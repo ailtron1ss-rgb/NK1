@@ -7,7 +7,7 @@
 - Expanded CI coverage across candidate coverage, numeric/fuzzy retrieval, bilingual concepts, typed intent, residency, background indexing and embedding privacy; the fixed-time numeric/fuzzy test fixtures were corrected after CI exposed their invalid temporal mode.
 - Removed 21 duplicate tracked Live2D shadows from `app/public` (16.69 MB); canonical assets remain in runtime and hydrate from the hash-locked manifest before Vite.
 - Working rules and navigation: [AGENTS.md](AGENTS.md); evidence/open gates: [WorkPass72 handover](docs/WORKPASS72_HANDOVER_2026-10-19.md); [exact-duplicate cleanup audit](docs/REPOSITORY_CLEANUP_AUDIT_WORKPASS72.md).
-- No recall uplift or production-ready claim is made. CI for this pass and independent labelled retrieval evidence remain open.
+- Validation: [WorkPass72 expanded CI passed](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39302836266) on `87564ddfd1f0d8758994c3ab0edb45511434a1b5`; a later handover-only commit records the result. No recall uplift or production-ready claim is made. Independent labelled retrieval evidence and real-world release gates remain open.
 
 ## Previous engineering pass — WorkPass71 (2026-10-19)
 
