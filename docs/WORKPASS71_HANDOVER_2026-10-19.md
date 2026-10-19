@@ -6,10 +6,10 @@
 
 ## Work completed
 
-- The retrieval benchmark's BM25 baseline was built from the first 1,600 valid memory rows, while the MemoryOS2 candidate previously restored the full supplied snapshot. When the source exceeded the cap, the two arms could therefore see different corpora.
-- Candidate retrieval now restores an isolated snapshot containing exactly the same bounded source rows as the baseline.
+- The retrieval benchmark's BM25 baseline filtered malformed rows, while the MemoryOS2 candidate previously restored those malformed rows. A malformed high-ranking row could therefore occupy a top-k slot in only the candidate arm and depress its measured recall.
+- Candidate retrieval now restores an isolated snapshot containing exactly the same validated corpus rows as the baseline.
 - The integrity report still marks truncation as invalid for promotion. The fix does not make truncated corpora eligible; it makes diagnostic A/B measurements fair and prevents the candidate from seeing extra rows.
-- Added a regression fixture with 1,601 rows and a uniquely relevant target after the cap. Expected: truncation is reported, promotion remains blocked, and neither arm retrieves the out-of-cap target.
+- Added two regression fixtures: (1) 1,601 rows with a uniquely relevant target after the cap, ensuring truncation is reported and neither arm retrieves beyond the cap; (2) a malformed top-ranked distractor, ensuring both arms filter to the same valid corpus while promotion remains blocked.
 - No retrieval uplift is claimed. This is an evaluation-correctness fix, not an algorithm-quality result.
 
 ## Canonical project map
