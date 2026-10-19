@@ -1,3 +1,11 @@
+## Current engineering pass — WorkPass75 (2026-10-19)
+
+- Hardened local LLM circuit-breaker tests: deterministic injected-clock snapshots, exact cooldown boundary, exponential backoff, cap enforcement, success reset and isolation from unrelated provider failures.
+- Removed the duplicate test-only backend selector; runtime and regression now exercise the same `LocalLanguageBackendPolicy` implementation.
+- Added [WorkPass75 rebuild and evidence ledger](docs/WORKPASS75_REBUILD_AND_EVIDENCE_LEDGER_2026-10-19.md): canonical ownership map, staged reassembly gates, evidence boundaries, and concrete next actions.
+- Updated [WorkPass74 local LLM handover](docs/WORKPASS74_LOCAL_LLM_SELECTION_2026-10-19.md) to distinguish its prior green CI run from the newer unvalidated hardening.
+- **Validation boundary:** CI run [39313943292](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39313943292) passed on baseline commit `ad949249ef10305a832f8d2e0dcb7a9c7c4b355d`, before WorkPass75 changes. Do not treat that run as validation of the latest head; the new workflow run must finish green.
+
 ## Current engineering pass — WorkPass72 (2026-10-19)
 
 - Fixed the retrieval candidate-budget off-by-one: revision and graph expansion check the cap before insertion, and fail fast if it is exceeded.
