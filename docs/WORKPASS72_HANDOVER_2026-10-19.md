@@ -44,6 +44,10 @@ This pass expands `.github/workflows/workpass71-validation.yml` to run:
 
 The expanded CI first found a numeric-retrieval fixture seeded with 2033 timestamps but run under `temporalMode: 'current'`. That mode intentionally ignores `asOfAt`; switching this deterministic fixture to explicit `temporalMode: 'at'` made the numeric checks pass. The following run exposed the same mismatch in the fuzzy-retrieval fixture; it too now uses point-in-time mode. `p2684-memory-residency.mjs` now asserts that retrieval leaves cold items cold and explicit `get()` owns vector materialization and the hot transition. These are fixture/assertion correctness changes, not changes to production temporal semantics. Run and inspect CI before counting WorkPass72 as validation-complete.
 
+## Candidate-budget defect found from CI
+
+The first expanded runtime CI got through the retrieval parity/numeric/fuzzy/concept/intent checks and P2684, then P2697 failed its 192-candidate bound. The source showed a real off-by-one pattern: revision and graph expansions checked the size **after** adding a candidate, so a 192-item pool could temporarily become 193 before breaking. WorkPass72 now checks the cap before every expansion insertion and throws a budget error if the invariant is ever violated. P2697 now prints all diagnostics in the failure message and asserts the reported budget is 192, making any future violation attributable rather than opaque. The corrected commit still requires CI validation.
+
 ## Remaining high-priority gates
 
 1. Confirm CI for this commit and repair every regression exposed by the expanded suite.

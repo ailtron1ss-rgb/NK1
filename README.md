@@ -1,5 +1,6 @@
 ## Current engineering pass — WorkPass72 (2026-10-19)
 
+- Fixed the retrieval candidate-budget off-by-one: revision and graph expansion check the cap before insertion, and fail fast if it is exceeded.
 - Fixed retrieval-side memory-residency warming: candidate search no longer rebuilds non-ranking hash vectors for cold records or reclassifies them as warm.
 - Gated adaptive policy updates on independent delayed-outcome verification; unverified observations do not change policy rewards, and legacy unverified reward aggregates are discarded on restore.
 - Strengthened the mobile residency regression to require zero vector-count growth and unchanged residency-tier counts across recall.

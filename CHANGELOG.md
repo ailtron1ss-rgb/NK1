@@ -1,4 +1,5 @@
 ## WorkPass72 — memory residency, verification-gated learning and source cleanup (2026-10-19)
+- Fixed a candidate-budget off-by-one in revision/graph expansion: both now check the 192-item cap before insertion, with a fail-fast invariant and diagnostic-rich regression assertion.
 - Fixed a resource/residency defect in `MemoryOS2.retrieve()`: cold candidates were assigned freshly rebuilt hash vectors and promoted to warm even though the hash similarity was not part of ranking.
 - Removed the non-ranking hash-cosine computation from retrieval. The legacy persisted `semanticHits` field remains schema-compatible but is no longer incremented by that misleading proxy.
 - Strengthened `p2697-mobile-residency.mjs` to require unchanged vector materialization and unchanged tier counts across a retrieval.

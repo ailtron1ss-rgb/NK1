@@ -30,7 +30,8 @@ assert.deepEqual(afterRetrieve.counts, before.counts, 'retrieval must not silent
 assert.ok(afterRetrieve.materializedVectors <= 112, `bounded residency failed: ${afterRetrieve.materializedVectors}`);
 
 const diag=restored.retrievalDiagnostics();
-assert.ok(diag.candidateCount<=192);
+assert.ok(diag.candidateCount<=192, `candidate budget must stay within 192: ${JSON.stringify(diag)}`);
+assert.equal(diag.candidateSelectionLimit,192);
 console.log(JSON.stringify({
   version:'P2697', ok:true, before, afterRestore, afterRetrieve,
   rows:rows.length, candidateCount:diag.candidateCount,

@@ -837,8 +837,10 @@ export class MemoryOS2{
        return Number(right?.revisionSequence??1)-Number(left?.revisionSequence??1)||Number(right?.createdAt??0)-Number(left?.createdAt??0)||a.localeCompare(b);
      });
      for(const revisionId of orderedRevisionIds){
-       candidateIds.add(revisionId);
+       // Check before insertion: checking after .add() allowed a 192-item seed
+       // pool to grow to 193 before the loop broke.
        if(candidateIds.size>=192)break;
+       candidateIds.add(revisionId);
      }
      if(candidateIds.size>=192)break;
    }
@@ -850,11 +852,14 @@ export class MemoryOS2{
      const seed=this.itemIndex.get(seedId);
      if(!seed)continue;
      for(const linkedId of [...(seed.semanticLinks??[]),...(seed.causalLinks??[])].slice(0,6)){
-       candidateIds.add(linkedId);
+       // The graph expansion shares the same strict bound as lexical/revision
+       // discovery; never insert the over-budget item before testing the cap.
        if(candidateIds.size>=192)break;
+       candidateIds.add(linkedId);
      }
      if(candidateIds.size>=192)break;
    }
+   if(candidateIds.size>192)throw new Error(`memory retrieval candidate budget exceeded: ${candidateIds.size}/192`);
    this.lastCandidateCount=candidateIds.size;
    const identifierBias=identifierLike(query);
    const rawRows:Array<{m:MemoryItem2;bm25:number;entity:number;lexical:number;coverage:number;fuzzy:number;conceptCoverage:number;temporal:number;causal:number;identity:number;goal:number;recency:number}> = [];
