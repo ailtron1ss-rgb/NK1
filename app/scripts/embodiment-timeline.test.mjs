@@ -73,6 +73,15 @@ test("combining marks, flags and joined emoji stay in one grapheme frame with UT
   assert.equal(base, timeline[0].startMs, "an offset inside a combining grapheme maps to its own frame");
 });
 
+test("line breaks and tabs preserve original UTF-16 offsets for speech boundary events", () => {
+  const text = "first\r\n\tsecond";
+  const timeline = buildVisemeTimeline(text, 1, "en-US");
+  const expected = Array.from(new Intl.Segmenter("en-US", { granularity: "grapheme" }).segment(text.replace(/[\r\n\t]/gu, " ")));
+  assert.equal(timeline.length, expected.length);
+  assert.deepEqual(timeline.map((frame) => frame.charIndex), expected.map((part) => part.index));
+  assert.equal(timeline.find((frame) => frame.charIndex === text.indexOf("second"))?.charIndex, text.indexOf("second"));
+});
+
 test("Russian and English graphemes map to distinct mouth shapes", () => {
   const ru = buildVisemeTimeline("мама фокус уют", 1, "ru-RU");
   const poses = new Set(ru.map((frame) => frame.pose.viseme));
