@@ -31,13 +31,16 @@ jobs:
         run: npm --prefix app run test:embodiment-timeline
       - name: Run app script regression suite
         run: npm --prefix app run test:scripts
+      - name: App typecheck
+        run: npm --prefix app run typecheck
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
-      - name: Speech gateway and persistence regression
+      - name: Speech gateway, timescale and persistence regression
         shell: bash
         run: |
           set -euo pipefail
           cd runtime/neuro-kurisu
+          node --experimental-strip-types tests/workpass71-continuum-timescale.mjs
           node --experimental-strip-types tests/workpass69-speech-interruption-gateway.mjs
           node --experimental-strip-types tests/termux-tts-concurrency-workpass69.mjs
           node --experimental-strip-types tests/workpass64-archived-receipt-reconciliation.mjs
