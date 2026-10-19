@@ -33,6 +33,23 @@ The goal is not to accumulate modules or produce an impressive architecture diag
 9. **Report exact evidence:** label findings `PROVEN`, `IMPLEMENTED`, `FUNCTIONAL INDICATOR`, `OBSERVED`, `HYPOTHESIS`, `UNKNOWN`, `UNRESOLVED` or `FAILED` accurately.
 10. **Skip blockers intelligently:** continue independent work when a device, registry, secret, external service or hardware test is unavailable; record the blocker and exact reproduction steps instead of fabricating results.
 
+## 2A. Research, upstream source and integration mandate
+
+Research is a continuous engineering input, not a documentation-only activity. For each high-impact subsystem and for the organism as a whole, actively examine current and historical papers, benchmarks, open-source implementations, issue discussions, model cards, licenses, reproducible reports and experimental mechanisms—even when approaches appear incompatible.
+
+For each candidate:
+1. Record the canonical upstream URL/repository, commit or release, date checked, license, provenance, dependency footprint, hardware assumptions and exact files/functions worth studying.
+2. Separate claims into reproduced results, author-reported results, implementation observations, hypotheses and unknowns. Do not treat a paper abstract, README, benchmark headline or source code presence as proof.
+3. Compare against NeuroCore's actual owner and failure mode. Map the proposed mechanism to existing code paths, data contracts, state ownership and resource budgets before integrating it.
+4. Prefer a minimal adapter or a reversible isolated experiment. Preserve attribution and licenses; do not paste large upstream code without license compatibility and provenance.
+5. Write a regression/ablation that tests the hypothesized benefit and failure modes, including latency, memory, privacy, interference, forgetting, recovery and target-device constraints where relevant.
+6. Promote only when the candidate beats a same-corpus/same-budget baseline under a declared threshold and does not break invariants. Reject or defer candidates with measured downsides; record why so later chats do not re-run the same dead end.
+7. Study integration effects, not only components: memory ↔ learning, language ↔ evidence, planning ↔ action verification, identity continuity ↔ revision, embodiment ↔ timing, and runtime ↔ persistence/recovery.
+
+Research intake is not limited to a predefined list of repositories or architectures. It may include relevant work on recurrent/state-space models, linear attention, fast weights, test-time training, associative memory, retrieval/reranking, continual learning, uncertainty/calibration, causal inference, active perception, planning, multi-agent interaction, event sourcing, durable agents, speech/viseme synchronization and mobile inference. These are search directions, not a mandate to implement every idea. Incompatible mechanisms may coexist as isolated candidates until a fair tournament decides which survives.
+
+Maintain a source-intake ledger with these fields: candidate; upstream URL/revision; license; subsystem; proposed mechanism; expected benefit; known downside; adaptation boundary; test/ablation; result; resource cost; decision (integrate / adapt / research-only / reject); rationale. Keep the ledger linked from the current handover. Never let research volume substitute for functional integration.
+
 ## 3. Required start-of-chat protocol
 
 At the start of every new work session, do not ask the user to restate the mission. Instead:
