@@ -29,7 +29,7 @@ function canonicalBaseUrl(raw: string | undefined): string | null {
   }
   url.pathname = url.pathname.replace(/\/+$/, '');
   if (!url.pathname || url.pathname === '/') url.pathname = '/v1';
-  return url.toString().replace(/\\/+$/, '');
+  return url.toString().replace(/\/+$/, '');
 }
 function extractText(value: unknown): string {
   if (typeof value === 'string') return value.trim();
