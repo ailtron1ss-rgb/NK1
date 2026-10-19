@@ -54,7 +54,7 @@ const requiredWorkflowTests = [
   'runtime/neuro-kurisu/tests/memory-temporal-inspector-closure.mjs',
   'runtime/neuro-kurisu/tests/memory-revision-history-budget-workpass36.mjs',
 ];
-const missingRequired = requiredWorkflowTests.filter(file => !workflow.includes(file));
+const missingRequired = requiredWorkflowTests.filter(file => !workflow.includes(file) && !workflow.includes(file.replace('runtime/neuro-kurisu/', '')));
 const report = {
   status: missingReferences.length === 0 && missingRequired.length === 0 ? 'PASS' : 'FAIL',
   scope: 'static direct-reference inventory; not proof that every test is executed or behavior is correct',
