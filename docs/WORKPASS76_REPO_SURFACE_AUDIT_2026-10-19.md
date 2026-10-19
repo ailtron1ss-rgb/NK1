@@ -166,3 +166,10 @@ The next useful improvement is to enrich the static audit with script-to-script 
 - **IMPLEMENTED:** [Local LLM smoke guide](LOCAL_LLM_SMOKE_GUIDE.md) records the PowerShell command and result interpretation for the Dell G3.
 - **CI pending at this update:** run [39320833685](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39320833685) includes the live smoke's default-skip behavior and coverage audit requirement; inspect the final conclusion before recording it as passed.
 - **UNRESOLVED:** actual `llama.cpp` inference on the Dell G3 has not been observed from this GitHub workflow. The local endpoint is machine-specific and is intentionally not exposed to CI.
+
+
+## Optional live-smoke CI behavior confirmed
+
+- **PROVEN (CI):** run [39320833685](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39320833685) completed successfully. The opt-in live local LLM smoke skipped cleanly without `LLAMA_CPP_SMOKE_URL`, while the fake-provider HTTP integration test, test-coverage audit, typechecks, app build and core regressions passed.
+- **UNRESOLVED:** the actual Dell G3 model endpoint was not configured in CI and was not tested by this run. Execute the documented live smoke on the laptop to collect machine-specific inference latency and actual model identity.
+- **IMPLEMENTED:** coverage audit now emits the exact 76 unreferenced candidate paths, not only their count. The next audit run will validate this report-output change; candidate status remains non-destructive and does not imply dead code.
