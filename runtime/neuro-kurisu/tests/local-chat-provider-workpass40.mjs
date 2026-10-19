@@ -42,7 +42,8 @@ const oversizedChunkedResponse = new OpenAICompatibleLocalChatProvider({
       pull(controller) {
         if (streamChunk++ === 0) controller.enqueue(new Uint8Array(2 * 1024 * 1024));
         else if (streamChunk === 2) controller.enqueue(new Uint8Array(1));
-        else controller.close();
+        // Keep the stream open so cancellation is observable rather than racing
+        // against a source that has already closed itself.
       },
       cancel() { streamCancelled = true; },
     }),
