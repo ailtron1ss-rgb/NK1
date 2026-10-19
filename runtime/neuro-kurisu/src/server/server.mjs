@@ -247,7 +247,7 @@ function localFallback(request) {
     };
 }
 async function tryLlamaCpp(request, failures) {
-    if (!LLAMA_CPP_PROVIDER.configured()) return null;
+    if (!LLAMA_CPP_PROVIDER.configured() || LOCAL_LANGUAGE_BACKEND_POLICY.snapshot().coolingDown) return null;
     try {
         return await LLAMA_CPP_PROVIDER.generate({ system: request.system, user: request.user, maxTokens: request.maxTokens, temperature: request.temperature });
     }
