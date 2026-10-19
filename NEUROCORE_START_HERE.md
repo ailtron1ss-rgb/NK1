@@ -77,6 +77,7 @@ At the start of every new work session, do not ask the user to restate the missi
 - `docs/WORKPASS75_REBUILD_AND_EVIDENCE_LEDGER_2026-10-19.md`: reconstruction strategy and scientific acceptance gates.
 - `docs/RESEARCH_INTAKE_LEDGER.md`: upstream papers/repos, adaptation boundaries, evidence status and the next research tournament.
 - `docs/LOCAL_LLM_SMOKE_GUIDE.md`: safe opt-in live `llama.cpp` smoke procedure for the Dell G3.
+- `docs/WORKPASS77_HANDOVER_2026-10-19.md`: latest continuation snapshot with recent commits, CI evidence and prioritized unresolved work.
 - `docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md`: latest repository surface inventory and unfinished work.
 
 ## 5. Acceptance gates — never collapse into one score
