@@ -4,8 +4,9 @@ on:
   push:
     branches: [workpass70-source]
     paths:
-      - "app/src/components/avatar/embodimentTimeline.ts"
-      - "app/scripts/embodiment-timeline.test.mjs"
+      - "app/**"
+      - "runtime/neuro-kurisu/src/**"
+      - "runtime/neuro-kurisu/tests/**"
       - ".github/workflows/workpass71-validation.yml"
       - "CHANGELOG.md"
       - "SUPER_VERSION.json"
