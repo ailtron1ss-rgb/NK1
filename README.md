@@ -369,3 +369,8 @@ Physical Termux speech invoked by `EmbodimentRuntime` now dispatches through the
 The active `llama.cpp` chat provider now reads real Fetch response bodies incrementally and cancels chunked responses when they exceed the 2 MiB byte budget, rather than buffering the entire response before checking its size. A regression covers the missing-`Content-Length` case and is wired into the active validation workflow.
 
 Implementation notes, commit links, and the evidence boundary: [WorkPass73 handover](docs/WORKPASS73_LOCAL_LLM_STREAM_BOUNDARY_2026-10-19.md). The patch remains **implemented, pending CI observation** until a run on the new head is confirmed. This is transport/resource hardening, not proof of real-model quality or production readiness.
+
+
+## WorkPass74 — local LLM first-choice routing (2026-10-19)
+
+When `LLAMA_CPP_URL` is configured, the server request path now selects local `llama.cpp` first and preserves the existing fallback chain if it fails. A four-case policy regression is included in the core validation workflow. This does not by itself prove real-model inference or production readiness. See [WorkPass74 handover](docs/WORKPASS74_LOCAL_LLM_SELECTION_2026-10-19.md).
