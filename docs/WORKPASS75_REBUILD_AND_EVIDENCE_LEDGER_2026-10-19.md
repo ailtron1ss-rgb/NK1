@@ -16,7 +16,7 @@
 
 - Removed the unused exported `chooseLanguageBackend` selector. The server's `LocalLanguageBackendPolicy` class is now the sole policy implementation rather than maintaining a second test-only decision path.
 - Made `snapshot({ now })` deterministic under an injected clock. Tests can assert exact deadline behavior without depending on machine wall time.
-- Expanded local provider regression to 12 behavioral assertions: preference, unconfigured routing, degraded fallback distinction, exact cooldown boundary, exponential backoff, cap enforcement, successful reset, and unrelated-provider isolation.
+- Expanded local provider regression to 13 behavioral assertions: preference, unconfigured routing, degraded fallback distinction, exact cooldown boundary, exponential backoff, cap enforcement, successful reset, and unrelated-provider isolation.
 - Updated WorkPass74's evidence record so the earlier green run is not misrepresented as validating these newer changes.
 
 ## Rebuild strategy — preserve first, consolidate by evidence
