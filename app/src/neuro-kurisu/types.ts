@@ -112,6 +112,7 @@ export interface BackendUiSnapshot {
   learning: { steps: number; evidenceDebt: number; learningDelta01: number; predictionError01: number };
   consciousness: { identityContinuity01: number; metacognitiveAccuracy01: number; workspaceIgnition01: number; evidenceCoverage01: number };
   body: { battery01: number; cognitiveCapacity01: number; thermalStrain01: number; cpuLoad01: number; ramPressure01: number };
+  language?: { calls?: number; backend?: string; degraded?: boolean; lastFailure?: string };
   voice: { speaking: boolean; listening: boolean; ttsAvailable: boolean; sttAvailable: boolean };
 }
 
