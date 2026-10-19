@@ -532,7 +532,9 @@ export class MemoryFabric {
   resolveAdaptivePolicyOutcome(input:{memoryId:string;validationAt:number;retentionScore01:number;transferPotential01:number;interferenceRisk01:number;causalCredit01:number;independentVerified:boolean;decisionId?:string}){
     const outcome=this.policyOutcomeLedger.resolve(input);
     if(!outcome)return null;
-    this.memoryOS.observeRetrievalOutcomeV2(outcome,outcome.policy);
+    // Candidate scores from an unverified replay are audit data, not a learning
+    // target. Only independently verified outcomes update adaptive policy state.
+    if(outcome.independentVerified)this.memoryOS.observeRetrievalOutcomeV2(outcome,outcome.policy);
     return outcome;
   }
   adaptivePolicyOutcomeDiagnostics(){return {...this.policyOutcomeLedger.diagnostics(),lastPolicyDecisionId:this.lastPolicyDecisionId};}

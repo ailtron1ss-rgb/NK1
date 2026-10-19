@@ -16,6 +16,10 @@ In `MemoryOS2.retrieve()`, the candidate loop rebuilt each missing 48-dimensiona
 - Expanded the active GitHub Actions regression suite to run candidate coverage, numeric and fuzzy retrieval, bilingual concept recall, query-intent ranking, the two residency regressions, background semantic-index maintenance and embedding privacy.
 - Added root `AGENTS.md` with a canonical file map, working procedure, evidence terminology and conservative cleanup policy.
 
+## Delayed policy-learning evidence gate
+
+The policy outcome ledger previously recorded an `independentVerified` flag but still emitted the full candidate reward and the MemoryFabric adapter always forwarded that reward into adaptive policy updates. WorkPass72 now sets unverified outcome reward to zero, tracks verified/unverified resolution counts separately, limits reward/causal-credit aggregates to independently verified outcomes, and updates AdaptiveMemoryPolicy only for verified outcomes. A focused regression checks that unverified resolution leaves the policy diagnostics unchanged and verified resolution changes the reward state. This is an integration guard, not proof that the upstream verifier always represents real-world truth; caller provenance still must be audited.
+
 ## Why this is not a retrieval-quality claim
 
 This is a resource/residency correctness fix. No recall uplift is claimed. The multi-seed benchmark still uses its existing synthetic fixture; independent, provenance-backed, temporally separated holdout data is still required before claiming real quality gains.

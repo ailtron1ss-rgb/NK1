@@ -1,11 +1,12 @@
-## WorkPass72 — keep retrieval residency bounded (2026-10-19)
+## WorkPass72 — memory residency, verification-gated learning and source cleanup (2026-10-19)
 - Fixed a resource/residency defect in `MemoryOS2.retrieve()`: cold candidates were assigned freshly rebuilt hash vectors and promoted to warm even though the hash similarity was not part of ranking.
 - Removed the non-ranking hash-cosine computation from retrieval. The legacy persisted `semanticHits` field remains schema-compatible but is no longer incremented by that misleading proxy.
 - Strengthened `p2697-mobile-residency.mjs` to require unchanged vector materialization and unchanged tier counts across a retrieval.
 - Expanded GitHub Actions to run the memory retrieval, query-intent, residency, background-index and embedding-privacy regressions.
 - Added `AGENTS.md` as the canonical working guide and an exact-hash cleanup inventory. Removed the 21 manifest-listed Live2D shadows from `app/public` after confirming SHA/size parity and automatic hash-verified hydration; 16,690,663 bytes of duplicate tracked payload removed. The remaining 18 exact duplicate groups (39 excess paths) are preserved pending individual reference/provenance review.
 - Expanded CI exposed fixed-time fixture errors in numeric and fuzzy retrieval: both seeded 2033 timestamps while calling `temporalMode: 'current'`, which deliberately uses wall-clock time and ignores `asOfAt`. Both tests now use explicit point-in-time mode; a further CI pass is required.
-- This is a residency/resource fix, not a retrieval-quality uplift or production approval. Independent labelled retrieval evidence remains open. The P2684 residency regression now specifies that retrieval leaves cold records cold and explicit `get()` owns vector materialization.
+- Gated adaptive memory-policy learning on independently verified delayed outcomes; unverified observations remain auditable but get zero policy reward and do not mutate adaptive policy state. Added verification-count diagnostics and regression coverage.
+- This is a residency/resource correctness pass, not a retrieval-quality uplift or production approval. Independent labelled retrieval evidence remains open. The P2684 residency regression specifies that retrieval leaves cold records cold and explicit `get()` owns vector materialization.
 
 ---
 
