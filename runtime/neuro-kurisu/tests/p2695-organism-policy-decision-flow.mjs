@@ -18,7 +18,7 @@ assert.equal(before.lastPolicyDecisionId,retrieved.decisionId);
 const replay=core.experienceContinuumReactivate(memoryId);
 assert.ok(replay,'memory must be present in the experience continuum');
 const verificationService=new OutcomeVerificationService();
-const verification=await verificationService.verify({toolId:'p2695-independent-test-harness',input:{memoryId},result:{retentionScore01:.88}},()=>({verified:true,basis:'external-postcondition',confidence01:1,externalObservation:true,observationId:`p2695-observation:${retrieved.decisionId}`,expectedPostcondition:'retention score independently measured',observedPostcondition:'retention score independently measured'}));
+const verification=await verificationService.verify({toolId:'p2695-independent-test-harness',input:{memoryId,evidenceKey:`p2695:${retrieved.decisionId}`,taskId:'p2695-policy-flow',contextKey:'p2695',delayMs:2*86400000,retentionScore01:.88,baselineScore01:.62,transferPotential01:.81,interferenceRisk01:.12},result:{retentionScore01:.88}},()=>({verified:true,basis:'external-postcondition',confidence01:1,externalObservation:true,observationId:`p2695-observation:${retrieved.decisionId}`,expectedPostcondition:'retention score independently measured',observedPostcondition:'retention score independently measured'}));
 assert.equal(verification.verified,true);
 const validation=core.experienceContinuumReplayValidate({
   memoryId,

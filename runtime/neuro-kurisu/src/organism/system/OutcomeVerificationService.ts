@@ -48,12 +48,15 @@ export interface OutcomeVerificationContext {
 export type OutcomeVerifier = (context: OutcomeVerificationContext) => Promise<OutcomeVerification> | OutcomeVerification;
 
 const VALID_BASES = new Set<OutcomeVerificationBasis>(['none', 'tool-contract', 'external-postcondition']);
-const trustedExternalPostconditionResults = new WeakSet<object>();
+const trustedExternalPostconditionResults = new WeakMap<object, OutcomeVerificationContext>();
 
-/** Only the exact normalized result emitted by this verifier can authorize independent learning. */
-export function isTrustedExternalPostconditionVerification(value: unknown): value is OutcomeVerification {
-  if (!value || typeof value !== 'object' || !trustedExternalPostconditionResults.has(value as object)) return false;
-  return assessExternalPostcondition(value as OutcomeVerification) === 'match';
+/** Only an exact, frozen verifier result bound to the same evidence tuple can authorize learning. */
+export function isTrustedExternalPostconditionVerification(value: unknown, expectedInput?: Record<string, unknown>): value is OutcomeVerification {
+  if (!value || typeof value !== 'object') return false;
+  const context = trustedExternalPostconditionResults.get(value as object);
+  if (!context || assessExternalPostcondition(value as OutcomeVerification) !== 'match') return false;
+  if (expectedInput && !Object.entries(expectedInput).every(([key, expected]) => Object.is(context.input[key], expected))) return false;
+  return true;
 }
 const clamp = (x: unknown) => typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : 0;
 const boundedText = (value: unknown, max: number): string | undefined => {
@@ -177,7 +180,10 @@ export class OutcomeVerificationService {
         ...(notes ? { notes } : {}),
         ...(verified ? { observedWorldContextAfter: normalizeWorldContext(checked.observedWorldContextAfter) } : {}),
       };
-      if (verified && external && assessExternalPostcondition(normalized) === 'match') trustedExternalPostconditionResults.add(normalized);
+      if (verified && external && assessExternalPostcondition(normalized) === 'match') {
+        Object.freeze(normalized);
+        trustedExternalPostconditionResults.set(normalized, isolated);
+      }
       return normalized;
     }
 
