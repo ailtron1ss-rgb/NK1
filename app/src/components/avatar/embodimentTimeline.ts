@@ -122,7 +122,7 @@ function segmentGraphemes(source: string, language: string): GraphemeSegment[] {
 }
 
 export function buildVisemeTimeline(text: string, rate = 0.96, language = "ru-RU"): VisemeFrame[] {
-  const source = String(text ?? "").replace(/[\r\n\t]+/gu, " ");
+  const source = String(text ?? "").replace(/[\r\n\t]/gu, " ");
   if (!source.length) return [];
   const graphemes = segmentGraphemes(source, language);
   const validRate = clamp(rate, 0.5, 2);
