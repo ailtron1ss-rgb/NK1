@@ -77,3 +77,12 @@ Use [RESEARCH_INTAKE_LEDGER.md](RESEARCH_INTAKE_LEDGER.md) as a living ledger. I
 **Not proven:** real-model quality, independent memory uplift, continual-learning transfer, autonomous external agency, device performance, subjective experience or consciousness. Software self-report is not evidence of consciousness.
 
 Next session: check live head and Actions first, then continue at P0 item 1 and the deterministic provider failure-path test. Do not ask the user to restate the mission.
+
+
+## Status refresh after handover creation
+
+- **PROVEN (CI):** run [39320980715](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39320980715) completed successfully on commit `0fbc6a85522497156ec254f983938d53a1912321`. The coverage audit passes after adding exact candidate paths to its JSON log; full runtime regression suite passed.
+- **PROVEN (CI):** run [39321059462](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39321059462) completed successfully on `953ba963c4b1be247b6c183cf461f7ad464ce114`, including the opt-in live-smoke default skip, app build/typechecks, HTTP fake-provider regression and core suite.
+- **Current branch head after the documentation-only handover links:** `dccbd3e332c4429f22c5c651b1b71a187fe18ab0`.
+- **Latest run observed at this refresh:** [39321285670](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39321285670) was queued on the current head after updating `AGENTS.md`. Check it to completion before calling the current head CI-verified.
+- Research ledger now explicitly preserves earlier requested candidates (Mamba-3/SSD, FLA, MoBA, preconditioned DeltaNet KKT/WY/`solve_tril`, Gated Oja, TTT, GSA, NSA, LIRA uncertainty/write gating, HiPPO, DPLR/IPLR, RWKV-7/Goose, fused updates, context parallelism, MEMO artifacts and `erase_control.py`). Unresolved names are marked as unresolved instead of assigned guessed upstream sources.
