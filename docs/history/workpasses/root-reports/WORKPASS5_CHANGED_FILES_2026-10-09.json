@@ -1,0 +1,83 @@
+{
+  "name": "Neuro-Kurisu SUPER WorkPass 5 change manifest",
+  "createdAt": "2026-10-09",
+  "incrementalBaseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS4_2026-10-09.zip",
+  "incrementalBaseSha256": "1f92ad7b079f2f6e1a53f04e8af0af173b55e8b9dd144037bf149713af5a1ad3",
+  "canonicalRuntime": "Neuro-Kurisu 35.40.0 / schema 223",
+  "overallRoadmapProgressPercent": 57.0,
+  "method": "SHA-256 comparison of current working-tree files against the prior WorkPass 4 archive; only added/modified content is integrated. No source branches were bulk-overlaid.",
+  "addedCount": 4,
+  "modifiedCount": 9,
+  "removedCount": 0,
+  "addedFiles": [
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-09.json",
+      "bytes": 2948,
+      "sha256": "6894a3bd8e03a6a7203084473433417bdfac6eeca2b6684259dedcdbbca7669d"
+    },
+    {
+      "path": "docs/WORKPASS5_AGENCY_AND_RELEASE_PROGRESS_2026-10-09.md",
+      "bytes": 8176,
+      "sha256": "804b893e04cd2e059effa72ef5b06a7b6034252cc00e4383de42d8bd7bfed3d0"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/MotorSchema.ts",
+      "bytes": 14159,
+      "sha256": "6392bba13a265f63a8808f8a424e01f56115f5a944bcf8553ccc54fc883c83c0"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/motor-schema-agency-contract.mjs",
+      "bytes": 9183,
+      "sha256": "f5df61b3444a42d4b548c1da94bfb8baf6f02f92796daae616be597c350baab5"
+    }
+  ],
+  "modifiedFiles": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 13047,
+      "sha256": "fc9b2fc087524b4e2f083c645818deae76324156273a9c5db4ccf0a44ff3c347"
+    },
+    {
+      "path": "contracts/inventory/live-source-inventory.json",
+      "bytes": 1330,
+      "sha256": "c61e020ab06e516135f893596bca62f319bb3a589f0ad8e34fa5052f633fecdb"
+    },
+    {
+      "path": "package.json",
+      "bytes": 2781,
+      "sha256": "a8979a5f9d6530391ad4e55afc8fab47b435710c55244ca036510554a5e45a8a"
+    },
+    {
+      "path": "runtime/neuro-kurisu/INTERFACE_FUNCTION_MATRIX_2026-10-08.json",
+      "bytes": 5645,
+      "sha256": "b35b28baa91ae91266a3dcbbf7b7aeaf2f3cc58ce3926a2ed63c9ba61ac77c25"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "bytes": 224273,
+      "sha256": "60c7a16cec171a8950421e7784ea9fa283f0dd1c187cbe1c6a39b73dbb886927"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+      "bytes": 1183721,
+      "sha256": "34477096fb952e41170ffd6316235abd2930baf68e46aa4bffe4f1c2e88e4f96"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts",
+      "bytes": 9057,
+      "sha256": "30752e393aa2a61396456761de0758e26e792eac1a294c43b415f2a96abb781d"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/OutcomeCognitionFabric.ts",
+      "bytes": 6719,
+      "sha256": "ec3829a27ced6da88a54a1ea0a5ccd4cfe6d20baf006b96e2e111880a2ccc1f4"
+    },
+    {
+      "path": "Список дел.md",
+      "bytes": 47431,
+      "sha256": "736434372e1ee6e5a1f2daeeb3d541daf0c083bd209ad022ecb082c0db594ad0"
+    }
+  ],
+  "removedFiles": [],
+  "manifestSelfHash": "not included (avoids recursive checksum)"
+}

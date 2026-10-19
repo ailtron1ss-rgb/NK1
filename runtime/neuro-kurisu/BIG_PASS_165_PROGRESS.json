@@ -1,0 +1,65 @@
+{
+  "pass": 165,
+  "release": "35.6.1",
+  "generatedAt": "2026-09-09T14:41:42.794805+00:00",
+  "semantic": {
+    "totalFunctions": 2397,
+    "VERIFIED": 14,
+    "INTEGRATION_ONLY": 561,
+    "UNSAFE_TO_AUTO_RUN": 214,
+    "UNVERIFIED": 1608,
+    "verifiedRate01": 0.0058,
+    "evidenceCoverage01": 0.0644
+  },
+  "parameterizedProbe": {
+    "sourceFiles": 262,
+    "imported": 262,
+    "attempted": 490,
+    "passed": 459,
+    "failed": 0,
+    "inputSynthesisNeeded": 19,
+    "lifecycleNeeded": 12,
+    "skipped": 29
+  },
+  "bigPass165": {
+    "ticks": 49,
+    "canonicalMemoryItems": 104,
+    "retentionEvaluations": 49,
+    "consolidations": 575,
+    "reconsolidations": 575,
+    "completeCycles": 49,
+    "memoryKnockout": true,
+    "restartPersistence": true
+  },
+  "longitudinal": {
+    "ticksPerTrajectory": 36,
+    "terminalDivergence": 0.14667114273520132,
+    "restartPersistence": true
+  },
+  "memoryKnockout": {
+    "policyDivergence": 0.07832905165569537,
+    "exploreWithMemory": 0.8244707596201983,
+    "exploreWithoutMemory": 0.785306247594219,
+    "verifyWithMemory": 0.5370223597337709,
+    "verifyWithoutMemory": 0.49785782010405455
+  },
+  "progress": {
+    "platform": 73,
+    "architecture": 71,
+    "persistence": 82,
+    "verification": 68,
+    "cognitiveIntegration": 67,
+    "memory": 82,
+    "agency": 66,
+    "learning": 60,
+    "worldModel": 56,
+    "selfModel": 63,
+    "emotion": 50,
+    "feeling": 30,
+    "social": 46,
+    "perception": 35,
+    "embodiment": 35,
+    "longHorizonLife": 45,
+    "humanLikeGeneralIntelligence": 30
+  }
+}

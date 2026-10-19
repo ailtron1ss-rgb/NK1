@@ -1,0 +1,74 @@
+{
+  "rows": [
+    {
+      "seed": 0.0,
+      "enabled": 0.0,
+      "consolidation_events": 0.0,
+      "slow_weight_delta": 0.0008436806383542717,
+      "final_fast_norm": 0.017088308930397034,
+      "max_consolidation_blend": 0.0,
+      "elapsed_s": 0.23856988999978057
+    },
+    {
+      "seed": 0.0,
+      "enabled": 1.0,
+      "consolidation_events": 2.0,
+      "slow_weight_delta": 0.000845179136376828,
+      "final_fast_norm": 0.0,
+      "max_consolidation_blend": 0.07999999821186066,
+      "elapsed_s": 0.2238434419996338
+    },
+    {
+      "seed": 1.0,
+      "enabled": 0.0,
+      "consolidation_events": 0.0,
+      "slow_weight_delta": 0.0008625391637906432,
+      "final_fast_norm": 0.01791875623166561,
+      "max_consolidation_blend": 0.0,
+      "elapsed_s": 0.22605389200043646
+    },
+    {
+      "seed": 1.0,
+      "enabled": 1.0,
+      "consolidation_events": 2.0,
+      "slow_weight_delta": 0.0008667020010761917,
+      "final_fast_norm": 0.0,
+      "max_consolidation_blend": 0.07999999821186066,
+      "elapsed_s": 0.22023623700033568
+    },
+    {
+      "seed": 2.0,
+      "enabled": 0.0,
+      "consolidation_events": 0.0,
+      "slow_weight_delta": 0.0008104821899905801,
+      "final_fast_norm": 0.012342472560703754,
+      "max_consolidation_blend": 0.0,
+      "elapsed_s": 0.22555391000014424
+    },
+    {
+      "seed": 2.0,
+      "enabled": 1.0,
+      "consolidation_events": 2.0,
+      "slow_weight_delta": 0.0008119439589791,
+      "final_fast_norm": 0.0,
+      "max_consolidation_blend": 0.07999999821186066,
+      "elapsed_s": 0.21248749199958183
+    }
+  ],
+  "summary": {
+    "False": {
+      "consolidation_events": 0.0,
+      "slow_weight_delta": 0.000838900664045165,
+      "final_fast_norm": 0.015783179240922134,
+      "max_consolidation_blend": 0.0,
+      "elapsed_s": 0.2300592306667871
+    },
+    "True": {
+      "consolidation_events": 2.0,
+      "slow_weight_delta": 0.0008412750321440399,
+      "final_fast_norm": 0.0,
+      "max_consolidation_blend": 0.07999999821186066,
+      "elapsed_s": 0.2188557236665171
+    }
+  }
+}

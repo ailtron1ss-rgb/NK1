@@ -1,0 +1,187 @@
+{
+  "title": "Neuro-Kurisu WorkPass29 changed-file manifest",
+  "workpass": 29,
+  "createdAt": "2026-10-13T05:53:07.029475+00:00",
+  "baseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS28_2026-10-13.zip",
+  "baseArchiveSha256": "918088e6d83eb42a648a926db81721431cbc5af872b3d1b6dcd31c0933bf497e",
+  "releaseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS29_2026-10-13.zip",
+  "rootVersion": "29.0.0-super-final15",
+  "runtimeVersion": "35.52.0",
+  "schema": 224,
+  "changeSummary": {
+    "modifiedFiles": 11,
+    "addedProjectFilesExcludingThisManifest": 8,
+    "deletedFiles": 0,
+    "unchangedBaseFiles": 12738,
+    "baseRegularFiles": 12749,
+    "outputRegularFilesExpected": 12758,
+    "manifestExcludedFromItsOwnEntries": true
+  },
+  "integrationSummary": [
+    "MemoryOS2 restore chooses dedup-index winners by temporal validity, trust/dormancy, revision sequence and observation time, independent of serialized row order.",
+    "Explicit revisions use lineage-scoped stable identities; corrections that preserve the same normalized content are no-ops.",
+    "Re-observation of expired content preserves the historical ID and validity boundary.",
+    "Hexis point-in-time temporal lookup and diff delegate to canonical MemoryOS2; Hexis rows are an audit/export projection.",
+    "Hexis default learning reviews select up to 12 most recently observed/accessed current memories.",
+    "Capacity eviction and forgetting rebuild affected content/exact indexes from surviving canonical rows instead of blindly deleting duplicate-key mappings."
+  ],
+  "verification": {
+    "runtimeTypecheck": "PASS",
+    "memorySourceIntegrationWorkPass29": "PASS (includes 1600-record capacity-eviction duplicate-index regression)",
+    "temporalInspectorClosure": "PASS",
+    "candidateCoverage": "PASS",
+    "numericRetrieval": "PASS",
+    "R15TemporalMemory": "PASS",
+    "R16MemoryBehavior": "PASS",
+    "retrievalBenchmark": "PASS; Recall@5 parity with BM25 on the small synthetic fixture, no promotion",
+    "multiSeedRetrievalExperiment": "PASS; deterministic, not promoted",
+    "serverSmoke": "PASS",
+    "releaseMetadata": "PASS (34/34)",
+    "releaseMetadataContract": "PASS (6/6)",
+    "browserSmokeUnitSuite": "PASS (51/51)",
+    "atomicReportWriter": "PASS (4/4)",
+    "serverImports": "PASS (10 checked, 0 missing)",
+    "uiApiLinkage": "PASS (124 client routes, 48 Runtime Atlas surfaces, no missing routes)",
+    "assetsAudit": "PASS (0 errors; Live2D and sprite references resolved)",
+    "aggregateRootAudit": "TIMEOUT at 300 seconds after runtime SERVER_SMOKE=PASS; remaining root gates passed when executed individually; aggregate exit status is not claimed",
+    "releaseReadiness": "NOT CLAIMED; independent temporal holdout, production frontend build/browser Live2D E2E, real NLI inference/provider run, clean-room rollback/soak remain open"
+  },
+  "changes": [
+    {
+      "path": "CHANGELOG.md",
+      "status": "MODIFIED",
+      "baseSha256": "986c50045a2f9a8f92ab8b9efb3e454a71a2c1a3566c97348cbd0c932f704171",
+      "sha256": "e711d524c5c0e61225dbff55ccec8801d6175efcd60eb51c6c79a03291b53342",
+      "baseSizeBytes": 43631,
+      "sizeBytes": 47226
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "status": "MODIFIED",
+      "baseSha256": "7e2e5559778cf41a964e821ba6150f8988e957229fe3339aec1125e80f9fb662",
+      "sha256": "4a202ee6928eecffe86fc934afad6fc5eccee09ae2ffd333226880d067616e2a",
+      "baseSizeBytes": 24441,
+      "sizeBytes": 25852
+    },
+    {
+      "path": "contracts/OWNERSHIP.md",
+      "status": "MODIFIED",
+      "baseSha256": "7f4e5c45971806d5aa48c3664da9a63164745e135e860a514c81cd55395b391b",
+      "sha256": "a36c327562a4b4980a9c5e2e26ab63fe9dc0bb3f7460dd328c685042fcf560a3",
+      "baseSizeBytes": 1359,
+      "sizeBytes": 1817
+    },
+    {
+      "path": "contracts/integration-manifest.json",
+      "status": "MODIFIED",
+      "baseSha256": "c4c17a010e8cfe34bd4de194c7c76b5d2b415f72a47951f3be39cec0902e8e10",
+      "sha256": "7f662c2801ad2fd0b026185e40e86913ba8a8c9444101f0d551f2feda3d0e318",
+      "baseSizeBytes": 7490,
+      "sizeBytes": 8022
+    },
+    {
+      "path": "docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md",
+      "status": "MODIFIED",
+      "baseSha256": "175d687a2f6cbe3ed9c5971aeb13f05c1628c820700ca39496c5bd64c429f69f",
+      "sha256": "7b95375b14152ed0870dfc0f9758a31af0ee3ee6b9f0d7c1be3d7a719c40a57c",
+      "baseSizeBytes": 94038,
+      "sizeBytes": 97633
+    },
+    {
+      "path": "package.json",
+      "status": "MODIFIED",
+      "baseSha256": "54fb5fc43a7df9c26888891ed159b9f38328cd366e68a5b402f14a9a723a0c2e",
+      "sha256": "7092ccd9df1e7361d21f627e1f4fa520db69dede76ac4522f94d90a2ca45cf64",
+      "baseSizeBytes": 13024,
+      "sizeBytes": 13630
+    },
+    {
+      "path": "runtime/neuro-kurisu/package-lock.json",
+      "status": "MODIFIED",
+      "baseSha256": "6a960f807237d106fc6ee9f38b2826fdda51362652d64f20ba3387e395208ee1",
+      "sha256": "6cc19fdd688b9e05955ddd7d2fd3a6825fc8af211aeb0676f29856e5195680c7",
+      "baseSizeBytes": 1041,
+      "sizeBytes": 1041
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "status": "MODIFIED",
+      "baseSha256": "7849fc8c3e418b7197907a9d5218cc98d8d3f06d35316737d88214d2baeb4183",
+      "sha256": "a016ab4972471998a1fc8834364ab29bc94651b3c125f2f1eb9457a433e72b99",
+      "baseSizeBytes": 234738,
+      "sizeBytes": 235315
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+      "status": "MODIFIED",
+      "baseSha256": "fc97d97b643345855743c109ea85eb8527f8440ceb1bd3570fb0644323817de3",
+      "sha256": "d6e1375aa2d4e3049e550db6a35c3ea1ac1ea9f74ec1237c8ced5c23f5646c13",
+      "baseSizeBytes": 1206629,
+      "sizeBytes": 1208946
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts",
+      "status": "MODIFIED",
+      "baseSha256": "579fc4f4bbce020ae988953223559d558bb1b1ec912c02494ec11e547375daa6",
+      "sha256": "1736ee6d45c40098fc5b9dd2031e26ee0d3e6c4368a17ab682959f4e00a4cd3a",
+      "baseSizeBytes": 57659,
+      "sizeBytes": 64291
+    },
+    {
+      "path": "Список дел.md",
+      "status": "MODIFIED",
+      "baseSha256": "b2dd90cd92568691ccc95a36ffce11196efa8653d8e9d3ba3cb71bcc07653ae6",
+      "sha256": "75397044b0609bf8527cd438796446170e29b2463eab9cd8cda81117c9b43cc4",
+      "baseSizeBytes": 117357,
+      "sizeBytes": 120952
+    },
+    {
+      "path": "WORKPASS29_REPORT_2026-10-13.md",
+      "status": "ADDED",
+      "sha256": "061165f1fddb66ba41a62b3907670fee5f4d69cb6b9261598ac6e57c15454a2d",
+      "sizeBytes": 4805
+    },
+    {
+      "path": "WORKPASS29_TASKS_2026-10-13.md",
+      "status": "ADDED",
+      "sha256": "57293746be8e8124c2b8dc332843dfbe2a6990d497722315e4369f0e35c576ca",
+      "sizeBytes": 2909
+    },
+    {
+      "path": "WORKPASS29_Список_дел_2026-10-13.md",
+      "status": "ADDED",
+      "sha256": "c566b773cff8dc2f27723f6717dafbfb3ecfc259716347030644700167dbf9d0",
+      "sizeBytes": 2380
+    },
+    {
+      "path": "docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_WorkPass29_2026-10-13.md",
+      "status": "ADDED",
+      "sha256": "7b95375b14152ed0870dfc0f9758a31af0ee3ee6b9f0d7c1be3d7a719c40a57c",
+      "sizeBytes": 97633
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-13_WORKPASS29.json",
+      "status": "ADDED",
+      "sha256": "53a17a2cd5cf1476f9c60cf401062315bbf83453542f2870750f2fe6273cda3b",
+      "sizeBytes": 35107
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-13_WORKPASS29.md",
+      "status": "ADDED",
+      "sha256": "061165f1fddb66ba41a62b3907670fee5f4d69cb6b9261598ac6e57c15454a2d",
+      "sizeBytes": 4805
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-13_WORKPASS29.json",
+      "status": "ADDED",
+      "sha256": "f440ceff574c7f87a2880b13279cf243f663dcd04841880ee1182a937d24e1b5",
+      "sizeBytes": 7841
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/memory-source-integration-workpass29.mjs",
+      "status": "ADDED",
+      "sha256": "58615facf2fda64cc64a8516629b23c08e19688ad2dd004c1e0f1d957cb244ee",
+      "sizeBytes": 10368
+    }
+  ]
+}

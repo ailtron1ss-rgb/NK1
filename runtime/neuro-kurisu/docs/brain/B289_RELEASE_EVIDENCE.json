@@ -1,0 +1,111 @@
+{
+  "release": "35.6.1",
+  "pass": "B289",
+  "date": "2026-09-12",
+  "status": "validated-integration-update",
+  "archiveComparison": {
+    "archivesIdentical": true,
+    "sha256": "57294e115f9f3dd3f713ff4e90366a2db009d4716b6cde3cc209026ddbb0610e",
+    "files": 2411,
+    "zipEntries": 2477,
+    "byteDifferences": 0
+  },
+  "architecture": {
+    "fullAuditFiles": 2183,
+    "canonicalFiles": 372,
+    "sourceFiles": 1094,
+    "errors": 0,
+    "warnings": 0,
+    "importCycles": 0,
+    "legacyLeakage": 0,
+    "apiRoutes": 109,
+    "apiDuplicates": 0
+  },
+  "functionReality": {
+    "functionLikeDeclarations": 3670,
+    "withBody": 3641,
+    "exported": 142,
+    "zeroReference": 210,
+    "oneOrLessReference": 661,
+    "semanticCoverage": {
+      "total": 3550,
+      "verified": 38,
+      "integrationOnly": 730,
+      "unsafeToAutoRun": 259,
+      "unverified": 2523,
+      "verifiedRate01": 0.0107,
+      "evidenceCoverage01": 0.0621
+    },
+    "parameterizedProbe": {
+      "attempted": 888,
+      "passed": 855,
+      "failed": 0,
+      "inputSynthesisNeeded": 21,
+      "lifecycleNeeded": 12,
+      "skipped": 39
+    }
+  },
+  "b289": {
+    "standaloneCycles": 240,
+    "learningUpdates": 240,
+    "activeSetSize": 6,
+    "computeTier": "balanced",
+    "deepCadence": 4,
+    "integration01": 0.7145929060774883,
+    "selfCoherence01": 0.8281577927794193,
+    "agency01": 0.5997101646992918,
+    "personalityCoherence01": 0.7157485313843119,
+    "identityStability01": 0.843581410049763,
+    "realityGrounding01": 0.5953264019659703,
+    "causalLesionDrop01": 0.068,
+    "restore": true,
+    "coreIntegrationCycles": 16,
+    "coreIntegrationPass": true
+  },
+  "runtime": {
+    "typecheck": "PASS",
+    "organismSmoke": "PASS",
+    "uiSmoke": "PASS",
+    "serverSmoke": "PASS",
+    "restartPersistence": "PASS (direct invocation)",
+    "concurrency": "PASS (separate direct rerun in audit sequence)",
+    "mobileProfile": "PASS",
+    "mobileHorizon1000": {
+      "pass": true,
+      "ratio": 1.195,
+      "firstMedianMs": 0.15,
+      "lastMedianMs": 0.17,
+      "p95Ms": 178.66,
+      "heapFirstMb": 72.1,
+      "heapLastMb": 160.2,
+      "memory": 131
+    },
+    "longHorizon250": {
+      "pass": true,
+      "warmedMedianRatio": 1.429,
+      "firstMedianMs": 92.86,
+      "lastMedianMs": 132.70,
+      "p95ApproxMs": 208.70,
+      "heapGrowthRatio": 0.573
+    },
+    "p42p44": {
+      "pass": true,
+      "cycles": 10000,
+      "ms": 108.9
+    }
+  },
+  "live2d": {
+    "qualityFilesPresent": 18,
+    "qualityFilesExpected": 18,
+    "mobileOk": true,
+    "mobileFilesPresent": 18,
+    "mobileFilesExpected": 18,
+    "mobileBytes": 8451698,
+    "resolvedByModelReferences": true
+  },
+  "claimsBoundary": {
+    "nonConsciousnessClaim": true,
+    "consciousnessNotEstablished": true,
+    "humanEquivalentMindNotEstablished": true
+  }
+}

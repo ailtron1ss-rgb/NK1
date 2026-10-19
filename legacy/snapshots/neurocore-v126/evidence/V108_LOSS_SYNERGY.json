@@ -1,0 +1,70 @@
+{
+  "version": 108,
+  "loss_gradient": {
+    "memory_loss": {
+      "norm": 0.2350025177001953,
+      "parameter_element_fraction_nonzero": 0.4717179536819458
+    },
+    "predictive_loss": {
+      "norm": 0.286812961101532,
+      "parameter_element_fraction_nonzero": 0.47107264399528503
+    },
+    "world_loss": {
+      "norm": 0.5023068785667419,
+      "parameter_element_fraction_nonzero": 0.47829747200012207
+    },
+    "spine_loss": {
+      "norm": 0.4493057429790497,
+      "parameter_element_fraction_nonzero": 0.45318594574928284
+    },
+    "self_loss": {
+      "norm": 0.30147606134414673,
+      "parameter_element_fraction_nonzero": 0.47111472487449646
+    },
+    "multiscale_loss": {
+      "norm": 0.3883892297744751,
+      "parameter_element_fraction_nonzero": 0.5042787790298462
+    },
+    "confidence_loss": {
+      "norm": 0.1945054829120636,
+      "parameter_element_fraction_nonzero": 0.4074941873550415
+    },
+    "temporal_loss": {
+      "norm": 0.006681095343083143,
+      "parameter_element_fraction_nonzero": 0.45284923911094666
+    }
+  },
+  "pairwise_cosine": {
+    "memory_loss__predictive_loss": 7.979321526363492e-05,
+    "memory_loss__world_loss": 6.32518858765252e-05,
+    "memory_loss__spine_loss": 0.00032837718026712537,
+    "memory_loss__self_loss": -0.0006262670503929257,
+    "memory_loss__multiscale_loss": 0.00012390523625072092,
+    "memory_loss__confidence_loss": -0.00015811444609425962,
+    "memory_loss__temporal_loss": -0.00015261782391462475,
+    "predictive_loss__world_loss": -0.0019790532533079386,
+    "predictive_loss__spine_loss": -0.004635972436517477,
+    "predictive_loss__self_loss": -0.0017541968263685703,
+    "predictive_loss__multiscale_loss": -0.0008956597885116935,
+    "predictive_loss__confidence_loss": 0.0006479957955889404,
+    "predictive_loss__temporal_loss": -0.005118261091411114,
+    "world_loss__spine_loss": 0.00020810385467484593,
+    "world_loss__self_loss": -0.0004969147266820073,
+    "world_loss__multiscale_loss": 0.0006146071245893836,
+    "world_loss__confidence_loss": 0.00033496436662971973,
+    "world_loss__temporal_loss": 0.0020801282953470945,
+    "spine_loss__self_loss": 0.0020528226159512997,
+    "spine_loss__multiscale_loss": 0.0008923301356844604,
+    "spine_loss__confidence_loss": 0.0020223616156727076,
+    "spine_loss__temporal_loss": 0.01991724967956543,
+    "self_loss__multiscale_loss": -0.0008011129684746265,
+    "self_loss__confidence_loss": 0.0024979538284242153,
+    "self_loss__temporal_loss": -0.010917408391833305,
+    "multiscale_loss__confidence_loss": -4.772256943397224e-06,
+    "multiscale_loss__temporal_loss": -0.0008158331038430333,
+    "confidence_loss__temporal_loss": -0.0015354343922808766
+  },
+  "mean_pairwise_cosine": 7.043665261465191e-05,
+  "negative_pair_fraction": 0.5,
+  "interpretation": "Descriptive evidence only. Low/negative cosine indicates objective interaction or conflict; it is not evidence that a head should be removed by itself."
+}

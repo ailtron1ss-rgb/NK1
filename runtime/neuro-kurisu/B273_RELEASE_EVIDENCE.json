@@ -1,0 +1,80 @@
+{
+  "version": "B273",
+  "date": "2026-09-12",
+  "tests": {
+    "standalone": "PASS",
+    "evaluator": "PASS",
+    "migration": "PASS",
+    "core": "PASS",
+    "coreLongCycle": "PASS"
+  },
+  "standalone": {
+    "cycles": 220,
+    "learningUpdates": 220,
+    "goalCreations": 30,
+    "goalRevisions": 6,
+    "goalCompletions": 7,
+    "subgoalCreations": 16,
+    "skillCreations": 145,
+    "skillUses": 91,
+    "hierarchicalGoalRate01": 0.5333333333,
+    "autonomy01": 0.5792218439,
+    "longHorizonValue01": 0.5629179843,
+    "selfAlignment01": 0.3265158324
+  },
+  "independentEvaluator": {
+    "trainingCycles": 320,
+    "evaluationSteps": 120,
+    "policyMean01": 0.7990666667,
+    "baselineMean01": 0.4375216667,
+    "gain01": 0.361545,
+    "oracleMean01": 0.8669,
+    "regret01": 0.0678333333,
+    "skillUsesDuringEvaluation": 435,
+    "hierarchicalGoalRate01": 0.59375,
+    "autonomy01": 0.6282833704,
+    "longHorizonValue01": 0.5996930744
+  },
+  "coreLongCycle": {
+    "cycles": 24,
+    "learningUpdates": 24,
+    "skillCreations": 14,
+    "skillUses": 22,
+    "autonomy01": 0.6713673881,
+    "goalStability01": 0.7712471264,
+    "longHorizonValue01": 0.5831470089,
+    "personalityCausalUpdates": 276,
+    "restart": true
+  },
+  "releaseLimitations": [
+    "Unified mega-run of all historical neural passes is too heavy for one runtime and is not used as sole evidence gate.",
+    "Action vocabulary remains bounded.",
+    "Skill prototypes reuse existing actions and do not yet instantiate arbitrary external tools.",
+    "Synthetic independent evaluator is not proof of general intelligence or consciousness."
+  ],
+  "finalReleaseGates": {
+    "typecheck": "PASS",
+    "auditFull": "PASS",
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "forensics": "PASS",
+    "hygiene": "PASS",
+    "syntax": "PASS",
+    "contract": "PASS",
+    "lock": "PASS",
+    "releaseSource": "PASS",
+    "doctor": "PASS",
+    "archiveManifest": "PASS",
+    "archiveVerification": "PASS",
+    "legacyAudit": "SKIPPED_NOT_SHIPPED"
+  },
+  "finalManifest": {
+    "files": 2238,
+    "missing": 0,
+    "hashMismatches": 0,
+    "extra": 0
+  },
+  "notes": [
+    "Final release-hygiene defects in package.json/B273 source were fixed before the final gate run."
+  ]
+}

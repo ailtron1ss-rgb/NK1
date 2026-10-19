@@ -1,0 +1,79 @@
+NEURO-KURISU 34.22.0 — BIG PASS 51 FINAL VERIFICATION
+
+PASS PURPOSE
+- Physical decomposition of all seven cognitive domains.
+- Preserve behavior while moving runtime ownership out of OrganismCore.
+- Add bounded subsystem flight diagnostics without persisting diagnostics into the subject.
+- Reconcile release/source-of-truth metadata.
+
+ACTUAL PHYSICAL OWNERS
+1. SelfSubsystemRuntime
+2. WorldSubsystemRuntime
+3. MemorySubsystemRuntime
+4. AgencySubsystemRuntime
+5. EmbodimentSubsystemRuntime
+6. EvidenceResearchSubsystemRuntime
+7. GovernanceSubsystemRuntime
+
+ARCHITECTURE
+- CORE_OWNERSHIP=PASS errors=0
+- CLEAN_ARCHITECTURE=PASS sourceFiles=477 canonicalFiles=206 missing=0 cycles=0 legacyLeakage=0
+- BIG_PASS_PROGRESS=100 checks=134/134
+- BIG_PASS_51_PHYSICAL_OWNERSHIP=PASS
+- SUBSYSTEM_REGISTRY=PASS
+- Flight Recorder bounded and non-persistent
+
+VERSION / SOURCE TRUTH
+- release = 34.22.0
+- TYPECHECK=PASS
+- RELEASE_CONTRACT=PASS
+- SOURCE_TRUTH=PASS
+- API_ROUTES=93 duplicates=0
+- SUBJECT_BOUNDARY=PASS
+
+REGRESSION
+- CLEAN_ORGANISM_SMOKE=PASS
+- CLEAN_RESTART_PERSISTENCE=PASS
+- MEMORY_DEDUP=PASS
+- IDENTITY_LOCK=PASS
+- CONCURRENCY=PASS
+- REPLAY=PASS
+- PORTABLE_SUBJECT_BOUNDARY=PASS
+- API_SECURITY=PASS
+- SERVER_SECURITY_SMOKE=PASS
+- BIG_PASS_50=PASS
+- BIG_PASS_51 physical ownership=PASS
+
+LONG HORIZON
+220-cycle current enhanced gate:
+- LONG_HORIZON_FUNCTIONAL=PASS
+- SCALING=WARNING (ratio=2.7595; p95=44.50ms; p99=91.21ms)
+- heapFirst=25.43MB
+- heapLast=66.12MB
+- heapGrowth01=1.60
+
+1000-cycle isolated operational gate:
+- LONG_HORIZON_OPERATIONAL_1000=PASS
+- ratio=1.348
+- steadyWarmMs=31.94
+- lastMs=43.07
+- p95=47.28
+- heapFirst=39.62MB
+- heapLast=114.68MB
+- memory=219
+
+IMPORTANT INTERPRETATION
+- The 1000-cycle test passes when isolated (~31s runtime in this execution).
+- A prior large sequential audit bundle exceeded the 300s command window before reaching that test; this was cumulative suite duration, not evidence of a 1000-cycle deadlock.
+- The 220-cycle suite reports SCALING=WARNING because its ratio remains above the suite threshold. This is not hidden or reclassified as PASS.
+
+PREVIOUS CHAT CROSS-CHECK
+The prior chat text claimed Memory/World/Embodiment were already physical owners. The current 34.21.0 archive did not actually contain those physical owner classes. BIG PASS 51 therefore implemented and verified them in the current tree instead of treating the prior report as ground truth.
+
+WHAT THIS PASS DOES NOT CLAIM
+- No completed real semantic vision pipeline.
+- No learned general world model.
+- No proof of consciousness or personhood.
+- No native Android host.
+- No full 24h/72h/7d/30d physical-device validation.
+- No claim that all historic audit suites complete within one command window.

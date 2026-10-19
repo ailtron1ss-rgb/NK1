@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
+import { rm } from 'node:fs/promises';
+const dir='/tmp/neuro-kurisu-p37-integration'; await rm(dir,{recursive:true,force:true});
+const stateFile=`${dir}/organism.json`; const worldStateFile=`${dir}/world.json`;
+const store=new FileStateStore(stateFile);
+const runtime=new OrganismRuntime({stateFile,worldStateFile,stateStore:store,enableLanguage:false}); await runtime.init();
+await runtime.core.observe({text:'Kurisu enters laboratory',vision:{features:[.8,.2],sceneLabel:'laboratory',confidence01:.9,objects:[{label:'desk',kind:'object',confidence01:.9,x:1,y:2,z:0},{label:'Kurisu',kind:'person',confidence01:.95}],relations:[{from:'Kurisu',relation:'near',to:'desk',confidence01:.8}]},audio:{samples:[.1,.2,.3],events:[{label:'door-close',confidence01:.8}]},worldContext:{tick:1,location:'laboratory',energy:.8,attention:.7,uncertainty:.3,facts:['desk exists'],objects:[{id:'d1',label:'desk',location:'laboratory',value:.5,visible:true,collected:false}],events:['arrival']},embodiment:{bodyEnergy01:.8,cognitiveCapacity01:.8,thermalStrain01:.2,sensoryFreshness01:1,awake:true,battery01:.8,cpuLoad01:.2,ramPressure01:.2}});
+await runtime.core.flush(); const p=runtime.core.p37Snapshot(); assert.ok(p.entities.length>=2); assert.ok(p.relationEdges.length>=1); assert.ok(p.activePerception.length>=0);
+console.log(`P37_INTEGRATION=PASS entities=${p.entities.length} relations=${p.relationEdges.length} agreement=${p.crossModalAgreement01.toFixed(3)} permanence=${p.objectPermanence01.toFixed(3)}`);

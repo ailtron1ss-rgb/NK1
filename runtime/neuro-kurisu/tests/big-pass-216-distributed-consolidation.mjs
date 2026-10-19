@@ -1,0 +1,14 @@
+import { MemoryConsolidationController } from '../src/organism/memory/MemoryConsolidationController.ts';
+import { MemorySubsystemRuntime } from '../src/organism/core/MemorySubsystemRuntime.ts';
+const assert=(ok,msg)=>{if(!ok)throw new Error(msg)};
+const c=new MemoryConsolidationController();
+const low={id:'low',salience01:.1,novelty01:.05,predictionError01:.05,uncertainty01:.05,outcome01:.5,recency01:.2};
+const uncertain={id:'uncertain',salience01:.8,novelty01:.9,predictionError01:.85,uncertainty01:.9,outcome01:.7,recency01:1};
+const procedural={id:'procedural',kind:'procedural',salience01:.7,novelty01:.5,predictionError01:.6,uncertainty01:.55,outcome01:1,recency01:1,procedural01:1};
+const ranked=c.rank([low,uncertain,procedural],{batchSize:3,pressure01:.7,awake01:1});
+assert(ranked[0].id==='uncertain','uncertainty/surprise should raise priority');
+assert(ranked.find(x=>x.id==='procedural')?.route==='procedural','procedural memories need independent route');
+assert(ranked.find(x=>x.id==='low')?.priority01 < ranked[0].priority01,'low-information memory should rank lower');
+const snap=c.snapshot(); const r=new MemoryConsolidationController(); r.restore(snap); assert(JSON.stringify(r.snapshot())===JSON.stringify(snap),'controller persistence mismatch');
+const mem=new MemorySubsystemRuntime(); const batch=mem.consolidationController.rank([uncertain,procedural,low],{batchSize:3,pressure01:.4,awake01:1}); const ms=mem.snapshot(); const mem2=new MemorySubsystemRuntime(); mem2.restoreFromPersisted({advanced:ms}); assert(mem2.consolidationController.diagnostics().runs===mem.consolidationController.diagnostics().runs,'runtime persistence mismatch');
+console.log(JSON.stringify({pass:'BIG_PASS_216_DISTRIBUTED_CONSOLIDATION',ranked,batch,persistence:{restoredRuns:mem2.consolidationController.diagnostics().runs},diagnostics:mem2.consolidationController.diagnostics(),verified:true},null,2));

@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { migratePersistedOrganism } from '../src/organism/persistence/StateMigrations.ts';
+const raw={schemaVersion:127,state:{tick:303},system:{holdoutGeneralizationB303:{version:1,trainingPulses:17,holdoutPulses:9,trainingBias:{respond:-.42},holdoutBias:{respond:.31},contextFingerprints:['marker-b303']}}};
+const out=migratePersistedOrganism(raw);
+assert.equal(out.system.holdoutGeneralizationB303.trainingPulses,17);
+assert.equal(out.system.holdoutGeneralizationB303.holdoutPulses,9);
+assert.equal(out.system.holdoutGeneralizationB303.trainingBias.respond,-.42);
+assert.equal(out.system.holdoutGeneralizationB303.holdoutBias.respond,.31);
+assert.deepEqual(out.system.holdoutGeneralizationB303.contextFingerprints,['marker-b303']);
+console.log(JSON.stringify({pass:true,schemaVersion:out.schemaVersion,trainingPulses:out.system.holdoutGeneralizationB303.trainingPulses,holdoutPulses:out.system.holdoutGeneralizationB303.holdoutPulses,negativeBiasPreserved:out.system.holdoutGeneralizationB303.trainingBias.respond}));

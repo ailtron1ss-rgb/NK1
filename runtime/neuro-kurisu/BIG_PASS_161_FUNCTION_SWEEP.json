@@ -1,0 +1,244 @@
+{
+  "pass": 161,
+  "generatedAt": "2026-09-09T12:22:16.992Z",
+  "candidates": 25,
+  "results": [
+    {
+      "file": "src/organism/cognition/ConsciousnessEvidenceLedger.ts",
+      "name": "defaultConsciousnessEvidence",
+      "line": 16,
+      "safety": "stateful",
+      "id": "src/organism/cognition/ConsciousnessEvidenceLedger.ts:16:defaultConsciousnessEvidence",
+      "status": "SKIPPED_UNSAFE",
+      "reason": "stateful"
+    },
+    {
+      "file": "src/organism/cognition/IdentityContinuity.ts",
+      "name": "defaultIdentityContinuity",
+      "line": 28,
+      "safety": "safe",
+      "id": "src/organism/cognition/IdentityContinuity.ts:28:defaultIdentityContinuity",
+      "status": "PASS",
+      "durationMs": 43,
+      "returnType": "object"
+    },
+    {
+      "file": "src/organism/cognition/IntrinsicMotivationEngine.ts",
+      "name": "defaultIntrinsicDriveState",
+      "line": 15,
+      "safety": "stateful",
+      "id": "src/organism/cognition/IntrinsicMotivationEngine.ts:15:defaultIntrinsicDriveState",
+      "status": "SKIPPED_UNSAFE",
+      "reason": "stateful"
+    },
+    {
+      "file": "src/organism/cognition/MetaCognitiveMonitor.ts",
+      "name": "defaultMetaCognitiveState",
+      "line": 12,
+      "safety": "stateful",
+      "id": "src/organism/cognition/MetaCognitiveMonitor.ts:12:defaultMetaCognitiveState",
+      "status": "SKIPPED_UNSAFE",
+      "reason": "stateful"
+    },
+    {
+      "file": "src/organism/cognition/P27NeuralWorldFoundation.ts",
+      "name": "defaultP27NeuralWorld",
+      "line": 80,
+      "safety": "stateful",
+      "id": "src/organism/cognition/P27NeuralWorldFoundation.ts:80:defaultP27NeuralWorld",
+      "status": "SKIPPED_UNSAFE",
+      "reason": "stateful"
+    },
+    {
+      "file": "src/organism/cognition/P48FunctionalAwarenessCore.ts",
+      "name": "defaultP48State",
+      "line": 68,
+      "safety": "stateful",
+      "id": "src/organism/cognition/P48FunctionalAwarenessCore.ts:68:defaultP48State",
+      "status": "SKIPPED_UNSAFE",
+      "reason": "stateful"
+    },
+    {
+      "file": "src/organism/cognition/PerceptionEngine.ts",
+      "name": "defaultPerceptionState",
+      "line": 50,
+      "safety": "safe",
+      "id": "src/organism/cognition/PerceptionEngine.ts:50:defaultPerceptionState",
+      "status": "PASS",
+      "durationMs": 5,
+      "returnType": "object"
+    },
+    {
+      "file": "src/organism/cognition/SelfAuthorship.ts",
+      "name": "defaultSelfAuthorship",
+      "line": 38,
+      "safety": "safe",
+      "id": "src/organism/cognition/SelfAuthorship.ts:38:defaultSelfAuthorship",
+      "status": "PASS",
+      "durationMs": 9,
+      "returnType": "object"
+    },
+    {
+      "file": "src/organism/cognition/SelfModelV2.ts",
+      "name": "defaultSelfModel",
+      "line": 15,
+      "safety": "stateful",
+      "id": "src/organism/cognition/SelfModelV2.ts:15:defaultSelfModel",
+      "status": "SKIPPED_UNSAFE",
+      "reason": "stateful"
+    },
+    {
+      "file": "src/organism/cognition/SensorimotorLoop.ts",
+      "name": "defaultSensorimotorState",
+      "line": 25,
+      "safety": "safe",
+      "id": "src/organism/cognition/SensorimotorLoop.ts:25:defaultSensorimotorState",
+      "status": "PASS",
+      "durationMs": 1,
+      "returnType": "object"
+    },
+    {
+      "file": "src/organism/cognition/WorkspaceIgnitionMetrics.ts",
+      "name": "defaultWorkspaceIgnition",
+      "line": 3,
+      "safety": "stateful",
+      "id": "src/organism/cognition/WorkspaceIgnitionMetrics.ts:3:defaultWorkspaceIgnition",
+      "status": "SKIPPED_UNSAFE",
+      "reason": "stateful"
+    },
+    {
+      "file": "src/organism/cognition/evolution/AgencyDeliberationEngine.ts",
+      "name": "defaultAgencyDeliberation",
+      "line": 15,
+      "safety": "stateful",
+      "id": "src/organism/cognition/evolution/AgencyDeliberationEngine.ts:15:defaultAgencyDeliberation",
+      "status": "SKIPPED_UNSAFE",
+      "reason": "stateful"
+    },
+    {
+      "file": "src/organism/cognition/evolution/AutobiographicalNarrative.ts",
+      "name": "defaultNarrative",
+      "line": 7,
+      "safety": "stateful",
+      "id": "src/organism/cognition/evolution/AutobiographicalNarrative.ts:7:defaultNarrative",
+      "status": "SKIPPED_UNSAFE",
+      "reason": "stateful"
+    },
+    {
+      "file": "src/organism/cognition/evolution/IdentityTrajectoryEngine.ts",
+      "name": "defaultIdentityTrajectory",
+      "line": 39,
+      "safety": "safe",
+      "id": "src/organism/cognition/evolution/IdentityTrajectoryEngine.ts:39:defaultIdentityTrajectory",
+      "status": "PASS",
+      "durationMs": 4,
+      "returnType": "object"
+    },
+    {
+      "file": "src/organism/cognition/evolution/SelfProjectEngine.ts",
+      "name": "defaultSelfProjectState",
+      "line": 46,
+      "safety": "safe",
+      "id": "src/organism/cognition/evolution/SelfProjectEngine.ts:46:defaultSelfProjectState",
+      "status": "PASS",
+      "durationMs": 5,
+      "returnType": "object"
+    },
+    {
+      "file": "src/organism/cognition/evolution/ValueEvolutionEngine.ts",
+      "name": "defaultValueEvolution",
+      "line": 12,
+      "safety": "safe",
+      "id": "src/organism/cognition/evolution/ValueEvolutionEngine.ts:12:defaultValueEvolution",
+      "status": "PASS",
+      "durationMs": 8,
+      "returnType": "object"
+    },
+    {
+      "file": "src/organism/learning/CausalExperienceStream.ts",
+      "name": "defaultCausalExperienceStream",
+      "line": 55,
+      "safety": "stateful",
+      "id": "src/organism/learning/CausalExperienceStream.ts:55:defaultCausalExperienceStream",
+      "status": "SKIPPED_UNSAFE",
+      "reason": "stateful"
+    },
+    {
+      "file": "src/organism/learning/P28PlasticitySubstrate.ts",
+      "name": "defaultP28Plasticity",
+      "line": 95,
+      "safety": "stateful",
+      "id": "src/organism/learning/P28PlasticitySubstrate.ts:95:defaultP28Plasticity",
+      "status": "SKIPPED_UNSAFE",
+      "reason": "stateful"
+    },
+    {
+      "file": "src/organism/learning/ParametricPolicyLearner.ts",
+      "name": "defaultParametricPolicy",
+      "line": 39,
+      "safety": "stateful",
+      "id": "src/organism/learning/ParametricPolicyLearner.ts:39:defaultParametricPolicy",
+      "status": "SKIPPED_UNSAFE",
+      "reason": "stateful"
+    },
+    {
+      "file": "src/organism/world/ActiveInferenceEngine.ts",
+      "name": "defaultActiveInferenceState",
+      "line": 7,
+      "safety": "stateful",
+      "id": "src/organism/world/ActiveInferenceEngine.ts:7:defaultActiveInferenceState",
+      "status": "SKIPPED_UNSAFE",
+      "reason": "stateful"
+    },
+    {
+      "file": "src/organism/body/AndroidEmbodimentBridge.ts",
+      "name": "detectTermuxCapabilities",
+      "line": 56,
+      "safety": "external-side-effect",
+      "id": "src/organism/body/AndroidEmbodimentBridge.ts:56:detectTermuxCapabilities",
+      "status": "SKIPPED_UNSAFE",
+      "reason": "external-side-effect"
+    },
+    {
+      "file": "src/organism/body/AndroidEmbodimentBridge.ts",
+      "name": "interruptTermuxTts",
+      "line": 151,
+      "safety": "safe",
+      "id": "src/organism/body/AndroidEmbodimentBridge.ts:151:interruptTermuxTts",
+      "status": "PASS",
+      "durationMs": 13,
+      "returnType": "boolean"
+    },
+    {
+      "file": "src/organism/body/P35SemanticWorldBody.ts",
+      "name": "defaultP35SemanticWorldBody",
+      "line": 80,
+      "safety": "stateful",
+      "id": "src/organism/body/P35SemanticWorldBody.ts:80:defaultP35SemanticWorldBody",
+      "status": "SKIPPED_UNSAFE",
+      "reason": "stateful"
+    },
+    {
+      "file": "src/organism/body/P37EmbodiedSensorium.ts",
+      "name": "defaultP37EmbodiedSensorium",
+      "line": 98,
+      "safety": "stateful",
+      "id": "src/organism/body/P37EmbodiedSensorium.ts:98:defaultP37EmbodiedSensorium",
+      "status": "SKIPPED_UNSAFE",
+      "reason": "stateful"
+    },
+    {
+      "file": "src/organism/body/PerceptionRouter.ts",
+      "name": "defaultPerceptionRoutingState",
+      "line": 12,
+      "safety": "safe",
+      "id": "src/organism/body/PerceptionRouter.ts:12:defaultPerceptionRoutingState",
+      "status": "PASS",
+      "durationMs": 2,
+      "returnType": "object"
+    }
+  ],
+  "passed": 9,
+  "unverified": 0,
+  "skipped": 16
+}

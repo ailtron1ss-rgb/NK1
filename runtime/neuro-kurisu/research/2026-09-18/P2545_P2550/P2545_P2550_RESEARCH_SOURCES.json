@@ -1,0 +1,91 @@
+[
+  {
+    "title": "BrainTrace: Model-agnostic linear-memory online learning in spiking neural networks",
+    "year": 2026,
+    "source": "Nature Communications",
+    "url": "https://www.nature.com/articles/s41467-026-68453-w",
+    "used_for": [
+      "linear eligibility",
+      "sparse temporal credit"
+    ]
+  },
+  {
+    "title": "Memory-R1: Enhancing Large Language Model Agents to Manage and Utilize Memories via Reinforcement Learning",
+    "year": 2026,
+    "source": "ACL Anthology",
+    "url": "https://aclanthology.org/2026.acl-long.583/",
+    "used_for": [
+      "learned memory operations",
+      "ADD UPDATE DELETE NOOP"
+    ]
+  },
+  {
+    "title": "Agentic Memory: Learning Unified Long-Term and Short-Term Memory Management for Large Language Model Agents",
+    "year": 2026,
+    "source": "ACL Anthology",
+    "url": "https://aclanthology.org/2026.acl-long.981/",
+    "used_for": [
+      "policy-integrated memory",
+      "STM/LTM unified management"
+    ]
+  },
+  {
+    "title": "Feedback-regulated dual-role memory consolidation for continual learning",
+    "year": 2026,
+    "source": "PubMed",
+    "url": "https://pubmed.ncbi.nlm.nih.gov/42614398/",
+    "used_for": [
+      "stability-plasticity",
+      "core/boundary memory",
+      "feedback replay"
+    ]
+  },
+  {
+    "title": "Learning to Remember: End-to-End Training of Memory Agents for Long-Context Reasoning",
+    "year": 2026,
+    "source": "arXiv",
+    "url": "https://arxiv.org/abs/2602.18493",
+    "used_for": [
+      "structured memory bank",
+      "proactive consolidation"
+    ]
+  },
+  {
+    "title": "Beyond the Next Step: Variable-Length Latent World Models for Long-Horizon Planning",
+    "year": 2026,
+    "source": "alphaXiv/arXiv mirror",
+    "url": "https://www.alphaxiv.org/abs/2606.21775",
+    "used_for": [
+      "multi-horizon latent prediction"
+    ]
+  },
+  {
+    "title": "Temporal Test-Time Adaptation with State-Space Models",
+    "year": 0.9995061728395062,
+    "source": "arXiv",
+    "url": "https://arxiv.org/abs/2407.12492",
+    "used_for": [
+      "continual adaptation",
+      "state-space stability"
+    ]
+  },
+  {
+    "title": "Benchmarking Memory Architectures for Mobile Agents in Short-Term and Long-Term Applications",
+    "year": 2026,
+    "source": "MobiSys Workshop",
+    "url": "https://doi.org/10.1145/3812836.3814752",
+    "used_for": [
+      "mobile memory/latency budget"
+    ]
+  },
+  {
+    "title": "EvoAgent: Agent Autonomous Evolution with Continual World Model for Long-Horizon Tasks",
+    "year": 2025,
+    "source": "arXiv",
+    "url": "https://arxiv.org/abs/2502.05907",
+    "used_for": [
+      "continual world model",
+      "closed-loop planning"
+    ]
+  }
+]

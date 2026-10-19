@@ -1,0 +1,92 @@
+[
+  {
+    "path": "package.json",
+    "bytes": 53184,
+    "sha256": "8abd5f3b1fd1de30263e612e9ab6c190d298a5d60d205a4b2716e73b9f23f1a5"
+  },
+  {
+    "path": "package-lock.json",
+    "bytes": 312,
+    "sha256": "e6955e8d70821ce9c8030f0c2d29f171d411fb924dd4df7176d78a37a945eb64"
+  },
+  {
+    "path": "VERSION.json",
+    "bytes": 270,
+    "sha256": "ecd7ae9afd97dc24f2be05dae5bc8ebc9a7644fd4cbdeba2eb768cba4a9f419c"
+  },
+  {
+    "path": "RELEASE_MANIFEST.json",
+    "bytes": 1050,
+    "sha256": "03481df3b93352bbed0d2f34fe0b9fd058e9d17194b0401e18f2a1d76d672d44"
+  },
+  {
+    "path": "ARCHITECTURE_MANIFEST.json",
+    "bytes": 992,
+    "sha256": "bd36a8f2248554e75f83eb08b14c443515be8f63608a6d93d8c8e7e35616a5ad"
+  },
+  {
+    "path": "RELEASE_ARCHIVE_MANIFEST.json",
+    "bytes": 229407,
+    "sha256": "11b04df93182e206475d003a3df097d0259fa9331a0f9f95a3098ff083ff1670"
+  },
+  {
+    "path": "README_RU.md",
+    "bytes": 12534,
+    "sha256": "8d8812bf88f6ed1fe3702520477f71fcb0f00779108be2010937de4edc79d336"
+  },
+  {
+    "path": "src/organism/cognition/SocialMindKernel.ts",
+    "bytes": 18561,
+    "sha256": "380ccd698de0690c625cd35b03f913fd35b23bb5ba12a569f940151369744689"
+  },
+  {
+    "path": "src/organism/core/OrganismCore.ts",
+    "bytes": 348631,
+    "sha256": "3c51b29a046bd110cd36c2a26bb9fc44916be5dd86f20f2893b293e955feaa68"
+  },
+  {
+    "path": "src/organism/system/ReleaseContract.ts",
+    "bytes": 406,
+    "sha256": "6741229b25e6bda10fc08213d8a3609746e5118357a965441a6ef933513e27d3"
+  },
+  {
+    "path": "src/server/server.mjs",
+    "bytes": 70700,
+    "sha256": "e60037a43590fe013d4aa9fe5f296ae52912030a3fd2b884ccfb1900302e76bb"
+  },
+  {
+    "path": "docs/BIG_PASS_95_ADD_NOT_ADD_MATRIX_RU.md",
+    "bytes": 1368,
+    "sha256": "1e8816e2c078947ab103e0538e7ccd9ebddc3db350fc2f37cd4888e538e3790e"
+  },
+  {
+    "path": "docs/BIG_PASS_95_FINAL_REPORT_RU.md",
+    "bytes": 1717,
+    "sha256": "65385bd5cfc8c92241a547cc94a6af03f655c32a03a5733d3746d55dce1631ce"
+  },
+  {
+    "path": "docs/BIG_PASS_95_PROGRESS_AND_DECISIONS_RU.md",
+    "bytes": 2117,
+    "sha256": "3681ee305e6e146832f1d523ea22dce650784999e38a1a9e0fd1bd97e851462e"
+  },
+  {
+    "path": "docs/BIG_PASS_95_PROGRESS_METRICS.json",
+    "bytes": 1139,
+    "sha256": "ac7b7a35b7af421f6519629912d24acc546004e0930b5b4dcd90db0e2d3921f6"
+  },
+  {
+    "path": "docs/PROJECT_STATE_INDEX_V34.68.0_RU.md",
+    "bytes": 937,
+    "sha256": "3af911e1d6a026300fda30cf9b2b2edac59366a1602f2164b73b5788a9941c9c"
+  },
+  {
+    "path": "RELEASE_NOTES_34.68.0_RU.md",
+    "bytes": 1396,
+    "sha256": "6e68df8a2c8b3aab2907f744260b72e08036f828b16222cfaf6ad770860843e8"
+  },
+  {
+    "path": "tests/big-pass-95-second-order-social.mjs",
+    "bytes": 998,
+    "sha256": "79bafdfc69ddba142b754cabc16a31700a622d73be9959890a390f5938407f9f"
+  }
+]

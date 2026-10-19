@@ -1,0 +1,143 @@
+import { cosineSimilarity01 } from '../core/NumericPrimitives.ts';
+import type { ActionKind } from '../core/types.ts';
+
+const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
+const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:.5));
+const mean=(xs:number[])=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:.5;
+const dot=(a:number[],b:number[])=>{let s=0;for(let i=0;i<Math.min(a.length,b.length);i++)s+=(a[i]??0)*(b[i]??0);return s;};
+const norm=(a:number[])=>Math.sqrt(Math.max(1e-9,dot(a,a)));
+const cosine=(a:number[],b:number[])=>cosineSimilarity01(a,b,1e-9);
+const dist=(a:number[],b:number[])=>mean(Array.from({length:Math.min(a.length,b.length)},(_,i)=>Math.abs((a[i]??0)-(b[i]??0))));
+const soft=(x:number)=>1/(1+Math.exp(-6*(x-.5)));
+
+export type B401Variant='surprise-memory'|'continuum-memory'|'state-space'|'latent-predictor'|'counterfactual'|'goal-value'|'population-code';
+export interface B401Experience { tick:number; action:ActionKind; context:number[]; outcome:number[]; reward01:number; surprise01:number; verified01:number; salience01:number; }
+export interface B401State {
+  version:1; enabled:boolean; tick:number; lesion:{memory:boolean;predictor:boolean;controller:boolean;stateSpace:boolean;latent:boolean;population:boolean};
+  weights:Record<B401Variant,number>; losses:Record<B401Variant,number>; uses:Record<B401Variant,number>;
+  fastAction:number[]; mediumAction:number[]; slowAction:number[]; hidden:number[]; population:number[];
+  prototypes:Array<{context:number[];action:ActionKind;outcome:number[];reward01:number;mass01:number;surprise01:number}>;
+  semantic:Array<{key:number[];actionMass:number[];confidence01:number;updates:number}>;
+  actionTransition:Array<{action:ActionKind;state:number[];next:number[];reward01:number;count:number}>;
+  diagnostics:{decisions:number;updates:number;retrievals:number;consolidations:number;counterfactuals:number;holdoutTests:number;lastEnsembleDiversity01:number;lastUncertainty01:number;lastCausalDelta01:number;bestVariant:B401Variant;developmentalGain01:number;restartCount:number};
+  last:{context:number[];predicted:number[];actionScore:number[];expertScores:Record<B401Variant,number[]>;chosenWeight:Record<B401Variant,number>;ensembleDiversity01:number;uncertainty01:number;novelty01:number;}
+}
+export interface B401Input { tick:number; context01:number[]; baseProbabilities:Record<ActionKind,number>; baseUtilities:Record<ActionKind,number>; reward01:number; surprise01:number; novelty01:number; uncertainty01:number; predictionError01:number; goalVector?:number[]; selfVector?:number[]; retrievedMemoryStrength01?:number; motivation01?:number; }
+export interface B401Output { actionBias:Record<ActionKind,number>; predictiveUtility:Record<ActionKind,number>; ensemble:{weights:Record<B401Variant,number>;diversity01:number;uncertainty01:number;novelty01:number;bestVariant:B401Variant}; memoryStrength01:number; stateDrift01:number; counterfactualGain01:number; confidence01:number; }
+
+const defaultWeights:Record<B401Variant,number>={
+  'surprise-memory':.17,'continuum-memory':.18,'state-space':.16,'latent-predictor':.18,'counterfactual':.17,'goal-value':.12,'population-code':.12,
+};
+const uniformActions=()=>Array(ACTIONS.length).fill(1/ACTIONS.length);
+
+export const defaultB401B420State=():B401State=>({
+  version:1,enabled:true,tick:0,lesion:{memory:false,predictor:false,controller:false,stateSpace:false,latent:false,population:false},weights:{...defaultWeights},losses:Object.fromEntries(Object.keys(defaultWeights).map(k=>[k,.2])) as Record<B401Variant,number>,uses:Object.fromEntries(Object.keys(defaultWeights).map(k=>[k,0])) as Record<B401Variant,number>,
+  fastAction:uniformActions(),mediumAction:uniformActions(),slowAction:uniformActions(),hidden:Array.from({length:16},(_,i)=>.48+((i%5)-2)*.025),population:Array.from({length:24},(_,i)=>.5+.08*Math.sin(i*.65)),prototypes:[],semantic:[],actionTransition:[],
+  diagnostics:{decisions:0,updates:0,retrievals:0,consolidations:0,counterfactuals:0,holdoutTests:0,lastEnsembleDiversity01:.5,lastUncertainty01:.5,lastCausalDelta01:0,bestVariant:'continuum-memory',developmentalGain01:0,restartCount:0},
+  last:{context:Array(8).fill(.5),predicted:Array(8).fill(.5),actionScore:Array(ACTIONS.length).fill(.5),expertScores:{'surprise-memory':uniformActions(),'continuum-memory':uniformActions(),'state-space':uniformActions(),'latent-predictor':uniformActions(),'counterfactual':uniformActions(),'goal-value':uniformActions(),'population-code':uniformActions()},chosenWeight:{...defaultWeights},ensembleDiversity01:.5,uncertainty01:.5,novelty01:.5},
+});
+
+export class B401B420AdaptiveCognitiveResearchCore {
+  private state:B401State=defaultB401B420State();
+  snapshot(){return structuredClone(this.state);}
+  diagnostics(){return structuredClone(this.state);}
+  restore(source?:Partial<B401State>){const d=defaultB401B420State();const s:any=source??{};this.state={...d,...structuredClone(s),lesion:{...d.lesion,...(s.lesion??{})},weights:{...d.weights,...(s.weights??{})},losses:{...d.losses,...(s.losses??{})},uses:{...d.uses,...(s.uses??{})},diagnostics:{...d.diagnostics,...(s.diagnostics??{})},last:{...d.last,...(s.last??{})},prototypes:Array.isArray(s.prototypes)?structuredClone(s.prototypes).slice(-320):[],semantic:Array.isArray(s.semantic)?structuredClone(s.semantic).slice(-96):[],actionTransition:Array.isArray(s.actionTransition)?structuredClone(s.actionTransition).slice(-192):[]};}
+  setEnabled(v:boolean){this.state.enabled=Boolean(v);}
+  setLesions(v:Partial<B401State['lesion']>){this.state.lesion={...this.state.lesion,...v};}
+  markRestart(){this.state.diagnostics.restartCount+=1;}
+  private normalizeWeights(){const vals=Object.values(this.state.weights);const total=mean(vals)*vals.length;for(const k of Object.keys(this.state.weights) as B401Variant[])this.state.weights[k]=this.state.lesion.controller?defaultWeights[k]!:clamp((this.state.weights[k]??defaultWeights[k])/Math.max(1e-6,total))*6/6;const z=Object.values(this.state.weights).reduce((a,b)=>a+b,0)||1;for(const k of Object.keys(this.state.weights) as B401Variant[])this.state.weights[k]/=z;}
+  private nearest(context:number[], limit=8){
+    if(this.state.lesion.memory)return [];
+    this.state.diagnostics.retrievals++;
+    return this.state.prototypes.map(p=>({p,score:clamp(.74*(1-dist(context,p.context))+.18*p.mass01+.08*p.surprise01)})).sort((a,b)=>b.score-a.score).slice(0,limit);
+  }
+  private updateTimescales(target:number[], error01:number){
+    const rates=[.22,.055,.009];
+    const arrays=[this.state.fastAction,this.state.mediumAction,this.state.slowAction];
+    arrays.forEach((arr,ri)=>{const r=rates[ri]!*(1+.5*error01);for(let i=0;i<arr.length;i++)arr[i]=clamp(arr[i]!+r*(target[i]!-arr[i]!));});
+    this.state.diagnostics.updates+=1;
+  }
+  private shiftHidden(context:number[],actionIndex:number,error01:number){
+    if(this.state.lesion.stateSpace)return this.state.hidden.slice();
+    const prev=this.state.hidden.slice();
+    for(let i=0;i<prev.length;i++){const c=context[i%context.length]??.5;const neighbor=prev[(i+1)%prev.length]??.5;const actionSignal=((actionIndex+i)%ACTIONS.length)/Math.max(1,ACTIONS.length-1);this.state.hidden[i]=clamp(.84*prev[i]! + .10*c + .04*neighbor + .03*actionSignal*(1-error01));}
+    return this.state.hidden.slice();
+  }
+  private latentPredict(context:number[],actionIndex:number){
+    if(this.state.lesion.latent)return context.slice(0,8);
+    return Array.from({length:8},(_,i)=>clamp(context[i%context.length]!*0.64+this.state.hidden[i%this.state.hidden.length]!*0.36+actionIndex*.009));
+  }
+  private expertScores(input:B401Input):Record<B401Variant,number[]>{
+    const ctx=input.context01.slice(0,8);
+    const retrieval=this.nearest(ctx);
+    const recScore=retrieval.length?mean(retrieval.slice(0,5).map(x=>x.score)):.5;
+    const memoryAction=ACTIONS.map(a=>{
+      const rows=retrieval.filter(r=>r.p.action===a);return rows.length?clamp(.48+mean(rows.map(r=>(r.p.reward01-.5)*1.15))*rows.length/3):.5;
+    });
+    const continuum=ACTIONS.map((_,i)=>clamp(.45+.36*(this.state.fastAction[i]??.5-this.state.mediumAction[i]??.5)+.22*(this.state.mediumAction[i]??.5-this.state.slowAction[i]??.5)));
+    const idx=this.state.diagnostics.decisions%ACTIONS.length;
+    const hidden=this.shiftHidden(ctx,idx,input.predictionError01);
+    const stateScore=ACTIONS.map((_,i)=>clamp(.46+.20*hidden[i%hidden.length]+.18*hidden[(i+3)%hidden.length]+.12*(this.state.fastAction[i]??.5)));
+    const latent=this.latentPredict(ctx,idx);
+    const latentScore=ACTIONS.map((_,i)=>clamp(.5+.34*cosine(latent,Array.from({length:8},(_,j)=>clamp(ctx[j]!*0.55+(i===j%7?.45:0))))-.17));
+    const rolloutValue=(a:ActionKind)=>{
+      const rows=this.state.actionTransition.filter(t=>t.action===a).slice(-16);
+      if(!rows.length)return clamp(input.baseUtilities[a]??.5);
+      let state=ctx.slice(); let total=0; let discount=.72;
+      for(let h=0;h<3;h++){
+        const best=rows.reduce((pick,row)=>1-dist(state,row.state)>(1-dist(state,pick.state))?row:pick,rows[0]!);
+        total += discount*clamp(.58*best.reward01+.42*(1-dist(state,best.next)));
+        state=best.next.slice(); discount*=.72;
+      }
+      return clamp(total/(.72+.72*.72+.72*.72*.72));
+    };
+    const counter=ACTIONS.map(a=>rolloutValue(a));
+    this.state.diagnostics.counterfactuals += ACTIONS.length;
+    const goal=input.goalVector?.slice(0,8)??ctx;
+    const self=input.selfVector?.slice(0,8)??ctx;
+    const goalValue=ACTIONS.map((a,i)=>clamp(.34*(input.baseUtilities[a]??.5)+.33*cosine(goal,Array.from({length:8},(_,j)=>clamp(self[j]!*.55+(i===j%7?.45:0))))+.33*(i===1?input.novelty01:i===2?1-input.uncertainty01:input.motivation01??.5)));
+    const populationScore=ACTIONS.map((_,a)=>{
+      if(this.state.lesion.population)return .5;
+      const phase=(a/ACTIONS.length)*Math.PI*2;
+      const pref=Array.from({length:24},(_,i)=>.5+.45*Math.sin(phase+i*.65));
+      return clamp(.38*mean(this.state.population.map((v,i)=>v*pref[i]!))+.32*cosine(ctx,pref.slice(0,8))+.30*(input.baseUtilities[ACTIONS[a]!]??.5));
+    });
+    return {'surprise-memory':memoryAction,'continuum-memory':continuum,'state-space':stateScore,'latent-predictor':latentScore,'counterfactual':counter,'goal-value':goalValue,'population-code':populationScore};
+  }
+  beforeDecision(input:B401Input):B401Output{
+    if(!this.state.enabled)return {actionBias:Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>,predictiveUtility:{...input.baseUtilities},ensemble:{weights:{...defaultWeights},diversity01:0,uncertainty01:.5,novelty01:input.novelty01,bestVariant:'continuum-memory'},memoryStrength01:0,stateDrift01:0,counterfactualGain01:0,confidence01:.5};
+    this.state.tick=input.tick;this.state.diagnostics.decisions+=1;
+    if(!this.state.lesion.population){for(let i=0;i<this.state.population.length;i++){const target=.5+.42*Math.tanh(((input.context01[i%input.context01.length]??.5)-.5)*2.2)+.08*Math.sin(i*.43+this.state.diagnostics.decisions*.015);this.state.population[i]=clamp(this.state.population[i]!*.90+target*.10);}}
+    const experts=this.expertScores(input);this.normalizeWeights();
+    const weights=this.state.weights;
+    const ensemble=ACTIONS.map((_,i)=>clamp(Object.keys(experts).reduce((s,k)=>s+(weights[k as B401Variant]??0)*(experts[k as B401Variant][i]??.5),0)));
+    const diversity=clamp(mean(ACTIONS.map((_,i)=>{const xs=Object.keys(experts).map(k=>experts[k as B401Variant][i]??.5);return Math.min(1,Math.sqrt(Math.max(0,mean(xs.map(x=>(x-ensemble[i]!)**2)))*8));})));
+    const uncertainty=clamp(.56*(1-input.uncertainty01)+.18*(1-diversity)+.16*(1-(input.retrievedMemoryStrength01??.5))+.10*(1-input.predictionError01));
+    const actionBias=Object.fromEntries(ACTIONS.map((a,i)=>[a,clamp11Signed((ensemble[i]??.5)-(input.baseUtilities[a]??.5))* .42])) as Record<ActionKind,number>;
+    const predictedUtility=Object.fromEntries(ACTIONS.map((a,i)=>[a,ensemble[i]??.5])) as Record<ActionKind,number>;
+    const bestIndex=ensemble.reduce((bi,v,i)=>v>ensemble[bi]! ? i:bi,0); const best=ACTIONS[bestIndex]??'wait';
+    const bestVariant=(Object.keys(experts) as B401Variant[]).sort((a,b)=>(weights[b]!*(1-(this.state.losses[b]??.5)))-(weights[a]!*(1-(this.state.losses[a]??.5))))[0]??'continuum-memory';
+    this.state.last={context:ctx8(input.context01),predicted:ctx8(ensemble.concat([input.reward01]).slice(0,8)),actionScore:ensemble,expertScores:structuredClone(experts),chosenWeight:{...weights},ensembleDiversity01:diversity,uncertainty01:uncertainty,novelty01:input.novelty01};
+    this.state.diagnostics.lastEnsembleDiversity01=diversity;this.state.diagnostics.lastUncertainty01=uncertainty;this.state.diagnostics.bestVariant=bestVariant;
+    return {actionBias,predictiveUtility:predictedUtility,ensemble:{weights:{...weights},diversity01:diversity,uncertainty01:uncertainty,novelty01:input.novelty01,bestVariant},memoryStrength01:this.nearest(input.context01).length?clamp(.4+.4*(this.state.prototypes.length/64)):0,stateDrift01:clamp(dist(input.context01,this.state.hidden.slice(0,8))),counterfactualGain01:clamp((ensemble[1]??.5)-(input.baseUtilities.explore??.5)),confidence01:clamp(.25+.45*diversity+.30*(1-uncertainty))};
+  }
+  afterOutcome(input:{tick:number;action:ActionKind;context01:number[];nextContext01?:number[];reward01:number;surprise01:number;verified01:number;salience01:number;predictionError01:number}):void{
+    if(!this.state.enabled)return;
+    const ai=Math.max(0,ACTIONS.indexOf(input.action));const target=uniformActions();target[ai]=clamp(.35+.65*input.reward01);
+    this.updateTimescales(target,input.predictionError01);
+    const next=input.nextContext01?.slice(0,8)??input.context01.slice(0,8);
+    const retention=clamp(.965 + input.surprise01*.028 + input.salience01*.012);
+    for(const p of this.state.prototypes) p.mass01=clamp(p.mass01*retention);
+    this.state.prototypes.push({context:input.context01.slice(0,8),action:input.action,outcome:next,reward01:clamp(input.reward01),mass01:clamp(.2+.8*input.salience01),surprise01:clamp(input.surprise01)});this.state.prototypes=this.state.prototypes.filter(p=>p.mass01>.08).slice(-320);
+    const row={action:input.action,state:input.context01.slice(0,8),next,reward01:clamp(input.reward01),count:1};this.state.actionTransition.push(row);this.state.actionTransition=this.state.actionTransition.slice(-192);
+    if(this.state.prototypes.length%16===0)this.state.diagnostics.consolidations+=1;
+    const experts=this.state.last.expertScores;
+    for(const k of Object.keys(experts) as B401Variant[]){const pred=mean(experts[k]!);const targetLoss=Math.abs(pred-clamp(input.reward01));const noveltyBonus=clamp(input.surprise01*.3+input.salience01*.2);this.state.losses[k]=clamp((this.state.losses[k]??.2)*.88+targetLoss*.12-noveltyBonus*.02);this.state.uses[k]=(this.state.uses[k]??0)+1;this.state.weights[k]=clamp((this.state.weights[k]??defaultWeights[k])*(1+.18*(.5-this.state.losses[k])));}
+    this.normalizeWeights();this.state.diagnostics.bestVariant=(Object.keys(this.state.weights) as B401Variant[]).sort((a,b)=>this.state.weights[b]!-this.state.weights[a]!)[0]??'continuum-memory';this.state.diagnostics.developmentalGain01=clamp(this.state.diagnostics.developmentalGain01*.97+(.5-input.predictionError01)*.02+input.salience01*.01);this.state.diagnostics.lastCausalDelta01=clamp(this.state.last.actionScore.reduce((s,v,i)=>s+Math.abs(v-target[i]!),0)/ACTIONS.length);this.state.diagnostics.updates+=1;
+  }
+  evaluateLesion(input:B401Input,lesion:Partial<B401State['lesion']>){const snap=this.snapshot();const on=this.beforeDecision(input);this.restore(snap);this.setLesions(lesion);const off=this.beforeDecision(input);const delta=mean(ACTIONS.map((_,i)=>Math.abs((on.predictiveUtility[ACTIONS[i]!]??.5)-(off.predictiveUtility[ACTIONS[i]!]??.5))));this.restore(snap);this.state.diagnostics.holdoutTests+=1;this.state.diagnostics.lastCausalDelta01=delta;return {delta01:delta,on,off};}
+  markHoldout(score01:number){this.state.diagnostics.holdoutTests+=1;this.state.diagnostics.developmentalGain01=clamp(this.state.diagnostics.developmentalGain01*.98+clamp(score01)*.02);}
+}
+
+const ctx8=(v:number[])=>Array.from({length:8},(_,i)=>clamp(v[i%Math.max(1,v.length)]??.5));
+const clamp11Signed=(x:number)=>Math.max(-1,Math.min(1,Number.isFinite(x)?x:0));

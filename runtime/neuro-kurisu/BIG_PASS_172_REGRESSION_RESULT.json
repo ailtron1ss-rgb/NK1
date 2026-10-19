@@ -1,0 +1,6 @@
+{
+  "pass": 172,
+  "status": "SPLIT_VALIDATED",
+  "aggregateRunner": "TIMEOUT_SANDBOX_LIMIT",
+  "criticalGatesIndividuallyPassed": true
+}

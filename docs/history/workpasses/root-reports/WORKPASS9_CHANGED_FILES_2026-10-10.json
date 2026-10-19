@@ -1,0 +1,123 @@
+{
+  "name": "Neuro-Kurisu SUPER WorkPass 9 change manifest",
+  "date": "2026-10-10",
+  "canonicalBaseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS8_2026-10-10.zip",
+  "canonicalBaseSha256": "a58b25ea5d468afcbb0218d251a09b9b4002e1536e44361e5b38b1e72a3b4576",
+  "runtime": "35.40.0",
+  "schema": 223,
+  "scope": "Conscio/Hexis idempotency collision semantics, safe outbox replay and HTTP conflict status; no new external execution owner.",
+  "counts": {
+    "addedIncludingThisManifest": 2,
+    "addedListedExcludingThisManifest": 1,
+    "modifiedFilesWithContentHashes": 12,
+    "removed": 0
+  },
+  "manifestSelfReference": "This manifest is excluded from addedFiles to avoid self-referential hashing.",
+  "addedFiles": [
+    {
+      "path": "docs/WORKPASS9_IDEMPOTENCY_RELIABILITY_2026-10-10.md",
+      "bytes": 3704,
+      "sha256": "67232b27190b566dedd6509f77afa66d7e35f42dc50d42bea84d8265c9b826cb"
+    }
+  ],
+  "modifiedFiles": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 17882,
+      "sha256": "b1b9117e7da2c98e4cd87d76d0f46ff53ce70103093cbde5ff82edc0d0884db7",
+      "previousSha256": "ee1fd114a7a2397d412c70952a2b2d43cc7974f5c44c96ca00edeb5bf6d3fad4"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "bytes": 1910,
+      "sha256": "231219129bf9acb50dedacbbf44aa02bb99b2fb8dac096554fb515f8d1da649b",
+      "previousSha256": "1bf581f052267b765006fe6bf99bd50cbdb5178e573f8fa965cfaa1ce34ed9e6"
+    },
+    {
+      "path": "package.json",
+      "bytes": 3488,
+      "sha256": "d1893c0720907ca2a53ac40137f168166ec1c244155a11661e56ab399e416ad0",
+      "previousSha256": "8d9accc42901930797ff59183ae7fcafc3fb995422e894bc26171efca19cc64d"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "bytes": 226471,
+      "sha256": "d66567fee632c8b14ebc6a3ae4e9d9449d9d0c2f5a52934699a4eab3ae5e788e",
+      "previousSha256": "a65bc4e9f5a76191c0a544fb4e78375a1a75bb0b04cad70f0b50a1d3e5963ac7"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/integration/conscio/ConscioAdaptationFabric.ts",
+      "bytes": 19077,
+      "sha256": "042b2ec72f718541c6b589e7fa4adee3922d5fe579dcf7b20a5e682744846c82",
+      "previousSha256": "dad443894a3632b88304e7d1e8448c4fe8e2d1de847725287295dea43c7f31d2"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/integration/hexis/HexisAdaptationFabric.ts",
+      "bytes": 29280,
+      "sha256": "b6f53d30912c941f7b90fb69d436ccc1c1d02c6d4b46ca7ddeb36b7cdb56e982",
+      "previousSha256": "b807442cf9f24ff47f86277faf1321e9994220f5dff2fc742b84472999ebbcea"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/server/server.mjs",
+      "bytes": 137635,
+      "sha256": "a0acbe1c9916f42c6f9ecbd9494c34515042f25c8009755efac35eae535b1f5d",
+      "previousSha256": "858a3d8cf04264c402916f7760bb7ae47a55dfad2a71bf3aa5b3144522f4697f"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/integration/conscio-adaptation.mjs",
+      "bytes": 4864,
+      "sha256": "dca16b63ecdd5516f4240acfac6e38714f737ee7f22827aff9004b1a110636a8",
+      "previousSha256": "d6674efca2fef7bca913dc0bc713d0fc2180d40753906202097333bc33681a0b"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/integration/conscio-server-smoke.mjs",
+      "bytes": 5644,
+      "sha256": "9da9d353f0c42b1e88283f1636693ba24b7c87f14829c8f919448806b5c5b54a",
+      "previousSha256": "34113734fdc4a35a3738c48407451971b4c44c9f817229d62f1cc637b725f848"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/integration/hexis-adaptation.mjs",
+      "bytes": 6147,
+      "sha256": "8d2711916049456290ab5a5f6fa60453b6a5797fe45c21a9dbcaf7a318972417",
+      "previousSha256": "ea44cf68ccb0f55b42e26c7fe22a5f68912b13fae3860770b7f5f69b98e306f8"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/integration/hexis-server-smoke.mjs",
+      "bytes": 7342,
+      "sha256": "daadc0ed7a2ad84008c8e6d9d5c1825624e33a0bf95de0fea5e6d737e417c64a",
+      "previousSha256": "e7061780e65bacf3cd3f9e7d9729a2ce3dac5ffbdd8e367dfdd6fee5012ff396"
+    },
+    {
+      "path": "Список дел.md",
+      "bytes": 61609,
+      "sha256": "7eabca18ba04b6840c1d26a33267f5fd0d77a0a31c13ede3315693eb30b8149f",
+      "previousSha256": "bfb6665a9e954f7cee6416a04064f2324098ce010dd06407b63b17cf1a3bf42e"
+    }
+  ],
+  "removedFiles": [],
+  "verification": {
+    "command": "npm run audit:workpass9",
+    "result": "PASS",
+    "conscioAdapter": "PASS",
+    "hexisAdapter": "PASS",
+    "conscioHttpSmoke": "PASS",
+    "hexisHttpSmoke": "PASS",
+    "runtimeTypecheck": "PASS",
+    "serverImports": {
+      "checked": 10,
+      "missing": 0
+    },
+    "uiApiLinkage": {
+      "clientRoutes": 124,
+      "runtimeAtlasSurfaces": 48,
+      "requiredSeams": 5,
+      "missing": 0
+    },
+    "memoryBenchmarkRegression": "PASS; synthetic fixture only",
+    "generalServerSmoke": "PASS",
+    "exactlyOnceExternalDeliveryClaimed": false,
+    "fullReactViteBuildOrBrowserE2EClaimed": false,
+    "releaseReadinessClaimed": false
+  },
+  "roadmapScoreHandling": "Historical WorkPass 7 scorecard is retained; no total roadmap score is recalculated from this targeted package."
+}

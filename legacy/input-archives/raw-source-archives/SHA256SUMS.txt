@@ -1,0 +1,4 @@
+5d28f152aba633fcc26fe20125fad28f73c6773e6526fc65249656b2d0c61075  /mnt/data/nk_current/legacy/input-archives/raw-source-archives/letta-main.zip
+a820cb1b394018451c8ee5863ae0a1f74666bd10519007d6e37e69e42452d467  /mnt/data/nk_current/legacy/input-archives/raw-source-archives/lumina-main.zip
+9d0c30277f0981b67104b1e2a07d9c7f025fee60ae57bd470cca898cf0d457a4  /mnt/data/nk_current/legacy/input-archives/raw-source-archives/will-main.zip
+05cc43c834029a02e841f6318e353af3f7681c4863c176d9396715a7446b1fb6  /mnt/data/nk_current/legacy/input-archives/external-sources/conscio-4.8.2.tar.gz

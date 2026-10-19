@@ -1,0 +1,1154 @@
+{
+  "pass": 160,
+  "startedAt": "2026-09-09T12:32:53.058Z",
+  "before": {
+    "tick": 0,
+    "at": 1788957166003,
+    "lastAction": "none",
+    "autonomyScore": 0,
+    "predictionError": 0.18,
+    "selfPredictionError": 0,
+    "activeGoal": null,
+    "identityContinuity": 0.88,
+    "workspaceIgnition": {
+      "version": 1,
+      "ignitionStrength": 0,
+      "broadcastBreadth": 0,
+      "recurrenceDepth": 0,
+      "competitionIntensity": 0,
+      "perturbability": 0,
+      "limitedCapacity": 1,
+      "samples": 0,
+      "updatedAt": 1788957166004
+    },
+    "memoryCount": 1,
+    "body": {
+      "awake": true,
+      "battery01": 0.75,
+      "cpuLoad01": 0.15,
+      "ramPressure01": 0.18,
+      "thermalStrain01": 0.12,
+      "cognitiveCapacity01": 0.84
+    }
+  },
+  "after": {
+    "tick": 8,
+    "at": 1788957166279,
+    "lastAction": "rest",
+    "autonomyScore": 1,
+    "predictionError": 0.6854187364105542,
+    "selfPredictionError": 0.8001813110571291,
+    "activeGoal": "Снизить неопределённость через исследование или проверку",
+    "identityContinuity": 0.7927492346616,
+    "workspaceIgnition": {
+      "version": 1,
+      "ignitionStrength": 0.6958249999999999,
+      "broadcastBreadth": 1,
+      "recurrenceDepth": 0.4095,
+      "competitionIntensity": 1,
+      "perturbability": 0.35,
+      "limitedCapacity": 0.6,
+      "samples": 8,
+      "updatedAt": 1788957166291
+    },
+    "memoryCount": 56,
+    "body": {
+      "awake": true,
+      "battery01": 0.75,
+      "cpuLoad01": 0.15,
+      "ramPressure01": 0.18,
+      "thermalStrain01": 0.12,
+      "cognitiveCapacity01": 0.84
+    }
+  },
+  "resumed": {
+    "tick": 8,
+    "at": 1788957166279,
+    "lastAction": "rest",
+    "autonomyScore": 1,
+    "predictionError": 0.6854187364105542,
+    "selfPredictionError": 0.8001813110571291,
+    "activeGoal": "Снизить неопределённость через исследование или проверку",
+    "identityContinuity": 0.7927492346616,
+    "workspaceIgnition": {
+      "version": 1,
+      "ignitionStrength": 0.6958249999999999,
+      "broadcastBreadth": 1,
+      "recurrenceDepth": 0.4095,
+      "competitionIntensity": 1,
+      "perturbability": 0.35,
+      "limitedCapacity": 0.6,
+      "samples": 8,
+      "updatedAt": 1788957166291
+    },
+    "memoryCount": 57,
+    "body": {
+      "awake": true,
+      "battery01": 0.75,
+      "cpuLoad01": 0.15,
+      "ramPressure01": 0.18,
+      "thermalStrain01": 0.12,
+      "cognitiveCapacity01": 0.84
+    }
+  },
+  "traces": [
+    {
+      "tick": 1,
+      "action": "respond",
+      "autonomy": 0.06,
+      "predictionError": 0.3576,
+      "memoryCount": 8,
+      "latencyMs": 77
+    },
+    {
+      "tick": 2,
+      "action": "respond",
+      "autonomy": 0.1182,
+      "predictionError": 0.49123199999999995,
+      "memoryCount": 13,
+      "latencyMs": 25
+    },
+    {
+      "tick": 3,
+      "action": "respond",
+      "autonomy": 0.17465399999999998,
+      "predictionError": 0.6008102399999999,
+      "memoryCount": 18,
+      "latencyMs": 17
+    },
+    {
+      "tick": 4,
+      "action": "rest",
+      "autonomy": 0.40941437999999997,
+      "predictionError": 0.5166643967999999,
+      "memoryCount": 27,
+      "latencyMs": 38
+    },
+    {
+      "tick": 5,
+      "action": "rest",
+      "autonomy": 0.6371319486,
+      "predictionError": 0.6636648053759999,
+      "memoryCount": 34,
+      "latencyMs": 21
+    },
+    {
+      "tick": 6,
+      "action": "rest",
+      "autonomy": 0.858017990142,
+      "predictionError": 0.7422051404083199,
+      "memoryCount": 40,
+      "latencyMs": 20
+    },
+    {
+      "tick": 7,
+      "action": "rest",
+      "autonomy": 1,
+      "predictionError": 0.8066082151348222,
+      "memoryCount": 46,
+      "latencyMs": 19
+    },
+    {
+      "tick": 8,
+      "action": "rest",
+      "autonomy": 1,
+      "predictionError": 0.6854187364105542,
+      "memoryCount": 56,
+      "latencyMs": 35
+    }
+  ],
+  "coreZeroArg": {
+    "candidateCount": 247,
+    "passed": 245,
+    "failed": 0,
+    "skipped": 2,
+    "traces": [
+      {
+        "name": "init",
+        "status": "PASS"
+      },
+      {
+        "name": "beginBatch",
+        "status": "PASS"
+      },
+      {
+        "name": "endBatch",
+        "status": "PASS"
+      },
+      {
+        "name": "p23ChecksumMaterial",
+        "status": "PASS"
+      },
+      {
+        "name": "projectionContext",
+        "status": "PASS"
+      },
+      {
+        "name": "syncHotPersistenceProjection",
+        "status": "PASS"
+      },
+      {
+        "name": "predictionLedgerSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "continuitySnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "externalEvidenceSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "selfPredictionBenchmarkSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "modelOlympicsSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "predictionDebtSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitiveQuorumSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "shadowOrganismSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "identityCausalitySnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "identityCausalitySummary",
+        "status": "PASS"
+      },
+      {
+        "name": "longHorizonPredictionSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "autonomousProjectExecutorSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "skillAcquisitionBenchmarkSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "evidenceFirewallSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "projectResearchSessionSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitiveSubsystemManifest",
+        "status": "PASS"
+      },
+      {
+        "name": "organismSystemsSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "organismSystemManifest",
+        "status": "PASS"
+      },
+      {
+        "name": "organismSystemGraph",
+        "status": "PASS"
+      },
+      {
+        "name": "organismSystemExecutionOrder",
+        "status": "PASS"
+      },
+      {
+        "name": "organismSystemHealth",
+        "status": "PASS"
+      },
+      {
+        "name": "selfSubsystemSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "governanceSubsystemSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitiveSubsystemHealth",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitiveSubsystemFlightSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitiveSubsystemFlightSummary",
+        "status": "PASS"
+      },
+      {
+        "name": "externalProjectResearchConfig",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitiveSpineScheduleSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitiveExecutionPlanSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitiveExecutionSavings01",
+        "status": "PASS"
+      },
+      {
+        "name": "temporalResolutionSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitivePressureSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "resourceAllocationSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "unifiedCognitiveSubstrateSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "derivedWorldPreviewSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitiveKernelSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "flush",
+        "status": "PASS"
+      },
+      {
+        "name": "memorySnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "evolutionSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitiveBudgetSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "embodimentSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "perceptionRoutingSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "memorySubstrateSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "persistenceMetrics",
+        "status": "PASS"
+      },
+      {
+        "name": "persistenceBudgetSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "revisionGraphSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "persistenceProjectionSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p64Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p74Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p60Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p71Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p75Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p76Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p77Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p78Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p79Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p65Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitiveEventFabricSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitiveResourceEconomySnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "realityEvidenceLedgerSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "unifiedCognitiveCycleSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "memoryRetentionEconomySnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "behavioralInfluenceLedgerSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p66Summary",
+        "status": "PASS"
+      },
+      {
+        "name": "p67Summary",
+        "status": "PASS"
+      },
+      {
+        "name": "p68Summary",
+        "status": "PASS"
+      },
+      {
+        "name": "systemSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "capabilitiesSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "developmentalCognitionSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "perceptionSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "residualRewardProvider",
+        "status": "PASS"
+      },
+      {
+        "name": "worldModelProvider",
+        "status": "PASS"
+      },
+      {
+        "name": "worldModel2Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "advancedDevelopmentSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "temporalContinuitySnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "exportPortableSubject",
+        "status": "PASS"
+      },
+      {
+        "name": "advancedResilienceSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "operationalStatusSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "snapshotLight",
+        "status": "PASS"
+      },
+      {
+        "name": "p53Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p54Summary",
+        "status": "PASS"
+      },
+      {
+        "name": "p55Summary",
+        "status": "PASS"
+      },
+      {
+        "name": "p56Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p56Plan",
+        "status": "PASS"
+      },
+      {
+        "name": "p57Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p57Summary",
+        "status": "PASS"
+      },
+      {
+        "name": "p58Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p59Summary",
+        "status": "PASS"
+      },
+      {
+        "name": "p60Summary",
+        "status": "PASS"
+      },
+      {
+        "name": "p61Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p62Summary",
+        "status": "PASS"
+      },
+      {
+        "name": "p63Summary",
+        "status": "PASS"
+      },
+      {
+        "name": "cameraEvidenceSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "recordSemanticVisionFrame",
+        "status": "PASS"
+      },
+      {
+        "name": "p39Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "perceptualEvidenceSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "perceptualEvidenceSummary",
+        "status": "PASS"
+      },
+      {
+        "name": "groundedWorldSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "groundedWorldSummary",
+        "status": "PASS"
+      },
+      {
+        "name": "persistentRealitySnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "persistentRealitySummary",
+        "status": "PASS"
+      },
+      {
+        "name": "autobiographicalContinuitySnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "autobiographicalContinuitySummary",
+        "status": "PASS"
+      },
+      {
+        "name": "autobiographicalActionOutcomeProfiles",
+        "status": "PASS"
+      },
+      {
+        "name": "autobiographicalContextualOutcomeProfiles",
+        "status": "PASS"
+      },
+      {
+        "name": "subjectContinuitySnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "developmentalIdentitySnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "developmentalSelfSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "identityDevelopmentSummary",
+        "status": "PASS"
+      },
+      {
+        "name": "motiveEcologySummary",
+        "status": "PASS"
+      },
+      {
+        "name": "developmentalAttractorSummary",
+        "status": "PASS"
+      },
+      {
+        "name": "experienceContinuumSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "experienceContinuumSummary",
+        "status": "PASS"
+      },
+      {
+        "name": "experienceContinuumRetentionSummary",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitiveResearchBatterySnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitiveResearchBatteryDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "p41PerceptionSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p41NativePerceptionSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p41NativePerceptionSummary",
+        "status": "PASS"
+      },
+      {
+        "name": "p41TemporalPerceptionSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p41TemporalPerceptionSummary",
+        "status": "PASS"
+      },
+      {
+        "name": "p41PerceptionSummary",
+        "status": "PASS"
+      },
+      {
+        "name": "p41NextPerception",
+        "status": "PASS"
+      },
+      {
+        "name": "p40SemanticSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p40SemanticSummary",
+        "status": "PASS"
+      },
+      {
+        "name": "p40ModelEcologySnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p42ExperienceSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p42ExperienceSummary",
+        "status": "PASS"
+      },
+      {
+        "name": "p43ImagerySnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p44PredictiveWorldSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p39Diagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "p35Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p37Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p37Summary",
+        "status": "PASS"
+      },
+      {
+        "name": "p37NextPerception",
+        "status": "PASS"
+      },
+      {
+        "name": "p38Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p38Diagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "p38Propose",
+        "status": "PASS"
+      },
+      {
+        "name": "p35Summary",
+        "status": "PASS"
+      },
+      {
+        "name": "p24Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "contextualWorldSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p27Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p27Counterfactuals",
+        "status": "PASS"
+      },
+      {
+        "name": "p26Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p28Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p28Diagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "p29Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p29Diagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "p30Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p31Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p32Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p33Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p33Diagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "p34Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p34Diagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "p33InspectPrivateState",
+        "status": "PASS"
+      },
+      {
+        "name": "p32Diagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "p30Diagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "p36Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p36Diagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "p36Propose",
+        "status": "PASS"
+      },
+      {
+        "name": "p36ActiveDevelopmentCycle",
+        "status": "PASS"
+      },
+      {
+        "name": "p36DevelopmentTaskRequest",
+        "status": "PASS"
+      },
+      {
+        "name": "p36DevelopmentCampaignPlan",
+        "status": "PASS"
+      },
+      {
+        "name": "p36LearningAgenda",
+        "status": "PASS"
+      },
+      {
+        "name": "p36LearningInvestmentDecision",
+        "status": "PASS"
+      },
+      {
+        "name": "causalExperienceSummary",
+        "status": "PASS"
+      },
+      {
+        "name": "unifiedLearningDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "causalDevelopmentDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "developmentalSynthesisDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "developmentalExecutiveDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "metaDevelopmentalDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "personalCurriculumDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "personalCurriculumSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "developmentalPortfolioDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "developmentalPortfolioSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "lifeCourseDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "lifeCourseSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "personalWorldlineDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "personalWorldlineSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "integratedLifeTrajectoryDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "integratedLifeTrajectorySnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitiveOrganismContinuityDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitiveOrganismContinuitySnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitiveOrganismContinuityBenchmark",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitiveOrganismContinuitySelfAudit",
+        "status": "PASS"
+      },
+      {
+        "name": "autonomousCognitiveLifeDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "autonomousCognitiveLifeSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "autonomousCognitiveLifeBenchmark",
+        "status": "PASS"
+      },
+      {
+        "name": "autonomousCognitiveLifeSelectPerception",
+        "status": "PASS"
+      },
+      {
+        "name": "verifiedAutonomousLifeDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "verifiedAutonomousLifeSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "verifiedAutonomousLifeBenchmark",
+        "status": "PASS"
+      },
+      {
+        "name": "verifiedAutonomousLifeSelfAudit",
+        "status": "PASS"
+      },
+      {
+        "name": "researchGradeOrganismSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "researchGradeOrganismDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "researchGradeOrganismBenchmark",
+        "status": "PASS"
+      },
+      {
+        "name": "researchGradeOrganismSelfAudit",
+        "status": "PASS"
+      },
+      {
+        "name": "operationalLifeSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "operationalLifeDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "operationalLifeBenchmark",
+        "status": "PASS"
+      },
+      {
+        "name": "operationalLifeSelfAudit",
+        "status": "PASS"
+      },
+      {
+        "name": "operationalLifeFreezeArchitecture",
+        "status": "PASS"
+      },
+      {
+        "name": "operationalLifeCloseWindow",
+        "status": "PASS"
+      },
+      {
+        "name": "developmentalExecutiveSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "developmentalSynthesisSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "causalDevelopmentSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "behavioralDevelopmentDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "unifiedLearningTransferDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "cognitiveDependencyDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "socialMindDiagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "socialMindSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p25Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p24ModelSwitchSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p23LearningSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "runP23Replay",
+        "status": "PASS"
+      },
+      {
+        "name": "p47Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p49Snapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "p49Summary",
+        "status": "PASS"
+      },
+      {
+        "name": "longitudinalSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "adaptiveDevelopmentSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "consolidateLongitudinal",
+        "status": "PASS"
+      },
+      {
+        "name": "multimodalSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "skillLibrarySnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "skillLibrarySummary",
+        "status": "PASS"
+      },
+      {
+        "name": "actionToolsSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "activeProjectSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "actionAuditSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "skillEcologySnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "outcomeVerificationSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "causalAccountabilitySnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "outcomeCognitionSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "externalObserverSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "externalObserverSummary",
+        "status": "PASS"
+      },
+      {
+        "name": "selfAuthorshipSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "sensorimotorSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "consciousnessSnapshot",
+        "status": "PASS"
+      },
+      {
+        "name": "activeGoalPressure",
+        "status": "PASS"
+      }
+    ]
+  },
+  "semanticSummary": {
+    "VERIFIED": 3,
+    "INTEGRATION_ONLY": 232,
+    "UNSAFE_TO_AUTO_RUN": 214,
+    "UNVERIFIED": 1936
+  }
+}

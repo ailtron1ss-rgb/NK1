@@ -1,0 +1,28 @@
+{
+  "version": 112,
+  "benchmark": "v112_preconditioner_short_comparison",
+  "rows": [
+    {
+      "seed": 112,
+      "initial": 2.919963836669922,
+      "final": 2.6427907943725586,
+      "grad_mean": 2.013516643728508e-05,
+      "gain_mean": 1.0000399351119995
+    },
+    {
+      "seed": 113,
+      "initial": 2.8376262187957764,
+      "final": 2.628269910812378,
+      "grad_mean": 1.8620602645569306e-05,
+      "gain_mean": 0.9991834163665771
+    },
+    {
+      "seed": 114,
+      "initial": 2.7335145473480225,
+      "final": 2.4708147048950195,
+      "grad_mean": 2.7588760076469043e-05,
+      "gain_mean": 0.9999668598175049
+    }
+  ],
+  "note": "V112 internal diagnostic; V111 comparison is inferred from the previous trainability evidence and source patch, not rerun from the older worktree in this script"
+}

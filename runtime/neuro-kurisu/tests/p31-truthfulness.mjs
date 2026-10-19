@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import { defaultP31Consciousness } from '../src/organism/cognition/P31FunctionalConsciousness.ts';
+import { ConsciousnessEvidenceLedger } from '../src/organism/cognition/ConsciousnessEvidenceLedger.ts';
+const s=defaultP31Consciousness();
+assert.equal(s.evidence.status,'functional-only');
+assert.equal(s.evidence.causalClaims,0);
+assert.equal(s.evidence.deviceClaims,0);
+assert.match(s.evidence.caveat,/не доказывают субъективный опыт/);
+const ledger=new ConsciousnessEvidenceLedger();
+for(let i=0;i<24;i++) ledger.update({recurrent:.9,workspace:.8,higherOrder:.7,predictive:.85,attention:.8,embodiment:.75,continuity:.9,metacognition:.78,agency:.8,causalMap:{},observationKey:`truthfulness-${i}`});
+const ev=ledger.snapshot();
+assert.equal(ev.version,4);
+assert.ok(ev.aggregateLongitudinalEvidence>0);
+assert.ok(ev.indicators.every(x=>x.supportingObservations>=24));
+console.log('P31_TRUTHFULNESS=PASS no-subjective-experience-claim');

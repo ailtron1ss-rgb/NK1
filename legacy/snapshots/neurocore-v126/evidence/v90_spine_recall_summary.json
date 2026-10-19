@@ -1,0 +1,25 @@
+{
+  "v82_baseline": {
+    "cosine_mean": 0.3871236383914948,
+    "cosine_sd": 0.026060999839292703,
+    "top1_mean": 0.19583333432674407,
+    "top1_sd": 0.04260817822610739,
+    "train_seconds_mean": 2.4409885299999585,
+    "final_loss_mean": 0.6138215899467468
+  },
+  "v90_routed_preconditioned": {
+    "cosine_mean": 0.46496254205703735,
+    "cosine_sd": 0.08148506261467883,
+    "top1_mean": 0.32552083432674406,
+    "top1_sd": 0.1441377493846244,
+    "train_seconds_mean": 3.275034242599941,
+    "final_loss_mean": 0.5470193862915039
+  },
+  "delta": {
+    "cosine_relative_pct": 20.106988038489337,
+    "top1_relative_pct": 66.22340391938533,
+    "train_time_relative_pct": 34.16835852973043,
+    "cosine_absolute": 0.07783890366554258,
+    "top1_absolute": 0.12968749999999998
+  }
+}

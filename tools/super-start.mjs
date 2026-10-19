@@ -1,0 +1,37 @@
+import { spawn } from 'node:child_process';
+import { mkdirSync, resolve } from 'node:path';
+
+const ROOT = resolve(new URL('..', import.meta.url).pathname);
+const stateDir = resolve(ROOT, '.super-state');
+mkdirSync(stateDir, { recursive: true });
+
+const children = [];
+let shuttingDown = false;
+const launch = (label, command, args, env = {}) => {
+  const child = spawn(command, args, { cwd: ROOT, env: { ...process.env, ...env }, stdio: 'inherit' });
+  child.on('error', (error) => console.error(`[super] ${label} spawn error: ${error.message}`));
+  child.on('exit', (code, signal) => {
+    if (shuttingDown) return;
+    if (signal) console.log(`[super] ${label} exited via ${signal}`);
+    else if (code !== 0) { console.error(`[super] ${label} exited with ${code}`); void shutdown(`child:${label}`); }
+  });
+  children.push(child);
+  return child;
+};
+
+launch('neuro-kurisu', 'node', ['--experimental-strip-types', 'src/server/server.mjs'], {
+  PORT: '3310', HOST: '127.0.0.1', STATE_DIR: resolve(stateDir, 'organism'), NODE_ENV: 'production'
+});
+launch('research-bridge', 'python3', ['research/research_bridge.py'], { RESEARCH_PORT: '8765' });
+launch('ui-preview', 'npm', ['--prefix', 'app', 'run', 'preview']);
+launch('gateway', 'node', ['tools/super-gateway.mjs'], { SUPER_GATEWAY_PORT: '8080', SUPER_UI_PORT: '8081', SUPER_RUNTIME_PORT: '3310', SUPER_RESEARCH_PORT: '8765' });
+
+const shutdown = (signal) => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[super] shutting down (${signal})`);
+  for (const child of children) child.kill('SIGTERM');
+  setTimeout(() => process.exit(0), 800).unref();
+};
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));

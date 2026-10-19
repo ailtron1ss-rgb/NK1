@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: neurocore-frontier
+Version: 1.26.0
+Summary: NeuroCore Frontier current research codebase with adaptive temporal credit, sparse memory, and stable-state candidates
+Requires-Python: >=3.10
+Requires-Dist: torch
+Requires-Dist: numpy
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"

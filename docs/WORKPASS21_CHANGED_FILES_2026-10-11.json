@@ -1,0 +1,151 @@
+{
+  "title": "WorkPass 21 file change manifest",
+  "date": "2026-10-11",
+  "baselineArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS20_2026-10-11.zip",
+  "baselineVersion": "WorkPass 20 / runtime 35.42.0",
+  "targetVersion": "WorkPass 21 / root 21.0.0-super-final7 / runtime 35.43.0",
+  "comparison": "SHA-256 byte comparison against the WorkPass 20 archive. Generated caches/state are excluded from the release package.",
+  "summary": {
+    "added": 7,
+    "modified": 13,
+    "deleted": 0,
+    "unchangedCurrentFiles": 12677
+  },
+  "changedFiles": [
+    {
+      "path": "CHANGELOG.md",
+      "status": "modified",
+      "bytes": 34329,
+      "sha256": "ae3071d55da389feb080e9d7bc8e6fee6aa3e0176fc33aa270541c7733de79be",
+      "baselineSha256": "9351d09c692beacec0bcd2cd5e560c5247dac6d49517f7a9b18d5de04c9d744f"
+    },
+    {
+      "path": "README.md",
+      "status": "modified",
+      "bytes": 12716,
+      "sha256": "c5253291ffac8bf6d8a575b5e3b9096bc79df5e978049a550797ffa045741cbb",
+      "baselineSha256": "e86f26880718afe71a907a1494f02e80a5b8671309a39c19e58849bc9448a568"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "status": "modified",
+      "bytes": 12643,
+      "sha256": "08aa29b1eb0e3260769ba871a6c1e666b3cb33301678eb192be36b6b62405e32",
+      "baselineSha256": "4523559df078036bfc498e2e28c962cd666676704fccd5616aa94c91233bcb0b"
+    },
+    {
+      "path": "docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_WorkPass21_2026-10-11.md",
+      "status": "added",
+      "bytes": 76669,
+      "sha256": "30c04c1dd1eb2fc101ab4bf5ccba02c7a8cd0fd446178bb3ec529d9d63459eff"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-11_WORKPASS21.json",
+      "status": "added",
+      "bytes": 27804,
+      "sha256": "6f6069db4d3377052c2bb9bc3ae27b72f66b17913e5c5b4fa4d0b78bb1f9c1c0"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-11_WORKPASS21.md",
+      "status": "added",
+      "bytes": 3658,
+      "sha256": "9159be4d3e93354eea9971f9d0c928cfb8701de1d1d4e4ff39ebc79a240da173"
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-11_WORKPASS21.json",
+      "status": "added",
+      "bytes": 7726,
+      "sha256": "1326ea5257360c0cde1e6871d55938a81a0572632108d369a44c03ab5ba7cb58"
+    },
+    {
+      "path": "docs/WORKPASS21_IMPLEMENTATION_REPORT_2026-10-11.md",
+      "status": "added",
+      "bytes": 7066,
+      "sha256": "79c070b721a950678154c6f2c1bef9582d9200b38bae7b3a15053d71fb1fdda6"
+    },
+    {
+      "path": "package.json",
+      "status": "modified",
+      "bytes": 9308,
+      "sha256": "2bbbb02ef4b549f633ed2098995bb0f9290d42ad056d97139a745edc919e1c26",
+      "baselineSha256": "6f23cd2e1cf0f69f8b95a529fc65fd63fa556ffbf620c81d864c9dac791a3dfc"
+    },
+    {
+      "path": "runtime/neuro-kurisu/VERSION.json",
+      "status": "modified",
+      "bytes": 271,
+      "sha256": "3ea55723e31ffb993b538da98a632f2723b3c94a02df929ec62b54f52aeb6b68",
+      "baselineSha256": "d8e4cb81ee8831d6068d391613d61e7be471e809025d8f29631a4451e2ba9d1f"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package-lock.json",
+      "status": "modified",
+      "bytes": 1041,
+      "sha256": "7f8faf9a42faa7204a6e8e800f70e298fa88846f776f263750b65f332461da14",
+      "baselineSha256": "42846e2e1e200d0ceddb0448a16f520bbb095f49f1f8177a166493a5e1de1c1f"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "status": "modified",
+      "bytes": 230897,
+      "sha256": "e460ee722fb664209f3efcb45146cb5af6299405b6f3c936d685884061a9d6dd",
+      "baselineSha256": "73d7a1336cfc4c7d82af1a699f7e2ff69d31c9bf217a343be0b5878cdcfce740"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+      "status": "modified",
+      "bytes": 1205026,
+      "sha256": "52924524417d9ddff6e0fa5c2d6c370651dc07a1edb57330e3222c3d8eb1964b",
+      "baselineSha256": "a7934be5b1ab9208a3de04aa834d45fc936d1981f4c5291b5322b77c6bab4a9e"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/EvidenceFirewall.ts",
+      "status": "modified",
+      "bytes": 10841,
+      "sha256": "71162c9c25c0ee1b9dc7214124f8d9183391e894146577537e6c21314ebaeb87",
+      "baselineSha256": "b5add3bc90a5d059686a14787be837a79b2b563ff8b5b8f0caeadda6e7162db7"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ProjectResearchSession.ts",
+      "status": "modified",
+      "bytes": 10295,
+      "sha256": "5ed79f02556698dcb5b1e156e22516452537728bc02f74f5c654b367da1a97d0",
+      "baselineSha256": "12427574d43e02ba71c07deb0dcf0ca1ac10cbe0c15e8df529ac98f46b2d37d9"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ResearchClaimAssessment.ts",
+      "status": "modified",
+      "bytes": 14268,
+      "sha256": "0a31527b3811d9f50b0a28c89a5aaa689624835f61ad476f0f66bbc6244a6ede",
+      "baselineSha256": "7aade1fe3f26d32929f0c3b4f53daf0c9ad9728b710f0883e50a24c2aa6582c0"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ResearchSourceLineage.ts",
+      "status": "added",
+      "bytes": 7050,
+      "sha256": "840208e8b9d206f2aa4dfa288cb5e13fb79bcd47f16fe5a49da593e2ef5f46c7"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-179-project-research-gates.mjs",
+      "status": "modified",
+      "bytes": 18806,
+      "sha256": "2174b1f46eec57fa035b424583365cdb0d76e26a5d739875d9d7a82d72f9e23c",
+      "baselineSha256": "93cf8871ced83e22482c8732470fc2d055385544abdcecdc9e17fb80e5ae8346"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/research-source-lineage.mjs",
+      "status": "added",
+      "bytes": 6800,
+      "sha256": "c5ae3c7ce890462c8f962b4f06d9e068714a19101d65a8bee98e4d4f027f1a23"
+    },
+    {
+      "path": "Список дел.md",
+      "status": "modified",
+      "bytes": 100447,
+      "sha256": "c608c9597f660a2130f50a90fba2492c84c16bc2155edc5723cc83f2bb75c08d",
+      "baselineSha256": "b5c76aff82830739c21b64942442bef3e2e1efc6423433cc974f8cca794d35bc"
+    }
+  ],
+  "deletedFiles": [],
+  "manifestSelfHash": "omitted to avoid a self-referential digest; hash the final manifest externally if needed."
+}

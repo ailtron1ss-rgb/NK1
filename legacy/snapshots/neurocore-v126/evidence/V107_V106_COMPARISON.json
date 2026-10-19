@@ -1,0 +1,28 @@
+{
+  "protocol": "same Python process isolation, B=1,T=16,D=9,goal=8,target=20, CPU; 5 measured passes after 2 warmups",
+  "v106": {
+    "total_parameters": 367437,
+    "trainable_parameters": 159870,
+    "per_pass_seconds": 0.17741546760007623,
+    "named_modules": 1951,
+    "called_modules": 233,
+    "gradient_parameter_fraction": 0.7636329517733158
+  },
+  "v107": {
+    "total_parameters": 72821,
+    "trainable_parameters": 71282,
+    "per_pass_seconds": 0.021328862399968784,
+    "named_modules": 70,
+    "called_modules": 60,
+    "gradient_parameter_fraction": 0.9998877697034314
+  },
+  "delta": {
+    "parameter_reduction_fraction": 0.8018136442437751,
+    "trainable_reduction_fraction": 0.5541252267467317,
+    "per_pass_speedup": 8.318093308170804,
+    "named_module_reduction_fraction": 0.9641209636084059,
+    "called_module_fraction_v106": 0.1194259354177345,
+    "called_module_fraction_v107": 0.8571428571428571,
+    "gradient_parameter_fraction_delta": 0.2362548179301156
+  }
+}

@@ -1,0 +1,221 @@
+{
+  "protocol": "causal_fast_state_influence",
+  "rows": [
+    {
+      "mode": "single",
+      "sequence_length": 8.0,
+      "seed": 0.0,
+      "late_causal_correction_norm": 0.2583908438682556,
+      "mean_post_first_correction_norm": 0.10742875188589096,
+      "fast_state_norm": 0.2043655812740326,
+      "updates": 7.0
+    },
+    {
+      "mode": "single",
+      "sequence_length": 8.0,
+      "seed": 1.0,
+      "late_causal_correction_norm": 0.1600044071674347,
+      "mean_post_first_correction_norm": 0.0741853192448616,
+      "fast_state_norm": 0.1771005541086197,
+      "updates": 7.0
+    },
+    {
+      "mode": "single",
+      "sequence_length": 32.0,
+      "seed": 0.0,
+      "late_causal_correction_norm": 1.2535403966903687,
+      "mean_post_first_correction_norm": 0.7301928997039795,
+      "fast_state_norm": 1.5470631122589111,
+      "updates": 31.0
+    },
+    {
+      "mode": "single",
+      "sequence_length": 32.0,
+      "seed": 1.0,
+      "late_causal_correction_norm": 1.0798243284225464,
+      "mean_post_first_correction_norm": 0.5103864073753357,
+      "fast_state_norm": 1.3156794309616089,
+      "updates": 31.0
+    },
+    {
+      "mode": "single",
+      "sequence_length": 128.0,
+      "seed": 0.0,
+      "late_causal_correction_norm": 1.4618946313858032,
+      "mean_post_first_correction_norm": 1.2641935348510742,
+      "fast_state_norm": 2.492042303085327,
+      "updates": 127.0
+    },
+    {
+      "mode": "single",
+      "sequence_length": 128.0,
+      "seed": 1.0,
+      "late_causal_correction_norm": 1.3457294702529907,
+      "mean_post_first_correction_norm": 1.0893627405166626,
+      "fast_state_norm": 2.5603487491607666,
+      "updates": 127.0
+    },
+    {
+      "mode": "dual",
+      "sequence_length": 8.0,
+      "seed": 0.0,
+      "late_causal_correction_norm": 0.2851259112358093,
+      "mean_post_first_correction_norm": 0.12767954170703888,
+      "fast_state_norm": 0.22484737634658813,
+      "updates": 7.0
+    },
+    {
+      "mode": "dual",
+      "sequence_length": 8.0,
+      "seed": 1.0,
+      "late_causal_correction_norm": 0.1795496642589569,
+      "mean_post_first_correction_norm": 0.08854176849126816,
+      "fast_state_norm": 0.19625546038150787,
+      "updates": 7.0
+    },
+    {
+      "mode": "dual",
+      "sequence_length": 32.0,
+      "seed": 0.0,
+      "late_causal_correction_norm": 1.1817996501922607,
+      "mean_post_first_correction_norm": 0.6921023726463318,
+      "fast_state_norm": 1.3322811126708984,
+      "updates": 31.0
+    },
+    {
+      "mode": "dual",
+      "sequence_length": 32.0,
+      "seed": 1.0,
+      "late_causal_correction_norm": 1.0235974788665771,
+      "mean_post_first_correction_norm": 0.47924768924713135,
+      "fast_state_norm": 1.132999062538147,
+      "updates": 31.0
+    },
+    {
+      "mode": "dual",
+      "sequence_length": 128.0,
+      "seed": 0.0,
+      "late_causal_correction_norm": 1.4615609645843506,
+      "mean_post_first_correction_norm": 1.241055965423584,
+      "fast_state_norm": 2.4777631759643555,
+      "updates": 127.0
+    },
+    {
+      "mode": "dual",
+      "sequence_length": 128.0,
+      "seed": 1.0,
+      "late_causal_correction_norm": 1.3434391021728516,
+      "mean_post_first_correction_norm": 1.0616291761398315,
+      "fast_state_norm": 2.5354318618774414,
+      "updates": 127.0
+    },
+    {
+      "mode": "cascade",
+      "sequence_length": 8.0,
+      "seed": 0.0,
+      "late_causal_correction_norm": 2.376038537477143e-06,
+      "mean_post_first_correction_norm": 5.89234730341559e-07,
+      "fast_state_norm": 2.0269201286282623e-06,
+      "updates": 7.0
+    },
+    {
+      "mode": "cascade",
+      "sequence_length": 8.0,
+      "seed": 1.0,
+      "late_causal_correction_norm": 1.3002423884245218e-06,
+      "mean_post_first_correction_norm": 3.807924713328248e-07,
+      "fast_state_norm": 1.691136844783614e-06,
+      "updates": 7.0
+    },
+    {
+      "mode": "cascade",
+      "sequence_length": 32.0,
+      "seed": 0.0,
+      "late_causal_correction_norm": 0.0025446952786296606,
+      "mean_post_first_correction_norm": 0.0004873836587648839,
+      "fast_state_norm": 0.0024819965474307537,
+      "updates": 31.0
+    },
+    {
+      "mode": "cascade",
+      "sequence_length": 32.0,
+      "seed": 1.0,
+      "late_causal_correction_norm": 0.002811817219480872,
+      "mean_post_first_correction_norm": 0.00039923444273881614,
+      "fast_state_norm": 0.002022328320890665,
+      "updates": 31.0
+    },
+    {
+      "mode": "cascade",
+      "sequence_length": 128.0,
+      "seed": 0.0,
+      "late_causal_correction_norm": 0.7616874575614929,
+      "mean_post_first_correction_norm": 0.18361201882362366,
+      "fast_state_norm": 0.6344068050384521,
+      "updates": 127.0
+    },
+    {
+      "mode": "cascade",
+      "sequence_length": 128.0,
+      "seed": 1.0,
+      "late_causal_correction_norm": 0.594616711139679,
+      "mean_post_first_correction_norm": 0.1319819986820221,
+      "fast_state_norm": 0.5785019397735596,
+      "updates": 127.0
+    },
+    {
+      "mode": "event_bank",
+      "sequence_length": 8.0,
+      "seed": 0.0,
+      "late_causal_correction_norm": 0.25618624687194824,
+      "mean_post_first_correction_norm": 0.10674965381622314,
+      "fast_state_norm": 0.20260468125343323,
+      "updates": 7.0
+    },
+    {
+      "mode": "event_bank",
+      "sequence_length": 8.0,
+      "seed": 1.0,
+      "late_causal_correction_norm": 0.1587350219488144,
+      "mean_post_first_correction_norm": 0.07373231649398804,
+      "fast_state_norm": 0.1756056398153305,
+      "updates": 7.0
+    },
+    {
+      "mode": "event_bank",
+      "sequence_length": 32.0,
+      "seed": 0.0,
+      "late_causal_correction_norm": 1.2351795434951782,
+      "mean_post_first_correction_norm": 0.7192233800888062,
+      "fast_state_norm": 1.4860923290252686,
+      "updates": 31.0
+    },
+    {
+      "mode": "event_bank",
+      "sequence_length": 32.0,
+      "seed": 1.0,
+      "late_causal_correction_norm": 0.8866448402404785,
+      "mean_post_first_correction_norm": 0.2686834931373596,
+      "fast_state_norm": 0.8989176154136658,
+      "updates": 31.0
+    },
+    {
+      "mode": "event_bank",
+      "sequence_length": 128.0,
+      "seed": 0.0,
+      "late_causal_correction_norm": 1.4403058290481567,
+      "mean_post_first_correction_norm": 1.246015191078186,
+      "fast_state_norm": 2.2866244316101074,
+      "updates": 127.0
+    },
+    {
+      "mode": "event_bank",
+      "sequence_length": 128.0,
+      "seed": 1.0,
+      "late_causal_correction_norm": 1.3171651363372803,
+      "mean_post_first_correction_norm": 1.0570238828659058,
+      "fast_state_norm": 2.3387324810028076,
+      "updates": 127.0
+    }
+  ]
+}

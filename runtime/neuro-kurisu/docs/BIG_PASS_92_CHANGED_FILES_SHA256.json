@@ -1,0 +1,146 @@
+{
+  "release": "34.65.0",
+  "baseRelease": "34.64.0",
+  "changedFiles": [
+    {
+      "path": "ARCHITECTURE_MANIFEST.json",
+      "sha256": "e1e95344ed8beac39b3c931f120e1479c75012f786e3bc5c98087345ca1950c6",
+      "previousSha256": "1ca4f4f92636b306a3a742b7e0fa03df48f05aa3f32a1f14e414ba458ac454f1"
+    },
+    {
+      "path": "README_RU.md",
+      "sha256": "fa49416876c79112d352b3886bfcd95bc947896e2ea2372dcfa587190cbc8569",
+      "previousSha256": "1545d788adcf0a18c08bfc44f22646664588f06e26cba9f1d0193d7f8cc5eeff"
+    },
+    {
+      "path": "RELEASE_ARCHIVE_MANIFEST.json",
+      "sha256": "505a919de6a84193e63a5dcd30803cca39575f56eea338a3ca068c4114008eb9",
+      "previousSha256": "2b99e1ac061f87c5357c7a108edc9669bfd0005abaa98cbe07eb198105974f45"
+    },
+    {
+      "path": "RELEASE_MANIFEST.json",
+      "sha256": "c005a1e8f6af257b7d74d7e72b283e8dac768b5098fe2f59261b0339f380fc9a",
+      "previousSha256": "4f87ceac1b9fd14fe74d4060ab0973bab29c0b9003efb1564e598bbab2edb88d"
+    },
+    {
+      "path": "VERSION.json",
+      "sha256": "57e7d4ec6f004c84e62db866c3cf90204a356920edf3f8a63d0b8e7b67fcda9e",
+      "previousSha256": "4e7c137183ed82eeb306d7b4af19f83312c27e78d6d3b61ada5e46f3e3bb93ed"
+    },
+    {
+      "path": "docs/00_MASTER_PERSONHOOD_CONSTITUTION_RU.md",
+      "sha256": "00ffe96567d054472037bf120716a757eea369df767f4d6652bfcd3f697e1e69",
+      "previousSha256": "6d45d46941b9b8b157a37e55c6809c7859c2a416a69b8c211f49e056cba13f9f"
+    },
+    {
+      "path": "docs/ARCHITECTURE_RU.md",
+      "sha256": "e91d3bc5efd6d8028220b69b8f51d4fd8fce7bf8ec7126654846eec74aa5bf26",
+      "previousSha256": "117854eee86202de1c229462fe5812f6ea47c5ee8e8fabc1b73dbe222d1a2905"
+    },
+    {
+      "path": "docs/BIG_PASS_92_ADD_DO_NOT_ADD_RU.md",
+      "sha256": "1d28f54f3da854bf65e6ab19cbfff59877a90d2e46787039b559578f5829e261",
+      "previousSha256": null
+    },
+    {
+      "path": "docs/BIG_PASS_92_FINAL_REPORT_RU.md",
+      "sha256": "f3669e48e6404d2f052193d16485e7a2c869d7fda50d8cc97bed8c04abacf1a3",
+      "previousSha256": null
+    },
+    {
+      "path": "docs/BIG_PASS_92_PROGRESS_AND_DECISIONS_RU.md",
+      "sha256": "8c847607b4d41e3c13d2053bfc683fd0437ac7a79c281f7d63a67c083467f146",
+      "previousSha256": null
+    },
+    {
+      "path": "docs/BIG_PASS_92_PROGRESS_METRICS.json",
+      "sha256": "742f5aca68ddf976ca782f579b5ccbd49ff619c7eb0ce0f9277bc39609f2d853",
+      "previousSha256": null
+    },
+    {
+      "path": "docs/EVOLUTION_HANDOFF_RU.md",
+      "sha256": "4ce8d9ead967d1e29f88c20cc68315279166d793e6e66a0eff76f4015af81a92",
+      "previousSha256": "f0ad5f1f1ecc02dae98abb9cc035dcab2268bfcbd0db7b7a353c3af7528d17f0"
+    },
+    {
+      "path": "docs/MASTER_ROADMAP_5_STAGES_RU.md",
+      "sha256": "f49598723ca839dd055967fef6f06ca02abe1914e0136d7f2862460e4ee25cf3",
+      "previousSha256": "be543aafa3a20ce722f6e90992b0b3479e1df5aac713225ac339091b8c20b227"
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_RU.md",
+      "sha256": "73f83312d2cabcd3a03e15da2888e2e40f89e2528b64a87eb349ed0c1b3ae893",
+      "previousSha256": "bb75745825d7e6f42f42e346146b0f11cdac64dd0d988deaca53ed1bbf98384f"
+    },
+    {
+      "path": "docs/RELEASE_NOTES_34.65.0_RU.md",
+      "sha256": "c2b772d4afe6bb8a065a4aa5c54d6c27822e7ea857d0338550441c82d4b899f6",
+      "previousSha256": null
+    },
+    {
+      "path": "docs/SYSTEM_OF_RECORD_RU.md",
+      "sha256": "d001f4318353926734ab89ab68f2b6eb8dabd1987b4a21c08dd4ae8042d0ed81",
+      "previousSha256": "f68d760f1a2ad4024675454c24ac138b145f838eb1226d93a3d90b6f132bd3aa"
+    },
+    {
+      "path": "docs/WORKING_PROMPT_RU.md",
+      "sha256": "f2e6609c9b10e92188808e367812060cbf9422a49166e2d452d156b323006e7b",
+      "previousSha256": "6707f3ba889120aeb82b51ccf080fdf242854735ca134cafcc41eda77cd00122"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "93b0af9e2931f10bcf15f8b789c53a1cb616687640a2306f2819191295526176",
+      "previousSha256": "4921002ff9ae5e26760a4e88a32502259acfde7980793560a80747be9c806f68"
+    },
+    {
+      "path": "package.json",
+      "sha256": "d0a72014e65570a646ff1b3fa7c67edd2e59c10cc8a24ca9cbc46ef1f109b30d",
+      "previousSha256": "cc5804d9e7f0eebbd8123e04b06715098dc6f60f31e49df952a4b17bb79d53af"
+    },
+    {
+      "path": "src/organism/body/CameraEvidenceProcessor.ts",
+      "sha256": "8b32d02f621e25723326808cc89e62214567b45fb8b0b94b8132e330838b26e6",
+      "previousSha256": null
+    },
+    {
+      "path": "src/organism/body/VisionSemanticBackend.ts",
+      "sha256": "456bd2db7db64c2745a616687688ea75e68b03a87809412c10d4b9fd4cd0c3c0",
+      "previousSha256": null
+    },
+    {
+      "path": "src/organism/core/OrganismCore.ts",
+      "sha256": "e52becaa4dc0e91aab5461d565b2bdabae0379bc2600daa70a7459305decff34",
+      "previousSha256": "bcf9e4bc05744224020224a2f650fc3c9a29b25b2b9300a4c0182c449449f121"
+    },
+    {
+      "path": "src/organism/core/OrganismRuntime.ts",
+      "sha256": "afea674029a7a70c596c2a125a16bf6a3b8b870549514f41c72b5a386d89331a",
+      "previousSha256": "0475bfa83ec8e00cc8c716974b2fa618bf105e5b766e895e0f782bb9d9d58b92"
+    },
+    {
+      "path": "src/organism/core/types.ts",
+      "sha256": "6d4fb3c7b5a49691be87c1f1dc6dedf26eeb5607a896cb78fd163bc2d8e5aefa",
+      "previousSha256": "eae0bbafbd2d925c7b9c97c1b8364628de92ff62d07f227fd12a8e2b4ef56dbc"
+    },
+    {
+      "path": "src/organism/persistence/StateMigrations.ts",
+      "sha256": "8f4bb11ad557c09333aa0eed06665995381f34a1837cc4c44536da46d7631503",
+      "previousSha256": "72d19f900f33510f46d4e43db11ff9e44e51e336e5937c6908058726617420cf"
+    },
+    {
+      "path": "src/organism/system/ReleaseContract.ts",
+      "sha256": "b7805d054b248a346a46703dcbd333134516212e6bd30d766d20a1c626dfa84b",
+      "previousSha256": "b8f8504b5027a3f54a58e23a8268385156f069c95429e6b6ad3313228223b6d4"
+    },
+    {
+      "path": "src/server/server.mjs",
+      "sha256": "517a72b15b60e34fde5a4fb024df5726cac2267eb80ed8098af1826cfdd5779f",
+      "previousSha256": "d8af916e1050776b357fb0f3a1c600f07be1ae0ccb7f6becf601c2be33592b03"
+    },
+    {
+      "path": "tests/big-pass-92-sensorium.mjs",
+      "sha256": "40e963af47a3f56619f28d48a9a84b25a96a24f479f451ada6035e228cd5a283",
+      "previousSha256": null
+    }
+  ]
+}

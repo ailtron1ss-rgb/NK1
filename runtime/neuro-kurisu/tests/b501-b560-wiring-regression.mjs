@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const s=fs.readFileSync(new URL('../src/organism/core/OrganismCore.ts',import.meta.url),'utf8');
+assert(s.includes("const b501Decision=this.b501B560HierarchicalMetaMemory.beforeDecision"));
+assert(s.includes('+b501Bias+b501PredictiveBias'));
+assert(s.includes('+ b421FullBias(action) + b421FullPredictiveBias(action)'));
+assert(s.includes("b451FullDecision ? (b451FullDecision.actionBias[action]??0)*0.085"));
+assert(s.includes("b501FullBias(action) + b501FullPredictiveBias(action)"));
+assert(s.includes('this.b501B560HierarchicalMetaMemory.afterOutcome'));
+console.log(JSON.stringify({pass:true,status:'B421_B451_FULL_PATH_WIRING_REGRESSION_PASS',b421FullWired:true,b451FullWired:true,b501Integrated:true},null,2));

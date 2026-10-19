@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import { PersistentContinuityKernel } from '../src/organism/system/PersistentContinuityKernel.ts';
+
+const material=(k,tick,action='wait')=>({subjectId:k.snapshot().subjectId,schemaVersion:166,tick,at:1_000+tick,lastAction:action,lastActionSuccess:1,identityFingerprint:'identity-A',identityContinuity01:.98,p84MomentId:`m:${tick}`,p84Continuity01:.97,p84CausalContinuity01:.96,memoryAnchorIds:[`mem:${tick%16}`],activeGoalIds:['goal:main'],unresolvedIntentions:tick%3,worldRevision:tick,b1600CampaignStep:tick,b1600Development01:.9});
+const k=new PersistentContinuityKernel(256,128);
+const first=material(k,0);
+assert.equal(k.beginSession({now:1000,tick:0,currentStateHash:k.materialHash(first),reason:'boot'}).verified,true);
+for(let i=1;i<=1200;i++) assert.equal(k.commit(material(k,i,i%11===0?'reflect':'wait'),'stress-checkpoint').ok,true);
+const d=k.diagnostics();
+assert.equal(d.verified,true);
+assert.equal(d.headSeq,1200);
+assert.equal(d.lineageTruncated,true);
+assert.equal(d.globalAncestryProofAvailable,false);
+assert.equal(d.brokenLinks,0);
+const snap=k.snapshot();
+const attacker=new PersistentContinuityKernel();
+const tampered=structuredClone(snap);
+tampered.lineage[tampered.lineage.length-1]={...tampered.lineage[tampered.lineage.length-1],eventHash:'tampered'};
+attacker.restore(tampered);
+assert.equal(attacker.verify().verified,false);
+console.log('B1701_B2200_PERSISTENT_STRESS_PASS');
+console.log(JSON.stringify({commits:d.commits,headSeq:d.headSeq,lineageLength:d.lineageLength,lineageBaseSeq:d.lineageBaseSeq,truncated:d.lineageTruncated,globalAncestryProofAvailable:d.globalAncestryProofAvailable,tamperRejected:true}));

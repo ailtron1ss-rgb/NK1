@@ -1,0 +1,17 @@
+B309 documents:
+- DEEP_AUDIT_B309_ARBITRATION_CONSOLIDATION_2026-09-13_RU.md
+- B309_EVIDENCE_REPORT_RU.md
+- B309_FINAL_AUDIT_STATUS_RU.md
+- B309_PROGRESS_V13_RU.md
+- B309_NEXT_STEP_PLAN_RU.md
+- B309_ARCHITECTURE_DECISIONS_RU.md
+- B309_DOCUMENTS_MANIFEST_RU.txt
+
+Core code:
+- src/organism/system/B297ExecutiveNeuralFusion.ts
+- src/organism/core/OrganismCore.ts
+- src/organism/persistence/StateMigrations.ts
+
+Tests:
+- tests/big-pass-309-arbitration-consolidation.mjs
+- tests/big-pass-309-migration.mjs

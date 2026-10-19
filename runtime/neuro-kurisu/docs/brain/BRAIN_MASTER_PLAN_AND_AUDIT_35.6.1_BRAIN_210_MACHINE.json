@@ -1,0 +1,181 @@
+{
+  "schemaVersion": 1,
+  "id": "BRAIN_210_MASTER_PLAN",
+  "release": "35.6.1",
+  "mode": "planning-and-audit-only",
+  "codeChanged": false,
+  "currentVerifiedPasses": [
+    "B204",
+    "B205",
+    "B206",
+    "B207",
+    "B208",
+    "B209"
+  ],
+  "nextPasses": [
+    "B210 — Master audit & architecture freeze",
+    "B211 — Cortical hierarchy",
+    "B212 — Cortical microcircuits",
+    "B213 — Predictive cortical inference",
+    "B214 — Thalamo-cortical closure",
+    "B215 — Hippocampal anatomy",
+    "B216 — Memory consolidation",
+    "B217 — Basal-ganglia closed loop",
+    "B218 — Cerebellar predictive network",
+    "B219 — Brainstem/arousal",
+    "B220 — Hypothalamus/homeostasis",
+    "B221 — Insula/cingulate interoception",
+    "B222 — Amygdala/limbic",
+    "B223 — Vision hierarchy",
+    "B224 — Auditory/speech hierarchy",
+    "B225 — Motor hierarchy",
+    "B226 — Glia/metabolic support",
+    "B227 — Sleep/offline brain",
+    "B228 — Developmental organism",
+    "B229 — Social brain",
+    "B230 — Language cognition",
+    "B231 — Self/identity",
+    "B232 — Consciousness research battery",
+    "B233 — Whole-brain connector",
+    "B234 — Autonomous life",
+    "B235 — Physical embodiment",
+    "B236 — AI model substrate",
+    "B237 — Self-improvement lab",
+    "B238 — Reliability/security",
+    "B239 — Mobile optimization",
+    "B240 — Reproducibility/final acceptance"
+  ],
+  "acceptanceLevels": [
+    "code-exists",
+    "smoke",
+    "semantic",
+    "integrated",
+    "causal",
+    "persistent",
+    "longitudinal",
+    "embodied",
+    "adaptive",
+    "organism-level",
+    "research-frontier"
+  ],
+  "criticalRules": [
+    "Не добавлять модуль только ради анатомического сходства.",
+    "Не считать функцию реализованной до прохождения соответствующего proof tier.",
+    "Не повышать evidence level автоматически: host/synthetic ≠ physical device.",
+    "Не смешивать biological fact, computational hypothesis и project-specific invention.",
+    "Каждая brain system должна иметь owner, state, inputs, outputs, timescale, energy cost, failure modes и test battery.",
+    "Каждая stateful система обязана переживать checkpoint → restart → replay без скрытой потери causal state.",
+    "Любая self-modification должна проходить intervention → benchmark → holdout → rollback.",
+    "Для среднего телефона каждое вычисление должно иметь budget class и policy for degradation.",
+    "Любая “consciousness” claim должна иметь adversarial alternative explanation и ablation experiment.",
+    "Architecture debt и evidence debt измеряются отдельно: отсутствие доказательства не равно отсутствию кода, но также не равно готовности."
+  ],
+  "keyMetrics": [
+    "Causal coverage",
+    "Semantic coverage",
+    "Persistence integrity",
+    "Longitudinal stability",
+    "Prediction quality",
+    "Action quality",
+    "Learning efficiency",
+    "Resource efficiency",
+    "Identity continuity",
+    "Autonomy",
+    "Recovery",
+    "Evidence integrity"
+  ],
+  "researchSources": [
+    {
+      "id": "S1",
+      "title": "NIH BRAIN Initiative Cell Atlas Network / BICAN",
+      "url": "https://www.braininitiative.nih.gov/research/tools-and-technologies-brain-cells-and-circuits/brain-initiative-cell-atlas-network"
+    },
+    {
+      "id": "S2",
+      "title": "NIH BRAIN Initiative Connectivity Across Scales (BRAIN CONNECTS)",
+      "url": "https://www.braininitiative.nih.gov/research/neuroimaging-technologies-across-scales/brain-initiative-connectivity-across-scales"
+    },
+    {
+      "id": "S3",
+      "title": "Glasser et al., A multi-modal parcellation of human cerebral cortex, Nature",
+      "url": "https://www.nature.com/articles/nature18933"
+    },
+    {
+      "id": "S4",
+      "title": "Shine et al., The impact of the human thalamus on brain-wide information processing, Nature Reviews Neuroscience",
+      "url": "https://www.nature.com/articles/s41583-023-00701-0"
+    },
+    {
+      "id": "S5",
+      "title": "Averbeck & O’Doherty, Reinforcement-learning in fronto-striatal circuits",
+      "url": "https://www.nature.com/articles/s41386-021-01108-0"
+    },
+    {
+      "id": "S6",
+      "title": "Lee & Sabatini, From avoidance to new action: the multifaceted role of the striatal indirect pathway",
+      "url": "https://www.nature.com/articles/s41583-025-00925-2"
+    },
+    {
+      "id": "S7",
+      "title": "Nguyen & Person, Cerebellar circuit computations for predictive motor control",
+      "url": "https://www.nature.com/articles/s41583-025-00936-z"
+    },
+    {
+      "id": "S8",
+      "title": "Zhang et al., Cortical and subcortical mapping of the human allostatic–interoceptive system",
+      "url": "https://www.nature.com/articles/s41593-025-02087-x"
+    },
+    {
+      "id": "S9",
+      "title": "Chang et al., Sleep microstructure organizes memory replay",
+      "url": "https://www.nature.com/articles/s41586-024-08340-w"
+    },
+    {
+      "id": "S10",
+      "title": "Bolaños & Magistretti, The neuron–astrocyte metabolic unit",
+      "url": "https://www.nature.com/articles/s42255-025-01404-9"
+    },
+    {
+      "id": "S11",
+      "title": "The Human Cell Atlas from a cell census to a unified foundation model, Nature",
+      "url": "https://www.nature.com/articles/s41586-024-08338-4"
+    },
+    {
+      "id": "S12",
+      "title": "The new NeuroAI, Nature Machine Intelligence",
+      "url": "https://www.nature.com/articles/s42256-024-00826-6"
+    },
+    {
+      "id": "S13",
+      "title": "Central cytometabolic functional vascular coupling in health and disease",
+      "url": "https://www.nature.com/articles/s44324-025-00090-1"
+    },
+    {
+      "id": "S14",
+      "title": "Large-scale neurophysiology and single-cell profiling in human neuroscience, Nature",
+      "url": "https://www.nature.com/articles/s41586-024-07405-0"
+    }
+  ],
+  "mobileStrategy": [
+    "sleep",
+    "idle",
+    "interaction",
+    "deep-thought",
+    "research",
+    "thermal",
+    "memory",
+    "network"
+  ],
+  "uniqueIdeas": [
+    "Causal Spine Compiler",
+    "Evidence Economy",
+    "Shadow Brain",
+    "Cognitive Thermostat",
+    "Brain State Checkpoints as Memories",
+    "Semantic Garbage Collector",
+    "Dream Laboratory",
+    "Identity Graph",
+    "Energy-to-Meaning Scheduler",
+    "Multi-timescale Brain"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "pass": "BRAIN_209",
+  "release": "35.6.1",
+  "components": [
+    {
+      "id": "cerebellar.predictive_control",
+      "owner": "CerebellarPredictiveController",
+      "status": "implemented",
+      "proof": "controlled-forward-error"
+    },
+    {
+      "id": "organism.sparse_compute",
+      "owner": "AdaptiveComputeGovernor",
+      "status": "implemented",
+      "proof": "resource-budget-differential"
+    }
+  ],
+  "metrics": {
+    "initialForwardError01": 0.5,
+    "learnedForwardError01": 0.21187651226484017,
+    "richBudget01": 0.8410559999999998,
+    "scarceBudget01": 0.394832,
+    "richMaxCandidates": 11,
+    "scarceMaxCandidates": 5,
+    "scarceEstimatedWorkSaved01": 0.36147124
+  },
+  "sources": [
+    "https://www.nature.com/articles/s41583-025-00936-z",
+    "https://www.nature.com/articles/s41467-025-65387-7",
+    "https://www.nature.com/articles/s43588-025-00770-4",
+    "https://www.nature.com/articles/s41586-024-08253-8"
+  ]
+}

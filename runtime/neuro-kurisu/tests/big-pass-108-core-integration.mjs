@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const store=new MemoryStateStore();
+const core=new OrganismCore(store,{enableLanguage:false,checkpointMinIntervalMs:0}); await core.init();
+const p=core.cognitiveResearchBatteryCreateProtocol({id:'core-rb108',hypothesisKey:'core-replay',taskIds:['t'],contextKeys:['a','b'],delaysMs:[1,2,3],requiredMatchedPairs:4,requiredHoldout:2,randomized:true,balanced:true,blinded:true,evaluatorVersion:'core-eval-108',seed:9,release:'34.82.0',stateSchema:117});
+const created=core.cognitiveResearchBatteryCreateSession(p.id,'core-s108',100); const slot=created.schedule[0];
+core.cognitiveResearchBatteryRecordEvaluatorOutcome({id:'core-outcome',protocolId:p.id,sessionId:'core-s108',scheduleSlotId:slot.slotId,taskId:slot.taskId,phase:slot.phase,condition:slot.condition,contextKey:slot.contextKey,pairKey:slot.pairKey,delayMs:slot.delayMs,result:{evaluatorRunId:'core-run',evaluatorVersion:'core-eval-108',source:'external-evaluator',score01:.8,baselineScore01:.5,independentVerified:true,holdout:slot.holdout,baselineEstablishedAt:10,outcomeRecordedAt:11}});
+core.cognitiveResearchBatteryRecordCheckpoint({id:'core-cp',sessionId:'core-s108',phase:'delay',tick:12,runtimeStateHash:'runtime-hash-108',at:12}); await core.flush();
+const core2=new OrganismCore(store,{enableLanguage:false,checkpointMinIntervalMs:0}); await core2.init(); const restored=core2.cognitiveResearchBatterySnapshot();
+assert.equal(restored.protocols[0].id,'core-rb108'); assert.equal(restored.sessions[0].id,'core-s108'); assert.equal(restored.schedules[0].sessionId,'core-s108'); assert.equal(restored.trials[0].evaluatorSource,'external-evaluator'); assert.equal(restored.checkpoints[0].runtimeStateHash,'runtime-hash-108');
+console.log('BIG_PASS_108_CORE_INTEGRATION=PASS',JSON.stringify({protocols:restored.protocols.length,sessions:restored.sessions.length,schedules:restored.schedules.length,trials:restored.trials.length,checkpoints:restored.checkpoints.length,schema:core2.snapshot().state.version}));

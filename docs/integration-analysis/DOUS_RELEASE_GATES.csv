@@ -1,0 +1,14 @@
+﻿gate,priority,status,proof
+G1 action receipt bypasses/ownership,P0,Open,All action callers classify effect; autonomous direct path uses central coordinator; no unapproved bypass remains.
+G2 receipt→causal lineage,P0,Open,Exact receipt/decision/observation/event/learning lineage; replay idempotent; cross-tick verifier.
+G3 crash/replay/fault injection,P0,Open,"Crash at each durability boundary, remote partial success, archive corruption/full disk, cancel/restart and reconciliation."
+G4 memory mutation replay,P0/P1,Open,Stable IDs for retryable writes; receipt horizon policy; restore/replay produces no duplicate revision/event.
+G5 full runtime typecheck,P0,Needs fresh run,"Runs from exact RC tree, output saved, no diagnostics or accepted documented waiver."
+G6 full app install and Vite production build,P0,Open,Clean lockfile install and production output succeeds; no reliance on hidden preinstalled deps.
+G7 interactive UI/Live2D/Legacy browser E2E,P0,Open,"Actual model load, message negative cases, API error/unavailable, legacy fallback, mobile layout and no required console/network errors."
+G8 actual external tool/provider/device receipts,P0,Open,"Real supported endpoint/device plus receipt IDs, postcondition verification and restart-safe replay."
+G9 real target model inference/performance,P0/P1,Open,"Model ID/revision, cold/warm timings, cancellation, context fit and resource/VRAM/thermal profile."
+G10 independent retrieval temporal holdout,P1,Open,"Pinned dataset/corpus hash, leak-proof split, real baseline, quality/safety/cost metrics and no automatic promotion."
+G11 restore/upgrade/rollback clean-room,P0,Open,"Backup, schema migration, injected mid-commit failure, rollback and preserved receipt/memory identities."
+G12 source/dependency license review,P0 release gate,Open,"Per-path decisions, SBOM, dependency notices and manual review including AutoGPT license-sensitive area."
+G13 long-running soak/resource ceilings,P1,Open,"Multi-hour/multi-session growth limits for heap, receipts, event buffers, file descriptors, provider latency and GPU/CPU."

@@ -1,0 +1,312 @@
+{
+  "version": 110,
+  "benchmark": "short_synergy_consensus_audit",
+  "seeds": [
+    110,
+    111,
+    112
+  ],
+  "steps": 4,
+  "rows": [
+    {
+      "initial": 2.9288861751556396,
+      "final": 2.864840507507324,
+      "mean_last2": 2.8754547834396362,
+      "mean_disagreement": 1.1184212267398834,
+      "peer_blend": 0.0,
+      "strength": 0.0,
+      "seed": 110
+    },
+    {
+      "initial": 2.8175888061523438,
+      "final": 2.734325647354126,
+      "mean_last2": 2.7482701539993286,
+      "mean_disagreement": 1.1010987758636475,
+      "peer_blend": 0.0,
+      "strength": 0.0,
+      "seed": 111
+    },
+    {
+      "initial": 2.9053940773010254,
+      "final": 2.83024001121521,
+      "mean_last2": 2.842722535133362,
+      "mean_disagreement": 1.0791468620300293,
+      "peer_blend": 0.0,
+      "strength": 0.0,
+      "seed": 112
+    },
+    {
+      "initial": 2.930607557296753,
+      "final": 2.862450122833252,
+      "mean_last2": 2.8736902475357056,
+      "mean_disagreement": 1.1188113689422607,
+      "peer_blend": 0.0,
+      "strength": 0.2,
+      "seed": 110
+    },
+    {
+      "initial": 2.810614585876465,
+      "final": 2.722688913345337,
+      "mean_last2": 2.737411379814148,
+      "mean_disagreement": 1.0980686843395233,
+      "peer_blend": 0.0,
+      "strength": 0.2,
+      "seed": 111
+    },
+    {
+      "initial": 2.902836799621582,
+      "final": 2.8214473724365234,
+      "mean_last2": 2.834973931312561,
+      "mean_disagreement": 1.0785037279129028,
+      "peer_blend": 0.0,
+      "strength": 0.2,
+      "seed": 112
+    },
+    {
+      "initial": 2.9313559532165527,
+      "final": 2.8601768016815186,
+      "mean_last2": 2.8717873096466064,
+      "mean_disagreement": 1.118943840265274,
+      "peer_blend": 0.0,
+      "strength": 0.35,
+      "seed": 110
+    },
+    {
+      "initial": 2.804028034210205,
+      "final": 2.7121901512145996,
+      "mean_last2": 2.7275495529174805,
+      "mean_disagreement": 1.095152884721756,
+      "peer_blend": 0.0,
+      "strength": 0.35,
+      "seed": 111
+    },
+    {
+      "initial": 2.8991880416870117,
+      "final": 2.8113884925842285,
+      "mean_last2": 2.8259934186935425,
+      "mean_disagreement": 1.0779248178005219,
+      "peer_blend": 0.0,
+      "strength": 0.35,
+      "seed": 112
+    },
+    {
+      "initial": 2.9288861751556396,
+      "final": 2.864840507507324,
+      "mean_last2": 2.8754547834396362,
+      "mean_disagreement": 1.1184212267398834,
+      "peer_blend": 0.5,
+      "strength": 0.0,
+      "seed": 110
+    },
+    {
+      "initial": 2.8175888061523438,
+      "final": 2.734325647354126,
+      "mean_last2": 2.7482701539993286,
+      "mean_disagreement": 1.1010987758636475,
+      "peer_blend": 0.5,
+      "strength": 0.0,
+      "seed": 111
+    },
+    {
+      "initial": 2.9053940773010254,
+      "final": 2.83024001121521,
+      "mean_last2": 2.842722535133362,
+      "mean_disagreement": 1.0791468620300293,
+      "peer_blend": 0.5,
+      "strength": 0.0,
+      "seed": 112
+    },
+    {
+      "initial": 2.9365451335906982,
+      "final": 2.867161273956299,
+      "mean_last2": 2.8787195682525635,
+      "mean_disagreement": 1.1222144663333893,
+      "peer_blend": 0.5,
+      "strength": 0.2,
+      "seed": 110
+    },
+    {
+      "initial": 2.810924530029297,
+      "final": 2.722351312637329,
+      "mean_last2": 2.737172245979309,
+      "mean_disagreement": 1.0979944467544556,
+      "peer_blend": 0.5,
+      "strength": 0.2,
+      "seed": 111
+    },
+    {
+      "initial": 2.901371955871582,
+      "final": 2.8200647830963135,
+      "mean_last2": 2.8335899114608765,
+      "mean_disagreement": 1.0788543224334717,
+      "peer_blend": 0.5,
+      "strength": 0.2,
+      "seed": 112
+    },
+    {
+      "initial": 2.94235897064209,
+      "final": 2.868802070617676,
+      "mean_last2": 2.8810853958129883,
+      "mean_disagreement": 1.1247808039188385,
+      "peer_blend": 0.5,
+      "strength": 0.35,
+      "seed": 110
+    },
+    {
+      "initial": 2.8045103549957275,
+      "final": 2.711699962615967,
+      "mean_last2": 2.727219820022583,
+      "mean_disagreement": 1.094852089881897,
+      "peer_blend": 0.5,
+      "strength": 0.35,
+      "seed": 111
+    },
+    {
+      "initial": 2.896207571029663,
+      "final": 2.808784246444702,
+      "mean_last2": 2.823323369026184,
+      "mean_disagreement": 1.0784009993076324,
+      "peer_blend": 0.5,
+      "strength": 0.35,
+      "seed": 112
+    },
+    {
+      "initial": 2.9288861751556396,
+      "final": 2.864840507507324,
+      "mean_last2": 2.8754547834396362,
+      "mean_disagreement": 1.1184212267398834,
+      "peer_blend": 1.0,
+      "strength": 0.0,
+      "seed": 110
+    },
+    {
+      "initial": 2.8175888061523438,
+      "final": 2.734325647354126,
+      "mean_last2": 2.7482701539993286,
+      "mean_disagreement": 1.1010987758636475,
+      "peer_blend": 1.0,
+      "strength": 0.0,
+      "seed": 111
+    },
+    {
+      "initial": 2.9053940773010254,
+      "final": 2.83024001121521,
+      "mean_last2": 2.842722535133362,
+      "mean_disagreement": 1.0791468620300293,
+      "peer_blend": 1.0,
+      "strength": 0.0,
+      "seed": 112
+    },
+    {
+      "initial": 2.9380807876586914,
+      "final": 2.8681302070617676,
+      "mean_last2": 2.879761815071106,
+      "mean_disagreement": 1.123706728219986,
+      "peer_blend": 1.0,
+      "strength": 0.2,
+      "seed": 110
+    },
+    {
+      "initial": 2.810926675796509,
+      "final": 2.721529245376587,
+      "mean_last2": 2.736469864845276,
+      "mean_disagreement": 1.0978628396987915,
+      "peer_blend": 1.0,
+      "strength": 0.2,
+      "seed": 111
+    },
+    {
+      "initial": 2.900174379348755,
+      "final": 2.8187930583953857,
+      "mean_last2": 2.832315683364868,
+      "mean_disagreement": 1.0793987214565277,
+      "peer_blend": 1.0,
+      "strength": 0.2,
+      "seed": 112
+    },
+    {
+      "initial": 2.946521043777466,
+      "final": 2.871969699859619,
+      "mean_last2": 2.8844425678253174,
+      "mean_disagreement": 1.1277146637439728,
+      "peer_blend": 1.0,
+      "strength": 0.35,
+      "seed": 110
+    },
+    {
+      "initial": 2.8042733669281006,
+      "final": 2.7101190090179443,
+      "mean_last2": 2.7258304357528687,
+      "mean_disagreement": 1.0944401323795319,
+      "peer_blend": 1.0,
+      "strength": 0.35,
+      "seed": 111
+    },
+    {
+      "initial": 2.8936517238616943,
+      "final": 2.806029796600342,
+      "mean_last2": 2.8205888271331787,
+      "mean_disagreement": 1.079435646533966,
+      "peer_blend": 1.0,
+      "strength": 0.35,
+      "seed": 112
+    }
+  ],
+  "summary": {
+    "blend=0.0|strength=0.0": {
+      "initial": 2.8839563528696694,
+      "final": 2.8098020553588867,
+      "mean_last2": 2.822149157524109,
+      "mean_disagreement": 1.0995556215445201
+    },
+    "blend=0.0|strength=0.2": {
+      "initial": 2.8813529809316,
+      "final": 2.8021954695383706,
+      "mean_last2": 2.815358519554138,
+      "mean_disagreement": 1.098461260398229
+    },
+    "blend=0.0|strength=0.35": {
+      "initial": 2.8781906763712564,
+      "final": 2.7945851484934487,
+      "mean_last2": 2.8084434270858765,
+      "mean_disagreement": 1.0973405142625172
+    },
+    "blend=0.5|strength=0.0": {
+      "initial": 2.8839563528696694,
+      "final": 2.8098020553588867,
+      "mean_last2": 2.822149157524109,
+      "mean_disagreement": 1.0995556215445201
+    },
+    "blend=0.5|strength=0.2": {
+      "initial": 2.8829472064971924,
+      "final": 2.803192456563314,
+      "mean_last2": 2.8164939085642495,
+      "mean_disagreement": 1.099687745173772
+    },
+    "blend=0.5|strength=0.35": {
+      "initial": 2.8810256322224936,
+      "final": 2.7964287598927817,
+      "mean_last2": 2.810542861620585,
+      "mean_disagreement": 1.0993446310361226
+    },
+    "blend=1.0|strength=0.0": {
+      "initial": 2.8839563528696694,
+      "final": 2.8098020553588867,
+      "mean_last2": 2.822149157524109,
+      "mean_disagreement": 1.0995556215445201
+    },
+    "blend=1.0|strength=0.2": {
+      "initial": 2.883060614267985,
+      "final": 2.8028175036112466,
+      "mean_last2": 2.8161824544270835,
+      "mean_disagreement": 1.1003227631251018
+    },
+    "blend=1.0|strength=0.35": {
+      "initial": 2.8814820448557534,
+      "final": 2.7960395018259683,
+      "mean_last2": 2.810287276903788,
+      "mean_disagreement": 1.1005301475524902
+    }
+  },
+  "note": "diagnostic; not a promotion gate"
+}

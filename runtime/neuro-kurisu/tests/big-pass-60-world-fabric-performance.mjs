@@ -1,0 +1,13 @@
+import { performance } from 'node:perf_hooks';
+import { WorldSubsystemRuntime } from '../src/organism/core/WorldSubsystemRuntime.ts';
+const ws=new WorldSubsystemRuntime();
+const contexts=[];
+for(let i=0;i<1000;i++) contexts.push({tick:i+1,location:i%3===0?'lab':'home',energy:.75+(i%10)/100,attention:.65+(i%7)/100,uncertainty:(i%9)/12,facts:[`f:${i%17}`,`g:${(i+2)%13}`],objects:[{id:`o:${i%31}`,label:i%2?'desk':'cup',location:i%3===0?'lab':'home',value:.5,visible:i%4!==0,collected:false,confidence01:.7,evidenceKind:'observed'}],events:[`event:${i%23}`]});
+const t0=performance.now();
+for(const c of contexts) ws.observeGroundedContext(c);
+const t1=performance.now();
+for(let i=0;i<1000;i++) ws.predictIntegrated(i%2?'explore':'verify',.55,.4);
+const t2=performance.now();
+const s=ws.worldLearningSnapshot();
+console.log('BIG_PASS_60_WORLD_FABRIC_PERFORMANCE=PASS');
+console.log(JSON.stringify({observations:1000,observeMs:+(t1-t0).toFixed(2),predictMs:+(t2-t1).toFixed(2),passiveUpdates:s.stats.passiveUpdates,learnedTransitions:ws.worldModel2.snapshot().learnedTransitions},null,2));

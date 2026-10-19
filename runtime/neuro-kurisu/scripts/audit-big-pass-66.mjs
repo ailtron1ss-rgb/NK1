@@ -1,0 +1,17 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const root=process.cwd();
+const read=p=>fs.readFileSync(`${root}/${p}`,'utf8');
+const version=JSON.parse(read('VERSION.json'));
+assert.equal(version.application,JSON.parse(fs.readFileSync('package.json','utf8')).version); assert.ok(version.stateSchema>=99);
+const world=read('src/organism/core/WorldSubsystemRuntime.ts');
+const p83=read('src/organism/world/P83PersistentRealityModel.ts');
+const core=read('src/organism/core/OrganismCore.ts');
+const coord=read('src/organism/core/PersistenceProjectionCoordinator.ts');
+const migration=read('src/organism/persistence/StateMigrations.ts');
+assert.match(world,/P83PersistentRealityModel/); assert.match(world,/observeWorld\(/); assert.match(world,/reconcileReality\(/);
+assert.match(p83,/predictionIds:string\[\]/); assert.match(p83,/continuityBreaks/); assert.match(p83,/reconcileClaim/);
+assert.match(core,/persistentRealitySummary\(\)/); assert.match(core,/trackPrediction/); assert.match(core,/reconcileReality\(/); assert.match(core,/persistentRealitySummary\(\)/);
+assert.match(read('src/server/server.mjs'),/organism\/persistent-reality/);
+assert.match(coord,/p83PersistentRealityModel/); assert.match(migration,/p83PersistentRealityModel/);
+console.log('BIG_PASS_66_AUDIT=PASS persistent-reality=1 prediction-link=1 continuity=1 persistence=1');

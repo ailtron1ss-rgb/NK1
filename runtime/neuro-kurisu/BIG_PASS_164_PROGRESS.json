@@ -1,0 +1,63 @@
+{
+  "release": "35.6.1",
+  "pass": 164,
+  "functionInventory": {
+    "total": 2391,
+    "verified": 14,
+    "integrationOnly": 560,
+    "unsafeToAutoRun": 214,
+    "unverified": 1603,
+    "verifiedRate01": 0.0059,
+    "evidenceCoverage01": 0.0644
+  },
+  "parameterizedProbe": {
+    "sourceFiles": 262,
+    "imported": 262,
+    "attempted": 489,
+    "passed": 458,
+    "failed": 0,
+    "inputSynthesisNeeded": 19,
+    "lifecycleNeeded": 12,
+    "skipped": 29
+  },
+  "longitudinalCausality": {
+    "status": "PASS",
+    "exploreUtilityA": 0.7788449286547465,
+    "exploreUtilityB": 0.518143057459544,
+    "verifyUtilityA": 0.4174545611657822,
+    "verifyUtilityB": 0.665866464188851,
+    "utilityDivergence": 0.5091137742182712,
+    "stressA": 0.45668606497203196,
+    "stressB": 0.596367062028032,
+    "divergence": 0.6487947712742712
+  },
+  "projectProgressPct": {
+    "softwareResearchPlatform": 72,
+    "architecture": 71,
+    "persistenceContinuity": 82,
+    "verificationInfrastructure": 68,
+    "cognitiveIntegration": 65,
+    "memory": 76,
+    "agency": 66,
+    "learning": 59,
+    "worldModel": 56,
+    "selfModel": 62,
+    "emotionAffect": 47,
+    "feelingArchitecture": 30,
+    "socialCognition": 46,
+    "realPerception": 35,
+    "embodiment": 35,
+    "autonomousLongTermLife": 42,
+    "humanLikeGeneralIntelligence": 30
+  },
+  "nextPasses": [
+    165,
+    166,
+    167,
+    168,
+    169,
+    170,
+    171,
+    172
+  ]
+}

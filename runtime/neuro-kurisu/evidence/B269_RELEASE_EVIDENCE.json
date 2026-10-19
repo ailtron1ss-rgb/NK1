@@ -1,0 +1,58 @@
+{
+  "version": "35.6.1",
+  "bigPass": "B269",
+  "title": "Spiking plastic neural substrate",
+  "standalone": {
+    "cycles": 800,
+    "neurons": 48,
+    "initialSynapses": 288,
+    "finalActiveSynapses": 213,
+    "totalSpikes": 3205,
+    "synapticUpdates": 61928,
+    "structuralUpdates": 111,
+    "structuralGrew": 18,
+    "structuralPruned": 93,
+    "firingRate01": 0.07706059636776387,
+    "sparsity01": 0.8612909265380251,
+    "homeostaticError01": 0.024328046567342873,
+    "neuromodulation01": 0.8125504857482444,
+    "predictionErrorMean01": 0.12726557433316998,
+    "meanActiveWeight": 0.11192190712786153,
+    "lesion": {
+      "fraction01": 0.35,
+      "baselineFiringRate01": 0.10069444444444443,
+      "lesionedFiringRate01": 0.09375,
+      "causalDrop01": 0.027777777777777735
+    }
+  },
+  "core": {
+    "steps": 180,
+    "outcomeUpdates": 90,
+    "synapticUpdates": 24117,
+    "firingRate01": 0.09744117460775323,
+    "sparsity01": 0.8246058857060442,
+    "homeostaticError01": 0.03618774811830922,
+    "persistence": "PASS",
+    "migration": "PASS"
+  },
+  "releaseGates": {
+    "typecheck": "PASS",
+    "syntax": "PASS",
+    "fullAudit": "PASS",
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "hygiene": "PASS",
+    "forensics": "PASS",
+    "releaseContract": "PASS",
+    "releaseSource": "PASS",
+    "doctor": "PASS",
+    "archiveManifest": "PASS",
+    "archiveVerification": "PASS"
+  },
+  "honesty": {
+    "biologicalSimulationClaim": false,
+    "consciousnessClaim": false,
+    "AGIClaim": false,
+    "physicalAgencyClaim": false
+  }
+}

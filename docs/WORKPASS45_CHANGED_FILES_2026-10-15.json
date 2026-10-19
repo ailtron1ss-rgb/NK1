@@ -1,0 +1,291 @@
+{
+  "title": "Neuro Kurisu WorkPass45 changed file manifest",
+  "date": "2026-10-15",
+  "baseArchive": "Neuro_Kurisu_WORKPASS44_2026-10-15.zip",
+  "outputArchive": "Neuro_Kurisu_WORKPASS45_2026-10-15.zip",
+  "summary": {
+    "baseFiles": 9126,
+    "unchangedExistingFiles": 9101,
+    "modifiedExistingFiles": 25,
+    "addedBeforeThisManifest": 15,
+    "thisManifestIsSelfExcludedFromItsOwnHashList": true,
+    "finalArchiveAddedFilesIncludingThisManifest": 16,
+    "deletedExistingFiles": 0,
+    "missingRestoredFromBaseline": 0,
+    "generatedLive2dShadowsExcluded": 21
+  },
+  "modified": [
+    {
+      "path": "CHANGELOG.md",
+      "size": 73564,
+      "sha256": "775d9cf079dbe13943d0455e4fda0a177f2421ba9a12b4ca748da35bda1223d6",
+      "previousSize": 71099,
+      "previousSha256": "be31bf47a561f7fa96f5357321e6f9d170d8325ea8762c0f1ea35e4c23feb4d8"
+    },
+    {
+      "path": "README.md",
+      "size": 29247,
+      "sha256": "97ff5796ae67cb9b063aac0f4b3db29a949ba7f15134f5d582285c5b292f1b81",
+      "previousSize": 27834,
+      "previousSha256": "dd8e12719cb8744254ba44c4992976eed837ebfe77373f0238f8cd433ad66a5f"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "size": 3105,
+      "sha256": "849b37f1655f7bd198976a41d5cbc5fd9755023f33cef1659b5eeacee32e1560",
+      "previousSize": 3298,
+      "previousSha256": "87e75b8b8f33fe0d28c926918dbd2c7e5baafb4bb7e3256e7156ba7205456a0a"
+    },
+    {
+      "path": "contracts/SBOM.final.json",
+      "size": 361387,
+      "sha256": "01935596033b395c7d5012415b7a7cac84b3f2ecfde9a49d886094c1ddca800f",
+      "previousSize": 361387,
+      "previousSha256": "bfd914ff6249d8e9f9448ea663d8ddf040875906246a8d60d75e54cb49882a7c"
+    },
+    {
+      "path": "contracts/integration-manifest.json",
+      "size": 12857,
+      "sha256": "57bd826b7bfc5d92ff914b9656eed029805e8525f72032d212921694b0cb4c1c",
+      "previousSize": 12857,
+      "previousSha256": "fe4d476d051be0d54b711cd3f66e365db2a38346a275aaf754298ea1a0550a07"
+    },
+    {
+      "path": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "size": 5501813,
+      "sha256": "420384495c68ef351c8da6ba34c59039edab728fcdf81216967f9d3374d1f34a",
+      "previousSize": 5501148,
+      "previousSha256": "7b3dbf23e22c8c653eb41a47ef71789ec907dc24dbd5a353b963fcc731c006e4"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.30.0_R16_PASS_11_SEMANTIC_ISOLATION_2026-09-29.manifest.json",
+      "size": 1906881,
+      "sha256": "e20159706d0510a1755f965a3a0607c7d62c89442412e136ba059b269298f909",
+      "previousSize": 1906792,
+      "previousSha256": "ce974d5f20d3de5bcab539d6cda2a7fe5f16c579ac0a356db4c3bbaa5fc8d385"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.40.0_R26_PASS20_RESTORE_SYMMETRY_2026-10-01.manifest.json",
+      "size": 1922272,
+      "sha256": "21f4e53d6d14576dfe7c8a27804340a7eaf02b2c91dfce5dbd243aacc4ab313b",
+      "previousSize": 1922142,
+      "previousSha256": "1a6ce726641068bf605fbb449036546cd3705aa36992d35e6a262d4135417faa"
+    },
+    {
+      "path": "package.json",
+      "size": 27853,
+      "sha256": "33ce2ed0db6a2a92401da51d5c96e1360bf6b143766542cfd7f5d2644144cbf4",
+      "previousSize": 26131,
+      "previousSha256": "a6438d28b8be4295522678843aea20b791d664fbe749b1eb45f8b8441d78a011"
+    },
+    {
+      "path": "runtime/neuro-kurisu/RELEASE_MANIFEST.json",
+      "size": 1030,
+      "sha256": "3190e8ee853f8d06c353f9a317c2988697a1459999e48f3f2487b67a805c4b31",
+      "previousSize": 1017,
+      "previousSha256": "a3527117cb9b5859c8e61397f73cd2edbc9da9e672ee7e28a20f1bedb16ba48d"
+    },
+    {
+      "path": "runtime/neuro-kurisu/VERSION.json",
+      "size": 294,
+      "sha256": "10645250e5f506bd89cb814606368d2967895abe5d5aafb853f85a9da0da2d21",
+      "previousSize": 281,
+      "previousSha256": "1cdb8496fdf6a8d6e3162bf1329f319593db608271d5d74422cba55aa199bbbd"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package-lock.json",
+      "size": 1041,
+      "sha256": "1f21ad9c8f8fcb7e99d519623566a053fa17b5cd866d4fa324b4c6f3d9848835",
+      "previousSize": 1041,
+      "previousSha256": "c0f7b6e78e3faaefa234a03dd733c9dea1dcd7f09be2c81bb6644f4c1a11063e"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "size": 244735,
+      "sha256": "6123127744e8ef99e8762fd6a7665db75d827f77d3fece90c5b40556c8354f69",
+      "previousSize": 243840,
+      "previousSha256": "56905ad7945f10e38d7454f5712f692d868511217ce17e8bc3fe9017be315b17"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/node-shims.d.ts",
+      "size": 3401,
+      "sha256": "24b8426259b874dd542a5612ef87939e41b6a0a0414d08ccde3c4d817f5c0cc9",
+      "previousSize": 3108,
+      "previousSha256": "d45b8a1bf7b1d984ae27f8edcf1c4ea1906e3a5b8d12b379067c108696e1c305"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/body/AndroidEmbodimentBridge.ts",
+      "size": 22526,
+      "sha256": "c21585c5b0e8b5386f0b357b58d190e919bf49e364fed4b8fae6fed0f56c6ff8",
+      "previousSize": 12989,
+      "previousSha256": "e0ef302d6700b88b46c84708999aed9b88357bc50c9d277d45ce7cc36a86bc9e"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/body/EmbodiedActionExecutor.ts",
+      "size": 8962,
+      "sha256": "a4685c73d357674f5f0fdfb7fb57409f7b949b7a0b0b75817b645fc0175ec3f2",
+      "previousSize": 8275,
+      "previousSha256": "22f13ce859d7ed23f7194d44ae6398b18f5d3b30115856ca8e592365771af435"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/body/EmbodimentRuntime.ts",
+      "size": 8392,
+      "sha256": "da09e79360fc5a59e2d5d1f0e43e8537c5b59fa74a599127e57df9b0e9aef083",
+      "previousSize": 8290,
+      "previousSha256": "17f507326e1688de0e580b2b1ce3cc668fe7030f55d5183d135869f85bfe7b76"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+      "size": 1233298,
+      "sha256": "ae397dbaa4de0a0ca418556cbf945f7e41ce821f4c0e571f9a2ae5c5cb517db8",
+      "previousSize": 1228828,
+      "previousSha256": "30046a026dc751ab183992d07718f6ddb0a71fa7bad4392cf5c77368bc5c108a"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts",
+      "size": 93069,
+      "sha256": "c56dabd0792f17d0f5a02db12affe3cffb18e6c44579be9ab46241e5de99bc81",
+      "previousSize": 90674,
+      "previousSha256": "02c64cc660d7eca275e7514dcc8d02987f972484931e7ab0c7a31802825f0197"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts",
+      "size": 44039,
+      "sha256": "e13e994d18ef073131b62ee8ee16d1cce3dcd66e173c22bb043d3d0055f6a19e",
+      "previousSize": 29009,
+      "previousSha256": "d1a47084cb3c79e565c336232508279de345f7f59551cbae026055a1db6cbeb3"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts",
+      "size": 29064,
+      "sha256": "291465674a1af1064c62976359e9ba82c2b98139a9caf05a6f25704f643801c0",
+      "previousSize": 29020,
+      "previousSha256": "cd55b12eece2923277ea3c25692c5698bcab61b89bb938bd48c421af1b83991b"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ReleaseContract.ts",
+      "size": 398,
+      "sha256": "da04c5c387fbc229a3320fbfc006a8d77cfb759eb69974774738a76191b44c29",
+      "previousSize": 385,
+      "previousSha256": "d3789c99e30f9cfa3d4736cf3b68d400b9d2a0ca3d275cdcce802fe15e1856cc"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/server/server.mjs",
+      "size": 145978,
+      "sha256": "e43e2c0bf527da5a157e781eedca8ebe4b70ba6d6edeb1c4ab3a03afe4018382",
+      "previousSize": 143000,
+      "previousSha256": "d2323e9e05a993d9fcec3684b3ed00ef875be899f41cc0f781dcf5004dd806dd"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/server-smoke.mjs",
+      "size": 24342,
+      "sha256": "1c530198e3a5953546828e828d4d5c39a67cddb8d02829b9d3b38338180cfb30",
+      "previousSize": 23432,
+      "previousSha256": "aa291b9409af0b635da503daa69a383ff6a8d28f94708bede36208d389a935d5"
+    },
+    {
+      "path": "Список дел.md",
+      "size": 48485,
+      "sha256": "7c11f9303166d6dbbd0ad9f9153639e64feb63ac1eaa6d8ebd0c135a4471b7bf",
+      "previousSize": 40632,
+      "previousSha256": "99201721becd5ed1904a07f5ceb6bc8ba78dc0a85de5b79e4dfa93104490cd6b"
+    }
+  ],
+  "added": [
+    {
+      "path": "contracts/SOURCE_PROVENANCE_LICENSES_WORKPASS45.json",
+      "size": 7001,
+      "sha256": "883cda70a155f071627cac54ab296b0eb083f483195f2ed5a0c48e991e6935db"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-15_WORKPASS45.json",
+      "size": 65407,
+      "sha256": "96e81ff5c8087830b53e1d885aa7f591ad37ebf01ecef9e3f32f17c609d008aa"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-15_WORKPASS45.md",
+      "size": 6052,
+      "sha256": "b7ea40b036f478b88f9a29cdf48bc58f12749f11ef13d3226a5a8de7a264ee59"
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-15_WORKPASS45.json",
+      "size": 13605,
+      "sha256": "a73c513c34bde5c07b1e83389158c4dba5d56fbf81f70cac3b1b2540fca71ff1"
+    },
+    {
+      "path": "docs/SOURCE_INTEGRATION_REMAINDER_WORKPASS45.csv",
+      "size": 12297,
+      "sha256": "3d0b0fe75e6d1d30666d95fc8cf5229a06db0b70c4d80b31383e8674681ce36d"
+    },
+    {
+      "path": "docs/SOURCE_INTEGRATION_REMAINDER_WORKPASS45.md",
+      "size": 5137,
+      "sha256": "5ad46e60983eb0ef2bf6619d38272a6c3575099f63176217e891dca64a44fc48"
+    },
+    {
+      "path": "docs/WORKPASS45_AUDIT_RESULTS_2026-10-15.json",
+      "size": 7796,
+      "sha256": "63a9cf97976909b6b705cf631c8ecc53f1cf381596ecc9b22c391f154500337a"
+    },
+    {
+      "path": "docs/WORKPASS45_REPORT_2026-10-15.md",
+      "size": 20246,
+      "sha256": "7e9ac6ffa59209e9e69608ddc4eb47006aab42f4f1217093a544c65f875f7c29"
+    },
+    {
+      "path": "docs/WORKPASS45_TASKS_2026-10-15.md",
+      "size": 7852,
+      "sha256": "4cc054d8dab0b2531c88cbf7cb4cab271b6376db35f6f2534055e31ff547df25"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/17f507326e1688de0e580b2b1ce3cc668fe7030f55d5183d135869f85bfe7b76",
+      "size": 8290,
+      "sha256": "17f507326e1688de0e580b2b1ce3cc668fe7030f55d5183d135869f85bfe7b76"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/22f13ce859d7ed23f7194d44ae6398b18f5d3b30115856ca8e592365771af435",
+      "size": 8275,
+      "sha256": "22f13ce859d7ed23f7194d44ae6398b18f5d3b30115856ca8e592365771af435"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/e0ef302d6700b88b46c84708999aed9b88357bc50c9d277d45ce7cc36a86bc9e",
+      "size": 12989,
+      "sha256": "e0ef302d6700b88b46c84708999aed9b88357bc50c9d277d45ce7cc36a86bc9e"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-381-provider-reconciliation.mjs",
+      "size": 8938,
+      "sha256": "d6e89c07d32db0d61241421931abf6a878b8cc5c991bf87ad4aa018388ed4acf"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-382-camera-receipt-store-workpass45.mjs",
+      "size": 4387,
+      "sha256": "0716b3d5a690ad680553ecf267bf1519d205d85ad878047fd7919048f4700c5e"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-383-canonical-camera-gateway-workpass45.mjs",
+      "size": 2177,
+      "sha256": "4816a152a807a98c2b168e2f23af571f41e53773bc98371afb2d17bf52686471"
+    }
+  ],
+  "historicalSourceBlobs": [
+    {
+      "sha256": "17f507326e1688de0e580b2b1ce3cc668fe7030f55d5183d135869f85bfe7b76",
+      "canonicalOldFile": "runtime/neuro-kurisu/src/organism/body/EmbodimentRuntime.ts"
+    },
+    {
+      "sha256": "22f13ce859d7ed23f7194d44ae6398b18f5d3b30115856ca8e592365771af435",
+      "canonicalOldFile": "runtime/neuro-kurisu/src/organism/body/EmbodiedActionExecutor.ts"
+    },
+    {
+      "sha256": "e0ef302d6700b88b46c84708999aed9b88357bc50c9d277d45ce7cc36a86bc9e",
+      "canonicalOldFile": "runtime/neuro-kurisu/src/organism/body/AndroidEmbodimentBridge.ts"
+    }
+  ],
+  "notes": [
+    "No original member removed.",
+    "Changed files are listed with previous and current SHA-256; new files have current SHA-256.",
+    "Historical snapshot and compacted source manifests reference exact old bytes through SHA-256 blobs, preserving reproducibility.",
+    "21 generated app/public Live2D duplicate shadows remain excluded from distribution; canonical runtime Live2D assets and app-specific viewer/vendor files are retained."
+  ]
+}

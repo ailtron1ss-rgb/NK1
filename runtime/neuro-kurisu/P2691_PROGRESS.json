@@ -1,0 +1,22 @@
+{
+  "release":"P2691",
+  "application":"35.6.91",
+  "overallPathEstimate01":0.39,
+  "codeWorkShare01":0.91,
+  "areas":{
+    "runtimeArchitecture":0.89,
+    "memoryArchitecture":0.86,
+    "retrievalIntelligence":0.85,
+    "adaptiveMemoryPolicy":0.74,
+    "causalReplay":0.76,
+    "continuousCognition":0.80,
+    "identityPersonalitySubstrate":0.71,
+    "functionRealityVerification":0.38,
+    "mobileReadiness":0.66,
+    "persistence":0.87,
+    "provenEndToEndLearning":0.38
+  },
+  "gates":{"typecheck":true,"syntax":true,"architecture":true,"integrity":true,"forensics":true,"hygiene":true,"releaseContract":true,"releaseSource":true,"archiveManifest":true,"p2688CausalCredit":true,"p2688LongHorizon":true,"p2679Transition":true,"p2690Fusion":true,"p2690RetrievalAudit":true,"p2691AdaptivePolicy":true},
+  "notes":["30-cycle mobile runtime reaches completion on current branch, but RSS remains above ideal phone target; lifecycle and allocation optimization remain active work.","Adaptive policy is bounded and persisted; it does not modify code or memory contents."],
+  "next":"Adaptive retrieval policy should be evaluated against independent long-horizon holdouts and then connected to delayed causal credit; neural reranking can be evaluated later with Hugging Face."
+}

@@ -1,0 +1,114 @@
+{
+  "release": "1.15.0-dev",
+  "baseline": "1.14.1",
+  "status": "research_only",
+  "sources": [
+    {
+      "id": "self_evolving_agents_2026",
+      "title": "Next-Generation Agentic Reinforcement Learning Systems Enable Self-Evolving Agents",
+      "year": 2026,
+      "url": "https://arxiv.org/abs/2607.01120",
+      "use": "trajectory protocol, governed learning data, evolution control plane"
+    },
+    {
+      "id": "self_improvement_survey_2026",
+      "title": "Self-Improvements in Modern Agentic Systems: A Survey",
+      "year": 2026,
+      "url": "https://arxiv.org/abs/2607.13104",
+      "use": "model/scaffold update operators; safety/evaluation framing"
+    },
+    {
+      "id": "bcoder",
+      "title": "B-Coder: Scientist-Inspired Exploratory Learning for Transformers",
+      "year": 2023,
+      "url": "https://arxiv.org/abs/2310.03173",
+      "use": "execution outcomes as reward; off-policy execution data"
+    },
+    {
+      "id": "mobilemoe",
+      "title": "MobileMoE",
+      "year": 2026,
+      "url": "https://arxiv.org/abs/2605.27358",
+      "use": "on-device sparse experts and mobile profiling hypotheses"
+    },
+    {
+      "id": "edge_moe",
+      "title": "Empirical Study of MoE Models on Edge Devices",
+      "year": 2026,
+      "url": "https://arxiv.org/abs/2606.21428",
+      "use": "dispatch/memory/energy caveats for mobile MoE"
+    },
+    {
+      "id": "quant_npu",
+      "title": "Quant.npu",
+      "year": 2026,
+      "url": "https://arxiv.org/abs/2605.20295",
+      "use": "static mixed-precision mobile NPU quantization hypothesis"
+    },
+    {
+      "id": "patch_eval_verified",
+      "title": "PatchEval-Verified",
+      "year": 2026,
+      "url": "https://github.com/Verified-Repair/PatchEval-Verified",
+      "use": "behavior-oriented verification rather than implementation matching"
+    },
+    {
+      "id": "execution_budgeting",
+      "title": "Execution Budgeting for Program Repair",
+      "year": 2026,
+      "url": "https://github.com/agentpatterns-ai/website/blob/main/verification/execution-budgeting-program-repair.md",
+      "use": "adaptive execution budgeting research hypothesis"
+    },
+    {
+      "id": "continual_optimizer_regression_control_2026",
+      "title": "Do Agent Optimizers Compound? A Continual-Learning Evaluation on Terminal-Bench 2.0",
+      "year": 2026,
+      "url": "https://arxiv.org/abs/2607.14004",
+      "use": "regression control / recurring optimization gate"
+    },
+    {
+      "id": "trajectory_poisoning_1_2026",
+      "title": "Query-Only Backdoor Attacks on Self-Evolving Skills via Trajectory Poisoning",
+      "year": 2026,
+      "url": "https://arxiv.org/abs/2608.08303",
+      "use": "security boundary for evidence/trajectory promotion; provenance quorum"
+    },
+    {
+      "id": "trajectory_poisoning_2_2026",
+      "title": "When Experience Becomes Instruction: Trajectory Poisoning in Self-Evolving Agent Skill Systems",
+      "year": 2026,
+      "url": "https://arxiv.org/abs/2608.05563",
+      "use": "causal attribution, recurrence, generalization before skill promotion"
+    },
+    {
+      "id": "mobile_npu_powerbench_2026",
+      "title": "Is Your NPU Ready for LLMs? Dissecting the Hidden Efficiency Bottlenecks in Mobile LLM Inference",
+      "year": 2026,
+      "url": "https://arxiv.org/abs/2607.05475",
+      "use": "backend-specific energy profiling and CPU/NPU workload separation"
+    },
+    {
+      "id": "execution_verified_skill_retrieval_1_15",
+      "date": "2026-09-20",
+      "type": "internal_experiment",
+      "claim": "verified structural skill retrieval can improve neural grounding when it is bounded by target execution verification",
+      "implementation": [
+        "neural_skill_retrieval_v1.py",
+        "grounding_recovery_controller_v1.py"
+      ],
+      "evidence": "runtime/neural_skill_retrieval_v1_matched_ablation.json",
+      "status": "measured_research_only"
+    }
+  ],
+  "implemented_mapping": {
+    "self_evolution_control_plane_v2": "self_evolving_agents_2026",
+    "causal_evidence_ledger_v1": "self_evolving_agents_2026",
+    "execution_budget_policy_v1": "execution_budgeting",
+    "program_ir_v1": "bcoder",
+    "mobile_runtime_benchmark_v2": "mobilemoe",
+    "grounding_bridge_v1": "self_improvement_survey_2026",
+    "architecture_health_v1": "self_improvement_survey_2026",
+    "evidence_quorum_v1": "trajectory_poisoning_1_2026",
+    "mobile_energy_telemetry": "mobile_npu_powerbench_2026"
+  }
+}

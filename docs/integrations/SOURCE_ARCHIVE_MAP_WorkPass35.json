@@ -1,0 +1,57 @@
+{
+  "project": "Neuro-Kurisu SUPER",
+  "workPass": 35,
+  "date": "2026-10-13",
+  "purpose": "Preserve original bytes and reproducibly materialize duplicate expanded source/snapshot views only when needed.",
+  "safetyPolicy": "No active runtime/UI/Live2D paths are removed. Only proven-expanded representations are omitted; retained source archives are SHA-256 verified before extraction.",
+  "materializableArchives": [
+    {
+      "id": "will",
+      "archivePath": "legacy/input-archives/raw-source-archives/will-main.zip",
+      "archiveSha256": "9d0c30277f0981b67104b1e2a07d9c7f025fee60ae57bd470cca898cf0d457a4",
+      "fileCount": 606,
+      "uncompressedBytes": 18244206,
+      "stripPrefix": "will-main",
+      "defaultOutputPath": "legacy/input-archives/will-main-2026-10-08",
+      "omittedExpandedPath": "legacy/input-archives/will-main-2026-10-08/",
+      "restoreCommand": "python3 tools/materialize_legacy_archive.py will"
+    },
+    {
+      "id": "neuro-kurisu-35.30",
+      "archivePath": "legacy/input-archives/Neuro_Kurisu_35.30.0_R16_PASS_11_SEMANTIC_ISOLATION_2026-09-29.zip",
+      "archiveSha256": "8d875575da7ce22586cd2cd008f60ff1db61ac09809394bd07e8fe2d46890886",
+      "fileCount": 4022,
+      "uncompressedBytes": 73383678,
+      "stripPrefix": "nk_pass10",
+      "defaultOutputPath": "legacy/snapshots/neuro-kurisu-35.30",
+      "omittedExpandedPath": "legacy/snapshots/neuro-kurisu-35.30/",
+      "restoreCommand": "python3 tools/materialize_legacy_archive.py neuro-kurisu-35.30"
+    }
+  ],
+  "duplicateArchiveAliases": [
+    {
+      "canonicalArchivePath": "legacy/input-archives/raw-source-archives/lumina-main.zip",
+      "omittedDuplicatePath": "legacy/input-archives/lumina-main-2026-10-08.zip",
+      "sha256": "a820cb1b394018451c8ee5863ae0a1f74666bd10519007d6e37e69e42452d467",
+      "fileCount": 109,
+      "uncompressedBytes": 3903620,
+      "equality": "full-file SHA-256 identical"
+    },
+    {
+      "canonicalArchivePath": "legacy/input-archives/raw-source-archives/letta-main.zip",
+      "omittedDuplicatePath": "legacy/input-archives/letta-main-2026-10-08.zip",
+      "sha256": "5d28f152aba633fcc26fe20125fad28f73c6773e6526fc65249656b2d0c61075",
+      "fileCount": 12,
+      "uncompressedBytes": 60623,
+      "equality": "full-file SHA-256 identical"
+    }
+  ],
+  "livePathsPreserved": [
+    "app/public/live2d",
+    "app/public/sprites",
+    "runtime/neuro-kurisu/public/live2d",
+    "runtime/neuro-kurisu/src",
+    "app/src"
+  ],
+  "note": "The canonical runtime has public/live2d but no runtime public/sprites directory in the input archive; legacy sprite assets are served from app/public/sprites. Only paths actually present in the inspected base are listed as preserved."
+}

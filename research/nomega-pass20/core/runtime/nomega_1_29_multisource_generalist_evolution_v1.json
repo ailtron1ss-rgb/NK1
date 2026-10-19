@@ -1,0 +1,628 @@
+{
+  "profiles": [
+    {
+      "profile": [
+        [
+          "replace_opcode",
+          0.47500000000000003
+        ],
+        [
+          "replace_operand",
+          0.25
+        ],
+        [
+          "insert_load",
+          0.025
+        ]
+      ],
+      "seed": 4401,
+      "source_rows": [
+        {
+          "best_gain": 0.8,
+          "corruption": "opcode",
+          "family": "sum3",
+          "primitive_scores": {
+            "drop_instruction": 0.0,
+            "duplicate_instruction": 0.0,
+            "insert_load": 0.0,
+            "replace_opcode": 0.8,
+            "replace_operand": 0.0,
+            "swap_adjacent": 0.0
+          },
+          "train_baseline": 0.2
+        },
+        {
+          "best_gain": 1.0,
+          "corruption": "operand",
+          "family": "xor3",
+          "primitive_scores": {
+            "drop_instruction": 0.0,
+            "duplicate_instruction": 0.0,
+            "insert_load": 0.0,
+            "replace_opcode": 0.1,
+            "replace_operand": 1.0,
+            "swap_adjacent": 0.0
+          },
+          "train_baseline": 0.0
+        },
+        {
+          "best_gain": 0.0,
+          "corruption": "drop",
+          "family": "mul2",
+          "primitive_scores": {
+            "drop_instruction": 0.0,
+            "duplicate_instruction": 0.0,
+            "insert_load": 0.0,
+            "replace_opcode": 0.0,
+            "replace_operand": 0.0,
+            "swap_adjacent": 0.0
+          },
+          "train_baseline": 0.0
+        },
+        {
+          "best_gain": 1.0,
+          "corruption": "opcode",
+          "family": "sub_offset",
+          "primitive_scores": {
+            "drop_instruction": 0.0,
+            "duplicate_instruction": 0.0,
+            "insert_load": 0.1,
+            "replace_opcode": 1.0,
+            "replace_operand": 0.0,
+            "swap_adjacent": 0.0
+          },
+          "train_baseline": 0.0
+        }
+      ]
+    },
+    {
+      "profile": [
+        [
+          "replace_opcode",
+          0.5
+        ],
+        [
+          "replace_operand",
+          0.25
+        ]
+      ],
+      "seed": 4402,
+      "source_rows": [
+        {
+          "best_gain": 0.9,
+          "corruption": "opcode",
+          "family": "sum3",
+          "primitive_scores": {
+            "drop_instruction": 0.0,
+            "duplicate_instruction": 0.0,
+            "insert_load": 0.0,
+            "replace_opcode": 0.9,
+            "replace_operand": 0.0,
+            "swap_adjacent": 0.0
+          },
+          "train_baseline": 0.1
+        },
+        {
+          "best_gain": 1.0,
+          "corruption": "operand",
+          "family": "xor3",
+          "primitive_scores": {
+            "drop_instruction": 0.0,
+            "duplicate_instruction": 0.0,
+            "insert_load": 0.0,
+            "replace_opcode": 0.1,
+            "replace_operand": 1.0,
+            "swap_adjacent": 0.0
+          },
+          "train_baseline": 0.0
+        },
+        {
+          "best_gain": 0.0,
+          "corruption": "drop",
+          "family": "mul2",
+          "primitive_scores": {
+            "drop_instruction": 0.0,
+            "duplicate_instruction": 0.0,
+            "insert_load": 0.0,
+            "replace_opcode": 0.0,
+            "replace_operand": 0.0,
+            "swap_adjacent": 0.0
+          },
+          "train_baseline": 0.0
+        },
+        {
+          "best_gain": 1.0,
+          "corruption": "opcode",
+          "family": "sub_offset",
+          "primitive_scores": {
+            "drop_instruction": 0.0,
+            "duplicate_instruction": 0.0,
+            "insert_load": 0.0,
+            "replace_opcode": 1.0,
+            "replace_operand": 0.0,
+            "swap_adjacent": 0.0
+          },
+          "train_baseline": 0.0
+        }
+      ]
+    },
+    {
+      "profile": [
+        [
+          "replace_opcode",
+          0.475
+        ],
+        [
+          "replace_operand",
+          0.25
+        ]
+      ],
+      "seed": 4403,
+      "source_rows": [
+        {
+          "best_gain": 0.9,
+          "corruption": "opcode",
+          "family": "sum3",
+          "primitive_scores": {
+            "drop_instruction": 0.0,
+            "duplicate_instruction": 0.0,
+            "insert_load": 0.0,
+            "replace_opcode": 0.9,
+            "replace_operand": 0.0,
+            "swap_adjacent": 0.0
+          },
+          "train_baseline": 0.1
+        },
+        {
+          "best_gain": 1.0,
+          "corruption": "operand",
+          "family": "xor3",
+          "primitive_scores": {
+            "drop_instruction": 0.0,
+            "duplicate_instruction": 0.0,
+            "insert_load": 0.0,
+            "replace_opcode": 0.0,
+            "replace_operand": 1.0,
+            "swap_adjacent": 0.0
+          },
+          "train_baseline": 0.0
+        },
+        {
+          "best_gain": 0.0,
+          "corruption": "drop",
+          "family": "mul2",
+          "primitive_scores": {
+            "drop_instruction": 0.0,
+            "duplicate_instruction": 0.0,
+            "insert_load": 0.0,
+            "replace_opcode": 0.0,
+            "replace_operand": 0.0,
+            "swap_adjacent": 0.0
+          },
+          "train_baseline": 0.1
+        },
+        {
+          "best_gain": 1.0,
+          "corruption": "opcode",
+          "family": "sub_offset",
+          "primitive_scores": {
+            "drop_instruction": 0.0,
+            "duplicate_instruction": 0.0,
+            "insert_load": 0.0,
+            "replace_opcode": 1.0,
+            "replace_operand": 0.0,
+            "swap_adjacent": 0.0
+          },
+          "train_baseline": 0.0
+        }
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "candidate_count": 149,
+      "future_baseline": 0.2,
+      "future_gain": 0.8,
+      "future_selected": 1.0,
+      "holdout_baseline": 0.125,
+      "holdout_gain": 0.875,
+      "holdout_selected": 1.0,
+      "profile": [
+        [
+          "replace_opcode",
+          0.47500000000000003
+        ],
+        [
+          "replace_operand",
+          0.25
+        ],
+        [
+          "insert_load",
+          0.025
+        ]
+      ],
+      "seed": 4401,
+      "selected_candidate_hash": "42f0956cd9cd2b731152e42f",
+      "source_families": [
+        "sum3",
+        "xor3",
+        "mul2",
+        "sub_offset"
+      ],
+      "target_family": "minmax3",
+      "train_baseline": 0.1,
+      "train_selected": 1.0
+    },
+    {
+      "candidate_count": 79,
+      "future_baseline": 0.0,
+      "future_gain": 1.0,
+      "future_selected": 1.0,
+      "holdout_baseline": 0.0,
+      "holdout_gain": 1.0,
+      "holdout_selected": 1.0,
+      "profile": [
+        [
+          "replace_opcode",
+          0.47500000000000003
+        ],
+        [
+          "replace_operand",
+          0.25
+        ],
+        [
+          "insert_load",
+          0.025
+        ]
+      ],
+      "seed": 4401,
+      "selected_candidate_hash": "c575d9a69c17f61736d3af0b",
+      "source_families": [
+        "sum3",
+        "xor3",
+        "mul2",
+        "sub_offset"
+      ],
+      "target_family": "sequence_diff",
+      "train_baseline": 0.0,
+      "train_selected": 1.0
+    },
+    {
+      "candidate_count": 149,
+      "future_baseline": 0.1,
+      "future_gain": 0.9,
+      "future_selected": 1.0,
+      "holdout_baseline": 0.0,
+      "holdout_gain": 1.0,
+      "holdout_selected": 1.0,
+      "profile": [
+        [
+          "replace_opcode",
+          0.47500000000000003
+        ],
+        [
+          "replace_operand",
+          0.25
+        ],
+        [
+          "insert_load",
+          0.025
+        ]
+      ],
+      "seed": 4401,
+      "selected_candidate_hash": "2652231518d8f20e9368767d",
+      "source_families": [
+        "sum3",
+        "xor3",
+        "mul2",
+        "sub_offset"
+      ],
+      "target_family": "nested3",
+      "train_baseline": 0.0,
+      "train_selected": 1.0
+    },
+    {
+      "candidate_count": 114,
+      "future_baseline": 0.1,
+      "future_gain": 0.9,
+      "future_selected": 1.0,
+      "holdout_baseline": 0.25,
+      "holdout_gain": 0.75,
+      "holdout_selected": 1.0,
+      "profile": [
+        [
+          "replace_opcode",
+          0.47500000000000003
+        ],
+        [
+          "replace_operand",
+          0.25
+        ],
+        [
+          "insert_load",
+          0.025
+        ]
+      ],
+      "seed": 4401,
+      "selected_candidate_hash": "844202ea97d811fd306dfb33",
+      "source_families": [
+        "sum3",
+        "xor3",
+        "mul2",
+        "sub_offset"
+      ],
+      "target_family": "compose_sum_xor",
+      "train_baseline": 0.2,
+      "train_selected": 1.0
+    },
+    {
+      "candidate_count": 136,
+      "future_baseline": 0.3,
+      "future_gain": 0.7,
+      "future_selected": 1.0,
+      "holdout_baseline": 0.0,
+      "holdout_gain": 1.0,
+      "holdout_selected": 1.0,
+      "profile": [
+        [
+          "replace_opcode",
+          0.5
+        ],
+        [
+          "replace_operand",
+          0.25
+        ]
+      ],
+      "seed": 4402,
+      "selected_candidate_hash": "42f0956cd9cd2b731152e42f",
+      "source_families": [
+        "sum3",
+        "xor3",
+        "mul2",
+        "sub_offset"
+      ],
+      "target_family": "minmax3",
+      "train_baseline": 0.1,
+      "train_selected": 1.0
+    },
+    {
+      "candidate_count": 66,
+      "future_baseline": 0.2,
+      "future_gain": 0.8,
+      "future_selected": 1.0,
+      "holdout_baseline": 0.0,
+      "holdout_gain": 1.0,
+      "holdout_selected": 1.0,
+      "profile": [
+        [
+          "replace_opcode",
+          0.5
+        ],
+        [
+          "replace_operand",
+          0.25
+        ]
+      ],
+      "seed": 4402,
+      "selected_candidate_hash": "c575d9a69c17f61736d3af0b",
+      "source_families": [
+        "sum3",
+        "xor3",
+        "mul2",
+        "sub_offset"
+      ],
+      "target_family": "sequence_diff",
+      "train_baseline": 0.0,
+      "train_selected": 1.0
+    },
+    {
+      "candidate_count": 136,
+      "future_baseline": 0.0,
+      "future_gain": 1.0,
+      "future_selected": 1.0,
+      "holdout_baseline": 0.0,
+      "holdout_gain": 1.0,
+      "holdout_selected": 1.0,
+      "profile": [
+        [
+          "replace_opcode",
+          0.5
+        ],
+        [
+          "replace_operand",
+          0.25
+        ]
+      ],
+      "seed": 4402,
+      "selected_candidate_hash": "2652231518d8f20e9368767d",
+      "source_families": [
+        "sum3",
+        "xor3",
+        "mul2",
+        "sub_offset"
+      ],
+      "target_family": "nested3",
+      "train_baseline": 0.0,
+      "train_selected": 1.0
+    },
+    {
+      "candidate_count": 101,
+      "future_baseline": 0.1,
+      "future_gain": 0.9,
+      "future_selected": 1.0,
+      "holdout_baseline": 0.125,
+      "holdout_gain": 0.875,
+      "holdout_selected": 1.0,
+      "profile": [
+        [
+          "replace_opcode",
+          0.5
+        ],
+        [
+          "replace_operand",
+          0.25
+        ]
+      ],
+      "seed": 4402,
+      "selected_candidate_hash": "844202ea97d811fd306dfb33",
+      "source_families": [
+        "sum3",
+        "xor3",
+        "mul2",
+        "sub_offset"
+      ],
+      "target_family": "compose_sum_xor",
+      "train_baseline": 0.0,
+      "train_selected": 1.0
+    },
+    {
+      "candidate_count": 136,
+      "future_baseline": 0.1,
+      "future_gain": 0.9,
+      "future_selected": 1.0,
+      "holdout_baseline": 0.375,
+      "holdout_gain": 0.625,
+      "holdout_selected": 1.0,
+      "profile": [
+        [
+          "replace_opcode",
+          0.475
+        ],
+        [
+          "replace_operand",
+          0.25
+        ]
+      ],
+      "seed": 4403,
+      "selected_candidate_hash": "42f0956cd9cd2b731152e42f",
+      "source_families": [
+        "sum3",
+        "xor3",
+        "mul2",
+        "sub_offset"
+      ],
+      "target_family": "minmax3",
+      "train_baseline": 0.1,
+      "train_selected": 1.0
+    },
+    {
+      "candidate_count": 66,
+      "future_baseline": 0.0,
+      "future_gain": 1.0,
+      "future_selected": 1.0,
+      "holdout_baseline": 0.0,
+      "holdout_gain": 1.0,
+      "holdout_selected": 1.0,
+      "profile": [
+        [
+          "replace_opcode",
+          0.475
+        ],
+        [
+          "replace_operand",
+          0.25
+        ]
+      ],
+      "seed": 4403,
+      "selected_candidate_hash": "c575d9a69c17f61736d3af0b",
+      "source_families": [
+        "sum3",
+        "xor3",
+        "mul2",
+        "sub_offset"
+      ],
+      "target_family": "sequence_diff",
+      "train_baseline": 0.0,
+      "train_selected": 1.0
+    },
+    {
+      "candidate_count": 136,
+      "future_baseline": 0.1,
+      "future_gain": 0.9,
+      "future_selected": 1.0,
+      "holdout_baseline": 0.0,
+      "holdout_gain": 1.0,
+      "holdout_selected": 1.0,
+      "profile": [
+        [
+          "replace_opcode",
+          0.475
+        ],
+        [
+          "replace_operand",
+          0.25
+        ]
+      ],
+      "seed": 4403,
+      "selected_candidate_hash": "2652231518d8f20e9368767d",
+      "source_families": [
+        "sum3",
+        "xor3",
+        "mul2",
+        "sub_offset"
+      ],
+      "target_family": "nested3",
+      "train_baseline": 0.0,
+      "train_selected": 1.0
+    },
+    {
+      "candidate_count": 101,
+      "future_baseline": 0.1,
+      "future_gain": 0.9,
+      "future_selected": 1.0,
+      "holdout_baseline": 0.125,
+      "holdout_gain": 0.875,
+      "holdout_selected": 1.0,
+      "profile": [
+        [
+          "replace_opcode",
+          0.475
+        ],
+        [
+          "replace_operand",
+          0.25
+        ]
+      ],
+      "seed": 4403,
+      "selected_candidate_hash": "844202ea97d811fd306dfb33",
+      "source_families": [
+        "sum3",
+        "xor3",
+        "mul2",
+        "sub_offset"
+      ],
+      "target_family": "compose_sum_xor",
+      "train_baseline": 0.0,
+      "train_selected": 1.0
+    }
+  ],
+  "seeds": [
+    4401,
+    4402,
+    4403
+  ],
+  "source_families": [
+    "sum3",
+    "xor3",
+    "mul2",
+    "sub_offset"
+  ],
+  "summary": {
+    "candidate_cap": 384,
+    "mean_future_gain": 0.8916666666666666,
+    "mean_holdout_gain": 0.9166666666666666,
+    "positive_future_fraction": 1.0,
+    "positive_holdout_fraction": 1.0,
+    "selection_protocol": "multi_source_train_profile_then_target_train_selection_then_hidden_holdout_then_future_hidden",
+    "source_family_count": 4,
+    "target_family_count": 4,
+    "unseen_target_protocol": true
+  },
+  "target_families": [
+    "minmax3",
+    "sequence_diff",
+    "nested3",
+    "compose_sum_xor"
+  ],
+  "version": "multi-source-generalist-evolution-v1"
+}

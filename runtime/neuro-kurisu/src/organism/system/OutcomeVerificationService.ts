@@ -1,0 +1,195 @@
+export type OutcomeVerificationBasis = 'none' | 'tool-contract' | 'external-postcondition';
+
+import type { WorldContext } from '../core/types.ts';
+import { normalizeWorldContext as normalizeCanonicalWorldContext } from '../core/WorldContextNormalizer.ts';
+
+export interface OutcomeVerification {
+  verified: boolean;
+  basis: OutcomeVerificationBasis;
+  confidence01: number;
+  externalObservation?: boolean;
+  observationId?: string;
+  expectedPostcondition?: string;
+  observedPostcondition?: string;
+  notes?: string;
+  observedWorldContextAfter?: WorldContext;
+}
+
+export type ExternalPostconditionAssessment = 'not-external' | 'match' | 'contradiction' | 'unknown';
+
+function canonicalPostcondition(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+  return normalized && normalized.length <= 1024 && !/[\u0000-\u001f\u007f]/.test(normalized) ? normalized : undefined;
+}
+
+/**
+ * Compare a trustworthy external observation to the intended postcondition.
+ * A valid observation is not synonymous with a successful action: a contradiction
+ * is evidence about the outcome, but must never be surfaced as verified success.
+ */
+export function assessExternalPostcondition(value: Partial<OutcomeVerification> | undefined): ExternalPostconditionAssessment {
+  if (value?.basis !== 'external-postcondition' || value.externalObservation !== true) return 'not-external';
+  const observationId = typeof value.observationId === 'string' ? value.observationId.trim() : '';
+  if (!observationId || observationId.length > 180 || /[\u0000-\u001f\u007f]/.test(observationId)) return 'unknown';
+  const expected = canonicalPostcondition(value.expectedPostcondition);
+  const observed = canonicalPostcondition(value.observedPostcondition);
+  if (!expected || !observed) return 'unknown';
+  if (expected !== observed) return 'contradiction';
+  return value.verified === true ? 'match' : 'unknown';
+}
+
+export interface OutcomeVerificationContext {
+  toolId: string;
+  input: Record<string, unknown>;
+  result: Record<string, unknown>;
+}
+
+export type OutcomeVerifier = (context: OutcomeVerificationContext) => Promise<OutcomeVerification> | OutcomeVerification;
+
+const VALID_BASES = new Set<OutcomeVerificationBasis>(['none', 'tool-contract', 'external-postcondition']);
+const clamp = (x: unknown) => typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : 0;
+const boundedText = (value: unknown, max: number): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const text = value.trim();
+  return text ? text.slice(0, max) : undefined;
+};
+
+function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
+  if (value === null || typeof value !== 'object') return value;
+  const object = value as unknown as object;
+  if (seen.has(object)) return value;
+  seen.add(object);
+  for (const key of Reflect.ownKeys(object)) {
+    let child: unknown;
+    try { child = (object as Record<PropertyKey, unknown>)[key]; } catch { continue; }
+    deepFreeze(child, seen);
+  }
+  return Object.freeze(value);
+}
+
+function isolatedContext(context: OutcomeVerificationContext): OutcomeVerificationContext {
+  const cloned = structuredClone({
+    toolId: boundedText(context?.toolId, 180) ?? 'unknown-tool',
+    input: context?.input ?? {},
+    result: context?.result ?? {},
+  });
+  if (!cloned || typeof cloned !== 'object' || !cloned.input || typeof cloned.input !== 'object' ||
+      !cloned.result || typeof cloned.result !== 'object') {
+    throw new TypeError('verification context is not a serializable record');
+  }
+  return deepFreeze(cloned) as OutcomeVerificationContext;
+}
+
+function failed(notes: string): OutcomeVerification {
+  return { verified: false, basis: 'none', confidence01: 0, externalObservation: false, notes };
+}
+
+function normalizeWorldContext(value: unknown): WorldContext | undefined {
+  if (value === undefined) return undefined;
+  try {
+    const clone = structuredClone(value);
+    if (clone && typeof clone === 'object' && !Array.isArray(clone)) {
+      return normalizeCanonicalWorldContext(clone as Partial<WorldContext>);
+    }
+  } catch {
+    // Supplementary context must never turn valid independent evidence into success.
+  }
+  return undefined;
+}
+
+export class OutcomeVerificationService {
+  async verify(
+    context: OutcomeVerificationContext,
+    verifier?: OutcomeVerifier,
+  ): Promise<OutcomeVerification> {
+    if (verifier) {
+      let isolated: OutcomeVerificationContext;
+      try {
+        isolated = isolatedContext(context);
+      } catch {
+        return failed('verification context could not be isolated safely');
+      }
+
+      let checked: OutcomeVerification;
+      try {
+        checked = await verifier(isolated);
+      } catch {
+        return failed('registered verifier failed before returning evidence');
+      }
+      if (!checked || typeof checked !== 'object') {
+        return failed('registered verifier returned no structured evidence');
+      }
+
+      const basis: OutcomeVerificationBasis = VALID_BASES.has(checked.basis) ? checked.basis : 'none';
+      // Only the explicit external-postcondition basis may cross the external-evidence
+      // boundary. A tool must not self-promote its own contract/ACK into world evidence
+      // by setting `externalObservation: true` alongside `basis: 'tool-contract'`.
+      if (checked.externalObservation === true && basis !== 'external-postcondition') {
+        return failed('external observation requires external-postcondition basis');
+      }
+      const external = basis === 'external-postcondition';
+      const observationIdRaw = boundedText(checked.observationId, 180);
+      const observationId = observationIdRaw && !/[\u0000-\u001f\u007f]/.test(observationIdRaw) ? observationIdRaw : undefined;
+      let verified = checked.verified === true && basis !== 'none';
+      let notes = boundedText(checked.notes, 320);
+      if (verified && external && !observationId) {
+        verified = false;
+        notes = 'external verification requires a valid observationId';
+      }
+      if (checked.verified === true && basis === 'none') {
+        notes = 'verification basis is missing or unsupported';
+      }
+      const expectedPostcondition = boundedText(checked.expectedPostcondition, 1024);
+      const observedPostcondition = boundedText(checked.observedPostcondition, 1024);
+      const externalEvidenceShapeValid = external && Boolean(observationId) &&
+        Boolean(expectedPostcondition) && Boolean(observedPostcondition) &&
+        !/[\u0000-\u001f\u007f]/.test(expectedPostcondition ?? '') &&
+        !/[\u0000-\u001f\u007f]/.test(observedPostcondition ?? '');
+      if (verified && external && !externalEvidenceShapeValid) {
+        verified = false;
+        notes = 'external verification requires a bounded observationId and explicit expected/observed postconditions';
+      }
+      const normalizedExpected = canonicalPostcondition(expectedPostcondition);
+      const normalizedObserved = canonicalPostcondition(observedPostcondition);
+      const externallyContradicted = verified && externalEvidenceShapeValid && Boolean(normalizedExpected && normalizedObserved && normalizedExpected !== normalizedObserved);
+      if (externallyContradicted) {
+        verified = false;
+        notes = 'external postcondition contradicts expected state';
+      }
+      const preserveExternalEvidence = external && externalEvidenceShapeValid && checked.verified === true;
+      return {
+        verified,
+        // Keep the provenance of a valid contradictory observation even though the
+        // action itself is not verified successful. Invalid contracts are still
+        // downgraded to `none` by the checks above.
+        basis: verified || preserveExternalEvidence ? basis : 'none',
+        confidence01: verified || preserveExternalEvidence ? clamp(checked.confidence01) : 0,
+        externalObservation: (verified || preserveExternalEvidence) && external,
+        ...((verified || preserveExternalEvidence) && observationId ? { observationId } : {}),
+        ...((verified || preserveExternalEvidence) && expectedPostcondition ? { expectedPostcondition } : {}),
+        ...((verified || preserveExternalEvidence) && observedPostcondition ? { observedPostcondition } : {}),
+        ...(notes ? { notes } : {}),
+        ...(verified ? { observedWorldContextAfter: normalizeWorldContext(checked.observedWorldContextAfter) } : {}),
+      };
+    }
+
+    if (context?.result?.verified === true) {
+      return {
+        verified: true,
+        basis: 'tool-contract',
+        confidence01: 0.6,
+        externalObservation: false,
+        notes: 'tool explicitly declared its own contract-level verification',
+      };
+    }
+
+    return {
+      verified: false,
+      basis: 'none',
+      confidence01: 0,
+      externalObservation: false,
+      notes: 'no independent postcondition verifier was registered',
+    };
+  }
+}

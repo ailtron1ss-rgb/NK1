@@ -1,0 +1,5 @@
+import assert from 'node:assert/strict';
+import { ResearchGradeOrganismEngine } from '../src/organism/learning/ResearchGradeOrganismEngine.ts';
+const e1=new ResearchGradeOrganismEngine(); const at=Date.now(); const state={tick:1,at,needs:{energy:.8,uncertainty:.2,novelty:.3,cognitiveLoad:.1},autonomyScore:.8,predictionError:.1};
+e1.beginCycle({state,action:'wait',predicted01:.5}); const d=e1.registerDecision('verify',.8,'restart',at); e1.recordPostcondition({decisionId:d,action:'verify',expected:'ok',observed:'ok',matched:true,evidenceKind:'world-postcondition',confidence01:.9,independent01:.9,at:at+1});e1.registerOutcome({decisionId:d,actual01:.85,verified01:1,causal01:.8,external01:1,at:at+2}); const snap=e1.snapshot();
+const e2=new ResearchGradeOrganismEngine();e2.restore(snap);const a=e2.selfAudit();assert.equal(a.pass,true);assert.equal(a.decisions,1);assert.equal(a.outcomes,1);assert.equal(a.evidence,1);console.log(`RESEARCH_GRADE_RESTART=PASS digest=${e2.snapshot().architectureDigest||'not-frozen'} decisions=${a.decisions}`);

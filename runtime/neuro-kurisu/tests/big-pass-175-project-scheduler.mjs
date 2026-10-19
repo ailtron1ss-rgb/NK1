@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { MultiProjectScheduler } from '../src/organism/system/MultiProjectScheduler.ts';
+const scheduler=new MultiProjectScheduler();
+const base=(id,priority,commitment,progress,lastWorkedAt)=>({id,title:id,origin:'intrinsic',status:'active',commitment,priority,identityRelevance:.8,progress,setbacks:0,successes:0,evidenceCount:3,validatedEvidenceCount:1,replicatedEvidenceCount:0,skillGain01:.2,milestones:[],nextMilestone:'',createdAt:1,lastWorkedAt,updatedAt:1,planRevision:1});
+const old=base('old',.7,.7,.7,Date.now());
+const stale=base('stale',.66,.66,.1,0);
+const d=scheduler.choose([old,stale],{tick:20,energy01:.8,cognitiveLoad01:.2,uncertainty01:.5,goalPressure01:.6,budget01:.8,selectedProjectId:'old',at:Date.now()});
+assert.equal(d.projectId,'stale');
+assert.equal(d.switched,true);
+const same=scheduler.choose([stale,old],{tick:21,energy01:.8,cognitiveLoad01:.2,uncertainty01:.5,goalPressure01:.6,budget01:.8,selectedProjectId:'stale',at:Date.now()});
+assert.equal(same.switched,false);
+console.log(JSON.stringify({pass:175,status:'PASS',winner:d.projectId,switched:d.switched,hysteresis:same.reason}));

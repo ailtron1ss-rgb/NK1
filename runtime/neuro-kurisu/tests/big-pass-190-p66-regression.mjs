@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { P66InteroceptiveHomeostasis } from '../src/organism/cognition/P66InteroceptiveHomeostasis.ts';
+const m=new P66InteroceptiveHomeostasis();
+const base={energy01:.8,thermal01:.2,capacity01:.8,load01:.25,awake:true,uncertainty01:.15,predictionError01:.12,novelty01:.7};
+const a=m.observe({tick:1,at:1001,...base});
+const b=m.observe({tick:2,at:1002,...base,novelty01:.75});
+const c=m.observe({tick:3,at:1003,...base,energy01:.18,capacity01:.35,thermal01:.85});
+assert.equal(a.mode,'explore');
+assert.equal(b.mode,'explore');
+assert(['recover','protect'].includes(c.mode));
+assert.equal(m.snapshot().cycles,3);
+const r=new P66InteroceptiveHomeostasis(); r.restore(m.snapshot()); assert.deepEqual(r.snapshot(),m.snapshot());
+console.log(JSON.stringify({pass:'P66-regression',a,b,c,deterministic:true},null,2));

@@ -1,0 +1,54 @@
+{
+  "pass": true,
+  "branch": "B269-B276 unified developmental brain",
+  "b276": {
+    "standalone": {
+      "imaginedPrograms": 31,
+      "realTrials": 2,
+      "verifiedPrograms": 1,
+      "successfulTransfers": 1,
+      "composeDepthMax": 3,
+      "neuralGrounding01": 0.8945513418590029,
+      "selfAlignment01": 0.887984248736807,
+      "personalityFit01": 0.925750026260142,
+      "autonomy01": 0.7462652647188304,
+      "programNovelty01": 0.43932659010154707,
+      "verificationConfidence01": 0.47158720000000004
+    },
+    "independent": {
+      "proposals": 100,
+      "realTrials": 100,
+      "hiddenAverage": 0.6400000000000001,
+      "baseline": 0.45,
+      "hiddenGain": 0.1900000000000001,
+      "neuralGrounding01": 0.9185122128239069,
+      "selfAlignment01": 0.9067728056017287,
+      "programNovelty01": 0.31419648307882925,
+      "verificationConfidence01": 0.6902255388782316
+    },
+    "core": {
+      "proposals": 21,
+      "realTrials": 20,
+      "composeDepthMax": 3,
+      "neuralGrounding01": 0.5628368917385375,
+      "selfAlignment01": 0.7824467703339794,
+      "personalityFit01": 0.8624393945246551,
+      "autonomy01": 0.5386939999938224,
+      "programNovelty01": 0.4343249088722286,
+      "verificationConfidence01": 0.6477739002397713,
+      "restartRoundTrip": true
+    },
+    "static": {
+      "typecheck": "PASS",
+      "fullAudit": "PASS",
+      "architecture": "PASS",
+      "integrity": "PASS",
+      "forensics": "PASS",
+      "hygiene": "PASS",
+      "syntax": "PASS",
+      "contract": "PASS",
+      "lock": "PASS",
+      "releaseSource": "PASS"
+    }
+  }
+}

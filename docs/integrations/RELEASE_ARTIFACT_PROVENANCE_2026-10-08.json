@@ -1,0 +1,31 @@
+{
+  "build": "v20-WILL-PASS2",
+  "date": "2026-10-08",
+  "canonicalRuntime": "Neuro-Kurisu 35.40.0",
+  "schema": 223,
+  "sourceBaseline": "Neuro_Kurisu_SUPER_FINAL_2026-10-06_UPDATED.zip",
+  "sourceManifestSha256": "11e4c6ce9fbd71bf133fbfe233b4130ab26eef552835d7f5a9c90175a5a838ac",
+  "willIntegration": "16/16",
+  "mode": "canonical-adapter",
+  "archiveSha256": "recorded in external sidecar after packaging",
+  "contains": [
+    "canonical runtime",
+    "selected WILL adapter code",
+    "full WILL input provenance",
+    "updated reports/checklists",
+    "archive manifest",
+    "verification evidence"
+  ],
+  "excluded": [
+    "node_modules",
+    "runtime state",
+    "temporary files",
+    "cache directories",
+    "generated test state",
+    "secret credentials"
+  ],
+  "releaseBlockers": [
+    "clean UI/Vite/browser E2E requires app/node_modules in a build-capable environment",
+    "long-duration soak and final production sign-off remain separate release gates"
+  ]
+}

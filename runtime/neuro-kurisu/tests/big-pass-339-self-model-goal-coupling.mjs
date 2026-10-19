@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import { SelfModelEngine } from '../src/organism/cognition/SelfModelV2.ts';
+const s=new SelfModelEngine();
+s.predict('explore',.9);
+const before=s.actionBias('explore');
+const neutral=s.actionBias('rest');
+for(let i=0;i<12;i++) s.learnGoalOutcome({action:'explore',goalAlignment01:.92,reward01:.9,tick:i+1});
+const after=s.actionBias('explore');
+assert.ok(after>before,'goal-aligned outcomes should strengthen self-consistent action bias');
+assert.ok(after>neutral,'learned self-model should prefer its successfully aligned action');
+const snap=s.snapshot();
+assert.ok(snap.goalAlignmentEMA01>.55);
+const r=new SelfModelEngine(); r.restore(snap);
+assert.ok(r.actionBias('explore')>neutral,'restored self-model must preserve action influence');
+console.log(`B339_SELF_MODEL_GOAL_COUPLING=PASS before=${before.toFixed(4)} after=${after.toFixed(4)} goalEMA=${snap.goalAlignmentEMA01.toFixed(3)}`);

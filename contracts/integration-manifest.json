@@ -1,0 +1,298 @@
+{
+  "project": "Neuro-Kurisu Super",
+  "releaseDate": "2026-10-19",
+  "releaseVersion": "35.0.0-super-workpass70",
+  "activeRuntime": {
+    "name": "Neuro-Kurisu",
+    "version": "35.90.0",
+    "schema": 225,
+    "path": "runtime/neuro-kurisu",
+    "ownership": "canonical-writable"
+  },
+  "surfaces": {
+    "uiShell": {
+      "path": "app",
+      "source": "Grok Workspace",
+      "ownership": "delivery-only"
+    },
+    "live2d": {
+      "path": "app/public/live2d",
+      "source": "Neuro-Kurisu 35.40 / Workspace assets",
+      "ownership": "visual-only"
+    },
+    "legacySprite": {
+      "path": "app/src/legacy/avatar",
+      "source": "Kurisu v9 resolver + v56 presentation patterns",
+      "ownership": "visual-compatibility-only"
+    },
+    "localLanguageProvider": {
+      "path": "runtime/neuro-kurisu/src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts",
+      "source": "llama.cpp OpenAI-compatible `/v1/chat/completions` API adapter",
+      "ownership": "adapter-only; model selection remains in P40 Model Ecology",
+      "configuration": "LLAMA_CPP_URL and LLAMA_CPP_MODEL",
+      "security": "loopback HTTP only; redirects disabled; response capped at 2 MiB; no bundled model weights",
+      "statusSemantics": "configured-unverified until an actual request succeeds; no target-host inference is implied"
+    }
+  },
+  "research": [
+    {
+      "name": "NeuroCore V143",
+      "path": "research/neurocore-v143",
+      "mode": "research-only",
+      "promotion": false
+    },
+    {
+      "name": "NOMEGA Pass20",
+      "path": "research/nomega-pass20",
+      "mode": "governed-research",
+      "promotion": false
+    },
+    {
+      "name": "DeepCode v21",
+      "path": "research/deepcode",
+      "mode": "research-only",
+      "promotion": false
+    }
+  ],
+  "legacy": [
+    {
+      "name": "Kurisu v9",
+      "path": "legacy/kurisu-v9",
+      "role": "visual/source reference"
+    },
+    {
+      "name": "Kurisu v56",
+      "path": "legacy/kurisu-v56",
+      "role": "visual/source reference; duplicate ownership audit"
+    },
+    {
+      "name": "Neuro-Kurisu 35.30",
+      "path": "legacy/input-archives/Neuro_Kurisu_35.30.0_R16_PASS_11_SEMANTIC_ISOLATION_2026-09-29.zip",
+      "role": "historical baseline; expanded byte-identical view is materialized on demand",
+      "materializeWith": "python3 tools/materialize_legacy_archive.py neuro-kurisu-35.30"
+    },
+    {
+      "name": "NeuroCore V126",
+      "path": "legacy/snapshots/neurocore-v126",
+      "role": "historical baseline"
+    },
+    {
+      "name": "original input archives",
+      "path": "legacy/input-archives",
+      "role": "immutable provenance"
+    }
+  ],
+  "ownershipRules": [
+    "Neuro-Kurisu owns runtime state, cognition loop, memory, goals, world model, embodiment state and persistence.",
+    "The browser never instantiates a second organism brain.",
+    "Live2D and legacy sprite engines are rendering surfaces only.",
+    "Research branches cannot auto-promote code into the canonical runtime.",
+    "Near-duplicate functions require a single owner plus adapters; no parallel writable state.",
+    "Legacy snapshots remain immutable reference material.",
+    "MemoryOS2 is the only writable canonical memory owner; source branches and Hexis are adapters/projections, and external evidence is hypothesis-only with bounded independent-lineage provenance.",
+    "Historical expanded WILL and Neuro-Kurisu 35.30 trees are reproducibly materialized from retained SHA-256-verified source archives; exact duplicate Lumina/Letta archive aliases are not stored twice.",
+    "WorkPass37 routes keyed external actions through the canonical ActionGateway receipt ledger; verified postconditions use the shared ExternalObserverFabric and only exact host-supplied decision IDs can enter temporal credit/reafference.",
+    "The optional llama.cpp chat adapter is local-loopback only, configured through LLAMA_CPP_URL/LLAMA_CPP_MODEL, and never owns cognition, memory or model weights.",
+    "WorkPass43 routes autonomous tool execution through OrganismCore.executeTool and ActionGateway durable receipts; receipt projection is keyed by executionId, replay-safe within the bounded causal ring, and external evidence cannot be attributed by tool name alone.",
+    "WorkPass46 makes the active app Live2D viewer deterministic and offline-first: it uses only release-vendored Pixi/Cubism scripts; a missing local asset is surfaced instead of loading unpinned remote code, and Legacy remains the visual fallback.",
+    "WorkPass48 builds autonomous dialogue candidates from active goals and eligible consolidated pattern/goal-learning/self-model memories, connects the existing affect appraisal to a bounded tone hint, suppresses near-duplicate topics for 14 days, and never treats UI delivery ACK as evidence of reciprocity.",
+    "WorkPass50 unifies endogenous topic selection across the canonical P33 graded-interest profile, active goals, evidence-backed memories, self-authored goals, temporary affect and explicit thread-linked response feedback. Actual user text—not sensor-only cycles—owns the social quiet timer. A real OrganismRuntime background-clock regression reaches the configured provider seam, stages an initiative, confirms UI delivery, persists learning and restores without redelivery. The avatar adds opt-in browser speech and approximate word-boundary mouth shaping; browser/device E2E remains unverified.",
+    "WorkPass51 fixes temporal credit attribution to exact decisionId, explicitly expires overflowed unresolved decisions with zero eligibility, requires independent Reafference support with corroborated reconciliation, persists verified external outcome episodes through the single MemoryOS2 owner and updates P33 idempotently; intent-aware retrieval remains unpromoted because broad recallDelta=0.",
+    "WorkPass54 adds an app-wide in-tab action approval continuation: protected API calls suspend on ActionGateway challenge, show only the redacted server preview, resolve through the single permission owner, and retry the captured JSON request once. Runtime Atlas is read-only for approval decisions to prevent cross-panel ticket races; no sensitive request body is persisted in browser storage.",
+    "WorkPass66 fixes canonical dual-lockfile installation, runtime pinned-TypeScript selection, and aligns the embedded ReleaseContract and integration manifest to the current runtime release; these changes do not certify a live provider/device or UI E2E.",
+    "WorkPass68 routes physical TTS through the canonical ActionGateway using stable speechEventId/idempotency keys; post-start timeout or failure is ambiguous and remains pending for reconciliation rather than being credited as no-effect or learned as failure. Process completion alone is not independent playback verification; live Android E2E remains open."
+  ],
+  "verification": "contracts/verification-2026-10-08.json",
+  "tooling": {
+    "inventory": "tools/super-inventory.mjs",
+    "assetAudit": "tools/audit-assets.mjs",
+    "quickAudit": "package.json#audit:quick",
+    "docsRoot": "docs/",
+    "integrationWorkpassAudit": "runtime/neuro-kurisu#audit:integration-workpass"
+  },
+  "integrationGuarantees": [
+    "Canonical runtime is the only writable organism state owner.",
+    "UI consumes canonical runtime snapshots over HTTP and does not instantiate the legacy organism.",
+    "Live2D and legacy sprites are asset-backed renderers with honest unavailable states; no procedural avatar fallback is shipped.",
+    "Research branches are read-only qualification surfaces exposed through research/research_bridge.py.",
+    "Legacy branches and exact input archives are preserved as immutable provenance, outside active ownership.",
+    "Generated runtime state and dependency directories are excluded from release artifacts.",
+    "Selected WILL mechanisms are adapter-bound and persisted inside the canonical runtime; no second organism owner is introduced.",
+    "Lumina-derived product adapters are canonical-adapter only: exact search, capability policy, idempotency and channel/voice/browser seams do not create competing state owners.",
+    "Letta-derived source-boundary, telemetry and artifact-review governance is adapter-only; no retired Letta runtime is imported.",
+    "ContextBudgetLedger is owned by LanguageOrgan; dynamic prompt truncation/omission is recorded as hashed receipts and does not create a second memory store.",
+    "PortableSubjectFidelity is a read-only diagnostic over the canonical portable-subject contract; fidelity status is not a behavioral-equivalence claim.",
+    "AdaptiveMemoryStrategyReadout is an evidence-gated advisory adapter into PolicyAuthorityLedger; per-action influence is capped at ±0.03 and strategy state is persisted via canonical organism migrations.",
+    "NeuroCore V143 benchmark outputs are portable and resolve from the project root or NK_NEUROCORE_V143_OUTPUT_DIR, not a hard-coded workstation path.",
+    "Backup/restore wrappers share a hash-verified state helper; restore requires explicit confirmation and refuses a live runtime lock.",
+    "Memo-derived content identity remains a canonical MemoryOS2 primitive; explicit revision IDs are scoped to the existing temporal lineage and do not introduce another memory store.",
+    "Hexis temporal lookup/diff delegates to canonical MemoryOS2 validity windows; Hexis temporal assertions are derived audit/export projections only.",
+    "Default Hexis learning reviews select bounded recent, valid and non-quarantined canonical memories; historical records remain accessible through explicit IDs and temporal inspection.",
+    "Canonical MemoryOS2 items retain a byte-bounded independent evidence trail (up to eight visible lineages plus a bounded 32-key replay guard); external research uses EvidenceFirewall-derived source lineage, so syndicated mirrors do not count as separate votes and provenance does not create a second memory owner.",
+    "MemoryOS2 hybrid retrieval combines BM25, token coverage, typo-tolerant character-trigram matches, entities and graph/temporal signals; hashed token projections are not ranked as semantic embeddings.",
+    "WorkPass35 applies bounded WILL agency scores before canonical P69 arbitration; P69 retains final choice/veto ownership and WILL diagnostics preserve baseline plus actual delta.",
+    "Embedded ReleaseContract version and schema match the canonical runtime package and activeRuntime manifest; schema migrations normalize older supported state snapshots to the current schema.",
+    "ActionGateway idempotency receipts persist pending before side effects; duplicate/conflicting requests, post-action finalization failures, and missing output schemas fail closed. Exact host-supplied decision IDs plus independently configured external source/postcondition evidence are required for temporal credit.",
+    "WorkPass40 restore takes the runtime maintenance lock atomically; restore stages and checksums supported state files and rolls back partial commits. The local llama.cpp adapter uses the existing model-ecology owner and configured local OpenAI-compatible HTTP surface.",
+    "Unified cognitive-cycle completion is verified against its own six stage IDs, same-tick ownership and required causal edges; old ring-buffer dangling parents cannot validate or invalidate a cycle by themselves.",
+    "Canonical MemoryRetentionEconomy uses net retention value, harm/redundancy and provenance for admission even without byte pressure; the byte-budget blend is an additional constraint, not the only path for cost/harm.",
+    "The active app Live2D viewer does not fall back to remote CDN script execution; the vendored local runtime is the sole script source, and a missing dependency surfaces the existing unavailable/Legacy fallback path.",
+    "WorkPass66 requires the canonical installer to validate and run both committed lockfiles; runtime typecheck prefers the app lockfile-pinned TypeScript, and all release owner manifests must match VERSION.json and ReleaseContract.",
+    "WorkPass67 removes the unused @hookform/resolvers dependency and its orphaned package subtree after active-source verification; the app manifest, lockfile root, SBOM and source provenance are checked together. No dependency-complete build is claimed while the registry is unreachable.",
+    "WorkPass67 enforces install deadlines by terminating the npm process group (TERM then KILL) and returns fail-fast without orphaning lifecycle descendants; the hanging-child regression is POSIX-verified. Networked package installation remains required before production build sign-off.",
+    "WorkPass68 routes EmbodimentRuntime speech through OrganismCore.executeTool and ActionGateway; Termux TTS outcomes distinguish completed, not-started and unknown. Ambiguous outcomes do not increase embodiment failure streak, cooldown or reliability penalty, and do not trigger blind retry. A successful command receipt is not claimed as independent playback verification."
+  ],
+  "releaseRoot": "Neuro_Kurisu_WORKPASS69_2026-10-19",
+  "willIntegration": {
+    "source": "@mindot/will 0.10.0 (selected adapter contracts)",
+    "path": "runtime/neuro-kurisu/src/organism/integration/will",
+    "mode": "canonical-adapter",
+    "ownership": "adapter-state-only; canonical runtime remains authoritative",
+    "capabilities": [
+      "agency competition semantics",
+      "compact PMA/fidelity",
+      "portable competence",
+      "known-entity dossier",
+      "conversation aims",
+      "deterministic HNSW-style vector retrieval",
+      "external envelope/ACK/replay",
+      "context budget accounting",
+      "tamper-evident record anchors",
+      "LLM provider/model attribution",
+      "provider-neutral SDK facade",
+      "MCP-compatible JSON-RPC surface",
+      "generic Discord/WhatsApp/HTTP/MCP channel adapter",
+      "replay re-feed",
+      "vector benchmark evidence gate",
+      "server request/rate/payload hardening"
+    ],
+    "excludedFromPromotion": [
+      "second brain/runtime",
+      "parallel memory authority",
+      "parallel personality/identity authority",
+      "unfinished provider-specific policy adapters",
+      "browser/UI clean-room dependencies unavailable in this build environment"
+    ],
+    "status": "Selected adapter mechanisms remain canonical-state-only; pre-arbitration agency correction and exact-decision, independently verified action reafference are covered by runtime integration tests."
+  },
+  "lettaIntegration": {
+    "source": "letta-main.zip",
+    "provenance": "legacy/input-archives/raw-source-archives/letta-main.zip",
+    "mode": "reference-governance-adapter",
+    "adaptedCapabilities": [
+      "source branch state boundaries",
+      "configurable telemetry policy",
+      "generated artifact review/provenance gate",
+      "human-review promotion gate",
+      "credential-bearing provenance path audit"
+    ],
+    "excludedOrDeferred": [
+      "retired Letta V1 runtime",
+      "Letta memory/agent/server/database implementation",
+      "unavailable current letta-ai/letta-code source"
+    ],
+    "status": "reference governance integrated; no parallel cognitive runtime"
+  },
+  "luminaIntegration": {
+    "source": "lumina-main.zip",
+    "provenance": "legacy/input-archives/raw-source-archives/lumina-main.zip",
+    "mode": "canonical-adapter",
+    "adaptedCapabilities": [
+      "tool capability risk profiles",
+      "exact lexical search projection",
+      "application idempotency ledger",
+      "channel-aware policy/telemetry",
+      "browser policy/session seam",
+      "voice provider seam tracking",
+      "secrets/sandbox architecture references",
+      "UI operator console for runtime capabilities"
+    ],
+    "excludedOrDeferred": [
+      "second agent loop",
+      "second memory owner",
+      "PySide desktop owner",
+      "native Playwright worker dependency",
+      "flat SQLite authority",
+      "unreviewed self-modifying executor"
+    ],
+    "status": "adapter layer implemented and server/UI smoke validated"
+  },
+  "memoryEvidenceLineage": {
+    "workpass": 30,
+    "canonicalOwner": "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts",
+    "ingestionBridge": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts#integrateExternalResearchMemory",
+    "lineageIdentity": "EvidenceFirewall/ProjectResearchSession sourceLineageKey; publisher/host is retained as provenance, not automatically treated as independence",
+    "visibleLineageLimitPerMemory": 8,
+    "replayGuardLimit": 32,
+    "externalEvidenceStatus": "hypothesis-only; capped confidence; no automatic fact promotion",
+    "readModels": [
+      "Runtime Atlas /api/organism/memory-inspector",
+      "MemoryOS2.inspectRecent",
+      "MemoryOS2.evidenceTrail"
+    ],
+    "promotion": "not-promoted based on retrieval quality; independent labelled temporal holdout remains required"
+  },
+  "latestRelease": "WorkPass70/Unified-Embodiment-Intent-Audio-Clock-and-Viseme-Timeline",
+  "workpass52": {
+    "runtime": "35.73.0",
+    "schema": 225,
+    "summary": "Qualified project-execution progress, persistence-safe qualifying attempts, gate-checked receipt idempotency, and per-step progress visibility."
+  },
+  "actionApprovalGate": {
+    "owner": "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts",
+    "status": "implementation-workpass",
+    "binding": "exact tool id, input, operation, decision lineage and expected output keys",
+    "lifecycle": "persisted pending -> owner approved/declined -> one-time consume; expires after five minutes",
+    "directSurfaces": [
+      "tool execute",
+      "tool reconcile",
+      "project tool steps",
+      "reusable skill steps",
+      "voice speak/listen/turn",
+      "current outbound integration route",
+      "legacy WILL outbound route",
+      "research bridge probe subprocess"
+    ],
+    "ui": "IntegrationConsole exact-bound approve-and-run-once card; Runtime Atlas global review queue",
+    "limitations": "production browser E2E and a real provider/device side effect remain unverified"
+  },
+  "workPass55": {
+    "approvalLifecycle": "server pending approval tickets from previous/other tabs are discoverable and explicitly declinable; the app never stores raw request bodies or auto-runs orphaned actions",
+    "memoryRetrieval": "MemoryOS2 canonical hybrid retrieval now includes pre-tokenized bilingual concept groups with balanced multi-concept expansion and explicit interest/personality intent",
+    "knownLimitations": [
+      "independent memory retrieval uplift not established",
+      "production app build and interactive browser E2E not run in current environment",
+      "real provider/device and audio-buffer lipsync acceptance remain open"
+    ]
+  },
+  "workPass56": {
+    "memoryIndexMaintenance": "Opt-in MemoryFabric maintenance schedules one bounded low-priority batch of at most eight MemoryOS2 records, with content-hash stale rejection, short provider timeout, retry backoff and lexical fallback; embeddings remain a derived bounded cache rather than canonical memory.",
+    "providerSerialization": "Live cognitive retrieval, explicit semantic-inspector queries and background maintenance share a single serialized provider lane; live cognition immediately uses canonical lexical/fuzzy retrieval while the provider is busy.",
+    "sourceIntegration": "Adapts the deferred batch/retry pattern from retained Hexis MIT source services/memory_embeddings.py; no SQL database, alternate memory runtime or canonical fact copy was imported.",
+    "knownLimitations": [
+      "NK_EMBEDDINGS_RUNTIME_ENABLED defaults off; real local embedding provider and target-host performance have not been run in this environment",
+      "Broad independent memory retrieval benchmark still reports recallDelta=0; the concept bridge is not promoted",
+      "Production Vite build/browser E2E, live provider/device outcome receipts, audio-buffer/phoneme lip sync, clean-room rollback, full nested-source license sign-off and soak remain open"
+    ],
+    "embeddingPrivacyBoundary": "LocalEmbeddingProvider sanitizes common credentials, bearer/API tokens, private-key blocks, emails, phone-like values, credentialed URLs and long numeric IDs before cache keying or outbound requests; only aggregate redaction counts are exposed. This is not universal PII classification."
+  },
+  "workpass69": {
+    "runtime": "35.89.0",
+    "schema": 225,
+    "canonicalSpeechOwner": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts#organism.device.speak",
+    "legacyAlias": "android.speak is normalized to organism.device.speak; no second Termux speech executor is registered in OrganismRuntime.",
+    "interruptOwner": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts#organism.device.speech.interrupt",
+    "interruptionContract": "Keyed, target-bound interrupt goes through ActionGateway. A positive response means process termination was requested/observed only; playbackVerified remains false because Termux exposes no authoritative audio readback.",
+    "userSurface": "POST /api/organism/voice/interrupt and IntegrationConsole Interrupt speech control; server-smoke and UI-smoke cover request surface.",
+    "verification": "Runtime typecheck, TTS concurrency fake-process tests, server-smoke and UI-smoke pass. Live Android audio and production app browser/Live2D E2E remain open."
+  },
+  "workpass70": {
+    "runtime": "35.90.0",
+    "schema": 225,
+    "contract": "contracts/embodiment-intent.v1.schema.json; one versioned kurisu_embodiment_intent envelope transports speech identity/clock/phase, mouth viseme, face expression, gaze, body pose/motion, priority and cancellation token.",
+    "owner": "app/src/components/AvatarStage.tsx is the sole browser speech timeline publisher; app/public/live2d/viewer.html accepts the single typed, stateVersion-gated control contract.",
+    "timing": "One monotonic speech-audio clock drives both published audioTimeMs and viseme timeline sampling. SpeechSynthesis UTF-16 charIndex boundaries re-anchor the text mapping; elapsedTime contributes an additional anchor when available, while the clock high-water mark never rewinds and stale/out-of-order boundaries are rejected.",
+    "cancellation": "Utterance identity guards suppress stale onstart/onboundary/onend/onerror callbacks; cancelled state carries cancel:<speechEventId> token and viewer closes the mouth immediately. Iframe remount handshake resends the latest state.",
+    "verification": "Nine targeted timeline/viewer-handler tests, 227 app-script tests, runtime typecheck, viewer JS syntax, release metadata and runtime contract/integrity/source checks pass. The production viewer message handler is exercised in an isolated VM with stubbed DOM/model methods, not in a browser renderer. Chromium in this container hangs before rendering even a simple page; real browser audio/Live2D p95 measurement remains open."
+  }
+}

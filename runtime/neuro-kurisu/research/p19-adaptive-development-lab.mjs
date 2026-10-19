@@ -1,0 +1,13 @@
+import os from 'node:os';
+import path from 'node:path';
+import { mkdtemp } from 'node:fs/promises';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+const dir=await mkdtemp(path.join(os.tmpdir(),'nk-p19-lab-'));
+const rt=new OrganismRuntime({stateFile:path.join(dir,'organism.json'),worldStateFile:path.join(dir,'world.json'),autoRun:false,checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:4});
+await rt.init();
+const started=Date.now();
+for(let i=0;i<64;i++) await rt.step(i%32===0?`Используй новый сигнал ${i} для проверки гипотезы` : undefined);
+const dev=rt.adaptiveDevelopmentSnapshot();
+const long=rt.longitudinalSnapshot();
+const rows={release:'P19',cycles:dev.cycles,actionCoverage:Object.keys(dev.actionCounts).length,behaviorEntropy01:dev.behaviorEntropy01,diversityPressure01:dev.diversityPressure01,explorationPressure01:dev.explorationPressure01,meanSuccess01:dev.meanSuccess01,recoveryMode01:dev.recoveryMode01,performanceMs:Date.now()-started,longitudinal:{continuity01:long.continuity01,causalEvidence01:long.causalEvidence01,predictionCalibration01:long.predictionCalibration01}};
+console.log(JSON.stringify(rows,null,2));

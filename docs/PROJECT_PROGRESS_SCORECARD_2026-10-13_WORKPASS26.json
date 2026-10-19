@@ -1,0 +1,131 @@
+{
+  "title": "Neuro-Kurisu SUPER — reconciled weighted implementation roadmap scorecard",
+  "date": "2026-10-13",
+  "workpass": "26 — temporal MemoryOS2 semantics, side-effect-free preview and UI inspector controls",
+  "baseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS25_2026-10-11.zip",
+  "runtime": "Neuro-Kurisu 35.49.0",
+  "schema": 224,
+  "method": "WorkPass26 closes a scoped implementation deliverable in the canonical MemoryOS2 temporal path: archive retrieval no longer drops expired revisions, absent asOfAt selects the live temporal view rather than epoch zero, and inspector previews operate on an isolated snapshot; Runtime Atlas exposes the temporal controls. This is code-path correctness in deterministic tests, not measured retrieval uplift. An independently labelled temporal holdout and BM25 comparison are still required; UI production build/browser E2E and other release gates remain open.",
+  "overallPercent": 72.15,
+  "previousOfficialScorePercent": 72.0,
+  "deltaPercentagePoints": 0.15,
+  "remainingWeightedRoadmapPoints": 27.85,
+  "workstreams": [
+    {
+      "id": "A",
+      "name": "Canonical source lineage and single-owner architecture",
+      "weight": 15,
+      "completionPercent": 100,
+      "weightedPoints": 15.0,
+      "previousPercent": 100,
+      "rationale": "No duplicate canonical owner; source manifests and metadata contract reconciled."
+    },
+    {
+      "id": "B",
+      "name": "Runtime integration, API/UI routes and smoke/linkage coverage",
+      "weight": 15,
+      "completionPercent": 95,
+      "weightedPoints": 14.25,
+      "previousPercent": 95,
+      "rationale": "WorkPass16 makes browser smoke fail closed on required brand warnings and actual auth mismatch, exposes indeterminate auth state, validates bounded timeouts, and atomically publishes private verdict files. The 212/212 source-only UI script suite passes; dependency-complete UI build and actual browser E2E remain open."
+    },
+    {
+      "id": "C",
+      "name": "Memory 2.0, retrieval/admission and benchmark evidence",
+      "weight": 15,
+      "completionPercent": 66,
+      "weightedPoints": 9.9,
+      "previousPercent": 65,
+      "rationale": "WorkPass26 repairs temporal archive filtering and absent/null asOfAt semantics, adds an isolated-snapshot read-only preview across MemoryOS2→MemoryFabric→OrganismCore, and exposes current/as-of/all revision search through Runtime Atlas. Focused regressions pass; this does not prove independent temporal retrieval uplift, which remains not-promoted pending labelled holdout and BM25 comparison."
+    },
+    {
+      "id": "D",
+      "name": "Agency, action schema, execution, outcome and reafference",
+      "weight": 20,
+      "completionPercent": 68,
+      "weightedPoints": 13.6,
+      "previousPercent": 65,
+      "rationale": "WorkPass20 adds exact action execution/step receipt correlation and a persisted bounded idempotency ledger; duplicate/stale receipts cannot advance later project steps. Entire action→independent external receipt→reafference chain remains partial."
+    },
+    {
+      "id": "E",
+      "name": "Portable subject continuity and social/known-entity dossier",
+      "weight": 10,
+      "completionPercent": 75,
+      "weightedPoints": 7.5,
+      "previousPercent": 75,
+      "rationale": "Read-only dossier and fidelity contracts are present; browser-backed corrections and behavioral equivalence remain open."
+    },
+    {
+      "id": "F",
+      "name": "External transport, SDK, idempotency and replay",
+      "weight": 10,
+      "completionPercent": 40,
+      "weightedPoints": 4.0,
+      "previousPercent": 40,
+      "rationale": "Conscio/Hexis/WILL local idempotency, queue backpressure and ACK/replay contracts improved; remote provider receipt/reconnect proof remains open."
+    },
+    {
+      "id": "G",
+      "name": "Research promotion and controlled experiments",
+      "weight": 5,
+      "completionPercent": 66,
+      "weightedPoints": 3.3,
+      "previousPercent": 63,
+      "rationale": "WorkPass25 supplies a deterministic private-first temperature-scaling fitter with a group-disjoint validation fold, version/dataset-bound artifact contract, NLL/Brier/ECE eligibility thresholds and provenance propagation into evidence/restore. This is an implemented pipeline only: the real pinned pretrained model and independent final holdout have not been run."
+    },
+    {
+      "id": "H",
+      "name": "Release durability: build, E2E, rollback, soak, SBOM/provenance",
+      "weight": 10,
+      "completionPercent": 46,
+      "weightedPoints": 4.6,
+      "previousPercent": 45,
+      "rationale": "Release metadata and operational readiness reporting improved; dependency-complete app install/build, browser E2E, clean-room restore/rollback, soak and final SBOM/provenance remain open."
+    }
+  ],
+  "normalizedTaskInventory": {
+    "count": 78,
+    "counts": {
+      "DONE": 57,
+      "PARTIAL": 11,
+      "TODO": 10
+    },
+    "strictDonePercent": 73.08,
+    "partialPercent": 14.1,
+    "todoPercent": 12.82,
+    "halfCreditEquivalentPercent": 80.13,
+    "note": "Normalized unique deliverables, not append-only historical tasklist line counts. PARTIAL is not treated as DONE. This inventory score does not establish release readiness."
+  },
+  "openReleaseGates": [
+    "Real autonomous research on at least two allowed external HTTPS hosts with distinct evidence and persisted source receipt",
+    "Real pretrained NLI inference on a fixed labelled, domain-relevant adversarial holdout; threshold review must remain separate from evaluation; multilingual/domain compatibility is unproven",
+    "Complete agency loop from competition to independent postcondition, persistence and reafference with cross-consumer no-double-credit",
+    "Entity correction/expiry/conflict across browser-backed multi-session flows",
+    "Portable subject continuity and behavioral fidelity",
+    "Capability evidence graph for critical user journeys",
+    "External provider delivery receipts, reconnect and replay guarantees",
+    "Clean-room backup/restore, schema migration and rollback drill",
+    "Research candidate integrations from NeuroCore/NOMEGA/DeepCode only where they measurably beat canonical baselines",
+    "Authorization/abuse/rate-limit review for diagnostic and benchmark APIs",
+    "Independent labelled temporal MemoryOS2 holdout and comparison to BM25 baseline",
+    "Dependency-complete app install and root/app semantic typecheck",
+    "React/Vite production build",
+    "Desktop/mobile browser E2E, including actual Live2D interaction",
+    "Multi-hour soak with memory and resource-growth limits",
+    "Final SBOM, license inventory and immutable release provenance sign-off",
+    "Release-candidate sign-off"
+  ],
+  "environmentNote": "WorkPass25: runtime TypeScript and focused implementation tests pass; all root gate components have passed, though one final concatenated aggregate invocation exceeded the tool time limit after completing the nested runtime gate. Calibration fitter uses a local mock; no real model inference was run because model/package registry DNS remains unavailable. UI production build is blocked by missing Vite install. Memory candidate remains not-promoted because its confidence interval permits regression and an independent temporal holdout is still absent.",
+  "releaseStatus": "implementation-workpass; NOT release-ready",
+  "limitations": [
+    "Actual pinned DeBERTa model weights and inference were not run in this environment; package/model registry DNS was unavailable. Calibration fitter tests use a loopback mock, not real inference.",
+    "Temperature fit uses its own training subset; NLL/Brier/ECE review checks are calculated on a deterministic group-disjoint validation subset from a dedicated calibration set. The final evaluation holdout must remain separate and untouched.",
+    "Temperature scaling calibrates NLI class scores for the represented distribution. It does not turn NLI into a probability that a sourced world claim is true and is never auto-promoted.",
+    "The test suite verifies contracts, group-disjoint split and provenance/failure handling but does not establish domain quality, multilingual behavior or improvement over baseline.",
+    "MemoryOS2 benchmark candidate remains not-promoted: a confidence interval allows regression, and an independent labelled temporal holdout and BM25 comparison remain open.",
+    "App dependency-complete installation, React/Vite production build and desktop/mobile browser E2E remain open because the sandbox cannot resolve package registries.",
+    "Live external research/provider receipts, complete agency→independent postcondition→reafference, clean-room restore/rollback, multi-hour soak, SBOM/provenance and final sign-off remain open.",
+    "No release-ready status or human-like/biological intelligence claim is made."
+  ]
+}

@@ -1,0 +1,10 @@
+import { RELEASE_CONTRACT } from '../src/organism/system/ReleaseContract.ts';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import assert from 'node:assert/strict';
+const core=new OrganismCore(new MemoryStateStore()); await core.init();
+await core.observe({text:'camera sees a new object',vision:{features:[.8,.1,.4,.7,.2],confidence01:.75},audio:{samples:Array.from({length:160},(_,i)=>Math.sin(i/3)),sampleRate:16000},novelty:.8});
+await core.feedback({success:.7,reward:.8,surprise:.2});
+const s=core.p27Snapshot(); assert(s.metrics.encoded>=3); assert(s.metrics.fused>=1); assert(s.world.samples>=1); const cf=core.p27Counterfactuals(); assert(cf.length===7);
+const snap=core.snapshot(); assert.equal(snap.facets.cognition.p27.world.samples,s.world.samples); assert.equal(snap.schemaVersion,RELEASE_CONTRACT.stateSchema);
+console.log(`P27_INTEGRATION=PASS samples=${s.world.samples} encoded=${s.metrics.encoded} counterfactuals=${cf.length}`);

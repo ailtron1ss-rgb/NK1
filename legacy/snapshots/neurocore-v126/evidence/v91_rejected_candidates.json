@@ -1,0 +1,19 @@
+{
+  "candidates": [
+    {
+      "name": "learned_surprise_plasticity",
+      "decision": "rejected",
+      "reason": "optimized variant regressed against V90 on short and 240-step matched recall while adding parameters/complexity"
+    },
+    {
+      "name": "state_aware_router",
+      "decision": "rejected",
+      "reason": "small short-horizon effects were inconsistent and the 200-step run did not improve recall"
+    },
+    {
+      "name": "learned_output_gate",
+      "decision": "rejected",
+      "reason": "episodic recall decreased while latency increased"
+    }
+  ]
+}

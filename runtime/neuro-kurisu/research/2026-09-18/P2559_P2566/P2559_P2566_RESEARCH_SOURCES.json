@@ -1,0 +1,11 @@
+[
+  {"title":"World Models for Embodied Intelligence: From Plausible to Controllable to Actionable","year":2026,"url":"https://arxiv.org/abs/2609.16697","use":"evaluate world models by actionable closed-loop improvement"},
+  {"title":"A survey of world models for physical AI with uncertainty representation and control","year":2026,"url":"https://link.springer.com/article/10.1007/s44163-026-02122-1","use":"partial observability, uncertainty, latent dynamics, decision coupling"},
+  {"title":"Learning Latent Action World Models In The Wild","year":2026,"url":"https://arxiv.org/abs/2601.05230","use":"compact latent action interface and transferable action models"},
+  {"title":"World Models Under Asynchronous Sensor Observations","year":2026,"url":"https://arxiv.org/abs/2609.07299","use":"sensor freshness/staleness and asynchronous observations"},
+  {"title":"SAFA-SNN","year":2026,"url":"https://proceedings.iclr.cc/paper_files/paper/2026/hash/8fba406323cb3930aeaccc9aa64c83a-Abstract-Conference.html","use":"sparsity-aware on-device continual learning"},
+  {"title":"Responsive Test-Time Model Adaptation for Mobile Applications via Runtime-efficient Sparse Updates","year":2026,"url":"https://scholars.cityu.edu.hk/en/publications/responsive-test-time-model-adaptation-for-mobile-applications-via/","use":"mobile sparse adaptation and latency constraints"},
+  {"title":"BoTTA: Benchmarking On-device Test Time Adaptation","year":2026,"url":"https://doi.org/10.1145/3774906.3800498","use":"device-aware adaptation tradeoffs"},
+  {"title":"Mixture-of-World Models","year":2026,"url":"https://proceedings.iclr.cc/paper_files/paper/2026/hash/33b47b3d2441a17b95344cd635f3dd01-Abstract-Conference.html","use":"modular latent world dynamics"},
+  {"title":"Reinforcement World Model Learning for LLM-based Agents","year":2026,"url":"https://huggingface.co/papers/2602.05842","use":"align simulated next states with realized next states"}
+]

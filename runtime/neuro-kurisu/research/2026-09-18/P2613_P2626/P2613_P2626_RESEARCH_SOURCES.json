@@ -1,0 +1,15 @@
+{
+  "date": "2026-09-18",
+  "release": "35.6.72",
+  "sources": [
+    {"title":"Hierarchical Planning with Latent World Models","authors":"Wancong Zhang et al.","year":2026,"id":"arXiv:2604.03208","url":"https://arxiv.org/abs/2604.03208","usedFor":["hierarchical planning","compute reduction","multi-timescale world model"]},
+    {"title":"Test-Time Mixture of World Models for Embodied Agents in Dynamic Environments","authors":"Jinwoo Jang et al.","year":2026,"id":"arXiv:2601.22647","url":"https://arxiv.org/abs/2601.22647","usedFor":["prototype routing","test-time adaptation","expert recombination"]},
+    {"title":"Rethinking World Models for Safety-Critical Embodied Systems","authors":"Kailang Ma et al.","year":2026,"id":"arXiv:2609.03774","url":"https://arxiv.org/abs/2609.03774","usedFor":["risk","recoverability","epistemic uncertainty","abstention"]},
+    {"title":"World Models for Embodied Intelligence: From Plausible to Controllable to Actionable","authors":"Nanjie Yao et al.","year":2026,"id":"arXiv:2609.16697","url":"https://arxiv.org/abs/2609.16697","usedFor":["actionable world-model evaluation","verification","recovery"]},
+    {"title":"Break It Down, Pass It On: Cross-Task Skill Transfer in LLM Agents","authors":"Yiyang Feng et al.","year":2026,"id":"arXiv:2608.20274","url":"https://arxiv.org/abs/2608.20274","usedFor":["specificity","abstractness","skill utility","negative transfer"]},
+    {"title":"IDER: IDempotent Experience Replay for Reliable Continual Learning","authors":"Zhanwang Liu et al.","year":2026,"id":"arXiv:2603.00624","url":"https://arxiv.org/abs/2603.00624","usedFor":["continual replay","uncertainty calibration"]},
+    {"title":"AdaJEPA: An Adaptive Latent World Model","authors":"Ying Wang et al.","year":2026,"id":"arXiv:2606.32026","url":"https://arxiv.org/abs/2606.32026","usedFor":["test-time world-model adaptation"]},
+    {"title":"EnerInfer: Energy-Aware On-Device LLM Inference","authors":"Bohua Zou et al.","year":2026,"id":"arXiv:2606.23001","url":"https://arxiv.org/abs/2606.23001","usedFor":["energy-aware runtime scheduling","thermal adaptation"]},
+    {"title":"Phoenix: Thermal-Aware On-Device Inference of Multi-Instance DNNs for Mobile Video Applications","year":2026,"id":"ACM TECS","url":"https://doi.org/10.1145/3793860","usedFor":["thermal scheduling","adaptive early exit"]}
+  ]
+}

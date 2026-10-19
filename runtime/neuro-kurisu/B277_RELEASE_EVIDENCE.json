@@ -1,0 +1,55 @@
+{
+  "version": "B277-evidence-1",
+  "standalone": {
+    "cycles": 220,
+    "learningUpdates": 220,
+    "operatorGenerations": 3,
+    "verifiedOperators": 1,
+    "neuralSparsity01": 0.7500000000025733,
+    "homeostasis01": 0.9700000000425897,
+    "selfGrounding01": 0.7808995167496753,
+    "transferGain01": 0.6180027227897654
+  },
+  "independent": {
+    "hiddenAverage": 0.72,
+    "baseline": 0.45,
+    "gain": 0.27,
+    "cycles": 220,
+    "learningUpdates": 220,
+    "operatorGenerations": 3,
+    "verifiedOperators": 2
+  },
+  "core": {
+    "cycles": 18,
+    "restartPass": true,
+    "neuralSparsity01": 0.8627478245424937,
+    "homeostasis01": 0.8600658982110501,
+    "selfGrounding01": 0.6564347974725828,
+    "personalityCausalUpdates": 210
+  },
+  "migration": {
+    "roundTripPass": true
+  },
+  "audit": {
+    "fullAuditPass": true,
+    "warnings": 0,
+    "errors": 0,
+    "architecturePass": true,
+    "integrityPass": true,
+    "forensicsPass": true,
+    "hygienePass": true,
+    "syntaxPass": true,
+    "contractPass": true,
+    "lockPass": true,
+    "releaseSourcePass": true,
+    "doctorPass": true,
+    "syntaxCounts": {
+      "js": 686,
+      "sh": 4,
+      "json": 176,
+      "failures": 0
+    },
+    "fullAuditFiles": 2050,
+    "canonicalFiles": 360
+  }
+}

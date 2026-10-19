@@ -1,0 +1,23 @@
+{
+  "pass": 176,
+  "date": "2026-09-10",
+  "results": {
+    "typecheck": "PASS",
+    "bigPass176": "PASS",
+    "parameterizedProbe": {"attempted": 509, "passed": 497, "failed": 0, "inputSynthesisNeeded": 0, "lifecycleNeeded": 12},
+    "semantic": {"functions": 2485, "verified": 24, "integrationOnly": 594, "unsafe": 214, "unverified": 1653, "verifiedRate01": 0.0097, "evidenceCoverage01": 0.0694},
+    "liveness": {"declarations": 2557, "withBody": 2528, "exported": 105, "zeroReference": 157, "oneOrLessReference": 481},
+    "longHorizon250": {"status":"PASS", "ratio":1.315, "firstMedianMs":46.88, "lastMedianMs":61.65, "p95ApproxMs":84.92, "heapGrowth":1.688},
+    "longHorizon500": {"status":"PASS", "ratio":1.038, "firstMedianMs":68.84, "lastMedianMs":71.49, "p95Ms":101.01, "heapFirstMB":43.26, "heapLastMB":212.08},
+    "longHorizon500Warm": {"status":"PASS", "ratio":1.388, "firstMedianMs":52.28, "lastMedianMs":72.55, "p95Ms":114.93, "heapGrowth":1.403},
+    "microPersistence": {"liveTick":24, "automaticPersistedTick":17, "crashLossTicks":7, "flushPersistedTick":24, "ceiling":16},
+    "replay": {"usesStateAfter":true, "idempotent":true},
+    "regression": {"p18":"PASS", "p20Temporal":"PASS", "p20Session":"PASS", "p42to44":"PASS", "p64p65":"PASS", "p66p68":"PASS", "p69to73":"PASS", "coreZeroArg":"73/73 PASS", "smoke":"PASS", "restart":"PASS", "memory":"PASS", "concurrency":"PASS"},
+    "release": {"architecture":"PASS", "integrity":"PASS", "forensics":"PASS", "hygiene":"PASS", "releaseSource":"PASS", "lock":"PASS"}
+  },
+  "honesty": {
+    "aggregateBigPass176": "NOT_CLAIMED_AS_PASS",
+    "reason": "Constituent gates were executed and recorded individually; the full aggregate orchestrator is not used as a substitute for completed evidence when a sandbox-wide runtime limit can intervene.",
+    "heapWarning": "Long-horizon heap growth remains an open performance issue."
+  }
+}

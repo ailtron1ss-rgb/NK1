@@ -1,0 +1,159 @@
+import type { ActionKind } from '../core/types.ts';
+
+const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
+const VARIANTS=['causal-graph','procedural-refiner','meta-router','compute-allocator','hierarchical-world','coordinated-rollout','confidence-calibrator','self-experiment'] as const;
+export type B421Variant=typeof VARIANTS[number];
+export type B421Mode='minimal'|'normal'|'deep'|'research';
+export interface B421Episode {tick:number; context:number[]; action:ActionKind; next:number[]; reward01:number; surprise01:number; verified01:number; success01:number; goal01:number; complexity01:number; strategy:B421Mode;}
+export interface B421Procedure {key:string; action:ActionKind; context:number[]; reward01:number; utility01:number; failures:number; successes:number; confidence01:number; lastTick:number; mass01:number;}
+export interface B421CausalEdge {from:number[]; action:ActionKind; to:number[]; effect01:number; confidence01:number; count:number;}
+export interface B421State {
+ version:1; enabled:boolean; tick:number; lesions:Record<B421Variant,boolean>;
+ router:Record<B421Variant,number>; losses:Record<B421Variant,number>; uses:Record<B421Variant,number>;
+ episodes:B421Episode[]; procedures:B421Procedure[]; edges:B421CausalEdge[];
+ transition:Array<{action:ActionKind;state:number[];next:number[];reward01:number;count:number}>;
+ calibration:Array<{bucket:number;total:number;correct:number}>;
+ diagnostics:{decisions:number;updates:number;retrievals:number;rollouts:number;experiments:number;procedures:number;pruned:number;holdouts:number;restartCount:number;lastCausalDelta01:number;lastConfidence01:number;lastComputeBudget01:number;lastNovelty01:number;bestStrategy:B421Variant;developmentalGain01:number;holdoutScore01:number;strategyMode:B421Mode};
+ last:{context:number[];actionScore:number[];strategy:B421Mode;route:Record<B421Variant,number>;retrievalStrength01:number;worldConfidence01:number;rolloutGain01:number;confidence01:number;computeBudget01:number;novelty01:number;}
+}
+export interface B421Input {tick:number; context01:number[]; baseUtilities:Record<ActionKind,number>; baseProbabilities?:Record<ActionKind,number>; reward01:number; surprise01:number; novelty01:number; uncertainty01:number; predictionError01:number; goalVector?:number[]; selfVector?:number[]; motivation01?:number; memoryStrength01?:number; complexity01?:number;}
+export interface B421Output {actionBias:Record<ActionKind,number>; predictiveUtility:Record<ActionKind,number>; strategy:{mode:B421Mode;route:Record<B421Variant,number>;best:B421Variant}; retrieval:{strength01:number;causalEvidence01:number;proceduralEvidence01:number}; world:{confidence01:number;horizons:number[]}; computeBudget01:number; confidence01:number; expectedInformationGain01:number; experimentCandidate01:number;}
+
+const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:.5));
+const signed=(x:number)=>Math.max(-1,Math.min(1,Number.isFinite(x)?x:0));
+const mean=(xs:number[])=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:.5;
+const dot=(a:number[],b:number[])=>{let s=0;for(let i=0;i<Math.min(a.length,b.length);i++)s+=(a[i]??0)*(b[i]??0);return s;};
+const norm=(a:number[])=>Math.sqrt(Math.max(1e-9,dot(a,a)));
+const cosine=(a:number[],b:number[])=>clamp((dot(a,b)/(norm(a)*norm(b))+1)/2);
+const dist=(a:number[],b:number[])=>mean(Array.from({length:Math.min(a.length,b.length)},(_,i)=>Math.abs((a[i]??0)-(b[i]??0))));
+const sig=(x:number)=>1/(1+Math.exp(-8*(x-.5)));
+const ctx8=(v:number[])=>Array.from({length:8},(_,i)=>clamp(v[i%Math.max(1,v.length)]??.5));
+const uniform=()=>ACTIONS.map(()=>1/ACTIONS.length);
+
+const DEFAULT_ROUTER:Record<B421Variant,number>={'causal-graph':.15,'procedural-refiner':.13,'meta-router':.15,'compute-allocator':.09,'hierarchical-world':.15,'coordinated-rollout':.14,'confidence-calibrator':.09,'self-experiment':.10};
+
+export const defaultB421B450State=():B421State=>({
+  version:1,enabled:true,tick:0,
+  lesions:Object.fromEntries(VARIANTS.map(k=>[k,false])) as Record<B421Variant,boolean>,
+  router:{...DEFAULT_ROUTER},
+  losses:Object.fromEntries(VARIANTS.map(k=>[k,.22])) as Record<B421Variant,number>,
+  uses:Object.fromEntries(VARIANTS.map(k=>[k,0])) as Record<B421Variant,number>,
+  episodes:[],procedures:[],edges:[],transition:[],
+  calibration:Array.from({length:6},(_,i)=>({bucket:i,total:0,correct:0})),
+  diagnostics:{decisions:0,updates:0,retrievals:0,rollouts:0,experiments:0,procedures:0,pruned:0,holdouts:0,restartCount:0,lastCausalDelta01:0,lastConfidence01:.5,lastComputeBudget01:.35,lastNovelty01:.5,bestStrategy:'causal-graph',developmentalGain01:0,holdoutScore01:0,strategyMode:'normal'},
+  last:{context:Array(8).fill(.5),actionScore:uniform(),strategy:'normal',route:{...DEFAULT_ROUTER},retrievalStrength01:0,worldConfidence01:.5,rolloutGain01:0,confidence01:.5,computeBudget01:.35,novelty01:.5}
+});
+
+export class B421B450ResearchAccelerationCore {
+ private state:B421State=defaultB421B450State();
+ snapshot(){return structuredClone(this.state);}
+ diagnostics(){return structuredClone(this.state);}
+ restore(source?:Partial<B421State>){
+  const d=defaultB421B450State();const s:any=source??{};
+  this.state={...d,...structuredClone(s),
+    lesions:{...d.lesions,...(s.lesions??{})},router:{...d.router,...(s.router??{})},
+    losses:{...d.losses,...(s.losses??{})},uses:{...d.uses,...(s.uses??{})},
+    episodes:Array.isArray(s.episodes)?structuredClone(s.episodes).slice(-512):[],
+    procedures:Array.isArray(s.procedures)?structuredClone(s.procedures).slice(-160):[],
+    edges:Array.isArray(s.edges)?structuredClone(s.edges).slice(-384):[],
+    transition:Array.isArray(s.transition)?structuredClone(s.transition).slice(-256):[],
+    calibration:Array.isArray(s.calibration)?structuredClone(s.calibration).slice(0,6):d.calibration,
+    diagnostics:{...d.diagnostics,...(s.diagnostics??{})},
+    last:{...d.last,...(s.last??{}),route:{...d.last.route,...(s.last?.route??{})}}
+  };
+ }
+ setEnabled(v:boolean){this.state.enabled=Boolean(v);}
+ setLesions(v:Partial<Record<B421Variant,boolean>>){this.state.lesions={...this.state.lesions,...v};}
+ markRestart(){this.state.diagnostics.restartCount+=1;}
+ private normalizeRouter(){const active=VARIANTS.reduce((s,k)=>s+((this.state.lesions[k]?0:this.state.router[k]??0)),0)||1;for(const k of VARIANTS)this.state.router[k]=(this.state.lesions[k]?0:(this.state.router[k]??DEFAULT_ROUTER[k])/active);}
+ private retrieve(ctx:number[], limit=8){this.state.diagnostics.retrievals++;const scored=this.state.episodes.map(e=>({e,score:clamp(.58*(1-dist(ctx,e.context))+.17*e.reward01+.13*e.verified01+.12*(1-e.complexity01))})).sort((a,b)=>b.score-a.score).slice(0,limit);return scored;}
+ private causalEvidence(ctx:number[],action:ActionKind){if(this.state.lesions['causal-graph'])return .5;const rows=this.state.edges.filter(e=>e.action===action&&dist(ctx,e.from)<.055).map(e=>({e,score:clamp(.72*(1-dist(ctx,e.from))+.28*e.confidence01)})).sort((a,b)=>b.score-a.score).slice(0,6);return rows.length?mean(rows.map(x=>x.score)): .5;}
+ private proceduralEvidence(ctx:number[],action:ActionKind){if(this.state.lesions['procedural-refiner'])return .5;const rows=this.state.procedures.filter(p=>p.action===action&&dist(ctx,p.context)<.055).map(p=>clamp(.62*(1-dist(ctx,p.context))+.24*p.confidence01+.14*p.utility01));return rows.length?mean(rows.slice(-6)): .5;}
+ private worldPrediction(ctx:number[],action:ActionKind,depth:number){if(this.state.lesions['hierarchical-world'])return {score:.5,confidence:.2,next:ctx};const rows=this.state.transition.filter(t=>t.action===action);if(!rows.length)return {score:.5,confidence:.15,next:ctx};let state=ctx.slice();let total=0;let w=1;for(let h=0;h<depth;h++){const best=rows.reduce((p,r)=>1-dist(state,r.state)>1-dist(state,p.state)?r:p,rows[0]!);total+=w*clamp(.52*best.reward01+.48*(1-dist(state,best.next)));state=best.next.slice();w*=.64;}return {score:clamp(total/(1+.64+.64**2+.64**3)),confidence:clamp(.18+rows.length/32*.65+.05*depth),next:state};}
+ private rollout(ctx:number[],action:ActionKind,input:B421Input){if(this.state.lesions['coordinated-rollout'])return {score:input.baseUtilities[action]??.5,gain:0};const horizons=[1,2,3];const branches:number[]=[];for(const h of horizons){const w=this.worldPrediction(ctx,action,h);const novelty=clamp(input.novelty01*(1-h*.08));branches.push(clamp(.62*w.score+.18*w.confidence+.20*novelty));}this.state.diagnostics.rollouts+=3;const best=branches.reduce((a,b)=>a>b?a:b,.5);const baseline=clamp(input.baseUtilities[action]??.5);return {score:best,gain:best-baseline};}
+ private chooseMode(input:B421Input):{mode:B421Mode;budget:number;complexity:number}{if(this.state.lesions['compute-allocator'])return {mode:'normal',budget:.35,complexity:.5};const complexity=clamp(.24*input.uncertainty01+.22*input.predictionError01+.20*input.surprise01+.18*input.novelty01+.16*(input.complexity01??.5));const budget=clamp(.15+.85*complexity);const mode: B421Mode=budget>.78?'research':budget>.57?'deep':budget>.34?'normal':'minimal';return {mode,budget,complexity};}
+ private route(input:B421Input,mode:B421Mode){
+  if(this.state.lesions['meta-router']){const w={...DEFAULT_ROUTER};this.normalizeRouter();return w;}
+  const route={...this.state.router};
+  const hardness=clamp(.5+.35*input.uncertainty01+.25*input.predictionError01);
+  const modeGain=mode==='research'?1.18:mode==='deep'?1.08:mode==='minimal'?.80:1;
+  for(const k of VARIANTS){
+    let bias=1;
+    if(k==='causal-graph')bias=1+.55*input.predictionError01;
+    if(k==='procedural-refiner')bias=1+.50*(1-input.novelty01);
+    if(k==='hierarchical-world')bias=1+.55*input.uncertainty01;
+    if(k==='coordinated-rollout')bias=1+.65*hardness;
+    if(k==='confidence-calibrator')bias=1+.65*input.uncertainty01;
+    if(k==='self-experiment')bias=1+.65*input.novelty01;
+    route[k]=clamp(route[k]*bias*modeGain);
+  }
+  const z=Object.values(route).reduce((a,b)=>a+b,0)||1;
+  for(const k of VARIANTS)route[k]/=z;
+  return route;
+ }
+ beforeDecision(input:B421Input):B421Output{
+  if(!this.state.enabled)return {actionBias:Object.fromEntries(ACTIONS.map(a=>[a,0])) as any,predictiveUtility:{...input.baseUtilities},strategy:{mode:'minimal',route:{...DEFAULT_ROUTER},best:'meta-router'},retrieval:{strength01:0,causalEvidence01:.5,proceduralEvidence01:.5},world:{confidence01:.2,horizons:[.5,.5,.5]},computeBudget01:0.05,confidence01:.5,expectedInformationGain01:.5,experimentCandidate01:0};
+  this.state.tick=input.tick;this.state.diagnostics.decisions++;
+  const ctx=ctx8(input.context01);const {mode,budget}=this.chooseMode(input);let route=this.route(input,mode);this.normalizeRouter();
+  const retrieveLimit=mode==='research'?8:mode==='deep'?6:mode==='normal'?3:1;
+  const rec=this.retrieve(ctx,retrieveLimit);const retrievalStrength=rec.length?mean(rec.slice(0,Math.min(5,rec.length)).map(r=>r.score)):.5;const actionScore:number[]=[];const worldH:number[][]=[];
+  const rankedActions=[...ACTIONS].sort((a,b)=>(input.baseUtilities[b]??.5)-(input.baseUtilities[a]??.5));
+  const deepK=mode==='research'?ACTIONS.length:mode==='deep'?Math.min(4,ACTIONS.length):mode==='normal'?Math.min(3,ACTIONS.length):Math.min(1,ACTIONS.length);
+  const deepSet=new Set(rankedActions.slice(0,deepK));
+  const horizonDepth=mode==='research'?3:mode==='deep'?2:mode==='normal'?1:1;
+  for(const action of ACTIONS){
+    const c=this.causalEvidence(ctx,action);const p=this.proceduralEvidence(ctx,action);const base=input.baseUtilities[action]??.5;
+    const expensive=deepSet.has(action);
+    const world1=expensive?this.worldPrediction(ctx,action,1):{score:.5,confidence:.15,next:ctx};
+    const world2=expensive&&horizonDepth>=2?this.worldPrediction(ctx,action,2):world1;
+    const world3=expensive&&horizonDepth>=3?this.worldPrediction(ctx,action,3):world2;
+    const rollout=expensive&&mode!=='minimal'?this.rollout(ctx,action,input):{score:base,gain:0};
+    const goal=input.goalVector?cosine(ctx8(input.goalVector),ctx):.5;const self=input.selfVector?cosine(ctx8(input.selfVector),ctx):.5;
+    const centeredCausal=signed(c-.5);
+    const centeredProcedural=signed(p-.5);
+    const centeredWorld=signed(mean([world1.score,world2.score,world3.score])-.5);
+    const centeredRollout=signed(rollout.score-.5);
+    const strategyScore=clamp(
+      .5+
+      route['causal-graph']*centeredCausal*1.35+
+      route['procedural-refiner']*centeredProcedural*1.65+
+      route['hierarchical-world']*centeredWorld*1.15+
+      route['coordinated-rollout']*centeredRollout*1.25+
+      route['meta-router']*signed((sig(self)+goal)/2-.5)*.80
+    );
+    actionScore.push(clamp(.46*base+.54*strategyScore));worldH.push([world1.score,world2.score,world3.score]);
+  }
+  const diversity=clamp(mean(actionScore.map((v,i)=>Math.abs(v-(input.baseUtilities[ACTIONS[i]!]??.5))))*2);
+  const calibration=input.baseUtilities?mean(Object.values(input.baseUtilities).map(v=>Math.abs(v-.5))):.5;const confidence=clamp(.20+retrievalStrength*.18+mean(worldH.flat())*.22+(1-input.uncertainty01)*.20+(1-input.predictionError01)*.12+calibration*.08);
+  const bestIndex=actionScore.reduce((bi,v,i)=>v>actionScore[bi]!?i:bi,0);const bestAction=ACTIONS[bestIndex]??'wait';
+  const bestVariant=(VARIANTS.filter(k=>!this.state.lesions[k]).sort((a,b)=>(route[b]??0)*(1-(this.state.losses[b]??.5))-(route[a]??0)*(1-(this.state.losses[a]??.5)))[0]??'meta-router');
+  const actionBias=Object.fromEntries(ACTIONS.map((a,i)=>[a,signed((actionScore[i]??.5)-(input.baseUtilities[a]??.5))*.12])) as Record<ActionKind,number>;
+  const expectedInfo=clamp(.34*input.novelty01+.28*input.uncertainty01+.22*(1-retrievalStrength)+.16*(1-confidence));
+  const experimentCandidate=this.state.lesions['self-experiment']?0:clamp(expectedInfo*.65+input.surprise01*.35);
+  const out:B421Output={actionBias,predictiveUtility:Object.fromEntries(ACTIONS.map((a,i)=>[a,actionScore[i]??.5])) as Record<ActionKind,number>,strategy:{mode,route,best:bestVariant},retrieval:{strength01:retrievalStrength,causalEvidence01:this.causalEvidence(ctx,bestAction),proceduralEvidence01:this.proceduralEvidence(ctx,bestAction)},world:{confidence01:clamp(mean(worldH.flat())),horizons:worldH[bestIndex]??[.5,.5,.5]},computeBudget01:budget,confidence01:confidence,expectedInformationGain01:expectedInfo,experimentCandidate01:experimentCandidate};
+  this.state.last={context:ctx,actionScore, strategy:mode, route, retrievalStrength01:retrievalStrength,worldConfidence01:out.world.confidence01,rolloutGain01:clamp(out.predictiveUtility[bestAction]!-(input.baseUtilities[bestAction]??.5)),confidence01:confidence,computeBudget01:budget,novelty01:input.novelty01};
+  this.state.diagnostics.lastConfidence01=confidence;this.state.diagnostics.lastComputeBudget01=budget;this.state.diagnostics.lastNovelty01=input.novelty01;this.state.diagnostics.bestStrategy=bestVariant;this.state.diagnostics.strategyMode=mode;
+  return out;
+ }
+ afterOutcome(input:{tick:number;action:ActionKind;context01:number[];nextContext01?:number[];reward01:number;surprise01:number;verified01:number;salience01:number;predictionError01:number;goal01?:number;complexity01?:number;success01?:number}){
+  if(!this.state.enabled)return;const ctx=ctx8(input.context01);const next=ctx8(input.nextContext01??input.context01);const success=clamp(input.success01??input.reward01);const complexity=clamp(input.complexity01??.5);const rec=this.retrieve(ctx);const strategy=this.state.last.strategy;this.state.episodes.push({tick:input.tick,context:ctx,action:input.action,next,reward01:clamp(input.reward01),surprise01:clamp(input.surprise01),verified01:clamp(input.verified01),success01:success,goal01:clamp(input.goal01??.5),complexity01:complexity,strategy});
+  const edge=this.state.edges.find(e=>e.action===input.action&&dist(e.from,ctx)<.12);if(edge){edge.effect01=clamp(edge.effect01*.84+input.reward01*.16);edge.confidence01=clamp(edge.confidence01*.88+input.verified01*.12);edge.count++;}else this.state.edges.push({from:ctx,action:input.action,to:next,effect01:clamp(input.reward01),confidence01:clamp(.35+.55*input.verified01),count:1});
+  const procedureKey=`${input.action}:${Math.round(mean(ctx)*20)}`;let proc=this.state.procedures.find(p=>p.key===procedureKey);if(!proc){proc={key:procedureKey,action:input.action,context:ctx,reward01:input.reward01,utility01:input.reward01,failures:0,successes:0,confidence01:.4,lastTick:input.tick,mass01:.35};this.state.procedures.push(proc);}
+  if(success>.6){proc.successes++;proc.reward01=clamp(proc.reward01*.82+input.reward01*.18);proc.utility01=clamp(proc.utility01*.80+input.reward01*.20);proc.confidence01=clamp(proc.confidence01*.88+.12);proc.mass01=clamp(proc.mass01+.04);}else{proc.failures++;proc.confidence01=clamp(proc.confidence01*.92);proc.mass01=clamp(proc.mass01*.985);}proc.lastTick=input.tick;
+  if(!this.state.lesions['hierarchical-world']){this.state.transition.push({action:input.action,state:ctx,next,reward01:clamp(input.reward01),count:1});this.state.transition=this.state.transition.slice(-256);}
+  const actual=clamp(input.reward01);const pred=this.state.last.actionScore[ACTIONS.indexOf(input.action)]??.5;const err=Math.abs(pred-actual);
+  this.state.losses['hierarchical-world']=clamp(this.state.losses['hierarchical-world']*.88+err*.12);
+  this.state.losses['coordinated-rollout']=clamp(this.state.losses['coordinated-rollout']*.88+Math.abs((this.state.last.rolloutGain01+.5)-actual)*.12);
+  this.state.losses['procedural-refiner']=clamp(this.state.losses['procedural-refiner']*.88+Math.abs(proc.utility01-actual)*.12);
+  this.state.losses['causal-graph']=clamp(this.state.losses['causal-graph']*.88+Math.abs((this.state.edges.at(-1)?.effect01??.5)-actual)*.12);
+  this.state.losses['confidence-calibrator']=clamp(this.state.losses['confidence-calibrator']*.90+Math.abs(this.state.last.confidence01-(.5+actual*.5))*.10);
+  const bucket=Math.max(0,Math.min(5,Math.floor(this.state.last.confidence01*6)));this.state.calibration[bucket]!.total++;if((this.state.last.confidence01>.6)===(actual>.6))this.state.calibration[bucket]!.correct++;
+  for(const k of VARIANTS){this.state.uses[k]=(this.state.uses[k]??0)+1;if(this.state.losses[k]<.35)this.state.router[k]=clamp((this.state.router[k]??DEFAULT_ROUTER[k])*(1+.05*(.35-this.state.losses[k])));}
+  this.normalizeRouter();this.state.diagnostics.updates++;this.state.diagnostics.procedures=this.state.procedures.length;this.state.diagnostics.developmentalGain01=clamp(this.state.diagnostics.developmentalGain01*.985+(1-err)*.015);this.state.diagnostics.lastCausalDelta01=clamp(Math.abs(pred-actual));
+  if(this.state.episodes.length>512){this.state.episodes.splice(0,this.state.episodes.length-512);this.state.diagnostics.pruned++;}
+  if(this.state.edges.length>384)this.state.edges.splice(0,this.state.edges.length-384);if(this.state.procedures.length>160)this.state.procedures.splice(0,this.state.procedures.length-160);
+  if(this.state.procedures.length&&this.state.procedures.length%24===0){this.state.diagnostics.experiments++;}
+ }
+ evaluateLesion(input:B421Input,lesion:Partial<Record<B421Variant,boolean>>){const snap=this.snapshot();const on=this.beforeDecision(input);this.restore(snap);this.setLesions(lesion);const off=this.beforeDecision(input);const delta=mean(ACTIONS.map((_,i)=>Math.abs((on.predictiveUtility[ACTIONS[i]!]??.5)-(off.predictiveUtility[ACTIONS[i]!]??.5))));this.restore(snap);this.state.diagnostics.holdouts++;this.state.diagnostics.lastCausalDelta01=delta;return {delta01:delta,on,off};}
+ markHoldout(score01:number){this.state.diagnostics.holdouts++;this.state.diagnostics.holdoutScore01=clamp(this.state.diagnostics.holdoutScore01*.95+clamp(score01)*.05);}
+}

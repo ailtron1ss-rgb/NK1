@@ -1,0 +1,51 @@
+{
+  "release": "34.69.0",
+  "pass": 96,
+  "overallEngineeringReadinessPct": 61,
+  "aspects": {
+    "runtimeStability": 96,
+    "releaseIntegrity": 99,
+    "persistence": 92,
+    "cognitiveIntegration": 89,
+    "causalTraceability": 91,
+    "unifiedLearning": 82,
+    "memoryConsolidation": 69,
+    "worldModelling": 72,
+    "mobileEfficiency": 86,
+    "identity": 84,
+    "agency": 74,
+    "embodiment": 77,
+    "sensorium": 82,
+    "semanticVision": 58,
+    "socialCognition": 75,
+    "personContinuity": 86,
+    "secondOrderSocialMind": 72,
+    "developmentalSelf": 71,
+    "longHorizonAutonomy": 45,
+    "consciousnessMechanism": 20,
+    "consciousnessResearch": 70
+  },
+  "previousPlanCompletionPct": {
+    "p83Fix": 100,
+    "persistenceFix": 100,
+    "cognitiveFrame": 100,
+    "evc": 100,
+    "dirtyRouting": 92,
+    "p26P30Fusion": 82,
+    "memoryConsolidation": 58,
+    "realSensorium": 86,
+    "semanticVisionContract": 100,
+    "semanticVisionBackend": 65,
+    "personContinuity": 90,
+    "socialMind": 90,
+    "secondOrderSocialMind": 78,
+    "developmentalSelf": 72,
+    "deviceSkillHierarchy": 0,
+    "longHorizonAndroid": 22
+  },
+  "statusNotes": [
+    "This is an engineering readiness estimate, not a consciousness probability.",
+    "Aggregate suites interrupted by external timeout are not converted into PASS claims.",
+    "Vendor Live2D tab warnings are intentionally preserved as non-runtime assets."
+  ]
+}

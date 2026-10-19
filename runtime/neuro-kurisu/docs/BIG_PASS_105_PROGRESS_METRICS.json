@@ -1,0 +1,47 @@
+{
+  "version":"34.79.0",
+  "stateSchema":114,
+  "bigPass":105,
+  "focus":"experimental protocol and evidence gating",
+  "metrics01to100":{
+    "replayInstrumentation":100,
+    "goalConditionedReplay":93,
+    "causalIntegration":98,
+    "unifiedLearningIntegration":98,
+    "retentionValidation":95,
+    "forgettingCurve":66,
+    "crossTaskTransfer":91,
+    "negativeTransferInterference":89,
+    "pairedExperimentRigour":99,
+    "experimentalProtocolRigor":96,
+    "skillMemoryCoupling":66,
+    "epistemicProvenance":100,
+    "canonicalMemorySafety":98,
+    "mobileEfficiency":95,
+    "migration":100,
+    "regressionCoverage":97,
+    "engineeringReadiness":88,
+    "empiricalReplayEvidence":44,
+    "consciousnessMechanism":20,
+    "consciousnessEvidence":0
+  },
+  "planCompletion":{
+    "previousPassRecommendations":96,
+    "pass105Scope":96,
+    "documentationAndReleaseIntegrity":99
+  },
+  "verification":{
+    "typecheck":"PASS",
+    "pass100Regression":"PASS",
+    "pass101Regression":"PASS",
+    "pass102Regression":"PASS",
+    "pass103Regression":"PASS",
+    "pass104Regression":"PASS",
+    "pass105Functional":"PASS",
+    "pass105Migration":"PASS",
+    "experimentalProtocolAudit":"PASS",
+    "mobileHorizon1000":"PASS",
+    "operationalHorizon500":"PASS",
+    "operationalHorizon1000":"NOT_CONFIRMED"
+  }
+}

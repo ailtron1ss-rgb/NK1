@@ -1,0 +1,10 @@
+import { P67AutonomousGoalGenesis } from '../src/organism/developmental/P67AutonomousGoalGenesis.ts';
+const base={tick:100,at:100,energy01:.78,uncertainty01:.72,predictionError01:.58,novelty01:.7,socialNeed01:.4,goalPressure01:.68,homeostaticPressure01:.18,epistemicUnresolved:2,identity01:.9,activeGoalCount:0,lastMode:'explore',identityDecision:'allow',motiveOverall01:.62,motiveConflict01:.05,motiveDominant:'epistemic'};
+const a=new P67AutonomousGoalGenesis();
+const neutral=a.propose({...base,attractorOverall01:.45,attractorConflict01:.05,attractorDominant:'curiosity'});
+const b=new P67AutonomousGoalGenesis();
+const reinforced=b.propose({...base,attractorOverall01:.92,attractorConflict01:.02,attractorDominant:'truthfulness'});
+if(!reinforced) throw new Error('reinforced attractor failed to produce a candidate');
+if(neutral && reinforced.importance < neutral.importance) throw new Error('stronger attractor reduced candidate importance');
+if(!reinforced.reason.includes('attractor=truthfulness')) throw new Error('attractor lineage missing in goal reason');
+console.log('P67_ATTRACTOR_SYNERGY=PASS');

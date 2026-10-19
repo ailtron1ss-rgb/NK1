@@ -1,0 +1,48 @@
+{
+  "version": 110,
+  "benchmark": "quick_branch_training_ablation_reference_objective",
+  "seeds": [
+    110,
+    111
+  ],
+  "steps": 4,
+  "summary": {
+    "baseline": {
+      "mean_reference_eval_loss": 2.6308155059814453,
+      "delta_vs_baseline": 0.0
+    },
+    "predictive_weight": {
+      "mean_reference_eval_loss": 2.6893422603607178,
+      "delta_vs_baseline": 0.05852675437927246
+    },
+    "memory_weight": {
+      "mean_reference_eval_loss": 2.639194965362549,
+      "delta_vs_baseline": 0.008379459381103516
+    },
+    "world_weight": {
+      "mean_reference_eval_loss": 2.669406771659851,
+      "delta_vs_baseline": 0.03859126567840576
+    },
+    "spine_weight": {
+      "mean_reference_eval_loss": 2.646756887435913,
+      "delta_vs_baseline": 0.015941381454467773
+    },
+    "self_weight": {
+      "mean_reference_eval_loss": 2.6381055116653442,
+      "delta_vs_baseline": 0.007290005683898926
+    },
+    "multiscale_weight": {
+      "mean_reference_eval_loss": 2.6473079919815063,
+      "delta_vs_baseline": 0.016492486000061035
+    },
+    "confidence_weight": {
+      "mean_reference_eval_loss": 2.6307308673858643,
+      "delta_vs_baseline": -8.463859558105469e-05
+    },
+    "temporal_weight": {
+      "mean_reference_eval_loss": 2.6308155059814453,
+      "delta_vs_baseline": 0.0
+    }
+  },
+  "note": "diagnostic; reference objective is fixed across variants, so dropping a training objective cannot mechanically lower the reported score"
+}

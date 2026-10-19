@@ -1,0 +1,10 @@
+[
+  {"title":"World Models for Embodied Intelligence: From Plausible to Controllable to Actionable","year":2026,"url":"https://arxiv.org/abs/2609.16697","use":"actionable closed-loop evaluation"},
+  {"title":"Test-Time Mixture of World Models for Embodied Agents in Dynamic Environments","year":2026,"url":"https://arxiv.org/abs/2601.22647","use":"prototype routing and test-time adaptation"},
+  {"title":"SelfMem: Self-Optimizing Memory for AI Agents","year":2026,"url":"https://arxiv.org/abs/2607.03726","use":"feedback-driven memory strategy"},
+  {"title":"FOREVER: Forgetting Curve-Inspired Memory Replay for Language Model Continual Learning","year":2026,"url":"https://aclanthology.org/2026.acl-long.1144/","use":"model-time replay"},
+  {"title":"Conflict-Aware Memory for Embodied Agents","year":2026,"url":"https://aclanthology.org/2026.acl-long.1306/","use":"conflict and negative-transfer control"},
+  {"title":"Replay can provably increase forgetting","year":2026,"url":"https://proceedings.mlr.press/v330/mahdaviyeh26a.html","use":"replay gating"},
+  {"title":"World Action Models: The Next Frontier in Embodied AI","year":2026,"url":"https://arxiv.org/abs/2605.12090","use":"predictive state + action composition"},
+  {"title":"From World Action Models to Embodied Brains","year":2026,"url":"https://arxiv.org/abs/2607.11689","use":"shared contracts and closed-loop post-training"}
+]

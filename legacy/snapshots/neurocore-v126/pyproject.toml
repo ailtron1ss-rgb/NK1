@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neurocore-frontier"
+dynamic = ["version"]
+description = "NeuroCore Frontier current research codebase with adaptive temporal credit, sparse memory, and stable-state candidates"
+requires-python = ">=3.10"
+dependencies = ["torch", "numpy"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+
+[tool.setuptools.dynamic]
+version = {attr = "neurocore.version.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/current"]
+pythonpath = ["src"]
+addopts = "-q"
+
+[tool.setuptools.package-data]
+"neurocore" = ["py.typed"]

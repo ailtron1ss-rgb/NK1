@@ -1,0 +1,72 @@
+{
+  "release": {
+    "application": "35.38.0",
+    "organismCore": "100.30.0-r24-causal-control-longhorizon",
+    "stateSchema": 221,
+    "phase": "Stage-123/R24-Causal-Control-LongHorizon"
+  },
+  "functionalCore": {
+    "pass": true,
+    "steps": 15
+  },
+  "heavyReleaseAudits": {
+    "pass": true,
+    "steps": 9
+  },
+  "operationEvidence": {
+    "runtimeTotal": 165,
+    "runtimeVerified": 165,
+    "verificationRate01": 1,
+    "criticalOperations": 814,
+    "staticCovered": 12,
+    "staticVerified": 11,
+    "staticCoverage01": 0.014742014742014743
+  },
+  "causalMemoryAB": {
+    "items": 40,
+    "queries": 20,
+    "controlHits": 20,
+    "budgetHits": 18,
+    "hitLoss01": 0.1,
+    "evictions": 4,
+    "counterfactualWitnessRegret01": 0.0037940271256961255
+  },
+  "worldHorizon5to8": {
+    "heldOut": 24,
+    "actionHitRate01": 0.9583333333333334,
+    "modelRegret01": 0.012374118165784832,
+    "baselineRegret01": 0.0034627425044091767,
+    "horizons": [
+      5,
+      6,
+      7,
+      8
+    ]
+  },
+  "matchedRecurrentAblation": {
+    "cycles": 320,
+    "recurrentAccuracy01": 0.346875,
+    "statelessAccuracy01": 0.803125,
+    "matchedDelta01": -0.45625,
+    "choiceChangeRate01": 0.69375,
+    "bounded01": 1
+  },
+  "endurance": {
+    "fullCore1000": {
+      "pass": true,
+      "cycles": 1000,
+      "tick": 1000,
+      "warmMeanMs": 25.36385688,
+      "tailMeanMs": 33.92788934,
+      "slowdownRatio": 1.337647089735505,
+      "operationEvidence": 256
+    },
+    "fullCore3000": {
+      "attempted": true,
+      "completed": false,
+      "status": "timeout_600s",
+      "pass": false,
+      "deviceCertified": false
+    }
+  }
+}

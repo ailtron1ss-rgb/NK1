@@ -1,0 +1,1433 @@
+{
+  "version": "config-usage-analyzer-v1",
+  "field_count": 132,
+  "static_referenced": 71,
+  "dynamic_unknown": 3,
+  "unused_static": 58,
+  "rows": [
+    {
+      "name": "abstain_threshold",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "allow_unverified_answers",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "attention_memory_capacity",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "bootstrap_routing",
+      "static_refs": 11,
+      "dynamic_refs": 4,
+      "files": [
+        "core/nomega/frontier_learning.py",
+        "core/nomega/joint_learning.py",
+        "core/nomega/omega_development_cycle.py",
+        "core/nomega/research.py",
+        "core/nomega/router.py",
+        "core/nomega/runtime.py",
+        "core/nomega/trace_trainer.py",
+        "core/nomega/train_system.py",
+        "tests/test_nomega_0_3.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "cache_capacity",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "cache_verified_only",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "canonical_neural_program_checkpoint",
+      "static_refs": 2,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py",
+        "core/nomega/runtime.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "canonical_neural_program_hidden",
+      "static_refs": 4,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py",
+        "core/nomega/runtime.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "canonical_neural_program_max_len",
+      "static_refs": 2,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py",
+        "core/nomega/runtime.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "confidence_threshold",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "default_compute_budget",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/router.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_adaptive_depth",
+      "static_refs": 1,
+      "dynamic_refs": 1,
+      "files": [
+        "core/nomega/research.py",
+        "core/nomega/router.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_adaptive_generalist",
+      "static_refs": 2,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py",
+        "core/nomega/universal_learning_loop.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_advanced_telemetry",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_attention_memory",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_canonical_neural_program",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_continual_v2",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_counterexample_refinement_v2",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_counterfactual_v2",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_dual_runtime",
+      "static_refs": 0,
+      "dynamic_refs": 1,
+      "files": [
+        "core/nomega/research.py"
+      ],
+      "status": "dynamic_unknown"
+    },
+    {
+      "name": "enable_dynamic_budget",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_evolution_controller",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_ewc",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_executable_spine_v2",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_experiment_registry_v2",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_expert_governance",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_frontier_evaluation",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_hybrid_reasoner_v2",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_joint_learning_v2",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_latent_alignment",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_memory",
+      "static_refs": 2,
+      "dynamic_refs": 1,
+      "files": [
+        "core/nomega/research.py",
+        "core/nomega/route_lab.py",
+        "core/nomega/router.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_memory_v2",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_mobile_benchmark_v3",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_mobile_compiler_v2",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_mobile_optimizer_v4",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_mobile_optimizer_v5",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_multimodal_grounding_v2",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_multimodal_v3",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_neural_invent",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_planner",
+      "static_refs": 1,
+      "dynamic_refs": 1,
+      "files": [
+        "core/nomega/core.py",
+        "core/nomega/research.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_prioritized_replay",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_production_guard_v2",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_project_audit_v2",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_quantization_lab",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_reasoning_audit",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_research_brain",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_self_evolution_lab_v1",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/runtime.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_self_improvement",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_self_model",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_self_play_v2",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_skill_bank",
+      "static_refs": 5,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_skill_compiler",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_skill_expert",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_skill_graph_v2",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_skill_transfer_v2",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_skill_transfer_v3",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_skill_versioning",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_sparse_moe_v1",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_symbolic",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_tool_planning",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_trace_learning_v2",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_uncertainty_suite_v2",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_unified_learning_v3",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_universal_latent",
+      "static_refs": 2,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_verified_cache",
+      "static_refs": 2,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_verifier",
+      "static_refs": 2,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py",
+        "core/nomega/router.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_working_memory",
+      "static_refs": 2,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "enable_world_model",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_world_model_v2",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "enable_world_model_v3",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "ewc_strength",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "executable_spine_candidates",
+      "static_refs": 2,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py",
+        "core/nomega/runtime.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "experimental_predictive_workspace",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "frontier_adversarial_per_family",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "frontier_holdout_per_family",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "frontier_train_steps",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "generalist_actions",
+      "static_refs": 3,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py",
+        "core/nomega/frontier_learning.py",
+        "core/nomega/omega_development_cycle.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "generalist_checkpoint",
+      "static_refs": 2,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "generalist_hidden",
+      "static_refs": 3,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py",
+        "core/nomega/frontier_learning.py",
+        "core/nomega/omega_development_cycle.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "generalist_influence",
+      "static_refs": 8,
+      "dynamic_refs": 1,
+      "files": [
+        "core/nomega/core.py",
+        "core/nomega/frontier_learning.py",
+        "core/nomega/omega_development_cycle.py",
+        "core/nomega/self_evolution_lab_v1.py",
+        "tests/test_nomega_1_0_loop.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "generalist_vocab",
+      "static_refs": 3,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py",
+        "core/nomega/frontier_learning.py",
+        "core/nomega/omega_development_cycle.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "has_npu",
+      "static_refs": 20,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/budget.py",
+        "core/nomega/budget_manager.py",
+        "core/nomega/core.py",
+        "core/nomega/mobile_benchmark_v3.py",
+        "core/nomega/mobile_policy.py",
+        "core/nomega/mobile_program_optimizer_v7.py",
+        "core/nomega/omega_development_cycle.py",
+        "core/nomega/runtime.py",
+        "tests/test_nomega_1_3_unified.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "hybrid_reasoner_influence",
+      "static_refs": 2,
+      "dynamic_refs": 1,
+      "files": [
+        "core/nomega/core.py",
+        "core/nomega/self_evolution_lab_v1.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "hybrid_reasoner_steps",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "latent_dim",
+      "static_refs": 127,
+      "dynamic_refs": 12,
+      "files": [
+        "core/nomega/apex_brain_v4.py",
+        "core/nomega/architecture_search.py",
+        "core/nomega/canonical_neural_execution_v1.py",
+        "core/nomega/core.py",
+        "core/nomega/encoder.py",
+        "core/nomega/evolution_controller.py",
+        "core/nomega/experts.py",
+        "core/nomega/frontier_generalist.py",
+        "core/nomega/frontier_learning.py",
+        "core/nomega/generalist_core.py",
+        "core/nomega/joint_learning_v2.py",
+        "core/nomega/joint_learning_v4.py",
+        "core/nomega/modalities.py",
+        "core/nomega/neural_predictive_coding_v1.py",
+        "core/nomega/neural_program_synth_v1.py",
+        "core/nomega/neural_program_synth_v2.py",
+        "core/nomega/neural_program_synth_v4.py",
+        "core/nomega/neural_program_synth_v5.py",
+        "core/nomega/neural_program_synth_v6.py",
+        "core/nomega/neural_program_synth_v7.py",
+        "core/nomega/neural_program_synth_v8.py",
+        "core/nomega/neural_program_trainer_v3.py",
+        "core/nomega/neural_program_trainer_v4.py",
+        "core/nomega/omega_development_cycle.py",
+        "core/nomega/research_brain.py",
+        "core/nomega/router.py",
+        "core/nomega/runtime.py",
+        "core/nomega/unified_learning_v3.py",
+        "tests/test_nomega_0_7.py",
+        "tests/test_nomega_1_0.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "max_candidates",
+      "static_refs": 70,
+      "dynamic_refs": 8,
+      "files": [
+        "core/nomega/autonomous_capability_builder_v1.py",
+        "core/nomega/autonomous_development_runner_v1.py",
+        "core/nomega/autonomous_repair_learning_loop_v1.py",
+        "core/nomega/budget_manager.py",
+        "core/nomega/cognitive_development_bridge_v1.py",
+        "core/nomega/core.py",
+        "core/nomega/development_cycle_v7.py",
+        "core/nomega/development_intervention_registry_v1.py",
+        "core/nomega/executable_spine_v2.py",
+        "core/nomega/execution_guided_learning_loop_v1.py",
+        "core/nomega/grounding_recovery_controller_v1.py",
+        "core/nomega/mobile_policy.py",
+        "core/nomega/neural_program_repair_v1.py",
+        "core/nomega/neural_program_repair_v2.py",
+        "core/nomega/neural_skill_retrieval_v1.py",
+        "core/nomega/neural_skill_retrieval_v2.py",
+        "core/nomega/program_acquisition_v1.py",
+        "core/nomega/program_acquisition_v2.py",
+        "core/nomega/program_generalization_v1.py",
+        "core/nomega/repair_engine_v1.py",
+        "core/nomega/runtime.py",
+        "core/nomega/self_evolution_lab_v1.py",
+        "core/nomega/self_modification_spine_v1.py",
+        "tests/test_nomega_0_5.py",
+        "tools/benchmark_1_15_neural_repair_v1.py",
+        "tools/benchmark_1_15_neural_skill_retrieval_v1.py",
+        "tools/benchmark_1_16_repair_v2_only.py",
+        "tools/benchmark_1_16_search_and_repair_v2.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "max_compute_budget",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/router.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "max_program_len",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/budget_manager.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "max_reason_steps",
+      "static_refs": 10,
+      "dynamic_refs": 2,
+      "files": [
+        "core/nomega/architecture_search.py",
+        "core/nomega/core.py",
+        "core/nomega/evolution_controller.py",
+        "core/nomega/router.py",
+        "core/nomega/self_evolution_lab_v1.py",
+        "tests/test_nomega_0_7.py",
+        "tests/test_self_evolution_lab_v1.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "max_tool_calls",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "max_total_trace_items",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "memory_capacity",
+      "static_refs": 2,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "memory_dim",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "min_reason_steps",
+      "static_refs": 4,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/router.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "min_route_margin",
+      "static_refs": 0,
+      "dynamic_refs": 1,
+      "files": [
+        "core/nomega/self_evolution_lab_v1.py"
+      ],
+      "status": "dynamic_unknown"
+    },
+    {
+      "name": "num_experts",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "omega12_adversarial_per_family",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "omega12_candidate_only",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "omega12_holdout_per_family",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "omega12_train_per_family",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "omega12_train_steps",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/runtime.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "promotion_min_gain",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/runtime.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "ram_gb",
+      "static_refs": 36,
+      "dynamic_refs": 1,
+      "files": [
+        "core/nomega/budget.py",
+        "core/nomega/budget_manager.py",
+        "core/nomega/core.py",
+        "core/nomega/mobile_benchmark_v3.py",
+        "core/nomega/mobile_compiler_v2.py",
+        "core/nomega/mobile_eval_v2.py",
+        "core/nomega/mobile_optimizer_v4.py",
+        "core/nomega/mobile_optimizer_v5.py",
+        "core/nomega/mobile_optimizer_v6.py",
+        "core/nomega/mobile_policy.py",
+        "core/nomega/mobile_program_optimizer_v7.py",
+        "core/nomega/omega_development_cycle.py",
+        "core/nomega/runtime.py",
+        "tests/test_nomega_1_3_unified.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "replay_capacity",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "research_brain_influence",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "research_mode",
+      "static_refs": 0,
+      "dynamic_refs": 1,
+      "files": [
+        "core/nomega/executable_spine_v2.py"
+      ],
+      "status": "dynamic_unknown"
+    },
+    {
+      "name": "retrieval_k",
+      "static_refs": 2,
+      "dynamic_refs": 2,
+      "files": [
+        "core/nomega/core.py",
+        "core/nomega/route_lab.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "reward_cost_weight",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "reward_efficiency_weight",
+      "static_refs": 2,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/trace_trainer.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "reward_verification_weight",
+      "static_refs": 2,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/trace_trainer.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "router_hidden",
+      "static_refs": 6,
+      "dynamic_refs": 1,
+      "files": [
+        "core/nomega/architecture_search.py",
+        "core/nomega/core.py",
+        "core/nomega/evolution_controller.py",
+        "core/nomega/router.py",
+        "core/nomega/runtime.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "safety_expert_floor",
+      "static_refs": 2,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py",
+        "core/nomega/router.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "safety_regression_tolerance",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "seed",
+      "static_refs": 1264,
+      "dynamic_refs": 59,
+      "files": [
+        "core/alloy_search.py",
+        "core/autonomy_daemon.py",
+        "core/bitplane.py",
+        "core/blank_attack.py",
+        "core/bottom_up.py",
+        "core/capability_harness.py",
+        "core/co_occurrence.py",
+        "core/combinator_evolve.py",
+        "core/combinator_synth.py",
+        "core/embryo.py",
+        "core/external_bench.py",
+        "core/family_siege.py",
+        "core/generic_skeletons.py",
+        "core/genesis_kernel.py",
+        "core/ir_compose.py",
+        "core/linear_ir.py",
+        "core/linked_invent.py",
+        "core/macro_miner.py",
+        "core/meta_controller.py",
+        "core/meta_grammar.py",
+        "core/meta_self.py",
+        "core/metrics_truth.py",
+        "core/mind.py",
+        "core/minimal_rules.py",
+        "core/neural_invent.py",
+        "core/neuro_core.py",
+        "core/neuro_policy.py",
+        "core/neuro_prior.py",
+        "core/neuro_programmer.py",
+        "core/nomega/adaptive_environment_forge_v2.py",
+        "core/nomega/adaptive_program_curriculum_v1.py",
+        "core/nomega/adversarial_evolution_arena_v1.py",
+        "core/nomega/autonomous_capability_builder_v1.py",
+        "core/nomega/autonomous_development_runner_v1.py",
+        "core/nomega/autonomous_repair_learning_loop_v1.py",
+        "core/nomega/behavioral_equivalence_contract.py",
+        "core/nomega/benchmark_1_27_neural_self_optimization.py",
+        "core/nomega/benchmark_1_28_autonomous_repair.py",
+        "core/nomega/benchmark_1_28_autonomous_repair_multiseed.py",
+        "core/nomega/benchmark_1_29_open_ended_evolution.py",
+        "core/nomega/calibrated_strategy_router_v1.py",
+        "core/nomega/canonical_neural_execution_v1.py",
+        "core/nomega/capability.py",
+        "core/nomega/capability_evolver_v1.py",
+        "core/nomega/capability_transfer_evaluator_v1.py",
+        "core/nomega/cognitive_development_bridge_v1.py",
+        "core/nomega/continual_learning_controller_v1.py",
+        "core/nomega/continual_strategy_portfolio_v1.py",
+        "core/nomega/core.py",
+        "core/nomega/counterexample_curriculum_v1.py",
+        "core/nomega/counterexample_replay_v1.py",
+        "core/nomega/counterexample_search_v2.py",
+        "core/nomega/curriculum.py",
+        "core/nomega/development_cycle_v4.py",
+        "core/nomega/development_cycle_v5.py",
+        "core/nomega/development_cycle_v6.py",
+        "core/nomega/development_cycle_v7.py",
+        "core/nomega/development_cycle_v8.py",
+        "core/nomega/development_cycle_v9.py",
+        "core/nomega/development_frontier_selector_v1.py",
+        "core/nomega/development_intervention_registry_v1.py",
+        "core/nomega/elastic_substrate_policy_v1.py",
+        "core/nomega/evolution_islands_v1.py",
+        "core/nomega/evolutionary_repair_portfolio_v1.py",
+        "core/nomega/executable_spine_v2.py",
+        "core/nomega/execution_feedback_policy_v1.py",
+        "core/nomega/execution_guided_learning_loop_v1.py",
+        "core/nomega/execution_guided_program_learning_v1.py",
+        "core/nomega/execution_preference_trainer_v1.py",
+        "core/nomega/experts.py",
+        "core/nomega/frontier_generalist.py",
+        "core/nomega/frontier_learning.py",
+        "core/nomega/generalist_core.py",
+        "core/nomega/gradient_alignment_ablation_v1.py",
+        "core/nomega/gradual_drift_benchmark_v1.py",
+        "core/nomega/grounding_recovery_controller_v1.py",
+        "core/nomega/joint_learning.py",
+        "core/nomega/joint_learning_v2.py",
+        "core/nomega/joint_learning_v4.py",
+        "core/nomega/learning_experiment_protocol_v1.py",
+        "core/nomega/long_horizon_development_benchmark_v1.py",
+        "core/nomega/long_horizon_self_development_v1.py",
+        "core/nomega/multi_source_generalist_evolution_v1.py",
+        "core/nomega/multimodal_bench.py",
+        "core/nomega/neural_causal_credit_trainer_v1.py",
+        "core/nomega/neural_causal_credit_v1.py",
+        "core/nomega/neural_causality_benchmark_v1.py",
+        "core/nomega/neural_causality_benchmark_v2.py",
+        "core/nomega/neural_execution_learning_lab_v1.py",
+        "core/nomega/neural_grounding_self_training_v1.py",
+        "core/nomega/neural_guided_program_search_v1.py",
+        "core/nomega/neural_program_acquisition_v1.py",
+        "core/nomega/neural_program_repair_v1.py",
+        "core/nomega/neural_program_repair_v2.py",
+        "core/nomega/neural_program_synth_v1.py",
+        "core/nomega/neural_program_synth_v2.py",
+        "core/nomega/neural_program_synth_v4.py",
+        "core/nomega/neural_program_synth_v6.py",
+        "core/nomega/neural_program_trainer_v3.py",
+        "core/nomega/neural_program_trainer_v4.py",
+        "core/nomega/neural_program_trainer_v5.py",
+        "core/nomega/neural_repair_policy_v1.py",
+        "core/nomega/neural_self_optimization_controller_v1.py",
+        "core/nomega/neural_self_optimization_controller_v2.py",
+        "core/nomega/neural_skill_retrieval_v1.py",
+        "core/nomega/neural_skill_retrieval_v2.py",
+        "core/nomega/neural_substrate_v1.py",
+        "core/nomega/neural_verified_curriculum_v1.py",
+        "core/nomega/omega_development_cycle.py",
+        "core/nomega/ood_curriculum_v5.py",
+        "core/nomega/ood_program_benchmark_v1.py",
+        "core/nomega/ood_prompt_benchmark_v2.py",
+        "core/nomega/open_ended_capability_evolution_loop_v1.py",
+        "core/nomega/partial_program_value_v1.py",
+        "core/nomega/partial_program_value_v2.py",
+        "core/nomega/pass20_capability_forge_v1.py",
+        "core/nomega/program_acquisition_ablation_v1.py",
+        "core/nomega/program_acquisition_v1.py",
+        "core/nomega/program_acquisition_v2.py",
+        "core/nomega/program_challenge_arena_v1.py",
+        "core/nomega/program_equivalence_v2.py",
+        "core/nomega/program_generalization_v1.py",
+        "core/nomega/program_learning_v1.py",
+        "core/nomega/program_runtime.py",
+        "core/nomega/release_evaluator_v3.py",
+        "core/nomega/repair_engine_v1.py",
+        "core/nomega/repair_operator_policy_v2.py",
+        "core/nomega/repair_operator_transfer_ablation_v1.py",
+        "core/nomega/repair_policy_ablation_v1.py",
+        "core/nomega/repair_search_policy_v1.py",
+        "core/nomega/replay.py",
+        "core/nomega/research.py",
+        "core/nomega/research_brain.py",
+        "core/nomega/research_eval_v2.py",
+        "core/nomega/research_orchestrator.py",
+        "core/nomega/research_orchestrator_v2.py",
+        "core/nomega/runtime.py",
+        "core/nomega/self_development_orchestrator_v1.py",
+        "core/nomega/self_evolution_control_plane_v2.py",
+        "core/nomega/self_evolution_lab_v1.py",
+        "core/nomega/self_improve.py",
+        "core/nomega/self_improvement_loop_v1.py",
+        "core/nomega/self_modification_spine_v1.py",
+        "core/nomega/self_play.py",
+        "core/nomega/self_play_arena_v2.py",
+        "core/nomega/semantic_prune_v1.py",
+        "core/nomega/skill_acquisition.py",
+        "core/nomega/skill_transfer_v2.py",
+        "core/nomega/strategy_router_gate_v1.py",
+        "core/nomega/structural_plasticity_controller_v1.py",
+        "core/nomega/task_generator.py",
+        "core/nomega/task_generator_v3.py",
+        "core/nomega/task_generator_v4.py",
+        "core/nomega/task_spec_ood_benchmark_v1.py",
+        "core/nomega/trace_trainer.py",
+        "core/nomega/train_router.py",
+        "core/nomega/train_system.py",
+        "core/nomega/unified_development_loop_v1.py",
+        "core/nomega/unified_learning_v3.py",
+        "core/nomega/universal_learning_loop.py",
+        "core/nomega/verifiable_environment_forge_v1.py",
+        "core/nomega/verified_neural_substrate_bridge_v1.py",
+        "core/nullseed_spine.py",
+        "core/open_composer.py",
+        "core/persistent_bank.py",
+        "core/plugins/__init__.py",
+        "core/plugins/ensemble_pure.py",
+        "core/plugins/family_pure.py",
+        "core/plugins/strong_pure_v2.py",
+        "core/plugins/strong_pure_v2_patched.py",
+        "core/plugins/strong_pure_v4.py",
+        "core/plugins/strong_pure_v5.py",
+        "core/plugins/strong_pure_v6.py",
+        "core/plugins/strong_pure_v7.py",
+        "core/problem_forge.py",
+        "core/progression.py",
+        "core/pure_bytecode.py",
+        "core/pure_wild.py",
+        "core/residual_dna.py",
+        "core/rift_search.py",
+        "core/rule_type_synth.py",
+        "core/schema_engine.py",
+        "core/schema_miner.py",
+        "core/self_curriculum.py",
+        "core/short_enum.py",
+        "core/stack_dna.py",
+        "core/true_blank.py",
+        "core/unique_methods.py",
+        "core/wake_forge.py",
+        "tests/test_benchmark_1_26_online_continual.py",
+        "tests/test_canonical_neural_execution_v1.py",
+        "tests/test_long_horizon_self_development_v1.py",
+        "tests/test_nomega_1_11_continual_portfolio.py",
+        "tests/test_pass15_self_modification_spine.py",
+        "tests/test_self_development_frontier_integration_v1.py",
+        "tests/test_self_development_orchestrator_v1.py",
+        "tools/benchmark_1_15_neural_repair_v1.py",
+        "tools/benchmark_1_15_neural_skill_retrieval_v1.py",
+        "tools/benchmark_1_15_typed_grounding_v9.py",
+        "tools/benchmark_1_16_repair_v2_only.py",
+        "tools/benchmark_1_16_search_and_repair_v2.py",
+        "tools/benchmark_1_17_active_retrieval.py",
+        "tools/benchmark_1_18_neural_substrate_grounding.py",
+        "tools/benchmark_1_24_adaptive_learning.py",
+        "tools/benchmark_1_26_online_continual.py",
+        "tools/benchmark_dendritic_adapter_v1.py",
+        "tools/benchmark_executable_spine_v2.py",
+        "tools/benchmark_neural_atomic_v4.py",
+        "tools/benchmark_neural_substrate_v1.py",
+        "tools/benchmark_ordered_grounding_v1.py",
+        "tools/benchmark_v7_v8_grounding_v1.py",
+        "tools/benchmark_v8_scheduled_v1.py",
+        "tools/benchmark_verified_grounding_v1.py",
+        "tools/run_1_9_9_continual_ablation.py",
+        "tools/run_continual_strategy_ablation_1_11.py",
+        "tools/run_continual_strategy_multifamily_1_11.py",
+        "tools/run_self_development.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "self_evolution_trials",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/runtime.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "skill_capacity",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "skill_regression_tolerance",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "sparse_moe_experts",
+      "static_refs": 2,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py",
+        "core/nomega/runtime.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "sparse_moe_influence",
+      "static_refs": 2,
+      "dynamic_refs": 1,
+      "files": [
+        "core/nomega/core.py",
+        "core/nomega/self_evolution_lab_v1.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "target_energy_proxy_mj",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "target_latency_ms",
+      "static_refs": 6,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/budget.py",
+        "core/nomega/budget_manager.py",
+        "core/nomega/runtime.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "top_k",
+      "static_refs": 17,
+      "dynamic_refs": 4,
+      "files": [
+        "core/macro_miner.py",
+        "core/nomega/architecture_search.py",
+        "core/nomega/evolution_controller.py",
+        "core/nomega/mobile_optimizer_v5.py",
+        "core/nomega/mobile_optimizer_v6.py",
+        "core/nomega/neural_astrocyte_memory_v1.py",
+        "core/nomega/neural_program_synth_v1.py",
+        "core/nomega/neural_program_synth_v13.py",
+        "core/nomega/research.py",
+        "core/nomega/router.py",
+        "core/nomega/self_evolution_lab_v1.py",
+        "core/nomega/verified_neural_substrate_bridge_v1.py",
+        "core/seed_bank.py",
+        "tests/test_nomega_0_7.py",
+        "tests/test_self_evolution_lab_v1.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "trace_capacity",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "unified_adversarial_per_family",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "unified_candidate_only",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "unified_holdout_per_family",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "unified_train_per_family",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "unified_train_steps",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/runtime.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "verify_threshold",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/router.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "working_memory_slots",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    },
+    {
+      "name": "workspace_slots",
+      "static_refs": 0,
+      "dynamic_refs": 0,
+      "files": [],
+      "status": "unused_static"
+    },
+    {
+      "name": "world_model_hidden",
+      "static_refs": 1,
+      "dynamic_refs": 0,
+      "files": [
+        "core/nomega/core.py"
+      ],
+      "status": "referenced"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import { SelfProjectEngine } from '../src/organism/cognition/evolution/SelfProjectEngine.ts';
+
+const engine=new SelfProjectEngine();
+const project=engine.propose({intrinsicOverall:.9,dominant:'competence',uncertainty:.8,predictionError:.7,identityDrift:.1,unresolvedExperiments:1,activeGoals:[]});
+assert.ok(project);
+assert.equal(project.milestones.length,3);
+assert.equal(project.milestones[0].requiredEvidenceClass,'internal');
+assert.equal(project.milestones[1].requiredEvidenceClass,'external');
+assert.equal(project.milestones[2].requiredEvidenceClass,'replicated');
+engine.ensureActiveProject();
+for(let i=0;i<8;i++) engine.observeOutcome({projectId:project.id,success:.86,surprise:.1,actionWasRelevant:true,evidenceClass:'internal',externalEvidence01:0,skillGain01:.08});
+let out=engine.snapshot().projects.find(p=>p.id===project.id);
+assert.ok(out);
+assert.equal(out.milestones[0].completed,true);
+assert.equal(out.milestones[1].completed,false);
+for(let i=0;i<8;i++) engine.observeOutcome({projectId:project.id,success:.86,surprise:.1,actionWasRelevant:true,evidenceClass:'external',externalEvidence01:.9,skillGain01:.08});
+for(let i=0;i<8;i++) engine.observeOutcome({projectId:project.id,success:.86,surprise:.1,actionWasRelevant:true,evidenceClass:'replicated',externalEvidence01:.9,skillGain01:.08});
+out=engine.snapshot().projects.find(p=>p.id===project.id);
+assert.ok(out);
+assert.ok(out.validatedEvidenceCount>=4);
+assert.ok(out.replicatedEvidenceCount>=4);
+assert.ok(out.skillGain01>0);
+console.log('P67_PROJECT_EVIDENCE=PASS',JSON.stringify({milestones:out.milestones.map(m=>({id:m.id,required:m.requiredEvidenceClass,completed:m.completed})),validated:out.validatedEvidenceCount,replicated:out.replicatedEvidenceCount}));

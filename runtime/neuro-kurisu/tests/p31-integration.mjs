@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const core=new OrganismCore(new MemoryStateStore(),{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1});
+await core.init();
+const c=await core.observe({text:'проверить новую гипотезу и сохранить контекст',surprise:.42,novelty:.63,embodiment:{bodyEnergy01:.78,cognitiveCapacity01:.76,thermalStrain01:.18,sensoryFreshness01:.8,awake:true,battery01:.72,cpuLoad01:.2,ramPressure01:.2}});
+await core.feedback({success:.83,reward:.86,surprise:.14});
+const p=core.p31Snapshot();
+assert.equal(p.evidence.status,'functional-only');
+assert.ok(p.higherOrder.sampleCount>=1);
+assert.ok(p.presentMomentId.length>0);
+const reloaded=new OrganismCore(new MemoryStateStore({initial:core.snapshot()}),{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1});
+await reloaded.init();
+assert.equal(reloaded.p31Snapshot().presentMomentId,p.presentMomentId);
+assert.equal(reloaded.p31Snapshot().evidence.causalClaims,0);
+console.log('P31_INTEGRATION=PASS',JSON.stringify({action:c.decision.selected?.action??'none',moment:p.presentMomentId,agency:Number(p.metrics.agencyBinding01.toFixed(3))}));

@@ -1,0 +1,32 @@
+{
+  "pass": "BIG_PASS_214_THALAMOCORTICAL_CLOSURE",
+  "status": "verified",
+  "causal": {
+    "preAction01": 0.7377140799999999,
+    "closedAction01": 0.7377140799999999,
+    "preResearch01": 0.6271448,
+    "closedResearch01": 0.5601657353599999,
+    "loopGain01": 0.6351375061942857,
+    "loopError01": 0.11428571428571428
+  },
+  "boundedFeedback": {
+    "hostileAction01": 0.6049255456,
+    "maxAllowedDelta01": 0.1601656752
+  },
+  "learning": {
+    "channel": "action",
+    "posterior01": 0.7361107260881234,
+    "precision01": 0.6061553527555935,
+    "samples": 14
+  },
+  "integration": {
+    "loopClosed": true,
+    "closedLoops": 1
+  },
+  "persistence": {
+    "closedLoops": 4,
+    "restored": true
+  },
+  "regressions": ["B208", "B211", "B212", "B213"],
+  "typecheck": "PASS"
+}

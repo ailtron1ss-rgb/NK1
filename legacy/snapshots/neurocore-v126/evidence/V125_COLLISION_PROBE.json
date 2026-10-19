@@ -1,0 +1,10 @@
+{
+  "route_overlap": 2.0,
+  "baseline_mean_target_cosine": 0.9712908565998077,
+  "fingerprint_mean_target_cosine": 0.9916910827159882,
+  "baseline_cross_leak": 0.6987652480602264,
+  "fingerprint_cross_leak": 0.647798627614975,
+  "target_cosine_gain": 0.02040022611618042,
+  "cross_leak_reduction": 0.050966620445251465,
+  "fingerprint_score_gain": 0.6
+}

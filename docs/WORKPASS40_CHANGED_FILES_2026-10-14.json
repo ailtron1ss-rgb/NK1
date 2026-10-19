@@ -1,0 +1,231 @@
+{
+  "title": "Neuro-Kurisu WorkPass40 changed files manifest",
+  "date": "2026-10-14",
+  "baseArchive": "Neuro_Kurisu_WORKPASS39_2026-10-14.zip",
+  "currentPass": "WorkPass40",
+  "baseFileCount": 9112,
+  "currentFileCountExcludingThisManifest": 9125,
+  "manifestSelfExcluded": true,
+  "addedCount": 13,
+  "modifiedCount": 21,
+  "unchangedCount": 9091,
+  "deletedCount": 0,
+  "deletedFiles": [],
+  "addedFiles": [
+    {
+      "path": "contracts/SOURCE_PROVENANCE_LICENSES_WORKPASS40.json",
+      "sizeBytes": 8053,
+      "sha256": "82af9916a3342d8286e4bb204c721cd369c3d33dc6fb25f4567fba3b2f581af8"
+    },
+    {
+      "path": "docs/INTEGRATION_MATRIX_WORKPASS40_2026-10-14.md",
+      "sizeBytes": 2525,
+      "sha256": "4d67b7f95c5ff3b694be7d753fa38dfeca5ff614de7a78869820c36cb2aec069"
+    },
+    {
+      "path": "docs/OPEN_SOURCE_INTEGRATION_REVIEW_WORKPASS40.md",
+      "sizeBytes": 4394,
+      "sha256": "3f086d56cce7aa9b187c83d28649889b774271463f90c53e47cc04a6e4eaf241"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-14_WORKPASS40.json",
+      "sizeBytes": 46417,
+      "sha256": "8f824bc76e62c6117c0cd7422c893ce2add7e916cdd259dc101d8a441153a52f"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-14_WORKPASS40.md",
+      "sizeBytes": 2619,
+      "sha256": "4af11fb5f6cc59551b0c406b309e4ebb5d0df5e5f2694508e62b38e9131108bd"
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-14_WORKPASS40.json",
+      "sizeBytes": 10027,
+      "sha256": "ba213aa6aeeaf4bc2af45aadb51473f7f7d7e01610bc01e632fe75fe917f4d5b"
+    },
+    {
+      "path": "docs/WORKPASS40_AUDIT_RESULTS_2026-10-14.json",
+      "sizeBytes": 4459,
+      "sha256": "69fb203a7eef4610a7865e6a3904a9e16f286b940519db41b5e13981c3f79315"
+    },
+    {
+      "path": "docs/WORKPASS40_REPORT_2026-10-14.md",
+      "sizeBytes": 3740,
+      "sha256": "64fbc701ffc634525018a778a4b0bcf6833d17e427bcb22963ab86292744fcd8"
+    },
+    {
+      "path": "docs/WORKPASS40_TASKS_2026-10-14.md",
+      "sizeBytes": 1983,
+      "sha256": "6320e649d77d92999f44e7389d30acf3fdc6098a5c2585508f6d5e6421ff6235"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts",
+      "sizeBytes": 4376,
+      "sha256": "255937211a79e324a6de3ffef13598ce314292d9c98a08de1af9ee27ca1cd7af"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/local-chat-provider-workpass40.mjs",
+      "sizeBytes": 4692,
+      "sha256": "3528c14b3129a952ceb2e331988e273fd2e551b69d793a9776f146b43ae643c5"
+    },
+    {
+      "path": "tools/state-backup-workpass40.test.mjs",
+      "sizeBytes": 5332,
+      "sha256": "7d8bcbacfb1ee75d86459ab253226d1d54a274333c1c1450b953085f1224c86b"
+    },
+    {
+      "path": "tools/super-sbom.test.mjs",
+      "sizeBytes": 2810,
+      "sha256": "77cf5e530b6b4a488d8aa7c37025370023f4aa1bdcec60de0afa4e8764a3526d"
+    }
+  ],
+  "modifiedFiles": [
+    {
+      "path": "CHANGELOG.md",
+      "beforeSizeBytes": 61697,
+      "beforeSha256": "b1bd7bd3e3169d549ae217721f4752b7fd6e4e1575b26666e0617ea352ddd39e",
+      "afterSizeBytes": 63008,
+      "afterSha256": "b967943a9ace28e51c139e2305e7536a32584a6580937617d2584b51aa0660d5"
+    },
+    {
+      "path": "README.md",
+      "beforeSizeBytes": 23971,
+      "beforeSha256": "33037823ded76bf0703210f1ef72820e779b8790c3d0a7aee1e6b2625e2d324f",
+      "afterSizeBytes": 23376,
+      "afterSha256": "21ff3eb9d06e50b3c340449b6f7690e9e5608825d7bd3e2ec776680c79605ecf"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "beforeSizeBytes": 2261,
+      "beforeSha256": "66924d438cfe57e0e86d8276312422851047f7934ffde0b30303589fdaa28173",
+      "afterSizeBytes": 2226,
+      "afterSha256": "5bf65be14397e4452a4d90d1d6ed84e647777bf1d53ae26f5f36fee85df238e7"
+    },
+    {
+      "path": "contracts/SBOM.final.json",
+      "beforeSizeBytes": 153850,
+      "beforeSha256": "7c327620a5113c4ee4a027baf9aec06e1be6fea132e324c7344791e83343e34a",
+      "afterSizeBytes": 363127,
+      "afterSha256": "9ea8657594a4dcfc9b1147409740476b5747d0bc2f828142a950cc7b0316c917"
+    },
+    {
+      "path": "contracts/integration-manifest.json",
+      "beforeSizeBytes": 11101,
+      "beforeSha256": "800e6360554c9cd7b39492df3f15e3f06addf7057938275ff9fe673b0b4602b6",
+      "afterSizeBytes": 12145,
+      "afterSha256": "bdbd545a6c885ea1b220859c0dd5348e9e19181ebdcc9491c66340e83e8947ee"
+    },
+    {
+      "path": "docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md",
+      "beforeSizeBytes": 110868,
+      "beforeSha256": "4bb107ea84decb91b65d9569a9fd6679c24ddee31be637b434a01eb59a30ac6b",
+      "afterSizeBytes": 113015,
+      "afterSha256": "85208561781c8f569d639e6b3ebb5d1e6e36ff27163798e93e05e0d603764d11"
+    },
+    {
+      "path": "docs/Neuro_Kurisu_Список_дел_CURRENT.md",
+      "beforeSizeBytes": 140108,
+      "beforeSha256": "912efb57fd1d58f24e095f8f0029cfe5001aec359f93e889f674546e1e4f3dfa",
+      "afterSizeBytes": 142095,
+      "afterSha256": "3cd7082fca4a6fde75e02cff97604b2c87b3cf50c3cd10a9460d3e93d1f049b9"
+    },
+    {
+      "path": "package.json",
+      "beforeSizeBytes": 19969,
+      "beforeSha256": "143780c1d23af4d6b343faf8f3af4df83a7bfedd8ad56c44834f8387ef81b3fb",
+      "afterSizeBytes": 21217,
+      "afterSha256": "85d9785c9b45d47a411c2e6113f64bd9ec89939e099c19cd118e39591ccfd79c"
+    },
+    {
+      "path": "runtime/neuro-kurisu/RELEASE_MANIFEST.json",
+      "beforeSizeBytes": 1014,
+      "beforeSha256": "292e53c618dab1bd08dd4696ad633be7801c5f85dc4aa89a0aaed879c59caba0",
+      "afterSizeBytes": 1007,
+      "afterSha256": "52b601b3dfab3224fac96d940f28d414a3279905b1b0bb6cc4c99d0222e7f97e"
+    },
+    {
+      "path": "runtime/neuro-kurisu/VERSION.json",
+      "beforeSizeBytes": 278,
+      "beforeSha256": "b0ca2bca31ca43c7155c1bda749538124b9488c21c2a1796c7cb0940cf18f25a",
+      "afterSizeBytes": 271,
+      "afterSha256": "ce0a68f1ac1cc65d47dda4f16d2fd4514e8a89ea510015bcdc981404c762aba3"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package-lock.json",
+      "beforeSizeBytes": 1041,
+      "beforeSha256": "3ac2e47a4fa44f88104002e709f1503e44c7d8e5f71e0857532943a06d190a63",
+      "afterSizeBytes": 1041,
+      "afterSha256": "27618408fc32c34c5ffbdb6ae72504ac9d9441460d523b795245c71d9a3bad23"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "beforeSizeBytes": 241926,
+      "beforeSha256": "693703d97aefd740f3d92f62bdffeb394ed5b16ef91deccdf3092b29c1d01225",
+      "afterSizeBytes": 242517,
+      "afterSha256": "8ae1c5bf02676f3367833df9aa6e9bfc007fe08e1e23d41266cd16ff7037eb8d"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+      "beforeSizeBytes": 1218879,
+      "beforeSha256": "b1ce50a4a6adf596afff3bcd489573675855ef60bac597fbd977b8b234466c02",
+      "afterSizeBytes": 1219295,
+      "afterSha256": "d615264b48442510282a46ffa5708c5bcc94e377c3a1561123bfe5f792401e3d"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/learning/P40ModelEcology.ts",
+      "beforeSizeBytes": 5934,
+      "beforeSha256": "3cf2c5235692b4effd14f912b55416168fe1a0ff405d0b80f65f25e0161bec22",
+      "afterSizeBytes": 7190,
+      "afterSha256": "bff8f1aaad4b9d602baa94ee814bcd9c502abe70c378abfc8de2ad634bc1d7da"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/CapabilityRegistry.ts",
+      "beforeSizeBytes": 5408,
+      "beforeSha256": "7eed92628e4e65733a2bbe601d3bb5fbc52b00f36189d20fc1af2143975da2e2",
+      "afterSizeBytes": 6323,
+      "afterSha256": "78db0df7b9e840ca653f1663a7c14176dec140f1dcb11412acb1d227d3382487"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ReleaseContract.ts",
+      "beforeSizeBytes": 432,
+      "beforeSha256": "7070459fd578e0ab2d687a1e262ccf82203171affc437353ff138b8ed13115c3",
+      "afterSizeBytes": 417,
+      "afterSha256": "30a579dcd556408d0c8fd6246c30e8b6bbe30cac62cc988ff485816abab4d619"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/server/server.mjs",
+      "beforeSizeBytes": 141962,
+      "beforeSha256": "0d25ef2d439ea3fe1fd57cc1d7a30980f295ded5923bac073cc4b2aef00ab96a",
+      "afterSizeBytes": 143000,
+      "afterSha256": "d2323e9e05a993d9fcec3684b3ed00ef875be899f41cc0f781dcf5004dd806dd"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/p2901-runtime-claim-truth.mjs",
+      "beforeSizeBytes": 1903,
+      "beforeSha256": "fe0421c7b496bef5571871157fe03d0f88208c139a43b2562cbca2db38227d72",
+      "afterSizeBytes": 2932,
+      "afterSha256": "da7449af0c2e526bf507db06ca59c0431ef91e747652792f15b7830b7a15af5d"
+    },
+    {
+      "path": "tools/lib/state-backup.mjs",
+      "beforeSizeBytes": 5958,
+      "beforeSha256": "7698156ac0240bd432df5e0599bbdae8c287349dc4dcc95055cbe573dc58427c",
+      "afterSizeBytes": 9728,
+      "afterSha256": "963d6d13be7af52dc50b9d98a147dd32c58dcec377cd12f0f8ef051bcb01e26c"
+    },
+    {
+      "path": "tools/super-sbom.mjs",
+      "beforeSizeBytes": 1314,
+      "beforeSha256": "e3885417d50ed03c9580a7b42800817357d575bdffac18e4505245118bebe4dd",
+      "afterSizeBytes": 9333,
+      "afterSha256": "9de250bfb19bbedd76e23516f9d812d0914fd5519cf7bb13e573a359bac9f0cb"
+    },
+    {
+      "path": "Список дел.md",
+      "beforeSizeBytes": 19433,
+      "beforeSha256": "f1c74ed3328290fff76b85a3e206a125a1c61bb9e306ed5f2c2fb20afaacb343",
+      "afterSizeBytes": 22719,
+      "afterSha256": "aa431986d55c0917edc408be23dd3b6d9cb2fd19ae3015c74176235a8d20d214"
+    }
+  ],
+  "note": "SHA-256 compares exact WorkPass39 member bytes with the current WorkPass40 worktree. This manifest excludes its own bytes to avoid a self-referential hash. The unchanged WorkPass39 archive remains the rollback source."
+}

@@ -1,0 +1,39 @@
+NEURO-KURISU 34.15.0 — BIG PASS 45 FINAL VERIFICATION
+Date: 2026-09-05
+
+TYPECHECK=PASS
+CLEAN_ORGANISM_SMOKE=PASS
+P42_P44_PERFORMANCE=PASS cycles=10000 ms=85.8
+P64_P65_INTEGRATION=PASS
+P67_PROJECT_EVIDENCE=PASS
+P74_P77_INTEGRATION=PASS
+P80_P82_RUNTIME_E2E=PASS tick=160
+CLEAN_RESTART_PERSISTENCE=PASS
+INTEGRITY_STAMP_OPTIONS=PASS
+BIG_PASS_45_RETENTION_GOVERNANCE=PASS records=160 consequences=192 totalRecords=420 totalConsequences=420 memoryCount=31
+BIG_PASS_45_ARCHITECTURE_PERFORMANCE=PASS first=14.27ms last=18.25ms ratio=1.279 cacheHits=1 retryCeiling=4
+LONG_HORIZON_OPERATIONAL_250=PASS ratio=1.568 firstMedianMs=17.20 lastMedianMs=26.98 p95Approx=28.69 heapGrowth=2.192
+LONG_HORIZON_OPERATIONAL_500_WARM=PASS ratio=1.727 firstMedianMs=21.26 lastMedianMs=36.71 p95=41.56 heapGrowth=1.028
+LONG_HORIZON_OPERATIONAL_500_NATURAL=PASS ratio=1.778 firstMedianMs=21.13 lastMedianMs=37.57 p95=39.98 heapGrowth=1.243
+LONG_HORIZON_OPERATIONAL_1000=PASS ratio=2.094 firstWarmMs=18.59 lastMs=38.93 p95=44.27 heapFirst=48.03 heapLast=79.98 memory=224
+API_SECURITY=PASS
+SERVER_SECURITY_SMOKE=PASS
+CLEAN_ARCHITECTURE=PASS
+FORENSICS=PASS
+SOURCE_HYGIENE=PASS
+SOURCE_TRUTH=PASS
+RELEASE_CONTRACT=PASS
+RELEASE_SOURCE=PASS
+LOCKFILE=PASS
+CLEAN_INTEGRITY=PASS
+
+Archive manifest verification will be run after final manifest generation.
+
+Known open items:
+- 1000-cycle natural repeat campaign not yet a dedicated gate
+- 24h/72h/7d/30d real device endurance not verified
+- native Android lifecycle not complete
+- real VLM/ASR/TTS device semantics not verified
+- consciousness claims not empirically established
+
+No PASS is claimed for the open items above.

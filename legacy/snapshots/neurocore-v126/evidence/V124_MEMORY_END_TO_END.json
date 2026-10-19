@@ -1,0 +1,79 @@
+{
+  "version": 124,
+  "benchmark": "structured_key_value_delayed_memory_predictive_learning",
+  "target": "fixed_data_grounded_next_observation_projection",
+  "rows": [
+    {
+      "seed": 0,
+      "sparse": false,
+      "delay": 12,
+      "steps": 32,
+      "initial_loss": 2.829803466796875,
+      "final_loss": 2.802949905395508,
+      "loss_delta_fraction": 0.009489549969264615,
+      "query_cosine": 0.0031145066022872925,
+      "query_error": 0.9968854933977127,
+      "sparse_read_abs_mean": 0.0
+    },
+    {
+      "seed": 0,
+      "sparse": true,
+      "delay": 12,
+      "steps": 32,
+      "initial_loss": 2.833427667617798,
+      "final_loss": 2.8026199340820312,
+      "loss_delta_fraction": 0.01087295570938932,
+      "query_cosine": -0.014428428374230862,
+      "query_error": 1.0144284283742309,
+      "sparse_read_abs_mean": 0.08129731565713882
+    },
+    {
+      "seed": 1,
+      "sparse": false,
+      "delay": 12,
+      "steps": 32,
+      "initial_loss": 2.8470346927642822,
+      "final_loss": 2.8229377269744873,
+      "loss_delta_fraction": 0.0084638820352408,
+      "query_cosine": 0.006080012768507004,
+      "query_error": 0.993919987231493,
+      "sparse_read_abs_mean": 0.0
+    },
+    {
+      "seed": 1,
+      "sparse": true,
+      "delay": 12,
+      "steps": 32,
+      "initial_loss": 2.8477704524993896,
+      "final_loss": 2.79716157913208,
+      "loss_delta_fraction": 0.017771401948107127,
+      "query_cosine": 0.01873735524713993,
+      "query_error": 0.9812626447528601,
+      "sparse_read_abs_mean": 0.16281817853450775
+    },
+    {
+      "seed": 2,
+      "sparse": false,
+      "delay": 12,
+      "steps": 32,
+      "initial_loss": 2.8618202209472656,
+      "final_loss": 2.82885479927063,
+      "loss_delta_fraction": 0.011519040027512334,
+      "query_cosine": 0.04023592546582222,
+      "query_error": 0.9597640745341778,
+      "sparse_read_abs_mean": 0.0
+    },
+    {
+      "seed": 2,
+      "sparse": true,
+      "delay": 12,
+      "steps": 32,
+      "initial_loss": 2.877758026123047,
+      "final_loss": 2.8727684020996094,
+      "loss_delta_fraction": 0.0017338580861016959,
+      "query_cosine": 0.09361031651496887,
+      "query_error": 0.9063896834850311,
+      "sparse_read_abs_mean": 0.12006603181362152
+    }
+  ]
+}

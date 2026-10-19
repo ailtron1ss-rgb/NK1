@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+import { CapabilityRegistry } from '../src/organism/system/CapabilityRegistry.ts';
+import { RealityShadowBridge } from '../src/organism/system/RealityShadowBridge.ts';
+import { BoundedOperationalJournal } from '../src/organism/persistence/BoundedOperationalJournal.ts';
+
+const caps=new CapabilityRegistry();
+const snapshot=await caps.refresh();
+assert(snapshot.features.length>=10);
+for(const feature of snapshot.features){
+  assert.ok(feature.owner,'capability owner missing');
+  assert.ok(feature.status,'capability status missing');
+  assert.ok(feature.evidence,'capability evidence missing');
+  if(feature.source==='simulation'){
+    assert.equal(feature.status,'simulation-only');
+    assert.equal(feature.evidence,'simulation-contract');
+    assert.equal(feature.available,true);
+  }
+  if(feature.status==='device-verified')assert.equal(feature.evidence,'live-device');
+  if(feature.status==='unavailable')assert.equal(feature.available,false);
+}
+
+const bridge=new RealityShadowBridge();
+const sim=bridge.resolve({source:'simulation',shadowReward01:.82,groundedReward01:.20,shadowSurprise01:.30});
+assert.equal(sim.lane,'predictive-sandbox');
+assert.equal(sim.promotionEligible,false);
+assert.equal(sim.commitShadow,true);
+const ext=bridge.resolve({source:'external',shadowReward01:.82,groundedReward01:.68,shadowSurprise01:.30});
+assert.equal(ext.lane,'grounded-world');
+assert.equal(ext.promotionEligible,true);
+assert.equal(ext.commitShadow,false);
+
+const journal=new BoundedOperationalJournal(32);
+await journal.write('info','runtime-test',{truthSurface:'operational'});
+assert.equal(journal.metrics().records,1);
+assert.match(JSON.stringify(journal.snapshot()),/runtime-test/);
+
+console.log(`P2901_RUNTIME_CLAIM_TRUTH=PASS features=${snapshot.features.length} simulationPromotion=${sim.promotionEligible} externalPromotion=${ext.promotionEligible}`);

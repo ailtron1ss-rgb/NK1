@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import { AutonomousRuntimeLifeController } from '../src/organism/system/AutonomousRuntimeLifeController.ts';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const ctl=new AutonomousRuntimeLifeController();
+let r=ctl.tick({tick:1,at:10000,externalSignal:false,energy01:.82,uncertainty01:.52,novelty01:.72,goalPressure01:.61,homeostaticPressure01:.18,initiative01:.79,predictionError01:.31,resourcePressure01:.2});
+assert.equal(r.autonomous,true); assert.equal(r.shouldAct,true);
+r=ctl.tick({tick:2,at:25000,externalSignal:false,energy01:.79,uncertainty01:.38,novelty01:.64,goalPressure01:.55,homeostaticPressure01:.16,initiative01:.74,predictionError01:.22,resourcePressure01:.18});
+assert.equal(r.autonomous,true); assert.ok(ctl.summary().selfStartedCycles>=2); assert.ok(ctl.summary().temporalPersistence01>.28);
+const blocked=ctl.tick({tick:3,at:40000,externalSignal:false,energy01:.11,uncertainty01:.7,novelty01:.4,goalPressure01:.8,homeostaticPressure01:.95,initiative01:.9,predictionError01:.7,resourcePressure01:.9});
+assert.equal(blocked.shouldAct,false);assert.equal(blocked.mode,'recover');
+const restoredCtl=new AutonomousRuntimeLifeController();restoredCtl.restore(ctl.snapshot());assert.equal(restoredCtl.summary().selfStartedCycles,ctl.summary().selfStartedCycles);
+const store=new MemoryStateStore();const cfg={enableLanguage:false,checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1,cycleResultMode:'operational',performanceProfile:'mobile',enableWorldModel:true,enableSelfProjects:true,enableAgencyModel:true,enableLifelongLearning:true};
+const core=new OrganismCore(store,cfg);await core.init();await core.autonomousHeartbeat(100000);await core.flush();
+const s1=core.systemSnapshot().autonomousRuntimeLife;assert.ok((s1?.ambientCycles??0)>=1);assert.ok((s1?.selfStartedCycles??0)>=1);assert.ok((s1?.selfAuthoredActivity01??0)>.35);
+const core2=new OrganismCore(store,cfg);await core2.init();const s2=core2.systemSnapshot().autonomousRuntimeLife;assert.equal(s2?.selfStartedCycles,s1?.selfStartedCycles);assert.equal(s2?.ambientCycles,s1?.ambientCycles);
+console.log(JSON.stringify({pass:'BIG_PASS_224_AUTONOMOUS_RUNTIME_LIFE',controller:{selfStartedCycles:ctl.summary().selfStartedCycles,idleGapCycles:ctl.summary().idleGapCycles,temporalPersistence01:ctl.summary().temporalPersistence01,environmentalAgency01:ctl.summary().environmentalAgency01,longestStreak:ctl.summary().longestStreak},core:{ambientCycles:s1?.ambientCycles,selfStartedCycles:s1?.selfStartedCycles,selfAuthoredActivity01:s1?.selfAuthoredActivity01,temporalPersistence01:s1?.temporalPersistence01,persistedSelfStartedCycles:s2?.selfStartedCycles},verified:true},null,2));

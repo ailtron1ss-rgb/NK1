@@ -1,0 +1,22 @@
+B313 DOCUMENTS MANIFEST — 2026-09-13
+
+Primary audit:
+- DEEP_AUDIT_B313_LONGITUDINAL_DEVELOPMENT_2026-09-13_RU.md
+- B313_EVIDENCE_REPORT_RU.md
+- B313_FINAL_AUDIT_STATUS_RU.md
+- B313_PROGRESS_V17_RU.md
+- B313_NEXT_STEP_PLAN_RU.md
+- B313_ARCHITECTURE_DECISIONS_RU.md
+- B313_RELEASE_NOTES_RU.md
+- B313_DOCUMENTS_MANIFEST_RU.txt
+- AUDIT_RECHECK_MATRIX_RU.md
+- CLAUDE_DOCUMENTS_INDEX_RU.md
+
+Claude PDF set present:
+- AUDIT_CLAUDE_B266_35_6_1_RU.pdf
+- BIG_PASS_CHAIN_B267_B330_RU.pdf
+- BRAIN_BRANCH_CHAIN_PLAN_CLAUDE_RU.pdf
+- DEEP_PROGRESS_AND_PLAN_CLAUDE_RU.pdf
+
+Evidence principle:
+Current executable evidence has priority over historical audit claims. B313 does not claim consciousness or human-equivalent cognition.

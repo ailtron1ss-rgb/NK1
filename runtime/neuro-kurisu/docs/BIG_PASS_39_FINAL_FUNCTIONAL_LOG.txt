@@ -1,0 +1,140 @@
+
+> neuro-kurisu-organism-evolution@34.8.1 test:big-pass-39
+> node --experimental-strip-types tests/big-pass-39-cognitive-spine.mjs && node --experimental-strip-types tests/big-pass-39-reality-boundary.mjs
+
+(node:18642) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+BIG_PASS_39_SPINE_UNITS=PASS {"winner":"good","accuracy":1,"selfSamples":2,"protectMode":"protect","deepMode":"deep"}
+(node:18653) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+BIG_PASS_39_REALITY_BOUNDARY=PASS {"schema":86,"simSourceClass":"simulator","deviceSourceClass":"device","records":2}
+BIG_PASS_39_PROJECT_TOOL_BRIDGE=PASS {"projectId":"project-1788612143113-aada1017e0c19","safe":true,"dangerBlocked":true}
+
+> neuro-kurisu-organism-evolution@34.8.1 test:big-pass-38
+> node --experimental-strip-types tests/big-pass-38-autonomous-spine.mjs
+
+(node:18700) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+BIG_PASS_38_AUTONOMOUS_SPINE=PASS {"tick":20,"predictionDebt":19,"quorum":17,"shadow":9,"longHorizon":34,"projectCycles":0}
+
+> neuro-kurisu-organism-evolution@34.8.1 test:p40:model-ecology
+> node --experimental-strip-types tests/p40-model-ecology.mjs
+
+P40_MODEL_ECOLOGY=PASS
+(node:18747) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> neuro-kurisu-organism-evolution@34.8.1 test:p41:truthfulness
+> node --experimental-strip-types tests/p41-truthfulness.mjs
+
+P41_TRUTHFULNESS=PASS
+(node:18770) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> neuro-kurisu-organism-evolution@34.8.1 test:p42-44
+> npm run test:p42:experience && npm run test:p43:imagery && npm run test:p44:predictive && npm run test:p42:integration && npm run test:p42:migration && npm run test:p42:truthfulness && npm run test:p42:persistence && npm run test:p42:performance
+
+
+> neuro-kurisu-organism-evolution@34.8.1 test:p42:experience
+> node --experimental-strip-types tests/p42-unified-experience.mjs
+
+P42_UNIFIED_EXPERIENCE=PASS {"tick":2,"salience":"0.353","surprise":"0.137","integration":"0.144"}
+(node:18805) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> neuro-kurisu-organism-evolution@34.8.1 test:p43:imagery
+> node --experimental-strip-types tests/p43-mental-scene.mjs
+
+P43_MENTAL_SCENE=PASS {"contents":4,"imagined":7,"workspace":"0.148"}
+(node:18828) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> neuro-kurisu-organism-evolution@34.8.1 test:p44:predictive
+> node --experimental-strip-types tests/p44-embodied-predictive.mjs
+
+P44_PREDICTIVE_WORLD=PASS {"samples":11,"oneStep":"0.651","rollout":4,"confidence":"0.358"}
+(node:18851) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> neuro-kurisu-organism-evolution@34.8.1 test:p42:integration
+> node --experimental-strip-types tests/p42-p44-integration.mjs
+
+(node:18874) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+P42_P44_INTEGRATION=PASS {"action":"respond","p42":1,"p43":1,"p44Samples":1}
+
+> neuro-kurisu-organism-evolution@34.8.1 test:p42:migration
+> node --experimental-strip-types tests/p42-p44-migration.mjs
+
+(node:18921) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+P42_P44_MIGRATION=PASS schema=86
+
+> neuro-kurisu-organism-evolution@34.8.1 test:p42:truthfulness
+> node --experimental-strip-types tests/p42-p44-truthfulness.mjs
+
+(node:18944) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+P42_P44_TRUTHFULNESS=PASS
+
+> neuro-kurisu-organism-evolution@34.8.1 test:p42:persistence
+> node --experimental-strip-types tests/p42-p44-persistence.mjs
+
+(node:18967) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+P42_P44_PERSISTENCE=PASS
+
+> neuro-kurisu-organism-evolution@34.8.1 test:p42:performance
+> node --experimental-strip-types tests/p42-p44-performance.mjs
+
+P42_P44_PERFORMANCE=PASS cycles=10000 ms=117.4
+(node:18990) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> neuro-kurisu-organism-evolution@34.8.1 test:p54
+> node --experimental-strip-types tests/p54-long-horizon-evidence.mjs
+
+p54 long-horizon evidence PASS
+(node:19013) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> neuro-kurisu-organism-evolution@34.8.1 test:p57
+> node --experimental-strip-types tests/p57-reality-first-observatory.mjs
+
+P57 reality-first observatory: PASS
+(node:19036) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> neuro-kurisu-organism-evolution@34.8.1 test:p74:p77
+> node --experimental-strip-types tests/p74-p77-integration.mjs
+
+(node:19059) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+P74_P77_INTEGRATION=PASS
+
+> neuro-kurisu-organism-evolution@34.8.1 test:p80:p82-runtime-e2e
+> node --experimental-strip-types tests/p80-p82-runtime-e2e.mjs
+
+(node:19106) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+P80_P82_RUNTIME_E2E=PASS {"tick":160,"p80":160,"p81":160,"p82":160}
+
+> neuro-kurisu-organism-evolution@34.8.1 test:restart
+> node --experimental-strip-types tests/restart-persistence.mjs
+
+(node:19153) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+CLEAN_RESTART_PERSISTENCE=PASS
+
+> neuro-kurisu-organism-evolution@34.8.1 test:replay
+> node --experimental-strip-types tests/replay.mjs
+
+(node:19200) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+REPLAY=PASS
+
+> neuro-kurisu-organism-evolution@34.8.1 test:concurrency
+> node --experimental-strip-types tests/concurrency.mjs
+
+(node:19247) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

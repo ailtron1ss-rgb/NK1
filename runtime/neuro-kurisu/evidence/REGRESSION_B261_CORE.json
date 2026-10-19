@@ -1,0 +1,1 @@
+{"ok":true,"trainingUpdates":12,"transitionSamples":12,"onlineTransitionError01":0.31420533006354817,"onlineRewardError01":0.41103124660488477,"holdoutDelta01":0,"replayGain01":0,"actionSensitivity01":0,"restartPreserved":true}

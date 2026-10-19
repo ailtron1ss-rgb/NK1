@@ -1,0 +1,23 @@
+{
+  "name": "neuro-kurisu-organism-evolution",
+  "version": "35.40.0",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "": {
+      "name": "neuro-kurisu-organism-evolution",
+      "version": "35.40.0",
+      "engines": {
+        "node": ">=22.12.0",
+        "npm": ">=10.8.0"
+      }
+    }
+  },
+  "scripts": {
+    "audit:big-pass-157": "npm run typecheck && npm run test:big-pass-157 && npm run test:big-pass-157:core && npm run test:big-pass-157:server && npm run test:big-pass-157:restart && npm run audit:architecture && npm run audit:hygiene && npm run audit:forensics && npm run audit:integrity && npm run verify:release-source",
+    "test:big-pass-157": "node --experimental-strip-types tests/big-pass-157-operational-life.mjs",
+    "test:big-pass-157:core": "node --experimental-strip-types tests/big-pass-157-core-operational-life.mjs",
+    "test:big-pass-157:restart": "node --experimental-strip-types tests/big-pass-157-restart.mjs",
+    "test:big-pass-157:server": "node tests/big-pass-157-server-smoke.mjs"
+  }
+}

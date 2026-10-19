@@ -1,0 +1,14 @@
+import { P27NeuralWorldFoundation } from '../src/organism/cognition/P27NeuralWorldFoundation.ts';
+import assert from 'node:assert/strict';
+const f=new P27NeuralWorldFoundation();
+const base={version:1,tick:1,at:Date.now(),needs:{energy:.9,cognitiveLoad:.1,uncertainty:.1,socialNeed:.2,novelty:.7,identityCoherence:.9,goalPressure:.4},predictionError:.1,attentionBudget:.9,lastAction:'none',lastActionSuccess:null,autonomyScore:.4,selfPredictionError:.1,predictedNextAction:'none',lastPredictionConfidence:.8,worldContextVersion:1};
+const encoded=f.encode({text:'high novelty research task',sensorState:base,vision:{features:[.9,.2,.1,.7],confidence01:.8},audio:{samples:Array.from({length:200},(_,i)=>Math.sin(i/4)),sampleRate:16000}});
+assert.equal(encoded.length,4); const latent=f.fuse(encoded); assert.equal(latent.vector.length,16); assert(latent.confidence01>.5);
+const before=f.predict(latent,'explore').reward01;
+for(let i=0;i<120;i++) f.train(latent,'explore',.95,latent);
+const after=f.predict(latent,'explore').reward01;
+assert(after>before+0.08);
+const c=f.counterfactuals(latent,'explore'); assert.equal(c.length,6); assert(c.every(x=>x.source==='learned-model'));
+const snap=f.snapshot(); const restored=new P27NeuralWorldFoundation(); restored.restore(snap); assert.deepEqual(restored.snapshot().world.actionWeights,snap.world.actionWeights);
+const hold=restored.recordHoldout(.5,.78); assert.equal(hold.holdoutDelta01,.28);
+console.log(`P27_LEARNED_WORLD=PASS encoded=${encoded.length} confidence=${latent.confidence01.toFixed(3)} before=${before.toFixed(3)} after=${after.toFixed(3)} holdoutDelta=${hold.holdoutDelta01.toFixed(3)}`);

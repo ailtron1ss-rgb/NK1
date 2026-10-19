@@ -1,0 +1,27 @@
+Neuro-Kurisu B305 document manifest
+
+Дата: 13.09.2026
+
+Новые B305 документы:
+- DEEP_AUDIT_B305_CRITICAL_PATH_2026-09-13_RU.md
+- B305_EVIDENCE_REPORT_RU.md
+- B305_FINAL_AUDIT_STATUS_RU.md
+- B305_PROGRESS_V9_RU.md
+- B305_NEXT_STEP_PLAN_RU.md
+- B305_ARCHITECTURE_DECISIONS_RU.md
+- RELEASE_VERIFICATION_B305_2026-09-13_RU.md
+- B305_DOCUMENTS_MANIFEST_RU.txt
+
+Новые B305 runtime/test artifacts:
+- src/organism/system/B305CriticalPathVerificationLedger.ts
+- tests/big-pass-305-critical-path-verification.mjs
+- tests/big-pass-305-independent-holdout.mjs
+- tests/big-pass-305-migration.mjs
+- tests/big-pass-305-termux-benchmark.mjs
+- scripts/run-b305-termux-benchmark.sh
+
+Claude PDF документы сохраняются в этой же папке:
+- AUDIT_CLAUDE_B266_35_6_1_RU.pdf
+- BIG_PASS_CHAIN_B267_B330_RU.pdf
+- BRAIN_BRANCH_CHAIN_PLAN_CLAUDE_RU.pdf
+- DEEP_PROGRESS_AND_PLAN_CLAUDE_RU.pdf

@@ -1,0 +1,73 @@
+{
+  "pass": 169,
+  "verifiedPrinciple": "A feature is not considered implemented unless its behavior has evidence; timeouts are not PASS.",
+  "functionInventory": {
+    "total": 2457,
+    "verified": 18,
+    "integrationOnly": 574,
+    "unsafeToAutoRun": 214,
+    "unverified": 1651,
+    "verifiedRate01": 0.0073,
+    "evidenceCoverage01": 0.0657
+  },
+  "parameterizedProbe": {
+    "sourceFiles": 269,
+    "imported": 269,
+    "attempted": 501,
+    "passed": 470,
+    "failed": 0,
+    "inputSynthesisNeeded": 19,
+    "lifecycleNeeded": 12,
+    "skipped": 30
+  },
+  "qualityGates": {
+    "typecheck": "PASS",
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "forensics": "PASS",
+    "hygiene": "PASS",
+    "releaseSource": "PASS",
+    "lock": "PASS",
+    "brain": "PASS"
+  },
+  "bigPass169": {
+    "coreIntegration": "PASS",
+    "restart": "PASS",
+    "activePerceptionRequestAndExecution": "PASS",
+    "worldCausalCalibration": "PASS",
+    "selfModelValidation": "PASS",
+    "failureRecovery": "PASS",
+    "tamperDetection": "PASS"
+  },
+  "regressions": [
+    "smoke",
+    "restart",
+    "memory",
+    "concurrency",
+    "P24 world",
+    "P26 true learning",
+    "P28 plasticity",
+    "P29 governance",
+    "P30 continual",
+    "P31 consciousness",
+    "P31 lesion",
+    "P32 causal self",
+    "P33 personhood",
+    "P34 personhood",
+    "P35 integration",
+    "P37 integration",
+    "P37 agreement",
+    "P37 episode",
+    "P41 native",
+    "P41 integration",
+    "P41 truthfulness",
+    "P41 temporal",
+    "P50 causal self-world",
+    "P51 grounded causal workspace",
+    "BIG PASS 168"
+  ],
+  "notes": [
+    "aggregate audit wrapper is not used as PASS evidence when orchestration timeouts occur.",
+    "Real Android sensor loop remains unverified because this environment cannot access the user device sensors."
+  ]
+}

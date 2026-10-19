@@ -1,0 +1,35 @@
+node_modules/
+app/node_modules/
+runtime/neuro-kurisu/node_modules/
+.super-state/
+.verify-state/
+**/state/
+**/.cache/
+**/__pycache__/
+**/*.pyc
+*.log
+npm-debug.log*
+.DS_Store
+
+# Generated Live2D shadows; canonical bytes live under runtime/neuro-kurisu/public.
+/app/public/live2d/Kurisu/Kurisu.4096/texture_00.png
+/app/public/live2d/Kurisu/Kurisu.cdi3.json
+/app/public/live2d/Kurisu/Kurisu.moc3
+/app/public/live2d/Kurisu/Kurisu.model3.json
+/app/public/live2d/Kurisu/Kurisu.physics3.json
+/app/public/live2d/Kurisu/exp/Arm Change.exp3.json
+/app/public/live2d/Kurisu/exp/Blush 1.exp3.json
+/app/public/live2d/Kurisu/exp/Blush 2.exp3.json
+/app/public/live2d/Kurisu/exp/Stanby Angry.exp3.json
+/app/public/live2d/Kurisu/exp/Stanby Sad.exp3.json
+/app/public/live2d/Kurisu/exp/Stanby Scared.exp3.json
+/app/public/live2d/Kurisu/exp/Stanby Smile.exp3.json
+/app/public/live2d/Kurisu/exp/Stanby Surprised.exp3.json
+/app/public/live2d/Kurisu/motions/58Loop.motion3.json
+/app/public/live2d/Kurisu/motions/Out From Camera.motion3.json
+/app/public/live2d/Kurisu/motions/haru_g_idle.motion3.json
+/app/public/live2d/Kurisu/motions/mtn_07.motion3.json
+/app/public/live2d/Kurisu/motions/xhiyori_m03.motion3.json
+/app/public/live2d/Kurisu.mobile/Kurisu-mobile.model3.json
+/app/public/live2d/Kurisu.mobile/Kurisu.2048/texture_00_mobile_2048.png
+/app/public/live2d/PROVENANCE.json

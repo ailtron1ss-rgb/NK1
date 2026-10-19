@@ -1,0 +1,9 @@
+{
+  "batch_ms": {
+    "8": 2.919861349982966,
+    "32": 4.922855299992079,
+    "64": 7.2960232000014,
+    "128": 11.583635049987606
+  },
+  "note": "V126 functional sparse-delta state update; compare absolute latency against the environment, not a universal speed claim."
+}

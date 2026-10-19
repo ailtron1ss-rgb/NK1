@@ -1,0 +1,10 @@
+.codegraph/codegraph.db
+
+/node_modules
+/build
+/data
+/.will
+
+.env
+.DS_Store
+.claude/

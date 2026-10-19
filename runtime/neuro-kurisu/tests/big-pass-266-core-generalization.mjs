@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { createB266Families, environmentForFamily } from '../src/organism/cognition/B266HiddenTaskGeneralization.ts';
+
+const acts=['respond','explore','verify','rest','reflect','wait','defer'];
+const core=new OrganismCore(new MemoryStateStore(),{performanceProfile:'mobile'});
+await core.init();
+const makeCandidates=()=>acts.map((action,i)=>({id:`b266-candidate-${i}`,action,score:.4,predictedUtility:action==='verify'?.72:action==='explore'?.68:action==='respond'?.63:.38,predictedNeedRelief:.5,predictedCost:action==='rest'?.12:.32,confidence:.64,generatedAt:0}));
+const choose=(_state,step)=>core.b264CausalPolicyDecide(makeCandidates(),step).chosen?.action ?? acts[step%acts.length];
+const train=createB266Families(20260912,8,0).train;
+const hold=createB266Families(20260912,0,6).holdout;
+const wrap=(family)=>({choose});
+const result=core.b266EvaluateHiddenFamilies(train.map(()=>wrap(train[0])),hold.map(()=>wrap(hold[0])),20260912);
+assert.equal(result.train.length,8); assert.equal(result.holdout.length,6);
+assert.ok(result.metrics.robustness01>0.5);
+assert.ok(result.metrics.hiddenFamilyGain01>-0.35);
+const stress=core.b266ReplayStress();
+const d=core.b266GeneralizationDiagnostics();
+assert.ok(d.families===14); assert.ok(d.episodes===14);
+const snap=core.snapshot(); assert.ok(snap.system.hiddenTaskGeneralizationB266?.holdoutEpisodes===6);
+console.log(JSON.stringify({pass:true,metrics:result.metrics,stress,diagnostics:d,persisted:snap.system.hiddenTaskGeneralizationB266},null,2));

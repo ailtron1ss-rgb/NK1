@@ -1,0 +1,32 @@
+{
+  "release": "35.30.0",
+  "organismCore": "100.21.0-r16-multi-system",
+  "canonicalRoot": "src/organism",
+  "canonicalFiles": 544,
+  "sourceSurfaceFiles": 1737,
+  "canonicalDomainRoots": [
+    "src/organism/core",
+    "src/organism/cognition",
+    "src/organism/memory",
+    "src/organism/world",
+    "src/organism/body",
+    "src/organism/language",
+    "src/organism/persistence",
+    "src/organism/system",
+    "src/organism/learning"
+  ],
+  "legacyIsolated": "legacy-original/",
+  "runtimeEntry": "src/server/server.mjs",
+  "uiEntry": "public/index.html",
+  "runtimeDependencies": 0,
+  "researchEntry": "research/",
+  "stateSchema": 219,
+  "dependencyRules": [
+    "canonical -> canonical only",
+    "canonical -> research forbidden",
+    "canonical -> legacy forbidden",
+    "UI -> runtime API only",
+    "LLM -> language realization only",
+    "system -> version/integrity contracts"
+  ]
+}

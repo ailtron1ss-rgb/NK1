@@ -1,0 +1,4 @@
+import assert from 'node:assert/strict';
+import { B283CompetingPredictiveHypotheses, defaultB283State } from '../src/organism/cognition/B283CompetingPredictiveHypotheses.ts';
+const w=new B283CompetingPredictiveHypotheses(); for(let i=0;i<36;i++) w.step({tick:i,globalLatent:Array(16).fill(i%4===0?.7:.2),selfLatent:Array(16).fill(.1),worldLatent:Array(16).fill(.2),goalVector:Array(16).fill(.3),memoryLatent:Array(16).fill(.12),reward01:.6,predictionError01:.2,uncertainty01:.2,autonomy01:.7,personalityVector:Array(16).fill(.05),learningEnabled:true});
+const snap=w.snapshot(); const r=new B283CompetingPredictiveHypotheses(); r.restore(snap); assert.deepEqual(r.snapshot(),snap); assert.equal(defaultB283State().version,1); console.log(JSON.stringify({pass:true,steps:snap.steps,learningUpdates:snap.learningUpdates,hypothesisSwitches:snap.hypothesisSwitches,roundTrip:true}));

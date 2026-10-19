@@ -1,0 +1,71 @@
+{
+  "release": "34.72.0",
+  "pass": 98,
+  "files": [
+    {
+      "path": "src/organism/learning/ProceduralSkillLibrary.ts",
+      "sha256": "7c2b1c00ff0b00abc1a846f29d9b9aa966265a2e336919ecfb718c3c158b16e4",
+      "bytes": 15064
+    },
+    {
+      "path": "src/organism/core/OrganismCore.ts",
+      "sha256": "4fb560675e9398f90ea9fac168b3a4d40063dc8610288916af16d510dcc554af",
+      "bytes": 361443
+    },
+    {
+      "path": "tests/big-pass-98-compound-device-agency.mjs",
+      "sha256": "2034d05b3bce2e6835a8822bd1aa42d889d1016c0836efc4865d0882e2bdb4e5",
+      "bytes": 10640
+    },
+    {
+      "path": "tests/big-pass-98-skill-migration.mjs",
+      "sha256": "72895ab5e883d8d05d5d314cae1d5e620e6f106e117e13d6acc3d585c948035b",
+      "bytes": 1114
+    },
+    {
+      "path": "package.json",
+      "sha256": "f8349abb1950aba4544d8cba9c0d8cd69e42d7bf33b407538f1a6b1a1af8a8ce",
+      "bytes": 54499
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "fd245291a7cb4ff663b83a6be5081605d8df105238900dbcbfcb4d83166202f5",
+      "bytes": 312
+    },
+    {
+      "path": "VERSION.json",
+      "sha256": "fa734d1b137ef74d0dfc2ae7c51ab5aaa3be028f6653913d2821977a03f4ac8d",
+      "bytes": 253
+    },
+    {
+      "path": "RELEASE_MANIFEST.json",
+      "sha256": "10c33efea41a3546278120eb771bde19f2040170bbb4585e6e20fd8b2a960f08",
+      "bytes": 1061
+    },
+    {
+      "path": "README_RU.md",
+      "sha256": "b103649588d278c8ed5afa3961de026732cc22280acc6284bc3414d8ffda99ee",
+      "bytes": 13044
+    },
+    {
+      "path": "docs/BIG_PASS_98_FINAL_REPORT_RU.md",
+      "sha256": "a55031cf5985027966d232a172368d8ea42f66261a011b567f80459437171c74",
+      "bytes": 4325
+    },
+    {
+      "path": "docs/BIG_PASS_98_PROGRESS_METRICS.json",
+      "sha256": "b01777bc4124c05f780ab1795d1776a82a88f93045f296bc0bec7ebaf1967808",
+      "bytes": 1687
+    },
+    {
+      "path": "docs/BIG_PASS_98_COMPOUND_DEVICE_AGENCY_RU.md",
+      "sha256": "1b74b8dea7cd04d06771742291a626cc04660ad310098eff5cd36318066f3a05",
+      "bytes": 3491
+    },
+    {
+      "path": "RELEASE_NOTES_34.72.0_RU.md",
+      "sha256": "13d78755efa47d309994efc82224a2c4bf59d5db6921a2ab7789a7dab89ff41a",
+      "bytes": 1114
+    }
+  ]
+}

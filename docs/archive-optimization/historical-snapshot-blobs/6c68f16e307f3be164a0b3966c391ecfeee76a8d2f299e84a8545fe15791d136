@@ -1,0 +1,64 @@
+# Neuro-Kurisu SUPER
+
+Integrated Neuro-Kurisu project with a single canonical writable organism runtime and explicit delivery, visual, research and legacy boundaries.
+
+## Structure
+
+- `runtime/neuro-kurisu` — **canonical runtime**, Neuro-Kurisu 35.40.0, schema 223.
+- `app` — Grok Workspace delivery shell: routing, UI, chat, HUD, Labs, auth/data infrastructure.
+- `app/public/live2d` — real Live2D model/runtime assets and vendor runtime.
+- `app/src/legacy/avatar` — real legacy sprite compatibility surface using assets in `app/public/sprites`.
+- `research/neurocore-v143` — research-only NeuroCore V143.
+- `research/nomega-pass20` — governed NOMEGA research branch.
+- `research/deepcode` — research-only DeepCode v21.
+- `legacy` — historical branches, exact uploaded input archives and provenance snapshots.
+- `contracts` — ownership, integration, verification and generated inventory contracts.
+- `docs` — navigation, architecture, gaps and runbook.
+- `tools` — project startup, gateway and repeatable audits.
+
+## Ownership
+
+There is exactly one writable organism owner: `runtime/neuro-kurisu`.
+
+The browser never instantiates a second organism brain. UI state is a projection of the runtime HTTP API. Live2D and legacy sprites render canonical emotion/embodiment state but do not own cognition. Research candidates are isolated behind `research/research_bridge.py` and cannot auto-promote or dual-write canonical state.
+
+See `contracts/OWNERSHIP.md` and `docs/ARCHITECTURE.md`.
+
+## Run
+
+Development:
+
+```bash
+npm --prefix app ci
+npm run dev
+```
+
+Production-style local start:
+
+```bash
+npm --prefix app ci
+npm --prefix app run build
+npm run start
+```
+
+Gateway: `http://127.0.0.1:8080`.
+
+## Verification
+
+Fast structural/runtime-source audit:
+
+```bash
+npm run audit:quick
+```
+
+Full historical runtime suites remain under `runtime/neuro-kurisu/package.json`; research suites remain isolated by design.
+
+The distribution does not ship `node_modules`. Camera, microphone, Gemini and Kobold are external capabilities; unavailable providers/hardware are surfaced as unavailable/degraded instead of fabricated success.
+
+## Provenance
+
+`contracts/inventory/provenance-2026-10-06.json` contains SHA-256 records for the exact uploaded source archives. The full original branches are preserved under `legacy/`.
+
+## Documentation map
+
+Start with `docs/START-HERE.md`, then `docs/ARCHITECTURE.md`, `docs/INVENTORY.md`, `docs/CONFLICTS-AND-GAPS.md`, `docs/DEFINITION-OF-DONE.md` and `docs/RUNBOOK.md`.

@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { migratePersistedOrganism } from '../src/organism/persistence/StateMigrations.ts';
+const raw={schemaVersion:127,system:{executiveNeuralFusionB297:{version:1,cycles:17,outcomeUpdates:8,commits:12,holds:1,sourceReliability:{self:.7},sourceCredit:{policy:.84},sourceCreditUpdates:19,pairRedundancy:{'self|policy':.6},actionReliability:{explore:.8},lastSignals:{explore:{policy:.12}},lastAction:'explore',lastAutonomy01:.7,lastDisagreement01:.1,lastCommitMargin01:.2,lastFrame:[],history:[]}}};
+const migrated=migratePersistedOrganism(raw); const fusion=migrated.system.executiveNeuralFusionB297;
+assert.ok(fusion,'B310 migration dropped B297 fusion state');
+assert.equal(fusion.cycles,17,'B310 migration changed legacy cycles');
+assert.equal(fusion.sourceCredit.policy,.84,'B310 migration lost source credit');
+assert.equal(fusion.sourceCreditUpdates,19,'B310 migration lost source credit update count');
+console.log(JSON.stringify({pass:true,schema:migrated.schemaVersion,cycles:fusion.cycles,policyCredit:fusion.sourceCredit.policy,sourceCreditUpdates:fusion.sourceCreditUpdates},null,2));
+process.exit(0);

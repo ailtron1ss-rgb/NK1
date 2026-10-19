@@ -1,0 +1,41 @@
+{
+  "generatedAt": "2026-10-06",
+  "inputs": [
+    {
+      "source": "/mnt/data/grok-workspace.zip",
+      "archivedPath": "legacy/input-archives/grok-workspace.zip",
+      "bytes": 54293752,
+      "sha256": "75d102549c372d7fed9cdcdcdbe9a3df5f475ca2540360d6be6551c3f2c53ea1"
+    },
+    {
+      "source": "/mnt/data/deepcode.docs",
+      "archivedPath": "legacy/input-archives/deepcode.docs",
+      "bytes": 78456,
+      "sha256": "104a480f59a006a4f54ae6714912ff4f7906f3dc8c36d587a536e93eae5cab69"
+    },
+    {
+      "source": "/mnt/data/NOMEGA_PASS20_CAPABILITY_FORGE.zip",
+      "archivedPath": "legacy/input-archives/NOMEGA_PASS20_CAPABILITY_FORGE.zip",
+      "bytes": 1140070,
+      "sha256": "01dfdf650158d29869c87bc0df584d7f9fed56b63feb17f47f9aae887af5079b"
+    },
+    {
+      "source": "/mnt/data/NeuroCore_V126_Consolidation_Decontaminated_2026-09-30.zip",
+      "archivedPath": "legacy/input-archives/NeuroCore_V126_Consolidation_Decontaminated_2026-09-30.zip",
+      "bytes": 2559769,
+      "sha256": "c57561e020593a67ae9bbf248da77cef9dee4b47d45e44c63db80ec05cd3dce0"
+    },
+    {
+      "source": "/mnt/data/Neuro_Kurisu_35.30.0_R16_PASS_11_SEMANTIC_ISOLATION_2026-09-29.zip",
+      "archivedPath": "legacy/input-archives/Neuro_Kurisu_35.30.0_R16_PASS_11_SEMANTIC_ISOLATION_2026-09-29.zip",
+      "bytes": 21138698,
+      "sha256": "8d875575da7ce22586cd2cd008f60ff1db61ac09809394bd07e8fe2d46890886"
+    },
+    {
+      "source": "/mnt/data/Kurisu_v9_Sprites_Live.zip",
+      "archivedPath": "legacy/input-archives/Kurisu_v9_Sprites_Live.zip",
+      "bytes": 9893957,
+      "sha256": "1592b64b5dbe47abfc3379ac8f08d73331adce790cc1fe8f7ff286236dd19750"
+    }
+  ]
+}

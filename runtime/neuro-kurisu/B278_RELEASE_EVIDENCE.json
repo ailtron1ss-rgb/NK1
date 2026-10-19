@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "date": "2026-09-12",
+  "stage": "B278 Neural Primitive Genesis",
+  "standalone": {
+    "cycles": 240,
+    "learningUpdates": 240,
+    "inventions": 2,
+    "verifiedPrimitives": 2,
+    "neuralGrounding01": 0.9889301949997158,
+    "selfBinding01": 0.937657006335438,
+    "personalityBinding01": 0.857499999271626,
+    "autonomy01": 0.8199999999961414,
+    "compositionDepthMax": 2,
+    "transferGain01": 0.6509184889756563,
+    "causalAblationDrop01": 0.05319710527337951,
+    "contextDivergence01": 0.500448556507465,
+    "adversarialRejections": 8,
+    "roundTrip": true
+  },
+  "core": {
+    "cycles": 16,
+    "inventions": 2,
+    "learningUpdates": 16,
+    "neuralGrounding01": 0.616263760159063,
+    "selfBinding01": 0.7336511986838601,
+    "personalityBinding01": 0.6976683645458729,
+    "autonomy01": 0.5135087317538188,
+    "compositionDepthMax": 2,
+    "restartRoundTrip": true
+  },
+  "independentHidden": {
+    "steps": 20,
+    "meanReward01": 0.61,
+    "baselineReward01": 0.61,
+    "gain01": 0,
+    "accuracy01": 0.5,
+    "contextDivergence01": 0.03997592451405856,
+    "meanAblationDrop01": 0.028758996568558848,
+    "interpretation": "internal neural/contextual influence is demonstrated, but external behavioural superiority is not yet demonstrated on this hidden benchmark"
+  },
+  "migration": {"exactRoundTrip": true},
+  "static": {
+    "fullAudit": true,
+    "architecture": true,
+    "integrity": true,
+    "forensics": true,
+    "hygiene": true,
+    "syntax": true,
+    "contract": true,
+    "lock": true,
+    "releaseSource": true
+  }
+}

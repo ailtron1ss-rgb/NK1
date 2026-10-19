@@ -1,0 +1,210 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .bg-radial-ambient {
+    background-image: radial-gradient(circle at 50% 25%, #4D3C9E 0%, transparent 70%);
+  }
+
+  .glow-red {
+    box-shadow: 0 0 12px rgba(255, 59, 48, 0.5);
+  }
+
+  .glow-green {
+    box-shadow: 0 0 8px #00FF94;
+  }
+
+  .glow-cyan {
+    box-shadow: 0 0 8px #5AC8FA;
+  }
+}
+
+/* Custom sleek scrollbar for immersive sci-fi theme */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #050508;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #FF3B30;
+}
+
+
+/* Mid-range Android optimizations */
+html, body, #root {
+  min-height: 100%;
+  overscroll-behavior: none;
+}
+
+button, input, textarea, select {
+  touch-action: manipulation;
+}
+
+@media (max-width: 640px) {
+  body {
+    -webkit-text-size-adjust: 100%;
+  }
+  .backdrop-blur-md, .backdrop-blur-lg, .backdrop-blur-xl {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* v3.1 mobile polish */
+@media (max-width: 640px) {
+  .min-h-\[380px\] { min-height: 280px; }
+  button { min-height: 36px; }
+}
+
+/* Thought bubble animation fallback */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-in { animation: fadeInUp 0.35s ease-out both; }
+
+/* === v18 Consciousness HUD + UI dynamics === */
+.consciousness-hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 25;
+  padding: 6px 8px 4px;
+  background: linear-gradient(180deg, rgba(8,8,14,0.92) 0%, rgba(8,8,14,0.55) 70%, transparent 100%);
+  backdrop-filter: blur(6px);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.chud-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.chud-pill {
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.75);
+  background: rgba(255,255,255,0.04);
+  animation: chud-fade 0.6s ease;
+}
+.chud-bars {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 8px;
+}
+.chud-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.chud-bar-label {
+  width: 22px;
+  font-size: 8px;
+  color: rgba(255,255,255,0.4);
+}
+.chud-bar-track {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+.chud-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #5AC8FA, #00FF94);
+  box-shadow: 0 0 6px rgba(0,255,148,0.35);
+  transition: width 0.45s ease;
+}
+.chud-workspace {
+  margin-top: 4px;
+  font-size: 9px;
+  color: rgba(255,255,255,0.45);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@keyframes chud-fade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Ambient pulse on chat shell */
+.kurisu-shell {
+  position: relative;
+}
+.kurisu-shell::before {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(circle at 30% 20%, rgba(90,200,250,0.07), transparent 40%),
+              radial-gradient(circle at 80% 60%, rgba(255,59,48,0.06), transparent 35%);
+  animation: ambient-drift 12s ease-in-out infinite alternate;
+  z-index: 0;
+}
+@keyframes ambient-drift {
+  from { transform: translate3d(0,0,0) scale(1); }
+  to { transform: translate3d(-2%, 1%, 0) scale(1.03); }
+}
+
+/* Message appear */
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.msg-animate {
+  animation: msg-in 0.28s ease-out;
+}
+
+/* Interactive press */
+.pressable {
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.pressable:active {
+  transform: scale(0.97);
+}
+
+/* Status strip glow */
+.status-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00FF94;
+  box-shadow: 0 0 8px #00FF94;
+  animation: live-pulse 1.6s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.85); }
+}
+
+/* Safe area for notched phones */
+.safe-bottom {
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}

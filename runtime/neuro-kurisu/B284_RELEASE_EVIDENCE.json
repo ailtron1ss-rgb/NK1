@@ -1,0 +1,8 @@
+{
+  "version": "B284",
+  "date": "2026-09-12",
+  "standalone": {"steps":260,"learningUpdates":260,"replayUpdates":60,"continuity01":0.9999999999917815,"selfConsistency01":0.9295065922824954,"personalityGrounding01":0.7014747096860445,"traitSpread01":0.20525512487498007,"ledgerFreeRecall01":0.8041153976515147,"ablationDrop01":0.30411539765151474,"restart":true},
+  "ledgerFree": {"steps":360,"learningUpdates":360,"replayUpdates":90,"traitSpread01":0.21455119988409932,"recall01":0.5780842747464819,"ablationDrop01":0.07808427474648194},
+  "core": {"steps":36,"learningUpdates":36,"identityRevisions":4,"continuity01":0.9913778217263741,"stability01":0.9905156038990115,"personalityGrounding01":0.8548138155884784,"ablationDrop01":0.5,"restart":true},
+  "regression": {"B279":true,"B280":true,"B281":true,"B282":true,"B283":true}
+}

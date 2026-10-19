@@ -1,0 +1,37 @@
+{
+  "release":"P2694",
+  "application":"35.6.94",
+  "organismCore":"94.0.0-policy-ablation-p2694",
+  "stateSchema":198,
+  "phase":"Stage-77/Policy-Ablation/P2694",
+  "overallPathEstimate01":0.435,
+  "codeWorkShare01":0.93,
+  "runtimeArchitecture":0.90,
+  "memoryArchitecture":0.90,
+  "retrievalIntelligence":0.87,
+  "adaptiveMemoryPolicy":0.86,
+  "causalReplay":0.81,
+  "continuousCognition":0.80,
+  "identityPersonalitySubstrate":0.71,
+  "functionRealityVerification":0.46,
+  "mobileReadiness":0.65,
+  "persistence":0.91,
+  "provenEndToEndLearning":0.47,
+  "implemented":[
+    "independent fixed-vs-adaptive-vs-adaptive+causal-credit holdout benchmark",
+    "5-seed train/eval separation with quality retention transfer interference compute delayed outcome metrics",
+    "policy outcome ledger persistence restore bug fixed",
+    "exact decisionId resolution path added while preserving memoryId fallback",
+    "bounded stale pending decision pruning for mobile-safe ledger residency",
+    "ReleaseContract phase/version synchronized to P2694"
+  ],
+  "verification":[
+    "typecheck PASS",
+    "P2694 policy ablation PASS",
+    "P2693 delayed policy credit PASS including persistence/exact-decision assertions",
+    "P2692 adaptive holdout PASS",
+    "P2688 long-horizon replay PASS"
+  ],
+  "benchmarkInterpretation":"On this synthetic holdout adaptive+causal-credit was only marginally different from adaptive (reward delta about +0.00014; selection accuracy unchanged). This is not evidence of universal superiority; it exposes that the current controller still needs stronger context-specific credit routing before claiming a meaningful gain.",
+  "next":"Carry decisionId through replay events end-to-end, then repeat ablation with real OrganismCore integration and mobile RSS profiling; optimize memory residency without removing causal/persistence behavior."
+}

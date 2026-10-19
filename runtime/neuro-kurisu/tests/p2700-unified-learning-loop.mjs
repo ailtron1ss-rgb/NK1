@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import { UnifiedLearningSubstrate } from '../src/organism/learning/UnifiedLearningSubstrate.ts';
+
+const u = new UnifiedLearningSubstrate();
+u.beginCycle();
+const started = u.beginLearningLoop({traceId:'trace-p2700',taskId:'task-alpha',at:100});
+assert.equal(started.phase,'experience');
+assert.equal(started.completed,1);
+u.advanceLearningLoop('memory',{learningDelta01:.4,transferDelta01:.3,at:110});
+u.advanceLearningLoop('replay',{learningDelta01:.6,transferDelta01:.5,at:120});
+u.advanceLearningLoop('learning',{learningDelta01:.8,transferDelta01:.55,at:130});
+u.advanceLearningLoop('policy',{learningDelta01:.8,policyDelta01:.35,transferDelta01:.6,at:140});
+u.advanceLearningLoop('verification',{learningDelta01:.8,policyDelta01:.35,transferDelta01:.6,retention01:.92,at:150});
+const closed=u.closeLearningLoop({verified:true,learningDelta01:.8,policyDelta01:.35,transferDelta01:.6,retention01:.92,at:160});
+assert.equal(closed.phase,'consolidation');
+assert.equal(closed.completed,7);
+assert.equal(closed.closedLoopCount,1);
+assert.equal(closed.verifiedClosedLoopCount,1);
+const restored=new UnifiedLearningSubstrate();
+restored.restore(u.snapshot());
+assert.equal(restored.learningLoopDiagnostics().verifiedClosedLoopCount,1);
+assert.equal(restored.snapshot().version,3);
+console.log('P2700 unified learning loop PASS',JSON.stringify(restored.learningLoopDiagnostics()));

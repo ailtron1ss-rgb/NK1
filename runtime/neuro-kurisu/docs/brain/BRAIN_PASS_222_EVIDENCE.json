@@ -1,0 +1,21 @@
+{
+  "pass": "B222",
+  "title": "Long-Horizon Autonomy",
+  "verified": true,
+  "controller": {
+    "plansCreated": 1,
+    "steps": 3,
+    "completedFirstStep": true,
+    "advancedToNextStep": true,
+    "snapshotRestore": true
+  },
+  "core": {
+    "plansCreated": 2,
+    "stepsStarted": 5,
+    "stepsCompleted": 5,
+    "stepsFailed": 0,
+    "meanLongHorizon01": 0.4232,
+    "meanCommitment01": 0.46476900078619204,
+    "persistence": true
+  }
+}

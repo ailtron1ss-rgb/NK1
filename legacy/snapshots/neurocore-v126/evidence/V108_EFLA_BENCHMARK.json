@@ -1,0 +1,72 @@
+{
+  "version": 108,
+  "benchmark": "supervised_next_state_synthetic",
+  "steps": 12,
+  "batch": 16,
+  "sequence": 16,
+  "results": [
+    {
+      "seed": 108,
+      "mode": "euler",
+      "initial": 2.8313708305358887,
+      "final": 2.8422303199768066,
+      "best": 2.823138952255249,
+      "mean_last10": 2.842312741279602
+    },
+    {
+      "seed": 109,
+      "mode": "euler",
+      "initial": 2.825420379638672,
+      "final": 2.849188804626465,
+      "best": 2.8075973987579346,
+      "mean_last10": 2.8471185684204103
+    },
+    {
+      "seed": 110,
+      "mode": "euler",
+      "initial": 2.852193593978882,
+      "final": 2.8368163108825684,
+      "best": 2.834462881088257,
+      "mean_last10": 2.8475892543792725
+    },
+    {
+      "seed": 108,
+      "mode": "efla_exact",
+      "initial": 2.831364870071411,
+      "final": 2.8422367572784424,
+      "best": 2.8231401443481445,
+      "mean_last10": 2.8423113346099855
+    },
+    {
+      "seed": 109,
+      "mode": "efla_exact",
+      "initial": 2.8254191875457764,
+      "final": 2.8491904735565186,
+      "best": 2.8075966835021973,
+      "mean_last10": 2.8471194744110107
+    },
+    {
+      "seed": 110,
+      "mode": "efla_exact",
+      "initial": 2.8521764278411865,
+      "final": 2.836822509765625,
+      "best": 2.834463596343994,
+      "mean_last10": 2.84758939743042
+    }
+  ],
+  "summary": {
+    "euler": {
+      "initial": 2.8363282680511475,
+      "final": 2.8427451451619468,
+      "best": 2.821733077367147,
+      "mean_last10": 2.8456735213597617
+    },
+    "efla_exact": {
+      "initial": 2.836320161819458,
+      "final": 2.842749913533529,
+      "best": 2.8217334747314453,
+      "mean_last10": 2.845673402150472
+    }
+  },
+  "decision": "candidate_only_until_longer_horizon_and_associative_recall_gates"
+}

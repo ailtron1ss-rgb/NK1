@@ -1,0 +1,28 @@
+{
+  "P14_EMBODIMENT_LAB": "PASS",
+  "results": [
+    {
+      "seed": 1,
+      "detectedKind": "motion",
+      "detectedSalience": 0.746,
+      "stableKind": "quiet",
+      "eventCount": 3
+    },
+    {
+      "seed": 2,
+      "detectedKind": "motion",
+      "detectedSalience": 0.8009999999999999,
+      "stableKind": "quiet",
+      "eventCount": 3
+    },
+    {
+      "seed": 3,
+      "detectedKind": "motion",
+      "detectedSalience": 0.7130000000000001,
+      "stableKind": "quiet",
+      "eventCount": 3
+    }
+  ],
+  "networkChange": true,
+  "resourceChange": true
+}

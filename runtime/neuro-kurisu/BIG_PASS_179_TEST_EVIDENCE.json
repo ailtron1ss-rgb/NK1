@@ -1,0 +1,79 @@
+{
+  "pass": 179,
+  "status": "PASS_WITH_EXPLICIT_LIMITS",
+  "consciousnessBattery": {
+    "status": "PASS",
+    "ignition01": 0.479,
+    "functionalIntegration01": 0.691,
+    "lesionDelta": -0.106,
+    "restartGapMs": 1200000,
+    "discontinuities": 1,
+    "recentMomentsAfterRestart": 2,
+    "accurateCalibration": 0.59,
+    "inaccurateCalibration": 0.446,
+    "sameObservationCount": 1,
+    "independentObservationCount": 25,
+    "oldReplayCountAfterInterveningEvents": 28
+  },
+  "coreEvidence": {
+    "status": "PASS",
+    "persistedRecentMoments": 2,
+    "evidenceSupports": 2
+  },
+  "recentRegression": {
+    "status": "PASS",
+    "tests": 15,
+    "range": "BIG PASS 169-179"
+  },
+  "parameterizedProbe": {
+    "sourceFiles": 269,
+    "attempted": 509,
+    "passed": 497,
+    "failed": 0,
+    "inputSynthesisNeeded": 0,
+    "lifecycleNeeded": 12,
+    "skipped": 30
+  },
+  "liveness": {
+    "sourceFiles": 810,
+    "functionLikeDeclarations": 2568,
+    "withBody": 2539,
+    "exported": 107,
+    "zeroReference": 156,
+    "oneOrLessReference": 480,
+    "algorithm": "single global identifier index + declaration-local subtraction"
+  },
+  "semanticReality": {
+    "totalFunctions": 2493,
+    "verified": 38,
+    "integrationOnly": 590,
+    "unsafeToAutoRun": 224,
+    "unverified": 1641,
+    "verifiedRate01": 0.0152,
+    "evidenceCoverage01": 0.0744,
+    "criticalUnverified": 1076,
+    "dormantUnverified": 157
+  },
+  "releaseGates": {
+    "typecheck": "PASS",
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "forensics": "PASS",
+    "hygiene": "PASS",
+    "releaseSource": "PASS",
+    "lock": "PASS",
+    "brain": "PASS",
+    "releaseContract": "PASS",
+    "publicUtilities": "PASS",
+    "smoke": "PASS",
+    "restart": "PASS",
+    "memory": "PASS",
+    "concurrency": "PASS"
+  },
+  "limitations": [
+    "No physical Poco device gate was executed in this sandbox.",
+    "Consciousness remains functional/research-only; no phenomenal consciousness claim.",
+    "Heap growth remains an open long-horizon performance issue.",
+    "A single huge aggregate transport batch is not used as evidence; constituent processes are authoritative."
+  ]
+}

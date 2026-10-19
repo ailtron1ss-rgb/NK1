@@ -1,0 +1,1758 @@
+{
+  "title": "WorkPass42 complete path-level delta vs WorkPass41",
+  "generatedAtUtc": "2026-10-14T08:44:05.024218+00:00",
+  "baseArchive": "Neuro_Kurisu_WORKPASS41_2026-10-14.zip",
+  "classificationMethod": "SHA-256 and size comparison plus explicit relocation, exact-duplicate, generated-asset and unreferenced-blob manifests; no filename-only deletion",
+  "baseFileCount": 9139,
+  "currentFileCount": 9089,
+  "baseFilesPresent": 8987,
+  "addedFileCount": 102,
+  "modifiedSamePathCount": 24,
+  "missingBaselinePathCount": 152,
+  "missingPathClassificationCounts": {
+    "byteIdenticalMoved": 68,
+    "restorableExactDuplicate": 56,
+    "generatedAssetShadow": 21,
+    "unreferencedSupersededBlob": 7,
+    "unexplained": 0
+  },
+  "byteIdenticalRelocations": [
+    {
+      "oldPath": "FINAL_INTEGRATION_HARDENING_REPORT_2026-10-08.md",
+      "newPath": "docs/history/workpasses/root-reports/FINAL_INTEGRATION_HARDENING_REPORT_2026-10-08.md",
+      "sha256": "6c88b86ab2502576011ea1804924ebfa542d619f408f58a16b56d037e86a8bbc",
+      "ok": true
+    },
+    {
+      "oldPath": "FINAL_RELEASE_REPORT_2026-10-08.md",
+      "newPath": "docs/history/workpasses/root-reports/FINAL_RELEASE_REPORT_2026-10-08.md",
+      "sha256": "f83aeac4e1045ea2cef9e7aaf0bc139c24607a786a54643e269b6ff07631452f",
+      "ok": true
+    },
+    {
+      "oldPath": "FINAL_RELEASE_REPORT_2026-10-08_FINAL4.md",
+      "newPath": "docs/history/workpasses/root-reports/FINAL_RELEASE_REPORT_2026-10-08_FINAL4.md",
+      "sha256": "d7327e9e231db8d4775ceffd4e7a49f33ebd532c51c20f8332d99495591c173c",
+      "ok": true
+    },
+    {
+      "oldPath": "FINAL_RELEASE_REPORT_2026-10-08_V2.md",
+      "newPath": "docs/history/workpasses/root-reports/FINAL_RELEASE_REPORT_2026-10-08_V2.md",
+      "sha256": "f6a18448c3161cd9b1e11be4396bd961d3281aca4053c528afa1c2efa7e27e10",
+      "ok": true
+    },
+    {
+      "oldPath": "FINAL_RELEASE_REPORT_2026-10-08_V3.md",
+      "newPath": "docs/history/workpasses/root-reports/FINAL_RELEASE_REPORT_2026-10-08_V3.md",
+      "sha256": "77a0478f67cd05d178c0e5448d8777a7fbc723fa2ced6a83b0eab1e1ed2b1762",
+      "ok": true
+    },
+    {
+      "oldPath": "FINAL_RELEASE_STATUS_FINAL4_2026-10-08.md",
+      "newPath": "docs/history/workpasses/root-reports/FINAL_RELEASE_STATUS_FINAL4_2026-10-08.md",
+      "sha256": "a6703db78cae6e5047b73beb94f7ab2589c87f79a03cda1a13a37fbb5f01c00a",
+      "ok": true
+    },
+    {
+      "oldPath": "HEXIS_INTEGRATION_FINAL_2026-10-08.md",
+      "newPath": "docs/history/workpasses/root-reports/HEXIS_INTEGRATION_FINAL_2026-10-08.md",
+      "sha256": "8e3c74108057f325af3efba21707663d94e8408711370bd0a98ca7449b217aa2",
+      "ok": true
+    },
+    {
+      "oldPath": "PASS3_RELEASE_REPORT_2026-10-08.md",
+      "newPath": "docs/history/workpasses/root-reports/PASS3_RELEASE_REPORT_2026-10-08.md",
+      "sha256": "202fe15694acde633dab9c32a479713b338c9cc8d74e1c9a270e3fd41df200c6",
+      "ok": true
+    },
+    {
+      "oldPath": "RELEASE_STATUS_FINAL2_2026-10-08.md",
+      "newPath": "docs/history/workpasses/root-reports/RELEASE_STATUS_FINAL2_2026-10-08.md",
+      "sha256": "b5d7cde5b53b86fe0d785773b416f62caac9c167c5ba988d29e1397e67900db8",
+      "ok": true
+    },
+    {
+      "oldPath": "SEMANTIC_DYNAMIC_EVIDENCE.json",
+      "newPath": "docs/history/evidence/SEMANTIC_DYNAMIC_EVIDENCE.json",
+      "sha256": "7e808a7594f33655627498d5e5492f59341601b79beef754c7cc544cbbd16247",
+      "ok": true
+    },
+    {
+      "oldPath": "SOURCE_BRANCH_COVERAGE_2026-10-08.md",
+      "newPath": "docs/history/workpasses/root-reports/SOURCE_BRANCH_COVERAGE_2026-10-08.md",
+      "sha256": "52c9f15d5ef7a3b1b06aac4d440bfc141a2b7636f314ac21a2745bcd973f7429",
+      "ok": true
+    },
+    {
+      "oldPath": "SOURCE_BRANCH_COVERAGE_2026-10-08_FINAL.md",
+      "newPath": "docs/history/workpasses/root-reports/SOURCE_BRANCH_COVERAGE_2026-10-08_FINAL.md",
+      "sha256": "ec371939c4f714cb0e56fd4a05cb03d80b899bc33a6a33531d56126a3ad08843",
+      "ok": true
+    },
+    {
+      "oldPath": "SOURCE_BRANCH_COVERAGE_2026-10-08_FINAL4.md",
+      "newPath": "docs/history/workpasses/root-reports/SOURCE_BRANCH_COVERAGE_2026-10-08_FINAL4.md",
+      "sha256": "94840d47b906e07f78284ec866a9e0fc3f4a16cb7b8c6ffcf93859ee021ef8d3",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS10_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS10_CHANGED_FILES_2026-10-10.json",
+      "sha256": "f01bdea5b13065aca6052c9035e489a62ed9a2de83e83117edf6384dc370dae2",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS11_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS11_CHANGED_FILES_2026-10-10.json",
+      "sha256": "da7d736034403157176f6e30d95582eb92ae44dd1134fc30358b96d49655c0ad",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS12_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS12_CHANGED_FILES_2026-10-10.json",
+      "sha256": "d224192bc546e808da11f9965b64ea1ff9e8b2baf7c076936ac69c465fbca1a2",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS13_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS13_CHANGED_FILES_2026-10-10.json",
+      "sha256": "106b691eb300dea831b1e31bf9f17a2d3a40ccd0c2c5b541b634455b1c8583df",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS14_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS14_CHANGED_FILES_2026-10-10.json",
+      "sha256": "b0fc0272123bb396e551f73e5bf2e3cdd0005a7ec5ad6704291a880a6802ea8b",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS15_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS15_CHANGED_FILES_2026-10-10.json",
+      "sha256": "4e86be922a7f4418c641f705f80f00d508526ca54c96709f0d3a5ae02671ccc3",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS16_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS16_CHANGED_FILES_2026-10-10.json",
+      "sha256": "2aff7c0e177c5f8b38a7c9e18c13e596fd9e570c5b834d97e2b0ea3235181bfe",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS17_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS17_CHANGED_FILES_2026-10-10.json",
+      "sha256": "a05d16f1bd86d9ca1ef43d77e295778c937465f083b72df4c6d8bead30ad1205",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS18_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS18_CHANGED_FILES_2026-10-10.json",
+      "sha256": "d39c13dce281d886bf2f47808c8c2c406068be7a0d73ed23b09860eeec145ce2",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS19_CHANGED_FILES_2026-10-11.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS19_CHANGED_FILES_2026-10-11.json",
+      "sha256": "2f3d9c0274eda69fcc219a87cdbb235c8e516704c141365c159cc2c39aa01b9c",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS20_CHANGED_FILES_2026-10-11.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS20_CHANGED_FILES_2026-10-11.json",
+      "sha256": "383e5e52032deb9d28b4977662a97c8bbb044e5e80db9c99a34ead78918c0d7b",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS23_CHANGED_FILES_2026-10-11.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS23_CHANGED_FILES_2026-10-11.json",
+      "sha256": "df86658a5a6c816e98c648d83a10e8426283f5f3dd46d946ee92045f82041984",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS25_CHANGED_FILES_2026-10-11.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS25_CHANGED_FILES_2026-10-11.json",
+      "sha256": "4bfefe852e0b5b48350ddacecc3b103f7bb45f2918cd5d45ee0068807371ea88",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS25_REPORT_2026-10-11.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS25_REPORT_2026-10-11.md",
+      "sha256": "13aee27267e8a457c299fb2e81c5c2effd932ddadf91040e0810884551c08d97",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS25_Список_дел_2026-10-11.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS25_Список_дел_2026-10-11.md",
+      "sha256": "59453cffc38ea25d95fa2b6c02238d8102468cf654e8e9e4551d3b57df060ad7",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS26_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS26_CHANGED_FILES_2026-10-13.json",
+      "sha256": "521e6ec3126546c5a4f6010f95f43aaa6c4c6f80c5720744d97cc780ff310834",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS26_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS26_REPORT_2026-10-13.md",
+      "sha256": "318b819a1ae74e9d719ec2fd60e4eacfb8dca63d0e964d4091c0b5568d2ec45f",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS26_Список_дел_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS26_Список_дел_2026-10-13.md",
+      "sha256": "3c88a70887a2e987acfd40d5b1890570325f1339a4b297ff51bf2ee95c7b70be",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS27_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS27_CHANGED_FILES_2026-10-13.json",
+      "sha256": "492ed51c6347234a894a44f5718022cf5d9348842b5152a3998899b5b5a4ffd4",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS27_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS27_REPORT_2026-10-13.md",
+      "sha256": "966d334f161387aa11b32cc31af37ed3a119e6387e796e1c5e5e6345563d3650",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS27_Список_дел_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS27_Список_дел_2026-10-13.md",
+      "sha256": "f0a17163842f7b432f641f733e7084187dc52be52e767afff988290cfda82235",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS28_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS28_CHANGED_FILES_2026-10-13.json",
+      "sha256": "43687fd39eaf85ba47773eacb5ec74f08dcd95fdbb535b04877a965a60f18d3b",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS28_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS28_REPORT_2026-10-13.md",
+      "sha256": "3970981dd1789d48b3e83268e55d6eea0f1cea1cf44b3d2b3b615c7b8b1ec484",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS28_TASKS_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS28_TASKS_2026-10-13.md",
+      "sha256": "ee5772335fff7be61018462a7125b6f40e4f76df60a62910d69c85f8ca2b298a",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS29_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS29_CHANGED_FILES_2026-10-13.json",
+      "sha256": "25ca86b324956af5e7a6f17867f73a6756f28b06c994cf4451d55549bd8fde76",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS29_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS29_REPORT_2026-10-13.md",
+      "sha256": "a527685bb2d481f1f382682db5a597e464b6509f82d3c6f060e98b789248d626",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS29_TASKS_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS29_TASKS_2026-10-13.md",
+      "sha256": "57293746be8e8124c2b8dc332843dfbe2a6990d497722315e4369f0e35c576ca",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS29_Список_дел_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS29_Список_дел_2026-10-13.md",
+      "sha256": "c566b773cff8dc2f27723f6717dafbfb3ecfc259716347030644700167dbf9d0",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS30_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS30_CHANGED_FILES_2026-10-13.json",
+      "sha256": "14c773558f58966431daab0cbb8c02751ac4ccdb0be2f846cd26b0fcb542dc3f",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS30_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS30_REPORT_2026-10-13.md",
+      "sha256": "ac05aad1e39c457f4a81f122b14cfc0f6e5481d9245407c10dab69e30fa17044",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS30_TASKS_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS30_TASKS_2026-10-13.md",
+      "sha256": "7366483f9751644e4793c5616fdbec00ffd70e4adf2032a243d873413824bdbb",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS31_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS31_CHANGED_FILES_2026-10-13.json",
+      "sha256": "85070ed867b6f84044c22c91613ffb570f25d66a116b2bb5fcfd6bfb38e4b260",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS31_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS31_REPORT_2026-10-13.md",
+      "sha256": "92668a944c801e21e702b14ad58538ff5dcb92ffcdb970c6354c46ff9816f6bf",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS31_TASKS_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS31_TASKS_2026-10-13.md",
+      "sha256": "20e136dcf61bccc7a8a30f976a1be30931d73aa1d473f711ffc8a8a7c3efafe5",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS32_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS32_CHANGED_FILES_2026-10-13.json",
+      "sha256": "be6c3ed2be8976ab2818ef9576ef2bff55402e7064b2629bac47a158afe2bdd4",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS32_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS32_REPORT_2026-10-13.md",
+      "sha256": "8d682e0edb47ee734bc23552dd6b8ba78407cd1375f44e7a4e2458a1f8bf9615",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS32_TASKS_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS32_TASKS_2026-10-13.md",
+      "sha256": "92eeffcc3a7a167872ed0c1d38827266c96b8f10ff026d2dac2bff6ea520e25e",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS33_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS33_CHANGED_FILES_2026-10-13.json",
+      "sha256": "8167d932ac44fd331d92da1e8f8888802ded3e7e028826c0de344ef80c6ed6ab",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS33_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS33_REPORT_2026-10-13.md",
+      "sha256": "e5f2dd09e5efc978e95b078e928aa63332c459a53f6caba3950ab400e258b357",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS33_TASKS_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS33_TASKS_2026-10-13.md",
+      "sha256": "1045630721b84b1e730663eea9a2692f164a417caaaffeb70e2eb70e495a2738",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS34_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS34_CHANGED_FILES_2026-10-13.json",
+      "sha256": "92e645328b926e1fb783851dffbfb2a705ffa27cbb425f353f3e5184554a46ea",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS34_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS34_REPORT_2026-10-13.md",
+      "sha256": "4e729d65adc63dc58fc9b717b5e3ccf254ed846fe28beeb2389b36a2254ead29",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS34_TASKS_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS34_TASKS_2026-10-13.md",
+      "sha256": "2239291cb55fb2cd1f8e7556662770cc9f95d85fe2949ce9c59cdeda793702f0",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS35_ARCHIVE_VERIFICATION_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS35_ARCHIVE_VERIFICATION_2026-10-13.json",
+      "sha256": "223af10882873d0ce5b2f61dbd5f00a24336220b788a2002352ba7a7c71e3979",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS35_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS35_CHANGED_FILES_2026-10-13.json",
+      "sha256": "40318ab4df99809ace614966a8d1f537559c782a8106af9cf01b92fb1598e2c0",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS35_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS35_REPORT_2026-10-13.md",
+      "sha256": "23780256fe30194e9bf5ebfb297abaac4dedfc2b2e9579dfdf2fc8ad2b701176",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS35_TASKS_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS35_TASKS_2026-10-13.md",
+      "sha256": "42cd3d01e7f64144c4fdde68a3c5ac1d9755a91d49dab725e6389781ade3943b",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS38_INTEGRATION_MATRIX_2026-10-14.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS38_INTEGRATION_MATRIX_2026-10-14.md",
+      "sha256": "3282b04a3b553d3a433b8c775c07b3a46497c9457909c2e4258d92bbb48e5269",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS38_REPORT_2026-10-14.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS38_REPORT_2026-10-14.md",
+      "sha256": "c8d26e267103db333e30b197ec43bdaabb2a5aaedd3d5ad86db4faca4f7e2010",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS38_TASKS_2026-10-14.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS38_TASKS_2026-10-14.md",
+      "sha256": "435c77112fed79f66a3815f977d8b9f2c80a79d2f48fbf2c5a441108a7b12ee5",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS5_CHANGED_FILES_2026-10-09.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS5_CHANGED_FILES_2026-10-09.json",
+      "sha256": "d1711df5c4900e9aaa5179321e8b755db21768a4711b20897b1f0ff46a3ee736",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS6_CHANGED_FILES_2026-10-09.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS6_CHANGED_FILES_2026-10-09.json",
+      "sha256": "e53e652d1fa9e96ada0383c27a369f07e0fa38d4973622e85d9d4b46f8596b48",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS8_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS8_CHANGED_FILES_2026-10-10.json",
+      "sha256": "3f9917ca7824e772ff6a868758bed87674f8bd23c2877517bf9bf23cba6ddf2b",
+      "ok": true
+    },
+    {
+      "oldPath": "WORKPASS9_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS9_CHANGED_FILES_2026-10-10.json",
+      "sha256": "e0cbfcb583f05a251eb4d1057e137136b2e160378f5e825f2c92201e00c3beec",
+      "ok": true
+    },
+    {
+      "oldPath": "Список дел — исходная версия HOTFIX_CHAT.md",
+      "newPath": "docs/history/backlogs/Список дел — исходная версия HOTFIX_CHAT.md",
+      "sha256": "87be2d7d8de5facfcbba37d7f990446396cbb6633d5707af787da16bbf7e0352",
+      "ok": true
+    }
+  ],
+  "restorableExactDuplicates": [
+    {
+      "path": "legacy/input-archives/letta-main-2026-10-08.zip",
+      "canonicalPath": "legacy/input-archives/raw-source-archives/letta-main.zip",
+      "sha256": "5d28f152aba633fcc26fe20125fad28f73c6773e6526fc65249656b2d0c61075",
+      "ok": true
+    },
+    {
+      "path": "legacy/input-archives/lumina-main-2026-10-08.zip",
+      "canonicalPath": "legacy/input-archives/raw-source-archives/lumina-main.zip",
+      "sha256": "a820cb1b394018451c8ee5863ae0a1f74666bd10519007d6e37e69e42452d467",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/index.html",
+      "canonicalPath": "legacy/kurisu-v56/index.html",
+      "sha256": "b5a1b4bb457eded1c68ffa133748651b475b26f62f55a4e4b8b9495e18e045d7",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/avatar/outfitCatalog.ts",
+      "canonicalPath": "legacy/kurisu-v56/src/avatar/outfitCatalog.ts",
+      "sha256": "7ab4c6bac6971c7b2f194419dceed24dc5db4dedb45baa779dacbf2c0b538459",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/avatar/spriteEngine.ts",
+      "canonicalPath": "legacy/kurisu-v56/src/avatar/spriteEngine.ts",
+      "sha256": "2f0d75b9f00396a9a31d04c3b0846a99a67a90048a75567aa6f7605a0ad441dd",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/brain/energyBudget.ts",
+      "canonicalPath": "legacy/kurisu-v56/src/brain/energyBudget.ts",
+      "sha256": "a0410a013f94bea34832a300e88cb09f47c28dafc8cfd7069f88a0ebaac6b8ce",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/cognitive/ConsciousnessCore.ts",
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/ConsciousnessCore.ts",
+      "sha256": "7307b454e25d657d13092a5dfd48d9f467b6556a5866015eceb58260637dfcee",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/cognitive/DesireAndPromiseStore.ts",
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/DesireAndPromiseStore.ts",
+      "sha256": "37b0d45ee719dd7e807d99bcbd2708fcb5ecc9fb2472192278bc85beea6b760d",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/cognitive/EmbodimentSystem.ts",
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/EmbodimentSystem.ts",
+      "sha256": "eb50f8b3e77ab204b1fa5c78414c6e68b69cca19728c4009d685e96dc89cf580",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/cognitive/GrokExtras.ts",
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/GrokExtras.ts",
+      "sha256": "aacda1ec1426f00aa36f2348cd67f5c21632f1c7a9c7ed8a4d2ee6ac89fc5f9a",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/cognitive/PersonalityRewardSystem.ts",
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/PersonalityRewardSystem.ts",
+      "sha256": "f847b1da4b895305bfdd974ab6c6f2836a92113d081a0f3038cc1950d7dfc448",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/cognitive/PresenceAndIdle.ts",
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/PresenceAndIdle.ts",
+      "sha256": "5e36b8d70811a44158e3f3a2c571448134adaeaf9e1b581dfca75f7d5bec4697",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/cognitive/SelfImprovementEngine.ts",
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/SelfImprovementEngine.ts",
+      "sha256": "1a68bcecf13596269dbca86d1c7b70a9f68017c8bc1ade285afa05b2e76fda15",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/cognitive/StatusIndicators.ts",
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/StatusIndicators.ts",
+      "sha256": "8dcd1a5f29bb19bf7ffc1dbc411edaa252aface0e3da04938c22019945e202ba",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/components/AndroidCodeExportModal.tsx",
+      "canonicalPath": "legacy/kurisu-v56/src/components/AndroidCodeExportModal.tsx",
+      "sha256": "59c21d4a0182c1d255ca7fea1be56c2ea6c5c87f119eb21af081b4d66b44bef2",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/components/Avatar2DOverlay.tsx",
+      "canonicalPath": "legacy/kurisu-v56/src/components/Avatar2DOverlay.tsx",
+      "sha256": "b7d97f8ccd1aa6637e0c1f01438cd3eba937fb6820531d8a5baf26b0bacd8efc",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/components/Avatar3D.tsx",
+      "canonicalPath": "legacy/kurisu-v56/src/components/Avatar3D.tsx",
+      "sha256": "2a7e67098e3cdee1f16e6af7ecfd27fc740b3c7a776f2cdfc5fe91a3380fd58c",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/components/EmotionalStatePanel.tsx",
+      "canonicalPath": "legacy/kurisu-v56/src/components/EmotionalStatePanel.tsx",
+      "sha256": "6825e1a53ebe99e36a50c57aa24c711a3114cb27c9b8901897c5b8fc4b5a85a2",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/components/ExpressionReferenceModal.tsx",
+      "canonicalPath": "legacy/kurisu-v56/src/components/ExpressionReferenceModal.tsx",
+      "sha256": "254d396468c5182ed33a8bb8619a0f2a2db626a9cdf42e1b6902aeaea347fc4a",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/components/MemoryInspector.tsx",
+      "canonicalPath": "legacy/kurisu-v56/src/components/MemoryInspector.tsx",
+      "sha256": "0492b5aaa0c346e16b618dc7aa23bb6cfac3043f747f74d030d76c7de3bff1c6",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/components/MultimodalCamera.tsx",
+      "canonicalPath": "legacy/kurisu-v56/src/components/MultimodalCamera.tsx",
+      "sha256": "44fdc6ef31ee259c29e58228f0cfb027cdfef2622622bcad24a99922e49f1413",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/components/PersonalityMapPanel.tsx",
+      "canonicalPath": "legacy/kurisu-v56/src/components/PersonalityMapPanel.tsx",
+      "sha256": "c5b70d0cff5e48ab7c4c83ba88e8a9361643f0dd6f30fcc2005deb85b7a780e2",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/components/ReflectionJournal.tsx",
+      "canonicalPath": "legacy/kurisu-v56/src/components/ReflectionJournal.tsx",
+      "sha256": "34aa345d1767a98d76d22bc925b818beb21def27a011a5336ade6f92be2ed06f",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/components/SearchPermissionModal.tsx",
+      "canonicalPath": "legacy/kurisu-v56/src/components/SearchPermissionModal.tsx",
+      "sha256": "c15438b0400bcbb4a3de6ed9633bb51dc993e6d513573e90e5206ed0dc0c8ded",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/components/SelfOptimizationModal.tsx",
+      "canonicalPath": "legacy/kurisu-v56/src/components/SelfOptimizationModal.tsx",
+      "sha256": "4fa47e401c703c5f268a889bccb23c09e8f7b7672204ff48f7daa65239caf0cc",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/components/ThoughtBubbleOverlay.tsx",
+      "canonicalPath": "legacy/kurisu-v56/src/components/ThoughtBubbleOverlay.tsx",
+      "sha256": "93a46e63a1f1f8ee67c0521f31907ac435534e3ec4c39b1a9132d4455a9cee00",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/services/notificationEngine.ts",
+      "canonicalPath": "legacy/kurisu-v56/src/services/notificationEngine.ts",
+      "sha256": "9529ed8ef1158b676815d200f86e77b9f2683907d53db277a2446b56f17ce153",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/tools/webSearch.ts",
+      "canonicalPath": "legacy/kurisu-v56/src/tools/webSearch.ts",
+      "sha256": "4d52f4b39a690c5dd2dbcfff0699b46c9349dac0fb28744f82a134dbc315a80b",
+      "ok": true
+    },
+    {
+      "path": "legacy/kurisu-v9/src/utils/spriteSheet.ts",
+      "canonicalPath": "legacy/kurisu-v56/src/utils/spriteSheet.ts",
+      "sha256": "3ee0618b3519df73754e15a73ad762cbb157f3ed3d2f2d65316f40452afe5704",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/BIG_PASS_319_PROGRESS_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/docs/BIG_PASS_319_PROGRESS_RU.md",
+      "sha256": "b75cd9c9094d37843751bbb692029fe9c0435a4c5c24648ebc7101a1f4c62922",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/BIG_PASS_320_MOBILE_DURABILITY_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/docs/BIG_PASS_320_MOBILE_DURABILITY_RU.md",
+      "sha256": "3b54a79e8d212ff7045d83d75ba26b403efd2361ddee2d159e4e33ae065357fe",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/BIG_PASS_321_DEVICE_REALITY_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/docs/BIG_PASS_321_DEVICE_REALITY_RU.md",
+      "sha256": "2e9f4c6922e338aff6311a93cc81165ef9be12e4ef3ca8beccb64a979842016a",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/BIG_PASS_338_PREVIOUS_B337_BASE_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/BIG_PASS_337_DECISION_ACTION_PIPELINE_EXTRACTION_RU.md",
+      "sha256": "3b754d7219caf61b05a4ee68d3ddcc1e57f9a085fcc92d8d055661015b0dec1a",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/RELEASE_NOTES_B319_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/docs/RELEASE_NOTES_B319_RU.md",
+      "sha256": "a465c0f80ec3a24c43d61f752162c0f5aae1fa11747e417ed2c6f43d44cc30bc",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/RELEASE_NOTES_B320_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/docs/RELEASE_NOTES_B320_RU.md",
+      "sha256": "6f8fccb7241b868a0a07acd47d99319c00c03c89008457a93ccd3a259465c8f9",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/RELEASE_NOTES_B324_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/BIG_PASS_324_RECOVERY_WATCHDOG_RU.md",
+      "sha256": "8d4d4ce893bc32c5aa961edd379a44ed9f366205bec03a8ccc944326d7714202",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_FIRST_STEP_11_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/README_FIRST_STEP_11_RU.md",
+      "sha256": "b28115bf1fff24b77c16ae8586eb68592351e2c95d5ab270688b27c981bb9273",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P46_BIG_STEP_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/README_P46_BIG_STEP_RU.md",
+      "sha256": "fbda3b0a5bb486f8ec735cadc44d7d0c6badba68f1aa9bfa7f51722b29eb19de",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P47_BIG_STEP_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/README_P47_BIG_STEP_RU.md",
+      "sha256": "0b34166249c873e8affcfd195cf361c7f05f3ce2fbe965edc372b35f6687b1a1",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P48_BIG_STEP_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/README_P48_BIG_STEP_RU.md",
+      "sha256": "bbc8a35f5af2b613d2c844adf1d45a3a9b1e865d4652c5efbcf0214ded52697c",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P49_BIG_STEP_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/README_P49_BIG_STEP_RU.md",
+      "sha256": "baaa51aaf531a9992faf662cf9e99ebfd8b221ba536af099354686966d47d2f5",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P50_BIG_STEP_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/README_P50_BIG_STEP_RU.md",
+      "sha256": "a1dd4e2c989be5df4f87fdfd3505b5645849c473479e3ff8678cef310ad02108",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P51_BIG_STEP_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/README_P51_BIG_STEP_RU.md",
+      "sha256": "504ec2cd2946860e0c3d2a8d0ab88cc2430258fd27192a73575616f284c25be5",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P52_BIG_STEP_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/README_P52_BIG_STEP_RU.md",
+      "sha256": "0e70d72b656338c873178f635bdcb8cd9b02dbfccff57ea733ff959ba32fc2c1",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P53_P54_BIG_STEP_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/README_P53_P54_BIG_STEP_RU.md",
+      "sha256": "356d256703dfa07f609748a6e41924ba621ea68f31153b4efb8155e7cfcd1303",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/p-phases/2026-09-18/P2659_P2674/RELEASE_NOTES_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_35.6.75_P2659_P2674_RU.md",
+      "sha256": "f281c1425308236c8e16a4174bf5bc67b865476c03acfa5eb89cad7480b97096",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_11_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_11_RU.md",
+      "sha256": "e74b97bc271466c0400bc52f07457a7404f80690d87af9e4bc495f7f8f895d97",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_12_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_12_RU.md",
+      "sha256": "96c8a901ce58f2b06094e620a5b4d738e3f6f36f3129e83eeeb8eddab0848499",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_13_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_13_RU.md",
+      "sha256": "0233c8621a2de74610ef3e47841f87a61f7207be02dfbdfe26d484dd0ee6f700",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_14_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_14_RU.md",
+      "sha256": "17dde7b002b73fc93385e0957f3f86049c924f566e6d0dd475165f74dfba0627",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_15_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_15_RU.md",
+      "sha256": "081f8eff1d44f09875f54d8bbe834bb4756b8d0b29784afb733ae3f5b9f12379",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_16_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_16_RU.md",
+      "sha256": "8018fb72d035cce239382540ab617020795ec534fbc979e43737f1eda8f8a556",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_17_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_17_RU.md",
+      "sha256": "13a1671f34b316a71c0e3ed28bd4e6e928f5203942bcf1dcb2f37170ea272567",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_18_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_18_RU.md",
+      "sha256": "27a0da087d7ded65e9f3a4079e243a2531b66a67d8c865fca2793882a2c7affc",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_19_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_19_RU.md",
+      "sha256": "c0d3518ee22b98bc5b90aa041d99551cea70926d43b42c4ba439965145c46e1d",
+      "ok": true
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_23_RU.md",
+      "canonicalPath": "runtime/neuro-kurisu/RELEASE_NOTES_23_RU.md",
+      "sha256": "e24e9e65b20554f048c478f5025bffbf4ce665915ee3ef0c1cf843fcb087e101",
+      "ok": true
+    }
+  ],
+  "generatedAssetShadows": [
+    {
+      "path": "app/public/live2d/Kurisu.mobile/Kurisu-mobile.model3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu.mobile/Kurisu-mobile.model3.json",
+      "sha256": "c886fec1313e4bc20207c5c4e0cd41684ced6bf6e9ce4386fabfcd4eddb35d64",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/Kurisu.mobile/Kurisu.2048/texture_00_mobile_2048.png",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu.mobile/Kurisu.2048/texture_00_mobile_2048.png",
+      "sha256": "a7050e00fc067fa22ce2df86e17684277ccb36167b95f6fe9b0de3ec3cddbd25",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/Kurisu/Kurisu.4096/texture_00.png",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.4096/texture_00.png",
+      "sha256": "c1551392e9f62ed69d7e12233ff0d2700711164b51667ae9072c1f3161841f33",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/Kurisu/Kurisu.cdi3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.cdi3.json",
+      "sha256": "26465ad680f5d6380e09edff8c3e1a79ed8bc9ce0f19a6dcd8d2d83a3c69561b",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/Kurisu/Kurisu.moc3",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.moc3",
+      "sha256": "d6b2ef7f8f93bb9313c0a117a9dcfe2286de314204657bfa88b17b7531fe5718",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/Kurisu/Kurisu.model3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.model3.json",
+      "sha256": "f7ae31d85349850a54dfc42999d03d7ac2cc428bf8292d1c7d0f033f65aea351",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/Kurisu/Kurisu.physics3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.physics3.json",
+      "sha256": "a911ba4b3db5a09005ec3e2387e8ad0d1e26598f86b488c03cfcf40425e6b0bb",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/Kurisu/exp/Arm Change.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Arm Change.exp3.json",
+      "sha256": "0f63c57e0ad71de202f759d6fa3668919a6fe39cfb134a32a10a90204942a516",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/Kurisu/exp/Blush 1.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Blush 1.exp3.json",
+      "sha256": "8c0e7b321b15d7525ad5934b07793539d0ae4e53350c33a3dcf264fda8f25d06",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/Kurisu/exp/Blush 2.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Blush 2.exp3.json",
+      "sha256": "f80b9bc8239acc343aa98341ceb9b7fe302545e10c2ea22ec745bb018f1adf34",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/Kurisu/exp/Stanby Angry.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Angry.exp3.json",
+      "sha256": "385605494d6ba8ff5aa5276c89b51ca36906cc08093970fd953dd31d8ebd0784",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/Kurisu/exp/Stanby Sad.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Sad.exp3.json",
+      "sha256": "dea3bf8875b12c032fcd662afb82364e015c71a693025037a3b4e973755c33b2",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/Kurisu/exp/Stanby Scared.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Scared.exp3.json",
+      "sha256": "6bb4c22998b8041c1fb00ccbf34d303d4ed012c7e78877426aeef43f651abbd5",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/Kurisu/exp/Stanby Smile.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Smile.exp3.json",
+      "sha256": "ce3333bf411e643a0220aab1339a3039272636c9868c280d6937f0a6d2e6bf71",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/Kurisu/exp/Stanby Surprised.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Surprised.exp3.json",
+      "sha256": "db7f7cdf837945fc73f6adb8bb43ac2df9cfef81b4d82da6bee295c2399a63f1",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/Kurisu/motions/58Loop.motion3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/motions/58Loop.motion3.json",
+      "sha256": "e80636a0fd68bcfe311f3ab702f9f20b322e79430bb4a3681f35db3baf54aeb0",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/Kurisu/motions/Out From Camera.motion3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/motions/Out From Camera.motion3.json",
+      "sha256": "955d0d344e3b7ac0139f3eabd3da1fdc9dce7f02c844ef3f2c9eead69da9b2a9",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/Kurisu/motions/haru_g_idle.motion3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/motions/haru_g_idle.motion3.json",
+      "sha256": "d34abb158fa5b007d307b8ca08bdc33b3394b0435ac3e07f5516211ffd359b46",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/Kurisu/motions/mtn_07.motion3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/motions/mtn_07.motion3.json",
+      "sha256": "8b12022b7bdf01e7a9e6f124f043452c6c49432368da0aecc82a550b79e72182",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/Kurisu/motions/xhiyori_m03.motion3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/motions/xhiyori_m03.motion3.json",
+      "sha256": "de4913417e572ab1cc30924768c885ece73f65cbfba6975e2c9ab98e909164bc",
+      "ok": true
+    },
+    {
+      "path": "app/public/live2d/PROVENANCE.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/PROVENANCE.json",
+      "sha256": "c09b01f86a03fdb05b1795a8136df7ce154c38a09adadd32d19977227b4976ee",
+      "ok": true
+    }
+  ],
+  "unreferencedSupersededBlobs": [
+    {
+      "path": "docs/archive-optimization/historical-snapshot-blobs/122bf608d6a33fdbbb982e44f7f85e62d40ccdd7cb739fe15cd989b9c8881c26",
+      "sha256": "122bf608d6a33fdbbb982e44f7f85e62d40ccdd7cb739fe15cd989b9c8881c26",
+      "sizeBytes": 1670,
+      "stillReferenced": false,
+      "ok": true
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/159b95a6fe4fe579ea8c230ae6f41264ae739d08882badd83901589e7f2e34e1",
+      "sha256": "159b95a6fe4fe579ea8c230ae6f41264ae739d08882badd83901589e7f2e34e1",
+      "sizeBytes": 1183,
+      "stillReferenced": false,
+      "ok": true
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/7ded54c5e43c1618cb05c8832696e9c933f0ec79cd28599d5ea9450266c8c244",
+      "sha256": "7ded54c5e43c1618cb05c8832696e9c933f0ec79cd28599d5ea9450266c8c244",
+      "sizeBytes": 8922,
+      "stillReferenced": false,
+      "ok": true
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/9aac98ff269555ca59811a62bc3577f02faa7e9649527add17d5f11367135154",
+      "sha256": "9aac98ff269555ca59811a62bc3577f02faa7e9649527add17d5f11367135154",
+      "sizeBytes": 5963,
+      "stillReferenced": false,
+      "ok": true
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/a1e2fd32b1bddba90c86f3d29f7d55f3252cf0ea3fc93d6c75d2c500511072e9",
+      "sha256": "a1e2fd32b1bddba90c86f3d29f7d55f3252cf0ea3fc93d6c75d2c500511072e9",
+      "sizeBytes": 9246,
+      "stillReferenced": false,
+      "ok": true
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/f02792c79bd90f6ea058b7ee0c7de04b672b5851cb384b2c697751d5b5262315",
+      "sha256": "f02792c79bd90f6ea058b7ee0c7de04b672b5851cb384b2c697751d5b5262315",
+      "sizeBytes": 10451,
+      "stillReferenced": false,
+      "ok": true
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/f442d9c53f4eb0f7e94de19ade4b8c3365347b2e122d0fdbbcae589b83ce5ae3",
+      "sha256": "f442d9c53f4eb0f7e94de19ade4b8c3365347b2e122d0fdbbcae589b83ce5ae3",
+      "sizeBytes": 2312,
+      "stillReferenced": false,
+      "ok": true
+    }
+  ],
+  "unexplainedMissingPaths": [],
+  "modified": [
+    {
+      "path": ".gitignore",
+      "before": {
+        "sizeBytes": 173,
+        "sha256": "28fc1b8824d0bdbd08f000d9ce3557d19a269488e6b2f274137e3a11151ac7da"
+      },
+      "after": {
+        "sizeBytes": 1354,
+        "sha256": "21eb919a6a36ff6698932c9d0b3f48f7d8e5214a4b68994b06689292cd7cd3f1"
+      }
+    },
+    {
+      "path": "CHANGELOG.md",
+      "before": {
+        "sizeBytes": 64343,
+        "sha256": "ce5a05828b8d5a1f93801f30a19e54c8b5d594d764ce3d78033336fc99764897"
+      },
+      "after": {
+        "sizeBytes": 66335,
+        "sha256": "210c19497ef4ea4e1e9d4afee3e72b19a8d54377fa549f93b743af5be5536bfe"
+      }
+    },
+    {
+      "path": "README.md",
+      "before": {
+        "sizeBytes": 24361,
+        "sha256": "e8143d941911e1cc60e930d6042bfc701353c99d1d28affe987dc7c80adce836"
+      },
+      "after": {
+        "sizeBytes": 26213,
+        "sha256": "fcc04db87ee698dc981eae2fe3177af2f33042974f05886ae92e6ad84160c8f8"
+      }
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "before": {
+        "sizeBytes": 2177,
+        "sha256": "a61578a8b0dfd4463ff068cd54ed216c5d480a4a9464a668279d42606c2a974a"
+      },
+      "after": {
+        "sizeBytes": 3383,
+        "sha256": "439fec329c7cb3e7217bd427cbcad04cff470e58c4ebb2f0515829d4378a58e7"
+      }
+    },
+    {
+      "path": "app/package.json",
+      "before": {
+        "sizeBytes": 3632,
+        "sha256": "a0cfaf9fcf60d790e3e53bee939662b8f3674d2a91bb69ab092dfc13e2b4039d"
+      },
+      "after": {
+        "sizeBytes": 3700,
+        "sha256": "0dceee470a8629f1f3c417fc221ae4e8a9f6ebfdf68f52c84c3236a09e45233d"
+      }
+    },
+    {
+      "path": "app/scripts/with-app-env.mjs",
+      "before": {
+        "sizeBytes": 4601,
+        "sha256": "a846b68bd3645299c23eef965d9ef226df3a500d345d7576c23f7a2b2ff643c7"
+      },
+      "after": {
+        "sizeBytes": 5299,
+        "sha256": "9dab5242e143b838d10d2aeb17d1d91858514dc436ad9111e926548f932cfdac"
+      }
+    },
+    {
+      "path": "contracts/SBOM.final.json",
+      "before": {
+        "sizeBytes": 363127,
+        "sha256": "0f4449c3e61cfbf0ecc6c7698c04ca5e09cb8bf2a81c31f01e23d86386b360b9"
+      },
+      "after": {
+        "sizeBytes": 361387,
+        "sha256": "0ff0934c5b7fc879f8f738bb4646d47be6ce4afbb42864a5d4deacd7c30b2c88"
+      }
+    },
+    {
+      "path": "docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md",
+      "before": {
+        "sizeBytes": 115814,
+        "sha256": "c5fe145af6273feb753a0cab2f3057997fd4f55dd4612f3537e1196cd7511171"
+      },
+      "after": {
+        "sizeBytes": 118702,
+        "sha256": "e18b683fca5a8ed44a2f7c612d1f2400a06ce2b60c01e0e43346551bc3c76738"
+      }
+    },
+    {
+      "path": "docs/Neuro_Kurisu_Список_дел_CURRENT.md",
+      "before": {
+        "sizeBytes": 143039,
+        "sha256": "ec47fbc11167faf4b5010b3512c091257c24e3ecb956e732c8431b94903bb64f"
+      },
+      "after": {
+        "sizeBytes": 145484,
+        "sha256": "b1d09a90442fc96cbed4fa8fdb4b2081624f648e083214615ad58e5a761ff046"
+      }
+    },
+    {
+      "path": "docs/archive-optimization/README.md",
+      "before": {
+        "sizeBytes": 2448,
+        "sha256": "7ca31f6d119198a4d563044db12a061d3e7b75c96c8115bab4bb33c4ba933247"
+      },
+      "after": {
+        "sizeBytes": 5432,
+        "sha256": "31c7fc7bf17fb2014b1465be94edfc4db3cd4ad8a861c265fb82f5d6bb810ce3"
+      }
+    },
+    {
+      "path": "docs/archive-optimization/historical-snapshot-2026-10-06.manifest.json",
+      "before": {
+        "sizeBytes": 5499133,
+        "sha256": "cbdd9d2e5758b7587c486769005198fd1163d14400c9c431e04e7a3db3019917"
+      },
+      "after": {
+        "sizeBytes": 5499186,
+        "sha256": "70ab7335003e5787317b6a17151bd367922a25e5d64ae48598de81af8034ee73"
+      }
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-manifests/Kurisu_v9_Sprites_Live.manifest.json",
+      "before": {
+        "sizeBytes": 33799,
+        "sha256": "a0f741c24f008581ad6d1f31f4feec8f1a874cb5ac8509e30d7116e471f5dd01"
+      },
+      "after": {
+        "sizeBytes": 48842,
+        "sha256": "239236f85aefda07b624eadbacdbf15358178ddbd3bddec2bf10fa74554943ed"
+      }
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.30.0_R16_PASS_11_SEMANTIC_ISOLATION_2026-09-29.manifest.json",
+      "before": {
+        "sizeBytes": 1906153,
+        "sha256": "b064500159a735fb874e2855abbbd0dc2b3cd3f2b5b8d8115f73ed921fe45c99"
+      },
+      "after": {
+        "sizeBytes": 1906111,
+        "sha256": "f3f53874509e0e47cfbc03736ec27d37c6ea27af0a165d87bef7241e767fdc74"
+      }
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_35.40.0_R26_PASS20_RESTORE_SYMMETRY_2026-10-01.manifest.json",
+      "before": {
+        "sizeBytes": 1922200,
+        "sha256": "8eb274f2bf67586fdd69cc092c7f5b593a03467acc055036608f325773937ccf"
+      },
+      "after": {
+        "sizeBytes": 1921461,
+        "sha256": "d0a8f09d372909b3bc5fce0660937898f46ddad13dc581e7730883e13dbf90f4"
+      }
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-manifests/Neuro_Kurisu_v56_TraitsHierarchy.manifest.json",
+      "before": {
+        "sizeBytes": 83960,
+        "sha256": "2b8e09d0d9647287aba4ff49329261a764b2cf0b944a3431db109e199aea497c"
+      },
+      "after": {
+        "sizeBytes": 119799,
+        "sha256": "d9d9c48a6b87b77f31dfeda2ff28293de60cfd4a0b136f561fac94c066853fcc"
+      }
+    },
+    {
+      "path": "legacy/input-archives/external-sources/README.md",
+      "before": {
+        "sizeBytes": 791,
+        "sha256": "e96a3cf5a2e20cb60bf26ac4dccb81e25dd88986a4979acdd34ef4039c5b00f5"
+      },
+      "after": {
+        "sizeBytes": 1012,
+        "sha256": "132d7317be4ce4dd9c0a15e54b02775778e06da3ec7cdeed77e15ce0152f284c"
+      }
+    },
+    {
+      "path": "package.json",
+      "before": {
+        "sizeBytes": 22600,
+        "sha256": "a2456aefeaef7c6a2fcfbd4c981e73fcbf3ed808ba20d5755153b5a297ae64c8"
+      },
+      "after": {
+        "sizeBytes": 23998,
+        "sha256": "b78ee60869c4f38f93b43d935244eb9925f1a6ec2e8d4b3a8da53530726c717f"
+      }
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ReleaseContract.ts",
+      "before": {
+        "sizeBytes": 417,
+        "sha256": "30a579dcd556408d0c8fd6246c30e8b6bbe30cac62cc988ff485816abab4d619"
+      },
+      "after": {
+        "sizeBytes": 380,
+        "sha256": "15bd1367b0ae122b76e45f563f39ece870add91db153ef4f5115c9f9843c1a09"
+      }
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/integration/letta-governance-adaptation.mjs",
+      "before": {
+        "sizeBytes": 1346,
+        "sha256": "acf8e3be6c268120418f15bd905717ff4424d1b7e9cff933b4fd2881753a3f60"
+      },
+      "after": {
+        "sizeBytes": 1355,
+        "sha256": "1a8e9e8a3c071eab62d455de480636f047fc2bed9ca929945d4e6f00a8e9a125"
+      }
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/release-contract-alignment-workpass37.mjs",
+      "before": {
+        "sizeBytes": 2462,
+        "sha256": "809883aa53b0769ae0ec8e7c937b731d3afd74334210476ea255bfd34165085c"
+      },
+      "after": {
+        "sizeBytes": 3126,
+        "sha256": "af30d4d22cc0a068e670ccb21c693a85d2543fda0a56b57398804f0c25596a05"
+      }
+    },
+    {
+      "path": "tools/audit-assets.mjs",
+      "before": {
+        "sizeBytes": 2619,
+        "sha256": "7f7abf2ddc2666d5aa83889fd71e442c11b375dcffd4f460aa7feaaa47d7f67f"
+      },
+      "after": {
+        "sizeBytes": 4909,
+        "sha256": "8d900c336fb1ee0bc0f9ee46f8b328eaafd9e2d3f5eb6a28edebe3afa28444c9"
+      }
+    },
+    {
+      "path": "tools/super-sbom.test.mjs",
+      "before": {
+        "sizeBytes": 3111,
+        "sha256": "df38c9dfaf5a833d454b0d2df00738f764cb79643040bebc3317815f1e9dd299"
+      },
+      "after": {
+        "sizeBytes": 3407,
+        "sha256": "a733bf9d505ccf40ddda9b803a79bfed9ab1a10a763963f78787e4a7f2733b64"
+      }
+    },
+    {
+      "path": "tools/verify-integration.mjs",
+      "before": {
+        "sizeBytes": 4661,
+        "sha256": "d7fdc0eadd9b19cec8d4bd00d56f7a686415a5873471e721b490bda9fef473e2"
+      },
+      "after": {
+        "sizeBytes": 4874,
+        "sha256": "99c8348c460bee402cfeac2c4ee9ed0024dd8f0a5483e86578876308b2f1dc10"
+      }
+    },
+    {
+      "path": "Список дел.md",
+      "before": {
+        "sizeBytes": 25601,
+        "sha256": "ea5d4466eeeae0dca6c8130c41ab12ee213a75ed65379f12292621567998f1ce"
+      },
+      "after": {
+        "sizeBytes": 28575,
+        "sha256": "070fde6106ecfc18d85493c4a558b879fe0b4dad187e6dfebff61991fbbc0355"
+      }
+    }
+  ],
+  "added": [
+    {
+      "path": "app/scripts/sync-canonical-public-assets.mjs",
+      "sizeBytes": 8400,
+      "sha256": "f16e9b485be3fd32c2465f15283aa2dd0883012d5b6bd9610b2dc9cc8fbcf1c5"
+    },
+    {
+      "path": "app/scripts/sync-canonical-public-assets.test.mjs",
+      "sizeBytes": 4652,
+      "sha256": "86a1a11b19b7e61eb3f893df52b8b0ed1f79e7ee431b7c72fb4c7d7e946845d2"
+    },
+    {
+      "path": "contracts/SOURCE_PROVENANCE_LICENSES_WORKPASS42.json",
+      "sizeBytes": 7001,
+      "sha256": "0844900f920570a33773f44333f326c05305ca09720f17016ce3c9ab3a9f059e"
+    },
+    {
+      "path": "contracts/inventory/canonical-public-assets-workpass42.json",
+      "sizeBytes": 6462,
+      "sha256": "ae174ccac281f24e67353a8a59c08b6a01bd5a6d61d6c14176c975d98b1b1091"
+    },
+    {
+      "path": "docs/INTEGRATION_MATRIX_WORKPASS42_2026-10-14.md",
+      "sizeBytes": 3215,
+      "sha256": "289ce55486755f0632e71903f1ee14c8762dd6cc388f0803da5c1c232cb62457"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-14_WORKPASS42.json",
+      "sizeBytes": 53643,
+      "sha256": "7b1ad7e65293c6a0bad4a35a9149f93f3897bd86bc100f521a254bec4733e015"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-14_WORKPASS42.md",
+      "sizeBytes": 1551,
+      "sha256": "5d025f495196d0a5956f07c89e69b361617f1a19fe80323ccaf354cfbdefbcf2"
+    },
+    {
+      "path": "docs/PROJECT_FILE_MAP_WORKPASS42.md",
+      "sizeBytes": 4587,
+      "sha256": "24cc48593de16f27e67ed98c2f1c02ba8d018b97580fc21619cac803f01f413e"
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-14_WORKPASS42.json",
+      "sizeBytes": 9684,
+      "sha256": "2f4977683abde7df36e1729d2a131b9805235c586f91cf2f9d486eb85f226e5c"
+    },
+    {
+      "path": "docs/WORKPASS42_REPORT_2026-10-14.md",
+      "sizeBytes": 10062,
+      "sha256": "cd533871d193d1bf311a8986f426d5a8dcf05397f282e5fd47d5b5b56717c2c5"
+    },
+    {
+      "path": "docs/WORKPASS42_TASKS_2026-10-14.md",
+      "sizeBytes": 3467,
+      "sha256": "3e3e737da58074114a426bcbe6ab842a1613682c72b3a6905b8c43c651f7d224"
+    },
+    {
+      "path": "docs/archive-optimization/blob-rebinding-workpass42.json",
+      "sizeBytes": 18454,
+      "sha256": "331053134d97d02d4a3afbc792da740ac1e6a372f56e21c5e7f2939d7325cd52"
+    },
+    {
+      "path": "docs/archive-optimization/cleanup-summary-workpass42.json",
+      "sizeBytes": 23008,
+      "sha256": "24ebc61863bd9c4959b79674e12836e3f99c1143db4dbea706ea934c59c361d2"
+    },
+    {
+      "path": "docs/archive-optimization/historical-duplicate-paths-workpass42.json",
+      "sizeBytes": 24234,
+      "sha256": "c3fdbb47cb9c830d596448d019c778a0a72d08623dd6b5bf96768218c68509c1"
+    },
+    {
+      "path": "docs/archive-optimization/historical-snapshot-blobs/28fc1b8824d0bdbd08f000d9ce3557d19a269488e6b2f274137e3a11151ac7da",
+      "sizeBytes": 173,
+      "sha256": "28fc1b8824d0bdbd08f000d9ce3557d19a269488e6b2f274137e3a11151ac7da"
+    },
+    {
+      "path": "docs/archive-optimization/historical-snapshot-blobs/7f7abf2ddc2666d5aa83889fd71e442c11b375dcffd4f460aa7feaaa47d7f67f",
+      "sizeBytes": 2619,
+      "sha256": "7f7abf2ddc2666d5aa83889fd71e442c11b375dcffd4f460aa7feaaa47d7f67f"
+    },
+    {
+      "path": "docs/archive-optimization/historical-snapshot-blobs/a846b68bd3645299c23eef965d9ef226df3a500d345d7576c23f7a2b2ff643c7",
+      "sizeBytes": 4601,
+      "sha256": "a846b68bd3645299c23eef965d9ef226df3a500d345d7576c23f7a2b2ff643c7"
+    },
+    {
+      "path": "docs/archive-optimization/removed-exact-duplicates-workpass42.json",
+      "sizeBytes": 9142,
+      "sha256": "bad1b6f87353547947e3ed7cb91807071e3dae6c6aec55d5bc84ee9a0b66b777"
+    },
+    {
+      "path": "docs/archive-optimization/shared-content-blob-dedup-workpass42.json",
+      "sizeBytes": 2327,
+      "sha256": "0ac52ad94091223724579cac378d0219f36afecba7269bdb5f3f62d500251974"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/15a79a5fe845f5d949a7a6a36e9d9b9ade3dafe6a2ffb1ffa576f3a5d2185ad0",
+      "sizeBytes": 6532,
+      "sha256": "15a79a5fe845f5d949a7a6a36e9d9b9ade3dafe6a2ffb1ffa576f3a5d2185ad0"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/3cf2c5235692b4effd14f912b55416168fe1a0ff405d0b80f65f25e0161bec22",
+      "sizeBytes": 5934,
+      "sha256": "3cf2c5235692b4effd14f912b55416168fe1a0ff405d0b80f65f25e0161bec22"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/7eed92628e4e65733a2bbe601d3bb5fbc52b00f36189d20fc1af2143975da2e2",
+      "sizeBytes": 5408,
+      "sha256": "7eed92628e4e65733a2bbe601d3bb5fbc52b00f36189d20fc1af2143975da2e2"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/d2a76eb41aa6fad57119854c1f7341312e2af1b3ef18c16236e625ee34b2d17d",
+      "sizeBytes": 12116,
+      "sha256": "d2a76eb41aa6fad57119854c1f7341312e2af1b3ef18c16236e625ee34b2d17d"
+    },
+    {
+      "path": "docs/archive-optimization/source-archive-blobs/fe0421c7b496bef5571871157fe03d0f88208c139a43b2562cbca2db38227d72",
+      "sizeBytes": 1903,
+      "sha256": "fe0421c7b496bef5571871157fe03d0f88208c139a43b2562cbca2db38227d72"
+    },
+    {
+      "path": "docs/archive-optimization/workpass42-restored-historical-blobs.json",
+      "sizeBytes": 2340,
+      "sha256": "b6fb5bf24688c2cce24e6bac1f0a2fb5a24cf860bfa234c7988ffde8e0236b20"
+    },
+    {
+      "path": "docs/archive-optimization/workpass42-restored-snapshot-blobs.json",
+      "sizeBytes": 3773,
+      "sha256": "d4ab0ab172793950fa4aca8cfc067cca328c10b5795e98be0af233a4fee9d66c"
+    },
+    {
+      "path": "docs/history/backlogs/Список дел — исходная версия HOTFIX_CHAT.md",
+      "sizeBytes": 31853,
+      "sha256": "87be2d7d8de5facfcbba37d7f990446396cbb6633d5707af787da16bbf7e0352"
+    },
+    {
+      "path": "docs/history/evidence/SEMANTIC_DYNAMIC_EVIDENCE.json",
+      "sizeBytes": 10642,
+      "sha256": "7e808a7594f33655627498d5e5492f59341601b79beef754c7cc544cbbd16247"
+    },
+    {
+      "path": "docs/history/workpasses/INDEX.md",
+      "sizeBytes": 1570,
+      "sha256": "12258924ab925ea4b0d03a5f18bf60b0bce7aaf39f1a336947ce14101192fa42"
+    },
+    {
+      "path": "docs/history/workpasses/RELOCATION_MANIFEST_WORKPASS42.json",
+      "sizeBytes": 21661,
+      "sha256": "b6f1fdb6cbe1eb7e922998882e087a807c13532fd8d1149f7711eeb41d2dbd69"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/FINAL_INTEGRATION_HARDENING_REPORT_2026-10-08.md",
+      "sizeBytes": 1576,
+      "sha256": "6c88b86ab2502576011ea1804924ebfa542d619f408f58a16b56d037e86a8bbc"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/FINAL_RELEASE_REPORT_2026-10-08.md",
+      "sizeBytes": 2615,
+      "sha256": "f83aeac4e1045ea2cef9e7aaf0bc139c24607a786a54643e269b6ff07631452f"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/FINAL_RELEASE_REPORT_2026-10-08_FINAL4.md",
+      "sizeBytes": 3125,
+      "sha256": "d7327e9e231db8d4775ceffd4e7a49f33ebd532c51c20f8332d99495591c173c"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/FINAL_RELEASE_REPORT_2026-10-08_V2.md",
+      "sizeBytes": 3167,
+      "sha256": "f6a18448c3161cd9b1e11be4396bd961d3281aca4053c528afa1c2efa7e27e10"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/FINAL_RELEASE_REPORT_2026-10-08_V3.md",
+      "sizeBytes": 2274,
+      "sha256": "77a0478f67cd05d178c0e5448d8777a7fbc723fa2ced6a83b0eab1e1ed2b1762"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/FINAL_RELEASE_STATUS_FINAL4_2026-10-08.md",
+      "sizeBytes": 2415,
+      "sha256": "a6703db78cae6e5047b73beb94f7ab2589c87f79a03cda1a13a37fbb5f01c00a"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/HEXIS_INTEGRATION_FINAL_2026-10-08.md",
+      "sizeBytes": 4591,
+      "sha256": "8e3c74108057f325af3efba21707663d94e8408711370bd0a98ca7449b217aa2"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/PASS3_RELEASE_REPORT_2026-10-08.md",
+      "sizeBytes": 3027,
+      "sha256": "202fe15694acde633dab9c32a479713b338c9cc8d74e1c9a270e3fd41df200c6"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/RELEASE_STATUS_FINAL2_2026-10-08.md",
+      "sizeBytes": 1278,
+      "sha256": "b5d7cde5b53b86fe0d785773b416f62caac9c167c5ba988d29e1397e67900db8"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/SOURCE_BRANCH_COVERAGE_2026-10-08.md",
+      "sizeBytes": 4517,
+      "sha256": "52c9f15d5ef7a3b1b06aac4d440bfc141a2b7636f314ac21a2745bcd973f7429"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/SOURCE_BRANCH_COVERAGE_2026-10-08_FINAL.md",
+      "sizeBytes": 1882,
+      "sha256": "ec371939c4f714cb0e56fd4a05cb03d80b899bc33a6a33531d56126a3ad08843"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/SOURCE_BRANCH_COVERAGE_2026-10-08_FINAL4.md",
+      "sizeBytes": 2005,
+      "sha256": "94840d47b906e07f78284ec866a9e0fc3f4a16cb7b8c6ffcf93859ee021ef8d3"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS10_CHANGED_FILES_2026-10-10.json",
+      "sizeBytes": 4238,
+      "sha256": "f01bdea5b13065aca6052c9035e489a62ed9a2de83e83117edf6384dc370dae2"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS11_CHANGED_FILES_2026-10-10.json",
+      "sizeBytes": 5019,
+      "sha256": "da7d736034403157176f6e30d95582eb92ae44dd1134fc30358b96d49655c0ad"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS12_CHANGED_FILES_2026-10-10.json",
+      "sizeBytes": 4229,
+      "sha256": "d224192bc546e808da11f9965b64ea1ff9e8b2baf7c076936ac69c465fbca1a2"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS13_CHANGED_FILES_2026-10-10.json",
+      "sizeBytes": 4311,
+      "sha256": "106b691eb300dea831b1e31bf9f17a2d3a40ccd0c2c5b541b634455b1c8583df"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS14_CHANGED_FILES_2026-10-10.json",
+      "sizeBytes": 6769,
+      "sha256": "b0fc0272123bb396e551f73e5bf2e3cdd0005a7ec5ad6704291a880a6802ea8b"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS15_CHANGED_FILES_2026-10-10.json",
+      "sizeBytes": 5178,
+      "sha256": "4e86be922a7f4418c641f705f80f00d508526ca54c96709f0d3a5ae02671ccc3"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS16_CHANGED_FILES_2026-10-10.json",
+      "sizeBytes": 5725,
+      "sha256": "2aff7c0e177c5f8b38a7c9e18c13e596fd9e570c5b834d97e2b0ea3235181bfe"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS17_CHANGED_FILES_2026-10-10.json",
+      "sizeBytes": 5145,
+      "sha256": "a05d16f1bd86d9ca1ef43d77e295778c937465f083b72df4c6d8bead30ad1205"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS18_CHANGED_FILES_2026-10-10.json",
+      "sizeBytes": 5352,
+      "sha256": "d39c13dce281d886bf2f47808c8c2c406068be7a0d73ed23b09860eeec145ce2"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS19_CHANGED_FILES_2026-10-11.json",
+      "sizeBytes": 7393,
+      "sha256": "2f3d9c0274eda69fcc219a87cdbb235c8e516704c141365c159cc2c39aa01b9c"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS20_CHANGED_FILES_2026-10-11.json",
+      "sizeBytes": 6629,
+      "sha256": "383e5e52032deb9d28b4977662a97c8bbb044e5e80db9c99a34ead78918c0d7b"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS23_CHANGED_FILES_2026-10-11.json",
+      "sizeBytes": 7128,
+      "sha256": "df86658a5a6c816e98c648d83a10e8426283f5f3dd46d946ee92045f82041984"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS25_CHANGED_FILES_2026-10-11.json",
+      "sizeBytes": 6775,
+      "sha256": "4bfefe852e0b5b48350ddacecc3b103f7bb45f2918cd5d45ee0068807371ea88"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS25_REPORT_2026-10-11.md",
+      "sizeBytes": 3350,
+      "sha256": "13aee27267e8a457c299fb2e81c5c2effd932ddadf91040e0810884551c08d97"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS25_Список_дел_2026-10-11.md",
+      "sizeBytes": 111897,
+      "sha256": "59453cffc38ea25d95fa2b6c02238d8102468cf654e8e9e4551d3b57df060ad7"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS26_CHANGED_FILES_2026-10-13.json",
+      "sizeBytes": 6552,
+      "sha256": "521e6ec3126546c5a4f6010f95f43aaa6c4c6f80c5720744d97cc780ff310834"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS26_REPORT_2026-10-13.md",
+      "sizeBytes": 5898,
+      "sha256": "318b819a1ae74e9d719ec2fd60e4eacfb8dca63d0e964d4091c0b5568d2ec45f"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS26_Список_дел_2026-10-13.md",
+      "sizeBytes": 1379,
+      "sha256": "3c88a70887a2e987acfd40d5b1890570325f1339a4b297ff51bf2ee95c7b70be"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS27_CHANGED_FILES_2026-10-13.json",
+      "sizeBytes": 6059,
+      "sha256": "492ed51c6347234a894a44f5718022cf5d9348842b5152a3998899b5b5a4ffd4"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS27_REPORT_2026-10-13.md",
+      "sizeBytes": 5402,
+      "sha256": "966d334f161387aa11b32cc31af37ed3a119e6387e796e1c5e5e6345563d3650"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS27_Список_дел_2026-10-13.md",
+      "sizeBytes": 1587,
+      "sha256": "f0a17163842f7b432f641f733e7084187dc52be52e767afff988290cfda82235"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS28_CHANGED_FILES_2026-10-13.json",
+      "sizeBytes": 5413,
+      "sha256": "43687fd39eaf85ba47773eacb5ec74f08dcd95fdbb535b04877a965a60f18d3b"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS28_REPORT_2026-10-13.md",
+      "sizeBytes": 5132,
+      "sha256": "3970981dd1789d48b3e83268e55d6eea0f1cea1cf44b3d2b3b615c7b8b1ec484"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS28_TASKS_2026-10-13.md",
+      "sizeBytes": 1606,
+      "sha256": "ee5772335fff7be61018462a7125b6f40e4f76df60a62910d69c85f8ca2b298a"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS29_CHANGED_FILES_2026-10-13.json",
+      "sizeBytes": 8163,
+      "sha256": "25ca86b324956af5e7a6f17867f73a6756f28b06c994cf4451d55549bd8fde76"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS29_REPORT_2026-10-13.md",
+      "sizeBytes": 283,
+      "sha256": "a527685bb2d481f1f382682db5a597e464b6509f82d3c6f060e98b789248d626"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS29_TASKS_2026-10-13.md",
+      "sizeBytes": 2909,
+      "sha256": "57293746be8e8124c2b8dc332843dfbe2a6990d497722315e4369f0e35c576ca"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS29_Список_дел_2026-10-13.md",
+      "sizeBytes": 2380,
+      "sha256": "c566b773cff8dc2f27723f6717dafbfb3ecfc259716347030644700167dbf9d0"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS30_CHANGED_FILES_2026-10-13.json",
+      "sizeBytes": 8576,
+      "sha256": "14c773558f58966431daab0cbb8c02751ac4ccdb0be2f846cd26b0fcb542dc3f"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS30_REPORT_2026-10-13.md",
+      "sizeBytes": 4553,
+      "sha256": "ac05aad1e39c457f4a81f122b14cfc0f6e5481d9245407c10dab69e30fa17044"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS30_TASKS_2026-10-13.md",
+      "sizeBytes": 2215,
+      "sha256": "7366483f9751644e4793c5616fdbec00ffd70e4adf2032a243d873413824bdbb"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS31_CHANGED_FILES_2026-10-13.json",
+      "sizeBytes": 9674,
+      "sha256": "85070ed867b6f84044c22c91613ffb570f25d66a116b2bb5fcfd6bfb38e4b260"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS31_REPORT_2026-10-13.md",
+      "sizeBytes": 2982,
+      "sha256": "92668a944c801e21e702b14ad58538ff5dcb92ffcdb970c6354c46ff9816f6bf"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS31_TASKS_2026-10-13.md",
+      "sizeBytes": 1477,
+      "sha256": "20e136dcf61bccc7a8a30f976a1be30931d73aa1d473f711ffc8a8a7c3efafe5"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS32_CHANGED_FILES_2026-10-13.json",
+      "sizeBytes": 6254,
+      "sha256": "be6c3ed2be8976ab2818ef9576ef2bff55402e7064b2629bac47a158afe2bdd4"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS32_REPORT_2026-10-13.md",
+      "sizeBytes": 3924,
+      "sha256": "8d682e0edb47ee734bc23552dd6b8ba78407cd1375f44e7a4e2458a1f8bf9615"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS32_TASKS_2026-10-13.md",
+      "sizeBytes": 249,
+      "sha256": "92eeffcc3a7a167872ed0c1d38827266c96b8f10ff026d2dac2bff6ea520e25e"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS33_CHANGED_FILES_2026-10-13.json",
+      "sizeBytes": 6670,
+      "sha256": "8167d932ac44fd331d92da1e8f8888802ded3e7e028826c0de344ef80c6ed6ab"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS33_REPORT_2026-10-13.md",
+      "sizeBytes": 3089,
+      "sha256": "e5f2dd09e5efc978e95b078e928aa63332c459a53f6caba3950ab400e258b357"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS33_TASKS_2026-10-13.md",
+      "sizeBytes": 2081,
+      "sha256": "1045630721b84b1e730663eea9a2692f164a417caaaffeb70e2eb70e495a2738"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS34_CHANGED_FILES_2026-10-13.json",
+      "sizeBytes": 6142,
+      "sha256": "92e645328b926e1fb783851dffbfb2a705ffa27cbb425f353f3e5184554a46ea"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS34_REPORT_2026-10-13.md",
+      "sizeBytes": 251,
+      "sha256": "4e729d65adc63dc58fc9b717b5e3ccf254ed846fe28beeb2389b36a2254ead29"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS34_TASKS_2026-10-13.md",
+      "sizeBytes": 3288,
+      "sha256": "2239291cb55fb2cd1f8e7556662770cc9f95d85fe2949ce9c59cdeda793702f0"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS35_ARCHIVE_VERIFICATION_2026-10-13.json",
+      "sizeBytes": 1860,
+      "sha256": "223af10882873d0ce5b2f61dbd5f00a24336220b788a2002352ba7a7c71e3979"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS35_CHANGED_FILES_2026-10-13.json",
+      "sizeBytes": 344806,
+      "sha256": "40318ab4df99809ace614966a8d1f537559c782a8106af9cf01b92fb1598e2c0"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS35_REPORT_2026-10-13.md",
+      "sizeBytes": 3656,
+      "sha256": "23780256fe30194e9bf5ebfb297abaac4dedfc2b2e9579dfdf2fc8ad2b701176"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS35_TASKS_2026-10-13.md",
+      "sizeBytes": 1451,
+      "sha256": "42cd3d01e7f64144c4fdde68a3c5ac1d9755a91d49dab725e6389781ade3943b"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS38_INTEGRATION_MATRIX_2026-10-14.md",
+      "sizeBytes": 230,
+      "sha256": "3282b04a3b553d3a433b8c775c07b3a46497c9457909c2e4258d92bbb48e5269"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS38_REPORT_2026-10-14.md",
+      "sizeBytes": 211,
+      "sha256": "c8d26e267103db333e30b197ec43bdaabb2a5aaedd3d5ad86db4faca4f7e2010"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS38_TASKS_2026-10-14.md",
+      "sizeBytes": 209,
+      "sha256": "435c77112fed79f66a3815f977d8b9f2c80a79d2f48fbf2c5a441108a7b12ee5"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS5_CHANGED_FILES_2026-10-09.json",
+      "sizeBytes": 3129,
+      "sha256": "d1711df5c4900e9aaa5179321e8b755db21768a4711b20897b1f0ff46a3ee736"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS6_CHANGED_FILES_2026-10-09.json",
+      "sizeBytes": 6069,
+      "sha256": "e53e652d1fa9e96ada0383c27a369f07e0fa38d4973622e85d9d4b46f8596b48"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS8_CHANGED_FILES_2026-10-10.json",
+      "sizeBytes": 4054,
+      "sha256": "3f9917ca7824e772ff6a868758bed87674f8bd23c2877517bf9bf23cba6ddf2b"
+    },
+    {
+      "path": "docs/history/workpasses/root-reports/WORKPASS9_CHANGED_FILES_2026-10-10.json",
+      "sizeBytes": 5091,
+      "sha256": "e0cbfcb583f05a251eb4d1057e137136b2e160378f5e825f2c92201e00c3beec"
+    },
+    {
+      "path": "legacy/kurisu-v9/README_DEDUPLICATED_FILES.md",
+      "sizeBytes": 747,
+      "sha256": "15ca34427d731583a4c6e9f0470ba832f815ff92a177e49c038819b20492d4ec"
+    },
+    {
+      "path": "tools/audit-workpass42-cleanup.py",
+      "sizeBytes": 14697,
+      "sha256": "8615b54cfd5bb93acc4d22bf0feb87deb1216563c055f306a29aeeefd5832024"
+    },
+    {
+      "path": "tools/restore-historical-duplicate-paths.mjs",
+      "sizeBytes": 6075,
+      "sha256": "6d1624f08987bbfa913be6b87bd573eaeec104fff2e5bc5db7254c390ac4909b"
+    },
+    {
+      "path": "tools/restore-historical-duplicate-paths.test.mjs",
+      "sizeBytes": 3120,
+      "sha256": "8e5a0023dcf948ea3e6babd4fc6471e323911d096d757cd5ef57878c9c8ba633"
+    }
+  ],
+  "auditArtifactsExcludedFromOwnHashListing": [
+    "docs/WORKPASS42_AUDIT_RESULTS_2026-10-14.json",
+    "docs/WORKPASS42_CHANGED_FILES_2026-10-14.json"
+  ],
+  "remainingExactDuplicateGroups": 18,
+  "remainingExactDuplicateExtraPaths": 39,
+  "remainingExactDuplicateRawBytes": 91244,
+  "remainingDuplicatePolicy": "Retain byte-equal paths where names are semantically distinct entrypoints/provenance: per-package LICENSE/SOURCE, bootstrap vs migration SQL, named fixtures, version-labelled evidence, Python package markers and latest-vs-version manifests.",
+  "symlinkPaths": [],
+  "relocationManifestDrift": [],
+  "historicalIntegrityGates": [
+    {
+      "command": "python3 tools/verify-compacted-source-archives.py",
+      "exitCode": 0,
+      "ok": true,
+      "stdout": "{\n  \"ok\": true,\n  \"manifestCount\": 4,\n  \"members\": 8512,\n  \"verifiedMembers\": 8512,\n  \"results\": [\n    {\n      \"manifest\": \"Kurisu_v9_Sprites_Live.manifest.json\",\n      \"members\": 98,\n      \"verified\": 98,\n      \"ok\": true,\n      \"originalArchiveBytes\": 9893957\n    },\n    {\n      \"manifest\": \"Neuro_Kurisu_35.30.0_R16_PASS_11_SEMANTIC_ISOLATION_2026-09-29.manifest.json\",\n      \"members\": 4022,\n      \"verified\": 4022,\n      \"ok\": true,\n      \"originalArchiveBytes\": 21138698\n    },\n    {\n      \"manifest\": \"Neuro_Kurisu_35.40.0_R26_PASS20_RESTORE_SYMMETRY_2026-10-01.manifest.json\",\n      \"members\": 4144,\n      \"verified\": 4144,\n      \"ok\": true,\n      \"originalArchiveBytes\": 21101126\n    },\n    {\n      \"manifest\": \"Neuro_Kurisu_v56_TraitsHierarchy.manifest.json\",\n      \"members\": 248,\n      \"verified\": 248,\n      \"ok\": true,\n      \"originalArchiveBytes\": 9182283\n    }\n  ],\n  \"errors\": []\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "python3 tools/restore-historical-snapshot.py --check",
+      "exitCode": 0,
+      "ok": true,
+      "stdout": "{\n  \"ok\": true,\n  \"mode\": \"check\",\n  \"members\": 10427,\n  \"contentSourcesChecked\": 18935,\n  \"errors\": []\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "node tools/restore-historical-duplicate-paths.mjs",
+      "exitCode": 0,
+      "ok": true,
+      "stdout": "{\n  \"ok\": true,\n  \"mode\": \"check\",\n  \"manifestEntries\": 56,\n  \"restored\": 0,\n  \"alreadyExact\": 0,\n  \"missingOrChangedCanonical\": 0,\n  \"conflicts\": 0,\n  \"results\": [\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_15_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_13_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P49_BIG_STEP_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/RELEASE_NOTES_B324_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-18/P2659_P2674/RELEASE_NOTES_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P53_P54_BIG_STEP_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P48_BIG_STEP_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_19_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P51_BIG_STEP_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P47_BIG_STEP_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_23_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_11_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/BIG_PASS_338_PREVIOUS_B337_BASE_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_16_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_18_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_14_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_17_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/releases/33.0.0/RELEASE_NOTES_12_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P50_BIG_STEP_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P46_BIG_STEP_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_FIRST_STEP_11_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/p-phases/2026-09-01/README_P52_BIG_STEP_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/BIG_PASS_320_MOBILE_DURABILITY_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/RELEASE_NOTES_B319_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/BIG_PASS_319_PROGRESS_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/BIG_PASS_321_DEVICE_REALITY_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"runtime/neuro-kurisu/docs/history/FORENSIC_DEDUP_2026-09-15/RELEASE_NOTES_B320_RU.md\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/index.html\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/avatar/outfitCatalog.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/avatar/spriteEngine.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/brain/energyBudget.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/cognitive/ConsciousnessCore.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/cognitive/DesireAndPromiseStore.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/cognitive/EmbodimentSystem.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/cognitive/GrokExtras.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/cognitive/PersonalityRewardSystem.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/cognitive/PresenceAndIdle.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/cognitive/SelfImprovementEngine.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/cognitive/StatusIndicators.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/AndroidCodeExportModal.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/Avatar2DOverlay.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/Avatar3D.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/EmotionalStatePanel.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/ExpressionReferenceModal.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/MemoryInspector.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/MultimodalCamera.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/PersonalityMapPanel.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/ReflectionJournal.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/SearchPermissionModal.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/SelfOptimizationModal.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/components/ThoughtBubbleOverlay.tsx\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/services/notificationEngine.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/tools/webSearch.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/kurisu-v9/src/utils/spriteSheet.ts\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/input-archives/lumina-main-2026-10-08.zip\",\n      \"result\": \"restorable\"\n    },\n    {\n      \"path\": \"legacy/input-archives/letta-main-2026-10-08.zip\",\n      \"result\": \"restorable\"\n    }\n  ]\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "node tools/restore-legacy-deduplicated-files.mjs",
+      "exitCode": 0,
+      "ok": true,
+      "stdout": "{\n  \"mode\": \"check\",\n  \"manifestEntries\": 3873,\n  \"alreadyPresent\": 6,\n  \"preservedByImmutableBlob\": 25,\n  \"restored\": 0,\n  \"missingOrChangedCanonical\": 0,\n  \"conflicts\": 0\n}\n",
+      "stderr": ""
+    }
+  ],
+  "uniqueContentLoss": false,
+  "restorationChecksPassed": true,
+  "ok": true
+}

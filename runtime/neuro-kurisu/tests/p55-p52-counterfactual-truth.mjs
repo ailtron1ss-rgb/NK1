@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { P52CounterfactualDevelopmentMind } from '../src/organism/world/P52CounterfactualDevelopmentMind.ts';
+const m=new P52CounterfactualDevelopmentMind();
+const state={version:55,tick:0,at:0,needs:{energy:.8,cognitiveLoad:.2,uncertainty:.3,socialNeed:.3,novelty:.4,identityCoherence:.9,goalPressure:.2},predictionError:.2,attentionBudget:.8,lastAction:'none',lastActionSuccess:null,autonomyScore:.2,selfPredictionError:0,predictedNextAction:'none',lastPredictionConfidence:0,worldContextVersion:1};
+const goals=[];
+m.observe({stateBefore:state,stateAfter:{...state,tick:1},action:'respond',predictedUtility01:.8,success01:.9,reward01:.9,surprise01:.1,predictionConfidence01:.8,selfPredictionError01:.2,goals,p50Alignment01:.8,p51Grounding01:.8,at:1});
+let snap=m.snapshot();
+assert.equal(snap.resolvedCounterfactuals,0,'unchosen branch must remain unresolved');
+m.observe({stateBefore:{...state,tick:1},stateAfter:{...state,tick:2},action:snap.counterfactuals[0].alternative,predictedUtility01:.6,success01:.7,reward01:.7,surprise01:.2,predictionConfidence01:.7,selfPredictionError01:.2,goals,p50Alignment01:.8,p51Grounding01:.8,at:2});
+snap=m.snapshot();
+assert.ok(snap.resolvedCounterfactuals>=1,'alternative must resolve only when actually chosen');
+console.log('P52 counterfactual truthfulness: PASS');

@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { migratePersistedOrganism, ORGANISM_STATE_SCHEMA } from '../src/organism/persistence/StateMigrations.ts';
+import { defaultB266HiddenTaskGeneralization } from '../src/organism/cognition/B266HiddenTaskGeneralization.ts';
+const base=defaultB266HiddenTaskGeneralization();
+const raw={schemaVersion:ORGANISM_STATE_SCHEMA,system:{hiddenTaskGeneralizationB266:{...base,trainEpisodes:8,holdoutEpisodes:6,lastFamilyId:'b266-holdout-test'}}};
+const m=migratePersistedOrganism(raw);
+assert.equal(m.system.hiddenTaskGeneralizationB266.trainEpisodes,8);
+assert.equal(m.system.hiddenTaskGeneralizationB266.holdoutEpisodes,6);
+assert.equal(m.system.hiddenTaskGeneralizationB266.lastFamilyId,'b266-holdout-test');
+console.log(JSON.stringify({pass:true,schema:ORGANISM_STATE_SCHEMA,restored:m.system.hiddenTaskGeneralizationB266},null,2));

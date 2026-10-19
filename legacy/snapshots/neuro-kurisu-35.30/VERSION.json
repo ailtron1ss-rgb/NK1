@@ -1,0 +1,10 @@
+{
+  "application": "35.30.0",
+  "organismCore": "100.21.0-r16-multi-system",
+  "stateSchema": 219,
+  "phase": "Stage-114/R16-Multi-System-Closure",
+  "status": "research-release",
+  "version": "35.30.0",
+  "release": "R16",
+  "schemaVersion": 219
+}

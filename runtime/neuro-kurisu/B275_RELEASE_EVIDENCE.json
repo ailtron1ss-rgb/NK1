@@ -1,0 +1,47 @@
+{
+  "release":"35.6.1",
+  "pass":"B275",
+  "verified":true,
+  "typecheck":"PASS",
+  "tests":{
+    "standalone":"PASS",
+    "independent":"PASS",
+    "core":"PASS",
+    "migration":"PASS",
+    "b273_core_regression":"PASS",
+    "b274_core_regression":"PASS"
+  },
+  "metrics":{
+    "standalone_decisions":220,
+    "standalone_learning_updates":220,
+    "standalone_verified_policies":1,
+    "standalone_transfer_gain01":0.574194545361617,
+    "hidden_decisions":240,
+    "hidden_learning_updates":160,
+    "hidden_average":0.368,
+    "hidden_baseline":0.28,
+    "hidden_gain":0.088,
+    "core_decisions":18,
+    "core_learning_updates":18,
+    "core_verified_policies":1,
+    "core_neural_grounding01":0.5255683418805898,
+    "core_self_alignment01":0.6282150801793569
+  },
+  "staticGates":{
+    "fullAudit":"PASS",
+    "architecture":"PASS",
+    "integrity":"PASS",
+    "forensics":"PASS",
+    "hygiene":"PASS",
+    "syntax":"PASS",
+    "contract":"PASS",
+    "lock":"PASS",
+    "releaseSource":"PASS"
+  },
+  "limitations":[
+    "fixed ActionKind vocabulary",
+    "shallow composition depth",
+    "synthetic hidden evaluation",
+    "no open-ended primitive action invention"
+  ]
+}

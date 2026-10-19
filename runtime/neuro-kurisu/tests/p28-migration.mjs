@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { migratePersistedOrganism, ORGANISM_STATE_SCHEMA } from '../src/organism/persistence/StateMigrations.ts';
+import { RELEASE_CONTRACT } from '../src/organism/system/ReleaseContract.ts';
+assert.equal(ORGANISM_STATE_SCHEMA, RELEASE_CONTRACT.stateSchema);
+const old = { schemaVersion:30, state:{ version:30, tick:4, at:1, needs:{energy:.8,cognitiveLoad:.2,uncertainty:.3,socialNeed:.2,novelty:.4,identityCoherence:.8,goalPressure:.1}, predictionError:.2, attentionBudget:.8, lastAction:'wait', lastActionSuccess:.7, autonomyScore:.5, selfPredictionError:.2, predictedNextAction:'wait', lastPredictionConfidence:.7, worldContextVersion:1 }};
+const next = migratePersistedOrganism(old);
+assert.equal(next.schemaVersion,ORGANISM_STATE_SCHEMA);
+assert.equal(next.state.version,ORGANISM_STATE_SCHEMA);
+assert.equal(next.facets.learning.p28.version,1);
+assert.ok(Array.isArray(next.facets.learning.p28.prototypes));
+console.log('P28_MIGRATION=PASS', JSON.stringify({from:30,to:43,prototypes:next.facets.learning.p28.prototypes.length}));

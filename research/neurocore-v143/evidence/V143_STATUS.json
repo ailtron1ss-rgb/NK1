@@ -1,0 +1,14 @@
+{
+  "release": "1.43.0",
+  "frontier": 143,
+  "tests": 8,
+  "tests_status": "PASS",
+  "canonical_memory_owners": 1,
+  "fwpkm_status": "candidate",
+  "fwpkm_language_status": "pending_no_promotion",
+  "fwpkm_mean_recall_3seed": 0.9628199941168228,
+  "fwpkm_revision_new_cos_3seed": 0.9549822807312012,
+  "fwpkm_revision_old_cos_3seed": 0.26718739171822864,
+  "real_text_initial_delta_loss": 0.0,
+  "next": "V144 execution + language scaling"
+}

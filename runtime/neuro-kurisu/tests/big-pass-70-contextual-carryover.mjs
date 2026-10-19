@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { P84AutobiographicalContinuityFabric } from '../src/organism/developmental/P84AutobiographicalContinuityFabric.ts';
+const f=new P84AutobiographicalContinuityFabric();
+const c={goalFamily:'epistemic',uncertainty01:.82,novelty01:.74,energy01:.81,cognitiveLoad01:.28,realityConfidence01:.78};
+f.learnFromVerifiedOutcome({action:'explore',success01:1,confidence01:.95,evidence01:.96,at:1000,context:c});
+f.learnFromVerifiedOutcome({action:'explore',success01:1,confidence01:.94,evidence01:.96,at:2000,context:c});
+const local=f.actionBias('explore',2000,c);
+assert(local>0 && local<=.06,'contextual positive carry-over must be bounded');
+const other=f.actionBias('explore',2000,{...c,uncertainty01:.05});
+assert(other<local,'different context must not receive the full local bias');
+const snap=f.contextualActionOutcomeSnapshot(); assert.equal(Object.keys(snap).length,1);
+const r=new P84AutobiographicalContinuityFabric(); r.restore(f.snapshot());
+assert(Math.abs(r.actionBias('explore',2000,c)-local)<1e-9,'contextual carry-over must persist');
+console.log(`BIG_PASS_70_CONTEXTUAL_CARRYOVER=PASS local=${local.toFixed(4)} other=${other.toFixed(4)} cells=${Object.keys(snap).length}`);

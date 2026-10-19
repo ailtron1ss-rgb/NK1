@@ -1,0 +1,1 @@
+{'current_schema_version': 30, 'current_neural_version': 124, 'engine_source_version': 124, 'loaded_tensors': 108, 'missing_tensors': [], 'shape_mismatch': [], 'unexpected_tensors': [], 'legacy_checkpoint_detected': False, 'legacy_tensors_loaded': 0, 'optimizer_loaded': False, 'optimizer_reset': False}

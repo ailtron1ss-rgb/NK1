@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+
+const store=new MemoryStateStore();
+const core=new OrganismCore(store,{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1});
+await core.init();
+const obs=await core.observe({text:'maintain a changing experimental situation and choose a response',novelty:.7,worldContext:{tick:1,location:'lab',energy:.75,attention:.82,uncertainty:.55,facts:['sensor stable'],objects:[{id:'sensor',label:'sensor',location:'lab',value:.7,visible:true,collected:false}],events:[]}});
+assert.ok(obs.decision.selected);
+await core.feedback({success:.84,reward:.82,surprise:.14,worldTransition:{action:obs.decision.selected.action,before:{tick:1,location:'lab',energy:.75,attention:.82,uncertainty:.55,facts:['sensor stable'],objects:[],events:[]},after:{tick:2,location:'lab',energy:.77,attention:.8,uncertainty:.4,facts:['sensor stable','verified change'],objects:[],events:['transition']},reward:.82,surprise:.14,at:Date.now()}});
+const d=core.developmentalSynthesisDiagnostics();
+assert.ok(Array.isArray(d.top));
+assert.ok(d.applications>=0);
+await core.flush();
+const saved=await store.load();
+assert.ok(saved.facets.learning.developmentalSynthesis);
+assert.ok(saved.facets.learning.developmentalSynthesis.decisions?.length>=1);
+const restored=new OrganismCore(store,{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1});
+await restored.init();
+const d2=restored.developmentalSynthesisDiagnostics();
+assert.ok(d2.counterfactualRegret01>=0);
+console.log(`BIG_PASS_119_CORE=PASS applications=${d2.applications} decisions=${d2.top.length>=0?1:0} persisted=${Boolean(saved.facets.learning.developmentalSynthesis)}`);

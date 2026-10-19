@@ -1,0 +1,598 @@
+import type { ActionKind, OrganismState } from '../core/types.ts';
+
+const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
+const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const now=()=>Date.now();
+
+export type DevelopmentArea = 'memory'|'learning'|'world-model'|'self-model'|'relationship'|'agency'|'resource-discipline'|'perception';
+export type DevelopmentStatus = 'proposed'|'running'|'completed'|'rejected'|'rolled-back'|'preview-only'|'awaiting-evidence';
+
+export interface DevelopmentHypothesis {
+  id:string;
+  area:DevelopmentArea;
+  title:string;
+  hypothesis:string;
+  evidence:string[];
+  expectedGain01:number;
+  estimatedCost01:number;
+  priority01:number;
+  status:DevelopmentStatus;
+  createdAt:number;
+  completedAt:number;
+  result01:number|null;
+  evidenceGate?: 'none'|'external-verified'|'holdout-verified'|'replicated';
+}
+
+export interface DevelopmentExperiment {
+  id:string;
+  hypothesisId:string;
+  control01:number;
+  treatment01:number;
+  delta01:number;
+  replicated:boolean;
+  safeSandbox:boolean;
+  runs:number;
+  informationGain01:number;
+  status:'completed'|'insufficient'|'rejected';
+  at:number;
+  evidenceGate?: 'sandbox-preview'|'external-verified'|'holdout-verified'|'replicated';
+}
+
+export interface DevelopmentCampaignSlot {
+  id:string;
+  sequence:number;
+  hypothesisId:string;
+  cycleId:string;
+  phase:'baseline'|'delayed-test'|'holdout';
+  contextKey:string;
+  delayMs:number;
+  holdout:boolean;
+  requestedAction:ActionKind;
+}
+
+export interface DevelopmentCycleRecord {
+  id:string;
+  hypothesisId:string;
+  goalId?:string;
+  objective:string;
+  origin:'autonomous-gap'|'goal-pressure'|'user-directed';
+  requestedAction:ActionKind;
+  requiredContexts:number;
+  requiredPositiveDelays:number;
+  requiredHoldout:number;
+  stage:'proposed'|'task-ready'|'awaiting-evidence'|'holdout-verified'|'replicated'|'closed';
+  createdAt:number;
+  taskCount:number;
+  verifiedEvidenceCount:number;
+  lastEvidenceAt:number;
+}
+
+export interface DevelopmentEvidenceRecord {
+  id:string;
+  hypothesisId:string;
+  contextKey:string;
+  control01:number;
+  treatment01:number;
+  delta01:number;
+  independentVerified:boolean;
+  holdout:boolean;
+  delayMs:number;
+  evaluatorVersion:string;
+  evidenceSource:'external-evaluator'|'manual-observer';
+  protocolId?:string;
+  sessionId?:string;
+  trialId?:string;
+  at:number;
+}
+
+export interface LearningInvestmentDecision {
+  id:string;
+  tick:number;
+  at:number;
+  decision:'invest'|'defer'|'recover'|'observe';
+  area:DevelopmentArea|null;
+  score01:number;
+  expectedGain01:number;
+  estimatedCost01:number;
+  opportunityCost01:number;
+  resourcePressure01:number;
+  reason:string;
+}
+
+export interface DevelopmentAgendaRecord {
+  version:1;
+  selectedArea:DevelopmentArea|null;
+  selectedHypothesisId:string|null;
+  score01:number;
+  expectedGain01:number;
+  estimatedCost01:number;
+  reason:string;
+  lastSelectedAt:number;
+  selectionCount:number;
+  lastDecisionTick:number;
+}
+
+export type DevelopmentalMaturityStage = 'seed'|'acquisition'|'integration'|'transfer'|'consolidation'|'stable';
+
+export interface DevelopmentalMaturityRecord {
+  cycle:number;
+  stage:DevelopmentalMaturityStage;
+  area:DevelopmentArea|null;
+  verified01:number;
+  retention01:number;
+  transfer01:number;
+  failed01:number;
+  at:number;
+}
+
+export interface SelfDevelopmentState {
+  version:5;
+  cycles:number;
+  lastCycleAt:number;
+  agenda:DevelopmentAgendaRecord;
+  currentHypothesisId:string|null;
+  hypotheses:DevelopmentHypothesis[];
+  experiments:DevelopmentExperiment[];
+  developmentCycles:DevelopmentCycleRecord[];
+  externalEvidence:DevelopmentEvidenceRecord[];
+  investmentDecisions:LearningInvestmentDecision[];
+  learningBudget01:number;
+  spentBudget01:number;
+  recovery01:number;
+  acceptedChanges:number;
+  rejectedChanges:number;
+  rollbackCount:number;
+  metrics:{
+    selfDevelopmentCoherence01:number;
+    experimentSuccess01:number;
+    autonomy01:number;
+    developmentalReadiness01:number;
+    longHorizonImprovement01:number;
+  };
+  developmentalMaturity:{
+    stage:DevelopmentalMaturityStage;
+    score01:number;
+    verifiedOutcomeCount:number;
+    retainedOutcomeCount:number;
+    transferredOutcomeCount:number;
+    regressionCount:number;
+    lastTransitionAt:number;
+    history:DevelopmentalMaturityRecord[];
+  };
+  curriculum:{
+    focus:DevelopmentArea;
+    mastery:Record<DevelopmentArea,number>;
+    plannedSteps:number;
+    completedSteps:number;
+  };
+  actionBias:Record<ActionKind,number>;
+}
+
+const defaultState=():SelfDevelopmentState=>({
+  version:5,
+  cycles:0,
+  lastCycleAt:0,
+  agenda:{version:1,selectedArea:null,selectedHypothesisId:null,score01:0,expectedGain01:0,estimatedCost01:0,reason:'no-development-decision',lastSelectedAt:0,selectionCount:0,lastDecisionTick:0},
+  currentHypothesisId:null,
+  hypotheses:[],
+  experiments:[],
+  developmentCycles:[],
+  externalEvidence:[],
+  investmentDecisions:[],
+  learningBudget01:.82,
+  spentBudget01:0,
+  recovery01:0,
+  acceptedChanges:0,
+  rejectedChanges:0,
+  rollbackCount:0,
+  metrics:{selfDevelopmentCoherence01:.28,experimentSuccess01:.5,autonomy01:.82,developmentalReadiness01:.35,longHorizonImprovement01:.5},
+  developmentalMaturity:{stage:'seed',score01:0,verifiedOutcomeCount:0,retainedOutcomeCount:0,transferredOutcomeCount:0,regressionCount:0,lastTransitionAt:0,history:[]},
+  curriculum:{
+    focus:'learning',
+    mastery:{memory:.5,learning:.5,'world-model':.4,'self-model':.4,relationship:.35,agency:.45,'resource-discipline':.5,perception:.35},
+    plannedSteps:0,
+    completedSteps:0,
+  },
+  actionBias:{respond:0,explore:0,verify:0,rest:0,reflect:0,wait:0,defer:0},
+});
+
+const hash=(s:string)=>{
+  let h=2166136261>>>0;
+  for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)>>>0;}
+  return h.toString(16).padStart(8,'0');
+};
+
+function bootstrapCI(values:number[],seed:number,resamples=384){
+  if(values.length<2)return {low:null as number|null,high:null as number|null};
+  let x=(seed>>>0)||0x9e3779b9; const rnd=()=>{x^=x<<13;x^=x>>>17;x^=x<<5;return (x>>>0)/4294967296;};
+  const means:number[]=[];
+  for(let r=0;r<Math.min(512,Math.max(64,resamples));r++){let sum=0;for(let i=0;i<values.length;i++)sum+=values[Math.floor(rnd()*values.length)];means.push(sum/values.length);}
+  means.sort((a,b)=>a-b);
+  return {low:means[Math.floor(means.length*.025)],high:means[Math.floor(means.length*.975)]};
+}
+
+function focusFromState(state:OrganismState, extras:{worldError01?:number; selfError01?:number; relationship01?:number; perception01?:number; resourceRisk01?:number}={}):DevelopmentArea{
+  const scores:Record<DevelopmentArea,number>={
+    learning:state.predictionError*.34 + (1-state.needs.identityCoherence)*.12,
+    'world-model':(extras.worldError01??state.predictionError)*.42,
+    'self-model':(extras.selfError01??state.selfPredictionError)*.42 + (1-state.autonomyScore)*.1,
+    relationship:(extras.relationship01??state.needs.socialNeed)*.35,
+    agency:(1-state.autonomyScore)*.36 + state.needs.goalPressure*.12,
+    'resource-discipline':(extras.resourceRisk01??state.needs.cognitiveLoad)*.4 + (1-state.attentionBudget)*.18,
+    perception:(extras.perception01??state.needs.uncertainty)*.3,
+    memory:state.needs.novelty*.16 + state.predictionError*.18,
+  };
+  return (Object.entries(scores).sort((a,b)=>b[1]-a[1])[0]?.[0] ?? 'learning') as DevelopmentArea;
+}
+
+export class P36AutonomousSelfDevelopmentEngine{
+  private state=defaultState();
+  restore(raw?:Partial<SelfDevelopmentState>|null){
+    const d=defaultState(); const r=raw??{};
+    this.state={...d,...r,version:5,
+      developmentalMaturity:{...d.developmentalMaturity,...((r as any).developmentalMaturity??{}),history:Array.isArray((r as any).developmentalMaturity?.history)?(r as any).developmentalMaturity.history.slice(-64):[]},
+      agenda:{...d.agenda,...((r as any).agenda??{})},
+      hypotheses:Array.isArray(r.hypotheses)?r.hypotheses.slice(-96):[],
+      experiments:Array.isArray(r.experiments)?r.experiments.slice(-128):[],
+      developmentCycles:Array.isArray((r as any).developmentCycles)?(r as any).developmentCycles.slice(-64):[],
+      externalEvidence:Array.isArray(r.externalEvidence)?r.externalEvidence.slice(-512):[],
+      investmentDecisions:Array.isArray((r as any).investmentDecisions)?(r as any).investmentDecisions.slice(-96):[],
+      metrics:{...d.metrics,...(r.metrics??{})},
+      curriculum:{...d.curriculum,...(r.curriculum??{}),mastery:{...d.curriculum.mastery,...(r.curriculum?.mastery??{})}},
+      actionBias:{...d.actionBias,...(r.actionBias??{})},
+    };
+  }
+  snapshot(){return structuredClone(this.state);}
+
+  beginCycle(){
+    this.state.cycles++;
+    this.state.lastCycleAt=now();
+    this.state.recovery01=clamp(this.state.recovery01+.028);
+    this.state.spentBudget01=clamp(Math.max(0,this.state.spentBudget01-.018));
+    this.state.metrics.developmentalReadiness01=clamp(this.state.metrics.developmentalReadiness01*.985+.015*(this.state.learningBudget01-this.state.spentBudget01+.25));
+  }
+
+  propose(state:OrganismState,input:{worldError01?:number;selfError01?:number;relationship01?:number;perception01?:number;resourceRisk01?:number}={}):DevelopmentHypothesis|null{
+    const decision=this.selectDevelopmentFocus(state,input);
+    const area=decision.area;
+    const mastery=this.state.curriculum.mastery[area]??.3;
+    const uncertainty=clamp(state.needs.uncertainty+(input.worldError01??0)*.4+(input.selfError01??0)*.25);
+    const expectedGain=decision.expectedGain01;
+    const cost=decision.estimatedCost01;
+    const remaining=this.state.learningBudget01-this.state.spentBudget01;
+    const priority=decision.score01;
+    this.state.agenda={version:1,selectedArea:area,selectedHypothesisId:this.state.currentHypothesisId,score01:priority,expectedGain01:expectedGain,estimatedCost01:cost,reason:decision.reason,lastSelectedAt:now(),selectionCount:this.state.agenda.selectionCount+1,lastDecisionTick:state.tick};
+    if(priority<.36 || remaining<cost*.5) return null;
+    const title=`self-development:${area}`;
+    const key=`${state.tick}:${area}:${Math.round(expectedGain*100)}`;
+    const existing=this.state.hypotheses.find(h=>h.area===area && (['proposed','running','awaiting-evidence'].includes(h.status) || (h.status==='completed' && h.evidenceGate==='holdout-verified')));
+    if(existing){this.state.currentHypothesisId=existing.id;return structuredClone(existing);}
+    const row:DevelopmentHypothesis={
+      id:`p36-h-${hash(key)}-${now().toString(36)}`,
+      area,
+      title,
+      hypothesis:this.hypothesisText(area),
+      evidence:[`tick:${state.tick}`,`predictionError:${state.predictionError.toFixed(3)}`,`uncertainty:${state.needs.uncertainty.toFixed(3)}`].slice(0,8),
+      expectedGain01:expectedGain,
+      estimatedCost01:cost,
+      priority01:priority,
+      status:'proposed',
+      createdAt:now(),
+      completedAt:0,
+      result01:null,
+    };
+    this.state.hypotheses=[row,...this.state.hypotheses].slice(0,96);
+    this.state.currentHypothesisId=row.id;
+    this.state.agenda.selectedArea=area;
+    this.state.agenda.selectedHypothesisId=row.id;
+    this.state.agenda.lastDecisionTick=state.tick;
+    this.state.curriculum.focus=area;
+    this.state.curriculum.plannedSteps+=1;
+    return structuredClone(row);
+  }
+
+  selectDevelopmentFocus(state:OrganismState,input:{worldError01?:number;selfError01?:number;relationship01?:number;perception01?:number;resourceRisk01?:number}={}):{area:DevelopmentArea;score01:number;expectedGain01:number;estimatedCost01:number;reason:string}{
+    const raw:Record<DevelopmentArea,number>={
+      learning:state.predictionError*.56+(1-state.needs.identityCoherence)*.10,
+      'world-model':(input.worldError01??state.predictionError)*.64+state.needs.uncertainty*.12,
+      'self-model':(input.selfError01??state.selfPredictionError)*.64+(1-state.autonomyScore)*.14,
+      relationship:(input.relationship01??state.needs.socialNeed)*.58+state.needs.socialNeed*.16,
+      agency:(1-state.autonomyScore)*.62+state.needs.goalPressure*.18,
+      'resource-discipline':(input.resourceRisk01??state.needs.cognitiveLoad)*.52+(1-state.attentionBudget)*.24,
+      perception:(input.perception01??state.needs.uncertainty)*.48+state.predictionError*.16,
+      memory:state.needs.novelty*.20+state.predictionError*.26,
+    };
+    const lastArea=this.state.agenda.selectedArea;
+    const options=Object.entries(raw).map(([name,rawScore])=>{
+      const area=name as DevelopmentArea;
+      const mastery=this.state.curriculum.mastery[area]??.3;
+      const cost=clamp(.08+state.needs.cognitiveLoad*.24+(1-state.attentionBudget)*.16+(1-state.needs.energy)*.08);
+      const noveltyBonus=area===lastArea?0:.035;
+      const repetitionPenalty=area===lastArea?Math.min(.14,.045+this.state.agenda.selectionCount*.004):0;
+      const feasibility=clamp(.7+state.needs.energy*.18-state.needs.cognitiveLoad*.20);
+      const expectedGain=clamp(.14+rawScore*.44+(1-mastery)*.30+state.needs.uncertainty*.08);
+      const voi=clamp(expectedGain*.62+(1-mastery)*.18+feasibility*.10+noveltyBonus-repetitionPenalty);
+      const score=clamp(voi/(.72+cost*.5));
+      return {area,score01:score,expectedGain01:expectedGain,estimatedCost01:cost,rawScore,mastery};
+    }).sort((a,b)=>b.score01-a.score01);
+    const best=options[0]??{area:'learning' as DevelopmentArea,score01:0,expectedGain01:.2,estimatedCost01:.2,rawScore:0,mastery:.5};
+    const reason=`d-voi:${best.area}:deficit=${(1-best.mastery).toFixed(2)}:uncertainty=${state.needs.uncertainty.toFixed(2)}:cost=${best.estimatedCost01.toFixed(2)}:feasibility=${clamp(.7+state.needs.energy*.18-state.needs.cognitiveLoad*.20).toFixed(2)}`;
+    return {area:best.area,score01:best.score01,expectedGain01:best.expectedGain01,estimatedCost01:best.estimatedCost01,reason};
+  }
+
+  learningAgenda(){ return structuredClone(this.state.agenda); }
+
+  decideLearningInvestment(state:OrganismState,input:{worldError01?:number;selfError01?:number;relationship01?:number;perception01?:number;resourceRisk01?:number}={}):LearningInvestmentDecision{
+    const focus=this.selectDevelopmentFocus(state,input);
+    const energyPressure=clamp((.42-state.needs.energy)/.42);
+    const loadPressure=clamp((state.needs.cognitiveLoad-.58)/.42);
+    const uncertaintyPressure=clamp(state.needs.uncertainty*.72+state.predictionError*.28);
+    const resourcePressure=clamp(energyPressure*.42+loadPressure*.34+(1-state.attentionBudget)*.24);
+    const currentCycle=this.activeDevelopmentCycle();
+    if(currentCycle){
+      const activeHypothesis=this.state.hypotheses.find(x=>x.id===currentCycle.hypothesisId);
+      const area=activeHypothesis?.area ?? this.state.curriculum.focus;
+      const expectedGain=activeHypothesis?.expectedGain01 ?? .25;
+      const estimatedCost=activeHypothesis?.estimatedCost01 ?? .12;
+      const row:LearningInvestmentDecision={id:`p36-li-${hash(`${state.tick}:${currentCycle.id}`)}-${now().toString(36)}`,tick:state.tick,at:now(),decision:'invest',area,score01:clamp(.72-resourcePressure*.22),expectedGain01:expectedGain,estimatedCost01:estimatedCost,opportunityCost01:clamp(resourcePressure*.42),resourcePressure01:resourcePressure,reason:'active-development-cycle'};
+      this.state.investmentDecisions=[row,...this.state.investmentDecisions].slice(0,96);
+      return structuredClone(row);
+    }
+    const remaining=clamp(this.state.learningBudget01-this.state.spentBudget01);
+    const opportunityCost=clamp(resourcePressure*.52 + Math.max(0,focus.estimatedCost01-remaining)*.7);
+    const expectedValue=clamp(focus.expectedGain01*.72 + uncertaintyPressure*.16 + (1-(this.state.curriculum.mastery[focus.area]??.3))*.12);
+    const net=clamp(expectedValue-opportunityCost);
+    let decision:LearningInvestmentDecision['decision']='invest';
+    if(state.needs.energy<.18 || resourcePressure>.86) decision='recover';
+    else if(remaining<focus.estimatedCost01*.55 || net<.075) decision='defer';
+    else if(net<.14) decision='observe';
+    const reason=`d-voi-gated:${decision}:value=${expectedValue.toFixed(2)}:opportunity=${opportunityCost.toFixed(2)}:resources=${resourcePressure.toFixed(2)}:remaining=${remaining.toFixed(2)}`;
+    const row:LearningInvestmentDecision={id:`p36-li-${hash(`${state.tick}:${focus.area}:${decision}`)}-${now().toString(36)}`,tick:state.tick,at:now(),decision,area:focus.area,score01:focus.score01,expectedGain01:focus.expectedGain01,estimatedCost01:focus.estimatedCost01,opportunityCost01:opportunityCost,resourcePressure01:resourcePressure,reason};
+    this.state.investmentDecisions=[row,...this.state.investmentDecisions].slice(0,96);
+    this.state.agenda.reason=reason;
+    return structuredClone(row);
+  }
+
+  learningInvestmentHistory(limit=32){ return structuredClone(this.state.investmentDecisions.slice(0,Math.max(1,Math.min(96,Math.floor(limit))))); }
+
+  beginAutonomousDevelopmentCycle(input:{
+    hypothesisId:string;
+    origin:'autonomous-gap'|'goal-pressure'|'user-directed';
+    objective?:string;
+    goalId?:string;
+    requestedAction?:ActionKind;
+    requiredContexts?:number;
+    requiredPositiveDelays?:number;
+    requiredHoldout?:number;
+  }):DevelopmentCycleRecord|null{
+    const h=this.state.hypotheses.find(x=>x.id===input.hypothesisId);
+    if(!h || h.status==='completed' || h.status==='rejected') return null;
+    const active=this.state.developmentCycles.find(c=>c.hypothesisId===h.id && c.stage!=='closed' && c.stage!=='replicated');
+    if(active) return structuredClone(active);
+    const cycle:DevelopmentCycleRecord={
+      id:`p36-c-${hash(`${h.id}:${input.origin}:${input.requestedAction??this.preferredAction(h.area)}`)}-${now().toString(36)}`,
+      hypothesisId:h.id,
+      goalId:input.goalId ? String(input.goalId).slice(0,96) : undefined,
+      objective:(input.objective??h.hypothesis).slice(0,240),
+      origin:input.origin,
+      requestedAction:input.requestedAction??this.preferredAction(h.area),
+      requiredContexts:Math.max(2,Math.min(8,Math.floor(input.requiredContexts??(h.area==='relationship'||h.area==='agency'?3:2)))),
+      requiredPositiveDelays:Math.max(2,Math.min(8,Math.floor(input.requiredPositiveDelays??(h.area==='memory'||h.area==='learning'?3:2)))),
+      requiredHoldout:Math.max(4,Math.min(16,Math.floor(input.requiredHoldout??(h.area==='resource-discipline'?5:4)))),
+      stage:'task-ready',createdAt:now(),taskCount:0,verifiedEvidenceCount:0,lastEvidenceAt:0,
+    };
+    this.state.developmentCycles=[cycle,...this.state.developmentCycles].slice(0,64);
+    h.status='awaiting-evidence';
+    return structuredClone(cycle);
+  }
+
+  activeDevelopmentCycle():DevelopmentCycleRecord|null{
+    return structuredClone(this.state.developmentCycles.find(c=>c.stage!=='closed'&&c.stage!=='replicated')??null);
+  }
+
+  noteDevelopmentTaskIssued(hypothesisId:string){
+    const c=this.state.developmentCycles.find(x=>x.hypothesisId===hypothesisId && x.stage!=='closed');
+    if(c){c.taskCount=Math.min(1024,c.taskCount+1);c.stage='awaiting-evidence';}
+  }
+
+  developmentTaskRequest(){
+    const c=this.activeDevelopmentCycle();
+    if(!c) return null;
+    return {cycleId:c.id,hypothesisId:c.hypothesisId,requestedAction:c.requestedAction,objective:c.objective,requiredContexts:c.requiredContexts,requiredPositiveDelays:c.requiredPositiveDelays,requiredHoldout:c.requiredHoldout,issuedTasks:c.taskCount};
+  }
+
+  developmentCampaignPlan(){
+    const c=this.activeDevelopmentCycle();
+    if(!c) return [];
+    const delays=[1000,6000,36000,216000];
+    const slots:DevelopmentCampaignSlot[]=[];
+    let sequence=0;
+    for(let context=0;context<c.requiredContexts;context++){
+      const contextKey=`dev-${c.hypothesisId.slice(-8)}-ctx-${context+1}`;
+      slots.push({id:`${c.id}:baseline:${context+1}`,sequence:++sequence,hypothesisId:c.hypothesisId,cycleId:c.id,phase:'baseline',contextKey,delayMs:0,holdout:false,requestedAction:c.requestedAction});
+      for(let d=0;d<c.requiredPositiveDelays;d++){
+        const delayMs=delays[d%delays.length];
+        slots.push({id:`${c.id}:delay:${context+1}:${d+1}`,sequence:++sequence,hypothesisId:c.hypothesisId,cycleId:c.id,phase:'delayed-test',contextKey,delayMs,holdout:false,requestedAction:c.requestedAction});
+      }
+    }
+    for(let i=0;i<c.requiredHoldout;i++){
+      const contextKey=`dev-${c.hypothesisId.slice(-8)}-holdout-${(i%Math.max(1,c.requiredContexts))+1}`;
+      const delayMs=delays[i%c.requiredPositiveDelays];
+      slots.push({id:`${c.id}:holdout:${i+1}`,sequence:++sequence,hypothesisId:c.hypothesisId,cycleId:c.id,phase:'holdout',contextKey,delayMs,holdout:true,requestedAction:c.requestedAction});
+    }
+    return slots.slice(0,96);
+  }
+
+  runSafeExperiment(hypothesisId:string,state:OrganismState,seed=1):DevelopmentExperiment|null{
+    const h=this.state.hypotheses.find(x=>x.id===hypothesisId); if(!h)return null;
+    if(h.status==='completed'||h.status==='rejected')return null;
+    const budget=this.state.learningBudget01-this.state.spentBudget01;
+    if(budget<h.estimatedCost01*.45){h.status='rejected';this.state.rejectedChanges++;return null;}
+    h.status='running';
+    const baseline=this.baseline(state,h.area);
+    const treatment=this.safeTreatment(state,h.area,seed);
+    const delta=treatment-baseline;
+    const replicated=Math.abs(delta)>.045;
+    const runs=replicated?3:2;
+    const informationGain=clamp(Math.abs(delta)*.82+(1-(this.state.curriculum.mastery[h.area]??.3))*.18);
+    const result:DevelopmentExperiment={id:`p36-x-${hash(`${hypothesisId}:${seed}`)}-${now().toString(36)}`,hypothesisId,control01:baseline,treatment01:treatment,delta01:delta,replicated:false,safeSandbox:true,runs:1,informationGain01:informationGain,status:'insufficient',at:now(),evidenceGate:'sandbox-preview'};
+    this.state.experiments=[result,...this.state.experiments].slice(0,128);
+    this.state.spentBudget01=clamp(this.state.spentBudget01+h.estimatedCost01*.04);
+    this.state.metrics.experimentSuccess01=clamp(this.state.metrics.experimentSuccess01*.97+.03*.5);
+    h.completedAt=now(); h.result01=null; h.status='preview-only'; h.evidenceGate='none';
+    this.state.metrics.selfDevelopmentCoherence01=clamp(this.state.metrics.selfDevelopmentCoherence01*.98+.02*.28);
+    this.state.metrics.autonomy01=clamp(this.state.metrics.autonomy01*.995+.005*this.state.metrics.autonomy01);
+    this.state.metrics.longHorizonImprovement01=clamp(this.state.metrics.longHorizonImprovement01*.995+.005*.5);
+    this.state.currentHypothesisId=null;
+    return structuredClone(result);
+  }
+
+  recordExternalEvidence(input:{hypothesisId:string;contextKey:string;control01:number;treatment01:number;independentVerified:boolean;holdout:boolean;delayMs:number;evaluatorVersion:string;evidenceSource:'external-evaluator'|'manual-observer';protocolId?:string;sessionId?:string;trialId?:string;at?:number}):{eligible:boolean;evidenceCount:number;distinctContexts:number;distinctDelays:number;holdoutCount:number;independentCount:number;meanDelta01:number|null;ci95Low01:number|null;ci95High01:number|null;status:'insufficient'|'holdout-verified'|'replicated';promoted:boolean} {
+    const h=this.state.hypotheses.find(x=>x.id===String(input.hypothesisId));
+    if(!h) throw new Error('unknown-development-hypothesis');
+    if(!input.contextKey || !input.evaluatorVersion) throw new Error('invalid-development-evidence');
+    const row:DevelopmentEvidenceRecord={id:`p36-e-${hash(`${h.id}:${input.contextKey}:${input.at??now()}`)}-${now().toString(36)}`,hypothesisId:h.id,contextKey:String(input.contextKey).slice(0,96),control01:clamp(input.control01),treatment01:clamp(input.treatment01),delta01:clamp(input.treatment01)-clamp(input.control01),independentVerified:Boolean(input.independentVerified),holdout:Boolean(input.holdout),delayMs:Math.max(0,Math.floor(Number(input.delayMs)||0)),evaluatorVersion:String(input.evaluatorVersion).slice(0,64),evidenceSource:input.evidenceSource,protocolId:input.protocolId?String(input.protocolId).slice(0,96):undefined,sessionId:input.sessionId?String(input.sessionId).slice(0,96):undefined,trialId:input.trialId?String(input.trialId).slice(0,96):undefined,at:input.at??now()};
+    const dup=this.state.externalEvidence.some(x=>x.hypothesisId===row.hypothesisId&&x.contextKey===row.contextKey&&x.evaluatorVersion===row.evaluatorVersion&&x.holdout===row.holdout&&x.delayMs===row.delayMs);
+    if(!dup)this.state.externalEvidence=[row,...this.state.externalEvidence].slice(0,512);
+    const rows=this.state.externalEvidence.filter(x=>x.hypothesisId===h.id&&x.independentVerified);
+    const contexts=new Set(rows.map(x=>x.contextKey));
+    const holdoutCount=rows.filter(x=>x.holdout).length;
+    const independentCount=rows.length;
+    const mean=rows.length?rows.reduce((a,b)=>a+b.delta01,0)/rows.length:null;
+    const delays=new Set(rows.filter(x=>x.delayMs>0).map(x=>x.delayMs));
+    const ci=mean===null?{low:null,high:null}:bootstrapCI(rows.map(x=>x.delta01),parseInt(hash(`${h.id}:ci`),16));
+    const hasHoldout=independentCount>=4&&holdoutCount>=2&&contexts.size>=2&&delays.size>=2&&mean!==null&&mean>.015&&ci.low!==null&&ci.low>0;
+    const repeatedContexts=new Set(rows.filter(x=>x.holdout).map(x=>x.contextKey)).size;
+    const replicated=hasHoldout&&holdoutCount>=4&&repeatedContexts>=3&&mean!==null&&mean>.03&&ci.low!==null&&ci.low>0;
+    const status=replicated?'replicated':hasHoldout?'holdout-verified':'insufficient';
+    const cycle=this.state.developmentCycles.find(c=>c.hypothesisId===h.id && c.stage!=='closed');
+    if(cycle){cycle.verifiedEvidenceCount=independentCount;cycle.lastEvidenceAt=row.at;cycle.stage=replicated?'replicated':hasHoldout?'holdout-verified':'awaiting-evidence';}
+    let promoted=false;
+    if(status==='replicated' && h.evidenceGate==='holdout-verified'){
+      h.evidenceGate='replicated';
+      this.state.agenda.selectedHypothesisId=null;
+      this.state.agenda.selectedArea=null;
+      promoted=true;
+      this.state.curriculum.completedSteps+=1;
+      this.state.metrics.experimentSuccess01=clamp(this.state.metrics.experimentSuccess01*.9+.92*.1);
+      this.state.metrics.longHorizonImprovement01=clamp(this.state.metrics.longHorizonImprovement01*.94+.62*.06);
+    } else if(status!=='insufficient' && (!h.evidenceGate || h.evidenceGate==='none')){
+      h.status='completed'; h.evidenceGate=status; h.completedAt=now(); h.result01=clamp(.5+(mean??0));
+      const gain=Math.min(.08,Math.max(0,mean??0)*.12); this.state.curriculum.mastery[h.area]=clamp((this.state.curriculum.mastery[h.area]??.3)+gain);
+      this.state.curriculum.completedSteps+=replicated?1:0;
+      this.state.acceptedChanges++;
+      promoted=true;
+      const preferred=this.preferredAction(h.area); const signed=(mean??0)>=0?1:-1; this.state.actionBias[preferred]=Math.max(-.12,Math.min(.12,this.state.actionBias[preferred]+signed*Math.min(.035,Math.abs(mean??0)*.08)));
+      this.state.metrics.experimentSuccess01=clamp(this.state.metrics.experimentSuccess01*.9+(replicated?.92:.75)*.1);
+      this.state.metrics.longHorizonImprovement01=clamp(this.state.metrics.longHorizonImprovement01*.94+(replicated?.62:.56)*.06);
+    }
+    return {eligible:status!=='insufficient',evidenceCount:independentCount,distinctContexts:contexts.size,distinctDelays:delays.size,holdoutCount,independentCount,meanDelta01:mean,ci95Low01:ci.low,ci95High01:ci.high,status,promoted};
+  }
+
+  developmentEvidence(hypothesisId?:string){ return structuredClone(this.state.externalEvidence.filter(e=>!hypothesisId||e.hypothesisId===hypothesisId).slice(-128)); }
+
+  recordRollback(reason:string){this.state.rollbackCount++;this.state.metrics.longHorizonImprovement01=clamp(this.state.metrics.longHorizonImprovement01*.9+.1*.35);const h=this.state.hypotheses.find(x=>x.id===this.state.currentHypothesisId);if(h)h.status='rolled-back';this.state.currentHypothesisId=null;return reason;}
+
+
+  observeDevelopmentalOutcome(input:{area?:DevelopmentArea|null;outcome01:number;verified?:boolean;delayed?:boolean;transfer?:boolean;at?:number}){
+    const outcome=clamp(input.outcome01);
+    const verified=Boolean(input.verified);
+    const delayed=Boolean(input.delayed);
+    const transfer=Boolean(input.transfer);
+    if(verified)this.state.developmentalMaturity.verifiedOutcomeCount++;
+    if(verified&&delayed&&outcome>=.62)this.state.developmentalMaturity.retainedOutcomeCount++;
+    if(verified&&transfer&&outcome>=.62)this.state.developmentalMaturity.transferredOutcomeCount++;
+    const failure=verified&&outcome<.4?1:0;
+    if(failure)this.state.developmentalMaturity.regressionCount++;
+    const evidenceRate=clamp(this.state.developmentalMaturity.verifiedOutcomeCount/Math.max(1,this.state.cycles));
+    const retentionRate=clamp(this.state.developmentalMaturity.retainedOutcomeCount/Math.max(1,this.state.developmentalMaturity.verifiedOutcomeCount));
+    const transferRate=clamp(this.state.developmentalMaturity.transferredOutcomeCount/Math.max(1,this.state.developmentalMaturity.verifiedOutcomeCount));
+    const regressionRate=clamp(this.state.developmentalMaturity.regressionCount/Math.max(1,this.state.developmentalMaturity.verifiedOutcomeCount));
+    const score=clamp(evidenceRate*.35+retentionRate*.30+transferRate*.25+(1-regressionRate)*.10);
+    const current=this.state.developmentalMaturity.stage;
+    let next=current;
+    if(this.state.developmentalMaturity.verifiedOutcomeCount<3)next='seed';
+    else if(evidenceRate<.18)next='acquisition';
+    else if(retentionRate<.45)next='integration';
+    else if(transferRate<.40)next='transfer';
+    else if(retentionRate<.72)next='consolidation';
+    else if(this.state.developmentalMaturity.verifiedOutcomeCount>=12 && regressionRate<.18)next='stable';
+    const rank:Record<DevelopmentalMaturityStage,number>={seed:0,acquisition:1,integration:2,transfer:3,consolidation:4,stable:5};
+    if(rank[next]<rank[current] && failure===0)next=current;
+    if(failure>0 && current==='stable' && regressionRate>.25)next='consolidation';
+    this.state.developmentalMaturity.score01=score;
+    if(next!==current){
+      this.state.developmentalMaturity.stage=next;
+      this.state.developmentalMaturity.lastTransitionAt=input.at??now();
+      this.state.developmentalMaturity.history=[{cycle:this.state.cycles,stage:next,area:input.area??this.state.curriculum.focus,verified01:verified?1:0,retention01:delayed&&outcome>=.62?1:0,transfer01:transfer&&outcome>=.62?1:0,failed01:failure,at:input.at??now()},...this.state.developmentalMaturity.history].slice(0,64);
+    }
+    return structuredClone(this.state.developmentalMaturity);
+  }
+
+  developmentalCertification(){
+    const d=this.state.developmentalMaturity;
+    return {stage:d.stage,score01:d.score01,verifiedOutcomeCount:d.verifiedOutcomeCount,retainedOutcomeCount:d.retainedOutcomeCount,transferredOutcomeCount:d.transferredOutcomeCount,regressionCount:d.regressionCount,certified:d.stage==='stable'&&d.verifiedOutcomeCount>=12&&d.retainedOutcomeCount>=8&&d.transferredOutcomeCount>=6&&d.regressionCount/Math.max(1,d.verifiedOutcomeCount)<.18};
+  }
+
+  actionBias(action:ActionKind){return Math.max(-0.12,Math.min(0.12,Number(this.state.actionBias[action]??0)));}
+  developmentTaskBias(action:ActionKind){
+    const c=this.activeDevelopmentCycle(); if(!c) return 0;
+    if(this.state.spentBudget01>=this.state.learningBudget01) return 0;
+    return action===c.requestedAction ? 0.055 : (['rest','wait','defer'].includes(action)?0:-0.008);
+  }
+
+  diagnostics(){
+    return {
+      cycles:this.state.cycles,
+      currentHypothesisId:this.state.currentHypothesisId,
+      agenda:{...this.state.agenda},
+      hypotheses:this.state.hypotheses.length,
+      experiments:this.state.experiments.length,
+      developmentCycles:this.state.developmentCycles.length,
+      activeDevelopmentCycle:this.activeDevelopmentCycle(),
+      developmentTaskRequest:this.developmentTaskRequest(),
+      externalEvidence:this.state.externalEvidence.length,
+      investmentDecisions:this.state.investmentDecisions.length,
+      learningBudget01:this.state.learningBudget01,
+      spentBudget01:this.state.spentBudget01,
+      acceptedChanges:this.state.acceptedChanges,
+      rejectedChanges:this.state.rejectedChanges,
+      rollbackCount:this.state.rollbackCount,
+      metrics:{...this.state.metrics},
+      developmentalMaturity:this.developmentalCertification(),
+      curriculum:{...this.state.curriculum,mastery:{...this.state.curriculum.mastery}},
+      actionBias:{...this.state.actionBias},
+    };
+  }
+
+  private hypothesisText(area:DevelopmentArea){
+    const map:Record<DevelopmentArea,string>={
+      memory:'Сжатая и приоритетная работа с памятью должна повышать полезность воспоминаний без роста стоимости извлечения.',
+      learning:'Дополнительный локальный learning-pass должен уменьшить ошибку предсказания на отложенных состояниях.',
+      'world-model':'Калибровка модели последствий должна улучшить многошаговой прогноз будущего состояния.',
+      'self-model':'Более точное самопредсказание должно уменьшить расхождение между ожидаемым и фактическим исходом собственного действия.',
+      relationship:'Более точная оценка совместной истории должна улучшить калибровку социальных решений.',
+      agency:'Явное разделение собственного выбора и внешнего запроса должно улучшить калибровку автономии.',
+      'resource-discipline':'Ограничение вычислений по ожидаемой информационной ценности должно улучшить результат на единицу ресурса.',
+      perception:'Дополнительная проверка неоднозначных сигналов должна уменьшить multimodal uncertainty.',
+    };return map[area];
+  }
+  private baseline(state:OrganismState,area:DevelopmentArea){
+    const n=state.needs; const base=clamp(.35+n.identityCoherence*.16+n.energy*.12+(1-n.uncertainty)*.16+state.autonomyScore*.12+state.attentionBudget*.08);
+    const penalty=area==='resource-discipline'?n.cognitiveLoad*.08:area==='world-model'?state.predictionError*.1:0;
+    return clamp(base-penalty);
+  }
+  private preferredAction(area:DevelopmentArea):ActionKind {
+    const map:Record<DevelopmentArea,ActionKind>={memory:'reflect',learning:'verify','world-model':'explore','self-model':'reflect',relationship:'respond',agency:'explore','resource-discipline':'rest',perception:'verify'};
+    return map[area];
+  }
+  private safeTreatment(state:OrganismState,area:DevelopmentArea,seed:number){
+    const b=this.baseline(state,area);
+    const mastery=this.state.curriculum.mastery[area]??.3;
+    const deterministic=((Math.abs(Math.sin(seed*12.9898))+Math.abs(Math.sin(state.tick+7.1)))/2)*.035;
+    const boost=clamp((1-mastery)*.18 + this.state.metrics.experimentSuccess01*.05 - state.needs.uncertainty*.025);
+    return clamp(b+boost+deterministic);
+  }
+}
+
+export const defaultP36SelfDevelopment=defaultState;

@@ -1,0 +1,24 @@
+{
+  "error_easy_mean": 0.0009740193490870297,
+  "error_hard_mean": 1.65326988697052,
+  "legacy_indices": [
+    0,
+    3,
+    6,
+    7,
+    9,
+    11
+  ],
+  "utility_indices": [
+    1,
+    3,
+    5,
+    7,
+    9,
+    11
+  ],
+  "selection_changed": true,
+  "fallback": 0.0,
+  "old_information_quality": 0.5167602300643921,
+  "new_information_quality": 0.3837180435657501
+}

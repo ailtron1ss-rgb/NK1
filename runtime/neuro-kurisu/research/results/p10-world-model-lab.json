@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "stage": "P10-world-model-2",
+  "seeds": [
+    7,
+    17,
+    27
+  ],
+  "results": [
+    {
+      "seed": 7,
+      "learnedTransitions": 30,
+      "transitionHypotheses": 26,
+      "causalHypotheses": 6,
+      "calibrationBuckets": 4,
+      "calibrationError": 0.4298255081609152,
+      "confidenceBefore": 0.2,
+      "confidenceAfter": 0.6724471576608432,
+      "uncertaintyAfter": 0.5352504463730934,
+      "meanEnvironmentSurprise": 0.02133333333333334,
+      "plannerCalls": 86,
+      "planExpectedValue": 0.2812,
+      "planHorizon": 4
+    },
+    {
+      "seed": 17,
+      "learnedTransitions": 30,
+      "transitionHypotheses": 27,
+      "causalHypotheses": 6,
+      "calibrationBuckets": 4,
+      "calibrationError": 0.4419088028984981,
+      "confidenceBefore": 0.2,
+      "confidenceAfter": 0.665950417349114,
+      "uncertaintyAfter": 0.536842147749467,
+      "meanEnvironmentSurprise": 0.02133333333333334,
+      "plannerCalls": 86,
+      "planExpectedValue": 0.2811,
+      "planHorizon": 4
+    },
+    {
+      "seed": 27,
+      "learnedTransitions": 30,
+      "transitionHypotheses": 28,
+      "causalHypotheses": 6,
+      "calibrationBuckets": 4,
+      "calibrationError": 0.4413184131159662,
+      "confidenceBefore": 0.2,
+      "confidenceAfter": 0.6668655193103209,
+      "uncertaintyAfter": 0.5366179477689714,
+      "meanEnvironmentSurprise": 0.02133333333333334,
+      "plannerCalls": 86,
+      "planExpectedValue": 0.2806,
+      "planHorizon": 4
+    }
+  ],
+  "createdAt": "2026-08-27T08:12:01.101Z"
+}

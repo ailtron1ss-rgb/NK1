@@ -1,0 +1,49 @@
+{
+  "release": "B272",
+  "date": "2026-09-12",
+  "standalone": {
+    "steps": 360,
+    "learningUpdates": 360,
+    "goalEntropy01": 1.0,
+    "goalVectorDiversity01": 0.6907008155,
+    "actionDiversity01": 0.8571428571,
+    "prototypeDiversity01": 0.5507828856,
+    "agency01": 0.8674841697,
+    "goalPressure01": 0.6399567762,
+    "selfConflict01": 0.1546492501,
+    "internalCoherence01": 0.8810013635,
+    "endogenousGoalRate01": 1.0
+  },
+  "independentEvaluator": {
+    "policyMeanReward01": 0.528135,
+    "baselineMeanReward01": 0.45001,
+    "gain01": 0.078125,
+    "oracleMeanReward01": 0.84824
+  },
+  "liveLifecycle": {
+    "personalityCausalUpdates": 186,
+    "goalEndogenousnessProxy01": 0.821402,
+    "restart": "PASS"
+  },
+  "static": {
+    "typecheck": "PASS",
+    "fullAudit": "PASS files=1995 errors=0 warnings=0",
+    "architecture": "PASS",
+    "integrity": "PASS files=2001",
+    "hygiene": "PASS",
+    "syntax": "PASS js=661 sh=4 json=171",
+    "contract": "PASS",
+    "forensics": "PASS",
+    "lockfile": "PASS",
+    "releaseSource": "PASS",
+    "doctor": "PASS",
+    "archiveManifest": "PASS files=2226 missing=0 hashMismatches=0 extra=0"
+  },
+  "limitations": [
+    "goal basis is still an engineered 8-D latent basis",
+    "action space is fixed",
+    "no consciousness claim",
+    "no biological equivalence claim",
+    "hidden-task evaluator gain is positive but moderate"
+  ]
+}

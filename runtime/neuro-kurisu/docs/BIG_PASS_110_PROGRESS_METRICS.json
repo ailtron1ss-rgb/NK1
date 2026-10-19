@@ -1,0 +1,35 @@
+{
+  "release": "34.84.0",
+  "bigPass": 110,
+  "stateSchema": 119,
+  "progress": {
+    "autonomousDevelopmentArchitecture": 92,
+    "selfGeneratedDevelopment": 82,
+    "developmentTaskOrchestration": 88,
+    "externalEvidenceGate": 98,
+    "sandboxIsolation": 100,
+    "promotionIdempotence": 100,
+    "realLearningEvidence": 6,
+    "memorySkillCoupling": 69,
+    "crossTaskTransferEvidence": 54,
+    "forgettingCurveEvidence": 73,
+    "experimentalRigor": 100,
+    "epistemicProvenance": 100,
+    "mobileEfficiency": 94,
+    "engineeringReadiness": 97,
+    "consciousnessMechanism": 20,
+    "consciousnessEvidence": 0
+  },
+  "previousPlanCompletion": 100,
+  "pass110ScopeCompletion": 100,
+  "note": "Real empirical organism data remain sparse; synthetic tests validate infrastructure only.",
+  "performance": {
+    "mobile1000": "PASS",
+    "operational500": "PASS",
+    "operational1000": "PASS",
+    "operational1000ElapsedSec": 33.86,
+    "operational1000P95Ms": 55.82,
+    "operational1000HeapFirstMB": 78.96,
+    "operational1000HeapLastMB": 69.02
+  }
+}

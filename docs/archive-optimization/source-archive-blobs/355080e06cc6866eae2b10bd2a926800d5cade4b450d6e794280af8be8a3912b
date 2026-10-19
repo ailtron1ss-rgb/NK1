@@ -1,0 +1,177 @@
+import type { ActionKind } from '../core/types.ts';
+
+type MemoryOp = 'ADD'|'UPDATE'|'DELETE'|'NOOP';
+type Abstraction = 0|1|2;
+type Mode = 'fast'|'normal'|'deep'|'research';
+const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
+const LESIONS=['task-inference','memory-manager','adaptive-lookahead','counterfactual','world-model','schema-abstraction','curriculum','neural-plasticity','policy','verifier'];
+const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:(a+b)/2));
+const mean=(a:number[])=>a.length?a.reduce((x,y)=>x+y,0)/a.length:.5;
+const dot=(a:number[],b:number[])=>{let s=0;for(let i=0;i<Math.min(a.length,b.length);i++)s+=(a[i]??0)*(b[i]??0);return s;};
+const norm=(a:number[])=>Math.sqrt(Math.max(1e-9,dot(a,a)));
+const cosine=(a:number[],b:number[])=>dot(a,b)/(norm(a)*norm(b));
+const dist=(a:number[],b:number[])=>mean(Array.from({length:Math.min(a.length,b.length)},(_,i)=>Math.abs((a[i]??.5)-(b[i]??.5))));
+const v=(x:number[]|undefined,n=24)=>Array.from({length:n},(_,i)=>clamp(x?.[i%(x?.length||1)]??.5));
+const zero=()=>Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>;
+const hash=(x:number)=>{const y=Math.sin(x*12.9898)*43758.5453;return y-Math.floor(y);};
+
+export interface B1101Input{
+  tick:number;context01:number[];baseUtilities:Record<ActionKind,number>;priorBias?:Record<ActionKind,number>;
+  uncertainty01:number;predictionError01:number;novelty01:number;confidence01:number;goalVector?:number[];selfVector?:number[];
+  complexity01?:number;modeHint?:string;currentAction?:ActionKind;
+}
+export interface B1101Output{
+  actionBias:Record<ActionKind,number>;predictiveBias:Record<ActionKind,number>;mode:Mode;taskId:number;taskConfidence01:number;
+  memoryRecall01:number;memoryTransfer01:number;lookahead01:number;counterfactual01:number;worldModel01:number;schema01:number;
+  curriculum01:number;neuralPlasticity01:number;confidence01:number;hiddenTask01:number;memoryOps:Record<MemoryOp,number>;
+}
+interface TaskProto{id:number;centroid:number[];mass:number;rewardByAction:Record<ActionKind,number>;actionUses:Record<ActionKind,number>;stability01:number;lastTick:number;}
+interface MemoryEntry{id:number;tick:number;context:number[];action:ActionKind;reward01:number;taskId:number;abstraction:Abstraction;utility01:number;novelty01:number;transfer01:number;trust01:number;uses:number;}
+interface PolicyHead{weights:number[];bias:number;uses:number;anchor:number[];importance:number[];}
+interface Predictor{delta:number[];rewardEMA01:number;confidence01:number;uses:number;}
+export interface B1101State{
+ version:1;enabled:boolean;tick:number;lesions:Record<string,boolean>;tasks:TaskProto[];memories:MemoryEntry[];
+ policy:Record<ActionKind,PolicyHead>;predictors:Record<ActionKind,Predictor>;schema:Record<ActionKind,PolicyHead>;
+ identity:number[];eligibility:number[];activeTaskId:number;taskConfidence01:number;regime01:number;curriculum01:number;
+ nextMemoryId:number;
+ stats:{
+  decisions:number;updates:number;taskAssignments:number;hiddenGeneralizations:number;memoryAdds:number;memoryUpdates:number;memoryDeletes:number;memoryNoops:number;memoryRecalls:number;memoryRecallRows:number;schemaConsolidations:number;
+  lookaheadCalls:number;lookaheadBranches:number;counterfactualCalls:number;worldUpdates:number;verifierCalls:number;curriculumSelections:number;neuralUpdates:number;policyUpdates:number;alignmentGuards:number;alignmentBlocks:number;reversalRecoveries:number;
+  restarts:number;lastLatencyMs:number;lastTaskSeparation01:number;lastMemoryRecall01:number;lastMemoryTransfer01:number;lastLookahead01:number;lastCounterfactual01:number;lastWorldModel01:number;lastSchema01:number;lastHiddenTask01:number;lastCurriculum01:number;lastConfidence01:number;
+ };
+}
+const head=(seed:number,n=24):PolicyHead=>({weights:Array.from({length:n},(_,i)=>Math.sin((seed+1)*(i+1)*.271)*.018),bias:0,uses:0,anchor:Array(n).fill(0),importance:Array(n).fill(.01)});
+const predictor=():Predictor=>({delta:Array(24).fill(0),rewardEMA01:.5,confidence01:.5,uses:0});
+export const defaultB1101B1350State=():B1101State=>({
+ version:1,enabled:true,tick:0,lesions:Object.fromEntries(LESIONS.map(x=>[x,false])),tasks:[],memories:[],
+ policy:Object.fromEntries(ACTIONS.map((a,i)=>[a,head(101+i)])) as Record<ActionKind,PolicyHead>,
+ predictors:Object.fromEntries(ACTIONS.map(a=>[a,predictor()])) as Record<ActionKind,Predictor>,
+ schema:Object.fromEntries(ACTIONS.map((a,i)=>[a,head(401+i)])) as Record<ActionKind,PolicyHead>,
+ identity:Array.from({length:512},(_,i)=>Math.sin(i*.071)*.008),eligibility:Array(512).fill(0),activeTaskId:-1,taskConfidence01:.5,regime01:0,curriculum01:0,nextMemoryId:1,
+ stats:{decisions:0,updates:0,taskAssignments:0,hiddenGeneralizations:0,memoryAdds:0,memoryUpdates:0,memoryDeletes:0,memoryNoops:0,memoryRecalls:0,memoryRecallRows:0,schemaConsolidations:0,lookaheadCalls:0,lookaheadBranches:0,counterfactualCalls:0,worldUpdates:0,verifierCalls:0,curriculumSelections:0,neuralUpdates:0,policyUpdates:0,alignmentGuards:0,alignmentBlocks:0,reversalRecoveries:0,restarts:0,lastLatencyMs:0,lastTaskSeparation01:0,lastMemoryRecall01:0,lastMemoryTransfer01:0,lastLookahead01:0,lastCounterfactual01:.5,lastWorldModel01:.5,lastSchema01:.5,lastHiddenTask01:.5,lastCurriculum01:.5,lastConfidence01:.5}
+});
+
+export class B1101B1350SelfDevelopmentCore{
+ private state=defaultB1101B1350State();
+ snapshot(){return structuredClone(this.state);} diagnostics(){return structuredClone(this.state.stats);} markRestart(){this.state.stats.restarts++;}
+ restore(src?:Partial<B1101State>){const d=defaultB1101B1350State(),s:any=src??{};this.state={...d,...structuredClone(s),lesions:{...d.lesions,...(s.lesions??{})},tasks:Array.isArray(s.tasks)?structuredClone(s.tasks).slice(-64):[],memories:Array.isArray(s.memories)?structuredClone(s.memories).slice(-6144):[],policy:{...d.policy,...(s.policy??{})},predictors:{...d.predictors,...(s.predictors??{})},schema:{...d.schema,...(s.schema??{})},identity:Array.isArray(s.identity)?s.identity.slice(0,512):d.identity,eligibility:Array.isArray(s.eligibility)?s.eligibility.slice(0,512):d.eligibility,stats:{...d.stats,...(s.stats??{})}};}
+ setLesions(v:Record<string,boolean>){this.state.lesions={...this.state.lesions,...v};}
+ private task(ctx:number[],tick:number){
+   if(this.state.lesions['task-inference'])return {id:0,conf:.5,sep:0};
+   let best:TaskProto|undefined;let bd=1;let sd=1;
+   for(const t of this.state.tasks){const d=dist(ctx,t.centroid);if(d<bd){sd=bd;bd=d;best=t;}else if(d<sd)sd=d;}
+   if(!best||bd>.22){const id=this.state.tasks.length;best={id,centroid:ctx.slice(0,24),mass:1,rewardByAction:zero(),actionUses:Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>,stability01:.5,lastTick:tick};this.state.tasks.push(best);this.state.stats.taskAssignments++;return {id,conf:.63,sep:.3};}
+   const old=best.centroid.slice();best.centroid=best.centroid.map((x,i)=>clamp(.955*x+.045*ctx[i]));best.mass++;best.lastTick=tick;best.stability01=clamp(.97*best.stability01+.03*(1-bd));const sep=clamp((sd-bd)*3.2);this.state.stats.taskAssignments++;return {id:best.id,conf:clamp(.72*(1-bd)+.28*best.stability01),sep};
+ }
+ private policyScore(h:PolicyHead,ctx:number[]){const x=v(ctx),n=h.weights.length;let z=h.bias;for(let i=0;i<n;i++)z+=h.weights[i]*(x[i]-.5);return Math.tanh(z)*.085;}
+ private empiricalReward(task:TaskProto|undefined,a:ActionKind){const uses=task?.actionUses[a]??0;return uses>0?clamp((task?.rewardByAction[a]??0)/uses):.5;}
+ private tightEmpirical(task:TaskProto|undefined,a:ActionKind){return this.empiricalReward(task,a);}
+ private memoryRecall(ctx:number[],taskId:number,uncertainty:number,novelty:number,budget:number){
+   if(this.state.lesions['memory-manager'])return {rows:[],quality:.5,transfer:.5};
+   const limit=budget>.82?16:budget>.58?10:budget>.32?5:2;
+   const rows=this.state.memories.map(m=>{const sim=1-dist(ctx,m.context);const task=(m.taskId===taskId)?1:0;const score=.29*sim+.20*task+.16*m.utility01+.14*m.transfer01+.10*m.trust01+.07*m.novelty01+.04*(1-Math.min(1,m.uses/64));return {...m,score};}).sort((a,b)=>b.score-a.score).slice(0,limit);
+   rows.forEach(r=>r.uses++);this.state.stats.memoryRecalls++;this.state.stats.memoryRecallRows+=rows.length;return {rows,quality:clamp(mean(rows.map(r=>r.score))||.5),transfer:clamp(mean(rows.map(r=>.45*r.transfer01+.35*(r.taskId===taskId?1:.5)+.20*(1-dist(ctx,r.context)))||.5))};
+ }
+ private memoryManage(ctx:number[],action:ActionKind,reward:number,taskId:number,novelty:number,error:number,verified:number){
+   if(this.state.lesions['memory-manager'])return 'NOOP' as MemoryOp;
+   let same=this.state.memories.filter(m=>m.taskId===taskId&&m.action===action).sort((a,b)=>b.tick-a.tick)[0];
+   const utility=clamp(.32*Math.abs(reward-.5)+.28*error+.20*novelty+.20*verified),transfer=clamp(.5*(1-dist(ctx,this.state.tasks[taskId]?.centroid??ctx))+.5*(1-error));
+   if(reward>.72||error>.62||novelty>.66||verified>.82){
+     if(same&&dist(ctx,same.context)<.12){same.context=same.context.map((x,i)=>clamp(.90*x+.10*ctx[i]));same.reward01=.92*same.reward01+.08*reward;same.utility01=clamp(.85*same.utility01+.15*utility);same.transfer01=clamp(.9*same.transfer01+.1*transfer);same.trust01=clamp(.92*same.trust01+.08*verified);same.uses++;this.state.stats.memoryUpdates++;return 'UPDATE';}
+     this.state.memories.push({id:this.state.nextMemoryId++,tick:this.state.tick,context:ctx.slice(0,24),action,reward01:reward,taskId,abstraction:0,utility01:utility,novelty01:novelty,transfer01:transfer,trust01:verified,uses:0});this.state.memories=this.state.memories.slice(-6144);this.state.stats.memoryAdds++;return 'ADD';
+   }
+   const candidate=this.state.memories.find(m=>m.taskId===taskId&&m.action===action&&m.utility01<.18&&m.uses<2);
+   if(candidate){this.state.memories=this.state.memories.filter(m=>m!==candidate);this.state.stats.memoryDeletes++;return 'DELETE';}
+   this.state.stats.memoryNoops++;return 'NOOP';
+ }
+ private abstract(taskId:number,intensity:number){
+   if(this.state.lesions['schema-abstraction'])return .5;
+   const rows=this.state.memories.filter(m=>m.taskId===taskId).slice(-96);if(rows.length<6)return .5;
+   let promoted=0;for(const m of rows){const stability=.45*m.trust01+.30*m.utility01+.25*m.transfer01;if(stability>0.62){m.abstraction=Math.max(m.abstraction,1) as Abstraction;promoted++;if(stability>.78&&intensity>.55)m.abstraction=2;}}
+   for(const a of ACTIONS){const relevant=rows.filter(m=>m.action===a&&m.abstraction>=1);if(!relevant.length)continue;const h=this.state.schema[a];const target=mean(relevant.map(m=>m.reward01-.5));for(let i=0;i<h.weights.length;i++){const g=(relevant[(i*7)%relevant.length]?.context[i%24]??.5)-.5;h.weights[i]=clamp(h.weights[i]+g*target*.003,-1.2,1.2);h.anchor[i]=.99*h.anchor[i]+.01*h.weights[i];}}
+   this.state.stats.schemaConsolidations++;return clamp(promoted/Math.max(1,rows.length));
+ }
+ private lookahead(ctx:number[],taskId:number,goal:number[]|undefined,uncertainty:number,budget:number){
+   if(this.state.lesions['adaptive-lookahead']||this.state.lesions['world-model']||budget<.28)return {bias:zero(),q:.5};
+   const depth=budget>.84?4:budget>.62?3:2;const g=v(goal);const out=zero();let used=0;
+   for(const a of ACTIONS){const p=this.state.predictors[a];let state=v(ctx);let value=0;for(let d=0;d<depth;d++){const step=state.map((x,i)=>clamp(x+(p.delta[i]??0)*(1/(d+1))));const goalFit=1-dist(step,g);value+=goalFit*(1-.17*d)+p.rewardEMA01*.45;state=step;used++;}out[a]=clamp((value/depth-.62)*.085,-.085,.085);}
+   this.state.stats.lookaheadCalls++;this.state.stats.lookaheadBranches+=used;return {bias:out,q:clamp(.48+.10*depth+.12*(mean(ACTIONS.map(a=>this.state.predictors[a].confidence01))-uncertainty))};
+ }
+ private counterfactual(ctx:number[],taskId:number,observed:ActionKind){
+   if(this.state.lesions['counterfactual'])return {bias:zero(),q:.5};
+   const t=this.state.tasks[taskId];const out=zero();let sum=0,n=0;for(const a of ACTIONS){const uses=t?.actionUses[a]??0;const emp=t&&uses>0?(t.rewardByAction[a]/uses):.5;const schema=this.policyScore(this.state.schema[a],ctx);const alt=clamp(.52*emp+.28*(.5+schema)+.20*(1-dist(ctx,t?.centroid??ctx)));out[a]=clamp((alt-.5)*.075,-.075,.075);if(a!==observed){sum+=alt;n++;}}
+   this.state.stats.counterfactualCalls++;return {bias:out,q:clamp(sum/Math.max(1,n))};
+ }
+ private curriculum(taskConf:number,novelty:number,error:number,reversal:number,transfer:number){
+   if(this.state.lesions['curriculum'])return .5;const pressure=clamp(.28*(1-taskConf)+.24*novelty+.22*error+.16*reversal+.10*(1-transfer));this.state.stats.curriculumSelections+=pressure>.66?1:0;this.state.curriculum01=clamp(.9*this.state.curriculum01+.1*pressure);return this.state.curriculum01;
+ }
+ private neuralActionReadout(action:ActionKind,ctx:number[]){let seed=0;for(let i=0;i<ACTIONS.length;i++)if(ACTIONS[i]===action)seed=i+1;let s=0;for(let i=0;i<24;i++){const idx=(seed*53+i*17)%512;s+=this.state.identity[idx]*(ctx[i]-.5);}return Math.tanh(s*.24)*.035;}
+ private neural(ctx:number[],reward:number,error:number,taskConf:number){
+   if(this.state.lesions['neural-plasticity'])return .5;const x=v(ctx),drive=clamp(.22+.58*Math.abs(reward-.5)+.28*error+.22*(1-taskConf));let s=0;for(let i=0;i<512;i++){const z=Math.tanh((x[i%24]-.5)*1.8+this.state.identity[i]*1.25);this.state.eligibility[i]=clamp(.978*this.state.eligibility[i]+.022*Math.abs(z));const lr=.00062*(.45+.55*this.state.eligibility[i])*drive;const anchor=Math.sin(i*.071)*.002;this.state.identity[i]=clamp(this.state.identity[i]*(1-lr)+z*lr+anchor*lr,-1,1);s+=Math.abs(z);}this.state.stats.neuralUpdates++;return clamp(s/512);
+ }
+ private updatePredictor(action:ActionKind,ctx:number[],next:number[],reward:number){if(this.state.lesions['world-model'])return .5;const p=this.state.predictors[action],lr=.035/(1+p.uses*.002);for(let i=0;i<24;i++)p.delta[i]=clamp(p.delta[i]*(1-lr)+(next[i]-ctx[i])*lr,-.25,.25);p.rewardEMA01=.965*p.rewardEMA01+.035*reward;p.confidence01=clamp(.97*p.confidence01+.03*(1-Math.min(1,dist(next,ctx)*2)));p.uses++;this.state.stats.worldUpdates++;return p.confidence01;}
+ beforeDecision(i:B1101Input):B1101Output{
+   const t0=performance.now();if(!this.state.enabled)return {actionBias:zero(),predictiveBias:zero(),mode:'fast',taskId:-1,taskConfidence01:.5,memoryRecall01:0,memoryTransfer01:.5,lookahead01:.5,counterfactual01:.5,worldModel01:.5,schema01:.5,curriculum01:.5,neuralPlasticity01:.5,confidence01:i.confidence01,hiddenTask01:0,memoryOps:{ADD:0,UPDATE:0,DELETE:0,NOOP:0}};
+   this.state.tick=i.tick;this.state.stats.decisions++;const ctx=v(i.context01),task=this.task(ctx,i.tick);this.state.activeTaskId=task.id;this.state.taskConfidence01=task.conf;
+   const complexity=clamp((i.uncertainty01+i.predictionError01+i.novelty01+(i.complexity01??.5))/4);const mode:Mode=complexity>.82?'research':complexity>.63?'deep':complexity>.36?'normal':'fast';
+   const mem=this.memoryRecall(ctx,task.id,i.uncertainty01,i.novelty01,complexity);const look=this.lookahead(ctx,task.id,i.goalVector,i.uncertainty01,complexity);const cf=this.counterfactual(ctx,task.id,i.currentAction??'wait');const schema= this.abstract(task.id,clamp(.25+complexity));
+   const actionBias=zero(),predictiveBias=zero();
+   let conf=i.confidence01;
+   const taskProto=this.state.tasks[task.id];
+   const recoveryMode=this.state.regime01>.34||i.predictionError01>.52;
+   const maxUses=Math.max(1,...ACTIONS.map(a=>taskProto?.actionUses[a]??0));
+   for(const a of ACTIONS){
+     const h=this.state.policy[a];
+     const sh=this.state.schema[a];
+     const memRows=mem.rows.filter(r=>r.action===a);
+     const mval=memRows.length?mean(memRows.map(r=>(r.reward01-.5)*(.55+.45*r.transfer01))):0;
+     const p=this.state.predictors[a];
+     const world=(p.rewardEMA01-.5)*.035;
+     const prior=i.baseUtilities[a]??.5;
+     const priorBias=i.priorBias?.[a]??0;
+     const uses=taskProto?.actionUses[a]??0;
+     const underSampled=clamp(1-uses/Math.max(4,maxUses+4));
+     const recoveryBonus=recoveryMode&&a!==(i.currentAction??'wait')?underSampled*.10:0;
+     const empirical=this.tightEmpirical(taskProto,a);
+     const verifier=clamp(.50+.35*empirical+.15*p.confidence01);
+     const guard=(verifier-.5)*.018;
+     const policyReadout=this.state.lesions['policy']?0:this.policyScore(h,ctx);
+     const schemaReadout=this.state.lesions['schema-abstraction']?0:this.policyScore(sh,ctx)*.42;
+     const neuralReadout=this.state.lesions['neural-plasticity']?0:this.neuralActionReadout(a,ctx);
+     const curriculumReadout=this.state.lesions['curriculum']?0:(this.state.curriculum01-.5)*(a==='explore'?.060:(a==='verify'?.045:-.012));
+     actionBias[a]=clamp(policyReadout+schemaReadout+neuralReadout+mval*.042+world+look.bias[a]+cf.bias[a]+priorBias*.30+Math.max(0,prior-.5)*.012+recoveryBonus+guard+curriculumReadout,-.12,.12);
+     predictiveBias[a]=clamp((p.rewardEMA01-.5)*.05+look.bias[a]*.32+(memRows.length?(.02*(mean(memRows.map(r=>r.trust01))-.5)):0)+guard*.6+neuralReadout*.35,-.07,.07);
+     conf=.94*conf+.06*clamp(.5+.25*p.confidence01+.25*task.conf+.10*mem.quality-.10*i.uncertainty01+.06*verifier);
+     if(recoveryMode&&underSampled>.65)this.state.stats.reversalRecoveries++;
+   }
+   this.state.stats.verifierCalls+=ACTIONS.length;
+   const hidden=clamp(.42*task.sep+.26*mem.transfer+.18*schema+.14*(1-i.uncertainty01));this.state.stats.hiddenGeneralizations+=hidden>.64?1:0;const curriculum=this.curriculum(task.conf,i.novelty01,i.predictionError01,this.state.regime01,mem.transfer);const neuro=this.neural(ctx,.5,i.predictionError01,task.conf);
+   this.state.stats.lastLatencyMs=performance.now()-t0;this.state.stats.lastTaskSeparation01=task.sep;this.state.stats.lastMemoryRecall01=mem.quality;this.state.stats.lastMemoryTransfer01=mem.transfer;this.state.stats.lastLookahead01=look.q;this.state.stats.lastCounterfactual01=cf.q;this.state.stats.lastWorldModel01=mean(ACTIONS.map(a=>this.state.predictors[a].confidence01));this.state.stats.lastSchema01=schema;this.state.stats.lastHiddenTask01=hidden;this.state.stats.lastCurriculum01=curriculum;this.state.stats.lastConfidence01=conf;
+   return {actionBias,predictiveBias,mode,taskId:task.id,taskConfidence01:task.conf,memoryRecall01:mem.quality,memoryTransfer01:mem.transfer,lookahead01:look.q,counterfactual01:cf.q,worldModel01:this.state.stats.lastWorldModel01,schema01:schema,curriculum01:curriculum,neuralPlasticity01:neuro,confidence01:clamp(conf*.74+task.conf*.16+hidden*.10),hiddenTask01:hidden,memoryOps:{ADD:0,UPDATE:0,DELETE:0,NOOP:0}};
+ }
+ afterOutcome(i:{tick:number;action:ActionKind;context01:number[];nextContext01:number[];reward01:number;predictionError01:number;verified01:number;success01:number}){
+   if(!this.state.enabled)return;const ctx=v(i.context01),next=v(i.nextContext01),r=clamp(i.reward01),e=clamp(i.predictionError01),ver=clamp(i.verified01);const task=this.task(ctx,i.tick),t=this.state.tasks[task.id];if(t){t.actionUses[i.action]++;t.rewardByAction[i.action]=clamp((t.rewardByAction[i.action]??0)+r,0,100000);}this.state.regime01=clamp(.93*this.state.regime01+.07*(e*.65+dist(ctx,next)*.35));
+   this.updatePredictor(i.action,ctx,next,r);const utility=clamp(.3*Math.abs(r-.5)+.3*e+.2*i.success01+.2*ver);const op=this.memoryManage(ctx,i.action,r,task.id,clamp(.4*e+.35*(1-task.conf)+.25*(i.success01<.5?1:0)),e,ver);const h=this.state.policy[i.action],lr=.010*(1+.9*this.state.regime01)/(1+h.uses*.001);const alternatives=this.state.tasks[task.id]?.actionUses??Object.fromEntries(ACTIONS.map(a=>[a,0]));let altSum=0,altN=0;for(const a of ACTIONS){if(a===i.action)continue;const uses=alternatives[a]??0;const emp=uses>0?(this.state.tasks[task.id].rewardByAction[a]/uses):.5;altSum+=emp;altN++;}
+   const baseline=altN?altSum/altN:.5;
+   const adv=clamp(r-baseline,-1,1);
+   if(!this.state.lesions['policy']){
+     for(let j=0;j<24;j++){
+       const g=(ctx[j]-.5)*adv;
+       h.weights[j]=clamp(h.weights[j]+g*lr,-1.2,1.2);
+       h.importance[j]=clamp(.988*h.importance[j]+.012*Math.abs(g*lr));
+     }
+     h.bias=clamp(h.bias+adv*lr*.8,-1.5,1.5);h.uses++;this.state.stats.policyUpdates++;
+     if(r<.5&&this.state.regime01>.28){
+       const ranked=ACTIONS.filter(a=>a!==i.action).map(a=>({a,uses:alternatives[a]??0,emp:this.empiricalReward(this.state.tasks[task.id],a)})).sort((a,b)=>(a.emp-b.emp)+(b.uses-a.uses)*.01).slice(0,2);
+       for(const alt of ranked){
+         const ah=this.state.policy[alt.a];const boost=lr*(.55+.45*(1-clamp(alt.uses/8)));
+         for(let j=0;j<24;j++){const g=(ctx[j]-.5)*(1-.35*clamp(alt.emp));ah.weights[j]=clamp(ah.weights[j]+g*boost,-1.2,1.2);ah.importance[j]=clamp(.988*ah.importance[j]+.012*Math.abs(g*boost));}
+         ah.bias=clamp(ah.bias+boost*.65,-1.5,1.5);this.state.stats.policyUpdates++;
+       }
+     }
+   }
+   const schema=this.abstract(task.id,clamp(.45+.55*utility));if(e>.65) this.state.stats.reversalRecoveries+=1;this.neural(ctx,r,e,task.conf);this.state.stats.updates++;this.state.curriculum01=clamp(.96*this.state.curriculum01+.04*utility);this.state.stats.lastSchema01=schema;
+   this.state.stats.lastTaskSeparation01=task.sep;this.state.stats.lastCurriculum01=this.state.curriculum01;
+ }
+ evaluate(input:B1101Input,lesion:Record<string,boolean>){const saved=this.snapshot();this.setLesions(lesion);const on=this.beforeDecision(input);this.restore(saved);const off=this.beforeDecision(input);this.restore(saved);return {effect01:mean(ACTIONS.map(a=>Math.abs(on.actionBias[a]-off.actionBias[a]))),confidenceDelta01:on.confidence01-off.confidence01};}
+}

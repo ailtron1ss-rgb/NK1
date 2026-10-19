@@ -1,0 +1,39 @@
+{
+  "pass": true,
+  "release": "35.6.1",
+  "brainPass": "B266",
+  "verification": {
+    "typecheck": "PASS",
+    "b265Standalone": "PASS",
+    "b265Migration": "PASS",
+    "b265Core": "PASS",
+    "b266Standalone": "PASS",
+    "b266Migration": "PASS",
+    "b266Core": "PASS",
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "hygiene": "PASS",
+    "forensics": "PASS",
+    "contract": "PASS",
+    "lock": "PASS",
+    "releaseSource": "PASS",
+    "doctor": "PASS",
+    "archiveManifest": "PASS",
+    "fullSyntaxSweep": "NOT_CLAIMED_PASS",
+    "fullHistoricalAudit": "NOT_CLAIMED_PASS"
+  },
+  "b266": {
+    "trainFamilies": 8,
+    "holdoutFamilies": 6,
+    "coreTrainGain01": 0.03504203324087411,
+    "coreHiddenFamilyGain01": 0.02778371803737213,
+    "coreLongHorizonGain01": 0.0559689973548469,
+    "coreDelayedRewardGain01": 0.053288540703833855,
+    "coreDelayedRewardGainAfterStress01": 0.10152052077729296,
+    "coreRobustness01": 0.7718714126759935,
+    "coreCatastrophicShift01": 0.007258315203501984,
+    "coreCalibration01": 0.5463304633042217,
+    "persistedFamilies": 14,
+    "persistedEpisodes": 14
+  }
+}

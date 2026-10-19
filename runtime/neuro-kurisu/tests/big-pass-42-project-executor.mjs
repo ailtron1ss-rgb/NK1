@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import { AutonomousProjectExecutor } from '../src/organism/system/AutonomousProjectExecutor.ts';
+
+const exec = new AutonomousProjectExecutor();
+exec.ensure({ id:'p42-project', origin:'intrinsic' });
+assert.equal(exec.currentStep()?.id, 'explore');
+assert.equal(exec.canAttempt(1), true);
+exec.observe({ action:'explore', success01:.8, evidence01:.7, relevant:true, tick:1 });
+assert.equal(exec.snapshot().completedSteps, 1);
+assert.equal(exec.currentStep()?.id, 'repeat');
+assert.equal(exec.canAttempt(2), true);
+exec.observeToolResult({ tick:2, tool:'organism.inspect', ok:false, error:'offline' });
+assert.equal(exec.canAttempt(2), true, 'an unrelated tool failure must not block the active project step');
+assert.equal(exec.snapshot().blockedCycles ?? 0, 0, 'unrelated outcomes must not inflate project blocking');
+assert.equal(exec.currentStep()?.id, 'repeat', 'unrelated tool output must not advance project');
+exec.observeToolResult({ tick:4, tool:'organism.project.research', ok:false, error:'offline' });
+assert.equal(exec.canAttempt(4), false, 'the matching project tool failure must schedule backoff');
+assert.equal(exec.currentStep()?.id, 'repeat', 'failed matching tool must not advance project');
+exec.observeToolResult({ tick:5, tool:'organism.project.research', ok:true });
+assert.equal(exec.snapshot().toolCalls, 3);
+assert.equal(exec.snapshot().toolSuccesses, 1);
+console.log(`BIG_PASS_42_PROJECT_EXECUTOR=PASS completed=${exec.snapshot().completedSteps} toolCalls=${exec.snapshot().toolCalls} blocked=${exec.snapshot().blockedCycles}`);

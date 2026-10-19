@@ -1,0 +1,127 @@
+{
+  "name": "Neuro-Kurisu SUPER WorkPass 17 change manifest",
+  "date": "2026-10-10",
+  "canonicalBaseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS16_2026-10-10.zip",
+  "canonicalBaseSha256": "fbe9481194f61c3dbd12ed058ee06bdc37f288208f96a6c2ae72481e1adbe7d8",
+  "runtime": "35.40.0",
+  "schema": 223,
+  "purpose": "Actual autonomous-project research execution and evidence-gated DAG completion; not a documentation-only pass.",
+  "counts": {
+    "addedExcludingManifest": 6,
+    "modified": 11,
+    "removed": 0
+  },
+  "addedFiles": [
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-10_WORKPASS17.json",
+      "bytes": 21653,
+      "sha256": "ad3a1b902d24e605d85bfabac8ca55fdddac23e18233b915f29ddf11a3459724"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-10_WORKPASS17.md",
+      "bytes": 2793,
+      "sha256": "6885072bb245569f499e642e8852719da5afcaa1f83e9e833d52129ecd5e25c4"
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-10_WORKPASS17.json",
+      "bytes": 7315,
+      "sha256": "b51dfe82b543cf7ced914a2902999732721931bf273b0521ab0d83a2c276cd65"
+    },
+    {
+      "path": "docs/WORKPASS17_AUDIT.log",
+      "bytes": 63068,
+      "sha256": "157cc1645877d5628e469130801c55c62e46fc7de4015395d9b81ca16607a156"
+    },
+    {
+      "path": "docs/WORKPASS17_PROJECT_RESEARCH_CLOSURE_2026-10-10.md",
+      "bytes": 5074,
+      "sha256": "28f8c3cce8f167c5a7c94ef8e2b8902bd2951588762ae86fe5e17b618845921a"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-179-project-research-gates.mjs",
+      "bytes": 6790,
+      "sha256": "586e76136b7d95d669ddf505c9a69539004ffc6576968ed14606f1a4338ccae4"
+    }
+  ],
+  "modifiedFiles": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 28356,
+      "sha256": "4721b9aa2452e1ddbb2520c8dda871b61232e3f4ff07392390728ab83507f67f",
+      "previousSha256": "1dc442eaeb407d13ef818e1f8ed2b07fda38c1108ebb9c2f42354b9b0fe0d4a0"
+    },
+    {
+      "path": "README.md",
+      "bytes": 10064,
+      "sha256": "d3687ffa7862b498c10f716a405a239f93650a3bccf725fa3e2c60c949f67106",
+      "previousSha256": "4bca892ecbf52c7d97ae61a9fb1d230e67403461b872ac0010078e13edf9bf8a"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "bytes": 8070,
+      "sha256": "e5d1fea7314284a3cb64deb201b31a4a582d302bae463130fb8d7ca0538baf5a",
+      "previousSha256": "2f838739bd0f7b5270425db6378e59ba62c3168ab82352d9c4692fd032acfa61"
+    },
+    {
+      "path": "package.json",
+      "bytes": 7470,
+      "sha256": "63af13d640e14c430098604bd521058dec8a2dea0719b04f9a073ce6c747f0dd",
+      "previousSha256": "5759719d2ce980f1a0c6fbd78a498a0af570362b3c054a9c8c57550301b80362"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "bytes": 229025,
+      "sha256": "ff39748be1cc8db2de6e866da488e6535f11aa7baf974a458b5a33155a98ecea",
+      "previousSha256": "cf4891413d44a27fe0ff5ec15a97c8da46559e2923545f4ff9a82b82a02f91b7"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+      "bytes": 1191211,
+      "sha256": "c269a66eb0dcfcab4c8d866c5137147b4fa2ea416a63078c9239f38e2b071804",
+      "previousSha256": "a075117c9dc1a3d7989634e2db06a28ef5e1c3694acda17eda0376a23240610f"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/AutonomousProjectExecutor.ts",
+      "bytes": 15989,
+      "sha256": "ca5197fe36f9235164d982ad57178dc73af343729c832992b9040527b3d6d31f",
+      "previousSha256": "5b2cc194826510965336e7579ea6fb57c3928368314df528dc31cef19f4f56ae"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/EvidenceFirewall.ts",
+      "bytes": 7274,
+      "sha256": "6ec6922625c625a519e034c19b0f5d5d30ace4034b50e7f5d4f02ebab3493b0b",
+      "previousSha256": "5f01cd5e3eb1bb5556d6c831086d8d60b4174ac00f1f5cbffff022fca0d3fab6"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ExternalProjectResearchTool.ts",
+      "bytes": 7384,
+      "sha256": "213e072d9c25828b67591b160c3de5f1409cb12ad4f2c313288cb4206462aaf6",
+      "previousSha256": "cd684e0afd104c607a799803f9282db5f0ca12fae6ff31bcd9e38e565e4e4a68"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ProjectResearchSession.ts",
+      "bytes": 3557,
+      "sha256": "35bea40e38f358a1d8c8c88987a5964c5743bb3de408f717ff877f8fc5396a61",
+      "previousSha256": "4effbe340283ff9b09dd9018302c06033977857e4e62d8e63a33d275b3a65be5"
+    },
+    {
+      "path": "Список дел.md",
+      "bytes": 86668,
+      "sha256": "b2a73a3ee8816263e84cf1816f0f1dd1e945b59408c733968444a37a8069b59f",
+      "previousSha256": "87cd4cb4d3c03e401881334cd0a1b527695a98df24d97ea5ead6b919c7b64a63"
+    }
+  ],
+  "removedFiles": [],
+  "verification": {
+    "command": "npm run audit:workpass17",
+    "result": "PASS",
+    "exitCode": 0,
+    "runtimeTypecheck": "PASS (tsc)",
+    "projectResearchGates": "PASS",
+    "projectLifecycleRecoveryScheduler": "PASS",
+    "serverRelativeImports": "PASS (10 checked, 0 missing)",
+    "uiApiLinkage": "PASS (124 routes, 48 Runtime Atlas surfaces, 5 required seams, 0 missing)",
+    "liveExternalProviderRun": false,
+    "reactViteBuildAndBrowserE2E": false
+  }
+}

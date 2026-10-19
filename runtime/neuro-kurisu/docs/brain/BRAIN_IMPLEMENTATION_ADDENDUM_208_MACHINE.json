@@ -1,0 +1,27 @@
+{
+  "release":"35.6.1 BIG PASS 208",
+  "basis":"KARTA_ISKUSSTVENNOGO_MOZGA_35.6.1",
+  "pass":"B-M3",
+  "component":"BasalGangliaSelectionCircuit",
+  "status":"implemented-computational-analogue",
+  "integration":{"coordinator":true,"organismCore":true,"persistence":true,"atlasBinding":true},
+  "verifiedBehaviors":[
+    "direct-pathway-like facilitation",
+    "indirect-pathway-like suppression",
+    "hyperdirect conflict brake",
+    "dopamine-gated action plasticity",
+    "lesion ablation",
+    "snapshot restore",
+    "core restart restore"
+  ],
+  "quantitativeWitness":{"healthySelection":"explore","healthyMargin01":0.087276,"learnedExploreValue":0.022135426221649605,"conflictHyperdirect01":0.4288,"lesionExploreGate01":0.5012,"coreCycles":3},
+  "remainingGaps":[
+    "explicit nucleus state dynamics",
+    "dorsal/ventral striatal territory graph",
+    "motor/associative/limbic loop separation",
+    "closed cortico-basal-ganglia-thalamo-cortical motor loop",
+    "temporal dopamine pulse semantics",
+    "embodied motor output"
+  ],
+  "scientificStatus":"computational-analogue-not-anatomical-equivalence"
+}

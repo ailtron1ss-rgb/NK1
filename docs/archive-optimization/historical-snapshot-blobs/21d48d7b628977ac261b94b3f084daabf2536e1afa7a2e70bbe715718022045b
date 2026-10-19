@@ -1,0 +1,16 @@
+# Super-project ownership contract
+
+## Canonical
+Neuro-Kurisu 35.40 is the only writable owner of the organism runtime. It owns decision-making, memory, goals, semantic world, embodiment state, persistence, learning and API truth.
+
+## Delivery layer
+The Grok Workspace code is retained as the application shell: routing, polished UI, auth/data scaffolding, chat surface, HUD and Labs layout. The former browser-organism implementation is archived under `app/src/legacy/browser-organism/` and is not an active brain.
+
+## Visual layer
+Live2D uses the canonical model assets already shared with the 35.40 build. The legacy sprite path imports the v9 sprite resolver/outfit catalog and follows the v56 crossfade presentation pattern. Neither visual path owns cognition or state.
+
+## Research layer
+NeuroCore V143, NOMEGA Pass20 and DeepCode v21 are research candidates. They are exposed through a read-only research bridge for qualification and smoke probes. No automatic promotion, mutation of the canonical runtime or dual-write state is permitted.
+
+## Duplicate policy
+When multiple branches implement the same conceptual capability, the newest validated Neuro-Kurisu implementation is canonical; alternatives are either visual compatibility, research candidates or historical snapshots. Adapters must cross an explicit boundary rather than copying state.

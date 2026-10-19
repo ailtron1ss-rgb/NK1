@@ -1,0 +1,176 @@
+{
+  "title": "Neuro-Kurisu SUPER — reconciled weighted implementation roadmap scorecard — WorkPass39",
+  "date": "2026-10-14",
+  "workpass": 39,
+  "baseArchive": "Neuro_Kurisu_WORKPASS38_2026-10-14.zip + canonical cognitive architecture, SHA-256 external evidence IDs, confidence-aware global workspace and upstream integration review",
+  "runtime": "35.61.0",
+  "schema": 225,
+  "method": "WorkPass39 adds actual emotion/feeling/interoceptive integration to the global cognitive workspace, fuses duplicate salience sources without evidence loss, prevents stale broadcasts from affecting actions when the network is disabled, and makes new external evidence IDs SHA-256 while preserving historical IDs. The canonical brain map stays read-only. Runtime suite and independent subsystem audits pass; Vite build remains blocked by outbound DNS, and retrieval candidate is not promoted because recallDelta=0.",
+  "overallPercent": 76.0,
+  "previousOfficialScorePercent": 74.5,
+  "deltaPercentagePoints": 1.5,
+  "remainingWeightedRoadmapPoints": 24.0,
+  "workstreams": [
+    {
+      "id": "A",
+      "name": "Canonical source lineage and single-owner architecture",
+      "weight": 15,
+      "completionPercent": 100,
+      "weightedPoints": 15.0,
+      "previousPercent": 100,
+      "rationale": "Single writable organism state/memory authorities preserved. WorkPass39 adds a read-only cognitive ownership map and typed flow validation without parallel runtime state."
+    },
+    {
+      "id": "B",
+      "name": "Runtime integration, API/UI routes and smoke/linkage coverage",
+      "weight": 15,
+      "completionPercent": 98,
+      "weightedPoints": 14.7,
+      "previousPercent": 96,
+      "rationale": "Runtime API and Runtime Atlas now surface the brain map and live composed-system health; routes and focused UI linkage are wired. Dependency-installed React/Vite and interactive browser Live2D E2E remain open."
+    },
+    {
+      "id": "C",
+      "name": "Memory 2.0, retrieval/admission and benchmark evidence",
+      "weight": 15,
+      "completionPercent": 70,
+      "weightedPoints": 10.5,
+      "previousPercent": 70,
+      "rationale": "MemoryOS2 stays canonical; retrieval remains at BM25 parity on the current synthetic temporal fixture and is not promoted. Independent labelled holdout and genuine local embedding inference remain open."
+    },
+    {
+      "id": "D",
+      "name": "Agency, action schema, execution, outcome and reafference",
+      "weight": 20,
+      "completionPercent": 80,
+      "weightedPoints": 16.0,
+      "previousPercent": 75,
+      "rationale": "Durable ActionGateway receipts from WorkPass38 remain integrated. WorkPass39 strengthens attributable external evidence IDs and confidence-aware attention; actual provider/device reconciliation and reconnect/replay evidence remain open."
+    },
+    {
+      "id": "E",
+      "name": "Portable subject continuity and social/known-entity dossier",
+      "weight": 10,
+      "completionPercent": 75,
+      "weightedPoints": 7.5,
+      "previousPercent": 75,
+      "rationale": "Cognitive map now ties self-model, affect/homeostasis, goals, perception, social cognition, memory, executive, reafference and metacognition to existing owners. This is architectural/system integration, not a claim of subjective consciousness."
+    },
+    {
+      "id": "F",
+      "name": "External transport, SDK, idempotency and replay",
+      "weight": 10,
+      "completionPercent": 42,
+      "weightedPoints": 4.2,
+      "previousPercent": 42,
+      "rationale": "Stable IDs for new evidence and legacy ID continuity are improved; external transport delivery receipts/reconnect and multi-provider reconciliation remain open."
+    },
+    {
+      "id": "G",
+      "name": "Research promotion and controlled experiments",
+      "weight": 5,
+      "completionPercent": 70,
+      "weightedPoints": 3.5,
+      "previousPercent": 66,
+      "rationale": "Fifteen upstream projects/docs were reviewed; design patterns and licensing/status risks documented. No external code downloads claimed due unavailable container Git/DNS; direct upstream code review/port remains pending."
+    },
+    {
+      "id": "H",
+      "name": "Release durability: build, E2E, rollback, soak, SBOM/provenance",
+      "weight": 10,
+      "completionPercent": 46,
+      "weightedPoints": 4.6,
+      "previousPercent": 46,
+      "rationale": "Release metadata and runtime gates aligned. Installed Vite build, browser E2E, clean-room restore/rollback, soak, SBOM and final release sign-off remain open."
+    }
+  ],
+  "normalizedTaskInventory": {
+    "count": 96,
+    "counts": {
+      "DONE": 75,
+      "PARTIAL": 11,
+      "TODO": 10
+    }
+  },
+  "openReleaseGates": [
+    "Real autonomous research on at least two allowed external HTTPS hosts with distinct evidence and persisted source receipt",
+    "Real pretrained NLI inference on a fixed labelled, domain-relevant adversarial holdout; threshold review must remain separate from evaluation; multilingual/domain compatibility is unproven",
+    "Complete agency loop from competition to independent postcondition, persistence and reafference with cross-consumer no-double-credit",
+    "Entity correction/expiry/conflict across browser-backed multi-session flows",
+    "Portable subject continuity and behavioral fidelity",
+    "Capability evidence graph for critical user journeys",
+    "External provider delivery receipts, reconnect and replay guarantees",
+    "Clean-room backup/restore, schema migration and rollback drill",
+    "Research candidate integrations from NeuroCore/NOMEGA/DeepCode only where they measurably beat canonical baselines",
+    "Authorization/abuse/rate-limit review for diagnostic and benchmark APIs",
+    "Independent labelled temporal MemoryOS2 holdout run against the implemented Okapi BM25 baseline; corrected synthetic fixture is at parity; no real-corpus uplift is established",
+    "Dependency-complete app install and root/app semantic typecheck",
+    "React/Vite production build",
+    "Desktop/mobile browser E2E, including actual Live2D interaction",
+    "Multi-hour soak with memory and resource-growth limits",
+    "Final SBOM, license inventory and immutable release provenance sign-off",
+    "Release-candidate sign-off"
+  ],
+  "environmentNote": "WorkPass39 runtime TypeScript typecheck and focused external observer SHA-256, evidence trust/firewall, confidence/energy-aware cognitive network, and architecture-map tests pass. Existing legacy external-observer and WILL tests also pass. Live Runtime Atlas endpoint/panel is wired; UI build not confirmed because app/node_modules is absent (vite ENOENT). Fourteen open-source repositories/docs were reviewed; no direct source code cloning claimed because container-side Git/DNS was unavailable. Retrieval benchmark uplift remains zero and not promoted. External provider receipts, independent labelled holdout, browser Live2D E2E, clean-room restore/rollback and soak remain open.",
+  "releaseStatus": "implementation-workpass; cognitive ownership map and evidence identity hardening integrated; release gates remain open",
+  "limitations": [
+    "The action/observer/temporal-credit end-to-end regression uses a controlled test tool; an independent real provider/device postcondition and reconnect/replay have not been demonstrated.",
+    "Synthetic temporal retrieval benchmark passes at parity only (recall uplift 0); candidate remains not-promoted until an independent labelled holdout demonstrates improvement.",
+    "Dependency-installed React/Vite production build and real browser Live2D E2E have not been completed.",
+    "Actual local-model/provider inference, clean-room restore/rollback, soak and release sign-off remain open."
+  ],
+  "workpassImplementationProgressPercent": 60,
+  "implementationDeltasWorkPass36": [
+    {
+      "area": "Shared primitives",
+      "status": "DONE",
+      "evidence": "NumericPrimitives, StableSerialization, shared action cost policy; targeted runtime and adapter tests pass."
+    },
+    {
+      "area": "Memory durability/compatibility",
+      "status": "DONE",
+      "evidence": "64-entry bounded revision history, byte accounting, restore normalization, legacy source-lineage round trip."
+    },
+    {
+      "area": "Source archive immutability",
+      "status": "DONE",
+      "evidence": "8,512/8,512 source member SHA256 checks; 10,427 historical snapshot entries and 3,873 legacy dedup entries resolved."
+    },
+    {
+      "area": "Release deployment E2E",
+      "status": "OPEN",
+      "evidence": "Dependency-installed app build, browser and interactive Live2D E2E not completed in this environment."
+    },
+    {
+      "area": "Independent capability evidence",
+      "status": "OPEN",
+      "evidence": "Real local model/provider inference, independent temporal holdout, external postcondition/reafference, rollback and soak remain open."
+    },
+    "Shared Unicode tokenizer preserving Lumina/Conscio separators as options",
+    "Immutable SHA-256 content-addressed preimages for source-archive and historical snapshots",
+    "Revision-history memory-budget accounting and legacy memory lineage round-trip",
+    "Shared stable serialization retaining persisted legacy fingerprint bytes",
+    "ReleaseContract aligned to runtime package/integration manifest; schema-223 migration regression added"
+  ],
+  "passImplementationProgressPercent": 60,
+  "passImplementationProgress": 60,
+  "workpassImplementationProgress": 92,
+  "lastVerification": {
+    "runtimeCore": "PASS",
+    "runtimeTypecheck": "PASS",
+    "serverSmoke": "PASS",
+    "releaseMetadata": "34/34",
+    "metadataContract": "6/6",
+    "appScripts": "212/212",
+    "browserSmoke": "51/51",
+    "serverImports": "10/10",
+    "uiApi": "125 routes / 49 Runtime Atlas surfaces",
+    "assets": "PASS",
+    "sourceArchiveMembers": "8512/8512",
+    "historicalSnapshotMembers": "10427/10427",
+    "historicalLogicalContentReferences": "18935",
+    "retrievalRecallDelta": 0,
+    "retrievalPromotion": "not-promoted",
+    "viteBuild": "blocked; npm ci EAI_AGAIN registry.npmjs.org"
+  }
+}

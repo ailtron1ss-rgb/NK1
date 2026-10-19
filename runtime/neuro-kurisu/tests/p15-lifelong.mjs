@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const core=new OrganismCore(new MemoryStateStore(),{}); await core.init();
+for(let i=0;i<12;i++) await core.observe({text:i%3===0?'study the unresolved question':'continue experiment',novelty:.45,surprise:i%4===0?.65:.2});
+await core.beginLifelongSleep('test',true);
+const sleeping=core.snapshot().facets.learning.lifelong;
+assert.equal(sleeping.phase,'deep');
+await core.applyConsolidation([],[]);
+await core.endLifelongSleep('test');
+const s=core.snapshot().facets.learning.lifelong;
+assert.ok(s.cycleCount>=12); assert.ok(s.replayCycles>0); assert.ok(s.dreamCount>0); assert.ok(s.lastConsolidationAt>0); assert.equal(s.phase,'awake'); assert.ok(s.skills.length>0); assert.equal(s.version,1);
+console.log(`P15_LIFELONG=PASS cycles=${s.cycleCount} replay=${s.replayCycles} dreams=${s.dreamCount} skills=${s.skills.length}`);

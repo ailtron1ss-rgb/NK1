@@ -1,0 +1,4 @@
+export interface CommitmentRepairRecord{id:string;at:number;commitment:string;stage:'acknowledge'|'diagnose'|'revise'|'compensate'|'rebuild';reason:string;}
+export interface CommitmentRepairState{records:CommitmentRepairRecord[];version:number;}
+export const defaultCommitmentRepair=():CommitmentRepairState=>({records:[],version:1});
+export class CommitmentRepair{private state=defaultCommitmentRepair();restore(s:CommitmentRepairState|undefined){this.state={...defaultCommitmentRepair(),...(s??{}),records:Array.isArray(s?.records)?s!.records.slice(0,128):[]};}repair(commitment:string,reason:string){const stages:CommitmentRepairRecord[]=(['acknowledge','diagnose','revise','compensate','rebuild'] as CommitmentRepairRecord['stage'][]).map((stage,i)=>({id:`repair-${Date.now()}-${i}`,at:Date.now(),commitment,stage,reason}));this.state.records=[...stages,...this.state.records].slice(0,128);return stages;}snapshot(){return structuredClone(this.state);}}

@@ -1,0 +1,55 @@
+{
+  "release": "35.6.84",
+  "pass": "P2684",
+  "title": "Memory Residency + Function Reality",
+  "timestamp": "2026-09-19",
+  "functionReality": {
+    "runtimeReachable": 2371,
+    "testOnly": 425,
+    "referencedNotRuntimeReachable": 2291,
+    "orphan": 328,
+    "criticalPathEdgesVerified": 11
+  },
+  "liveness": {
+    "functionLikeDeclarations": 5009,
+    "withBody": 4980,
+    "exported": 145,
+    "zeroReference": 288,
+    "oneOrLessReference": 879,
+    "runtimeSecondsApprox": 3.3
+  },
+  "semanticCoverage": {
+    "totalFunctions": 4803,
+    "verified": 48,
+    "integrationOnly": 9,
+    "unsafeToAutoRun": 309,
+    "unverified": 4437,
+    "verifiedRate01": 0.01
+  },
+  "parameterizedProbe": {
+    "attempted": 1098,
+    "passed": 1043,
+    "failed": 0,
+    "inputSynthesisNeeded": 45,
+    "lifecycleNeeded": 10,
+    "skipped": 40
+  },
+  "mobile": {
+    "cycles": 30,
+    "elapsedSec": 27.19,
+    "peakRssMb": 353.0,
+    "v8OldSpaceMb": 256,
+    "pass": true
+  },
+  "archive": {
+    "manifestFiles": 3636,
+    "missing": 0,
+    "hashMismatches": 0,
+    "extra": 0,
+    "pass": true
+  },
+  "releaseGates": {
+    "allIndividualGatesPass": true,
+    "combinedNpmOrchestration": "intermittent-timeout-in-current-environment"
+  }
+}

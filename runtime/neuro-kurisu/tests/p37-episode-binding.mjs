@@ -1,0 +1,12 @@
+import { P37EmbodiedSensoriumEngine } from '../src/organism/body/P37EmbodiedSensorium.ts';
+const assert=(c,m)=>{if(!c)throw new Error(m)};
+const p=new P37EmbodiedSensoriumEngine();
+const a=p.ingest({at:100,text:'Kurisu',vision:{sceneLabel:'lab',confidence01:.8,objects:[{label:'desk',kind:'object',confidence01:.9}]},audio:{events:[{label:'speech',confidence01:.7}]}});
+const b=p.ingest({at:200,text:'Kurisu',vision:{sceneLabel:'lab',confidence01:.8,objects:[{label:'desk',kind:'object',confidence01:.9}]},audio:{events:[{label:'speech',confidence01:.7}]}});
+assert(a.episodeKey===b.episodeKey,'stable episode changed under identical scene');
+assert(b.episodeBoundary01<.3,'identical scene created strong boundary');
+const c=p.ingest({at:300,vision:{sceneLabel:'street',confidence01:.9,objects:[{label:'car',kind:'object',confidence01:.9}]},audio:{events:[{label:'horn',confidence01:.8}]}});
+assert(c.episodeKey!==b.episodeKey,'new scene retained old episode key');
+assert(c.episodeBoundary01>b.episodeBoundary01,'new scene did not raise boundary');
+assert(c.crossModalEntityBinding01>=0,'binding metric invalid');
+console.log('P37_EPISODE_BINDING=PASS');

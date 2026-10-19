@@ -1,0 +1,137 @@
+{
+  "name": "Neuro-Kurisu SUPER WorkPass 16 change manifest",
+  "date": "2026-10-10",
+  "baseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS15_2026-10-10.zip",
+  "baseSha256": "9bac52b3427858e290173c061253b11e110848528a934196b1d2ac8da1bb4ac2",
+  "releaseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS16_2026-10-10.zip",
+  "runtime": "Neuro-Kurisu 35.40.0",
+  "schema": 223,
+  "scope": "Browser smoke release gate: brand/auth exit policy, bounded timeout config, atomic private verdict publication and regression gates.",
+  "counts": {
+    "addedIncludingThisManifest": 8,
+    "addedListedExcludingThisManifest": 7,
+    "modifiedFiles": 11,
+    "removed": 0
+  },
+  "manifestSelfReference": "This manifest is excluded from addedFiles to avoid self-referential hashing.",
+  "addedFiles": [
+    {
+      "path": "app/scripts/write-report-atomic.mjs",
+      "bytes": 2130,
+      "sha256": "7e718437e6ddd715e62ea7cb30e66897c4a41bce502f5692fa489d8d89195f33"
+    },
+    {
+      "path": "app/scripts/write-report-atomic.test.mjs",
+      "bytes": 2156,
+      "sha256": "26a3056659d7ae46e2a32fc478ddf44629fe30f4acf94780b1a1cf96d333a556"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-10_WORKPASS16.json",
+      "bytes": 19509,
+      "sha256": "88fb9357f444fc50231ee3703494de5757464f005d81104500a2dc228b97ddef"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-10_WORKPASS16.md",
+      "bytes": 8116,
+      "sha256": "415b3f8e9cec6aa2327c2b6694e0253b486ebcda3f4fbe0f979e5be93a372279"
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-10_WORKPASS16.json",
+      "bytes": 7184,
+      "sha256": "135443f5852891063c221975479c1a58fb603cb7200cd1c2bb1d4e85107d7325"
+    },
+    {
+      "path": "docs/WORKPASS16_AUDIT_SUMMARY_2026-10-10.md",
+      "bytes": 2668,
+      "sha256": "47a2ee5aa8ddd21f8e0b5c8f03e5a02b473a9ee6e7f8db5d33e61d841b230a83"
+    },
+    {
+      "path": "docs/WORKPASS16_BROWSER_RELEASE_GATE_2026-10-10.md",
+      "bytes": 4728,
+      "sha256": "f6632b7ff00b3bfa08a5ecded7d7abaa1e931a096d41855ca322ab53e7dad5f1"
+    }
+  ],
+  "modifiedFiles": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 27176,
+      "sha256": "1dc442eaeb407d13ef818e1f8ed2b07fda38c1108ebb9c2f42354b9b0fe0d4a0",
+      "previousSha256": "b547a430907ef4c85f4285080447b39e9225ffa2d1290487cec6cc9c24fa33b2"
+    },
+    {
+      "path": "README.md",
+      "bytes": 9282,
+      "sha256": "4bca892ecbf52c7d97ae61a9fb1d230e67403461b872ac0010078e13edf9bf8a",
+      "previousSha256": "539c35ddad35198eb60f5b48d125ac9b34ae2eadcd8f00ee0aac8592e8dfcc8d"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "bytes": 6969,
+      "sha256": "2f838739bd0f7b5270425db6378e59ba62c3168ab82352d9c4692fd032acfa61",
+      "previousSha256": "46de175c8bd3210898e9f0d8e10236d4f06e29d2ab5a393a32770b769867d1f9"
+    },
+    {
+      "path": "app/scripts/browser-smoke-verdict.mjs",
+      "bytes": 7299,
+      "sha256": "84ed65d12a1de366e56a4164bcc1a2057b8204fc8f06b51c8af6b4a5d3a4f237",
+      "previousSha256": "b274e9cb061bf16fb68bc0b483181daae29832e76cca71383242a329d1c706f3"
+    },
+    {
+      "path": "app/scripts/browser-smoke-verdict.test.mjs",
+      "bytes": 20119,
+      "sha256": "772794c1d4da74c52e918aabfcc954f6adab55fb825c11c38f59e0b73d807a84",
+      "previousSha256": "c18adf000cbbfe23f34cd7b3689f62f0fe3a38d440b89d73e31049074cdb4fe9"
+    },
+    {
+      "path": "app/scripts/browser-smoke.mjs",
+      "bytes": 6586,
+      "sha256": "58cd438aae276b05fccf83dfbf9aa447a673cadbef72cd52b8771ee21fe8f292",
+      "previousSha256": "d35641e2529e23ea17a8f6497da76fed2829ca6eaf173ba6fa9e5698cc76e4bf"
+    },
+    {
+      "path": "app/scripts/check-auth-invariant.mjs",
+      "bytes": 4209,
+      "sha256": "b30f4bfde76ecf5397bd22c62fc5f825d119f50f4a95523fe3019594c7511bdf",
+      "previousSha256": "d712203c4bc92c197c342e5c91660fc5a141a31171f22f35c505a0bff45f98ee"
+    },
+    {
+      "path": "app/scripts/check-auth-invariant.test.mjs",
+      "bytes": 4365,
+      "sha256": "2220b0c5e21e73f89ac3f1a3a6d2335a14aea734cc76f8dcb050b89ab6ed7a86",
+      "previousSha256": "75a58f44dffb2fc77eb47473638646f607dba26a68a6900156031c7b6227cf3c"
+    },
+    {
+      "path": "package.json",
+      "bytes": 6997,
+      "sha256": "5759719d2ce980f1a0c6fbd78a498a0af570362b3c054a9c8c57550301b80362",
+      "previousSha256": "585361c5002ccd22dc2a2573e5edf3913258d5057b39333c77e5330a4a0dba4f"
+    },
+    {
+      "path": "tools/verify-release-metadata.mjs",
+      "bytes": 9182,
+      "sha256": "86ddf55fcee00361e5d24f5b76c5cfde456de3d704375291aaa730ab239a1adb",
+      "previousSha256": "d7fa832b70f0c05c25c9a923bbf53a4b1b84532d627c346d93b3903ed361770e"
+    },
+    {
+      "path": "Список дел.md",
+      "bytes": 83711,
+      "sha256": "87cd4cb4d3c03e401881334cd0a1b527695a98df24d97ea5ead6b919c7b64a63",
+      "previousSha256": "ad9505d85be3d7a656445cee1eea30a1f7fe6ebd390c4e2ffa9e7bc1ebd1330b"
+    }
+  ],
+  "removedFiles": [],
+  "verification": {
+    "command": "npm run audit:workpass16",
+    "result": "PASS",
+    "appScriptTests": "212/212 PASS",
+    "releaseMetadataValidator": "34/34 PASS; fixture tests 6/6 PASS",
+    "focusedBrowserGateTests": "66/66 PASS",
+    "runtimeTypecheck": "PASS mode=tsc",
+    "memoryBenchmarkAndExperiment": "PASS; synthetic candidate remains not-promoted",
+    "serverImports": "10 imports, 0 missing",
+    "uiApiLinkage": "124 client routes, 48 Runtime Atlas surfaces, 5 required seams, 0 missing",
+    "appTypecheck": "BLOCKED: TS2688 missing @types/node and vite/client",
+    "appBuild": "BLOCKED: spawn vite ENOENT; app npm ci timed out at 120s",
+    "liveBrowserE2E": "NOT RUN successfully; dependencies unavailable; not claimed"
+  }
+}

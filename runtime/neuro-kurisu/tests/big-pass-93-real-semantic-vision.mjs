@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import { inspectCameraBytes } from '../src/organism/body/CameraEvidenceProcessor.ts';
+import { PerceptualContinuityModel } from '../src/organism/cognition/PerceptualContinuityModel.ts';
+import { PerceptualEpistemicGraph } from '../src/organism/cognition/PerceptualEpistemicGraph.ts';
+import { P41SemanticPerceptionEngine } from '../src/organism/cognition/P41SemanticPerception.ts';
+
+const jpeg=Uint8Array.from([0xff,0xd8,0xff,0xc0,0x00,0x11,0x08,0x00,0xf0,0x01,0x40,0x03,0x01,0x11,0x00,0x02,0x11,0x01,0x03,0x11,0x01,0xff,0xd9]);
+const evidence=inspectCameraBytes({bytes:jpeg,cameraId:0,at:1000});
+assert.equal(evidence.width,320); assert.equal(evidence.height,240);
+const continuity=new PerceptualContinuityModel();
+const a=continuity.observe({scene:'lab',at:1000,entityIds:['a','b']});
+const b=continuity.observe({scene:'lab',at:2000,entityIds:['a','b','c'],previousEntityIds:['a','b']});
+assert.ok(b.objectPersistence01>a.objectPersistence01); assert.ok(b.temporalGrounding01>0);
+const epi=new PerceptualEpistemicGraph();
+epi.add({at:1000,modality:'vision',claim:'scene:lab',source:'model-output',confidence01:.91,targetIds:['a']});
+epi.add({at:1001,modality:'vision',claim:'semantic-vision-unresolved',source:'unresolved',confidence01:.1});
+assert.equal(epi.summary().claims,2);
+const engine=new P41SemanticPerceptionEngine();
+const first=engine.ingest({vision:{semantic:true,sceneLabel:'lab',confidence01:.9,objects:[{label:'terminal',kind:'object',confidence01:.95}],relations:[{from:'terminal',relation:'on',to:'desk',confidence01:.8}]},sensor:{location:'lab',freshness01:.95},at:1000});
+const second=engine.ingest({vision:{semantic:true,sceneLabel:'lab',confidence01:.9,objects:[{label:'terminal',kind:'object',confidence01:.94}],relations:[{from:'terminal',relation:'on',to:'desk',confidence01:.81}]},sensor:{location:'lab',freshness01:.95},at:2000});
+assert.ok(second.metrics.temporalBinding01>first.metrics.temporalBinding01 || second.metrics.temporalGrounding01>0);
+assert.ok(second.continuity); assert.ok(second.epistemic);
+console.log(`BIG_PASS_93=PASS scene=${second.scene.label} entities=${second.entities.length} temporal=${second.metrics.temporalGrounding01.toFixed(3)} evidence=${second.epistemic.claims.length}`);

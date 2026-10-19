@@ -1,0 +1,23 @@
+{
+  "version": "1.29.0-dev",
+  "pass": "cognitive-self-development-integration",
+  "changed_files": [
+    "core/nomega/canonical_registry_v1.py",
+    "core/nomega/canonical_capability_facade_v1.py",
+    "core/nomega/executable_spine_v2.py",
+    "core/nomega/cognitive_development_bridge_v1.py",
+    "core/nomega/verifier_guided_search_v1.py",
+    "core/nomega/neural_program_repair_v2.py",
+    "core/nomega/unified_development_loop_v1.py",
+    "core/nomega/runtime.py",
+    "tests/test_canonical_capability_facade_v1.py",
+    "tests/test_cognitive_development_bridge_v1.py",
+    "tests/test_unified_development_loop_v1.py",
+    "docs/reports/NOMEGA_1.29.0_COGNITIVE_SELF_DEVELOPMENT_PASS.md"
+  ],
+  "tests_collected": 370,
+  "targeted_tests": "15/15",
+  "governance": "PASS; 0 failures; 88 warnings",
+  "import_time_cycles": 0,
+  "promotion_record": "runtime/unified_promotions_v1.jsonl"
+}

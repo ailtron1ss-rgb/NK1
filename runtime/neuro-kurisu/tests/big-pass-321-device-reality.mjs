@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+const p='state/device-reality-b321/report.json';
+const r=JSON.parse(await readFile(p,'utf8'));
+assert.equal(r.gate,'B321_DEVICE_REALITY_GATE');
+assert.ok(['VERIFIED_DEVICE','HOST_ONLY'].includes(r.verdict));
+assert.ok(Number.isFinite(r.memory.totalMiB));
+assert.ok(Number.isFinite(r.filesystem.fsWriteMsAvg));
+assert.ok(r.commands.successRate01>=0 && r.commands.successRate01<=1);
+assert.ok(['verified','host-probe','unavailable'].includes(r.certification.status));
+console.log('BIG_PASS_321_DEVICE_REALITY=PASS',JSON.stringify({verdict:r.verdict,platform:r.platform,androidLike:r.androidLike,termux:r.termux,model:r.model,abi:r.abi,memoryMiB:r.memory.totalMiB,freeMiB:r.memory.freeMiB,fsWriteMsAvg:r.filesystem.fsWriteMsAvg,certification:r.certification.status}));

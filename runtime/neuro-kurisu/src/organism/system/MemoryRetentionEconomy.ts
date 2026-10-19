@@ -1,0 +1,135 @@
+/**
+ * BIG PASS 165 — Memory Economy 2.0.
+ *
+ * Policy layer over the canonical MemoryOS2 store. This is intentionally not a
+ * second memory database: it only scores, consolidates, and records evidence
+ * about retention/reconsolidation decisions. Canonical bytes remain owned by
+ * MemoryOS2.
+ */
+export type RetentionAction='retain'|'dormant'|'discard-candidate';
+export type ConsolidationMode='preserve'|'strengthen'|'cool'|'quarantine-candidate';
+export interface RetentionAssessment {
+  id?:string;
+  score01:number;
+  action:RetentionAction;
+  utility:{salience01:number;identity01:number;goal01:number;social01:number;prediction01:number;emotion01:number;recency01:number;novelty01:number;redundancyPenalty01:number;cost01:number};
+  reason:string;
+  consolidation:ConsolidationMode;
+  estimatedBytes:number;
+  netValuePerByte01:number;
+  budgetPressure01:number;
+  harm01:number;
+}
+export interface MemoryConsolidationRecord {
+  id:string; memoryId:string; tick:number; at:number; mode:ConsolidationMode;
+  score01:number; emotionalGain01:number; identityGain01:number; goalGain01:number;
+  reason:string;
+}
+export interface MemoryRetentionEconomyState {
+  version:4;
+  evaluations:number;
+  retained:number;
+  dormantCandidates:number;
+  discardCandidates:number;
+  consolidations:number;
+  reconsolidations:number;
+  meanScore01:number;
+  meanRedundancyPenalty01:number;
+  lastAt:number;
+  lastTick:number;
+  recent:RetentionAssessment[];
+  consolidationHistory:MemoryConsolidationRecord[];
+  learnedWeights:Record<string,number>;
+  learningSamples:number;
+  meanUtilityGap01:number;
+  weightEntropy01:number;
+  maxPositiveToMean01:number;
+  totalEstimatedBytes:number;
+  meanNetValuePerByte01:number;
+  byteBudget:number;
+  budgetConstrained:number;
+  budgetEvictionCandidates:number;
+}
+const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const empty=():MemoryRetentionEconomyState=>({version:4,evaluations:0,retained:0,dormantCandidates:0,discardCandidates:0,consolidations:0,reconsolidations:0,meanScore01:0,meanRedundancyPenalty01:0,lastAt:0,lastTick:-1,recent:[],consolidationHistory:[],learnedWeights:{salience:.18,identity:.18,goal:.15,social:.09,prediction:.14,emotion:.10,recency:.07,novelty:.09,redundancy:-.15,cost:-.08,pressure:.04},learningSamples:0,meanUtilityGap01:0,weightEntropy01:1,maxPositiveToMean01:1,totalEstimatedBytes:0,meanNetValuePerByte01:0,byteBudget:524288,budgetConstrained:0,budgetEvictionCandidates:0});
+export class MemoryRetentionEconomy{
+  private state=empty();
+  restore(raw?:Partial<MemoryRetentionEconomyState>|null){
+    const d=empty();
+    this.state={...d,...(raw??{}),version:4,learnedWeights:{...d.learnedWeights,...((raw as any)?.learnedWeights??{})},learningSamples:Math.max(0,Math.floor(Number((raw as any)?.learningSamples??0))),meanUtilityGap01:clamp(Number((raw as any)?.meanUtilityGap01??0)),
+      recent:Array.isArray(raw?.recent)?raw!.recent.slice(0,96).map((x:any)=>({...x,score01:clamp(Number(x?.score01??0)),consolidation:['preserve','strengthen','cool','quarantine-candidate'].includes(x?.consolidation)?x.consolidation:'preserve'})):[],
+      consolidationHistory:Array.isArray((raw as any)?.consolidationHistory)?(raw as any).consolidationHistory.slice(0,128):[]};
+  }
+  assess(input:{tick:number;at?:number;id?:string;salience01?:number;identity01?:number;goal01?:number;social01?:number;predictionError01?:number;emotion01?:number;recency01?:number;novelty01?:number;redundancy01?:number;storageCost01?:number;pressure01?:number;estimatedBytes?:number;memoryBytesUsed?:number;memoryByteBudget?:number;provenanceConfidence01?:number;harm01?:number}):RetentionAssessment{
+    const u={salience01:clamp(input.salience01??0),identity01:clamp(input.identity01??0),goal01:clamp(input.goal01??0),social01:clamp(input.social01??0),prediction01:clamp(input.predictionError01??0),emotion01:clamp(input.emotion01??0),recency01:clamp(input.recency01??0),novelty01:clamp(input.novelty01??0),redundancyPenalty01:clamp(input.redundancy01??0),cost01:clamp(input.storageCost01??0)};
+    const pressure=clamp(input.pressure01??0);
+    const estimatedBytes=Math.max(96,Math.floor(Number(input.estimatedBytes??Math.max(128,Math.round((input.storageCost01??0)*1800)))));
+    const byteBudget=Math.max(4096,Math.floor(Number(input.memoryByteBudget??this.state.byteBudget)));
+    const memoryBytesUsed=Math.max(0,Number(input.memoryBytesUsed??this.state.totalEstimatedBytes));
+    const budgetPressure=clamp(memoryBytesUsed/byteBudget);
+    const w=this.state.learnedWeights;
+    const positive=w.salience*u.salience01+w.identity*u.identity01+w.goal*u.goal01+w.social*u.social01+w.prediction*u.prediction01+w.emotion*u.emotion01+w.recency*u.recency01+w.novelty*u.novelty01+w.redundancy*u.redundancyPenalty01+w.cost*u.cost01+w.pressure*pressure;
+    const score=clamp(.5+.5*positive);
+    const harm=clamp(input.harm01??(.58*u.redundancyPenalty01+.24*u.cost01+.18*pressure));
+    const provenance=clamp(input.provenanceConfidence01??.5);
+    const netValue=clamp(score-.32*harm+.08*provenance);
+    const density=clamp(netValue*Math.sqrt(512/estimatedBytes));
+    // Net value is the decision baseline even when storage is not near its byte
+    // budget. Previously harm/redundancy only affected density, so low-value,
+    // duplicated records were incorrectly kept dormant unless budget pressure
+    // was already high. Pressure still changes the blend toward value-per-byte.
+    const effectiveScore=clamp(netValue*(1-.28*budgetPressure)+density*(.28*budgetPressure));
+    const action:RetentionAction=effectiveScore>=.40?'retain':effectiveScore>=.22?'dormant':'discard-candidate';
+    const consolidation:ConsolidationMode=action==='retain'?(u.emotion01>.62||u.identity01>.7||u.goal01>.72?'strengthen':'preserve'):action==='dormant'?'cool':'quarantine-candidate';
+    const reason=budgetPressure>.7&&density<score?'net-value-per-byte-under-pressure':action==='retain'?'future-value-dominates-cost':action==='dormant'?'useful-but-low-current-pressure':'low-future-value-or-high-redundancy';
+    const assessment={id:input.id,score01:effectiveScore,action,utility:u,reason,consolidation,estimatedBytes,netValuePerByte01:density,budgetPressure01:budgetPressure,harm01:harm};
+    const next=this.state.evaluations+1;
+    const meanDensity=clamp(this.state.meanNetValuePerByte01*(next-1)/next+density/next);
+    this.state={
+      ...this.state,
+      evaluations:next,
+      retained:this.state.retained+(action==='retain'?1:0),
+      dormantCandidates:this.state.dormantCandidates+(action==='dormant'?1:0),
+      discardCandidates:this.state.discardCandidates+(action==='discard-candidate'?1:0),
+      meanScore01:clamp(this.state.meanScore01*(next-1)/next+effectiveScore/next),
+      meanRedundancyPenalty01:clamp(this.state.meanRedundancyPenalty01*(next-1)/next+u.redundancyPenalty01/next),
+      lastAt:Number(input.at??Date.now()),
+      lastTick:Math.max(0,Math.floor(input.tick)),
+      totalEstimatedBytes:Math.min(byteBudget,Math.max(0,memoryBytesUsed+estimatedBytes)),
+      meanNetValuePerByte01:meanDensity,byteBudget,
+      budgetConstrained:this.state.budgetConstrained+(budgetPressure>.7?1:0),
+      budgetEvictionCandidates:this.state.budgetEvictionCandidates+(density<score&&budgetPressure>.7?1:0),
+      recent:[assessment,...this.state.recent].slice(0,96),
+    };
+    return structuredClone(assessment);
+  }
+  recordConsolidation(input:{memoryId:string;tick:number;at?:number;mode:ConsolidationMode;score01?:number;emotionalGain01?:number;identityGain01?:number;goalGain01?:number;reason:string}){
+    const row:MemoryConsolidationRecord={id:`mcon:${input.at??Date.now()}:${this.state.consolidations+1}`,memoryId:String(input.memoryId),tick:Math.max(0,Math.floor(input.tick)),at:Number(input.at??Date.now()),mode:input.mode,score01:clamp(input.score01??0),emotionalGain01:clamp(input.emotionalGain01??0),identityGain01:clamp(input.identityGain01??0),goalGain01:clamp(input.goalGain01??0),reason:String(input.reason).slice(0,240)};
+    const isRecon=input.mode==='strengthen'||input.mode==='cool';
+    this.state={...this.state,consolidations:this.state.consolidations+1,reconsolidations:this.state.reconsolidations+(isRecon?1:0),consolidationHistory:[row,...this.state.consolidationHistory].slice(0,128)};
+    return structuredClone(row);
+  }
+  observeOutcome(input:{score01:number;observedUtility01:number;features?:Partial<RetentionAssessment['utility']>;learningRate01?:number}){
+    const rate=clamp(input.learningRate01??.04),target=clamp(input.observedUtility01),prediction=clamp(input.score01),error=target-prediction,f=input.features??{};
+    const x:Record<string,number>={salience:clamp(f.salience01??0),identity:clamp(f.identity01??0),goal:clamp(f.goal01??0),social:clamp(f.social01??0),prediction:clamp(f.prediction01??0),emotion:clamp(f.emotion01??0),recency:clamp(f.recency01??0),novelty:clamp(f.novelty01??0),redundancy:clamp(f.redundancyPenalty01??0),cost:clamp(f.cost01??0),pressure:0};
+    const weights={...this.state.learnedWeights}; for(const [key,value] of Object.entries(x))weights[key]=Number(weights[key]??0)+rate*error*value;
+    const positiveKeys=['salience','identity','goal','social','prediction','emotion','recency','novelty'];
+    for(const key of positiveKeys)weights[key]=Number.isFinite(weights[key])?Math.max(.025,Math.min(.30,weights[key])):.025;
+    for(const key of ['redundancy','cost'])weights[key]=Number.isFinite(weights[key])?Math.max(-.30,Math.min(-.025,weights[key])):-.025;
+    weights.pressure=Number.isFinite(weights.pressure)?Math.max(0,Math.min(.25,weights.pressure)):.04;
+    // R19 anti-collapse projection: retain adaptation, but pull the policy back toward
+    // a diverse simplex so one feature cannot silently become the whole memory economy.
+    const priors={salience:.18,identity:.18,goal:.15,social:.09,prediction:.14,emotion:.10,recency:.07,novelty:.09};
+    for(const key of positiveKeys)weights[key]=weights[key]*.92+Number((priors as any)[key])*.08;
+    const positiveTotal=positiveKeys.reduce((sum,key)=>sum+Math.max(.001,weights[key]),0);
+    for(const key of positiveKeys)weights[key]=clamp(Math.max(.025,weights[key])/positiveTotal);
+    const negativeKeys=['redundancy','cost']; const negativePriors={redundancy:-.15,cost:-.08}; for(const key of negativeKeys)weights[key]=Number(weights[key])*.92+Number((negativePriors as any)[key])*.08; const negativeTotal=negativeKeys.reduce((sum,key)=>sum+Math.abs(weights[key]),0); for(const key of negativeKeys)weights[key]=Math.max(-.30,Math.min(-.025,weights[key]/Math.max(.0001,negativeTotal)*.23));
+    const vals=positiveKeys.map(key=>Math.max(.0001,weights[key])); const mean=vals.reduce((a,b)=>a+b,0)/Math.max(1,vals.length); const entropy=-vals.reduce((sum,v)=>{const q=v;return sum+q*Math.log(q);},0)/Math.log(vals.length); const maxPositiveToMean01=Math.max(...vals)/Math.max(.0001,mean);
+    const samples=this.state.learningSamples+1; this.state={...this.state,learnedWeights:weights,learningSamples:samples,meanUtilityGap01:clamp(this.state.meanUtilityGap01*(samples-1)/samples+Math.abs(error)/samples),weightEntropy01:clamp(entropy),maxPositiveToMean01};
+    return {error01:error,learningDelta01:clamp(Math.abs(error)*rate),weights:{...weights},samples};
+  }
+  learnedPolicyDiagnostics(){return {samples:this.state.learningSamples,meanUtilityGap01:this.state.meanUtilityGap01,weightEntropy01:this.state.weightEntropy01,maxPositiveToMean01:this.state.maxPositiveToMean01,meanNetValuePerByte01:this.state.meanNetValuePerByte01,totalEstimatedBytes:this.state.totalEstimatedBytes,byteBudget:this.state.byteBudget,budgetConstrained:this.state.budgetConstrained,budgetEvictionCandidates:this.state.budgetEvictionCandidates,weights:{...this.state.learnedWeights}};}
+  rankBudget(candidates:Array<RetentionAssessment>,maxBytes:number){const budget=Math.max(4096,Math.floor(Number(maxBytes)||this.state.byteBudget));const ordered=[...candidates].sort((a,b)=>(b.netValuePerByte01-a.netValuePerByte01)||(b.score01-a.score01));let used=0;const selected:string[]=[];const deferred:string[]=[];for(const c of ordered){if(used+c.estimatedBytes<=budget){selected.push(c.id??'');used+=c.estimatedBytes;}else deferred.push(c.id??'');}return {budgetBytes:budget,usedBytes:used,utilization01:clamp(used/budget),selected,deferred};}
+  snapshot(){return structuredClone(this.state);}
+}
+export const defaultMemoryRetentionEconomy=()=>empty();

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>Kurisu Live2D</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+    #fallback {
+      position: absolute; inset: 0;
+      display: flex; align-items: flex-end; justify-content: center;
+      background: transparent;
+      z-index: 0;
+    }
+    #fallback img {
+      max-width: 100%; max-height: 100%; object-fit: contain; object-position: bottom center;
+    }
+    #canvas-wrap { position: absolute; inset: 0; z-index: 1; }
+    canvas { width: 100% !important; height: 100% !important; }
+    #status {
+      position: absolute; left: 6px; bottom: 6px; z-index: 3;
+      font: 10px monospace; color: rgba(255,255,255,0.45);
+    }
+  </style>
+</head>
+<body>
+  <div id="fallback">
+    <img src="./Kurisu/Kurisu.4096/texture_00.png" alt="Kurisu" id="tex" />
+  </div>
+  <div id="canvas-wrap"><canvas id="canvas"></canvas></div>
+  <div id="status">init…</div>
+  <script>
+    const status = document.getElementById('status');
+    const parent = window.parent;
+    let model = null;
+    let app = null;
+    let lipTarget = 0;
+    let lipCurrent = 0;
+
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = () => reject(new Error('fail ' + src));
+        document.head.appendChild(s);
+      });
+    }
+
+    const EXPR_MAP = {
+      neutral: 'Stanby Smile',
+      happy: 'Stanby Smile',
+      sad: 'Stanby Sad',
+      angry: 'Stanby Angry',
+      surprised: 'Stanby Surprised',
+      flustered: 'Blush 1',
+      embarrassed: 'Blush 2',
+      thinking: 'Stanby Scared',
+      focused: 'Stanby Smile',
+      smile: 'Stanby Smile',
+      tender: 'Blush 1',
+      sarcastic: 'Stanby Smile'
+    };
+
+    async function boot() {
+      try {
+        status.textContent = 'loading runtime…';
+        await loadScript('https://cdn.jsdelivr.net/npm/pixi.js@6.5.10/dist/browser/pixi.min.js');
+        await loadScript('https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js');
+        await loadScript('https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/cubism4.min.js');
+
+        const PIXI = window.PIXI;
+        app = new PIXI.Application({
+          view: document.getElementById('canvas'),
+          autoStart: true,
+          backgroundAlpha: 0,
+          resizeTo: window,
+          antialias: true
+        });
+
+        const { Live2DModel } = PIXI;
+        model = await Live2DModel.from('./Kurisu/Kurisu.model3.json', { autoInteract: false });
+        const scale = Math.min(app.screen.width / model.width, app.screen.height / model.height) * 0.95;
+        model.scale.set(scale);
+        model.x = app.screen.width / 2;
+        model.y = app.screen.height * 0.98;
+        model.anchor.set(0.5, 1);
+        app.stage.addChild(model);
+
+        document.getElementById('fallback').style.opacity = '0';
+        status.textContent = 'live2d ok';
+        parent && parent.postMessage({ type: 'live2d_ready' }, '*');
+
+        // breathe / blink loop
+        app.ticker.add(() => {
+          if (!model) return;
+          lipCurrent += (lipTarget - lipCurrent) * 0.35;
+          try {
+            const core = model.internalModel?.coreModel;
+            if (core) {
+              // ParamMouthOpenY if exists
+              if (typeof core.setParameterValueById === 'function') {
+                core.setParameterValueById('ParamMouthOpenY', lipCurrent);
+              }
+            }
+          } catch (e) { /* */ }
+        });
+      } catch (err) {
+        console.error(err);
+        status.textContent = 'texture only: ' + (err && err.message ? err.message : err);
+        parent && parent.postMessage({ type: 'live2d_error', error: String(err && err.message || err) }, '*');
+      }
+    }
+
+    window.addEventListener('message', (ev) => {
+      const d = ev.data || {};
+      if (d.type === 'kurisu_lipsync') {
+        lipTarget = Math.max(0, Math.min(1, Number(d.value) || 0));
+      }
+      if (d.type === 'kurisu_expression' && model) {
+        const name = EXPR_MAP[d.expression] || EXPR_MAP.neutral;
+        try {
+          model.expression(name);
+        } catch (e) {
+          try { model.internalModel?.motionManager?.expressionManager?.setExpression(name); } catch (e2) {}
+        }
+      }
+      if (d.type === 'motion' && model) {
+        try { model.motion(d.group || 'Idle'); } catch (e) {}
+      }
+      if (d.type === 'tap' && model) {
+        try { model.motion('TapBody'); } catch (e) {}
+      }
+    });
+
+    boot();
+  </script>
+</body>
+</html>

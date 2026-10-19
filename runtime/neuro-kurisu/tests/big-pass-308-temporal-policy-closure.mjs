@@ -1,0 +1,91 @@
+import assert from 'node:assert/strict';
+import { AdaptivePolicyEngine } from '../src/organism/learning/AdaptivePolicyEngine.ts';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+
+const contextA='e2|c1|u2|n2|g1|s1';
+const contextB='e2|c1|u2|n2|g2|s1';
+
+// Unit: a verified consequence of step B must partially credit the eligible step A.
+const unit=new AdaptivePolicyEngine();
+for(let i=0;i<6;i++) unit.update(contextA,'explore',.54,contextA);
+const beforePositive=unit.estimate(contextA,'explore',.5);
+unit.update(contextB,'verify',.54,contextB);
+unit.observeVerifiedOutcome(contextB,'verify',.96,.90,true,true);
+const afterPositive=unit.estimate(contextA,'explore',.5);
+assert.ok(afterPositive.verifiedUpdates>0,'positive verified outcome did not credit eligible prior action');
+assert.ok(afterPositive.verifiedValue>beforePositive.verifiedValue+.0005,'positive temporal credit did not move prior verified value');
+
+const negative=new AdaptivePolicyEngine();
+for(let i=0;i<6;i++) negative.update(contextA,'explore',.54,contextA);
+const beforeNegative=negative.estimate(contextA,'explore',.5);
+negative.update(contextB,'verify',.54,contextB);
+negative.observeVerifiedOutcome(contextB,'verify',.04,.90,true,true);
+const afterNegative=negative.estimate(contextA,'explore',.5);
+assert.ok(afterNegative.verifiedUpdates>0,'negative verified outcome did not credit eligible prior action');
+assert.ok(afterNegative.verifiedValue<beforeNegative.verifiedValue-.0005,'negative temporal credit did not suppress prior verified value');
+
+const learned=new AdaptivePolicyEngine();
+const beforeTop=learned.topActions(contextA);
+const beforeEffective=learned.topEffectiveActions(contextA);
+for(let i=0;i<18;i++) learned.observeVerifiedOutcome(contextA,'explore',.95,.92,true,true);
+for(let i=0;i<18;i++) learned.observeVerifiedOutcome(contextA,'respond',.05,.92,true,true);
+const afterTop=learned.topActions(contextA);
+const afterEffective=learned.topEffectiveActions(contextA);
+const beforeWinner=beforeTop[0].action;
+const afterWinner=afterTop[0].action;
+const effectiveWinner=afterEffective[0].action;
+const exploreBias=learned.bias(contextA,'explore',.5);
+const respondBias=learned.bias(contextA,'respond',.5);
+assert.equal(beforeWinner,'respond','baseline tie order changed unexpectedly');
+assert.equal(afterWinner,'respond','raw value tie remains intentionally unchanged without ordinary updates');
+assert.equal(effectiveWinner,'explore','trusted learning did not change effective policy ranking');
+assert.ok(exploreBias>0.001,'positive verified closure did not raise explore bias');
+assert.ok(respondBias<-.001,'negative verified closure did not suppress respond bias');
+
+const core=new OrganismCore(new MemoryStateStore(),{performanceProfile:'mobile',cycleResultMode:'operational',enableTemporalResolutionGovernor:true,operationalPulseEvery:2,checkpointMaxDirtyCycles:256,checkpointMinIntervalMs:600000});
+await core.init();
+const corePolicy=(core).adaptivePolicy;
+const coreContext='e2|c1|u2|n2|g1|s1';
+const coreBeforeEffective=corePolicy.topEffectiveActions(coreContext);
+for(let i=0;i<16;i++) corePolicy.observeVerifiedOutcome(coreContext,'explore',.94,.92,true,true);
+for(let i=0;i<16;i++) corePolicy.observeVerifiedOutcome(coreContext,'respond',.06,.92,true,true);
+const coreAfterEffective=corePolicy.topEffectiveActions(coreContext);
+assert.equal(coreAfterEffective[0].action,'explore','live core policy object did not rank verified preferred action first');
+assert.ok(coreAfterEffective[0].score>coreBeforeEffective[0].score,'live core effective ranking did not increase');
+const firstCounts={};
+const secondCounts={};
+let full=0;
+let verified=0;
+for(let i=0;i<48;i++){
+  const embodiment={bodyEnergy01:.88-i*.002,cognitiveCapacity01:.90,thermalStrain01:i>40?.62:.14,sensoryFreshness01:.86,battery01:.86-i*.002,cpuLoad01:i>40?.66:.18,ramPressure01:i>40?.64:.14,awake:true};
+  const result=await core.observeOperational(i%2===0?{text:'Check the consequence and adapt the strategy.',novelty:.22,surprise:.08,embodiment}:{embodiment});
+  if(result.workspace.content.temporalResolution==='micro') continue;
+  full++;
+  const action=result.decision?.selected?.action??'wait';
+  const target=full<=Math.ceil(48/2/2) ? firstCounts : secondCounts;
+  target[action]=(target[action]??0)+1;
+  const reward=(action==='verify'||action==='explore')?.88:(action==='reflect'?.72:(action==='rest'?.64:.42));
+  const world=(full%2===0)?{action,before:{tick:i,location:'b308',energy:.82,attention:.74,uncertainty:.56,facts:[`before-${i}`],objects:[],events:[`before-${i}`]},after:{tick:i+1,location:'b308',energy:.78,attention:.80,uncertainty:.26,facts:[`before-${i}`,`after-${i}`],objects:[],events:[`before-${i}`,`after-${i}`]},reward,surprise:.08,at:Date.now()}:undefined;
+  if(world) verified++;
+  await core.feedback({success:reward,reward,surprise:.08,evidenceSource:world?'external':'unknown',worldTransition:world});
+}
+const diag=core.snapshot().facets.learning.adaptivePolicy;
+const rowList=Object.values(diag.values??{}).flatMap(v=>Object.values(v??{}));
+const temporalRows=rowList.filter(r=>Number(r?.verifiedUpdates??0)>0 && Number(r?.eligibility01??0)>=0);
+const firstTotal=Object.values(firstCounts).reduce((a,b)=>a+b,0);
+const secondTotal=Object.values(secondCounts).reduce((a,b)=>a+b,0);
+const firstExplore=(firstCounts.explore??0)/Math.max(1,firstTotal);
+const secondExplore=(secondCounts.explore??0)/Math.max(1,secondTotal);
+const distributionShift=Math.abs(secondExplore-firstExplore);
+assert.ok(full>=18,'live B308 did not produce enough full cycles');
+assert.ok(verified>=6,'live B308 did not exercise enough verified outcomes');
+assert.ok(diag.temporalCreditUpdates>=full-1,'temporal credit updates did not track live transitions');
+assert.ok(diag.verifiedTemporalUpdates>0,'live B308 produced no verified temporal credits');
+assert.ok(temporalRows.length>0,'live B308 produced no temporal policy rows');
+const restored=new OrganismCore(new MemoryStateStore({initial:core.snapshot()}),{performanceProfile:'mobile',cycleResultMode:'operational',enableTemporalResolutionGovernor:true,operationalPulseEvery:2,checkpointMaxDirtyCycles:256,checkpointMinIntervalMs:600000});
+await restored.init();
+const restoredPolicy=restored.snapshot().facets.learning.adaptivePolicy;
+assert.equal(restoredPolicy.verifiedTemporalUpdates,diag.verifiedTemporalUpdates,'verified temporal updates lost after restart');
+console.log(JSON.stringify({pass:true,unit:{beforePositive,afterPositive,beforeNegative,afterNegative,beforeWinner,afterWinner,effectiveWinner,beforeEffective,afterEffective,exploreBias,respondBias},core:{full,verified,temporalCreditUpdates:diag.temporalCreditUpdates,verifiedTemporalUpdates:diag.verifiedTemporalUpdates,coreBeforeEffective,coreAfterEffective,firstCounts,secondCounts,firstExplore,secondExplore,distributionShift,temporalRows:temporalRows.length},restart:true},null,2));
+process.exit(0);

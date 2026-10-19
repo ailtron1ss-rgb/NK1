@@ -1,0 +1,79 @@
+NEURO-KURISU 34.19.0 — BIG PASS 48 FINAL VERIFICATION
+Date: 2026-09-06
+
+RELEASE
+application=34.19.0
+stateSchema=92
+organismCore=70.0.0-master-prompt-progress-engine
+
+CURRENT BIG PASS CHECKLIST
+BIG_PASS_PROGRESS=100 checks=112/112
+
+CORE REGRESSION
+TYPECHECK=PASS
+BIG_PASS_48=PASS
+BIG_PASS_46=PASS
+BIG_PASS_47=PASS
+BIG_PASS_44_KERNEL=PASS
+BIG_PASS_45_ARCHITECTURE_PERFORMANCE=PASS
+P64_P65_INTEGRATION=PASS
+P66_P68_INTEGRATION=PASS
+P74_P77_INTEGRATION=PASS
+P80_P82_RUNTIME_E2E=PASS
+CLEAN_RESTART_PERSISTENCE=PASS
+MEMORY_DEDUP=PASS
+IDENTITY_LOCK=PASS
+REPLAY=PASS
+CONCURRENCY=PASS (independent verification available; giant composite runs may exceed wall-clock)
+API_SECURITY=PASS
+SERVER_SECURITY_SMOKE=PASS
+PORTABLE_SUBJECT_BOUNDARY=PASS
+OPERATIONAL_HARDENING=PASS
+
+STATIC / RELEASE
+SOURCE_TRUTH=PASS
+CLEAN_ARCHITECTURE=PASS
+FORENSICS=PASS
+SOURCE_HYGIENE=PASS
+RELEASE_CONTRACT=PASS
+RELEASE_SOURCE=PASS
+CLEAN_INTEGRITY=PASS
+BIG_PASS_48_AUDIT=PASS
+
+LONG-HORIZON OPERATIONAL
+250-cycle=PASS ratio=1.524 first=18.34ms last=27.96ms p95=32.49ms heapGrowth=2.279
+500-cycle=PASS steady-state ratio=1.148 first=29.51ms last=33.89ms p95=36.13ms heap=25.06->99.17MB
+1000-cycle=PASS ratio=1.397 warm=27.34ms last=38.18ms p95=45.97ms heap=48.64->75.43MB memory=224
+
+EVIDENCE FIREWALL
+quarantine/promoted/contested/rejected/expired=implemented
+sourceIdentity != contentIdentity=PASS
+multi-source promotion=PASS
+contradiction retention=PASS
+proof-carrying promotion receipt=PASS
+receipt persists as audit trail after contradiction=PASS
+
+AUTONOMOUS PROJECTS
+multi-project research session reset on project switch=PASS
+external research source separation=PASS
+bounded tool gateway=PASS
+skill acquisition benchmark=persisted and integrated
+
+ARCHITECTURE
+CognitiveSubsystemPorts uses accessor contract; concrete OrganismCore dependency removed from ports.
+Subsystem registry health is probe-based and cached.
+Physical decomposition of OrganismCore is NOT claimed complete.
+
+LIMITATIONS
+Live external-network validation is not available in this sandbox and is therefore not claimed as PASS.
+Termux:API hardware integration is not device-validated here.
+Native Android lifecycle host remains open.
+Real vision backend remains open.
+Full social cognition remains open.
+Independent Shadow Organism remains partial.
+Fully learned world-model competition remains partial.
+24h/72h/7d/30d real-device validation remains open.
+Phenomenal consciousness is not established or claimed.
+
+COMPOSITE AUDIT NOTE
+The giant composite audit can exceed a single wall-clock window even when its constituent gates pass independently. This is tracked as operational tooling debt, not converted into a false PASS.

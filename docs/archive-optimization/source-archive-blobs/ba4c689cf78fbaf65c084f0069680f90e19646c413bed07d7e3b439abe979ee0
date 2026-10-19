@@ -1,0 +1,1251 @@
+import { FileStateStore } from '../persistence/FileStateStore.ts';
+import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
+import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
+import { PlanEngine } from '../world/PlanEngine.ts';
+import { OfflineConsolidation, type ConsolidationResult } from '../cognition/OfflineConsolidation.ts';
+import type { OrganismCycleResult, CognitiveProposal, WorldContext, WorldTransitionForOrganism } from './types.ts';
+import { buildCognitivePrompt, type LanguageInvoker, type LanguageResponse } from '../language/LanguageOrgan.ts';
+import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
+import { EmbodimentRuntime } from '../body/EmbodimentRuntime.ts';
+import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
+import { OperationalJournal } from '../persistence/OperationalJournal.ts';
+import type { JsonStateStore } from '../persistence/FileStateStore.ts';
+import { choosePhonePolicyDelay, type PhonePolicyConfig } from '../system/PhoneRuntimePolicy.ts';
+import { RuntimeClockScheduler, type RuntimeClockDecision } from '../system/RuntimeClockScheduler.ts';
+import { ContinuityLedger } from '../system/ContinuityLedger.ts';
+import { RuntimeEvidenceBus } from '../system/RuntimeEvidenceBus.ts';
+import { CognitiveEventFabric } from '../system/CognitiveEventFabric.ts';
+import { CognitiveResourceEconomy } from '../system/CognitiveResourceEconomy.ts';
+import { RealityEvidenceLedger } from '../system/RealityEvidenceLedger.ts';
+import { UnifiedCognitiveCycle } from '../system/UnifiedCognitiveCycle.ts';
+import { ContinuousCognitiveFabric } from '../system/ContinuousCognitiveFabric.ts';
+import { RuntimeClosureLedger } from '../system/RuntimeClosureLedger.ts';
+import { CausalDomainClosureLedger, type CausalDomainEvidence } from '../system/CausalDomainClosureLedger.ts';
+import { AdaptiveConsolidationGate } from '../system/AdaptiveConsolidationGate.ts';
+import { cameraEvidenceFromResult, inspectCameraFile, type CameraEvidence } from '../body/CameraEvidenceProcessor.ts';
+import { EmbodiedActionExecutor, type EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
+import { EmbodiedRecoveryController } from '../body/EmbodiedRecoveryController.ts';
+import type { VisionSemanticBackend } from '../body/VisionSemanticBackend.ts';
+import { RealityGroundingController, type RealityGroundingMode } from '../system/RealityGroundingController.ts';
+import { NeuralCausalTraceLedger } from '../system/NeuralCausalTraceLedger.ts';
+import { RealityLearningGate } from '../system/RealityLearningGate.ts';
+import { RealityShadowBridge } from '../system/RealityShadowBridge.ts';
+import { ExternalPostconditionVerifier } from '../system/ExternalPostconditionVerifier.ts';
+import { RuntimePerformanceGovernor } from '../system/RuntimePerformanceGovernor.ts';
+
+function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
+const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
+
+function environmentToWorldContext(snapshot: ReturnType<WorldEnvironment['snapshot']>): WorldContext {
+  return {
+    tick: Number(snapshot.tick),
+    location: String(snapshot.location),
+    energy: clamp01(snapshot.energy),
+    attention: clamp01(snapshot.attention),
+    uncertainty: clamp01(snapshot.uncertainty),
+    facts: snapshot.facts.slice(-120),
+    objects: snapshot.objects.slice(-64).map(object => ({ ...object })),
+    events: snapshot.events.slice(-40),
+  };
+}
+
+function environmentTransitionToOrganismTransition(transition: ReturnType<WorldEnvironment['simulate']>): WorldTransitionForOrganism {
+  return {
+    action: transition.action,
+    before: environmentToWorldContext(transition.before),
+    after: environmentToWorldContext(transition.after),
+    reward: transition.reward,
+    surprise: transition.surprise,
+    at: transition.at,
+  };
+}
+
+function bodyActionCost(body: ReturnType<EmbodimentRuntime['snapshot']>, action: EnvironmentAction): number {
+  const base = { observe:0.04, inspect:0.12, move:0.16, collect:0.14, rest:0.01, communicate:0.06 }[action];
+  return Math.max(0, Math.min(1, base + (1-body.cognitiveCapacity01)*0.25 + body.thermalStrain01*0.15));
+}
+
+export interface RuntimeConfig extends OrganismConfig {
+  stateFile: string;
+  worldStateFile?: string;
+  intervalMs?: number;
+  enableLanguage?: boolean;
+  autoRun?: boolean;
+  sensorIntervalMs?: number;
+  phonePolicy?: Partial<PhonePolicyConfig>;
+  languageInvoker?: LanguageInvoker;
+  stateStore?: JsonStateStore<PersistedOrganism>;
+  worldStateStore?: JsonStateStore<PersistedWorld>;
+  journal?: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
+  visionBackend?: VisionSemanticBackend;
+  /** P2836: how real device outcomes compete with the predictive simulator. */
+  realityMode?: RealityGroundingMode;
+}
+
+export interface RuntimeStep { cycle: OrganismCycleResult; worldAction: EnvironmentAction; language?: LanguageResponse; embodiedAction?: EmbodiedActionResult; }
+
+export class OrganismRuntime {
+  readonly core: OrganismCore;
+  readonly environment = new WorldEnvironment();
+  readonly plans: PlanEngine;
+  readonly consolidation = new OfflineConsolidation();
+  readonly counterfactuals = new CounterfactualEngine(this.environment);
+  readonly embodiment = new EmbodimentRuntime();
+  readonly embodiedActions = new EmbodiedActionExecutor(this.embodiment);
+  readonly embodiedRecovery = new EmbodiedRecoveryController();
+  private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
+  private stepsSinceConsolidation = 0;
+  private readonly worldStore: JsonStateStore<PersistedWorld>;
+  private readonly journal: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
+  private readonly sensorIntervalMs: number;
+  private readonly phonePolicy: PhonePolicyConfig;
+  private worldDirtyCycles = 0;
+  private lastWorldCheckpointAt = 0;
+  private lastThermalStrain01 = 0.2;
+  private consecutiveActiveCycles = 0;
+  private queue: Promise<unknown> = Promise.resolve();
+  private initialized = false;
+  private readonly clockScheduler = new RuntimeClockScheduler();
+  private readonly continuityLedger: ContinuityLedger;
+  private readonly evidenceBus = new RuntimeEvidenceBus(384);
+  private readonly cognitiveEventFabric = new CognitiveEventFabric(512);
+  private readonly resourceEconomy = new CognitiveResourceEconomy();
+  private readonly realityEvidence = new RealityEvidenceLedger(384);
+  private readonly unifiedCycle = new UnifiedCognitiveCycle();
+  private readonly continuousCognitiveFabric = new ContinuousCognitiveFabric();
+  private readonly realityGrounding = new RealityGroundingController();
+  private readonly neuralCausalTrace = new NeuralCausalTraceLedger();
+  private readonly realityLearningGate = new RealityLearningGate();
+  private readonly realityShadowBridge = new RealityShadowBridge();
+  private readonly postconditionVerifier = new ExternalPostconditionVerifier();
+  private readonly runtimePerformance = new RuntimePerformanceGovernor(1200);
+  private readonly runtimeClosure = new RuntimeClosureLedger();
+  private readonly causalDomainClosureLedger = new CausalDomainClosureLedger(32);
+  private readonly adaptiveConsolidationGate = new AdaptiveConsolidationGate();
+  private stopping = false;
+  private sleepStartedAt: number | null = null;
+  private sleepReason = '';
+  private lastAutonomyStepAt = 0;
+  private lastEmergencyCheckpointTick = -1;
+  private emergencyCheckpointCount = 0;
+  private lastEmergencyCheckpointReason: string | null = null;
+  private pendingEmergencyCheckpointReason: string | null = null;
+  private pendingEmergencyCheckpointTick = -1;
+
+
+  constructor(config: RuntimeConfig) {
+    this.config = { intervalMs: 30_000, enableLanguage: false, autoRun: false, ...config };
+    const defaultSensorCadenceMs = config.performanceProfile === 'mobile' ? 60_000 : 60_000;
+    const inheritedSensorCadenceMs = config.intervalMs == null ? defaultSensorCadenceMs : Math.max(30_000, Number(config.intervalMs) * 2);
+    this.sensorIntervalMs = Math.max(10_000, Number(config.sensorIntervalMs ?? inheritedSensorCadenceMs));
+    this.phonePolicy = {
+      mode: 'active', baseIntervalMs: this.config.intervalMs, samplerIntervalMs: this.sensorIntervalMs,
+      checkpointMinIntervalMs: Number(config.checkpointMinIntervalMs ?? 60_000), checkpointMaxDirtyCycles: Number(config.checkpointMaxDirtyCycles ?? 3),
+      worldCheckpointMinIntervalMs: Number(config.phonePolicy?.worldCheckpointMinIntervalMs ?? 300_000),
+      worldCheckpointMaxDirtyCycles: Number(config.phonePolicy?.worldCheckpointMaxDirtyCycles ?? 10), maxConsecutiveActiveCycles: Number(config.phonePolicy?.maxConsecutiveActiveCycles ?? 3),
+      ...(config.phonePolicy ?? {}),
+    };
+    this.phonePolicy.baseIntervalMs = Math.max(5_000, Number(this.phonePolicy.baseIntervalMs));
+    this.phonePolicy.samplerIntervalMs = Math.max(10_000, Number(this.phonePolicy.samplerIntervalMs));
+    this.phonePolicy.checkpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.checkpointMaxDirtyCycles));
+    this.phonePolicy.worldCheckpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.worldCheckpointMaxDirtyCycles));
+    this.stopping = false;
+    this.core = new OrganismCore(config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile), { ...config, cycleResultMode:'operational' });
+    this.realityGrounding.setMode(config.realityMode ?? 'hybrid');
+    this.plans = new PlanEngine(this.environment, {
+      predict: (action, baseReward, context) => {
+        const wm = this.core.worldModelProvider().predict(action, baseReward, context as any);
+        return {
+          predicted: wm.predicted,
+          confidence: Math.max(0.15, wm.confidence),
+          samples: wm.samples ?? 0,
+          uncertainty: wm.uncertainty,
+          modelReady: Boolean(wm.modelReady),
+        };
+      },
+    });
+    const worldPath = config.worldStateFile ?? config.stateFile.replace(/\.json$/i, '.world.json');
+    this.worldStore = config.worldStateStore ?? new FileStateStore<PersistedWorld>(worldPath);
+    this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
+    this.continuityLedger = new ContinuityLedger(config.stateFile.replace(/\.json$/i, '.continuity.jsonl'));
+    this.registerRuntimeClocks();
+  }
+
+  private enqueue<T>(work: () => Promise<T>): Promise<T> {
+    const run = this.queue.then(work, work);
+    this.queue = run.then(() => undefined, () => undefined);
+    return run;
+  }
+
+  async init(): Promise<void> {
+    return this.enqueue(async () => {
+      if (this.initialized) return;
+      await this.journal.write('info', 'runtime.init.begin');
+      await this.core.init();
+      const systemSnapshot = this.core.systemSnapshot();
+      this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
+      this.cognitiveEventFabric.restore(systemSnapshot.cognitiveEventFabric ?? undefined);
+      this.resourceEconomy.restore(systemSnapshot.cognitiveResourceEconomy ?? undefined);
+      this.runtimePerformance.restore(systemSnapshot.runtimePerformance ?? undefined);
+      this.realityEvidence.restore(systemSnapshot.realityEvidenceLedger ?? undefined);
+      this.unifiedCycle.restore(systemSnapshot.unifiedCognitiveCycle ?? undefined);
+      this.continuousCognitiveFabric.restore(systemSnapshot.continuousCognitiveFabric ?? undefined);
+      this.realityGrounding.restore(systemSnapshot.realityGrounding ?? undefined);
+      this.realityGrounding.setMode(this.config.realityMode ?? systemSnapshot.realityGrounding?.mode ?? 'hybrid');
+      this.neuralCausalTrace.restore(systemSnapshot.neuralCausalTrace ?? undefined);
+      this.realityLearningGate.restore(systemSnapshot.realityLearningGate ?? undefined);
+      this.realityShadowBridge.restore(systemSnapshot.realityShadowBridge ?? undefined);
+      this.runtimeClosure.restore(systemSnapshot.runtimeClosure ?? undefined);
+      this.causalDomainClosureLedger.restore(systemSnapshot.causalDomainClosureLedger ?? undefined);
+      this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
+      const runtimeView = this.core.runtimeClosureOperationalSnapshot();
+      this.runtimeClosure.restoreVerification({
+        at: Date.now(),
+        tick: runtimeView.tick,
+        previousDurableHash: systemSnapshot.runtimeClosure?.lastDurableHash,
+        replaySignature: runtimeView.replaySignature,
+        continuousTick: runtimeView.continuous?.tick,
+        processed: runtimeView.continuous?.processed,
+      });
+      this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+      const world = await this.worldStore.load();
+      this.environment.restore(world);
+      if (!world) { await this.worldStore.save(this.environment.persisted()); this.lastWorldCheckpointAt = Date.now(); }
+      const snap = this.core.snapshot();
+      await this.embodiment.init(snap.facets.embodiment?.body);
+      this.embodiedRecovery.restore(snap.facets.embodiment?.embodiedRecovery);
+      this.core.registerActionTool({ id:'android.speak', capability:'android.tts', destructive:false, execute:async(input)=>{ const text=String(input.text||'').slice(0,2000); if(!text) return {ok:false,error:'empty-text'}; const ok=await this.embodiment.speak(text); return {ok,textLength:text.length}; } });
+      this.core.registerActionTool({ id:'android.listen', capability:'android.stt', destructive:false, execute:async()=>{ const text=await this.embodiment.listen(); return {ok:text!=null,text:text?.slice(0,4000) ?? null}; } });
+      this.core.registerActionTool({ id:'android.capture_camera', capability:'android.camera', destructive:false, execute:async(input)=>{ const cameraId=Math.max(0,Math.floor(Number(input.cameraId??0))); const retain=Boolean(input.retain); return this.captureCamera(cameraId,retain); } });
+      this.core.registerActionTool({ id:'organism.project.device', capability:'project.device.read', destructive:false, projectAllowed:true, execute:async()=>{ const b=this.embodiment.snapshot(); const fresh= b.telemetry.source==='android-termux' && b.telemetry.staleMs===0; return {ok:fresh,verified:fresh,evidenceSource:fresh?'device':'host-fallback',independenceKey:`device:${b.telemetry.sampledAt}`,battery01:b.telemetry.battery01,thermal01:b.telemetry.thermalPressure01,cpuLoad01:b.telemetry.cpuLoad01,ramPressure01:b.telemetry.ramPressure01,awake:b.awake,sampledAt:b.telemetry.sampledAt,staleMs:b.telemetry.staleMs,error:fresh?undefined:'android-telemetry-not-fresh'}; } });
+      this.core.registerActionTool({ id:'organism.project.world', capability:'project.world.read', destructive:false, projectAllowed:true, execute:async()=>{ const c=this.environment.observationContext(); return {ok:true,evidenceSource:'simulator',independenceKey:`sim-world:${c.tick}`,tick:c.tick,location:c.location,energy:c.energy,attention:c.attention,uncertainty:c.uncertainty,facts:c.facts.slice(-12),objects:c.objects.slice(-12),events:c.events.slice(-12)}; } });
+      await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog(), { sensorFailures: snap.facets.embodiment?.sensorFailures ?? 0 });
+      this.initialized = true;
+      this.startEmbodimentClock();
+      this.clockScheduler.start('reflection');
+      if (this.config.autoRun) this.startCognitiveClock();
+      await this.journal.write('info', 'runtime.init.complete', { tick: this.core.operationalStatusSnapshot().tick });
+    });
+  }
+
+  /** B368: explicit endogenous cycle with no external command. */
+  async autonomousStep(options: { deliberate?: boolean } = { deliberate: false }): Promise<RuntimeStep> {
+    return this.step(undefined, { deliberate: false, ...options });
+  }
+
+  /** B368: bounded sequential autonomous closed loop. */
+  async runAutonomousCycles(count = 1): Promise<{ cycles:number; actions:string[]; worldTicks:number; neuralLearningUpdates:number; temporalUpdates:number; externalCommands:number }> {
+    const total=Math.max(0,Math.min(512,Math.floor(Number(count)||0)));
+    const actions:string[]=[];
+    for(let i=0;i<total;i+=1){ const result=await this.autonomousStep(); actions.push(result.worldAction); }
+    const neural=this.core.b365UnifiedNeuroCausalDiagnostics();
+    return {cycles:total,actions,worldTicks:this.environment.snapshot().tick,neuralLearningUpdates:Number(neural.learningUpdates??0),temporalUpdates:Number(neural.temporalUpdates??0),externalCommands:0};
+  }
+
+  async step(externalText?: string, options: { deliberate?: boolean } = { deliberate: true }): Promise<RuntimeStep> {
+    return this.enqueue(async () => {
+      const stepStartedAt=Date.now();
+      let stepCpuStart:any=null;
+      try { stepCpuStart=(process as any).cpuUsage?.(); } catch {}
+      await this.core.beginBatch();
+      const worldBeforeTick=Number(this.environment.snapshot().tick);
+      const domainBefore=this.core.causalDomainOperationalSnapshot(worldBeforeTick);
+      this.causalDomainClosureLedger.begin({
+        at: Date.now(),
+        tick: Number(domainBefore.tick)+1,
+        counters: {
+          memoryCount: domainBefore.memoryCount, worldTick: domainBefore.worldTick, identityRevision: domainBefore.identityRevision,
+          agencyDecisions: domainBefore.agencyDecisions, learningUpdates: domainBefore.learningUpdates, selfChangeCount: domainBefore.selfChangeCount,
+          lifeGraphCompleteChains: domainBefore.lifeGraphCompleteChains,
+        },
+      });
+      try {
+        const previousTick = this.core.operationalStatusSnapshot().tick;
+        const previousProcessed = this.continuousCognitiveFabric.diagnostics().processed;
+        const result = await this.stepInternal(externalText, options);
+        const fabric = this.continuousCognitiveFabric.diagnostics();
+        this.runtimeClosure.step({
+          at: Date.now(),
+          previousTick,
+          stateTick: result.cycle.state.tick,
+          cycleTick: result.cycle.state.tick,
+          continuousTick: fabric.processed > 0 ? Number(fabric.tick ?? 0) : undefined,
+          processed: fabric.processed,
+          previousProcessed,
+          continuity01: fabric.continuity01,
+          energy01: result.cycle.state.needs.energy,
+          uncertainty01: result.cycle.state.needs.uncertainty,
+          identityContinuity01: this.core.operationalStatusSnapshot().identityContinuity,
+          predictionError01: result.cycle.state.predictionError,
+          action: result.worldAction,
+        });
+        this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+        await this.journal.write('info', 'runtime.step', { tick: result.cycle.state.tick, action: result.worldAction, external: Boolean(externalText) });
+        await this.continuityLedger.record({
+          at: Date.now(), tick: result.cycle.state.tick, stage: this.core.runtimeMetadataSnapshot().stage, action: result.worldAction,
+          energy01: result.cycle.state.needs.energy, uncertainty01: result.cycle.state.needs.uncertainty,
+          predictionError01: result.cycle.state.predictionError, selfPredictionError01: result.cycle.state.selfPredictionError,
+          identityContinuity01: this.core.consciousnessSnapshot().identityContinuity.continuity,
+          memoryCount: result.cycle.memories?.length ?? 0, goalCount: result.cycle.goals?.length ?? 0,
+          stateBytes: new TextEncoder().encode(JSON.stringify({ state: result.cycle.state })).byteLength,
+          replaySignature: this.core.runtimeMetadataSnapshot().replaySignature,
+        }).catch(() => {});
+
+        const worldAfterTick=Number(this.environment.snapshot().tick);
+        const domainAfter=this.core.causalDomainOperationalSnapshot(worldAfterTick);
+        const evidence:CausalDomainEvidence={
+          memoryChanged: domainAfter.memoryCount > domainBefore.memoryCount || domainAfter.memoryEventCount > domainBefore.memoryEventCount || (domainAfter.continuousProcessed ?? 0) > (domainBefore.continuousProcessed ?? 0),
+          worldChanged: worldAfterTick > worldBeforeTick,
+          agencyChanged: domainAfter.agencyDecisions > domainBefore.agencyDecisions,
+          learningChanged: domainAfter.learningUpdates > domainBefore.learningUpdates,
+          selfChanged: domainAfter.selfChangeCount > domainBefore.selfChangeCount || Math.abs(domainAfter.identityContinuity01-domainBefore.identityContinuity01)>=0.005,
+          memoryWorldVerified: this.core.memoryWorldCausalBridgeSnapshot().recent?.some((row:any)=>Number(row?.tick)===Number(result.cycle.state.tick) && row?.status==='verified') ?? false,
+          worldAgencyLearningVerified: this.core.worldAgencyLearningCausalBridgeSnapshot().recent?.some((row:any)=>Number(row?.tick)===Number(result.cycle.state.tick) && row?.status==='verified') ?? false,
+          causalLifeGraphChain: Boolean((domainAfter as any).lifeGraphCurrentTickComplete),
+          replaySignaturePresent: Boolean(domainAfter.replaySignature),
+          durableStateAligned: domainAfter.lastCheckpointTick === domainAfter.tick && Boolean(domainAfter.replaySignature),
+        };
+        const closureRecord=this.causalDomainClosureLedger.end({counters:{
+          memoryCount:domainAfter.memoryCount,worldTick:domainAfter.worldTick,identityRevision:domainAfter.identityRevision,agencyDecisions:domainAfter.agencyDecisions,
+          learningUpdates:domainAfter.learningUpdates,selfChangeCount:domainAfter.selfChangeCount,lifeGraphCompleteChains:domainAfter.lifeGraphCompleteChains,
+        },evidence});
+        this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
+        if (closureRecord && closureRecord.status==='FAIL') {
+          await this.journal.write('warn','runtime.causal-domain-closure.degraded',{tick:closureRecord.tick,score01:closureRecord.score01,chain:closureRecord.causalChain});
+        }
+        return result;
+      } catch (error: any) {
+        await this.journal.write('error', 'runtime.step.failed', { message: String(error?.message || error) });
+        throw error;
+      } finally {
+        await this.core.endBatch();
+        let cpuMs=0;
+        try { if(stepCpuStart && (process as any).cpuUsage) { const cpu=(process as any).cpuUsage(stepCpuStart); cpuMs=(Number(cpu?.user??0)+Number(cpu?.system??0))/1000; } } catch {}
+        const mem=process.memoryUsage();
+        const afterBody=this.embodiment.snapshot();
+        this.runtimePerformance.record({wallMs:Math.max(0,Date.now()-stepStartedAt),cpuMs,heapUsedBytes:Number(mem.heapUsed),rssBytes:Number(mem.rss),thermal01:afterBody.thermalStrain01,ramPressure01:afterBody.telemetry.ramPressure01});
+        this.core.setRuntimePerformance(this.runtimePerformance.snapshot());
+        if (this.pendingEmergencyCheckpointReason !== null) {
+          const reason = this.pendingEmergencyCheckpointReason;
+          const tick = this.pendingEmergencyCheckpointTick;
+          this.pendingEmergencyCheckpointReason = null;
+          this.pendingEmergencyCheckpointTick = -1;
+          await this.core.flush();
+          this.lastEmergencyCheckpointTick = tick;
+          this.emergencyCheckpointCount += 1;
+          this.lastEmergencyCheckpointReason = reason;
+          await this.journal.write('warn','runtime.emergency-checkpoint',{tick,reason});
+        }
+        const runtimeView = this.core.runtimeClosureOperationalSnapshot();
+        this.runtimeClosure.durable({
+          at: Date.now(),
+          tick: runtimeView.tick,
+          stateTick: runtimeView.tick,
+          replaySignature: runtimeView.replaySignature,
+          continuousTick: runtimeView.continuous?.tick,
+          continuityProcessed: runtimeView.continuous?.processed,
+          memoryCount: runtimeView.memoryCount,
+        });
+        this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+        const causalView=this.core.causalDomainOperationalSnapshot(Number(this.environment.snapshot().tick));
+        this.causalDomainClosureLedger.durable({
+          tick: causalView.tick,
+          stateTick: causalView.tick,
+          replaySignature: causalView.replaySignature,
+          continuousTick: causalView.continuousTick,
+          processed: causalView.continuousProcessed,
+        });
+        this.causalDomainClosureLedger.finalizeDurable({
+          tick: causalView.tick,
+          stateTick: causalView.tick,
+          replaySignature: causalView.replaySignature,
+          continuousTick: causalView.continuousTick,
+          processed: causalView.continuousProcessed,
+        });
+        this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
+      }
+    });
+  }
+
+  private async generateCognitiveProposal(cycle: OrganismCycleResult, fusedObservation: string, deliberate = false, autonomous = false): Promise<CognitiveProposal|null> {
+    if (!this.config.enableLanguage || !this.config.languageInvoker) return null;
+    const current = this.core.operationalStatusSnapshot();
+    const budgetSnapshot = this.core.cognitiveBudgetOperationalSnapshot();
+    const shouldAsk = Boolean(fusedObservation.trim()) && (deliberate || (autonomous && current.predictionError > 0.62));
+    if (!shouldAsk) return null;
+    const request=buildCognitiveProposalPrompt(cycle,fusedObservation);
+    const budgetMode = budgetSnapshot?.mode ?? 'shallow';
+    if (!deliberate && (budgetMode === 'sleep' || budgetMode === 'defer' || budgetMode === 'reflex')) return null;
+    const infoGain=cycle.state.needs.uncertainty * .55 + cycle.state.needs.novelty * .45;
+    const tierCost=budgetMode==='deep' ? .42 : budgetMode==='simulate' ? .30 : .20;
+    const spend=this.core.cognitiveBudgetSpend(budgetMode==='deep'?'llm-deep':'llm-fast',tierCost,infoGain,'cognitive-proposal');
+    if(!spend.accepted) return parseCognitiveProposal('budget constrained: preserve resources and verify supplied evidence before changing course','local-fallback');
+    try {
+      const response=await this.config.languageInvoker(request);
+      await this.core.recordLanguageBackend(response.backend, response.latencyMs, true);
+      this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:response.backend,confidence01:.7,payload:{latencyMs:response.latencyMs,role:'cognitive-proposal'}});
+      return parseCognitiveProposal(response.text,'llm');
+    } catch (error) {
+      await this.core.recordLanguageFailure(undefined, 0).catch(()=>{});
+      this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:'language-failure',confidence01:.15,payload:{role:'cognitive-proposal',message:String((error as any)?.message || error).slice(0,180)}});
+      return parseCognitiveProposal('local structured fallback: verify supplied evidence before changing course','local-fallback');
+    }
+  }
+
+  private async stepInternal(externalText?: string, options: { deliberate?: boolean } = {}): Promise<RuntimeStep> {
+    if (!this.initialized) throw new Error('OrganismRuntime.init() must be called first');
+    if (externalText) this.embodiment.userActivity();
+    let body = await this.embodiment.sample();
+    const resourceAllocation = this.resourceEconomy.allocate({
+      tick: this.core.operationalStatusSnapshot().tick,
+      at: Date.now(),
+      energy01: body.bodyEnergy01,
+      cognitiveLoad01: body.cognitiveCapacity01 <= 0 ? 1 : 1 - body.cognitiveCapacity01,
+      uncertainty01: this.core.operationalStatusSnapshot().predictionError,
+      novelty01: this.core.operationalStatusSnapshot().autonomyScore,
+      predictionDebt01: Number((this.core.predictionDebtSnapshot() as any)?.meanPriority01 ?? 0),
+      thermalStrain01: body.thermalStrain01,
+      ramPressure01: clamp01((1-body.cognitiveCapacity01)*.65 + (1-body.cognitiveCapacity01)*.35),
+      performancePressure01: 0,
+      awake: body.awake,
+    });
+    this.evidenceBus.publish({tick:this.core.operationalStatusSnapshot().tick,kind:'resource',source:'cognitive-resource-economy',confidence01:.92,payload:{mode:resourceAllocation.mode,scarcity01:resourceAllocation.scarcity01,attention01:resourceAllocation.attention01,simulation01:resourceAllocation.simulation01,learning01:resourceAllocation.learning01}});
+    this.core.setCognitiveResourceEconomy(this.resourceEconomy.snapshot());
+    const previousNeural = this.core.b365UnifiedNeuroCausalDiagnostics();
+    const perceptionPlan = this.core.b365PlanActivePerception({
+      tick:this.core.operationalStatusSnapshot().tick,
+      uncertainty01:this.core.operationalStatusSnapshot().predictionError,
+      predictionError01:previousNeural.predictionError01,
+      novelty01:previousNeural.grounding?.activePerceptionDemand01 ?? this.core.operationalStatusSnapshot().autonomyScore,
+      forceHighValueCheck:Boolean(externalText) || this.realityShadowBridge.diagnostics().meanDivergence01 > .38 || this.core.operationalStatusSnapshot().predictionError > .62 || (this.realityGrounding.diagnostics().meanIndependent01 < .30 && this.realityGrounding.diagnostics().externalPrimary > 0),
+    });
+    const previousSampledAt=body.telemetry.sampledAt;
+    const activeBody = await this.embodiment.sampleActive(perceptionPlan.requestedSensors,true);
+    const observedSensors:string[]=[];
+    if(activeBody.telemetry.source==='android-termux' && activeBody.telemetry.staleMs===0){
+      if(perceptionPlan.requestedSensors.includes('battery') || perceptionPlan.requestedSensors.includes('thermal')) observedSensors.push('battery');
+      if(perceptionPlan.requestedSensors.includes('motion')) observedSensors.push('motion');
+      if(perceptionPlan.requestedSensors.includes('light')) observedSensors.push('light');
+      if(perceptionPlan.requestedSensors.includes('proximity')) observedSensors.push('proximity');
+      if(perceptionPlan.requestedSensors.includes('network')) observedSensors.push('network');
+    }
+    const perceptionFulfilled = activeBody.telemetry.sampledAt>previousSampledAt && activeBody.telemetry.source==='android-termux' ? Math.min(1, observedSensors.length/Math.max(1,perceptionPlan.requestedSensors.filter((x:string)=>x!=='camera').length)) : 0;
+    this.core.b365RecordPerceptionPlanResult({tick:this.core.operationalStatusSnapshot().tick,observedSensors,fulfilled01:perceptionFulfilled});
+    const wasAwake = activeBody.awake;
+    body = activeBody;
+    if (this.embodiment.maybeSleep() && !externalText) {
+      if (wasAwake && !this.embodimentStatus().awake && this.sleepStartedAt == null) { this.sleepStartedAt = Date.now(); this.sleepReason = this.embodimentStatus().wakeReason || 'resource-or-idle'; }
+      await this.consolidateInternal();
+    await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog());
+    }
+    const observation = this.environment.toOrganismObservation();
+    const modalityEvents = [];
+    if (externalText) modalityEvents.push(this.core.recordMultimodalObservation({ modality:'text', summary:externalText.slice(0,500), confidence:.88, salience:.72, evidence:['user-input'], content:externalText }));
+    modalityEvents.push(this.core.recordMultimodalObservation({ modality:'sensor', summary:this.embodiment.resourceSummary(), confidence:body.sensoryFreshness01*.82, salience:Math.max(.18,Math.abs(body.telemetry.motion01 ?? 0)+.15), evidence:['device-telemetry'] }));
+    modalityEvents.push(this.core.recordMultimodalObservation({ modality:'world', summary:observation.worldContext.facts.slice(-8).join(' | '), confidence:.7, salience:Math.max(.15,observation.surprise ?? .2), evidence:['world-model'] }));
+    const fused = this.core.multimodalSnapshot();
+    const cycle = await this.core.observe({
+      ...observation,
+      text: externalText,
+      externalGoal: externalText ? { title: externalText.slice(0, 160), importance: 0.65, urgency: 0.4 } : undefined,
+      embodiment: { bodyEnergy01: body.bodyEnergy01, cognitiveCapacity01: body.cognitiveCapacity01, thermalStrain01: body.thermalStrain01, sensoryFreshness01: body.sensoryFreshness01, awake: body.awake, battery01: body.telemetry.battery01, cpuLoad01: body.telemetry.cpuLoad01, ramPressure01: body.telemetry.ramPressure01 },
+    });
+    const activePerceptionRequestId = this.core.activePerceptionPendingId();
+    const fusedObservation = modalityEvents.slice(-6).map((x:any)=>`[${x.modality}] ${x.summary}`).join(' | ');
+    const cognitiveProposal = await this.generateCognitiveProposal(cycle, fusedObservation, Boolean(options.deliberate), !externalText);
+    if (cognitiveProposal) {
+      this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });
+    }
+    const internalAction = cycle.decision.selected?.action ?? 'wait';
+    const observationEvidence = this.evidenceBus.publish({tick:cycle.state.tick,kind:'observation',source:'runtime',confidence01:.72,payload:{external:Boolean(externalText),predictionError:cycle.state.predictionError,selectedAction:internalAction}});
+    this.core.cognitiveBudgetSpend('planning',undefined,cycle.state.needs.uncertainty,'action-planning');
+    const plan = this.plans.build(cycle.goals.find(g => g.id === cycle.decision.selected?.goalId) ?? null, internalAction, 4, 4);
+    const simBudget=this.core.cognitiveBudgetSpend('simulation',undefined,cycle.state.needs.uncertainty,'counterfactual-rollout');
+    const branches = simBudget.accepted
+      ? this.counterfactuals.imagine(plan.steps[0]?.environmentAction, resourceAllocation.maxCounterfactualBranches, 4)
+      : [];
+    await this.core.recordCounterfactuals(branches);
+    const worldAction = plan.steps[0]?.environmentAction ?? 'observe';
+    const expectedReward = plan.steps[0]?.predictedReward ?? 0.5;
+    const before = this.environment.observationContext();
+    const causalContextKey = `loc:${String(before.location ?? 'unknown').trim().toLowerCase().slice(0,64)}|goal:${String(cycle.decision.selected?.goalId ?? 'none').slice(0,32)}|energy:${Math.floor(Math.max(0,Math.min(1,cycle.state.needs.energy))*4)}`;
+    // P2840: predictive simulation is pure. Canonical world state is committed only
+    // after reality arbitration decides that no authoritative external outcome exists.
+    const shadowTransition = this.environment.simulate(worldAction, before);
+    const transition = shadowTransition;
+    const matchedCandidates: import('../world/WorldEnvironment.ts').EnvironmentAction[] = ['observe','inspect','move','collect','rest','communicate'].filter((a): a is import('../world/WorldEnvironment.ts').EnvironmentAction => a !== worldAction);
+    const matchedProjections = matchedCandidates.map(action => ({ action, projection: this.environment.project(action, before) }));
+    const matched = matchedProjections.filter(x => x.projection.valid).sort((a,b) => b.projection.reward-a.projection.reward)[0] ?? null;
+    if (matched) {
+      const matchedAction = matched.action;
+      const matchedProjection = matched.projection;
+      const selectedExpected01 = Math.max(0,Math.min(1,(expectedReward+1)/2));
+      const alternativeExpected01 = Math.max(0,Math.min(1,(matchedProjection.reward+1)/2));
+      const actualSelectedReward01 = Math.max(0,Math.min(1,(transition.reward+1)/2));
+      const actualAlternativeReward01 = alternativeExpected01;
+      this.core.recordMatchedCounterfactual({tick:cycle.state.tick,action:matchedAction,internalAction,contextKey:this.core.recoveryStrategyContextKey(cycle.state),selectedExpected01,alternativeExpected01,actualSelectedReward01,matchedTrials:1,source:'matched-simulated'});
+    }
+    const rewardPredictionId = this.core.recordPrediction({
+      tick: cycle.state.tick, kind: 'reward', action: worldAction,
+      predicted01: Math.max(0, Math.min(1, expectedReward)),
+      confidence01: Math.max(0.05, Math.min(0.99, plan.steps[0]?.confidence ?? cycle.decision.selected?.confidence ?? 0.5)),
+      context: { internalAction, selectedGoalId: cycle.decision.selected?.goalId ?? null },
+    });
+    this.core.trackWorldCausalPrediction({
+      predictionId:rewardPredictionId,
+      action:worldAction,
+      predicted01:Math.max(0,Math.min(1,expectedReward)),
+      confidence01:Math.max(0.05,Math.min(0.99,plan.steps[0]?.confidence ?? cycle.decision.selected?.confidence ?? .5)),
+      intervention:true,
+      at:cycle.state.at,
+      persist:false,
+    });
+    const predictionEvidence = this.evidenceBus.publish({
+      tick:cycle.state.tick,kind:'prediction',source:'reward-model',confidence01:plan.steps[0]?.confidence ?? .5,
+      parentIds:[observationEvidence.id],payload:{id:rewardPredictionId,action:worldAction,predicted01:expectedReward,shadowModel:true},
+    });
+    const actionEvidence = this.evidenceBus.publish({
+      tick:cycle.state.tick,kind:'action',source:'organism-action-gate',confidence01:cycle.decision.selected?.confidence ?? .5,
+      parentIds:[predictionEvidence.id],payload:{action:worldAction,internalAction,deviceActionPending:true},
+    });
+    const bodyIsPhysical = body.telemetry.source === 'android-termux' && body.telemetry.staleMs === 0;
+    this.realityEvidence.record({tick:cycle.state.tick,realityClass:bodyIsPhysical?'device-observation':'derived',claim:bodyIsPhysical?'device-resource-sample':'host-resource-sample-derived',confidence01:bodyIsPhysical ? body.sensoryFreshness01*.82 : body.sensoryFreshness01*.25,independenceKey:`${bodyIsPhysical?'device':'host'}:${body.telemetry.sampledAt}`,parentIds:[observationEvidence.id]});
+    this.realityEvidence.record({tick:cycle.state.tick,realityClass:'simulator',claim:'shadow-world-transition-outcome',confidence01:.72,independenceKey:`sim-shadow:${transition.at}`,parentIds:[predictionEvidence.id]});
+
+    const selectedCandidate = cycle.decision.selected;
+    const expectedReward01 = Math.max(0, Math.min(1, selectedCandidate?.predictedUtility ?? expectedReward));
+    const expectedStateDelta01 = 0.5;
+    let language: LanguageResponse | undefined;
+    if (this.config.enableLanguage && this.config.languageInvoker && externalText && currentBudgetAllowsLanguage(this.core.cognitiveBudgetOperationalSnapshot()?.mode)) {
+      const request = buildCognitivePrompt(cycle, transition.after.facts);
+      language = await this.config.languageInvoker({ ...request, user: `${request.user}\n[USER]\n${externalText.slice(0, 4000)}` });
+    }
+    const actionAdvice = this.embodiedRecovery.advise(internalAction);
+    const physicalAction = actionAdvice.allowed ? internalAction : 'wait';
+    if (!actionAdvice.allowed && physicalAction !== internalAction) this.embodiedRecovery.noteRetry(internalAction);
+    const embodiedAction = await this.embodiedActions.execute(physicalAction, {
+      spokenText: language?.text || externalText || '',
+      allowCamera: process.env.NEURO_ALLOW_AUTONOMOUS_CAMERA === '1',
+    });
+    await this.core.setEmbodiedActionResult(embodiedAction);
+    const consequencePredictedForRecovery = clamp01(.10 + .34*Number(cycle.decision.selected?.confidence ?? .5) + .34*(1-cycle.state.predictionError) + .12*(1-body.thermalStrain01) + .10*(body.awake ? 1 : .4));
+    const recoveryRecord = this.embodiedRecovery.record({
+      tick:cycle.state.tick, action:embodiedAction.action, status:embodiedAction.status, realityClass:embodiedAction.realityClass, source:embodiedAction.source,
+      verified01:embodiedAction.consequenceVerification.verified ? 1 : 0,
+      independent01:embodiedAction.consequenceVerification.independent ? 1 : 0,
+      effect01:embodiedAction.effect01, consequenceError01:Math.abs(consequencePredictedForRecovery-embodiedAction.consequenceVerification.changed01),
+      verificationMode:embodiedAction.consequenceVerification.verificationMode, sourceStable:embodiedAction.consequenceVerification.sourceStable,
+      freshBefore01:embodiedAction.consequenceVerification.freshBefore01, freshAfter01:embodiedAction.consequenceVerification.freshAfter01,
+      artifact:Boolean(embodiedAction.artifact), enabled:true,
+    });
+    this.core.setEmbodiedRecoverySnapshot(this.embodiedRecovery.snapshot());
+
+    const postcondition = this.postconditionVerifier.assess(embodiedAction);
+    const grounded = this.realityGrounding.resolve({
+      tick:cycle.state.tick,
+      action:(embodiedAction.action as import('../core/types.ts').ActionKind) ?? selectedCandidate?.action ?? null,
+      expectedReward01,
+      predictionConfidence01:clamp01(Number(selectedCandidate?.confidence ?? plan.steps[0]?.confidence ?? .5)),
+      simulatedReward01:Math.max(0,Math.min(1,(transition.reward+1)/2)),
+      simulatedSurprise01:clamp01(transition.surprise),
+      simulatedSuccess01:transition.valid?1:0,
+      embodiedAction,
+      novelty01:clamp01(Math.max(transition.surprise,cycle.state.needs.novelty)),
+      resource01:clamp01(resourceAllocation.learning01),
+      contextKey:causalContextKey,
+    });
+    if (grounded.source==='external') {
+      grounded.verified01 = Math.min(grounded.verified01, postcondition.verified01);
+      grounded.independent01 = Math.min(grounded.independent01, postcondition.independent01);
+      grounded.evidence01 = Math.min(grounded.evidence01, Math.max(postcondition.evidence01, .18));
+      grounded.consequence01 = Math.min(grounded.consequence01, postcondition.consequence01 + .35*(1-postcondition.verified01));
+      grounded.reason = `${grounded.reason};postcondition=${postcondition.proofClass}`;
+    }
+    this.realityGrounding.refineLatest({verified01:grounded.verified01,independent01:grounded.independent01,evidence01:grounded.evidence01,consequence01:grounded.consequence01,reason:grounded.reason});
+    this.core.setRealityGrounding(this.realityGrounding.snapshot());
+
+    const shadowResolution=this.realityShadowBridge.resolve({
+      source:grounded.source,
+      shadowReward01:Math.max(0,Math.min(1,(shadowTransition.reward+1)/2)),
+      groundedReward01:grounded.reward01,
+      shadowSurprise01:clamp01(shadowTransition.surprise),
+    });
+    if (grounded.source==='external') {
+      this.core.recordGroundedExternalOutcome({
+        at:cycle.state.at, action:String(embodiedAction.action), status:embodiedAction.status, proofClass:postcondition.proofClass,
+        verified01:grounded.verified01, independent01:grounded.independent01, evidence01:grounded.evidence01,
+        consequence01:grounded.consequence01, claim:postcondition.reason, provenanceId:`outcome:${cycle.state.tick}:${embodiedAction.at}`,
+        divergence01:shadowResolution.divergence01,
+      });
+    }
+    if(shadowResolution.commitShadow){
+      this.environment.commit(shadowTransition);
+      this.worldDirtyCycles += 1;
+      if(this.shouldCheckpointWorld()) await this.checkpointWorld();
+    }
+    this.core.setRealityShadowBridge(this.realityShadowBridge.snapshot());
+
+    const holdoutReadiness01=this.realityGrounding.causalHoldoutReadiness((embodiedAction.action as import('../core/types.ts').ActionKind) ?? selectedCandidate?.action ?? null, grounded.source, 6);
+    const calibrationReadiness01=this.core.worldCausalActionReadiness(String(worldAction),6,causalContextKey);
+    const learningGate=this.realityLearningGate.decide({
+      source:grounded.source, evidence01:grounded.evidence01, verified01:grounded.verified01,
+      independent01:grounded.independent01, consequence01:grounded.consequence01,
+      predictionError01:clamp01(cycle.state.predictionError), surprise01:grounded.surprise01,
+      reward01:grounded.reward01, success01:grounded.success01,
+      actuation:Boolean(embodiedAction.action==='respond'||embodiedAction.action==='rest'),
+      resource01:clamp01(resourceAllocation.learning01),
+    });
+    if(grounded.source==='external') {
+      const combinedCausalReadiness01=clamp01(.62*holdoutReadiness01+.38*calibrationReadiness01);
+      const memoryFactor=.72+.28*combinedCausalReadiness01;
+      const identityFactor=.65+.35*combinedCausalReadiness01;
+      learningGate.memoryPromotionScale01=clamp01(learningGate.memoryPromotionScale01*memoryFactor);
+      learningGate.identityUpdateScale01=clamp01(learningGate.identityUpdateScale01*identityFactor);
+      learningGate.learningScale01=clamp01(.44*learningGate.neuralUpdateScale01+.30*learningGate.worldModelUpdateScale01+.18*learningGate.memoryPromotionScale01+.08*learningGate.identityUpdateScale01);
+      learningGate.reason=`${learningGate.reason};causal-holdout-readiness=${holdoutReadiness01.toFixed(3)};calibration-readiness=${calibrationReadiness01.toFixed(3)};combined=${combinedCausalReadiness01.toFixed(3)}`;
+      this.realityLearningGate.refineLatest({memoryPromotionScale01:learningGate.memoryPromotionScale01,identityUpdateScale01:learningGate.identityUpdateScale01,learningScale01:learningGate.learningScale01,reason:learningGate.reason});
+    }
+    this.core.setRealityLearningGate(this.realityLearningGate.snapshot());
+
+    const resolvedRewardSigned = clamp01(grounded.reward01)*2-1;
+    const learningRewardSigned = clamp01(learningGate.reward01)*2-1;
+    const resolvedPrediction = this.core.resolvePrediction(rewardPredictionId, resolvedRewardSigned);
+    const outcomeSource = grounded.source === 'external' ? 'device' : 'simulator';
+    const outcomeEvidence = this.evidenceBus.publish({
+      tick:cycle.state.tick,kind:'outcome',source:grounded.source === 'external' ? 'external-device':'shadow-simulator',
+      confidence01:grounded.evidence01,parentIds:[actionEvidence.id,predictionEvidence.id],external01:grounded.source==='external',
+      payload:{reward01:grounded.reward01,surprise01:grounded.surprise01,action:embodiedAction.action,reason:grounded.reason,verified01:grounded.verified01,independent01:grounded.independent01,consequence01:grounded.consequence01,predictionError01:resolvedPrediction?.error01 ?? null},
+    });
+    const cycleStageIds = this.cognitiveEventFabric.recordOperationalCycle({
+      tick:cycle.state.tick,
+      observation:{source:'runtime',external:Boolean(externalText),confidence01:.72,payload:{predictionError:cycle.state.predictionError,selectedAction:internalAction,evidenceId:observationEvidence.id}},
+      prediction:{source:'reward-model',confidence01:plan.steps[0]?.confidence ?? .5,payload:{predictionId:rewardPredictionId,evidenceId:predictionEvidence.id,action:worldAction,predicted01:expectedReward,shadowModel:true}},
+      action:{source:'organism-action-gate',confidence01:cycle.decision.selected?.confidence ?? .5,payload:{evidenceId:actionEvidence.id,action:embodiedAction.action,internalAction,goalId:cycle.decision.selected?.goalId ?? null}},
+      outcome:{source:grounded.source==='external'?'external-device':'shadow-simulator',external:grounded.source==='external',confidence01:grounded.evidence01,payload:{evidenceId:outcomeEvidence.id,reward01:grounded.reward01,surprise:grounded.surprise01,error01:resolvedPrediction?.error01 ?? null,verified01:grounded.verified01}},
+      learning:{source:'core.feedback',confidence01:clamp01((1-(resolvedPrediction?.error01??0.5))*learningGate.learningScale01),payload:{predictionError01:resolvedPrediction?.error01??null,realitySource:grounded.source,learningPriority01:grounded.learningPriority01,learningScale01:learningGate.learningScale01}},
+      selfUpdate:{source:'core.lifecycle',confidence01:this.core.consciousnessSnapshot().identityContinuity.continuity,payload:{identityContinuity01:this.core.consciousnessSnapshot().identityContinuity.continuity}},
+      at:cycle.state.at,
+    });
+    const fabricSnapshot = this.cognitiveEventFabric.snapshot();
+    this.core.setCognitiveEventFabric(fabricSnapshot);
+    const parentLinks = Math.max(0, fabricSnapshot.linkedParentEvents);
+    const parentRefs = parentLinks + Math.max(0, fabricSnapshot.danglingParentLinks);
+    const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:{observation:cycleStageIds.observation,prediction:cycleStageIds.prediction,action:cycleStageIds.action,outcome:cycleStageIds.outcome,learning:cycleStageIds.learning,'self-update':cycleStageIds.selfUpdate},parentIntegrity01:parentRefs ? parentLinks/parentRefs : 1});
+    this.core.setUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
+
+    await this.core.feedback({
+      success: learningGate.success01,
+      reward: learningRewardSigned,
+      evidenceSource: outcomeSource,
+      surprise: learningGate.surprise01,
+      worldEvent: { type: grounded.source === 'external' ? 'external_action_consequence' : 'environment_transition', importance: learningGate.surprise01, payload: { action: embodiedAction.action, internalAction, facts: grounded.source === 'simulation' ? transition.after.facts.slice(-6) : [this.embodiment.resourceSummary()], plan, realitySource:grounded.source, shadowHeld01:shadowResolution.commitShadow?0:1, shadowDivergence01:shadowResolution.divergence01 } },
+      learning: {
+        source: grounded.source,
+        evidence01: learningGate.evidence01,
+        verified01: learningGate.verified01,
+        independent01: learningGate.independent01,
+        consequence01: learningGate.consequence01,
+        learningScale01: learningGate.learningScale01,
+        neuralUpdateScale01: learningGate.neuralUpdateScale01,
+        worldModelUpdateScale01: learningGate.worldModelUpdateScale01,
+        memoryPromotionScale01: learningGate.memoryPromotionScale01,
+        identityUpdateScale01: learningGate.identityUpdateScale01,
+        reward01: learningGate.reward01,
+        success01: learningGate.success01,
+        surprise01: learningGate.surprise01,
+      },
+      worldTransition: grounded.source === 'simulation' ? environmentTransitionToOrganismTransition(transition) : undefined,
+      observation: { worldContext: environmentToWorldContext(grounded.source === 'simulation' ? transition.after : before), novelty: clamp01(grounded.consequenceError01*learningGate.worldModelUpdateScale01), surprise: learningGate.surprise01, reward: learningRewardSigned, success: learningGate.success01, embodiment: { bodyEnergy01: body.bodyEnergy01, cognitiveCapacity01: body.cognitiveCapacity01, thermalStrain01: body.thermalStrain01, sensoryFreshness01: body.sensoryFreshness01, awake: body.awake, battery01: body.telemetry.battery01, cpuLoad01: body.telemetry.cpuLoad01, ramPressure01: body.telemetry.ramPressure01 } },
+    });
+
+    if(activePerceptionRequestId){
+      const activeGain=clamp01(
+        .62*perceptionFulfilled+
+        .20*grounded.consequenceError01+
+        .18*grounded.surprise01,
+      );
+      this.core.activePerceptionComplete(activePerceptionRequestId,activeGain);
+    }
+
+    this.core.recordGroundedWorldCausalOutcome({
+      predictionId:rewardPredictionId,
+      action:worldAction,
+      actual01:clamp01(grounded.reward01),
+      source:grounded.source==='external' ? 'intervention' : 'feedback',
+      confidence01:clamp01(plan.steps[0]?.confidence ?? cycle.decision.selected?.confidence ?? .5),
+      verified01:grounded.verified01,
+      independent01:grounded.independent01,
+      evidence01:grounded.evidence01,
+      matchedContextKey:causalContextKey,
+      at:cycle.state.at,
+    });
+
+    const actualStateDelta01 = grounded.source === 'external'
+      ? grounded.consequence01
+      : Math.max(0, Math.min(1, Math.abs(transition.after.energy-transition.before.energy)*.8 + Math.abs(transition.after.attention-transition.before.attention)*.6));
+    if (grounded.source === 'simulation') {
+      this.core.recordSensorimotor(cycle.state.tick, transition, expectedReward, bodyActionCost(this.embodiment.snapshot(), worldAction));
+    }
+    this.core.b365LearnGroundedTransition({
+      tick:cycle.state.tick, action:selectedCandidate?.action ?? null, expectedReward01, actualReward01:learningGate.reward01,
+      expectedStateDelta01, actualStateDelta01:actualStateDelta01*learningGate.worldModelUpdateScale01, verified01:grounded.verified01, evidence01:grounded.evidence01*learningGate.worldModelUpdateScale01,
+    });
+    const embodiedActionKind = (embodiedAction.action as import('../core/types.ts').ActionKind) ?? selectedCandidate?.action ?? null;
+    const consequenceActual01 = grounded.consequence01;
+    const predictedConfidence = clamp01(Number(selectedCandidate?.confidence ?? 0.5));
+    const consequencePredicted01 = clamp01(.10 + .34*predictedConfidence + .34*(1-cycle.state.predictionError) + .12*(1-body.thermalStrain01) + .10*(body.awake ? 1 : .4));
+    this.core.b365LearnEmbodiedConsequence({
+      tick:cycle.state.tick, action:embodiedActionKind, predictedEffect01:consequencePredicted01, actualEffect01:clamp01(.5+(consequenceActual01-.5)*learningGate.neuralUpdateScale01),
+      verified01:grounded.verified01, independent01:grounded.independent01, source:embodiedAction.source,
+    });
+
+    const embodiedLedgerClass = embodiedAction.realityClass === 'device-observation' ? 'device-observation' : 'derived';
+    this.realityEvidence.record({tick:cycle.state.tick,realityClass:embodiedLedgerClass,claim:`embodied-action:${physicalAction}`,confidence01:grounded.evidence01,independenceKey:`embodied:${embodiedAction.at}:${embodiedAction.source}`,parentIds:[actionEvidence.id]});
+    this.realityEvidence.record({tick:cycle.state.tick,realityClass:grounded.source==='external' ? 'device-observation' : 'simulator',claim:`action-consequence:${physicalAction}`,confidence01:grounded.evidence01,independenceKey:`consequence:${cycle.state.tick}:${embodiedAction.source}:${grounded.source}`,parentIds:[outcomeEvidence.id]});
+    this.realityEvidence.record({tick:cycle.state.tick,realityClass:'derived',claim:'cognitive-cycle-completeness',confidence01:cycleVerification.complete ? .95 : .35,independenceKey:`cycle:${cycle.state.tick}`,parentIds:Object.values(cycleStageIds).filter(Boolean) as string[]});
+    this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());
+    if(grounded.source==='external') {
+      this.core.recordExternalPerceptualEvidence({
+        at:cycle.state.at,
+        modality:embodiedAction.realityClass==='device-observation'?'sensor':'world',
+        claim:`external-outcome:${embodiedAction.action}:verified=${grounded.verified01.toFixed(2)}:independent=${grounded.independent01.toFixed(2)}:consequence=${grounded.consequence01.toFixed(2)}:shadowDivergence=${shadowResolution.divergence01.toFixed(2)}`,
+        confidence01:grounded.evidence01, verified:grounded.verified01>.5, parents:[outcomeEvidence.id,actionEvidence.id],
+      });
+    }
+
+    const continuousFabric = this.continuousCognitiveFabric.step({
+      tick: cycle.state.tick,
+      at: cycle.state.at,
+      signal: {
+        id: `experience:${cycle.state.tick}:${embodiedAction.action}`,
+        timestamp: cycle.state.at,
+        source: grounded.source === 'external' ? (externalText ? 'user-input+external-device' : 'external-device') : (externalText ? 'user-input+shadow-world' : 'shadow-world+sensor'),
+        meaning: grounded.reward01,
+        novelty: clamp01(Math.max(grounded.surprise01, cycle.state.needs.novelty)),
+        emotionalImpact: clamp01(cycle.state.needs.goalPressure * 0.45 + cycle.state.needs.socialNeed * 0.25 + grounded.surprise01 * 0.30),
+        tags: [String(embodiedAction.action), grounded.source === 'external' ? 'grounded' : 'shadow', externalText ? 'external-input' : 'autonomous', grounded.surprise01 > 0.55 ? 'challenge' : 'experience', cycle.state.needs.novelty > 0.6 ? 'learning' : 'routine'],
+      },
+      identityEvent: {
+        id: `identity:${cycle.state.tick}:${embodiedAction.action}`,
+        timestamp: cycle.state.at,
+        significance: clamp01(Math.max(learningGate.surprise01, Math.abs(learningGate.reward01-.5)*2)*learningGate.identityUpdateScale01),
+        emotionalWeight: clamp01(cycle.state.needs.goalPressure * 0.55 + cycle.state.needs.socialNeed * 0.25 + learningGate.surprise01 * 0.20),
+        tags: [String(embodiedAction.action), grounded.source === 'external' ? 'reality' : 'shadow', 'continuity', grounded.surprise01 > 0.50 ? 'challenge' : 'reflection', cycle.state.needs.novelty > 0.55 ? 'learning' : 'experience'],
+      },
+      belief: grounded.surprise01 > 0.45 ? {
+        id: `world-prediction:${cycle.state.tick}`,
+        confidence: clamp01((1 - (resolvedPrediction?.error01 ?? cycle.state.predictionError))*learningGate.identityUpdateScale01),
+        content: grounded.source === 'external' ? 'external consequence calibrated against prior prediction' : 'shadow-world transition remains predictive only',
+      } : undefined,
+      evidenceSupport01: grounded.evidence01,
+      allowDream: cycle.state.tick % 8 === 0 || Boolean(this.sleepStartedAt),
+    });
+    this.core.setContinuousCognitiveFabric(continuousFabric);
+    this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:'continuous-cognitive-fabric',confidence01:continuousFabric.continuity01,payload:{continuity01:continuousFabric.continuity01,memoryRetention01:continuousFabric.memoryRetention01,spine01:continuousFabric.lastSpine01,conflict01:continuousFabric.lastConflict?.intensity ?? 0,realitySource:grounded.source,grounding01:this.realityGrounding.snapshot().meanGrounding01}});
+
+    const afterNeural = this.core.b365UnifiedNeuroCausalDiagnostics();
+    const neuralTrace = this.neuralCausalTrace.record({
+      tick:cycle.state.tick,action:embodiedActionKind,reward01:grounded.reward01,external01:grounded.source==='external',
+      verified01:grounded.verified01,independent01:grounded.independent01,evidence01:grounded.evidence01,
+      before:{
+        learningUpdates:Number(previousNeural.learningUpdates ?? 0),
+        replayUpdates:Number(previousNeural.replayUpdates ?? 0),
+        predictionError01:clamp01(Number(previousNeural.predictionError01 ?? .5)),
+        plasticity01:clamp01(Number(previousNeural.plasticity01 ?? 0)),
+        recurrentCoherence01:clamp01(Number(previousNeural.recurrentCoherence01 ?? 0)),
+        neuralConfidence01:clamp01(Number(previousNeural.neuralConfidence01 ?? 0)),
+        groundingReliability01:clamp01((.18+.42*Number(previousNeural.grounding?.freshness01 ?? 0)+.40*Number(previousNeural.grounding?.sensorConfidence01 ?? 0))*(.35+.65*Number(previousNeural.grounding?.verified01 ?? 0))),
+      },
+      after:{
+        learningUpdates:Number(afterNeural.learningUpdates ?? 0),
+        replayUpdates:Number(afterNeural.replayUpdates ?? 0),
+        predictionError01:clamp01(Number(afterNeural.predictionError01 ?? .5)),
+        plasticity01:clamp01(Number(afterNeural.plasticity01 ?? 0)),
+        recurrentCoherence01:clamp01(Number(afterNeural.recurrentCoherence01 ?? 0)),
+        neuralConfidence01:clamp01(Number(afterNeural.neuralConfidence01 ?? 0)),
+        groundingReliability01:clamp01((.18+.42*Number(afterNeural.grounding?.freshness01 ?? 0)+.40*Number(afterNeural.grounding?.sensorConfidence01 ?? 0))*(.35+.65*Number(afterNeural.grounding?.verified01 ?? 0))),
+      },
+      reason:`${grounded.source==='external'?'external-grounded':'simulation-fallback'}-neural-loop;learningScale=${learningGate.learningScale01.toFixed(3)};worldScale=${learningGate.worldModelUpdateScale01.toFixed(3)};identityScale=${learningGate.identityUpdateScale01.toFixed(3)};shadowDivergence=${shadowResolution.divergence01.toFixed(3)};causalHoldout=${holdoutReadiness01.toFixed(3)};intervention/lesion-still-required-for-causal-attribution`,
+    });
+    this.core.setNeuralCausalTrace(this.neuralCausalTrace.snapshot());
+    this.realityEvidence.record({tick:cycle.state.tick,realityClass:grounded.source==='external'?'device-observation':'simulator',claim:'neural-learning-input-provenance',confidence01:grounded.evidence01,independenceKey:`neural-input:${cycle.state.tick}:${grounded.source}`,parentIds:[outcomeEvidence.id]});
+    this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());
+
+    this.core.closeB380TemporalLife({tick:cycle.state.tick,at:cycle.state.at,action:embodiedAction.action,goalId:cycle.decision.selected?.goalId??null,reward01:grounded.reward01,success01:grounded.success01,surprise01:grounded.surprise01,predictionError01:clamp01(Math.max(resolvedPrediction?.error01??cycle.state.predictionError,grounded.consequenceError01)),physicalVerified01:grounded.verified01,independent01:grounded.independent01,evidenceQuality01:grounded.evidence01,recoveryEvent01:(embodiedAction.status!=='executed'||recoveryRecord.recovered)?1:0,sleepBoundary01:body.awake?0:1,external01:grounded.source==='external'?1:0});
+    const b380Token=this.core.b380TemporalLifeSnapshot().lastToken;
+    if(b380Token){ this.core.consolidateB365Experience({tick:b380Token.tick,action:b380Token.action as import('../core/types.ts').ActionKind,reward01:b380Token.reward01,predictionError01:b380Token.predictionError01,salience01:b380Token.salience01,verified01:b380Token.physicalVerified01,independent01:b380Token.independent01,evidenceQuality01:b380Token.evidenceQuality01,continuity01:b380Token.continuity01,goalId:b380Token.goalId}); }
+    await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog());
+
+    // B364: severe embodied resource pressure is now a real durability event, not only a
+    // scheduling signal. When battery/thermal/RAM/awake state crosses a critical boundary,
+    // force a durable core checkpoint immediately (with a bounded cooldown) so the organism
+    // cannot lose a large amount of learned state precisely when the device is becoming
+    // unstable. This remains below constitutional cognition: it protects persistence, not choice.
+    const emergencyReasons:string[] = [];
+    if (body.telemetry.battery01 <= .18) emergencyReasons.push('battery-critical');
+    if (body.thermalStrain01 >= .82) emergencyReasons.push('thermal-critical');
+    if (body.telemetry.ramPressure01 >= .90) emergencyReasons.push('ram-critical');
+    if (!body.awake) emergencyReasons.push('not-awake');
+    const emergencyReason = emergencyReasons.join('+');
+    const emergencyDue = Boolean(emergencyReason) && (this.lastEmergencyCheckpointTick < 0 || cycle.state.tick - this.lastEmergencyCheckpointTick >= 8);
+    if (emergencyDue) {
+      // This method is executed inside core.beginBatch()/endBatch(). OrganismCore intentionally
+      // defers physical persistence while a batch is open, so queue the durability operation and
+      // execute the real checkpoint immediately after endBatch() in step().
+      this.pendingEmergencyCheckpointReason = emergencyReason;
+      this.pendingEmergencyCheckpointTick = cycle.state.tick;
+    }
+
+    if(cycle.state.tick % 8 === 0 || Boolean(externalText)) this.core.setRuntimeEvidence(this.evidenceBus.snapshot());
+    this.core.setCognitiveEventFabric(this.cognitiveEventFabric.snapshot());
+    this.core.setCognitiveResourceEconomy(this.resourceEconomy.snapshot());
+    this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());
+    this.core.setUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
+
+    this.stepsSinceConsolidation += 1;
+    // On a medium phone, consolidation must be budgeted as a background operation:
+    // the core projection is several MB and a forced flush every ~24 cycles can
+    // dominate wall-clock time. We keep the same adaptive gate, but give mobile
+    // runs a longer accumulation window so learning remains continuous without
+    // turning maintenance into the main workload.
+    const heapPressure01 = (() => {
+      try {
+        const m = process.memoryUsage();
+        return clamp01(Number(m.heapUsed) / Math.max(1, Number(m.heapTotal)));
+      } catch { return 0; }
+    })();
+    // P2705 mobile maintenance governor: when V8 is already under heap pressure,
+    // delay non-critical consolidation instead of creating another large snapshot/GC
+    // burst. Durable checkpoints and explicit sleep consolidation remain unchanged.
+    const consolidationCadence = this.mobileConsolidationCadence(heapPressure01);
+    if (this.stepsSinceConsolidation >= consolidationCadence) {
+      const traces=this.core.consolidationInputSnapshot().traces.slice(0,24);
+      const selected=traces.filter(t=>t.selected);
+      const actionKinds=new Set(selected.map(t=>String(t.selected?.action??'')));
+      const repeatedActions=selected.length>0 ? clamp01((selected.length-actionKinds.size)/Math.max(1,selected.length)) : 0;
+      const recurrence=clamp01(.55*repeatedActions+.25*(selected.length/Math.max(1,traces.length))+.20*(cycle.state.predictionError>.55?1:0));
+      const gate=this.adaptiveConsolidationGate.decide({
+        tick:cycle.state.tick, stepsSinceConsolidation:this.stepsSinceConsolidation, recurrence01:recurrence,
+        predictionError01:cycle.state.predictionError, novelty01:cycle.state.needs.novelty,
+        memoryPressure01:1-cycle.state.needs.energy, ramPressure01:body.telemetry.ramPressure01,
+        performanceProfile:'balanced', explicit:false,
+      });
+      if(gate.run) await this.consolidateInternal(false);
+    }
+    return { cycle: { ...cycle, multimodal: this.core.multimodalSnapshot(), cognitiveProposal }, worldAction, language, embodiedAction };
+  }
+
+  realityGroundingSnapshot(){ return this.realityGrounding.snapshot(); }
+  neuralCausalTraceSnapshot(){ return this.neuralCausalTrace.snapshot(); }
+  realityLearningGateSnapshot(){ return this.realityLearningGate.snapshot(); }
+  realityShadowBridgeSnapshot(){ return this.realityShadowBridge.snapshot(); }
+
+  async executeTool(id:string,input:Record<string,unknown>={},reason='runtime-tool'){ return this.enqueue(()=>this.core.executeTool(id,input,reason)); }
+  async executeProjectTool(id:string,input:Record<string,unknown>={},reason='project-tool'){ return this.enqueue(()=>this.core.executeProjectTool(id,input,reason)); }
+  async executeNextProjectStep(reason='project-step', input:Record<string,unknown>={}){ return this.enqueue(()=>this.core.executeNextProjectStep(reason,input)); }
+  toolSnapshot(){ return this.core.actionToolsSnapshot(); }
+  cognitiveResourceEconomySnapshot(){ return this.resourceEconomy.snapshot(); }
+  runtimePerformanceSnapshot(){ return this.runtimePerformance.snapshot(); }
+  realityEvidenceLedgerSnapshot(){ return this.realityEvidence.snapshot(); }
+  unifiedCognitiveCycleSnapshot(){ return this.unifiedCycle.snapshot(); }
+  activeProjectSnapshot(){ return this.core.activeProjectSnapshot(); }
+  runtimeDecisionSnapshot(){ const p=this.runtimeDecision(); return { ...p, body:this.embodiment.snapshot(), clocks:this.clockScheduler.snapshot() }; }
+  evidenceSnapshot(){ return this.evidenceBus.snapshot(); }
+  embodiedRecoverySnapshot(){ return this.embodiedRecovery.snapshot(); }
+  cognitiveEventFabricSnapshot(){ return this.cognitiveEventFabric.snapshot(); }
+  cognitiveBudgetSnapshot(){ return this.core.cognitiveBudgetOperationalSnapshot(); }
+  cognitiveImmuneSnapshot(){ return this.core.cognitiveImmuneSnapshot(); }
+  async sampleEmbodiment(): Promise<ReturnType<EmbodimentRuntime['snapshot']>> {
+    return this.enqueue(async () => {
+      const before = this.embodiment.snapshot();
+      const body = await this.embodiment.sample();
+    const resourceAllocation = this.resourceEconomy.allocate({
+      tick: this.core.operationalStatusSnapshot().tick,
+      at: Date.now(),
+      energy01: body.bodyEnergy01,
+      cognitiveLoad01: body.cognitiveCapacity01 <= 0 ? 1 : 1 - body.cognitiveCapacity01,
+      uncertainty01: this.core.operationalStatusSnapshot().predictionError,
+      novelty01: this.core.operationalStatusSnapshot().autonomyScore,
+      predictionDebt01: Number((this.core.predictionDebtSnapshot() as any)?.meanPriority01 ?? 0),
+      thermalStrain01: body.thermalStrain01,
+      ramPressure01: body.telemetry.ramPressure01,
+      performancePressure01: this.runtimePerformance.decision().performancePressure01,
+      awake: body.awake,
+    });
+    this.evidenceBus.publish({tick:this.core.operationalStatusSnapshot().tick,kind:'resource',source:'cognitive-resource-economy',confidence01:.92,payload:{mode:resourceAllocation.mode,scarcity01:resourceAllocation.scarcity01,attention01:resourceAllocation.attention01,simulation01:resourceAllocation.simulation01,learning01:resourceAllocation.learning01}});
+    this.core.setCognitiveResourceEconomy(this.resourceEconomy.snapshot());
+      if (before.awake && !body.awake && this.sleepStartedAt == null) { this.sleepStartedAt = Date.now(); this.sleepReason = body.wakeReason || 'resource-pressure'; }
+      const sensorDiagnostics = this.embodiment.sensorDiagnosticsSnapshot();
+      const telemetryFresh = body.telemetry.source === 'android-termux' && body.telemetry.staleMs === 0;
+      this.core.b365RecordGroundedObservation({
+        tick:this.core.operationalStatusSnapshot().tick,
+        source:body.telemetry.source === 'android-termux' ? 'android-termux' : 'node-host',
+        freshness01:telemetryFresh ? 1 : Math.max(0, Math.min(1, 1 - Math.min(1, body.telemetry.staleMs / 30000))),
+        sensorConfidence01:telemetryFresh ? (sensorDiagnostics.diagnostics?.commandsSucceeded ? Math.min(1, 0.65 + sensorDiagnostics.diagnostics.commandsSucceeded*0.08) : 0.6) : 0.35,
+        verified01:telemetryFresh ? 1 : 0,
+        energy01:body.telemetry.battery01, thermal01:body.thermalStrain01, motion01:body.telemetry.motion01 ?? 0,
+        light01:body.telemetry.ambientLight01 ?? 0.5, proximity01:body.telemetry.proximity01 ?? 0.5, network01:body.telemetry.networkOnline ? 1 : 0,
+      });
+      await this.core.setEmbodiment(body, this.embodiment.eventLog(), { sensorFailures: sensorDiagnostics.sensorFailures, sensorDiagnostics, durability: 'defer' });
+      return body;
+    });
+  }
+
+  async enterSleep(reason = 'manual'): Promise<ReturnType<EmbodimentRuntime['snapshot']>> {
+    return this.enqueue(async () => {
+      this.embodiment.sleep(reason);
+      await this.core.beginLifelongSleep(reason, true);
+      if (this.sleepStartedAt == null) { this.sleepStartedAt = Date.now(); this.sleepReason = reason; }
+      const body = this.embodiment.snapshot();
+      await this.core.setEmbodiment(body, this.embodiment.eventLog());
+      await this.consolidateInternal();
+      return body;
+    });
+  }
+
+  async wake(reason = 'manual'): Promise<ReturnType<EmbodimentRuntime['snapshot']>> {
+    return this.enqueue(async () => {
+      const at = Date.now();
+      this.embodiment.wake(reason);
+      await this.core.endLifelongSleep(reason);
+      const body = this.embodiment.snapshot();
+      const session = this.sleepStartedAt == null ? undefined : { startedAt: this.sleepStartedAt, endedAt: at, reason: this.sleepReason || reason, durationMs: Math.max(0, at - this.sleepStartedAt) };
+      this.sleepStartedAt = null;
+      this.sleepReason = '';
+      await this.core.setEmbodiment(body, this.embodiment.eventLog(), session ? { sleepSession: session } : undefined);
+      return body;
+    });
+  }
+
+  async injectExternalEvent(detail: string, importance = 0.5) {
+    return this.enqueue(async () => {
+      this.embodiment.externalEvent(detail, importance);
+      const body = this.embodiment.snapshot();
+      await this.core.observe({
+        worldEvent:{ type:'external_event', importance, payload:{ detail } },
+        novelty:importance,
+        surprise:importance,
+        embodiment:{
+          bodyEnergy01:body.bodyEnergy01,
+          cognitiveCapacity01:body.cognitiveCapacity01,
+          thermalStrain01:body.thermalStrain01,
+          sensoryFreshness01:body.sensoryFreshness01,
+          awake:body.awake,
+          battery01:body.telemetry.battery01,
+          cpuLoad01:body.telemetry.cpuLoad01,
+          ramPressure01:body.telemetry.ramPressure01,
+        },
+      });
+      await this.core.setEmbodiment(body, this.embodiment.eventLog());
+      return this.core.perceptionSnapshot();
+    });
+  }
+  adaptiveDevelopmentSnapshot(){ return this.core.adaptiveDevelopmentSnapshot(); }
+  async captureCamera(cameraId = 0, retain = false) {
+    return this.enqueue(async () => {
+      // Capture remains an explicit device action. Evidence is recorded immediately,
+      // but semantic vision is never inferred unless a declared backend exists.
+      const backendNeedsPath = Boolean(this.config.visionBackend);
+      const result = await this.embodiment.captureCamera(cameraId, retain || backendNeedsPath);
+      if (result.ok !== true) return result;
+      const successResult = result as {ok:true;path?:string;size?:number;hash?:string};
+      let evidence: CameraEvidence = cameraEvidenceFromResult(successResult, cameraId, this.core.cameraEvidenceSnapshot().last?.sha256 ?? '', Date.now());
+      if (successResult.path) {
+        try {
+          evidence = await inspectCameraFile({ path: successResult.path, cameraId, previousHash: this.core.cameraEvidenceSnapshot().last?.sha256 ?? '', at: Date.now() });
+        } catch {
+          // Metadata-only fallback is intentionally retained; lack of a decoder is not
+          // upgraded into fake semantic vision.
+        }
+      }
+      const state = this.core.recordCameraEvidence(evidence);
+      let semantic = null as Awaited<ReturnType<VisionSemanticBackend['analyze']>> | null;
+      if (this.config.visionBackend) this.core.setSemanticVisionAvailability(true);
+      if (this.config.visionBackend && evidence.path) {
+        const started = Date.now();
+        try {
+          semantic = await this.config.visionBackend.analyze({
+            imagePath: evidence.path,
+            at: evidence.at,
+            cameraId,
+            context: { scene: this.core.p41PerceptionSnapshot().scene.label, uncertainty01: this.core.operationalStatusSnapshot().needs.uncertainty },
+          });
+          semantic = { ...semantic, latencyMs: Math.max(0, Date.now()-started) };
+          if (semantic.semantic) {
+            this.core.recordSemanticVisionFrame();
+            this.core.p41PerceptionIngest({
+              vision: { sceneLabel: semantic.sceneLabel, confidence01: semantic.confidence01, objects: semantic.objects, relations: semantic.relations, events: semantic.events, latencyMs: semantic.latencyMs, semantic: true },
+              at: evidence.at,
+            });
+            const pendingVision=this.core.p41NextPerception();
+            if(pendingVision?.modality==='vision') this.core.p41FulfillPerception(pendingVision.id,true);
+          }
+        } catch (error) {
+          semantic = { semantic:false, backend:this.config.visionBackend.id, latencyMs:Math.max(0,Date.now()-started), evidenceKind:'external', confidence01:0, } as any;
+        }
+      }
+      await this.core.flush();
+      if (backendNeedsPath && !retain && evidence.path) {
+        const fs = await import('node:fs/promises'); await fs.rm(evidence.path,{force:true});
+      }
+      return { ...result, evidence, cameraEvidence: this.core.cameraEvidenceSnapshot(), semanticVision: semantic?.semantic === true, semanticBackend: semantic?.backend ?? null, semanticResult: semantic };
+    });
+  }
+
+  async captureCameraForCognition(cameraId = 0, retain = false) {
+    return this.enqueue(async () => {
+      const body = this.embodiment.snapshot();
+      const plan = this.core.cognitiveExecutionPlanSnapshot();
+      const demand = plan ? Math.max(...Object.values(plan.expectedValue01).map(Number), 0) : 0;
+      const next = this.core.p41NextPerception();
+      const motion01 = Number(body.telemetry.motion01 ?? 0);
+      const visionNeeded = next?.modality === 'vision' || demand > .62 || motion01 > .5;
+      const resourceBlocked = body.telemetry.battery01 < .12 || body.thermalStrain01 > .82 || body.telemetry.ramPressure01 > .88 || !body.awake;
+      if (!visionNeeded || resourceBlocked) return { ok:false, skipped:true, reason:resourceBlocked?'resource-gate':'low-vision-utility', demand01:demand, nextPerception:next, resourceGate:resourceBlocked };
+      return this.captureCamera(cameraId, retain);
+    });
+  }
+  async speak(text: string): Promise<boolean> {
+    return this.enqueue(async () => {
+      const snapshot=this.core.operationalStatusSnapshot();
+      const subject=this.core.subjectContinuitySnapshot();
+      const p64=this.core.p64Snapshot();
+      return this.embodiment.speak(text,{
+        action:snapshot.lastAction,
+        mode:p64.lastFrame?.mode ?? null,
+        needs:snapshot.needs,
+        continuity01:subject.continuity01,
+        grounding01:subject.embodiedGrounding01,
+        uncertainty01:snapshot.needs.uncertainty,
+      });
+    });
+  }
+  async listen(): Promise<string | null> {
+    return this.enqueue(async () => {
+      const text=await this.embodiment.listen();
+      if(text){
+        this.embodiment.userActivity();
+        const clean=text.trim().slice(0,4000);
+        this.core.recordMultimodalObservation({modality:'speech',summary:clean.slice(0,220),confidence:.86,salience:.68,evidence:['termux-speech-to-text'],content:clean});
+      }
+      return text;
+    });
+  }
+  async voiceStatus(){ return this.enqueue(async ()=>({voice:this.embodiment.voiceSnapshot(),body:this.embodiment.snapshot(),multimodal:this.core.multimodalSnapshot()})); }
+  interruptVoice(reason='manual'): void { this.embodiment.markVoiceInterruption(reason); }
+  async voiceTurn(options:{deliberate?:boolean;speak?:boolean}={}){
+    return this.enqueue(async ()=>{
+      const text=await this.embodiment.listen();
+      if(!text) return {text:null,step:null,spoken:false,voice:this.embodiment.voiceSnapshot()};
+      this.embodiment.userActivity();
+      const clean=text.trim().slice(0,4000);
+      this.core.recordMultimodalObservation({modality:'speech',summary:clean.slice(0,220),confidence:.86,salience:.74,evidence:['termux-speech-to-text','voice-turn'],content:clean});
+      await this.core.beginBatch();
+      try {
+        const step=await this.stepInternal(clean,{deliberate:Boolean(options.deliberate)});
+        await this.journal.write('info','runtime.voice-turn',{tick:step.cycle.state.tick,action:step.worldAction,speakRequested:Boolean(options.speak)});
+        await this.continuityLedger.record({
+          at:Date.now(),tick:step.cycle.state.tick,stage:this.core.runtimeMetadataSnapshot().stage,action:step.worldAction,
+          energy01:step.cycle.state.needs.energy,uncertainty01:step.cycle.state.needs.uncertainty,
+          predictionError01:step.cycle.state.predictionError,selfPredictionError01:step.cycle.state.selfPredictionError,
+          identityContinuity01:this.core.consciousnessSnapshot().identityContinuity.continuity,
+          memoryCount:step.cycle.memories?.length??0,goalCount:step.cycle.goals?.length??0,
+          stateBytes:new TextEncoder().encode(JSON.stringify({state:step.cycle.state})).byteLength,
+          replaySignature:this.core.runtimeMetadataSnapshot().replaySignature,
+        }).catch(()=>{});
+        let spoken=false;
+        if(options.speak && step.language?.text){
+          const subject=this.core.subjectContinuitySnapshot();
+          const voicePlanContext={action:step.cycle.state.lastAction,mode:this.core.p64Snapshot().lastFrame?.mode??null,needs:step.cycle.state.needs,continuity01:subject.continuity01,grounding01:subject.embodiedGrounding01,uncertainty01:step.cycle.state.needs.uncertainty};
+          spoken=await this.embodiment.speak(step.language.text,voicePlanContext);
+        }
+        return {text:clean,step,spoken,voice:this.embodiment.voiceSnapshot()};
+      } catch (error:any) {
+        await this.journal.write('error','runtime.voice-turn.failed',{message:String(error?.message||error)});
+        throw error;
+      } finally {
+        await this.core.endBatch();
+      }
+    });
+  }
+
+  embodimentStatus(): ReturnType<EmbodimentRuntime['snapshot']> { return this.embodiment.snapshot(); }
+  embodimentDiagnostics(){ return this.embodiment.sensorDiagnosticsSnapshot(); }
+  async stop(): Promise<void> {
+    // Stop is a durability boundary, not merely a scheduler shutdown.  The previous
+    // implementation closed runtime clocks/ledgers without forcing the core/world
+    // stores to persist the final in-memory cycle.  On mobile this is especially
+    // dangerous because checkpoint cadence is deliberately throttled.
+    this.stopping = true;
+    this.clockScheduler.stop();
+    await this.clockScheduler.drain();
+    await this.queue.catch(() => undefined);
+
+    // All queued cognitive work has drained, so the final flush is now serialized
+    // with the same queue used by step()/tool calls.  This closes the crash/restart
+    // window without making every cycle pay a synchronous disk write.
+    await this.enqueue(async () => {
+      // Capture the closure before the single durable flush. A previous implementation
+      // flushed twice here, which is disproportionately expensive because a full core
+      // projection serializes several MB of state on a phone.
+      const runtimeView = this.core.runtimeClosureOperationalSnapshot();
+      this.runtimeClosure.durable({
+        at: Date.now(),
+        tick: runtimeView.tick,
+        stateTick: runtimeView.tick,
+        replaySignature: runtimeView.replaySignature,
+        continuousTick: runtimeView.continuous?.tick,
+        continuityProcessed: runtimeView.continuous?.processed,
+        memoryCount: runtimeView.memoryCount,
+      });
+      this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+      await this.core.flush();
+      await this.checkpointWorld(true);
+      await this.journal.write('info', 'runtime.stop.durable', {
+        tick: runtimeView.tick,
+        worldTick: this.environment.snapshot().tick,
+      }).catch(() => {});
+    });
+
+    await this.continuityLedger.flush().catch(() => {});
+    await this.continuityLedger.close();
+  }
+
+  private runtimeDecision(): ReturnType<typeof choosePhonePolicyDelay> {
+    const body = this.embodiment.snapshot();
+    const performance = this.runtimePerformance.decision();
+    const base = choosePhonePolicyDelay({
+      baseIntervalMs: this.phonePolicy.baseIntervalMs, mode: this.phonePolicy.mode, awake: body.awake,
+      battery01: body.telemetry.battery01, thermalStrain01: body.thermalStrain01, ramPressure01: body.telemetry.ramPressure01,
+      cpuLoad01: body.telemetry.cpuLoad01, lastStepMs: Math.max(this.lastAutonomyStepAt, performance.effectiveLastStepMs), previousThermalStrain01: this.lastThermalStrain01,
+      consecutiveActiveCycles: this.consecutiveActiveCycles, maxConsecutiveActiveCycles: this.phonePolicy.maxConsecutiveActiveCycles,
+    });
+    // Runtime-performance pressure is a host execution signal. It may delay or
+    // thin background work, but it must not enter OrganismCore cognitive scoring.
+    const schedulerMultiplier = performance.schedulerMultiplier01;
+    const nextDelayMs = Math.max(5_000, Math.round(base.nextDelayMs * schedulerMultiplier));
+    const sampleDelayMs = Math.max(10_000, Math.min(10 * 60_000, Math.round(base.sampleDelayMs * schedulerMultiplier)));
+    const reasonCodes = performance.performancePressure01 > 0.05
+      ? [...new Set([...base.reasonCodes, 'runtime-performance'])]
+      : base.reasonCodes;
+    return { ...base, nextDelayMs, sampleDelayMs, reasonCodes };
+  }
+
+  private registerRuntimeClocks(): void {
+    this.clockScheduler.register({
+      id: 'cognitive', initialDelayMs: 0,
+      decide: () => {
+        const p = this.runtimeDecision();
+        return { delayMs: p.nextDelayMs, reason: p.reasonCodes.join(','), run: p.cognitiveBudget01 >= 0.45 && this.embodiment.snapshot().awake };
+      },
+      task: async () => {
+        const body = this.embodiment.snapshot();
+        if (!body.awake) { await this.sleepConsolidate(); this.consecutiveActiveCycles = 0; return; }
+        const started = Date.now();
+        try { await this.step(undefined, { deliberate: false }); this.consecutiveActiveCycles += 1; }
+        finally { this.lastAutonomyStepAt = Date.now() - started; this.lastThermalStrain01 = this.embodiment.snapshot().thermalStrain01; }
+      },
+      onError: async (error) => {
+        this.core.markRuntimeAnomaly(`cognitive-clock:${String((error as any)?.message || error)}`);
+        await this.journal.write('warn', 'runtime.clock.failed', { clock: 'cognitive', message: String((error as any)?.message || error) }).catch(() => {});
+      },
+    });
+    this.clockScheduler.register({
+      id: 'embodiment', initialDelayMs: this.sensorIntervalMs,
+      decide: () => { const p=this.runtimeDecision(); return { delayMs:p.sampleDelayMs, reason:`sensor-cadence:${p.reasonCodes.join(',')}`, run:!this.stopping }; },
+      task: async () => { await this.sampleEmbodiment(); },
+      onError: async (error) => { await this.journal.write('warn', 'runtime.clock.failed', { clock: 'embodiment', message: String((error as any)?.message || error) }).catch(() => {}); },
+    });
+    this.clockScheduler.register({
+      id: 'reflection', initialDelayMs: this.reflectionIntervalMs(),
+      decide: () => ({ delayMs: this.reflectionIntervalMs(), reason: 'reflection-cadence', run: this.initialized && !this.stopping }),
+      task: async () => { if (this.embodiment.snapshot().awake && this.stepsSinceConsolidation >= 12) await this.sleepConsolidate(); },
+      onError: async (error) => { await this.journal.write('warn', 'runtime.clock.failed', { clock: 'reflection', message: String((error as any)?.message || error) }).catch(() => {}); },
+    });
+  }
+
+  private heapPressure01(): number {
+    try { const m=process.memoryUsage(); return clamp01(Number(m.heapUsed)/Math.max(1,Number(m.heapTotal))); } catch { return 0; }
+  }
+  private mobileConsolidationCadence(_heapPressure01=this.heapPressure01()): number {
+    // Consolidation is cognitive semantics, not maintenance. Mobile may defer
+    // checkpoints/serialization, but it must not defer the semantic learning event.
+    return 24;
+  }
+
+  private reflectionIntervalMs(): number {
+    const base = this.phonePolicy.mode === 'eco' ? 45 * 60_000 : this.phonePolicy.mode === 'research' ? 5 * 60_000 : 15 * 60_000;
+    return Math.max(60_000, Math.round(base * (this.embodiment.snapshot().awake ? 1 : 2)));
+  }
+
+  private startCognitiveClock(): void { if (this.initialized) this.clockScheduler.start('cognitive'); }
+  private startEmbodimentClock(): void { if (this.initialized) this.clockScheduler.start('embodiment'); }
+
+  private shouldCheckpointWorld(force = false): boolean {
+    if (force || this.lastWorldCheckpointAt === 0) return true;
+    if (this.worldDirtyCycles >= this.phonePolicy.worldCheckpointMaxDirtyCycles) return true;
+    return Date.now() - this.lastWorldCheckpointAt >= this.phonePolicy.worldCheckpointMinIntervalMs;
+  }
+
+  private async checkpointWorld(force = false): Promise<void> {
+    if (!this.shouldCheckpointWorld(force)) return;
+    await this.worldStore.save(this.environment.persisted());
+    this.worldDirtyCycles = 0;
+    this.lastWorldCheckpointAt = Date.now();
+  }
+
+  async flush(): Promise<void> {
+    return this.enqueue(async () => {
+      await this.core.flush();
+      const view = this.core.runtimeClosureOperationalSnapshot();
+      this.runtimeClosure.durable({ at: Date.now(), tick: view.tick, stateTick: view.tick, replaySignature: view.replaySignature, continuousTick: view.continuous?.tick, continuityProcessed: view.continuous?.processed, memoryCount: view.memoryCount });
+      this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+      await this.core.flush();
+    });
+  }
+  async sleepConsolidate(): Promise<ConsolidationResult> { return this.enqueue(() => this.consolidateInternal(true)); }
+  consolidationGateDiagnostics(){ return this.adaptiveConsolidationGate.diagnostics(); }
+  longitudinalSnapshot(){
+    const heap=this.heapPressure01();
+    return {
+      ...this.core.longitudinalSnapshot(),
+      lastAutonomyStepMs:this.lastAutonomyStepAt,
+      runtimeClocks:this.clockScheduler.snapshot(),
+      continuityLedger:this.continuityLedger.metrics(),
+      consolidationGate:this.adaptiveConsolidationGate.diagnostics(),
+      mobileMaintenance:{heapPressure01:heap,stepsSinceConsolidation:this.stepsSinceConsolidation,cadence:this.mobileConsolidationCadence(heap)},
+    };
+  }
+  persistenceMetrics(){
+    const heap=this.heapPressure01();
+    return {
+      core:this.core.persistenceMetrics(),
+      predictionLedger:this.core.predictionLedgerSnapshot(),
+      continuity:this.core.continuitySnapshot(),
+      world:typeof this.worldStore.metrics==='function' ? this.worldStore.metrics() : null,
+      worldDirtyCycles:this.worldDirtyCycles,
+      lastWorldCheckpointAt:this.lastWorldCheckpointAt,
+      emergencyCheckpoint:{count:this.emergencyCheckpointCount,lastTick:this.lastEmergencyCheckpointTick,lastReason:this.lastEmergencyCheckpointReason},
+      runtimeClocks:this.clockScheduler.snapshot(),
+      continuityLedger:{...this.continuityLedger.metrics(), ...this.continuityLedger.diagnostics()},
+      mobileMaintenance:{heapPressure01:heap,stepsSinceConsolidation:this.stepsSinceConsolidation,cadence:this.mobileConsolidationCadence(heap)},
+    };
+  }
+  continuousCognitiveDiagnostics(){ return this.continuousCognitiveFabric.diagnostics(); }
+  runtimeClosureDiagnostics(){ return this.runtimeClosure.diagnostics(); }
+  causalDomainClosureDiagnostics(){ return this.causalDomainClosureLedger.diagnostics(); }
+  causalDomainClosureSnapshot(){ return this.causalDomainClosureLedger.snapshot(); }
+
+
+  private async consolidateInternal(explicit=false): Promise<ConsolidationResult> {
+    if (!this.initialized) throw new Error('OrganismRuntime.init() must be called before consolidation');
+    const snapshot = this.core.consolidationInputSnapshot();
+    const result = this.consolidation.run(snapshot.traces, snapshot.goals);
+    await this.core.applyConsolidation(result.goalUpdates, result.memories);
+    this.core.b365ReplayConsolidate(16, this.core.operationalStatusSnapshot().tick);
+    this.core.consolidateLongitudinal();
+    await this.core.flush();
+    this.stepsSinceConsolidation = 0;
+    return result;
+  }
+}

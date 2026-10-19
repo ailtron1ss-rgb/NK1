@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { P27NeuralWorldFoundation } from '../src/organism/cognition/P27NeuralWorldFoundation.ts';
+const m=new P27NeuralWorldFoundation();
+const a=m.fuse(m.encode({sensorState:{version:1,tick:1,at:1,needs:{energy:.8,cognitiveLoad:.2,uncertainty:.2,socialNeed:.2,novelty:.1,identityCoherence:.8,goalPressure:.2},predictionError:0.2,attentionBudget:.8,lastAction:'wait',lastActionSuccess:null,autonomyScore:.5,selfPredictionError:.2,predictedNextAction:'wait',lastPredictionConfidence:.5,worldContextVersion:1}}));
+const b=m.fuse(m.encode({world:{tick:2,location:'lab',energy:.7,attention:.7,uncertainty:.6,facts:['observed:person:present'],objects:[{id:'p',label:'person',location:'lab',value:.8,visible:true,collected:false}],events:['person-entered']}}));
+const before=m.snapshot().world.updates;
+const r=m.observePassiveTransition(a,b);
+const after=m.snapshot();
+assert(after.world.updates>before);
+assert(r.error01>=0 && r.error01<=1);
+console.log('BIG_PASS_55_P27_PASSIVE_LEARNING=PASS', JSON.stringify({updates:after.world.updates,error01:r.error01}));

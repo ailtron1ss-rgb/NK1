@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import { B285NeuralLifeConsolidationCore } from '../src/organism/cognition/B285NeuralLifeConsolidationCore.ts';
+const core=new B285NeuralLifeConsolidationCore();
+for(let t=1;t<=320;t++){
+  const phase=t%80;
+  const self=Array.from({length:24},(_,i)=>Math.sin(i*.17+phase*.04));
+  const world=Array.from({length:16},(_,i)=>Math.cos(i*.13+phase*.07));
+  const goal=Array.from({length:8},(_,i)=>Math.sin(i*.43+phase*.09+(t>160?.7:0)));
+  const memory=Array.from({length:16},(_,i)=>Math.cos(i*.21+phase*.05));
+  const relation=Array.from({length:24},(_,i)=>Math.sin(i*.11+(t%3)*.9));
+  const reward=.62+.16*Math.sin(t*.12)+(t%71===0?.18:0);
+  core.step({tick:t,selfLatent:self,worldLatent:world,goalVector:goal,memoryLatent:memory,relationshipVector:relation,relationshipId:t%3===0?'alice':t%3===1?'mentor':'team',personalityVector:self,reward01:Math.max(0,Math.min(1,reward)),predictionError01:.11,agency01:.82,importance01:t%41===0?.88:.48,learningEnabled:true});
+}
+const d=core.diagnostics();
+assert(d.steps===320);
+assert(d.learningUpdates>=300);
+assert(d.episodeCount===320);
+assert(d.chapterCount>=8);
+assert(d.relationshipCount>=3);
+assert(d.autobiographicalCompression01>.6);
+assert(d.futureConsistency01>.7);
+assert(d.futureIdentityAlignment01>.5);
+assert(d.traitSpread01>.03);
+const f1=core.predictFuture(8); const f32=core.predictFuture(32); assert(f1.length===24 && f32.length===24);
+const relA=core.relationshipSnapshot('alice'); const relB=core.relationshipSnapshot('mentor');
+assert(relA && relB && relA.relationId!==relB.relationId);
+const actionBias=core.actionBias('reflect')-core.actionBias('explore');
+const ablation=core.futureSelfAblation(f1);
+assert(ablation>0.005);
+const snap=core.snapshot(); const restored=new B285NeuralLifeConsolidationCore(); restored.restore(snap); assert.equal(JSON.stringify({...restored.diagnostics(),causalAblationDrop01:0}), JSON.stringify({...d,causalAblationDrop01:0}));
+console.log(JSON.stringify({ok:true,d,future8:f1,future32:f32,relationshipA:relA,relationshipB:relB,actionBias,ablation}));

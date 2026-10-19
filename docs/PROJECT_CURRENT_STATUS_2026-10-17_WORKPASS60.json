@@ -1,0 +1,642 @@
+{
+  "title": "Neuro-Kurisu SUPER — текущий статус реализации — WorkPass60",
+  "date": "2026-10-17",
+  "workpass": 60,
+  "runtime": "35.80.0",
+  "schema": 225,
+  "baseArchive": "Neuro_Kurisu_WORKPASS59_2026-10-17.zip",
+  "counts": {
+    "DONE": 58,
+    "PARTIAL": 10,
+    "TODO": 8
+  },
+  "officialWeightedRoadmapPercent": 78.8,
+  "releaseStatus": "implementation-workpass; release gates remain open",
+  "items": [
+    {
+      "id": "P48-01",
+      "workstream": "A",
+      "title": "Исходные архивы сохранены в библиотеке",
+      "status": "DONE",
+      "evidence": "one.7z, two.7z, three.7z и four.7z подтверждены в /Нейро Курису/Исходники/ с исходными байтами и именами.",
+      "nextStep": ""
+    },
+    {
+      "id": "P48-02",
+      "workstream": "A",
+      "title": "Единая release metadata line",
+      "status": "DONE",
+      "evidence": "Root/runtime manifests, lockfiles, ReleaseContract, SUPER_VERSION and integration manifest aligned to WorkPass48 / 35.69.0 / schema 225.",
+      "nextStep": ""
+    },
+    {
+      "id": "P48-03",
+      "workstream": "B",
+      "title": "Инициатива получает предметные темы из целей и памяти",
+      "status": "DONE",
+      "evidence": "OrganismCore passes active goals and evidence-backed pattern/goal-learning/self-model memories to the existing initiative engine.",
+      "nextStep": ""
+    },
+    {
+      "id": "P48-04",
+      "workstream": "B",
+      "title": "Новизна тем и защита от циклических повторов",
+      "status": "DONE",
+      "evidence": "Fourteen-day token-overlap near-duplicate suppression, candidate dedupe and no generic fallback when all candidates are duplicates; focused queue regression passes.",
+      "nextStep": ""
+    },
+    {
+      "id": "P48-05",
+      "workstream": "E",
+      "title": "Appraisal-linked expression",
+      "status": "DONE",
+      "evidence": "Existing emotion appraisal maps to a confidence-gated transient toneHint; prompt keeps stable Kurisu identity, does not reveal telemetry and does not authorize tools. Shared sanitization rejects common credential/medical-secret patterns and contact/phone-like values in candidate topics and autonomous recent-memory context; it is a targeted filter, not a universal PII detector.",
+      "nextStep": ""
+    },
+    {
+      "id": "P48-06",
+      "workstream": "B",
+      "title": "Правдивая модель доставки и взаимности",
+      "status": "DONE",
+      "evidence": "A UI delivery ACK marks only delivery/execution; it no longer increases reciprocity. Test asserts unchanged reciprocity after delivery.",
+      "nextStep": ""
+    },
+    {
+      "id": "P48-07",
+      "workstream": "B",
+      "title": "Runtime typecheck and focused tests",
+      "status": "DONE",
+      "evidence": "npm run test:workpass48 passes typecheck, autonomous queue, prompt and trait-salience tests.",
+      "nextStep": ""
+    },
+    {
+      "id": "P48-08",
+      "workstream": "B",
+      "title": "Legacy integration regressions",
+      "status": "DONE",
+      "evidence": "big-pass-229-233 personhood/restart test and big-pass-288 social consolidation test pass after correcting outdated fixture assumptions.",
+      "nextStep": ""
+    },
+    {
+      "id": "P48-09",
+      "workstream": "B",
+      "title": "Server import and UI/API linkage",
+      "status": "DONE",
+      "evidence": "server relative import audit checks 11 imports; UI/API linkage reports 127 routes, 49 runtime atlas surfaces and no missing required seams.",
+      "nextStep": ""
+    },
+    {
+      "id": "P48-10",
+      "workstream": "H",
+      "title": "Provider-backed self-initiated dialogue idle/restart E2E",
+      "status": "TODO",
+      "evidence": "Queue and prompt contracts are tested but there is no long live provider/UI run in this environment.",
+      "nextStep": "Run with installed dependencies and a real configured language provider; observe idle initiation, restart and replay; continue provider-side data minimization review."
+    },
+    {
+      "id": "P48-11",
+      "workstream": "H",
+      "title": "Production app build and browser Live2D E2E",
+      "status": "TODO",
+      "evidence": "App dependencies are absent; production Vite build and interactive browser E2E were not verified.",
+      "nextStep": "Install through canonical project installer, build app and run browser tests including fallback and UI message delivery."
+    },
+    {
+      "id": "P48-12",
+      "workstream": "E",
+      "title": "True audio-to-avatar viseme/lipsync",
+      "status": "PARTIAL",
+      "evidence": "Existing intent/state mapping drives gaze/head motion; no verified audio envelope or phoneme/viseme path was added here.",
+      "nextStep": "Connect a real audio/viseme source to the canonical avatar body mapping."
+    },
+    {
+      "id": "P48-13",
+      "workstream": "C",
+      "title": "Full source archive integration and license sign-off",
+      "status": "PARTIAL",
+      "evidence": "Four archives are preserved and 21 unique nested source ZIPs were inventoried in previous review; this pass did not claim line-by-line integration of every upstream source.",
+      "nextStep": "Integrate the next source only when it closes a concrete missing capability, with license/provenance and single-owner review."
+    },
+    {
+      "id": "P48-14",
+      "workstream": "D",
+      "title": "Real receipt → Reafference → temporal credit → checkpoint",
+      "status": "PARTIAL",
+      "evidence": "WorkPass51 integrates exact decision-targeted Reafference/temporal credit and persists independently reconciled external outcomes as MemoryOS2 episodes with P33 feedback; physical provider/device proof, provider-side idempotency and live environment validation remain open.",
+      "nextStep": "Verify with a real external provider/device adapter, reconnect/replay and ambiguous-result scenarios; then validate end-to-end causal learning on independent tasks."
+    },
+    {
+      "id": "P49-01",
+      "workstream": "A",
+      "title": "Recall privacy gate shared by all three provider prompt routes",
+      "status": "DONE",
+      "evidence": "Normal cognitive, autonomous-dialogue and cognitive-proposal prompt paths now sanitize stored memory summaries, known-entity fact statements and world facts; unsafe facts are omitted as whole records.",
+      "nextStep": ""
+    },
+    {
+      "id": "P49-02",
+      "workstream": "D",
+      "title": "Unsafe restored proactive messages and generated output fail closed",
+      "status": "DONE",
+      "evidence": "Persisted unsafe topics/messages are stripped and pending work is deferred; unsafe generated unsolicited text cannot be marked ready for UI delivery.",
+      "nextStep": ""
+    },
+    {
+      "id": "P49-03",
+      "workstream": "H",
+      "title": "Privacy regression coverage across retrieval, prompt and restore seams",
+      "status": "DONE",
+      "evidence": "Focused regressions cover secret/API-key patterns and email-like data in all recalled context classes, old persisted queue state and outgoing proactive text; safe context remains available.",
+      "nextStep": ""
+    },
+    {
+      "id": "P49-04",
+      "workstream": "A",
+      "title": "Universal privacy classification and explicit cloud-context policy",
+      "status": "PARTIAL",
+      "evidence": "A shared heuristic gate covers known credential/contact patterns; it is not a complete PII detector or a user-consent policy for every provider.",
+      "nextStep": "Implement classification, local/cloud policy and network-level evidence."
+    },
+    {
+      "id": "P49-05",
+      "workstream": "H",
+      "title": "Production Vite build and interactive browser/Live2D E2E",
+      "status": "TODO",
+      "evidence": "Still not run because app dependencies are absent in the current work environment.",
+      "nextStep": "Install from lockfile in an environment with dependencies and execute actual browser E2E."
+    },
+    {
+      "id": "P49-06",
+      "workstream": "D",
+      "title": "Real provider/device receipt to Reafference and temporal credit",
+      "status": "PARTIAL",
+      "evidence": "WorkPass51 integrates exact decision-targeted Reafference/temporal credit and persists independently reconciled external outcomes as MemoryOS2 episodes with P33 feedback; physical provider/device proof, provider-side idempotency and live environment validation remain open.",
+      "nextStep": "Verify with a real external provider/device adapter, reconnect/replay and ambiguous-result scenarios; then validate end-to-end causal learning on independent tasks."
+    },
+    {
+      "id": "P49-07",
+      "workstream": "B",
+      "title": "Actual audio/viseme Live2D synchronization",
+      "status": "PARTIAL",
+      "evidence": "State-linked motion selection exists; real audio-envelope/viseme source and browser proof remain open.",
+      "nextStep": "Connect actual TTS playback audio to mouth parameters and test finish/cancel."
+    },
+    {
+      "id": "P49-08",
+      "workstream": "B",
+      "title": "Independent labelled memory retrieval holdout",
+      "status": "TODO",
+      "evidence": "Current documented retrieval uplift is zero and no candidate is promoted.",
+      "nextStep": "Build fixed independent labelled set and compare end-task outcomes."
+    },
+    {
+      "id": "P49-09",
+      "workstream": "G",
+      "title": "Target-host local inference profile",
+      "status": "TODO",
+      "evidence": "llama.cpp adapter exists but real target-hardware inference and performance are unverified.",
+      "nextStep": "Benchmark latency, memory, thermal and no-cloud-fallback behavior on target host."
+    },
+    {
+      "id": "P50-01",
+      "workstream": "B",
+      "title": "Единый контур интересов, целей, памяти и реакции пользователя",
+      "status": "DONE",
+      "evidence": "OrganismCore derives candidate themes from active goals, evidence-backed memory and self-authored goals; P33 owns graded interest profiles; explicit thread-linked positive/engaged/negative feedback updates the matching profile idempotently with source/evidence IDs. Affect and selected profile context reach autonomous dialogue generation.",
+      "nextStep": "Run a live provider idle dialogue to evaluate topic quality and long-run stability."
+    },
+    {
+      "id": "P50-02",
+      "workstream": "B",
+      "title": "Фоновый autonomous scheduler до durable delivery/restart",
+      "status": "DONE",
+      "evidence": "Deterministic provider test exercises actual OrganismRuntime background clock -> cognitive cycle -> language-provider seam -> ready message -> UI acknowledgement -> explicit response feedback -> durable flush -> restart with no redelivery. Sensor-only cycles preserve social quiet-time.",
+      "nextStep": "Repeat with installed application and an actual configured provider in a real browser."
+    },
+    {
+      "id": "P50-03",
+      "workstream": "E",
+      "title": "Opt-in browser speech with state-driven Live2D movement and mouth mapping",
+      "status": "PARTIAL",
+      "evidence": "AvatarStage implements opt-in SpeechSynthesis, voice choice, cancel paths, word-boundary mouth-shape approximation, and sends emotion/gaze/thinking/gesture/motion to Live2D viewer. Actual production browser and audio timing were not available in this environment.",
+      "nextStep": "Run Vite production build and browser/Live2D E2E; replace word-boundary approximation with audio/phoneme sync when output provider supplies timing."
+    },
+    {
+      "id": "P51-01",
+      "workstream": "D",
+      "title": "Exact decision attribution and explicit capacity expiry in temporal credit",
+      "status": "DONE",
+      "evidence": "CanonicalTemporalCreditAuthority excludes outcomes targeted to another decision and expires overflowed unresolved decisions with zero eligibility/confidence; focused cross-decision leakage and overflow regressions pass.",
+      "nextStep": ""
+    },
+    {
+      "id": "P51-02",
+      "workstream": "D",
+      "title": "Independent external evidence gate for Reafference",
+      "status": "DONE",
+      "evidence": "Positive match is rejected when independent support is zero or reconciliation is not supported/corroborated; high confidence alone cannot manufacture independent evidence. Focused codec tests pass.",
+      "nextStep": ""
+    },
+    {
+      "id": "P51-03",
+      "workstream": "C",
+      "title": "Verified external action outcome to canonical episodic memory",
+      "status": "DONE",
+      "evidence": "Exact-decision, independently reconciled and non-replayed external outcomes are admitted to the single MemoryOS2 as provenance-linked episodic facts, then update canonical P33 interest evidence idempotently. Persistence/restart integration passes.",
+      "nextStep": ""
+    },
+    {
+      "id": "P51-04",
+      "workstream": "C",
+      "title": "Intent-aware MemoryOS2 query ranking",
+      "status": "DONE",
+      "evidence": "Bilingual query intent gives bounded kind/context fit for episodic, procedural, identity, goal, causal and factual queries. Controlled same-lexical fixtures pass; broad retrieval benchmark has recallDelta=0 and candidate is not promoted.",
+      "nextStep": ""
+    },
+    {
+      "id": "P52-01",
+      "workstream": "D",
+      "title": "Project step completion requires qualified evidence",
+      "status": "DONE",
+      "evidence": "AutonomousProjectExecutor returns a completion result only after tool/step identity, research gates, threshold evidence and minimum qualified attempts pass. Core progress/skill promotion cannot use an incomplete attempt.",
+      "nextStep": ""
+    },
+    {
+      "id": "P52-02",
+      "workstream": "D",
+      "title": "Persisted qualifying-attempt count",
+      "status": "DONE",
+      "evidence": "qualifyingAttempts is stored in the project plan and sanitized on restore. Weak evidence does not satisfy multi-attempt promotion policy. Legacy snapshots safely default to zero.",
+      "nextStep": ""
+    },
+    {
+      "id": "P52-03",
+      "workstream": "D",
+      "title": "Outcome-ID binding gates and quality-aware retry",
+      "status": "DONE",
+      "evidence": "Outcome IDs are consumed only after project/tool/step/research-gate checks pass; low evidence receives bounded retry/backoff and no fitness or promotion bonus.",
+      "nextStep": ""
+    },
+    {
+      "id": "P52-04",
+      "workstream": "B",
+      "title": "Project execution state exposed in runtime/UI",
+      "status": "DONE",
+      "evidence": "The existing active-project endpoint includes a sanitized read-only plan-status view; Runtime Atlas renders progress, per-step gates, qualifying attempts and blockers without exposing tool input.",
+      "nextStep": ""
+    },
+    {
+      "id": "P52-05",
+      "workstream": "H",
+      "title": "Production browser validation of project progress panel",
+      "status": "PARTIAL",
+      "evidence": "Runtime typecheck and route/linkage contracts pass; installed React/Vite production build and interactive browser E2E are not established in this environment.",
+      "nextStep": "Run installed app build and interactive browser E2E in the full app environment."
+    },
+    {
+      "id": "P53-01",
+      "workstream": "D",
+      "title": "Canonical persisted one-time action approval gate",
+      "status": "DONE",
+      "evidence": "ActionGateway binds exact tool/input/operation and decision lineage, expires tickets, serializes ticket admission and one-time consumption, persists state and denies altered/replayed approvals.",
+      "nextStep": ""
+    },
+    {
+      "id": "P53-02",
+      "workstream": "B",
+      "title": "Owner approval UI can retry the exact protected action",
+      "status": "DONE",
+      "evidence": "Operator Console safely renders redacted approval previews, resolves owner decision and re-submits the captured exact voice/outbound operation once; Runtime Atlas retains the global review queue.",
+      "nextStep": ""
+    },
+    {
+      "id": "P53-03",
+      "workstream": "D",
+      "title": "Direct voice, modern/legacy outbound, and research probe routes protected",
+      "status": "DONE",
+      "evidence": "Missing approval blocks these direct surfaces before voice capture, outbound envelope creation or Python probe execution; actual local runtime + bridge E2E confirmed approval and replay-denial.",
+      "nextStep": ""
+    },
+    {
+      "id": "P53-04",
+      "workstream": "A",
+      "title": "Approval preview data minimization improved",
+      "status": "DONE",
+      "evidence": "Bearer credentials, secret query parameters, URL userinfo, email and phone-like strings are redacted from public approval previews; full request fingerprint stays private.",
+      "nextStep": ""
+    },
+    {
+      "id": "P53-05",
+      "workstream": "H",
+      "title": "Production app and actual provider/device E2E",
+      "status": "TODO",
+      "evidence": "App dependency tree is absent; production Vite/browser E2E and live provider/device side effects were not executed.",
+      "nextStep": "Install using npm run install:all in an allowed environment, run app production build/browser E2E and validate protected operations against real adapters."
+    },
+    {
+      "id": "P54-01",
+      "workstream": "B",
+      "title": "Universal approval continuation in app root",
+      "status": "DONE",
+      "evidence": "Structured approvalRequired POST responses with replayable JSON-object bodies register safe metadata in the global ActionApprovalCenter; original body remains only in the current tab closure.",
+      "nextStep": ""
+    },
+    {
+      "id": "P54-02",
+      "workstream": "B",
+      "title": "Exact replay after approval",
+      "status": "DONE",
+      "evidence": "Owner approval resolves the canonical ActionGateway ticket, then replays the same route and same JSON object once with approvalId; preview is never used to reconstruct inputs.",
+      "nextStep": ""
+    },
+    {
+      "id": "P54-03",
+      "workstream": "A",
+      "title": "Single approval decision UI",
+      "status": "DONE",
+      "evidence": "Runtime Atlas became read-only for approval decisions so a second panel cannot consume a ticket while the active client call is waiting to resume.",
+      "nextStep": ""
+    },
+    {
+      "id": "P54-04",
+      "workstream": "H",
+      "title": "Approval continuation broker lifecycle",
+      "status": "DONE",
+      "evidence": "Broker tests cover publish, approve-once, decline, duplicate live ticket, ticket expiry and automatic pending-call expiry; malformed/out-of-contract expiry is rejected before a UI card is created, and sensitive bodies are never persisted.",
+      "nextStep": ""
+    },
+    {
+      "id": "P54-05",
+      "workstream": "B",
+      "title": "Source-derived fail-closed approval UX",
+      "status": "DONE",
+      "evidence": "The retained MIT Hexis approval policy and tests informed the no-approver-means-no-consent flow; implicit CHAT approval was deliberately not copied.",
+      "nextStep": ""
+    },
+    {
+      "id": "P54-06",
+      "workstream": "H",
+      "title": "Production Vite build and browser E2E",
+      "status": "TODO",
+      "evidence": "App dependencies are not installed in the work environment; source TSX transpilation and route-wiring checks are not equivalent to a real browser session.",
+      "nextStep": "Install app lockfile in a clean network-enabled environment and run real approval journey tests."
+    },
+    {
+      "id": "P54-07",
+      "workstream": "F",
+      "title": "Approval ticket orphan cleanup on reload",
+      "status": "DONE",
+      "evidence": "Global ActionApprovalCenter polls the canonical ActionGateway permission snapshot and displays unclaimed server-pending tickets after a short race-avoidance grace interval. The owner can explicitly decline an orphan. Raw request body is not persisted and no action is resumed after tab reload.",
+      "nextStep": ""
+    },
+    {
+      "id": "P55-01",
+      "workstream": "C",
+      "title": "Bilingual, concept-aware MemoryOS2 retrieval for paraphrased interests, goals, causes and identity questions",
+      "status": "PARTIAL",
+      "evidence": "Added pre-tokenized bilingual concept groups, balanced expansion across active topics, identity intent for curiosity/personality prompts and controlled Russian-to-English recall examples. MemoryOS2/MemoryFabric remain the sole canonical memory owner; broad labelled holdout has not proved uplift and the candidate is not promoted.",
+      "nextStep": "Build a frozen independent Russian/English paraphrase holdout with sufficient hard negatives; compare against BM25 with Recall@k, MRR, false recalls and p95 latency; only promote if it beats the baseline."
+    },
+    {
+      "id": "P55-02",
+      "workstream": "B",
+      "title": "Safe discovery and explicit revocation of orphaned approval tickets after page reload",
+      "status": "DONE",
+      "evidence": "ActionApprovalCenter fetches server-owned permission snapshots, filters pending tickets without an in-tab continuation, shows a redacted preview and allows explicit decline only. Sensitive original request bodies remain ephemeral and orphaned tickets are never auto-executed.",
+      "nextStep": ""
+    },
+    {
+      "id": "P55-03",
+      "workstream": "C",
+      "title": "Balanced expansion and cached concept tokens in bilingual retrieval",
+      "status": "DONE",
+      "evidence": "Concept aliases are tokenized once at module initialization; multi-concept queries round-robin their bounded expansion terms in relevance order rather than truncating alphabetically, protecting active secondary concepts. Runtime typecheck and focused retrieval scenarios pass.",
+      "nextStep": ""
+    },
+    {
+      "id": "P56-01",
+      "workstream": "C",
+      "title": "Deferred batched semantic-index maintenance integrated into canonical MemoryOS2/MemoryFabric",
+      "status": "DONE",
+      "evidence": "Opt-in MemoryFabric maintenance schedules bounded batches; validates vectors and content hash, caps the derived cache, applies content-bound exponential retry backoff, keeps lexical/fuzzy fallback, serializes background/live/inspector provider access, and reports aggregate diagnostics. Hexis MIT deferred-worker pattern adapted without importing another memory database/runtime.",
+      "nextStep": ""
+    },
+    {
+      "id": "P56-02",
+      "workstream": "A",
+      "title": "Embedding-provider outbound text minimization before cache and HTTP",
+      "status": "DONE",
+      "evidence": "The canonical LocalEmbeddingProvider redacts common API/bearer credentials, private-key blocks, email addresses, phone-like values, credentialed URL userinfo/query secrets and long numeric IDs before cache fingerprinting and provider HTTP payloads. Aggregate-only redaction diagnostics are exposed. The behavior is tested with a fake explicitly remote HTTPS endpoint; no raw input secrets appear on the wire.",
+      "nextStep": "Expand classification and add user-facing local/cloud data policy plus network-level evidence; heuristic redaction is not a universal PII classifier."
+    },
+    {
+      "id": "P57-01",
+      "workstream": "D",
+      "title": "External verification cannot be self-promoted from tool-contract ACK",
+      "status": "DONE",
+      "evidence": "OutcomeVerificationService and OutcomeCognitionFabric reject externalObservation spoofing with basis=tool-contract; verified postconditions require bounded observation identity and expected/observed state.",
+      "nextStep": ""
+    },
+    {
+      "id": "P57-02",
+      "workstream": "D",
+      "title": "Durable idempotency is inferred for mutating and high-risk tools",
+      "status": "DONE",
+      "evidence": "ActionGateway classifies side-effecting tool identities/capabilities even if legacy definitions omitted requiresIdempotencyKey; unkeyed operations fail before executor entry.",
+      "nextStep": "Continue exhaustive call-site matrix for every bridge and action class."
+    },
+    {
+      "id": "P57-03",
+      "workstream": "D",
+      "title": "Explicit postcondition contradiction remains a distinct non-success outcome",
+      "status": "DONE",
+      "evidence": "ActionGateway now returns executed-contradicted/ok=false/verified=false when a bounded external state contradicts expectation; causal autobiography exposes the contradiction.",
+      "nextStep": "Verify on real provider/device read-after-write observations."
+    },
+    {
+      "id": "P57-04",
+      "workstream": "D",
+      "title": "Learning assignments require evidence provenance and confidence",
+      "status": "DONE",
+      "evidence": "External observations retain sourceId/sourceClass/independenceKey; direct tool ACK and unproven single-source contradiction are retained as accountability evidence but do not directly alter competence.",
+      "nextStep": "Confirm that host adapters supply truthful source lineage in a live environment."
+    },
+    {
+      "id": "P57-05",
+      "workstream": "D",
+      "title": "Negative evidence credit requires two independent contradictory lineages",
+      "status": "DONE",
+      "evidence": "Distinct independence keys, allowed external source classes and confidence threshold are required; repeated sources with one shared key do not count as independent. Regression tests cover this boundary.",
+      "nextStep": "Validate consensus behavior against actual external provider/device traces."
+    },
+    {
+      "id": "P57-06",
+      "workstream": "D",
+      "title": "Delayed outcome correlation survives bounded ring eviction and migration",
+      "status": "DONE",
+      "evidence": "OutcomeCognition projection fingerprint index and CausalAccountabilityGraph outcome directory persist/restore. Late observations reattach by exact executionId and identical replay is deduplicated.",
+      "nextStep": "Exercise under real process crash/restart and long-duration workload."
+    },
+    {
+      "id": "P57-07",
+      "workstream": "D",
+      "title": "Persisted external evidence provenance survives schema normalization",
+      "status": "DONE",
+      "evidence": "StateMigrations keeps assessment, source identity, source class and independent lineage fields under bounded limits for records and projection indexes.",
+      "nextStep": ""
+    },
+    {
+      "id": "P57-08",
+      "workstream": "H",
+      "title": "WorkPass57 runtime regression set and typecheck",
+      "status": "DONE",
+      "evidence": "npm run test:workpass57 passes typecheck, external outcome hardening, inferred idempotency, late evidence/migration/replay, crash reconciliation, 9 receipt integration scenarios, 5 provider reconciliation scenarios and memory-index/privacy regressions.",
+      "nextStep": "Run installed app build and live provider/device tests when the target environment is available."
+    },
+    {
+      "id": "P57-09",
+      "workstream": "A",
+      "title": "Architecture audit covers sibling app/runtime imports without false missing-import errors",
+      "status": "DONE",
+      "evidence": "audit-architecture.mjs indexes the cross-package import sources and TSX/JSX/query-bearing asset references; output reports zero unresolved imports/cycles/legacy leakage.",
+      "nextStep": "Keep cross-package resolution in the canonical audit contract."
+    },
+    {
+      "id": "P57-10",
+      "workstream": "A",
+      "title": "Release source, contract, hygiene, integrity and executable syntax checks",
+      "status": "DONE",
+      "evidence": "ReleaseContract=PASS; ReleaseSource=PASS; source hygiene 4024 files/0 warnings; integrity 4030 files PASS; syntax 1343 JS/6 shell/247 JSON PASS. Final archive manifest is regenerated and verified in this pass.",
+      "nextStep": ""
+    },
+    {
+      "id": "P57-11",
+      "workstream": "H",
+      "title": "Live external device/provider outcome-to-learning E2E",
+      "status": "PARTIAL",
+      "evidence": "Simulated and persisted tests cover approval, keyed receipt, crash recovery, exact correlation, source provenance and replay. A physical provider/device side effect and independent real postcondition remain unverified in this environment.",
+      "nextStep": "Run read-after-write confirmation and crash/restart/reconcile against a real configured adapter."
+    },
+    {
+      "id": "P57-12",
+      "workstream": "H",
+      "title": "Independent labelled retrieval holdout demonstrates reliable memory uplift",
+      "status": "TODO",
+      "evidence": "Current broad benchmark remains recallDelta=0/not-promoted; WorkPass57 did not claim retrieval improvement.",
+      "nextStep": "Create frozen labelled set and compare BM25/hybrid/vector recall, temporal correctness, false-recall, abstention, latency and storage cost."
+    },
+    {
+      "id": "P58-01",
+      "workstream": "D",
+      "title": "Полный preflight составного навыка до первого шага",
+      "status": "DONE",
+      "evidence": "executeReusableSkill заранее собирает primary/repair/fallback кандидатов и блокирует отсутствие/некорректность parent idempotency key до любого вызова инструмента, исключая частично выполненный навык из-за позднего контракта.",
+      "nextStep": "Проверить тот же сценарий на реальном registered skill и внешнем адаптере."
+    },
+    {
+      "id": "P58-02",
+      "workstream": "D",
+      "title": "Стабильные decision IDs и происхождение на шагах reusable skill",
+      "status": "DONE",
+      "evidence": "Ключевые шаги получают детерминированный per-step idempotency key и decisionId; доверенный host autonomous-контекст и ожидаемые output keys проходят по пути финализации.",
+      "nextStep": "Подтвердить сохранение lineage после реального process restart."
+    },
+    {
+      "id": "P58-03",
+      "workstream": "D",
+      "title": "Project tool preflight до списания бюджета",
+      "status": "DONE",
+      "evidence": "executeProjectTool валидирует инструмент и обязательный durable key до списания бюджета, создаёт стабильный decision identity и использует нормализованные execution options в approval/resume.",
+      "nextStep": "Проверить неоднозначный исход и reconciliation на реальном provider."
+    },
+    {
+      "id": "P58-04",
+      "workstream": "F",
+      "title": "Запрет подделки autonomous provenance через HTTP API",
+      "status": "DONE",
+      "evidence": "/api/organism/projects/tool и /projects/step больше не доверяют клиентскому autonomous=true; публичные project/skill routes возвращают явную ошибку preflight, когда ключ обязателен.",
+      "nextStep": "В production E2E проверить реальные границы origin/session/permission."
+    },
+    {
+      "id": "P58-05",
+      "workstream": "D",
+      "title": "Регрессионная интеграция: no-partial-execution, receipts и replay",
+      "status": "DONE",
+      "evidence": "Добавлен tests/workpass58-composite-idempotency-preflight.mjs: нет вызовов при missing parent key; keyed run даёт durable step receipts, стабильные decision IDs, autonomous lineage и replay без повторного side effect; project budget не расходуется до preflight.",
+      "nextStep": "Добавить реальный crash/restart сценарий для многошагового внешнего навыка."
+    },
+    {
+      "id": "P58-06",
+      "workstream": "C",
+      "title": "Стабилизация теста фоновой индексации без произвольного таймера",
+      "status": "DONE",
+      "evidence": "memory-background-index-workpass56.mjs использует управляемый provider barrier вместо sleep race; изолированный npm run test:workpass57 проходит все поднаборы, включая serialized provider load и privacy.",
+      "nextStep": "Измерить независимый retrieval uplift; текущий recallDelta=0 и promotion остаётся not-promoted."
+    },
+    {
+      "id": "P58-07",
+      "workstream": "H",
+      "title": "Согласование runtime/root release metadata, backlog и архива WorkPass58",
+      "status": "DONE",
+      "evidence": "Runtime 35.78.0, version/release contracts, current status/scorecard/CHANGELOG/список задач и runtime archive manifest согласованы; root release metadata contract, кодовые регрессии, исходные пути UTF-8, CRC и SHA-256 итогового ZIP проверены.",
+      "nextStep": "Production Vite/browser E2E, live provider/device, rollback and soak остаются общими release gates."
+    },
+    {
+      "id": "P58-08",
+      "workstream": "F",
+      "title": "Различать некорректный idempotency key и отсутствующее предусловие на HTTP-границе",
+      "status": "DONE",
+      "evidence": "Новый idempotencyPreflightHttpStatus используется route handlers: malformed explicit key → HTTP 400; missing required key → HTTP 428; ordinary result codes остаются у endpoint. Отдельный тест покрывает оба статуса и не-idempotency случаи.",
+      "nextStep": "Проверить весь HTTP flow с installed browser и действующим API клиентом."
+    },
+    {
+      "id": "P59-01",
+      "workstream": "D",
+      "title": "Предисполнительные исходы исключены из причинной проекции действия",
+      "status": "DONE",
+      "evidence": "Добавлен общий wasToolExecutorEntered в ActionGateway и центральная защита finalizeToolOutcome в OrganismCore. approval-required, unavailable, competence-insufficient, policy-refused и ошибки ledger/idempotency до входа в executor остаются в audit trail, но не создают ложные OutcomeCognition/causal action/outcome nodes. Explicit reconciled-not-executed сохраняется как reconciliation event без обучения.",
+      "nextStep": "Подтвердить ту же границу на реальных внешних provider/device путях и после process restart."
+    },
+    {
+      "id": "P59-02",
+      "workstream": "D",
+      "title": "Обучение reusable skill и project executor ограждено от непроизошедших действий",
+      "status": "DONE",
+      "evidence": "executeReusableSkill не создаёт repair/aggregate competence penalty при pre-execution gate, сохраняет паузу с событием и не называет частичный replay полным replay. executeProjectTool не вызывает observeToolResult и skillAcquisitionBenchmark для заблокированных действий; они остаются видимыми через project-tool-preflight-blocked.",
+      "nextStep": "Добавить многокроковое crash/restart/resume/reconciliation с прежними ключами на адаптере, поддерживающем реальные durable receipts."
+    },
+    {
+      "id": "P60-01",
+      "workstream": "D",
+      "title": "Durable project-step execution checkpoint with stable decision/operation identity",
+      "status": "DONE",
+      "evidence": "AutonomousProjectExecutor snapshot schema v7 persists active operation stage, project/step/tool identity, request fingerprint, stable operation key and decisionId; restore accepts the previous version 6 state with migration defaults.",
+      "nextStep": "Validate restart using real provider/device adapters and clean process termination."
+    },
+    {
+      "id": "P60-02",
+      "workstream": "F",
+      "title": "Reconciliation-first project step resume; changed payload blocked without repeating side effect",
+      "status": "DONE",
+      "evidence": "OrganismCore reuses the checkpoint's operation identity, routes unresolved outcomes to read-only ActionGateway reconciliation, blocks a changed request, and exposes redacted active-operation status. Focused integration test verifies an unknown provider receipt never invokes the action executor twice.",
+      "nextStep": "Close authoritative provider receipt finalization as a superseding evidence revision; validate real transport/restart."
+    }
+  ],
+  "resultArchive": "Neuro_Kurisu_WORKPASS60_2026-10-17.zip",
+  "originalArchiveFilePathsRetained": 9260,
+  "newFiles": 8,
+  "resultArchiveFileEntries": 9268,
+  "runtimeArchiveManifestFiles": 4250,
+  "archiveNamesEncoding": "UTF-8; all Unicode paths preserved",
+  "lastVerification": {
+    "timestamp": "2026-10-17",
+    "runtimeSuite": "PASS: typecheck, WorkPass60 checkpoint and reconciliation tests, WorkPass59 outcome/learning firewall regressions",
+    "workpass58Regressions": "PASS individually: composite preflight and idempotency HTTP statuses",
+    "runtimeArchiveManifest": "PASS: 4250 files, no missing files, hash mismatches or extras",
+    "releaseMetadata": "PASS: all metadata-contract checks",
+    "limitations": [
+      "Authoritative provider-found receipt still conflicts with the existing executionId projection fingerprint guard; evidence revision/supersession remains open.",
+      "Live provider/device action and real process restart, production browser E2E and release soak not performed."
+    ]
+  }
+}

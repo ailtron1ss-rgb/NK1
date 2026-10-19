@@ -1,0 +1,73 @@
+{
+  "release": "35.7.7",
+  "benchmark": "P2707_FACTORIAL_LEARNING_BENCHMARK",
+  "status": "PASS",
+  "variants": [
+    {
+      "variant": "A-baseline",
+      "deltaWeightL1": 0,
+      "meanAbsWeight": 0.0195,
+      "generalization": 0.25,
+      "replayDiversity": 0,
+      "adaptiveMix": 0.7746,
+      "astroGate": 0.9944,
+      "longDelayCredit": 0,
+      "cascadeUpdates": 0
+    },
+    {
+      "variant": "B-online",
+      "deltaWeightL1": 9.73252,
+      "meanAbsWeight": 0.01716,
+      "generalization": 0.125,
+      "replayDiversity": 0,
+      "adaptiveMix": 0.7515,
+      "astroGate": 0.9944,
+      "longDelayCredit": 0,
+      "cascadeUpdates": 0
+    },
+    {
+      "variant": "C-cascade",
+      "deltaWeightL1": 9.93004,
+      "meanAbsWeight": 0.01717,
+      "generalization": 0.125,
+      "replayDiversity": 0,
+      "adaptiveMix": 0.7501,
+      "astroGate": 0.7358,
+      "longDelayCredit": 0.0058,
+      "cascadeUpdates": 96783
+    },
+    {
+      "variant": "D-cascade-replay",
+      "deltaWeightL1": 9.93356,
+      "meanAbsWeight": 0.01717,
+      "generalization": 0.125,
+      "replayDiversity": 0.2891,
+      "adaptiveMix": 0.7496,
+      "astroGate": 0.7354,
+      "longDelayCredit": 0.0059,
+      "cascadeUpdates": 96871
+    },
+    {
+      "variant": "E-cascade-high",
+      "deltaWeightL1": 10.0055,
+      "meanAbsWeight": 0.01722,
+      "generalization": 0.125,
+      "replayDiversity": 0.2891,
+      "adaptiveMix": 0.7485,
+      "astroGate": 0.7376,
+      "longDelayCredit": 0.0044,
+      "cascadeUpdates": 96204
+    },
+    {
+      "variant": "F-cascade-low",
+      "deltaWeightL1": 9.73302,
+      "meanAbsWeight": 0.01711,
+      "generalization": 0.125,
+      "replayDiversity": 0.2891,
+      "adaptiveMix": 0.7559,
+      "astroGate": 0.7292,
+      "longDelayCredit": 0.0111,
+      "cascadeUpdates": 98172
+    }
+  ]
+}

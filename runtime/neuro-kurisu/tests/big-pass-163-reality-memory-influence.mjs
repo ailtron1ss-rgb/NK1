@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { RealityEvidenceLedger } from '../src/organism/system/RealityEvidenceLedger.ts';
+import { MemoryRetentionEconomy } from '../src/organism/system/MemoryRetentionEconomy.ts';
+import { BehavioralInfluenceLedger } from '../src/organism/system/BehavioralInfluenceLedger.ts';
+const r=new RealityEvidenceLedger();
+r.record({tick:1,realityClass:'simulator',claim:'weather',confidence01:.95,independenceKey:'sim:a'});
+r.record({tick:2,realityClass:'device-observation',claim:'weather',confidence01:.72,independenceKey:'device:a'});
+r.record({tick:3,realityClass:'external-observation',claim:'weather',confidence01:.81,independenceKey:'external:b'});
+const a=r.claimAssessment('weather');
+assert.equal(a.independentExternalSources,2);assert.equal(a.promotionAllowed,true);assert.equal(a.simulationConfidence01,.95);assert.equal(a.externalConfidence01,.81);assert.equal(a.realityGap01>.13,true);
+const m=new MemoryRetentionEconomy(); const hi=m.assess({tick:1,salience01:.9,identity01:.9,goal01:.9,predictionError01:.8,emotion01:.7,novelty01:.8}); const lo=m.assess({tick:2,salience01:.05,identity01:0,goal01:0,predictionError01:0,emotion01:0,novelty01:0,redundancy01:1,storageCost01:1}); assert.equal(hi.action,'retain');assert.equal(lo.action,'discard-candidate');
+const b=new BehavioralInfluenceLedger();b.anchor('e1',{tick:1,action:'explore',score01:.3});const x=b.observeFuture('e1',{tick:5,action:'verify',score01:.8});assert.ok(x);assert.equal(x.evidence,'action-divergence');assert.equal(x.influence01,.5);
+console.log(JSON.stringify({pass:163,status:'PASS',reality:a,retention:m.snapshot(),influence:b.snapshot()},null,2));

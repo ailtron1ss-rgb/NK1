@@ -1,0 +1,1870 @@
+"""
+NeuroCore Organism v21 — Option-Critic + C51 + RSSM burn-in + intra-option actor.
+Requires: torch>=2.0.
+
+Run:
+  python neurocore_v21.py --mode smoke
+  python neurocore_v21.py --mode grads
+  python neurocore_v21.py --mode train --steps 15000
+  python neurocore_v21.py --mode curriculum --steps 20000
+  python neurocore_v21.py --mode benchmark --steps 10000 --seeds 0,1,2
+  python neurocore_v21.py --mode ablate --steps 3000
+"""
+from __future__ import annotations
+import argparse, copy, json, math, random, statistics, time
+from collections import deque
+from dataclasses import asdict, dataclass
+from typing import Any, Deque, Dict, List, Optional, Tuple
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+# ============================================================
+# Utils
+# ============================================================
+
+def set_seed(seed):
+    random.seed(seed); torch.manual_seed(seed)
+    if torch.cuda.is_available(): torch.cuda.manual_seed_all(seed)
+
+
+def symlog(x): return torch.sign(x) * torch.log1p(x.abs())
+
+
+def twohot_encode(x, bins):
+    x = x.unsqueeze(-1)
+    below = ((bins <= x).sum(-1) - 1).clamp(0, len(bins) - 2)
+    above = below + 1
+    bb, ba = bins[below], bins[above]
+    w_a = ((x.squeeze(-1) - bb) / (ba - bb).clamp_min(1e-6)).clamp(0, 1)
+    w_b = 1 - w_a
+    out = torch.zeros(x.shape[0], len(bins), device=x.device)
+    out.scatter_(1, below.unsqueeze(-1), w_b.unsqueeze(-1))
+    out.scatter_(1, above.unsqueeze(-1), w_a.unsqueeze(-1))
+    return out
+
+
+def twohot_decode(p, bins): return (p * bins).sum(-1)
+
+
+# ============================================================
+# Config
+# ============================================================
+
+@dataclass
+class Config:
+    input_dim: int = 44
+    latent_dim: int = 64
+    # RSSM
+    rssm_deter: int = 128
+    rssm_stoch: int = 32
+    rssm_classes: int = 32
+    rssm_hidden: int = 128
+    kl_free_bits: float = 1.0
+    kl_balance: float = 0.8
+    burn_in: int = 5
+    seq_len: int = 15
+    # WM
+    wm_hidden: int = 64
+    # Options
+    n_options: int = 4
+    max_option_steps: int = 25
+    termination_entropy_beta: float = 0.01
+    # Actions
+    n_actions: int = 6
+    # Character
+    n_traits: int = 34
+    emotion_dim: int = 8
+    # RL
+    batch_size: int = 16
+    warmup_episodes: int = 8
+    train_every: int = 2
+    gamma: float = 0.99
+    lambda_returns: float = 0.95
+    target_tau: float = 0.01
+    learning_rate: float = 1e-4
+    weight_decay: float = 1e-5
+    grad_clip: float = 100.0
+    entropy_beta: float = 0.01
+    imagination_horizon: int = 15
+    # C51 critic
+    n_value_bins: int = 51
+    v_min: float = -20.0
+    v_max: float = 20.0
+    # BYOL
+    byol_ema: float = 0.99
+    byol_scale: float = 0.03
+    # EB
+    eb_size: int = 2000
+    eb_topk: int = 8
+    eb_dim: int = 64
+    eb_weight: float = 0.05
+    # Curriculum
+    curriculum_window: int = 50
+    competence_target: float = 0.5
+    variance_bonus: float = 0.5
+    # Aux
+    aux_fe_weight: float = 0.02
+    aux_self_weight: float = 0.02
+    aux_tom_weight: float = 0.03
+    aux_char_weight: float = 0.02
+    aux_wm_weight: float = 0.02
+    aux_eb_weight: float = 0.02
+    # Sleep
+    sleep_every: int = 2000
+    sleep_updates: int = 20
+    # Env
+    max_episode_steps: int = 300
+    eval_steps: int = 400
+    n_task_types: int = 3
+
+
+# ============================================================
+# Environment
+# ============================================================
+
+class MultiTaskEnv:
+    def __init__(self, input_dim=44, seed=0):
+        self.dim = input_dim
+        self.seed = seed
+        self.rng = random.Random(seed)
+        self.regime_vectors = self._make_regimes(seed)
+        self.reset(seed)
+
+    def _make_regimes(self, seed):
+        g = torch.Generator().manual_seed(seed + 101)
+        return [F.normalize(torch.randn(5, generator=g), dim=0) for _ in range(4)]
+
+    def reset(self, seed=None, task_id=0):
+        if seed is not None:
+            self.seed = seed; self.rng = random.Random(seed)
+        self.task_id = int(task_id)
+        self.t = 0
+        self.pos = torch.tensor([self.rng.uniform(-.7,.7), self.rng.uniform(-.7,.7)])
+        self.vel = torch.zeros(2)
+        self.energy = 0.72
+        self.resources = torch.tensor([
+            [self.rng.uniform(-.9,.9), self.rng.uniform(-.9,.9)] for _ in range(3)])
+        self.dangers = torch.tensor([
+            [self.rng.uniform(-.9,.9), self.rng.uniform(-.9,.9)]])
+        self.waypoint = torch.tensor([self.rng.uniform(-.9,.9),
+                                       self.rng.uniform(-.9,.9)])
+        self.regime = self.rng.randrange(4)
+        self.social = torch.zeros(4)
+        self.collected = 0
+        return self.observe()
+
+    def observe(self):
+        rel = self.resources - self.pos.unsqueeze(0)
+        d = rel.norm(dim=-1)
+        ni = int(d.argmin().item()); nr = rel[ni]; nd = float(d[ni].item())
+        dd = (self.dangers - self.pos.unsqueeze(0)).norm(dim=-1)
+        ndi = int(dd.argmin().item())
+        dv = (self.dangers - self.pos.unsqueeze(0))[ndi]; ndd = float(dd[ndi].item())
+        wr = self.waypoint - self.pos; wd = float(wr.norm().item())
+        r = self.regime_vectors[self.regime]
+        obs = torch.zeros(self.dim)
+        obs[0:2] = self.pos; obs[2:4] = self.vel; obs[4] = self.energy
+        obs[5:7] = nr.clamp(-1, 1); obs[7] = nd
+        obs[8:10] = dv.clamp(-1, 1); obs[10] = ndd
+        obs[11:13] = wr.clamp(-1, 1); obs[13] = wd
+        obs[14] = math.sin(self.t/20.); obs[15] = math.cos(self.t/20.)
+        obs[16:21] = r; obs[21:25] = self.social
+        obs[25] = math.sin(self.pos[0].item()*math.pi)
+        obs[26] = math.cos(self.pos[0].item()*math.pi)
+        obs[27] = math.sin(self.pos[1].item()*math.pi)
+        obs[28] = math.cos(self.pos[1].item()*math.pi)
+        obs[29] = math.sin(nd*2*math.pi); obs[30] = math.cos(nd*2*math.pi)
+        obs[31] = self.vel.norm().item()
+        obs[32] = float(self.t % 60)/60.
+        obs[33] = float(self.regime)/3.
+        obs[34] = self.energy**2
+        obs[35] = math.sin(self.energy*math.pi)
+        obs[36] = math.cos(self.energy*math.pi)
+        obs[37] = float(self.task_id)/max(1, 2)
+        obs[38] = 1.0 if ndd < .25 else 0.0
+        obs[39] = self.energy - .5
+        obs[40] = float(self.collected)/3.
+        obs[41] = 1.0 if wd < .15 else 0.0
+        obs[42] = math.sin(wd*2*math.pi)
+        obs[43] = 1.0
+        if self.dim > 44: obs[44:] = torch.randn(self.dim-44)*.01
+        return obs
+
+    def step(self, action):
+        self.t += 1; action = int(action)
+        dirs = [torch.tensor([0.,1.]), torch.tensor([0.,-1.]),
+                torch.tensor([-1.,0.]), torch.tensor([1.,0.])]
+        mv = dirs[action]*.10 if action < 4 else torch.zeros(2)
+        rel = self.resources - self.pos.unsqueeze(0)
+        nb = float(rel.norm(dim=-1).min().item())
+        if action < 4:
+            self.vel.mul_(.35).add_(.65*mv)
+            self.pos.add_(self.vel).clamp_(-1.,1.)
+            self.energy -= .020
+        elif action == 4:
+            self.vel.mul_(.2); self.energy += .045
+        else:
+            self.energy -= .006
+        ig = 0.0
+        rel = self.resources - self.pos.unsqueeze(0)
+        d_now = rel.norm(dim=-1); nn_ = float(d_now.min().item())
+        ni = int(d_now.argmin().item())
+        if action == 5 and nn_ < .15:
+            ig = .30; self.energy += ig; self.collected += 1
+            self.resources[ni] = torch.tensor([self.rng.uniform(-.9,.9),
+                                                self.rng.uniform(-.9,.9)])
+        dd = (self.dangers - self.pos.unsqueeze(0)).norm(dim=-1)
+        dp = -.05 if float(dd.min().item()) < .20 else 0.0
+        if self.t % 120 == 0: self.regime = (self.regime+1) % 4
+        if self.t % 70 == 0:
+            for i in range(3):
+                self.resources[i] += torch.randn(2)*.15
+                self.resources[i].clamp_(-.9,.9)
+        self.energy = max(.05, min(1., self.energy))
+
+        progress = nb - nn_
+        wd_before = float((self.waypoint - self.pos).norm().item())
+        if self.task_id == 0:
+            task_reward = 2.0*ig + 0.4*progress
+        elif self.task_id == 1:
+            task_reward = -0.5*dp + 0.05
+        elif self.task_id == 2:
+            wd_now = float((self.waypoint - self.pos).norm().item())
+            task_reward = 0.5*(wd_before - wd_now)
+            if wd_now < .15:
+                task_reward += 1.0
+                self.waypoint = torch.tensor([self.rng.uniform(-.9,.9),
+                                               self.rng.uniform(-.9,.9)])
+        else:
+            task_reward = 0.0
+        homeo = 0.10*(1. - min(1., abs(self.energy-.72)))
+        sr = task_reward + homeo - 0.004
+        self.social.mul_(.92).add_(.08*torch.randn_like(self.social))
+        done = self.t >= 300
+        return self.observe(), float(sr), done, self.social.clone()
+
+
+# ============================================================
+# Replay
+# ============================================================
+
+@dataclass
+class Transition:
+    obs: torch.Tensor
+    action: int
+    reward: float
+    next_obs: torch.Tensor
+    social: Optional[torch.Tensor]
+    next_social: Optional[torch.Tensor]
+    done: bool
+    option: int = 0
+    task_id: int = 0
+
+
+class SequenceReplay:
+    def __init__(self, capacity_episodes=500):
+        self.episodes: Deque[List[Transition]] = deque(maxlen=capacity_episodes)
+        self.current: List[Transition] = []
+
+    def add(self, t): self.current.append(t)
+
+    def end_episode(self):
+        if len(self.current) > 0:
+            self.episodes.append(self.current)
+            self.current = []
+
+    def __len__(self): return len(self.episodes)
+
+    def sample_batch(self, batch_size, seq_len, device):
+        if len(self.episodes) < batch_size:
+            raise ValueError("not enough")
+        obs_l, act_l, rew_l, done_l, soc_l, nsoc_l, task_l = [], [], [], [], [], [], []
+        for _ in range(batch_size):
+            ep = random.choice(self.episodes)
+            if len(ep) < seq_len:
+                ep_p = ep + [ep[-1]] * (seq_len - len(ep))
+            else:
+                start = random.randint(0, len(ep) - seq_len)
+                ep_p = ep[start:start+seq_len]
+            obs_l.append(torch.stack([t.obs for t in ep_p]))
+            act_l.append(torch.tensor([t.action for t in ep_p], dtype=torch.long))
+            rew_l.append(torch.tensor([t.reward for t in ep_p], dtype=torch.float32))
+            done_l.append(torch.tensor([t.done for t in ep_p], dtype=torch.float32))
+            soc_l.append(torch.stack([t.social if t.social is not None else torch.zeros(4)
+                                       for t in ep_p]))
+            nsoc_l.append(torch.stack([t.next_social if t.next_social is not None
+                                        else torch.zeros(4) for t in ep_p]))
+            task_l.append(torch.tensor([t.task_id for t in ep_p], dtype=torch.long))
+        return {
+            "obs": torch.stack(obs_l).to(device),
+            "actions": torch.stack(act_l).to(device),
+            "rewards": torch.stack(rew_l).to(device),
+            "dones": torch.stack(done_l).to(device),
+            "social": torch.stack(soc_l).to(device),
+            "next_social": torch.stack(nsoc_l).to(device),
+            "tasks": torch.stack(task_l).to(device),
+        }
+
+
+class RunningNorm:
+    def __init__(self, momentum=0.99):
+        self.mean = 0.0; self.var = 1.0; self.momentum = momentum
+        self.initialized = False
+
+    def update(self, x):
+        if not self.initialized:
+            self.mean = float(x); self.var = 1.0; self.initialized = True; return
+        d = float(x) - self.mean
+        self.mean = self.momentum*self.mean + (1-self.momentum)*float(x)
+        self.var = self.momentum*self.var + (1-self.momentum)*d*d
+
+    def normalize(self, x):
+        return (float(x) - self.mean) / (math.sqrt(self.var) + 1e-6)
+
+
+# ============================================================
+# Encoder: Bidirectional PC
+# ============================================================
+
+class PCLayer(nn.Module):
+    def __init__(self, in_dim, out_dim):
+        super().__init__()
+        self.W_gen = nn.Linear(out_dim, in_dim, bias=False)
+        self.W_enc = nn.Linear(in_dim, out_dim, bias=False)
+        self.precision_g = nn.Parameter(torch.zeros(1))
+        self.precision_d = nn.Parameter(torch.zeros(1))
+        self.act = nn.GELU()
+
+    def forward(self, x, n_infer=3, lr=0.1):
+        r = self.act(self.W_enc(x))
+        for _ in range(n_infer):
+            pg = self.W_gen(r); eg = x - pg
+            r = r + lr*self.act(eg @ self.W_gen.weight)
+        pg = self.W_gen(r); eg = x - pg
+        pd = self.W_enc(x); ed = r - pd
+        return r, eg, ed
+
+
+class BidirectionalPC(nn.Module):
+    def __init__(self, input_dim, latent_dim, hidden=96):
+        super().__init__()
+        self.l1 = PCLayer(input_dim, hidden)
+        self.l2 = PCLayer(hidden, latent_dim)
+        self.l3 = PCLayer(latent_dim, latent_dim)
+        self.norm = nn.LayerNorm(latent_dim)
+
+    def forward(self, x):
+        orig = x.dim()
+        if orig == 3:
+            B, L, D = x.shape; x = x.reshape(B*L, D)
+        r1, eg1, ed1 = self.l1(x)
+        r2, eg2, ed2 = self.l2(r1)
+        r3, eg3, ed3 = self.l3(r2)
+        fe = (F.softplus(self.l1.precision_g)*eg1.pow(2).mean() +
+              F.softplus(self.l1.precision_d)*ed1.pow(2).mean() +
+              F.softplus(self.l2.precision_g)*eg2.pow(2).mean() +
+              F.softplus(self.l2.precision_d)*ed2.pow(2).mean() +
+              F.softplus(self.l3.precision_g)*eg3.pow(2).mean() +
+              F.softplus(self.l3.precision_d)*ed3.pow(2).mean())
+        out = self.norm(torch.tanh(r3))
+        if orig == 3: out = out.reshape(B, L, -1)
+        return out, fe
+
+
+# ============================================================
+# RSSM with burn-in support
+# ============================================================
+
+class RSSM(nn.Module):
+    def __init__(self, latent_dim, n_actions, deter=128, stoch=32, classes=32,
+                 hidden=128, reward_bins=41):
+        super().__init__()
+        self.latent_dim = latent_dim; self.n_actions = n_actions
+        self.deter = deter; self.stoch = stoch; self.classes = classes
+        self.stoch_dim = stoch * classes
+        self.reward_bins = reward_bins
+
+        self.encoder_emb = nn.Sequential(
+            nn.Linear(latent_dim, hidden), nn.GELU(),
+            nn.Linear(hidden, hidden), nn.GELU())
+        self.pre_gru = nn.Sequential(
+            nn.Linear(deter + self.stoch_dim + n_actions, hidden), nn.GELU())
+        self.gru = nn.GRUCell(hidden, deter)
+        self.prior_net = nn.Sequential(
+            nn.Linear(deter, hidden), nn.GELU(),
+            nn.Linear(hidden, stoch*classes))
+        self.post_net = nn.Sequential(
+            nn.Linear(deter + hidden, hidden), nn.GELU(),
+            nn.Linear(hidden, stoch*classes))
+        self.reward_head = nn.Sequential(
+            nn.Linear(deter + self.stoch_dim, hidden), nn.GELU(),
+            nn.Linear(hidden, reward_bins))
+        self.continue_head = nn.Sequential(
+            nn.Linear(deter + self.stoch_dim, hidden), nn.GELU(),
+            nn.Linear(hidden, 1))
+        self.register_buffer("reward_bins_vec",
+            torch.linspace(-10, 10, reward_bins))
+
+    def init_state(self, B, device):
+        return {"h": torch.zeros(B, self.deter, device=device),
+                "z": torch.zeros(B, self.stoch_dim, device=device)}
+
+    def _z_st(self, logits):
+        sample = F.softmax(logits, dim=-1)
+        sample = sample.view(*logits.shape[:-1], self.stoch, self.classes)
+        idx = sample.argmax(-1)
+        oh = F.one_hot(idx, self.classes).float()
+        z_st = oh + sample - sample.detach()
+        return z_st.view(*logits.shape[:-2], self.stoch*self.classes)
+
+    def observe_step(self, state, embed, action):
+        a_oh = F.one_hot(action, self.n_actions).float()
+        pre = self.pre_gru(torch.cat([state["h"], state["z"], a_oh], dim=-1))
+        h = self.gru(pre, state["h"])
+        prior_logits = self.prior_net(h)
+        emb = self.encoder_emb(embed)
+        post_logits = self.post_net(torch.cat([h, emb], dim=-1))
+        z = self._z_st(post_logits)
+        pr = prior_logits.view(-1, self.stoch, self.classes)
+        po = post_logits.view(-1, self.stoch, self.classes)
+        return h, z, pr, po
+
+    def imagine_step(self, state, action):
+        a_oh = F.one_hot(action, self.n_actions).float()
+        pre = self.pre_gru(torch.cat([state["h"], state["z"], a_oh], dim=-1))
+        h = self.gru(pre, state["h"])
+        prior_logits = self.prior_net(h)
+        z = self._z_st(prior_logits)
+        feat = torch.cat([h, z], dim=-1)
+        r_logits = self.reward_head(feat)
+        cont = self.continue_head(feat).squeeze(-1)
+        return {"h": h, "z": z}, r_logits, cont
+
+    def observe(self, embed_seq, action_seq, initial_state=None,
+                burn_in=0, stop_grad_burnin=True):
+        """
+        If burn_in > 0: first burn_in steps are computed without grad,
+        then remaining steps have grad.
+        """
+        B, L, _ = embed_seq.shape
+        state = initial_state if initial_state is not None else \
+                self.init_state(B, embed_seq.device)
+        h_l, z_l, pr_l, po_l = [], [], [], []
+
+        for t in range(L):
+            if burn_in > 0 and t < burn_in and stop_grad_burnin:
+                with torch.no_grad():
+                    h, z, pr, po = self.observe_step(
+                        state, embed_seq[:, t], action_seq[:, t])
+                h = h.detach(); z = z.detach()
+            else:
+                h, z, pr, po = self.observe_step(
+                    state, embed_seq[:, t], action_seq[:, t])
+            state = {"h": h, "z": z}
+            h_l.append(h); z_l.append(z); pr_l.append(pr); po_l.append(po)
+
+        return (torch.stack(h_l, 1), torch.stack(z_l, 1),
+                torch.stack(pr_l, 1), torch.stack(po_l, 1), state)
+
+    def feat(self, state): return torch.cat([state["h"], state["z"]], dim=-1)
+
+
+# ============================================================
+# Working Memory (GRU-based, faster than transformer)
+# ============================================================
+
+class WorkingMemoryGRU(nn.Module):
+    def __init__(self, feat_dim, wm_hidden=64):
+        super().__init__()
+        self.wm_hidden = wm_hidden
+        self.gru = nn.GRUCell(feat_dim, wm_hidden)
+        self.project = nn.Linear(wm_hidden, feat_dim)
+        self.hidden: Optional[torch.Tensor] = None
+
+    def reset(self):
+        self.hidden = None
+
+    def forward(self, feat):
+        B = feat.shape[0]
+        if self.hidden is None or self.hidden.shape[0] != B:
+            self.hidden = torch.zeros(B, self.wm_hidden, device=feat.device)
+        self.hidden = self.gru(feat, self.hidden)
+        return self.project(self.hidden)
+
+
+# ============================================================
+# Value-Conditioned Episodic Buffer
+# ============================================================
+
+class ValueConditionedEB(nn.Module):
+    """
+    Stores (feat, return). Retrieves via attention.
+    Query includes current value estimate to make retrieval value-aware.
+    """
+    def __init__(self, feat_dim, capacity=2000, topk=8, dim=64):
+        super().__init__()
+        self.capacity = capacity
+        self.topk = topk
+        self.dim = dim
+        # Query projection: feat + scalar value
+        self.W_q = nn.Linear(feat_dim + 1, dim)
+        self.W_k = nn.Linear(feat_dim, dim)
+        self.W_v = nn.Linear(1, dim)
+        self.W_out = nn.Linear(dim, feat_dim)
+        self.register_buffer("keys", torch.zeros(capacity, feat_dim))
+        self.register_buffer("values", torch.zeros(capacity, 1))
+        self.register_buffer("valid", torch.zeros(capacity, dtype=torch.bool))
+        self.register_buffer("ptr", torch.zeros(1, dtype=torch.long))
+
+    @torch.no_grad()
+    def store(self, feat, value):
+        i = int(self.ptr.item()) % self.capacity
+        self.keys[i] = feat.detach()
+        self.values[i, 0] = float(value)
+        self.valid[i] = True
+        self.ptr.add_(1)
+
+    def retrieve(self, feat, current_value):
+        """
+        feat: [B, feat_dim]
+        current_value: [B] scalar (critic estimate)
+        Returns: [B, feat_dim] attention-weighted context, [B] value estimate
+        """
+        B = feat.shape[0]
+        if not bool(self.valid.any().item()):
+            return torch.zeros(B, feat.shape[1], device=feat.device), \
+                   torch.zeros(B, device=feat.device)
+        idx = torch.where(self.valid)[0]
+        q = self.W_q(torch.cat([feat, current_value.unsqueeze(-1)], dim=-1))
+        k = self.W_k(self.keys[idx].detach())
+        sims = q @ k.t() / math.sqrt(self.dim)
+        k_num = min(self.topk, sims.shape[-1])
+        top_s, top_i = sims.topk(k_num, dim=-1)
+        attn = F.softmax(top_s, dim=-1)
+        top_v = self.values[idx][top_i]                  # [B, k, 1]
+        top_k = self.keys[idx][top_i]                    # [B, k, feat_dim]
+        v_emb = self.W_v(top_v)                          # [B, k, dim]
+        attended = (attn.unsqueeze(-1) * v_emb).sum(1)   # [B, dim]
+        context = self.W_out(attended)                   # [B, feat_dim]
+        value_est = (attn * top_v.squeeze(-1)).sum(-1)   # [B]
+        # Blend keys too as extra context
+        key_context = (attn.unsqueeze(-1) * top_k).sum(1)
+        return context + key_context, value_est
+
+    def size(self): return int(self.valid.sum().item())
+
+
+# ============================================================
+# BYOL-Explore
+# ============================================================
+
+class BYOLExplore(nn.Module):
+    def __init__(self, feat_dim, n_actions, hidden=128, out_dim=64, ema=0.99):
+        super().__init__()
+        self.ema = ema
+        self.online = nn.Sequential(
+            nn.Linear(feat_dim+n_actions, hidden), nn.GELU(),
+            nn.Linear(hidden, hidden), nn.GELU(),
+            nn.Linear(hidden, out_dim))
+        self.target = nn.Sequential(
+            nn.Linear(feat_dim+n_actions, hidden), nn.GELU(),
+            nn.Linear(hidden, hidden), nn.GELU(),
+            nn.Linear(hidden, out_dim))
+        for p in self.target.parameters(): p.requires_grad_(False)
+        self.register_buffer("bonus_var", torch.tensor(1.0))
+
+    def forward(self, feat, a_oh):
+        x = torch.cat([feat, a_oh], dim=-1)
+        o = self.online(x)
+        with torch.no_grad(): t = self.target(x)
+        return (o-t).pow(2).sum(-1), o, t
+
+    @torch.no_grad()
+    def update_target(self):
+        for o, t in zip(self.online.parameters(), self.target.parameters()):
+            t.mul_(self.ema).add_((1-self.ema)*o)
+
+    @torch.no_grad()
+    def update_norm(self, bonus):
+        bv = bonus.var().item() if bonus.numel() > 1 else 1.0
+        self.bonus_var.mul_(0.99).add_(0.01*bv)
+
+    def normalized_bonus(self, bonus):
+        return (bonus / (self.bonus_var.sqrt() + 1e-6)).clamp(0, 10)
+
+
+# ============================================================
+# Actor (intra-option policy: takes feat + option)
+# ============================================================
+
+class OptionConditionedActor(nn.Module):
+    def __init__(self, feat_dim, n_actions, n_options, hidden=128):
+        super().__init__()
+        self.n_options = n_options
+        self.n_actions = n_actions
+        self.net = nn.Sequential(
+            nn.Linear(feat_dim + n_options, hidden), nn.LayerNorm(hidden), nn.GELU(),
+            nn.Linear(hidden, hidden), nn.LayerNorm(hidden), nn.GELU(),
+            nn.Linear(hidden, n_actions))
+
+    def forward(self, feat, option_onehot):
+        return self.net(torch.cat([feat, option_onehot], dim=-1))
+
+    def sample(self, feat, option_onehot, temperature=1.0):
+        logits = self.forward(feat, option_onehot)
+        probs = F.softmax(logits/temperature, dim=-1)
+        dist = torch.distributions.Categorical(probs=probs)
+        a = dist.sample()
+        return a, dist.log_prob(a), dist.entropy()
+
+
+# ============================================================
+# C51 Distributional Critic
+# ============================================================
+
+class C51Critic(nn.Module):
+    def __init__(self, feat_dim, n_bins=51, v_min=-20, v_max=20, hidden=128):
+        super().__init__()
+        self.n_bins = n_bins
+        self.v_min = v_min; self.v_max = v_max
+        self.net = nn.Sequential(
+            nn.Linear(feat_dim, hidden), nn.LayerNorm(hidden), nn.GELU(),
+            nn.Linear(hidden, hidden), nn.LayerNorm(hidden), nn.GELU(),
+            nn.Linear(hidden, n_bins))
+        self.register_buffer("bins", torch.linspace(v_min, v_max, n_bins))
+
+    def forward(self, f): return self.net(f)
+
+    def predict_value(self, f):
+        p = F.softmax(self.forward(f), dim=-1)
+        return (p * self.bins).sum(-1)
+
+    def distributional_loss(self, f, target):
+        """target: [B] already symlog'd returns."""
+        logits = self.forward(f)
+        target_dist = twohot_encode(target, self.bins)
+        log_probs = F.log_softmax(logits, dim=-1)
+        return -(target_dist * log_probs).sum(-1).mean()
+
+
+# ============================================================
+# Option-Critic Manager (Bacon et al. 2017)
+# ============================================================
+
+class OptionCriticManager(nn.Module):
+    """
+    π(o|s), β(s,o), V_Ω(s,o).
+    Termination gradient: β * (V_Ω - return) (increase β when option underperforms)
+    """
+    def __init__(self, feat_dim, n_options, hidden=128):
+        super().__init__()
+        self.n_options = n_options
+        # π(o|s)
+        self.option_net = nn.Sequential(
+            nn.Linear(feat_dim, hidden), nn.LayerNorm(hidden), nn.GELU(),
+            nn.Linear(hidden, hidden), nn.GELU(),
+            nn.Linear(hidden, n_options))
+        # β(s,o) — termination probability
+        self.termination_net = nn.Sequential(
+            nn.Linear(feat_dim + n_options, hidden), nn.GELU(),
+            nn.Linear(hidden, 1))
+        # V_Ω(s,o) — option value
+        self.option_value = nn.Sequential(
+            nn.Linear(feat_dim + n_options, hidden), nn.GELU(),
+            nn.Linear(hidden, 1))
+
+    def select(self, feat, epsilon=0.1):
+        logits = self.option_net(feat)
+        probs = F.softmax(logits, dim=-1)
+        B = feat.shape[0]
+        if B == 1:
+            if random.random() < epsilon:
+                opt = random.randrange(self.n_options)
+            else:
+                opt = int(torch.multinomial(probs[0], 1).item())
+            logp = torch.log(probs[0, opt].clamp_min(1e-10))
+            return opt, logp
+        opts, logps = [], []
+        for b in range(B):
+            if random.random() < epsilon:
+                o = random.randrange(self.n_options)
+            else:
+                o = int(torch.multinomial(probs[b], 1).item())
+            opts.append(o); logps.append(torch.log(probs[b, o].clamp_min(1e-10)))
+        return opts, torch.stack(logps)
+
+    def termination_prob(self, feat, option_onehot):
+        return torch.sigmoid(
+            self.termination_net(torch.cat([feat, option_onehot], dim=-1))
+        ).squeeze(-1)
+
+    def option_values(self, feat, option_onehot):
+        return self.option_value(
+            torch.cat([feat, option_onehot], dim=-1)).squeeze(-1)
+
+    def should_terminate(self, feat, option, max_steps, current_step):
+        """Terminate if learned β > 0.5 or max steps reached."""
+        if current_step >= max_steps: return True
+        with torch.no_grad():
+            oh = F.one_hot(torch.tensor([option], device=feat.device),
+                            self.n_options).float()
+            p = self.termination_prob(feat.unsqueeze(0), oh)
+        return bool(p.item() > 0.5)
+
+
+# ============================================================
+# Supporting subsystems
+# ============================================================
+
+class Character(nn.Module):
+    GROUPS = {
+        "openness": ["imagination","curiosity","aesthetic","ideas","values"],
+        "conscientiousness": ["order","dutifulness","achievement","self_discipline","cautiousness"],
+        "extraversion": ["warmth","gregariousness","assertiveness","activity","excitement"],
+        "agreeableness": ["trust","straightforwardness","altruism","compliance","tenderness"],
+        "neuroticism": ["anxiety","hostility","depression","self_consciousness","vulnerability"],
+        "honesty": ["sincerity","fairness","greed_avoidance","modesty"],
+        "resilience": ["optimism","humor","emotional_regulation"],
+        "intellect": ["abstract_thinking","problem_solving"],
+    }
+    ALL = [t for g in GROUPS.values() for t in g]
+
+    def __init__(self, n_traits=34):
+        super().__init__()
+        self.traits = nn.Parameter((0.5+0.08*torch.randn(n_traits)).clamp(0.1, 0.9))
+        self.reward_head = nn.Sequential(nn.Linear(n_traits, 32), nn.GELU(),
+                                           nn.Linear(32, 1))
+
+    def forward(self):
+        t = torch.sigmoid(self.traits)
+        return t, self.reward_head(t).squeeze(-1)
+
+    def profile(self):
+        with torch.no_grad(): t = torch.sigmoid(self.traits)
+        return {n: float(t[i]) for i, n in enumerate(self.ALL)}
+
+
+class EmotionalCore(nn.Module):
+    BASIS = ["joy","sadness","fear","anger","trust","surprise","anticipation","shame"]
+
+    def __init__(self, trait_dim):
+        super().__init__()
+        self.baseline = nn.Linear(trait_dim, len(self.BASIS))
+        self.register_buffer("state", torch.full((len(self.BASIS),), 1.0/len(self.BASIS)))
+
+    @torch.no_grad()
+    def step(self, traits, rpe, surprise, social, energy):
+        target = F.softmax(self.baseline(traits), dim=-1)
+        d = torch.zeros_like(target)
+        d[0] += max(0, rpe); d[1] += max(0, -rpe)
+        d[2] += max(0, surprise)*0.7 + max(0, 0.55-energy)*0.4
+        d[5] += max(0, surprise)*0.5
+        d[4] += max(0, social)*0.4
+        target = F.softmax(torch.log(target.clamp_min(1e-8)) + d, dim=-1)
+        self.state.mul_(0.9).add_(0.1*target)
+        self.state.div_(self.state.sum().clamp_min(1e-8))
+
+    def dominant(self): return self.BASIS[int(self.state.argmax().item())]
+    def valence(self):
+        p = self.state
+        return float(p[0]+p[4]+p[6]-p[1]-p[2]-p[3]-p[7])
+    def arousal(self):
+        p = self.state
+        return float(p[2]+p[3]+p[5])
+
+
+class Neuromodulator(nn.Module):
+    NAMES = ["dopamine","serotonin","norepinephrine","acetylcholine",
+             "cortisol","oxytocin","histamine","gaba"]
+
+    def __init__(self):
+        super().__init__()
+        self.register_buffer("levels",
+            torch.tensor([0.5,0.5,0.5,0.5,0.3,0.5,0.5,0.5]))
+
+    @torch.no_grad()
+    def tick(self, rpe, surprise, social, energy):
+        base = torch.tensor([0.5,0.5,0.5,0.5,0.3,0.5,0.5,0.5], device=self.levels.device)
+        self.levels.mul_(0.98).add_(0.02*base)
+        self.levels[0].add_(0.08*math.tanh(rpe))
+        self.levels[2].add_(0.06*surprise)
+        self.levels[3].add_(0.05*surprise)
+        self.levels[4].add_(0.04*surprise + 0.04*max(0, 0.55-energy))
+        self.levels[5].add_(0.05*max(0, social))
+        self.levels.clamp_(0, 1)
+
+    def get(self, n): return float(self.levels[self.NAMES.index(n)].item())
+    def vector(self): return self.levels.clone()
+
+
+class SelfModel(nn.Module):
+    def __init__(self, feat_dim):
+        super().__init__()
+        self.identity = nn.Parameter(torch.randn(feat_dim)*0.05)
+        self.predictor = nn.Sequential(nn.Linear(feat_dim, feat_dim), nn.GELU(),
+                                        nn.Linear(feat_dim, feat_dim))
+        self.narrative = deque(maxlen=500); self.reflections = 0
+
+    def forward(self, f): return torch.tanh(self.predictor(f) + self.identity)
+
+    @torch.no_grad()
+    def reflect(self, step, action, emotion):
+        self.narrative.append((int(step), int(action), emotion))
+        self.reflections += 1
+
+
+class TheoryOfMind(nn.Module):
+    def __init__(self, feat_dim, social_dim=4):
+        super().__init__()
+        self.net = nn.Sequential(nn.Linear(feat_dim+social_dim, 64), nn.GELU(),
+                                   nn.Linear(64, feat_dim))
+        self.next_social = nn.Linear(feat_dim, social_dim)
+
+    def forward(self, feat, social):
+        other = torch.tanh(self.net(torch.cat([feat, social], dim=-1)))
+        return self.next_social(other), other
+
+
+class SomaticMarker(nn.Module):
+    def __init__(self, feat_dim, capacity=256):
+        super().__init__()
+        self.capacity = capacity
+        self.W_read = nn.Linear(feat_dim, feat_dim)
+        self.bias_head = nn.Sequential(nn.Linear(feat_dim, 32), nn.GELU(),
+                                         nn.Linear(32, 1))
+        self.register_buffer("keys", torch.zeros(capacity, feat_dim))
+        self.register_buffer("value", torch.zeros(capacity))
+        self.register_buffer("valid", torch.zeros(capacity, dtype=torch.bool))
+        self.register_buffer("ptr", torch.zeros(1, dtype=torch.long))
+
+    @torch.no_grad()
+    def tag(self, feat, outcome):
+        i = int(self.ptr.item()) % self.capacity
+        self.keys[i] = feat.detach()
+        self.value[i] = float(max(-1, min(1, outcome)))
+        self.valid[i] = True; self.ptr.add_(1)
+
+    def read(self, feat):
+        if not bool(self.valid.any().item()):
+            return torch.zeros_like(feat)
+        idx = torch.where(self.valid)[0]
+        s = F.cosine_similarity(F.normalize(feat.unsqueeze(0), dim=-1),
+                                 F.normalize(self.keys[idx], dim=-1).detach(),
+                                 dim=-1)
+        w = F.softmax(s*6., dim=-1)
+        return (w.unsqueeze(-1) * self.keys[idx]).sum(1)
+
+    def bias(self, feat):
+        return self.bias_head(self.read(feat)).squeeze(-1)
+
+
+class Metabolism(nn.Module):
+    def __init__(self, cap=1.0):
+        super().__init__()
+        self.cap = float(cap)
+        self.register_buffer("energy", torch.tensor(float(cap)))
+
+    @torch.no_grad()
+    def step(self, action, arousal, env_reward=0.0):
+        mc = 0.020 if action < 4 else 0.005
+        rec = 0.045 if action == 4 else 0.012
+        ac = 0.006*max(0, min(1, arousal))
+        rb = 0.004*max(0, env_reward)
+        self.energy.add_(rec+rb-mc-ac)
+        self.energy.clamp_(0.05, self.cap)
+
+    def level(self): return float(self.energy.item())
+
+
+# ============================================================
+# Variance-Aware Curriculum
+# ============================================================
+
+class VarianceAwareCurriculum:
+    """
+    Prefer tasks near competence target AND with high uncertainty (variance).
+    """
+    def __init__(self, n_tasks, window=50, target=0.5, var_bonus=0.5):
+        self.n_tasks = n_tasks
+        self.window = window
+        self.target = target
+        self.var_bonus = var_bonus
+        self.history = {i: deque(maxlen=window) for i in range(n_tasks)}
+
+    def update(self, task_id, success):
+        self.history[task_id].append(float(success))
+
+    def _stats(self, i):
+        h = list(self.history[i])
+        if len(h) < 2:
+            return 0.5, 0.25  # mean, variance (max)
+        m = sum(h) / len(h)
+        v = sum((x - m)**2 for x in h) / len(h)
+        return m, v
+
+    def sample_task(self):
+        weights = {}
+        for i in range(self.n_tasks):
+            m, v = self._stats(i)
+            # Gaussian preference around target mean
+            near = math.exp(-((m - self.target)**2) / 0.1)
+            # Variance bonus
+            w = near * (1.0 + self.var_bonus * v)
+            weights[i] = max(0.01, w)
+        total = sum(weights.values())
+        tasks = list(weights.keys()); ps = [weights[t]/total for t in tasks]
+        return random.choices(tasks, weights=ps)[0]
+
+    def competence(self):
+        return {i: self._stats(i)[0] for i in range(self.n_tasks)}
+
+
+# ============================================================
+# Main Organism v21
+# ============================================================
+
+class NeuroCoreOrganismV21(nn.Module):
+    ABLATABLE = {
+        "pc", "rssm", "wm", "eb", "options", "byol", "imagination",
+        "tom", "self_model", "somatic", "emotion", "neuromod",
+        "character_aux", "curriculum", "burn_in", "intra_option",
+    }
+
+    def __init__(self, cfg: Config, ablate=None, device="cpu"):
+        super().__init__()
+        self.cfg = cfg
+        self.ablate = set(ablate or set())
+        unknown = self.ablate - self.ABLATABLE
+        if unknown: raise ValueError(f"unknown ablations: {sorted(unknown)}")
+        self.device_name = device
+
+        self.character = Character(cfg.n_traits)
+
+        if "pc" not in self.ablate:
+            self.pc = BidirectionalPC(cfg.input_dim, cfg.latent_dim)
+        else:
+            self.pc = None
+            self.pc_fallback = nn.Sequential(
+                nn.Linear(cfg.input_dim, 96), nn.GELU(),
+                nn.Linear(96, cfg.latent_dim), nn.LayerNorm(cfg.latent_dim))
+
+        self.state_proj = nn.Sequential(
+            nn.Linear(cfg.latent_dim, cfg.latent_dim), nn.GELU(),
+            nn.LayerNorm(cfg.latent_dim))
+
+        if "rssm" not in self.ablate:
+            self.rssm = RSSM(cfg.latent_dim, cfg.n_actions,
+                             deter=cfg.rssm_deter, stoch=cfg.rssm_stoch,
+                             classes=cfg.rssm_classes, hidden=cfg.rssm_hidden,
+                             reward_bins=41)
+            feat_dim = cfg.rssm_deter + cfg.rssm_stoch * cfg.rssm_classes
+        else:
+            self.rssm = None
+            self.rssm_fallback = nn.Sequential(
+                nn.Linear(cfg.latent_dim, cfg.rssm_deter),
+                nn.LayerNorm(cfg.rssm_deter))
+            feat_dim = cfg.rssm_deter
+        self.feat_dim = feat_dim
+
+        # Working Memory
+        self.wm = WorkingMemoryGRU(feat_dim, cfg.wm_hidden) \
+            if "wm" not in self.ablate else None
+
+        # Episodic Buffer
+        self.eb = ValueConditionedEB(feat_dim, cfg.eb_size,
+                                       cfg.eb_topk, cfg.eb_dim) \
+            if "eb" not in self.ablate else None
+
+        # Actor with option conditioning
+        self.actor = OptionConditionedActor(
+            feat_dim, cfg.n_actions, cfg.n_options) \
+            if "imagination" not in self.ablate else None
+        self.critic = C51Critic(feat_dim, cfg.n_value_bins,
+                                 cfg.v_min, cfg.v_max) \
+            if "imagination" not in self.ablate else None
+        if self.critic is not None:
+            self.target_critic = copy.deepcopy(self.critic)
+            for p in self.target_critic.parameters(): p.requires_grad_(False)
+
+        # BYOL
+        self.byol = BYOLExplore(feat_dim, cfg.n_actions, ema=cfg.byol_ema) \
+            if "byol" not in self.ablate else None
+
+        # Options
+        self.options = OptionCriticManager(feat_dim, cfg.n_options) \
+            if "options" not in self.ablate else None
+
+        # Support subsystems
+        self.emotion = EmotionalCore(cfg.n_traits) if "emotion" not in self.ablate else None
+        self.somatic = SomaticMarker(feat_dim) if "somatic" not in self.ablate else None
+        self.self_model = SelfModel(feat_dim) if "self_model" not in self.ablate else None
+        self.tom = TheoryOfMind(feat_dim, 4) if "tom" not in self.ablate else None
+        self.neuromod = Neuromodulator() if "neuromod" not in self.ablate else None
+        self.metabolism = Metabolism()
+
+        # Replay + norm
+        self.seq_replay = SequenceReplay(capacity_episodes=500)
+        self.reward_norm = RunningNorm()
+
+        # Curriculum
+        self.curriculum = VarianceAwareCurriculum(
+            cfg.n_task_types, window=cfg.curriculum_window,
+            target=cfg.competence_target, var_bonus=cfg.variance_bonus) \
+            if "curriculum" not in self.ablate else None
+
+        # Option state
+        self.current_option = 0
+        self.option_steps = 0
+        self.option_start_feat: Optional[torch.Tensor] = None
+        self.option_accum = 0.0
+        self.option_logp: Optional[torch.Tensor] = None
+        self.option_buffer: List[Tuple] = []  # (feat, option, return, logp)
+        self.max_option_buffer = 512
+
+        # Runtime
+        self.rssm_state = None
+        self.last_action = 0
+
+        # Stats
+        self.tick_count = 0
+        self.learn_steps = 0
+        self.manager_steps = 0
+        self.last_loss: Dict[str, float] = {}
+        self.actions_taken = deque(maxlen=5000)
+        self.recent_rewards = deque(maxlen=100)
+        self.recent_novelty = deque(maxlen=100)
+
+        # Optimizer
+        trainable = [p for p in self.parameters() if p.requires_grad]
+        self._opt = torch.optim.AdamW(trainable, lr=cfg.learning_rate,
+                                        weight_decay=cfg.weight_decay)
+
+        self.to(device)
+        if hasattr(self, "target_critic"): self.target_critic.to(device)
+
+    def _encode(self, obs):
+        single = obs.dim() == 1
+        if single: obs = obs.unsqueeze(0)
+        obs = obs.to(self.device_name)
+        if self.pc is not None:
+            z, fe = self.pc(obs)
+        else:
+            z = torch.tanh(self.pc_fallback(obs))
+            fe = torch.zeros((), device=obs.device)
+        return self.state_proj(z), fe
+
+    def reset_wm(self):
+        if self.wm is not None: self.wm.reset()
+
+    def _get_actor_feat(self, feat):
+        """Combine feat with WM output."""
+        if self.wm is not None:
+            wm_out = self.wm(feat)
+            return feat + 0.3 * wm_out
+        return feat
+
+    # ---------------- act ----------------
+    @torch.no_grad()
+    def act(self, obs, social=None, deterministic=False):
+        self.eval()
+        embed, fe = self._encode(obs)
+        if self.rssm is not None:
+            if self.rssm_state is None:
+                self.rssm_state = self.rssm.init_state(embed.shape[0], embed.device)
+            a_prev = torch.full((embed.shape[0],), self.last_action,
+                                dtype=torch.long, device=embed.device)
+            h, z, _, _ = self.rssm.observe_step(self.rssm_state, embed, a_prev)
+            self.rssm_state = {"h": h, "z": z}
+            feat = self.rssm.feat(self.rssm_state)
+        else:
+            feat = self.rssm_fallback(embed)
+
+        actor_feat = self._get_actor_feat(feat)
+
+        # Option boundary check
+        terminate = False
+        if self.option_steps == 0:
+            terminate = True
+        elif self.options is not None:
+            terminate = self.options.should_terminate(
+                actor_feat, self.current_option,
+                self.cfg.max_option_steps, self.option_steps)
+
+        if terminate:
+            # Save previous option to buffer
+            if self.option_start_feat is not None and self.option_logp is not None:
+                self.option_buffer.append((
+                    self.option_start_feat.detach().clone(),
+                    self.current_option, self.option_accum,
+                    self.option_logp.detach().clone()))
+                if len(self.option_buffer) > self.max_option_buffer:
+                    self.option_buffer = self.option_buffer[-self.max_option_buffer//2:]
+            # Select new option
+            if self.options is not None:
+                opt, logp = self.options.select(actor_feat, epsilon=0.1)
+                self.current_option = opt if isinstance(opt, int) else int(opt)
+                self.option_logp = logp if torch.is_tensor(logp) else torch.tensor(logp)
+            else:
+                self.current_option = 0
+                self.option_logp = torch.tensor(0.0)
+            self.option_steps = 0
+            self.option_start_feat = actor_feat.detach().clone()
+            self.option_accum = 0.0
+
+        self.option_steps += 1
+
+        # Action selection
+        if self.actor is not None:
+            oh = F.one_hot(torch.tensor([self.current_option], device=actor_feat.device),
+                            self.cfg.n_options).float()
+            logits = self.actor(actor_feat, oh)
+            if self.somatic is not None:
+                logits = logits + 0.1 * self.somatic.bias(actor_feat)
+            temp = 1.0
+            if self.neuromod is not None:
+                da = self.neuromod.get("dopamine")
+                temp = 1.0 / max(0.3, da)
+            probs = F.softmax(logits / temp, dim=-1)
+            if deterministic:
+                action = int(probs.argmax(-1).item())
+            else:
+                eps = max(0.03, 0.15 * math.exp(-self.tick_count/5000.))
+                if random.random() < eps:
+                    action = random.randrange(self.cfg.n_actions)
+                else:
+                    action = int(torch.multinomial(probs[0], 1).item())
+        else:
+            probs = torch.ones(1, self.cfg.n_actions, device=actor_feat.device)/self.cfg.n_actions
+            action = random.randrange(self.cfg.n_actions)
+
+        info = {
+            "feat": actor_feat.detach(),
+            "rssm_state": {k: v.detach().clone() for k, v in self.rssm_state.items()}
+                if self.rssm_state else None,
+            "option": self.current_option,
+            "action_probs": probs.detach().cpu().tolist(),
+            "free_energy": float(fe.item() if torch.is_tensor(fe) else fe),
+        }
+        return action, info
+
+    # ---------------- observe transition ----------------
+    @torch.no_grad()
+    def observe_transition(self, obs, action, env_reward, next_obs, social,
+                           next_social, done, info, task_id=0):
+        byol_bonus = 0.0
+        if self.byol is not None:
+            feat = info["feat"]
+            if feat.dim() == 1: feat = feat.unsqueeze(0)
+            a_oh = F.one_hot(torch.tensor([action], device=feat.device),
+                              self.cfg.n_actions).float()
+            b, _, _ = self.byol(feat, a_oh)
+            self.byol.update_norm(b)
+            byol_bonus = float(self.byol.normalized_bonus(b).item())
+
+        total_reward = float(env_reward + self.cfg.byol_scale * byol_bonus)
+        self.option_accum += total_reward
+
+        if self.somatic is not None:
+            self.somatic.tag(info["feat"].flatten(), math.tanh(total_reward*3.))
+
+        arousal = self.emotion.arousal() if self.emotion is not None else 0.2
+        self.metabolism.step(action, arousal, env_reward)
+
+        self.seq_replay.add(Transition(
+            obs=obs.detach().cpu(), action=int(action), reward=total_reward,
+            next_obs=next_obs.detach().cpu(),
+            social=social.detach().cpu() if social is not None else None,
+            next_social=next_social.detach().cpu() if next_social is not None else None,
+            done=bool(done), option=int(info["option"]), task_id=int(task_id)))
+        if done: self.seq_replay.end_episode()
+
+        rpe = max(-1, min(1, total_reward - 0.5))
+        soc = float(next_social.abs().mean().item()) if next_social is not None else 0.0
+        if self.neuromod is not None:
+            self.neuromod.tick(rpe, byol_bonus, soc, self.metabolism.level())
+        if self.emotion is not None:
+            self.emotion.step(self.character.traits.detach(), rpe, byol_bonus,
+                                soc, self.metabolism.level())
+        if self.self_model is not None:
+            self.self_model.reflect(self.tick_count, action,
+                self.emotion.dominant() if self.emotion is not None else "neutral")
+
+        self.tick_count += 1
+        self.last_action = int(action)
+        self.actions_taken.append(int(action))
+        self.recent_rewards.append(env_reward)
+        self.recent_novelty.append(byol_bonus)
+        return total_reward
+
+    def _soft_update(self):
+        with torch.no_grad():
+            if hasattr(self, "target_critic") and self.critic is not None:
+                for t, o in zip(self.target_critic.parameters(),
+                                 self.critic.parameters()):
+                    t.mul_(1-self.cfg.target_tau).add_(self.cfg.target_tau*o)
+
+    # ---------------- RSSM loss ----------------
+    def _rssm_loss(self, obs_seq, action_seq, reward_seq, done_seq):
+        if self.pc is not None:
+            embed, fe = self.pc(obs_seq)
+        else:
+            embed = torch.tanh(self.pc_fallback(obs_seq))
+            fe = torch.zeros((), device=obs_seq.device)
+        embed = self.state_proj(embed)
+
+        burn_in = self.cfg.burn_in if "burn_in" not in self.ablate else 0
+        h_seq, z_seq, pr, po, _ = self.rssm.observe(
+            embed, action_seq, burn_in=burn_in)
+        # Only compute loss on non-burn-in portion
+        if burn_in > 0:
+            pr = pr[:, burn_in:]
+            po = po[:, burn_in:]
+            h_seq = h_seq[:, burn_in:]
+            z_seq = z_seq[:, burn_in:]
+            reward_seq_t = reward_seq[:, burn_in:]
+            done_seq_t = done_seq[:, burn_in:]
+        else:
+            reward_seq_t = reward_seq
+            done_seq_t = done_seq
+
+        pr_log = F.log_softmax(pr, dim=-1)
+        po_log = F.log_softmax(po, dim=-1)
+        pr_p = F.softmax(pr, dim=-1); po_p = F.softmax(po, dim=-1)
+        kl_lhs = (po_p.detach() * (po_log - pr_log)).sum(-1)
+        kl_rhs = (po_p * (po_log.detach() - pr_log.detach())).sum(-1)
+        kl = (self.cfg.kl_balance*kl_lhs + (1-self.cfg.kl_balance)*kl_rhs).mean()
+        kl_loss = torch.clamp(kl, min=self.cfg.kl_free_bits)
+
+        feat_seq = torch.cat([h_seq, z_seq], dim=-1)
+        r_logits = self.rssm.reward_head(feat_seq)
+        r_target = twohot_encode(
+            symlog(reward_seq_t.reshape(-1)),
+            self.rssm.reward_bins_vec)
+        reward_loss = F.cross_entropy(
+            r_logits.reshape(-1, r_logits.shape[-1]), r_target.argmax(-1))
+
+        cont_pred = self.rssm.continue_head(feat_seq).squeeze(-1)
+        cont_loss = F.binary_cross_entropy_with_logits(cont_pred, 1.0 - done_seq_t)
+        return {"kl_loss": kl_loss, "reward_loss": reward_loss,
+                "continue_loss": cont_loss,
+                "fe_loss": fe if torch.is_tensor(fe) else torch.tensor(0.0)}, feat_seq
+
+    # ---------------- imagination (stop-grad RSSM) ----------------
+    def _imagine_rollout(self, start_state, horizon):
+        cur = {"h": start_state["h"].detach(), "z": start_state["z"].detach()}
+        feats, rewards, conts, logps, ents = [], [], [], [], []
+        for t in range(horizon):
+            feat = self.rssm.feat(cur)
+            with torch.no_grad():
+                if self.wm is not None:
+                    # Don't update WM during imagination
+                    pass
+                actor_feat = feat
+            oh = F.one_hot(torch.tensor([0], device=actor_feat.device).expand(
+                actor_feat.shape[0]), self.cfg.n_options).float()
+            a, lp, e = self.actor.sample(actor_feat, oh)
+            with torch.no_grad():
+                next_state, r_logits, cont = self.rssm.imagine_step(cur, a)
+                r = twohot_decode(F.softmax(r_logits, dim=-1),
+                                    self.rssm.reward_bins_vec)
+            feats.append(actor_feat)
+            rewards.append(r.detach())
+            conts.append(cont.detach())
+            logps.append(lp); ents.append(e)
+            cur = {"h": next_state["h"].detach(), "z": next_state["z"].detach()}
+        return feats, rewards, conts, logps, ents
+
+    # ---------------- learning ----------------
+    def learn(self, updates=1):
+        if len(self.seq_replay) < max(4, self.cfg.batch_size): return {}
+        self.train()
+        metrics = {}
+        # Sample sequence with burn-in
+        seq_len = self.cfg.burn_in + self.cfg.seq_len if "burn_in" not in self.ablate \
+                  else self.cfg.seq_len
+
+        for _ in range(updates):
+            b = self.seq_replay.sample_batch(
+                self.cfg.batch_size, seq_len,
+                torch.device(self.device_name))
+            for r in b["rewards"].flatten().tolist():
+                self.reward_norm.update(r)
+            rew_norm = torch.tensor(
+                [self.reward_norm.normalize(r)
+                 for r in b["rewards"].flatten().tolist()],
+                device=self.device_name).view(b["rewards"].shape)
+
+            rssm_m, feat_seq = self._rssm_loss(
+                b["obs"], b["actions"], rew_norm, b["dones"])
+
+            # WM loss: predict next feat
+            wm_loss = torch.zeros((), device=self.device_name)
+            if self.wm is not None:
+                self.wm.reset()
+                feats_list = []
+                for t in range(feat_seq.shape[1]):
+                    out = self.wm(feat_seq[:, t])
+                    feats_list.append(out)
+                att_seq = torch.stack(feats_list, dim=1)
+                wm_loss = F.mse_loss(att_seq[:, :-1], feat_seq[:, 1:].detach())
+                self.wm.reset()
+
+            # Sample start state
+            B, L, _ = feat_seq.shape
+            t_idx = torch.randint(0, L, (B,))
+            s_feat = feat_seq[torch.arange(B), t_idx]
+            h_dim = self.rssm.deter
+            start_state = {"h": s_feat[:, :h_dim], "z": s_feat[:, h_dim:]}
+
+            # Actor-Critic via imagination
+            actor_loss = torch.zeros((), device=self.device_name)
+            critic_loss = torch.zeros((), device=self.device_name)
+            entropy_loss = torch.zeros((), device=self.device_name)
+            if self.actor is not None and self.critic is not None:
+                feats, rewards, conts, logps, ents = self._imagine_rollout(
+                    start_state, self.cfg.imagination_horizon)
+                with torch.no_grad():
+                    values = self.critic.predict_value(torch.stack(feats))
+                R = torch.zeros(B, device=self.device_name)
+                returns = []
+                for t in reversed(range(len(rewards))):
+                    cont = torch.sigmoid(conts[t]).detach()
+                    R = rewards[t] + self.cfg.gamma*cont*(
+                        (1-self.cfg.lambda_returns)*values[t] +
+                        self.cfg.lambda_returns*R)
+                    returns.append(R)
+                returns_t = torch.stack(list(reversed(returns)))
+                # C51 distributional critic loss
+                critic_loss = self.critic.distributional_loss(
+                    torch.stack(feats).reshape(-1, feats[0].shape[-1]),
+                    symlog(returns_t.flatten()))
+                adv = (returns_t - values.detach())
+                if adv.numel() > 1:
+                    adv = (adv - adv.mean())/(adv.std()+1e-8)
+                lp_t = torch.stack(logps); ent_t = torch.stack(ents)
+                actor_loss = -(lp_t*adv).mean()
+                entropy_loss = -self.cfg.entropy_beta*ent_t.mean()
+
+            # BYOL
+            byol_loss = torch.zeros((), device=self.device_name)
+            if self.byol is not None:
+                Bf, Lf, Fd = feat_seq.shape
+                ff = feat_seq.reshape(Bf*Lf, Fd)
+                af = b["actions"].reshape(Bf*Lf)
+                a_oh = F.one_hot(af, self.cfg.n_actions).float()
+                _, o, t = self.byol(ff, a_oh)
+                byol_loss = (o - t.detach()).pow(2).mean()
+
+            # EB update: store feats with returns
+            eb_loss = torch.zeros((), device=self.device_name)
+            if self.eb is not None and self.learn_steps % 4 == 0:
+                with torch.no_grad():
+                    Bf, Lf, Fd = feat_seq.shape
+                    ff = feat_seq.reshape(Bf*Lf, Fd)
+                    for bi in range(min(Bf, 4)):
+                        R = 0.0
+                        for ti in reversed(range(Lf)):
+                            R = float(b["rewards"][bi, ti].item()) + self.cfg.gamma*R
+                            self.eb.store(ff[bi*Lf + ti], R)
+                # EB aux: reconstruct value via retrieval
+                with torch.no_grad():
+                    vals = self.critic.predict_value(feat_seq.reshape(Bf*Lf, Fd))
+                context, eb_val = self.eb.retrieve(feat_seq.reshape(Bf*Lf, Fd), vals)
+                eb_loss = F.mse_loss(eb_val, vals)
+
+            # ToM
+            tom_loss = torch.zeros((), device=self.device_name)
+            if self.tom is not None:
+                lf = feat_seq[:, -1]; ls = b["social"][:, -1]
+                ns = b["next_social"][:, -1]
+                pn, _ = self.tom(lf, ls)
+                tom_loss = F.mse_loss(pn, ns)
+
+            # Self model
+            self_loss = torch.zeros((), device=self.device_name)
+            if self.self_model is not None:
+                cf = feat_seq[:, :-1].reshape(-1, feat_seq.shape[-1])
+                nf = feat_seq[:, 1:].reshape(-1, feat_seq.shape[-1])
+                sp = self.self_model(cf)
+                self_loss = F.mse_loss(sp, nf.detach())
+
+            # Character aux
+            char_loss = torch.zeros((), device=self.device_name)
+            if "character_aux" not in self.ablate:
+                _, rp = self.character()
+                char_loss = F.mse_loss(rp.expand(1), rew_norm.mean().reshape(1))
+
+            total = (rssm_m["kl_loss"] + 2.0*rssm_m["reward_loss"] +
+                     2.0*rssm_m["continue_loss"] +
+                     actor_loss + entropy_loss + critic_loss +
+                     0.5*byol_loss +
+                     self.cfg.aux_wm_weight*wm_loss +
+                     self.cfg.aux_eb_weight*eb_loss +
+                     self.cfg.aux_tom_weight*tom_loss +
+                     self.cfg.aux_self_weight*self_loss +
+                     self.cfg.aux_char_weight*char_loss +
+                     self.cfg.aux_fe_weight*rssm_m["fe_loss"])
+
+            self._opt.zero_grad(set_to_none=True)
+            total.backward()
+            gn = torch.nn.utils.clip_grad_norm_(self.parameters(), self.cfg.grad_clip)
+            if not math.isfinite(float(gn)):
+                self._opt.zero_grad(set_to_none=True); continue
+            self._opt.step()
+            self._soft_update()
+            if self.byol is not None: self.byol.update_target()
+            self.learn_steps += 1
+
+            # ============ Option-Critic update (Bacon et al. 2017) ============
+            manager_loss = torch.zeros((), device=self.device_name)
+            term_loss = torch.zeros((), device=self.device_name)
+            if self.options is not None and len(self.option_buffer) >= 8:
+                rec = self.option_buffer[-64:]
+                st = torch.stack([o[0] for o in rec]).to(self.device_name)
+                opts = torch.tensor([o[1] for o in rec], dtype=torch.long,
+                                    device=self.device_name)
+                rets = torch.tensor([o[2] for o in rec], dtype=torch.float32,
+                                    device=self.device_name)
+                lps = torch.stack([o[3] for o in rec]).to(self.device_name)
+                oh = F.one_hot(opts, self.cfg.n_options).float()
+
+                # Option value V_Ω(s,o)
+                opt_v = self.options.option_values(st, oh)
+
+                # Value loss: predict actual option return
+                value_loss = F.mse_loss(opt_v, rets)
+
+                # Policy loss: REINFORCE with option value baseline
+                adv_pi = (rets - opt_v.detach())
+                policy_loss = -(lps * adv_pi).mean()
+
+                # Termination loss (Bacon et al. 2017):
+                # beta * (V_Ω(s,o) - return).detach()
+                # If V > return (option underperformed), push β up
+                # If V < return (option overperformed), push β down
+                beta = self.options.termination_prob(st, oh)
+                term_grad_target = (opt_v - rets).detach()
+                # Beta loss: beta * target_grad + entropy regularization
+                term_loss = (beta * term_grad_target).mean()
+                # Entropy bonus for exploration in termination
+                beta_entropy = -beta * torch.log(beta.clamp_min(1e-8)) - \
+                                (1-beta) * torch.log((1-beta).clamp_min(1e-8))
+                term_loss = term_loss - self.cfg.termination_entropy_beta * beta_entropy.mean()
+
+                manager_loss = policy_loss + 0.5 * value_loss + term_loss
+
+                self._opt.zero_grad(set_to_none=True)
+                manager_loss.backward(retain_graph=False)
+                torch.nn.utils.clip_grad_norm_(self.options.parameters(), 1.0)
+                self._opt.step()
+                self.manager_steps += 1
+
+                if len(self.option_buffer) > 2 * self.max_option_buffer:
+                    self.option_buffer = self.option_buffer[-self.max_option_buffer:]
+
+            metrics = {
+                "kl": float(rssm_m["kl_loss"].item()),
+                "reward": float(rssm_m["reward_loss"].item()),
+                "continue": float(rssm_m["continue_loss"].item()),
+                "actor": float(actor_loss.item()),
+                "critic": float(critic_loss.item()),
+                "byol": float(byol_loss.item()),
+                "wm": float(wm_loss.item()),
+                "eb": float(eb_loss.item()),
+                "tom": float(tom_loss.item()),
+                "self": float(self_loss.item()),
+                "char": float(char_loss.item()),
+                "manager": float(manager_loss.item()),
+                "term": float(term_loss.item()),
+                "total": float(total.item()),
+                "gn": float(gn),
+            }
+            self.last_loss = metrics
+        return metrics
+
+    # ---------------- evaluation ----------------
+    @torch.no_grad()
+    def evaluate(self, env, steps=400, seed=123, task_id=0):
+        set_seed(seed)
+        obs = env.reset(seed, task_id=task_id)
+        social = env.social.clone()
+        rewards, actions, energies = [], [], []
+        self.rssm_state = None
+        self.reset_wm()
+        for _ in range(steps):
+            action, _ = self.act(obs, social, deterministic=True)
+            next_obs, r, done, ns = env.step(action)
+            rewards.append(r); actions.append(action); energies.append(env.energy)
+            obs, social = next_obs, ns
+            if done:
+                obs = env.reset(seed + 1, task_id=task_id)
+                social = env.social.clone()
+                self.rssm_state = None
+                self.reset_wm()
+        return {
+            "mean_reward": float(sum(rewards)/max(1, len(rewards))),
+            "return": float(sum(rewards)),
+            "mean_energy": float(sum(energies)/max(1, len(energies))),
+            "action_entropy": self._entropy(actions),
+            "unique_actions": float(len(set(actions))),
+        }
+
+    def _entropy(self, actions):
+        if not actions: return 0.0
+        c = torch.bincount(torch.tensor(actions), minlength=self.cfg.n_actions).float()
+        p = c/c.sum().clamp_min(1.0)
+        return float((-(p*torch.log(p.clamp_min(1e-8))).sum()).item())
+
+    def report(self):
+        return {
+            "version": "v21",
+            "steps": self.tick_count,
+            "learn_steps": self.learn_steps,
+            "manager_steps": self.manager_steps,
+            "n_episodes": len(self.seq_replay),
+            "mean_recent_reward": float(sum(self.recent_rewards)/
+                                          max(1, len(self.recent_rewards))),
+            "energy": self.metabolism.level(),
+            "emotion": self.emotion.dominant() if self.emotion else "disabled",
+            "eb_size": self.eb.size() if self.eb is not None else 0,
+            "competence": self.curriculum.competence() if self.curriculum else {},
+            "option_buffer_size": len(self.option_buffer),
+            "last_loss": dict(self.last_loss),
+        }
+
+    def save(self, path):
+        torch.save({"version": "v21", "config": asdict(self.cfg),
+                     "ablate": sorted(self.ablate),
+                     "model": self.state_dict(),
+                     "tick_count": self.tick_count,
+                     "learn_steps": self.learn_steps}, path)
+
+    def load_payload(self, payload):
+        self.load_state_dict(payload["model"])
+        self.tick_count = int(payload.get("tick_count", 0))
+        self.learn_steps = int(payload.get("learn_steps", 0))
+
+
+# ============================================================
+# Training
+# ============================================================
+
+def train_organism(steps, seed, cfg, ablate=None, device="cpu",
+                   show_every=500, save_path=None, use_curriculum=False):
+    set_seed(seed)
+    env = MultiTaskEnv(cfg.input_dim, seed=seed)
+    org = NeuroCoreOrganismV21(cfg, ablate=ablate, device=device)
+
+    if use_curriculum and org.curriculum is not None:
+        task_id = org.curriculum.sample_task()
+    else:
+        task_id = random.randrange(cfg.n_task_types)
+    obs = env.reset(seed, task_id=task_id)
+    social = env.social.clone()
+
+    rolling = deque(maxlen=100)
+    print(f"[NeuroCore v21] device={device} steps={steps} "
+          f"ablate={sorted(org.ablate) or ['none']}")
+    print("Option-Critic + C51 + RSSM burn-in + value-conditioned EB\n")
+
+    t0 = time.time()
+    for step in range(1, steps + 1):
+        action, info = org.act(obs, social, deterministic=False)
+        next_obs, env_reward, done, next_social = env.step(action)
+        org.observe_transition(obs, action, env_reward, next_obs, social,
+                                next_social, done, info, task_id=task_id)
+        rolling.append(env_reward)
+
+        if len(org.seq_replay) >= max(4, cfg.batch_size) and step % cfg.train_every == 0:
+            org.learn(1)
+
+        if step % cfg.sleep_every == 0 and len(org.seq_replay) >= 4:
+            for _ in range(cfg.sleep_updates): org.learn(1)
+
+        if done:
+            if org.curriculum is not None:
+                success = 1.0 if env_reward > 0.1 else 0.0
+                org.curriculum.update(task_id, success)
+            if use_curriculum and org.curriculum is not None:
+                task_id = org.curriculum.sample_task()
+            else:
+                task_id = random.randrange(cfg.n_task_types)
+            obs = env.reset(seed + step, task_id=task_id)
+            social = env.social.clone()
+            org.rssm_state = None
+            org.reset_wm()
+        else:
+            obs, social = next_obs, next_social
+
+        if show_every and step % show_every == 0:
+            mr = sum(rolling)/max(1, len(rolling))
+            ll = org.last_loss
+            comp = org.curriculum.competence() if org.curriculum else {}
+            comp_str = " ".join(f"t{k}={v:.2f}" for k, v in comp.items())
+            print(f"t={step:6d} r100={mr:+.4f} eps={len(org.seq_replay)} "
+                  f"kl={ll.get('kl', 0):.3f} actor={ll.get('actor', 0):+.3f} "
+                  f"term={ll.get('term', 0):+.3f} crit={ll.get('critic', 0):.3f} "
+                  f"[{comp_str}]")
+
+    report = org.report()
+    report["elapsed_sec"] = time.time() - t0
+    if save_path: org.save(save_path)
+    return org, report
+
+
+def random_baseline(cfg, steps, seed, task_id=0):
+    set_seed(seed)
+    env = MultiTaskEnv(cfg.input_dim, seed=seed)
+    obs = env.reset(seed, task_id=task_id)
+    total = 0.0; energies, actions = [], []
+    for _ in range(steps):
+        a = random.randrange(cfg.n_actions)
+        _, r, done, _ = env.step(a)
+        total += r; energies.append(env.energy); actions.append(a)
+        if done: obs = env.reset(seed + 1, task_id=task_id)
+    c = torch.bincount(torch.tensor(actions), minlength=cfg.n_actions).float()
+    p = c/c.sum().clamp_min(1.0)
+    return {"mean_reward": total/steps,
+            "mean_energy": sum(energies)/steps,
+            "action_entropy": float((-(p*torch.log(p.clamp_min(1e-8))).sum()).item()),
+            "unique_actions": float(len(set(actions)))}
+
+
+def benchmark(steps, seeds, cfg, device="cpu"):
+    rows = []
+    for seed in seeds:
+        org, _ = train_organism(steps, seed, cfg, device=device,
+                                 show_every=0, use_curriculum=True)
+        eval_env = MultiTaskEnv(cfg.input_dim, seed=10_000 + seed)
+        task_rewards, random_rewards = [], []
+        for task_id in range(cfg.n_task_types):
+            learned = org.evaluate(eval_env, steps=cfg.eval_steps,
+                                    seed=20_000 + seed, task_id=task_id)
+            random_r = random_baseline(cfg, cfg.eval_steps,
+                                         seed=30_000 + seed, task_id=task_id)
+            task_rewards.append(learned["mean_reward"])
+            random_rewards.append(random_r["mean_reward"])
+        delta = sum(task_rewards)/len(task_rewards) - sum(random_rewards)/len(random_rewards)
+        rows.append({"seed": seed, "learned_avg": sum(task_rewards)/len(task_rewards),
+                     "random_avg": sum(random_rewards)/len(random_rewards),
+                     "delta": delta})
+        print(f"seed={seed}: learned={sum(task_rewards)/len(task_rewards):+.5f} "
+              f"random={sum(random_rewards)/len(random_rewards):+.5f} delta={delta:+.5f}")
+    lr = [r["learned_avg"] for r in rows]
+    deltas = [r["delta"] for r in rows]
+    summary = {"learned_mean": statistics.mean(lr),
+                "learned_std": statistics.stdev(lr) if len(lr) > 1 else 0.0,
+                "delta_mean": statistics.mean(deltas),
+                "delta_std": statistics.stdev(deltas) if len(deltas) > 1 else 0.0}
+    print(f"\nSummary: learned={summary['learned_mean']:+.4f}±{summary['learned_std']:.4f}, "
+          f"delta={summary['delta_mean']:+.4f}±{summary['delta_std']:.4f}")
+    return {"steps": steps, "results": rows, "summary": summary}
+
+
+def run_ablation(steps, cfg, device="cpu"):
+    configs = {
+        "full": set(),
+        "no_rssm": {"rssm"},
+        "no_wm": {"wm"},
+        "no_eb": {"eb"},
+        "no_options": {"options"},
+        "no_byol": {"byol"},
+        "no_pc": {"pc"},
+        "no_tom": {"tom"},
+        "no_self_model": {"self_model"},
+        "no_imagination": {"imagination"},
+        "no_curriculum": {"curriculum"},
+        "no_burn_in": {"burn_in"},
+        "no_intra_option": {"intra_option"},
+        "minimal": {"pc", "rssm", "wm", "eb", "options", "byol",
+                    "tom", "self_model", "imagination", "character_aux",
+                    "somatic", "emotion", "neuromod", "curriculum"},
+    }
+    out = {}
+    for name, ab in configs.items():
+        print(f"\n=== {name} ===")
+        org, report = train_organism(steps, 0, cfg, ablate=ab, device=device,
+                                      show_every=0)
+        eval_env = MultiTaskEnv(cfg.input_dim, seed=9000)
+        eval_rewards = []
+        for task_id in range(cfg.n_task_types):
+            ev = org.evaluate(eval_env, steps=cfg.eval_steps,
+                                seed=9001, task_id=task_id)
+            eval_rewards.append(ev["mean_reward"])
+        avg = sum(eval_rewards)/len(eval_rewards)
+        out[name] = {"avg_reward": avg, "per_task": eval_rewards,
+                     "learn_steps": report["learn_steps"]}
+        print(json.dumps({"avg_reward": avg, "per_task": eval_rewards,
+                          "learn_steps": report["learn_steps"]},
+                          ensure_ascii=False))
+    return out
+
+
+def gradient_report(device="cpu"):
+    cfg = Config()
+    set_seed(42)
+    org = NeuroCoreOrganismV21(cfg, device=device)
+    env = MultiTaskEnv(cfg.input_dim, seed=42)
+    obs = env.reset(42, task_id=0); social = env.social.clone()
+    for step in range(1500):
+        a, info = org.act(obs, social)
+        no, r, done, ns = env.step(a)
+        org.observe_transition(obs, a, r, no, social, ns, done, info, task_id=0)
+        if len(org.seq_replay) >= max(4, cfg.batch_size) and step % 2 == 0:
+            org.learn(1)
+        obs, social = (env.reset(42 + step, task_id=0), env.social.clone()) if done else (no, ns)
+        if done:
+            org.rssm_state = None
+            org.reset_wm()
+
+    groups = {
+        "pc": ["pc.l1.W_gen.weight"],
+        "rssm_gru": ["rssm.gru.weight_hh"],
+        "rssm_prior": ["rssm.prior_net.0.weight"],
+        "rssm_post": ["rssm.post_net.0.weight"],
+        "rssm_reward": ["rssm.reward_head.0.weight"],
+        "wm_gru": ["wm.gru.weight_hh"] if org.wm is not None else [],
+        "eb_W_q": ["eb.W_q.weight"] if org.eb is not None else [],
+        "actor": ["actor.net.0.weight"],
+        "critic": ["critic.net.0.weight"],
+        "options_net": ["options.option_net.0.weight"] if org.options else [],
+        "options_term": ["options.termination_net.0.weight"] if org.options else [],
+        "options_value": ["options.option_value.0.weight"] if org.options else [],
+        "byol": ["byol.online.0.weight"] if org.byol else [],
+        "character": ["character.traits"],
+        "tom": ["tom.net.0.weight"] if org.tom else [],
+        "self_model": ["self_model.predictor.0.weight"] if org.self_model else [],
+    }
+    sd = dict(org.named_parameters())
+    print("=== Gradient flow report (v21) ===")
+    for name, params in groups.items():
+        total = 0.0; found = False
+        for p in params:
+            if p in sd and sd[p].grad is not None:
+                total += float(sd[p].grad.norm().item()); found = True
+        status = "OK" if found and total > 1e-8 else "MISSING"
+        print(f"  {name:20s}  grad_norm={total:.6f}  [{status}]")
+
+
+def smoke_test(device="cpu"):
+    cfg = Config(batch_size=8, seq_len=8, burn_in=3, sleep_every=10000,
+                 rssm_deter=64, rssm_hidden=64, imagination_horizon=3,
+                 wm_hidden=32, eb_dim=32)
+    set_seed(123)
+    org = NeuroCoreOrganismV21(cfg, device=device)
+    env = MultiTaskEnv(cfg.input_dim, seed=123)
+    obs = env.reset(123, task_id=0); social = env.social.clone()
+    initial = {k: v.detach().clone() for k, v in org.state_dict().items()
+               if v.dtype.is_floating_point}
+    losses = []
+    for step in range(150):
+        a, info = org.act(obs, social)
+        no, r, done, ns = env.step(a)
+        org.observe_transition(obs, a, r, no, social, ns, done, info, task_id=0)
+        if len(org.seq_replay) >= max(4, cfg.batch_size) and step % 2 == 0:
+            m = org.learn(1)
+            if m:
+                losses.append(m["total"])
+                assert all(math.isfinite(v) for v in m.values()), f"non-finite: {m}"
+        obs, social = (env.reset(123+step, task_id=0), env.social.clone()) if done else (no, ns)
+        if done:
+            org.rssm_state = None
+            org.reset_wm()
+
+    changed = sum(float((org.state_dict()[k]-v0).abs().mean().item())
+                   for k, v0 in initial.items()
+                   if k in org.state_dict() and org.state_dict()[k].dtype.is_floating_point)
+    assert len(losses) > 0, "no learning"
+    assert changed > 0, "params didn't change"
+
+    sd = dict(org.named_parameters())
+    checks = {
+        "pc": ["pc.l1.W_gen.weight"],
+        "rssm_gru": ["rssm.gru.weight_hh"],
+        "wm_gru": ["wm.gru.weight_hh"] if org.wm is not None else [],
+        "eb_W_q": ["eb.W_q.weight"] if org.eb is not None else [],
+        "actor": ["actor.net.0.weight"],
+        "critic": ["critic.net.0.weight"],
+        "options_net": ["options.option_net.0.weight"] if org.options else [],
+        "options_term": ["options.termination_net.0.weight"] if org.options else [],
+        "options_value": ["options.option_value.0.weight"] if org.options else [],
+        "character": ["character.traits"],
+        "byol": ["byol.online.0.weight"] if org.byol else [],
+    }
+    gs = {}
+    for g, names in checks.items():
+        gs[g] = "OK" if any(n in sd and sd[n].grad is not None and
+                            sd[n].grad.norm().item() > 1e-10 for n in names) else "MISSING"
+
+    report = org.report()
+    report.update({"smoke": "PASS" if len(losses) > 0 and changed > 0 else "FAIL",
+                    "first_loss": losses[0] if losses else None,
+                    "last_loss": losses[-1] if losses else None,
+                    "grad_status": gs})
+    print(json.dumps({k: v for k, v in report.items()
+                     if k in {"smoke", "steps", "learn_steps", "first_loss",
+                              "last_loss", "grad_status", "manager_steps"}},
+                     indent=2, ensure_ascii=False, default=str))
+    return report
+
+
+# ============================================================
+# CLI
+# ============================================================
+
+def parse_args():
+    p = argparse.ArgumentParser(description="NeuroCore Organism v21")
+    p.add_argument("--mode", choices=["smoke", "grads", "train", "curriculum",
+                                       "benchmark", "ablate", "self-report"],
+                   default="smoke")
+    p.add_argument("--steps", type=int, default=15000)
+    p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--seeds", type=str, default="0,1,2")
+    p.add_argument("--device", type=str,
+                   default="cuda" if torch.cuda.is_available() else "cpu")
+    p.add_argument("--quiet", action="store_true")
+    return p.parse_args()
+
+
+def main():
+    args = parse_args()
+    device = args.device
+    if device.startswith("cuda") and not torch.cuda.is_available():
+        device = "cpu"
+    cfg = Config()
+    t0 = time.time()
+
+    if args.mode == "smoke":
+        smoke_test(device)
+    elif args.mode == "grads":
+        gradient_report(device)
+    elif args.mode == "train":
+        _, report = train_organism(
+            args.steps, args.seed, cfg, device=device,
+            show_every=0 if args.quiet else 500, use_curriculum=False)
+        print(json.dumps(report, indent=2, ensure_ascii=False, default=str))
+    elif args.mode == "curriculum":
+        _, report = train_organism(
+            args.steps, args.seed, cfg, device=device,
+            show_every=0 if args.quiet else 500, use_curriculum=True)
+        print(json.dumps(report, indent=2, ensure_ascii=False, default=str))
+    elif args.mode == "self-report":
+        org, report = train_organism(args.steps, args.seed, cfg, device=device,
+                                      show_every=0 if args.quiet else 500,
+                                      use_curriculum=True)
+        print(json.dumps(report, indent=2, ensure_ascii=False, default=str))
+    elif args.mode == "benchmark":
+        seeds = [int(x.strip()) for x in args.seeds.split(",") if x.strip()]
+        result = benchmark(args.steps, seeds, cfg, device=device)
+        print(json.dumps(result, indent=2, ensure_ascii=False, default=str))
+    elif args.mode == "ablate":
+        result = run_ablation(args.steps, cfg, device=device)
+        print(json.dumps(result, indent=2, ensure_ascii=False, default=str))
+
+    print(f"\nCompleted in {time.time()-t0:.2f}s")
+
+
+if __name__ == "__main__":
+    main()

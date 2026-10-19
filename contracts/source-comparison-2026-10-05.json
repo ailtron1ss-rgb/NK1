@@ -1,0 +1,50 @@
+{
+  "comparisons": [
+    {
+      "label": "Neuro-Kurisu 35.30 -> 35.40",
+      "leftFiles": 1755,
+      "rightFiles": 1814,
+      "commonRelativePaths": 1753,
+      "byteIdenticalCommonPaths": 1640,
+      "leftOnlyPaths": 2,
+      "rightOnlyPaths": 61
+    },
+    {
+      "label": "Kurisu v9 -> v56",
+      "leftFiles": 52,
+      "rightFiles": 159,
+      "commonRelativePaths": 51,
+      "byteIdenticalCommonPaths": 26,
+      "leftOnlyPaths": 1,
+      "rightOnlyPaths": 108
+    },
+    {
+      "label": "NeuroCore V126 -> V143",
+      "leftFiles": 525,
+      "rightFiles": 63,
+      "commonRelativePaths": 32,
+      "byteIdenticalCommonPaths": 14,
+      "leftOnlyPaths": 493,
+      "rightOnlyPaths": 31
+    }
+  ],
+  "v56DuplicateBasenames": {
+    "types.ts": [
+      "src/types.ts",
+      "src/modular/types.ts"
+    ],
+    "BrainHub.ts": [
+      "src/modular/BrainHub.ts",
+      "src/brain/BrainHub.ts"
+    ],
+    "AceMemory.ts": [
+      "src/modular/AceMemory.ts",
+      "src/brain/AceMemory.ts"
+    ],
+    "ModuleManager.ts": [
+      "src/modular/ModuleManager.ts",
+      "src/brain/ModuleManager.ts"
+    ]
+  },
+  "v56ExactDuplicateGroups": 0
+}

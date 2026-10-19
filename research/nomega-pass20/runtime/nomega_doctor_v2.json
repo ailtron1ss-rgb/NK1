@@ -1,0 +1,55 @@
+{
+  "tool": "nomega-doctor-v2",
+  "checks": {
+    "version": {
+      "pass": true,
+      "version": "1.36.0-dev",
+      "baseline": "1.14.1",
+      "status": "research_only"
+    },
+    "governance_manifest": {
+      "pass": true,
+      "current_release": "1.36.0-dev"
+    },
+    "compileall": {
+      "pass": true
+    },
+    "star_import": {
+      "pass": true
+    },
+    "governance_check": {
+      "returncode": 0,
+      "stdout": "ata/pass20_build/core/meta_grammar.py:480\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/meta_self.py:116\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/meta_self.py:58\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/mind.py:112\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/mind.py:120\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/mind.py:104\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/minimal_rules.py:34\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/modules_catalog.py:62\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/modules_catalog.py:70\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/neural_invent.py:277\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/neural_invent.py:314\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/neural_invent.py:272\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/neural_invent.py:531\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/neuro_core.py:124\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/neuro_core.py:165\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/neuro_core.py:359\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/neuro_core.py:443\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/neuro_core.py:104\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/neuro_core.py:154\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/neuro_core.py:181\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/neuro_prior.py:78\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/neuro_prior.py:110\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/patch_journal.py:35\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/patch_journal.py:53\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/plugins/ensemble_pure.py:21\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/plugins/ensemble_pure.py:27\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/plugins/family_pure.py:75\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/plugins/strong_pure_v2.py:36\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/plugins/strong_pure_v2_patched.py:37\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/plugins/strong_pure_v4.py:82\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/plugins/strong_pure_v5.py:89\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/plugins/strong_pure_v6.py:98\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/plugins/strong_pure_v7.py:101\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/progression.py:98\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/pure_bytecode.py:78\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/seed_bank.py:132\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/seed_bank.py:52\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/seed_bank.py:106\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/self_curriculum.py:91\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/self_curriculum.py:69\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/true_blank.py:27\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/true_blank.py:72\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/true_blank.py:82\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/true_blank.py:262\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/true_blank.py:271\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/true_blank.py:286\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/unique_methods.py:317\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/unique_methods.py:62\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/unique_methods.py:243\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/unique_methods.py:52\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/unique_methods.py:233\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/unique_methods.py:134\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/unique_methods.py:145\nWARN - LEGACY_EXCEPT_PASS /mnt/data/pass20_build/core/unique_methods.py:152\n",
+      "stderr": "",
+      "pass": true
+    },
+    "evidence_ledger": {
+      "valid": true,
+      "records": 0,
+      "tail_hash": "GENESIS"
+    },
+    "architecture_health": {
+      "package_modules": 314,
+      "versioned_modules": 160,
+      "import_edges": 717,
+      "cycle_count": 0,
+      "cycles": [],
+      "bare_except_pass_count": 0,
+      "config_field_count": 132,
+      "config_unused_field_estimate": 58,
+      "status": "attention_required",
+      "lazy_import_edges": 75,
+      "filename_versioned_modules": 214,
+      "registry_versioned_modules": 160,
+      "filename_legacy_gap_modules": 0,
+      "unclassified_filename_versioned_modules": 0,
+      "config_dynamic_unknown_count": 3,
+      "pass": true
+    },
+    "test_collection": {
+      "pass": true,
+      "stdout_tail": "ry_v2.py::test_train_generation_can_change\ntests/test_replay_scheduler_and_evolution_diagnostics_1_9_8.py::test_transfer_aware_replay_preserves_anchor_and_penalizes_negative_transfer\ntests/test_replay_scheduler_and_evolution_diagnostics_1_9_8.py::test_scheduler_persists_decision_lineage\ntests/test_replay_scheduler_and_evolution_diagnostics_1_9_8.py::test_evolution_diagnostics_distinguishes_retune_and_reintroduction\ntests/test_replay_scheduler_and_evolution_diagnostics_1_9_8.py::test_training_rows_can_use_transfer_aware_replay\ntests/test_restart_equivalence_verifier_v1.py::test_restart_equivalence\ntests/test_restart_equivalence_verifier_v1.py::test_restart_mismatch_is_detected\ntests/test_self_development_autonomous_dispatch_v1.py::test_orchestrator_dispatches_selected_intervention\ntests/test_self_development_autonomous_dispatch_v1.py::test_registry_marks_interventions_canonical\ntests/test_self_development_control_plane_1_9_7.py::test_experience_memory_is_evidence_gated_and_persistent\ntests/test_self_development_control_plane_1_9_7.py::test_evolution_archive_pareto_and_parent_selection\ntests/test_self_development_control_plane_1_9_7.py::test_bottleneck_detector_prefers_low_ood_and_neural\ntests/test_self_development_control_plane_1_9_7.py::test_orchestrator_promotion_gate\ntests/test_self_development_control_plane_1_9_7.py::test_mobile_benchmark_marks_host_not_device\ntests/test_self_development_control_plane_1_9_7.py::test_development_cycle_bootstraps_verified_memory\ntests/test_self_development_frontier_integration_v1.py::test_orchestrator_plan_exposes_frontier_and_cycle_uses_it\ntests/test_self_development_orchestrator_v1.py::test_evaluate_candidate_separates_metrics_from_evidence\ntests/test_self_evolution_lab_v1.py::test_self_evolution_finds_improvement\ntests/test_self_improvement_loop_v1.py::test_self_improvement_loop_rejects_training_gain_without_ood_gain\ntests/test_structural_plasticity_controller_v1.py::test_controller_proposes_bounded_structural_plan\ntests/test_structural_plasticity_controller_v1.py::test_structural_transaction_rolls_back_when_external_gate_rejects\ntests/test_task_spec_and_adaptive_curriculum_1_9_4.py::test_typed_taskspec_contains_nontrivial_semantic_structure\ntests/test_task_spec_and_adaptive_curriculum_1_9_4.py::test_typed_ood_track_is_distinct_and_executable\ntests/test_task_spec_and_adaptive_curriculum_1_9_4.py::test_adaptive_curriculum_persists_evidence_and_keeps_anchors\ntests/test_task_spec_and_adaptive_curriculum_1_9_4.py::test_execution_guided_typed_smoke\ntests/test_task_spec_and_execution_guided_1_9_3.py::test_taskspec_semantic_normalization\ntests/test_task_spec_and_execution_guided_1_9_3.py::test_taskspec_rejects_ambiguous_or_unknown\ntests/test_task_spec_and_execution_guided_1_9_3.py::test_taskspec_ood_benchmark_uses_neural_generation\ntests/test_task_spec_and_execution_guided_1_9_3.py::test_execution_guided_smoke\ntests/test_task_spec_and_execution_guided_1_9_3.py::test_scheduled_sampling_path_changes_training_contract\ntests/test_unified_development_loop_v1.py::test_unified_loop_promotes_only_with_full_evidence\ntests/test_unified_development_loop_v1.py::test_unified_loop_blocks_three_identical_failed_interventions\ntests/test_unified_development_loop_v1.py::test_unified_loop_records_evidence_gated_promotion\ntests/test_unified_development_loop_v1.py::test_unified_loop_passes_replay_context_and_archives_code_candidate\ntests/test_unified_development_loop_v1.py::test_unified_loop_rollback_restores_previous_promoted_artifact\ntests/test_verifiable_dense_reward_v1.py::test_dense_reward_prefers_verified_program\ntests/test_verifiable_dense_reward_v1.py::test_difficulty_weights_are_persisted\ntests/test_verifiable_environment_forge_v1.py::test_environment_forge_emits_verified_hard_rows\ntests/test_verified_neural_substrate_bridge_v1.py::test_bridge_requires_verified_fit_and_ranks_after_fit\ntests/test_verified_neural_substrate_bridge_v1.py::test_bridge_is_deterministic_for_fixed_seed\n\n480 tests collected in 1.27s\n"
+    }
+  },
+  "all_contracts_pass": true
+}

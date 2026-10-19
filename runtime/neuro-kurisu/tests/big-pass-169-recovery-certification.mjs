@@ -1,0 +1,3 @@
+import assert from 'node:assert/strict';
+import {FailureRecoveryCertification} from '../src/organism/system/FailureRecoveryCertification.ts';
+const r=new FailureRecoveryCertification(); const state={tick:4,self:'stable',values:[.8,.9],memory:['m1','m2']}; r.checkpoint(state,100); assert.equal(r.recoverAndVerify(state,101),true); assert.equal(r.recoverAndVerify({...state,tick:5},102),false); const s=r.snapshot(); assert.equal(s.recoveries,1); assert.equal(s.failedRecoveries,1); console.log(JSON.stringify({ok:true,checkpoints:s.checkpoints,recoveries:s.recoveries,failedRecoveries:s.failedRecoveries}));

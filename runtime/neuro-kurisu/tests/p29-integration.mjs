@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { P29LearningGovernanceEngine, defaultP29Governance } from '../src/organism/learning/P29LearningGovernance.ts';
+import { defaultP26TrueLearning } from '../src/organism/learning/P26TrueLearningEngine.ts';
+import { defaultP28Plasticity } from '../src/organism/learning/P28PlasticitySubstrate.ts';
+import { defaultP27NeuralWorld } from '../src/organism/cognition/P27NeuralWorldFoundation.ts';
+const g=new P29LearningGovernanceEngine();g.restore(defaultP29Governance());
+const first={p26:defaultP26TrueLearning(),p27:defaultP27NeuralWorld(),p28:defaultP28Plasticity()};
+const second=structuredClone(first); second.p26.metrics.onlineUpdates=10; second.p28.associationUpdates=5;
+g.captureLastKnownGood(first); g.captureLastKnownGood(second);
+assert.equal(g.rollbackAvailable(),true);
+const restored=g.takeRollback();
+assert.equal(restored.p26.metrics.onlineUpdates,0);
+assert.equal(restored.p28.associationUpdates,0);
+console.log('P29_INTEGRATION=PASS rollback-restored=previous-checkpoint');

@@ -1,0 +1,162 @@
+{
+  "title": "Neuro-Kurisu WorkPass 25 changed files",
+  "date": "2026-10-11",
+  "baseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS24_2026-10-11.zip",
+  "rootVersion": "25.0.0-super-final12",
+  "runtimeVersion": "35.48.0",
+  "schema": 224,
+  "diffMethod": "SHA-256 comparison of archive entries against the source tree; generated caches, node_modules, runtime/test state, and this self-referential manifest are excluded.",
+  "manifestSelfExcluded": true,
+  "summary": {
+    "added": 9,
+    "modified": 15,
+    "removed": 0,
+    "totalAffectedPaths": 24
+  },
+  "files": [
+    {
+      "path": "WORKPASS25_REPORT_2026-10-11.md",
+      "status": "ADDED",
+      "previousSha256": null,
+      "currentSha256": "13aee27267e8a457c299fb2e81c5c2effd932ddadf91040e0810884551c08d97"
+    },
+    {
+      "path": "WORKPASS25_Список_дел_2026-10-11.md",
+      "status": "ADDED",
+      "previousSha256": null,
+      "currentSha256": "59453cffc38ea25d95fa2b6c02238d8102468cf654e8e9e4551d3b57df060ad7"
+    },
+    {
+      "path": "docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_WorkPass25_2026-10-11.md",
+      "status": "ADDED",
+      "previousSha256": null,
+      "currentSha256": "889cf7ee5d69d6367616de6416c6999ff80c652007433dea4f5ad5a0af56b273"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-11_WORKPASS25.json",
+      "status": "ADDED",
+      "previousSha256": null,
+      "currentSha256": "8cc08c9abe9acb857efcb99a0c183d1e0fb2b1d35a6b304804b853655da82aab"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-11_WORKPASS25.md",
+      "status": "ADDED",
+      "previousSha256": null,
+      "currentSha256": "7b97d8ce207151a4d3ae619492399b21fa69ed48955a6044001f5a810847abcb"
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-11_WORKPASS25.json",
+      "status": "ADDED",
+      "previousSha256": null,
+      "currentSha256": "c6ca05cd446089c85793b212cc4f425e72a39a2d6c07ffdc97d6ec0d8d090150"
+    },
+    {
+      "path": "docs/RESEARCH_NLI_CALIBRATION.md",
+      "status": "ADDED",
+      "previousSha256": null,
+      "currentSha256": "9915390e5d3464206c2acc9d54505ef809663a40ca1c8425584601a6da472f12"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/research-nli-calibration.test.py",
+      "status": "ADDED",
+      "previousSha256": null,
+      "currentSha256": "87d13591bbdaf1bddb0c4c5b95ea63d8d71655e92d39c2052b053dbf4654f286"
+    },
+    {
+      "path": "tools/fit_research_nli_calibration.py",
+      "status": "ADDED",
+      "previousSha256": null,
+      "currentSha256": "825db106e593c9a6df2382b2b2682ced47d3f3a670f7593eb7213bdcc0021f5b"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "status": "MODIFIED",
+      "previousSha256": "079f25d79fe1bfbc5ad35a5c0ee76f9824cb8e4ecebc732a49a94eb21a883979",
+      "currentSha256": "cc4e45bc692bec1a22e30a8cde92b500433619cd89b18382b4f6d549a25c6f0e"
+    },
+    {
+      "path": "README.md",
+      "status": "MODIFIED",
+      "previousSha256": "f3d5f7e815e1fa22bd93ea130b4679c4654b22a6c34436f741cb20b1019c9a15",
+      "currentSha256": "b51e3deb248a04cf56f8f83cd31b55442b870d53a71e6b1a760d148c0954928c"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "status": "MODIFIED",
+      "previousSha256": "8886a8a8a29e7ab3212836f08950598c19dcba866f794a324b4eb45a8f18b310",
+      "currentSha256": "e81ef175fe3f7775c35888fcc85d84bfb4ec44517dc9af933b76efbec8cbdd8a"
+    },
+    {
+      "path": "docs/RUNBOOK.md",
+      "status": "MODIFIED",
+      "previousSha256": "c90654a5dc94667f038dee7502abf8e5aa71f8a7dd9b2ff8056547e098efc9e5",
+      "currentSha256": "f87f782013c514fd7c678d1e0d80fc099de8772a269ca7c3499a1a8a3c3b63c8"
+    },
+    {
+      "path": "package.json",
+      "status": "MODIFIED",
+      "previousSha256": "627df9ac1ed54e3fadd6e26378849c8f3b60da080092409f432b9cf78f43e7a4",
+      "currentSha256": "a262c212544065ff0fdc84b75df302eef13c4426615c99b142d88102c41732dc"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package-lock.json",
+      "status": "MODIFIED",
+      "previousSha256": "07694cf5ec86974ab9db1cf70e5a9537948646a281c8cc2e9b7c82cb735bb0aa",
+      "currentSha256": "3a1f1d3209d09e094be13db46073544b1ab51a679b67a0200b6cd36d24280402"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "status": "MODIFIED",
+      "previousSha256": "9ed206561f69cdf3c3004224feb7481fa886cd1e40559eb586b90ba7bd08695a",
+      "currentSha256": "1112ef8d1a68f25de47e39077c2287973cc9fca14f7a42d3c2de2ab7b96da9d1"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ProjectResearchSession.ts",
+      "status": "MODIFIED",
+      "previousSha256": "a8b7f64ac8abf68dbd5bc0ddf380ac2ed3126a58953ae22c654b32dd05e5c2e4",
+      "currentSha256": "4388022196b9e8a07d46e836859844734d8973063a69f75841aa67300dcc70d3"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ResearchClaimAssessment.ts",
+      "status": "MODIFIED",
+      "previousSha256": "65e59f4865a899bc3f62b3e246933c63ecad788e94d3d17d3598006cc618365f",
+      "currentSha256": "77542d3face5a04aa8525f667143873cfb5867bbc5b463f3ec41ab3be6e350f5"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ResearchSemanticEntailment.ts",
+      "status": "MODIFIED",
+      "previousSha256": "1f9d3217c6839158d905c03efef33043b2404e68cb05b49f24f656999bbd2529",
+      "currentSha256": "9aaca404faedf668266c885ccb5309068f54613d1cf209dd4d7b94be78014502"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/research-nli-service.test.py",
+      "status": "MODIFIED",
+      "previousSha256": "8f867b96b98fc054fa64fd77d69adc50e8bebbbd317957c36ff4b5270383fb0a",
+      "currentSha256": "f14338a1be0ad0af4e1923393daac890d311e779a8a5f6484bd5f9758e21596a"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/research-semantic-entailment.mjs",
+      "status": "MODIFIED",
+      "previousSha256": "0fdf69d8a92adfe512133cebd29d6cf0731cbec587512cb8774e3e90f539fb09",
+      "currentSha256": "1b53798239b32f295dc58f11c291155e4e3bda38db41c1afd5cb59fb16e318b8"
+    },
+    {
+      "path": "tools/evaluate_research_nli.py",
+      "status": "MODIFIED",
+      "previousSha256": "262e14ea0e6e181f4848bcbc654a02a9f24b56145e28607b9a9a7db5a5441643",
+      "currentSha256": "86f0f7921defb0c55461016e0cbb29ea26e57f7c6cb17b1f85c3b4f929518126"
+    },
+    {
+      "path": "tools/research_nli_server.py",
+      "status": "MODIFIED",
+      "previousSha256": "ffef998adab33b74b2af75a35df05e029c68767f2ae91c4541213fa854a32570",
+      "currentSha256": "e02a0a01a0a61590af790273ab96ea338ece60d367fe8e295147ed7937144ac7"
+    },
+    {
+      "path": "Список дел.md",
+      "status": "MODIFIED",
+      "previousSha256": "2d0b6780af15a9e2da995a6ae23209556d9e0e5d261a4f71e9c3f2be35e927c5",
+      "currentSha256": "59453cffc38ea25d95fa2b6c02238d8102468cf654e8e9e4551d3b57df060ad7"
+    }
+  ]
+}

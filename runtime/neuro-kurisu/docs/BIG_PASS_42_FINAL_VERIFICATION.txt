@@ -1,0 +1,37 @@
+Neuro-Kurisu 34.11.0 / BIG PASS 42
+Date: 2026-09-05
+
+COMPLETED FAST/INTEGRATION GATES
+TYPECHECK=PASS
+BIG_PASS_42_PROJECT_EXECUTOR=PASS completed=1 toolCalls=2 blocked=1
+BIG_PASS_42_EVIDENCE_SPINE=PASS linked=1 dangling=1 coverage=0.031
+P64_P65_INTEGRATION=PASS
+P66_P68_INTEGRATION=PASS
+P74_P77_INTEGRATION=PASS
+P80_P82_RUNTIME_E2E=PASS
+CLEAN_RESTART_PERSISTENCE=PASS
+MEMORY_DEDUP=PASS
+IDENTITY_LOCK=PASS
+REPLAY=PASS
+API_SECURITY=PASS
+SERVER_SECURITY_SMOKE=PASS
+API_ROUTES=PASS duplicates=0
+SUBJECT_BOUNDARY=PASS
+CLEAN_ARCHITECTURE=PASS
+FORENSICS=PASS
+SOURCE_HYGIENE=PASS
+SOURCE_TRUTH=PASS
+RELEASE_CONTRACT=PASS
+RELEASE_SOURCE=PASS
+BIG_PASS_PROGRESS=100% checks=58/58
+ARCHIVE_MANIFEST=PASS
+
+LONG-RUN / PERFORMANCE STATUS
+OPERATIONAL_250=OPEN; run exceeded available 120s verification window.
+OPERATIONAL_500_WARM=OPEN; run exceeded available 180s verification window.
+OPERATIONAL_1000=NOT RUN.
+
+IMPORTANT
+The complete composite audit:release campaign was started but exceeded the available verification window while running the historical P8 stage. It is not classified as PASS.
+The fast correctness/release gates listed above were rerun separately and completed successfully.
+Hardware-level Android validation is not available on the current non-Termux host; Termux:API-backed sensors/TTS/STT remain device-gated.

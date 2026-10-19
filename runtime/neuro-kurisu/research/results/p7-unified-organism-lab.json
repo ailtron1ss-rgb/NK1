@@ -1,0 +1,89 @@
+{
+  "rows": [
+    {
+      "condition": "baseline",
+      "seed": 1,
+      "ignitions": 4,
+      "networkHistory": 36,
+      "explorationBias": 0.8999223241622883,
+      "semanticNodes": 13,
+      "semanticEdges": 22,
+      "replayHash": "e1b9c6e9c47b810da6e42b5f7b6b61e5122000cdd6d44c34b531c7b3079cd3ba"
+    },
+    {
+      "condition": "baseline",
+      "seed": 2,
+      "ignitions": 4,
+      "networkHistory": 36,
+      "explorationBias": 0.8999223241622883,
+      "semanticNodes": 13,
+      "semanticEdges": 22,
+      "replayHash": "c6db31a31c39d18b1e302f6e78248b29163796a7d5efa9794e1debe0ffddf2e5"
+    },
+    {
+      "condition": "network-lesion",
+      "seed": 1,
+      "ignitions": 0,
+      "networkHistory": 0,
+      "explorationBias": 0.8999223241622883,
+      "semanticNodes": 13,
+      "semanticEdges": 22,
+      "replayHash": "0ad72f1d69ced064c71103d2a8356dfb9ca2dba6d5241df1ceffb50988a15ff1"
+    },
+    {
+      "condition": "network-lesion",
+      "seed": 2,
+      "ignitions": 0,
+      "networkHistory": 0,
+      "explorationBias": 0.8999223241622883,
+      "semanticNodes": 13,
+      "semanticEdges": 22,
+      "replayHash": "62611d74a54516d3eb1941e6bbcf23beaf7fe452ffcb014f6548d8964e630d2e"
+    },
+    {
+      "condition": "neuromod-lesion",
+      "seed": 1,
+      "ignitions": 4,
+      "networkHistory": 36,
+      "explorationBias": 0.5,
+      "semanticNodes": 13,
+      "semanticEdges": 22,
+      "replayHash": "612ec4fa448c7e09466e75b5e8827b65660d01da3fa56134069de7f4fa078128"
+    },
+    {
+      "condition": "neuromod-lesion",
+      "seed": 2,
+      "ignitions": 4,
+      "networkHistory": 36,
+      "explorationBias": 0.5,
+      "semanticNodes": 13,
+      "semanticEdges": 22,
+      "replayHash": "2b97202c53d7d9bcb990ac510148866af617d4c3dba4e0c42caa652f4aef4ef8"
+    },
+    {
+      "condition": "semantic-lesion",
+      "seed": 1,
+      "ignitions": 4,
+      "networkHistory": 36,
+      "explorationBias": 0.8999223241622883,
+      "semanticNodes": 0,
+      "semanticEdges": 0,
+      "replayHash": "73aeb37b495d726db1e2c0a52b43823037b1a374c5271af9da3b6944bc9c56a5"
+    },
+    {
+      "condition": "semantic-lesion",
+      "seed": 2,
+      "ignitions": 4,
+      "networkHistory": 36,
+      "explorationBias": 0.8999223241622883,
+      "semanticNodes": 0,
+      "semanticEdges": 0,
+      "replayHash": "f3ac33b611dfba4c71a41a228e5eec901266f4abc311c2ae07bb89dd85c75514"
+    }
+  ],
+  "assertions": {
+    "networkIgnitionReduced": true,
+    "neuromodChanged": true,
+    "semanticRemoved": true
+  }
+}

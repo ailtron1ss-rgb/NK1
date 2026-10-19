@@ -1,0 +1,8 @@
+{
+  "pass":"BIG_PASS_218_CEREBELLAR_BASAL_GANGLIA_MOTOR_LOOP",
+  "causal":{"lesionPlasticity":0,"learningUpdates":24},
+  "learning":{"bestSkill01":0.7157526824645184,"lastGain01":0.9949385590790134,"freshGain01":0.9093448599551999,"sparseSkips":0},
+  "persistence":{"outcomeUpdates":24},
+  "verified":true,
+  "scientific_framing":["cerebellar predictive control","cortico-basal-ganglia-cerebellar motor learning","event-driven sparse execution"]
+}

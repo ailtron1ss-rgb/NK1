@@ -1,0 +1,158 @@
+// ─────────────────────────────────────────────────────────────
+// tests/unit/senses.somatosensation.test.ts
+// ─────────────────────────────────────────────────────────────
+/**
+ * SIGNAL_BOUNDARY P1 — the first shell to become a real sense.
+ *
+ * The wake event was a hand-written `percept` entity in `stem/index.ts`, and
+ * every bug it had came from being hand-written: no tick (so it never expired,
+ * and told the executive "I was offline for 3 hours" for the rest of the mind's
+ * life) and no provenance (so the rupture gate excluded it exactly as it
+ * excludes the mind's own echo). P0 step 2 fixed both BY HAND. This removes the
+ * hand — and these tests are about that: not that the wake works, but that
+ * nothing about the wake is special any more.
+ */
+
+import { describe, it, expect } from 'vitest'
+import { SomatosensationEngine, SYSTEM_SIGNAL_SALIENCE } from '#senses/somatosensation.engine'
+import { PERCEPT_SUMMARY_CAP } from '#cognition/percept.entity'
+import type { Percept } from '#senses/index'
+
+function wired(){
+  const published: Percept[] = []
+  const traced: Array<{ id: string; type: string; metadata: Record<string, unknown> }> = []
+  const e = new SomatosensationEngine()
+  e.attachBus( { publish: ( ev: { payload: unknown } ) => published.push( ev.payload as Percept ),
+                 subscribe: () => {} } as never )
+  e.attachPerceptTrace( x => traced.push( x as never ), () => 42 )
+  return { e, published, traced }
+}
+
+describe('somatosensation transduces a system signal', () => {
+  it('a host-supplied summary is what the mind reads', async () => {
+    // `summary` is the only field the executive prompt renders, so a signal
+    // without one reaches the mind as a name and nothing else.
+    const { e, published } = wired()
+    await e.sense( { kind: 'system', signal: 'WAKE', provenance: 'exafferent',
+                      data: { summary: 'I was offline for 3 hours. I am now online again.' } } )
+    expect( published[0]!.summary ).toBe('I was offline for 3 hours. I am now online again.')
+    expect( published[0]!.sourceEntityId ).toBe('system:WAKE')
+  } )
+
+  it('falls back to the signal name when the host says nothing', async () => {
+    const { e, published } = wired()
+    await e.sense( { kind: 'system', signal: 'WAKE', provenance: 'exafferent', data: {} } )
+    expect( published[0]!.summary ).toBe('Something happened: WAKE.')
+  } )
+
+  it('defaults loud enough to rupture, because something happened TO the mind', async () => {
+    // Above exteroception's ambient 0.3 and above action.selector's gate (0.4).
+    const { e, published } = wired()
+    await e.sense( { kind: 'system', signal: 'WAKE', provenance: 'exafferent', data: {} } )
+    expect( published[0]!.salience ).toBe( SYSTEM_SIGNAL_SALIENCE )
+    expect( SYSTEM_SIGNAL_SALIENCE ).toBeGreaterThan( 0.4 )
+  } )
+
+  it('a host may override the salience, and it is clamped', async () => {
+    const { e, published } = wired()
+    await e.sense( { kind: 'system', signal: 'X', provenance: 'exafferent', data: { salience: 9 } } )
+    expect( published[0]!.salience ).toBe( 1 )
+  } )
+} )
+
+describe('the wake stops being special', () => {
+  it('lays down a percept trace like any other sense — ticked and stamped', async () => {
+    // The two things the hand-written version kept getting wrong, now supplied
+    // by the machinery rather than remembered by a caller.
+    const { e, traced } = wired()
+    await e.sense( { kind: 'system', signal: 'WAKE', provenance: 'exafferent',
+                      data: { summary: 'I was offline for 3 hours.' } } )
+    expect( traced ).toHaveLength( 1 )
+    expect( traced[0]!.metadata['tick'] ).toBe( 42 )              // sweepable
+    expect( traced[0]!.metadata['provenance'] ).toBe('exafferent') // rupture-eligible
+    expect( traced[0]!.metadata['category'] ).toBe('somatosensation')
+    expect( traced[0]!.metadata['summary'] ).toBe('I was offline for 3 hours.')
+  } )
+
+  it('a reafferent signal is carried as such — a webhook the mind\'s own write fired', async () => {
+    // The case the door exists for: not everything that touches the mind is the
+    // world. Only the host can tell, so only the host says.
+    const { e, traced } = wired()
+    await e.sense( { kind: 'webhook', source: 'github', headers: {},
+                      provenance: 'reafferent', sourceIntentId: 'intent-12',
+                      payload: { summary: 'The push I made landed.' } } )
+    expect( traced[0]!.metadata['provenance'] ).toBe('reafferent')
+    expect( traced[0]!.metadata['sourceIntentId'] ).toBe('intent-12')
+  } )
+
+  it('ignores a kind that is not its own, silently', async () => {
+    const { e, published, traced } = wired()
+    await e.sense( { kind: 'text', entityId: 'e', threadId: 't', content: 'hi', provenance: 'exafferent' } )
+    expect( published ).toHaveLength( 0 )
+    expect( traced ).toHaveLength( 0 )
+  } )
+} )
+
+describe('the label is the engine\'s to bound; the payload is the host\'s to keep whole', () => {
+  // SIGNAL_BOUNDARY P2 — the engine may bound the words IT composes (its own
+  // business), but the host's payload is the mind's only copy of what came back
+  // and is never clipped. These pin that split at the unit level; the existing
+  // coverage exercises it only through the object/`compact` path.
+
+  it('a bare-string payload becomes the summary verbatim', async () => {
+    // `data` need not be an object. A host that hands back a plain string of
+    // words has said what it means, and those words are what the mind reads.
+    const { e, published } = wired()
+    await e.sense( { kind: 'system', signal: 'X', provenance: 'exafferent',
+                      data: 'the deploy finished' } )
+    expect( published[0]!.summary ).toBe('the deploy finished')
+    expect( published[0]!.data ).toBe('the deploy finished')
+  } )
+
+  it('a host\'s own summary is the label whole — those are the host\'s words, not the engine\'s', async () => {
+    // It was cut at PERCEPT_SUMMARY_CAP as if the engine had written it. The data
+    // beneath leaves `summary` out (it is the label), so what was cut was read
+    // nowhere (LOSSLESS P5b).
+    const { e, published } = wired()
+    const long = 'x'.repeat( PERCEPT_SUMMARY_CAP + 50 )
+    await e.sense( { kind: 'system', signal: 'X', provenance: 'exafferent',
+                      data: { summary: long } } )
+    expect( published[0]!.summary ).toBe( long )
+    expect( ( published[0]!.data as { summary: string } ).summary ).toBe( long )
+  } )
+
+  it('caps only the label it composes — a long payload is named by its signal, and rides whole in data', async () => {
+    const { e, published } = wired()
+    const long = '[{"number":1}' + ',{"number":2}'.repeat( 40 ) + ']'
+    await e.sense( { kind: 'system', signal: 'list_pull_requests', provenance: 'reafferent', data: long } )
+    expect( published[0]!.summary ).toHaveLength( PERCEPT_SUMMARY_CAP )
+    expect( published[0]!.summary!.startsWith('list_pull_requests: [{"number":1}') ).toBe( true )
+    expect( published[0]!.summary!.endsWith('…') ).toBe( true )
+    expect( published[0]!.data ).toBe( long )
+  } )
+
+  it('labels a wordless object payload with a compact render, payload beside it', async () => {
+    // No host words → the label is the signal name plus a glance at the shape,
+    // and the whole object rides in `data`.
+    const { e, published } = wired()
+    await e.sense( { kind: 'system', signal: 'server_snapshot', provenance: 'exafferent',
+                      data: { warnings: 3 } } )
+    expect( published[0]!.summary ).toBe('server_snapshot: {"warnings":3}')
+    expect( published[0]!.data ).toEqual( { warnings: 3 } )
+  } )
+} )
+
+describe('the webhook branch transduces with the same contract', () => {
+  // The webhook path has been covered only for provenance; its source id, its
+  // wordless-fallback label, and its default salience were unpinned — a mutation
+  // to any of the three passed the whole suite.
+
+  it('names its source and falls back to the signal name when the payload says nothing', async () => {
+    const { e, published } = wired()
+    await e.sense( { kind: 'webhook', source: 'github', headers: {},
+                      provenance: 'exafferent', payload: {} } )
+    expect( published[0]!.sourceEntityId ).toBe('webhook:github')
+    expect( published[0]!.summary ).toBe('Something happened: github.')
+    expect( published[0]!.salience ).toBe( SYSTEM_SIGNAL_SALIENCE )
+  } )
+} )

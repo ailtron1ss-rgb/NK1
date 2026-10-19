@@ -1,0 +1,13 @@
+{
+  "pass":"BIG_PASS_221_INTEROCEPTION_AUTONOMY",
+  "verified":true,
+  "research":{
+    "interoceptiveAI":"https://www.nature.com/articles/s42256-026-01296-8",
+    "allostaticInteroceptiveSystem":"https://www.nature.com/articles/s41593-025-02087-x",
+    "agenticProfiles":"https://www.nature.com/articles/s41586-026-10805-z"
+  },
+  "causal":{"calmError01":0.0425,"conflictError01":0.58705,"calmUncertainty01":0.282599,"conflictUncertainty01":0.3473415912,"calmControl01":0.13684633,"conflictControl01":0.625920920504},
+  "autonomy":{"initiative01":0.708056,"autonomousDecisions":5,"initiatives":1,"externalDependence01":0.618288498504,"restartPreserved":true,"selfAuthoredAgenda":true},
+  "regression":{"B208_B221":"PASS","typecheck":"PASS","architecture":"PASS","integrity":"PASS","hygiene":"PASS","syntax":"PASS","contract":"PASS","forensics":"PASS","releaseSource":"PASS","archive":"PASS"},
+  "deepAudit":{"liveness":"PASS","parameterized":{"attempted":610,"passed":595,"failed":0},"semantic":{"verified":38,"integrationOnly":654,"unsafe":235,"unverified":1878,"evidenceCoverage01":0.0718}}
+}

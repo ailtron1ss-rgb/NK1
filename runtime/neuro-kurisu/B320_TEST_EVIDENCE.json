@@ -1,0 +1,12 @@
+{
+  "pass": true,
+  "profile": "mobile",
+  "durableFileBytes": 2060116,
+  "payloadBytes": 1844885,
+  "lastSaveMs": 35,
+  "adaptiveWindow": 6,
+  "syntheticSlowWindow": 8,
+  "lowBatteryWindow": 4,
+  "resourcePressureWindow": 12,
+  "decisionReason": "resource-pressure"
+}

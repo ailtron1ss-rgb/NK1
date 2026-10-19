@@ -1,0 +1,36 @@
+import json, sys
+from pathlib import Path
+ROOT=Path(__file__).resolve().parent
+sys.path.insert(0,str(ROOT/'src'))
+from neurocore.research.portable_paths import resolve_output_dir
+OUTPUT_DIR=resolve_output_dir(ROOT)
+import torch
+import torch.nn.functional as F
+from neurocore.research.fwpkm_candidate import FastWeightProductKeyMemoryCandidate,FwPKMConfig
+
+def run(seed=0, n_keys=32, distractors=256):
+ torch.manual_seed(seed)
+ m=FastWeightProductKeyMemoryCandidate(FwPKMConfig(subkey_size=8,slots_per_subkey=64,topk_per_subkey=2,value_dim=20,local_lr=0.75,chunk_size=32,use_idw_addressing=True,use_lookahead_target=False))
+ st=m.initial_state(1,torch.device('cpu'),torch.float32)
+ keys=torch.randn(1,n_keys,16); vals=F.normalize(torch.randn(1,n_keys,20),dim=-1)
+ _,st,info=m.sequence(keys,vals,st,chunk_size=32)
+ dk=torch.randn(1,distractors,16); dv=F.normalize(torch.randn(1,distractors,20),dim=-1)
+ _,st,_=m.sequence(dk,dv,st,chunk_size=32)
+ cos=[]
+ for i in range(n_keys):
+  r,_,_=m.read(keys[:,i],st); cos.append(float(F.cosine_similarity(r,vals[:,i],dim=-1).item()))
+ # revision: overwrite same key/value, then verify newest value dominates
+ rk=keys[:,0]
+ va=vals[:,0]; vb=F.normalize(torch.randn(1,20),dim=-1)
+ st,_=m.rewrite_chunk(rk[:,None,:],va[:,None,:],st)
+ st,_=m.rewrite_chunk(rk[:,None,:],vb[:,None,:],st)
+ rr,_,_=m.read(rk,st)
+ rev=float(F.cosine_similarity(rr,vb,dim=-1).item())
+ old=float(F.cosine_similarity(rr,va,dim=-1).item())
+ return {'seed':seed,'mean_recall':sum(cos)/len(cos),'min_recall':min(cos),'revision_new_cos':rev,'revision_old_cos':old,'unique_after_distractor':info['unique_slots_per_batch']}
+
+res=[run(s) for s in range(3)]
+agg={'seeds':res,'mean_recall':sum(x['mean_recall'] for x in res)/3,'revision_new_cos_mean':sum(x['revision_new_cos'] for x in res)/3,'revision_old_cos_mean':sum(x['revision_old_cos'] for x in res)/3}
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+(OUTPUT_DIR/'V143_FwPKM_MEMORY_CAPACITY.json').write_text(json.dumps(agg,indent=2))
+print(json.dumps(agg,indent=2))

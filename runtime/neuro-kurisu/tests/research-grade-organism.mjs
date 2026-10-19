@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { ResearchGradeOrganismEngine } from '../src/organism/learning/ResearchGradeOrganismEngine.ts';
+const e=new ResearchGradeOrganismEngine();
+const state={tick:1,at:Date.now(),needs:{energy:.8,uncertainty:.3,novelty:.4,cognitiveLoad:.2},autonomyScore:.7,predictionError:.2};
+e.beginCycle({state,action:'wait',predicted01:.5,activePerception01:.7,longHorizon01:.8,autonomy01:.7,continuity01:.8});
+const d=e.registerDecision('explore',.72,'research:test',state.at);
+e.recordPostcondition({decisionId:d,action:'explore',expected:'world changed',observed:'object discovered',matched:true,evidenceKind:'world-postcondition',confidence01:.9,independent01:.85,at:state.at+1});
+const o=e.registerOutcome({decisionId:d,actual01:.8,reward01:.82,verified01:1,causal01:.8,external01:1,at:state.at+2});
+assert.equal(o.ok,true); e.upsertIntention('verify discovery',null,.8,state.at+3); e.recordReplication('world-model',7,.50,.72,30,true,state.at+4); e.recordRecovery('restart',true,.97,state.at+5);
+const a=e.selfAudit(),b=e.benchmark(); assert.equal(a.pass,true); assert.ok(b.overall01>.3); console.log(`RESEARCH_GRADE=PASS decisions=${a.decisions} outcomes=${a.outcomes} evidence=${a.evidence} overall=${b.overall01.toFixed(3)}`);

@@ -1,0 +1,190 @@
+{
+  "title": "Neuro-Kurisu WorkPass30 changed-file manifest",
+  "workpass": 30,
+  "createdAt": "2026-10-13T06:17:59.549640+00:00",
+  "baseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS29_2026-10-13.zip",
+  "baseArchiveSha256": "af0d52836c7d0fe41bb8ccbc27670c2040a8c1607e37d29d63721bb7900ba1c9",
+  "releaseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS30_2026-10-13.zip",
+  "rootVersion": "30.0.0-super-final16",
+  "runtimeVersion": "35.53.0",
+  "schema": 224,
+  "changeSummary": {
+    "modifiedFiles": 12,
+    "addedProjectFilesExcludingThisManifest": 7,
+    "deletedFiles": 0,
+    "unchangedBaseFiles": 12746,
+    "baseRegularFiles": 12758,
+    "outputRegularFilesExpected": 12766,
+    "manifestExcludedFromItsOwnEntries": true
+  },
+  "integrationSummary": [
+    "MemoryOS2 is still the only writable canonical memory owner; source systems and Hexis remain adapters/projections.",
+    "Each canonical memory has a bounded evidence trail of up to eight visible independent source lineages plus a 32-lineage replay guard.",
+    "OrganismCore external research ingestion carries EvidenceFirewall/ProjectResearchSession-derived sourceLineageKey into MemoryOS2; publisher/host is provenance, not automatic independence.",
+    "Repeated or syndicated source lineage does not increase corroboration or confidence; a new independent lineage merges into the same canonical record with a capped update.",
+    "Evidence provenance participates in snapshot/restore and byte accounting and is available through read-only inspector/evidence-trail diagnostics."
+  ],
+  "verification": {
+    "runtimeTypecheck": "PASS",
+    "memoryProvenanceLineageWorkPass30": "PASS; external Core→MemoryOS2 bridge covers publisher mirror and second independent lineage, restore, replay guard and byte estimate stability",
+    "memorySourceIntegrationWorkPass29": "PASS; revision/index/capacity-eviction/Hexis canonical temporal integration",
+    "temporalInspectorClosure": "PASS",
+    "candidateCoverage": "PASS",
+    "numericRetrieval": "PASS",
+    "R15TemporalMemory": "PASS",
+    "R16MemoryBehavior": "PASS",
+    "retrievalBenchmark": "PASS; synthetic Recall@5 parity with BM25 (delta 0), promotion remains not-promoted",
+    "multiSeedRetrievalExperiment": "PASS; deterministic, not-promoted",
+    "serverSmoke": "PASS (standalone server-smoke run)",
+    "releaseMetadata": "PASS (34/34)",
+    "releaseMetadataContract": "PASS (6/6)",
+    "appScriptSuite": "PASS",
+    "browserSmokeVerdictSuite": "PASS (51/51)",
+    "atomicReportWriter": "PASS (4/4)",
+    "serverImports": "PASS",
+    "uiApiLinkage": "PASS (124 client routes, 48 Runtime Atlas surfaces, no missing links)",
+    "assetsAudit": "PASS (0 errors; Live2D and sprite references resolve)",
+    "aggregateRuntimeAudit": "TIMEOUT during a repeated BM25 benchmark inside the long combined command; the benchmark, memory regressions and server smoke passed when run individually. Aggregate audit exit status is not claimed.",
+    "releaseReadiness": "NOT CLAIMED; independent temporal holdout, frontend production build/browser Live2D E2E, real pretrained NLI inference/provider run, clean-room rollback/soak and final sign-off remain open."
+  },
+  "changes": [
+    {
+      "path": "CHANGELOG.md",
+      "status": "MODIFIED",
+      "baseSha256": "e711d524c5c0e61225dbff55ccec8801d6175efcd60eb51c6c79a03291b53342",
+      "sha256": "8027bbfc6688d6c727c757e16fdab65d65d308a2d0cacf59043e0d3449340f3d",
+      "baseSizeBytes": 47226,
+      "sizeBytes": 48671
+    },
+    {
+      "path": "README.md",
+      "status": "MODIFIED",
+      "baseSha256": "ddf661c5d7de6f445d9635aa8f45d57289820cbe7bfd1679bc986430355849f1",
+      "sha256": "b51f969c491056c95d6aa8809ab99c42dc5dec2b996a5007d9a96e84e9ed35fe",
+      "baseSizeBytes": 19229,
+      "sizeBytes": 19969
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "status": "MODIFIED",
+      "baseSha256": "4a202ee6928eecffe86fc934afad6fc5eccee09ae2ffd333226880d067616e2a",
+      "sha256": "526318ba754e8bac6600aa7479e015735ec2e197bb81102b0419f321ae30b544",
+      "baseSizeBytes": 25852,
+      "sizeBytes": 13988
+    },
+    {
+      "path": "contracts/OWNERSHIP.md",
+      "status": "MODIFIED",
+      "baseSha256": "a36c327562a4b4980a9c5e2e26ab63fe9dc0bb3f7460dd328c685042fcf560a3",
+      "sha256": "6d112341ddb9f274ffc04e8be1314de99544667abfa3b2e47843764938bcdca3",
+      "baseSizeBytes": 1817,
+      "sizeBytes": 2349
+    },
+    {
+      "path": "contracts/integration-manifest.json",
+      "status": "MODIFIED",
+      "baseSha256": "7f662c2801ad2fd0b026185e40e86913ba8a8c9444101f0d551f2feda3d0e318",
+      "sha256": "0f90aee29654066420f5b8aaf19d6446e360b78ef18b9eaf5f088e4385daa3e8",
+      "baseSizeBytes": 8022,
+      "sizeBytes": 9388
+    },
+    {
+      "path": "docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md",
+      "status": "MODIFIED",
+      "baseSha256": "7b95375b14152ed0870dfc0f9758a31af0ee3ee6b9f0d7c1be3d7a719c40a57c",
+      "sha256": "9c49cd30f66b8f08b76760126a745164655fb9f325f04c2cb0e80596b45ef0f8",
+      "baseSizeBytes": 97633,
+      "sizeBytes": 99495
+    },
+    {
+      "path": "package.json",
+      "status": "MODIFIED",
+      "baseSha256": "7092ccd9df1e7361d21f627e1f4fa520db69dede76ac4522f94d90a2ca45cf64",
+      "sha256": "10e8c6e9b480170f38c8a2a44ea40c6b85600469348e7960472befe412c3181b",
+      "baseSizeBytes": 13630,
+      "sizeBytes": 14236
+    },
+    {
+      "path": "runtime/neuro-kurisu/package-lock.json",
+      "status": "MODIFIED",
+      "baseSha256": "6cc19fdd688b9e05955ddd7d2fd3a6825fc8af211aeb0676f29856e5195680c7",
+      "sha256": "878ad16589e0a3e88bd1244acc2350972c7f26cea3ce5e1a6ea24761beeed9c9",
+      "baseSizeBytes": 1041,
+      "sizeBytes": 1041
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "status": "MODIFIED",
+      "baseSha256": "a016ab4972471998a1fc8834364ab29bc94651b3c125f2f1eb9457a433e72b99",
+      "sha256": "9447f8f0f6ac220a68d144dcbcabeeb091f12720f5222a2ae7a8a01f1d3b959f",
+      "baseSizeBytes": 235315,
+      "sizeBytes": 235945
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+      "status": "MODIFIED",
+      "baseSha256": "d6e1375aa2d4e3049e550db6a35c3ea1ac1ea9f74ec1237c8ced5c23f5646c13",
+      "sha256": "302d2418ca0e511141be4bed88add498b9f4670248ff7f916ff042601756c203",
+      "baseSizeBytes": 1208946,
+      "sizeBytes": 1210892
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts",
+      "status": "MODIFIED",
+      "baseSha256": "1736ee6d45c40098fc5b9dd2031e26ee0d3e6c4368a17ab682959f4e00a4cd3a",
+      "sha256": "b79ee26eed29b8708ca199a32aac2019c6d25fb6224acad0685a9644c3091378",
+      "baseSizeBytes": 64291,
+      "sizeBytes": 72275
+    },
+    {
+      "path": "Список дел.md",
+      "status": "MODIFIED",
+      "baseSha256": "75397044b0609bf8527cd438796446170e29b2463eab9cd8cda81117c9b43cc4",
+      "sha256": "0f91e6d23f2e617d1599a941b8fd7763ba7a2835dc82cf993105d24d2e685abe",
+      "baseSizeBytes": 120952,
+      "sizeBytes": 122660
+    },
+    {
+      "path": "WORKPASS30_REPORT_2026-10-13.md",
+      "status": "ADDED",
+      "sha256": "ac05aad1e39c457f4a81f122b14cfc0f6e5481d9245407c10dab69e30fa17044",
+      "sizeBytes": 4553
+    },
+    {
+      "path": "WORKPASS30_TASKS_2026-10-13.md",
+      "status": "ADDED",
+      "sha256": "7366483f9751644e4793c5616fdbec00ffd70e4adf2032a243d873413824bdbb",
+      "sizeBytes": 2215
+    },
+    {
+      "path": "docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_WorkPass30_2026-10-13.md",
+      "status": "ADDED",
+      "sha256": "9c49cd30f66b8f08b76760126a745164655fb9f325f04c2cb0e80596b45ef0f8",
+      "sizeBytes": 99495
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-13_WORKPASS30.json",
+      "status": "ADDED",
+      "sha256": "1d524f185d36713af8742322ddd05f0bd03adf0dc60616b743418627d73f1996",
+      "sizeBytes": 35902
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-13_WORKPASS30.md",
+      "status": "ADDED",
+      "sha256": "b18f10e7ad55d66c356965fc696a6cc661855a76e4c1fe8e8fbd0324ce53494e",
+      "sizeBytes": 5936
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-13_WORKPASS30.json",
+      "status": "ADDED",
+      "sha256": "42e3df6c2dce331161fe7f0e633fcfb18b265e01b30a33b3ee58701d724b6609",
+      "sizeBytes": 8138
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/memory-provenance-lineage-workpass30.mjs",
+      "status": "ADDED",
+      "sha256": "65dce370c624d1e23a29ff98840850d8886bc2e450026374557e27ec02cb6076",
+      "sizeBytes": 9017
+    }
+  ]
+}

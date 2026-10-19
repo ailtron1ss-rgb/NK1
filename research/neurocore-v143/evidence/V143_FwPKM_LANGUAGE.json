@@ -1,0 +1,9 @@
+{
+  "windows": 8,
+  "base_loss_mean": 5.591036796569824,
+  "fwpkm_augmented_loss_mean": 5.591036796569824,
+  "delta_loss": 0.0,
+  "bridge_parity_max_abs": 0.0,
+  "memory_state_bytes_fp32": 81920,
+  "status": "research_only"
+}

@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { MultiHorizonAllostasisSubstrate } from '../src/organism/cognition/MultiHorizonAllostasisSubstrate.ts';
+import { NeuromodulatoryPlasticitySubstrate } from '../src/organism/cognition/NeuromodulatoryPlasticitySubstrate.ts';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+
+const inp=t=>({tick:t,at:500000+t,energy01:.8-Math.min(.3,t*.001),thermal01:.2+(t%17)/90,capacity01:.78-(t%11)/130,load01:.25+(t%13)/45,arousal01:.7-(t%9)/60,recoveryDebt01:(t%15)/40,pressure01:.18+(t%19)/34,awake:t%37!==0,uncertainty01:.15+(t%7)/32,predictionError01:.12+(t%8)/30});
+const a=new MultiHorizonAllostasisSubstrate(); for(let t=0;t<220;t++) a.observe(inp(t)); const aq=a.globalState(); assert.equal(a.snapshot().samples,220); assert.equal(aq.horizonErrors.length,3);
+const rs=new MultiHorizonAllostasisSubstrate(); rs.restore(a.snapshot()); assert.deepEqual(rs.snapshot(),a.snapshot());
+const n=new NeuromodulatoryPlasticitySubstrate(); for(let t=0;t<220;t++){ const i=inp(t); const g=n.observe({dopamine01:.5+i.predictionError01*.2,norepinephrine01:i.uncertainty01,acetylcholine01:1-i.load01,serotonin01:.6,explorationBias01:i.novelty01??.3,attentionGain01:1-i.load01,updateRate01:.4,predictionError01:i.predictionError01,uncertainty01:i.uncertainty01,novelty01:.2+(t%5)/20,energy01:i.energy01,load01:i.load01,tick:t,at:i.at}); if(t>0)n.learnFromOutcome((t%9)/8, .6-i.predictionError01); }
+const nq=n.globalState(); assert.equal(n.snapshot().samples,220); assert(Number.isFinite(nq.plasticLearning01)); const nr=new NeuromodulatoryPlasticitySubstrate(); nr.restore(n.snapshot()); assert.deepEqual(nr.snapshot(),n.snapshot());
+const core=new OrganismCore(new MemoryStateStore()); await core.init();
+for(let t=0;t<8;t++){await core.observe({text:`brain191-${t}`,novelty:.2+(t%3)*.1,worldContext:{tick:t,location:'b191',energy:.8,attention:.7,uncertainty:.2,facts:['b191'],objects:[],events:[]},embodiment:{bodyEnergy01:.78-t*.01,thermalStrain01:.22+t*.02,cognitiveCapacity01:.74,awake:true,battery01:.8,cpuLoad01:.2,ramPressure01:.2,sensoryFreshness01:.9}}); await core.feedback({success:.65+(t%2)*.1,reward:.62,surprise:.12,worldTransition:{action:'observe',before:{tick:t,location:'b191',energy:.8,attention:.7,uncertainty:.2,facts:['b191'],objects:[],events:[]},after:{tick:t+1,location:'b191',energy:.79,attention:.69,uncertainty:.21,facts:['b191'],objects:[],events:['observe']},reward:.62,surprise:.12,at:500100+t}});}
+const s=core.snapshot(); assert(s.facets.advanced.multiHorizonAllostasis?.samples>=8); assert(s.facets.advanced.neuromodulatoryPlasticity?.samples>=8); console.log(JSON.stringify({pass:191,allostasis:aq,neuromod:nq,core:{allostasisSamples:s.facets.advanced.multiHorizonAllostasis.samples,neuromodSamples:s.facets.advanced.neuromodulatoryPlasticity.samples}},null,2));

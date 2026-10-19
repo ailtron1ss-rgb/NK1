@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import { P39ContinuousArtificialLifeEngine } from '../src/organism/learning/P39ContinuousArtificialLife.ts';
+const e=new P39ContinuousArtificialLifeEngine();
+const t0=1_000_000;
+let r=e.beginCycle({at:t0,host:'poco-m7-pro',awake:true,energy01:.82,cognitiveLoad01:.18,battery01:.82,thermal01:.22,storagePressure01:.10});
+assert.equal(r.phase,'active');
+e.recordAction(.35);
+r=e.beginCycle({at:t0+6*3600000,host:'poco-m7-pro',awake:true,energy01:.62,cognitiveLoad01:.62,battery01:.62,thermal01:.55,storagePressure01:.10});
+assert.ok(e.snapshot().lifeTicks===2);
+assert.ok(e.snapshot().sleepDebtHours>0);
+r=e.beginCycle({at:t0+7*3600000,host:'poco-m7-pro',awake:false,energy01:.55,cognitiveLoad01:.28,battery01:.54,thermal01:.18});
+assert.equal(r.phase,'sleep');
+e.endSleep(t0+15*3600000,t0+7*3600000,'night',.91);
+const s=e.snapshot(); assert.ok(s.totalSleepMs>0); assert.ok(s.sleepSessions.length===1);
+e.completeMaintenance({at:t0+16*3600000,reason:'nightly-consolidation',compactions:2,memoryDormantDelta:3});
+assert.equal(e.snapshot().maintenance.runs,1);
+assert.ok(e.diagnostics().continuity01>.8);
+console.log(`P39_CONTINUOUS_LIFE=PASS phase=${e.snapshot().phase} sleepDebt=${e.snapshot().sleepDebtHours.toFixed(3)} sessions=${e.snapshot().sleepSessions.length}`);

@@ -1,0 +1,137 @@
+{
+  "title": "Neuro-Kurisu SUPER — reconciled weighted implementation roadmap scorecard",
+  "date": "2026-10-11",
+  "workpass": "19 — canonical, provenance-bound external research memory integration",
+  "baseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS18_2026-10-10.zip",
+  "runtime": "Neuro-Kurisu 35.41.0",
+  "schema": 223,
+  "method": "Retains WorkPass 7 fixed weights; small changes only for workstreams with concrete WorkPass19 integration evidence. This is an estimated weighted implementation score, not release readiness; no credit is awarded for unverified semantic entailment or unavailable live providers.",
+  "overallPercent": 69.9,
+  "previousOfficialScorePercent": 69.25,
+  "deltaPercentagePoints": 0.65,
+  "remainingWeightedRoadmapPoints": 30.1,
+  "workstreams": [
+    {
+      "id": "A",
+      "name": "Canonical source lineage and single-owner architecture",
+      "weight": 15,
+      "completionPercent": 100,
+      "weightedPoints": 15.0,
+      "previousPercent": 100,
+      "rationale": "No duplicate canonical owner; source manifests and metadata contract reconciled."
+    },
+    {
+      "id": "B",
+      "name": "Runtime integration, API/UI routes and smoke/linkage coverage",
+      "weight": 15,
+      "completionPercent": 95,
+      "weightedPoints": 14.25,
+      "previousPercent": 95,
+      "rationale": "WorkPass16 makes browser smoke fail closed on required brand warnings and actual auth mismatch, exposes indeterminate auth state, validates bounded timeouts, and atomically publishes private verdict files. The 212/212 source-only UI script suite passes; dependency-complete UI build and actual browser E2E remain open."
+    },
+    {
+      "id": "C",
+      "name": "Memory 2.0, retrieval/admission and benchmark evidence",
+      "weight": 15,
+      "completionPercent": 62,
+      "weightedPoints": 9.3,
+      "previousPercent": 60,
+      "rationale": "WorkPass19 integrates bounded provenance-rich excerpts into canonical MemoryOS2 after publisher/content diversity, holds them as confidence-capped hypotheses, and returns them to quarantine on conflict. Semantic claim verification and a real labelled temporal holdout remain open."
+    },
+    {
+      "id": "D",
+      "name": "Agency, action schema, execution, outcome and reafference",
+      "weight": 20,
+      "completionPercent": 66,
+      "weightedPoints": 13.2,
+      "previousPercent": 65,
+      "rationale": "WorkPass19 connects the session publisher identity, evidence firewall state and persistent MemoryOS2 notes across restart. Semantic entailment, live providers and full closed-loop proof remain open."
+    },
+    {
+      "id": "E",
+      "name": "Portable subject continuity and social/known-entity dossier",
+      "weight": 10,
+      "completionPercent": 75,
+      "weightedPoints": 7.5,
+      "previousPercent": 75,
+      "rationale": "Read-only dossier and fidelity contracts are present; browser-backed corrections and behavioral equivalence remain open."
+    },
+    {
+      "id": "F",
+      "name": "External transport, SDK, idempotency and replay",
+      "weight": 10,
+      "completionPercent": 40,
+      "weightedPoints": 4.0,
+      "previousPercent": 40,
+      "rationale": "Conscio/Hexis/WILL local idempotency, queue backpressure and ACK/replay contracts improved; remote provider receipt/reconnect proof remains open."
+    },
+    {
+      "id": "G",
+      "name": "Research promotion and controlled experiments",
+      "weight": 5,
+      "completionPercent": 43,
+      "weightedPoints": 2.15,
+      "previousPercent": 40,
+      "rationale": "WorkPass19 derives publisher identity from serving hosts, distinguishes distinct pages from same-document revisions, bounds and migrates provenance, and covers conflict/hypothesis lifecycle with persistence regressions. Claim-specific support/refute/unknown verification and real-corpus uplift remain open."
+    },
+    {
+      "id": "H",
+      "name": "Release durability: build, E2E, rollback, soak, SBOM/provenance",
+      "weight": 10,
+      "completionPercent": 45,
+      "weightedPoints": 4.5,
+      "previousPercent": 45,
+      "rationale": "Version/metadata and archive evidence improved; app install/build, browser E2E, clean-room drill and soak remain open."
+    }
+  ],
+  "normalizedTaskInventory": {
+    "count": 63,
+    "counts": {
+      "DONE": 44,
+      "PARTIAL": 9,
+      "TODO": 10
+    },
+    "strictDonePercent": 69.84,
+    "partialPercent": 14.29,
+    "todoPercent": 15.87,
+    "halfCreditEquivalentPercent": 76.98,
+    "note": "Normalized unique deliverables, not append-only historical tasklist line counts. PARTIAL is not always exactly half-complete; half-credit is a comparison aid."
+  },
+  "openReleaseGates": [
+    "Execute autonomous research through at least two allowlisted real external HTTPS hosts, with distinct content and persisted EvidenceFirewall promotion receipt",
+    "Add semantic entailment/claim-support verifier and adversarial topical-keyword false-positive corpus",
+    "Complete agency loop: competition → action → verified outcome → persistence → reafference",
+    "Independent action-outcome evidence and no-double-credit stress",
+    "Entity correction/expiry/conflict across browser-backed multi-session flows",
+    "Portable subject continuity and behavioral fidelity",
+    "Capability evidence graph for critical user journeys",
+    "External delivery receipts, reconnect and provider replay guarantees",
+    "Clean-room backup/restore, migration and rollback drill",
+    "Research candidates from NeuroCore/NOMEGA/DeepCode and external adapters",
+    "Authorization/abuse/rate-limit review for new diagnostic/benchmark APIs",
+    "Real independently labelled temporal MemoryOS2 holdout",
+    "Dependency-complete app install and full root/app typecheck",
+    "React/Vite production build",
+    "Desktop/mobile browser E2E, including interactive Live2D",
+    "Clean-room install + restore/upgrade/rollback release drill",
+    "Multi-hour soak and memory/resource-growth limits",
+    "Final SBOM, license inventory and immutable release provenance sign-off",
+    "Release-candidate sign-off",
+    "React/Vite dependency-complete build and desktop/mobile/Live2D browser E2E"
+  ],
+  "environmentNote": "WorkPass18 adds real bounded HTTPS transport with DNS pinning, per-hop allowlist/DNS validation, query hashing and a lexical relevance gate. Runtime tsc and project-research suites pass. A live probe returned dns-resolution-failed in this sandbox, so no live-provider evidence promotion is claimed. React/Vite dependency-complete build and live browser E2E remain open.",
+  "releaseStatus": "implementation-workpass; NOT release-ready",
+  "limitations": [
+    "No real independently labeled temporal MemoryOS2 holdout; synthetic fixture proves harness behavior only.",
+    "Full agency chain from ActionCompetition through external receipt, persistence, reafference and UI remains partially covered.",
+    "Full app dependency installation, root/app semantic typecheck, React/Vite production build and desktop/mobile browser E2E remain open.",
+    "Clean-room install/restore/upgrade/rollback, multi-hour soak, provider reconnect/remote-postcondition stress and final SBOM/provenance sign-off remain open.",
+    "Full app dependency installation, semantic app typecheck, React/Vite build and Playwright browser E2E remain blocked/unverified in the current environment.",
+    "Brand and auth smoke gate behavior is unit-tested, but not executed against a running Chromium app in this pass.",
+    "Direct app typecheck fails with TS2688 for missing @types/node and vite/client; production build fails because vite executable is absent (spawn vite ENOENT).",
+    "WorkPass18 lexical topicality is not semantic entailment: query-term matching cannot prove that retrieved content supports the target claim.",
+    "A real external provider run on two allowed hosts could not be completed because DNS resolution failed in the current sandbox.",
+    "No real independently labeled temporal MemoryOS2 holdout; synthetic fixtures prove harness behavior only.",
+    "Full app dependency installation, React/Vite production build and desktop/mobile/Live2D browser E2E remain open."
+  ]
+}

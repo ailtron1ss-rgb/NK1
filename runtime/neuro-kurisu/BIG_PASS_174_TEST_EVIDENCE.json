@@ -1,0 +1,46 @@
+{
+  "pass": 174,
+  "status": "CONSTITUENT_GATES_PASS",
+  "worldTickets": {
+    "status": "PASS",
+    "sameActionDistinctIds": true,
+    "orderedResolution": true,
+    "restartPersistence": true,
+    "worldModelPending": true
+  },
+  "semantic": {
+    "totalFunctions": 2477,
+    "verified": 18,
+    "integrationOnly": 594,
+    "unsafe": 214,
+    "unverified": 1651,
+    "verifiedRate01": 0.0073,
+    "evidenceCoverage01": 0.0672
+  },
+  "parameterizedProbe": {
+    "sourceFiles": 269,
+    "attempted": 509,
+    "passed": 497,
+    "failed": 0,
+    "inputSynthesisNeeded": 0,
+    "lifecycleNeeded": 12,
+    "skipped": 30
+  },
+  "liveness": {
+    "functionLikeDeclarations": 2549,
+    "withBody": 2520,
+    "exported": 105,
+    "zeroReference": 158,
+    "oneOrLessReference": 482
+  },
+  "longHorizon": {
+    "functional": "PASS",
+    "scaling": "WARNING",
+    "meanLatencyFirst50Ms": 50,
+    "meanLatencyLast50Ms": 145,
+    "latencyRatio": 2.88,
+    "heapFirstMb": 44.3,
+    "heapLastMb": 127.6
+  },
+  "aggregateOrchestrator": "TIMEOUT_NOT_COUNTED_AS_PASS"
+}

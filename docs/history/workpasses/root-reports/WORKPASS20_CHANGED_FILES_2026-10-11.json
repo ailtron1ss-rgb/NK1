@@ -1,0 +1,155 @@
+{
+  "title": "Neuro-Kurisu WorkPass 20 changed-file manifest",
+  "date": "2026-10-11",
+  "baselineArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS19_2026-10-11.zip",
+  "rootReleaseVersion": "20.0.0-super-final6",
+  "canonicalRuntime": "Neuro-Kurisu 35.42.0 / schema 223",
+  "changedFileCount": 21,
+  "implementationSourceCount": 5,
+  "notes": [
+    "Hashes are computed against the actual WorkPass19 archive entries and current file bytes. The manifest intentionally does not hash itself.",
+    "Archive packaging excludes .verify-state, __pycache__, node_modules, git metadata, bytecode and generated verification-run.txt.",
+    "Implementation changes are integrated into the canonical runtime and MemoryOS2; exact text anchors are not semantic entailment."
+  ],
+  "entries": [
+    {
+      "path": "CHANGELOG.md",
+      "status": "modified",
+      "bytes": 32822,
+      "workpass20Sha256": "9351d09c692beacec0bcd2cd5e560c5247dac6d49517f7a9b18d5de04c9d744f",
+      "baselineSha256": "cb3ddcc44beaea874d50b7ba9670276dbbc66dc295fba86d79c726ee97590a44"
+    },
+    {
+      "path": "README.md",
+      "status": "modified",
+      "bytes": 12716,
+      "workpass20Sha256": "e86f26880718afe71a907a1494f02e80a5b8671309a39c19e58849bc9448a568",
+      "baselineSha256": "a93ef54fcaeb2ef3aee565f43864898e4cc3807da065221df68279a29f3bea8b"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "status": "modified",
+      "bytes": 11649,
+      "workpass20Sha256": "4523559df078036bfc498e2e28c962cd666676704fccd5616aa94c91233bcb0b",
+      "baselineSha256": "28ffa9fe182343183782dbc94b946bf8808307b7016cec19fb601cf6c92d5166"
+    },
+    {
+      "path": "docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_WorkPass20_2026-10-11.md",
+      "status": "added",
+      "bytes": 74044,
+      "workpass20Sha256": "1344b2697d5ac4a0e6bf9a5cc297258f446bd696108872a42939ec34576f4887"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-11_WORKPASS20.json",
+      "status": "added",
+      "bytes": 26659,
+      "workpass20Sha256": "2af32a9dcbd5352d4b8644d87b547e1bef46e4ac76b7fc502abf8471d5fcfc74"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-11_WORKPASS20.md",
+      "status": "added",
+      "bytes": 2995,
+      "workpass20Sha256": "7f0a16fa56b5586b5f0120174863c725e4c2ed8315dcb1b9e560b147e99aea79"
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-11_WORKPASS20.json",
+      "status": "added",
+      "bytes": 7944,
+      "workpass20Sha256": "3e87ec50c4a6d4a18680af6e3f317a55cfec3d087285245745d51724b5eccb63"
+    },
+    {
+      "path": "docs/WORKPASS20_IMPLEMENTATION_REPORT_2026-10-11.md",
+      "status": "added",
+      "bytes": 5391,
+      "workpass20Sha256": "99cf5cb30fd248a56d8ec0c66446877ca011f7d2e0e53adbe352dc2c8f1e394a"
+    },
+    {
+      "path": "package.json",
+      "status": "modified",
+      "bytes": 8881,
+      "workpass20Sha256": "6f23cd2e1cf0f69f8b95a529fc65fd63fa556ffbf620c81d864c9dac791a3dfc",
+      "baselineSha256": "e5f1284d824e3075ee7a4155d90ec9b6773c71311355aca7f4a6178bfd983c76"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package-lock.json",
+      "status": "modified",
+      "bytes": 1041,
+      "workpass20Sha256": "42846e2e1e200d0ceddb0448a16f520bbb095f49f1f8177a166493a5e1de1c1f",
+      "baselineSha256": "54a956f4cb3b27688271f545c0b1787afa86b958ea8f3ad635daf695d0634301"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "status": "modified",
+      "bytes": 230387,
+      "workpass20Sha256": "73d7a1336cfc4c7d82af1a699f7e2ff69d31c9bf217a343be0b5878cdcfce740",
+      "baselineSha256": "bb357603c6939f93240b827d59eb8c3ca393426d6bcaf20302eaaa4fc00e3c91"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+      "status": "modified",
+      "bytes": 1203107,
+      "workpass20Sha256": "a7934be5b1ab9208a3de04aa834d45fc936d1981f4c5291b5322b77c6bab4a9e",
+      "baselineSha256": "4f826e61000bf2f21c04a88c2d81329260f6b3cb60ad278b94cd499ae850893a"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/AutonomousProjectExecutor.ts",
+      "status": "modified",
+      "bytes": 17077,
+      "workpass20Sha256": "ec037810d34e0dcfcb3dec614e563e0e318fbe9232a17d8813bd64c1bba14b07",
+      "baselineSha256": "ca5197fe36f9235164d982ad57178dc73af343729c832992b9040527b3d6d31f"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ExternalProjectResearchTool.ts",
+      "status": "modified",
+      "bytes": 24648,
+      "workpass20Sha256": "8a3cb934b040e7f96e17632e5afce27875e796f8b93a3c55dcbd9de0d548b184",
+      "baselineSha256": "b0b843d000bc56cc0b7634502a05502b8bf98b48864046901ed492493b74fee2"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ProjectResearchSession.ts",
+      "status": "modified",
+      "bytes": 8893,
+      "workpass20Sha256": "12427574d43e02ba71c07deb0dcf0ca1ac10cbe0c15e8df529ac98f46b2d37d9",
+      "baselineSha256": "83093d11cdfd74b79d4bd96036841bb9b007b6342764673482facdf240d63dae"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ResearchClaimAssessment.ts",
+      "status": "added",
+      "bytes": 12673,
+      "workpass20Sha256": "7aade1fe3f26d32929f0c3b4f53daf0c9ad9728b710f0883e50a24c2aa6582c0"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-179-project-research-gates.mjs",
+      "status": "modified",
+      "bytes": 14671,
+      "workpass20Sha256": "93cf8871ced83e22482c8732470fc2d055385544abdcecdc9e17fb80e5ae8346",
+      "baselineSha256": "4a50e4d2b84daf3599651a727b310c415d3983be9d9233943bb225de9e9887de"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-49-subsystem-runtime.mjs",
+      "status": "modified",
+      "bytes": 1640,
+      "workpass20Sha256": "59ca48461988293e42b7091d07e901deff3f140656ea04c2b3d4c4f12479f85d",
+      "baselineSha256": "67cb9d08ee9297b991ef6b4e0da824a0598a4d73853d14299a9756e449febef4"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/project-execution-idempotency.mjs",
+      "status": "added",
+      "bytes": 2939,
+      "workpass20Sha256": "9a4eaeb64f8fa76e80e7a5973c9fdfd991a27551cfd735a3a65dbe87f86e4f04"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/research-claim-assessment.mjs",
+      "status": "added",
+      "bytes": 6705,
+      "workpass20Sha256": "ac9376a487b9031fcdc043045433f27bce3e791253af004580bd13563629488d"
+    },
+    {
+      "path": "Список дел.md",
+      "status": "modified",
+      "bytes": 96560,
+      "workpass20Sha256": "b5c76aff82830739c21b64942442bef3e2e1efc6423433cc974f8cca794d35bc",
+      "baselineSha256": "49d4975b943f3805b0be7a678d7758742987e5badda665a7600978b6c55ba49c"
+    }
+  ]
+}

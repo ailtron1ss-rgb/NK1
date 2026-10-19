@@ -1,0 +1,8 @@
+{
+  "parentRelease": "Neuro-Kurisu SUPER + WILL + Lumina + Hexis FINAL v20",
+  "parentArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_FINAL_v20_2026-10-08.zip",
+  "parentSha256": "e71799ab5c0726544e950616ae77c0b6f4b63f555d362bde7130d4a882038cd1",
+  "rollbackPatch": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_ROLLBACK_PATCH_v20_2026-10-08.zip",
+  "rollbackPatchSha256": "f0e6de87d6053c8c599ada98122bdf53a2b7dbe3f2aa4226d92170697f18af88",
+  "note": "Patch contains changed files plus deleted generated-artifact paths; it is a release rollback aid, not a standalone full source archive."
+}

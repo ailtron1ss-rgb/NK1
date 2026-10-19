@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const cfg={enableWorldModel:true,enableLanguage:false,includeAdvancedCycleSnapshot:false,checkpointMinIntervalMs:60000,checkpointMaxDirtyCycles:64};
+const core=new OrganismCore(new MemoryStateStore(),cfg); await core.init();
+const before=core.b384AutobiographicalValueGoalDiagnostics();
+for(let i=1;i<=64;i++) core.closeB380TemporalLife({tick:i,at:i,action:'verify',goalId:'b384-auto-goal',reward01:.91,success01:.91,surprise01:.44,predictionError01:.12,physicalVerified01:1,independent01:1,evidenceQuality01:.99,recoveryEvent01:0,sleepBoundary01:0,external01:0,energy01:.72,capacity01:.82,thermal01:.2,uncertainty01:.22,novelty01:.55,goalPressure01:.42,identity01:.92,awake:true,recoveryDebt01:0});
+const after=core.b384AutobiographicalValueGoalDiagnostics();
+assert.ok(after.verifiedEpisodes>before.verifiedEpisodes,'B380 token did not reach B384');
+assert.ok(after.valueRevisionCount>0,'B380 token produced no B384 developmental revision');
+const snap=core.snapshot(); const restored=new OrganismCore(new MemoryStateStore({initial:snap}),cfg); await restored.init(); const rd=restored.b384AutobiographicalValueGoalDiagnostics();
+assert.equal(rd.verifiedEpisodes,after.verifiedEpisodes); assert.equal(rd.valueRevisionCount,after.valueRevisionCount);
+console.log(JSON.stringify({pass:true,status:'B380_TO_B384_AUTO_PROMOTION_PASS',verifiedEpisodes:after.verifiedEpisodes,valueRevisionCount:after.valueRevisionCount,goalValueRevisions:after.goalValueRevisions,restartEqual:true},null,2));

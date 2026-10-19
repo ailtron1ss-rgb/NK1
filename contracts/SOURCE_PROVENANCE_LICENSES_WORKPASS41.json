@@ -1,0 +1,217 @@
+{
+  "format": "neuro-kurisu-source-provenance/v1",
+  "generatedAt": "2026-10-14T06:59:18.959Z",
+  "note": "Inventory evidence only; a detected identifier or license file is not legal advice or proof that every file in a source tree uses that license. Unknown or ambiguous licenses require manual review before redistribution.",
+  "dependencySummary": {
+    "lockedNpmComponents": 464,
+    "licenses": {
+      "0BSD": 1,
+      "Apache-2.0": 22,
+      "BlueOak-1.0.0": 2,
+      "BSD-2-Clause": 6,
+      "BSD-3-Clause": 6,
+      "CC-BY-4.0": 1,
+      "ISC": 27,
+      "MIT": 372,
+      "MIT AND ISC": 1,
+      "MPL-2.0": 24,
+      "Python-2.0": 1,
+      "Unlicense": 1
+    },
+    "missingLicenseFields": 0
+  },
+  "sourceArchiveSummary": {
+    "archives": 10,
+    "archivesWithLicenseEvidence": 6,
+    "archivesWithoutDetectedLicense": [
+      "legacy/input-archives/NOMEGA_PASS20_CAPABILITY_FORGE.zip",
+      "legacy/input-archives/NeuroCore_V126_Consolidation_Decontaminated_2026-09-30.zip",
+      "legacy/input-archives/NeuroCore_V143_FwPKM_Language_2026-10-01.zip",
+      "legacy/input-archives/grok-workspace.zip"
+    ]
+  },
+  "sourceArchives": [
+    {
+      "path": "legacy/input-archives/NOMEGA_PASS20_CAPABILITY_FORGE.zip",
+      "format": "zip",
+      "sizeBytes": 1140070,
+      "sha256": "01dfdf650158d29869c87bc0df584d7f9fed56b63feb17f47f9aae887af5079b",
+      "memberCount": 763,
+      "embeddedLicenses": [],
+      "licenseReview": "license-not-detected-in-top-level-members"
+    },
+    {
+      "path": "legacy/input-archives/NeuroCore_V126_Consolidation_Decontaminated_2026-09-30.zip",
+      "format": "zip",
+      "sizeBytes": 2559769,
+      "sha256": "c57561e020593a67ae9bbf248da77cef9dee4b47d45e44c63db80ec05cd3dce0",
+      "memberCount": 997,
+      "embeddedLicenses": [],
+      "licenseReview": "license-not-detected-in-top-level-members"
+    },
+    {
+      "path": "legacy/input-archives/NeuroCore_V143_FwPKM_Language_2026-10-01.zip",
+      "format": "zip",
+      "sizeBytes": 357999,
+      "sha256": "97cacf02b82d1008ef52f2072a458d3a8467dbc5402408dd2e5733b077885d03",
+      "memberCount": 75,
+      "embeddedLicenses": [],
+      "licenseReview": "license-not-detected-in-top-level-members"
+    },
+    {
+      "path": "legacy/input-archives/external-sources/conscio-4.8.2.tar.gz",
+      "format": "tar.gz",
+      "sizeBytes": 1471096,
+      "sha256": "05cc43c834029a02e841f6318e353af3f7681c4863c176d9396715a7446b1fb6",
+      "memberCount": 669,
+      "embeddedLicenses": [
+        {
+          "member": "conscio-4.8.2/LICENSE",
+          "sizeBytes": 34523,
+          "sha256": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0"
+        }
+      ],
+      "licenseReview": "license-evidence-found-not-a-legal-conclusion"
+    },
+    {
+      "path": "legacy/input-archives/grok-workspace.zip",
+      "format": "zip",
+      "sizeBytes": 54293752,
+      "sha256": "75d102549c372d7fed9cdcdcdbe9a3df5f475ca2540360d6be6551c3f2c53ea1",
+      "memberCount": 395,
+      "embeddedLicenses": [],
+      "licenseReview": "license-not-detected-in-top-level-members"
+    },
+    {
+      "path": "legacy/input-archives/letta-main-2026-10-08.zip",
+      "format": "zip",
+      "sizeBytes": 24683,
+      "sha256": "5d28f152aba633fcc26fe20125fad28f73c6773e6526fc65249656b2d0c61075",
+      "memberCount": 16,
+      "embeddedLicenses": [
+        {
+          "member": "letta-main/LICENSE",
+          "sizeBytes": 10759,
+          "sha256": "984c6db99fc6609803108dfc196762118662cd94b82a456dd9217583f18f3612"
+        }
+      ],
+      "licenseReview": "license-evidence-found-not-a-legal-conclusion"
+    },
+    {
+      "path": "legacy/input-archives/lumina-main-2026-10-08.zip",
+      "format": "zip",
+      "sizeBytes": 3240773,
+      "sha256": "a820cb1b394018451c8ee5863ae0a1f74666bd10519007d6e37e69e42452d467",
+      "memberCount": 131,
+      "embeddedLicenses": [
+        {
+          "member": "lumina-main/LICENSE",
+          "sizeBytes": 11357,
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        }
+      ],
+      "licenseReview": "license-evidence-found-not-a-legal-conclusion"
+    },
+    {
+      "path": "legacy/input-archives/raw-source-archives/letta-main.zip",
+      "format": "zip",
+      "sizeBytes": 24683,
+      "sha256": "5d28f152aba633fcc26fe20125fad28f73c6773e6526fc65249656b2d0c61075",
+      "memberCount": 16,
+      "embeddedLicenses": [
+        {
+          "member": "letta-main/LICENSE",
+          "sizeBytes": 10759,
+          "sha256": "984c6db99fc6609803108dfc196762118662cd94b82a456dd9217583f18f3612"
+        }
+      ],
+      "licenseReview": "license-evidence-found-not-a-legal-conclusion"
+    },
+    {
+      "path": "legacy/input-archives/raw-source-archives/lumina-main.zip",
+      "format": "zip",
+      "sizeBytes": 3240773,
+      "sha256": "a820cb1b394018451c8ee5863ae0a1f74666bd10519007d6e37e69e42452d467",
+      "memberCount": 131,
+      "embeddedLicenses": [
+        {
+          "member": "lumina-main/LICENSE",
+          "sizeBytes": 11357,
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        }
+      ],
+      "licenseReview": "license-evidence-found-not-a-legal-conclusion"
+    },
+    {
+      "path": "legacy/input-archives/raw-source-archives/will-main.zip",
+      "format": "zip",
+      "sizeBytes": 5799770,
+      "sha256": "9d0c30277f0981b67104b1e2a07d9c7f025fee60ae57bd470cca898cf0d457a4",
+      "memberCount": 661,
+      "embeddedLicenses": [
+        {
+          "member": "will-main/NOTICE",
+          "sizeBytes": 173,
+          "sha256": "baedc4a6fccbaaaa9801fde10279a5720e7f58542f3f46a4af9fd0be10e4812c"
+        },
+        {
+          "member": "will-main/LICENSE",
+          "sizeBytes": 11358,
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "licenseReview": "license-evidence-found-not-a-legal-conclusion"
+    }
+  ],
+  "repositoryLicenseFiles": [
+    {
+      "path": "app/.grok/skills/generate2dmap/LICENSE",
+      "sizeBytes": 1065,
+      "sha256": "d63ddc781bf0d15753fe0ba22c7cd5828dabb7776465ea4d4939558d4909b0fa",
+      "status": "license-text-present-id-needs-review"
+    },
+    {
+      "path": "app/.grok/skills/generate2dsprite/LICENSE",
+      "sizeBytes": 1065,
+      "sha256": "d63ddc781bf0d15753fe0ba22c7cd5828dabb7776465ea4d4939558d4909b0fa",
+      "status": "license-text-present-id-needs-review"
+    },
+    {
+      "path": "app/.grok/skills/video2dsprite/LICENSE",
+      "sizeBytes": 1065,
+      "sha256": "d63ddc781bf0d15753fe0ba22c7cd5828dabb7776465ea4d4939558d4909b0fa",
+      "status": "license-text-present-id-needs-review"
+    },
+    {
+      "path": "legacy/input-archives/hexis-main-2026-10-08/LICENSE",
+      "sizeBytes": 1070,
+      "sha256": "b5138e29f1b4a2ca7f6106af7317efb23d89e255867609b79cd26baef4843308",
+      "status": "license-text-present-id-needs-review"
+    },
+    {
+      "path": "legacy/input-archives/will-main-2026-10-08/LICENSE",
+      "sizeBytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "adjacentPackageDeclaredLicense": "Apache-2.0",
+      "status": "identified"
+    },
+    {
+      "path": "legacy/input-archives/will-main-2026-10-08/NOTICE",
+      "sizeBytes": 173,
+      "sha256": "baedc4a6fccbaaaa9801fde10279a5720e7f58542f3f46a4af9fd0be10e4812c",
+      "adjacentPackageDeclaredLicense": "Apache-2.0",
+      "status": "identified"
+    },
+    {
+      "path": "runtime/neuro-kurisu/LICENSE",
+      "sizeBytes": 97,
+      "sha256": "4a3eeabf67408063d4b46aada572343348a792c901db1eb0ae08cca30eea42c4",
+      "status": "license-text-present-id-needs-review"
+    }
+  ],
+  "unknownOrManualReview": [
+    "Repository-wide source license policy is not declared by the root package.",
+    "Raw snapshots may contain nested projects with multiple licenses; inspect notices and file-level headers before redistribution.",
+    "License text may not carry an SPDX identifier. A present license file is recorded as evidence, not automatically classified."
+  ]
+}

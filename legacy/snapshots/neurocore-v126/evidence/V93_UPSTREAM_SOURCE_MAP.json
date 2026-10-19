@@ -1,0 +1,58 @@
+{
+  "frontier": 93,
+  "date": "2026-09-25",
+  "primary_upstream": {
+    "name": "flash-linear-attention",
+    "url": "https://github.com/fla-org/flash-linear-attention",
+    "license": "MIT",
+    "verified_public_layer_exports": 42,
+    "cataloged_fla_non_export_candidates": [
+      "CAT",
+      "FlashQLA"
+    ]
+  },
+  "external": [
+    {
+      "key": "pgdn",
+      "url": "https://github.com/ntumm120/preconditioned-deltanet",
+      "license": "MIT"
+    },
+    {
+      "key": "mamba_official",
+      "url": "https://github.com/state-spaces/mamba",
+      "license": "Apache-2.0"
+    },
+    {
+      "key": "mamba3_portable",
+      "url": "https://github.com/Aiyoniganmaaiya/mamba3-ssm",
+      "license": "MIT"
+    },
+    {
+      "key": "delta_product",
+      "url": "https://github.com/automl/DeltaProduct",
+      "license": "MIT"
+    },
+    {
+      "key": "hnet",
+      "url": "https://github.com/goombalab/hnet",
+      "license": "MIT"
+    },
+    {
+      "key": "atlas_torch",
+      "url": "https://github.com/danielquintas8/atlas-torch",
+      "license": "MIT"
+    },
+    {
+      "key": "titans_pytorch",
+      "url": "https://github.com/lucidrains/titans-pytorch",
+      "license": "MIT"
+    },
+    {
+      "key": "nvidia_gdn2",
+      "url": "https://github.com/NVlabs/GatedDeltaNet-2",
+      "license": "NVIDIA Source Code License-NC",
+      "status": "research_only"
+    }
+  ],
+  "policy": "source bytes + license + probe + matched qualification required for promotion"
+}

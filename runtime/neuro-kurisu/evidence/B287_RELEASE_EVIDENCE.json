@@ -1,0 +1,81 @@
+{
+  "release": "35.6.1",
+  "pass": "B287",
+  "date": "2026-09-12",
+  "focus": "relationship_value_development",
+  "standalone": {
+    "steps": 320,
+    "learningUpdates": 320,
+    "relationCount": 2,
+    "relationshipDifferentiation01": 0.09761899936413013,
+    "causalAblationDrop01": 0.024160914751580706,
+    "transferUses": 3,
+    "roundTrip": true
+  },
+  "hidden": {
+    "steps": 240,
+    "relationCount": 2,
+    "relationshipDifferentiation01": 0.14880119671241684,
+    "actionBiasA": 0.0137517186803344,
+    "actionBiasB": 0.003683889231602521,
+    "actionBiasDelta": 0.010067829448731878,
+    "transferUses": 4
+  },
+  "core": {
+    "steps": 18,
+    "learningUpdates": 18,
+    "globalIdentityInfluence01": 0.31559651164530816,
+    "relationshipActionBiasRespond": -0.0012119343877857215,
+    "relationshipActionBiasVerify": 0.003886860261121544,
+    "relationshipActionBiasDelta": 0.005098794648907265,
+    "restart": true
+  },
+  "migration": {
+    "roundTrip": true,
+    "snapshotBytes": 101230,
+    "relations": 2
+  },
+  "comparative_research": [
+    "Brian2",
+    "Nengo",
+    "Lava",
+    "DreamerV3",
+    "Generative Agents",
+    "Letta"
+  ],
+  "limitations": [
+    "Direct relationship-to-action effect is currently auxiliary and small in Core.",
+    "No claim of consciousness or subjective experience.",
+    "Relationship value vectors are engineered latent representations, not biological neural regions.",
+    "No open-ended social action invention yet."
+  ],
+  "projectAudit": {
+    "fullAuditFiles": 2161,
+    "fullAuditErrors": 0,
+    "fullAuditWarnings": 0,
+    "sourceFiles": 1083,
+    "canonicalFiles": 370,
+    "syntax": {
+      "js": 732,
+      "sh": 4,
+      "json": 186,
+      "failures": 0
+    },
+    "archiveManifestFiles": 2392
+  },
+  "releaseGates": {
+    "typecheck": "PASS",
+    "fullAudit": "PASS",
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "forensics": "PASS",
+    "hygiene": "PASS",
+    "syntax": "PASS",
+    "contract": "PASS",
+    "lockfile": "PASS",
+    "releaseSource": "PASS",
+    "doctor": "PASS",
+    "brainAudit": "PASS",
+    "archiveVerification": "PASS"
+  }
+}

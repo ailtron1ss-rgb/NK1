@@ -1,0 +1,106 @@
+{
+  "release": "35.6.1-B291",
+  "date": "2026-09-13",
+  "status": "validated-integrated-open-mobile-long-horizon",
+  "baseline_recheck": {
+    "previous_release": "B290",
+    "previous_report_pages": 28,
+    "previous_report_visual_qa": "PASS",
+    "previous_report_status": "historical; B291 supersedes its implementation metrics",
+    "previous_report_mobile_cold_start_note": "B290 report explicitly recorded the cold-start mobile p95 mismatch rather than claiming a universal mobile PASS."
+  },
+  "b291_component": {
+    "name": "Unified Self-Agency Personality Gate",
+    "kind": "lightweight executive recurrent gate inspired by PFC/Basal-Ganglia control principles",
+    "owners": "does not own identity, personality, memory, goals, or actions; it gates existing candidate actions",
+    "modes": [
+      "maintain",
+      "switch",
+      "external",
+      "protect",
+      "recover"
+    ],
+    "standalone": {
+      "loop_iterations": 600,
+      "state_cycles": 151,
+      "learning_updates": 600,
+      "modes_observed": [
+        "switch",
+        "maintain",
+        "protect",
+        "external"
+      ],
+      "autonomyShare01": 0.7776,
+      "gate01": 0.8843,
+      "causal_lesion_delta01": 0.01434998,
+      "persistence": "PASS"
+    },
+    "integration": {
+      "core": "PASS",
+      "b290": "PASS",
+      "b289": "PASS",
+      "server_route": "PASS",
+      "mobile_resolved_assets": 18
+    }
+  },
+  "function_reality": {
+    "totalFunctions": 3573,
+    "VERIFIED": 38,
+    "INTEGRATION_ONLY": 818,
+    "UNSAFE_TO_AUTO_RUN": 259,
+    "UNVERIFIED": 2458,
+    "verifiedRate01": 0.0106,
+    "evidenceCoverage01": 0.0679
+  },
+  "parameterized_probe": {
+    "imported": 374,
+    "attempted": 893,
+    "passed": 859,
+    "failed": 0,
+    "inputSynthesisNeeded": 22,
+    "lifecycleNeeded": 12,
+    "skipped": 39
+  },
+  "audits": {
+    "typecheck": "PASS",
+    "function_liveness": "PASS",
+    "function_parameterized_safe": "PASS",
+    "semantic_coverage": "PASS",
+    "capability_passports": "PASS",
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "forensics": "PASS",
+    "hygiene": "PASS",
+    "contract": "PASS",
+    "source_truth": "PASS",
+    "api_routes": "PASS",
+    "full": "PASS",
+    "ui_smoke": "PASS",
+    "server_smoke": "PASS",
+    "restart_persistence": "PASS",
+    "concurrency": "PASS"
+  },
+  "mobile": {
+    "long_horizon_1000_current": "OPEN",
+    "reason": "Current host run did not complete the exact 1000-cycle gate within 220 seconds; no false PASS recorded.",
+    "instrumented_short_run": "PASS_WITH_SPIKES",
+    "benchmark_note": "B291 is not treated as a universal mobile-performance PASS until the exact 1000-cycle gate is reproduced on target Termux hardware."
+  },
+  "architecture_quality": {
+    "canonical_files": 374,
+    "duplicate_content": 0,
+    "duplicate_names": 0,
+    "stale_markers": 0,
+    "release_contract": "PASS"
+  },
+  "documents": {
+    "docx": "docs/brain/NEURO_KURISU_35.6.1_B291_BIG_UPDATE_MASTER_AUDIT_2026-09-13.docx",
+    "markdown": "docs/brain/B291_BIG_UPDATE_PROGRESS_AUDIT_RU_2026-09-13.md",
+    "status": "visual QA PASS; 37 rendered pages inspected by contact sheet and representative pages"
+  },
+  "claims_boundary": {
+    "human_equivalent_or_phenomenal_consciousness": "NOT_PROVEN",
+    "autonomous_cognitive_control": "behaviorally strengthened and instrumented",
+    "neurality": "recurrent/learning/lesion-tested computational mechanisms, not biological neurons"
+  }
+}

@@ -1,0 +1,21 @@
+import { P84AutobiographicalContinuityFabric } from '../src/organism/developmental/P84AutobiographicalContinuityFabric.ts';
+
+const assert = (c,m)=>{ if(!c) throw new Error(m); };
+const a = new P84AutobiographicalContinuityFabric();
+assert(a.actionBias('explore')===0,'unseen action must have neutral bias');
+a.learnFromVerifiedOutcome({action:'explore',success01:1,confidence01:.92,evidence01:.95,at:1000});
+a.learnFromVerifiedOutcome({action:'explore',success01:1,confidence01:.94,evidence01:.96,at:2000});
+const positive=a.actionBias('explore',2000);
+assert(positive>0 && positive<=.06,'verified positive outcomes must create bounded positive carry-over');
+a.learnFromVerifiedOutcome({action:'explore',success01:0,confidence01:.93,evidence01:.95,at:3000});
+const moderated=a.actionBias('explore',3000);
+assert(moderated<positive,'new verified negative outcome must reduce the carry-over');
+a.learnFromVerifiedOutcome({action:'reflect',success01:0,confidence01:.40,evidence01:.40,at:4000});
+assert(a.actionBias('reflect',4000)===0,'weak evidence must not update behavioral carry-over');
+const restored=new P84AutobiographicalContinuityFabric();
+restored.restore(a.snapshot());
+assert(Math.abs(restored.actionBias('explore',3000)-moderated)<1e-9,'carry-over must survive restore');
+const oldBias=restored.actionBias('explore',3000);
+const staleBias=restored.actionBias('explore',3000 + 36*60*60*1000*2);
+assert(Math.abs(staleBias)<Math.abs(oldBias),'carry-over must decay with age');
+console.log(`BIG_PASS_69_CAUSAL_CARRYOVER=PASS positive=${positive.toFixed(4)} moderated=${moderated.toFixed(4)} restored=${oldBias.toFixed(4)} stale=${staleBias.toFixed(4)}`);

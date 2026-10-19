@@ -1,0 +1,87 @@
+{
+  "pass": "BIG_PASS_213_PREDICTIVE_CORTICAL_INFERENCE",
+  "base": "Neuro-Kurisu 35.6.1 B212",
+  "status": "IMPLEMENTED_VERIFIED",
+  "implementation": {
+    "primary": "src/organism/system/CorticalHierarchyEngine.ts",
+    "test": "tests/big-pass-213-predictive-cortical-inference.mjs",
+    "auditInfrastructureFix": "scripts/audit-full-project.mjs"
+  },
+  "learning": {
+    "updates": 24,
+    "skips": 0,
+    "coldPredictionError01": 0.19786737576043234,
+    "trainedPredictionError01": 0.0896928676250599,
+    "errorReduction01": 0.5465,
+    "trainedPosterior01": 0.6221425437473309,
+    "calibration01": 0.87540771351475,
+    "selectiveAbstain01": 0.18950908729881832
+  },
+  "causal": {
+    "delta01": 0.19510362954259886,
+    "trainedPosterior01": 0.6438094216791244,
+    "coldPosterior01": 0.48
+  },
+  "eventTriggeredLearning": {
+    "quietEventSkipped": true,
+    "quietEventPredictiveUpdates": 0,
+    "quietEventPredictiveSkips": 1
+  },
+  "migration": {
+    "legacyRouteModelWithoutNewFields": "PASS"
+  },
+  "persistence": {
+    "restore": "PASS",
+    "predictiveMetricsRestored": true
+  },
+  "regression": {
+    "b212": "PASS",
+    "integration": "PASS",
+    "typecheck": "PASS",
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "hygiene": "PASS",
+    "syntax": "PASS",
+    "contract": "PASS",
+    "forensics": "PASS",
+    "releaseSource": "PASS",
+    "lockfile": "PASS",
+    "fullProjectAudit": "PASS",
+    "brainAudit": "PASS",
+    "functionLiveness": "PASS",
+    "parameterizedProbe": "PASS",
+    "semanticCoverage": "PASS",
+    "functionPassports": "PASS"
+  },
+  "functionReality": {
+    "strictPassportTotal": 2746,
+    "VERIFIED": 14,
+    "INTEGRATION_ONLY": 27,
+    "UNSAFE_TO_AUTO_RUN": 129,
+    "UNVERIFIED": 2576,
+    "semanticCorpusTotal": 2759
+  },
+  "research": [
+    {
+      "title": "Predictive Coding Light",
+      "url": "https://www.nature.com/articles/s41467-025-64234-z"
+    },
+    {
+      "title": "Exploiting neuro-inspired dynamic sparsity for energy-efficient intelligent perception",
+      "url": "https://www.nature.com/articles/s41467-025-65387-7"
+    },
+    {
+      "title": "Bayesian electronics for trustworthy artificial intelligence",
+      "url": "https://www.nature.com/articles/s44287-025-00226-x"
+    },
+    {
+      "title": "Edge intelligence through in-sensor and near-sensor computing for the artificial intelligence of things",
+      "url": "https://www.nature.com/articles/s44335-025-00040-6"
+    }
+  ],
+  "auditHardening": {
+    "issue": "audit-full-project used spread with Math.max over all line lengths",
+    "fix": "replaced spread-based max with iterative reduce",
+    "postFix": "PASS"
+  }
+}

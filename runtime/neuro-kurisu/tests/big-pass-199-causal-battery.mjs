@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { BrainWideCausalBattery } from '../src/organism/research/BrainWideCausalBattery.ts';
+const battery=new BrainWideCausalBattery();
+const mk=(shift)=>({condition:'run',cycles:120,autonomyRate:.55+shift,actionEntropy:.42+shift*.5,selfPrediction:.62+shift,identityContinuity:.71+shift*.6,workspaceIgnition:.48+shift*.8,intrinsicGoalRate:.37+shift*.4,valueRevisions:.21+shift*.2});
+const runs=[.12,.11,.13,.115].map((x,i)=>({id:`run-${i}`,control:mk(0),treatment:mk(x)}));
+const result=battery.evaluate(runs);
+assert.equal(result.runs,4);
+assert.equal(result.metrics.length,7);
+assert.equal(result.status,'supported');
+assert.ok(result.reproducible01>=.9);
+assert.ok(result.metrics.every(m=>m.status==='supported'));
+const insufficient=battery.evaluate(runs.slice(0,2));
+assert.equal(insufficient.status,'insufficient');
+console.log('BIG_PASS_199_CAUSAL_BATTERY=PASS',JSON.stringify({runs:result.runs,status:result.status,reproducible01:result.reproducible01,supported:result.metrics.filter(m=>m.status==='supported').length,insufficient2:insufficient.status}));

@@ -1,0 +1,161 @@
+{
+  "project": "Neuro Kurisu",
+  "workpass": 33,
+  "date": "2026-10-13",
+  "baseArchive": "Neuro_Kurisu_WORKPASS32_2026-10-13.zip",
+  "comparison": "SHA-256 of regular files by normalized archive-relative path; UTF-8 path names retained",
+  "manifestSelfExcluded": true,
+  "counts": {
+    "added": 11,
+    "modified": 15,
+    "deleted": 0,
+    "unchanged": 12770
+  },
+  "files": [
+    {
+      "path": "CHANGELOG.md",
+      "status": "modified",
+      "baseSha256": "a01eb93e556d2fcf81b56bfcab58d83387cd23df50f3d118582ed63f82962108",
+      "workPass33Sha256": "8c9a0f4eaf361a4645913b9a943a0b5cb9f548e40ba067b0caeafff8791d8431"
+    },
+    {
+      "path": "README.md",
+      "status": "modified",
+      "baseSha256": "67a84bcbdbf5e50de8f36c8d82fbfb731b6ef2ca4871c3c4e6fa5c41368b9c95",
+      "workPass33Sha256": "3c9ac2c82c083b8814180c9ee7cf409a46de19cdd28755afddbabb8507088507"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "status": "modified",
+      "baseSha256": "bad45a5c07ec1cfc9f2a4bb83ee5f2abed1e71e47d56861088432875974fcebd",
+      "workPass33Sha256": "1459834006a8737a40dad541bc3e5d8063a53719c773fb3d65e42b2ca67ddb99"
+    },
+    {
+      "path": "WORKPASS33_REPORT_2026-10-13.md",
+      "status": "added",
+      "workPass33Sha256": "e5f2dd09e5efc978e95b078e928aa63332c459a53f6caba3950ab400e258b357"
+    },
+    {
+      "path": "WORKPASS33_TASKS_2026-10-13.md",
+      "status": "added",
+      "workPass33Sha256": "1045630721b84b1e730663eea9a2692f164a417caaaffeb70e2eb70e495a2738"
+    },
+    {
+      "path": "docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_WorkPass33_2026-10-13.md",
+      "status": "added",
+      "workPass33Sha256": "d05d35b530600904ed83c03aeabf0cc2935124fcab0ca3527a3bc1881774400e"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-13_WORKPASS33.json",
+      "status": "added",
+      "workPass33Sha256": "0820f4e887ee58de2f59ac9b854a26440b8979771ca756ae55e438ab560dc01c"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-13_WORKPASS33.md",
+      "status": "added",
+      "workPass33Sha256": "754d7a7f1ae9783e9778989739287d228922d730b6e91e879a0d828f95b3a09a"
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-13_WORKPASS33.json",
+      "status": "added",
+      "workPass33Sha256": "369a40f89bebf9aa218ea1f72305392bbdfedc057b7551a7eeea2952ee6fcd5e"
+    },
+    {
+      "path": "docs/WORKPASS33_REPORT_2026-10-13.md",
+      "status": "added",
+      "workPass33Sha256": "b95a7cc481cad0a8b8dc66cad3166150ef40c279ada63d3ea1819c9937bea0b2"
+    },
+    {
+      "path": "docs/WORKPASS33_TASKS_2026-10-13.md",
+      "status": "added",
+      "workPass33Sha256": "f83f14d8cb05f1e15ff1d62eb14fc5bcce4c24724b1a7955e21e6dfe0beaf512"
+    },
+    {
+      "path": "package.json",
+      "status": "modified",
+      "baseSha256": "7dd07ad6012a3c1e3593341ded78870f7f5caf4ea099dd452911fec5c54bd604",
+      "workPass33Sha256": "7a7d75d53a149991bb0d6fa82d272dd2bb41a27c6899e613b88ccc04b6ef4993"
+    },
+    {
+      "path": "runtime/neuro-kurisu/README.md",
+      "status": "modified",
+      "baseSha256": "e4f599b60a1eb59dc91df21138fa7a3ccdce6b5c2f61aa3eeca2fec834ddff74",
+      "workPass33Sha256": "b6ec9ae5ef8b1e4da6cd2ecd0df876e24fa1d10c1f9d3c8446e300f1e30cf39b"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/LOCAL_SEMANTIC_MEMORY.md",
+      "status": "added",
+      "workPass33Sha256": "4eb1c1ee70a49fac586b952068bcadc95f3a281cb30fc516308ff0f7b0048494"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package-lock.json",
+      "status": "modified",
+      "baseSha256": "e5b93ff028fa1605afec7af17ada081d40eca3e1252283091bbdeb9c6aee2386",
+      "workPass33Sha256": "c68fac41cd97a23d3bfa89f416b204f5070b558a304c7679b7bb3f1a22ac5b07"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "status": "modified",
+      "baseSha256": "e6e885d97248488ea0aee6267e4b6bf871beb17dd538b44a86ea5ddbc40cb9e3",
+      "workPass33Sha256": "8dac3abad1968025a24affbb5504cc87888c8ffa359d6a9d0280e781278fd3ae"
+    },
+    {
+      "path": "runtime/neuro-kurisu/public/app.js",
+      "status": "modified",
+      "baseSha256": "9831703b5aae022c3bf76322741c2c84e2d99d2e61cbaa116cc4ed5dac52d2a4",
+      "workPass33Sha256": "f8e1a2e582ebb52e12cca2c7f104dcd120d77c04e4ee717e390ec815b5f78242"
+    },
+    {
+      "path": "runtime/neuro-kurisu/public/index.html",
+      "status": "modified",
+      "baseSha256": "41d184af542c3a570af5f2f693f9109b34118bfcb54dabba200d7249bcf195d5",
+      "workPass33Sha256": "0861541bcdcae668ae8182201bd50844e57fb3a1c1d4c31b40b7db4c0d31f6a4"
+    },
+    {
+      "path": "runtime/neuro-kurisu/public/style.css",
+      "status": "modified",
+      "baseSha256": "2e9af29ce335631fa389bacb5bc9508f6388e192c0a85f5db44ba443b1720dd6",
+      "workPass33Sha256": "c9df8a53512f368a3f2adb5f78ea0dcd82eff890c68d986215ebc2efbc3288ff"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+      "status": "modified",
+      "baseSha256": "e0e1cc806a4f387591198beaede494ebff9630b92c2845477a90872acb76c1d7",
+      "workPass33Sha256": "2f333ad756fe81a4ced36a5b12f765f65e2f96b7f493740083e2fad92fd3bc3c"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/developmental/LocalEmbeddingProvider.ts",
+      "status": "added",
+      "workPass33Sha256": "54c3ef77a1f0f8735510021dd883dfbf997dd849ee8eaf0b6aa0ea758738e89a"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts",
+      "status": "modified",
+      "baseSha256": "29ad7d378f8bf551fdae27d6a708593cff24c08c2f00d540c47dcf063d7e3d83",
+      "workPass33Sha256": "366f8f2ef9d7c812996443c3d88f7d73d8342c488de87cb890c531a6338894db"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts",
+      "status": "modified",
+      "baseSha256": "967109c822a4da8dfcf7e803237d1274ba569c808e944f9bd431d4a52e12d578",
+      "workPass33Sha256": "c3099637fd2acc8f35c662dad02b95891e4129798dfb9cb696075e4fe3f7d762"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/server/server.mjs",
+      "status": "modified",
+      "baseSha256": "4c301ecab28513217970db72630d1876b8e9137ca279f6ad89da392cb4374991",
+      "workPass33Sha256": "f5d13ece55e10915b457aa1f657d1a1cd435cbbe7b683ff95e64685d05e088da"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/memory-semantic-embeddings-workpass33.mjs",
+      "status": "added",
+      "workPass33Sha256": "66ab7d8b6fe4d1e6b5f75d0bb1d790e5ac67fd39950a90a3f0ef773cdbf1e52e"
+    },
+    {
+      "path": "Список дел.md",
+      "status": "modified",
+      "baseSha256": "b30b7f6deead8239e84900950e05151d8497ae046e4626b9f47d2ecf81bf4924",
+      "workPass33Sha256": "782fde639dde5b46295173639e3ca560588c7d5a1ff4d34ea0f6dcc59adc1ca6"
+    }
+  ]
+}

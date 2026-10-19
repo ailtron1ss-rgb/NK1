@@ -1,0 +1,42 @@
+{
+  "release": "B369",
+  "date": "2026-09-15",
+  "status": "PASS",
+  "canonicalNeuralSubstrate": "B365",
+  "causalBattery": {
+    "replayedExperiences": 32,
+    "parameterUpdates": 2529,
+    "impact01": 0.2753988539867933,
+    "futurePolicyL1VsNoReplay": 0.010794,
+    "control": "same learned experiences, replay OFF probe"
+  },
+  "runtimePersistence": {
+    "cycles": 6,
+    "learningUpdates": 6,
+    "temporalUpdates": 6,
+    "replayExperiences": 6,
+    "replayUpdatesBeforeConsolidation": 897,
+    "replayUpdatesAfterConsolidation": 1263,
+    "restoredReplayUpdates": 1263,
+    "restoredReplayBufferSize": 6
+  },
+  "regression": {
+    "B365CoreCausality": "PASS",
+    "B365LearningTransfer": "PASS",
+    "B365HomeostasisStructure": "PASS",
+    "B366ActionCommitment": "PASS 6/6",
+    "B367PredictiveClosure": "PASS 6/6",
+    "B368TemporalAutonomous": "PASS",
+    "B368FullRuntime": "PASS"
+  },
+  "sourceGates": {
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "forensics": "PASS",
+    "hygiene": "PASS",
+    "contract": "PASS",
+    "syntax": "PASS",
+    "releaseSource": "PASS",
+    "projectDoctor": "PASS"
+  }
+}

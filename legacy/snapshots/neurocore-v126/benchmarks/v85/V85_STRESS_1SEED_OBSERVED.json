@@ -1,0 +1,13 @@
+{
+  "config": {"seed": 0, "steps_per_task": 12, "batch_size": 4, "train_per_task": 180, "test_per_task": 20, "num_tasks": 3},
+  "dataset": "sklearn_digits",
+  "task_domains": ["original", "rot90", "invert"],
+  "protocol": "three independent fixed target teachers; task ID and labels are not supplied to the model",
+  "results": [
+    {"strategy":"current_only","stage_cosine":[-0.0081321159,-0.1626275927,-0.6446640491,-0.0029697188,-0.0208532121,-0.6306487918,-0.0033438005,0.1388504654,-0.4080092311],"average_forgetting":0.0001870409,"backward_transfer":0.0822460,"adaptation":0.1226868,"wall_time_s":4.75,"replay_events":0,"diagnostic_events":0},
+    {"strategy":"fixed_replay","stage_cosine":[-0.0077318414,-0.1642237604,-0.6431576014,-0.0012926150,-0.0201617964,-0.6270867586,-0.0014907836,0.1472088397,-0.3971291482],"average_forgetting":0.0000990843,"backward_transfer":0.0868058,"adaptation":0.1260221,"wall_time_s":5.28,"replay_events":18,"diagnostic_events":0},
+    {"strategy":"adaptive_replay","stage_cosine":[0.0180460531,-0.3451875150,-0.0017704859,0.0273200534,-0.2133210003,0.0239627995,0.0250178818,-0.0561401732,0.2345154285],"average_forgetting":0.0011510858,"backward_transfer":0.0820763,"adaptation":0.1167491,"wall_time_s":6.09,"replay_events":24,"diagnostic_events":0,"final_replay_interval":4},
+    {"strategy":"adaptive_sparse_surgery","stage_cosine":[0.0180532429,-0.3451717794,-0.0017352536,0.0273816790,-0.2132380456,0.0241220929,0.0250908025,-0.0560279191,0.2346903533],"average_forgetting":0.0011454383,"backward_transfer":0.0821238,"adaptation":0.1167791,"wall_time_s":5.52,"replay_events":24,"diagnostic_events":8,"final_replay_interval":4}
+  ],
+  "status": "observed_single_seed_stress_only; not a promotion gate"
+}

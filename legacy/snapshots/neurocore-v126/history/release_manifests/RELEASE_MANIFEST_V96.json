@@ -1,0 +1,2637 @@
+{
+  "frontier": 96,
+  "package_version": "0.96.0",
+  "file_count": 526,
+  "files": [
+    {
+      "path": "ARCHIVE_INDEX_RU.md",
+      "bytes": 334,
+      "sha256": "df92af18ee5079db1675b9dc82b66e4049d0ae6f2b19307862a97435ddb16a17"
+    },
+    {
+      "path": "CHANGELOG_V84_RU.md",
+      "bytes": 1104,
+      "sha256": "75b6c324995eb858bcb2cd04917d67f68defcd47f3836a0387c12344b09c49e3"
+    },
+    {
+      "path": "CHANGELOG_V85_RU.md",
+      "bytes": 955,
+      "sha256": "c9aa768ccae286be0eaccaf7a27911a1de2d8f6d2e2eb4c97d9a9975a943e820"
+    },
+    {
+      "path": "CHANGELOG_V86_RU.md",
+      "bytes": 729,
+      "sha256": "43286d21c0ff31be424443cae43d537fb6253d523845a9316ebade02872ad19a"
+    },
+    {
+      "path": "CHANGELOG_V87_RU.md",
+      "bytes": 1046,
+      "sha256": "08d8dbc9d39ca89764afe5a4df26d45386617b241aa6c9bfba9f39241e9700db"
+    },
+    {
+      "path": "CHANGELOG_V88_RU.md",
+      "bytes": 560,
+      "sha256": "f634cbcd20c5e5f748b42d2db755fa533b824eb7a8a0a1f84174e3a9be4787aa"
+    },
+    {
+      "path": "CHANGELOG_V89_RU.md",
+      "bytes": 2010,
+      "sha256": "a2cf3ea611b3a49e8d2429caeff055334a2306a79a897d341966630a1ecf4a3e"
+    },
+    {
+      "path": "CHANGELOG_V90_RU.md",
+      "bytes": 3513,
+      "sha256": "e6ea581a5bf6572994fad77120f3a37ef8515b30dad4b75567283ec54776c735"
+    },
+    {
+      "path": "CHANGELOG_V91_RU.md",
+      "bytes": 738,
+      "sha256": "a79c971b50a7d8da84b6d1e5fefe6a1a7eda4d0ad477102e56340a8f03ffe216"
+    },
+    {
+      "path": "CHANGELOG_V92_RU.md",
+      "bytes": 1493,
+      "sha256": "2d65ebc81e9361be7b6a92e9628793cdd9af1c8c5b9a2581257435151ee7a9e3"
+    },
+    {
+      "path": "CHANGELOG_V94_RU.md",
+      "bytes": 1250,
+      "sha256": "52aa8329ee33a33bd224baa696de3f2296fb34a5e9ff4797371a071b7284b4d7"
+    },
+    {
+      "path": "CHANGELOG_V96_RU.md",
+      "bytes": 481,
+      "sha256": "24c4677aee85b1b5f486247c93c19f6f0bb522b654113a87850612353104f138"
+    },
+    {
+      "path": "CURRENT_FRONTIER.txt",
+      "bytes": 3,
+      "sha256": "d93844f8f37e55564be3f194656bf33b5d0fb5e589a0fe17eb7c2d4e8593ec9c"
+    },
+    {
+      "path": "LATEST_VERSION.txt",
+      "bytes": 4,
+      "sha256": "5b7623658ef90c1879558466d202e09e70921b592fbf49e2af0c04d5008d235c"
+    },
+    {
+      "path": "PROJECT_STATUS_LATEST_RU.md",
+      "bytes": 3840,
+      "sha256": "6688efb4029af828d6aacf3bbeb4d29b0901e1d49912f59f73f49ee8f2674a6a"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3790,
+      "sha256": "3ba7153457e7f22320c230b3e4c06a6472a7cb29b66fb90489e8aa8cbf119dda"
+    },
+    {
+      "path": "RELEASE_BUILD.txt",
+      "bytes": 685,
+      "sha256": "c1878ff8e73f76652b1606bb5f376ac42403c29aacb4ca959a9cf14f8f798ace"
+    },
+    {
+      "path": "RELEASE_FILES_SHA256_V94.json",
+      "bytes": 77870,
+      "sha256": "e2be7be1e2b254d66951974b3fcd11246758359273a1ca5532e8d71873cda29a"
+    },
+    {
+      "path": "RELEASE_MANIFEST_V88.txt",
+      "bytes": 197,
+      "sha256": "930fcf8339161bf969a5df6d1e2abb27dad824185b3f8de7faf8ac49bd167555"
+    },
+    {
+      "path": "RELEASE_MANIFEST_V90.txt",
+      "bytes": 1051,
+      "sha256": "d393f926d8527ea2134bed3b001cdc633a1a9916b3aa7ba7d8b1178ef822c015"
+    },
+    {
+      "path": "RELEASE_MANIFEST_V90_SHA256.txt",
+      "bytes": 69075,
+      "sha256": "39435610f28573c48a8a5873cfc742fd9a7d21ddd79ea7331bd8118bb734ba69"
+    },
+    {
+      "path": "RELEASE_MANIFEST_V91.txt",
+      "bytes": 15333,
+      "sha256": "b57a3f3f4d199dd11f6b530791db608c750690a083e13751633728a78efc799a"
+    },
+    {
+      "path": "RELEASE_MANIFEST_V91_SHA256.txt",
+      "bytes": 46089,
+      "sha256": "2b92d4f760596ec07e5160f358db5f3ee5c6109301f9beecc87f3c693f3d83cb"
+    },
+    {
+      "path": "RELEASE_MANIFEST_V92.txt",
+      "bytes": 52603,
+      "sha256": "ec1fdcaf1b0ff9b7631a4b42a19d47486463ec0165a5379705d18cb3543cf21d"
+    },
+    {
+      "path": "RELEASE_MANIFEST_V93.json",
+      "bytes": 81444,
+      "sha256": "326a899f7f3b0282cee5a7129c27ade9f05c74d8dc05454acc75381f9312000c"
+    },
+    {
+      "path": "RELEASE_MANIFEST_V94.json",
+      "bytes": 557,
+      "sha256": "16dea7751147097f1cc51b1335dd5c4759f98ec93ee6cb8e7f859dc59cf5de11"
+    },
+    {
+      "path": "RESEARCH_LEDGER_CURRENT_RU.md",
+      "bytes": 2820,
+      "sha256": "ea0dcf2698b3e6a0be5f4a2c733127406fb4f2799f1ad193192710198cde79cd"
+    },
+    {
+      "path": "UPSTREAM_CANDIDATES_RU.md",
+      "bytes": 769,
+      "sha256": "107dc8411fd9f1f108bb430401d50d918bc6d2da0010afdf5358b9427ed1ca0e"
+    },
+    {
+      "path": "UPSTREAM_CANDIDATES_V93_RU.md",
+      "bytes": 783,
+      "sha256": "76802ee9027b28706c3dfa4475cf3b61019e5b54cd6dc7f8297c699a807e2797"
+    },
+    {
+      "path": "V84_NEXT_FRONTIER_PLAN_RU.md",
+      "bytes": 1294,
+      "sha256": "de7fe07fd7c87a3d3f0d63721a7db020d204d7095a723dd86cd2f543eb8daf9a"
+    },
+    {
+      "path": "V85_NEXT_FRONTIER_PLAN_RU.md",
+      "bytes": 1384,
+      "sha256": "1293fea50d667de382111a0e565fbc3b3b0d18191c8fd6709244e8c681af4650"
+    },
+    {
+      "path": "V86_BIG_PASS_REPORT_RU.md",
+      "bytes": 6810,
+      "sha256": "47998e4a2c9f90e2c33cdea0e81fc2e04ac7cf58c4f49c2bef01833ae05e1469"
+    },
+    {
+      "path": "V86_NEXT_FRONTIER_PLAN_RU.md",
+      "bytes": 1516,
+      "sha256": "3c80d53c327f6266f737d608a0c50013f5bb42cfb11c646bf7895d670fe1087c"
+    },
+    {
+      "path": "V86_RESEARCH_ALIGNMENT_RU.md",
+      "bytes": 872,
+      "sha256": "8363cec0803077c4fd55d1d4a3dc48569f9bb0e7daa11b05453d0f968defbd43"
+    },
+    {
+      "path": "V87_BIG_PASS_REPORT_RU.md",
+      "bytes": 6299,
+      "sha256": "eb61b7cd2c2d2bc5aa5c4749bf78c9a852a8171cb2d9cb9bdb7dd9265c444a1e"
+    },
+    {
+      "path": "V87_NEXT_FRONTIER_PLAN_RU.md",
+      "bytes": 1107,
+      "sha256": "6a6dc5c49355d1281d82c7541106f6523fe6a75f322d7f80d21bee58f8698e32"
+    },
+    {
+      "path": "V87_RESEARCH_ALIGNMENT_RU.md",
+      "bytes": 1434,
+      "sha256": "72c2d0ae6b90fd3a70cc3570524d89e38e71ac6993d6939448fbf4d15b5d7a76"
+    },
+    {
+      "path": "V88_BIG_PASS_REPORT_RU.md",
+      "bytes": 7742,
+      "sha256": "87ca5d096cac773c433c6c63eb8086e63eed6da54283de72e6bc1065e6cd73f8"
+    },
+    {
+      "path": "V88_NEXT_FRONTIER_PLAN_RU.md",
+      "bytes": 1165,
+      "sha256": "ee93bb56eac61f656ff7cf89c16a447955e404eb2a0c59f36f81cfe1f139333a"
+    },
+    {
+      "path": "V88_RESEARCH_ALIGNMENT_RU.md",
+      "bytes": 1601,
+      "sha256": "a295f93b6560bd6f84a07e020f465c9522b9e83e540ccbc6f84f6555dca25062"
+    },
+    {
+      "path": "V89_AUDIT_RESULT_RU.md",
+      "bytes": 3217,
+      "sha256": "fcc1c49c3496dd09dd68fb99dd941085415d3be04c294f87845dd45b49ef0a24"
+    },
+    {
+      "path": "V90_NEURALITY_PASS_REPORT_RU.md",
+      "bytes": 5205,
+      "sha256": "d63e45000737d75ac555e5920fbd00050d0b0c1a67ebaf1d8c8537a67ddb1c03"
+    },
+    {
+      "path": "V91_NEURALITY_PASS_REPORT_RU.md",
+      "bytes": 2669,
+      "sha256": "6f072ffe7ad5256706985d79ed244f9c7431f17d3acfaad3fdb1d5759a4435cc"
+    },
+    {
+      "path": "V91_NEXT_FRONTIER_PLAN_RU.md",
+      "bytes": 1329,
+      "sha256": "423b27268c306ebad5a312debc1f8d88821e8b018751327047c514a1dd1a274b"
+    },
+    {
+      "path": "V92_SOURCE_BACKED_PLAN_RU.md",
+      "bytes": 712,
+      "sha256": "9e81bff979998eebecfab25932efe1aae62f487c60ad198b75437a1e1877b25d"
+    },
+    {
+      "path": "V92_UPSTREAM_FUSION_PASS_REPORT_RU.md",
+      "bytes": 1745,
+      "sha256": "3637b81981cd76287b2dd59576d030fbce76076e31a459246811e8b02bb183ae"
+    },
+    {
+      "path": "V93_NEXT_FRONTIER_PLAN_RU.md",
+      "bytes": 1319,
+      "sha256": "b48842b61419cb11f500297fe814feced306c0b5d09901493a7faad845f9c1e3"
+    },
+    {
+      "path": "V93_SOURCE_FUSION_PASS_REPORT_RU.md",
+      "bytes": 1965,
+      "sha256": "68eadf69001307d4acd91a43609116bc00900a3993fcc59e4af49b5e26d91191"
+    },
+    {
+      "path": "V94_NEURAL_REGULATION_PASS_REPORT_RU.md",
+      "bytes": 3790,
+      "sha256": "1af57544f60bb516761b1d80972e71c2007cb0d7a53f7baa10cf002a1c1100a4"
+    },
+    {
+      "path": "V94_NEXT_FRONTIER_PLAN_RU.md",
+      "bytes": 1188,
+      "sha256": "adc094fe4912a10bf2737af52bd4a65d2df8a66dabb24718d6d0e62d97bd55c8"
+    },
+    {
+      "path": "V94_RESEARCH_LEDGER_RU.md",
+      "bytes": 1468,
+      "sha256": "410b5ff50698b5910f970fe39c4ca1818d3ad0f159f11ad8ef98090be2a1632a"
+    },
+    {
+      "path": "V95_NEXT_RESEARCH_FRONTIER_RU.md",
+      "bytes": 1140,
+      "sha256": "ac67f73b5322a88dcf18bd19a40217eb5061152ec386ae3c6753656dbf5e1429"
+    },
+    {
+      "path": "V96_NEURAL_PASS_REPORT_RU.md",
+      "bytes": 3221,
+      "sha256": "1af40c18b4920c090994e8ce06af548bbdd2e1d5d45c6ab491f0e191d0408f33"
+    },
+    {
+      "path": "V96_NEXT_FRONTIER_PLAN_RU.md",
+      "bytes": 1568,
+      "sha256": "2782bf9cee0bba11fdce2f12cc37d0a5e672910360f4ba808e58794493b92599"
+    },
+    {
+      "path": "VERSION_POLICY_RU.md",
+      "bytes": 1482,
+      "sha256": "2e49351b8be9e21ce104fb2a3fd606bd6f84612da250c87d48b336a3298b9a9a"
+    },
+    {
+      "path": "benchmarks/baselines/v90_spine.py",
+      "bytes": 9343,
+      "sha256": "6bafa682e0c8704199e4325f037dbe6d83d132183295982f66822fd9c88fc2d1"
+    },
+    {
+      "path": "benchmarks/current/README_RU.md",
+      "bytes": 390,
+      "sha256": "83f42b33cf9a19303ca080cb1ef99950ec2adb20a10c080273d63d710aac6775"
+    },
+    {
+      "path": "benchmarks/current/V94_NEURAL_LIFECYCLE.py",
+      "bytes": 5477,
+      "sha256": "39d62bb9758240db6f69a8e3b8c1e874264879324b3c8bebcaec40d458ebeed6"
+    },
+    {
+      "path": "benchmarks/history/bench_v91_qualification.py",
+      "bytes": 4938,
+      "sha256": "30c014a1a4674b3253780f71857d46e3798393eb1689ce975171693d13771aac"
+    },
+    {
+      "path": "benchmarks/source_backed/benchmark_adapter_matrix.py",
+      "bytes": 1001,
+      "sha256": "a71bf9c3dffd8ea030f23a5320bfc5a04e70079965e8bf32d326bcf311376054"
+    },
+    {
+      "path": "benchmarks/v82/V82_BALANCER_ABLATION.py",
+      "bytes": 3389,
+      "sha256": "336c22f1ba90c28e1d4ee3ccbdcfe1c839132444d31b104520aba9573759cdf9"
+    },
+    {
+      "path": "benchmarks/v82/V82_RECURRENT_TOURNAMENT.py",
+      "bytes": 4666,
+      "sha256": "ca3c8ce9ca36579be217da8205a464a905bacc02c2157763947a743d879358eb"
+    },
+    {
+      "path": "benchmarks/v82/V82_SPINE_ABLATION.py",
+      "bytes": 2416,
+      "sha256": "6c4a13d7532a1f28df02a90ecb30353d7501eea8a8eb8b9d6e47d01b55d903d5"
+    },
+    {
+      "path": "benchmarks/v84/V84_SHORT_AB.py",
+      "bytes": 1987,
+      "sha256": "e330800a437779448771c59f2c5621f342393a31bd0d7ad283cf6c0e1394e733"
+    },
+    {
+      "path": "benchmarks/v84/V84_SHORT_AB_RESULT.json",
+      "bytes": 1203,
+      "sha256": "4e2f6ee19c54e3c721c4d3cc27531dff121ce0c4c88a98c93885e276a8b11a03"
+    },
+    {
+      "path": "benchmarks/v85/V85_COMPACT_3SEED_RESULT.json",
+      "bytes": 13185,
+      "sha256": "06364eac3c1fd48bd846eae0f644de618b5d5f4a41c944d2a714c681fca14ca2"
+    },
+    {
+      "path": "benchmarks/v85/V85_EXTERNAL_CONTINUAL.py",
+      "bytes": 467,
+      "sha256": "18c88325e6acdcbbe403c1dbcecf4764fa97fb4590239f6f55c88118cdf4c4c7"
+    },
+    {
+      "path": "benchmarks/v85/V85_STRESS_1SEED_OBSERVED.json",
+      "bytes": 1750,
+      "sha256": "36e851fc9757b1114ef540f3ac8a7c2d6d0cb4dfd3f2ea50bcfc4cbc069afc5e"
+    },
+    {
+      "path": "benchmarks/v86/V86_REPLAY_INFORMATION.py",
+      "bytes": 11197,
+      "sha256": "0441255abaf567447c0d82650680e0ce301ef81414063ffe0b954ff35da7fac3"
+    },
+    {
+      "path": "benchmarks/v86/V86_REPLAY_INFORMATION_RESULT.json",
+      "bytes": 9849,
+      "sha256": "af027601aecbf0197da926418d9030537cbe8774d709d5f8b95971509a7884a9"
+    },
+    {
+      "path": "benchmarks/v87/V87_CONFLICT_STRESS.py",
+      "bytes": 4056,
+      "sha256": "1e4077a0300c1d556f4cb1d7ee3cf659c78066734f872abf1399e3aeedf80e70"
+    },
+    {
+      "path": "benchmarks/v87/V87_CONFLICT_STRESS_RESULT.json",
+      "bytes": 13265,
+      "sha256": "84d723679951a103e30b34c66f3209bc5441809d013b31355ef1a005dcc3bef8"
+    },
+    {
+      "path": "benchmarks/v87/V87_MODEL_AWARE_REPLAY.py",
+      "bytes": 3293,
+      "sha256": "550470e9b930a2c248c47d74029640e1577cf277e769303caf2de555a60aecee"
+    },
+    {
+      "path": "benchmarks/v87/V87_MODEL_AWARE_RESULT.json",
+      "bytes": 3261,
+      "sha256": "2d6c84939a64782d72b60851a5e3276ae354ec28c22125dd5906a3728fd06549"
+    },
+    {
+      "path": "benchmarks/v87/V87_UTILITY_CAUSAL_RESULT.json",
+      "bytes": 370,
+      "sha256": "8f3c2733a2aa241e1d9176666e6f80cc7424d72585dff07ae080de41bdc79e62"
+    },
+    {
+      "path": "benchmarks/v88/V88_CACHE_AB.py",
+      "bytes": 3483,
+      "sha256": "ea1a05c614a7f5c722657a7daf4a37a3ca87052a239363adda461917b30e3042"
+    },
+    {
+      "path": "benchmarks/v88/V88_CACHE_AB_RESULT.json",
+      "bytes": 2763,
+      "sha256": "b2cb11f1d4a6548f90ed16f5dbc6c378b3e80a1a11275a92aa575c4a706500d9"
+    },
+    {
+      "path": "benchmarks/v88/V88_CACHE_AB_RESULT_CLEAN.json",
+      "bytes": 633,
+      "sha256": "40a8e068d73a4c8616a3b94be0effe24e523c483902852b9010f0de7996c4a8d"
+    },
+    {
+      "path": "docs/CURRENT_ARCHITECTURE_RU.md",
+      "bytes": 2796,
+      "sha256": "5b94051ada991e52c2e387fc439bc38d47c3f9eb05412b0ec5b414841305f46b"
+    },
+    {
+      "path": "docs/PASS_PROTOCOL_RU.md",
+      "bytes": 3242,
+      "sha256": "452df889e62a1e2209c62c11fefe0e170acd9b867185fcad6fc0c6e61aa09b36"
+    },
+    {
+      "path": "docs/RESEARCH_ADMISSION_POLICY_RU.md",
+      "bytes": 1575,
+      "sha256": "08fa64492d35a84eda303c84907c0abe70a34f0e74f6eab02bd234b3d1f1db4a"
+    },
+    {
+      "path": "docs/SOURCE_BACKED_FUSION_RU.md",
+      "bytes": 1592,
+      "sha256": "497e9f9d13b5566cccb41811cfc33070610e25fdac0b032c46fee76a80de7617"
+    },
+    {
+      "path": "docs/UPSTREAM_SOURCE_WORKFLOW_RU.md",
+      "bytes": 1752,
+      "sha256": "2da54469db7071425bf885d40b6c565d874e96b7ade09306ebd5f829918c9050"
+    },
+    {
+      "path": "evidence/V92_SOURCE_BACKENDS_STATUS.json",
+      "bytes": 235,
+      "sha256": "ff6c2dee3f39b99ede7d7ace4774c63149770ea449270846d29b9bb057ae3efd"
+    },
+    {
+      "path": "evidence/V93_FLA_EXPORT_SURFACE.json",
+      "bytes": 462,
+      "sha256": "b386f8c9d9f293b967d54cdb81a2a0a247a2988005cdd64e0baf911f17c38c83"
+    },
+    {
+      "path": "evidence/V93_UPSTREAM_SOURCE_MAP.json",
+      "bytes": 1479,
+      "sha256": "f2622398c181b6b3e7a739e2d5128a8bd81a7718e5c6453cee5ecd9778b254ea"
+    },
+    {
+      "path": "evidence/V94_NEURAL_REGULATION_EVIDENCE.json",
+      "bytes": 2914,
+      "sha256": "d976191748f632148b74946ed4440289eed20f15004d0e687cd48db2e35dd486"
+    },
+    {
+      "path": "evidence/V96_EVIDENCE_SUMMARY.json",
+      "bytes": 1253,
+      "sha256": "f2d8b95021d5ff21a6c8285821bbf97bf3ce836cdee89c9226e78112069bc20f"
+    },
+    {
+      "path": "evidence/rejected_v91_experimental_plasticity_benchmark.json",
+      "bytes": 5515,
+      "sha256": "19439e28b9dc9cdea812372e23b0532b4a98229497a49f46e849702719bb9e7f"
+    },
+    {
+      "path": "evidence/v90_spine_recall_benchmark.json",
+      "bytes": 2363,
+      "sha256": "e2029b99f0100df7d238f2bdf002043a51092546ec40656b598209ae6af97b00"
+    },
+    {
+      "path": "evidence/v90_spine_recall_summary.json",
+      "bytes": 787,
+      "sha256": "dd946aaf31f057eb954f71f6ee5ffd1433e82042eba8dad431eb54d331b6b278"
+    },
+    {
+      "path": "evidence/v91_rejected_candidates.json",
+      "bytes": 578,
+      "sha256": "8b7c7875d848a73aca0750f888abe8c2b693a50c7f24f09480a9471c67212636"
+    },
+    {
+      "path": "evidence/v91_sequence_local_preconditioner.json",
+      "bytes": 3349,
+      "sha256": "50d38b2d838df5a37d5a71cadf5c061d6d2fe3771c66398ad2a49135d596ed54"
+    },
+    {
+      "path": "evidence/v91_sequence_local_preconditioner_summary.json",
+      "bytes": 640,
+      "sha256": "e3c90f0c89ac56885761d723f1d04d048b9f4467bc6d18ccfa13d462e33cc698"
+    },
+    {
+      "path": "evidence/v95_adaptive_compute_benchmark.json",
+      "bytes": 1820,
+      "sha256": "c52f763867e8765a6c4f3a3cb5b127bbbc3d8dbf039054ff47cdc0bb3608f719"
+    },
+    {
+      "path": "evidence/v95_online_plasticity_benchmark.json",
+      "bytes": 5087,
+      "sha256": "1e13984865ddd174aaa529e595ae1c7a1e9b49f683944a7e49eba46e9716eae2"
+    },
+    {
+      "path": "evidence/v96_long_delay_quick_benchmark.json",
+      "bytes": 1156,
+      "sha256": "28c42e18cf3650612832163f23c7a9b301525596f31eb6d6a0286679b311ceb7"
+    },
+    {
+      "path": "pyproject.toml",
+      "bytes": 517,
+      "sha256": "43ed49975ddbce212a2b21bf3b39b60955eb373ee16b2b88f897cd5cf00fec5a"
+    },
+    {
+      "path": "scripts/admit_upstream_source.py",
+      "bytes": 3986,
+      "sha256": "565503361bee5ba534169ef40a88e9456f3113c37c64a383446e4c6214e94f65"
+    },
+    {
+      "path": "scripts/bench_v90_spine.py",
+      "bytes": 4719,
+      "sha256": "48d1ac26c55971092783c9a57866fb5016b8be2b6cb0f2959d4b5e41f34e28d3"
+    },
+    {
+      "path": "scripts/bench_v95_adaptive_compute.py",
+      "bytes": 4349,
+      "sha256": "09d77da8201976c67a69b1c05f078d213aedc7df89e02881a9150bee43e23f0e"
+    },
+    {
+      "path": "scripts/bench_v95_online_plasticity.py",
+      "bytes": 4484,
+      "sha256": "a89157e3e44cd06e69b7addd7573f4dca7a015a3c860305275e43b89fb0fc68d"
+    },
+    {
+      "path": "scripts/bench_v96_long_delay.py",
+      "bytes": 4295,
+      "sha256": "63513921f137d140647fba859f4ab95302fb0f3c83357ea2ce2af0ac856a6611"
+    },
+    {
+      "path": "scripts/bench_v96_long_delay_quick.py",
+      "bytes": 4299,
+      "sha256": "5a625b76a9cc51a0eeaf093141b4d2cc9fbaa28d40fffa2134fe670bb69cd961"
+    },
+    {
+      "path": "scripts/fetch_upstream_source.py",
+      "bytes": 2089,
+      "sha256": "06cf26b6d6a7a01dfc1058da11b1270ca2c7427fa258e5d610a759d43f5e0602"
+    },
+    {
+      "path": "scripts/probe_upstream_backends.py",
+      "bytes": 4763,
+      "sha256": "44085e4e81fe13044454bb97320a1143ef806ba1a503adbd3a7aaa6d9dd8958d"
+    },
+    {
+      "path": "scripts/verify_current.py",
+      "bytes": 3093,
+      "sha256": "5f4a64360d30b1b96a7d390bbd90ccf4102c842a13372bb8a9d9193e5cc480c3"
+    },
+    {
+      "path": "src/neurocore/__all__.py",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "src/neurocore/__init__.py",
+      "bytes": 1386,
+      "sha256": "69d64c015985292b444c0a051e952d29f69e61def0568fa97af829cf972ca455"
+    },
+    {
+      "path": "src/neurocore/ablation_v07.py",
+      "bytes": 824,
+      "sha256": "91176f28100bb9fa9ee7aa03649eacf377909abaf49cfe82c18467183abe1764"
+    },
+    {
+      "path": "src/neurocore/active_policy_v7.py",
+      "bytes": 736,
+      "sha256": "f3f1caf908efa4f0854a4cdd9844e166dd1ff66662bc9fbed6c183bf2f6a4ad5"
+    },
+    {
+      "path": "src/neurocore/addressable_memory_v6.py",
+      "bytes": 2359,
+      "sha256": "6b36f058404389f09d8a955634b770ece1ad707a87c0bbeb086b082263e009f2"
+    },
+    {
+      "path": "src/neurocore/associative.py",
+      "bytes": 2058,
+      "sha256": "485db375a2f0fa49bc84453a61207f5aeb7699e43d8c3beb27f55182b9d7143e"
+    },
+    {
+      "path": "src/neurocore/associative_bank.py",
+      "bytes": 3056,
+      "sha256": "eef5288640dc1b55502317fdceb9d111a2b69a3de40b86e6fc1f22abe88361d0"
+    },
+    {
+      "path": "src/neurocore/attention.py",
+      "bytes": 2128,
+      "sha256": "4bc201d4aeb876f5afc442559e02e9c97ec3f16ff7bdc655359479c13eb8bbde"
+    },
+    {
+      "path": "src/neurocore/baseline_suite_v10.py",
+      "bytes": 1346,
+      "sha256": "37dc997c3b4653645287065305ee7d742a0285c28e7b23bf97b258a329668b27"
+    },
+    {
+      "path": "src/neurocore/baselines.py",
+      "bytes": 1029,
+      "sha256": "1a89de1d64b808c26468a6dffcfd55888b72d2ddd9ad70981043f833a79f12ed"
+    },
+    {
+      "path": "src/neurocore/baselines_v11.py",
+      "bytes": 1116,
+      "sha256": "d90d4e75e8097446254fd17599325c9009c0ba62d29ebacece1e7531c547ce9a"
+    },
+    {
+      "path": "src/neurocore/benchmarks_v09.py",
+      "bytes": 1367,
+      "sha256": "9449f563e5047858819e2cf07a42fcbc1785b25e0912d2910e67c3fe02b9e2a2"
+    },
+    {
+      "path": "src/neurocore/binding_v3.py",
+      "bytes": 1446,
+      "sha256": "a723bcfe1b43267edcbbdc6b083bf413ef0cfaaabfb37ef0153f07d70fdc0749"
+    },
+    {
+      "path": "src/neurocore/calibration.py",
+      "bytes": 599,
+      "sha256": "c0c058a2856fe4f98d98e77a1cf71c350e97ce49704243b363293f256d90df03"
+    },
+    {
+      "path": "src/neurocore/causal_probe_v7.py",
+      "bytes": 566,
+      "sha256": "eba3d0bdb8ecec666ca5d5ca086de08f7042c0446801e99687afdcc9766d760f"
+    },
+    {
+      "path": "src/neurocore/checkpoint_v07.py",
+      "bytes": 634,
+      "sha256": "fca4bcd0826e46d436c02dc3b7f27356bcd0805a2664eaed2228991759124e2a"
+    },
+    {
+      "path": "src/neurocore/compute_controller.py",
+      "bytes": 1682,
+      "sha256": "88b1654d11c979fb1d603545087ede02407cc38912b1f5c6c025005b89101c1c"
+    },
+    {
+      "path": "src/neurocore/consolidation.py",
+      "bytes": 1239,
+      "sha256": "4468517403295c430ba15e757bb774a7f362cdd240ad6672abf22f4032016b70"
+    },
+    {
+      "path": "src/neurocore/continual.py",
+      "bytes": 1794,
+      "sha256": "43a49f6f5067f97e6cf5e0b7ad3465e616681efa07063f8134333a44dff52815"
+    },
+    {
+      "path": "src/neurocore/continual_v2.py",
+      "bytes": 2396,
+      "sha256": "028114512d1622fc5dc8cd7c7d2aa6681ab5c38e4159c8fe1884739e4d490544"
+    },
+    {
+      "path": "src/neurocore/continual_v3.py",
+      "bytes": 682,
+      "sha256": "e9f0a2e1e93872a74429643db78c292617ec1297b754c9285a6f01f2fde3e3e7"
+    },
+    {
+      "path": "src/neurocore/core.py",
+      "bytes": 2145,
+      "sha256": "b90c5ca95b2b1eb068df5dd556b1798b9b7f24efdfd8259d8998c7b705ada535"
+    },
+    {
+      "path": "src/neurocore/counterfactual_v3.py",
+      "bytes": 943,
+      "sha256": "7e03b613ea79b0cc6172ae254f349a647dba4c5e31f183c5b3059f9e3ac52ecf"
+    },
+    {
+      "path": "src/neurocore/current/__init__.py",
+      "bytes": 1719,
+      "sha256": "bbb87741f13e278a8414dcd2be7e203ad932d5fd3314964d33b9a8d25b8a9fc1"
+    },
+    {
+      "path": "src/neurocore/current/adaptive_compute.py",
+      "bytes": 2326,
+      "sha256": "63a6c577c89f692ccf6a8012bde6cca3fa1436154bc976dc8f321ef525481f0b"
+    },
+    {
+      "path": "src/neurocore/current/contracts.py",
+      "bytes": 1666,
+      "sha256": "9f63804d4459ffbe00c86ec77766040aefe4865f2226a8c5f2d39ae32b438705"
+    },
+    {
+      "path": "src/neurocore/current/core.py",
+      "bytes": 15798,
+      "sha256": "9939c40747c7cc07435fccc23eddbe3067ecc6a93a4634e96d18f7fe077dde56"
+    },
+    {
+      "path": "src/neurocore/current/neural_lifecycle.py",
+      "bytes": 12529,
+      "sha256": "16d29467a7f8dd218117110ff3eab858ae98f1129740e91a1559850134705790"
+    },
+    {
+      "path": "src/neurocore/current/neural_spine.py",
+      "bytes": 20571,
+      "sha256": "981c26b5ab107cfb44e3b473623c289feb0ebfb5fd935f4caff119cd1e4fa16c"
+    },
+    {
+      "path": "src/neurocore/current/online_plasticity.py",
+      "bytes": 6578,
+      "sha256": "c1ad7505cb3c0d7989a11e84f76f670a9559817a0f249043955f9b3ce48ddc54"
+    },
+    {
+      "path": "src/neurocore/current/registry.py",
+      "bytes": 5211,
+      "sha256": "fa85f8251f04aaf250c3e9d4fe5e2e6ff701fd349c9897a81e364332b77388dc"
+    },
+    {
+      "path": "src/neurocore/current/temporal_dynamics.py",
+      "bytes": 1773,
+      "sha256": "83fab70f5a849b4abd7e07ff21a1d53193435c9a1052ab51f5200c02f2c592c4"
+    },
+    {
+      "path": "src/neurocore/current/upstream.py",
+      "bytes": 13724,
+      "sha256": "306fa9582560fb653b3eca52870f87057b0ed0136fd151303d1977f0784e6e18"
+    },
+    {
+      "path": "src/neurocore/current/upstream_adapter.py",
+      "bytes": 2403,
+      "sha256": "4e88772011ad7d4c3245abc23daebbf7699b96e450c12958d3a89397c973f6a6"
+    },
+    {
+      "path": "src/neurocore/drift_recovery_v7.py",
+      "bytes": 514,
+      "sha256": "fcb5c3ba67da8df533e8052c2c11dcb53e262dd9952f864902bade2b6a876326"
+    },
+    {
+      "path": "src/neurocore/energy_v3.py",
+      "bytes": 566,
+      "sha256": "3423f4132bdd1bc362cd22b829eb13fe5fcd721efb4a1e66f687af11dc595234"
+    },
+    {
+      "path": "src/neurocore/eval_v09.py",
+      "bytes": 673,
+      "sha256": "90e5e2009145f71b4ba1bdb42efb3f6ad2c9960499b16df37a671148154761c3"
+    },
+    {
+      "path": "src/neurocore/evidence_v10.py",
+      "bytes": 648,
+      "sha256": "ecb586e8043a5ecd26ea675f8a57e4ee8b0b2a1c955a708e02129254f407d74a"
+    },
+    {
+      "path": "src/neurocore/exports.py",
+      "bytes": 1763,
+      "sha256": "fa6ac6ac5a95f352c1eb4a7ec3bd90dfde3350447ddfbfe0188961ec4e0b9b50"
+    },
+    {
+      "path": "src/neurocore/frontier.py",
+      "bytes": 1298,
+      "sha256": "dee7f875ab8e5e86b9e64a0b355e3761cc6d5616b561bc2c4f9e48e22648c7e4"
+    },
+    {
+      "path": "src/neurocore/gated_delta.py",
+      "bytes": 1716,
+      "sha256": "ba9532ef8472d28d8777ee16d5eb8fa1686fc8e1a77f81a46bf6a8ee912d5fb0"
+    },
+    {
+      "path": "src/neurocore/homeostatic_budget.py",
+      "bytes": 1533,
+      "sha256": "7fe6a116b4a3968ba0ff83fb4b71d44a3e518b92ecccb165cf5f5969e23e1136"
+    },
+    {
+      "path": "src/neurocore/hybrid.py",
+      "bytes": 1951,
+      "sha256": "47df336c634b9236a53dd7260bd2be712d6a94ab221a6b14904b99ef113b944d"
+    },
+    {
+      "path": "src/neurocore/information_gain.py",
+      "bytes": 526,
+      "sha256": "8ff17d3b89e3dc7b6163b4ff7cf6f35a483ac254b48a84d0620ed3e48a784a56"
+    },
+    {
+      "path": "src/neurocore/integration_v11.py",
+      "bytes": 820,
+      "sha256": "a85a73ff10cc939ae9f64064633772945a550a83ffd494cfc2b3375833da23dc"
+    },
+    {
+      "path": "src/neurocore/integrity_v07.py",
+      "bytes": 580,
+      "sha256": "32652b053253b2f7fd7448568a23bd90c722145d3da66cfd144aa90db6c9d933"
+    },
+    {
+      "path": "src/neurocore/local_plasticity_v7.py",
+      "bytes": 559,
+      "sha256": "579967b2ae3e9fa80d1e62e41352f8308e4c12cc192badaf49e172490d60743c"
+    },
+    {
+      "path": "src/neurocore/memory.py",
+      "bytes": 1175,
+      "sha256": "f178ca57c4cf6be7a54dc9f5dd18ebce7bcaad4cd4963eb8c12374fa506077c3"
+    },
+    {
+      "path": "src/neurocore/metrics.py",
+      "bytes": 568,
+      "sha256": "d1258b492174c99d3da713b4ce39cf4cf1b82210b2197afdfe02bff5498e4a5e"
+    },
+    {
+      "path": "src/neurocore/metrics_v11.py",
+      "bytes": 750,
+      "sha256": "9058cf5af41e8e85b6eb6927a95dfad803eb6872111235daf3228e45fcf76105"
+    },
+    {
+      "path": "src/neurocore/model.py",
+      "bytes": 9222,
+      "sha256": "57519fff69680ac57c26dbdd3374501f74a8fdc4790930df1b7abc0fe8cabd67"
+    },
+    {
+      "path": "src/neurocore/model_v07.py",
+      "bytes": 8507,
+      "sha256": "9a170a648816394db2ff74f90d4763a7022970c235554b55848e3cd8bae7edae"
+    },
+    {
+      "path": "src/neurocore/multimodal.py",
+      "bytes": 1795,
+      "sha256": "3e45700cad74478980638a1aac07f2e3b6a66b72efb1d6d5eb8804b54b3623a2"
+    },
+    {
+      "path": "src/neurocore/neural_field_v7.py",
+      "bytes": 5165,
+      "sha256": "7e15794ce000d24f5dca362f150cdc05985f8894e456a8ce19508796183a6329"
+    },
+    {
+      "path": "src/neurocore/neuro_weave.py",
+      "bytes": 1799,
+      "sha256": "f2fb828b820ef88f1468a196fb78b4bbf97d4275e8f4bf4a3b90f74db0f8397e"
+    },
+    {
+      "path": "src/neurocore/neuro_weave_v2.py",
+      "bytes": 5687,
+      "sha256": "064f3557921a892af75754aa20fa468fe26f80bd8c722c4f1d5c26d913433358"
+    },
+    {
+      "path": "src/neurocore/neuro_weave_v3.py",
+      "bytes": 10795,
+      "sha256": "d4cd76aafc1eb43b213c1cc95fa87184d6a4a490527b347823de8edbad47580f"
+    },
+    {
+      "path": "src/neurocore/neuroweave_v4.py",
+      "bytes": 3473,
+      "sha256": "09687796fb678c846f54ba7ec8650a7dee7190715f2253cb9f5370f58133fb32"
+    },
+    {
+      "path": "src/neurocore/neuroweave_v5.py",
+      "bytes": 6267,
+      "sha256": "d47f912687b4e3e48631ec3c816736a3f77f8b23064758e626cdf98f4ff01742"
+    },
+    {
+      "path": "src/neurocore/neuroweave_v6.py",
+      "bytes": 4359,
+      "sha256": "5091090b8335327ce51fed3dfe7e75357b1558c7071e1771ca1dc5f928a51513"
+    },
+    {
+      "path": "src/neurocore/neuroweave_v7.py",
+      "bytes": 2166,
+      "sha256": "74c6035dd21c618a01a62b87698bc1f4a073bed8372122b3eaf52d241a8043a0"
+    },
+    {
+      "path": "src/neurocore/novelty.py",
+      "bytes": 1151,
+      "sha256": "438e416bd8e2bd9847c9867e614f2d9976687f4320f465c885ea62f213415235"
+    },
+    {
+      "path": "src/neurocore/objectives.py",
+      "bytes": 1027,
+      "sha256": "c62a57a20016e0fdcbdaef5ed6cedf7632fab524e170feba4d94cd7955c3ab4d"
+    },
+    {
+      "path": "src/neurocore/objectives_v2.py",
+      "bytes": 1118,
+      "sha256": "3d9e64cffd9ebbdd123e35118bf409e4e65c8c037e1a41f9f4b12fb82c3b6796"
+    },
+    {
+      "path": "src/neurocore/objectives_v3.py",
+      "bytes": 2484,
+      "sha256": "dc3a0064e523c543cf914ee3d0daf6eb6ce72c50576b7538347c88e218e65515"
+    },
+    {
+      "path": "src/neurocore/parameter_budget.py",
+      "bytes": 533,
+      "sha256": "307b30cf7602ccc0725e60b9f2dac7677688a71256a46e2956c080c3311ece92"
+    },
+    {
+      "path": "src/neurocore/planner.py",
+      "bytes": 1160,
+      "sha256": "b88a02943f61e9df25503d3adb1bce0bdd1ebb1b94e1c371f5af764b48d387e0"
+    },
+    {
+      "path": "src/neurocore/plasticity_gate.py",
+      "bytes": 614,
+      "sha256": "317fd0f6e52b43c3b87ce293be7b954bea81d5dbcef436766b9bbdc78eff4971"
+    },
+    {
+      "path": "src/neurocore/plasticity_v3.py",
+      "bytes": 1605,
+      "sha256": "b7d3643769b1f3174ceb14272d4f16dd5ef4aaeb3f12148a469f808cdde69e3a"
+    },
+    {
+      "path": "src/neurocore/predictive_coding.py",
+      "bytes": 1377,
+      "sha256": "b5c2b594f169eeacfa295dcc4ec2fe45cc2f13775584aa9550e60f285a5c6585"
+    },
+    {
+      "path": "src/neurocore/probes.py",
+      "bytes": 1088,
+      "sha256": "90c2a46d54c10cc22d9674160363ba91c93b5d9c6c8e2a255e5e475b10ed936f"
+    },
+    {
+      "path": "src/neurocore/py.typed",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "src/neurocore/qual_metrics_v13.py",
+      "bytes": 848,
+      "sha256": "4f6c578d0265141b2d28062b265c3db2d0ae29aa622093506e64983adca19125"
+    },
+    {
+      "path": "src/neurocore/qualification_v10.py",
+      "bytes": 980,
+      "sha256": "b7a9d765a8bc8560f6bebdc61cf24c16ba75299ba0a3da8adf5b51ebd6ea4280"
+    },
+    {
+      "path": "src/neurocore/qualification_v11.py",
+      "bytes": 2654,
+      "sha256": "7737952af5511a22aee0a6102a809aad2c6d4f5fe7a4600b97c840c37356eff2"
+    },
+    {
+      "path": "src/neurocore/quantization.py",
+      "bytes": 1482,
+      "sha256": "3d6a8bd2b13ba9ae363289bb96e4767071d3c39bc19b00e8cb7d2363a28b64b4"
+    },
+    {
+      "path": "src/neurocore/replay_consolidation.py",
+      "bytes": 2029,
+      "sha256": "b24d18eda24c55b9fa5d25efd12973b895e9b74db4b7f84a1368fc4b931d70b4"
+    },
+    {
+      "path": "src/neurocore/retrieval.py",
+      "bytes": 1937,
+      "sha256": "a9fd4b1a2cf21017b24b77ee5637f1652132fde28abe41593742a29e35bb4459"
+    },
+    {
+      "path": "src/neurocore/router.py",
+      "bytes": 935,
+      "sha256": "5f049dee13a1fb25548355c5054f30b660e101154251a42cba24d7a0ad861108"
+    },
+    {
+      "path": "src/neurocore/runtime.py",
+      "bytes": 2499,
+      "sha256": "b48a4d793dc1ece83a72a1f06ae7d323b31351ca06950c8936925daeeb737cdc"
+    },
+    {
+      "path": "src/neurocore/runtime_learning.py",
+      "bytes": 1000,
+      "sha256": "a283e62bf3a05de166e0a5caabf20596def9b9dae2f60e370c814f1f919d7a49"
+    },
+    {
+      "path": "src/neurocore/tasks_v07.py",
+      "bytes": 889,
+      "sha256": "06827f619cfe819e913e85fb688bd20f8c2e8efe58ad15822f6d23e1808b2c09"
+    },
+    {
+      "path": "src/neurocore/tasks_v10.py",
+      "bytes": 718,
+      "sha256": "9afc1321b89a2aa6df8bccb980334111e63641088ffe96f934f3067d94f5d0d1"
+    },
+    {
+      "path": "src/neurocore/tasks_v11.py",
+      "bytes": 553,
+      "sha256": "3791720f6fa9dd996f85ae773dd5e39e0dd730d1039d901de72f0f383bc9e738"
+    },
+    {
+      "path": "src/neurocore/temporal.py",
+      "bytes": 1390,
+      "sha256": "ae466ef079c13c769295dff77935be858389c15401fec44a89a0a5de79e56383"
+    },
+    {
+      "path": "src/neurocore/trace_memory.py",
+      "bytes": 3424,
+      "sha256": "3ff124eb5e9122992b4a44613792e70babc59b6fcaf3ce682bcbd451900aa9bc"
+    },
+    {
+      "path": "src/neurocore/trace_memory_v7.py",
+      "bytes": 1406,
+      "sha256": "b747b60460b9a38fdf9d2afcddefb27d5e94d528f4f07ba0f93fc99b18e659ba"
+    },
+    {
+      "path": "src/neurocore/training_v07.py",
+      "bytes": 1149,
+      "sha256": "022790195a4659593bedc5d4e2c7fc234a6df8c1b60670e54900ab63cabc3c3a"
+    },
+    {
+      "path": "src/neurocore/tri_scale.py",
+      "bytes": 2086,
+      "sha256": "1288607029932377a0abaa5e31440b99a1ad80e518ef04421deda93da3da3a4a"
+    },
+    {
+      "path": "src/neurocore/v14/__init__.py",
+      "bytes": 110,
+      "sha256": "c31b515bd7b7e4947134b046d17978d5a13a2b493a1231a9bd016e791650186f"
+    },
+    {
+      "path": "src/neurocore/v14/active_learning_v14.py",
+      "bytes": 473,
+      "sha256": "e8cc278d05bb330e76e2941d012f9d0d602a3f45ddebda79b40c1a5ce8521382"
+    },
+    {
+      "path": "src/neurocore/v14/baselines_v14.py",
+      "bytes": 1918,
+      "sha256": "a4691fef2befc2e112aa5ac8ba4ca3f652b448bfd983b13cd241f9e1146bcf61"
+    },
+    {
+      "path": "src/neurocore/v14/causal_v14.py",
+      "bytes": 536,
+      "sha256": "6b06bfbdebec34560b2a954c9546b8a26ba3da2d850f00d24395b1d875076c2f"
+    },
+    {
+      "path": "src/neurocore/v14/interventions_v14.py",
+      "bytes": 820,
+      "sha256": "7de1a9dfac5945f17851a44a18cf3e99a5256901dc658f3c3145b3c6e4354d45"
+    },
+    {
+      "path": "src/neurocore/v14/mobile_v14.py",
+      "bytes": 348,
+      "sha256": "fb7194b5703aef7ee91afb8f8313e6e4cd46d1da379e3fdf1a258333a0103286"
+    },
+    {
+      "path": "src/neurocore/v14/neuroweave_v8.py",
+      "bytes": 6908,
+      "sha256": "215af50c14f169e71f4841e635d1a6758c46afdd5c1ee947a7967c166797fc2c"
+    },
+    {
+      "path": "src/neurocore/v14/qualification_v14.py",
+      "bytes": 2109,
+      "sha256": "751b50a70ab21658afceb8fffa5f602cd24d272c0b8cb085e51cbe0f3ea9ea0a"
+    },
+    {
+      "path": "src/neurocore/v14/quantization_v14.py",
+      "bytes": 342,
+      "sha256": "3f630e6b310ca5f90e0401fcb5a9fef43077ccac877bbf64e3aa7ec8c216642d"
+    },
+    {
+      "path": "src/neurocore/v14/run_qualification.py",
+      "bytes": 509,
+      "sha256": "ac0c7089f29855a9efdbe0500c3b086373e76556b1be98ecd114048aed84e4d7"
+    },
+    {
+      "path": "src/neurocore/v14/tasks_v14.py",
+      "bytes": 1871,
+      "sha256": "0e9f078baabb9712e98fb8c02a12233ead8f15ca83c709fb9f72d1284f174e80"
+    },
+    {
+      "path": "src/neurocore/v15/active_v15.py",
+      "bytes": 438,
+      "sha256": "bf02e654305bebb582b130a829bf1f7503fcd8e2b3a5c3e61c17af05694e32c6"
+    },
+    {
+      "path": "src/neurocore/v15/invariants_v15.py",
+      "bytes": 355,
+      "sha256": "605b9d0262039b55974ce30f088a402980b7f6869557c78ddbb33f40d513babb"
+    },
+    {
+      "path": "src/neurocore/v15/neuroweave_v9.py",
+      "bytes": 8432,
+      "sha256": "0826c8fb9a51343e0b878ae91b58b84a5dcbcbbb44bde5d426cce024398336fd"
+    },
+    {
+      "path": "src/neurocore/v15/objectives_v15.py",
+      "bytes": 930,
+      "sha256": "b81177a825edbf1e3fa4d00b933a00c4b2158a633dcf334ac2fa990253c709a2"
+    },
+    {
+      "path": "src/neurocore/v15/plasticity_v15.py",
+      "bytes": 540,
+      "sha256": "f231f3d737f44ff6ddfa3c824ebffba8e80b658141e62810d7c535f18eaf0960"
+    },
+    {
+      "path": "src/neurocore/v15/qualification_v15.py",
+      "bytes": 1245,
+      "sha256": "d6922c437e1e5e1d95230b22332c476a175f326ce5d155c824157d8a8cb28297"
+    },
+    {
+      "path": "src/neurocore/v15_frontier/__init__.py",
+      "bytes": 280,
+      "sha256": "d814f9004147efe410422097f2f43ecef48b205361f470c76de0d725f144880a"
+    },
+    {
+      "path": "src/neurocore/v15_frontier/core.py",
+      "bytes": 17872,
+      "sha256": "6358db7148608bf97f1c60d895fe6fc68e51a02b0d3fb7bc7ea1d106f457e7f5"
+    },
+    {
+      "path": "src/neurocore/v15_frontier/objectives.py",
+      "bytes": 907,
+      "sha256": "ebce544d12a97496322fba903c64bd39cf9f14afa0f9b61e4677c286446578f0"
+    },
+    {
+      "path": "src/neurocore/v15_frontier/qualification.py",
+      "bytes": 2326,
+      "sha256": "18d0c288136ead117ad8d535df2ffca6a5c95140f8d21e319565675ae338dcbd"
+    },
+    {
+      "path": "src/neurocore/v16/budget_v16.py",
+      "bytes": 669,
+      "sha256": "f4cb3f1dc71e1a1984ebc7fc84b46dbdde173c57fc893f9aa8572b52ee1e01a3"
+    },
+    {
+      "path": "src/neurocore/v16/curriculum_v16.py",
+      "bytes": 404,
+      "sha256": "b01e5aa8c3aa86e0b434631d3c4c5fa7b044df79bca34697c569a74e56b01f7b"
+    },
+    {
+      "path": "src/neurocore/v16/neuroweave_v10.py",
+      "bytes": 8987,
+      "sha256": "f07b317606e1b28c2c49fe2d9b2290ef5d59ce97ee22d6602ccb8ac2e7c33983"
+    },
+    {
+      "path": "src/neurocore/v16/uniqueness_v16.py",
+      "bytes": 641,
+      "sha256": "23acbb771cf7a9fd325a47222c1073a1fbbd0ae63efa0956277612eeb4a3f554"
+    },
+    {
+      "path": "src/neurocore/v16_frontier/__init__.py",
+      "bytes": 212,
+      "sha256": "41962284bc18261bc3e7470ffa22db24d7a9c0732db26335cd248488859ceb9a"
+    },
+    {
+      "path": "src/neurocore/v16_frontier/core.py",
+      "bytes": 11281,
+      "sha256": "a1907d27f437b6b23ff070e3794943adceb44914c1ca8e93744f011d94c23093"
+    },
+    {
+      "path": "src/neurocore/v16_frontier/objectives.py",
+      "bytes": 858,
+      "sha256": "cc7aa74f2bd65a5f9b649265f2e434514bc42db8dfd257e89b2d169ecb338caa"
+    },
+    {
+      "path": "src/neurocore/v17/__init__.py",
+      "bytes": 11,
+      "sha256": "045bfbeb67de5048f0e848f55217f6ac24a3aa24a1cb7195d7a46676e75b4ffc"
+    },
+    {
+      "path": "src/neurocore/v17/research_modules.py",
+      "bytes": 3181,
+      "sha256": "8970c46630939cda74d058a02474aa02ca845e13e338329608fed2ea55159582"
+    },
+    {
+      "path": "src/neurocore/v17/trainability.py",
+      "bytes": 5404,
+      "sha256": "22c2c0706fe0718d0cd5c23ebc1616569c6c3535aa54a4b5f6e00a06270e664a"
+    },
+    {
+      "path": "src/neurocore/v17/uniqueness.py",
+      "bytes": 1534,
+      "sha256": "f954b391b8339795e769f993b97fe7e2689be0c8d41f852883ba81668de4148f"
+    },
+    {
+      "path": "src/neurocore/v17_frontier/__init__.py",
+      "bytes": 288,
+      "sha256": "a423567d693a962f57448608d28c55bf046899694f178542fbd3a1f71a1e7928"
+    },
+    {
+      "path": "src/neurocore/v17_frontier/core.py",
+      "bytes": 11315,
+      "sha256": "4c3d6d087227fd6e8c4cadc3422f8e0f4922b0f78cd949aa70562b33024e490a"
+    },
+    {
+      "path": "src/neurocore/v17_frontier/memory.py",
+      "bytes": 5062,
+      "sha256": "faa933343824ec0390cce78e8d03d9d871e7dd83e09c3b0b68745d998216e41c"
+    },
+    {
+      "path": "src/neurocore/v17_frontier/world.py",
+      "bytes": 2225,
+      "sha256": "b651d48313e548b31ac69f6214eb484091567f100e353770539e5cbc7f14b579"
+    },
+    {
+      "path": "src/neurocore/v18/__init__.py",
+      "bytes": 314,
+      "sha256": "1da6e78a686ef2be233239486cc1305a2b3e7e8057f6c654753ecc556a6f4567"
+    },
+    {
+      "path": "src/neurocore/v18/neuroweave_v11.py",
+      "bytes": 11793,
+      "sha256": "bc6fbe380a6f10f00d8c3baa70d731c48541308f4b600560dcd49c7c70f4c5fc"
+    },
+    {
+      "path": "src/neurocore/v18/neuroweave_v12.py",
+      "bytes": 17159,
+      "sha256": "402bc408d0ca562501878c5d009d26e02971c1c63fe6de09ca92cde80bbc0f37"
+    },
+    {
+      "path": "src/neurocore/v18/neuroweave_v13.py",
+      "bytes": 24361,
+      "sha256": "cd0b7236535bad0acb0811432702a58c2016adfd3c719f8108bf10d414f424d1"
+    },
+    {
+      "path": "src/neurocore/v18/objectives_v13.py",
+      "bytes": 1779,
+      "sha256": "b3328129c6027c050091ccaa8a2a7671f4f1d29407d3791f3a1dc5ba53c13288"
+    },
+    {
+      "path": "src/neurocore/v19/__init__.py",
+      "bytes": 230,
+      "sha256": "1c3f019d07398b551a0e51a7b511ecf281f3e4c4c6b98d98ae8ecb06c7aa540c"
+    },
+    {
+      "path": "src/neurocore/v19/neuroweave_v14.py",
+      "bytes": 24106,
+      "sha256": "a6b8020d00104d103336aeb3a9ca105d492db0b1e697e8a1129dd7cded09dca5"
+    },
+    {
+      "path": "src/neurocore/v19/objectives_v14.py",
+      "bytes": 1754,
+      "sha256": "c812b147268af3a13f8b47a2478b9e7fb3b99d9df1a066489b15e504989d72b7"
+    },
+    {
+      "path": "src/neurocore/v20/__init__.py",
+      "bytes": 140,
+      "sha256": "e329c25699b3168ec4e6b189ce07c03a4bfe6c7de0f76bca30b04b690ca6725e"
+    },
+    {
+      "path": "src/neurocore/v20/core.py",
+      "bytes": 17393,
+      "sha256": "5b69bd92b7883dd8e3100b0bd380a5d117a4a1e9f0897885503960dea7e93764"
+    },
+    {
+      "path": "src/neurocore/v21/__init__.py",
+      "bytes": 135,
+      "sha256": "bbe8587b8eeb9fb11fe8b17ea2453b42914b4387bd94a56bc62fb979815197cd"
+    },
+    {
+      "path": "src/neurocore/v21/core.py",
+      "bytes": 22364,
+      "sha256": "ecde847b33dd5eff828eadc44e10e59d918395de5ead6598930a8c06dc5dcb97"
+    },
+    {
+      "path": "src/neurocore/v22/__init__.py",
+      "bytes": 141,
+      "sha256": "0588a6c2a4876a40a238f0fa429ca700092dbdff0b8cb8d4c70269ffa75f8f28"
+    },
+    {
+      "path": "src/neurocore/v22/core.py",
+      "bytes": 21809,
+      "sha256": "ee3e232823d138a5df3d141bcd33620cfbef79c0814be254ac1db62557d6121c"
+    },
+    {
+      "path": "src/neurocore/v23/__init__.py",
+      "bytes": 200,
+      "sha256": "574eb83996fa9604e09b9d38d89db5ff8669aa88cf667c6e85a380094df5f180"
+    },
+    {
+      "path": "src/neurocore/v23/core.py",
+      "bytes": 25020,
+      "sha256": "fc8ea810f7f5af91dacaa364ae0d5e1d605fd1817ea0c3ae6e068f8e18820d50"
+    },
+    {
+      "path": "src/neurocore/v24/__init__.py",
+      "bytes": 140,
+      "sha256": "e071ed8f32b321cd98a5da559fb16614c4591d47cbc59c2331b8c08b1f22bdf2"
+    },
+    {
+      "path": "src/neurocore/v24/core.py",
+      "bytes": 23124,
+      "sha256": "f3e9a2eecc8648f4e6bec55c7fdda24a4c085f2fdb6843ebaa1936ad6ff394c9"
+    },
+    {
+      "path": "src/neurocore/v25/__init__.py",
+      "bytes": 145,
+      "sha256": "bb4b687c15591503e5836790a11420f635e7f4d7ed7a25ef1ae074b50650bb55"
+    },
+    {
+      "path": "src/neurocore/v25/core.py",
+      "bytes": 19443,
+      "sha256": "0bd987cb85dd9f8fc21373932950d8a9dc6c8f590c4e5a3f4228ccec0bddbf2a"
+    },
+    {
+      "path": "src/neurocore/v26/__init__.py",
+      "bytes": 466,
+      "sha256": "8aead1cb269a34525a4769360a8b2abb76a5636933eb3bb72aba8f75900c2f8a"
+    },
+    {
+      "path": "src/neurocore/v26/core.py",
+      "bytes": 21887,
+      "sha256": "7596d7b8613a02df9d79fbb43f84070181d12347eb89a782bf72caa6fd219350"
+    },
+    {
+      "path": "src/neurocore/v26/test_dummy.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "src/neurocore/v27/__init__.py",
+      "bytes": 417,
+      "sha256": "17bcafe3110191342ddcc3b85ae2a0dcf17a16009a46c941fa9cc186f01b545e"
+    },
+    {
+      "path": "src/neurocore/v27/core.py",
+      "bytes": 19363,
+      "sha256": "269b4d5e8ff9961c34d82994c7c17860ab02e52bc740a20eefafa3aaca900059"
+    },
+    {
+      "path": "src/neurocore/v28/__init__.py",
+      "bytes": 348,
+      "sha256": "a03e8a587bdd8bc54eb9edf62cde6c0af6546d6adec7199992fb6c8e47741d54"
+    },
+    {
+      "path": "src/neurocore/v28/core.py",
+      "bytes": 17222,
+      "sha256": "3b5fdcb51fb9dabf84796f568358cc2cea85abeca01b4db7972f3a3040d95899"
+    },
+    {
+      "path": "src/neurocore/v29/__init__.py",
+      "bytes": 433,
+      "sha256": "b475bc537384d55e75cf7b0aad5ee205a313e74197080b66d32081e2d80caaa5"
+    },
+    {
+      "path": "src/neurocore/v29/core.py",
+      "bytes": 18953,
+      "sha256": "ece4d7e09afd62780151713aa9961a4bec2e2779c6198438f649ded22ef5ec72"
+    },
+    {
+      "path": "src/neurocore/v30/README_V30_CANONICAL.md",
+      "bytes": 2001,
+      "sha256": "354fad7883c0eacf1af570b2e203543589ce66d06a625aad813d93480eded768"
+    },
+    {
+      "path": "src/neurocore/v30/__init__.py",
+      "bytes": 553,
+      "sha256": "f949462fc6d6c50916345e473a3438d634a674b3f93d1df6dd92f5d100e8430b"
+    },
+    {
+      "path": "src/neurocore/v30/core.py",
+      "bytes": 29018,
+      "sha256": "1f97d1c26a0f92dcf1084deab5db814a88b6eab9d565aa49ca29827f8aa7d34b"
+    },
+    {
+      "path": "src/neurocore/v30/environment.py",
+      "bytes": 1850,
+      "sha256": "490c035ef6d334762752b04db667f6b85bddf7a16f88e779c413559489293415"
+    },
+    {
+      "path": "src/neurocore/v31/__init__.py",
+      "bytes": 286,
+      "sha256": "c15fec2e1fe15b361575b92e3fa50840ef51ac62fb57531d1d31cc9454709510"
+    },
+    {
+      "path": "src/neurocore/v31/core.py",
+      "bytes": 22743,
+      "sha256": "342adc8f5805719c65abbe56c8fab16f6b1b959a52d01a4d74ede7e5a5484df0"
+    },
+    {
+      "path": "src/neurocore/v32/__init__.py",
+      "bytes": 417,
+      "sha256": "0896e335706ceeed9c29568c83d8b7b50bc37e76c2da4304ce4a368ef14149c4"
+    },
+    {
+      "path": "src/neurocore/v32/core.py",
+      "bytes": 29663,
+      "sha256": "3fa7b76b85a14913ee5d5d0ce1fdbff215d4633ee9ff17ff4acc7e5ade8f38d6"
+    },
+    {
+      "path": "src/neurocore/v33/__init__.py",
+      "bytes": 395,
+      "sha256": "b78827d37aefda2f1cac68c130378731c71307a357b78562392cf93cdb3df111"
+    },
+    {
+      "path": "src/neurocore/v33/core.py",
+      "bytes": 29312,
+      "sha256": "033316de321f3ef8e450b49a9c6751cac28150cc3d992fbc2a8494a17e1caab5"
+    },
+    {
+      "path": "src/neurocore/v33_core_new.py",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "src/neurocore/v34/__init__.py",
+      "bytes": 345,
+      "sha256": "5ef9cd630f68b2fb917e7677f98a2de3ce268c7bb71d83ec057072ca8cc49778"
+    },
+    {
+      "path": "src/neurocore/v34/core.py",
+      "bytes": 29904,
+      "sha256": "569e89e8a5900fb592821241dbd12c46c7622bd6b1e0d0673dadbdf0a281234b"
+    },
+    {
+      "path": "src/neurocore/v35/__init__.py",
+      "bytes": 450,
+      "sha256": "b4476aa5f2c054d8d24f7f3c2aa2b5d8b0d602224a7020bc67f494d44a44ebda"
+    },
+    {
+      "path": "src/neurocore/v35/core.py",
+      "bytes": 49263,
+      "sha256": "a7f4fcba8b5df58722ea3e4d2962ffab5af8fca448e348514c98c28dff315778"
+    },
+    {
+      "path": "src/neurocore/v35/runtime.py",
+      "bytes": 4107,
+      "sha256": "872734e4c78498c83e45b237a06b44f8ae6553d3a50c2e5c5a5299226182b3d8"
+    },
+    {
+      "path": "src/neurocore/v36/__init__.py",
+      "bytes": 527,
+      "sha256": "9f7a4e12fc7bab6356e359bc6995cb020a601756a732ca0e8240f3ab05c6d42b"
+    },
+    {
+      "path": "src/neurocore/v36/core.py",
+      "bytes": 41770,
+      "sha256": "a510762d876d54a1dd8f9a587326755ffbde8cdfc49e48b93421f344d85b3961"
+    },
+    {
+      "path": "src/neurocore/v36/runtime.py",
+      "bytes": 3729,
+      "sha256": "cbba2428ce5286c1fa3d5a59bdf20e2555446bd790241edbace795a6200d3fdb"
+    },
+    {
+      "path": "src/neurocore/v37/__init__.py",
+      "bytes": 491,
+      "sha256": "755a96b03161ad5c1cfa431f837bc9f677af9ece5028e261131d9e4b5f0bd4b0"
+    },
+    {
+      "path": "src/neurocore/v37/core.py",
+      "bytes": 32345,
+      "sha256": "d218a514e5db69296c2d86b7c1b1c5e72dc582cf5b7d6532c63a5192633d7b18"
+    },
+    {
+      "path": "src/neurocore/v37/runtime.py",
+      "bytes": 3270,
+      "sha256": "f4ac4c2d6c667c1f1bcbe67be236785e0191c9befbb3991363957679766fc0a7"
+    },
+    {
+      "path": "src/neurocore/v38/__init__.py",
+      "bytes": 329,
+      "sha256": "cb8533ba8d543c009c7f3c4b99319fd0fe9f5cf2989d3041b6e0b6627db290bd"
+    },
+    {
+      "path": "src/neurocore/v38/core.py",
+      "bytes": 30461,
+      "sha256": "0f16a3fd29f1e1e781d96d74fcbcf16755d63b5129e711a3f208444e675c5861"
+    },
+    {
+      "path": "src/neurocore/v38/runtime.py",
+      "bytes": 3534,
+      "sha256": "ee98e4ca029d73a0467df3cf21871484c07d9358b4fcfb7942d88a33b7028f18"
+    },
+    {
+      "path": "src/neurocore/v39/README.md",
+      "bytes": 613,
+      "sha256": "b1ad00a95087cacdb0aee00ee7a0c24c077bc4aff7d1fa60df8a23132dcfe183"
+    },
+    {
+      "path": "src/neurocore/v39/__init__.py",
+      "bytes": 389,
+      "sha256": "51d510159efcaae6b906acc1956b14feb024218b33f65d82608843485f1519b8"
+    },
+    {
+      "path": "src/neurocore/v39/core.py",
+      "bytes": 29227,
+      "sha256": "7573a9c17c161362ff5c55de09f880cac71fdee6f014dbd92e4fc52a1d1538f1"
+    },
+    {
+      "path": "src/neurocore/v39/runtime.py",
+      "bytes": 4835,
+      "sha256": "8cc740bc19256a1d862635b63d515efd317090bc4a7a8479aef86e55787421d7"
+    },
+    {
+      "path": "src/neurocore/v40/__init__.py",
+      "bytes": 566,
+      "sha256": "5671d63b2910e79f08672fadcd2cd43d638b7ebbd0fce1c71d1ec15138d87bef"
+    },
+    {
+      "path": "src/neurocore/v40/core.py",
+      "bytes": 27779,
+      "sha256": "93d4063aa467f9d3507ea1f3b1dfbe21e03531efa8d6660e8c8f5e8bb6d1fdd7"
+    },
+    {
+      "path": "src/neurocore/v40/runtime.py",
+      "bytes": 3217,
+      "sha256": "99b58fd096240155648d1fdfc5105ef4e8b1ace3b99b19cdeb45a9d5915b1d0e"
+    },
+    {
+      "path": "src/neurocore/v41/__init__.py",
+      "bytes": 288,
+      "sha256": "07eb36f3f8b7ca1d18e3966ed87a6ec6131571c35abb7ff5a4ec009745c939ca"
+    },
+    {
+      "path": "src/neurocore/v41/core.py",
+      "bytes": 10230,
+      "sha256": "3b038e457953681ec3bdedb9eabc8ae5613dc1d5664a517599b340f0e9da5c14"
+    },
+    {
+      "path": "src/neurocore/v42/__init__.py",
+      "bytes": 627,
+      "sha256": "0eb7181443b3c7d0a98ae8350d7596bcf38734241c1e65df3bc4ebd95ccdeda0"
+    },
+    {
+      "path": "src/neurocore/v42/core.py",
+      "bytes": 36994,
+      "sha256": "a4eaccf0d0ce0099bce2fd43fdbef72a5e89f6acce5cc41063fff7fd9a0d4ac8"
+    },
+    {
+      "path": "src/neurocore/v43/__init__.py",
+      "bytes": 601,
+      "sha256": "a50635f3cc20e5429ed23ee2165b4da289446818c29c40fa42f2b70354b16876"
+    },
+    {
+      "path": "src/neurocore/v43/core.py",
+      "bytes": 36272,
+      "sha256": "114923161ca0232da03b4b524486f75d623a73d1b4ad965981a65578163affc7"
+    },
+    {
+      "path": "src/neurocore/v44/__init__.py",
+      "bytes": 614,
+      "sha256": "cd78930b4a1fac601f15dff5232643610e21a160cd1f8106f0ecf7101029525f"
+    },
+    {
+      "path": "src/neurocore/v44/core.py",
+      "bytes": 30554,
+      "sha256": "978ac1e3ffe75bb862091c1e04569599312b89672d4d2600c7591807d193b3ce"
+    },
+    {
+      "path": "src/neurocore/v45/__init__.py",
+      "bytes": 439,
+      "sha256": "4cd23440d29f894e87803e7efd3c7b083df255f7245bdb9a2356577a2dd1ce90"
+    },
+    {
+      "path": "src/neurocore/v45/core.py",
+      "bytes": 26177,
+      "sha256": "87fa533b542075c9340bf861b501a20ce5c6cfd1d8f8f6ab0a4e3309b3a7fdc5"
+    },
+    {
+      "path": "src/neurocore/v46/__init__.py",
+      "bytes": 717,
+      "sha256": "0f0c0243433a2d50079b6fae40042af083f028050c5376f2896d68d256c8f0e1"
+    },
+    {
+      "path": "src/neurocore/v46/core.py",
+      "bytes": 39574,
+      "sha256": "6c8e7352ec79c06494d0cc803bcddb193cf56a46e8ce1de7c842bf19fa1633a3"
+    },
+    {
+      "path": "src/neurocore/v47/__init__.py",
+      "bytes": 705,
+      "sha256": "2a53ad1a8f407b7f2bc8b2dca97f8877992979dd04daa8ec1789d7b9256dd7ec"
+    },
+    {
+      "path": "src/neurocore/v47/core.py",
+      "bytes": 44739,
+      "sha256": "3370dcbdedb5e498c9e7a5955f45dc3722e250096b407bdb2a082883a53c52f7"
+    },
+    {
+      "path": "src/neurocore/v48/__init__.py",
+      "bytes": 46,
+      "sha256": "f143add8f02828c77a748226c3d7801970d5c794b9bb8f2f1b958d3d3e277c93"
+    },
+    {
+      "path": "src/neurocore/v48/core.py",
+      "bytes": 48159,
+      "sha256": "3cd8a9517d45c6f77d40df949f000d1f817c57cfc08f2e069ad91244540f1f82"
+    },
+    {
+      "path": "src/neurocore/v48/embodiment.py",
+      "bytes": 6271,
+      "sha256": "cee464087fe501a090e1e0c7256d0b74455de2b8a44f372f4e6c3cd734f05495"
+    },
+    {
+      "path": "src/neurocore/v49/README_PLACEHOLDER.txt",
+      "bytes": 16,
+      "sha256": "7107b86cbdb6126cfd7c3a0e4b4f4f2b71e60c4e911a51db07a4baf162a3fe4f"
+    },
+    {
+      "path": "src/neurocore/v49/__init__.py",
+      "bytes": 20,
+      "sha256": "2b490dcb6e959ba03ed55e65493de2972eb256c34b51b8aa93a0190c59b69c92"
+    },
+    {
+      "path": "src/neurocore/v49/core.py",
+      "bytes": 51294,
+      "sha256": "66018216b2417826d6baf3137de103d19182a1c0fcc21c9a9bd01b5c30128a6d"
+    },
+    {
+      "path": "src/neurocore/v50/__init__.py",
+      "bytes": 20,
+      "sha256": "2b490dcb6e959ba03ed55e65493de2972eb256c34b51b8aa93a0190c59b69c92"
+    },
+    {
+      "path": "src/neurocore/v50/core.py",
+      "bytes": 53227,
+      "sha256": "c1ba76dd998b5af9e2142a750a95ecc390a046ca67f37f70fb30933e34ec53fe"
+    },
+    {
+      "path": "src/neurocore/v51/__init__.py",
+      "bytes": 20,
+      "sha256": "2b490dcb6e959ba03ed55e65493de2972eb256c34b51b8aa93a0190c59b69c92"
+    },
+    {
+      "path": "src/neurocore/v51/core.py",
+      "bytes": 36486,
+      "sha256": "d4cfabb1773da95b23248c7b7c8d71eb95f5feb7839a5f159e14bb3ab3b2f8d2"
+    },
+    {
+      "path": "src/neurocore/v52/__init__.py",
+      "bytes": 20,
+      "sha256": "2b490dcb6e959ba03ed55e65493de2972eb256c34b51b8aa93a0190c59b69c92"
+    },
+    {
+      "path": "src/neurocore/v52/core.py",
+      "bytes": 30198,
+      "sha256": "dbf74e63c89233e062c4ce1ef07f4dedb3107514013a173fc7836252767ab8eb"
+    },
+    {
+      "path": "src/neurocore/v53/__init__.py",
+      "bytes": 20,
+      "sha256": "2b490dcb6e959ba03ed55e65493de2972eb256c34b51b8aa93a0190c59b69c92"
+    },
+    {
+      "path": "src/neurocore/v53/core.py",
+      "bytes": 36752,
+      "sha256": "c7ec9006712e458c106730b4e7d6431f1a12f2343e69bf8df65a1bfd79bf179e"
+    },
+    {
+      "path": "src/neurocore/v54/__init__.py",
+      "bytes": 20,
+      "sha256": "2b490dcb6e959ba03ed55e65493de2972eb256c34b51b8aa93a0190c59b69c92"
+    },
+    {
+      "path": "src/neurocore/v54/core.py",
+      "bytes": 45353,
+      "sha256": "4876d20923ab22aaa62b24cf22de9af1fc40ec8f648af0aad45b05a69d8817d0"
+    },
+    {
+      "path": "src/neurocore/v55/__init__.py",
+      "bytes": 857,
+      "sha256": "249b2930193cb2dc0fdcdcce5a6d030b9083ad8a73d33de04f922b7a2fbc0556"
+    },
+    {
+      "path": "src/neurocore/v55/core.py",
+      "bytes": 52498,
+      "sha256": "14495eca5e844f988f50702657f4c61104d4ae76df2780ab3722d33cd2ab4979"
+    },
+    {
+      "path": "src/neurocore/v56/__init__.py",
+      "bytes": 699,
+      "sha256": "3999371405ebd63043baa211aa0f084c8687101c9458e96328d48c9586fe6a0f"
+    },
+    {
+      "path": "src/neurocore/v56/core.py",
+      "bytes": 38838,
+      "sha256": "2b65d5f1c4d746ffe7cbd3ec92fd3a2774e2c0974c43cf30df0ebfa7b445cd2b"
+    },
+    {
+      "path": "src/neurocore/v57/__init__.py",
+      "bytes": 574,
+      "sha256": "0ee05fba589fc38cac87967711614ad2169381f21f37a7d94a1cbb9a21749dc3"
+    },
+    {
+      "path": "src/neurocore/v57/core.py",
+      "bytes": 36438,
+      "sha256": "6565f7e25ca45fdeddc5331cac087e00a5fdbb888c1884f93fbe3e703a85f9b0"
+    },
+    {
+      "path": "src/neurocore/v58/__init__.py",
+      "bytes": 477,
+      "sha256": "98cee323bbeec33f71d73cfb1535099e1cc30450d410f2e09b324b01fb6244af"
+    },
+    {
+      "path": "src/neurocore/v58/core.py",
+      "bytes": 30869,
+      "sha256": "31f100cabec58315cd62dfa9411c3a9a6b99a0d745fea1525a76cfb131c9c1f7"
+    },
+    {
+      "path": "src/neurocore/v59/__init__.py",
+      "bytes": 451,
+      "sha256": "5ef3dbeed407a874f6a795edd383dfc747d6ed40fb6971be687d4c8ab6f4bc47"
+    },
+    {
+      "path": "src/neurocore/v59/core.py",
+      "bytes": 29658,
+      "sha256": "2a03524f5634157efccfd94e9b60541823c62304d59444cdd2b844102ade216f"
+    },
+    {
+      "path": "src/neurocore/v60/__init__.py",
+      "bytes": 531,
+      "sha256": "99fa7174fe2d8058b6b8563734274d360e9917733cb5e415e0a4f7f231247a90"
+    },
+    {
+      "path": "src/neurocore/v60/core.py",
+      "bytes": 41950,
+      "sha256": "b298ac3168962ddfe6f8d76014cddb3968750b0a3d882bf21d3a5ff86df33974"
+    },
+    {
+      "path": "src/neurocore/v61/__init__.py",
+      "bytes": 314,
+      "sha256": "b6d3d2ef61677706917ced97437e89b6e30210fcfe423781101a56f093770a90"
+    },
+    {
+      "path": "src/neurocore/v61/core.py",
+      "bytes": 35860,
+      "sha256": "86b8e5b14f5206b206a4b8b13032e27648b0758b696907fd5414c2ae598528f2"
+    },
+    {
+      "path": "src/neurocore/v62/__init__.py",
+      "bytes": 304,
+      "sha256": "f4f14136792eccc3862dbec2e4485f1d7c7c3d41c050d10ee3814a04d12e0057"
+    },
+    {
+      "path": "src/neurocore/v62/core.py",
+      "bytes": 19697,
+      "sha256": "32adce68541bcdb57ffb9c7783502d68fc632ea76a80c1c6cb6b8fa622841eb9"
+    },
+    {
+      "path": "src/neurocore/v63/__init__.py",
+      "bytes": 357,
+      "sha256": "96214353e71d22274f5e38917493025f6b10c175433ab8375ab4430c9f61fc3b"
+    },
+    {
+      "path": "src/neurocore/v63/core.py",
+      "bytes": 25679,
+      "sha256": "6ed6651eca7eabd689488c8c0a541cc48a36f7f4d0a4e6d9628b5d45db7d1eaa"
+    },
+    {
+      "path": "src/neurocore/v64/__init__.py",
+      "bytes": 403,
+      "sha256": "bb0b97ca29220237a32f23b252206640203e16899b0f515ad5d59ced83b9af6f"
+    },
+    {
+      "path": "src/neurocore/v64/core.py",
+      "bytes": 38220,
+      "sha256": "89fc3c0f51fb9dfb5a6941604fa2e9453108c5288782786e6559ac5244c14f1f"
+    },
+    {
+      "path": "src/neurocore/v65/__init__.py",
+      "bytes": 419,
+      "sha256": "72f026b467123856a10b7244ad6c2c8bbf4f18be667f848e5104a26281bda872"
+    },
+    {
+      "path": "src/neurocore/v65/core.py",
+      "bytes": 44913,
+      "sha256": "48e71b1596248cadf3c3cde8c3e5446d78f7a784dfbae9401c32543de3951095"
+    },
+    {
+      "path": "src/neurocore/v66/__init__.py",
+      "bytes": 417,
+      "sha256": "a3d65ad8667d303541b78948ee50f4ed72c54cbcf3ce937d21b32f7280611800"
+    },
+    {
+      "path": "src/neurocore/v66/core.py",
+      "bytes": 34163,
+      "sha256": "5f2574a146ee9ebb9eaa10f05464ad6bd0e008b3bedde090931516d57408eaa7"
+    },
+    {
+      "path": "src/neurocore/v67/__init__.py",
+      "bytes": 433,
+      "sha256": "c1a6ed9fb1a8f400f89cea4060496ee3149ab0eff5806567edf0e2a210167cc2"
+    },
+    {
+      "path": "src/neurocore/v67/core.py",
+      "bytes": 43610,
+      "sha256": "a24e52b93449d891863b288903d27fc25f407467aebbf831a494629389a04c8d"
+    },
+    {
+      "path": "src/neurocore/v68/__init__.py",
+      "bytes": 416,
+      "sha256": "1f9528f723e78e5b485ea37bf85928fbeab7e233b7369c5c338c13f06ed497c8"
+    },
+    {
+      "path": "src/neurocore/v68/core.py",
+      "bytes": 35314,
+      "sha256": "8801577edd759751c53c50c114124f5dc9b498d4afb509e40476f4eac173100b"
+    },
+    {
+      "path": "src/neurocore/v69/__init__.py",
+      "bytes": 422,
+      "sha256": "7f29a8a57c80ff67e924a9bc70f27937f3817a4d3124eee30000c0192be335e8"
+    },
+    {
+      "path": "src/neurocore/v69/core.py",
+      "bytes": 30381,
+      "sha256": "84d3f395684b116c595c5a464979f4ff71458e9aa838ce5c30dff0d726310424"
+    },
+    {
+      "path": "src/neurocore/v70/__init__.py",
+      "bytes": 403,
+      "sha256": "bbad683b9c062b9d33cfeee2ac0356a49b35e8ae1d79074f0fcca59a32b6f59c"
+    },
+    {
+      "path": "src/neurocore/v70/core.py",
+      "bytes": 36343,
+      "sha256": "ff0d91d93eb4d718f3696f2e51b6c00527b50ac385a7a17a98dda4e048ca7a20"
+    },
+    {
+      "path": "src/neurocore/v71/__init__.py",
+      "bytes": 361,
+      "sha256": "13df024d4e5c8dba093a2b3f21fde16d1d23d5909ec3f7d280577425433fe1b1"
+    },
+    {
+      "path": "src/neurocore/v71/core.py",
+      "bytes": 28363,
+      "sha256": "966cd1249d980c03028d5c84cf28d71fae81ed2f39de2b5a8701e15558b0fe2f"
+    },
+    {
+      "path": "src/neurocore/v72/__init__.py",
+      "bytes": 341,
+      "sha256": "8cc42c3f29412dd8e3857ec157c870c5f674234e2f125e11db61d27f3d4ad5ff"
+    },
+    {
+      "path": "src/neurocore/v72/core.py",
+      "bytes": 31324,
+      "sha256": "5aa2d42627660ced6fae57a45de8f2a140b64762824aa599a079de213bf8f3a5"
+    },
+    {
+      "path": "src/neurocore/v73/__init__.py",
+      "bytes": 341,
+      "sha256": "ea610f115ffb356e0ac182bf3e81097c421276d20b0c331b41b51a0dae0b8cdc"
+    },
+    {
+      "path": "src/neurocore/v73/core.py",
+      "bytes": 27769,
+      "sha256": "1cf1610ebdb478aeea02b3ee74195bfd628932a329bbcf636166dfdfba76856a"
+    },
+    {
+      "path": "src/neurocore/v74/__init__.py",
+      "bytes": 298,
+      "sha256": "0a5884d7dd68467cf1803b7f75a782a5be6a2fade4beb6b501ce8ba31b14ca97"
+    },
+    {
+      "path": "src/neurocore/v74/core.py",
+      "bytes": 16157,
+      "sha256": "64d299ae895501d12884c1c8fd090aaccb3e1d2b50f9c0d5c24e60cfc925a933"
+    },
+    {
+      "path": "src/neurocore/v75/__init__.py",
+      "bytes": 304,
+      "sha256": "d90c2234599bfd26552e073832b4734d8444e5aa207b45dd52159e0b7aad6b11"
+    },
+    {
+      "path": "src/neurocore/v75/core.py",
+      "bytes": 17352,
+      "sha256": "f87dddac7ac88ff1ffe92b4f12992d91ca0c52ec40bd55db70650c126b8383e1"
+    },
+    {
+      "path": "src/neurocore/v76/__init__.py",
+      "bytes": 331,
+      "sha256": "55d196faf21da56618d8aa203f60067458669506ad7604ae6f14a278d7dee5ee"
+    },
+    {
+      "path": "src/neurocore/v76/core.py",
+      "bytes": 25836,
+      "sha256": "d59e8ddc479d9170d2b23a1c8ffeb64ee4f038fecd5514481ef4896ed7f7b9fa"
+    },
+    {
+      "path": "src/neurocore/v77/__init__.py",
+      "bytes": 331,
+      "sha256": "54bb75e3f6ce108e9b7a9466dad3fd576ddfda34b15d1a8ab19ddfd2f9770022"
+    },
+    {
+      "path": "src/neurocore/v77/core.py",
+      "bytes": 26424,
+      "sha256": "fe787dc8fb14d1a36a7367c2d2042c19bf1f9dea13946c1bfb61fe925f247ec9"
+    },
+    {
+      "path": "src/neurocore/v78/__init__.py",
+      "bytes": 336,
+      "sha256": "8153815d8921964576ad79a2988349864d6ec614eebd8de4096e15ea4fef64f5"
+    },
+    {
+      "path": "src/neurocore/v78/benchmark.py",
+      "bytes": 19309,
+      "sha256": "b2c5421464422db25d6e181d07cfc8616818541f5ebea08084cefbd68fdbc9c0"
+    },
+    {
+      "path": "src/neurocore/v78/core.py",
+      "bytes": 22327,
+      "sha256": "6694e580b5fb712d17718ea166d117cc7a7cbf66d3a1fd87c2c029d458cf3cf3"
+    },
+    {
+      "path": "src/neurocore/v79/__init__.py",
+      "bytes": 336,
+      "sha256": "6b1bae33da56baf580dc300c10b6e4a07162415036243602963453f0e0b6005d"
+    },
+    {
+      "path": "src/neurocore/v79/core.py",
+      "bytes": 10068,
+      "sha256": "7b910518defc814b0b887dad2e2ecd67fcc1c5cb87e1fb31827b2976bc4583b8"
+    },
+    {
+      "path": "src/neurocore/v79/qualification.py",
+      "bytes": 2068,
+      "sha256": "cfd70fd6d9e36a6514f155567b8f62c481990faaeae35a68fc006a7c97651941"
+    },
+    {
+      "path": "src/neurocore/v80/__init__.py",
+      "bytes": 351,
+      "sha256": "90c651f598a8cfdcc204eb0a1940336fa92073e63c1cc703586c2dcd90fc9d1b"
+    },
+    {
+      "path": "src/neurocore/v80/core.py",
+      "bytes": 27414,
+      "sha256": "ebfa8a77baf5dd09dac93d103a3dfb8846a1edcd608d4b150b4b8224e4b8754a"
+    },
+    {
+      "path": "src/neurocore/v81/__init__.py",
+      "bytes": 304,
+      "sha256": "d17e300ecdcef4fd316481f3c1d4ea43544608304678046c3b1bd150baddf42d"
+    },
+    {
+      "path": "src/neurocore/v81/core.py",
+      "bytes": 23603,
+      "sha256": "46d749cb304e30d52f162710da44f1212fc1e47c51f8ef9ad7c90a10bece40a3"
+    },
+    {
+      "path": "src/neurocore/v82/__init__.py",
+      "bytes": 349,
+      "sha256": "e556d832f6a4f2900bdb403da47be4793052e8b55d043bfb23c98531b18d77a3"
+    },
+    {
+      "path": "src/neurocore/v82/core.py",
+      "bytes": 23546,
+      "sha256": "935db7e2d037dc66f424a80e530a577fa3f54b7f4900d78380f39218f01302a7"
+    },
+    {
+      "path": "src/neurocore/v83/__init__.py",
+      "bytes": 191,
+      "sha256": "b7e5c316524dd4f7aff15ea5e6b08f60edfb02c53b11c7933e65b5cc2d7580f9"
+    },
+    {
+      "path": "src/neurocore/v83/core.py",
+      "bytes": 17263,
+      "sha256": "c35b4d2f1beb4de332c395ca2bb57ad392a236ab96aa81fc21c5d7ae5de5c7b6"
+    },
+    {
+      "path": "src/neurocore/v84/__init__.py",
+      "bytes": 247,
+      "sha256": "da638d1dfcfd2a72521b9cfd5ca12404a779f492b09d700a3a83f7b43f7a5408"
+    },
+    {
+      "path": "src/neurocore/v84/core.py",
+      "bytes": 13877,
+      "sha256": "d94216752cce41dcf6badcc428f172975bf0ddc36618c85bd7cec50bd0cef456"
+    },
+    {
+      "path": "src/neurocore/v85/__init__.py",
+      "bytes": 204,
+      "sha256": "71d19f68090aeed554fbd6321e8c11ec0aeb7c194fefe9137aa183c1554efb73"
+    },
+    {
+      "path": "src/neurocore/v85/benchmark.py",
+      "bytes": 9459,
+      "sha256": "cd243c2f8b7c60e77c7f7d3e405536850a4ab0c15d66f25106f958f35736a2a3"
+    },
+    {
+      "path": "src/neurocore/v86/__init__.py",
+      "bytes": 375,
+      "sha256": "6c301181e2783f251498de80d23413752bf0d82756c14c88c2cb1d65d73f409c"
+    },
+    {
+      "path": "src/neurocore/v86/core.py",
+      "bytes": 26616,
+      "sha256": "b815e837a718362dfc916f13397236c289aae1e032744e22d89a0a927a6ba44b"
+    },
+    {
+      "path": "src/neurocore/v87/__init__.py",
+      "bytes": 311,
+      "sha256": "42a93d306ee02be38881db9f82cdb9ca38556c531aa1ba497773f5ab0725253c"
+    },
+    {
+      "path": "src/neurocore/v87/core.py",
+      "bytes": 29281,
+      "sha256": "72202e3ed763b519c20cf38efaf46716ee4988bd841a12391f51776214e13677"
+    },
+    {
+      "path": "src/neurocore/v88/__init__.py",
+      "bytes": 311,
+      "sha256": "2625081509d231402258f6a050e8faba96c99061bc2eee5267508d881ff9e3a6"
+    },
+    {
+      "path": "src/neurocore/v88/core.py",
+      "bytes": 13529,
+      "sha256": "481c40c2a7384f36f27f610b605580d6d9f2c6692a55d97b5b3d3afead397161"
+    },
+    {
+      "path": "src/neurocore/world_model.py",
+      "bytes": 1587,
+      "sha256": "9f39ac58bb9c8b2beae6d35b907aa5cde57354b93ee01a9d7f25d1f6b70f9e91"
+    },
+    {
+      "path": "tests/current/test_adaptive_compute.py",
+      "bytes": 2721,
+      "sha256": "c46c87b5155b846c0fe97b8c63c8008db52a11ab2d6c16d4def2b21882e2eafa"
+    },
+    {
+      "path": "tests/current/test_current_neurality.py",
+      "bytes": 8295,
+      "sha256": "b6b24fc4a1a9887ffb47049f4717d98493f3ba4b0ecc10df8f968544c95e1ae9"
+    },
+    {
+      "path": "tests/current/test_current_surface.py",
+      "bytes": 1678,
+      "sha256": "6e6bc3c16aab7d5641baf94414dfa6c389dddca592935fdbd88943a606755def"
+    },
+    {
+      "path": "tests/current/test_gradient_spike_measurement.py",
+      "bytes": 787,
+      "sha256": "9c152905e58b7149d5c1c4fb7cf1d7d31dc70fc30abe77da7e41037fd231cccd"
+    },
+    {
+      "path": "tests/current/test_online_plasticity.py",
+      "bytes": 3313,
+      "sha256": "5f4b87c19bc0e606f2e871ce9f5f4c6d4c589ae11fa65791d3d1ec740173665c"
+    },
+    {
+      "path": "tests/current/test_release_metadata.py",
+      "bytes": 388,
+      "sha256": "9f9aa095d41a96492b1508b4b9a289a20c32bfb33aafb174661482e11762af68"
+    },
+    {
+      "path": "tests/current/test_source_backed.py",
+      "bytes": 1475,
+      "sha256": "8ccde997ac13def520b9d97cefc5a2a3038f9a3df708c445577d006fc4d3f01a"
+    },
+    {
+      "path": "tests/current/test_temporal_dynamics.py",
+      "bytes": 2016,
+      "sha256": "734decdb8d8fc6ceb4280208a262b58bf25b2b31d8e0c3288fdc7f931f8426af"
+    },
+    {
+      "path": "tests/current/test_upstream_adapter.py",
+      "bytes": 973,
+      "sha256": "10cdf4e6750612738ba041d6e589adf7e4f79e9fabd3895478d927a4a85b6ea7"
+    },
+    {
+      "path": "tests/current/test_upstream_intake.py",
+      "bytes": 2191,
+      "sha256": "0c4dcaa5eab6def7bfc268409f006b551f38d3470a2d4e839f1f206419e799eb"
+    },
+    {
+      "path": "tests/test_core.py",
+      "bytes": 1565,
+      "sha256": "c74ecf7540b1131d77a8e98a1caaf5bbd098ae7f8a04f7b00af6a1bcf6576033"
+    },
+    {
+      "path": "tests/test_deep_modules.py",
+      "bytes": 1162,
+      "sha256": "453876a73ca54852c6eeaf3cacda21596c9202b6cb2851cb77450f7719f03868"
+    },
+    {
+      "path": "tests/test_hybrid_v06.py",
+      "bytes": 699,
+      "sha256": "6dc4454e9da47bd625c83bafc41797b3c1d4c7de42ecf221252a82b81eb374b6"
+    },
+    {
+      "path": "tests/test_trace_memory.py",
+      "bytes": 886,
+      "sha256": "8b4ee95bc7dc9c29a92b7abb9a159b55adfd0687d0263917435c0f5092145459"
+    },
+    {
+      "path": "tests/test_v04.py",
+      "bytes": 1152,
+      "sha256": "22ae488af1a3ba22099eef2f154ac7fedb982dc1497eec9da1ef7c2d4c6c7f60"
+    },
+    {
+      "path": "tests/test_v05.py",
+      "bytes": 835,
+      "sha256": "9555256a0e3503eb03286555f8b65d41fb9097a6c31457b1ec872653c67a3c6c"
+    },
+    {
+      "path": "tests/test_v06.py",
+      "bytes": 1906,
+      "sha256": "3b134143b87c5824aaa51412e611619bcc6d8e72038ebb9f4e1270ecdaafd6de"
+    },
+    {
+      "path": "tests/test_v06_systems.py",
+      "bytes": 1643,
+      "sha256": "18dae1f9b8d371feb5120238e620529bf7c4d0a727ed67932f0574e8f3302eae"
+    },
+    {
+      "path": "tests/test_v07_core.py",
+      "bytes": 2494,
+      "sha256": "901c8d78850bf89efc79d0d04e3171214945309d2b5d76a6b56fe1389742a384"
+    },
+    {
+      "path": "tests/test_v07_export.py",
+      "bytes": 624,
+      "sha256": "7547811059e63795dafd68d904cc6cd01a91957952ee5661855721d7fd9cd9c6"
+    },
+    {
+      "path": "tests/test_v07_invariants.py",
+      "bytes": 1736,
+      "sha256": "5926c0ba4e13b9744b21bb632cc0172d0dd65e48f1a28ffd6817f39a77ec660c"
+    },
+    {
+      "path": "tests/test_v07_systems.py",
+      "bytes": 2044,
+      "sha256": "dc6866a38531b37e91ee6b0a275a6365d14e55ca3f2b1f212e3d370b9ed4dc01"
+    },
+    {
+      "path": "tests/test_v08_neuro_weave.py",
+      "bytes": 2009,
+      "sha256": "c70440f42dfc1dd6c3fff3c870b759117d8b0f2e9db408dbb1778315ca7b9ae8"
+    },
+    {
+      "path": "tests/test_v09_core_smoke.py",
+      "bytes": 497,
+      "sha256": "888f778e959373d635fc04f20346f8e28e51d5ce08fd84d7d8f28a1232910aaa"
+    },
+    {
+      "path": "tests/test_v09_invariants.py",
+      "bytes": 791,
+      "sha256": "ab71529cfca33645047b34ec6b4424940e47f244232754b53e3af8f24e4ba4c6"
+    },
+    {
+      "path": "tests/test_v09_neuroweave.py",
+      "bytes": 2302,
+      "sha256": "e022f8bc334b72261cd2a297f69bb1dba5d4d28d3cf39764113502a80f182bbc"
+    },
+    {
+      "path": "tests/test_v09_new_modules.py",
+      "bytes": 1396,
+      "sha256": "3a3b8f39c8aad99ddaceb6afb6bda2e41c3ccf8bfcc00f2bf3f01fd4904cd398"
+    },
+    {
+      "path": "tests/test_v11.py",
+      "bytes": 2057,
+      "sha256": "fceb630f458735f0c3f81d0c9009cc9210b66f111fe42a56ed8b2d96a4f98437"
+    },
+    {
+      "path": "tests/test_v12.py",
+      "bytes": 1968,
+      "sha256": "1f919078d180ab139c5ec0b32905453d9d2c75e56015ce6ff249fa65d115f26e"
+    },
+    {
+      "path": "tests/v10/test_campaign.py",
+      "bytes": 386,
+      "sha256": "eec0e0fff28c0a862e013612ef2dc6751369a969785debaec0ae1c02643b9d41"
+    },
+    {
+      "path": "tests/v10/test_neuroweave_v4.py",
+      "bytes": 1094,
+      "sha256": "a219d5568d746644a22cd06c99ca6d970d6bf4416399984d874085f78dcc82c4"
+    },
+    {
+      "path": "tests/v10/test_qualification.py",
+      "bytes": 312,
+      "sha256": "03a80311228723589eece533da4e28bc2ae06d409b98b4361c4f5fcd59325a83"
+    },
+    {
+      "path": "tests/v13/test_v13_core.py",
+      "bytes": 1558,
+      "sha256": "beed846e5b0d7e775d82f39e6d76ba8f5dfcaa523c6db858c6110d3b2e82e7fd"
+    },
+    {
+      "path": "tests/v13/test_v13_properties.py",
+      "bytes": 595,
+      "sha256": "644df8465c83c0762cc911c3051ca27779ea6e3bb29c491180da6a8f9a7af229"
+    },
+    {
+      "path": "tests/v14/test_v14_core.py",
+      "bytes": 630,
+      "sha256": "cf5a086700fcc9840ec4a26b90ebcda1a0ca35fcf6a2597ce1d8a05064021b49"
+    },
+    {
+      "path": "tests/v14/test_v14_qmobile.py",
+      "bytes": 267,
+      "sha256": "cb4824ea4377b082ede94612a09de3eff2d64973b36b823d767a527a07c0b7d1"
+    },
+    {
+      "path": "tests/v14/test_v14_qualification.py",
+      "bytes": 242,
+      "sha256": "c3c431ed76bae4d4c261973beb00bcab077b6f21d6a378512b7628030c557761"
+    },
+    {
+      "path": "tests/v14/test_v14_tasks.py",
+      "bytes": 323,
+      "sha256": "09a43995f43302dbcea5c615611ba37a228833390b10b46678d61fc3b56c8ed7"
+    },
+    {
+      "path": "tests/v14/test_v14_tools.py",
+      "bytes": 522,
+      "sha256": "8c3f25411be4850d0a3ba905091f67e7af7bcd40b08110877d099f91a4b017f2"
+    },
+    {
+      "path": "tests/v15/test_v15_core.py",
+      "bytes": 1058,
+      "sha256": "6e6aaca3f2081e90a1b3b61f75ad445877555fc0672248a5d8b9478fb862b6e5"
+    },
+    {
+      "path": "tests/v15/test_v15_qualification.py",
+      "bytes": 297,
+      "sha256": "f057909298f220633ea664c3aaebf9676809162a16e2b015e3f7e938c4112bff"
+    },
+    {
+      "path": "tests/v15/test_v15_tools.py",
+      "bytes": 829,
+      "sha256": "2a03807165849d07eb6b982f042fef47a1032d854ed4c51e280301f4e57e4d9c"
+    },
+    {
+      "path": "tests/v15_frontier/test_v15_frontier.py",
+      "bytes": 3462,
+      "sha256": "ce52c4c1052730f062516c3238d5620cc988c72647f2b6b56eeb6afe5574e27c"
+    },
+    {
+      "path": "tests/v16/test_v16_core.py",
+      "bytes": 994,
+      "sha256": "d630b8448d1079357fb60c577e8ead5d8bd8510bd843a9d53851b746bf4e965a"
+    },
+    {
+      "path": "tests/v16/test_v16_data.py",
+      "bytes": 316,
+      "sha256": "508d0786d600438bb81e28932d3d945446a601957c20984dcabb2c8968f45f9a"
+    },
+    {
+      "path": "tests/v16/test_v16_tools.py",
+      "bytes": 683,
+      "sha256": "42567f1d0400c45938c8ffe3f76cbd801c21040d9e96d7482e190d3aaf115b63"
+    },
+    {
+      "path": "tests/v16_frontier/test_v16_frontier.py",
+      "bytes": 3011,
+      "sha256": "7c480f2d9a3d664da0dfc9fe696b555938fd5d3f648139bae50f2af96519595c"
+    },
+    {
+      "path": "tests/v17/test_research_modules.py",
+      "bytes": 836,
+      "sha256": "057296981d044baa6a0b7284cd745746d5bdeeb591414b5e43c4ececfd9cac6e"
+    },
+    {
+      "path": "tests/v17/test_trainability.py",
+      "bytes": 610,
+      "sha256": "ec0efb699e4fc741e947e9edf70690719d40feff80037a93045d3dae4d0d574c"
+    },
+    {
+      "path": "tests/v17/test_uniqueness.py",
+      "bytes": 297,
+      "sha256": "813aa08c2871682b1c7df92107fbdcbad7598ff49b08b339c5021c776981dac4"
+    },
+    {
+      "path": "tests/v17_frontier/test_core.py",
+      "bytes": 2707,
+      "sha256": "67bafaa57a352dcadb6ebe9ca999fa9d0d662247b0d9d56b1089091d4c3b2534"
+    },
+    {
+      "path": "tests/v17_frontier/test_training.py",
+      "bytes": 1193,
+      "sha256": "6100d1a15ac482b1c01ecb8077aac50c0a6a050f54b50228d56b5a1cabf0b03f"
+    },
+    {
+      "path": "tests/v18/test_v13_frontier.py",
+      "bytes": 4026,
+      "sha256": "24da575039b8778e5a59bd87062305e876a6731865187f23535e81c8721629cb"
+    },
+    {
+      "path": "tests/v18/test_v13_objective.py",
+      "bytes": 545,
+      "sha256": "4baa112dfff2ccecaec8d4d0a1278cae7c6db7cb4fcda6353e22e73594c84c5e"
+    },
+    {
+      "path": "tests/v18/test_v18_core.py",
+      "bytes": 1693,
+      "sha256": "01f2304efef6b025e7f4ef3b57758400dd4ca0d04d3a5fb147a3978c240e3abc"
+    },
+    {
+      "path": "tests/v18/test_v18_trainability.py",
+      "bytes": 315,
+      "sha256": "ec89451993470f14ed3a0bd4d43e2e44287f2dd8953f90b69ad371a8b762c4aa"
+    },
+    {
+      "path": "tests/v18/test_v18_v12.py",
+      "bytes": 2979,
+      "sha256": "dde4f6e41e739805d5998da9a45f1430a6a9027c4008452da1251b6cb14abfb8"
+    },
+    {
+      "path": "tests/v19_test_frontier.py",
+      "bytes": 5118,
+      "sha256": "ce84455cbf2eb6d760aa2697e3afb2a059da5eb101e90d7cc867a95b8e85089f"
+    },
+    {
+      "path": "tests/v20/test_v20_core.py",
+      "bytes": 5285,
+      "sha256": "3c7408063d392535e7d1a8428082b92d2e6e454bc84336a58fef08f308839d5c"
+    },
+    {
+      "path": "tests/v21/test_v21_frontier.py",
+      "bytes": 7189,
+      "sha256": "498ec054f956a2971da3053bb4fe55ea88d9f8d7ac94c77d75936c5d5c26758c"
+    },
+    {
+      "path": "tests/v22/test_v22_frontier.py",
+      "bytes": 4262,
+      "sha256": "4e221a601f4e303b6a09f8ded45f9d2305df9f1b62689db50e5a43788ab2b8e0"
+    },
+    {
+      "path": "tests/v23/test_v23_frontier.py",
+      "bytes": 3128,
+      "sha256": "924dad4cbbf4058a2ae78befd3fa98d5017dded8acb9ff867355ddbacb159e48"
+    },
+    {
+      "path": "tests/v24/test_v24_frontier.py",
+      "bytes": 3145,
+      "sha256": "c95b3ca51a32e5acbd7c71609378893adce10f27d303de3a75775b7170befe7e"
+    },
+    {
+      "path": "tests/v25/test_v25_frontier.py",
+      "bytes": 3887,
+      "sha256": "173cee8f7ce3dc3be79673300e4d9c24596249829c4b427ffe9d445bc7391816"
+    },
+    {
+      "path": "tests/v26/test_v26_frontier.py",
+      "bytes": 5522,
+      "sha256": "5f8ea13ab7bb85075e2aa8adf219bb3a5f75084482261ce6aee06ab3c89603f5"
+    },
+    {
+      "path": "tests/v27/test_v27_frontier.py",
+      "bytes": 4628,
+      "sha256": "7b609df029b341de780818b5ae65b935c8c79c36baeafe0b15856fd473653881"
+    },
+    {
+      "path": "tests/v28/test_v28_frontier.py",
+      "bytes": 5839,
+      "sha256": "4b2eb2011813527dde16083b6aea523a828bfa72619fa39777847f4d42c893cf"
+    },
+    {
+      "path": "tests/v29/test_v29_frontier.py",
+      "bytes": 6251,
+      "sha256": "2d0f1a4d35a926660d244d0ea6ab221ec14f22c8f9b8f7438ebc31a52914ea70"
+    },
+    {
+      "path": "tests/v30/test_v30_organism.py",
+      "bytes": 5573,
+      "sha256": "5e63f41f25fcece49f29f071191b76696bb9ff04d9d5e28248eeda40be4129e6"
+    },
+    {
+      "path": "tests/v31/test_v31_spine.py",
+      "bytes": 4162,
+      "sha256": "d1c49cdcaeb6007b4f1b195fdcbee8213437d084a1e109b419cb9a5ae6228b06"
+    },
+    {
+      "path": "tests/v32/test_v32_frontier.py",
+      "bytes": 5940,
+      "sha256": "43ca42f1c96890e75b7587e6fba3a4ad896467938833a8941ba96256ba2721ed"
+    },
+    {
+      "path": "tests/v33/test_v33_brain.py",
+      "bytes": 6983,
+      "sha256": "2feae9618527a5a727f371bd6876f4bc979caefa737937bf85f5070e8bca8471"
+    },
+    {
+      "path": "tests/v34/test_v34_brain.py",
+      "bytes": 6524,
+      "sha256": "d58dfdddedbb40f56aa58ff71b3d060fd618d94855074e2b544ff686ea8f2aec"
+    },
+    {
+      "path": "tests/v35/test_v35_self_identity.py",
+      "bytes": 11017,
+      "sha256": "10569ace64b66fbb6cf04e6f2c337149ebf97dd322bad717f8b2c8a29d0417f1"
+    },
+    {
+      "path": "tests/v36/test_v36_brain.py",
+      "bytes": 7753,
+      "sha256": "4821299ff8f468455a5aad0ffb89493506912c8f2fcc5ea7a830ad4a96ff1674"
+    },
+    {
+      "path": "tests/v37/test_v37_brain.py",
+      "bytes": 2995,
+      "sha256": "03b5f8bb8818d71bf76648c3306a26f2bf1a8516d40b8d375240b2f567ed4b08"
+    },
+    {
+      "path": "tests/v38/test_v38_development.py",
+      "bytes": 2569,
+      "sha256": "96e94ce435cb548ac7fec47fd9b4391a9ade9cb5ad2f367be35bca0ac20a697f"
+    },
+    {
+      "path": "tests/v38/test_v38_developmental_properties.py",
+      "bytes": 2307,
+      "sha256": "06db177b58e1bcb05ceb938be35b3ec3a32a02ecad0503c5c0250fafe16bd69c"
+    },
+    {
+      "path": "tests/v39/test_v39_policy.py",
+      "bytes": 3039,
+      "sha256": "0dfbadf58a669df1cee5c7b3abf106da601a4a7cc734be888709417c15ff200b"
+    },
+    {
+      "path": "tests/v40/test_v40_external.py",
+      "bytes": 3714,
+      "sha256": "2a7bea34e0d6e902e9bfcb0f8c7dce39f8b4b29d7e8d0e4eda9a4e2be319009c"
+    },
+    {
+      "path": "tests/v41/test_v41.py",
+      "bytes": 1304,
+      "sha256": "9d764d148f8df36c1e333a67d68381bb14cfb8996b2e97bf2af3177ed9df7133"
+    },
+    {
+      "path": "tests/v42/test_v42.py",
+      "bytes": 5087,
+      "sha256": "81f873f10809df4f1e2e04ddf14b72cc0acc3c9ca3e2231f658eac07e06e39e0"
+    },
+    {
+      "path": "tests/v43/test_v43.py",
+      "bytes": 4711,
+      "sha256": "11de79cb0ece455746b5c68c9a30c0dde5f794ad12bff3eaecaaa84ae27c2d35"
+    },
+    {
+      "path": "tests/v44/test_v44.py",
+      "bytes": 6206,
+      "sha256": "0956fc744997aec783e8e76a84976f17421d7d6d7bb8376f0af2e598db994360"
+    },
+    {
+      "path": "tests/v45/test_v45.py",
+      "bytes": 4087,
+      "sha256": "18093da1fa37f14c2dad59678b57020a6b452ff571f7e41e90f9d464adc2690b"
+    },
+    {
+      "path": "tests/v46/test_v46.py",
+      "bytes": 8060,
+      "sha256": "f57558babe84612ced4db3a08011952fb1a0db6fd660aeb07aa53a9483f73464"
+    },
+    {
+      "path": "tests/v47/test_v47.py",
+      "bytes": 9158,
+      "sha256": "d830425b7e5f239f1641d9cad9bac676a3c6a084bb37c3dfde170af8d8d768d8"
+    },
+    {
+      "path": "tests/v48/test_embodiment_v48.py",
+      "bytes": 2175,
+      "sha256": "2f6b005f5f3755fb15bb06583f9d947b11a5a969fab07d818acee40a69aa17c0"
+    },
+    {
+      "path": "tests/v48/test_v48.py",
+      "bytes": 12215,
+      "sha256": "74ac97409badb074c89041553881737324232fd07a80a84fb6db1b9b81197220"
+    },
+    {
+      "path": "tests/v49/test_v49.py",
+      "bytes": 11699,
+      "sha256": "0f7346bd9904f4c18df54ae87000f66564ff4626ee0b8934f7b29cca6c1bf473"
+    },
+    {
+      "path": "tests/v50/test_v50.py",
+      "bytes": 13463,
+      "sha256": "249f2a983da35a11a511654f14c8312b6c68ffd7e050a08faf533eb863ce3b0c"
+    },
+    {
+      "path": "tests/v51/test_v51.py",
+      "bytes": 15040,
+      "sha256": "2a2f1333db7169d62fae8d00a414ba9cd1d13b6d37efbb93ae5e9646a7961aaf"
+    },
+    {
+      "path": "tests/v52/test_v52.py",
+      "bytes": 7039,
+      "sha256": "aa0ecf885db084702496d19238fbcd1b67a0187b0951fd864b4364b4e683b00d"
+    },
+    {
+      "path": "tests/v53/test_v53.py",
+      "bytes": 7992,
+      "sha256": "d0c559c75f42b1b32bad95e0c1c10a9ad1d045e5f5e2d752483c26716087e936"
+    },
+    {
+      "path": "tests/v54/test_v54.py",
+      "bytes": 6820,
+      "sha256": "2008e681a60893eb5bd15e6d7655f40bd76cce94d2a99828b5447b7db519b0bb"
+    },
+    {
+      "path": "tests/v55/test_v55.py",
+      "bytes": 4866,
+      "sha256": "0107ef443aaec04aef331982d0e0d9511fefbda98ae6defb71adc7e602c6a39a"
+    },
+    {
+      "path": "tests/v56/test_v56.py",
+      "bytes": 4259,
+      "sha256": "5fca76459cbff25c056029606e693157fabc2e15308d2b6d37ea9e5da6aa2da8"
+    },
+    {
+      "path": "tests/v57/test_v57.py",
+      "bytes": 4813,
+      "sha256": "040cad3a90eb721ecbb931d9e680984c14c8f0a918d81ea0b027bad9e36a2e34"
+    },
+    {
+      "path": "tests/v58/test_v58.py",
+      "bytes": 5637,
+      "sha256": "942afa72d410bccc35bb930aa06d8c6dc610ad7e8b9d10487e1966a3486b47bf"
+    },
+    {
+      "path": "tests/v59/test_v59.py",
+      "bytes": 5189,
+      "sha256": "228bc67be6f6eab3a8deb5df8dc6530e5c1a3d043cdba2cb74c1917bb10e837b"
+    },
+    {
+      "path": "tests/v60/test_v60.py",
+      "bytes": 4991,
+      "sha256": "9b693061d2419e6fe11fb6d975b2bde57fe437792d89d21abcf192d85bf22be3"
+    },
+    {
+      "path": "tests/v61/test_v61.py",
+      "bytes": 4505,
+      "sha256": "2e86434ab56cbde0df74090023064f7fe8e85ec691a3c4c917e4d7bfc3a2e357"
+    },
+    {
+      "path": "tests/v62/test_v62.py",
+      "bytes": 4445,
+      "sha256": "7720f8a4a6bb9e316bd2886f314294e0c8427637ea93532c5125c2406efc49f4"
+    },
+    {
+      "path": "tests/v63/test_v63.py",
+      "bytes": 6307,
+      "sha256": "4b8423185b699a703f24e350e70ee1b34fb191c8bbb0185ee019fa6d85724ae6"
+    },
+    {
+      "path": "tests/v64/test_v64.py",
+      "bytes": 10277,
+      "sha256": "50f791dc7c9e66010eeca6a6b6884495912ba81438802c2af2c5f24d58009e85"
+    },
+    {
+      "path": "tests/v65/test_v65.py",
+      "bytes": 7795,
+      "sha256": "fbe6e760064b415aa0bc514c9b823316711a58d5e1592cc32c6c83d983458eb4"
+    },
+    {
+      "path": "tests/v66/test_v66.py",
+      "bytes": 7876,
+      "sha256": "79186ec9117f04d5822dec7a862d99ac23da0799eb26e242f3fff06a91de7181"
+    },
+    {
+      "path": "tests/v67/test_v67.py",
+      "bytes": 8470,
+      "sha256": "7fbc708029112ad4b63cc4dab5da646672c2fc4e1e8824302e0d479c1867c7d5"
+    },
+    {
+      "path": "tests/v68/test_v68.py",
+      "bytes": 6097,
+      "sha256": "be242ee28e8cdd7ec526c7b12802b6b26996932a9493f8c7794d66edcebbae29"
+    },
+    {
+      "path": "tests/v69/test_v69.py",
+      "bytes": 7075,
+      "sha256": "cc2627d4f0b6a93a2dcd940e2597dfcc1d5665044518fa29363678bbe1b8df31"
+    },
+    {
+      "path": "tests/v70/test_v70.py",
+      "bytes": 7580,
+      "sha256": "2a418e6a19018425af64c175fdd2f50e91c5fe1b9c7bb45044487d41a0620e2c"
+    },
+    {
+      "path": "tests/v71/test_v71.py",
+      "bytes": 4891,
+      "sha256": "7726aecea7be8edfdd2d8e59192871b483edaa848d5551bfdbff9683ac5c7ac8"
+    },
+    {
+      "path": "tests/v72/test_v72.py",
+      "bytes": 5172,
+      "sha256": "5ce9bc795b99ecc8f0402affe3e7522740af7000bddcc87c18047afcba297a9f"
+    },
+    {
+      "path": "tests/v73/test_v73.py",
+      "bytes": 5950,
+      "sha256": "ca9fcacd03686e207fd39af854ff42acf80d5eada1c57e40fbd5bd8ef1d11dc4"
+    },
+    {
+      "path": "tests/v74/test_v74.py",
+      "bytes": 3138,
+      "sha256": "716fb458b44c945ea6e0a1f0b7e8e25a16274ae467adf4897a07de106d06d9be"
+    },
+    {
+      "path": "tests/v75/test_v75.py",
+      "bytes": 2912,
+      "sha256": "3f05047eee5d3eeee1450a992ca055eca8a4eb3cf493404456bfcbd6d54f719a"
+    },
+    {
+      "path": "tests/v76/test_v76.py",
+      "bytes": 4263,
+      "sha256": "776a2b92638e418fed04c4a2e592c0cb7c2d117c623198e7ba3a7c718de5b4c0"
+    },
+    {
+      "path": "tests/v77/test_v77.py",
+      "bytes": 6625,
+      "sha256": "586ff1c68b0c989793131a3ed044fd3b5827922350caa8e5ace157e748624b00"
+    },
+    {
+      "path": "tests/v78/test_v78.py",
+      "bytes": 3514,
+      "sha256": "f168c67194ea58fef0b9b1b89718891b4450aa1b7fe6df715b108dd96786d5e7"
+    },
+    {
+      "path": "tests/v78/test_v78_extra.py",
+      "bytes": 1532,
+      "sha256": "3f4790a4448ad7f4f2e3255d5d65df5febad475c23125f82d1c779345f3af490"
+    },
+    {
+      "path": "tests/v79/test_v79.py",
+      "bytes": 1949,
+      "sha256": "126aaca1e6700e32cc2e61c710436be2ceec26120ccac56ec0aabc21234c7416"
+    },
+    {
+      "path": "tests/v80/test_v80.py",
+      "bytes": 5639,
+      "sha256": "8d4fde99bbc468d131c1130efd9efe4aebe1a53444256e35f0a1be5e55f8ed10"
+    },
+    {
+      "path": "tests/v81/test_v81.py",
+      "bytes": 3356,
+      "sha256": "39601b7f587bef13bdc3a34c242ac83bdb28f897e9ad0e3764c3308bc49ad057"
+    },
+    {
+      "path": "tests/v82/test_v82.py",
+      "bytes": 3280,
+      "sha256": "d958a237ff1f94d62fb3c42c9cdb29f20f146faa9720288d4f71aa4d94923e36"
+    },
+    {
+      "path": "tests/v83/test_v83.py",
+      "bytes": 4279,
+      "sha256": "1df1f0e448c50ef740160ff50a5a2a385fd395505d4babb5df03e0fc5542eb44"
+    },
+    {
+      "path": "tests/v84/test_v84.py",
+      "bytes": 3315,
+      "sha256": "67eb3ac9b0115941f1d1b127a027eb0110c33b76b4a1bc4628bfa1ead0a5910d"
+    },
+    {
+      "path": "tests/v85/test_v85.py",
+      "bytes": 1028,
+      "sha256": "09364b93689091384de3ef40df43699731b976db6600f27b4df86d74c61f8ccd"
+    },
+    {
+      "path": "tests/v86/test_v86.py",
+      "bytes": 5272,
+      "sha256": "b5aeeadfb7692997c76f27a09f4b13f623a43d78842f77009cd95dfc656235a2"
+    },
+    {
+      "path": "tests/v87/test_v87.py",
+      "bytes": 4608,
+      "sha256": "ac134242794e2bf425b8b29f5ff59d50a0fbe9fd2f80efd4f1b226f0d6554950"
+    },
+    {
+      "path": "tests/v88/test_v88.py",
+      "bytes": 3561,
+      "sha256": "c255e3ebe859db5f9264798fa2d2adfe536789e9f24935687a3b1c7ab511c335"
+    },
+    {
+      "path": "third_party/UPSTREAM_SOURCES_RU.md",
+      "bytes": 3128,
+      "sha256": "0a2cf6100117a45e7dd09da5cd12524677a55343ceb0823c519ec3f0a17a81f1"
+    },
+    {
+      "path": "ПРОЧИТАТЬ_ПЕРВЫМ.md",
+      "bytes": 2115,
+      "sha256": "a179ad1a2b651bf64fd10a55f18160c76810447863a62dc035462ec25b900d64"
+    }
+  ]
+}

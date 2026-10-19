@@ -1,0 +1,35 @@
+{
+  "release": "20.0.0-super-final",
+  "frozenAt": "2026-10-08T13:14:52.025Z",
+  "node": "v22.16.0",
+  "files": [
+    {
+      "path": "SUPER_VERSION.json",
+      "sha256": "297789eb2f6c6ecab80e71928eed720eb2923adb56d2118a58c13f5f83ee994f"
+    },
+    {
+      "path": "package.json",
+      "sha256": "483710c96ce61202b49621657f4658627c8eac586685b3f8f8c0604dd2e1dffa"
+    },
+    {
+      "path": "app/package-lock.json",
+      "sha256": "68c85563e56ae0f26c8b844bef1b71113e468f2d6d584c0d7a082dce474307be"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "sha256": "20faf766eef235539d37f8694e8fe76ca9851203a7209ee659a1f62b7994b9df"
+    },
+    {
+      "path": "runtime/neuro-kurisu/VERSION.json",
+      "sha256": "d8e4cb81ee8831d6068d391613d61e7be471e809025d8f29631a4451e2ba9d1f"
+    },
+    {
+      "path": "runtime/neuro-kurisu/RELEASE_MANIFEST.json",
+      "sha256": "f45712d39873e0bf11e5a51fcc20211529cf358a9d834dcf95f4356e152467c0"
+    }
+  ],
+  "environment": {
+    "databaseConfigured": false,
+    "apiTokenConfigured": false
+  }
+}

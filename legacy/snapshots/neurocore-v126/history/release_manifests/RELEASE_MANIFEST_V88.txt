@@ -1,0 +1,8 @@
+NeuroCore Frontier 3.1 — V88 Release
+Date: 2026-09-24
+Current frontier: 88
+Total params: 366909
+Active params: 159342
+Targeted gate: 19/19 V86-V88 tests PASS
+Compile gate: PASS
+Import gate: PASS

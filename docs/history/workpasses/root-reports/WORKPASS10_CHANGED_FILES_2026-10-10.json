@@ -1,0 +1,98 @@
+{
+  "name": "Neuro-Kurisu SUPER WorkPass 10 change manifest",
+  "date": "2026-10-10",
+  "baseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS9_2026-10-10.zip",
+  "baseSha256": "21172c4b61a006cc11d0a63b4d83328c7f90623d235b5c32ad0bdba81ee3b622",
+  "canonicalRuntime": "35.40.0",
+  "schema": 223,
+  "scope": "WILL transport envelope identity, queue backpressure, ACK conflict semantics, non-recursive replay and Lumina-to-Will transport seam checks; existing canonical owners retained.",
+  "counts": {
+    "addedIncludingThisManifest": 2,
+    "addedListedExcludingThisManifest": 1,
+    "modifiedFilesWithContentHashes": 10,
+    "removed": 0
+  },
+  "manifestSelfReference": "This manifest is excluded from addedFiles to avoid self-referential hashing.",
+  "addedFiles": [
+    {
+      "path": "docs/WORKPASS10_TRANSPORT_RELIABILITY_2026-10-10.md",
+      "bytes": 5038,
+      "sha256": "5b5d006306f9aa6ce1c98e6977664bfe6d8e3bc12266c2d05ac9b795d9e892dc"
+    }
+  ],
+  "modifiedFiles": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 19023,
+      "sha256": "5bde9dd9ae563c678b820f691bc212d376bd5368523898439cd819d819c23a3b",
+      "previousSha256": "b1b9117e7da2c98e4cd87d76d0f46ff53ce70103093cbde5ff82edc0d0884db7"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "bytes": 2224,
+      "sha256": "636f9062272c2c54d66fe680b844a06794a0040f42dc201907b6fe690c9ea346",
+      "previousSha256": "231219129bf9acb50dedacbbf44aa02bb99b2fb8dac096554fb515f8d1da649b"
+    },
+    {
+      "path": "package.json",
+      "bytes": 3667,
+      "sha256": "11f9a4f49a77294692e5914afa5225e41b6a8d06d3b96240878995cfc69ad9bb",
+      "previousSha256": "d1893c0720907ca2a53ac40137f168166ec1c244155a11661e56ab399e416ad0"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "bytes": 226807,
+      "sha256": "ab5d2a10bf5c4724938a5d7df69e686b1bc953741070f0a84e387f3b6399514a",
+      "previousSha256": "d66567fee632c8b14ebc6a3ae4e9d9449d9d0c2f5a52934699a4eab3ae5e788e"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+      "bytes": 1189928,
+      "sha256": "a075117c9dc1a3d7989634e2db06a28ef5e1c3694acda17eda0376a23240610f",
+      "previousSha256": "2bcbce7f4bb48e056dd527564c58b2bf0f21d745df66482b5fa5963f1e06daa0"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/integration/will/WillIntegrationBridge.ts",
+      "bytes": 37305,
+      "sha256": "b8403f4f2889cc1491d36a77178f3ae01c3bd7032a396a6c545548b4212b74dd",
+      "previousSha256": "329e5ed991180c5a6552fcd6fef928ef75eb30261ed0215d594a791a53ddef06"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/server/server.mjs",
+      "bytes": 139760,
+      "sha256": "ff284cfbacb0f0e8cfe3300d54e4f4e58cc1cc1551743b656a303063c44349ff",
+      "previousSha256": "a0acbe1c9916f42c6f9ecbd9494c34515042f25c8009755efac35eae535b1f5d"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/integration/will-integration-bridge.mjs",
+      "bytes": 10307,
+      "sha256": "df7af15a31f6afdd84890b28a5507720bd122ffc18e8320deab9b07b27fda5a1",
+      "previousSha256": "220173c7bd0b4b9145588319cd1c1fec4b72d94e373eb263f3aac257c01240fd"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/server-smoke.mjs",
+      "bytes": 18034,
+      "sha256": "e9220ea456e8a6297504e8b9a50e9f6ecc89ff8b126031fd898587793518f9ee",
+      "previousSha256": "bbbe2bf22c9e577054521a9a6348310963991b8d5d5b07ccd84802cd0d632897"
+    },
+    {
+      "path": "Список дел.md",
+      "bytes": 65845,
+      "sha256": "6d5680c73679d3588c637844656bdd6be3bcbffcef75a1df8fd875c2984d9223",
+      "previousSha256": "7eabca18ba04b6840c1d26a33267f5fd0d77a0a31c13ede3315693eb30b8149f"
+    }
+  ],
+  "removedFiles": [],
+  "verification": {
+    "command": "npm run audit:workpass10",
+    "result": "PASS",
+    "runtimeTypecheck": "PASS",
+    "serverSmoke": "PASS",
+    "uiApiLinkage": "PASS: 124 client routes, 48 Runtime Atlas surfaces, 5 required seams, 0 missing",
+    "serverRelativeImports": "PASS: 10 checked, 0 missing",
+    "memoryBenchmark": "PASS as a synthetic harness regression only; candidate not promoted",
+    "assetAudit": "PASS: 0 errors",
+    "fullReactViteBuildBrowserE2EClaimed": false,
+    "exactlyOnceExternalDeliveryClaimed": false
+  }
+}

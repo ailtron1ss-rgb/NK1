@@ -1,0 +1,4 @@
+B347 predictive calibration release
+Tests: B344/B345/B346/B347
+Architecture: 1228 source / 399 canonical / 0 cycles
+Integrity: 2634 files / schema 127

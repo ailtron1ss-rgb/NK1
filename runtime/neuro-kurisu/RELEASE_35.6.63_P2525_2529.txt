@@ -1,0 +1,32 @@
+Neuro Kurisu 35.6.63
+P2525–P2529 Neural Learning & Continuity Giant Upgrade
+Date: 2026-09-18
+
+Core additions:
+- learned sensory encoder
+- persistent input eligibility traces
+- recurrent eligibility traces
+- temporal delay learning
+- uncertainty-guided metaplasticity
+- selective slow memory
+- prioritized replay
+- delayed-credit action bridge
+- action-readout centering
+- sparse neural compatibility and migration
+
+Verification:
+- typecheck PASS
+- B2522 neural branch PASS
+- B2522 runtime PASS
+- B2523 distribution-shift PASS
+- P2525–P2529 learning benchmark PASS
+- B2521 runtime PASS
+- P22 phone reliability PASS
+- architecture PASS
+- integrity PASS
+- hygiene PASS
+- forensics PASS
+- syntax PASS
+
+No claim is made that the project has consciousness or general intelligence.
+Performance smoke: 1200 cycles / 861.97 ms (~1392 cycles/sec) in current Node runtime; not a device-specific Android benchmark.

@@ -1,0 +1,288 @@
+import { cosineSimilarity01 } from '../core/NumericPrimitives.ts';
+/**
+ * B289 — Neural Organism Integration Spine.
+ *
+ * Purpose:
+ *   Provide one compact recurrent state that integrates the already-existing
+ *   neural/cognitive subsystems instead of creating another competing owner.
+ *
+ * This is intentionally "neural-like", not a claim of biological equivalence.
+ * It uses sparse area competition, recurrent dynamics, slow self/personality
+ * traces, eligibility traces and a resource-aware active set.
+ *
+ * Design goals:
+ *   - one canonical cross-domain latent bridge;
+ *   - multi-timescale state (fast / medium / slow);
+ *   - bounded mobile cost (fixed small matrices, top-k area updates);
+ *   - causal action influence that can be lesioned and measured;
+ *   - persistence-safe and deterministic from state + input.
+ */
+
+import type { ActionKind } from '../core/types.ts';
+
+const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
+const AREAS = ['brainstem','salience','sensory','memory','world','self','value','social','workspace','planning','motor','metacognition'] as const;
+type Area = typeof AREAS[number];
+const TRAITS = ['curiosity','truth-seeking','care','self-reflection','self-preservation','social-attunement','persistence','autonomy'] as const;
+type Trait = typeof TRAITS[number];
+const clamp01 = (x:number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
+const clamp11 = (x:number) => Math.max(-1, Math.min(1, Number.isFinite(x) ? x : 0));
+const tanh = (x:number) => Math.tanh(Math.max(-6, Math.min(6, x)));
+
+function hash(seed:number){
+  let x = seed | 0;
+  x = Math.imul(x ^ (x >>> 16), 0x21f0aaad);
+  x = Math.imul(x ^ (x >>> 15), 0x735a2d97);
+  x ^= x >>> 13;
+  return x >>> 0;
+}
+function signed(seed:number, scale=.1){ return (((hash(seed) / 0xffffffff) * 2) - 1) * scale; }
+const cosine01=(a:number[],b:number[])=>cosineSimilarity01(a,b,1e-9);
+function mean(xs:number[]){ return xs.length ? xs.reduce((a,b)=>a+b,0)/xs.length : 0; }
+
+export interface B289State {
+  version:1;
+  tick:number;
+  cycles:number;
+  learningUpdates:number;
+  activeSetSize:number;
+  fastLatent:number[];
+  slowIdentity:number[];
+  areaActivity:Record<Area,number>;
+  areaTrace:Record<Area,number>;
+  recurrentWeights:number[][];
+  traitValues:Record<Trait,number>;
+  traitEvidence:Record<Trait,number>;
+  eligibility:number[];
+  neuromodulation:{dopamine01:number; norepinephrine01:number; acetylcholine01:number; serotonin01:number};
+  predictionError01:number;
+  integration01:number;
+  selfCoherence01:number;
+  agency01:number;
+  personalityCoherence01:number;
+  realityGrounding01:number;
+  identityStability01:number;
+  computeTier:'micro'|'fast'|'balanced'|'deep'|'protect';
+  deepCadence:number;
+  lastAction:ActionKind|null;
+  proposedAction:ActionKind;
+  lastOutcome01:number;
+  lesion01:number;
+  history:Array<{tick:number;action:ActionKind|null;reward01:number;predictionError01:number;integration01:number;agency01:number}>;
+}
+
+export interface B289StepInput {
+  tick:number;
+  worldLatent:number[];
+  selfLatent:number[];
+  memoryLatent:number[];
+  goalVector:number[];
+  workspaceLatent:number[];
+  socialLatent:number[];
+  predictionError01:number;
+  uncertainty01:number;
+  novelty01:number;
+  energy01:number;
+  thermal01:number;
+  cognitiveCapacity01:number;
+  identityContinuity01:number;
+  autobiographicalContinuity01:number;
+  realityAlignment01:number;
+  agency01:number;
+  socialNeed01:number;
+  selectedAction?:ActionKind|null;
+  outcome01?:number;
+}
+
+export interface B289StepResult {
+  latent:number[];
+  activeAreas:Area[];
+  integration01:number;
+  selfCoherence01:number;
+  agency01:number;
+  personalityCoherence01:number;
+  identityStability01:number;
+  realityGrounding01:number;
+  proposedAction:ActionKind;
+  computeTier:B289State['computeTier'];
+  deepCadence:number;
+}
+
+export const defaultB289State = (): B289State => ({
+  version:1,tick:0,cycles:0,learningUpdates:0,activeSetSize:6,
+  fastLatent:new Array(24).fill(0), slowIdentity:new Array(12).fill(.0),
+  areaActivity:Object.fromEntries(AREAS.map(a=>[a, .18])) as Record<Area,number>,
+  areaTrace:Object.fromEntries(AREAS.map(a=>[a, .05])) as Record<Area,number>,
+  recurrentWeights:Array.from({length:24},(_,i)=>Array.from({length:24},(_,j)=>signed(289000+i*67+j*13,.035))),
+  traitValues:Object.fromEntries(TRAITS.map(t=>[t,.5])) as Record<Trait,number>,
+  traitEvidence:Object.fromEntries(TRAITS.map(t=>[t,0])) as Record<Trait,number>,
+  eligibility:new Array(24).fill(0),
+  neuromodulation:{dopamine01:.5,norepinephrine01:.5,acetylcholine01:.5,serotonin01:.5},
+  predictionError01:.5,integration01:.45,selfCoherence01:.6,agency01:.45,personalityCoherence01:.62,realityGrounding01:.5,identityStability01:.65,
+  computeTier:'balanced',deepCadence:4,lastAction:null,proposedAction:'wait',lastOutcome01:.5,lesion01:0,history:[]
+});
+
+export class B289NeuralOrganismIntegrationSpine {
+  private state = defaultB289State();
+
+  restore(raw?:Partial<B289State>|null){
+    const d=defaultB289State(),r:any=raw??{};
+    this.state={
+      ...d,...r,version:1,
+      fastLatent:Array.isArray(r.fastLatent)?r.fastLatent.slice(0,24).concat(new Array(Math.max(0,24-r.fastLatent.length)).fill(0)).slice(0,24):d.fastLatent,
+      slowIdentity:Array.isArray(r.slowIdentity)?r.slowIdentity.slice(0,12).concat(new Array(Math.max(0,12-r.slowIdentity.length)).fill(0)).slice(0,12):d.slowIdentity,
+      areaActivity:{...d.areaActivity,...(r.areaActivity??{})},areaTrace:{...d.areaTrace,...(r.areaTrace??{})},
+      recurrentWeights:Array.isArray(r.recurrentWeights)?r.recurrentWeights.slice(0,24).map((row:any,i:number)=>Array.isArray(row)?row.slice(0,24).concat(new Array(Math.max(0,24-row.length)).fill(0)).slice(0,24):d.recurrentWeights[i]):d.recurrentWeights,
+      traitValues:{...d.traitValues,...(r.traitValues??{})},traitEvidence:{...d.traitEvidence,...(r.traitEvidence??{})},
+      neuromodulation:{...d.neuromodulation,...(r.neuromodulation??{})},
+      eligibility:Array.isArray(r.eligibility)?r.eligibility.slice(0,24).concat(new Array(Math.max(0,24-r.eligibility.length)).fill(0)).slice(0,24):d.eligibility,
+      history:Array.isArray(r.history)?r.history.slice(-256):[],
+    };
+  }
+
+  snapshot(){ return structuredClone(this.state); }
+
+  private computeTier(input:B289StepInput):{tier:B289State['computeTier'];cadence:number;activeSetSize:number}{
+    const pressure=clamp01(input.thermal01*.42 + (1-input.energy01)*.20 + (1-input.cognitiveCapacity01)*.20 + input.uncertainty01*.08 + input.predictionError01*.10);
+    const demand=clamp01(input.novelty01*.26 + input.uncertainty01*.24 + input.predictionError01*.22 + input.socialNeed01*.10 + input.agency01*.08 + .10);
+    if(pressure>.82) return {tier:'protect',cadence:10,activeSetSize:4};
+    if(pressure>.66) return {tier:'micro',cadence:8,activeSetSize:4};
+    if(demand>.75) return {tier:'deep',cadence:1,activeSetSize:9};
+    if(demand>.48) return {tier:'fast',cadence:2,activeSetSize:7};
+    return {tier:'balanced',cadence:4,activeSetSize:6};
+  }
+
+  private projectAreas(input:B289StepInput){
+    const source=(name:string,arr:number[],idx:number)=>Math.abs((arr[idx%Math.max(1,arr.length)]??0));
+    const pe=clamp01(input.predictionError01), u=clamp01(input.uncertainty01), n=clamp01(input.novelty01), social=clamp01(input.socialNeed01);
+    const values:Record<Area,number>={
+      brainstem:clamp01(.50*(1-input.energy01)+.25*input.thermal01+.25*pe),
+      salience:clamp01(.35*n+.35*pe+.20*u+.10*social),
+      sensory:clamp01(mean(input.worldLatent.slice(0,8).map(Math.abs))+.15*n),
+      memory:clamp01(mean(input.memoryLatent.slice(0,8).map(Math.abs))+.18*(1-input.autobiographicalContinuity01)),
+      world:clamp01(mean(input.worldLatent.slice(0,12).map(Math.abs))+.25*(1-input.realityAlignment01)),
+      self:clamp01(mean(input.selfLatent.slice(0,12).map(Math.abs))+.28*(1-input.identityContinuity01)),
+      value:clamp01(mean(input.goalVector.slice(0,12).map(Math.abs))+.18*input.agency01),
+      social:clamp01(mean(input.socialLatent.slice(0,12).map(Math.abs))+.30*social),
+      workspace:clamp01(mean(input.workspaceLatent.slice(0,12).map(Math.abs))+.25*pe+.15*n),
+      planning:clamp01(mean(input.goalVector.slice(0,8).map(Math.abs))+.24*input.agency01+.14*u),
+      motor:clamp01(.35*input.agency01+.35*input.energy01+.30*(1-input.predictionError01)),
+      metacognition:clamp01(.34*pe+.30*u+.20*(1-input.realityAlignment01)+.16*(1-input.identityContinuity01)),
+    };
+    void source;
+    return values;
+  }
+
+  private actionTrait(action:ActionKind):Trait[]{
+    const map:Record<ActionKind,Trait[]>={respond:['care','social-attunement'],explore:['curiosity'],verify:['truth-seeking'],rest:['self-preservation'],reflect:['self-reflection'],wait:['persistence'],defer:['caution' as Trait]};
+    return map[action]??[];
+  }
+
+  step(input:B289StepInput):B289StepResult{
+    const tier=this.computeTier(input);
+    const areas=this.projectAreas(input);
+    const ranked=Object.entries(areas).sort((a,b)=>b[1]-a[1]);
+    const active=ranked.slice(0,tier.activeSetSize).map(([a])=>a as Area);
+    const activeSet=new Set(active);
+    const next=new Array(24).fill(0);
+    for(let i=0;i<24;i++){
+      let recurrent=0;
+      for(let j=0;j<24;j++) recurrent += this.state.recurrentWeights[i][j]*(this.state.fastLatent[j]??0);
+      const areaBoost=active.reduce((s,a)=>s + (areas[a]??0)*signed(289400+i*101+a.length*17,.06),0);
+      const inputMix=
+        (input.selfLatent[i%Math.max(1,input.selfLatent.length)]??0)*.20 +
+        (input.worldLatent[i%Math.max(1,input.worldLatent.length)]??0)*.17 +
+        (input.memoryLatent[i%Math.max(1,input.memoryLatent.length)]??0)*.15 +
+        (input.goalVector[i%Math.max(1,input.goalVector.length)]??0)*.12 +
+        (input.workspaceLatent[i%Math.max(1,input.workspaceLatent.length)]??0)*.10 +
+        (input.socialLatent[i%Math.max(1,input.socialLatent.length)]??0)*.08;
+      next[i]=tanh((recurrent+inputMix+areaBoost)*(activeSet.size/12+0.45));
+    }
+    const leaky=(tier.tier==='deep'?.28:tier.tier==='fast'?.20:tier.tier==='micro'?.10:.16);
+    for(let i=0;i<24;i++) this.state.fastLatent[i]=clamp11(this.state.fastLatent[i]*(1-leaky)+next[i]*leaky);
+    for(let i=0;i<12;i++){
+      const target=this.state.fastLatent[(i*2)%24];
+      this.state.slowIdentity[i]=clamp11(this.state.slowIdentity[i]*.992 + target*.008 + (input.identityContinuity01-.5)*.004);
+    }
+    for(const area of AREAS){
+      const target=clamp01(areas[area]??0);
+      this.state.areaActivity[area]=clamp01(this.state.areaActivity[area]*.72+target*.28);
+      this.state.areaTrace[area]=clamp01(this.state.areaTrace[area]*.96+(activeSet.has(area)?1:0)*.04);
+    }
+    const novelty=clamp01(input.novelty01), uncertainty=clamp01(input.uncertainty01), pe=clamp01(input.predictionError01);
+    const identitySimilarity=cosine01(this.state.slowIdentity,input.selfLatent.slice(0,12));
+    const latentCoherence=clamp01(1-mean(this.state.fastLatent.map((v,i)=>Math.abs(v-(this.state.fastLatent[(i+1)%24]??0)))));
+    const integration=clamp01(.22*mean(active.map(a=>this.state.areaActivity[a]))+.18*(1-pe)+.15*(1-uncertainty)+.15*input.realityAlignment01+.15*identitySimilarity+.15*latentCoherence);
+    const selfCoherence=clamp01(.30*identitySimilarity+.26*input.identityContinuity01+.18*input.autobiographicalContinuity01+.16*(1-pe)+.10*input.realityAlignment01);
+    const agency=clamp01(.26*input.agency01+.18*integration+.18*(1-pe)+.14*input.energy01+.12*novelty+.12*this.state.areaActivity.planning);
+    const realityGrounding=clamp01(.34*input.realityAlignment01+.26*(1-pe)+.18*this.state.areaActivity.world+.12*this.state.areaActivity.sensory+.10*identitySimilarity);
+    const identityStability=clamp01(.38*input.identityContinuity01+.22*selfCoherence+.20*identitySimilarity+.20*(1-input.uncertainty01));
+    const traitMean=mean(TRAITS.map(t=>this.state.traitValues[t]));
+    const traitVar=mean(TRAITS.map(t=>(this.state.traitValues[t]-traitMean)**2));
+    const evidence=mean(TRAITS.map(t=>clamp01(this.state.traitEvidence[t]*2)));
+    const personalityCoherence=clamp01(.42*(1-Math.min(1,traitVar*4))+.33*evidence+.25*identityStability);
+
+    const dm=clamp01(.55*novelty+.45*agency);
+    const ne=clamp01(.45*pe+.30*uncertainty+.25*novelty);
+    const ach=clamp01(.50*uncertainty+.28*novelty+.22*(1-pe));
+    const ser=clamp01(.42*selfCoherence+.28*(1-pe)+.30*input.energy01);
+    this.state.neuromodulation={dopamine01:dm,norepinephrine01:ne,acetylcholine01:ach,serotonin01:ser};
+    this.state.integration01=integration;this.state.selfCoherence01=selfCoherence;this.state.agency01=agency;this.state.personalityCoherence01=personalityCoherence;this.state.realityGrounding01=realityGrounding;this.state.identityStability01=identityStability;this.state.predictionError01=pe;
+
+    const actionScores=ACTIONS.map(action=>{
+      const traits=this.actionTrait(action); let traitBoost=0;
+      for(const t of traits) traitBoost+=(this.state.traitValues[t]-.5)*.10;
+      const area=action==='explore'?'world':action==='verify'?'metacognition':action==='respond'?'social':action==='reflect'?'self':action==='rest'?'brainstem':action==='defer'?'value':'planning';
+      let score=.5 + traitBoost + this.state.areaActivity[area]*.10;
+      score += action==='explore'?novelty*.10:0;
+      score += action==='verify'?uncertainty*.12:0;
+      score += action==='rest'?(1-input.energy01)*.14:0;
+      score += action==='reflect'?(1-selfCoherence)*.10:0;
+      score += action==='respond'?input.socialNeed01*.08:0;
+      score += action==='wait'?(1-integration)*.05:0;
+      return score;
+    });
+    const proposed=ACTIONS[actionScores.indexOf(Math.max(...actionScores))];
+
+    this.state.activeSetSize=active.length;this.state.tick=input.tick;this.state.cycles++;this.state.proposedAction=proposed;this.state.lastAction=input.selectedAction??null;this.state.computeTier=tier.tier;this.state.deepCadence=tier.cadence;
+    this.state.history=[...this.state.history,{tick:input.tick,action:input.selectedAction??null,reward01:clamp01(input.outcome01??this.state.lastOutcome01),predictionError01:pe,integration01:integration,agency01:agency}].slice(-256);
+    for(let i=0;i<24;i++) this.state.eligibility[i]=this.state.eligibility[i]*.93 + Math.abs(this.state.fastLatent[i])*.07;
+    return {latent:[...this.state.fastLatent],activeAreas:active,integration01:integration,selfCoherence01:selfCoherence,agency01:agency,personalityCoherence01:personalityCoherence,identityStability01:identityStability,realityGrounding01:realityGrounding,proposedAction:proposed,computeTier:tier.tier,deepCadence:tier.cadence};
+  }
+
+  learnFromOutcome(input:{tick:number;action:ActionKind|null;reward01:number;predictionError01:number;externalEvidence01:number;identityContinuity01:number}){
+    const reward=clamp01(input.reward01), surprise=clamp01(input.predictionError01);
+    const signedReward=(reward-.5)*.85+(1-surprise-.5)*.30+(input.externalEvidence01-.5)*.10;
+    const lr=.008 + .014*clamp01(this.state.neuromodulation.dopamine01) + .008*clamp01(this.state.neuromodulation.acetylcholine01);
+    for(let i=0;i<24;i++){
+      const credit=(this.state.eligibility[i]??0);
+      for(let j=0;j<24;j++) this.state.recurrentWeights[i][j]=clamp11(this.state.recurrentWeights[i][j] + lr*signedReward*credit*this.state.fastLatent[j]*.004);
+    }
+    const traits=this.actionTrait(input.action??'wait');
+    for(const trait of TRAITS){
+      const relevance=traits.includes(trait)?1:.06;
+      const delta=signedReward*lr*relevance;
+      this.state.traitValues[trait]=clamp01(this.state.traitValues[trait]+delta-.0015*(this.state.traitValues[trait]-.5));
+      this.state.traitEvidence[trait]=clamp01(this.state.traitEvidence[trait]+Math.abs(delta)*2+.004*relevance);
+    }
+    this.state.lastOutcome01=reward;this.state.learningUpdates++;
+    this.state.agency01=clamp01(this.state.agency01 + (reward-.5)*.018 - surprise*.006);
+    this.state.identityStability01=clamp01(this.state.identityStability01*.995+input.identityContinuity01*.005);
+    return {learningRate:lr,signedReward,agency01:this.state.agency01,personalityCoherence01:this.state.personalityCoherence01};
+  }
+
+  actionBias(action:ActionKind){
+    const traits=this.actionTrait(action); let b=0;
+    for(const trait of traits) b+=(this.state.traitValues[trait]-.5)*.07;
+    const preferred=this.state.proposedAction===action ? this.state.agency01*.045 : 0;
+    const area=action==='explore'?'world':action==='verify'?'metacognition':action==='respond'?'social':action==='reflect'?'self':action==='rest'?'brainstem':action==='defer'?'value':'planning';
+    return clamp11(b+preferred+(this.state.areaActivity[area]-.5)*.035-this.state.lesion01*.08);
+  }
+
+  lesion(fraction01=.5){ this.state.lesion01=clamp01(fraction01); return {lesion01:this.state.lesion01}; }
+  clearLesion(){ this.state.lesion01=0; }
+  diagnostics(){
+    const active=AREAS.filter(a=>this.state.areaActivity[a]>.48);
+    return {tick:this.state.tick,cycles:this.state.cycles,learningUpdates:this.state.learningUpdates,activeSetSize:this.state.activeSetSize,activeAreas:active,computeTier:this.state.computeTier,deepCadence:this.state.deepCadence,integration01:this.state.integration01,selfCoherence01:this.state.selfCoherence01,agency01:this.state.agency01,personalityCoherence01:this.state.personalityCoherence01,identityStability01:this.state.identityStability01,realityGrounding01:this.state.realityGrounding01,neuromodulation:{...this.state.neuromodulation},traits:{...this.state.traitValues},traitEvidence:{...this.state.traitEvidence},proposedAction:this.state.proposedAction,lesion01:this.state.lesion01,historyDepth:this.state.history.length};
+  }
+}

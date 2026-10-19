@@ -1,0 +1,227 @@
+{
+  "title": "Neuro-Kurisu SUPER — reconciled weighted implementation roadmap scorecard — WorkPass48",
+  "date": "2026-10-16",
+  "workpass": 48,
+  "baseArchive": "Neuro_Kurisu_WORKPASS47_2026-10-16.zip → WorkPass48 affect-grounded autonomous topic selection",
+  "runtime": "35.69.0",
+  "schema": 225,
+  "method": "WorkPass48 links active goals and evidence-backed consolidated learning memories into the existing autonomous dialogue agenda, adds affect-grounded transient expression, near-duplicate suppression, a targeted sensitive-string gate for topic/recollection context, and honest delivery/reciprocity semantics. Runtime typecheck, pass-scoped tests, personhood/restore and social consolidation regressions plus server and UI/API linkage audits pass. Official weighted release score remains 78.0% because dependency-installed Vite/browser E2E, live provider idle/restart, external real-device/provider receipts, target-host inference, independent retrieval holdout, clean-room rollback, manual nested source-license review and soak remain open.",
+  "overallPercent": 78.0,
+  "previousOfficialScorePercent": 78.0,
+  "deltaPercentagePoints": 0.0,
+  "remainingWeightedRoadmapPoints": 22.0,
+  "workstreams": [
+    {
+      "id": "A",
+      "name": "Canonical source lineage and single-owner architecture",
+      "weight": 15,
+      "completionPercent": 100,
+      "weightedPoints": 15.0,
+      "previousPercent": 100,
+      "rationale": "Single writable organism state/memory authorities preserved. WorkPass39 adds a read-only cognitive ownership map and typed flow validation without parallel runtime state."
+    },
+    {
+      "id": "B",
+      "name": "Runtime integration, API/UI routes and smoke/linkage coverage",
+      "weight": 15,
+      "completionPercent": 98,
+      "weightedPoints": 14.7,
+      "previousPercent": 96,
+      "rationale": "Runtime API and Runtime Atlas now surface the brain map and live composed-system health; routes and focused UI linkage are wired. Dependency-installed React/Vite and interactive browser Live2D E2E remain open."
+    },
+    {
+      "id": "C",
+      "name": "Memory 2.0, retrieval/admission and benchmark evidence",
+      "weight": 15,
+      "completionPercent": 72,
+      "weightedPoints": 10.8,
+      "previousPercent": 70,
+      "rationale": "Memory admission now respects net utility, harm/redundancy and provenance even without budget pressure. Independent labelled temporal holdout remains open and retrieval uplift is still zero."
+    },
+    {
+      "id": "D",
+      "name": "Agency, action schema, execution, outcome and reafference",
+      "weight": 20,
+      "completionPercent": 82,
+      "weightedPoints": 16.4,
+      "previousPercent": 80,
+      "rationale": "Cycle-local lineage checks now gate completion in runtime and core feedback; durable ActionGateway receipts remain. Real provider/device receipts and reconnect/replay remain open."
+    },
+    {
+      "id": "E",
+      "name": "Portable subject continuity and social/known-entity dossier",
+      "weight": 10,
+      "completionPercent": 76,
+      "weightedPoints": 7.6,
+      "previousPercent": 75,
+      "rationale": "Unified cycle verification is tied to actual same-tick causal edges; this improves continuity evidence but is not a claim of subjective consciousness."
+    },
+    {
+      "id": "F",
+      "name": "External transport, SDK, idempotency and replay",
+      "weight": 10,
+      "completionPercent": 42,
+      "weightedPoints": 4.2,
+      "previousPercent": 42,
+      "rationale": "Stable IDs for new evidence and legacy ID continuity are improved; external transport delivery receipts/reconnect and multi-provider reconciliation remain open."
+    },
+    {
+      "id": "G",
+      "name": "Research promotion and controlled experiments",
+      "weight": 5,
+      "completionPercent": 70,
+      "weightedPoints": 3.5,
+      "previousPercent": 66,
+      "rationale": "WorkPass40 reviews the existing source archives and upstream contracts, adds SBOM/provenance inventory, and adapts the documented OpenAI-compatible llama.cpp endpoint into the existing P40 model ecology. External source clones and target-hardware inference remain pending where network or target hardware is unavailable."
+    },
+    {
+      "id": "H",
+      "name": "Release durability: build, E2E, rollback, soak, SBOM/provenance",
+      "weight": 10,
+      "completionPercent": 58,
+      "weightedPoints": 5.8,
+      "previousPercent": 46,
+      "rationale": "WorkPass40 adds an atomic lock-guarded exact-set restore with checksum staging, symlink rejection, rollback staging and nine state-backup tests; SBOM/provenance covers 464 locked npm components and ten embedded source archives. Full fault-injected clean-room rollback, installed Vite build, browser E2E, manual license sign-off and soak remain open."
+    }
+  ],
+  "normalizedTaskInventory": {
+    "count": 14,
+    "counts": {
+      "DONE": 9,
+      "PARTIAL": 2,
+      "TODO": 3
+    }
+  },
+  "openReleaseGates": [
+    "Installed React/Vite production build and interactive browser Live2D E2E, including idle dialogue delivery/restart",
+    "Actual audio-envelope/viseme to avatar synchronization",
+    "Authoritative external provider/device receipts, reconnect/replay and ambiguous-outcome reconciliation",
+    "Clean-room install/upgrade/fault-injected rollback with byte/state invariants",
+    "Actual target-host local inference",
+    "Independent labelled temporal retrieval holdout (current candidate uplift zero; not promoted)",
+    "Critical runtime behavior evidence, complete source-license review and long soak"
+  ],
+  "environmentNote": "WorkPass47: runtime TypeScript typecheck PASS; autonomous-dialogue queue and prompt tests PASS; graded trait salience contract PASS; node --check server.mjs PASS. UI/TSX source parses, but app dependencies are absent, so production Vite build and interactive browser/Live2D E2E are not run. Real provider/device action loops, target-host inference, independent holdout, rollback, licence sign-off and soak remain open. Weighted release roadmap remains 78.0% by policy; no score uplift is assigned just for code being present.",
+  "releaseStatus": "implementation-workpass; self-initiated dialogue and evidence-gated trait projection integrated; release gates remain open",
+  "limitations": [
+    "Production React/Vite build and interactive browser Live2D E2E remain unverified because app dependencies are not installed in this environment.",
+    "Local llama.cpp adapter has not been tested against a real model on target hardware; the adapter tests use mocked responses.",
+    "Real external provider/device receipts, reconnect/replay and ambiguous-outcome reconciliation remain open.",
+    "Synthetic temporal retrieval benchmark still reports zero measured recall uplift; candidate remains not promoted pending independent labelled holdout.",
+    "Nested source license obligations require manual review; SBOM/provenance evidence is not a legal conclusion.",
+    "Clean-room install/upgrade/fault-injected rollback and endurance soak remain release gates."
+  ],
+  "workpassImplementationProgressPercent": 90,
+  "implementationDeltasWorkPass36": [
+    {
+      "area": "Shared primitives",
+      "status": "DONE",
+      "evidence": "NumericPrimitives, StableSerialization, shared action cost policy; targeted runtime and adapter tests pass."
+    },
+    {
+      "area": "Memory durability/compatibility",
+      "status": "DONE",
+      "evidence": "64-entry bounded revision history, byte accounting, restore normalization, legacy source-lineage round trip."
+    },
+    {
+      "area": "Source archive immutability",
+      "status": "DONE",
+      "evidence": "8,512/8,512 source member SHA256 checks; 10,427 historical snapshot entries and 3,873 legacy dedup entries resolved."
+    },
+    {
+      "area": "Release deployment E2E",
+      "status": "OPEN",
+      "evidence": "Dependency-installed app build, browser and interactive Live2D E2E not completed in this environment."
+    },
+    {
+      "area": "Independent capability evidence",
+      "status": "OPEN",
+      "evidence": "Real local model/provider inference, independent temporal holdout, external postcondition/reafference, rollback and soak remain open."
+    },
+    "Shared Unicode tokenizer preserving Lumina/Conscio separators as options",
+    "Immutable SHA-256 content-addressed preimages for source-archive and historical snapshots",
+    "Revision-history memory-budget accounting and legacy memory lineage round-trip",
+    "Shared stable serialization retaining persisted legacy fingerprint bytes",
+    "ReleaseContract aligned to runtime package/integration manifest; schema-223 migration regression added"
+  ],
+  "passImplementationProgressPercent": 90,
+  "passImplementationProgress": 90,
+  "workpassImplementationProgress": 90,
+  "lastVerification": {
+    "checkedAt": "2026-10-16T11:30:00Z",
+    "releaseMetadata": "reconciled after report generation",
+    "runtimeTypecheck": "PASS",
+    "autonomousDialogueQueue": "PASS (focused regression)",
+    "autonomousDialoguePrompt": "PASS (focused regression)",
+    "gradedTraitSalience": "PASS (evidence gate, magnitude gate, top-K, all 3 prompt routes)",
+    "serverSyntax": "pending final pass",
+    "appBuild": "NOT RUN: app dependencies absent",
+    "browserE2E": "NOT RUN",
+    "providerDeviceE2E": "OPEN",
+    "officialWeightedScorePercent": 78.0
+  },
+  "remainingPercent": 22.8,
+  "workpass43Evidence": {
+    "runtime": "35.64.0",
+    "schema": 225,
+    "receiptCausalTests": "8/8 PASS",
+    "idempotencyTests": "13/13 PASS",
+    "ledgerArchiveTests": "4/4 PASS",
+    "reafferenceIntegration": "1/1 PASS",
+    "sourceArchivesVerified": "8512/8512",
+    "historicalSnapshotEntriesVerified": "10427/10427",
+    "historicalSnapshotSourcesChecked": 18935,
+    "legacyDedupEntries": 3873,
+    "historicalDuplicatePaths": 56,
+    "immutableHistoricalSourceBlobsAdded": 3,
+    "memoryRecallDelta": 0,
+    "memoryCandidatePromotion": "not-promoted",
+    "aggregateAudit": "TIMEOUT (not pass)",
+    "appBuild": "NOT RUN: app dependencies absent"
+  },
+  "workpass44Evidence": {
+    "runtime": "35.65.0",
+    "schema": 225,
+    "receiptCausalTests": "9/9 PASS",
+    "externalEvidenceReplay": "PASS",
+    "actionCrashReconciliation": "PASS",
+    "memoryTombstoneSafety": "PASS",
+    "memoryRecallDelta": 0,
+    "memoryCandidatePromotion": "not-promoted",
+    "providerSideIdempotency": "not yet evidenced with real provider/device",
+    "appBuild": "not run: dependencies absent",
+    "browserE2E": "not run",
+    "overallOfficialScorePercent": 78.0,
+    "passImplementationProgressPercent": 90,
+    "sourceArchiveMembersVerified": "8512/8512",
+    "historicalSnapshotEntriesVerified": "10427/10427",
+    "historicalSnapshotContentSourcesChecked": 18935,
+    "immutableHistoricalSourceBlobsAdded": 3,
+    "sourceManifestReferencesPinned": 12,
+    "metadataContract": "34/34 + contract tests 6/6 PASS",
+    "appScriptTests": "218/218 PASS",
+    "browserSmokeContract": "51/51 PASS",
+    "uiApiLinkage": "125 routes / 49 surfaces / zero missing required seams",
+    "assets": "PASS; zero errors",
+    "provenance": "PASS; 464 locked npm components / 8 source archives",
+    "officialScorePercent": 78.0
+  },
+  "latestPassEvidence": {
+    "workpass": 48,
+    "completed": [
+      "Affect-grounded topic ranking from active goals and consolidated learning memory",
+      "14-day semantic duplicate suppression and no repeated generic fallback",
+      "Existing appraisal to transient tone hint",
+      "Delivery acknowledgement no longer treated as reciprocity",
+      "Runtime typecheck and focused queue/prompt/personhood/social regression tests",
+      "Server import and UI/API linkage audits",
+      "Targeted privacy gate for sensitive topic and recalled-memory text before language context assembly"
+    ],
+    "open": [
+      "Provider-backed long idle run, app restart/replay and browser E2E",
+      "Production Vite build and Live2D audio/viseme E2E",
+      "Real provider/device receipt and independent retrieval holdout",
+      "Clean-room rollback, nested source licence review and soak"
+    ]
+  }
+}

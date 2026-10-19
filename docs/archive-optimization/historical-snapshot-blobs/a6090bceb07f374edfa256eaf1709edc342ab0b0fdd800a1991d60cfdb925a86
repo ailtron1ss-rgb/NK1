@@ -1,0 +1,20 @@
+{
+  "name": "Neuro-Kurisu SUPER",
+  "version": "0.1.1-super-optimized",
+  "date": "2026-10-06",
+  "canonicalRuntime": "Neuro-Kurisu 35.40.0",
+  "schema": 223,
+  "research": [
+    "NeuroCore V143",
+    "NOMEGA Pass20",
+    "DeepCode v21"
+  ],
+  "legacy": [
+    "Kurisu v9",
+    "Kurisu v56",
+    "Neuro-Kurisu 35.30",
+    "NeuroCore V126"
+  ],
+  "integrity": "source-first; no runtime state, node_modules, caches, or generated test state shipped",
+  "releaseRoot": "Neuro_Kurisu_SUPER_2026-10-06"
+}

@@ -1,0 +1,91 @@
+{
+  "release": "35.6.1",
+  "pass": "B300",
+  "date": "2026-09-13",
+  "scores01": {
+    "architecture": 0.96,
+    "persistence": 0.95,
+    "neural_substrate": 0.75,
+    "neural_integration": 0.76,
+    "world_model": 0.7,
+    "causal_identification": 0.64,
+    "policy_learning": 0.67,
+    "executive_integration": 0.7,
+    "action_ownership": 0.6,
+    "self_model": 0.5,
+    "agency": 0.56,
+    "motivation": 0.49,
+    "personality_learning": 0.72,
+    "memory_replay": 0.64,
+    "structural_plasticity": 0.27,
+    "closed_loop_embodiment": 0.5,
+    "long_horizon_autonomy": 0.31,
+    "android_evidence": 0.25,
+    "consciousness_evidence": 0.02,
+    "overall_functional_organism_maturity": 0.52
+  },
+  "evidence": {
+    "typecheck": "PASS",
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "hygiene": "PASS",
+    "forensics": "PASS",
+    "release_contract": "PASS",
+    "syntax": "PASS",
+    "function_liveness": {
+      "pass": 175,
+      "sourceFiles": 1145,
+      "functionLikeDeclarations": 3809,
+      "withBody": 3780,
+      "zeroReference": 215
+    },
+    "parameterized_probe": {
+      "attempted": 916,
+      "passed": 882,
+      "failed": 0,
+      "inputSynthesisNeeded": 22,
+      "lifecycleNeeded": 12,
+      "skipped": 39
+    },
+    "semantic_coverage": {
+      "total": 3689,
+      "verified": 38,
+      "integrationOnly": 841,
+      "unsafeToAutoRun": 259,
+      "unverified": 2551,
+      "verifiedRate01": 0.0103,
+      "evidenceCoverage01": 0.0673
+    },
+    "b300_contextual_unit": {
+      "contextCreditAssignments": 80,
+      "socialPreference11": 0.7867043932,
+      "epistemicPreference11": -0.5696488454,
+      "socialAfterBias11": 0.06911907125,
+      "epistemicAfterBias11": -0.06539613891,
+      "lesion": "PASS"
+    },
+    "b299_live_mobile_24": {
+      "cycles": 24,
+      "learningUpdates": 24,
+      "verifiedUpdates": 24,
+      "autonomousUpdates": 20,
+      "contextCreditAssignments": 24,
+      "personalityInfluence01": 0.02735608021,
+      "personalityStability01": 0.7885505516,
+      "selfAuthoredDevelopment01": 0.4335450754,
+      "causalIntegrity01": 0.6033499165,
+      "afterBiasMagnitude01": 0.01930577801,
+      "lesionedMagnitude01": 0.0009652889007
+    },
+    "b299_migration": {
+      "schema": 127,
+      "b299Cycles": 7,
+      "b296Cycles": 9,
+      "b298Cycles": 11
+    },
+    "ui_smoke": "PASS",
+    "server_smoke": "PASS",
+    "historical_long_horizon_40_content": "PASS with prior successful assertions; current harness does not terminate cleanly and is excluded from B300 release gate",
+    "react_vite": "not the current stack: no React/Vite dependency; UI is static HTML/CSS/JS served by Node"
+  }
+}

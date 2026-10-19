@@ -1,0 +1,8 @@
+{
+  "version": 115,
+  "engine_version": "v115-large-qualification",
+  "total_parameters": 69137,
+  "trainable_parameters": 69137,
+  "legacy_imports": [],
+  "recurrent_owner_count": 1
+}

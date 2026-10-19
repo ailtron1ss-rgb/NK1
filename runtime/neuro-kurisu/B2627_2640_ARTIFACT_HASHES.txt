@@ -1,0 +1,6 @@
+P2627_P2640_NEW_CODE=SelfOptimizingAutobiographicalMemory.ts
+P2627_P2640_TEST=big-pass-2627-2640-self-optimizing-autobiographical.mjs
+P2627_P2640_ABLATION=big-pass-2627-2640-ablation.mjs
+P2627_P2640_RELEASE=35.6.73
+P2627_P2640_CORE=84.0.0-self-optimizing-autobiographical-p2640
+P2627_P2640_SCHEMA=182

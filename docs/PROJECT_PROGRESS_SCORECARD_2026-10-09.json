@@ -1,0 +1,91 @@
+{
+  "title": "Neuro-Kurisu SUPER weighted roadmap scorecard",
+  "date": "2026-10-09",
+  "workpass": "7 — KnownEntityDossier + Memory retrieval benchmark",
+  "canonicalBase": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS6_2026-10-09.zip",
+  "canonicalBaseSha256": "f15f0f00436209a7dd7a82c52bba2223ed3d81065ac615f50437773a3b20e413",
+  "lineage": "WorkPass 6 selectively integrates useful changes based on HOTFIX_CHAT v20 2026-10-09; no wholesale legacy-tree overlay.",
+  "runtime": "35.40.0",
+  "schema": 223,
+  "method": "Weighted workstream estimate: each fixed weight is multiplied by the evidence-based completion fraction. Percent is implementation roadmap progress, not release readiness. The retrieval candidate metric was tested on a synthetic fixture only; no production-corpus uplift is claimed.",
+  "overallPercent": 63.55,
+  "previousPercent": 60.0,
+  "deltaPercentagePoints": 3.55,
+  "workstreams": [
+    {
+      "id": "A",
+      "name": "Canonical source lineage and single-owner architecture",
+      "weight": 15,
+      "completionPercent": 100,
+      "nextGate": "Retain existing single-owner boundaries",
+      "weightedPoints": 15.0
+    },
+    {
+      "id": "B",
+      "name": "Runtime integration, API/UI routes and smoke/linkage coverage",
+      "weight": 15,
+      "completionPercent": 92,
+      "nextGate": "Clean browser E2E across application and Live2D; benchmark endpoint auth/abuse review",
+      "weightedPoints": 13.8
+    },
+    {
+      "id": "C",
+      "name": "Memory 2.0, retrieval/admission and benchmark evidence",
+      "weight": 15,
+      "completionPercent": 45,
+      "nextGate": "Run matched baseline/candidate on real labeled multi-seed holdout; confirm retrieval uplift and contradiction safety",
+      "weightedPoints": 6.75
+    },
+    {
+      "id": "D",
+      "name": "Agency, action schema, execution, outcome and reafference",
+      "weight": 20,
+      "completionPercent": 60,
+      "nextGate": "Broader ActionCompetition and independent verified reafference stress before long-running promotion",
+      "weightedPoints": 12.0
+    },
+    {
+      "id": "E",
+      "name": "Portable subject continuity and social/known-entity dossier",
+      "weight": 10,
+      "completionPercent": 75,
+      "nextGate": "Behavioral fidelity and cross-session/entity-conflict E2E; improve correction and expiry handling",
+      "weightedPoints": 7.5
+    },
+    {
+      "id": "F",
+      "name": "External transport, SDK, idempotency and replay",
+      "weight": 10,
+      "completionPercent": 20,
+      "nextGate": "Determinism/reconnect/replay stress and abuse cases",
+      "weightedPoints": 2.0
+    },
+    {
+      "id": "G",
+      "name": "Research promotion and controlled experiments",
+      "weight": 5,
+      "completionPercent": 40,
+      "nextGate": "Use the new benchmark harness on real corpus and publish multi-seed/holdout evidence",
+      "weightedPoints": 2.0
+    },
+    {
+      "id": "H",
+      "name": "Release durability: build, E2E, rollback, soak, SBOM/provenance",
+      "weight": 10,
+      "completionPercent": 45,
+      "nextGate": "Dependency-complete typecheck/build, E2E, restore/rollback, soak and final release artifacts",
+      "weightedPoints": 4.5
+    }
+  ],
+  "openReleaseGates": [
+    "full dependency-complete root/app TypeScript typecheck",
+    "clean React/Vite production build",
+    "browser/mobile/Live2D E2E",
+    "clean-room backup/restore and upgrade/rollback",
+    "multi-hour soak and memory/resource growth",
+    "Memory 2.0 baseline-vs-candidate evaluation on real labeled multi-seed holdout data",
+    "deterministic transport/replay stress and abuse cases",
+    "final verified SBOM/provenance/release manifest",
+    "known-entity corrections, expiry and conflicts verified in browser-backed multi-session E2E"
+  ]
+}

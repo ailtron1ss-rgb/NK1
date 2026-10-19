@@ -1,0 +1,17 @@
+{
+  "pass": 174,
+  "generatedAt": "2026-09-10T14:36:08.971Z",
+  "steps": [
+    {
+      "name": "typecheck",
+      "ok": false,
+      "status": null,
+      "signal": null,
+      "error": "spawnSync npm run ENOENT",
+      "log": ".audit-big-pass-174-typecheck.log"
+    }
+  ],
+  "passed": 0,
+  "total": 44,
+  "failed": "typecheck"
+}

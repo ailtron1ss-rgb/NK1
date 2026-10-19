@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { LongHorizonAutonomyController } from '../src/organism/system/LongHorizonAutonomyController.ts';
+const c=new LongHorizonAutonomyController();
+const p=c.plan({tick:1,at:1000,agenda:{id:'goal-r16',title:'verify sensor',reason:'reduce uncertainty',mode:'learning',priority01:.8,commitment01:.8},energy01:.8,uncertainty01:.7,predictionError01:.1,identity01:.8,homeostaticPressure01:.2,novelty01:.7});
+assert.ok(p); const before=c.summary().revisions;
+c.observeExecution({action:p.steps[0].action,success01:.5,predictionError01:.6,at:1100});
+assert.equal(c.summary().revisions,before+1);
+assert.ok((c.snapshot().plans[0].commitment01)<p.commitment01);
+assert.ok(c.snapshot().plans[0].steps.some(s=>s.status==='active'));
+console.log(JSON.stringify({pass:true,revisions:c.summary().revisions,activeStep:c.summary().activePlan?.stepIndex,commitment:c.snapshot().plans[0].commitment01},null,2));

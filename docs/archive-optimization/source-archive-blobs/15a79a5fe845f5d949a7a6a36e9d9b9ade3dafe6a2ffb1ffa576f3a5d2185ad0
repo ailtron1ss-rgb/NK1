@@ -1,0 +1,93 @@
+/**
+ * BIG PASS 161 — Unified Cognitive Event Fabric.
+ *
+ * This is intentionally a thin causal ledger over the existing runtime evidence
+ * and organism EventLog. It does not become a second source of truth for memory,
+ * world or goals. It only records the causal spine of an operational cycle:
+ * observation -> prediction -> action -> outcome -> learning/self update.
+ */
+export type CognitiveStage = 'observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'self-update';
+
+export interface CognitiveEventNode {
+  id: string;
+  tick: number;
+  at: number;
+  stage: CognitiveStage;
+  source: string;
+  parentIds: string[];
+  external: boolean;
+  confidence01: number;
+  payload: Record<string, unknown>;
+}
+
+export interface CognitiveEventFabricSnapshot {
+  version: 1;
+  capacity: number;
+  total: number;
+  buffered: number;
+  linkedParentEvents: number;
+  danglingParentLinks: number;
+  lineageIntegrity01: number;
+  cycleCoverage01: number;
+  causalDensity01: number;
+  recentTicks: number;
+  recent: CognitiveEventNode[];
+}
+
+const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const cleanPayload=(x:Record<string,unknown>|undefined)=>({...(x??{})});
+
+export class CognitiveEventFabric {
+  private readonly capacity:number;
+  private events:CognitiveEventNode[]=[];
+  private total=0;
+
+  constructor(capacity=512){this.capacity=Math.max(128,Math.min(4096,Math.floor(capacity)));}
+
+  restore(raw?:Partial<CognitiveEventFabricSnapshot>|null):void{
+    const rows=Array.isArray(raw?.recent)?raw!.recent.slice(0,this.capacity):[];
+    this.events=rows.map(e=>({...e,parentIds:Array.isArray(e.parentIds)?e.parentIds.slice(0,12):[],payload:cleanPayload(e.payload)}));
+    this.total=Math.max(this.events.length,Number(raw?.total??this.events.length));
+  }
+
+  append(input:{tick:number;stage:CognitiveStage;source:string;parentIds?:string[];external?:boolean;confidence01?:number;payload?:Record<string,unknown>;at?:number}):CognitiveEventNode{
+    const at=Number.isFinite(input.at)?Number(input.at):Date.now();
+    const event:CognitiveEventNode={
+      id:`cef:${at}:${Math.max(0,Math.floor(input.tick))}:${Math.random().toString(16).slice(2)}`,
+      tick:Math.max(0,Math.floor(input.tick)), at,
+      stage:input.stage, source:String(input.source||'unknown').slice(0,120),
+      parentIds:[...(input.parentIds??[])].map(String).slice(0,12),
+      external:Boolean(input.external), confidence01:clamp01(input.confidence01??0.5), payload:cleanPayload(input.payload),
+    };
+    this.events.unshift(event);
+    if(this.events.length>this.capacity)this.events=this.events.slice(0,this.capacity);
+    this.total+=1;
+    return {...event,parentIds:[...event.parentIds],payload:{...event.payload}};
+  }
+
+  recordOperationalCycle(input:{tick:number;observation?:{source?:string;external?:boolean;confidence01?:number;payload?:Record<string,unknown>};prediction?:{source?:string;confidence01?:number;payload?:Record<string,unknown>};action?:{source?:string;confidence01?:number;payload?:Record<string,unknown>};outcome?:{source?:string;confidence01?:number;external?:boolean;payload?:Record<string,unknown>};learning?:{source?:string;confidence01?:number;payload?:Record<string,unknown>};selfUpdate?:{source?:string;confidence01?:number;payload?:Record<string,unknown>};at?:number}){
+    const ids:Partial<Record<'observation'|'prediction'|'action'|'outcome'|'learning'|'selfUpdate',string>>={};
+    if(input.observation){const e=this.append({tick:input.tick,stage:'observation',source:input.observation.source??'runtime',external:input.observation.external,confidence01:input.observation.confidence01,payload:input.observation.payload,at:input.at});ids.observation=e.id;}
+    if(input.prediction){const e=this.append({tick:input.tick,stage:'prediction',source:input.prediction.source??'prediction',parentIds:ids.observation?[ids.observation]:[],confidence01:input.prediction.confidence01,payload:input.prediction.payload,at:input.at});ids.prediction=e.id;}
+    if(input.action){const parents=[ids.prediction,ids.observation].filter(Boolean) as string[];const e=this.append({tick:input.tick,stage:'action',source:input.action.source??'action',parentIds:parents,confidence01:input.action.confidence01,payload:input.action.payload,at:input.at});ids.action=e.id;}
+    if(input.outcome){const parents=[ids.action,ids.prediction].filter(Boolean) as string[];const e=this.append({tick:input.tick,stage:'outcome',source:input.outcome.source??'outcome',parentIds:parents,external:input.outcome.external,confidence01:input.outcome.confidence01,payload:input.outcome.payload,at:input.at});ids.outcome=e.id;}
+    if(input.learning){const parents=[ids.outcome,ids.action].filter(Boolean) as string[];const e=this.append({tick:input.tick,stage:'learning',source:input.learning.source??'learning',parentIds:parents,confidence01:input.learning.confidence01,payload:input.learning.payload,at:input.at});ids.learning=e.id;}
+    if(input.selfUpdate){const parents=[ids.learning,ids.outcome].filter(Boolean) as string[];const e=this.append({tick:input.tick,stage:'self-update',source:input.selfUpdate.source??'self-update',parentIds:parents,confidence01:input.selfUpdate.confidence01,payload:input.selfUpdate.payload,at:input.at});ids.selfUpdate=e.id;}
+    return ids;
+  }
+
+  recent(limit=64):CognitiveEventNode[]{return structuredClone(this.events.slice(0,Math.max(1,Math.min(256,Math.floor(limit)))));}
+
+  snapshot():CognitiveEventFabricSnapshot{
+    const known=new Set(this.events.map(e=>e.id));
+    let linked=0,dangling=0;
+    for(const e of this.events)for(const p of e.parentIds){if(known.has(p))linked++;else dangling++;}
+    const byTick=new Map<number,Set<CognitiveStage>>();
+    for(const e of this.events){const s=byTick.get(e.tick)??new Set<CognitiveStage>();s.add(e.stage);byTick.set(e.tick,s);}
+    const complete=[...byTick.values()].filter(s=>s.has('observation')&&s.has('prediction')&&s.has('action')&&s.has('outcome')).length;
+    const coverage=byTick.size?clamp01(complete/byTick.size):0;
+    const totalParentRefs=linked+dangling;
+    const recentTicks=byTick.size?Math.max(...byTick.keys())-Math.min(...byTick.keys()):0;
+    return{version:1,capacity:this.capacity,total:this.total,buffered:this.events.length,linkedParentEvents:linked,danglingParentLinks:dangling,lineageIntegrity01:clamp01(linked/Math.max(1,totalParentRefs)),cycleCoverage01:coverage,causalDensity01:clamp01(linked/Math.max(1,this.events.length*2)),recentTicks,recent:this.recent(96)};
+  }
+}

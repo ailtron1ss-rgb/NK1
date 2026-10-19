@@ -1,0 +1,54 @@
+{
+  "workpass": 41,
+  "date": "2026-10-14",
+  "runtimeVersion": "35.63.0",
+  "schema": 225,
+  "gates": {
+    "cognitiveCycleLocalLineage": {
+      "status": "PASS",
+      "assertions": 10,
+      "strictTickType": "PASS",
+      "note": "Restore rejects null and string ticks rather than coercing them into causal time."
+    },
+    "memoryRetentionNetValue": {
+      "status": "PASS",
+      "assertions": 5
+    },
+    "bigPass162UnifiedCognitiveEconomy": {
+      "status": "PASS"
+    },
+    "bigPass164LargeCognitivePass": {
+      "status": "PASS",
+      "note": "previously failed because net-value admission did not affect action at low byte pressure"
+    },
+    "p2894MemoryAntiCollapse": {
+      "status": "PASS"
+    },
+    "p2888AdaptiveMemoryEconomy": {
+      "status": "PASS"
+    },
+    "memorySubstrateIndexEquivalence": {
+      "status": "PASS"
+    },
+    "runtimeTypecheck": {
+      "status": "PASS"
+    },
+    "viteProductionBuild": {
+      "status": "BLOCKED",
+      "reason": "Vite dependencies unavailable in current environment; do not count as pass"
+    },
+    "interactiveBrowserLive2DE2E": {
+      "status": "OPEN"
+    },
+    "realProviderDeviceReceipts": {
+      "status": "OPEN"
+    },
+    "independentTemporalHoldout": {
+      "status": "OPEN",
+      "note": "current synthetic retrieval uplift zero; candidate not promoted"
+    }
+  },
+  "weightedRoadmapPercent": 78.0,
+  "implementationProgressPercent": 92,
+  "releaseReady": false
+}

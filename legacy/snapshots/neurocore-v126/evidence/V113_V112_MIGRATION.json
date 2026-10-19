@@ -1,0 +1,18 @@
+{
+  "current_schema_version": 23,
+  "current_neural_version": 112,
+  "engine_source_version": 112,
+  "loaded_tensors": 105,
+  "missing_tensors": [],
+  "shape_mismatch": [],
+  "unexpected_tensors": [
+    "trunk.spine.memory_to_action.0.weight",
+    "trunk.spine.memory_to_action.0.bias",
+    "trunk.spine.memory_to_action.2.weight",
+    "trunk.spine.memory_to_action.2.bias"
+  ],
+  "legacy_checkpoint_detected": true,
+  "legacy_tensors_loaded": 105,
+  "optimizer_loaded": false,
+  "optimizer_reset": false
+}

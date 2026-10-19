@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { migratePersistedOrganism, ORGANISM_STATE_SCHEMA } from '../src/organism/persistence/StateMigrations.ts';
+const old={schemaVersion:11,state:{version:11,tick:3,needs:{energy:.7}},facets:{advanced:{worldModel2:{version:1,transitions:{move:{samples:3,meanReward:.6,rewardVariance:.1,surpriseMean:.2,confidence:.4,lastAt:1}},causal:[],latent:{energy:.7,uncertainty:.3,novelty:.2,load:.3},predictionErrors:[.2],rollouts:2}}}};
+const next=migratePersistedOrganism(old);
+assert.equal(next.schemaVersion,ORGANISM_STATE_SCHEMA);
+assert.equal(next.facets.advanced.worldModel2.modelVersion,2);
+assert.ok(next.facets.advanced.worldModel2.transitions.move.meanDelta);
+assert.ok(next.facets.advanced.worldModel2.transitionHypotheses);
+assert.ok(Array.isArray(next.facets.advanced.worldModel2.calibration));
+console.log(`P10_MIGRATION=PASS schema=${next.schemaVersion} worldModelVersion=${next.facets.advanced.worldModel2.modelVersion}`);

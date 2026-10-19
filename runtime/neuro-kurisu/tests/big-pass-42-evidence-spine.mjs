@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { RuntimeEvidenceBus } from '../src/organism/system/RuntimeEvidenceBus.ts';
+const bus = new RuntimeEvidenceBus(128);
+const a = bus.publish({tick:1,kind:'observation',source:'device',external01:true,confidence01:.9});
+bus.publish({tick:2,kind:'prediction',source:'core',parentIds:[a.id],confidence01:.7});
+bus.publish({tick:3,kind:'outcome',source:'simulator',parentIds:['missing'],confidence01:.6});
+const s = bus.snapshot();
+assert.equal(s.total,3);
+assert.equal(s.externalCount,1);
+assert.equal(s.linkedParentEvents,1);
+assert.equal(s.danglingParentLinks,1);
+assert.ok(s.coverage01 > 0);
+assert.equal(s.recentWindowTicks,2);
+console.log(`BIG_PASS_42_EVIDENCE_SPINE=PASS linked=${s.linkedParentEvents} dangling=${s.danglingParentLinks} coverage=${s.coverage01.toFixed(3)}`);

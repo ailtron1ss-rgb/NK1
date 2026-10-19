@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "artifact": "historical-pointer",
+  "supersededBy": "docs/brain/SEMANTIC_VERIFICATION_BACKLOG_B291.json",
+  "reason": "The B291 backlog supersedes the B181 snapshot. This pointer prevents duplicate-content archaeology while preserving the historical release reference.",
+  "policy": "A function remains UNVERIFIED until direct behavioral evidence or an explicit lifecycle contract exists."
+}

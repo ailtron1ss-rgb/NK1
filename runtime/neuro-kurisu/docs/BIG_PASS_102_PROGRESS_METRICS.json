@@ -1,0 +1,19 @@
+{
+  "version": "34.76.0",
+  "pass": 102,
+  "focus": "memory-replay-consolidation",
+  "memoryReplay": 72,
+  "memoryConsolidation": 66,
+  "causalIntegration": 66,
+  "unifiedLearningIntegration": 64,
+  "skillEcology": 70,
+  "longHorizon": 55,
+  "engineeringReadiness": 80,
+  "consciousnessMechanism": 20,
+  "consciousnessResearch": 70,
+  "claims": {
+    "replayImplemented": true,
+    "biologicalConsolidationProven": false,
+    "consciousnessProven": false
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "version": "35.6.1-B274",
+  "date": "2026-09-12",
+  "feature": "autonomous-skill-laboratory",
+  "claims": {
+    "imagined_experiment_before_real_trial": true,
+    "independent_promotion_gate": true,
+    "personality_fit_gate": true,
+    "neural_grounding_gate": true,
+    "transfer_requires_separate_test": true,
+    "restart_persistence": true
+  },
+  "standalone": {
+    "imaginedExperiments": 2,
+    "realTrials": 9,
+    "promotions": 1,
+    "neuralGrounding01": 0.74754,
+    "autonomyContribution01": 0.59847,
+    "selfAlignment01": 0.63789,
+    "personalityFit01": 0.72237,
+    "rollbackSafety01": 0.9,
+    "transfers": 0,
+    "transferConfidence01": 0.6487
+  },
+  "independent": {
+    "realTrials": 18,
+    "independentEvaluations": 18,
+    "promotions": 1,
+    "transferGain01": 0.66785,
+    "discoveryRate01": 0.07968,
+    "promotionConfidence01": 0.71735,
+    "neuralGrounding01": 0.91474,
+    "autonomyContribution01": 0.72436,
+    "selfAlignment01": 0.77351,
+    "personalityFit01": 0.81745,
+    "transfers": 1
+  },
+  "core": {
+    "cycles": 14,
+    "imaginedExperiments": 13,
+    "realTrials": 14,
+    "promotions": 1,
+    "transfers": 0,
+    "restart": "PASS"
+  },
+  "regression": {
+    "b269": "PASS",
+    "b270": "PASS",
+    "b271": "PASS",
+    "b272": "PASS",
+    "b273": "PASS"
+  },
+  "limitations": [
+    "finite action vocabulary",
+    "world-model-based imagined experiment",
+    "hybrid symbolic personality evidence",
+    "no consciousness claim"
+  ],
+  "mega_run": "NOT_USED_AS_RELEASE_GATE",
+  "finalGates": {
+    "typecheck": "PASS",
+    "auditFull": "PASS",
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "hygiene": "PASS",
+    "syntax": "PASS",
+    "contract": "PASS",
+    "forensics": "PASS",
+    "lock": "PASS",
+    "releaseSource": "PASS",
+    "doctor": "PASS",
+    "archiveManifest": "PASS",
+    "archive": "PASS"
+  },
+  "releaseOrchestration": "TIMEOUT_AT_SYNTAX_STAGE_BUT_INDEPENDENT_SYNTAX_GATE_PASS"
+}

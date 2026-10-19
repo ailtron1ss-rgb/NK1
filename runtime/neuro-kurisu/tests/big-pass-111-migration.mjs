@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { migratePersistedOrganism, ORGANISM_STATE_SCHEMA } from '../src/organism/persistence/StateMigrations.ts';
+const legacy={schemaVersion:119,facets:{learning:{p36:{version:2,cycles:5,hypotheses:[],experiments:[],externalEvidence:[],metrics:{autonomy01:.7},curriculum:{focus:'learning',mastery:{learning:.6}}}}}};
+const m=migratePersistedOrganism(legacy);
+assert.equal(m.schemaVersion,ORGANISM_STATE_SCHEMA);
+assert.equal(m.facets.learning.p36.version,4);
+assert.equal(Array.isArray(m.facets.learning.p36.investmentDecisions),true);
+assert.equal(m.facets.learning.p36.agenda.selectedArea,null);
+assert.equal(Array.isArray(m.facets.learning.p36.developmentCycles),true);
+console.log('BIG_PASS_111_MIGRATION=PASS',JSON.stringify({schema:m.schemaVersion,p36:m.facets.learning.p36.version,agenda:m.facets.learning.p36.agenda.selectedArea}));

@@ -1,0 +1,207 @@
+{
+  "title": "Neuro-Kurisu WorkPass38 changed files manifest",
+  "date": "2026-10-14",
+  "workpass": 38,
+  "baselineArchive": "Neuro_Kurisu_WORKPASS37_2026-10-13.zip",
+  "baselineFileCount": 9104,
+  "workingTreeFileCount": 9116,
+  "addedFileCount": 12,
+  "removedBaselineFileCount": 0,
+  "modifiedBaselineFileCount": 18,
+  "allBaselinePathsRetained": true,
+  "selfReferenceExcluded": true,
+  "selfPath": "docs/WORKPASS38_CHANGED_FILES_2026-10-14.json",
+  "rule": "Path/content deltas are based on SHA-256 comparisons. This manifest excludes its own digest to avoid self-reference; it is independently protected by the final archive SHA-256 sidecar.",
+  "addedFiles": [
+    {
+      "path": "WORKPASS38_INTEGRATION_MATRIX_2026-10-14.md",
+      "sizeBytes": 230,
+      "sha256": "3282b04a3b553d3a433b8c775c07b3a46497c9457909c2e4258d92bbb48e5269"
+    },
+    {
+      "path": "WORKPASS38_REPORT_2026-10-14.md",
+      "sizeBytes": 211,
+      "sha256": "c8d26e267103db333e30b197ec43bdaabb2a5aaedd3d5ad86db4faca4f7e2010"
+    },
+    {
+      "path": "WORKPASS38_TASKS_2026-10-14.md",
+      "sizeBytes": 209,
+      "sha256": "435c77112fed79f66a3815f977d8b9f2c80a79d2f48fbf2c5a441108a7b12ee5"
+    },
+    {
+      "path": "docs/INTEGRATION_MATRIX_WORKPASS38_2026-10-14.md",
+      "sizeBytes": 2671,
+      "sha256": "1ca976a3677247568051b5c06185b9f41fd9da76e94258e81a778284b7f730dd"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-14_WORKPASS38.json",
+      "sizeBytes": 43054,
+      "sha256": "3a7c48930173026193073a6c6991ffaf6e5577742ddf8b7efef731b6e96910b5"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-14_WORKPASS38.md",
+      "sizeBytes": 2273,
+      "sha256": "348458d61c46e66feea86c819d60a09eaf36a9654d395aeb3637a835bf512ce8"
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-14_WORKPASS38.json",
+      "sizeBytes": 10550,
+      "sha256": "3f5ed6d725d2cc469f82f6012e67aeb1aa02b77921ed95e680ebf68395e3d178"
+    },
+    {
+      "path": "docs/WORKPASS38_REPORT_2026-10-14.md",
+      "sizeBytes": 3203,
+      "sha256": "12b56ef28981285b218b9c167216f53cf20ac01c25baa6261f856d215c9fa1f6"
+    },
+    {
+      "path": "docs/WORKPASS38_TASKS_2026-10-14.md",
+      "sizeBytes": 2079,
+      "sha256": "7faad6d20babdb1fa0217a347278137633d3dd4002e7a9f66201bb9a74e65527"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/FileActionExecutionLedgerArchive.ts",
+      "sizeBytes": 6567,
+      "sha256": "8eebe5f4dc500eb59fc37e2a6148a73c42e52b44e896f197fa51f28fe3d8080d"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/action-ledger-archive-workpass38.mjs",
+      "sizeBytes": 6213,
+      "sha256": "09a4639222daab9afc0af04fc723acab906b633f5a857bb7de75bfe0122ecec2"
+    }
+  ],
+  "removedFiles": [],
+  "modifiedFiles": [
+    {
+      "path": "CHANGELOG.md",
+      "sizeBytes": 59573,
+      "baselineSizeBytes": 58451,
+      "baselineSha256": "794960288f56d2eb0b8563028dd7f0b3c4c3c7948bf6f821a438dbfe57862c9a",
+      "currentSha256": "5442ac2a109ab6afb21c7428c95404718825a3652a56e4dde046cdff326ae2d7"
+    },
+    {
+      "path": "README.md",
+      "sizeBytes": 23971,
+      "baselineSizeBytes": 23204,
+      "baselineSha256": "e743fc017c4687681c63f9a8e6b5ec500cf339635a94d5b76fac458d0b7f3dd1",
+      "currentSha256": "33037823ded76bf0703210f1ef72820e779b8790c3d0a7aee1e6b2625e2d324f"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "sizeBytes": 2469,
+      "baselineSizeBytes": 2507,
+      "baselineSha256": "25085b15b7d3041e47b36d3cc17a52efbcfee29ef2a48452e90fd915c3ed80b2",
+      "currentSha256": "a097e627d723237d44ffc5515b3992345fdb1026a9ccd1d42ea0ff2b44ac46ec"
+    },
+    {
+      "path": "package.json",
+      "sizeBytes": 19515,
+      "baselineSizeBytes": 18879,
+      "baselineSha256": "97ca7a5ee02e67fc9aee082b57036b085ca47ca158b3345a60ab969252ed7a03",
+      "currentSha256": "1e82f61e2bb669367c1d8498950c909869376e5b90fdca89d0211b974c2cd446"
+    },
+    {
+      "path": "runtime/neuro-kurisu/FUNCTION_LIVENESS_AUDIT.json",
+      "sizeBytes": 67563,
+      "baselineSizeBytes": 67559,
+      "baselineSha256": "7a56cad78bfd088b93b0ed8e32df993ab20d5f9f4befc47ee6146fb11fba22a4",
+      "currentSha256": "8b179cc433b0d7ea0b584b42d4e11b110ee13fd3d68820a7f73b4735d740fc0e"
+    },
+    {
+      "path": "runtime/neuro-kurisu/RELEASE_MANIFEST.json",
+      "sizeBytes": 1014,
+      "baselineSizeBytes": 1028,
+      "baselineSha256": "917425806e987ebdaea5c1ab9816d16e01f3414281266a5646bb3830143e6b7c",
+      "currentSha256": "292e53c618dab1bd08dd4696ad633be7801c5f85dc4aa89a0aaed879c59caba0"
+    },
+    {
+      "path": "runtime/neuro-kurisu/VERSION.json",
+      "sizeBytes": 278,
+      "baselineSizeBytes": 292,
+      "baselineSha256": "e97198e05279a026dbbde747543300017693e6083a9dd46a92c1b7c22aa053a0",
+      "currentSha256": "b0ca2bca31ca43c7155c1bda749538124b9488c21c2a1796c7cb0940cf18f25a"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package-lock.json",
+      "sizeBytes": 1041,
+      "baselineSizeBytes": 1041,
+      "baselineSha256": "ea0926cc2ff8145fc360ace347cdbdd8ae01255b485b94b73ae218b26d86c9ee",
+      "currentSha256": "122998ef307fb05ca021c7b656e9e0f0b7f8fc40754b676694b507151fe80dd5"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "sizeBytes": 240887,
+      "baselineSizeBytes": 240401,
+      "baselineSha256": "1c1d0a6b5fddf87af8f73ccff4792daf0fd20a89bb5d576bb4d1e09373b8edea",
+      "currentSha256": "1f5e0f3e9dfdbed2d7f22676cc8ab20f993d8e093d203b4e70e1501159034390"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+      "sizeBytes": 1217117,
+      "baselineSizeBytes": 1216452,
+      "baselineSha256": "5362ce93a357726b7424de3bb140b8ea8de4ce67c3de0425dea4f891e4ff0586",
+      "currentSha256": "8147515a62b41917158019eb0b98c3929e31a98421f8e6acf48b46fc09891788"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/FileStateStore.ts",
+      "sizeBytes": 7721,
+      "baselineSizeBytes": 7403,
+      "baselineSha256": "55a2f906ecef0fb8c29333fec6f5ec0b367150b1217359c01a6222d949775997",
+      "currentSha256": "7df375f121d727a778c25388e04bd2ce969ca0a9430d23f69a1bf062f10cf859"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts",
+      "sizeBytes": 26846,
+      "baselineSizeBytes": 23205,
+      "baselineSha256": "a81500c7c1603ea5dbcd093b5381f607a354251dc28890376b2c2e53fa26c553",
+      "currentSha256": "162f722d94d4f5bf6c6bdbb4e47c418d832b7bda2c0dbcb285e252f82b7571fa"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ExternalProjectResearchTool.ts",
+      "sizeBytes": 24648,
+      "baselineSizeBytes": 24648,
+      "baselineSha256": "0125c8eaa8737fc122a73fffbc93827626adacced40a4a06c57534effade548b",
+      "currentSha256": "a6556c9a4a65c1d236483f7df6de1eef73d995cf14d5fe3b93feb07e49d6d3da"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ReleaseContract.ts",
+      "sizeBytes": 424,
+      "baselineSizeBytes": 417,
+      "baselineSha256": "7dc8d86ce61789349d6b78b4bc2ab6c047304752faa09fe546b1df3cb8f87b0a",
+      "currentSha256": "1295732dee8231ad26193bb4eb06a23cd65780d40566260eb0295410801416cc"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/server/server.mjs",
+      "sizeBytes": 141693,
+      "baselineSizeBytes": 141612,
+      "baselineSha256": "0a3b874aaf8cb5762b855bcde368aec3ba6bae8aa8b301ce2401071a237beab4",
+      "currentSha256": "03d8a4da278e26047ba8fd51229b66ceb2bf4541870c990c6b624df50e52c9aa"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/action-gateway-idempotency-workpass37.mjs",
+      "sizeBytes": 21259,
+      "baselineSizeBytes": 21171,
+      "baselineSha256": "e4416ba372023027e8e302e23f7fe151d2713c32f804b1dd26ccdcca3d40e774",
+      "currentSha256": "04588d7183b6d8e9c64f0be5aee89dac78b9e03d1c55644ad49f55f3e7ac7146"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/server-smoke.mjs",
+      "sizeBytes": 22879,
+      "baselineSizeBytes": 22537,
+      "baselineSha256": "cc5adbe29ff2c97bc7fb3eff49d36263398d824149f73683b295889b90ff3684",
+      "currentSha256": "ef8efa30ff291cefcffd5baec15328796d380182c174b3f7efbd6c9aa08e084e"
+    },
+    {
+      "path": "Список дел.md",
+      "sizeBytes": 15757,
+      "baselineSizeBytes": 13525,
+      "baselineSha256": "625ecb41f39b12fd196257810af6c3d4a0a4c95b8b4dbde97ae445885228bcfc",
+      "currentSha256": "6b18381406eb51e5edb1360b991ef3563a80cd4a85b00fd7f2b3ce3f969c8a9a"
+    }
+  ],
+  "highImpactChanges": [
+    "FileActionExecutionLedgerArchive: checksummed append-only JSONL, bounded-chunk load, fsync, indexed reads, fail-closed integrity handling",
+    "ActionGateway: durable persistence required before keyed side effects; no silent key eviction; capacity admission serialized; archive replay after restart",
+    "OrganismCore/FileStateStore/server health: archive loaded before receipt restoration and safe ledger metrics exposed",
+    "WorkPass38 status, scorecard, tasks and integration docs reconciled; root navigation stubs point to one canonical detailed copy"
+  ]
+}

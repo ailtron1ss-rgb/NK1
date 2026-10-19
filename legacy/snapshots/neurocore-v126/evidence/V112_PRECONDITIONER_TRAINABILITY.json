@@ -1,0 +1,28 @@
+{
+  "version": 112,
+  "benchmark": "preconditioner_trainability_probe",
+  "rows": [
+    {
+      "seed": 112,
+      "initial": 2.8915820121765137,
+      "final": 2.7980597019195557,
+      "preconditioner_grad_norm_mean": 4.436567996890517e-05,
+      "learned_gain_mean_final": 1.0003376007080078
+    },
+    {
+      "seed": 113,
+      "initial": 2.9010989665985107,
+      "final": 2.789644718170166,
+      "preconditioner_grad_norm_mean": 2.5334506517538102e-05,
+      "learned_gain_mean_final": 0.9999836683273315
+    },
+    {
+      "seed": 114,
+      "initial": 2.8565146923065186,
+      "final": 2.7443602085113525,
+      "preconditioner_grad_norm_mean": 2.317558073627879e-05,
+      "learned_gain_mean_final": 1.0000977516174316
+    }
+  ],
+  "note": "diagnostic: verifies the former clamp saturation is gone; not a quality promotion gate"
+}

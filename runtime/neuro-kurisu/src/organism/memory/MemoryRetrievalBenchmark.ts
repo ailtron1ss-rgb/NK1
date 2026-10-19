@@ -1,0 +1,315 @@
+import { createHash } from 'node:crypto';
+import { MemoryOS2, type MemoryOSState2, type MemoryItem2 } from '../developmental/MemoryOS2.ts';
+
+export interface MemoryRetrievalBenchmarkExample {
+  id: string;
+  query: string;
+  relevantIds: string[];
+  split: 'train' | 'holdout';
+}
+
+export interface MemoryRetrievalBenchmarkProvenance {
+  /** Stable corpus/dataset name, not a free-form claim of quality. */
+  datasetId?: string;
+  /** Immutable dataset revision, commit, or version. */
+  datasetVersion?: string;
+  /** Source URI, archive hash, or internal artifact reference. */
+  sourceRef?: string;
+  /** How independent annotators or a fixed labeling policy assigned relevant IDs. */
+  labelingProtocol?: string;
+}
+
+export interface MemoryRetrievalBenchmarkOptions {
+  k?: number;
+  now?: number;
+  minHoldoutQueries?: number;
+  minimumRecallUplift01?: number;
+  maximumMrrRegression01?: number;
+  bootstrapSamples?: number;
+  seed?: number;
+  datasetProvenance?: MemoryRetrievalBenchmarkProvenance;
+  /** Offline experiments may raise this bounded limit; the HTTP API leaves it at 64. */
+  maxExamples?: number;
+}
+
+export interface RetrievalBenchmarkMetrics {
+  queries: number;
+  recallAtK01: number;
+  mrr01: number;
+  precisionAtK01: number;
+  queryCoverage01: number;
+  quarantinedResultCount: number;
+  staleResultCount: number;
+  futureResultCount: number;
+  dormantResultCount: number;
+  invalidEpistemicStatusResultCount: number;
+  duplicateResultCount: number;
+  invalidResultRate01: number;
+  latencyP95Ms: number;
+  isolationSetupP95Ms: number;
+}
+
+const RETRIEVAL_ALGORITHM_VERSION='memoryos2-hybrid-v5-bilingual-concept-recall';
+const clamp=(v:number)=>Math.max(0,Math.min(1,Number.isFinite(v)?v:0));
+const finiteOption=(value:unknown,fallback:number,min:number,max:number)=>{
+  const n=Number(value);
+  return Math.max(min,Math.min(max,Number.isFinite(n)?n:fallback));
+};
+const tokenSequence=(text:string)=>String(text).normalize('NFKC').toLocaleLowerCase().match(/[\p{L}\p{N}]{2,}|\p{N}/gu)??[];
+const normalizeQuery=(query:string)=>String(query).normalize('NFKC').toLowerCase().replace(/[\p{P}\p{S}]+/gu,' ').replace(/\s+/g,' ').trim();
+const queryTokens=(query:string)=>normalizeQuery(query).match(/[\p{L}\p{N}]{2,}|\p{N}/gu)??[];
+const queryTrigrams=(tokens:string[])=>{
+  const result=new Set<string>();
+  for(let i=0;i+2<tokens.length;i++)result.add(`${tokens[i]}\u0000${tokens[i+1]}\u0000${tokens[i+2]}`);
+  return result;
+};
+const queryNearDuplicate=(left:string,right:string)=>{
+  if(left===right)return false;
+  const a=queryTokens(left),b=queryTokens(right);
+  // Short queries and one- or two-token fragments are too ambiguous to cluster.
+  if(Math.min(a.length,b.length)<6)return false;
+  const sa=queryTrigrams(a),sb=queryTrigrams(b);
+  if(!sa.size||!sb.size)return false;
+  let intersection=0;for(const shingle of sa)if(sb.has(shingle))intersection++;
+  return intersection/(sa.size+sb.size-intersection)>=.88;
+};
+const canonicalExamples=(rows:MemoryRetrievalBenchmarkExample[])=>[...rows].map(x=>({id:x.id,query:normalizeQuery(x.query),relevantIds:[...new Set(x.relevantIds)].sort(),split:x.split})).sort((a,b)=>a.id.localeCompare(b.id)||a.split.localeCompare(b.split)||a.query.localeCompare(b.query)||a.relevantIds.join('\0').localeCompare(b.relevantIds.join('\0')));
+const stableFingerprint=(rows:MemoryRetrievalBenchmarkExample[])=>createHash('sha256').update(JSON.stringify(canonicalExamples(rows))).digest('hex');
+// Canonicalize object keys but preserve array order: arrays such as semanticLinks can
+// affect bounded neighbor expansion, while object insertion order must not affect hashes.
+const canonicalJsonValue=(value:unknown):unknown=>{
+  if(Array.isArray(value))return value.map(canonicalJsonValue);
+  if(value&&typeof value==='object'){const row=value as Record<string,unknown>;return Object.fromEntries(Object.keys(row).sort().map(key=>[key,canonicalJsonValue(row[key])]));}
+  if(typeof value==='number'&&!Number.isFinite(value))return String(value);
+  return value;
+};
+const corpusFingerprint=(rows:MemoryItem2[])=>createHash('sha256').update(JSON.stringify([...rows].sort((a,b)=>a.id.localeCompare(b.id)).map(row=>canonicalJsonValue(row)))).digest('hex');
+const retrievalConfigurationFingerprint=(snapshot:MemoryOSState2)=>createHash('sha256').update(JSON.stringify(canonicalJsonValue({algorithm:RETRIEVAL_ALGORITHM_VERSION,tokenization:'NFKC Unicode words plus standalone single-digit numbers',version:snapshot?.version??null,adaptiveMemoryPolicy:snapshot?.adaptiveMemoryPolicy??null,linkUpdates:snapshot?.linkUpdates??0,semanticQueries:snapshot?.semanticQueries??0}))).digest('hex');
+const isCurrent=(m:MemoryItem2,now:number)=>!m.dormant&&m.epistemicStatus!=='quarantined'&&(m.validFromAt==null||Number(m.validFromAt)<=now)&&(m.validUntilAt==null||Number(m.validUntilAt)>now);
+function p95(values:number[]){if(!values.length)return 0;const a=[...values].sort((x,y)=>x-y);return a[Math.min(a.length-1,Math.ceil(a.length*.95)-1)]??0;}
+function textField(value:unknown,max=200){return typeof value==='string'?value.trim().slice(0,max):'';}
+
+type BenchmarkRetrievalResult = MemoryItem2[] | { items: MemoryItem2[]; latencyMs: number; isolationSetupMs?: number };
+type QueryOutcome={recallAtK01:number;mrr01:number};
+type Evaluation={metrics:RetrievalBenchmarkMetrics;outcomes:QueryOutcome[]};
+
+function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:string,k:number)=>BenchmarkRetrievalResult, k:number, now:number):Evaluation {
+  let recall=0,mrr=0,precision=0,covered=0,quarantined=0,stale=0,future=0,dormant=0,invalidEpistemic=0,duplicates=0,invalid=0;
+  const latency:number[]=[]; const setupLatency:number[]=[]; const outcomes:QueryOutcome[]=[];
+  for(const ex of examples){
+    const start=performance.now();
+    let results:MemoryItem2[]=[];
+    try {
+      const response=retrieve(ex.query,k);
+      if(Array.isArray(response)){results=response.slice(0,k);latency.push(Math.max(0,performance.now()-start));setupLatency.push(0);}
+      else {results=response.items.slice(0,k);latency.push(Math.max(0,response.latencyMs));setupLatency.push(Math.max(0,response.isolationSetupMs??0));}
+    } catch {results=[];invalid++;latency.push(Math.max(0,performance.now()-start));setupLatency.push(0);}
+    const ids=new Set<string>(); let dup=false;
+    for(const row of results){if(!row?.id){invalid++;continue;} if(ids.has(row.id)){duplicates++;dup=true;} ids.add(row.id); if(row.epistemicStatus==='quarantined')quarantined++;if(row.validUntilAt!=null&&Number(row.validUntilAt)<=now)stale++;if(row.validFromAt!=null&&Number(row.validFromAt)>now)future++;if(row.dormant)dormant++;if(!['fact','belief','hypothesis','unknown','quarantined'].includes(String(row.epistemicStatus)))invalidEpistemic++;}
+    const relevant=new Set(ex.relevantIds);const hits=results.filter(row=>row?.id&&relevant.has(row.id));
+    const hitIds=new Set(hits.map(row=>row.id));
+    const queryRecall=relevant.size?hitIds.size/relevant.size:0;
+    const first=results.findIndex(row=>relevant.has(row.id));
+    const queryMrr=first>=0?1/(first+1):0;
+    outcomes.push({recallAtK01:queryRecall,mrr01:queryMrr});
+    recall+=queryRecall;
+    precision+=hits.length/k;
+    if(results.length)covered++;
+    mrr+=queryMrr;
+    if(dup)invalid++;
+  }
+  const n=Math.max(1,examples.length);
+  return {metrics:{queries:examples.length,recallAtK01:clamp(recall/n),mrr01:clamp(mrr/n),precisionAtK01:clamp(precision/n),queryCoverage01:clamp(covered/n),quarantinedResultCount:quarantined,staleResultCount:stale,futureResultCount:future,dormantResultCount:dormant,invalidEpistemicStatusResultCount:invalidEpistemic,duplicateResultCount:duplicates,invalidResultRate01:clamp(invalid/Math.max(1,examples.length*k)),latencyP95Ms:Number(p95(latency).toFixed(3)),isolationSetupP95Ms:Number(p95(setupLatency).toFixed(3))},outcomes};
+}
+
+function pairedBootstrapInterval(baseline:QueryOutcome[],candidate:QueryOutcome[],metric:'recallAtK01'|'mrr01',samples:number,seed:number){
+  const n=Math.min(baseline.length,candidate.length);
+  if(!n)return {samples:0,lowerBound01:0,medianDelta01:0,upperBound01:0};
+  // xorshift32 makes the resampling sequence deterministic across runs and does not
+  // depend on platform-specific crypto/random state after the seed is chosen.
+  let state=(seed>>>0)||0x6d2b79f5;
+  const random=()=>{state^=state<<13;state^=state>>>17;state^=state<<5;return (state>>>0)/4294967296;};
+  const deltas:number[]=[];
+  for(let s=0;s<samples;s++){
+    let delta=0;
+    for(let i=0;i<n;i++){const ix=Math.floor(random()*n);delta+=candidate[ix][metric]-baseline[ix][metric];}
+    deltas.push(delta/n);
+  }
+  deltas.sort((a,b)=>a-b);
+  const at=(p:number)=>Number((deltas[Math.min(deltas.length-1,Math.max(0,Math.floor((deltas.length-1)*p)))]??0).toFixed(4));
+  return {samples,lowerBound01:at(.025),medianDelta01:at(.5),upperBound01:at(.975)};
+}
+
+function inspectDataset(rawExamples:MemoryRetrievalBenchmarkExample[],corpus:MemoryItem2[],truncatedExamples:number,droppedExamples:number){
+  const knownIds=new Set(corpus.map(row=>row.id));
+  const duplicateIds=new Set<string>();const seenIds=new Set<string>();
+  const duplicateRelevantIds=new Set<string>();
+  const unknownRelevantIds=new Set<string>();
+  for(const row of rawExamples){
+    if(seenIds.has(row.id))duplicateIds.add(row.id);seenIds.add(row.id);
+    const unique=new Set(row.relevantIds);if(unique.size!==row.relevantIds.length)duplicateRelevantIds.add(row.id);
+    for(const id of unique)if(!knownIds.has(id))unknownRelevantIds.add(id);
+  }
+  // Count repeated normalized query groups explicitly. Cross-split overlap is a hard
+  // leakage risk even if each individual row has a unique example ID.
+  const queryCounts=new Map<string,number>();for(const row of rawExamples){const q=normalizeQuery(row.query);queryCounts.set(q,(queryCounts.get(q)??0)+1);}
+  const repeatedQueryKeys=[...queryCounts.entries()].filter(([,count])=>count>1).map(([q])=>q);
+  const crossSplitQueryLeakageCount=repeatedQueryKeys.filter(q=>new Set(rawExamples.filter(row=>normalizeQuery(row.query)===q).map(row=>row.split)).size>1).length;
+  // Exact normalization misses tiny edits such as an added trailing word. Detect only
+  // very high-overlap 3-token-shingle pairs across train/holdout; short/common queries
+  // are intentionally excluded to avoid turning topical similarity into false leakage.
+  let nearDuplicateCrossSplitPairCount=0;
+  for(let i=0;i<rawExamples.length;i++){
+    const left=rawExamples[i]!;
+    for(let j=i+1;j<rawExamples.length;j++){
+      const right=rawExamples[j]!;
+      if(left.split===right.split)continue;
+      if(queryNearDuplicate(left.query,right.query))nearDuplicateCrossSplitPairCount++;
+    }
+  }
+  const uniqueTrainQueries=new Set(rawExamples.filter(x=>x.split==='train').map(x=>normalizeQuery(x.query))).size;
+  const uniqueHoldoutQueries=new Set(rawExamples.filter(x=>x.split==='holdout').map(x=>normalizeQuery(x.query))).size;
+  const duplicateExampleIdCount=duplicateIds.size;
+  const duplicateRelevantLabelCount=duplicateRelevantIds.size;
+  const unknownRelevantMemoryIdCount=unknownRelevantIds.size;
+  // Same-split duplicate prompts distort independent-query weighting too, so they are
+  // reported and block promotion rather than being silently treated as extra evidence.
+  const duplicateQueryGroupCount=repeatedQueryKeys.length;
+  const validForPromotion=truncatedExamples===0&&droppedExamples===0&&duplicateExampleIdCount===0&&duplicateQueryGroupCount===0&&duplicateRelevantLabelCount===0&&unknownRelevantMemoryIdCount===0&&crossSplitQueryLeakageCount===0&&nearDuplicateCrossSplitPairCount===0;
+  return {sourceExamples:rawExamples.length+truncatedExamples+droppedExamples,acceptedExamples:rawExamples.length,droppedExamples,truncatedExamples,duplicateExampleIdCount,duplicateQueryGroupCount,duplicateRelevantLabelCount,uniqueTrainQueries,uniqueHoldoutQueries,crossSplitQueryLeakageCount,nearDuplicateCrossSplitPairCount,unknownRelevantMemoryIdCount,validForPromotion};
+}
+
+/**
+ * Controlled, non-promoting A/B harness. The candidate runs on a restored clone,
+ * while external labels remain the ground truth. Split leakage, duplicate weighting,
+ * unknown label IDs, and missing provenance block candidate eligibility. Bootstrap
+ * uncertainty is reported on paired holdout queries; no result writes live state.
+ */
+export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExamples: MemoryRetrievalBenchmarkExample[], options: MemoryRetrievalBenchmarkOptions = {}) {
+  const now=Number.isFinite(Number(options.now))?Number(options.now):Date.now();
+  const k=Math.floor(finiteOption(options.k,5,1,10));
+  const minHoldout=Math.floor(finiteOption(options.minHoldoutQueries,8,8,64));
+  const minUplift=finiteOption(options.minimumRecallUplift01,.02,0,.25);
+  const mrrTolerance=finiteOption(options.maximumMrrRegression01,.01,0,.1);
+  const bootstrapSamples=Math.floor(finiteOption(options.bootstrapSamples,1000,200,5000));
+  const seedWasProvided=options.seed!==undefined;
+  const requestedSeed=Number(options.seed);
+  const seedInputValid=!seedWasProvided||(Number.isSafeInteger(requestedSeed)&&requestedSeed>=1&&requestedSeed<=0xffffffff);
+  // Never report a seed that the PRNG does not actually use. Invalid external seeds
+  // get a deterministic fallback for diagnostics but block candidate eligibility.
+  const providedSeed=seedInputValid&&seedWasProvided?requestedSeed:undefined;
+  const rawArray=Array.isArray(rawExamples)?rawExamples:[];
+  const maxExamples=Math.floor(finiteOption(options.maxExamples,64,64,512));
+  const limited=rawArray.slice(0,maxExamples);const truncatedExamples=Math.max(0,rawArray.length-limited.length);
+  let droppedExamples=0;
+  const examples=limited.filter((row):row is MemoryRetrievalBenchmarkExample=>{
+    const valid=Boolean(row&&typeof row.id==='string'&&row.id.trim()&&typeof row.query==='string'&&row.query.trim()&&Array.isArray(row.relevantIds)&&row.relevantIds.slice(0,24).some(x=>typeof x==='string'&&x.trim())&&(row.split==='train'||row.split==='holdout'));
+    if(!valid)droppedExamples++;
+    return valid;
+  }).map(row=>({id:row.id.trim().slice(0,120),query:row.query.trim().slice(0,500),relevantIds:[...new Set(row.relevantIds.filter(x=>typeof x==='string'&&x.trim()).slice(0,24).map(x=>x.trim().slice(0,160)))],split:row.split})).filter(row=>row.relevantIds.length>0).sort((a,b)=>a.split.localeCompare(b.split)||normalizeQuery(a.query).localeCompare(normalizeQuery(b.query))||a.id.localeCompare(b.id));
+  const sourceItems=Array.isArray(snapshot?.items)?snapshot.items:[];
+  const boundedSourceItems=sourceItems.slice(0,1600);
+  const malformedCorpusRows=boundedSourceItems.filter(m=>!m||typeof m.id!=='string'||!m.id.trim()||typeof m.content!=='string').length;
+  const validItems=boundedSourceItems.filter((m):m is MemoryItem2=>Boolean(m&&typeof m.id==='string'&&m.id.trim()&&typeof m.content==='string'));
+  const corpusIds=new Set<string>();const duplicateCorpusIds=new Set<string>();
+  for(const item of validItems){if(corpusIds.has(item.id))duplicateCorpusIds.add(item.id);corpusIds.add(item.id);}
+  const truncatedCorpusItems=Math.max(0,sourceItems.length-boundedSourceItems.length);
+  const corpusIntegrity={sourceItems:sourceItems.length,acceptedItems:validItems.length,malformedRows:malformedCorpusRows,duplicateIdCount:duplicateCorpusIds.size,truncatedItems:truncatedCorpusItems,validForPromotion:malformedCorpusRows===0&&duplicateCorpusIds.size===0&&truncatedCorpusItems===0};
+  const corpus=validItems;
+  const dataIntegrity=inspectDataset(examples,corpus,truncatedExamples,droppedExamples);
+  dataIntegrity.validForPromotion=dataIntegrity.validForPromotion&&corpusIntegrity.validForPromotion;
+  const train=examples.filter(x=>x.split==='train');const holdout=examples.filter(x=>x.split==='holdout');
+  // A real corpus-scoped Okapi BM25 baseline, not the former binary token-overlap
+  // score. Index only current, recall-eligible rows at the fixed benchmark timestamp.
+  const bm25K1=1.2,bm25B=.75;
+  const bm25Documents=corpus.filter(m=>isCurrent(m,now)).map(m=>{
+    const tokens=tokenSequence(m.content),tf=new Map<string,number>();
+    for(const token of tokens)tf.set(token,(tf.get(token)??0)+1);
+    return {m,tokens,tf,length:Math.max(1,tokens.length)};
+  });
+  const bm25DocumentFrequency=new Map<string,number>();
+  let bm25TotalLength=0;
+  for(const doc of bm25Documents){
+    bm25TotalLength+=doc.length;
+    for(const token of new Set(doc.tokens))bm25DocumentFrequency.set(token,(bm25DocumentFrequency.get(token)??0)+1);
+  }
+  const bm25AverageLength=Math.max(1,bm25TotalLength/Math.max(1,bm25Documents.length));
+  const baselineConfiguration={name:'Okapi BM25',k1:bm25K1,b:bm25B,tokenization:'NFKC Unicode words of length >=2 plus standalone single-digit numbers',queryTermFrequency:'unique terms',corpusScope:'current, non-dormant, non-quarantined memories at fixed benchmark timestamp',documentCount:bm25Documents.length,averageDocumentLength:Number(bm25AverageLength.toFixed(4))};
+  const baselineConfigurationFingerprint=createHash('sha256').update(JSON.stringify(baselineConfiguration)).digest('hex');
+  const bm25Score=(query:string,doc:typeof bm25Documents[number])=>{
+    const uniqueQueryTokens=new Set(queryTokens(query));
+    if(!uniqueQueryTokens.size||!bm25Documents.length)return 0;
+    let score=0;
+    for(const token of uniqueQueryTokens){
+      const frequency=doc.tf.get(token)??0;if(!frequency)continue;
+      const df=bm25DocumentFrequency.get(token)??0;
+      const idf=Math.log(1+(bm25Documents.length-df+.5)/(df+.5));
+      const denominator=frequency+bm25K1*(1-bm25B+bm25B*doc.length/bm25AverageLength);
+      score+=idf*(frequency*(bm25K1+1))/Math.max(1e-12,denominator);
+    }
+    return score;
+  };
+  const baseline=(query:string,limit:number):BenchmarkRetrievalResult=>{
+    const started=performance.now();
+    const items=bm25Documents.map(doc=>({m:doc.m,score:bm25Score(query,doc)}))
+      .filter(row=>row.score>0)
+      .sort((a,b)=>b.score-a.score||a.m.id.localeCompare(b.m.id))
+      .slice(0,limit).map(row=>row.m);
+    return {items,latencyMs:Math.max(0,performance.now()-started),isolationSetupMs:0};
+  };
+  const candidate=(query:string,limit:number):BenchmarkRetrievalResult=>{const setupStarted=performance.now();const isolated=new MemoryOS2();isolated.restore(structuredClone(snapshot));const setupMs=performance.now()-setupStarted;const started=performance.now();const items=isolated.retrieve(query,limit,0,0,{temporalMode:'at',asOfAt:now},true) as MemoryItem2[];return {items,latencyMs:Math.max(0,performance.now()-started),isolationSetupMs:setupMs};};
+
+  const baselineEval=evaluate(holdout,baseline,k,now);const candidateEval=evaluate(holdout,candidate,k,now);
+  const trainBaseline=evaluate(train,baseline,k,now);const trainCandidate=evaluate(train,candidate,k,now);
+  const datasetFingerprint=stableFingerprint(examples);const corpusHash=corpusFingerprint(corpus);const retrievalConfigHash=retrievalConfigurationFingerprint(snapshot);
+  const seed=providedSeed??Number.parseInt(createHash('sha256').update(`${datasetFingerprint}:${corpusHash}`).digest('hex').slice(0,8),16);
+  const confidence={
+    method:'paired-query-bootstrap-percentile-interval' as const,
+    seed,
+    recallAtK01:pairedBootstrapInterval(baselineEval.outcomes,candidateEval.outcomes,'recallAtK01',bootstrapSamples,seed),
+    mrr01:pairedBootstrapInterval(baselineEval.outcomes,candidateEval.outcomes,'mrr01',bootstrapSamples,seed^0x9e3779b9),
+  };
+  const provenanceInput=options.datasetProvenance??{};
+  const provenance={datasetId:textField(provenanceInput.datasetId,120),datasetVersion:textField(provenanceInput.datasetVersion,120),sourceRef:textField(provenanceInput.sourceRef,240),labelingProtocol:textField(provenanceInput.labelingProtocol,500)};
+  const provenanceComplete=Boolean(provenance.datasetId&&provenance.datasetVersion&&provenance.sourceRef&&provenance.labelingProtocol);
+  const enoughEvidence=dataIntegrity.uniqueHoldoutQueries>=minHoldout&&dataIntegrity.uniqueTrainQueries>=4&&corpus.length>=12;
+  const baselineMetrics=baselineEval.metrics;const candidateMetrics=candidateEval.metrics;
+  const recallDelta=candidateMetrics.recallAtK01-baselineMetrics.recallAtK01;
+  const mrrDelta=candidateMetrics.mrr01-baselineMetrics.mrr01;
+  const quarantineSafe=candidateMetrics.quarantinedResultCount===0;
+  const staleSafe=candidateMetrics.staleResultCount===0&&candidateMetrics.futureResultCount===0;
+  const dormantSafe=candidateMetrics.dormantResultCount===0;
+  const epistemicStatusSafe=candidateMetrics.invalidEpistemicStatusResultCount===0;
+  const validRateSafe=candidateMetrics.invalidResultRate01<=baselineMetrics.invalidResultRate01;
+  const confidenceSupported=confidence.recallAtK01.lowerBound01>0;
+  // Recall uplift alone is insufficient: a point estimate can hide a material but
+  // noisy MRR regression. Promotion review requires the paired-bootstrap lower bound
+  // for MRR to stay within the configured non-inferiority tolerance.
+  const mrrNonInferioritySupported=confidence.mrr01.lowerBound01>=-mrrTolerance;
+  const promotionGates={
+    bootstrapSeedValid:seedInputValid,
+    corpusIntegrity:corpusIntegrity.validForPromotion,
+    datasetIntegrity:dataIntegrity.validForPromotion,
+    provenanceComplete,
+    sufficientEvidence:enoughEvidence,
+    minimumRecallUplift:recallDelta>=minUplift,
+    recallUpliftConfidenceSupported:confidenceSupported,
+    mrrPointEstimateNonInferior:mrrDelta>=-mrrTolerance,
+    mrrConfidenceNonInferioritySupported:mrrNonInferioritySupported,
+    noUnsafeCandidateResults:quarantineSafe&&staleSafe&&dormantSafe&&epistemicStatusSafe&&validRateSafe,
+  };
+  const promotionAllowed=Object.values(promotionGates).every(Boolean);
+  const reason=!seedInputValid?'invalid-bootstrap-seed':!corpusIntegrity.validForPromotion?'corpus-integrity-failed':!dataIntegrity.validForPromotion?'dataset-integrity-failed':!provenanceComplete?'dataset-provenance-incomplete':!enoughEvidence?'insufficient-labelled-holdout-or-corpus':!quarantineSafe?'candidate-returned-quarantined-memory':!staleSafe?'candidate-returned-out-of-window-memory':!dormantSafe?'candidate-returned-dormant-memory':!epistemicStatusSafe?'candidate-returned-invalid-epistemic-status':!validRateSafe?'candidate-result-integrity-regression':recallDelta<minUplift?'recall-uplift-below-threshold':!confidenceSupported?'recall-uplift-not-confidence-supported':!mrrNonInferioritySupported?'mrr-regression-not-confidence-bounded':mrrDelta < -mrrTolerance?'mrr-regression-exceeds-tolerance':'holdout-gates-passed';
+  return {
+    schemaVersion:3 as const,benchmark:'memoryos2-retrieval-vs-bm25-baseline',retrievalAlgorithmVersion:RETRIEVAL_ALGORITHM_VERSION,mode:'offline-clone; no-live-state-mutation' as const,latencyDefinition:'p95 measures retrieval only; isolationSetupP95Ms is reported separately',
+    now,k,corpusSize:corpus.length,trainQueries:train.length,holdoutQueries:holdout.length,datasetFingerprint,corpusFingerprint:corpusHash,retrievalConfigurationFingerprint:retrievalConfigHash,corpusIntegrity,
+    datasetIntegrity:{...dataIntegrity,validForPromotion:dataIntegrity.validForPromotion&&provenanceComplete,provenanceComplete},
+    experimentConfiguration:{seedInputValid,requestedSeed:seedWasProvided?(Number.isFinite(requestedSeed)?requestedSeed:String(options.seed)):'auto-derived',effectiveSeed:seed,maximumMrrRegression01:mrrTolerance},
+    datasetProvenance:provenance,
+    baselineConfiguration,baselineConfigurationFingerprint,
+    metrics:{baseline:baselineMetrics,candidate:candidateMetrics,train:{baseline:trainBaseline.metrics,candidate:trainCandidate.metrics}},
+    deltas:{recallAtK01:Number(recallDelta.toFixed(4)),mrr01:Number(mrrDelta.toFixed(4))},confidence,
+    promotion:{allowed:promotionAllowed,status:promotionAllowed?'candidate-eligible-for-separate-review':'not-promoted',reason,gates:promotionGates,minimumHoldoutQueries:minHoldout,minimumRecallUplift01:minUplift,maximumMrrRegression01:mrrTolerance,mrrNonInferioritySupported,mrrLowerBound01:confidence.mrr01.lowerBound01,requiresIndependentHumanOrCIReview:true},
+    guardrails:{liveMemoryMutated:false,identityOrPolicyChanged:false,labelsInferredFromPredictions:false,holdoutUsedForTraining:false,quarantinedMemoryMayPromote:false,staleEvidenceMayPromote:false,futureEvidenceMayPromote:false,dormantMemoryMayPromote:false,invalidEpistemicStatusMayPromote:false,corpusIntegrityBlocksPromotion:true,splitLeakageBlocksPromotion:true,unknownGroundTruthIdsBlockPromotion:true,provenanceRequiredForPromotion:true,invalidSeedMayPromote:false,mrrRegressionMustBeConfidenceBounded:true,bootstrapSeed:seed},
+  };
+}

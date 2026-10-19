@@ -1,0 +1,40 @@
+{
+  "baseline": "NOMEGA_PASS14",
+  "generated_at_epoch": 1790228276.759823,
+  "known_limits": [
+    "complete 441-test suite remains unclaimed green because historical/legacy slow paths are still unresolved",
+    "strict pure-neural coding capability uplift remains unproven",
+    "source proposal generation is conservative numeric-AST exploration, not yet learned open-ended code synthesis",
+    "legacy core contains warning-only EXCEPT_PASS debt outside canonical NOMEGA"
+  ],
+  "name": "NOMEGA",
+  "next_passes": [
+    "PASS16: skill contamination-resistant admission/quarantine/retirement and transfer-aware memory",
+    "PASS17: metaproductive open-ended evolution over architecture, skills and search policy",
+    "PASS18: continual neural learning with causal unseen-family benchmarks"
+  ],
+  "pass": "PASS15",
+  "real_changes": [
+    "canonical source mutation proposal generator uses AST-located numeric sites and deterministic provenance",
+    "self-modification spine connects proposal, isolated candidate evaluation, strict evidence gates, metaproductivity and governed source promotion",
+    "promotion decisions are cryptographically bound to candidate and baseline source hashes",
+    "source sandbox and promotion tree hashes now share the same runtime/cache exclusion contract",
+    "metaproductivity now measures transitive verified descendants instead of direct offspring volume",
+    "metaproductivity productivity requires explicit accepted/promoted status rather than inferred positive gain",
+    "README and machine-checkable governance release contract added",
+    "legacy governance exceptions kept warning-only and isolated from canonical baseline",
+    "full-suite execution documented as a separate release gate"
+  ],
+  "status": "research_only",
+  "verification": {
+    "canonical_registry_failures": 0,
+    "canonical_registry_targets": 39,
+    "compileall": "pass",
+    "critical_targeted_tests": "42 passed",
+    "full_suite": "not_claimed_green",
+    "governance_checker": "pass; 88 warning-only legacy findings",
+    "high_risk_regression_tests": "14 passed",
+    "pytest_collection": 441
+  },
+  "version": "1.31.0-dev"
+}

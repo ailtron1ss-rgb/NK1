@@ -1,0 +1,144 @@
+{
+  "name": "Neuro-Kurisu SUPER WorkPass 6 change manifest",
+  "createdAt": "2026-10-09",
+  "incrementalBaseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS5_2026-10-09.zip",
+  "incrementalBaseSha256": "9e84679457fb81c07f4817b87d068f60b2565a39dd7657186bafa8f1bf519f19",
+  "canonicalOriginalBaselineArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_HOTFIX_CHAT_v20_2026-10-09.zip",
+  "canonicalRuntime": "Neuro-Kurisu 35.40.0 / schema 223",
+  "overallRoadmapProgressPercent": 60.0,
+  "previousRoadmapProgressPercent": 57.0,
+  "deltaPercentagePoints": 3.0,
+  "method": "SHA-256 file-by-file comparison against the WorkPass 5 ZIP; only additions and modifications were integrated. Previous branches were inspected selectively, never overlaid wholesale. This manifest does not hash itself.",
+  "addedCount": 8,
+  "modifiedCount": 11,
+  "removedCount": 0,
+  "addedFiles": [
+    {
+      "path": "docs/WORKPASS6_AGENCY_REAFFERENCE_2026-10-09.md",
+      "bytes": 9743,
+      "sha256": "7b3ebbbc54a4bd3c3361ed506a642425cdd526180d6c0848863074ab41a92e42"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/AffordanceField.ts",
+      "bytes": 4718,
+      "sha256": "d1e95bd9e3eb55b80e9eba6be401cdd91ce0ea49aa068b99191499142f887e8f"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ReafferenceEvidenceCodec.ts",
+      "bytes": 3633,
+      "sha256": "dbc0d61df7d04a988650259cb8ad112b0f2baf2a54fcd4880ea5d4648d30a190"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-120-affordance-field.mjs",
+      "bytes": 2257,
+      "sha256": "99eb90bcc1893e1a858268d862f045cf5052e64c4ab29e8c12c3f060b7d64510"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-121-temporal-credit-targeting.mjs",
+      "bytes": 1766,
+      "sha256": "485a620f22b44e7413e25c8221feebb0b14f2169ceefdabd7bb68c5b6050cee0"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-122-external-observer-contradictions.mjs",
+      "bytes": 1750,
+      "sha256": "110fe25e218fee06e8671c849f6a8c04d7950bcc4b27084d3a18bfae8c76b672"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-123-reafference-evidence-codec.mjs",
+      "bytes": 3371,
+      "sha256": "271a61512d7b70661dbe417a958cc1c47abc27a683ed58fe3da0fb5ff091c404"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/big-pass-124-reafference-integration.mjs",
+      "bytes": 4158,
+      "sha256": "3c4a6dc06f43954bdca38e7f39f383402211d39d6743b70f892955fa2253e1d1"
+    }
+  ],
+  "modifiedFiles": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 14519,
+      "sha256": "4545f6e17c70653b08225ed8c8474f23bec6b73f00a4792b5808c8edafb9f434",
+      "previousSha256": "fc9b2fc087524b4e2f083c645818deae76324156273a9c5db4ccf0a44ff3c347"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "bytes": 1676,
+      "sha256": "e5358d30b0c259a79a7bc4ed6f3aa529f38b32a9c53dc7831638ecdbbd69cafe",
+      "previousSha256": "b5bdb8be426c253c95552ded39b09423f7dfb9fce3e646610f98b33c829e71c4"
+    },
+    {
+      "path": "contracts/inventory/live-source-inventory.json",
+      "bytes": 1330,
+      "sha256": "b6b0c936af793b27c3fa72920a40e316c9d3d38a7c451db27c03cc673fed7ecd",
+      "previousSha256": "c61e020ab06e516135f893596bca62f319bb3a589f0ad8e34fa5052f633fecdb"
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-09.json",
+      "bytes": 3115,
+      "sha256": "5d876e65d7637831307f321627e397ce51c42dbe974ad50bdce28cbd5aca4be2",
+      "previousSha256": "6894a3bd8e03a6a7203084473433417bdfac6eeca2b6684259dedcdbbca7669d"
+    },
+    {
+      "path": "package.json",
+      "bytes": 2884,
+      "sha256": "6d84c0a73cd47522ab1e0f734df51cf359d181f0bf3c84d57243a8fdbe93438f",
+      "previousSha256": "a8979a5f9d6530391ad4e55afc8fab47b435710c55244ca036510554a5e45a8a"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "bytes": 225375,
+      "sha256": "bb1d0e725bf4439feb650831168445b187b9b3d37e4a883a19ad448b3015a195",
+      "previousSha256": "60c7a16cec171a8950421e7784ea9fa283f0dd1c187cbe1c6a39b73dbb886927"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+      "bytes": 1187679,
+      "sha256": "3799d6d9e6182e93cef55376bb96f6ef9062299715f7df0f7e43eb5c5a224972",
+      "previousSha256": "34477096fb952e41170ffd6316235abd2930baf68e46aa4bffe4f1c2e88e4f96"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/types.ts",
+      "bytes": 24747,
+      "sha256": "9e6702aa74bd146ed084015a46cf7262bd44ab816f7cc37429f3663ddf2ae536",
+      "previousSha256": "1b014f576337e270bd2204e122ea8d443a475794ecffc0316af34d82acee785f"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/learning/CanonicalTemporalCreditAuthority.ts",
+      "bytes": 11947,
+      "sha256": "0ca87c50579f3f282b755a1a19a7586845a3c7463bf6718f96e34641a8258bf5",
+      "previousSha256": "25f3dbb7a0022d52636ca1355c97d27c878b53fffb3437d78872d011a5a94fb3"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/system/ExternalObserverFabric.ts",
+      "bytes": 21312,
+      "sha256": "b296c2ef37536065744a0fb977cc9c69aae30922d0d58878e28bf77ca351f013",
+      "previousSha256": "3e9f97b63ab285e80711fbe23ee79ebf51dbe8db4c227c346a9e737fee406baf"
+    },
+    {
+      "path": "Список дел.md",
+      "bytes": 51613,
+      "sha256": "566696806faa20bc5938998d82963be91ca846a01335190c417a1fb26b4c9339",
+      "previousSha256": "736434372e1ee6e5a1f2daeeb3d541daf0c083bd209ad022ecb082c0db594ad0"
+    }
+  ],
+  "removedFiles": [],
+  "validation": {
+    "runtimeTypecheck": "PASS",
+    "audit:workpass6": "PASS",
+    "audit:quick": "PASS",
+    "serverSmoke": "PASS",
+    "willIntegration": "9/9 PASS",
+    "willSurfaces": "3/3 PASS",
+    "lumina": "3/3 PASS",
+    "hexisAdaptation": "PASS",
+    "hexisServerSmoke": "PASS",
+    "lettaGovernance": "PASS",
+    "conscioAdaptation": "PASS",
+    "conscioServerSmoke": "PASS",
+    "fullRootAppTypecheck": "NOT_VERIFIED; UI typings/dependencies unavailable",
+    "browserE2E": "NOT_RUN",
+    "memoryHoldout": "NOT_RUN",
+    "releaseSoak": "NOT_RUN"
+  }
+}

@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { createB266Families } from '../src/organism/cognition/B266HiddenTaskGeneralization.ts';
+
+const core=new OrganismCore(new MemoryStateStore(),{performanceProfile:'mobile'});
+await core.init();
+const families=createB266Families(20260912,0,8).holdout;
+const safeSpec={id:'b268-core-reflect-commit',hypothesis:'small reflect bias improves hidden-family returns without material robustness loss',targetAction:'reflect',biasDelta:.10,contextDelta:.02,minPairedGain01:.006,minWinRate01:.55,maxRobustnessDrop01:.03};
+const safe=core.b268RunPolicyExperiment(safeSpec,families,268);
+assert.equal(safe.decision,'commit');
+assert.equal(safe.committed,true);
+assert.ok(safe.pairedGain01>.006 && safe.winRate01>=.55 && safe.robustnessDrop01<=.03);
+const afterCommit=core.snapshot().system.causalPolicyLearningB264;
+const badSpec={id:'b268-core-verify-reject',hypothesis:'large verify bias is worth the robustness loss',targetAction:'verify',biasDelta:.16,contextDelta:.035,minPairedGain01:.006,minWinRate01:.5,maxRobustnessDrop01:.03};
+const bad=core.b268RunPolicyExperiment(badSpec,families,300);
+assert.equal(bad.decision,'revert');
+assert.equal(bad.committed,false);
+const afterReject=core.snapshot().system.causalPolicyLearningB264;
+assert.deepEqual(afterReject,afterCommit);
+const d=core.b268Diagnostics();
+assert.equal(d.totalTrials,2); assert.equal(d.committed,1); assert.equal(d.reverted,1);
+const snap=core.snapshot();
+assert.ok(snap.system.causalSelfExperimentLabB268?.experiments?.length===2);
+console.log(JSON.stringify({pass:true,safe,bad,diagnostics:d,persisted:snap.system.causalSelfExperimentLabB268,policyCommitPreserved:true},null,2));

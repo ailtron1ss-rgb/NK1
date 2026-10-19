@@ -1,0 +1,48 @@
+{
+  "version": 110,
+  "benchmark": "quick_branch_training_ablation",
+  "seeds": [
+    110,
+    111
+  ],
+  "steps": 2,
+  "summary": {
+    "baseline": {
+      "mean_final": 2.728494644165039,
+      "delta_vs_baseline": 0.0
+    },
+    "predictive_weight": {
+      "mean_final": 1.772497534751892,
+      "delta_vs_baseline": -0.955997109413147
+    },
+    "memory_weight": {
+      "mean_final": 2.3410245180130005,
+      "delta_vs_baseline": -0.3874701261520386
+    },
+    "world_weight": {
+      "mean_final": 2.207935094833374,
+      "delta_vs_baseline": -0.520559549331665
+    },
+    "spine_weight": {
+      "mean_final": 2.2731364965438843,
+      "delta_vs_baseline": -0.4553581476211548
+    },
+    "self_weight": {
+      "mean_final": 2.5485132932662964,
+      "delta_vs_baseline": -0.17998135089874268
+    },
+    "multiscale_weight": {
+      "mean_final": 2.512826681137085,
+      "delta_vs_baseline": -0.2156679630279541
+    },
+    "confidence_weight": {
+      "mean_final": 2.710865020751953,
+      "delta_vs_baseline": -0.017629623413085938
+    },
+    "temporal_weight": {
+      "mean_final": 2.72845995426178,
+      "delta_vs_baseline": -3.4689903259277344e-05
+    }
+  },
+  "note": "diagnostic only; short horizon intentionally, not a promotion gate"
+}

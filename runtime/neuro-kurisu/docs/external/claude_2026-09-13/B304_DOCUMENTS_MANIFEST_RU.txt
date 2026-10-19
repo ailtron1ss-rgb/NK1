@@ -1,0 +1,24 @@
+B304 DOCUMENT MANIFEST — 13.09.2026
+
+Core B304 documents:
+- DEEP_AUDIT_B304_SEMANTIC_SUSTAINED_2026-09-13_RU.md
+- B304_EVIDENCE_REPORT_RU.md
+- B304_RELEASE_NOTES_RU.md
+- B304_PROGRESS_V8_RU.md
+- B304_ARCHITECTURE_DECISIONS_RU.md
+- B304_FINAL_AUDIT_STATUS_RU.md
+- B304_NEXT_STEP_PLAN_RU.md
+- RELEASE_VERIFICATION_B304_2026-09-13_RU.md
+- B304_DOCUMENTS_MANIFEST_RU.txt
+
+Claude PDF documents present in the same folder:
+- AUDIT_CLAUDE_B266_35_6_1_RU.pdf
+- BIG_PASS_CHAIN_B267_B330_RU.pdf
+- BRAIN_BRANCH_CHAIN_PLAN_CLAUDE_RU.pdf
+- DEEP_PROGRESS_AND_PLAN_CLAUDE_RU.pdf
+
+Key B304 source/tests:
+- src/organism/system/B304SemanticHoldoutLedger.ts
+- tests/big-pass-304-semantic-holdout.mjs
+- tests/big-pass-304-resource-governor.mjs
+- tests/big-pass-304-migration.mjs

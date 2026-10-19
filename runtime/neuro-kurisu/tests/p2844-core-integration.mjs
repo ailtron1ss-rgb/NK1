@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const core=new OrganismCore(new MemoryStateStore(),{performanceProfile:'mobile',cycleResultMode:'summary',enableLanguage:false});
+await core.init();
+const report=core.p2844NeuralPlasticityBenchmark();
+assert(report.overall01>.8);
+const snap=core.snapshot();
+assert(snap.system.neuralPlasticityBenchmarkP2844?.overall01===report.overall01);
+const restored=new OrganismCore(new MemoryStateStore({initial:snap}),{performanceProfile:'mobile',cycleResultMode:'summary',enableLanguage:false});
+await restored.init();
+assert.equal(restored.snapshot().system.neuralPlasticityBenchmarkP2844?.overall01,report.overall01);
+console.log(JSON.stringify({ok:true,overall01:report.overall01,persisted:true}));

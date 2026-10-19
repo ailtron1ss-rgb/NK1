@@ -1,0 +1,2 @@
+import assert from 'node:assert/strict'; import { P39ContinuousArtificialLifeEngine } from '../src/organism/learning/P39ContinuousArtificialLife.ts';
+const e=new P39ContinuousArtificialLifeEngine(); const t=Date.now(); for(let i=0;i<100000;i++) e.beginCycle({at:t+i*1000,awake:true,energy01:.7,cognitiveLoad01:.3,battery01:.7,thermal01:.2}); const ms=Date.now()-t; assert.ok(ms<1500,`too slow: ${ms}ms`); console.log(`P39_PERFORMANCE=PASS cycles=100000 ms=${ms}`);

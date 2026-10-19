@@ -1,0 +1,45 @@
+{
+  "runs": [
+    {
+      "seed": 3,
+      "v83": {
+        "time_s": 2.7566402859999926,
+        "final_loss": 3.159255266189575,
+        "replay_events": 7.0,
+        "coverage_mean": 0.7628999259454506
+      },
+      "v84": {
+        "time_s": 1.0597959309999396,
+        "final_loss": 3.1514194011688232,
+        "replay_events": 3.0,
+        "diagnostic_events": 1.0,
+        "final_interval": 3.0,
+        "coverage_diag": 0.7628999259454506
+      },
+      "time_ratio_v84_over_v83": 0.38445202168098275
+    },
+    {
+      "seed": 7,
+      "v83": {
+        "time_s": 3.9039155740000524,
+        "final_loss": 3.2607998847961426,
+        "replay_events": 7.0,
+        "coverage_mean": 0.7628999259454506
+      },
+      "v84": {
+        "time_s": 2.849692533999928,
+        "final_loss": 3.572593927383423,
+        "replay_events": 3.0,
+        "diagnostic_events": 1.0,
+        "final_interval": 3.0,
+        "coverage_diag": 0.7628999259454506
+      },
+      "time_ratio_v84_over_v83": 0.7299575208487564
+    }
+  ],
+  "mean_time_v83": 3.3302779300000225,
+  "mean_time_v84": 1.9547442324999338,
+  "mean_ratio": 0.5572047712648696,
+  "mean_replay_events_v83": 7.0,
+  "mean_replay_events_v84": 3.0
+}

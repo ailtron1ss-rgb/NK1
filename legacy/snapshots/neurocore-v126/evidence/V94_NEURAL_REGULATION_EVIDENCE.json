@@ -1,0 +1,27 @@
+{
+  "status": "candidate_not_promoted",
+  "scope": "Neural lifecycle regeneration + bounded homeostatic gain",
+  "sources": [
+    "https://www.nature.com/articles/s41586-024-07711-7",
+    "https://proceedings.iclr.cc/paper_files/paper/2025/hash/359c0c4dc53b6bf64041b4c8334f1c11-Abstract-Conference.html",
+    "https://openreview.net/pdf/bc5315b38fd0e0f1e120a6841884ab9b5219e107.pdf",
+    "https://github.com/lucidrains/ccbp-pytorch",
+    "https://github.com/ajozefiak/SelfNormalizedResets"
+  ],
+  "runs": [
+    {"seed": 0, "condition": "baseline", "phases": 4, "steps_per_phase": 12, "mean_post_cosine": 0.06252980045974255, "late_task_cosine": -0.03885502368211746, "plasticity_probe_gain": 0.011430755257606506, "rejuvenations": 0, "elapsed_s": 8.345427766999933},
+    {"seed": 0, "condition": "lifecycle", "phases": 4, "steps_per_phase": 12, "mean_post_cosine": 0.06263548508286476, "late_task_cosine": -0.03855700045824051, "plasticity_probe_gain": 0.011720478534698486, "rejuvenations": 1, "elapsed_s": 8.378672037000001},
+    {"seed": 0, "condition": "homeostasis", "phases": 4, "steps_per_phase": 12, "mean_post_cosine": 0.06265082024037838, "late_task_cosine": -0.038787923753261566, "plasticity_probe_gain": 0.011333607137203217, "rejuvenations": 0, "elapsed_s": 8.317246060000002, "mean_gain": 1.1026079654693604},
+    {"seed": 0, "condition": "combined", "phases": 4, "steps_per_phase": 12, "mean_post_cosine": 0.06271174550056458, "late_task_cosine": -0.03870455175638199, "plasticity_probe_gain": 0.01127055287361145, "rejuvenations": 1, "elapsed_s": 8.567268705999936, "mean_gain": 1.1028473377227783},
+    {"seed": 1, "condition": "baseline", "phases": 4, "steps_per_phase": 12, "mean_post_cosine": 0.11622363701462746, "late_task_cosine": 0.18912026286125183, "plasticity_probe_gain": 0.022340700030326843, "rejuvenations": 0, "elapsed_s": 8.544360116000007},
+    {"seed": 1, "condition": "lifecycle", "phases": 4, "steps_per_phase": 12, "mean_post_cosine": 0.11631807591766119, "late_task_cosine": 0.18949604034423828, "plasticity_probe_gain": 0.02246128022670746, "rejuvenations": 1, "elapsed_s": 8.258387299999981},
+    {"seed": 2, "condition": "baseline_long", "phases": 8, "steps_per_phase": 20, "mean_post_cosine": 0.08136788662523031, "late_task_cosine": 0.07053373754024506, "plasticity_probe_gain": 0.02290913090109825, "rejuvenations": 0, "elapsed_s": 26.149528463000024},
+    {"seed": 2, "condition": "lifecycle_long", "phases": 8, "steps_per_phase": 20, "mean_post_cosine": 0.07997525669634342, "late_task_cosine": 0.0653267353773117, "plasticity_probe_gain": 0.023595158010721207, "rejuvenations": 1, "elapsed_s": 27.334558694000066}
+  ],
+  "interpretation": {
+    "comparable_short_lifecycle_mean_delta_percent": 0.112047,
+    "short_combined_seed0_mean_delta_percent": 0.290993,
+    "long_seed2_lifecycle_mean_delta_percent": -1.712,
+    "decision": "retain_as_candidate_only"
+  }
+}

@@ -1,0 +1,4526 @@
+{
+  "schemaVersion": 1,
+  "originalArchivePath": "legacy/input-archives/Neuro_Kurisu_v56_TraitsHierarchy.zip",
+  "originalArchiveSha256": "c34ac3d02ae40ad8eb6e8d97fa1f872f8fb037c490594a6d4aae8712b885e608",
+  "originalArchiveBytes": 9182283,
+  "reconstruction": "Logical ZIP reconstruction: each member path and byte content is preserved; ZIP container byte-for-byte identity is not promised. Original WorkPass34 remains the immutable full snapshot.",
+  "entries": [
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/.env.example",
+      "sizeBytes": 16,
+      "sha256": "d8a5307154d6e4906e900eb03ef3e8fb071b7ad5dd6272f11586544e459dfcf2",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        50
+      ],
+      "compressType": 0,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/.env.example"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/AI_MAINTAINER.md",
+      "sizeBytes": 2851,
+      "sha256": "592036d8fa4984a48a5fffa7d4fccea6d61d9ee366968b4cb8dc27e3d80005d6",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        50
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/AI_MAINTAINER.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/CHANGELOG_V15.md",
+      "sizeBytes": 2783,
+      "sha256": "b5dfb8cbc75eb8905dd33b04a683df30c0dff27c661d0cb381429bf2a23e8af0",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        52
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/CHANGELOG_V15.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/CHANGELOG_V17.md",
+      "sizeBytes": 1238,
+      "sha256": "c337b168b58cb5ff8fa5a0466e804ed5d23e2afdfe1d1b8cd7976d4d7c0be56c",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        52
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/CHANGELOG_V17.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/CHANGELOG_V17_1.md",
+      "sizeBytes": 256,
+      "sha256": "5580a01788c6684c1d307676ed59287a510289ab6779c397707d2a5a4b2c4066",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        52
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/CHANGELOG_V17_1.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/CHANGELOG_V40_RU.md",
+      "sizeBytes": 1462,
+      "sha256": "a123a7e56a25d8bf01463e38c0c346eba3f0c3804848755b7ac6e37d1f2e4a7e",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        52
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/CHANGELOG_V40_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/CHANGELOG_V41_RU.md",
+      "sizeBytes": 2912,
+      "sha256": "862d56815c7555a0a634e02acb2945c9c6b81f3f2a694961e7d527fad2f51c1e",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        52
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/CHANGELOG_V41_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/FIX_REPORT_RU.md",
+      "sizeBytes": 1710,
+      "sha256": "81527f7ce6d5516ac437002e4ec8f400e3b30c3145ff4e0510f751b87a892b0d",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        52
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/FIX_REPORT_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/FIX_REPORT_TS_V41_1.md",
+      "sizeBytes": 948,
+      "sha256": "dadebea74f4dbcf5fc12bf0166e5dec8acb2d4a79c4f1d51333d41a794dca048",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        52
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/FIX_REPORT_TS_V41_1.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/SELF_EVOLUTION_V41.md",
+      "sizeBytes": 1833,
+      "sha256": "32dce12e9239ae5d1632de68c93f2c1688291bb74af3668a023291e67b6234ad",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        54
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/SELF_EVOLUTION_V41.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/START_HERE_RU.md",
+      "sizeBytes": 357,
+      "sha256": "335813c088b5f2fda3aec9f1a3809e81bf6efe7f66447585f86bfc64d581e063",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        59,
+        46
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/START_HERE_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/TERMUX_BUILD_V41_RU.md",
+      "sizeBytes": 1723,
+      "sha256": "77ce95cc4cf0de0aa4de9bbe7341b20e3292b99d954ed9cdefa73893b3cbff85",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        54
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/TERMUX_BUILD_V41_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/VERIFY_TERMUX.sh",
+      "sizeBytes": 443,
+      "sha256": "adf1c72d761bbbb48335130717ad7cf9a5b6647027c5a0671f914b84feb6a470",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        54
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/VERIFY_TERMUX.sh"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/VERSION_26.txt",
+      "sizeBytes": 145,
+      "sha256": "2b24189dfb320989617179c4df989fa3c92b4e2702d865324968c0a7f5519bba",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        54
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/VERSION_26.txt"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/VERSION_27.txt",
+      "sizeBytes": 7,
+      "sha256": "b8d7e5e08b0d472fadede7d9388009d23a39603cbeaa5a4534079e0cfa678aad",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        54
+      ],
+      "compressType": 0,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/VERSION_27.txt"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/VERSION_40.txt",
+      "sizeBytes": 42,
+      "sha256": "14559f70099d838f021e06fa52f8972b9da13c9705ebc32c70d500bde7f54d7f",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        54
+      ],
+      "compressType": 0,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/VERSION_40.txt"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/VERSION_41.txt",
+      "sizeBytes": 21,
+      "sha256": "339d45f8e89fd90a924c33de489cee532339bdfd6d727fe646074f4f2a266c31",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        56
+      ],
+      "compressType": 0,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/VERSION_41.txt"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/AI_COMPLIANCE_SPEC_V22.md",
+      "sizeBytes": 5612,
+      "sha256": "c065860fcfd6dc6a35bee282a1ab4afd369a50d8f9eb2ff3214a73d5f80f0d87",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        56
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/AI_COMPLIANCE_SPEC_V22.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/AI_COMPLIANCE_SPEC_V23.md",
+      "sizeBytes": 2956,
+      "sha256": "eaf7d802df624aa20aebaf6408982dcef73802432cf50a7be7e6c5d8a0b2bc9c",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        56
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/AI_COMPLIANCE_SPEC_V23.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/ANDROID_TERMUX_V15.md",
+      "sizeBytes": 6413,
+      "sha256": "22c8dfcb042b0b46a1d0d4d2b2aa6c9022c3dd2c21a9440c762cc0751be34e23",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        56
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/ANDROID_TERMUX_V15.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/ARCHITECTURE_V26_RU.md",
+      "sizeBytes": 3341,
+      "sha256": "da1b9fad9df356ca13b2bd57e9a1257ceec1eeb95735b38113aa46013f958396",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        58
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/ARCHITECTURE_V26_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V21_RU.md",
+      "sizeBytes": 1321,
+      "sha256": "cb3180aca10246a11087a367565eb3213a6f7268383d579e71dc7fad62d514b5",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        58
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V21_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V22_RU.md",
+      "sizeBytes": 732,
+      "sha256": "3a26468350a9b2f5db04b6726ee6b9338e88a7ce5cd0d368b12816b58852ca33",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        58
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V22_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V23_RU.md",
+      "sizeBytes": 396,
+      "sha256": "3f75248748bb1f50920c0ac46f1e5be8534bb313816bfbfd507aa08c461f4599",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        58
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V23_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V24_RU.md",
+      "sizeBytes": 253,
+      "sha256": "8f6d66e28d7c62550ef03490ca6c0e7520ef663afcca449505607205d789c69b",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        58
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V24_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V25_RU.md",
+      "sizeBytes": 778,
+      "sha256": "7de00ed0a90e12c27163694a20f60b75a0f9cbdff82cdcf1495d13c5901d18eb",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        58
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V25_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V26_RU.md",
+      "sizeBytes": 7022,
+      "sha256": "8030d1bc26b24cd4e5535a0ba83d4efb7e64e455369ba5a07f8338368dd1bcd4",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        58
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V26_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V42_SYNTHESIS_RU.md",
+      "sizeBytes": 533,
+      "sha256": "321f3af2eef46fad12a820c358027dd142e07bc52dffb3c90203c0ce23610092",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        20,
+        54
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V42_SYNTHESIS_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V43_AVATAR_BRAIN_RU.md",
+      "sizeBytes": 786,
+      "sha256": "09ce14578c730206f163d095dea9dc17eb0712b94584c2b85a58123a7e5ef3aa",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        41,
+        34
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V43_AVATAR_BRAIN_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V44_ST_SYNTHESIS_RU.md",
+      "sizeBytes": 230,
+      "sha256": "fad161f866d6c72ed434d0bef802a9fe74344593d96224a08260d28705734836",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        51,
+        28
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V44_ST_SYNTHESIS_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V45_VOICE_DIALOGUE_RU.md",
+      "sizeBytes": 1062,
+      "sha256": "e35585a5df9e12ae5dfaa9bec64caa00fb8e8ba76e900b71dc705809b1240a17",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        2,
+        42
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V45_VOICE_DIALOGUE_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V46_EPISODIC_FACTS_RU.md",
+      "sizeBytes": 786,
+      "sha256": "6caed35d603927f7ca2d4b6697a286a355ecfaccd99d8d57bc405a5fdd5174d4",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        11,
+        16
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V46_EPISODIC_FACTS_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V47_STONES_BREATH_DEBT_RU.md",
+      "sizeBytes": 985,
+      "sha256": "ebb5204e54cb40844e8038ea7c95ef5a387a0559edf88e5ed98bab917a71bbe5",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        27,
+        54
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V47_STONES_BREATH_DEBT_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V48_FOCUS_STONES_UI_RU.md",
+      "sizeBytes": 776,
+      "sha256": "45c358d65b1268aebbd205ccde839af5376776b49a2d2d07440f03735d419ea2",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        31,
+        36
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V48_FOCUS_STONES_UI_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V49_DIALOGUE_MIND_RU.md",
+      "sizeBytes": 864,
+      "sha256": "e545a36c23b18bf8713634d2c02cc6c45f935adfb61fc6df6599360e23a983a2",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        36,
+        6
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V49_DIALOGUE_MIND_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V50_UNIFIED_CONSCIOUSNESS_RU.md",
+      "sizeBytes": 1570,
+      "sha256": "e8a878db377112471ebe99189789c850df20383b8ea2e3a265d6605f43eba96f",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        41,
+        26
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V50_UNIFIED_CONSCIOUSNESS_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V51_FEEL_STICKY_LIVE_RU.md",
+      "sizeBytes": 724,
+      "sha256": "daca8ff3d7998e92b489c74bbe294b5808cfedc17fe2a9dc9266099d3877a664",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        49,
+        40
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V51_FEEL_STICKY_LIVE_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V52_NEURAL_LATTICE_RU.md",
+      "sizeBytes": 907,
+      "sha256": "8ead593e19faf9bab823155ce74744507c8925cb0955500dea19d7262a6c263f",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        4,
+        34
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V52_NEURAL_LATTICE_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V53_OFFICIAL_LATTICE32_RU.md",
+      "sizeBytes": 643,
+      "sha256": "dc0d6780269b4eb8e48541e2ad6bc5a22ee920f57c25b3b3c44f95ba3939a499",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        12,
+        56
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V53_OFFICIAL_LATTICE32_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V54_RESONANCE_HARDENED_RU.md",
+      "sizeBytes": 745,
+      "sha256": "f68dc2ce17e85bad237338b397d456827ea3e39286380891fce48eb3ad3d4f26",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        27,
+        16
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V54_RESONANCE_HARDENED_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V55_HIERARCHICAL_FANIN_RU.md",
+      "sizeBytes": 638,
+      "sha256": "af4c4d04dcc6b19bb6d6bb6c75aa9421033cc247893fd90555411fde9adbf53c",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        52,
+        22
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V55_HIERARCHICAL_FANIN_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CHANGELOG_V56_TRAITS_HIERARCHY_RU.md",
+      "sizeBytes": 523,
+      "sha256": "203d2bb40fd9cc4aa4e9dc906d70c5f7c02369689b5723f3e639d0747624011d",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        59,
+        46
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CHANGELOG_V56_TRAITS_HIERARCHY_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/COGNITIVE_BENCHMARK_V17.md",
+      "sizeBytes": 1187,
+      "sha256": "67af2d56916c7a4c10a8c7f7642b72357107b54aeaea17745aeec145d02a1804",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        0
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/COGNITIVE_BENCHMARK_V17.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/COGNITIVE_KERNEL_V15.md",
+      "sizeBytes": 7709,
+      "sha256": "64a29acc6099bd907bac0d8761416a8362c2b7221069b89eebe2770fe033e6e4",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        0
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/COGNITIVE_KERNEL_V15.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/COGNITIVE_LOOP_V16_PLAN.md",
+      "sizeBytes": 4008,
+      "sha256": "490e2eb4f45479d615e30292c0111f372218163ef1826b2ede4fc021302e18f6",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        0
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/COGNITIVE_LOOP_V16_PLAN.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CONSCIOUSNESS_CORE_V18.md",
+      "sizeBytes": 1862,
+      "sha256": "028fa81269d1967d248af2e7768e4d1b93009872e2894f8c418898127f32f511",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        0
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CONSCIOUSNESS_CORE_V18.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CONSCIOUS_LOOP_V16.md",
+      "sizeBytes": 4207,
+      "sha256": "34ba486d514f15dd11ef736874836909f61747d8b8c83b584508bffa299a4112",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        0
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CONSCIOUS_LOOP_V16.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/CORE_ENHANCEMENTS_V27_RU.md",
+      "sizeBytes": 2322,
+      "sha256": "f0efb632cb04560a1429412bbe03456b7bc88fcc847b04b4d2072694c0dde29d",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        0
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/CORE_ENHANCEMENTS_V27_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/EVOLUTION_V17.md",
+      "sizeBytes": 3887,
+      "sha256": "606180b89185a590caeb639deb22c1b095cfb2a61c16bb62cc56ba7398bdeeef",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        0
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/EVOLUTION_V17.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/FIXES_V19_LIVE2D_PROVIDERS.md",
+      "sizeBytes": 1138,
+      "sha256": "802fd06c75044e8ab0a05dfc36d9fa0290c7827729de3f7d46826e40b2b4baff",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        2
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/FIXES_V19_LIVE2D_PROVIDERS.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/FIXES_V20_GEMINI_LIVE2D.md",
+      "sizeBytes": 968,
+      "sha256": "329955477eae6ad3182c400c8fe0a70eed82718d5b5f7a82f48c9b182d0251a9",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        2
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/FIXES_V20_GEMINI_LIVE2D.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/FOR_FUTURE_AI_FULL_HISTORY_AND_MANDATE.md",
+      "sizeBytes": 6947,
+      "sha256": "ee428f668e3d903749990e6e619850865845acf8904aa32366f6d53c66339dc7",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        2
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/FOR_FUTURE_AI_FULL_HISTORY_AND_MANDATE.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/IDEA_INVENTORY_AND_ST.md",
+      "sizeBytes": 2360,
+      "sha256": "92acc41d3dd12c37e3dd376e8dc9d35a11f3c96a61c69614cb73f172dcf0e5fd",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        51,
+        26
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/IDEA_INVENTORY_AND_ST.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/INTEGRITY_V14.md",
+      "sizeBytes": 319,
+      "sha256": "32ff7de930f4e9faecb2882bed8f5497a7c569536930dbe854c674c5e3ce3523",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        2
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/INTEGRITY_V14.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/MODULAR_BRAIN_V24.md",
+      "sizeBytes": 1190,
+      "sha256": "245b28941c9e8b3266563b9f35cee67ba00e11e87d04334122880e6c1da8b73b",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        2
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/MODULAR_BRAIN_V24.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/NEXT_LEVEL_ENHANCEMENTS_RU.md",
+      "sizeBytes": 1465,
+      "sha256": "93619318dc24c02b69f0861e9426c83211f1ae02ef3d5b9db83c41fc863459ef",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        2
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/NEXT_LEVEL_ENHANCEMENTS_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/SELF_PROGRAMMING_V17.md",
+      "sizeBytes": 1768,
+      "sha256": "3b827e2d6df5054022569c26f3c1a884cba315b6d808aa0cdee544662265e1ad",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        2
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/SELF_PROGRAMMING_V17.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/SOTA_INTEGRATION_V40_RU.md",
+      "sizeBytes": 5501,
+      "sha256": "16f6bfac36498bd86bd0a8d5e921ed1cf9b41a2e206a5bec7229637a07ff504b",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        2
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/SOTA_INTEGRATION_V40_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/SYNTHESIS_V42_ANALYSIS.md",
+      "sizeBytes": 2456,
+      "sha256": "1cb85441f8d79777eae49fb03719945c04142ccba27b9050bc3da119b4229aeb",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        20,
+        54
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/SYNTHESIS_V42_ANALYSIS.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/TERMUX_ANDROID_V17.md",
+      "sizeBytes": 3667,
+      "sha256": "565757b21ec160fec79c6130b639ed25e597a31692114d48127b41345cf16cfb",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        4
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/TERMUX_ANDROID_V17.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/TERMUX_ANDROID_V26_RU.md",
+      "sizeBytes": 1955,
+      "sha256": "32b2ef5de0f3206340143396e33fdd52a6305aad9f1d99f1fd21e701ade3a02e",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        4
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/TERMUX_ANDROID_V26_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/TERMUX_LAUNCH_FULL_RU.md",
+      "sizeBytes": 3784,
+      "sha256": "654d9b4a9ab86a4035fafbbadaaf1e718ea4492898708c0661adac4f6a1aebe7",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        4
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/TERMUX_LAUNCH_FULL_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/VALIDATION_V15.md",
+      "sizeBytes": 1284,
+      "sha256": "b0e80b685e15d35dd290ae98082e4db16b77c7d2e78730db6cb069d0599f47c6",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        4
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/VALIDATION_V15.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/VALIDATION_V17.md",
+      "sizeBytes": 1120,
+      "sha256": "a3964439f47d8263058646dd41afec4c074a55c9dbb66aee194e8c3c44e3af7a",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        4
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/VALIDATION_V17.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/VALIDATION_V27_RU.md",
+      "sizeBytes": 1479,
+      "sha256": "a3ee45db787ecb82fcb3d6613f31daac80456ed90c53e39ed3ca64e038397d73",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        4
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/docs/VALIDATION_V27_RU.md"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/index.html",
+      "sizeBytes": 311,
+      "sha256": "b5a1b4bb457eded1c68ffa133748651b475b26f62f55a4e4b8b9495e18e045d7",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        4
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/index.html"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/package.json",
+      "sizeBytes": 1481,
+      "sha256": "fcd1b8c1e3d1175eb4003d3e7eeadbd4ac9fe3e8c68bcb202ae10b04dfd0b27f",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        59,
+        46
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/package.json"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/Kurisu.4096/texture_00.png",
+      "sizeBytes": 8236235,
+      "sha256": "c1551392e9f62ed69d7e12233ff0d2700711164b51667ae9072c1f3161841f33",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        8
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.4096/texture_00.png"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/Kurisu.cdi3.json",
+      "sizeBytes": 9018,
+      "sha256": "dd46fe491b7242562b9d57bb071c28fdc814d7cab2c631591f35d1989f20b134",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        8
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/public/live2d/Kurisu/Kurisu.cdi3.json"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/Kurisu.moc3",
+      "sizeBytes": 6001152,
+      "sha256": "d6b2ef7f8f93bb9313c0a117a9dcfe2286de314204657bfa88b17b7531fe5718",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        8
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.moc3"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/Kurisu.model3.json",
+      "sizeBytes": 1848,
+      "sha256": "405b2bee1a658fe610c45aa03cb858eb3e6ef68b9851ddd27a9930bd06320ce2",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        8
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/public/live2d/Kurisu/Kurisu.model3.json"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/Kurisu.physics3.json",
+      "sizeBytes": 26961,
+      "sha256": "cb2db82d4a039e3d02f98b31bfb522e73550e86f6af9e1e5060600e6b44805b8",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        10
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/public/live2d/Kurisu/Kurisu.physics3.json"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/exp/Arm Change.exp3.json",
+      "sizeBytes": 126,
+      "sha256": "61b1b82b6d02a03cd229acec975ec5d68bc4f7d2187202f28d0cbae04fe64fb4",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        10
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/public/live2d/Kurisu/exp/Arm Change.exp3.json"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/exp/Blush 1.exp3.json",
+      "sizeBytes": 128,
+      "sha256": "237779579a42e0bef6ad625db69d4ecffd7a02c18bcd10db1a08aebde039f8cf",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        10
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/public/live2d/Kurisu/exp/Blush 1.exp3.json"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/exp/Blush 2.exp3.json",
+      "sizeBytes": 126,
+      "sha256": "b9e26c5ca7634c1aa37c52124a3cebbce06fce098b8841dc7b2f8e206231d9d6",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        10
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/public/live2d/Kurisu/exp/Blush 2.exp3.json"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/exp/Stanby Angry.exp3.json",
+      "sizeBytes": 121,
+      "sha256": "33191457254e0832d3d93d5e3f23a7bea7c57a38274848bb1b93992e1381c384",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        10
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/public/live2d/Kurisu/exp/Stanby Angry.exp3.json"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/exp/Stanby Sad.exp3.json",
+      "sizeBytes": 119,
+      "sha256": "c5b32aebd55b154feab9daa6399c9c7585d8e8ab0b05d632891b0d5ad0ca048a",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        12
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/public/live2d/Kurisu/exp/Stanby Sad.exp3.json"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/exp/Stanby Scared.exp3.json",
+      "sizeBytes": 122,
+      "sha256": "abfc924a8baeb57226c11f915850e308e21e7b7e5db24e8653ffc780878c1056",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        12
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/public/live2d/Kurisu/exp/Stanby Scared.exp3.json"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/exp/Stanby Smile.exp3.json",
+      "sizeBytes": 121,
+      "sha256": "ac1a0efff6d6346e6630707e101f510363541e9e79e97e6aa91d99904bd1983e",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        12
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/public/live2d/Kurisu/exp/Stanby Smile.exp3.json"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/exp/Stanby Surprised.exp3.json",
+      "sizeBytes": 126,
+      "sha256": "99b574a5e69f4cc9e1c7954ba0ca236cabde1f981a6817160f115f62e6e2a831",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        12
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/public/live2d/Kurisu/exp/Stanby Surprised.exp3.json"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/motions/58Loop.motion3.json",
+      "sizeBytes": 770163,
+      "sha256": "e80636a0fd68bcfe311f3ab702f9f20b322e79430bb4a3681f35db3baf54aeb0",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        12
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/motions/58Loop.motion3.json"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/motions/Out From Camera.motion3.json",
+      "sizeBytes": 6414,
+      "sha256": "7c49d6073e008c85fca887cbe0e198f01f36115b1355c6f6b9b3d1e9d5416d3e",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        14
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/public/live2d/Kurisu/motions/Out From Camera.motion3.json"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/motions/haru_g_idle.motion3.json",
+      "sizeBytes": 2555,
+      "sha256": "d34abb158fa5b007d307b8ca08bdc33b3394b0435ac3e07f5516211ffd359b46",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        14
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/motions/haru_g_idle.motion3.json"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/motions/mtn_07.motion3.json",
+      "sizeBytes": 21420,
+      "sha256": "30ea674f7c59548de1b9a85def72c88ac7a338a3e948514b1c23e9d4469cc197",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        14
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/public/live2d/Kurisu/motions/mtn_07.motion3.json"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/motions/xhiyori_m03.motion3.json",
+      "sizeBytes": 13630,
+      "sha256": "de4913417e572ab1cc30924768c885ece73f65cbfba6975e2c9ab98e909164bc",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        14
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/motions/xhiyori_m03.motion3.json"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/viewer.html",
+      "sizeBytes": 4737,
+      "sha256": "f4ce91ffe098f4fef3d44c04088b75012970074fb481460b54f5477656200330",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        40,
+        0
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/public/live2d/viewer.html"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/sprites/manifest.json",
+      "sizeBytes": 5968,
+      "sha256": "6200032562c06d5090fb23cc0fe3db5d3e528aae953f8c4ca9681642279b4465",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        16
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "app/public/sprites/manifest.json"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/server.ts",
+      "sizeBytes": 28480,
+      "sha256": "516e7e9578afdfbfa0f5fb3157be37b5a00c4a59e02e7ede6441bfc1cc9bda72",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        16
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/server.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/App.tsx",
+      "sizeBytes": 50784,
+      "sha256": "4cee2de10cc2b3e5029cfd5a27aab7e075467f4d0232df76b44bcd96471edce6",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        58,
+        42
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/App.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/avatar/outfitCatalog.ts",
+      "sizeBytes": 3859,
+      "sha256": "7ab4c6bac6971c7b2f194419dceed24dc5db4dedb45baa779dacbf2c0b538459",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        18
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/avatar/outfitCatalog.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/avatar/spriteEngine.ts",
+      "sizeBytes": 2966,
+      "sha256": "2f0d75b9f00396a9a31d04c3b0846a99a67a90048a75567aa6f7605a0ad441dd",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        18
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/avatar/spriteEngine.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/AceMemory.ts",
+      "sizeBytes": 3290,
+      "sha256": "cd315de94a58c2bebfad9e050f20594979376a2e5b714abfde9d5935dde034e3",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        18
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/AceMemory.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/BrainHub.ts",
+      "sizeBytes": 3467,
+      "sha256": "4b25ca45f35379b335342fabdd3239f2d20d3dc972459bc020cf06c234652f2b",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        18
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/BrainHub.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/BrainOrchestrator.ts",
+      "sizeBytes": 13393,
+      "sha256": "1ea1ec6c87063a636c962fd03c649ad4586c9c949410f312e61ed5efcc3f04d4",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        23,
+        52
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/BrainOrchestrator.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/MicroExperts.ts",
+      "sizeBytes": 1979,
+      "sha256": "dde0a224bb7456d0e86b24530a67a6dfef1b0d04a2f33bf2274c71567f2f87eb",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        20
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/MicroExperts.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/ModuleManager.ts",
+      "sizeBytes": 3064,
+      "sha256": "2bb7adfdf2aee6cf80ac457ae7aea9d74da38f307eab6fd994513961a3d2b359",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        20
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/ModuleManager.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/NfhSelfImprove.ts",
+      "sizeBytes": 3029,
+      "sha256": "3d28e76f960ce7b5fea69df608fd306ffeb4255a5719706ddbc64619c1924fb1",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        20
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/NfhSelfImprove.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/attentionEconomy.ts",
+      "sizeBytes": 2349,
+      "sha256": "dea2b81291d2aa36780f652ee5306d0709126992d404a33d9ea92456915e19ab",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        20
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/attentionEconomy.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/banList.ts",
+      "sizeBytes": 670,
+      "sha256": "b6ab80b5f4bde40031669648f890981394cc6cc4192852ee2b962843bea27a20",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        20
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/banList.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/characterCard.ts",
+      "sizeBytes": 2879,
+      "sha256": "abf3c3dd516b400fedda8e75c7dff839dc812a1e582b75531385000feabb92b5",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        58,
+        42
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/characterCard.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/continuityHandshake.ts",
+      "sizeBytes": 1447,
+      "sha256": "df925569db395656c454f6e9bc4e492f43f18e10d2691ead604a5171ebd16676",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        22
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/continuityHandshake.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/contradictionGuard.ts",
+      "sizeBytes": 1192,
+      "sha256": "630b262f4fc5d03ecb2a6f7dd25069e8f3eb8017a61179babf8601b8f6c73a26",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        22
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/contradictionGuard.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/curiosityDrive.ts",
+      "sizeBytes": 1694,
+      "sha256": "c1f3a357634c69a2f376d809012cb32b5365e94f9d1690a97869b56d6becf805",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        22
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/curiosityDrive.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/dailyPlan.ts",
+      "sizeBytes": 2673,
+      "sha256": "86c103d02fdb09afecf7e704e36e4e9af0791c36d29781a46bf0103825dfc635",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        22
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/dailyPlan.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/dialogueReasoner.ts",
+      "sizeBytes": 4608,
+      "sha256": "9d19146a12c6e3a9162988ea37ae0cadc08f9553317a3d59ec2fc9e5741d523d",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        34,
+        42
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/dialogueReasoner.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/echoCheck.ts",
+      "sizeBytes": 1187,
+      "sha256": "6999046c92a6c2ed76c811e5c72cf8a04f421d75dfcbd14c465cc3b593643832",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        26,
+        14
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/echoCheck.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/embeddings.ts",
+      "sizeBytes": 1627,
+      "sha256": "4ad975906a04c7ff1324a636bc38107ce8f3416d8cd9ce3b69bdccdf2625177a",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        23,
+        8
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/embeddings.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/energyBudget.ts",
+      "sizeBytes": 1931,
+      "sha256": "a0410a013f94bea34832a300e88cb09f47c28dafc8cfd7069f88a0ebaac6b8ce",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        22
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/energyBudget.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/eventBus.ts",
+      "sizeBytes": 1221,
+      "sha256": "5cc192eaa6f4b6f59da716e217c50cae09e4fbe1f192e4f773ff6aacbcac294d",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        22
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/eventBus.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/factExtractor.ts",
+      "sizeBytes": 2625,
+      "sha256": "c817fa8cda83e6cc15730c8e59e233ca0bdcca0e4edefb247bcca27e3bd45616",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        31,
+        0
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/factExtractor.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/followUpEngine.ts",
+      "sizeBytes": 1490,
+      "sha256": "af063b414dd960eff436d9de18b5a60af7b588fb6e7486b40133d29a5b6165b7",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        24
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/followUpEngine.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/goldStyleStore.ts",
+      "sizeBytes": 1342,
+      "sha256": "7fc85852815959ca948d7f4852fc0f9e75a123213473301d6a8a9be0500beae2",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        24
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/goldStyleStore.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/innerMonologue.ts",
+      "sizeBytes": 1836,
+      "sha256": "1620bec8b0b1b03149024361aa3154d299490ed03d7ddd7446bd001deca06b42",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        24
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/innerMonologue.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/intentRouter.ts",
+      "sizeBytes": 3074,
+      "sha256": "0210d97ce38d319f30e3f70203cb19356655764a9108085a398b77b4805c7d3c",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        24
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/intentRouter.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/kurisuStones.ts",
+      "sizeBytes": 2429,
+      "sha256": "0307ac283846b6be6d43f9ab1380c2eeea4b4ff508900534f2fda462e22e85bb",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        26,
+        10
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/kurisuStones.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/kurisuTraitsEngine.ts",
+      "sizeBytes": 10138,
+      "sha256": "2ac77f086295a0172f1d0be8a8fcabf00e4679e2eb7567d00366d5cfcb1ebcb0",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        57,
+        54
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/kurisuTraitsEngine.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/labClock.ts",
+      "sizeBytes": 1008,
+      "sha256": "f23f0271895e7154c299deca37d0002f6b83ab305692c9ffa63a3f64c5b1e722",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        24
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/labClock.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/microDream.ts",
+      "sizeBytes": 1490,
+      "sha256": "340b4fc30f099114da8fc91684fd5ad4bf6ec9141ad01cac44c2432bbb1cb2ba",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        24
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/microDream.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/modelManager.ts",
+      "sizeBytes": 6066,
+      "sha256": "293c023e7189e1c6dd20d162963353d0d242187e727c35e607386e813e77f764",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        24
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/modelManager.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/narrativeLog.ts",
+      "sizeBytes": 886,
+      "sha256": "411c9159c1e0699847477f4eb9c702e1a7945cfbc41c4fd9fd4bda881ed30471",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        24
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/narrativeLog.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/replyMemory.ts",
+      "sizeBytes": 1541,
+      "sha256": "11117451a1ab52a5bdd5dd302b62efb30c14f824bba53b5a1de7cc1ea68aa78a",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        34,
+        42
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/replyMemory.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/sessionEpisode.ts",
+      "sizeBytes": 3396,
+      "sha256": "d2582409a6b646d6112634a20e6dde4b89c79d5b4f2d4d3e8d32113688198a6e",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        10,
+        48
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/sessionEpisode.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/sleepCycle.ts",
+      "sizeBytes": 3674,
+      "sha256": "ff22a053e77c47571bcb2dac04dffa934e0cf7199e4b19bcf61a67d5dba1b5d0",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        26
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/sleepCycle.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/speechBreath.ts",
+      "sizeBytes": 1917,
+      "sha256": "bd4459073982239ada7ebb8c9b87ffd8e4e35112743e5c8ddf14d2dcc590fe27",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        26,
+        12
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/speechBreath.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/userModel.ts",
+      "sizeBytes": 1564,
+      "sha256": "0f5493930ac5a6ed0774be176fb0ba158515cd3eb8a43a3cd2b1f5da1294e8a7",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        10,
+        46
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/userModel.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/worldInfo.ts",
+      "sizeBytes": 5460,
+      "sha256": "5be3ee991e22a9e2954ecfb3b95043948d46316919612db06eebeba6fb721c33",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        49,
+        56
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/worldInfo.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/worldlineContract.ts",
+      "sizeBytes": 1588,
+      "sha256": "9b2191e01072a367ded19ebf7c2f8e9ee8aa29d3ae62134e4ea998bf94966a53",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        26,
+        12
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/brain/worldlineContract.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/ALASLearning.ts",
+      "sizeBytes": 3474,
+      "sha256": "1894f002af417fd27639410cba2866d882a2e0f1c71007de494383fd34361a6d",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        26
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/ALASLearning.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/AttentionField.ts",
+      "sizeBytes": 3360,
+      "sha256": "23f77e9b9ab8f8ca2d4e1f3e1298e8c31b1000ccbe081c4e2e977f7b0ef1cf64",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        26
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/AttentionField.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/AutonomyDrives.ts",
+      "sizeBytes": 4861,
+      "sha256": "cd3a4cc47ab5abcb7c214fe25a47fd92a3ffbb63fb9ca50d10631fe26d02e2c3",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        27,
+        18
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/AutonomyDrives.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/AvatarLifeSystem.ts",
+      "sizeBytes": 1900,
+      "sha256": "2ae17fbdedb6131aab9c1f0408978c72fb5b21dd65d66eb032dc1a14d9bfc7f4",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        26
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/AvatarLifeSystem.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/CognitiveKernel.ts",
+      "sizeBytes": 16194,
+      "sha256": "e3c1617b3779dce287e39dfb343ee0b9fca135a3a9244e692c22919f0d2c434d",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        28
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/CognitiveKernel.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/CognitiveOrganism.ts",
+      "sizeBytes": 5260,
+      "sha256": "5d482a7b41e5c8bb386c23f64f76d19493342b7962d9b8078b8c85e0907bb3e5",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        28
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/CognitiveOrganism.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/ConsciousLoop.ts",
+      "sizeBytes": 5435,
+      "sha256": "cf7cd082ab6d6a20a45b085254bfddc5447d140f25c481c607f4900296aeda6b",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        28
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/ConsciousLoop.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/ConsciousnessCore.ts",
+      "sizeBytes": 14217,
+      "sha256": "7307b454e25d657d13092a5dfd48d9f467b6556a5866015eceb58260637dfcee",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        28
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/ConsciousnessCore.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/ContinuumMemory.ts",
+      "sizeBytes": 4880,
+      "sha256": "1d7f25b53e75a890afe78bd8c8c93481bb49162d3e859e5b34a94cc0b5b2f873",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        28
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/ContinuumMemory.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/CoreEnhancementHub.ts",
+      "sizeBytes": 8235,
+      "sha256": "9eedf1dd86cf801d20840b24d98474148abc3e5066557bd66703c9edaab28ea2",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        28
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/CoreEnhancementHub.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/CuriosityQueue.ts",
+      "sizeBytes": 1651,
+      "sha256": "def8f35958111c6ffe5bc3ac50076a401807cd4247c08c600829f4d178b6f457",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        19,
+        4
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/CuriosityQueue.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/DesireAndPromiseStore.ts",
+      "sizeBytes": 3530,
+      "sha256": "37b0d45ee719dd7e807d99bcbd2708fcb5ecc9fb2472192278bc85beea6b760d",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        30
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/DesireAndPromiseStore.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/EmbodimentSystem.ts",
+      "sizeBytes": 5612,
+      "sha256": "eb50f8b3e77ab204b1fa5c78414c6e68b69cca19728c4009d685e96dc89cf580",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        30
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/EmbodimentSystem.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/EmergentBehaviorEngine.ts",
+      "sizeBytes": 1537,
+      "sha256": "c861b95190f1796fdbd18b014cdc81f53df0f02204fe14733bf8e2939633c55f",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        30
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/EmergentBehaviorEngine.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/GenesisMigration.ts",
+      "sizeBytes": 1230,
+      "sha256": "d0aede044d1973d8354eacaf5d824ebc8bc66f11f55a50ab5c508a628ec5909b",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        30
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/GenesisMigration.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/GoalSystem.ts",
+      "sizeBytes": 2864,
+      "sha256": "1f0f17d5e50eae0e0a51781d075b2ef0344eb69ace3475bb5059a68bf964126e",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        30
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/GoalSystem.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/GrokExtras.ts",
+      "sizeBytes": 3335,
+      "sha256": "aacda1ec1426f00aa36f2348cd67f5c21632f1c7a9c7ed8a4d2ee6ac89fc5f9a",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        30
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/GrokExtras.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/HybridBrain.ts",
+      "sizeBytes": 1359,
+      "sha256": "ac5d70c3d67ceb0e30ccc4881dc7fba1b8babbd855d991aaca0e7722c752061c",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        30
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/HybridBrain.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/HypothesisLab.ts",
+      "sizeBytes": 1986,
+      "sha256": "a9d0de4fc0ceeb9f47873561abbdf275de5ed604fae53909e5d0752b9562aa21",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        30
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/HypothesisLab.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/MemoryAssociator.ts",
+      "sizeBytes": 2195,
+      "sha256": "8d5853acd54e7afd9de3c18dd8cdc8be41e6546d588acfca3a57a0c31925248e",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        32
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/MemoryAssociator.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/MetaCognition.ts",
+      "sizeBytes": 1755,
+      "sha256": "4c36e86cb709e17265ea4c90814a6ed72d70479f3f85d790a35f5da32b26b75b",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        32
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/MetaCognition.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/MiRUState.ts",
+      "sizeBytes": 1944,
+      "sha256": "6b3916a520542adaa77b0c4ac345cfa6cadf73fb8efccd112af3b34310bf7404",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        32
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/MiRUState.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/MultiLayerConsciousness.ts",
+      "sizeBytes": 8125,
+      "sha256": "073c4a5a08810e126974113f770585f2423f41f59c7940f54f23de66afe980e1",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        32
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/MultiLayerConsciousness.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/NeuroEngine.ts",
+      "sizeBytes": 9993,
+      "sha256": "1ebea37de933b55027c26070a88c5537b9151bfc9d3db946471212937976cc09",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        32
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/NeuroEngine.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/PersonalityRewardSystem.ts",
+      "sizeBytes": 9184,
+      "sha256": "f847b1da4b895305bfdd974ab6c6f2836a92113d081a0f3038cc1950d7dfc448",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        32
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/PersonalityRewardSystem.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/PredictiveLoop.ts",
+      "sizeBytes": 3877,
+      "sha256": "142c179acb0fc2243cb0e9a97062069a1a3d8ab9a06264cfe12115d8bc2d048d",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        32
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/PredictiveLoop.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/PresenceAndIdle.ts",
+      "sizeBytes": 7905,
+      "sha256": "5e36b8d70811a44158e3f3a2c571448134adaeaf9e1b581dfca75f7d5bec4697",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        32
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/PresenceAndIdle.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/PrivateCognition.ts",
+      "sizeBytes": 2366,
+      "sha256": "295c13b8cf293775aa5828a3abc260dbca0e13a795022a900f033ad066cb3f19",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        19,
+        4
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/PrivateCognition.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/RelationshipModel.ts",
+      "sizeBytes": 3690,
+      "sha256": "39b9c1df40addac1174d8f313edc933efed3a78727a0d88e3816880707081afc",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        34
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/RelationshipModel.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/SelfEvolutionLab.ts",
+      "sizeBytes": 3981,
+      "sha256": "1ffd2364c9ad353738cee4e6a8f167520a0a9a3f44e77430eeaa70ff1699b1de",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        34
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/SelfEvolutionLab.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/SelfImprovementEngine.ts",
+      "sizeBytes": 11384,
+      "sha256": "1a68bcecf13596269dbca86d1c7b70a9f68017c8bc1ade285afa05b2e76fda15",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        34
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/SelfImprovementEngine.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/SelfModel.ts",
+      "sizeBytes": 3424,
+      "sha256": "68abc6e55b83170dfadb1aeb5a9c5c217824c160e74c5febad709209409074ad",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        34
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/SelfModel.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/SleepDreamEngine.ts",
+      "sizeBytes": 1826,
+      "sha256": "eb3fde9524b7c31559d0707d7dd45dad47d7b27379a8616a2a63ba152fbbbe34",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        34
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/SleepDreamEngine.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/StateVault.ts",
+      "sizeBytes": 1009,
+      "sha256": "cb0e6a835d72ad05a7b2241840bbdc27c0a92b271941488363bc953b57b21924",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        34
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/StateVault.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/StatusIndicators.ts",
+      "sizeBytes": 4341,
+      "sha256": "8dcd1a5f29bb19bf7ffc1dbc411edaa252aface0e3da04938c22019945e202ba",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        34
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/StatusIndicators.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/UnifiedConsciousness.ts",
+      "sizeBytes": 8112,
+      "sha256": "583631b12f8a9196131fd2834f6d67d3d7e53f2cb8e74ab60157355b040f840f",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        40,
+        40
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/UnifiedConsciousness.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/thoughtDebt.ts",
+      "sizeBytes": 2482,
+      "sha256": "f00ec1547cd2d6506e957735f7acf9e62b97aed880b15e0bda1288d07afdf24d",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        26,
+        12
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/cognitive/thoughtDebt.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/AndroidCodeExportModal.tsx",
+      "sizeBytes": 14744,
+      "sha256": "59c21d4a0182c1d255ca7fea1be56c2ea6c5c87f119eb21af081b4d66b44bef2",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        36
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/AndroidCodeExportModal.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/Avatar2D.tsx",
+      "sizeBytes": 27953,
+      "sha256": "b7c613bfeff14c3da0a540c57b817e0c28f8a0394c1ad69f64a7cfd45f060afb",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        36
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/Avatar2D.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/Avatar2DOverlay.tsx",
+      "sizeBytes": 8862,
+      "sha256": "b7d97f8ccd1aa6637e0c1f01438cd3eba937fb6820531d8a5baf26b0bacd8efc",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        36
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/Avatar2DOverlay.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/Avatar3D.tsx",
+      "sizeBytes": 775,
+      "sha256": "2a7e67098e3cdee1f16e6af7ecfd27fc740b3c7a776f2cdfc5fe91a3380fd58c",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        36
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/Avatar3D.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/BrainMonitorPanel.tsx",
+      "sizeBytes": 9057,
+      "sha256": "d1d1fdc0dc3581e0c682dc2f2773abdbc4f37ed1cd4d85ec22a0b1e808a10c09",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        38
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/BrainMonitorPanel.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/ChatView.tsx",
+      "sizeBytes": 14679,
+      "sha256": "5124359fa9833213833cc3322f251495077de305c7d7c327e3c13a0dcb905a00",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        38
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/ChatView.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/ConsciousnessHUD.tsx",
+      "sizeBytes": 3652,
+      "sha256": "8ff0049286fcc967821e7a24b0e6c77081376f4ffc5a4b0887e0ff6d36448373",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        49,
+        24
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/ConsciousnessHUD.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/DailyPlanStrip.tsx",
+      "sizeBytes": 744,
+      "sha256": "90b1773b6df18451e2e0b00c7aa9db716f2da033c27af85c4f17a5c6f90d9f83",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        38
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/DailyPlanStrip.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/DevPanel.tsx",
+      "sizeBytes": 3479,
+      "sha256": "c9cb3154a1c7f965c4a13a2b0ae9f66df389bcb71a7a863b82b8df75d6f08551",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        38
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/DevPanel.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/EmotionalStatePanel.tsx",
+      "sizeBytes": 6410,
+      "sha256": "6825e1a53ebe99e36a50c57aa24c711a3114cb27c9b8901897c5b8fc4b5a85a2",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        38
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/EmotionalStatePanel.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/ExpressionReferenceModal.tsx",
+      "sizeBytes": 33650,
+      "sha256": "254d396468c5182ed33a8bb8619a0f2a2db626a9cdf42e1b6902aeaea347fc4a",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        38
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/ExpressionReferenceModal.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/FeelingsHUD.tsx",
+      "sizeBytes": 2647,
+      "sha256": "0ca60941d2ec2d2e7fc6fc0cf10feea6aa08bae4fd4601195f9bfb3182e90251",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        49,
+        24
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/FeelingsHUD.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/HierarchyMindPanel.tsx",
+      "sizeBytes": 2074,
+      "sha256": "b31db9c5d611baff2dc97fb2129ede2e3fa9d63b0739f0d39f1d3b8df2a37360",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        51,
+        26
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/HierarchyMindPanel.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/Live2DAvatar.tsx",
+      "sizeBytes": 5573,
+      "sha256": "838308e049a8deca707f397876f232e4aa141dd208eb780cbc387e4acf033e9d",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        39,
+        58
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/Live2DAvatar.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/LiveAvatar.tsx",
+      "sizeBytes": 6727,
+      "sha256": "f30c7e4792ee531a36fde7e66e8b72ba1109ab299eb136cf326ea50f28656175",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        40
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/LiveAvatar.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/MemoryInspector.tsx",
+      "sizeBytes": 12886,
+      "sha256": "0492b5aaa0c346e16b618dc7aa23bb6cfac3043f747f74d030d76c7de3bff1c6",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        40
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/MemoryInspector.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/ModularBrainPanel.tsx",
+      "sizeBytes": 4512,
+      "sha256": "bb20b87657cfb08b9159db9486679cf228bc5b95308bc7bf9cd4cfd99b8ab966",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        40
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/ModularBrainPanel.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/ModuleManagerPanel.tsx",
+      "sizeBytes": 2170,
+      "sha256": "b9fac7807d5c0d40ce08e0c54c6a6a7bcb7e3a9ed56b3d9b7dd3634de9d0c17e",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        40
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/ModuleManagerPanel.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/MultimodalCamera.tsx",
+      "sizeBytes": 6954,
+      "sha256": "44fdc6ef31ee259c29e58228f0cfb027cdfef2622622bcad24a99922e49f1413",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        40
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/MultimodalCamera.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/NeuralLatticePanel.tsx",
+      "sizeBytes": 2091,
+      "sha256": "baa908c91682a274089a1b435805de1d803037350dd0a090f86d6522dea55b04",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        23,
+        52
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/NeuralLatticePanel.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/PersonalityMapPanel.tsx",
+      "sizeBytes": 15885,
+      "sha256": "c5b70d0cff5e48ab7c4c83ba88e8a9361643f0dd6f30fcc2005deb85b7a780e2",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        40
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/PersonalityMapPanel.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/PromiseStrip.tsx",
+      "sizeBytes": 1210,
+      "sha256": "df9315e0be9c2bc737858dc96833e614901537597a101954e436fa5bd3e87ee5",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        40
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/PromiseStrip.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/ProviderKeysPanel.tsx",
+      "sizeBytes": 7525,
+      "sha256": "00940ce15ddb46485345dbb2a3235dc44c4159263d1afc48922107674cd0b795",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        42
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/ProviderKeysPanel.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/ReflectionJournal.tsx",
+      "sizeBytes": 16099,
+      "sha256": "34aa345d1767a98d76d22bc925b818beb21def27a011a5336ade6f92be2ed06f",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        42
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/ReflectionJournal.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/SearchPermissionModal.tsx",
+      "sizeBytes": 2295,
+      "sha256": "c15438b0400bcbb4a3de6ed9633bb51dc993e6d513573e90e5206ed0dc0c8ded",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        42
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/SearchPermissionModal.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/SelfOptimizationModal.tsx",
+      "sizeBytes": 26665,
+      "sha256": "4fa47e401c703c5f268a889bccb23c09e8f7b7672204ff48f7daa65239caf0cc",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        42
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/SelfOptimizationModal.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/SettingsPanel.tsx",
+      "sizeBytes": 32954,
+      "sha256": "126b3a7bdd5e6e36a359ef964fbb73a525313f5a7d5749b764799da41f2a2a15",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        42
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/SettingsPanel.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/SocialContractPanel.tsx",
+      "sizeBytes": 1001,
+      "sha256": "99100aed97aff97e75b4ea36e516d1a0a4853f795e480921f2039907837c0bf3",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        42
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/SocialContractPanel.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/SpriteGallery.tsx",
+      "sizeBytes": 980,
+      "sha256": "a22f0e2f534a80297cb2e18a508485b74d6d76d80076755f6c4d59bbbebf1fbe",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        42
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/SpriteGallery.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/StonesContractPanel.tsx",
+      "sizeBytes": 4586,
+      "sha256": "a3b31a7fe646980ed1c0854019c16460777df2703647490db74d88dceccfa878",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        30,
+        58
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/StonesContractPanel.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/ThoughtBubbleOverlay.tsx",
+      "sizeBytes": 1217,
+      "sha256": "93a46e63a1f1f8ee67c0521f31907ac435534e3ec4c39b1a9132d4455a9cee00",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        42
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/ThoughtBubbleOverlay.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/TokenStatusBar.tsx",
+      "sizeBytes": 1308,
+      "sha256": "0890b2966079b4ace331e7d2b4d4d68ce0ed32c7aea28396bbe5a9f1d5f8631f",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        44
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/TokenStatusBar.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/TraitsPanel.tsx",
+      "sizeBytes": 1186,
+      "sha256": "bac3e9ed1cc523a78ec67ba3bfbd6484b220272a037fc8fdf32bcb6dd230a76e",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        59,
+        24
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/TraitsPanel.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/VoiceControls.tsx",
+      "sizeBytes": 4963,
+      "sha256": "09762f08ee06d12f5dcd7cb1968069f21f6d1c63cf859059440fd5ae88330dda",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        10,
+        48
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/components/VoiceControls.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/data/kurisuCanon.ts",
+      "sizeBytes": 13954,
+      "sha256": "066684a54af7763425fb7604c20eb42df3fdb4f1a1c881a13240741236f0c82b",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        58,
+        40
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/data/kurisuCanon.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/data/kurisuDeepCanonSeed.ts",
+      "sizeBytes": 2852,
+      "sha256": "9771e7d2113c4a6e33eeceb5b5646f9f21c61f0bfc0a0c9f70a72ffc81c0e786",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        2,
+        40
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/data/kurisuDeepCanonSeed.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/data/kurisuDeepMemory.ts",
+      "sizeBytes": 3886,
+      "sha256": "4fc4bac2d242a78b16138c9621aad271a435fcb12cecfc43607fc89db9b9bb89",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        49,
+        58
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/data/kurisuDeepMemory.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/data/kurisuOfficialProfile.ts",
+      "sizeBytes": 7589,
+      "sha256": "275d845d27b92478da2fb7e842fc3cd25f973de90be340f4c12799f583bf0b36",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        59,
+        24
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/data/kurisuOfficialProfile.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/index.css",
+      "sizeBytes": 4661,
+      "sha256": "de742aac2d906a95d832257b0c8d518f994379de365fd87071a10ea1bb4e72a6",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        44
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/index.css"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/main.tsx",
+      "sizeBytes": 227,
+      "sha256": "b1aed57fbfac2dcb25aee8cb0152c52bd0a1bde8f5755a09bffb0d3ede10f983",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        44
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/main.tsx"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/modular/AceMemory.ts",
+      "sizeBytes": 3332,
+      "sha256": "116f5b62d7761441e743dfa17642aeee83f8f2d8819e57a94e816f207b1e3b4b",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        46
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/modular/AceMemory.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/modular/BrainHub.ts",
+      "sizeBytes": 2314,
+      "sha256": "25ba6d9eb2b35b28481893efbd3da5566a8f954662ccd3469a9556d870a7b601",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        46
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/modular/BrainHub.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/modular/ModuleManager.ts",
+      "sizeBytes": 1461,
+      "sha256": "820ccb1284ed6563beb0836b3868c65458201880663172f7ee7861915d2d593b",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        46
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/modular/ModuleManager.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/modular/SelfImproveLoop.ts",
+      "sizeBytes": 5348,
+      "sha256": "52299973b34fef66644cecc3d04adcb8441c92ddfa987a0784a19406e4f432f7",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        46
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/modular/SelfImproveLoop.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/modular/builtinModules.ts",
+      "sizeBytes": 4339,
+      "sha256": "3ecd05b9d95de2ee8ef5e1a4c5733e22160c0606fd82fe04596d9d1929033c31",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        48
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/modular/builtinModules.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/modular/types.ts",
+      "sizeBytes": 1097,
+      "sha256": "ec6bce2e27f1b5027e92953698120173fd17bc8c2e7d37a45649ac722eb49205",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        48
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/modular/types.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/neural/HierarchicalMind.ts",
+      "sizeBytes": 9385,
+      "sha256": "9b4ded33fca9f1deb5179588049e2fe2bd301bd4f1c58a617be3a0b04a5e465c",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        57,
+        56
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/neural/HierarchicalMind.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/neural/MicroNeuralLattice.ts",
+      "sizeBytes": 9349,
+      "sha256": "937da24f7b268747e8ba7b85a3cafcf5353cdbf32932f6d2a90d114ff54bd8e9",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        11,
+        30
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/neural/MicroNeuralLattice.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/neural/ResonanceField.ts",
+      "sizeBytes": 7011,
+      "sha256": "76fe9558ac87a5dc97845555af2e115ae23bf048a9d2d7e31e82c1f4e4651673",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        23,
+        8
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/neural/ResonanceField.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/neural/ToneEmotionNet.ts",
+      "sizeBytes": 3950,
+      "sha256": "7f6a534e1739e267b28218fa77a4285ec07382540d5cf1a27d4c323337423579",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        2,
+        40
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/neural/ToneEmotionNet.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/psyche/EmotionAffectSystem.ts",
+      "sizeBytes": 4629,
+      "sha256": "3f9862d14f63c20e890c23896c9f1991092f6443ece4098279e8c11a5fce8f84",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        48
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/psyche/EmotionAffectSystem.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/psyche/LivingPersona.ts",
+      "sizeBytes": 7447,
+      "sha256": "0e446e5d60f49c20905266b53ce324fa9d488ac4e3913496ae72e5e4b7dc2c7c",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        48
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/psyche/LivingPersona.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/psyche/NeuralPathwayGraph.ts",
+      "sizeBytes": 4213,
+      "sha256": "29a1629d81af6b028861de41fa1b181c548c7efc079f25117ae57d832c866243",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        48
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/psyche/NeuralPathwayGraph.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/psyche/PerceptionModel.ts",
+      "sizeBytes": 2308,
+      "sha256": "1c86167c7e3a6428fda0b0dab903cf2a8092ea127da0f98e9a11b4d9058a5b56",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        50
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/psyche/PerceptionModel.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/psyche/PersonalityCore.ts",
+      "sizeBytes": 4428,
+      "sha256": "c5f82c198ffd692c6fb3c4f38a80403592c8c00cd7214f2fb90f1a07d877567c",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        50
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/psyche/PersonalityCore.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/autonomousEngine.ts",
+      "sizeBytes": 6507,
+      "sha256": "ede8c7bc9909712952ccdc2a6489da4d499ff6345c9ae3607445d4312156a84e",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        50
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/autonomousEngine.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/chatService.ts",
+      "sizeBytes": 12378,
+      "sha256": "ddd076e1d698f537121c4b0a4331dcd6a7ae66dd6a49b0f3b3fa6acc5f89bb41",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        3,
+        22
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/chatService.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/consciousnessCompose.ts",
+      "sizeBytes": 7234,
+      "sha256": "8f5f24e1cb34e8f5d1ede17e443562a2eac0434a5505881fbf6142170690c6e2",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        58,
+        42
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/consciousnessCompose.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/contextPacket.ts",
+      "sizeBytes": 13940,
+      "sha256": "33a02044744a426c0cb664c5c56e73c62708c75a29431e14157587cce25936f5",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        51,
+        50
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/contextPacket.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/embodimentBus.ts",
+      "sizeBytes": 848,
+      "sha256": "f7a9b115f5dc82ef00a35e6ced85152a1fce42a9a8676ffa6144c183cfbe3865",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        26,
+        12
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/embodimentBus.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/fallbackBank.ts",
+      "sizeBytes": 1904,
+      "sha256": "21ff4966fe0314db9ddf5dcf88cc33270888ae94ec7a1e22d05a733466d57b4f",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        35,
+        18
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/fallbackBank.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/localLLMEngine.ts",
+      "sizeBytes": 28539,
+      "sha256": "eac712f3e4984ff30149cc3b8bca2624e9b9349b1e0c9d21d816ec03ef5c99af",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        47,
+        50
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/localLLMEngine.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/logger.ts",
+      "sizeBytes": 1305,
+      "sha256": "41c696d6985dcdfec0ab3627d4adfa2b5fbeb0f34b1fe57bfe9eeec18504cd7b",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        52
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/logger.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/memoryEngine.ts",
+      "sizeBytes": 15459,
+      "sha256": "41f83c4b7fdc20197a7e79c44e8401404dd3f03aeb10cff97a899465b4a8b0a5",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        11,
+        58
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/memoryEngine.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/neuralLocalEngine.ts",
+      "sizeBytes": 6053,
+      "sha256": "f4cecb475687a40d52e986be33b974073720b7fcbbc00e5e7e719bd93502145b",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        52
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/neuralLocalEngine.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/notificationEngine.ts",
+      "sizeBytes": 4076,
+      "sha256": "9529ed8ef1158b676815d200f86e77b9f2683907d53db277a2446b56f17ce153",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        52
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/notificationEngine.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/powerGovernor.ts",
+      "sizeBytes": 1961,
+      "sha256": "ce995032e8a1e63dd8b0c394af458c86f01800c7a6296f07a6ae38f9578f5884",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        54
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/powerGovernor.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/providerConfig.ts",
+      "sizeBytes": 5049,
+      "sha256": "563cc8bc67033a5caffac7ad9c4b9b5c88e8b617529ff594b66532f9dade54fe",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        41,
+        2
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/providerConfig.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/regexHygiene.ts",
+      "sizeBytes": 1101,
+      "sha256": "d1aaa1adbf2ba3e74517f9ff53b6fe7fae1ae2f866e20526089d76b3efeb52d4",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        49,
+        56
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/regexHygiene.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/responseHygiene.ts",
+      "sizeBytes": 1446,
+      "sha256": "8708e84e01352f9ca084cd41a04898eef7430c0233ada8279db6fe64096abb52",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        54
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/responseHygiene.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/runtimeGovernor.ts",
+      "sizeBytes": 4793,
+      "sha256": "075146c68177535aa56843992b20925d75982c102dd11f9a226a8eb3d5ad6b44",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        54
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/runtimeGovernor.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/sentimentKurisu.ts",
+      "sizeBytes": 2798,
+      "sha256": "1145f37c22914d5c13a54c274d096371845bf1e973a2e584f2645a732721c5d7",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        19,
+        4
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/sentimentKurisu.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/speechInterrupt.ts",
+      "sizeBytes": 433,
+      "sha256": "38782e98f6e9945aa03b390e53a8fd013e034cdc8183274b370e895589cbbad4",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        10,
+        14
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/speechInterrupt.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/tokenMeter.ts",
+      "sizeBytes": 2655,
+      "sha256": "ac6ec7a40ba15602e7614324dbe6222a9ecd9d5ace876270642136a77a8f559f",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        54
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/tokenMeter.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/ttsEngine.ts",
+      "sizeBytes": 5794,
+      "sha256": "66aca82c7b5f9205b80e9da5c738f0208c23c9b5e385f6b34d4d8e78e18b5545",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        20,
+        26
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/ttsEngine.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/voiceConversation.ts",
+      "sizeBytes": 3733,
+      "sha256": "a3d914cf22375a929c962a83e3f83b6c41437dcfae540e3bd9acf18a13122135",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        13,
+        1,
+        28
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/services/voiceConversation.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/synergy/GlobalState.ts",
+      "sizeBytes": 2752,
+      "sha256": "73c20db7fa5a706bcd9d60d77fdc47ed646de1a05f7c5b0869703064930d0c7e",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        56
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/synergy/GlobalState.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/synergy/InternalClock.ts",
+      "sizeBytes": 1560,
+      "sha256": "3495359625b93f777b531bf7b3918462ed338d9220dcfec16b762eeb97bd0f04",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        56
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/synergy/InternalClock.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/synergy/SynergyOrchestrator.ts",
+      "sizeBytes": 3862,
+      "sha256": "8b3b0f013aee1426b2fa4f6b7e4730dfabe7cda6a13b7a489c5a9cfc944ad309",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        56
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/synergy/SynergyOrchestrator.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/tools/webSearch.ts",
+      "sizeBytes": 3093,
+      "sha256": "4d52f4b39a690c5dd2dbcfff0699b46c9349dac0fb28744f82a134dbc315a80b",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        56
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/tools/webSearch.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/types.ts",
+      "sizeBytes": 4542,
+      "sha256": "2184f5e8474ee90e66910783dc06af4c7cf3a8b4ea65e0fb951e839b8482c740",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        58
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/types.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/utils/spriteSheet.ts",
+      "sizeBytes": 1881,
+      "sha256": "3ee0618b3519df73754e15a73ad762cbb157f3ed3d2f2d65316f40452afe5704",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        58
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/src/utils/spriteSheet.ts"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/tsconfig.json",
+      "sizeBytes": 341,
+      "sha256": "de1de86524c1a5075e92834e752ce1dbdd11417b904fe0f6509f7dc4e746d2eb",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        58
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/tsconfig.json"
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/vite.config.ts",
+      "sizeBytes": 399,
+      "sha256": "cf04350539e0febb277236585314b7d380feaef56355a63a34819537957262f6",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        58
+      ],
+      "compressType": 8,
+      "externalAttr": 2175008768,
+      "createSystem": 3,
+      "canonicalPath": "legacy/kurisu-v56/vite.config.ts"
+    }
+  ],
+  "directories": [
+    {
+      "path": "kurisu_neuro_v40/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        50
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        50
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/docs/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        16,
+        56
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        6
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        6
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        6
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/Kurisu.4096/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        6
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/exp/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        10
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/live2d/Kurisu/motions/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        12
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/public/sprites/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        16
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        16
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/avatar/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        18
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/brain/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        18
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/cognitive/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        26
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/components/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        36
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/data/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        44
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/modular/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        46
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/neural/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        14,
+        2,
+        38
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/psyche/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        48
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/services/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        50
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/synergy/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        56
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/tools/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        56
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    },
+    {
+      "path": "kurisu_neuro_v40/kurisu_webapp/src/utils/",
+      "dateTime": [
+        2026,
+        8,
+        14,
+        12,
+        17,
+        58
+      ],
+      "externalAttr": 1106051088,
+      "createSystem": 3
+    }
+  ]
+}

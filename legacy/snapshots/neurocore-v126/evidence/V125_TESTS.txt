@@ -1,0 +1,9 @@
+........................................................................ [ 80%]
+.................                                                        [100%]
+=============================== warnings summary ===============================
+tests/current/test_v123_decontamination.py::test_v123_active_synergy_has_real_runtime_path
+  /mnt/data/neurocore_v125/neurocore_v123/tests/current/test_v123_decontamination.py:35: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+  Consider using tensor.detach() first. (Triggered internally at /pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:836.)
+    assert float((out["latent"] - out["spine_latent"]).abs().mean()) > 1e-8
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html

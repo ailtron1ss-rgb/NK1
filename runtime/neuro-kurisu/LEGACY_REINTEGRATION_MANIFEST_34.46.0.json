@@ -1,0 +1,104 @@
+{
+  "version": "34.46.0",
+  "purpose": "Deterministic register of what was retained/reintegrated from the large historical archive into the current canonical tree.",
+  "comparison": {
+    "largeArchive": "Neuro_Kurisu_34.2.0_BIG_PASS_15_INDEPENDENT_REVISION_MEMORY_PERF_QWEN_AUDIT.zip",
+    "currentArchiveBaseline": "Neuro_Kurisu_34.42.0_BIG_PASS_71_SIMILARITY_EXPERIENCE.zip",
+    "largeProjectFiles": 2063,
+    "currentProjectFiles": 1025,
+    "samePath": 715,
+    "sameHash": 630,
+    "changedSamePath": 85,
+    "largeOnly": 1348,
+    "largeOnlyAllUnderLegacyOriginal": true,
+    "currentOnly": 310,
+    "functionalConclusion": "No canonical active file was deleted when 34.42.0 was produced; the size collapse was mainly caused by removing legacy-original. However, the real Live2D embodiment assets were inside that legacy set and had to be selectively reintegrated. BIG PASS 75 added project-state/conflict controls and retained the selective legacy policy."
+  },
+  "reintegratedRuntime": {
+    "path": "public/live2d/Kurisu/",
+    "assets": [
+      "Kurisu.model3.json",
+      "Kurisu.moc3",
+      "Kurisu.4096/texture_00.png",
+      "Kurisu.physics3.json",
+      "Kurisu.cdi3.json",
+      "exp/*.exp3.json",
+      "motions/*.motion3.json"
+    ],
+    "counts": {
+      "expressions": 7,
+      "motions": 5
+    },
+    "reason": "Required for an actually visible Kurisu embodiment."
+  },
+  "reworkedRuntime": {
+    "files": [
+      "public/live2d/viewer.html",
+      "public/avatar.html",
+      "public/index.html",
+      "public/app.js",
+      "public/style.css",
+      "src/server/server.mjs",
+      "src/organism/core/OrganismCore.ts",
+      "src/organism/cognition/evolution/SelfGovernanceEngine.ts"
+    ],
+    "changes": [
+      "Real Live2D viewer with low-power idle cadence and origin-safe postMessage.",
+      "Avatar endpoint and status-lite no longer require a full organism snapshot.",
+      "Embodiment asset status endpoint exposes runtime readiness.",
+      "Governance projection avoids repeated full-state clones in the same projection pass."
+    ]
+  },
+  "referenceOnly": {
+    "path": "docs/history/reintegrated-legacy/",
+    "files": [
+      "ui-reference/Avatar2D.legacy-reference.tsx",
+      "ui-reference/Live2DAvatar.legacy-reference.tsx",
+      "ui-reference/MemoryInspector.legacy-reference.tsx",
+      "ui-reference/BrainMonitorPanel.legacy-reference.tsx",
+      "ui-reference/verify-live2d.legacy-reference.mjs",
+      "research/ARCHITECTURE_AND_GAPS_RU.md",
+      "research/CONSCIOUSNESS_GOAL_AND_PLAN_RU.md",
+      "research/MINIMAL_CONSCIOUSNESS_CONDITIONS_RU.md",
+      "research/P3_FINAL_AUDIT_RU.md",
+      "research/P2_FINAL_REPORT_RU.md",
+      "research/P3_PROGRESS_RU.md",
+      "research/P2_PROGRESS_RU.md",
+      "termux/TERMUX_ONE_COMMAND_V99_80_3_RU.md",
+      "termux/TERMUX_FULL_START_V99_80_3_RU.md",
+      "termux/TERMUX_ONE_COMMAND_V99_80_RU.md"
+    ],
+    "count": 15
+  },
+  "notReintegratedRuntime": {
+    "legacyRootFiles": 1348,
+    "categories": {
+      "legacyOriginalSrc": 537,
+      "legacyOriginalScripts": 394,
+      "legacyOriginalDocs": 281,
+      "legacyOriginalDopGrokQwen": 43,
+      "legacyOriginalPublic": 22,
+      "historicalRootDocsAndInstallers": 71
+    },
+    "rules": [
+      "Do not restore historical parallel organism cores.",
+      "Do not restore the old React/Vite runtime as a second UI architecture.",
+      "Do not restore historical service/provider graphs into canonical src/organism.",
+      "Do not restore obsolete installers/bootstrap scripts as executable release entry points.",
+      "Keep research and audits as reference material rather than runtime dependencies."
+    ]
+  },
+  "validation": {
+    "legacyReintegration": "PASS",
+    "typecheck": "PASS",
+    "syntax": "PASS",
+    "architecture": "PASS",
+    "releaseContract": "PASS",
+    "sourceTruth": "PASS",
+    "forensics": "PASS",
+    "serverSmoke": "PASS"
+  },
+  "currentArchiveBaseline": "34.45.0-worktree",
+  "currentRelease": "34.46.0",
+  "updatedBy": "BIG PASS 75"
+}

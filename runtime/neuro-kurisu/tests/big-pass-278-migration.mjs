@@ -1,0 +1,6 @@
+import assert from 'node:assert/strict';
+import { B278NeuralPrimitiveGenesis } from '../src/organism/cognition/B278NeuralPrimitiveGenesis.ts';
+const g=new B278NeuralPrimitiveGenesis();
+const x={goalVector:[.7,.3,.6,.4,.5,.2,.3,.8],selfLatent:Array(16).fill(.25),worldLatent:Array(16).fill(.32),neuralAssembly:Array(16).fill(.4),operatorOutput:Array.from({length:12},(_,i)=>.18+i*.01),operatorId:'op277-mig',programLatent:Array(12).fill(.2),programId:'prog276-mig',personalityBias:{explore:.04,verify:.06},autonomy01:.74,novelty01:.76,predictionError01:.18,traitValues:{curiosity:.7,'truth-seeking':.65,'self-reflection':.6,persistence:.7,'social-attunement':.6,'self-preservation':.68,autonomy:.74,care:.62}};
+for(let t=1;t<32;t++){const r=g.step({...x,tick:t});g.learnFromOutcome({tick:t,reward01:.75,predictionError01:.12,action:r.selectedAction,selfLatent:x.selfLatent,worldLatent:x.worldLatent,neuralAssembly:x.neuralAssembly,autonomy01:x.autonomy01,externalEvidence01:1,novelty01:x.novelty01,personalityFit01:.8,contextVector:x.goalVector});}
+const s=JSON.parse(JSON.stringify(g.snapshot()));const q=new B278NeuralPrimitiveGenesis();q.restore(s);assert.deepEqual(q.snapshot(),g.snapshot());assert.ok(q.diagnostics().verified.length>=1);console.log(JSON.stringify({pass:true,roundTrip:true,diagnostics:q.diagnostics()},null,2));

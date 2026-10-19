@@ -1,0 +1,34 @@
+import assert from 'node:assert/strict';
+import { B365UnifiedNeuroCausalCore } from '../src/organism/cognition/B365UnifiedNeuroCausalCore.ts';
+const actions=['respond','explore','verify','rest','reflect','wait','defer'];
+const vector=Array.from({length:64},(_,i)=>Math.tanh(.13*Math.sin(i*.17)+.06*Math.cos(i*.31)));
+const ctxA=[.95,.90,.88,.92,.94,.90,.86,.91];
+const ctxB=[.08,.12,.10,.06,.14,.09,.11,.07];
+const ctxA2=[.90,.87,.84,.89,.92,.88,.82,.86];
+const ctxC=[.50,.48,.52,.49,.51,.53,.47,.50];
+const contextMap={A:ctxA,B:ctxB,A2:ctxA2,C:ctxC};
+function policy(net,ctx,tick){ return net.step({tick,vector,novelty01:.45,uncertainty01:.35,predictionError01:.12,goalPressure01:.30,autonomy01:.72,learningEnabled:false,developmentContext01:ctx,actionContext:Object.fromEntries(actions.map(a=>[a,{worldUtility01:a==='explore'?.52:.48,worldConfidence01:.85,worldUncertainty01:.15,needRelief01:a==='rest'?.65:.3,predictedCost01:a==='explore'?.18:.1}]))}).actionProbabilities; }
+const net=new B365UnifiedNeuroCausalCore();
+net.setDevelopmentalMemoryEnabled(false);
+const baseA=policy(net,ctxA,1); const baseB=policy(net,ctxB,2);
+for(let i=0;i<80;i++) net.consolidateExperience({tick:10+i,action:'explore',reward01:.96,predictionError01:.04,salience01:.82,verified01:1,independent01:1,evidenceQuality01:.99,continuity01:.94,goalId:'ctx-A',context01:ctxA});
+for(let i=0;i<80;i++) net.consolidateExperience({tick:120+i,action:'explore',reward01:.08,predictionError01:.90,salience01:.84,verified01:1,independent01:1,evidenceQuality01:.99,continuity01:.90,goalId:'ctx-B',context01:ctxB});
+const learnedBase=net.snapshot();
+function evalFrom(ctx,tick){ const n=new B365UnifiedNeuroCausalCore(); n.restore(learnedBase); return policy(n,ctx,tick); }
+const pA=evalFrom(ctxA,300), pA2=evalFrom(ctxA2,301), pB=evalFrom(ctxB,302), pC=evalFrom(ctxC,303);
+const dAB=Math.abs(pA.explore-pB.explore); const dAA2=Math.abs(pA.explore-pA2.explore); const dAC=Math.abs(pA.explore-pC.explore);
+assert.ok(dAB>.015,`context separation too small: ${dAB}`);
+assert.ok(dAA2<dAB,`near-context failed to generalize: near=${dAA2} far=${dAB}`);
+assert.ok(dAC<dAB || dAC>.01);
+const beforeContr=net.contextualDevelopmentalDiagnostics();
+for(let i=0;i<36;i++) net.consolidateExperience({tick:400+i,action:'explore',reward01:(i%2? .95:.05),predictionError01:.88,salience01:.78,verified01:1,independent01:1,evidenceQuality01:.99,continuity01:.88,goalId:'ctx-A-conflict',context01:ctxA});
+const afterContr=net.contextualDevelopmentalDiagnostics();
+assert.ok(afterContr.contradictions>=beforeContr.contradictions,`contradiction counter regressed`);
+assert.ok(afterContr.profiles.some(p=>p.action==='explore'&&p.conflict01>0),`no contextual conflict accumulated`);
+const learned=net.snapshot(); const learnedNet=new B365UnifiedNeuroCausalCore(); learnedNet.restore(learned); const learnedA=policy(learnedNet,ctxA,500).explore;
+const knocked=new B365UnifiedNeuroCausalCore(); knocked.restore(learned); knocked.resetContextualDevelopmentalMemory(); const resetA=policy(knocked,ctxA,500).explore;
+assert.ok(Math.abs(learnedA-resetA)>.01,`context knockout too small: ${Math.abs(learnedA-resetA)}`);
+const restartedNet=new B365UnifiedNeuroCausalCore(); restartedNet.restore(learned); const restarted=policy(restartedNet,ctxA,500).explore;
+assert.ok(Math.abs(restarted-learnedA)<0.01,`restart changed contextual policy: ${Math.abs(restarted-learnedA)}`);
+const off=new B365UnifiedNeuroCausalCore(); off.setDevelopmentalMemoryEnabled(false); off.setContextualDevelopmentalMemoryEnabled(false); const offA=policy(off,ctxA,1).explore; const offB=policy(off,ctxB,2).explore; assert.ok(Math.abs(offA-offB)<0.02,`context OFF still diverges: ${Math.abs(offA-offB)}`);
+console.log(JSON.stringify({pass:true,status:'B382_CONTEXTUAL_DEVELOPMENTAL_CAUSAL_PASS',dAB,dAA2,dAC,contradictions:afterContr.contradictions,conflictProfiles:afterContr.profiles.filter(p=>p.conflict01>0).length,knockoutDelta:Math.abs(learnedA-resetA),restartDelta:Math.abs(restarted-learnedA),offDelta:Math.abs(offA-offB),contextProfiles:afterContr.contextCount,retrievals:afterContr.retrievals},null,2));

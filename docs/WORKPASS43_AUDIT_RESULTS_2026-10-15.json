@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "title": "Neuro Kurisu WorkPass43 — execution evidence ledger",
+  "date": "2026-10-15",
+  "workpass": 43,
+  "baselineArchive": "Neuro_Kurisu_WORKPASS42_2026-10-14.zip",
+  "releaseIdentity": {
+    "rootPackageVersion": "35.0.0-super-workpass43",
+    "runtimeVersion": "35.64.0",
+    "stateSchema": 225,
+    "releaseStatus": "implementation-workpass; release gates remain open",
+    "weightedRoadmapPercent": 78.0
+  },
+  "tests": [
+    {"id":"release-metadata","command":"npm run audit:release-metadata","status":"PASS","result":"34/34 checks; root/runtime versions, lockfiles, schema and WorkPass43 lineage aligned"},
+    {"id":"release-metadata-contract","command":"npm run test:release-metadata-contract","status":"PASS","result":"6/6 tests"},
+    {"id":"receipt-causal-integration","command":"npm run test:tool-receipt-causal-workpass43","status":"PASS","result":"8/8 tests: duplicate tool ID refusal; action/outcome/evidence trace; replay; snapshot/restore beyond recent-96 window; ring eviction; stable plan ID; exact execution identity; controller dedup; real OrganismCore keyed-receipt projection"},
+    {"id":"action-gateway-idempotency","command":"npm run test:action-gateway-idempotency-workpass37","status":"PASS","result":"13/13 tests"},
+    {"id":"action-ledger-archive","command":"npm run test:action-ledger-archive-workpass38","status":"PASS","result":"4/4 tests including disk archive/restart and torn/corrupt append handling"},
+    {"id":"will-reafference-integration","command":"node --experimental-strip-types --test runtime/neuro-kurisu/tests/big-pass-124-reafference-integration.mjs","status":"PASS","result":"1/1 test; persisted and restored decision/outcome, delayed temporal assignment applied"},
+    {"id":"runtime-typecheck","command":"npm --prefix runtime/neuro-kurisu run typecheck","status":"PASS","result":"TYPECHECK=PASS mode=tsc"},
+    {"id":"runtime-smoke","command":"npm run test:runtime:smoke","status":"PASS_STANDALONE","result":"CLEAN_ORGANISM_SMOKE=PASS when invoked independently"},
+    {"id":"runtime-restart-persistence","command":"npm --prefix runtime/neuro-kurisu run test:restart","status":"PASS_STANDALONE","result":"CLEAN_RESTART_PERSISTENCE=PASS; 20 steps, persisted tick restored, next step succeeded"},
+    {"id":"canonical-public-assets","command":"npm run test:canonical-public-assets","status":"PASS","result":"6/6 tests; generates byte-identical app shadows only during hydration. Follow-up assets:clean removed all 21 shadows"},
+    {"id":"historical-path-restoration-contract","command":"npm run test:historical-path-restoration","status":"PASS","result":"4/4 tests"},
+    {"id":"compacted-source-archives","command":"npm run check:compacted-source-archives","status":"PASS","result":"4 manifests, 8,512/8,512 members verified"},
+    {"id":"historical-snapshot","command":"npm run check:historical-snapshot","status":"PASS","result":"10,427/10,427 snapshot entries and 18,935 content sources checked; zero errors"},
+    {"id":"legacy-deduplicated-files","command":"node tools/restore-legacy-deduplicated-files.mjs","status":"PASS","result":"3,873 entries; no missing canonical source or conflict; 26 entries resolve through immutable historical blobs"},
+    {"id":"historical-duplicate-paths","command":"node tools/restore-historical-duplicate-paths.mjs","status":"PASS","result":"56 entries; missing/changed canonical sources 0; conflicts 0"},
+    {"id":"source-provenance-sbom","command":"npm run test:provenance-current","status":"PASS","result":"1/1; 464 locked npm components, 8 canonical source archives, license evidence files inventoried"},
+    {"id":"app-script-contracts","command":"npm run test:app:scripts","status":"PASS","result":"218/218 tests according to current scorecard and completed command output"},
+    {"id":"browser-smoke-contract","command":"npm run test:browser-smoke-verdict","status":"PASS","result":"51/51 contract tests; does not represent execution in a real browser"},
+    {"id":"memory-retrieval-benchmark","command":"npm run test:memory-retrieval-benchmark","status":"PASS_NO_PROMOTION","result":"benchmark executed; recallDelta=0; candidate intentionally remains not-promoted pending independent labelled holdout"},
+    {"id":"server-relative-imports","command":"npm run audit:server-imports","status":"PASS","result":"11 imports checked; none missing"},
+    {"id":"ui-api-linkage","command":"npm run audit:ui-api-linkage","status":"PASS","result":"125 client routes and 49 Runtime Atlas surfaces; missing atlas entries 0; missing required seams 0; proxy checks pass"},
+    {"id":"asset-audit","command":"npm run audit:assets (after npm run assets:clean)","status":"PASS","result":"zero asset errors; canonical Live2D assets, app-specific viewer/vendor and Legacy presentation files retained; 21 generated duplicate app shadows absent in final tree"},
+    {"id":"source-parser-syntax","command":"TypeScript compiler API parse diagnostics + node --check on extracted Live2D viewer script","status":"PASS","result":"6 touched TS/TSX modules parsed with zero syntax diagnostics; inline viewer JavaScript node --check passed; this is not equivalent to app typecheck/build"}
+  ],
+  "aggregateGate": {
+    "command": "npm run audit:workpass43",
+    "status": "TIMED_OUT_NOT_PASSED",
+    "timeoutSeconds": 300,
+    "lastObservedStage": "runtime smoke invocation after metadata, receipt, idempotency, ledger and runtime typecheck stages",
+    "interpretation": "The long chained invocation timed out while entering the runtime smoke stage even though the same smoke test and restart persistence pass when run independently. The aggregate command is not recorded as a pass. Constituent gates are listed above and were executed individually.",
+    "followUp": "On a provisioned runner, identify and fix the sequential-suite timeout or run the gates in isolated subprocesses with per-stage timeouts and resource cleanup."
+  },
+  "notRunOrStillOpen": [
+    {"gate":"React/Vite production build","status":"BLOCKED_NOT_RUN","reason":"app/node_modules is absent; no claim of build success"},
+    {"gate":"Real interactive browser and Live2D/Legacy E2E","status":"NOT_RUN","reason":"browser contract tests are not a real application session"},
+    {"gate":"Long autonomy suite","status":"TIMED_OUT_NOT_PASSED","reason":"previous long run timed out; not counted as evidence"},
+    {"gate":"External provider/device receipts and reconnect","status":"OPEN","reason":"requires a real external executor/provider and authoritative evidence"},
+    {"gate":"Target hardware llama.cpp inference","status":"OPEN","reason":"no real target-host measurement in this pass"},
+    {"gate":"Independent labelled temporal retrieval holdout","status":"OPEN","reason":"synthetic benchmark recall uplift is zero and candidate was not promoted"},
+    {"gate":"Clean-room install/upgrade and crash-injected rollback","status":"OPEN","reason":"not exercised"},
+    {"gate":"Manual nested LICENSE/NOTICE review","status":"OPEN","reason":"SBOM and source archive inventory are evidence, not legal sign-off"},
+    {"gate":"Long-running soak and leak/recovery measurements","status":"OPEN","reason":"not exercised"}
+  ],
+  "historicalImmutability": {
+    "description":"Original WorkPass42 bytes for three files were preserved as SHA-256-named blobs and affected manifests now point to immutable blobs rather than mutable active paths.",
+    "pinnedFiles":[
+      {"path":"runtime/neuro-kurisu/src/organism/system/AutonomousResourceToolLifeController.ts","sha256":"8ce007cd30caf59e85d2f3dcee02915a13b93e94372b01b6253501fad1eb64a4","sizeBytes":6139},
+      {"path":"app/src/components/AvatarStage.tsx","sha256":"6e4394887457c9f15ea4cd40d7589796afec8153039b8469d6b5ff49d994a111","sizeBytes":4364},
+      {"path":"app/public/live2d/viewer.html","sha256":"59adc45261b0e233fd4ffb83b85348f62e40992b62eaf901c5cc319018daea57","sizeBytes":7373}
+    ],
+    "effect":"Historical manifests retain their original SHA-256 content identity; active runtime/UI code remains improved in the current branch."
+  },
+  "finalVerdict":"WorkPass43 is a substantive implementation pass, not release certification. The core receipt/cause/recovery slice and source reproducibility are covered by focused evidence. App build, actual provider/device evidence, full interactive E2E, aggregate-suite stability, crash rollback, independent holdout, license sign-off and soak remain open."
+}

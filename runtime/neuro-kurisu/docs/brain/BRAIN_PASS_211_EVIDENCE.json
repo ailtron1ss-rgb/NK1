@@ -1,0 +1,65 @@
+{
+  "pass": "BRAIN-211",
+  "title": "Cortical hierarchy and distributed predictive routing",
+  "status": "verified",
+  "release": "35.6.1",
+  "changed_code": [
+    "src/organism/system/CorticalHierarchyEngine.ts",
+    "src/organism/core/CognitiveKernelCoordinator.ts",
+    "src/organism/core/OrganismCore.ts",
+    "src/organism/persistence/StateMigrations.ts",
+    "src/organism/system/ArtificialBrainAtlas.ts"
+  ],
+  "new_test": "tests/big-pass-211-cortical-hierarchy.mjs",
+  "results": {
+    "deepDepth": 5,
+    "deepMode": "deep",
+    "deepCoherence01": 0.9520366715082943,
+    "deepContradiction01": 0.07469584371239968,
+    "shallowDepth": 2,
+    "shallowMode": "shallow",
+    "normalExploreGain01": 0.9826154716030697,
+    "contradictoryExploreGain01": 0.8898825596368407,
+    "contradictoryExplore01": 0.3913005645430018,
+    "learningSamples": 16,
+    "learnedMeanError01": 0.1893275323572149,
+    "coreCorticalCycles": 4,
+    "restore": "PASS"
+  },
+  "release_gate": {
+    "typecheck": "PASS",
+    "b207": "PASS",
+    "b208": "PASS",
+    "b209": "PASS",
+    "b211": "PASS",
+    "functionPassportGate": "PASS",
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "hygiene": "PASS",
+    "syntax": "PASS",
+    "contract": "PASS",
+    "forensics": "PASS",
+    "releaseSource": "PASS",
+    "archiveManifest": "PASS"
+  },
+  "function_counts": {
+    "total": 2742,
+    "verified": 14,
+    "integrationOnly": 27,
+    "unsafeToAutoRun": 129,
+    "unverified": 2572
+  },
+  "scientific_caution": [
+    "computational analogue, not anatomical equivalence",
+    "no device battery claim",
+    "no consciousness claim"
+  ],
+  "research": [
+    "https://www.nature.com/articles/s41586-026-10219-x",
+    "https://www.nature.com/articles/s41583-025-00992-5",
+    "https://www.nature.com/articles/s41583-026-01045-1",
+    "https://www.nature.com/articles/s42256-024-00826-6",
+    "https://www.nature.com/articles/s41928-026-01631-2",
+    "https://www.nature.com/articles/s44287-026-00321-7"
+  ]
+}

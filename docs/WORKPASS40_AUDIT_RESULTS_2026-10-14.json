@@ -1,0 +1,148 @@
+{
+  "title": "Neuro-Kurisu WorkPass40 independent gate results",
+  "date": "2026-10-14",
+  "version": {
+    "root": "35.0.0-super-workpass40",
+    "runtime": "35.62.0",
+    "schema": 225
+  },
+  "implementationProgressPercent": 85,
+  "weightedRoadmapPercent": 77.2,
+  "primaryAggregateAudit": {
+    "command": "npm run audit:workpass40",
+    "exitCode": 0,
+    "status": "PASS"
+  },
+  "checks": [
+    {
+      "id": "release-metadata",
+      "status": "PASS",
+      "observed": "34/34"
+    },
+    {
+      "id": "release-metadata-contract",
+      "status": "PASS",
+      "observed": "6/6"
+    },
+    {
+      "id": "state-backup-and-restore",
+      "status": "PASS",
+      "observed": "9/9"
+    },
+    {
+      "id": "sbom-source-provenance",
+      "status": "PASS",
+      "observed": "1/1; 464 locked npm components; ten source archives; seven repo license/notice files; six archives with top-level license evidence"
+    },
+    {
+      "id": "application-script-tests",
+      "status": "PASS",
+      "observed": "212/212"
+    },
+    {
+      "id": "browser-smoke-verdict-contract",
+      "status": "PASS",
+      "observed": "51/51; contract tests, not real browser E2E"
+    },
+    {
+      "id": "server-relative-imports",
+      "status": "PASS",
+      "observed": "11 checked; zero missing"
+    },
+    {
+      "id": "ui-api-linkage",
+      "status": "PASS",
+      "observed": "125 client routes; 49 Runtime Atlas surfaces; zero missing required seams"
+    },
+    {
+      "id": "assets",
+      "status": "PASS",
+      "observed": "0 missing sprite/Live2D assets"
+    },
+    {
+      "id": "memory-retrieval-benchmark",
+      "status": "PASS",
+      "observed": "corpus 18; train 4; holdout 8; recallDelta 0; candidate not promoted"
+    },
+    {
+      "id": "action-ledger-archive",
+      "status": "PASS",
+      "observed": "4/4"
+    },
+    {
+      "id": "action-gateway-idempotency",
+      "status": "PASS",
+      "observed": "13/13"
+    },
+    {
+      "id": "will-agency-prearbitration",
+      "status": "PASS",
+      "observed": "17/17"
+    },
+    {
+      "id": "local-chat-provider",
+      "status": "PASS",
+      "observed": "mocked OpenAI-compatible API; redirect blocked; response cap 2 MiB; no real target inference"
+    },
+    {
+      "id": "capability-truthfulness",
+      "status": "PASS",
+      "observed": "23 features; llama.cpp configuration labelled configured-unverified; remote URL rejected"
+    },
+    {
+      "id": "model-ecology-migration",
+      "status": "PASS",
+      "observed": "new local provider profile safely merges into older snapshots"
+    },
+    {
+      "id": "runtime-typecheck",
+      "status": "PASS",
+      "observed": "TYPECHECK=PASS mode=tsc"
+    },
+    {
+      "id": "server-smoke",
+      "status": "PASS",
+      "observed": "separately run via npm run audit:workpass40:server; SERVER_SMOKE=PASS"
+    },
+    {
+      "id": "workpass39-cognitive-core",
+      "status": "PASS",
+      "observed": "separately run npm run test:workpass39-core; typecheck and source/evidence/cognitive-map/affect-workspace checks pass"
+    },
+    {
+      "id": "vite-production-build",
+      "status": "BLOCKED",
+      "observed": "npm run build exits spawn vite ENOENT; app/node_modules/.bin/vite absent and npm cache has no Vite"
+    },
+    {
+      "id": "live-llama-inference",
+      "status": "OPEN",
+      "observed": "no target-host model or measured latency/RAM/VRAM"
+    },
+    {
+      "id": "real-provider-device-receipts",
+      "status": "OPEN",
+      "observed": "requires actual device/provider receipt and reconnect/replay drill"
+    },
+    {
+      "id": "clean-room-fault-injected-restore",
+      "status": "OPEN",
+      "observed": "unit tests pass, full upgrade/partial-commit/rollback drill not yet run"
+    },
+    {
+      "id": "labelled-temporal-memory-holdout",
+      "status": "OPEN",
+      "observed": "synthetic recall uplift zero; candidate not promoted"
+    },
+    {
+      "id": "manual-license-signoff-and-soak",
+      "status": "OPEN",
+      "observed": "nested upstream license review and long-run soak remain"
+    }
+  ],
+  "notes": [
+    "No production release claim.",
+    "Primary aggregate intentionally excludes live server smoke and WorkPass39 cognitive core because they are stable when run separately but can hold an open Node/SQLite handle in long chained execution; both separate gates were run and passed.",
+    "An app-script/browser-smoke verdict contract is not the same as a real browser E2E test."
+  ]
+}

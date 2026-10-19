@@ -1,0 +1,6 @@
+import assert from 'node:assert/strict';
+import { migratePersistedOrganism, ORGANISM_STATE_SCHEMA } from '../src/organism/persistence/StateMigrations.ts';
+const raw={schemaVersion:127,system:{neuralLifeConsolidationB285:{steps:42,negativeScar01:.62,negativeScarConfidence01:.81,negativeScarCount:7,recovery01:.23,recoveryCount:3,lastScarTick:77,scarActionBiases:{respond:-.08,explore:0,verify:0,rest:0,reflect:0,wait:0,defer:0},scarContextStates:{'e2|c1|u1|n1|g1|s1':{negative01:.44,recovery01:.12,count:6,lastTick:75,actionNegative01:{respond:.31,explore:0,verify:.04,rest:0,reflect:0,wait:0,defer:0}}},scarHistory:[{tick:77,action:'respond',severity01:.81,evidence01:.92,recovered01:.12,contextKey:'e2|c1|u1|n1|g1|s1'}]}}};
+const migrated=migratePersistedOrganism(raw);const b=migrated.system.neuralLifeConsolidationB285;
+assert.equal(migrated.schemaVersion,127);assert.equal(ORGANISM_STATE_SCHEMA,127);assert.equal(b.negativeScarCount,7);assert.equal(b.scarContextStates['e2|c1|u1|n1|g1|s1'].count,6);assert.equal(b.scarHistory[0].contextKey,'e2|c1|u1|n1|g1|s1');
+console.log(JSON.stringify({pass:true,schemaVersion:migrated.schemaVersion,contextCount:Object.keys(b.scarContextStates).length,context:b.scarContextStates['e2|c1|u1|n1|g1|s1'],history:b.scarHistory.length},null,2));process.exit(0);

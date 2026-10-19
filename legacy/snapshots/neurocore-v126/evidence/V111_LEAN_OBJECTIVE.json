@@ -1,0 +1,109 @@
+{
+  "version": 111,
+  "benchmark": "lean_objective_reference_comparison",
+  "rows": [
+    {
+      "confidence_weight": 0.1,
+      "temporal_weight": 0.0,
+      "seed": 111,
+      "reference_loss": 2.4774134159088135,
+      "confidence_loss": 0.18612562119960785,
+      "temporal_loss": 0.0007618296076543629
+    },
+    {
+      "confidence_weight": 0.1,
+      "temporal_weight": 0.0,
+      "seed": 112,
+      "reference_loss": 2.7668514251708984,
+      "confidence_loss": 0.1506400853395462,
+      "temporal_loss": 0.0006087712827138603
+    },
+    {
+      "confidence_weight": 0.1,
+      "temporal_weight": 0.0,
+      "seed": 113,
+      "reference_loss": 2.752596855163574,
+      "confidence_loss": 0.14806552231311798,
+      "temporal_loss": 0.0005744941881857812
+    },
+    {
+      "confidence_weight": 0.0,
+      "temporal_weight": 0.0,
+      "seed": 111,
+      "reference_loss": 2.4775352478027344,
+      "confidence_loss": 0.18759913742542267,
+      "temporal_loss": 0.0007600764511153102
+    },
+    {
+      "confidence_weight": 0.0,
+      "temporal_weight": 0.0,
+      "seed": 112,
+      "reference_loss": 2.766904830932617,
+      "confidence_loss": 0.1520264595746994,
+      "temporal_loss": 0.0006084326305426657
+    },
+    {
+      "confidence_weight": 0.0,
+      "temporal_weight": 0.0,
+      "seed": 113,
+      "reference_loss": 2.752739191055298,
+      "confidence_loss": 0.14922413229942322,
+      "temporal_loss": 0.0005741127533838153
+    },
+    {
+      "confidence_weight": 0.1,
+      "temporal_weight": 0.04,
+      "seed": 111,
+      "reference_loss": 2.4774181842803955,
+      "confidence_loss": 0.18612556159496307,
+      "temporal_loss": 0.0007610213942825794
+    },
+    {
+      "confidence_weight": 0.1,
+      "temporal_weight": 0.04,
+      "seed": 112,
+      "reference_loss": 2.766852855682373,
+      "confidence_loss": 0.15064005553722382,
+      "temporal_loss": 0.0006085161585360765
+    },
+    {
+      "confidence_weight": 0.1,
+      "temporal_weight": 0.04,
+      "seed": 113,
+      "reference_loss": 2.7525970935821533,
+      "confidence_loss": 0.14806567132472992,
+      "temporal_loss": 0.0005739570478908718
+    },
+    {
+      "confidence_weight": 0.0,
+      "temporal_weight": 0.04,
+      "seed": 111,
+      "reference_loss": 2.4775373935699463,
+      "confidence_loss": 0.18759974837303162,
+      "temporal_loss": 0.0007594094495289028
+    },
+    {
+      "confidence_weight": 0.0,
+      "temporal_weight": 0.04,
+      "seed": 112,
+      "reference_loss": 2.7669060230255127,
+      "confidence_loss": 0.15202590823173523,
+      "temporal_loss": 0.0006081172032281756
+    },
+    {
+      "confidence_weight": 0.0,
+      "temporal_weight": 0.04,
+      "seed": 113,
+      "reference_loss": 2.752739906311035,
+      "confidence_loss": 0.14922413229942322,
+      "temporal_loss": 0.0005738046602346003
+    }
+  ],
+  "summary": {
+    "confidence=0.1|temporal=0.0": 2.6656205654144287,
+    "confidence=0.0|temporal=0.0": 2.66572642326355,
+    "confidence=0.1|temporal=0.04": 2.6656227111816406,
+    "confidence=0.0|temporal=0.04": 2.6657277743021646
+  },
+  "note": "diagnostic; fixed reference objective exposes actual retained-task behavior"
+}

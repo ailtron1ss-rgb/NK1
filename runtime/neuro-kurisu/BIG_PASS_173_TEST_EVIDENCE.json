@@ -1,0 +1,58 @@
+{
+  "pass": 173,
+  "worldModel": {
+    "status": "PASS",
+    "ensemblePredictions": 8,
+    "outcomes": 1,
+    "disagreements": 8,
+    "wm2PredictionSequence": 39,
+    "wm2Pending": 38,
+    "restart": true,
+    "antiLeakBoundary": true
+  },
+  "functions": {
+    "total": 2474,
+    "verified": 18,
+    "integrationOnly": 578,
+    "unsafeToAutoRun": 214,
+    "unverified": 1664,
+    "criticalUnverified": 948,
+    "dormantUnverified": 154,
+    "parameterizedAttempted": 509,
+    "parameterizedPassed": 472,
+    "parameterizedFailed": 0,
+    "zeroArgPassed": 73,
+    "zeroArgDiscovered": 73
+  },
+  "regression": {
+    "typecheck": "PASS",
+    "bigPass172": "PASS",
+    "bigPass171": "PASS",
+    "bigPass170": "PASS",
+    "bigPass169": "PASS",
+    "bigPass166": "PASS",
+    "p26": "PASS",
+    "p28": "PASS",
+    "p29": "PASS",
+    "p30": "PASS",
+    "p31": "PASS",
+    "p32": "PASS",
+    "p33": "PASS",
+    "p34": "PASS",
+    "p35": "PASS",
+    "p37": "PASS",
+    "p41": "PASS",
+    "architecture": "PASS",
+    "forensics": "PASS",
+    "hygiene": "PASS",
+    "releaseSource": "PASS",
+    "lock": "PASS",
+    "brain": "PASS",
+    "serverSmoke": "PASS",
+    "longHorizon250": "PASS"
+  },
+  "nonPass": {
+    "aggregateBigPass173": "TIMEOUT_FUNCTION_LIVENESS",
+    "longHorizonProfile": "TIMEOUT"
+  }
+}

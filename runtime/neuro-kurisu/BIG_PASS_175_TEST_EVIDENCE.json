@@ -1,0 +1,114 @@
+{
+  "pass": 175,
+  "generatedAt": "2026-09-10T15:04:31Z",
+  "project": {
+    "application": "35.6.1",
+    "stateSchema": 127,
+    "organismCore": "70.0.0-master-prompt-progress-engine"
+  },
+  "coreChanges": [
+    "SelfProjectEngine state schema v2 with evidence/plan lifecycle",
+    "AutonomousProjectExecutor state schema v4 with bounded lifecycle telemetry",
+    "verified project tool execution now advances SelfProjectEngine",
+    "linked goal progress/status synchronized with project state",
+    "external promoted research can count as replicated evidence when independent",
+    "project completion emits causal life event",
+    "repeated project tool failures can pause the project instead of looping"
+  ],
+  "functionReality": {
+    "total": 2485,
+    "counts": {
+      "VERIFIED": 18,
+      "INTEGRATION_ONLY": 594,
+      "UNSAFE_TO_AUTO_RUN": 214,
+      "UNVERIFIED": 1659
+    },
+    "verifiedRate01": 0.007243460764587525,
+    "parameterized": {
+      "sourceFiles": 269,
+      "attempted": 509,
+      "passed": 497,
+      "failed": 0,
+      "inputSynthesisNeeded": 0,
+      "lifecycleNeeded": 12,
+      "skipped": 30
+    },
+    "dormantUnverified": 156,
+    "criticalUnverified": 600
+  },
+  "semantic": {
+    "total": 2485,
+    "byStatus": {
+      "VERIFIED": 18,
+      "INTEGRATION_ONLY": 594,
+      "UNSAFE_TO_AUTO_RUN": 214,
+      "UNVERIFIED": 1659
+    },
+    "verifiedRate01": 0.0072,
+    "evidenceCoverage01": 0.067
+  },
+  "newTests": {
+    "projectLife": "PASS",
+    "projectRecovery": "PASS",
+    "projectScheduler": "PASS",
+    "migration": "PASS",
+    "coreProjectClosure": "PASS"
+  },
+  "constituentGates": {
+    "typecheck": "PASS",
+    "big-pass-175": "PASS",
+    "big-pass-175-project-recovery": "PASS",
+    "big-pass-175-project-scheduler": "PASS",
+    "big-pass-175-migration": "PASS",
+    "big-pass-175-core-project-closure": "PASS",
+    "big-pass-174": "PASS",
+    "big-pass-173": "PASS",
+    "big-pass-172": "PASS",
+    "big-pass-171": "PASS",
+    "big-pass-49": "PASS",
+    "p67-project-evidence": "PASS",
+    "p11-agency": "PASS",
+    "p24-world": "PASS",
+    "p26-learning": "PASS",
+    "p28-plasticity": "PASS",
+    "p29-governance": "PASS",
+    "p30-continual": "PASS",
+    "p31-consciousness": "PASS",
+    "p31-lesion": "PASS",
+    "p32-self": "PASS",
+    "p33-personhood": "PASS",
+    "p34-personhood": "PASS",
+    "p35-body": "PASS",
+    "p37-sensorium": "PASS",
+    "p41-perception": "PASS",
+    "smoke": "PASS",
+    "restart": "PASS",
+    "memory": "PASS",
+    "concurrency": "PASS",
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "forensics": "PASS",
+    "hygiene": "PASS",
+    "release-source": "PASS",
+    "lock": "PASS",
+    "brain": "PASS",
+    "subject-boundary": "PASS",
+    "component-conflicts": "PASS",
+    "project-state": "PASS",
+    "source-truth": "PASS",
+    "api-routes": "PASS",
+    "p36-self-development": "PASS",
+    "p38-research": "PASS",
+    "p64-p65": "PASS",
+    "p37-runtime": "PASS",
+    "p155-verified-life": "PASS"
+  },
+  "aggregateAudit": {
+    "status": "NOT_COUNTED_AS_PASS",
+    "reason": "full orchestrator exceeds sandbox execution budget on the large legacy regression surface; constituent gates are recorded independently"
+  },
+  "longHorizon250": {
+    "status": "NOT_COUNTED_AS_PASS",
+    "reason": "exceeded sandbox execution budget in this pass; bounded project-life and 155-cycle verified-life tests passed"
+  }
+}

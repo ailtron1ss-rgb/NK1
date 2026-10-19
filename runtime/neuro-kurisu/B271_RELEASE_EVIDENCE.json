@@ -1,0 +1,70 @@
+{
+  "release":"B271",
+  "date":"2026-09-12",
+  "typecheck":true,
+  "standalone":{
+    "steps":320,
+    "learningUpdates":320,
+    "replayCount":2002,
+    "sequenceDepth":40,
+    "sequenceMeanLength":8,
+    "reconstruction01":0.6094590631,
+    "autobiographicalContinuity01":0.7351633022,
+    "selfPrediction01":0.3868104683,
+    "autonomousGoalPressure01":0.4530991832,
+    "assemblyDiversity01":0.3125,
+    "meanStability01":0.4987077891,
+    "recallSimilarity01":0.5337807117,
+    "recallSimilarityAfterSequenceLedgerAblation01":0.5337807117
+  },
+  "core":{
+    "steps":96,
+    "learningUpdates":48,
+    "reconstruction01":0.7931051811,
+    "autobiographicalContinuity01":0.8493863597,
+    "selfPrediction01":0.3728158368,
+    "sequenceDepth":48,
+    "restartPreserved":true
+  },
+  "liveLifecycle":{
+    "cycles":18,
+    "learningUpdates":18,
+    "reconstruction01":0.4674607168,
+    "autobiographicalContinuity01":0.6510776966,
+    "selfPrediction01":0.4613872611,
+    "goalPressure01":0.3677935599,
+    "proposedGoal":"seek-novel-evidence",
+    "proposedAction":"explore",
+    "personalityCausalUpdates":66,
+    "restartPreserved":true
+  },
+  "staticAudit":{
+    "fullAudit":true,
+    "architecture":true,
+    "integrity":true,
+    "hygiene":true,
+    "syntax":true,
+    "contract":true,
+    "forensics":true,
+    "releaseSource":true,
+    "doctor":true,
+    "archiveManifest":true,
+    "files":1978,
+    "canonicalFiles":354,
+    "sourceFiles":990,
+    "syntaxJS":655,
+    "syntaxSH":4,
+    "syntaxJSON":169,
+    "cycles":0,
+    "missing":0,
+    "hashMismatches":0,
+    "extra":0
+  },
+  "limitations":[
+    "goal vocabulary partially hand-designed",
+    "low-dimensional learned neural substrate",
+    "algorithmic rather than biophysical dendritic context",
+    "no proof of consciousness",
+    "no proof of human-like episodic semantics"
+  ]
+}

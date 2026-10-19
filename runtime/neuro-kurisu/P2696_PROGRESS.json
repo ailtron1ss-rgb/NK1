@@ -1,0 +1,23 @@
+{
+  "release": "P2696",
+  "version": "35.6.96",
+  "phase": "Stage-78/Contextual-Policy-Learning/P2696",
+  "organismCore": "96.0.0-contextual-policy-learning-p2696",
+  "stateSchema": 198,
+  "changes": {
+    "contextLocalColdStart": true,
+    "contextualUcbScoring": true,
+    "crossContextCooldownFix": true,
+    "benchmarkApiCorrection": true,
+    "contextualRegressionGate": true
+  },
+  "evidence": {
+    "p2696ContextualAccuracy01": 1,
+    "p2694AdaptiveAccuracy01": 1,
+    "p2694AdaptiveReward01": 0.8732724000556578,
+    "p2694AdaptiveCausalCreditReward01": 0.8734018838380827,
+    "p2694CausalCredit01": 0.8003118647797516,
+    "mobileSoakPeakRssMb": 359.2
+  },
+  "status": "research-release"
+}

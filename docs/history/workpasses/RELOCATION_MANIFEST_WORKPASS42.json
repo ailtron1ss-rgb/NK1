@@ -1,0 +1,482 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-14",
+  "entries": [
+    {
+      "oldPath": "FINAL_INTEGRATION_HARDENING_REPORT_2026-10-08.md",
+      "newPath": "docs/history/workpasses/root-reports/FINAL_INTEGRATION_HARDENING_REPORT_2026-10-08.md",
+      "sha256": "6c88b86ab2502576011ea1804924ebfa542d619f408f58a16b56d037e86a8bbc",
+      "sizeBytes": 1576,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "FINAL_RELEASE_REPORT_2026-10-08.md",
+      "newPath": "docs/history/workpasses/root-reports/FINAL_RELEASE_REPORT_2026-10-08.md",
+      "sha256": "f83aeac4e1045ea2cef9e7aaf0bc139c24607a786a54643e269b6ff07631452f",
+      "sizeBytes": 2615,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "FINAL_RELEASE_REPORT_2026-10-08_FINAL4.md",
+      "newPath": "docs/history/workpasses/root-reports/FINAL_RELEASE_REPORT_2026-10-08_FINAL4.md",
+      "sha256": "d7327e9e231db8d4775ceffd4e7a49f33ebd532c51c20f8332d99495591c173c",
+      "sizeBytes": 3125,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "FINAL_RELEASE_REPORT_2026-10-08_V2.md",
+      "newPath": "docs/history/workpasses/root-reports/FINAL_RELEASE_REPORT_2026-10-08_V2.md",
+      "sha256": "f6a18448c3161cd9b1e11be4396bd961d3281aca4053c528afa1c2efa7e27e10",
+      "sizeBytes": 3167,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "FINAL_RELEASE_REPORT_2026-10-08_V3.md",
+      "newPath": "docs/history/workpasses/root-reports/FINAL_RELEASE_REPORT_2026-10-08_V3.md",
+      "sha256": "77a0478f67cd05d178c0e5448d8777a7fbc723fa2ced6a83b0eab1e1ed2b1762",
+      "sizeBytes": 2274,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "FINAL_RELEASE_STATUS_FINAL4_2026-10-08.md",
+      "newPath": "docs/history/workpasses/root-reports/FINAL_RELEASE_STATUS_FINAL4_2026-10-08.md",
+      "sha256": "a6703db78cae6e5047b73beb94f7ab2589c87f79a03cda1a13a37fbb5f01c00a",
+      "sizeBytes": 2415,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "HEXIS_INTEGRATION_FINAL_2026-10-08.md",
+      "newPath": "docs/history/workpasses/root-reports/HEXIS_INTEGRATION_FINAL_2026-10-08.md",
+      "sha256": "8e3c74108057f325af3efba21707663d94e8408711370bd0a98ca7449b217aa2",
+      "sizeBytes": 4591,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "PASS3_RELEASE_REPORT_2026-10-08.md",
+      "newPath": "docs/history/workpasses/root-reports/PASS3_RELEASE_REPORT_2026-10-08.md",
+      "sha256": "202fe15694acde633dab9c32a479713b338c9cc8d74e1c9a270e3fd41df200c6",
+      "sizeBytes": 3027,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "RELEASE_STATUS_FINAL2_2026-10-08.md",
+      "newPath": "docs/history/workpasses/root-reports/RELEASE_STATUS_FINAL2_2026-10-08.md",
+      "sha256": "b5d7cde5b53b86fe0d785773b416f62caac9c167c5ba988d29e1397e67900db8",
+      "sizeBytes": 1278,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "SEMANTIC_DYNAMIC_EVIDENCE.json",
+      "newPath": "docs/history/evidence/SEMANTIC_DYNAMIC_EVIDENCE.json",
+      "sha256": "7e808a7594f33655627498d5e5492f59341601b79beef754c7cc544cbbd16247",
+      "sizeBytes": 10642,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "SOURCE_BRANCH_COVERAGE_2026-10-08.md",
+      "newPath": "docs/history/workpasses/root-reports/SOURCE_BRANCH_COVERAGE_2026-10-08.md",
+      "sha256": "52c9f15d5ef7a3b1b06aac4d440bfc141a2b7636f314ac21a2745bcd973f7429",
+      "sizeBytes": 4517,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "SOURCE_BRANCH_COVERAGE_2026-10-08_FINAL.md",
+      "newPath": "docs/history/workpasses/root-reports/SOURCE_BRANCH_COVERAGE_2026-10-08_FINAL.md",
+      "sha256": "ec371939c4f714cb0e56fd4a05cb03d80b899bc33a6a33531d56126a3ad08843",
+      "sizeBytes": 1882,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "SOURCE_BRANCH_COVERAGE_2026-10-08_FINAL4.md",
+      "newPath": "docs/history/workpasses/root-reports/SOURCE_BRANCH_COVERAGE_2026-10-08_FINAL4.md",
+      "sha256": "94840d47b906e07f78284ec866a9e0fc3f4a16cb7b8c6ffcf93859ee021ef8d3",
+      "sizeBytes": 2005,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS10_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS10_CHANGED_FILES_2026-10-10.json",
+      "sha256": "f01bdea5b13065aca6052c9035e489a62ed9a2de83e83117edf6384dc370dae2",
+      "sizeBytes": 4238,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS11_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS11_CHANGED_FILES_2026-10-10.json",
+      "sha256": "da7d736034403157176f6e30d95582eb92ae44dd1134fc30358b96d49655c0ad",
+      "sizeBytes": 5019,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS12_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS12_CHANGED_FILES_2026-10-10.json",
+      "sha256": "d224192bc546e808da11f9965b64ea1ff9e8b2baf7c076936ac69c465fbca1a2",
+      "sizeBytes": 4229,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS13_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS13_CHANGED_FILES_2026-10-10.json",
+      "sha256": "106b691eb300dea831b1e31bf9f17a2d3a40ccd0c2c5b541b634455b1c8583df",
+      "sizeBytes": 4311,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS14_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS14_CHANGED_FILES_2026-10-10.json",
+      "sha256": "b0fc0272123bb396e551f73e5bf2e3cdd0005a7ec5ad6704291a880a6802ea8b",
+      "sizeBytes": 6769,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS15_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS15_CHANGED_FILES_2026-10-10.json",
+      "sha256": "4e86be922a7f4418c641f705f80f00d508526ca54c96709f0d3a5ae02671ccc3",
+      "sizeBytes": 5178,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS16_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS16_CHANGED_FILES_2026-10-10.json",
+      "sha256": "2aff7c0e177c5f8b38a7c9e18c13e596fd9e570c5b834d97e2b0ea3235181bfe",
+      "sizeBytes": 5725,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS17_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS17_CHANGED_FILES_2026-10-10.json",
+      "sha256": "a05d16f1bd86d9ca1ef43d77e295778c937465f083b72df4c6d8bead30ad1205",
+      "sizeBytes": 5145,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS18_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS18_CHANGED_FILES_2026-10-10.json",
+      "sha256": "d39c13dce281d886bf2f47808c8c2c406068be7a0d73ed23b09860eeec145ce2",
+      "sizeBytes": 5352,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS19_CHANGED_FILES_2026-10-11.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS19_CHANGED_FILES_2026-10-11.json",
+      "sha256": "2f3d9c0274eda69fcc219a87cdbb235c8e516704c141365c159cc2c39aa01b9c",
+      "sizeBytes": 7393,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS20_CHANGED_FILES_2026-10-11.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS20_CHANGED_FILES_2026-10-11.json",
+      "sha256": "383e5e52032deb9d28b4977662a97c8bbb044e5e80db9c99a34ead78918c0d7b",
+      "sizeBytes": 6629,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS23_CHANGED_FILES_2026-10-11.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS23_CHANGED_FILES_2026-10-11.json",
+      "sha256": "df86658a5a6c816e98c648d83a10e8426283f5f3dd46d946ee92045f82041984",
+      "sizeBytes": 7128,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS25_CHANGED_FILES_2026-10-11.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS25_CHANGED_FILES_2026-10-11.json",
+      "sha256": "4bfefe852e0b5b48350ddacecc3b103f7bb45f2918cd5d45ee0068807371ea88",
+      "sizeBytes": 6775,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS25_REPORT_2026-10-11.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS25_REPORT_2026-10-11.md",
+      "sha256": "13aee27267e8a457c299fb2e81c5c2effd932ddadf91040e0810884551c08d97",
+      "sizeBytes": 3350,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS25_Список_дел_2026-10-11.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS25_Список_дел_2026-10-11.md",
+      "sha256": "59453cffc38ea25d95fa2b6c02238d8102468cf654e8e9e4551d3b57df060ad7",
+      "sizeBytes": 111897,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS26_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS26_CHANGED_FILES_2026-10-13.json",
+      "sha256": "521e6ec3126546c5a4f6010f95f43aaa6c4c6f80c5720744d97cc780ff310834",
+      "sizeBytes": 6552,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS26_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS26_REPORT_2026-10-13.md",
+      "sha256": "318b819a1ae74e9d719ec2fd60e4eacfb8dca63d0e964d4091c0b5568d2ec45f",
+      "sizeBytes": 5898,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS26_Список_дел_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS26_Список_дел_2026-10-13.md",
+      "sha256": "3c88a70887a2e987acfd40d5b1890570325f1339a4b297ff51bf2ee95c7b70be",
+      "sizeBytes": 1379,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS27_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS27_CHANGED_FILES_2026-10-13.json",
+      "sha256": "492ed51c6347234a894a44f5718022cf5d9348842b5152a3998899b5b5a4ffd4",
+      "sizeBytes": 6059,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS27_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS27_REPORT_2026-10-13.md",
+      "sha256": "966d334f161387aa11b32cc31af37ed3a119e6387e796e1c5e5e6345563d3650",
+      "sizeBytes": 5402,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS27_Список_дел_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS27_Список_дел_2026-10-13.md",
+      "sha256": "f0a17163842f7b432f641f733e7084187dc52be52e767afff988290cfda82235",
+      "sizeBytes": 1587,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS28_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS28_CHANGED_FILES_2026-10-13.json",
+      "sha256": "43687fd39eaf85ba47773eacb5ec74f08dcd95fdbb535b04877a965a60f18d3b",
+      "sizeBytes": 5413,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS28_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS28_REPORT_2026-10-13.md",
+      "sha256": "3970981dd1789d48b3e83268e55d6eea0f1cea1cf44b3d2b3b615c7b8b1ec484",
+      "sizeBytes": 5132,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS28_TASKS_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS28_TASKS_2026-10-13.md",
+      "sha256": "ee5772335fff7be61018462a7125b6f40e4f76df60a62910d69c85f8ca2b298a",
+      "sizeBytes": 1606,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS29_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS29_CHANGED_FILES_2026-10-13.json",
+      "sha256": "25ca86b324956af5e7a6f17867f73a6756f28b06c994cf4451d55549bd8fde76",
+      "sizeBytes": 8163,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS29_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS29_REPORT_2026-10-13.md",
+      "sha256": "a527685bb2d481f1f382682db5a597e464b6509f82d3c6f060e98b789248d626",
+      "sizeBytes": 283,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS29_TASKS_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS29_TASKS_2026-10-13.md",
+      "sha256": "57293746be8e8124c2b8dc332843dfbe2a6990d497722315e4369f0e35c576ca",
+      "sizeBytes": 2909,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS29_Список_дел_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS29_Список_дел_2026-10-13.md",
+      "sha256": "c566b773cff8dc2f27723f6717dafbfb3ecfc259716347030644700167dbf9d0",
+      "sizeBytes": 2380,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS30_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS30_CHANGED_FILES_2026-10-13.json",
+      "sha256": "14c773558f58966431daab0cbb8c02751ac4ccdb0be2f846cd26b0fcb542dc3f",
+      "sizeBytes": 8576,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS30_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS30_REPORT_2026-10-13.md",
+      "sha256": "ac05aad1e39c457f4a81f122b14cfc0f6e5481d9245407c10dab69e30fa17044",
+      "sizeBytes": 4553,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS30_TASKS_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS30_TASKS_2026-10-13.md",
+      "sha256": "7366483f9751644e4793c5616fdbec00ffd70e4adf2032a243d873413824bdbb",
+      "sizeBytes": 2215,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS31_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS31_CHANGED_FILES_2026-10-13.json",
+      "sha256": "85070ed867b6f84044c22c91613ffb570f25d66a116b2bb5fcfd6bfb38e4b260",
+      "sizeBytes": 9674,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS31_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS31_REPORT_2026-10-13.md",
+      "sha256": "92668a944c801e21e702b14ad58538ff5dcb92ffcdb970c6354c46ff9816f6bf",
+      "sizeBytes": 2982,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS31_TASKS_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS31_TASKS_2026-10-13.md",
+      "sha256": "20e136dcf61bccc7a8a30f976a1be30931d73aa1d473f711ffc8a8a7c3efafe5",
+      "sizeBytes": 1477,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS32_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS32_CHANGED_FILES_2026-10-13.json",
+      "sha256": "be6c3ed2be8976ab2818ef9576ef2bff55402e7064b2629bac47a158afe2bdd4",
+      "sizeBytes": 6254,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS32_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS32_REPORT_2026-10-13.md",
+      "sha256": "8d682e0edb47ee734bc23552dd6b8ba78407cd1375f44e7a4e2458a1f8bf9615",
+      "sizeBytes": 3924,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS32_TASKS_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS32_TASKS_2026-10-13.md",
+      "sha256": "92eeffcc3a7a167872ed0c1d38827266c96b8f10ff026d2dac2bff6ea520e25e",
+      "sizeBytes": 249,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS33_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS33_CHANGED_FILES_2026-10-13.json",
+      "sha256": "8167d932ac44fd331d92da1e8f8888802ded3e7e028826c0de344ef80c6ed6ab",
+      "sizeBytes": 6670,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS33_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS33_REPORT_2026-10-13.md",
+      "sha256": "e5f2dd09e5efc978e95b078e928aa63332c459a53f6caba3950ab400e258b357",
+      "sizeBytes": 3089,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS33_TASKS_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS33_TASKS_2026-10-13.md",
+      "sha256": "1045630721b84b1e730663eea9a2692f164a417caaaffeb70e2eb70e495a2738",
+      "sizeBytes": 2081,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS34_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS34_CHANGED_FILES_2026-10-13.json",
+      "sha256": "92e645328b926e1fb783851dffbfb2a705ffa27cbb425f353f3e5184554a46ea",
+      "sizeBytes": 6142,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS34_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS34_REPORT_2026-10-13.md",
+      "sha256": "4e729d65adc63dc58fc9b717b5e3ccf254ed846fe28beeb2389b36a2254ead29",
+      "sizeBytes": 251,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS34_TASKS_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS34_TASKS_2026-10-13.md",
+      "sha256": "2239291cb55fb2cd1f8e7556662770cc9f95d85fe2949ce9c59cdeda793702f0",
+      "sizeBytes": 3288,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS35_ARCHIVE_VERIFICATION_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS35_ARCHIVE_VERIFICATION_2026-10-13.json",
+      "sha256": "223af10882873d0ce5b2f61dbd5f00a24336220b788a2002352ba7a7c71e3979",
+      "sizeBytes": 1860,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS35_CHANGED_FILES_2026-10-13.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS35_CHANGED_FILES_2026-10-13.json",
+      "sha256": "40318ab4df99809ace614966a8d1f537559c782a8106af9cf01b92fb1598e2c0",
+      "sizeBytes": 344806,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS35_REPORT_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS35_REPORT_2026-10-13.md",
+      "sha256": "23780256fe30194e9bf5ebfb297abaac4dedfc2b2e9579dfdf2fc8ad2b701176",
+      "sizeBytes": 3656,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS35_TASKS_2026-10-13.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS35_TASKS_2026-10-13.md",
+      "sha256": "42cd3d01e7f64144c4fdde68a3c5ac1d9755a91d49dab725e6389781ade3943b",
+      "sizeBytes": 1451,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS38_INTEGRATION_MATRIX_2026-10-14.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS38_INTEGRATION_MATRIX_2026-10-14.md",
+      "sha256": "3282b04a3b553d3a433b8c775c07b3a46497c9457909c2e4258d92bbb48e5269",
+      "sizeBytes": 230,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS38_REPORT_2026-10-14.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS38_REPORT_2026-10-14.md",
+      "sha256": "c8d26e267103db333e30b197ec43bdaabb2a5aaedd3d5ad86db4faca4f7e2010",
+      "sizeBytes": 211,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS38_TASKS_2026-10-14.md",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS38_TASKS_2026-10-14.md",
+      "sha256": "435c77112fed79f66a3815f977d8b9f2c80a79d2f48fbf2c5a441108a7b12ee5",
+      "sizeBytes": 209,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS5_CHANGED_FILES_2026-10-09.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS5_CHANGED_FILES_2026-10-09.json",
+      "sha256": "d1711df5c4900e9aaa5179321e8b755db21768a4711b20897b1f0ff46a3ee736",
+      "sizeBytes": 3129,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS6_CHANGED_FILES_2026-10-09.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS6_CHANGED_FILES_2026-10-09.json",
+      "sha256": "e53e652d1fa9e96ada0383c27a369f07e0fa38d4973622e85d9d4b46f8596b48",
+      "sizeBytes": 6069,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS8_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS8_CHANGED_FILES_2026-10-10.json",
+      "sha256": "3f9917ca7824e772ff6a868758bed87674f8bd23c2877517bf9bf23cba6ddf2b",
+      "sizeBytes": 4054,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "WORKPASS9_CHANGED_FILES_2026-10-10.json",
+      "newPath": "docs/history/workpasses/root-reports/WORKPASS9_CHANGED_FILES_2026-10-10.json",
+      "sha256": "e0cbfcb583f05a251eb4d1057e137136b2e160378f5e825f2c92201e00c3beec",
+      "sizeBytes": 5091,
+      "action": "moved-content-unchanged"
+    },
+    {
+      "oldPath": "Список дел — исходная версия HOTFIX_CHAT.md",
+      "newPath": "docs/history/backlogs/Список дел — исходная версия HOTFIX_CHAT.md",
+      "sha256": "87be2d7d8de5facfcbba37d7f990446396cbb6633d5707af787da16bbf7e0352",
+      "sizeBytes": 31853,
+      "action": "moved-content-unchanged"
+    }
+  ]
+}

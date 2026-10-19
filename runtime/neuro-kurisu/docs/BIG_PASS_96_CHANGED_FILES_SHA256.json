@@ -1,0 +1,22 @@
+{
+  "release":"34.69.0",
+  "pass":96,
+  "changedFiles":[
+    "src/organism/developmental/P84AutobiographicalContinuityFabric.ts",
+    "src/organism/cognition/evolution/FutureSelfModel.ts",
+    "src/organism/cognition/evolution/ValueEvolutionEngine.ts",
+    "src/organism/learning/UnifiedLearningSubstrate.ts",
+    "src/organism/core/OrganismCore.ts",
+    "src/server/server.mjs",
+    "package.json",
+    "package-lock.json",
+    "VERSION.json",
+    "RELEASE_MANIFEST.json",
+    "src/organism/system/ReleaseContract.ts",
+    "tests/big-pass-71-similarity-transfer.mjs",
+    "tests/big-pass-96-developmental-self.mjs",
+    "tests/big-pass-96-developmental-integration.mjs",
+    "tests/big-pass-96-value-evidence-gate.mjs"
+  ],
+  "note":"Archive manifest is the authoritative hash inventory for the complete release. This file lists the primary modified/new implementation and regression-test paths."
+}

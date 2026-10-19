@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Remove byte-identical app/public Live2D shadows; rehydrate them from runtime/neuro-kurisu/public on Vite dev/build so runtime owns one canonical copy. Only exact SHA-256 matches are eligible.",
+  "strategy": "copy-on-demand-before-vite; fail closed on missing/changed canonical assets or conflicting existing target files",
+  "items": [
+    {
+      "targetPath": "app/public/live2d/Kurisu/Kurisu.4096/texture_00.png",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.4096/texture_00.png",
+      "sizeBytes": 8236235,
+      "sha256": "c1551392e9f62ed69d7e12233ff0d2700711164b51667ae9072c1f3161841f33"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/Kurisu.cdi3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.cdi3.json",
+      "sizeBytes": 8478,
+      "sha256": "26465ad680f5d6380e09edff8c3e1a79ed8bc9ce0f19a6dcd8d2d83a3c69561b"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/Kurisu.moc3",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.moc3",
+      "sizeBytes": 6001152,
+      "sha256": "d6b2ef7f8f93bb9313c0a117a9dcfe2286de314204657bfa88b17b7531fe5718"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/Kurisu.model3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.model3.json",
+      "sizeBytes": 1846,
+      "sha256": "f7ae31d85349850a54dfc42999d03d7ac2cc428bf8292d1c7d0f033f65aea351"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/Kurisu.physics3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.physics3.json",
+      "sizeBytes": 25386,
+      "sha256": "a911ba4b3db5a09005ec3e2387e8ad0d1e26598f86b488c03cfcf40425e6b0bb"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/exp/Arm Change.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Arm Change.exp3.json",
+      "sizeBytes": 117,
+      "sha256": "0f63c57e0ad71de202f759d6fa3668919a6fe39cfb134a32a10a90204942a516"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/exp/Blush 1.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Blush 1.exp3.json",
+      "sizeBytes": 119,
+      "sha256": "8c0e7b321b15d7525ad5934b07793539d0ae4e53350c33a3dcf264fda8f25d06"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/exp/Blush 2.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Blush 2.exp3.json",
+      "sizeBytes": 117,
+      "sha256": "f80b9bc8239acc343aa98341ceb9b7fe302545e10c2ea22ec745bb018f1adf34"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/exp/Stanby Angry.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Angry.exp3.json",
+      "sizeBytes": 112,
+      "sha256": "385605494d6ba8ff5aa5276c89b51ca36906cc08093970fd953dd31d8ebd0784"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/exp/Stanby Sad.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Sad.exp3.json",
+      "sizeBytes": 110,
+      "sha256": "dea3bf8875b12c032fcd662afb82364e015c71a693025037a3b4e973755c33b2"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/exp/Stanby Scared.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Scared.exp3.json",
+      "sizeBytes": 113,
+      "sha256": "6bb4c22998b8041c1fb00ccbf34d303d4ed012c7e78877426aeef43f651abbd5"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/exp/Stanby Smile.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Smile.exp3.json",
+      "sizeBytes": 112,
+      "sha256": "ce3333bf411e643a0220aab1339a3039272636c9868c280d6937f0a6d2e6bf71"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/exp/Stanby Surprised.exp3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Surprised.exp3.json",
+      "sizeBytes": 117,
+      "sha256": "db7f7cdf837945fc73f6adb8bb43ac2df9cfef81b4d82da6bee295c2399a63f1"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/motions/58Loop.motion3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/motions/58Loop.motion3.json",
+      "sizeBytes": 770163,
+      "sha256": "e80636a0fd68bcfe311f3ab702f9f20b322e79430bb4a3681f35db3baf54aeb0"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/motions/Out From Camera.motion3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/motions/Out From Camera.motion3.json",
+      "sizeBytes": 5798,
+      "sha256": "955d0d344e3b7ac0139f3eabd3da1fdc9dce7f02c844ef3f2c9eead69da9b2a9"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/motions/haru_g_idle.motion3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/motions/haru_g_idle.motion3.json",
+      "sizeBytes": 2555,
+      "sha256": "d34abb158fa5b007d307b8ca08bdc33b3394b0435ac3e07f5516211ffd359b46"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/motions/mtn_07.motion3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/motions/mtn_07.motion3.json",
+      "sizeBytes": 19460,
+      "sha256": "8b12022b7bdf01e7a9e6f124f043452c6c49432368da0aecc82a550b79e72182"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu/motions/xhiyori_m03.motion3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu/motions/xhiyori_m03.motion3.json",
+      "sizeBytes": 13630,
+      "sha256": "de4913417e572ab1cc30924768c885ece73f65cbfba6975e2c9ab98e909164bc"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu.mobile/Kurisu-mobile.model3.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu.mobile/Kurisu-mobile.model3.json",
+      "sizeBytes": 2371,
+      "sha256": "c886fec1313e4bc20207c5c4e0cd41684ced6bf6e9ce4386fabfcd4eddb35d64"
+    },
+    {
+      "targetPath": "app/public/live2d/Kurisu.mobile/Kurisu.2048/texture_00_mobile_2048.png",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/Kurisu.mobile/Kurisu.2048/texture_00_mobile_2048.png",
+      "sizeBytes": 1601788,
+      "sha256": "a7050e00fc067fa22ce2df86e17684277ccb36167b95f6fe9b0de3ec3cddbd25"
+    },
+    {
+      "targetPath": "app/public/live2d/PROVENANCE.json",
+      "canonicalPath": "runtime/neuro-kurisu/public/live2d/PROVENANCE.json",
+      "sizeBytes": 884,
+      "sha256": "c09b01f86a03fdb05b1795a8136df7ce154c38a09adadd32d19977227b4976ee"
+    }
+  ]
+}

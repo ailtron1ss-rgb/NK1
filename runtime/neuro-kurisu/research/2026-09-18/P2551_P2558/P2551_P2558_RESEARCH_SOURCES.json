@@ -1,0 +1,37 @@
+[
+  {
+    "title": "Model-agnostic linear-memory online learning in spiking neural networks",
+    "year": 2026,
+    "venue": "Nature Communications",
+    "url": "https://www.nature.com/articles/s41467-026-68453-w",
+    "projectUse": ["linear-memory online credit assignment", "sparse temporal learning"]
+  },
+  {
+    "title": "Memory-R1: Enhancing Large Language Model Agents to Manage and Utilize Memories via Reinforcement Learning",
+    "year": 2026,
+    "venue": "ACL",
+    "url": "https://aclanthology.org/2026.acl-long.583/",
+    "projectUse": ["learned memory operations", "outcome-driven memory policy"]
+  },
+  {
+    "title": "Self-Evolving World Models for LLM Agent Planning",
+    "year": 2026,
+    "venue": "arXiv",
+    "url": "https://arxiv.org/abs/2606.30639",
+    "projectUse": ["episodic memory", "semantic rules", "selective foresight"]
+  },
+  {
+    "title": "Active inference and artificial reasoning",
+    "year": 2026,
+    "venue": "Nature Communications",
+    "url": "https://www.nature.com/articles/s41467-026-77209-5",
+    "projectUse": ["information gain", "epistemic action", "uncertainty-aware reasoning"]
+  },
+  {
+    "title": "A survey of world models for physical AI with uncertainty representation and control",
+    "year": 2026,
+    "venue": "Discover Artificial Intelligence",
+    "url": "https://link.springer.com/article/10.1007/s44163-026-02122-1",
+    "projectUse": ["closed-loop world-model evaluation", "uncertainty and control"]
+  }
+]

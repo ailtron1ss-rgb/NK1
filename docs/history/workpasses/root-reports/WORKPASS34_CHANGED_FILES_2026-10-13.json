@@ -1,0 +1,147 @@
+{
+  "project": "Neuro Kurisu",
+  "workpass": 34,
+  "date": "2026-10-13",
+  "baseArchive": "Neuro_Kurisu_WORKPASS33_2026-10-13.zip",
+  "comparison": "SHA-256 by exact UTF-8 archive-relative path; every baseline entry is retained; changed files come from the WorkPass34 working tree.",
+  "manifestSelfExcluded": true,
+  "counts": {
+    "added": 8,
+    "modified": 14,
+    "deleted": 0,
+    "unchanged": 12783
+  },
+  "preservation": {
+    "baselineEntries": 12797,
+    "baselineEntriesMissingFromWorkingExtraction": 0,
+    "missingExtractionEntriesRetainedFromBaseArchive": 0,
+    "baselineEntriesDeleted": 0,
+    "additionalReleaseArtifactsBeforeManifest": 8
+  },
+  "files": [
+    {
+      "path": "CHANGELOG.md",
+      "status": "modified",
+      "baseSha256": "8c9a0f4eaf361a4645913b9a943a0b5cb9f548e40ba067b0caeafff8791d8431",
+      "workPass34Sha256": "ef5fd85995dada640822cb9bca07b6d518b6632d7cfcae336c62eea38d2190d6"
+    },
+    {
+      "path": "README.md",
+      "status": "modified",
+      "baseSha256": "3c9ac2c82c083b8814180c9ee7cf409a46de19cdd28755afddbabb8507088507",
+      "workPass34Sha256": "563574ce8daf35fb7d8a798490d69d07be8028e80e7da1400438aa77e37bacba"
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "status": "modified",
+      "baseSha256": "1459834006a8737a40dad541bc3e5d8063a53719c773fb3d65e42b2ca67ddb99",
+      "workPass34Sha256": "e83b1ecd7d921264d1e91bb4c5b4380d8a06be7f98c2f21aa72dfeb2c1bad756"
+    },
+    {
+      "path": "WORKPASS34_REPORT_2026-10-13.md",
+      "status": "added",
+      "workPass34Sha256": "d6d01ec26bc9bef1974c03d9d1eff7c354b91459d2de9a72f7daf111bda55146"
+    },
+    {
+      "path": "WORKPASS34_TASKS_2026-10-13.md",
+      "status": "added",
+      "workPass34Sha256": "2239291cb55fb2cd1f8e7556662770cc9f95d85fe2949ce9c59cdeda793702f0"
+    },
+    {
+      "path": "docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md",
+      "status": "modified",
+      "baseSha256": "ba7ca92a762a640e167b9f8ddbd47c5da90e16d0628bd80f4280a47b6a56f18f",
+      "workPass34Sha256": "6944a1dc5fff35bdf234f2c7923f60fb0ab491f7aa0e89de13738b52c9947c76"
+    },
+    {
+      "path": "docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_WorkPass34_2026-10-13.md",
+      "status": "added",
+      "workPass34Sha256": "6944a1dc5fff35bdf234f2c7923f60fb0ab491f7aa0e89de13738b52c9947c76"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-13_WORKPASS34.json",
+      "status": "added",
+      "workPass34Sha256": "990ae49fc934a5643e1bfb0626c8b84c5b7d45ce2b20b736655892f329051e46"
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-13_WORKPASS34.md",
+      "status": "added",
+      "workPass34Sha256": "0b70ff9ac8067cd5162dd70e521d12a866ce4ec639fa454c99f8484578845b8b"
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-13_WORKPASS34.json",
+      "status": "added",
+      "workPass34Sha256": "6b87eab046b5460b03e76f8544cdce5f9fdae28a7c7dd3d47a27f05550d9d6d0"
+    },
+    {
+      "path": "docs/WORKPASS34_REPORT_2026-10-13.md",
+      "status": "added",
+      "workPass34Sha256": "d6d01ec26bc9bef1974c03d9d1eff7c354b91459d2de9a72f7daf111bda55146"
+    },
+    {
+      "path": "package.json",
+      "status": "modified",
+      "baseSha256": "7a7d75d53a149991bb0d6fa82d272dd2bb41a27c6899e613b88ccc04b6ef4993",
+      "workPass34Sha256": "6870f86d461347027242263f56784ebb562c031dfb67076191c82473aa0dafb9"
+    },
+    {
+      "path": "runtime/neuro-kurisu/README.md",
+      "status": "modified",
+      "baseSha256": "b6ec9ae5ef8b1e4da6cd2ecd0df876e24fa1d10c1f9d3c8446e300f1e30cf39b",
+      "workPass34Sha256": "d7eebb2756815c17a75b514636cb2f7a60d2dab816a7a966f8b87f7ed6c23768"
+    },
+    {
+      "path": "runtime/neuro-kurisu/docs/LOCAL_SEMANTIC_MEMORY.md",
+      "status": "modified",
+      "baseSha256": "4eb1c1ee70a49fac586b952068bcadc95f3a281cb30fc516308ff0f7b0048494",
+      "workPass34Sha256": "61e1f5b976f97ca6e3c0cc0c98985d90a9fa61d180a2799ac26a9c1b4f205057"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package-lock.json",
+      "status": "modified",
+      "baseSha256": "c68fac41cd97a23d3bfa89f416b204f5070b558a304c7679b7bb3f1a22ac5b07",
+      "workPass34Sha256": "3851e78e4ed4148b6706ff569cdc2ce2fd1cc4fc6210e77527d12b2f014f5b7e"
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "status": "modified",
+      "baseSha256": "8dac3abad1968025a24affbb5504cc87888c8ffa359d6a9d0280e781278fd3ae",
+      "workPass34Sha256": "307a7811e8006909f19feab9e981b0444ad8d42883af5a5b37a5a800739440d8"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+      "status": "modified",
+      "baseSha256": "2f333ad756fe81a4ced36a5b12f765f65e2f96b7f493740083e2fad92fd3bc3c",
+      "workPass34Sha256": "e99a6ccc82aa8d080d1ecfb460168911d7f21e1349ac80e5d15b294184be2185"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/developmental/LocalEmbeddingProvider.ts",
+      "status": "modified",
+      "baseSha256": "54c3ef77a1f0f8735510021dd883dfbf997dd849ee8eaf0b6aa0ea758738e89a",
+      "workPass34Sha256": "a1c45cc68e3c10fb1418894287e7eaade6e1876455ab64b47195a2b98577755c"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts",
+      "status": "modified",
+      "baseSha256": "366f8f2ef9d7c812996443c3d88f7d73d8342c488de87cb890c531a6338894db",
+      "workPass34Sha256": "7d5d3152aec8deb8695262afd984a240a0309d707e2721ecd3a811008ad264ca"
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts",
+      "status": "modified",
+      "baseSha256": "c3099637fd2acc8f35c662dad02b95891e4129798dfb9cb696075e4fe3f7d762",
+      "workPass34Sha256": "41ea048a7d85c5ceb6a4fe0a3c0d60ab34d60242ee5e10c25b6bbd4122f8998d"
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/memory-cognition-retrieval-workpass34.mjs",
+      "status": "added",
+      "workPass34Sha256": "9e9024a69f5416f09182ede81f96dd29f7a4448093d25ed9db2b542f221617a5"
+    },
+    {
+      "path": "Список дел.md",
+      "status": "modified",
+      "baseSha256": "782fde639dde5b46295173639e3ca560588c7d5a1ff4d34ea0f6dcc59adc1ca6",
+      "workPass34Sha256": "cacecd97543c6bca8ee38139f528cd596e41878121c968d62669faf2476b90d7"
+    }
+  ]
+}

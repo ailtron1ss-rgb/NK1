@@ -1,0 +1,54 @@
+{
+  "version": "35.6.1",
+  "pass": "B279",
+  "date": "2026-09-12",
+  "component": "Neural Attractor Assemblies",
+  "standalone": {
+    "cycles": 330,
+    "learningUpdates": 330,
+    "consolidationCount": 13,
+    "meanRecall": 0.999930162581847,
+    "lesionCausalDrop": 0.22344627256167204
+  },
+  "hidden": {
+    "cycles": 480,
+    "meanTrainRecall": 0.9824119564660917,
+    "meanHiddenRecall": 0.8865425144650837,
+    "baseline": 0.5,
+    "hiddenGain": 0.3865425144650837,
+    "ablatedRecall": 0.6104067029308793,
+    "recurrentCausalContribution": 0.38959325787905597,
+    "assemblyDiversity": 0.4
+  },
+  "core": {
+    "cycles": 14,
+    "learningUpdates": 14,
+    "migrationRoundTrip": true
+  },
+  "lifecycle": {
+    "cycles": 8,
+    "learningUpdates": 8,
+    "stability": 0.5284146572579728,
+    "homeostaticError": 0.04469948856657889,
+    "restartPreserved": true
+  },
+  "staticGates": {
+    "typecheck": "PASS",
+    "auditFull": "PASS",
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "forensics": "PASS",
+    "hygiene": "PASS",
+    "syntax": "PASS",
+    "contract": "PASS",
+    "lock": "PASS",
+    "releaseSource": "PASS",
+    "doctor": "PASS"
+  },
+  "honestLimitations": [
+    "not a biophysical neuron simulator",
+    "external behavioural superiority not independently established by B279",
+    "small attractor size",
+    "personality evidence remains mediated by the surrounding organism loop"
+  ]
+}

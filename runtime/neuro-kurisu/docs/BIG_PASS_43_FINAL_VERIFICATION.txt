@@ -1,0 +1,68 @@
+Neuro-Kurisu 34.12.0 — BIG PASS 43 FINAL VERIFICATION
+Date: 2026-09-05
+
+CURRENT CHECKLIST
+BIG_PASS_PROGRESS=100 checks=68/68
+
+PASS
+TYPECHECK
+BIG_PASS_43_PERFORMANCE_CACHE
+PROJECT_EXECUTION_PERSISTENCE
+P67_PROJECT_EVIDENCE
+P64_P65_INTEGRATION
+P80_P82_RUNTIME_E2E
+SERVER_SMOKE
+API_SECURITY_POLICY
+SERVER_SECURITY_SMOKE
+CLEAN_ARCHITECTURE
+FORENSICS
+SOURCE_HYGIENE
+SOURCE_TRUTH
+RELEASE_CONTRACT
+CLEAN_INTEGRITY
+ARCHIVE_MANIFEST
+
+LEGACY
+LEGACY_SNAPSHOT=SKIPPED_NOT_SHIPPED
+Reason: legacy-original is not shipped in this release; no synthetic legacy snapshot was created.
+
+PERFORMANCE OBSERVATION
+BIG_PASS_43_PERFORMANCE_CACHE repeated runs:
+- run A: firstMedian 15.81ms, lastMedian 69.79ms, ratio 4.414, spineSavings 0.681
+- run B: firstMedian 15.34ms, lastMedian 67.11ms, ratio 4.374, spineSavings 0.681
+- final after operational projection gating: firstMedian 17.15ms, lastMedian 74.24ms, ratio 4.330, spineSavings 0.681
+
+Interpretation: correctness is stable, but long-horizon scaling remains environment/GC sensitive. No universal 250/500/1000-cycle guarantee is claimed.
+
+LONG-HORIZON
+- natural 250-cycle run: exceeded current verification wall-clock window.
+- natural 500-cycle run: exceeded current verification wall-clock window.
+
+These are OPEN performance debts, not PASS claims.
+
+MAIN CHANGES
+- one-tick caching of repeated cognitive snapshots/signals;
+- operational mode avoids heavy P61–P68/P74–P82 snapshot materialization;
+- read-only non-cloning EventLog slice for internal consumers;
+- semantic-memory scoping bug fixed;
+- project steps now carry preferred tools;
+- safe project context/evidence tools added;
+- automatic next-project-step API added;
+- release 34.12.0 / schema 89.
+
+FIRST-AUDIT CROSSWALK
+Weighted implementation estimate: ~80%.
+Overall engineering readiness estimate: ~80%.
+Plan adherence: ~99% actionable items complete or implemented as partial infrastructure.
+
+NOT PROVEN
+- phenomenal consciousness;
+- human-level intelligence;
+- 24h/72h/7d/30d autonomous device life;
+- native Android lifecycle robustness;
+- real vision backend;
+- ASR/TTS device benchmarks;
+- fully independent Shadow Organism;
+- fully learned Model Olympics;
+- general transfer learning;
+- external multi-step project execution.

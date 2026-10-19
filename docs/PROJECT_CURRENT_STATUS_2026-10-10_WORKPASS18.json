@@ -1,0 +1,476 @@
+{
+  "title": "Current normalized status inventory — WorkPass 18",
+  "date": "2026-10-10",
+  "workpass": 18,
+  "counts": {
+    "DONE": 40,
+    "PARTIAL": 9,
+    "TODO": 9
+  },
+  "items": [
+    {
+      "id": "G01",
+      "workstream": "A",
+      "title": "Один canonical runtime и single-owner границы",
+      "status": "DONE",
+      "evidence": "Runtime 35.40.0/schema 223; ownership rules and architecture audits; WorkPass 5–12 preserve canonical owners.",
+      "nextStep": ""
+    },
+    {
+      "id": "G02",
+      "workstream": "A",
+      "title": "История исходников, манифесты изменений и согласование версий",
+      "status": "DONE",
+      "evidence": "Архивы WorkPass 7–12 имеют SHA-256/manifests; WorkPass 13 aligns root package version with SUPER_VERSION and validates nested lockfiles.",
+      "nextStep": ""
+    },
+    {
+      "id": "G03",
+      "workstream": "B",
+      "title": "Runtime TypeScript/syntax validation",
+      "status": "DONE",
+      "evidence": "WorkPass 12 aggregate audit PASS; runtime checker may fall back to Node syntax-only if tsc unavailable, so semantic compiler mode must be recorded per run.",
+      "nextStep": ""
+    },
+    {
+      "id": "G04",
+      "workstream": "B",
+      "title": "Server relative imports",
+      "status": "DONE",
+      "evidence": "Last reported audit: 10 imports checked, zero missing.",
+      "nextStep": ""
+    },
+    {
+      "id": "G05",
+      "workstream": "B",
+      "title": "Static UI/API route ownership linkage",
+      "status": "DONE",
+      "evidence": "Last reported audit: 124 client routes, 48 Runtime Atlas surfaces, five required seams, zero missing links.",
+      "nextStep": ""
+    },
+    {
+      "id": "G06",
+      "workstream": "B",
+      "title": "Real HTTP chat and diagnostic smoke coverage",
+      "status": "DONE",
+      "evidence": "Server smoke exercises HTTP chat and selected diagnostic endpoints; not equivalent to full browser testing.",
+      "nextStep": ""
+    },
+    {
+      "id": "G07",
+      "workstream": "D",
+      "title": "MotorSchema → procedural skill → ActionGateway outcome classifications",
+      "status": "DONE",
+      "evidence": "WorkPass 5 agency contract and regressions cover validation, outcome classes and existing execution owner.",
+      "nextStep": ""
+    },
+    {
+      "id": "G08",
+      "workstream": "D",
+      "title": "Exact decision-bound reafference and targeted temporal credit",
+      "status": "DONE",
+      "evidence": "WorkPass 6 records exact decisionId linkage, thresholded contradiction and snapshot/migration/restart regression.",
+      "nextStep": ""
+    },
+    {
+      "id": "G09",
+      "workstream": "E",
+      "title": "Read-only KnownEntityDossier in real prompt contexts",
+      "status": "DONE",
+      "evidence": "WorkPass 7 connects known entity projection to normal and cognitive-proposal prompt paths through ContextBudgetLedger.",
+      "nextStep": ""
+    },
+    {
+      "id": "G10",
+      "workstream": "C",
+      "title": "Deterministic retrieval under candidate cap",
+      "status": "DONE",
+      "evidence": "WorkPass 11 regression verifies a 260-record corpus produces the same top-k after permutation beyond the 192-candidate cap.",
+      "nextStep": ""
+    },
+    {
+      "id": "G11",
+      "workstream": "C",
+      "title": "Full retrieval-relevant memory corpus fingerprint",
+      "status": "DONE",
+      "evidence": "WorkPass 11 fingerprints rank-relevant fields, revision, temporal metadata, links and provenance.",
+      "nextStep": ""
+    },
+    {
+      "id": "G12",
+      "workstream": "C",
+      "title": "Retrieval policy/configuration fingerprint",
+      "status": "DONE",
+      "evidence": "WorkPass 11 records separate policy/configuration fingerprint for evidence that can affect retrieval.",
+      "nextStep": ""
+    },
+    {
+      "id": "G13",
+      "workstream": "C",
+      "title": "Benchmark query/split/gold-label/corpus integrity and provenance gates",
+      "status": "DONE",
+      "evidence": "WorkPass 8/11 reject overlap, duplicates, unknown labels, malformed/truncated sets and missing provenance.",
+      "nextStep": ""
+    },
+    {
+      "id": "G14",
+      "workstream": "C",
+      "title": "Offline benchmark runner for snapshot + JSONL labels + provenance",
+      "status": "DONE",
+      "evidence": "WorkPass 11 runner supports up to 512 examples with bounded inputs; HTTP route retains its separate limit.",
+      "nextStep": ""
+    },
+    {
+      "id": "G15",
+      "workstream": "C",
+      "title": "Paired bootstrap metrics and multi-seed sensitivity report",
+      "status": "DONE",
+      "evidence": "Recall@k/MRR confidence intervals and seed sensitivity are implemented; seeds resample evaluation, not retrain retrieval.",
+      "nextStep": ""
+    },
+    {
+      "id": "G16",
+      "workstream": "C",
+      "title": "Confidence-aware MRR non-inferiority and explicit per-gate eligibility",
+      "status": "DONE",
+      "evidence": "WorkPass 12 blocks eligibility when MRR CI permits unacceptable regression; eligibility never auto-promotes to production.",
+      "nextStep": ""
+    },
+    {
+      "id": "G17",
+      "workstream": "C",
+      "title": "Atomic, exclusive benchmark report publication",
+      "status": "DONE",
+      "evidence": "WorkPass 12 writes/syncs temp output and refuses overwrite; regressions cover cleanup and existing-result protection.",
+      "nextStep": ""
+    },
+    {
+      "id": "G18",
+      "workstream": "F",
+      "title": "Conscio peer-message idempotency",
+      "status": "DONE",
+      "evidence": "WorkPass 9 exact duplicate replay, changed-payload key conflict and persisted conflict counters.",
+      "nextStep": ""
+    },
+    {
+      "id": "G19",
+      "workstream": "F",
+      "title": "Hexis outbox idempotency and required keys",
+      "status": "DONE",
+      "evidence": "WorkPass 9 rejects blank keys and changed-payload reuse; uncertain terminal failures do not auto-create duplicate sends.",
+      "nextStep": ""
+    },
+    {
+      "id": "G20",
+      "workstream": "F",
+      "title": "WILL envelope identity, ACK validation, backpressure and local replay hardening",
+      "status": "DONE",
+      "evidence": "WorkPass 10 tests unknown/conflicting ACK, queue pressure, same-ID changed payload and non-recursive replay.",
+      "nextStep": ""
+    },
+    {
+      "id": "G21",
+      "workstream": "H",
+      "title": "Reusable backup/restore helper safeguards",
+      "status": "DONE",
+      "evidence": "Backup/restore helper has hash/staging/pre-restore backup/live-lock checks and targeted unit regressions.",
+      "nextStep": ""
+    },
+    {
+      "id": "G22",
+      "workstream": "B",
+      "title": "Live2D/sprite asset-reference audit",
+      "status": "DONE",
+      "evidence": "Last reports claim asset references checked with zero errors; this is static inventory, not interactive browser E2E.",
+      "nextStep": ""
+    },
+    {
+      "id": "G23",
+      "workstream": "H",
+      "title": "Archive integrity, Unicode paths and source-tree/hash reconciliation",
+      "status": "DONE",
+      "evidence": "WorkPass 12 package report: 12,631 unique entries, no duplicate names, no tree mismatch, checksum validated.",
+      "nextStep": ""
+    },
+    {
+      "id": "G24",
+      "workstream": "D",
+      "title": "Complete agency loop: competition → action → verified outcome → persistence → reafference",
+      "status": "PARTIAL",
+      "evidence": "Core seams exist, but full causal path needs wider ActionCompetition, external postcondition and independent-reafference stress.",
+      "nextStep": "Add critical-path receipts and fault-injection tests, then verify trace persistence end-to-end."
+    },
+    {
+      "id": "G25",
+      "workstream": "D",
+      "title": "Independent action-outcome evidence and no-double-credit stress",
+      "status": "PARTIAL",
+      "evidence": "Exact decision targeting and contradictory-observer thresholds exist; broad repeated/stale/duplicate-source and reconnect stress remains.",
+      "nextStep": "Expand negative/fault cases against canonical TemporalCredit authority."
+    },
+    {
+      "id": "G26",
+      "workstream": "E",
+      "title": "Entity correction/expiry/conflict across browser-backed multi-session flows",
+      "status": "PARTIAL",
+      "evidence": "KnownEntityDossier filters stale/disputed/dormant/expired data; full user correction and cross-session browser behavior not demonstrated.",
+      "nextStep": "Implement and verify correction/expiry/conflict paths from UI through persistence."
+    },
+    {
+      "id": "G27",
+      "workstream": "E",
+      "title": "Portable subject continuity and behavioral fidelity",
+      "status": "PARTIAL",
+      "evidence": "Read-only fidelity evaluator and portable subject contracts exist; evaluator output is not proof of behavioral equivalence.",
+      "nextStep": "Use round-trip fixtures across clean restarts and compare declared invariants."
+    },
+    {
+      "id": "G28",
+      "workstream": "B",
+      "title": "Capability evidence graph for critical user journeys",
+      "status": "PARTIAL",
+      "evidence": "Several HTTP/API paths are smoke-tested, but not every critical path has an auditable input→action→outcome→persistence→UI receipt.",
+      "nextStep": "Inventory eight critical paths and add a receipt/postcondition contract for each."
+    },
+    {
+      "id": "G29",
+      "workstream": "F",
+      "title": "External delivery receipts, reconnect and provider replay guarantees",
+      "status": "PARTIAL",
+      "evidence": "Local idempotency and ACK/replay behavior is improved; remote exactly-once delivery is not proven.",
+      "nextStep": "Add real provider receipts, disconnect/retry injection and remote postcondition verification."
+    },
+    {
+      "id": "G30",
+      "workstream": "H",
+      "title": "Clean-room backup/restore, migration and rollback drill",
+      "status": "PARTIAL",
+      "evidence": "Reusable helper and unit tests pass, but destructive restore/upgrade/rollback has not been run in a clean environment.",
+      "nextStep": "Run a documented isolated drill with before/after hashes and failure recovery."
+    },
+    {
+      "id": "G31",
+      "workstream": "G",
+      "title": "Research candidates from NeuroCore/NOMEGA/DeepCode and external adapters",
+      "status": "PARTIAL",
+      "evidence": "Selected adapters and governance exist; research components remain research-only because real uplift/ablation evidence is incomplete.",
+      "nextStep": "Build candidate register with owner, metric, holdout, risk and promote/adapt/reject decision."
+    },
+    {
+      "id": "G32",
+      "workstream": "B",
+      "title": "Authorization/abuse/rate-limit review for new diagnostic/benchmark APIs",
+      "status": "PARTIAL",
+      "evidence": "Payload limits and bounded request fields are documented; a full endpoint auth/abuse review is still open.",
+      "nextStep": "Review auth, rate limits, resource budget, logs and concurrent load on each route."
+    },
+    {
+      "id": "G33",
+      "workstream": "C",
+      "title": "Real independently labelled temporal MemoryOS2 holdout",
+      "status": "TODO",
+      "evidence": "Only synthetic regression fixtures are available; no production uplift is claimed.",
+      "nextStep": "Use a real dataset with fixed train/holdout, temporal separation, multi-seed and pre-registered metrics."
+    },
+    {
+      "id": "G34",
+      "workstream": "H",
+      "title": "Dependency-complete app install and full root/app typecheck",
+      "status": "TODO",
+      "evidence": "Clean npm install was attempted but package registry lookup returned EAI_AGAIN; no app/node_modules were retained.",
+      "nextStep": "Retry install in a network-enabled build environment using the committed app lockfile and capture exact logs."
+    },
+    {
+      "id": "G35",
+      "workstream": "H",
+      "title": "React/Vite production build",
+      "status": "TODO",
+      "evidence": "WorkPass16 directly attempted npm run build and app typecheck. Build fails with `[with-app-env] failed to run vite: spawn vite ENOENT`; app typecheck fails with TS2688 for missing @types/node and vite/client. npm ci timed out at 120s; no success claimed.",
+      "nextStep": "Restore registry access or install exact app lockfile dependencies in a network-enabled clean environment, then rerun root/app typecheck and React/Vite build and fix all source errors."
+    },
+    {
+      "id": "G36",
+      "workstream": "B",
+      "title": "Desktop/mobile browser E2E, including interactive Live2D",
+      "status": "TODO",
+      "evidence": "Static asset/linkage audits and HTTP smoke do not count as browser E2E.",
+      "nextStep": "Run Playwright on desktop and mobile layouts with chat, diagnostics, avatar interactions and sprite fallback."
+    },
+    {
+      "id": "G37",
+      "workstream": "H",
+      "title": "Clean-room install + restore/upgrade/rollback release drill",
+      "status": "TODO",
+      "evidence": "No end-to-end clean-room operational drill is evidenced.",
+      "nextStep": "Test empty install, prior-version upgrade, backup, destructive simulation, restore and rollback."
+    },
+    {
+      "id": "G38",
+      "workstream": "H",
+      "title": "Multi-hour soak and memory/resource-growth limits",
+      "status": "TODO",
+      "evidence": "No measured long-duration soak or growth budget is evidenced.",
+      "nextStep": "Define baseline, duration, sampling, thresholds and failure criteria before running the soak."
+    },
+    {
+      "id": "G39",
+      "workstream": "H",
+      "title": "Final SBOM, license inventory and immutable release provenance sign-off",
+      "status": "TODO",
+      "evidence": "Historical manifests exist but final consolidated SBOM/license review and signed release provenance are not verified.",
+      "nextStep": "Generate final SBOM, reconcile licenses/NOTICE and bind all artifacts to canonical source/archive hashes."
+    },
+    {
+      "id": "G40",
+      "workstream": "H",
+      "title": "Release-candidate sign-off",
+      "status": "TODO",
+      "evidence": "Explicit release gates remain open; implementation workpass is not release-ready.",
+      "nextStep": "Close or explicitly waiver each gate with owner, evidence and date before marking a release candidate ready."
+    },
+    {
+      "id": "G41",
+      "workstream": "B",
+      "title": "Hermetic PWA/share-card unit tests",
+      "status": "DONE",
+      "evidence": "WorkPass 14 isolates host/document fallback scenarios from the checked-in app/src/lib/og/site.json and public card assets. All 203 app/scripts unit tests pass in the source-only environment.",
+      "nextStep": ""
+    },
+    {
+      "id": "G42",
+      "workstream": "B",
+      "title": "Browser smoke baseline detects new errors and fails on drift",
+      "status": "DONE",
+      "evidence": "Comparator now checks error signatures and occurrence counts, not only aggregate error totals; explicit baseline divergence returns exit code 3 while navigation/runtime failures keep higher priority. Browser-smoke verdict suite passes 46/46.",
+      "nextStep": ""
+    },
+    {
+      "id": "G43",
+      "workstream": "D",
+      "title": "RuntimeEvidenceBus bounded and deterministic evidence ingestion",
+      "status": "DONE",
+      "evidence": "WorkPass 15 validates kind/tick; uses stable sequence IDs; bounds and normalizes payloads and parent IDs; hardens snapshot restore and tracks lifetime and buffered counters separately. Regressions cover permutation stability, payload mutation, oversized/deep values, corrupt snapshots and counter continuity.",
+      "nextStep": ""
+    },
+    {
+      "id": "G44",
+      "workstream": "D",
+      "title": "Outcome verification isolation and fail-closed evidence contract",
+      "status": "DONE",
+      "evidence": "WorkPass 15 passes immutable cloned context to registered verifiers, rejects missing/unsupported basis and blank external receipt IDs, bounds returned text, and converts verifier exceptions or non-serializable contexts to unverified results without exposing exception details.",
+      "nextStep": ""
+    },
+    {
+      "id": "G45",
+      "workstream": "B",
+      "title": "Server smoke startup is time-bounded and child-exit aware",
+      "status": "DONE",
+      "evidence": "WorkPass 15 extracts pollUntilReady with a total deadline, per-probe timeout, early exit on child-process termination and bounded cleanup. Deterministic regressions cover ready-after-retry, early child exit, deadline expiry and safe probe errors; HTTP server smoke passes.",
+      "nextStep": ""
+    },
+    {
+      "id": "G46",
+      "workstream": "B",
+      "title": "Browser smoke fails on blocking brand-asset contract warnings",
+      "status": "DONE",
+      "evidence": "WorkPass16 passes blocking BRAND WARNING entries into the exit-code policy; BRAND NOTE stays advisory for the plain-utility exception. Source-only regression verifies both outcomes.",
+      "nextStep": "Run against an actual browser in dependency-complete environment and verify the production assets."
+    },
+    {
+      "id": "G47",
+      "workstream": "B",
+      "title": "Browser smoke exposes auth-invariant divergence and indeterminate state",
+      "status": "DONE",
+      "evidence": "Verdict records authInvariant.status/message; true dev/build mismatch fails the gate while an unobservable built-preview probe remains explicit and non-blocking.",
+      "nextStep": "Exercise dev and preview URLs in Playwright once app dependencies are installed."
+    },
+    {
+      "id": "G48",
+      "workstream": "B",
+      "title": "Browser smoke timeout configuration is validated and bounded",
+      "status": "DONE",
+      "evidence": "BROWSER_SMOKE_TIMEOUT_MS accepts only bounded integer values from 1000 to 180000 ms; invalid/NaN/fractional/unbounded settings fail before browser launch. Unit regressions cover boundaries.",
+      "nextStep": "Validate the selected default and maximum against real CI browser duration once Chromium is available."
+    },
+    {
+      "id": "G49",
+      "workstream": "B",
+      "title": "Browser smoke verdict publication is atomic and private",
+      "status": "DONE",
+      "evidence": "Verdicts publish through same-directory temp files, fsync and atomic rename; output files default to mode 0600, and a failed rename preserves the previous complete report and cleans temporary files.",
+      "nextStep": "Confirm on the target CI filesystem and attach actual browser-run evidence."
+    },
+    {
+      "id": "G50",
+      "workstream": "B",
+      "title": "WorkPass16 browser release-gate regressions and root audit are integrated",
+      "status": "DONE",
+      "evidence": "212/212 app-script tests pass including smoke verdict/auth invariant/atomic report tests; root npm run audit:workpass16 is wired to the full available regression chain. Actual React/Vite build and browser E2E remain separate gates.",
+      "nextStep": "Run aggregate command in dependency-complete network-enabled environment before release sign-off."
+    },
+    {
+      "id": "G51",
+      "workstream": "A",
+      "title": "Release metadata validator preserves older workpass fixtures while requiring current experiment entrypoint",
+      "status": "DONE",
+      "evidence": "WorkPass16 contract now requires the standalone memory-experiment alias only for WorkPass16+; the historical WorkPass14 fixture stays valid. Release metadata contract tests pass 6/6.",
+      "nextStep": ""
+    },
+    {
+      "id": "G52",
+      "workstream": "D",
+      "title": "Автономный проект использует настоящий внешний источник вместо повторного внутреннего чтения",
+      "status": "DONE",
+      "evidence": "WorkPass17: повторный DAG step использует organism.project.research и требует реальный HTTPS result.",
+      "nextStep": ""
+    },
+    {
+      "id": "G53",
+      "workstream": "D",
+      "title": "Промоут research-шага и consolidation привязан к EvidenceFirewall",
+      "status": "DONE",
+      "evidence": "Executor completeToolStep требует externalResearchVerified/researchPromoted для соответствующих шагов; Core ingests research before attempting completion.",
+      "nextStep": ""
+    },
+    {
+      "id": "G54",
+      "workstream": "D",
+      "title": "URL/network policy preflight не расходует retry budget",
+      "status": "DONE",
+      "evidence": "ExternalProjectResearchTool.preflightUrl and Core project-tool gate reject missing URL, disabled network, unsafe protocol/host and absent allowlist before budget/attempt side effects.",
+      "nextStep": ""
+    },
+    {
+      "id": "G55",
+      "workstream": "D",
+      "title": "External evidence promotion требует разные source identities и content hashes",
+      "status": "DONE",
+      "evidence": "EvidenceFirewall requires at least two external sources and two unique content hashes; regression confirms distinct hostnames with identical bytes do not promote.",
+      "nextStep": ""
+    },
+    {
+      "id": "G56",
+      "workstream": "D",
+      "title": "Полный live research run на разрешённых внешних доменах",
+      "status": "TODO",
+      "evidence": "No external provider/network run performed in this pass; network stays disabled by default and requires explicit allowlist/URLs.",
+      "nextStep": "Configure two allowed independent hosts and execute Core end-to-end research through actual fetches and persisted promotion receipt."
+    },
+    {
+      "id": "G57",
+      "workstream": "D",
+      "title": "DNS-pinned HTTPS transport with validated redirects and bounded response handling",
+      "status": "DONE",
+      "evidence": "ExternalProjectResearchTool resolves all addresses, rejects any non-public/special address, pins HTTPS request to a vetted IP while retaining hostname TLS verification, validates each redirect hop, and bounds DNS/request timeout, response bytes and textual MIME. Thirteen deterministic transport regressions pass and runtime TypeScript tsc passes. Live DNS/provider run is explicitly not claimed.",
+      "nextStep": ""
+    },
+    {
+      "id": "G58",
+      "workstream": "D",
+      "title": "Bind external research evidence and cache to a specific query fingerprint and topical relevance",
+      "status": "DONE",
+      "evidence": "Research requires at least three distinct content terms, hashes normalized query into cache identity and canonical firewall claim key, rejects unrelated content and attenuates EvidenceFirewall confidence by lexical relevance. Firewall regressions prove low-relevance evidence fails to promote while relevant independent evidence can pass. Lexical relevance is not semantic entailment.",
+      "nextStep": ""
+    }
+  ]
+}

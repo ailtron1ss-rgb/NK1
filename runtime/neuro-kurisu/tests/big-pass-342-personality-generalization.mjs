@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+const mod = await import('../src/organism/system/B299CausalPersonalityDevelopmentLoop.ts');
+const {B299CausalPersonalityDevelopmentLoop, defaultB299State} = mod;
+const mk=(ctx)=>({tick:0,action:'verify',reward01:0.92,predictionError01:0.08,causalConfidence01:0.82,identityContinuity01:0.9,externalEvidence01:1,worldTransition:true,independent:true,autonomous:true,predictedUtility01:0.52,neuralPlasticity01:0.84,selfModelAlignment01:0.9,goalLearningQuality01:0.9,context:ctx});
+const fresh=new B299CausalPersonalityDevelopmentLoop();
+fresh.restore(defaultB299State());
+fresh.setContext({social:1,epistemic:0,autonomy:0,maintenance:0});
+const baseline=fresh.actionBias('verify');
+for(let i=0;i<72;i++){ const x=mk({social:0,epistemic:1,autonomy:0,maintenance:0}); x.tick=i+1; fresh.observeOutcome(x); }
+fresh.setContext({social:1,epistemic:0,autonomy:0,maintenance:0});
+const holdout=fresh.actionBias('verify');
+assert.ok(holdout>baseline+0.004,`personality did not generalize to unseen context: ${baseline} -> ${holdout}`);
+const snap=fresh.snapshot();
+const restored=new B299CausalPersonalityDevelopmentLoop(); restored.restore(snap); restored.setContext({social:1,epistemic:0,autonomy:0,maintenance:0});
+const restoredBias=restored.actionBias('verify');
+assert.ok(Math.abs(restoredBias-holdout)<1e-12,'restart lost generalized personality');
+fresh.lesion(1);
+const lesioned=fresh.actionBias('verify');
+assert.ok(Math.abs(lesioned)<Math.abs(holdout)*0.2,'personality lesion did not remove most decision influence');
+console.log(JSON.stringify({pass:true,baseline,holdout,delta:holdout-baseline,restoredBias,lesioned,traitSlow: fresh.diagnostics().traitSlow11,traitEvidence:fresh.diagnostics().traitEvidence01}));

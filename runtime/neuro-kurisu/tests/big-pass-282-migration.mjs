@@ -1,0 +1,4 @@
+import assert from 'node:assert/strict';
+import { B282PredictiveGlobalWorkspace, defaultB282State } from '../src/organism/cognition/B282PredictiveGlobalWorkspace.ts';
+const w=new B282PredictiveGlobalWorkspace(); for(let t=0;t<40;t++) w.step({tick:t,areaSpikes:{sensorium:[1,0,1,0,0,1,0,0],memory:[0,1,0,1,1,0,0,0],association:[1,1,0,0,0,0,1,0],selfAction:[0,0,1,1,0,0,1,0]},selfLatent:Array(8).fill(.2),worldLatent:Array(8).fill(.3),goalVector:Array(8).fill(.4),novelty01:.3,uncertainty01:.2,predictionError01:.15,reward01:.6,autonomy01:.7,learningEnabled:true});
+const snap=w.snapshot(); const n=new B282PredictiveGlobalWorkspace(); n.restore(snap); assert.deepEqual(n.snapshot(),snap); assert.equal(defaultB282State().version,1); console.log(JSON.stringify({pass:true,steps:snap.steps,learningUpdates:snap.learningUpdates,ignitionCount:snap.ignitionCount,roundTrip:true}));

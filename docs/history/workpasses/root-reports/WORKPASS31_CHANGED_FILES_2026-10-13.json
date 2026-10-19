@@ -1,0 +1,204 @@
+{
+  "title": "Neuro-Kurisu WorkPass31 changed-file manifest",
+  "workpass": 31,
+  "createdAt": "2026-10-13T07:16:41.457754+00:00",
+  "baseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS30_2026-10-13.zip",
+  "baseArchiveSha256": "7026894227a6cb66781986f43ad9fb42b3064c79e0309ef36eac139d377e4932",
+  "releaseArchive": "Neuro_Kurisu_WORKPASS31_2026-10-13.zip",
+  "rootVersion": "31.0.0-super-final17",
+  "runtimeVersion": "35.54.0",
+  "schema": 224,
+  "changeSummary": {
+    "modifiedFiles": 14,
+    "addedProjectFilesExcludingThisManifest": 7,
+    "deletedFiles": 0,
+    "unchangedBaseFiles": 12752,
+    "baseRegularFiles": 12766,
+    "outputRegularFilesExpected": 12774,
+    "manifestExcludedFromItsOwnEntries": true
+  },
+  "integrationSummary": [
+    "MemoryOS2 remains the only writable canonical memory owner; MemoryFabric is the application-level mutation gateway, not a second store.",
+    "Encode, content/status revisions, signal/context updates and forgetting are routed through a single lifecycle command handler.",
+    "A bounded 512-entry persisted receipt journal fingerprints mutation payloads, suppresses duplicate effects/events on exact retry and rejects changed-payload command-ID reuse.",
+    "Compatibility import/restore, Hexis review and external research write paths route through MemoryFabric; legacy direct-write coordinator methods are retained only for historical callers.",
+    "StateMigrations sanitizes and preserves the receipt journal so normal persisted-state normalization does not silently erase replay protection."
+  ],
+  "verification": {
+    "runtimeTypecheck": "PASS",
+    "memoryLifecycleCommandWorkPass31": "PASS; normal migratePersistedOrganism path, replay after restore, conflict detection, compatibility dedupe, no-op context, forgetting and bounded 512 receipt journal",
+    "memoryProvenanceLineageWorkPass30": "PASS; external Core→MemoryOS2 bridge preserves independent source lineages, mirror replay guards, restore and byte budget",
+    "memorySourceIntegrationWorkPass29": "PASS; revision/index/capacity-eviction/Hexis canonical temporal integration",
+    "temporalInspectorClosure": "PASS",
+    "R15TemporalMemory": "PASS",
+    "R16MemoryBehavior": "PASS",
+    "serverSmoke": "PASS (standalone server-smoke run)",
+    "releaseMetadata": "PASS (34/34)",
+    "releaseMetadataContract": "PASS (6/6)",
+    "appScriptSuite": "PASS (212/212)",
+    "browserSmokeVerdictSuite": "PASS (51/51)",
+    "serverImports": "PASS (10 checked, 0 missing)",
+    "uiApiLinkage": "PASS (124 client routes, 48 Runtime Atlas surfaces, no missing links)",
+    "assetsAudit": "PASS (0 errors; Live2D and sprite references resolve)",
+    "legacyMigrationFixture": "One old big-pass-315 migration fixture asserts schema 127 while current runtime migration returns schema 223; this unrelated stale expectation is not claimed as passing and the fixture file is unchanged from baseline.",
+    "retrievalQuality": "No retrieval uplift claimed; synthetic MemoryOS2 vs BM25 parity remains previous benchmark result; independent temporal holdout remains open.",
+    "aggregateRuntimeAudit": "The first composite runtime audit timed out after the repeated R15/R16 memory gate; the alias was shortened to avoid running R15 twice (R16 memory suite already includes it). Focused gates and standalone server smoke pass separately.",
+    "releaseReadiness": "NOT CLAIMED; independent temporal holdout, frontend production build/browser Live2D E2E, real pretrained NLI inference/provider run, clean-room rollback/soak and final sign-off remain open."
+  },
+  "changes": [
+    {
+      "path": "CHANGELOG.md",
+      "status": "MODIFIED",
+      "baseSha256": "8027bbfc6688d6c727c757e16fdab65d65d308a2d0cacf59043e0d3449340f3d",
+      "sha256": "9481406e4061cf9ead6b116ff0ccf31ba2682e751ec4285eb9968d4fddfc8c44",
+      "baseSizeBytes": 48671,
+      "sizeBytes": 49891
+    },
+    {
+      "path": "README.md",
+      "status": "MODIFIED",
+      "baseSha256": "b51f969c491056c95d6aa8809ab99c42dc5dec2b996a5007d9a96e84e9ed35fe",
+      "sha256": "3a0787c3e89f41d2b257f5cbfd8e6d2f1f4e5185bed901228ff26e1ac6775d05",
+      "baseSizeBytes": 19969,
+      "sizeBytes": 20075
+    },
+    {
+      "path": "SUPER_VERSION.json",
+      "status": "MODIFIED",
+      "baseSha256": "526318ba754e8bac6600aa7479e015735ec2e197bb81102b0419f321ae30b544",
+      "sha256": "297cd3f733b50ff13400ce19febcd21cb651749763b5d91e2cc2c7684a8c04e0",
+      "baseSizeBytes": 13988,
+      "sizeBytes": 14236
+    },
+    {
+      "path": "contracts/OWNERSHIP.md",
+      "status": "MODIFIED",
+      "baseSha256": "6d112341ddb9f274ffc04e8be1314de99544667abfa3b2e47843764938bcdca3",
+      "sha256": "5690bcfd19045df7ecc1cde7a1983324f52dd463caa2ddcd0349128bb1fe9b47",
+      "baseSizeBytes": 2349,
+      "sizeBytes": 2912
+    },
+    {
+      "path": "contracts/integration-manifest.json",
+      "status": "MODIFIED",
+      "baseSha256": "0f90aee29654066420f5b8aaf19d6446e360b78ef18b9eaf5f088e4385daa3e8",
+      "sha256": "0fd729499dd6f5ea27484dff7e6ea03827b198b5f7561ef024efddcc0e2777d9",
+      "baseSizeBytes": 9388,
+      "sizeBytes": 9388
+    },
+    {
+      "path": "docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md",
+      "status": "MODIFIED",
+      "baseSha256": "9c49cd30f66b8f08b76760126a745164655fb9f325f04c2cb0e80596b45ef0f8",
+      "sha256": "e612724ebddd04875a93b448d9f189c0b21fc1efc118bb7ee010810f3472e778",
+      "baseSizeBytes": 99495,
+      "sizeBytes": 100929
+    },
+    {
+      "path": "package.json",
+      "status": "MODIFIED",
+      "baseSha256": "10e8c6e9b480170f38c8a2a44ea40c6b85600469348e7960472befe412c3181b",
+      "sha256": "cbf8ecb37e278ab6b3480ba6ef2de804ebeae876cb15116795ca3f1e1e5b092d",
+      "baseSizeBytes": 14236,
+      "sizeBytes": 14793
+    },
+    {
+      "path": "runtime/neuro-kurisu/package-lock.json",
+      "status": "MODIFIED",
+      "baseSha256": "878ad16589e0a3e88bd1244acc2350972c7f26cea3ce5e1a6ea24761beeed9c9",
+      "sha256": "25e74f7beb818a43212cfa0b7bb61e690838d2c5d83e08cbf4aafd120cddabbe",
+      "baseSizeBytes": 1041,
+      "sizeBytes": 1041
+    },
+    {
+      "path": "runtime/neuro-kurisu/package.json",
+      "status": "MODIFIED",
+      "baseSha256": "9447f8f0f6ac220a68d144dcbcabeeb091f12720f5222a2ae7a8a01f1d3b959f",
+      "sha256": "6a2ee17af81cf6aeaae6f89d808db457f47122174e924dbf8817a6e4859d4898",
+      "baseSizeBytes": 235945,
+      "sizeBytes": 236511
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts",
+      "status": "MODIFIED",
+      "baseSha256": "478256a832efabbf0471a3378de13a78ba9d8d6d9b85f5f4f793eb974553f9b1",
+      "sha256": "2c4ff58ab7c0128680f7277c7265529bbbab2672613248df627b29a7579205ca",
+      "baseSizeBytes": 7219,
+      "sizeBytes": 7307
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+      "status": "MODIFIED",
+      "baseSha256": "302d2418ca0e511141be4bed88add498b9f4670248ff7f916ff042601756c203",
+      "sha256": "e0e1cc806a4f387591198beaede494ebff9630b92c2845477a90872acb76c1d7",
+      "baseSizeBytes": 1210892,
+      "sizeBytes": 1211551
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/developmental/MemorySubstrateCoordinator.ts",
+      "status": "MODIFIED",
+      "baseSha256": "1a70f12260f0c24e767782abeee1c1a314d02b6c8a56f75e939c7d927e7d2d0d",
+      "sha256": "6c489787b719f9a7939dca0405d0a2e21e25782cf24d6cf2a72c0def1fec268a",
+      "baseSizeBytes": 5959,
+      "sizeBytes": 5501
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts",
+      "status": "MODIFIED",
+      "baseSha256": "0392e7dd995a716e7263935d66d72d7b1bee4e12bb002e94ae0d0ad44d041a3b",
+      "sha256": "967109c822a4da8dfcf7e803237d1274ba569c808e944f9bd431d4a52e12d578",
+      "baseSizeBytes": 13053,
+      "sizeBytes": 24095
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts",
+      "status": "MODIFIED",
+      "baseSha256": "69c9c62559f08f5fdf6784ecb426884c6d9216db276b7a6bd9e059e2fbf5d1c1",
+      "sha256": "5e08ca4bcd5ae1bb5d22bb5ed490db323d488e5983403b8618cf7a165e678ec3",
+      "baseSizeBytes": 127746,
+      "sizeBytes": 129081
+    },
+    {
+      "path": "WORKPASS31_REPORT_2026-10-13.md",
+      "status": "ADDED",
+      "sha256": "92668a944c801e21e702b14ad58538ff5dcb92ffcdb970c6354c46ff9816f6bf",
+      "sizeBytes": 2982
+    },
+    {
+      "path": "WORKPASS31_TASKS_2026-10-13.md",
+      "status": "ADDED",
+      "sha256": "20e136dcf61bccc7a8a30f976a1be30931d73aa1d473f711ffc8a8a7c3efafe5",
+      "sizeBytes": 1477
+    },
+    {
+      "path": "docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_WorkPass31_2026-10-13.md",
+      "status": "ADDED",
+      "sha256": "e612724ebddd04875a93b448d9f189c0b21fc1efc118bb7ee010810f3472e778",
+      "sizeBytes": 100929
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-13_WORKPASS31.json",
+      "status": "ADDED",
+      "sha256": "dd5aeea88cbd9f161e418a90853ccd12667634af30aff7ee45535b42df32329c",
+      "sizeBytes": 36843
+    },
+    {
+      "path": "docs/PROJECT_CURRENT_STATUS_2026-10-13_WORKPASS31.md",
+      "status": "ADDED",
+      "sha256": "f028f0211026fd0b8245ce03bb8214df760a4e370ccc98746fe1dcab1ed07399",
+      "sizeBytes": 3371
+    },
+    {
+      "path": "docs/PROJECT_PROGRESS_SCORECARD_2026-10-13_WORKPASS31.json",
+      "status": "ADDED",
+      "sha256": "9fe01a9d69a35335f5bbadf0514d5f7e7da496e1d1b37628173feb0019b2f8ee",
+      "sizeBytes": 7712
+    },
+    {
+      "path": "runtime/neuro-kurisu/tests/memory-lifecycle-command-workpass31.mjs",
+      "status": "ADDED",
+      "sha256": "09c92c74a9785f377381eb8605c34a0d1a4dc0bd3efc106f14469ed378900033",
+      "sizeBytes": 9922
+    }
+  ]
+}

@@ -1,0 +1,266 @@
+import type { ActionKind, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
+import type { CausalExperienceRecord, CausalLearningPacket } from './CausalExperienceStream.ts';
+
+const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
+const DIM=16;
+const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+
+export interface UnifiedLearningPattern {
+  id:string;
+  key:string;
+  samples:number;
+  taskId:string;
+  dominantAction:ActionKind;
+  meanReward01:number;
+  meanPredictionError01:number;
+  meanCausalStrength01:number;
+  meanNovelty01:number;
+  transferPotential01:number;
+  confidence01:number;
+  firstAt:number;
+  lastAt:number;
+}
+
+export interface TransferProbe {
+  id:string;
+  sourceTaskId:string;
+  targetTaskId:string;
+  baseline01:number;
+  postScore01:number;
+  delta01:number;
+  independentVerified:boolean;
+  holdout:boolean;
+  contextKey:string;
+  at:number;
+}
+
+export interface UnifiedLearningLoopState {
+  cycleId:string;
+  phase:'idle'|'experience'|'memory'|'replay'|'learning'|'policy'|'verification'|'consolidation';
+  completed:number;
+  total:number;
+  lastOutcomeVerified:boolean;
+  lastLearningDelta01:number;
+  lastPolicyDelta01:number;
+  lastTransferDelta01:number;
+  lastRetention01:number;
+  closedLoopCount:number;
+  verifiedClosedLoopCount:number;
+  failedClosedLoopCount:number;
+  lastAt:number;
+}
+
+export interface UnifiedLearningState {
+  version:3;
+  cycles:number;
+  samples:number;
+  updates:number;
+  sharedRepresentation01:number[];
+  representationDrift01:number;
+  predictionAgreement01:number;
+  crossTaskTransfer01:number;
+  consolidationEfficiency01:number;
+  developmentalTransfer01:number;
+  lastDevelopmentalSignal01:number;
+  lastLearningOpportunity01:number;
+  lastAt:number;
+  patterns:UnifiedLearningPattern[];
+  provenanceCounts:{runtime:number;experienceReplay:number;skillRepair:number;external:number};
+  validatedTransferSamples:number;
+  positiveTransferSamples:number;
+  negativeTransferSamples:number;
+  interference01:number;
+  transferProbes:TransferProbe[];
+  loop:UnifiedLearningLoopState;
+}
+
+export interface UnifiedLearningSignal {
+  latent01:number[];
+  learningOpportunity01:number;
+  representationNovelty01:number;
+  transferPotential01:number;
+  consolidationPriority01:number;
+}
+
+export const defaultUnifiedLearning=():UnifiedLearningState=>({
+  version:3,cycles:0,samples:0,updates:0,sharedRepresentation01:new Array(DIM).fill(.5),
+  representationDrift01:0,predictionAgreement01:.5,crossTaskTransfer01:0,consolidationEfficiency01:0,developmentalTransfer01:0,lastDevelopmentalSignal01:0,
+  lastLearningOpportunity01:0,lastAt:0,patterns:[],provenanceCounts:{runtime:0,experienceReplay:0,skillRepair:0,external:0},validatedTransferSamples:0,positiveTransferSamples:0,negativeTransferSamples:0,interference01:0,transferProbes:[],loop:{cycleId:'',phase:'idle',completed:0,total:7,lastOutcomeVerified:false,lastLearningDelta01:0,lastPolicyDelta01:0,lastTransferDelta01:0,lastRetention01:1,closedLoopCount:0,verifiedClosedLoopCount:0,failedClosedLoopCount:0,lastAt:0},
+});
+
+function stateVector(state:OrganismState):number[]{
+  const n=state.needs;
+  return [n.energy,n.cognitiveLoad,n.uncertainty,n.novelty,n.goalPressure,n.socialNeed,n.identityCoherence,state.predictionError,state.attentionBudget,state.selfPredictionError,
+    1-n.energy,1-n.cognitiveLoad,1-n.uncertainty,1-n.novelty,1-n.goalPressure,1-n.socialNeed].map(clamp01);
+}
+function centroid(oldV:number[],newV:number[],alpha:number){return newV.map((v,i)=>clamp01((oldV[i]??.5)*(1-alpha)+v*alpha));}
+function distance(a:number[],b:number[]){let s=0,n=Math.min(a.length,b.length);for(let i=0;i<n;i++)s+=(clamp01(a[i])-clamp01(b[i]))**2;return n?clamp01(Math.sqrt(s/n)*1.8):0;}
+
+export class UnifiedLearningSubstrate {
+  private state=defaultUnifiedLearning();
+  restore(raw?:Partial<UnifiedLearningState>|null){
+    const d=defaultUnifiedLearning(),r=raw??{};
+    this.state={...d,...r,version:3,sharedRepresentation01:Array.isArray(r.sharedRepresentation01)?r.sharedRepresentation01.slice(0,DIM).map(clamp01):d.sharedRepresentation01.slice(),patterns:Array.isArray(r.patterns)?r.patterns.slice(-128):[],provenanceCounts:{...d.provenanceCounts,...(r.provenanceCounts??{})},transferProbes:Array.isArray(r.transferProbes)?r.transferProbes.slice(-96):[],loop:{...d.loop,...(r.loop??{})}};
+  }
+  snapshot(){return structuredClone(this.state);}
+  beginCycle(){this.state.cycles++;this.state.loop={...this.state.loop,cycleId:'',phase:'idle',completed:0,total:7,lastOutcomeVerified:false,lastLearningDelta01:0,lastPolicyDelta01:0,lastTransferDelta01:0,lastRetention01:1,lastAt:Date.now()};}
+
+  beginLearningLoop(input:{traceId:string;taskId:string;at?:number}){
+    const at=input.at??Date.now();
+    this.state.loop={...this.state.loop,cycleId:String(input.traceId).slice(0,128),phase:'experience',completed:1,total:7,lastOutcomeVerified:false,lastLearningDelta01:0,lastPolicyDelta01:0,lastTransferDelta01:0,lastRetention01:1,lastAt:at};
+    return structuredClone(this.state.loop);
+  }
+
+  advanceLearningLoop(phase:UnifiedLearningLoopState['phase'], input?:{learningDelta01?:number;policyDelta01?:number;transferDelta01?:number;retention01?:number;at?:number}){
+    const order:UnifiedLearningLoopState['phase'][]=['idle','experience','memory','replay','learning','policy','verification','consolidation'];
+    const index=Math.max(0,order.indexOf(phase));
+    const at=input?.at??Date.now();
+    this.state.loop={...this.state.loop,phase,completed:Math.max(this.state.loop.completed,index),lastLearningDelta01:clamp01(input?.learningDelta01??this.state.loop.lastLearningDelta01),lastPolicyDelta01:clamp01(input?.policyDelta01??this.state.loop.lastPolicyDelta01),lastTransferDelta01:clamp01(input?.transferDelta01??this.state.loop.lastTransferDelta01),lastRetention01:clamp01(input?.retention01??this.state.loop.lastRetention01),lastAt:at};
+    return structuredClone(this.state.loop);
+  }
+
+  closeLearningLoop(input:{verified:boolean;learningDelta01:number;policyDelta01:number;transferDelta01:number;retention01:number;at?:number}){
+    const at=input.at??Date.now();
+    const verified=Boolean(input.verified);
+    this.state.loop={...this.state.loop,phase:'consolidation',completed:7,total:7,lastOutcomeVerified:verified,lastLearningDelta01:clamp01(input.learningDelta01),lastPolicyDelta01:clamp01(input.policyDelta01),lastTransferDelta01:clamp01(input.transferDelta01),lastRetention01:clamp01(input.retention01),closedLoopCount:this.state.loop.closedLoopCount+1,verifiedClosedLoopCount:this.state.loop.verifiedClosedLoopCount+(verified?1:0),failedClosedLoopCount:this.state.loop.failedClosedLoopCount+(verified?0:1),lastAt:at};
+    return structuredClone(this.state.loop);
+  }
+
+  learningLoopDiagnostics(){return structuredClone(this.state.loop);}
+
+  encode(state:OrganismState):number[]{
+    const x=stateVector(state);
+    const alpha=this.state.samples<8?.12:.045;
+    const drift=distance(this.state.sharedRepresentation01,x);
+    this.state.sharedRepresentation01=centroid(this.state.sharedRepresentation01,x,alpha);
+    this.state.representationDrift01=clamp01(this.state.representationDrift01*.94+drift*.06);
+    return x;
+  }
+
+  ingestExternalSignal(input:{taskId:string;action:ActionKind;reward01:number;success01:number;surprise01:number;novelty01:number;causalStrength01:number;transferPotential01?:number;provenance?:'experience-replay'|'skill-repair'|'external'}){
+    const reward=clamp01(input.reward01),success=clamp01(input.success01),surprise=clamp01(input.surprise01),novelty=clamp01(input.novelty01),causal=clamp01(input.causalStrength01);
+    const transfer=clamp01(input.transferPotential01??(.45*causal+.25*novelty+.30*success));
+    const opportunity=clamp01(.50*causal+.22*surprise+.18*novelty+.10*transfer);
+    const provenance=input.provenance??'external'; this.state.provenanceCounts[provenance==='experience-replay'?'experienceReplay':provenance==='skill-repair'?'skillRepair':'external']++;
+    const priority=clamp01(.58*opportunity+.42*transfer);
+    this.state.crossTaskTransfer01=clamp01(this.state.crossTaskTransfer01*.95+transfer*.05);
+    this.state.lastLearningOpportunity01=opportunity;
+    this.state.consolidationEfficiency01=clamp01(this.state.consolidationEfficiency01*.97+(priority>.5?1:0)*.03);
+    this.state.samples++;this.state.updates++;this.state.lastAt=Date.now();
+    const key=`${String(input.taskId).slice(0,96)}|${input.action}`;
+    const existing=this.state.patterns.find(p=>p.key===key);
+    if(existing){
+      const a=1/Math.max(2,existing.samples+1);existing.samples++;existing.meanReward01=existing.meanReward01*(1-a)+reward*a;existing.meanPredictionError01=existing.meanPredictionError01*(1-a)+surprise*a;existing.meanCausalStrength01=existing.meanCausalStrength01*(1-a)+causal*a;existing.meanNovelty01=existing.meanNovelty01*(1-a)+novelty*a;existing.transferPotential01=existing.transferPotential01*(1-a)+transfer*a;existing.confidence01=clamp01(existing.confidence01*.9+.1*clamp01(.4+existing.samples/24));existing.lastAt=Date.now();
+    } else {
+      this.state.patterns.push({id:`ulp-ext-${this.state.patterns.length+1}-${Date.now()}`,key,samples:1,taskId:String(input.taskId).slice(0,96),dominantAction:input.action,meanReward01:reward,meanPredictionError01:surprise,meanCausalStrength01:causal,meanNovelty01:novelty,transferPotential01:transfer,confidence01:.38,firstAt:Date.now(),lastAt:Date.now()});
+      if(this.state.patterns.length>128)this.state.patterns=this.state.patterns.slice(-128);
+    }
+    return {learningOpportunity01:opportunity,consolidationPriority01:priority,transferPotential01:transfer};
+  }
+
+  ingest(trace:OrganismDecisionTrace,after:OrganismState,record:CausalExperienceRecord|null,packet:CausalLearningPacket):UnifiedLearningSignal{
+    const before=stateVector(trace.stateBefore),afterV=stateVector(after);
+    const drift=distance(before,afterV);
+    const repNovelty=distance(this.state.sharedRepresentation01,afterV);
+    const causal=record?.causalStrength01??packet.learningOpportunity01;
+    const prediction=record?.predictionError01??trace.stateBefore.predictionError;
+    const uncertainty=record?.uncertainty01??trace.stateBefore.needs.uncertainty;
+    const novelty=record?.novelty01??trace.stateBefore.needs.novelty;
+    const transfer=clamp01(.45*(1-Math.abs((record?.reward01??.5)-.5)*1.2)+.3*causal+.25*repNovelty);
+    const opportunity=clamp01(.48*causal+.2*prediction+.16*novelty+.16*repNovelty);
+    const consolidationPriority=clamp01(opportunity*.55+Math.min(1,packet.records.length/12)*.25+transfer*.2);
+    const alpha=.04+.10*opportunity;
+    this.state.sharedRepresentation01=centroid(this.state.sharedRepresentation01,afterV,alpha);
+    this.state.representationDrift01=clamp01(this.state.representationDrift01*.9+drift*.1);
+    this.state.predictionAgreement01=clamp01(this.state.predictionAgreement01*.94+(1-prediction)*.06);
+    this.state.crossTaskTransfer01=clamp01(this.state.crossTaskTransfer01*.96+transfer*.04);
+    this.state.consolidationEfficiency01=clamp01(this.state.consolidationEfficiency01*.97+(consolidationPriority>0.5?1:0)*.03);
+    this.state.lastLearningOpportunity01=opportunity;
+    this.state.samples++;this.state.updates++;this.state.lastAt=Date.now();
+    if(record)this.upsertPattern(record,transfer);
+    return {latent01:this.state.sharedRepresentation01.slice(),learningOpportunity01:opportunity,representationNovelty01:repNovelty,transferPotential01:transfer,consolidationPriority01:consolidationPriority};
+  }
+
+  private upsertPattern(record:CausalExperienceRecord,transferPotential01:number){
+    const key=`${record.taskId}|${record.action}`;
+    const prev=this.state.patterns.find(p=>p.key===key);
+    if(!prev){
+      this.state.patterns.push({id:`ulp-${this.state.patterns.length+1}-${record.tick}`,key,samples:1,taskId:record.taskId,dominantAction:record.action,meanReward01:record.reward01,meanPredictionError01:record.predictionError01,meanCausalStrength01:record.causalStrength01,meanNovelty01:record.novelty01,transferPotential01,confidence01:.35,firstAt:record.at,lastAt:record.at});
+    }else{
+      const a=1/Math.max(2,prev.samples+1);prev.samples++;prev.meanReward01=prev.meanReward01*(1-a)+record.reward01*a;prev.meanPredictionError01=prev.meanPredictionError01*(1-a)+record.predictionError01*a;prev.meanCausalStrength01=prev.meanCausalStrength01*(1-a)+record.causalStrength01*a;prev.meanNovelty01=prev.meanNovelty01*(1-a)+record.novelty01*a;prev.transferPotential01=prev.transferPotential01*(1-a)+transferPotential01*a;prev.confidence01=clamp01(prev.confidence01*.92+.08*clamp01(.45+prev.samples/32));prev.lastAt=record.at;
+    }
+    this.state.patterns.sort((a,b)=>(b.samples*b.meanCausalStrength01)-(a.samples*a.meanCausalStrength01));
+    if(this.state.patterns.length>128)this.state.patterns=this.state.patterns.slice(0,128);
+  }
+
+  beginTransferProbe(input:{sourceTaskId:string;targetTaskId:string;baseline01:number;contextKey:string;at?:number}){
+    return {id:`transfer:${String(input.sourceTaskId).slice(0,64)}:${String(input.targetTaskId).slice(0,64)}:${Date.now()}`,sourceTaskId:String(input.sourceTaskId).slice(0,96),targetTaskId:String(input.targetTaskId).slice(0,96),baseline01:clamp01(input.baseline01),contextKey:String(input.contextKey).slice(0,96),at:input.at??Date.now()};
+  }
+
+  recordTransferProbe(input:{id:string;sourceTaskId:string;targetTaskId:string;baseline01:number;postScore01:number;independentVerified:boolean;holdout:boolean;contextKey:string;at?:number}){
+    const delta=clamp01(input.postScore01)-clamp01(input.baseline01);
+    const probe:TransferProbe={id:String(input.id).slice(0,96),sourceTaskId:String(input.sourceTaskId).slice(0,96),targetTaskId:String(input.targetTaskId).slice(0,96),baseline01:clamp01(input.baseline01),postScore01:clamp01(input.postScore01),delta01:delta,independentVerified:Boolean(input.independentVerified),holdout:Boolean(input.holdout),contextKey:String(input.contextKey).slice(0,96),at:input.at??Date.now()};
+    this.state.transferProbes.push(probe); if(this.state.transferProbes.length>96)this.state.transferProbes=this.state.transferProbes.slice(-96);
+    if(probe.independentVerified && probe.holdout){
+      this.state.validatedTransferSamples++;
+      if(delta>.04)this.state.positiveTransferSamples++; else if(delta<-.04)this.state.negativeTransferSamples++;
+      const signed=clamp01(Math.abs(Math.min(0,delta))*2);
+      this.state.interference01=clamp01(this.state.interference01*.94+signed*.06);
+      const magnitude=clamp01(Math.abs(delta)*1.5);
+      this.state.crossTaskTransfer01=clamp01(this.state.crossTaskTransfer01*.92+(delta>0?magnitude:delta<0?0:magnitude*.35)*.08);
+    }
+    return structuredClone(probe);
+  }
+
+  transferMatrix(taskIds?:string[]){
+    const filter=taskIds&&taskIds.length?new Set(taskIds.map(x=>String(x).slice(0,96))):null;
+    const rows=this.state.transferProbes.filter(p=>p.independentVerified&&p.holdout&&(!filter||filter.has(p.sourceTaskId)||filter.has(p.targetTaskId)));
+    const matrix=new Map<string,{n:number;meanDelta01:number;positive:number;negative:number}>();
+    for(const p of rows){const key=`${p.sourceTaskId}->${p.targetTaskId}`;const cur=matrix.get(key)??{n:0,meanDelta01:0,positive:0,negative:0};cur.n++;cur.meanDelta01+=(p.delta01-cur.meanDelta01)/cur.n;if(p.delta01>.04)cur.positive++;if(p.delta01<-.04)cur.negative++;matrix.set(key,cur);}
+    return [...matrix.entries()].map(([pair,v])=>({pair,...v})).sort((a,b)=>b.n-a.n);
+  }
+
+  transferInferenceGate(input:{sourceTaskId:string;targetTaskId:string;minHoldout?:number;minDistinctContexts?:number}){
+    const rows=this.state.transferProbes.filter(p=>p.sourceTaskId===input.sourceTaskId&&p.targetTaskId===input.targetTaskId&&p.independentVerified&&p.holdout);
+    const contexts=new Set(rows.map(p=>p.contextKey));
+    const minHoldout=Math.max(2,Math.min(32,Math.floor(input.minHoldout??4)));
+    const minContexts=Math.max(2,Math.min(32,Math.floor(input.minDistinctContexts??2)));
+    const mean=rows.length?rows.reduce((s,p)=>s+p.delta01,0)/rows.length:0;
+    const positive=rows.filter(p=>p.delta01>.04).length,negative=rows.filter(p=>p.delta01<-.04).length;
+    return {sourceTaskId:input.sourceTaskId,targetTaskId:input.targetTaskId,holdoutSamples:rows.length,distinctContexts:contexts.size,meanDelta01:mean,positive,negative,eligibleForConfirmatoryInference:rows.length>=minHoldout&&contexts.size>=minContexts,reason:rows.length<minHoldout?'insufficient-holdout':contexts.size<minContexts?'insufficient-context-diversity':'eligible'};
+  }
+
+  transferDiagnostics(){
+    const validated=this.state.transferProbes.filter(p=>p.independentVerified&&p.holdout);
+    return {validatedSamples:this.state.validatedTransferSamples,positiveSamples:this.state.positiveTransferSamples,negativeSamples:this.state.negativeTransferSamples,interference01:this.state.interference01,crossTaskTransfer01:this.state.crossTaskTransfer01,validatedProbeRate01:this.state.transferProbes.length?validated.length/this.state.transferProbes.length:0,recentValidated:validated.slice(-12)};
+  }
+
+  observeDevelopmentalSignal(input:{identityContinuity01:number;socialBinding01:number;identityPressure01:number;causalSignal01:number;evidenceQuality01:number;selfChange01:number}):number{
+    const values=[clamp01(input.identityContinuity01),clamp01(input.socialBinding01),clamp01(1-input.identityPressure01),clamp01(input.causalSignal01),clamp01(input.evidenceQuality01),clamp01(input.selfChange01)];
+    const signal=clamp01(values.reduce((a,b)=>a+b,0)/values.length);
+    const transfer=clamp01(.34*signal+.24*clamp01(input.evidenceQuality01)+.22*clamp01(input.causalSignal01)+.20*(1-clamp01(input.identityPressure01)));
+    const alpha=.025+.05*transfer;
+    for(let i=0;i<Math.min(values.length,this.state.sharedRepresentation01.length);i++) this.state.sharedRepresentation01[i]=clamp01(this.state.sharedRepresentation01[i]*(1-alpha)+values[i]*alpha);
+    this.state.developmentalTransfer01=clamp01(this.state.developmentalTransfer01*.96+transfer*.04);
+    this.state.lastDevelopmentalSignal01=signal;
+    this.state.lastAt=Date.now();
+    return transfer;
+  }
+
+  consolidate(limit=8){
+    return this.state.patterns.filter(p=>p.samples>=2 && (p.meanCausalStrength01>=.44 || p.transferPotential01>=.62)).slice(0,Math.max(1,Math.min(32,Math.floor(limit)))).map(p=>structuredClone(p));
+  }
+
+  diagnostics(){
+    return {
+      version:2,cycles:this.state.cycles,samples:this.state.samples,updates:this.state.updates,
+      representationDrift01:this.state.representationDrift01,predictionAgreement01:this.state.predictionAgreement01,
+      crossTaskTransfer01:this.state.crossTaskTransfer01,consolidationEfficiency01:this.state.consolidationEfficiency01,
+      developmentalTransfer01:this.state.developmentalTransfer01,lastDevelopmentalSignal01:this.state.lastDevelopmentalSignal01,
+      lastLearningOpportunity01:this.state.lastLearningOpportunity01,patternCount:this.state.patterns.length,
+      provenanceCounts:this.state.provenanceCounts,validatedTransferSamples:this.state.validatedTransferSamples,
+      positiveTransferSamples:this.state.positiveTransferSamples,negativeTransferSamples:this.state.negativeTransferSamples,
+      interference01:this.state.interference01,transferProbes:this.state.transferProbes.length,learningLoop:this.state.loop,topPatterns:this.state.patterns.slice(0,8)
+    };
+  }
+}

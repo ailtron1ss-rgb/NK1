@@ -1,0 +1,120 @@
+import type { ActionKind } from '../core/types.ts';
+
+type Phase = 'wake'|'replay'|'sleep'|'dream'|'rehab'|'research';
+const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
+const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:(a+b)/2));
+const mean=(a:number[])=>a.length?a.reduce((x,y)=>x+y,0)/a.length:.5;
+const dot=(a:number[],b:number[])=>{let s=0;for(let i=0;i<Math.min(a.length,b.length);i++)s+=(a[i]??0)*(b[i]??0);return s;};
+const norm=(a:number[])=>Math.sqrt(Math.max(1e-9,dot(a,a)));
+const cosine=(a:number[],b:number[])=>dot(a,b)/(norm(a)*norm(b));
+const dist=(a:number[],b:number[])=>mean(Array.from({length:Math.min(a.length,b.length)},(_,i)=>Math.abs((a[i]??.5)-(b[i]??.5))));
+const vec=(x:number[]|undefined,n=48)=>Array.from({length:n},(_,i)=>clamp(x?.[i%(x?.length||1)]??.5));
+const zeros=()=>Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>;
+
+export interface B1351Input {
+  tick:number; context01:number[]; baseUtilities:Record<ActionKind,number>; priorBias?:Record<ActionKind,number>;
+  uncertainty01:number; predictionError01:number; novelty01:number; confidence01:number;
+  goalVector?:number[]; selfVector?:number[]; memoryTransfer01?:number; hiddenTask01?:number;
+  curriculum01?:number; worldModel01?:number; neuralPlasticity01?:number; modeHint?:string; complexity01?:number;
+}
+export interface B1351Output {
+  actionBias:Record<ActionKind,number>; predictiveBias:Record<ActionKind,number>; phase:Phase;
+  longHorizon01:number; consolidation01:number; attractor01:number; causalCredit01:number; skillMastery01:number;
+  curriculum01:number; identityContinuity01:number; rehab01:number; worldLatent01:number; confidence01:number;
+  campaignStep:number; developmentGain01:number;
+}
+interface SkillNode {id:number; name:string; mastery:number; stability:number; uses:number; prereq:number[]; transfer:number; lastTick:number;}
+interface Episode {tick:number; context:number[]; action:ActionKind; reward:number; error:number; success:number; task:number; surprise:number; phase:Phase; importance:number; uses:number;}
+interface Attractor {v:number[]; strength:number; stability:number; drift:number; samples:number;}
+interface Task {id:number; centroid:number[]; difficulty:number; novelty:number; mastery:number; attempts:number; successes:number; parent:number;}
+interface Ledger {credit:Record<ActionKind,number>; variance:Record<ActionKind,number>; uses:Record<ActionKind,number>; eligibility:number[];}
+export interface B1351State {
+  version:1; enabled:boolean; tick:number; phase:Phase; campaignStep:number; sleepCounter:number;
+  episodes:Episode[]; skills:SkillNode[]; tasks:Task[]; attractor:Attractor; latent:number[]; ledger:Ledger;
+  identity:number[]; identityAnchor:number[]; goals:number[]; curriculum01:number; nextSkill:number; nextTask:number;
+  lesions:Record<string,boolean>;
+  stats:{
+    decisions:number;updates:number;episodes:number;replays:number;sleepCycles:number;dreamCycles:number;
+    consolidationEvents:number;forgettingEvents:number;rehabEvents:number;skillUpdates:number;curriculumSelections:number;
+    tasksGenerated:number;taskTransfers:number;worldUpdates:number;causalUpdates:number;neuralUpdates:number;
+    campaignCycles:number;longHorizonChecks:number;identityChecks:number;lesionChecks:number;restart:number;
+    last:{phase:Phase;longHorizon:number;consolidation:number;attractor:number;causalCredit:number;skillMastery:number;curriculum:number;identity:number;rehab:number;world:number;confidence:number;development:number;};
+  };
+}
+const lesionNames=['sleep-consolidation','attractor','causal-credit','skill-graph','curriculum','world-latent','identity','rehab','long-horizon'];
+const makeAttractor=():Attractor=>({v:Array.from({length:512},(_,i)=>Math.sin(i*.037)*.003),strength:.15,stability:.5,drift:0,samples:0});
+export const defaultB1351B1600State=():B1351State=>({
+  version:1,enabled:true,tick:0,phase:'wake',campaignStep:0,sleepCounter:0,episodes:[],skills:[],tasks:[],attractor:makeAttractor(),latent:Array.from({length:48},(_,i)=>Math.sin(i*.17)*.002),
+  ledger:{credit:Object.fromEntries(ACTIONS.map(a=>[a,.5])) as Record<ActionKind,number>,variance:Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>,uses:Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>,eligibility:Array(512).fill(0)},
+  identity:Array.from({length:512},(_,i)=>Math.cos(i*.013)*.002),identityAnchor:Array.from({length:512},(_,i)=>Math.cos(i*.013)*.002),goals:Array(16).fill(0),curriculum01:.2,nextSkill:1,nextTask:1,
+  lesions:Object.fromEntries(lesionNames.map(x=>[x,false])),
+  stats:{decisions:0,updates:0,episodes:0,replays:0,sleepCycles:0,dreamCycles:0,consolidationEvents:0,forgettingEvents:0,rehabEvents:0,skillUpdates:0,curriculumSelections:0,tasksGenerated:0,taskTransfers:0,worldUpdates:0,causalUpdates:0,neuralUpdates:0,campaignCycles:0,longHorizonChecks:0,identityChecks:0,lesionChecks:0,restart:0,last:{phase:'wake',longHorizon:.5,consolidation:.5,attractor:.5,causalCredit:.5,skillMastery:.5,curriculum:.5,identity:.5,rehab:.5,world:.5,confidence:.5,development:.5}}
+});
+
+export class B1351B1600LifelongDevelopmentCore {
+ private state = defaultB1351B1600State();
+ snapshot(){return structuredClone(this.state);}
+ diagnostics(){return structuredClone(this.state.stats);}
+ restore(src?:Partial<B1351State>){
+  const d=defaultB1351B1600State(),s:any=src??{};
+  const ss=structuredClone(s);
+  this.state={
+   ...d,...ss,lesions:{...d.lesions,...(s.lesions??{})},
+   episodes:Array.isArray(s.episodes)?ss.episodes.slice(-8192):[],
+   skills:Array.isArray(s.skills)?ss.skills.slice(-256):[],tasks:Array.isArray(s.tasks)?ss.tasks.slice(-256):[],
+   attractor:{...d.attractor,...(s.attractor??{}),v:Array.isArray(s.attractor?.v)?s.attractor.v.slice(0,512):d.attractor.v},
+   latent:Array.isArray(s.latent)?s.latent.slice(0,48):d.latent,identity:Array.isArray(s.identity)?s.identity.slice(0,512):d.identity,
+   identityAnchor:Array.isArray(s.identityAnchor)?s.identityAnchor.slice(0,512):d.identityAnchor,
+   ledger:{...d.ledger,...(s.ledger??{}),credit:{...d.ledger.credit,...(s.ledger?.credit??{})},variance:{...d.ledger.variance,...(s.ledger?.variance??{})},uses:{...d.ledger.uses,...(s.ledger?.uses??{}),},eligibility:Array.isArray(s.ledger?.eligibility)?s.ledger.eligibility.slice(0,512):d.ledger.eligibility},
+   stats:{...d.stats,...(s.stats??{}),last:{...d.stats.last,...(s.stats?.last??{})}}
+  };
+ }
+ markRestart(){this.state.stats.restart++;}
+ setLesions(v:Record<string,boolean>){this.state.lesions={...this.state.lesions,...v};this.state.stats.lesionChecks++;}
+ private phase(i:B1351Input):Phase {const c=clamp((i.uncertainty01+i.predictionError01+i.novelty01)/3); if(c>.82)return 'research'; if(this.state.sleepCounter>=64 && c<.46)return 'sleep'; if(c>.62)return 'replay'; if(c>.44)return 'dream'; return 'wake';}
+ private task(ctx:number[],i:B1351Input){if(!this.state.tasks.length){const t:Task={id:this.state.nextTask++,centroid:ctx.slice(0,48),difficulty:.35,novelty:1,mastery:.18,attempts:0,successes:0,parent:0};this.state.tasks.push(t);this.state.stats.tasksGenerated++;return t;}let best=this.state.tasks[0],bd=dist(ctx,best.centroid);
+ for(const t of this.state.tasks){const d=dist(ctx,t.centroid);if(d<bd){bd=d;best=t;}}if(bd>.10){const t:Task={id:this.state.nextTask++,centroid:ctx.slice(0,48),difficulty:clamp(.35+.45*(i.complexity01??i.uncertainty01)),novelty:clamp(bd),mastery:.12,attempts:0,successes:0,parent:best.id};this.state.tasks.push(t);this.state.stats.tasksGenerated++;return t;
+ }if(bd<.10) best.centroid=best.centroid.map((x,j)=>clamp(.992*x+.008*ctx[j]));best.novelty=clamp(.97*best.novelty+.03*bd);return best;}
+ private skillFor(task:Task,action:ActionKind){let s=this.state.skills.find(x=>x.name===`task:${task.id}:${action}`);if(!s){s={id:this.state.nextSkill++,name:`task:${task.id}:${action}`,mastery:.12,stability:.42,uses:0,prereq:[],transfer:.2,lastTick:this.state.tick};this.state.skills.push(s);}return s;}
+ private worldUpdate(ctx:number[],next:number[],reward:number){if(this.state.lesions['world-latent'])return .5;const lr=.018;for(let i=0;i<48;i++)this.state.latent[i]=clamp(this.state.latent[i]*(1-lr)+(next[i]-ctx[i])*lr,-1,1);this.state.stats.worldUpdates++;const pred=mean(this.state.latent.map((x,j)=>1-Math.min(1,Math.abs(x-(next[j]-ctx[j]))*3)));return clamp(.5+.5*pred);}
+ private causal(action:ActionKind,reward:number,error:number,ctx:number[],task:Task){if(this.state.lesions['causal-credit'])return .5;const r=clamp(reward), surprise=clamp(error);const base=.55*r+.30*(1-surprise)+.15*(1-task.difficulty);const old=this.state.ledger.credit[action]??0;const lr=.035/(1+(this.state.ledger.uses[action]??0)*.002);
+ this.state.ledger.credit[action]=clamp(old*(1-lr)+base*lr);this.state.ledger.variance[action]=clamp(.97*(this.state.ledger.variance[action]??0)+.03*Math.abs(base-old));this.state.ledger.uses[action]=(this.state.ledger.uses[action]??0)+1;this.state.stats.causalUpdates++;return this.state.ledger.credit[action];}
+ private neural(ctx:number[],reward:number,plasticity:number){if(this.state.lesions.identity)return .5;const lr=.0008*(.35+.65*plasticity)*(1+Math.abs(reward-.5));let d=0;for(let i=0;i<512;i++){const z=Math.tanh((ctx[i%48]-.5)*1.8+this.state.identity[i]*1.15);this.state.ledger.eligibility[i]=clamp(.985*this.state.ledger.eligibility[i]+.015*Math.abs(z));
+ const e=this.state.ledger.eligibility[i];this.state.identity[i]=clamp(this.state.identity[i]*(1-lr)+z*lr,-1,1);d+=Math.abs(this.state.identity[i]-this.state.identityAnchor[i]);}this.state.stats.neuralUpdates++;const drift=clamp(d/512);this.state.attractor.drift=clamp(.97*this.state.attractor.drift+.03*drift);return clamp(.5+.5*(1-drift));}
+ private consolidate(phase:Phase){if(this.state.lesions['sleep-consolidation'])return .5;const candidates=this.state.episodes.filter(e=>e.importance>.48).sort((a,b)=>b.importance-a.importance).slice(0,phase==='sleep'?96:32);if(!candidates.length)return .5;for(const e of candidates){for(let i=0;i<512;i++){const q=Math.tanh((e.context[i%48]-.5)*1.25);
+ this.state.attractor.v[i]=clamp(this.state.attractor.v[i]*.993+q*.007,-1,1);this.state.identityAnchor[i]=clamp(this.state.identityAnchor[i]*.9995+this.state.identity[i]*.0005,-1,1);}e.uses++;}this.state.attractor.samples+=candidates.length;this.state.attractor.strength=clamp(.96*this.state.attractor.strength+.04*Math.min(1,candidates.length/48));
+ this.state.attractor.stability=clamp(.97*this.state.attractor.stability+.03*(1-this.state.attractor.drift));this.state.stats.consolidationEvents+=candidates.length;this.state.stats.replays+=candidates.length;
+ if(phase==='sleep'&&this.state.episodes.length>4096){const ranked=this.state.episodes.map((e,idx)=>({e,idx})).sort((a,b)=>a.e.importance-b.e.importance);const drop=Math.min(256,Math.floor(this.state.episodes.length*.04));const remove=new Set(ranked.slice(0,drop).map(x=>x.idx));this.state.episodes=this.state.episodes.filter((_,idx)=>!remove.has(idx));
+ this.state.stats.forgettingEvents+=drop;}return clamp(.4*this.state.attractor.strength+.35*this.state.attractor.stability+.25*(1-this.state.attractor.drift));}
+ private rehab(task:Task){if(this.state.lesions.rehab)return .5;const weak=this.state.skills.filter(s=>s.mastery<.38).sort((a,b)=>a.mastery-b.mastery).slice(0,8);let gain=0;for(const s of weak){const boost=.012*(1+(.8*(task.id===Number(s.name.split(':')[1])?1:0)));s.mastery=clamp(s.mastery+boost);s.stability=clamp(s.stability+.006);s.uses++;
+ s.lastTick=this.state.tick;gain+=boost;}if(weak.length)this.state.stats.rehabEvents++;return clamp(.5+gain*5);
+ }
+ private curriculum(task:Task,i:B1351Input){if(this.state.lesions.curriculum)return .5;const pressure=clamp(.36*(1-task.mastery)+.24*i.novelty01+.22*i.uncertainty01+.18*i.predictionError01);const target=clamp(.25+pressure*.55);task.difficulty=clamp(.985*task.difficulty+.015*target);task.attempts++;this.state.stats.curriculumSelections++;return clamp(.35+.65*pressure);}
+ private longHorizon(i:B1351Input,task:Task,skills:number){const horizon=1+Math.floor(clamp((i.uncertainty01+i.novelty01+i.predictionError01)/3)*8);let continuity=1;for(let h=1;h<=horizon;h++){const decay=Math.exp(-h*(.035+.055*i.uncertainty01));continuity*=decay;continuity*=.90+.10*skills;}this.state.stats.longHorizonChecks++;return clamp(.5+.5*continuity);
+ }
+ private sleepTick(){this.state.sleepCounter++;if(this.state.sleepCounter%64!==0)return .5;this.state.stats.sleepCycles++;return this.consolidate('sleep');}
+ beforeDecision(i:B1351Input):B1351Output {const ctx=vec(i.context01),ph=this.phase(i),task=this.task(ctx,i),skill=this.skillFor(task,'wait');this.state.tick=i.tick;this.state.phase=ph;this.state.stats.decisions++;this.state.stats.identityChecks++;this.state.campaignStep++;this.state.stats.campaignCycles++;this.state.sleepCounter++;
+ const skillMastery=clamp(skill.mastery);const lh=this.longHorizon(i,task,skillMastery);const rehab=this.rehab(task);const cons=ph==='sleep'||ph==='replay'?this.consolidate(ph):.5;const curriculum=this.curriculum(task,i);const world=clamp(.5+.5*(i.worldModel01??.5));const neural=clamp(i.neuralPlasticity01??.5);
+ const attractor=clamp(.4*this.state.attractor.strength+.35*this.state.attractor.stability+.25*(1-this.state.attractor.drift));const identity=clamp(1-dist(this.state.identity,this.state.identityAnchor)*.65);const causalCredit=this.state.ledger.credit;const actionBias=zeros(),predictive=zeros();for(const a of ACTIONS){const sk=this.skillFor(task,a);
+ const c=causalCredit[a]??.5;const usage=this.state.ledger.uses[a]??0;const under=clamp(1-usage/Math.max(8,this.state.campaignStep*.18));const explorePressure=under*.075;const explore=((ph==='research'||ph==='dream')&&a==='explore'?under*.055:0)+explorePressure;const verify=(ph==='replay'||i.predictionError01>.55)&&a==='verify'?under*.045:0;
+ const reflect=(ph==='sleep'||ph==='replay')&&a==='reflect'?.035:0;const rest=(ph==='sleep'&&a==='rest')?.05:0;const identityRead=this.state.lesions.identity?0:(this.state.identity[a.charCodeAt(0)%512]??0)*.012;const skillRead=this.state.lesions['skill-graph']?0:(sk.mastery-.5)*.090;const creditRead=this.state.lesions['causal-credit']?0:(c-.5)*.075;
+ const prior=i.priorBias?.[a]??0;actionBias[a]=clamp(prior*.20+creditRead+skillRead+identityRead+explore+verify+reflect+rest+(lh-.5)*.028+(cons-.5)*.022+(curriculum-.5)*(a==='explore'?.018:(a==='verify'?.012:-.006)),-.14,.14);predictive[a]=clamp((c-.5)*.05+(world-.5)*.04+(lh-.5)*.035+(attractor-.5)*.02,-.08,.08);
+ sk.mastery=clamp(.998*sk.mastery+.002*(i.confidence01>.7?.55:.45));}
+ const development=clamp(.18*cons+.16*attractor+.18*causalCredit[task?ACTIONS[task.id%ACTIONS.length]:'wait']+.16*skillMastery+.14*curriculum+.10*identity+.08*lh);const conf=clamp(.58*i.confidence01+.10*world+.08*identity+.08*lh+.08*cons+.08*skillMastery);
+ this.state.stats.last={phase:ph,longHorizon:lh,consolidation:cons,attractor,causalCredit:mean(ACTIONS.map(a=>causalCredit[a]??.5)),skillMastery,curriculum,identity,rehab,world,confidence:conf,development};
+ return {actionBias,predictiveBias:predictive,phase:ph,longHorizon01:lh,consolidation01:cons,attractor01:attractor,causalCredit01:this.state.stats.last.causalCredit,skillMastery01:skillMastery,curriculum01:curriculum,identityContinuity01:identity,rehab01:rehab,worldLatent01:world,confidence01:conf,campaignStep:this.state.campaignStep,developmentGain01:development};
+ }
+ afterOutcome(i:{tick:number;action:ActionKind;context01:number[];nextContext01:number[];reward01:number;predictionError01:number;success01:number;verified01:number;taskHint?:number}){if(!this.state.enabled)return;
+ const ctx=vec(i.context01),next=vec(i.nextContext01),task=this.task(ctx,{tick:i.tick,context01:ctx,baseUtilities:zeros(),uncertainty01:i.predictionError01,predictionError01:i.predictionError01,novelty01:Math.abs(i.reward01-.5),confidence01:.5});
+ const ph=this.state.phase,importance=clamp(.22*Math.abs(i.reward01-.5)+.28*i.predictionError01+.20*i.success01+.18*i.verified01+.12*task.novelty);
+ this.state.episodes.push({tick:i.tick,context:ctx,action:i.action,reward:clamp(i.reward01),error:clamp(i.predictionError01),success:clamp(i.success01),task:task.id,surprise:clamp(i.predictionError01),phase:ph,importance,uses:0});if(this.state.episodes.length>8192)this.state.episodes=this.state.episodes.slice(-8192);this.state.stats.episodes++;
+ task.attempts++;task.successes+=clamp(i.success01);task.mastery=clamp(.986*task.mastery+.014*i.success01);const skill=this.skillFor(task,i.action);const causal=this.causal(i.action,i.reward01,i.predictionError01,ctx,task);const world=this.worldUpdate(ctx,next,i.reward01);
+ const plastic=this.neural(ctx,i.reward01,clamp(.4*i.verified01+.3*(1-i.predictionError01)+.3*task.mastery));const sGain=i.success01>0.5 ? .032*(1+.35*(1-skill.mastery)) : -.022*(1+.20*skill.mastery);skill.mastery=clamp(skill.mastery+sGain);skill.stability=clamp(.995*skill.stability+.005*(1-i.predictionError01));
+ skill.transfer=clamp(.97*skill.transfer+.03*(1-dist(ctx,task.centroid)));skill.uses++;skill.lastTick=i.tick;this.state.stats.skillUpdates++;if(i.success01<0.5){const alternatives=ACTIONS.filter(a=>a!==i.action).sort((a,b)=>(this.state.ledger.uses[a]??0)-(this.state.ledger.uses[b]??0)).slice(0,2);
+ for(const alt of alternatives){this.state.ledger.credit[alt]=clamp((this.state.ledger.credit[alt]??.5)*.92+.08*(.56+.08*(1-(this.state.ledger.uses[alt]??0)/8)));}}if(skill.transfer>.72)this.state.stats.taskTransfers++;this.state.curriculum01=clamp(.95*this.state.curriculum01+.05*task.mastery);const sleep=this.sleepTick();
+ if(ph==='dream'){this.state.stats.dreamCycles++;this.consolidate('replay');}this.state.stats.updates++;const development=clamp(.20*causal+.18*world+.18*plastic+.16*skill.mastery+.12*task.mastery+.08*this.state.curriculum01+.08*(1-this.state.attractor.drift));
+ this.state.stats.last={...this.state.stats.last,world,causalCredit:causal,skillMastery:skill.mastery,curriculum:this.state.curriculum01,identity:clamp(1-this.state.attractor.drift),development};}
+ evaluate(input:B1351Input,lesion:Record<string,boolean>){const saved=this.snapshot();this.setLesions(lesion);const on=this.beforeDecision(input);this.restore(saved);const off=this.beforeDecision(input);this.restore(saved);
+ return {effect01:mean(ACTIONS.map(a=>Math.abs(on.actionBias[a]-off.actionBias[a]))),confidenceDelta01:on.confidence01-off.confidence01,developmentDelta01:on.developmentGain01-off.developmentGain01};}
+}
+const _stateAlias=defaultB1351B1600State;

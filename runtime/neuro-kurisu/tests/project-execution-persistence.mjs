@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import { AutonomousProjectExecutor } from '../src/organism/system/AutonomousProjectExecutor.ts';
+const e=new AutonomousProjectExecutor();
+e.ensure({id:'p-test',origin:'unresolved'});
+const before=e.snapshot();
+assert.equal(before.steps.length,3);
+// A skipped project cycle must not reset accumulated progress.
+e.observe({action:'verify',success01:.8,evidence01:.8,relevant:true,tick:1});
+const mid=e.snapshot();
+assert.equal(mid.cycles,1);
+assert.equal(mid.steps[0].attempts,1);
+e.observeToolResult({tick:2,tool:'organism.inspect',ok:false,error:'offline'});
+const failed=e.snapshot();
+assert.equal(failed.toolCalls,1);
+assert.ok(failed.steps.some(step=>Number(step.retryAfterTick ?? 0)>=2),'failed tool must schedule retry');
+e.restore(failed);
+const restored=e.snapshot();
+assert.equal(restored.toolCalls,1);
+assert.equal(restored.steps[0].attempts,1);
+console.log('PROJECT_EXECUTION_PERSISTENCE=PASS');

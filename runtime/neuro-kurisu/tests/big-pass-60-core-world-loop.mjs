@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+
+const core=new OrganismCore(new MemoryStateStore(),{enableLanguage:false});
+await core.init();
+const mkWorld=(tick,label,uncertainty)=>({tick,location:'lab',energy:.8,attention:.75,uncertainty,facts:[`observed-evidence:${label}`],objects:[{id:label,label,location:'lab',value:.7,visible:true,collected:false,confidence01:.86,evidenceKind:'observed',sourceId:label}],events:[`${label}-appeared`]});
+await core.observe({worldContext:mkWorld(1,'desk',.62),vision:{features:[.2,.8,.3,.4],confidence01:.8},novelty:.6});
+const first=core.snapshot();
+await core.observe({worldContext:mkWorld(2,'cup',.28),vision:{features:[.7,.3,.6,.5],confidence01:.82},novelty:.78});
+const second=core.snapshot();
+assert.ok(second.facets.advanced.worldModel2.learnedTransitions>=1);
+assert.ok(second.facets.advanced.groundedWorld.entities.length>=1);
+assert.ok(second.facets.advanced.worldModel2.predictionErrors.length>=1);
+assert.ok(second.facets.advanced.worldModel2.modelVersion>=2);
+await core.feedback({success:.72,reward:.75,surprise:.2,worldTransition:{action:'explore',before:mkWorld(2,'cup',.28),after:mkWorld(3,'phone',.21),reward:.75,surprise:.2,at:Date.now()}});
+const third=core.snapshot();
+assert.ok(third.facets.advanced.worldModel2.learnedTransitions>=2);
+console.log('BIG_PASS_60_CORE_WORLD_LOOP=PASS');
+console.log(JSON.stringify({before:second.facets.advanced.worldModel2.learnedTransitions,after:third.facets.advanced.worldModel2.learnedTransitions,groundedEntities:third.facets.advanced.groundedWorld.entities.length,predictionErrors:third.facets.advanced.worldModel2.predictionErrors.length},null,2));

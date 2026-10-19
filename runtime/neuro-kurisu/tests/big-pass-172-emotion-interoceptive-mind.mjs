@@ -1,0 +1,57 @@
+import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { EmotionAppraisalEngine } from '../src/organism/system/EmotionAppraisalEngine.ts';
+import { P66InteroceptiveHomeostasis } from '../src/organism/cognition/P66InteroceptiveHomeostasis.ts';
+
+const e = new EmotionAppraisalEngine();
+const calmBody = e.observeInteroception({energy01:.88,thermal01:.16,capacity01:.9,load01:.12,homeostaticPressure01:.08});
+const first = e.appraise({tick:1,at:1001,novelty01:.8,uncertainty01:.5,predictionError01:.1,homeostaticPressure01:.08,success01:.92,goalPressure01:.25,goalCongruence01:.9,controllability01:.8});
+assert.ok(calmBody.cycles===1 && calmBody.lastMismatch01<.25);
+assert.equal(first.label,'curiosity');
+assert.ok(first.valence01>.55,'successful episode should be positively valenced');
+const firstAgain = e.appraise({tick:1,at:1001,novelty01:.8,uncertainty01:.5,predictionError01:.1,homeostaticPressure01:.08,success01:.92,goalPressure01:.25,goalCongruence01:.9,controllability01:.8});
+assert.notEqual(first.id, firstAgain.id,'episode IDs must be unique within one process even with same tick/time');
+
+e.observeInteroception({energy01:.18,thermal01:.86,capacity01:.24,load01:.88,homeostaticPressure01:.9});
+const stressed = e.appraise({tick:3,at:1003,novelty01:.2,uncertainty01:.9,predictionError01:.85,homeostaticPressure01:.9,success01:.12,goalPressure01:.9,goalCongruence01:.15,controllability01:.15});
+assert.ok(['anxiety','frustration','protective'].includes(stressed.label));
+const feeling = e.inferFeeling(stressed,{energy01:.18,cognitiveLoad01:.88,uncertainty01:.9,selfFocus01:.8});
+assert.ok(feeling.interoceptiveMismatch01>.1 && feeling.bodilyFocus01>.5);
+for(let i=0;i<4;i++) e.recordOutcome({action:'rest',success01:.9,surprise01:.1,regulationCost01:.2});
+assert.ok((e.outcomeCalibration('rest')?.attempts??0)===4);
+assert.ok(e.actionBias('rest')>e.actionBias('explore'),'high interoceptive pressure plus good rest outcomes should favor regulation');
+const es=e.snapshot(); const er=new EmotionAppraisalEngine(); er.restore(es); assert.deepEqual(er.snapshot(),es);
+
+const h = new P66InteroceptiveHomeostasis();
+const high = h.observe({tick:1,at:1,energy01:.2,thermal01:.9,capacity01:.25,load01:.9,awake:true,uncertainty01:.8,predictionError01:.8,novelty01:.2});
+assert.equal(high.mode,'recover'); assert.ok(high.pressure01>.5);
+for(let i=2;i<=10;i++) h.observe({tick:i,at:i,energy01:.84,thermal01:.2,capacity01:.86,load01:.2,awake:true,uncertainty01:.1,predictionError01:.08,novelty01:.1});
+const hs=h.summary(); assert.ok(hs.recoveryDebt01<.45,'recovery debt should dissipate during sustained recovery');
+const hr=new P66InteroceptiveHomeostasis(); hr.restore(h.snapshot()); assert.deepEqual(hr.snapshot(),h.snapshot());
+
+async function runBody(file, low){
+ const c=new OrganismCore(new FileStateStore(file),{enableLanguage:false,performanceProfile:'mobile',checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1}); await c.init();
+ for(let i=0;i<10;i++){
+   const energy=low?.24:.86, capacity=low?.34:.88, load=low?.8:.18, uncertainty=low?.68:.16, novelty=i%3===0?.72:.25;
+   await c.observe({text:`172-${low?'stressed':'stable'}-${i}`,novelty,success:low?.2:.9,embodiment:{bodyEnergy01:energy,cognitiveCapacity01:capacity,thermalStrain01:low?.72:.16,sensoryFreshness01:.9,awake:true,battery01:energy,cpuLoad01:load,ramPressure01:load},worldContext:{location:'lab',facts:[low?'resource-stress':'stable-body'],objects:['sensor'],events:[low?'strain':'stable'],energy,attention:capacity,uncertainty}});
+   await c.feedback({success:low?.2:.9,reward:low?-.2:.6,surprise:low?.7:.1,evidenceSource:i%3===0?'device':'user'});
+ }
+ await c.flush(); return c;
+}
+const root=await mkdtemp(join(tmpdir(),'nk172-')); const stableFile=join(root,'stable.json'), stressFile=join(root,'stress.json');
+const stable=await runBody(stableFile,false), stressCore=await runBody(stressFile,true);
+const stableS=stable.emotionAppraisalSnapshot(), stressS=stressCore.emotionAppraisalSnapshot();
+assert.ok(stableS.interoception.cycles>=10 && stressS.interoception.cycles>=10);
+assert.ok(stressS.interoception.regulationPressure01>stableS.interoception.regulationPressure01,'body state must alter affective regulation pressure');
+assert.ok(stressS.meanStress01>stableS.meanStress01,'sustained bodily stress must alter emotion state');
+assert.ok(stressCore.p66Summary().recoveryDebt01>stable.p66Summary().recoveryDebt01,'homeostatic recovery debt must track persistent body strain');
+const stressR=new OrganismCore(new FileStateStore(stressFile),{enableLanguage:false,performanceProfile:'mobile',checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1}); await stressR.init();
+assert.equal(stressR.emotionAppraisalSnapshot().interoception.cycles,stressS.interoception.cycles);
+assert.equal(stressR.p66Summary().recoveryDebt01,stressCore.p66Summary().recoveryDebt01);
+stable.stop?.(); stressCore.stop?.(); stressR.stop?.(); await rm(root,{recursive:true,force:true});
+
+console.log(JSON.stringify({pass:172,status:'PASS',direct:{episodeIdsUnique:true,positiveValence:first.valence01,stressLabel:stressed.label,feelingMismatch:feeling.interoceptiveMismatch01,restBias:e.actionBias('rest')},p66:{highMode:high.mode,highPressure:high.pressure01,recoveryDebtAfterRecovery:hs.recoveryDebt01},core:{stableInteroCycles:stableS.interoception.cycles,stressInteroCycles:stressS.interoception.cycles,stableRegulation:stableS.interoception.regulationPressure01,stressRegulation:stressS.interoception.regulationPressure01,stableMeanStress:stableS.meanStress01,stressMeanStress:stressS.meanStress01,stableRecoveryDebt:stable.p66Summary().recoveryDebt01,stressRecoveryDebt:stressCore.p66Summary().recoveryDebt01,restart:true}},null,2));

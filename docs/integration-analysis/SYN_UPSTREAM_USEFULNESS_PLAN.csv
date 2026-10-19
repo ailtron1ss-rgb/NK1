@@ -1,0 +1,23 @@
+source,archive,contribution,candidate_useful_mechanisms,canonical_target,integration_constraints,priority
+WILL,will-main.zip,P0/P1,"Action/result reafference, affordance synthesis, skill competence","WillIntegrationBridge, ActionGateway, exact decision receipt, Temporal Credit",Differential source-to-canonical audit; no second arbiter or learner,P0
+Lumina,lumina-main.zip,P1,"Dreaming, temporal decay, staged toolmaker, memory candidate patterns",MemoryFabric lifecycle; existing ActionGateway and provider adapters,"Fix UTC cursor/fidelity, approved-only sandbox tools, no second memory",P1
+Hexis,Hexis-main.zip,P1,"Belief supersession/revert, provenance, capability evidence","MemoryOS2 revision groups, MemoryFabric diagnostics, release evidence",No second DB or independent belief authority,P1
+Mem0,mem0-main.zip,P1,"Entity extraction, update/conflict candidate logic",MemoryFabric and MemoryOS2,"Candidate producer only; preserve lineage, exact lifecycle receipts",P1
+OpenAI Agents SDK,openai-agents-python-main.zip,P1,"Tripwires, pre/post guards, handoff and tracing patterns","ActionGateway, API authorization, CEF correlation",Port contracts only; typed outcomes and current license/version review,P1
+Microsoft Agent Framework,agent-framework-main.zip,P1,"Middleware, typed events, task/handoff/error contract","ActionGateway, CEF, provider/session adapters",No duplicate orchestration runtime; extract only identified gap,P1
+OpenClaw,openclaw-main.zip,"P1, security-first","Channels, pairing/auth, sessions, browser/device adapters","server API, capability registry, ActionGateway",Very large source: use targeted call graph; no bulk merge,P1
+Hermes Agent,hermes-agent-main.zip,P1,"Gateway/channel/session recovery, tool approval","Canonical API, action receipt, provider/session code",Avoid second gateway and second skill/tool registry,P1
+llama.cpp,llama.cpp-master.zip,P1,"Local GGUF inference, embedding/server adapter, resource controls",Provider-neutral adapter,Measure on actual target hardware; no cognitive subsystem copy,P1
+Chroma,chroma-main.zip,P1/P2,Metadata/hybrid retrieval and embedding-index patterns,Read-only candidate ranker for MemoryFabric,Enable only after held-out quality/resource win,P2
+FAISS,faiss-main.zip,P2,Similarity index performance and CPU/GPU tradeoffs,Retrieval adapter candidate,Benchmark against existing ranking and memory size,P2
+DSPy,dspy-main.zip,P2,Offline prompt/program optimization and evaluation,"research/offline eval, versioned config diff",No live prompt auto-mutation; fixed holdout split,P2
+Agent0,Agent0-main.zip,P2 research,Curriculum/task generation and capability evaluation,bounded research runner and skill promotion gate,No RL/training executor in production runtime,P2
+Hyperon/MeTTa,hyperon-experimental-main.zip,P3 research,Symbolic reasoning and premise traces,typed evidence adapter,No direct execution authority or consciousness claim,P3
+AutoGPT,AutoGPT-master.zip,P1/P2 selective,"Project orchestration UX, task history, tracing",existing project runner/Runtime Atlas,Path-specific license gate; no platform bulk copy,P2
+AutoGen,autogen-main.zip,P2 reference,Agent message/task orchestration history,compare vs Agent Framework,Avoid duplicate multi-agent coordinator,P2
+Langroid,langroid-main.zip,P2 reference,Typed task delegation and message contracts,existing task/tool interfaces,Use only for a documented gap,P2
+OWL,owl-main.zip,P2 reference,Task automation and tool adapters,select MCP/search/browser gaps,Permission and tool lifecycle remain canonical,P2
+PocketFlow,PocketFlow-main.zip,P2 simplification,Small workflow state graph and retry patterns,existing project-step execution,Port only if complexity/latency measurably drops,P2
+Letta copy A,letta-main.zip,P3 provenance,Agent state/memory ideas,document/hash one source reference,Do not import another writable memory architecture,P3
+Letta copy B,letta-main (1).zip,P3 provenance,Incomplete/duplicate docs snapshot,one source provenance row,Keep source; no duplicate data store,P3
+Superpowers,superpowers-main.zip,P3 process,Implementation/review discipline,engineering workflow,"Process reference only, not a runtime feature",P3

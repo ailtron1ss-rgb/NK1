@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nomega"
+version = "1.35.0.dev0"
+description = "Execution-grounded neural-symbolic cognitive self-development research platform"
+requires-python = ">=3.11"
+dependencies = ["torch>=2.0"]
+
+[tool.setuptools.packages.find]
+include = ["core*", "core.nomega*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

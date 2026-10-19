@@ -1,0 +1,14 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const files=['src/organism/cognition/CognitivePressureField.ts','tests/big-pass-55-cognitive-pressure.mjs','tests/big-pass-55-p27-passive-learning.mjs'];
+for(const f of files) assert(fs.existsSync(f),`missing ${f}`);
+const planner=fs.readFileSync('src/organism/core/CognitiveExecutionPlanner.ts','utf8');
+const core=fs.readFileSync('src/organism/core/OrganismCore.ts','utf8');
+const p27=fs.readFileSync('src/organism/cognition/P27NeuralWorldFoundation.ts','utf8');
+assert(planner.includes('CognitivePressureFieldState'));
+assert(planner.includes('pressureAllows'));
+assert(core.includes('new CognitivePressureField()'));
+assert(core.includes('cognitivePressureField.compile'));
+assert(core.includes('cognitivePressureSnapshot'));
+assert(p27.includes('observePassiveTransition'));
+console.log('BIG_PASS_55_AUDIT=PASS');

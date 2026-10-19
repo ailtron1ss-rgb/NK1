@@ -1,0 +1,38 @@
+# Architecture and ownership
+
+```text
+                    ┌──────────────────────────────┐
+                    │     Neuro-Kurisu 35.40       │
+                    │ runtime/neuro-kurisu         │
+                    │ canonical writable organism  │
+                    └──────────────┬───────────────┘
+                                   │ HTTP API
+                         ┌─────────▼─────────┐
+                         │ app / Grok shell  │
+                         │ routing + UI + HUD│
+                         └──────┬─────┬──────┘
+                                │     │
+                   postMessage │     │ research HTTP
+                                │     │
+            ┌───────────────────▼┐   ┌▼────────────────────┐
+            │ Live2D / legacy    │   │ research bridge     │
+            │ visual-only        │   │ read-only probes    │
+            └────────────────────┘   └──────┬─────────────┘
+                                             │
+                           ┌─────────────────┼─────────────────┐
+                           │                 │                 │
+                    NeuroCore V143    NOMEGA Pass20     DeepCode v21
+                    research-only     governed-research research-only
+
+legacy/* and legacy/input-archives preserve source history/provenance only.
+```
+
+## Runtime data flow
+
+`app/src/neuro-kurisu/api.ts` → `/api/organism/*` → `runtime/neuro-kurisu/src/server/server.mjs` → `OrganismRuntime` / `OrganismCore`.
+
+`AvatarStage.tsx` receives canonical emotion/speaking state and sends only rendering commands to Live2D. On Live2D failure the UI explicitly offers the real legacy sprite path; no synthetic portrait is drawn.
+
+`ResearchDock.tsx` → `/api/research/*` → `research/research_bridge.py` → isolated research candidates. No research endpoint mutates canonical runtime state.
+
+`tools/super-gateway.mjs` provides one local entry surface and forwards `/api/organism/*` and `/api/research/*` to their owners.

@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import { NeuralEcologyRouter } from '../src/organism/system/NeuralEcologyRouter.ts';
+import { DualTimescaleMemoryBridge } from '../src/organism/system/DualTimescaleMemoryBridge.ts';
+import { NeuralPhaseTransitionDetector } from '../src/organism/system/NeuralPhaseTransitionDetector.ts';
+import { SelfGeneratedCurriculumEngine } from '../src/organism/system/SelfGeneratedCurriculumEngine.ts';
+import { CounterfactualWorldCompiler } from '../src/organism/system/CounterfactualWorldCompiler.ts';
+import { NeuralMorphogeneticConstraintSolver } from '../src/organism/system/NeuralMorphogeneticConstraintSolver.ts';
+import { NeuralDigitalCoevolutionController } from '../src/organism/system/NeuralDigitalCoevolutionController.ts';
+import { UnifiedDevelopmentalCompiler } from '../src/organism/system/UnifiedDevelopmentalCompiler.ts';
+import { NeuroDigitalEvolutionEngine } from '../src/organism/system/NeuroDigitalEvolutionEngine.ts';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+
+const input={surprise01:.72,novelty01:.66,goalPressure01:.58,memorySalience01:.74,energy01:.84,causalUncertainty01:.34,predictionError01:.42,coherence01:.82,plasticity01:.62,stability01:.74,repeat01:.78,reliability01:.84,reward01:.71,capabilityGap01:.69,resource01:.82};
+const r=new NeuralEcologyRouter(); const rr=r.route(input); assert.ok(rr.channel);
+const m=new DualTimescaleMemoryBridge(); for(let i=0;i<12;i++)m.update(input); assert.ok(m.summary().slow01>0);
+const p=new NeuralPhaseTransitionDetector(); const stable=p.observe(input); const unstable=p.observe({...input,energy01:.2,predictionError01:.95,coherence01:.15,plasticity01:.9,stability01:.1}); assert.ok(unstable.freeze01>stable.freeze01);
+const c=new SelfGeneratedCurriculumEngine(); const task=c.generate({skill:'causal-modeling',gap01:.82,novelty01:.72,uncertainty01:.66,energy01:.86,goalPressure01:.74}); assert.ok(task.priority01>.4); c.complete(task.id,.8);
+const cf=new CounterfactualWorldCompiler(); const yes=cf.compile({domain:'planning',baseline01:.82,intervention01:.55,uncertainty01:.14,resource01:.9,predictedGain01:.72}); assert.ok(yes.promoted);
+const mc=new NeuralMorphogeneticConstraintSolver(); const ok=mc.solve({demand01:.72,energy01:.86,stability01:.82,plasticity01:.64,uncertainty01:.28}); const blocked=mc.solve({demand01:.92,energy01:.12,stability01:.12,plasticity01:.9,uncertainty01:.86}); assert.ok(ok.feasible01>blocked.feasible01);
+const co=new NeuralDigitalCoevolutionController(); const co1=co.adapt({predictionError01:.22,reward01:.84,stability01:.78,resource01:.88,humanOrEnvironmentDrift01:.1}); const co2=co.adapt({predictionError01:.86,reward01:.38,stability01:.22,resource01:.44,humanOrEnvironmentDrift01:.72}); assert.ok(co2.alignment01<co1.alignment01);
+const dev=new UnifiedDevelopmentalCompiler(); const dv=dev.decide({gap01:.82,uncertainty01:.32,phaseFreeze01:.1,counterfactualSupport01:.8,coadaptation01:.72,resourceDebt01:.1,causalConfidence01:.78}); assert.equal(dv.operation,'learn');
+const eng=new NeuroDigitalEvolutionEngine(); for(let i=0;i<20;i++)eng.cycle(input); const s=eng.summary(); assert.ok(s.cycles>=20); assert.ok(s.curriculum.tasksCreated>=20); assert.ok(s.counterfactual.compiled>=20); assert.ok(s.developmental.cycles>=20);
+const store=new MemoryStateStore(); const cfg={enableLanguage:false,checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1,cycleResultMode:'operational',performanceProfile:'mobile',enableWorldModel:true,enableSelfProjects:true,enableAgencyModel:true,enableLifelongLearning:true}; const core=new OrganismCore(store,cfg); await core.init(); for(let i=0;i<18;i++) await core.autonomousHeartbeat(700000+i*10000); await core.flush(); const s1=core.systemSnapshot(); assert.ok(s1.neuroDigitalEvolution?.cycles>0); const core2=new OrganismCore(store,cfg); await core2.init(); const s2=core2.systemSnapshot(); assert.equal(s2.neuroDigitalEvolution?.cycles,s1.neuroDigitalEvolution?.cycles); assert.equal(s2.neuroDigitalEvolution?.curriculum.tasksCreated,s1.neuroDigitalEvolution?.curriculum.tasksCreated);
+console.log(JSON.stringify({pass:'BIG_PASS_242_249_NEURO_DIGITAL_EVOLUTION',verified:true,standalone:{route:rr,phase:unstable,dualMemory:m.summary(),curriculum:c.summary(),counterfactual:cf.summary(),constraints:mc.summary(),coev:co.summary(),development:dev.summary()},core:{cycles:s1.neuroDigitalEvolution.cycles,tasks:s1.neuroDigitalEvolution.curriculum.tasksCreated,promoted:s1.neuroDigitalEvolution.counterfactual.promoted,developmentIndex01:s1.neuroDigitalEvolution.developmental.developmentIndex01,restartPreserved:true}},null,2));

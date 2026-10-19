@@ -1,0 +1,284 @@
+{
+  "title": "Neuro-Kurisu SUPER — reconciled weighted implementation roadmap and pass-completion scorecard — WorkPass58",
+  "date": "2026-10-17",
+  "workpass": 58,
+  "baseArchive": "Neuro_Kurisu_WORKPASS57_2026-10-17.zip",
+  "runtime": "35.78.0",
+  "schema": 225,
+  "method": "Two distinct percentages are tracked. Pass completion is completed WorkPass58 implementation deliverables divided by eight scoped deliverables; verification tests support delivery but do not count as extra progress items. Official weighted roadmap/release readiness remains 78.0%, unchanged because live provider/device, installed app/browser E2E, independent memory uplift, local target inference, rollback, source license review and soak remain open.",
+  "overallPercent": 78.0,
+  "previousOfficialScorePercent": 78.0,
+  "deltaPercentagePoints": 0.0,
+  "remainingWeightedRoadmapPoints": 22.0,
+  "workstreams": [
+    {
+      "id": "A",
+      "name": "Canonical source lineage and single-owner architecture",
+      "weight": 15,
+      "completionPercent": 100,
+      "weightedPoints": 15,
+      "previousPercent": 100,
+      "rationale": "Single writable organism state/memory authorities preserved. WorkPass39 adds a read-only cognitive ownership map and typed flow validation without parallel runtime state."
+    },
+    {
+      "id": "B",
+      "name": "Runtime integration, API/UI routes and smoke/linkage coverage",
+      "weight": 15,
+      "completionPercent": 98,
+      "weightedPoints": 14.7,
+      "previousPercent": 96,
+      "rationale": "Any structured API approvalRequired challenge can now pause the actual originating call, show a redacted preview and resume its captured JSON request exactly once after explicit approval. The cross-surface queue is now read-only to avoid conflicting approvals. Dependency-installed Vite and browser E2E remain open."
+    },
+    {
+      "id": "C",
+      "name": "Memory 2.0, retrieval/admission and benchmark evidence",
+      "weight": 15,
+      "completionPercent": 72,
+      "weightedPoints": 10.8,
+      "previousPercent": 70,
+      "rationale": "Memory admission now respects net utility, harm/redundancy and provenance even without budget pressure. Independent labelled temporal holdout remains open and retrieval uplift is still zero."
+    },
+    {
+      "id": "D",
+      "name": "Agency, action schema, execution, outcome and reafference",
+      "weight": 20,
+      "completionPercent": 82,
+      "weightedPoints": 16.4,
+      "previousPercent": 80,
+      "rationale": "WorkPass57 hardens outcome truth and delayed evidence correlation: external postcondition mismatch is distinct from success; inferred durable idempotency protects legacy mutation registrations; late observations survive bounded-index eviction/migration; learning credit now requires source provenance and independence. Simulated integrations pass; real provider/device postconditions and reconnect/replay remain open. WorkPass58 adds preflight across the complete reusable-skill candidate set and project tool path before partial execution/budget spend; real adapter E2E remains open."
+    },
+    {
+      "id": "E",
+      "name": "Portable subject continuity and social/known-entity dossier",
+      "weight": 10,
+      "completionPercent": 76,
+      "weightedPoints": 7.6,
+      "previousPercent": 75,
+      "rationale": "Unified cycle verification is tied to actual same-tick causal edges; this improves continuity evidence but is not a claim of subjective consciousness."
+    },
+    {
+      "id": "F",
+      "name": "External transport, SDK, idempotency and replay",
+      "weight": 10,
+      "completionPercent": 42,
+      "weightedPoints": 4.2,
+      "previousPercent": 42,
+      "rationale": "Stable IDs for new evidence and legacy ID continuity are improved; external transport delivery receipts/reconnect and multi-provider reconciliation remain open. WorkPass58 stops external HTTP callers from self-asserting autonomous provenance and keeps normalized decision identity across approval/resume; live transport validation remains open."
+    },
+    {
+      "id": "G",
+      "name": "Research promotion and controlled experiments",
+      "weight": 5,
+      "completionPercent": 70,
+      "weightedPoints": 3.5,
+      "previousPercent": 66,
+      "rationale": "WorkPass40 reviews the existing source archives and upstream contracts, adds SBOM/provenance inventory, and adapts the documented OpenAI-compatible llama.cpp endpoint into the existing P40 model ecology. External source clones and target-hardware inference remain pending where network or target hardware is unavailable."
+    },
+    {
+      "id": "H",
+      "name": "Release durability: build, E2E, rollback, soak, SBOM/provenance",
+      "weight": 10,
+      "completionPercent": 58,
+      "weightedPoints": 5.8,
+      "previousPercent": 46,
+      "rationale": "WorkPass57 aligns root/runtime pass metadata, expands architecture audit to cross-package source imports, and passes source hygiene, integrity, syntax, receipt and recovery checks. Installed Vite/browser E2E, live provider/device validation, clean-room rollback, manual nested-source license sign-off and soak remain open. WorkPass58 aligns root/runtime release metadata and current-pass docs; root metadata contract and final packaged archive are revalidated before delivery, while actual release gates remain open."
+    }
+  ],
+  "normalizedTaskInventory": {
+    "count": 72,
+    "counts": {
+      "DONE": 54,
+      "PARTIAL": 10,
+      "TODO": 8
+    }
+  },
+  "openReleaseGates": [
+    "Install app dependencies from canonical lockfile; run production Vite build and interactive browser/Live2D approval journeys.",
+    "Execute a multi-step reusable skill and project step against a real configured provider/device, then interrupt/restart and verify exact decisionId/executionId, no duplicate side effect and read-after-write postcondition.",
+    "Actual live language-provider idle session; real physical device/provider receipts, read-after-write postconditions, reconnect/replay and reconciliation.",
+    "Audio-buffer/phoneme timing for lipsync and controlled interruption/cancel.",
+    "Independent labelled Russian/English retrieval holdout with hard negatives, Recall@k/MRR/false-recall/latency; current broad recallDelta=0 and no candidate promoted.",
+    "Fault-injected clean-room state restore/rollback, complete nested-source license review, multi-hour soak and measured target-host inference."
+  ],
+  "environmentNote": "WorkPass58 implementation pass complete (8/8 scoped deliverables = 100%). Runtime typecheck and both W58 focused tests pass; the full inherited WorkPass57 regression suite passes when run independently. Root release metadata contract passes 34/34. Runtime archive manifest is regenerated. Official weighted readiness remains 78.0%; this pass does not close production release gates.",
+  "releaseStatus": "implementation-workpass; release gates remain open",
+  "limitations": [
+    "Prompt privacy uses bounded heuristic patterns and does not replace a full data classification or user consent policy.",
+    "Production React/Vite build and interactive browser Live2D E2E not run because app dependencies are not installed in the environment.",
+    "Real external provider/device receipts, reconnect/replay and ambiguous-outcome reconciliation remain open.",
+    "Actual audio/viseme synchronization and voice-session interruption are unverified.",
+    "Local llama.cpp adapter not tested against a real target-host model in this pass.",
+    "Independent labelled temporal retrieval holdout still shows no documented uplift; no candidate is promoted.",
+    "Clean-room fault-injected rollback, manual nested-source license review and endurance soak remain release gates.",
+    "Functional autonomy/personhood implementation does not by itself demonstrate subjective consciousness."
+  ],
+  "workpassImplementationProgressPercent": 100.0,
+  "implementationDeltasWorkPass36": [
+    {
+      "area": "Shared primitives",
+      "status": "DONE",
+      "evidence": "NumericPrimitives, StableSerialization, shared action cost policy; targeted runtime and adapter tests pass."
+    },
+    {
+      "area": "Memory durability/compatibility",
+      "status": "DONE",
+      "evidence": "64-entry bounded revision history, byte accounting, restore normalization, legacy source-lineage round trip."
+    },
+    {
+      "area": "Source archive immutability",
+      "status": "DONE",
+      "evidence": "8,512/8,512 source member SHA256 checks; 10,427 historical snapshot entries and 3,873 legacy dedup entries resolved."
+    },
+    {
+      "area": "Release deployment E2E",
+      "status": "OPEN",
+      "evidence": "Dependency-installed app build, browser and interactive Live2D E2E not completed in this environment."
+    },
+    {
+      "area": "Independent capability evidence",
+      "status": "OPEN",
+      "evidence": "Real local model/provider inference, independent temporal holdout, external postcondition/reafference, rollback and soak remain open."
+    },
+    "Shared Unicode tokenizer preserving Lumina/Conscio separators as options",
+    "Immutable SHA-256 content-addressed preimages for source-archive and historical snapshots",
+    "Revision-history memory-budget accounting and legacy memory lineage round-trip",
+    "Shared stable serialization retaining persisted legacy fingerprint bytes",
+    "ReleaseContract aligned to runtime package/integration manifest; schema-223 migration regression added"
+  ],
+  "passImplementationProgressPercent": 100.0,
+  "passImplementationProgress": 100.0,
+  "workpassImplementationProgress": 100.0,
+  "lastVerification": {
+    "checkedAt": "2026-10-17T16:45:05Z",
+    "workpass58Test": "PASS — composite skill/project preflight and HTTP idempotency status mapping",
+    "workpass57RuntimeSuite": "PASS — independently run; receipt integration 9/9; provider reconciliation 5 scenarios; crash/replay, memory indexing and embedding privacy pass",
+    "runtimeTypecheck": "PASS — TypeScript compiler, runtime 35.78.0",
+    "serverSyntax": "PASS — server.mjs and idempotency-response.mjs",
+    "rootReleaseMetadata": "PASS 34/34 after final W58 docs/scripts",
+    "releaseMetadataContract": "PASS 6/6",
+    "runtimeArchiveManifest": "PASS — regenerated with 4246 file entries",
+    "finalArchive": "PASS — 9,252 entries; all 9,243 baseline paths retained; 14 changed existing files + 9 additions; CRC and full source hash comparison PASS; UTF-8 filename flags 8/8. SHA-256 recorded in external sidecar.",
+    "memoryRetrievalBenchmark": "recallDelta=0; promotion=not-promoted",
+    "productionAppBuild": "OPEN — app dependencies not installed",
+    "liveProviderDeviceE2E": "OPEN — simulated integrations only",
+    "rootAuditQuick": "PASS — architecture 0 missing/cycles/leakage; hygiene 4027 files 0 errors/warnings; integrity 4033 files PASS; syntax 1346 JS/6 shell/247 JSON PASS; assets 0 errors",
+    "serverImports": "PASS — 12 checked, 0 missing",
+    "uiApiLinkage": "PASS — 130 routes, 49 surfaces, 5 required seams"
+  },
+  "remainingPercent": 22.0,
+  "workpass43Evidence": {
+    "runtime": "35.64.0",
+    "schema": 225,
+    "receiptCausalTests": "8/8 PASS",
+    "idempotencyTests": "13/13 PASS",
+    "ledgerArchiveTests": "4/4 PASS",
+    "reafferenceIntegration": "1/1 PASS",
+    "sourceArchivesVerified": "8512/8512",
+    "historicalSnapshotEntriesVerified": "10427/10427",
+    "historicalSnapshotSourcesChecked": 18935,
+    "legacyDedupEntries": 3873,
+    "historicalDuplicatePaths": 56,
+    "immutableHistoricalSourceBlobsAdded": 3,
+    "memoryRecallDelta": 0,
+    "memoryCandidatePromotion": "not-promoted",
+    "aggregateAudit": "TIMEOUT (not pass)",
+    "appBuild": "NOT RUN: app dependencies absent"
+  },
+  "workpass44Evidence": {
+    "runtime": "35.65.0",
+    "schema": 225,
+    "receiptCausalTests": "9/9 PASS",
+    "externalEvidenceReplay": "PASS",
+    "actionCrashReconciliation": "PASS",
+    "memoryTombstoneSafety": "PASS",
+    "memoryRecallDelta": 0,
+    "memoryCandidatePromotion": "not-promoted",
+    "providerSideIdempotency": "not yet evidenced with real provider/device",
+    "appBuild": "not run: dependencies absent",
+    "browserE2E": "not run",
+    "overallOfficialScorePercent": 78,
+    "passImplementationProgressPercent": 90,
+    "sourceArchiveMembersVerified": "8512/8512",
+    "historicalSnapshotEntriesVerified": "10427/10427",
+    "historicalSnapshotContentSourcesChecked": 18935,
+    "immutableHistoricalSourceBlobsAdded": 3,
+    "sourceManifestReferencesPinned": 12,
+    "metadataContract": "34/34 + contract tests 6/6 PASS",
+    "appScriptTests": "218/218 PASS",
+    "browserSmokeContract": "51/51 PASS",
+    "uiApiLinkage": "125 routes / 49 surfaces / zero missing required seams",
+    "assets": "PASS; zero errors",
+    "provenance": "PASS; 464 locked npm components / 8 source archives",
+    "officialScorePercent": 78
+  },
+  "latestPassEvidence": {
+    "workpass": 58,
+    "passCompletionPercent": 100.0,
+    "completedDeliverables": 8,
+    "totalDeliverables": 8,
+    "completedCodeChanges": [
+      "Reusable skill validates primary, learned-repair and fallback candidates before the first step and rejects missing/invalid parent idempotency key without partial execution.",
+      "Deterministic per-step idempotency and decision IDs; trusted host autonomous provenance and expected output fields are preserved through finalization.",
+      "Project tool validates the canonical tool and durable key before spending project budget; normalized approval/resume options retain stable decision identity.",
+      "Public project HTTP endpoints no longer accept client supplied autonomous=true as trustworthy provenance; key-preflight failures are explicit.",
+      "Added integrated regression test for no-partial-execution, receipt lineage, same-key replay and no-budget-spend preflight.",
+      "Replaced timer-based provider test race with a deterministic deferred barrier so concurrent index observers are validated against active work.",
+      "HTTP preflight statuses now distinguish invalid supplied keys (400) from missing required keys (428); route handlers share idempotencyPreflightHttpStatus and a focused regression test verifies the semantics."
+    ],
+    "stillOpen": [
+      "Physical provider/device side effect, independent read-after-write state and process crash/restart reconciliation.",
+      "Installed app dependencies, production Vite build and interactive browser/Live2D E2E.",
+      "Independent labelled memory retrieval uplift; current recallDelta=0.",
+      "Target-hardware local inference, audio/phoneme lipsync, clean-room rollback, complete nested-source license review and soak."
+    ]
+  },
+  "previousCumulativeImplementationProgressPercent": 71.9,
+  "passCompletion": {
+    "completed": 8,
+    "total": 8,
+    "percent": 100.0,
+    "formula": "DONE deliverables / all WorkPass58 scoped implementation deliverables * 100; tests are evidence, not separate work items.",
+    "items": [
+      {
+        "id": "P58-01",
+        "title": "Полный preflight составного навыка до первого шага",
+        "status": "DONE"
+      },
+      {
+        "id": "P58-02",
+        "title": "Стабильные decision IDs и происхождение на шагах reusable skill",
+        "status": "DONE"
+      },
+      {
+        "id": "P58-03",
+        "title": "Project tool preflight до списания бюджета",
+        "status": "DONE"
+      },
+      {
+        "id": "P58-04",
+        "title": "Запрет подделки autonomous provenance через HTTP API",
+        "status": "DONE"
+      },
+      {
+        "id": "P58-05",
+        "title": "Регрессионная интеграция: no-partial-execution, receipts и replay",
+        "status": "DONE"
+      },
+      {
+        "id": "P58-06",
+        "title": "Стабилизация теста фоновой индексации без произвольного таймера",
+        "status": "DONE"
+      },
+      {
+        "id": "P58-07",
+        "title": "Согласование runtime/root release metadata, backlog и архива WorkPass58",
+        "status": "DONE"
+      },
+      {
+        "id": "P58-08",
+        "title": "Различать некорректный idempotency key и отсутствующее предусловие на HTTP-границе",
+        "status": "DONE"
+      }
+    ]
+  }
+}

@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Neuro‑Kurisu · Live2D</title>
+  <style>
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#020806}
+    body{background-image:radial-gradient(circle at 50% 40%,rgba(0,255,120,.10),transparent 55%)}
+    #canvas-wrap{position:absolute;inset:0}
+    canvas{width:100%!important;height:100%!important}
+    #status{position:absolute;left:7px;bottom:6px;z-index:5;font:10px monospace;color:rgba(210,255,230,.42);pointer-events:none}
+  </style>
+</head>
+<body>
+<div id="canvas-wrap"><canvas id="canvas"></canvas></div>
+<div id="status">загрузка…</div>
+<script>
+(() => {
+  const status=document.getElementById('status');
+  const parent=window.parent;
+  let model=null,app=null,lipTarget=0,lipCurrent=0,lipFormTarget=0,lipFormCurrent=0,bodySignal={},assetProfile='auto',modelPath='./Kurisu/Kurisu.model3.json';
+  let lastIntentStateVersion=0,lastSpeechEventId=null,lastAudioClockId=null,lastAudioTimeMs=0;
+  let blinkT=0,blinkUntil=0,nextBlink=performance.now()+6500,nextSaccade=performance.now()+1200;
+  let eyeX=0,eyeY=0,targetEyeX=0,targetEyeY=0,lastMotionKey='';
+  const EXPR_MAP={
+    neutral:'Stanby Smile',happy:'Stanby Smile',sad:'Stanby Sad',angry:'Stanby Angry',
+    surprised:'Stanby Surprised',flustered:'Blush 1',embarrassed:'Blush 2',thinking:'Stanby Scared',
+    focused:'Stanby Smile',smile:'Stanby Smile',tender:'Blush 1',sarcastic:'Stanby Smile',
+    smug:'Stanby Smile',looking_away:'Stanby Scared',tired:'Stanby Scared'
+  };
+  const clamp=(n,a,b)=>Math.max(a,Math.min(b,Number.isFinite(Number(n))?Number(n):0));
+  function loadScript(src,fallback){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>fallback?loadScript(fallback).then(resolve,reject):reject(new Error('не удалось загрузить '+src));document.head.appendChild(s)})}
+  function send(type,extra={}){try{parent&&parent.postMessage({type,...extra},window.location.origin)}catch{}}
+  function setCore(id,value){try{const core=model?.internalModel?.coreModel;if(core?.setParameterValueById)core.setParameterValueById(id,value)}catch{}}
+  function applyEmbodiment(d){
+    bodySignal=d||{};
+    setCore('ParamAngleX',clamp(bodySignal.gazeX,-1,1)*30);
+    setCore('ParamAngleY',clamp(bodySignal.gazeY,-1,1)*20);
+    setCore('ParamAngleZ',clamp(bodySignal.headTilt,-.15,.15)*35);
+    setCore('ParamEyeBallX',clamp(bodySignal.gazeX,-1,1));
+    setCore('ParamEyeBallY',clamp(bodySignal.gazeY,-1,1));
+    const mouth=clamp(bodySignal.mouthOpen,0,1), emph=clamp(bodySignal.voiceEmphasis,0,1), intensity=clamp(bodySignal.expressionIntensity,.0,1);
+    lipTarget=bodySignal.speaking?mouth:0.015;
+    lipFormTarget=bodySignal.speaking?clamp(bodySignal.mouthForm,-1,1):0;
+    setCore('ParamMouthOpenY',Math.max(lipTarget,mouth+emph*.08));
+    if(!bodySignal.speaking) setCore('ParamMouthForm',(intensity-.5)*.8);
+    if(bodySignal.expression) applyExpression(bodySignal.expression);
+    if(bodySignal.motionGroup){const token=Number.isSafeInteger(bodySignal.motionToken)&&bodySignal.motionToken>=0?bodySignal.motionToken:0;const k=`${String(bodySignal.motionGroup)}:${Number(bodySignal.motionIndex||0)}:${token}`;if(k!==lastMotionKey){try{model.motion(String(bodySignal.motionGroup),Number(bodySignal.motionIndex||0));lastMotionKey=k}catch{}}}
+  }
+  function applyExpression(expr){try{model?.expression(EXPR_MAP[expr]||EXPR_MAP.neutral)}catch{}}
+  function chooseProfile(){
+    const requested=new URLSearchParams(location.search).get('profile');
+    if(['mobile','balanced','quality'].includes(requested||'')) return requested;
+    const mem=Number(navigator.deviceMemory||0);
+    const touch=Number(navigator.maxTouchPoints||0)>0;
+    return mem>0&&mem<=6 ? 'mobile' : (touch && Math.min(innerWidth,innerHeight)<900 ? 'mobile' : 'balanced');
+  }
+  function modelForProfile(profile){
+    if(profile==='mobile') return './Kurisu.mobile/Kurisu-mobile.model3.json';
+    return './Kurisu/Kurisu.model3.json';
+  }
+  async function boot(){
+    try{
+      assetProfile=chooseProfile();
+      modelPath=modelForProfile(assetProfile);
+      status.textContent=`ядро · ${assetProfile}`;
+      // Use only the versioned assets shipped with this release. A missing local
+      // runtime is a packaging error: fail visibly and let AvatarStage offer the
+      // real Legacy sprite fallback instead of executing unpinned remote code.
+      await loadScript('./vendor/pixi.min.js');
+      await loadScript('./vendor/live2dcubismcore.min.js');
+      await loadScript('./vendor/cubism4.min.js');
+      const PIXI=window.PIXI;
+      if(!PIXI?.live2d)throw new Error('Live2D runtime не найден');
+      app=new PIXI.Application({view:document.getElementById('canvas'),autoStart:true,backgroundAlpha:0,resizeTo:window,antialias:true,powerPreference:'low-power'});
+      const {Live2DModel}=PIXI.live2d;
+      model=await Live2DModel.from(modelPath,{autoInteract:false});
+      if(!model?.width)throw new Error('модель без размера');
+      const fit=()=>{if(!model)return;const scale=Math.min(app.screen.width/model.width,app.screen.height/model.height)*.92;model.scale.set(scale);model.x=app.screen.width/2;model.y=app.screen.height*.98;model.anchor.set(.5,1)};
+      fit();window.addEventListener('resize',fit,{passive:true});app.stage.addChild(model);
+      status.textContent=`ок · ${assetProfile}`;send('live2d_ready',{profile:assetProfile,modelPath});
+      app.ticker.add(() => {
+        if(!model)return;
+        const now=performance.now();
+        const active=Boolean(bodySignal.speaking||bodySignal.expressionIntensity>.5||bodySignal.gesture);
+        const targetFps=active?30:14;
+        const every=1000/targetFps;
+        if(now-(model.__nkLastFrame||0)<every)return;model.__nkLastFrame=now;
+        lipCurrent+=(lipTarget-lipCurrent)*.30;
+        lipFormCurrent+=(lipFormTarget-lipFormCurrent)*.30;
+        eyeX+=(targetEyeX-eyeX)*.08;eyeY+=(targetEyeY-eyeY)*.08;
+        if(now>=nextBlink){blinkT=1;blinkUntil=now+115;nextBlink=now+6500+Math.random()*7500}
+        if(blinkT>0){blinkT*=.72;if(now>blinkUntil)blinkT=Math.max(0,blinkT-.12)}
+        if(!bodySignal.gazeDriven&&now>=nextSaccade){targetEyeX=(Math.random()-.5)*.35;targetEyeY=(Math.random()-.5)*.18;nextSaccade=now+1100+Math.random()*3200}
+        setCore('ParamMouthOpenY',lipCurrent);
+        setCore('ParamMouthForm',bodySignal.speaking?lipFormCurrent:(clamp(bodySignal.expressionIntensity,0,1)-.5)*.8);
+        setCore('ParamEyeLOpen',1-blinkT);setCore('ParamEyeROpen',1-blinkT);
+        if(bodySignal.gazeDriven){setCore('ParamEyeBallX',clamp(bodySignal.gazeX,-1,1));setCore('ParamEyeBallY',clamp(bodySignal.gazeY,-1,1))}else if(!bodySignal.gazeX&&!bodySignal.gazeY){setCore('ParamEyeBallX',eyeX);setCore('ParamEyeBallY',eyeY)}
+      });
+    }catch(err){status.textContent='fallback';send('live2d_error',{error:String(err?.message||err)})}
+  }
+  document.getElementById('canvas').addEventListener('pointerdown',ev=>{
+    if(!model)return;
+    const r=ev.currentTarget.getBoundingClientRect();
+    const nx=(ev.clientX-r.left)/Math.max(1,r.width), ny=(ev.clientY-r.top)/Math.max(1,r.height);
+    const zone=ny<0.50?'head':'body';
+    try{model.motion(zone==='head'?'TapHead':'TapBody')}catch{}
+    send('live2d_tap',{zone,nx,ny});
+  },{passive:true});
+  const isRecord=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+  const finiteNumber=(value,min,max,fallback=0)=>typeof value==='number'&&Number.isFinite(value)?clamp(value,min,max):fallback;
+  function sanitizeIntent(d){
+    if(d.protocolVersion!==1||!Number.isSafeInteger(d.stateVersion)||d.stateVersion<=lastIntentStateVersion)return null;
+    if(typeof d.sentAtEpochMs!=='number'||!Number.isFinite(d.sentAtEpochMs))return null;
+    if(!['idle','starting','speaking','ended','cancelled','unknown'].includes(d.speechPhase))return null;
+    const speechEventId=d.speechEventId===null?null:(typeof d.speechEventId==='string'&&d.speechEventId.length<=180?d.speechEventId:null);
+    const audioClockId=d.audioClockId===null?null:(typeof d.audioClockId==='string'&&d.audioClockId.length<=220?d.audioClockId:null);
+    if(d.speechEventId!==null&&speechEventId===null)return null;
+    if(d.audioClockId!==null&&audioClockId===null)return null;
+    if(d.speechPhase==='speaking'&&(!speechEventId||!audioClockId))return null;
+    if(typeof d.audioTimeMs!=='number'||!Number.isFinite(d.audioTimeMs)||d.audioTimeMs<0)return null;
+    if(d.clockSource!=='none'&&d.clockSource!=='speech-synthesis-boundary-anchored-monotonic'&&d.clockSource!=='speech-synthesis-elapsed-time-anchored-monotonic')return null;
+    if(typeof d.priority!=='number'||!Number.isFinite(d.priority)||d.priority<0||d.priority>100)return null;
+    const cancellationToken=d.cancellationToken===null?null:(typeof d.cancellationToken==='string'&&d.cancellationToken.length<=220?d.cancellationToken:null);
+    if(d.cancellationToken!==null&&cancellationToken===null)return null;
+    if(d.speechPhase==='cancelled'&&(!speechEventId||cancellationToken!==`cancel:${speechEventId}`))return null;
+    if(!d.mouth||typeof d.mouth!=='object'||!d.gaze||typeof d.gaze!=='object'||!d.body||typeof d.body!=='object')return null;
+    if(typeof d.expression!=='string'||!Object.prototype.hasOwnProperty.call(EXPR_MAP,d.expression))return null;
+    if(typeof d.mouth.viseme!=='string'||!/^[a-z]{1,16}$/.test(d.mouth.viseme))return null;
+    if(typeof d.gaze.driven!=='boolean'||typeof d.body.gesture!=='boolean')return null;
+    if(typeof d.body.motionGroup!=='string'||!/^[a-zA-Z0-9_-]{1,32}$/.test(d.body.motionGroup))return null;
+    if(!Number.isInteger(d.body.motionIndex)||d.body.motionIndex<0||d.body.motionIndex>32||!Number.isSafeInteger(d.body.motionToken)||d.body.motionToken<0)return null;
+    return {
+      protocolVersion:1,
+      stateVersion:d.stateVersion,
+      sentAtEpochMs:d.sentAtEpochMs,
+      speechEventId,
+      audioClockId,
+      speechPhase:d.speechPhase,
+      audioTimeMs:d.audioTimeMs,
+      clockSource:d.clockSource,
+      priority:d.priority,
+      cancellationToken,
+      speaking:d.speechPhase==='speaking',
+      mouthOpen:finiteNumber(d.mouth.open,0,1),
+      mouthForm:finiteNumber(d.mouth.form,-1,1),
+      viseme:d.mouth.viseme,
+      expression:d.expression,
+      expressionIntensity:finiteNumber(d.expressionIntensity,0,1),
+      gazeX:finiteNumber(d.gaze.x,-1,1),
+      gazeY:finiteNumber(d.gaze.y,-1,1),
+      gazeDriven:d.gaze.driven,
+      headTilt:finiteNumber(d.body.headTilt,-.15,.15),
+      gesture:d.body.gesture,
+      motionGroup:d.body.motionGroup,
+      motionIndex:d.body.motionIndex,
+      motionToken:d.body.motionToken,
+      voiceEmphasis:finiteNumber(d.voiceEmphasis,0,1),
+    };
+  }
+  window.addEventListener('message',ev=>{
+    // A single versioned EmbodimentIntent is the only parent->Live2D control contract.
+    // Origin + source checks reject unrelated frames; sequence checks reject stale async events.
+    if(ev.origin!==window.location.origin||ev.source!==window.parent)return;
+    const d=ev.data;
+    if(!isRecord(d)||d.type!=='kurisu_embodiment_intent')return;
+    const intent=sanitizeIntent(d);
+    if(!intent)return;
+    if(intent.speechEventId===lastSpeechEventId&&intent.audioClockId===lastAudioClockId&&intent.speechPhase==='speaking'&&intent.audioTimeMs+1<lastAudioTimeMs)return;
+    lastIntentStateVersion=intent.stateVersion;
+    if(intent.speechEventId!==lastSpeechEventId||intent.audioClockId!==lastAudioClockId){lastAudioTimeMs=0;lastSpeechEventId=intent.speechEventId;lastAudioClockId=intent.audioClockId;}
+    if(intent.speechPhase==='speaking')lastAudioTimeMs=Math.max(lastAudioTimeMs,intent.audioTimeMs);
+    else lastAudioTimeMs=Math.max(lastAudioTimeMs,intent.audioTimeMs);
+    if(intent.speechPhase==='cancelled'||intent.speechPhase==='ended'||intent.speechPhase==='idle'||intent.speechPhase==='unknown'){
+      intent.speaking=false;intent.mouthOpen=0.015;intent.mouthForm=0;intent.voiceEmphasis=0;
+    }
+    applyEmbodiment(intent);
+  });
+  boot();
+})();
+</script>
+</body>
+</html>

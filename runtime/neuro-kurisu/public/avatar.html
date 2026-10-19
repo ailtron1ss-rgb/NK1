@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Neuro‑Kurisu · Live2D Viewer</title>
+  <style>
+    :root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif}
+    html,body{margin:0;min-height:100%;background:#071018;color:#e8eef6}
+    body{display:grid;min-height:100vh}
+    .shell{position:relative;min-height:100vh;overflow:hidden;background:radial-gradient(circle at 50% 30%,rgba(96,160,255,.10),transparent 48%),#071018}
+    iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent}
+    .hud{position:absolute;left:10px;right:10px;bottom:10px;display:flex;justify-content:space-between;gap:8px;pointer-events:none;font:10px ui-monospace,monospace;color:rgba(232,238,246,.45)}
+    .chip{background:rgba(5,12,18,.65);border:1px solid rgba(130,160,190,.16);padding:5px 8px;border-radius:999px;backdrop-filter:blur(5px)}
+    .fallback{position:absolute;inset:0;display:none;place-items:center;background:radial-gradient(circle at 50% 35%,rgba(190,138,216,.16),transparent 42%),#111822}
+    .fallback-card{text-align:center;color:#b9c7d6}
+    .fallback-avatar{width:min(52vw,280px);aspect-ratio:.75;margin:auto;position:relative}
+    .fallback-hair{position:absolute;inset:4% 8% 0;background:linear-gradient(155deg,#9b2f24,#57191b);border-radius:50% 50% 42% 42%}
+    .fallback-face{position:absolute;left:22%;right:22%;top:19%;height:47%;background:#f1d3bf;border-radius:46% 46% 42% 42%}
+    .eye{position:absolute;top:42%;width:11%;height:5px;border-radius:8px;background:#2d3441}.eye.left{left:26%}.eye.right{right:26%}
+    .mouth{position:absolute;left:40%;top:61%;width:20%;height:7px;border-bottom:2px solid #9c5f69;border-radius:50%}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <iframe id="live2d" title="Neuro-Kurisu Live2D" src="/live2d/viewer.html?profile=auto" allow="autoplay"></iframe>
+  <div id="fallback" class="fallback"><div class="fallback-card"><div class="fallback-avatar"><div class="fallback-hair"></div><div class="fallback-face"><span class="eye left"></span><span class="eye right"></span><span class="mouth"></span></div></div><div>2D safe renderer</div></div></div>
+  <div class="hud"><span id="state" class="chip">инициализация…</span><span id="tick" class="chip">tick —</span></div>
+</div>
+<script>
+const frame=document.getElementById('live2d'), fallback=document.getElementById('fallback'), state=document.getElementById('state'), tick=document.getElementById('tick');
+let last={};
+function post(type,data={}){try{frame.contentWindow.postMessage({type,...data},location.origin)}catch{}}
+function expressionFor(action){return action==='communicate'?'tender':action==='inspect'?'thinking':action==='move'?'focused':action==='collect'?'happy':action==='rest'?'tired':'neutral'}
+window.addEventListener('message',e=>{if(e.origin!==location.origin)return;if(e.data?.type==='live2d_ready'){fallback.style.display='none';state.textContent='Live2D online'}if(e.data?.type==='live2d_error'){fallback.style.display='grid';state.textContent='Live2D fallback'}});
+async function refresh(){try{const r=await fetch('/api/organism/avatar',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();last=d;state.textContent=(d.awake?'awake':'sleep')+' · '+(d.action||'wait');post('kurisu_expression',{expression:d.expression||expressionFor(d.action)});post('kurisu_embodiment',d.body||{});if(d.body?.speaking)post('kurisu_lipsync',{value:.55});else post('kurisu_lipsync',{value:0});}catch{state.textContent='offline'}}
+async function refreshTick(){try{const r=await fetch('/api/organism/status-lite',{cache:'no-store'});if(r.ok){const d=await r.json();tick.textContent='tick '+(d.tick??'—')}}catch{}}
+void refresh();void refreshTick();setInterval(refresh,5000);setInterval(refreshTick,5000);
+</script>
+</body>
+</html>

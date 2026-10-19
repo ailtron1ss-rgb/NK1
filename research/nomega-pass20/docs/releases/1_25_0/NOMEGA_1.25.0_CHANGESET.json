@@ -1,0 +1,38 @@
+{
+  "changed_files": [
+    {
+      "change": "modified",
+      "path": "CHANGELOG.md"
+    },
+    {
+      "change": "added",
+      "path": "NOMEGA_1.25.0_BUILD_MANIFEST.json"
+    },
+    {
+      "change": "modified",
+      "path": "VERSION.json"
+    },
+    {
+      "change": "added",
+      "path": "docs/releases/1_25_0/NOMEGA_1.25.0_UPGRADE_REPORT.md"
+    },
+    {
+      "change": "added",
+      "path": "docs/research/NOMEGA_1.25_CAUSAL_NEURALITY_RESEARCH.md"
+    },
+    {
+      "change": "modified",
+      "path": "docs/roadmaps/NOMEGA_1.25_1.30_NEURAL_SELF_IMPROVEMENT_ROADMAP.md"
+    },
+    {
+      "change": "added",
+      "path": "runtime/nomega_1_25_meta_controller_probe/result.json"
+    },
+    {
+      "change": "added",
+      "path": "runtime/nomega_1_25_meta_controller_probe/runtime/neural_self_optimization_controller_v1.json"
+    }
+  ],
+  "from": "1.24.0-dev",
+  "to": "1.25.0-dev"
+}

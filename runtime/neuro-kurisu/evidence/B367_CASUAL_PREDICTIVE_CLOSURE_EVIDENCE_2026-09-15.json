@@ -1,0 +1,18 @@
+{
+  "status": "PASS",
+  "test": "tests/big-pass-367-causal-predictive-closure.mjs",
+  "seeds": 6,
+  "trainingCyclesPerSeed": 360,
+  "minExternalL1": 1.604969,
+  "minLearnedTransferL1": 0.014191,
+  "minForecastLesionL1": 0.006932,
+  "maxRestartL1": 0,
+  "rows": [
+    {"seed":1,"externalL1":1.648278,"learnedTransferL1":0.036020,"lesionL1":0.007081,"restartL1":0,"forecastSamples":51,"forecastConfidence":0.933138,"forecastError":0.056791,"entropy":0.122978,"modelAgreement":0.735704},
+    {"seed":2,"externalL1":1.651203,"learnedTransferL1":0.036878,"lesionL1":0.007382,"restartL1":0,"forecastSamples":51,"forecastConfidence":0.933181,"forecastError":0.056700,"entropy":0.115543,"modelAgreement":0.735692},
+    {"seed":3,"externalL1":1.615989,"learnedTransferL1":0.027124,"lesionL1":0.008294,"restartL1":0,"forecastSamples":52,"forecastConfidence":0.933633,"forecastError":0.055743,"entropy":0.149899,"modelAgreement":0.730463},
+    {"seed":4,"externalL1":1.643124,"learnedTransferL1":0.014191,"lesionL1":0.008626,"restartL1":0,"forecastSamples":51,"forecastConfidence":0.933180,"forecastError":0.056701,"entropy":0.129834,"modelAgreement":0.733012},
+    {"seed":5,"externalL1":1.638455,"learnedTransferL1":0.023527,"lesionL1":0.006932,"restartL1":0,"forecastSamples":51,"forecastConfidence":0.932300,"forecastError":0.058563,"entropy":0.121507,"modelAgreement":0.735214},
+    {"seed":6,"externalL1":1.604969,"learnedTransferL1":0.029109,"lesionL1":0.010388,"restartL1":0,"forecastSamples":52,"forecastConfidence":0.934019,"forecastError":0.054928,"entropy":0.155038,"modelAgreement":0.729353}
+  ]
+}

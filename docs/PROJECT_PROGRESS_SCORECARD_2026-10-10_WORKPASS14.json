@@ -1,0 +1,129 @@
+{
+  "title": "Neuro-Kurisu SUPER — reconciled weighted implementation roadmap scorecard",
+  "date": "2026-10-10",
+  "workpass": "14 — UI regression isolation and browser smoke baseline enforcement",
+  "baseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS13_2026-10-10.zip",
+  "runtime": "Neuro-Kurisu 35.40.0",
+  "schema": 223,
+  "method": "Retains WorkPass 7 fixed weights; updates only workstreams whose implementation evidence changed. This is estimated weighted implementation progress, not release readiness. Task counts below use a normalized, non-duplicated inventory of current deliverables, not the append-only historical tasklist. WorkPass14 changes only workstream B based on a previously failing 8-test environment-contamination cluster being made hermetic and a baseline comparator regression defect being closed. Full browser execution remains unverified.",
+  "overallPercent": 67.95,
+  "previousOfficialScorePercent": 67.8,
+  "deltaPercentagePoints": 0.15,
+  "remainingWeightedRoadmapPoints": 32.05,
+  "workstreams": [
+    {
+      "id": "A",
+      "name": "Canonical source lineage and single-owner architecture",
+      "weight": 15,
+      "completionPercent": 100,
+      "weightedPoints": 15.0,
+      "previousPercent": 100,
+      "rationale": "No duplicate canonical owner; source manifests and metadata contract reconciled."
+    },
+    {
+      "id": "B",
+      "name": "Runtime integration, API/UI routes and smoke/linkage coverage",
+      "weight": 15,
+      "completionPercent": 93,
+      "weightedPoints": 13.95,
+      "previousPercent": 92,
+      "rationale": "Static runtime routes and smoke remain healthy; WorkPass14 made PWA tests hermetic and browser smoke baseline regression detection fail closed. Full app dependency-complete tests/build and actual browser E2E remain open."
+    },
+    {
+      "id": "C",
+      "name": "Memory 2.0, retrieval/admission and benchmark evidence",
+      "weight": 15,
+      "completionPercent": 60,
+      "weightedPoints": 9.0,
+      "previousPercent": 45,
+      "rationale": "Retrieval determinism, complete fingerprints, offline runner and confidence gates are implemented; real labeled temporal holdout is still absent."
+    },
+    {
+      "id": "D",
+      "name": "Agency, action schema, execution, outcome and reafference",
+      "weight": 20,
+      "completionPercent": 60,
+      "weightedPoints": 12.0,
+      "previousPercent": 60,
+      "rationale": "Core execution and targeted feedback links exist; full critical-path and external-observer stress remains partial."
+    },
+    {
+      "id": "E",
+      "name": "Portable subject continuity and social/known-entity dossier",
+      "weight": 10,
+      "completionPercent": 75,
+      "weightedPoints": 7.5,
+      "previousPercent": 75,
+      "rationale": "Read-only dossier and fidelity contracts are present; browser-backed corrections and behavioral equivalence remain open."
+    },
+    {
+      "id": "F",
+      "name": "External transport, SDK, idempotency and replay",
+      "weight": 10,
+      "completionPercent": 40,
+      "weightedPoints": 4.0,
+      "previousPercent": 20,
+      "rationale": "Conscio/Hexis/WILL local idempotency, queue backpressure and ACK/replay contracts improved; remote provider receipt/reconnect proof remains open."
+    },
+    {
+      "id": "G",
+      "name": "Research promotion and controlled experiments",
+      "weight": 5,
+      "completionPercent": 40,
+      "weightedPoints": 2.0,
+      "previousPercent": 40,
+      "rationale": "Experiment infrastructure is stronger, but no real-corpus uplift or research promotion is evidenced."
+    },
+    {
+      "id": "H",
+      "name": "Release durability: build, E2E, rollback, soak, SBOM/provenance",
+      "weight": 10,
+      "completionPercent": 45,
+      "weightedPoints": 4.5,
+      "previousPercent": 45,
+      "rationale": "Version/metadata and archive evidence improved; app install/build, browser E2E, clean-room drill and soak remain open."
+    }
+  ],
+  "normalizedTaskInventory": {
+    "count": 42,
+    "counts": {
+      "DONE": 25,
+      "PARTIAL": 9,
+      "TODO": 8
+    },
+    "strictDonePercent": 59.52,
+    "partialPercent": 21.43,
+    "todoPercent": 19.05,
+    "halfCreditEquivalentPercent": 70.24,
+    "note": "Status counts classify 42 normalized deliverables. PARTIAL is not half-complete in every instance; half-credit is only a comparison aid."
+  },
+  "openReleaseGates": [
+    "Complete agency loop: competition → action → verified outcome → persistence → reafference",
+    "Independent action-outcome evidence and no-double-credit stress",
+    "Entity correction/expiry/conflict across browser-backed multi-session flows",
+    "Portable subject continuity and behavioral fidelity",
+    "Capability evidence graph for critical user journeys",
+    "External delivery receipts, reconnect and provider replay guarantees",
+    "Clean-room backup/restore, migration and rollback drill",
+    "Research candidates from NeuroCore/NOMEGA/DeepCode and external adapters",
+    "Authorization/abuse/rate-limit review for new diagnostic/benchmark APIs",
+    "Real independently labelled temporal MemoryOS2 holdout",
+    "Dependency-complete app install and full root/app typecheck",
+    "React/Vite production build",
+    "Desktop/mobile browser E2E, including interactive Live2D",
+    "Clean-room install + restore/upgrade/rollback release drill",
+    "Multi-hour soak and memory/resource-growth limits",
+    "Final SBOM, license inventory and immutable release provenance sign-off",
+    "Release-candidate sign-off"
+  ],
+  "environmentNote": "App script tests pass 203/203, but full `npm --prefix app test` cannot finish its TypeScript unit stage because dependencies @tanstack/react-start and jose are unavailable in this source-only environment. npm registry DNS failure EAI_AGAIN prevented clean install; no React/Vite build or browser E2E is claimed.",
+  "releaseStatus": "implementation-workpass; NOT release-ready",
+  "limitations": [
+    "No real independently labelled temporal corpus; synthetic fixtures are not production uplift evidence.",
+    "Root/app clean typecheck and React/Vite production build remain unverified.",
+    "Browser/mobile/Live2D E2E, clean-room restore/upgrade/rollback, multi-hour soak and final SBOM/provenance sign-off remain open.",
+    "PWA app unit tests now use isolated workspaces; this fixes environment contamination in tests, not a production site identity change.",
+    "Browser-smoke baseline comparison logic is unit-tested, but Playwright browser run itself was not possible without installed app/playwright dependencies.",
+    "Do not count app UI build or browser E2E as complete until a dependency-complete environment executes them."
+  ]
+}

@@ -1,0 +1,97 @@
+[
+  {
+    "path": "src/organism/core/WorldContextNormalizer.ts",
+    "sha256": "c22bed2525489343c287c5759bf6d00e15d404bbd94dc07afef77a820d414641",
+    "bytes": 1858
+  },
+  {
+    "path": "src/organism/core/CognitiveFrame.ts",
+    "sha256": "0863a00b8c716406da9fd0cde59870b7da7ac0b0b7ef8b7ffa61522a9e2584f1",
+    "bytes": 5326
+  },
+  {
+    "path": "src/organism/core/CognitiveExecutionPlanner.ts",
+    "sha256": "18504bf2f4051a447e37cf1f0f092c88618bc147eea616271421dfe68ca69ec7",
+    "bytes": 11826
+  },
+  {
+    "path": "src/organism/core/PersistenceProjectionCoordinator.ts",
+    "sha256": "3d87a4726c62b18f7619c8b25e9436b9a3459d86b56ae51850f7707f6f98a627",
+    "bytes": 28301
+  },
+  {
+    "path": "src/organism/system/CognitiveSpineScheduler.ts",
+    "sha256": "5ff62f36df886e473baf988e1103ae8bd5cf98d6f817eeffae210d9b2bf26fd2",
+    "bytes": 4387
+  },
+  {
+    "path": "src/organism/world/P83PersistentRealityModel.ts",
+    "sha256": "f37e9fb39f92f3730b470428a89ffa295b9781deffca3bec2be29204aebd6871",
+    "bytes": 12230
+  },
+  {
+    "path": "src/organism/core/OrganismCore.ts",
+    "sha256": "76a35fc32a78ffa872ed3a32e00721030550790d98b1b188514ac0e1e0f787bf",
+    "bytes": 336457
+  },
+  {
+    "path": "src/organism/system/ReleaseContract.ts",
+    "sha256": "6ae5cfb623c92c77fd3b524e4e9360d2c87f9fc7715fac076ac6298acb1d5a6b",
+    "bytes": 413
+  },
+  {
+    "path": "tests/big-pass-50-cognitive-execution.mjs",
+    "sha256": "e66ac1f1afcbe4c51e61a25e6a045707252654292750143caaf2e33dd0b6e72c",
+    "bytes": 4927
+  },
+  {
+    "path": "tests/big-pass-89-cognitive-substrate.mjs",
+    "sha256": "9728cb69854eaa5b904e01f8607432cef4b2de11aa83c3b04a3945898f64071d",
+    "bytes": 2100
+  },
+  {
+    "path": "package.json",
+    "sha256": "6224043f2bf0fbc2a064b485bba5e3a6a4d5eca485e8688530d67d4aa04bf363",
+    "bytes": 49386
+  },
+  {
+    "path": "package-lock.json",
+    "sha256": "b2b14f7c2372379e08c917b19c3cc3920c079b11f714d815db064f2aff9c8c3c",
+    "bytes": 312
+  },
+  {
+    "path": "VERSION.json",
+    "sha256": "158338d85667b035c6e14ddf89b50a176fed0d4434acf57b61e06da438255f67",
+    "bytes": 277
+  },
+  {
+    "path": "RELEASE_MANIFEST.json",
+    "sha256": "1f622d9cf584d1dbd30dbc9197763aa060c51d96ab4943f0663a0f789031afd3",
+    "bytes": 1057
+  },
+  {
+    "path": "ARCHITECTURE_MANIFEST.json",
+    "sha256": "940e1d43f90b41bfc90f5696b36564dee990579348c630ec2a146119bf8a2969",
+    "bytes": 908
+  },
+  {
+    "path": "docs/BIG_PASS_89_FINAL_REPORT_RU.md",
+    "sha256": "62bcf3fb3dcb83030a3516b98b57ae3a0a129b4cd6c43da238b3913b99b3b43b",
+    "bytes": 3917
+  },
+  {
+    "path": "docs/BIG_PASS_89_PROGRESS_AND_DECISIONS_RU.md",
+    "sha256": "f516b8088e00f3e997528d3738846ff5c5b27452b1905b31377b18f0f3a12d9d",
+    "bytes": 1591
+  },
+  {
+    "path": "docs/BIG_PASS_89_PROGRESS_METRICS.json",
+    "sha256": "ff1a9c5c8c7657d5a84183250a550d00f0fcda9e809202716a43669e3d0e38b2",
+    "bytes": 1728
+  },
+  {
+    "path": "docs/RELEASE_NOTES_34.62.0_RU.md",
+    "sha256": "3bb26bf3e88ea125da5061e513b332fac7f813b9d8f7251a2efaf6754f3e3045",
+    "bytes": 2203
+  }
+]

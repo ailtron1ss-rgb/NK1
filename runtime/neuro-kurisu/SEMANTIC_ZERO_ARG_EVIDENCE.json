@@ -1,0 +1,101 @@
+{
+  "src/organism/cognition/IdentityContinuity.ts:28:defaultIdentityContinuity": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1788956536993,
+        "source": "BIG_PASS_161_ZERO_ARG_EXPORT_SWEEP",
+        "details": "safe exported zero-arg function executed in-process durationMs=43; returnType=object"
+      }
+    ]
+  },
+  "src/organism/cognition/PerceptionEngine.ts:50:defaultPerceptionState": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1788956536993,
+        "source": "BIG_PASS_161_ZERO_ARG_EXPORT_SWEEP",
+        "details": "safe exported zero-arg function executed in-process durationMs=5; returnType=object"
+      }
+    ]
+  },
+  "src/organism/cognition/SelfAuthorship.ts:38:defaultSelfAuthorship": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1788956536993,
+        "source": "BIG_PASS_161_ZERO_ARG_EXPORT_SWEEP",
+        "details": "safe exported zero-arg function executed in-process durationMs=9; returnType=object"
+      }
+    ]
+  },
+  "src/organism/cognition/SensorimotorLoop.ts:25:defaultSensorimotorState": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1788956536993,
+        "source": "BIG_PASS_161_ZERO_ARG_EXPORT_SWEEP",
+        "details": "safe exported zero-arg function executed in-process durationMs=1; returnType=object"
+      }
+    ]
+  },
+  "src/organism/cognition/evolution/IdentityTrajectoryEngine.ts:39:defaultIdentityTrajectory": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1788956536993,
+        "source": "BIG_PASS_161_ZERO_ARG_EXPORT_SWEEP",
+        "details": "safe exported zero-arg function executed in-process durationMs=4; returnType=object"
+      }
+    ]
+  },
+  "src/organism/cognition/evolution/SelfProjectEngine.ts:46:defaultSelfProjectState": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1788956536993,
+        "source": "BIG_PASS_161_ZERO_ARG_EXPORT_SWEEP",
+        "details": "safe exported zero-arg function executed in-process durationMs=5; returnType=object"
+      }
+    ]
+  },
+  "src/organism/cognition/evolution/ValueEvolutionEngine.ts:12:defaultValueEvolution": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1788956536993,
+        "source": "BIG_PASS_161_ZERO_ARG_EXPORT_SWEEP",
+        "details": "safe exported zero-arg function executed in-process durationMs=8; returnType=object"
+      }
+    ]
+  },
+  "src/organism/body/AndroidEmbodimentBridge.ts:151:interruptTermuxTts": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1788956536993,
+        "source": "BIG_PASS_161_ZERO_ARG_EXPORT_SWEEP",
+        "details": "safe exported zero-arg function executed in-process durationMs=13; returnType=boolean"
+      }
+    ]
+  },
+  "src/organism/body/PerceptionRouter.ts:12:defaultPerceptionRoutingState": {
+    "evidence": [
+      {
+        "kind": "direct",
+        "ok": true,
+        "at": 1788956536993,
+        "source": "BIG_PASS_161_ZERO_ARG_EXPORT_SWEEP",
+        "details": "safe exported zero-arg function executed in-process durationMs=2; returnType=object"
+      }
+    ]
+  }
+}

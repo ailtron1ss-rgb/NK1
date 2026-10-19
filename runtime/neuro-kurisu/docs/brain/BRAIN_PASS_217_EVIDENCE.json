@@ -1,0 +1,16 @@
+{
+  "pass": "BIG_PASS_217_BASAL_GANGLIA_CONSOLIDATION",
+  "causal": {
+    "exploreGate": 0.941332,
+    "lesionGate": 0.504,
+    "proceduralPriorityHigh": 0.7803532,
+    "proceduralPriorityLow": 0.73662,
+    "redundantRetention": 0.2083121928,
+    "proceduralRetention": 0.65075645966,
+    "overconsolidationRedundant": 0.9806,
+    "overconsolidationProcedural": 0.25
+  },
+  "feedback": {"goodRetention": 0.67130656, "badRetention": 0.224},
+  "persistence": {"feedbackUpdates": 2, "coreFeedbackUpdates": 3},
+  "verified": true
+}

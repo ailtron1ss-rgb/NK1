@@ -1,0 +1,32 @@
+{
+  "pass": "B223",
+  "title": "Autonomous Resource & Tool Life",
+  "verified": true,
+  "metrics": {
+    "controllerToolPlans": 1,
+    "controllerToolExecutions": 1,
+    "controllerToolSuccesses": 1,
+    "controllerSelfStops": 1,
+    "coreToolPlans": 8,
+    "coreToolExecutions": 2,
+    "coreToolSuccesses": 2,
+    "coreToolFailures": 0,
+    "resourceEfficiency01": 0.74608,
+    "persistedExecutions": 2
+  },
+  "gates": {
+    "typecheck": "PASS",
+    "b208_b223_regression": "PASS",
+    "functionPassportGate": "PASS",
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "hygiene": "PASS",
+    "syntax": "PASS",
+    "contract": "PASS",
+    "forensics": "PASS",
+    "releaseSource": "PASS",
+    "functionLiveness": "PASS",
+    "parameterizedSafe": "PASS",
+    "semanticCoverage": "PASS"
+  }
+}

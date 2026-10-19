@@ -1,0 +1,14 @@
+{
+  "release": "35.6.34",
+  "milestone": "B561-B620",
+  "trainingAccuracy": 0.9158,
+  "holdoutAccuracy": 0.5,
+  "reversalZeroShotAccuracy": 0.7583,
+  "decisions": 1680,
+  "updates": 1200,
+  "skillUpdates": 1339,
+  "neuralUpdates": 3120,
+  "strategySwitches": 125,
+  "avgDecisionMs": 0.2228,
+  "p95DecisionMs": 0.3669
+}

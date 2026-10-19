@@ -1,0 +1,178 @@
+{
+  "title": "Neuro-Kurisu SUPER — reconciled weighted implementation roadmap scorecard — WorkPass40",
+  "date": "2026-10-14",
+  "workpass": 40,
+  "baseArchive": "Neuro_Kurisu_WORKPASS39_2026-10-14.zip + atomic exact-set restore/rollback guard, CycloneDX/license provenance inventory, loopback llama.cpp chat adapter",
+  "runtime": "35.62.0",
+  "schema": 225,
+  "method": "WorkPass40 closes exact-state restoration and contributes a source provenance SBOM plus an opt-in loopback local inference boundary. Actual local inference, full clean-room restore/fault injection, UI production build, browser Live2D E2E, external provider receipts, independent retrieval holdout and soak remain open.",
+  "overallPercent": 77.2,
+  "previousOfficialScorePercent": 76.0,
+  "deltaPercentagePoints": 1.2,
+  "remainingWeightedRoadmapPoints": 22.8,
+  "workstreams": [
+    {
+      "id": "A",
+      "name": "Canonical source lineage and single-owner architecture",
+      "weight": 15,
+      "completionPercent": 100,
+      "weightedPoints": 15.0,
+      "previousPercent": 100,
+      "rationale": "Single writable organism state/memory authorities preserved. WorkPass39 adds a read-only cognitive ownership map and typed flow validation without parallel runtime state."
+    },
+    {
+      "id": "B",
+      "name": "Runtime integration, API/UI routes and smoke/linkage coverage",
+      "weight": 15,
+      "completionPercent": 98,
+      "weightedPoints": 14.7,
+      "previousPercent": 96,
+      "rationale": "Runtime API and Runtime Atlas now surface the brain map and live composed-system health; routes and focused UI linkage are wired. Dependency-installed React/Vite and interactive browser Live2D E2E remain open."
+    },
+    {
+      "id": "C",
+      "name": "Memory 2.0, retrieval/admission and benchmark evidence",
+      "weight": 15,
+      "completionPercent": 70,
+      "weightedPoints": 10.5,
+      "previousPercent": 70,
+      "rationale": "MemoryOS2 stays canonical; retrieval remains at BM25 parity on the current synthetic temporal fixture and is not promoted. Independent labelled holdout and genuine local embedding inference remain open."
+    },
+    {
+      "id": "D",
+      "name": "Agency, action schema, execution, outcome and reafference",
+      "weight": 20,
+      "completionPercent": 80,
+      "weightedPoints": 16.0,
+      "previousPercent": 75,
+      "rationale": "Durable ActionGateway receipts from WorkPass38 remain integrated. WorkPass39 strengthens attributable external evidence IDs and confidence-aware attention; actual provider/device reconciliation and reconnect/replay evidence remain open."
+    },
+    {
+      "id": "E",
+      "name": "Portable subject continuity and social/known-entity dossier",
+      "weight": 10,
+      "completionPercent": 75,
+      "weightedPoints": 7.5,
+      "previousPercent": 75,
+      "rationale": "Cognitive map now ties self-model, affect/homeostasis, goals, perception, social cognition, memory, executive, reafference and metacognition to existing owners. This is architectural/system integration, not a claim of subjective consciousness."
+    },
+    {
+      "id": "F",
+      "name": "External transport, SDK, idempotency and replay",
+      "weight": 10,
+      "completionPercent": 42,
+      "weightedPoints": 4.2,
+      "previousPercent": 42,
+      "rationale": "Stable IDs for new evidence and legacy ID continuity are improved; external transport delivery receipts/reconnect and multi-provider reconciliation remain open."
+    },
+    {
+      "id": "G",
+      "name": "Research promotion and controlled experiments",
+      "weight": 5,
+      "completionPercent": 70,
+      "weightedPoints": 3.5,
+      "previousPercent": 66,
+      "rationale": "WorkPass40 reviews the existing source archives and upstream contracts, adds SBOM/provenance inventory, and adapts the documented OpenAI-compatible llama.cpp endpoint into the existing P40 model ecology. External source clones and target-hardware inference remain pending where network or target hardware is unavailable."
+    },
+    {
+      "id": "H",
+      "name": "Release durability: build, E2E, rollback, soak, SBOM/provenance",
+      "weight": 10,
+      "completionPercent": 58,
+      "weightedPoints": 5.8,
+      "previousPercent": 46,
+      "rationale": "WorkPass40 adds an atomic lock-guarded exact-set restore with checksum staging, symlink rejection, rollback staging and nine state-backup tests; SBOM/provenance covers 464 locked npm components and ten embedded source archives. Full fault-injected clean-room rollback, installed Vite build, browser E2E, manual license sign-off and soak remain open."
+    }
+  ],
+  "normalizedTaskInventory": {
+    "count": 96,
+    "counts": {
+      "DONE": 75,
+      "PARTIAL": 12,
+      "TODO": 9
+    }
+  },
+  "openReleaseGates": [
+    "Actual loopback llama.cpp inference on target hardware with latency, VRAM, model/license and failure/fallback evidence",
+    "Full clean-room install plus prior-version upgrade/restore/rollback with injected partial-commit failure",
+    "Manual review of nested third-party license/NOTICE evidence and immutable signed provenance release",
+    "Dependency-complete app install and full root/app semantic typecheck",
+    "React/Vite production build",
+    "Desktop/mobile browser E2E including interactive Live2D",
+    "Independent labelled temporal MemoryOS2 holdout; current synthetic retrieval uplift remains zero and promotion is blocked",
+    "Real external provider/device receipts, reconnect/replay and postcondition reconciliation",
+    "Multi-hour soak with memory/resource-growth limits and crash/restart injection",
+    "Broader semantic function verification, especially action, memory, self-model, emotion, planning and tool paths",
+    "Release-candidate sign-off after all P0 gates pass"
+  ],
+  "environmentNote": "WorkPass40 restore tests 7/7, SBOM/provenance validation and local provider boundary tests pass; runtime typecheck passes. The llama.cpp adapter was tested with a mocked OpenAI-compatible endpoint and enforces loopback-only HTTP. No real model weights were downloaded and no target-hardware inference is claimed. Registry DNS previously failed; Vite production build remains open.",
+  "releaseStatus": "implementation-workpass; exact restore and source provenance improved; release gates remain open",
+  "limitations": [
+    "The llama.cpp chat adapter has not been exercised against a real server/model or target hardware; its tests use deterministic mock responses.",
+    "Restore helper now applies an exact state-file set under an atomically acquired process lock and rolls back on commit exceptions, but a full clean-room archive upgrade/rollback with injected failure remains open.",
+    "SBOM identifies lockfile licenses and inventories source license evidence, but nested archive license obligations require manual review; no legal conclusion is implied.",
+    "App dependencies could not be installed from the external registry in previous runs; production Vite build and interactive browser Live2D E2E remain unverified.",
+    "Synthetic temporal retrieval benchmark has zero measured recall uplift; candidate remains not-promoted.",
+    "External provider/device receipts, independent labelled temporal holdout, soak and release sign-off remain open."
+  ],
+  "workpassImplementationProgressPercent": 82,
+  "implementationDeltasWorkPass36": [
+    {
+      "area": "Shared primitives",
+      "status": "DONE",
+      "evidence": "NumericPrimitives, StableSerialization, shared action cost policy; targeted runtime and adapter tests pass."
+    },
+    {
+      "area": "Memory durability/compatibility",
+      "status": "DONE",
+      "evidence": "64-entry bounded revision history, byte accounting, restore normalization, legacy source-lineage round trip."
+    },
+    {
+      "area": "Source archive immutability",
+      "status": "DONE",
+      "evidence": "8,512/8,512 source member SHA256 checks; 10,427 historical snapshot entries and 3,873 legacy dedup entries resolved."
+    },
+    {
+      "area": "Release deployment E2E",
+      "status": "OPEN",
+      "evidence": "Dependency-installed app build, browser and interactive Live2D E2E not completed in this environment."
+    },
+    {
+      "area": "Independent capability evidence",
+      "status": "OPEN",
+      "evidence": "Real local model/provider inference, independent temporal holdout, external postcondition/reafference, rollback and soak remain open."
+    },
+    "Shared Unicode tokenizer preserving Lumina/Conscio separators as options",
+    "Immutable SHA-256 content-addressed preimages for source-archive and historical snapshots",
+    "Revision-history memory-budget accounting and legacy memory lineage round-trip",
+    "Shared stable serialization retaining persisted legacy fingerprint bytes",
+    "ReleaseContract aligned to runtime package/integration manifest; schema-223 migration regression added"
+  ],
+  "passImplementationProgressPercent": 85,
+  "passImplementationProgress": 60,
+  "workpassImplementationProgress": 82,
+  "lastVerification": {
+    "runtimeCore": "PASS",
+    "runtimeTypecheck": "PASS",
+    "serverSmoke": "PASS",
+    "releaseMetadata": "34/34",
+    "metadataContract": "6/6",
+    "appScripts": "212/212",
+    "browserSmoke": "51/51",
+    "serverImports": "10/10",
+    "uiApi": "125 routes / 49 Runtime Atlas surfaces",
+    "assets": "PASS",
+    "sourceArchiveMembers": "8512/8512",
+    "historicalSnapshotMembers": "10427/10427",
+    "historicalLogicalContentReferences": "18935",
+    "retrievalRecallDelta": 0,
+    "retrievalPromotion": "not-promoted",
+    "viteBuild": "blocked; npm ci EAI_AGAIN registry.npmjs.org",
+    "restoreWorkPass40": "7/7",
+    "sourceProvenanceWorkPass40": "PASS 464 locked npm components / 10 archive hashes / 7 license notice files",
+    "llamaCppAdapterWorkPass40": "PASS mocked response; loopback enforced; legacy profile migration pass",
+    "runtimeTypecheckWorkPass40": "PASS",
+    "appViteBuild": "OPEN / missing installed vite dependencies"
+  },
+  "remainingPercent": 22.8
+}

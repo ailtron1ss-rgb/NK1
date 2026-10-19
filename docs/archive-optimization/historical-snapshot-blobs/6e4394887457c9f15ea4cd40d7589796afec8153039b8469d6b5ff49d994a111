@@ -1,0 +1,78 @@
+import { useEffect, useRef, useState } from "react";
+import type { EmotionLabel, OrganismSnapshot } from "@/organism/types";
+import { cn } from "@/lib/utils";
+import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
+
+const EXPR: Record<EmotionLabel, string> = {
+  curiosity: "thinking",
+  calm: "neutral",
+  joy: "happy",
+  anxiety: "sad",
+  frustration: "angry",
+  sadness: "sad",
+  anger: "angry",
+  protective: "focused",
+};
+
+type ViewMode = "live2d" | "legacy";
+
+export function AvatarStage({ snap, speaking }: { snap: OrganismSnapshot; speaking: boolean }) {
+  const frame = useRef<HTMLIFrameElement>(null);
+  const [live, setLive] = useState(false);
+  const [mode, setMode] = useState<ViewMode>(() => (typeof window !== "undefined" && window.localStorage.getItem("kurisu-avatar-mode") as ViewMode) || "live2d");
+
+  useEffect(() => {
+    const onMsg = (ev: MessageEvent) => {
+      if (ev.origin !== window.location.origin) return;
+      if (ev.data?.type === "live2d_ready") setLive(true);
+      if (ev.data?.type === "live2d_error") setLive(false);
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("kurisu-avatar-mode", mode);
+  }, [mode]);
+
+  useEffect(() => {
+    const win = frame.current?.contentWindow;
+    if (!win || !live || mode !== "live2d") return;
+    win.postMessage({ type: "kurisu_expression", expression: EXPR[snap.emotion.label] ?? "neutral" }, window.location.origin);
+    win.postMessage({
+      type: "kurisu_embodiment",
+      speaking,
+      mouthOpen: speaking ? 0.35 : 0.04,
+      expressionIntensity: snap.emotion.arousal,
+      gazeX: 0,
+      gazeY: 0,
+      voiceEmphasis: speaking ? Math.min(1, snap.emotion.arousal + 0.15) : 0,
+    }, window.location.origin);
+    win.postMessage({ type: "kurisu_lipsync", value: speaking ? 0.45 : 0.02 }, window.location.origin);
+  }, [snap.emotion, speaking, live, mode]);
+
+  return (
+    <div className="relative overflow-hidden rounded-xl bg-elevated">
+      <div className="absolute left-3 top-3 z-30 flex gap-1 rounded-md border border-border bg-black/50 p-1 backdrop-blur">
+        <button type="button" onClick={() => setMode("live2d")} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "live2d" ? "bg-accent text-accent-fg" : "text-white/55")}>Live2D</button>
+        <button type="button" onClick={() => setMode("legacy")} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "legacy" ? "bg-accent text-accent-fg" : "text-white/55")}>Legacy</button>
+      </div>
+      {mode === "legacy" ? <LegacySpriteDeck emotion={snap.emotion.label} speaking={speaking} /> : <>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,color-mix(in_oklab,var(--color-ember)_18%,transparent),transparent_62%)]" />
+        <iframe
+          ref={frame}
+          title="Kurisu Live2D"
+          src="/live2d/viewer.html?profile=auto"
+          className={cn("relative z-10 h-[320px] w-full border-0 transition-opacity duration-300 md:h-[420px]", live ? "opacity-100" : "opacity-0")}
+          allow="autoplay"
+        />
+        {!live ? <div className="absolute inset-0 z-[11] flex items-center justify-center p-6"><div className="max-w-sm rounded-xl border border-border bg-bg/85 p-4 text-center backdrop-blur"><p className="text-xs font-medium uppercase tracking-wider text-subtle">Live2D unavailable</p><p className="mt-1 text-sm text-fg">Переключитесь на Legacy — там используются реальные legacy sprite-ассеты.</p><button type="button" onClick={() => setMode("legacy")} className="mt-3 rounded-md border border-border px-3 py-1.5 text-xs text-fg hover:bg-elevated">Open Legacy</button></div></div> : null}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between p-4">
+          <div><p className="font-display text-lg tracking-tight text-fg">Kurisu</p><p className="text-xs text-muted tabular-nums">{snap.awake ? "awake" : "sleep"} · {snap.emotion.label} · t{snap.tick}</p></div>
+          <span className="rounded-full border border-border bg-bg/70 px-2.5 py-1 text-xs uppercase tracking-wider text-muted">{live ? "live2d" : "live2d unavailable"}</span>
+        </div>
+      </>}
+    </div>
+  );
+}
+

@@ -1,0 +1,61 @@
+{
+  "pass": "B261_UNIFIED_WORLD_MODEL",
+  "date": "2026-09-12",
+  "verified": true,
+  "previousAuditRechecked": true,
+  "b259Regression": {
+    "learningUpdates": 20,
+    "trainError01": 0.4306272261,
+    "holdoutError01": 0.3439819622,
+    "holdoutDelta01": 0.1560180378,
+    "generalization01": 0.6560180378,
+    "lesionDrop01": 0.0000203076,
+    "restartPreserved": true
+  },
+  "b260Regression": {
+    "encodingCount": 18,
+    "outcomeCount": 18,
+    "replayRuns": 1,
+    "replayedEpisodes": 12,
+    "delayedCredit01": 0.0469593504,
+    "linkedMemoryCount": 3
+  },
+  "b261Standalone": {
+    "onlineUpdates": 80,
+    "holdoutAfterOnline01": 0.2062928067,
+    "holdoutAfterReplay01": 0.2057565192,
+    "replayHoldoutGain01": 0.0005362875,
+    "onlineTransitionError01": 0.0503448018,
+    "onlineRewardError01": 0.1229135805,
+    "lesionTransitionDrop01": 0.0059027577,
+    "lesionRewardDrop01": 0.0014756894,
+    "restorePreserved": true,
+    "actionConditionedPredictionsDiffer": true
+  },
+  "b261Core": {
+    "trainingUpdates": 12,
+    "transitionSamples": 12,
+    "restartPreserved": true
+  },
+  "global": {
+    "architecture": "PASS",
+    "integrity": "PASS",
+    "hygiene": "PASS",
+    "syntax": "PASS",
+    "contract": "PASS",
+    "forensics": "PASS",
+    "releaseSource": "PASS",
+    "archiveManifest": "PASS",
+    "archiveVerification": "PASS",
+    "archiveFiles": 2119,
+    "sourceFiles": 949,
+    "canonicalFiles": 344
+  },
+  "knownLimitations": [
+    "replay transfer gain remains small",
+    "world-model lesion effect remains modest",
+    "dynamics are still low-dimensional",
+    "no long-horizon planning benchmark yet",
+    "Android device filesystem gate still requires physical-device verification"
+  ]
+}

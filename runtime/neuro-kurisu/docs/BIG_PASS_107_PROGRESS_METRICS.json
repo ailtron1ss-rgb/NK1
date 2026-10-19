@@ -1,0 +1,57 @@
+{
+  "version": "34.81.0",
+  "stateSchema": 116,
+  "bigPass": 107,
+  "focus": "cognitive research battery, preregistration, reproducibility, uncertainty and claim gating",
+  "metrics01to100": {
+    "replayInstrumentation": 100,
+    "goalConditionedReplay": 94,
+    "causalIntegration": 98,
+    "unifiedLearningIntegration": 98,
+    "retentionValidation": 97,
+    "forgettingCurve": 72,
+    "crossTaskTransfer": 92,
+    "negativeTransferInterference": 92,
+    "pairedExperimentRigour": 100,
+    "experimentalProtocolRigor": 99,
+    "longitudinalExperiment": 97,
+    "reproducibility": 98,
+    "uncertaintyQuantification": 91,
+    "dataQualityGating": 97,
+    "claimIntegrity": 99,
+    "skillMemoryCoupling": 68,
+    "epistemicProvenance": 100,
+    "canonicalMemorySafety": 99,
+    "mobileEfficiency": 94,
+    "migration": 100,
+    "regressionCoverage": 99,
+    "engineeringReadiness": 93,
+    "empiricalReplayEvidence": 50,
+    "consciousnessMechanism": 20,
+    "consciousnessEvidence": 0
+  },
+  "planCompletion": {
+    "previousPassRecommendations": 100,
+    "pass107Scope": 99,
+    "documentationAndReleaseIntegrity": 100
+  },
+  "verification": {
+    "typecheck": "PASS",
+    "pass107Functional": "PASS",
+    "pass107Migration": "PASS",
+    "cognitiveResearchBatteryAudit": "PASS",
+    "pass106Regression": "PASS",
+    "pass105Regression": "PASS",
+    "pass104Regression": "PASS",
+    "pass103Regression": "PASS",
+    "mobileHorizon1000": "PASS",
+    "operationalHorizon500": "PASS",
+    "operationalHorizon1000": "PASS",
+    "coreIntegration": "PASS",
+    "aggregateAuditPass107": "TIMEOUT_AFTER_TARGETED_GATES_PASS"
+  },
+  "notes": [
+    "All targeted Pass 107 gates passed individually; the composite audit process exceeded its wall-clock budget during the long operational suite. This is not classified as PASS.",
+    "Synthetic battery data validates software mechanics only and is not empirical evidence about the organism or consciousness."
+  ]
+}

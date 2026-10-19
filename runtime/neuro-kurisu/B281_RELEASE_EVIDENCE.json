@@ -1,0 +1,52 @@
+{
+  "release": "35.6.1",
+  "pass": "B281",
+  "component": "PredictiveInterAreaMessaging",
+  "standalone": {
+    "steps": 220,
+    "messageUpdates": 84288,
+    "delayedCredit01": 0.999754807815311,
+    "messageCoherence01": 0.6636539470016387,
+    "meanEdgePrediction01": 0.9997177493860393,
+    "lesionDrop01": 0.028219269658676827
+  },
+  "hiddenTransfer": {
+    "trainSteps": 320,
+    "hiddenSteps": 120,
+    "hiddenError01": 0.20876400295890285,
+    "baselineError01": 0.46875,
+    "gain01": 0.25998599704109715,
+    "messageCoherence01": 0.8114922320497011,
+    "delayedCredit01": 0.7968472184070072
+  },
+  "core": {
+    "steps": 8,
+    "learningUpdates": 100,
+    "messageUpdates": 1536,
+    "delayedCredit01": 0.6417690458271192,
+    "messageCoherence01": 0.46154179775081705,
+    "meanEdgePrediction01": 0.5421893844932199,
+    "migration": true
+  },
+  "regression": {
+    "b279": true,
+    "b280": true
+  },
+  "static": {
+    "typecheck": true,
+    "architecture": true,
+    "integrity": true,
+    "forensics": true,
+    "hygiene": true,
+    "contract": true,
+    "lock": true,
+    "releaseSource": true,
+    "doctor": true,
+    "fullExecutableSyntax": "BLOCKED_BY_ENV_TIMEOUT",
+    "fullAudit": true,
+    "executableSyntax": "BLOCKED_BY_ENV_TIMEOUT",
+    "archiveManifestFiles": 2323,
+    "architectureSourceFiles": 1050,
+    "fullAuditFiles": 2092
+  }
+}

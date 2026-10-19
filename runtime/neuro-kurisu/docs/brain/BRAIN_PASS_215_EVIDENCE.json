@@ -1,0 +1,17 @@
+{
+  "pass": "BIG_PASS_215_HIPPOCAMPAL_FORMATION",
+  "verified": true,
+  "healthy": {
+    "memoryId": "m1",
+    "separation01": 0.6619541097592867,
+    "completion01": 0.8134532861108399,
+    "predictionError01": 0.08449290289588585,
+    "uncertainty01": 0.09894921991881445
+  },
+  "ablation": {
+    "dg_off_separation01": 0.08038459426978645,
+    "ca3_off_completion01": 0.44739930736096195
+  },
+  "persistence": {"restored": true, "replayRuns": 12},
+  "scientific_note": "Computational analogue; not a claim of anatomical equivalence."
+}

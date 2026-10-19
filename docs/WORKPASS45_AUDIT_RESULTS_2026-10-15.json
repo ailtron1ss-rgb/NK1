@@ -1,0 +1,196 @@
+{
+  "title": "Neuro Kurisu WorkPass45 focused audit results",
+  "date": "2026-10-15",
+  "baseArchive": "Neuro_Kurisu_WORKPASS44_2026-10-15.zip",
+  "releaseArchive": "Neuro_Kurisu_WORKPASS45_2026-10-15.zip",
+  "runtimeVersion": "35.66.0",
+  "stateSchema": 225,
+  "officialWeightedReleaseReadinessPercent": 78.0,
+  "workPassImplementationProgress": {
+    "percent": 85,
+    "scale": "0-100 pass-specific implementation progress; not release readiness"
+  },
+  "cumulativeTaskInventory": {
+    "total": 120,
+    "DONE": 94,
+    "PARTIAL": 14,
+    "TODO": 12
+  },
+  "checks": [
+    {
+      "name": "provider-reconciliation-workpass45",
+      "status": "PASS",
+      "evidence": "5 scenarios; found receipt recovery; unknown fail-closed; concurrent lookup coalescing; authoritative no-effect terminalization; no execute fallback."
+    },
+    {
+      "name": "camera-receipt-store-workpass45",
+      "status": "PASS",
+      "evidence": "5 synthetic scenarios; stable key and operation binding; replay/conflict; retained-image SHA-256; malformed metadata fail-closed. hardwareExecuted=false."
+    },
+    {
+      "name": "canonical-camera-gateway-workpass45",
+      "status": "PASS",
+      "evidence": "7 assertions; one canonical camera tool; mandatory key; lookup; legacy alias; raw runtime path fails closed. physicalDeviceTouched=false."
+    },
+    {
+      "name": "tool-receipt-causal-workpass43",
+      "status": "PASS",
+      "evidence": "9/9 assertions."
+    },
+    {
+      "name": "workpass44-evidence-replay",
+      "status": "PASS",
+      "evidence": "Unknown is distinct from contradicted; external evidence exact identity; replay/restore; temporal credit; trust; observer; P83/P84; retired key fail-closed."
+    },
+    {
+      "name": "workpass44-action-crash-reconciliation",
+      "status": "PASS",
+      "evidence": "Pre-effect persist failure, post-effect pending state, finalizer failure, stable executor context, post-restart replay, conflicting key refusal."
+    },
+    {
+      "name": "action-gateway-idempotency",
+      "status": "PASS",
+      "evidence": "13/13 tests."
+    },
+    {
+      "name": "durable-action-ledger-archive",
+      "status": "PASS",
+      "evidence": "4/4 tests."
+    },
+    {
+      "name": "runtime-typecheck",
+      "status": "PASS",
+      "evidence": "Standalone runtime TypeScript typecheck = PASS. The long sequential reconciliation chain later timed out at its final typecheck invocation and is not counted as an aggregate PASS."
+    },
+    {
+      "name": "organism-smoke-and-restart",
+      "status": "PASS",
+      "evidence": "Standalone CLEAN_ORGANISM_SMOKE=PASS and CLEAN_RESTART_PERSISTENCE=PASS."
+    },
+    {
+      "name": "live-node-server-smoke",
+      "status": "PASS",
+      "evidence": "SERVER_SMOKE=PASS; camera POST without Idempotency-Key returns 400 before runtime invocation."
+    },
+    {
+      "name": "release-contract-alignment",
+      "status": "PASS",
+      "evidence": "Runtime 35.66.0 / schema 225; migration compatibility 223/224 preserved."
+    },
+    {
+      "name": "release-metadata",
+      "status": "PASS",
+      "evidence": "34/34 checks."
+    },
+    {
+      "name": "release-metadata-contract-tests",
+      "status": "PASS",
+      "evidence": "6/6 tests."
+    },
+    {
+      "name": "app-scripts",
+      "status": "PASS",
+      "evidence": "218/218 tests."
+    },
+    {
+      "name": "browser-smoke-verdict-contract",
+      "status": "PASS",
+      "evidence": "51/51; this is contract logic, not interactive browser execution."
+    },
+    {
+      "name": "server-relative-imports",
+      "status": "PASS",
+      "evidence": "11 checked; missing 0."
+    },
+    {
+      "name": "ui-api-linkage",
+      "status": "PASS",
+      "evidence": "125 routes / 49 runtime surfaces; no missing required seams."
+    },
+    {
+      "name": "assets",
+      "status": "PASS",
+      "evidence": "Zero missing asset errors; Live2D and sprite references resolve."
+    },
+    {
+      "name": "compacted-source-archives",
+      "status": "PASS",
+      "evidence": "4 archives; 8,512/8,512 member hashes."
+    },
+    {
+      "name": "historical-snapshot",
+      "status": "PASS",
+      "evidence": "10,427/10,427 entries; 18,935 content-source references; immutable blobs preserve old bytes for five changed historical snapshot references."
+    },
+    {
+      "name": "historical-path-restoration",
+      "status": "PASS",
+      "evidence": "4/4; exact restore, idempotence, conflict protection, hash drift and symlink-parent protection."
+    },
+    {
+      "name": "sbom-and-provenance",
+      "status": "PASS",
+      "evidence": "1/1; 464 locked npm components; 7 license/notice files; 8 source archives; 4 with license evidence; no missing npm license fields. Not legal sign-off."
+    },
+    {
+      "name": "memory-retrieval-benchmark",
+      "status": "PASS_NOT_PROMOTED",
+      "evidence": "Corpus 18, train 4, holdout 8, 400 confidence samples; recallDelta=0; candidate remains not-promoted."
+    },
+    {
+      "name": "long-sequential-reconciliation-gate",
+      "status": "TIMEOUT_NOT_PASS",
+      "evidence": "Component tests ran to final typecheck step before tool execution time limit; a full aggregate success is not claimed. Component/typecheck commands are separately confirmed."
+    }
+  ],
+  "notRunOrOpen": [
+    {
+      "name": "physical-Termux-camera",
+      "status": "NOT_RUN",
+      "reason": "The adapter tests use synthetic receipts and explicitly perform no hardware action. Target Android/Termux crash/reconnect must be tested safely."
+    },
+    {
+      "name": "authoritative-provider-receipts",
+      "status": "OPEN",
+      "reason": "Each external provider/device must actually accept the stable idempotency token and return an authoritative receipt or authoritative not-executed proof."
+    },
+    {
+      "name": "Vite-production-build",
+      "status": "NOT_RUN",
+      "reason": "App dependencies absent in this environment; no network install performed."
+    },
+    {
+      "name": "interactive-browser-Live2D-E2E",
+      "status": "NOT_RUN",
+      "reason": "Browser smoke is contract-only. Need real browser rendering, iframe messaging, Legacy fallback, restore and mobile/desktop checks."
+    },
+    {
+      "name": "target-host-local-model-inference",
+      "status": "OPEN",
+      "reason": "Real llama.cpp/GGUF inference and resource/latency/cancellation profiling not performed."
+    },
+    {
+      "name": "independent-temporal-retrieval-holdout",
+      "status": "OPEN",
+      "reason": "Current benchmark recall uplift is zero; keep Chroma/FAISS candidate not-promoted until independent labels show uplift."
+    },
+    {
+      "name": "clean-room-install-and-fault-injected-rollback",
+      "status": "OPEN",
+      "reason": "Need dependency-installed installation and failure injection on restore/upgrade paths."
+    },
+    {
+      "name": "nested-source-license-signoff",
+      "status": "OPEN",
+      "reason": "SBOM/provenance is inventory, not legal review; AutoGPT and all nested licenses need manual review."
+    },
+    {
+      "name": "long-duration-soak",
+      "status": "OPEN",
+      "reason": "Need runtime/memory/resource growth budget and soak evidence."
+    }
+  ],
+  "sourceIntegrationRemainder": "docs/SOURCE_INTEGRATION_REMAINDER_WORKPASS45.csv (22 nested source archives) and .md summary list source, outer .7z, current disposition, canonical target, remaining useful work, acceptance evidence, and non-import rules.",
+  "historicalIntegrityFix": "Five historical snapshot entries now point to immutable content-addressed byte sources; two compacted-source manifests were rebound for the three files changed by WP45. Active code was not reverted.",
+  "aggregateAuditClaim": "No full aggregate audit PASS is claimed. Independent/focused gates have the statuses listed above."
+}

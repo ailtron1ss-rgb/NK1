@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+
+const store=new MemoryStateStore();
+const core=new OrganismCore(store,{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1});
+await core.init();
+const before=core.p36Snapshot();
+const step=await core.observe({text:'проверить собственное развитие',novelty:.7,worldContext:{tick:1,location:'lab',energy:.72,attention:.82,uncertainty:.78,facts:['test'],objects:[],events:[]}});
+await core.feedback({success:.8,reward:.6,surprise:.12,notes:'useful developmental outcome'});
+const after=core.p36Snapshot();
+assert.ok(after.cycles>=before.cycles);
+assert.ok(after.hypotheses.length>=0);
+assert.ok(after.experiments.length>=0);
+assert.ok(step.decision.selected);
+await core.flush();
+const saved=await store.load();
+assert.ok(saved.facets.learning.p36);
+assert.equal(saved.facets.learning.p36.version,4);
+console.log('P36_INTEGRATION=PASS',JSON.stringify({action:step.decision.selected.action,hypotheses:after.hypotheses.length,experiments:after.experiments.length,completedSteps:after.curriculum.completedSteps}));

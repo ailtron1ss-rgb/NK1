@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neurocore-frontier"
+version = "1.43.0"
+description = "NeuroCore frontier research runtime"
+requires-python = ">=3.10"
+dependencies = ["torch>=2.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["neurocore*"]

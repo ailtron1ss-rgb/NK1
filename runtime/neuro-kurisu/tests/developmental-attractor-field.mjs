@@ -1,0 +1,16 @@
+import { DevelopmentalAttractorField, defaultDevelopmentalAttractorField } from '../src/organism/cognition/evolution/DevelopmentalAttractorField.ts';
+const assert=(c,m)=>{if(!c)throw new Error(m)};
+const f=new DevelopmentalAttractorField();
+const v={curiosity:.8,truth:.9,autonomy:.7,care:.6,responsibility:.8,evidence:.9,social:.55};
+const input={evidenceKey:'episode:A|action:verify',at:1,action:'verify',success01:.8,predictionError01:.2,uncertainty01:.55,novelty01:.4,socialNeed01:.3,identityPressure01:.5,counterEvidence01:.1,phase:'stabilizing',values:v,motiveOverall01:.7,motiveConflict01:.1};
+const before=f.summary();
+f.observe(input); const after=f.summary();
+assert(after.observations===1,'first observation missing');
+f.observe({...input,at:2});
+const dup=f.summary();
+assert(dup.duplicateObservations===1,'duplicate evidence not deduped');
+assert(dup.observations===1,'duplicate changed observation count');
+assert(after.fieldStrength01>=before.fieldStrength01-0.01,'field unexpectedly regressed');
+assert(dup.nonConsciousnessClaim===true,'epistemic label missing');
+assert(defaultDevelopmentalAttractorField().attractors.length===8,'default attractor count drifted');
+console.log('DEVELOPMENTAL_ATTRACTOR=PASS');

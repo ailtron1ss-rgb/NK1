@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const runtime=new OrganismRuntime({stateFile:'/tmp/nk-b2511-runtime.json',stateStore:new MemoryStateStore(),enableLanguage:false,autoRun:false,intervalMs:30000,cycleResultMode:'full',performanceProfile:'balanced'});
+await runtime.init();
+for(let t=0;t<8;t++) await runtime.autonomousStep({novelty:t%3/2,uncertainty:.30+.08*(t%4),reward:t%2?.76:.34,embodiment:{bodyEnergy01:.72,cognitiveCapacity01:.81,thermalStrain01:.16,sensoryFreshness01:.84,awake:true,battery01:.76,cpuLoad01:.22,ramPressure01:.20}});
+const d=runtime.core.b2511ActiveEpistemicDiagnostics();
+assert.ok(d.cycles>=8);
+assert.ok(d.outcomes>=8);
+assert.ok(d.learningUpdates>=8);
+assert.ok(Number.isFinite(d.epistemicEfficiency01));
+console.log(JSON.stringify({pass:true,status:'B2511_RUNTIME_PASS',diagnostics:d},null,2));
+await runtime.stop();

@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import { PersistenceBudgetController } from '../src/organism/persistence/PersistenceBudgetController.ts';
+const c=new PersistenceBudgetController();
+const base={facets:{memory:{autobiographicalMemories:[],eventLog:[]},advanced:{p62MemoryFabric:{},memoryOS:{},p54LongHorizonEvidence:{},p77RealityExperimentOS:{}}},traces:[]};
+const normal=c.decide(base);
+assert.equal(normal.tier,'normal');
+const pressure={...base,traces:Array.from({length:1},()=>({x:'x'.repeat(400000)}))};
+const forcedPressure=c.decide(pressure);
+assert.equal(forcedPressure.tier,'pressure');
+assert.equal(forcedPressure.traceLimit,224);
+const emergency={...base,traces:Array.from({length:1},()=>({x:'x'.repeat(470000)}))};
+const forcedEmergency=c.decide(emergency);
+assert.equal(forcedEmergency.tier,'emergency');
+assert.equal(forcedEmergency.traceLimit,160);
+console.log(`PERSISTENCE_BUDGET_FEEDBACK=PASS normal=${normal.tier} pressure=${forcedPressure.tier} emergency=${forcedEmergency.tier}`);

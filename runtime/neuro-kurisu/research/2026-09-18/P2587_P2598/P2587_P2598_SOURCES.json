@@ -1,0 +1,68 @@
+[
+  {
+    "title": "World Models for Embodied Intelligence: From Plausible to Controllable to Actionable",
+    "year": 2026,
+    "primary": "https://arxiv.org/abs/2609.16697",
+    "use": "actionable world-model evaluation; planning/verification/recovery/data-selection loops"
+  },
+  {
+    "title": "The World Model Remembers, the Actor Forgets: Dream Rehearsal for Continual Model-Based RL",
+    "year": 2026,
+    "primary": "https://arxiv.org/abs/2607.19749",
+    "use": "dream rehearsal, actor forgetting, skill recovery"
+  },
+  {
+    "title": "EnvACE: Internalizing Environment Dynamics via World Rehearsal for Agentic Reinforcement Learning",
+    "year": 2026,
+    "primary": "https://arxiv.org/abs/2608.06197",
+    "use": "internal world rehearsal before action"
+  },
+  {
+    "title": "CAER: Causal Action Effect Reweighting for World Model Training",
+    "year": 2026,
+    "primary": "https://arxiv.org/abs/2608.30897",
+    "use": "action-effect-weighted learning signal"
+  },
+  {
+    "title": "A survey of world models for physical AI with uncertainty representation and control",
+    "year": 2026,
+    "primary": "https://link.springer.com/article/10.1007/s44163-026-02122-1",
+    "use": "long-horizon error, uncertainty, control and sim-to-real design tensions"
+  },
+  {
+    "title": "Successor features for transfer in reinforcement learning",
+    "year": 2016,
+    "primary": "https://arxiv.org/abs/1606.05312",
+    "use": "decoupling dynamics/reward and transferable value representation"
+  },
+  {
+    "title": "Temporal Abstraction in Reinforcement Learning with the Successor Representation",
+    "year": 2023,
+    "primary": "https://www.jmlr.org/papers/v24/21-1213.html",
+    "use": "option discovery and temporally abstract action composition"
+  },
+  {
+    "title": "Active Inference for Physical AI Agents -- An Engineering Perspective",
+    "year": 2026,
+    "primary": "https://arxiv.org/abs/2603.20927",
+    "use": "future experimental direction: event-driven uncertainty-sensitive control"
+  },
+  {
+    "title": "From World Action Models to Embodied Brains: A Roadmap for Open-World Physical Intelligence",
+    "year": 2026,
+    "primary": "https://arxiv.org/abs/2607.11689",
+    "use": "shared contracts, action-conditioned world models, verification, closed-loop post-training, modular embodied-brain stack"
+  },
+  {
+    "title": "Lifting Embodied World Models for Planning and Control",
+    "year": 2026,
+    "primary": "https://arxiv.org/abs/2604.26182",
+    "use": "high-level action abstraction to reduce planning dimensionality and compute cost"
+  },
+  {
+    "title": "Rethinking World Models for Safety-Critical Embodied Systems",
+    "year": 2026,
+    "primary": "https://arxiv.org/abs/2609.03774",
+    "use": "risk-informed world models; intervention, epistemic uncertainty, recoverability, runtime assurance"
+  }
+]

@@ -1,0 +1,18 @@
+{
+  "release": "1.20.0-dev",
+  "date": "2026-09-20",
+  "sources": [
+    {"title":"Darwin Godel Machine: Open-Ended Evolution of Self-Improving Agents","url":"https://arxiv.org/abs/2505.22954","year":2025,"use":"self-improvement archive and empirical promotion loop"},
+    {"title":"A Self-Improving Coding Agent","url":"https://arxiv.org/abs/2504.15228","year":2025,"use":"agent-framework self-editing"},
+    {"title":"Huxley-Godel Machine","url":"https://arxiv.org/abs/2510.21614","year":2025,"use":"future self-improvement potential / metaproductivity"},
+    {"title":"Olympiad-level formal mathematical reasoning with reinforcement learning","url":"https://www.nature.com/articles/s41586-025-09833-y","year":2025,"use":"verifier-guided search, value model and test-time RL"},
+    {"title":"VerMCTS","url":"https://arxiv.org/abs/2402.08147","year":2024,"use":"counterexample-aware tree search"},
+    {"title":"RLEF","url":"https://arxiv.org/abs/2410.02089","year":2025,"use":"execution-feedback learning"},
+    {"title":"Improving Assembly Code Performance with Large Language Models via Reinforcement Learning","url":"https://arxiv.org/abs/2505.11480","year":2025,"use":"correctness-first performance reward"},
+    {"title":"RLPF: Reinforcement Learning from Performance Feedback for Code Generation","url":"https://arxiv.org/abs/2607.27271","year":2026,"use":"staged performance reward"},
+    {"title":"Verifier-First Evaluation of Agentic LLMs for Infrastructure-as-Code Generation","url":"https://arxiv.org/abs/2607.20478","year":2026,"use":"verifier-first decomposition and refinement"},
+    {"title":"ExecCritic: Learn to Test, Test to Improve for Coding Agents","url":"https://arxiv.org/abs/2609.09133","year":2026,"use":"independent test construction and fail-closed repair"},
+    {"title":"TIPCODER","url":"https://arxiv.org/abs/2609.03309","year":2026,"use":"test-time instruction-space exploration"},
+    {"title":"Self-Evolving Coding Agents","url":"https://arxiv.org/abs/2608.03392","year":2026,"use":"taxonomy and risks of self-evolution"}
+  ]
+}

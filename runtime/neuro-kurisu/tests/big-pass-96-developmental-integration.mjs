@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { BoundedOperationalJournal } from '../src/organism/persistence/BoundedOperationalJournal.ts';
+
+const dir=await mkdtemp(path.join(tmpdir(),'nk-pass96-'));
+const make=()=>new OrganismRuntime({
+  stateFile:path.join(dir,'state.json'),
+  worldStateFile:path.join(dir,'world.json'),
+  enableLanguage:false,
+  journal:new BoundedOperationalJournal(),
+  checkpointMinIntervalMs:0,
+});
+try {
+  const runtime=make();
+  await runtime.init();
+  const stepped=await runtime.step('Проверим это осторожно и учтём результат.');
+  assert.ok(stepped.cycle.state.tick>=1);
+  await runtime.core.feedback({success:.88,surprise:.62,evidenceSource:'unknown'});
+  const dev=runtime.core.developmentalSelfSnapshot();
+  assert.ok(dev.p84.count>=1,'developmental consequence should be recorded after feedback');
+  assert.ok(dev.future.length>=1,'future-self developmental forecast should exist');
+  assert.ok(dev.unifiedLearning.developmentalTransfer01>=0,'unified learning must receive developmental signal');
+  const first=dev.p84;
+  await runtime.core.flush();
+  await runtime.stop();
+
+  const restored=make();
+  await restored.init();
+  const after=restored.core.developmentalSelfSnapshot();
+  assert.ok(after.p84.count>=first.count,'developmental continuity should survive restart');
+  assert.ok(after.future.length>=1,'future-self developmental forecasts should survive restart');
+  restored.stop();
+  console.log(`BIG_PASS_96_INTEGRATION=PASS consequences=${after.p84.count} futureForecasts=${after.future.length} developmentalTransfer=${after.unifiedLearning.developmentalTransfer01.toFixed(4)}`);
+} finally { await rm(dir,{recursive:true,force:true}); }

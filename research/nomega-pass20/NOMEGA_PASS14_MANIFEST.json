@@ -1,0 +1,51 @@
+{
+  "baseline": "NOMEGA_PASS13",
+  "canonical_registry_failures": 0,
+  "canonical_registry_targets": 38,
+  "core_nomega_python_files": 304,
+  "file_count": 1049,
+  "generated_at_epoch": 1790226681.8511448,
+  "known_limits": [
+    "full 436-test suite has not been declared green",
+    "V13 neural substrate is differentiable and causally instrumented but has not yet shown robust pure-neural coding uplift on strict raw-language ablation",
+    "structural-health utility is intentionally not treated as capability evidence"
+  ],
+  "name": "NOMEGA",
+  "next_passes": [
+    "PASS15: full self-modification spine with real proposal generation, verifier-backed promotion, immutable lineage and mutation testing",
+    "PASS16: skill contamination-resistant memory with marginal-gain admission, quarantine, retirement and cross-family transfer",
+    "PASS17: metaproductivity/open-ended evolution over agent architecture, skills and search policy",
+    "PASS18: continual neural learning with learned plasticity gating and stronger unseen-family causality benchmarks"
+  ],
+  "pass": "PASS14",
+  "pytest_collected": 436,
+  "python_files": 541,
+  "real_changes": [
+    "source candidate identity now commits to baseline source tree hash",
+    "source promotion refuses stale canonical trees",
+    "source promotion stages all edits then commits with rollback on partial failure",
+    "source promotion has explicit rollback API and result provenance",
+    "source sandbox can create new modules through create_if_missing",
+    "structural plasticity pruning preserves per-target E/I reachability",
+    "structural restart check uses actual serialized state round-trip",
+    "dummy open-ended structural evaluators replaced with explicit structural-health measurement",
+    "open-ended smoke drift scoring now uses real program holdout execution"
+  ],
+  "status": "research_only",
+  "test_python_files": 141,
+  "tree_digest": "327bcc2ab1b4354fecfd93b57743c9e5740db8e89a45cf2643a0dd28841e7e93",
+  "verification": {
+    "compileall": "pass",
+    "critical_targeted_tests": {
+      "count": 85,
+      "status": "pass",
+      "warning_count": 1
+    },
+    "full_suite": "not_claimed_green",
+    "open_ended_smoke": "real_execution_feedback_and_structural_health_evaluator",
+    "source_level_candidate_smoke": "sandbox_rejected_invalid_release_candidate_as_expected",
+    "source_level_governance": "validated_candidate_path_with_stale_detection_and_rollback",
+    "strict_pure_neural_capability_ablation": "no_reliable_coding_gain_demonstrated"
+  },
+  "version": "1.30.0-dev"
+}

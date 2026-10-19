@@ -1,0 +1,14 @@
+{
+  "source": "letta-main.zip",
+  "classification": "reference-governance-only",
+  "currentRuntimeAvailableInArchive": false,
+  "rules": {
+    "canonicalSource": "Neuro-Kurisu 35.40",
+    "researchCannotAutoPromote": true,
+    "legacyCannotPromote": true,
+    "provenanceArchivesAreImmutable": true,
+    "credentialFilesExcluded": true,
+    "generatedArtifactsRequireHumanReview": true,
+    "telemetryDefault": {"enabled": true, "localOnly": true, "redactSensitive": true, "exportAllowed": false, "retentionDays": 30}
+  }
+}

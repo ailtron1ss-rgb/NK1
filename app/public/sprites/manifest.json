@@ -1,0 +1,274 @@
+{
+  "cells": [
+    {
+      "sheet": "sheet_anime_office",
+      "id": "arms_crossed",
+      "file": "sprites/sheet_anime_office/arms_crossed.png"
+    },
+    {
+      "sheet": "sheet_anime_office",
+      "id": "embarrassed",
+      "file": "sprites/sheet_anime_office/embarrassed.png"
+    },
+    {
+      "sheet": "sheet_anime_office",
+      "id": "neutral_front",
+      "file": "sprites/sheet_anime_office/neutral_front.png"
+    },
+    {
+      "sheet": "sheet_anime_office",
+      "id": "phone_look",
+      "file": "sprites/sheet_anime_office/phone_look.png"
+    },
+    {
+      "sheet": "sheet_anime_office",
+      "id": "shocked",
+      "file": "sprites/sheet_anime_office/shocked.png"
+    },
+    {
+      "sheet": "sheet_anime_office",
+      "id": "thinking_chin",
+      "file": "sprites/sheet_anime_office/thinking_chin.png"
+    },
+    {
+      "sheet": "sheet_anime_office",
+      "id": "tired_rest",
+      "file": "sprites/sheet_anime_office/tired_rest.png"
+    },
+    {
+      "sheet": "sheet_anime_office",
+      "id": "whiteboard",
+      "file": "sprites/sheet_anime_office/whiteboard.png"
+    },
+    {
+      "sheet": "sheet_trench_full",
+      "id": "city_stand",
+      "file": "sprites/sheet_trench_full/city_stand.png",
+      "w": 418,
+      "h": 470
+    },
+    {
+      "sheet": "sheet_trench_full",
+      "id": "rain_kneel",
+      "file": "sprites/sheet_trench_full/rain_kneel.png",
+      "w": 418,
+      "h": 470
+    },
+    {
+      "sheet": "sheet_trench_full",
+      "id": "reach_out",
+      "file": "sprites/sheet_trench_full/reach_out.png",
+      "w": 418,
+      "h": 470
+    },
+    {
+      "sheet": "sheet_trench_full",
+      "id": "phone_lean",
+      "file": "sprites/sheet_trench_full/phone_lean.png",
+      "w": 418,
+      "h": 470
+    },
+    {
+      "sheet": "sheet_trench_full",
+      "id": "lab_think",
+      "file": "sprites/sheet_trench_full/lab_think.png",
+      "w": 418,
+      "h": 470
+    },
+    {
+      "sheet": "sheet_trench_full",
+      "id": "sunset_phone",
+      "file": "sprites/sheet_trench_full/sunset_phone.png",
+      "w": 418,
+      "h": 470
+    },
+    {
+      "sheet": "sheet_trench_full",
+      "id": "clockwork",
+      "file": "sprites/sheet_trench_full/clockwork.png",
+      "w": 418,
+      "h": 470
+    },
+    {
+      "sheet": "sheet_trench_full",
+      "id": "street_walk",
+      "file": "sprites/sheet_trench_full/street_walk.png",
+      "w": 418,
+      "h": 470
+    },
+    {
+      "sheet": "sheet_cinematic",
+      "id": "arms_close",
+      "file": "sprites/sheet_cinematic/arms_close.png",
+      "w": 350,
+      "h": 561
+    },
+    {
+      "sheet": "sheet_cinematic",
+      "id": "sofa_phone",
+      "file": "sprites/sheet_cinematic/sofa_phone.png",
+      "w": 350,
+      "h": 561
+    },
+    {
+      "sheet": "sheet_cinematic",
+      "id": "passionate_reach",
+      "file": "sprites/sheet_cinematic/passionate_reach.png",
+      "w": 350,
+      "h": 561
+    },
+    {
+      "sheet": "sheet_cinematic",
+      "id": "whiteboard_write",
+      "file": "sprites/sheet_cinematic/whiteboard_write.png",
+      "w": 350,
+      "h": 561
+    },
+    {
+      "sheet": "sheet_cinematic",
+      "id": "drpepper_dusk",
+      "file": "sprites/sheet_cinematic/drpepper_dusk.png",
+      "w": 350,
+      "h": 561
+    },
+    {
+      "sheet": "sheet_cinematic",
+      "id": "steeple_focus",
+      "file": "sprites/sheet_cinematic/steeple_focus.png",
+      "w": 350,
+      "h": 561
+    },
+    {
+      "sheet": "sheet_cinematic",
+      "id": "wet_glance",
+      "file": "sprites/sheet_cinematic/wet_glance.png",
+      "w": 350,
+      "h": 561
+    },
+    {
+      "sheet": "sheet_cinematic",
+      "id": "soft_smile",
+      "file": "sprites/sheet_cinematic/soft_smile.png",
+      "w": 350,
+      "h": 561
+    },
+    {
+      "sheet": "sheet_lab",
+      "id": "lab_chin",
+      "file": "sprites/sheet_lab/lab_chin.png",
+      "w": 350,
+      "h": 561
+    },
+    {
+      "sheet": "sheet_lab",
+      "id": "lab_tired",
+      "file": "sprites/sheet_lab/lab_tired.png",
+      "w": 350,
+      "h": 561
+    },
+    {
+      "sheet": "sheet_lab",
+      "id": "lab_crossed",
+      "file": "sprites/sheet_lab/lab_crossed.png",
+      "w": 350,
+      "h": 561
+    },
+    {
+      "sheet": "sheet_lab",
+      "id": "lab_drpepper",
+      "file": "sprites/sheet_lab/lab_drpepper.png",
+      "w": 350,
+      "h": 561
+    },
+    {
+      "sheet": "sheet_lab",
+      "id": "lab_explain",
+      "file": "sprites/sheet_lab/lab_explain.png",
+      "w": 350,
+      "h": 561
+    },
+    {
+      "sheet": "sheet_lab",
+      "id": "lab_profile",
+      "file": "sprites/sheet_lab/lab_profile.png",
+      "w": 350,
+      "h": 561
+    },
+    {
+      "sheet": "sheet_lab",
+      "id": "lab_steeple",
+      "file": "sprites/sheet_lab/lab_steeple.png",
+      "w": 350,
+      "h": 561
+    },
+    {
+      "sheet": "sheet_lab",
+      "id": "lab_shocked",
+      "file": "sprites/sheet_lab/lab_shocked.png",
+      "w": 350,
+      "h": 561
+    }
+  ],
+  "exprMap": {
+    "neutral": [
+      "neutral_front",
+      "lab_crossed",
+      "arms_close"
+    ],
+    "happy": [
+      "soft_smile",
+      "lab_explain"
+    ],
+    "sad": [
+      "lab_tired",
+      "rain_kneel"
+    ],
+    "thinking": [
+      "thinking_chin",
+      "lab_chin",
+      "steeple_focus",
+      "lab_steeple"
+    ],
+    "embarrassed": [
+      "embarrassed"
+    ],
+    "surprised": [
+      "shocked",
+      "lab_shocked"
+    ],
+    "focused": [
+      "whiteboard",
+      "whiteboard_write",
+      "lab_think"
+    ],
+    "tired": [
+      "tired_rest",
+      "lab_tired"
+    ],
+    "tsundere_denial": [
+      "arms_crossed",
+      "lab_crossed"
+    ],
+    "dr_pepper_break": [
+      "lab_drpepper",
+      "drpepper_dusk"
+    ],
+    "whiteboard_explain": [
+      "whiteboard",
+      "whiteboard_write"
+    ],
+    "tender_glance": [
+      "soft_smile",
+      "wet_glance"
+    ],
+    "phone": [
+      "phone_look",
+      "phone_lean",
+      "sofa_phone"
+    ],
+    "passionate": [
+      "passionate_reach",
+      "reach_out"
+    ]
+  }
+}

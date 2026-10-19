@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+const cfg={enableWorldModel:true,enableLanguage:false,includeAdvancedCycleSnapshot:false,checkpointMinIntervalMs:60000,checkpointMaxDirtyCycles:64};
+const core=new OrganismCore(new MemoryStateStore(),cfg); await core.init();
+const A=[.92,.89,.90,.94,.91,.88,.87,.93];
+for(let i=1;i<=80;i++) core.consolidateB365Experience({tick:i,action:'explore',reward01:.9,predictionError01:.1,salience01:.76,verified01:1,independent01:1,evidenceQuality01:.98,continuity01:.94,goalId:'b383-runtime',context01:A});
+const before=core.b383ContextualPersonalityDiagnostics(); const query=core.queryB383ContextualMemory(A,'explore'); assert.ok(query.profiles.length>0); assert.ok(before.personalityAdaptations>0);
+const snap=core.snapshot(); const restored=new OrganismCore(new MemoryStateStore({initial:snap}),cfg); await restored.init(); const after=restored.b383ContextualPersonalityDiagnostics(); assert.deepEqual(after,before);
+for(let i=100;i<130;i++) restored.consolidateB365Experience({tick:i,action:'explore',reward01:.05,predictionError01:.9,salience01:.8,verified01:0,independent01:0,evidenceQuality01:.1,continuity01:.8,goalId:'bad',context01:A});
+assert.equal(restored.b383ContextualPersonalityDiagnostics().personalityAdaptations,before.personalityAdaptations);
+console.log(JSON.stringify({pass:true,status:'B383_RUNTIME_PERSONALITY_PERSISTENCE_PASS',adaptations:before.personalityAdaptations,traitImpact01:before.traitImpact01,restartEqual:true,unverifiedBlocked:true,queryProfiles:query.profiles.length},null,2));

@@ -1,0 +1,15 @@
+{
+  "pass": 20,
+  "version": "1.36.0-dev",
+  "title": "Capability Forge: experience wiki + structured skill composition + adversarial arena + adaptive evidence",
+  "status": "research_only",
+  "canonical_targets": [
+    "experience_wiki_v1",
+    "skill_composition_v1",
+    "adaptive_evidence_scheduler_v1",
+    "adversarial_evolution_arena_v1",
+    "pass20_capability_forge_v1"
+  ],
+  "external_research_register": "docs/research/pass20/RESEARCH_REGISTER.md",
+  "implementation_report": "docs/PASS20_IMPLEMENTATION_REPORT.md"
+}

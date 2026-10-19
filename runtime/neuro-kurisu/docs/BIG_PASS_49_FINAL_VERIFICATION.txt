@@ -1,0 +1,48 @@
+Neuro-Kurisu BIG PASS 49 / 34.20.0
+Final verification date: 2026-09-06
+
+TYPECHECK=PASS
+BIG_PASS_PROGRESS=100 checks=123/123
+CORE_OWNERSHIP=PASS
+FACADE_DEPENDENCY=PASS
+SUBSYSTEM_REGISTRY=PASS
+CLEAN_ARCHITECTURE=PASS
+FORENSICS=PASS
+SOURCE_HYGIENE=PASS
+SOURCE_TRUTH=PASS
+RELEASE_CONTRACT=PASS
+RELEASE_SOURCE=PASS
+LOCKFILE=PASS
+CLEAN_INTEGRITY=PASS
+API_ROUTES=92 duplicates=0
+SUBJECT_BOUNDARY=PASS
+CLEAN_RESTART_PERSISTENCE=PASS
+MEMORY_DEDUP=PASS
+IDENTITY_LOCK=PASS
+REPLAY=PASS
+PORTABLE_SUBJECT_BOUNDARY=PASS
+API_SECURITY=PASS
+SERVER_SECURITY_SMOKE=PASS
+BIG_PASS_49_SUBSYSTEM_RUNTIME=PASS
+BIG_PASS_49_PROJECT_DAG=PASS
+BIG_PASS_44_KERNEL=PASS
+BIG_PASS_45_ARCHITECTURE_PERFORMANCE=PASS
+BIG_PASS_46_MULTI_PROJECT_MODELS=PASS
+BIG_PASS_47_EXTERNAL_SKILL=PASS
+BIG_PASS_48_FIREWALL=PASS
+BIG_PASS_48_SUBSYSTEM_PORTS=PASS
+BIG_PASS_48_PERSISTENCE=PASS
+BIG_PASS_48_PROOF_RECEIPT=PASS
+
+Final long-horizon measurements after code freeze:
+LONG_HORIZON_OPERATIONAL_250=PASS warmedMedianRatio=1.503 firstMedianMs=19.73 lastMedianMs=29.65 p95Approx=33.06 heapGrowth=2.263
+LONG_HORIZON_OPERATIONAL_500=PASS ratio=1.246 firstMs=28.59 lastMs=35.62 p95=40.78 heapFirst=25.35 heapLast=99.33
+LONG_HORIZON_OPERATIONAL_1000=PASS ratio=1.588 steadyWarmMs=24.50 lastMs=38.91 p95=45.57 heapFirst=49.71 heapLast=80.91 memory=224
+
+Composite audit note:
+The full release composite is not used as a single binary PASS criterion because earlier historical runs exceeded the global wall-clock window after many individually passing gates. The targeted release gates above are the authoritative checks for this pass.
+
+Termux/Android note:
+This environment does not expose Termux:API hardware services. Device-level battery/sensor/Wi-Fi/TTS/STT validation therefore remains unverified here.
+
+No claim of human-level intelligence or phenomenal consciousness is made by these tests.

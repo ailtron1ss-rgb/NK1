@@ -1,0 +1,38 @@
+{
+  "frontier": 96,
+  "tests": {
+    "current": "34/34 PASS"
+  },
+  "model": {
+    "total_parameters": 367437,
+    "trainable_parameters": 159870,
+    "recurrent_owners": 1,
+    "duplicate_state_keys": 0
+  },
+  "candidates": {
+    "adaptive_compute": {
+      "status": "candidate_not_promoted",
+      "seeds": 3,
+      "steps": 120,
+      "dense_cosine_mean": 0.23680271208286285,
+      "adaptive_cosine_mean": 0.22876175741354624,
+      "adaptive_deep_fraction_mean": 0.7038938485499886
+    },
+    "three_factor_fast_synapse": {
+      "status": "candidate_not_promoted",
+      "seeds": 5,
+      "phase2_cosine_mean": 0.09503904022276402,
+      "frozen_baseline_phase2_cosine_mean": -0.03295813500881195,
+      "ungated_two_factor_phase2_cosine_mean": 0.24741215258836746
+    },
+    "multiscale_temporal_decay": {
+      "status": "candidate_not_promoted",
+      "seeds": 2,
+      "single_cosine_mean": 0.20138884335756302,
+      "multiscale_cosine_mean": 0.20166727900505066,
+      "single_top1_mean": 0.041666666977107525,
+      "multiscale_top1_mean": 0.041666666977107525
+    }
+  },
+  "next_frontier": "V97 selective weight regeneration + AdaLin-style adaptive linearity + fast-to-slow consolidation + long-horizon continual-learning qualification"
+}

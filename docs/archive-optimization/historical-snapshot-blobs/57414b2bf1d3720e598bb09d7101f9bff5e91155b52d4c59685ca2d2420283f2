@@ -1,0 +1,32 @@
+import type { BackendUiSnapshot, ChatBackendResponse } from "./types";
+
+const API_BASE = String(import.meta.env.VITE_NEURO_KURISU_API_BASE ?? "").replace(/\/$/, "");
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
+    cache: "no-store",
+  });
+  const text = await response.text();
+  let data: unknown = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = null; }
+  if (!response.ok) {
+    const message = typeof data === "object" && data && "error" in data ? String((data as { error?: unknown }).error) : `HTTP ${response.status}`;
+    throw new Error(message);
+  }
+  return data as T;
+}
+
+export const neuroApi = {
+  uiSnapshot: () => request<BackendUiSnapshot>("/api/organism/ui-snapshot"),
+  statusLite: () => request<{ ok: boolean; version: string; tick: number; lastAction: string; autonomyScore: number; predictionError: number; identityContinuity01: number; memoryCount: number; body: Record<string, number | boolean>; language: { calls: number; backend: string; degraded: boolean; lastFailure?: string }; voice: { state?: { speaking: boolean; listening: boolean } } }>("/api/organism/status-lite"),
+  chat: (message: string, deliberate = true, speak = false) => request<ChatBackendResponse>("/api/organism/chat", {
+    method: "POST",
+    body: JSON.stringify({ message, deliberate, speak }),
+  }),
+  sleep: (reason = "ui") => request<{ ok: boolean }>("/api/organism/sleep", { method: "POST", body: JSON.stringify({ reason }) }),
+  wake: (reason = "ui") => request<{ ok: boolean }>("/api/organism/wake", { method: "POST", body: JSON.stringify({ reason }) }),
+  researchStatus: () => request<Record<string, unknown>>("/api/research/status"),
+  researchProbe: (kind: "neurocore" | "nomega-registry" | "deepcode") => request<Record<string, unknown>>(`/api/research/probe/${kind}`, { method: "POST", body: "{}" }),
+};

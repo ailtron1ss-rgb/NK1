@@ -1,0 +1,63 @@
+import assert from 'node:assert/strict';
+import { ReservoirSampler, PrioritizedReplaySampler, symlog, symexp, robustPercentileNormalize } from '../src/organism/system/UpstreamReplayPrimitives.ts';
+import { B365UnifiedNeuroCausalCore } from '../src/organism/cognition/B365UnifiedNeuroCausalCore.ts';
+
+const reservoir = new ReservoirSampler(3, 123);
+for (let i = 0; i < 100; i++) reservoir.push(i);
+assert.equal(reservoir.values().length, 3);
+assert.equal(reservoir.snapshot().seen, 100);
+
+const rows = [{id:'a',p:0.01},{id:'b',p:0.2},{id:'c',p:0.8},{id:'d',p:0.5}];
+const per = new PrioritizedReplaySampler(.6,.4);
+const drawn = per.sample(rows, 3, (x) => x.p, 77);
+assert.equal(drawn.samples.length, 3);
+assert.ok(drawn.samples.every(x => x.importanceWeight01 >= 0 && x.importanceWeight01 <= 1));
+assert.ok(symlog(symexp(1.2)) > 0.99 && symlog(symexp(1.2)) < 1.21);
+assert.ok(robustPercentileNormalize([0,1,2,3,4], 2) > .35 && robustPercentileNormalize([0,1,2,3,4], 2) < .65);
+
+const core = new B365UnifiedNeuroCausalCore();
+for (let i = 0; i < 320; i++) {
+  core.step({tick:i, vector:Array.from({length:64},(_,j)=>Math.sin(i*.017+j*.13)), action:i%3===0?'explore':i%3===1?'verify':'respond', novelty01:(i%11)/10, uncertainty01:.35, predictionError01:(i%7)/12, autonomy01:.7, learningEnabled:true});
+  core.learnFromOutcome({tick:i,action:i%3===0?'explore':i%3===1?'verify':'respond',reward01:(i%9)/8,predictionError01:(i%7)/12,verified01:i%5===0?1:.6,externalEvidence01:i%17===0?1:0.2,actualUtility01:(i%10)/9,actualStateDelta01:(i%6)/5,actualWorldConfidence01:.72,temporalCreditEnabled:true,delayedReward01:(i%8)/7});
+}
+const before = core.diagnostics();
+const groupCounts = Object.values(before.replayReservoirGroups ?? {}).map((state) => state.capacity);
+assert.ok(groupCounts.length >= 3);
+assert.ok(Math.max(...groupCounts) - Math.min(...groupCounts) <= 1);
+const replay = core.replayConsolidate(24, 321);
+const after = core.diagnostics();
+assert.ok(before.replayStreamCount >= 300);
+assert.ok(after.replayBufferSize <= 128);
+assert.ok(replay.selected > 0);
+assert.ok(after.replayImpact01 >= 0);
+const restored = new B365UnifiedNeuroCausalCore();
+restored.restore(core.snapshot());
+const restoredDiag = restored.diagnostics();
+assert.equal(restoredDiag.replayBufferSize, after.replayBufferSize);
+assert.equal(restoredDiag.replayStreamCount, after.replayStreamCount);
+const continuedA = new B365UnifiedNeuroCausalCore();
+const continuedB = new B365UnifiedNeuroCausalCore();
+continuedA.restore(core.snapshot());
+continuedB.restore(core.snapshot());
+const continuationInput = {tick:999,action:'verify',reward01:.81,predictionError01:.14,verified01:.97,externalEvidence01:.88,actualUtility01:.77,actualStateDelta01:.62,actualWorldConfidence01:.79,temporalCreditEnabled:true,delayedReward01:.73};
+continuedA.learnFromOutcome(continuationInput);
+continuedB.learnFromOutcome(continuationInput);
+assert.deepEqual(continuedA.diagnostics().replayReservoirGroups, continuedB.diagnostics().replayReservoirGroups);
+assert.equal(continuedA.diagnostics().replayImportanceBeta01, continuedB.diagnostics().replayImportanceBeta01);
+const plasticImport = await import('../src/organism/cognition/NeuromodulatoryPlasticitySubstrate.ts');
+const plastic = new plasticImport.NeuromodulatoryPlasticitySubstrate();
+for (let i=0;i<128;i++) plastic.observe({dopamine01:.6,norepinephrine01:.5,acetylcholine01:.7,serotonin01:.5,explorationBias01:.6,attentionGain01:.7,updateRate01:.6,predictionError01:(i%9)/8,uncertainty01:.4,novelty01:.5,energy01:.7,load01:.3,tick:i,at:i});
+const beforePlastic=plastic.globalState(); plastic.learnFromOutcome(.94,.72); const afterPlastic=plastic.globalState();
+assert.ok(afterPlastic.metaplasticity01 >= 0 && afterPlastic.metaplasticity01 <= 1);
+assert.ok(Number.isFinite(afterPlastic.outputUncertaintyMean01));
+const legacyB365 = core.snapshot();
+delete legacyB365.replayStreamCount; delete legacyB365.replayReservoirGroups; delete legacyB365.replayImportanceBeta01; legacyB365.version=11;
+const legacyB365Restored = new B365UnifiedNeuroCausalCore();
+legacyB365Restored.restore(legacyB365);
+assert.ok(legacyB365Restored.diagnostics().replayBufferSize>=0);
+const legacyPlastic = plastic.snapshot();
+delete legacyPlastic.outputWeightUncertainty; delete legacyPlastic.recurrentWeightUncertainty; delete legacyPlastic.outputWeightAnchor; delete legacyPlastic.outputWeightImportance; legacyPlastic.version=1;
+const legacyPlasticRestored = new plasticImport.NeuromodulatoryPlasticitySubstrate();
+legacyPlasticRestored.restore(legacyPlastic);
+assert.ok(Number.isFinite(legacyPlasticRestored.globalState().outputImportanceMean01));
+console.log(JSON.stringify({ok:true, reservoirSeen:reservoir.snapshot().seen, replaySamples:drawn.samples.map(x=>x.item.id), b365:{buffer:after.replayBufferSize,stream:after.replayStreamCount,selected:replay.selected,impact01:after.replayImpact01,groups:after.replayReservoirGroups}, plastic:{metaplasticity01:afterPlastic.metaplasticity01,uncertainty01:afterPlastic.outputUncertaintyMean01,delta:afterPlastic.quality.advantage01-beforePlastic.quality.advantage01}}));

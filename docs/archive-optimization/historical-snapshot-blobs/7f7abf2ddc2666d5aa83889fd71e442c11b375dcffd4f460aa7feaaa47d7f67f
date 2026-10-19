@@ -1,0 +1,50 @@
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { dirname, resolve, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const PUBLIC = resolve(ROOT, 'app/public');
+const errors = [];
+const checks = [];
+const add = (label, ok, detail = '') => { checks.push({ label, ok, detail }); if (!ok) errors.push({ label, detail }); };
+
+const spriteManifest = resolve(PUBLIC, 'sprites/manifest.json');
+try {
+  const manifest = JSON.parse(readFileSync(spriteManifest, 'utf8'));
+  for (const cell of manifest.cells ?? []) {
+    const p = resolve(PUBLIC, cell.file);
+    add(`sprite:${cell.id}`, existsSync(p) && statSync(p).size > 0, relative(ROOT, p));
+  }
+} catch (error) {
+  add('sprites:manifest', false, String(error));
+}
+
+const liveRoot = resolve(PUBLIC, 'live2d/Kurisu');
+const mobile = resolve(PUBLIC, 'live2d/Kurisu.mobile/Kurisu-mobile.model3.json');
+function checkModel(modelPath) {
+  try {
+    const model = JSON.parse(readFileSync(modelPath, 'utf8'));
+    const base = dirname(modelPath);
+    const refs = model.FileReferences ?? {};
+    const values = [];
+    for (const key of ['Moc', 'Physics', 'DisplayInfo']) if (typeof refs[key] === 'string') values.push(refs[key]);
+    for (const x of refs.Textures ?? []) if (typeof x === 'string') values.push(x);
+    for (const group of Object.values(refs.Motions ?? {})) for (const motion of group ?? []) if (motion?.File) values.push(motion.File);
+    for (const expression of refs.Expressions ?? []) if (expression?.File) values.push(expression.File);
+    for (const ref of values) {
+      const p = resolve(base, ref);
+      add(`live2d:${relative(PUBLIC, modelPath)}:${ref}`, existsSync(p) && statSync(p).size > 0, relative(ROOT, p));
+    }
+  } catch (error) { add(`live2d:model:${relative(PUBLIC, modelPath)}`, false, String(error)); }
+}
+checkModel(resolve(liveRoot, 'Kurisu.model3.json'));
+checkModel(mobile);
+
+const profileSource = readFileSync(resolve(ROOT, 'app/src/legacy/avatar/outfitCatalog.ts'), 'utf8');
+const known = new Set((JSON.parse(readFileSync(spriteManifest, 'utf8')).cells ?? []).map(x => x.id));
+const blocks = [...profileSource.matchAll(/spritePreferences:\[([^\]]*)\]/g)];
+for (const block of blocks) for (const id of [...block[1].matchAll(/'([^']+)'/g)].map(m => m[1])) add(`visual-profile:${id}`, known.has(id), `manifest:${id}`);
+
+const summary = { ok: errors.length === 0, errorCount: errors.length, checks, generatedAt: new Date().toISOString() };
+console.log(JSON.stringify(summary, null, 2));
+process.exitCode = summary.ok ? 0 : 1;

@@ -1,0 +1,4976 @@
+{
+  "version": "canonical-module-registry-v1",
+  "generated_at": 1791191548.8075216,
+  "total_modules": 313,
+  "canonical_modules": 48,
+  "research_modules": 24,
+  "legacy_or_versioned_modules": 160,
+  "consolidation_candidates": 119,
+  "import_edges": 569,
+  "lazy_import_edges": 67,
+  "cycles": [],
+  "records": [
+    {
+      "module": "active_hypothesis_filter_v1",
+      "path": "core/nomega/active_hypothesis_filter_v1.py",
+      "role": "versioned",
+      "family": "active_hypothesis_filter",
+      "version": 1,
+      "classes": [
+        "ActiveHypothesisFilterV1",
+        "FilterReportV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "adaptive_environment_forge_v2",
+      "path": "core/nomega/adaptive_environment_forge_v2.py",
+      "role": "versioned",
+      "family": "adaptive_environment_forge",
+      "version": 2,
+      "classes": [
+        "AdaptiveEnvironmentForgeV2",
+        "AdaptiveForgeReportV2",
+        "EnvironmentRowV2"
+      ],
+      "imports": [
+        "verifiable_environment_forge_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "adaptive_evidence_scheduler_v1",
+      "path": "core/nomega/adaptive_evidence_scheduler_v1.py",
+      "role": "canonical",
+      "family": "adaptive_evidence_scheduler",
+      "version": 1,
+      "classes": [
+        "AdaptiveEvidenceSchedulerV1",
+        "EvidenceStageV1",
+        "ScheduleResultV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "adaptive_experience_memory_v3",
+      "path": "core/nomega/adaptive_experience_memory_v3.py",
+      "role": "canonical",
+      "family": "memory",
+      "version": 3,
+      "classes": [
+        "AdaptiveExperienceMemoryV3",
+        "ExperienceRecordV3"
+      ],
+      "imports": [
+        "program_abstraction_v1",
+        "replay_scheduler_v1",
+        "selective_memory_unlearning_v1",
+        "transfer_selective_replay_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "adaptive_program_curriculum_v1",
+      "path": "core/nomega/adaptive_program_curriculum_v1.py",
+      "role": "versioned",
+      "family": "adaptive_program_curriculum",
+      "version": 1,
+      "classes": [
+        "AdaptiveProgramCurriculumV1",
+        "FamilyEvidence"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "advanced_runtime",
+      "path": "core/nomega/advanced_runtime.py",
+      "role": "support",
+      "family": "advanced",
+      "version": null,
+      "classes": [
+        "AdvancedRuntimeGate"
+      ],
+      "imports": [
+        "mobile_compiler_v2",
+        "research_brain"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "adversarial_evolution_arena_v1",
+      "path": "core/nomega/adversarial_evolution_arena_v1.py",
+      "role": "canonical",
+      "family": "adversarial_evolution_arena",
+      "version": 1,
+      "classes": [
+        "AdversarialEvolutionArenaV1",
+        "ArenaTestV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "anti_forgetting",
+      "path": "core/nomega/anti_forgetting.py",
+      "role": "support",
+      "family": "anti",
+      "version": null,
+      "classes": [],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "apex_brain_v4",
+      "path": "core/nomega/apex_brain_v4.py",
+      "role": "versioned",
+      "family": "apex_brain",
+      "version": 4,
+      "classes": [
+        "ApexBrainV4",
+        "ApexOutput"
+      ],
+      "imports": [
+        "generalist_core"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "architecture_debt_registry_v1",
+      "path": "core/nomega/architecture_debt_registry_v1.py",
+      "role": "canonical",
+      "family": "architecture_diagnostics",
+      "version": 1,
+      "classes": [
+        "ArchitectureDebtRegistryReportV1",
+        "ArchitectureDebtRegistryV1"
+      ],
+      "imports": [
+        "canonical_registry_v1",
+        "config_usage_analyzer_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "architecture_health_v1",
+      "path": "core/nomega/architecture_health_v1.py",
+      "role": "canonical",
+      "family": "architecture_diagnostics",
+      "version": 1,
+      "classes": [
+        "ArchitectureHealthReportV1",
+        "ArchitectureHealthScannerV1"
+      ],
+      "imports": [
+        "canonical_registry_v1",
+        "config_usage_analyzer_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "architecture_search",
+      "path": "core/nomega/architecture_search.py",
+      "role": "support",
+      "family": "architecture",
+      "version": null,
+      "classes": [
+        "Candidate"
+      ],
+      "imports": [
+        "config",
+        "core"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "attention_memory",
+      "path": "core/nomega/attention_memory.py",
+      "role": "support",
+      "family": "attention",
+      "version": null,
+      "classes": [
+        "AttentionMemory"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "autonomous_capability_builder_v1",
+      "path": "core/nomega/autonomous_capability_builder_v1.py",
+      "role": "canonical",
+      "family": "autonomous_builder",
+      "version": 1,
+      "classes": [
+        "AutonomousBuildReportV1",
+        "AutonomousCapabilityBuilderV1"
+      ],
+      "imports": [
+        "candidate_artifact_lifecycle_v1",
+        "executable_spine_v2",
+        "program_acquisition_v2",
+        "task_spec_v1",
+        "verified_neural_substrate_bridge_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "autonomous_development_runner_v1",
+      "path": "core/nomega/autonomous_development_runner_v1.py",
+      "role": "canonical",
+      "family": "autonomous_builder",
+      "version": 1,
+      "classes": [
+        "AutonomousDevelopmentRunnerV1"
+      ],
+      "imports": [
+        "autonomous_capability_builder_v1",
+        "self_development_orchestrator_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "autonomous_repair_learning_loop_v1",
+      "path": "core/nomega/autonomous_repair_learning_loop_v1.py",
+      "role": "versioned",
+      "family": "autonomous_repair_learning_loop",
+      "version": 1,
+      "classes": [
+        "AutonomousRepairLearningLoopV1"
+      ],
+      "imports": [
+        "execution_evidence_v2",
+        "execution_trace_v1",
+        "neural_repair_policy_v1",
+        "repair_engine_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "behavioral_consolidation_prover_v1",
+      "path": "core/nomega/behavioral_consolidation_prover_v1.py",
+      "role": "versioned",
+      "family": "behavioral_consolidation_prover",
+      "version": 1,
+      "classes": [
+        "BehavioralConsolidationProverV1",
+        "ConsolidationProofV1",
+        "ModuleSurfaceV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "behavioral_equivalence_contract",
+      "path": "core/nomega/behavioral_equivalence_contract.py",
+      "role": "support",
+      "family": "behavioral",
+      "version": null,
+      "classes": [
+        "BehavioralEquivalenceContractV1",
+        "ContractResultV1"
+      ],
+      "imports": [
+        "canonical_capability_facade_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "bench",
+      "path": "core/nomega/bench.py",
+      "role": "support",
+      "family": "bench",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "config",
+        "core",
+        "research",
+        "route_lab"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "benchmark_1_27_neural_self_optimization",
+      "path": "core/nomega/benchmark_1_27_neural_self_optimization.py",
+      "role": "research",
+      "family": "benchmark",
+      "version": null,
+      "classes": [
+        "_TinyContinualNet"
+      ],
+      "imports": [
+        "neural_self_optimization_controller_v2",
+        "online_adaptation_transaction_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "benchmark_1_28_autonomous_repair",
+      "path": "core/nomega/benchmark_1_28_autonomous_repair.py",
+      "role": "research",
+      "family": "benchmark",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "autonomous_repair_learning_loop_v1",
+        "neural_substrate_v1",
+        "structural_plasticity_controller_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "benchmark_1_28_autonomous_repair_multiseed",
+      "path": "core/nomega/benchmark_1_28_autonomous_repair_multiseed.py",
+      "role": "research",
+      "family": "benchmark",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "autonomous_repair_learning_loop_v1",
+        "neural_substrate_v1",
+        "structural_plasticity_controller_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "benchmark_1_29_open_ended_evolution",
+      "path": "core/nomega/benchmark_1_29_open_ended_evolution.py",
+      "role": "research",
+      "family": "benchmark",
+      "version": null,
+      "classes": [
+        "OpenEndedEvolutionBenchmarkV1"
+      ],
+      "imports": [
+        "capability_evolver_v1",
+        "capability_transfer_evaluator_v1",
+        "elastic_substrate_policy_v1",
+        "gradual_drift_benchmark_v1",
+        "multi_source_generalist_evolution_v1",
+        "neural_substrate_v1",
+        "program_acquisition_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "bridge",
+      "path": "core/nomega/bridge.py",
+      "role": "support",
+      "family": "bridge",
+      "version": null,
+      "classes": [
+        "NullseedSearchBridge"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "budget",
+      "path": "core/nomega/budget.py",
+      "role": "support",
+      "family": "budget",
+      "version": null,
+      "classes": [
+        "HardwareProfile"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "budget_manager",
+      "path": "core/nomega/budget_manager.py",
+      "role": "support",
+      "family": "budget",
+      "version": null,
+      "classes": [
+        "BudgetManager",
+        "RuntimeBudget"
+      ],
+      "imports": [
+        "budget"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "cache",
+      "path": "core/nomega/cache.py",
+      "role": "support",
+      "family": "cache",
+      "version": null,
+      "classes": [
+        "VerifiedCache"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "calibrated_strategy_router_v1",
+      "path": "core/nomega/calibrated_strategy_router_v1.py",
+      "role": "versioned",
+      "family": "calibrated_strategy_router",
+      "version": 1,
+      "classes": [
+        "CalibratedStrategyRouterV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "calibration_v2",
+      "path": "core/nomega/calibration_v2.py",
+      "role": "versioned",
+      "family": "calibration",
+      "version": 2,
+      "classes": [
+        "ConfidenceCalibratorV2"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "candidate_artifact_lifecycle_v1",
+      "path": "core/nomega/candidate_artifact_lifecycle_v1.py",
+      "role": "versioned",
+      "family": "candidate_artifact_lifecycle",
+      "version": 1,
+      "classes": [
+        "ArtifactRecordV1",
+        "CandidateArtifactLifecycleV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "canonical_capability_facade_v1",
+      "path": "core/nomega/canonical_capability_facade_v1.py",
+      "role": "versioned",
+      "family": "canonical_capability_facade",
+      "version": 1,
+      "classes": [
+        "CanonicalCapabilityFacadeV1",
+        "CapabilityHandleV1"
+      ],
+      "imports": [
+        "canonical_registry_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "canonical_consolidation_planner_v1",
+      "path": "core/nomega/canonical_consolidation_planner_v1.py",
+      "role": "versioned",
+      "family": "canonical_consolidation_planner",
+      "version": 1,
+      "classes": [
+        "CanonicalConsolidationPlannerV1",
+        "ConsolidationCandidateV1",
+        "ConsolidationPlanV1"
+      ],
+      "imports": [
+        "canonical_registry_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "canonical_neural_execution_v1",
+      "path": "core/nomega/canonical_neural_execution_v1.py",
+      "role": "canonical",
+      "family": "canonical_neural_execution",
+      "version": 1,
+      "classes": [
+        "CanonicalNeuralProgramBridgeV1",
+        "NeuralBridgeReportV1",
+        "NeuralCandidateV1"
+      ],
+      "imports": [
+        "neural_program_synth",
+        "neural_program_trainer_v6",
+        "program_acquisition_v2",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "canonical_registry_v1",
+      "path": "core/nomega/canonical_registry_v1.py",
+      "role": "versioned",
+      "family": "canonical_registry",
+      "version": 1,
+      "classes": [
+        "CanonicalModuleRegistryV1",
+        "CanonicalRegistryReportV1",
+        "ModuleRecordV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "canonical_skill_lifecycle_v1",
+      "path": "core/nomega/canonical_skill_lifecycle_v1.py",
+      "role": "canonical",
+      "family": "skill_lifecycle",
+      "version": 1,
+      "classes": [
+        "CanonicalSkillAdmissionV1",
+        "CanonicalSkillLifecycleV1"
+      ],
+      "imports": [
+        "skill_bank",
+        "skill_compiler",
+        "skill_governance_v1",
+        "skill_versioning"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "capability",
+      "path": "core/nomega/capability.py",
+      "role": "support",
+      "family": "capability",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "curriculum"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "capability_evolver_v1",
+      "path": "core/nomega/capability_evolver_v1.py",
+      "role": "canonical",
+      "family": "open_ended_evolution",
+      "version": 1,
+      "classes": [
+        "CapabilityDiscoveryReportV1",
+        "CapabilityEvolverV1",
+        "OperatorGenomeV1"
+      ],
+      "imports": [
+        "evolution_archive_v1",
+        "program_acquisition_v2",
+        "program_runtime_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "capability_registry",
+      "path": "core/nomega/capability_registry.py",
+      "role": "support",
+      "family": "capability",
+      "version": null,
+      "classes": [
+        "Capability",
+        "CapabilityRegistry"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "capability_transfer_evaluator_v1",
+      "path": "core/nomega/capability_transfer_evaluator_v1.py",
+      "role": "canonical",
+      "family": "capability_transfer",
+      "version": 1,
+      "classes": [
+        "CapabilityTransferEvaluatorV1",
+        "TransferPairResultV1"
+      ],
+      "imports": [
+        "capability_evolver_v1",
+        "gradual_drift_benchmark_v1",
+        "program_acquisition_v2",
+        "program_runtime_v2",
+        "semantic_repair_v2",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "causal_development_planner_v1",
+      "path": "core/nomega/causal_development_planner_v1.py",
+      "role": "versioned",
+      "family": "causal_development_planner",
+      "version": 1,
+      "classes": [
+        "CausalDevelopmentPlannerV1"
+      ],
+      "imports": [
+        "causal_self_model_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "causal_evidence_ledger_v1",
+      "path": "core/nomega/causal_evidence_ledger_v1.py",
+      "role": "canonical",
+      "family": "causal",
+      "version": 1,
+      "classes": [
+        "CausalEvidenceLedgerV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "causal_self_model_v1",
+      "path": "core/nomega/causal_self_model_v1.py",
+      "role": "canonical",
+      "family": "causal",
+      "version": 1,
+      "classes": [
+        "CausalSelfModelV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "cognitive_development_bridge_v1",
+      "path": "core/nomega/cognitive_development_bridge_v1.py",
+      "role": "versioned",
+      "family": "cognitive_development_bridge",
+      "version": 1,
+      "classes": [
+        "CognitiveDevelopmentBridgeV1",
+        "DevelopmentTaskV1",
+        "StrategyResultV1"
+      ],
+      "imports": [
+        "executable_spine_v2",
+        "matched_evidence_v1",
+        "neural_program_repair_v2",
+        "program_acquisition_v2",
+        "program_runtime_v2",
+        "unified_development_loop_v1",
+        "verified_neural_substrate_bridge_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "compression_report",
+      "path": "core/nomega/compression_report.py",
+      "role": "support",
+      "family": "compression",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "quantization_lab"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "config",
+      "path": "core/nomega/config.py",
+      "role": "support",
+      "family": "config",
+      "version": null,
+      "classes": [
+        "NOMEGAConfig"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "config_usage_analyzer_v1",
+      "path": "core/nomega/config_usage_analyzer_v1.py",
+      "role": "canonical",
+      "family": "architecture_diagnostics",
+      "version": 1,
+      "classes": [
+        "ConfigFieldUsageV1",
+        "ConfigUsageAnalyzerV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "continual",
+      "path": "core/nomega/continual.py",
+      "role": "support",
+      "family": "continual",
+      "version": null,
+      "classes": [
+        "Evaluation",
+        "PromotionGate"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "continual_learning_controller_v1",
+      "path": "core/nomega/continual_learning_controller_v1.py",
+      "role": "canonical",
+      "family": "continual_learning",
+      "version": 1,
+      "classes": [
+        "ContinualLearningControllerV1",
+        "ReplayPartitionV1",
+        "RetentionReportV1"
+      ],
+      "imports": [
+        "continual_replay_policy_v2",
+        "replay_partition_registry_v2",
+        "replay_scheduler_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "continual_replay_policy_v2",
+      "path": "core/nomega/continual_replay_policy_v2.py",
+      "role": "versioned",
+      "family": "continual_replay_policy",
+      "version": 2,
+      "classes": [
+        "ContinualReplayPolicyV2"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "continual_strategy_portfolio_v1",
+      "path": "core/nomega/continual_strategy_portfolio_v1.py",
+      "role": "versioned",
+      "family": "continual_strategy_portfolio",
+      "version": 1,
+      "classes": [
+        "AGEMConstraintV1",
+        "ContinualStrategyBenchmarkV1",
+        "ContinualStrategyPortfolioV1",
+        "EWCPenaltyV1",
+        "StrategyEvidence"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "continual_v2",
+      "path": "core/nomega/continual_v2.py",
+      "role": "canonical",
+      "family": "continual_learning",
+      "version": 2,
+      "classes": [
+        "ContinualLearnerV2",
+        "GateResult",
+        "ReplayBufferV2"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "core",
+      "path": "core/nomega/core.py",
+      "role": "support",
+      "family": "core",
+      "version": null,
+      "classes": [
+        "NOmegaCore"
+      ],
+      "imports": [
+        "attention_memory",
+        "budget_manager",
+        "cache",
+        "canonical_neural_execution_v1",
+        "canonical_skill_lifecycle_v1",
+        "capability_registry",
+        "causal_evidence_ledger_v1",
+        "config",
+        "encoder",
+        "ensemble",
+        "evolution_controller",
+        "executable_spine_v2",
+        "expert_manager",
+        "experts",
+        "generalist_core",
+        "goal_manager",
+        "governance_runtime",
+        "hybrid_reasoner_v2",
+        "memory",
+        "mobile_policy",
+        "modalities",
+        "planning_search",
+        "program_equivalence_v2",
+        "reasoning",
+        "router",
+        "self_model",
+        "skill_bank",
+        "skill_compiler",
+        "skill_governance_v1",
+        "skill_versioning",
+        "sparse_moe_v1",
+        "task_policy",
+        "telemetry",
+        "telemetry_advanced",
+        "tools",
+        "types",
+        "universal_latent",
+        "verifier",
+        "working_memory",
+        "world_model"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "counterexample_curriculum_v1",
+      "path": "core/nomega/counterexample_curriculum_v1.py",
+      "role": "versioned",
+      "family": "counterexample_curriculum",
+      "version": 1,
+      "classes": [
+        "CounterexampleCurriculumV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "counterexample_replay_v1",
+      "path": "core/nomega/counterexample_replay_v1.py",
+      "role": "versioned",
+      "family": "counterexample_replay",
+      "version": 1,
+      "classes": [
+        "Counterexample",
+        "CounterexampleReplayV1"
+      ],
+      "imports": [
+        "program_runtime"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "counterexample_search_v2",
+      "path": "core/nomega/counterexample_search_v2.py",
+      "role": "canonical",
+      "family": "counterexample_search",
+      "version": 2,
+      "classes": [
+        "CounterexampleSearchV2",
+        "SearchNodeV2"
+      ],
+      "imports": [
+        "partial_program_value_v1",
+        "program_acquisition_v2",
+        "program_contract_v1",
+        "program_runtime_v2",
+        "semantic_prune_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "counterfactual_v2",
+      "path": "core/nomega/counterfactual_v2.py",
+      "role": "versioned",
+      "family": "counterfactual",
+      "version": 2,
+      "classes": [
+        "CandidateResult",
+        "CounterfactualArenaV2"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "curriculum",
+      "path": "core/nomega/curriculum.py",
+      "role": "support",
+      "family": "curriculum",
+      "version": null,
+      "classes": [
+        "CurriculumTask"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "deploy",
+      "path": "core/nomega/deploy.py",
+      "role": "support",
+      "family": "deploy",
+      "version": null,
+      "classes": [],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "development_cycle",
+      "path": "core/nomega/development_cycle.py",
+      "role": "canonical",
+      "family": "development_cycle",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "development_cycle_v9"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "development_cycle_v4",
+      "path": "core/nomega/development_cycle_v4.py",
+      "role": "legacy",
+      "family": "development_cycle",
+      "version": 4,
+      "classes": [
+        "OmegaDevelopmentCycleV4"
+      ],
+      "imports": [
+        "governance_runtime",
+        "joint_learning_v4",
+        "long_horizon_planner_v3",
+        "mobile_optimizer_v6",
+        "ood_curriculum_v5",
+        "skill_transfer_v4",
+        "trace_learning_v2",
+        "world_model_v3"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "development_cycle_v5",
+      "path": "core/nomega/development_cycle_v5.py",
+      "role": "legacy",
+      "family": "development_cycle",
+      "version": 5,
+      "classes": [
+        "OmegaDevelopmentCycleV5"
+      ],
+      "imports": [
+        "long_horizon_planner_v3",
+        "mobile_optimizer_v6",
+        "program_acquisition_v1",
+        "program_learning_v1",
+        "skill_transfer_v4",
+        "task_generator_v4",
+        "world_model_v3"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "development_cycle_v6",
+      "path": "core/nomega/development_cycle_v6.py",
+      "role": "legacy",
+      "family": "development_cycle",
+      "version": 6,
+      "classes": [
+        "OmegaDevelopmentCycleV6"
+      ],
+      "imports": [
+        "counterexample_replay_v1",
+        "mobile_optimizer_v6",
+        "program_acquisition_v1",
+        "program_learning_v1",
+        "skill_induction_v1",
+        "task_generator_v4"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "development_cycle_v7",
+      "path": "core/nomega/development_cycle_v7.py",
+      "role": "legacy",
+      "family": "development_cycle",
+      "version": 7,
+      "classes": [
+        "OmegaDevelopmentCycleV7"
+      ],
+      "imports": [
+        "program_acquisition_v2",
+        "program_equivalence_v2",
+        "program_generalization_v1",
+        "skill_induction_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "development_cycle_v8",
+      "path": "core/nomega/development_cycle_v8.py",
+      "role": "legacy",
+      "family": "development_cycle",
+      "version": 8,
+      "classes": [
+        "OmegaDevelopmentCycleV8"
+      ],
+      "imports": [
+        "neural_program_acquisition_v1",
+        "program_acquisition_v2",
+        "program_generalization_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "development_cycle_v9",
+      "path": "core/nomega/development_cycle_v9.py",
+      "role": "legacy",
+      "family": "development_cycle",
+      "version": 9,
+      "classes": [
+        "OmegaDevelopmentCycleV9"
+      ],
+      "imports": [
+        "experiment_registry_v3",
+        "mobile_program_optimizer_v7",
+        "neural_guided_program_search_v1",
+        "neural_program_synth_v2",
+        "ood_prompt_benchmark_v2",
+        "program_acquisition_v2",
+        "program_generalization_v1",
+        "skill_consolidation_v3",
+        "task_spec_ood_benchmark_v1",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "development_frontier_selector_v1",
+      "path": "core/nomega/development_frontier_selector_v1.py",
+      "role": "versioned",
+      "family": "development_frontier_selector",
+      "version": 1,
+      "classes": [
+        "DevelopmentFrontierSelectorV1",
+        "FrontierCandidateV1",
+        "FrontierDecisionV1"
+      ],
+      "imports": [
+        "developmental_bottleneck_detector_v1",
+        "metaproductivity_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "development_intervention_registry_v1",
+      "path": "core/nomega/development_intervention_registry_v1.py",
+      "role": "canonical",
+      "family": "development_interventions",
+      "version": 1,
+      "classes": [
+        "DevelopmentInterventionRegistryV1",
+        "InterventionResultV1",
+        "InterventionSpecV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "developmental_bottleneck_detector_v1",
+      "path": "core/nomega/developmental_bottleneck_detector_v1.py",
+      "role": "versioned",
+      "family": "developmental_bottleneck_detector",
+      "version": 1,
+      "classes": [
+        "DevelopmentalBottleneckDetectorV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "dual_runtime",
+      "path": "core/nomega/dual_runtime.py",
+      "role": "support",
+      "family": "dual",
+      "version": null,
+      "classes": [
+        "DualRuntime"
+      ],
+      "imports": [
+        "program_runtime"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "elastic_substrate_policy_v1",
+      "path": "core/nomega/elastic_substrate_policy_v1.py",
+      "role": "versioned",
+      "family": "elastic_substrate_policy",
+      "version": 1,
+      "classes": [
+        "ElasticPlanV1",
+        "ElasticSubstratePolicyV1"
+      ],
+      "imports": [
+        "neural_substrate_v1",
+        "structural_plasticity_controller_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "encoder",
+      "path": "core/nomega/encoder.py",
+      "role": "support",
+      "family": "encoder",
+      "version": null,
+      "classes": [
+        "TinyTextEncoder"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "ensemble",
+      "path": "core/nomega/ensemble.py",
+      "role": "support",
+      "family": "ensemble",
+      "version": null,
+      "classes": [
+        "EvidenceEnsemble"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "evidence",
+      "path": "core/nomega/evidence.py",
+      "role": "support",
+      "family": "evidence",
+      "version": null,
+      "classes": [
+        "AnswerBundle",
+        "Evidence"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "evolution_archive_v1",
+      "path": "core/nomega/evolution_archive_v1.py",
+      "role": "versioned",
+      "family": "evolution_archive",
+      "version": 1,
+      "classes": [
+        "ArchiveCandidateV1",
+        "EvolutionArchiveV1"
+      ],
+      "imports": [
+        "program_abstraction_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "evolution_controller",
+      "path": "core/nomega/evolution_controller.py",
+      "role": "support",
+      "family": "evolution",
+      "version": null,
+      "classes": [
+        "CandidateConfig",
+        "EvolutionController"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "evolution_diagnostics_v1",
+      "path": "core/nomega/evolution_diagnostics_v1.py",
+      "role": "versioned",
+      "family": "evolution_diagnostics",
+      "version": 1,
+      "classes": [
+        "EvolutionDiagnosticsV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "evolution_islands_v1",
+      "path": "core/nomega/evolution_islands_v1.py",
+      "role": "versioned",
+      "family": "evolution_islands",
+      "version": 1,
+      "classes": [
+        "EvolutionIslandControllerV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "evolutionary_repair_portfolio_v1",
+      "path": "core/nomega/evolutionary_repair_portfolio_v1.py",
+      "role": "versioned",
+      "family": "evolutionary_repair_portfolio",
+      "version": 1,
+      "classes": [
+        "EvolutionaryRepairPortfolioV1"
+      ],
+      "imports": [
+        "evolution_archive_v1",
+        "evolution_islands_v1",
+        "program_acquisition_v2",
+        "repair_operator_policy_v2"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "executable_spine_v2",
+      "path": "core/nomega/executable_spine_v2.py",
+      "role": "canonical",
+      "family": "executable_spine",
+      "version": 2,
+      "classes": [
+        "ExecutableSpineV2",
+        "PortfolioRowV2"
+      ],
+      "imports": [
+        "counterexample_search_v2",
+        "execution_contract_v2",
+        "program_acquisition_v2",
+        "program_runtime_v2",
+        "prompt_grounding_v2",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "execution_budget_policy_v1",
+      "path": "core/nomega/execution_budget_policy_v1.py",
+      "role": "versioned",
+      "family": "execution_budget_policy",
+      "version": 1,
+      "classes": [
+        "ExecutionBudgetDecisionV1",
+        "ExecutionBudgetPolicyV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "execution_contract_v2",
+      "path": "core/nomega/execution_contract_v2.py",
+      "role": "versioned",
+      "family": "execution_contract",
+      "version": 2,
+      "classes": [
+        "EvidenceItemV2",
+        "ExecutionContractV2"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "execution_evidence_v2",
+      "path": "core/nomega/execution_evidence_v2.py",
+      "role": "versioned",
+      "family": "execution_evidence",
+      "version": 2,
+      "classes": [
+        "EvidenceStepV2",
+        "ExecutionEvidenceV2"
+      ],
+      "imports": [
+        "execution_trace_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "execution_feedback_policy_v1",
+      "path": "core/nomega/execution_feedback_policy_v1.py",
+      "role": "versioned",
+      "family": "execution_feedback_policy",
+      "version": 1,
+      "classes": [
+        "ExecutionFeedbackPolicyTrainerV1",
+        "ExecutionFeedbackTrainReportV1",
+        "FeedbackTrajectoryV1"
+      ],
+      "imports": [
+        "adaptive_experience_memory_v3",
+        "evolution_archive_v1",
+        "neural_program_synth_v2",
+        "program_acquisition_v2",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "execution_guided_learning_loop_v1",
+      "path": "core/nomega/execution_guided_learning_loop_v1.py",
+      "role": "canonical",
+      "family": "execution_guided_learning",
+      "version": 1,
+      "classes": [
+        "ExecutionGuidedCycleReportV1",
+        "ExecutionGuidedLearningLoopV1",
+        "ExecutionGuidedSampleV1"
+      ],
+      "imports": [
+        "canonical_neural_execution_v1",
+        "canonical_skill_lifecycle_v1",
+        "causal_evidence_ledger_v1",
+        "evolution_islands_v1",
+        "evolutionary_repair_portfolio_v1",
+        "executable_spine_v2",
+        "program_acquisition_v2",
+        "program_runtime_v2",
+        "skill_bank",
+        "skill_compiler",
+        "skill_governance_v1",
+        "skill_versioning",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "execution_guided_program_learning_v1",
+      "path": "core/nomega/execution_guided_program_learning_v1.py",
+      "role": "versioned",
+      "family": "execution_guided_program_learning",
+      "version": 1,
+      "classes": [
+        "ExecutionGuidedProgramLearnerV1"
+      ],
+      "imports": [
+        "adaptive_experience_memory_v3",
+        "adaptive_program_curriculum_v1",
+        "causal_self_model_v1",
+        "evolution_archive_v1",
+        "evolution_diagnostics_v1",
+        "evolutionary_repair_portfolio_v1",
+        "fixed_replay_schedule_v1",
+        "gradient_alignment_replay_v1",
+        "model_time_replay_v1",
+        "multiscale_consolidation_v1",
+        "neural_program_synth_v2",
+        "neural_program_synth_v4",
+        "neural_program_synth_v8",
+        "neural_program_trainer_v3",
+        "neural_program_trainer_v5",
+        "program_acquisition_v2",
+        "repair_operator_policy_v2",
+        "repair_search_policy_v1",
+        "self_development_orchestrator_v1",
+        "task_spec_ood_benchmark_v1",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "execution_preference_trainer_v1",
+      "path": "core/nomega/execution_preference_trainer_v1.py",
+      "role": "versioned",
+      "family": "execution_preference_trainer",
+      "version": 1,
+      "classes": [
+        "ExecutionPreferenceTrainerV1",
+        "PreferenceTrainReportV1"
+      ],
+      "imports": [
+        "neural_program_synth_v2",
+        "program_acquisition_v2",
+        "verifiable_dense_reward_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "execution_replay_trainer_v2",
+      "path": "core/nomega/execution_replay_trainer_v2.py",
+      "role": "versioned",
+      "family": "execution_replay_trainer",
+      "version": 2,
+      "classes": [
+        "ExecutionReplayTrainerV2"
+      ],
+      "imports": [
+        "program_runtime_v2"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "execution_trace_v1",
+      "path": "core/nomega/execution_trace_v1.py",
+      "role": "versioned",
+      "family": "execution_trace",
+      "version": 1,
+      "classes": [
+        "ExecutionTraceV1",
+        "TraceStepV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "experience_wiki_v1",
+      "path": "core/nomega/experience_wiki_v1.py",
+      "role": "canonical",
+      "family": "experience_wiki",
+      "version": 1,
+      "classes": [
+        "ExperienceRecordV1",
+        "ExperienceWikiV1",
+        "KnowledgeRecordV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "experiment_matrix",
+      "path": "core/nomega/experiment_matrix.py",
+      "role": "support",
+      "family": "experiment",
+      "version": null,
+      "classes": [
+        "ExperimentMatrix"
+      ],
+      "imports": [
+        "config",
+        "core",
+        "research"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "experiment_registry",
+      "path": "core/nomega/experiment_registry.py",
+      "role": "canonical",
+      "family": "experiment_registry",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "experiment_registry_v3"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "experiment_registry_v2",
+      "path": "core/nomega/experiment_registry_v2.py",
+      "role": "legacy",
+      "family": "experiment_registry",
+      "version": 2,
+      "classes": [
+        "ExperimentRegistryV2"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "experiment_registry_v3",
+      "path": "core/nomega/experiment_registry_v3.py",
+      "role": "legacy",
+      "family": "experiment_registry",
+      "version": 3,
+      "classes": [
+        "ExperimentRegistryV3"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "expert_manager",
+      "path": "core/nomega/expert_manager.py",
+      "role": "support",
+      "family": "expert",
+      "version": null,
+      "classes": [
+        "ExpertManager",
+        "ExpertStats"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "experts",
+      "path": "core/nomega/experts.py",
+      "role": "support",
+      "family": "experts",
+      "version": null,
+      "classes": [
+        "BaseExpert",
+        "ExpertBank",
+        "HeuristicExpert",
+        "MemoryExpert",
+        "NeuralInventExpert",
+        "PlannerExpert",
+        "SkillExpert",
+        "SymbolicExpert"
+      ],
+      "imports": [
+        "canonical_neural_execution_v1",
+        "dual_runtime",
+        "planner",
+        "program_runtime"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "fixed_replay_schedule_v1",
+      "path": "core/nomega/fixed_replay_schedule_v1.py",
+      "role": "versioned",
+      "family": "fixed_replay_schedule",
+      "version": 1,
+      "classes": [
+        "FixedReplayScheduleV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "frontier_evaluator",
+      "path": "core/nomega/frontier_evaluator.py",
+      "role": "support",
+      "family": "frontier",
+      "version": null,
+      "classes": [
+        "EvalCase",
+        "FrontierEvaluator"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "frontier_generalist",
+      "path": "core/nomega/frontier_generalist.py",
+      "role": "support",
+      "family": "frontier",
+      "version": null,
+      "classes": [
+        "FrontierGeneralist",
+        "FrontierGeneralistTrainer",
+        "FrontierTrainReport"
+      ],
+      "imports": [
+        "generalist_core",
+        "task_generator_v3"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "frontier_learning",
+      "path": "core/nomega/frontier_learning.py",
+      "role": "support",
+      "family": "frontier",
+      "version": null,
+      "classes": [
+        "FrontierCycleResult",
+        "FrontierLearningLoop"
+      ],
+      "imports": [
+        "counterfactual_v2",
+        "frontier_evaluator",
+        "frontier_generalist",
+        "generalist_core",
+        "governance_runtime",
+        "mobile_benchmark_v3",
+        "project_audit_v2",
+        "task_generator",
+        "task_generator_v3",
+        "trace_learning_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "full_evaluation",
+      "path": "core/nomega/full_evaluation.py",
+      "role": "support",
+      "family": "full",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "compression_report",
+        "config",
+        "core",
+        "experiment_matrix",
+        "multimodal_bench",
+        "research"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "generalist_core",
+      "path": "core/nomega/generalist_core.py",
+      "role": "support",
+      "family": "generalist",
+      "version": null,
+      "classes": [
+        "AdaptiveGeneralist",
+        "FisherSnapshot",
+        "GeneralistCheckpoint",
+        "GeneralistOutput",
+        "GeneralistTrainer",
+        "PrioritizedReplay",
+        "ReplayItem"
+      ],
+      "imports": [
+        "governance_runtime",
+        "task_generator"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "goal_manager",
+      "path": "core/nomega/goal_manager.py",
+      "role": "support",
+      "family": "goal",
+      "version": null,
+      "classes": [
+        "Goal",
+        "GoalManager"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "governance_runtime",
+      "path": "core/nomega/governance_runtime.py",
+      "role": "support",
+      "family": "governance",
+      "version": null,
+      "classes": [],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "gradient_alignment_ablation_v1",
+      "path": "core/nomega/gradient_alignment_ablation_v1.py",
+      "role": "research",
+      "family": "benchmark",
+      "version": 1,
+      "classes": [
+        "GradientAlignmentAblationV1"
+      ],
+      "imports": [
+        "gradient_alignment_replay_v1",
+        "neural_program_synth_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "gradient_alignment_replay_v1",
+      "path": "core/nomega/gradient_alignment_replay_v1.py",
+      "role": "versioned",
+      "family": "gradient_alignment_replay",
+      "version": 1,
+      "classes": [
+        "GradientAlignmentReplayV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "gradual_drift_benchmark_v1",
+      "path": "core/nomega/gradual_drift_benchmark_v1.py",
+      "role": "research",
+      "family": "benchmark",
+      "version": 1,
+      "classes": [
+        "DriftPhaseV1",
+        "GradualDriftBenchmarkV1"
+      ],
+      "imports": [
+        "program_acquisition_v2",
+        "program_runtime_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "grounding_bridge_v1",
+      "path": "core/nomega/grounding_bridge_v1.py",
+      "role": "versioned",
+      "family": "grounding_bridge",
+      "version": 1,
+      "classes": [
+        "GroundingBridgeV1",
+        "GroundingRouteDecisionV1"
+      ],
+      "imports": [
+        "execution_budget_policy_v1",
+        "neural_route_policy_v1",
+        "program_ir_v1",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "grounding_recovery_controller_v1",
+      "path": "core/nomega/grounding_recovery_controller_v1.py",
+      "role": "versioned",
+      "family": "grounding_recovery_controller",
+      "version": 1,
+      "classes": [
+        "GroundingRecoveryControllerV1",
+        "RecoveryDecisionV1"
+      ],
+      "imports": [
+        "execution_budget_policy_v1",
+        "neural_program_repair_v1",
+        "neural_skill_retrieval_v1",
+        "program_acquisition_v2"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "hvm_bridge",
+      "path": "core/nomega/hvm_bridge.py",
+      "role": "support",
+      "family": "hvm",
+      "version": null,
+      "classes": [
+        "HVMBridge"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "hybrid_reasoner_v2",
+      "path": "core/nomega/hybrid_reasoner_v2.py",
+      "role": "versioned",
+      "family": "hybrid_reasoner",
+      "version": 2,
+      "classes": [
+        "HybridReasonerV2"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "joint_learning",
+      "path": "core/nomega/joint_learning.py",
+      "role": "support",
+      "family": "joint",
+      "version": null,
+      "classes": [
+        "JointLearningHarness"
+      ],
+      "imports": [
+        "config",
+        "continual",
+        "core",
+        "curriculum",
+        "governance_runtime",
+        "replay",
+        "route_lab",
+        "self_play"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "joint_learning_canonical",
+      "path": "core/nomega/joint_learning_canonical.py",
+      "role": "canonical",
+      "family": "joint_learning",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "joint_learning_v4"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "joint_learning_v2",
+      "path": "core/nomega/joint_learning_v2.py",
+      "role": "legacy",
+      "family": "joint_learning",
+      "version": 2,
+      "classes": [
+        "JointGeneralistV2",
+        "JointResult",
+        "TraceAlignment"
+      ],
+      "imports": [
+        "frontier_generalist",
+        "generalist_core",
+        "task_generator_v4",
+        "trace_learning_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "joint_learning_v4",
+      "path": "core/nomega/joint_learning_v4.py",
+      "role": "legacy",
+      "family": "joint_learning",
+      "version": 4,
+      "classes": [
+        "JointLearningV4",
+        "JointTrainV4Result"
+      ],
+      "imports": [
+        "apex_brain_v4",
+        "generalist_core"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "latent_alignment",
+      "path": "core/nomega/latent_alignment.py",
+      "role": "support",
+      "family": "latent",
+      "version": null,
+      "classes": [],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "latent_alignment_v2",
+      "path": "core/nomega/latent_alignment_v2.py",
+      "role": "versioned",
+      "family": "latent_alignment",
+      "version": 2,
+      "classes": [
+        "LatentAlignmentV2"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "learning_experiment_protocol_v1",
+      "path": "core/nomega/learning_experiment_protocol_v1.py",
+      "role": "versioned",
+      "family": "learning_experiment_protocol",
+      "version": 1,
+      "classes": [
+        "ComparisonResultV1",
+        "EvaluationBundleV1",
+        "ExperimentRequestV1",
+        "LearningExperimentProtocolV1"
+      ],
+      "imports": [
+        "experiment_registry_v2"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "learning_objectives",
+      "path": "core/nomega/learning_objectives.py",
+      "role": "support",
+      "family": "learning",
+      "version": null,
+      "classes": [],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "long_horizon_development_benchmark_v1",
+      "path": "core/nomega/long_horizon_development_benchmark_v1.py",
+      "role": "research",
+      "family": "benchmark",
+      "version": 1,
+      "classes": [
+        "LongHorizonDevelopmentBenchmarkV1"
+      ],
+      "imports": [
+        "execution_guided_program_learning_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "long_horizon_planner_v3",
+      "path": "core/nomega/long_horizon_planner_v3.py",
+      "role": "versioned",
+      "family": "long_horizon_planner",
+      "version": 3,
+      "classes": [
+        "LongHorizonPlannerV3",
+        "PlanCandidate"
+      ],
+      "imports": [
+        "world_model_v3"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "long_horizon_self_development_v1",
+      "path": "core/nomega/long_horizon_self_development_v1.py",
+      "role": "versioned",
+      "family": "long_horizon_self_development",
+      "version": 1,
+      "classes": [
+        "LongHorizonSelfDevelopmentV1"
+      ],
+      "imports": [
+        "development_frontier_selector_v1",
+        "metaproductivity_v1",
+        "unified_development_loop_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "matched_evidence_v1",
+      "path": "core/nomega/matched_evidence_v1.py",
+      "role": "versioned",
+      "family": "matched_evidence",
+      "version": 1,
+      "classes": [
+        "MatchedEffectV1",
+        "MatchedEvidenceAnalyzerV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "memory",
+      "path": "core/nomega/memory.py",
+      "role": "support",
+      "family": "memory",
+      "version": null,
+      "classes": [
+        "CognitiveMemory"
+      ],
+      "imports": [
+        "types"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "memory_program",
+      "path": "core/nomega/memory_program.py",
+      "role": "support",
+      "family": "memory",
+      "version": null,
+      "classes": [],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "memory_v2",
+      "path": "core/nomega/memory_v2.py",
+      "role": "canonical",
+      "family": "memory",
+      "version": 2,
+      "classes": [
+        "MemoryConsolidatorV2"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "metaproductivity_v1",
+      "path": "core/nomega/metaproductivity_v1.py",
+      "role": "canonical",
+      "family": "metaproductivity",
+      "version": 1,
+      "classes": [
+        "LineageRecordV1",
+        "MetaProductivityReportV1",
+        "MetaProductivityTrendV1",
+        "MetaproductivityTrackerV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "mobile_benchmark_v3",
+      "path": "core/nomega/mobile_benchmark_v3.py",
+      "role": "versioned",
+      "family": "mobile_benchmark",
+      "version": 3,
+      "classes": [
+        "DeviceProfile",
+        "MobileBenchmarkV3"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "mobile_compiler_v2",
+      "path": "core/nomega/mobile_compiler_v2.py",
+      "role": "versioned",
+      "family": "mobile_compiler",
+      "version": 2,
+      "classes": [
+        "MobileCompilerV2",
+        "MobileProfile"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "mobile_eval_v2",
+      "path": "core/nomega/mobile_eval_v2.py",
+      "role": "versioned",
+      "family": "mobile_eval",
+      "version": 2,
+      "classes": [
+        "MobileEvaluatorV2"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "mobile_optimizer",
+      "path": "core/nomega/mobile_optimizer.py",
+      "role": "canonical",
+      "family": "mobile_optimizer",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "mobile_optimizer_v6"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "mobile_optimizer_v4",
+      "path": "core/nomega/mobile_optimizer_v4.py",
+      "role": "legacy",
+      "family": "mobile_optimizer",
+      "version": 4,
+      "classes": [
+        "MobileOptimizerV4",
+        "MobileTarget"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "mobile_optimizer_v5",
+      "path": "core/nomega/mobile_optimizer_v5.py",
+      "role": "legacy",
+      "family": "mobile_optimizer",
+      "version": 5,
+      "classes": [
+        "MobileOptimizerV5",
+        "MobileTargetV5"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "mobile_optimizer_v6",
+      "path": "core/nomega/mobile_optimizer_v6.py",
+      "role": "legacy",
+      "family": "mobile_optimizer",
+      "version": 6,
+      "classes": [
+        "MobileConfig",
+        "MobileOptimizerV6"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "mobile_policy",
+      "path": "core/nomega/mobile_policy.py",
+      "role": "support",
+      "family": "mobile",
+      "version": null,
+      "classes": [
+        "MobileDecision",
+        "MobilePolicy"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "mobile_program_optimizer_v7",
+      "path": "core/nomega/mobile_program_optimizer_v7.py",
+      "role": "versioned",
+      "family": "mobile_program_optimizer",
+      "version": 7,
+      "classes": [
+        "MobileProgramOptimizerV7"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "mobile_runtime_benchmark",
+      "path": "core/nomega/mobile_runtime_benchmark.py",
+      "role": "canonical",
+      "family": "mobile_runtime_benchmark",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "mobile_runtime_benchmark_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "mobile_runtime_benchmark_v1",
+      "path": "core/nomega/mobile_runtime_benchmark_v1.py",
+      "role": "research",
+      "family": "benchmark",
+      "version": 1,
+      "classes": [
+        "MobileRuntimeBenchmarkV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "mobile_runtime_benchmark_v2",
+      "path": "core/nomega/mobile_runtime_benchmark_v2.py",
+      "role": "legacy",
+      "family": "mobile_runtime_benchmark",
+      "version": 2,
+      "classes": [
+        "MobileRuntimeBenchmarkV2"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "modalities",
+      "path": "core/nomega/modalities.py",
+      "role": "support",
+      "family": "modalities",
+      "version": null,
+      "classes": [
+        "AudioAdapter",
+        "ModalityFusion",
+        "VisionAdapter"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "model_time_replay_v1",
+      "path": "core/nomega/model_time_replay_v1.py",
+      "role": "versioned",
+      "family": "model_time_replay",
+      "version": 1,
+      "classes": [
+        "ModelTimeReplayControllerV1",
+        "ModelTimeReplayDecisionV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "multi_source_generalist_evolution_v1",
+      "path": "core/nomega/multi_source_generalist_evolution_v1.py",
+      "role": "canonical",
+      "family": "generalist_evolution",
+      "version": 1,
+      "classes": [
+        "GeneralistTargetResultV1",
+        "MultiSourceGeneralistEvolutionV1",
+        "SourceProfileRowV1"
+      ],
+      "imports": [
+        "capability_evolver_v1",
+        "capability_transfer_evaluator_v1",
+        "program_acquisition_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "multimodal_bench",
+      "path": "core/nomega/multimodal_bench.py",
+      "role": "support",
+      "family": "multimodal",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "config",
+        "core"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "multimodal_grounding_v2",
+      "path": "core/nomega/multimodal_grounding_v2.py",
+      "role": "versioned",
+      "family": "multimodal_grounding",
+      "version": 2,
+      "classes": [
+        "GroundingAlignerV2"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "multimodal_v3",
+      "path": "core/nomega/multimodal_v3.py",
+      "role": "versioned",
+      "family": "multimodal",
+      "version": 3,
+      "classes": [
+        "MultimodalGroundingV3"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "multiscale_consolidation_v1",
+      "path": "core/nomega/multiscale_consolidation_v1.py",
+      "role": "versioned",
+      "family": "multiscale_consolidation",
+      "version": 1,
+      "classes": [
+        "MultiTimescaleConsolidationV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_astrocyte_memory_v1",
+      "path": "core/nomega/neural_astrocyte_memory_v1.py",
+      "role": "versioned",
+      "family": "neural_astrocyte_memory",
+      "version": 1,
+      "classes": [
+        "AstrocyteMemoryControllerV1",
+        "AstrocyteMetricsV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_causal_credit_trainer_v1",
+      "path": "core/nomega/neural_causal_credit_trainer_v1.py",
+      "role": "versioned",
+      "family": "neural_causal_credit_trainer",
+      "version": 1,
+      "classes": [
+        "CausalCreditTrainReportV1",
+        "NeuralCausalCreditTrainerV1"
+      ],
+      "imports": [
+        "neural_program_synth_v2"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_causal_credit_v1",
+      "path": "core/nomega/neural_causal_credit_v1.py",
+      "role": "versioned",
+      "family": "neural_causal_credit",
+      "version": 1,
+      "classes": [
+        "LeaveOneOutReportV1",
+        "NeuralCausalCreditAssignerV1",
+        "ParameterAblationReportV1",
+        "ProgramPositionCreditReportV1",
+        "ReplacementCreditReportV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_causality_benchmark_v1",
+      "path": "core/nomega/neural_causality_benchmark_v1.py",
+      "role": "research",
+      "family": "benchmark",
+      "version": 1,
+      "classes": [
+        "NeuralAblationReportV1",
+        "NeuralCausalityBenchmarkV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "neural_causality_benchmark_v2",
+      "path": "core/nomega/neural_causality_benchmark_v2.py",
+      "role": "versioned",
+      "family": "neural_causality_benchmark",
+      "version": 2,
+      "classes": [
+        "NeuralCausalEvaluationReportV2",
+        "NeuralCausalityBenchmarkV2"
+      ],
+      "imports": [
+        "neural_causal_credit_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_dendritic_adapter_v1",
+      "path": "core/nomega/neural_dendritic_adapter_v1.py",
+      "role": "versioned",
+      "family": "neural_dendritic_adapter",
+      "version": 1,
+      "classes": [
+        "DendriticAdapterMetricsV1",
+        "DendriticContextAdapterV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_execution_learning_lab_v1",
+      "path": "core/nomega/neural_execution_learning_lab_v1.py",
+      "role": "research",
+      "family": "research",
+      "version": 1,
+      "classes": [
+        "LearningLabReportV1",
+        "NeuralExecutionLearningLabV1"
+      ],
+      "imports": [
+        "adaptive_environment_forge_v2",
+        "causal_self_model_v1",
+        "continual_learning_controller_v1",
+        "developmental_bottleneck_detector_v1",
+        "execution_preference_trainer_v1",
+        "learning_experiment_protocol_v1",
+        "metaproductivity_v1",
+        "neural_causal_credit_trainer_v1",
+        "neural_causal_credit_v1",
+        "neural_causality_benchmark_v1",
+        "neural_causality_benchmark_v2",
+        "neural_program_synth_v2",
+        "neural_program_trainer_v3",
+        "neural_verified_curriculum_v1",
+        "verifiable_dense_reward_v1",
+        "verifiable_environment_forge_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "neural_grounding_self_training_v1",
+      "path": "core/nomega/neural_grounding_self_training_v1.py",
+      "role": "versioned",
+      "family": "neural_grounding_self_training",
+      "version": 1,
+      "classes": [
+        "GroundingRow",
+        "NeuralGroundingSelfTrainingV1"
+      ],
+      "imports": [
+        "neural_program_synth_v2",
+        "neural_program_trainer_v3",
+        "program_acquisition_v2",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_guided_program_search_v1",
+      "path": "core/nomega/neural_guided_program_search_v1.py",
+      "role": "versioned",
+      "family": "neural_guided_program_search",
+      "version": 1,
+      "classes": [
+        "NeuralGuidedProgramSearchV1"
+      ],
+      "imports": [
+        "neural_program_synth_v2",
+        "program_acquisition_v2",
+        "program_runtime_v2",
+        "program_skill_retrieval_v2"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_interference_monitor_v1",
+      "path": "core/nomega/neural_interference_monitor_v1.py",
+      "role": "versioned",
+      "family": "neural_interference_monitor",
+      "version": 1,
+      "classes": [
+        "NeuralInterferenceMonitorV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_plasticity_monitor_v1",
+      "path": "core/nomega/neural_plasticity_monitor_v1.py",
+      "role": "versioned",
+      "family": "neural_plasticity_monitor",
+      "version": 1,
+      "classes": [
+        "NeuralPlasticityMonitorV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_predictive_coding_v1",
+      "path": "core/nomega/neural_predictive_coding_v1.py",
+      "role": "versioned",
+      "family": "neural_predictive_coding",
+      "version": 1,
+      "classes": [
+        "PredictiveCodingMetricsV1",
+        "PredictiveCodingRefinerV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_program_acquisition_v1",
+      "path": "core/nomega/neural_program_acquisition_v1.py",
+      "role": "versioned",
+      "family": "neural_program_acquisition",
+      "version": 1,
+      "classes": [
+        "NeuralProgramAcquisitionV1"
+      ],
+      "imports": [
+        "counterexample_replay_v1",
+        "neural_program_synth_v1",
+        "program_abstraction_v1",
+        "program_acquisition_v2",
+        "skill_induction_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_program_repair",
+      "path": "core/nomega/neural_program_repair.py",
+      "role": "canonical",
+      "family": "neural_program_repair",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "neural_program_repair_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_program_repair_v1",
+      "path": "core/nomega/neural_program_repair_v1.py",
+      "role": "legacy",
+      "family": "neural_program_repair",
+      "version": 1,
+      "classes": [
+        "NeuralProgramRepairV1",
+        "RepairResultV1"
+      ],
+      "imports": [
+        "program_acquisition_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_program_repair_v2",
+      "path": "core/nomega/neural_program_repair_v2.py",
+      "role": "legacy",
+      "family": "neural_program_repair",
+      "version": 2,
+      "classes": [
+        "NeuralProgramRepairV2",
+        "RepairResultV2"
+      ],
+      "imports": [
+        "program_acquisition_v2",
+        "semantic_repair_v2",
+        "verifier_guided_search_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_program_synth",
+      "path": "core/nomega/neural_program_synth.py",
+      "role": "canonical",
+      "family": "neural_program_synth",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "neural_program_synth_v13"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_program_synth_v1",
+      "path": "core/nomega/neural_program_synth_v1.py",
+      "role": "legacy",
+      "family": "neural_program_synth",
+      "version": 1,
+      "classes": [
+        "NeuralProgramSynthesizerV1",
+        "NeuralProgramTrainReport",
+        "NeuralProgramTrainerV1",
+        "ProgramAugmenterV1",
+        "_FamilyEncoder"
+      ],
+      "imports": [
+        "generalist_core"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_program_synth_v10",
+      "path": "core/nomega/neural_program_synth_v10.py",
+      "role": "legacy",
+      "family": "neural_program_synth",
+      "version": 10,
+      "classes": [
+        "NeuralProgramSynthesizerV10"
+      ],
+      "imports": [
+        "neural_program_synth_v9",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_program_synth_v11",
+      "path": "core/nomega/neural_program_synth_v11.py",
+      "role": "legacy",
+      "family": "neural_program_synth",
+      "version": 11,
+      "classes": [
+        "NeuralProgramSynthesizerV11"
+      ],
+      "imports": [
+        "neural_program_synth_v9",
+        "neural_substrate_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_program_synth_v12",
+      "path": "core/nomega/neural_program_synth_v12.py",
+      "role": "legacy",
+      "family": "neural_program_synth",
+      "version": 12,
+      "classes": [
+        "NeuralProgramSynthesizerV12"
+      ],
+      "imports": [
+        "neural_predictive_coding_v1",
+        "neural_program_synth_v9",
+        "neural_substrate_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_program_synth_v13",
+      "path": "core/nomega/neural_program_synth_v13.py",
+      "role": "legacy",
+      "family": "neural_program_synth",
+      "version": 13,
+      "classes": [
+        "NeuralProgramSynthesizerV13"
+      ],
+      "imports": [
+        "neural_astrocyte_memory_v1",
+        "neural_program_synth_v12"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_program_synth_v2",
+      "path": "core/nomega/neural_program_synth_v2.py",
+      "role": "legacy",
+      "family": "neural_program_synth",
+      "version": 2,
+      "classes": [
+        "NeuralProgramSynthesizerV2",
+        "NeuralProgramTrainerV2",
+        "ProgramAugmenterV2",
+        "ProgramTrainReportV2"
+      ],
+      "imports": [
+        "generalist_core"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_program_synth_v4",
+      "path": "core/nomega/neural_program_synth_v4.py",
+      "role": "legacy",
+      "family": "neural_program_synth",
+      "version": 4,
+      "classes": [
+        "AtomicProgramSynthesizerV4",
+        "AtomicProgramTrainReportV4",
+        "AtomicProgramTrainerV4",
+        "InstructionVocabularyV1"
+      ],
+      "imports": [
+        "generalist_core",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_program_synth_v5",
+      "path": "core/nomega/neural_program_synth_v5.py",
+      "role": "legacy",
+      "family": "neural_program_synth",
+      "version": 5,
+      "classes": [
+        "NeuralProgramSynthesizerV5",
+        "SemanticIRAdapterV1"
+      ],
+      "imports": [
+        "neural_program_synth_v2",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_program_synth_v6",
+      "path": "core/nomega/neural_program_synth_v6.py",
+      "role": "legacy",
+      "family": "neural_program_synth",
+      "version": 6,
+      "classes": [
+        "NeuralProgramSynthesizerV6",
+        "NeuralProgramTrainerV6"
+      ],
+      "imports": [
+        "neural_program_synth_v2",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_program_synth_v7",
+      "path": "core/nomega/neural_program_synth_v7.py",
+      "role": "legacy",
+      "family": "neural_program_synth",
+      "version": 7,
+      "classes": [
+        "NeuralProgramSynthesizerV7"
+      ],
+      "imports": [
+        "neural_program_synth_v2",
+        "neural_text_encoder_v1",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_program_synth_v8",
+      "path": "core/nomega/neural_program_synth_v8.py",
+      "role": "legacy",
+      "family": "neural_program_synth",
+      "version": 8,
+      "classes": [
+        "NeuralProgramSynthesizerV8"
+      ],
+      "imports": [
+        "neural_program_synth_v4",
+        "neural_text_encoder_v1",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_program_synth_v9",
+      "path": "core/nomega/neural_program_synth_v9.py",
+      "role": "legacy",
+      "family": "neural_program_synth",
+      "version": 9,
+      "classes": [
+        "NeuralProgramSynthesizerV9"
+      ],
+      "imports": [
+        "neural_program_synth_v8",
+        "program_ir_v1",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_program_trainer_v3",
+      "path": "core/nomega/neural_program_trainer_v3.py",
+      "role": "versioned",
+      "family": "neural_program_trainer",
+      "version": 3,
+      "classes": [
+        "BatchProgramTrainReportV3",
+        "NeuralProgramTrainerV3"
+      ],
+      "imports": [
+        "generalist_core",
+        "neural_program_synth_v2"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_program_trainer_v4",
+      "path": "core/nomega/neural_program_trainer_v4.py",
+      "role": "versioned",
+      "family": "neural_program_trainer",
+      "version": 4,
+      "classes": [
+        "BatchProgramTrainReportV4",
+        "NeuralProgramTrainerV4"
+      ],
+      "imports": [
+        "generalist_core",
+        "neural_program_synth_v2"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_program_trainer_v5",
+      "path": "core/nomega/neural_program_trainer_v5.py",
+      "role": "versioned",
+      "family": "neural_program_trainer",
+      "version": 5,
+      "classes": [
+        "AtomicProgramTrainReportV5",
+        "AtomicProgramTrainerV5"
+      ],
+      "imports": [
+        "generalist_core",
+        "neural_program_synth_v4"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_program_trainer_v6",
+      "path": "core/nomega/neural_program_trainer_v6.py",
+      "role": "versioned",
+      "family": "neural_program_trainer",
+      "version": 6,
+      "classes": [
+        "AtomicProgramTrainReportV6",
+        "AtomicProgramTrainerV6"
+      ],
+      "imports": [
+        "neural_program_trainer_v5",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_repair_policy_v1",
+      "path": "core/nomega/neural_repair_policy_v1.py",
+      "role": "versioned",
+      "family": "neural_repair_policy",
+      "version": 1,
+      "classes": [
+        "NeuralRepairPolicyFitReportV1",
+        "NeuralRepairPolicyV1",
+        "_RepairNetV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_research_evidence_v1",
+      "path": "core/nomega/neural_research_evidence_v1.py",
+      "role": "versioned",
+      "family": "neural_research_evidence",
+      "version": 1,
+      "classes": [],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_route_policy_v1",
+      "path": "core/nomega/neural_route_policy_v1.py",
+      "role": "versioned",
+      "family": "neural_route_policy",
+      "version": 1,
+      "classes": [
+        "NeuralRouteDecisionV1",
+        "NeuralRoutePolicyV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_self_optimization_controller_v1",
+      "path": "core/nomega/neural_self_optimization_controller_v1.py",
+      "role": "versioned",
+      "family": "neural_self_optimization_controller",
+      "version": 1,
+      "classes": [
+        "MetaFitReportV1",
+        "NeuralSelfOptimizationControllerV1",
+        "OptimizationGateV1",
+        "_UtilityNet"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_self_optimization_controller_v2",
+      "path": "core/nomega/neural_self_optimization_controller_v2.py",
+      "role": "canonical",
+      "family": "neural_self_optimization",
+      "version": 2,
+      "classes": [
+        "MetaOptimizationFitReportV2",
+        "NeuralSelfOptimizationControllerV2",
+        "OptimizationGateV2",
+        "_MetaUtilityNetV2"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_skill_retrieval",
+      "path": "core/nomega/neural_skill_retrieval.py",
+      "role": "canonical",
+      "family": "skill_retrieval",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "neural_skill_retrieval_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_skill_retrieval_v1",
+      "path": "core/nomega/neural_skill_retrieval_v1.py",
+      "role": "legacy",
+      "family": "neural_skill_retrieval",
+      "version": 1,
+      "classes": [
+        "NeuralSkillRetrievalV1",
+        "RetrievalResultV1"
+      ],
+      "imports": [
+        "program_acquisition_v2",
+        "program_skill_retrieval_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_skill_retrieval_v2",
+      "path": "core/nomega/neural_skill_retrieval_v2.py",
+      "role": "legacy",
+      "family": "neural_skill_retrieval",
+      "version": 2,
+      "classes": [
+        "NeuralSkillRetrievalV2",
+        "RetrievalResultV2"
+      ],
+      "imports": [
+        "active_hypothesis_filter_v1",
+        "program_acquisition_v2",
+        "program_runtime_v2",
+        "program_skill_retrieval_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_substrate_v1",
+      "path": "core/nomega/neural_substrate_v1.py",
+      "role": "canonical",
+      "family": "neural_substrate",
+      "version": 1,
+      "classes": [
+        "DendriticBranchBankV1",
+        "ModernNeuralSubstrateV1",
+        "NeuralSubstrateMetricsV1",
+        "_SurrogateSpike"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "neural_text_encoder_v1",
+      "path": "core/nomega/neural_text_encoder_v1.py",
+      "role": "versioned",
+      "family": "neural_text_encoder",
+      "version": 1,
+      "classes": [
+        "OrderedSubwordTextEncoderV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "neural_verified_curriculum_v1",
+      "path": "core/nomega/neural_verified_curriculum_v1.py",
+      "role": "versioned",
+      "family": "neural_verified_curriculum",
+      "version": 1,
+      "classes": [
+        "VerifiedCurriculumStatsV1",
+        "VerifiedNeuralCurriculumV1"
+      ],
+      "imports": [
+        "neural_program_synth_v2",
+        "program_acquisition_v2",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "omega_development_cycle",
+      "path": "core/nomega/omega_development_cycle.py",
+      "role": "support",
+      "family": "omega",
+      "version": null,
+      "classes": [
+        "OmegaDevelopmentCycle"
+      ],
+      "imports": [
+        "config",
+        "experiment_registry_v2",
+        "frontier_evaluator",
+        "joint_learning_v2",
+        "memory_v2",
+        "mobile_optimizer_v4",
+        "multimodal_grounding_v2",
+        "production_guard_v2",
+        "project_audit_v2",
+        "runtime",
+        "task_generator_v4",
+        "trace_learning_v2",
+        "world_model_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "online_adaptation_transaction_v1",
+      "path": "core/nomega/online_adaptation_transaction_v1.py",
+      "role": "versioned",
+      "family": "online_adaptation_transaction",
+      "version": 1,
+      "classes": [
+        "OnlineAdaptationTransactionV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "online_stream_monitor_v1",
+      "path": "core/nomega/online_stream_monitor_v1.py",
+      "role": "versioned",
+      "family": "online_stream_monitor",
+      "version": 1,
+      "classes": [
+        "OnlineStreamMonitorV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "ood_curriculum_v5",
+      "path": "core/nomega/ood_curriculum_v5.py",
+      "role": "versioned",
+      "family": "ood_curriculum",
+      "version": 5,
+      "classes": [
+        "OODTask"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "ood_program_benchmark_v1",
+      "path": "core/nomega/ood_program_benchmark_v1.py",
+      "role": "research",
+      "family": "benchmark",
+      "version": 1,
+      "classes": [
+        "OODProgramBenchmarkV1"
+      ],
+      "imports": [
+        "neural_program_synth_v2",
+        "program_acquisition_v2",
+        "program_runtime_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "ood_prompt_benchmark_v2",
+      "path": "core/nomega/ood_prompt_benchmark_v2.py",
+      "role": "versioned",
+      "family": "ood_prompt_benchmark",
+      "version": 2,
+      "classes": [
+        "OODPromptBenchmarkV2"
+      ],
+      "imports": [
+        "program_acquisition_v2",
+        "program_runtime_v2",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "open_ended_capability_evolution_loop_v1",
+      "path": "core/nomega/open_ended_capability_evolution_loop_v1.py",
+      "role": "canonical",
+      "family": "open_ended_evolution",
+      "version": 1,
+      "classes": [
+        "OpenEndedCapabilityEvolutionLoopV1"
+      ],
+      "imports": [
+        "capability_evolver_v1",
+        "elastic_substrate_policy_v1",
+        "gradual_drift_benchmark_v1",
+        "neural_substrate_v1",
+        "program_acquisition_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "partial_program_value",
+      "path": "core/nomega/partial_program_value.py",
+      "role": "canonical",
+      "family": "partial_program_value",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "partial_program_value_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "partial_program_value_v1",
+      "path": "core/nomega/partial_program_value_v1.py",
+      "role": "legacy",
+      "family": "partial_program_value",
+      "version": 1,
+      "classes": [
+        "PartialProgramValueV1",
+        "ValueFitReportV1",
+        "ValueObservationV1",
+        "_ValueNet"
+      ],
+      "imports": [
+        "execution_trace_v1",
+        "program_contract_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "partial_program_value_v2",
+      "path": "core/nomega/partial_program_value_v2.py",
+      "role": "legacy",
+      "family": "partial_program_value",
+      "version": 2,
+      "classes": [
+        "PartialProgramValueV2",
+        "ValueFitReportV2",
+        "ValuePredictionV2",
+        "_ValueNetV2"
+      ],
+      "imports": [
+        "execution_trace_v1",
+        "program_contract_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "pass20_capability_forge_v1",
+      "path": "core/nomega/pass20_capability_forge_v1.py",
+      "role": "canonical",
+      "family": "capability_forge",
+      "version": 1,
+      "classes": [
+        "CapabilityForgeReportV1",
+        "CapabilityForgeV1"
+      ],
+      "imports": [
+        "adaptive_evidence_scheduler_v1",
+        "adversarial_evolution_arena_v1",
+        "causal_evidence_ledger_v1",
+        "execution_guided_learning_loop_v1",
+        "experience_wiki_v1",
+        "skill_composition_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "planner",
+      "path": "core/nomega/planner.py",
+      "role": "support",
+      "family": "planner",
+      "version": null,
+      "classes": [
+        "PlanStep",
+        "TaskPlanner"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "planning_search",
+      "path": "core/nomega/planning_search.py",
+      "role": "support",
+      "family": "planning",
+      "version": null,
+      "classes": [
+        "BeamPlanner",
+        "PlanNode"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "policy_fusion",
+      "path": "core/nomega/policy_fusion.py",
+      "role": "support",
+      "family": "policy",
+      "version": null,
+      "classes": [
+        "PolicyFusion"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "production_guard_v2",
+      "path": "core/nomega/production_guard_v2.py",
+      "role": "versioned",
+      "family": "production_guard",
+      "version": 2,
+      "classes": [
+        "ProductionGuardV2"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "program_abstraction_v1",
+      "path": "core/nomega/program_abstraction_v1.py",
+      "role": "versioned",
+      "family": "program_abstraction",
+      "version": 1,
+      "classes": [
+        "ProgramAbstractionV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "program_acquisition_ablation_v1",
+      "path": "core/nomega/program_acquisition_ablation_v1.py",
+      "role": "research",
+      "family": "benchmark",
+      "version": 1,
+      "classes": [
+        "ProgramAcquisitionAblationV1"
+      ],
+      "imports": [
+        "neural_program_acquisition_v1",
+        "program_acquisition_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "program_acquisition_v1",
+      "path": "core/nomega/program_acquisition_v1.py",
+      "role": "versioned",
+      "family": "program_acquisition",
+      "version": 1,
+      "classes": [
+        "ProgramAcquisitionCoreV1",
+        "ProgramBankV1",
+        "ProgramCandidate"
+      ],
+      "imports": [
+        "program_runtime"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "program_acquisition_v2",
+      "path": "core/nomega/program_acquisition_v2.py",
+      "role": "canonical",
+      "family": "program_acquisition",
+      "version": 2,
+      "classes": [
+        "AcquisitionResult",
+        "ProgramAcquisitionCoreV2",
+        "ProgramBankV2"
+      ],
+      "imports": [
+        "program_runtime_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "program_challenge_arena_v1",
+      "path": "core/nomega/program_challenge_arena_v1.py",
+      "role": "versioned",
+      "family": "program_challenge_arena",
+      "version": 1,
+      "classes": [
+        "ProgramChallengeArenaV1"
+      ],
+      "imports": [
+        "program_runtime_v2"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "program_contract_v1",
+      "path": "core/nomega/program_contract_v1.py",
+      "role": "versioned",
+      "family": "program_contract",
+      "version": 1,
+      "classes": [
+        "ContractResultV1",
+        "ProgramContractV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "program_equivalence_v2",
+      "path": "core/nomega/program_equivalence_v2.py",
+      "role": "versioned",
+      "family": "program_equivalence",
+      "version": 2,
+      "classes": [
+        "ProgramEquivalenceV2"
+      ],
+      "imports": [
+        "program_runtime_v2"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "program_generalization_v1",
+      "path": "core/nomega/program_generalization_v1.py",
+      "role": "versioned",
+      "family": "program_generalization",
+      "version": 1,
+      "classes": [
+        "ProgramGeneralizationV1"
+      ],
+      "imports": [
+        "program_abstraction_v1",
+        "program_acquisition_v2"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "program_ir_v1",
+      "path": "core/nomega/program_ir_v1.py",
+      "role": "canonical",
+      "family": "program_ir",
+      "version": 1,
+      "classes": [
+        "ProgramIRV1",
+        "ProgramSketchV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "program_learning_v1",
+      "path": "core/nomega/program_learning_v1.py",
+      "role": "versioned",
+      "family": "program_learning",
+      "version": 1,
+      "classes": [
+        "ProgramLearningReport",
+        "ProgramSelectorTrainerV1",
+        "ProgramSelectorV1"
+      ],
+      "imports": [
+        "generalist_core"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "program_runtime",
+      "path": "core/nomega/program_runtime.py",
+      "role": "support",
+      "family": "program",
+      "version": null,
+      "classes": [],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "program_runtime_v2",
+      "path": "core/nomega/program_runtime_v2.py",
+      "role": "versioned",
+      "family": "program_runtime",
+      "version": 2,
+      "classes": [],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "program_skill_retrieval_v2",
+      "path": "core/nomega/program_skill_retrieval_v2.py",
+      "role": "versioned",
+      "family": "program_skill_retrieval",
+      "version": 2,
+      "classes": [
+        "ProgramSkillRetrievalV2"
+      ],
+      "imports": [
+        "governance_runtime",
+        "program_abstraction_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "project_audit",
+      "path": "core/nomega/project_audit.py",
+      "role": "support",
+      "family": "project",
+      "version": null,
+      "classes": [
+        "AuditMetric",
+        "ProjectAudit"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "project_audit_canonical",
+      "path": "core/nomega/project_audit_canonical.py",
+      "role": "canonical",
+      "family": "project_audit",
+      "version": null,
+      "classes": [
+        "ProjectAudit"
+      ],
+      "imports": [
+        "project_audit_v5"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "project_audit_v2",
+      "path": "core/nomega/project_audit_v2.py",
+      "role": "legacy",
+      "family": "project_audit",
+      "version": 2,
+      "classes": [
+        "ProjectAuditV2"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "project_audit_v3",
+      "path": "core/nomega/project_audit_v3.py",
+      "role": "legacy",
+      "family": "project_audit",
+      "version": 3,
+      "classes": [
+        "ProjectAuditV3"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "project_audit_v4",
+      "path": "core/nomega/project_audit_v4.py",
+      "role": "legacy",
+      "family": "project_audit",
+      "version": 4,
+      "classes": [],
+      "imports": [
+        "governance_runtime"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "project_audit_v5",
+      "path": "core/nomega/project_audit_v5.py",
+      "role": "legacy",
+      "family": "project_audit",
+      "version": 5,
+      "classes": [
+        "ProjectAuditV5"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "promotion",
+      "path": "core/nomega/promotion.py",
+      "role": "support",
+      "family": "promotion",
+      "version": null,
+      "classes": [],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "prompt_grounding_v2",
+      "path": "core/nomega/prompt_grounding_v2.py",
+      "role": "versioned",
+      "family": "prompt_grounding",
+      "version": 2,
+      "classes": [
+        "GroundedPromptV2"
+      ],
+      "imports": [
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "quantization_lab",
+      "path": "core/nomega/quantization_lab.py",
+      "role": "support",
+      "family": "quantization",
+      "version": null,
+      "classes": [],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "reasoning",
+      "path": "core/nomega/reasoning.py",
+      "role": "support",
+      "family": "reasoning",
+      "version": null,
+      "classes": [
+        "ConfidenceCalibrator",
+        "ReasoningAuditor"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "release_evaluator_v3",
+      "path": "core/nomega/release_evaluator_v3.py",
+      "role": "versioned",
+      "family": "release_evaluator",
+      "version": 3,
+      "classes": [
+        "ReleaseEvaluatorV3"
+      ],
+      "imports": [
+        "frontier_evaluator",
+        "mobile_benchmark_v3",
+        "task_generator_v4"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "repair_engine_v1",
+      "path": "core/nomega/repair_engine_v1.py",
+      "role": "canonical",
+      "family": "repair",
+      "version": 1,
+      "classes": [
+        "RepairCandidateV1",
+        "RepairEngineV1",
+        "RepairHypothesisV1"
+      ],
+      "imports": [
+        "execution_evidence_v2",
+        "execution_trace_v1",
+        "program_acquisition_v2",
+        "program_runtime_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "repair_operator_policy_v2",
+      "path": "core/nomega/repair_operator_policy_v2.py",
+      "role": "versioned",
+      "family": "repair_operator_policy",
+      "version": 2,
+      "classes": [
+        "RepairOperatorPolicyV2"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "repair_operator_transfer_ablation_v1",
+      "path": "core/nomega/repair_operator_transfer_ablation_v1.py",
+      "role": "research",
+      "family": "benchmark",
+      "version": 1,
+      "classes": [
+        "RepairOperatorTransferAblationV1"
+      ],
+      "imports": [
+        "program_acquisition_v2",
+        "repair_operator_policy_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "repair_policy_ablation_v1",
+      "path": "core/nomega/repair_policy_ablation_v1.py",
+      "role": "research",
+      "family": "benchmark",
+      "version": 1,
+      "classes": [
+        "RepairPolicyAblationV1"
+      ],
+      "imports": [
+        "program_acquisition_v2",
+        "repair_search_policy_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "repair_search_policy_v1",
+      "path": "core/nomega/repair_search_policy_v1.py",
+      "role": "versioned",
+      "family": "repair_search_policy",
+      "version": 1,
+      "classes": [
+        "RepairSearchPolicyV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "replay",
+      "path": "core/nomega/replay.py",
+      "role": "support",
+      "family": "replay",
+      "version": null,
+      "classes": [
+        "ReplayBuffer",
+        "ReplayItem"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "replay_ablation_v1",
+      "path": "core/nomega/replay_ablation_v1.py",
+      "role": "research",
+      "family": "benchmark",
+      "version": 1,
+      "classes": [
+        "ReplayAblationV1"
+      ],
+      "imports": [
+        "adaptive_experience_memory_v3"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "replay_partition_registry_v2",
+      "path": "core/nomega/replay_partition_registry_v2.py",
+      "role": "versioned",
+      "family": "replay_partition_registry",
+      "version": 2,
+      "classes": [
+        "ImmutablePartitionError",
+        "ReplayPartitionRegistryV2"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "replay_scheduler_v1",
+      "path": "core/nomega/replay_scheduler_v1.py",
+      "role": "versioned",
+      "family": "replay_scheduler",
+      "version": 1,
+      "classes": [
+        "ReplayDecisionV1",
+        "TransferAwareReplaySchedulerV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "research",
+      "path": "core/nomega/research.py",
+      "role": "support",
+      "family": "research",
+      "version": null,
+      "classes": [
+        "CaseResult"
+      ],
+      "imports": [
+        "capability",
+        "config",
+        "core",
+        "curriculum"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "research_brain",
+      "path": "core/nomega/research_brain.py",
+      "role": "research",
+      "family": "research",
+      "version": null,
+      "classes": [
+        "BrainOutput",
+        "BrainTrainer",
+        "CurriculumFactory",
+        "ResearchBrain",
+        "ResearchCheckpoint",
+        "WorldModelTrainer"
+      ],
+      "imports": [
+        "governance_runtime"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "research_eval_v2",
+      "path": "core/nomega/research_eval_v2.py",
+      "role": "research",
+      "family": "research",
+      "version": 2,
+      "classes": [
+        "ResearchEvaluatorV2"
+      ],
+      "imports": [
+        "calibration_v2",
+        "generalist_core",
+        "mobile_eval_v2",
+        "project_audit",
+        "task_generator"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "research_frontier_v1",
+      "path": "core/nomega/research_frontier_v1.py",
+      "role": "research",
+      "family": "research",
+      "version": 1,
+      "classes": [
+        "ResearchFrontierV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "research_orchestrator",
+      "path": "core/nomega/research_orchestrator.py",
+      "role": "research",
+      "family": "research",
+      "version": null,
+      "classes": [
+        "ResearchOrchestrator"
+      ],
+      "imports": [
+        "architecture_search",
+        "deploy",
+        "research",
+        "self_improve",
+        "task_generator"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "research_orchestrator_v2",
+      "path": "core/nomega/research_orchestrator_v2.py",
+      "role": "research",
+      "family": "research",
+      "version": 2,
+      "classes": [
+        "ResearchOrchestratorV2"
+      ],
+      "imports": [
+        "continual_v2",
+        "mobile_compiler_v2",
+        "research_brain",
+        "self_play_arena_v2",
+        "skill_graph_v2"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "restart_equivalence_verifier_v1",
+      "path": "core/nomega/restart_equivalence_verifier_v1.py",
+      "role": "versioned",
+      "family": "restart_equivalence_verifier",
+      "version": 1,
+      "classes": [
+        "RestartEquivalenceVerifierV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "retrieval",
+      "path": "core/nomega/retrieval.py",
+      "role": "support",
+      "family": "retrieval",
+      "version": null,
+      "classes": [
+        "MemoryConsolidator"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "route_lab",
+      "path": "core/nomega/route_lab.py",
+      "role": "support",
+      "family": "route",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "task_policy"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "router",
+      "path": "core/nomega/router.py",
+      "role": "support",
+      "family": "router",
+      "version": null,
+      "classes": [
+        "CognitiveRouter"
+      ],
+      "imports": [
+        "config",
+        "types"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "runtime",
+      "path": "core/nomega/runtime.py",
+      "role": "support",
+      "family": "runtime",
+      "version": null,
+      "classes": [
+        "NOmegaRuntime"
+      ],
+      "imports": [
+        "budget",
+        "config",
+        "continual",
+        "core",
+        "deploy",
+        "experiment_registry_v2",
+        "frontier_evaluator",
+        "generalist_core",
+        "governance_runtime",
+        "memory_v2",
+        "mobile_benchmark_v3",
+        "mobile_eval_v2",
+        "mobile_optimizer_v4",
+        "production_guard_v2",
+        "project_audit",
+        "project_audit_v2",
+        "task_generator_v3",
+        "task_generator_v4",
+        "uncertainty_suite_v2",
+        "version"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "safety",
+      "path": "core/nomega/safety.py",
+      "role": "support",
+      "family": "safety",
+      "version": null,
+      "classes": [],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "selective_memory_unlearning_v1",
+      "path": "core/nomega/selective_memory_unlearning_v1.py",
+      "role": "versioned",
+      "family": "selective_memory_unlearning",
+      "version": 1,
+      "classes": [
+        "SelectiveMemoryUnlearningV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "self_development_orchestrator_v1",
+      "path": "core/nomega/self_development_orchestrator_v1.py",
+      "role": "canonical",
+      "family": "self_development",
+      "version": 1,
+      "classes": [
+        "SelfDevelopmentOrchestratorV1"
+      ],
+      "imports": [
+        "adaptive_experience_memory_v3",
+        "adaptive_program_curriculum_v1",
+        "calibrated_strategy_router_v1",
+        "canonical_consolidation_planner_v1",
+        "canonical_registry_v1",
+        "causal_development_planner_v1",
+        "causal_evidence_ledger_v1",
+        "continual_strategy_portfolio_v1",
+        "development_frontier_selector_v1",
+        "development_intervention_registry_v1",
+        "developmental_bottleneck_detector_v1",
+        "evolution_archive_v1",
+        "evolution_islands_v1",
+        "execution_feedback_policy_v1",
+        "long_horizon_self_development_v1",
+        "neural_program_synth_v2",
+        "self_evolution_control_plane_v2",
+        "strategy_router_gate_v1",
+        "unified_development_loop_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "self_evolution_control_plane_v2",
+      "path": "core/nomega/self_evolution_control_plane_v2.py",
+      "role": "canonical",
+      "family": "self_evolution",
+      "version": 2,
+      "classes": [
+        "EvaluationSnapshotV2",
+        "EvidenceQuorumV1",
+        "PromotionDecisionV2",
+        "SelfEvolutionControlPlaneV2"
+      ],
+      "imports": [
+        "causal_evidence_ledger_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "self_evolution_lab_v1",
+      "path": "core/nomega/self_evolution_lab_v1.py",
+      "role": "research",
+      "family": "research",
+      "version": 1,
+      "classes": [
+        "EvaluationVectorV1",
+        "EvolutionResultV1",
+        "ParameterMutationV1",
+        "SelfEvolutionLabV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "self_improve",
+      "path": "core/nomega/self_improve.py",
+      "role": "support",
+      "family": "self",
+      "version": null,
+      "classes": [
+        "ImprovementCycle"
+      ],
+      "imports": [
+        "config",
+        "core",
+        "curriculum",
+        "joint_learning",
+        "promotion",
+        "route_lab"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "self_improvement_loop_v1",
+      "path": "core/nomega/self_improvement_loop_v1.py",
+      "role": "versioned",
+      "family": "self_improvement_loop",
+      "version": 1,
+      "classes": [
+        "SelfImprovementCycleV1",
+        "SelfImprovementLoopV1",
+        "SelfImprovementResultV1"
+      ],
+      "imports": [
+        "developmental_bottleneck_detector_v1",
+        "learning_experiment_protocol_v1",
+        "metaproductivity_v1",
+        "self_evolution_control_plane_v2"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "self_model",
+      "path": "core/nomega/self_model.py",
+      "role": "support",
+      "family": "self",
+      "version": null,
+      "classes": [
+        "FamilyStat",
+        "SelfModel"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "self_modification_spine_v1",
+      "path": "core/nomega/self_modification_spine_v1.py",
+      "role": "canonical",
+      "family": "self_modification",
+      "version": 1,
+      "classes": [
+        "MutationProposalGeneratorV1",
+        "MutationProposalV1",
+        "MutationRunResultV1",
+        "SelfModificationSpineV1"
+      ],
+      "imports": [
+        "metaproductivity_v1",
+        "self_evolution_control_plane_v2",
+        "source_patch_sandbox_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "self_play",
+      "path": "core/nomega/self_play.py",
+      "role": "support",
+      "family": "self",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "curriculum",
+        "route_lab"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "self_play_arena_v2",
+      "path": "core/nomega/self_play_arena_v2.py",
+      "role": "versioned",
+      "family": "self_play_arena",
+      "version": 2,
+      "classes": [
+        "Duel",
+        "SelfPlayArenaV2"
+      ],
+      "imports": [
+        "governance_runtime"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "semantic_prune_v1",
+      "path": "core/nomega/semantic_prune_v1.py",
+      "role": "versioned",
+      "family": "semantic_prune",
+      "version": 1,
+      "classes": [
+        "SemanticPrunerV1"
+      ],
+      "imports": [
+        "program_contract_v1",
+        "program_runtime_v2"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "semantic_repair_v2",
+      "path": "core/nomega/semantic_repair_v2.py",
+      "role": "versioned",
+      "family": "semantic_repair",
+      "version": 2,
+      "classes": [],
+      "imports": [
+        "program_acquisition_v2",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "skill_acquisition",
+      "path": "core/nomega/skill_acquisition.py",
+      "role": "support",
+      "family": "skill",
+      "version": null,
+      "classes": [
+        "SkillAcquisitionEngine"
+      ],
+      "imports": [
+        "curriculum",
+        "learning_objectives",
+        "route_lab"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "skill_bank",
+      "path": "core/nomega/skill_bank.py",
+      "role": "support",
+      "family": "skill",
+      "version": null,
+      "classes": [
+        "Skill",
+        "SkillBank"
+      ],
+      "imports": [
+        "skill_governance_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "skill_compiler",
+      "path": "core/nomega/skill_compiler.py",
+      "role": "support",
+      "family": "skill",
+      "version": null,
+      "classes": [
+        "CompiledSkill",
+        "SkillCompiler"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "skill_composition_v1",
+      "path": "core/nomega/skill_composition_v1.py",
+      "role": "canonical",
+      "family": "skill_composition",
+      "version": 1,
+      "classes": [
+        "SkillCompositionEngineV1",
+        "SkillPlanV1"
+      ],
+      "imports": [
+        "skill_bank"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "skill_consolidation_v3",
+      "path": "core/nomega/skill_consolidation_v3.py",
+      "role": "versioned",
+      "family": "skill_consolidation",
+      "version": 3,
+      "classes": [
+        "SkillConsolidatorV3"
+      ],
+      "imports": [
+        "program_runtime_v2"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "skill_governance_v1",
+      "path": "core/nomega/skill_governance_v1.py",
+      "role": "canonical",
+      "family": "skill_governance",
+      "version": 1,
+      "classes": [
+        "SkillEvidenceDecisionV1",
+        "SkillGovernanceV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "skill_graph_v2",
+      "path": "core/nomega/skill_graph_v2.py",
+      "role": "versioned",
+      "family": "skill_graph",
+      "version": 2,
+      "classes": [
+        "SkillGraphV2",
+        "SkillNode"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "skill_induction_v1",
+      "path": "core/nomega/skill_induction_v1.py",
+      "role": "versioned",
+      "family": "skill_induction",
+      "version": 1,
+      "classes": [
+        "SkillInducerV1",
+        "SkillInduction"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "skill_transfer",
+      "path": "core/nomega/skill_transfer.py",
+      "role": "canonical",
+      "family": "skill_transfer",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "skill_transfer_v4"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "skill_transfer_v2",
+      "path": "core/nomega/skill_transfer_v2.py",
+      "role": "legacy",
+      "family": "skill_transfer",
+      "version": 2,
+      "classes": [
+        "SkillTransferV2"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "skill_transfer_v3",
+      "path": "core/nomega/skill_transfer_v3.py",
+      "role": "legacy",
+      "family": "skill_transfer",
+      "version": 3,
+      "classes": [
+        "CompositeSkill",
+        "SkillAtom",
+        "SkillTransferV3"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "skill_transfer_v4",
+      "path": "core/nomega/skill_transfer_v4.py",
+      "role": "legacy",
+      "family": "skill_transfer",
+      "version": 4,
+      "classes": [
+        "SkillTransferV4",
+        "SkillV4"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "skill_versioning",
+      "path": "core/nomega/skill_versioning.py",
+      "role": "support",
+      "family": "skill",
+      "version": null,
+      "classes": [
+        "SkillVersion",
+        "VersionedSkillRegistry"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "source_patch_sandbox_v1",
+      "path": "core/nomega/source_patch_sandbox_v1.py",
+      "role": "versioned",
+      "family": "source_patch_sandbox",
+      "version": 1,
+      "classes": [
+        "SourceCandidateResultV1",
+        "SourceEditV1",
+        "SourcePatchSandboxV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "sparse_moe_v1",
+      "path": "core/nomega/sparse_moe_v1.py",
+      "role": "versioned",
+      "family": "sparse_moe",
+      "version": 1,
+      "classes": [
+        "MoEUsagePenalty",
+        "SparseMoE"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "strategy_router_gate_v1",
+      "path": "core/nomega/strategy_router_gate_v1.py",
+      "role": "versioned",
+      "family": "strategy_router_gate",
+      "version": 1,
+      "classes": [
+        "StrategyRouterGateV1"
+      ],
+      "imports": [
+        "calibrated_strategy_router_v1",
+        "continual_strategy_portfolio_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "structural_plasticity_controller_v1",
+      "path": "core/nomega/structural_plasticity_controller_v1.py",
+      "role": "versioned",
+      "family": "structural_plasticity_controller",
+      "version": 1,
+      "classes": [
+        "StructuralPlanV1",
+        "StructuralPlasticityControllerV1",
+        "StructuralTransactionResultV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "task_generator",
+      "path": "core/nomega/task_generator.py",
+      "role": "support",
+      "family": "task",
+      "version": null,
+      "classes": [
+        "GeneratedTask"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "task_generator_v3",
+      "path": "core/nomega/task_generator_v3.py",
+      "role": "versioned",
+      "family": "task_generator",
+      "version": 3,
+      "classes": [
+        "TaskV3"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "task_generator_v4",
+      "path": "core/nomega/task_generator_v4.py",
+      "role": "versioned",
+      "family": "task_generator",
+      "version": 4,
+      "classes": [
+        "TaskV4"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "task_policy",
+      "path": "core/nomega/task_policy.py",
+      "role": "support",
+      "family": "task",
+      "version": null,
+      "classes": [],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "task_spec_ood_benchmark_v1",
+      "path": "core/nomega/task_spec_ood_benchmark_v1.py",
+      "role": "research",
+      "family": "benchmark",
+      "version": 1,
+      "classes": [
+        "TaskSpecOodBenchmarkV1"
+      ],
+      "imports": [
+        "program_acquisition_v2",
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "task_spec_v1",
+      "path": "core/nomega/task_spec_v1.py",
+      "role": "versioned",
+      "family": "task_spec",
+      "version": 1,
+      "classes": [
+        "TaskSpecV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "telemetry",
+      "path": "core/nomega/telemetry.py",
+      "role": "support",
+      "family": "telemetry",
+      "version": null,
+      "classes": [
+        "CostMeter"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "telemetry_advanced",
+      "path": "core/nomega/telemetry_advanced.py",
+      "role": "support",
+      "family": "telemetry",
+      "version": null,
+      "classes": [
+        "AdvancedTelemetry",
+        "OpStats"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "tools",
+      "path": "core/nomega/tools.py",
+      "role": "support",
+      "family": "tools",
+      "version": null,
+      "classes": [
+        "SafeToolRegistry",
+        "ToolSpec"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "trace",
+      "path": "core/nomega/trace.py",
+      "role": "support",
+      "family": "trace",
+      "version": null,
+      "classes": [
+        "TraceStore"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "trace_learning_v2",
+      "path": "core/nomega/trace_learning_v2.py",
+      "role": "versioned",
+      "family": "trace_learning",
+      "version": 2,
+      "classes": [
+        "RuntimeTraceDataset",
+        "TraceExample"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "trace_replay_v2",
+      "path": "core/nomega/trace_replay_v2.py",
+      "role": "versioned",
+      "family": "trace_replay",
+      "version": 2,
+      "classes": [
+        "TracePriority",
+        "TraceReplayV2"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "trace_trainer",
+      "path": "core/nomega/trace_trainer.py",
+      "role": "support",
+      "family": "trace",
+      "version": null,
+      "classes": [
+        "RouterTraceTrainer"
+      ],
+      "imports": [
+        "config",
+        "core",
+        "governance_runtime",
+        "route_lab",
+        "task_policy",
+        "trace"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "train_router",
+      "path": "core/nomega/train_router.py",
+      "role": "support",
+      "family": "train",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "config",
+        "core"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "train_system",
+      "path": "core/nomega/train_system.py",
+      "role": "support",
+      "family": "train",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "route_lab",
+        "trace_trainer"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "transfer_selective_ablation_v1",
+      "path": "core/nomega/transfer_selective_ablation_v1.py",
+      "role": "research",
+      "family": "benchmark",
+      "version": 1,
+      "classes": [
+        "TransferSelectiveReplayAblationV1"
+      ],
+      "imports": [
+        "adaptive_experience_memory_v3",
+        "replay_scheduler_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "transfer_selective_replay_v1",
+      "path": "core/nomega/transfer_selective_replay_v1.py",
+      "role": "versioned",
+      "family": "transfer_selective_replay",
+      "version": 1,
+      "classes": [
+        "SelectiveReplayDecisionV1",
+        "TaskSignatureV1",
+        "TransferSelectiveReplayV1"
+      ],
+      "imports": [
+        "task_spec_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "types",
+      "path": "core/nomega/types.py",
+      "role": "support",
+      "family": "types",
+      "version": null,
+      "classes": [
+        "LatentState",
+        "MemoryItem",
+        "RouteDecision",
+        "StepTrace",
+        "VerificationResult"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "uncertainty_suite_v2",
+      "path": "core/nomega/uncertainty_suite_v2.py",
+      "role": "versioned",
+      "family": "uncertainty_suite",
+      "version": 2,
+      "classes": [],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "unified_development_loop_v1",
+      "path": "core/nomega/unified_development_loop_v1.py",
+      "role": "versioned",
+      "family": "unified_development_loop",
+      "version": 1,
+      "classes": [
+        "UnifiedDevelopmentLoopV1",
+        "UnifiedDevelopmentResultV1"
+      ],
+      "imports": [
+        "candidate_artifact_lifecycle_v1",
+        "developmental_bottleneck_detector_v1",
+        "evolution_archive_v1",
+        "learning_experiment_protocol_v1",
+        "metaproductivity_v1",
+        "self_evolution_control_plane_v2"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "unified_learning_v3",
+      "path": "core/nomega/unified_learning_v3.py",
+      "role": "versioned",
+      "family": "unified_learning",
+      "version": 3,
+      "classes": [
+        "UnifiedCycleResult",
+        "UnifiedLearningCycleV3"
+      ],
+      "imports": [
+        "joint_learning_v2",
+        "mobile_optimizer_v5",
+        "multimodal_v3",
+        "production_guard_v2",
+        "skill_transfer_v3",
+        "task_generator_v4",
+        "trace_learning_v2",
+        "world_model_v3"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "universal_latent",
+      "path": "core/nomega/universal_latent.py",
+      "role": "support",
+      "family": "universal",
+      "version": null,
+      "classes": [
+        "LatentObservation",
+        "LatentStateStore",
+        "UniversalLatentMixer"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "universal_learning_loop",
+      "path": "core/nomega/universal_learning_loop.py",
+      "role": "support",
+      "family": "universal",
+      "version": null,
+      "classes": [
+        "LoopResult",
+        "UniversalLearningLoop"
+      ],
+      "imports": [
+        "config",
+        "generalist_core",
+        "mobile_eval_v2",
+        "project_audit",
+        "runtime",
+        "task_generator"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "unlearning_benchmark_v1",
+      "path": "core/nomega/unlearning_benchmark_v1.py",
+      "role": "research",
+      "family": "benchmark",
+      "version": 1,
+      "classes": [
+        "UnlearningBenchmarkV1"
+      ],
+      "imports": [
+        "selective_memory_unlearning_v1"
+      ],
+      "consolidation_candidate": false,
+      "reason": "research/benchmark implementation intentionally isolated from production path"
+    },
+    {
+      "module": "verifiable_dense_reward_v1",
+      "path": "core/nomega/verifiable_dense_reward_v1.py",
+      "role": "versioned",
+      "family": "verifiable_dense_reward",
+      "version": 1,
+      "classes": [
+        "DenseRewardV1",
+        "VerifiableDenseRewardV1"
+      ],
+      "imports": [
+        "execution_trace_v1",
+        "program_runtime_v2"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "verifiable_environment_forge_v1",
+      "path": "core/nomega/verifiable_environment_forge_v1.py",
+      "role": "versioned",
+      "family": "verifiable_environment_forge",
+      "version": 1,
+      "classes": [
+        "ForgedEnvironmentReportV1",
+        "VerifiableEnvironmentForgeV1"
+      ],
+      "imports": [
+        "program_acquisition_v2",
+        "program_runtime_v2"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "verified_neural_substrate_bridge_v1",
+      "path": "core/nomega/verified_neural_substrate_bridge_v1.py",
+      "role": "versioned",
+      "family": "verified_neural_substrate_bridge",
+      "version": 1,
+      "classes": [
+        "VerifiedNeuralSubstrateBridgeV1",
+        "VerifiedSubstrateTrainingReportV1",
+        "_SubstrateScoreHeadV1"
+      ],
+      "imports": [
+        "neural_substrate_v1"
+      ],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "verifier",
+      "path": "core/nomega/verifier.py",
+      "role": "support",
+      "family": "verifier",
+      "version": null,
+      "classes": [
+        "SafeVerifier"
+      ],
+      "imports": [
+        "types"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "verifier_guided_search_v1",
+      "path": "core/nomega/verifier_guided_search_v1.py",
+      "role": "versioned",
+      "family": "verifier_guided_search",
+      "version": 1,
+      "classes": [
+        "CandidateEvidenceV1",
+        "SearchReportV1",
+        "VerifierGuidedSearchV1"
+      ],
+      "imports": [],
+      "consolidation_candidate": true,
+      "reason": "versioned implementation outside the canonical family mapping"
+    },
+    {
+      "module": "version",
+      "path": "core/nomega/version.py",
+      "role": "support",
+      "family": "version",
+      "version": null,
+      "classes": [],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "working_memory",
+      "path": "core/nomega/working_memory.py",
+      "role": "support",
+      "family": "working",
+      "version": null,
+      "classes": [
+        "WorkingMemory",
+        "WorkingSlot"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "world_model",
+      "path": "core/nomega/world_model.py",
+      "role": "support",
+      "family": "world",
+      "version": null,
+      "classes": [
+        "TinyWorldModel"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "world_model_canonical",
+      "path": "core/nomega/world_model_canonical.py",
+      "role": "canonical",
+      "family": "world_model",
+      "version": null,
+      "classes": [],
+      "imports": [
+        "world_model_v3"
+      ],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "world_model_v2",
+      "path": "core/nomega/world_model_v2.py",
+      "role": "legacy",
+      "family": "world_model",
+      "version": 2,
+      "classes": [
+        "MultiStepWorldModel",
+        "WorldModelTrainer"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    },
+    {
+      "module": "world_model_v3",
+      "path": "core/nomega/world_model_v3.py",
+      "role": "legacy",
+      "family": "world_model",
+      "version": 3,
+      "classes": [
+        "DynamicsMember",
+        "EnsembleRollout",
+        "WorldModelTrainerV3",
+        "WorldModelV3"
+      ],
+      "imports": [],
+      "consolidation_candidate": false,
+      "reason": "canonical family member"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "name": "Neuro-Kurisu SUPER",
+  "version": "35.0.0-super-workpass70",
+  "date": "2026-10-19",
+  "canonicalRuntime": "Neuro-Kurisu 35.90.0",
+  "schema": 225,
+  "research": [
+    "NeuroCore V143",
+    "NOMEGA Pass20",
+    "DeepCode v21"
+  ],
+  "legacy": [
+    "Kurisu v9",
+    "Kurisu v56",
+    "Neuro-Kurisu 35.30",
+    "NeuroCore V126"
+  ],
+  "integrity": "source-first; generated app/public Live2D shadows are omitted from the source archive and hash-verified before Vite dev/build; path-level duplicates are recorded in restoration manifests; no runtime state, node_modules, caches, or generated verification state shipped",
+  "releaseRoot": "Neuro_Kurisu_WORKPASS70_2026-10-19",
+  "build": "v35.0-UNIFIED-EMBODIMENT-INTENT-AUDIO-CLOCK-WORKPASS70",
+  "willIntegration": "bounded WILL agency signal applied before P69; P69 remains sole final arbiter",
+  "sourceBaseline": "Neuro_Kurisu_WORKPASS69_2026-10-19.zip",
+  "releaseStatus": "implementation-workpass; release gates remain open",
+  "latestIntegration": "WorkPass70 uses one monotonic browser speech-audio clock for both published audioTimeMs and Live2D viseme sampling. Per-utterance speechEventId/audioClockId, UTF-16 charIndex boundary anchors, optional elapsedTime calibration, stale/out-of-order anchor rejection, versioned single-envelope viewer protocol and iframe-ready resend are implemented. This remains approximate boundary-based synchronization, not PCM/phoneme ground truth.",
+  "luminaIntegration": "selected tool/browser/search/security/voice adapters; canonical-adapter mode",
+  "hexisIntegration": "10/10 major mechanisms implemented; canonical-adapter mode",
+  "readinessNote": "WorkPass70 targeted timeline tests, strict helper TypeScript check, root app script suite, runtime typecheck, viewer syntax, release metadata, runtime release contract/integrity/source verification pass. Chromium could not initialize/complete even a simple headless page in this container; actual browser/Live2D playback and p95 audio-to-mouth offset remain unverified. App dependency-complete build and physical Android TTS, provider/device recovery, memory uplift (recallDelta=0/not-promoted), rollback, license review and soak remain open.",
+  "migratedFrom": "WorkPass69",
+  "migratedAt": "2026-10-19T09:27:00+03:00",
+  "lettaIntegration": "source-boundary/provenance/telemetry/review-gate adapter; canonical-adapter mode",
+  "actionApprovalGate": "ActionGateway remains the single durable gate; app request layer suspends protected API calls, shows a sanitized approval card and resumes the captured exact JSON operation once only in the current tab.",
+  "approvalRecovery": "After page refresh, server-persisted pending tickets without an in-tab continuation are shown as unclaimed. Only a pending ticket may be explicitly declined. The original request body is never persisted, and no side effect is replayed from an orphaned ticket."
+}

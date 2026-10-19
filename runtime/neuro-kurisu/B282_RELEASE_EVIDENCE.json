@@ -1,0 +1,9 @@
+{
+  "pass": true,
+  "bigPass": 282,
+  "scope": "predictive global workspace",
+  "standalone": {"steps":240,"learningUpdates":240,"predictionUpdates":61440,"ignition01":0.9351523546,"globalCoherence01":0.9996852626,"globalPrediction01":0.9864619672,"lesionDrop01":0.0166221347},
+  "hidden": {"steps":360,"modelError01":0.2605473284,"baselineError01":0.5,"gain01":0.2394526716,"coalitionSwitches":7,"globalCoherence01":0.9999756553,"actionInfluence01":0.9584826315},
+  "core": {"steps":12,"learningUpdates":12,"predictionUpdates":3072,"ignition01":0.9386784318,"globalCoherence01":0.9163140362,"globalPrediction01":0.9328051539,"lesionDrop01":0.0137687185,"restart":true},
+  "limitations": ["ignition dwell is currently too persistent","digital controlled benchmark","not a proof of consciousness","small neural substrate"]
+}

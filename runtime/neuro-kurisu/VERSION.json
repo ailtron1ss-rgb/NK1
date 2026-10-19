@@ -1,0 +1,11 @@
+{
+  "application": "35.90.0",
+  "organismCore": "100.32.0-r26-hierarchical-lowrank-causal",
+  "stateSchema": 225,
+  "phase": "WorkPass70/Unified-Embodiment-Intent-Audio-Clock-and-Viseme-Timeline",
+  "status": "implementation-workpass",
+  "version": "35.90.0",
+  "release": "WorkPass70",
+  "schemaVersion": 225,
+  "releaseDate": "2026-10-19"
+}

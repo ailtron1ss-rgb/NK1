@@ -1,0 +1,17 @@
+{
+  "pass": "BIG_PASS_234_241_NEURO_DIGITAL_SUPERUPDATE",
+  "architecture": {
+    "neuroDigitalFusion": {"cycles": 18, "spikeLike": true, "lesionTest": true},
+    "plasticityHomeostasis": {"cycles": 18, "adaptive": true},
+    "causalSelfExperimentLab": {"cycles": 18, "verifiedEffects": true, "rejectedEffects": true},
+    "dreamCounterfactualLab": {"cycles": 18, "rehearsal": true},
+    "capabilitySelfModel": {"cycles": 18, "gapRanking": true},
+    "neuroSymbolicCompiler": {"cycles": 18, "latentToConcept": true},
+    "neuralMorphogenesis": {"cycles": 18, "growth": true, "pruning": true},
+    "hybridNeuroCognitiveLoop": {"cycles": 18, "integration": true}
+  },
+  "integration": {"organismCore": true, "stateMigration": true, "persistence": true, "restartPreserved": true},
+  "verification": {"typecheck": true, "architecture": true, "integrity": true, "forensics": true, "hygiene": true, "syntax": true, "releaseContract": true, "releaseSource": true},
+  "status": "verified",
+  "note": "Computational neuro-inspired architecture; no claim of biological equivalence or subjective consciousness."
+}

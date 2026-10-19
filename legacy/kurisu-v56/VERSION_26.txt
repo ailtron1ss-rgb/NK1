@@ -1,0 +1,4 @@
+Kurisu Neuro Mobile 26.0.0
+Android/Termux focused build.
+Syntax validation: 0 diagnostics across src/*.ts/*.tsx.
+No onnxruntime-node dependency.

@@ -1,0 +1,58 @@
+{
+  "release": "V119",
+  "name": "Final Integrated",
+  "verified_at": "2026-09-29",
+  "scope": "Current NeuroCore trunk; legacy history remains outside active current path",
+  "tests": {
+    "pytest_current": "50 passed",
+    "verify_current": "PASS",
+    "checkpoint_roundtrip": {
+      "loaded_tensors": 107,
+      "missing_tensors": 0,
+      "shape_mismatch": 0,
+      "unexpected_tensors": 0
+    }
+  },
+  "structure": {
+    "current_frontier": 119,
+    "engine_version": "v119-final-integrated",
+    "total_parameters": 69137,
+    "trainable_parameters": 69137,
+    "gradient_parameter_fraction": 1.0,
+    "called_module_fraction": 0.9016393442622951,
+    "recurrent_owner_count": 1,
+    "duplicate_state_keys": 0,
+    "forbidden_current_legacy_spine_namespace": false,
+    "legacy_imports": 0
+  },
+  "integrated_mechanisms": [
+    "causal online plasticity with per-sample modulation",
+    "cascade temporal credit candidate",
+    "event-specific fast-weight bank candidate",
+    "QED/address erase candidates",
+    "uncertainty-aware write candidate",
+    "preconditioned delta update",
+    "gradient arbitration and optimizer-update alignment audit",
+    "parameter-free synergy feedback candidate",
+    "causal HiPPO history state candidate",
+    "HiPPO+cascade hybrid credit candidate",
+    "product-key sparse memory candidate",
+    "learned initial state candidate (research-only)"
+  ],
+  "negative_findings": [
+    "HiPPO preserves directional recall but amplitude decays strongly at long horizons and collapses by delay 256 in the current probe.",
+    "Hybrid HiPPO+cascade is not superior to pure HiPPO on the current delayed probe.",
+    "Event-bank requires explicit credit/routing key; without it, memory separation cannot infer causal assignment.",
+    "Synergy feedback shows short-run gains but is not yet proven on long-horizon delayed tasks.",
+    "Optimizer post-update alignment reduces measured update conflict but requires further optimizer-state-consistency study before default promotion.",
+    "Learned initial state did not improve matched-seed quality sufficiently to justify default promotion.",
+    "Sparse product-key memory improves address selectivity in isolated probes but short full-trunk training is not yet better than dense memory."
+  ],
+  "release_policy": {
+    "default_only_if_proven": true,
+    "research_candidates_remain_disabled_by_default": true,
+    "no_decorative_modules": true,
+    "no_duplicate_sources_of_truth": true
+  },
+  "next_frontier": "V120 — Long-Horizon Causal Qualification + memory/credit ablation + optimizer-state-safe alignment + mobile resource qualification"
+}

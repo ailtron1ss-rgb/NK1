@@ -1,0 +1,130 @@
+{
+  "title": "Neuro-Kurisu SUPER — reconciled weighted implementation roadmap scorecard",
+  "date": "2026-10-10",
+  "workpass": "16 — browser release gate diagnostics, atomic verdicts and bounded timeout",
+  "baseArchive": "Neuro_Kurisu_SUPER_WILL_LUMINA_HEXIS_LETTA_CONSCIO_INTEGRATED_WORKPASS15_2026-10-10.zip",
+  "runtime": "Neuro-Kurisu 35.40.0",
+  "schema": 223,
+  "method": "Retains WorkPass 7 fixed weights; updates only workstreams whose implementation evidence changed. This is estimated weighted implementation progress, not release readiness. Task counts use the normalized, non-duplicated inventory, not append-only historical tasklist rows.",
+  "overallPercent": 68.65,
+  "previousOfficialScorePercent": 68.5,
+  "deltaPercentagePoints": 0.15,
+  "remainingWeightedRoadmapPoints": 31.35,
+  "workstreams": [
+    {
+      "id": "A",
+      "name": "Canonical source lineage and single-owner architecture",
+      "weight": 15,
+      "completionPercent": 100,
+      "weightedPoints": 15.0,
+      "previousPercent": 100,
+      "rationale": "No duplicate canonical owner; source manifests and metadata contract reconciled."
+    },
+    {
+      "id": "B",
+      "name": "Runtime integration, API/UI routes and smoke/linkage coverage",
+      "weight": 15,
+      "completionPercent": 95,
+      "weightedPoints": 14.25,
+      "previousPercent": 94,
+      "rationale": "WorkPass16 makes browser smoke fail closed on required brand warnings and actual auth mismatch, exposes indeterminate auth state, validates bounded timeouts, and atomically publishes private verdict files. The 212/212 source-only UI script suite passes; dependency-complete UI build and actual browser E2E remain open."
+    },
+    {
+      "id": "C",
+      "name": "Memory 2.0, retrieval/admission and benchmark evidence",
+      "weight": 15,
+      "completionPercent": 60,
+      "weightedPoints": 9.0,
+      "previousPercent": 45,
+      "rationale": "Retrieval determinism, complete fingerprints, offline runner and confidence gates are implemented; real labeled temporal holdout is still absent."
+    },
+    {
+      "id": "D",
+      "name": "Agency, action schema, execution, outcome and reafference",
+      "weight": 20,
+      "completionPercent": 62,
+      "weightedPoints": 12.4,
+      "previousPercent": 60,
+      "rationale": "WorkPass15 hardens bounded evidence event ingestion and independent outcome-verifier isolation/fail-closed handling. The full agency loop, independent provider receipts and no-double-credit stress remain partial."
+    },
+    {
+      "id": "E",
+      "name": "Portable subject continuity and social/known-entity dossier",
+      "weight": 10,
+      "completionPercent": 75,
+      "weightedPoints": 7.5,
+      "previousPercent": 75,
+      "rationale": "Read-only dossier and fidelity contracts are present; browser-backed corrections and behavioral equivalence remain open."
+    },
+    {
+      "id": "F",
+      "name": "External transport, SDK, idempotency and replay",
+      "weight": 10,
+      "completionPercent": 40,
+      "weightedPoints": 4.0,
+      "previousPercent": 20,
+      "rationale": "Conscio/Hexis/WILL local idempotency, queue backpressure and ACK/replay contracts improved; remote provider receipt/reconnect proof remains open."
+    },
+    {
+      "id": "G",
+      "name": "Research promotion and controlled experiments",
+      "weight": 5,
+      "completionPercent": 40,
+      "weightedPoints": 2.0,
+      "previousPercent": 40,
+      "rationale": "Experiment infrastructure is stronger, but no real-corpus uplift or research promotion is evidenced."
+    },
+    {
+      "id": "H",
+      "name": "Release durability: build, E2E, rollback, soak, SBOM/provenance",
+      "weight": 10,
+      "completionPercent": 45,
+      "weightedPoints": 4.5,
+      "previousPercent": 45,
+      "rationale": "Version/metadata and archive evidence improved; app install/build, browser E2E, clean-room drill and soak remain open."
+    }
+  ],
+  "normalizedTaskInventory": {
+    "count": 51,
+    "counts": {
+      "DONE": 34,
+      "PARTIAL": 9,
+      "TODO": 8
+    },
+    "strictDonePercent": 66.67,
+    "partialPercent": 17.65,
+    "todoPercent": 15.69,
+    "halfCreditEquivalentPercent": 75.49,
+    "note": "Status counts classify normalized deliverables. PARTIAL is not half-complete in every instance; half-credit is only a comparison aid."
+  },
+  "openReleaseGates": [
+    "Complete agency loop: competition → action → verified outcome → persistence → reafference",
+    "Independent action-outcome evidence and no-double-credit stress",
+    "Entity correction/expiry/conflict across browser-backed multi-session flows",
+    "Portable subject continuity and behavioral fidelity",
+    "Capability evidence graph for critical user journeys",
+    "External delivery receipts, reconnect and provider replay guarantees",
+    "Clean-room backup/restore, migration and rollback drill",
+    "Research candidates from NeuroCore/NOMEGA/DeepCode and external adapters",
+    "Authorization/abuse/rate-limit review for new diagnostic/benchmark APIs",
+    "Real independently labelled temporal MemoryOS2 holdout",
+    "Dependency-complete app install and full root/app typecheck",
+    "React/Vite production build",
+    "Desktop/mobile browser E2E, including interactive Live2D",
+    "Clean-room install + restore/upgrade/rollback release drill",
+    "Multi-hour soak and memory/resource-growth limits",
+    "Final SBOM, license inventory and immutable release provenance sign-off",
+    "Release-candidate sign-off"
+  ],
+  "environmentNote": "WorkPass16 focused audit passes: release metadata contracts, 212 source-only app script tests, browser smoke/auth/atomic report gates, runtime typecheck, memory benchmark/offline experiment, server imports and static UI/API linkage. Full app typecheck was attempted but fails with TS2688 for missing @types/node and vite/client; npm run build fails with spawn vite ENOENT. npm ci timed out at 120s and no app/node_modules was created. React/Vite build and actual browser E2E remain open. Asset audit and HTTP server smoke were separately run and passed.",
+  "releaseStatus": "implementation-workpass; NOT release-ready",
+  "limitations": [
+    "No real independently labeled temporal MemoryOS2 holdout; synthetic fixture proves harness behavior only.",
+    "Full agency chain from ActionCompetition through external receipt, persistence, reafference and UI remains partially covered.",
+    "Full app dependency installation, root/app semantic typecheck, React/Vite production build and desktop/mobile browser E2E remain open.",
+    "Clean-room install/restore/upgrade/rollback, multi-hour soak, provider reconnect/remote-postcondition stress and final SBOM/provenance sign-off remain open.",
+    "Full app dependency installation, semantic app typecheck, React/Vite build and Playwright browser E2E remain blocked/unverified in the current environment.",
+    "Brand and auth smoke gate behavior is unit-tested, but not executed against a running Chromium app in this pass.",
+    "Direct app typecheck fails with TS2688 for missing @types/node and vite/client; production build fails because vite executable is absent (spawn vite ENOENT)."
+  ]
+}

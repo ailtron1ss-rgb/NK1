@@ -1,0 +1,9 @@
+NeuroCore Frontier V97 — Plasticity Evolution
+Built: 2026-09-26
+Current API: src/neurocore/current
+Historical snapshots: src/neurocore/vXX
+Default validation: pytest -q tests/current
+Current engine: V88-compatible predictive/world/memory substrate + one canonical current recurrent spine
+V97 candidate layers: adaptive linearity, selective weight regeneration, fast→slow synaptic consolidation
+Promotion decision: candidates remain opt-in until long-horizon qualification establishes causal benefit without unacceptable cost
+Upstream policy: external source code enters through audited vendor/adapters; no silent source substitution

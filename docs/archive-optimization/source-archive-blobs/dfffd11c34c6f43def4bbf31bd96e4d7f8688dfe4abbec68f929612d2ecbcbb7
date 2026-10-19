@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { BoundedOperationalJournal } from '../src/organism/persistence/BoundedOperationalJournal.ts';
+
+const store=new MemoryStateStore();
+const runtime=new OrganismRuntime({stateFile:`/tmp/nk-p11-${process.pid}`,stateStore:store,journal:new BoundedOperationalJournal(),intervalMs:999999,enableLanguage:false});
+await runtime.init();
+const before=runtime.core.snapshot().facets.advanced.selfGovernance;
+await runtime.step('проверь научную гипотезу, а затем сообщи вывод');
+await runtime.step();
+const after=runtime.core.snapshot();
+assert.ok(after.facets.advanced.selfGovernance.records.length>=2);
+assert.ok(after.facets.advanced.consequenceAttribution.length>=1);
+assert.ok(after.facets.advanced.futureSelf.forecasts.length>=2);
+assert.notEqual(after.facets.advanced.selfGovernance.lastAt,before.lastAt);
+assert.ok(after.facets.evolution.agency.records.length>=2);
+assert.ok(after.traces.length>=2);
+runtime.stop();
+console.log(`P11_INTEGRATION=PASS governanceRecords=${after.facets.advanced.selfGovernance.records.length} consequences=${after.facets.advanced.consequenceAttribution.length} forecasts=${after.facets.advanced.futureSelf.forecasts.length}`);

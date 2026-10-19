@@ -1,0 +1,240 @@
+{
+  "title": "Neuro-Kurisu SUPER — reconciled weighted implementation roadmap scorecard — WorkPass57",
+  "date": "2026-10-17",
+  "workpass": 57,
+  "baseArchive": "Neuro_Kurisu_WORKPASS56_2026-10-17.zip",
+  "runtime": "35.77.0",
+  "schema": 225,
+  "method": "WorkPass57 strengthens the single canonical action/outcome chain: an executor ACK is not independent world evidence; explicit postcondition contradiction is a distinct non-success outcome; mutating/high-risk operations require durable idempotency; source provenance and independence are enforced before learning credit; delayed observations survive bounded recent-ring eviction and migration. Focused runtime and structural audits pass. No release-score increase is warranted because the live provider/device loop, app/browser E2E, independent retrieval uplift and endurance gates remain unproven.",
+  "overallPercent": 78,
+  "previousOfficialScorePercent": 78,
+  "deltaPercentagePoints": 0,
+  "remainingWeightedRoadmapPoints": 22,
+  "workstreams": [
+    {
+      "id": "A",
+      "name": "Canonical source lineage and single-owner architecture",
+      "weight": 15,
+      "completionPercent": 100,
+      "weightedPoints": 15,
+      "previousPercent": 100,
+      "rationale": "Single writable organism state/memory authorities preserved. WorkPass39 adds a read-only cognitive ownership map and typed flow validation without parallel runtime state."
+    },
+    {
+      "id": "B",
+      "name": "Runtime integration, API/UI routes and smoke/linkage coverage",
+      "weight": 15,
+      "completionPercent": 98,
+      "weightedPoints": 14.7,
+      "previousPercent": 96,
+      "rationale": "Any structured API approvalRequired challenge can now pause the actual originating call, show a redacted preview and resume its captured JSON request exactly once after explicit approval. The cross-surface queue is now read-only to avoid conflicting approvals. Dependency-installed Vite and browser E2E remain open."
+    },
+    {
+      "id": "C",
+      "name": "Memory 2.0, retrieval/admission and benchmark evidence",
+      "weight": 15,
+      "completionPercent": 72,
+      "weightedPoints": 10.8,
+      "previousPercent": 70,
+      "rationale": "Memory admission now respects net utility, harm/redundancy and provenance even without budget pressure. Independent labelled temporal holdout remains open and retrieval uplift is still zero."
+    },
+    {
+      "id": "D",
+      "name": "Agency, action schema, execution, outcome and reafference",
+      "weight": 20,
+      "completionPercent": 82,
+      "weightedPoints": 16.4,
+      "previousPercent": 80,
+      "rationale": "WorkPass57 hardens outcome truth and delayed evidence correlation: external postcondition mismatch is distinct from success; inferred durable idempotency protects legacy mutation registrations; late observations survive bounded-index eviction/migration; learning credit now requires source provenance and independence. Simulated integrations pass; real provider/device postconditions and reconnect/replay remain open."
+    },
+    {
+      "id": "E",
+      "name": "Portable subject continuity and social/known-entity dossier",
+      "weight": 10,
+      "completionPercent": 76,
+      "weightedPoints": 7.6,
+      "previousPercent": 75,
+      "rationale": "Unified cycle verification is tied to actual same-tick causal edges; this improves continuity evidence but is not a claim of subjective consciousness."
+    },
+    {
+      "id": "F",
+      "name": "External transport, SDK, idempotency and replay",
+      "weight": 10,
+      "completionPercent": 42,
+      "weightedPoints": 4.2,
+      "previousPercent": 42,
+      "rationale": "Stable IDs for new evidence and legacy ID continuity are improved; external transport delivery receipts/reconnect and multi-provider reconciliation remain open."
+    },
+    {
+      "id": "G",
+      "name": "Research promotion and controlled experiments",
+      "weight": 5,
+      "completionPercent": 70,
+      "weightedPoints": 3.5,
+      "previousPercent": 66,
+      "rationale": "WorkPass40 reviews the existing source archives and upstream contracts, adds SBOM/provenance inventory, and adapts the documented OpenAI-compatible llama.cpp endpoint into the existing P40 model ecology. External source clones and target-hardware inference remain pending where network or target hardware is unavailable."
+    },
+    {
+      "id": "H",
+      "name": "Release durability: build, E2E, rollback, soak, SBOM/provenance",
+      "weight": 10,
+      "completionPercent": 58,
+      "weightedPoints": 5.8,
+      "previousPercent": 46,
+      "rationale": "WorkPass57 aligns root/runtime pass metadata, expands architecture audit to cross-package source imports, and passes source hygiene, integrity, syntax, receipt and recovery checks. Installed Vite/browser E2E, live provider/device validation, clean-room rollback, manual nested-source license sign-off and soak remain open."
+    }
+  ],
+  "normalizedTaskInventory": {
+    "count": 64,
+    "counts": {
+      "DONE": 46,
+      "PARTIAL": 10,
+      "TODO": 8
+    }
+  },
+  "openReleaseGates": [
+    "Install app dependencies from canonical lockfile; run production Vite build and interactive browser/Live2D approval journeys.",
+    "Actual live language-provider idle session; real physical device/provider receipts, read-after-write postconditions, reconnect/replay and reconciliation.",
+    "Audio-buffer/phoneme timing for lipsync and controlled interruption/cancel.",
+    "Independent labelled Russian/English retrieval holdout with hard negatives, Recall@k/MRR/false-recall/latency; current broad recallDelta=0 and no candidate promoted.",
+    "Fault-injected clean-room state restore/rollback, complete nested-source license review, multi-hour soak and measured target-host inference."
+  ],
+  "environmentNote": "WorkPass57 focused runtime and root audit:quick pass. Root release metadata still requires one final verification after package/version alignment. Production Vite/browser/Live2D E2E is not established because app dependencies are not installed. Physical provider/device outcomes and target inference remain open; broad memory recallDelta remains 0 and nothing is promoted.",
+  "releaseStatus": "implementation-workpass; release gates remain open",
+  "limitations": [
+    "Prompt privacy uses bounded heuristic patterns and does not replace a full data classification or user consent policy.",
+    "Production React/Vite build and interactive browser Live2D E2E not run because app dependencies are not installed in the environment.",
+    "Real external provider/device receipts, reconnect/replay and ambiguous-outcome reconciliation remain open.",
+    "Actual audio/viseme synchronization and voice-session interruption are unverified.",
+    "Local llama.cpp adapter not tested against a real target-host model in this pass.",
+    "Independent labelled temporal retrieval holdout still shows no documented uplift; no candidate is promoted.",
+    "Clean-room fault-injected rollback, manual nested-source license review and endurance soak remain release gates.",
+    "Functional autonomy/personhood implementation does not by itself demonstrate subjective consciousness."
+  ],
+  "workpassImplementationProgressPercent": 71.9,
+  "implementationDeltasWorkPass36": [
+    {
+      "area": "Shared primitives",
+      "status": "DONE",
+      "evidence": "NumericPrimitives, StableSerialization, shared action cost policy; targeted runtime and adapter tests pass."
+    },
+    {
+      "area": "Memory durability/compatibility",
+      "status": "DONE",
+      "evidence": "64-entry bounded revision history, byte accounting, restore normalization, legacy source-lineage round trip."
+    },
+    {
+      "area": "Source archive immutability",
+      "status": "DONE",
+      "evidence": "8,512/8,512 source member SHA256 checks; 10,427 historical snapshot entries and 3,873 legacy dedup entries resolved."
+    },
+    {
+      "area": "Release deployment E2E",
+      "status": "OPEN",
+      "evidence": "Dependency-installed app build, browser and interactive Live2D E2E not completed in this environment."
+    },
+    {
+      "area": "Independent capability evidence",
+      "status": "OPEN",
+      "evidence": "Real local model/provider inference, independent temporal holdout, external postcondition/reafference, rollback and soak remain open."
+    },
+    "Shared Unicode tokenizer preserving Lumina/Conscio separators as options",
+    "Immutable SHA-256 content-addressed preimages for source-archive and historical snapshots",
+    "Revision-history memory-budget accounting and legacy memory lineage round-trip",
+    "Shared stable serialization retaining persisted legacy fingerprint bytes",
+    "ReleaseContract aligned to runtime package/integration manifest; schema-223 migration regression added"
+  ],
+  "passImplementationProgressPercent": 71.9,
+  "passImplementationProgress": 71.9,
+  "workpassImplementationProgress": 71.9,
+  "lastVerification": {
+    "checkedAt": "2026-10-17T15:52:34Z",
+    "releaseMetadata": "PASS (34/34 root release metadata checks)",
+    "releaseMetadataContract": "PASS (6/6 contract tests)",
+    "runtimeTypecheck": "PASS (TypeScript compiler; runtime 35.77.0)",
+    "workpass57RuntimeSuite": "PASS (all targeted tests; crash/replay/reconciliation; receipt integration 9/9; provider reconciliation 5/5; memory indexing and embedding privacy)",
+    "architecture": "PASS (1998 indexed source files; 582 canonical runtime files; 0 unresolved relative imports; 0 cycles; 0 legacy leakage)",
+    "sourceHygiene": "PASS (4024 files; 0 errors; 0 warnings)",
+    "integrity": "PASS (4030 files; runtime 35.77.0/core 100.32.0-r26-hierarchical-lowrank-causal/schema 225)",
+    "executableSyntax": "PASS (1343 JS; 6 shell; 247 JSON; no parser failures)",
+    "assetAudit": "PASS (zero errors; 21 Live2D shadows byte-identical to canonical assets)",
+    "serverImports": "PASS (11 server-relative imports checked; missing=0)",
+    "uiApiLinkage": "PASS (130 client routes; 49 Runtime Atlas surfaces; 5 required seams; no missing handlers/proxies)",
+    "appScripts": "PASS (npm run test:app:scripts; full Node test suite exited 0)",
+    "browserSmokeContract": "PASS (51/51 browser smoke contract tests; contract tests are not live browser E2E)",
+    "appBuild": "NOT RUN: app dependencies are not installed; production Vite build remains open",
+    "browserE2E": "NOT RUN: no dependency-complete app/browser runtime in this environment",
+    "providerDeviceE2E": "OPEN: simulated provider and receipt integration passed; actual live device/provider external postconditions and reconnect/replay not executed",
+    "memoryRetrieval": "Benchmark executed: corpus=18, train=4, holdout=8, 400 bootstrap samples; recallDelta=0, CI lower/median/upper=0, promotion=not-promoted. No retrieval uplift claimed.",
+    "officialWeightedScorePercent": 78,
+    "archive": "Final archive: Neuro_Kurisu_WORKPASS57_2026-10-17.zip; CRC and exact member paths verified; SHA-256 sidecar is outside the ZIP to avoid self-reference.",
+    "archiveInventory": "Runtime archive manifest verified: 4243 files, missing=0/hash mismatches=0/extras=0. Full content comparison: 9205 original files byte-identical, 29 original files changed, 9 new files added, 0 missing. Final ZIP has 9243 file entries with UTF-8 names; CRC verified.",
+    "embeddingMaintenance": "PASS (bounded batches, derived-only cache, stale-content guard, retry backoff, serialized provider lane and lexical fallback)",
+    "embeddingPrivacy": "PASS (5-input scenario; sanitized inputs 4; raw sensitive outbound values absent; heuristic, not universal PII detection)"
+  },
+  "remainingPercent": 22.0,
+  "workpass43Evidence": {
+    "runtime": "35.64.0",
+    "schema": 225,
+    "receiptCausalTests": "8/8 PASS",
+    "idempotencyTests": "13/13 PASS",
+    "ledgerArchiveTests": "4/4 PASS",
+    "reafferenceIntegration": "1/1 PASS",
+    "sourceArchivesVerified": "8512/8512",
+    "historicalSnapshotEntriesVerified": "10427/10427",
+    "historicalSnapshotSourcesChecked": 18935,
+    "legacyDedupEntries": 3873,
+    "historicalDuplicatePaths": 56,
+    "immutableHistoricalSourceBlobsAdded": 3,
+    "memoryRecallDelta": 0,
+    "memoryCandidatePromotion": "not-promoted",
+    "aggregateAudit": "TIMEOUT (not pass)",
+    "appBuild": "NOT RUN: app dependencies absent"
+  },
+  "workpass44Evidence": {
+    "runtime": "35.65.0",
+    "schema": 225,
+    "receiptCausalTests": "9/9 PASS",
+    "externalEvidenceReplay": "PASS",
+    "actionCrashReconciliation": "PASS",
+    "memoryTombstoneSafety": "PASS",
+    "memoryRecallDelta": 0,
+    "memoryCandidatePromotion": "not-promoted",
+    "providerSideIdempotency": "not yet evidenced with real provider/device",
+    "appBuild": "not run: dependencies absent",
+    "browserE2E": "not run",
+    "overallOfficialScorePercent": 78,
+    "passImplementationProgressPercent": 90,
+    "sourceArchiveMembersVerified": "8512/8512",
+    "historicalSnapshotEntriesVerified": "10427/10427",
+    "historicalSnapshotContentSourcesChecked": 18935,
+    "immutableHistoricalSourceBlobsAdded": 3,
+    "sourceManifestReferencesPinned": 12,
+    "metadataContract": "34/34 + contract tests 6/6 PASS",
+    "appScriptTests": "218/218 PASS",
+    "browserSmokeContract": "51/51 PASS",
+    "uiApiLinkage": "125 routes / 49 surfaces / zero missing required seams",
+    "assets": "PASS; zero errors",
+    "provenance": "PASS; 464 locked npm components / 8 source archives",
+    "officialScorePercent": 78
+  },
+  "latestPassEvidence": {
+    "workpass": 57,
+    "completed": [
+      "OutcomeVerificationService and OutcomeCognitionFabric reject tool-contract self-promotion into independent external evidence.",
+      "ActionGateway classifies side-effect/high-risk tools and refuses unkeyed mutations before executor entry.",
+      "External postcondition mismatch maps to executed-contradicted, never verified success.",
+      "Evidence rows retain sourceId/sourceClass/independenceKey/assessment through state normalization and the bounded projection index.",
+      "Learning is provenance gated; negative credit requires two distinct high-confidence contradictory independence keys, not duplicate observers of one source.",
+      "Causal outcome directory and projection fingerprint index reconnect late observations after recent-ring eviction; replay stays idempotent.",
+      "Runtime focused tests and architecture/source hygiene/contract/integrity/syntax/asset audits pass."
+    ],
+    "open": [
+      "Real device/provider external postconditions, process crash/restart and full Reafference-to-memory/skill path.",
+      "Production Vite and interactive browser/Live2D E2E.",
+      "Independent labelled memory retrieval holdout; current broad recallDelta=0 and candidate not promoted.",
+      "Target host local inference profile; exact audio-buffer/phoneme lipsync.",
+      "Clean-room rollback, full nested-source license sign-off and multi-hour soak."
+    ]
+  }
+}
