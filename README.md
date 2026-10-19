@@ -373,4 +373,4 @@ Implementation notes, commit links, and the evidence boundary: [WorkPass73 hando
 
 ## WorkPass74 — local LLM first-choice routing (2026-10-19)
 
-When `LLAMA_CPP_URL` is configured, the server request path now selects local `llama.cpp` first and preserves the existing fallback chain if it fails. A four-case policy regression is included in the core validation workflow. This does not by itself prove real-model inference or production readiness. See [WorkPass74 handover](docs/WORKPASS74_LOCAL_LLM_SELECTION_2026-10-19.md).
+When `LLAMA_CPP_URL` is configured, the server request path selects local `llama.cpp` first, preserves the existing fallback chain, and applies a bounded cooldown after repeated endpoint failures before retrying. A regression covers selection, cooldown, and recovery. This does not by itself prove real-model inference or production readiness. See [WorkPass74 handover](docs/WORKPASS74_LOCAL_LLM_SELECTION_2026-10-19.md).
