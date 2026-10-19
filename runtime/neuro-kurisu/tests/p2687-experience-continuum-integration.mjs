@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { ExperienceContinuumFabric } from '../src/organism/memory/ExperienceContinuumFabric.ts';
+import { OutcomeVerificationService } from '../src/organism/system/OutcomeVerificationService.ts';
 
 const mem=(i,now)=>({
   id:`m-${i}`,content:`experience ${i} topic ${i%5} surprise ${i%7}`,kind:i%9===0?'identity':i%5===0?'autobiographical':'episodic',
@@ -28,7 +29,9 @@ assert.equal(restoredSummary.adaptiveReplayGovernor.selected,summary.adaptiveRep
 assert.equal(restoredSummary.replay.events.length,summary.replay.events.length);
 const replayed=restored.reactivate(snapshot.graphNodes[0]?.memoryId??'missing',now+100000);
 if(replayed){
-  const validation=restored.recordReplayValidation({memoryId:replayed.memoryId,retentionScore01:.78,baselineScore01:.61,delayMs:8*86400000,transferPotential01:.74,interferenceRisk01:.11,independentVerified:true,evidenceKey:'p2687-integration'});
+  const verifier=new OutcomeVerificationService();
+  const verification=await verifier.verify({toolId:'p2687-test-harness',input:{memoryId:replayed.memoryId},result:{retentionScore01:.78}},()=>({verified:true,basis:'external-postcondition',confidence01:1,externalObservation:true,observationId:'p2687-observation',expectedPostcondition:'retention score independently measured',observedPostcondition:'retention score independently measured'}));
+  const validation=restored.recordReplayValidation({memoryId:replayed.memoryId,retentionScore01:.78,baselineScore01:.61,delayMs:8*86400000,transferPotential01:.74,interferenceRisk01:.11,independentVerified:true,verification,evidenceKey:'p2687-integration'});
   assert.equal(validation.independentVerified,true);
   assert(restored.summary().adaptiveReplayGovernor.feedbackUpdates>=1);
 }

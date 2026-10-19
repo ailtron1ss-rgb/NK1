@@ -48,6 +48,13 @@ export interface OutcomeVerificationContext {
 export type OutcomeVerifier = (context: OutcomeVerificationContext) => Promise<OutcomeVerification> | OutcomeVerification;
 
 const VALID_BASES = new Set<OutcomeVerificationBasis>(['none', 'tool-contract', 'external-postcondition']);
+const trustedExternalPostconditionResults = new WeakSet<object>();
+
+/** Only the exact normalized result emitted by this verifier can authorize independent learning. */
+export function isTrustedExternalPostconditionVerification(value: unknown): value is OutcomeVerification {
+  if (!value || typeof value !== 'object' || !trustedExternalPostconditionResults.has(value as object)) return false;
+  return assessExternalPostcondition(value as OutcomeVerification) === 'match';
+}
 const clamp = (x: unknown) => typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : 0;
 const boundedText = (value: unknown, max: number): string | undefined => {
   if (typeof value !== 'string') return undefined;
@@ -158,11 +165,9 @@ export class OutcomeVerificationService {
         notes = 'external postcondition contradicts expected state';
       }
       const preserveExternalEvidence = external && externalEvidenceShapeValid && checked.verified === true;
-      return {
+      const normalized: OutcomeVerification = {
         verified,
-        // Keep the provenance of a valid contradictory observation even though the
-        // action itself is not verified successful. Invalid contracts are still
-        // downgraded to `none` by the checks above.
+        // Preserve valid contradictory external evidence for diagnostics, but it cannot authorize success.
         basis: verified || preserveExternalEvidence ? basis : 'none',
         confidence01: verified || preserveExternalEvidence ? clamp(checked.confidence01) : 0,
         externalObservation: (verified || preserveExternalEvidence) && external,
@@ -172,6 +177,8 @@ export class OutcomeVerificationService {
         ...(notes ? { notes } : {}),
         ...(verified ? { observedWorldContextAfter: normalizeWorldContext(checked.observedWorldContextAfter) } : {}),
       };
+      if (verified && external && assessExternalPostcondition(normalized) === 'match') trustedExternalPostconditionResults.add(normalized);
+      return normalized;
     }
 
     if (context?.result?.verified === true) {

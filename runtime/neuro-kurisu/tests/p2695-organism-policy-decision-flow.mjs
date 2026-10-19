@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { OutcomeVerificationService } from '../src/organism/system/OutcomeVerificationService.ts';
 
 const embodiment={bodyEnergy01:.78,cognitiveCapacity01:.86,thermalStrain01:.12,sensoryFreshness01:.95,awake:true,battery01:.82,cpuLoad01:.18,ramPressure01:.20};
 const core=new OrganismCore(new MemoryStateStore(),{performanceProfile:'mobile',cycleResultMode:'operational'});
@@ -16,6 +17,9 @@ assert.equal(before.lastPolicyDecisionId,retrieved.decisionId);
 
 const replay=core.experienceContinuumReactivate(memoryId);
 assert.ok(replay,'memory must be present in the experience continuum');
+const verificationService=new OutcomeVerificationService();
+const verification=await verificationService.verify({toolId:'p2695-independent-test-harness',input:{memoryId},result:{retentionScore01:.88}},()=>({verified:true,basis:'external-postcondition',confidence01:1,externalObservation:true,observationId:`p2695-observation:${retrieved.decisionId}`,expectedPostcondition:'retention score independently measured',observedPostcondition:'retention score independently measured'}));
+assert.equal(verification.verified,true);
 const validation=core.experienceContinuumReplayValidate({
   memoryId,
   retentionScore01:.88,
@@ -23,7 +27,8 @@ const validation=core.experienceContinuumReplayValidate({
   delayMs:2*86400000,
   transferPotential01:.81,
   interferenceRisk01:.12,
-  independentVerified:true,
+  independentVerified:true, // legacy claim is ignored; verifier-issued object below is authoritative.
+  verification,
   evidenceKey:`p2695:${retrieved.decisionId}`,
   taskId:'p2695-policy-flow',
   contextKey:'p2695',

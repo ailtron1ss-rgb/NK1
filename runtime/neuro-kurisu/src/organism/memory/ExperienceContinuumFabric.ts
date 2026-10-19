@@ -1,6 +1,7 @@
 import type { MemoryItem2 } from '../developmental/MemoryOS2.ts';
 import { AdaptiveReplayGovernor, defaultAdaptiveReplayGovernorState, type AdaptiveReplayGovernorState } from '../system/AdaptiveReplayGovernor.ts';
 import { CausalReplayCreditAssigner, defaultCausalReplayCreditState, type CausalReplayCreditState } from '../system/CausalReplayCreditAssigner.ts';
+import { isTrustedExternalPostconditionVerification, type OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 
 export type MemoryTier = 'hot' | 'warm' | 'cold';
 export type ExperienceEdgeType = 'semantic' | 'temporal' | 'causal' | 'identity' | 'goal';
@@ -407,14 +408,18 @@ export class ExperienceContinuumFabric {
     return structuredClone(node);
   }
 
-  recordReplayValidation(input:{memoryId:string;retentionScore01:number;baselineScore01?:number;delayMs?:number;transferPotential01?:number;interferenceRisk01?:number;independentVerified?:boolean;evidenceKey:string;taskId?:string;contextKey?:string;replayEventId?:string;policyDecisionId?:string;at?:number}){
+  recordReplayValidation(input:{memoryId:string;retentionScore01:number;baselineScore01?:number;delayMs?:number;transferPotential01?:number;interferenceRisk01?:number;/** Deprecated; a caller boolean is not proof. */ independentVerified?:boolean;verification?:OutcomeVerification;evidenceKey:string;taskId?:string;contextKey?:string;replayEventId?:string;policyDecisionId?:string;at?:number}){
     const at=input.at??Date.now();
     const delayMs=Math.max(0,Number(input.delayMs??0));
     const retentionScore01=clamp(input.retentionScore01);
     const baselineScore01=clamp(input.baselineScore01??retentionScore01);
-    const validation:ReplayValidation={id:`rv:${input.memoryId}:${at}`,memoryId:String(input.memoryId),at,delayMs,retentionScore01,baselineScore01,retentionGain01:clamp(retentionScore01-baselineScore01),transferPotential01:clamp(input.transferPotential01??0),interferenceRisk01:clamp(input.interferenceRisk01??0),independentVerified:Boolean(input.independentVerified),evidenceKey:clean(input.evidenceKey,96),taskId:input.taskId?clean(input.taskId,96):undefined,contextKey:input.contextKey?clean(input.contextKey,96):undefined,replayEventId:input.replayEventId?clean(input.replayEventId,96):undefined,policyDecisionId:input.policyDecisionId?clean(input.policyDecisionId,128):undefined};
-    const duplicate=this.state.replay.validations.some(v=>v.evidenceKey===validation.evidenceKey && v.memoryId===validation.memoryId && v.taskId===validation.taskId && v.contextKey===validation.contextKey && v.delayMs===validation.delayMs);
-    if(duplicate) return structuredClone(this.state.replay.validations.find(v=>v.evidenceKey===validation.evidenceKey && v.memoryId===validation.memoryId && v.taskId===validation.taskId && v.contextKey===validation.contextKey && v.delayMs===validation.delayMs)!);
+    let validation:ReplayValidation={id:`rv:${input.memoryId}:${at}`,memoryId:String(input.memoryId),at,delayMs,retentionScore01,baselineScore01,retentionGain01:clamp(retentionScore01-baselineScore01),transferPotential01:clamp(input.transferPotential01??0),interferenceRisk01:clamp(input.interferenceRisk01??0),independentVerified:isTrustedExternalPostconditionVerification(input.verification),evidenceKey:clean(input.evidenceKey,96),taskId:input.taskId?clean(input.taskId,96):undefined,contextKey:input.contextKey?clean(input.contextKey,96):undefined,replayEventId:input.replayEventId?clean(input.replayEventId,96):undefined,policyDecisionId:input.policyDecisionId?clean(input.policyDecisionId,128):undefined};
+    const duplicateIndex=this.state.replay.validations.findIndex(v=>v.evidenceKey===validation.evidenceKey && v.memoryId===validation.memoryId && v.taskId===validation.taskId && v.contextKey===validation.contextKey && v.delayMs===validation.delayMs);
+    if(duplicateIndex>=0){
+      const prior=this.state.replay.validations[duplicateIndex]!;
+      if(prior.independentVerified || !validation.independentVerified) return structuredClone(prior);
+      validation={...validation,id:prior.id};
+    }
     const replayEvent=this.state.replay.events.find(e=>e.id===validation.replayEventId) ?? this.state.replay.events.slice().reverse().find(e=>e.memoryId===validation.memoryId && e.at<=validation.at);
     if(replayEvent){
       const credit=this.causalReplayCredit.assign({
@@ -426,7 +431,9 @@ export class ExperienceContinuumFabric {
       const node=this.nodeIndex.get(validation.memoryId);
       if(node) node.replayPriority01=clamp(node.replayPriority01*.88+credit.credit01*.12);
     }
-    this.state.replay.validations.push(validation); if(this.state.replay.validations.length>96)this.state.replay.validations=this.state.replay.validations.slice(-96);
+    if(duplicateIndex>=0) this.state.replay.validations[duplicateIndex]=validation;
+    else this.state.replay.validations.push(validation);
+    if(this.state.replay.validations.length>96)this.state.replay.validations=this.state.replay.validations.slice(-96);
     this.state.retention.observations++;
     if(validation.independentVerified){
       this.state.replay.validated++;

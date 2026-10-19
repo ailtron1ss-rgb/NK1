@@ -130,6 +130,21 @@ export class CausalReplayCreditAssigner {
       delayMs:effectiveDelay,delayAttenuation01,cascadeShort01, cascadeMedium01, cascadeLong01, temporalMatch01,eligibility01,outcome01,credit01,
       independentVerified,at:validationAt
     };
+    const existingIndex=this.state.recent.findIndex(x=>x.memoryId===record.memoryId&&x.validationId===record.validationId);
+    if(existingIndex>=0){
+      const existing=this.state.recent[existingIndex]!;
+      if(existing.independentVerified || !record.independentVerified) return structuredClone(existing);
+      this.state.assignments++;
+      this.state.verifiedAssignments++;
+      this.state.meanCredit01=clamp(this.state.meanCredit01*.92+credit01*.08);
+      this.state.meanEligibility01=clamp(this.state.meanEligibility01*.92+eligibility01*.08);
+      this.state.meanOutcome01=clamp(this.state.meanOutcome01*.92+outcome01*.08);
+      this.state.meanDelayAttenuation01=clamp(this.state.meanDelayAttenuation01*.92+delayAttenuation01*.08);
+      this.state.lastCredit01=credit01;
+      this.state.lastAt=validationAt;
+      this.state.recent[existingIndex]=record;
+      return structuredClone(record);
+    }
     this.state.assignments++;
     if(record.independentVerified){
       this.state.verifiedAssignments++;
@@ -138,8 +153,6 @@ export class CausalReplayCreditAssigner {
       this.state.meanOutcome01=clamp(this.state.meanOutcome01*.92+outcome01*.08);
       this.state.meanDelayAttenuation01=clamp(this.state.meanDelayAttenuation01*.92+delayAttenuation01*.08);
     }
-    // Keep attempts observable, but do not let unverified records contaminate
-    // aggregates. lastCredit01 is explicitly zero on unverified attempts.
     this.state.lastCredit01=credit01;
     this.state.lastAt=validationAt;
     this.state.recent=[...this.state.recent,record].slice(-128);
