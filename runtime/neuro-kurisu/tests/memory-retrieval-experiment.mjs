@@ -61,6 +61,38 @@ assert.equal(overflowReport.corpusIntegrity.validForPromotion, false);
 assert.equal(overflowReport.metrics.baseline.recallAtK01, 0);
 assert.equal(overflowReport.metrics.candidate.recallAtK01, 0, 'candidate must not see memory rows omitted from the baseline corpus cap');
 
+// Malformed-row parity regression: candidate restore used to keep a malformed row
+// that the baseline explicitly filtered out. With k=1 that row could crowd out a
+// labelled relevant result, making the two arms evaluate different corpora.
+const malformedSnapshot = structuredClone(snapshot);
+const malformedDistractor = {
+  ...structuredClone(malformedSnapshot.items[0]),
+  id: '',
+  content: 'malformedneedle',
+  epistemicStatus: 'fact',
+  dormant: false,
+  validFromAt: now - 1000,
+  validUntilAt: null,
+};
+const validTarget = {
+  ...structuredClone(malformedSnapshot.items[0]),
+  id: 'valid-target',
+  content: 'malformedneedle relevant target',
+  epistemicStatus: 'fact',
+  dormant: false,
+  validFromAt: now - 1000,
+  validUntilAt: null,
+};
+malformedSnapshot.items = [malformedDistractor, validTarget, ...malformedSnapshot.items.slice(1)];
+const malformedReport = runMemoryOS2RetrievalBenchmark(malformedSnapshot, [
+  { id: 'malformed-row-holdout', query: 'malformedneedle', relevantIds: ['valid-target'], split: 'holdout' },
+], { now, k: 1, bootstrapSamples: 200, maxExamples: 64 });
+assert.equal(malformedReport.corpusIntegrity.malformedRows, 1);
+assert.equal(malformedReport.corpusIntegrity.validForPromotion, false);
+assert.equal(malformedReport.metrics.baseline.recallAtK01, 1);
+assert.equal(malformedReport.metrics.candidate.recallAtK01, 1, 'candidate and baseline must filter to the same valid corpus even when promotion is blocked');
+
+
 
 // High-fanout query: selection must remain stable when identical memory rows are reordered.
 const largeMemory = new MemoryOS2();
