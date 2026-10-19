@@ -8,7 +8,7 @@ import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
 import { ProcessLock } from '../organism/persistence/ProcessLock.ts';
 import { FileStateStore } from '../organism/persistence/FileStateStore.ts';
 import { idempotencyPreflightHttpStatus } from './idempotency-response.mjs';
-import { chooseLanguageBackend } from './local-language-backend-policy.mjs';
+import { LocalLanguageBackendPolicy } from './local-language-backend-policy.mjs';
 import { RELEASE_CONTRACT } from '../organism/system/ReleaseContract.ts';
 import { resolvePhonePolicyConfig } from '../organism/system/PhoneRuntimePolicy.ts';
 import { authorizeApiRequest } from '../organism/system/ApiSecurityPolicy.ts';
@@ -28,6 +28,7 @@ const PORT = Number(process.env.PORT || 3000);
 const KOBOLD_URL = String(process.env.KOBOLD_URL || 'http://127.0.0.1:5001').replace(/\/$/, '');
 const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 15000);
 const LLAMA_CPP_PROVIDER = new OpenAICompatibleLocalChatProvider({ baseUrl: process.env.LLAMA_CPP_URL, model: process.env.LLAMA_CPP_MODEL || 'local-model', timeoutMs: LLM_TIMEOUT_MS });
+const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
 const REQUEST_TIMEOUT_MS = Math.max(5000, Number(process.env.NEURO_REQUEST_TIMEOUT_MS || 45000));
 const MAX_BODY_BYTES = Math.max(4096, Number(process.env.NEURO_MAX_BODY_BYTES || 256000));
 const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
@@ -68,11 +69,12 @@ await lock.acquire();
 async function invokeLanguage(request) {
     const started = Date.now();
     const ecologyPreferredBackend = runtime.core.p40SelectModel('language', PHONE_MODE === false, request.maxTokens && request.maxTokens > 900 ? .82 : .72);
-    const preferredBackend = chooseLanguageBackend({ localLlamaConfigured: LLAMA_CPP_PROVIDER.configured(), ecologyPreferredBackend });
+    const preferredBackend = LOCAL_LANGUAGE_BACKEND_POLICY.select({ localLlamaConfigured: LLAMA_CPP_PROVIDER.configured(), ecologyPreferredBackend });
     const effectiveBackend = preferredBackend === 'local-fallback'
         ? 'deterministic-policy-fallback'
         : preferredBackend;
     const response = await generateLanguage({ ...request, preferredBackend: effectiveBackend });
+    LOCAL_LANGUAGE_BACKEND_POLICY.observe({ backend: String(response.backend ?? ''), failures: response.failures || [], now: finishedAt });
     const finishedAt = Date.now();
     const backend = String(response.backend ?? effectiveBackend ?? 'unknown');
     const provider = backend.split(':')[0];
