@@ -3,9 +3,9 @@
 - Removed the non-ranking hash-cosine computation from retrieval. The legacy persisted `semanticHits` field remains schema-compatible but is no longer incremented by that misleading proxy.
 - Strengthened `p2697-mobile-residency.mjs` to require unchanged vector materialization and unchanged tier counts across a retrieval.
 - Expanded GitHub Actions to run the memory retrieval, query-intent, residency, background-index and embedding-privacy regressions.
-- Added `AGENTS.md` as the canonical working guide; a first repository inventory found 9,350 tracked files, 2,888 Markdown files and 370 roadmap/workpass/report-named paths. No files were deleted or moved without a reference audit.
+- Added `AGENTS.md` as the canonical working guide and an exact-hash cleanup inventory. Removed the 21 manifest-listed Live2D shadows from `app/public` after confirming SHA/size parity and automatic hash-verified hydration; 16,690,663 bytes of duplicate tracked payload removed. The remaining 18 exact duplicate groups (39 excess paths) are preserved pending individual reference/provenance review.
 - Expanded CI exposed fixed-time fixture errors in numeric and fuzzy retrieval: both seeded 2033 timestamps while calling `temporalMode: 'current'`, which deliberately uses wall-clock time and ignores `asOfAt`. Both tests now use explicit point-in-time mode; a further CI pass is required.
-- This is a residency/resource fix, not a retrieval-quality uplift or production approval. Independent labelled retrieval evidence remains open.
+- This is a residency/resource fix, not a retrieval-quality uplift or production approval. Independent labelled retrieval evidence remains open. The P2684 residency regression now specifies that retrieval leaves cold records cold and explicit `get()` owns vector materialization.
 
 ---
 

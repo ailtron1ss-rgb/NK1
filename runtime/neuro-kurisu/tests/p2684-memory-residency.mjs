@@ -33,10 +33,16 @@ for (const id of identityIds) assert.ok(after.items.some(x => x.id === id), `pro
 const cold = after.items.find(x => x.residencyTier === 'cold');
 if (cold) {
   assert.equal(cold.semanticVector.length, 0);
+  const coldId = cold.id;
   const result = memory.retrieve(cold.content.slice(0, 48), 4);
   assert.ok(Array.isArray(result));
-  const restored = memory.get(cold.id);
-  assert.ok((restored?.semanticVector?.length ?? 0) > 0, 'cold vector must lazily re-materialize on retrieval');
+  const afterRetrieve = memory.snapshot({ clone: false }).items.find(x => x.id === coldId);
+  assert.equal(afterRetrieve?.residencyTier, 'cold', 'retrieval must not reclassify cold memories as hot or warm');
+  assert.equal(afterRetrieve?.semanticVector.length, 0, 'retrieval must not materialize the non-ranking hash vector');
+  const restored = memory.get(coldId);
+  assert.ok((restored?.semanticVector?.length ?? 0) > 0, 'explicit memory access must lazily materialize the vector');
+  const afterExplicitAccess = memory.snapshot({ clone: false }).items.find(x => x.id === coldId);
+  assert.equal(afterExplicitAccess?.residencyTier, 'hot', 'explicit access owns the hot-residency transition');
 }
 
 console.log(JSON.stringify({

@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-19  
 **Branch:** `workpass70-source`  
-**Status:** implementation committed; initial expanded CI found a test-fixture time-mode error (corrective commit pending validation). Not a production approval.
+**Status:** implementation + asset deduplication committed; latest CI pending. Fixed-time retrieval fixtures have been corrected after real CI failures. Not a production approval.
 
 ## Behavioral defect found
 
@@ -26,7 +26,7 @@ The first expanded CI failed at `memory-retrieval-numeric-terms.mjs`: records we
 
 ## Repository organization audit
 
-The recursive Git tree on the parent revision contained 9,350 tracked blobs, including 2,888 Markdown files and 370 paths matching roadmap/handover/workpass-report naming. This is enough to justify better navigation, but **not** enough to prove which files are garbage or safe to delete. Older pass documents, `research/`, `legacy/`, licenses, manifests, archives and source provenance remain untouched pending import/reference/manifest audits. `AGENTS.md` is the working entry point; the README and current handover are the status sources.
+The exact-blob audit for baseline `585c3d1c66ad452c9684b7969bcbaba9006f60f7` found 9,354 tracked files, 2,891 Markdown files and 39 duplicate-content groups (60 excess paths). All 21 pairs in `contracts/inventory/canonical-public-assets-workpass42.json` were verified by Git blob SHA and recorded size. Removed only those 21 manifest-listed `app/public/live2d/` shadows: 16,690,663 bytes (15.92 MiB) of duplicate tracked payload. These ignored targets hydrate from the sole runtime owner before Vite dev/build/preview, and asset ownership is now a CI gate. Post-cleanup tree: 9,333 tracked files, 18 exact duplicate groups, 39 excess paths. No legacy snapshots, research code, licenses, archives, provenance, viewer, vendor or sprite files were removed. Full inventory: `docs/REPOSITORY_CLEANUP_AUDIT_WORKPASS72.md` and companion JSON.
 
 ## Validation
 
@@ -38,12 +38,12 @@ This pass expands `.github/workflows/workpass71-validation.yml` to run:
 - memory residency and background embedding-index behavior;
 - embedding request privacy sanitization.
 
-The expanded CI first found a numeric-retrieval fixture seeded with 2033 timestamps but run under `temporalMode: 'current'`. That mode intentionally ignores `asOfAt`; switching this deterministic fixture to explicit `temporalMode: 'at'` made the numeric checks pass. The following run exposed the same mismatch in the fuzzy-retrieval fixture; it is now also corrected to use point-in-time mode. These are test-fixture corrections, not changes to production temporal semantics. Re-run CI before counting WorkPass72 as validation-complete.
+The expanded CI first found a numeric-retrieval fixture seeded with 2033 timestamps but run under `temporalMode: 'current'`. That mode intentionally ignores `asOfAt`; switching this deterministic fixture to explicit `temporalMode: 'at'` made the numeric checks pass. The following run exposed the same mismatch in the fuzzy-retrieval fixture; it too now uses point-in-time mode. `p2684-memory-residency.mjs` now asserts that retrieval leaves cold items cold and explicit `get()` owns vector materialization and the hot transition. These are fixture/assertion correctness changes, not changes to production temporal semantics. Run and inspect CI before counting WorkPass72 as validation-complete.
 
 ## Remaining high-priority gates
 
-1. Confirm CI for this commit and repair every introduced regression.
-2. Audit duplicated/stale Markdown using content hashes plus links/import/script references; prepare a reversible cleanup manifest before moving or deleting anything.
+1. Confirm CI for this commit and repair every regression exposed by the expanded suite.
+2. Audit any remaining exact duplicates against references/imports/scripts/licenses/provenance before deciding whether to move anything; never delete historical copies by default.
 3. Establish and label a real independent retrieval corpus and evaluate recall@k/MRR, paired uncertainty and temporal leakage.
 4. Measure p50/p95 retrieval latency, heap/RSS, allocation and thermal/battery impact on the actual target device; don't infer device behavior from desktop CI.
 5. Keep real browser/Live2D E2E, Android TTS clock, production build/release contract, license audit and soak tests open until directly observed.
