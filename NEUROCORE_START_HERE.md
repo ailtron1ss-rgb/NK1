@@ -74,18 +74,30 @@ At the start of every new work session, do not ask the user to restate the missi
 
 ## 6. Open work known at the WorkPass76 start
 
-Treat these as a queue to re-verify, not as guaranteed current facts:
+Treat this as a live queue. Verify branch head and Actions first; do not assume a status is current merely because it appears in this document.
 
-1. Fix and regression-test language invocation/backend attribution; inspect the full provider path and confirm an actual server request succeeds.
-2. Correct the previously identified retrieval/residency issue: retrieval must not warm/materialize cold memory merely to calculate a signal that does not affect ranking; add a behavioral test that snapshots residency/maintenance state before and after ordinary retrieval.
-3. Add an opt-in live local `llama.cpp` smoke test (default CI must require no secret, internet or model download) with latency, timeout/cancellation, output bounds and actual backend attribution.
-4. Add a real autobiographical fact-revision/temporal query suite; old facts must not leak into current answers after revision.
-5. Run independent retrieval holdout and learning-transfer/anti-forgetting ablations; prior retrieval work recorded `recallDelta=0`, so do not claim uplift until measured.
+### Recently closed / partially closed (verify exact CI head before relying on it)
+
+- **IMPLEMENTED:** fixed the `invokeLanguage()` timestamp temporal-dead-zone defect; added a regression for timestamp order and actual-response backend attribution. The regression is in the active CI workflow.
+- **PROVEN (CI on commit 57215aeda3):** WorkPass76 language-order regression, runtime typecheck and preceding core suite passed in run [39319636214](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39319636214). This is not a live HTTP request or real-model inference.
+- **PROVEN (CI on commit 23f9b534):** cold-memory residency regression passed in run [39319686397](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39319686397).
+- **PROVEN (CI on commit 268c127):** cold-memory regression wired into the core workflow and that run passed: [39319849208](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39319849208).
+- **IMPLEMENTED:** added current-mode / historical-mode revision and bounded revision-history regressions to the core workflow in commit `b8f144348bb756639c02234f5eb2fd3869607b22`.
+- **IMPLEMENTED:** added `tools/audit-runtime-test-coverage.mjs` and wired it into CI to detect missing test references, broken paths and dropped required regressions. Its first run is pending; do not call the audit green until observed.
+- **UNRESOLVED:** full live server/provider request, local model quality, independent memory uplift, learning transfer and consciousness remain unproven.
+
+### Prioritized open queue
+
+1. Confirm the latest workflow on the current branch head, including the test-coverage audit and newly wired temporal regressions.
+2. Add an HTTP-level server test using a deterministic fake local provider; assert response body, actual backend attribution, latency and failure accounting. Keep default CI secret-free and model-free.
+3. Add an opt-in live `llama.cpp` smoke test with timeout/cancellation, bounded output and cold/warm latency; execute on Dell G3 when accessible.
+4. Run independent RU/EN retrieval holdouts, same-corpus baseline, insertion-order/shuffle controls, leakage checks and uncertainty intervals. Previous `recallDelta=0` blocks uplift claims.
+5. Run learning-transfer / anti-forgetting ablations and test fact revision, selective forgetting, interference and evidence provenance.
 6. Trace one action end-to-end: accepted action → ACK loss/timeout → process restart → read-after-write → independent postcondition → verified learning credit, with duplicate replay.
-7. Generate and inspect import/reference graphs for runtime sources, tests, scripts, package manifests, assets and licenses; do not delete historical files until references are resolved.
-8. Test app production build, browser/Live2D/TTS E2E, interruption races and actual audio timing.
-9. Run soak and target-hardware performance tests; current CI is not evidence of 24–72 h stability or Dell/mobile performance.
-10. Review dependency/license/security posture and verify generated artifacts are not mistaken for canonical source.
+7. Complete import/reference graphs for runtime source, tests, scripts, package manifests, assets and licenses; treat unreferenced candidates as review items, not deletion instructions.
+8. Run production app build, browser/Live2D/TTS E2E, interruption races and actual audio timing.
+9. Run 24–72 h soak and target-hardware measurements; current CI does not prove Dell/mobile performance.
+10. Review dependency/license/security posture and ensure generated artifacts are not mistaken for canonical source.
 
 ## 7. Work-pass definition of done
 
