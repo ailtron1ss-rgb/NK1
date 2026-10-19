@@ -13,6 +13,6 @@ const finishedAt = invoke.indexOf('const finishedAt = Date.now();');
 const observeAt = invoke.indexOf('LOCAL_LANGUAGE_BACKEND_POLICY.observe(');
 assert.ok(responseAt >= 0 && finishedAt > responseAt, 'finish timestamp must be captured after language generation completes');
 assert.ok(observeAt > finishedAt, 'policy observation must happen only after finishedAt is initialized');
-assert.equal((invoke.match(/const finishedAt = Date\\.now\\(\\);/g) ?? []).length, 1, 'invokeLanguage must have exactly one completion timestamp declaration');
+assert.equal((invoke.match(/const finishedAt = Date\.now\(\);/g) ?? []).length, 1, 'invokeLanguage must have exactly one completion timestamp declaration');
 assert.match(invoke, /const backend = String\(response\.backend \?\? effectiveBackend \?\? 'unknown'\)/, 'reported backend must prefer the backend returned by the actual provider');
 console.log('LANGUAGE_INVOKE_ORDER_REGRESSION=PASS', JSON.stringify({ responseBeforeTimestamp: true, timestampBeforeObservation: true, backendAttribution: 'actual-response-first' }));
