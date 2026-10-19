@@ -68,6 +68,9 @@ jobs:
           node --experimental-strip-types tests/organism-smoke.mjs
           node --experimental-strip-types tests/memory-retrieval-experiment.mjs
           node --experimental-strip-types tests/cold-retrieval-residency-regression.mjs
+          node --experimental-strip-types tests/r15-temporal-memory-behavior.mjs
+          node --experimental-strip-types tests/memory-temporal-inspector-closure.mjs
+          node --experimental-strip-types tests/memory-revision-history-budget-workpass36.mjs
           node --experimental-strip-types tests/memory-retrieval-candidate-coverage.mjs
           node --experimental-strip-types tests/memory-retrieval-numeric-terms.mjs
           node --experimental-strip-types tests/memory-retrieval-fuzzy-workpass32.mjs
