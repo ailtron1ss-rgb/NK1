@@ -63,6 +63,7 @@ const report = {
   testFilesFound: runnableFiles.length,
   directlyReferencedRunnableFiles: referenced.size,
   unreferencedCandidates: runnableFiles.length - referenced.size,
+  unreferencedCandidatePaths: runnableFiles.filter(file => !referenced.has(file)),
   packageScriptCount: Object.keys(packageJson.scripts ?? {}).length,
   explicitReferenceCount: references.length,
   missingReferences,
