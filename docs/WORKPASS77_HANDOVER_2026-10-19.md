@@ -86,3 +86,10 @@ Next session: check live head and Actions first, then continue at P0 item 1 and 
 - **Current branch head after the documentation-only handover links:** `dccbd3e332c4429f22c5c651b1b71a187fe18ab0`.
 - **Latest run observed at this refresh:** [39321285670](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39321285670) was queued on the current head after updating `AGENTS.md`. Check it to completion before calling the current head CI-verified.
 - Research ledger now explicitly preserves earlier requested candidates (Mamba-3/SSD, FLA, MoBA, preconditioned DeltaNet KKT/WY/`solve_tril`, Gated Oja, TTT, GSA, NSA, LIRA uncertainty/write gating, HiPPO, DPLR/IPLR, RWKV-7/Goose, fused updates, context parallelism, MEMO artifacts and `erase_control.py`). Unresolved names are marked as unresolved instead of assigned guessed upstream sources.
+
+
+### Final snapshot for this chat handoff
+
+- **Branch head when checked:** `86a142108de6e9f99955e7b508dcd8cf962d3de7` (`README.md` now links this handover).
+- **Latest Actions runs:** [39321337981](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39321337981) on the current head and [39321285670](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39321285670) on the immediately preceding documentation-only head were still in progress when checked. The most recent completed full core run remains [39321059462](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39321059462), **PASS** on the code/workflow that includes the fake-provider HTTP test and opt-in live-smoke default-skip test.
+- Start the next chat by polling both runs; do not claim the exact current head is green until one completes successfully. Code/workflow did not change after the validated test/audit commit `0fbc6a85522497156ec254f983938d53a1912321`; intervening commits were documentation/ledger/README updates.
