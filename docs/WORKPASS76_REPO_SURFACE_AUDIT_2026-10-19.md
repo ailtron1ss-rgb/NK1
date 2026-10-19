@@ -150,3 +150,10 @@ No quality uplift, actual local model quality, autonomous agency, or subjective 
 - **CI status boundary:** the audit and temporal regressions are green on the relevant code/workflow commits. The latest branch head must still be checked at session start; documentation-only commits after the tested code do not change the tested runtime, but they are not themselves a new runtime measurement.
 
 The next useful improvement is to enrich the static audit with script-to-script reachability and dynamic-runner inspection, then inspect the 76 unreferenced candidates against imports, generated test manifests, docs and historical provenance. Keep the output as an auditable report; do not automatically remove files.
+
+
+## End-to-end local-language HTTP path — implemented, awaiting current CI
+
+- **IMPLEMENTED:** added `runtime/neuro-kurisu/tests/server-language-http-fake-provider.mjs`. It starts a real NeuroCore HTTP server with isolated temporary state and a local fake OpenAI-compatible endpoint, submits a real `POST /api/organism/chat`, and asserts returned text, actual `llama.cpp:model` attribution, selected backend, finite latency, one provider call, model identity and request payload.
+- **Safety boundary:** the test binds both servers to loopback, uses no API key or downloaded model, and removes its temporary state. It proves the real server → policy → provider adapter → response path only if the current workflow passes; it does not prove quality or speed of a real model.
+- **CI wiring:** added the test to the active workflow and required coverage list. Runs [39320616341](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39320616341) and [39320623533](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39320623533) were running at the time of this entry; inspect the run that includes the coverage-list update and record the actual result.
