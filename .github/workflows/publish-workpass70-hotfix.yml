@@ -20,7 +20,24 @@ jobs:
         with:
           ref: workpass70-source
           fetch-depth: 0
+      - name: Guard against publishing a stale validation run
+        id: guard
+        shell: bash
+        env:
+          VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          LATEST_SHA="$(git ls-remote origin refs/heads/workpass70-source | cut -f1)"
+          if [ -z "$LATEST_SHA" ]; then echo "Could not resolve current source branch"; exit 1; fi
+          if [ "$LATEST_SHA" = "$VALIDATED_SHA" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "Validated commit is the current source branch tip: $LATEST_SHA"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping stale run $VALIDATED_SHA; current source tip is $LATEST_SHA"
+          fi
       - name: Package tracked source and verify archive
+        if: steps.guard.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -42,6 +59,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Create release and upload verified artifacts
+        if: steps.guard.outputs.publish == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
