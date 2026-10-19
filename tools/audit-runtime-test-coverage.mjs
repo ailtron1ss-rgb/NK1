@@ -47,6 +47,7 @@ const duplicateReferences = [...counts.entries()].filter(([, count]) => count > 
 const referenced = new Set([...counts.keys()].filter(file => runnableFiles.includes(file)));
 const requiredWorkflowTests = [
   'runtime/neuro-kurisu/tests/local-chat-provider-workpass40.mjs',
+  'runtime/neuro-kurisu/tests/local-llm-live-smoke.mjs',
   'runtime/neuro-kurisu/tests/local-llm-selection-workpass74.mjs',
   'runtime/neuro-kurisu/tests/language-invoke-order-regression.mjs',
   'runtime/neuro-kurisu/tests/server-language-http-fake-provider.mjs',
