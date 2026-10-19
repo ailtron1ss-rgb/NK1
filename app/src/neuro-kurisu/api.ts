@@ -267,7 +267,6 @@ export const neuroApi = {
   voiceListen: (approvalId?: string) => request<Record<string, unknown>>("/api/organism/voice/listen", { method: "POST", body: JSON.stringify({ ...(approvalId ? { approvalId } : {}) }) }),
   voiceTurn: (speak = true, deliberate = true, approvalId?: string) => request<Record<string, unknown>>("/api/organism/voice/turn", { method: "POST", body: JSON.stringify({ speak, deliberate, ...(approvalId ? { approvalId } : {}) }) }),
   status: () => request<Record<string, unknown>>("/api/organism/status"),
-  statusLite: () => request<Record<string, unknown>>("/api/organism/status-lite"),
   inspect: () => request<Record<string, unknown>>("/api/organism/inspect"),
   systemGraph: () => request<Record<string, unknown>>("/api/organism/system-graph"),
   cognitiveArchitecture: () => request<Record<string, unknown>>("/api/organism/cognitive-architecture"),
