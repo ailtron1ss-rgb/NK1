@@ -2,7 +2,8 @@
 
 - Fixed retrieval-side memory-residency warming: candidate search no longer rebuilds non-ranking hash vectors for cold records or reclassifies them as warm.
 - Strengthened the mobile residency regression to require zero vector-count growth and unchanged residency-tier counts across recall.
-- Expanded CI coverage across candidate coverage, numeric/fuzzy retrieval, bilingual concepts, typed intent, residency, background indexing and embedding privacy.
+- Expanded CI coverage across candidate coverage, numeric/fuzzy retrieval, bilingual concepts, typed intent, residency, background indexing and embedding privacy; the fixed-time numeric/fuzzy test fixtures were corrected after CI exposed their invalid temporal mode.
+- Removed 21 duplicate tracked Live2D shadows from `app/public` (16.69 MB); canonical assets remain in runtime and hydrate from the hash-locked manifest before Vite.
 - Working rules and navigation: [AGENTS.md](AGENTS.md); evidence/open gates: [WorkPass72 handover](docs/WORKPASS72_HANDOVER_2026-10-19.md); [exact-duplicate cleanup audit](docs/REPOSITORY_CLEANUP_AUDIT_WORKPASS72.md).
 - No recall uplift or production-ready claim is made. CI for this pass and independent labelled retrieval evidence remain open.
 

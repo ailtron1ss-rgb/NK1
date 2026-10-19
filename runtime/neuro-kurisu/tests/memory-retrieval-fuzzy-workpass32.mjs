@@ -17,12 +17,12 @@ add('decoy-1', 'The runtime starts a network service and reports process health.
 add('decoy-2', 'Граф причинных связей хранит результаты предыдущих действий.');
 add('decoy-3', 'The user interface opens a settings panel for visual preferences.');
 
-const english = memory.previewRetrieve('memori retrival mechanizm prefernces', 5, 0, 0, { temporalMode: 'current', asOfAt: now });
+const english = memory.previewRetrieve('memori retrival mechanizm prefernces', 5, 0, 0, { temporalMode: 'at', asOfAt: now });
 assert.equal(english[0]?.id, 'english-target', 'fuzzy n-gram retrieval should rescue misspelled English terms with no exact overlap');
-const russian = memory.previewRetrieve('датчик давленя калибровка', 5, 0, 0, { temporalMode: 'current', asOfAt: now });
+const russian = memory.previewRetrieve('датчик давленя калибровка', 5, 0, 0, { temporalMode: 'at', asOfAt: now });
 assert.equal(russian[0]?.id, 'russian-target', 'fuzzy retrieval should tolerate common Russian inflection and spelling variants');
 
-memory.retrieve('memori retrival mechanizm prefernces', 5, 0, 0, { temporalMode: 'current', asOfAt: now });
+memory.retrieve('memori retrival mechanizm prefernces', 5, 0, 0, { temporalMode: 'at', asOfAt: now });
 const diag = memory.retrievalDiagnostics();
 assert.equal(diag.semanticVectorUsedForRanking, false, 'the hashed lexical projection must not masquerade as a true embedding ranker');
 assert.equal(diag.semanticEmbeddingProvider, 'none');
@@ -37,6 +37,6 @@ assert.equal(memory.forgetById('temporary-token', 'fuzzy-index-removal'), true);
 const restored = new MemoryOS2();
 restored.restore(memory.snapshot());
 assert.equal(restored.indexDiagnostics().pass, true);
-const afterRestore = restored.previewRetrieve('memori retrival mechanizm prefernces', 5, 0, 0, { temporalMode: 'current', asOfAt: now });
+const afterRestore = restored.previewRetrieve('memori retrival mechanizm prefernces', 5, 0, 0, { temporalMode: 'at', asOfAt: now });
 assert.equal(afterRestore[0]?.id, 'english-target');
 console.log('MEMORY_RETRIEVAL_FUZZY_WORKPASS32=PASS', JSON.stringify({ englishTop: english[0]?.id, russianTop: russian[0]?.id, fuzzyCandidates: diag.fuzzyCandidateCount, index: restored.indexDiagnostics() }));

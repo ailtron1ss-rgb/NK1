@@ -28,6 +28,8 @@ jobs:
           cache-dependency-path: app/package-lock.json
       - name: Install app dependencies without lifecycle scripts
         run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Audit canonical public asset ownership
+        run: node tools/audit-assets.mjs
       - name: Validate grapheme timeline
         run: npm --prefix app run test:embodiment-timeline
       - name: Run app script regression suite

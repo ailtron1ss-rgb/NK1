@@ -1,36 +1,21 @@
 # Repository cleanup audit — WorkPass72
 
-**Snapshot:** `f7d579c55f4f044dca9abd4ca8203911d826ed9b`  
-**Scope:** byte-exact Git blobs in the recursive tracked tree.  
-**Decision:** audit-only. No files deleted or moved.
+**Baseline commit:** `585c3d1c66ad452c9684b7969bcbaba9006f60f7`  
+**Scope:** exact Git blob duplicates; only manifest-proven generated Live2D shadows were removed.
 
-## Findings
+| Metric | Before | After projected removal |
+|---|---:|---:|
+| Tracked files | 9,354 | 9,333 |
+| Markdown files | 2,891 | 2,891 |
+| Exact duplicate SHA groups | 39 | 18 |
+| Excess copies above one per group | 60 | 39 |
+| Tracked app Live2D shadows | 21 | 0 |
+| Duplicate payload removed from tracked tree | — | 16,690,663 bytes (15.92 MiB) |
 
-| Metric | Observed |
-|---|---:|
-| Tracked files | 9,352 |
-| Markdown files | 2,890 |
-| Exact duplicate-content groups | 39 |
-| Files participating in those groups | 99 |
-| Excess copies above one per group | 60 |
-| Exact duplicate Markdown groups | 0 |
-| Theoretical excess-copy bytes | 16,781,907 bytes |
-| Removed or moved | **0** |
+## Why this deletion is safe
 
-Theoretical bytes are a **ceiling inside this Git tree**, not a promised disk reduction: paths can be required by separate static roots, upstream archives, package imports, tests, manifests or legal/provenance contracts. Git history retains old blobs too.
+All 21 `app/public/live2d/**` targets matched runtime-owned twins by Git blob SHA and recorded size in `contracts/inventory/canonical-public-assets-workpass42.json`. `app/scripts/with-app-env.mjs` invokes `hydrateCanonicalPublicAssets` before Vite dev/build/preview, where SHA-256 and size are revalidated. Root `.gitignore` already excludes each generated target. The canonical owner remains `runtime/neuro-kurisu/public/live2d/`. App-specific viewer/vendor files and sprites were not touched.
 
-## Priority for the next audit
+This reduces duplicate payload in the tracked checkout, not Git history size. 18 exact-content groups remain (39 excess paths); they are primarily license/source notices, empty package markers, archived upstream SQL and historical evidence, which remain protected from blind deletion.
 
-21 exact groups mirror model files between `app/public/live2d/` and `runtime/neuro-kurisu/public/live2d/`. This warrants a targeted static-mount/build audit, but not blind removal. Same files may be needed at both serving roots.
-
-Repeated skill `LICENSE` and `SOURCE.md` notices stay with each skill. Empty package markers and fixtures are preserved. Duplicated SQL/migration, release manifests, evidence and legacy snapshot files remain intact as historical source provenance.
-
-## Cleanup protocol
-
-1. Pick a small candidate group from the manifest.
-2. Search source imports, package scripts, workflow references, static asset URLs/mounts, Markdown links, manifests, hash locks and release assembly.
-3. Classify each occurrence as runtime-required, build-required, test-required, legal/provenance, or truly unreferenced.
-4. Prefer a reversible archive move with updated references over deletion; never deduplicate legal notices or source history.
-5. Run focused tests, typecheck, package/bundle checks and CI, then regenerate this inventory.
-
-Full exact paths, blob SHAs, sizes and per-group disposition: [machine-readable manifest](REPOSITORY_CLEANUP_AUDIT_WORKPASS72.json).
+The CI workflow now runs `node tools/audit-assets.mjs` before app tests/build. Machine-readable path, SHA and disposition inventory: [cleanup JSON](REPOSITORY_CLEANUP_AUDIT_WORKPASS72.json).

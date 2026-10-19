@@ -38,7 +38,7 @@ This pass expands `.github/workflows/workpass71-validation.yml` to run:
 - memory residency and background embedding-index behavior;
 - embedding request privacy sanitization.
 
-The first expanded CI run failed inside the newly added numeric-retrieval test: its fixture used 2033 timestamps while calling `temporalMode: 'current'`, whose contract intentionally ignores `asOfAt` and uses wall-clock time. The candidate code was not the cause; the test was corrected to use explicit point-in-time mode (`temporalMode: 'at'`) for deterministic fixtures. Re-run CI before counting WorkPass72 as validation-complete.
+The expanded CI first found a numeric-retrieval fixture seeded with 2033 timestamps but run under `temporalMode: 'current'`. That mode intentionally ignores `asOfAt`; switching this deterministic fixture to explicit `temporalMode: 'at'` made the numeric checks pass. The following run exposed the same mismatch in the fuzzy-retrieval fixture; it is now also corrected to use point-in-time mode. These are test-fixture corrections, not changes to production temporal semantics. Re-run CI before counting WorkPass72 as validation-complete.
 
 ## Remaining high-priority gates
 
