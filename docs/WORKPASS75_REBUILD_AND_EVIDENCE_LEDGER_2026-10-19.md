@@ -65,3 +65,21 @@ The repository has a large historical surface and multiple generations of number
 5. Run one restart-safe action-evidence trace end-to-end before adding further autonomy modules.
 
 This handover is a work queue and evidence boundary, not a claim that the organism is complete.
+## Research update — memory must be evaluated as a changing system
+
+Recent benchmark work reinforces a specific design choice: do not promote memory changes using static fact-recall alone.
+
+- [MemoryAgentBench (2025; updated 2026)](https://arxiv.org/abs/2507.05257) frames evaluation around accurate retrieval, test-time learning, long-range understanding, and conflict resolution/selective forgetting. Use these as separate test suites, not one blended score.
+- [Memora / FAMA (ACL 2026)](https://arxiv.org/abs/2604.20006) explicitly penalizes use of obsolete or invalidated memories. Add paired tests where a fact is first true, later revised, and then queried both before and after the revision timestamp.
+- [MINTEval (May 2026)](https://arxiv.org/abs/2605.18565) stresses multi-target interference and aggregation across evolving evidence; its reported average accuracy of 27.9% across evaluated systems warns that relevant retrieval alone does not guarantee correct synthesis.
+- [AgeMem (ACL 2026)](https://aclanthology.org/2026.acl-long.981/) studies learned management of short- and long-term memory, suggesting that write/manage/read policy should be measured alongside answer accuracy and token/context cost.
+
+### Translation into NeuroCore acceptance tests
+
+1. **Revision correctness:** seed fact A, revise to B with provenance, query current state and historical state separately; current queries must not surface A as current truth.
+2. **Interference:** insert distractors and related entities between write and query; report target recall, multi-hop aggregation accuracy, and unsupported-claim rate.
+3. **Test-time learning:** measure task success on a later unseen task that reuses a prior verified procedure; compare against a no-memory/no-learning control.
+4. **Selective forgetting:** explicit invalidation/deletion must change retrieval and downstream answers, not merely hide the record in one view.
+5. **Promotion rule:** preserve raw per-task outputs, corpus/version provenance, baseline parity, and uncertainty intervals. Never collapse the four axes into a single opaque quality score.
+
+Research is a test-design input, not proof that the current implementation passes these benchmarks. Before importing external datasets or source code, check license, provenance, privacy and reproducibility.
