@@ -34,6 +34,8 @@ jobs:
         run: npm --prefix app run test:scripts
       - name: App typecheck
         run: npm --prefix app run typecheck
+      - name: App development bundle build
+        run: npm --prefix app run build:dev
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Speech gateway, timescale and persistence regression
