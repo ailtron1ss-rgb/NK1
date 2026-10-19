@@ -3,7 +3,11 @@ import { Activity, ChevronDown, Database, Eye, RefreshCw, Search, ShieldAlert } 
 import { neuroApi } from "@/neuro-kurisu/api";
 import { BrainArchitecturePanel } from "@/components/BrainArchitecturePanel";
 
-const SURFACES = [
+type SurfaceKey = keyof typeof neuroApi;
+type SurfaceRoute = readonly [label: string, route: string, key: SurfaceKey];
+type SurfaceGroup = { group: string; routes: readonly SurfaceRoute[] };
+
+const SURFACES: readonly SurfaceGroup[] = [
   { group: "Runtime", routes: [
     ["Status", "/api/organism/status", "status"],
     ["Status lite", "/api/organism/status-lite", "statusLite"],
@@ -66,9 +70,7 @@ const SURFACES = [
     ["Experience continuum", "/api/organism/experience-continuum", "experienceContinuum"],
     ["Consciousness diagnostics", "/api/organism/consciousness", "consciousness"],
   ]},
-] as const;
-
-type SurfaceKey = typeof SURFACES[number]["routes"][number][2];
+];
 type MemoryTemporalMode = "current" | "at" | "all";
 type ActionApproval = { id:string; toolId:string; permissionClass:string; operation:string; status:string; createdAt:number; expiresAt:number; resolvedAt?:number; consumedAt?:number; reasonCode?:string; inputKeys?:string[]; inputPreview?:Record<string,unknown>; decisionId?:string; autonomous?:boolean; requestHashPrefix?:string };
 type PermissionOverview = { requests:ActionApproval[]; created:number; approved:number; declined:number; consumed:number; expired:number; pending:number; lastChangeAt:number };
@@ -154,7 +156,7 @@ export function RuntimeAtlas() {
     setActiveKey(key);
     setBusy(key);
     try {
-      const fn = neuroApi[key];
+      const fn = neuroApi[key] as () => Promise<unknown>;
       if (typeof fn !== "function") throw new Error(`Surface ${key} is not wired in the client API`);
       setPayload(key === "memoryInspector" ? await neuroApi.memoryInspector({ limit: memoryLimit, temporalMode: memoryTemporalMode }) : await fn());
     } catch (error) {
