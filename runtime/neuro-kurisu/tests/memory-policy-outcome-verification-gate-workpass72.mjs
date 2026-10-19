@@ -7,6 +7,7 @@ import { MemorySubstrateCoordinator } from '../src/organism/developmental/Memory
 import { UnifiedMemorySystem } from '../src/organism/developmental/UnifiedMemorySystem.ts';
 import { P62MemoryFabric } from '../src/organism/memory/P62MemoryFabric.ts';
 import { SemanticMemoryGraph } from '../src/organism/memory/SemanticMemoryGraph.ts';
+import { CausalReplayCreditAssigner } from '../src/organism/system/CausalReplayCreditAssigner.ts';
 
 const now=Date.now();
 const memory=new MemoryOS2({signalFusionProfile:'balanced',embeddingProvider:null});
@@ -81,4 +82,36 @@ assert.equal(malformedDiag.unverifiedResolved,2);
 assert.equal(malformedDiag.meanDelayedReward01,0,'aggregate stats are discarded when verification counter provenance is corrupt');
 assert.equal(malformedDiag.meanCausalCredit01,0);
 assert.equal(malformedDiag.legacyAggregatesDiscarded,true);
+
+const creditAssigner=new CausalReplayCreditAssigner();
+const unverifiedCredit=creditAssigner.assign({
+  memoryId:'policy-evidence-memory',replayEventId:'replay-unverified',validationId:'validation-unverified',
+  replayAt:now,validationAt:now+10_000,delayMs:10_000,retentionGain01:.95,transferPotential01:.95,
+  interferenceRisk01:.02,learningOpportunity01:.95,priorityAfter01:.95,independentVerified:false,
+});
+assert.equal(unverifiedCredit.independentVerified,false);
+assert.equal(unverifiedCredit.credit01,0,'unverified replay cannot publish causal credit');
+const unverifiedCreditDiag=creditAssigner.diagnostics();
+assert.equal(unverifiedCreditDiag.assignments,1);
+assert.equal(unverifiedCreditDiag.verifiedAssignments,0);
+assert.equal(unverifiedCreditDiag.meanCredit01,0);
+assert.equal(unverifiedCreditDiag.meanEligibility01,0);
+assert.equal(unverifiedCreditDiag.meanOutcome01,0);
+assert.equal(unverifiedCreditDiag.meanDelayAttenuation01,0);
+assert.equal(unverifiedCreditDiag.lastCredit01,0);
+assert.equal(unverifiedCreditDiag.recentCount,1,'unverified attempt remains observable in bounded recent history');
+
+const verifiedCredit=creditAssigner.assign({
+  memoryId:'policy-evidence-memory',replayEventId:'replay-verified',validationId:'validation-verified',
+  replayAt:now,validationAt:now+10_000,delayMs:10_000,retentionGain01:.95,transferPotential01:.95,
+  interferenceRisk01:.02,learningOpportunity01:.95,priorityAfter01:.95,independentVerified:true,
+});
+assert.ok(verifiedCredit.credit01>0);
+const verifiedCreditDiag=creditAssigner.diagnostics();
+assert.equal(verifiedCreditDiag.assignments,2);
+assert.equal(verifiedCreditDiag.verifiedAssignments,1);
+assert.ok(verifiedCreditDiag.meanCredit01>0);
+assert.ok(verifiedCreditDiag.meanEligibility01>0);
+assert.ok(verifiedCreditDiag.meanOutcome01>0);
+assert.ok(verifiedCreditDiag.meanDelayAttenuation01>0);
 console.log('WORKPASS72_POLICY_VERIFICATION_GATE=PASS',JSON.stringify({unverifiedPolicyStateUnchanged:true,verifiedRewardUpdated:true,ledger:finalDiag}));

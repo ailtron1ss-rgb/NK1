@@ -119,19 +119,27 @@ export class CausalReplayCreditAssigner {
       .18*clamp(input.learningOpportunity01)+
       .14*clamp(input.priorityAfter01)
     );
-    const credit01=clamp(outcome01*eligibility01*(input.independentVerified?.96:.42));
+    const independentVerified=Boolean(input.independentVerified);
+    // Unverified replay is observable, but it is not a credit assignment. Keep
+    // the record for diagnosis with zero credit until the verifier accepts it.
+    const candidateCredit01=clamp(outcome01*eligibility01*(independentVerified?.96:.42));
+    const credit01=independentVerified?candidateCredit01:0;
     const record:ReplayCreditRecord={
       id:`crc:${input.memoryId}:${input.validationId}`,
       memoryId:String(input.memoryId),replayEventId:String(input.replayEventId),validationId:String(input.validationId),
       delayMs:effectiveDelay,delayAttenuation01,cascadeShort01, cascadeMedium01, cascadeLong01, temporalMatch01,eligibility01,outcome01,credit01,
-      independentVerified:Boolean(input.independentVerified),at:validationAt
+      independentVerified,at:validationAt
     };
     this.state.assignments++;
-    if(record.independentVerified)this.state.verifiedAssignments++;
-    this.state.meanCredit01=clamp(this.state.meanCredit01*.92+credit01*.08);
-    this.state.meanEligibility01=clamp(this.state.meanEligibility01*.92+eligibility01*.08);
-    this.state.meanOutcome01=clamp(this.state.meanOutcome01*.92+outcome01*.08);
-    this.state.meanDelayAttenuation01=clamp(this.state.meanDelayAttenuation01*.92+delayAttenuation01*.08);
+    if(record.independentVerified){
+      this.state.verifiedAssignments++;
+      this.state.meanCredit01=clamp(this.state.meanCredit01*.92+credit01*.08);
+      this.state.meanEligibility01=clamp(this.state.meanEligibility01*.92+eligibility01*.08);
+      this.state.meanOutcome01=clamp(this.state.meanOutcome01*.92+outcome01*.08);
+      this.state.meanDelayAttenuation01=clamp(this.state.meanDelayAttenuation01*.92+delayAttenuation01*.08);
+    }
+    // Keep attempts observable, but do not let unverified records contaminate
+    // aggregates. lastCredit01 is explicitly zero on unverified attempts.
     this.state.lastCredit01=credit01;
     this.state.lastAt=validationAt;
     this.state.recent=[...this.state.recent,record].slice(-128);
