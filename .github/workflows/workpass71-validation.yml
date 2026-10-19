@@ -48,3 +48,4 @@ jobs:
           node --experimental-strip-types tests/termux-tts-concurrency-workpass69.mjs
           node --experimental-strip-types tests/workpass64-archived-receipt-reconciliation.mjs
           node --experimental-strip-types tests/organism-smoke.mjs
+          node --experimental-strip-types tests/memory-retrieval-experiment.mjs
