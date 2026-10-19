@@ -46,4 +46,4 @@ circuit.observe({ backend: 'kobold', failures: ['kobold:timeout'], now: 7000 });
 assert.deepEqual(circuit.snapshot({ now: 7000 }), { consecutiveFailures: 0, cooldownUntil: 0, coolingDown: false },
   'unrelated provider failures must not alter the local endpoint circuit');
 
-console.log(JSON.stringify({ status: 'PASS', pass: 'local-llm-selection-workpass74', cases: 12 }));
+console.log(JSON.stringify({ status: 'PASS', pass: 'local-llm-selection-workpass74', cases: 13 }));
