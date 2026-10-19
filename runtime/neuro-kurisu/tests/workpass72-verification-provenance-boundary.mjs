@@ -27,7 +27,7 @@ const promoted=fabric.recordReplayValidation({...common,verification:proof,at:no
 assert.equal(promoted.id,first.id);
 assert.equal(promoted.independentVerified,true);
 assert.equal(fabric.summary().retention.validated,1);
-assert.equal(fabric.summary().adaptiveReplayGovernor.feedbackUpdates,1);
+assert.equal(fabric.summary().adaptiveReplayGovernor.feedbackUpdates,0,'verified replay without a prior adaptive-governor decision must not update an unrelated policy row');
 assert.equal(fabric.summary().causalReplayCredit.verifiedAssignments,1,JSON.stringify({replayEventId,events:fabric.snapshot().replay.events.map(e=>({id:e.id,memoryId:e.memoryId,at:e.at})),validations:fabric.snapshot().replay.validations,credit:fabric.snapshot().causalReplayCredit}));
 assert.equal(fabric.summary().causalReplayCredit.recentCount,1,'promotion must not duplicate credit record');
 assert.ok(fabric.summary().causalReplayCredit.meanCredit01>0);
