@@ -30,6 +30,27 @@ assert.throws(() => new OpenAICompatibleLocalChatProvider({ baseUrl: 'http://exa
 await assert.rejects(new OpenAICompatibleLocalChatProvider({ baseUrl: 'http://127.0.0.1:8080/v1', fetchImpl: async () => ({ ok: false, status: 503, text: async () => '{}' , headers: { get: () => null } }) }).generate({ system: '', user: 'x' }), /llama\.cpp-http-503/);
 await assert.rejects(new OpenAICompatibleLocalChatProvider({ baseUrl: 'http://127.0.0.1:8080/v1', fetchImpl: async () => ({ ok: true, text: async () => JSON.stringify({ choices: [{ message: { content: ' ' } }] }), headers: { get: () => null } }) }).generate({ system: '', user: 'x' }), /llama\.cpp-empty-response/);
 await assert.rejects(new OpenAICompatibleLocalChatProvider({ baseUrl: 'http://127.0.0.1:8080/v1', fetchImpl: async () => ({ ok: true, headers: { get: (n) => n === 'content-length' ? String(2 * 1024 * 1024 + 1) : null }, text: async () => '{}' }) }).generate({ system: '', user: 'x' }), /response-too-large/);
+
+let streamCancelled = false;
+let streamChunk = 0;
+const oversizedChunkedResponse = new OpenAICompatibleLocalChatProvider({
+  baseUrl: 'http://127.0.0.1:8080/v1',
+  fetchImpl: async () => ({
+    ok: true,
+    headers: { get: () => null },
+    body: new ReadableStream({
+      pull(controller) {
+        if (streamChunk++ === 0) controller.enqueue(new Uint8Array(2 * 1024 * 1024));
+        else if (streamChunk === 2) controller.enqueue(new Uint8Array(1));
+        else controller.close();
+      },
+      cancel() { streamCancelled = true; },
+    }),
+  }),
+});
+await assert.rejects(oversizedChunkedResponse.generate({ system: '', user: 'x' }), /response-too-large/,
+  'chunked responses without Content-Length must be bounded while streaming');
+assert.equal(streamCancelled, true, 'oversized response stream must be cancelled as soon as the byte budget is exceeded');
 await assert.rejects(new OpenAICompatibleLocalChatProvider({ baseUrl: 'http://127.0.0.1:8080/v1', fetchImpl: async () => ({ ok: true, headers: { get: () => null }, text: async () => 'not-json' }) }).generate({ system: '', user: 'x' }), /invalid-json/);
 assert.equal(new OpenAICompatibleLocalChatProvider().configured(), false);
 await assert.rejects(new OpenAICompatibleLocalChatProvider().generate({ system: '', user: 'x' }), /llama\.cpp-not-configured/);
