@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
 import { MemoryFabric } from '../src/organism/memory/MemoryFabric.ts';
-import { MemoryFabric as _MemoryFabricTypeGuard } from '../src/organism/memory/MemoryFabric.ts';
 import { EventLog } from '../src/organism/memory/EventSourcing.ts';
 import { MultiTimescaleMemory } from '../src/organism/memory/MultiTimescaleMemory.ts';
 import { MemorySubstrateCoordinator } from '../src/organism/developmental/MemorySubstrateCoordinator.ts';
@@ -64,4 +63,7 @@ const restoredLedger=new (await import('../src/organism/system/MemoryPolicyOutco
 restoredLedger.restore({version:1,registered:2,resolved:2,dropped:0,meanDelayedReward01:.4,meanCausalCredit01:.3,pending:[]});
 assert.equal(restoredLedger.diagnostics().verifiedResolved,0,'legacy snapshots load with explicit unknown verification counts');
 assert.equal(restoredLedger.diagnostics().unverifiedResolved,0);
+assert.equal(restoredLedger.diagnostics().meanDelayedReward01,0,'legacy aggregate means without verification provenance are discarded');
+assert.equal(restoredLedger.diagnostics().meanCausalCredit01,0,'legacy causal credit without verification provenance is discarded');
+assert.equal(restoredLedger.diagnostics().legacyAggregatesDiscarded,true);
 console.log('WORKPASS72_POLICY_VERIFICATION_GATE=PASS',JSON.stringify({unverifiedPolicyStateUnchanged:true,verifiedRewardUpdated:true,ledger:finalDiag}));
