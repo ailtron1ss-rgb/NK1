@@ -27,7 +27,7 @@ function canonicalBaseUrl(raw: string | undefined): string | null {
   if (url.protocol !== 'http:' || !LOOPBACK_HOSTS.has(url.hostname.toLowerCase()) || url.username || url.password || url.search || url.hash) {
     throw new Error('llama.cpp-endpoint-must-be-loopback-http');
   }
-  url.pathname = url.pathname.replace(/\\/+$/, '');
+  url.pathname = url.pathname.replace(/\/+$/, '');
   if (!url.pathname || url.pathname === '/') url.pathname = '/v1';
   return url.toString().replace(/\\/+$/, '');
 }
