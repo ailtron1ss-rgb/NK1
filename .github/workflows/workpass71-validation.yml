@@ -71,6 +71,7 @@ jobs:
           node --experimental-strip-types tests/memory-background-index-workpass56.mjs
           node --experimental-strip-types tests/local-embedding-privacy-workpass56.mjs
           node --experimental-strip-types tests/memory-policy-outcome-verification-gate-workpass72.mjs
+          node --experimental-strip-types tests/workpass72-verification-provenance-boundary.mjs
           node --experimental-strip-types tests/memory-semantic-embeddings-workpass33.mjs
           node --experimental-strip-types tests/memory-cognition-retrieval-workpass34.mjs
           node --experimental-strip-types tests/p2693-delayed-policy-credit.mjs

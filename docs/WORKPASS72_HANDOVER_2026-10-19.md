@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-19  
 **Branch:** `workpass70-source`  
-**Status:** implementation + asset deduplication committed; latest CI pending. Fixed-time retrieval fixtures have been corrected after real CI failures. Not a production approval.
+**Status:** verifier-provenance hardening committed at `732ac9772d3d427b2ab37ddae58e816bdcea51bf`; CI for this commit is pending. Previous baseline CI passed at `d2791939f1db608e55f51a7e1369e26e836758bd`. Not a production approval.
 
 ## Behavioral defect found
 
@@ -19,6 +19,10 @@ In `MemoryOS2.retrieve()`, the candidate loop rebuilt each missing 48-dimensiona
 ## Delayed policy-learning evidence gate
 
 The policy outcome ledger previously recorded an `independentVerified` flag but still emitted the full candidate reward and the MemoryFabric adapter always forwarded that reward into adaptive policy updates. WorkPass72 now sets unverified outcome reward to zero, tracks verified resolutions and unverified attempts separately, limits reward/causal-credit aggregates to independently verified outcomes, and updates AdaptiveMemoryPolicy only for verified outcomes. An unverified observation no longer consumes its pending decision, so later independent proof can resolve that same decision. The same gate now protects `CausalReplayCreditAssigner`: unverified attempts are kept in its bounded recent records, return zero causal credit, and do not mutate credit/outcome/eligibility/delay aggregates. Older snapshots without verification counters cannot prove the provenance of historic policy reward means, so restore resets those means to zero and exposes `legacyAggregatesDiscarded` rather than carrying uncertain reward forward as trusted evidence. A focused regression checks that unverified resolution leaves the policy diagnostics unchanged and verified resolution changes the reward state. This is an integration guard, not proof that the upstream verifier always represents real-world truth; caller provenance still must be audited.
+
+## Verification provenance hardening — committed, awaiting CI
+
+A further audit found that `ExperienceContinuumFabric.recordReplayValidation()` trusted a caller-provided `independentVerified: true` boolean. The policy ledger's internal reward gate was working, but this upstream flag was not proof. The committed patch makes the flag non-authoritative: only the exact normalized result object emitted by `OutcomeVerificationService`, with a matching `external-postcondition` observation, can authorize verified replay learning. A copied/serialized object and a tool-contract ACK do not pass. Duplicate unverified evidence can be promoted by later trusted proof while retaining the original validation ID; the causal-credit ledger upgrades the existing record idempotently instead of double-counting it. `tests/workpass72-verification-provenance-boundary.mjs` exercises boolean spoofing, token identity, delayed promotion, and idempotency; the active CI workflow now runs it. Do not call this pass validated until that run finishes.
 
 ## Why this is not a retrieval-quality claim
 
