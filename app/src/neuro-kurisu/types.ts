@@ -125,7 +125,7 @@ export interface ChatBackendResponse {
     };
     workspace?: { selected?: string[]; content?: Record<string, unknown>; recurrentCycles?: number };
   };
-  language?: { text?: string; backend?: string; latencyMs?: number };
+  language?: { text?: string; calls?: number; backend?: string; latencyMs?: number };
   worldAction?: string;
   explanation?: string;
   voice?: { spoken?: boolean };
