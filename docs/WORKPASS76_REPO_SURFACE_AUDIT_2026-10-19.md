@@ -117,3 +117,25 @@ This register is intentionally explicit: many open tasks remain. Do not call the
 - [ ] Run browser/audio/Live2D E2E and long soak on declared target hardware.
 
 The next session should start from the live branch head and current Actions state, not from any SHA above.
+
+## WorkPass76 follow-through — temporal gates and coverage audit (2026-10-19)
+
+- **PROVEN (CI):** run [39320023335](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39320023335) passed on `b8f144348bb756639c02234f5eb2fd3869607b22`. This includes runtime typecheck, language routing/order regressions, and the newly wired temporal fact revision, read-only temporal inspector, and bounded revision-history tests.
+- **IMPLEMENTED:** added `tools/audit-runtime-test-coverage.mjs`, which inventories runnable test files, extracts direct test references from the active workflow and package scripts, reports unreferenced candidates without treating them as deletion instructions, and fails if referenced files are missing or required regressions are removed from CI.
+- **OBSERVED / FAILED (audit script v1):** the first audit run [39320097798](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39320097798) failed because its required-test matcher expected repository-root-prefixed paths, while the workflow's shell block correctly references paths relative to `runtime/neuro-kurisu`. The underlying tests were present and the workflow itself had run them. This was an audit-script defect, not a runtime regression.
+- **IMPLEMENTED:** fixed the audit matcher to accept both root-relative and runtime-relative workflow paths in commit `47e57880d58398f08011cb68bd2fd2e1d6e6e3d1`.
+- **UNRESOLVED until observed:** the rerun for the fixed audit script is [39320207064](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39320207064); inspect its final conclusion and audit summary before calling the coverage audit green.
+
+### Current state at this update
+
+- [x] Language invocation order regression and backend attribution source guard are in CI.
+- [x] Cold retrieval does not materialize the legacy hash vector or change cold residency; behavioral regression passes CI.
+- [x] Temporal revision/history and temporal inspector read-only regressions pass CI.
+- [x] Coverage audit is implemented and wired; its corrected run is pending.
+- [ ] Add HTTP-level server request with deterministic fake local provider.
+- [ ] Add opt-in live `llama.cpp` inference smoke and run on Dell G3.
+- [ ] Run independent retrieval-quality and learning-transfer/anti-forgetting experiments.
+- [ ] Run restart-safe external action verification and learning-credit trace.
+- [ ] Finish dependency/import/license/asset inventory and browser/audio/Live2D + soak measurements.
+
+No quality uplift, actual local model quality, autonomous agency, or subjective consciousness is established by these regressions.
