@@ -1,5 +1,7 @@
 # NeuroCore — repository working rules
 
+> **New-session entry point:** read [`NEUROCORE_START_HERE.md`](NEUROCORE_START_HERE.md) first, then verify the current branch head, latest Actions status, and the open-work register in [`docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md`](docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md). The mission is persistent across chats; do not ask the user to restate it.
+
 ## Project objective
 
 Build **NeuroCore** as one cohesive, memory-rich, learning and adaptive system. The repository retains the historical `Neuro-Kurisu` name in paths and older documents; that name is implementation lineage, not a reason to fork the architecture.
