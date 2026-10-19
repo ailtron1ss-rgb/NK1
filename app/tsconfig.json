@@ -32,5 +32,9 @@
   "include": [
     "src",
     "server"
+  ],
+  "exclude": [
+    "src/legacy/browser-organism/**",
+    "src/lib/cortex.ts"
   ]
 }
