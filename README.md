@@ -363,3 +363,9 @@ The archive revision gate now requires concrete reconciliation evidence (bounded
 ## WorkPass68 — speech side-effect truth and gateway ownership (2026-10-19)
 
 Physical Termux speech invoked by `EmbodimentRuntime` now dispatches through the canonical `OrganismCore.executeTool` → `ActionGateway` path with stable `speechEventId` and idempotency key. `completed`, `not-started`, and `unknown` outcomes remain distinct; a post-start timeout/non-zero exit does not become a false no-effect failure and cannot earn failure-learning credit. Local fake-process/gateway regressions pass. Live Android audio postcondition, dependency-complete app build and browser/Live2D E2E remain open. See `docs/WORKPASS68_HANDOVER_2026-10-19.md`.
+
+## WorkPass73 — local LLM response-boundary hardening (2026-10-19)
+
+The active `llama.cpp` chat provider now reads real Fetch response bodies incrementally and cancels chunked responses when they exceed the 2 MiB byte budget, rather than buffering the entire response before checking its size. A regression covers the missing-`Content-Length` case and is wired into the active validation workflow.
+
+Implementation notes, commit links, and the evidence boundary: [WorkPass73 handover](docs/WORKPASS73_LOCAL_LLM_STREAM_BOUNDARY_2026-10-19.md). The patch remains **implemented, pending CI observation** until a run on the new head is confirmed. This is transport/resource hardening, not proof of real-model quality or production readiness.
