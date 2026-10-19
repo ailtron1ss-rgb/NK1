@@ -1,0 +1,98 @@
+{
+  "title": "NeuroCore WorkPass64 Final Audit",
+  "date": "2026-10-19",
+  "status": "PASS_WITH_OPEN_RELEASE_GATES",
+  "identity": "NeuroCore",
+  "workpass": 64,
+  "runtimeVersion": "35.83.0",
+  "schemaVersion": 225,
+  "releaseStatus": "implementation-workpass; not production-approved",
+  "verification": {
+    "fast": {
+      "status": "PASS",
+      "passed": 10,
+      "failed": 0,
+      "durationMs": 20843,
+      "workers": 4
+    },
+    "workpass64NamedRunner": {
+      "status": "PASS",
+      "passed": 10,
+      "failed": 0
+    },
+    "fullAudit": {
+      "status": "PASS",
+      "exitCode": 0
+    },
+    "typecheck": "PASS",
+    "coreOwnership": {
+      "status": "PASS",
+      "errors": 0,
+      "directConstructors": 5,
+      "maximum": 5
+    },
+    "learningActionUnit": {
+      "status": "PASS",
+      "cases": 8
+    },
+    "learningActionLiveAblation": {
+      "status": "PASS",
+      "featureOn": {
+        "receipts": 7,
+        "exploreBias": 0.035,
+        "restBias": -0.035
+      },
+      "featureOff": {
+        "receipts": 7,
+        "allBiasesZero": true
+      },
+      "claim": "controlled signal-path and ablation proof only; downstream task quality uplift not tested"
+    },
+    "P26_trueLearning": {
+      "status": "PASS",
+      "updates": 20160,
+      "heldoutMetric": 1,
+      "scope": "existing synthetic test criterion; not a general intelligence measure"
+    },
+    "P28_plasticity": "PASS",
+    "P29_governance": "PASS",
+    "P30_continual": "PASS",
+    "restartPersistence": "PASS",
+    "autonomy": {
+      "status": "PASS",
+      "score": "79/80",
+      "scope": "existing test criterion"
+    },
+    "selfAgency": {
+      "status": "PASS",
+      "cycles": 10,
+      "policyContributions": 28,
+      "duplicateSourcePairs": 0,
+      "ablationDeltaUnderExistingTestMetric": 0.0765
+    },
+    "architecture": {
+      "status": "PASS",
+      "sourceFiles": 2013,
+      "canonicalFiles": 583,
+      "missing": 0,
+      "cycles": 0,
+      "legacyLeakage": 0
+    },
+    "archiveManifest": {
+      "status": "PASS",
+      "verified": "4257/4257"
+    },
+    "retrievalBenchmark": {
+      "recallDelta": 0,
+      "promotion": "not-promoted"
+    },
+    "openGates": [
+      "full verify:deep",
+      "production UI build",
+      "real browser/Live2D E2E",
+      "independent multi-seed holdout",
+      "long-duration endurance soak",
+      "full license review"
+    ]
+  }
+}
