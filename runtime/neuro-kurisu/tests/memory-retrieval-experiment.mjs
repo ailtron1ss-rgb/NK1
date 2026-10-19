@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
 import { runMemoryOS2RetrievalExperiment } from '../src/organism/memory/MemoryRetrievalExperiment.ts';
+import { runMemoryOS2RetrievalBenchmark } from '../src/organism/memory/MemoryRetrievalBenchmark.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const now = 2_000_000_000_000;
@@ -41,6 +42,25 @@ assert.deepEqual(snapshot, before, 'experiment must not mutate supplied snapshot
 assert.equal(experiment.runs.length, 3);
 assert.equal(new Set(experiment.runs.map(row => row.recallDelta01)).size, 1, 'retrieval point estimate should be seed invariant');
 assert.throws(() => runMemoryOS2RetrievalExperiment(snapshot, examples, { ...options, seeds: [1, 1, 2] }), /at-least-3-distinct-bootstrap-seeds/);
+
+// Corpus-cap parity regression: the baseline indexes only the first 1600 rows.
+// The candidate must use that exact same bounded snapshot, not retrieve from row 1601.
+const overflowSnapshot = structuredClone(snapshot);
+const overflowBase = structuredClone(overflowSnapshot.items[0]);
+overflowSnapshot.items = [
+  ...overflowSnapshot.items,
+  ...Array.from({ length: 1584 }, (_, i) => ({ ...structuredClone(overflowBase), id: `overflow-filler-${i}` })),
+  { ...structuredClone(overflowBase), id: 'overflow-target', content: 'outofboundneedle unique target', epistemicStatus: 'fact', dormant: false, validFromAt: now - 1000, validUntilAt: undefined },
+];
+assert.equal(overflowSnapshot.items.length, 1601);
+const overflowReport = runMemoryOS2RetrievalBenchmark(overflowSnapshot, [
+  { id: 'overflow-holdout', query: 'outofboundneedle', relevantIds: ['overflow-target'], split: 'holdout' },
+], { now, k: 5, bootstrapSamples: 200, maxExamples: 64 });
+assert.equal(overflowReport.corpusIntegrity.truncatedItems, 1);
+assert.equal(overflowReport.corpusIntegrity.validForPromotion, false);
+assert.equal(overflowReport.metrics.baseline.recallAtK01, 0);
+assert.equal(overflowReport.metrics.candidate.recallAtK01, 0, 'candidate must not see memory rows omitted from the baseline corpus cap');
+
 
 // High-fanout query: selection must remain stable when identical memory rows are reordered.
 const largeMemory = new MemoryOS2();
