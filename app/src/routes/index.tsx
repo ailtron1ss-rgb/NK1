@@ -78,7 +78,7 @@ function Home() {
       </div>
 
       <footer className="mx-auto mt-6 max-w-7xl text-xs text-subtle">
-        canonicalRuntime=Neuro-Kurisu 35.75.0 · researchOnly={NeuroCore,NOMEGA,DeepCode} · Live2D+legacy visual bridge
+        canonicalRuntime=Neuro-Kurisu 35.75.0 · researchOnly={"NeuroCore, NOMEGA, DeepCode"} · Live2D+legacy visual bridge
       </footer>
     </main>
   );
