@@ -1,4 +1,12 @@
-## Current engineering pass — WorkPass70 (2026-10-19)
+## Current engineering pass — WorkPass71 (2026-10-19)
+
+- Retrieval benchmark fairness fix: baseline and candidate now evaluate the same bounded corpus; truncation remains an automatic promotion blocker.
+- Added a 1,601-row regression that ensures the candidate cannot access the target beyond the BM25 corpus cap.
+- Retrieval regression is included in WorkPass71 CI; no quality uplift is claimed until the workflow and independent holdout support it.
+- Project navigation and safe cleanup protocol: [WorkPass71 handover](docs/WORKPASS71_HANDOVER_2026-10-19.md).
+- Release status remains implementation-only; production/browser/device gates and independent retrieval uplift remain open.
+
+## Previous engineering pass — WorkPass70 (2026-10-19)
 
 - Canonical runtime `35.90.0`; persisted schema `225`; release status remains implementation-only.
 - Browser speech and the Live2D viewer now share one versioned `kurisu_embodiment_intent` envelope and one monotonic speech-audio clock. Per-utterance `speechEventId`/`audioClockId`, UTF-16 boundary anchors, stale callback rejection, cancellation identity and iframe-ready replay are implemented.
