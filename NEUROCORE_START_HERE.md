@@ -75,6 +75,7 @@ At the start of every new work session, do not ask the user to restate the missi
 - `app/`: client/UI shell; it must not grow a second canonical organism or memory owner.
 - `research/`: isolated candidates; `legacy/`: preserved source/provenance; neither is automatically production-ready.
 - `docs/WORKPASS75_REBUILD_AND_EVIDENCE_LEDGER_2026-10-19.md`: reconstruction strategy and scientific acceptance gates.
+- `docs/RESEARCH_INTAKE_LEDGER.md`: upstream papers/repos, adaptation boundaries, evidence status and the next research tournament.
 - `docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md`: latest repository surface inventory and unfinished work.
 
 ## 5. Acceptance gates — never collapse into one score
