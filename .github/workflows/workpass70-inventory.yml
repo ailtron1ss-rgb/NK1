@@ -13,14 +13,18 @@ permissions:
 jobs:
   inventory:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
-      - name: Download release asset
+      - name: Download release asset using repository token
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           curl --fail --location --retry 3 \
-            "https://github.com/ailtron1ss-rgb/NK1/releases/download/Neuro/Neuro_Kurisu_WORKPASS70_2026-10-19.zip" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/octet-stream" \
+            "https://api.github.com/repos/ailtron1ss-rgb/NK1/releases/assets/656465125" \
             --output "$RUNNER_TEMP/workpass70.zip"
           echo "c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286  $RUNNER_TEMP/workpass70.zip" | sha256sum --check
           ls -lh "$RUNNER_TEMP/workpass70.zip"
@@ -29,7 +33,7 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
-          import collections, hashlib, json, os, pathlib, zipfile
+          import hashlib, json, os, pathlib, zipfile
           archive = pathlib.Path(os.environ["RUNNER_TEMP"]) / "workpass70.zip"
           root = pathlib.Path(os.environ["RUNNER_TEMP"]) / "workpass70-source"
           root.mkdir()
@@ -68,7 +72,6 @@ jobs:
           inventory["entry_count"] = len(inventory["entries"])
           inventory["unsafe_entry_count"] = len(inventory["unsafe_entries"])
           (pathlib.Path(os.environ["RUNNER_TEMP"]) / "workpass70-inventory.json").write_text(json.dumps(inventory, indent=2), encoding="utf-8")
-          # Short text summary for immediate inspection in Actions logs.
           print("ARCHIVE_SHA256", inventory["sha256"])
           print("ENTRY_COUNT", inventory["entry_count"])
           print("UNSAFE_ENTRY_COUNT", inventory["unsafe_entry_count"])
@@ -78,14 +81,13 @@ jobs:
           print("TEST_CANDIDATES", json.dumps(inventory["candidate_tests"][:300], ensure_ascii=False))
           print("LARGE_FILES", json.dumps(inventory["large_files"][:100], ensure_ascii=False))
           if inventory["unsafe_entries"]:
-              raise SystemExit("Unsafe archive paths detected; extraction skipped for those entries.")
+              raise SystemExit("Unsafe archive paths detected; unsafe entries were skipped.")
           PY
 
       - name: Upload inventory artifact
         uses: actions/upload-artifact@v4
         with:
           name: workpass70-source-inventory
-          path: |
-            ${{ runner.temp }}/workpass70-inventory.json
+          path: ${{ runner.temp }}/workpass70-inventory.json
           if-no-files-found: error
           retention-days: 14
