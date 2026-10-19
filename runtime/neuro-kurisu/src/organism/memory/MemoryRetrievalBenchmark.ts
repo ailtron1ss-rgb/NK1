@@ -257,7 +257,11 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
       .slice(0,limit).map(row=>row.m);
     return {items,latencyMs:Math.max(0,performance.now()-started),isolationSetupMs:0};
   };
-  const candidate=(query:string,limit:number):BenchmarkRetrievalResult=>{const setupStarted=performance.now();const isolated=new MemoryOS2();isolated.restore(structuredClone(snapshot));const setupMs=performance.now()-setupStarted;const started=performance.now();const items=isolated.retrieve(query,limit,0,0,{temporalMode:'at',asOfAt:now},true) as MemoryItem2[];return {items,latencyMs:Math.max(0,performance.now()-started),isolationSetupMs:setupMs};};
+  // Both arms must see the exact same bounded corpus. The report still blocks promotion
+  // when sourceItems exceeds the limit, but candidate retrieval must not secretly inspect
+  // rows that the baseline was forbidden to index.
+  const boundedSnapshotForBenchmark = { ...structuredClone(snapshot), items: structuredClone(boundedSourceItems) } as MemoryOSState2;
+  const candidate=(query:string,limit:number):BenchmarkRetrievalResult=>{const setupStarted=performance.now();const isolated=new MemoryOS2();isolated.restore(structuredClone(boundedSnapshotForBenchmark));const setupMs=performance.now()-setupStarted;const started=performance.now();const items=isolated.retrieve(query,limit,0,0,{temporalMode:'at',asOfAt:now},true) as MemoryItem2[];return {items,latencyMs:Math.max(0,performance.now()-started),isolationSetupMs:setupMs};};
 
   const baselineEval=evaluate(holdout,baseline,k,now);const candidateEval=evaluate(holdout,candidate,k,now);
   const trainBaseline=evaluate(train,baseline,k,now);const trainCandidate=evaluate(train,candidate,k,now);
