@@ -1,3 +1,13 @@
+## WorkPass72 — keep retrieval residency bounded (2026-10-19)
+- Fixed a resource/residency defect in `MemoryOS2.retrieve()`: cold candidates were assigned freshly rebuilt hash vectors and promoted to warm even though the hash similarity was not part of ranking.
+- Removed the non-ranking hash-cosine computation from retrieval. The legacy persisted `semanticHits` field remains schema-compatible but is no longer incremented by that misleading proxy.
+- Strengthened `p2697-mobile-residency.mjs` to require unchanged vector materialization and unchanged tier counts across a retrieval.
+- Expanded GitHub Actions to run the memory retrieval, query-intent, residency, background-index and embedding-privacy regressions.
+- Added `AGENTS.md` as the canonical working guide; a first repository inventory found 9,350 tracked files, 2,888 Markdown files and 370 roadmap/workpass/report-named paths. No files were deleted or moved without a reference audit.
+- This is a residency/resource fix, not a retrieval-quality uplift or production approval. CI validation and independent labelled retrieval evidence remain open.
+
+---
+
 ## WorkPass71 — retrieval benchmark corpus parity (2026-10-19)
 - Fixed an evaluation fairness defect: BM25 filtered malformed rows, while the MemoryOS2 candidate previously restored them. Invalid rows could occupy top-k positions in only the candidate arm. Candidate now restores the exact validated corpus used by BM25; malformed/truncated input still blocks promotion.
 - Truncated input still fails the corpus-integrity/promotion gate; this change improves diagnostic comparability and does not make truncated evaluation eligible.

@@ -742,7 +742,7 @@ export class MemoryOS2{
    const qTokens=this.tokensFor(query);
    const conceptQuery=expandMemoryQueryConcepts(qTokens);
    const queryEntities=extractEntities(query);
-   const qVector=vectorize(query);
+   
    this.state.semanticQueries++;
    const wallClockNow=Date.now();
    const requestedAsOf=typeof temporalOptions.asOfAt==='number'&&Number.isFinite(temporalOptions.asOfAt)?temporalOptions.asOfAt:undefined;
@@ -765,7 +765,7 @@ export class MemoryOS2{
      this.linkSupportCache=support;this.linkSupportCacheVersion=this.state.linkUpdates;
    }
    const linkSupport=this.linkSupportCache;
-   const rows:Array<{m:MemoryItem2;score:number;semantic:number;bm25:number;entity:number;lexical:number}> = [];
+   const rows:Array<{m:MemoryItem2;score:number;bm25:number;entity:number;lexical:number}> = [];
    // Candidate truncation must not depend on the insertion order of the snapshot.
    // Accumulate inverse-document-frequency support across all unique query terms, then
    // select a bounded deterministic top set. The old first-192 walk could omit relevant
@@ -858,7 +858,7 @@ export class MemoryOS2{
    }
    this.lastCandidateCount=candidateIds.size;
    const identifierBias=identifierLike(query);
-   const rawRows:Array<{m:MemoryItem2;semantic:number;bm25:number;entity:number;lexical:number;coverage:number;fuzzy:number;conceptCoverage:number;temporal:number;causal:number;identity:number;goal:number;recency:number}> = [];
+   const rawRows:Array<{m:MemoryItem2;bm25:number;entity:number;lexical:number;coverage:number;fuzzy:number;conceptCoverage:number;temporal:number;causal:number;identity:number;goal:number;recency:number}> = [];
    for(const id of candidateIds){
      const m=this.itemIndex.get(id);
      if(!m||m.dormant||m.epistemicStatus==='quarantined')continue;
@@ -867,7 +867,6 @@ export class MemoryOS2{
      if(temporalMode!=='all'&&m.validUntilAt!=null&&Number(m.validUntilAt)<=now){this.state.staleRetrievalsAvoided++;continue;}
      const temporalValid=temporalMode==='all'?true:isValidAt(m,now);
      if(!temporalValid)continue;
-     if(!m.semanticVector.length){m.semanticVector=vectorize(m.content);m.residencyTier='warm';}
      m.temperature01=memoryTemperature(m,now);
      const lexicalTokens=this.tokensFor(m.content);
      const exact=this.lowerFor(m.id,m.content).includes(queryLower)?1:0;
@@ -877,7 +876,7 @@ export class MemoryOS2{
      // This legacy vector is a hashed lexical projection, not an embedding. It is
      // retained for continuity/link maintenance but deliberately excluded from
      // final ranking until a genuine embedding provider is configured.
-     const semantic=cosine(qVector,m.semanticVector);
+     
      const bm25=bm25Score(queryTokenArray,m.content,this.state.items.length,this.documentFrequency,this.itemTokenLength,this.totalTokenLength,m.id);
      const lexical=clamp(.24*coverage+.14*exact+.42*normalizeBm25(bm25)+.20*fuzzy);
      const entity=overlap(queryEntities,m.entities);
@@ -887,7 +886,7 @@ export class MemoryOS2{
      const temporalBase=this.signalFusion.temporalHint(query,m.validFromAt??m.createdAt,now); const validity=temporalMode==='all'?1:(isValidAt(m,now)?1:0); const temporal=clamp(.72*validity+.28*temporalBase);
      const identity=clamp(m.identityRelevance*clamp(identityRelevance));
      const goal=clamp(m.goalRelevance*clamp(goalRelevance));
-     rawRows.push({m,semantic,bm25,entity,lexical,coverage,fuzzy,conceptCoverage,temporal,causal,identity,goal,recency});
+     rawRows.push({m,bm25,entity,lexical,coverage,fuzzy,conceptCoverage,temporal,causal,identity,goal,recency});
    }
    const rrfK=60;
    const rankBy=(score:(row:typeof rawRows[number])=>number)=>new Map(rawRows.filter(row=>score(row)>0).sort((a,b)=>score(b)-score(a)||a.m.id.localeCompare(b.m.id)).map((row,index)=>[row.m.id,index+1]));
@@ -919,16 +918,14 @@ export class MemoryOS2{
      // direct BM25/coverage/phrase scores still dominate exact matches.
      const conceptBoost01=row.conceptCoverage*.10;
      fused.score01=clamp(fused.score01+policyBias+intentBoost01+conceptBoost01);
-     return {m:row.m,score:fused.score01,semantic:row.semantic,bm25:row.bm25,entity:row.entity,lexical,intentBoost01,conceptBoost01};
+     return {m:row.m,score:fused.score01,bm25:row.bm25,entity:row.entity,lexical,intentBoost01,conceptBoost01};
    }).sort((a,b)=>b.score-a.score||a.m.id.localeCompare(b.m.id)).slice(0,Math.max(1,limit));
    rows.push(...topRows);
    this.lastHybridDiagnostics={...this.lastHybridDiagnostics,bm25Enabled:true,bm25CandidateCount:rawRows.filter(x=>x.bm25>0).length,bm25Max:maxBm25,rrfEnabled:true,identifierBias,temporalMode,asOfAt:now,queryIntentMode,maxQueryIntentBoost01:Math.max(0,...topRows.map(x=>x.intentBoost01)),candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:fuzzyCandidateIds.size,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit']};
-   this.state.semanticHits+=rows.filter(x=>x.semantic>=.58).length;
-   // P2697: only retained/hot results keep their vector materialized. Other
-   // candidates can return to cold residency immediately, bounding RSS after
-   // broad retrievals on mobile devices.
-   const retained=new Set(rows.map(x=>x.m.id));
-   for(const id of candidateIds){const m=this.itemIndex.get(id);if(m&&m.residencyTier==='cold'&&!retained.has(id))m.semanticVector=[];}
+   // semanticHits is retained only for persisted-state compatibility. It is not
+   // incremented by retrieval: the legacy hashed token projection is not a semantic
+   // retrieval channel, and its previous calculation silently warmed cold memories.
+   // Residency planning and explicit get()/consolidation own vector materialization.
    this.state.adaptiveMemoryPolicy=this.adaptivePolicy.snapshot();
    const queryTokens=[...qTokens];
    for(const witness of this.state.evictionWitnesses){

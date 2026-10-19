@@ -1,10 +1,16 @@
-## Current engineering pass — WorkPass71 (2026-10-19)
+## Current engineering pass — WorkPass72 (2026-10-19)
 
-- Retrieval benchmark fairness fix: baseline and candidate now evaluate the same bounded corpus; truncation remains an automatic promotion blocker.
-- Added a 1,601-row regression that ensures the candidate cannot access the target beyond the BM25 corpus cap.
-- Retrieval regression is included in WorkPass71 CI; no quality uplift is claimed until the workflow and independent holdout support it.
-- Project navigation and safe cleanup protocol: [WorkPass71 handover](docs/WORKPASS71_HANDOVER_2026-10-19.md).
-- Release status remains implementation-only; production/browser/device gates and independent retrieval uplift remain open.
+- Fixed retrieval-side memory-residency warming: candidate search no longer rebuilds non-ranking hash vectors for cold records or reclassifies them as warm.
+- Strengthened the mobile residency regression to require zero vector-count growth and unchanged residency-tier counts across recall.
+- Expanded CI coverage across candidate coverage, numeric/fuzzy retrieval, bilingual concepts, typed intent, residency, background indexing and embedding privacy.
+- Working rules and canonical navigation: [AGENTS.md](AGENTS.md); current pass evidence and open gates: [WorkPass72 handover](docs/WORKPASS72_HANDOVER_2026-10-19.md).
+- No recall uplift or production-ready claim is made. CI for this pass and independent labelled retrieval evidence remain open.
+
+## Previous engineering pass — WorkPass71 (2026-10-19)
+
+- Fixed retrieval benchmark fairness: baseline and candidate now evaluate the same validated bounded corpus; truncation and malformed/duplicate rows remain promotion blockers.
+- Added cap-boundary and malformed-row parity regressions plus multi-seed experiment checks.
+- Handover: [WorkPass71 handover](docs/WORKPASS71_HANDOVER_2026-10-19.md). No retrieval uplift was claimed.
 
 ## Previous engineering pass — WorkPass70 (2026-10-19)
 

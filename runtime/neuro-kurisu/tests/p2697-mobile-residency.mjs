@@ -25,7 +25,8 @@ assert.equal(afterRestore.materializedVectors,before.materializedVectors);
 const rows=restored.retrieve('subject 777 retrieval context',8,.2,.1);
 assert.ok(rows.length>0);
 const afterRetrieve=restored.residencyDiagnostics();
-assert.ok(afterRetrieve.materializedVectors <= before.materializedVectors + 32, `retrieval warmed too much: ${afterRetrieve.materializedVectors}`);
+assert.equal(afterRetrieve.materializedVectors, before.materializedVectors, 'retrieval must not materialize hash vectors for cold candidates when vectors do not participate in ranking');
+assert.deepEqual(afterRetrieve.counts, before.counts, 'retrieval must not silently reclassify cold memories as warm');
 assert.ok(afterRetrieve.materializedVectors <= 112, `bounded residency failed: ${afterRetrieve.materializedVectors}`);
 
 const diag=restored.retrievalDiagnostics();
