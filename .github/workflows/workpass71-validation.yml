@@ -54,6 +54,8 @@ jobs:
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/local-chat-provider-workpass40.mjs
       - name: Local LLM backend selection regression
         run: node runtime/neuro-kurisu/tests/local-llm-selection-workpass74.mjs
+      - name: Language invocation ordering regression
+        run: node runtime/neuro-kurisu/tests/language-invoke-order-regression.mjs
       - name: Speech gateway, timescale and persistence regression
         shell: bash
         run: |
