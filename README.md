@@ -3,7 +3,7 @@
 - Fixed retrieval-side memory-residency warming: candidate search no longer rebuilds non-ranking hash vectors for cold records or reclassifies them as warm.
 - Strengthened the mobile residency regression to require zero vector-count growth and unchanged residency-tier counts across recall.
 - Expanded CI coverage across candidate coverage, numeric/fuzzy retrieval, bilingual concepts, typed intent, residency, background indexing and embedding privacy.
-- Working rules and canonical navigation: [AGENTS.md](AGENTS.md); current pass evidence and open gates: [WorkPass72 handover](docs/WORKPASS72_HANDOVER_2026-10-19.md).
+- Working rules and navigation: [AGENTS.md](AGENTS.md); evidence/open gates: [WorkPass72 handover](docs/WORKPASS72_HANDOVER_2026-10-19.md); [exact-duplicate cleanup audit](docs/REPOSITORY_CLEANUP_AUDIT_WORKPASS72.md).
 - No recall uplift or production-ready claim is made. CI for this pass and independent labelled retrieval evidence remain open.
 
 ## Previous engineering pass — WorkPass71 (2026-10-19)

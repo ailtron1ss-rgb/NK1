@@ -1,0 +1,556 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-19",
+  "auditedCommit": "f7d579c55f4f044dca9abd4ca8203911d826ed9b",
+  "branch": "workpass70-source",
+  "scope": "Exact SHA equality in the recursive tracked Git tree only; does not claim semantic duplication, dead code or deploy-size savings.",
+  "summary": {
+    "trackedFiles": 9352,
+    "markdownFiles": 2890,
+    "exactDuplicateGroups": 39,
+    "filesInDuplicateGroups": 99,
+    "excessCopies": 60,
+    "markdownDuplicateGroups": 0,
+    "theoreticalExcessCopyBytesIfEveryDuplicateCouldBeSafelyRemoved": 16781907,
+    "filesDeleted": 0,
+    "filesMoved": 0
+  },
+  "interpretation": [
+    "Matching SHA confirms identical content, not interchangeable paths.",
+    "Mirrored live2d assets may be required by distinct serving roots.",
+    "Empty __init__.py and fixtures can carry package or test semantics.",
+    "Repeated legal/provenance notices must remain near their owning files.",
+    "legacy/, research/, archives, manifests, release evidence and provenance are preserved.",
+    "Theoretical byte total is only within the checked tree and excludes Git history; no deployment-size reduction is asserted."
+  ],
+  "groups": [
+    {
+      "sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sizeBytes": 0,
+      "count": 16,
+      "excessCopies": 15,
+      "paths": [
+        "legacy/input-archives/hexis-main-2026-10-08/apps/__init__.py",
+        "legacy/input-archives/hexis-main-2026-10-08/characters/__init__.py",
+        "legacy/input-archives/hexis-main-2026-10-08/core/__init__.py",
+        "legacy/input-archives/hexis-main-2026-10-08/db/__init__.py",
+        "legacy/input-archives/hexis-main-2026-10-08/ops/__init__.py",
+        "legacy/input-archives/hexis-main-2026-10-08/plugins/installed/__init__.py",
+        "legacy/input-archives/hexis-main-2026-10-08/tests/fixtures/prompt_render/chatctx_empty.txt",
+        "legacy/input-archives/hexis-main-2026-10-08/tests/fixtures/prompt_render/subconscious_empty.txt",
+        "legacy/input-archives/hexis-main-2026-10-08/tests/plugins/__init__.py",
+        "legacy/input-archives/hexis-main-2026-10-08/tests/services/__init__.py",
+        "legacy/input-archives/hexis-main-2026-10-08/tests/web/__init__.py",
+        "legacy/snapshots/neurocore-v126/src/neurocore/__all__.py",
+        "legacy/snapshots/neurocore-v126/src/neurocore/py.typed",
+        "legacy/snapshots/neurocore-v126/src/neurocore/v26/test_dummy.txt",
+        "legacy/snapshots/neurocore-v126/src/neurocore/v33_core_new.py",
+        "research/neurocore-v143/src/neurocore/__all__.py"
+      ],
+      "classification": "empty-archive-package-marker-or-fixture",
+      "recommendation": "PRESERVE: empty __init__.py and test fixtures may be semantically required.",
+      "deleted": false
+    },
+    {
+      "sha": "bb67a43fa4e5791ab58e7e40260bc3df8b6bc7cc",
+      "sizeBytes": 20,
+      "count": 6,
+      "excessCopies": 5,
+      "paths": [
+        "legacy/snapshots/neurocore-v126/src/neurocore/v49/__init__.py",
+        "legacy/snapshots/neurocore-v126/src/neurocore/v50/__init__.py",
+        "legacy/snapshots/neurocore-v126/src/neurocore/v51/__init__.py",
+        "legacy/snapshots/neurocore-v126/src/neurocore/v52/__init__.py",
+        "legacy/snapshots/neurocore-v126/src/neurocore/v53/__init__.py",
+        "legacy/snapshots/neurocore-v126/src/neurocore/v54/__init__.py"
+      ],
+      "classification": "legacy-snapshot-identical-blob",
+      "recommendation": "PRESERVE_FOR_PROVENANCE: require restoration and manifest audit before deduplicating snapshots.",
+      "deleted": false
+    },
+    {
+      "sha": "5c7720b24e8d24177847e32f8fa498328167f6ba",
+      "sizeBytes": 1065,
+      "count": 3,
+      "excessCopies": 2,
+      "paths": [
+        "app/.grok/skills/generate2dmap/LICENSE",
+        "app/.grok/skills/generate2dsprite/LICENSE",
+        "app/.grok/skills/video2dsprite/LICENSE"
+      ],
+      "classification": "reused-skill-license-or-source-provenance",
+      "recommendation": "PRESERVE: license and provenance notices remain beside each owning skill.",
+      "deleted": false
+    },
+    {
+      "sha": "857459755a496e059e09d038eb3c14a102037ef0",
+      "sizeBytes": 970,
+      "count": 3,
+      "excessCopies": 2,
+      "paths": [
+        "legacy/input-archives/hexis-main-2026-10-08/tests/fixtures/prompt_render/heartbeat_allowed_empty.txt",
+        "legacy/input-archives/hexis-main-2026-10-08/tests/fixtures/prompt_render/heartbeat_backlog_empty_counts.txt",
+        "legacy/input-archives/hexis-main-2026-10-08/tests/fixtures/prompt_render/heartbeat_empty.txt"
+      ],
+      "classification": "legacy-snapshot-identical-blob",
+      "recommendation": "PRESERVE_FOR_PROVENANCE: require restoration and manifest audit before deduplicating snapshots.",
+      "deleted": false
+    },
+    {
+      "sha": "71b68ff6752d68b4b71f97aa025b57f768429ef3",
+      "sizeBytes": 303,
+      "count": 3,
+      "excessCopies": 2,
+      "paths": [
+        "app/.grok/skills/generate2dmap/SOURCE.md",
+        "app/.grok/skills/generate2dsprite/SOURCE.md",
+        "app/.grok/skills/video2dsprite/SOURCE.md"
+      ],
+      "classification": "reused-skill-license-or-source-provenance",
+      "recommendation": "PRESERVE: license and provenance notices remain beside each owning skill.",
+      "deleted": false
+    },
+    {
+      "sha": "144607fc4c30a993c4934db73a7c876b98b7f70e",
+      "sizeBytes": 8236235,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu/Kurisu.4096/texture_00.png",
+        "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.4096/texture_00.png"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "0f4c47bb4f7a924205616ad2bb210b063e16c8f0",
+      "sizeBytes": 6001152,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu/Kurisu.moc3",
+        "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.moc3"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "15145af592e81b6f3dfb8f6ea92aa9304fc388da",
+      "sizeBytes": 1601788,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu.mobile/Kurisu.2048/texture_00_mobile_2048.png",
+        "runtime/neuro-kurisu/public/live2d/Kurisu.mobile/Kurisu.2048/texture_00_mobile_2048.png"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "fd07b625f4a372080315f2ab0791070f70456f68",
+      "sizeBytes": 770163,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu/motions/58Loop.motion3.json",
+        "runtime/neuro-kurisu/public/live2d/Kurisu/motions/58Loop.motion3.json"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "3445a10f2366e81114e11bc0b12b8aa6c1e4fe46",
+      "sizeBytes": 25386,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu/Kurisu.physics3.json",
+        "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.physics3.json"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "2067b832f77fa070680e1c0142e81875d9a88b67",
+      "sizeBytes": 24797,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "legacy/input-archives/hexis-main-2026-10-08/db/56a_functions_learning_reviews.sql",
+        "legacy/input-archives/hexis-main-2026-10-08/db/migrations/0235_weekly_learning_reviews.sql"
+      ],
+      "classification": "legacy-snapshot-identical-blob",
+      "recommendation": "PRESERVE_FOR_PROVENANCE: require restoration and manifest audit before deduplicating snapshots.",
+      "deleted": false
+    },
+    {
+      "sha": "9cc36407d02e35b4bf6558ee91b543f159acec7c",
+      "sizeBytes": 22333,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "legacy/input-archives/hexis-main-2026-10-08/db/52_hmx_in_flight_work.sql",
+        "legacy/input-archives/hexis-main-2026-10-08/db/migrations/0011_hmx_in_flight_work.sql"
+      ],
+      "classification": "legacy-snapshot-identical-blob",
+      "recommendation": "PRESERVE_FOR_PROVENANCE: require restoration and manifest audit before deduplicating snapshots.",
+      "deleted": false
+    },
+    {
+      "sha": "feb7c01e316a32540572558cd407cc1854ec78fb",
+      "sizeBytes": 19460,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu/motions/mtn_07.motion3.json",
+        "runtime/neuro-kurisu/public/live2d/Kurisu/motions/mtn_07.motion3.json"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "c8df337a4c58cbae8f9ee8f727f5d9a00f02c6fe",
+      "sizeBytes": 13630,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu/motions/xhiyori_m03.motion3.json",
+        "runtime/neuro-kurisu/public/live2d/Kurisu/motions/xhiyori_m03.motion3.json"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "8d16c637b661ecb09d4eb8e2a1020f245da3dc94",
+      "sizeBytes": 9817,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "legacy/input-archives/hexis-main-2026-10-08/db/70_humanizer.sql",
+        "legacy/input-archives/hexis-main-2026-10-08/db/migrations/0065_humanizer_patterns.sql"
+      ],
+      "classification": "legacy-snapshot-identical-blob",
+      "recommendation": "PRESERVE_FOR_PROVENANCE: require restoration and manifest audit before deduplicating snapshots.",
+      "deleted": false
+    },
+    {
+      "sha": "d19d3c5ef0c154f57b0b169985c908ae243d8306",
+      "sizeBytes": 8478,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu/Kurisu.cdi3.json",
+        "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.cdi3.json"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "d4903c81db33845ade79dc256fd33ba07bf97640",
+      "sizeBytes": 8295,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "legacy/snapshots/neurocore-v126/history/tests_v106_current/test_current_neurality.py",
+        "legacy/snapshots/neurocore-v126/history/tests_v106_legacy/test_current_neurality_v106_legacy.py"
+      ],
+      "classification": "legacy-snapshot-identical-blob",
+      "recommendation": "PRESERVE_FOR_PROVENANCE: require restoration and manifest audit before deduplicating snapshots.",
+      "deleted": false
+    },
+    {
+      "sha": "0e87225c3fac97886aabeb9095dd1aa0b489ca48",
+      "sizeBytes": 7646,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "legacy/input-archives/hexis-main-2026-10-08/db/49a_hmx_onboarding_interview.sql",
+        "legacy/input-archives/hexis-main-2026-10-08/db/migrations/0250_hmx_onboarding_interview.sql"
+      ],
+      "classification": "legacy-snapshot-identical-blob",
+      "recommendation": "PRESERVE_FOR_PROVENANCE: require restoration and manifest audit before deduplicating snapshots.",
+      "deleted": false
+    },
+    {
+      "sha": "a03e577f3a686bb679a574ad2ac2bf906daa7dd2",
+      "sizeBytes": 5798,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu/motions/Out From Camera.motion3.json",
+        "runtime/neuro-kurisu/public/live2d/Kurisu/motions/Out From Camera.motion3.json"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "c024b0e06ce46afe2289c63b8dbfd2c5f5358a6c",
+      "sizeBytes": 4287,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "legacy/input-archives/hexis-main-2026-10-08/db/46g_functions_voice_wake.sql",
+        "legacy/input-archives/hexis-main-2026-10-08/db/migrations/0229_voice_wake_nodes.sql"
+      ],
+      "classification": "legacy-snapshot-identical-blob",
+      "recommendation": "PRESERVE_FOR_PROVENANCE: require restoration and manifest audit before deduplicating snapshots.",
+      "deleted": false
+    },
+    {
+      "sha": "b032ca2510c0171c6a52a23b5c1ff1797f0d7a6a",
+      "sizeBytes": 3365,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "legacy/snapshots/neurocore-v126/RELEASE_MANIFEST_LATEST.json",
+        "legacy/snapshots/neurocore-v126/RELEASE_MANIFEST_V126.json"
+      ],
+      "classification": "legacy-snapshot-identical-blob",
+      "recommendation": "PRESERVE_FOR_PROVENANCE: require restoration and manifest audit before deduplicating snapshots.",
+      "deleted": false
+    },
+    {
+      "sha": "36fcc213e8295cfd6cea91ab8103decef0007891",
+      "sizeBytes": 2555,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu/motions/haru_g_idle.motion3.json",
+        "runtime/neuro-kurisu/public/live2d/Kurisu/motions/haru_g_idle.motion3.json"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "fa732aacba13a5a3340990e976cc8268ff45c93e",
+      "sizeBytes": 2371,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu.mobile/Kurisu-mobile.model3.json",
+        "runtime/neuro-kurisu/public/live2d/Kurisu.mobile/Kurisu-mobile.model3.json"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "c220d6c30f7aa427a0b2abcaf36364ce6d8a9141",
+      "sizeBytes": 1846,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu/Kurisu.model3.json",
+        "runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.model3.json"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "f8d892c5d05b908ebea27e1f0424dbeb4824301b",
+      "sizeBytes": 1678,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "legacy/snapshots/neurocore-v126/history/tests_v106_current/test_current_surface.py",
+        "legacy/snapshots/neurocore-v126/history/tests_v106_legacy/test_current_surface_v106_legacy.py"
+      ],
+      "classification": "legacy-snapshot-identical-blob",
+      "recommendation": "PRESERVE_FOR_PROVENANCE: require restoration and manifest audit before deduplicating snapshots.",
+      "deleted": false
+    },
+    {
+      "sha": "9d0a66db82793822851ad5499f6bbb9d6925ebd0",
+      "sizeBytes": 1463,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "legacy/snapshots/neurocore-v126/evidence/V110_BRANCH_ABLATION_REFERENCE.json",
+        "legacy/snapshots/neurocore-v126/evidence/V113_BRANCH_ABLATION_REFERENCE.json"
+      ],
+      "classification": "legacy-snapshot-identical-blob",
+      "recommendation": "PRESERVE_FOR_PROVENANCE: require restoration and manifest audit before deduplicating snapshots.",
+      "deleted": false
+    },
+    {
+      "sha": "d9252160e690cc587c46930472551c1a12ebe27d",
+      "sizeBytes": 1047,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "legacy/snapshots/neurocore-v126/evidence/V126_DECONTAMINATION.json",
+        "legacy/snapshots/neurocore-v126/evidence/V126_DECONTAMINATION.txt"
+      ],
+      "classification": "legacy-snapshot-identical-blob",
+      "recommendation": "PRESERVE_FOR_PROVENANCE: require restoration and manifest audit before deduplicating snapshots.",
+      "deleted": false
+    },
+    {
+      "sha": "c56f9edd98658b58a60f7e91ee5e760ff75c3669",
+      "sizeBytes": 884,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/PROVENANCE.json",
+        "runtime/neuro-kurisu/public/live2d/PROVENANCE.json"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "ec684c3dea243b68edcc7594ba33a21d8eda0bff",
+      "sizeBytes": 877,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "legacy/snapshots/neurocore-v126/evidence/V123_DECONTAMINATION.json",
+        "legacy/snapshots/neurocore-v126/evidence/V124_DECONTAMINATION.txt"
+      ],
+      "classification": "legacy-snapshot-identical-blob",
+      "recommendation": "PRESERVE_FOR_PROVENANCE: require restoration and manifest audit before deduplicating snapshots.",
+      "deleted": false
+    },
+    {
+      "sha": "24544c35217dfeb394813b85a6a9f2c422f4c6c0",
+      "sizeBytes": 506,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "legacy/snapshots/neurocore-v126/evidence/V113_V112_MIGRATION.json",
+        "legacy/snapshots/neurocore-v126/evidence/V114_V112_MIGRATION.json"
+      ],
+      "classification": "legacy-snapshot-identical-blob",
+      "recommendation": "PRESERVE_FOR_PROVENANCE: require restoration and manifest audit before deduplicating snapshots.",
+      "deleted": false
+    },
+    {
+      "sha": "d8996b0e47fb21f93505e217f83f880242280bd2",
+      "sizeBytes": 357,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "docs/archive-optimization/source-archive-blobs/335813c088b5f2fda3aec9f1a3809e81bf6efe7f66447585f86bfc64d581e063",
+        "legacy/kurisu-v56/START_HERE_RU.md"
+      ],
+      "classification": "historical-document-archive-copy",
+      "recommendation": "REVIEW_REFERENCES: verify archive manifest/provenance role before removal.",
+      "deleted": false
+    },
+    {
+      "sha": "bd5e8247329dda941e80b4e9c67db46a4236d42d",
+      "sizeBytes": 119,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu/exp/Blush 1.exp3.json",
+        "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Blush 1.exp3.json"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "41eccb952502232839c16749d80ce288741524f8",
+      "sizeBytes": 117,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu/exp/Arm Change.exp3.json",
+        "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Arm Change.exp3.json"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "541f550810339390b02e2a1eaa1300c225d0c8ba",
+      "sizeBytes": 117,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu/exp/Blush 2.exp3.json",
+        "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Blush 2.exp3.json"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "b16a65a82e149aaef9264712e148ffb82faf3396",
+      "sizeBytes": 117,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu/exp/Stanby Surprised.exp3.json",
+        "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Surprised.exp3.json"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "9630860645112b94404ab7b2cb0a024f6692fa79",
+      "sizeBytes": 113,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu/exp/Stanby Scared.exp3.json",
+        "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Scared.exp3.json"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "96489b0f152e1a0108efac15215bafd6fce3c50c",
+      "sizeBytes": 112,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu/exp/Stanby Angry.exp3.json",
+        "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Angry.exp3.json"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "47807cba09ee04f170094dc2f8bac7055622de99",
+      "sizeBytes": 112,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu/exp/Stanby Smile.exp3.json",
+        "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Smile.exp3.json"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    },
+    {
+      "sha": "4862f136caaf77e05229db7da4dedf98f6c52e72",
+      "sizeBytes": 110,
+      "count": 2,
+      "excessCopies": 1,
+      "paths": [
+        "app/public/live2d/Kurisu/exp/Stanby Sad.exp3.json",
+        "runtime/neuro-kurisu/public/live2d/Kurisu/exp/Stanby Sad.exp3.json"
+      ],
+      "classification": "mirrored-live2d-runtime-asset",
+      "recommendation": "DO_NOT_DELETE_YET: verify app public path, runtime static mount, package assembly and release artifacts; each serving root may require a copy.",
+      "deleted": false
+    }
+  ]
+}

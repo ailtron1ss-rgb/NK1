@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-19  
 **Branch:** `workpass70-source`  
-**Status:** implementation committed; CI validation pending for this pass. Not a production approval.
+**Status:** implementation committed; initial expanded CI found a test-fixture time-mode error (corrective commit pending validation). Not a production approval.
 
 ## Behavioral defect found
 
@@ -20,6 +20,10 @@ In `MemoryOS2.retrieve()`, the candidate loop rebuilt each missing 48-dimensiona
 
 This is a resource/residency correctness fix. No recall uplift is claimed. The multi-seed benchmark still uses its existing synthetic fixture; independent, provenance-backed, temporally separated holdout data is still required before claiming real quality gains.
 
+## First CI feedback and test-fixture correction
+
+The first expanded CI failed at `memory-retrieval-numeric-terms.mjs`: records were seeded with 2033 timestamps but the test called `temporalMode: 'current'`. Current mode deliberately uses wall-clock time and ignores `asOfAt`; use explicit `temporalMode: 'at'` for deterministic point-in-time fixtures. This is a test-fixture correction, not a change to the production temporal contract. The fixture now uses explicit point-in-time mode and the expanded CI must be re-run before claiming validation success.
+
 ## Repository organization audit
 
 The recursive Git tree on the parent revision contained 9,350 tracked blobs, including 2,888 Markdown files and 370 paths matching roadmap/handover/workpass-report naming. This is enough to justify better navigation, but **not** enough to prove which files are garbage or safe to delete. Older pass documents, `research/`, `legacy/`, licenses, manifests, archives and source provenance remain untouched pending import/reference/manifest audits. `AGENTS.md` is the working entry point; the README and current handover are the status sources.
@@ -34,7 +38,7 @@ This pass expands `.github/workflows/workpass71-validation.yml` to run:
 - memory residency and background embedding-index behavior;
 - embedding request privacy sanitization.
 
-The new workflow run has not yet been observed at commit time. If it fails, use the failing test as the next work item rather than describing the pass as complete.
+The first expanded CI run failed inside the newly added numeric-retrieval test: its fixture used 2033 timestamps while calling `temporalMode: 'current'`, whose contract intentionally ignores `asOfAt` and uses wall-clock time. The candidate code was not the cause; the test was corrected to use explicit point-in-time mode (`temporalMode: 'at'`) for deterministic fixtures. Re-run CI before counting WorkPass72 as validation-complete.
 
 ## Remaining high-priority gates
 

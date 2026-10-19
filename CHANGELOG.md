@@ -4,7 +4,8 @@
 - Strengthened `p2697-mobile-residency.mjs` to require unchanged vector materialization and unchanged tier counts across a retrieval.
 - Expanded GitHub Actions to run the memory retrieval, query-intent, residency, background-index and embedding-privacy regressions.
 - Added `AGENTS.md` as the canonical working guide; a first repository inventory found 9,350 tracked files, 2,888 Markdown files and 370 roadmap/workpass/report-named paths. No files were deleted or moved without a reference audit.
-- This is a residency/resource fix, not a retrieval-quality uplift or production approval. CI validation and independent labelled retrieval evidence remain open.
+- First expanded CI correctly exposed a fixture error in the numeric retrieval test: it used 2033 dates with `temporalMode: 'current'` even though current mode deliberately ignores `asOfAt`; updated the fixture to explicit point-in-time mode. Re-run CI required.
+- This is a residency/resource fix, not a retrieval-quality uplift or production approval. Independent labelled retrieval evidence remains open.
 
 ---
 

@@ -18,11 +18,11 @@ for (let value = 0; value <= 4; value++) {
   encode(`sensor-${value}`, `датчик давление ${value} режим нормальный`);
 }
 
-const status = memory.previewRetrieve('status telemetry alpha 3', 5, 0, 0, { temporalMode: 'current', asOfAt: now });
+const status = memory.previewRetrieve('status telemetry alpha 3', 5, 0, 0, { temporalMode: 'at', asOfAt: now });
 assert.equal(status[0]?.id, 'telemetry-3', 'one-digit status codes must be indexed and ranked, not discarded');
 assert.ok(status.findIndex(row => row.id === 'telemetry-3') < status.findIndex(row => row.id === 'telemetry-2'));
 
-const russian = memory.previewRetrieve('давление датчик 4 режим', 5, 0, 0, { temporalMode: 'current', asOfAt: now });
+const russian = memory.previewRetrieve('давление датчик 4 режим', 5, 0, 0, { temporalMode: 'at', asOfAt: now });
 assert.equal(russian[0]?.id, 'sensor-4', 'single-digit measurements must work with Unicode/Russian queries too');
 
 // Numeric support is a ranking signal, not permission to return future or invalid memory.
@@ -30,7 +30,7 @@ const invalid = memory.snapshot();
 invalid.items.find(row => row.id === 'telemetry-1').validUntilAt = now - 1;
 const isolated = new MemoryOS2();
 isolated.restore(invalid);
-const afterExpiry = isolated.previewRetrieve('status telemetry alpha 1', 5, 0, 0, { temporalMode: 'current', asOfAt: now });
+const afterExpiry = isolated.previewRetrieve('status telemetry alpha 1', 5, 0, 0, { temporalMode: 'at', asOfAt: now });
 assert.ok(afterExpiry.every(row => row.id !== 'telemetry-1'), 'numeric matching must not bypass temporal validity');
 
 console.log('MEMORY_RETRIEVAL_NUMERIC_TERMS=PASS', JSON.stringify({ statusTop: status[0]?.id, russianTop: russian[0]?.id, expiredExcluded: true }));

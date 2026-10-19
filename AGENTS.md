@@ -9,7 +9,8 @@ Work code-first. Prefer observable, testable behavior over architectural labels.
 ## Canonical navigation
 
 - `README.md`: current repository status and release gates.
-- `docs/WORKPASS72_HANDOVER_2026-10-19.md`: current implementation finding, validation scope, structure audit and next queue.
+- `docs/WORKPASS72_HANDOVER_2026-10-19.md`: current implementation finding, validation scope and next queue.
+- `docs/REPOSITORY_CLEANUP_AUDIT_WORKPASS72.md` plus its JSON manifest: exact content-duplicate audit; candidates are not deletion instructions.
 - `runtime/neuro-kurisu/`: canonical organism/runtime implementation.
 - `runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts`: canonical memory store and retrieval owner.
 - `runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts`: offline BM25-vs-candidate evaluation; it must not mutate or promote live state.

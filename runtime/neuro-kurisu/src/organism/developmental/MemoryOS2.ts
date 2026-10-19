@@ -742,7 +742,6 @@ export class MemoryOS2{
    const qTokens=this.tokensFor(query);
    const conceptQuery=expandMemoryQueryConcepts(qTokens);
    const queryEntities=extractEntities(query);
-   
    this.state.semanticQueries++;
    const wallClockNow=Date.now();
    const requestedAsOf=typeof temporalOptions.asOfAt==='number'&&Number.isFinite(temporalOptions.asOfAt)?temporalOptions.asOfAt:undefined;
@@ -873,10 +872,6 @@ export class MemoryOS2{
      const queryTokenArray=[...qTokens];
      const coverage=queryTokenArray.length?queryTokenArray.filter(token=>lexicalTokens.has(token)).length/queryTokenArray.length:0;
      const fuzzy=fuzzyTokenCoverage(queryTokenArray,lexicalTokens);
-     // This legacy vector is a hashed lexical projection, not an embedding. It is
-     // retained for continuity/link maintenance but deliberately excluded from
-     // final ranking until a genuine embedding provider is configured.
-     
      const bm25=bm25Score(queryTokenArray,m.content,this.state.items.length,this.documentFrequency,this.itemTokenLength,this.totalTokenLength,m.id);
      const lexical=clamp(.24*coverage+.14*exact+.42*normalizeBm25(bm25)+.20*fuzzy);
      const entity=overlap(queryEntities,m.entities);
