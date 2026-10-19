@@ -164,6 +164,20 @@ export function timelineOffsetForCharIndex(timeline: VisemeFrame[], charIndex: n
   return timeline[0].startMs;
 }
 
+export function sampleVisemeTimeline(timeline: VisemeFrame[], timeMs: number): MouthPose {
+  if (!timeline.length || !Number.isFinite(timeMs) || timeMs < 0) return { ...CLOSED_MOUTH };
+  let low = 0;
+  let high = timeline.length - 1;
+  while (low <= high) {
+    const mid = (low + high) >> 1;
+    const frame = timeline[mid];
+    if (timeMs < frame.startMs) high = mid - 1;
+    else if (timeMs >= frame.endMs) low = mid + 1;
+    else return frame.pose;
+  }
+  return { ...CLOSED_MOUTH };
+}
+
 /**
  * Append a SpeechSynthesis boundary without admitting stale/out-of-order events.
  * A later observed character is authoritative even when our estimate had advanced
