@@ -9,14 +9,14 @@ Make the configured local llama.cpp model the first-choice language backend in t
 ## Implementation
 - Added `src/server/local-language-backend-policy.mjs`, a small deterministic policy function: a configured local llama.cpp endpoint becomes first choice; otherwise the P40 ecology decision is retained.
 - Wired the policy into `server/server.mjs`. Existing provider failure handling and fallback ordering remain in place, so a bad local endpoint does not prevent fallback to other configured providers.
-- Added `tests/local-llm-selection-workpass74.mjs` with nine assertions covering configured-local priority, no-config ecology preservation, deterministic degraded fallback distinction, cooldown enforcement, retry after cooldown, and recovery after a successful local response.
+- Added `tests/local-llm-selection-workpass74.mjs` with 12 behavioral assertions covering configured-local priority, no-config ecology preservation, deterministic degraded fallback distinction, exact cooldown boundary, exponential backoff, maximum cooldown, successful recovery, and isolation from unrelated provider failures.
 - Added the regression to `.github/workflows/workpass71-validation.yml`.
 - Added a bounded exponential cooldown (15 seconds initially, capped at 5 minutes) after repeated local endpoint failures; the fallback path now skips llama.cpp during cooldown and resumes after the deadline. A successful local response resets the failure streak. The cooldown is process-local and intentionally does not claim endpoint health across restarts.
 
 ## Evidence status
 - **IMPLEMENTED:** server request routing now consults the local-first policy when `LLAMA_CPP_URL` is configured.
-- **TEST ADDED:** four deterministic policy assertions are wired into the validation workflow.
-- **CI UNKNOWN until observed:** a GitHub Actions run on the resulting head must pass before this pass is called validated.
+- **TEST ADDED:** 12 deterministic policy assertions are wired into the validation workflow. The circuit snapshot accepts an injected clock so deadline and backoff checks do not depend on wall-clock timing.
+- **CI PASS:** [run 39313943292](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39313943292) passed on the pre-hardening head. The deterministic-clock/backoff expansion is a newer commit and needs its own CI run before being called validated.
 - **NOT PROVEN:** real llama.cpp inference, response quality, model warm/cold start, restart recovery, long-duration stability, and measured device resource use.
 - **KNOWN FOLLOW-UP:** P40 ecology's internal selected-profile telemetry may still reflect its recommendation rather than the server's local-first override. Future integration should reconcile actual backend selection into the canonical ecology without falsely marking an unprobed endpoint healthy.
 
