@@ -1,0 +1,44 @@
+name: WorkPass71 validation
+
+on:
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "app/src/components/avatar/embodimentTimeline.ts"
+      - "app/scripts/embodiment-timeline.test.mjs"
+      - ".github/workflows/workpass71-validation.yml"
+      - "CHANGELOG.md"
+      - "SUPER_VERSION.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  targeted-and-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.16.0"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install app dependencies without lifecycle scripts
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Validate grapheme timeline
+        run: npm --prefix app run test:embodiment-timeline
+      - name: Run app script regression suite
+        run: npm --prefix app run test:scripts
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Speech gateway and persistence regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd runtime/neuro-kurisu
+          node --experimental-strip-types tests/workpass69-speech-interruption-gateway.mjs
+          node --experimental-strip-types tests/termux-tts-concurrency-workpass69.mjs
+          node --experimental-strip-types tests/workpass64-archived-receipt-reconciliation.mjs
+          node --experimental-strip-types tests/organism-smoke.mjs
