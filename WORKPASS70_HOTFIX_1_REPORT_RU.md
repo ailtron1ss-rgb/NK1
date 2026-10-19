@@ -30,7 +30,7 @@
 
 ## Release gates still open
 
-- Latest GitHub Actions run must confirm app typecheck, runtime typecheck and the full regression tail after the continuum fix.
+- The attached hotfix release is published only after the GitHub Actions validation workflow passes app typecheck, runtime typecheck and the regression tail. The workflow-run URL and exact commit should be checked in the repository Actions history.
 - Production Vite build and real browser/Live2D E2E are not established by these tests.
 - Real Android/Termux speech timing and p95 audio-to-mouth offset remain unverified.
 - Memory retrieval uplift remains `recallDelta=0` in the existing benchmark and is not promoted.
