@@ -91,3 +91,29 @@ Largest file extensions in the full tree: Markdown (2,895), Python (1,762), MJS 
 - **FAILED:** a specified test/acceptance gate failed.
 
 This register is intentionally explicit: many open tasks remain. Do not call the whole organism complete merely because a local regression suite is green.
+
+
+## WorkPass76 follow-through — CI coverage closure (2026-10-19)
+
+**Branch head at the start of this follow-through:** `23f9b534d8a2f314983f9d42c803edac045e72fc`. Do not treat this as the head after the workflow update below.
+
+- **IMPLEMENTED:** the cold retrieval residency regression already existed at `runtime/neuro-kurisu/tests/cold-retrieval-residency-regression.mjs`. It exercises the canonical `MemoryOS2` owner and asserts that a relevant cold record is still retrievable without materializing legacy hash vectors, changing residency tiers, incrementing the legacy semantic-hit counter, or changing corpus size.
+- **Gap found:** the test file was not called by `.github/workflows/workpass71-validation.yml`; therefore the regression could silently stop protecting production behavior even though the file existed.
+- **Fix committed:** added `node --experimental-strip-types tests/cold-retrieval-residency-regression.mjs` to the core CI regression block. This is a behavioral test and runs without a model download, API key, or external service.
+- **Workflow-update commit:** `268c12719036877678970ecaf69f94fe7166846d`.
+- **CI status at recording time:** runs `39319686397` (commit `23f9b534`) and `39319636214` (commit `57215aeda`) were still in progress when checked; neither result is inferred from the previous green run. The workflow update should trigger a new run. Record its exact result in the next update.
+
+### Reconciled queue
+
+- [x] Inspect latest branch head and recent commits rather than relying on stale WorkPass75 SHA.
+- [x] Verify earlier WorkPass75 backend selection run `39318445086` completed successfully.
+- [x] Wire cold-retrieval residency behavior into CI.
+- [ ] Confirm a green workflow on the current post-update head, including the newly wired regression.
+- [ ] Add an executable HTTP-level server test with deterministic local fake provider; assert response body, actual backend attribution, timing and failure accounting.
+- [ ] Add temporal fact revision tests (old fact remains historically queryable but is not current after revision).
+- [ ] Complete import/script/license/asset ownership inventories; current tree counts are structural only.
+- [ ] Run restart-safe action evidence trace and verify spoofed/copy/late proof cannot update policy credit.
+- [ ] Run live `llama.cpp` smoke on Dell G3; record model identity, cold/warm latency, timeout/cancellation and bounded output.
+- [ ] Run browser/audio/Live2D E2E and long soak on declared target hardware.
+
+The next session should start from the live branch head and current Actions state, not from any SHA above.
