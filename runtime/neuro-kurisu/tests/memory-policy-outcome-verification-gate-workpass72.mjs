@@ -34,17 +34,18 @@ assert.equal(unverified.independentVerified,false);
 assert.equal(unverified.reward01,0,'unverified observations must not publish a policy reward');
 assert.deepEqual(memory.adaptivePolicyDiagnostics(),beforeUnverified,'unverified replay must not change adaptive policy state');
 const unverifiedDiag=fabric.adaptivePolicyOutcomeDiagnostics();
-assert.equal(unverifiedDiag.unverifiedResolved,1);
+assert.equal(unverifiedDiag.unverifiedResolved,0,'unverified data is not a terminal resolution');
+assert.equal(unverifiedDiag.unverifiedAttempts,1);
 assert.equal(unverifiedDiag.verifiedResolved,0);
+assert.equal(unverifiedDiag.pending,1,'the same decision must remain open for later independent verification');
+assert.equal(unverifiedDiag.resolved,0);
 assert.equal(unverifiedDiag.meanDelayedReward01,0);
 assert.equal(unverifiedDiag.meanCausalCredit01,0);
 assert.equal(unverifiedDiag.rewardEvidenceScope,'independently-verified-only');
 
-const second=fabric.retrieveWithPolicyDecision(query,1,.6,.6);
-assert.ok(second.decisionId);
 const beforeVerified=structuredClone(memory.adaptivePolicyDiagnostics());
 const verified=fabric.resolveAdaptivePolicyOutcome({
-  memoryId:'policy-evidence-memory',decisionId:second.decisionId,validationAt:now+2000,
+  memoryId:'policy-evidence-memory',decisionId:registered.decisionId,validationAt:now+2000,
   retentionScore01:.95,transferPotential01:.95,interferenceRisk01:.02,causalCredit01:.95,
   independentVerified:true,
 });
@@ -54,8 +55,11 @@ assert.ok(verified.reward01>0);
 const afterVerified=memory.adaptivePolicyDiagnostics();
 assert.notDeepEqual(afterVerified.reward,beforeVerified.reward,'verified replay must update the selected policy reward');
 const finalDiag=fabric.adaptivePolicyOutcomeDiagnostics();
-assert.equal(finalDiag.unverifiedResolved,1);
+assert.equal(finalDiag.unverifiedResolved,0);
+assert.equal(finalDiag.unverifiedAttempts,1);
 assert.equal(finalDiag.verifiedResolved,1);
+assert.equal(finalDiag.resolved,1);
+assert.equal(finalDiag.pending,0);
 assert.ok(finalDiag.meanDelayedReward01>0);
 assert.ok(finalDiag.meanCausalCredit01>0);
 

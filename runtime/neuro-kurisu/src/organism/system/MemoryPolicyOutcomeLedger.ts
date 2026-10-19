@@ -37,13 +37,16 @@ export interface MemoryPolicyOutcomeLedgerState {
   lastOutcome?:MemoryPolicyDelayedOutcome;
   /** Counts by evidence class; optional for snapshots written before WorkPass72. */
   verifiedResolved?:number;
+  /** Legacy counter from the first verification-gate iteration; not incremented by new resolutions. */
   unverifiedResolved?:number;
+  /** Unverified assessments do not consume a pending decision; a later verified result can resolve it. */
+  unverifiedAttempts?:number;
   /** True if legacy reward means were discarded because verification provenance was absent. */
   legacyAggregatesDiscarded?:boolean;
   pending:MemoryPolicyDecision[];
 }
 
-const blank=():MemoryPolicyOutcomeLedgerState=>({version:1,registered:0,resolved:0,dropped:0,meanDelayedReward01:0,meanCausalCredit01:0,verifiedResolved:0,unverifiedResolved:0,legacyAggregatesDiscarded:false,pending:[]});
+const blank=():MemoryPolicyOutcomeLedgerState=>({version:1,registered:0,resolved:0,dropped:0,meanDelayedReward01:0,meanCausalCredit01:0,verifiedResolved:0,unverifiedResolved:0,unverifiedAttempts:0,legacyAggregatesDiscarded:false,pending:[]});
 const hash=(s:string)=>{let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;};
 const safeCount=(value:unknown)=>{const n=Number(value);return Number.isFinite(n)?Math.max(0,Math.floor(n)):0;};
 
@@ -57,10 +60,10 @@ export class MemoryPolicyOutcomeLedger {
     const d=blank(),r=raw??{};
     const hasVerificationCounters=r.verifiedResolved!==undefined&&r.unverifiedResolved!==undefined&&Number.isFinite(Number(r.verifiedResolved))&&Number.isFinite(Number(r.unverifiedResolved));
     const legacyAggregatesDiscarded=Boolean(r.legacyAggregatesDiscarded)||(!hasVerificationCounters&&(Number(r.meanDelayedReward01??0)!==0||Number(r.meanCausalCredit01??0)!==0));
-    this.state={...d,...r,version:1,registered:safeCount(r.registered),resolved:safeCount(r.resolved),dropped:safeCount(r.dropped),meanDelayedReward01:hasVerificationCounters?clamp(Number(r.meanDelayedReward01??0)):0,meanCausalCredit01:hasVerificationCounters?clamp(Number(r.meanCausalCredit01??0)):0,verifiedResolved:safeCount(r.verifiedResolved),unverifiedResolved:safeCount(r.unverifiedResolved),legacyAggregatesDiscarded,pending:Array.isArray(r.pending)?r.pending.slice(-this.maxPending).map(x=>this.cleanDecision(x)):[]};
+    this.state={...d,...r,version:1,registered:safeCount(r.registered),resolved:safeCount(r.resolved),dropped:safeCount(r.dropped),meanDelayedReward01:hasVerificationCounters?clamp(Number(r.meanDelayedReward01??0)):0,meanCausalCredit01:hasVerificationCounters?clamp(Number(r.meanCausalCredit01??0)):0,verifiedResolved:safeCount(r.verifiedResolved),unverifiedResolved:safeCount(r.unverifiedResolved),unverifiedAttempts:safeCount(r.unverifiedAttempts),legacyAggregatesDiscarded,pending:Array.isArray(r.pending)?r.pending.slice(-this.maxPending).map(x=>this.cleanDecision(x)):[]};
   }
   snapshot(){return structuredClone(this.state);}
-  diagnostics(){return {version:1,registered:this.state.registered,resolved:this.state.resolved,verifiedResolved:this.state.verifiedResolved??0,unverifiedResolved:this.state.unverifiedResolved??0,dropped:this.state.dropped,pending:this.state.pending.length,resolveRate01:clamp(this.state.resolved/Math.max(1,this.state.registered)),rewardEvidenceScope:'independently-verified-only' as const,legacyAggregatesDiscarded:Boolean(this.state.legacyAggregatesDiscarded),meanDelayedReward01:this.state.meanDelayedReward01,meanCausalCredit01:this.state.meanCausalCredit01,lastOutcome:this.state.lastOutcome?structuredClone(this.state.lastOutcome):null};}
+  diagnostics(){return {version:1,registered:this.state.registered,resolved:this.state.resolved,verifiedResolved:this.state.verifiedResolved??0,unverifiedResolved:this.state.unverifiedResolved??0,unverifiedAttempts:this.state.unverifiedAttempts??0,dropped:this.state.dropped,pending:this.state.pending.length,resolveRate01:clamp(this.state.resolved/Math.max(1,this.state.registered)),rewardEvidenceScope:'independently-verified-only' as const,legacyAggregatesDiscarded:Boolean(this.state.legacyAggregatesDiscarded),meanDelayedReward01:this.state.meanDelayedReward01,meanCausalCredit01:this.state.meanCausalCredit01,lastOutcome:this.state.lastOutcome?structuredClone(this.state.lastOutcome):null};}
 
   register(input:{policy:MemoryPolicyDecision['policy'];contextKey:string;query:string;memoryIds:string[];at?:number;hit01?:number;computeCost01?:number}){
     const at=Number.isFinite(input.at)?Number(input.at):Date.now();
@@ -81,7 +84,6 @@ export class MemoryPolicyOutcomeLedger {
     }
     if(index<0)return null;
     const d=this.state.pending[index]!;
-    this.state.pending.splice(index,1);
     const retention=clamp(input.retentionScore01),transfer=clamp(input.transferPotential01),interference=clamp(1-input.interferenceRisk01),causal=clamp(input.causalCredit01);
     const delayed=clamp(.55*causal+.25*retention+.12*transfer+.08*interference);
     const quality=clamp(.55*d.hit01+.25*retention+.20*causal);
@@ -91,14 +93,18 @@ export class MemoryPolicyOutcomeLedger {
     // represented as policy reward. Reward aggregates are verified-only.
     const reward=independentVerified?candidateReward:0;
     const outcome:MemoryPolicyDelayedOutcome={decisionId:d.id,policy:d.policy,contextKey:d.contextKey,quality01:quality,retention01:retention,transfer01:transfer,interference01:interference,computeCost01:d.computeCost01,delayed01:delayed,reward01:reward,causalCredit01:causal,independentVerified,at};
-    this.state.resolved++;
-    if(independentVerified){
-      this.state.verifiedResolved=(this.state.verifiedResolved??0)+1;
-      this.state.meanDelayedReward01=clamp(this.state.meanDelayedReward01*.92+reward*.08);
-      this.state.meanCausalCredit01=clamp(this.state.meanCausalCredit01*.92+causal*.08);
-    }else{
-      this.state.unverifiedResolved=(this.state.unverifiedResolved??0)+1;
+    if(!independentVerified){
+      // Verification may arrive after an initial replay. Keep the decision pending
+      // and record only an untrusted observation; it must not close the learning slot.
+      this.state.unverifiedAttempts=(this.state.unverifiedAttempts??0)+1;
+      this.state.lastOutcome=outcome;
+      return structuredClone(outcome);
     }
+    this.state.pending.splice(index,1);
+    this.state.resolved++;
+    this.state.verifiedResolved=(this.state.verifiedResolved??0)+1;
+    this.state.meanDelayedReward01=clamp(this.state.meanDelayedReward01*.92+reward*.08);
+    this.state.meanCausalCredit01=clamp(this.state.meanCausalCredit01*.92+causal*.08);
     this.state.lastOutcome=outcome;
     return structuredClone(outcome);
   }
