@@ -1,3 +1,13 @@
+## WorkPass 70 hotfix 1 — grapheme timing and continuum timescales (2026-10-19)
+- Fixed speech viseme segmentation to use grapheme clusters, while preserving the UTF-16 offsets emitted by browser SpeechSynthesis boundary events.
+- Added an explicit exclusive end offset for each grapheme frame; boundary indices inside combining/ZWJ sequences now map to that grapheme rather than the following frame.
+- Preserved the original UTF-16 positions across CR/LF/tab runs by replacing whitespace characters individually instead of collapsing the run.
+- Fixed a continuum-memory expression precedence bug: nullish-coalescing previously captured the subtraction's right operand, so the expert used fast/medium values rather than the intended fast-minus-medium and medium-minus-slow differences.
+- Added regression coverage for combining marks, regional-indicator flags, ZWJ emoji, whitespace offsets and the continuum timescale calculation.
+- Scope remains an implementation hotfix. Real browser/Live2D playback timing, Android TTS timing, independent retrieval uplift and production release gates remain open.
+
+---
+
 ## WorkPass 69 — keyed physical speech interruption and UI (2026-10-19)
 - Removed the duplicate `android.speak` physical executor; legacy calls resolve to the single canonical `organism.device.speak` owner.
 - Added `organism.device.speech.interrupt`, a target-bound, idempotency-keyed ActionGateway action. Ambiguous termination remains unknown; an accepted request explicitly does not prove that Android audio is silent.
