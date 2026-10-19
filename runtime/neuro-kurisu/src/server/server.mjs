@@ -8,6 +8,7 @@ import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
 import { ProcessLock } from '../organism/persistence/ProcessLock.ts';
 import { FileStateStore } from '../organism/persistence/FileStateStore.ts';
 import { idempotencyPreflightHttpStatus } from './idempotency-response.mjs';
+import { chooseLanguageBackend } from './local-language-backend-policy.mjs';
 import { RELEASE_CONTRACT } from '../organism/system/ReleaseContract.ts';
 import { resolvePhonePolicyConfig } from '../organism/system/PhoneRuntimePolicy.ts';
 import { authorizeApiRequest } from '../organism/system/ApiSecurityPolicy.ts';
@@ -66,7 +67,8 @@ const lock = new ProcessLock(path.join(STATE, 'organism-runtime.lock'));
 await lock.acquire();
 async function invokeLanguage(request) {
     const started = Date.now();
-    const preferredBackend = runtime.core.p40SelectModel('language', PHONE_MODE === false, request.maxTokens && request.maxTokens > 900 ? .82 : .72);
+    const ecologyPreferredBackend = runtime.core.p40SelectModel('language', PHONE_MODE === false, request.maxTokens && request.maxTokens > 900 ? .82 : .72);
+    const preferredBackend = chooseLanguageBackend({ localLlamaConfigured: LLAMA_CPP_PROVIDER.configured(), ecologyPreferredBackend });
     const effectiveBackend = preferredBackend === 'local-fallback'
         ? 'deterministic-policy-fallback'
         : preferredBackend;
