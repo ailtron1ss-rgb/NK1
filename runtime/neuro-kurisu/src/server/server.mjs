@@ -74,8 +74,8 @@ async function invokeLanguage(request) {
         ? 'deterministic-policy-fallback'
         : preferredBackend;
     const response = await generateLanguage({ ...request, preferredBackend: effectiveBackend });
-    LOCAL_LANGUAGE_BACKEND_POLICY.observe({ backend: String(response.backend ?? ''), failures: response.failures || [], now: finishedAt });
     const finishedAt = Date.now();
+    LOCAL_LANGUAGE_BACKEND_POLICY.observe({ backend: String(response.backend ?? ''), failures: response.failures || [], now: finishedAt });
     const backend = String(response.backend ?? effectiveBackend ?? 'unknown');
     const provider = backend.split(':')[0];
     const model = backend.includes(':') ? backend.split(':').slice(1).join(':') : undefined;
