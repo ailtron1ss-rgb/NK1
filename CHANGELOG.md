@@ -1,3 +1,13 @@
+## WorkPass71 — retrieval benchmark corpus parity (2026-10-19)
+- Fixed an evaluation fairness defect: BM25 previously indexed only the bounded first 1,600 rows, while the MemoryOS2 candidate restored the full snapshot. The candidate now receives the same bounded corpus as the baseline.
+- Truncated input still fails the corpus-integrity/promotion gate; this change improves diagnostic comparability and does not make truncated evaluation eligible.
+- Added a 1,601-row regression proving that an out-of-cap target is not visible to either arm.
+- Added the retrieval experiment regression to WorkPass71 GitHub Actions validation.
+- Added `docs/WORKPASS71_HANDOVER_2026-10-19.md` with current ownership/navigation, safe cleanup rules and next work queue.
+- No recall uplift or release-readiness improvement is claimed; CI result and independent holdout remain required.
+
+---
+
 ## WorkPass 70 hotfix 1 — grapheme timing and continuum timescales (2026-10-19)
 - Fixed speech viseme segmentation to use grapheme clusters, while preserving the UTF-16 offsets emitted by browser SpeechSynthesis boundary events.
 - Added an explicit exclusive end offset for each grapheme frame; boundary indices inside combining/ZWJ sequences now map to that grapheme rather than the following frame.
