@@ -34,6 +34,6 @@ assert.ok(fabric.summary().causalReplayCredit.meanCredit01>0);
 const duplicate=fabric.recordReplayValidation({...common,verification:proof,at:now+4});
 assert.equal(duplicate.id,promoted.id);
 assert.equal(fabric.summary().retention.validated,1);
-assert.equal(fabric.summary().adaptiveReplayGovernor.feedbackUpdates,1);
+assert.equal(fabric.summary().adaptiveReplayGovernor.feedbackUpdates,0,'verified replay without a prior adaptive-governor decision must not update an unrelated policy row');
 assert.equal(fabric.summary().causalReplayCredit.verifiedAssignments,1);
 console.log('WORKPASS72_VERIFICATION_PROVENANCE_BOUNDARY=PASS');
