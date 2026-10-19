@@ -74,7 +74,7 @@ export class B401B420AdaptiveCognitiveResearchCore {
     const memoryAction=ACTIONS.map(a=>{
       const rows=retrieval.filter(r=>r.p.action===a);return rows.length?clamp(.48+mean(rows.map(r=>(r.p.reward01-.5)*1.15))*rows.length/3):.5;
     });
-    const continuum=ACTIONS.map((_,i)=>clamp(.45+.36*(this.state.fastAction[i]??.5-this.state.mediumAction[i]??.5)+.22*(this.state.mediumAction[i]??.5-this.state.slowAction[i]??.5)));
+    const continuum=ACTIONS.map((_,i)=>clamp(.45+.36*((this.state.fastAction[i]??.5)-(this.state.mediumAction[i]??.5))+.22*((this.state.mediumAction[i]??.5)-(this.state.slowAction[i]??.5))));
     const idx=this.state.diagnostics.decisions%ACTIONS.length;
     const hidden=this.shiftHidden(ctx,idx,input.predictionError01);
     const stateScore=ACTIONS.map((_,i)=>clamp(.46+.20*hidden[i%hidden.length]+.18*hidden[(i+3)%hidden.length]+.12*(this.state.fastAction[i]??.5)));
