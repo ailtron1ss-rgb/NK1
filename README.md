@@ -1,3 +1,11 @@
+## Current engineering pass — WorkPass76 (2026-10-19)
+
+- Added [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md) as the persistent mission/working contract and new-chat resume protocol; linked it from [AGENTS.md](AGENTS.md).
+- Fixed a language invocation temporal-dead-zone defect: `finishedAt` is now initialized before `LocalLanguageBackendPolicy.observe()` reads it.
+- Added [language-invoke-order-regression.mjs](runtime/neuro-kurisu/tests/language-invoke-order-regression.mjs) and wired it into the active core GitHub Actions workflow.
+- Added [WorkPass76 repository surface audit and open-work register](docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md): 9,341 files / 857 directories at the audited tree, with explicit unresolved integration, memory, learning, action-recovery, hardware and cleanup gates.
+- **Validation boundary:** previous run [39318445086](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39318445086) passed on commit `cff909737e6af06a96d55612270392ba53b00173`, before the WorkPass76 code/test/workflow changes. A new CI run must pass before this pass is CI-verified. The source-order test is not a substitute for a live server request or local-model inference.
+
 ## Current engineering pass — WorkPass75 (2026-10-19)
 
 - Hardened local LLM circuit-breaker tests: deterministic injected-clock snapshots, exact cooldown boundary, exponential backoff, cap enforcement, success reset and isolation from unrelated provider failures.
