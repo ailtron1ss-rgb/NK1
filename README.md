@@ -1,10 +1,15 @@
 ## Current engineering pass — WorkPass76 (2026-10-19)
 
-- Added [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md) as the persistent mission/working contract and new-chat resume protocol; linked it from [AGENTS.md](AGENTS.md).
-- Fixed a language invocation temporal-dead-zone defect: `finishedAt` is now initialized before `LocalLanguageBackendPolicy.observe()` reads it.
-- Added [language-invoke-order-regression.mjs](runtime/neuro-kurisu/tests/language-invoke-order-regression.mjs) and wired it into the active core GitHub Actions workflow.
-- Added [WorkPass76 repository surface audit and open-work register](docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md): 9,341 files / 857 directories at the audited tree, with explicit unresolved integration, memory, learning, action-recovery, hardware and cleanup gates.
-- **Validation boundary:** previous run [39318445086](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39318445086) passed on commit `cff909737e6af06a96d55612270392ba53b00173`, before the WorkPass76 code/test/workflow changes. A new CI run must pass before this pass is CI-verified. The source-order test is not a substitute for a live server request or local-model inference.
+- Added [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md) as the durable project charter, new-chat resume protocol and evidence-based upstream research/integration mandate.
+- Added [Research Intake Ledger](docs/RESEARCH_INTAKE_LEDGER.md) with paper/repository candidates, adaptation boundaries, license/provenance checks and explicit status labels. Candidate links are a research queue, not claims of completed upstream review or integration.
+- Fixed the `invokeLanguage()` completion timestamp ordering defect; source regression checks timestamp order and prefers the actual response backend for attribution.
+- Added cold-retrieval residency regression and wired it into CI. It verifies retrieval does not materialize the legacy hash vector, promote cold memory or increment the legacy semantic-hit counter.
+- Wired temporal fact-revision, read-only temporal inspector and bounded revision-history regressions into the active workflow.
+- Added [runtime test reachability audit](tools/audit-runtime-test-coverage.mjs). On run [39320207064](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39320207064), the corrected audit passed: 1,200 runnable test-shaped files, 1,124 directly referenced, 76 unreferenced candidates, 1,647 package scripts, 1,308 explicit references and zero broken paths. The 76 are review candidates, not confirmed dead tests.
+- **CI evidence:** run [39320023335](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39320023335) passed the temporal regressions and core suite; run [39319849208](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39319849208) passed after cold-residency regression was wired. Check the current branch head and latest Actions status before relying on these historical run results.
+- **Still unproven:** a live HTTP chat request against a running server, real local `llama.cpp` inference/model quality, independent retrieval uplift, learning transfer, restart-safe action evidence, real browser/audio/Live2D E2E, target-hardware performance and subjective consciousness.
+
+Full findings and the updated queue: [WorkPass76 repository audit](docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md). The current rebuild/evidence gates remain in [WorkPass75 ledger](docs/WORKPASS75_REBUILD_AND_EVIDENCE_LEDGER_2026-10-19.md).
 
 ## Current engineering pass — WorkPass75 (2026-10-19)
 
