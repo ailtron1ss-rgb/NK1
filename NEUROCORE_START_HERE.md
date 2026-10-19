@@ -101,13 +101,13 @@ Treat this as a live queue. Verify branch head and Actions first; do not assume 
 - **PROVEN (CI on commit 23f9b534):** cold-memory residency regression passed in run [39319686397](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39319686397).
 - **PROVEN (CI on commit 268c127):** cold-memory regression wired into the core workflow and that run passed: [39319849208](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39319849208).
 - **IMPLEMENTED:** added current-mode / historical-mode revision and bounded revision-history regressions to the core workflow in commit `b8f144348bb756639c02234f5eb2fd3869607b22`.
-- **IMPLEMENTED:** added `tools/audit-runtime-test-coverage.mjs` and wired it into CI to detect missing test references, broken paths and dropped required regressions. Its first run is pending; do not call the audit green until observed.
+- **PROVEN (CI):** `tools/audit-runtime-test-coverage.mjs` passed in [run 39320207064](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39320207064): 1,200 runnable test-shaped files, 1,124 directly referenced, 76 unreferenced candidates, 1,647 package scripts, 1,308 explicit references, zero missing paths. The 76 remain review candidates, not confirmed dead tests.
 - **UNRESOLVED:** full live server/provider request, local model quality, independent memory uplift, learning transfer and consciousness remain unproven.
 
 ### Prioritized open queue
 
-1. Confirm the latest workflow on the current branch head, including the test-coverage audit and newly wired temporal regressions.
-2. Add an HTTP-level server test using a deterministic fake local provider; assert response body, actual backend attribution, latency and failure accounting. Keep default CI secret-free and model-free.
+1. Confirm the latest workflow on the current branch head, including the end-to-end fake-provider HTTP test and coverage audit.
+2. **IMPLEMENTED, CI PENDING:** `runtime/neuro-kurisu/tests/server-language-http-fake-provider.mjs` starts a real server and local fake provider, then checks actual chat HTTP response, backend attribution, latency and provider request identity. Record its final CI result before treating this path as proven.
 3. Add an opt-in live `llama.cpp` smoke test with timeout/cancellation, bounded output and cold/warm latency; execute on Dell G3 when accessible.
 4. Run independent RU/EN retrieval holdouts, same-corpus baseline, insertion-order/shuffle controls, leakage checks and uncertainty intervals. Previous `recallDelta=0` blocks uplift claims.
 5. Run learning-transfer / anti-forgetting ablations and test fact revision, selective forgetting, interference and evidence provenance.
