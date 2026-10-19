@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-19  
 **Branch:** `workpass70-source`  
-**Status:** verifier-provenance hardening committed at `732ac9772d3d427b2ab37ddae58e816bdcea51bf`; CI for this commit is pending. Previous baseline CI passed at `d2791939f1db608e55f51a7e1369e26e836758bd`. Not a production approval.
+**Status:** WorkPass72 verifier-provenance hardening and expanded regression CI passed at `87564ddfd1f0d8758994c3ab0edb45511434a1b5` ([GitHub Actions run](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39302836266)). This validates the current targeted/regression workflow only; it is not production approval.
 
 ## Behavioral defect found
 
@@ -59,3 +59,11 @@ The first expanded runtime CI got through the retrieval parity/numeric/fuzzy/con
 3. Establish and label a real independent retrieval corpus and evaluate recall@k/MRR, paired uncertainty and temporal leakage.
 4. Measure p50/p95 retrieval latency, heap/RSS, allocation and thermal/battery impact on the actual target device; don't infer device behavior from desktop CI.
 5. Keep real browser/Live2D E2E, Android TTS clock, production build/release contract, license audit and soak tests open until directly observed.
+
+
+## Final validation follow-up — 2026-10-19
+
+- Expanded WorkPass71 validation run `39302836266` completed **success** on `87564ddfd1f0d8758994c3ab0edb45511434a1b5`. Canonical asset ownership audit, grapheme timeline tests, app script regression suite, app typecheck, development bundle build, runtime typecheck and the full configured speech/memory/retrieval/policy regression tail passed.
+- The verification-provenance test now asserts the exact replay-event identity captured from runtime state. Its adaptive replay-governor assertion correctly expects no policy update when no matching prior governor decision exists; verified causal replay-credit promotion remains required and is asserted separately. Duplicate proof delivery must remain idempotent.
+- This is **IMPLEMENTED + CI-OBSERVED** correctness evidence for the configured tests. It does not establish that an upstream verifier is inherently truthful, that replay improves real-world recall, or that the organism is production-ready.
+- Open gates remain: independent labelled retrieval holdout (`recallDelta` is still 0 / `not-promoted`), real browser/Live2D audio E2E, physical Android/Termux TTS and cancellation evidence, real external action/provider verification, production build/migration/rollback, full license/SBOM review, target-device performance and 24–72 hour soak.
