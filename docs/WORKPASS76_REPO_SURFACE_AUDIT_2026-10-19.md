@@ -139,3 +139,14 @@ The next session should start from the live branch head and current Actions stat
 - [ ] Finish dependency/import/license/asset inventory and browser/audio/Live2D + soak measurements.
 
 No quality uplift, actual local model quality, autonomous agency, or subjective consciousness is established by these regressions.
+
+
+## Coverage audit result — corrected run observed
+
+- **PROVEN (CI):** corrected coverage audit passed in [run 39320207064](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39320207064) on code/workflow commit `47e57880d58398f08011cb68bd2fd2e1d6e6e3d1`.
+- **OBSERVED:** 1,200 runnable test-shaped files; 1,124 directly referenced from package scripts or the active workflow; 76 unreferenced candidates; 1,647 package scripts; 1,308 explicit test-path references; zero broken references; required regression list present.
+- **Interpretation:** the 76 files are investigation candidates, not proven dead tests. Some may be invoked dynamically, through aggregate runners, or intentionally preserved as historical experiments. Do not delete them based on this report.
+- **OBSERVED:** duplicate direct references were reported for some tests. This can mean a test is intentionally run in more than one aggregate/script; inspect runtime cost and intent before deduplicating.
+- **CI status boundary:** the audit and temporal regressions are green on the relevant code/workflow commits. The latest branch head must still be checked at session start; documentation-only commits after the tested code do not change the tested runtime, but they are not themselves a new runtime measurement.
+
+The next useful improvement is to enrich the static audit with script-to-script reachability and dynamic-runner inspection, then inspect the 76 unreferenced candidates against imports, generated test manifests, docs and historical provenance. Keep the output as an auditable report; do not automatically remove files.
