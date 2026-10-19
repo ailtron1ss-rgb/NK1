@@ -1,5 +1,5 @@
 ## WorkPass71 — retrieval benchmark corpus parity (2026-10-19)
-- Fixed an evaluation fairness defect: BM25 previously indexed only the bounded first 1,600 rows, while the MemoryOS2 candidate restored the full snapshot. The candidate now receives the same bounded corpus as the baseline.
+- Fixed an evaluation fairness defect: BM25 filtered malformed rows, while the MemoryOS2 candidate previously restored them. Invalid rows could occupy top-k positions in only the candidate arm. Candidate now restores the exact validated corpus used by BM25; malformed/truncated input still blocks promotion.
 - Truncated input still fails the corpus-integrity/promotion gate; this change improves diagnostic comparability and does not make truncated evaluation eligible.
 - Added regressions for a 1,601-row cap boundary and malformed-row parity, proving both arms see the same valid corpus.
 - Added the retrieval experiment regression to WorkPass71 GitHub Actions validation.
