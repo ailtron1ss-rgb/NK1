@@ -7,8 +7,10 @@ const memory={id:'verification-boundary-memory',content:'A replay validation who
 fabric.observe(memory,{tick:1,at:now,novelty01:.8,identityContinuity01:.8,valueStability01:.8,evidenceSupport01:.8,activeGoalIds:['goal-proof']});
 const replay=fabric.reactivate(memory.id,now+1); assert.ok(replay);
 const common={memoryId:memory.id,retentionScore01:.9,baselineScore01:.6,delayMs:86400000,transferPotential01:.8,interferenceRisk01:.1,evidenceKey:'same-evidence-lineage',taskId:'proof-boundary',contextKey:'proof-boundary',replayEventId:`replay:${memory.id}:${now+1}`,at:now+2};
+const priorityBefore=fabric.snapshot().graphNodes.find(x=>x.memoryId===memory.id).replayPriority01;
 const first=fabric.recordReplayValidation({...common,independentVerified:true});
 assert.equal(first.independentVerified,false,'bare caller boolean must be ignored');
+assert.equal(fabric.snapshot().graphNodes.find(x=>x.memoryId===memory.id).replayPriority01,priorityBefore,'unverified evidence must not mutate replay priority');
 assert.equal(fabric.summary().retention.validated,0);
 assert.equal(fabric.summary().adaptiveReplayGovernor.feedbackUpdates,0);
 assert.equal(fabric.causalReplayCreditDiagnostics().verifiedAssignments,0);
