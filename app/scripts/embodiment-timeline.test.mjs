@@ -44,7 +44,7 @@ function intent(overrides = {}) {
 test("builds grapheme-level viseme frames with UTF-16 offsets for SpeechSynthesis boundary events", () => {
   const text = "Курису 🙂 говорит!";
   const timeline = buildVisemeTimeline(text, 0.96, "ru-RU");
-  assert.equal(timeline.length, Array.from(text).length);
+  assert.equal(timeline.length, Array.from(new Intl.Segmenter("ru-RU", { granularity: "grapheme" }).segment(text)).length);
   assert.equal(timeline[0].charIndex, 0);
   const emojiIndex = text.indexOf("🙂");
   const afterEmoji = timeline.find((frame) => frame.charIndex > emojiIndex);
@@ -55,6 +55,22 @@ test("builds grapheme-level viseme frames with UTF-16 offsets for SpeechSynthesi
     assert.ok(timeline[i].charIndex > timeline[i - 1].charIndex, "character offsets must be ordered");
   }
   assert.ok(timeline.at(-1).endMs > 500, "non-empty phrases need a useful playback timeline");
+});
+
+test("combining marks, flags and joined emoji stay in one grapheme frame with UTF-16 boundary offsets", () => {
+  const text = "a\u0308 🇳🇱 👩‍🔬";
+  const timeline = buildVisemeTimeline(text, 1, "en-US");
+  const expected = Array.from(new Intl.Segmenter("en-US", { granularity: "grapheme" }).segment(text));
+  assert.equal(timeline.length, expected.length);
+  assert.deepEqual(timeline.map((frame) => frame.charIndex), expected.map((part) => part.index));
+  assert.equal(timeline[0].charIndex, 0);
+  const flagIndex = text.indexOf("🇳🇱");
+  const joinedEmojiIndex = text.indexOf("👩‍🔬");
+  assert.equal(timeline.find((frame) => frame.charIndex === flagIndex)?.charIndex, flagIndex);
+  assert.equal(timeline.find((frame) => frame.charIndex === joinedEmojiIndex)?.charIndex, joinedEmojiIndex);
+  assert.equal(timeline.filter((frame) => frame.charIndex >= joinedEmojiIndex && frame.charIndex < joinedEmojiIndex + "👩‍🔬".length).length, 1);
+  const base = timelineOffsetForCharIndex(timeline, 1);
+  assert.equal(base, timeline[0].startMs, "an offset inside a combining grapheme maps to its own frame");
 });
 
 test("Russian and English graphemes map to distinct mouth shapes", () => {
