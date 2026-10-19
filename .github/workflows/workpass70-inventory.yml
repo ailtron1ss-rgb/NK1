@@ -84,10 +84,12 @@ jobs:
               raise SystemExit("Unsafe archive paths detected; unsafe entries were skipped.")
           PY
 
-      - name: Upload inventory artifact
+      - name: Upload inventory and verified source archive
         uses: actions/upload-artifact@v4
         with:
-          name: workpass70-source-inventory
-          path: ${{ runner.temp }}/workpass70-inventory.json
+          name: workpass70-source-bundle
+          path: |
+            ${{ runner.temp }}/workpass70-inventory.json
+            ${{ runner.temp }}/workpass70.zip
           if-no-files-found: error
           retention-days: 14
