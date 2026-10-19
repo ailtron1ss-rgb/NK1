@@ -9,6 +9,7 @@ on:
       - "runtime/neuro-kurisu/tests/**"
       - ".github/workflows/workpass71-validation.yml"
       - "tools/audit-assets.mjs"
+      - "tools/audit-runtime-test-coverage.mjs"
       - "contracts/inventory/canonical-public-assets-workpass42.json"
       - "app/scripts/sync-canonical-public-assets.mjs"
       - "app/scripts/sync-canonical-public-assets.test.mjs"
@@ -40,6 +41,8 @@ jobs:
         run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Audit canonical public asset ownership
         run: node tools/audit-assets.mjs
+      - name: Audit runtime test reachability and required coverage
+        run: node tools/audit-runtime-test-coverage.mjs
       - name: Validate grapheme timeline
         run: npm --prefix app run test:embodiment-timeline
       - name: Run app script regression suite
