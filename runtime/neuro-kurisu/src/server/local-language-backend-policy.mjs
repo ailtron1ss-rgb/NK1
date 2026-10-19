@@ -2,11 +2,6 @@
  * Resolve language backend priority and temporarily cool down a local endpoint
  * after repeated failures. Configuration selects preference, not health.
  */
-export function chooseLanguageBackend({ localLlamaConfigured, ecologyPreferredBackend }) {
-  if (localLlamaConfigured === true) return 'llama.cpp';
-  return String(ecologyPreferredBackend || 'local-fallback');
-}
-
 export class LocalLanguageBackendPolicy {
   constructor({ baseCooldownMs = 15_000, maxCooldownMs = 300_000 } = {}) {
     this.baseCooldownMs = Math.max(250, Math.min(300_000, Math.floor(Number(baseCooldownMs) || 15_000)));
@@ -24,7 +19,7 @@ export class LocalLanguageBackendPolicy {
     if (String(backend).startsWith('llama.cpp:')) {
       this.consecutiveFailures = 0;
       this.cooldownUntil = 0;
-      return this.snapshot();
+      return this.snapshot({ now });
     }
     const localFailure = Array.isArray(failures) && failures.some(value => String(value).startsWith('llama.cpp:'));
     if (localFailure) {
@@ -32,14 +27,14 @@ export class LocalLanguageBackendPolicy {
       const exponent = Math.min(10, this.consecutiveFailures - 1);
       this.cooldownUntil = now + Math.min(this.maxCooldownMs, this.baseCooldownMs * (2 ** exponent));
     }
-    return this.snapshot();
+    return this.snapshot({ now });
   }
 
-  snapshot() {
+  snapshot({ now = Date.now() } = {}) {
     return {
       consecutiveFailures: this.consecutiveFailures,
       cooldownUntil: this.cooldownUntil,
-      coolingDown: this.cooldownUntil > Date.now(),
+      coolingDown: this.cooldownUntil > now,
     };
   }
 }
