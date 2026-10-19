@@ -9,6 +9,7 @@ const buttonVariants = cva(
       variant: {
         default: "bg-accent text-accent-fg hover:bg-accent/90",
         secondary: "border border-border bg-elevated text-fg hover:bg-surface",
+        outline: "border border-border bg-transparent text-fg hover:bg-elevated",
         ghost: "text-muted hover:text-fg hover:bg-elevated",
         ember: "bg-ember text-fg hover:bg-ember/90",
       },
