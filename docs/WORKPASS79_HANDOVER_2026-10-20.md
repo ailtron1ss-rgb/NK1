@@ -163,3 +163,13 @@ No external benchmark data or code has been copied into NK1. Verify licences and
 - Recall, MRR and precision are calculated over answerable queries only. Reports separately expose `answerableQueries`, `unanswerableQueries`, `unsupportedRetrievalCount`, `unsupportedRetrievalRate01`, `correctAbstentionRate01`, `falseAbstentionCount` and `falseAbstentionRate01`.
 - Candidate promotion now requires non-regression in unsupported retrieval versus the same-corpus BM25 baseline. The fixture includes 8 answerable and 2 unanswerable RU/EN holdout queries.
 - This is still a synthetic harness. **No external-data quality claim, retrieval uplift, or consciousness claim is supported.** The current branch must pass its own Actions run before this work is considered verified.
+
+
+## WorkPass86 — dataset provenance and content-hash binding (2026-10-20)
+
+**IMPLEMENTED in branch; exact-head CI pending.**
+
+- Report schema is now v4 because WorkPass85 changed the metric contract.
+- Promotion provenance requires dataset ID/version, source reference, labeling protocol, a declared license identifier, and a SHA-256 equal to the benchmark's canonical dataset fingerprint. The report exposes `contentHashValid` for audit.
+- The synthetic fixture uses `LicenseRef-NK1-Synthetic-Fixture` solely as repository-local test metadata. No claim is made that this is an external dataset or that a real third-party license was checked.
+- A deliberate hash mismatch is covered by regression and must block promotion with `dataset-provenance-incomplete`.

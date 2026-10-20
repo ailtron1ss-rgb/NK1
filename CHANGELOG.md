@@ -944,3 +944,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Recall/MRR/precision now use answerable queries only; the report separately records unanswerable-query count, unsupported retrieval rate, correct abstention rate, false-abstention count and rate. Promotion gates require the candidate's unsupported-retrieval rate not to regress against BM25.
 - Expanded the fixed RU/EN synthetic harness from 8 to 10 holdout queries (8 answerable, 2 unanswerable). This tests metric integrity only; it is not an independent human-labelled dataset and cannot support a quality-uplift claim.
 - Exact-head GitHub Actions validation is pending for this commit; do not mark WorkPass85 PASS until its run succeeds.
+
+
+## WorkPass86 — bind benchmark provenance to the exact dataset (2026-10-20)
+
+- Retrieval benchmark report schema advanced to v4 after adding abstention metrics.
+- Promotion provenance now requires a license identifier (SPDX ID or explicit repository-scoped `LicenseRef`) and a SHA-256 matching the canonical labelled-example fingerprint. Missing, malformed or mismatched hashes block promotion; they are not silently accepted as metadata.
+- Regression test derives the fixture hash from the benchmark's canonical fingerprint and verifies a deliberately wrong hash blocks promotion. The fixture's `LicenseRef` is internal test metadata, not a claim that the synthetic fixture is an externally licensed benchmark.
+- GitHub Actions is the execution authority; update this receipt only after the exact new head finishes.

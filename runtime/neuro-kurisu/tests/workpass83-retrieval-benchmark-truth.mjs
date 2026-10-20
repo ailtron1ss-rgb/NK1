@@ -46,13 +46,19 @@ const examples = [
   { id: 'abstain-en-9', query: 'xenolith quasar tetrad unfound archive', relevantIds: [], split: 'holdout', answerable: false },
   { id: 'abstain-ru-10', query: 'кварк ксенолит вымышленный архив отсутствующий', relevantIds: [], split: 'holdout', answerable: false },
 ];
-const provenance = {
+const provenanceBase = {
   datasetId: 'nk1-workpass83-synthetic-fixture',
   datasetVersion: '1',
   sourceRef: 'repository:test-fixture',
   labelingProtocol: 'Each query is paired with the single document whose fixed source text contains the query concepts; synthetic test only, not external evidence.',
+  licenseId: 'LicenseRef-NK1-Synthetic-Fixture',
 };
 const before = JSON.stringify(memory.snapshot());
+const fingerprintProbe = runMemoryOS2RetrievalBenchmark(memory.snapshot(), examples, {
+  now, k: 3, minHoldoutQueries: 8, bootstrapSamples: 200, seed: 83,
+  datasetProvenance: provenanceBase, maxExamples: 64,
+});
+const provenance = { ...provenanceBase, contentSha256: fingerprintProbe.datasetFingerprint };
 const report = runMemoryOS2RetrievalBenchmark(memory.snapshot(), examples, {
   now, k: 3, minHoldoutQueries: 8, bootstrapSamples: 200, seed: 83,
   datasetProvenance: provenance, maxExamples: 64,
@@ -73,7 +79,16 @@ assert.ok(Number.isFinite(report.metrics.baseline.recallAtK01));
 assert.ok(Number.isFinite(report.metrics.candidate.mrr01));
 assert.equal(report.promotion.status, report.promotion.allowed ? 'candidate-eligible-for-separate-review' : 'not-promoted',
   'promotion status must faithfully reflect all gates; this fixture is not independent scientific evidence');
+assert.equal(report.schemaVersion, 4, 'metric shape changes must advance the report schema');
 assert.equal(report.datasetProvenance.datasetId, 'nk1-workpass83-synthetic-fixture');
+assert.equal(report.datasetProvenance.contentHashValid, true, 'provenance hash must bind to the exact canonical dataset');
+const badHashReport = runMemoryOS2RetrievalBenchmark(memory.snapshot(), examples, {
+  now, k: 3, minHoldoutQueries: 8, bootstrapSamples: 200, seed: 83,
+  datasetProvenance: { ...provenance, contentSha256: '0'.repeat(64) }, maxExamples: 64,
+});
+assert.equal(badHashReport.datasetProvenance.contentHashValid, false);
+assert.equal(badHashReport.promotion.allowed, false, 'a mismatched dataset content hash must block promotion');
+assert.equal(badHashReport.promotion.reason, 'dataset-provenance-incomplete');
 
 const leaked = [...examples, { ...examples[0], id: 'leaked-copy', split: 'holdout' }];
 const leakReport = runMemoryOS2RetrievalBenchmark(memory.snapshot(), leaked, {

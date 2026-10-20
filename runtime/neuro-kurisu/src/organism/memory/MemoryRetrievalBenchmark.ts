@@ -19,6 +19,10 @@ export interface MemoryRetrievalBenchmarkProvenance {
   sourceRef?: string;
   /** How independent annotators or a fixed labeling policy assigned relevant IDs. */
   labelingProtocol?: string;
+  /** SPDX license identifier or a repository-scoped LicenseRef; never a guessed license. */
+  licenseId?: string;
+  /** SHA-256 of the canonical labelled examples, bound to this exact dataset fingerprint. */
+  contentSha256?: string;
 }
 
 export interface MemoryRetrievalBenchmarkOptions {
@@ -304,8 +308,9 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
     mrr01:pairedBootstrapInterval(baselineEval.outcomes,candidateEval.outcomes,'mrr01',bootstrapSamples,seed^0x9e3779b9),
   };
   const provenanceInput=options.datasetProvenance??{};
-  const provenance={datasetId:textField(provenanceInput.datasetId,120),datasetVersion:textField(provenanceInput.datasetVersion,120),sourceRef:textField(provenanceInput.sourceRef,240),labelingProtocol:textField(provenanceInput.labelingProtocol,500)};
-  const provenanceComplete=Boolean(provenance.datasetId&&provenance.datasetVersion&&provenance.sourceRef&&provenance.labelingProtocol);
+  const provenance={datasetId:textField(provenanceInput.datasetId,120),datasetVersion:textField(provenanceInput.datasetVersion,120),sourceRef:textField(provenanceInput.sourceRef,240),labelingProtocol:textField(provenanceInput.labelingProtocol,500),licenseId:textField(provenanceInput.licenseId,120),contentSha256:textField(provenanceInput.contentSha256,64).toLowerCase()};
+  const contentHashValid=/^[a-f0-9]{64}$/.test(provenance.contentSha256)&&provenance.contentSha256===datasetFingerprint;
+  const provenanceComplete=Boolean(provenance.datasetId&&provenance.datasetVersion&&provenance.sourceRef&&provenance.labelingProtocol&&provenance.licenseId&&contentHashValid);
   const labelledHoldoutQueries=holdout.filter(x=>x.answerable!==false).length;
   const enoughEvidence=labelledHoldoutQueries>=minHoldout&&dataIntegrity.uniqueTrainQueries>=4&&corpus.length>=12;
   const baselineMetrics=baselineEval.metrics;const candidateMetrics=candidateEval.metrics;
@@ -338,11 +343,11 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const promotionAllowed=Object.values(promotionGates).every(Boolean);
   const reason=!seedInputValid?'invalid-bootstrap-seed':!corpusIntegrity.validForPromotion?'corpus-integrity-failed':!dataIntegrity.validForPromotion?'dataset-integrity-failed':!provenanceComplete?'dataset-provenance-incomplete':!enoughEvidence?'insufficient-labelled-holdout-or-corpus':!quarantineSafe?'candidate-returned-quarantined-memory':!staleSafe?'candidate-returned-out-of-window-memory':!dormantSafe?'candidate-returned-dormant-memory':!epistemicStatusSafe?'candidate-returned-invalid-epistemic-status':!validRateSafe?'candidate-result-integrity-regression':!abstentionSafe?'unsupported-retrieval-rate-regression':recallDelta<minUplift?'recall-uplift-below-threshold':!confidenceSupported?'recall-uplift-not-confidence-supported':!mrrNonInferioritySupported?'mrr-regression-not-confidence-bounded':mrrDelta < -mrrTolerance?'mrr-regression-exceeds-tolerance':'holdout-gates-passed';
   return {
-    schemaVersion:3 as const,benchmark:'memoryos2-retrieval-vs-bm25-baseline',retrievalAlgorithmVersion:RETRIEVAL_ALGORITHM_VERSION,mode:'offline-clone; no-live-state-mutation' as const,latencyDefinition:'p95 measures retrieval only; isolationSetupP95Ms is reported separately',
+    schemaVersion:4 as const,benchmark:'memoryos2-retrieval-vs-bm25-baseline',retrievalAlgorithmVersion:RETRIEVAL_ALGORITHM_VERSION,mode:'offline-clone; no-live-state-mutation' as const,latencyDefinition:'p95 measures retrieval only; isolationSetupP95Ms is reported separately',
     now,k,corpusSize:corpus.length,trainQueries:train.length,holdoutQueries:holdout.length,datasetFingerprint,corpusFingerprint:corpusHash,retrievalConfigurationFingerprint:retrievalConfigHash,corpusIntegrity,
     datasetIntegrity:{...dataIntegrity,validForPromotion:dataIntegrity.validForPromotion&&provenanceComplete,provenanceComplete},
     experimentConfiguration:{seedInputValid,requestedSeed:seedWasProvided?(Number.isFinite(requestedSeed)?requestedSeed:String(options.seed)):'auto-derived',effectiveSeed:seed,maximumMrrRegression01:mrrTolerance},
-    datasetProvenance:provenance,
+    datasetProvenance:{...provenance,contentHashValid},
     baselineConfiguration,baselineConfigurationFingerprint,
     metrics:{baseline:baselineMetrics,candidate:candidateMetrics,train:{baseline:trainBaseline.metrics,candidate:trainCandidate.metrics}},
     deltas:{recallAtK01:Number(recallDelta.toFixed(4)),mrr01:Number(mrrDelta.toFixed(4))},confidence,
