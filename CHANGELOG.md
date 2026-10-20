@@ -1,3 +1,9 @@
+## NK1 learning WorkPass104 — feature-schema migration regression (2026-10-20)
+
+- Added a dedicated regression that restores a legacy 15-feature policy snapshot into the expanded 18-feature basis and verifies old weights remain attached to their semantic feature names, especially `actionCost`.
+- Wired the migration regression into `test:learning-replay` so the same Actions gate exercises replay, holdout provenance, sequential learning and feature-schema compatibility.
+- **Evidence status:** exact-head Actions is pending.
+
 ## NK1 learning WorkPass104 follow-up — balance consolidation in context-aware replay (2026-10-20)
 
 - The first context-aware CI probe showed that merely adding interaction features is not enough: with a very low replay budget/rate, Task A fell to 1.25% while Task B reached 99.375%. This was a real retention failure, not a test harness issue.

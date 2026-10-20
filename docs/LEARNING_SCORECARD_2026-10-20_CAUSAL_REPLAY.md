@@ -2,12 +2,12 @@
 
 **Branch:** `rebuild`  
 **Scope:** P26 parametric learner + causal-experience replay path  
-**Status:** code and regression suite passed on exact code head `db5f1a0850d9987ffec3ffe0f449c8ef97fb0c48`; documentation updates trigger a fresh run.  
+**Status:** WorkPass104 implementation and synthetic regressions passed on exact code head `86a741e74bde63ed6194fc3a7a24b7152087fac7` (Actions run [39429062750](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39429062750)); scorecard documentation update triggers a fresh run.  
 **Interpretation:** percentages are engineering coverage estimates, not measured intelligence or task-success rates.
 
 ## Progress estimates
 
-- P26 replay/holdout instrumentation implementation coverage: **70%** (engineering estimate, not a measured success rate).
+- P26 replay/holdout and contextual-feature implementation coverage: **74%** (engineering estimate, not a measured success rate).
 - Outcome-grounded learning evidence maturity: **40%** (independent-evidence registration exists; external task outcomes remain unproven).
 - End-to-end continual-learning ambition across memory, policy, skills and transfer: **32%**.
 - Current learning-system engineering score: **58/100** (unchanged; synthetic retention tests expose a forgetting/replay trade-off but do not establish external-task uplift).
@@ -36,7 +36,7 @@ These are not interchangeable metrics. The implementation percentage tracks pres
 | Replay diversity across actions/contexts | 70 | Measure retention/transfer on controlled sequential tasks |
 | Priority signal quality | 52 | Priority is heuristic; calibrate against verified utility |
 | Skill formation and promotion | 61 | Independent verification must govern all promotion routes |
-| Contextual transfer | 58 | External-task and cross-domain holdout evidence |
+| Contextual transfer | 61 | Interaction features are added; independent external-task and cross-domain holdout evidence remains open |
 | Delayed credit assignment | 63 | Validate causal attribution against intervention controls |
 | Calibration and uncertainty | 43 | Reliability curves and abstention metrics on holdout |
 | Benchmark and baselines | 48 | Sequential synthetic task shift now measures retention/plasticity; independent external task outcomes remain open |
@@ -53,6 +53,25 @@ These are not interchangeable metrics. The implementation percentage tracks pres
 - **MemSkill:** explore evolving *how to remember* separately from stored experience, after provenance and retention are stronger. Source: https://github.com/ViktorAxelsen/MemSkill
 
 No third-party source code or datasets were copied in this pass. Recheck licences and dependencies before importing any implementation.
+
+
+## WorkPass102–104 — interleaving, conflict gating and contextual feature basis
+
+- Added experimental `P26TrueLearningEngine.trainInterleaved` with bounded update counts, separate current/replay learning-rate controls, TD-target default, and a direct-reward option for controlled supervised-style comparisons.
+- Added same-action, nearest-state conflict screening: strongly contradictory outcomes for near-identical states can be excluded from replay. This adapts the principle of blocking inconsistent replay from the 2026 A2ER/O2S study, not its implementation.
+- Expanded the P26 feature basis from 15 to 18 features with energy×novelty, energy×goal-pressure and novelty×goal-pressure interactions. Restore maps old weights by feature name so the previous action-cost weight is not reassigned to a new feature.
+- CI evidence, synthetic only: context-free contradictory targets still force a plasticity/consolidation trade-off. In the latest passing benchmark, online-only reached Task A 1.25% after interference and Task B 99.375%; post-hoc replay reached Task A 1.25%→2.5% and Task B 95.625%; conflict-gated interleaving reached Task A 1.25% and Task B 99.375%, with 5,648 conflicting replay records blocked and 1,256 replay updates. This is not a win in old-task retention.
+- Context-separated synthetic test: Task A 98.75% before task B, Task A 100% after, Task B 90%; 20,160 eligible replay records, zero blocked. This supports only the tested synthetic setup; it is not external-task evidence.
+- Exact-head CI: [run 39429062750 — PASS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39429062750), code head `86a741e74bde63ed6194fc3a7a24b7152087fac7`.
+- **Important integration boundary:** `trainInterleaved` remains an experimental API not yet wired into the ordinary runtime learning caller. Therefore overall learning-system score stays **58/100**; outcome evidence maturity stays **40%**, and end-to-end continual-learning scope stays **32%**. The engineering-coverage estimate rises to 74% because the feature/migration/replay mechanisms are implemented, not because generalization is proven.
+
+### New research/source comparison
+
+- **Kobayashi (Frontiers in Artificial Intelligence, 19 Feb 2026), “Improvements to dark experience replay and reservoir sampling…”** proposes adaptive consolidation/plasticity, blocking inconsistent replay, correcting stale outputs, and multiple connected reservoirs. NK1 currently adapts conflict screening and keeps the design dependency-free; adaptive weighting and multi-buffer storage remain future work. https://doi.org/10.3389/frai.2026.1649239
+- **ARROW (Cerenaut)** proposes short-term plus long-term distributions and replay through a world model. The Python/PyTorch/DreamerV3 pipeline is not suitable for direct wholesale import into NK1's TypeScript/mobile runtime; its two-timescale buffer design remains a source candidate. https://github.com/Cerenaut/ARROW
+- **Dark Experience Replay + reservoir sampling (MIT-licensed example)** stores old outputs as well as experiences; useful as a research baseline, but a logits-distillation pipeline is not a drop-in fit for the current small parametric policy. https://github.com/FabriDeCastelli/dark-experience-replay
+
+No third-party implementation or dataset was copied. The feature-schema migration regression is added to the learning-replay CI group; its exact-head result is pending.
 
 ## Evidence boundary
 

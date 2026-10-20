@@ -1677,6 +1677,7 @@
     "test:causal-replay-benchmark": "node --experimental-strip-types tests/causal-replay-sampler-benchmark.mjs",
     "test:p26:holdout-provenance": "node --experimental-strip-types tests/p26-holdout-provenance.mjs",
     "test:p26:sequential-benchmark": "node --experimental-strip-types tests/p26-sequential-learning-benchmark.mjs",
-    "test:learning-replay": "npm run test:causal-replay-sampler && npm run test:causal-replay-benchmark && node --experimental-strip-types tests/big-pass-115-causal-replay.mjs && npm run test:p26:true-learning && npm run test:p26:holdout-provenance && npm run test:p26:sequential-benchmark"
+    "test:p26:feature-schema-migration": "node --experimental-strip-types tests/p26-feature-schema-migration.mjs",
+    "test:learning-replay": "npm run test:p26:feature-schema-migration && npm run test:causal-replay-sampler && npm run test:causal-replay-benchmark && node --experimental-strip-types tests/big-pass-115-causal-replay.mjs && npm run test:p26:true-learning && npm run test:p26:holdout-provenance && npm run test:p26:sequential-benchmark"
   }
 }
