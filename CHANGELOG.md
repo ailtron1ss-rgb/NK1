@@ -1,3 +1,9 @@
+## WorkPass88 — reject silent benchmark-label truncation (2026-10-20)
+
+- Retrieval benchmark reports now count source rows whose IDs, query text, or relevance labels exceed canonical bounds; bounded diagnostic execution is allowed, but `datasetIntegrity.validForPromotion` becomes false.
+- Bumped benchmark report schema to v5 and added a regression with 25 relevance IDs, ensuring truncating the 25th label cannot silently authorize promotion.
+- Synthetic fixture/harness-only change: no external-data quality uplift is claimed. Verify exact-head GitHub Actions before marking PASS.
+
 ## WorkPass83 — проверка честности retrieval benchmark (2026-10-20)
 
 - Добавлен `tests/workpass83-retrieval-benchmark-truth.mjs`: фиксированный двуязычный корпус из 12 воспоминаний, 4 train-запроса и 8 holdout-запросов, сопоставление метрик кандидата с Okapi BM25 и bootstrap-конфигурацией.
