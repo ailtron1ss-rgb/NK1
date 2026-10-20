@@ -206,3 +206,20 @@ No external benchmark data or code has been copied into NK1. Verify licences and
 - **PASS:** [GitHub Actions run 39378152687](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39378152687), exact head `7d56d67a9c8cec7617340f607d199be4bd5859f7`.
 - The new WorkPass88 benchmark label-truncation guard passed, as did script integrity, cold-memory residency, WorkPass87 supersession recovery, WorkPass83/85/86 benchmark integrity/abstention/provenance, local provider policy/boundary, end-to-end caller cancellation, and controlled-provider server smoke.
 - Evidence scope is regression integrity only. The run does not measure external retrieval quality, real llama.cpp latency, continual-learning gains, or consciousness.
+
+
+## WorkPass89 — confidence-bounded abstention gate (2026-10-20)
+
+**Status:** implemented in `MemoryRetrievalBenchmark.ts`; regression assertions added to `workpass83-retrieval-benchmark-truth.mjs`. Await exact-head GitHub Actions verification before treating the pass as validated.
+
+- Added `maximumUnsupportedRetrievalRegression01` (default `0`, bounded to `0..0.25`).
+- Added paired bootstrap interval for the per-query unsupported-retrieval indicator on unanswerable holdout examples; report includes lower bound, median delta and upper bound.
+- Promotion now requires both the point-estimate abstention non-inferiority gate and a confidence-bound gate (`upperBound01 <= tolerance`). The failure reason distinguishes confidence uncertainty from a point-estimate regression.
+- Bumped benchmark schema to v6 and added regression checks that the configured sample count and promotion gate are reflected in the report.
+- **Evidence boundary:** this improves promotion conservatism only. It does not improve retrieval by itself, and the current RU/EN fixture is synthetic, not independent human-labelled evidence. No live llama.cpp, full cognitive uplift, or consciousness claim is implied.
+
+### Next gates
+
+1. Obtain a lawful, independently human-labelled RU/EN dataset and freeze its version/hash before tuning.
+2. Run the benchmark repeatedly on a real, fixed corpus; check bootstrap stability across independent seeds and stratify answerable/unanswerable queries by language and scenario.
+3. Validate actual local inference and resource behavior on Dell G3; keep controlled-provider CI explicitly separate from live-model evidence.
