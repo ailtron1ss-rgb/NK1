@@ -61,7 +61,7 @@ assert.throws(()=>buildContinualOutcomeMatrix(ledger,[{stageId:'x',method:'check
 assert.throws(()=>buildContinualOutcomeMatrix(ledger,[{stageId:'x',method:'checkpoint-1'}]),/stage count must equal task count/);
 assert.throws(()=>buildContinualOutcomeMatrix(ledger,[{stageId:'x',method:'checkpoint-1'},{stageId:'y',method:'checkpoint-2'}],{preTrainingMethod:'checkpoint-1'}),/distinct from checkpoint methods/);
 const sparse = new VerifiedOutcomeLedger(manifest);
-assert.throws(()=>buildContinualOutcomeMatrix(sparse,[{stageId:'x',method:'checkpoint-1'}]),/missing outcomes/);
+assert.throws(()=>buildContinualOutcomeMatrix(sparse,[{stageId:'x',method:'checkpoint-1'},{stageId:'y',method:'checkpoint-2'}]),/missing outcomes/);
 const uneven = new VerifiedOutcomeLedger(manifest);
 for (const seed of [11,22]) {
   for (const taskId of ['a','b']) {
