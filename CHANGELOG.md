@@ -1,3 +1,10 @@
+## WorkPass91 — memory-to-action evidence path (2026-10-20)
+
+- Added a deterministic sandbox integration regression that composes the canonical MemoryOS2 current retrieval/revision/snapshot-restore path with the production ActionGateway and its durable idempotency ledger.
+- Scenarios cover an explicit preference correction, suppression of the superseded preference, retrieval after memory restore, missing evidence requiring clarification, grounded action arguments, a verified in-memory tool result, and no duplicate execution after restoring the action ledger.
+- Wired the regression into the existing cognitive Actions workflow.
+- Evidence boundary: the scenario oracle is deliberately explicit test code, not a claim that the live autonomous planner already performs this mapping correctly. All side effects are in-memory; no external tool is called. Exact-head Actions verification is required before marking PASS.
+
 ## WorkPass88 — reject silent benchmark-label truncation (2026-10-20)
 
 - Retrieval benchmark reports now count source rows whose IDs, query text, or relevance labels exceed canonical bounds; bounded diagnostic execution is allowed, but `datasetIntegrity.validForPromotion` becomes false.
