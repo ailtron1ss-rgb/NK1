@@ -29,6 +29,8 @@ export interface MemoryRetrievalBenchmarkOptions {
   k?: number;
   now?: number;
   minHoldoutQueries?: number;
+  /** Minimum explicitly unanswerable holdout queries required to evaluate abstention safely. */
+  minUnanswerableHoldoutQueries?: number;
   minimumRecallUplift01?: number;
   maximumMrrRegression01?: number;
   /** Maximum tolerated increase in unsupported retrieval rate; default is strict non-inferiority. */
@@ -242,6 +244,7 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const now=Number.isFinite(Number(options.now))?Number(options.now):Date.now();
   const k=Math.floor(finiteOption(options.k,5,1,10));
   const minHoldout=Math.floor(finiteOption(options.minHoldoutQueries,8,8,64));
+  const minUnanswerableHoldout=Math.floor(finiteOption(options.minUnanswerableHoldoutQueries,4,2,32));
   const minUplift=finiteOption(options.minimumRecallUplift01,.02,0,.25);
   const mrrTolerance=finiteOption(options.maximumMrrRegression01,.01,0,.1);
   const unsupportedRetrievalTolerance=finiteOption(options.maximumUnsupportedRetrievalRegression01,0,0,.25);
@@ -335,7 +338,9 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const contentHashValid=/^[a-f0-9]{64}$/.test(provenance.contentSha256)&&provenance.contentSha256===datasetFingerprint;
   const provenanceComplete=Boolean(provenance.datasetId&&provenance.datasetVersion&&provenance.sourceRef&&provenance.labelingProtocol&&provenance.licenseId&&contentHashValid);
   const labelledHoldoutQueries=holdout.filter(x=>x.answerable!==false).length;
+  const unanswerableHoldoutQueries=holdout.filter(x=>x.answerable===false).length;
   const enoughEvidence=labelledHoldoutQueries>=minHoldout&&dataIntegrity.uniqueTrainQueries>=4&&corpus.length>=12;
+  const enoughUnanswerableEvidence=unanswerableHoldoutQueries>=minUnanswerableHoldout;
   const baselineMetrics=baselineEval.metrics;const candidateMetrics=candidateEval.metrics;
   const recallDelta=candidateMetrics.recallAtK01-baselineMetrics.recallAtK01;
   const mrrDelta=candidateMetrics.mrr01-baselineMetrics.mrr01;
@@ -359,6 +364,7 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
     datasetIntegrity:dataIntegrity.validForPromotion,
     provenanceComplete,
     sufficientEvidence:enoughEvidence,
+    sufficientUnanswerableEvidence:enoughUnanswerableEvidence,
     minimumRecallUplift:recallDelta>=minUplift,
     recallUpliftConfidenceSupported:confidenceSupported,
     mrrPointEstimateNonInferior:mrrDelta>=-mrrTolerance,
@@ -368,7 +374,7 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
     abstentionConfidenceNonInferioritySupported,
   };
   const promotionAllowed=Object.values(promotionGates).every(Boolean);
-  const reason=!seedInputValid?'invalid-bootstrap-seed':!corpusIntegrity.validForPromotion?'corpus-integrity-failed':!dataIntegrity.validForPromotion?'dataset-integrity-failed':!provenanceComplete?'dataset-provenance-incomplete':!enoughEvidence?'insufficient-labelled-holdout-or-corpus':!quarantineSafe?'candidate-returned-quarantined-memory':!staleSafe?'candidate-returned-out-of-window-memory':!dormantSafe?'candidate-returned-dormant-memory':!epistemicStatusSafe?'candidate-returned-invalid-epistemic-status':!validRateSafe?'candidate-result-integrity-regression':!abstentionSafe?'unsupported-retrieval-rate-regression':!abstentionConfidenceNonInferioritySupported?'unsupported-retrieval-regression-not-confidence-bounded':recallDelta<minUplift?'recall-uplift-below-threshold':!confidenceSupported?'recall-uplift-not-confidence-supported':!mrrNonInferioritySupported?'mrr-regression-not-confidence-bounded':mrrDelta < -mrrTolerance?'mrr-regression-exceeds-tolerance':'holdout-gates-passed';
+  const reason=!seedInputValid?'invalid-bootstrap-seed':!corpusIntegrity.validForPromotion?'corpus-integrity-failed':!dataIntegrity.validForPromotion?'dataset-integrity-failed':!provenanceComplete?'dataset-provenance-incomplete':!enoughEvidence?'insufficient-labelled-holdout-or-corpus':!enoughUnanswerableEvidence?'insufficient-unanswerable-holdout':!quarantineSafe?'candidate-returned-quarantined-memory':!staleSafe?'candidate-returned-out-of-window-memory':!dormantSafe?'candidate-returned-dormant-memory':!epistemicStatusSafe?'candidate-returned-invalid-epistemic-status':!validRateSafe?'candidate-result-integrity-regression':!abstentionSafe?'unsupported-retrieval-rate-regression':!abstentionConfidenceNonInferioritySupported?'unsupported-retrieval-regression-not-confidence-bounded':recallDelta<minUplift?'recall-uplift-below-threshold':!confidenceSupported?'recall-uplift-not-confidence-supported':!mrrNonInferioritySupported?'mrr-regression-not-confidence-bounded':mrrDelta < -mrrTolerance?'mrr-regression-exceeds-tolerance':'holdout-gates-passed';
   return {
     schemaVersion:6 as const,benchmark:'memoryos2-retrieval-vs-bm25-baseline',retrievalAlgorithmVersion:RETRIEVAL_ALGORITHM_VERSION,mode:'offline-clone; no-live-state-mutation' as const,latencyDefinition:'p95 measures retrieval only; isolationSetupP95Ms is reported separately',
     now,k,corpusSize:corpus.length,trainQueries:train.length,holdoutQueries:holdout.length,datasetFingerprint,corpusFingerprint:corpusHash,retrievalConfigurationFingerprint:retrievalConfigHash,corpusIntegrity,
@@ -378,7 +384,7 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
     baselineConfiguration,baselineConfigurationFingerprint,
     metrics:{baseline:baselineMetrics,candidate:candidateMetrics,train:{baseline:trainBaseline.metrics,candidate:trainCandidate.metrics}},
     deltas:{recallAtK01:Number(recallDelta.toFixed(4)),mrr01:Number(mrrDelta.toFixed(4))},confidence,
-    promotion:{allowed:promotionAllowed,status:promotionAllowed?'candidate-eligible-for-separate-review':'not-promoted',reason,gates:promotionGates,minimumHoldoutQueries:minHoldout,minimumRecallUplift01:minUplift,maximumMrrRegression01:mrrTolerance,maximumUnsupportedRetrievalRegression01:unsupportedRetrievalTolerance,mrrNonInferioritySupported,abstentionConfidenceNonInferioritySupported,mrrLowerBound01:confidence.mrr01.lowerBound01,requiresIndependentHumanOrCIReview:true},
-    guardrails:{liveMemoryMutated:false,identityOrPolicyChanged:false,labelsInferredFromPredictions:false,holdoutUsedForTraining:false,quarantinedMemoryMayPromote:false,staleEvidenceMayPromote:false,futureEvidenceMayPromote:false,dormantMemoryMayPromote:false,invalidEpistemicStatusMayPromote:false,corpusIntegrityBlocksPromotion:true,splitLeakageBlocksPromotion:true,unknownGroundTruthIdsBlockPromotion:true,unanswerableQueryLabelsRequired:true,unsupportedRetrievalRateMustNotRegress:true,provenanceRequiredForPromotion:true,invalidSeedMayPromote:false,mrrRegressionMustBeConfidenceBounded:true,unsupportedRetrievalRegressionMustBeConfidenceBounded:true,bootstrapSeed:seed},
+    promotion:{allowed:promotionAllowed,status:promotionAllowed?'candidate-eligible-for-separate-review':'not-promoted',reason,gates:promotionGates,minimumHoldoutQueries:minHoldout,minimumUnanswerableHoldoutQueries:minUnanswerableHoldout,minimumRecallUplift01:minUplift,maximumMrrRegression01:mrrTolerance,maximumUnsupportedRetrievalRegression01:unsupportedRetrievalTolerance,mrrNonInferioritySupported,abstentionConfidenceNonInferioritySupported,mrrLowerBound01:confidence.mrr01.lowerBound01,requiresIndependentHumanOrCIReview:true},
+    guardrails:{minimumUnanswerableHoldoutQueriesRequired:true,liveMemoryMutated:false,identityOrPolicyChanged:false,labelsInferredFromPredictions:false,holdoutUsedForTraining:false,quarantinedMemoryMayPromote:false,staleEvidenceMayPromote:false,futureEvidenceMayPromote:false,dormantMemoryMayPromote:false,invalidEpistemicStatusMayPromote:false,corpusIntegrityBlocksPromotion:true,splitLeakageBlocksPromotion:true,unknownGroundTruthIdsBlockPromotion:true,unanswerableQueryLabelsRequired:true,unsupportedRetrievalRateMustNotRegress:true,provenanceRequiredForPromotion:true,invalidSeedMayPromote:false,mrrRegressionMustBeConfidenceBounded:true,unsupportedRetrievalRegressionMustBeConfidenceBounded:true,bootstrapSeed:seed},
   };
 }
