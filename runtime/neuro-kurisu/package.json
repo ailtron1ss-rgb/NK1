@@ -1672,8 +1672,9 @@
     "test:workpass79:provider-boundary": "node --experimental-strip-types tests/workpass79-local-provider-boundary.mjs",
     "test:workpass88:label-truncation": "node --experimental-strip-types tests/workpass83-retrieval-benchmark-truth.mjs",
     "test:p23:paired-outcome-identity": "node --experimental-strip-types tests/p23-paired-outcome-identity.mjs",
+    "test:p23:task-manifest-fingerprint": "node --experimental-strip-types tests/p23-task-manifest-fingerprint.mjs",
     "test:p23:verified-outcome-persistence": "node --experimental-strip-types tests/p23-verified-outcome-ledger-persistence.mjs",
-    "test:p23:verified-outcomes:full": "npm run test:p23:verified-outcomes && npm run test:p23:verified-promotion && npm run test:p23:promotion-integration && npm run test:p23:paired-outcome-identity && npm run test:p23:verified-outcome-persistence && npm run test:p23:verified-outcome-file-store",
+    "test:p23:verified-outcomes:full": "npm run test:p23:verified-outcomes && npm run test:p23:verified-promotion && npm run test:p23:promotion-integration && npm run test:p23:paired-outcome-identity && npm run test:p23:task-manifest-fingerprint && npm run test:p23:verified-outcome-persistence && npm run test:p23:verified-outcome-file-store",
     "test:p23:verified-outcome-file-store": "node --experimental-strip-types tests/p23-verified-outcome-ledger-file-store.mjs",
     "test:p23:verified-outcome-persistence:full": "npm run test:p23:verified-outcome-persistence && npm run test:p23:verified-outcome-file-store"
   }
