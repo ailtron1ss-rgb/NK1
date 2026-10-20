@@ -14,6 +14,16 @@
 | AgeMem (ACL 2026) | https://aclanthology.org/2026.acl-long.981/ | Learned short-/long-term memory management | Existing memory residency and consolidation owner | **RESEARCH-ONLY** — compare learned management with deterministic policy under equal budgets; do not add another memory store |
 | Existing NeuroCore retrieval experiment | `runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalExperiment.ts` | Paired bootstrap sensitivity across fixed seeds | Canonical `MemoryOS2` | **IMPLEMENTED** — seeds resample intervals; they do not train the retriever. Prior `recallDelta=0` remains a hard block on uplift claims |
 
+## Continual skill learning and evaluation (2026-10-20)
+
+| Candidate / source | Evidence / license | NK1 adaptation | Decision |
+|---|---|---|---|
+| SkillLearnBench | https://github.com/cxcscmu/SkillLearnBench ; MIT license declared upstream. 20 verified tasks / 100 instances, with skill quality, execution trajectory and task outcome scored separately. | Use the three-stage diagnostic pattern for a future small NK1 task set: skill artifact validity, actual skill invocation/trajectory, and independently verified outcome. Do not import Docker/API-heavy runner into the dependency-light runtime without a separate harness review. | **ADAPT PROTOCOL; CODE NOT VENDORED** |
+| ContinualSkillBench | https://arxiv.org/abs/2608.03874 ; five domains with sequential, cross-task skill reuse. Reports gains vary by model/domain; explicit skill libraries do not consistently outperform retained context/feedback. | Require order variation, context-only vs explicit-skill ablations, transfer tasks and per-domain reporting. A written/promoted skill is not evidence of a reusable abstraction. | **ADAPT EVALUATION DESIGN** |
+| Berkeley Continual Learning Bench | https://sky.cs.berkeley.edu/project/continual-learning-bench/ ; expert-validated task sequences where tasks interact and the system may change during evaluation. | Prioritize versioned task streams and online update boundaries over isolated single-task fixtures; compare frozen and adaptive controls on identical sequences. | **RESEARCH-ONLY; TASK/VERIFIER LICENSE REVIEW REQUIRED** |
+
+NK1 adaptation from this research in WorkPass116: add seed-clustered paired outcomes so task cells within a run do not inflate the independent sample count. This is a measurement-integrity improvement, not evidence that any learning strategy is better. The upstream benchmark datasets, task code and Docker/API integrations were not copied.
+
 ## Language model and neural architecture candidates
 
 | Candidate / source | URL | Mechanism to inspect | Target / adaptation boundary | Current status / next evidence |
