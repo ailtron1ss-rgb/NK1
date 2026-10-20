@@ -35,6 +35,9 @@ jobs:
       - name: Verify current retrieval suppresses superseded records with damaged validity metadata
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass87:superseded-memory
+      - name: WorkPass88 benchmark label-truncation guard
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass88:label-truncation
       - name: Test retrieval metrics, abstention, dataset hash/provenance and holdout leakage guards
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass83:retrieval-benchmark-truth
