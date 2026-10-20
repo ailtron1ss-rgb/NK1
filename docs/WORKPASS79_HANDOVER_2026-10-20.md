@@ -253,7 +253,7 @@ Updated `docs/RESEARCH_GATE_MEMORY_CONTINUAL_LEARNING_2026-10-20.md` after check
 
 ## WorkPass91 — memory-to-action evaluation (2026-10-20)
 
-IMPLEMENTED; exact-head CI must confirm before PASS.
+**PASS:** exact-head Actions run 39380460196, test commit 12ed8ee0029c9c62d5abaef1141d403d68fcc34e. All 13 workflow steps succeeded.
 
 - Added runtime/neuro-kurisu/tests/workpass91-memory-to-action.mjs, composing production MemoryOS2 and ActionGateway rather than introducing a second memory owner or a fake gateway.
 - Regression scenarios:
@@ -264,4 +264,6 @@ IMPLEMENTED; exact-head CI must confirm before PASS.
   5. Execute a grounded action through the actual ActionGateway against an in-memory-only tool, require the tool-contract verifier, persist the execution ledger, restore a new gateway, and replay the same idempotency key without a second executor call.
 - The regression is wired directly into the existing Actions workflow. No package manifest was changed; the workflow invokes the test with Node's built-in TypeScript stripping enabled.
 - The test's minimal decision oracle is explicitly test-only; it is not evidence that the production autonomous planner already grounds arbitrary tool calls in MemoryOS2. The tool is sandboxed and has no network, filesystem, device, or user-visible side effect.
+- The first run failed because the test oracle ignored query-topic relevance; this was corrected by requiring the query to match the notification topic, then the full workflow passed without relaxing assertions.
+- Exact log: `WORKPASS91_MEMORY_TO_ACTION=PASS` — correctedPreferenceRetrieved=true, supersededPreferenceSuppressed=true, memorySurvivesRestore=true, missingEvidenceDecision=clarify, actionVerified=true, replayPreservedExecutionId=true, sideEffectExecutions=1, sandboxOnly=true.
 - Evidence boundary: no independent human-labelled dataset, live llama.cpp inference, real external tool call, measured learning/anti-forgetting improvement, or consciousness claim. The memory and action-ledger paths are exercised; the full autonomous memory-to-action loop remains UNRESOLVED until wired and tested through the runtime's own decision path.
