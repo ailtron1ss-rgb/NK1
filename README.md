@@ -438,3 +438,8 @@ Implementation notes, commit links, and the evidence boundary: [WorkPass73 hando
 ## WorkPass74 — local LLM first-choice routing (2026-10-19)
 
 When `LLAMA_CPP_URL` is configured, the server request path selects local `llama.cpp` first, preserves the existing fallback chain, and applies a bounded cooldown after repeated endpoint failures before retrying. A regression covers selection, cooldown, and recovery. This does not by itself prove real-model inference or production readiness. See [WorkPass74 handover](docs/WORKPASS74_LOCAL_LLM_SELECTION_2026-10-19.md).
+
+
+## WorkPass97 — Node.js 24 and continual-learning retention (2026-10-20)
+
+The active cognitive branch now uses `actions/checkout@v7` and `actions/setup-node@v7` (Node.js 24 action runtime), sets the test runtime and `.nvmrc` to Node.js 24, and adds CI assertions for the runtime version, cognitive-core ownership and runtime smoke integration. A learning bug was fixed so fresh skill evidence refreshes the retention clock even when the validation score changes by less than the update threshold. See [WorkPass97 implementation and verification boundary](docs/WORKPASS97_NODE24_LEARNING_RETENTION_2026-10-20.md). The newly expanded workflow must pass on the new head before this pass is called CI-verified.
