@@ -75,9 +75,10 @@ export class CanonicalActionPolicyArbiter {
     const identityGate = clamp(input?.identityGate01 ?? 1, 0, 1, 0);
     const sourceRows = ACTIONS.map(action => {
       const raw = active.map(source => {
-        const rawBias = source.bias[action];\n        const bias = typeof rawBias === 'number' && Number.isFinite(rawBias) ? rawBias : 0;
-        const confidence = clamp(source.confidence01);
-        const causal = clamp(source.causal01 ?? confidence);
+        const rawBias = source.bias[action];
+        const bias = typeof rawBias === 'number' && Number.isFinite(rawBias) ? rawBias : 0;
+        const confidence = clamp(source.confidence01, 0, 1, 0);
+        const causal = source.causal01 === undefined ? confidence : clamp(source.causal01, 0, 1, 0);
         // Uncertain or non-causal policy proposals are attenuated rather than
         // allowed to silently dominate the production decision surface.
         const trust = confidence * (.65 + .35 * causal) * (.72 + .28 * identityGate);

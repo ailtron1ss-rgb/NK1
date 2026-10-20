@@ -1,3 +1,9 @@
+## NK1 v2.0 rebuild — policy input parser hotfix (2026-10-20)
+
+- [FIXED] Removed a literal escaped-newline sequence introduced in the policy bias guard that prevented the runtime TypeScript loader from parsing the module.
+- [FIXED] Applied fail-closed finite defaults to source confidence and causal confidence at the actual scoring site.
+- [VALIDATION] The first run for the policy hardening commit failed before policy tests at module parse time; this hotfix corrects the syntax and reruns the same exact-HEAD workflow.
+
 ## NK1 v2.0 rebuild — bound cognitive policy frame and authority ledger size (2026-10-20)
 
 - [HARDENED] Canonical policy arbitration now fails closed on frames with more than 256 sources, avoiding unbounded per-cycle scoring and order-dependent prefix truncation.
