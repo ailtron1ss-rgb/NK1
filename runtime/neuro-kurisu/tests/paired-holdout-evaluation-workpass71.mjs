@@ -50,7 +50,7 @@ test("reports task-success, regret, latency and calibration changes", () => {
   assert.ok(result.paired.regretDelta < 0);
   assert.equal(result.candidate.calibrationCoverage, 1);
   assert.ok(result.candidate.brierScore < result.baseline.brierScore);
-  assert.equal(result.paired.latencyRatio, 0.05);
+  assert.ok(Math.abs(result.paired.latencyRatio - 0.05) < 1e-12);
 });
 
 test("refuses promotion when reward improves but success regresses", () => {
