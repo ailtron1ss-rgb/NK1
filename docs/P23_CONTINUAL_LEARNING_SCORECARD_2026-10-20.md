@@ -1,3 +1,12 @@
+## WorkPass116 update — seed-clustered evidence comparisons (2026-10-20)
+
+- Added seed-level paired comparison methods to the canonical `VerifiedOutcomeLedger`. The evaluator now has an explicit path where each seed contributes one aggregate observation, not one observation per correlated task cell.
+- Requires complete attempt-1 coverage for the exact task set; incomplete seeds and retries do not inflate the sample. Family-level comparisons are available for diagnostic breakdowns.
+- CI currently cannot be treated as a pass: GitHub reports the triggered job as failed with zero executed steps and no retrievable job log (runner ID 0). This does not identify a code failure or establish that the new regression passed; runner/Actions execution remains unresolved.
+- Research adaptation: SkillLearnBench's separate skill/trajectory/outcome evaluation, ContinualSkillBench's order/domain-dependent transfer findings, and Berkeley Continual Learning Bench's interacting task sequences motivate future controlled task-stream evaluation. NK1 did not vendor their task datasets or runner.
+- **Scores intentionally unchanged pending behavioral evidence:** overall learning engineering **57/100**; evidence-grounded maturity **36%**; P23 symbolic core **61%**; project-wide lifelong-learning roadmap **30%**. This pass improves statistical validity and measurement infrastructure, not demonstrated learning ability.
+- **Next P0:** restore runnable exact-head CI; connect signed/independently retrieved verifier evidence to replay/skill-promotion decisions; then compare no replay, recent, multi-timescale, surprise, diversity and reservoir strategies on the same versioned task manifest, seeds and memory budget. Measure skill quality, trajectory, success, forgetting, transfer, latency and memory; do not promote automatically.
+
 ## WorkPass113 update — family-level regression visibility (2026-10-20)
 
 - The outcome matrix now reports verified pass rates at each checkpoint split by task family, plus family-specific forgetting and backward transfer.
