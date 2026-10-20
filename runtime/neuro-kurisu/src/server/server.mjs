@@ -246,12 +246,18 @@ function localFallback(request) {
         generated: false,
     };
 }
+function languageTransportSignal(request) {
+    const deadline = AbortSignal.timeout(LLM_TIMEOUT_MS);
+    return request.signal ? AbortSignal.any([deadline, request.signal]) : deadline;
+}
 async function tryLlamaCpp(request, failures) {
+    if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
     if (!LLAMA_CPP_PROVIDER.configured() || LOCAL_LANGUAGE_BACKEND_POLICY.snapshot().coolingDown) return null;
     try {
-        return await LLAMA_CPP_PROVIDER.generate({ system: request.system, user: request.user, maxTokens: request.maxTokens, temperature: request.temperature });
+        return await LLAMA_CPP_PROVIDER.generate({ system: request.system, user: request.user, maxTokens: request.maxTokens, temperature: request.temperature, signal: request.signal });
     }
     catch (error) {
+        if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
         failures.push(`llama.cpp:${error?.message || error}`);
         return null;
     }
@@ -261,7 +267,7 @@ async function tryKobold(request, failures) {
         const response = await fetch(`${KOBOLD_URL}/api/v1/generate`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+            signal: languageTransportSignal(request),
             body: JSON.stringify({
                 prompt: `${request.system}\n\n${request.user}`,
                 max_context_length: 4096,
@@ -319,6 +325,7 @@ async function generateLanguage(request) {
         : preferred === 'kobold' ? ['kobold', 'llama.cpp', 'gemini']
             : ['gemini', 'llama.cpp', 'kobold'];
     for (const provider of order) {
+        if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
         let result = null;
         if (provider === 'llama.cpp') result = await tryLlamaCpp(request, failures);
         else if (provider === 'kobold') result = await tryKobold(request, failures);
@@ -1293,9 +1300,26 @@ async function route(req, res) {
                     return json(res,403,{ok:false,error:permission.reason||'approval-invalid'});
                 }
             }
-            const step = await runtime.step(message, { deliberate });
+            const languageController = new AbortController();
+            const abortLanguage = () => {
+                if (!res.writableEnded && !languageController.signal.aborted) languageController.abort();
+            };
+            const onRequestAborted = () => abortLanguage();
+            const onResponseClose = () => abortLanguage();
+            req.once('aborted', onRequestAborted);
+            res.once('close', onResponseClose);
+            if (req.aborted || res.destroyed) abortLanguage();
+            let step;
+            try {
+                step = await runtime.step(message, { deliberate, signal: languageController.signal });
+            } finally {
+                req.off('aborted', onRequestAborted);
+                res.off('close', onResponseClose);
+            }
+            if (res.destroyed || res.writableEnded) return;
             const language = step.language;
             const voice = speakReply && language?.text ? await runtime.speak(language.text) : false;
+            if (res.destroyed || res.writableEnded) return;
             return json(res, 200, {
                 ok: true,
                 cycle: step.cycle,
