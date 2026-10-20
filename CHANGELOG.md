@@ -872,3 +872,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Ambiguous speech is retained as unresolved evidence and does not increase embodiment failure streak/cooldown or produce false negative skill/reliability credit.
 - Added fake-process tests and gateway-boundary/recovery tests. Runtime typecheck and the new tests pass; archived receipt recovery suites also pass when run individually. A long nested aggregate command timed out at the execution wrapper and is not recorded as a single PASS.
 - Synchronized root integration manifest and runtime release owners at 35.88.0 / schema 225. App dependency installation remains blocked by npm registry DNS; live Android/audio and browser/Live2D E2E remain open. Memory retrieval candidate remains unpromoted at recallDelta=0; roadmap score stays 80.1%.
+
+
+## WorkPass 80 — cold-memory retrieval invariants (2026-10-20)
+
+- Added a deterministic regression with a 140-record corpus that forces an old, low-salience record into cold residency, then verifies it remains recallable by lexical retrieval without materializing a vector or silently changing residency.
+- Added snapshot/restore coverage for cold records, candidate budget (192), and canonical memory index integrity.
+- Wired the regression into runtime scripts and the WorkPass79 GitHub Actions workflow; test:workpass80 combines the new memory regression with the local-language reliability suite.
+- **Evidence status:** IMPLEMENTED; GitHub Actions execution is required before marking the regression PASS. The test is a residency/integrity invariant, not an independent RU/EN retrieval-quality benchmark. No Recall@k, MRR, transfer-learning, or overall readiness uplift is claimed.
