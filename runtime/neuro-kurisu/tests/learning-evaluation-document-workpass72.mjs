@@ -31,3 +31,14 @@ test("rejects non-object options instead of silently spreading malformed input",
     candidate: [run(1, 0.4), run(2, 0.5)], options: []
   }), /options must be an object/);
 });
+
+test("options cannot replace the baseline or candidate evidence arrays", () => {
+  const baseline = [run(1, 0.4), run(2, 0.5)];
+  const candidate = [run(1, 0.8), run(2, 0.9)];
+  const report = evaluateLearningDocument({
+    schemaVersion: 1, baseline, candidate,
+    options: { baseline: [run(8, 0.1), run(9, 0.1)], minimumSampleCount: 2 }
+  });
+  assert.equal(report.evaluation.sampleCount, 2);
+  assert.equal(report.evaluation.baseline.meanReward, 0.45);
+});
