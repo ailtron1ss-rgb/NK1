@@ -89,33 +89,50 @@ export class P26TrueLearningEngine{
     return {updates,meanLoss01:updates?loss/updates:0};
   }
   /**
-   * Interleave fresh outcomes with bounded rehearsal instead of learning a whole task
-   * and trying to repair forgetting afterwards. This is a scheduling primitive, not
-   * a guarantee: callers must retain a representative, provenance-checked replay set.
+   * Interleave fresh outcomes with bounded rehearsal. Near-identical states whose
+   * verified rewards strongly disagree are treated as a distribution-shift conflict:
+   * replay is blocked for those records so stale outcomes cannot dominate plasticity.
+   * Without an explicit context signal, conflicting labels are not jointly learnable.
    */
   trainInterleaved(
     current:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
     replayRows:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
-    options:{replayEveryNCurrent?:number;maxReplayUpdates?:number;targetMode?:'td'|'reward'}={},
+    options:{replayEveryNCurrent?:number;maxReplayUpdates?:number;targetMode?:'td'|'reward';conflictDistance01?:number;conflictRewardGap01?:number;currentLearningRate01?:number;replayLearningRate01?:number}={},
     extras?:BodyExtras,
   ){
     const stride=Math.max(1,Math.min(32,Math.floor(options.replayEveryNCurrent??4)));
     const replayCap=Math.max(0,Math.min(4096,Math.floor(options.maxReplayUpdates??1024)));
-    if(!current.length||!replayRows.length||replayCap===0)return {onlineUpdates:0,replayUpdates:0,meanLoss01:0};
-    let onlineUpdates=0,replayUpdates=0,loss=0,replayCursor=this.learner.snapshot().updates%replayRows.length;
+    if(!current.length)return {onlineUpdates:0,replayUpdates:0,blockedReplayRows:0,eligibleReplayRows:0,meanLoss01:0};
+    const conflictDistance=Math.max(0,Math.min(.2,options.conflictDistance01??.035));
+    const conflictRewardGap=Math.max(.1,Math.min(1,options.conflictRewardGap01??.45));
+    const vector=(e:{state:OrganismState;action:ActionKind})=>this.learner.features(e.state,extras,e.action);
+    const distance=(a:number[],b:number[])=>Math.sqrt(a.reduce((sum,value,i)=>sum+(value-(b[i]??0))**2,0)/Math.max(1,a.length));
+    const freshByAction=new Map<ActionKind,Array<{row:typeof current[number];features:number[]}>>();
+    for(const row of current){const group=freshByAction.get(row.action)??[];group.push({row,features:vector(row)});freshByAction.set(row.action,group);}
+    const eligible:Array<{row:typeof replayRows[number];features:number[]}> = [];
+    let blockedReplayRows=0;
+    for(const row of replayRows){
+      const features=vector(row), candidates=freshByAction.get(row.action)??[];
+      let nearestDistance=Number.POSITIVE_INFINITY,nearestReward:number|undefined;
+      for(const candidate of candidates){const d=distance(features,candidate.features);if(d<nearestDistance){nearestDistance=d;nearestReward=candidate.row.reward;}}
+      const conflicts=nearestReward!==undefined&&nearestDistance<=conflictDistance&&Math.abs(clamp(row.reward)-clamp(nearestReward))>=conflictRewardGap;
+      if(conflicts)blockedReplayRows++;else eligible.push({row,features});
+    }
+    let onlineUpdates=0,replayUpdates=0,loss=0,replayCursor=eligible.length?this.learner.snapshot().updates%eligible.length:0;
     const update=(e:{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number},isReplay:boolean)=>{
       const next=Math.max(...this.learner.predict(e.nextState,extras).map(x=>x.value),.5);
       const target=options.targetMode==='reward'?clamp(e.reward):tdTarget01(e.reward,next);
       const surprise=clamp(e.surprise??.2);
-      const learningRate01 = isReplay ? (0.035 + surprise * 0.025) : (0.045 + surprise * 0.04);
+      const configured=isReplay?options.replayLearningRate01:options.currentLearningRate01;
+      const learningRate01=configured===undefined?(isReplay ? (0.012+surprise*0.018) : (0.045+surprise*0.04)):Math.max(.003,Math.min(.30,configured));
       const result=this.learner.train({state:e.state,action:e.action,target01:target,learningRate01,extras});
       loss+=result.loss01;
       if(isReplay)replayUpdates++;else onlineUpdates++;
     };
     for(let i=0;i<current.length;i++){
       update(current[i],false);
-      if((i+1)%stride===0&&replayUpdates<replayCap){
-        update(replayRows[replayCursor%replayRows.length],true);
+      if((i+1)%stride===0&&replayUpdates<replayCap&&eligible.length){
+        update(eligible[replayCursor%eligible.length].row,true);
         replayCursor++;
       }
     }
@@ -126,7 +143,7 @@ export class P26TrueLearningEngine{
     this.state.metrics.trainingExposure01=clamp(Math.min(1,this.learner.snapshot().updates/160));
     this.state.metrics.lastUpdatedAt=Date.now();
     this.sync();
-    return {onlineUpdates,replayUpdates,meanLoss01:loss/Math.max(1,onlineUpdates+replayUpdates)};
+    return {onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows:eligible.length,meanLoss01:loss/Math.max(1,onlineUpdates+replayUpdates)};
   }
 
   replayCausalRecords(records:Array<{id?:string;tick?:number;taskId?:string;action:ActionKind;reward01:number;success01:number;surprise01:number;causalStrength01?:number;learningQuality01?:number;policyFeatures01?:number[];replayPriority01?:number}>){

@@ -1,3 +1,10 @@
+## NK1 learning WorkPass103 — conflict-aware interleaved rehearsal (2026-10-20)
+
+- Added bounded conflict screening to `trainInterleaved`: for each replay record, compare the closest fresh example for the same action using normalized learner features. If states are within a small distance threshold but rewards disagree strongly, block that replay record instead of reinforcing a stale target.
+- The replay learning rate is now deliberately lower by default than the fresh-outcome rate; callers may override both rates for controlled experiments. The runtime target mode remains TD by default; direct-reward mode is used only to align the synthetic classification probe with its direct-label baseline.
+- The prior interleaving probe revealed why fixed-ratio replay is unsafe here: on indistinguishable states with contradictory targets, it preserved Task A at 91.875% but reduced Task B to 10%. No single policy can satisfy both labels without a context feature; this pass adds a selective-blocking mechanism and tests latest-task plasticity under that adversarial fixture.
+- **Evidence status:** exact-head Actions required. Even if the synthetic regression passes, it is not independent task evidence and does not prove production caller integration. The method remains experimental until runtime wiring, multi-seed contextual tests, and verifier-grounded outcomes are complete.
+
 ## NK1 learning WorkPass102 follow-up — align the replay probe's target semantics (2026-10-20)
 
 - The first CI run caught a real benchmark mismatch: the new interleaving path used bootstrapped TD targets while the existing sequential classification probe trained against direct reward labels. In that setup the mixed run preserved Task A (96.25%) but Task B collapsed to 1.25%; it would have been incorrect to present that as a fair replay comparison.

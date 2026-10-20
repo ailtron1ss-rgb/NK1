@@ -45,7 +45,7 @@ const makeRun=(strategy)=>{
     // Same task-B stream, with bounded old-task rehearsal during learning.
     for(let epoch=0;epoch<8;epoch++){
       const fresh=taskB.flatMap(row=>actions.map(action=>({...row,action,reward:targetB(row.state,action)})));
-      const result=engine.trainInterleaved(fresh,replayRows,{replayEveryNCurrent:16,maxReplayUpdates:160,targetMode:'reward'});
+      const result=engine.trainInterleaved(fresh,replayRows,{replayEveryNCurrent:16,maxReplayUpdates:160,targetMode:'reward',currentLearningRate01:.18});
       replayUpdates+=result.replayUpdates;onlineUpdates+=result.onlineUpdates;
     }
   }else{
@@ -71,12 +71,12 @@ assert.equal(onlineOnly.replayUpdates,0);
 assert.ok(replay.replayUpdates>0);
 assert.ok(replay.taskAAfterReplay>replay.taskAAfterInterference,'post-hoc replay should recover at least some old-task performance');
 assert.ok(replay.taskBFinal>.8,'post-hoc replay should not erase the recently learned task');
-assert.ok(interleaved.onlineUpdates>0&&interleaved.replayUpdates>0,'interleaving must update both fresh and replay experience');
+assert.ok(interleaved.onlineUpdates>0,'interleaving must update fresh experience');
+assert.ok(interleaved.replayUpdates+interleaved.blockedReplayRows>0,'interleaving must either replay or explicitly block stale/conflicting records');
+assert.ok(interleaved.blockedReplayRows>0,'near-identical states with contradictory outcomes should block stale replay');
+assert.ok(interleaved.taskBFinal>.8,'conflict-gated replay should preserve plasticity for the latest outcome when no context signal distinguishes the tasks');
 console.log('P26_INTERLEAVED_DIAGNOSTIC',JSON.stringify(interleaved));
-// This adversarial fixture assigns contradictory targets to indistinguishable states.
-// No single policy can score well on both tasks without a task/context signal, so report
-// the trade-off rather than making an impossible pass-rate assertion.
-assert.ok(interleaved.taskBFinal>=0&&interleaved.taskBFinal<=1);
+// Contradictory labels on indistinguishable states require selective forgetting unless context is represented.
 assert.ok(onlineOnly.taskABefore>.8,'benchmark must establish task A before measuring forgetting');
 assert.ok(onlineOnly.taskBFinal>.8,'benchmark must establish task B before measuring retention');
 assert.equal(replay.generalizationEvidence01,0,'synthetic task evaluation is not verifier-certified generalization evidence');
