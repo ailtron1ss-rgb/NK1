@@ -72,7 +72,18 @@ const timeoutProvider = new OpenAICompatibleLocalChatProvider({
     }, { once: true });
   }),
 });
-await assert.rejects(() => timeoutProvider.generate({ system: '', user: 'timeout test' }));
+// AbortSignal.timeout uses an unreferenced timer in Node. Keep this focused
+// test process alive until the deadline fires, otherwise top-level await exits
+// with code 13 before the provider's timeout contract can be observed.
+const timeoutTestKeepAlive = setTimeout(() => {}, 1_000);
+try {
+  await assert.rejects(
+    () => timeoutProvider.generate({ system: '', user: 'timeout test' }),
+    /llama\\.cpp-timeout/,
+  );
+} finally {
+  clearTimeout(timeoutTestKeepAlive);
+}
 assert.equal(timeoutSignalObserved, true, 'the request deadline must abort the provider transport');
 
 // Caller cancellation must be composed with the provider deadline, not ignored
