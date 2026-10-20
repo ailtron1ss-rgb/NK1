@@ -107,12 +107,36 @@ export class VerifiedOutcomeLedger {
   }
 
   comparePaired(baseline: string, candidate: string, split: EvaluationSplit = 'holdout'): PairedMethodSummary {
+    return this.compareFiltered(baseline, candidate, split);
+  }
+
+  comparePairedByFamily(
+    baseline: string,
+    candidate: string,
+    split: EvaluationSplit = 'holdout',
+  ): Array<PairedMethodSummary & { family: string }> {
+    const families = [...new Set([...this.manifest.values()]
+      .filter(task => task.split === split)
+      .map(task => task.family))].sort();
+    return families.map(family => ({
+      family,
+      ...this.compareFiltered(baseline, candidate, split, family),
+    }));
+  }
+
+  private compareFiltered(
+    baseline: string,
+    candidate: string,
+    split: EvaluationSplit,
+    family?: string,
+  ): PairedMethodSummary {
     if (!baseline || !candidate || baseline === candidate) throw new Error('two distinct method names are required');
     const rows = new Map<string, Map<string, VerifiedTaskOutcome>>();
     for (const outcome of this.outcomes.values()) {
       const task = this.manifest.get(outcome.taskId)!;
-      if (task.split !== split || (outcome.method !== baseline && outcome.method !== candidate)) continue;
-      const pairKey = `${task.taskId}\u0000${outcome.seed}\u0000${outcome.attempt}`;
+      if (task.split !== split || (family !== undefined && task.family !== family) ||
+          (outcome.method !== baseline && outcome.method !== candidate)) continue;
+      const pairKey = `${task.taskId}\\u0000${outcome.seed}\\u0000${outcome.attempt}`;
       const pair = rows.get(pairKey) ?? new Map<string, VerifiedTaskOutcome>();
       pair.set(outcome.method, outcome);
       rows.set(pairKey, pair);
