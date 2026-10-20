@@ -880,3 +880,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added snapshot/restore coverage for cold records, candidate budget (192), and canonical memory index integrity.
 - Wired the regression into runtime scripts and the WorkPass79 GitHub Actions workflow; test:workpass80 combines the new memory regression with the local-language reliability suite.
 - **Evidence status:** IMPLEMENTED; GitHub Actions execution is required before marking the regression PASS. The test is a residency/integrity invariant, not an independent RU/EN retrieval-quality benchmark. No Recall@k, MRR, transfer-learning, or overall readiness uplift is claimed.
+
+
+## WorkPass 81 — caller cancellation for local inference (2026-10-20)
+
+- Extended the existing `OpenAICompatibleLocalChatProvider` request contract with an optional caller-owned `AbortSignal`; provider timeout and caller cancellation are composed rather than one replacing the other.
+- Added stable `llama.cpp-request-aborted` normalization for caller cancellation before dispatch, during transport, and while reading a bounded response; deadline failures normalize to `llama.cpp-timeout`.
+- Extended the provider boundary regression for in-flight and pre-aborted requests. This proves the provider boundary honors a signal when its caller supplies one; it does not prove every upstream cognitive-cycle caller currently forwards cancellation.
+- **Evidence status:** IMPLEMENTED; Actions must execute the updated test before it is marked PASS. Real llama.cpp cancellation and process restart/recovery remain unverified.
