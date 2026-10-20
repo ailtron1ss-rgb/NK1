@@ -80,7 +80,7 @@ export class CausalExperienceStream {
   constructor(maxRecords=1024){ this.maxRecords=Math.max(64,Math.min(4096,Math.floor(maxRecords))); }
   restore(raw?:Partial<CausalExperienceState>|null){
     const d=defaultCausalExperienceStream(),r=raw??{};
-    this.state={...d,...r,records:Array.isArray(r.records)?r.records.slice(-this.maxRecords):[],rolling:{...d.rolling,...(r.rolling??{})},recordedTraceIds:Array.isArray(r.recordedTraceIds)?r.recordedTraceIds.map(String).filter(Boolean).slice(-4096):[]};
+    this.state={...d,...r,records:Array.isArray(r.records)?r.records.slice(-this.maxRecords).map(record=>({...record,traceId:normalizeTraceId(record?.traceId)})).filter(record=>Boolean(record.traceId)):[],rolling:{...d.rolling,...(r.rolling??{})},recordedTraceIds:Array.isArray(r.recordedTraceIds)?r.recordedTraceIds.map(normalizeTraceId).filter(Boolean).slice(-4096):[]};
     this.recordedOutcomeTraceIds.clear();
     for(const id of this.state.recordedTraceIds??[])this.recordedOutcomeTraceIds.add(id);
     for(const record of this.state.records)this.recordedOutcomeTraceIds.add(record.traceId);
