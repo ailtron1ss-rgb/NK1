@@ -1,3 +1,10 @@
+## NK1 learning WorkPass100 follow-up — prevent false generalization evidence (2026-10-20)
+
+- [FIXED] P26 causal replay's same-call train/diagnostic split no longer raises `generalizationEvidence01`; records can have influenced online learning or previous replay, so this split cannot establish independent generalization.
+- [CLARIFIED] `replayCausalRecords` returns `holdoutEvidenceGrade: 'in-batch-diagnostic'` when it has enough records and `'insufficient'` otherwise.
+- [REGRESSION] Extended the causal replay integration test to assert the evidence grade and that the generalization metric remains unchanged.
+- [VALIDATION] The exact-head Actions run must complete after these changes before the pass is marked validated.
+
 ## NK1 learning WorkPass100 — bounded stratified causal replay (2026-10-20)
 
 - [ADDED] `CausalReplaySampler.ts` provides deterministic, bounded, recent-window + priority + action/coarse-state-stratified selection for P26 causal experience replay.
