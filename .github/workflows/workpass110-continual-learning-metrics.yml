@@ -9,6 +9,8 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualBenchmarkComparison.ts'
       - 'runtime/neuro-kurisu/tests/p23-continual-benchmark-comparison.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/LearningExperimentPlan.ts'
+      - 'runtime/neuro-kurisu/tests/p23-learning-execution-audit.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/LearningExecutionAudit.ts'
       - 'runtime/neuro-kurisu/tests/p23-learning-execution-evidence.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/LearningExecutionEvidence.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/LearningProcessSupervisor.ts'
