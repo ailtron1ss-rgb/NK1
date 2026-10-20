@@ -78,8 +78,9 @@ export class ParametricPolicyLearner{
     this.state={...d,...(raw??{}),featureNames:[...featureNames],weights:{...d.weights,...(raw?.weights??{})},bias:{...d.bias,...(raw?.bias??{})}};
     for(const a of ACTIONS){
       const w=Array.isArray(this.state.weights[a])?this.state.weights[a]:[];
-      this.state.weights[a]=new Array(featureNames.length).fill(0).map((_,i)=>Math.max(-4,Math.min(4,Number(w[i]??0))));
-      this.state.bias[a]=Math.max(-4,Math.min(4,Number(this.state.bias[a]??0)));
+      this.state.weights[a]=new Array(featureNames.length).fill(0).map((_,i)=>{const value=Number(w[i]??0);return Number.isFinite(value)?Math.max(-4,Math.min(4,value)):0;});
+      const bias=Number(this.state.bias[a]??0);
+      this.state.bias[a]=Number.isFinite(bias)?Math.max(-4,Math.min(4,bias)):0;
     }
   }
 
@@ -115,7 +116,9 @@ export class ParametricPolicyLearner{
     const before=this.value(input.state,input.action,input.extras).value;
     const target=clamp(input.target01);
     const error=target-before;
-    const lr=Math.max(.003,Math.min(.30,input.learningRate01))*Math.max(.1,Math.min(1,input.sampleWeight01??1));
+    const requestedRate=Number.isFinite(input.learningRate01)?input.learningRate01:.03;
+    const requestedWeight=input.sampleWeight01===undefined?1:(Number.isFinite(input.sampleWeight01)?input.sampleWeight01:.1);
+    const lr=Math.max(.003,Math.min(.30,requestedRate))*Math.max(.1,Math.min(1,requestedWeight));
     const zDerivative=Math.max(.05, 2*before*(1-before));
     const norm=0.25+x.reduce((sum,v)=>sum+v*v,0);
     const step=lr*error*zDerivative/norm;
@@ -136,7 +139,9 @@ export class ParametricPolicyLearner{
     const x=input.features.slice(0,featureNames.length).map(clamp); while(x.length<featureNames.length)x.push(0);
     const w=this.state.weights[input.action]; if(!w)return {predictionBefore:.5,predictionAfter:.5,loss01:0,tdError01:0};
     const before=this.predictFromFeatures(x,input.action), target=clamp(input.target01), error=target-before;
-    const lr=Math.max(.002,Math.min(.25,input.learningRate01))*Math.max(.05,Math.min(1,input.sampleWeight01??1));
+    const requestedRate=Number.isFinite(input.learningRate01)?input.learningRate01:.03;
+    const requestedWeight=input.sampleWeight01===undefined?1:(Number.isFinite(input.sampleWeight01)?input.sampleWeight01:.1);
+    const lr=Math.max(.002,Math.min(.25,requestedRate))*Math.max(.05,Math.min(1,requestedWeight));
     const derivative=Math.max(.05,2*before*(1-before)), norm=.25+x.reduce((sum,v)=>sum+v*v,0), step=lr*error*derivative/norm;
     for(let i=0;i<w.length;i++)w[i]=Math.max(-4,Math.min(4,w[i]+step*x[i]));
     this.state.bias[input.action]=Math.max(-4,Math.min(4,(this.state.bias[input.action]??0)+step));
