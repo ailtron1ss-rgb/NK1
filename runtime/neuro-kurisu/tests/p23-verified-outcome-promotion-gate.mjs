@@ -51,6 +51,8 @@ const missingFamilyEvidence = evaluateOutcomePromotion(summary(), [
 assert.ok(missingFamilyEvidence.reasons.includes('missing-family-pairs:transfer'));
 
 const tooFewFamilies = evaluateOutcomePromotion(summary(), [family('memory'), family('transfer')]);
+const incompleteFamilies = evaluateOutcomePromotion(summary(), [family('memory'), family('transfer')]);
+assert.ok(incompleteFamilies.reasons.includes('family-pair-count-mismatch'));
 assert.ok(tooFewFamilies.reasons.includes('insufficient-task-families'));
 
 const noPairs = evaluateOutcomePromotion(summary({ pairedN: 0, approximate95CI: null }), []);
