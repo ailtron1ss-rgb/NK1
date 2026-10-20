@@ -79,7 +79,7 @@ export class P26TrueLearningEngine{
     let updates=0,loss=0;
     for(const e of experiences){
       const next=Math.max(...this.learner.predict(e.nextState,extras).map(x=>x.value),.5);
-      const target=tdTarget01(e.reward,next);
+      const target=options.targetMode==='reward'?clamp(e.reward):tdTarget01(e.reward,next);
       const r=this.learner.train({state:e.state,action:e.action,target01:target,learningRate01:.10+clamp(e.surprise??.2)*.06,extras});
       updates++; loss+=r.loss01;
     }
@@ -96,7 +96,7 @@ export class P26TrueLearningEngine{
   trainInterleaved(
     current:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
     replayRows:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
-    options:{replayEveryNCurrent?:number;maxReplayUpdates?:number}={},
+    options:{replayEveryNCurrent?:number;maxReplayUpdates?:number;targetMode?:'td'|'reward'}={},
     extras?:BodyExtras,
   ){
     const stride=Math.max(1,Math.min(32,Math.floor(options.replayEveryNCurrent??4)));

@@ -45,7 +45,7 @@ const makeRun=(strategy)=>{
     // Same task-B stream, with bounded old-task rehearsal during learning.
     for(let epoch=0;epoch<8;epoch++){
       const fresh=taskB.flatMap(row=>actions.map(action=>({...row,action,reward:targetB(row.state,action)})));
-      const result=engine.trainInterleaved(fresh,replayRows,{replayEveryNCurrent:16,maxReplayUpdates:160});
+      const result=engine.trainInterleaved(fresh,replayRows,{replayEveryNCurrent:16,maxReplayUpdates:160,targetMode:'reward'});
       replayUpdates+=result.replayUpdates;onlineUpdates+=result.onlineUpdates;
     }
   }else{

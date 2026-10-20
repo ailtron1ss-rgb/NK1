@@ -1,3 +1,9 @@
+## NK1 learning WorkPass102 follow-up — align the replay probe's target semantics (2026-10-20)
+
+- The first CI run caught a real benchmark mismatch: the new interleaving path used bootstrapped TD targets while the existing sequential classification probe trained against direct reward labels. In that setup the mixed run preserved Task A (96.25%) but Task B collapsed to 1.25%; it would have been incorrect to present that as a fair replay comparison.
+- Added an explicit `targetMode` option to `trainInterleaved`. Production defaults to the existing TD target semantics; the synthetic label-based comparison opts into direct reward targets to compare replay schedules under the same target semantics as its established online-only baseline.
+- Reduced the synthetic replay budget and kept the diagnostic visible. This is a methodology correction, not a claim of improved learning. The exact-head Actions result is still required.
+
 ## NK1 learning WorkPass102 — online/replay interleaving probe (2026-10-20)
 
 - Added `P26TrueLearningEngine.trainInterleaved` to schedule fresh-task updates and bounded old-experience rehearsal in one deterministic pass, rather than relying only on post-hoc replay after forgetting has already happened.
