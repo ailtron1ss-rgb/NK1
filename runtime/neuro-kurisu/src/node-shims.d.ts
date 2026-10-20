@@ -1,5 +1,5 @@
 declare module 'node:crypto' { export function randomUUID(): string;
-  export function createHash(algorithm: string): { update(data: string | Uint8Array): any; digest(encoding: string): string }; }
+  export function createHash(algorithm: string): { update(data: string | Uint8Array): any; digest(encoding: string): string }; export function verify(algorithm: null | string, data: Uint8Array, key: string, signature: Uint8Array): boolean; export function sign(algorithm: null | string, data: Uint8Array, key: string): Uint8Array; }
 declare module 'node:fs/promises' {
   export function access(path:string): Promise<void>;
   export function appendFile(path:string,data:string,encoding?:string):Promise<void>;
