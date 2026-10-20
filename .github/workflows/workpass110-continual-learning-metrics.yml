@@ -30,6 +30,8 @@ on:
       - 'runtime/neuro-kurisu/tests/p23-continual-outcome-matrix.mjs'
       - 'runtime/neuro-kurisu/tests/p23-continual-benchmark-comparison.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/LearningExperimentPlan.ts'
+      - 'runtime/neuro-kurisu/tests/p23-learning-execution-audit.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/LearningExecutionAudit.ts'
       - 'runtime/neuro-kurisu/tests/p23-learning-execution-evidence.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/LearningExecutionEvidence.ts'
       - 'runtime/neuro-kurisu/tests/p23-learning-experiment-plan.mjs'
@@ -57,6 +59,9 @@ jobs:
       - name: Run reproducible learning experiment plan regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:learning-experiment-plan
+      - name: Run execution coverage audit
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:learning-execution-audit
       - name: Run execution-backed outcome evidence regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:learning-execution-evidence
