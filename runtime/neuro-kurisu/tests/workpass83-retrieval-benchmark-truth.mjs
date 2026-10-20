@@ -79,7 +79,7 @@ assert.ok(Number.isFinite(report.metrics.baseline.recallAtK01));
 assert.ok(Number.isFinite(report.metrics.candidate.mrr01));
 assert.equal(report.promotion.status, report.promotion.allowed ? 'candidate-eligible-for-separate-review' : 'not-promoted',
   'promotion status must faithfully reflect all gates; this fixture is not independent scientific evidence');
-assert.equal(report.schemaVersion, 4, 'metric shape changes must advance the report schema');
+assert.equal(report.schemaVersion, 5, 'metric shape changes must advance the report schema');
 assert.equal(report.datasetProvenance.datasetId, 'nk1-workpass83-synthetic-fixture');
 assert.equal(report.datasetProvenance.contentHashValid, true, 'provenance hash must bind to the exact canonical dataset');
 const badHashReport = runMemoryOS2RetrievalBenchmark(memory.snapshot(), examples, {
@@ -98,6 +98,23 @@ const leakReport = runMemoryOS2RetrievalBenchmark(memory.snapshot(), leaked, {
 assert.equal(leakReport.datasetIntegrity.validForPromotion, false,
   'duplicated normalized query across train/holdout must block promotion');
 assert.equal(leakReport.promotion.allowed, false);
+
+const overlongLabels = [...examples, {
+  id: 'holdout-too-many-labels',
+  query: 'a deliberately bounded query whose labels must not be silently truncated',
+  relevantIds: Array.from({ length: 25 }, (_, index) => index === 0 ? ids.get('en-train-1') : `unknown-label-${index}`),
+  split: 'holdout',
+}];
+const truncatedLabelReport = runMemoryOS2RetrievalBenchmark(memory.snapshot(), overlongLabels, {
+  now, k: 3, minHoldoutQueries: 8, bootstrapSamples: 200, seed: 83,
+  datasetProvenance: provenance, maxExamples: 64,
+});
+assert.equal(truncatedLabelReport.datasetIntegrity.truncatedFieldRows, 1,
+  'source rows with clipped labels must be reported rather than silently normalized');
+assert.equal(truncatedLabelReport.datasetIntegrity.validForPromotion, false,
+  'silently truncated label sets must block candidate promotion');
+assert.equal(truncatedLabelReport.promotion.allowed, false,
+  'a clipped label set must never authorize promotion');
 
 console.log('WORKPASS83_RETRIEVAL_BENCHMARK_TRUTH=PASS', JSON.stringify({
   corpus: report.corpusSize,
