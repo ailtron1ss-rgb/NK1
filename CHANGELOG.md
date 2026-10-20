@@ -1,3 +1,8 @@
+## NK1 v2.0 rebuild — finalizer assertion escaping fix (2026-10-20)
+
+- [FIXED] Corrected regular-expression escaping in `test:workpass97:planner-route`; the prior edit accidentally made the assertion look for literal backslashes, so the workflow still failed at the same assertion.
+- Validation: rerun Actions on the current `rebuild` HEAD; CI remains unverified until that run completes successfully.
+
 ## NK1 v2.0 rebuild — planner-route regression assertion correction (2026-10-20)
 
 - [FIXED] Updated the canonical-finalizer regression assertion to accept the optional `finalizationContextKeys` argument while still requiring the same core-owned finalization call.
