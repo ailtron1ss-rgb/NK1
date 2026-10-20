@@ -138,3 +138,11 @@ Read `docs/RESEARCH_GATE_MEMORY_CONTINUAL_LEARNING_2026-10-20.md` before changin
 - Modular memory and Titans: candidates, not approved architecture changes until resource and ablation evidence exists.
 
 No external benchmark data or code has been copied into NK1. Verify licences and data provenance before importing. Next quality pass should extend the existing benchmark harness to a versioned manifest and independent RU/EN holdout, including stale-fact, temporal-update and abstention metrics; preserve the synthetic WorkPass83 fixture strictly as harness validation. The WorkPass84 CI guard and latest successful run are recorded below in the verification ledger.
+
+
+## Verified CI receipt — WorkPass84
+
+- **PASS:** [GitHub Actions run 39374168533](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39374168533), exact code HEAD `b95235b5696667ad96cc6f1d63c11f4b91a96ee8`.
+- `WORKPASS84_SCRIPT_INTEGRITY=PASS`: 1,655 scripts; 3,334 npm-run references checked; 1,286 static test-file references checked; zero missing script targets and zero missing test files.
+- Same run passed WorkPass80 memory residency, WorkPass83 benchmark truthfulness/leakage, WorkPass79 local provider policy and boundary, WorkPass82 end-to-end cancellation, and server HTTP smoke.
+- The research-note commits after this code HEAD do not change runtime logic; still verify the latest workflow run against current PR HEAD before treating the whole branch as green.
