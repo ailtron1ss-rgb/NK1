@@ -1,3 +1,11 @@
+## WorkPass73 — skill-learning evidence integrity (2026-10-20)
+- Removed false holdout labels from compound-skill execution outcomes and project-research observations; runtime outcome telemetry is learning data unless an explicit independent evaluation protocol labels it otherwise.
+- Skill acquisition holdout evidence now counts only distinct context keys, requires at least three unique accepted holdout contexts before eligibility, rejects empty contexts, and safely handles prototype-named keys.
+- Legacy snapshots recompute the accepted holdout count from the unique phase registry rather than trusting counters that may have included repeated observations.
+- Expanded split-integrity regressions for duplicate contexts, prototype keys, empty contexts, migration and contamination persistence.
+- Research reference: LifelongAgentBench and AgentMemoryBench separate online learning, held-out evaluation, replay/forgetting and transfer; these ideas are used as evaluation design references, not copied runtime dependencies.
+- No learning uplift is claimed. Production learning effectiveness, transfer, forgetting curves and independent labelled holdout performance remain unmeasured.
+
 ## WorkPass72 — memory residency, verification-gated learning and source cleanup (2026-10-19)
 - Fixed a candidate-budget off-by-one in revision/graph expansion: both now check the 192-item cap before insertion, with a fail-fast invariant and diagnostic-rich regression assertion.
 - Fixed a resource/residency defect in `MemoryOS2.retrieve()`: cold candidates were assigned freshly rebuilt hash vectors and promoted to warm even though the hash similarity was not part of ranking.
