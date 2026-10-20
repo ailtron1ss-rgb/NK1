@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
 import { SkillAcquisitionBenchmark } from '../src/organism/system/SkillAcquisitionBenchmark.ts';
 const b=new SkillAcquisitionBenchmark();
+assert.equal(b.summary().holdoutEligible,false,'no holdout observations means no evidence of learning gain');
 const implicit=b.observe({action:'a',contextKey:'new task',outcome01:1});
 assert.equal(implicit.phase,'learning','implicit sample ordering must not fabricate a holdout split');
 assert.equal(implicit.holdoutEvidenceAccepted,false);
 b.observe({action:'a',contextKey:'baseline-1',outcome01:.2,phase:'baseline'});
 const accepted=b.observe({action:'a',contextKey:'holdout-1',outcome01:.9,phase:'holdout'});
 assert.equal(accepted.holdoutEvidenceAccepted,true);
+assert.equal(b.summary().holdoutEligible,true);
 const before=b.snapshot().holdoutMean01;
 const leaked=b.observe({action:'a',contextKey:'baseline-1',outcome01:1,phase:'holdout'});
 assert.equal(leaked.holdoutEvidenceAccepted,false,'a training context cannot become holdout evidence');
