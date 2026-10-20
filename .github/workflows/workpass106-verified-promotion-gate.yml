@@ -6,6 +6,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedgerStore.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedgerFileStore.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeArtifact.ts'
+      - 'runtime/neuro-kurisu/src/node-shims.d.ts'
       - 'runtime/neuro-kurisu/tests/p23-signed-outcome-artifact.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomePromotionGate.ts'
       - 'runtime/neuro-kurisu/tests/p23-verified-outcome-ledger.mjs'
