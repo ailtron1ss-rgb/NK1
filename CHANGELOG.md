@@ -912,3 +912,13 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Local cancellation is no longer recorded as a normal llama.cpp provider failure and does not fan out into fallback generation. Kobold/Gemini fetches also compose the caller signal with their deadline, and provider iteration stops when the request has been cancelled.
 - Added `tests/workpass82-server-language-cancellation.mjs`: starts a real NK1 server plus a controlled loopback chat-completions endpoint, disconnects the client during generation, and requires the upstream provider socket to close before the 12-second provider deadline.
 - Wired the E2E cancellation test into the WorkPass79 Actions workflow. **PASS** in [Actions run 39372093088](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39372093088): the controlled provider received one request and observed one upstream disconnect after the chat client disconnected, well before the 12-second provider deadline. This controlled loopback test does not substitute for live llama.cpp or restart/soak testing.
+
+
+## WorkPass84 — целостность npm scripts и локальных тестовых целей (2026-10-20)
+
+- Добавлен `runtime/neuro-kurisu/tests/workpass84-script-integrity.mjs`: проверяет, что все `npm run <target>` из runtime `package.json` ссылаются на объявленные scripts, а все статические `tests/*.{mjs,cjs,js,ts,mts,cts}`-цели существуют внутри каталога тестов.
+- Одноразовый аудит обнаружил три настоящие битые ссылки: пропущенный префикс `test:` у `long-horizon:operational:1000`, неверное имя `test:big-pass-317` вместо существующего `test:big-pass-317:reality`, и ссылку `test:p2852:neural-continuity` вместо существующего канонического `test:p2850:neural-continuity`. Исправлены все три; assertions не ослаблялись.
+- Новый script подключён к WorkPass79 GitHub Actions workflow.
+- Предварительная проверка обновлённого manifest: 1,655 scripts; 3,334 `npm run`-ссылки без отсутствующих targets; 1,286 статических ссылок на тестовые файлы. Это локальная проверка manifest-данных, не замена ожидаемому результату Actions.
+- **CI status:** новый WorkPass84 step ожидает выполнения GitHub Actions на обновлённом HEAD. До подтверждения run не маркировать как PASS.
+- Scope: ловит отсутствующие npm script targets и отсутствующие статические test files; не доказывает достижимость/качество каждого теста и не является полным аудитом динамических import/require.
