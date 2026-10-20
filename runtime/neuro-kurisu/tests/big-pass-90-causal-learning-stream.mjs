@@ -33,6 +33,13 @@ const restored=new CausalExperienceStream(16);
 restored.restore(persisted);
 assert.deepEqual(restored.recent(8),stream.recent(8));
 assert.equal(restored.recordExternalLearningEvent({...externalInput,reward01:1,success01:1}),null,'external trace deduplication must survive snapshot restore');
+const legacySnapshot=stream.snapshot();
+legacySnapshot.recordedTraceIds=[...(legacySnapshot.recordedTraceIds??[]),'  legacy-external-trace  '];
+const legacyExternal=legacySnapshot.records.find(row=>row.traceId==='external-trace-once');
+if(legacyExternal) legacyExternal.traceId=' external-trace-once ';
+const legacyRestored=new CausalExperienceStream(16);legacyRestored.restore(legacySnapshot);
+assert.equal(legacyRestored.recent(8).find(row=>row.traceId==='external-trace-once')?.traceId,'external-trace-once','restore must canonicalize legacy persisted record IDs');
+assert.equal(legacyRestored.recordExternalLearningEvent({...externalInput,traceId:'legacy-external-trace'}),null,'restore must canonicalize legacy persisted deduplication IDs');
 for(let i=0;i<70;i++){
   const nextTrace={...trace,id:`trace-evict-${i}`,tick:i+10,createdAt:1000+i};
   stream.recordOutcome(nextTrace,mkState({tick:i+11}),{reward01:.6,success01:.6,surprise01:.2,novelty01:.2});
