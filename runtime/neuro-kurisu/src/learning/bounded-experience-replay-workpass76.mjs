@@ -90,7 +90,7 @@ export class BoundedExperienceReplayBuffer {
   sample(count) {
     if (!Number.isInteger(count) || count < 0) throw new RangeError("count must be a non-negative integer");
     const n = this.strategy === "prioritized" ? count : Math.min(count, this.#items.length);
-    if (!n) return [];
+    if (!n || this.#items.length === 0) return [];
     const selected = [];
     const totalPriority = this.#items.reduce((sum, item) => sum + item.priority ** this.priorityAlpha, 0);
     const probabilityFor = item => this.strategy === "prioritized"
