@@ -84,3 +84,12 @@ The selector benchmark measures replay-set composition. The sequential benchmark
 3. Extend the sandboxed memory-to-action benchmark with corrected preferences, superseded facts, ambiguity, false feedback and restart/replay.
 4. Compare no-memory, online-only, recent-only, priority-only and stratified replay on identical task seeds.
 5. Report pass rate, retention, transfer, stale-fact use, abstention, latency and memory cost separately with paired intervals; test on target local hardware before claiming production improvement.
+
+
+## WorkPass105 — bounded conflict-screening cost and research implications
+
+- Runtime code: `P26TrueLearningEngine.trainInterleaved` now caps per-action conflict candidates at 64 by default (configuration clamped to 8–128). Conflict comparisons are counted and returned with the result so runtime/benchmarks can report the work performed.
+- Regression: sequential benchmark asserts comparisons do not exceed `replayRows × conflictCandidateCap` in both the contradictory-context and separable-context experiments. The existing `test:learning-replay` workflow already executes this benchmark; no parallel learner or dependency was introduced.
+- **Limitation:** deterministic representative sampling reduces cost but is approximate. It can miss contradictory current examples not included in the sample; it must not be treated as an authoritative safety/provenance filter. Follow-up work should measure false-negative/false-positive rates against exhaustive screening across fixed seeds and compare latency.
+- **Research comparison:** the 2026 PMLR paper *Replay can provably increase forgetting* is a warning against assuming replay always helps; it strengthens the decision to report old-task retention and new-task plasticity separately. ARROW uses complementary short-term and long-term buffers for distribution matching; A2ER/O2S focuses on balancing consolidation and plasticity with bounded resources. NK1 currently adapts conflict gating and boundedness, not their full model/training stacks. Sources: https://proceedings.mlr.press/v330/mahdaviyeh26a.html ; https://github.com/Cerenaut/ARROW ; https://doi.org/10.3389/frai.2026.1649239
+- No external code or datasets copied. Current score remains **58/100**; no task-quality uplift is claimed from this efficiency change.
