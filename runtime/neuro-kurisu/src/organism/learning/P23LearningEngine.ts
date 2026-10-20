@@ -362,7 +362,7 @@ export class P23LearningEngine {
       const status:PolicySkillRecord['status']=valSuccess>=.70 && trainSuccess>=.64 && confidence>=.4 ? 'promoted' : valSuccess<=.42 && validation.length>=4 ? 'rejected' : 'candidate';
       if(status==='candidate') candidates++;
       const record:PolicySkillRecord={id,contextKey:items[0].contextKey,action,totalUses:items.length,trainUses:train,validationUses:validation.length,trainSuccess01:clamp(trainSuccess),validationSuccess01:clamp(valSuccess),confidence01:confidence,status,createdAt:existing?.createdAt??now(),updatedAt:now(),validationWindowStartTick:validation[0]?.tick??items[0].tick,validationWindowEndTick:validation.at(-1)?.tick??items.at(-1)!.tick};
-      if(!existing || status!==existing.status || Math.abs(record.validationSuccess01-existing.validationSuccess01)>.02){
+      if(!existing || status!==existing.status || record.totalUses!==existing.totalUses || record.validationWindowEndTick!==existing.validationWindowEndTick || Math.abs(record.validationSuccess01-existing.validationSuccess01)>.02){
         const idx=this.state.skills.findIndex(s=>s.id===id); if(idx>=0)this.state.skills[idx]=record; else this.state.skills.unshift(record);
       }
     }
