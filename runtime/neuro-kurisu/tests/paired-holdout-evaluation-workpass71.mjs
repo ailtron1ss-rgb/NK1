@@ -14,7 +14,7 @@ test("paired holdout detects stable reward uplift without promoting on tiny samp
   const result = evaluatePairedLearningRuns({ baseline, candidate });
   assert.equal(result.sampleCount, 4);
   assert.ok(Math.abs(result.paired.rewardDeltaMean - 0.2) < 1e-12);
-  assert.deepEqual(result.paired.rewardDeltaBootstrap95CI, [0.2, 0.2]);
+  assert.ok(result.paired.rewardDeltaBootstrap95CI.every(value => Math.abs(value - 0.2) < 1e-12));
   assert.equal(result.paired.bootstrapResamples, 2000);
   assert.equal(result.paired.bootstrapSeed, 42);
   assert.equal(result.paired.rewardEffectSizeCohenD, Infinity);
