@@ -1,3 +1,11 @@
+## NK1 learning WorkPass102 — online/replay interleaving probe (2026-10-20)
+
+- Added `P26TrueLearningEngine.trainInterleaved` to schedule fresh-task updates and bounded old-experience rehearsal in one deterministic pass, rather than relying only on post-hoc replay after forgetting has already happened.
+- Expanded the synthetic sequential-task comparison to online-only, post-hoc replay and interleaved rehearsal. It records fresh/replay update counts and old/new task accuracy separately; the benchmark remains synthetic and does not count as independent generalization evidence.
+- The interleaving API is bounded (stride 1–32; replay cap 0–4096 per call), uses a lower replay learning-rate schedule than fresh outcomes, and updates existing P26 metrics without creating a parallel learner.
+- Research basis: rehearsal is an established baseline; ARROW motivates complementary short-term/long-term distributions, while DER/reservoir sampling motivates bounded representative history. Their heavyweight Python/PyTorch pipelines are not copied into NK1's TypeScript/mobile runtime.
+- **Evidence status:** exact-head Actions is the authority. No improvement is claimed until the comparison passes and measured retention/plasticity deltas are inspected.
+
 ## NK1 learning WorkPass101 — holdout provenance, TD calibration and retention probe (2026-10-20)
 
 - [FIXED] P26 separates `trainingExposure01` from `generalizationEvidence01`; updates and in-batch diagnostics no longer count as generalization evidence.
