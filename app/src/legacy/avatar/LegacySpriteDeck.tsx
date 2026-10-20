@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { getOutfit, type VisualProfileId, OUTFITS } from "./outfitCatalog";
 import { resolveSpritePath } from "./spriteEngine";
 import type { EmotionLabel } from "@/organism/types";
+import { readAvatarPreference, writeAvatarPreference } from "./safeLocalStorage";
 
 const EXPRESSION: Record<EmotionLabel, string> = {
   curiosity: "thinking",
@@ -18,7 +19,7 @@ export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const currentRef = useRef<HTMLImageElement | null>(null);
   const previousRef = useRef<HTMLImageElement | null>(null);
-  const [outfit, setOutfit] = useState<VisualProfileId>(() => (typeof window !== "undefined" && window.localStorage.getItem("kurisu-visual-profile") as VisualProfileId) || "lab_coat");
+  const [outfit, setOutfit] = useState<VisualProfileId>(() => (readAvatarPreference("kurisu-visual-profile") as VisualProfileId | null) || "lab_coat");
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
   const blend = useRef(1);
@@ -31,7 +32,7 @@ export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel;
     img.src = url;
   }, [emotion, outfit]);
 
-  useEffect(() => { if (typeof window !== "undefined") window.localStorage.setItem("kurisu-visual-profile", outfit); }, [outfit]);
+  useEffect(() => { writeAvatarPreference("kurisu-visual-profile", outfit); }, [outfit]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
