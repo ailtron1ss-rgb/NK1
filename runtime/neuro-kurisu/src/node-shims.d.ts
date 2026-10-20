@@ -1,5 +1,5 @@
 declare module 'node:crypto' { export function randomUUID(): string;
-  export function createHash(algorithm: string): { update(data: string | Uint8Array): any; digest(encoding: string): string }; export function verify(algorithm: null | string, data: Uint8Array, key: string, signature: Uint8Array): boolean; export function sign(algorithm: null | string, data: Uint8Array, key: string): Uint8Array; }
+  export function createHash(algorithm: string): { update(data: string | Uint8Array): any; digest(encoding: string): string }; export function verify(algorithm: null | string, data: Uint8Array, key: string, signature: Uint8Array): boolean; export function sign(algorithm: null | string, data: Uint8Array, key: string): any; }
 declare module 'node:fs/promises' {
   export function access(path:string): Promise<void>;
   export function appendFile(path:string,data:string,encoding?:string):Promise<void>;
@@ -29,4 +29,4 @@ declare module 'node:v8' { export function serialize(value: unknown): Uint8Array
 declare module 'node:dns/promises' { export function lookup(hostname:string, options?:{all?:boolean;verbatim?:boolean}):Promise<any>; }
 declare module 'node:net' { export function isIP(input:string):number; }
 declare module 'node:https' { export type RequestOptions = { lookup?: any; [key:string]: any }; export function request(options:any, callback:(response:any)=>void):any; }
-declare const Buffer: { isBuffer(value:unknown):boolean; from(value:string|Uint8Array):Uint8Array; concat(list:readonly Uint8Array[], totalLength?:number):Uint8Array; };
+declare const Buffer: { isBuffer(value:unknown):boolean; from(value:string|Uint8Array, encoding?:string):any; concat(list:readonly Uint8Array[], totalLength?:number):Uint8Array; };
