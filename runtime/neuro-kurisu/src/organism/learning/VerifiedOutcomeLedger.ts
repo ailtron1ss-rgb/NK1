@@ -147,6 +147,85 @@ export class VerifiedOutcomeLedger {
     }));
   }
 
+  /**
+   * Compare methods with seed as the independent statistical unit.
+   * Every included seed must contain attempt-1 outcomes for both methods on
+   * every task in the selected split (and family, when supplied). This avoids
+   * treating correlated task cells or retries as independent samples.
+   */
+  comparePairedBySeed(baseline: string, candidate: string, split: EvaluationSplit = 'holdout'): PairedMethodSummary {
+    return this.compareFilteredBySeed(baseline, candidate, split);
+  }
+
+  /** Family-stratified counterpart to comparePairedBySeed. */
+  comparePairedByFamilyAndSeed(
+    baseline: string,
+    candidate: string,
+    split: EvaluationSplit = 'holdout',
+  ): Array<PairedMethodSummary & { family: string }> {
+    const families = [...new Set([...this.manifest.values()]
+      .filter(task => task.split === split)
+      .map(task => task.family))].sort();
+    return families.map(family => ({
+      family,
+      ...this.compareFilteredBySeed(baseline, candidate, split, family),
+    }));
+  }
+
+  private compareFilteredBySeed(
+    baseline: string,
+    candidate: string,
+    split: EvaluationSplit,
+    family?: string,
+  ): PairedMethodSummary {
+    if (!baseline || !candidate || baseline === candidate) throw new Error('two distinct method names are required');
+    const expectedTasks = [...this.manifest.values()]
+      .filter(task => task.split === split && (family === undefined || task.family === family))
+      .map(task => task.taskId).sort();
+    const bySeed = new Map<number, Map<string, Map<string, VerifiedTaskOutcome>>>();
+    for (const outcome of this.outcomes.values()) {
+      const task = this.manifest.get(outcome.taskId)!;
+      if (task.split !== split || (family !== undefined && task.family !== family) ||
+          (outcome.method !== baseline && outcome.method !== candidate) || outcome.attempt !== 1) continue;
+      const taskRows = bySeed.get(outcome.seed) ?? new Map<string, Map<string, VerifiedTaskOutcome>>();
+      const methodRows = taskRows.get(task.taskId) ?? new Map<string, VerifiedTaskOutcome>();
+      methodRows.set(outcome.method, outcome);
+      taskRows.set(task.taskId, methodRows);
+      bySeed.set(outcome.seed, taskRows);
+    }
+    const paired: Array<{ baseline: number; candidate: number }> = [];
+    for (const taskRows of bySeed.values()) {
+      // Fail closed on incomplete seed coverage: never compare different task sets.
+      if (!expectedTasks.length || expectedTasks.some(taskId => {
+        const methods = taskRows.get(taskId);
+        return !methods?.has(baseline) || !methods?.has(candidate);
+      })) continue;
+      const b = expectedTasks.reduce((sum, taskId) => sum + Number(taskRows.get(taskId)!.get(baseline)!.passed), 0) / expectedTasks.length;
+      const c = expectedTasks.reduce((sum, taskId) => sum + Number(taskRows.get(taskId)!.get(candidate)!.passed), 0) / expectedTasks.length;
+      paired.push({ baseline: b, candidate: c });
+    }
+    const n = paired.length;
+    const baselinePassRate = n ? paired.reduce((sum, row) => sum + row.baseline, 0) / n : 0;
+    const candidatePassRate = n ? paired.reduce((sum, row) => sum + row.candidate, 0) / n : 0;
+    const differences = paired.map(row => row.candidate - row.baseline);
+    const absoluteGain = n ? differences.reduce((sum, value) => sum + value, 0) / n : 0;
+    let approximate95CI: [number, number] | null = null;
+    if (n > 1) {
+      const variance = differences.reduce((sum, value) => sum + (value - absoluteGain) ** 2, 0) / (n - 1);
+      const critical = [0, 12.706, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262,
+        2.228, 2.201, 2.179, 2.160, 2.145, 2.131, 2.120, 2.110, 2.101, 2.093,
+        2.086, 2.080, 2.074, 2.069, 2.064, 2.060, 2.056, 2.052, 2.048, 2.045, 2.042];
+      const t = n - 1 < critical.length ? critical[n - 1]! : 1.96;
+      const margin = t * Math.sqrt(variance / n);
+      approximate95CI = [Math.max(-1, absoluteGain - margin), Math.min(1, absoluteGain + margin)];
+    }
+    return {
+      baseline, candidate, pairedN: n, baselinePassRate, candidatePassRate, absoluteGain,
+      discordantCandidateWins: differences.filter(value => value > 0).length,
+      discordantBaselineWins: differences.filter(value => value < 0).length,
+      approximate95CI,
+    };
+  }
   private compareFiltered(
     baseline: string,
     candidate: string,
