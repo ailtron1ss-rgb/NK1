@@ -38,10 +38,6 @@ function validateHistory(history, taskIds) {
     for (const [taskIndex, score] of row.entries()) {
       finite(score, `history[${rowIndex}][${taskIndex}]`);
       if (score < 0 || score > 1) throw new RangeError("task scores must be in [0, 1]");
-      if (taskIndex > rowIndex && rowIndex === 0) {
-        // Explicitly documented below: untrained-task scores are retained as observed values,
-        // but no forward-transfer claim is inferred without a separate chance/baseline score.
-      }
     }
   }
   return ids;
