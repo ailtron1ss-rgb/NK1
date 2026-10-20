@@ -56,6 +56,7 @@ export function selectVerifiedReplayExperiences<T extends ReplayExperienceRefere
   const snapshot = ledger.snapshot();
   const manifest = snapshot.manifest as TaskManifestEntry[];
   const outcomes = snapshot.outcomes as VerifiedTaskOutcome[];
+  const manifestFingerprint = ledger.manifestFingerprint();
   const manifestByTask = new Map(manifest.map(task => [task.taskId, task]));
   const outcomeByIdentity = new Map<string, VerifiedTaskOutcome>();
   for (const outcome of outcomes) {
@@ -94,7 +95,7 @@ export function selectVerifiedReplayExperiences<T extends ReplayExperienceRefere
         evidenceRef: outcome.evidenceRef,
         observedAt: outcome.observedAt,
       },
-      manifestFingerprint: ledger.manifestFingerprint(),
+      manifestFingerprint,
     });
   }
 
@@ -106,11 +107,8 @@ export function selectVerifiedReplayExperiences<T extends ReplayExperienceRefere
 
   return {
     split,
-    manifestFingerprint: ledger.manifestFingerprint(),
-    eligibleOutcomeCount: outcomes.filter(outcome => {
-      const task = manifestByTask.get(outcome.taskId);
-      return task?.split === split;
-    }).length,
+    manifestFingerprint,
+    eligibleOutcomeCount: outcomes.filter(outcome => manifestByTask.get(outcome.taskId)?.split === split).length,
     admittedCount: admitted.length,
     selectedCount: selected.length,
     admitted,
