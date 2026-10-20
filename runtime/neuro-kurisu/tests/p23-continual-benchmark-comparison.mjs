@@ -10,10 +10,18 @@ const runs=[
 ];
 const summary=comparePairedContinualRuns(runs,'baseline','candidate');
 assert.equal(summary.pairedN,2);
+assert.equal(summary.successScore.pairedN,2,'uncertainty uses matched runs, not correlated task cells');
+assert.equal(summary.forgetting.pairedN,2);
 assert.ok(Math.abs(summary.successScore.meanDelta-0.175)<1e-12);
 assert.ok(Math.abs(summary.forgetting.meanDelta-(-0.1))<1e-12);
+assert.ok(summary.successScore.approximate95CI);
+assert.ok(summary.successScore.approximate95CI[0] < summary.successScore.meanDelta);
+assert.ok(summary.successScore.approximate95CI[1] > summary.successScore.meanDelta);
 assert.equal(summary.unpairedBaselineRuns,0);
 assert.equal(summary.unpairedCandidateRuns,1);
+const onePair=comparePairedContinualRuns(runs.slice(0,2),'baseline','candidate');
+assert.equal(onePair.pairedN,1);
+assert.equal(onePair.successScore.approximate95CI,null,'do not report a confidence interval from one paired run');
 assert.throws(()=>comparePairedContinualRuns([...runs,runs[0]],'baseline','candidate'),/duplicate run/);
 assert.throws(()=>comparePairedContinualRuns([{...runs[0],manifestFingerprint:'bad'}],'baseline','candidate'),/SHA-256/);
 assert.throws(()=>comparePairedContinualRuns([
@@ -22,4 +30,5 @@ assert.throws(()=>comparePairedContinualRuns([
 assert.throws(()=>comparePairedContinualRuns([
  runs[0],{...runs[1],forgettingByTask:{a:0.1}}
 ],'baseline','candidate'),/task sets must match/);
-console.log('PASS paired continual benchmark: same-seed pairing, manifest/task integrity, forgetting and success deltas');
+assert.throws(()=>comparePairedContinualRuns(runs,'baseline','baseline'),/two distinct methods/);
+console.log('PASS paired continual benchmark: run-level uncertainty, same-seed pairing, manifest/task integrity, forgetting and success deltas');
