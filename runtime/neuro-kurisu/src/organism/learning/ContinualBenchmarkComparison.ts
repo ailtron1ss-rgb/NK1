@@ -1,7 +1,9 @@
 /**
  * Fair paired comparison utilities for continual-learning ablations.
  * Runs are pairable only when seed, manifest fingerprint and task set match.
- * Deltas are candidate minus baseline; no missing cells are silently imputed.
+ * Each run is the statistical unit: task scores are averaged within a run before
+ * confidence intervals are calculated, avoiding pseudo-replication of correlated
+ * tasks as if each task were an independent seed.
  */
 export interface ContinualBenchmarkRun {
   method: string;
@@ -11,6 +13,7 @@ export interface ContinualBenchmarkRun {
   forgettingByTask: Record<string, number>;
 }
 export interface PairedMetric {
+  /** Number of matched independent runs/seeds, not the number of task cells. */
   pairedN: number;
   baselineMean: number;
   candidateMean: number;
@@ -42,9 +45,11 @@ function validateRun(run: ContinualBenchmarkRun): void {
     if (!Number.isFinite(forgetting) || forgetting < 0 || forgetting > 1) throw new Error(`forgetting for ${id} must be in [0, 1]`);
   }
 }
+function mean(values: number[]): number {
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+}
 function summarize(deltas: Array<{ baseline: number; candidate: number }>): PairedMetric {
   const n = deltas.length;
-  const mean = (xs: number[]) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
   const baselineMean = mean(deltas.map(x => x.baseline));
   const candidateMean = mean(deltas.map(x => x.candidate));
   const differences = deltas.map(x => x.candidate - x.baseline);
@@ -54,12 +59,18 @@ function summarize(deltas: Array<{ baseline: number; candidate: number }>): Pair
   const halfWidth = 1.96 * Math.sqrt(variance / n);
   return { pairedN: n, baselineMean, candidateMean, meanDelta, approximate95CI: [meanDelta - halfWidth, meanDelta + halfWidth] };
 }
+function runMean(values: Record<string, number>): number {
+  return mean(Object.values(values));
+}
 export function comparePairedContinualRuns(
   runs: ContinualBenchmarkRun[],
   baseline: string,
   candidate: string,
 ): PairedContinualBenchmark {
-  if (!Array.isArray(runs) || !baseline.trim() || !candidate.trim() || baseline === candidate) throw new Error('two distinct methods and a run list are required');
+  if (!Array.isArray(runs) || typeof baseline !== 'string' || !baseline.trim() ||
+      typeof candidate !== 'string' || !candidate.trim() || baseline === candidate) {
+    throw new Error('two distinct methods and a run list are required');
+  }
   const byKey = new Map<string, Map<string, ContinualBenchmarkRun>>();
   for (const run of runs) {
     validateRun(run);
@@ -83,12 +94,14 @@ export function comparePairedContinualRuns(
     if (JSON.stringify(bIds) !== JSON.stringify(cIds)) throw new Error('paired runs must contain the identical task set');
     paired.push({ baseline: b, candidate: c });
   }
-  const scores = paired.flatMap(({ baseline: b, candidate: c }) => Object.keys(b.taskScores).map(taskId => ({
-    baseline: b.taskScores[taskId]!, candidate: c.taskScores[taskId]!,
-  })));
-  const forgetting = paired.flatMap(({ baseline: b, candidate: c }) => Object.keys(b.forgettingByTask).map(taskId => ({
-    baseline: b.forgettingByTask[taskId]!, candidate: c.forgettingByTask[taskId]!,
-  })));
+  // Aggregate tasks within each seed first. Confidence intervals then describe
+  // between-run variation, not artificial precision from correlated task cells.
+  const scores = paired.map(({ baseline: b, candidate: c }) => ({
+    baseline: runMean(b.taskScores), candidate: runMean(c.taskScores),
+  }));
+  const forgetting = paired.map(({ baseline: b, candidate: c }) => ({
+    baseline: runMean(b.forgettingByTask), candidate: runMean(c.forgettingByTask),
+  }));
   return {
     baseline, candidate, pairedN: paired.length,
     successScore: summarize(scores),
