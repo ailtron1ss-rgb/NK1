@@ -124,3 +124,17 @@ The change is additive. Revert the WorkPass79 commits or remove the workflow/scr
 - The guard validates every `npm run` target declared inside runtime package scripts and every static local `tests/*` source path referenced there. It is deliberately conservative: it does not claim that every script passes, that dynamic imports are complete, or that the project is release-ready.
 - Manifest preflight after fixes: 1,655 scripts, 3,334 npm-run references, 1,286 static test-file references, zero missing script targets in the preflight parser. GitHub Actions on the new head is the authoritative execution evidence and is still pending at time of this note.
 - Next: verify the new CI run; then inspect high-risk restart/recovery and learning/retention paths, and build the independent RU/EN retrieval holdout. Do not raise cognitive-readiness scores from an integrity guard alone.
+
+
+## Research handoff — independent memory/learning quality gates
+
+Read `docs/RESEARCH_GATE_MEMORY_CONTINUAL_LEARNING_2026-10-20.md` before changing retrieval or learning algorithms. It records research links and translates them into concrete gates:
+
+- LongMemEval: extraction, multi-session/temporal reasoning, knowledge updates and abstention.
+- MemoryAgentBench: retrieval, test-time learning, long-range understanding and selective forgetting.
+- MemBench: factual/reflective memory plus effectiveness, efficiency and capacity.
+- Memora/FAMA: explicitly penalize reliance on obsolete facts.
+- FOREVER: test forgetting-aware replay scheduling as an ablation; do not assume its training method transfers directly.
+- Modular memory and Titans: candidates, not approved architecture changes until resource and ablation evidence exists.
+
+No external benchmark data or code has been copied into NK1. Verify licences and data provenance before importing. Next quality pass should extend the existing benchmark harness to a versioned manifest and independent RU/EN holdout, including stale-fact, temporal-update and abstention metrics; preserve the synthetic WorkPass83 fixture strictly as harness validation. The WorkPass84 CI guard and latest successful run are recorded below in the verification ledger.
