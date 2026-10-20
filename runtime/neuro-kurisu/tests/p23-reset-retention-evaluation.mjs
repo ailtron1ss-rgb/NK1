@@ -29,7 +29,7 @@ const r1 = report.estimates[0];
 assert.equal(r1.pairedSeeds,4,'independent seed count, not task-cell count');
 assert.equal(r1.eligibleTaskCount,2);
 assert.equal(r1.excludedTaskCount,1);
-assert.ok(Math.abs(r1.normalizedRetention - (0.5*((0.5-0.2)/(0.8-0.2)+0.5))) < 1e-12);
+assert.ok(Math.abs(r1.normalizedRetention - (0.5*((((0.5-0.2)/(0.8-0.2)+3*((0.6-0.2)/(0.8-0.2)))/4)+0.5))) < 1e-12);
 assert.ok(r1.seedLevel95CI && r1.seedLevel95CI[0] < r1.normalizedRetention && r1.seedLevel95CI[1] > r1.normalizedRetention);
 assert.equal(r1.perFamily.length,2);
 assert.equal(r1.perFamily.find(x=>x.family==='transfer').taskCount,1);
