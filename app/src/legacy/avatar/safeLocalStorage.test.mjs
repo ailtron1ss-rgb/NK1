@@ -1,0 +1,47 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readAvatarPreference, writeAvatarPreference } from "./safeLocalStorage.ts";
+
+const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+
+function setWindow(value) {
+  Object.defineProperty(globalThis, "window", { configurable: true, writable: true, value });
+}
+function restoreWindow() {
+  if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
+  else delete globalThis.window;
+}
+
+test("avatar preference reads fail closed when storage is unavailable", () => {
+  try {
+    delete globalThis.window;
+    assert.equal(readAvatarPreference("profile"), null);
+    Object.defineProperty(globalThis, "window", { configurable: true, get() { throw new Error("blocked"); } });
+    assert.equal(readAvatarPreference("profile"), null);
+    assert.equal(writeAvatarPreference("profile", "formal"), false);
+  } finally { restoreWindow(); }
+});
+
+test("avatar preference reads and writes tolerate storage exceptions", () => {
+  try {
+    setWindow({ localStorage: {
+      getItem() { throw new Error("read denied"); },
+      setItem() { throw new Error("write denied"); },
+    } });
+    assert.equal(readAvatarPreference("profile"), null);
+    assert.equal(writeAvatarPreference("profile", "formal"), false);
+  } finally { restoreWindow(); }
+});
+
+test("avatar preference persists when storage works", () => {
+  const values = new Map();
+  try {
+    setWindow({ localStorage: {
+      getItem(key) { return values.get(key) ?? null; },
+      setItem(key, value) { values.set(key, String(value)); },
+    } });
+    assert.equal(readAvatarPreference("profile"), null);
+    assert.equal(writeAvatarPreference("profile", "formal"), true);
+    assert.equal(readAvatarPreference("profile"), "formal");
+  } finally { restoreWindow(); }
+});
