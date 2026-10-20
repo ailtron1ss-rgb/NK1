@@ -1,4 +1,4 @@
-name: WorkPass95 continual skill learning
+name: WorkPass97 Node 24 and continual skill learning
 
 on:
   push:
@@ -14,15 +14,31 @@ on:
       - 'runtime/neuro-kurisu/tests/p23-integration.mjs'
       - 'runtime/neuro-kurisu/tests/p26-true-learning.mjs'
       - '.github/workflows/workpass95-continual-skill-learning.yml'
+      - '.nvmrc'
+
+permissions:
+  contents: read
 
 jobs:
   continual-skill-learning:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
+      - name: Enforce current Node.js runtime contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          npm --version
+          node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
+      - name: Audit cognitive subsystem ownership
+        run: npm --prefix runtime/neuro-kurisu run audit:core-ownership
+      - name: Runtime smoke integration
+        run: npm --prefix runtime/neuro-kurisu run test:smoke
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Validate skill learning and cross-context transfer boundaries
