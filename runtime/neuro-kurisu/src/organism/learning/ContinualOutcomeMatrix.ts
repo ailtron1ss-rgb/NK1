@@ -53,11 +53,15 @@ export function buildContinualOutcomeMatrix(
   const outcomes = snapshot.outcomes as VerifiedTaskOutcome[];
   const tasksInSplit = manifest.filter(task => task.split === split).sort((a,b) => a.taskId.localeCompare(b.taskId));
   if (!tasksInSplit.length) throw new Error(`no manifest tasks in split: ${split}`);
+  const selectedMethods = new Set([
+    ...stages.map(stage => stage.method),
+    ...(options.preTrainingMethod ? [options.preTrainingMethod] : []),
+  ]);
   const eligible = outcomes.filter(outcome =>
     outcome.attempt === 1 &&
     (outcome.authority === 'independent-verifier' || outcome.authority === 'human-review') &&
     tasksInSplit.some(task => task.taskId === outcome.taskId) &&
-    (stages.some(stage => stage.method === outcome.method) || outcome.method === options.preTrainingMethod));
+    selectedMethods.has(outcome.method));
   const cell = new Map<string, Map<number, boolean>>();
   for (const outcome of eligible) {
     const key = JSON.stringify([outcome.taskId, outcome.method]);
