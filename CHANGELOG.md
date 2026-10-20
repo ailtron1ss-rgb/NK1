@@ -1,3 +1,8 @@
+## NK1 v2.0 rebuild — stage 0 addendum (2026-10-20)
+
+- Extended existing `docs/ARCHITECTURE.md` rather than replacing the current architecture record; the new section clearly separates target contracts from implemented behavior.
+- Added `docs/ROADMAP.md` with island-level tasks and evidence gates for core, memory, motivation, embodiment, self and validation.
+
 ## NK1 v2.0 rebuild — stage 0 (2026-10-20)
 
 - [REBUILT] Created the isolated `rebuild` branch from the WorkPass93 cognitive-rebuild baseline; `main` and the existing draft PR remain untouched.
