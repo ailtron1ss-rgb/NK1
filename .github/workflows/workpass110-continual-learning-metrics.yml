@@ -3,7 +3,9 @@ on:
   pull_request:
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualLearningMetrics.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/ContinualOutcomeMatrix.ts'
       - 'runtime/neuro-kurisu/tests/p23-continual-learning-metrics.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-continual-outcome-matrix.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualBenchmarkComparison.ts'
       - 'runtime/neuro-kurisu/tests/p23-continual-benchmark-comparison.mjs'
       - 'runtime/neuro-kurisu/package.json'
@@ -12,7 +14,9 @@ on:
     branches: [workpass79-cognitive-rebuild]
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualLearningMetrics.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/ContinualOutcomeMatrix.ts'
       - 'runtime/neuro-kurisu/tests/p23-continual-learning-metrics.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-continual-outcome-matrix.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
 jobs:
