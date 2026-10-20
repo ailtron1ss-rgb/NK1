@@ -1,3 +1,9 @@
+## NK1 v2.0 rebuild — project tool finalization route (2026-10-20)
+
+- [FIXED] Fresh project-tool execution now dispatches through OrganismCore.executeTool instead of calling ActionGateway.executeTool directly. Keyed mutations still use the gateway's atomic finalizer/receipt path; unkeyed read-only outcomes now also pass through the host's canonical finalizer and checkpoint.
+- Extended the autonomous planner route regression to guard both the autonomous planner and project executor dispatch paths against this bypass returning.
+- Exact-head CI is required; this source-level guard does not replace a full live project execution and EthicalGate trace.
+
 ## NK1 v2.0 rebuild — autonomous planner gateway route guard (2026-10-20)
 
 - [GUARDED] Added a source-level architecture regression that requires the autonomous resource/tool/life planner to call the canonical OrganismCore execution wrapper, verifies alias canonicalization and ActionGateway delegation, and protects finalizer ownership for keyed versus unkeyed calls.
