@@ -2,6 +2,7 @@ export type OutcomeVerificationBasis = 'none' | 'tool-contract' | 'external-post
 
 import type { WorldContext } from '../core/types.ts';
 import { normalizeWorldContext as normalizeCanonicalWorldContext } from '../core/WorldContextNormalizer.ts';
+import { stableJson } from '../core/StableSerialization.ts';
 
 export interface OutcomeVerification {
   verified: boolean;
@@ -55,7 +56,15 @@ export function isTrustedExternalPostconditionVerification(value: unknown, expec
   if (!value || typeof value !== 'object') return false;
   const context = trustedExternalPostconditionResults.get(value as object);
   if (!context || assessExternalPostcondition(value as OutcomeVerification) !== 'match') return false;
-  if (expectedInput && !Object.entries(expectedInput).every(([key, expected]) => Object.is(context.input[key], expected))) return false;
+  if (expectedInput) {
+    // Bind to the complete action input, not a caller-selected subset. A partial
+    // match could otherwise reuse valid evidence for a different operation.
+    try {
+      if (stableJson(context.input) !== stableJson(expectedInput)) return false;
+    } catch {
+      return false;
+    }
+  }
   return true;
 }
 const clamp = (x: unknown) => typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : 0;
