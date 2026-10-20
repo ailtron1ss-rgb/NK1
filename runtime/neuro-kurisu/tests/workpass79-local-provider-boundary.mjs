@@ -79,7 +79,7 @@ const timeoutTestKeepAlive = setTimeout(() => {}, 1_000);
 try {
   await assert.rejects(
     () => timeoutProvider.generate({ system: '', user: 'timeout test' }),
-    /llama\\.cpp-timeout/,
+    /llama\.cpp-timeout/,
   );
 } finally {
   clearTimeout(timeoutTestKeepAlive);
