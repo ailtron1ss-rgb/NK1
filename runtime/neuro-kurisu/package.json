@@ -1667,6 +1667,7 @@
     "test:workpass79:provider-boundary": "node --experimental-strip-types tests/workpass79-local-provider-boundary.mjs",
     "test:workpass88:label-truncation": "node --experimental-strip-types tests/workpass83-retrieval-benchmark-truth.mjs",
     "test:cognitive-cycle-boundary": "node --experimental-strip-types tests/cognitive-cycle-boundary.mjs",
-    "test:workpass95:receipt-integrity": "node --experimental-strip-types tests/workpass95-restored-action-receipt-integrity.mjs"
+    "test:workpass95:receipt-integrity": "node --experimental-strip-types tests/workpass95-restored-action-receipt-integrity.mjs",
+    "test:workpass96:finalizer-boundary": "node --experimental-strip-types tests/workpass96-action-finalizer-boundary.mjs"
   }
 }
