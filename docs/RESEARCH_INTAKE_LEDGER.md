@@ -82,3 +82,45 @@ These names were explicitly proposed for NeuroCore research. Where the exact ups
 | Learned anti-forgetting / memory interference | MemoryAgentBench and MINTEval above, plus maintained continual-learning baselines | Transfer, catastrophic forgetting, interference and reversal | Existing learning/memory owner with held-out tasks | **ADAPT** — no new module until a repeatable failure case and a baseline comparison exist |
 
 These entries intentionally separate known source starting points from names whose exact upstream is unresolved. Before any code port, record the actual URL/revision, license, files inspected, behavior reproduced and decision in this ledger. The fact that a candidate appeared in an earlier plan is not proof it exists upstream in the assumed form.
+
+
+## Adjacent-science intake — cognitive systems, neuroscience and control (2026-10-20)
+
+These references are starting points for translating functional hypotheses into testable software experiments. They do **not** prove that a biological mechanism can or should be copied into NeuroCore. Record the exact claim, competing interpretation, adaptation boundary and falsifiable test before implementation.
+
+| Research / primary source | What it contributes as a hypothesis | Possible NeuroCore experiment | Caution / status |
+|---|---|---|---|
+| McClelland, McNaughton & O'Reilly (1995), *Why there are complementary learning systems in the hippocampus and neocortex* — https://doi.org/10.1037/0033-295X.102.3.419 | Complementary fast episodic learning and slower extraction of regularities can reduce interference in connectionist models. | Compare fast episodic store + slow consolidation against one-rate learning; measure transfer, interference, stale fact persistence and recovery. | **ADAPT** as a systems hypothesis, not a literal hippocampus/neocortex implementation. Must compare equal storage/compute budgets. |
+| Rao & Ballard (1999), *Predictive coding in the visual cortex* — https://doi.org/10.1038/4580 | Hierarchical prediction and residual-error signals as one functional account of visual processing. | In a future multimodal path, compare prediction/error-guided attention with a plain input pipeline on labelled novelty and correction tasks. | **RESEARCH-ONLY** until a real sensory signal and meaningful error measure exist; text-generated “prediction error” is not sensory grounding. |
+| Friston (2010), *The free-energy principle: a unified brain theory?* — https://doi.org/10.1038/nrn2787 | A broad framework connecting inference, action, learning and uncertainty through variational free energy. | If planning/perception needs a common uncertainty/cost formalism, compare a narrowly specified expected-cost policy with existing explicit risk/budget policy. | **RESEARCH-ONLY**. This is a broad and debated framework, not an automatically useful universal objective. See critical discussion such as https://doi.org/10.1038/nrn2787-c1. |
+| Dehaene & Changeux (2011), *Experimental and theoretical approaches to conscious processing* — https://doi.org/10.1016/j.neuron.2011.03.018 | Reviews global neuronal workspace accounts and empirical approaches to conscious access. | Only use as a source of operationally testable hypotheses about availability/broadcast of information across subsystems and reportable access. | **RESEARCH-ONLY** for cognitive architecture; not a consciousness test. Passing software integration tests does not establish subjective experience. |
+| MemoryAgentBench (2025; updated 2026) — https://arxiv.org/abs/2507.05257 | Benchmark task families for memory retrieval, test-time learning, long-range understanding and forgetting-related behavior. | Independent RU/EN held-out task suites with fact revision, multi-hop, interference, selective forgetting and calibrated abstention. | **ADAPT**; inspect current benchmark version, dataset license, split design and leakage risks before reuse. |
+| Memora / FAMA (ACL 2026) — https://arxiv.org/abs/2604.20006 | Memory update/retrieval behavior under stale or invalidated evidence. | Pair fact A→fact B updates with queries before/after the validity boundary; measure false-current and false-historical answer rates. | **ADAPT** after verifying publication details and exact benchmark protocol. |
+| MINTEval (2026) — https://arxiv.org/abs/2605.18565 | Multi-target interference and aggregation as memory evolves. | Shuffle insertion order, add distractors/conflicts, and compare per-target accuracy plus calibration. | **ADAPT**; do not tune against the final holdout. |
+| AgeMem (ACL 2026) — https://aclanthology.org/2026.acl-long.981/ | Learned memory management and short/long-term allocation. | Compare existing deterministic residency/consolidation owner against a learned manager under equal RAM, latency and data budget. | **RESEARCH-ONLY** until deterministic baseline and safe rollback exist. |
+
+### Additional research lanes to explore continuously
+
+1. **Episodic and semantic memory:** event sourcing, temporal databases, provenance, knowledge graphs, contradiction resolution, source reliability, temporal query semantics, memory compaction and reversible summaries.
+2. **Learning and forgetting:** complementary learning systems, replay scheduling, continual learning, meta-learning, test-time adaptation, selective erasure, stability/plasticity trade-offs and distribution shift.
+3. **Uncertainty and decision theory:** calibration, selective prediction/abstention, Bayesian decision theory, conformal prediction, risk-sensitive planning, value of information and out-of-distribution detection.
+4. **Causal reasoning:** interventions, counterfactuals, causal graphs, treatment of confounders, credit assignment and separation of correlation from verified action outcome.
+5. **Control and robotics:** feedback control, model-predictive control, state estimation, partial observability, active perception, safety envelopes and system identification. Use only when a real action/sensor loop exists.
+6. **Cognitive control:** working-memory limits, interference, task switching, inhibition, metacognition and error monitoring; operationalize each as a benchmark rather than naming a module after a brain region.
+7. **Speech and interaction:** turn-taking, interruption handling, streaming latency, diarization where relevant, phoneme/viseme alignment, prosody, accessibility and perceptual quality evaluation.
+8. **Distributed systems:** event sourcing, transactional outbox/inbox, sagas, idempotency, durable workflows, exactly-once illusions, crash consistency and reconciliation after ambiguous outcomes.
+9. **Security and privacy:** threat modeling, least privilege, untrusted memory/tool output, secret redaction, data lifecycle, prompt injection, software supply-chain integrity and auditability.
+10. **Evaluation science:** preregistration of hypotheses, blind test sets, paired comparisons, confidence intervals, effect sizes, negative controls, ablations, leakage detection and reproducibility.
+
+### Translation gate from science to code
+
+For each idea, answer before implementation:
+- What concrete failure in the current canonical owner motivates it?
+- What would falsify the hypothesis?
+- Which baseline and same-budget candidate will be compared?
+- Which data split is held out and who/what protects it from tuning?
+- What adverse effects must be measured (latency, RAM/VRAM, forgetting, privacy, reliability)?
+- What result causes rejection or rollback?
+- Is the mechanism actually necessary, or can a simpler change solve the observed failure?
+
+Do not count a reference as “used” until a source revision/paper protocol is inspected, a testable hypothesis is recorded, and an experiment or explicit rejection decision is linked.
