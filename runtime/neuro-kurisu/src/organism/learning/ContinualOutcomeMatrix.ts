@@ -57,7 +57,7 @@ export function buildContinualOutcomeMatrix(
     outcome.attempt === 1 &&
     (outcome.authority === 'independent-verifier' || outcome.authority === 'human-review') &&
     tasksInSplit.some(task => task.taskId === outcome.taskId) &&
-    stages.some(stage => stage.method === outcome.method));
+    (stages.some(stage => stage.method === outcome.method) || outcome.method === options.preTrainingMethod));
   const cell = new Map<string, Map<number, boolean>>();
   for (const outcome of eligible) {
     const key = JSON.stringify([outcome.taskId, outcome.method]);
@@ -78,7 +78,7 @@ export function buildContinualOutcomeMatrix(
     }
   }
   const referenceScore = options.referenceScore ?? 0;
-  const tasks: ContinualTask[] = tasksInSplit.map((task, taskIndex) => {
+  const tasks: ContinualTask[] = tasksInSplit.map(task => {
     const scoreByStage = stages.map(stage => {
       const values = cell.get(JSON.stringify([task.taskId, stage.method]))!;
       return [...values.values()].reduce((sum, passed) => sum + Number(passed), 0) / values.size;
