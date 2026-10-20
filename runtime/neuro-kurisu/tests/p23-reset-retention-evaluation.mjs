@@ -35,7 +35,7 @@ assert.ok(r1.seedLevel95CI && r1.seedLevel95CI[0] < r1.normalizedRetention && r1
 assert.equal(r1.perFamily.length,2);
 assert.equal(r1.perFamily.find(x=>x.family==='transfer').taskCount,1);
 assert.ok(report.estimates[1].normalizedRetention < r1.normalizedRetention,'more frequent reset should reflect lower fixture retention');
-const oneSeed = evaluateResetRetention(rows.filter(x=>x.seed===1),{resetEvery:[1]});
+const oneSeed = evaluateResetRetention(rows.filter(x=>x.seed===1 && x.arm!=='R(2)'),{resetEvery:[1]});
 assert.equal(oneSeed.estimates[0].seedLevel95CI,null,'single seed cannot support a confidence interval');
 assert.throws(()=>evaluateResetRetention([...rows,rows[0]],{resetEvery:[1,2]}),/duplicate task\/seed\/arm/);
 assert.throws(()=>evaluateResetRetention(rows.map((x,i)=>i===0?{...x,manifestFingerprint:'invalid'}:x),{resetEvery:[1,2]}),/manifestFingerprint/);
