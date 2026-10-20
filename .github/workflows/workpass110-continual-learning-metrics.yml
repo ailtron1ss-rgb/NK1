@@ -22,10 +22,12 @@ on:
       - 'runtime/neuro-kurisu/tests/p23-seed-clustered-outcome-comparison.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/ResetRetentionEvaluation.ts'
       - 'runtime/neuro-kurisu/tests/p23-reset-retention-evaluation.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedReplayAdmission.ts'
+      - 'runtime/neuro-kurisu/tests/p23-verified-replay-admission.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
   push:
-    branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval]
+    branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission]
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualLearningMetrics.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualOutcomeMatrix.ts'
@@ -45,6 +47,8 @@ on:
       - 'runtime/neuro-kurisu/tests/p23-seed-clustered-outcome-comparison.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/ResetRetentionEvaluation.ts'
       - 'runtime/neuro-kurisu/tests/p23-reset-retention-evaluation.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedReplayAdmission.ts'
+      - 'runtime/neuro-kurisu/tests/p23-verified-replay-admission.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
 jobs:
@@ -62,6 +66,9 @@ jobs:
       - name: Run seed-clustered verified outcome comparison regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:seed-clustered-outcomes
+      - name: Run evidence-gated replay admission regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-verified-replay-admission.mjs
       - name: Run reset-retention evaluation regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-reset-retention-evaluation.mjs
