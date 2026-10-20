@@ -50,7 +50,7 @@ assert.deepEqual(byFamily.map(row => row.family), ['memory', 'transfer']);
 assert.equal(byFamily.find(row => row.family === 'memory').pairedN, 12);
 assert.equal(byFamily.find(row => row.family === 'transfer').pairedN, 8);
 assert.ok(byFamily.find(row => row.family === 'transfer').absoluteGain > 0);
-assert.equal(ledger.comparePairedByFamily('baseline', 'candidate', 'train').length, 0);
+assert.equal(ledger.comparePairedByFamily('baseline', 'candidate', 'train')[0].pairedN, 0);
 const snapshot = ledger.snapshot();
 assert.equal(snapshot.manifestCount, 3);
 assert.equal(snapshot.rejectionCounts['self-report-not-authoritative'], 1);
