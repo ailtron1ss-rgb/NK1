@@ -24,10 +24,11 @@ export interface LearningProcessCommand {
   inheritEnv?: string[];
 }
 export interface LearningExecutionReceipt {
-  schemaVersion: 1;
+  schemaVersion: 2;
   executionId: string;
   runId: string;
   planFingerprint: string;
+  manifestFingerprint: string;
   commandFingerprint: string;
   startedAt: number;
   finishedAt: number;
@@ -170,10 +171,11 @@ export async function runLearningProcess(
   const finishedAt = Date.now();
   if (!terminalStatus) terminalStatus = exitCode === 0 ? 'completed' : 'failed';
   const receipt: LearningExecutionReceipt = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     executionId,
     runId: run.runId,
     planFingerprint,
+    manifestFingerprint: run.manifestFingerprint,
     commandFingerprint,
     startedAt,
     finishedAt,
@@ -209,7 +211,7 @@ export async function readLearningExecutionReceipt(receiptPath: string): Promise
   const parsed: unknown = JSON.parse(await readFile(receiptPath, 'utf8'));
   if (!parsed || typeof parsed !== 'object') throw new Error('invalid execution receipt');
   const receipt = parsed as LearningExecutionReceipt;
-  if (receipt.schemaVersion !== 1 || !nonEmpty(receipt.executionId) || !nonEmpty(receipt.runId) ||
+  if (receipt.schemaVersion !== 2 || !nonEmpty(receipt.executionId) || !nonEmpty(receipt.runId) ||
       !/^[a-f0-9]{64}$/i.test(receipt.planFingerprint) ||
       !/^[a-f0-9]{64}$/i.test(receipt.commandFingerprint) ||
       !['completed', 'failed', 'timed-out', 'output-limit', 'spawn-error'].includes(receipt.status) ||
