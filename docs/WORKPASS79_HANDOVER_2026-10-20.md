@@ -167,7 +167,7 @@ No external benchmark data or code has been copied into NK1. Verify licences and
 
 ## WorkPass86 — dataset provenance and content-hash binding (2026-10-20)
 
-**IMPLEMENTED in branch; exact-head CI pending.**
+**IMPLEMENTED and verified by exact-head CI.**
 
 - Report schema is now v4 because WorkPass85 changed the metric contract.
 - Promotion provenance requires dataset ID/version, source reference, labeling protocol, a declared license identifier, and a SHA-256 equal to the benchmark's canonical dataset fingerprint. The report exposes `contentHashValid` for audit.
@@ -182,4 +182,12 @@ No external benchmark data or code has been copied into NK1. Verify licences and
 - Current and point-in-time `MemoryOS2.retrieve` no longer returns a record with `supersededById` set but no `validUntilAt`; it records suppression using the existing `staleRetrievalsAvoided` diagnostic.
 - The archival `temporalMode: 'all'` path remains available for history inspection.
 - Regression uses a real `reviseContent` transition, deliberately damages the snapshot interval, restores it, then checks both current suppression and archival visibility. This is a recovery/integrity test, not evidence of improved general retrieval quality.
-- WorkPass86 passed exact-head Actions run 39376018280 on `192a4858cc1bbcb2b6944128c14f0170cc4caf59`; WorkPass87 requires a new exact-head run.
+- WorkPass86 passed exact-head Actions run 39376018280 on `192a4858cc1bbcb2b6944128c14f0170cc4caf59`. WorkPass87 passed exact-head Actions run 39376255921 on `cd278c83002b1afcfb821836ff3ce7502fa4906e`, including script integrity, memory residency, superseded-memory guard, benchmark abstention/hash checks, provider policy/boundary, cancellation and server smoke.
+
+
+## Latest verified code receipt — WorkPass87
+
+- **PASS:** [GitHub Actions run 39376255921](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39376255921), exact code HEAD `cd278c83002b1afcfb821836ff3ce7502fa4906e`.
+- New regression proves a damaged supersession interval cannot revive an obsolete fact in current retrieval, the existing stale-suppression diagnostic increments, and archive mode can still inspect the historical record.
+- All steps passed: WorkPass84 script integrity, WorkPass80 residency, WorkPass87 supersession recovery, WorkPass83/85/86 retrieval metrics and provenance, WorkPass79 provider policy/boundary, WorkPass82 cancellation, and controlled-provider server smoke.
+- The following handover/changelog-only commit does not change runtime behavior; check its exact-head Actions run before treating the documentation-updated branch as fully green.
