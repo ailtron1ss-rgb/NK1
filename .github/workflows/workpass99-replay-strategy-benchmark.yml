@@ -1,0 +1,28 @@
+name: WorkPass99 replay strategy benchmark
+
+on:
+  push:
+    branches: [workpass79-cognitive-rebuild]
+    paths:
+      - 'runtime/neuro-kurisu/tests/p23-replay-strategy-benchmark.mjs'
+      - '.github/workflows/workpass99-replay-strategy-benchmark.yml'
+  pull_request:
+    paths:
+      - 'runtime/neuro-kurisu/tests/p23-replay-strategy-benchmark.mjs'
+      - '.github/workflows/workpass99-replay-strategy-benchmark.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  replay-strategy-benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Compare replay selection strategies
+        run: node runtime/neuro-kurisu/tests/p23-replay-strategy-benchmark.mjs
