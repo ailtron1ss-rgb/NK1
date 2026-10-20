@@ -93,3 +93,11 @@ The selector benchmark measures replay-set composition. The sequential benchmark
 - **Limitation:** deterministic representative sampling reduces cost but is approximate. It can miss contradictory current examples not included in the sample; it must not be treated as an authoritative safety/provenance filter. Follow-up work should measure false-negative/false-positive rates against exhaustive screening across fixed seeds and compare latency.
 - **Research comparison:** the 2026 PMLR paper *Replay can provably increase forgetting* is a warning against assuming replay always helps; it strengthens the decision to report old-task retention and new-task plasticity separately. ARROW uses complementary short-term and long-term buffers for distribution matching; A2ER/O2S focuses on balancing consolidation and plasticity with bounded resources. NK1 currently adapts conflict gating and boundedness, not their full model/training stacks. Sources: https://proceedings.mlr.press/v330/mahdaviyeh26a.html ; https://github.com/Cerenaut/ARROW ; https://doi.org/10.3389/frai.2026.1649239
 - No external code or datasets copied. Current score remains **58/100**; no task-quality uplift is claimed from this efficiency change.
+
+
+## WorkPass106 — multi-seed policy comparison
+
+- Added a three-seed sweep across online-only and three replay schedules (1:8, 1:4, and 1:1 fresh-to-replay cadence) on context-separated task shifts. Each run records old-task accuracy before/after, new-task accuracy, retention delta, replay update count, blocked/eligible history and conflict-screening comparisons.
+- Wired the new sweep into `test:learning-replay` and therefore into the existing WorkPass79 cognitive regression workflow. The benchmark uses fixed deterministic seeds and checks bounded comparison work; it does not treat synthetic scores as generalization evidence.
+- This experiment is designed to expose the consolidation/plasticity Pareto frontier, not assume a denser replay ratio is better. Results must be read from the exact-head Actions logs before tuning defaults.
+- Current scorecard remains **58/100 overall**, **40% evidence maturity**, **32% end-to-end continual-learning scope** until the run passes and evidence is reviewed. No external code/datasets copied.
