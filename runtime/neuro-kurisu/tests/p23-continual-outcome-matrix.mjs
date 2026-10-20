@@ -15,7 +15,7 @@ const add = (taskId, method, seed, passed, extra={}) => ledger.record({
 });
 for (const seed of [11, 22, 33, 44]) {
   add('a','pretrain',seed,seed===11);
-  add('b','pretrain',seed===11 || seed===22);
+  add('b','pretrain',seed,seed===11 || seed===22);
   add('a','checkpoint-1',seed,seed!==44);
   add('b','checkpoint-1',seed,seed===11 || seed===22);
   add('a','checkpoint-2',seed,seed===11 || seed===22);
@@ -36,11 +36,12 @@ assert.deepEqual(matrix.tasks.map(t=>t.taskId),['a','b']);
 assert.ok(matrix.metrics.averageForwardTransfer !== null);
 assert.equal(matrix.metrics.forwardTransferTaskCount,2);
 assert.equal(matrix.metrics.stageCount,2);
+assert.equal(matrix.metrics.finalAverageScore,0.875);
+assert.equal(matrix.metrics.averageForwardTransfer,0.125);
 assert.equal(matrix.manifestFingerprint,ledger.manifestFingerprint());
 assert.throws(()=>buildContinualOutcomeMatrix(ledger,[{stageId:'x',method:'checkpoint-1'},{stageId:'x',method:'checkpoint-2'}]),/duplicate stageId/);
 assert.throws(()=>buildContinualOutcomeMatrix(ledger,[{stageId:'x',method:'checkpoint-1'},{stageId:'y',method:'checkpoint-1'}]),/duplicate stage method/);
 const sparse = new VerifiedOutcomeLedger(manifest);
-add('a','checkpoint-1',11,true); // deliberately unrelated ledger; no sparse outcomes in sparse
 assert.throws(()=>buildContinualOutcomeMatrix(sparse,[{stageId:'x',method:'checkpoint-1'}]),/missing outcomes/);
 const uneven = new VerifiedOutcomeLedger(manifest);
 for (const seed of [11,22]) {
@@ -50,4 +51,16 @@ for (const seed of [11,22]) {
   }
 }
 assert.throws(()=>buildContinualOutcomeMatrix(uneven,[{stageId:'one',method:'x'},{stageId:'two',method:'y'}]),/exact same seed set/);
+
+// Baseline must cover the same seed IDs for every holdout task; missing baseline
+// evidence cannot be silently interpreted as zero forward transfer.
+const missingBaseline = new VerifiedOutcomeLedger(manifest);
+for (const seed of [1,2]) {
+  for (const taskId of ['a','b']) {
+    missingBaseline.record({taskId,taskVersion:'1',method:'stage-1',seed,attempt:1,passed:true,authority:'independent-verifier',verifierId:'v1',evidenceRef:`verifier://${taskId}/stage-1/${seed}`,observedAt:2000+seed});
+    missingBaseline.record({taskId,taskVersion:'1',method:'stage-2',seed,attempt:1,passed:true,authority:'independent-verifier',verifierId:'v1',evidenceRef:`verifier://${taskId}/stage-2/${seed}`,observedAt:3000+seed});
+    if (taskId === 'a') missingBaseline.record({taskId,taskVersion:'1',method:'baseline',seed,attempt:1,passed:true,authority:'independent-verifier',verifierId:'v1',evidenceRef:`verifier://${taskId}/baseline/${seed}`,observedAt:4000+seed});
+  }
+}
+assert.throws(()=>buildContinualOutcomeMatrix(missingBaseline,[{stageId:'s1',method:'stage-1'},{stageId:'s2',method:'stage-2'}],{preTrainingMethod:'baseline'}),/pre-training method lacks matched seeds for task b/);
 console.log('PASS continual outcome matrix: verified evidence -> matched-seed task-by-stage metrics');
