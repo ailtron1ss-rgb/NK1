@@ -79,7 +79,14 @@ assert.ok(Number.isFinite(report.metrics.baseline.recallAtK01));
 assert.ok(Number.isFinite(report.metrics.candidate.mrr01));
 assert.equal(report.promotion.status, report.promotion.allowed ? 'candidate-eligible-for-separate-review' : 'not-promoted',
   'promotion status must faithfully reflect all gates; this fixture is not independent scientific evidence');
-assert.equal(report.schemaVersion, 5, 'metric shape changes must advance the report schema');
+assert.equal(report.schemaVersion, 6, 'metric shape changes must advance the report schema');
+assert.equal(report.confidence.unsupportedRetrievalRate01.samples, 200,
+  'unsupported retrieval must be evaluated with the configured paired bootstrap');
+assert.ok(Number.isFinite(report.confidence.unsupportedRetrievalRate01.upperBound01),
+  'abstention confidence interval must be finite');
+assert.equal(report.promotion.gates.abstentionConfidenceNonInferioritySupported,
+  report.confidence.unsupportedRetrievalRate01.upperBound01 <= report.promotion.maximumUnsupportedRetrievalRegression01,
+  'promotion gate must match the upper confidence bound and explicit tolerance');
 assert.equal(report.datasetProvenance.datasetId, 'nk1-workpass83-synthetic-fixture');
 assert.equal(report.datasetProvenance.contentHashValid, true, 'provenance hash must bind to the exact canonical dataset');
 const badHashReport = runMemoryOS2RetrievalBenchmark(memory.snapshot(), examples, {
@@ -131,6 +138,8 @@ console.log('WORKPASS83_RETRIEVAL_BENCHMARK_TRUTH=PASS', JSON.stringify({
   liveMemoryMutated: report.guardrails.liveMemoryMutated,
   tinyFixturePromotionAllowed: report.promotion.allowed,
   promotionDecisionConsistent: report.promotion.status === (report.promotion.allowed ? 'candidate-eligible-for-separate-review' : 'not-promoted'),
+  abstentionConfidenceBound: report.confidence.unsupportedRetrievalRate01.upperBound01,
+  abstentionConfidenceGate: report.promotion.gates.abstentionConfidenceNonInferioritySupported,
   crossSplitLeakageBlocksPromotion: !leakReport.datasetIntegrity.validForPromotion,
   syntheticFixtureIsNotExternalEvidence: true,
 }));
