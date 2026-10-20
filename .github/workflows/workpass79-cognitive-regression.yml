@@ -32,6 +32,9 @@ jobs:
       - name: Test cold-memory retrieval and residency invariants
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass80:memory-residency
+      - name: Verify current retrieval suppresses superseded records with damaged validity metadata
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass87:superseded-memory
       - name: Test retrieval metrics, abstention, dataset hash/provenance and holdout leakage guards
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass83:retrieval-benchmark-truth

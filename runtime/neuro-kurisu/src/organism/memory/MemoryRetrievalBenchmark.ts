@@ -98,7 +98,7 @@ const canonicalJsonValue=(value:unknown):unknown=>{
 };
 const corpusFingerprint=(rows:MemoryItem2[])=>createHash('sha256').update(JSON.stringify([...rows].sort((a,b)=>a.id.localeCompare(b.id)).map(row=>canonicalJsonValue(row)))).digest('hex');
 const retrievalConfigurationFingerprint=(snapshot:MemoryOSState2)=>createHash('sha256').update(JSON.stringify(canonicalJsonValue({algorithm:RETRIEVAL_ALGORITHM_VERSION,tokenization:'NFKC Unicode words plus standalone single-digit numbers',version:snapshot?.version??null,adaptiveMemoryPolicy:snapshot?.adaptiveMemoryPolicy??null,linkUpdates:snapshot?.linkUpdates??0,semanticQueries:snapshot?.semanticQueries??0}))).digest('hex');
-const isCurrent=(m:MemoryItem2,now:number)=>!m.dormant&&m.epistemicStatus!=='quarantined'&&(m.validFromAt==null||Number(m.validFromAt)<=now)&&(m.validUntilAt==null||Number(m.validUntilAt)>now);
+const isCurrent=(m:MemoryItem2,now:number)=>!m.dormant&&m.epistemicStatus!=='quarantined'&&(m.supersededById==null||m.validUntilAt!=null)&&(m.validFromAt==null||Number(m.validFromAt)<=now)&&(m.validUntilAt==null||Number(m.validUntilAt)>now);
 function p95(values:number[]){if(!values.length)return 0;const a=[...values].sort((x,y)=>x-y);return a[Math.min(a.length-1,Math.ceil(a.length*.95)-1)]??0;}
 function textField(value:unknown,max=200){return typeof value==='string'?value.trim().slice(0,max):'';}
 
@@ -119,7 +119,7 @@ function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:st
       else {results=response.items.slice(0,k);latency.push(Math.max(0,response.latencyMs));setupLatency.push(Math.max(0,response.isolationSetupMs??0));}
     } catch {results=[];invalid++;latency.push(Math.max(0,performance.now()-start));setupLatency.push(0);}
     const ids=new Set<string>(); let dup=false;
-    for(const row of results){if(!row?.id){invalid++;continue;} if(ids.has(row.id)){duplicates++;dup=true;} ids.add(row.id); if(row.epistemicStatus==='quarantined')quarantined++;if(row.validUntilAt!=null&&Number(row.validUntilAt)<=now)stale++;if(row.validFromAt!=null&&Number(row.validFromAt)>now)future++;if(row.dormant)dormant++;if(!['fact','belief','hypothesis','unknown','quarantined'].includes(String(row.epistemicStatus)))invalidEpistemic++;}
+    for(const row of results){if(!row?.id){invalid++;continue;} if(ids.has(row.id)){duplicates++;dup=true;} ids.add(row.id); if(row.epistemicStatus==='quarantined')quarantined++;if((row.validUntilAt!=null&&Number(row.validUntilAt)<=now)||(row.supersededById!=null&&row.validUntilAt==null))stale++;if(row.validFromAt!=null&&Number(row.validFromAt)>now)future++;if(row.dormant)dormant++;if(!['fact','belief','hypothesis','unknown','quarantined'].includes(String(row.epistemicStatus)))invalidEpistemic++;}
     const relevant=new Set(ex.relevantIds);
     const answerable=ex.answerable!==false;
     const hits=results.filter(row=>row?.id&&relevant.has(row.id));

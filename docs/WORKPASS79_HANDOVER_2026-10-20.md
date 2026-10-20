@@ -173,3 +173,13 @@ No external benchmark data or code has been copied into NK1. Verify licences and
 - Promotion provenance requires dataset ID/version, source reference, labeling protocol, a declared license identifier, and a SHA-256 equal to the benchmark's canonical dataset fingerprint. The report exposes `contentHashValid` for audit.
 - The synthetic fixture uses `LicenseRef-NK1-Synthetic-Fixture` solely as repository-local test metadata. No claim is made that this is an external dataset or that a real third-party license was checked.
 - A deliberate hash mismatch is covered by regression and must block promotion with `dataset-provenance-incomplete`.
+
+
+## WorkPass87 — damaged supersession metadata guard (2026-10-20)
+
+**IMPLEMENTED in branch; exact-head CI pending.**
+
+- Current and point-in-time `MemoryOS2.retrieve` no longer returns a record with `supersededById` set but no `validUntilAt`; it records suppression using the existing `staleRetrievalsAvoided` diagnostic.
+- The archival `temporalMode: 'all'` path remains available for history inspection.
+- Regression uses a real `reviseContent` transition, deliberately damages the snapshot interval, restores it, then checks both current suppression and archival visibility. This is a recovery/integrity test, not evidence of improved general retrieval quality.
+- WorkPass86 passed exact-head Actions run 39376018280 on `192a4858cc1bbcb2b6944128c14f0170cc4caf59`; WorkPass87 requires a new exact-head run.

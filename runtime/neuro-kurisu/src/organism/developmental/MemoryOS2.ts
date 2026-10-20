@@ -868,7 +868,7 @@ export class MemoryOS2{
      if(!m||m.dormant||m.epistemicStatus==='quarantined')continue;
      // `all` is the archival view: expired revisions must remain inspectable.
      // Current/point-in-time recall still excludes them and tracks stale suppression.
-     if(temporalMode!=='all'&&m.validUntilAt!=null&&Number(m.validUntilAt)<=now){this.state.staleRetrievalsAvoided++;continue;}
+     if(temporalMode!=='all'&&((m.validUntilAt!=null&&Number(m.validUntilAt)<=now)||(m.supersededById!=null&&m.validUntilAt==null))){this.state.staleRetrievalsAvoided++;continue;}
      const temporalValid=temporalMode==='all'?true:isValidAt(m,now);
      if(!temporalValid)continue;
      m.temperature01=memoryTemperature(m,now);

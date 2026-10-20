@@ -952,3 +952,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Promotion provenance now requires a license identifier (SPDX ID or explicit repository-scoped `LicenseRef`) and a SHA-256 matching the canonical labelled-example fingerprint. Missing, malformed or mismatched hashes block promotion; they are not silently accepted as metadata.
 - Regression test derives the fixture hash from the benchmark's canonical fingerprint and verifies a deliberately wrong hash blocks promotion. The fixture's `LicenseRef` is internal test metadata, not a claim that the synthetic fixture is an externally licensed benchmark.
 - GitHub Actions is the execution authority; update this receipt only after the exact new head finishes.
+
+
+## WorkPass87 — suppress corrupt superseded memories in current retrieval (2026-10-20)
+
+- Hardened the canonical `MemoryOS2.retrieve` path: if a memory has a supersession pointer but a missing validity-end timestamp, current/point-in-time retrieval now treats it as stale and increments the existing `staleRetrievalsAvoided` counter. Explicit archival mode remains able to inspect historical records.
+- Aligned benchmark current-corpus eligibility and stale-result accounting with the same invariant.
+- Added a process-level regression that creates a real revision, corrupts only the parent's validity-end metadata in a restored snapshot, and checks current retrieval suppression, observable diagnostics, and archive-mode visibility.
+- WorkPass86 exact-head CI: [run 39376018280 — PASS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39376018280) on `192a4858cc1bbcb2b6944128c14f0170cc4caf59`. WorkPass87 exact-head CI is pending.
