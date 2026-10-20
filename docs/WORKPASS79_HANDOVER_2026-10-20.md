@@ -267,3 +267,27 @@ Updated `docs/RESEARCH_GATE_MEMORY_CONTINUAL_LEARNING_2026-10-20.md` after check
 - The first run failed because the test oracle ignored query-topic relevance; this was corrected by requiring the query to match the notification topic, then the full workflow passed without relaxing assertions.
 - Exact log: `WORKPASS91_MEMORY_TO_ACTION=PASS` — correctedPreferenceRetrieved=true, supersededPreferenceSuppressed=true, memorySurvivesRestore=true, missingEvidenceDecision=clarify, actionVerified=true, replayPreservedExecutionId=true, sideEffectExecutions=1, sandboxOnly=true.
 - Evidence boundary: no independent human-labelled dataset, live llama.cpp inference, real external tool call, measured learning/anti-forgetting improvement, or consciousness claim. The memory and action-ledger paths are exercised; the full autonomous memory-to-action loop remains UNRESOLVED until wired and tested through the runtime's own decision path.
+
+
+## WorkPass92 — core ownership audit gate (2026-10-20)
+
+PASS: Actions run 39380982918 (https://github.com/ailtron1ss-rgb/NK1/actions/runs/39380982918), code head 04f16761704760a6c347a77e113a7a9221b661fe. All workflow steps passed.
+
+- Added audit:core-ownership to CI. The first run exposed a real diagnostic bug: it printed PASS before applying the constructor threshold. Fixed the reporting order and emitted a constructor-owner inventory.
+- The inventory reports six direct constructors. operationalMicroCycle / OperationalMicroCycleRuntime is the one documented orchestration exception; five other direct owners count against the limit. The corrected gate passes with zero errors.
+- The same run passed script integrity (1,657 scripts, 3,334 npm-run references, 1,288 local test-file references, zero missing targets/files) and WorkPass91 memory-to-action (corrected memory restored, stale fact suppressed, missing evidence clarified, verified sandbox action replayed with one execution).
+
+## Progress ledger — 2026-10-20 (rough estimates, not capability scores)
+
+- WorkPass91: 100% complete; exact-head CI PASS.
+- WorkPass92: 100% complete; ownership audit is wired into CI and exact-head PASS.
+- Overall stages 1–3: approximately 44%; not a release-readiness or intelligence score. No increase from guardrail/test work alone.
+- Retrieval evaluation infrastructure: ~80%; independent human-labelled RU/EN holdout remains open.
+- Local LLM integration: ~50%; live llama.cpp/device measurements on Dell G3 remain open.
+- Learning/anti-forgetting: ~20%; transfer, retention, interference and forgetting ablations remain open.
+- Browser/Live2D/TTS UX: ~25%; end-to-end validation remains open.
+- Deployment/recovery/soak: ~15%; clean install, rollback, real process restart and long-duration stability remain open.
+
+## Next — WorkPass93
+
+Trace the actual runtime cognitive proposal → memory evidence → action authorization → ActionGateway path. Replace the test-only memory-to-action decision oracle with a sandboxed production-path regression carrying evidence IDs and temporal validity, and requiring clarification/refusal for missing, conflicting or stale evidence. Preserve one canonical memory owner and the gateway's idempotency/approval boundaries. PR remains draft/unmerged.
