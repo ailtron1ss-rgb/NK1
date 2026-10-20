@@ -30,6 +30,7 @@ on:
       - "runtime/neuro-kurisu/scripts/evaluate-learning-holdout-workpass72.mjs"
       - "runtime/neuro-kurisu/scripts/evaluate-learning-history-workpass74.mjs"
       - "runtime/neuro-kurisu/tests/replay-strategy-comparison-workpass75.mjs"
+      - "runtime/neuro-kurisu/tests/bounded-experience-replay-workpass76.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/workpass71-validation.yml"
   workflow_dispatch:
@@ -72,6 +73,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:learning-history-workpass74
       - name: Sequential parametric policy retention experiment
         run: npm --prefix runtime/neuro-kurisu run test:learning-policy-sequence-workpass74
+      - name: Bounded experience replay regression
+        run: npm --prefix runtime/neuro-kurisu run test:bounded-experience-replay-workpass76
       - name: Paired replay-strategy comparison regression
         run: npm --prefix runtime/neuro-kurisu run test:replay-strategy-comparison-workpass75
       - name: Validate continual learning history CLI entry point
