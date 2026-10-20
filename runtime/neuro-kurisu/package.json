@@ -1659,6 +1659,7 @@
     "test:learning-eval-workpass71": "node --experimental-strip-types tests/paired-holdout-evaluation-workpass71.mjs",
     "test:learning-eval-workpass72": "node --experimental-strip-types tests/learning-evaluation-document-workpass72.mjs",
     "test:learning-history-workpass74": "node --experimental-strip-types tests/continual-learning-history-workpass74.mjs",
+    "test:learning-policy-sequence-workpass74": "node --experimental-strip-types tests/continual-learning-policy-sequence-workpass74.mjs",
     "eval:learning-history-workpass74": "node --experimental-strip-types scripts/evaluate-learning-history-workpass74.mjs",
     "eval:learning-holdout-workpass72": "node --experimental-strip-types scripts/evaluate-learning-holdout-workpass72.mjs"
   }
