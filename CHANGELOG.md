@@ -1,3 +1,11 @@
+## WorkPass105 — verifier-grounded outcome ledger (2026-10-20)
+
+- Added `VerifiedOutcomeLedger.ts`: versioned task manifests, normalized SHA-256 prompt fingerprints, cross-split duplicate-prompt leakage rejection, version/verifier/evidence provenance checks, self-report rejection, duplicate-attempt protection, and paired baseline/candidate comparisons.
+- Paired summaries report sample size, pass rates, absolute gain, discordant wins, and approximate 95% intervals. Pairing is keyed by task, seed, and attempt to avoid comparing mismatched trials.
+- Added `tests/p23-verified-outcome-ledger.mjs`, package script `test:p23:verified-outcomes`, and dedicated Node 24 Actions workflow.
+- Synthetic fixtures validate the evaluator contract only; they are not evidence of NK1 task performance. The ledger is not yet wired to production training or persistence; no model weights, replay defaults, or skill promotion rules changed.
+- Research adaptation: SkillLearnBench's separation of skill/trajectory/outcome evaluation and continual-learning benchmarks' same-sequence comparisons inspired the local verifier-first contract. No third-party code or datasets were copied.
+
 ## WorkPass104 — multi-seed replay proxy summary (2026-10-20)
 
 - Expanded the reservoir comparator from five hand-picked seeds to 50 deterministic seeds and added mean, sample standard deviation, and approximate 95% intervals for selection-composition metrics.
