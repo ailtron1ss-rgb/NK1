@@ -199,3 +199,10 @@ No external benchmark data or code has been copied into NK1. Verify licences and
 - Added `truncatedFieldRows` to dataset-integrity reporting. Any example exceeding ID/query/label limits can still be evaluated for diagnostics, but blocks promotion. Report schema advanced from v4 to v5.
 - Regression supplies 25 relevance labels and asserts the clipped row is reported and candidate promotion is denied. This is an integrity guard, not evidence of retrieval-quality improvement.
 - Exact-head Actions receipt must be added after the new commit's workflow completes.
+
+
+## WorkPass88 verification receipt — 2026-10-20
+
+- **PASS:** [GitHub Actions run 39378152687](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39378152687), exact head `7d56d67a9c8cec7617340f607d199be4bd5859f7`.
+- The new WorkPass88 benchmark label-truncation guard passed, as did script integrity, cold-memory residency, WorkPass87 supersession recovery, WorkPass83/85/86 benchmark integrity/abstention/provenance, local provider policy/boundary, end-to-end caller cancellation, and controlled-provider server smoke.
+- Evidence scope is regression integrity only. The run does not measure external retrieval quality, real llama.cpp latency, continual-learning gains, or consciousness.
