@@ -355,8 +355,12 @@ export class P23LearningEngine {
     const key=contextKey(state);
     const exact=this.state.skills.find(x=>x.contextKey===key&&x.action===action);
     if(exact){
-      if(exact.status==='promoted') return clamp(exact.confidence01*.05);
-      if(exact.status==='rejected') return -clamp(exact.confidence01*.03);
+      // Skills are durable but not immortal: stale evidence gradually loses
+      // influence, reaching zero after 180 days without fresh validation.
+      const ageMs=Math.max(0,now()-exact.updatedAt);
+      const retention=ageMs>=180*24*60*60*1000?0:Math.pow(0.5,ageMs/(30*24*60*60*1000));
+      if(exact.status==='promoted') return clamp(exact.confidence01*.05*retention);
+      if(exact.status==='rejected') return retention===0?0:-clamp(exact.confidence01*.03*retention);
       return 0;
     }
 
@@ -380,7 +384,7 @@ export class P23LearningEngine {
         if(penalty>bestNegative) bestNegative=penalty;
       }
     }
-    return bestPositive>0 ? bestPositive : -bestNegative;
+    return bestPositive>0 ? bestPositive : (bestNegative>0 ? -bestNegative : 0);
   }
   verificationPressure01():number {
     return clamp(this.state.evidenceDebt.filter(x=>x.priority01>.45).reduce((m,x)=>Math.max(m,x.informationGainPerCost01),0));
