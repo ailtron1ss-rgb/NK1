@@ -18,11 +18,10 @@ Continue NeuroCore as one cohesive, genuinely functional cognitive runtime, with
    - Tests that unrelated-provider failures do not alter local-provider failure state.
    - Tests successful actual local-backend attribution resets the circuit breaker.
    - Tests behavior when local provider is not configured.
-2. Added runtime scripts:
-   - `test:workpass79:local-language-policy`
-   - `test:workpass79` (policy regression plus existing server/UI smoke aliases).
-3. Added `.github/workflows/workpass79-cognitive-regression.yml` to run the focused policy regression and the existing server HTTP smoke using a controlled local provider.
-4. Updated `CHANGELOG.md`.
+2. Added `runtime/neuro-kurisu/tests/workpass79-local-provider-boundary.mjs` for the actual `OpenAICompatibleLocalChatProvider` interface: backend/model attribution, output/temperature bounds, 503, malformed JSON, empty output, 2 MiB response cap, timeout signal and loopback-only URL policy.
+3. Added runtime scripts `test:workpass79:local-language-policy`, `test:workpass79:provider-boundary`, and aggregate `test:workpass79` (policy + provider boundary + existing server HTTP smoke).
+4. Added `.github/workflows/workpass79-cognitive-regression.yml` to run the policy regression, provider-boundary regression and existing server HTTP smoke with a controlled local provider.
+5. Updated `CHANGELOG.md`.
 
 ## Commits
 
