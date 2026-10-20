@@ -23,6 +23,52 @@ const sampleVariance = values => {
   return values.reduce((sum, value) => sum + (value - average) ** 2, 0) / (values.length - 1);
 };
 
+
+function deterministicRandom(seed) {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6D2B79F5) >>> 0;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function percentile(sortedValues, probability) {
+  if (!sortedValues.length) return null;
+  const position = (sortedValues.length - 1) * probability;
+  const lower = Math.floor(position);
+  const upper = Math.ceil(position);
+  if (lower === upper) return sortedValues[lower];
+  return sortedValues[lower] + (sortedValues[upper] - sortedValues[lower]) * (position - lower);
+}
+
+function bootstrapPairedMeanInterval(values, { resamples = 2000, seed = 42 } = {}) {
+  if (!Number.isInteger(resamples) || resamples < 1000) {
+    throw new RangeError("bootstrapResamples must be an integer >= 1000");
+  }
+  const random = deterministicRandom(seed);
+  const estimates = new Array(resamples);
+  for (let iteration = 0; iteration < resamples; iteration += 1) {
+    let total = 0;
+    for (let sample = 0; sample < values.length; sample += 1) {
+      total += values[Math.floor(random() * values.length)];
+    }
+    estimates[iteration] = total / values.length;
+  }
+  estimates.sort((a, b) => a - b);
+  return [percentile(estimates, 0.025), percentile(estimates, 0.975)];
+}
+
+function cohenDForPairedDeltas(values) {
+  const variance = sampleVariance(values);
+  if (variance == null || variance === 0) return values.length && values.every(value => value === values[0])
+    ? (values[0] === 0 ? 0 : Math.sign(values[0]) * Infinity)
+    : null;
+  return mean(values) / Math.sqrt(variance);
+}
+
 function validateRuns(runs, label) {
   if (!Array.isArray(runs) || runs.length < 2) {
     throw new TypeError(`${label} must contain at least two held-out runs`);
@@ -83,7 +129,9 @@ export function evaluatePairedLearningRuns({
   maximumSuccessRateDrop = 0,
   maximumRegretIncrease = 0,
   maximumLatencyIncreaseRatio = 0.1,
-  minimumSampleCount = 10
+  minimumSampleCount = 10,
+  bootstrapResamples = 2000,
+  bootstrapSeed = 42
 }) {
   const baseBySeed = validateRuns(baseline, "baseline");
   const candidateBySeed = validateRuns(candidate, "candidate");
@@ -119,6 +167,8 @@ export function evaluatePairedLearningRuns({
   const variance = sampleVariance(rewardDeltas);
   const standardError = variance == null ? null : Math.sqrt(variance / rewardDeltas.length);
   const halfWidth95 = standardError == null ? null : 1.96 * standardError;
+  const rewardBootstrap95CI = bootstrapPairedMeanInterval(rewardDeltas, { resamples: bootstrapResamples, seed: bootstrapSeed });
+  const rewardEffectSizeCohenD = cohenDForPairedDeltas(rewardDeltas);
   const baselineSummary = summarize(baseline);
   const candidateSummary = summarize(candidate);
   const successRateDelta = candidateSummary.taskSuccessRate - baselineSummary.taskSuccessRate;
@@ -131,7 +181,7 @@ export function evaluatePairedLearningRuns({
     pairedHoldoutComplete: true,
     minimumSampleCount: paired.length >= minimumSampleCount,
     rewardUpliftObserved: rewardMean >= minimumRewardUplift,
-    rewardIntervalExcludesZero: halfWidth95 != null && rewardMean - halfWidth95 > 0,
+    rewardIntervalExcludesZero: rewardBootstrap95CI[0] > 0,
     taskSuccessNonInferior: successRateDelta >= -Math.abs(maximumSuccessRateDrop),
     regretNonInferior: regretDelta <= Math.abs(maximumRegretIncrease),
     latencyWithinBudget: latencyRatio != null && latencyRatio <= maximumLatencyIncreaseRatio
@@ -149,6 +199,10 @@ export function evaluatePairedLearningRuns({
       rewardDeltaApprox95CI: halfWidth95 == null
         ? null
         : [rewardMean - halfWidth95, rewardMean + halfWidth95],
+      rewardDeltaBootstrap95CI: rewardBootstrap95CI,
+      rewardEffectSizeCohenD,
+      bootstrapResamples,
+      bootstrapSeed,
       successRateDelta,
       regretDelta,
       latencyRatio
