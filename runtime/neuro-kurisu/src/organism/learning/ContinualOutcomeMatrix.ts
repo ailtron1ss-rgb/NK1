@@ -83,12 +83,16 @@ export function buildContinualOutcomeMatrix(
     if (methods.has(stage.method)) throw new Error(`duplicate stage method: ${stage.method}`);
     stageIds.add(stage.stageId); methods.add(stage.method);
   }
+  if (options.preTrainingMethod !== undefined && (!options.preTrainingMethod.trim() || methods.has(options.preTrainingMethod))) {
+    throw new Error('pre-training method must be non-empty and distinct from checkpoint methods');
+  }
   const split = options.split ?? 'holdout';
   const snapshot = ledger.snapshot();
   const manifest = snapshot.manifest as TaskManifestEntry[];
   const outcomes = snapshot.outcomes as VerifiedTaskOutcome[];
   const tasksInSplit = manifest.filter(task => task.split === split).sort((a,b) => a.taskId.localeCompare(b.taskId));
   if (!tasksInSplit.length) throw new Error(`no manifest tasks in split: ${split}`);
+  if (stages.length !== tasksInSplit.length) throw new Error('stage count must equal task count for a sequential task matrix');
   const selectedMethods = new Set([
     ...stages.map(stage => stage.method),
     ...(options.preTrainingMethod ? [options.preTrainingMethod] : []),
