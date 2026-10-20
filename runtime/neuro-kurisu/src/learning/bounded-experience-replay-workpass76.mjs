@@ -12,12 +12,21 @@ const finite = (value, label) => {
 
 function makeRandom(seed) {
   let state = seed >>> 0;
-  return () => {
-    state = (state + 0x6D2B79F5) >>> 0;
-    let value = state;
-    value = Math.imul(value ^ (value >>> 15), value | 1);
-    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
-    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  return {
+    next() {
+      state = (state + 0x6D2B79F5) >>> 0;
+      let value = state;
+      value = Math.imul(value ^ (value >>> 15), value | 1);
+      value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+      return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+    },
+    getState() { return state; },
+    setState(nextState) {
+      if (!Number.isInteger(nextState) || nextState < 0 || nextState > 0xFFFFFFFF) {
+        throw new RangeError("rngState must be an unsigned 32-bit integer");
+      }
+      state = nextState >>> 0;
+    }
   };
 }
 
@@ -55,7 +64,7 @@ export class BoundedExperienceReplayBuffer {
     while (this.#bytes + bytes > this.maxBytes && this.#items.length) {
       let removeIndex = 0;
       if (this.strategy === "uniform") {
-        removeIndex = Math.floor(this.#random() * this.#items.length);
+        removeIndex = Math.floor(this.#random.next() * this.#items.length);
       } else {
         removeIndex = this.#items.reduce((lowest, item, index, items) =>
           item.priority < items[lowest].priority ? index : lowest, 0);
@@ -122,6 +131,61 @@ export class BoundedExperienceReplayBuffer {
     }
     return selected;
   }
+  snapshot() {
+    return {
+      schemaVersion: 1,
+      strategy: this.strategy,
+      maxBytes: this.maxBytes,
+      priorityAlpha: this.priorityAlpha,
+      importanceBeta: this.importanceBeta,
+      rngState: this.#random.getState(),
+      nextId: this.#nextId,
+      bytesUsed: this.#bytes,
+      items: this.#items.map(item => ({
+        id: item.id, sample: structuredClone(item.sample), bytes: item.bytes, priority: item.priority
+      }))
+    };
+  }
+
+  restore(snapshot) {
+    if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+      throw new TypeError("snapshot must be an object");
+    }
+    if (snapshot.schemaVersion !== 1) throw new Error("unsupported replay snapshot schemaVersion");
+    for (const key of ["strategy", "maxBytes", "priorityAlpha", "importanceBeta"]) {
+      if (snapshot[key] !== this[key]) throw new Error(`snapshot ${key} does not match buffer configuration`);
+    }
+    if (!Array.isArray(snapshot.items)) throw new TypeError("snapshot.items must be an array");
+    if (!Number.isInteger(snapshot.nextId) || snapshot.nextId < 1) throw new RangeError("snapshot.nextId is invalid");
+    if (!Number.isInteger(snapshot.rngState) || snapshot.rngState < 0 || snapshot.rngState > 0xFFFFFFFF) {
+      throw new RangeError("snapshot.rngState is invalid");
+    }
+    const restored = [];
+    const ids = new Set();
+    let bytes = 0;
+    for (const [index, raw] of snapshot.items.entries()) {
+      if (!raw || !Number.isInteger(raw.id) || raw.id < 1 || ids.has(raw.id)) {
+        throw new Error(`snapshot.items[${index}].id is invalid or duplicated`);
+      }
+      if (!Number.isFinite(raw.priority) || raw.priority <= 0) {
+        throw new RangeError(`snapshot.items[${index}].priority must be positive and finite`);
+      }
+      const sample = structuredClone(raw.sample);
+      const measuredBytes = Buffer.byteLength(JSON.stringify(sample), "utf8");
+      if (measuredBytes !== raw.bytes) throw new Error(`snapshot.items[${index}] byte size does not match its sample`);
+      ids.add(raw.id);
+      bytes += measuredBytes;
+      restored.push({ id: raw.id, sample, bytes: measuredBytes, priority: raw.priority });
+    }
+    if (bytes > this.maxBytes || bytes !== snapshot.bytesUsed) throw new Error("snapshot byte accounting is inconsistent or exceeds budget");
+    if (restored.some(item => item.id >= snapshot.nextId)) throw new Error("snapshot.nextId must exceed every stored item ID");
+    this.#items = restored;
+    this.#bytes = bytes;
+    this.#nextId = snapshot.nextId;
+    this.#random.setState(snapshot.rngState);
+    return this.stats;
+  }
+
   get stats() {
     return {
       strategy: this.strategy,
