@@ -59,6 +59,21 @@ assert.equal(normalizedEvictionStream.recent(64).some(row=>row.traceId==='normal
 assert.equal(normalizedEvictionStream.recordOutcome({...trace,id:'normalized-after-eviction'},mkState({tick:200}),{reward01:1,success01:1,surprise01:1,novelty01:1}),null,'the canonical trace ID must remain deduplicated after a padded ID record is evicted');
 
 
+// Replay must balance high-value experiences with task/context coverage.
+const diverseReplay=new CausalExperienceStream(64);
+for(let i=0;i<6;i++){
+  const dominant={...trace,id:`replay-dominant-${i}`,tick:300+i,selected:{...trace.selected,goalId:'dominant-task'}};
+  diverseReplay.recordOutcome(dominant,mkState({tick:301+i,needs:{...mkState().needs,energy:.25,uncertainty:.9,novelty:.95,goalPressure:.9}}),{reward01:.95,success01:.95,surprise01:.95,novelty01:.95});
+}
+for(let i=0;i<3;i++){
+  const alternate={...trace,id:`replay-alternate-${i}`,tick:400+i,selected:{...trace.selected,goalId:`alternate-task-${i}`}};
+  diverseReplay.recordOutcome(alternate,mkState({tick:401+i,needs:{...mkState().needs,energy:.65,uncertainty:.55,novelty:.55,goalPressure:.5}}),{reward01:.7,success01:.7,surprise01:.55,novelty01:.55});
+}
+const replayBatch=diverseReplay.prioritizedReplayCandidates(5,2000);
+assert.equal(replayBatch.length,5);
+assert.ok(new Set(replayBatch.map(row=>row.taskId)).size>=2,'replay selection must not let one high-scoring task monopolize the entire batch');
+assert.ok(replayBatch[0].replayPriority01>=replayBatch[replayBatch.length-1].replayPriority01,'selected candidates retain their raw priority ordering metadata');
+
 const consolidated=restored.consolidate(8,1200);
 assert.equal(consolidated.length,1);
 assert.equal(restored.summary().consolidated,1);

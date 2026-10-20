@@ -1,3 +1,9 @@
+## WorkPass85 — diversity-aware causal experience replay (2026-10-20)
+- Replaced strict top-score truncation with greedy marginal-value selection that discounts repeated task/context selections while preserving each record's raw replay priority.
+- Replay batches now balance high-signal causal experiences with coverage across tasks and state contexts, reducing the risk that repeated near-duplicate episodes crowd out useful transfer examples.
+- Added a regression with a high-scoring dominant task and lower-scoring alternate tasks; the replay batch must retain cross-task coverage.
+- This is a replay-selection improvement, not evidence of measured learning uplift; retention and transfer still require controlled holdout evaluation.
+
 ## WorkPass84 — preserve canonical trace identity after record eviction (2026-10-20)
 - Fixed a mismatch where runtime outcomes checked the normalized trace ID but inserted the raw ID into the persistent deduplication registry.
 - The registry now stores the same canonical ID used by duplicate checks, so whitespace/Unicode-normalized IDs remain idempotent even after their causal records leave the bounded replay window.

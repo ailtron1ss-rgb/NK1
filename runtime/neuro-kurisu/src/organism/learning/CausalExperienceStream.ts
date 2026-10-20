@@ -161,7 +161,29 @@ export class CausalExperienceStream {
       const quality=clamp01(r.learningQuality01??.5);
       return clamp01(.24*r.surprise01+.20*r.predictionError01+.18*r.causalStrength01+.12*r.novelty01+.10*r.uncertainty01+.08*r.identityRelevance01+.08*r.goalPressure01+.06*quality+ageBoost-repeatPenalty-recencyPenalty);
     };
-    return rows.map(r=>({...r,replayPriority01:score(r)})).sort((a,b)=>(b.replayPriority01??0)-(a.replayPriority01??0)).slice(0,Math.max(1,Math.min(64,Math.floor(limit)))).map(r=>structuredClone(r));
+    // Greedy maximal-marginal-relevance style selection: keep high-value surprises,
+    // but prevent one task/context from consuming the entire replay budget.
+    const ranked=rows.map(r=>({...r,replayPriority01:score(r)}));
+    const selected:typeof ranked=[];
+    const taskCounts=new Map<string,number>(),contextCounts=new Map<string,number>();
+    const wanted=Math.max(1,Math.min(64,Math.floor(limit)));
+    while(selected.length<wanted&&ranked.length){
+      let bestIndex=0,bestAdjusted=-Infinity;
+      for(let i=0;i<ranked.length;i++){
+        const candidate=ranked[i];
+        const base=candidate.replayPriority01??0;
+        const taskSeen=taskCounts.get(candidate.taskId)??0;
+        const contextSeen=contextCounts.get(this.contextKey(candidate))??0;
+        const adjusted=base-Math.min(.42,taskSeen*.24+contextSeen*.08);
+        if(adjusted>bestAdjusted){bestAdjusted=adjusted;bestIndex=i;}
+      }
+      const [chosen]=ranked.splice(bestIndex,1);
+      selected.push(chosen);
+      taskCounts.set(chosen.taskId,(taskCounts.get(chosen.taskId)??0)+1);
+      const key=this.contextKey(chosen);
+      contextCounts.set(key,(contextCounts.get(key)??0)+1);
+    }
+    return selected.map(r=>structuredClone(r));
   }
   policyReplayCandidates(limit=32,at=Date.now()){ return this.prioritizedReplayCandidates(limit,at); }
   markReplay(ids:string[],at=Date.now()){
