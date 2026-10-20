@@ -15,7 +15,14 @@ const valueRestored=new AutonomousValueFormationEngine(); valueRestored.restore(
 const skill=new OpenEndedSkillAcquisitionController(); let skillFrame=null;
 for(let i=0;i<16;i++) skillFrame=skill.cycle({at:i*1000,domain:'learning',gap01:.78,learningPressure01:.72,resource01:.78,novelty01:.62,identity01:.86,availableSkillNames:['tool-use','prediction','reflection']});
 assert.ok(skill.summary().created>=1); assert.ok(skill.summary().practiced>=8); assert.ok(skill.summary().meanMastery01>.2);
-if(skillFrame?.track) skill.evaluate(skillFrame.track.id,.88,20000);
+assert.equal(skill.summary().mastered,0,'practice cycles cannot fabricate mastery without an evaluated outcome');
+const activeTrack=skill.snapshot().tracks.find(t=>t.id===skill.snapshot().active);
+assert.ok(activeTrack); assert.equal(activeTrack.mastery01,.08,'practice must not increase mastery without outcome evidence');
+assert.equal(skill.evaluate(activeTrack.id,1,19000,{verified:false,independent:true}),null,'unverified outcomes cannot change mastery');
+assert.equal(skill.evaluate(activeTrack.id,1,19500,{verified:true,independent:false}),null,'non-independent outcomes cannot change mastery');
+let evaluatedTrack=null; for(let i=0;i<12;i++) evaluatedTrack=skill.evaluate(activeTrack.id,1,20000+i,{verified:true,independent:true})??evaluatedTrack;
+assert.equal(evaluatedTrack?.status,'mastered','repeated verified independent outcomes can establish mastery');
+assert.ok(skill.summary().evaluated>=1);
 const skillRestored=new OpenEndedSkillAcquisitionController();skillRestored.restore(skill.snapshot());assert.equal(skillRestored.summary().created,skill.summary().created);
 
 const narrative=new AutobiographicalLifeNarrativeEngine();

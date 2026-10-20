@@ -9125,6 +9125,26 @@ export class OrganismCore {
                 });
             }
             this.evidenceResearchSubsystem.skillAcquisitionBenchmark.observe({ action: trace.selected.action, contextKey: `${skillContext}|energy:${Math.round(state.needs.energy * 4)}|unc:${Math.round(state.needs.uncertainty * 4)}|goal:${selectedGoalTitle ?? 'general'}`, outcome01: gatedSuccess01 });
+            // Skill mastery is earned only from a verified, independent outcome in a matching action domain.
+            const skillLearningState = this.organismSystems.agency.openEndedSkillAcquisition.snapshot();
+            const activeSkill = skillLearningState.tracks.find(track => track.id === skillLearningState.active && track.status === 'active');
+            const actionName = String(trace.selected.action);
+            const skillActionMatches = activeSkill?.domain === 'perception'
+                ? ['explore', 'observe', 'listen', 'look', 'scan'].includes(actionName)
+                : activeSkill?.domain === 'prediction'
+                    ? ['predict', 'forecast'].includes(actionName)
+                    : activeSkill?.domain === 'tool-use'
+                        ? projectEvidenceExternal || ['verify', 'use_tool', 'execute_tool'].includes(actionName)
+                        : activeSkill?.domain === 'reflection'
+                            ? ['reflect'].includes(actionName)
+                            : activeSkill?.domain === 'social-coordination'
+                                ? ['socialize', 'communicate', 'speak', 'message'].includes(actionName)
+                                : false;
+            const independentSkillOutcome = Boolean(outcome.worldTransition?.after) || projectEvidenceExternal;
+            if (activeSkill && skillActionMatches && fullVerified && independentSkillOutcome) {
+                this.organismSystems.agency.openEndedSkillAcquisition.evaluate(activeSkill.id, gatedSuccess01, Date.now(), { verified: true, independent: true });
+                this.persisted.system.openEndedSkillAcquisition = this.organismSystems.agency.openEndedSkillAcquisition.snapshot();
+            }
             if (this.config.enableLifelongLearning)
                 this.cognitiveRuntime.lifelong.observeOutcome(trace.selected.action, gatedSuccess01, 'active', trace.selected.predictedCost, fullSuccess01 < 0.45 ? 'low-outcome' : undefined);
             if (this.config.enableLifelongLearning) {

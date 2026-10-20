@@ -1,3 +1,11 @@
+## WorkPass74 — outcome-grounded skill mastery (2026-10-20)
+- Removed synthetic mastery growth from autonomous practice cycles: practice now records exposure but does not improve mastery or mark a skill mastered.
+- Skill evaluation requires both verified and independent outcome evidence; only those evaluations update mastery, evaluation counters and aggregate mastery.
+- Connected verified runtime outcomes to active skill evaluation through an explicit action-domain match and persisted the resulting controller state.
+- Fixed curriculum selection that always chose the first available skill; matching requested domains win, otherwise eligible skills rotate deterministically instead of starving all but the first.
+- Regression coverage proves practice alone cannot raise mastery, unverified/non-independent outcomes are rejected, and repeated verified outcomes can establish mastery.
+- This improves evidence discipline, not demonstrated task performance. Real-world action coverage and transfer/retention benchmarks remain open.
+
 ## WorkPass73 — skill-learning evidence integrity (2026-10-20)
 - Removed false holdout labels from compound-skill execution outcomes and project-research observations; runtime outcome telemetry is learning data unless an explicit independent evaluation protocol labels it otherwise.
 - Skill acquisition holdout evidence now counts only distinct context keys, requires at least three unique accepted holdout contexts before eligibility, rejects empty contexts, and safely handles prototype-named keys.
