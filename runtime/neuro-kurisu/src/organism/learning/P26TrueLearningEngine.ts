@@ -79,7 +79,7 @@ export class P26TrueLearningEngine{
     let updates=0,loss=0;
     for(const e of experiences){
       const next=Math.max(...this.learner.predict(e.nextState,extras).map(x=>x.value),.5);
-      const target=options.targetMode==='reward'?clamp(e.reward):tdTarget01(e.reward,next);
+      const target=tdTarget01(e.reward,next);
       const r=this.learner.train({state:e.state,action:e.action,target01:target,learningRate01:.10+clamp(e.surprise??.2)*.06,extras});
       updates++; loss+=r.loss01;
     }
@@ -105,7 +105,7 @@ export class P26TrueLearningEngine{
     let onlineUpdates=0,replayUpdates=0,loss=0,replayCursor=this.learner.snapshot().updates%replayRows.length;
     const update=(e:{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number},isReplay:boolean)=>{
       const next=Math.max(...this.learner.predict(e.nextState,extras).map(x=>x.value),.5);
-      const target=tdTarget01(e.reward,next);
+      const target=options.targetMode==='reward'?clamp(e.reward):tdTarget01(e.reward,next);
       const surprise=clamp(e.surprise??.2);
       const learningRate01 = isReplay ? (0.035 + surprise * 0.025) : (0.045 + surprise * 0.04);
       const result=this.learner.train({state:e.state,action:e.action,target01:target,learningRate01,extras});
