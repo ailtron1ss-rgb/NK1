@@ -60,6 +60,25 @@ for (let i = 9; i <= 20; i++) {
 }
 assert.equal(rollbackLearning.topSkills().some(s => s.action === 'verify'), false, 'later negative validation evidence must revoke promotion');
 
+// Fresh evidence must refresh retention even when the validation score is nearly unchanged.
+const freshnessLearning = new P23LearningEngine();
+const freshnessPolicy = new AdaptivePolicyEngine();
+for (let i = 1; i <= 12; i++) {
+  const success = i <= 8 ? .92 : .78;
+  const trace = makeTrace(600 + i, 'verify', success, { uncertainty:.72 });
+  freshnessLearning.recordExperience(trace, trace.stateBefore, {success,reward:success,surprise:Math.abs(success-.65)}, freshnessPolicy);
+}
+const freshnessBefore = freshnessLearning.snapshot();
+const freshnessSkillBefore = freshnessBefore.skills.find(s => s.action === 'verify' && s.status === 'promoted');
+assert.ok(freshnessSkillBefore, 'retention-refresh regression requires a promoted skill');
+freshnessSkillBefore.updatedAt = Date.now() - 10 * 24 * 60 * 60 * 1000;
+freshnessLearning.restore(freshnessBefore);
+const refreshTrace = makeTrace(613, 'verify', .78, { uncertainty:.72 });
+freshnessLearning.recordExperience(refreshTrace, refreshTrace.stateBefore, {success:.78,reward:.78,surprise:Math.abs(.78-.65)}, freshnessPolicy);
+const freshnessSkillAfter = freshnessLearning.snapshot().skills.find(s => s.action === 'verify' && s.status === 'promoted');
+assert.ok(freshnessSkillAfter.updatedAt > freshnessSkillBefore.updatedAt, 'new validation evidence must refresh skill retention even when the validation score barely changes');
+assert.equal(freshnessSkillAfter.totalUses, 13);
+
 // Failed skills should weakly discourage the same action in a tightly neighboring
 // context, but must not leak into unrelated states.
 const negativeLearning = new P23LearningEngine();
