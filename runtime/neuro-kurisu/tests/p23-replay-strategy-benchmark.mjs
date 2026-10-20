@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { selectReplayBatch } from '../src/organism/learning/ReplaySelectionPolicy.ts';
+import { selectReservoirBatch } from '../src/organism/learning/ReservoirReplayPolicy.ts';
 
 // Algorithm-level proxy benchmark: it measures selection properties, not task success.
 const CAPACITY = 64;
@@ -29,6 +30,11 @@ const metrics = (batch, guaranteedRecentFloor) => ({
   duplicateIds: batch.length - new Set(batch.map(t => t.id)).size,
 });
 const recentOnly = traces.slice(-CAPACITY);
+const reservoirSeeds = [7, 19, 42, 101, 2026];
+const reservoir = Object.fromEntries(reservoirSeeds.map(seed => [
+  `seed${seed}`,
+  metrics(selectReservoirBatch(traces, { capacity: CAPACITY, seed }), traces.length - CAPACITY),
+]));
 const surpriseOnly = [...traces].sort(bySurprise).slice(0, CAPACITY);
 const quotas = [16, 32, 48];
 const balanced = Object.fromEntries(quotas.map(recentQuota => [
@@ -40,7 +46,7 @@ const ageAware = Object.fromEntries(ageHalfLives.map(ageHalfLifeTicks => [
   Number.isFinite(ageHalfLifeTicks) ? `halfLife${ageHalfLifeTicks}` : 'halfLifeInfinite',
   metrics(selectReplayBatch(traces, { maxBatchSize: CAPACITY, recentQuota: 32, ageHalfLifeTicks }), traces.length - 32),
 ]));
-const results = { recentOnly: metrics(recentOnly, 96), surpriseOnly: metrics(surpriseOnly, 96), balanced, ageAware };
+const results = { recentOnly: metrics(recentOnly, 96), surpriseOnly: metrics(surpriseOnly, 96), reservoir, balanced, ageAware };
 for (const recentQuota of quotas) {
   const row = results.balanced[`recentQuota${recentQuota}`];
   assert.equal(row.size, CAPACITY, `quota ${recentQuota}: respect hard capacity`);
@@ -50,6 +56,12 @@ for (const recentQuota of quotas) {
   assert.ok(row.strata >= 20, `quota ${recentQuota}: preserve broad context/action strata`);
 }
 assert.equal(results.surpriseOnly.size, CAPACITY);
+for (const [seed, row] of Object.entries(results.reservoir)) {
+  assert.equal(row.size, CAPACITY, `${seed}: respect hard capacity`);
+  assert.equal(row.duplicateIds, 0, `${seed}: no duplicate trace IDs`);
+  assert.ok(row.historical > 0, `${seed}: sample spans the historical stream`);
+  assert.ok(row.strata > 1, `${seed}: sample is not a single context/action stratum`);
+}
 for (const [name, row] of Object.entries(results.ageAware)) {
   assert.equal(row.size, CAPACITY, `${name}: respect hard capacity`);
   assert.equal(row.duplicateIds, 0, `${name}: no duplicate trace IDs`);
