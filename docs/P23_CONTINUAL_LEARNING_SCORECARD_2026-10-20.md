@@ -186,3 +186,10 @@ The gate prevents several common false promotions: tiny samples, positive aggreg
 - **Boundary:** this is a persistence codec, not yet an atomic filesystem/database adapter; checksum is integrity detection, not signing. Production learning/promotion remains disconnected and disabled.
 - **Scores remain unchanged:** overall learning engineering 57/100; evidence-grounded learning maturity 36%; overall lifelong-learning roadmap 30%. Persistence hardening alone is not measured learning improvement.
 - **Next implementation:** add immutable evidence artifact references with verifier-run IDs and task-manifest digests; build a deterministic benchmark runner comparing context-only, no-replay, recency, surprise, reservoir and multi-timescale policies over identical task streams, then measure delayed retention and forward transfer.
+
+
+### WorkPass107 extension — atomic file-backed persistence
+
+- Added a local file-store adapter over the checksummed envelope. It writes to a unique same-directory temporary file, syncs the file, atomically renames it into place, attempts directory sync, and cleans up temporary files after failures.
+- Added size caps and a restrictive `0600` mode for the temporary data file. Added round-trip/replacement/size-limit/corrupt-file tests and wired them into the same CI gate and package scripts.
+- Explicit limits: this is single-writer local persistence, not a distributed transaction store. It has no cross-process lock, encryption, authenticated signatures, or trusted evidence retrieval; those must be provided before a production service relies on it.
