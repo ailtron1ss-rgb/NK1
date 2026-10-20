@@ -59,13 +59,13 @@ const makeContextAwareRun=()=>{
   train(engine,taskA,0);
   const taskABefore=evalContextTask(engine,0);
   const replayRows=taskA.flatMap(row=>actions.map(action=>({...row,action,reward:targetA(row.state,action)})));
-  let replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0;
+  let replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,conflictComparisons=0,conflictCandidateCap=64;
   for(let epoch=0;epoch<8;epoch++){
     const fresh=taskB.flatMap(row=>actions.map(action=>({...row,action,reward:targetB(row.state,action)})));
     const result=engine.trainInterleaved(fresh,replayRows,{replayEveryNCurrent:1,maxReplayUpdates:2520,targetMode:'reward',currentLearningRate01:.18,replayLearningRate01:.18});
-    replayUpdates+=result.replayUpdates;blockedReplayRows+=result.blockedReplayRows;eligibleReplayRows+=result.eligibleReplayRows;
+    replayUpdates+=result.replayUpdates;blockedReplayRows+=result.blockedReplayRows;eligibleReplayRows+=result.eligibleReplayRows;conflictComparisons+=result.conflictComparisons;conflictCandidateCap=result.conflictCandidateCap;
   }
-  return {taskABefore,taskAFinal:evalContextTask(engine,0),taskBFinal:evalContextTask(engine,1),replayUpdates,blockedReplayRows,eligibleReplayRows};
+  return {taskABefore,taskAFinal:evalContextTask(engine,0),taskBFinal:evalContextTask(engine,1),replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons,conflictCandidateCap};
 };
 const makeRun=(strategy)=>{
   const engine=new P26TrueLearningEngine();
@@ -74,13 +74,13 @@ const makeRun=(strategy)=>{
   const taskABefore=evalTask(engine,0);
   const taskB=rows(1);
   const replayRows=taskA.flatMap(row=>actions.map(action=>({...row,action,reward:targetA(row.state,action)})));
-  let replayUpdates=0,onlineUpdates=0,blockedReplayRows=0,eligibleReplayRows=0;
+  let replayUpdates=0,onlineUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,conflictComparisons=0,conflictCandidateCap=64;
   if(strategy==='interleaved'){
     // Same task-B stream, with bounded old-task rehearsal during learning.
     for(let epoch=0;epoch<8;epoch++){
       const fresh=taskB.flatMap(row=>actions.map(action=>({...row,action,reward:targetB(row.state,action)})));
       const result=engine.trainInterleaved(fresh,replayRows,{replayEveryNCurrent:16,maxReplayUpdates:160,targetMode:'reward',currentLearningRate01:.18});
-      replayUpdates+=result.replayUpdates;onlineUpdates+=result.onlineUpdates;blockedReplayRows+=result.blockedReplayRows;eligibleReplayRows+=result.eligibleReplayRows;
+      replayUpdates+=result.replayUpdates;onlineUpdates+=result.onlineUpdates;blockedReplayRows+=result.blockedReplayRows;eligibleReplayRows+=result.eligibleReplayRows;conflictComparisons+=result.conflictComparisons;conflictCandidateCap=result.conflictCandidateCap;
     }
   }else{
     train(engine,taskB,1);
@@ -93,7 +93,7 @@ const makeRun=(strategy)=>{
   }
   const taskAAfterReplay=evalTask(engine,0);
   const taskBFinal=evalTask(engine,1);
-  return {strategy,taskABefore,taskAAfterInterference,taskAAfterReplay,taskBFinal,onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows,trainingExposure01:engine.metrics().trainingExposure01,generalizationEvidence01:engine.metrics().generalizationEvidence01};
+  return {strategy,taskABefore,taskAAfterInterference,taskAAfterReplay,taskBFinal,onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons,conflictCandidateCap,trainingExposure01:engine.metrics().trainingExposure01,generalizationEvidence01:engine.metrics().generalizationEvidence01};
 };
 const onlineOnly=makeRun('online-only');
 const replay=makeRun('posthoc-replay');
@@ -109,6 +109,9 @@ assert.ok(replay.taskBFinal>.8,'post-hoc replay should not erase the recently le
 assert.ok(interleaved.onlineUpdates>0,'interleaving must update fresh experience');
 assert.ok(interleaved.replayUpdates+interleaved.blockedReplayRows>0,'interleaving must either replay or explicitly block stale/conflicting records');
 assert.ok(interleaved.blockedReplayRows>0,'near-identical states with contradictory outcomes should block stale replay');
+assert.ok(interleaved.conflictCandidateCap>=8&&interleaved.conflictCandidateCap<=128,'conflict candidate cap must remain bounded');
+assert.ok(interleaved.conflictComparisons<=(interleaved.blockedReplayRows+interleaved.eligibleReplayRows)*interleaved.conflictCandidateCap,'conflict screening must have a bounded comparison count');
+assert.ok(contextAware.conflictComparisons<=(contextAware.blockedReplayRows+contextAware.eligibleReplayRows)*contextAware.conflictCandidateCap,'contextual conflict screening must remain bounded too');
 assert.ok(interleaved.taskBFinal>.8,'conflict-gated replay should preserve plasticity for the latest outcome when no context signal distinguishes the tasks');
 console.log('P26_INTERLEAVED_DIAGNOSTIC',JSON.stringify(interleaved));
 // Contradictory labels on indistinguishable states require selective forgetting unless context is represented.
