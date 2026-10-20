@@ -17,6 +17,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+          package-manager-cache: false
       - name: Reservoir policy regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-reservoir-replay-policy.mjs
