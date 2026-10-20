@@ -58,7 +58,10 @@ jobs:
       - name: Verify action finalization precedes receipt commit and failure blocks replay
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass96:finalizer-boundary
-      - name: Verify canonical policy arbitration edge cases and provenance aggregation\n        working-directory: runtime/neuro-kurisu\n        run: npm run test:canonical-policy-arbiter && npm run test:policy-authority-ledger\n      - name: Guard autonomous planner against bypassing canonical execution wrapper
+      - name: Verify canonical policy arbitration edge cases and provenance aggregation
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:canonical-policy-arbiter && npm run test:policy-authority-ledger
+      - name: Guard autonomous planner against bypassing canonical execution wrapper
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass97:planner-route
       - name: Verify project receipt reconciliation canonicalizes legacy tool aliases
