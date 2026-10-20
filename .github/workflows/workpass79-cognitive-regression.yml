@@ -38,6 +38,9 @@ jobs:
       - name: WorkPass88 benchmark label-truncation guard
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass88:label-truncation
+      - name: Evaluate corrected memory to grounded sandbox action and restart replay
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass91-memory-to-action.mjs
       - name: Test retrieval metrics, abstention, dataset hash/provenance and holdout leakage guards
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass83:retrieval-benchmark-truth
