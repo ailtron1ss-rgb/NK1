@@ -8,6 +8,17 @@ export interface ContinualStage {
   /** Exact method value written by the outcome recorder. */
   method: string;
 }
+export interface ContinualOutcomeCell {
+  taskId: string;
+  family: string;
+  stageId: string;
+  method: string;
+  sampleCount: number;
+  passedCount: number;
+  passRate: number;
+  /** Wilson score interval for a binomial pass rate; descriptive, not a causal guarantee. */
+  wilson95CI: [number, number];
+}
 export interface ContinualOutcomeMatrix {
   manifestFingerprint: string;
   split: EvaluationSplit;
@@ -15,6 +26,8 @@ export interface ContinualOutcomeMatrix {
   seedCount: number;
   taskCount: number;
   tasks: ContinualTask[];
+  /** Per-task/per-stage outcome detail, including sample counts and uncertainty. */
+  cells: ContinualOutcomeCell[];
   metrics: ContinualLearningMetrics;
   evidence: {
     outcomeCount: number;
@@ -32,6 +45,19 @@ export interface ContinualOutcomeMatrix {
  * used deliberately so retries cannot inflate success rates. This adapter does
  * not run the learner, fetch evidence, or authenticate the verifier itself.
  */
+function wilsonInterval(passedCount: number, sampleCount: number): [number, number] {
+  if (!Number.isInteger(sampleCount) || sampleCount < 1 || !Number.isInteger(passedCount) || passedCount < 0 || passedCount > sampleCount) {
+    throw new Error('Wilson interval requires valid binomial counts');
+  }
+  const z = 1.96;
+  const z2 = z * z;
+  const p = passedCount / sampleCount;
+  const denominator = 1 + z2 / sampleCount;
+  const center = (p + z2 / (2 * sampleCount)) / denominator;
+  const margin = z * Math.sqrt(p * (1 - p) / sampleCount + z2 / (4 * sampleCount * sampleCount)) / denominator;
+  return [Math.max(0, center - margin), Math.min(1, center + margin)];
+}
+
 export function buildContinualOutcomeMatrix(
   ledger: VerifiedOutcomeLedger,
   stages: ContinualStage[],
@@ -98,13 +124,22 @@ export function buildContinualOutcomeMatrix(
     }
     return { taskId: task.taskId, ...(preTrainingScore === undefined ? {} : { preTrainingScore }), scoreByStage };
   });
+  const cells: ContinualOutcomeCell[] = tasksInSplit.flatMap(task => stages.map(stage => {
+    const values = cell.get(JSON.stringify([task.taskId, stage.method]))!;
+    const passedCount = [...values.values()].filter(Boolean).length;
+    return {
+      taskId: task.taskId, family: task.family, stageId: stage.stageId, method: stage.method,
+      sampleCount: values.size, passedCount, passRate: passedCount / values.size,
+      wilson95CI: wilsonInterval(passedCount, values.size),
+    };
+  }));
   const authorityCounts = { 'independent-verifier': 0, 'human-review': 0 };
   for (const outcome of eligible) authorityCounts[outcome.authority as keyof typeof authorityCounts]++;
   const taskVersions: Record<string,string> = {}, taskFamilies: Record<string,string> = {};
   for (const task of tasksInSplit) { taskVersions[task.taskId] = task.version; taskFamilies[task.taskId] = task.family; }
   return {
     manifestFingerprint: ledger.manifestFingerprint(), split, stages: stages.map(stage => ({...stage})),
-    seedCount: canonicalSeeds.length, taskCount: tasks.length, tasks,
+    seedCount: canonicalSeeds.length, taskCount: tasks.length, tasks, cells,
     metrics: evaluateContinualLearning(tasks, referenceScore),
     evidence: { outcomeCount: eligible.length, authorityCounts, seedIds: canonicalSeeds, taskVersions, taskFamilies },
   };
