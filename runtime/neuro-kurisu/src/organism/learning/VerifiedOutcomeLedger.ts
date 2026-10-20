@@ -78,7 +78,7 @@ export class VerifiedOutcomeLedger {
   }
 
   static fingerprintPrompt(prompt: string): string {
-    const normalized = String(prompt).normalize('NFKC').trim().replace(/\\s+/g, ' ').toLocaleLowerCase('en-US');
+    const normalized = String(prompt).normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
     return createHash('sha256').update(normalized, 'utf8').digest('hex');
   }
 
