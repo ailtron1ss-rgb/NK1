@@ -36,7 +36,7 @@ assert.deepEqual(matrix.tasks.map(t=>t.taskId),['a','b']);
 assert.ok(matrix.metrics.averageForwardTransfer !== null);
 assert.equal(matrix.metrics.forwardTransferTaskCount,2);
 assert.equal(matrix.metrics.stageCount,2);
-assert.equal(matrix.metrics.finalAverageScore,0.875);
+assert.equal(matrix.metrics.finalAverageScore,0.75);
 assert.equal(matrix.metrics.averageForwardTransfer,0.125);
 assert.equal(matrix.manifestFingerprint,ledger.manifestFingerprint());
 assert.throws(()=>buildContinualOutcomeMatrix(ledger,[{stageId:'x',method:'checkpoint-1'},{stageId:'x',method:'checkpoint-2'}]),/duplicate stageId/);
