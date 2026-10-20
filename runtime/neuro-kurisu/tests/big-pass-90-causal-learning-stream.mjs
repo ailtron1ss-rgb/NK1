@@ -49,6 +49,15 @@ assert.equal(stream.recordOutcome(trace,mkState({tick:999}),{reward01:1,success0
 const dedupeRestored=new CausalExperienceStream(64);dedupeRestored.restore(stream.snapshot());
 assert.equal(dedupeRestored.recordOutcome(trace,mkState({tick:1000}),{reward01:1,success01:1,surprise01:1,novelty01:1}),null,'dedupe history must survive snapshot and restart');
 assert.ok((dedupeRestored.snapshot().recordedTraceIds??[]).length<=4096,'dedupe history must remain bounded');
+const normalizedEvictionStream=new CausalExperienceStream(64);
+const paddedTrace={...trace,id:'  normalized-after-eviction  '};
+assert.ok(normalizedEvictionStream.recordOutcome(paddedTrace,mkState({tick:2}),{reward01:.7,success01:.7,surprise01:.3,novelty01:.2}));
+for(let i=0;i<70;i++){
+  normalizedEvictionStream.recordOutcome({...trace,id:`normalized-evict-${i}`,tick:i+20},mkState({tick:i+21}),{reward01:.6,success01:.6,surprise01:.2,novelty01:.2});
+}
+assert.equal(normalizedEvictionStream.recent(64).some(row=>row.traceId==='normalized-after-eviction'),false,'normalized fixture must evict its original causal record');
+assert.equal(normalizedEvictionStream.recordOutcome({...trace,id:'normalized-after-eviction'},mkState({tick:200}),{reward01:1,success01:1,surprise01:1,novelty01:1}),null,'the canonical trace ID must remain deduplicated after a padded ID record is evicted');
+
 
 const consolidated=restored.consolidate(8,1200);
 assert.equal(consolidated.length,1);
