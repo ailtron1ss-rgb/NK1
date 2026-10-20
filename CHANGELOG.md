@@ -1,3 +1,10 @@
+## WorkPass103 — replay baseline robustness and CI repair (2026-10-20)
+
+- Fixed WorkPass102 workflow setup: `actions/setup-node@v7` enables package-manager caching by default, but this repository has no root npm/yarn lockfile. Disabled package-manager caching for this dependency-free Node 24 harness rather than inventing a lockfile.
+- Added a deterministic multi-seed inclusion-frequency regression for Algorithm R. Across 400 seeds it checks that no stream-position inclusion rate deviates grossly from expectation; this is a statistical sanity guard, not evidence of task-learning uplift.
+- CI was rerun after the workflow fix; the exact-head run is pending/active at commit `71c3b6a0e631aead7305b8ac28eef66d884a9497` and must not be called PASS until completed.
+- The reservoir remains an experimental baseline; no replay default or production training behavior changed.
+
 ## WorkPass101 — age-aware replay ablation (2026-10-20)
 
 - Added optional logical-tick half-life discounting to historical surprise priority; the default remains unchanged.
