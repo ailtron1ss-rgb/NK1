@@ -1656,6 +1656,7 @@
     "audit:workpass69": "npm run test:workpass69 && npm run audit:contract && npm run verify:release-source && npm run audit:integrity",
     "test:workpass69:server-smoke": "node --experimental-strip-types tests/server-smoke.mjs",
     "test:workpass69:ui-smoke": "node --experimental-strip-types tests/ui-smoke.mjs",
+    "test:workpass82:server-cancellation": "node --experimental-strip-types tests/workpass82-server-language-cancellation.mjs",
     "test:workpass80:memory-residency": "node --experimental-strip-types tests/workpass80-memory-residency-retrieval.mjs",
     "test:workpass80": "npm run test:workpass80:memory-residency && npm run test:workpass79",
     "test:workpass79:local-language-policy": "node tests/workpass79-local-language-backend-policy.mjs",
