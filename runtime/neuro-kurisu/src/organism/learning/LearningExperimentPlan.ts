@@ -49,7 +49,7 @@ function canonical(value: unknown): string {
   return `{${Object.keys(object).sort().map(key => `${JSON.stringify(key)}:${canonical(object[key])}`).join(',')}}`;
 }
 function parseResetArm(value: string): number | null {
-  const match = /^R\\(([1-9]\\d*)\\)$/.exec(value);
+  const match = /^R\(([1-9]\d*)\)$/.exec(value);
   return match ? Number(match[1]) : null;
 }
 function nonEmpty(value: unknown): value is string {
