@@ -1130,3 +1130,13 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - This is an eligibility calculation only: it does not automatically promote or alter production learning policy. Synthetic test fixtures validate gate behavior, not real task success.
 - Research adaptation: SkillLearnBench's three-level evaluation chain and deterministic task verifiers, plus continual-learning benchmarks' emphasis on transfer/retention rather than memory accumulation. No upstream benchmark data or third-party code was copied into this change.
 - Exact-head CI status must be read from Actions before this pass is marked validated.
+
+
+## WorkPass116 — reproducible learning experiment protocol (2026-10-20)
+
+- Added `LearningExperimentPlan.ts`: deterministic, manifest-bound matched P/C/R(k) run scheduling; stable per-run IDs; deterministic per-seed order randomization; exact matched task/seed/arm coverage; plan fingerprint validation; split isolation and prompt-leakage checks inherited from the canonical ledger.
+- Added `recordPlannedLearningOutcome`: outcome metadata must match a scheduled run, ledger manifest identity must match, and duplicate task/method/seed outcomes are rejected before canonical ledger recording.
+- Added `scripts/create-learning-experiment-plan.mjs` to generate a versioned plan from a task-manifest JSON file with atomic output replacement; added core and CLI regression tests.
+- Added package scripts and expanded the WorkPass110 Actions workflow to run both experiment-plan tests plus reset-retention and continual-learning regressions.
+- Research adaptation: retention-bench uses actual process-kill resets with only a designated survive-directory preserved; AgentMemoryBench adds online/replay/transfer/repair modes; MemoryAgentBench emphasizes incremental multi-turn interaction; SkillLearnBench evaluates verified skill-dependent tasks. NK1 adapts the protocol ideas, not external code or benchmark data, pending license and dataset review.
+- Explicit boundary: the planner does not execute tasks, kill/restart the learner, authenticate external evidence, or prove learning uplift. Next implementation step is a process supervisor that launches real NK1 arms, enforces survive-directory boundaries, captures receipts, and records verifier-backed outcomes.
