@@ -26,6 +26,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Audit runtime npm script targets and local test files
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass84:script-integrity
       - name: Test cold-memory retrieval and residency invariants
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass80:memory-residency
