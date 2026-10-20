@@ -141,3 +141,14 @@ Added `tests/p23-replay-strategy-benchmark.mjs` and `.github/workflows/workpass9
 - This is a better view of sampler seed sensitivity than a few hand-picked examples, but its intervals describe only this synthetic stream and these seeds. They are **not** uncertainty intervals for task success, retention or forward transfer.
 - **Scores remain unchanged:** benchmark quality 35/100 and overall learning engineering 57/100. No increase is justified until independent verifiers score real task outcomes on identical task streams.
 - CI for the newest code head must complete before this pass is marked fully validated.
+
+
+## WorkPass105 — verifier-grounded evaluation substrate (2026-10-20)
+
+- Added a versioned manifest + outcome ledger that rejects self-reported outcomes as truth, validates task version/verifier/evidence provenance, prevents duplicate attempts, and rejects normalized prompt fingerprints shared across train/validation/holdout splits.
+- Added paired baseline/candidate metrics over identical task + seed + attempt cells: pass rate, absolute gain, discordant wins and approximate 95% interval. Missing pairs are excluded rather than imputed.
+- New fixture has 3 manifest entries and paired synthetic outcomes. This validates metric plumbing and guardrails only; it is not a benchmark result for NK1.
+- **Integration boundary:** the ledger is not yet connected to the production learner, storage, or skill promotion. That is deliberate until outcome contracts are reviewed and the held-out set can be protected from training leakage.
+- **Scores unchanged:** real outcome validation 34/100; benchmark quality 35/100; overall learning engineering 57/100. A scoring substrate is progress toward measurement, not proof of improved task success.
+- **Next:** persist signed/versioned evidence, add task-family-level paired summaries and retention-after-interference measurements, then connect only externally verified outcomes to the learning stream. Keep the holdout unavailable to training and model-authored labels.
+
