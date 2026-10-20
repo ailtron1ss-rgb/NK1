@@ -1,3 +1,8 @@
+## WorkPass87 — diversify consolidation under bounded capacity (2026-10-20)
+- Extended task/context-aware selection into the consolidation stage, not just active replay. High-signal records remain favored, but repeated records from one task incur a diminishing selection penalty so eligible alternatives can survive limited consolidation budgets.
+- Added a regression where one task dominates raw causal/surprise scores while multiple other grounded tasks qualify; a small consolidation budget must retain cross-task coverage.
+- Combined with WorkPass86, ungrounded events are excluded before diversity selection. Grounding is necessary but not equivalent to independent verification.
+
 ## WorkPass86 — prevent ungrounded feedback from entering consolidated experience (2026-10-20)
 - Tightened causal experience consolidation to consider only state-grounded records. External feedback can still be recorded for provenance and diagnostics, but unsupported events cannot become consolidated learning merely because their surprise or reward signal is large.
 - Added explicit regression assertions that a high-signal ungrounded external event is excluded while grounded causal experience remains consolidatable.

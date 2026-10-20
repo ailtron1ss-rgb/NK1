@@ -79,4 +79,16 @@ assert.equal(consolidated.length,1);
 assert.equal(restored.summary().consolidated,1);
 assert.ok(consolidated.every(row=>row.stateGrounded),'consolidation must only accept state-grounded experiences');
 assert.equal(consolidated.some(row=>row.traceId==='external-trace-once'),false,'high-surprise but ungrounded external feedback must not become consolidated learning');
+
+// Consolidation should preserve task coverage instead of selecting only the loudest task.
+const consolidationDiversity=new CausalExperienceStream(64);
+for(let i=0;i<5;i++){
+  consolidationDiversity.recordExternalLearningEvent({tick:500+i,taskId:'dominant-consolidation-task',action:'explore',reward01:.95,success01:.95,surprise01:.95,novelty01:.9,causalStrength01:.9,traceId:`grounded-dominant-${i}`,stateGrounded:true});
+}
+for(let i=0;i<3;i++){
+  consolidationDiversity.recordExternalLearningEvent({tick:600+i,taskId:`alternate-consolidation-${i}`,action:'verify',reward01:.75,success01:.75,surprise01:.7,novelty01:.7,causalStrength01:.68,traceId:`grounded-alternate-${i}`,stateGrounded:true});
+}
+const consolidatedDiverse=consolidationDiversity.consolidate(3,1800);
+assert.equal(consolidatedDiverse.length,3);
+assert.ok(new Set(consolidatedDiverse.map(row=>row.taskId)).size>=2,'consolidation must retain more than one task when grounded alternatives qualify');
 console.log('BIG_PASS_90_CAUSAL_STREAM=PASS');

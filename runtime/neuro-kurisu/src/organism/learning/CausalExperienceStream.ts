@@ -212,7 +212,27 @@ export class CausalExperienceStream {
     return {records:rows,learningOpportunity01:clamp01(mean(r=>r.causalStrength01*.6+r.surprise01*.2+r.predictionError01*.2)),meanReward01:clamp01(mean(r=>r.reward01)),meanSurprise01:clamp01(mean(r=>r.surprise01)),meanCausalStrength01:clamp01(mean(r=>r.causalStrength01))};
   }
   consolidate(limit=32,at=Date.now()){
-    const rows=this.state.records.filter(r=>!r.consolidated&&r.stateGrounded).sort((a,b)=>(b.causalStrength01+b.surprise01)-(a.causalStrength01+a.surprise01)).slice(0,Math.max(1,Math.min(128,Math.floor(limit))));
+    const candidates=this.state.records.filter(r=>!r.consolidated&&r.stateGrounded);
+    const ranked=[...candidates];
+    const rows:CausalExperienceRecord[]=[];
+    const taskCounts=new Map<string,number>(),contextCounts=new Map<string,number>();
+    const wanted=Math.max(1,Math.min(128,Math.floor(limit)));
+    while(rows.length<wanted&&ranked.length){
+      let bestIndex=0,bestAdjusted=-Infinity;
+      for(let i=0;i<ranked.length;i++){
+        const candidate=ranked[i];
+        const taskSeen=taskCounts.get(candidate.taskId)??0;
+        const contextSeen=contextCounts.get(this.contextKey(candidate))??0;
+        const base=candidate.causalStrength01+candidate.surprise01;
+        const adjusted=base-Math.min(1.1,taskSeen*.55+contextSeen*.20);
+        if(adjusted>bestAdjusted){bestAdjusted=adjusted;bestIndex=i;}
+      }
+      const [chosen]=ranked.splice(bestIndex,1);
+      rows.push(chosen);
+      taskCounts.set(chosen.taskId,(taskCounts.get(chosen.taskId)??0)+1);
+      const key=this.contextKey(chosen);
+      contextCounts.set(key,(contextCounts.get(key)??0)+1);
+    }
     const eligible=rows.filter(r=>r.causalStrength01>=.44||r.surprise01>=.55||r.identityRelevance01>=.78);
     for(const r of eligible)r.consolidated=true;
     this.state.consolidated+=eligible.length; if(eligible.length)this.state.lastConsolidatedAt=at;
