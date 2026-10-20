@@ -34,7 +34,7 @@ export interface ParametricPrediction { action:ActionKind; value:number; uncerta
 const featureNames=[
   'energy','cognitiveLoad','uncertainty','novelty','goalPressure','socialNeed',
   'predictionError','attentionBudget','identityCoherence','externalInput','bodyCapacity','thermalPressure',
-  'boredom','resourceRisk','actionCost'
+  'boredom','resourceRisk','energyNoveltyInteraction','energyGoalPressureInteraction','noveltyGoalPressureInteraction','actionCost'
 ];
 
 export function defaultParametricPolicy():ParametricPolicyState{
@@ -51,12 +51,13 @@ export function defaultParametricPolicy():ParametricPolicyState{
 
 function featureVector(state:OrganismState, extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}):number[]{
   const n=state.needs;
+  const energy=clamp(n.energy),novelty=clamp(n.novelty),goalPressure=clamp(n.goalPressure);
   return [
-    clamp(n.energy),
+    energy,
     clamp(n.cognitiveLoad),
     clamp(n.uncertainty),
-    clamp(n.novelty),
-    clamp(n.goalPressure),
+    novelty,
+    goalPressure,
     clamp(n.socialNeed),
     clamp(state.predictionError),
     clamp(state.attentionBudget),
@@ -66,6 +67,9 @@ function featureVector(state:OrganismState, extras?:{external01?:number;boredom0
     clamp(extras?.thermalPressure01??0),
     clamp(extras?.boredom01??0),
     clamp(extras?.resourceRisk01??0),
+    energy*novelty,
+    energy*goalPressure,
+    novelty*goalPressure,
     0,
   ];
 }
@@ -75,10 +79,17 @@ export class ParametricPolicyLearner{
 
   restore(raw?:Partial<ParametricPolicyState>|null){
     const d=defaultParametricPolicy();
+    const savedNames=Array.isArray(raw?.featureNames)?raw!.featureNames:[];
     this.state={...d,...(raw??{}),featureNames:[...featureNames],weights:{...d.weights,...(raw?.weights??{})},bias:{...d.bias,...(raw?.bias??{})}};
     for(const a of ACTIONS){
-      const w=Array.isArray(this.state.weights[a])?this.state.weights[a]:[];
-      this.state.weights[a]=new Array(featureNames.length).fill(0).map((_,i)=>Math.max(-4,Math.min(4,Number(w[i]??0))));
+      const savedWeights=Array.isArray(raw?.weights?.[a])?raw!.weights![a]:[];
+      this.state.weights[a]=featureNames.map((name,index)=>{
+        // Migrate old positional snapshots by semantic name so the former actionCost
+        // weight remains attached to actionCost rather than an interaction feature.
+        const oldIndex=savedNames.length?savedNames.indexOf(name):(name==='actionCost'?14:index<14?index:-1);
+        const value=oldIndex>=0?Number(savedWeights[oldIndex]??0):0;
+        return Math.max(-4,Math.min(4,Number.isFinite(value)?value:0));
+      });
       this.state.bias[a]=Math.max(-4,Math.min(4,Number(this.state.bias[a]??0)));
     }
   }

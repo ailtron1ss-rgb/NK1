@@ -1,3 +1,11 @@
+## NK1 learning WorkPass104 — contextual feature interactions and dual-mode replay probe (2026-10-20)
+
+- Expanded the P26 feature basis with bounded interaction terms `energy×novelty`, `energy×goalPressure`, and `novelty×goalPressure`, allowing the linear learner to represent simple context-dependent action-value changes rather than only additive state effects.
+- Updated policy snapshot restoration to remap weights by saved feature names. Existing 15-feature snapshots preserve their old `actionCost` weight and initialize new interaction weights to zero; no old weight is silently reassigned to a new feature.
+- Added a second sequential-learning experiment with state distributions that expose a context signal (low-vs-high novelty) and test both old/new task retention, conflict blocking, and whether non-conflicting replay remains eligible. The original same-state contradictory-target stress test remains in place to preserve the failure case.
+- Research basis: the 2026 A2ER/O2S study emphasizes blocking inconsistent replay and balancing consolidation with plasticity; ARROW motivates complementary short-term and long-term experience distributions. NK1 adapts only the conflict-gating and contextual-representation principles, not the heavyweight Python/PyTorch implementations. No third-party code or datasets copied.
+- **Evidence status:** CI is required on the exact new head. Synthetic contextual accuracy is still not independent task-generalization evidence or production outcome proof.
+
 ## NK1 learning WorkPass103 — conflict-aware interleaved rehearsal (2026-10-20)
 
 - Added bounded conflict screening to `trainInterleaved`: for each replay record, compare the closest fresh example for the same action using normalized learner features. If states are within a small distance threshold but rewards disagree strongly, block that replay record instead of reinforcing a stale target.

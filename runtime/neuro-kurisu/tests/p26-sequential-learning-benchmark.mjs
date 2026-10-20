@@ -33,6 +33,40 @@ function train(engine,data,phase){
     engine.learner.train({state:row.state,action,target01:phase===0?targetA(row.state,action):targetB(row.state,action),learningRate01:.18});
   }
 }
+
+const contextRows=(phase,n=360)=>Array.from({length:n},(_,i)=>{
+  const energy=.2+((i*37)%61)/100;
+  const novelty=phase===0?((i*19)%30)/100:.7+((i*19)%30)/100;
+  const state=mkState(energy,novelty);
+  const action=phase===0?(energy<.5?'rest':'respond'):(energy<.5?'respond':'rest');
+  return {state,action,reward:phase===0?targetA(state,action):targetB(state,action),nextState:mkState(Math.min(.99,energy+.03),novelty),surprise:.35+((i*11)%50)/100};
+});
+const evalContextTask=(engine,phase,n=160)=>{
+  let correct=0;
+  for(let i=0;i<n;i++){
+    const energy=.22+((i*23)%57)/100;
+    const novelty=phase===0?((i*17)%30)/100:.7+((i*17)%30)/100;
+    const state=mkState(energy,novelty);
+    const expected=phase===0?(energy<.5?'rest':'respond'):(energy<.5?'respond':'rest');
+    const predicted=engine.predict(state).slice().sort((a,b)=>b.value-a.value)[0]?.action;
+    if(predicted===expected)correct++;
+  }
+  return correct/n;
+};
+const makeContextAwareRun=()=>{
+  const engine=new P26TrueLearningEngine();
+  const taskA=contextRows(0),taskB=contextRows(1);
+  train(engine,taskA,0);
+  const taskABefore=evalContextTask(engine,0);
+  const replayRows=taskA.flatMap(row=>actions.map(action=>({...row,action,reward:targetA(row.state,action)})));
+  let replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0;
+  for(let epoch=0;epoch<8;epoch++){
+    const fresh=taskB.flatMap(row=>actions.map(action=>({...row,action,reward:targetB(row.state,action)})));
+    const result=engine.trainInterleaved(fresh,replayRows,{replayEveryNCurrent:16,maxReplayUpdates:160,targetMode:'reward',currentLearningRate01:.18});
+    replayUpdates+=result.replayUpdates;blockedReplayRows+=result.blockedReplayRows;eligibleReplayRows+=result.eligibleReplayRows;
+  }
+  return {taskABefore,taskAFinal:evalContextTask(engine,0),taskBFinal:evalContextTask(engine,1),replayUpdates,blockedReplayRows,eligibleReplayRows};
+};
 const makeRun=(strategy)=>{
   const engine=new P26TrueLearningEngine();
   const taskA=rows(0);
@@ -64,6 +98,7 @@ const makeRun=(strategy)=>{
 const onlineOnly=makeRun('online-only');
 const replay=makeRun('posthoc-replay');
 const interleaved=makeRun('interleaved');
+const contextAware=makeContextAwareRun();
 for(const [name,result] of Object.entries({onlineOnly,replay,interleaved})){
   for(const metric of ['taskABefore','taskAAfterInterference','taskAAfterReplay','taskBFinal'])assert(Number.isFinite(result[metric])&&result[metric]>=0&&result[metric]<=1,name+'.'+metric+' out of range');
 }
@@ -80,4 +115,9 @@ console.log('P26_INTERLEAVED_DIAGNOSTIC',JSON.stringify(interleaved));
 assert.ok(onlineOnly.taskABefore>.8,'benchmark must establish task A before measuring forgetting');
 assert.ok(onlineOnly.taskBFinal>.8,'benchmark must establish task B before measuring retention');
 assert.equal(replay.generalizationEvidence01,0,'synthetic task evaluation is not verifier-certified generalization evidence');
-console.log('P26_SEQUENTIAL_LEARNING_BENCHMARK=PASS',JSON.stringify({onlineOnly,replay,interleaved,interpretation:'synthetic diagnostic only; not a production or external-task result'}));
+assert.ok(contextAware.taskABefore>.8,'contextual benchmark must establish old-task performance');
+assert.ok(contextAware.taskAFinal>.8,'separable state contexts plus interaction features should preserve old-task skill');
+assert.ok(contextAware.taskBFinal>.8,'separable state contexts plus interaction features should learn the new task');
+assert.ok(contextAware.eligibleReplayRows>0&&contextAware.replayUpdates>0,'non-conflicting historical examples should remain eligible for rehearsal');
+assert.equal(contextAware.blockedReplayRows,0,'separable task contexts should not be treated as contradictory same-context feedback');
+console.log('P26_SEQUENTIAL_LEARNING_BENCHMARK=PASS',JSON.stringify({onlineOnly,replay,interleaved,contextAware,interpretation:'synthetic diagnostic only; not a production or external-task result'}));
