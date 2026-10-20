@@ -35,6 +35,9 @@ jobs:
       - name: Test local provider timeout, payload bounds and failure normalization
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass79:provider-boundary
+      - name: Verify client disconnect cancels in-flight local inference end to end
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass82:server-cancellation
       - name: Exercise real server HTTP path with a controlled local provider
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass69:server-smoke
