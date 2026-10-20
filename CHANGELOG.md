@@ -1,3 +1,10 @@
+## NK1 learning WorkPass106 — multi-seed replay-policy sweep (2026-10-20)
+
+- Added `p26-replay-policy-sweep.mjs`: a deterministic three-seed comparison of online-only, interleaving every 8 updates, every 4 updates, and every update. It measures old-task retention, new-task plasticity, replay update counts, conflict blocks and bounded screening comparisons.
+- The test deliberately uses context-separated tasks so the old and new rules are distinguishable from the state. It checks that context separation is not mistaken for same-context contradiction and that recent-task performance remains useful.
+- Wired the sweep into `npm run test:learning-replay`, which is already executed by the cognitive-regression workflow.
+- **Evidence boundary:** results are synthetic, not external task holdout evidence. Do not raise the 58/100 overall score until exact-head Actions passes and the measured retention/plasticity trade-off is reviewed. No third-party implementation or dataset copied.
+
 ## NK1 learning WorkPass105 — bounded conflict preflight (2026-10-20)
 
 - Bounded `trainInterleaved`'s conflict-screening work per replay row with a deterministic, evenly spaced sample of at most 64 current examples by default (configurable, hard-clamped to 8–128), preventing replay×current comparisons from growing without bound.
