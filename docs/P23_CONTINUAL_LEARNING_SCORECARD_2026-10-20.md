@@ -1,5 +1,14 @@
 # P23 continual-learning scorecard and comparative roadmap — 2026-10-20
 
+## WorkPass108 update — paired identity and manifest-bound evidence (2026-10-20)
+
+- Paired outcome comparison now encodes `taskId`, `seed`, and `attempt` as a JSON tuple rather than delimiter concatenation, avoiding ambiguous composite keys.
+- `manifestFingerprint()` supplies a deterministic digest over sorted manifest entries. Tests assert stability under insertion-order changes and sensitivity to prompt, version, verifier, and split changes.
+- Added CI coverage for both regressions and included them in the full verified-outcome test suite.
+- **Scores unchanged:** overall learning engineering **57/100**; evidence-grounded maturity **36%**; overall lifelong-learning roadmap **30%**. This pass improves evidence identity and evaluation reliability, not demonstrated task-solving ability.
+- **Remaining P0:** verifier-run artifacts must carry this manifest digest and be independently retrieved/validated; evidence needs authenticated provenance. Next, build the same-seed outcome benchmark across context-only, online-only, recency, surprise, reservoir, and multi-timescale approaches, with old-task retention and forward-transfer measurements. Do not enable automatic promotion from synthetic fixtures.
+
+
 This is an engineering assessment of the current repository implementation, not a claim of human-level learning. Scores are provisional expert estimates based on implemented code paths and test coverage. They must be replaced or calibrated with repeated external-task benchmark results.
 
 ## Progress estimate
