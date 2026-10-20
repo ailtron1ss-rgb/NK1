@@ -191,3 +191,11 @@ No external benchmark data or code has been copied into NK1. Verify licences and
 - New regression proves a damaged supersession interval cannot revive an obsolete fact in current retrieval, the existing stale-suppression diagnostic increments, and archive mode can still inspect the historical record.
 - All steps passed: WorkPass84 script integrity, WorkPass80 residency, WorkPass87 supersession recovery, WorkPass83/85/86 retrieval metrics and provenance, WorkPass79 provider policy/boundary, WorkPass82 cancellation, and controlled-provider server smoke.
 - The following handover/changelog-only commit does not change runtime behavior; check its exact-head Actions run before treating the documentation-updated branch as fully green.
+
+
+## WorkPass88 — benchmark label truncation integrity (2026-10-20)
+
+- **IMPLEMENTED; CI verification pending for the new head.** The retrieval harness bounded each query to 24 relevance IDs and clipped long IDs/query text without separately marking that the source row had been altered. That could hash a truncated dataset while hiding truncation from promotion eligibility.
+- Added `truncatedFieldRows` to dataset-integrity reporting. Any example exceeding ID/query/label limits can still be evaluated for diagnostics, but blocks promotion. Report schema advanced from v4 to v5.
+- Regression supplies 25 relevance labels and asserts the clipped row is reported and candidate promotion is denied. This is an integrity guard, not evidence of retrieval-quality improvement.
+- Exact-head Actions receipt must be added after the new commit's workflow completes.
