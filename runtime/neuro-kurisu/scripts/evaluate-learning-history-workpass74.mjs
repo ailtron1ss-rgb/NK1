@@ -13,9 +13,9 @@ import { evaluateContinualLearningHistory } from "../src/learning/continual-lear
 
 const [inputPath, outputPath] = process.argv.slice(2);
 if (inputPath === "--help" || inputPath === "-h") {
-  process.stdout.write("Usage: evaluate-learning-history-workpass74.mjs input.json [report.json]\\n");
+  process.stdout.write("Usage: evaluate-learning-history-workpass74.mjs input.json [report.json]" + String.fromCharCode(10));
 } else if (!inputPath || process.argv.length > 4) {
-  process.stderr.write("Usage: evaluate-learning-history-workpass74.mjs input.json [report.json]\\n");
+  process.stderr.write("Usage: evaluate-learning-history-workpass74.mjs input.json [report.json]" + String.fromCharCode(10));
   process.exitCode = 1;
 } else {
   try {
