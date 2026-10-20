@@ -106,3 +106,12 @@ The change is additive. Revert the WorkPass79 commits or remove the workflow/scr
 - `WORKPASS79_LOCAL_PROVIDER_BOUNDARY=PASS`: bounded output, 503/malformed/empty/size cases, timeout abort, caller cancellation, loopback-only endpoint.
 - `WORKPASS82_SERVER_LANGUAGE_CANCELLATION=PASS`: controlled local provider received one request and its socket closed when the client disconnected, before the 12-second timeout.
 - `SERVER_SMOKE=PASS`: existing server HTTP smoke also passed.
+
+
+## WorkPass83 — retrieval benchmark truthfulness and holdout leakage
+
+- Added `tests/workpass83-retrieval-benchmark-truth.mjs` and `test:workpass83:retrieval-benchmark-truth`.
+- Fixture: 12 synthetic memories (English and Russian), 4 train queries, 8 holdout queries. The test runs the existing MemoryOS2-vs-Okapi-BM25 harness, checks stable metric shape and promotion-gate/status consistency, verifies the live memory snapshot remains unchanged, and confirms duplicated normalized prompts crossing train/holdout block promotion.
+- **PASS:** Actions run https://github.com/ailtron1ss-rgb/NK1/actions/runs/39372815361. Log: `WORKPASS83_RETRIEVAL_BENCHMARK_TRUTH=PASS`, baseline/candidate Recall@3 = 1.0, baseline/candidate MRR = 1.0, liveMemoryMutated=false, crossSplitLeakageBlocksPromotion=true. Other WorkPass79/80/82 checks and `SERVER_SMOKE` also passed.
+- Interpretation: the synthetic fixture is deliberately easy; equal 1.0 scores mean **zero observed uplift**, not proof that semantic retrieval improved. It validates the experiment harness and guardrails only.
+- Next: use a versioned independent RU/EN labelled holdout, pre-register relevance labels and split rules, compare Recall@k/MRR and paired confidence intervals against BM25; then test actual llama.cpp on Dell G3, process restart/recovery, transfer/anti-forgetting and soak. Keep the PR draft until these are evidenced.
