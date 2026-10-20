@@ -29,7 +29,7 @@
 
 - **IMPLEMENTED:** source binding is strict and canonical.
 - **REGRESSION ADDED:** behavioral cases are present and wired to a dedicated workflow.
-- **CI PENDING / NOT YET OBSERVED:** no workflow run was returned for the workflow commit at checkpoint time; do not claim the test passed until the exact-head Actions run is visible and green.
+- **CI PENDING:** WorkPass79 cognitive runtime regression run [39414533372](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39414533372) was observed in pending state on commit `b041767681158834540fbd979a2b97306e512e2f`; no test result is claimed until it completes green.
 - **UNRESOLVED:** live provider/device action recovery, independent RU/EN retrieval uplift, learning transfer/retention, real browser/Live2D/TTS E2E, target-device performance and release readiness remain open.
 
 ## Next actions
