@@ -987,3 +987,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Closed an evaluation gap: a benchmark with no or too few explicitly unanswerable holdout queries could otherwise report a zero-width abstention interval and appear to satisfy the confidence gate without meaningful abstention evidence.
 - Added `minUnanswerableHoldoutQueries` (default 4; bounded to 2–32), a dedicated `sufficientUnanswerableEvidence` promotion gate, a surfaced threshold, and the fail-closed reason `insufficient-unanswerable-holdout`.
 - The fixed synthetic fixture has only two unanswerable cases and now explicitly proves that promotion is blocked for insufficient abstention evidence. This is a conservative evaluation guard, not retrieval uplift.
+
+
+## WorkPass90 — adequate abstention evidence gate (2026-10-20)
+
+- **PASS:** exact-head GitHub Actions run [39379410664](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39379410664), branch head `f60a2c3ed314595fc4d8d8cc46b9a37c592d9628`; all workflow steps succeeded.
+- Added `minUnanswerableHoldoutQueries` (default 4, bounded 2–32), `sufficientUnanswerableEvidence`, and the fail-closed reason `insufficient-unanswerable-holdout`.
+- Regression test proves the current synthetic fixture's two unanswerable queries are insufficient to authorize an abstention promotion claim.
+- Reviewed 2026 research on MemoryBench, Mem2ActBench, Memory-R1, AgeMem, MemFit and LeanMem; updated the research gate with a next-stage memory-to-action evaluation plan. These are design inputs, not reproduced NK1 results.
+- Evidence scope: CI regression integrity only. No real local LLM run, independent human-labelled corpus, or measured cognitive-quality uplift is claimed.
