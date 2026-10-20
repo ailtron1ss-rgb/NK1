@@ -37,6 +37,14 @@ assert.ok(matrix.metrics.averageForwardTransfer !== null);
 assert.equal(matrix.metrics.forwardTransferTaskCount,2);
 assert.equal(matrix.metrics.stageCount,2);
 assert.equal(matrix.cells.length,4);
+assert.equal(matrix.familySummaries.length,2);
+const memoryFamily = matrix.familySummaries.find(item => item.family === 'memory');
+const transferFamily = matrix.familySummaries.find(item => item.family === 'transfer');
+assert.equal(memoryFamily.taskCount,1);
+assert.equal(memoryFamily.finalPassRate,0.5);
+assert.equal(memoryFamily.averageForgetting,0.25);
+assert.equal(transferFamily.finalPassRate,1);
+assert.equal(transferFamily.averageForgetting,0);
 const bAfterStage2 = matrix.cells.find(cell => cell.taskId === 'b' && cell.stageId === 'after-task-2');
 assert.equal(bAfterStage2.sampleCount,4);
 assert.equal(bAfterStage2.passedCount,4);
@@ -72,4 +80,4 @@ for (const seed of [1,2]) {
   }
 }
 assert.throws(()=>buildContinualOutcomeMatrix(missingBaseline,[{stageId:'s1',method:'stage-1'},{stageId:'s2',method:'stage-2'}],{preTrainingMethod:'baseline'}),/pre-training method lacks matched seeds for task b/);
-console.log('PASS continual outcome matrix: matched seeds, split isolation, baseline parity, cell-level Wilson intervals');
+console.log('PASS continual outcome matrix: matched seeds, split isolation, baseline parity, cell-level Wilson intervals, task-family stratification');
