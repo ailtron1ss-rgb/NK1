@@ -48,6 +48,10 @@ function canonical(value: unknown): string {
   const object = value as Record<string, unknown>;
   return `{${Object.keys(object).sort().map(key => `${JSON.stringify(key)}:${canonical(object[key])}`).join(',')}}`;
 }
+function parseResetArm(value: string): number | null {
+  const match = /^R\\(([1-9]\\d*)\\)$/.exec(value);
+  return match ? Number(match[1]) : null;
+}
 function nonEmpty(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
@@ -150,6 +154,28 @@ export function validateLearningExperimentPlan(
 ): { valid: true; runCount: number } {
   if (!plan || plan.protocol !== 'nk1-matched-reset-retention' || plan.protocolVersion !== 1) {
     throw new Error('unsupported experiment plan');
+  }
+  if (!Array.isArray(plan.seedIds) || !plan.seedIds.length ||
+      plan.seedIds.some(seed => !Number.isSafeInteger(seed) || seed < 0) ||
+      new Set(plan.seedIds).size !== plan.seedIds.length ||
+      plan.seedIds.some((seed, i) => i > 0 && plan.seedIds[i - 1]! >= seed)) {
+    throw new Error('plan seed IDs must be unique, non-negative, and sorted');
+  }
+  if (!Array.isArray(plan.arms) || plan.arms.length < 3 ||
+      !plan.arms.some(arm => arm.arm === 'P') || !plan.arms.some(arm => arm.arm === 'C')) {
+    throw new Error('plan must contain prior, continuous and reset arms');
+  }
+  const armLabels = plan.arms.map(arm => arm.arm);
+  const methodNames = plan.arms.map(arm => arm.method);
+  if (new Set(armLabels).size !== armLabels.length || new Set(methodNames).size !== methodNames.length ||
+      plan.arms.some(arm => !nonEmpty(arm.method) ||
+        (arm.arm !== 'P' && arm.arm !== 'C' && parseResetArm(arm.arm) === null))) {
+    throw new Error('plan arms must have valid unique labels and methods');
+  }
+  if (!plan.counts || plan.counts.seeds !== plan.seedIds.length ||
+      plan.counts.arms !== plan.arms.length ||
+      plan.counts.tasks !== manifest.filter(task => task.split === plan.split).length) {
+    throw new Error('plan summary counts do not match its manifest, seeds and arms');
   }
   const expectedManifest = new VerifiedOutcomeLedger(manifest).manifestFingerprint();
     if (expectedManifest !== plan.manifestFingerprint) throw new Error('manifest fingerprint mismatch');
