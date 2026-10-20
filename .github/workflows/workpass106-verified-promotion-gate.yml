@@ -12,6 +12,7 @@ on:
       - 'runtime/neuro-kurisu/tests/p23-verified-outcome-ledger-persistence.mjs'
       - 'runtime/neuro-kurisu/tests/p23-verified-outcome-ledger-file-store.mjs'
       - 'runtime/neuro-kurisu/tests/p23-paired-outcome-identity.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-task-manifest-fingerprint.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass106-verified-promotion-gate.yml'
   workflow_dispatch:
@@ -38,6 +39,9 @@ jobs:
       - name: Check collision-safe paired outcome identity
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-paired-outcome-identity.mjs
+      - name: Check stable task-manifest fingerprint binding
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-task-manifest-fingerprint.mjs
       - name: Check durable ledger roundtrip and corruption rejection
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-verified-outcome-ledger-persistence.mjs
