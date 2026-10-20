@@ -21,6 +21,15 @@ on:
       - "AGENTS.md"
       - "CHANGELOG.md"
       - "SUPER_VERSION.json"
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/learning/**"
+      - "runtime/neuro-kurisu/tests/paired-holdout-evaluation-workpass71.mjs"
+      - "runtime/neuro-kurisu/tests/learning-evaluation-document-workpass72.mjs"
+      - "runtime/neuro-kurisu/scripts/evaluate-learning-holdout-workpass72.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/workpass71-validation.yml"
   workflow_dispatch:
 
 permissions:
@@ -53,6 +62,12 @@ jobs:
         run: npm --prefix app run build:dev
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Paired holdout learning statistics regression
+        run: npm --prefix runtime/neuro-kurisu run test:learning-eval-workpass71
+      - name: Learning evaluation JSON boundary regression
+        run: npm --prefix runtime/neuro-kurisu run test:learning-eval-workpass72
+      - name: Existing bilingual memory recall regression
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/workpass55-memory-concept-recall.mjs
       - name: Local LLM bounded-response regression
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/local-chat-provider-workpass40.mjs
       - name: Optional live local LLM smoke (skips without explicit loopback URL)
