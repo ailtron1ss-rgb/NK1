@@ -19,7 +19,7 @@
 - **CI evidence:** [run 39320023335](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39320023335) passed temporal revision/history tests; [run 39320833685](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39320833685) passed the core suite with the fake-provider HTTP integration and optional live-smoke skip. Always check the current branch head and latest Actions status before relying on a historical run.
 - **Still unproven:** real `llama.cpp` inference/model quality on the Dell G3, independent retrieval uplift, learning transfer, restart-safe external action evidence, real browser/audio/Live2D E2E, target-hardware performance and subjective consciousness.
 
-Latest continuation and next-chat entry: [WorkPass77 handover](docs/WORKPASS77_HANDOVER_2026-10-19.md). Full findings and the updated queue: [WorkPass76 repository audit](docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md). The current rebuild/evidence gates remain in [WorkPass75 ledger](docs/WORKPASS75_REBUILD_AND_EVIDENCE_LEDGER_2026-10-19.md).
+Latest continuation and next-chat entry: [WorkPass77 handover](docs/WORKPASS78_HANDOVER_2026-10-20.md). Full findings and the updated queue: [WorkPass76 repository audit](docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md). The current rebuild/evidence gates remain in [WorkPass75 ledger](docs/WORKPASS75_REBUILD_AND_EVIDENCE_LEDGER_2026-10-19.md).
 
 ## Current engineering pass — WorkPass75 (2026-10-19)
 
