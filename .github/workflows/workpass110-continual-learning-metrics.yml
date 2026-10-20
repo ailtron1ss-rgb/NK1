@@ -4,6 +4,8 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualLearningMetrics.ts'
       - 'runtime/neuro-kurisu/tests/p23-continual-learning-metrics.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/ContinualBenchmarkComparison.ts'
+      - 'runtime/neuro-kurisu/tests/p23-continual-benchmark-comparison.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
   push:
