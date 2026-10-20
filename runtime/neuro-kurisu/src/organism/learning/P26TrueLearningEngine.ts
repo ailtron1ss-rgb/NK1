@@ -80,7 +80,7 @@ export class P26TrueLearningEngine{
     for(const e of experiences){
       const next=Math.max(...this.learner.predict(e.nextState,extras).map(x=>x.value),.5);
       const target=tdTarget01(e.reward,next);
-      const r=this.learner.train({state:e.state,action:e.action,target01:target,learningRate01:.035+clamp(e.surprise??.2)*.03,extras});
+      const r=this.learner.train({state:e.state,action:e.action,target01:target,learningRate01:.10+clamp(e.surprise??.2)*.06,extras});
       updates++; loss+=r.loss01;
     }
     this.state.metrics.replayUpdates+=updates;
