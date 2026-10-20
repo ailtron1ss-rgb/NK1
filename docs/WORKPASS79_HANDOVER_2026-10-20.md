@@ -227,7 +227,7 @@ No external benchmark data or code has been copied into NK1. Verify licences and
 
 ## WorkPass90 — minimum unanswerable holdout evidence (2026-10-20)
 
-**Status:** runtime guard and regression assertion committed; exact-head Actions verification pending.
+**Status:** runtime guard and regression assertion validated by [exact-head GitHub Actions run 39379410664](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39379410664) on `f60a2c3ed314595fc4d8d8cc46b9a37c592d9628`; all workflow steps passed. Later documentation-only commits require their own exact-head receipt.
 
 - Added `minUnanswerableHoldoutQueries` (default `4`, clamped to `2..32`) because a confidence interval over zero or too few unanswerable examples cannot substantiate abstention safety.
 - Added the explicit `sufficientUnanswerableEvidence` promotion gate, report threshold, and fail-closed reason `insufficient-unanswerable-holdout`.
@@ -240,3 +240,12 @@ No external benchmark data or code has been copied into NK1. Verify licences and
 2. Add language/scenario-stratified reporting and enforce minimum RU and EN coverage separately, not only aggregate counts.
 3. Validate benchmark stability across independent seeds and larger unanswerable sets; report paired uncertainty without treating bootstrap as a substitute for representative data.
 4. Continue toward real local model execution and sequential-learning retention/interference tests; these remain unverified on this branch.
+
+
+## Research refresh and next architectural target — 2026-10-20
+
+Updated `docs/RESEARCH_GATE_MEMORY_CONTINUAL_LEARNING_2026-10-20.md` after checking recent work: MemoryBench (ICML 2026), Mem2ActBench (ACL 2026), Memory-R1 (ACL 2026), AgeMem (ACL 2026), and the MemFit/LeanMem preprints. Main change to the plan: NK1 must evaluate whether memory reliably changes a grounded action and observed outcome, not only whether a record appears in retrieval results.
+
+**Next code pass:** build a deterministic, sandbox-only memory-to-action evaluation harness. Scenarios should cover a remembered preference, a later correction, stale/superseded evidence, missing evidence requiring clarification, and restart/replay. Score memory transition, retrieved evidence, selected tool and grounded arguments, task outcome, stale-memory use, and invalid actions separately. No real external side effects in tests. Keep the current memory owner canonical; do not introduce a parallel memory store without a migration/rollback design.
+
+**Current evidence boundaries:** WorkPass90 CI passed on its exact code head. The current RU/EN benchmark fixture remains synthetic. Real llama.cpp on the Dell G3, independent labelled data, sequential retention/transfer/interference, full UI/TTS/browser integration, and restart/soak evidence remain open. No claim of general autonomy or consciousness follows from these tests.
