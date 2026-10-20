@@ -1,3 +1,12 @@
+## WorkPass93 — harden core ownership exemption and add durable checkpoint (2026-10-20)
+
+- Replaced the field-name-only constructor exemption with an exact field + constructor policy: `operationalMicroCycle:OperationalMicroCycleRuntime`.
+- Added an executable adversarial regression guard to `audit-core-ownership.mjs`: only the exact documented pair is exempt; a mismatched constructor, renamed field or unrelated owner is counted.
+- Added durable continuation/evidence report: [WorkPass93 checkpoint](docs/WORKPASS93_CHECKPOINT_2026-10-20.md).
+- Code commits: `8bcffba1511e1327ae71f7500295d31ccffa3c73` (policy module), `ce804abde19ccd20868cd579032431550ca1c35a` (audit integration).
+- Validation boundary: exact-head CI for WorkPass93 must be checked before marking this pass validated. The prior WorkPass92 CI run is a baseline only, not evidence for these changes.
+- Remaining gates are unchanged: live llama.cpp on Dell G3, independent RU/EN retrieval uplift, learning transfer/anti-forgetting, restart-safe action proof, browser/Live2D/TTS E2E, soak, packaging and release security.
+
 ## WorkPass92 — enforce core ownership audit in CI (2026-10-20)
 
 - Wired the existing audit:core-ownership into the regression workflow. The first run exposed a diagnostic defect: it printed PASS before applying the constructor ceiling, then failed. The report now computes the final status after all gates and lists the direct constructor owners.
