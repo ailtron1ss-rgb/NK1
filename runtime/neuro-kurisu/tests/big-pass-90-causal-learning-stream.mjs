@@ -18,9 +18,11 @@ assert.ok(record);
 assert.ok(record.causalStrength01>.3);
 assert.ok(stream.summary().rolling.learningOpportunity01>0);
 assert.equal(stream.recordOutcome(trace,mkState({tick:3}),{reward01:1,success01:1,surprise01:0,novelty01:0}),null,'a decision trace must not receive causal learning credit twice');
+assert.equal(stream.recordOutcome({...trace,id:'  trace-90  '},mkState({tick:3}),{reward01:1,success01:1,surprise01:1,novelty01:1}),null,'whitespace variants of a stable trace ID must not bypass causal deduplication');
 const externalInput={tick:4,taskId:'external-once',action:'reflect',reward01:.7,success01:.7,surprise01:.2,novelty01:.3,traceId:'external-trace-once',provenance:'skill-repair',stateGrounded:false};
 assert.ok(stream.recordExternalLearningEvent(externalInput));
 assert.equal(stream.recordExternalLearningEvent({...externalInput,reward01:1,success01:1}),null,'external causal events with the same stable trace ID must not receive duplicate credit');
+assert.equal(stream.recordExternalLearningEvent({...externalInput,traceId:'  external-trace-once  ',reward01:1,success01:1}),null,'normalized external trace IDs must share the same idempotency key');
 
 const packet=stream.learningPacket(8);
 assert.equal(packet.records.length,2,'the causal packet must include both the verified runtime outcome and the accepted external event');
