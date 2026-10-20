@@ -1,3 +1,15 @@
+## NK1 learning WorkPass100 — bounded stratified causal replay (2026-10-20)
+
+- [ADDED] `CausalReplaySampler.ts` provides deterministic, bounded, recent-window + priority + action/coarse-state-stratified selection for P26 causal experience replay.
+- [INTEGRATED] `P26TrueLearningEngine.replayCausalRecords` now uses the shared sampler instead of taking the first 32 valid records, reducing order bias in replay admission.
+- [TESTED-IN-CI-PENDING] Added sampler invariants for stable-ID deduplication, latest-version preference, recent quota, action diversity, malformed features, boundary capacities and deterministic output.
+- [BENCHMARK] Added recent-only vs priority-only vs stratified selection comparison. This measures replay-set composition only, not task success or learning uplift.
+- [CI] Registered `test:learning-replay` and added it to the WorkPass79 cognitive regression workflow on `rebuild`.
+- [RESEARCH] Added source-based adaptation notes for SkillLearnBench (MIT), XSkill (ICML 2026), RethinkSkill (MIT), and AgentSynth (MIT); no upstream code or datasets were copied.
+- [PROGRESS] See `docs/LEARNING_SCORECARD_2026-10-20_CAUSAL_REPLAY.md`. Engineering coverage estimate: P26 replay selection 64%; evidence maturity 36%; overall learning score 58/100 (unchanged pending independent task-outcome evidence).
+- [EVIDENCE BOUNDARY] P26's existing in-batch score delta is not an independent holdout. No task-success, retention, transfer, or production uplift is claimed.
+- [VALIDATION] Exact-head GitHub Actions run must pass before this pass is marked validated.
+
 ## NK1 v2.0 rebuild — correct normalized provenance assertion (2026-10-20)
 
 - [FIXED] Adjusted the provenance aggregation assertion to match the arbiter's normalized weighted-contribution semantics: two contributions of 0.10 and 0.08 produce an aggregated diagnostic of 0.09, not a raw sum above 0.10.
