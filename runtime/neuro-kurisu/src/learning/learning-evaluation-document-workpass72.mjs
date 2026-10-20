@@ -18,10 +18,11 @@ export function evaluateLearningDocument(document) {
   if (!options || typeof options !== "object" || Array.isArray(options)) {
     throw new TypeError("options must be an object when supplied");
   }
+  // The evidence arrays are authoritative; options must never replace the measured runs.
   const evaluation = evaluatePairedLearningRuns({
+    ...options,
     baseline: document.baseline,
-    candidate: document.candidate,
-    ...options
+    candidate: document.candidate
   });
   return {
     schemaVersion: 1,
