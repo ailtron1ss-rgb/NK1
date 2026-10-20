@@ -24,7 +24,7 @@ export class VerifiedOutcomeLedgerFileStore {
     if (bytes > this.maxBytes) throw new Error('ledger persistence exceeds configured size limit');
     const directory = path.dirname(this.filePath);
     await mkdir(directory, { recursive: true });
-    const temporary = path.join(directory, \`.\${path.basename(this.filePath)}.\${randomUUID()}.tmp\`);
+    const temporary = path.join(directory, `.${path.basename(this.filePath)}.${randomUUID()}.tmp`);
     let handle: Awaited<ReturnType<typeof open>> | undefined;
     try {
       handle = await open(temporary, 'wx', 0o600);
