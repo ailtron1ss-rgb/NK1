@@ -2,7 +2,7 @@
 
 **Branch:** `rebuild`  
 **Scope:** P26 parametric learner + causal-experience replay path  
-**Status:** implementation committed; exact-head Actions validation pending at document creation.  
+**Status:** implementation committed; exact-head Actions validation pending after the final evidence-accounting fix.  
 **Interpretation:** percentages are engineering coverage estimates, not measured intelligence or task-success rates.
 
 ## Progress estimates
@@ -21,6 +21,7 @@ These are not interchangeable metrics. The implementation percentage tracks pres
 3. Wired `P26TrueLearningEngine.replayCausalRecords` to the shared selector; this replaces the previous “take the first 32” truncation, which could over-represent whichever records happened to be first.
 4. Added selector invariants, a recent-only / priority-only / stratified benchmark, npm scripts and the WorkPass79 Actions workflow step.
 5. Retained existing P26 online learning and P23 policy ownership; no duplicate learner or parallel memory owner was added.
+6. Corrected an evidence-accounting defect: the same-call replay split is now explicitly labelled `in-batch-diagnostic` and no longer increments `generalizationEvidence01`. The test asserts this metric remains unchanged by the diagnostic.
 
 ## Aspect scores (engineering estimates)
 
@@ -34,7 +35,7 @@ These are not interchangeable metrics. The implementation percentage tracks pres
 | Contextual transfer | 58 | External-task and cross-domain holdout evidence |
 | Delayed credit assignment | 63 | Validate causal attribution against intervention controls |
 | Calibration and uncertainty | 43 | Reliability curves and abstention metrics on holdout |
-| Benchmark and baselines | 39 | Synthetic selector proxy only; independent task outcome benchmark open |
+| Benchmark and baselines | 40 | Synthetic selector proxy and a guard against inflating generalization metrics; independent task outcome benchmark open |
 | Persistence and replay idempotency | 69 | Full restart/replay duplication and schema migration campaign |
 | Experiment reproducibility | 53 | Versioned data manifests, fixed seeds, paired confidence intervals |
 
