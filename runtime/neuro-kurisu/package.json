@@ -1665,6 +1665,7 @@
     "test:workpass79:local-language-policy": "node tests/workpass79-local-language-backend-policy.mjs",
     "test:workpass79": "npm run test:workpass79:local-language-policy && npm run test:workpass79:provider-boundary && npm run test:workpass69:server-smoke",
     "test:workpass79:provider-boundary": "node --experimental-strip-types tests/workpass79-local-provider-boundary.mjs",
-    "test:workpass88:label-truncation": "node --experimental-strip-types tests/workpass83-retrieval-benchmark-truth.mjs"
+    "test:workpass88:label-truncation": "node --experimental-strip-types tests/workpass83-retrieval-benchmark-truth.mjs",
+    "test:cognitive-cycle-boundary": "node --experimental-strip-types tests/cognitive-cycle-boundary.mjs"
   }
 }

@@ -1,3 +1,4 @@
+import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
 import { actionCost } from './ActionCostPolicy.ts';
 import { sha256Stable } from './StableSerialization.ts';
 import { memoRuntimeContext } from '../developmental/MemoRuntimeContext.ts';
@@ -3941,6 +3942,7 @@ export class OrganismCore {
         return [...new Set(expected)];
     }
     async observe(observation: OrganismObservation = {}, resultMode: 'full' | 'operational' | undefined = this.config.cycleResultMode): Promise<OrganismCycleResult> {
+        assertCognitiveCycleBoundaryInput(observation, resultMode);
         if (this.config.spineOnly)
             return this.observeSpineOnly(observation, (resultMode ?? 'operational') as 'full' | 'operational');
         if (!this.ready)

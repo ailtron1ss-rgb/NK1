@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - workpass79-cognitive-rebuild
+      - rebuild
   pull_request:
     branches:
       - main
@@ -26,6 +27,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Validate runtime cognitive-cycle boundary contract
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:cognitive-cycle-boundary
       - name: Audit runtime npm script targets and local test files
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass84:script-integrity
