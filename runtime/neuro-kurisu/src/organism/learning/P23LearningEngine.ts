@@ -166,6 +166,15 @@ function contextKey(state:Pick<OrganismState,'needs'>):string {
   return `e${bucket(n.energy)}|c${bucket(n.cognitiveLoad)}|u${bucket(n.uncertainty)}|n${bucket(n.novelty)}|g${bucket(n.goalPressure)}|s${bucket(n.socialNeed)}`;
 }
 
+/** Conservative nearest-context matching: transfer is allowed only when at least five of six normalized context buckets match. */
+function contextSimilarity(a:string,b:string):number {
+  const left=a.split('|'), right=b.split('|');
+  if(left.length!==6 || right.length!==6) return 0;
+  let matches=0;
+  for(let i=0;i<6;i++) if(left[i]===right[i]) matches++;
+  return matches/6;
+}
+
 function baselineAction(state:OrganismState):{action:ActionKind;reason:string} {
   const n=state.needs;
   if (n.energy < .28 || n.cognitiveLoad > .82) return {action:'rest',reason:'resource preservation'};
@@ -344,11 +353,27 @@ export class P23LearningEngine {
   topSkills(limit=12):PolicySkillRecord[]{return this.state.skills.filter(s=>s.status==='promoted').slice(0,limit).map(x=>structuredClone(x));}
   skillBias(state:OrganismState, action:ActionKind):number {
     const key=contextKey(state);
-    const row=this.state.skills.find(x=>x.contextKey===key&&x.action===action);
-    if(!row) return 0;
-    if(row.status==='promoted') return clamp(row.confidence01*.05);
-    if(row.status==='rejected') return -clamp(row.confidence01*.03);
-    return 0;
+    const exact=this.state.skills.find(x=>x.contextKey===key&&x.action===action);
+    if(exact){
+      if(exact.status==='promoted') return clamp(exact.confidence01*.05);
+      if(exact.status==='rejected') return -clamp(exact.confidence01*.03);
+      return 0;
+    }
+
+    // Generalize a mastered skill only to a tightly neighboring state. SkillLearnBench
+    // shows that transfer is not automatic, so this is deliberately weaker than an
+    // exact match and requires a held-out validation window, not training success alone.
+    let best=0;
+    for(const row of this.state.skills){
+      if(row.action!==action || row.status!=='promoted' || row.validationUses<4 ||
+         row.validationSuccess01<.70 || row.confidence01<.4) continue;
+      const similarity=contextSimilarity(key,row.contextKey);
+      if(similarity<5/6) continue;
+      const support=Math.min(1,row.validationUses/8);
+      const transfer=clamp(row.confidence01*.02*((similarity-.70)/.30)*support);
+      if(transfer>best) best=transfer;
+    }
+    return best;
   }
   verificationPressure01():number {
     return clamp(this.state.evidenceDebt.filter(x=>x.priority01>.45).reduce((m,x)=>Math.max(m,x.informationGainPerCost01),0));
