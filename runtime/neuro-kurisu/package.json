@@ -1656,6 +1656,8 @@
     "audit:workpass69": "npm run test:workpass69 && npm run audit:contract && npm run verify:release-source && npm run audit:integrity",
     "test:workpass69:server-smoke": "node --experimental-strip-types tests/server-smoke.mjs",
     "test:workpass69:ui-smoke": "node --experimental-strip-types tests/ui-smoke.mjs",
-    "test:learning-eval-workpass71": "node --experimental-strip-types tests/paired-holdout-evaluation-workpass71.mjs"
+    "test:learning-eval-workpass71": "node --experimental-strip-types tests/paired-holdout-evaluation-workpass71.mjs",
+    "test:learning-eval-workpass72": "node --experimental-strip-types tests/learning-evaluation-document-workpass72.mjs",
+    "eval:learning-holdout-workpass72": "node --experimental-strip-types scripts/evaluate-learning-holdout-workpass72.mjs"
   }
 }
