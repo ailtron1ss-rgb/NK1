@@ -32,4 +32,17 @@ assert.match(projectDispatch, /result = await this\.executeTool\(id, input, exec
 assert.doesNotMatch(projectDispatch, /actionGateway\.executeTool\(id, input, executionReason, executionOptions\)/,
   'project executor must not bypass the canonical core finalizer for fresh tool execution');
 
+
+const skillStart = source.indexOf('const canonicalCandidateTool =');
+assert.notEqual(skillStart, -1, 'compound skill execution path must remain identifiable');
+const skillEnd = source.indexOf('stepError = result.result?.error', skillStart);
+assert.ok(skillEnd > skillStart, 'compound skill execution must expose its outcome boundary');
+const skillDispatch = source.slice(skillStart, skillEnd);
+assert.match(skillDispatch, /this\.executeTool\(\s*canonicalCandidateTool, resolvedToolInput, executionReason, executionOptions, Object\.keys\(runtimeInput\)/,
+  'compound skill steps must dispatch through OrganismCore.executeTool and preserve finalization context keys');
+assert.doesNotMatch(skillDispatch, /actionGateway\.executeTool\(/,
+  'compound skill execution must not bypass canonical core finalization');
+assert.doesNotMatch(skillDispatch, /this\.finalizeToolOutcome\(/,
+  'compound skill execution must not duplicate the core wrapper finalizer');
+
 console.log('NK1_AUTONOMOUS_PLANNER_GATEWAY_ROUTE=PASS plannerUsesCoreWrapper=true projectUsesCoreWrapper=true canonicalGateway=true finalizerOwnership=true');
