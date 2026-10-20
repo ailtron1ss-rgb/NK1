@@ -16,6 +16,8 @@ const skill=new OpenEndedSkillAcquisitionController(); let skillFrame=null;
 for(let i=0;i<16;i++) skillFrame=skill.cycle({at:i*1000,domain:'learning',gap01:.78,learningPressure01:.72,resource01:.78,novelty01:.62,identity01:.86,availableSkillNames:['tool-use','prediction','reflection']});
 assert.ok(skill.summary().created>=1); assert.ok(skill.summary().practiced>=8); assert.ok(skill.summary().meanMastery01>.2);
 assert.ok(skill.snapshot().tracks.some(track=>track.status==='deferred'),'a skill with no matching verified outcome must eventually yield the curriculum slot');
+const deferredSkill=skill.snapshot().tracks.find(track=>track.status==='deferred'); const currentSkill=skill.snapshot().tracks.find(track=>track.id===skill.snapshot().active);
+assert.ok(deferredSkill&&currentSkill); assert.notEqual(currentSkill.domain,deferredSkill.domain,'curriculum rotation must advance after a deferred skill');
 assert.equal(skill.summary().mastered,0,'practice cycles cannot fabricate mastery without an evaluated outcome');
 const activeTrack=skill.snapshot().tracks.find(t=>t.id===skill.snapshot().active);
 assert.ok(activeTrack); assert.equal(activeTrack.mastery01,.08,'practice must not increase mastery without outcome evidence');

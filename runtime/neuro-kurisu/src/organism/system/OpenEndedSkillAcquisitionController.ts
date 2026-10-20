@@ -13,7 +13,7 @@ export class OpenEndedSkillAcquisitionController{
   if(active){if(active.practice>=8){active.status='deferred';active.updatedAt=input.at;this.state.active=null;return{action:'defer',track:structuredClone(active),mastery01:active.mastery01};}active.practice++;active.updatedAt=input.at;this.state.practiced++;this.state.active=active.id;return{action:'practice',track:structuredClone(active),mastery01:active.mastery01};}
   const eligible=input.gap01>.3&&input.learningPressure01>.24&&input.resource01>.3&&input.identity01>.45;
   if(!eligible){return{action:'defer',track:null,mastery01:this.state.meanMastery01};}
-  const candidates=[...new Set((input.availableSkillNames??[]).map(x=>String(x).trim()).filter(Boolean))];const requested=String(input.domain??'').trim().toLocaleLowerCase();const domain=candidates.find(x=>x.toLocaleLowerCase()===requested)??(candidates.length?candidates[(this.state.cycles-1)%candidates.length]:`${input.domain}-adaptive-skill`);
+  const candidates=[...new Set((input.availableSkillNames??[]).map(x=>String(x).trim()).filter(Boolean))];const requested=String(input.domain??'').trim().toLocaleLowerCase();const domain=candidates.find(x=>x.toLocaleLowerCase()===requested)??(candidates.length?candidates[this.state.created%candidates.length]:`${input.domain}-adaptive-skill`);
   const track:SkillTrack={id:`skill:${this.state.cycles}:${domain}`,domain,target01:clamp(.62+input.gap01*.25),mastery01:.08,practice:0,status:'active',createdAt:input.at,updatedAt:input.at};
   this.state.tracks=[track,...this.state.tracks].slice(0,32);this.state.created++;this.state.active=track.id;
   return{action:'create',track:structuredClone(track),mastery01:track.mastery01};
