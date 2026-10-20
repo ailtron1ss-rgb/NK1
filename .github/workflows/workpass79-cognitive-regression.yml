@@ -58,6 +58,9 @@ jobs:
       - name: Verify action finalization precedes receipt commit and failure blocks replay
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass96:finalizer-boundary
+      - name: Guard autonomous planner against bypassing canonical execution wrapper
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass97:planner-route
       - name: Test retrieval metrics, abstention, dataset hash/provenance and holdout leakage guards
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass83:retrieval-benchmark-truth
