@@ -1,3 +1,9 @@
+## NK1 v2.0 rebuild — bound cognitive policy frame and authority ledger size (2026-10-20)
+
+- [HARDENED] Canonical policy arbitration now fails closed on frames with more than 256 sources, avoiding unbounded per-cycle scoring and order-dependent prefix truncation.
+- [HARDENED] PolicyAuthorityLedger now has a 4,096-contribution per-cycle ceiling; source/action/stage validation is backed by a shared action whitelist rather than rebuilding it per insertion.
+- [REGRESSION] Added oversized-frame and ledger-capacity behavioral tests to the policy suites already wired into WorkPass79 CI.
+
 ## NK1 v2.0 rebuild — fail-closed cognitive policy inputs (2026-10-20)
 
 - [FIXED] CanonicalActionPolicyArbiter now drops malformed source rows, accepts only finite numeric biases, and treats non-finite confidence/control values as zero authority (or maximum uncertainty) instead of silently granting midpoint influence.

@@ -20,6 +20,8 @@ export interface PolicyAuthorityLedgerState {
 
 const finite = (x: unknown, fallback = 0) => typeof x === 'number' && Number.isFinite(x) ? x : fallback;
 const clamp = (x: number, lo = -1, hi = 1) => Math.max(lo, Math.min(hi, x));
+const VALID_ACTIONS: ReadonlySet<ActionKind> = new Set(['respond','explore','verify','rest','reflect','wait','defer']);
+const MAX_POLICY_CONTRIBUTIONS_PER_CYCLE = 4096;
 
 /**
  * R2 production policy contract: one auditable authority ledger sits between
@@ -43,8 +45,8 @@ export class PolicyAuthorityLedger {
 
   add(input: Omit<PolicyAuthorityContribution, 'bias01'> & { bias01: number }) {
     if (!input || typeof input !== 'object') throw new Error('invalid-policy-contribution');
-    const actions = new Set<ActionKind>(['respond','explore','verify','rest','reflect','wait','defer']);
-    if (!actions.has(input.action)) throw new Error('invalid-policy-action');
+    if (this.state.contributions.length >= MAX_POLICY_CONTRIBUTIONS_PER_CYCLE) throw new Error('policy-contribution-limit-exceeded');
+    if (!VALID_ACTIONS.has(input.action)) throw new Error('invalid-policy-action');
     if (typeof input.source !== 'string' || !input.source.trim() || input.source.length > 120) throw new Error('invalid-policy-source');
     if (typeof input.stage !== 'string' || !input.stage.trim() || input.stage.length > 80) throw new Error('invalid-policy-stage');
     const bias = clamp(finite(input.bias01));

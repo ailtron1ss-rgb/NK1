@@ -57,7 +57,7 @@ export class CanonicalActionPolicyArbiter {
     // TypeScript. Drop malformed source rows instead of allowing them to crash
     // arbitration or contribute through coercion.
     const sourceRows = Array.isArray(input?.sources) ? input.sources : [];
-    const active = sourceRows.filter((source): source is CanonicalPolicySource =>
+    const active = sourceRows.length <= 256 ? sourceRows.filter((source): source is CanonicalPolicySource =>
       Boolean(source) &&
       typeof source === 'object' &&
       typeof source.name === 'string' &&
@@ -67,7 +67,7 @@ export class CanonicalActionPolicyArbiter {
       typeof source.bias === 'object' &&
       !Array.isArray(source.bias) &&
       source.enabled !== false
-    );
+    ) : []; // Oversized policy frames fail closed instead of biasing decisions with a truncated prefix.
     // Fail closed for malformed control signals: no compute budget, maximum
     // uncertainty and no identity authority, rather than midpoint influence.
     const budget = clamp(input?.computeBudget01 ?? 1, 0, 1, 0);

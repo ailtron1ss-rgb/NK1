@@ -64,6 +64,8 @@ assert.equal(malformed.actions.explore.contribution01, 0,
 assert.ok(Number.isFinite(malformed.totalSignal01));
 const missingSources = arbiter.evaluate({baseUtility:.5,predictedUtility:.5,sources:null});
 assert.equal(missingSources.actions.verify.sourceCount,0,'non-array sources must degrade to an empty policy frame');
+const oversizedFrame = arbiter.evaluate({baseUtility:.5,predictedUtility:.5,sources:Array.from({length:257},(_,i)=>({name:`source-${i}`,bias:{verify:.14},confidence01:1,causal01:1}))});
+assert.equal(oversizedFrame.actions.verify.sourceCount,0,'oversized policy frames must fail closed rather than letting a truncated prefix dominate');
 console.log(JSON.stringify({
   verifyContribution01:frame.actions.verify.contribution01,
   meanConfidence01:frame.meanConfidence01,

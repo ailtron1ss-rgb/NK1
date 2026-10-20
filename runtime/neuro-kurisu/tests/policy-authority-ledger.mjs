@@ -34,4 +34,9 @@ l.add({source:'finite-fallback',action:'reflect',bias01:.03,authority01:Number.N
 const safeContribution=l.snapshot().contributions.at(-1);
 assert.equal(safeContribution.authority01,0,'malformed authority defaults to no authority');
 assert.equal(safeContribution.causal01,0,'malformed causal confidence defaults to no authority');
-console.log('POLICY_AUTHORITY_LEDGER=PASS runtimeInputValidation=true finiteCycle=true');
+// Per-cycle storage has a hard bound so a runaway producer cannot grow the authority ledger indefinitely.
+const bounded = new PolicyAuthorityLedger();
+bounded.beginCycle(1);
+for (let i = 0; i < 4096; i++) bounded.add({source:`source-${i}`,action:'wait',bias01:0,authority01:0,causal01:0,stage:'bounded'});
+assert.throws(() => bounded.add({source:'overflow',action:'wait',bias01:0,authority01:0,causal01:0,stage:'bounded'}), /policy-contribution-limit-exceeded/);
+console.log('POLICY_AUTHORITY_LEDGER=PASS runtimeInputValidation=true finiteCycle=true boundedContributions=4096');
