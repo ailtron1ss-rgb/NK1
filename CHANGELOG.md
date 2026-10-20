@@ -1,3 +1,10 @@
+## WorkPass92 — enforce core ownership audit in CI (2026-10-20)
+
+- Wired the existing audit:core-ownership into the regression workflow. The first run exposed a diagnostic defect: it printed PASS before applying the constructor ceiling, then failed. The report now computes the final status after all gates and lists the direct constructor owners.
+- The audit showed six direct constructors, including the explicitly documented OperationalMicroCycleRuntime orchestration owner. The ceiling now counts the other five and names the single explicit exception; this is not a blanket increase of the limit.
+- Exact-head CI PASS: https://github.com/ailtron1ss-rgb/NK1/actions/runs/39380982918, code head 04f16761704760a6c347a77e113a7a9221b661fe. CORE_OWNERSHIP=PASS errors=0 directConstructors=6 countedDirectConstructors=5 and all other workflow steps passed.
+- This is architecture-boundary/integrity evidence, not proof of end-to-end cognitive quality. No global readiness score is increased by the audit alone.
+
 ## WorkPass91 — memory-to-action evidence path (2026-10-20)
 
 - Added a deterministic sandbox integration regression that composes the canonical MemoryOS2 current retrieval/revision/snapshot-restore path with the production ActionGateway and its durable idempotency ledger.
