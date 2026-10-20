@@ -77,6 +77,21 @@ export class VerifiedOutcomeLedger {
     }
   }
 
+  /** Stable digest for binding verifier artifacts to the exact task manifest. */
+  manifestFingerprint(): string {
+    const canonicalManifest = [...this.manifest.values()]
+      .map(entry => ({
+        taskId: entry.taskId,
+        family: entry.family,
+        split: entry.split,
+        promptFingerprint: entry.promptFingerprint,
+        verifierId: entry.verifierId,
+        version: entry.version,
+      }))
+      .sort((a, b) => a.taskId.localeCompare(b.taskId));
+    return createHash('sha256').update(JSON.stringify(canonicalManifest)).digest('hex');
+  }
+
   static fingerprintPrompt(prompt: string): string {
     const normalized = String(prompt).normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
     return createHash('sha256').update(normalized).digest('hex');
