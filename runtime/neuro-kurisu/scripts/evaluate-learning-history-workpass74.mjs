@@ -12,8 +12,10 @@ import { readFile, writeFile } from "node:fs/promises";
 import { evaluateContinualLearningHistory } from "../src/learning/continual-learning-history-workpass74.mjs";
 
 const [inputPath, outputPath] = process.argv.slice(2);
-if (!inputPath || process.argv.length > 4) {
-  process.stderr.write("Usage: evaluate-learning-history-workpass74.mjs input.json [report.json]\n");
+if (inputPath === "--help" || inputPath === "-h") {
+  process.stdout.write("Usage: evaluate-learning-history-workpass74.mjs input.json [report.json]\\n");
+} else if (!inputPath || process.argv.length > 4) {
+  process.stderr.write("Usage: evaluate-learning-history-workpass74.mjs input.json [report.json]\\n");
   process.exitCode = 1;
 } else {
   try {
