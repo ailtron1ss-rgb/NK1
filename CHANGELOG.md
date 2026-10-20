@@ -1,3 +1,10 @@
+## WorkPass113 — task-family stratification for continual learning (2026-10-20)
+
+- Added family-level checkpoint summaries to `ContinualOutcomeMatrix.ts`: pooled verified pass counts/rates per stage plus family-level forgetting and backward transfer.
+- This makes aggregate regressions harder to hide: a replay strategy that improves memory tasks but harms transfer tasks can now be inspected by family instead of relying only on the overall mean.
+- Added a regression that checks family-specific final pass rates and forgetting. Pooled counts are reported without a misleading pooled confidence interval because task outcomes may not be independent.
+- Still measurement infrastructure only: no live learner was run, no replay policy was promoted, and the overall learning score is unchanged.
+
 ## WorkPass112 — matched-seed evidence matrix and uncertainty reporting (2026-10-20)
 
 - Fixed a malformed pre-training fixture that accidentally passed a boolean as the seed ID; the test now supplies the same explicit seed set to every task/method cell.
