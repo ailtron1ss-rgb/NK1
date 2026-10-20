@@ -1,4 +1,4 @@
-name: WorkPass106 verified outcome promotion gate
+name: WorkPass107 verified outcome persistence and promotion gate
 on:
   pull_request:
     paths:
