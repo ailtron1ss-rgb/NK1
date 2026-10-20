@@ -29,6 +29,9 @@ jobs:
       - name: Test local backend circuit-breaker transitions
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass79:local-language-policy
+      - name: Test local provider timeout, payload bounds and failure normalization
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass79:provider-boundary
       - name: Exercise real server HTTP path with a controlled local provider
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass69:server-smoke
