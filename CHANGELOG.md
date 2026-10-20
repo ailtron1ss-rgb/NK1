@@ -1,3 +1,10 @@
+## NK1 v2.0 rebuild — restored action receipt integrity (2026-10-20)
+
+- [FIXED] `ActionGateway.restoreExecutionLedger` no longer trusts arbitrary completed response objects from persisted snapshots. Response identity, known outcome class, structured result, and agreement across outcome/audit/verification fields are validated before replay.
+- Invalid completed receipts remain key tombstones with response omitted; retries fail closed with `idempotency-recovery-required` and never automatically repeat the side effect.
+- Added three tampered-snapshot regressions plus valid replay coverage; wired `test:workpass95:receipt-integrity` into the rebuild cognitive CI workflow.
+- Checkpoint: [restored action receipt integrity](docs/REBUILD_CHECKPOINT_ACTION_RECEIPT_INTEGRITY_2026-10-20.md). This does not close the separate live planner bypass audit.
+
 ## NK1 v2.0 rebuild — legacy avatar storage hardening (2026-10-20)
 
 - [FIXED] LegacySpriteDeck no longer accesses `window.localStorage` directly; optional outfit preference read/write failures now fall back safely instead of breaking the avatar.
