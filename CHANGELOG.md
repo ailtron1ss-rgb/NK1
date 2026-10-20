@@ -1,7 +1,7 @@
 ## WorkPass114 — paired continual-learning uncertainty without pseudo-replication (2026-10-20)
 
 - Corrected `ContinualBenchmarkComparison.ts`: the prior implementation flattened every task score across paired runs before computing the confidence interval. Since tasks within a run share the same seed, that could treat correlated task cells as independent observations and make uncertainty look artificially small.
-- The comparison now averages task success and forgetting within each run first, then calculates paired deltas and approximate 95% intervals across matched seeds. `pairedN` now consistently means matched independent runs for both metrics; one paired run produces no confidence interval.
+- The comparison now averages task success and forgetting within each run first, then calculates paired deltas and 95% Student-t intervals across matched seeds. Small samples use conservative t critical values (including df=1), rather than the overly narrow normal approximation; one paired run produces no confidence interval. `pairedN` now consistently means matched independent runs for both metrics.
 - Preserved strict pairing by manifest fingerprint and seed, identical task-set checks, duplicate-run rejection, and reporting of unpaired runs. Expanded regressions for run-level sample counts, interval behavior and invalid same-method comparisons; CI triggers on push for the comparison test too.
 - This is a statistical-validity correction, not a learning-performance gain. No replay strategy or promotion threshold was changed; the learning score remains unchanged until real verifier-backed matched-seed outcomes exist.
 
