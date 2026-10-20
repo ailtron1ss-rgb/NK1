@@ -77,7 +77,7 @@ At the start of every new work session, do not ask the user to restate the missi
 - `docs/WORKPASS75_REBUILD_AND_EVIDENCE_LEDGER_2026-10-19.md`: reconstruction strategy and scientific acceptance gates.
 - `docs/RESEARCH_INTAKE_LEDGER.md`: upstream papers/repos, adaptation boundaries, evidence status and the next research tournament.
 - `docs/LOCAL_LLM_SMOKE_GUIDE.md`: safe opt-in live `llama.cpp` smoke procedure for the Dell G3.
-- `docs/WORKPASS77_HANDOVER_2026-10-19.md`: latest continuation snapshot with recent commits, CI evidence and prioritized unresolved work.
+- `docs/WORKPASS78_HANDOVER_2026-10-20.md`: latest continuation snapshot with recent commits, CI evidence and prioritized unresolved work.
 - `docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md`: latest repository surface inventory and unfinished work.
 
 ## 5. Acceptance gates — never collapse into one score
@@ -140,7 +140,7 @@ Read these living documents in this order after this charter:
 1. [Master strategy, architecture interaction map, human-brain analogy, weaknesses, provisional scorecard and release gates](docs/NEUROCORE_MASTER_STRATEGY_AND_BRAIN_MAP.md).
 2. [1,000-work-unit backlog](docs/NEUROCORE_1000_WORK_UNIT_BACKLOG.md). These are planned work units, not completed changes; choose by dependency/risk and split further when needed.
 3. [Research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md).
-4. [Latest handover](docs/WORKPASS77_HANDOVER_2026-10-19.md), refreshed by each work pass.
+4. [Latest handover](docs/WORKPASS78_HANDOVER_2026-10-20.md), refreshed by each work pass.
 5. [Repository surface audit](docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md).
 
 ### Expanded work mandate
@@ -154,3 +154,6 @@ The master strategy's scorecard is explicitly a triage estimate, not a benchmark
 ### User's continuation phrase
 
 When the user says “работай над проектом”, “продолжай NeuroCore”, “@GitHub продолжай”, or equivalent: resume the existing NeuroCore mission from live GitHub state, check latest CI, inspect the current handover and backlog, select the next real blocker, implement and test it, commit the work, and update the handover/scorecard/source ledger. Never ask them to re-explain the long-term goal.
+
+
+**Newest continuation handover:** [WorkPass78 — 2026-10-20](docs/WORKPASS78_HANDOVER_2026-10-20.md). Always check the live branch and Actions before relying on its snapshot.
