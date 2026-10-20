@@ -37,7 +37,8 @@ const canonical = value => value === null || typeof value !== 'object'
 corruptedButRehashed.sha256 = createHash('sha256').update(canonical(corruptedButRehashed.payload)).digest('hex');
 assert.throws(() => restoreVerifiedOutcomeLedger(JSON.stringify(corruptedButRehashed)), /invalid accepted outcome/);
 const badManifest = JSON.parse(encoded);
-badManifest.payload.manifest[1].split = 'train';
+badManifest.payload.manifest[1].promptFingerprint = badManifest.payload.manifest[0].promptFingerprint;
+ badManifest.payload.manifest[1].split = 'train';
 badManifest.sha256 = createHash('sha256').update(canonical(badManifest.payload)).digest('hex');
 assert.throws(() => restoreVerifiedOutcomeLedger(JSON.stringify(badManifest)), /cross-split prompt leakage|invalid accepted outcome/);
 
