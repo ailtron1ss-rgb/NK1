@@ -106,10 +106,10 @@ export class BoundedExperienceReplayBuffer {
     for (let drawIndex = 0; drawIndex < n; drawIndex += 1) {
       let item;
       if (this.strategy === "uniform") {
-        const index = Math.floor(this.#random() * available.length);
+        const index = Math.floor(this.#random.next() * available.length);
         [item] = available.splice(index, 1);
       } else {
-        let draw = this.#random() * totalPriority;
+        let draw = this.#random.next() * totalPriority;
         item = this.#items.find(entry => (draw -= entry.priority ** this.priorityAlpha) < 0)
           ?? this.#items[this.#items.length - 1];
       }
