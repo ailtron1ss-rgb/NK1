@@ -97,24 +97,35 @@ export class P26TrueLearningEngine{
   trainInterleaved(
     current:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
     replayRows:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
-    options:{replayEveryNCurrent?:number;maxReplayUpdates?:number;targetMode?:'td'|'reward';conflictDistance01?:number;conflictRewardGap01?:number;currentLearningRate01?:number;replayLearningRate01?:number}={},
+    options:{replayEveryNCurrent?:number;maxReplayUpdates?:number;targetMode?:'td'|'reward';conflictDistance01?:number;conflictRewardGap01?:number;conflictCandidateCap?:number;currentLearningRate01?:number;replayLearningRate01?:number}={},
     extras?:BodyExtras,
   ){
     const stride=Math.max(1,Math.min(32,Math.floor(options.replayEveryNCurrent??4)));
     const replayCap=Math.max(0,Math.min(4096,Math.floor(options.maxReplayUpdates??1024)));
-    if(!current.length)return {onlineUpdates:0,replayUpdates:0,blockedReplayRows:0,eligibleReplayRows:0,meanLoss01:0};
+    if(!current.length)return {onlineUpdates:0,replayUpdates:0,blockedReplayRows:0,eligibleReplayRows:0,conflictComparisons:0,conflictCandidateCap:64,meanLoss01:0};
     const conflictDistance=Math.max(0,Math.min(.2,options.conflictDistance01??.035));
     const conflictRewardGap=Math.max(.1,Math.min(1,options.conflictRewardGap01??.45));
+    // Bound the conflict preflight: large streams must not create an O(replay × current)
+    // latency spike. Evenly spaced representatives make the approximation deterministic.
+    const conflictCandidateCap=Math.max(8,Math.min(128,Math.floor(options.conflictCandidateCap??64)));
     const vector=(e:{state:OrganismState;action:ActionKind})=>this.learner.features(e.state,extras,e.action);
     const distance=(a:number[],b:number[])=>Math.sqrt(a.reduce((sum,value,i)=>sum+(value-(b[i]??0))**2,0)/Math.max(1,a.length));
     const freshByAction=new Map<ActionKind,Array<{row:typeof current[number];features:number[]}>>();
     for(const row of current){const group=freshByAction.get(row.action)??[];group.push({row,features:vector(row)});freshByAction.set(row.action,group);}
     const eligible:Array<{row:typeof replayRows[number];features:number[]}> = [];
-    let blockedReplayRows=0;
+    let blockedReplayRows=0,conflictComparisons=0;
     for(const row of replayRows){
       const features=vector(row), candidates=freshByAction.get(row.action)??[];
       let nearestDistance=Number.POSITIVE_INFINITY,nearestReward:number|undefined;
-      for(const candidate of candidates){const d=distance(features,candidate.features);if(d<nearestDistance){nearestDistance=d;nearestReward=candidate.row.reward;}}
+      const sampleCount=Math.min(candidates.length,conflictCandidateCap);
+      for(let sample=0;sample<sampleCount;sample++){
+        const index=sampleCount===candidates.length?sample:Math.floor(sample*(candidates.length-1)/Math.max(1,sampleCount-1));
+        const candidate=candidates[index];
+        if(!candidate)continue;
+        conflictComparisons++;
+        const d=distance(features,candidate.features);
+        if(d<nearestDistance){nearestDistance=d;nearestReward=candidate.row.reward;}
+      }
       const conflicts=nearestReward!==undefined&&nearestDistance<=conflictDistance&&Math.abs(clamp(row.reward)-clamp(nearestReward))>=conflictRewardGap;
       if(conflicts)blockedReplayRows++;else eligible.push({row,features});
     }
@@ -143,7 +154,7 @@ export class P26TrueLearningEngine{
     this.state.metrics.trainingExposure01=clamp(Math.min(1,this.learner.snapshot().updates/160));
     this.state.metrics.lastUpdatedAt=Date.now();
     this.sync();
-    return {onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows:eligible.length,meanLoss01:loss/Math.max(1,onlineUpdates+replayUpdates)};
+    return {onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows:eligible.length,conflictComparisons,conflictCandidateCap,meanLoss01:loss/Math.max(1,onlineUpdates+replayUpdates)};
   }
 
   replayCausalRecords(records:Array<{id?:string;tick?:number;taskId?:string;action:ActionKind;reward01:number;success01:number;surprise01:number;causalStrength01?:number;learningQuality01?:number;policyFeatures01?:number[];replayPriority01?:number}>){
