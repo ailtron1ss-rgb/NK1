@@ -2,7 +2,7 @@
 
 - Retrieval benchmark reports now count source rows whose IDs, query text, or relevance labels exceed canonical bounds; bounded diagnostic execution is allowed, but `datasetIntegrity.validForPromotion` becomes false.
 - Bumped benchmark report schema to v5 and added a regression with 25 relevance IDs, ensuring truncating the 25th label cannot silently authorize promotion.
-- Synthetic fixture/harness-only change: no external-data quality uplift is claimed. Verify exact-head GitHub Actions before marking PASS.
+- Synthetic fixture/harness-only change: no external-data quality uplift is claimed. Exact-head Actions verification is recorded in the handover below.
 
 ## WorkPass83 — проверка честности retrieval benchmark (2026-10-20)
 
@@ -966,3 +966,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Aligned benchmark current-corpus eligibility and stale-result accounting with the same invariant.
 - Added a process-level regression that creates a real revision, corrupts only the parent's validity-end metadata in a restored snapshot, and checks current retrieval suppression, observable diagnostics, and archive-mode visibility.
 - WorkPass86 exact-head CI: [run 39376018280 — PASS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39376018280) on `192a4858cc1bbcb2b6944128c14f0170cc4caf59`. WorkPass87 exact-head CI: [run 39376255921 — PASS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39376255921) on `cd278c83002b1afcfb821836ff3ce7502fa4906e`. All steps passed, including the new superseded-memory recovery test.
+
+
+## WorkPass88 verification receipt — 2026-10-20
+
+- **PASS:** [GitHub Actions run 39378152687](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39378152687), exact head `7d56d67a9c8cec7617340f607d199be4bd5859f7`.
+- The new WorkPass88 benchmark label-truncation guard passed, as did script integrity, cold-memory residency, WorkPass87 supersession recovery, WorkPass83/85/86 benchmark integrity/abstention/provenance, local provider policy/boundary, end-to-end caller cancellation, and controlled-provider server smoke.
+- Evidence scope is regression integrity only. The run does not measure external retrieval quality, real llama.cpp latency, continual-learning gains, or consciousness.
