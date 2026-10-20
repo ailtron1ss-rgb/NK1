@@ -1669,6 +1669,7 @@
     "test:cognitive-cycle-boundary": "node --experimental-strip-types tests/cognitive-cycle-boundary.mjs",
     "test:workpass95:receipt-integrity": "node --experimental-strip-types tests/workpass95-restored-action-receipt-integrity.mjs",
     "test:workpass96:finalizer-boundary": "node --experimental-strip-types tests/workpass96-action-finalizer-boundary.mjs",
-    "test:workpass97:planner-route": "node --experimental-strip-types tests/workpass97-autonomous-planner-gateway-route.mjs"
+    "test:workpass97:planner-route": "node --experimental-strip-types tests/workpass97-autonomous-planner-gateway-route.mjs",
+    "test:workpass98:project-reconciliation-route": "node --experimental-strip-types tests/workpass98-project-reconciliation-route.mjs"
   }
 }

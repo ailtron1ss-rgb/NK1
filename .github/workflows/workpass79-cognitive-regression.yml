@@ -61,6 +61,9 @@ jobs:
       - name: Guard autonomous planner against bypassing canonical execution wrapper
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass97:planner-route
+      - name: Verify project receipt reconciliation canonicalizes legacy tool aliases
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass98:project-reconciliation-route
       - name: Test retrieval metrics, abstention, dataset hash/provenance and holdout leakage guards
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass83:retrieval-benchmark-truth

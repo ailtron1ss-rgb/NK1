@@ -1,3 +1,9 @@
+## NK1 v2.0 rebuild — behavioral project reconciliation route test (2026-10-20)
+
+- [ADDED] Added a runtime-level regression test for the core reconciliation wrapper. It verifies camera/speech legacy aliases are normalized before gateway receipt lookup and that the original request, decision/idempotency options and reason are preserved.
+- [INTEGRATED] Registered the test in the runtime package scripts and WorkPass79 cognitive regression workflow so future pushes exercise it automatically.
+- Validation: this workflow run is expected to validate the combined reconciliation and autonomous outcome-classification changes on the resulting HEAD.
+
 ## NK1 v2.0 rebuild — unify autonomous executor-entry semantics (2026-10-20)
 
 - [FIXED] Autonomous tool-life learning now uses the shared `wasToolExecutorEntered` classifier from ActionGateway instead of a second hard-coded outcome list. This keeps learning admission aligned with the same execution-boundary semantics used by canonical finalization and skill execution, while unresolved partial outcomes remain excluded by the existing recovery guard.
