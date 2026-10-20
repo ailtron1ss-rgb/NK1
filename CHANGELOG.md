@@ -930,3 +930,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The actionable changes are evaluation gates, not unverified architecture imports: separate retrieval from answer correctness; test temporal updates, abstention and stale-memory use; evaluate incremental learning and selective forgetting; track language-specific quality, resource cost and restart recovery; preserve independent holdout integrity.
 - Paper and dataset/code links are recorded in the research note. No external dataset or implementation was copied into the runtime; licensing/schema compatibility must be checked before any direct import.
 - **Evidence status:** research synthesis only. No NK1 quality improvement is claimed; WorkPass83 remains a synthetic harness test with zero observed uplift.
+
+
+## Verification update — research-note branch HEAD (2026-10-20)
+
+- **PASS:** [GitHub Actions run 39374347662](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39374347662) completed successfully on HEAD `b440066e49eca7cf098cbbe99267962a9eb564d6`, including WorkPass84 integrity audit, WorkPass80/83 memory tests, WorkPass79 provider tests, WorkPass82 cancellation and server smoke.
+- The run includes the research-note and handover updates; those documents do not change runtime behavior. Continue to use exact-head Actions status as the gate for any future commits.
