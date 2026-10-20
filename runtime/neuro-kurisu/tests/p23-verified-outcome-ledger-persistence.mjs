@@ -16,6 +16,8 @@ assert.equal(ledger.record(row()).accepted, true);
 assert.equal(ledger.record(row()).rejection.code, 'duplicate-attempt');
 assert.equal(ledger.record(row({ method: 'self-check', authority: 'self-report' })).rejection.code, 'self-report-not-authoritative');
 ledger.record(row({ taskId: 'task-2', method: 'candidate', seed: 8, passed: false, evidenceRef: 'evidence://run/8' }));
+assert.equal(ledger.record(row({ method: 'malformed', evidenceRef: undefined })).rejection.code, 'invalid-outcome');
+assert.equal(ledger.record(row({ method: 'malformed-pass', passed: 'yes' })).rejection.code, 'invalid-outcome');
 
 const encoded = serializeVerifiedOutcomeLedger(ledger);
 const restored = restoreVerifiedOutcomeLedger(encoded);
