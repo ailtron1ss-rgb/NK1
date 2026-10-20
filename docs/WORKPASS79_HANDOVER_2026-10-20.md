@@ -4,7 +4,7 @@
 **Repository:** https://github.com/ailtron1ss-rgb/NK1  
 **Working branch:** `workpass79-cognitive-rebuild`  
 **Base:** `workpass70-source`  
-**Status:** WorkPass79–82 implementation and focused regressions committed; WorkPass79–81 CI passed in run 39371651412. WorkPass82 adds source-level end-to-end cancellation coverage and awaits CI.
+**Status:** WorkPass79–82 implementation and focused regressions committed. WorkPass79–81 passed in run 39371651412; WorkPass82 and the full four-test CI sequence passed in run 39372093088.
 
 ## Mission and constraints
 
@@ -95,4 +95,14 @@ The change is additive. Revert the WorkPass79 commits or remove the workflow/scr
 - `OrganismRuntime` attaches the optional signal to both cognitive-proposal and response-generation language requests. Caller cancellation does not count as a model failure or force the runtime to fabricate a language result.
 - Server provider selection composes the caller signal with deadlines and stops provider fallback after cancellation; local llama.cpp receives the caller signal.
 - Added `tests/workpass82-server-language-cancellation.mjs`, which runs a real NK1 server and a deliberately non-responsive loopback provider, then checks that destroying the chat client closes the upstream provider connection before the provider timeout.
-- **IMPLEMENTED, not yet VERIFIED:** run the final Actions workflow. The test does not prove a real llama.cpp process recovers correctly after restart, nor that Android/browser clients are covered.
+- **PASS:** Actions run [39372093088](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39372093088) reports `WORKPASS82_SERVER_LANGUAGE_CANCELLATION=PASS` with one provider request and one observed upstream disconnect; provider boundary, memory residency, policy and server smoke also passed. This controlled test does not prove a real llama.cpp process recovers correctly after restart, nor that Android/browser clients are covered.
+
+
+## Verified WorkPass82 Actions evidence
+
+- Run: https://github.com/ailtron1ss-rgb/NK1/actions/runs/39372093088 — job conclusion **success**.
+- `WORKPASS80_MEMORY_RESIDENCY_RETRIEVAL=PASS`: 140 records, 60 cold, materialized vectors unchanged at 80, target recall before/after restore, index integrity true.
+- `WORKPASS79_LOCAL_LANGUAGE_BACKEND_POLICY=PASS`: 12 policy assertions.
+- `WORKPASS79_LOCAL_PROVIDER_BOUNDARY=PASS`: bounded output, 503/malformed/empty/size cases, timeout abort, caller cancellation, loopback-only endpoint.
+- `WORKPASS82_SERVER_LANGUAGE_CANCELLATION=PASS`: controlled local provider received one request and its socket closed when the client disconnected, before the 12-second timeout.
+- `SERVER_SMOKE=PASS`: existing server HTTP smoke also passed.
