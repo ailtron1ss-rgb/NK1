@@ -3,7 +3,9 @@
 - Added a deterministic sandbox integration regression that composes the canonical MemoryOS2 current retrieval/revision/snapshot-restore path with the production ActionGateway and its durable idempotency ledger.
 - Scenarios cover an explicit preference correction, suppression of the superseded preference, retrieval after memory restore, missing evidence requiring clarification, grounded action arguments, a verified in-memory tool result, and no duplicate execution after restoring the action ledger.
 - Wired the regression into the existing cognitive Actions workflow.
-- Evidence boundary: the scenario oracle is deliberately explicit test code, not a claim that the live autonomous planner already performs this mapping correctly. All side effects are in-memory; no external tool is called. Exact-head Actions verification is required before marking PASS.
+- First exact-head run exposed a test-oracle bug: the harness did not check whether the current query matched the memory's topic. The oracle now checks query-topic relevance, and the regression passes without weakening assertions.
+- **Exact-head CI PASS:** [Actions run 39380460196](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39380460196), test commit `12ed8ee0029c9c62d5abaef1141d403d68fcc34e`. Log confirms corrected preference retrieved, superseded preference suppressed, snapshot restore works, missing evidence yields `clarify`, sandbox action verified, restored receipt preserves execution ID, and executor count remains 1.
+- Evidence boundary: the scenario oracle is test-only, not proof that the live autonomous planner already performs this mapping correctly. All side effects are in-memory; no external tool is called. No retrieval uplift, learning gain, live LLM performance, or consciousness claim is made.
 
 ## WorkPass88 — reject silent benchmark-label truncation (2026-10-20)
 
