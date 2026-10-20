@@ -261,14 +261,25 @@ export class P23LearningEngine {
     // fully replayed, preserving deterministic recovery behavior.
     let ordered=eligible.slice().sort((a,b)=>a.tick-b.tick);
     if(ordered.length>64){
+      // Multi-timescale consolidation, adapted from continual-RL replay research:
+      // preserve a fixed recent window for rapid adaptation, while reserving the
+      // other half for older evidence across context/action strata. This is an
+      // algorithmic adaptation, not copied upstream implementation code.
+      const recent=ordered.slice(-32);
+      const historical=ordered.slice(0,-32);
       const keyOf=(trace:OrganismDecisionTrace)=>`${contextKey(trace.stateBefore)}|${trace.selected!.action}`;
       const groups=new Map<string,OrganismDecisionTrace[]>();
-      for(const trace of ordered){const key=keyOf(trace);const group=groups.get(key)??[];group.push(trace);groups.set(key,group);}
-      const representatives=[...groups.values()].map(group=>group.sort((a,b)=>(b.outcome?.surprise??0)-(a.outcome?.surprise??0)||a.tick-b.tick)[0]).sort((a,b)=>(b.outcome?.surprise??0)-(a.outcome?.surprise??0)||a.tick-b.tick);
+      for(const trace of historical){const key=keyOf(trace);const group=groups.get(key)??[];group.push(trace);groups.set(key,group);}
+      const bySurprise=(a:OrganismDecisionTrace,b:OrganismDecisionTrace)=>(b.outcome?.surprise??0)-(a.outcome?.surprise??0)||a.tick-b.tick;
+      const representatives=[...groups.values()].map(group=>group.slice().sort(bySurprise)[0]).sort(bySurprise);
       const selected=new Map<string,OrganismDecisionTrace>();
-      for(const trace of representatives.slice(0,64)) selected.set(trace.id,trace);
+      for(const trace of recent) selected.set(trace.id,trace);
+      for(const trace of representatives){
+        if(selected.size>=64)break;
+        selected.set(trace.id,trace);
+      }
       if(selected.size<64){
-        for(const trace of ordered.slice().sort((a,b)=>(b.outcome?.surprise??0)-(a.outcome?.surprise??0)||a.tick-b.tick)){
+        for(const trace of historical.slice().sort(bySurprise)){
           if(selected.size>=64)break;
           selected.set(trace.id,trace);
         }
