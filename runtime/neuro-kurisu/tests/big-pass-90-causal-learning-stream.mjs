@@ -23,12 +23,14 @@ assert.ok(stream.recordExternalLearningEvent(externalInput));
 assert.equal(stream.recordExternalLearningEvent({...externalInput,reward01:1,success01:1}),null,'external causal events with the same stable trace ID must not receive duplicate credit');
 
 const packet=stream.learningPacket(8);
-assert.equal(packet.records.length,1);
+assert.equal(packet.records.length,2,'the causal packet must include both the verified runtime outcome and the accepted external event');
+assert.deepEqual(new Set(packet.records.map(row=>row.traceId)),new Set(['trace-90','external-trace-once']));
 assert.ok(packet.meanCausalStrength01>0);
 const persisted=stream.snapshot();
 const restored=new CausalExperienceStream(16);
 restored.restore(persisted);
 assert.deepEqual(restored.recent(8),stream.recent(8));
+assert.equal(restored.recordExternalLearningEvent({...externalInput,reward01:1,success01:1}),null,'external trace deduplication must survive snapshot restore');
 for(let i=0;i<70;i++){
   const nextTrace={...trace,id:`trace-evict-${i}`,tick:i+10,createdAt:1000+i};
   stream.recordOutcome(nextTrace,mkState({tick:i+11}),{reward01:.6,success01:.6,surprise01:.2,novelty01:.2});
