@@ -1,5 +1,6 @@
 import type { ActionKind, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
 import { ParametricPolicyLearner, defaultParametricPolicy, type ParametricPolicyState } from './ParametricPolicyLearner.ts';
+import { selectCausalReplayBatch } from './CausalReplaySampler.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
@@ -81,8 +82,10 @@ export class P26TrueLearningEngine{
     this.sync();
     return {updates,meanLoss01:updates?loss/updates:0};
   }
-  replayCausalRecords(records:Array<{action:ActionKind;reward01:number;success01:number;surprise01:number;causalStrength01?:number;learningQuality01?:number;policyFeatures01?:number[];replayPriority01?:number}>){
-    const usable=records.filter(r=>Array.isArray(r.policyFeatures01)&&r.policyFeatures01.length>=16).slice(0,32);
+  replayCausalRecords(records:Array<{id?:string;tick?:number;taskId?:string;action:ActionKind;reward01:number;success01:number;surprise01:number;causalStrength01?:number;learningQuality01?:number;policyFeatures01?:number[];replayPriority01?:number}>){
+    // Runtime and benchmark share the same bounded, deterministic sampler.
+    // The holdout below remains an in-batch diagnostic, not an independent task holdout.
+    const usable=selectCausalReplayBatch(records,{maxBatchSize:32,recentQuota:8});
     if(!usable.length)return {updates:0,meanLoss01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0};
     const holdout=usable.filter((_,i)=>(i+1)%4===0),train=usable.filter((_,i)=>(i+1)%4!==0);
     const score=(rows:typeof usable)=>rows.length?rows.reduce((sum,r)=>sum+this.learner.predictFromFeatures(r.policyFeatures01!,r.action),0)/rows.length:0;
