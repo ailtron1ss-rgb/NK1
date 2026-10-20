@@ -4,7 +4,7 @@
 **Repository:** https://github.com/ailtron1ss-rgb/NK1  
 **Working branch:** `workpass79-cognitive-rebuild`  
 **Base:** `workpass70-source`  
-**Status:** WorkPass79–81 implementation and focused regressions committed; Actions run 39371651412 passed all four workflow steps on the code state before this evidence-only documentation update.
+**Status:** WorkPass79–82 implementation and focused regressions committed; WorkPass79–81 CI passed in run 39371651412. WorkPass82 adds source-level end-to-end cancellation coverage and awaits CI.
 
 ## Mission and constraints
 
@@ -87,3 +87,12 @@ The change is additive. Revert the WorkPass79 commits or remove the workflow/scr
 - Local provider: success path, HTTP 503 normalization, malformed JSON, empty output, 2 MiB response cap, timeout abort, caller cancellation, loopback-only endpoint policy all PASS.
 - Server HTTP smoke: PASS.
 - Still not covered by this CI: live llama.cpp on Dell G3, caller signal propagation from the whole cognitive cycle, restart/recovery under a real process, independent bilingual Recall@k/MRR benchmark, learning transfer/forgetting, browser/Live2D/TTS E2E, clean install/rollback, and soak testing.
+
+
+## WorkPass82 — HTTP disconnect to upstream local-model cancellation
+
+- `/api/organism/chat` now creates a request-scoped controller and aborts it on `req.aborted` or a premature response `close`; the controller is passed into `runtime.step`.
+- `OrganismRuntime` attaches the optional signal to both cognitive-proposal and response-generation language requests. Caller cancellation does not count as a model failure or force the runtime to fabricate a language result.
+- Server provider selection composes the caller signal with deadlines and stops provider fallback after cancellation; local llama.cpp receives the caller signal.
+- Added `tests/workpass82-server-language-cancellation.mjs`, which runs a real NK1 server and a deliberately non-responsive loopback provider, then checks that destroying the chat client closes the upstream provider connection before the provider timeout.
+- **IMPLEMENTED, not yet VERIFIED:** run the final Actions workflow. The test does not prove a real llama.cpp process recovers correctly after restart, nor that Android/browser clients are covered.
