@@ -144,7 +144,7 @@ export class VerifiedOutcomeLedger {
       const task = this.manifest.get(outcome.taskId)!;
       if (task.split !== split || (family !== undefined && task.family !== family) ||
           (outcome.method !== baseline && outcome.method !== candidate)) continue;
-      const pairKey = `${task.taskId}\\u0000${outcome.seed}\\u0000${outcome.attempt}`;
+      const pairKey = JSON.stringify([task.taskId, outcome.seed, outcome.attempt]);
       const pair = rows.get(pairKey) ?? new Map<string, VerifiedTaskOutcome>();
       pair.set(outcome.method, outcome);
       rows.set(pairKey, pair);
