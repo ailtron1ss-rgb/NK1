@@ -13,8 +13,8 @@ const plan = createLearningExperimentPlan(manifest, {
 const ledger = new VerifiedOutcomeLedger(manifest);
 const run = plan.runs.find(item => item.arm === 'P' && item.taskId === 'memory-1');
 const receipt = {
-  schemaVersion: 1, executionId: 'exec-001', runId: run.runId,
-  planFingerprint: plan.planFingerprint, commandFingerprint: 'c'.repeat(64),
+  schemaVersion: 2, executionId: 'exec-001', runId: run.runId,
+  planFingerprint: plan.planFingerprint, manifestFingerprint: plan.manifestFingerprint, commandFingerprint: 'c'.repeat(64),
   startedAt: 100, finishedAt: 120, durationMs: 20, status: 'completed',
   exitCode: 0, signal: null, stdout: '', stderr: '', stdoutBytes: 0, stderrBytes: 0,
   outputTruncated: false, runDirectory: '/tmp/run', surviveDirectory: '/tmp/survive', boundaries: [],
