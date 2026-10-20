@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = process.cwd();
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const workflowDir = path.join(root, '.github', 'workflows');
 const workflows = readdirSync(workflowDir).filter(name => /\.ya?ml$/i.test(name)).sort();
 assert.ok(workflows.length > 0, 'expected at least one GitHub Actions workflow');
