@@ -28,6 +28,7 @@ on:
       - "runtime/neuro-kurisu/tests/paired-holdout-evaluation-workpass71.mjs"
       - "runtime/neuro-kurisu/tests/learning-evaluation-document-workpass72.mjs"
       - "runtime/neuro-kurisu/scripts/evaluate-learning-holdout-workpass72.mjs"
+      - "runtime/neuro-kurisu/scripts/evaluate-learning-history-workpass74.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/workpass71-validation.yml"
   workflow_dispatch:
@@ -68,6 +69,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:learning-eval-workpass72
       - name: Continual learning retention and transfer regression
         run: npm --prefix runtime/neuro-kurisu run test:learning-history-workpass74
+      - name: Validate continual learning history CLI entry point
+        run: node --experimental-strip-types runtime/neuro-kurisu/scripts/evaluate-learning-history-workpass74.mjs --help
       - name: Existing bilingual memory recall regression
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/workpass55-memory-concept-recall.mjs
       - name: Local LLM bounded-response regression
