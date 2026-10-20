@@ -5,8 +5,8 @@ This is an engineering assessment of the current repository implementation, not 
 ## Progress estimate
 
 - **P23 symbolic continual-learning core: 61%** — experience capture, bounded replay, contextual action values, skill promotion/rejection, nearby-context transfer, retention decay, rollback and persistence exist. This measures implementation coverage against the currently scoped P23 core, not success rate.
-- **Evidence-grounded learning maturity: 34%** — independent outcome verification, reliable holdout splits across task families, delayed retention measurements and external task outcomes remain incomplete.
-- **Project-wide learning ambition: 29%** — this is a broad roadmap estimate across autonomous, cross-domain, lifelong learning; it is not a measured capability metric.
+- **Evidence-grounded learning maturity: 36%** — independent outcome verification, reliable holdout splits across task families, delayed retention measurements and external task outcomes remain incomplete.
+- **Project-wide learning ambition: 30%** — this is a broad roadmap estimate across autonomous, cross-domain, lifelong learning; it is not a measured capability metric.
 - **WorkPass100 replay-selection integration: implemented; exact-head CI pending** — production and benchmark now share one bounded selector; runtime exposes a safe configurable quota for controlled ablations; tests cover boundary conditions and 16/32/48 recent quotas. This improves implementation coverage, not evidence of task-success uplift.
 
 Do not add these percentages together. Their denominators differ and each is a planning estimate.
@@ -21,7 +21,7 @@ Do not add these percentages together. Their denominators differ and each is a p
 | Skill formation and promotion/rejection | 61 | Context/action skills, held-out validation windows and promotion rollback exist; validation is still narrow and largely synthetic. |
 | Contextual transfer | 58 | Conservative near-context transfer and distant-context rejection are tested; task-semantic similarity is represented by coarse state buckets. |
 | Forgetting and retention bookkeeping | 70 | Half-life decay, expiry, fresh-evidence refresh and rollback exist; delayed repeated task tests are missing. |
-| Outcome verification / causal grounding | 34 | There are feedback labels, shadow comparisons and ablations, but no universal independent verifier for real actions or claims. |
+| Outcome verification / causal grounding | 36 | There are feedback labels, shadow comparisons and ablations, but no universal independent verifier for real actions or claims. |
 | Calibration and uncertainty reporting | 43 | Prediction error and calibration metrics exist; sample-count-aware confidence intervals and drift alarms are incomplete. |
 | Benchmark quality / baselines | 35 | Shared production selector is compared against recency-only and surprise-only baselines at 16/32/48 recent quotas; task-verifier outcomes, retention and transfer remain unmeasured. |
 | Persistence and state integrity | 69 | Snapshot/restore and checksum mechanisms exist; long-horizon corruption and migration fault injection need wider coverage. |
@@ -152,3 +152,25 @@ Added `tests/p23-replay-strategy-benchmark.mjs` and `.github/workflows/workpass9
 - **Scores unchanged:** real outcome validation 34/100; benchmark quality 35/100; overall learning engineering 57/100. A scoring substrate is progress toward measurement, not proof of improved task success.
 - **Next:** persist signed/versioned evidence, add task-family-level paired summaries and retention-after-interference measurements, then connect only externally verified outcomes to the learning stream. Keep the holdout unavailable to training and model-authored labels.
 
+
+
+## WorkPass106 — outcome-based promotion guard (2026-10-20)
+
+The verifier ledger now has a separate conservative eligibility gate for candidate-vs-baseline results. By default it requires at least 30 paired outcomes, at least three task families, aggregate absolute gain of at least 2 percentage points, a positive lower bound on the approximate paired 95% interval, and no family regression worse than 5 percentage points. These are initial engineering guardrails, not statistically universal thresholds; tune them only against a pre-registered benchmark protocol. A deliberately relaxed confidence setting exists for exploratory diagnostics and is not the default.
+
+The gate prevents several common false promotions: tiny samples, positive aggregate gains driven by one family while another collapses, no usable uncertainty interval, and missing family-level comparisons. It is still only a calculation over already verified outcomes: it does not authenticate evidence artifacts, execute verifiers, persist a ledger, or change the production learner. Current fixture tests are synthetic and do not justify increasing the overall 57/100 engineering score.
+
+### Research adaptation update
+
+- [SkillLearnBench](https://github.com/cxcscmu/SkillLearnBench) separates skill quality, execution trajectory, and final verifier-based task outcome. NK1 should retain this layered evaluation rather than treating an internal skill score as task success. The upstream benchmark contains 20 tasks / 100 verified instances and reports mixed method wins, so one replay policy should not be assumed universally superior. ([repo](https://github.com/cxcscmu/SkillLearnBench), [paper](https://arxiv.org/abs/2604.20087))
+- [ContinualSkillBench](https://arxiv.org/abs/2608.03874) finds that in-context adaptation can be competitive with explicit skill maintenance, and skill reuse gains vary by domain. NK1 therefore needs a context-only baseline as well as explicit replay/skill arms.
+- [AgentMemoryBench](https://github.com/solomoon313/AgentMemoryBench) emphasizes online learning curves, replay retention, cross-environment transfer, and repair after erroneous feedback. Adapt these as separate outcome metrics, not a single aggregate memory score.
+- [Continual Learning Bench](https://arxiv.org/abs/2606.05661) warns that memory systems do not automatically produce genuine learning and can underperform simpler in-context baselines. This supports leaving production promotion disabled until verifier-backed comparisons show reliable gains.
+
+### Remaining high-priority work
+
+1. Connect independently executed verifiers to durable evidence artifacts and stable task/version IDs.
+2. Add task-family-level retention and forward-transfer evaluation after process restart.
+3. Run context-only, no-replay, recency, surprise, reservoir, and multi-timescale policies on the same held-out streams.
+4. Add delayed and corrupted-feedback repair tests; do not treat self-report as ground truth.
+5. Only after repeated paired gains and family-level safety checks, consider production promotion. Live llama.cpp, real RU/EN retrieval uplift, long-horizon persistence, and full application E2E remain separate release gates.
