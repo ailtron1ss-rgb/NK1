@@ -27,6 +27,9 @@ assert.throws(() => createLearningExperimentPlan(manifest, { ...options, resetEv
 assert.throws(() => createLearningExperimentPlan(manifest, { ...options, priorMethod: 'same', continuousMethod: 'same' }), /unique/);
 const leaked = [...manifest, { ...manifest[0], taskId: 'leaked', split: 'train' }];
 assert.throws(() => createLearningExperimentPlan(leaked, options), /cross-split prompt leakage/);
+assert.throws(() => validateLearningExperimentPlan({ ...plan, counts: { ...plan.counts, tasks: 999 } }, manifest), /summary counts/);
+assert.throws(() => validateLearningExperimentPlan({ ...plan, seedIds: [17, 3, 9] }, manifest), /sorted/);
+assert.throws(() => validateLearningExperimentPlan({ ...plan, arms: [...plan.arms, plan.arms[0]] }, manifest), /prior, continuous and reset arms|unique labels/);
 console.log('P23_LEARNING_EXPERIMENT_PLAN=PASS');
 
 const ledger = new VerifiedOutcomeLedger(manifest);
