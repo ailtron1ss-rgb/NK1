@@ -11,7 +11,7 @@ Work code-first. Prefer observable, testable behavior over architectural labels.
 ## Canonical navigation
 
 - `README.md`: current repository status and release gates.
-- `docs/WORKPASS77_HANDOVER_2026-10-19.md`: latest continuation snapshot, CI evidence and prioritized unresolved queue.
+- `docs/WORKPASS78_HANDOVER_2026-10-20.md`: latest continuation snapshot, CI evidence and prioritized unresolved queue.
 - `docs/REPOSITORY_CLEANUP_AUDIT_WORKPASS72.md` plus its JSON manifest: exact content-duplicate audit; candidates are not deletion instructions.
 - `docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md`: repository inventory, audit findings and open-work register.
 - `runtime/neuro-kurisu/`: canonical organism/runtime implementation.
@@ -69,7 +69,7 @@ Before a substantial pass, read:
 - [Master strategy / brain map / risk register / release gates](docs/NEUROCORE_MASTER_STRATEGY_AND_BRAIN_MAP.md)
 - [1,000-work-unit planning backlog](docs/NEUROCORE_1000_WORK_UNIT_BACKLOG.md)
 - [Research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md)
-- [Current handover](docs/WORKPASS77_HANDOVER_2026-10-19.md) and refresh it after work.
+- [Current handover](docs/WORKPASS78_HANDOVER_2026-10-20.md) and refresh it after work.
 
 **Broad exploration, narrow promotion:** explore relevant science and source implementations across neural architectures, cognitive science, neuroscience, memory, continual learning, causal inference, planning, distributed systems, human-computer interaction, speech, reliability, security, mobile inference and systems engineering. Preserve speculative ideas as labeled hypotheses; test incompatible candidates in isolated, comparable experiments. Integrate only when a measured benefit beats a same-budget baseline and preserves correctness, safety, privacy, license and resource invariants.
 
