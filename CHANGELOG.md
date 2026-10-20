@@ -888,3 +888,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added stable `llama.cpp-request-aborted` normalization for caller cancellation before dispatch, during transport, and while reading a bounded response; deadline failures normalize to `llama.cpp-timeout`.
 - Extended the provider boundary regression for in-flight and pre-aborted requests. This proves the provider boundary honors a signal when its caller supplies one; it does not prove every upstream cognitive-cycle caller currently forwards cancellation.
 - **Evidence status:** IMPLEMENTED; Actions must execute the updated test before it is marked PASS. Real llama.cpp cancellation and process restart/recovery remain unverified.
+
+
+### WorkPass81 follow-up — deterministic timeout test harness (2026-10-20)
+
+- GitHub Actions exposed that Node's `AbortSignal.timeout()` timer is unreferenced: the test's unresolved top-level await could terminate with exit code 13 before the timeout fired. The focused test now holds the process open only for the expected timeout window and asserts the normalized `llama.cpp-timeout` outcome.
+- This is a test-harness correction discovered by CI, not a claim that the full provider suite passes. Re-run Actions on the new head.
