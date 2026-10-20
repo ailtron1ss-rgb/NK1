@@ -55,6 +55,9 @@ jobs:
       - name: Reject malformed restored action receipts without replaying effects
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass95:receipt-integrity
+      - name: Verify action finalization precedes receipt commit and failure blocks replay
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass96:finalizer-boundary
       - name: Test retrieval metrics, abstention, dataset hash/provenance and holdout leakage guards
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass83:retrieval-benchmark-truth
