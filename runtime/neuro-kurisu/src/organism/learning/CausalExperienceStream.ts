@@ -120,7 +120,7 @@ export class CausalExperienceStream {
       learningQuality01:clamp01(.45+causalStrength*.45+surprise*.10), replayEligible:true, replayPriority01:clamp01(.24*surprise+.20*predictionError+.18*causalStrength+.12*novelty+.10*uncertainty+.08*clamp01(trace.stateBefore.needs.identityCoherence)+.08*clamp01(trace.stateBefore.needs.goalPressure)+.06*clamp01(.45+causalStrength*.45+surprise*.10)), replayCount:0, lastReplayedAt:0,
     };
     this.state.records.push(record); if(this.state.records.length>this.maxRecords)this.state.records=this.state.records.slice(-this.maxRecords);
-    this.recordedOutcomeTraceIds.add(trace.id);while(this.recordedOutcomeTraceIds.size>this.maxRecordedTraceIds)this.recordedOutcomeTraceIds.delete(this.recordedOutcomeTraceIds.values().next().value!);this.state.recordedTraceIds=[...this.recordedOutcomeTraceIds];
+    this.recordedOutcomeTraceIds.add(traceId);while(this.recordedOutcomeTraceIds.size>this.maxRecordedTraceIds)this.recordedOutcomeTraceIds.delete(this.recordedOutcomeTraceIds.values().next().value!);this.state.recordedTraceIds=[...this.recordedOutcomeTraceIds];
     this.state.outcomes++;
     this.state.rolling.surprise01=clamp01(this.state.rolling.surprise01*.92+surprise*.08);
     this.state.rolling.predictionError01=clamp01(this.state.rolling.predictionError01*.92+predictionError*.08);
