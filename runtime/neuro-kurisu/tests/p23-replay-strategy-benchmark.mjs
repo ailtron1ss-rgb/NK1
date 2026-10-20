@@ -30,7 +30,7 @@ const metrics = (batch, guaranteedRecentFloor) => ({
   duplicateIds: batch.length - new Set(batch.map(t => t.id)).size,
 });
 const recentOnly = traces.slice(-CAPACITY);
-const reservoirSeeds = [7, 19, 42, 101, 2026];
+const reservoirSeeds = Array.from({ length: 50 }, (_, i) => 7 + i * 101);
 const reservoir = Object.fromEntries(reservoirSeeds.map(seed => [
   `seed${seed}`,
   metrics(selectReservoirBatch(traces, { capacity: CAPACITY, seed }), traces.length - CAPACITY),
@@ -46,7 +46,36 @@ const ageAware = Object.fromEntries(ageHalfLives.map(ageHalfLifeTicks => [
   Number.isFinite(ageHalfLifeTicks) ? `halfLife${ageHalfLifeTicks}` : 'halfLifeInfinite',
   metrics(selectReplayBatch(traces, { maxBatchSize: CAPACITY, recentQuota: 32, ageHalfLifeTicks }), traces.length - 32),
 ]));
-const results = { recentOnly: metrics(recentOnly, 96), surpriseOnly: metrics(surpriseOnly, 96), reservoir, balanced, ageAware };
+const summarizeSeeds = rows => {
+  const fields = ['postShift', 'historical', 'oldest32', 'strata', 'surpriseMean'];
+  return Object.fromEntries(fields.map(field => {
+    const values = rows.map(row => row[field]);
+    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+    const variance = values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / Math.max(1, values.length - 1);
+    const standardError = Math.sqrt(variance / values.length);
+    return [field, {
+      mean: Number(mean.toFixed(4)),
+      standardDeviation: Number(Math.sqrt(variance).toFixed(4)),
+      confidence95Approx: [
+        Number((mean - 1.96 * standardError).toFixed(4)),
+        Number((mean + 1.96 * standardError).toFixed(4)),
+      ],
+    }];
+  }));
+};
+const reservoirRows = Object.values(reservoir);
+const results = {
+  note: 'Proxy composition only; confidence intervals summarize variation across fixed reservoir seeds, not task outcomes or population-level learning gains.',
+  recentOnly: metrics(recentOnly, 96),
+  surpriseOnly: metrics(surpriseOnly, 96),
+  reservoir: {
+    seedRuns: reservoir,
+    seedCount: reservoirRows.length,
+    acrossSeedSummary: summarizeSeeds(reservoirRows),
+  },
+  balanced,
+  ageAware,
+};
 for (const recentQuota of quotas) {
   const row = results.balanced[`recentQuota${recentQuota}`];
   assert.equal(row.size, CAPACITY, `quota ${recentQuota}: respect hard capacity`);
@@ -55,8 +84,8 @@ for (const recentQuota of quotas) {
   assert.ok(row.historical > 0, `quota ${recentQuota}: retain pre-shift evidence`);
   assert.ok(row.strata >= 20, `quota ${recentQuota}: preserve broad context/action strata`);
 }
-assert.equal(results.surpriseOnly.size, CAPACITY);
-for (const [seed, row] of Object.entries(results.reservoir)) {
+assert.equal(results.surpriseOnly.size, CAPACITY);\nassert.equal(results.reservoir.seedCount, 50, 'report enough independent fixed seeds for a useful proxy spread');\nfor (const summary of Object.values(results.reservoir.acrossSeedSummary)) {\n  assert.ok(Number.isFinite(summary.mean));\n  assert.ok(summary.confidence95Approx[0] <= summary.mean && summary.mean <= summary.confidence95Approx[1]);\n}
+for (const [seed, row] of Object.entries(results.reservoir.seedRuns)) {
   assert.equal(row.size, CAPACITY, `${seed}: respect hard capacity`);
   assert.equal(row.duplicateIds, 0, `${seed}: no duplicate trace IDs`);
   assert.ok(row.historical > 0, `${seed}: sample spans the historical stream`);
