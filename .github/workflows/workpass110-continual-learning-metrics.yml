@@ -15,6 +15,7 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualLearningMetrics.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualOutcomeMatrix.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/ContinualBenchmarkComparison.ts'
       - 'runtime/neuro-kurisu/tests/p23-continual-learning-metrics.mjs'
       - 'runtime/neuro-kurisu/tests/p23-continual-outcome-matrix.mjs'
       - 'runtime/neuro-kurisu/tests/p23-continual-benchmark-comparison.mjs'
