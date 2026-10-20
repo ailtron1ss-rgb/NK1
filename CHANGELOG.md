@@ -1,3 +1,7 @@
+## NK1 v2.0 rebuild — make control-character regression fixtures literal-safe (2026-10-20)
+
+- [FIXED] Corrected the two JavaScript fixtures to construct actual control-character strings at runtime, ensuring the provenance validation tests exercise the intended hostile inputs rather than literal backslash sequences.
+
 ## NK1 v2.0 rebuild — canonicalize policy provenance labels (2026-10-20)
 
 - [FIXED] Policy arbitration now trims provenance labels before diagnostic aggregation and rejects labels containing control characters.

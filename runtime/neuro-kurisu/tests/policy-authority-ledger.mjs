@@ -25,7 +25,7 @@ assert.equal(oversizedBound.explore, 0.13);
 assert.throws(() => l.add({source:'bad-action',action:'execute',bias01:.9,authority01:1,causal01:1,stage:'candidate'}), /invalid-policy-action/);
 assert.throws(() => l.add({source:'',action:'verify',bias01:.9,authority01:1,causal01:1,stage:'candidate'}), /invalid-policy-source/);
 assert.throws(() => l.add({source:'x'.repeat(121),action:'verify',bias01:.9,authority01:1,causal01:1,stage:'candidate'}), /invalid-policy-source/);
-assert.throws(() => l.add({source:'bad\\u0000source',action:'verify',bias01:.9,authority01:1,causal01:1,stage:'candidate'}), /invalid-policy-source/);
+assert.throws(() => l.add({source:'bad\u0000source',action:'verify',bias01:.9,authority01:1,causal01:1,stage:'candidate'}), /invalid-policy-source/);
 assert.throws(() => l.add({source:'valid',action:'verify',bias01:.9,authority01:1,causal01:1,stage:''}), /invalid-policy-stage/);
 l.beginCycle(Number.NaN);
 assert.equal(l.snapshot().cycle,0,'non-finite cycle identifiers normalize to zero instead of contaminating diagnostics');
