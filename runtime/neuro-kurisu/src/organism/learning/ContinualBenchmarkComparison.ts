@@ -48,6 +48,14 @@ function validateRun(run: ContinualBenchmarkRun): void {
 function mean(values: number[]): number {
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
 }
+function tCritical95(degreesOfFreedom: number): number {
+  // Two-sided 95% Student-t critical values for small paired-seed samples.
+  // Above df=30 the normal approximation is adequate for this diagnostic.
+  const critical = [0, 12.706, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262,
+    2.228, 2.201, 2.179, 2.160, 2.145, 2.131, 2.120, 2.110, 2.101, 2.093,
+    2.086, 2.080, 2.074, 2.069, 2.064, 2.060, 2.056, 2.052, 2.048, 2.045, 2.042];
+  return degreesOfFreedom < critical.length ? critical[degreesOfFreedom]! : 1.96;
+}
 function summarize(deltas: Array<{ baseline: number; candidate: number }>): PairedMetric {
   const n = deltas.length;
   const baselineMean = mean(deltas.map(x => x.baseline));
@@ -56,7 +64,7 @@ function summarize(deltas: Array<{ baseline: number; candidate: number }>): Pair
   const meanDelta = mean(differences);
   if (n < 2) return { pairedN: n, baselineMean, candidateMean, meanDelta, approximate95CI: null };
   const variance = differences.reduce((sum, x) => sum + (x - meanDelta) ** 2, 0) / (n - 1);
-  const halfWidth = 1.96 * Math.sqrt(variance / n);
+  const halfWidth = tCritical95(n - 1) * Math.sqrt(variance / n);
   return { pairedN: n, baselineMean, candidateMean, meanDelta, approximate95CI: [meanDelta - halfWidth, meanDelta + halfWidth] };
 }
 function runMean(values: Record<string, number>): number {
