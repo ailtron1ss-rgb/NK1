@@ -1,0 +1,32 @@
+name: WorkPass95 continual skill learning
+
+on:
+  push:
+    branches: [workpass79-cognitive-rebuild]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts'
+      - 'runtime/neuro-kurisu/tests/p23-true-learning.mjs'
+      - 'runtime/neuro-kurisu/tests/p26-true-learning.mjs'
+      - '.github/workflows/workpass95-continual-skill-learning.yml'
+
+jobs:
+  continual-skill-learning:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Validate skill learning and cross-context transfer boundaries
+        run: npm --prefix runtime/neuro-kurisu run test:p23:learning
+      - name: Validate parametric learning generalization and finite-state guards
+        run: npm --prefix runtime/neuro-kurisu run test:p26:true-learning
+      - name: Validate continual transfer calibration
+        run: npm --prefix runtime/neuro-kurisu run test:big-pass-116
+      - name: Validate personal learning curriculum
+        run: npm --prefix runtime/neuro-kurisu run test:big-pass-122
