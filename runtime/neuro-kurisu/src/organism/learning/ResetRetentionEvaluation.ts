@@ -131,7 +131,7 @@ export function evaluateResetRetention(
   for (const taskId of allTaskIds) {
     for (const seed of seeds) {
       const cell = cells.get(`${taskId}\u0000${seed}`);
-      if (!cell) continue;
+      if (!cell) throw new Error(`missing matched task/seed cell for task ${taskId}, seed ${seed}`);
       if (requiredArms.some(arm => !cell.has(arm))) throw new Error(`incomplete matched arms for task ${taskId}, seed ${seed}`);
       const p = cell.get('P')!.score;
       const c = cell.get('C')!.score;
@@ -154,7 +154,7 @@ export function evaluateResetRetention(
     // A single matched seed is useful descriptively, but cannot support a CI.
   }
   const estimates: RetentionEstimate[] = ks.map(k => {
-    const rows = byK.get(k)!.filter(row => seedRows.includes(row.seed));
+    const rows = byK.get(k)!.filter(row => seedRows.includes(row.seed) && eligibleTaskIds.includes(row.taskId));
     const seedMetrics = seedRows.map(seed => {
       const matched = rows.filter(row => row.seed === seed);
       return matched.length ? mean(matched.map(row => row.normalized)) : NaN;
@@ -172,8 +172,10 @@ export function evaluateResetRetention(
       seedLevel95CI: confidenceInterval(seedMetrics),
       perFamily: familyNames.map(family => {
         const familyRows = rows.filter(row => row.family === family);
-        const familySeedMeans = seedRows.map(seed => mean(familyRows.filter(row => row.seed === seed).map(row => row.normalized)))
-          .filter(Number.isFinite);
+        const familySeedMeans = seedRows.map(seed => {
+          const values = familyRows.filter(row => row.seed === seed).map(row => row.normalized);
+          return values.length ? mean(values) : NaN;
+        }).filter(Number.isFinite);
         return { family, taskCount: new Set(familyRows.map(row => row.taskId)).size, normalizedRetention: familySeedMeans.length ? mean(familySeedMeans) : null };
       }),
     };
