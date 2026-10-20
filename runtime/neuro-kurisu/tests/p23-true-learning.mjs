@@ -96,6 +96,13 @@ const verifyTrace = makeTrace(99,'verify',.98,{uncertainty:.72});
 learning.recordExperience(verifyTrace,{...verifyTrace.stateBefore,tick:100,needs:{...verifyTrace.stateBefore.needs,uncertainty:.25}}, {success:.98,reward:.98,surprise:.02},policy);
 assert.ok(learning.snapshot().metrics.evidenceDebtOpen <= debtBefore);
 assert.ok(learning.snapshot().evidenceDebt.some(x=>x.priority01 < 0.45) || learning.snapshot().metrics.evidenceDebtOpen===0);
+// Non-finite feedback labels are rejected, not silently converted into a
+// plausible zero-success observation that could poison future skill promotion.
+const invalidEvidenceLearning = new P23LearningEngine();
+const invalidEvidenceTrace = makeTrace(450, 'verify', .9, { uncertainty:.72 });
+invalidEvidenceLearning.recordExperience(invalidEvidenceTrace, invalidEvidenceTrace.stateBefore, {success:NaN,reward:.9,surprise:.1}, new AdaptivePolicyEngine());
+assert.equal(invalidEvidenceLearning.snapshot().experiences.length, 0, 'invalid outcome labels must not enter the learning dataset');
+
 // Large consolidation queues are bounded and stratified rather than dominated
 // by repeated examples from one easy context.
 const replayBudgetLearning = new P23LearningEngine();
