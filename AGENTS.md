@@ -1,6 +1,6 @@
 # NeuroCore — repository working rules
 
-> **New-session entry point:** read [`NEUROCORE_START_HERE.md`](NEUROCORE_START_HERE.md) first, then verify the current branch head, latest Actions status, and the open-work register in [`docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md`](docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md). The mission is persistent across chats; do not ask the user to restate it.
+> **New-session entry point:** read [`NEUROCORE_START_HERE.md`](NEUROCORE_START_HERE.md) and the latest [WorkPass93 checkpoint](docs/WORKPASS93_CHECKPOINT_2026-10-20.md), then refresh the live branch head, PR state, latest Actions status and open-work register. The mission is persistent across chats; do not ask the user to restate it.
 
 ## Latest checkpoint
 
