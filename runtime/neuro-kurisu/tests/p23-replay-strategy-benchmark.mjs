@@ -16,7 +16,7 @@ const traces = Array.from({ length: 160 }, (_, i) => {
   const surprise = i >= 128 ? ((i * 7) % 11) / 10 : ((i * 3) % 7) / 10;
   return { id: `trace-${i}`, tick: i, contextKey, action: actions[(i + Math.floor(i / 24)) % actions.length], surprise };
 });
-const stratum = t => `${t.contextKey}|${t.action}`;
+const stratum = t => JSON.stringify([t.contextKey, t.action]);
 const bySurprise = (a, b) => b.surprise - a.surprise || a.tick - b.tick || a.id.localeCompare(b.id);
 const metrics = (batch, guaranteedRecentFloor) => ({
   size: batch.length,
@@ -35,7 +35,12 @@ const balanced = Object.fromEntries(quotas.map(recentQuota => [
   `recentQuota${recentQuota}`,
   metrics(selectReplayBatch(traces, { maxBatchSize: CAPACITY, recentQuota }), traces.length - recentQuota),
 ]));
-const results = { recentOnly: metrics(recentOnly, 96), surpriseOnly: metrics(surpriseOnly, 96), balanced };
+const ageHalfLives = [Number.POSITIVE_INFINITY, 1000, 100, 10];
+const ageAware = Object.fromEntries(ageHalfLives.map(ageHalfLifeTicks => [
+  Number.isFinite(ageHalfLifeTicks) ? `halfLife${ageHalfLifeTicks}` : 'halfLifeInfinite',
+  metrics(selectReplayBatch(traces, { maxBatchSize: CAPACITY, recentQuota: 32, ageHalfLifeTicks }), traces.length - 32),
+]));
+const results = { recentOnly: metrics(recentOnly, 96), surpriseOnly: metrics(surpriseOnly, 96), balanced, ageAware };
 for (const recentQuota of quotas) {
   const row = results.balanced[`recentQuota${recentQuota}`];
   assert.equal(row.size, CAPACITY, `quota ${recentQuota}: respect hard capacity`);
@@ -45,5 +50,11 @@ for (const recentQuota of quotas) {
   assert.ok(row.strata >= 20, `quota ${recentQuota}: preserve broad context/action strata`);
 }
 assert.equal(results.surpriseOnly.size, CAPACITY);
+for (const [name, row] of Object.entries(results.ageAware)) {
+  assert.equal(row.size, CAPACITY, `${name}: respect hard capacity`);
+  assert.equal(row.duplicateIds, 0, `${name}: no duplicate trace IDs`);
+  assert.equal(row.guaranteedRecent, 32, `${name}: preserve same recent quota`);
+  assert.ok(row.historical > 0, `${name}: retain historical samples`);
+}
 console.log('P23_REPLAY_STRATEGY_BENCHMARK=PASS');
 console.log(JSON.stringify(results, null, 2));
