@@ -14,6 +14,7 @@ Execution branch: rebuild. Stable branch: main (do not modify as part of island 
 - [x] Add deterministic regression for valid modes, malformed observations, invalid mode and non-mutation; wire it into the cognitive regression workflow on the rebuild branch.
 - [ ] Trace one production cycle from perception through plan, EthicalGate, ActionGateway, reafference and reflection.
 - [ ] Remove any direct side-effect path that bypasses canonical authorization/receipt verification.
+- [x] Reject malformed restored ActionGateway completion receipts unless receipt identity, outcome, audit and verification fields agree; invalid rows remain recovery tombstones and never trigger automatic re-execution.
 - [ ] Define the smallest versioned cycle/event contract and enforce it on the live path.
 - [ ] Add regression for malformed/stale/cancelled events and no-side-effect bypass.
 - [ ] Run focused tests, runtime typecheck and exact-head CI.
