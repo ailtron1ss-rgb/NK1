@@ -141,6 +141,11 @@ for (let i = 0; i < 96; i++) {
 }
 const boundedReplay = replayBudgetLearning.replayPending(replayBudgetTraces, replayBudgetPolicy);
 assert.equal(boundedReplay, 64, 'large replay queues must respect the per-consolidation budget');
-assert.equal(replayBudgetLearning.snapshot().replayUpdates.length, 64);
+const replayUpdateRecords = replayBudgetLearning.snapshot().replayUpdates;
+assert.equal(replayUpdateRecords.length, 64);
+const replayedTicks = replayUpdateRecords.map(update => Number(update.traceId.replace('trace-', ''))).sort((a,b)=>a-b);
+assert.equal(replayedTicks.filter(tick => tick >= 564).length, 32, 'half of a large replay batch must be reserved for the most recent experiences');
+assert.ok(replayedTicks.some(tick => tick <= 531), 'the long-term replay quota must retain older evidence rather than only replaying recent traces');
+assert.equal(new Set(replayedTicks).size, 64, 'multi-timescale replay must not select duplicate experiences');
 
 console.log(`P23_TRUE_LEARNING=PASS replay=${firstReplay} promoted=${learning.topSkills().length} checksumFailures=${learning.snapshot().metrics.checksumFailures}`);
