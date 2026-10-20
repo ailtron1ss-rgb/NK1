@@ -909,3 +909,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Ambiguous speech is retained as unresolved evidence and does not increase embodiment failure streak/cooldown or produce false negative skill/reliability credit.
 - Added fake-process tests and gateway-boundary/recovery tests. Runtime typecheck and the new tests pass; archived receipt recovery suites also pass when run individually. A long nested aggregate command timed out at the execution wrapper and is not recorded as a single PASS.
 - Synchronized root integration manifest and runtime release owners at 35.88.0 / schema 225. App dependency installation remains blocked by npm registry DNS; live Android/audio and browser/Live2D E2E remain open. Memory retrieval candidate remains unpromoted at recallDelta=0; roadmap score stays 80.1%.
+
+## WorkPass 81 — external causal-event persistence regression (2026-10-20)
+
+- Corrected the causal-stream regression contract after WorkPass80 extended the learning packet to include accepted external events: the fixture now expects both the runtime outcome and the external event, and checks their stable trace identities.
+- Added an explicit restart assertion: replaying the same external trace ID after snapshot/restore is rejected, even if the attempted duplicate carries stronger reward/success values.
+- This is a test-contract correction and persistence regression, not a claim of improved model performance. WorkPass80 CI had passed runtime typecheck and preceding learning checks but failed at this stale one-record assertion; the WorkPass81 rerun must confirm the fix.
