@@ -29,8 +29,8 @@ const matrix = buildContinualOutcomeMatrix(ledger, [
 ], {split:'holdout', preTrainingMethod:'pretrain', referenceScore:0.25});
 assert.equal(matrix.taskCount,2);
 assert.equal(matrix.seedCount,4);
-assert.equal(matrix.evidence.outcomeCount,16);
-assert.equal(matrix.evidence.authorityCounts['independent-verifier'],16);
+assert.equal(matrix.evidence.outcomeCount,24);
+assert.equal(matrix.evidence.authorityCounts['independent-verifier'],24);
 assert.deepEqual(matrix.evidence.seedIds,[11,22,33,44]);
 assert.deepEqual(matrix.tasks.map(t=>t.taskId),['a','b']);
 assert.ok(matrix.metrics.averageForwardTransfer !== null);
