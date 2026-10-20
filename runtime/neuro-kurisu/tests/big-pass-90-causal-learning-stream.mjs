@@ -77,4 +77,6 @@ assert.ok(replayBatch[0].replayPriority01>=replayBatch[replayBatch.length-1].rep
 const consolidated=restored.consolidate(8,1200);
 assert.equal(consolidated.length,1);
 assert.equal(restored.summary().consolidated,1);
+assert.ok(consolidated.every(row=>row.stateGrounded),'consolidation must only accept state-grounded experiences');
+assert.equal(consolidated.some(row=>row.traceId==='external-trace-once'),false,'high-surprise but ungrounded external feedback must not become consolidated learning');
 console.log('BIG_PASS_90_CAUSAL_STREAM=PASS');

@@ -1,3 +1,8 @@
+## WorkPass86 — prevent ungrounded feedback from entering consolidated experience (2026-10-20)
+- Tightened causal experience consolidation to consider only state-grounded records. External feedback can still be recorded for provenance and diagnostics, but unsupported events cannot become consolidated learning merely because their surprise or reward signal is large.
+- Added explicit regression assertions that a high-signal ungrounded external event is excluded while grounded causal experience remains consolidatable.
+- This is an evidence-quality gate; it does not claim that grounded records are automatically true or independently verified.
+
 ## WorkPass85 — diversity-aware causal experience replay (2026-10-20)
 - Replaced strict top-score truncation with greedy marginal-value selection that discounts repeated task/context selections while preserving each record's raw replay priority.
 - Replay batches now balance high-signal causal experiences with coverage across tasks and state contexts, reducing the risk that repeated near-duplicate episodes crowd out useful transfer examples.

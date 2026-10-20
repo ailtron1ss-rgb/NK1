@@ -212,7 +212,7 @@ export class CausalExperienceStream {
     return {records:rows,learningOpportunity01:clamp01(mean(r=>r.causalStrength01*.6+r.surprise01*.2+r.predictionError01*.2)),meanReward01:clamp01(mean(r=>r.reward01)),meanSurprise01:clamp01(mean(r=>r.surprise01)),meanCausalStrength01:clamp01(mean(r=>r.causalStrength01))};
   }
   consolidate(limit=32,at=Date.now()){
-    const rows=this.state.records.filter(r=>!r.consolidated).sort((a,b)=>(b.causalStrength01+b.surprise01)-(a.causalStrength01+a.surprise01)).slice(0,Math.max(1,Math.min(128,Math.floor(limit))));
+    const rows=this.state.records.filter(r=>!r.consolidated&&r.stateGrounded).sort((a,b)=>(b.causalStrength01+b.surprise01)-(a.causalStrength01+a.surprise01)).slice(0,Math.max(1,Math.min(128,Math.floor(limit))));
     const eligible=rows.filter(r=>r.causalStrength01>=.44||r.surprise01>=.55||r.identityRelevance01>=.78);
     for(const r of eligible)r.consolidated=true;
     this.state.consolidated+=eligible.length; if(eligible.length)this.state.lastConsolidatedAt=at;
