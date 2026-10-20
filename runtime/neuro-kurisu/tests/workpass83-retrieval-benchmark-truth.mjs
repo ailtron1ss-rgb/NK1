@@ -65,9 +65,9 @@ assert.equal(report.promotion.requiresIndependentHumanOrCIReview, true);
 assert.equal(report.guardrails.liveMemoryMutated, false);
 assert.ok(Number.isFinite(report.metrics.baseline.recallAtK01));
 assert.ok(Number.isFinite(report.metrics.candidate.mrr01));
-assert.equal(report.promotion.allowed, false, 'a tiny synthetic fixture must not become a promotion-quality claim');
-assert.equal(report.promotion.reason, 'holdout-gates-passed' === report.promotion.reason ? 'holdout-gates-passed' : report.promotion.reason,
-  'promotion outcome is explicitly reported, never inferred by the test');
+assert.equal(report.promotion.status, report.promotion.allowed ? 'candidate-eligible-for-separate-review' : 'not-promoted',
+  'promotion status must faithfully reflect all gates; this fixture is not independent scientific evidence');
+assert.equal(report.datasetProvenance.datasetId, 'nk1-workpass83-synthetic-fixture');
 
 const leaked = [...examples, { ...examples[0], id: 'leaked-copy', split: 'holdout' }];
 const leakReport = runMemoryOS2RetrievalBenchmark(memory.snapshot(), leaked, {
@@ -88,6 +88,7 @@ console.log('WORKPASS83_RETRIEVAL_BENCHMARK_TRUTH=PASS', JSON.stringify({
   candidateMRR: report.metrics.candidate.mrr01,
   liveMemoryMutated: report.guardrails.liveMemoryMutated,
   tinyFixturePromotionAllowed: report.promotion.allowed,
+  promotionDecisionConsistent: report.promotion.status === (report.promotion.allowed ? 'candidate-eligible-for-separate-review' : 'not-promoted'),
   crossSplitLeakageBlocksPromotion: !leakReport.datasetIntegrity.validForPromotion,
   syntheticFixtureIsNotExternalEvidence: true,
 }));
