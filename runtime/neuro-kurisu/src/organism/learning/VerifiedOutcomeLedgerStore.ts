@@ -28,7 +28,7 @@ export function serializeVerifiedOutcomeLedger(ledger: VerifiedOutcomeLedger): s
     payload,
     sha256: digest(payload),
   };
-  return JSON.stringify(envelope, null, 2) + '\\n';
+  return JSON.stringify(envelope, null, 2) + '\n';
 }
 
 /** Restore only after envelope integrity and every accepted outcome are revalidated. */
