@@ -9,7 +9,7 @@ const manifest = [
 ];
 const ledger = new VerifiedOutcomeLedger(manifest);
 const outcome = (overrides={}) => ({
-  taskId:'task-b', taskVersion:'1', method:'baseline', seed:7, attempt:1,
+  taskId:'task-b', taskVersion:'1', method:'baseline', seed:99, attempt:1,
   passed:true, authority:'independent-verifier', verifierId:'verify-v1',
   evidenceRef:'artifact://trial-1', observedAt:1000, ...overrides,
 });
