@@ -1,0 +1,58 @@
+import assert from 'node:assert/strict';
+import { P26TrueLearningEngine } from '../src/organism/learning/P26TrueLearningEngine.ts';
+
+const actions=['respond','explore','verify','rest','reflect','wait','defer'];
+const mkState=(energy,novelty,uncertainty=.3)=>({
+  version:29,tick:1,at:0,
+  needs:{energy,cognitiveLoad:.25,uncertainty,socialNeed:.2,novelty,identityCoherence:.8,goalPressure:.35},
+  predictionError:.15,attentionBudget:.8,lastAction:'none',lastActionSuccess:null,autonomyScore:.5,
+  selfPredictionError:.1,predictedNextAction:'none',lastPredictionConfidence:.5,worldContextVersion:1,
+});
+const targetA=(s,a)=>s.needs.energy<.5?(a==='rest'?.92:.08):(a==='respond'?.92:.08);
+const targetB=(s,a)=>s.needs.energy<.5?(a==='respond'?.92:.08):(a==='rest'?.92:.08);
+const rows=(phase,n=180)=>Array.from({length:n},(_,i)=>{
+  const energy=.2+((i*37+phase*13)%61)/100;
+  const novelty=((i*19+phase*7)%100)/100;
+  const state=mkState(energy,novelty);
+  const action=phase===0?(energy<.5?'rest':'respond'):(energy<.5?'respond':'rest');
+  return {state,action,reward:phase===0?targetA(state,action):targetB(state,action),nextState:mkState(Math.min(.99,energy+.03),novelty),surprise:.35+((i*11)%50)/100};
+});
+const evalTask=(engine,phase,n=160)=>{
+  let correct=0;
+  for(let i=0;i<n;i++){
+    const energy=.22+((i*23+phase*5)%57)/100;
+    const state=mkState(energy,((i*17)%100)/100);
+    const expected=phase===0?(energy<.5?'rest':'respond'):(energy<.5?'respond':'rest');
+    const predicted=engine.predict(state).slice().sort((a,b)=>b.value-a.value)[0]?.action;
+    if(predicted===expected)correct++;
+  }
+  return correct/n;
+};
+function train(engine,data,phase){
+  for(const row of data) for(const action of actions){
+    engine.learner.train({state:row.state,action,target01:phase===0?targetA(row.state,action):targetB(row.state,action),learningRate01:.10});
+  }
+}
+const makeRun=(withReplay)=>{
+  const engine=new P26TrueLearningEngine();
+  const taskA=rows(0);
+  train(engine,taskA,0);
+  const taskABefore=evalTask(engine,0);
+  const taskB=rows(1);
+  train(engine,taskB,1);
+  const taskAAfterInterference=evalTask(engine,0);
+  let replayUpdates=0;
+  if(withReplay) replayUpdates=engine.replay(taskA,{}).updates;
+  const taskAAfterReplay=evalTask(engine,0);
+  const taskBFinal=evalTask(engine,1);
+  return {taskABefore,taskAAfterInterference,taskAAfterReplay,taskBFinal,replayUpdates,trainingExposure01:engine.metrics().trainingExposure01,generalizationEvidence01:engine.metrics().generalizationEvidence01};
+};
+const onlineOnly=makeRun(false);
+const replay=makeRun(true);
+for(const [name,result] of Object.entries({onlineOnly,replay})){
+  for(const metric of ['taskABefore','taskAAfterInterference','taskAAfterReplay','taskBFinal'])assert(Number.isFinite(result[metric])&&result[metric]>=0&&result[metric]<=1,name+'.'+metric+' out of range');
+}
+assert.equal(onlineOnly.replayUpdates,0);
+assert.ok(replay.replayUpdates>0);
+assert.equal(replay.generalizationEvidence01,0,'synthetic task evaluation is not verifier-certified generalization evidence');
+console.log('P26_SEQUENTIAL_LEARNING_BENCHMARK=PASS',JSON.stringify({onlineOnly,replay,interpretation:'synthetic diagnostic only; not a production or external-task result'}));
