@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createLearningExperimentPlan, validateLearningExperimentPlan } from '../src/organism/learning/LearningExperimentPlan.ts';
+import { createLearningExperimentPlan, recordPlannedLearningOutcome, validateLearningExperimentPlan } from '../src/organism/learning/LearningExperimentPlan.ts';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 
 const manifest = [
@@ -28,3 +28,26 @@ assert.throws(() => createLearningExperimentPlan(manifest, { ...options, priorMe
 const leaked = [...manifest, { ...manifest[0], taskId: 'leaked', split: 'train' }];
 assert.throws(() => createLearningExperimentPlan(leaked, options), /cross-split prompt leakage/);
 console.log('P23_LEARNING_EXPERIMENT_PLAN=PASS');
+
+const ledger = new VerifiedOutcomeLedger(manifest);
+const scheduled = plan.runs.find(run => run.taskId === 'm-1' && run.seed === 3 && run.arm === 'P');
+const recorded = recordPlannedLearningOutcome(ledger, plan, scheduled.runId, {
+  attempt: 1, passed: true, authority: 'independent-verifier',
+  evidenceRef: 'artifact://experiment/receipt-001', observedAt: 1_800_000_000_000,
+});
+assert.equal(recorded.accepted, true);
+assert.equal(ledger.snapshot().outcomes[0].method, 'prior-v1');
+assert.equal(ledger.snapshot().outcomes[0].seed, 3);
+assert.throws(() => recordPlannedLearningOutcome(ledger, plan, scheduled.runId, {
+  attempt: 1, passed: true, authority: 'independent-verifier',
+  evidenceRef: 'artifact://experiment/receipt-duplicate', observedAt: 1_800_000_000_001,
+}), /already has an outcome/);
+const otherLedger = new VerifiedOutcomeLedger(manifest.map(task => task.taskId === 'm-1' ? { ...task, version: '2' } : task));
+assert.throws(() => recordPlannedLearningOutcome(otherLedger, plan, scheduled.runId, {
+  attempt: 1, passed: true, authority: 'independent-verifier',
+  evidenceRef: 'artifact://experiment/wrong-manifest', observedAt: 1_800_000_000_000,
+}), /manifest fingerprint mismatch|different ledger manifest/);
+assert.throws(() => recordPlannedLearningOutcome(new VerifiedOutcomeLedger(manifest), plan, scheduled.runId, {
+  taskId: 't-1', attempt: 1, passed: true, authority: 'independent-verifier',
+  evidenceRef: 'artifact://experiment/wrong-task', observedAt: 1_800_000_000_000,
+}), /metadata does not match scheduled run/);
