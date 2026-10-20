@@ -95,3 +95,5 @@ jobs:
           node --experimental-strip-types tests/memory-cognition-retrieval-workpass34.mjs
           node --experimental-strip-types tests/p2693-delayed-policy-credit.mjs
           node --experimental-strip-types tests/p2695-organism-policy-decision-flow.mjs
+          node --experimental-strip-types tests/big-pass-90-causal-learning-stream.mjs
+          node --experimental-strip-types tests/big-pass-229-233-open-ended-personhood.mjs

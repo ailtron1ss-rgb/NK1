@@ -1,3 +1,7 @@
+## WorkPass77 — make learning regressions mandatory in CI (2026-10-20)
+- Added the causal-stream exactly-once regression and open-ended skill-mastery integration suite to the canonical WorkPass71 validation workflow.
+- This ensures the new outcome-deduplication and verified-mastery paths are executed on every relevant source change rather than remaining discoverable but unrun tests.
+
 ## WorkPass76 — bounded causal outcome idempotency (2026-10-20)
 - Added a persisted, bounded causal-outcome trace-ID registry so a repeated decision cannot receive a second causal-learning update after its record has aged out of the recent replay window.
 - Restores merge legacy recent records with the dedupe registry, preserve backward compatibility, and cap retained trace IDs at 4,096.
