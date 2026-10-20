@@ -10,11 +10,11 @@ Command from `runtime/neuro-kurisu`:
 
 `npm run test:workpass95:receipt-integrity`
 
-The test exercises three corrupted snapshots (forged execution identity, verification contradiction, audit/outcome mismatch), confirms no duplicate executor call, and confirms valid receipts still replay.
+The test exercises four corrupted snapshots (forged execution identity, verification contradiction, audit/outcome mismatch, oversized payload), confirms no duplicate executor call, and confirms valid receipts still replay.
 
 Expected output:
 
-`NK1_RESTORED_ACTION_RECEIPT_INTEGRITY=PASS corruptCases=3 validReplay=true duplicateExecution=false`
+`NK1_RESTORED_ACTION_RECEIPT_INTEGRITY=PASS corruptCases=4 validReplay=true duplicateExecution=false`
 
 ## Evidence boundary
 This guards restored local receipt integrity. It does not prove every production planner path is routed through the canonical gateway; the direct planner-to-gateway bypass audit remains open. Exact-head GitHub Actions must pass before this checkpoint is marked CI-validated.
