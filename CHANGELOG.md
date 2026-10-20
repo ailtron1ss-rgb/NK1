@@ -3,6 +3,7 @@
 - Added family-level checkpoint summaries to `ContinualOutcomeMatrix.ts`: pooled verified pass counts/rates per stage plus family-level forgetting and backward transfer.
 - This makes aggregate regressions harder to hide: a replay strategy that improves memory tasks but harms transfer tasks can now be inspected by family instead of relying only on the overall mean.
 - Added a regression that checks family-specific final pass rates and forgetting. Pooled counts are reported without a misleading pooled confidence interval because task outcomes may not be independent.
+- CI caught two integration issues: the missing-cell fixture needed a full two-stage sequence after the new cardinality guard, and the new workflow still used deprecated Node 20-based Actions v4. Both were corrected; rerun exact-head CI before marking this pass fully validated.
 - Still measurement infrastructure only: no live learner was run, no replay policy was promoted, and the overall learning score is unchanged.
 
 ## WorkPass112 — matched-seed evidence matrix and uncertainty reporting (2026-10-20)
