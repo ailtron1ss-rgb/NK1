@@ -2,8 +2,8 @@
 
 - Added `ResetRetentionEvaluation.ts` to compare independently verified task outcomes across stateless prior `P`, uninterrupted ceiling `C`, and reset-survival `R(k)` arms on the same manifest/task/seed.
 - Computes normalized retention `(R-P)/(C-P)`, excludes saturated/unlearnable tasks where `C-P` is too small, stratifies by task family, and derives uncertainty from seed-level aggregates rather than treating task cells as independent samples.
-- Requires independent-verifier evidence references, score bounds, stable task-family identity, unique observations and complete matched arms. The module evaluates supplied outcomes; it does not itself kill/restart the process, and its deterministic fixture is not evidence of real NK1 retention or skill abstraction.
-- Added a regression and wired it into the continual-learning workflow for PR and branch pushes. Await exact-head CI before calling this pass validated.
+- Requires independent-verifier evidence references, score bounds, stable task-family identity, unique observations and complete matched arms. Added an adapter from the canonical `VerifiedOutcomeLedger`, binding the evaluation to its full manifest fingerprint and selecting only the requested split; duplicate attempts require an explicit selection policy rather than silent latest-wins behavior.
+- Added direct-fixture and ledger-adapter regressions and wired them into the continual-learning workflow for PR and branch pushes. The module evaluates supplied outcomes; it does not itself kill/restart the process, and deterministic fixtures are not evidence of real NK1 retention or skill abstraction. Await exact-head CI before calling this pass validated.
 
 ## WorkPass114 — paired continual-learning uncertainty without pseudo-replication (2026-10-20)
 
