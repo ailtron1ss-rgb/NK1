@@ -27,6 +27,9 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
+      - name: Verify signed verifier outcome artifacts and reject tampering
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-signed-outcome-artifact.mjs
       - name: Audit runtime npm script targets and local test files
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass84:script-integrity
