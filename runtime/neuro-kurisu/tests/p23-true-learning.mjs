@@ -26,6 +26,25 @@ assert.ok(learning.skillBias(stateBefore({uncertainty:.72}), 'verify') > 0, 'pro
 const nearbyTransfer=learning.skillBias(stateBefore({uncertainty:.42}), 'verify');
 assert.ok(nearbyTransfer>0&&nearbyTransfer<learning.skillBias(stateBefore({uncertainty:.72}), 'verify'), 'a validated skill should transfer weakly to a one-bucket-neighbor context');
 assert.equal(learning.skillBias(stateBefore({energy:.2,uncertainty:.42,novelty:.95,goalPressure:.9,socialNeed:.85}), 'verify'), 0, 'skills must not transfer across dissimilar contexts');
+
+// Failed skills should weakly discourage the same action in a tightly neighboring
+// context, but must not leak into unrelated states.
+const negativeLearning = new P23LearningEngine();
+const negativePolicy = new AdaptivePolicyEngine();
+for (let i = 0; i < 12; i++) {
+  const trace = makeTrace(200 + i, 'verify', .12, { uncertainty:.72 });
+  negativeLearning.recordExperience(
+    trace,
+    { ...trace.stateBefore, tick:trace.tick + 1, needs:{ ...trace.stateBefore.needs, uncertainty:.38 } },
+    { success:.12, reward:.12, surprise:.53 },
+    negativePolicy,
+  );
+}
+assert.ok(negativeLearning.topSkills().length === 0);
+assert.ok(negativeLearning.skillBias(stateBefore({ uncertainty:.72 }), 'verify') < 0, 'rejected local skills should carry a negative exact-context bias');
+const negativeNeighbor = negativeLearning.skillBias(stateBefore({ uncertainty:.42 }), 'verify');
+assert.ok(negativeNeighbor < 0 && negativeNeighbor > -.01, 'rejected skills should transfer only a very small negative bias to a nearby context');
+assert.equal(negativeLearning.skillBias(stateBefore({ energy:.2, uncertainty:.42, novelty:.95, goalPressure:.9, socialNeed:.85 }), 'verify'), 0, 'negative skill evidence must not transfer to distant contexts');
 assert.equal(learning.snapshot().shadow.length,12);
 assert.equal(learning.snapshot().ablations.length,12);
 const summary=learning.learningSummary();
