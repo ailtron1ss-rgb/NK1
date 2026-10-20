@@ -193,6 +193,35 @@ function classifyVerifiedExecution(toolOk:boolean, verification:OutcomeVerificat
   const outcomeClass:ActionOutcomeClass=!toolOk?'execution-failed':contradicted?'executed-contradicted':verified?'executed-verified':'executed-unverified';
   return {ok,verified,outcomeClass,contradicted};
 }
+const RESTORED_OUTCOME_CLASSES: ReadonlySet<string> = new Set<ActionOutcomeClass>([
+  'unavailable','competence-insufficient','gate-check-failed','policy-refused','execution-failed',
+  'executed-unverified','executed-verified','executed-contradicted','idempotency-conflict',
+  'idempotency-recovery-required','idempotency-storage-failed','idempotency-ledger-full',
+  'failed-no-effect','executed-partial','reconciled-not-executed','idempotency-key-required',
+  'approval-required','approval-invalid','approval-storage-failed',
+]);
+
+/**
+ * A persisted receipt is replayed as authority, so its internal identity and
+ * verification fields must agree with the enclosing ledger row. Corrupt or
+ * hand-edited snapshots must never manufacture a successful replay.
+ */
+function isSafeRestoredToolExecution(value: unknown, entry: ActionExecutionLedgerEntry): value is ToolExecution {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const response = value as Partial<ToolExecution>;
+  if (typeof response.ok !== 'boolean' || typeof response.verified !== 'boolean') return false;
+  if (!entry.executionId || !entry.toolId || response.executionId !== entry.executionId || response.tool !== entry.toolId) return false;
+  if (typeof response.capability !== 'string' || !response.result || typeof response.result !== 'object' || Array.isArray(response.result)) return false;
+  if (typeof response.outcomeClass !== 'string' || !RESTORED_OUTCOME_CLASSES.has(response.outcomeClass)) return false;
+  if (!response.verification || typeof response.verification !== 'object'
+    || response.verification.verified !== response.verified) return false;
+  if (!response.audit || typeof response.audit !== 'object'
+    || response.audit.outcomeClass !== response.outcomeClass
+    || response.audit.accepted !== response.ok
+    || response.audit.verified !== response.verified) return false;
+  return true;
+}
+
 const defaultActionToolPermissions=():ActionToolPermissionSnapshot=>({version:1,requests:[],created:0,approved:0,declined:0,consumed:0,expired:0,lastChangeAt:0});
 const DIRECT_PERMISSION_ACTIONS = new Set(['http.voice.speak','http.voice.listen','http.voice.turn','http.voice.speak-reply']);
 function inferPermissionClass(id:string, capability=''):ActionToolPermissionClass|null {
@@ -477,9 +506,13 @@ export class ActionGateway {
         ...(typeof row.toolId==='string'&&row.toolId.length<=64?{toolId:row.toolId}:{}),
         ...(typeof row.decisionId==='string'&&row.decisionId.length<=180?{decisionId:row.decisionId}:{}),
         ...(typeof row.autonomous==='boolean'?{autonomous:row.autonomous}:{})};
-      if(row.status==='completed' && row.response && typeof row.response==='object') {
+      if(row.status==='completed' && row.response && isSafeRestoredToolExecution(row.response, safe)) {
         try { safe.response=structuredClone(row.response); } catch { safe.responseOmitted=true; }
-      } else if(row.status==='completed') safe.responseOmitted=true;
+      } else if(row.status==='completed') {
+        // Preserve the key as a tombstone, but never trust a malformed response
+        // as a success. Replays return recovery-required without re-running effects.
+        safe.responseOmitted=true;
+      }
       const prior=restored.get(safe.keyHash);
       if(prior && (prior.requestHash!==safe.requestHash || stableJson(prior)!==stableJson(safe))) throw new Error('action-ledger-snapshot-key-conflict');
       restored.set(safe.keyHash,safe);
