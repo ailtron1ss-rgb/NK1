@@ -1,4 +1,4 @@
-import { createHash, verify as verifySignature } from 'node:crypto';
+import { createHash, sign as signSignature, verify as verifySignature } from 'node:crypto';
 import type { TaskManifestEntry, VerifiedTaskOutcome } from './VerifiedOutcomeLedger.ts';
 import { VerifiedOutcomeLedger } from './VerifiedOutcomeLedger.ts';
 
@@ -111,13 +111,5 @@ export function signOutcomePayloadForFixture(
   payload: SignedOutcomePayload,
   privateKeyPem: string,
 ): SignedOutcomeArtifact {
-  const { sign } = requireCryptoSign();
-  return { payload, signature: sign(null, Buffer.from(canonicalOutcomePayload(payload)), privateKeyPem).toString('base64') };
+  return { payload, signature: signSignature(null, Buffer.from(canonicalOutcomePayload(payload)), privateKeyPem).toString('base64') };
 }
-
-function requireCryptoSign(): typeof import('node:crypto') {
-  // Static import would also be fine; this indirection keeps the verification API obvious.
-  return cryptoModule;
-}
-
-import * as cryptoModule from 'node:crypto';
