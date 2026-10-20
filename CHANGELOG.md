@@ -1,3 +1,9 @@
+## NK1 v2.0 rebuild — action finalizer boundary regression (2026-10-20)
+
+- [GUARDED] Added a runtime regression for the canonical ActionGateway finalizer: a fresh keyed execution finalizes once before the completed receipt is returned, replay does not repeat finalization, and finalization failure leaves an unresolved receipt that blocks automatic re-execution.
+- Wired test:workpass96:finalizer-boundary into the rebuild cognitive regression workflow.
+- The planner audit remains open: this proves gateway receipt/finalizer behavior, not that every live planner entry point is routed correctly.
+
 ## NK1 v2.0 rebuild — restored action receipt integrity (2026-10-20)
 
 - [FIXED] `ActionGateway.restoreExecutionLedger` no longer trusts arbitrary completed response objects from persisted snapshots. Response identity, known outcome class, bounded serialized size (48 KiB), structured result, and agreement across outcome/audit/verification fields are validated before replay.
