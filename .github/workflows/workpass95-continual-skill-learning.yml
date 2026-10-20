@@ -8,7 +8,10 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/AdaptivePolicyEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
       - 'runtime/neuro-kurisu/tests/p23-true-learning.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-integration.mjs'
       - 'runtime/neuro-kurisu/tests/p26-true-learning.mjs'
       - '.github/workflows/workpass95-continual-skill-learning.yml'
 
@@ -24,6 +27,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Validate skill learning and cross-context transfer boundaries
         run: npm --prefix runtime/neuro-kurisu run test:p23:learning
+      - name: Validate core skill-learning persistence and restart recovery
+        run: npm --prefix runtime/neuro-kurisu run test:p23:integration
       - name: Validate parametric learning generalization and finite-state guards
         run: npm --prefix runtime/neuro-kurisu run test:p26:true-learning
       - name: Validate continual transfer calibration
