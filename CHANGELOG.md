@@ -1,3 +1,9 @@
+## WorkPass84 — preserve canonical trace identity after record eviction (2026-10-20)
+- Fixed a mismatch where runtime outcomes checked the normalized trace ID but inserted the raw ID into the persistent deduplication registry.
+- The registry now stores the same canonical ID used by duplicate checks, so whitespace/Unicode-normalized IDs remain idempotent even after their causal records leave the bounded replay window.
+- Added a regression that records a padded ID, evicts its record, and verifies that the canonical ID cannot earn a second causal credit.
+- This closes a concrete exactly-once integrity gap; it does not claim unbounded deduplication beyond the configured retained-ID registry.
+
 ## WorkPass80 — idempotent external causal-learning events (2026-10-20)
 - Extended the persisted causal trace-ID deduplication boundary to externally supplied replay and skill-repair events, not just ordinary decision outcomes.
 - Duplicate stable trace IDs now return no new causal record; the three OrganismCore consumers suppress downstream UnifiedLearning credit when no new record was accepted.
