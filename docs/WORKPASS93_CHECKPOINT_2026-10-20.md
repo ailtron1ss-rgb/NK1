@@ -63,7 +63,7 @@ Percentages measure engineering workstream/evidence closure, not consciousness o
 | Real browser / voice / TTS / Live2D E2E | UNRESOLVED | 15% | Real integration and interruption/reconnect tests still needed |
 | Live model, target-device, soak and release gates | UNRESOLVED | 10% | Dell G3 live-model run, recovery/soak, clean install/rollback, SBOM/licensing and release checks remain open |
 
-**WorkPass93 execution:** 70% at checkpoint creation — code and regression guard implemented; durable report is being written; exact-head CI and documentation synchronization remain. Update only against completed, linked evidence.
+**WorkPass93 execution:** 85% at this update — code and executable regression guard implemented; checkpoint saved; README, charter, agent rules and changelog synchronized; PR description updated. Exact-head CI is still in progress and is the remaining validation gate for this pass. Update only against completed, linked evidence.
 
 **Overall functional completion:** not responsibly reducible to one proven percentage yet. These are explicit triage estimates, not benchmark scores. Green CI is not evidence of human-level intelligence, consciousness, live-device performance or learning transfer.
 
