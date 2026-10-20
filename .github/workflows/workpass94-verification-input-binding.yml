@@ -1,0 +1,22 @@
+name: WorkPass94 verification input binding
+
+on:
+  push:
+    branches: [workpass79-cognitive-rebuild]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts'
+      - 'runtime/neuro-kurisu/tests/workpass94-verification-input-binding.mjs'
+      - '.github/workflows/workpass94-verification-input-binding.yml'
+
+jobs:
+  verification-input-binding:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+      - name: Reject partial or altered evidence-input bindings
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/workpass94-verification-input-binding.mjs
