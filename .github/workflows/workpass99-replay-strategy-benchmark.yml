@@ -4,6 +4,9 @@ on:
   push:
     branches: [workpass79-cognitive-rebuild]
     paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/ReplaySelectionPolicy.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/tests/p23-replay-selection-policy.mjs'
       - 'runtime/neuro-kurisu/tests/p23-replay-strategy-benchmark.mjs'
       - '.github/workflows/workpass99-replay-strategy-benchmark.yml'
   pull_request:
@@ -25,4 +28,6 @@ jobs:
           node-version: 24
           package-manager-cache: false
       - name: Compare replay selection strategies
-        run: node runtime/neuro-kurisu/tests/p23-replay-strategy-benchmark.mjs
+        run: |
+          node --experimental-strip-types runtime/neuro-kurisu/tests/p23-replay-selection-policy.mjs
+          node --experimental-strip-types runtime/neuro-kurisu/tests/p23-replay-strategy-benchmark.mjs
