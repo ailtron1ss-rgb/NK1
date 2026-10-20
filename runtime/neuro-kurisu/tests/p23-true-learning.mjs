@@ -96,4 +96,25 @@ const verifyTrace = makeTrace(99,'verify',.98,{uncertainty:.72});
 learning.recordExperience(verifyTrace,{...verifyTrace.stateBefore,tick:100,needs:{...verifyTrace.stateBefore.needs,uncertainty:.25}}, {success:.98,reward:.98,surprise:.02},policy);
 assert.ok(learning.snapshot().metrics.evidenceDebtOpen <= debtBefore);
 assert.ok(learning.snapshot().evidenceDebt.some(x=>x.priority01 < 0.45) || learning.snapshot().metrics.evidenceDebtOpen===0);
+// Large consolidation queues are bounded and stratified rather than dominated
+// by repeated examples from one easy context.
+const replayBudgetLearning = new P23LearningEngine();
+const replayBudgetPolicy = new AdaptivePolicyEngine();
+const replayBudgetTraces = [];
+const levels = [.05, .35, .65, .95];
+const actionSet = ['respond','explore','verify','rest','reflect','wait','defer'];
+for (let i = 0; i < 96; i++) {
+  const needs = {
+    energy:levels[i%4], cognitiveLoad:levels[Math.floor(i/4)%4],
+    uncertainty:levels[Math.floor(i/16)%4], novelty:levels[Math.floor(i/8)%4],
+    goalPressure:levels[Math.floor(i/32)%3], socialNeed:levels[(i*3)%4],
+  };
+  const trace = makeTrace(500 + i, actionSet[i%actionSet.length], (i%5)/5, needs);
+  replayBudgetTraces.push(trace);
+  replayBudgetLearning.recordExperience(trace, trace.stateBefore, {success:trace.outcome.success,reward:trace.outcome.reward,surprise:trace.outcome.surprise}, replayBudgetPolicy);
+}
+const boundedReplay = replayBudgetLearning.replayPending(replayBudgetTraces, replayBudgetPolicy);
+assert.equal(boundedReplay, 64, 'large replay queues must respect the per-consolidation budget');
+assert.equal(replayBudgetLearning.snapshot().replayUpdates.length, 64);
+
 console.log(`P23_TRUE_LEARNING=PASS replay=${firstReplay} promoted=${learning.topSkills().length} checksumFailures=${learning.snapshot().metrics.checksumFailures}`);
