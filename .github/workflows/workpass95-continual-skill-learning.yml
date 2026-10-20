@@ -35,6 +35,8 @@ jobs:
           node --version
           npm --version
           node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
+      - name: Audit GitHub Actions runtime compatibility
+        run: npm --prefix runtime/neuro-kurisu run audit:actions-runtime
       - name: Audit cognitive subsystem ownership
         run: npm --prefix runtime/neuro-kurisu run audit:core-ownership
       - name: Runtime smoke integration
