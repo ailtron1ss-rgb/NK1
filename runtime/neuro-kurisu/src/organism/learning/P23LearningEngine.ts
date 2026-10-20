@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { ActionKind, IntentCandidate, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
 import type { AdaptivePolicyEngine, AdaptivePolicyState } from './AdaptivePolicyEngine.ts';
 import { selectReplayBatch, type ReplaySelectionOptions } from './ReplaySelectionPolicy.ts';
+import { adaptiveReplayLearningRate, adaptiveReplayOptions, bellmanTarget, scoreReplayPriority } from './MultiSourceLearningMechanisms.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp = (x:number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
@@ -267,22 +268,33 @@ export class P23LearningEngine {
     const eligible=traces.filter(trace=>trace.selected && trace.outcome && !this.state.replayedTraceIds.includes(trace.id) && this.state.experiences.some(x=>x.traceId===trace.id));
     // Selection is shared with the standalone benchmark so production and evaluation
     // exercise the same policy. Recent quota is configurable at the selector boundary.
-    const ordered=selectReplayBatch(eligible.map(trace=>({
-      trace,
-      id:trace.id,
-      tick:trace.tick,
-      contextKey:contextKey(trace.stateBefore),
-      action:trace.selected!.action,
-      surprise:trace.outcome?.surprise ?? 0,
-    })),this.replaySelectionOptions).map(item=>item.trace);
+    const newestTick=eligible.reduce((latest,trace)=>Math.max(latest,trace.tick),0);
+    const frequencies=new Map<string,number>();
+    for(const trace of eligible){
+      const key=`${contextKey(trace.stateBefore)}|${trace.selected!.action}`;
+      frequencies.set(key,(frequencies.get(key)??0)+1);
+    }
+    const ranked=eligible.map(trace=>{
+      const exp=this.state.experiences.find(x=>x.traceId===trace.id)!;
+      const key=`${exp.contextKey}|${exp.action}`;
+      const priority=scoreReplayPriority(exp,newestTick,frequencies.get(key)??1);
+      return {trace,id:trace.id,tick:trace.tick,contextKey:exp.contextKey,action:exp.action,surprise:priority.priority01};
+    });
+    const metrics=this.state.metrics;
+    const options=adaptiveReplayOptions(this.replaySelectionOptions,{
+      predictionError01:metrics.predictionError01,recentPredictionError01:metrics.recentPredictionError01,
+      replayTdError01:metrics.replayMeanAbsTdError01,evidenceDebt01:clamp(metrics.evidenceDebtOpen/16),
+      memoryPressure01:clamp(this.state.experiences.length/1024),energy01:1,
+    },ranked.length);
+    const ordered=selectReplayBatch(ranked,options).map(item=>item.trace);
     for (const trace of ordered) {
       const exp=this.state.experiences.find(x=>x.traceId===trace.id);
       if(!exp) continue;
       const before=policy.estimate(exp.contextKey,exp.action,.5);
       const nextValues=ACTIONS.map(a=>policy.estimate(exp.nextContextKey,a,.5).value);
-      const target=clamp(exp.reward + .76*Math.max(...nextValues,0));
+      const target=bellmanTarget(exp.reward,nextValues,.76);
       const tdError=target-before.value;
-      const lr=Math.min(.085,.035+exp.surprise*.05)/(1+Math.min(12,before.updates)*.08);
+      const lr=adaptiveReplayLearningRate({baseRate:.035,tdError:target-before.value,surprise01:exp.surprise,confidence01:exp.predictedConfidence,replayCount:before.updates});
       policy.update(exp.contextKey,exp.action,exp.reward,exp.nextContextKey,ACTIONS,lr,.76,exp.surprise);
       const after=policy.estimate(exp.contextKey,exp.action,.5);
       this.state.replayUpdates=[{
