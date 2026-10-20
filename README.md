@@ -1,10 +1,17 @@
-## Latest continuation checkpoint — WorkPass93 (2026-10-20)
+## Latest continuation checkpoint — WorkPass94 (2026-10-20)
 
 - Active work branch: `workpass79-cognitive-rebuild`; open draft PR: [#1](https://github.com/ailtron1ss-rgb/NK1/pull/1).
-- Durable resume contract: [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md) and [AGENTS.md](AGENTS.md).
-- Latest detailed state, evidence boundaries, progress dashboard and prioritized next tasks: [WorkPass93 checkpoint](docs/WORKPASS93_CHECKPOINT_2026-10-20.md).
-- WorkPass93 hardened the core-ownership audit exemption to require the exact field+constructor pair and added an executable regression guard. Exact-head CI remains to be verified; do not treat the prior WorkPass92 run as validation of this change.
-- Start each new session by refreshing the live branch head, PR state and latest Actions run. Continue from the checkpoint rather than repeating discovery.
+- Latest detailed state and next actions: [WorkPass94 checkpoint](docs/WORKPASS94_CHECKPOINT_2026-10-20.md).
+- WorkPass94 tightens `isTrustedExternalPostconditionVerification`: if an expected input is supplied, it must structurally match the **complete** action input; partial input, altered nested parameters and non-serializable values fail closed. Added a behavioral regression and a dedicated Node 22 workflow.
+- WorkPass94 exact-head CI is **pending/not yet observed**. Do not infer success from workflow-file presence or older green runs.
+- Start each session by refreshing live branch head, PR state and latest Actions run.
+
+## WorkPass94 — bind verification evidence to the complete action input
+
+- Fixed the partial-input matching weakness in `runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts` using the shared canonical serializer.
+- Added regression cases for exact structural match, deep clones, partial/mismatched inputs, copied verification tokens and malformed circular input.
+- Added [focused CI workflow](.github/workflows/workpass94-verification-input-binding.yml).
+- Evidence status: implementation and test wiring are present; the workflow result and the broader runtime typecheck/regression suite still need confirmation.
 
 ## WorkPass78 — master strategy, architecture map and 1,000-unit execution plan (2026-10-20)
 
