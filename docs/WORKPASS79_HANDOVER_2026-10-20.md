@@ -146,3 +146,10 @@ No external benchmark data or code has been copied into NK1. Verify licences and
 - `WORKPASS84_SCRIPT_INTEGRITY=PASS`: 1,655 scripts; 3,334 npm-run references checked; 1,286 static test-file references checked; zero missing script targets and zero missing test files.
 - Same run passed WorkPass80 memory residency, WorkPass83 benchmark truthfulness/leakage, WorkPass79 local provider policy and boundary, WorkPass82 end-to-end cancellation, and server HTTP smoke.
 - The research-note commits after this code HEAD do not change runtime logic; still verify the latest workflow run against current PR HEAD before treating the whole branch as green.
+
+
+## Latest exact-head verification
+
+- **PASS:** [GitHub Actions run 39374347662](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39374347662) completed successfully for the branch HEAD at the time of that run: `b440066e49eca7cf098cbbe99267962a9eb564d6`.
+- Passed steps: WorkPass84 script/test target integrity, WorkPass80 cold-memory residency, WorkPass83 benchmark truthfulness/leakage, WorkPass79 provider policy/boundary, WorkPass82 end-to-end cancellation, and server HTTP smoke.
+- The next commit changes the HEAD and therefore requires its own Actions confirmation; do not treat this historical receipt as proof for future commits.
