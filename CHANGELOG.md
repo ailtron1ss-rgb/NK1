@@ -1,3 +1,10 @@
+## NK1 v2.0 rebuild — global gateway bypass guard and CI dependency isolation (2026-10-20)
+
+- [HARDENED] The WorkPass97 regression now enforces a whole-file invariant: direct ActionGateway execute/reconcile calls inside OrganismCore are allowed only at the two canonical wrapper boundaries.
+- [FIXED] The CI approval step retains the two deterministic approval suites plus idempotency regression, but excludes the optional research bridge E2E test that requires PyTorch, which is not installed in the standard GitHub runner.
+- [EVIDENCE] The previous run confirmed WorkPass53 approval-boundary (22 scenarios) and research-bridge approval (8 scenarios) pass; the optional E2E failed at environment setup with ModuleNotFoundError: torch, not at approval authorization.
+- [FOLLOW-UP] The research E2E remains available for a dedicated ML-enabled runner or after its Python dependency contract is made reproducible.
+
 ## NK1 v2.0 rebuild — close the global gateway bypass regression and keep approval CI focused (2026-10-20)
 
 - [HARDENED] Expanded the WorkPass97 regression contract from named planner/project/skill paths to a whole-OrganismCore count invariant: direct gateway execute/reconcile calls must exist only inside their canonical wrappers.
