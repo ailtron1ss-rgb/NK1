@@ -33,6 +33,8 @@ export interface LanguageRequest {
   user: string;
   maxTokens?: number;
   temperature?: number;
+  /** Optional host cancellation signal for bounded inference. */
+  signal?: AbortSignal;
   contextLedger?: ContextBudgetLedgerReport;
 }
 
