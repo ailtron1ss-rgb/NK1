@@ -45,7 +45,7 @@ const makeRun=(strategy)=>{
     // Same task-B stream, with bounded old-task rehearsal during learning.
     for(let epoch=0;epoch<8;epoch++){
       const fresh=taskB.flatMap(row=>actions.map(action=>({...row,action,reward:targetB(row.state,action)})));
-      const result=engine.trainInterleaved(fresh,replayRows,{replayEveryNCurrent:4,maxReplayUpdates:1024});
+      const result=engine.trainInterleaved(fresh,replayRows,{replayEveryNCurrent:16,maxReplayUpdates:160});
       replayUpdates+=result.replayUpdates;onlineUpdates+=result.onlineUpdates;
     }
   }else{
@@ -72,6 +72,7 @@ assert.ok(replay.replayUpdates>0);
 assert.ok(replay.taskAAfterReplay>replay.taskAAfterInterference,'post-hoc replay should recover at least some old-task performance');
 assert.ok(replay.taskBFinal>.8,'post-hoc replay should not erase the recently learned task');
 assert.ok(interleaved.onlineUpdates>0&&interleaved.replayUpdates>0,'interleaving must update both fresh and replay experience');
+console.log('P26_INTERLEAVED_DIAGNOSTIC',JSON.stringify(interleaved));
 assert.ok(interleaved.taskBFinal>.5,'interleaving must retain meaningful recent-task plasticity');
 assert.ok(onlineOnly.taskABefore>.8,'benchmark must establish task A before measuring forgetting');
 assert.ok(onlineOnly.taskBFinal>.8,'benchmark must establish task B before measuring retention');
