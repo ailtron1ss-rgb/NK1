@@ -39,3 +39,8 @@
 - The existing P23 reward/validation model is not yet a substitute for an independent real-world task verifier. Future promotion should increasingly depend on trustworthy outcomes, held-out tasks, retention after delay, transfer to new contexts, efficiency/cost and rollback after regressions.
 - Still open: externally grounded outcome verification before promotion, balanced/prioritized replay for large queues, and benchmark suites using real environment/tool outcomes. Current holdout tasks are deterministic synthetic tests, not evidence of real-world task success.
 - Do not count a skill as a capability improvement merely because it was written, promoted or invoked. Require outcome improvement against a baseline and report uncertainty/sample counts.
+
+
+## WorkPass97 — retention refresh correctness and Node.js 24 CI (2026-10-20)
+
+A retention bookkeeping defect was found during the broader pass: the learned skill's `updatedAt` was not refreshed when new examples arrived but the validation score stayed within the previous 0.02 update threshold. That could cause a continuously reinforced skill to age out as if it had received no new evidence. Skill records now refresh on evidence-count or validation-window movement, with a regression covering nearly unchanged held-out performance. Repository workflows were migrated to current `actions/checkout@v7` and `actions/setup-node@v7`, with Node.js 24 as the test runtime and `.nvmrc`. The updated CI adds explicit runtime, cognitive ownership and runtime-smoke gates. This is a code-level retention correction and CI modernization; synthetic tests still do not establish external outcome truth or real-world agent learning quality.
