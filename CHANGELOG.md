@@ -1,3 +1,11 @@
+## WorkPass108 — collision-safe paired evaluation and manifest binding (2026-10-20)
+
+- Replaced delimiter-concatenated paired-outcome identity with JSON tuple encoding for `[taskId, seed, attempt]`, so unusual task identifiers cannot accidentally merge independent evaluation cells.
+- Added `VerifiedOutcomeLedger.manifestFingerprint()`: a stable SHA-256 digest over sorted, versioned task-manifest fields. It changes when task prompt fingerprints, versions, verifier IDs, family assignments or evaluation splits change, and is independent of manifest insertion order.
+- Added regressions for separator-bearing task IDs, exact paired sample count, manifest order stability and digest invalidation after task/version/verifier/split/prompt changes. Wired both tests into the full P23 verified-outcomes suite and the WorkPass108 workflow.
+- This digest provides a stable manifest binding token for future verifier-run artifacts. It is not a signature and does not authenticate who generated an artifact; trusted verifier execution, artifact retrieval and production learner integration remain open.
+- No replay defaults or automatic promotion changed. Scores remain unchanged until outcome-based benchmark runs demonstrate task success, retention and transfer.
+
 ## WorkPass105 — verifier-grounded outcome ledger (2026-10-20)
 
 - Added `VerifiedOutcomeLedger.ts`: versioned task manifests, normalized SHA-256 prompt fingerprints, cross-split duplicate-prompt leakage rejection, version/verifier/evidence provenance checks, self-report rejection, duplicate-attempt protection, and paired baseline/candidate comparisons.
