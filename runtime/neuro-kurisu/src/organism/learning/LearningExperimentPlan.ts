@@ -178,9 +178,6 @@ export function validateLearningExperimentPlan(
     throw new Error('plan summary counts do not match its manifest, seeds and arms');
   }
   const expectedManifest = new VerifiedOutcomeLedger(manifest).manifestFingerprint();
-    if (expectedManifest !== plan.manifestFingerprint) throw new Error('manifest fingerprint mismatch');
-  }
-  const expectedManifest = new VerifiedOutcomeLedger(manifest).manifestFingerprint();
   if (expectedManifest !== plan.manifestFingerprint) throw new Error('manifest fingerprint mismatch');
   if (!Array.isArray(plan.runs) || plan.runs.length !== plan.counts.runs) throw new Error('plan run count mismatch');
   const seen = new Set<string>();
