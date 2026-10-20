@@ -1,3 +1,11 @@
+## NK1 learning WorkPass105 — bounded conflict preflight (2026-10-20)
+
+- Bounded `trainInterleaved`'s conflict-screening work per replay row with a deterministic, evenly spaced sample of at most 64 current examples by default (configurable, hard-clamped to 8–128), preventing replay×current comparisons from growing without bound.
+- Added counters for comparisons and the effective cap; the sequential benchmark now asserts the comparison ceiling in both conflicting-task and context-separated cases.
+- This is an efficiency guard, not a claim that approximate screening is equivalent to exhaustive nearest-neighbour conflict detection. Large streams can miss a conflicting example outside the sampled subset; future work should compare the bounded screen with exact screening and measure false-negative/false-positive conflict rates across seeds.
+- Research signal: replay is not universally beneficial. The 2026 PMLR paper “Replay can provably increase forgetting” reinforces measuring interference rather than assuming more replay helps. ARROW's complementary short-/long-term buffers and the 2026 A2ER/O2S work remain useful design references, but their full training stacks are not imported into NK1.
+- No external code or datasets copied. Score stays **58/100** until paired, multi-seed measurements show a meaningful retention/plasticity gain; this pass only improves boundedness and observability.
+
 ## NK1 learning WorkPass104 — feature-schema migration regression (2026-10-20)
 
 - Added a dedicated regression that restores a legacy 15-feature policy snapshot into the expanded 18-feature basis and verifies old weights remain attached to their semantic feature names, especially `actionCost`.
