@@ -45,6 +45,7 @@ export interface CausalExperienceState {
   behavioralImpact01:number;
   behavioralContextSamples:number;
   behavioralDivergence01:number;
+  recordedTraceIds?:string[];
 }
 
 export interface CausalLearningPacket {
@@ -73,24 +74,27 @@ function distance(a:number[],b:number[]){
 export class CausalExperienceStream {
   private state=defaultCausalExperienceStream();
   private readonly maxRecords:number;
-  private readonly observedTraceIds=new Set<string>();
+  private readonly recordedOutcomeTraceIds=new Set<string>();
+  private readonly maxRecordedTraceIds=4096;
   constructor(maxRecords=1024){ this.maxRecords=Math.max(64,Math.min(4096,Math.floor(maxRecords))); }
   restore(raw?:Partial<CausalExperienceState>|null){
     const d=defaultCausalExperienceStream(),r=raw??{};
-    this.state={...d,...r,records:Array.isArray(r.records)?r.records.slice(-this.maxRecords):[],rolling:{...d.rolling,...(r.rolling??{})}};
-    this.observedTraceIds.clear();
-    for(const record of this.state.records) this.observedTraceIds.add(record.traceId);
+    this.state={...d,...r,records:Array.isArray(r.records)?r.records.slice(-this.maxRecords):[],rolling:{...d.rolling,...(r.rolling??{})},recordedTraceIds:Array.isArray(r.recordedTraceIds)?r.recordedTraceIds.map(String).filter(Boolean).slice(-4096):[]};
+    this.recordedOutcomeTraceIds.clear();
+    for(const id of this.state.recordedTraceIds??[])this.recordedOutcomeTraceIds.add(id);
+    for(const record of this.state.records)this.recordedOutcomeTraceIds.add(record.traceId);
+    while(this.recordedOutcomeTraceIds.size>this.maxRecordedTraceIds)this.recordedOutcomeTraceIds.delete(this.recordedOutcomeTraceIds.values().next().value!);
+    this.state.recordedTraceIds=[...this.recordedOutcomeTraceIds];
     this.recomputeBehavioralImpact();
   }
   snapshot(){return structuredClone(this.state);}
   observe(trace:OrganismDecisionTrace):void{
     this.state.observations++;
-    this.observedTraceIds.add(trace.id);
     // Observation is intentionally cheap: it never evicts causal records. The stream waits for outcome before creating a sample.
   }
   recordOutcome(trace:OrganismDecisionTrace,stateAfter:OrganismState,input:{reward01:number;success01:number;surprise01:number;novelty01:number}):CausalExperienceRecord|null{
     if(!trace.selected)return null;
-    if(this.state.records.some(r=>r.traceId===trace.id))return null;
+    if(this.recordedOutcomeTraceIds.has(trace.id)||this.state.records.some(r=>r.traceId===trace.id))return null;
     const before=vector(trace.stateBefore),after=vector(stateAfter);
     const stateDelta=distance(before,after);
     const surprise=clamp01(input.surprise01);
@@ -114,6 +118,7 @@ export class CausalExperienceStream {
       learningQuality01:clamp01(.45+causalStrength*.45+surprise*.10), replayEligible:true, replayPriority01:clamp01(.24*surprise+.20*predictionError+.18*causalStrength+.12*novelty+.10*uncertainty+.08*clamp01(trace.stateBefore.needs.identityCoherence)+.08*clamp01(trace.stateBefore.needs.goalPressure)+.06*clamp01(.45+causalStrength*.45+surprise*.10)), replayCount:0, lastReplayedAt:0,
     };
     this.state.records.push(record); if(this.state.records.length>this.maxRecords)this.state.records=this.state.records.slice(-this.maxRecords);
+    this.recordedOutcomeTraceIds.add(trace.id);while(this.recordedOutcomeTraceIds.size>this.maxRecordedTraceIds)this.recordedOutcomeTraceIds.delete(this.recordedOutcomeTraceIds.values().next().value!);this.state.recordedTraceIds=[...this.recordedOutcomeTraceIds];
     this.state.outcomes++;
     this.state.rolling.surprise01=clamp01(this.state.rolling.surprise01*.92+surprise*.08);
     this.state.rolling.predictionError01=clamp01(this.state.rolling.predictionError01*.92+predictionError*.08);

@@ -1,3 +1,10 @@
+## WorkPass76 — bounded causal outcome idempotency (2026-10-20)
+- Added a persisted, bounded causal-outcome trace-ID registry so a repeated decision cannot receive a second causal-learning update after its record has aged out of the recent replay window.
+- Restores merge legacy recent records with the dedupe registry, preserve backward compatibility, and cap retained trace IDs at 4,096.
+- Removed an unused unbounded observed-trace set that grew on every decision without participating in outcome deduplication.
+- Regression coverage exercises immediate duplicate outcomes, record-window eviction, restart restoration and the bounded registry.
+- This protects causal credit from duplicate delivery; real-world learning gain and long-horizon retention remain to be measured.
+
 ## WorkPass75 — gate derived learning gain on evidence eligibility (2026-10-20)
 - The benchmark now reports zero learning gain until at least three distinct holdout contexts have been accepted without contamination or registry saturation.
 - Any later contamination or registry saturation immediately clears the derived gain score rather than leaving a stale positive estimate visible.
