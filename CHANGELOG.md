@@ -927,5 +927,5 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 - Normalized runtime and external causal trace IDs with Unicode NFKC normalization, trimming and a shared length bound before duplicate detection and persistence.
 - This closes a deduplication bypass where whitespace or compatibility-character variants of one stable ID could otherwise be credited as separate causal experiences.
-- Added regression coverage for normalized runtime outcome IDs, normalized external event IDs, and external deduplication across snapshot/restore.
+- Added regression coverage for normalized runtime outcome IDs, normalized external event IDs, external deduplication across snapshot/restore, and migration of legacy padded IDs in both records and the persisted deduplication registry.
 - This strengthens evidence integrity; it does not itself demonstrate higher task success, transfer or retention. The full workflow must pass before the change is considered validated.
