@@ -174,3 +174,15 @@ The gate prevents several common false promotions: tiny samples, positive aggreg
 3. Run context-only, no-replay, recency, surprise, reservoir, and multi-timescale policies on the same held-out streams.
 4. Add delayed and corrupted-feedback repair tests; do not treat self-report as ground truth.
 5. Only after repeated paired gains and family-level safety checks, consider production promotion. Live llama.cpp, real RU/EN retrieval uplift, long-horizon persistence, and full application E2E remain separate release gates.
+
+
+
+## WorkPass107 — checksummed ledger persistence and restart recovery (2026-10-20)
+
+- Added a versioned JSON envelope for the verifier outcome ledger with deterministic canonical SHA-256 checksum. The checksum detects accidental corruption and payload drift; it is **not** a cryptographic signature and does not authenticate the writer or evidence URI.
+- Added restore support that validates the envelope, checksum, schema, manifest invariants, every accepted outcome, and rejection history/counts before returning a ledger. A malformed or modified accepted outcome is rejected instead of silently becoming trusted training data.
+- Snapshot schema now carries its manifest, so the restored ledger remains bound to task IDs, task versions, task families, split assignments, verifier IDs and normalized prompt fingerprints.
+- Added persistence tests for round-trip equivalence, paired metric equivalence after restore, malformed JSON, unsupported envelopes, payload tampering, rehashed invalid outcomes and cross-split manifest corruption. Wired the test into package scripts and the WorkPass106 CI workflow.
+- **Boundary:** this is a persistence codec, not yet an atomic filesystem/database adapter; checksum is integrity detection, not signing. Production learning/promotion remains disconnected and disabled.
+- **Scores remain unchanged:** overall learning engineering 57/100; evidence-grounded learning maturity 36%; overall lifelong-learning roadmap 30%. Persistence hardening alone is not measured learning improvement.
+- **Next implementation:** add immutable evidence artifact references with verifier-run IDs and task-manifest digests; build a deterministic benchmark runner comparing context-only, no-replay, recency, surprise, reservoir and multi-timescale policies over identical task streams, then measure delayed retention and forward transfer.
