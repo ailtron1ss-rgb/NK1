@@ -1,3 +1,13 @@
+## WorkPass79 — локальная устойчивость языкового контура (2026-10-20)
+
+- Добавлен отдельный регрессионный набор для канонического `LocalLanguageBackendPolicy`: локальный backend имеет приоритет, ошибка переводит его в cooldown, повторные ошибки увеличивают паузу по ограниченной экспоненте, посторонние сбои не приписываются llama.cpp, успешный ответ сбрасывает breaker.
+- Подключены `test:workpass79:local-language-policy` и агрегирующий `test:workpass79` в runtime `package.json`.
+- Добавлен GitHub Actions workflow `.github/workflows/workpass79-cognitive-regression.yml` для policy-регрессии и HTTP smoke существующего серверного пути с контролируемым локальным провайдером.
+- Проверки в этой среде ещё не запускались: GitHub API-коммиты не исполняют код. Результат Actions должен быть проверен после push/PR; реальный llama.cpp на Dell G3 не проверен.
+- Это узкий reliability-pass, не заявление об улучшении качества генерации, когнитивном обучении или готовности организма к релизу.
+
+---
+
 ## WorkPass72 — memory residency, verification-gated learning and source cleanup (2026-10-19)
 - Fixed a candidate-budget off-by-one in revision/graph expansion: both now check the 192-item cap before insertion, with a fail-fast invariant and diagnostic-rich regression assertion.
 - Fixed a resource/residency defect in `MemoryOS2.retrieve()`: cold candidates were assigned freshly rebuilt hash vectors and promoted to warm even though the hash similarity was not part of ranking.
