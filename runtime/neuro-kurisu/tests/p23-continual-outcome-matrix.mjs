@@ -1,0 +1,53 @@
+import assert from 'node:assert/strict';
+import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
+import { buildContinualOutcomeMatrix } from '../src/organism/learning/ContinualOutcomeMatrix.ts';
+
+const manifest = [
+  { taskId:'a', family:'memory', split:'holdout', promptFingerprint:VerifiedOutcomeLedger.fingerprintPrompt('old fact'), verifierId:'v1', version:'1' },
+  { taskId:'b', family:'transfer', split:'holdout', promptFingerprint:VerifiedOutcomeLedger.fingerprintPrompt('new context'), verifierId:'v1', version:'1' },
+  { taskId:'train-only', family:'memory', split:'train', promptFingerprint:VerifiedOutcomeLedger.fingerprintPrompt('training only'), verifierId:'v1', version:'1' },
+];
+const ledger = new VerifiedOutcomeLedger(manifest);
+const add = (taskId, method, seed, passed, extra={}) => ledger.record({
+  taskId, taskVersion:'1', method, seed, attempt:1, passed,
+  authority:'independent-verifier', verifierId:'v1', evidenceRef:`verifier://${taskId}/${method}/${seed}`,
+  observedAt:1000+seed, ...extra,
+});
+for (const seed of [11, 22, 33, 44]) {
+  add('a','pretrain',seed,seed===11);
+  add('b','pretrain',seed===11 || seed===22);
+  add('a','checkpoint-1',seed,seed!==44);
+  add('b','checkpoint-1',seed,seed===11 || seed===22);
+  add('a','checkpoint-2',seed,seed===11 || seed===22);
+  add('b','checkpoint-2',seed,true);
+  add('train-only','checkpoint-1',seed,true);
+  add('train-only','checkpoint-2',seed,true);
+}
+const matrix = buildContinualOutcomeMatrix(ledger, [
+  {stageId:'after-task-1',method:'checkpoint-1'},
+  {stageId:'after-task-2',method:'checkpoint-2'},
+], {split:'holdout', preTrainingMethod:'pretrain', referenceScore:0.25});
+assert.equal(matrix.taskCount,2);
+assert.equal(matrix.seedCount,4);
+assert.equal(matrix.evidence.outcomeCount,16);
+assert.equal(matrix.evidence.authorityCounts['independent-verifier'],16);
+assert.deepEqual(matrix.evidence.seedIds,[11,22,33,44]);
+assert.deepEqual(matrix.tasks.map(t=>t.taskId),['a','b']);
+assert.ok(matrix.metrics.averageForwardTransfer !== null);
+assert.equal(matrix.metrics.forwardTransferTaskCount,2);
+assert.equal(matrix.metrics.stageCount,2);
+assert.equal(matrix.manifestFingerprint,ledger.manifestFingerprint());
+assert.throws(()=>buildContinualOutcomeMatrix(ledger,[{stageId:'x',method:'checkpoint-1'},{stageId:'x',method:'checkpoint-2'}]),/duplicate stageId/);
+assert.throws(()=>buildContinualOutcomeMatrix(ledger,[{stageId:'x',method:'checkpoint-1'},{stageId:'y',method:'checkpoint-1'}]),/duplicate stage method/);
+const sparse = new VerifiedOutcomeLedger(manifest);
+add('a','checkpoint-1',11,true); // deliberately unrelated ledger; no sparse outcomes in sparse
+assert.throws(()=>buildContinualOutcomeMatrix(sparse,[{stageId:'x',method:'checkpoint-1'}]),/missing outcomes/);
+const uneven = new VerifiedOutcomeLedger(manifest);
+for (const seed of [11,22]) {
+  for (const taskId of ['a','b']) {
+    uneven.record({taskId,taskVersion:'1',method:'x',seed,attempt:1,passed:true,authority:'independent-verifier',verifierId:'v1',evidenceRef:'verifier://x',observedAt:1000+seed});
+    if (!(taskId==='b' && seed===22)) uneven.record({taskId,taskVersion:'1',method:'y',seed,attempt:1,passed:false,authority:'independent-verifier',verifierId:'v1',evidenceRef:'verifier://y',observedAt:1000+seed});
+  }
+}
+assert.throws(()=>buildContinualOutcomeMatrix(uneven,[{stageId:'one',method:'x'},{stageId:'two',method:'y'}]),/exact same seed set/);
+console.log('PASS continual outcome matrix: verified evidence -> matched-seed task-by-stage metrics');
