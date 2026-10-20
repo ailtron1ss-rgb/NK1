@@ -33,34 +33,47 @@ function train(engine,data,phase){
     engine.learner.train({state:row.state,action,target01:phase===0?targetA(row.state,action):targetB(row.state,action),learningRate01:.18});
   }
 }
-const makeRun=(withReplay)=>{
+const makeRun=(strategy)=>{
   const engine=new P26TrueLearningEngine();
   const taskA=rows(0);
   train(engine,taskA,0);
   const taskABefore=evalTask(engine,0);
   const taskB=rows(1);
-  train(engine,taskB,1);
+  const replayRows=taskA.flatMap(row=>actions.map(action=>({...row,action,reward:targetA(row.state,action)})));
+  let replayUpdates=0,onlineUpdates=0;
+  if(strategy==='interleaved'){
+    // Same task-B stream, with bounded old-task rehearsal during learning.
+    for(let epoch=0;epoch<8;epoch++){
+      const fresh=taskB.flatMap(row=>actions.map(action=>({...row,action,reward:targetB(row.state,action)})));
+      const result=engine.trainInterleaved(fresh,replayRows,{replayEveryNCurrent:4,maxReplayUpdates:1024});
+      replayUpdates+=result.replayUpdates;onlineUpdates+=result.onlineUpdates;
+    }
+  }else{
+    train(engine,taskB,1);
+    onlineUpdates=taskB.length*actions.length*8;
+  }
   const taskAAfterInterference=evalTask(engine,0);
-  let replayUpdates=0;
-  if(withReplay){
-    const replayRows=taskA.flatMap(row=>actions.map(action=>({...row,action,reward:targetA(row.state,action)})));
-    // Three bounded passes test a retention/plasticity compromise; eight passes overwhelmed the new task.
+  if(strategy==='posthoc-replay'){
+    // Repair-after-interference baseline; it is not mixed rehearsal.
     for(let epoch=0;epoch<3;epoch++) replayUpdates+=engine.replay(replayRows,{}).updates;
   }
   const taskAAfterReplay=evalTask(engine,0);
   const taskBFinal=evalTask(engine,1);
-  return {taskABefore,taskAAfterInterference,taskAAfterReplay,taskBFinal,replayUpdates,trainingExposure01:engine.metrics().trainingExposure01,generalizationEvidence01:engine.metrics().generalizationEvidence01};
+  return {strategy,taskABefore,taskAAfterInterference,taskAAfterReplay,taskBFinal,onlineUpdates,replayUpdates,trainingExposure01:engine.metrics().trainingExposure01,generalizationEvidence01:engine.metrics().generalizationEvidence01};
 };
-const onlineOnly=makeRun(false);
-const replay=makeRun(true);
-for(const [name,result] of Object.entries({onlineOnly,replay})){
+const onlineOnly=makeRun('online-only');
+const replay=makeRun('posthoc-replay');
+const interleaved=makeRun('interleaved');
+for(const [name,result] of Object.entries({onlineOnly,replay,interleaved})){
   for(const metric of ['taskABefore','taskAAfterInterference','taskAAfterReplay','taskBFinal'])assert(Number.isFinite(result[metric])&&result[metric]>=0&&result[metric]<=1,name+'.'+metric+' out of range');
 }
 assert.equal(onlineOnly.replayUpdates,0);
 assert.ok(replay.replayUpdates>0);
-assert.ok(replay.taskAAfterReplay>replay.taskAAfterInterference,'replay should recover at least some old-task performance');
-assert.ok(replay.taskBFinal>.8,'replay should not erase the recently learned task');
+assert.ok(replay.taskAAfterReplay>replay.taskAAfterInterference,'post-hoc replay should recover at least some old-task performance');
+assert.ok(replay.taskBFinal>.8,'post-hoc replay should not erase the recently learned task');
+assert.ok(interleaved.onlineUpdates>0&&interleaved.replayUpdates>0,'interleaving must update both fresh and replay experience');
+assert.ok(interleaved.taskBFinal>.5,'interleaving must retain meaningful recent-task plasticity');
 assert.ok(onlineOnly.taskABefore>.8,'benchmark must establish task A before measuring forgetting');
 assert.ok(onlineOnly.taskBFinal>.8,'benchmark must establish task B before measuring retention');
 assert.equal(replay.generalizationEvidence01,0,'synthetic task evaluation is not verifier-certified generalization evidence');
-console.log('P26_SEQUENTIAL_LEARNING_BENCHMARK=PASS',JSON.stringify({onlineOnly,replay,interpretation:'synthetic diagnostic only; not a production or external-task result'}));
+console.log('P26_SEQUENTIAL_LEARNING_BENCHMARK=PASS',JSON.stringify({onlineOnly,replay,interleaved,interpretation:'synthetic diagnostic only; not a production or external-task result'}));
