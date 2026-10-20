@@ -64,3 +64,10 @@ The change is additive. Revert the WorkPass79 commits or remove the workflow/scr
 
 - Previous run `39371124054` was still `pending` and returned no jobs when last checked. New commits should trigger a newer run; inspect the run associated with the exact current PR head and retrieve job logs before claiming success.
 - The GitHub content/commit API does not execute tests locally. No claim is made that the new test has passed until Actions supplies evidence.
+
+
+## WorkPass81 — cancellation at the local provider boundary
+
+- `LocalChatCompletionRequest` now accepts an optional caller `AbortSignal`. The provider composes it with its own deadline using `AbortSignal.any`, rejects already-cancelled work before dispatch, and normalizes cancellation/deadline failures.
+- Boundary tests cover in-flight caller abort and pre-aborted requests, in addition to the existing deadline test.
+- **IMPLEMENTED, not yet VERIFIED:** test execution must be confirmed by Actions. This change only guarantees cancellation propagation when an upstream caller passes a signal; audit the actual cognitive-cycle call chain before claiming end-to-end cancellation. Real llama.cpp and restart/recovery tests remain open.
