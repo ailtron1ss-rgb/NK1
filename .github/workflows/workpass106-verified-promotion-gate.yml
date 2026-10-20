@@ -3,10 +3,12 @@ on:
   pull_request:
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedgerStore.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomePromotionGate.ts'
       - 'runtime/neuro-kurisu/tests/p23-verified-outcome-ledger.mjs'
       - 'runtime/neuro-kurisu/tests/p23-verified-outcome-promotion-gate.mjs'
       - 'runtime/neuro-kurisu/tests/p23-outcome-promotion-integration.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-verified-outcome-ledger-persistence.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass106-verified-promotion-gate.yml'
   workflow_dispatch:
@@ -30,6 +32,9 @@ jobs:
       - name: Check ledger-to-promotion integration
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-outcome-promotion-integration.mjs
+      - name: Check durable ledger roundtrip and corruption rejection
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-verified-outcome-ledger-persistence.mjs
       - name: Type-check runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
