@@ -1,3 +1,8 @@
+## NK1 v2.0 rebuild — correct autonomous outcome test window (2026-10-20)
+
+- [FIXED] The planner regression test now includes the executor-entry classification in its inspected source window; the previous window ended before that statement and caused a false-negative assertion despite the runtime code using the shared classifier.
+- Validation: the exact-HEAD workflow from the intermediate commit exposed this test-window defect; rerun on the corrected HEAD is required.
+
 ## NK1 v2.0 rebuild — behavioral project reconciliation route test (2026-10-20)
 
 - [ADDED] Added a runtime-level regression test for the core reconciliation wrapper. It verifies camera/speech legacy aliases are normalized before gateway receipt lookup and that the original request, decision/idempotency options and reason are preserved.

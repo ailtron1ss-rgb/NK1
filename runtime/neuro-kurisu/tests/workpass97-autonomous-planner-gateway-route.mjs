@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 const source = await readFile(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
 const planAt = source.indexOf("planner: 'autonomous-resource-tool-life'");
 assert.notEqual(planAt, -1, 'autonomous resource/tool/life planner must remain identifiable');
-const autonomousBlock = source.slice(planAt, source.indexOf('const recoveredUncertainOutcome =', planAt));
+const autonomousBlock = source.slice(planAt, source.indexOf('const recorded =', planAt));
 assert.match(autonomousBlock, /wasToolExecutorEntered\(toolResult\.outcomeClass\)/,
   'autonomous learning must share the gateway executor-entry classification instead of maintaining a divergent outcome list');
 assert.doesNotMatch(autonomousBlock, /const executionActuallyAttempted = \[/,
