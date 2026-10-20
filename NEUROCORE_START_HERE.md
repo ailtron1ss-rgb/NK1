@@ -7,12 +7,13 @@
 **This document is the durable instruction for future work. Read it before starting a new pass.**
 
 
-## Latest durable checkpoint — WorkPass93 (2026-10-20)
+## Latest durable checkpoint — WorkPass94 (2026-10-20)
 
 - Active branch: `workpass79-cognitive-rebuild`; open draft PR: https://github.com/ailtron1ss-rgb/NK1/pull/1.
-- Read `docs/WORKPASS93_CHECKPOINT_2026-10-20.md` before resuming; it contains current evidence boundaries, percentage dashboard and next tasks.
-- Refresh the live HEAD and exact-head Actions status every session. The previous WorkPass92 green run does not validate WorkPass93.
-- Latest code change hardens the core ownership exemption to the exact `operationalMicroCycle:OperationalMicroCycleRuntime` pair, with an adversarial regression guard in the existing audit.
+- Read `docs/WORKPASS94_CHECKPOINT_2026-10-20.md` for the strict verification-input binding change, commit links, evidence status and next tasks.
+- `OutcomeVerificationService` now compares the complete expected action input using canonical structural serialization; partial inputs and mismatched nested values fail closed.
+- Focused regression and CI workflow are added. Exact-head CI and the broader runtime typecheck/regression suite remain pending until observed.
+- Refresh the live branch head, PR state and exact-head Actions status before continuing.
 
 ## 1. North-star outcome
 
