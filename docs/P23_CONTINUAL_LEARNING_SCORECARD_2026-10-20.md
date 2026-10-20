@@ -114,3 +114,13 @@ Added `tests/p23-replay-strategy-benchmark.mjs` and `.github/workflows/workpass9
 - [Improvements to dark experience replay and reservoir sampling](https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2026.1649239/full) is open access (CC BY) and studies consolidation/plasticity balance. Candidate next step: implement reservoir sampling as a separate baseline and test order sensitivity before considering any code reuse; no upstream code copied in WorkPass101.
 
 **Decision:** keep the recent-quota default and age half-life disabled. The latest work adds a controlled parameter sweep; only verifier-grounded task success, old-task retention, transfer and uncertainty intervals can justify changing defaults. Paper results from neural RL/LLM settings are not NK1 results.
+
+
+## WorkPass102 — seeded reservoir baseline (2026-10-20)
+
+- Added `ReservoirReplayPolicy.ts`: bounded Algorithm R sampling without replacement, deterministic explicit seeds, duplicate-ID protection (first occurrence wins), stable chronological output, and capacity clamp 0–512. It is a baseline only and is not wired as the production default.
+- Added focused regression coverage for capacity, reproducibility, seed sensitivity, input immutability, duplicate ingestion, and stable seed normalization.
+- Expanded the strategy benchmark to report five fixed reservoir seeds (7, 19, 42, 101, 2026) alongside recent-only, surprise-only, quota-stratified multi-timescale replay and age-decay sweeps. This remains a replay-composition proxy; it does not establish task-success, retention, or transfer uplift.
+- Added a dedicated Node 24 GitHub Actions workflow for the reservoir regression and strategy comparison.
+- **Status:** code and workflow committed; CI must finish on the exact latest head before recording PASS. No upstream code copied; Algorithm R is a standard baseline implemented locally.
+- **Next:** add a verifier-labelled deterministic task stream and compare strategies on identical seeds, reporting success, old-task retention, forward transfer and paired confidence intervals. Keep all defaults unchanged until outcome evidence supports a change.
