@@ -1,6 +1,7 @@
 import type { ActionKind, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
 
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const normalizeTraceId=(value:unknown)=>String(value??'').normalize('NFKC').trim().slice(0,180);
 
 export interface CausalExperienceRecord {
   id:string;
@@ -94,7 +95,8 @@ export class CausalExperienceStream {
   }
   recordOutcome(trace:OrganismDecisionTrace,stateAfter:OrganismState,input:{reward01:number;success01:number;surprise01:number;novelty01:number}):CausalExperienceRecord|null{
     if(!trace.selected)return null;
-    if(this.recordedOutcomeTraceIds.has(trace.id)||this.state.records.some(r=>r.traceId===trace.id))return null;
+    const traceId=normalizeTraceId(trace.id);
+    if(!traceId||this.recordedOutcomeTraceIds.has(traceId)||this.state.records.some(r=>r.traceId===traceId))return null;
     const before=vector(trace.stateBefore),after=vector(stateAfter);
     const stateDelta=distance(before,after);
     const surprise=clamp01(input.surprise01);
@@ -105,9 +107,9 @@ export class CausalExperienceStream {
     const outcomeMagnitude=clamp01(Math.abs(reward-.5)*1.6+Math.abs(success-.5)*.8);
     const causalStrength=clamp01(stateDelta*.34+predictionError*.24+surprise*.18+outcomeMagnitude*.16+novelty*.08);
     const learningOpportunity=clamp01(causalStrength*.58+surprise*.18+predictionError*.14+novelty*.10);
-    const id=`cx-${trace.tick}-${trace.id}`;
+    const id=`cx-${trace.tick}-${traceId}`;
     const record:CausalExperienceRecord={
-      id, tick:trace.tick, at:Date.now(), traceId:trace.id, action:trace.selected.action,
+      id, tick:trace.tick, at:Date.now(), traceId, action:trace.selected.action,
       taskId:trace.selected.goalId??trace.selected.action, reward01:reward, success01:success,
       surprise01:surprise, predictionError01:predictionError, novelty01:novelty, uncertainty01:uncertainty,
       energyBefore01:clamp01(trace.stateBefore.needs.energy), energyAfter01:clamp01(stateAfter.needs.energy),
@@ -130,7 +132,7 @@ export class CausalExperienceStream {
   recordExternalLearningEvent(input:{tick:number;taskId:string;action:ActionKind;reward01:number;success01:number;surprise01:number;novelty01:number;uncertainty01?:number;identityRelevance01?:number;goalPressure01?:number;causalStrength01?:number;traceId?:string;provenance?:CausalExperienceRecord['provenance'];stateGrounded?:boolean;sourceMemoryId?:string;evidenceKey?:string}):CausalExperienceRecord|null{
     const reward=clamp01(input.reward01),success=clamp01(input.success01),surprise=clamp01(input.surprise01),novelty=clamp01(input.novelty01),uncertainty=clamp01(input.uncertainty01??.5); const causal=clamp01(input.causalStrength01??(surprise*.35+novelty*.15+Math.abs(reward-.5)*.25+Math.abs(success-.5)*.25));
     const id=`cx-ext-${input.tick}-${input.taskId}-${Date.now()}`;
-    const traceId=String(input.traceId??id).slice(0,180);
+    const traceId=normalizeTraceId(input.traceId??id);
     if(!traceId||this.recordedOutcomeTraceIds.has(traceId)||this.state.records.some(r=>r.traceId===traceId))return null;
     const record:CausalExperienceRecord={
       id, tick:Math.max(0,Math.floor(input.tick)), at:Date.now(), traceId, action:input.action,
