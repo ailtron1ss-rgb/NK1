@@ -174,7 +174,7 @@ function pairedBootstrapInterval(baseline:QueryOutcome[],candidate:QueryOutcome[
   return {samples,lowerBound01:at(.025),medianDelta01:at(.5),upperBound01:at(.975)};
 }
 
-function inspectDataset(rawExamples:MemoryRetrievalBenchmarkExample[],corpus:MemoryItem2[],truncatedExamples:number,droppedExamples:number){
+function inspectDataset(rawExamples:MemoryRetrievalBenchmarkExample[],corpus:MemoryItem2[],truncatedExamples:number,droppedExamples:number,truncatedFieldRows:number){
   const knownIds=new Set(corpus.map(row=>row.id));
   const duplicateIds=new Set<string>();const seenIds=new Set<string>();
   const duplicateRelevantIds=new Set<string>();
@@ -209,8 +209,8 @@ function inspectDataset(rawExamples:MemoryRetrievalBenchmarkExample[],corpus:Mem
   // Same-split duplicate prompts distort independent-query weighting too, so they are
   // reported and block promotion rather than being silently treated as extra evidence.
   const duplicateQueryGroupCount=repeatedQueryKeys.length;
-  const validForPromotion=truncatedExamples===0&&droppedExamples===0&&duplicateExampleIdCount===0&&duplicateQueryGroupCount===0&&duplicateRelevantLabelCount===0&&unknownRelevantMemoryIdCount===0&&crossSplitQueryLeakageCount===0&&nearDuplicateCrossSplitPairCount===0;
-  return {sourceExamples:rawExamples.length+truncatedExamples+droppedExamples,acceptedExamples:rawExamples.length,droppedExamples,truncatedExamples,duplicateExampleIdCount,duplicateQueryGroupCount,duplicateRelevantLabelCount,uniqueTrainQueries,uniqueHoldoutQueries,crossSplitQueryLeakageCount,nearDuplicateCrossSplitPairCount,unknownRelevantMemoryIdCount,validForPromotion};
+  const validForPromotion=truncatedExamples===0&&droppedExamples===0&&truncatedFieldRows===0&&duplicateExampleIdCount===0&&duplicateQueryGroupCount===0&&duplicateRelevantLabelCount===0&&unknownRelevantMemoryIdCount===0&&crossSplitQueryLeakageCount===0&&nearDuplicateCrossSplitPairCount===0;
+  return {sourceExamples:rawExamples.length+truncatedExamples+droppedExamples,acceptedExamples:rawExamples.length,droppedExamples,truncatedExamples,truncatedFieldRows,duplicateExampleIdCount,duplicateQueryGroupCount,duplicateRelevantLabelCount,uniqueTrainQueries,uniqueHoldoutQueries,crossSplitQueryLeakageCount,nearDuplicateCrossSplitPairCount,unknownRelevantMemoryIdCount,validForPromotion};
 }
 
 /**
@@ -236,6 +236,8 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const maxExamples=Math.floor(finiteOption(options.maxExamples,64,64,512));
   const limited=rawArray.slice(0,maxExamples);const truncatedExamples=Math.max(0,rawArray.length-limited.length);
   let droppedExamples=0;
+  // Bounded copies remain diagnostic-only if the source labels/text would be clipped.
+  const truncatedFieldRows=limited.filter(row=>Boolean(row&&((typeof row.id==='string'&&row.id.length>120)||(typeof row.query==='string'&&row.query.length>500)||(Array.isArray(row.relevantIds)&&(row.relevantIds.length>24||row.relevantIds.some(id=>typeof id==='string'&&id.length>160)))))).length;
   const examples=limited.filter((row):row is MemoryRetrievalBenchmarkExample=>{
     const valid=Boolean(row&&typeof row.id==='string'&&row.id.trim()&&typeof row.query==='string'&&row.query.trim()&&Array.isArray(row.relevantIds)&&(row.answerable===undefined||typeof row.answerable==='boolean')&&(row.answerable===false?row.relevantIds.length===0:row.relevantIds.slice(0,24).some(x=>typeof x==='string'&&x.trim()))&&(row.split==='train'||row.split==='holdout'));
     if(!valid)droppedExamples++;
@@ -250,7 +252,7 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const truncatedCorpusItems=Math.max(0,sourceItems.length-boundedSourceItems.length);
   const corpusIntegrity={sourceItems:sourceItems.length,acceptedItems:validItems.length,malformedRows:malformedCorpusRows,duplicateIdCount:duplicateCorpusIds.size,truncatedItems:truncatedCorpusItems,validForPromotion:malformedCorpusRows===0&&duplicateCorpusIds.size===0&&truncatedCorpusItems===0};
   const corpus=validItems;
-  const dataIntegrity=inspectDataset(examples,corpus,truncatedExamples,droppedExamples);
+  const dataIntegrity=inspectDataset(examples,corpus,truncatedExamples,droppedExamples,truncatedFieldRows);
   dataIntegrity.validForPromotion=dataIntegrity.validForPromotion&&corpusIntegrity.validForPromotion;
   const train=examples.filter(x=>x.split==='train');const holdout=examples.filter(x=>x.split==='holdout');
   // A real corpus-scoped Okapi BM25 baseline, not the former binary token-overlap
@@ -343,7 +345,7 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const promotionAllowed=Object.values(promotionGates).every(Boolean);
   const reason=!seedInputValid?'invalid-bootstrap-seed':!corpusIntegrity.validForPromotion?'corpus-integrity-failed':!dataIntegrity.validForPromotion?'dataset-integrity-failed':!provenanceComplete?'dataset-provenance-incomplete':!enoughEvidence?'insufficient-labelled-holdout-or-corpus':!quarantineSafe?'candidate-returned-quarantined-memory':!staleSafe?'candidate-returned-out-of-window-memory':!dormantSafe?'candidate-returned-dormant-memory':!epistemicStatusSafe?'candidate-returned-invalid-epistemic-status':!validRateSafe?'candidate-result-integrity-regression':!abstentionSafe?'unsupported-retrieval-rate-regression':recallDelta<minUplift?'recall-uplift-below-threshold':!confidenceSupported?'recall-uplift-not-confidence-supported':!mrrNonInferioritySupported?'mrr-regression-not-confidence-bounded':mrrDelta < -mrrTolerance?'mrr-regression-exceeds-tolerance':'holdout-gates-passed';
   return {
-    schemaVersion:4 as const,benchmark:'memoryos2-retrieval-vs-bm25-baseline',retrievalAlgorithmVersion:RETRIEVAL_ALGORITHM_VERSION,mode:'offline-clone; no-live-state-mutation' as const,latencyDefinition:'p95 measures retrieval only; isolationSetupP95Ms is reported separately',
+    schemaVersion:5 as const,benchmark:'memoryos2-retrieval-vs-bm25-baseline',retrievalAlgorithmVersion:RETRIEVAL_ALGORITHM_VERSION,mode:'offline-clone; no-live-state-mutation' as const,latencyDefinition:'p95 measures retrieval only; isolationSetupP95Ms is reported separately',
     now,k,corpusSize:corpus.length,trainQueries:train.length,holdoutQueries:holdout.length,datasetFingerprint,corpusFingerprint:corpusHash,retrievalConfigurationFingerprint:retrievalConfigHash,corpusIntegrity,
     datasetIntegrity:{...dataIntegrity,validForPromotion:dataIntegrity.validForPromotion&&provenanceComplete,provenanceComplete},
     experimentConfiguration:{seedInputValid,requestedSeed:seedWasProvided?(Number.isFinite(requestedSeed)?requestedSeed:String(options.seed)):'auto-derived',effectiveSeed:seed,maximumMrrRegression01:mrrTolerance},
