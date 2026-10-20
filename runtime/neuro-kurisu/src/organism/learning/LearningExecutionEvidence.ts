@@ -28,7 +28,8 @@ export function recordExecutionBackedLearningOutcome(
   if (!run) throw new Error('runId is not present in experiment plan');
   if (!receipt || receipt.schemaVersion !== 1 || receipt.runId !== runId ||
       receipt.planFingerprint !== plan.planFingerprint ||
-      receipt.planFingerprint.length !== 64 ||
+      receipt.manifestFingerprint !== plan.manifestFingerprint ||
+      !/^[a-f0-9]{64}$/i.test(receipt.commandFingerprint) ||
       receipt.status !== 'completed' || receipt.exitCode !== 0 ||
       receipt.outputTruncated || !Number.isFinite(receipt.startedAt) ||
       !Number.isFinite(receipt.finishedAt) || receipt.finishedAt < receipt.startedAt ||
