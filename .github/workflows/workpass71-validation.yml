@@ -2,7 +2,7 @@ name: NeuroCore core regression validation
 
 on:
   push:
-    branches: [workpass70-source]
+    branches: [workpass70-source, workpass71-learning-integrity]
     paths:
       - "app/**"
       - "runtime/neuro-kurisu/src/**"
@@ -53,6 +53,8 @@ jobs:
         run: npm --prefix app run build:dev
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Skill acquisition holdout isolation regression
+        run: npm --prefix runtime/neuro-kurisu run test:skill-acquisition-split-integrity
       - name: Local LLM bounded-response regression
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/local-chat-provider-workpass40.mjs
       - name: Optional live local LLM smoke (skips without explicit loopback URL)
