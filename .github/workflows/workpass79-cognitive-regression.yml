@@ -85,3 +85,6 @@ jobs:
       - name: Exercise real server HTTP path with a controlled local provider
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass69:server-smoke
+      - name: Verify bounded stratified causal replay and P26 runtime integration
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:learning-replay
