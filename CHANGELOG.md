@@ -1,3 +1,10 @@
+## NK1 v2.0 rebuild — compound skill canonical execution route (2026-10-20)
+
+- [FIXED] Compound skill steps now dispatch through `OrganismCore.executeTool`, preserving canonical tool-ID normalization and the host finalizer/checkpoint path instead of maintaining a second manual finalization path.
+- The core wrapper accepts bounded finalization context keys for skill runtime inputs; keyed actions remain finalized atomically inside ActionGateway, while unkeyed outcomes are finalized once by the core.
+- Extended `test:workpass97:planner-route` to guard the compound-skill route and prevent direct gateway dispatch or duplicate finalization from returning.
+- Validation boundary: source and regression changes are committed; run the focused test and verify Actions on the exact resulting HEAD before marking CI validated.
+
 ## NK1 v2.0 rebuild — live repository checkpoint (2026-10-20)
 
 - [ADDED] Added [live rebuild checkpoint](docs/REBUILD_CHECKPOINT_LIVE_STATE_2026-10-20.md) recording the observed branch topology, the separate WorkPass79 PR line, recent rebuild implementation slices, evidence boundaries and the next core execution-path task.
