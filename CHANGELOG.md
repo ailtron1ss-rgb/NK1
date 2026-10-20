@@ -920,7 +920,7 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Одноразовый аудит обнаружил три настоящие битые ссылки: пропущенный префикс `test:` у `long-horizon:operational:1000`, неверное имя `test:big-pass-317` вместо существующего `test:big-pass-317:reality`, и ссылку `test:p2852:neural-continuity` вместо существующего канонического `test:p2850:neural-continuity`. Исправлены все три; assertions не ослаблялись.
 - Новый script подключён к WorkPass79 GitHub Actions workflow.
 - Предварительная проверка обновлённого manifest: 1,655 scripts; 3,334 `npm run`-ссылки без отсутствующих targets; 1,286 статических ссылок на тестовые файлы. Это локальная проверка manifest-данных, не замена ожидаемому результату Actions.
-- **CI status:** новый WorkPass84 step ожидает выполнения GitHub Actions на обновлённом HEAD. До подтверждения run не маркировать как PASS.
+- **PASS:** GitHub Actions run [39374168533](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39374168533) на кодовом HEAD `b95235b5696667ad96cc6f1d63c11f4b91a96ee8`: audit `WORKPASS84_SCRIPT_INTEGRITY=PASS` (1,655 scripts; 3,334 npm-run references; 1,286 static test-file references; zero missing targets/files), WorkPass80 residency, WorkPass83 benchmark truthfulness, WorkPass79 provider policy/boundary, WorkPass82 cancellation and server smoke all passed. Later commits in this PR only add research documentation; their exact-head Actions run is separate.
 - Scope: ловит отсутствующие npm script targets и отсутствующие статические test files; не доказывает достижимость/качество каждого теста и не является полным аудитом динамических import/require.
 
 
