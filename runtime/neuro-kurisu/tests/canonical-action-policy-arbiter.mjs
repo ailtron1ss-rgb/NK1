@@ -66,6 +66,9 @@ const missingSources = arbiter.evaluate({baseUtility:.5,predictedUtility:.5,sour
 assert.equal(missingSources.actions.verify.sourceCount,0,'non-array sources must degrade to an empty policy frame');
 const oversizedFrame = arbiter.evaluate({baseUtility:.5,predictedUtility:.5,sources:Array.from({length:257},(_,i)=>({name:`source-${i}`,bias:{verify:.14},confidence01:1,causal01:1}))});
 assert.equal(oversizedFrame.actions.verify.sourceCount,0,'oversized policy frames must fail closed rather than letting a truncated prefix dominate');
+const provenanceFrame = arbiter.evaluate({baseUtility:.5,predictedUtility:.5,sources:[{name:' family ',bias:{verify:.10},confidence01:1,causal01:1},{name:'family',bias:{verify:.08},confidence01:1,causal01:1},{name:'bad\\u0000name',bias:{verify:.14},confidence01:1,causal01:1}]});
+assert.ok(provenanceFrame.actions.verify.sourceContributions01.family > .10,'trim-equivalent provenance labels aggregate into one canonical diagnostic key');
+assert.equal(Object.keys(provenanceFrame.actions.verify.sourceContributions01).some(name=>name.includes('bad')),false,'control-character provenance labels are rejected');
 console.log(JSON.stringify({
   verifyContribution01:frame.actions.verify.contribution01,
   meanConfidence01:frame.meanConfidence01,

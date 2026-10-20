@@ -47,8 +47,8 @@ export class PolicyAuthorityLedger {
     if (!input || typeof input !== 'object') throw new Error('invalid-policy-contribution');
     if (this.state.contributions.length >= MAX_POLICY_CONTRIBUTIONS_PER_CYCLE) throw new Error('policy-contribution-limit-exceeded');
     if (!VALID_ACTIONS.has(input.action)) throw new Error('invalid-policy-action');
-    if (typeof input.source !== 'string' || !input.source.trim() || input.source.length > 120) throw new Error('invalid-policy-source');
-    if (typeof input.stage !== 'string' || !input.stage.trim() || input.stage.length > 80) throw new Error('invalid-policy-stage');
+    if (typeof input.source !== 'string' || !input.source.trim() || input.source.length > 120 || /[\u0000-\u001f\u007f]/.test(input.source)) throw new Error('invalid-policy-source');
+    if (typeof input.stage !== 'string' || !input.stage.trim() || input.stage.length > 80 || /[\u0000-\u001f\u007f]/.test(input.stage)) throw new Error('invalid-policy-stage');
     const bias = clamp(finite(input.bias01));
     const row: PolicyAuthorityContribution = {
       source: input.source.trim(), action: input.action, bias01: bias,

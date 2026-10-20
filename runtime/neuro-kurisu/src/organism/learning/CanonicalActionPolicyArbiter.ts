@@ -63,6 +63,7 @@ export class CanonicalActionPolicyArbiter {
       typeof source.name === 'string' &&
       source.name.trim().length > 0 &&
       source.name.length <= 120 &&
+      !/[\u0000-\u001f\u007f]/.test(source.name) &&
       Boolean(source.bias) &&
       typeof source.bias === 'object' &&
       !Array.isArray(source.bias) &&
@@ -82,7 +83,7 @@ export class CanonicalActionPolicyArbiter {
         // Uncertain or non-causal policy proposals are attenuated rather than
         // allowed to silently dominate the production decision surface.
         const trust = confidence * (.65 + .35 * causal) * (.72 + .28 * identityGate);
-        return { bias: clampSigned(bias), weight: trust, name: source.name };
+        return { bias: clampSigned(bias), weight: trust, name: source.name.trim() };
       });
       const weight = rowsWeight(raw);
       const weighted = weight > 0 ? raw.reduce((sum, row) => sum + row.bias * row.weight, 0) / weight : 0;

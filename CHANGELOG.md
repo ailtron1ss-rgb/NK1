@@ -1,3 +1,9 @@
+## NK1 v2.0 rebuild — canonicalize policy provenance labels (2026-10-20)
+
+- [FIXED] Policy arbitration now trims provenance labels before diagnostic aggregation and rejects labels containing control characters.
+- [FIXED] PolicyAuthorityLedger rejects control characters in source/stage identifiers so logs and duplicate-family accounting cannot be confused by embedded delimiters or terminal controls.
+- [REGRESSION] Added whitespace-equivalent provenance aggregation and control-character rejection cases.
+
 ## NK1 v2.0 rebuild — remove policy frame local-name collision (2026-10-20)
 
 - [FIXED] Renamed the validated incoming policy list to `inputSources`, preserving the existing per-action `sourceRows` accumulator and eliminating a duplicate block-scoped declaration.
