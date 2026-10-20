@@ -27,6 +27,24 @@ const nearbyTransfer=learning.skillBias(stateBefore({uncertainty:.42}), 'verify'
 assert.ok(nearbyTransfer>0&&nearbyTransfer<learning.skillBias(stateBefore({uncertainty:.72}), 'verify'), 'a validated skill should transfer weakly to a one-bucket-neighbor context');
 assert.equal(learning.skillBias(stateBefore({energy:.2,uncertainty:.42,novelty:.95,goalPressure:.9,socialNeed:.85}), 'verify'), 0, 'skills must not transfer across dissimilar contexts');
 
+// Retention/forgetting: recently validated skills retain influence, old evidence
+// decays, and evidence older than the retention horizon cannot bias selection.
+const retentionState = learning.snapshot();
+const recentSkill = retentionState.skills.find(s => s.status === 'promoted' && s.action === 'verify');
+assert.ok(recentSkill, 'benchmark requires a promoted skill');
+const recentBias = learning.skillBias(stateBefore({ uncertainty:.72 }), 'verify');
+const agedState = structuredClone(retentionState);
+const agedSkill = agedState.skills.find(s => s.id === recentSkill.id);
+agedSkill.updatedAt = Date.now() - 90 * 24 * 60 * 60 * 1000;
+const agedLearning = new P23LearningEngine();
+agedLearning.restore(agedState);
+const agedBias = agedLearning.skillBias(stateBefore({ uncertainty:.72 }), 'verify');
+assert.ok(agedBias > 0 && agedBias < recentBias, 'stale skills must decay rather than remain permanently dominant');
+agedSkill.updatedAt = Date.now() - 181 * 24 * 60 * 60 * 1000;
+const forgottenLearning = new P23LearningEngine();
+forgottenLearning.restore(agedState);
+assert.equal(forgottenLearning.skillBias(stateBefore({ uncertainty:.72 }), 'verify'), 0, 'expired skill evidence must stop influencing action selection');
+
 // Failed skills should weakly discourage the same action in a tightly neighboring
 // context, but must not leak into unrelated states.
 const negativeLearning = new P23LearningEngine();
