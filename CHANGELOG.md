@@ -879,7 +879,7 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added a deterministic regression with a 140-record corpus that forces an old, low-salience record into cold residency, then verifies it remains recallable by lexical retrieval without materializing a vector or silently changing residency.
 - Added snapshot/restore coverage for cold records, candidate budget (192), and canonical memory index integrity.
 - Wired the regression into runtime scripts and the WorkPass79 GitHub Actions workflow; test:workpass80 combines the new memory regression with the local-language reliability suite.
-- **Evidence status:** IMPLEMENTED; GitHub Actions execution is required before marking the regression PASS. The test is a residency/integrity invariant, not an independent RU/EN retrieval-quality benchmark. No Recall@k, MRR, transfer-learning, or overall readiness uplift is claimed.
+- **Evidence status:** PASS in GitHub Actions run [39371651412](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39371651412): corpus 140, tiers hot/warm/cold 16/64/60, materialized vectors unchanged at 80, target recall and restore recall true, candidate count 140, index integrity true. This is a residency/integrity invariant, not an independent RU/EN retrieval-quality benchmark. No Recall@k, MRR, transfer-learning, or overall readiness uplift is claimed.
 
 
 ## WorkPass 81 — caller cancellation for local inference (2026-10-20)
@@ -887,10 +887,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Extended the existing `OpenAICompatibleLocalChatProvider` request contract with an optional caller-owned `AbortSignal`; provider timeout and caller cancellation are composed rather than one replacing the other.
 - Added stable `llama.cpp-request-aborted` normalization for caller cancellation before dispatch, during transport, and while reading a bounded response; deadline failures normalize to `llama.cpp-timeout`.
 - Extended the provider boundary regression for in-flight and pre-aborted requests. This proves the provider boundary honors a signal when its caller supplies one; it does not prove every upstream cognitive-cycle caller currently forwards cancellation.
-- **Evidence status:** IMPLEMENTED; Actions must execute the updated test before it is marked PASS. Real llama.cpp cancellation and process restart/recovery remain unverified.
+- **Evidence status:** PASS in GitHub Actions run [39371651412](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39371651412): timeout abort and caller cancellation (in-flight and pre-aborted) passed alongside HTTP 503, malformed JSON, empty output, response-size limit and loopback-only checks. Real llama.cpp cancellation, upstream end-to-end signal forwarding, and process restart/recovery remain unverified.
 
 
 ### WorkPass81 follow-up — deterministic timeout test harness (2026-10-20)
 
 - GitHub Actions exposed that Node's `AbortSignal.timeout()` timer is unreferenced: the test's unresolved top-level await could terminate with exit code 13 before the timeout fired. The focused test now holds the process open only for the expected timeout window and asserts the normalized `llama.cpp-timeout` outcome.
-- This is a test-harness correction discovered by CI, not a claim that the full provider suite passes. Re-run Actions on the new head.
+- Follow-up run [39371651412](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39371651412) passed the cold-memory regression, policy test, provider-boundary suite and server HTTP smoke.
