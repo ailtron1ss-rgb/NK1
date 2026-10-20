@@ -20,7 +20,7 @@ export class VerifiedOutcomeLedgerFileStore {
 
   async save(ledger: VerifiedOutcomeLedger): Promise<void> {
     const data = serializeVerifiedOutcomeLedger(ledger);
-    const bytes = Buffer.byteLength(data, 'utf8');
+    const bytes = new TextEncoder().encode(data).byteLength;
     if (bytes > this.maxBytes) throw new Error('ledger persistence exceeds configured size limit');
     const directory = path.dirname(this.filePath);
     await mkdir(directory, { recursive: true });
