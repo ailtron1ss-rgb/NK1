@@ -1,3 +1,9 @@
+## WorkPass113 update — family-level regression visibility (2026-10-20)
+
+- The outcome matrix now reports verified pass rates at each checkpoint split by task family, plus family-specific forgetting and backward transfer.
+- This follows the benchmark lesson from AgentMemoryBench and SkillLearnBench: online/replay/transfer/repair and skill/trajectory/outcome are distinct dimensions; a single aggregate can mask task-specific regressions. NK1 implements the reporting layer but has not yet run a real cross-family stream.
+- No score increase: overall learning engineering **57/100**; evidence-grounded maturity **36%**; P23 symbolic core **61%**; project-wide lifelong-learning roadmap **30%**.
+
 ## WorkPass112 update — per-cell outcome uncertainty (2026-10-20)
 
 - `ContinualOutcomeMatrix.ts` now exposes each task × stage's verified sample count, successes, pass rate, task family and Wilson 95% interval, in addition to aggregate retention/transfer metrics.
