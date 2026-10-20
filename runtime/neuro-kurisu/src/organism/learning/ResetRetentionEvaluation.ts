@@ -187,3 +187,65 @@ export function evaluateResetRetention(
     observationCount: observations.length,
   };
 }
+
+/**
+ * Adapter from the canonical verified-outcome ledger. The ledger's complete
+ * manifest fingerprint binds this evaluation to a stable dataset version.
+ * Only the requested split and mapped methods are projected into P/C/R(k).
+ */
+export function evaluateResetRetentionFromLedger(
+  ledger: import('./VerifiedOutcomeLedger.ts').VerifiedOutcomeLedger,
+  options: {
+    priorMethod: string;
+    ceilingMethod: string;
+    resetMethods: Record<number, string>;
+    split?: 'train' | 'validation' | 'holdout';
+    epsilon?: number;
+  },
+): ResetRetentionReport {
+  if (!options.priorMethod.trim() || !options.ceilingMethod.trim() ||
+      options.priorMethod === options.ceilingMethod) {
+    throw new Error('prior and ceiling must be distinct non-empty methods');
+  }
+  const resetEvery = Object.keys(options.resetMethods).map(Number).sort((a, b) => a - b);
+  if (!resetEvery.length || resetEvery.some(k => !Number.isSafeInteger(k) || k < 1)) {
+    throw new Error('resetMethods must map positive reset intervals to method names');
+  }
+  const methodArms = new Map<string, ResetRetentionArm>();
+  methodArms.set(options.priorMethod, 'P');
+  methodArms.set(options.ceilingMethod, 'C');
+  for (const k of resetEvery) {
+    const method = options.resetMethods[k];
+    if (typeof method !== 'string' || !method.trim() || methodArms.has(method)) {
+      throw new Error('all reset methods must be distinct non-empty method names');
+    }
+    methodArms.set(method, `R(${k})`);
+  }
+  const snapshot = ledger.snapshot();
+  const split = options.split ?? 'holdout';
+  const tasks = new Map<string, { family: string; version: string }>(
+    snapshot.manifest.filter(task => task.split === split)
+      .map(task => [task.taskId, { family: task.family, version: task.version }]),
+  );
+  if (!tasks.size) throw new Error(`manifest has no tasks in ${split} split`);
+  const attempts = new Set<string>();
+  const observations: ResetRetentionObservation[] = [];
+  const fingerprint = ledger.manifestFingerprint();
+  for (const outcome of snapshot.outcomes) {
+    const task = tasks.get(outcome.taskId);
+    const arm = methodArms.get(outcome.method);
+    if (!task || !arm) continue;
+    if (outcome.authority !== 'independent-verifier') {
+      throw new Error('reset retention requires independent-verifier outcomes');
+    }
+    const key = `${outcome.taskId}\\u0000${outcome.method}\\u0000${outcome.seed}`;
+    if (attempts.has(key)) throw new Error('multiple attempts per task/method/seed need explicit attempt-selection policy');
+    attempts.add(key);
+    observations.push({
+      arm, seed: outcome.seed, taskId: outcome.taskId, family: task.family,
+      manifestFingerprint: fingerprint, score: outcome.passed ? 1 : 0,
+      authority: 'independent-verifier', evidenceRef: outcome.evidenceRef,
+    });
+  }
+  return evaluateResetRetention(observations, { resetEvery, epsilon: options.epsilon });
+}
