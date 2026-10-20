@@ -18,6 +18,7 @@ export class SkillAcquisitionBenchmark{
   const context=String(input.contextKey).normalize('NFKC').trim().toLocaleLowerCase().slice(0,160);
   const priorPhase=this.state.contextPhaseByKey[context];
   const contaminated=phase==='holdout'?(priorPhase!==undefined&&priorPhase!=='holdout'):priorPhase==='holdout';
+  if(contaminated)this.state.contaminatedHoldoutSamples++;
   if(!priorPhase){
    if(Object.keys(this.state.contextPhaseByKey).length<MAX_CONTEXT_REGISTRY)this.state.contextPhaseByKey[context]=phase;
    else this.state.contextRegistrySaturated=true;
@@ -29,8 +30,8 @@ export class SkillAcquisitionBenchmark{
   const update=(old:number,value:number,rate:number)=>clamp(old*(1-rate)+value*rate);
   if(phase==='baseline'&&!contaminated)this.state.baselineMean01=update(this.state.baselineMean01,row.outcome01,.18);
   if(phase==='holdout'){
-   if(contaminated||this.state.contextRegistrySaturated)this.state.contaminatedHoldoutSamples++;
-   else this.state.holdoutMean01=update(this.state.holdoutMean01,row.outcome01,.22);
+   if(this.state.contextRegistrySaturated){this.state.contaminatedHoldoutSamples++;}
+   else if(!contaminated)this.state.holdoutMean01=update(this.state.holdoutMean01,row.outcome01,.22);
   }
   const learningGap=this.state.holdoutMean01-this.state.baselineMean01;
   this.state.gain01=clamp(.9*this.state.gain01+.1*(learningGap>0?learningGap:0));
