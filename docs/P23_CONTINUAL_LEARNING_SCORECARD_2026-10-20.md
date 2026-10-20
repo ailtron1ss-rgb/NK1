@@ -124,3 +124,12 @@ Added `tests/p23-replay-strategy-benchmark.mjs` and `.github/workflows/workpass9
 - Added a dedicated Node 24 GitHub Actions workflow for the reservoir regression and strategy comparison.
 - **Status:** code and workflow committed; CI must finish on the exact latest head before recording PASS. No upstream code copied; Algorithm R is a standard baseline implemented locally.
 - **Next:** add a verifier-labelled deterministic task stream and compare strategies on identical seeds, reporting success, old-task retention, forward transfer and paired confidence intervals. Keep all defaults unchanged until outcome evidence supports a change.
+
+
+## WorkPass103 — replay baseline robustness (2026-10-20)
+
+- Added a 400-seed inclusion-frequency regression for Algorithm R with a broad positional-bias guardrail. It tests whether the implementation behaves plausibly as a uniform reservoir over the deterministic fixture; it does not measure task success, forgetting or transfer.
+- Repaired the WorkPass102 workflow failure: setup-node v7 was auto-detecting npm from `package.json` and failing because no supported lockfile exists at repository root. The harness has no install step, so package-manager caching is explicitly disabled rather than creating an unrelated lockfile.
+- **Exact-head status:** reruns were triggered after the workflow fix and the statistical regression. Do not mark CI PASS until all required runs finish on the final head.
+- **Scores unchanged:** replay budget 79/100, diversity/multi-timescale 66/100, benchmark quality 35/100, overall learning engineering 57/100. More sampler tests improve implementation confidence but do not demonstrate real learning gains.
+- **Next major capability gap remains:** verifier-labelled outcome stream, same-stream ablations of online-only / recency / surprise / multi-timescale / reservoir, delayed old-task retention and forward transfer with per-task confidence intervals. Keep replay defaults unchanged until these are measured.
