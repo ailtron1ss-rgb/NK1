@@ -84,7 +84,12 @@ for (const recentQuota of quotas) {
   assert.ok(row.historical > 0, `quota ${recentQuota}: retain pre-shift evidence`);
   assert.ok(row.strata >= 20, `quota ${recentQuota}: preserve broad context/action strata`);
 }
-assert.equal(results.surpriseOnly.size, CAPACITY);\nassert.equal(results.reservoir.seedCount, 50, 'report enough independent fixed seeds for a useful proxy spread');\nfor (const summary of Object.values(results.reservoir.acrossSeedSummary)) {\n  assert.ok(Number.isFinite(summary.mean));\n  assert.ok(summary.confidence95Approx[0] <= summary.mean && summary.mean <= summary.confidence95Approx[1]);\n}
+assert.equal(results.surpriseOnly.size, CAPACITY);
+assert.equal(results.reservoir.seedCount, 50, 'report enough independent fixed seeds for a useful proxy spread');
+for (const summary of Object.values(results.reservoir.acrossSeedSummary)) {
+  assert.ok(Number.isFinite(summary.mean));
+  assert.ok(summary.confidence95Approx[0] <= summary.mean && summary.mean <= summary.confidence95Approx[1]);
+}
 for (const [seed, row] of Object.entries(results.reservoir.seedRuns)) {
   assert.equal(row.size, CAPACITY, `${seed}: respect hard capacity`);
   assert.equal(row.duplicateIds, 0, `${seed}: no duplicate trace IDs`);
