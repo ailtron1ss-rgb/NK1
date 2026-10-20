@@ -1,3 +1,8 @@
+## NK1 v2.0 rebuild — remove policy frame local-name collision (2026-10-20)
+
+- [FIXED] Renamed the validated incoming policy list to `inputSources`, preserving the existing per-action `sourceRows` accumulator and eliminating a duplicate block-scoped declaration.
+- [VALIDATION] This is a compile-time correction discovered while reviewing the combined bounded-frame change; exact-HEAD Actions must confirm the full policy and runtime regression workflow.
+
 ## NK1 v2.0 rebuild — policy input parser hotfix (2026-10-20)
 
 - [FIXED] Removed a literal escaped-newline sequence introduced in the policy bias guard that prevented the runtime TypeScript loader from parsing the module.

@@ -56,8 +56,8 @@ export class CanonicalActionPolicyArbiter {
     // Runtime boundaries must remain safe even when JavaScript callers bypass
     // TypeScript. Drop malformed source rows instead of allowing them to crash
     // arbitration or contribute through coercion.
-    const sourceRows = Array.isArray(input?.sources) ? input.sources : [];
-    const active = sourceRows.length <= 256 ? sourceRows.filter((source): source is CanonicalPolicySource =>
+    const inputSources = Array.isArray(input?.sources) ? input.sources : [];
+    const active = inputSources.length <= 256 ? inputSources.filter((source): source is CanonicalPolicySource =>
       Boolean(source) &&
       typeof source === 'object' &&
       typeof source.name === 'string' &&
