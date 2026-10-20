@@ -115,3 +115,12 @@ The change is additive. Revert the WorkPass79 commits or remove the workflow/scr
 - **PASS:** Actions run https://github.com/ailtron1ss-rgb/NK1/actions/runs/39372815361. Log: `WORKPASS83_RETRIEVAL_BENCHMARK_TRUTH=PASS`, baseline/candidate Recall@3 = 1.0, baseline/candidate MRR = 1.0, liveMemoryMutated=false, crossSplitLeakageBlocksPromotion=true. Other WorkPass79/80/82 checks and `SERVER_SMOKE` also passed.
 - Interpretation: the synthetic fixture is deliberately easy; equal 1.0 scores mean **zero observed uplift**, not proof that semantic retrieval improved. It validates the experiment harness and guardrails only.
 - Next: use a versioned independent RU/EN labelled holdout, pre-register relevance labels and split rules, compare Recall@k/MRR and paired confidence intervals against BM25; then test actual llama.cpp on Dell G3, process restart/recovery, transfer/anti-forgetting and soak. Keep the PR draft until these are evidenced.
+
+
+## WorkPass84 — script-target integrity guard (2026-10-20)
+
+- Added `tests/workpass84-script-integrity.mjs` and npm entry `test:workpass84:script-integrity`; added it as an explicit step in `.github/workflows/workpass79-cognitive-regression.yml`.
+- The first manifest scan found and corrected three broken script aliases: `audit:pass98:long` now calls `test:long-horizon:operational:1000`; `audit:reality-fast` calls `test:big-pass-317:reality`; `test:p2853` uses the existing canonical `test:p2850:neural-continuity` target.
+- The guard validates every `npm run` target declared inside runtime package scripts and every static local `tests/*` source path referenced there. It is deliberately conservative: it does not claim that every script passes, that dynamic imports are complete, or that the project is release-ready.
+- Manifest preflight after fixes: 1,655 scripts, 3,334 npm-run references, 1,286 static test-file references, zero missing script targets in the preflight parser. GitHub Actions on the new head is the authoritative execution evidence and is still pending at time of this note.
+- Next: verify the new CI run; then inspect high-risk restart/recovery and learning/retention paths, and build the independent RU/EN retrieval holdout. Do not raise cognitive-readiness scores from an integrity guard alone.
