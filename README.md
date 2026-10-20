@@ -1,3 +1,12 @@
+## Latest continuation checkpoint — WorkPass96 (2026-10-20)
+
+- Active work branch: `workpass79-cognitive-rebuild`; draft PR #1 remains open and unmerged.
+- Skill learning now has bounded negative transfer, 30-day half-life retention decay, 180-day expiry, and rollback when later validation evidence deteriorates.
+- Regressions cover transfer boundaries, forgetting, rollback, parametric generalization on a deterministic synthetic holdout, and core persistence/restart integration.
+- Exact-head CI previously exposed a `-0` versus `0` assertion failure; the code fix is committed. Do not claim the newest run passes until it completes.
+- Research and evidence limits: [WorkPass96 research note](docs/CONTINUAL_SKILL_LEARNING_RESEARCH_2026-10-20.md); [checkpoint](docs/WORKPASS95_CHECKPOINT_2026-10-20.md).
+- Remaining high-value work: independent external outcome verification before promotion, balanced/prioritized replay, and real environment outcome benchmarks.
+
 ## Latest continuation checkpoint — WorkPass95 (2026-10-20)
 
 - Active work branch: `workpass79-cognitive-rebuild`; open draft PR: [#1](https://github.com/ailtron1ss-rgb/NK1/pull/1).
