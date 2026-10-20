@@ -28,6 +28,9 @@
 - P26's fixed synthetic holdout suite trains on a deterministic state/action dataset and evaluates generalization on a separate deterministic set; the test enforces >90% action accuracy and finite model state after malformed inputs.
 - The P23 integration test is wired into CI to cover core feedback, explicit replay, checksums and persistence across restart.
 - Exact-context skill influence decays with a 30-day half-life and expires after 180 days without fresh validation; rejected-skill negative transfer remains bounded and returns a true zero when absent.
+- Replay now caps large consolidation calls at 64 experiences, first selecting representatives across distinct context/action strata, then filling remaining slots by surprise and age. Small batches are fully replayed.
+- P23 rejects non-finite outcome labels before they enter the experience buffer, instead of clamping malformed labels into apparently valid observations.
+- Validation deterioration can revoke promotion; tests exercise promotion followed by a poor later validation window.
 - A dedicated GitHub Actions workflow runs runtime typecheck, P23/P26 learning regressions, predictive-transfer regression and personal-curriculum regression.
 
 ## Deliberate limits / next research steps
