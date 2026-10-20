@@ -3,7 +3,7 @@
 - Active work branch: `workpass79-cognitive-rebuild`; open draft PR: [#1](https://github.com/ailtron1ss-rgb/NK1/pull/1).
 - Latest detailed state and next actions: [WorkPass94 checkpoint](docs/WORKPASS94_CHECKPOINT_2026-10-20.md).
 - WorkPass94 tightens `isTrustedExternalPostconditionVerification`: if an expected input is supplied, it must structurally match the **complete** action input; partial input, altered nested parameters and non-serializable values fail closed. Added a behavioral regression and a dedicated Node 22 workflow.
-- WorkPass94 exact-head CI is **pending/not yet observed**. Do not infer success from workflow-file presence or older green runs.
+- WorkPass94 validation is **pending**: [WorkPass79 cognitive runtime regression run 39414533372](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39414533372) was observed pending on commit `b041767681158834540fbd979a2b97306e512e2f`. Do not infer success until the run completes green.
 - Start each session by refreshing live branch head, PR state and latest Actions run.
 
 ## WorkPass94 — bind verification evidence to the complete action input
