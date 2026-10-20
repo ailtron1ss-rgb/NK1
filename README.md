@@ -1,3 +1,11 @@
+## Latest continuation checkpoint — WorkPass95 (2026-10-20)
+
+- Active work branch: `workpass79-cognitive-rebuild`; open draft PR: [#1](https://github.com/ailtron1ss-rgb/NK1/pull/1).
+- WorkPass95 adds conservative validated skill transfer between near-neighbor contexts and prevents non-finite persisted/training values from poisoning the parametric policy learner.
+- Regression coverage now includes positive transfer to a near context, rejection of distant-context transfer, malformed learned-parameter recovery and non-finite training controls.
+- Research rationale and limits: [WorkPass95 research note](docs/CONTINUAL_SKILL_LEARNING_RESEARCH_2026-10-20.md); implementation checkpoint: [WorkPass95](docs/WORKPASS95_CHECKPOINT_2026-10-20.md).
+- Exact-head CI: [WorkPass95 continual skill learning workflow](https://github.com/ailtron1ss-rgb/NK1/actions/workflows/workpass95-continual-skill-learning.yml). Treat results as unverified until the run completes successfully.
+
 ## Latest continuation checkpoint — WorkPass94 (2026-10-20)
 
 - Active work branch: `workpass79-cognitive-rebuild`; open draft PR: [#1](https://github.com/ailtron1ss-rgb/NK1/pull/1).
