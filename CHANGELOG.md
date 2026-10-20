@@ -1040,3 +1040,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Regression test proves the current synthetic fixture's two unanswerable queries are insufficient to authorize an abstention promotion claim.
 - Reviewed 2026 research on MemoryBench, Mem2ActBench, Memory-R1, AgeMem, MemFit and LeanMem; updated the research gate with a next-stage memory-to-action evaluation plan. These are design inputs, not reproduced NK1 results.
 - Evidence scope: CI regression integrity only. No real local LLM run, independent human-labelled corpus, or measured cognitive-quality uplift is claimed.
+
+
+## 2026-10-20 — Rebuild embodiment: Live2D expression transition cache
+
+- **Fixed:** the Live2D viewer previously invoked `model.expression(...)` for every accepted embodiment intent. Since mouth/gaze intents arrive during speech, repeated calls could restart the same expression while lip motion was updating.
+- Cache the last successfully applied mapped expression and call the model only on a mapped-expression transition. Different intent states that map to the same model expression no longer reset it.
+- Added `app/scripts/test-live2d-expression-cache.mjs` and wired it into the rebuild branch's GitHub Actions workflow.
+- **Verification:** exact-head CI is pending for this change. The regression's expected output is `NK1_LIVE2D_EXPRESSION_CACHE=PASS transitions=2 duplicateResets=0`.
+- **Scope:** this prevents redundant expression restarts at the viewer boundary; it does not prove real-browser lip-sync, audio timing, or target-device performance.
