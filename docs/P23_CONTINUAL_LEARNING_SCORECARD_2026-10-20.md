@@ -133,3 +133,11 @@ Added `tests/p23-replay-strategy-benchmark.mjs` and `.github/workflows/workpass9
 - **Exact-head status:** reruns were triggered after the workflow fix and the statistical regression. Do not mark CI PASS until all required runs finish on the final head.
 - **Scores unchanged:** replay budget 79/100, diversity/multi-timescale 66/100, benchmark quality 35/100, overall learning engineering 57/100. More sampler tests improve implementation confidence but do not demonstrate real learning gains.
 - **Next major capability gap remains:** verifier-labelled outcome stream, same-stream ablations of online-only / recency / surprise / multi-timescale / reservoir, delayed old-task retention and forward transfer with per-task confidence intervals. Keep replay defaults unchanged until these are measured.
+
+
+## WorkPass104 — multi-seed proxy uncertainty (2026-10-20)
+
+- The replay-composition benchmark now uses 50 deterministic reservoir seeds and summarizes proxy metrics with mean, sample standard deviation and approximate 95% intervals. It reports historical/post-shift coverage, oldest-stream representation, context/action-stratum count and mean surprise.
+- This is a better view of sampler seed sensitivity than a few hand-picked examples, but its intervals describe only this synthetic stream and these seeds. They are **not** uncertainty intervals for task success, retention or forward transfer.
+- **Scores remain unchanged:** benchmark quality 35/100 and overall learning engineering 57/100. No increase is justified until independent verifiers score real task outcomes on identical task streams.
+- CI for the newest code head must complete before this pass is marked fully validated.
