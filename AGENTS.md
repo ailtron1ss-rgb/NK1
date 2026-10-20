@@ -1,10 +1,10 @@
 # NeuroCore — repository working rules
 
-> **New-session entry point:** read [`NEUROCORE_START_HERE.md`](NEUROCORE_START_HERE.md) and the latest [WorkPass93 checkpoint](docs/WORKPASS93_CHECKPOINT_2026-10-20.md), then refresh the live branch head, PR state, latest Actions status and open-work register. The mission is persistent across chats; do not ask the user to restate it.
+> **New-session entry point:** read [`NEUROCORE_START_HERE.md`](NEUROCORE_START_HERE.md) and the latest [WorkPass94 checkpoint](docs/WORKPASS94_CHECKPOINT_2026-10-20.md), then refresh the live branch head, PR state, latest Actions status and open-work register. The mission is persistent across chats; do not ask the user to restate it.
 
 ## Latest checkpoint
 
-Read [WorkPass93 checkpoint](docs/WORKPASS93_CHECKPOINT_2026-10-20.md) before resuming. Active work branch is `workpass79-cognitive-rebuild` and PR #1 remains draft/unmerged unless live GitHub state says otherwise. Refresh the exact HEAD and latest Actions status each session; prior green runs do not validate newer commits.
+Read [WorkPass94 checkpoint](docs/WORKPASS94_CHECKPOINT_2026-10-20.md) before resuming. Active work branch is `workpass79-cognitive-rebuild` and PR #1 remains draft/unmerged unless live GitHub state says otherwise. WorkPass94 exact-head CI and broader runtime regressions remain pending until verified.
 
 ## Project objective
 
