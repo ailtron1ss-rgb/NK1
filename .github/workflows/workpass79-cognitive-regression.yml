@@ -1,0 +1,34 @@
+name: WorkPass79 cognitive runtime regression
+
+on:
+  push:
+    branches:
+      - workpass79-cognitive-rebuild
+  pull_request:
+    branches:
+      - main
+      - workpass70-source
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workpass79-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  local-language-resilience:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+      - name: Test local backend circuit-breaker transitions
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass79:local-language-policy
+      - name: Exercise real server HTTP path with a controlled local provider
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass69:server-smoke
