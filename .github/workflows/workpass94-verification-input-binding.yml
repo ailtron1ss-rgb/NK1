@@ -14,10 +14,10 @@ jobs:
   verification-input-binding:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: '22.12.0'
+          node-version: '24'
       - name: Reject partial or altered evidence-input bindings
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/workpass94-verification-input-binding.mjs
       - name: Runtime typecheck
