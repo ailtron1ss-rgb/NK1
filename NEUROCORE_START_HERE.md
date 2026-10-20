@@ -2,9 +2,17 @@
 
 **Canonical project name:** NeuroCore / нейроядро  
 **Repository:** https://github.com/ailtron1ss-rgb/NK1  
-**Active work branch:** `workpass70-source`  
+**Active work branch:** `workpass79-cognitive-rebuild`  
 **Primary intent:** build one cohesive, genuinely functional, memory-rich, learning-capable, adaptive digital organism/personality, with Makise Kurisu as the intended identity/persona direction. The historic `Neuro-Kurisu` name in directory paths is lineage, not a separate project.  
 **This document is the durable instruction for future work. Read it before starting a new pass.**
+
+
+## Latest durable checkpoint — WorkPass93 (2026-10-20)
+
+- Active branch: `workpass79-cognitive-rebuild`; open draft PR: https://github.com/ailtron1ss-rgb/NK1/pull/1.
+- Read `docs/WORKPASS93_CHECKPOINT_2026-10-20.md` before resuming; it contains current evidence boundaries, percentage dashboard and next tasks.
+- Refresh the live HEAD and exact-head Actions status every session. The previous WorkPass92 green run does not validate WorkPass93.
+- Latest code change hardens the core ownership exemption to the exact `operationalMicroCycle:OperationalMicroCycleRuntime` pair, with an adversarial regression guard in the existing audit.
 
 ## 1. North-star outcome
 
@@ -29,7 +37,7 @@ The goal is not to accumulate modules or produce an impressive architecture diag
 5. **Preserve before deleting:** inspect imports, tests, workflows, package scripts, manifests, license/provenance, assets and restore paths. Archive candidates reversibly; never delete because names look similar.
 6. **Fail safely:** bounded inputs/outputs, timeouts, cancellation, privacy minimization, deterministic degraded behavior and clear provider/error provenance.
 7. **Use real target constraints:** the user's test machine is a Dell G3 laptop with Intel i5 and GTX 1650; mobile deployment must remain mindful of Poco M7 Pro 5G / 8 GB RAM and battery/thermal constraints. Do not claim performance without measuring it on the named device.
-8. **Do not silently merge branches:** continue on `workpass70-source`; inspect branch history and CI before proposing a merge to `main`.
+8. **Do not silently merge branches:** continue on `workpass79-cognitive-rebuild`; inspect branch history and CI before proposing a merge to `main`.
 9. **Report exact evidence:** label findings `PROVEN`, `IMPLEMENTED`, `FUNCTIONAL INDICATOR`, `OBSERVED`, `HYPOTHESIS`, `UNKNOWN`, `UNRESOLVED` or `FAILED` accurately.
 10. **Skip blockers intelligently:** continue independent work when a device, registry, secret, external service or hardware test is unavailable; record the blocker and exact reproduction steps instead of fabricating results.
 
