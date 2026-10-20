@@ -297,7 +297,7 @@ async function tryGemini(request, failures) {
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+            signal: languageTransportSignal(request),
             body: JSON.stringify({
                 contents: [{ role: 'user', parts: [{ text: `${request.system}\n\n${request.user}` }] }],
                 generationConfig: { temperature: request.temperature ?? 0.7, maxOutputTokens: request.maxTokens ?? 512 },
@@ -318,6 +318,7 @@ async function tryGemini(request, failures) {
 }
 async function generateLanguage(request) {
     const failures = [];
+    if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
     if (request.preferredBackend === 'deterministic-policy-fallback')
         return { ...localFallback(request), failures };
     const preferred = ['llama.cpp', 'kobold', 'gemini'].includes(request.preferredBackend) ? request.preferredBackend : 'gemini';
@@ -330,6 +331,7 @@ async function generateLanguage(request) {
         if (provider === 'llama.cpp') result = await tryLlamaCpp(request, failures);
         else if (provider === 'kobold') result = await tryKobold(request, failures);
         else result = await tryGemini(request, failures);
+        if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
         if (result?.text) return { ...result, failures };
     }
     return { ...localFallback(request), failures };
