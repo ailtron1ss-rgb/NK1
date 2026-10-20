@@ -18,9 +18,10 @@ const traces = Array.from({ length: 160 }, (_, i) => {
 });
 const stratum = t => `${t.contextKey}|${t.action}`;
 const bySurprise = (a, b) => b.surprise - a.surprise || a.tick - b.tick || a.id.localeCompare(b.id);
-const metrics = batch => ({
+const metrics = (batch, guaranteedRecentFloor) => ({
   size: batch.length,
-  recentSegment: batch.filter(t => t.tick >= 128).length,
+  guaranteedRecent: batch.filter(t => t.tick >= guaranteedRecentFloor).length,
+  postShift: batch.filter(t => t.tick >= 128).length,
   historical: batch.filter(t => t.tick < 128).length,
   oldest32: batch.filter(t => t.tick < 32).length,
   strata: new Set(batch.map(stratum)).size,
@@ -32,14 +33,14 @@ const surpriseOnly = [...traces].sort(bySurprise).slice(0, CAPACITY);
 const quotas = [16, 32, 48];
 const balanced = Object.fromEntries(quotas.map(recentQuota => [
   `recentQuota${recentQuota}`,
-  metrics(selectReplayBatch(traces, { maxBatchSize: CAPACITY, recentQuota })),
+  metrics(selectReplayBatch(traces, { maxBatchSize: CAPACITY, recentQuota }), traces.length - recentQuota),
 ]));
-const results = { recentOnly: metrics(recentOnly), surpriseOnly: metrics(surpriseOnly), balanced };
+const results = { recentOnly: metrics(recentOnly, 96), surpriseOnly: metrics(surpriseOnly, 96), balanced };
 for (const recentQuota of quotas) {
   const row = results.balanced[`recentQuota${recentQuota}`];
   assert.equal(row.size, CAPACITY, `quota ${recentQuota}: respect hard capacity`);
   assert.equal(row.duplicateIds, 0, `quota ${recentQuota}: no duplicate trace IDs`);
-  assert.equal(row.recentSegment, recentQuota, `quota ${recentQuota}: exact recent guarantee under the shift fixture`);
+  assert.equal(row.guaranteedRecent, recentQuota, `quota ${recentQuota}: exact guaranteed-recent window`);
   assert.ok(row.historical > 0, `quota ${recentQuota}: retain pre-shift evidence`);
   assert.ok(row.strata >= 20, `quota ${recentQuota}: preserve broad context/action strata`);
 }
