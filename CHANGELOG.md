@@ -1,3 +1,8 @@
+## NK1 v2.0 rebuild — planner-route regression assertion correction (2026-10-20)
+
+- [FIXED] Updated the canonical-finalizer regression assertion to accept the optional `finalizationContextKeys` argument while still requiring the same core-owned finalization call.
+- Validation: the prior exact-HEAD Actions run failed only at `test:workpass97:planner-route` because the assertion expected the old five-argument call; earlier workflow steps in that run passed. The corrected test must be rerun on the resulting HEAD before CI is marked green.
+
 ## NK1 v2.0 rebuild — compound skill canonical execution route (2026-10-20)
 
 - [FIXED] Compound skill steps now dispatch through `OrganismCore.executeTool`, preserving canonical tool-ID normalization and the host finalizer/checkpoint path instead of maintaining a second manual finalization path.
