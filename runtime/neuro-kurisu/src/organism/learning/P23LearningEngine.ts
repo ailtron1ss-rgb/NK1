@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { ActionKind, IntentCandidate, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
 import type { AdaptivePolicyEngine, AdaptivePolicyState } from './AdaptivePolicyEngine.ts';
 import { selectReplayBatch, type ReplaySelectionOptions } from './ReplaySelectionPolicy.ts';
-import { adaptiveReplayLearningRate, adaptiveReplayOptions, bellmanTarget, scoreReplayPriority } from './MultiSourceLearningMechanisms.ts';
+import { adaptiveReplayLearningRate, adaptiveReplayOptions, bellmanTarget, calibratedConfidence, forgettingRisk, repairOpportunity, scoreReplayPriority, transferConfidence, wilsonLowerBound } from './MultiSourceLearningMechanisms.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp = (x:number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
@@ -371,7 +371,10 @@ export class P23LearningEngine {
       const action=items[0].action;
       const id=`p23-skill-${key}`;
       const existing=this.state.skills.find(s=>s.id===id);
-      const status:PolicySkillRecord['status']=valSuccess>=.70 && trainSuccess>=.64 && confidence>=.4 ? 'promoted' : valSuccess<=.42 && validation.length>=4 ? 'rejected' : 'candidate';
+      const validationLowerBound=wilsonLowerBound(Math.round(valSuccess*validation.length),validation.length);
+      const calibrated=calibratedConfidence(items.length,valSuccess,Math.abs(valSuccess-trainSuccess));
+      const status:PolicySkillRecord['status']=valSuccess<=.42 && validation.length>=4 ? 'rejected' :
+        valSuccess>=.70 && trainSuccess>=.64 && confidence>=.4 && validationLowerBound>=.30 && calibrated>=.4 ? 'promoted' : 'candidate';
       if(status==='candidate') candidates++;
       const record:PolicySkillRecord={id,contextKey:items[0].contextKey,action,totalUses:items.length,trainUses:train,validationUses:validation.length,trainSuccess01:clamp(trainSuccess),validationSuccess01:clamp(valSuccess),confidence01:confidence,status,createdAt:existing?.createdAt??now(),updatedAt:now(),validationWindowStartTick:validation[0]?.tick??items[0].tick,validationWindowEndTick:validation.at(-1)?.tick??items.at(-1)!.tick};
       if(!existing || status!==existing.status || record.totalUses!==existing.totalUses || record.validationWindowEndTick!==existing.validationWindowEndTick || Math.abs(record.validationSuccess01-existing.validationSuccess01)>.02){
@@ -392,7 +395,7 @@ export class P23LearningEngine {
       // Skills are durable but not immortal: stale evidence gradually loses
       // influence, reaching zero after 180 days without fresh validation.
       const ageMs=Math.max(0,now()-exact.updatedAt);
-      const retention=ageMs>=180*24*60*60*1000?0:Math.pow(0.5,ageMs/(30*24*60*60*1000));
+      const retention=ageMs>=180*24*60*60*1000?0:1-forgettingRisk({lastValidatedAt:exact.updatedAt,now:now(),halfLifeMs:30*24*60*60*1000,usageGapMs:ageMs});
       if(exact.status==='promoted') return clamp(exact.confidence01*.05*retention);
       if(exact.status==='rejected') return retention===0?0:-clamp(exact.confidence01*.03*retention);
       return 0;
@@ -408,23 +411,24 @@ export class P23LearningEngine {
       const similarity=contextSimilarity(key,row.contextKey);
       if(similarity<5/6) continue;
       const support=Math.min(1,row.validationUses/8);
+      const calibratedTransfer=transferConfidence({shared:Math.round(similarity*6),total:6,sourceValidation01:row.validationSuccess01,independentN:row.validationUses,distance01:1-similarity});
       if(row.status==='promoted' && row.validationSuccess01>=.70){
-        const transfer=clamp(row.confidence01*.02*((similarity-.70)/.30)*support);
+        const transfer=clamp(row.confidence01*calibratedTransfer*.02*((similarity-.70)/.30)*support);
         if(transfer>bestPositive) bestPositive=transfer;
       } else if(row.status==='rejected' && row.validationSuccess01<=.42){
         // A rejected skill is evidence against this action in similar contexts,
         // but it must never penalize as strongly as a locally validated success.
-        const penalty=clamp(row.confidence01*.008*((similarity-.70)/.30)*support);
+        const penalty=clamp(row.confidence01*calibratedTransfer*.008*((similarity-.70)/.30)*support);
         if(penalty>bestNegative) bestNegative=penalty;
       }
     }
     return bestPositive>0 ? bestPositive : (bestNegative>0 ? -bestNegative : 0);
   }
   verificationPressure01():number {
-    return clamp(this.state.evidenceDebt.filter(x=>x.priority01>.45).reduce((m,x)=>Math.max(m,x.informationGainPerCost01),0));
+    return clamp(this.state.evidenceDebt.filter(x=>x.priority01>.45).reduce((m,x)=>Math.max(m,repairOpportunity({recurrence:1,severity01:x.priority01,uncertainty01:x.uncertainty01,expectedGain01:x.informationGainPerCost01,cost01:x.estimatedVerificationCost01})),0));
   }
 
-  evidenceDebt(limit=12):EvidenceDebtItem[]{return this.state.evidenceDebt.slice().sort((a,b)=>b.informationGainPerCost01-a.informationGainPerCost01).slice(0,limit).map(x=>structuredClone(x));}
+  evidenceDebt(limit=12):EvidenceDebtItem[]{return this.state.evidenceDebt.slice().sort((a,b)=>repairOpportunity({recurrence:1,severity01:b.priority01,uncertainty01:b.uncertainty01,expectedGain01:b.informationGainPerCost01,cost01:b.estimatedVerificationCost01})-repairOpportunity({recurrence:1,severity01:a.priority01,uncertainty01:a.uncertainty01,expectedGain01:a.informationGainPerCost01,cost01:a.estimatedVerificationCost01})).slice(0,limit).map(x=>structuredClone(x));}
 
   private updateEvidenceDebt(e:LearningExperience):void {
     const key=`${e.contextKey}|${e.action}`;
