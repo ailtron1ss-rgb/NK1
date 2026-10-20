@@ -15,17 +15,27 @@ export interface ReplaySelectionOptions {
   maxBatchSize?: number;
   /** Number of newest samples guaranteed a place before historical selection. */
   recentQuota?: number;
+  /** Optional half-life for historical surprise priority, measured in logical ticks. */
+  ageHalfLifeTicks?: number;
 }
 
 const finite = (value: number | undefined): number => Number.isFinite(value) ? Number(value) : 0;
-const chronological = <T extends ReplayCandidate>(a: T, b: T): number => a.tick - b.tick || a.id.localeCompare(b.id);
+const chronological = <T extends ReplayCandidate>(a: T, b: T): number =>
+  finite(a.tick) - finite(b.tick) || a.id.localeCompare(b.id);
 const bySurprise = <T extends ReplayCandidate>(a: T, b: T): number =>
   finite(b.surprise) - finite(a.surprise) || chronological(a, b);
 
+function effectivePriority<T extends ReplayCandidate>(item: T, newestTick: number, halfLifeTicks: number): number {
+  const surprise = Math.max(0, finite(item.surprise));
+  if (!Number.isFinite(halfLifeTicks)) return surprise;
+  const age = Math.max(0, newestTick - finite(item.tick));
+  return surprise * Math.pow(0.5, age / halfLifeTicks);
+}
+
 /**
  * Keeps a guaranteed recent window, then represents historical context/action strata,
- * and finally fills remaining capacity by surprise with deterministic age/ID tie breaks.
- * Inputs with <= capacity are returned chronologically without sampling.
+ * and fills remaining capacity by surprise, optionally discounted by age.
+ * The default infinite half-life preserves the prior surprise-only behavior.
  */
 export function selectReplayBatch<T extends ReplayCandidate>(
   input: readonly T[],
@@ -34,18 +44,30 @@ export function selectReplayBatch<T extends ReplayCandidate>(
   const requestedCapacity = options.maxBatchSize === undefined ? 64 : Math.floor(finite(options.maxBatchSize));
   const maxBatchSize = Math.max(1, Math.min(512, requestedCapacity));
   const recentQuota = Math.max(0, Math.min(maxBatchSize, Math.floor(finite(options.recentQuota ?? Math.floor(maxBatchSize / 2)))));
+  const requestedHalfLife = options.ageHalfLifeTicks;
+  const ageHalfLifeTicks = requestedHalfLife === undefined || requestedHalfLife === Number.POSITIVE_INFINITY
+    ? Number.POSITIVE_INFINITY
+    : Number.isFinite(requestedHalfLife) && requestedHalfLife > 0
+      ? Math.max(1, requestedHalfLife)
+      : Number.POSITIVE_INFINITY;
   const ordered = [...input].sort(chronological);
   const unique = new Map<string, T>();
-  for (const item of ordered) if (!unique.has(item.id)) unique.set(item.id, item);
+  for (const item of ordered) if (item.id && !unique.has(item.id)) unique.set(item.id, item);
   const candidates = [...unique.values()];
   if (candidates.length <= maxBatchSize) return candidates;
   if (recentQuota >= maxBatchSize) return candidates.slice(-maxBatchSize);
 
   const recent = recentQuota === 0 ? [] : candidates.slice(-recentQuota);
   const historical = recentQuota === 0 ? candidates : candidates.slice(0, -recentQuota);
+  const newestTick = candidates.reduce((latest, item) => Math.max(latest, finite(item.tick)), 0);
+  const priorityOrder = (a: T, b: T): number =>
+    effectivePriority(b, newestTick, ageHalfLifeTicks) - effectivePriority(a, newestTick, ageHalfLifeTicks)
+      || chronological(a, b);
+
+  // JSON tuple encoding prevents delimiter collisions between context and action keys.
   const strata = new Map<string, T[]>();
   for (const item of historical) {
-    const key = `${item.contextKey}|${item.action}`;
+    const key = JSON.stringify([item.contextKey, item.action]);
     const group = strata.get(key) ?? [];
     group.push(item);
     strata.set(key, group);
@@ -53,13 +75,13 @@ export function selectReplayBatch<T extends ReplayCandidate>(
 
   const selected = new Map<string, T>();
   for (const item of recent) selected.set(item.id, item);
-  const representatives = [...strata.values()].map(group => [...group].sort(bySurprise)[0]).sort(bySurprise);
+  const representatives = [...strata.values()].map(group => [...group].sort(priorityOrder)[0]).sort(priorityOrder);
   for (const item of representatives) {
     if (selected.size >= maxBatchSize) break;
     selected.set(item.id, item);
   }
   if (selected.size < maxBatchSize) {
-    for (const item of [...historical].sort(bySurprise)) {
+    for (const item of [...historical].sort(priorityOrder)) {
       if (selected.size >= maxBatchSize) break;
       selected.set(item.id, item);
     }
