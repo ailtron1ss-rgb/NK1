@@ -6,6 +6,8 @@ export interface MemoryRetrievalBenchmarkExample {
   query: string;
   relevantIds: string[];
   split: 'train' | 'holdout';
+  /** False marks an intentionally unanswerable query; it must have no relevant labels. */
+  answerable?: boolean;
 }
 
 export interface MemoryRetrievalBenchmarkProvenance {
@@ -34,6 +36,13 @@ export interface MemoryRetrievalBenchmarkOptions {
 
 export interface RetrievalBenchmarkMetrics {
   queries: number;
+  answerableQueries: number;
+  unanswerableQueries: number;
+  unsupportedRetrievalCount: number;
+  unsupportedRetrievalRate01: number;
+  correctAbstentionRate01: number;
+  falseAbstentionCount: number;
+  falseAbstentionRate01: number;
   recallAtK01: number;
   mrr01: number;
   precisionAtK01: number;
@@ -73,7 +82,7 @@ const queryNearDuplicate=(left:string,right:string)=>{
   let intersection=0;for(const shingle of sa)if(sb.has(shingle))intersection++;
   return intersection/(sa.size+sb.size-intersection)>=.88;
 };
-const canonicalExamples=(rows:MemoryRetrievalBenchmarkExample[])=>[...rows].map(x=>({id:x.id,query:normalizeQuery(x.query),relevantIds:[...new Set(x.relevantIds)].sort(),split:x.split})).sort((a,b)=>a.id.localeCompare(b.id)||a.split.localeCompare(b.split)||a.query.localeCompare(b.query)||a.relevantIds.join('\0').localeCompare(b.relevantIds.join('\0')));
+const canonicalExamples=(rows:MemoryRetrievalBenchmarkExample[])=>[...rows].map(x=>({id:x.id,query:normalizeQuery(x.query),relevantIds:[...new Set(x.relevantIds)].sort(),split:x.split,answerable:x.answerable!==false})).sort((a,b)=>a.id.localeCompare(b.id)||a.split.localeCompare(b.split)||a.query.localeCompare(b.query)||a.relevantIds.join('\0').localeCompare(b.relevantIds.join('\0')));
 const stableFingerprint=(rows:MemoryRetrievalBenchmarkExample[])=>createHash('sha256').update(JSON.stringify(canonicalExamples(rows))).digest('hex');
 // Canonicalize object keys but preserve array order: arrays such as semanticLinks can
 // affect bounded neighbor expansion, while object insertion order must not affect hashes.
@@ -95,6 +104,7 @@ type Evaluation={metrics:RetrievalBenchmarkMetrics;outcomes:QueryOutcome[]};
 
 function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:string,k:number)=>BenchmarkRetrievalResult, k:number, now:number):Evaluation {
   let recall=0,mrr=0,precision=0,covered=0,quarantined=0,stale=0,future=0,dormant=0,invalidEpistemic=0,duplicates=0,invalid=0;
+  let answerableQueries=0,unanswerableQueries=0,unsupportedRetrievalCount=0,falseAbstentionCount=0;
   const latency:number[]=[]; const setupLatency:number[]=[]; const outcomes:QueryOutcome[]=[];
   for(const ex of examples){
     const start=performance.now();
@@ -106,22 +116,42 @@ function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:st
     } catch {results=[];invalid++;latency.push(Math.max(0,performance.now()-start));setupLatency.push(0);}
     const ids=new Set<string>(); let dup=false;
     for(const row of results){if(!row?.id){invalid++;continue;} if(ids.has(row.id)){duplicates++;dup=true;} ids.add(row.id); if(row.epistemicStatus==='quarantined')quarantined++;if(row.validUntilAt!=null&&Number(row.validUntilAt)<=now)stale++;if(row.validFromAt!=null&&Number(row.validFromAt)>now)future++;if(row.dormant)dormant++;if(!['fact','belief','hypothesis','unknown','quarantined'].includes(String(row.epistemicStatus)))invalidEpistemic++;}
-    const relevant=new Set(ex.relevantIds);const hits=results.filter(row=>row?.id&&relevant.has(row.id));
-    const hitIds=new Set(hits.map(row=>row.id));
-    const queryRecall=relevant.size?hitIds.size/relevant.size:0;
-    const first=results.findIndex(row=>relevant.has(row.id));
-    const queryMrr=first>=0?1/(first+1):0;
-    outcomes.push({recallAtK01:queryRecall,mrr01:queryMrr});
-    recall+=queryRecall;
-    precision+=hits.length/k;
+    const relevant=new Set(ex.relevantIds);
+    const answerable=ex.answerable!==false;
+    const hits=results.filter(row=>row?.id&&relevant.has(row.id));
+    if(answerable){
+      answerableQueries++;
+      const hitIds=new Set(hits.map(row=>row.id));
+      const queryRecall=relevant.size?hitIds.size/relevant.size:0;
+      const first=results.findIndex(row=>relevant.has(row.id));
+      const queryMrr=first>=0?1/(first+1):0;
+      outcomes.push({recallAtK01:queryRecall,mrr01:queryMrr});
+      recall+=queryRecall;
+      precision+=hits.length/k;
+      mrr+=queryMrr;
+      if(results.length===0)falseAbstentionCount++;
+    }else{
+      unanswerableQueries++;
+      if(results.length>0)unsupportedRetrievalCount++;
+    }
     if(results.length)covered++;
-    mrr+=queryMrr;
     if(dup)invalid++;
   }
-  const n=Math.max(1,examples.length);
-  return {metrics:{queries:examples.length,recallAtK01:clamp(recall/n),mrr01:clamp(mrr/n),precisionAtK01:clamp(precision/n),queryCoverage01:clamp(covered/n),quarantinedResultCount:quarantined,staleResultCount:stale,futureResultCount:future,dormantResultCount:dormant,invalidEpistemicStatusResultCount:invalidEpistemic,duplicateResultCount:duplicates,invalidResultRate01:clamp(invalid/Math.max(1,examples.length*k)),latencyP95Ms:Number(p95(latency).toFixed(3)),isolationSetupP95Ms:Number(p95(setupLatency).toFixed(3))},outcomes};
+  const n=Math.max(1,answerableQueries);
+  const all=Math.max(1,examples.length);
+  const metrics:RetrievalBenchmarkMetrics={
+    queries:examples.length,answerableQueries,unanswerableQueries,unsupportedRetrievalCount,
+    unsupportedRetrievalRate01:clamp(unsupportedRetrievalCount/Math.max(1,unanswerableQueries)),
+    correctAbstentionRate01:unanswerableQueries?clamp(1-unsupportedRetrievalCount/unanswerableQueries):0,
+    falseAbstentionCount,falseAbstentionRate01:clamp(falseAbstentionCount/n),
+    recallAtK01:clamp(recall/n),mrr01:clamp(mrr/n),precisionAtK01:clamp(precision/n),
+    queryCoverage01:clamp(covered/all),quarantinedResultCount:quarantined,staleResultCount:stale,
+    futureResultCount:future,dormantResultCount:dormant,invalidEpistemicStatusResultCount:invalidEpistemic,
+    duplicateResultCount:duplicates,invalidResultRate01:clamp(invalid/Math.max(1,examples.length*k)),
+    latencyP95Ms:Number(p95(latency).toFixed(3)),isolationSetupP95Ms:Number(p95(setupLatency).toFixed(3))
+  };
+  return {metrics,outcomes};
 }
-
 function pairedBootstrapInterval(baseline:QueryOutcome[],candidate:QueryOutcome[],metric:'recallAtK01'|'mrr01',samples:number,seed:number){
   const n=Math.min(baseline.length,candidate.length);
   if(!n)return {samples:0,lowerBound01:0,medianDelta01:0,upperBound01:0};
@@ -203,10 +233,10 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const limited=rawArray.slice(0,maxExamples);const truncatedExamples=Math.max(0,rawArray.length-limited.length);
   let droppedExamples=0;
   const examples=limited.filter((row):row is MemoryRetrievalBenchmarkExample=>{
-    const valid=Boolean(row&&typeof row.id==='string'&&row.id.trim()&&typeof row.query==='string'&&row.query.trim()&&Array.isArray(row.relevantIds)&&row.relevantIds.slice(0,24).some(x=>typeof x==='string'&&x.trim())&&(row.split==='train'||row.split==='holdout'));
+    const valid=Boolean(row&&typeof row.id==='string'&&row.id.trim()&&typeof row.query==='string'&&row.query.trim()&&Array.isArray(row.relevantIds)&&(row.answerable===undefined||typeof row.answerable==='boolean')&&(row.answerable===false?row.relevantIds.length===0:row.relevantIds.slice(0,24).some(x=>typeof x==='string'&&x.trim()))&&(row.split==='train'||row.split==='holdout'));
     if(!valid)droppedExamples++;
     return valid;
-  }).map(row=>({id:row.id.trim().slice(0,120),query:row.query.trim().slice(0,500),relevantIds:[...new Set(row.relevantIds.filter(x=>typeof x==='string'&&x.trim()).slice(0,24).map(x=>x.trim().slice(0,160)))],split:row.split})).filter(row=>row.relevantIds.length>0).sort((a,b)=>a.split.localeCompare(b.split)||normalizeQuery(a.query).localeCompare(normalizeQuery(b.query))||a.id.localeCompare(b.id));
+  }).map(row=>({id:row.id.trim().slice(0,120),query:row.query.trim().slice(0,500),relevantIds:[...new Set(row.relevantIds.filter(x=>typeof x==='string'&&x.trim()).slice(0,24).map(x=>x.trim().slice(0,160)))],split:row.split,answerable:row.answerable!==false})).filter(row=>row.answerable===false||row.relevantIds.length>0).sort((a,b)=>a.split.localeCompare(b.split)||normalizeQuery(a.query).localeCompare(normalizeQuery(b.query))||a.id.localeCompare(b.id));
   const sourceItems=Array.isArray(snapshot?.items)?snapshot.items:[];
   const boundedSourceItems=sourceItems.slice(0,1600);
   const malformedCorpusRows=boundedSourceItems.filter(m=>!m||typeof m.id!=='string'||!m.id.trim()||typeof m.content!=='string').length;
@@ -276,7 +306,8 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const provenanceInput=options.datasetProvenance??{};
   const provenance={datasetId:textField(provenanceInput.datasetId,120),datasetVersion:textField(provenanceInput.datasetVersion,120),sourceRef:textField(provenanceInput.sourceRef,240),labelingProtocol:textField(provenanceInput.labelingProtocol,500)};
   const provenanceComplete=Boolean(provenance.datasetId&&provenance.datasetVersion&&provenance.sourceRef&&provenance.labelingProtocol);
-  const enoughEvidence=dataIntegrity.uniqueHoldoutQueries>=minHoldout&&dataIntegrity.uniqueTrainQueries>=4&&corpus.length>=12;
+  const labelledHoldoutQueries=holdout.filter(x=>x.answerable!==false).length;
+  const enoughEvidence=labelledHoldoutQueries>=minHoldout&&dataIntegrity.uniqueTrainQueries>=4&&corpus.length>=12;
   const baselineMetrics=baselineEval.metrics;const candidateMetrics=candidateEval.metrics;
   const recallDelta=candidateMetrics.recallAtK01-baselineMetrics.recallAtK01;
   const mrrDelta=candidateMetrics.mrr01-baselineMetrics.mrr01;
@@ -285,6 +316,7 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const dormantSafe=candidateMetrics.dormantResultCount===0;
   const epistemicStatusSafe=candidateMetrics.invalidEpistemicStatusResultCount===0;
   const validRateSafe=candidateMetrics.invalidResultRate01<=baselineMetrics.invalidResultRate01;
+  const abstentionSafe=candidateMetrics.unsupportedRetrievalRate01<=baselineMetrics.unsupportedRetrievalRate01;
   const confidenceSupported=confidence.recallAtK01.lowerBound01>0;
   // Recall uplift alone is insufficient: a point estimate can hide a material but
   // noisy MRR regression. Promotion review requires the paired-bootstrap lower bound
@@ -301,9 +333,10 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
     mrrPointEstimateNonInferior:mrrDelta>=-mrrTolerance,
     mrrConfidenceNonInferioritySupported:mrrNonInferioritySupported,
     noUnsafeCandidateResults:quarantineSafe&&staleSafe&&dormantSafe&&epistemicStatusSafe&&validRateSafe,
+    abstentionNonInferiority:abstentionSafe,
   };
   const promotionAllowed=Object.values(promotionGates).every(Boolean);
-  const reason=!seedInputValid?'invalid-bootstrap-seed':!corpusIntegrity.validForPromotion?'corpus-integrity-failed':!dataIntegrity.validForPromotion?'dataset-integrity-failed':!provenanceComplete?'dataset-provenance-incomplete':!enoughEvidence?'insufficient-labelled-holdout-or-corpus':!quarantineSafe?'candidate-returned-quarantined-memory':!staleSafe?'candidate-returned-out-of-window-memory':!dormantSafe?'candidate-returned-dormant-memory':!epistemicStatusSafe?'candidate-returned-invalid-epistemic-status':!validRateSafe?'candidate-result-integrity-regression':recallDelta<minUplift?'recall-uplift-below-threshold':!confidenceSupported?'recall-uplift-not-confidence-supported':!mrrNonInferioritySupported?'mrr-regression-not-confidence-bounded':mrrDelta < -mrrTolerance?'mrr-regression-exceeds-tolerance':'holdout-gates-passed';
+  const reason=!seedInputValid?'invalid-bootstrap-seed':!corpusIntegrity.validForPromotion?'corpus-integrity-failed':!dataIntegrity.validForPromotion?'dataset-integrity-failed':!provenanceComplete?'dataset-provenance-incomplete':!enoughEvidence?'insufficient-labelled-holdout-or-corpus':!quarantineSafe?'candidate-returned-quarantined-memory':!staleSafe?'candidate-returned-out-of-window-memory':!dormantSafe?'candidate-returned-dormant-memory':!epistemicStatusSafe?'candidate-returned-invalid-epistemic-status':!validRateSafe?'candidate-result-integrity-regression':!abstentionSafe?'unsupported-retrieval-rate-regression':recallDelta<minUplift?'recall-uplift-below-threshold':!confidenceSupported?'recall-uplift-not-confidence-supported':!mrrNonInferioritySupported?'mrr-regression-not-confidence-bounded':mrrDelta < -mrrTolerance?'mrr-regression-exceeds-tolerance':'holdout-gates-passed';
   return {
     schemaVersion:3 as const,benchmark:'memoryos2-retrieval-vs-bm25-baseline',retrievalAlgorithmVersion:RETRIEVAL_ALGORITHM_VERSION,mode:'offline-clone; no-live-state-mutation' as const,latencyDefinition:'p95 measures retrieval only; isolationSetupP95Ms is reported separately',
     now,k,corpusSize:corpus.length,trainQueries:train.length,holdoutQueries:holdout.length,datasetFingerprint,corpusFingerprint:corpusHash,retrievalConfigurationFingerprint:retrievalConfigHash,corpusIntegrity,
@@ -314,6 +347,6 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
     metrics:{baseline:baselineMetrics,candidate:candidateMetrics,train:{baseline:trainBaseline.metrics,candidate:trainCandidate.metrics}},
     deltas:{recallAtK01:Number(recallDelta.toFixed(4)),mrr01:Number(mrrDelta.toFixed(4))},confidence,
     promotion:{allowed:promotionAllowed,status:promotionAllowed?'candidate-eligible-for-separate-review':'not-promoted',reason,gates:promotionGates,minimumHoldoutQueries:minHoldout,minimumRecallUplift01:minUplift,maximumMrrRegression01:mrrTolerance,mrrNonInferioritySupported,mrrLowerBound01:confidence.mrr01.lowerBound01,requiresIndependentHumanOrCIReview:true},
-    guardrails:{liveMemoryMutated:false,identityOrPolicyChanged:false,labelsInferredFromPredictions:false,holdoutUsedForTraining:false,quarantinedMemoryMayPromote:false,staleEvidenceMayPromote:false,futureEvidenceMayPromote:false,dormantMemoryMayPromote:false,invalidEpistemicStatusMayPromote:false,corpusIntegrityBlocksPromotion:true,splitLeakageBlocksPromotion:true,unknownGroundTruthIdsBlockPromotion:true,provenanceRequiredForPromotion:true,invalidSeedMayPromote:false,mrrRegressionMustBeConfidenceBounded:true,bootstrapSeed:seed},
+    guardrails:{liveMemoryMutated:false,identityOrPolicyChanged:false,labelsInferredFromPredictions:false,holdoutUsedForTraining:false,quarantinedMemoryMayPromote:false,staleEvidenceMayPromote:false,futureEvidenceMayPromote:false,dormantMemoryMayPromote:false,invalidEpistemicStatusMayPromote:false,corpusIntegrityBlocksPromotion:true,splitLeakageBlocksPromotion:true,unknownGroundTruthIdsBlockPromotion:true,unanswerableQueryLabelsRequired:true,unsupportedRetrievalRateMustNotRegress:true,provenanceRequiredForPromotion:true,invalidSeedMayPromote:false,mrrRegressionMustBeConfidenceBounded:true,bootstrapSeed:seed},
   };
 }

@@ -43,6 +43,8 @@ const examples = [
   { id: 'holdout-ru-6', query: 'калибровка неопределённости уверенность точность', relevantIds: [ids.get('ru-holdout-6')], split: 'holdout' },
   { id: 'holdout-en-7', query: 'checkpoint durable state process restart', relevantIds: [ids.get('en-holdout-7')], split: 'holdout' },
   { id: 'holdout-ru-8', query: 'контрольная точка состояние перезапуск процесса', relevantIds: [ids.get('ru-holdout-8')], split: 'holdout' },
+  { id: 'abstain-en-9', query: 'xenolith quasar tetrad unfound archive', relevantIds: [], split: 'holdout', answerable: false },
+  { id: 'abstain-ru-10', query: 'кварк ксенолит вымышленный архив отсутствующий', relevantIds: [], split: 'holdout', answerable: false },
 ];
 const provenance = {
   datasetId: 'nk1-workpass83-synthetic-fixture',
@@ -57,8 +59,12 @@ const report = runMemoryOS2RetrievalBenchmark(memory.snapshot(), examples, {
 });
 assert.equal(JSON.stringify(memory.snapshot()), before, 'benchmark must not mutate the live memory owner');
 assert.equal(report.benchmark, 'memoryos2-retrieval-vs-bm25-baseline');
-assert.equal(report.metrics.baseline.queries, 8);
-assert.equal(report.metrics.candidate.queries, 8);
+assert.equal(report.metrics.baseline.queries, 10);
+assert.equal(report.metrics.candidate.queries, 10);
+assert.equal(report.metrics.baseline.answerableQueries, 8);
+assert.equal(report.metrics.candidate.unanswerableQueries, 2);
+assert.ok(Number.isFinite(report.metrics.candidate.unsupportedRetrievalRate01));
+assert.ok(Number.isFinite(report.metrics.candidate.falseAbstentionRate01));
 assert.equal(report.datasetIntegrity.validForPromotion, true, 'fixed fixture should pass dataset integrity checks');
 assert.equal(report.corpusIntegrity.validForPromotion, true);
 assert.equal(report.promotion.requiresIndependentHumanOrCIReview, true);
@@ -82,6 +88,10 @@ console.log('WORKPASS83_RETRIEVAL_BENCHMARK_TRUTH=PASS', JSON.stringify({
   corpus: report.corpusSize,
   trainQueries: report.trainQueries,
   holdoutQueries: report.holdoutQueries,
+  answerableQueries: report.metrics.candidate.answerableQueries,
+  unanswerableQueries: report.metrics.candidate.unanswerableQueries,
+  candidateUnsupportedRetrievalRate: report.metrics.candidate.unsupportedRetrievalRate01,
+  candidateFalseAbstentionRate: report.metrics.candidate.falseAbstentionRate01,
   baselineRecallAt3: report.metrics.baseline.recallAtK01,
   candidateRecallAt3: report.metrics.candidate.recallAtK01,
   baselineMRR: report.metrics.baseline.mrr01,

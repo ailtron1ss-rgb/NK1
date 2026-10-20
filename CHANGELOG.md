@@ -936,3 +936,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 - **PASS:** [GitHub Actions run 39374347662](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39374347662) completed successfully on HEAD `b440066e49eca7cf098cbbe99267962a9eb564d6`, including WorkPass84 integrity audit, WorkPass80/83 memory tests, WorkPass79 provider tests, WorkPass82 cancellation and server smoke.
 - The run includes the research-note and handover updates; those documents do not change runtime behavior. Continue to use exact-head Actions status as the gate for any future commits.
+
+
+## WorkPass85 — abstention-aware retrieval evaluation (2026-10-20)
+
+- Extended the offline MemoryOS2-vs-BM25 benchmark to label answerable and intentionally unanswerable queries explicitly. Unanswerable examples must have an empty relevance-label set; malformed combinations are rejected rather than silently scored.
+- Recall/MRR/precision now use answerable queries only; the report separately records unanswerable-query count, unsupported retrieval rate, correct abstention rate, false-abstention count and rate. Promotion gates require the candidate's unsupported-retrieval rate not to regress against BM25.
+- Expanded the fixed RU/EN synthetic harness from 8 to 10 holdout queries (8 answerable, 2 unanswerable). This tests metric integrity only; it is not an independent human-labelled dataset and cannot support a quality-uplift claim.
+- Exact-head GitHub Actions validation is pending for this commit; do not mark WorkPass85 PASS until its run succeeds.

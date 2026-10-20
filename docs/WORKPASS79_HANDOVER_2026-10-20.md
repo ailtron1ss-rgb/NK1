@@ -153,3 +153,13 @@ No external benchmark data or code has been copied into NK1. Verify licences and
 - **PASS:** [GitHub Actions run 39374347662](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39374347662) completed successfully for the branch HEAD at the time of that run: `b440066e49eca7cf098cbbe99267962a9eb564d6`.
 - Passed steps: WorkPass84 script/test target integrity, WorkPass80 cold-memory residency, WorkPass83 benchmark truthfulness/leakage, WorkPass79 provider policy/boundary, WorkPass82 end-to-end cancellation, and server HTTP smoke.
 - The next commit changes the HEAD and therefore requires its own Actions confirmation; do not treat this historical receipt as proof for future commits.
+
+
+## WorkPass85 — abstention-aware benchmark metrics (2026-10-20)
+
+**IMPLEMENTED in branch; CI pending until the new exact head completes.**
+
+- `MemoryRetrievalBenchmark.ts` accepts `answerable: false` only when the example has no relevant IDs; omitted `answerable` defaults to answerable.
+- Recall, MRR and precision are calculated over answerable queries only. Reports separately expose `answerableQueries`, `unanswerableQueries`, `unsupportedRetrievalCount`, `unsupportedRetrievalRate01`, `correctAbstentionRate01`, `falseAbstentionCount` and `falseAbstentionRate01`.
+- Candidate promotion now requires non-regression in unsupported retrieval versus the same-corpus BM25 baseline. The fixture includes 8 answerable and 2 unanswerable RU/EN holdout queries.
+- This is still a synthetic harness. **No external-data quality claim, retrieval uplift, or consciousness claim is supported.** The current branch must pass its own Actions run before this work is considered verified.
