@@ -9,7 +9,9 @@ Execution branch: rebuild. Stable branch: main (do not modify as part of island 
 - [x] Persist CHANGELOG and checkpoint pointers.
 - [ ] Confirm latest Actions on branch baseline and current WorkPass93/94 findings.
 
-## Stage 1 — core island
+## Stage 1 — core island (IN PROGRESS)
+- [x] Add runtime validation at the public OrganismCore.observe boundary before spine-only/full-cycle routing; reject malformed observations and invalid cycle modes before side effects.
+- [x] Add deterministic regression for valid modes, malformed observations, invalid mode and non-mutation; wire it into the cognitive regression workflow on the rebuild branch.
 - [ ] Trace one production cycle from perception through plan, EthicalGate, ActionGateway, reafference and reflection.
 - [ ] Remove any direct side-effect path that bypasses canonical authorization/receipt verification.
 - [ ] Define the smallest versioned cycle/event contract and enforce it on the live path.
