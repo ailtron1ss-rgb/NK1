@@ -57,3 +57,18 @@ test("refuses promotion when reward improves but success regresses", () => {
   assert.equal(result.gates.taskSuccessNonInferior, false);
   assert.equal(result.promotionEligible, false);
 });
+
+test("validates promotion thresholds and permits an explicit sample-size policy", () => {
+  const baseline = Array.from({ length: 3 }, (_, i) => run(i, 0.4));
+  const candidate = Array.from({ length: 3 }, (_, i) => run(i, 0.8));
+  const result = evaluatePairedLearningRuns({
+    baseline, candidate, minimumSampleCount: 3
+  });
+  assert.equal(result.gates.minimumSampleCount, true);
+  assert.throws(() => evaluatePairedLearningRuns({
+    baseline, candidate, maximumLatencyIncreaseRatio: -0.1
+  }), /maximumLatencyIncreaseRatio must be a finite non-negative number/);
+  assert.throws(() => evaluatePairedLearningRuns({
+    baseline, candidate, minimumSampleCount: 1
+  }), /minimumSampleCount must be an integer >= 2/);
+});
