@@ -1,3 +1,11 @@
+## WorkPass116 — seed-clustered verified learning comparisons (2026-10-20)
+
+- Added `VerifiedOutcomeLedger.comparePairedBySeed` and `comparePairedByFamilyAndSeed`. The independent statistical unit is now a seed-level aggregate rather than each correlated task cell.
+- Requires complete attempt-1 baseline/candidate coverage for the exact task set within a seed; incomplete seeds are excluded as a whole, and retries cannot inflate sample counts or silently replace the primary attempt.
+- Uses a small-sample Student-t interval across paired seeds and reports no interval for a single seed. Existing task-cell APIs remain available for compatibility.
+- Added `p23-seed-clustered-outcome-comparison.mjs`, registered the npm script, and wired the regression into the continual-learning workflow.
+- Evidence boundary: this fixes the statistical unit and missing-cell handling in the evaluation path; it does not demonstrate real-world learning uplift. Exact-head Actions and runtime typecheck are pending.
+
 ## WorkPass115 — matched hard-reset retention evaluation (2026-10-20)
 
 - Added `ResetRetentionEvaluation.ts` to compare independently verified task outcomes across stateless prior `P`, uninterrupted ceiling `C`, and reset-survival `R(k)` arms on the same manifest/task/seed.
