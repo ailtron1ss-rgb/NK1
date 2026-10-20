@@ -1681,9 +1681,10 @@
     "test:p23:continual-metrics": "node --experimental-strip-types tests/p23-continual-learning-metrics.mjs && npm run test:p23:continual-benchmark && node --experimental-strip-types tests/p23-continual-outcome-matrix.mjs",
     "test:p23:continual-benchmark": "node --experimental-strip-types tests/p23-continual-benchmark-comparison.mjs",
     "test:p23:learning-experiment-plan": "node --experimental-strip-types tests/p23-learning-experiment-plan.mjs && npm run test:p23:learning-experiment-plan-cli",
-    "test:p23:continual-learning:full": "npm run test:p23:learning-experiment-plan && npm run test:p23:learning-process-supervisor && npm run test:p23:continual-metrics && node --experimental-strip-types tests/p23-reset-retention-evaluation.mjs",
+    "test:p23:continual-learning:full": "npm run test:p23:learning-execution-evidence && npm run test:p23:learning-experiment-plan && npm run test:p23:learning-process-supervisor && npm run test:p23:continual-metrics && node --experimental-strip-types tests/p23-reset-retention-evaluation.mjs",
     "test:p23:learning-experiment-plan-cli": "node --experimental-strip-types tests/p23-learning-experiment-plan-cli.mjs",
-    "audit:p23:learning-experiment-plan": "npm run test:p23:learning-experiment-plan && npm run test:p23:learning-process-supervisor && npm run typecheck",
-    "test:p23:learning-process-supervisor": "node --experimental-strip-types tests/p23-learning-process-supervisor.mjs"
+    "audit:p23:learning-experiment-plan": "npm run test:p23:learning-execution-evidence && npm run test:p23:learning-experiment-plan && npm run test:p23:learning-process-supervisor && npm run typecheck",
+    "test:p23:learning-process-supervisor": "node --experimental-strip-types tests/p23-learning-process-supervisor.mjs",
+    "test:p23:learning-execution-evidence": "node --experimental-strip-types tests/p23-learning-execution-evidence.mjs"
   }
 }
