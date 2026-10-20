@@ -9,6 +9,8 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualBenchmarkComparison.ts'
       - 'runtime/neuro-kurisu/tests/p23-continual-benchmark-comparison.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/LearningExperimentPlan.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/LearningProcessSupervisor.ts'
+      - 'runtime/neuro-kurisu/tests/p23-learning-process-supervisor.mjs'
       - 'runtime/neuro-kurisu/tests/p23-learning-experiment-plan.mjs'
       - 'runtime/neuro-kurisu/tests/p23-learning-experiment-plan-cli.mjs'
       - 'runtime/neuro-kurisu/scripts/create-learning-experiment-plan.mjs'
@@ -51,6 +53,9 @@ jobs:
       - name: Run reproducible learning experiment plan regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:learning-experiment-plan
+      - name: Run bounded learning process supervisor regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:learning-process-supervisor
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
