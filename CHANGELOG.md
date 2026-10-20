@@ -1,3 +1,10 @@
+## NK1 v2.0 rebuild — stage 1 core boundary (2026-10-20)
+
+- [FIXED] Added runtime validation at the canonical OrganismCore.observe entrypoint before full-cycle/spine-only routing. Invalid observation shapes and invalid mode values fail closed before stateful work.
+- Added `CognitiveCycleBoundary.ts` and a 9-assertion regression; registered `test:cognitive-cycle-boundary` and wired it into the cognitive regression workflow for pushes to `rebuild`.
+- Updated `docs/ROADMAP.md` and added `docs/REBUILD_CHECKPOINT_CORE_BOUNDARY_2026-10-20.md` with command, expected output, rollback and remaining gates.
+- Validation status: IMPLEMENTED; exact-head Actions result pending. This input-boundary guard is not evidence of end-to-end cognition or consciousness.
+
 ## NK1 v2.0 rebuild — stage 0 addendum (2026-10-20)
 
 - Extended existing `docs/ARCHITECTURE.md` rather than replacing the current architecture record; the new section clearly separates target contracts from implemented behavior.
