@@ -55,7 +55,7 @@ export class VerifiedOutcomeLedgerFileStore {
     const info = await stat(this.filePath);
     if (!info.isFile() || info.size > this.maxBytes) throw new Error('ledger file is not regular or exceeds size limit');
     const data = await readFile(this.filePath, 'utf8');
-    if (Buffer.byteLength(data, 'utf8') > this.maxBytes) throw new Error('ledger persistence exceeds configured size limit');
+    if (new TextEncoder().encode(data).byteLength > this.maxBytes) throw new Error('ledger persistence exceeds configured size limit');
     return restoreVerifiedOutcomeLedger(data);
   }
 }
