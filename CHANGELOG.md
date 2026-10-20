@@ -5,7 +5,7 @@
 - Added standalone regressions for selector invariants and runtime configuration; expanded the benchmark to compare recent-only, surprise-only, and multi-timescale selection with recent quotas 16, 32 and 48.
 - Updated `docs/P23_CONTINUAL_LEARNING_SCORECARD_2026-10-20.md` with current engineering estimates, research comparisons and the evidence boundary.
 - Research adaptation: ARB (AISTATS 2026) motivates future policy-alignment-aware replay, but it is not copied wholesale; adding it safely requires verified outcome provenance and controlled task-stream comparisons.
-- Validation status at commit time: exact-head Actions runs are pending. Do not mark this pass CI-validated until the latest head's replay-policy, P23 learning and runtime regression workflows complete.
+- **Exact tested code head CI PASS:** `891e56f58373377ea6a325552fe2d1e389f6d71b`. [Replay selector + 16/32/48 quota sweep](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39421560741), [Node 24 + continual skill learning](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39421553511), [cognitive runtime regression](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39421553534), and [verification input binding](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39421553538) all passed on the same code head. Later scorecard/changelog commits are documentation-only.
 - Evidence boundary: selector coverage and synthetic batch composition are implementation evidence only; no independent task-success, retention, transfer or production-learning uplift is claimed.
 
 ## WorkPass93 — harden core ownership exemption and add durable checkpoint (2026-10-20)
