@@ -1,3 +1,11 @@
+## WorkPass78 — master strategy, architecture map and 1,000-unit execution plan (2026-10-20)
+
+- Added [NeuroCore master strategy and brain map](docs/NEUROCORE_MASTER_STRATEGY_AND_BRAIN_MAP.md): logical subsystem boundaries, cross-component interaction trace, human-brain analogy with explicit limits, provisional readiness scorecard, prioritized risk register, scientific research tracks, source inventory boundaries and staged release gates.
+- Added [1,000-work-unit backlog](docs/NEUROCORE_1000_WORK_UNIT_BACKLOG.md), a 20 × 10 × 5 decomposition of domains, subsystems and lifecycle stages. All units begin PLANNED / UNVERIFIED; this is a planning framework, not a claim that tasks are completed or a mandate to create empty modules.
+- Expanded [persistent start-here charter](NEUROCORE_START_HERE.md) and [AGENTS.md](AGENTS.md) with new-chat continuation, broad research / selective promotion, source inventory requirements and release discipline.
+- **Important limits:** scorecard values are provisional triage estimates, not measured benchmark scores. The strategy identifies the next release blockers but does not itself close them. The complete live file inventory, call graph, dependency/license/SBOM and asset provenance still need to be generated from the current repository.
+- **Next code-first priorities:** provider failure/cancellation/cooldown HTTP regressions; restart-in-flight action/request tests; live Dell G3 local-model smoke; independent RU/EN retrieval holdouts; learning-transfer controls; action verification matrix; dynamic test-runner/source/license inventory; real browser/Live2D/TTS E2E; target-device soak and release packaging.
+
 ## Current engineering pass — WorkPass76 (2026-10-19)
 
 - Added [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md) as the durable project charter, new-chat resume protocol and evidence-based upstream research/integration mandate.
