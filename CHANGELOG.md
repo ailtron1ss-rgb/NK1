@@ -1068,3 +1068,14 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added a bounded, seeded Algorithm R reservoir sampler as an independent continual-learning replay baseline; production defaults are unchanged.
 - Added deterministic regression tests and expanded the replay-selection benchmark across five reservoir seeds.
 - Added a Node 24 GitHub Actions workflow. Report only replay composition and reproducibility until verifier-grounded task outcomes, retention, transfer and uncertainty intervals are measured.
+
+
+## WorkPass106 — verifier-outcome promotion gate (2026-10-20)
+
+- Added `VerifiedOutcomePromotionGate.ts`: explicit minimum paired sample and task-family thresholds, minimum aggregate pass-rate gain, optional strict positive 95% CI lower-bound requirement, and a per-family regression ceiling.
+- Added `tests/p23-verified-outcome-promotion-gate.mjs` covering successful evidence, small samples, weak gain, uncertain intervals, missing family pairs, regressions, duplicate family names, invalid config, and an explicitly relaxed exploratory mode.
+- Corrected `VerifiedOutcomeLedger.ts` so empty/whitespace method IDs are classified as `invalid-method`, not misreported as an invalid attempt; added regression coverage.
+- Exposed `test:p23:verified-promotion` in the runtime package and added a Node 24 Actions workflow running the ledger regression, promotion-gate regression, and runtime typecheck.
+- This is an eligibility calculation only: it does not automatically promote or alter production learning policy. Synthetic test fixtures validate gate behavior, not real task success.
+- Research adaptation: SkillLearnBench's three-level evaluation chain and deterministic task verifiers, plus continual-learning benchmarks' emphasis on transfer/retention rather than memory accumulation. No upstream benchmark data or third-party code was copied into this change.
+- Exact-head CI status must be read from Actions before this pass is marked validated.
