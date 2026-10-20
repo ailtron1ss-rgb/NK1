@@ -1,0 +1,85 @@
+# P23 continual-learning scorecard and comparative roadmap — 2026-10-20
+
+This is an engineering assessment of the current repository implementation, not a claim of human-level learning. Scores are provisional expert estimates based on implemented code paths and test coverage. They must be replaced or calibrated with repeated external-task benchmark results.
+
+## Progress estimate
+
+- **P23 symbolic continual-learning core: 58%** — experience capture, bounded replay, contextual action values, skill promotion/rejection, nearby-context transfer, retention decay, rollback and persistence exist. This measures implementation coverage against the currently scoped P23 core, not success rate.
+- **Evidence-grounded learning maturity: 34%** — independent outcome verification, reliable holdout splits across task families, delayed retention measurements and external task outcomes remain incomplete.
+- **Project-wide learning ambition: 29%** — this is a broad roadmap estimate across autonomous, cross-domain, lifelong learning; it is not a measured capability metric.
+- **WorkPass99 benchmark coverage: newly added** — deterministic algorithm-level comparison of recent-only, surprise-only and multi-timescale replay. Await GitHub Actions result before marking it passed.
+
+Do not add these percentages together. Their denominators differ and each is a planning estimate.
+
+## Provisional scorecard (1–100)
+
+| Aspect | Score | Evidence and main limitation |
+|---|---:|---|
+| Experience ingestion and malformed-label rejection | 72 | Deduplication and non-finite label rejection are implemented; source truth/reliability is not independently established. |
+| Replay budget and bounded resource use | 78 | Hard cap of 64 updates per consolidation and bounded state history; capacity is fixed rather than workload-adaptive. |
+| Replay diversity and multi-timescale retention | 62 | Recent quota plus older context/action representatives; no yet-validated retention/forward-transfer win on a task stream. |
+| Skill formation and promotion/rejection | 61 | Context/action skills, held-out validation windows and promotion rollback exist; validation is still narrow and largely synthetic. |
+| Contextual transfer | 58 | Conservative near-context transfer and distant-context rejection are tested; task-semantic similarity is represented by coarse state buckets. |
+| Forgetting and retention bookkeeping | 70 | Half-life decay, expiry, fresh-evidence refresh and rollback exist; delayed repeated task tests are missing. |
+| Outcome verification / causal grounding | 34 | There are feedback labels, shadow comparisons and ablations, but no universal independent verifier for real actions or claims. |
+| Calibration and uncertainty reporting | 43 | Prediction error and calibration metrics exist; sample-count-aware confidence intervals and drift alarms are incomplete. |
+| Benchmark quality / baselines | 32 | Synthetic regression tests cover important invariants; no stable external-task suite yet compares task success, retention and transfer. |
+| Persistence and state integrity | 69 | Snapshot/restore and checksum mechanisms exist; long-horizon corruption and migration fault injection need wider coverage. |
+| Observability and experiment reproducibility | 49 | Metrics are exposed, but there is not yet a durable experiment ledger with versioned seeds, benchmark manifests and confidence intervals. |
+
+**Provisional overall score: 57/100.** This is a weighted engineering judgment, not a measured benchmark score. It deliberately discounts synthetic-test coverage where external outcome truth is absent. The strongest implemented areas are boundedness, validation rollback and retention bookkeeping; the weakest are external grounding and comparative empirical evaluation.
+
+## Comparison with established and experimental systems
+
+| System | Strength to learn from | Difference from NK1 | Adaptation priority |
+|---|---|---|---|
+| [Voyager](https://github.com/MineDojo/Voyager) (MIT) | Executable/compositional skill library, automatic curriculum, environment feedback and self-verification | Minecraft-specific, LLM/tool-driven; not a drop-in TypeScript cognition module | High: add versioned skill contracts, invocation traces, verifier outcomes and safe rollback; review relevant files/license before importing code. |
+| [ARROW](https://github.com/Cerenaut/ARROW) (paper: https://arxiv.org/abs/2603.11395) | Separate recent and long-term replay; long-term distribution matching to mitigate forgetting | Neural world-model RL and Python/PyTorch dependencies; current P23 is symbolic contextual replay | High: next benchmark should test fixed 50/50 against 25/75 and 75/25, with context/action distribution coverage and old-task retention. Do not import the neural stack wholesale. |
+| [SkillLearnBench](https://github.com/cxcscmu/SkillLearnBench) (MIT) | Real-world task suite with separate skill quality, trajectory and final outcome metrics; teacher feedback versus self-feedback baselines | Requires LLM APIs, Docker and task-specific setup; costly to run fully | Very high: borrow the three-level evaluation model and task verifier patterns; start with a small local subset, preserve upstream attribution/license. |
+| [ContinualSkillBench](https://arxiv.org/abs/2608.03874) (2026) | Sequential task streams and tests whether learned skills actually transfer, not merely accumulate | Research benchmark, not a runtime library | High: add increasing-difficulty task streams and compare skill-memory use against context-only adaptation. |
+| Replay-based recurrent RL ([paper/code](https://github.com/amazon-science/replay-based-recurrent-rl)) | Modular replay baseline and controlled continual-RL comparisons | Neural policy, different representation and compute assumptions | Medium: use as evaluation-design reference; avoid transplanting incompatible training code. |
+
+Research sources are design references, not proof that their gains transfer to NK1. In particular, ARROW's neural results do not establish that the current symbolic replay policy improves outcomes; only an NK1-controlled benchmark can do that.
+
+## Required benchmark protocol
+
+Compare these baselines on the *same deterministic, versioned stream*:
+
+1. No replay / online-only update.
+2. Recency-only replay.
+3. Surprise-priority replay.
+4. Current multi-timescale replay (32 recent + up to 32 historical representatives).
+5. Multi-timescale ratios 25/75 and 75/25.
+6. Context/action-stratified replay without surprise ranking.
+
+Report at least:
+- task success against an independent verifier;
+- old-task retention after new-task blocks;
+- forward transfer on unseen but related contexts;
+- skill promotion precision and rollback latency;
+- context/action stratum coverage;
+- updates per consolidation, memory footprint and wall-clock cost;
+- per-task sample counts and uncertainty intervals.
+
+Do not promote a strategy just because its replay batch is diverse or its internal TD error decreases. Those are diagnostics, not outcome success. Split training/validation/test by task family or environment instance to avoid leakage. External/self-generated feedback must be labelled separately.
+
+## Next implementation order
+
+1. **P0 — trustworthy outcomes:** attach provenance, verifier identity, timestamp and confidence to feedback; prevent unverified self-judgment alone from promoting high-impact skills.
+2. **P1 — benchmark baselines:** make replay strategy selectable behind a typed policy/config, with a deterministic task-stream harness and machine-readable results.
+3. **P1 — adaptive replay allocation:** tune recent/historical ratio from measured drift/retention signals only after controlled ablations; retain a fixed safe default.
+4. **P1 — transferable skills:** explicit preconditions, expected effects, contraindications, versioning, invocation and postcondition checks.
+5. **P2 — long-horizon validation:** delayed recall/retention, task-family holdouts, recovery after corrupted persistence and drift detection.
+6. **P2 — upstream integration:** audit specific files and licenses; prefer small interoperable algorithms and benchmark fixtures over adding large incompatible ML dependencies.
+
+## Research references
+
+- ARROW: https://arxiv.org/abs/2603.11395 and https://github.com/Cerenaut/ARROW
+- SkillLearnBench: https://arxiv.org/abs/2604.20087 and https://github.com/cxcscmu/SkillLearnBench
+- ContinualSkillBench: https://arxiv.org/abs/2608.03874
+- Voyager: https://arxiv.org/abs/2305.16291 and https://github.com/MineDojo/Voyager
+- Replay-based recurrent RL: https://arxiv.org/abs/2205.14495 and https://github.com/amazon-science/replay-based-recurrent-rl
+
+## WorkPass99 code addition
+
+Added `tests/p23-replay-strategy-benchmark.mjs` and `.github/workflows/workpass99-replay-strategy-benchmark.yml`. The harness compares recent-only, surprise-only and multi-timescale sample selection under a deterministic distribution shift. It asserts bounded batch size, exact recent quota, no duplicate IDs and nontrivial historical/context coverage. It deliberately reports proxy metrics only and must not be represented as proof of better task outcomes until the workflow runs and a verifier-grounded task stream is added.
