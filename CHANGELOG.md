@@ -1,3 +1,11 @@
+## WorkPass101 — age-aware replay ablation (2026-10-20)
+
+- Added optional logical-tick half-life discounting to historical surprise priority; the default remains unchanged.
+- Made context/action stratum identity collision-safe with JSON tuple encoding and hardened tick ordering for non-finite values.
+- Added regression cases for stale high-surprise vs recent moderate-surprise selection, invalid half-life fallback, deterministic output, and delimiter collisions.
+- The existing shared selector is still the canonical owner used by runtime and benchmark; this is not a second implementation.
+- Evidence boundary: the tests validate selection mechanics only. They do not establish higher task success, better transfer, or reduced forgetting. Keep age discount disabled until same-stream task-outcome ablations justify a setting.
+
 ## WorkPass100 — shared configurable continual-learning replay (2026-10-20)
 
 - Extracted the P23 replay selection into `ReplaySelectionPolicy.ts` and wired the runtime to that shared implementation, eliminating the risk that benchmark logic and production selection drift apart.
