@@ -75,6 +75,36 @@ const timeoutProvider = new OpenAICompatibleLocalChatProvider({
 await assert.rejects(() => timeoutProvider.generate({ system: '', user: 'timeout test' }));
 assert.equal(timeoutSignalObserved, true, 'the request deadline must abort the provider transport');
 
+// Caller cancellation must be composed with the provider deadline, not ignored
+// or replaced by a provider-owned signal.
+let cancellationSignalObserved = false;
+let markTransportStarted;
+const transportStarted = new Promise(resolve => { markTransportStarted = resolve; });
+const callerController = new AbortController();
+const cancellationProvider = new OpenAICompatibleLocalChatProvider({
+  baseUrl: 'http://127.0.0.1:43123/v1',
+  timeoutMs: 10_000,
+  fetchImpl: (_url, init) => new Promise((_resolve, reject) => {
+    init.signal.addEventListener('abort', () => {
+      cancellationSignalObserved = true;
+      reject(init.signal.reason ?? new Error('aborted'));
+    }, { once: true });
+    markTransportStarted();
+  }),
+});
+const cancellation = cancellationProvider.generate({ system: '', user: 'cancel test', signal: callerController.signal });
+await transportStarted;
+callerController.abort();
+await assert.rejects(cancellation, /llama\\.cpp-request-aborted/);
+assert.equal(cancellationSignalObserved, true, 'caller abort must reach the actual transport');
+
+const alreadyAborted = new AbortController();
+alreadyAborted.abort();
+await assert.rejects(
+  () => healthy.generate({ system: '', user: 'already cancelled', signal: alreadyAborted.signal }),
+  /llama\\.cpp-request-aborted/,
+);
+
 assert.throws(() => new OpenAICompatibleLocalChatProvider({ baseUrl: 'https://127.0.0.1/v1' }),
   /llama\.cpp-endpoint-must-be-loopback-http/);
 assert.throws(() => new OpenAICompatibleLocalChatProvider({ baseUrl: 'http://example.com/v1' }),
@@ -89,5 +119,6 @@ console.log('WORKPASS79_LOCAL_PROVIDER_BOUNDARY=PASS', JSON.stringify({
   emptyOutput: true,
   responseByteLimit: 2 * 1024 * 1024,
   timeoutAbort: timeoutSignalObserved,
+  callerCancellation: cancellationSignalObserved,
   loopbackOnly: true,
 }));
