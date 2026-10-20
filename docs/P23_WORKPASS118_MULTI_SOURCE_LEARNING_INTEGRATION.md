@@ -6,7 +6,7 @@
 3. [Prioritized Experience Replay](https://arxiv.org/abs/1511.05952) — learning-signal-based replay priority.
 4. [SkillLearnBench](https://github.com/cxcscmu/SkillLearnBench) — task outcomes, trajectories and skill evaluation.
 5. [AgentMemoryBench](https://github.com/solomoon313/AgentMemoryBench) — memory/replay/transfer/repair evaluation themes; license requires checking before vendoring.
-6. [XSkill](https://github.com/thu-ml/xskill) — skill/action experience separation; canonical repository and license need exact-revision confirmation.
+6. [XSkill](https://github.com/XSkill-Agent/XSkill) — skill/action experience separation; canonical repository and license need exact-revision confirmation.
 7. [Letta](https://github.com/letta-ai/letta) — stateful agents and persistent memory lifecycle.
 8. [Mem0](https://github.com/mem0ai/mem0) — memory extraction, update and retrieval lifecycle.
 9. [Generative Agents](https://github.com/joonspk-research/generative_agents) — salience, reflection and retrieval.
