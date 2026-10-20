@@ -31,7 +31,8 @@ export function selectReplayBatch<T extends ReplayCandidate>(
   input: readonly T[],
   options: ReplaySelectionOptions = {},
 ): T[] {
-  const maxBatchSize = Math.max(1, Math.min(512, Math.floor(finite(options.maxBatchSize ?? 64)) || 64));
+  const requestedCapacity = options.maxBatchSize === undefined ? 64 : Math.floor(finite(options.maxBatchSize));
+  const maxBatchSize = Math.max(1, Math.min(512, requestedCapacity));
   const recentQuota = Math.max(0, Math.min(maxBatchSize, Math.floor(finite(options.recentQuota ?? Math.floor(maxBatchSize / 2)))));
   const ordered = [...input].sort(chronological);
   const unique = new Map<string, T>();
