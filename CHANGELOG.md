@@ -1,3 +1,9 @@
+## NK1 v2.0 rebuild — close the global gateway bypass regression and keep approval CI focused (2026-10-20)
+
+- [HARDENED] Expanded the WorkPass97 regression contract from named planner/project/skill paths to a whole-OrganismCore count invariant: direct gateway execute/reconcile calls must exist only inside their canonical wrappers.
+- [FIXED] The approval CI step now runs the three WorkPass53 behavioral suites directly instead of invoking the aggregate npm script that also runs the repository-wide TypeScript check; that unrelated pre-existing typecheck currently reports many errors in OrganismCore.
+- [INTEGRATED] Kept action approval, approval bridge, and durable idempotency behavioral coverage in CI without conflating them with the independent typecheck baseline.
+
 ## NK1 v2.0 rebuild — include action approval and idempotency regressions in CI (2026-10-20)
 
 - [INTEGRATED] WorkPass79 now executes the existing multi-scenario action approval boundary suite and action gateway idempotency suite on every rebuild push.
