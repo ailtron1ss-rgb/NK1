@@ -221,6 +221,9 @@ export class P23LearningEngine {
 
   recordExperience(trace:OrganismDecisionTrace,stateAfter:OrganismState,outcome:{success:number;reward:number;surprise:number},policy:AdaptivePolicyEngine):void {
     if (!trace.selected || this.state.processedTraceIds.includes(trace.id)) return;
+    // Invalid feedback is not evidence: reject non-finite labels instead of
+    // silently converting NaN/Infinity into apparently valid zero-reward data.
+    if (![outcome.success,outcome.reward,outcome.surprise].every(Number.isFinite)) return;
     const key=contextKey(trace.stateBefore), nextKey=contextKey(stateAfter);
     const record:LearningExperience={
       id:`exp-${trace.id}`,
