@@ -29,6 +29,9 @@ jobs:
       - name: Test cold-memory retrieval and residency invariants
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass80:memory-residency
+      - name: Test retrieval benchmark truthfulness and holdout leakage guards
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass83:retrieval-benchmark-truth
       - name: Test local backend circuit-breaker transitions
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass79:local-language-policy
