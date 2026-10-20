@@ -2,7 +2,7 @@
 
 **Branch:** `rebuild`  
 **Scope:** P26 parametric learner + causal-experience replay path  
-**Status:** WorkPass104 implementation and synthetic regressions passed on exact code head `86a741e74bde63ed6194fc3a7a24b7152087fac7` (Actions run [39429062750](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39429062750)); scorecard documentation update triggers a fresh run.  
+**Status:** WorkPass104 implementation and synthetic regressions passed on exact code head `86a741e74bde63ed6194fc3a7a24b7152087fac7` (Actions run [39429062750](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39429062750)); exact-head Actions also passed on `69e921d63e7fa61c863c0cd445b153988a4375f3` (run [39429299853](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39429299853)), including feature-schema migration.  
 **Interpretation:** percentages are engineering coverage estimates, not measured intelligence or task-success rates.
 
 ## Progress estimates
@@ -71,7 +71,7 @@ No third-party source code or datasets were copied in this pass. Recheck licence
 - **ARROW (Cerenaut)** proposes short-term plus long-term distributions and replay through a world model. The Python/PyTorch/DreamerV3 pipeline is not suitable for direct wholesale import into NK1's TypeScript/mobile runtime; its two-timescale buffer design remains a source candidate. https://github.com/Cerenaut/ARROW
 - **Dark Experience Replay + reservoir sampling (MIT-licensed example)** stores old outputs as well as experiences; useful as a research baseline, but a logits-distillation pipeline is not a drop-in fit for the current small parametric policy. https://github.com/FabriDeCastelli/dark-experience-replay
 
-No third-party implementation or dataset was copied. The feature-schema migration regression is added to the learning-replay CI group; its exact-head result is pending.
+No third-party implementation or dataset was copied. The feature-schema migration regression is wired into the learning-replay CI group and passed on exact head `69e921d63e7fa61c863c0cd445b153988a4375f3`.
 
 ## Evidence boundary
 
