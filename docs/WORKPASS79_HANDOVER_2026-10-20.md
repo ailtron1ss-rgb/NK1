@@ -249,3 +249,19 @@ Updated `docs/RESEARCH_GATE_MEMORY_CONTINUAL_LEARNING_2026-10-20.md` after check
 **Next code pass:** build a deterministic, sandbox-only memory-to-action evaluation harness. Scenarios should cover a remembered preference, a later correction, stale/superseded evidence, missing evidence requiring clarification, and restart/replay. Score memory transition, retrieved evidence, selected tool and grounded arguments, task outcome, stale-memory use, and invalid actions separately. No real external side effects in tests. Keep the current memory owner canonical; do not introduce a parallel memory store without a migration/rollback design.
 
 **Current evidence boundaries:** WorkPass90 CI passed on its exact code head. The current RU/EN benchmark fixture remains synthetic. Real llama.cpp on the Dell G3, independent labelled data, sequential retention/transfer/interference, full UI/TTS/browser integration, and restart/soak evidence remain open. No claim of general autonomy or consciousness follows from these tests.
+
+
+## WorkPass91 — memory-to-action evaluation (2026-10-20)
+
+IMPLEMENTED; exact-head CI must confirm before PASS.
+
+- Added runtime/neuro-kurisu/tests/workpass91-memory-to-action.mjs, composing production MemoryOS2 and ActionGateway rather than introducing a second memory owner or a fake gateway.
+- Regression scenarios:
+  1. Encode a user preference, revise it with an explicit correction, and require current retrieval to select the revision.
+  2. Verify current retrieval suppresses the superseded preference.
+  3. Restore the memory snapshot and verify the correction remains retrievable.
+  4. Request a fact absent from memory and require the test oracle to choose clarification (no action args).
+  5. Execute a grounded action through the actual ActionGateway against an in-memory-only tool, require the tool-contract verifier, persist the execution ledger, restore a new gateway, and replay the same idempotency key without a second executor call.
+- The regression is wired directly into the existing Actions workflow. No package manifest was changed; the workflow invokes the test with Node's built-in TypeScript stripping enabled.
+- The test's minimal decision oracle is explicitly test-only; it is not evidence that the production autonomous planner already grounds arbitrary tool calls in MemoryOS2. The tool is sandboxed and has no network, filesystem, device, or user-visible side effect.
+- Evidence boundary: no independent human-labelled dataset, live llama.cpp inference, real external tool call, measured learning/anti-forgetting improvement, or consciousness claim. The memory and action-ledger paths are exercised; the full autonomous memory-to-action loop remains UNRESOLVED until wired and tested through the runtime's own decision path.
