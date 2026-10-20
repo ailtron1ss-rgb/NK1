@@ -1,3 +1,10 @@
+## WorkPass110 — continual-learning retention and transfer metrics (2026-10-20)
+
+- Added a reusable sequential-task metric module reporting final average score, peak-to-final forgetting, backward transfer, and forward transfer relative to an explicit reference policy.
+- Enforces a square task-by-stage score matrix, unique task identities, finite [0,1] scores and explicit handling of missing pre-training baselines; unavailable forward-transfer values remain null rather than being fabricated.
+- Added focused regression coverage and wired it into the full P23 verified-outcome suite. The module consumes measured scores; it does not itself run a model or establish NK1 performance.
+- Research adaptation: continual-learning evaluation commonly separates final competence from forgetting and transfer. This is an NK1-local metric implementation, not copied benchmark code. Use the same tasks/seeds and a fixed reference policy before comparing replay strategies; do not compare results across changed task manifests.
+
 ## WorkPass109 — signed verifier outcome artifacts (2026-10-20)
 
 - Added Ed25519 signed outcome artifact verification, binding each payload to the exact task-manifest fingerprint, task version, verifier identity, run ID, task/method/seed/attempt and outcome.
