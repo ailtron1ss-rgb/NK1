@@ -16,7 +16,7 @@ const wrapper = source.slice(wrapperAt, wrapperEnd === -1 ? wrapperAt + 2500 : w
 assert.match(wrapper, /canonicalActionToolId\(id\)/, 'wrapper canonicalizes legacy aliases before dispatch');
 assert.match(wrapper, /actionGateway\.executeTool\(canonicalId, input, reason, options\)/,
   'wrapper delegates to the canonical ActionGateway');
-assert.match(wrapper, /finalizeToolOutcome\(canonicalId, input, reason, result, options\)/,
+assert.match(wrapper, /finalizeToolOutcome\\(canonicalId, input, reason, result, options(?:, finalizationContextKeys)?\\)/,
   'unkeyed wrapper outcomes still pass through canonical finalization');
 assert.match(wrapper, /options\.idempotencyKey \|\| result\.idempotentReplay/,
   'keyed execution and replay must not be finalized twice by the wrapper');
