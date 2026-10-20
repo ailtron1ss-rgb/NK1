@@ -210,7 +210,7 @@ No external benchmark data or code has been copied into NK1. Verify licences and
 
 ## WorkPass89 — confidence-bounded abstention gate (2026-10-20)
 
-**Status:** implemented in `MemoryRetrievalBenchmark.ts`; regression assertions added to `workpass83-retrieval-benchmark-truth.mjs`. Await exact-head GitHub Actions verification before treating the pass as validated.
+**Status:** implemented and validated by exact-head GitHub Actions run [39378856902](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39378856902), head `7b8e63a0e83e6afd0714dae323848cb664068a4a`. The retrieval benchmark truth/abstention/provenance test and all other workflow steps passed.
 
 - Added `maximumUnsupportedRetrievalRegression01` (default `0`, bounded to `0..0.25`).
 - Added paired bootstrap interval for the per-query unsupported-retrieval indicator on unanswerable holdout examples; report includes lower bound, median delta and upper bound.
