@@ -24,7 +24,7 @@ try {
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /PLAN_CREATED/);
   const plan = JSON.parse(await readFile(outputPath, 'utf8'));
-  assert.equal(plan.counts.runs, 9);
+  assert.equal(plan.counts.runs, 8);
   assert.deepEqual(plan.seedIds, [1, 2]);
   assert.equal(plan.split, 'holdout');
   const bad = spawnSync(process.execPath, [
