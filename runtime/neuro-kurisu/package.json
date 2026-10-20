@@ -1679,6 +1679,8 @@
     "test:p23:verified-outcome-persistence:full": "npm run test:p23:verified-outcome-persistence && npm run test:p23:verified-outcome-file-store",
     "test:p23:signed-outcome-artifact": "node --experimental-strip-types tests/p23-signed-outcome-artifact.mjs",
     "test:p23:continual-metrics": "node --experimental-strip-types tests/p23-continual-learning-metrics.mjs && npm run test:p23:continual-benchmark && node --experimental-strip-types tests/p23-continual-outcome-matrix.mjs",
-    "test:p23:continual-benchmark": "node --experimental-strip-types tests/p23-continual-benchmark-comparison.mjs"
+    "test:p23:continual-benchmark": "node --experimental-strip-types tests/p23-continual-benchmark-comparison.mjs",
+    "test:p23:learning-experiment-plan": "node --experimental-strip-types tests/p23-learning-experiment-plan.mjs",
+    "test:p23:continual-learning:full": "npm run test:p23:learning-experiment-plan && npm run test:p23:continual-metrics && node --experimental-strip-types tests/p23-reset-retention-evaluation.mjs"
   }
 }
