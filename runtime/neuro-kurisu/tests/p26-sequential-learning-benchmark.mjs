@@ -10,7 +10,7 @@ const mkState=(energy,novelty,uncertainty=.3)=>({
 });
 const targetA=(s,a)=>s.needs.energy<.5?(a==='rest'?.92:.08):(a==='respond'?.92:.08);
 const targetB=(s,a)=>s.needs.energy<.5?(a==='respond'?.92:.08):(a==='rest'?.92:.08);
-const rows=(phase,n=180)=>Array.from({length:n},(_,i)=>{
+const rows=(phase,n=360)=>Array.from({length:n},(_,i)=>{
   const energy=.2+((i*37+phase*13)%61)/100;
   const novelty=((i*19+phase*7)%100)/100;
   const state=mkState(energy,novelty);
@@ -29,8 +29,8 @@ const evalTask=(engine,phase,n=160)=>{
   return correct/n;
 };
 function train(engine,data,phase){
-  for(const row of data) for(const action of actions){
-    engine.learner.train({state:row.state,action,target01:phase===0?targetA(row.state,action):targetB(row.state,action),learningRate01:.10});
+  for(let epoch=0;epoch<8;epoch++) for(const row of data) for(const action of actions){
+    engine.learner.train({state:row.state,action,target01:phase===0?targetA(row.state,action):targetB(row.state,action),learningRate01:.18});
   }
 }
 const makeRun=(withReplay)=>{
@@ -42,7 +42,10 @@ const makeRun=(withReplay)=>{
   train(engine,taskB,1);
   const taskAAfterInterference=evalTask(engine,0);
   let replayUpdates=0;
-  if(withReplay) replayUpdates=engine.replay(taskA,{}).updates;
+  if(withReplay){
+    const replayRows=taskA.flatMap(row=>actions.map(action=>({...row,action,reward:targetA(row.state,action)})));
+    for(let epoch=0;epoch<8;epoch++) replayUpdates+=engine.replay(replayRows,{}).updates;
+  }
   const taskAAfterReplay=evalTask(engine,0);
   const taskBFinal=evalTask(engine,1);
   return {taskABefore,taskAAfterInterference,taskAAfterReplay,taskBFinal,replayUpdates,trainingExposure01:engine.metrics().trainingExposure01,generalizationEvidence01:engine.metrics().generalizationEvidence01};
@@ -54,5 +57,7 @@ for(const [name,result] of Object.entries({onlineOnly,replay})){
 }
 assert.equal(onlineOnly.replayUpdates,0);
 assert.ok(replay.replayUpdates>0);
+assert.ok(onlineOnly.taskABefore>.8,'benchmark must establish task A before measuring forgetting');
+assert.ok(onlineOnly.taskBFinal>.8,'benchmark must establish task B before measuring retention');
 assert.equal(replay.generalizationEvidence01,0,'synthetic task evaluation is not verifier-certified generalization evidence');
 console.log('P26_SEQUENTIAL_LEARNING_BENCHMARK=PASS',JSON.stringify({onlineOnly,replay,interpretation:'synthetic diagnostic only; not a production or external-task result'}));
