@@ -44,15 +44,26 @@ assert.equal(disabled.actions.verify.sourceCount, 0);
 assert.equal(disabled.actions.verify.contribution01, 0);
 const malformed = arbiter.evaluate({
   baseUtility: .5, predictedUtility: .5, computeBudget01: Number.NaN,
-  uncertainty01: Number.POSITIVE_INFINITY,
-  sources: [{name:'malformed', bias:{verify:Number.NaN, explore:999}, confidence01:Number.NaN, causal01:Number.NaN}],
+  uncertainty01: Number.POSITIVE_INFINITY, identityGate01: Number.NaN,
+  sources: [
+    null,
+    {name:'malformed', bias:{verify:Number.NaN, explore:999}, confidence01:Number.NaN, causal01:Number.NaN},
+    {name:'', bias:{verify:.14}, confidence01:1, causal01:1},
+    {name:'oversized-name'.repeat(20), bias:{verify:.14}, confidence01:1, causal01:1},
+  ],
 });
 for (const action of Object.values(malformed.actions)) {
   assert.ok(Number.isFinite(action.contribution01));
   assert.ok(action.contribution01 >= -.14 && action.contribution01 <= .14);
   assert.ok(Number.isFinite(action.confidence01));
 }
+assert.equal(malformed.actions.verify.contribution01, 0,
+  'NaN confidence/bias and malformed source rows must fail closed instead of retaining midpoint authority');
+assert.equal(malformed.actions.explore.contribution01, 0,
+  'malformed control signals must not let an out-of-range proposal affect the policy frame');
 assert.ok(Number.isFinite(malformed.totalSignal01));
+const missingSources = arbiter.evaluate({baseUtility:.5,predictedUtility:.5,sources:null});
+assert.equal(missingSources.actions.verify.sourceCount,0,'non-array sources must degrade to an empty policy frame');
 console.log(JSON.stringify({
   verifyContribution01:frame.actions.verify.contribution01,
   meanConfidence01:frame.meanConfidence01,

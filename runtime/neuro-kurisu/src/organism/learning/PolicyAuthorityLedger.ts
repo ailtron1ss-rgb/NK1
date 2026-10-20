@@ -34,18 +34,24 @@ export class PolicyAuthorityLedger {
   };
 
   beginCycle(cycle: number) {
+    const safeCycle = typeof cycle === 'number' && Number.isFinite(cycle) ? Math.max(0, Math.floor(cycle)) : 0;
     this.state = {
-      version: 1, cycle: Math.max(0, Math.floor(cycle)), contributions: [],
+      version: 1, cycle: safeCycle, contributions: [],
       duplicateSourcePairs: 0, duplicateMagnitude01: 0, finalByAction: {},
     };
   }
 
   add(input: Omit<PolicyAuthorityContribution, 'bias01'> & { bias01: number }) {
+    if (!input || typeof input !== 'object') throw new Error('invalid-policy-contribution');
+    const actions = new Set<ActionKind>(['respond','explore','verify','rest','reflect','wait','defer']);
+    if (!actions.has(input.action)) throw new Error('invalid-policy-action');
+    if (typeof input.source !== 'string' || !input.source.trim() || input.source.length > 120) throw new Error('invalid-policy-source');
+    if (typeof input.stage !== 'string' || !input.stage.trim() || input.stage.length > 80) throw new Error('invalid-policy-stage');
     const bias = clamp(finite(input.bias01));
     const row: PolicyAuthorityContribution = {
-      source: String(input.source), action: input.action, bias01: bias,
-      authority01: Math.max(0, Math.min(1, finite(input.authority01, .5))),
-      causal01: Math.max(0, Math.min(1, finite(input.causal01, .5))), stage: String(input.stage),
+      source: input.source.trim(), action: input.action, bias01: bias,
+      authority01: Math.max(0, Math.min(1, finite(input.authority01, 0))),
+      causal01: Math.max(0, Math.min(1, finite(input.causal01, 0))), stage: input.stage.trim(),
     };
     if (Math.abs(row.bias01) > 1e-9) {
       const sameFamily = this.state.contributions.filter(x => x.action === row.action &&

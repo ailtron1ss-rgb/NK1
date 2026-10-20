@@ -1,3 +1,9 @@
+## NK1 v2.0 rebuild — fail-closed cognitive policy inputs (2026-10-20)
+
+- [FIXED] CanonicalActionPolicyArbiter now drops malformed source rows, accepts only finite numeric biases, and treats non-finite confidence/control values as zero authority (or maximum uncertainty) instead of silently granting midpoint influence.
+- [FIXED] PolicyAuthorityLedger now rejects unknown action kinds and invalid/unbounded provenance labels; malformed cycle IDs and authority/causal values normalize to finite fail-closed defaults.
+- [REGRESSION] Expanded both existing policy suites with malformed-source, `NaN`/infinity, invalid action, overlong provenance, and cycle-boundary cases. Existing WorkPass79 CI already runs these suites.
+
 ## NK1 v2.0 rebuild — global gateway bypass guard and CI dependency isolation (2026-10-20)
 
 - [HARDENED] The WorkPass97 regression now enforces a whole-file invariant: direct ActionGateway execute/reconcile calls inside OrganismCore are allowed only at the two canonical wrapper boundaries.

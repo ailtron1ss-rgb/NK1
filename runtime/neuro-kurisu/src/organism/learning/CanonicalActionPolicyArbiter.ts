@@ -35,7 +35,7 @@ export interface CanonicalPolicyFrame {
 }
 
 const ACTIONS: ActionKind[] = ['respond', 'explore', 'verify', 'rest', 'reflect', 'wait', 'defer'];
-const clamp = (x: number, a = 0, b = 1) => Math.max(a, Math.min(b, Number.isFinite(x) ? x : (a + b) / 2));
+const clamp = (x: number, a = 0, b = 1, fallback = 0) => Math.max(a, Math.min(b, Number.isFinite(x) ? x : fallback));
 const clampSigned = (x: number, a = -.16, b = .16) => Math.max(a, Math.min(b, Number.isFinite(x) ? x : 0));
 
 /**
@@ -53,13 +53,29 @@ export class CanonicalActionPolicyArbiter {
 
   evaluate(input: CanonicalPolicyInput): CanonicalPolicyFrame {
     const actions = {} as Record<ActionKind, CanonicalPolicyAction>;
-    const active = input.sources.filter(s => s.enabled !== false);
-    const budget = clamp(input.computeBudget01 ?? 1);
-    const uncertainty = clamp(input.uncertainty01 ?? .5);
-    const identityGate = clamp(input.identityGate01 ?? 1);
+    // Runtime boundaries must remain safe even when JavaScript callers bypass
+    // TypeScript. Drop malformed source rows instead of allowing them to crash
+    // arbitration or contribute through coercion.
+    const sourceRows = Array.isArray(input?.sources) ? input.sources : [];
+    const active = sourceRows.filter((source): source is CanonicalPolicySource =>
+      Boolean(source) &&
+      typeof source === 'object' &&
+      typeof source.name === 'string' &&
+      source.name.trim().length > 0 &&
+      source.name.length <= 120 &&
+      Boolean(source.bias) &&
+      typeof source.bias === 'object' &&
+      !Array.isArray(source.bias) &&
+      source.enabled !== false
+    );
+    // Fail closed for malformed control signals: no compute budget, maximum
+    // uncertainty and no identity authority, rather than midpoint influence.
+    const budget = clamp(input?.computeBudget01 ?? 1, 0, 1, 0);
+    const uncertainty = clamp(input?.uncertainty01 ?? .5, 0, 1, 1);
+    const identityGate = clamp(input?.identityGate01 ?? 1, 0, 1, 0);
     const sourceRows = ACTIONS.map(action => {
       const raw = active.map(source => {
-        const bias = Number(source.bias[action] ?? 0);
+        const rawBias = source.bias[action];\n        const bias = typeof rawBias === 'number' && Number.isFinite(rawBias) ? rawBias : 0;
         const confidence = clamp(source.confidence01);
         const causal = clamp(source.causal01 ?? confidence);
         // Uncertain or non-causal policy proposals are attenuated rather than

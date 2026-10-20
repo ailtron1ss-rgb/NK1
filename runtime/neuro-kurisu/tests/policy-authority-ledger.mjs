@@ -19,4 +19,19 @@ const zeroBound = l.finalize(-5);
 assert.equal(zeroBound.explore, 0);
 const oversizedBound = l.finalize(50);
 assert.equal(oversizedBound.explore, 0.13);
-console.log('POLICY_AUTHORITY_LEDGER=PASS');
+
+// Runtime callers cannot inject unknown action names or unbounded provenance
+// labels into the authoritative policy ledger.
+assert.throws(() => l.add({source:'bad-action',action:'execute',bias01:.9,authority01:1,causal01:1,stage:'candidate'}), /invalid-policy-action/);
+assert.throws(() => l.add({source:'',action:'verify',bias01:.9,authority01:1,causal01:1,stage:'candidate'}), /invalid-policy-source/);
+assert.throws(() => l.add({source:'x'.repeat(121),action:'verify',bias01:.9,authority01:1,causal01:1,stage:'candidate'}), /invalid-policy-source/);
+assert.throws(() => l.add({source:'valid',action:'verify',bias01:.9,authority01:1,causal01:1,stage:''}), /invalid-policy-stage/);
+l.beginCycle(Number.NaN);
+assert.equal(l.snapshot().cycle,0,'non-finite cycle identifiers normalize to zero instead of contaminating diagnostics');
+l.beginCycle(-12.4);
+assert.equal(l.snapshot().cycle,0,'negative cycle identifiers normalize to zero');
+l.add({source:'finite-fallback',action:'reflect',bias01:.03,authority01:Number.NaN,causal01:Number.POSITIVE_INFINITY,stage:'validation'});
+const safeContribution=l.snapshot().contributions.at(-1);
+assert.equal(safeContribution.authority01,0,'malformed authority defaults to no authority');
+assert.equal(safeContribution.causal01,0,'malformed causal confidence defaults to no authority');
+console.log('POLICY_AUTHORITY_LEDGER=PASS runtimeInputValidation=true finiteCycle=true');
