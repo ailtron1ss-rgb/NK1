@@ -93,3 +93,32 @@ Next session: check live head and Actions first, then continue at P0 item 1 and 
 - **Branch head when checked:** `86a142108de6e9f99955e7b508dcd8cf962d3de7` (`README.md` now links this handover).
 - **Latest Actions runs:** [39321337981](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39321337981) on the current head and [39321285670](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39321285670) on the immediately preceding documentation-only head were still in progress when checked. The most recent completed full core run remains [39321059462](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39321059462), **PASS** on the code/workflow that includes the fake-provider HTTP test and opt-in live-smoke default-skip test.
 - Start the next chat by polling both runs; do not claim the exact current head is green until one completes successfully. Code/workflow did not change after the validated test/audit commit `0fbc6a85522497156ec254f983938d53a1912321`; intervening commits were documentation/ledger/README updates.
+
+
+## WorkPass78 — strategy and execution system added (2026-10-20)
+
+### Artifacts committed
+- [Master strategy and brain map](NEUROCORE_MASTER_STRATEGY_AND_BRAIN_MAP.md): product invariants, provisional triage scorecard, 20-domain logical architecture, interaction envelope/trace, cautious human-brain analogy, 20-item risk register, release phases, scientific directions, known file ownership and next 12 tasks.
+- [1,000-work-unit backlog](NEUROCORE_1000_WORK_UNIT_BACKLOG.md): 20 domains × 10 subareas × 5 lifecycle stages = 1,000 planned work units. All remain PLANNED / UNVERIFIED until evidence is linked. This must not be interpreted as 1,000 code changes to generate or as completed work.
+- Updated `NEUROCORE_START_HERE.md`, `AGENTS.md` and `README.md` to link the strategy/backlog and preserve the continuation contract across chats.
+
+### Integrity and status boundaries
+- The master-plan scorecard is an explicitly provisional engineering triage estimate; it is not a measured benchmark and must not be promoted without raw measurements.
+- The human-brain comparison is a functional analogy, not anatomical equivalence or evidence of consciousness.
+- A complete list of every source file is **not yet proven**. The strategy records known canonical starting paths and specifies the required live path manifest, import/call graph, dynamic test-runner graph, SBOM/license inventory, and source/asset provenance reports.
+- The backlog is intentionally a planning grid. Do not generate empty modules, mass tickets or cosmetic changes to increase completion counts.
+- These documentation commits do not close the outstanding runtime release gates. Live Dell G3 inference, independent retrieval uplift, transfer learning, restart-safe external action proof, real embodiment E2E, target-device soak and release packaging remain open until verified.
+
+### Next action queue
+1. Refresh current branch head and latest Actions; do not rely on historical run state.
+2. Implement provider HTTP failure-path regressions (503, timeout, malformed response, cancellation, fallback provenance, cooldown and recovery).
+3. Add restart/fault-injection tests while a language request and an external action are in flight.
+4. Run actual `llama.cpp` smoke on Dell G3 and record model hash/configuration plus cold/warm latency.
+5. Generate source/call graph, dynamic test-runner graph, dependency/SBOM/license and asset provenance inventories.
+6. Build independent RU/EN retrieval holdouts and leakage-resistant baseline/candidate experiments.
+7. Prove learning transfer with no-learning, wrong-feedback, reversal, interference and selective-forgetting controls.
+8. Complete action verification matrix for lost ACK, independent postcondition, spoofed/late evidence, duplicate replay and restart.
+9. Complete production build and real browser/Live2D/TTS interruption/reconnect tests.
+10. Run soak and target-hardware resource profiling; complete clean-room packaging and rollback gates.
+
+**Resume contract:** on “работай над проектом” / “продолжай NeuroCore” / “@GitHub продолжай”, inspect live branch and Actions, read the charter + AGENTS + this handover + master strategy + backlog + research ledger, then continue the highest-impact unresolved item with code/tests where possible. Never ask the user to restate the mission.
