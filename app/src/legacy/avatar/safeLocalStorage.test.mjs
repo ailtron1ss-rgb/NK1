@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { readAvatarPreference, writeAvatarPreference } from "./safeLocalStorage.ts";
 
 const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
@@ -44,4 +45,12 @@ test("avatar preference persists when storage works", () => {
     assert.equal(writeAvatarPreference("profile", "formal"), true);
     assert.equal(readAvatarPreference("profile"), "formal");
   } finally { restoreWindow(); }
+});
+
+test("LegacySpriteDeck routes optional outfit persistence through the safe adapter", async () => {
+  const component = await readFile(new URL("./LegacySpriteDeck.tsx", import.meta.url), "utf8");
+  assert.match(component, /import \{ readAvatarPreference, writeAvatarPreference \} from "\.\/safeLocalStorage"/);
+  assert.match(component, /readAvatarPreference\("kurisu-visual-profile"\)/);
+  assert.match(component, /writeAvatarPreference\("kurisu-visual-profile", outfit\)/);
+  assert.doesNotMatch(component, /window\.localStorage\.(?:getItem|setItem)/);
 });
