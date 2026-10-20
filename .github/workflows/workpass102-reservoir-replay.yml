@@ -1,0 +1,25 @@
+name: WorkPass102 reservoir replay baseline
+on:
+  pull_request:
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/ReservoirReplayPolicy.ts'
+      - 'runtime/neuro-kurisu/tests/p23-reservoir-replay-policy.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-replay-strategy-benchmark.mjs'
+      - '.github/workflows/workpass102-reservoir-replay.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reservoir-replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Reservoir policy regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-reservoir-replay-policy.mjs
+      - name: Compare reservoir and multi-timescale replay
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-replay-strategy-benchmark.mjs
