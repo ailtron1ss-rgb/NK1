@@ -1,3 +1,8 @@
+## WorkPass78 — prevent unverified skill tracks from monopolizing the curriculum (2026-10-20)
+- An active skill that reaches eight practice cycles without verified mastery evidence is deferred rather than occupying the active slot indefinitely.
+- Deferral changes no mastery score; later cycles can select other eligible skill domains while the deferred track remains available for future curriculum review.
+- Added a regression asserting a no-evidence track yields the slot without fabricating mastery.
+
 ## WorkPass77 — make learning regressions mandatory in CI (2026-10-20)
 - Added the causal-stream exactly-once regression and open-ended skill-mastery integration suite to the canonical WorkPass71 validation workflow.
 - This ensures the new outcome-deduplication and verified-mastery paths are executed on every relevant source change rather than remaining discoverable but unrun tests.

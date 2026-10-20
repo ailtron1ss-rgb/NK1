@@ -10,7 +10,7 @@ export class OpenEndedSkillAcquisitionController{
  cycle(input:{at:number;domain:string;gap01:number;learningPressure01:number;resource01:number;novelty01:number;identity01:number;availableSkillNames?:string[]}):{action:'create'|'practice'|'defer'|'master';track:SkillTrack|null;mastery01:number}{
   this.state.cycles++;
   const active=this.state.tracks.find(t=>t.status==='active') ?? null;
-  if(active){active.practice++;active.updatedAt=input.at;this.state.practiced++;this.state.active=active.id;return{action:'practice',track:structuredClone(active),mastery01:active.mastery01};}
+  if(active){if(active.practice>=8){active.status='deferred';active.updatedAt=input.at;this.state.active=null;return{action:'defer',track:structuredClone(active),mastery01:active.mastery01};}active.practice++;active.updatedAt=input.at;this.state.practiced++;this.state.active=active.id;return{action:'practice',track:structuredClone(active),mastery01:active.mastery01};}
   const eligible=input.gap01>.3&&input.learningPressure01>.24&&input.resource01>.3&&input.identity01>.45;
   if(!eligible){return{action:'defer',track:null,mastery01:this.state.meanMastery01};}
   const candidates=[...new Set((input.availableSkillNames??[]).map(x=>String(x).trim()).filter(Boolean))];const requested=String(input.domain??'').trim().toLocaleLowerCase();const domain=candidates.find(x=>x.toLocaleLowerCase()===requested)??(candidates.length?candidates[(this.state.cycles-1)%candidates.length]:`${input.domain}-adaptive-skill`);
