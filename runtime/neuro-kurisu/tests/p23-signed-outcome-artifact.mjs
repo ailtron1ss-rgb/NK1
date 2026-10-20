@@ -20,7 +20,7 @@ const makePayload = (overrides = {}) => ({
   passed: true, verifierId: 'verifier-ed25519-v1', observedAt: 1792512000000,
   ...overrides,
 });
-const artifactFor = (payload: SignedOutcomePayload) => ({
+const artifactFor = payload => ({
   payload,
   signature: sign(null, Buffer.from(canonicalOutcomePayload(payload)), privateKey).toString('base64'),
 });
