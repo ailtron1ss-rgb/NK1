@@ -82,3 +82,25 @@ test("rejects malformed budgets, strategies and replay ratios", () => {
   const buffer = new BoundedExperienceReplayBuffer({ maxBytes: 1000 });
   assert.throws(() => trainWithExperienceReplay({ trainBatch() {} }, [], buffer, { replayRatio: 2 }), /replayRatio must be in/);
 });
+
+test("restores replay samples and PRNG state reproducibly across a restart", () => {
+  const original = new BoundedExperienceReplayBuffer({ maxBytes: 4096, strategy: "uniform", seed: 991 });
+  for (let i = 0; i < 10; i += 1) original.add(sample(i));
+  const checkpoint = original.snapshot();
+  const expected = original.sample(5).map(entry => entry.id);
+  const restarted = new BoundedExperienceReplayBuffer({ maxBytes: 4096, strategy: "uniform", seed: 2 });
+  restarted.restore(checkpoint);
+  assert.deepEqual(restarted.sample(5).map(entry => entry.id), expected);
+  assert.equal(restarted.stats.bytesUsed, original.stats.bytesUsed);
+});
+
+test("rejects corrupt snapshots instead of trusting persisted byte accounting", () => {
+  const source = new BoundedExperienceReplayBuffer({ maxBytes: 4096, strategy: "uniform", seed: 9 });
+  source.add(sample(1));
+  const corrupted = source.snapshot();
+  corrupted.bytesUsed += 1;
+  const target = new BoundedExperienceReplayBuffer({ maxBytes: 4096, strategy: "uniform", seed: 9 });
+  assert.throws(() => target.restore(corrupted), /byte accounting is inconsistent/);
+  const wrongConfig = new BoundedExperienceReplayBuffer({ maxBytes: 1024, strategy: "uniform", seed: 9 });
+  assert.throws(() => wrongConfig.restore(source.snapshot()), /maxBytes does not match/);
+});
