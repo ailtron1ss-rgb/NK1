@@ -1039,3 +1039,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Regression test proves the current synthetic fixture's two unanswerable queries are insufficient to authorize an abstention promotion claim.
 - Reviewed 2026 research on MemoryBench, Mem2ActBench, Memory-R1, AgeMem, MemFit and LeanMem; updated the research gate with a next-stage memory-to-action evaluation plan. These are design inputs, not reproduced NK1 results.
 - Evidence scope: CI regression integrity only. No real local LLM run, independent human-labelled corpus, or measured cognitive-quality uplift is claimed.
+
+
+## 2026-10-20 — WorkPass102: reservoir replay baseline
+
+- Added a bounded, seeded Algorithm R reservoir sampler as an independent continual-learning replay baseline; production defaults are unchanged.
+- Added deterministic regression tests and expanded the replay-selection benchmark across five reservoir seeds.
+- Added a Node 24 GitHub Actions workflow. Report only replay composition and reproducibility until verifier-grounded task outcomes, retention, transfer and uncertainty intervals are measured.
