@@ -19,6 +19,15 @@ export interface ContinualOutcomeCell {
   /** Wilson score interval for a binomial pass rate; descriptive, not a causal guarantee. */
   wilson95CI: [number, number];
 }
+export interface ContinualFamilySummary {
+  family: string;
+  taskCount: number;
+  /** Family-level pooled outcomes per checkpoint; do not infer independence across tasks. */
+  stages: Array<{ stageId: string; method: string; sampleCount: number; passedCount: number; passRate: number }>;
+  finalPassRate: number;
+  averageForgetting: number;
+  averageBackwardTransfer: number;
+}
 export interface ContinualOutcomeMatrix {
   manifestFingerprint: string;
   split: EvaluationSplit;
@@ -28,6 +37,7 @@ export interface ContinualOutcomeMatrix {
   tasks: ContinualTask[];
   /** Per-task/per-stage outcome detail, including sample counts and uncertainty. */
   cells: ContinualOutcomeCell[];
+  familySummaries: ContinualFamilySummary[];
   metrics: ContinualLearningMetrics;
   evidence: {
     outcomeCount: number;
@@ -137,10 +147,30 @@ export function buildContinualOutcomeMatrix(
   for (const outcome of eligible) authorityCounts[outcome.authority as keyof typeof authorityCounts]++;
   const taskVersions: Record<string,string> = {}, taskFamilies: Record<string,string> = {};
   for (const task of tasksInSplit) { taskVersions[task.taskId] = task.version; taskFamilies[task.taskId] = task.family; }
+  const metrics = evaluateContinualLearning(tasks, referenceScore);
+  const taskMetricById = new Map(metrics.perTask.map(item => [item.taskId, item]));
+  const familySummaries: ContinualFamilySummary[] = [...new Set(tasksInSplit.map(task => task.family))].sort().map(family => {
+    const familyTasks = tasksInSplit.filter(task => task.family === family);
+    const familyCells = cells.filter(item => item.family === family);
+    const familyStages = stages.map(stage => {
+      const stageCells = familyCells.filter(item => item.stageId === stage.stageId);
+      const sampleCount = stageCells.reduce((sum, item) => sum + item.sampleCount, 0);
+      const passedCount = stageCells.reduce((sum, item) => sum + item.passedCount, 0);
+      return { stageId: stage.stageId, method: stage.method, sampleCount, passedCount, passRate: sampleCount ? passedCount / sampleCount : 0 };
+    });
+    const familyMetrics = familyTasks.map(task => taskMetricById.get(task.taskId)!);
+    const mean = (values: number[]) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+    return {
+      family, taskCount: familyTasks.length, stages: familyStages,
+      finalPassRate: familyStages.at(-1)?.passRate ?? 0,
+      averageForgetting: mean(familyMetrics.map(item => item.forgetting)),
+      averageBackwardTransfer: mean(familyMetrics.map(item => item.backwardTransfer)),
+    };
+  });
   return {
     manifestFingerprint: ledger.manifestFingerprint(), split, stages: stages.map(stage => ({...stage})),
-    seedCount: canonicalSeeds.length, taskCount: tasks.length, tasks, cells,
-    metrics: evaluateContinualLearning(tasks, referenceScore),
+    seedCount: canonicalSeeds.length, taskCount: tasks.length, tasks, cells, familySummaries,
+    metrics,
     evidence: { outcomeCount: eligible.length, authorityCounts, seedIds: canonicalSeeds, taskVersions, taskFamilies },
   };
 }
