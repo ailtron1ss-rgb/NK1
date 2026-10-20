@@ -1,3 +1,10 @@
+## WorkPass114 — paired continual-learning uncertainty without pseudo-replication (2026-10-20)
+
+- Corrected `ContinualBenchmarkComparison.ts`: the prior implementation flattened every task score across paired runs before computing the confidence interval. Since tasks within a run share the same seed, that could treat correlated task cells as independent observations and make uncertainty look artificially small.
+- The comparison now averages task success and forgetting within each run first, then calculates paired deltas and approximate 95% intervals across matched seeds. `pairedN` now consistently means matched independent runs for both metrics; one paired run produces no confidence interval.
+- Preserved strict pairing by manifest fingerprint and seed, identical task-set checks, duplicate-run rejection, and reporting of unpaired runs. Expanded regressions for run-level sample counts, interval behavior and invalid same-method comparisons; CI triggers on push for the comparison test too.
+- This is a statistical-validity correction, not a learning-performance gain. No replay strategy or promotion threshold was changed; the learning score remains unchanged until real verifier-backed matched-seed outcomes exist.
+
 ## WorkPass113 — task-family stratification for continual learning (2026-10-20)
 
 - Added family-level checkpoint summaries to `ContinualOutcomeMatrix.ts`: pooled verified pass counts/rates per stage plus family-level forgetting and backward transfer.
