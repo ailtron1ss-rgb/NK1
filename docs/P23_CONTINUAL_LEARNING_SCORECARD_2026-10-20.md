@@ -4,10 +4,10 @@ This is an engineering assessment of the current repository implementation, not 
 
 ## Progress estimate
 
-- **P23 symbolic continual-learning core: 58%** — experience capture, bounded replay, contextual action values, skill promotion/rejection, nearby-context transfer, retention decay, rollback and persistence exist. This measures implementation coverage against the currently scoped P23 core, not success rate.
+- **P23 symbolic continual-learning core: 61%** — experience capture, bounded replay, contextual action values, skill promotion/rejection, nearby-context transfer, retention decay, rollback and persistence exist. This measures implementation coverage against the currently scoped P23 core, not success rate.
 - **Evidence-grounded learning maturity: 34%** — independent outcome verification, reliable holdout splits across task families, delayed retention measurements and external task outcomes remain incomplete.
 - **Project-wide learning ambition: 29%** — this is a broad roadmap estimate across autonomous, cross-domain, lifelong learning; it is not a measured capability metric.
-- **WorkPass99 benchmark coverage: newly added** — deterministic algorithm-level comparison of recent-only, surprise-only and multi-timescale replay. Await GitHub Actions result before marking it passed.
+- **WorkPass100 replay-selection integration: implemented; exact-head CI pending** — production and benchmark now share one bounded selector; runtime exposes a safe configurable quota for controlled ablations; tests cover boundary conditions and 16/32/48 recent quotas. This improves implementation coverage, not evidence of task-success uplift.
 
 Do not add these percentages together. Their denominators differ and each is a planning estimate.
 
@@ -16,14 +16,14 @@ Do not add these percentages together. Their denominators differ and each is a p
 | Aspect | Score | Evidence and main limitation |
 |---|---:|---|
 | Experience ingestion and malformed-label rejection | 72 | Deduplication and non-finite label rejection are implemented; source truth/reliability is not independently established. |
-| Replay budget and bounded resource use | 78 | Hard cap of 64 updates per consolidation and bounded state history; capacity is fixed rather than workload-adaptive. |
-| Replay diversity and multi-timescale retention | 62 | Recent quota plus older context/action representatives; no yet-validated retention/forward-transfer win on a task stream. |
+| Replay budget and bounded resource use | 79 | Runtime hard cap remains 64 updates per consolidation; a typed selector config supports smaller controlled ablations without raising the ceiling. |
+| Replay diversity and multi-timescale retention | 66 | Shared selector guarantees a configurable recent quota, then chooses historical context/action representatives and surprise-ranked fill; no validated retention/forward-transfer win on a task stream. |
 | Skill formation and promotion/rejection | 61 | Context/action skills, held-out validation windows and promotion rollback exist; validation is still narrow and largely synthetic. |
 | Contextual transfer | 58 | Conservative near-context transfer and distant-context rejection are tested; task-semantic similarity is represented by coarse state buckets. |
 | Forgetting and retention bookkeeping | 70 | Half-life decay, expiry, fresh-evidence refresh and rollback exist; delayed repeated task tests are missing. |
 | Outcome verification / causal grounding | 34 | There are feedback labels, shadow comparisons and ablations, but no universal independent verifier for real actions or claims. |
 | Calibration and uncertainty reporting | 43 | Prediction error and calibration metrics exist; sample-count-aware confidence intervals and drift alarms are incomplete. |
-| Benchmark quality / baselines | 32 | Synthetic regression tests cover important invariants; no stable external-task suite yet compares task success, retention and transfer. |
+| Benchmark quality / baselines | 35 | Shared production selector is compared against recency-only and surprise-only baselines at 16/32/48 recent quotas; task-verifier outcomes, retention and transfer remain unmeasured. |
 | Persistence and state integrity | 69 | Snapshot/restore and checksum mechanisms exist; long-horizon corruption and migration fault injection need wider coverage. |
 | Observability and experiment reproducibility | 49 | Metrics are exposed, but there is not yet a durable experiment ledger with versioned seeds, benchmark manifests and confidence intervals. |
 
@@ -48,8 +48,8 @@ Compare these baselines on the *same deterministic, versioned stream*:
 1. No replay / online-only update.
 2. Recency-only replay.
 3. Surprise-priority replay.
-4. Current multi-timescale replay (32 recent + up to 32 historical representatives).
-5. Multi-timescale ratios 25/75 and 75/25.
+4. Current multi-timescale replay (default 32 recent + up to 32 historical representatives; total cap 64).
+5. Multi-timescale recent quotas 16/48 (with the default 32 as middle arm); report realized composition, not just configured ratio.
 6. Context/action-stratified replay without surprise ranking.
 
 Report at least:
@@ -83,3 +83,14 @@ Do not promote a strategy just because its replay batch is diverse or its intern
 ## WorkPass99 code addition
 
 Added `tests/p23-replay-strategy-benchmark.mjs` and `.github/workflows/workpass99-replay-strategy-benchmark.yml`. The harness compares recent-only, surprise-only and multi-timescale sample selection under a deterministic distribution shift. It asserts bounded batch size, exact recent quota, no duplicate IDs and nontrivial historical/context coverage. It deliberately reports proxy metrics only and must not be represented as proof of better task outcomes until the workflow runs and a verifier-grounded task stream is added.
+
+
+## WorkPass100 — production-shared replay selector (2026-10-20)
+
+- Extracted the replay-selection algorithm into `ReplaySelectionPolicy.ts`; the production `P23LearningEngine` and the deterministic benchmark now call the same implementation instead of maintaining parallel copies.
+- Added a typed `configureReplaySelection({ maxBatchSize, recentQuota })` seam for controlled ablations. Runtime max is clamped to 64; defaults remain 64 total / 32 recent, and the policy does not auto-tune from unverified feedback.
+- The selector guarantees unique trace IDs, chronological deterministic output, a recent quota, historical context/action-stratum representatives, and surprise-ranked fill. It clamps malformed/oversized configuration at the boundary.
+- Added tests for zero/oversized quotas, batch cap, duplicates, deterministic ordering, historical retention, small-batch preservation, and actual runtime integration. Benchmark sweeps recent quotas 16/32/48 against recent-only and surprise-only baselines.
+- Exact-head GitHub Actions must pass before this pass is marked validated. The benchmark is still a selection-quality proxy; no task-success, retention or transfer uplift is claimed.
+- New research reference: [Adaptive Replay Buffer (ARB), AISTATS 2026](https://proceedings.mlr.press/v300/song26d.html), which dynamically weights online/offline trajectories using a policy-alignment signal. NK1 adapts the *experimental direction*—measuring whether experiences match the current policy—rather than copying its offline-to-online RL implementation. Follow-up must first add outcome provenance and controlled task-stream evaluation.
+- Upstream skill evaluation reference: [SkillLearnBench](https://github.com/cxcscmu/SkillLearnBench) (MIT) separates skill artifact quality, execution trajectory, and verifier-based task outcome; [SkillsBench](https://github.com/benchflow-ai/skillsbench) (Apache-2.0) offers broader skill-utility tasks. Their task harnesses have different dependencies and are evaluation references, not drop-in runtime dependencies.
