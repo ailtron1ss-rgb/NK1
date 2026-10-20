@@ -31,6 +31,7 @@ on:
       - "runtime/neuro-kurisu/scripts/evaluate-learning-history-workpass74.mjs"
       - "runtime/neuro-kurisu/tests/replay-strategy-comparison-workpass75.mjs"
       - "runtime/neuro-kurisu/tests/bounded-experience-replay-workpass76.mjs"
+      - "runtime/neuro-kurisu/tests/continual-replay-ablation-workpass78.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/workpass71-validation.yml"
   workflow_dispatch:
@@ -77,6 +78,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:bounded-experience-replay-workpass76
       - name: Paired replay-strategy comparison regression
         run: npm --prefix runtime/neuro-kurisu run test:replay-strategy-comparison-workpass75
+      - name: Paired-seed continual replay ablation on the parametric policy learner
+        run: npm --prefix runtime/neuro-kurisu run test:continual-replay-ablation-workpass78
       - name: Validate continual learning history CLI entry point
         run: node --experimental-strip-types runtime/neuro-kurisu/scripts/evaluate-learning-history-workpass74.mjs --help
       - name: Existing bilingual memory recall regression
