@@ -126,3 +126,8 @@ test("prioritized replay supports minibatches larger than the resident buffer", 
   assert.equal(draws.length, 20);
   assert.ok(draws.every(row => row.id === 1 || row.id === 2));
 });
+
+test("prioritized replay safely returns no samples before first insertion", () => {
+  const buffer = new BoundedExperienceReplayBuffer({ maxBytes: 1024, strategy: "prioritized" });
+  assert.deepEqual(buffer.sample(8), []);
+});
