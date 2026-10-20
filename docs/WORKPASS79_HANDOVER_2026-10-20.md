@@ -4,7 +4,7 @@
 **Repository:** https://github.com/ailtron1ss-rgb/NK1  
 **Working branch:** `workpass79-cognitive-rebuild`  
 **Base:** `workpass70-source`  
-**Status:** WorkPass79 local-language resilience slice plus WorkPass80 cold-memory residency regression committed; GitHub Actions status must be checked against the latest branch head before calling tests green.
+**Status:** WorkPass79–81 implementation and focused regressions committed; Actions run 39371651412 passed all four workflow steps on the code state before this evidence-only documentation update.
 
 ## Mission and constraints
 
@@ -62,8 +62,8 @@ The change is additive. Revert the WorkPass79 commits or remove the workflow/scr
 
 ## Current verification gate
 
-- Previous run `39371124054` was still `pending` and returned no jobs when last checked. New commits should trigger a newer run; inspect the run associated with the exact current PR head and retrieve job logs before claiming success.
-- The GitHub content/commit API does not execute tests locally. No claim is made that the new test has passed until Actions supplies evidence.
+- Run `39371651412` completed successfully: cold-memory retrieval, local-backend policy, provider boundary (including timeout and caller cancellation), and server HTTP smoke all PASS. Job logs explicitly show `WORKPASS80_MEMORY_RESIDENCY_RETRIEVAL=PASS`, `WORKPASS79_LOCAL_LANGUAGE_BACKEND_POLICY=PASS`, `WORKPASS79_LOCAL_PROVIDER_BOUNDARY=PASS`, and `SERVER_SMOKE=PASS`.
+- The GitHub content/commit API does not execute tests locally; the evidence above comes from GitHub Actions. Documentation-only commits after that run do not change the tested source, but a final head check is still recommended.
 
 
 ## WorkPass81 — cancellation at the local provider boundary
@@ -77,3 +77,13 @@ The change is additive. Revert the WorkPass79 commits or remove the workflow/scr
 
 - Run `39371576041` confirmed WorkPass80 cold-memory regression and WorkPass79 policy regression **PASS**. The provider-boundary step failed with Node exit code 13 at the timeout test because the test awaited Node's unreferenced `AbortSignal.timeout()` timer without keeping the process alive.
 - The focused timeout test now holds the process open for up to one second, asserts the normalized timeout error, and clears its keep-alive timer in `finally`. This preserves the timeout assertion rather than skipping it. The follow-up Actions run is still required before provider cancellation/timeout coverage is marked PASS.
+
+
+## Verified CI evidence — WorkPass80/81
+
+- Run: https://github.com/ailtron1ss-rgb/NK1/actions/runs/39371651412
+- Result: **PASS** (Node v22.23.3, npm 10.9.9).
+- Cold memory: corpus 140; tiers 16 hot / 64 warm / 60 cold; materialized vectors 80 before and after retrieval; target recalled before and after restore; 140 candidates; index integrity true.
+- Local provider: success path, HTTP 503 normalization, malformed JSON, empty output, 2 MiB response cap, timeout abort, caller cancellation, loopback-only endpoint policy all PASS.
+- Server HTTP smoke: PASS.
+- Still not covered by this CI: live llama.cpp on Dell G3, caller signal propagation from the whole cognitive cycle, restart/recovery under a real process, independent bilingual Recall@k/MRR benchmark, learning transfer/forgetting, browser/Live2D/TTS E2E, clean install/rollback, and soak testing.
