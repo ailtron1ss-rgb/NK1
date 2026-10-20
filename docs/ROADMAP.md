@@ -7,7 +7,7 @@ Execution branch: rebuild. Stable branch: main (do not modify as part of island 
 - [x] Write rebuild charter and six-island Definition of Done.
 - [x] Document 12-layer target architecture and cross-island contracts.
 - [x] Persist CHANGELOG and checkpoint pointers.
-- [ ] Confirm latest Actions on branch baseline and current WorkPass93/94 findings.
+- [x] Confirm exact-head Actions passed for Live2D expression cache change (run 39397209551, head ae861fe76dfc2b2c38ced3293f80aff100672806); WorkPass94 browser/device findings remain open.
 
 ## Stage 1 — core island (IN PROGRESS)
 - [x] Add runtime validation at the public OrganismCore.observe boundary before spine-only/full-cycle routing; reject malformed observations and invalid cycle modes before side effects.
@@ -18,6 +18,11 @@ Execution branch: rebuild. Stable branch: main (do not modify as part of island 
 - [ ] Add regression for malformed/stale/cancelled events and no-side-effect bypass.
 - [ ] Run focused tests, runtime typecheck and exact-head CI.
 - Exit: one-command core test/start, documented owners, no unverified bypass in the exercised path.
+
+- [x] Deduplicate unchanged Live2D expression application to avoid repeated expression resets; regression is in CI.
+- [x] Guard legacy avatar localStorage access and test missing/throwing storage; exact-head CI pending for this change.
+- [ ] Reconcile browser speech synthesis, backend voice routes and Android bridge under an explicit status/interrupt contract.
+- [ ] Verify actual browser rendering, asset hydration, microphone/STT permissions, visibility/unmount interruption, target-device performance and measured audio/phoneme lip-sync.
 
 ## Stage 2 — hierarchical memory
 - [ ] Map existing MemoryOS2 to working/episodic/semantic/procedural responsibilities without adding a second store.
