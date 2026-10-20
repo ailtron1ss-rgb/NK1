@@ -16,5 +16,5 @@ assert.equal(evaluateContinualLearning([{ taskId: 'x', scoreByStage: [0.5] }]).a
 assert.throws(() => evaluateContinualLearning([]), /at least one task/);
 assert.throws(() => evaluateContinualLearning([{ taskId: 'x', scoreByStage: [0.5] }, { taskId: 'x', scoreByStage: [0.5] }]), /duplicate taskId/);
 assert.throws(() => evaluateContinualLearning([{ taskId: 'x', scoreByStage: [0.5, 0.6] }]), /one stage per task/);
-assert.throws(() => evaluateContinualLearning([{ taskId: 'x', scoreByStage: [1.2] }]), /in \\[0, 1\\]/);
+assert.throws(() => evaluateContinualLearning([{ taskId: 'x', scoreByStage: [1.2] }]), /in \[0, 1\]/);
 console.log('PASS continual-learning metrics: final score, forgetting, backward/forward transfer, validation');
