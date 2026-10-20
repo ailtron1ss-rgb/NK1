@@ -4,7 +4,7 @@
 - Добавлен тест реального интерфейса `OpenAICompatibleLocalChatProvider`: фактическая идентичность модели, bounded max_tokens/temperature, HTTP 503, malformed JSON, пустой ответ, лимит 2 MiB, timeout AbortSignal и запрет не-loopback endpoint/redirect.
 - Подключены `test:workpass79:local-language-policy`, `test:workpass79:provider-boundary` и агрегирующий `test:workpass79` в runtime `package.json`.
 - Добавлен GitHub Actions workflow `.github/workflows/workpass79-cognitive-regression.yml` для policy-регрессии, границ provider и HTTP smoke существующего серверного пути с контролируемым локальным провайдером.
-- Проверки в этой среде ещё не запускались: GitHub API-коммиты не исполняют код. Результат Actions должен быть проверен на точном актуальном head; реальный llama.cpp на Dell G3 не проверен.
+- Первый Actions run подтвердил policy-тест, но выявил ошибку окружения workflow: Node 22.12 не экспортировал `node:sqlite`, который импортирует сервер. CI обновлён с жёсткого `22.12.0` на актуальную линию Node 22; это устраняет известную причину запуска, но повторный run ещё должен подтвердить результат.
 - Это узкий reliability-pass, не заявление об улучшении качества генерации, когнитивном обучении или готовности организма к релизу.
 
 ---
