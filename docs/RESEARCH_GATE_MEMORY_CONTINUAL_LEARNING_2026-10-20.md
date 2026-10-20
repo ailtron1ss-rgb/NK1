@@ -79,3 +79,34 @@
 6. Separately run the actual local model on the Dell G3 and record model hash, quantization, llama.cpp build, GPU layers, context, cold/warm latency, peak RAM/VRAM, failures and restart recovery.
 
 **Status:** research-informed test plan; no claim of a measured NK1 cognitive capability improvement.
+
+
+## 2026-10-20 update — newer memory and action-grounding work
+
+These publications were reviewed after the initial gate. They inform evaluation design; they are not claims that NK1 has reproduced their results.
+
+### 8. MemoryBench (ICML 2026) — learning from feedback during service time
+- Paper: [MemoryBench: A Benchmark for Memory and Continual Learning in LLM Systems](https://proceedings.mlr.press/v306/ai26e.html)
+- Why it matters: tests accumulated user feedback across domains, languages and task types rather than only homogeneous long-context QA; reports that current baselines still leave substantial room for improvement.
+- NK1 gate: add sequential episodes with a feedback event, a subsequent task where the feedback should matter, and a counterfactual task where it must not matter. Report acquisition, retention, transfer and interference separately.
+
+### 9. Mem2ActBench (ACL 2026) — memory must change grounded action, not just recall
+- Paper: [Mem2ActBench](https://aclanthology.org/2026.acl-long.370/)
+- Why it matters: tests whether agents use remembered preferences and state to select tools and ground action parameters, beyond passive fact retrieval.
+- NK1 gate: create deterministic tool-simulation tasks where an old preference changes a parameter, a later correction overrides it, and missing/ambiguous memory triggers clarification instead of a guessed action. Score parameter correctness, invalid-action rate, stale-memory use and abstention. Use a sandboxed fake tool first; do not exercise real external side effects in unit tests.
+
+### 10. Memory-R1 and AgeMem (ACL 2026) — memory operations as policy decisions
+- Papers: [Memory-R1](https://aclanthology.org/2026.acl-long.583/) and [AgeMem](https://aclanthology.org/2026.acl-long.981/)
+- Why they matter: treat ADD/UPDATE/DELETE/NOOP and short-/long-term memory management as decisions that can be evaluated against downstream outcomes, rather than assuming hand-written heuristics are optimal.
+- NK1 gate: before any RL or weight update is attempted, log memory-operation proposals, accepted/rejected writes, evidence, later utility, correction cost and deletion/supersession outcomes. Run a policy ablation against the current deterministic rules. Do not claim reinforcement learning merely because a utility counter is updated.
+
+### 11. MemFit and LeanMem (2026 preprints) — preserve evidence while controlling write cost
+- Papers: [MemFit](https://arxiv.org/abs/2610.00872) and [LeanMem](https://arxiv.org/abs/2608.03463)
+- Why they matter: explore low-cost append-only interaction storage, segment summaries, hybrid retrieval and differentiated handling of stable profiles, evolving events and source-grounded records.
+- NK1 gate: benchmark append-only raw-event retention plus derived indexes against current memory storage; require reversible summaries, source links, explicit temporal updates, bounded write latency, and identical retrieval/recovery tests. Do not add another parallel memory owner until a single canonical write/read path and migration strategy are specified.
+
+## Additional implementation priority
+
+The current WorkPass83 harness is retrieval-centred. The next evaluation layer should be a **memory-to-action benchmark**: same initial state, paired trajectories, simulated tool calls, corrected preferences, stale facts, missing evidence, and post-restart replay. It must separately score (1) memory state transition, (2) evidence retrieval, (3) selected action and grounded arguments, and (4) observed task outcome. This avoids mistaking correct recall for successful autonomous behavior.
+
+Source pages were checked on 2026-10-20. Verify repository/dataset licences and reproduce baselines before importing third-party code or data. Findings from abstracts are design leads; implementation decisions require reviewing full methods, artefacts and licence terms.
