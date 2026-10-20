@@ -74,6 +74,11 @@ assert.ok(Number.isFinite(report.metrics.candidate.falseAbstentionRate01));
 assert.equal(report.datasetIntegrity.validForPromotion, true, 'fixed fixture should pass dataset integrity checks');
 assert.equal(report.corpusIntegrity.validForPromotion, true);
 assert.equal(report.promotion.requiresIndependentHumanOrCIReview, true);
+assert.equal(report.promotion.minimumUnanswerableHoldoutQueries, 4);
+assert.equal(report.promotion.gates.sufficientUnanswerableEvidence, false,
+  'two unanswerable examples are too few to authorize an abstention promotion claim');
+assert.equal(report.promotion.reason, 'insufficient-unanswerable-holdout',
+  'insufficient abstention evidence must have an explicit fail-closed reason');
 assert.equal(report.guardrails.liveMemoryMutated, false);
 assert.ok(Number.isFinite(report.metrics.baseline.recallAtK01));
 assert.ok(Number.isFinite(report.metrics.candidate.mrr01));
