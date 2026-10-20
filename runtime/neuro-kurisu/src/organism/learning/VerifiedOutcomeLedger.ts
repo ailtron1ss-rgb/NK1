@@ -28,7 +28,7 @@ export interface VerifiedTaskOutcome {
 export interface OutcomeRejection {
   code: 'unknown-task' | 'version-mismatch' | 'invalid-method' | 'invalid-seed' | 'invalid-attempt' |
     'self-report-not-authoritative' | 'verifier-mismatch' | 'missing-evidence' |
-    'invalid-time' | 'duplicate-attempt';
+    'invalid-time' | 'duplicate-attempt' | 'invalid-outcome';
   taskId: string;
   method: string;
   detail: string;
@@ -83,22 +83,30 @@ export class VerifiedOutcomeLedger {
   }
 
   record(outcome: VerifiedTaskOutcome): { accepted: boolean; rejection?: OutcomeRejection } {
-    const task = this.manifest.get(outcome.taskId);
+    const safeTaskId = typeof outcome?.taskId === 'string' ? outcome.taskId : '';
+    const safeMethod = typeof outcome?.method === 'string' ? outcome.method : '';
+    const task = this.manifest.get(safeTaskId);
     let code: OutcomeRejection['code'] | undefined;
     let detail = '';
-    if (!task) { code = 'unknown-task'; detail = 'task is not in the versioned manifest'; }
+    if (!outcome || typeof outcome !== 'object' || typeof outcome.taskId !== 'string' ||
+        typeof outcome.taskVersion !== 'string' || typeof outcome.verifierId !== 'string' ||
+        typeof outcome.evidenceRef !== 'string' || typeof outcome.passed !== 'boolean' ||
+        !['independent-verifier', 'human-review', 'self-report'].includes(outcome.authority)) {
+      code = 'invalid-outcome'; detail = 'outcome shape or authority fields are malformed';
+    }
+    else if (!task) { code = 'unknown-task'; detail = 'task is not in the versioned manifest'; }
     else if (task.version !== outcome.taskVersion) { code = 'version-mismatch'; detail = 'outcome references a different task version'; }
     else if (typeof outcome.method !== 'string' || !outcome.method.trim()) { code = 'invalid-method'; detail = 'method must be a non-empty string'; }
     else if (!Number.isSafeInteger(outcome.seed) || outcome.seed < 0) { code = 'invalid-seed'; detail = 'seed must be a non-negative safe integer'; }
     else if (!Number.isSafeInteger(outcome.attempt) || outcome.attempt < 1) { code = 'invalid-attempt'; detail = 'attempt must be a positive safe integer'; }
     else if (outcome.authority === 'self-report') { code = 'self-report-not-authoritative'; detail = 'self-assessed success cannot become ground truth'; }
-    else if (task.verifierId !== outcome.verifierId && outcome.authority === 'independent-verifier') { code = 'verifier-mismatch'; detail = 'verifier does not match the manifest'; }
+    else if (outcome.authority === 'independent-verifier' && task.verifierId !== outcome.verifierId) { code = 'verifier-mismatch'; detail = 'verifier does not match the manifest'; }
     else if (!outcome.evidenceRef.trim()) { code = 'missing-evidence'; detail = 'accepted outcomes require an evidence reference'; }
     else if (!Number.isFinite(outcome.observedAt) || outcome.observedAt <= 0) { code = 'invalid-time'; detail = 'observedAt must be a positive finite timestamp'; }
-    const key = this.key(outcome);
+    const key = code ? '' : this.key(outcome);
     if (!code && this.outcomes.has(key)) { code = 'duplicate-attempt'; detail = 'this task/method/seed/attempt already has an outcome'; }
     if (code) {
-      const rejection: OutcomeRejection = { code, taskId: outcome.taskId, method: outcome.method, detail };
+      const rejection: OutcomeRejection = { code, taskId: safeTaskId, method: safeMethod, detail };
       this.rejections.push(rejection);
       return { accepted: false, rejection };
     }
@@ -180,7 +188,7 @@ export class VerifiedOutcomeLedger {
     if (ledger.outcomes.size !== snapshot.acceptedOutcomes) throw new Error('accepted outcome count mismatch');
     const allowed = new Set<OutcomeRejection['code']>([
       'unknown-task', 'version-mismatch', 'invalid-method', 'invalid-seed', 'invalid-attempt',
-      'self-report-not-authoritative', 'verifier-mismatch', 'missing-evidence', 'invalid-time', 'duplicate-attempt',
+      'self-report-not-authoritative', 'verifier-mismatch', 'missing-evidence', 'invalid-time', 'duplicate-attempt', 'invalid-outcome',
     ]);
     for (const item of snapshot.rejections as OutcomeRejection[]) {
       if (!item || !allowed.has(item.code) || typeof item.taskId !== 'string' ||
