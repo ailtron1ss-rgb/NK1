@@ -980,3 +980,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Extended the retrieval benchmark with a paired-query bootstrap interval for unsupported retrieval on explicitly unanswerable holdout queries.
 - Candidate eligibility now requires the upper confidence bound of candidate-minus-baseline unsupported retrieval to remain within a configurable tolerance (default `0`), in addition to the existing point-estimate guard.
 - Bumped the benchmark report schema to v6 and added focused assertions. This is a stricter evaluation gate, not evidence of improved retrieval quality; the current bilingual fixture remains synthetic.
+
+
+## 2026-10-20 — WorkPass90: require adequate unanswerable holdout evidence
+
+- Closed an evaluation gap: a benchmark with no or too few explicitly unanswerable holdout queries could otherwise report a zero-width abstention interval and appear to satisfy the confidence gate without meaningful abstention evidence.
+- Added `minUnanswerableHoldoutQueries` (default 4; bounded to 2–32), a dedicated `sufficientUnanswerableEvidence` promotion gate, a surfaced threshold, and the fail-closed reason `insufficient-unanswerable-holdout`.
+- The fixed synthetic fixture has only two unanswerable cases and now explicitly proves that promotion is blocked for insufficient abstention evidence. This is a conservative evaluation guard, not retrieval uplift.
