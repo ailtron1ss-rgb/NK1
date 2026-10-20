@@ -251,9 +251,28 @@ export class P23LearningEngine {
 
   replayPending(traces:OrganismDecisionTrace[],policy:AdaptivePolicyEngine):number {
     let updates=0;
-    const ordered=traces.slice().sort((a,b)=>a.tick-b.tick);
+    const eligible=traces.filter(trace=>trace.selected && trace.outcome && !this.state.replayedTraceIds.includes(trace.id) && this.state.experiences.some(x=>x.traceId===trace.id));
+    // Bound each consolidation call and preserve context/action diversity. For a
+    // large backlog, first take the most surprising example from each context-action
+    // stratum, then fill remaining slots by surprise and age. Small batches remain
+    // fully replayed, preserving deterministic recovery behavior.
+    let ordered=eligible.slice().sort((a,b)=>a.tick-b.tick);
+    if(ordered.length>64){
+      const keyOf=(trace:OrganismDecisionTrace)=>`${contextKey(trace.stateBefore)}|${trace.selected!.action}`;
+      const groups=new Map<string,OrganismDecisionTrace[]>();
+      for(const trace of ordered){const key=keyOf(trace);const group=groups.get(key)??[];group.push(trace);groups.set(key,group);}
+      const representatives=[...groups.values()].map(group=>group.sort((a,b)=>(b.outcome?.surprise??0)-(a.outcome?.surprise??0)||a.tick-b.tick)[0]).sort((a,b)=>(b.outcome?.surprise??0)-(a.outcome?.surprise??0)||a.tick-b.tick);
+      const selected=new Map<string,OrganismDecisionTrace>();
+      for(const trace of representatives.slice(0,64)) selected.set(trace.id,trace);
+      if(selected.size<64){
+        for(const trace of ordered.slice().sort((a,b)=>(b.outcome?.surprise??0)-(a.outcome?.surprise??0)||a.tick-b.tick)){
+          if(selected.size>=64)break;
+          selected.set(trace.id,trace);
+        }
+      }
+      ordered=[...selected.values()].sort((a,b)=>a.tick-b.tick);
+    }
     for (const trace of ordered) {
-      if(!trace.selected || !trace.outcome || this.state.replayedTraceIds.includes(trace.id)) continue;
       const exp=this.state.experiences.find(x=>x.traceId===trace.id);
       if(!exp) continue;
       const before=policy.estimate(exp.contextKey,exp.action,.5);
