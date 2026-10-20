@@ -1663,6 +1663,8 @@
     "test:replay-strategy-comparison-workpass75": "node --experimental-strip-types tests/replay-strategy-comparison-workpass75.mjs",
     "test:bounded-experience-replay-workpass76": "node --experimental-strip-types tests/bounded-experience-replay-workpass76.mjs",
     "eval:learning-history-workpass74": "node --experimental-strip-types scripts/evaluate-learning-history-workpass74.mjs",
-    "eval:learning-holdout-workpass72": "node --experimental-strip-types scripts/evaluate-learning-holdout-workpass72.mjs"
+    "eval:learning-holdout-workpass72": "node --experimental-strip-types scripts/evaluate-learning-holdout-workpass72.mjs",
+    "test:continual-replay-ablation-workpass78": "node --experimental-strip-types tests/continual-replay-ablation-workpass78.mjs",
+    "eval:continual-replay-ablation-workpass78": "node --experimental-strip-types src/learning/continual-replay-ablation-workpass78.mjs"
   }
 }
