@@ -1,0 +1,30 @@
+name: WorkPass110 continual learning metrics
+on:
+  pull_request:
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/ContinualLearningMetrics.ts'
+      - 'runtime/neuro-kurisu/tests/p23-continual-learning-metrics.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/workpass110-continual-learning-metrics.yml'
+  push:
+    branches: [workpass79-cognitive-rebuild]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/ContinualLearningMetrics.ts'
+      - 'runtime/neuro-kurisu/tests/p23-continual-learning-metrics.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/workpass110-continual-learning-metrics.yml'
+jobs:
+  metrics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Run continual-learning metric regressions
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:continual-metrics
+      - name: Typecheck runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
