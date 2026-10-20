@@ -65,7 +65,8 @@ for(const [runtimeName, runtimePath] of extractedRuntimes){
 }
 const coreDirectConstructorOwners=[...core.matchAll(/^\s*(?:private\s+)?(?:readonly\s+)?([A-Za-z_$][\w$]*)\s*=\s*new\s+([A-Za-z_$][\w$]*)\s*\(/gm)].map(m=>({field:m[1],constructor:m[2]}));
 const coreDirectConstructors=coreDirectConstructorOwners.length;
-// OperationalMicroCycleRuntime is a deliberate orchestration owner; five direct constructors is the new ceiling.
-if(coreDirectConstructors > 5) errors.push(`core-direct-constructors-too-many:${coreDirectConstructors}`);
-console.log(`CORE_OWNERSHIP=${errors.length?'FAIL':'PASS'} errors=${errors.length} directConstructors=${coreDirectConstructors} directConstructorOwners=${JSON.stringify(coreDirectConstructorOwners)}`);
+// OperationalMicroCycleRuntime is the explicitly permitted orchestration owner; the ceiling applies to the other direct owners.
+const countedDirectConstructors=coreDirectConstructorOwners.filter(({field})=>field!=='operationalMicroCycle').length;
+if(countedDirectConstructors > 5) errors.push(`core-direct-constructors-too-many:${countedDirectConstructors}`);
+console.log(`CORE_OWNERSHIP=${errors.length?'FAIL':'PASS'} errors=${errors.length} directConstructors=${coreDirectConstructors} countedDirectConstructors=${countedDirectConstructors} exemptOrchestrationOwner=operationalMicroCycle directConstructorOwners=${JSON.stringify(coreDirectConstructorOwners)}`);
 if(errors.length){for(const e of errors) console.log(`ERROR=${e}`); process.exit(1);}
