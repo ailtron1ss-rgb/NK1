@@ -8,7 +8,7 @@ The legacy sprite deck persisted its selected outfit through direct `window.loca
 
 - Added `safeLocalStorage.ts` with best-effort read/write helpers that catch access and operation errors.
 - Wired `LegacySpriteDeck.tsx` to the helpers. When storage is unavailable, initial outfit falls back to `lab_coat`; persistence failure does not block the visual.
-- Added three Node tests covering missing/throwing window access, throwing get/set operations, and successful persistence.
+- Added four Node tests covering missing/throwing window access, throwing get/set operations, successful persistence, and production component wiring (no direct localStorage calls).
 - Added `app/package.json` script `test:avatar-storage` and an exact CI step in the rebuild regression workflow.
 
 ## Verification
@@ -19,7 +19,7 @@ Run from repository root:
 node --experimental-strip-types --test app/src/legacy/avatar/safeLocalStorage.test.mjs
 ```
 
-Expected: 3 tests pass. Exact-head GitHub Actions result is tracked separately; this checkpoint does not claim a browser-level visual acceptance test.
+Expected: 4 tests pass. Exact-head GitHub Actions result is tracked separately; this checkpoint does not claim a browser-level visual acceptance test.
 
 ## Commits
 
