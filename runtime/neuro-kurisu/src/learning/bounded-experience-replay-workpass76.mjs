@@ -82,39 +82,46 @@ export class BoundedExperienceReplayBuffer {
     if (!Number.isInteger(count) || count < 0) throw new RangeError("count must be a non-negative integer");
     const n = Math.min(count, this.#items.length);
     if (!n) return [];
-    const available = [...this.#items];
     const selected = [];
-    while (selected.length < n) {
-      let index;
+    const totalPriority = this.#items.reduce((sum, item) => sum + item.priority ** this.priorityAlpha, 0);
+    const probabilityFor = item => this.strategy === "prioritized"
+      ? item.priority ** this.priorityAlpha / totalPriority
+      : 1 / this.#items.length;
+    const maxUnnormalizedWeight = this.strategy === "prioritized"
+      ? Math.max(...this.#items.map(item => (this.#items.length * probabilityFor(item)) ** (-this.importanceBeta)))
+      : 1;
+
+    // Uniform sampling is without replacement. Prioritized experience replay
+    // samples with replacement, matching the probability used by its IS weights.
+    const available = this.strategy === "uniform" ? [...this.#items] : null;
+    for (let drawIndex = 0; drawIndex < n; drawIndex += 1) {
+      let item;
       if (this.strategy === "uniform") {
-        index = Math.floor(this.#random() * available.length);
+        const index = Math.floor(this.#random() * available.length);
+        [item] = available.splice(index, 1);
       } else {
-        const weights = available.map(item => item.priority ** this.priorityAlpha);
-        const total = weights.reduce((sum, weight) => sum + weight, 0);
-        let draw = this.#random() * total;
-        index = weights.findIndex(weight => (draw -= weight) < 0);
-        if (index < 0) index = available.length - 1;
+        let draw = this.#random() * totalPriority;
+        item = this.#items.find(entry => (draw -= entry.priority ** this.priorityAlpha) < 0)
+          ?? this.#items[this.#items.length - 1];
       }
-      const [item] = available.splice(index, 1);
-      const probability = this.strategy === "prioritized"
-        ? item.priority ** this.priorityAlpha /
-          this.#items.reduce((sum, entry) => sum + entry.priority ** this.priorityAlpha, 0)
-        : 1 / this.#items.length;
-      const maxWeight = this.strategy === "prioritized"
-        ? Math.max(...this.#items.map(entry => (this.#items.length * (
-          entry.priority ** this.priorityAlpha /
-          this.#items.reduce((sum, candidate) => sum + candidate.priority ** this.priorityAlpha, 0)
-        )) ** (-this.importanceBeta)))
+      const probability = probabilityFor(item);
+      const rawImportanceWeight = this.strategy === "prioritized"
+        ? (this.#items.length * probability) ** (-this.importanceBeta)
         : 1;
       const importanceWeight = this.strategy === "prioritized"
-        ? Math.min(1, (this.#items.length * probability) ** (-this.importanceBeta) / maxWeight)
+        ? Math.min(1, rawImportanceWeight / maxUnnormalizedWeight)
         : 1;
-      selected.push({ id: item.id, sample: structuredClone(item.sample), priority: item.priority,
-        samplingProbability: probability, importanceWeight01: importanceWeight, bytes: item.bytes });
+      selected.push({
+        id: item.id,
+        sample: structuredClone(item.sample),
+        priority: item.priority,
+        samplingProbability: probability,
+        importanceWeight01: importanceWeight,
+        bytes: item.bytes
+      });
     }
     return selected;
   }
-
   get stats() {
     return {
       strategy: this.strategy,
@@ -139,9 +146,12 @@ export function trainWithExperienceReplay(learner, incomingSamples, buffer, {
   finite(replayRatio, "replayRatio");
   if (replayRatio < 0 || replayRatio > 1) throw new RangeError("replayRatio must be in [0, 1]");
   if (!Number.isInteger(replayBatchSize) || replayBatchSize < 0) throw new RangeError("replayBatchSize must be a non-negative integer");
-  for (const sample of incomingSamples) buffer.add(sample, { priority: priorityOf(sample) });
+  // Draw only prior experience before inserting the current batch. Otherwise
+  // every new sample could be trained twice in its first update, biasing the
+  // comparison against a true no-replay baseline.
   const replayCount = Math.floor(replayBatchSize * replayRatio);
   const replayEntries = buffer.sample(replayCount);
+  for (const sample of incomingSamples) buffer.add(sample, { priority: priorityOf(sample) });
   const replay = replayEntries.map(entry => ({
     ...entry.sample,
     sampleWeight01: entry.importanceWeight01
