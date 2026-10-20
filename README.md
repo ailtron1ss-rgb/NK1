@@ -2,7 +2,8 @@
 
 - Active work branch: `workpass79-cognitive-rebuild`; draft PR #1 remains open and unmerged.
 - Skill learning now has bounded negative transfer, 30-day half-life retention decay, 180-day expiry, and rollback when later validation evidence deteriorates.
-- Regressions cover transfer boundaries, forgetting, rollback, parametric generalization on a deterministic synthetic holdout, and core persistence/restart integration.
+- Regressions cover transfer boundaries, forgetting, rollback, invalid feedback rejection, bounded/stratified replay, parametric generalization on a deterministic synthetic holdout, and core persistence/restart integration.
+- Code head `c8d20f5` passed runtime typecheck and all five WorkPass95 workflow steps. Documentation-only commits followed; confirm the newest head's run before release.
 - Exact-head CI previously exposed a `-0` versus `0` assertion failure; the code fix is committed. Do not claim the newest run passes until it completes.
 - Research and evidence limits: [WorkPass96 research note](docs/CONTINUAL_SKILL_LEARNING_RESEARCH_2026-10-20.md); [checkpoint](docs/WORKPASS95_CHECKPOINT_2026-10-20.md).
 - Remaining high-value work: independent external outcome verification before promotion, balanced/prioritized replay, and real environment outcome benchmarks.
