@@ -8,6 +8,8 @@ on:
       - 'runtime/neuro-kurisu/tests/p23-continual-outcome-matrix.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualBenchmarkComparison.ts'
       - 'runtime/neuro-kurisu/tests/p23-continual-benchmark-comparison.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/ResetRetentionEvaluation.ts'
+      - 'runtime/neuro-kurisu/tests/p23-reset-retention-evaluation.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
   push:
@@ -33,6 +35,9 @@ jobs:
       - name: Run continual-learning metric regressions
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:continual-metrics
+      - name: Run reset-retention evaluation regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-reset-retention-evaluation.mjs
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
