@@ -22,6 +22,8 @@ export interface SignedOutcomeArtifact {
   signature: string;
 }
 
+function isNonEmptyString(value: unknown): value is string { return typeof value === 'string' && value.trim().length > 0; }
+
 function canonical(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonical).join(',') }]`;
@@ -57,9 +59,9 @@ export function ingestSignedOutcomeArtifact(
       payload.manifestFingerprint !== ledger.manifestFingerprint()) {
     return { accepted: false, artifactFingerprint: fingerprint, rejection: 'manifest-fingerprint-mismatch' };
   }
-  if (!payload.artifactId?.trim() || !payload.runId?.trim() ||
-      !payload.taskId?.trim() || !payload.taskVersion?.trim() ||
-      !payload.method?.trim() || !payload.verifierId?.trim() ||
+  if (!isNonEmptyString(payload.artifactId) || !isNonEmptyString(payload.runId) ||
+      !isNonEmptyString(payload.taskId) || !isNonEmptyString(payload.taskVersion) ||
+      !isNonEmptyString(payload.method) || !isNonEmptyString(payload.verifierId) ||
       !Number.isSafeInteger(payload.seed) || payload.seed < 0 ||
       !Number.isSafeInteger(payload.attempt) || payload.attempt < 1 ||
       typeof payload.passed !== 'boolean' ||
