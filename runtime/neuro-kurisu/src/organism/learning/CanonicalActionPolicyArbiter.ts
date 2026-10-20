@@ -73,7 +73,15 @@ export class CanonicalActionPolicyArbiter {
       const disagreement = values.length > 1 ? clamp01Variance(values) : 0;
       const confidence = active.length ? clamp((weight / Math.max(1, active.length)) * (.72 + .28 * (1 - disagreement))) : 0;
       const scale = (.72 + .28 * budget) * (.78 + .22 * (1 - uncertainty));
-      const sourceContributions01 = Object.fromEntries(raw.map(row => [row.name, clampSigned(row.bias * row.weight / Math.max(.001, weight), -.14, .14)]));
+      // Names are provenance keys, not guaranteed unique IDs. Aggregate duplicate
+      // names instead of silently overwriting earlier contributions in diagnostics.
+      const sourceContributions01: Record<string, number> = {};
+      for (const row of raw) {
+        const contribution = row.bias * row.weight / Math.max(.001, weight);
+        sourceContributions01[row.name] = clampSigned(
+          (sourceContributions01[row.name] ?? 0) + contribution, -.14, .14,
+        );
+      }
       actions[action] = {
         action,
         contribution01: clampSigned(weighted * scale, -.14, .14),

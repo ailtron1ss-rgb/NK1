@@ -20,6 +20,39 @@ const suppressed = arbiter.evaluate({
   sources:[{name:'bad', bias:{verify:.14}, confidence01:0, causal01:0}]
 });
 assert.ok(Math.abs(suppressed.actions.verify.contribution01) < .03);
+
+// Duplicate provenance labels must aggregate rather than overwrite in the
+// diagnostic frame, while sourceCount continues to report physical contributors.
+const duplicateNames = arbiter.evaluate({
+  baseUtility: .5, predictedUtility: .5,
+  sources: [
+    {name:'shared-family', bias:{verify:.10}, confidence01:1, causal01:1},
+    {name:'shared-family', bias:{verify:.08}, confidence01:1, causal01:1},
+  ],
+});
+assert.equal(duplicateNames.actions.verify.sourceCount, 2);
+assert.ok(duplicateNames.actions.verify.sourceContributions01['shared-family'] > .08);
+assert.ok(duplicateNames.actions.verify.contribution01 > 0);
+
+// Disabled sources are absent from both signal and source counts; malformed
+// numeric inputs are bounded and cannot inject NaN into the policy frame.
+const disabled = arbiter.evaluate({
+  baseUtility: .5, predictedUtility: .5,
+  sources: [{name:'disabled', bias:{verify:.14}, confidence01:1, enabled:false}],
+});
+assert.equal(disabled.actions.verify.sourceCount, 0);
+assert.equal(disabled.actions.verify.contribution01, 0);
+const malformed = arbiter.evaluate({
+  baseUtility: .5, predictedUtility: .5, computeBudget01: Number.NaN,
+  uncertainty01: Number.POSITIVE_INFINITY,
+  sources: [{name:'malformed', bias:{verify:Number.NaN, explore:999}, confidence01:Number.NaN, causal01:Number.NaN}],
+});
+for (const action of Object.values(malformed.actions)) {
+  assert.ok(Number.isFinite(action.contribution01));
+  assert.ok(action.contribution01 >= -.14 && action.contribution01 <= .14);
+  assert.ok(Number.isFinite(action.confidence01));
+}
+assert.ok(Number.isFinite(malformed.totalSignal01));
 console.log(JSON.stringify({
   verifyContribution01:frame.actions.verify.contribution01,
   meanConfidence01:frame.meanConfidence01,

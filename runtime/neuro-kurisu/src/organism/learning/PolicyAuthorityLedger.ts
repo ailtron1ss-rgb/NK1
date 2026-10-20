@@ -59,10 +59,10 @@ export class PolicyAuthorityLedger {
     return row;
   }
 
-  finalize(maxAbs01 = .24) {
+  finalize(maxAbs01 = .24) {\n    // A caller-controlled bound must itself be finite and non-negative; otherwise\n    // Math.min/Math.max can leak NaN or invert the clamp interval into policy output.\n    const limit = Math.max(0, Math.min(1, finite(maxAbs01, .24)));
     const byAction: Partial<Record<ActionKind, number>> = {};
     for (const row of this.state.contributions) byAction[row.action] = (byAction[row.action] ?? 0) + row.bias01;
-    for (const action of Object.keys(byAction) as ActionKind[]) byAction[action] = clamp(byAction[action] ?? 0, -maxAbs01, maxAbs01);
+    for (const action of Object.keys(byAction) as ActionKind[]) byAction[action] = clamp(byAction[action] ?? 0, -limit, limit);
     this.state.finalByAction = byAction;
     return structuredClone(byAction);
   }

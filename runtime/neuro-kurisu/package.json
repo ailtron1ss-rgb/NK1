@@ -9,6 +9,8 @@
     "npm": ">=10.8.0"
   },
   "scripts": {
+    "test:canonical-policy-arbiter": "node --experimental-strip-types tests/canonical-action-policy-arbiter.mjs",
+    "test:policy-authority-ledger": "node --experimental-strip-types tests/policy-authority-ledger.mjs",
     "test:workpass84:script-integrity": "node tests/workpass84-script-integrity.mjs",
     "test:workpass87:superseded-memory": "node --experimental-strip-types tests/workpass87-superseded-current-retrieval.mjs",
     "test:p2840:boundary": "node --experimental-strip-types tests/p2840-reality-boundary.mjs",

@@ -1,3 +1,10 @@
+## NK1 v2.0 rebuild — harden policy aggregation and authority bounds (2026-10-20)
+
+- [FIXED] Canonical policy diagnostics now aggregate duplicate source labels rather than silently replacing earlier contributors; the physical contributor count remains accurate.
+- [FIXED] PolicyAuthorityLedger now normalizes its caller-supplied output bound to a finite interval, preventing NaN or negative bounds from leaking invalid/inverted policy outputs.
+- [REGRESSION] Expanded arbiter coverage for duplicate labels, disabled sources, malformed numeric inputs and finite/clamped outputs; expanded authority-ledger coverage for NaN, negative and oversized bounds.
+- [INTEGRATED] Added named npm scripts and made both policy regression suites part of the WorkPass79 CI workflow.
+
 ## NK1 v2.0 rebuild — correct autonomous outcome test window (2026-10-20)
 
 - [FIXED] The planner regression test now includes the executor-entry classification in its inspected source window; the previous window ended before that statement and caused a false-negative assertion despite the runtime code using the shared classifier.
