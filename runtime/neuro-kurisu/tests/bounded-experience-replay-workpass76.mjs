@@ -61,6 +61,8 @@ test("training adapter trains incoming data plus replay and reports measured buf
       return { samples: samples.length, updates: this.calls };
     }
   };
+  const priorA = buffer.add(sample(90));
+  const priorB = buffer.add(sample(91));
   const incoming = [sample(1), sample(2), sample(3), sample(4)];
   const result = trainWithExperienceReplay(learner, incoming, buffer, {
     replayRatio: 0.5, replayBatchSize: 4
@@ -70,6 +72,7 @@ test("training adapter trains incoming data plus replay and reports measured buf
   assert.equal(result.replaySampleCount, 2);
   assert.equal(learner.lastSamples.length, 6);
   assert.equal(result.replayIds.length, 2);
+  assert.ok(result.replayIds.every(id => id === priorA.id || id === priorB.id), "replay minibatch must contain only prior experiences");
   assert.equal(result.buffer.withinBudget, true);
 });
 
