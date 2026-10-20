@@ -58,6 +58,9 @@ jobs:
       - name: Verify action finalization precedes receipt commit and failure blocks replay
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass96:finalizer-boundary
+      - name: Exercise durable approval boundaries, ticket replay protection and idempotent execution
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass53 && npm run test:action-gateway-idempotency-workpass37
       - name: Verify canonical policy arbitration edge cases and provenance aggregation
         working-directory: runtime/neuro-kurisu
         run: npm run test:canonical-policy-arbiter && npm run test:policy-authority-ledger

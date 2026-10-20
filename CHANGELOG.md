@@ -1,3 +1,9 @@
+## NK1 v2.0 rebuild — include action approval and idempotency regressions in CI (2026-10-20)
+
+- [INTEGRATED] WorkPass79 now executes the existing multi-scenario action approval boundary suite and action gateway idempotency suite on every rebuild push.
+- [COVERAGE] CI now continuously checks durable approval persistence, exact request binding, sensitive preview redaction, atomic one-shot consumption, storage-failure rollback and replay-safe side-effect receipts.
+- [SCOPE] This extends the execution safety checks without creating a second policy or approval implementation.
+
 ## NK1 v2.0 rebuild — harden policy aggregation and authority bounds (2026-10-20)
 
 - [FIXED] Canonical policy diagnostics now aggregate duplicate source labels rather than silently replacing earlier contributors; the physical contributor count remains accurate.
