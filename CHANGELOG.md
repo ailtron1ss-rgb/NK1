@@ -922,3 +922,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Предварительная проверка обновлённого manifest: 1,655 scripts; 3,334 `npm run`-ссылки без отсутствующих targets; 1,286 статических ссылок на тестовые файлы. Это локальная проверка manifest-данных, не замена ожидаемому результату Actions.
 - **CI status:** новый WorkPass84 step ожидает выполнения GitHub Actions на обновлённом HEAD. До подтверждения run не маркировать как PASS.
 - Scope: ловит отсутствующие npm script targets и отсутствующие статические test files; не доказывает достижимость/качество каждого теста и не является полным аудитом динамических import/require.
+
+
+## Research gate — long-term memory and continual learning (2026-10-20)
+
+- Added `docs/RESEARCH_GATE_MEMORY_CONTINUAL_LEARNING_2026-10-20.md`, synthesizing LongMemEval (ICLR 2025), MemoryAgentBench (2025), MemBench (ACL Findings 2025), Memora/FAMA (ACL 2026), FOREVER (ACL 2026), modular-memory continual-learning work (ICML 2026), and Titans.
+- The actionable changes are evaluation gates, not unverified architecture imports: separate retrieval from answer correctness; test temporal updates, abstention and stale-memory use; evaluate incremental learning and selective forgetting; track language-specific quality, resource cost and restart recovery; preserve independent holdout integrity.
+- Paper and dataset/code links are recorded in the research note. No external dataset or implementation was copied into the runtime; licensing/schema compatibility must be checked before any direct import.
+- **Evidence status:** research synthesis only. No NK1 quality improvement is claimed; WorkPass83 remains a synthetic harness test with zero observed uplift.
