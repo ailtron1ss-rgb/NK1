@@ -4,7 +4,7 @@
 **Repository:** https://github.com/ailtron1ss-rgb/NK1  
 **Working branch:** `workpass79-cognitive-rebuild`  
 **Base:** `workpass70-source`  
-**Status:** implementation committed; runtime tests and Actions not yet observed from this session.
+**Status:** implementation committed; first Actions run observed a workflow runtime incompatibility; CI was updated and the rerun on the newest head remains pending.
 
 ## Mission and constraints
 
