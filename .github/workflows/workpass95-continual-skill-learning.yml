@@ -28,6 +28,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
+          package-manager-cache: false
       - name: Enforce current Node.js runtime contract
         shell: bash
         run: |
