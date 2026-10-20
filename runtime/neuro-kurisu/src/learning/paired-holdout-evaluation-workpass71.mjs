@@ -82,7 +82,8 @@ export function evaluatePairedLearningRuns({
   minimumRewardUplift = 0,
   maximumSuccessRateDrop = 0,
   maximumRegretIncrease = 0,
-  maximumLatencyIncreaseRatio = 0.1
+  maximumLatencyIncreaseRatio = 0.1,
+  minimumSampleCount = 10
 }) {
   const baseBySeed = validateRuns(baseline, "baseline");
   const candidateBySeed = validateRuns(candidate, "candidate");
@@ -94,6 +95,16 @@ export function evaluatePairedLearningRuns({
   }
   if (typeof minimumRewardUplift !== "number" || !Number.isFinite(minimumRewardUplift)) {
     throw new TypeError("minimumRewardUplift must be finite");
+  }
+  for (const [name, value] of Object.entries({
+    maximumSuccessRateDrop, maximumRegretIncrease, maximumLatencyIncreaseRatio
+  })) {
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+      throw new RangeError(`${name} must be a finite non-negative number`);
+    }
+  }
+  if (!Number.isInteger(minimumSampleCount) || minimumSampleCount < 2) {
+    throw new RangeError("minimumSampleCount must be an integer >= 2");
   }
 
   const paired = baseSeeds.map(seed => ({
@@ -118,7 +129,7 @@ export function evaluatePairedLearningRuns({
 
   const gates = {
     pairedHoldoutComplete: true,
-    minimumSampleCount: paired.length >= 10,
+    minimumSampleCount: paired.length >= minimumSampleCount,
     rewardUpliftObserved: rewardMean >= minimumRewardUplift,
     rewardIntervalExcludesZero: halfWidth95 != null && rewardMean - halfWidth95 > 0,
     taskSuccessNonInferior: successRateDelta >= -Math.abs(maximumSuccessRateDrop),
