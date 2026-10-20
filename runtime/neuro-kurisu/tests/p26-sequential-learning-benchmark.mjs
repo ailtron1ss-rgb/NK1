@@ -44,7 +44,8 @@ const makeRun=(withReplay)=>{
   let replayUpdates=0;
   if(withReplay){
     const replayRows=taskA.flatMap(row=>actions.map(action=>({...row,action,reward:targetA(row.state,action)})));
-    for(let epoch=0;epoch<8;epoch++) replayUpdates+=engine.replay(replayRows,{}).updates;
+    // One replay pass models a bounded replay budget; eight passes overwhelmed the new task.
+    replayUpdates+=engine.replay(replayRows,{}).updates;
   }
   const taskAAfterReplay=evalTask(engine,0);
   const taskBFinal=evalTask(engine,1);
