@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { VerifiedOutcomeLedger, type EvaluationSplit, type TaskManifestEntry } from './VerifiedOutcomeLedger.ts';
+import { VerifiedOutcomeLedger, type EvaluationSplit, type TaskManifestEntry, type VerifiedTaskOutcome } from './VerifiedOutcomeLedger.ts';
 
 export interface LearningExperimentArm {
   arm: 'P' | 'C' | `R(${number})`;
@@ -187,4 +187,50 @@ export function validateLearningExperimentPlan(
   };
   if (sha256(canonical(planPayload)) !== plan.planFingerprint) throw new Error('plan fingerprint mismatch');
   return { valid: true, runCount: plan.runs.length };
+}
+
+
+/**
+ * Records one actual result only if it corresponds to a scheduled run. This
+ * binds the outcome to the plan's exact task/version/method/seed/verifier and
+ * rejects duplicate planned cells. It cannot authenticate external evidence;
+ * the ledger's verifier policy remains authoritative.
+ */
+export function recordPlannedLearningOutcome(
+  ledger: VerifiedOutcomeLedger,
+  plan: LearningExperimentPlan,
+  runId: string,
+  outcome: Omit<VerifiedTaskOutcome, 'taskId' | 'taskVersion' | 'method' | 'seed' | 'verifierId'> & {
+    taskId?: string;
+    taskVersion?: string;
+    method?: string;
+    seed?: number;
+    verifierId?: string;
+  },
+): { accepted: boolean; rejection?: ReturnType<VerifiedOutcomeLedger['record']>['rejection'] } {
+  const snapshot = ledger.snapshot();
+  const manifest = snapshot.manifest as TaskManifestEntry[];
+  validateLearningExperimentPlan(plan, manifest);
+  if (ledger.manifestFingerprint() !== plan.manifestFingerprint) throw new Error('plan is bound to a different ledger manifest');
+  const run = plan.runs.find(item => item.runId === runId);
+  if (!run) throw new Error('runId is not present in experiment plan');
+  if ((outcome.taskId !== undefined && outcome.taskId !== run.taskId) ||
+      (outcome.taskVersion !== undefined && outcome.taskVersion !== run.taskVersion) ||
+      (outcome.method !== undefined && outcome.method !== run.method) ||
+      (outcome.seed !== undefined && outcome.seed !== run.seed) ||
+      (outcome.verifierId !== undefined && outcome.verifierId !== run.verifierId)) {
+    throw new Error('outcome metadata does not match scheduled run');
+  }
+  const prior = (snapshot.outcomes as VerifiedTaskOutcome[]).some(item =>
+    item.taskId === run.taskId && item.taskVersion === run.taskVersion &&
+    item.method === run.method && item.seed === run.seed);
+  if (prior) throw new Error('scheduled task/method/seed already has an outcome');
+  return ledger.record({
+    ...outcome,
+    taskId: run.taskId,
+    taskVersion: run.taskVersion,
+    method: run.method,
+    seed: run.seed,
+    verifierId: run.verifierId,
+  } as VerifiedTaskOutcome);
 }
