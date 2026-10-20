@@ -12257,7 +12257,7 @@ export class OrganismCore {
         if (reconcileExistingOperation) {
             // Never call the executor again for an operation that may already have
             // crossed the side-effect boundary. The gateway only performs receipt lookup.
-            result = await this.cognitiveRuntime.actionGateway.reconcileToolExecution(id, input, `${executionReason};resume-reconcile`, executionOptions);
+            result = await this.reconcileToolExecution(id, input, `${executionReason};resume-reconcile`, executionOptions);
         } else {
             const budget = this.agencySubsystem.budget.spend('planning', undefined, 0.05, { tick: this.persisted.state.tick, reason: `project-tool:${project.id}` });
             if (!budget.accepted) {

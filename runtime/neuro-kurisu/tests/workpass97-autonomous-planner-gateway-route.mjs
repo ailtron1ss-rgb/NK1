@@ -31,6 +31,10 @@ assert.match(projectDispatch, /result = await this\.executeTool\(id, input, exec
   'fresh project tool execution must use the canonical core wrapper so unkeyed outcomes are finalized');
 assert.doesNotMatch(projectDispatch, /actionGateway\.executeTool\(id, input, executionReason, executionOptions\)/,
   'project executor must not bypass the canonical core finalizer for fresh tool execution');
+assert.match(projectDispatch, /this\.reconcileToolExecution\(id, input, `\$\{executionReason\};resume-reconcile`, executionOptions\)/,
+  'project receipt recovery must use the core reconciliation wrapper so legacy tool aliases are canonicalized');
+assert.doesNotMatch(projectDispatch, /cognitiveRuntime\.actionGateway\.reconcileToolExecution\(/,
+  'project receipt recovery must not bypass canonical tool-ID normalization');
 
 
 const skillStart = source.indexOf('const canonicalCandidateTool =');

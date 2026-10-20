@@ -1,3 +1,9 @@
+## NK1 v2.0 rebuild — canonical project receipt reconciliation (2026-10-20)
+
+- [FIXED] Project recovery now routes pending receipt reconciliation through `OrganismCore.reconcileToolExecution` instead of calling `ActionGateway` directly. This preserves the same canonical tool-ID normalization used by normal execution, including legacy camera/speech aliases, before the gateway performs its read-only receipt lookup.
+- [REGRESSION] Extended the planner/project route contract to reject a direct project-to-gateway reconciliation bypass and require the core wrapper.
+- Validation: prior exact-HEAD cognitive regression workflow passed on `dd86a108a4c605cbd92bf684cdbb6bb1ba353f2c`; this change requires a fresh exact-HEAD run.
+
 ## NK1 v2.0 rebuild — finalizer assertion escaping fix (2026-10-20)
 
 - [FIXED] Corrected regular-expression escaping in `test:workpass97:planner-route`; the prior edit accidentally made the assertion look for literal backslashes, so the workflow still failed at the same assertion.
