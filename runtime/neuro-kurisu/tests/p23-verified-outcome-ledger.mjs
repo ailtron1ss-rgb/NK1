@@ -24,6 +24,7 @@ assert.equal(ledger.record(outcome()).accepted, true);
 assert.equal(ledger.record(outcome()).rejection.code, 'duplicate-attempt');
 assert.equal(ledger.record(outcome({ method:'self-judge', authority:'self-report' })).rejection.code, 'self-report-not-authoritative');
 assert.equal(ledger.record(outcome({ method:'wrong-version', taskVersion:'2' })).rejection.code, 'version-mismatch');
+assert.equal(ledger.record(outcome({ method:'   ' })).rejection.code, 'invalid-method');
 assert.equal(ledger.record(outcome({ method:'wrong-verifier', verifierId:'forged-v9' })).rejection.code, 'verifier-mismatch');
 assert.equal(ledger.record(outcome({ method:'no-evidence', evidenceRef:'' })).rejection.code, 'missing-evidence');
 assert.equal(ledger.record(outcome({ method:'bad-seed', seed:-1 })).rejection.code, 'invalid-seed');
