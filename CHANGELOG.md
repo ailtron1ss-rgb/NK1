@@ -1,3 +1,8 @@
+## NK1 v2.0 rebuild — correct normalized provenance assertion (2026-10-20)
+
+- [FIXED] Adjusted the provenance aggregation assertion to match the arbiter's normalized weighted-contribution semantics: two contributions of 0.10 and 0.08 produce an aggregated diagnostic of 0.09, not a raw sum above 0.10.
+- [VALIDATION] The preceding run passed parsing and reached the policy suite; it failed only on this incorrect test threshold.
+
 ## NK1 v2.0 rebuild — make control-character regression fixtures literal-safe (2026-10-20)
 
 - [FIXED] Corrected the two JavaScript fixtures to construct actual control-character strings at runtime, ensuring the provenance validation tests exercise the intended hostile inputs rather than literal backslash sequences.
