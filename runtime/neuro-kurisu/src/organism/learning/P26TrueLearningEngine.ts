@@ -88,6 +88,47 @@ export class P26TrueLearningEngine{
     this.sync();
     return {updates,meanLoss01:updates?loss/updates:0};
   }
+  /**
+   * Interleave fresh outcomes with bounded rehearsal instead of learning a whole task
+   * and trying to repair forgetting afterwards. This is a scheduling primitive, not
+   * a guarantee: callers must retain a representative, provenance-checked replay set.
+   */
+  trainInterleaved(
+    current:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
+    replayRows:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
+    options:{replayEveryNCurrent?:number;maxReplayUpdates?:number}={},
+    extras?:BodyExtras,
+  ){
+    const stride=Math.max(1,Math.min(32,Math.floor(options.replayEveryNCurrent??4)));
+    const replayCap=Math.max(0,Math.min(4096,Math.floor(options.maxReplayUpdates??1024)));
+    if(!current.length||!replayRows.length||replayCap===0)return {onlineUpdates:0,replayUpdates:0,meanLoss01:0};
+    let onlineUpdates=0,replayUpdates=0,loss=0,replayCursor=this.learner.snapshot().updates%replayRows.length;
+    const update=(e:{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number},isReplay:boolean)=>{
+      const next=Math.max(...this.learner.predict(e.nextState,extras).map(x=>x.value),.5);
+      const target=tdTarget01(e.reward,next);
+      const surprise=clamp(e.surprise??.2);
+      const learningRate01 = isReplay ? (0.035 + surprise * 0.025) : (0.045 + surprise * 0.04);
+      const result=this.learner.train({state:e.state,action:e.action,target01:target,learningRate01,extras});
+      loss+=result.loss01;
+      if(isReplay)replayUpdates++;else onlineUpdates++;
+    };
+    for(let i=0;i<current.length;i++){
+      update(current[i],false);
+      if((i+1)%stride===0&&replayUpdates<replayCap){
+        update(replayRows[replayCursor%replayRows.length],true);
+        replayCursor++;
+      }
+    }
+    this.state.metrics.outcomeSamples+=onlineUpdates;
+    this.state.metrics.onlineUpdates+=onlineUpdates;
+    this.state.metrics.replayUpdates+=replayUpdates;
+    this.state.metrics.recentLoss01=clamp(loss/Math.max(1,onlineUpdates+replayUpdates));
+    this.state.metrics.trainingExposure01=clamp(Math.min(1,this.learner.snapshot().updates/160));
+    this.state.metrics.lastUpdatedAt=Date.now();
+    this.sync();
+    return {onlineUpdates,replayUpdates,meanLoss01:loss/Math.max(1,onlineUpdates+replayUpdates)};
+  }
+
   replayCausalRecords(records:Array<{id?:string;tick?:number;taskId?:string;action:ActionKind;reward01:number;success01:number;surprise01:number;causalStrength01?:number;learningQuality01?:number;policyFeatures01?:number[];replayPriority01?:number}>){
     // Runtime and benchmark share the same bounded, deterministic sampler.
     // The holdout below remains an in-batch diagnostic, not an independent task holdout.
