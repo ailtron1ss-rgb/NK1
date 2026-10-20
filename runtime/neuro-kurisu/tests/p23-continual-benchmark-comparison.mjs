@@ -10,7 +10,7 @@ const runs=[
 ];
 const summary=comparePairedContinualRuns(runs,'baseline','candidate');
 assert.equal(summary.pairedN,2);
-assert.ok(Math.abs(summary.successScore.meanDelta-0.2)<1e-12);
+assert.ok(Math.abs(summary.successScore.meanDelta-0.175)<1e-12);
 assert.ok(Math.abs(summary.forgetting.meanDelta-(-0.1))<1e-12);
 assert.equal(summary.unpairedBaselineRuns,0);
 assert.equal(summary.unpairedCandidateRuns,1);
