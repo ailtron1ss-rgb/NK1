@@ -1,3 +1,9 @@
+## NK1 learning WorkPass104 follow-up — balance consolidation in context-aware replay (2026-10-20)
+
+- The first context-aware CI probe showed that merely adding interaction features is not enough: with a very low replay budget/rate, Task A fell to 1.25% while Task B reached 99.375%. This was a real retention failure, not a test harness issue.
+- The context-separated comparison now uses a balanced replay schedule (one eligible rehearsal per fresh update, bounded at 2,520 replay updates per pass) and equal controlled learning rates. The context-free contradictory-target test remains a separate case and still checks that conflicting records are blocked.
+- This separates two distinct questions: (1) can the learner retain both tasks when state features distinguish their contexts and replay is balanced; (2) should stale contradictory outcomes be replayed when no context signal distinguishes them? Neither result is generalized to production without exact-head CI and external holdout evidence.
+
 ## NK1 learning WorkPass104 — contextual feature interactions and dual-mode replay probe (2026-10-20)
 
 - Expanded the P26 feature basis with bounded interaction terms `energy×novelty`, `energy×goalPressure`, and `novelty×goalPressure`, allowing the linear learner to represent simple context-dependent action-value changes rather than only additive state effects.
