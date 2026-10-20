@@ -21,7 +21,8 @@
     "format": "prettier --write .",
     "test:scripts": "node --experimental-strip-types --test 'scripts/**/*.test.mjs'",
     "assets:sync": "node scripts/sync-canonical-public-assets.mjs",
-    "test:embodiment-timeline": "node --experimental-strip-types --test scripts/embodiment-timeline.test.mjs"
+    "test:embodiment-timeline": "node --experimental-strip-types --test scripts/embodiment-timeline.test.mjs",
+    "test:avatar-storage": "node --experimental-strip-types --test src/legacy/avatar/safeLocalStorage.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
