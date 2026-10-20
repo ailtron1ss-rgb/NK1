@@ -1,3 +1,11 @@
+## WorkPass109 update — signed artifact provenance boundary (2026-10-20)
+
+- Added `VerifiedOutcomeArtifact.ts`: verifies Ed25519 signatures over canonical payloads and binds them to the current manifest fingerprint and the manifest's task version/verifier ID before recording the result.
+- Added tamper, unknown-key, manifest-drift, task-version, malformed-payload and duplicate-attempt regressions. The signature covers the outcome and run/artifact identifiers, so payload edits invalidate the signature.
+- The verifier public-key registry is injected by the caller; no private key is stored in NK1. A signature authenticates possession of a configured key, not verifier neutrality or real-world correctness.
+- **Scores remain unchanged pending external task evidence:** overall learning engineering **57/100**; evidence-grounded maturity **36%**; lifelong-learning roadmap **30%**. This pass strengthens evidence intake, not demonstrated learning quality.
+- **Still open:** independently retrieve verifier artifacts; define operational trust-root provisioning/rotation/revocation; connect signed evidence to controlled replay/skill updates; compare same-seed replay strategies on independent RU/EN holdouts; measure retention, transfer, repair under corrupted feedback, and real-model outcomes.
+
 # P23 continual-learning scorecard and comparative roadmap — 2026-10-20
 
 ## WorkPass108 update — paired identity and manifest-bound evidence (2026-10-20)
