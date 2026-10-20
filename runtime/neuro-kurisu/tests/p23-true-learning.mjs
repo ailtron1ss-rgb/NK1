@@ -45,6 +45,21 @@ const forgottenLearning = new P23LearningEngine();
 forgottenLearning.restore(agedState);
 assert.equal(forgottenLearning.skillBias(stateBefore({ uncertainty:.72 }), 'verify'), 0, 'expired skill evidence must stop influencing action selection');
 
+// Rollback on a deteriorating holdout window: a previously promoted action must
+// lose its promoted status when later validation evidence contradicts it.
+const rollbackLearning = new P23LearningEngine();
+const rollbackPolicy = new AdaptivePolicyEngine();
+for (let i = 1; i <= 8; i++) {
+  const trace = makeTrace(300 + i, 'verify', .92, { uncertainty:.72 });
+  rollbackLearning.recordExperience(trace, trace.stateBefore, { success:.92, reward:.92, surprise:.02 }, rollbackPolicy);
+}
+assert.ok(rollbackLearning.topSkills().some(s => s.action === 'verify'), 'strong initial evidence should promote the skill');
+for (let i = 9; i <= 20; i++) {
+  const trace = makeTrace(300 + i, 'verify', .08, { uncertainty:.72 });
+  rollbackLearning.recordExperience(trace, trace.stateBefore, { success:.08, reward:.08, surprise:.57 }, rollbackPolicy);
+}
+assert.equal(rollbackLearning.topSkills().some(s => s.action === 'verify'), false, 'later negative validation evidence must revoke promotion');
+
 // Failed skills should weakly discourage the same action in a tightly neighboring
 // context, but must not leak into unrelated states.
 const negativeLearning = new P23LearningEngine();
