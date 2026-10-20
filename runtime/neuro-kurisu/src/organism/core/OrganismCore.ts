@@ -12273,7 +12273,7 @@ export class OrganismCore {
             }
             await this.checkpoint(true); // Prepared intent is durable; ActionGateway writes its own pending receipt before executor entry.
             stepOperation = this.agencySubsystem.projectExecutor.activeStepOperation()!;
-            result = await this.cognitiveRuntime.actionGateway.executeTool(id, input, executionReason, executionOptions);
+            result = await this.executeTool(id, input, executionReason, executionOptions);
         }
         if(result.outcomeClass==='approval-required') {
             if (reconcileExistingOperation) {
