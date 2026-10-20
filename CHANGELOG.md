@@ -1,3 +1,13 @@
+## WorkPass100 — shared configurable continual-learning replay (2026-10-20)
+
+- Extracted the P23 replay selection into `ReplaySelectionPolicy.ts` and wired the runtime to that shared implementation, eliminating the risk that benchmark logic and production selection drift apart.
+- Added a typed runtime configuration seam for deterministic ablations. Defaults stay at 64 samples maximum / 32 recent; configured capacity is clamped to 1–64 and recent quota to 0–capacity.
+- Added standalone regressions for selector invariants and runtime configuration; expanded the benchmark to compare recent-only, surprise-only, and multi-timescale selection with recent quotas 16, 32 and 48.
+- Updated `docs/P23_CONTINUAL_LEARNING_SCORECARD_2026-10-20.md` with current engineering estimates, research comparisons and the evidence boundary.
+- Research adaptation: ARB (AISTATS 2026) motivates future policy-alignment-aware replay, but it is not copied wholesale; adding it safely requires verified outcome provenance and controlled task-stream comparisons.
+- Validation status at commit time: exact-head Actions runs are pending. Do not mark this pass CI-validated until the latest head's replay-policy, P23 learning and runtime regression workflows complete.
+- Evidence boundary: selector coverage and synthetic batch composition are implementation evidence only; no independent task-success, retention, transfer or production-learning uplift is claimed.
+
 ## WorkPass93 — harden core ownership exemption and add durable checkpoint (2026-10-20)
 
 - Replaced the field-name-only constructor exemption with an exact field + constructor policy: `operationalMicroCycle:OperationalMicroCycleRuntime`.
