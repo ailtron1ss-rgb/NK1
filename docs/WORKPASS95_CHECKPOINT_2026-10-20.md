@@ -16,6 +16,8 @@
 ## WorkPass96 changes
 
 - Exact-context skill bias now decays with a 30-day half-life and expires after 180 days without fresh validation.
+- P23 replay is capped at 64 experiences per large consolidation call, stratified by context/action before prioritizing surprise/age; small batches replay fully.
+- Non-finite outcome labels are rejected before entering the learning buffer.
 - Fixed a negative-zero edge case so unrelated contexts return numeric `0`, not `-0`.
 - Added regression checks that stale skills lose influence and later poor validation revokes promotion.
 - The P26 deterministic synthetic holdout enforces greater than 90% generalization accuracy; it is a synthetic benchmark, not real-world capability evidence.
@@ -25,7 +27,8 @@
 
 - **IMPLEMENTED:** code and regression tests committed to the active work branch.
 - **NOT YET VERIFIED:** no claim of passing tests until WorkPass95 Actions completes on the final head.
-- **IMPLEMENTED, PENDING CI:** bounded negative transfer, retention/forgetting and validation-triggered rollback regression coverage; core restart/persistence integration is wired into CI.
+- **IMPLEMENTED:** bounded negative transfer, retention/forgetting, invalid-feedback rejection, validation-triggered rollback, bounded/stratified replay and deterministic synthetic holdout regression coverage; core restart/persistence integration is wired into CI.
+- **VERIFIED ON CODE HEAD `c8d20f5`:** runtime typecheck, P23 learning regression, P23 core persistence/restart integration, P26 parametric holdout/finite-state test, predictive-transfer test and personal-curriculum test all completed successfully in GitHub Actions.
 - **OPEN:** independent external outcome grounding for skill promotion; prioritized/balanced replay for large queues; real environment/tool outcome benchmarks; resource efficiency measurement.
 
 ## Next code-first steps
