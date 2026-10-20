@@ -94,3 +94,13 @@ Added `tests/p23-replay-strategy-benchmark.mjs` and `.github/workflows/workpass9
 - **Exact tested code head CI PASS:** `891e56f58373377ea6a325552fe2d1e389f6d71b` — [replay selector/quota sweep](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39421560741), [P23 learning](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39421553511), [runtime regression](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39421553534), [verification input binding](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39421553538). Later scorecard/changelog commits are documentation-only. The benchmark remains a selection-quality proxy; no task-success, retention or transfer uplift is claimed.
 - New research reference: [Adaptive Replay Buffer (ARB), AISTATS 2026](https://proceedings.mlr.press/v300/song26d.html), which dynamically weights online/offline trajectories using a policy-alignment signal. NK1 adapts the *experimental direction*—measuring whether experiences match the current policy—rather than copying its offline-to-online RL implementation. Follow-up must first add outcome provenance and controlled task-stream evaluation.
 - Upstream skill evaluation reference: [SkillLearnBench](https://github.com/cxcscmu/SkillLearnBench) (MIT) separates skill artifact quality, execution trajectory, and verifier-based task outcome; [SkillsBench](https://github.com/benchflow-ai/skillsbench) (Apache-2.0) offers broader skill-utility tasks. Their task harnesses have different dependencies and are evaluation references, not drop-in runtime dependencies.
+
+
+## WorkPass101 implementation update
+
+- Shared selector now supports opt-in `ageHalfLifeTicks` to discount stale historical surprise while preserving the existing default (infinite half-life).
+- Context/action stratum keys are tuple-encoded to avoid delimiter collisions. Tests cover collision behavior and invalid configuration fallback.
+- **Implementation coverage:** replay selector options expanded; keep replay/diversity maturity at **66/100** pending outcome-based ablation. Do not raise empirical quality scores based on selector-only tests.
+- **Next experiment:** on identical versioned task streams, compare infinite, 1k, 100, and 10 tick half-lives alongside 16/32/48 recent quotas; report independently verified success, old-task retention, forward transfer, replay composition, latency and memory with paired uncertainty intervals.
+- **Current status:** IMPLEMENTED; exact-head CI pending. No production default change and no uplift claim.
+
