@@ -16,7 +16,7 @@ for (const recentQuota of [0, 1, 16, 32, 48, 63, 64, 99]) {
 const balanced = selectReplayBatch(input, { maxBatchSize: 64, recentQuota: 32 });
 assert.equal(balanced.filter(x => x.tick >= 128).length, 32, 'recent quota is guaranteed');
 assert.ok(balanced.some(x => x.tick < 32), 'oldest history remains eligible when strata/surprise warrant it');
-assert.ok(new Set(balanced.map(x => `${x.contextKey}|${x.action}`)).size >= 12, 'context/action diversity survives consolidation');
+assert.ok(new Set(balanced.map(x => JSON.stringify([x.contextKey,x.action]))).size >= 12, 'context/action diversity survives consolidation');
 assert.deepEqual(selectReplayBatch(input, { maxBatchSize: 64, recentQuota: 32 }), balanced, 'same input/config yields same replay batch');
 
 // Duplicate IDs must never consume capacity twice; the first chronological instance wins.
@@ -26,4 +26,27 @@ assert.equal(deduplicated.filter(x => x.id === 'trace-159').length, 1);
 assert.equal(deduplicated.find(x => x.id === 'trace-159').tick, 159);
 assert.deepEqual(selectReplayBatch(input.slice(0, 10), { maxBatchSize: 64, recentQuota: 32 }), input.slice(0, 10), 'small batches are returned whole in chronological order');
 assert.equal(selectReplayBatch(input, { maxBatchSize: 0, recentQuota: 0 }).length, 1, 'capacity is clamped to a positive bounded value');
+
+// Collision regression: tuple keys keep these two strata distinct.
+const collision = [
+  make('c1', 1, 'alpha|beta', 'gamma', .4),
+  make('c2', 2, 'alpha', 'beta|gamma', .3),
+  ...Array.from({length: 8}, (_, i) => make(`f${i}`, i + 3, 'filler', 'respond', .1)),
+];
+const collisionBatch = selectReplayBatch(collision, { maxBatchSize: 4, recentQuota: 0 });
+assert.ok(collisionBatch.some(x => x.id === 'c1') && collisionBatch.some(x => x.id === 'c2'), 'delimiter collisions must not merge distinct context/action strata');
+
+// With an explicit finite half-life, historical surprise priority decays by age.
+const temporal = [
+  make('old-high', 0, 'same', 'verify', 1),
+  make('new-medium', 90, 'same', 'verify', .6),
+  ...Array.from({length: 8}, (_, i) => make(`other-${i}`, i + 1, `other-${i}`, 'respond', .05)),
+];
+const noDecay = selectReplayBatch(temporal, { maxBatchSize: 3, recentQuota: 0 });
+const withDecay = selectReplayBatch(temporal, { maxBatchSize: 3, recentQuota: 0, ageHalfLifeTicks: 10 });
+assert.ok(noDecay.some(x => x.id === 'old-high'), 'default preserves surprise-only ranking');
+assert.ok(withDecay.some(x => x.id === 'new-medium'), 'finite half-life allows recent moderate-surprise evidence to outrank stale high surprise');
+assert.deepEqual(selectReplayBatch(temporal, { maxBatchSize: 3, recentQuota: 0, ageHalfLifeTicks: 10 }), withDecay, 'age-discounted selection remains deterministic');
+assert.deepEqual(selectReplayBatch(temporal, { maxBatchSize: 3, recentQuota: 0, ageHalfLifeTicks: 0 }), noDecay, 'invalid half-life falls back safely to legacy priority');
+
 console.log('P23_REPLAY_SELECTION_POLICY=PASS');
