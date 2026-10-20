@@ -36,6 +36,15 @@ assert.deepEqual(matrix.tasks.map(t=>t.taskId),['a','b']);
 assert.ok(matrix.metrics.averageForwardTransfer !== null);
 assert.equal(matrix.metrics.forwardTransferTaskCount,2);
 assert.equal(matrix.metrics.stageCount,2);
+assert.equal(matrix.cells.length,4);
+const bAfterStage2 = matrix.cells.find(cell => cell.taskId === 'b' && cell.stageId === 'after-task-2');
+assert.equal(bAfterStage2.sampleCount,4);
+assert.equal(bAfterStage2.passedCount,4);
+assert.equal(bAfterStage2.passRate,1);
+assert.ok(bAfterStage2.wilson95CI[0] > 0.5 && bAfterStage2.wilson95CI[1] === 1);
+const aAfterStage2 = matrix.cells.find(cell => cell.taskId === 'a' && cell.stageId === 'after-task-2');
+assert.equal(aAfterStage2.passRate,0.5);
+assert.ok(aAfterStage2.wilson95CI[0] < 0.5 && aAfterStage2.wilson95CI[1] > 0.5);
 assert.equal(matrix.metrics.finalAverageScore,0.75);
 assert.equal(matrix.metrics.averageForwardTransfer,0.125);
 assert.equal(matrix.manifestFingerprint,ledger.manifestFingerprint());
@@ -63,4 +72,4 @@ for (const seed of [1,2]) {
   }
 }
 assert.throws(()=>buildContinualOutcomeMatrix(missingBaseline,[{stageId:'s1',method:'stage-1'},{stageId:'s2',method:'stage-2'}],{preTrainingMethod:'baseline'}),/pre-training method lacks matched seeds for task b/);
-console.log('PASS continual outcome matrix: verified evidence -> matched-seed task-by-stage metrics');
+console.log('PASS continual outcome matrix: matched seeds, split isolation, baseline parity, cell-level Wilson intervals');
