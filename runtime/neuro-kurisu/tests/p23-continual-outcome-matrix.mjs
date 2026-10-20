@@ -58,6 +58,8 @@ assert.equal(matrix.metrics.averageForwardTransfer,0.125);
 assert.equal(matrix.manifestFingerprint,ledger.manifestFingerprint());
 assert.throws(()=>buildContinualOutcomeMatrix(ledger,[{stageId:'x',method:'checkpoint-1'},{stageId:'x',method:'checkpoint-2'}]),/duplicate stageId/);
 assert.throws(()=>buildContinualOutcomeMatrix(ledger,[{stageId:'x',method:'checkpoint-1'},{stageId:'y',method:'checkpoint-1'}]),/duplicate stage method/);
+assert.throws(()=>buildContinualOutcomeMatrix(ledger,[{stageId:'x',method:'checkpoint-1'}]),/stage count must equal task count/);
+assert.throws(()=>buildContinualOutcomeMatrix(ledger,[{stageId:'x',method:'checkpoint-1'},{stageId:'y',method:'checkpoint-2'}],{preTrainingMethod:'checkpoint-1'}),/distinct from checkpoint methods/);
 const sparse = new VerifiedOutcomeLedger(manifest);
 assert.throws(()=>buildContinualOutcomeMatrix(sparse,[{stageId:'x',method:'checkpoint-1'}]),/missing outcomes/);
 const uneven = new VerifiedOutcomeLedger(manifest);
