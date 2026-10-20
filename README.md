@@ -1,3 +1,11 @@
+## Latest continuation checkpoint — WorkPass93 (2026-10-20)
+
+- Active work branch: `workpass79-cognitive-rebuild`; open draft PR: [#1](https://github.com/ailtron1ss-rgb/NK1/pull/1).
+- Durable resume contract: [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md) and [AGENTS.md](AGENTS.md).
+- Latest detailed state, evidence boundaries, progress dashboard and prioritized next tasks: [WorkPass93 checkpoint](docs/WORKPASS93_CHECKPOINT_2026-10-20.md).
+- WorkPass93 hardened the core-ownership audit exemption to require the exact field+constructor pair and added an executable regression guard. Exact-head CI remains to be verified; do not treat the prior WorkPass92 run as validation of this change.
+- Start each new session by refreshing the live branch head, PR state and latest Actions run. Continue from the checkpoint rather than repeating discovery.
+
 ## WorkPass78 — master strategy, architecture map and 1,000-unit execution plan (2026-10-20)
 
 - Added [NeuroCore master strategy and brain map](docs/NEUROCORE_MASTER_STRATEGY_AND_BRAIN_MAP.md): logical subsystem boundaries, cross-component interaction trace, human-brain analogy with explicit limits, provisional readiness scorecard, prioritized risk register, scientific research tracks, source inventory boundaries and staged release gates.
