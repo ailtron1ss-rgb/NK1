@@ -30,6 +30,8 @@ on:
       - 'runtime/neuro-kurisu/tests/p23-continual-outcome-matrix.mjs'
       - 'runtime/neuro-kurisu/tests/p23-continual-benchmark-comparison.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/LearningExperimentPlan.ts'
+      - 'runtime/neuro-kurisu/tests/p23-learning-execution-evidence.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/LearningExecutionEvidence.ts'
       - 'runtime/neuro-kurisu/tests/p23-learning-experiment-plan.mjs'
       - 'runtime/neuro-kurisu/tests/p23-learning-experiment-plan-cli.mjs'
       - 'runtime/neuro-kurisu/scripts/create-learning-experiment-plan.mjs'
