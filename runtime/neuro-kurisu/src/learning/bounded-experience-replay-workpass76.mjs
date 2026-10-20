@@ -1,6 +1,6 @@
 /**
  * Small deterministic replay buffer for NK1's online policy-learning samples.
- * Byte-bounded for mobile/local use; supports uniform and priority-weighted draws.
+ * Byte-bounded for mobile/local use; supports uniform, diversity-aware and priority-weighted draws.
  * It is opt-in and does not silently change the production learner's behavior.
  */
 import { Buffer } from "node:buffer";
@@ -38,7 +38,7 @@ export class BoundedExperienceReplayBuffer {
 
   constructor({ maxBytes, strategy = "uniform", seed = 42, priorityAlpha = 0.6, importanceBeta = 0.4 } = {}) {
     if (!Number.isInteger(maxBytes) || maxBytes <= 0) throw new RangeError("maxBytes must be a positive integer");
-    if (!["uniform", "prioritized"].includes(strategy)) throw new TypeError("strategy must be uniform or prioritized");
+    if (!["uniform", "diversity", "prioritized"].includes(strategy)) throw new TypeError("strategy must be uniform, diversity or prioritized");
     if (!Number.isInteger(seed) || !Number.isFinite(seed)) throw new TypeError("seed must be a finite integer");
     for (const [name, value] of Object.entries({ priorityAlpha, importanceBeta })) {
       finite(value, name);
@@ -63,7 +63,7 @@ export class BoundedExperienceReplayBuffer {
 
     while (this.#bytes + bytes > this.maxBytes && this.#items.length) {
       let removeIndex = 0;
-      if (this.strategy === "uniform") {
+      if (this.strategy === "uniform" || this.strategy === "diversity") {
         removeIndex = Math.floor(this.#random.next() * this.#items.length);
       } else {
         removeIndex = this.#items.reduce((lowest, item, index, items) =>
@@ -89,7 +89,7 @@ export class BoundedExperienceReplayBuffer {
 
   sample(count) {
     if (!Number.isInteger(count) || count < 0) throw new RangeError("count must be a non-negative integer");
-    const n = Math.min(count, this.#items.length);
+    const n = this.strategy === "prioritized" ? count : Math.min(count, this.#items.length);
     if (!n) return [];
     const selected = [];
     const totalPriority = this.#items.reduce((sum, item) => sum + item.priority ** this.priorityAlpha, 0);
@@ -102,18 +102,33 @@ export class BoundedExperienceReplayBuffer {
 
     // Uniform sampling is without replacement. Prioritized experience replay
     // samples with replacement, matching the probability used by its IS weights.
-    const available = this.strategy === "uniform" ? [...this.#items] : null;
+    const available = this.strategy !== "prioritized" ? [...this.#items] : null;
     for (let drawIndex = 0; drawIndex < n; drawIndex += 1) {
       let item;
+      let drawProbability = probabilityFor(this.#items[0]);
       if (this.strategy === "uniform") {
         const index = Math.floor(this.#random.next() * available.length);
         [item] = available.splice(index, 1);
+        drawProbability = 1 / (available.length + 1);
+      } else if (this.strategy === "diversity") {
+        const groups = new Map();
+        for (const entry of available) {
+          const group = String(entry.sample.replayGroup ?? entry.sample.taskId ?? entry.sample.action ?? entry.sample.kind ?? "__default__");
+          if (!groups.has(group)) groups.set(group, []);
+          groups.get(group).push(entry);
+        }
+        const groupKeys = [...groups.keys()];
+        const chosenGroup = groupKeys[Math.floor(this.#random.next() * groupKeys.length)];
+        const candidates = groups.get(chosenGroup);
+        item = candidates[Math.floor(this.#random.next() * candidates.length)];
+        available.splice(available.findIndex(entry => entry.id === item.id), 1);
+        drawProbability = 1 / groupKeys.length / candidates.length;
       } else {
         let draw = this.#random.next() * totalPriority;
         item = this.#items.find(entry => (draw -= entry.priority ** this.priorityAlpha) < 0)
           ?? this.#items[this.#items.length - 1];
       }
-      const probability = probabilityFor(item);
+      const probability = this.strategy === "diversity" ? drawProbability : probabilityFor(item);
       const rawImportanceWeight = this.strategy === "prioritized"
         ? (this.#items.length * probability) ** (-this.importanceBeta)
         : 1;
