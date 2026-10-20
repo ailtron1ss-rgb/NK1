@@ -95,14 +95,14 @@ const cancellationProvider = new OpenAICompatibleLocalChatProvider({
 const cancellation = cancellationProvider.generate({ system: '', user: 'cancel test', signal: callerController.signal });
 await transportStarted;
 callerController.abort();
-await assert.rejects(cancellation, /llama\\.cpp-request-aborted/);
+await assert.rejects(cancellation, /llama\.cpp-request-aborted/);
 assert.equal(cancellationSignalObserved, true, 'caller abort must reach the actual transport');
 
 const alreadyAborted = new AbortController();
 alreadyAborted.abort();
 await assert.rejects(
   () => healthy.generate({ system: '', user: 'already cancelled', signal: alreadyAborted.signal }),
-  /llama\\.cpp-request-aborted/,
+  /llama\.cpp-request-aborted/,
 );
 
 assert.throws(() => new OpenAICompatibleLocalChatProvider({ baseUrl: 'https://127.0.0.1/v1' }),
