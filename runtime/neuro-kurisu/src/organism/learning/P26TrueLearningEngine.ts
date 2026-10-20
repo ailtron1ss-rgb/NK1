@@ -3,6 +3,9 @@ import { ParametricPolicyLearner, defaultParametricPolicy, type ParametricPolicy
 import { selectCausalReplayBatch } from './CausalReplaySampler.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+// Rewards and values share [0,1]; normalize the Bellman mixture instead of clipping
+// reward + gamma * next-value, which otherwise pushes low-reward targets toward 0.5.
+const tdTarget01=(reward:number,nextValue:number,gamma=.78)=>clamp((clamp(reward)+gamma*clamp(nextValue))/(1+gamma));
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
 
 export interface P26LearningMetrics {
@@ -58,7 +61,7 @@ export class P26TrueLearningEngine{
     const action=trace.selected.action;
     const next=Math.max(...this.learner.predict(stateAfter,extras).map(p=>p.value),0.5);
     const reward=clamp(input.reward);
-    const target=clamp(reward + 0.78*next);
+    const target=tdTarget01(reward,next);
     const shared=clamp(input.sharedLearningSignal01??.5);
     const lr=(.045 + shared*.02) + clamp(input.surprise)*(.03 + shared*.02);
     const r=this.learner.train({state:trace.stateBefore,action,target01:target,learningRate01:lr,extras});
@@ -76,7 +79,7 @@ export class P26TrueLearningEngine{
     let updates=0,loss=0;
     for(const e of experiences){
       const next=Math.max(...this.learner.predict(e.nextState,extras).map(x=>x.value),.5);
-      const target=clamp(e.reward+.78*next);
+      const target=tdTarget01(e.reward,next);
       const r=this.learner.train({state:e.state,action:e.action,target01:target,learningRate01:.035+clamp(e.surprise??.2)*.03,extras});
       updates++; loss+=r.loss01;
     }
@@ -95,7 +98,7 @@ export class P26TrueLearningEngine{
     const baseline=score(holdout); let loss=0;
     for(const r of train){
       const next=Math.max(...this.learner.actionList().map(a=>this.learner.predictFromFeatures(r.policyFeatures01!,a)),.5);
-      const target=clamp(r.reward01+.78*next); const priority=clamp(r.replayPriority01??(.24*r.surprise01+.20*clamp(r.causalStrength01??.5)+.56*(r.learningQuality01??.5))); const weight=clamp((r.learningQuality01??.5)*(.45+.35*clamp(r.causalStrength01??.5)+.20*priority));
+      const target=tdTarget01(r.reward01,next); const priority=clamp(r.replayPriority01??(.24*r.surprise01+.20*clamp(r.causalStrength01??.5)+.56*(r.learningQuality01??.5))); const weight=clamp((r.learningQuality01??.5)*(.45+.35*clamp(r.causalStrength01??.5)+.20*priority));
       loss+=this.learner.trainFeatures({features:r.policyFeatures01!,action:r.action,target01:target,learningRate01:.022+clamp(r.surprise01)*.028+priority*.018,sampleWeight01:weight}).loss01;
     }
     const learned=score(holdout); this.state.metrics.replayUpdates+=train.length; this.state.metrics.recentLoss01=clamp(train.length?loss/train.length:0);
