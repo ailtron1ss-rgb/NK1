@@ -360,20 +360,27 @@ export class P23LearningEngine {
       return 0;
     }
 
-    // Generalize a mastered skill only to a tightly neighboring state. SkillLearnBench
-    // shows that transfer is not automatic, so this is deliberately weaker than an
-    // exact match and requires a held-out validation window, not training success alone.
-    let best=0;
+    // Transfer only across a tightly neighboring context and only from held-out
+    // evidence. Positive evidence wins conflicts; negative transfer is smaller and
+    // acts only when no validated positive neighbor exists, limiting overreaction.
+    let bestPositive=0;
+    let bestNegative=0;
     for(const row of this.state.skills){
-      if(row.action!==action || row.status!=='promoted' || row.validationUses<4 ||
-         row.validationSuccess01<.70 || row.confidence01<.4) continue;
+      if(row.action!==action || row.validationUses<4 || row.confidence01<.4) continue;
       const similarity=contextSimilarity(key,row.contextKey);
       if(similarity<5/6) continue;
       const support=Math.min(1,row.validationUses/8);
-      const transfer=clamp(row.confidence01*.02*((similarity-.70)/.30)*support);
-      if(transfer>best) best=transfer;
+      if(row.status==='promoted' && row.validationSuccess01>=.70){
+        const transfer=clamp(row.confidence01*.02*((similarity-.70)/.30)*support);
+        if(transfer>bestPositive) bestPositive=transfer;
+      } else if(row.status==='rejected' && row.validationSuccess01<=.42){
+        // A rejected skill is evidence against this action in similar contexts,
+        // but it must never penalize as strongly as a locally validated success.
+        const penalty=clamp(row.confidence01*.008*((similarity-.70)/.30)*support);
+        if(penalty>bestNegative) bestNegative=penalty;
+      }
     }
-    return best;
+    return bestPositive>0 ? bestPositive : -bestNegative;
   }
   verificationPressure01():number {
     return clamp(this.state.evidenceDebt.filter(x=>x.priority01>.45).reduce((m,x)=>Math.max(m,x.informationGainPerCost01),0));
