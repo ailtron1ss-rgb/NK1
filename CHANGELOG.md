@@ -1,3 +1,10 @@
+## WorkPass104 — multi-seed replay proxy summary (2026-10-20)
+
+- Expanded the reservoir comparator from five hand-picked seeds to 50 deterministic seeds and added mean, sample standard deviation, and approximate 95% intervals for selection-composition metrics.
+- The summary includes historical/post-shift coverage, oldest-stream representation, context/action strata, and mean surprise. Assertions check the reported seed count and interval arithmetic.
+- These intervals describe variation between this fixed set of sampler seeds only. They are not task-outcome confidence intervals and do not establish improved learning, retention, or transfer.
+- No production policy/default changed; outcome-grounded same-stream evaluation remains the P0 gap.
+
 ## WorkPass103 — replay baseline robustness and CI repair (2026-10-20)
 
 - Fixed WorkPass102 workflow setup: `actions/setup-node@v7` enables package-manager caching by default, but this repository has no root npm/yarn lockfile. Disabled package-manager caching for this dependency-free Node 24 harness rather than inventing a lockfile.
