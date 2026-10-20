@@ -973,3 +973,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **PASS:** [GitHub Actions run 39378152687](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39378152687), exact head `7d56d67a9c8cec7617340f607d199be4bd5859f7`.
 - The new WorkPass88 benchmark label-truncation guard passed, as did script integrity, cold-memory residency, WorkPass87 supersession recovery, WorkPass83/85/86 benchmark integrity/abstention/provenance, local provider policy/boundary, end-to-end caller cancellation, and controlled-provider server smoke.
 - Evidence scope is regression integrity only. The run does not measure external retrieval quality, real llama.cpp latency, continual-learning gains, or consciousness.
+
+
+## 2026-10-20 — WorkPass89: confidence-bounded abstention regression
+
+- Extended the retrieval benchmark with a paired-query bootstrap interval for unsupported retrieval on explicitly unanswerable holdout queries.
+- Candidate eligibility now requires the upper confidence bound of candidate-minus-baseline unsupported retrieval to remain within a configurable tolerance (default `0`), in addition to the existing point-estimate guard.
+- Bumped the benchmark report schema to v6 and added focused assertions. This is a stricter evaluation gate, not evidence of improved retrieval quality; the current bilingual fixture remains synthetic.
