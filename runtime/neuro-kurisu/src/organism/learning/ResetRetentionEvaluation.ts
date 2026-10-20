@@ -223,10 +223,10 @@ export function evaluateResetRetentionFromLedger(
   }
   const snapshot = ledger.snapshot();
   const split = options.split ?? 'holdout';
-  const tasks = new Map<string, { family: string; version: string }>(
-    snapshot.manifest.filter(task => task.split === split)
-      .map(task => [task.taskId, { family: task.family, version: task.version }]),
-  );
+  const tasks = new Map<string, { family: string; version: string }>();
+  for (const task of snapshot.manifest) {
+    if (task.split === split) tasks.set(task.taskId, { family: task.family, version: task.version });
+  }
   if (!tasks.size) throw new Error(`manifest has no tasks in ${split} split`);
   const attempts = new Set<string>();
   const observations: ResetRetentionObservation[] = [];
