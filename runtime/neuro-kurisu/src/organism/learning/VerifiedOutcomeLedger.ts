@@ -88,6 +88,7 @@ export class VerifiedOutcomeLedger {
     let detail = '';
     if (!task) { code = 'unknown-task'; detail = 'task is not in the versioned manifest'; }
     else if (task.version !== outcome.taskVersion) { code = 'version-mismatch'; detail = 'outcome references a different task version'; }
+    else if (!outcome.method.trim()) { code = 'invalid-attempt'; detail = 'method must be non-empty'; }
     else if (!Number.isSafeInteger(outcome.seed) || outcome.seed < 0) { code = 'invalid-seed'; detail = 'seed must be a non-negative safe integer'; }
     else if (!Number.isSafeInteger(outcome.attempt) || outcome.attempt < 1) { code = 'invalid-attempt'; detail = 'attempt must be a positive safe integer'; }
     else if (outcome.authority === 'self-report') { code = 'self-report-not-authoritative'; detail = 'self-assessed success cannot become ground truth'; }
@@ -111,7 +112,7 @@ export class VerifiedOutcomeLedger {
     for (const outcome of this.outcomes.values()) {
       const task = this.manifest.get(outcome.taskId)!;
       if (task.split !== split || (outcome.method !== baseline && outcome.method !== candidate)) continue;
-      const pairKey = `${task.taskId}\u0000${outcome.seed}`;
+      const pairKey = `${task.taskId}\u0000${outcome.seed}\u0000${outcome.attempt}`;
       const pair = rows.get(pairKey) ?? new Map<string, VerifiedTaskOutcome>();
       pair.set(outcome.method, outcome);
       rows.set(pairKey, pair);
