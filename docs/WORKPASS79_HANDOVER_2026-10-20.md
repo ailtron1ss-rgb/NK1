@@ -223,3 +223,20 @@ No external benchmark data or code has been copied into NK1. Verify licences and
 1. Obtain a lawful, independently human-labelled RU/EN dataset and freeze its version/hash before tuning.
 2. Run the benchmark repeatedly on a real, fixed corpus; check bootstrap stability across independent seeds and stratify answerable/unanswerable queries by language and scenario.
 3. Validate actual local inference and resource behavior on Dell G3; keep controlled-provider CI explicitly separate from live-model evidence.
+
+
+## WorkPass90 — minimum unanswerable holdout evidence (2026-10-20)
+
+**Status:** runtime guard and regression assertion committed; exact-head Actions verification pending.
+
+- Added `minUnanswerableHoldoutQueries` (default `4`, clamped to `2..32`) because a confidence interval over zero or too few unanswerable examples cannot substantiate abstention safety.
+- Added the explicit `sufficientUnanswerableEvidence` promotion gate, report threshold, and fail-closed reason `insufficient-unanswerable-holdout`.
+- Updated `workpass83-retrieval-benchmark-truth.mjs`: the synthetic fixture contains only two unanswerable holdout examples, so the test now asserts that this evidence count blocks promotion. Existing benchmark test is already included in the regression workflow.
+- **Evidence boundary:** no retrieval uplift is claimed. The test fixture remains synthetic and deliberately underpowered for abstention inference; an independent, human-labelled dataset is still required.
+
+### Next execution gates
+
+1. Confirm exact-head CI and repair any failures before claiming WorkPass90 validated.
+2. Add language/scenario-stratified reporting and enforce minimum RU and EN coverage separately, not only aggregate counts.
+3. Validate benchmark stability across independent seeds and larger unanswerable sets; report paired uncertainty without treating bootstrap as a substitute for representative data.
+4. Continue toward real local model execution and sequential-learning retention/interference tests; these remain unverified on this branch.
