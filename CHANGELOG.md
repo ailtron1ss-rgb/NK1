@@ -894,3 +894,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 - GitHub Actions exposed that Node's `AbortSignal.timeout()` timer is unreferenced: the test's unresolved top-level await could terminate with exit code 13 before the timeout fired. The focused test now holds the process open only for the expected timeout window and asserts the normalized `llama.cpp-timeout` outcome.
 - Follow-up run [39371651412](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39371651412) passed the cold-memory regression, policy test, provider-boundary suite and server HTTP smoke.
+
+
+## WorkPass 82 — end-to-end cancellation of in-flight language generation (2026-10-20)
+
+- Propagated the request `AbortSignal` from `/api/organism/chat` through `OrganismRuntime.step`, `LanguageRequest`, `invokeLanguage`, and the local provider. The server aborts generation when the client disconnects and avoids writing a response to a destroyed socket.
+- Local cancellation is no longer recorded as a normal llama.cpp provider failure and does not fan out into fallback generation. Kobold/Gemini fetches also compose the caller signal with their deadline, and provider iteration stops when the request has been cancelled.
+- Added `tests/workpass82-server-language-cancellation.mjs`: starts a real NK1 server plus a controlled loopback chat-completions endpoint, disconnects the client during generation, and requires the upstream provider socket to close before the 12-second provider deadline.
+- Wired the E2E cancellation test into the WorkPass79 Actions workflow. **IMPLEMENTED, not yet VERIFIED:** await Actions for the final source head. This controlled loopback test does not substitute for live llama.cpp or restart/soak testing.
