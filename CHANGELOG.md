@@ -1,3 +1,10 @@
+## NK1 v2.0 rebuild — stage 0 (2026-10-20)
+
+- [REBUILT] Created the isolated `rebuild` branch from the WorkPass93 cognitive-rebuild baseline; `main` and the existing draft PR remain untouched.
+- Added `docs/REBUILD.md` as the durable charter: six work islands, 12 target layers, initial old→new ownership map, per-island Definition of Done, release evidence boundaries and session continuation protocol.
+- The charter explicitly treats WorkPass94 avatar/voice/Live2D findings as source-level evidence only; real browser/device acceptance remains open.
+- This is the rebuild control-plane milestone, not a claim that the six islands or consciousness are complete. Next implementation stage is a bounded, tested core slice.
+
 ## WorkPass93 — harden core ownership exemption and add durable checkpoint (2026-10-20)
 
 - Replaced the field-name-only constructor exemption with an exact field + constructor policy: `operationalMicroCycle:OperationalMicroCycleRuntime`.
