@@ -71,3 +71,9 @@ The change is additive. Revert the WorkPass79 commits or remove the workflow/scr
 - `LocalChatCompletionRequest` now accepts an optional caller `AbortSignal`. The provider composes it with its own deadline using `AbortSignal.any`, rejects already-cancelled work before dispatch, and normalizes cancellation/deadline failures.
 - Boundary tests cover in-flight caller abort and pre-aborted requests, in addition to the existing deadline test.
 - **IMPLEMENTED, not yet VERIFIED:** test execution must be confirmed by Actions. This change only guarantees cancellation propagation when an upstream caller passes a signal; audit the actual cognitive-cycle call chain before claiming end-to-end cancellation. Real llama.cpp and restart/recovery tests remain open.
+
+
+## CI finding and test-harness correction
+
+- Run `39371576041` confirmed WorkPass80 cold-memory regression and WorkPass79 policy regression **PASS**. The provider-boundary step failed with Node exit code 13 at the timeout test because the test awaited Node's unreferenced `AbortSignal.timeout()` timer without keeping the process alive.
+- The focused timeout test now holds the process open for up to one second, asserts the normalized timeout error, and clears its keep-alive timer in `finally`. This preserves the timeout assertion rather than skipping it. The follow-up Actions run is still required before provider cancellation/timeout coverage is marked PASS.
