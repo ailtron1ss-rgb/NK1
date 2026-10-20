@@ -922,3 +922,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - When the most recent track was deferred and the same domain is requested again, selection now advances to the next available domain; normal exact-domain preference remains when it does not repeat the deferred domain.
 - Added a regression where the requested domain is itself present in the candidate list, which the earlier rotation test did not cover.
 - Research alignment: AgentMemoryBench evaluates online learning, replay/forgetting, transfer and repair; LifelongAgentBench highlights skill-grounded interdependent tasks and the weakness of indiscriminate replay. NK1 should extend toward those trajectories instead of treating heartbeat/practice counts as learning. No benchmark uplift is claimed by this code change.
+
+## WorkPass 83 — canonical causal trace identity (2026-10-20)
+
+- Normalized runtime and external causal trace IDs with Unicode NFKC normalization, trimming and a shared length bound before duplicate detection and persistence.
+- This closes a deduplication bypass where whitespace or compatibility-character variants of one stable ID could otherwise be credited as separate causal experiences.
+- Added regression coverage for normalized runtime outcome IDs, normalized external event IDs, and external deduplication across snapshot/restore.
+- This strengthens evidence integrity; it does not itself demonstrate higher task success, transfer or retention. The full workflow must pass before the change is considered validated.
