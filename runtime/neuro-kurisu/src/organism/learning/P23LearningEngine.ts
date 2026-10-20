@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { ActionKind, IntentCandidate, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
 import type { AdaptivePolicyEngine, AdaptivePolicyState } from './AdaptivePolicyEngine.ts';
-import { selectReplayBatch } from './ReplaySelectionPolicy.ts';
+import { selectReplayBatch, type ReplaySelectionOptions } from './ReplaySelectionPolicy.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp = (x:number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
@@ -196,6 +196,15 @@ function canonicalize(value:unknown):string {
 
 export class P23LearningEngine {
   private state = defaultP23Learning();
+  private replaySelectionOptions: ReplaySelectionOptions = { maxBatchSize:64, recentQuota:32 };
+
+  /** Configure a bounded replay ablation; defaults remain 64 total / 32 recent. */
+  configureReplaySelection(options: ReplaySelectionOptions):void {
+    const requestedCapacity = options.maxBatchSize === undefined ? 64 : Math.floor(Number.isFinite(options.maxBatchSize) ? options.maxBatchSize : 64);
+    const maxBatchSize = Math.max(1, Math.min(64, requestedCapacity));
+    const requestedRecent = options.recentQuota === undefined ? Math.floor(maxBatchSize / 2) : Math.floor(Number.isFinite(options.recentQuota) ? options.recentQuota : Math.floor(maxBatchSize / 2));
+    this.replaySelectionOptions = { maxBatchSize, recentQuota:Math.max(0, Math.min(maxBatchSize, requestedRecent)) };
+  }
 
   restore(raw?:Partial<P23LearningState>|null):void {
     const d = defaultP23Learning();
@@ -265,7 +274,7 @@ export class P23LearningEngine {
       contextKey:contextKey(trace.stateBefore),
       action:trace.selected!.action,
       surprise:trace.outcome?.surprise ?? 0,
-    })),{maxBatchSize:64,recentQuota:32}).map(item=>item.trace);
+    })),this.replaySelectionOptions).map(item=>item.trace);
     for (const trace of ordered) {
       const exp=this.state.experiences.find(x=>x.traceId===trace.id);
       if(!exp) continue;
