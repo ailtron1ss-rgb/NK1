@@ -160,9 +160,43 @@ export class VerifiedOutcomeLedger {
     };
   }
 
+  static restoreSnapshot(value: unknown): VerifiedOutcomeLedger {
+    if (!value || typeof value !== 'object') throw new Error('invalid ledger snapshot');
+    const snapshot = value as {
+      schemaVersion?: unknown; manifest?: unknown; manifestCount?: unknown;
+      acceptedOutcomes?: unknown; rejectedOutcomes?: unknown;
+      outcomes?: unknown; rejections?: unknown;
+    };
+    if (snapshot.schemaVersion !== 2 || !Array.isArray(snapshot.manifest) ||
+        !Array.isArray(snapshot.outcomes) || !Array.isArray(snapshot.rejections)) {
+      throw new Error('unsupported or malformed ledger snapshot');
+    }
+    const ledger = new VerifiedOutcomeLedger(snapshot.manifest as TaskManifestEntry[]);
+    if (snapshot.manifestCount !== ledger.manifest.size) throw new Error('manifest count mismatch');
+    for (const outcome of snapshot.outcomes as VerifiedTaskOutcome[]) {
+      const result = ledger.record(outcome);
+      if (!result.accepted) throw new Error(`snapshot contains invalid accepted outcome: ${result.rejection?.code}`);
+    }
+    if (ledger.outcomes.size !== snapshot.acceptedOutcomes) throw new Error('accepted outcome count mismatch');
+    const allowed = new Set<OutcomeRejection['code']>([
+      'unknown-task', 'version-mismatch', 'invalid-method', 'invalid-seed', 'invalid-attempt',
+      'self-report-not-authoritative', 'verifier-mismatch', 'missing-evidence', 'invalid-time', 'duplicate-attempt',
+    ]);
+    for (const item of snapshot.rejections as OutcomeRejection[]) {
+      if (!item || !allowed.has(item.code) || typeof item.taskId !== 'string' ||
+          typeof item.method !== 'string' || typeof item.detail !== 'string') {
+        throw new Error('snapshot contains malformed rejection record');
+      }
+      ledger.rejections.push({ ...item });
+    }
+    if (ledger.rejections.length !== snapshot.rejectedOutcomes) throw new Error('rejected outcome count mismatch');
+    return ledger;
+  }
+
   snapshot() {
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
+      manifest: [...this.manifest.values()].map(x => ({ ...x })),
       manifestCount: this.manifest.size,
       acceptedOutcomes: this.outcomes.size,
       rejectedOutcomes: this.rejections.length,
