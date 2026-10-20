@@ -86,7 +86,7 @@ export class P26TrueLearningEngine{
     // Runtime and benchmark share the same bounded, deterministic sampler.
     // The holdout below remains an in-batch diagnostic, not an independent task holdout.
     const usable=selectCausalReplayBatch(records,{maxBatchSize:32,recentQuota:8});
-    if(!usable.length)return {updates:0,meanLoss01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0};
+    if(!usable.length)return {updates:0,meanLoss01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0,holdoutEvidenceGrade:'insufficient' as const};
     const holdout=usable.filter((_,i)=>(i+1)%4===0),train=usable.filter((_,i)=>(i+1)%4!==0);
     const score=(rows:typeof usable)=>rows.length?rows.reduce((sum,r)=>sum+this.learner.predictFromFeatures(r.policyFeatures01!,r.action),0)/rows.length:0;
     const baseline=score(holdout); let loss=0;
@@ -96,9 +96,10 @@ export class P26TrueLearningEngine{
       loss+=this.learner.trainFeatures({features:r.policyFeatures01!,action:r.action,target01:target,learningRate01:.022+clamp(r.surprise01)*.028+priority*.018,sampleWeight01:weight}).loss01;
     }
     const learned=score(holdout); this.state.metrics.replayUpdates+=train.length; this.state.metrics.recentLoss01=clamp(train.length?loss/train.length:0);
-    this.state.metrics.generalizationEvidence01=clamp(this.state.metrics.generalizationEvidence01*.85+Math.min(1,holdout.length/4)*.15);
+    // Do not promote generalizationEvidence01 from a same-call split: records may have
+    // influenced online training or earlier replay. This score is diagnostic only.
     this.state.metrics.holdoutBaseline01=baseline; this.state.metrics.holdoutLearned01=learned; this.state.metrics.holdoutDelta01=learned-baseline; this.state.metrics.lastUpdatedAt=Date.now(); this.sync();
-    return {updates:train.length,meanLoss01:train.length?loss/train.length:0,holdoutBaseline01:baseline,holdoutLearned01:learned,holdoutDelta01:learned-baseline};
+    return {updates:train.length,meanLoss01:train.length?loss/train.length:0,holdoutBaseline01:baseline,holdoutLearned01:learned,holdoutDelta01:learned-baseline,holdoutEvidenceGrade:'in-batch-diagnostic' as const};
   }
 
   recordHoldout(baseline01:number,learned01:number){
