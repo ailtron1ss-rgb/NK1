@@ -1,3 +1,13 @@
+## WorkPass83 — проверка честности retrieval benchmark (2026-10-20)
+
+- Добавлен `tests/workpass83-retrieval-benchmark-truth.mjs`: фиксированный двуязычный корпус из 12 воспоминаний, 4 train-запроса и 8 holdout-запросов, сопоставление метрик кандидата с Okapi BM25 и bootstrap-конфигурацией.
+- Регрессия подтверждает, что offline benchmark не мутирует live MemoryOS2; train/holdout query leakage блокирует promotion; статус promotion согласован с набором gates.
+- GitHub Actions run [39372815361](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39372815361) — PASS: benchmark test, memory residency, provider policy/boundary, end-to-end cancellation и server HTTP smoke.
+- Synthetic fixture получил Recall@3/MRR 1.0 у обеих сторон. Это только проверка harness и не независимое evidence retrieval uplift; наблюдаемая разница равна нулю, качество не повышено.
+- Следующий gate — независимый, версионированный RU/EN holdout с заранее зафиксированными relevance labels и сравнением Recall@k/MRR; затем live llama.cpp на Dell G3, process restart/recovery, transfer/anti-forgetting и soak.
+
+---
+
 ## WorkPass79 — локальная устойчивость языкового контура (2026-10-20)
 
 - Добавлен отдельный регрессионный набор для канонического `LocalLanguageBackendPolicy`: локальный backend имеет приоритет, ошибка переводит его в cooldown, повторные ошибки увеличивают паузу по ограниченной экспоненте, посторонние сбои не приписываются llama.cpp, успешный ответ сбрасывает breaker.
