@@ -1,3 +1,10 @@
+## WorkPass109 — signed verifier outcome artifacts (2026-10-20)
+
+- Added Ed25519 signed outcome artifact verification, binding each payload to the exact task-manifest fingerprint, task version, verifier identity, run ID, task/method/seed/attempt and outcome.
+- Only keys explicitly supplied in the trusted verifier-key registry are accepted. Tampered payloads, unknown keys, manifest drift, version/verifier mismatch, malformed artifacts and duplicate attempts are rejected before they can enter the ledger.
+- Added focused fixture tests for valid signatures, tampering, wrong manifest, unknown verifier keys, version mismatch and duplicate replay; wired into the P23 suite and CI.
+- This is a verification primitive, not a production trust-root deployment: independently fetching artifacts, key rotation/revocation, verifier governance, and learner/promotion integration remain open. Private keys must stay outside NK1.
+
 ## WorkPass108 — collision-safe paired evaluation and manifest binding (2026-10-20)
 
 - Replaced delimiter-concatenated paired-outcome identity with JSON tuple encoding for `[taskId, seed, attempt]`, so unusual task identifiers cannot accidentally merge independent evaluation cells.
