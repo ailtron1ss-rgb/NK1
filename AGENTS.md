@@ -2,6 +2,10 @@
 
 > **New-session entry point:** read [`NEUROCORE_START_HERE.md`](NEUROCORE_START_HERE.md) first, then verify the current branch head, latest Actions status, and the open-work register in [`docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md`](docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md). The mission is persistent across chats; do not ask the user to restate it.
 
+## Latest checkpoint
+
+Read [WorkPass93 checkpoint](docs/WORKPASS93_CHECKPOINT_2026-10-20.md) before resuming. Active work branch is `workpass79-cognitive-rebuild` and PR #1 remains draft/unmerged unless live GitHub state says otherwise. Refresh the exact HEAD and latest Actions status each session; prior green runs do not validate newer commits.
+
 ## Project objective
 
 Build **NeuroCore** as one cohesive, memory-rich, learning and adaptive system. The repository retains the historical `Neuro-Kurisu` name in paths and older documents; that name is implementation lineage, not a reason to fork the architecture.
@@ -11,7 +15,7 @@ Work code-first. Prefer observable, testable behavior over architectural labels.
 ## Canonical navigation
 
 - `README.md`: current repository status and release gates.
-- `docs/WORKPASS78_HANDOVER_2026-10-20.md`: latest continuation snapshot, CI evidence and prioritized unresolved queue.
+- `docs/WORKPASS93_CHECKPOINT_2026-10-20.md`: latest continuation snapshot, CI evidence and prioritized unresolved queue.
 - `docs/REPOSITORY_CLEANUP_AUDIT_WORKPASS72.md` plus its JSON manifest: exact content-duplicate audit; candidates are not deletion instructions.
 - `docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md`: repository inventory, audit findings and open-work register.
 - `runtime/neuro-kurisu/`: canonical organism/runtime implementation.
