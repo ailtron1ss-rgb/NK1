@@ -22,4 +22,24 @@ assert.equal(unique.length, 3, 'duplicate IDs must not overweight an experience'
 assert.equal(unique.find(x => x.id === 'a').tick, 1, 'first occurrence wins');
 assert.deepEqual(selectReservoirBatch(input, { capacity: 64, seed: 42.9 }), selectReservoirBatch(input, { capacity: 64, seed: 42 }), 'seed normalization is stable');
 assert.deepEqual(selectReservoirBatch(input, { capacity: 64, seed: NaN }), selectReservoirBatch(input, { capacity: 64, seed: 1 }), 'non-finite seed falls back deterministically');
+
+ // Statistical sanity check across independent seeds: Algorithm R should not
+ // systematically favor early or late stream positions. This is a guardrail,
+ // not a proof of uniformity or a task-learning result.
+const frequencyRuns = 400;
+const frequencyCapacity = 10;
+const frequencyInput = Array.from({ length: 100 }, (_, i) => make(`uniform-${i}`, i));
+const inclusionCounts = new Array(frequencyInput.length).fill(0);
+for (let seed = 1; seed <= frequencyRuns; seed++) {
+  for (const item of selectReservoirBatch(frequencyInput, { capacity: frequencyCapacity, seed })) {
+    inclusionCounts[Number(item.id.slice('uniform-'.length))] += 1;
+  }
+}
+const expectedInclusions = frequencyRuns * frequencyCapacity / frequencyInput.length;
+const maxDeviation = Math.max(...inclusionCounts.map(count => Math.abs(count - expectedInclusions)));
+assert.ok(maxDeviation < expectedInclusions * 0.45,
+  `reservoir inclusion frequencies should not show a large positional bias (max deviation ${maxDeviation})`);
+assert.ok(inclusionCounts.slice(0, 20).reduce((sum, x) => sum + x, 0) > 0);
+assert.ok(inclusionCounts.slice(-20).reduce((sum, x) => sum + x, 0) > 0);
+
 console.log('P23_RESERVOIR_REPLAY_POLICY=PASS');
