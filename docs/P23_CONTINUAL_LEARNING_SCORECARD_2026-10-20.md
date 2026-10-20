@@ -1,3 +1,10 @@
+## WorkPass112 update — per-cell outcome uncertainty (2026-10-20)
+
+- `ContinualOutcomeMatrix.ts` now exposes each task × stage's verified sample count, successes, pass rate, task family and Wilson 95% interval, in addition to aggregate retention/transfer metrics.
+- Fixed the pre-training test fixture so task `b` uses real numeric seed IDs; expanded coverage for matched baseline seeds, missing baseline evidence and interval behavior.
+- The intervals are descriptive binomial intervals for each cell. They do not adjust for dependence between tasks/seeds, establish causal improvement, or replace repeated paired comparisons. With four seeds, intervals are necessarily broad.
+- Current scores remain unchanged: overall learning engineering **57/100**; evidence-grounded maturity **36%**; P23 symbolic core **61%**; project-wide lifelong-learning roadmap **30%**. This pass improves measurement granularity, not demonstrated learning.
+
 ## WorkPass109 update — signed artifact provenance boundary (2026-10-20)
 
 - Added `VerifiedOutcomeArtifact.ts`: verifies Ed25519 signatures over canonical payloads and binds them to the current manifest fingerprint and the manifest's task version/verifier ID before recording the result.
