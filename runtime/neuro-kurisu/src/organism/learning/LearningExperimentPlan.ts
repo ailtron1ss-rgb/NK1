@@ -151,18 +151,7 @@ export function validateLearningExperimentPlan(
   if (!plan || plan.protocol !== 'nk1-matched-reset-retention' || plan.protocolVersion !== 1) {
     throw new Error('unsupported experiment plan');
   }
-  const options: LearningExperimentPlanOptions = {
-    split: plan.split,
-    seeds: plan.seedIds,
-    resetEvery: plan.arms.filter(arm => arm.arm.startsWith('R(')).map(arm => Number(arm.arm.slice(2, -1))),
-    priorMethod: plan.arms.find(arm => arm.arm === 'P')?.method ?? '',
-    continuousMethod: plan.arms.find(arm => arm.arm === 'C')?.method ?? '',
-    resetMethodPrefix: '',
-  };
-  const resetArms = plan.arms.filter(arm => arm.arm.startsWith('R('));
-  if (resetArms.some(arm => arm.method !== `${options.resetMethodPrefix}${Number(arm.arm.slice(2, -1))}`)) {
-    // Method prefixes can be arbitrary. Reconstruct and compare by validating the full payload below instead.
-    const expectedManifest = new VerifiedOutcomeLedger(manifest).manifestFingerprint();
+  const expectedManifest = new VerifiedOutcomeLedger(manifest).manifestFingerprint();
     if (expectedManifest !== plan.manifestFingerprint) throw new Error('manifest fingerprint mismatch');
   }
   const expectedManifest = new VerifiedOutcomeLedger(manifest).manifestFingerprint();
