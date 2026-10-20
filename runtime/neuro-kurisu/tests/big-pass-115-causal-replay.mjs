@@ -8,6 +8,8 @@ for(let i=0;i<24;i++){
   const after=structuredClone(state); after.needs.uncertainty=Math.max(.05,state.needs.uncertainty-(i%3===0?.08:.015)); after.needs.novelty=Math.min(1,state.needs.novelty+(i%4===0?.04:0));
   cx.observe(trace); cx.recordOutcome(trace,after,{reward01:i%2?.78:.34,success01:i%2?.82:.38,surprise01:i%5===0?.7:.18,novelty01:after.needs.novelty});
 }
-const candidates=cx.policyReplayCandidates(24); assert.ok(candidates.length>=20); const p26=new P26TrueLearningEngine(); const before=p26.snapshot().policy.updates; const r=p26.replayCausalRecords(candidates);
+const candidates=cx.policyReplayCandidates(24); assert.ok(candidates.length>=20); const p26=new P26TrueLearningEngine(); const before=p26.snapshot().policy.updates; const generalizationBefore=p26.metrics().generalizationEvidence01; const r=p26.replayCausalRecords(candidates);
 assert.ok(r.updates>=10); assert.ok(p26.snapshot().policy.updates>before); assert.ok(Number.isFinite(r.holdoutDelta01));
-console.log('BIG_PASS_115_CAUSAL_REPLAY=PASS',JSON.stringify({candidates:candidates.length,updates:r.updates,holdoutDelta01:Number(r.holdoutDelta01.toFixed(4)),loss01:Number(r.meanLoss01.toFixed(4))}));
+assert.equal(r.holdoutEvidenceGrade,'in-batch-diagnostic','same-call replay split must be labelled diagnostic, not independent evidence');
+assert.equal(p26.metrics().generalizationEvidence01,generalizationBefore,'in-batch replay score must not inflate generalization evidence');
+console.log('BIG_PASS_115_CAUSAL_REPLAY=PASS',JSON.stringify({candidates:candidates.length,updates:r.updates,holdoutEvidenceGrade:r.holdoutEvidenceGrade,holdoutDelta01:Number(r.holdoutDelta01.toFixed(4)),loss01:Number(r.meanLoss01.toFixed(4)),generalizationEvidence01:p26.metrics().generalizationEvidence01}));
