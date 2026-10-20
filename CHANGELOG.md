@@ -1,3 +1,9 @@
+## NK1 v2.0 rebuild — live repository checkpoint (2026-10-20)
+
+- [ADDED] Added [live rebuild checkpoint](docs/REBUILD_CHECKPOINT_LIVE_STATE_2026-10-20.md) recording the observed branch topology, the separate WorkPass79 PR line, recent rebuild implementation slices, evidence boundaries and the next core execution-path task.
+- Explicitly distinguishes implementation records from exact-head CI validation and keeps independent retrieval uplift, live-model/device behavior, learning transfer, browser/voice E2E, soak and release gates open.
+- Documentation-only change; no runtime test result is claimed. Re-check Actions against the current `rebuild` HEAD.
+
 ## NK1 v2.0 rebuild — project tool finalization route (2026-10-20)
 
 - [FIXED] Fresh project-tool execution now dispatches through OrganismCore.executeTool instead of calling ActionGateway.executeTool directly. Keyed mutations still use the gateway's atomic finalizer/receipt path; unkeyed read-only outcomes now also pass through the host's canonical finalizer and checkpoint.
