@@ -219,3 +219,13 @@ The gate prevents several common false promotions: tiny samples, positive aggreg
 - Added a dedicated Node 24 workflow and wired the regression into the full P23 verified-outcome suite.
 - **Scores unchanged:** engineering estimate 57/100; P23 symbolic core 61%; evidence-grounded maturity 36%; lifelong-learning roadmap 30%. This is measurement infrastructure, not proof of actual learning uplift.
 - Next empirical step: connect the evaluator to a same-manifest, same-seed run recorder for context-only, no-replay, recency, surprise, reservoir and multi-timescale conditions; retain per-task raw scores and confidence intervals. Do not use synthetic fixtures as benchmark evidence or enable automatic promotion.
+
+
+## Research review — benchmark design and what to adapt (2026-10-20)
+
+- **AgentMemoryBench** (<https://github.com/solomoon313/AgentMemoryBench>): adapt its separation of online learning, replay retention, cross-environment transfer, and repair after incorrect feedback. NK1's next benchmark should report each axis separately, not one aggregate “learning score”.
+- **SkillLearnBench** (<https://github.com/cxcscmu/SkillLearnBench>, COLM 2026; <https://arxiv.org/abs/2604.20087>): adapt its three-level evidence chain—skill quality, execution trajectory, and verified task outcome. Its report warns that self-feedback can drift and that external feedback can matter; NK1 should preserve independent verifier outcomes and inspect raw trajectories before changing skill policy.
+- **MemoryBench** (<https://proceedings.mlr.press/v306/ai26e.html>, ICML 2026): use service-time feedback and continual-learning tasks as a comparator to static long-context recall; design tests around updates from feedback rather than only memory retrieval.
+- **AgentMemBench / MESA** (<https://github.com/mazaiying/AgentMemBench>): complement task outcome tests with memory middleware dimensions such as temporal consistency, isolation/privacy, write efficiency and retrieval quality. This is an evaluation roadmap, not a claim that NK1 passes those tests.
+- No upstream benchmark code or datasets were copied in WorkPass110. The new metrics and paired comparator are original NK1-local implementations inspired by public evaluation designs. Before importing external code/data, pin a commit, inspect its license and data terms, and adapt only the minimum compatible interface.
+- **No score uplift yet:** the new code measures supplied scores; no real model runs were executed by this change. Keep engineering 57/100, symbolic P23 core 61%, evidence-grounded maturity 36%, and project-wide roadmap 30% until repeated, externally verified, same-seed task runs demonstrate improvements.
