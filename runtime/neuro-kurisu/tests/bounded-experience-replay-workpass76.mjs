@@ -78,7 +78,7 @@ test("training adapter trains incoming data plus replay and reports measured buf
 
 test("rejects malformed budgets, strategies and replay ratios", () => {
   assert.throws(() => new BoundedExperienceReplayBuffer({ maxBytes: 0 }), /maxBytes must be a positive integer/);
-  assert.throws(() => new BoundedExperienceReplayBuffer({ maxBytes: 100, strategy: "magic" }), /strategy must be uniform or prioritized/);
+  assert.throws(() => new BoundedExperienceReplayBuffer({ maxBytes: 100, strategy: "magic" }), /strategy must be uniform, diversity or prioritized/);
   const buffer = new BoundedExperienceReplayBuffer({ maxBytes: 1000 });
   assert.throws(() => trainWithExperienceReplay({ trainBatch() {} }, [], buffer, { replayRatio: 2 }), /replayRatio must be in/);
 });
@@ -103,4 +103,26 @@ test("rejects corrupt snapshots instead of trusting persisted byte accounting", 
   assert.throws(() => target.restore(corrupted), /byte accounting is inconsistent/);
   const wrongConfig = new BoundedExperienceReplayBuffer({ maxBytes: 1024, strategy: "uniform", seed: 9 });
   assert.throws(() => wrongConfig.restore(source.snapshot()), /maxBytes does not match/);
+});
+
+test("diversity replay spreads a minibatch across distinct task/action groups", () => {
+  const buffer = new BoundedExperienceReplayBuffer({ maxBytes: 8192, strategy: "diversity", seed: 31 });
+  for (let i = 0; i < 12; i += 1) {
+    buffer.add(sample(i, { replayGroup: i < 8 ? "memory" : "planning" }));
+  }
+  const draws = buffer.sample(6);
+  assert.equal(draws.length, 6);
+  assert.equal(new Set(draws.map(row => row.id)).size, 6);
+  assert.ok(draws.some(row => row.sample.replayGroup === "memory"));
+  assert.ok(draws.some(row => row.sample.replayGroup === "planning"));
+  assert.ok(draws.every(row => row.samplingProbability > 0 && row.importanceWeight01 === 1));
+});
+
+test("prioritized replay supports minibatches larger than the resident buffer", () => {
+  const buffer = new BoundedExperienceReplayBuffer({ maxBytes: 4096, strategy: "prioritized", seed: 12 });
+  buffer.add(sample(1), { priority: 1 });
+  buffer.add(sample(2), { priority: 3 });
+  const draws = buffer.sample(20);
+  assert.equal(draws.length, 20);
+  assert.ok(draws.every(row => row.id === 1 || row.id === 2));
 });
