@@ -1,3 +1,9 @@
+## WorkPass80 — idempotent external causal-learning events (2026-10-20)
+- Extended the persisted causal trace-ID deduplication boundary to externally supplied replay and skill-repair events, not just ordinary decision outcomes.
+- Duplicate stable trace IDs now return no new causal record; the three OrganismCore consumers suppress downstream UnifiedLearning credit when no new record was accepted.
+- Added regressions for repeated external events with changed reward values, ensuring a duplicate cannot smuggle in a second or stronger update.
+- The registry remains bounded and restart-persistent; this is bounded idempotency, not a claim of eternal exactly-once semantics beyond the retained 4,096-ID window.
+
 ## WorkPass79 — rotate curriculum on skill creation, not heartbeat count (2026-10-20)
 - Corrected curriculum rotation to advance from the number of created tracks, so repeated heartbeat cycles cannot repeatedly select the same skill after a deferral.
 - Added a regression that verifies the next active skill uses a different domain from the deferred track.
