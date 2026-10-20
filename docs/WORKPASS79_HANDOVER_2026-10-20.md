@@ -4,7 +4,7 @@
 **Repository:** https://github.com/ailtron1ss-rgb/NK1  
 **Working branch:** `workpass79-cognitive-rebuild`  
 **Base:** `workpass70-source`  
-**Status:** implementation committed; first Actions run observed a workflow runtime incompatibility; CI was updated and the rerun on the newest head remains pending.
+**Status:** WorkPass79 local-language resilience slice plus WorkPass80 cold-memory residency regression committed; GitHub Actions status must be checked against the latest branch head before calling tests green.
 
 ## Mission and constraints
 
@@ -51,3 +51,16 @@ Continue NeuroCore as one cohesive, genuinely functional cognitive runtime, with
 ## Rollback
 
 The change is additive. Revert the WorkPass79 commits or remove the workflow/script/test additions if they prove unstable; do not alter the existing canonical provider policy solely to satisfy the new test without a reproduced defect.
+
+
+## WorkPass80 — cold-memory retrieval invariant
+
+1. Added `tests/workpass80-memory-residency-retrieval.mjs` with 140 deterministic records. The fixture makes an older, low-salience record cold, confirms lexical recall still returns it, and checks retrieval does not re-materialize its vector or promote its residency tier.
+2. Added snapshot/restore assertions, candidate budget <=192, and canonical index integrity checks.
+3. Added `test:workpass80:memory-residency` and aggregate `test:workpass80`; wired the focused regression into `.github/workflows/workpass79-cognitive-regression.yml`.
+4. **IMPLEMENTED, not yet VERIFIED:** the regression is committed but must pass Actions on the current head before being marked PASS. The fixture does not establish semantic retrieval uplift; independent RU/EN holdout, Recall@k/MRR comparison to BM25, transfer/forgetting tests, and real local-model inference remain open.
+
+## Current verification gate
+
+- Previous run `39371124054` was still `pending` and returned no jobs when last checked. New commits should trigger a newer run; inspect the run associated with the exact current PR head and retrieve job logs before claiming success.
+- The GitHub content/commit API does not execute tests locally. No claim is made that the new test has passed until Actions supplies evidence.
