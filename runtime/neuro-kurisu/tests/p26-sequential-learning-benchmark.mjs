@@ -44,8 +44,8 @@ const makeRun=(withReplay)=>{
   let replayUpdates=0;
   if(withReplay){
     const replayRows=taskA.flatMap(row=>actions.map(action=>({...row,action,reward:targetA(row.state,action)})));
-    // One replay pass models a bounded replay budget; eight passes overwhelmed the new task.
-    replayUpdates+=engine.replay(replayRows,{}).updates;
+    // Three bounded passes test a retention/plasticity compromise; eight passes overwhelmed the new task.
+    for(let epoch=0;epoch<3;epoch++) replayUpdates+=engine.replay(replayRows,{}).updates;
   }
   const taskAAfterReplay=evalTask(engine,0);
   const taskBFinal=evalTask(engine,1);
@@ -58,6 +58,8 @@ for(const [name,result] of Object.entries({onlineOnly,replay})){
 }
 assert.equal(onlineOnly.replayUpdates,0);
 assert.ok(replay.replayUpdates>0);
+assert.ok(replay.taskAAfterReplay>replay.taskAAfterInterference,'replay should recover at least some old-task performance');
+assert.ok(replay.taskBFinal>.8,'replay should not erase the recently learned task');
 assert.ok(onlineOnly.taskABefore>.8,'benchmark must establish task A before measuring forgetting');
 assert.ok(onlineOnly.taskBFinal>.8,'benchmark must establish task B before measuring retention');
 assert.equal(replay.generalizationEvidence01,0,'synthetic task evaluation is not verifier-certified generalization evidence');
