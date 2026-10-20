@@ -1,5 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { evaluateContinualLearningHistory } from "../src/learning/continual-learning-history-workpass74.mjs";
 
 const fixture = {
@@ -88,4 +93,26 @@ test("does not mutate the supplied evidence matrix", () => {
   const before = structuredClone(input);
   evaluateContinualLearningHistory(input);
   assert.deepEqual(input, before);
+});
+
+test("JSON CLI writes a reusable report and rejects invalid evidence", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "nk1-learning-history-"));
+  const inputPath = path.join(directory, "history.json");
+  const outputPath = path.join(directory, "report.json");
+  const scriptPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../scripts/evaluate-learning-history-workpass74.mjs");
+  try {
+    await writeFile(inputPath, JSON.stringify(fixture), "utf8");
+    const result = spawnSync(process.execPath, ["--experimental-strip-types", scriptPath, inputPath, outputPath], { encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+    const report = JSON.parse(await readFile(outputPath, "utf8"));
+    assert.equal(report.kind, "nk1.continual-learning-history-report");
+    assert.equal(report.interpretation.promotionAllowed, false);
+
+    await writeFile(inputPath, JSON.stringify({ taskIds: ["A", "B"], history: [[0.5], [0.4, 0.8]] }), "utf8");
+    const invalid = spawnSync(process.execPath, ["--experimental-strip-types", scriptPath, inputPath], { encoding: "utf8" });
+    assert.equal(invalid.status, 1);
+    assert.match(invalid.stderr, /must score every task/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
