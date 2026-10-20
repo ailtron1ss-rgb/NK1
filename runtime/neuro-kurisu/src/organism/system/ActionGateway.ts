@@ -215,10 +215,18 @@ function isSafeRestoredToolExecution(value: unknown, entry: ActionExecutionLedge
   if (typeof response.outcomeClass !== 'string' || !RESTORED_OUTCOME_CLASSES.has(response.outcomeClass)) return false;
   if (!response.verification || typeof response.verification !== 'object'
     || response.verification.verified !== response.verified) return false;
+  if (response.outcomeClass === 'executed-verified' && !(response.ok && response.verified)) return false;
+  if (response.outcomeClass === 'executed-unverified' && !(response.ok && !response.verified)) return false;
+  if (response.outcomeClass === 'executed-contradicted' && (response.ok || response.verified)) return false;
   if (!response.audit || typeof response.audit !== 'object'
     || response.audit.outcomeClass !== response.outcomeClass
     || response.audit.accepted !== response.ok
     || response.audit.verified !== response.verified) return false;
+  try {
+    if (new TextEncoder().encode(stableJson(value)).length > 48 * 1024) return false;
+  } catch {
+    return false;
+  }
   return true;
 }
 
