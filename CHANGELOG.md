@@ -1,3 +1,9 @@
+## NK1 v2.0 rebuild — unify autonomous executor-entry semantics (2026-10-20)
+
+- [FIXED] Autonomous tool-life learning now uses the shared `wasToolExecutorEntered` classifier from ActionGateway instead of a second hard-coded outcome list. This keeps learning admission aligned with the same execution-boundary semantics used by canonical finalization and skill execution, while unresolved partial outcomes remain excluded by the existing recovery guard.
+- [REGRESSION] Extended the planner route contract to prevent a divergent local outcome list from reappearing.
+- Validation: the preceding exact-HEAD workflow passed; this follow-up requires a fresh exact-HEAD run.
+
 ## NK1 v2.0 rebuild — canonical project receipt reconciliation (2026-10-20)
 
 - [FIXED] Project recovery now routes pending receipt reconciliation through `OrganismCore.reconcileToolExecution` instead of calling `ActionGateway` directly. This preserves the same canonical tool-ID normalization used by normal execution, including legacy camera/speech aliases, before the gateway performs its read-only receipt lookup.

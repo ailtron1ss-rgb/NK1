@@ -4678,7 +4678,7 @@ export class OrganismCore {
                     || toolResult.outcomeClass === 'idempotency-storage-failed'
                     || toolResult.outcomeClass === 'idempotency-ledger-full'
                     || toolResult.outcomeClass === 'executed-partial';
-                const executionActuallyAttempted = ['execution-failed', 'failed-no-effect', 'executed-unverified', 'executed-verified', 'executed-contradicted'].includes(toolResult.outcomeClass);
+                const executionActuallyAttempted = wasToolExecutorEntered(toolResult.outcomeClass);
                 // A policy/approval refusal, availability gate, missing prerequisite or
                 // receipt-infrastructure failure is not evidence of low tool competence.
                 // Only an actual executor outcome updates the tool-life learning counters.
