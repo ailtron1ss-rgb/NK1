@@ -103,7 +103,6 @@ export function evaluateContinualLearningHistory(input) {
       finalAverageAccuracy01: mean(finalScores),
       averageForgetting01: mean(forgetting),
       averageBackwardTransfer01: mean(backwardTransfer),
-      taskRetentionRate01: mean(taskReports.map(task => task.finalScore01)),
       memory: resource
     },
     taskReports,
