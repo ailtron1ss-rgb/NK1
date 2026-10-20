@@ -12,7 +12,12 @@ const DEFAULT_MAX_BYTES = 32 * 1024 * 1024;
  * This does not provide cross-process locking, signed provenance, or encryption.
  */
 export class VerifiedOutcomeLedgerFileStore {
-  constructor(private readonly filePath: string, private readonly maxBytes = DEFAULT_MAX_BYTES) {
+  private readonly filePath: string;
+  private readonly maxBytes: number;
+
+  constructor(filePath: string, maxBytes = DEFAULT_MAX_BYTES) {
+    this.filePath = filePath;
+    this.maxBytes = maxBytes;
     if (!filePath.trim() || !Number.isSafeInteger(maxBytes) || maxBytes < 1) {
       throw new Error('invalid ledger file-store configuration');
     }
