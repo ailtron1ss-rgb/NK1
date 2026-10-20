@@ -1,3 +1,9 @@
+## NK1 v2.0 rebuild — autonomous planner gateway route guard (2026-10-20)
+
+- [GUARDED] Added a source-level architecture regression that requires the autonomous resource/tool/life planner to call the canonical OrganismCore execution wrapper, verifies alias canonicalization and ActionGateway delegation, and protects finalizer ownership for keyed versus unkeyed calls.
+- Wired test:workpass97:planner-route into the rebuild cognitive regression workflow.
+- This is a targeted bypass guard, not a full proof that all planner, skill and project paths satisfy EthicalGate/approval policy; direct gateway call sites in those other paths remain under review.
+
 ## NK1 v2.0 rebuild — action finalizer boundary regression (2026-10-20)
 
 - [GUARDED] Added a runtime regression for the canonical ActionGateway finalizer: a fresh keyed execution finalizes once before the completed receipt is returned, replay does not repeat finalization, and finalization failure leaves an unresolved receipt that blocks automatic re-execution.
