@@ -266,7 +266,7 @@ export class OrganismRuntime {
     return {cycles:total,actions,worldTicks:this.environment.snapshot().tick,neuralLearningUpdates:Number(neural.learningUpdates??0),temporalUpdates:Number(neural.temporalUpdates??0),externalCommands:0};
   }
 
-  async step(externalText?: string, options: { deliberate?: boolean; spontaneous?: boolean } = { deliberate: true }): Promise<RuntimeStep> {
+  async step(externalText?: string, options: { deliberate?: boolean; spontaneous?: boolean; signal?: AbortSignal } = { deliberate: true }): Promise<RuntimeStep> {
     return this.enqueue(async () => {
       const stepStartedAt=Date.now();
       let stepCpuStart:any=null;
@@ -391,13 +391,14 @@ export class OrganismRuntime {
     });
   }
 
-  private async generateCognitiveProposal(cycle: OrganismCycleResult, fusedObservation: string, deliberate = false, autonomous = false): Promise<CognitiveProposal|null> {
+  private async generateCognitiveProposal(cycle: OrganismCycleResult, fusedObservation: string, deliberate = false, autonomous = false, signal?: AbortSignal): Promise<CognitiveProposal|null> {
     if (!this.config.enableLanguage || !this.config.languageInvoker) return null;
     const current = this.core.operationalStatusSnapshot();
     const budgetSnapshot = this.core.cognitiveBudgetOperationalSnapshot();
     const shouldAsk = Boolean(fusedObservation.trim()) && (deliberate || (autonomous && current.predictionError > 0.62));
     if (!shouldAsk) return null;
     const request=buildCognitiveProposalPrompt(cycle,fusedObservation,this.core.knownEntityPromptContext('user'),this.core.personalityTraitPromptContext());
+    if(signal) request.signal=signal;
     this.lastContextBudgetLedger = request.contextLedger ?? null;
     const budgetMode = budgetSnapshot?.mode ?? 'shallow';
     if (!deliberate && (budgetMode === 'sleep' || budgetMode === 'defer' || budgetMode === 'reflex')) return null;
@@ -411,13 +412,14 @@ export class OrganismRuntime {
       this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:response.backend,confidence01:.7,payload:{latencyMs:response.latencyMs,role:'cognitive-proposal'}});
       return parseCognitiveProposal(response.text,'llm');
     } catch (error) {
+      if(signal?.aborted) return parseCognitiveProposal('language request cancelled; preserve the current verified state','local-fallback');
       await this.core.recordLanguageFailure(undefined, 0).catch(()=>{});
       this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:'language-failure',confidence01:.15,payload:{role:'cognitive-proposal',message:String((error as any)?.message || error).slice(0,180)}});
       return parseCognitiveProposal('local structured fallback: verify supplied evidence before changing course','local-fallback');
     }
   }
 
-  private async stepInternal(externalText?: string, options: { deliberate?: boolean; spontaneous?: boolean } = {}): Promise<RuntimeStep> {
+  private async stepInternal(externalText?: string, options: { deliberate?: boolean; spontaneous?: boolean; signal?: AbortSignal } = {}): Promise<RuntimeStep> {
     if (!this.initialized) throw new Error('OrganismRuntime.init() must be called first');
     if (externalText) this.embodiment.userActivity();
     let body = await this.embodiment.sample();
@@ -477,7 +479,7 @@ export class OrganismRuntime {
     });
     const activePerceptionRequestId = this.core.activePerceptionPendingId();
     const fusedObservation = modalityEvents.slice(-6).map((x:any)=>`[${x.modality}] ${x.summary}`).join(' | ');
-    const cognitiveProposal = await this.generateCognitiveProposal(cycle, fusedObservation, Boolean(options.deliberate), !externalText);
+    const cognitiveProposal = await this.generateCognitiveProposal(cycle, fusedObservation, Boolean(options.deliberate), !externalText, options.signal);
     if (cognitiveProposal) {
       this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });
     }
@@ -549,6 +551,7 @@ export class OrganismRuntime {
       const request = externalText
         ? buildCognitivePrompt(cycle, transition.after.facts, externalText, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext())
         : buildAutonomousDialoguePrompt(cycle, autonomousAgenda!, transition.after.facts, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext());
+      if(options.signal) request.signal=options.signal;
       this.lastContextBudgetLedger = request.contextLedger ?? null;
       try {
         language = await this.config.languageInvoker(request);
@@ -556,7 +559,9 @@ export class OrganismRuntime {
           this.evidenceBus.publish({ tick: cycle.state.tick, kind: 'model', source: 'autonomous-dialogue-stage', confidence01: .25, payload: { initiativeId: autonomousAgenda.id, staged: false, reason: 'empty-or-stale-initiative' } });
         }
       } catch (error) {
-        if (!externalText && autonomousAgenda) {
+        if(options.signal?.aborted) {
+          this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:'language-cancelled',confidence01:.95,payload:{reason:'caller-aborted',role:'response-generation'}});
+        } else if (!externalText && autonomousAgenda) {
           this.core.deferAutonomousSocialInitiative(autonomousAgenda.id, Date.now());
           this.evidenceBus.publish({ tick: cycle.state.tick, kind: 'model', source: 'autonomous-dialogue-failure', confidence01: .2, payload: { initiativeId: autonomousAgenda.id, reason: String((error as any)?.message ?? error).slice(0, 180) } });
         } else {
