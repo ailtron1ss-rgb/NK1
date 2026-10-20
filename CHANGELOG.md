@@ -1,9 +1,10 @@
 ## WorkPass79 — локальная устойчивость языкового контура (2026-10-20)
 
 - Добавлен отдельный регрессионный набор для канонического `LocalLanguageBackendPolicy`: локальный backend имеет приоритет, ошибка переводит его в cooldown, повторные ошибки увеличивают паузу по ограниченной экспоненте, посторонние сбои не приписываются llama.cpp, успешный ответ сбрасывает breaker.
-- Подключены `test:workpass79:local-language-policy` и агрегирующий `test:workpass79` в runtime `package.json`.
-- Добавлен GitHub Actions workflow `.github/workflows/workpass79-cognitive-regression.yml` для policy-регрессии и HTTP smoke существующего серверного пути с контролируемым локальным провайдером.
-- Проверки в этой среде ещё не запускались: GitHub API-коммиты не исполняют код. Результат Actions должен быть проверен после push/PR; реальный llama.cpp на Dell G3 не проверен.
+- Добавлен тест реального интерфейса `OpenAICompatibleLocalChatProvider`: фактическая идентичность модели, bounded max_tokens/temperature, HTTP 503, malformed JSON, пустой ответ, лимит 2 MiB, timeout AbortSignal и запрет не-loopback endpoint/redirect.
+- Подключены `test:workpass79:local-language-policy`, `test:workpass79:provider-boundary` и агрегирующий `test:workpass79` в runtime `package.json`.
+- Добавлен GitHub Actions workflow `.github/workflows/workpass79-cognitive-regression.yml` для policy-регрессии, границ provider и HTTP smoke существующего серверного пути с контролируемым локальным провайдером.
+- Проверки в этой среде ещё не запускались: GitHub API-коммиты не исполняют код. Результат Actions должен быть проверен на точном актуальном head; реальный llama.cpp на Dell G3 не проверен.
 - Это узкий reliability-pass, не заявление об улучшении качества генерации, когнитивном обучении или готовности организма к релизу.
 
 ---
