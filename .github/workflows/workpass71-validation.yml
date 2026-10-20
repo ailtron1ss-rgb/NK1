@@ -69,6 +69,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:learning-eval-workpass72
       - name: Continual learning retention and transfer regression
         run: npm --prefix runtime/neuro-kurisu run test:learning-history-workpass74
+      - name: Sequential parametric policy retention experiment
+        run: npm --prefix runtime/neuro-kurisu run test:learning-policy-sequence-workpass74
       - name: Validate continual learning history CLI entry point
         run: node --experimental-strip-types runtime/neuro-kurisu/scripts/evaluate-learning-history-workpass74.mjs --help
       - name: Existing bilingual memory recall regression
