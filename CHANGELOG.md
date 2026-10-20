@@ -1,3 +1,13 @@
+## NK1 learning WorkPass101 — holdout provenance, TD calibration and retention probe (2026-10-20)
+
+- [FIXED] P26 separates `trainingExposure01` from `generalizationEvidence01`; updates and in-batch diagnostics no longer count as generalization evidence.
+- [ADDED] `recordVerifiedHoldout(...)` requires task/protocol/verifier/sample-set provenance and independent verification flags, deduplicates evidence IDs and persists the guard across restore. The legacy holdout method is diagnostic-only.
+- [FIXED] Normalized bounded TD targets instead of clipping the unnormalized reward-plus-bootstrap sum, preserving low-reward signal on a [0,1] value scale.
+- [ADDED] A deterministic sequential task-shift benchmark measures old-task retention and new-task plasticity. It exposes a severe forgetting gap: task A was 98.75% before task B, 2.5% after interference, and only 3.75% after three replay passes; task B remained 94.375%.
+- [TUNED] Increased bounded replay correction strength after a retention probe; recovery remains weak, so the overall learning score stays 58/100 rather than claiming real-world improvement.
+- [RESEARCH] Added AgentMemoryBench's online/replay/transfer/repair evaluation dimensions and MemSkill's meta-memory direction to the adaptation roadmap. No third-party code or datasets were copied.
+- [VALIDATION] Exact-head GitHub Actions passed on code head `db5f1a0850d9987ffec3ffe0f449c8ef97fb0c48`; documentation changes trigger a fresh regression run.
+
 ## NK1 learning WorkPass100 follow-up — prevent false generalization evidence (2026-10-20)
 
 - [FIXED] P26 causal replay's same-call train/diagnostic split no longer raises `generalizationEvidence01`; records can have influenced online learning or previous replay, so this split cannot establish independent generalization.
