@@ -17,6 +17,8 @@ assert.ok(Math.abs(summary.forgetting.meanDelta-(-0.1))<1e-12);
 assert.ok(summary.successScore.approximate95CI);
 assert.ok(summary.successScore.approximate95CI[0] < summary.successScore.meanDelta);
 assert.ok(summary.successScore.approximate95CI[1] > summary.successScore.meanDelta);
+assert.ok(summary.successScore.approximate95CI[1] - summary.successScore.approximate95CI[0] > 0.6,
+  'two paired seeds must use the conservative small-sample Student-t interval, not a narrow normal interval');
 assert.equal(summary.unpairedBaselineRuns,0);
 assert.equal(summary.unpairedCandidateRuns,1);
 const onePair=comparePairedContinualRuns(runs.slice(0,2),'baseline','candidate');
