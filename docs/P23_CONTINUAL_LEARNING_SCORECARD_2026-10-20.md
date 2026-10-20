@@ -210,3 +210,12 @@ The gate prevents several common false promotions: tiny samples, positive aggreg
 - Added a local file-store adapter over the checksummed envelope. It writes to a unique same-directory temporary file, syncs the file, atomically renames it into place, attempts directory sync, and cleans up temporary files after failures.
 - Added size caps and a restrictive `0600` mode for the temporary data file. Added round-trip/replacement/size-limit/corrupt-file tests and wired them into the same CI gate and package scripts.
 - Explicit limits: this is single-writer local persistence, not a distributed transaction store. It has no cross-process lock, encryption, authenticated signatures, or trusted evidence retrieval; those must be provided before a production service relies on it.
+
+
+## WorkPass110 — explicit sequential retention/transfer metrics (2026-10-20)
+
+- Added `ContinualLearningMetrics.ts`, a reusable evaluator for a task-by-stage score matrix. It reports final mean score, peak-to-final forgetting, backward transfer, and forward transfer relative to a declared reference policy.
+- Added validation for square task/stage matrices, duplicate task IDs, non-finite/out-of-range scores, and missing pre-training baselines. Forward transfer is `null` when it cannot be computed; it is not imputed.
+- Added a dedicated Node 24 workflow and wired the regression into the full P23 verified-outcome suite.
+- **Scores unchanged:** engineering estimate 57/100; P23 symbolic core 61%; evidence-grounded maturity 36%; lifelong-learning roadmap 30%. This is measurement infrastructure, not proof of actual learning uplift.
+- Next empirical step: connect the evaluator to a same-manifest, same-seed run recorder for context-only, no-replay, recency, surprise, reservoir and multi-timescale conditions; retain per-task raw scores and confidence intervals. Do not use synthetic fixtures as benchmark evidence or enable automatic promotion.
