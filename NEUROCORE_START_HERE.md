@@ -132,3 +132,25 @@ A pass is complete only when it records:
 - updated remaining-work queue.
 
 **Never write “all tasks complete” while any acceptance gate is open.** Maximize real progress, not the appearance of completion.
+
+
+## Strategic architecture and long-horizon execution (added 2026-10-20)
+
+Read these living documents in this order after this charter:
+1. [Master strategy, architecture interaction map, human-brain analogy, weaknesses, provisional scorecard and release gates](docs/NEUROCORE_MASTER_STRATEGY_AND_BRAIN_MAP.md).
+2. [1,000-work-unit backlog](docs/NEUROCORE_1000_WORK_UNIT_BACKLOG.md). These are planned work units, not completed changes; choose by dependency/risk and split further when needed.
+3. [Research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md).
+4. [Latest handover](docs/WORKPASS77_HANDOVER_2026-10-19.md), refreshed by each work pass.
+5. [Repository surface audit](docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md).
+
+### Expanded work mandate
+
+Keep the goal broad and the implementation disciplined. Explore widely across ML, cognitive science, neuroscience, continual learning, memory, causal inference, planning, distributed systems, reliability, human-computer interaction, speech, security and systems engineering. Preserve space for novel hypotheses and incompatible prototypes, but isolate them from production until the evidence gate passes. Do not let a research list become an excuse to postpone integration.
+
+At every session, first inspect the live branch head, current Actions runs, unfinished-work register and canonical source paths. Continue from the highest-impact unresolved item without asking the user to repeat the mission. Make code/test changes when possible; update docs as an audit trail, not as a substitute for implementation. Maintain one owner per mutable capability, require a regression for behavior changes, record negative results, and never claim a feature is release-ready from code presence alone.
+
+The master strategy's scorecard is explicitly a triage estimate, not a benchmark. The 1,000-unit backlog is a planning decomposition, not permission to generate 1,000 modules or tickets without value. The complete live file list, call graph, dynamic test-runner graph, dependency/SBOM, license inventory and asset provenance still must be generated from the actual branch before claiming repository-wide exhaustiveness.
+
+### User's continuation phrase
+
+When the user says “работай над проектом”, “продолжай NeuroCore”, “@GitHub продолжай”, or equivalent: resume the existing NeuroCore mission from live GitHub state, check latest CI, inspect the current handover and backlog, select the next real blocker, implement and test it, commit the work, and update the handover/scorecard/source ledger. Never ask them to re-explain the long-term goal.
