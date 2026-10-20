@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
-import { canonicalOutcomePayload, ingestSignedOutcomeArtifact, outcomePayloadFingerprint, type SignedOutcomePayload } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
+import { canonicalOutcomePayload, ingestSignedOutcomeArtifact, outcomePayloadFingerprint } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');
 const publicPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
@@ -13,7 +13,7 @@ const manifest = [{
 }];
 const ledger = new VerifiedOutcomeLedger(manifest);
 const keys = new Map([['verifier-ed25519-v1', publicPem]]);
-const makePayload = (overrides: Partial<SignedOutcomePayload> = {}): SignedOutcomePayload => ({
+const makePayload = (overrides = {}) => ({
   schemaVersion: 1, artifactId: 'artifact-001', runId: 'run-001',
   manifestFingerprint: ledger.manifestFingerprint(), taskId: 'holdout-1',
   taskVersion: '3', method: 'candidate', seed: 42, attempt: 1,
