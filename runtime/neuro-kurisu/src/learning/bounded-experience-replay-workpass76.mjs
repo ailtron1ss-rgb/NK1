@@ -141,7 +141,8 @@ export function trainWithExperienceReplay(learner, incomingSamples, buffer, {
   if (!Number.isInteger(replayBatchSize) || replayBatchSize < 0) throw new RangeError("replayBatchSize must be a non-negative integer");
   for (const sample of incomingSamples) buffer.add(sample, { priority: priorityOf(sample) });
   const replayCount = Math.floor(replayBatchSize * replayRatio);
-  const replay = buffer.sample(replayCount).map(entry => ({
+  const replayEntries = buffer.sample(replayCount);
+  const replay = replayEntries.map(entry => ({
     ...entry.sample,
     sampleWeight01: entry.importanceWeight01
   }));
@@ -151,6 +152,6 @@ export function trainWithExperienceReplay(learner, incomingSamples, buffer, {
     incomingSampleCount: incomingSamples.length,
     replaySampleCount: replay.length,
     buffer: buffer.stats,
-    replayIds: buffer.sample(0).map(entry => entry.id)
+    replayIds: replayEntries.map(entry => entry.id)
   };
 }
