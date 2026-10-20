@@ -9,6 +9,7 @@ b.observe({action:'a',contextKey:'baseline-1',outcome01:.2,phase:'baseline'});
 const accepted1=b.observe({action:'a',contextKey:'holdout-1',outcome01:.9,phase:'holdout'});
 assert.equal(accepted1.holdoutEvidenceAccepted,true);
 assert.equal(b.summary().holdoutEligible,false,'one context is not an adequate independent holdout');
+assert.equal(b.summary().gain01,0,'a provisional holdout must not produce a learning-gain score');
 const accepted2=b.observe({action:'a',contextKey:'holdout-2',outcome01:.8,phase:'holdout'});
 const accepted3=b.observe({action:'a',contextKey:'holdout-3',outcome01:.7,phase:'holdout'});
 assert.equal(accepted2.holdoutEvidenceAccepted,true);
@@ -24,6 +25,7 @@ const leaked=b.observe({action:'a',contextKey:'baseline-1',outcome01:1,phase:'ho
 assert.equal(leaked.holdoutEvidenceAccepted,false,'a training context cannot become holdout evidence');
 assert.equal(b.snapshot().holdoutMean01,before,'contaminated holdout must not update the holdout estimate');
 assert.equal(b.summary().holdoutEligible,false);
+assert.equal(b.summary().gain01,0,'contamination must erase the derived gain score');
 const reused=b.observe({action:'a',contextKey:'holdout-1',outcome01:.8,phase:'learning'});
 assert.equal(reused.holdoutEvidenceAccepted,false,'holdout context cannot be reused as training evidence');
 const restored=new SkillAcquisitionBenchmark();restored.restore(b.snapshot());

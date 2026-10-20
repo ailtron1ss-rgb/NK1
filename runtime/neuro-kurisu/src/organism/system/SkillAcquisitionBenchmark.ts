@@ -42,7 +42,8 @@ export class SkillAcquisitionBenchmark{
   if(acceptedHoldout){this.state.holdoutMean01=update(this.state.holdoutMean01,row.outcome01,.22);this.state.acceptedHoldoutSamples++;}
   // Repeated observations of one holdout context are not independent samples.
   const learningGap=this.state.holdoutMean01-this.state.baselineMean01;
-  this.state.gain01=clamp(.9*this.state.gain01+.1*(learningGap>0?learningGap:0));
+  const holdoutEligible=this.state.acceptedHoldoutSamples>=MIN_HOLDOUT_CONTEXTS&&this.state.contaminatedHoldoutSamples===0&&!this.state.contextRegistrySaturated;
+  this.state.gain01=holdoutEligible?clamp(.9*this.state.gain01+.1*(learningGap>0?learningGap:0)):0;
   this.state.lastAt=row.at;
   return {...structuredClone(row),holdoutEvidenceAccepted:acceptedHoldout};
  }

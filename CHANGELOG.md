@@ -1,3 +1,9 @@
+## WorkPass75 — gate derived learning gain on evidence eligibility (2026-10-20)
+- The benchmark now reports zero learning gain until at least three distinct holdout contexts have been accepted without contamination or registry saturation.
+- Any later contamination or registry saturation immediately clears the derived gain score rather than leaving a stale positive estimate visible.
+- Regression assertions cover provisional evidence and post-contamination score reset.
+- This closes a diagnostic false-positive path; it does not establish actual learning uplift.
+
 ## WorkPass74 — outcome-grounded skill mastery (2026-10-20)
 - Removed synthetic mastery growth from autonomous practice cycles: practice now records exposure but does not improve mastery or mark a skill mastered.
 - Skill evaluation requires both verified and independent outcome evidence; only those evaluations update mastery, evaluation counters and aggregate mastery.
