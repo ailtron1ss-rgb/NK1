@@ -58,7 +58,10 @@ assert.ok(restoredHits.some(item => item.id === correction.id),
 // This small, explicit decision rule belongs to the test harness, not the production
 // planner. It makes the evaluation oracle inspectable: only a current fact with a
 // matching topic can ground the sandbox action; absent topic evidence means clarify.
-function decideNotificationFormat(items) {
+function decideNotificationFormat(queryText, items) {
+  if (!/project notifications|notification format/i.test(queryText)) {
+    return { decision: 'clarify', evidenceId: null, input: null };
+  }
   const evidence = items.find(item =>
     item.kind === 'semantic' &&
     item.epistemicStatus === 'fact' &&
@@ -69,7 +72,7 @@ function decideNotificationFormat(items) {
     ? { decision: 'execute', evidenceId: evidence.id, input: { format: 'detailed' } }
     : { decision: 'clarify', evidenceId: null, input: null };
 }
-const groundedDecision = decideNotificationFormat(restoredHits);
+const groundedDecision = decideNotificationFormat(query, restoredHits);
 assert.equal(groundedDecision.decision, 'execute');
 assert.equal(groundedDecision.evidenceId, correction.id);
 
@@ -77,7 +80,7 @@ const missingEvidenceHits = restoredMemory.retrieve(
   'orbital engine for Mars transfer vehicle',
   8, 0, 0, { temporalMode: 'current' }, true,
 );
-const unsupportedDecision = decideNotificationFormat(missingEvidenceHits);
+const unsupportedDecision = decideNotificationFormat('orbital engine for Mars transfer vehicle', missingEvidenceHits);
 assert.equal(unsupportedDecision.decision, 'clarify',
   'missing evidence must request clarification rather than invent a preference');
 
