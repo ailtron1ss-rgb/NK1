@@ -1,0 +1,148 @@
+/**
+ * Paired-seed learning evaluation for NK1.
+ *
+ * This module deliberately evaluates held-out outcomes rather than internal
+ * activity counters. Baseline and candidate must use identical seed IDs.
+ * It never promotes a candidate itself; it returns evidence and explicit gates.
+ */
+
+const finite = (value, label) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new TypeError(`${label} must be a finite number`);
+  }
+  return value;
+};
+
+const mean = values => values.length
+  ? values.reduce((sum, value) => sum + value, 0) / values.length
+  : null;
+
+const sampleVariance = values => {
+  if (values.length < 2) return null;
+  const average = mean(values);
+  return values.reduce((sum, value) => sum + (value - average) ** 2, 0) / (values.length - 1);
+};
+
+function validateRuns(runs, label) {
+  if (!Array.isArray(runs) || runs.length < 2) {
+    throw new TypeError(`${label} must contain at least two held-out runs`);
+  }
+  const seen = new Set();
+  for (const [index, run] of runs.entries()) {
+    if (!run || (typeof run.seed !== "string" && typeof run.seed !== "number")) {
+      throw new TypeError(`${label}[${index}].seed is required`);
+    }
+    const seed = String(run.seed);
+    if (seen.has(seed)) throw new Error(`${label} contains duplicate seed: ${seed}`);
+    seen.add(seed);
+    finite(run.reward, `${label}[${index}].reward`);
+    finite(run.regret, `${label}[${index}].regret`);
+    finite(run.latencyMs, `${label}[${index}].latencyMs`);
+    if (run.latencyMs < 0 || run.regret < 0) throw new RangeError("latencyMs and regret must be non-negative");
+    if (typeof run.success !== "boolean") throw new TypeError(`${label}[${index}].success must be boolean`);
+    if (run.confidence != null) {
+      const confidence = finite(run.confidence, `${label}[${index}].confidence`);
+      if (confidence < 0 || confidence > 1) throw new RangeError("confidence must be in [0, 1]");
+      if (typeof run.correct !== "boolean") throw new TypeError("correct must be boolean when confidence is supplied");
+    }
+    if (run.memoryBytes != null && finite(run.memoryBytes, "memoryBytes") < 0) {
+      throw new RangeError("memoryBytes must be non-negative");
+    }
+  }
+  return new Map(runs.map(run => [String(run.seed), run]));
+}
+
+function summarize(runs) {
+  const calibrated = runs.filter(run => run.confidence != null);
+  return {
+    n: runs.length,
+    taskSuccessRate: mean(runs.map(run => Number(run.success))),
+    meanReward: mean(runs.map(run => run.reward)),
+    meanRegret: mean(runs.map(run => run.regret)),
+    meanLatencyMs: mean(runs.map(run => run.latencyMs)),
+    meanMemoryBytes: runs.some(run => run.memoryBytes != null)
+      ? mean(runs.filter(run => run.memoryBytes != null).map(run => run.memoryBytes))
+      : null,
+    brierScore: calibrated.length
+      ? mean(calibrated.map(run => (run.confidence - Number(run.correct)) ** 2))
+      : null,
+    calibrationCoverage: calibrated.length / runs.length
+  };
+}
+
+/**
+ * Compare candidate and baseline on the same immutable holdout seed IDs.
+ * Positive reward delta is better; negative regret and latency deltas are better.
+ * The normal-approximation interval is reported as descriptive evidence only;
+ * for small seed counts use additional seeds / a bootstrap before promotion.
+ */
+export function evaluatePairedLearningRuns({
+  baseline,
+  candidate,
+  minimumRewardUplift = 0,
+  maximumSuccessRateDrop = 0,
+  maximumRegretIncrease = 0,
+  maximumLatencyIncreaseRatio = 0.1
+}) {
+  const baseBySeed = validateRuns(baseline, "baseline");
+  const candidateBySeed = validateRuns(candidate, "candidate");
+  const baseSeeds = [...baseBySeed.keys()].sort();
+  const candidateSeeds = [...candidateBySeed.keys()].sort();
+  if (baseSeeds.length !== candidateSeeds.length ||
+      baseSeeds.some((seed, index) => seed !== candidateSeeds[index])) {
+    throw new Error("baseline and candidate must use exactly the same paired holdout seeds");
+  }
+  if (typeof minimumRewardUplift !== "number" || !Number.isFinite(minimumRewardUplift)) {
+    throw new TypeError("minimumRewardUplift must be finite");
+  }
+
+  const paired = baseSeeds.map(seed => ({
+    seed,
+    rewardDelta: candidateBySeed.get(seed).reward - baseBySeed.get(seed).reward,
+    regretDelta: candidateBySeed.get(seed).regret - baseBySeed.get(seed).regret,
+    successDelta: Number(candidateBySeed.get(seed).success) - Number(baseBySeed.get(seed).success),
+    latencyDelta: candidateBySeed.get(seed).latencyMs - baseBySeed.get(seed).latencyMs
+  }));
+  const rewardDeltas = paired.map(row => row.rewardDelta);
+  const rewardMean = mean(rewardDeltas);
+  const variance = sampleVariance(rewardDeltas);
+  const standardError = variance == null ? null : Math.sqrt(variance / rewardDeltas.length);
+  const halfWidth95 = standardError == null ? null : 1.96 * standardError;
+  const baselineSummary = summarize(baseline);
+  const candidateSummary = summarize(candidate);
+  const successRateDelta = candidateSummary.taskSuccessRate - baselineSummary.taskSuccessRate;
+  const regretDelta = candidateSummary.meanRegret - baselineSummary.meanRegret;
+  const latencyRatio = baselineSummary.meanLatencyMs > 0
+    ? candidateSummary.meanLatencyMs / baselineSummary.meanLatencyMs - 1
+    : (candidateSummary.meanLatencyMs === 0 ? 0 : null);
+
+  const gates = {
+    pairedHoldoutComplete: true,
+    minimumSampleCount: paired.length >= 10,
+    rewardUpliftObserved: rewardMean >= minimumRewardUplift,
+    rewardIntervalExcludesZero: halfWidth95 != null && rewardMean - halfWidth95 > 0,
+    taskSuccessNonInferior: successRateDelta >= -Math.abs(maximumSuccessRateDrop),
+    regretNonInferior: regretDelta <= Math.abs(maximumRegretIncrease),
+    latencyWithinBudget: latencyRatio != null && latencyRatio <= maximumLatencyIncreaseRatio
+  };
+  return {
+    schemaVersion: 1,
+    promotionEligible: Object.values(gates).every(Boolean),
+    interpretation: "Descriptive evaluation only; no automatic model or policy promotion.",
+    sampleCount: paired.length,
+    baseline: baselineSummary,
+    candidate: candidateSummary,
+    paired: {
+      rewardDeltaMean: rewardMean,
+      rewardDeltaStandardError: standardError,
+      rewardDeltaApprox95CI: halfWidth95 == null
+        ? null
+        : [rewardMean - halfWidth95, rewardMean + halfWidth95],
+      successRateDelta,
+      regretDelta,
+      latencyRatio
+    },
+    gates,
+    pairedSeeds: baseSeeds
+  };
+}
