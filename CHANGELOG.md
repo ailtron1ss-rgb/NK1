@@ -915,3 +915,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Corrected the causal-stream regression contract after WorkPass80 extended the learning packet to include accepted external events: the fixture now expects both the runtime outcome and the external event, and checks their stable trace identities.
 - Added an explicit restart assertion: replaying the same external trace ID after snapshot/restore is rejected, even if the attempted duplicate carries stronger reward/success values.
 - This is a test-contract correction and persistence regression, not a claim of improved model performance. WorkPass80 CI had passed runtime typecheck and preceding learning checks but failed at this stale one-record assertion; the WorkPass81 rerun must confirm the fix.
+
+## WorkPass 82 — prevent repeated-domain curriculum starvation (2026-10-20)
+
+- Fixed a curriculum-selection edge case: an exact requested domain previously overrode round-robin rotation indefinitely, even after its skill track was deferred for lack of verified mastery evidence.
+- When the most recent track was deferred and the same domain is requested again, selection now advances to the next available domain; normal exact-domain preference remains when it does not repeat the deferred domain.
+- Added a regression where the requested domain is itself present in the candidate list, which the earlier rotation test did not cover.
+- Research alignment: AgentMemoryBench evaluates online learning, replay/forgetting, transfer and repair; LifelongAgentBench highlights skill-grounded interdependent tasks and the weakness of indiscriminate replay. NK1 should extend toward those trajectories instead of treating heartbeat/practice counts as learning. No benchmark uplift is claimed by this code change.
