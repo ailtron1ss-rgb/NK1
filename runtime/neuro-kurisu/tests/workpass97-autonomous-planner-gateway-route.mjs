@@ -21,4 +21,15 @@ assert.match(wrapper, /finalizeToolOutcome\(canonicalId, input, reason, result, 
 assert.match(wrapper, /options\.idempotencyKey \|\| result\.idempotentReplay/,
   'keyed execution and replay must not be finalized twice by the wrapper');
 
-console.log('NK1_AUTONOMOUS_PLANNER_GATEWAY_ROUTE=PASS plannerUsesCoreWrapper=true canonicalGateway=true finalizerOwnership=true');
+
+const projectStart = source.indexOf('const reconcileExistingOperation =');
+assert.notEqual(projectStart, -1, 'project execution/reconciliation path must remain identifiable');
+const projectEnd = source.indexOf('const unresolvedReceipt = [', projectStart);
+assert.ok(projectEnd > projectStart, 'project execution path must have an explicit receipt outcome boundary');
+const projectDispatch = source.slice(projectStart, projectEnd);
+assert.match(projectDispatch, /result = await this\.executeTool\(id, input, executionReason, executionOptions\)/,
+  'fresh project tool execution must use the canonical core wrapper so unkeyed outcomes are finalized');
+assert.doesNotMatch(projectDispatch, /actionGateway\.executeTool\(id, input, executionReason, executionOptions\)/,
+  'project executor must not bypass the canonical core finalizer for fresh tool execution');
+
+console.log('NK1_AUTONOMOUS_PLANNER_GATEWAY_ROUTE=PASS plannerUsesCoreWrapper=true projectUsesCoreWrapper=true canonicalGateway=true finalizerOwnership=true');
