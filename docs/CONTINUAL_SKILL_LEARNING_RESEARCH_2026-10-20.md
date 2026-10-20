@@ -18,18 +18,21 @@
    - Paper: https://arxiv.org/abs/2305.16291
    - MIT-licensed upstream implementation: https://github.com/MineDojo/Voyager
 
-## Changes implemented in WorkPass95
+## Changes implemented through WorkPass96
 
 - `P23LearningEngine.skillBias()` now supports **bounded nearest-context transfer** when no exact context skill exists. Transfer requires a promoted skill, at least four held-out validation examples, validation success of at least 0.70 and confidence of at least 0.4. The source and target must match in at least five of six normalized state buckets.
 - Transfer influence is deliberately smaller than exact-context influence and scales with validation support and context similarity. Dissimilar contexts receive no transferred bias. This is a conservative inductive bias, not a claim of universal skill transfer.
 - `ParametricPolicyLearner.restore()` now replaces non-finite persisted weights/biases with zero instead of allowing NaN/Infinity to poison future predictions.
 - Both parametric training entry points now sanitize non-finite learning rates and sample weights before gradient updates.
-- P23 and P26 regressions now exercise near-context transfer, distant-context rejection, malformed restored parameters and non-finite training controls.
+- P23 regressions now exercise positive near-context transfer, distant-context rejection, conservative negative transfer, skill aging/forgetting, and rollback after validation deterioration.
+- P26's fixed synthetic holdout suite trains on a deterministic state/action dataset and evaluates generalization on a separate deterministic set; the test enforces >90% action accuracy and finite model state after malformed inputs.
+- The P23 integration test is wired into CI to cover core feedback, explicit replay, checksums and persistence across restart.
+- Exact-context skill influence decays with a 30-day half-life and expires after 180 days without fresh validation; rejected-skill negative transfer remains bounded and returns a true zero when absent.
 - A dedicated GitHub Actions workflow runs runtime typecheck, P23/P26 learning regressions, predictive-transfer regression and personal-curriculum regression.
 
 ## Deliberate limits / next research steps
 
 - No upstream source code was copied in this pass; the work adapts specific design principles. Any future code import requires file-level license/provenance review.
 - The existing P23 reward/validation model is not yet a substitute for an independent real-world task verifier. Future promotion should increasingly depend on trustworthy outcomes, held-out tasks, retention after delay, transfer to new contexts, efficiency/cost and rollback after regressions.
-- Add replay sampling that prevents frequent easy contexts from dominating rare high-value experiences; measure performance before/after learning on fixed held-out task suites; track retention and negative transfer; separate skill artifact quality from skill-use rate and task success; test persistence/restart behavior.
+- Still open: externally grounded outcome verification before promotion, balanced/prioritized replay for large queues, and benchmark suites using real environment/tool outcomes. Current holdout tasks are deterministic synthetic tests, not evidence of real-world task success.
 - Do not count a skill as a capability improvement merely because it was written, promoted or invoked. Require outcome improvement against a baseline and report uncertainty/sample counts.
