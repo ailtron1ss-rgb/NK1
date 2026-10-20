@@ -27,6 +27,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Verify Live2D expression transitions do not restart unchanged expressions
+        run: node app/scripts/test-live2d-expression-cache.mjs
       - name: Validate runtime cognitive-cycle boundary contract
         working-directory: runtime/neuro-kurisu
         run: npm run test:cognitive-cycle-boundary
