@@ -1,7 +1,7 @@
 ## NK1 v2.0 rebuild — legacy avatar storage hardening (2026-10-20)
 
 - [FIXED] LegacySpriteDeck no longer accesses `window.localStorage` directly; optional outfit preference read/write failures now fall back safely instead of breaking the avatar.
-- Added three regression tests for unavailable storage, throwing reads/writes and normal persistence; added `test:avatar-storage` and wired the test into rebuild CI.
+- Added four regression tests for unavailable storage, throwing reads/writes, normal persistence and component wiring; added `test:avatar-storage` and wired the test into rebuild CI.
 - Checkpoint: [avatar storage hardening](docs/REBUILD_CHECKPOINT_AVATAR_STORAGE_2026-10-20.md). Browser-level rendering and real device acceptance remain open.
 
 ## NK1 v2.0 rebuild — stage 1 core boundary (2026-10-20)
