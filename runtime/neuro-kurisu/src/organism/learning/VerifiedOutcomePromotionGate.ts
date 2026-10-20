@@ -72,6 +72,8 @@ export function evaluateOutcomePromotion(
     else if (item.absoluteGain < -cfg.maxFamilyRegression) reasons.push(`family-regression:${item.family}`);
     return { family: item.family, pairedN: item.pairedN, gain: item.absoluteGain, eligible };
   });
+  const familyPairTotal = familyResults.reduce((sum, item) => sum + (Number.isSafeInteger(item.pairedN) && item.pairedN > 0 ? item.pairedN : 0), 0);
+  if (familyPairTotal !== aggregate.pairedN) reasons.push('family-pair-count-mismatch');
   const worstFamilyGain = familyResults.length
     ? Math.min(...familyResults.map((item) => item.gain))
     : null;
