@@ -34,7 +34,7 @@ Execution branch: rebuild. Stable branch: main (do not modify as part of island 
 - Exit: traceable initiatives plus a 24-hour soak with at least three valid initiatives; no synthetic timer claim substituted.
 
 ## Stage 4 — embodiment
-- [ ] Fix repeated expression application and unsafe localStorage access from WorkPass94 findings.
+- [x] Fix repeated Live2D expression application: cache the last mapped expression and apply only on transitions; regression is wired into CI (exact-head result pending).\n- [ ] Make LegacySpriteDeck localStorage access fail-safe.
 - [ ] Unify correlation/cancellation across browser TTS and Android/Termux speech while preserving provider identity.
 - [ ] Test speech interruption, iframe remount, visibility, stale messages and asset hydration.
 - [ ] Run browser E2E, real audio and target-device tests separately.
