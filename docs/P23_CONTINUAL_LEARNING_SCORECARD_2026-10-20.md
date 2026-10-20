@@ -104,3 +104,13 @@ Added `tests/p23-replay-strategy-benchmark.mjs` and `.github/workflows/workpass9
 - **Next experiment:** on identical versioned task streams, compare infinite, 1k, 100, and 10 tick half-lives alongside 16/32/48 recent quotas; report independently verified success, old-task retention, forward transfer, replay composition, latency and memory with paired uncertainty intervals.
 - **Current status:** IMPLEMENTED; exact-head CI pending. No production default change and no uplift claim.
 
+
+
+## Research update — 2026-10-20
+
+- [Distribution-aware sampling of replay buffer for mitigating catastrophic forgetting](https://www.sciencedirect.com/science/article/pii/S0020160026005712), published 15 Oct 2026, reports state-action-space-aware sampling outperforming the compared alternatives in its evaluated setting. Adaptation for NK1: measure state/action coverage and task retention together; the current stratum representative selector is a lightweight hypothesis, not an implementation of the paper's clustering method.
+- [Prioritized Model Experience Replay (ICML 2026)](https://proceedings.mlr.press/v306/tao26c.html) argues that globally low model error may still hide policy-relevant local error under distribution shift. Adaptation: prioritize only where policy-relevant prediction error is available and independently measured; NK1 does not currently have the model-based transition learner needed to reproduce PMER.
+- [Revisiting Replay and Gradient Alignment for Continual Pre-Training of Large Language Models (Lifelong Learning Agents 2026)](https://proceedings.mlr.press/v330/abbes26a.html) evaluates replay and gradient alignment at large language-model scale. Adaptation: use its comparison framing, not its gradients or reported scores; NK1's symbolic replay selector and small parametric policy are not directly comparable to 100B-token model pretraining.
+- [Improvements to dark experience replay and reservoir sampling](https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2026.1649239/full) is open access (CC BY) and studies consolidation/plasticity balance. Candidate next step: implement reservoir sampling as a separate baseline and test order sensitivity before considering any code reuse; no upstream code copied in WorkPass101.
+
+**Decision:** keep the recent-quota default and age half-life disabled. The latest work adds a controlled parameter sweep; only verifier-grounded task success, old-task retention, transfer and uncertainty intervals can justify changing defaults. Paper results from neural RL/LLM settings are not NK1 results.
