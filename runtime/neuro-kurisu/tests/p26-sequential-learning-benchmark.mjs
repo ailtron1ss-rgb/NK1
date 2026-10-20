@@ -40,13 +40,13 @@ const makeRun=(strategy)=>{
   const taskABefore=evalTask(engine,0);
   const taskB=rows(1);
   const replayRows=taskA.flatMap(row=>actions.map(action=>({...row,action,reward:targetA(row.state,action)})));
-  let replayUpdates=0,onlineUpdates=0;
+  let replayUpdates=0,onlineUpdates=0,blockedReplayRows=0,eligibleReplayRows=0;
   if(strategy==='interleaved'){
     // Same task-B stream, with bounded old-task rehearsal during learning.
     for(let epoch=0;epoch<8;epoch++){
       const fresh=taskB.flatMap(row=>actions.map(action=>({...row,action,reward:targetB(row.state,action)})));
       const result=engine.trainInterleaved(fresh,replayRows,{replayEveryNCurrent:16,maxReplayUpdates:160,targetMode:'reward',currentLearningRate01:.18});
-      replayUpdates+=result.replayUpdates;onlineUpdates+=result.onlineUpdates;
+      replayUpdates+=result.replayUpdates;onlineUpdates+=result.onlineUpdates;blockedReplayRows+=result.blockedReplayRows;eligibleReplayRows+=result.eligibleReplayRows;
     }
   }else{
     train(engine,taskB,1);
@@ -59,7 +59,7 @@ const makeRun=(strategy)=>{
   }
   const taskAAfterReplay=evalTask(engine,0);
   const taskBFinal=evalTask(engine,1);
-  return {strategy,taskABefore,taskAAfterInterference,taskAAfterReplay,taskBFinal,onlineUpdates,replayUpdates,trainingExposure01:engine.metrics().trainingExposure01,generalizationEvidence01:engine.metrics().generalizationEvidence01};
+  return {strategy,taskABefore,taskAAfterInterference,taskAAfterReplay,taskBFinal,onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows,trainingExposure01:engine.metrics().trainingExposure01,generalizationEvidence01:engine.metrics().generalizationEvidence01};
 };
 const onlineOnly=makeRun('online-only');
 const replay=makeRun('posthoc-replay');
