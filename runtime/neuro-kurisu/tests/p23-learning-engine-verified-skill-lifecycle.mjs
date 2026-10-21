@@ -28,7 +28,9 @@ engine.approveVerifiedSkillCandidate(candidate.candidateId, {
 });
 assert.ok(engine.skillBias(state, 'reflect') > 0, 'only an explicitly approved active version reaches the runtime resolver');
 assert.equal(engine.topSkills().length, 1);
+assert.equal(engine.snapshot().metrics.skillPromotions, 1);
 engine.rollbackVerifiedSkillCandidate(candidate.candidateId, 1, Date.now());
 assert.equal(engine.skillBias(state, 'reflect'), 0, 'rollback immediately removes the versioned skill from action bias');
 assert.equal(engine.topSkills().length, 0);
+assert.equal(engine.snapshot().metrics.skillPromotions, 0);
 console.log('P23_LEARNING_ENGINE_VERIFIED_SKILL_LIFECYCLE=PASS');
