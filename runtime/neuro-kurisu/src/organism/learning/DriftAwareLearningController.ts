@@ -2,9 +2,14 @@ import type { ReplayExperience, ReplayTrainingReport } from './ContinualReplayBu
 import { ContinualReplayBuffer, trainWithExperienceReplay } from './ContinualReplayBuffer.ts';
 import type { ParametricPolicyLearner } from './ParametricPolicyLearner.ts';
 import { AdaptiveWindowDriftDetector, type AdaptiveWindowOptions, type AdaptiveWindowSnapshot } from './AdaptiveWindowDriftDetector.ts';
+import { PageHinkleyDriftDetector, type PageHinkleyOptions, type PageHinkleySnapshot } from './PageHinkleyDriftDetector.ts';
+
+export type DriftDetectorKind = 'adaptive-window' | 'page-hinkley' | 'either';
 
 export interface DriftAwareTrainingOptions {
   detector?: AdaptiveWindowOptions;
+  pageHinkley?: PageHinkleyOptions;
+  detectorKind?: DriftDetectorKind;
   driftReplayMultiplier?: number;
   alpha?: number;
   beta?: number;
@@ -16,6 +21,9 @@ export interface DriftAwareTrainingReport {
     detections: number;
     width: number;
     heldOutError01: number;
+    kind: DriftDetectorKind;
+    adaptiveWindowDetected: boolean;
+    pageHinkleyDetected: boolean;
   };
   replay: ReplayTrainingReport;
   selectedPolicy: 'balanced-stable' | 'prioritized-after-drift';
@@ -23,20 +31,24 @@ export interface DriftAwareTrainingReport {
 }
 
 /**
- * Connects trusted held-out evaluation to the existing replay trainer.
- *
- * Stable evaluation keeps task-balanced replay. When the adaptive-window
- * detector signals a shift in held-out error, the next training call uses
- * prioritized replay (high prediction-error examples rise in sampling chance)
- * and a bounded larger replay batch. This is a recommendation/control seam,
- * not a replacement for the trusted evaluator that supplies quality01.
+ * Converts trusted held-out quality to error and chooses replay policy.
+ * Adaptive-window mode is the conservative default. Page-Hinkley is a
+ * constant-memory alternative for mean shifts; "either" trades sensitivity
+ * for potentially more false alarms, so it must be validated on held-out data.
  */
 export class DriftAwareLearningController {
   private readonly detector: AdaptiveWindowDriftDetector;
+  private readonly pageHinkley: PageHinkleyDriftDetector;
+  private readonly detectorKind: DriftDetectorKind;
   private readonly driftReplayMultiplier: number;
 
   constructor(options: DriftAwareTrainingOptions = {}) {
     this.detector = new AdaptiveWindowDriftDetector(options.detector);
+    this.pageHinkley = new PageHinkleyDriftDetector(options.pageHinkley);
+    this.detectorKind = options.detectorKind ?? 'adaptive-window';
+    if (!['adaptive-window', 'page-hinkley', 'either'].includes(this.detectorKind)) {
+      throw new RangeError('drift-detector-kind-invalid');
+    }
     const multiplier = options.driftReplayMultiplier ?? 1.5;
     if (!Number.isFinite(multiplier) || multiplier < 1 || multiplier > 4) {
       throw new RangeError('drift-replay-multiplier-out-of-range');
@@ -61,12 +73,20 @@ export class DriftAwareLearningController {
       throw new RangeError('drift-replay-batch-invalid');
     }
 
-    // Convert quality to error so rising held-out error is a positive drift.
-    const observation = this.detector.update(1 - input.heldOutQuality01);
-    const replayBatchSize = observation.driftDetected
+    const error = 1 - input.heldOutQuality01;
+    const adaptive = this.detector.update(error);
+    const pageHinkley = this.pageHinkley.update(error);
+    const adaptiveWindowDetected = adaptive.driftDetected;
+    const pageHinkleyDetected = pageHinkley.driftDetected;
+    const driftDetected = this.detectorKind === 'adaptive-window'
+      ? adaptiveWindowDetected
+      : this.detectorKind === 'page-hinkley'
+        ? pageHinkleyDetected
+        : adaptiveWindowDetected || pageHinkleyDetected;
+    const replayBatchSize = driftDetected
       ? Math.min(input.buffer.capacity, Math.ceil(input.replayBatchSize * this.driftReplayMultiplier))
       : Math.min(input.buffer.capacity, input.replayBatchSize);
-    const replayStrategy = observation.driftDetected ? 'prioritized' : 'balanced';
+    const replayStrategy = driftDetected ? 'prioritized' : 'balanced';
     const replay = trainWithExperienceReplay(
       input.learner,
       input.buffer,
@@ -78,32 +98,66 @@ export class DriftAwareLearningController {
         ...(input.beta === undefined ? {} : { beta: input.beta }),
       },
     );
+    const chosenEstimate = this.detectorKind === 'page-hinkley'
+      ? pageHinkley.mean
+      : adaptive.estimation;
     return {
       detector: {
-        driftDetected: observation.driftDetected,
-        detections: observation.detections,
-        width: observation.width,
-        heldOutError01: observation.estimation ?? 0,
+        driftDetected,
+        detections: this.detector.nDetections + this.pageHinkley.nDetections,
+        width: adaptive.width,
+        heldOutError01: chosenEstimate ?? 0,
+        kind: this.detectorKind,
+        adaptiveWindowDetected,
+        pageHinkleyDetected,
       },
       replay,
-      selectedPolicy: observation.driftDetected ? 'prioritized-after-drift' : 'balanced-stable',
+      selectedPolicy: driftDetected ? 'prioritized-after-drift' : 'balanced-stable',
       replayBatchSize,
     };
   }
 
-  snapshot(): { version: 1; detector: AdaptiveWindowSnapshot; driftReplayMultiplier: number } {
-    return { version: 1, detector: this.detector.snapshot(), driftReplayMultiplier: this.driftReplayMultiplier };
+  snapshot(): {
+    version: 2;
+    detector: AdaptiveWindowSnapshot;
+    pageHinkley: PageHinkleySnapshot;
+    detectorKind: DriftDetectorKind;
+    driftReplayMultiplier: number;
+  } {
+    return {
+      version: 2,
+      detector: this.detector.snapshot(),
+      pageHinkley: this.pageHinkley.snapshot(),
+      detectorKind: this.detectorKind,
+      driftReplayMultiplier: this.driftReplayMultiplier,
+    };
   }
 
   restore(raw: unknown): void {
     if (!raw || typeof raw !== 'object') throw new TypeError('drift-controller-snapshot-invalid');
-    const snapshot = raw as { version?: number; detector?: AdaptiveWindowSnapshot; driftReplayMultiplier?: number };
-    if (snapshot.version !== 1 || !snapshot.detector ||
+    const snapshot = raw as {
+      version?: number;
+      detector?: AdaptiveWindowSnapshot;
+      pageHinkley?: PageHinkleySnapshot;
+      detectorKind?: DriftDetectorKind;
+      driftReplayMultiplier?: number;
+    };
+    if (snapshot.version !== 2 || !snapshot.detector || !snapshot.pageHinkley ||
+        snapshot.detectorKind !== this.detectorKind ||
         snapshot.driftReplayMultiplier !== this.driftReplayMultiplier) {
       throw new TypeError('drift-controller-snapshot-invalid');
     }
+    // Validate both snapshots before mutating either state.
+    const adaptiveProbe = new AdaptiveWindowDriftDetector(this.detector.options);
+    const pageHinkleyProbe = new PageHinkleyDriftDetector(this.pageHinkley.options);
+    adaptiveProbe.restore(snapshot.detector);
+    pageHinkleyProbe.restore(snapshot.pageHinkley);
     this.detector.restore(snapshot.detector);
+    this.pageHinkley.restore(snapshot.pageHinkley);
   }
 
-  reset(): void { this.detector.reset(); }
+  reset(): void {
+    this.detector.reset();
+    this.pageHinkley.reset();
+  }
 }
