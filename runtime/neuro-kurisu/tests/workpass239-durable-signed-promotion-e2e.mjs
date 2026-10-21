@@ -3,7 +3,6 @@ import { generateKeyPairSync, sign } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { AtomicFileTrustedSkillShadowRunRegistry } from '../src/organism/learning/TrustedSkillShadowRunRegistry.ts';
 import { createVerifiedSkillLifecycleBootstrap } from '../src/organism/learning/VerifiedSkillLifecycleBootstrap.ts';
 import { signOutcomePayloadForFixture, ingestSignedOutcomeArtifact } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
@@ -18,7 +17,6 @@ import {
 } from '../src/organism/learning/VerifiedSkillShadowEvidence.ts';
 
 const root = mkdtempSync(join(tmpdir(), 'nk1-workpass239-e2e-'));
-const fingerprint = (char) => char.repeat(64);
 try {
   const verifier = generateKeyPairSync('ed25519');
   const verifierPublic = verifier.publicKey.export({ type: 'spki', format: 'pem' }).toString();
