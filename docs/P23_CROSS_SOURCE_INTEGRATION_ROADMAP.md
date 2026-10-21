@@ -1,6 +1,6 @@
 # Neuro Kurisu — cross-source learning integration roadmap
 
-Latest implementation checkpoint: WorkPass237 (promotion now requires matched independent baseline/candidate envelopes); code is committed on the current draft PR branch, but execution results remain unverified.
+Latest implementation checkpoint: WorkPass239 (race-safer durable registry lock recovery plus restart/replay/authenticated-promotion end-to-end regression); code is committed on the current draft PR branch, but execution results remain unverified.
 
 Scope: continue integrating mechanisms into the existing P23 learning/revision lifecycle. This is an implementation queue, not a promise that upstream mechanisms are already integrated. Preserve the current branch/PR boundary; do not merge to the default branch without explicit approval.
 
@@ -263,3 +263,16 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **DONE (integration):** the existing workflow step/path filters already run the registry regression; the canonical `audit:p23:cross-source-replay` aggregate now also includes it.
 - **PARTIAL (validation):** test/typecheck and exact-head Actions have not been run/observed in this pass.
 - **OPEN:** verify on an actual runner; add a subprocess crash/restart integration case for the full signed-receipt → registry resolution → candidate-store activation path, including duplicate receipt/replay rejection under authenticated approval.
+
+
+### WorkPass239 — durable signed promotion across restart, with replay rejection (2026-10-21)
+
+- **DONE (code):** hardened trusted-run registry stale-lock recovery with a unique quarantine path, exact-content recheck, exclusive reacquisition, and an owner token so cleanup cannot unlink a replacement lock. Ambiguous ownership remains fail-closed.
+- **DONE (integration):** added an end-to-end regression that builds a proposal from signed manifest-bound paired outcomes, stages the candidate in the durable store, registers trusted execution contexts, ingests three candidate-bound signed shadow receipts, restarts both authorities, rejects receipt replay, verifies a detached Ed25519 approval, promotes by active-version CAS, and reconstructs/re-authenticates the active state after another restart.
+- **DONE (P1/P3 bridge):** the test exercises existing paired outcome evidence, task/seed/manifest/runtime-bound shadow receipts, persistent registry/store recovery, duplicate-run rejection, signed authorization and active-state reconstruction without introducing a second learner or registry.
+- **DONE (CI wiring):** registered `test:workpass239:durable-signed-promotion-e2e`, added it to `audit:p23:cross-source-replay`, and added an explicit continual-learning workflow step/path filter.
+- **PARTIAL (P0):** this closes the durable evidence → authenticated approval → activation segment. The production host still must provide and wire the actual generator, isolated sandbox executor, independent verifier and safety scanner; the test's signing keys are generated fixtures and are not production authority.
+- **PARTIAL (P1):** restart, receipt replay and repeated-promotion rejection are now covered in one flow. Multi-process crash/kill contention and end-to-end matched baseline/candidate execution through a real host sandbox still require execution evidence.
+- **PARTIAL (P2):** reuse the existing P23 process supervisor, runtime scheduler, Hermes receipt binding and SkillLearnBench gate; no third-party execution framework was vendored. Real host-owned sandbox/verifier/scanner provisioning remains OPEN rather than being simulated.
+- **PARTIAL (P3):** signed outcomes and candidate provenance now traverse a durable restart path; retention, transfer and capability-ablation experiments still need real task suites and bounded compute budgets before any learning-uplift claim.
+- **Validation:** code and workflow are committed, but this pass did not execute the new test or typecheck. Do not mark it PASS until exact-head CI runs the step successfully.
