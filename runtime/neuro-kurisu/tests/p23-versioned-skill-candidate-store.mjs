@@ -105,7 +105,7 @@ assert.equal(store.snapshot().candidates.find(item => item.candidateId === c2.ca
 assert.throws(() => store.rollback(c2.candidateId, 2), /currently promoted/);
 
 // The production-safe default denies promotion even if a caller fabricates plausible audit fields.
-const denyStore = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence());
+const denyStore = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => false, () => true); // allow fixture shadow rows while testing default-deny approval
 const denyCandidate = denyStore.stageCandidate(proposal('deny'), 'deny-by-default', { instruction: 'must not activate' });
 for (let i=1;i<=3;i++) denyStore.recordShadowObservation(denyCandidate.candidateId, {
   runId: 'deny-shadow-'+i, evidenceFingerprint: (i+6).toString().repeat(64), passed: true, observedAt: Date.now(),
