@@ -1033,7 +1033,8 @@ export class OrganismRuntime {
     generate:(request:Parameters<Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[5]>[0] & {
       repairEvidence:ReturnType<OrganismRuntime['compoundSkillRepairEvidence']>;
     })=>Promise<unknown>|unknown;
-    options?:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[6];
+    evaluateRevisedCandidate:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[6];
+    options?:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[7];
   }){
     if(!input?.engine || typeof input.engine.generateAndStageReflectiveSkillRevision!=='function') {
       throw new Error('configured P23 learning engine is required');
@@ -1045,7 +1046,8 @@ export class OrganismRuntime {
     }
     const result=await input.engine.generateAndStageReflectiveSkillRevision(
       input.proposal,input.skillId,input.sourceCandidateId,input.baseline,input.candidateEvaluation,
-      request=>input.generate({...request,repairEvidence:structuredClone(repairEvidence)}),input.options,
+      request=>input.generate({...request,repairEvidence:structuredClone(repairEvidence)}),
+      input.evaluateRevisedCandidate,input.options,
     );
     await this.journal.write('info','runtime.p23.compound-repair-revision.staged',{
       skillId:input.skillId,sourceCandidateId:input.sourceCandidateId,candidateId:result.candidate.candidateId,
