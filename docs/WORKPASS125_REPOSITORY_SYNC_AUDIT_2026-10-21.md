@@ -8,14 +8,14 @@
 
 **Stage 1 result: source topology mapped; safe integration route established; no unverified branch was merged into `main`.**
 
-The repository is deliberately split into a small release/metadata `main` branch and a full source tree on `workpass70-source`, with later work arranged as a stacked draft-PR chain. The `main` tree has 12 paths; the WorkPass124 tree has 10,301 paths. GitHub's compare endpoint reports no common ancestor between `main` and the source branches. This is not a normal merge-ready topology and must not be “fixed” by force-merging or replacing `main` with an unreviewed source tree.
+The repository is deliberately split into a small release/metadata `main` branch and a full source tree on `workpass70-source`, with later work arranged as a stacked draft-PR chain. The `main` tree has 12 paths; the WorkPass124 tree had 10,301 paths at the implementation head and 10,302 paths after this audit document was added. GitHub's compare endpoint reports no common ancestor between `main` and the source branches. This is not a normal merge-ready topology and must not be “fixed” by force-merging or replacing `main` with an unreviewed source tree.
 
 - **Release/metadata anchor:** `main` at `69f8186c8bc2cfcadc7c88fc89406358eedbe8c1`.
 - **Source rollback anchor:** `workpass70-source` at `e0d8e5b1a422c1e42db817cc37e5e1f97549c4d5`.
-- **Current learning stack head:** `workpass124-learning-evidence-hardening` at `372c0bbb4d020901e1c935cf84fc63cff13c9f36`.
+- **WorkPass124 implementation head:** `372c0bbb4d020901e1c935cf84fc63cff13c9f36`. **Current branch tip after this audit/navigation commits:** `8e1d0b6e57356bf0c2df389ae3f0f4838de66bff`.
 - **Immediate parent / prior pass:** `workpass123-authenticated-skill-lifecycle` at `21fef8029b7329f438276c915ce1139c4dfff093`.
 - **Current PR:** [#12 — WorkPass124](https://github.com/ailtron1ss-rgb/NK1/pull/12), draft, unmerged, based on WorkPass123.
-- **No release approval:** combined status for the current WorkPass124 head returned no status checks; the surfaced associated runs for WorkPass108 evidence identity, WorkPass105 verified outcome ledger, and WorkPass110 continual-learning metrics were failures. PR #12 explicitly says the new failure-boundary regression has not yet had a successful CI execution. Do not treat missing statuses as a pass.
+- **No release approval:** combined status for the current branch tip returned no status checks. Exact-tip runs [WorkPass108 paired evidence identity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39546614074), [WorkPass105 verified outcome ledger](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39546614175), and [WorkPass110 continual-learning metrics](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39546614201) all ended `failure`; the connector reports zero job steps for all three, so these results do **not** identify a code assertion and are an execution/infrastructure blocker until actionable logs exist. PR #12 also states the new failure-boundary regression has not yet had a successful CI execution. Do not treat empty statuses, empty job steps, or a workflow run with no actionable logs as a pass.
 
 ## 1. Branch and PR topology
 
@@ -117,9 +117,10 @@ Existing audit entry points include:
 - [x] Establish safe duplicate-handling and rollback rules.
 - [ ] Obtain green exact-head CI for WorkPass124 and the owning runtime typecheck/regressions.
 - [ ] Run the source-level promotion-bypass/call-graph audit and review its concrete findings.
-- [ ] Refresh durable navigation/checkpoint docs to point to the verified active stack.
+- [x] Refresh durable navigation/checkpoint docs (`AGENTS.md`, `NEUROCORE_START_HERE.md`) to point to the WorkPass124 stack and this audit.
+- [ ] Obtain actionable CI logs or a successful exact-head run; the currently surfaced runs fail before exposing any job steps.
 
-The last three items remain open because this pass did not have a successful exact-head CI result or execution environment for running the repository's local Node suite. They must not be marked done based on this document.
+The CI and promotion-bypass items remain open because no successful exact-head CI result or actionable job logs were available, and this connector session cannot execute the repository's local Node suite. The navigation refresh is complete. Do not mark runtime tests or the bypass audit done based on this document.
 
 ## Next code-first pass
 
