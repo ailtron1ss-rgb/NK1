@@ -1,5 +1,5 @@
 import { createHash, createPublicKey, verify as verifySignature } from 'node:crypto';
-import type { SkillPromotionApproval, SkillPromotionApprovalPayload, SkillPromotionApprovalVerifier, VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
+import type { SkillPromotionApproval, SkillPromotionApprovalPayload, SkillPromotionApprovalVerificationPurpose, SkillPromotionApprovalVerifier, VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 
 export interface AuthenticatedSkillPromotionApprovalOptions {
   maxAgeMs?: number;
@@ -107,7 +107,7 @@ export function createAuthenticatedSkillPromotionApprovalVerifier(
       !safeInteger(allowedClockSkewMs, 0, 5 * 60_000)) {
     throw new Error('promotion approval freshness policy is out of bounds');
   }
-  return (approval: SkillPromotionApproval, candidate: Readonly<VersionedSkillCandidate>, requestedMinShadowRuns: number): boolean => {
+  return (approval: SkillPromotionApproval, candidate: Readonly<VersionedSkillCandidate>, requestedMinShadowRuns: number, purpose: SkillPromotionApprovalVerificationPurpose = 'promotion'): boolean => {
     try {
       if (trustedKeys.size === 0 || !approval?.artifact || !isRecord(approval.artifact) ||
           !isRecord(approval.artifact.payload) || typeof approval.artifact.signature !== 'string') return false;
@@ -131,8 +131,10 @@ export function createAuthenticatedSkillPromotionApprovalVerifier(
           payload.proposalOutcomeFingerprint !== candidate.proposalOutcomeFingerprint ||
           payload.shadowEvidenceFingerprint !== skillPromotionShadowEvidenceFingerprint(candidate)) return false;
       const timestamp = now();
-      if (!Number.isFinite(timestamp) || payload.approvedAt > timestamp + allowedClockSkewMs ||
-          timestamp - payload.approvedAt > maxAgeMs) return false;
+      if (!Number.isFinite(timestamp) || payload.approvedAt > timestamp + allowedClockSkewMs) return false;
+      // A new activation needs a recent approval. Existing active skills are
+      // re-verified across restart without expiring just because 15 minutes passed.
+      if (purpose === 'promotion' && timestamp - payload.approvedAt > maxAgeMs) return false;
       const key = createPublicKey(keyPem);
       return verifySignature(null, Buffer.from(canonicalSkillPromotionApprovalPayload(payload), 'utf8'), key,
         Buffer.from(approval.artifact.signature, 'base64'));
