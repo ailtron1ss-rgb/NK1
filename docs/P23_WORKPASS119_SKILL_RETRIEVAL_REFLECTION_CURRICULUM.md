@@ -37,3 +37,10 @@ These references are design candidates, not a claim that every repository was ex
 3. Evaluate no-memory / memory-only / retrieved-skill / reflection-curriculum variants on the same task manifest and seeds.
 4. Add explicit skill revision proposals in a sandbox with rollback, rather than allowing reflection to rewrite live skills directly.
 5. Extend evaluation beyond success rate: calibration, transfer to unseen task families, retention after reset, number of retries, verifier cost and latency.
+
+
+## WorkPass120 addendum — verified skill revision gate
+- Added `SkillRevisionGate.ts`, a proposal-only promotion gate inspired by Voyager/Memento-Skills iteration and SkillLearnBench outcome evaluation.
+- Requires paired attempt-1 outcomes on the held-out split, authoritative evidence, matching verifier identity for independent-verifier rows, a minimum sample count, material net gain, and no sufficiently sampled family regression beyond the configured bound.
+- It does not rewrite the live skill store; a passed result only authorizes a revision proposal for a separate controlled integration step.
+- Regression covers success, self-report rejection, family regression, and train/holdout separation.
