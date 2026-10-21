@@ -1,3 +1,10 @@
+## Latest durable checkpoint — WorkPass143 (2026-10-21)
+
+- **Code change:** lifecycle bootstrap now cryptographically parses configured public keys and rejects non-Ed25519 keys, matching the signature algorithm used by `VerifiedSkillShadowEvidence`. This catches malformed deployment configuration at startup rather than silently configuring a verifier that cannot verify artifacts.
+- Added regression coverage for valid Ed25519 keys, incompatible RSA keys, malformed PEM and the empty-key default-deny state.
+- **Validation status:** source and test are committed on the existing PR branch; test/typecheck execution is not yet confirmed because the latest Actions runner failures occurred before steps started.
+- **Next P0:** wire the real production scheduler to the Core-owned trusted run entry point; provision trusted verifier keys and authenticated approval authority; audit all candidate-store activation paths; obtain actionable exact-head CI/typecheck.
+
 ## Latest durable checkpoint — WorkPass142 (2026-10-21)
 
 - **Code change:** `LearningProcessSupervisor.runLearningProcess` now refuses candidate/shadow runs unless trusted registration is provided, closing the direct-call bypass around the Core coordinator. Trusted registration is rejected for baseline/control and other non-shadow lanes.
