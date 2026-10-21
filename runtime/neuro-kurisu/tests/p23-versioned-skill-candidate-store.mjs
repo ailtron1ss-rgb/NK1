@@ -46,6 +46,10 @@ assert.equal(restored.version, 1);
 assert.equal(restored.payload.instruction, 'version one');
 assert.equal(store.snapshot().active.find(item => item.skillId === 'memory-repair').version, 1);
 assert.equal(store.snapshot().candidates.find(item => item.candidateId === c2.candidateId).status, 'rolled-back');
+assert.equal(store.snapshot().candidates.find(item => item.candidateId === c1.candidateId).status, 'active',
+  'rollback restores the prior version lifecycle status as well as its payload');
+assert.equal(store.snapshot().candidates.find(item => item.candidateId === c2.candidateId).approval.approvedBy, 'human-reviewer-1',
+  'promotion approval is retained as an audit record');
 assert.throws(() => store.rollback(c2.candidateId, 2), /currently promoted/);
 
 const persistence = new InMemorySkillStorePersistence();
