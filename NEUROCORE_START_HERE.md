@@ -1,3 +1,10 @@
+## Latest durable checkpoint — WorkPass142 (2026-10-21)
+
+- **Code change:** `LearningProcessSupervisor.runLearningProcess` now refuses candidate/shadow runs unless trusted registration is provided, closing the direct-call bypass around the Core coordinator. Trusted registration is rejected for baseline/control and other non-shadow lanes.
+- Added a regression that attempts a direct unregistered candidate/shadow launch and verifies the child marker is never created. The existing continual-learning workflow already includes this test.
+- **Validation status:** source, regression and checkpoint are being committed to the existing WorkPass135–136 PR branch. GitHub Actions and typecheck still need actionable successful results; no local execution or learning uplift is claimed.
+- **Next P0:** wire the deployed scheduler's real call site to the Core-owned entry point; configure verifier public keys and authenticated approval; audit candidate-store construction/activation paths; obtain exact-head tests/typecheck.
+
 ## Latest durable checkpoint — WorkPass135 (2026-10-21)
 
 - Report: [WorkPass135 durable trusted shadow-run registry](docs/WORKPASS135_DURABLE_SHADOW_RUN_REGISTRY_2026-10-21.md).
