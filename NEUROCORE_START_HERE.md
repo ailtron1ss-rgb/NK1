@@ -7,6 +7,12 @@
 **This document is the durable instruction for future work. Read it before starting a new pass.**
 
 
+## Latest durable checkpoint — WorkPass127 (2026-10-21)
+
+- WorkPass127 report: `docs/WORKPASS127_PROMOTION_PROPOSAL_AUTHENTICITY_2026-10-21.md`. Candidate staging now requires the exact proposal object issued by the canonical proposal generator in the same process; copied or caller-fabricated public fields no longer satisfy admission.
+- Code commits: `225903c6eff87ebe38b83032abff55d52c7bf7a6`, `27a267d541ab8ecfd654424ae3ed368f57c9d0a1`. Lifecycle regression fixtures now build successful proposals through signed, manifest-bound artifact ingestion; copied-object rejection regression: `399225fa696dbd1bb0dabac9efc69cfc0d0056bc`.
+- This is an in-process issuance check, not a portable cryptographic proposal signature. Recreate/revalidate proposals after restart from authenticated artifacts. Test execution, typecheck, exact-head CI and the complete activation call-graph audit remain unverified/open. PR #12 remains draft; do not merge to `main`.
+
 ## Latest durable checkpoint — WorkPass126 (2026-10-21)
 
 - WorkPass126 implementation report: `docs/WORKPASS126_SKILL_STORE_INTEGRITY_2026-10-21.md`. The durable skill-store adapter now rejects malformed nested active/candidate records, recomputes payload fingerprints/candidate identity, and validates CAS input. Regression cases were added for malformed records and stale payload fingerprints.
