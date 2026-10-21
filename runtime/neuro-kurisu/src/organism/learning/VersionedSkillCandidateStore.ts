@@ -1,7 +1,13 @@
 import { createHash } from 'node:crypto';
 import type { VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
 
-export type SkillCandidateStatus = 'staged' | 'shadow' | 'active' | 'rolled-back';
+export type SkillCandidateStatus = 'staged' | 'shadow' | 'active' | 'superseded' | 'rolled-back';
+
+export interface SkillPromotionApproval {
+  approvedBy: string;
+  approvedAt: number;
+  expectedActiveVersion: number | null;
+}
 
 export interface SkillShadowObservation {
   runId: string;
@@ -32,6 +38,7 @@ export interface VersionedSkillCandidate {
   status: SkillCandidateStatus;
   shadowObservations: SkillShadowObservation[];
   createdAt: number;
+  approval?: SkillPromotionApproval;
   promotedAt?: number;
   rolledBackAt?: number;
 }
@@ -191,7 +198,12 @@ export class VersionedSkillCandidateStore {
     next.active = next.active.filter(item => item.skillId !== candidate.skillId);
     next.active.push(promoted);
     const target = next.candidates.find(item => item.candidateId === candidateId)!;
+    for (const previous of next.candidates) {
+      if (previous.skillId === candidate.skillId && previous.candidateId !== candidateId &&
+          previous.status === 'active' && previous.version === candidate.baseVersion) previous.status = 'superseded';
+    }
     target.status = 'active';
+    target.approval = clone(approval);
     target.promotedAt = approval.approvedAt;
     this.commit(current, next);
     return clone(promoted);
@@ -215,6 +227,10 @@ export class VersionedSkillCandidateStore {
     const target = next.candidates.find(item => item.candidateId === candidateId)!;
     target.status = 'rolled-back';
     target.rolledBackAt = rolledBackAt;
+    if (restored) {
+      const priorCandidate = next.candidates.find(item => item.skillId === candidate.skillId && item.version === restored.version);
+      if (priorCandidate?.status === 'superseded') priorCandidate.status = 'active';
+    }
     this.commit(current, next);
     return restored;
   }
