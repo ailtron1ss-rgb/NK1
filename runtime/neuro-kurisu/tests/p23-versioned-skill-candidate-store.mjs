@@ -146,8 +146,12 @@ const shadowPublicPem = shadowKeyPair.publicKey.export({ type: 'spki', format: '
 const shadowPrivatePem = shadowKeyPair.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
 const shadowKeys = new Map([['trusted-shadow-v1', shadowPublicPem]]);
 const trustedManifest = 'e'.repeat(64);
-const trustedRuntime = 'nk1-runtime-workpass130';
+const trustedRuntime = 'nk1-runtime-workpass131';
+const trustedRunId = 'wp130-shadow-run';
+const trustedTaskId = 'holdout-task-1';
+const trustedSeed = 17;
 const contextVerifier = createContextBoundSkillShadowEvidenceVerifier(shadowKeys, () => ({
+  runId: trustedRunId, taskId: trustedTaskId, seed: trustedSeed,
   manifestFingerprint: trustedManifest, runtimeVersion: trustedRuntime,
 }));
 const shadowTempRoot = mkdtempSync(join(tmpdir(), 'nk1-signed-shadow-'));
@@ -160,8 +164,8 @@ const shadowPayload = {
   skillId: shadowCandidate.skillId, candidateVersion: shadowCandidate.version,
   payloadFingerprint: shadowCandidate.payloadFingerprint,
   proposalOutcomeFingerprint: shadowCandidate.proposalOutcomeFingerprint,
-  runId: 'wp130-shadow-run', taskId: 'holdout-task-1', manifestFingerprint: trustedManifest,
-  seed: 17, runtimeVersion: trustedRuntime, passed: true, observedAt: Date.now(),
+  runId: trustedRunId, taskId: trustedTaskId, manifestFingerprint: trustedManifest,
+  seed: trustedSeed, runtimeVersion: trustedRuntime, passed: true, observedAt: Date.now(),
   verifierId: 'trusted-shadow-v1',
 };
 const shadowArtifact = signSkillShadowArtifactForFixture(shadowPayload, shadowPrivatePem);
@@ -175,16 +179,28 @@ const restoredShadowStore = new VersionedSkillCandidateStore(
 );
 assert.equal(restoredShadowStore.snapshot().candidates[0].shadowObservations[0].artifact.signature,
   shadowArtifact.signature, 'signed receipt survives durable JSON reconstruction byte-for-byte');
-const wrongContextVerifier = createContextBoundSkillShadowEvidenceVerifier(shadowKeys, () => ({
-  manifestFingerprint: 'f'.repeat(64), runtimeVersion: trustedRuntime,
-}));
-const wrongContextStore = new VersionedSkillCandidateStore(
-  new AtomicFileSkillStorePersistence(shadowPath), () => true, wrongContextVerifier,
-);
-assert.throws(() => wrongContextStore.approveAndPromote(shadowCandidate.candidateId, {
-  approvedBy: 'fixture-authority', approvedAt: Date.now(), expectedActiveVersion: null,
-}, 1), /persisted shadow evidence failed authentication/,
-  'a correctly signed receipt for a different manifest is denied on restart');
+const mismatchedTrustedContexts = [
+  [{ runId: 'different-run', taskId: trustedTaskId, seed: trustedSeed,
+    manifestFingerprint: trustedManifest, runtimeVersion: trustedRuntime }, 'different run ID'],
+  [{ runId: trustedRunId, taskId: 'different-task', seed: trustedSeed,
+    manifestFingerprint: trustedManifest, runtimeVersion: trustedRuntime }, 'different task ID'],
+  [{ runId: trustedRunId, taskId: trustedTaskId, seed: trustedSeed + 1,
+    manifestFingerprint: trustedManifest, runtimeVersion: trustedRuntime }, 'different random seed'],
+  [{ runId: trustedRunId, taskId: trustedTaskId, seed: trustedSeed,
+    manifestFingerprint: 'f'.repeat(64), runtimeVersion: trustedRuntime }, 'different manifest'],
+  [{ runId: trustedRunId, taskId: trustedTaskId, seed: trustedSeed,
+    manifestFingerprint: trustedManifest, runtimeVersion: 'different-runtime' }, 'different runtime version'],
+];
+for (const [trustedContext, label] of mismatchedTrustedContexts) {
+  const wrongContextVerifier = createContextBoundSkillShadowEvidenceVerifier(shadowKeys, () => trustedContext);
+  const wrongContextStore = new VersionedSkillCandidateStore(
+    new AtomicFileSkillStorePersistence(shadowPath), () => true, wrongContextVerifier,
+  );
+  assert.throws(() => wrongContextStore.approveAndPromote(shadowCandidate.candidateId, {
+    approvedBy: 'fixture-authority', approvedAt: Date.now(), expectedActiveVersion: null,
+  }, 1), /persisted shadow evidence failed authentication/,
+    `signed receipt with ${label} mismatch is denied after restart`);
+}
 const acceptedAfterRestart = restoredShadowStore.approveAndPromote(shadowCandidate.candidateId, {
   approvedBy: 'fixture-authority', approvedAt: Date.now(), expectedActiveVersion: null,
 }, 1);
