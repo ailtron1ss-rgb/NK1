@@ -192,9 +192,13 @@ assert.equal(beforeFinal.status,'candidate','three live outcomes remain below th
 const liveFour=lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,context:'live-4'});
 assert.equal(liveFour.status,'active','sufficient non-holdout evidence may promote the candidate');
 const confidenceBeforeHoldout=liveFour.confidence01;
+const contextBeforeVariantHoldout=liveFour.lastContext;
+const distinctContextsBeforeVariantHoldout=liveFour.distinctContexts;
 lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,holdout:true,context:'holdout-1'});
 const after=lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,holdout:true,context:'holdout-2'});
 assert.ok(after); assert.equal(after.confidence01,confidenceBeforeHoldout,'holdout must not inflate confidence');
+assert.equal(after.lastContext,contextBeforeVariantHoldout,'holdout must not replace the learned variant context');
+assert.equal(after.distinctContexts,distinctContextsBeforeVariantHoldout,'holdout must not inflate learned context diversity');
 assert.equal(lib.snapshot().compoundSkills.find(s=>s.id===skill.id).activeVariantId,variant.id);
 assert.equal(lib.snapshot().compoundSkills.find(s=>s.id===skill.id).steps[1].toolId,'tool.fallback');
 const rolled=lib.rollbackCompoundSkill(skill.id,'regression-test');
