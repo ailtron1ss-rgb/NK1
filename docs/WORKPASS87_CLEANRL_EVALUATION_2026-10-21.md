@@ -11,4 +11,4 @@
 - Preserved MIT license and source intake notes.
 
 ## Interpretation boundary
-This is a small synthetic diagnostic, not a broad benchmark or proof of quality improvement. It should provide the first comparable numbers for the three strategies once CI executes. A result should only be considered meaningful after a larger task suite, held-out tasks, and real verified feedback outcomes.
+This is a small synthetic diagnostic, not a broad benchmark or proof of quality improvement. It should provide the first comparable numbers for the three strategies once CI executes. CI evidence: workflow run 39555037574 completed with failure, but the job returned no step summaries and the log endpoint returned `BlobNotFound`; the cause is unresolved. The benchmark has not been confirmed as executed. A result should only be considered meaningful after a successful visible run, a larger task suite, held-out tasks, and real verified feedback outcomes.
