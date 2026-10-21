@@ -128,7 +128,11 @@ export function createIndependentSkillCandidateEvaluator(
       try {
         execution = await config.executor.execute({ payload: structuredClone(payload), task: structuredClone(task) });
         if (!execution || typeof execution.runId !== 'string' || !execution.runId.trim() ||
-            !Array.isArray(execution.observedStepIds)) throw new Error('candidate-sandbox-result-invalid');
+            !Array.isArray(execution.observedStepIds) ||
+            execution.observedStepIds.some(step => typeof step !== 'string' || !step.trim()) ||
+            new Set(execution.observedStepIds).size !== execution.observedStepIds.length) {
+          throw new Error('candidate-sandbox-result-invalid');
+        }
         if (seenRunIds.has(execution.runId)) throw new Error('candidate-sandbox-reused-run-id');
         seenRunIds.add(execution.runId);
       } catch {
