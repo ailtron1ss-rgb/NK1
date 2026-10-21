@@ -27,6 +27,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
       - 'runtime/neuro-kurisu/tests/p23-verified-skill-shadow-evidence.mjs'
       - 'runtime/neuro-kurisu/tests/p23-trusted-skill-shadow-run-registry.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-trusted-shadow-supervisor-registration.mjs'
       - 'runtime/neuro-kurisu/tests/p23-verified-outcome-artifact-authentication.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts'
@@ -151,6 +152,9 @@ jobs:
       - name: Run verified skill lifecycle bootstrap regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:verified-skill-lifecycle-bootstrap
+      - name: Run trusted shadow registration before process spawn regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:trusted-shadow-supervisor-registration
       - name: Run versioned skill candidate lifecycle regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-versioned-skill-candidate-store.mjs

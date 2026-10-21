@@ -50,6 +50,12 @@ export interface LearningProcessResult {
   receiptPath: string;
 }
 
+/** Trusted registration capability owned by the host runtime, never supplied by the child process. */
+export interface TrustedShadowRunRegistration {
+  runtimeVersion: string;
+  register(context: { runId: string; taskId: string; seed: number; manifestFingerprint: string; runtimeVersion: string }): void | Promise<unknown>;
+}
+
 const DEFAULT_TIMEOUT_MS = 120_000;
 const DEFAULT_MAX_OUTPUT_BYTES = 1_048_576;
 const MAX_TIMEOUT_MS = 3_600_000;
@@ -69,12 +75,15 @@ function safeInteger(value: unknown, minimum: number, maximum: number): value is
  * Executes one scheduled learner attempt as a real child process, without a
  * shell. Every attempt gets a fresh scratch directory; the caller explicitly
  * chooses the arm's survive directory. This function produces execution
- * evidence only: exit code/output are NOT verified task outcomes.
+ * evidence only: exit code/output are NOT verified task outcomes. When a trusted
+ * registrar is supplied, its durable registration completes before the child is spawned;
+ * registration failure aborts execution and cannot produce an unregistered trusted run.
  */
 export async function runLearningProcess(
   run: LearningProcessRun,
   planFingerprint: string,
   command: LearningProcessCommand,
+  trustedShadowRun?: TrustedShadowRunRegistration,
 ): Promise<LearningProcessResult> {
   if (!run || !nonEmpty(run.runId) || !/^[a-f0-9]{64}$/i.test(run.manifestFingerprint) ||
       !nonEmpty(run.taskId) || !nonEmpty(run.taskVersion) || !nonEmpty(run.arm) || !nonEmpty(run.method) ||
@@ -117,6 +126,16 @@ export async function runLearningProcess(
     NK1_LEARNING_RUN_DIR: runDirectory,
     NK1_LEARNING_SURVIVE_DIR: surviveDirectory,
   });
+  if (trustedShadowRun !== undefined) {
+    if (!nonEmpty(trustedShadowRun.runtimeVersion) || typeof trustedShadowRun.register !== 'function') {
+      throw new Error('invalid trusted shadow run registrar');
+    }
+    // This call is deliberately before spawn(): a registry outage must prevent the run.
+    await trustedShadowRun.register({
+      runId: run.runId, taskId: run.taskId, seed: run.seed,
+      manifestFingerprint: run.manifestFingerprint, runtimeVersion: trustedShadowRun.runtimeVersion,
+    });
+  }
   const commandFingerprint = sha256(JSON.stringify({
     executable: command.executable, args: command.args, cwd: path.resolve(command.cwd),
     inheritedEnvKeys: [...(command.inheritEnv ?? [])].sort(),

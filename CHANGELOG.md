@@ -1,3 +1,10 @@
+## WorkPass137 — register trusted shadow runs before learner process spawn (2026-10-21)
+
+- Added an explicit host-owned trusted registration capability to `runLearningProcess`. When supplied, it persists run/task/seed/manifest/runtime identity before spawning the child process.
+- Registration failures abort before spawn, so an unavailable trusted registry cannot produce a run that downstream code mistakes for a registered shadow execution.
+- Added a focused supervisor regression and wired it into the P23 continual-learning workflow.
+- **Boundary:** the runner's registration capability must still be bound by the production orchestration caller to `OrganismCore.registerTrustedSkillShadowRun`; repository search did not identify an existing production call site that constructs this supervisor invocation. No production end-to-end shadow run or learning uplift is claimed. CI/typecheck are not yet verified.
+
 ## WorkPass136 — production bootstrap for verified skill shadow lifecycle (2026-10-21)
 
 - Configure the canonical P23 learner at OrganismCore construction with durable candidate storage and a durable trusted-run registry.
