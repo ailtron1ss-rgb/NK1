@@ -30,4 +30,31 @@ assert.throws(() => engine.approveReflectiveVerifiedSkillCandidate(
   () => true,
 ), /reflective fitness gate rejected candidate/);
 assert.equal(approvalCalls, 0, 'failed reflective fitness must not reach promotion approval');
-console.log('P23_HERMES_PRODUCTION_PROMOTION_GATE=PASS fitnessFailureBlocksApproval=true');
+
+// WorkPass237: the independent promotion path must not accept caller-invented
+// baseline report arrays. It requires full evaluator envelopes so the canonical
+// matched comparison can prove task/seed/split/environment/manifest identity.
+candidate.revisionProvenance = { schemaVersion: 1, evaluationFingerprint: 'c'.repeat(64) };
+const candidateEnvelope = {
+  payloadFingerprint: candidate.payloadFingerprint,
+  evaluationFingerprint: 'c'.repeat(64),
+  evaluation: { validation: [], holdout: [], provenance: { payloadFingerprint: candidate.payloadFingerprint } },
+};
+assert.throws(() => engine.approveIndependentlyEvaluatedSkillCandidate(
+  candidate.candidateId,
+  { approvedBy: 'reviewer', approvedAt: 100, expectedActiveVersion: null },
+  { validation, holdout },
+  candidateEnvelope,
+  () => true,
+), /matched-independent-evaluation-baseline-envelope-invalid/);
+assert.equal(approvalCalls, 0, 'unmatched caller-supplied baseline data must never reach promotion approval');
+
+assert.throws(() => engine.approveIndependentlyEvaluatedSkillCandidate(
+  candidate.candidateId,
+  { approvedBy: 'reviewer', approvedAt: 100, expectedActiveVersion: null },
+  null,
+  null,
+  () => true,
+), /matched independent baseline and candidate envelopes are required/);
+assert.equal(approvalCalls, 0, 'malformed envelopes must fail before approval');
+console.log('P23_HERMES_PRODUCTION_PROMOTION_GATE=PASS fitnessFailureBlocksApproval=true matchedEnvelopeRequired=true malformedEnvelopeDenied=true');
