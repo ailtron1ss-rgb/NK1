@@ -388,6 +388,80 @@ export class ProceduralSkillLibrary{
     if(firstAction){ const list=this.compoundActionIndex.get(firstAction)??[]; list.unshift(record); this.compoundActionIndex.set(firstAction,list.slice(0,64)); }
     return structuredClone(record);
   }
+  /**
+   * Execute the selected compound-skill variant through the caller's canonical tool gateway.
+   * Holdout and independence are explicit run provenance; this method never infers either
+   * from context, order, or success. The gateway callback must return verified postcondition
+   * evidence rather than treating an exit code or tool response alone as proof.
+   */
+  async executeCompoundSkill(id:string,input:{
+    context:string;
+    holdout:boolean;
+    independent:boolean;
+    executeTool:(toolId:string,toolInput:Record<string,unknown>,step:CompoundSkillStep)=>Promise<{
+      ok:boolean; verified:boolean; result?:Record<string,unknown>; error?:string; confidence01?:number;
+    }>;
+  }):Promise<{ok:boolean;verified:boolean;skill:CompoundSkillRecord|null;outputs:Record<string,Record<string,unknown>>;failedStepId?:string;error?:string}>{
+    const initial=this.state.compoundSkills.find(x=>x.id===id);
+    if(!initial||initial.status==='disabled')return {ok:false,verified:false,skill:null,outputs:{},error:'compound-skill-unavailable'};
+    if(typeof input.context!=='string'||typeof input.holdout!=='boolean'||typeof input.independent!=='boolean'||typeof input.executeTool!=='function'){
+      return {ok:false,verified:false,skill:structuredClone(initial),outputs:{},error:'compound-skill-run-provenance-required'};
+    }
+    const selected=initial.activeVariantId?initial.variants.find(v=>v.id===initial.activeVariantId&&v.status==='active'):null;
+    const steps=structuredClone(selected?.steps??initial.steps);
+    if(steps.length<2)return {ok:false,verified:false,skill:structuredClone(initial),outputs:{},error:'compound-skill-has-no-executable-steps'};
+    const outputs:Record<string,Record<string,unknown>>={};
+    const failed: Array<{step:CompoundSkillStep;toolId:string;error:string;candidateTools:string[]}>= [];
+    let attempts=0,resourceCost=0,allVerified=true;
+    const maxAttempts=Math.max(steps.length,Math.min(24,initial.policy.maxTotalAttempts));
+    for(const step of steps){
+      const stepInput:Record<string,unknown>={...step.input};
+      for(const [target,source] of Object.entries(step.inputBindings??{})){
+        const [sourceStep,...sourcePath]=String(source).split('.');
+        let value:unknown=outputs[sourceStep];
+        for(const part of sourcePath){if(value&&typeof value==='object'&&!Array.isArray(value))value=(value as Record<string,unknown>)[part];else{value=undefined;break;}}
+        if(value!==undefined)stepInput[target]=value;
+      }
+      const candidates=Array.from(new Set([step.toolId,...(step.fallbackToolIds??[])].filter(Boolean))).slice(0,5);
+      let completed=false;
+      for(const toolId of candidates){
+        if(attempts>=maxAttempts||resourceCost+clamp(Number(step.resourceCost01??.1))>initial.policy.maxTotalResourceCost01){
+          const error=attempts>=maxAttempts?'compound-skill-max-attempts':'compound-skill-resource-budget';
+          this.recordCompoundRepair(id,{stepId:step.id,toolId,error,ok:false,verified:false,confidence01:0,context:input.context,candidateTools:candidates,holdout:input.holdout});
+          this.recordCompoundExecution(id,{success01:0,verified:false,independent:input.independent,holdout:input.holdout,context:input.context});
+          return {ok:false,verified:false,skill:this.state.compoundSkills.find(x=>x.id===id)?structuredClone(this.state.compoundSkills.find(x=>x.id===id)!):null,outputs,failedStepId:step.id,error};
+        }
+        attempts++;resourceCost+=clamp(Number(step.resourceCost01??.1));
+        let observed:{ok:boolean;verified:boolean;result?:Record<string,unknown>;error?:string;confidence01?:number};
+        try{observed=await input.executeTool(toolId,{...stepInput},step);}
+        catch(error){observed={ok:false,verified:false,error:String((error as Error)?.message??error).slice(0,180),confidence01:0};}
+        const verified=observed.ok===true&&observed.verified===true;
+        if(observed.ok===true&&(!initial.policy.requireVerified||verified)){
+          outputs[step.id]=observed.result&&typeof observed.result==='object'?{...observed.result}:{};
+          allVerified=allVerified&&verified;
+          completed=true;
+          const priorFailure=failed.find(x=>x.step.id===step.id);
+          if(priorFailure&&verified&&!input.holdout){
+            this.recordCompoundRepair(id,{stepId:step.id,toolId:priorFailure.toolId,error:priorFailure.error,ok:false,verified:true,confidence01:clamp(Number(observed.confidence01??0)),context:input.context,candidateTools:candidates,selectedTool:toolId,holdout:false});
+          }
+          break;
+        }
+        const error=String(observed.error??(observed.ok?'postcondition-missing':'tool-execution-failed')).slice(0,180);
+        failed.push({step,toolId,error,candidateTools:candidates});
+        if(toolId===candidates[candidates.length-1]){
+          this.recordCompoundRepair(id,{stepId:step.id,toolId,error,ok:false,verified,confidence01:clamp(Number(observed.confidence01??0)),context:input.context,candidateTools:candidates,holdout:input.holdout});
+        }
+      }
+      if(!completed){
+        const last=failed[failed.length-1];
+        this.recordCompoundExecution(id,{success01:0,verified:false,independent:input.independent,holdout:input.holdout,context:input.context});
+        const skill=this.state.compoundSkills.find(x=>x.id===id);
+        return {ok:false,verified:false,skill?structuredClone(skill):null,outputs,failedStepId:step.id,error:last?.error??'compound-skill-step-failed'};
+      }
+    }
+    const skill=this.recordCompoundExecution(id,{success01:1,verified:allVerified,independent:input.independent,holdout:input.holdout,context:input.context});
+    return {ok:true,verified:allVerified,skill,outputs};
+  }
   recordCompoundExecution(id:string,input:{success01:number;verified:boolean;independent?:boolean;holdout?:boolean;context?:string}):CompoundSkillRecord|null{
     const skill=this.state.compoundSkills.find(x=>x.id===id); if(!skill || skill.status==='disabled')return null;
     const success=clamp(input.success01); const holdout=Boolean(input.holdout); const context=String(input.context??'').slice(0,180);
