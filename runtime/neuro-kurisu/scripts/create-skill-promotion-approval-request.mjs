@@ -98,7 +98,7 @@ const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve
 if (isMain) {
   const [, , storePath, registryPath, candidateId, approverId, approvalId, rawMinRuns] = process.argv;
   if (!storePath || !registryPath || !candidateId || !approverId || !approvalId) {
-    console.error('Usage: NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON='{"verifier-id":"<Ed25519 public PEM>"}' node --experimental-strip-types scripts/create-skill-promotion-approval-request.mjs <candidate-store.json> <trusted-run-registry.json> <candidate-id> <approver-id> <approval-id> [min-shadow-runs]');
+    console.error(`Usage: NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON='{"verifier-id":"<Ed25519 public PEM>"}' node --experimental-strip-types scripts/create-skill-promotion-approval-request.mjs <candidate-store.json> <trusted-run-registry.json> <candidate-id> <approver-id> <approval-id> [min-shadow-runs]`);
     process.exitCode = 2;
   } else {
     try {
