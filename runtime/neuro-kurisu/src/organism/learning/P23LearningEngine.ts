@@ -7,7 +7,7 @@ import { retrievedSkillBias } from './SkillRetrievalAugmentation.ts';
 import { rankLearningTargets, reflectOnOutcomes } from './OutcomeReflectionCurriculum.ts';
 import { isAuthenticVerifiedSkillPromotionProposal, type VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
 import { evaluateSkillLearnBenchCandidate, type SkillLearnBenchCandidateEvaluation, type SkillLearnBenchCandidateGateOptions, type SkillLearnBenchCandidateGateReport } from './SkillLearnBenchAdapter.ts';
-import { bindReflectiveReportsToVerifiedShadowEvidence, type ReflectiveEvidenceBindingReport } from './HermesVerifiedEvidenceBinding.ts';
+import { bindIndependentEvaluationToVerifiedShadowEvidence, bindReflectiveReportsToVerifiedShadowEvidence, type ReflectiveEvidenceBindingReport } from './HermesVerifiedEvidenceBinding.ts';
 import { planSkillRevision, type SkillRevisionPlan } from './SkillRevisionPlan.ts';
 import type { SkillShadowEvidenceVerifier } from './VersionedSkillCandidateStore.ts';
 import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillRollbackApproval, type SkillShadowObservation, type SkillRevisionProvenance, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
@@ -429,6 +429,21 @@ export class P23LearningEngine {
     verifyEvidence: SkillShadowEvidenceVerifier,
   ): ReflectiveEvidenceBindingReport {
     return bindReflectiveReportsToVerifiedShadowEvidence(reports, observations, candidate, verifyEvidence);
+  }
+
+  /**
+   * Bind P23 independent evaluation provenance to signed Hermes shadow receipts.
+   * The evaluation envelope must already have passed its own digest and matched-plan
+   * checks. This method adds receipt identity/outcome binding only; it does not
+   * authenticate quality scores or grant candidate lifecycle authority.
+   */
+  bindIndependentEvaluationEvidence(
+    evaluation: Parameters<typeof bindIndependentEvaluationToVerifiedShadowEvidence>[0],
+    observations: readonly SkillShadowObservation[],
+    candidate: Readonly<VersionedSkillCandidate>,
+    verifyEvidence: SkillShadowEvidenceVerifier,
+  ): ReflectiveEvidenceBindingReport {
+    return bindIndependentEvaluationToVerifiedShadowEvidence(evaluation, observations, candidate, verifyEvidence);
   }
 
   stageVerifiedSkillCandidate(proposal:VerifiedSkillPromotionProposal, skill:PolicySkillRecord):VersionedSkillCandidate {
