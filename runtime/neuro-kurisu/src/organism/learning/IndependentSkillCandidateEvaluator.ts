@@ -185,7 +185,7 @@ export function createIndependentSkillCandidateEvaluator(
     const reports: Record<'validation' | 'holdout', SkillLearnBenchTrialReport[]> = {
       validation: [], holdout: [],
     };
-    const runBindings: Array<{ taskId: string; trialId: string; runId: string | null; seed: number; split: string; executable: boolean; observedStepIds: string[]; bindingVerified: boolean; verifierPassed: boolean; coveredCapabilityIds: string[]; safetyViolationCount: number }> = [];
+    const runBindings: Array<{ taskId: string; trialId: string; runId: string | null; plannedRunId: string | null; seed: number; split: string; executable: boolean; observedStepIds: string[]; bindingVerified: boolean; verifierPassed: boolean; coveredCapabilityIds: string[]; safetyViolationCount: number }> = [];
     const seenRunIds = new Set<string>();
     for (const task of tasks) {
       const authority = config.experimentAuthority;
@@ -313,4 +313,115 @@ export function createIndependentSkillCandidateEvaluator(
     const evaluationFingerprint = sha256(canonical(evaluation));
     return { payloadFingerprint, evaluationFingerprint, evaluation };
   };
+}
+
+
+/**
+ * Commit independently bound evaluator outcomes to the existing canonical ledger.
+ * This is deliberately a separate explicit step: evaluation alone does not mutate
+ * training truth, and no unbound trace can be promoted into verified evidence.
+ */
+export function recordIndependentEvaluationOutcomes(
+  evaluation: {
+    validation: SkillLearnBenchTrialReport[];
+    holdout: SkillLearnBenchTrialReport[];
+    provenance: {
+      experimentAuthority: {
+        manifestFingerprint: string;
+        validationPlanFingerprint: string;
+        holdoutPlanFingerprint: string;
+        method: string;
+        attempt: number;
+      } | null;
+      runBindings: Array<{
+        taskId: string; trialId: string; runId: string | null; plannedRunId: string | null;
+        seed: number; split: string; bindingVerified: boolean; safetyViolationCount: number;
+      }>;
+    };
+  },
+  authority: {
+    manifest: TaskManifestEntry[];
+    ledger: VerifiedOutcomeLedger;
+    validationPlan: LearningExperimentPlan;
+    holdoutPlan: LearningExperimentPlan;
+    method: string;
+    attempt?: number;
+  },
+  observedAt = Date.now(),
+): { accepted: number } {
+  if (!evaluation?.provenance || !(authority?.ledger instanceof VerifiedOutcomeLedger) ||
+      !Array.isArray(evaluation.provenance.runBindings) || !Number.isFinite(observedAt) || observedAt <= 0) {
+    throw new Error('independent-evaluation-ledger-commit-invalid');
+  }
+  validateLearningExperimentPlan(authority.validationPlan, authority.manifest);
+  validateLearningExperimentPlan(authority.holdoutPlan, authority.manifest);
+  const attempt = authority.attempt ?? 1;
+  const recordedAuthority = evaluation.provenance.experimentAuthority;
+  if (!recordedAuthority ||
+      recordedAuthority.manifestFingerprint !== authority.ledger.manifestFingerprint() ||
+      recordedAuthority.validationPlanFingerprint !== authority.validationPlan.planFingerprint ||
+      recordedAuthority.holdoutPlanFingerprint !== authority.holdoutPlan.planFingerprint ||
+      recordedAuthority.method !== authority.method || recordedAuthority.attempt !== attempt ||
+      authority.validationPlan.split !== 'validation' || authority.holdoutPlan.split !== 'holdout') {
+    throw new Error('independent-evaluation-ledger-authority-mismatch');
+  }
+  const bindings = evaluation.provenance.runBindings;
+  const reports = [...evaluation.validation, ...evaluation.holdout];
+  if (bindings.length !== reports.length || !bindings.length) {
+    throw new Error('independent-evaluation-ledger-incomplete-reports');
+  }
+  const reportByTrial = new Map<string, SkillLearnBenchTrialReport>();
+  for (const report of reports) {
+    if (reportByTrial.has(report.trialId)) throw new Error('independent-evaluation-ledger-duplicate-trial');
+    reportByTrial.set(report.trialId, report);
+  }
+  const seenPlannedRuns = new Set<string>();
+  const pending: Array<{ plan: LearningExperimentPlan; runId: string; passed: boolean; evidenceRef: string }> = [];
+  for (const binding of bindings) {
+    if (!binding.bindingVerified || !binding.runId || !binding.plannedRunId ||
+        !Number.isSafeInteger(binding.seed) || binding.seed < 0 ||
+        !['validation', 'holdout'].includes(binding.split)) {
+      throw new Error('independent-evaluation-ledger-unbound-run');
+    }
+    const plan = binding.split === 'validation' ? authority.validationPlan : authority.holdoutPlan;
+    const scheduled = plan.runs.find(run => run.runId === binding.plannedRunId);
+    if (!scheduled || scheduled.taskId !== binding.taskId || scheduled.seed !== binding.seed ||
+        scheduled.method !== authority.method || scheduled.split !== binding.split ||
+        seenPlannedRuns.has(scheduled.runId)) {
+      throw new Error('independent-evaluation-ledger-run-not-scheduled');
+    }
+    seenPlannedRuns.add(scheduled.runId);
+    const report = reportByTrial.get(binding.trialId);
+    if (!report || report.taskId !== binding.taskId) {
+      throw new Error('independent-evaluation-ledger-report-binding-mismatch');
+    }
+    pending.push({
+      plan,
+      runId: scheduled.runId,
+      passed: report.taskSuccess.passed && binding.safetyViolationCount === 0,
+      evidenceRef: binding.runId,
+    });
+  }
+  // Preflight every cell before writing any rows. The canonical ledger rejects a
+  // second outcome for the same task/method/seed, even if the attempt differs.
+  const existing = authority.ledger.snapshot().outcomes as Array<{
+    taskId: string; method: string; seed: number;
+  }>;
+  for (const item of pending) {
+    const run = item.plan.runs.find(candidate => candidate.runId === item.runId)!;
+    if (existing.some(row => row.taskId === run.taskId && row.method === run.method && row.seed === run.seed)) {
+      throw new Error('independent-evaluation-ledger-cell-already-recorded');
+    }
+  }
+  for (const item of pending) {
+    const result = recordPlannedLearningOutcome(authority.ledger, item.plan, item.runId, {
+      attempt,
+      passed: item.passed,
+      authority: 'independent-verifier',
+      evidenceRef: item.evidenceRef,
+      observedAt,
+    });
+    if (!result.accepted) throw new Error('independent-evaluation-ledger-rejected-outcome');
+  }
+  return { accepted: pending.length };
 }
