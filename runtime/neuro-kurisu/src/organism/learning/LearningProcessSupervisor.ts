@@ -92,6 +92,17 @@ export async function runLearningProcess(
   if (!nonEmpty(command?.executable) || !Array.isArray(command.args) ||
       command.args.some(arg => typeof arg !== 'string') || !nonEmpty(command.cwd) ||
       !nonEmpty(command.runRoot) || !nonEmpty(command.surviveDir)) throw new Error('invalid process command');
+  // Candidate shadow runs are the only runs eligible for trusted skill evidence.
+  // Fail closed here too, not only in the Core coordinator: direct callers of this
+  // generic supervisor must not launch an unregistered candidate/shadow run.
+  const isTrustedShadowLane = run.arm === 'candidate' && run.method === 'shadow';
+  if (isTrustedShadowLane && trustedShadowRun === undefined) {
+    throw new Error('candidate/shadow execution requires trusted run registration');
+  }
+  if (trustedShadowRun !== undefined && !isTrustedShadowLane) {
+    throw new Error('trusted run registration is only valid for candidate/shadow execution');
+  }
+
   const timeoutMs = command.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxOutputBytes = command.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES;
   if (!safeInteger(timeoutMs, 1, MAX_TIMEOUT_MS)) throw new Error('timeoutMs out of bounds');
