@@ -39,7 +39,7 @@ const valid = (x: RevisionObservation) => Boolean(
   x && x.taskId?.trim() && x.family?.trim() && x.method?.trim() &&
   Number.isSafeInteger(x.seed) && x.seed >= 0 &&
   Number.isSafeInteger(x.attempt) && x.attempt === 1 &&
-  x.split === 'holdout' && x.passed !== undefined &&
+  x.split === 'holdout' && typeof x.passed === 'boolean' &&
   (x.authority === 'independent-verifier' || x.authority === 'human-review') &&
   x.verifierId?.trim() && x.evidenceRef?.trim() &&
   (x.authority !== 'independent-verifier' || x.verifierId === x.expectedVerifierId)
