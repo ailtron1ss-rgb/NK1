@@ -20,6 +20,8 @@ on:
       - 'runtime/neuro-kurisu/scripts/create-learning-experiment-plan.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeArtifact.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillShadowEvidence.ts'
+      - 'runtime/neuro-kurisu/tests/p23-verified-skill-shadow-evidence.mjs'
       - 'runtime/neuro-kurisu/tests/p23-verified-outcome-artifact-authentication.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts'
@@ -130,6 +132,9 @@ jobs:
       - name: Run signed outcome artifact authentication regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-verified-outcome-artifact-authentication.mjs
+      - name: Run signed shadow execution evidence regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:verified-skill-shadow-evidence
       - name: Run versioned skill candidate lifecycle regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-versioned-skill-candidate-store.mjs
