@@ -320,7 +320,7 @@ export function createIndependentSkillCandidateEvaluator(
       provenance: {
         schemaVersion: 1,
         payloadFingerprint,
-        environmentFingerprint: config.environmentFingerprint,
+        environmentFingerprint,
         planFingerprint,
         experimentAuthority: authority ? {
           manifestFingerprint: authority.validationPlan.manifestFingerprint,
