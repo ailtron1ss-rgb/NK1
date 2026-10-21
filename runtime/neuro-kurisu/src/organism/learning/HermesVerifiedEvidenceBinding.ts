@@ -185,7 +185,7 @@ export function bindIndependentEvaluationToVerifiedShadowEvidence(
         typeof binding.plannedRunId !== 'string' || !binding.plannedRunId.trim() ||
         !Number.isSafeInteger(binding.seed) || binding.seed < 0 ||
         !['validation', 'holdout'].includes(binding.split) ||
-        binding.bindingVerified !== true || binding.verifierPassed !== true ||
+        binding.bindingVerified !== true || typeof binding.verifierPassed !== 'boolean' ||
         !Number.isSafeInteger(binding.safetyViolationCount) || binding.safetyViolationCount !== 0) {
       reasons.push('independent-evaluation-run-untrusted');
       continue;
