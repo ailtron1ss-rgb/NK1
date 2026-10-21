@@ -28,7 +28,7 @@ Scope: continue integrating mechanisms into the existing P23 learning/revision l
 
 ### WorkPass235 — P23 ↔ Hermes evidence bridge
 
-- **DONE (code):** added `bindIndependentEvaluationToVerifiedShadowEvidence` and exposed it through the canonical `P23LearningEngine`. It joins P23 experiment trial identities to actual sandbox execution run IDs through evaluator-produced `runBindings`, then checks the signed shadow receipt against task, seed, manifest, binary outcome and candidate identity.
+- **DONE (code):** added `bindIndependentEvaluationToVerifiedShadowEvidence` and exposed it through the canonical `P23LearningEngine`. It recomputes the P23 evaluation envelope digest/payload fingerprint, joins experiment trial identities to actual sandbox execution run IDs through evaluator-produced `runBindings`, then checks the signed shadow receipt against task, seed, manifest, binary outcome and candidate identity.
 - **DONE (code):** exact one-to-one coverage is required across evaluation reports, run bindings and signed observations; validation/holdout collection membership must match the binding; duplicate/orphan receipts, unbound execution, nonzero safety findings, seed/task/manifest/outcome mismatches fail closed.
 - **DONE (code):** negative outcomes remain bindable as evidence when independently verified and safety-clean. The signature authenticates only identity and binary outcome, not quality/trajectory scores; no new staging, approval or promotion authority was added.
 - **DONE (regression authored):** extended `tests/p23-hermes-verified-evidence-binding.mjs` with P23-trial-to-runtime-run joins, seed mismatch rejection and safety veto. Existing targeted test command already includes this file.
