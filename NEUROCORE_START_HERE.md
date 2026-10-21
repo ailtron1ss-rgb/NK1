@@ -1,5 +1,15 @@
 # NeuroCore — persistent project charter and resume contract
 
+## Latest durable checkpoint — WorkPass132 (2026-10-21)
+
+- Report: [WorkPass132 bootstrap-backed learning gate](docs/WORKPASS132_BOOTSTRAP_LEARNING_GATE_2026-10-21.md).
+- `VerifiedOutcomeLedger.ts` adds a deterministic 4,000-resample percentile interval over paired seed-level deltas; one-seed comparisons return no bootstrap interval.
+- `VerifiedSkillPromotion.ts` now requires positive lower bounds from both the existing Student-t interval and bootstrap interval before an otherwise eligible candidate can pass the seed-clustered gain gate.
+- Regressions updated for deterministic output, interval coverage, one-seed uncertainty and bootstrap-backed promotion. Research intake records the limited adaptation from SkillLearnBench, SkillsBench and a storage-aware replay evaluation protocol; no upstream code or benchmark data was copied.
+- **NOT VERIFIED:** tests, runtime typecheck and exact-head Actions have not yet been confirmed. This tightens the evidence gate; it does not show learning uplift.
+- Remaining P0s: production trusted-run resolver/key registry/approval authority, all store constructors and activation paths, successful exact-head test/typecheck/CI, and real transfer/retention evaluation. PR #12 remains draft/unmerged; do not merge to `main`.
+
+
 **Canonical project name:** NeuroCore / нейроядро  
 **Repository:** https://github.com/ailtron1ss-rgb/NK1  
 **Active learning work branch:** `workpass124-learning-evidence-hardening` (draft PR #12, unmerged; stacked on WorkPass123)  
