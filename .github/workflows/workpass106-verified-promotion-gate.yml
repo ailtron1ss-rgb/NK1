@@ -22,6 +22,7 @@ on:
       - 'runtime/neuro-kurisu/package.json'
       - 'runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts'
       - 'runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-hermes-reflective-diagnostics.mjs'
       - '.github/workflows/workpass106-verified-promotion-gate.yml'
   workflow_dispatch:
 permissions:
@@ -65,6 +66,9 @@ jobs:
       - name: Check Hermes-inspired reflective candidate evaluation gate
         working-directory: runtime/neuro-kurisu
         run: npm run test:p29:hermes-reflective-candidate-gate
+      - name: Check P23 Hermes reflective diagnostics wiring
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:hermes-reflective-diagnostics
       - name: Type-check runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
