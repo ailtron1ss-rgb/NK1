@@ -208,3 +208,11 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **Compatibility fix:** the process-descendant regression is now POSIX-only, matching the implementation's process-group guarantee; Windows remains direct-child semantics rather than failing a test for a guarantee it does not provide.
 - **PARTIAL:** source and regression are committed, but this session has not run the test or TypeScript typecheck. CI must execute the targeted supervisor test before this is considered validated.
 - **NEXT:** inspect and bind the real trusted host command factory to approved capabilities and postcondition verification; continue the P23 → Hermes/Will integration through existing skill/evidence contracts, not a parallel learner.
+
+### WorkPass233 — bind execution identity to effective environment inputs
+
+- **DONE (code):** command fingerprints now include the values of explicit environment entries and the effective values of inherited environment keys, not only their names. The receipt stores only the SHA-256 digest, not a copy of environment values; this strengthens provenance when environment configuration changes execution behavior.
+- **Determinism:** explicit environment keys use locale-independent ordering before hashing.
+- **DONE (regression code):** added a regression proving distinct explicit environment values produce distinct command fingerprints. Expanded the async-registration mutation test to change the caller's environment value after registration begins and assert the child still sees the original snapshotted value.
+- **PARTIAL:** tests/typecheck have not been run in this session. Current workflow jobs available through GitHub have failed before any steps execute (steps array is empty), so they neither validate nor establish a code-level failure.
+- **NEXT:** validate the process-supervisor tests in an executing runner; then finish the trusted host adapter using approved command capabilities and independent postcondition evidence.
