@@ -48,7 +48,7 @@ assert.equal(ledger.record({
 
 const experiences = [
   { id: 'good-pass', taskId: 'train-pass', taskVersion: 'v1', method: 'policy-a', seed: 1, attempt: 1, evidenceRef: pass.evidenceRef, tick: 1, contextKey: 'memory', action: 'recall', surprise: 0.4 },
-  { id: 'good-failure', taskId: 'train-fail', taskVersion: 'v1', method: 'policy-a', seed: 1, attempt: 1, evidenceRef: failure.evidenceRef, tick: 2, contextKey: 'tools', action: 'repair', surprise: 0.9 },
+  { id: 'good-failure', taskId: 'train-fail', taskVersion: 'v1', method: 'policy-a', seed: 1, attempt: 1, evidenceRef: failure.evidenceRef, tick: 2, contextKey: 'tools', action: 'repair', surprise: 0.9, emotionalIntensity: 0.8, activationStrength: 0.7, goalPriority: 0.9, retrievalCount: 4, novelty: 0.85 },
   { id: 'wrong-evidence', taskId: 'train-pass', taskVersion: 'v1', method: 'policy-a', seed: 1, attempt: 1, evidenceRef: 'signed-artifact:forged', tick: 3, contextKey: 'memory', action: 'recall', surprise: 1 },
   { id: 'unknown-task', taskId: 'not-in-manifest', taskVersion: 'v1', method: 'policy-a', seed: 1, attempt: 1, evidenceRef: 'artifact://unknown', tick: 4, contextKey: 'other', action: 'do', surprise: 1 },
   { id: 'wrong-version', taskId: 'train-pass', taskVersion: 'v0', method: 'policy-a', seed: 1, attempt: 1, evidenceRef: pass.evidenceRef, tick: 5, contextKey: 'memory', action: 'recall', surprise: 1 },
