@@ -144,7 +144,7 @@ function validateConfig(config: IndependentCandidateEvaluationConfig): void {
         !authority.holdoutPlan.arms.some(arm => arm.method === authority.method)) {
       throw new Error('independent-candidate-experiment-plan-mismatch');
     }
-    const manifestById = new Map(authority.manifest.map(entry => [entry.taskId, entry]));
+    const manifestById = new Map<string, TaskManifestEntry>(authority.manifest.map(entry => [entry.taskId, entry] as const));
     for (const task of config.tasks) {
       const manifestEntry = manifestById.get(task.taskId);
       const prompt = task.input && typeof task.input === 'object'
