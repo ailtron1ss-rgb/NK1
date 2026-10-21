@@ -89,6 +89,24 @@ try {
   assert.equal(immutableCommandResult.receipt.status, 'completed');
   assert.equal(immutableCommandResult.receipt.stdout, 'original-env');
 
+  // Replacing registrar method/version after scheduling must not alter trusted identity.
+  let originalRegistrationCalls = 0;
+  const mutableRegistrar = {
+    runtimeVersion: 'pinned-runtime',
+    register: async () => { originalRegistrationCalls++; },
+  };
+  const registrarRun = runLearningProcess(
+    { ...run, runId: 'run-registrar-pinned', arm: 'candidate', method: 'shadow' },
+    'b'.repeat(64),
+    { ...base, runRoot: path.join(root, 'registrar-runs') },
+    mutableRegistrar,
+  );
+  mutableRegistrar.runtimeVersion = 'attacker-runtime';
+  mutableRegistrar.register = async () => { throw new Error('registrar-swapped'); };
+  const pinnedRegistrarResult = await registrarRun;
+  assert.equal(pinnedRegistrarResult.receipt.status, 'completed');
+  assert.equal(originalRegistrationCalls, 1);
+
   if (process.platform !== 'win32') {
     // A timed-out parent must not leave a same-process-group descendant running.
     // The descendant would create a marker after the supervisor has returned if it survived.
