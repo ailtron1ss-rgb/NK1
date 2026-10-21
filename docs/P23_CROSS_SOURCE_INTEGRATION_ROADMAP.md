@@ -175,3 +175,11 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **Reuse/integration:** this adapts the existing P23 process supervisor instead of introducing a competing subprocess runner. It also gives WorkPass227's evaluator deadlines a concrete host-side cancellation seam when an adapter passes the signal through.
 - **OPEN:** current `child.kill('SIGKILL')` terminates the direct child only; process-tree containment and OS/container isolation remain the responsibility of a stronger host sandbox. The evaluator still needs a concrete trusted adapter that maps candidate payload/task inputs to an approved command; do not execute arbitrary generated payloads as shell commands.
 - **Validation:** code and test wiring are committed; test/typecheck/CI success remains unverified in this pass.
+
+
+### WorkPass229 — preserve terminal process state across cancellation races
+
+- **DONE (code):** the existing `LearningProcessSupervisor` now records the child `close` event before resolving the run promise and ignores late abort notifications once the child has closed. This prevents an abort racing with process completion from relabeling a completed receipt as `cancelled`.
+- **Reuse/integration:** this is a narrow correctness fix inside the existing P23 supervisor; no parallel runner or new authority was added.
+- **PARTIAL:** the race guard is committed, but this pass has not run the targeted supervisor regression or TypeScript typecheck. A deterministic regression for close/abort ordering and actual process-tree containment remain open.
+- **NEXT:** add a deterministic race regression and continue the trusted-host adapter path; process-tree/container isolation must remain explicit rather than inferred from direct-child SIGKILL.
