@@ -47,6 +47,14 @@ function proposal(id, accepted=true, authenticatedEvidenceRows=20, unauthenticat
   };
 }
 const store = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => true, () => true); // explicit test-only approval/evidence adapters
+const defaultDenyStore = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence());
+const defaultDenyCandidate = defaultDenyStore.stageCandidate(proposal('f'), 'deny-shadow-test', { instruction: 'must not enter shadow' });
+assert.throws(() => defaultDenyStore.recordShadowObservation(defaultDenyCandidate.candidateId, {
+  runId: 'unsigned-shadow-run', evidenceFingerprint: '1'.repeat(64), passed: true, observedAt: Date.now(),
+}), /not authenticated by the configured evidence verifier/,
+  'plausible unsigned shadow metadata must be denied by the default verifier');
+assert.equal(defaultDenyStore.snapshot().active.length, 0, 'denied shadow evidence cannot activate a skill');
+
 const p1 = proposal('a');
 const forgedProposal = { ...p1 };
 assert.throws(() => store.stageCandidate(forgedProposal, 'memory-repair', { instruction: 'forged' }),
