@@ -245,6 +245,11 @@ export class P23LearningEngine {
     this.state.metrics.skillPromotions = store.snapshot().active.length;
   }
 
+  /** Read-only view of the durable staged/active skill lifecycle; null means not configured. */
+  verifiedSkillCandidateSnapshot() {
+    return this.verifiedSkillStore?.snapshot() ?? null;
+  }
+
   stageVerifiedSkillCandidate(proposal:VerifiedSkillPromotionProposal, skill:PolicySkillRecord):VersionedSkillCandidate {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
     if(!skill || !skill.id || !skill.contextKey || !ACTIONS.includes(skill.action) ||
