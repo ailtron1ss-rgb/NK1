@@ -406,8 +406,7 @@ export class ProceduralSkillLibrary{
     const skill=this.state.compoundSkills.find(x=>x.id===id); if(!skill||skill.status==='disabled')return null;
     const d=this.diagnoseCompoundFailure(input);
     const row:CompoundSkillRepair={at:Date.now(),stepId:String(input.stepId),toolId:String(input.toolId),failureFingerprint:d.failureFingerprint,diagnosis:d.diagnosis,contextSignature:d.contextSignature,candidateTools:Array.from(new Set((input.candidateTools??[]).map(String))).slice(0,5),selectedTool:input.selectedTool?String(input.selectedTool):undefined,verified:Boolean(input.verified),confidence01:clamp(Number(input.confidence01??0)),holdout:Boolean(input.holdout)};
-    const prior=skill.repairsLedger[0];
-    const duplicate=prior && prior.failureFingerprint===row.failureFingerprint && prior.selectedTool===row.selectedTool && prior.contextSignature===row.contextSignature;
+    const duplicate=skill.repairsLedger.some(prior=>prior.failureFingerprint===row.failureFingerprint && prior.selectedTool===row.selectedTool && prior.contextSignature===row.contextSignature);
     if(!duplicate){skill.repairsLedger=[row,...skill.repairsLedger].slice(0,48);skill.lineageVersion++;}
     // Turn verified, non-holdout repair evidence into a staged variant at the point
     // where the runtime records the repair. Holdout observations remain evaluation-only.
