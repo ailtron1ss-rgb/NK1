@@ -35,6 +35,46 @@ try {
   assert.equal(result.verified,true);
   assert.equal(result.outputs.second.received,'bound-output');
   assert.equal(runtime.proceduralSkillLibrarySnapshot().compoundSkills.find(x=>x.id===skill.id)?.uses,1);
+
+  runtime.core.registerActionTool({
+    id:'test.compound.primary-fails',capability:'test.read',destructive:false,
+    execute:async()=>({ok:false,error:'simulated-primary-failure'}),
+    verify:()=>({verified:false,basis:'tool-contract',confidence01:0,notes:'expected primary failure'}),
+  });
+  runtime.core.registerActionTool({
+    id:'test.compound.fallback',capability:'test.read',destructive:false,
+    execute:async()=>({ok:true,value:'repaired-output'}),
+    verify:()=>({verified:true,basis:'tool-contract',confidence01:1,notes:'deterministic fallback contract'}),
+  });
+  const repairSkill=await runtime.compileCompoundSkill({
+    projectId:'workpass169',name:'runtime-repair-evidence',origin:'integration-test',
+    steps:[
+      {id:'first',action:'observe',toolId:'test.compound.primary-fails',fallbackToolIds:['test.compound.fallback']},
+      {id:'second',action:'verify',toolId:'test.compound.second',inputBindings:{received:'first.value'},requiredInputKeys:['received']},
+    ],
+  });
+  assert.ok(repairSkill);
+  const repaired=await runtime.executeCompoundSkill(repairSkill.id,{
+    runId:'wp169-run-1',context:'runtime repair evidence test',holdout:false,independent:true,autonomous:false,
+  });
+  assert.equal(repaired.ok,true);
+  const repairEvidence=runtime.compoundSkillRepairEvidence(repairSkill.id);
+  assert.equal(repairEvidence.length,1);
+  assert.equal(repairEvidence[0].failedTool,'test.compound.primary-fails');
+  assert.equal(repairEvidence[0].selectedTool,'test.compound.fallback');
+  assert.equal(repairEvidence[0].revisionEligible,true);
+  const holdoutSkill=await runtime.compileCompoundSkill({
+    projectId:'workpass169',name:'runtime-holdout-exclusion',origin:'integration-test',
+    steps:[
+      {id:'first',action:'observe',toolId:'test.compound.primary-fails',fallbackToolIds:['test.compound.fallback']},
+      {id:'second',action:'verify',toolId:'test.compound.second',inputBindings:{received:'first.value'},requiredInputKeys:['received']},
+    ],
+  });
+  assert.ok(holdoutSkill);
+  await runtime.executeCompoundSkill(holdoutSkill.id,{
+    runId:'wp169-run-holdout',context:'holdout repair evidence test',holdout:true,independent:true,autonomous:false,
+  });
+  assert.equal(runtime.compoundSkillRepairEvidence(holdoutSkill.id).length,0,'holdout repair evidence must not be exposed to revision callers');
   await runtime.stop();
 
   const restarted=new OrganismRuntime({stateFile,worldStateFile,enableLanguage:false});
