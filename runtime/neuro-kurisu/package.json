@@ -1688,6 +1688,7 @@
     "test:p23:learning-process-supervisor": "node --experimental-strip-types tests/p23-learning-process-supervisor.mjs",
     "test:p23:learning-execution-evidence": "node --experimental-strip-types tests/p23-learning-execution-evidence.mjs",
     "test:p23:learning-execution-audit": "node --experimental-strip-types tests/p23-learning-execution-audit.mjs",
-    "test:p23:skill-retrieval-reflection-curriculum": "node --experimental-strip-types tests/p23-skill-retrieval-reflection-curriculum.mjs"
+    "test:p23:skill-retrieval-reflection-curriculum": "node --experimental-strip-types tests/p23-skill-retrieval-reflection-curriculum.mjs",
+    "test:p23:verified-skill-revision-gate": "node --experimental-strip-types tests/p23-verified-skill-revision-gate.mjs"
   }
 }
