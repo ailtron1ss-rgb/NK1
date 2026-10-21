@@ -106,9 +106,10 @@ export function createContextBoundSkillShadowEvidenceVerifier(
     let context: TrustedShadowExecutionContext | null;
     try { context = resolveTrustedContext(observation, candidate); }
     catch { return false; }
-    if (!context || !context.runId?.trim() || !context.taskId?.trim() ||
+    if (!context || typeof context.runId !== 'string' || !context.runId.trim() ||
+        typeof context.taskId !== 'string' || !context.taskId.trim() ||
         !Number.isSafeInteger(context.seed) || context.seed < 0 ||
-        !/^[a-f0-9]{64}$/.test(context.manifestFingerprint) ||
+        typeof context.manifestFingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(context.manifestFingerprint) ||
         typeof context.runtimeVersion !== 'string' || !context.runtimeVersion.trim()) return false;
     const payload = observation.artifact!.payload;
     // in-toto-inspired subject/provenance binding: receipt identity, task, seed,
