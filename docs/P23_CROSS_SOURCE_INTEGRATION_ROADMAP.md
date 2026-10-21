@@ -1,6 +1,6 @@
 # Neuro Kurisu — cross-source learning integration roadmap
 
-Latest implementation checkpoint: WorkPass227 (bounded independent-evaluation services); implementation and CI wiring are committed on the current draft PR branch, but execution results remain unverified.
+Latest implementation checkpoint: WorkPass235 (P23 independent-evaluation ↔ Hermes signed-shadow-evidence binding); code and regression are committed on the current draft PR branch, but execution results remain unverified.
 
 Scope: continue integrating mechanisms into the existing P23 learning/revision lifecycle. This is an implementation queue, not a promise that upstream mechanisms are already integrated. Preserve the current branch/PR boundary; do not merge to the default branch without explicit approval.
 
@@ -24,6 +24,16 @@ Scope: continue integrating mechanisms into the existing P23 learning/revision l
 - [x] WorkPass226 partial: production `withIndependentCandidateEvaluation` now rejects configs without canonical experiment authority (manifest, validation/holdout plans and verified-outcome ledger); the WorkPass224 regression now covers a factory that supplies interface-shaped services but omits this authority.
 - [x] WorkPass225 follow-up: bind each provenance split to the actual validation/holdout report array before scoring; this prevents a caller from relabeling a verified validation trial as holdout (or vice versa) and recomputing the outer digest. Added a cross-split tampering regression.
 - [x] WorkPass225 integration repair: registered the regression script in `package.json` and included WorkPass224/225 in the canonical `audit:p23:cross-source-replay` command. The CI workflow already invokes the targeted regression.
+
+
+### WorkPass235 — P23 ↔ Hermes evidence bridge
+
+- **DONE (code):** added `bindIndependentEvaluationToVerifiedShadowEvidence` and exposed it through the canonical `P23LearningEngine`. It joins P23 experiment trial identities to actual sandbox execution run IDs through evaluator-produced `runBindings`, then checks the signed shadow receipt against task, seed, manifest, binary outcome and candidate identity.
+- **DONE (code):** exact one-to-one coverage is required across evaluation reports, run bindings and signed observations; validation/holdout collection membership must match the binding; duplicate/orphan receipts, unbound execution, nonzero safety findings, seed/task/manifest/outcome mismatches fail closed.
+- **DONE (code):** negative outcomes remain bindable as evidence when independently verified and safety-clean. The signature authenticates only identity and binary outcome, not quality/trajectory scores; no new staging, approval or promotion authority was added.
+- **DONE (regression authored):** extended `tests/p23-hermes-verified-evidence-binding.mjs` with P23-trial-to-runtime-run joins, seed mismatch rejection and safety veto. Existing targeted test command already includes this file.
+- **PARTIAL (validation):** test and typecheck were not run in this session; CI status must be checked at the exact current head. No green result is claimed.
+- **OPEN:** production verifier-key/context resolution must bind receipt signatures to independently trusted run records; connect the bridge to the actual promotion preparation/review path only after the evaluation envelope digest and signed receipt context are both revalidated at that boundary.
 
 ## Next implementation passes
 
