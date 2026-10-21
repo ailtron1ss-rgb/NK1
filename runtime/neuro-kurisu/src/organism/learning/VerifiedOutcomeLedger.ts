@@ -225,8 +225,8 @@ export class VerifiedOutcomeLedger {
       taskRows.set(task.taskId, methodRows);
       bySeed.set(outcome.seed, taskRows);
     }
-    const paired: Array<{ baseline: number; candidate: number }> = [];
-    for (const [, taskRows] of [...bySeed.entries()].sort((a, b) => a[0] - b[0])) {
+    const paired: Array<{ seed: number; baseline: number; candidate: number }> = [];
+    for (const [seed, taskRows] of [...bySeed.entries()].sort((a, b) => a[0] - b[0])) {
       // Fail closed on incomplete seed coverage: never compare different task sets.
       if (!expectedTasks.length || expectedTasks.some(taskId => {
         const methods = taskRows.get(taskId);
@@ -234,16 +234,18 @@ export class VerifiedOutcomeLedger {
       })) continue;
       const b = expectedTasks.reduce((sum, taskId) => sum + Number(taskRows.get(taskId)!.get(baseline)!.passed), 0) / expectedTasks.length;
       const c = expectedTasks.reduce((sum, taskId) => sum + Number(taskRows.get(taskId)!.get(candidate)!.passed), 0) / expectedTasks.length;
-      paired.push({ baseline: b, candidate: c });
+      paired.push({ seed, baseline: b, candidate: c });
     }
     const n = paired.length;
     const baselinePassRate = n ? paired.reduce((sum, row) => sum + row.baseline, 0) / n : 0;
     const candidatePassRate = n ? paired.reduce((sum, row) => sum + row.candidate, 0) / n : 0;
     const differences = paired.map(row => row.candidate - row.baseline);
     const absoluteGain = n ? differences.reduce((sum, value) => sum + value, 0) / n : 0;
+    // Only complete paired seeds define the sample and its deterministic bootstrap stream.
+    // Unrelated incomplete seeds must not perturb an otherwise identical estimate.
     const bootstrap95CI = bootstrapMean95CI(
       differences,
-      JSON.stringify({ baseline, candidate, split, family: family ?? null, seeds: [...bySeed.keys()].sort((a, b) => a - b) }),
+      JSON.stringify({ baseline, candidate, split, family: family ?? null, seeds: paired.map(row => row.seed) }),
     );
     let approximate95CI: [number, number] | null = null;
     if (n > 1) {
