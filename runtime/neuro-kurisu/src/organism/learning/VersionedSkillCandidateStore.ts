@@ -32,6 +32,45 @@ export interface SkillPromotionApproval {
   artifact?: SignedSkillPromotionApprovalArtifact;
 }
 
+export interface SkillRollbackApprovalPayload {
+  schemaVersion: 1;
+  approvalId: string;
+  approverId: string;
+  approvedAt: number;
+  candidateId: string;
+  skillId: string;
+  candidateVersion: number;
+  payloadFingerprint: string;
+  proposalId: string;
+  expectedActiveVersion: number;
+  restoredVersion: number | null;
+  restoredPayloadFingerprint: string | null;
+  restoredProposalId: string | null;
+  previousActiveFingerprint: string;
+  shadowEvidenceFingerprint: string;
+}
+
+export interface SignedSkillRollbackApprovalArtifact {
+  payload: SkillRollbackApprovalPayload;
+  signature: string;
+}
+
+export interface SkillRollbackApproval {
+  approvedBy: string;
+  approvedAt: number;
+  expectedActiveVersion: number;
+  artifact?: SignedSkillRollbackApprovalArtifact;
+}
+
+export type SkillRollbackApprovalVerificationPurpose = 'rollback' | 'persisted-rollback';
+export type SkillRollbackApprovalVerifier = (
+  approval: SkillRollbackApproval,
+  candidate: Readonly<VersionedSkillCandidate>,
+  restoreTarget: Readonly<ActiveSkillVersion> | null,
+  purpose?: SkillRollbackApprovalVerificationPurpose,
+) => boolean;
+
+
 /**
  * The application must supply an authority that validates the approval against
  * an authenticated human/session or a separately trusted approval service.
@@ -82,6 +121,7 @@ export interface VersionedSkillCandidate {
   shadowObservations: SkillShadowObservation[];
   createdAt: number;
   approval?: SkillPromotionApproval;
+  rollbackApproval?: SkillRollbackApproval;
   promotedAt?: number;
   rolledBackAt?: number;
 }
@@ -142,6 +182,7 @@ export class VersionedSkillCandidateStore {
     private readonly persistence: SkillStorePersistence = new InMemorySkillStorePersistence(),
     private readonly verifyApproval: SkillPromotionApprovalVerifier = () => false,
     private readonly verifyShadowEvidence: SkillShadowEvidenceVerifier = () => false,
+    private readonly verifyRollbackApproval: SkillRollbackApprovalVerifier = () => false,
   ) {
     const initial = persistence.read();
     if (initial.schemaVersion !== 1 || !Number.isSafeInteger(initial.revision) ||
