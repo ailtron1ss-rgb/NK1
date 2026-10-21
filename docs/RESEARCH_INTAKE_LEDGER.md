@@ -167,3 +167,13 @@ Do not count a reference as “used” until a source revision/paper protocol is
 - `VerifiedSkillPromotion.ts` requires both the existing small-sample Student-t lower bound and the bootstrap lower bound to be above zero, as well as existing minimum-gain, evidence-authentication, task-coverage, seed-coverage and family-regression gates.
 - Regression tests assert determinism, interval bracketing and no confidence interval for one seed, and require the positive bootstrap lower bound in the accepted promotion fixture.
 - **Not proven:** bootstrap intervals do not fix tiny or biased samples, verifier bias, task leakage, multiple-comparison inflation, or poor benchmark representativeness. No live learning run has been measured by this change; it is a stricter admission/evaluation rule, not a performance gain.
+
+
+## WorkPass134 — manifest-bound outcome ingestion (2026-10-21)
+
+- Added a canonical fingerprint equality check between the caller-supplied task manifest and the `VerifiedOutcomeLedger` manifest before signed outcome ingestion. Malformed and substituted manifests fail closed before the ledger is mutated.
+- Tightened runtime task-manifest validation: non-empty string identity fields, a supported `train|validation|holdout` split, and a SHA-256 prompt fingerprint are required. Unknown split labels can no longer silently disappear from expected evaluation coverage.
+- Added regression cases for side-manifest substitution, duplicate task IDs, unknown split labels, and whitespace-only family names.
+- Research relationship: manifest-bound, controlled evaluation and signed-provenance principles; protocol adaptation only, no upstream code or dataset copied.
+- **Verification boundary:** code and tests committed; runtime execution, typecheck and exact-head Actions are still unverified. No learning uplift is claimed.
+- Report: `docs/WORKPASS134_MANIFEST_BOUND_OUTCOME_EVIDENCE_2026-10-21.md`.
