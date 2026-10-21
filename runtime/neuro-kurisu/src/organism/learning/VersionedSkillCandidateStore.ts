@@ -305,6 +305,7 @@ export class VersionedSkillCandidateStore {
     if (!isAuthenticVerifiedSkillPromotionProposal(proposal) || proposal.schemaVersion !== 1 || proposal.gate?.accepted !== true ||
         proposal.canActivateAutomatically !== false || proposal.authenticatedEvidenceRows < 1 ||
         proposal.unauthenticatedEvidenceRows !== 0 || !/^[a-f0-9]{64}$/.test(proposal.proposalId) ||
+        !/^[a-f0-9]{64}$/.test(proposal.datasetFingerprint) ||
         !/^[a-f0-9]{64}$/.test(proposal.outcomeFingerprint)) {
       throw new Error('only an authentic, accepted proposal backed exclusively by authenticated evidence can be staged');
     }
@@ -312,6 +313,7 @@ export class VersionedSkillCandidateStore {
       revisionProvenance.schemaVersion !== 1 ||
       !(revisionProvenance.sourceCandidateId === null || /^[a-f0-9]{64}$/.test(revisionProvenance.sourceCandidateId)) ||
       !/^[a-f0-9]{64}$/.test(revisionProvenance.planFingerprint) ||
+      !/^[a-f0-9]{64}$/.test(revisionProvenance.datasetFingerprint) ||
       !Array.isArray(revisionProvenance.dimensions) || revisionProvenance.dimensions.length === 0 ||
       revisionProvenance.dimensions.some(d => !['safety','task-success','trajectory','capability-coverage','executability','holdout-generalization'].includes(d)) ||
       new Set(revisionProvenance.dimensions).size !== revisionProvenance.dimensions.length ||
