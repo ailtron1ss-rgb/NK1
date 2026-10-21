@@ -6,6 +6,7 @@ import { adaptiveReplayLearningRate, adaptiveReplayOptions, bellmanTarget, calib
 import { retrievedSkillBias } from './SkillRetrievalAugmentation.ts';
 import { rankLearningTargets, reflectOnOutcomes } from './OutcomeReflectionCurriculum.ts';
 import type { VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
+import { evaluateSkillLearnBenchCandidate, type SkillLearnBenchCandidateEvaluation, type SkillLearnBenchCandidateGateOptions, type SkillLearnBenchCandidateGateReport } from './SkillLearnBenchAdapter.ts';
 import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillRollbackApproval, type SkillShadowObservation, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
@@ -248,6 +249,20 @@ export class P23LearningEngine {
   /** Read-only view of the durable staged/active skill lifecycle; null means not configured. */
   verifiedSkillCandidateSnapshot() {
     return this.verifiedSkillStore?.snapshot() ?? null;
+  }
+
+  /**
+   * Run the Hermes-inspired multi-axis candidate assessment from the canonical
+   * learning engine. This is deliberately diagnostic-only: trial reports are not
+   * signed outcome artifacts, so this method cannot stage, approve, or activate
+   * a skill. The authenticated outcome ledger remains the promotion authority.
+   */
+  evaluateReflectiveSkillCandidate(
+    baseline: { validation: SkillLearnBenchCandidateEvaluation['reports']; holdout: SkillLearnBenchCandidateEvaluation['reports'] },
+    candidate: { validation: SkillLearnBenchCandidateEvaluation['reports']; holdout: SkillLearnBenchCandidateEvaluation['reports'] },
+    options: SkillLearnBenchCandidateGateOptions = {},
+  ): SkillLearnBenchCandidateGateReport {
+    return evaluateSkillLearnBenchCandidate(baseline, candidate, options);
   }
 
   stageVerifiedSkillCandidate(proposal:VerifiedSkillPromotionProposal, skill:PolicySkillRecord):VersionedSkillCandidate {
