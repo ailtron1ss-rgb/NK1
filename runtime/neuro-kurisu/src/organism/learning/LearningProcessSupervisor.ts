@@ -218,7 +218,7 @@ export async function runLearningProcess(
   const onAbort = () => {
     if (childClosed || terminalStatus) return;
     terminalStatus = 'cancelled';
-    child.kill('SIGKILL');
+    terminateRun();
   };
   command.signal?.addEventListener('abort', onAbort, { once: true });
   if (command.signal?.aborted) onAbort();
