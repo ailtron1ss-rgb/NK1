@@ -168,10 +168,12 @@ export function createIndependentSkillCandidateEvaluator(
         coveredCapabilityIds,
         safetyViolationCount: safety.violationCount,
       });
+      // Unsafe behavior is a task failure even if the functional verifier passed.
+      const taskPassed = executable && verifierPassed && safety.violationCount === 0;
       const report = evaluateSkillLearnBenchTrial({
         taskId: task.taskId,
         trialId: task.trialId,
-        verifierPassed: executable && verifierPassed,
+        verifierPassed: taskPassed,
         skill: {
           requiredCapabilityIds: task.requiredCapabilityIds,
           coveredCapabilityIds,
