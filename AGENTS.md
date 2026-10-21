@@ -1,10 +1,10 @@
 # NeuroCore — repository working rules
 
-> **New-session entry point:** read [`NEUROCORE_START_HERE.md`](NEUROCORE_START_HERE.md) and the latest [WorkPass94 checkpoint](docs/WORKPASS94_CHECKPOINT_2026-10-20.md), then refresh the live branch head, PR state, latest Actions status and open-work register. The mission is persistent across chats; do not ask the user to restate it.
+> **New-session entry point:** read [`NEUROCORE_START_HERE.md`](NEUROCORE_START_HERE.md) and [WorkPass125 repository synchronization audit](docs/WORKPASS125_REPOSITORY_SYNC_AUDIT_2026-10-21.md), then refresh the live branch head, stacked PR state, exact-head Actions status and open-work register. The active learning stack is WorkPass124 on top of WorkPass123; PR #12 is draft and unmerged. The release/metadata `main` branch is not the direct merge target for the source stack. The mission is persistent across chats; do not ask the user to restate it.
 
 ## Latest checkpoint
 
-Read [WorkPass94 checkpoint](docs/WORKPASS94_CHECKPOINT_2026-10-20.md) before resuming. Active work branch is `workpass79-cognitive-rebuild` and PR #1 remains draft/unmerged unless live GitHub state says otherwise. WorkPass94 exact-head CI and broader runtime regressions remain pending until verified.
+Read [WorkPass125 repository synchronization audit](docs/WORKPASS125_REPOSITORY_SYNC_AUDIT_2026-10-21.md) before resuming, then read the current WorkPass124 PR description and inspect its exact-head CI. Active learning work is `workpass124-learning-evidence-hardening` (PR #12, draft/unmerged), stacked on `workpass123-authenticated-skill-lifecycle` (PR #11). The full source stack is based on `workpass70-source`; `main` is a separate release/metadata branch with no common ancestor reported by GitHub compare. Do not merge directly to `main`.
 
 ## Project objective
 
