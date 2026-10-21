@@ -51,6 +51,9 @@ export function createSkillPromotionApprovalPayload(
       !safeInteger(minShadowRuns, 1, 1000)) {
     throw new Error('invalid authenticated skill promotion request identity or guards');
   }
+  if (candidate.shadowObservations.some(item => !Number.isFinite(item.observedAt) || item.observedAt > approvedAt)) {
+    throw new Error('promotion approval timestamp must not predate any shadow observation');
+  }
   return {
     schemaVersion: 1,
     approvalId,
@@ -131,7 +134,8 @@ export function createAuthenticatedSkillPromotionApprovalVerifier(
           payload.candidateVersion !== candidate.version || payload.payloadFingerprint !== candidate.payloadFingerprint ||
           payload.proposalId !== candidate.proposalId ||
           payload.proposalOutcomeFingerprint !== candidate.proposalOutcomeFingerprint ||
-          payload.shadowEvidenceFingerprint !== skillPromotionShadowEvidenceFingerprint(candidate)) return false;
+          payload.shadowEvidenceFingerprint !== skillPromotionShadowEvidenceFingerprint(candidate) ||
+          candidate.shadowObservations.some(item => item.observedAt > payload.approvedAt)) return false;
       const timestamp = now();
       if (!Number.isFinite(timestamp) || payload.approvedAt > timestamp + allowedClockSkewMs) return false;
       // A new activation needs a recent approval. Existing active skills are
