@@ -1179,3 +1179,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added a three-level holdout evaluation report for skill quality, execution trajectory, and verified task outcomes with explicit sample/task/seed and evidence coverage gates.
 - Added regression coverage for forged evidence refs, authenticated outcomes, candidate lifecycle/rollback, and report completeness; wired tests into the WorkPass110 workflow.
 - Boundaries: provenance receipts are process-local and must be re-established after restart; the lifecycle bridge is opt-in and application bootstrap does not yet configure the durable adapter by default; crash/kill contention tests remain open. Exact-head Actions validation is blocked before job steps start (GitHub reports runner_id=0 and no step logs); no learning uplift is claimed.
+
+
+## WorkPass134 — manifest-bound outcome evidence (2026-10-21)
+
+- Reject signed-outcome ingestion when the caller-supplied manifest is malformed or does not fingerprint-match the ledger manifest.
+- Reject malformed manifest entries at runtime, including unsupported split labels and whitespace-only identity/stratum fields.
+- Add regressions for manifest substitution, duplicate task IDs, unknown splits and invalid family labels.
+- Validation remains unconfirmed: no exact-head test/typecheck/Actions pass is claimed.
