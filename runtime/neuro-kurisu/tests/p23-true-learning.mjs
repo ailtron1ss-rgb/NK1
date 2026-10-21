@@ -1,9 +1,15 @@
 import assert from 'node:assert/strict';
-import { P23LearningEngine } from '../src/organism/learning/P23LearningEngine.ts';
+import { P23LearningEngine, outcomeReplaySalience } from '../src/organism/learning/P23LearningEngine.ts';
 import { AdaptivePolicyEngine } from '../src/organism/learning/AdaptivePolicyEngine.ts';
 
 const learning = new P23LearningEngine();
 const policy = new AdaptivePolicyEngine();
+const nearThresholdSalienceA = outcomeReplaySalience(.49, .65);
+const nearThresholdSalienceB = outcomeReplaySalience(.50, .65);
+assert.ok(Math.abs(nearThresholdSalienceA - nearThresholdSalienceB) < .02,
+  'near-identical outcomes around 0.5 must not receive a discontinuous replay-salience jump');
+assert.ok(outcomeReplaySalience(.15, .65) > outcomeReplaySalience(.9, .9),
+  'poor outcomes should retain more replay salience than well-predicted successes');
 const baseNeeds = (overrides={}) => ({ energy:.72, cognitiveLoad:.24, uncertainty:.42, socialNeed:.32, novelty:.45, identityCoherence:.86, goalPressure:.22, ...overrides });
 const stateBefore = (overrides={}) => ({ version:26,tick:1,at:1,needs:baseNeeds(overrides),predictionError:.2,attentionBudget:.8,lastAction:'wait',lastActionSuccess:null,autonomyScore:.2,selfPredictionError:.1,predictedNextAction:'reflect',lastPredictionConfidence:.6,worldContextVersion:1 });
 const makeTrace = (tick, action, success, overrides={}) => ({
