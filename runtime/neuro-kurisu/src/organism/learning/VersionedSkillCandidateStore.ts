@@ -37,10 +37,12 @@ export interface SkillPromotionApproval {
  * an authenticated human/session or a separately trusted approval service.
  * An audit-shaped { approvedBy } object alone is not authorization.
  */
+export type SkillPromotionApprovalVerificationPurpose = 'promotion' | 'persisted-active';
 export type SkillPromotionApprovalVerifier = (
   approval: SkillPromotionApproval,
   candidate: Readonly<VersionedSkillCandidate>,
   minShadowRuns: number,
+  purpose?: SkillPromotionApprovalVerificationPurpose,
 ) => boolean;
 
 export interface SkillShadowObservation {
@@ -146,9 +148,61 @@ export class VersionedSkillCandidateStore {
         initial.revision < 0 || !Array.isArray(initial.active) || !Array.isArray(initial.candidates)) {
       throw new Error('invalid versioned skill store snapshot');
     }
+    this.assertTrustedActiveState(initial);
   }
 
-  snapshot(): VersionedSkillStoreSnapshot { return clone(this.persistence.read()); }
+  snapshot(): VersionedSkillStoreSnapshot { return clone(this.readTrustedSnapshot()); }
+
+  private readTrustedSnapshot(): VersionedSkillStoreSnapshot {
+    const current = this.persistence.read();
+    this.assertTrustedActiveState(current);
+    return current;
+  }
+
+  /**
+   * A structurally valid JSON snapshot is not promotion authority. On startup and
+   * every read, each active skill must map to an active candidate carrying a signed
+   * approval and independently verifiable shadow observations.
+   */
+  private assertTrustedActiveState(current: VersionedSkillStoreSnapshot): void {
+    const activeCandidates = current.candidates.filter(candidate => candidate.status === 'active');
+    if (activeCandidates.length !== current.active.length) {
+      throw new Error('persisted active skill set does not match candidate lifecycle');
+    }
+    const activeSkillIds = new Set<string>();
+    for (const active of current.active) {
+      if (activeSkillIds.has(active.skillId)) throw new Error('persisted active skill set contains duplicate skill IDs');
+      activeSkillIds.add(active.skillId);
+      const candidate = activeCandidates.find(item =>
+        item.skillId === active.skillId && item.version === active.version);
+      if (!candidate || candidate.payloadFingerprint !== active.payloadFingerprint ||
+          candidate.proposalId !== active.proposalId || canonical(candidate.payload) !== canonical(active.payload)) {
+        throw new Error('persisted active skill is not bound to its candidate payload/version');
+      }
+      const approval = candidate.approval;
+      if (!approval) throw new Error('persisted active candidate is missing signed promotion approval');
+      const minShadowRuns = approval.artifact?.payload?.minShadowRuns ?? 3;
+      if (!Number.isSafeInteger(minShadowRuns) || minShadowRuns < 1 || minShadowRuns > 1000 ||
+          candidate.shadowObservations.length < minShadowRuns ||
+          candidate.shadowObservations.some(item => item.passed !== true)) {
+        throw new Error('persisted active candidate does not satisfy its signed shadow gate');
+      }
+      let approvalAuthorized = false;
+      try { approvalAuthorized = this.verifyApproval(clone(approval), clone(candidate), minShadowRuns, 'persisted-active'); }
+      catch { approvalAuthorized = false; }
+      if (approvalAuthorized !== true) {
+        throw new Error('persisted active skill approval failed signature/context verification');
+      }
+      for (const observation of candidate.shadowObservations) {
+        let evidenceAuthorized = false;
+        try { evidenceAuthorized = this.verifyShadowEvidence(clone(observation), clone(candidate)); }
+        catch { evidenceAuthorized = false; }
+        if (evidenceAuthorized !== true) {
+          throw new Error('persisted active skill shadow evidence failed authentication');
+        }
+      }
+    }
+  }
 
   stageCandidate(
     proposal: VerifiedSkillPromotionProposal,
@@ -163,7 +217,7 @@ export class VersionedSkillCandidateStore {
       throw new Error('only an authentic, accepted proposal backed exclusively by authenticated evidence can be staged');
     }
     const payloadFingerprint = fingerprint(payload);
-    const current = this.persistence.read();
+    const current = this.readTrustedSnapshot();
     const existing = current.candidates.find(item => item.proposalId === proposal.proposalId &&
       item.skillId === skillId && item.payloadFingerprint === payloadFingerprint);
     if (existing) return clone(existing);
@@ -193,7 +247,7 @@ export class VersionedSkillCandidateStore {
         !/^[a-f0-9]{64}$/i.test(observation.evidenceFingerprint) ||
         typeof observation.passed !== 'boolean' || !Number.isFinite(observation.observedAt) ||
         observation.observedAt <= 0) throw new Error('invalid shadow observation');
-    const current = this.persistence.read();
+    const current = this.readTrustedSnapshot();
     const candidate = current.candidates.find(item => item.candidateId === candidateId);
     if (!candidate || !['staged', 'shadow'].includes(candidate.status)) throw new Error('candidate is not eligible for shadow evaluation');
     let evidenceAuthorized = false;
@@ -227,7 +281,7 @@ export class VersionedSkillCandidateStore {
     if (!Number.isSafeInteger(minShadowRuns) || minShadowRuns < 1 || minShadowRuns > 1000) {
       throw new Error('minShadowRuns must be an integer from 1 to 1000');
     }
-    const current = this.persistence.read();
+    const current = this.readTrustedSnapshot();
     const candidate = current.candidates.find(item => item.candidateId === candidateId);
     if (!candidate || candidate.status !== 'shadow') throw new Error('candidate must complete shadow staging before promotion');
     const active = activeFor(current, candidate.skillId);
@@ -249,7 +303,7 @@ export class VersionedSkillCandidateStore {
     // Default is deny; production must inject a verifier backed by authenticated authority.
     let approvalAuthorized = false;
     try {
-      approvalAuthorized = this.verifyApproval(clone(approval), clone(candidate), minShadowRuns);
+      approvalAuthorized = this.verifyApproval(clone(approval), clone(candidate), minShadowRuns, 'promotion');
     } catch {
       approvalAuthorized = false;
     }
@@ -280,7 +334,7 @@ export class VersionedSkillCandidateStore {
   rollback(candidateId: string, expectedActiveVersion: number, rolledBackAt = Date.now()): ActiveSkillVersion | null {
     if (!Number.isSafeInteger(expectedActiveVersion) || expectedActiveVersion < 1 ||
         !Number.isFinite(rolledBackAt) || rolledBackAt <= 0) throw new Error('invalid rollback guard');
-    const current = this.persistence.read();
+    const current = this.readTrustedSnapshot();
     const candidate = current.candidates.find(item => item.candidateId === candidateId);
     if (!candidate || candidate.status !== 'active') throw new Error('only the currently promoted candidate can be rolled back');
     const active = activeFor(current, candidate.skillId);
