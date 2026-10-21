@@ -293,6 +293,7 @@ export class P23LearningEngine {
     candidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
     generate:(request:{
       sourcePayload:unknown;
+      datasetFingerprint:string;
       optimizerInstruction:string;
       validationEvidence:SkillLearnBenchCandidateEvaluation['reports'];
       targets:SkillRevisionPlan['targets'];
@@ -307,6 +308,7 @@ export class P23LearningEngine {
     if(!isAuthenticVerifiedSkillPromotionProposal(proposal) || proposal.schemaVersion!==1 ||
        proposal.gate?.accepted!==true || proposal.canActivateAutomatically!==false ||
        proposal.authenticatedEvidenceRows<1 || proposal.unauthenticatedEvidenceRows!==0 ||
+       !/^[a-f0-9]{64}$/.test(proposal.datasetFingerprint) ||
        !/^[a-f0-9]{64}$/.test(proposal.proposalId) || !/^[a-f0-9]{64}$/.test(proposal.outcomeFingerprint)) {
       throw new Error('reflective revision requires an authentic accepted proposal backed exclusively by authenticated evidence');
     }
@@ -320,6 +322,7 @@ export class P23LearningEngine {
     if(plan.targets.length===0) throw new Error('reflective revision has no evidence-backed target; no candidate was staged');
     const revisedPayload=await generate({
       sourcePayload:structuredClone(source.payload),
+      datasetFingerprint:proposal.datasetFingerprint,
       optimizerInstruction:plan.optimizerInstruction,
       validationEvidence:structuredClone(candidateEvaluation.validation),
       targets:structuredClone(plan.targets),
