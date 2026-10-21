@@ -45,8 +45,20 @@ assert.equal(repaired.weights.respond[0], 0);
 assert.equal(repaired.weights.explore[1], 0);
 assert.equal(repaired.bias.verify, 0);
 
+// Batch preflight must reject a malformed later sample before applying the
+// valid earlier sample; the batch is atomic with respect to input validation.
+const batchLearner = new ParametricPolicyLearner();
+const batchBefore = batchLearner.snapshot();
+assert.throws(() => batchLearner.trainBatch([
+  valid,
+  { ...valid, state: { needs: null } },
+]), /state-must-have-needs/);
+assert.deepEqual(batchLearner.snapshot(), batchBefore, 'invalid batch must not partially train the policy');
+assert.throws(() => batchLearner.trainBatch([valid, { ...valid, target01: Number.NaN }]), /target-must-be-finite/);
+assert.deepEqual(batchLearner.snapshot(), batchBefore, 'invalid batch feedback must be rejected before mutation');
+
 const result = learner.train(valid);
 assert.equal(learner.snapshot().updates, 1, 'valid feedback must still update the learner');
 assert.ok(Number.isFinite(result.predictionAfter));
 assert.ok(learner.snapshot().weights.respond.every(Number.isFinite));
-console.log('P26_LEARNING_INPUT_INTEGRITY=PASS invalidSamples=5 corruptSnapshotFieldsRepaired=9 stateMutationOnReject=0 validUpdates=1');
+console.log('P26_LEARNING_INPUT_INTEGRITY=PASS invalidSamples=5 corruptSnapshotFieldsRepaired=9 atomicBatchReject=2 stateMutationOnReject=0 validUpdates=1');
