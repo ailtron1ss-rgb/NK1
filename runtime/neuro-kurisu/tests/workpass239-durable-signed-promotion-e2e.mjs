@@ -84,7 +84,7 @@ try {
   for (let i = 0; i < 3; i++) {
     const context = {
       runId: `wp239-shadow-run-${i + 1}`,
-      taskId: `shadow-task-${i + 1}`,
+      taskId: manifest[i].taskId,
       seed: 101 + i,
       manifestFingerprint,
       runtimeVersion: 'nk1-workpass239-e2e',
