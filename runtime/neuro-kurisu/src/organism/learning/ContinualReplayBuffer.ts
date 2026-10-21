@@ -1,5 +1,6 @@
 import type { ActionKind } from '../core/types.ts';
 import { ParametricPolicyLearner } from './ParametricPolicyLearner.ts';
+import { priorityFromTdError, samplePrioritized } from './PrioritizedReplaySampler.ts';
 
 export interface ReplayExperience {
   taskId: string;
@@ -17,6 +18,13 @@ export interface ReplayTrainingReport {
   seenCount: number;
   meanLoss01: number;
   perTaskMemory: Record<string, number>;
+  replayStrategy: 'balanced' | 'prioritized';
+}
+
+export interface ReplayTrainingOptions {
+  strategy?: 'balanced' | 'prioritized';
+  alpha?: number;
+  beta?: number;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -164,30 +172,41 @@ export class ContinualReplayBuffer {
 }
 
 /**
- * Train on the current batch plus a task-balanced sample from older experience.
- * Existing memory is sampled before current items are inserted, preventing
- * accidental double-counting of the current batch as both new and replay data.
+ * Train on current examples plus older experience. Balanced sampling remains
+ * the default; proportional prioritization is opt-in and uses the learner's
+ * current absolute prediction error as its priority signal. Memory is sampled
+ * before current items are inserted to avoid double-counting the current batch.
  */
 export function trainWithExperienceReplay(
   learner: ParametricPolicyLearner,
   buffer: ContinualReplayBuffer,
   current: ReplayExperience[],
   replayBatchSize: number,
+  options: ReplayTrainingOptions = {},
 ): ReplayTrainingReport {
   if (!Array.isArray(current)) throw new TypeError('replay-current-batch-required');
   if (!Number.isSafeInteger(replayBatchSize) || replayBatchSize < 0) throw new RangeError('replay-batch-size-invalid');
   // Validate the entire current batch before changing either learner or memory.
   const checked = current.map((item) => buffer.validateForTraining(item));
-  const replay = buffer.sampleBalanced(replayBatchSize);
-  const combined = [...checked, ...replay];
+  const strategy = options.strategy ?? 'balanced';
+  if (strategy !== 'balanced' && strategy !== 'prioritized') throw new TypeError('replay-strategy-invalid');
+  const replay = strategy === 'balanced'
+    ? buffer.sampleBalanced(replayBatchSize).map((item) => ({ item, weight: item.sampleWeight01 ?? 1 }))
+    : samplePrioritized(buffer.snapshot().items.map((item) => ({
+        item,
+        priority01: priorityFromTdError(Math.abs(item.target01 - learner.predictFromFeatures(item.features, item.action))),
+      })), replayBatchSize, { alpha: options.alpha, beta: options.beta })
+        .map((sample) => ({ item: sample.item.item, weight: sample.importanceWeight01 * (sample.item.item.sampleWeight01 ?? 1) }));
+  const combined = [...checked.map((item) => ({ item, weight: item.sampleWeight01 ?? 1 })), ...replay];
   let loss = 0;
-  for (const item of combined) {
+  for (const entry of combined) {
+    const item = entry.item;
     loss += learner.trainFeatures({
       features: item.features,
       action: item.action,
       target01: item.target01,
       learningRate01: item.learningRate01,
-      ...(item.sampleWeight01 === undefined ? {} : { sampleWeight01: item.sampleWeight01 }),
+      sampleWeight01: Math.max(0, Math.min(1, entry.weight)),
     }).loss01;
   }
   buffer.addMany(checked);
@@ -198,5 +217,6 @@ export function trainWithExperienceReplay(
     seenCount: buffer.seenCount,
     meanLoss01: combined.length ? Number((loss / combined.length).toFixed(6)) : 0,
     perTaskMemory: buffer.taskCounts(),
+    replayStrategy: strategy,
   };
 }
