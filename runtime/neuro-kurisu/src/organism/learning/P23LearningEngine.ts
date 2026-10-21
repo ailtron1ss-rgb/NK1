@@ -252,10 +252,21 @@ export class P23LearningEngine {
 
   stageVerifiedSkillCandidate(proposal:VerifiedSkillPromotionProposal, skill:PolicySkillRecord):VersionedSkillCandidate {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
-    if(!skill || !skill.id || !skill.contextKey || !ACTIONS.includes(skill.action) ||
-       !Number.isFinite(skill.validationSuccess01) || !Number.isFinite(skill.confidence01)) {
-      throw new Error('candidate policy skill record is malformed');
-    }
+    const ratio01 = (value:number) => Number.isFinite(value) && value >= 0 && value <= 1;
+    const safeCount = (value:number) => Number.isSafeInteger(value) && value >= 0;
+    const validSkill = Boolean(skill) &&
+      typeof skill.id === 'string' && skill.id.trim().length > 0 &&
+      typeof skill.contextKey === 'string' && skill.contextKey.trim().length > 0 &&
+      ACTIONS.includes(skill.action) &&
+      skill.status === 'candidate' &&
+      safeCount(skill.totalUses) && safeCount(skill.trainUses) && safeCount(skill.validationUses) &&
+      skill.trainUses + skill.validationUses <= skill.totalUses &&
+      ratio01(skill.trainSuccess01) && ratio01(skill.validationSuccess01) && ratio01(skill.confidence01) &&
+      Number.isFinite(skill.createdAt) && skill.createdAt > 0 &&
+      Number.isFinite(skill.updatedAt) && skill.updatedAt >= skill.createdAt &&
+      safeCount(skill.validationWindowStartTick) && safeCount(skill.validationWindowEndTick) &&
+      skill.validationWindowEndTick >= skill.validationWindowStartTick;
+    if (!validSkill) throw new Error('candidate policy skill record is malformed or outside canonical P23 bounds');
     return this.verifiedSkillStore.stageCandidate(proposal,skill.id,skill);
   }
 
