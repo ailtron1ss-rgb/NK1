@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, openSync, closeSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { tmpdir, hostname } from 'node:os';
 import { join } from 'node:path';
 import { AtomicFileTrustedSkillShadowRunRegistry, InMemoryTrustedSkillShadowRunRegistry } from '../src/organism/learning/TrustedSkillShadowRunRegistry.ts';
 import { createContextBoundSkillShadowEvidenceVerifier, signSkillShadowArtifactForFixture, skillShadowPayloadFingerprint } from '../src/organism/learning/VerifiedSkillShadowEvidence.ts';
@@ -48,6 +48,22 @@ try {
   const lockFd = openSync(file + '.lock', 'wx', 0o600);
   try { assert.throws(() => restored.register({ ...context, runId: 'other-run' }), /locked; fail closed/); }
   finally { closeSync(lockFd); rmSync(file + '.lock', { force: true }); }
+
+  // Crash-recovery regression: a same-host lock whose owner PID is provably
+  // gone can be reclaimed; age alone must never be used to break a lock.
+  let deadPid = process.pid + 1;
+  while (true) {
+    try { process.kill(deadPid, 0); deadPid += 1; }
+    catch (error) {
+      if (error?.code === 'ESRCH') break;
+      throw error;
+    }
+  }
+  writeFileSync(file + '.lock', JSON.stringify({ pid: deadPid, hostname: hostname(), acquiredAt: Date.now() }));
+  assert.equal(restored.register(context).runId, context.runId,
+    'a provably stale same-host lock must not permanently block trusted-run registration');
+  assert.equal(readFileSync(file + '.lock', 'utf8').includes(String(deadPid)), false,
+    'stale lock is replaced and cleaned up after successful registration');
 
   writeFileSync(file, JSON.stringify({ schemaVersion: 1, revision: 2, runs: [{ ...context, seed: -1, registeredAt: Date.now() }] }));
   assert.throws(() => restored.snapshot(), /schema is invalid/, 'corrupt trusted state must not be silently reset');
