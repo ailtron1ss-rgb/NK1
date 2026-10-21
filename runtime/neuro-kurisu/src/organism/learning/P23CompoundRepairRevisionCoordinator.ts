@@ -7,7 +7,8 @@ type Proposal = RevisionArgs[0];
 type Baseline = RevisionArgs[3];
 type CandidateEvaluation = RevisionArgs[4];
 type Generator = RevisionArgs[5];
-type Options = RevisionArgs[6];
+type Evaluator = RevisionArgs[6];
+type Options = RevisionArgs[7];
 
 export interface CompoundRepairRevisionInputs {
   proposal: Proposal;
@@ -15,6 +16,7 @@ export interface CompoundRepairRevisionInputs {
   baseline: Baseline;
   candidateEvaluation: CandidateEvaluation;
   generate: Generator;
+  evaluateRevisedCandidate: Evaluator;
   options?: Options;
 }
 
@@ -65,7 +67,7 @@ export class P23CompoundRepairRevisionCoordinator {
       throw new Error('trusted revision input provider must return a source candidate id');
     }
     if (!prepared.proposal || !prepared.baseline || !prepared.candidateEvaluation ||
-        typeof prepared.generate !== 'function') {
+        typeof prepared.generate !== 'function' || typeof prepared.evaluateRevisedCandidate !== 'function') {
       throw new Error('trusted revision input provider returned incomplete proposal/evaluation/generator inputs');
     }
 
@@ -87,6 +89,7 @@ export class P23CompoundRepairRevisionCoordinator {
       baseline: prepared.baseline,
       candidateEvaluation: prepared.candidateEvaluation,
       generate: prepared.generate,
+      evaluateRevisedCandidate: prepared.evaluateRevisedCandidate,
       ...(prepared.options ? { options: prepared.options } : {}),
     });
     return {
