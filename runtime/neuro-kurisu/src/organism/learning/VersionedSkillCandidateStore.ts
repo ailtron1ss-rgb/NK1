@@ -111,6 +111,8 @@ export interface SkillRevisionProvenance {
   schemaVersion: 1;
   sourceCandidateId: string | null;
   planFingerprint: string;
+  /** Verified dataset snapshot used when the proposal authorized this revision attempt. */
+  datasetFingerprint: string;
   dimensions: string[];
   createdAt: number;
 }
