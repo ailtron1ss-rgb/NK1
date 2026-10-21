@@ -6,7 +6,7 @@ import { adaptiveReplayLearningRate, adaptiveReplayOptions, bellmanTarget, calib
 import { retrievedSkillBias } from './SkillRetrievalAugmentation.ts';
 import { rankLearningTargets, reflectOnOutcomes } from './OutcomeReflectionCurriculum.ts';
 import type { VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
-import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillShadowObservation, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
+import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillShadowObservation, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp = (x:number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
@@ -277,7 +277,7 @@ export class P23LearningEngine {
 
   approveVerifiedSkillCandidate(
     candidateId:string,
-    approval:{approvedBy:string;approvedAt:number;expectedActiveVersion:number|null},
+    approval:SkillPromotionApproval,
     minShadowRuns=3,
   ):ActiveSkillVersion {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
