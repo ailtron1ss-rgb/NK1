@@ -30,11 +30,18 @@ export interface VerifiedSkillPromotionProposal {
   canActivateAutomatically: false;
   activationRequirements: string[];
 }
-const authenticProposals = new WeakSet<object>();
+const authenticProposals = new WeakMap<object, string>();
+
+function proposalDigest(value: unknown): string {
+  return createHash('sha256').update(JSON.stringify(value)).digest('hex');
+}
 
 /** True only for the exact proposal object emitted by this module in this process. */
 export function isAuthenticVerifiedSkillPromotionProposal(value: unknown): value is VerifiedSkillPromotionProposal {
-  return value !== null && typeof value === 'object' && authenticProposals.has(value as object);
+  if (value === null || typeof value !== 'object') return false;
+  const expected = authenticProposals.get(value as object);
+  if (!expected) return false;
+  try { return proposalDigest(value) === expected; } catch { return false; }
 }
 
 const boundedInteger = (value: number | undefined, fallback: number, min: number, max: number) =>
@@ -117,7 +124,7 @@ export function proposeVerifiedSkillPromotion(
     ...gate, accepted: false, reason: 'seed-clustered-gain-not-statistically-supported',
   } : gate;
   const manifestFingerprint = ledger.manifestFingerprint();
-  const datasetFingerprint = buildVerifiedSessionDataset(ledger).datasetFingerprint;
+  const datasetFingerprint = buildVerifiedSessionDataset(ledger, snapshot).datasetFingerprint;
   const canonicalOutcomes = [...snapshot.outcomes].sort((a, b) =>
     JSON.stringify([a.taskId, a.method, a.seed, a.attempt]).localeCompare(JSON.stringify([b.taskId, b.method, b.seed, b.attempt])),
   );
@@ -145,6 +152,6 @@ export function proposeVerifiedSkillPromotion(
       'Re-ingest and re-verify signed outcome artifacts after process restart; restored ledger rows alone are not trusted.',
     ],
   };
-  authenticProposals.add(proposal);
+  authenticProposals.set(proposal, proposalDigest(proposal));
   return proposal;
 }
