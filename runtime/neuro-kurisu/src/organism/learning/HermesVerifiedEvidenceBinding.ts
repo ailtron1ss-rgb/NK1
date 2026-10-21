@@ -1,6 +1,17 @@
+import { createHash } from 'node:crypto';
 import type { SkillLearnBenchTrialReport } from './SkillLearnBenchAdapter.ts';
 import type { SkillShadowEvidenceVerifier, SkillShadowObservation, VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 
+function canonicalEvidence(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return '[' + value.map(canonicalEvidence).join(',') + ']';
+  const object = value as Record<string, unknown>;
+  return '{' + Object.keys(object).sort().map(key => JSON.stringify(key) + ':' + canonicalEvidence(object[key])).join(',') + '}';
+}
+
+function sha256Evidence(value: unknown): string {
+  return createHash('sha256').update(canonicalEvidence(value)).digest('hex');
+}
 export interface ReflectiveEvidenceBindingReport {
   accepted: boolean;
   reasons: string[];
@@ -118,22 +129,28 @@ export function bindReflectiveReportsToVerifiedShadowEvidence(
  * signature. This function grants no staging, approval, or promotion authority.
  */
 export function bindIndependentEvaluationToVerifiedShadowEvidence(
-  evaluation: {
-    validation: readonly SkillLearnBenchTrialReport[];
-    holdout: readonly SkillLearnBenchTrialReport[];
-    provenance: {
-      experimentAuthority: { manifestFingerprint: string } | null;
-      runBindings: readonly {
-        taskId: string;
-        trialId: string;
-        runId: string | null;
-        plannedRunId: string | null;
-        seed: number;
-        split: 'validation' | 'holdout';
-        bindingVerified: boolean;
-        verifierPassed: boolean;
-        safetyViolationCount: number;
-      }[];
+  envelope: {
+    payloadFingerprint: string;
+    evaluationFingerprint: string;
+    evaluation: {
+      payloadFingerprint?: string;
+      validation: readonly SkillLearnBenchTrialReport[];
+      holdout: readonly SkillLearnBenchTrialReport[];
+      provenance: {
+        payloadFingerprint?: string;
+        experimentAuthority: { manifestFingerprint: string } | null;
+        runBindings: readonly {
+          taskId: string;
+          trialId: string;
+          runId: string | null;
+          plannedRunId: string | null;
+          seed: number;
+          split: 'validation' | 'holdout';
+          bindingVerified: boolean;
+          verifierPassed: boolean;
+          safetyViolationCount: number;
+        }[];
+      };
     };
   },
   observations: readonly SkillShadowObservation[],
@@ -141,9 +158,17 @@ export function bindIndependentEvaluationToVerifiedShadowEvidence(
   verifyEvidence: SkillShadowEvidenceVerifier,
 ): ReflectiveEvidenceBindingReport {
   const reasons: string[] = [];
+  const evaluation = envelope?.evaluation;
   const authority = evaluation?.provenance?.experimentAuthority;
   const bindings = evaluation?.provenance?.runBindings;
   const trustedManifestFingerprint = authority?.manifestFingerprint ?? '';
+  if (!envelope || !/^[a-f0-9]{64}$/.test(envelope.payloadFingerprint) ||
+      !/^[a-f0-9]{64}$/.test(envelope.evaluationFingerprint) || !evaluation ||
+      envelope.payloadFingerprint !== evaluation.provenance?.payloadFingerprint ||
+      envelope.payloadFingerprint !== evaluation.payloadFingerprint ||
+      envelope.evaluationFingerprint !== sha256Evidence(evaluation)) {
+    reasons.push('independent-evaluation-envelope-integrity-invalid');
+  }
   if (!evaluation || !Array.isArray(evaluation.validation) || !Array.isArray(evaluation.holdout) ||
       !Array.isArray(bindings) || !authority ||
       typeof authority.manifestFingerprint !== 'string' ||
