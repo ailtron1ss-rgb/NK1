@@ -6,6 +6,9 @@ export interface ReflectiveEvidenceBindingReport {
   reasons: string[];
   boundTrials: number;
   manifestFingerprint: string | null;
+  /** Signed receipt authenticates identity/outcome only; quality metrics remain advisory. */
+  boundEvidenceScope: 'identity-and-binary-outcome-only';
+  qualityMetricsAuthenticated: false;
 }
 
 /**
@@ -33,7 +36,7 @@ export function bindReflectiveReportsToVerifiedShadowEvidence(
     reasons.push('candidate-identity-required');
   }
   if (typeof verifyEvidence !== 'function') reasons.push('trusted-evidence-verifier-required');
-  if (reasons.length) return { accepted: false, reasons, boundTrials: 0, manifestFingerprint: null };
+  if (reasons.length) return { accepted: false, reasons, boundTrials: 0, manifestFingerprint: null, boundEvidenceScope: 'identity-and-binary-outcome-only', qualityMetricsAuthenticated: false };
 
   for (const observation of observations) {
     const payload = observation?.artifact?.payload;
@@ -50,6 +53,7 @@ export function bindReflectiveReportsToVerifiedShadowEvidence(
   }
 
   const seenTrials = new Set<string>();
+  const consumedRuns = new Set<string>();
   let boundTrials = 0;
   for (const report of reports) {
     if (!report || typeof report.taskId !== 'string' || typeof report.trialId !== 'string' ||
@@ -69,6 +73,7 @@ export function bindReflectiveReportsToVerifiedShadowEvidence(
       reasons.push('reflective-trial-has-no-signed-run');
       continue;
     }
+    consumedRuns.add(report.trialId);
     if (payload.taskId !== report.taskId || payload.runId !== report.trialId) {
       reasons.push('reflective-trial-receipt-identity-mismatch');
       continue;
@@ -88,10 +93,15 @@ export function bindReflectiveReportsToVerifiedShadowEvidence(
   }
 
   if (boundTrials !== reports.length) reasons.push('not-all-reflective-trials-bound');
+  for (const runId of byRun.keys()) {
+    if (!consumedRuns.has(runId)) reasons.push('unmatched-shadow-observation');
+  }
   return {
     accepted: reasons.length === 0,
     reasons: [...new Set(reasons)],
     boundTrials,
     manifestFingerprint: reasons.length === 0 ? manifestFingerprint : null,
+    boundEvidenceScope: 'identity-and-binary-outcome-only',
+    qualityMetricsAuthenticated: false,
   };
 }
