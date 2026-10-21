@@ -4,8 +4,10 @@ import { URL } from 'node:url';
 import { mkdir, readFile } from 'node:fs/promises';
 import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsReaddirSync, readFileSync as fsReadFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
+import { P23LearningEngine } from '../organism/learning/P23LearningEngine.ts';
+import { createVerifiedSkillLifecycleBootstrap } from '../organism/learning/VerifiedSkillLifecycleBootstrap.ts';
 import { parseTrustedShadowLearningScheduleConfig } from '../organism/learning/P23TrustedShadowLearningScheduler.ts';
 import { createSkillPromotionApprovalPayload, createSkillRollbackApprovalPayload, parseTrustedSkillPromotionApprovalKeys } from '../organism/learning/AuthenticatedSkillPromotionApproval.ts';
 import { ProcessLock } from '../organism/persistence/ProcessLock.ts';
@@ -37,6 +39,41 @@ const MAX_BODY_BYTES = Math.max(4096, Number(process.env.NEURO_MAX_BODY_BYTES ||
 const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
 // Opt-in only: malformed production settings abort startup, and absence means no shadow child process.
 const TRUSTED_SHADOW_LEARNING = parseTrustedShadowLearningScheduleConfig(process.env.NEURO_SKILL_SHADOW_SCHEDULER_JSON);
+const COMPOUND_REPAIR_REVISION_PROVIDER_MODULE = String(process.env.NEURO_COMPOUND_REPAIR_REVISION_PROVIDER_MODULE || '').trim();
+async function configureCompoundRepairRevision() {
+    if (!COMPOUND_REPAIR_REVISION_PROVIDER_MODULE)
+        return undefined;
+    // Explicit opt-in only. The provider is trusted executable code that must call
+    // the application's real proposal, independent-evaluation, and generator pipeline.
+    const providerPath = path.isAbsolute(COMPOUND_REPAIR_REVISION_PROVIDER_MODULE)
+        ? COMPOUND_REPAIR_REVISION_PROVIDER_MODULE
+        : path.resolve(ROOT, COMPOUND_REPAIR_REVISION_PROVIDER_MODULE);
+    const lifecycle = createVerifiedSkillLifecycleBootstrap(
+        path.join(STATE, 'p23-verified-skill-candidates.json'),
+        path.join(STATE, 'p23-trusted-shadow-runs.json'),
+    );
+    if (lifecycle.trustedVerifierCount < 1 || lifecycle.trustedApprovalCount < 1) {
+        throw new Error('compound repair revision requires trusted shadow verifier keys and authenticated promotion approval keys');
+    }
+    const engine = new P23LearningEngine();
+    engine.configureVerifiedSkillLifecycle(lifecycle.store);
+    const providerModule = await import(pathToFileURL(providerPath).href);
+    const factory = providerModule.createCompoundRepairRevisionProvider ?? providerModule.default;
+    if (typeof factory !== 'function') {
+        throw new Error('compound repair revision provider module must export createCompoundRepairRevisionProvider() or a default factory');
+    }
+    const provideInputs = await factory({
+        engine,
+        candidateStore: lifecycle.store,
+        trustedRunRegistry: lifecycle.registry,
+        stateDirectory: STATE,
+    });
+    if (typeof provideInputs !== 'function') {
+        throw new Error('compound repair revision provider factory must return an input-provider function');
+    }
+    return { engine, provideInputs };
+}
+const COMPOUND_REPAIR_REVISION = await configureCompoundRepairRevision();
 const TRUSTED_PROMOTION_APPROVER_IDS = new Set(parseTrustedSkillPromotionApprovalKeys(process.env.NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON).keys());
 const PHONE_MODE = PHONE_POLICY.mode !== 'research';
 const INTERVAL_MS = PHONE_POLICY.baseIntervalMs;
@@ -127,6 +164,7 @@ const runtime = new OrganismRuntime({
     stateStore: new FileStateStore(stateFile, { backupEverySaves: BACKUP_EVERY_SAVES, encoding: PHONE_MODE ? 'v8' : 'json' }),
     worldStateStore: new FileStateStore(worldFile, { backupEverySaves: BACKUP_EVERY_SAVES, encoding: PHONE_MODE ? 'v8' : 'json' }),
     ...(TRUSTED_SHADOW_LEARNING ? { trustedShadowLearning: TRUSTED_SHADOW_LEARNING } : {}),
+    ...(COMPOUND_REPAIR_REVISION ? { compoundRepairRevision: COMPOUND_REPAIR_REVISION } : {}),
 });
 let runtimeReady = false;
 const willSdk = new WillSdkFacade({ step: (message, options) => runtime.step(message, options), snapshot: () => runtime.core.snapshot(), flush: () => runtime.core.flush(), exportWillPma: () => runtime.core.exportWillPma(), validateWillPma: (pma) => runtime.core.validateWillPma(pma) }, { enqueue: (input) => runtime.core.willEnqueueEnvelope(input), ack: (input) => runtime.core.willAckEnvelope(input), searchText: (text, k) => runtime.core.willSearchVector(text, k), benchmarkVectorIndex: (queries, k, ef) => runtime.core.willBenchmarkVectorIndex(queries, k, ef), diagnostics: () => runtime.core.willIntegrationDiagnostics() }, 'kurisu');
