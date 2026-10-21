@@ -9,6 +9,37 @@ const skill=lib.compileCompoundSkill({projectId:'eco-101',name:'variant-skill',o
  {id:'b',action:'verify',toolId:'tool.primary',fallbackToolIds:['tool.fallback']}
 ]});
 assert.ok(skill);
+
+// A verified in-distribution repair observation should materialize a staged variant
+// through the existing repair-recording path; it must not activate that variant.
+const autoRepair = lib.compileCompoundSkill({projectId:'eco-101',name:'auto-repair',origin:'intrinsic',steps:[
+ {id:'a',action:'explore',toolId:'tool.a'},
+ {id:'b',action:'verify',toolId:'tool.primary',fallbackToolIds:['tool.fallback']}
+]});
+assert.ok(autoRepair);
+const repaired = lib.recordCompoundRepair(autoRepair.id,{
+ stepId:'b',toolId:'tool.primary',error:'execution error',ok:false,verified:true,
+ confidence01:.9,context:'verified runtime failure',candidateTools:['tool.fallback'],selectedTool:'tool.fallback',holdout:false
+});
+assert.ok(repaired);
+assert.ok(repaired.variants.some(v=>v.status==='candidate'&&v.toTool==='tool.fallback'));
+assert.notEqual(repaired.activeVariantId,repaired.variants.find(v=>v.toTool==='tool.fallback')?.id,
+ 'recording repair evidence must stage, not activate, the new variant');
+
+// Holdout-only evidence must not be used to construct a repair candidate.
+const holdoutOnly = lib.compileCompoundSkill({projectId:'eco-101',name:'holdout-only',origin:'intrinsic',steps:[
+ {id:'a',action:'explore',toolId:'tool.a'},
+ {id:'b',action:'verify',toolId:'tool.primary',fallbackToolIds:['tool.fallback']}
+]});
+assert.ok(holdoutOnly);
+const held = lib.recordCompoundRepair(holdoutOnly.id,{
+ stepId:'b',toolId:'tool.primary',error:'execution error',ok:false,verified:true,
+ confidence01:.95,context:'sealed holdout failure',candidateTools:['tool.fallback'],selectedTool:'tool.fallback',holdout:true
+});
+assert.ok(held);
+assert.equal(held.variants.filter(v=>v.toTool==='tool.fallback').length,0,
+ 'holdout observations must remain evaluation-only');
+
 const variant=lib.createRepairVariant(skill.id,{stepId:'b',toTool:'tool.fallback',reason:'verified alternative'});
 assert.ok(variant); assert.equal(variant.status,'candidate');
 lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,independent:true,context:'holdout-1'});
