@@ -31,7 +31,7 @@ export interface ReplaySelectionOptions {
   ageHalfLifeTicks?: number;
 }
 
-const finite = (value: number | undefined): number => Number.isFinite(value) ? Number(value) : 0;
+const finite = (value: number | undefined, fallback = 0): number => Number.isFinite(value) ? Number(value) : fallback;
 const chronological = <T extends ReplayCandidate>(a: T, b: T): number =>
   finite(a.tick) - finite(b.tick) || a.id.localeCompare(b.id);
 const bySurprise = <T extends ReplayCandidate>(a: T, b: T): number =>
