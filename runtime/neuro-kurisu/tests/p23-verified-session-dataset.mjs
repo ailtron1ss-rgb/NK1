@@ -1,18 +1,33 @@
 import assert from 'node:assert/strict';
+import { generateKeyPairSync } from 'node:crypto';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import { buildVerifiedSessionDataset } from '../src/organism/learning/VerifiedSessionDataset.ts';
+import { ingestSignedOutcomeArtifact, signOutcomePayloadForFixture } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 
 const fp = value => VerifiedOutcomeLedger.fingerprintPrompt(value);
+const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+const trustedKeys = new Map([['verifier-a', publicKey.export({ type: 'spki', format: 'pem' }).toString()]]);
+const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
 const ledger = new VerifiedOutcomeLedger([
   { taskId: 'train-1', family: 'tool-use', split: 'train', promptFingerprint: fp('train prompt'), verifierId: 'verifier-a', version: 'v1' },
   { taskId: 'validation-1', family: 'tool-use', split: 'validation', promptFingerprint: fp('validation prompt'), verifierId: 'verifier-a', version: 'v1' },
   { taskId: 'holdout-secret-id', family: 'tool-use', split: 'holdout', promptFingerprint: fp('holdout prompt'), verifierId: 'verifier-a', version: 'v1' },
 ]);
 const now = Date.now();
-const record = (taskId, method, passed, evidenceRef, seed = 1) => ledger.record({
-  taskId, taskVersion: 'v1', method, seed, attempt: 1, passed,
-  authority: 'independent-verifier', verifierId: 'verifier-a', evidenceRef, observedAt: now,
-});
+let artifactCounter = 0;
+const record = (taskId, method, passed, evidenceRef, seed = 1) => {
+  const payload = {
+    schemaVersion: 1, artifactId: `artifact-${++artifactCounter}`, runId: `run-${method}-${seed}`,
+    manifestFingerprint: ledger.manifestFingerprint(), taskId, taskVersion: 'v1', method, seed,
+    attempt: 1, passed, verifierId: 'verifier-a', observedAt: now,
+  };
+  const artifact = signOutcomePayloadForFixture(payload, privateKeyPem);
+  return ingestSignedOutcomeArtifact(ledger, [
+    { taskId: 'train-1', family: 'tool-use', split: 'train', promptFingerprint: fp('train prompt'), verifierId: 'verifier-a', version: 'v1' },
+    { taskId: 'validation-1', family: 'tool-use', split: 'validation', promptFingerprint: fp('validation prompt'), verifierId: 'verifier-a', version: 'v1' },
+    { taskId: 'holdout-secret-id', family: 'tool-use', split: 'holdout', promptFingerprint: fp('holdout prompt'), verifierId: 'verifier-a', version: 'v1' },
+  ], artifact, trustedKeys);
+};
 assert.equal(record('train-1', 'baseline', true, '/private/path?token=secret').accepted, true);
 assert.equal(record('validation-1', 'candidate', false, 'https://example.invalid/evidence?api_key=secret').accepted, true);
 for (let seed = 1; seed <= 5; seed++) {
@@ -53,4 +68,13 @@ assert.notEqual(buildVerifiedSessionDataset(ledger).datasetFingerprint, dataset.
   'new verified outcomes must change dataset fingerprint');
 assert.equal(buildVerifiedSessionDataset(ledger, evaluationSnapshot).datasetFingerprint, dataset.datasetFingerprint,
   'a proposal using a captured ledger snapshot must not silently mix in later outcomes');
+const untrustedLedger = new VerifiedOutcomeLedger([
+  { taskId: 'untrusted-train', family: 'tool-use', split: 'train', promptFingerprint: fp('untrusted prompt'), verifierId: 'verifier-a', version: 'v1' },
+]);
+assert.equal(untrustedLedger.record({
+  taskId: 'untrusted-train', taskVersion: 'v1', method: 'candidate', seed: 1, attempt: 1, passed: true,
+  authority: 'independent-verifier', verifierId: 'verifier-a', evidenceRef: `signed-artifact:forged:sha256:${'a'.repeat(64)}`, observedAt: now,
+}).accepted, true);
+assert.equal(buildVerifiedSessionDataset(untrustedLedger).training.length, 0,
+  'claimed independent-verifier authority without an authenticated artifact must not enter training data');
 console.log('P23_VERIFIED_SESSION_DATASET=PASS');
