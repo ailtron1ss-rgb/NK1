@@ -59,7 +59,7 @@ on:
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
   push:
-    branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals, workpass122-promotion-gate-coverage-hardening, workpass123-authenticated-skill-lifecycle, workpass124-learning-evidence-hardening]
+    branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals, workpass122-promotion-gate-coverage-hardening, workpass123-authenticated-skill-lifecycle, workpass124-learning-evidence-hardening, workpass135-durable-shadow-run-registry]
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualLearningMetrics.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualOutcomeMatrix.ts'
@@ -77,7 +77,9 @@ on:
       - 'runtime/neuro-kurisu/scripts/create-learning-experiment-plan.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeArtifact.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/TrustedSkillShadowRunRegistry.ts'
       - 'runtime/neuro-kurisu/tests/p23-verified-outcome-artifact-authentication.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-trusted-skill-shadow-run-registry.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillPromotion.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts'
