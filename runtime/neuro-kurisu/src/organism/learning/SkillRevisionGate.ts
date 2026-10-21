@@ -71,7 +71,11 @@ export function evaluateSkillRevision(
     pair.set(row.method, row);
     byPair.set(key, pair);
   }
-  const paired = [...byPair.values()].filter(pair => pair.has(baselineMethod) && pair.has(candidateMethod));
+  const paired = [...byPair.values()].filter(pair => {
+    if (!pair.has(baselineMethod) || !pair.has(candidateMethod)) return false;
+    // Do not compare mismatched manifest-family labels even if a caller reuses task IDs.
+    return pair.get(baselineMethod)!.family === pair.get(candidateMethod)!.family;
+  });
   const n = paired.length;
   const baselinePassRate = n ? paired.reduce((s, p) => s + Number(p.get(baselineMethod)!.passed), 0) / n : 0;
   const candidatePassRate = n ? paired.reduce((s, p) => s + Number(p.get(candidateMethod)!.passed), 0) / n : 0;
