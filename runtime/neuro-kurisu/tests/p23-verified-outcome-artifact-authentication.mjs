@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
+import { serializeVerifiedOutcomeLedger, restoreVerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedgerStore.ts';
 import {
   hasAuthenticatedOutcomeEvidence, ingestSignedOutcomeArtifact, outcomePayloadFingerprint,
   signOutcomePayloadForFixture,
@@ -62,9 +63,19 @@ const untrusted = ingestSignedOutcomeArtifact(
 assert.equal(untrusted.accepted, false);
 assert.equal(untrusted.rejection, 'untrusted-verifier-key');
 
-const restored = VerifiedOutcomeLedger.restoreSnapshot(ledger.snapshot());
+const restored = restoreVerifiedOutcomeLedger(serializeVerifiedOutcomeLedger(ledger));
 assert.equal(hasAuthenticatedOutcomeEvidence(restored, evidenceRef), false,
   'restored ledger rows do not inherit in-process cryptographic provenance');
-assert.equal(ingestSignedOutcomeArtifact(restored, manifest, validArtifact, new Map([[task.verifierId, publicPem]])).accepted, false,
-  're-ingesting an already accepted attempt remains blocked by duplicate-attempt protection');
+const reauthenticated = ingestSignedOutcomeArtifact(restored, manifest, validArtifact, new Map([[task.verifierId, publicPem]]));
+assert.equal(reauthenticated.accepted, true,
+  'the exact signed artifact must restore its trust receipt after restart without duplicating the ledger row');
+assert.equal(hasAuthenticatedOutcomeEvidence(restored, evidenceRef), true);
+assert.equal(restored.snapshot().outcomes.length, ledger.snapshot().outcomes.length,
+  'reattestation must not create a duplicate accepted outcome');
+const conflictingPayload = { ...validPayload, passed: false };
+const conflictingArtifact = signOutcomePayloadForFixture(conflictingPayload, privatePem);
+const conflicting = ingestSignedOutcomeArtifact(restored, manifest, conflictingArtifact, new Map([[task.verifierId, publicPem]]));
+assert.equal(conflicting.accepted, false,
+  'a different signed outcome for the same task/method/seed/attempt must not replace the restored record');
+assert.equal(conflicting.rejection, 'conflicting-existing-outcome');
 console.log('P23_VERIFIED_OUTCOME_ARTIFACT_AUTHENTICATION=PASS');
