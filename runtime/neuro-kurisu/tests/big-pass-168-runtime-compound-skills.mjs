@@ -46,11 +46,16 @@ try {
     execute:async()=>({ok:true,value:'repaired-output'}),
     verify:()=>({verified:true,basis:'tool-contract',confidence01:1,notes:'deterministic fallback contract'}),
   });
+  runtime.core.registerActionTool({
+    id:'test.compound.repair-second',capability:'test.read',destructive:false,
+    execute:async(input)=>({ok:input.received==='repaired-output',received:input.received}),
+    verify:({result})=>({verified:result.ok===true,basis:'tool-contract',confidence01:result.ok===true?1:0,notes:'repair binding assertion'}),
+  });
   const repairSkill=await runtime.compileCompoundSkill({
     projectId:'workpass169',name:'runtime-repair-evidence',origin:'integration-test',
     steps:[
       {id:'first',action:'observe',toolId:'test.compound.primary-fails',fallbackToolIds:['test.compound.fallback']},
-      {id:'second',action:'verify',toolId:'test.compound.second',inputBindings:{received:'first.value'},requiredInputKeys:['received']},
+      {id:'second',action:'verify',toolId:'test.compound.repair-second',inputBindings:{received:'first.value'},requiredInputKeys:['received']},
     ],
   });
   assert.ok(repairSkill);
@@ -67,7 +72,7 @@ try {
     projectId:'workpass169',name:'runtime-holdout-exclusion',origin:'integration-test',
     steps:[
       {id:'first',action:'observe',toolId:'test.compound.primary-fails',fallbackToolIds:['test.compound.fallback']},
-      {id:'second',action:'verify',toolId:'test.compound.second',inputBindings:{received:'first.value'},requiredInputKeys:['received']},
+      {id:'second',action:'verify',toolId:'test.compound.repair-second',inputBindings:{received:'first.value'},requiredInputKeys:['received']},
     ],
   });
   assert.ok(holdoutSkill);
