@@ -254,7 +254,7 @@ export async function readLearningExecutionReceipt(receiptPath: string): Promise
   if (receipt.schemaVersion !== 2 || !nonEmpty(receipt.executionId) || !nonEmpty(receipt.runId) ||
       !/^[a-f0-9]{64}$/i.test(receipt.planFingerprint) ||
       !/^[a-f0-9]{64}$/i.test(receipt.commandFingerprint) ||
-      !['completed', 'failed', 'timed-out', 'output-limit', 'spawn-error'].includes(receipt.status) ||
+      !['completed', 'failed', 'timed-out', 'cancelled', 'output-limit', 'spawn-error'].includes(receipt.status) ||
       !Number.isFinite(receipt.startedAt) || !Number.isFinite(receipt.finishedAt) ||
       receipt.finishedAt < receipt.startedAt || !Number.isSafeInteger(receipt.stdoutBytes) ||
       !Number.isSafeInteger(receipt.stderrBytes) || typeof receipt.outputTruncated !== 'boolean') {
