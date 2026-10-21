@@ -1,8 +1,10 @@
 # Neuro Kurisu — cross-source learning integration roadmap
 
+Latest implementation checkpoint: WorkPass227 (bounded independent-evaluation services); implementation and CI wiring are committed on the current draft PR branch, but execution results remain unverified.
+
 Scope: continue integrating mechanisms into the existing P23 learning/revision lifecycle. This is an implementation queue, not a promise that upstream mechanisms are already integrated. Preserve the current branch/PR boundary; do not merge to the default branch without explicit approval.
 
-## Completed in this branch (through WorkPass225)
+## Completed in this branch (through WorkPass227 code; runtime verification pending)
 
 - [x] Reuse SkillLearnBench-style task success, skill quality, trajectory quality and macro-averaged task metrics.
 - [x] Bind evaluator runs to exact payload/task/environment/plan identity; require an independent verifier's explicit binding attestation.
@@ -154,3 +156,13 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **DONE (regression code):** extended the production authority regression with interface-shaped but authority-free config; it must fail closed before the evaluator executes.
 - **PARTIAL:** this closes the configuration-authority gap but does not prove that the injected executor, verifier, or safety scanner are real trusted host services. A provider can still supply function-shaped objects; production wiring must bind these to actual sandbox/postcondition/safety implementations and verify provenance of the authority provider.
 - **NEXT:** WorkPass226 continuation: trace real runtime service ownership, construct an explicit trusted-host adapter using existing ActionGateway / ExternalPostconditionVerifier seams where contracts fit, add timeout/cancellation and run identity binding, then test fail-closed behavior end-to-end. Do not label the real host path DONE until this wiring is demonstrated.
+
+
+### WorkPass227 — bounded independent evaluation service calls
+
+- **DONE (code):** executor, verifier and safety scanner calls now use a configurable per-service deadline (serviceTimeoutMs, default 30 seconds, accepted range 10 ms–5 minutes). Each service receives an AbortSignal; deadline expiry aborts that signal and rejects the bounded call.
+- **DONE (fail-closed behavior):** executor timeout is treated as non-executable evidence; verifier timeout cannot produce trusted binding or task success; safety-scanner timeout aborts the evaluation rather than treating missing safety results as clean.
+- **DONE (regression code and wiring):** added tests/workpass227-bounded-independent-evaluation.mjs, registered test:workpass227:bounded-independent-evaluation, added the test to the continual-learning workflow's PR/push path filters and execution steps, and appended it to audit:p23:cross-source-replay.
+- **IMPORTANT LIMIT:** AbortSignal is cooperative. A host executor/verifier/scanner must observe the signal and actually terminate its underlying process/request. The evaluator's deadline prevents waiting indefinitely for a response but cannot kill a non-cooperative remote process by itself. Real host adapter wiring remains OPEN.
+- **Validation:** no local execution or successful GitHub Actions result is claimed in this pass; keep PR draft until the new regression and runtime typecheck actually execute successfully.
+- **Next pass (WorkPass228):** integrate signal propagation into the actual host sandbox/process supervisor, guarantee process-tree termination and resource quotas, then bind cancellation/timeout receipts to run provenance and reject stale late results.
