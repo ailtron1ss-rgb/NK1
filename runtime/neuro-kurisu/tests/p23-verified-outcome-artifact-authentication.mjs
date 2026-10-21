@@ -40,13 +40,13 @@ const manifestSubstitution = ingestSignedOutcomeArtifact(
 assert.equal(manifestSubstitution.accepted, false);
 assert.equal(manifestSubstitution.rejection, 'supplied-manifest-mismatch');
 
-const malformedManifest = [task, { ...task, taskId: task.taskId + '-duplicate' }];
+const malformedManifest = [task, { ...task }];
 const malformedManifestResult = ingestSignedOutcomeArtifact(
   ledger, malformedManifest, validArtifact, new Map([[task.verifierId, publicPem]]),
 );
 assert.equal(malformedManifestResult.accepted, false);
-assert.equal(malformedManifestResult.rejection, 'supplied-manifest-mismatch',
-  'an unbound manifest must not be used to validate signed outcomes');
+assert.equal(malformedManifestResult.rejection, 'invalid-supplied-manifest',
+  'duplicate task IDs in the supplied manifest must fail closed');
 
 const alteredPayload = { ...payload(false), artifactId: 'altered-artifact' };
 const alteredArtifact = { ...signOutcomePayloadForFixture(alteredPayload, privatePem), payload: { ...alteredPayload, passed: true } };
