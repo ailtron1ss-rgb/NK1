@@ -322,21 +322,26 @@ export function createIndependentSkillCandidateEvaluator(
  * training truth, and no unbound trace can be promoted into verified evidence.
  */
 export function recordIndependentEvaluationOutcomes(
-  evaluation: {
-    validation: SkillLearnBenchTrialReport[];
-    holdout: SkillLearnBenchTrialReport[];
-    provenance: {
-      experimentAuthority: {
-        manifestFingerprint: string;
-        validationPlanFingerprint: string;
-        holdoutPlanFingerprint: string;
-        method: string;
-        attempt: number;
-      } | null;
-      runBindings: Array<{
-        taskId: string; trialId: string; runId: string | null; plannedRunId: string | null;
-        seed: number; split: string; bindingVerified: boolean; safetyViolationCount: number;
-      }>;
+  result: {
+    payloadFingerprint: string;
+    evaluationFingerprint: string;
+    evaluation: {
+      validation: SkillLearnBenchTrialReport[];
+      holdout: SkillLearnBenchTrialReport[];
+      provenance: {
+        payloadFingerprint: string;
+        experimentAuthority: {
+          manifestFingerprint: string;
+          validationPlanFingerprint: string;
+          holdoutPlanFingerprint: string;
+          method: string;
+          attempt: number;
+        } | null;
+        runBindings: Array<{
+          taskId: string; trialId: string; runId: string | null; plannedRunId: string | null;
+          seed: number; split: string; bindingVerified: boolean; safetyViolationCount: number;
+        }>;
+      };
     };
   },
   authority: {
@@ -349,12 +354,23 @@ export function recordIndependentEvaluationOutcomes(
   },
   observedAt = Date.now(),
 ): { accepted: number } {
+  const evaluation = result?.evaluation;
   if (!evaluation?.provenance || !(authority?.ledger instanceof VerifiedOutcomeLedger) ||
+      !isDigest(result?.payloadFingerprint) || !isDigest(result?.evaluationFingerprint) ||
       !Array.isArray(evaluation.provenance.runBindings) || !Number.isFinite(observedAt) || observedAt <= 0) {
     throw new Error('independent-evaluation-ledger-commit-invalid');
   }
+  // Recompute the evaluator's canonical digest before treating its reports as evidence.
+  // This detects accidental or post-evaluation mutation of reports/provenance.
+  if (result.payloadFingerprint !== evaluation.provenance.payloadFingerprint ||
+      result.evaluationFingerprint !== sha256(canonical(evaluation))) {
+    throw new Error('independent-evaluation-ledger-evaluation-fingerprint-mismatch');
+  }
   validateLearningExperimentPlan(authority.validationPlan, authority.manifest);
   validateLearningExperimentPlan(authority.holdoutPlan, authority.manifest);
+  if (typeof authority.method !== 'string' || !authority.method.trim()) {
+    throw new Error('independent-evaluation-ledger-method-invalid');
+  }
   const attempt = authority.attempt ?? 1;
   const recordedAuthority = evaluation.provenance.experimentAuthority;
   if (!recordedAuthority ||
@@ -377,6 +393,31 @@ export function recordIndependentEvaluationOutcomes(
   }
   const seenPlannedRuns = new Set<string>();
   const pending: Array<{ plan: LearningExperimentPlan; runId: string; passed: boolean; evidenceRef: string }> = [];
+  const reportSplitByTrial = new Map<string, 'validation' | 'holdout'>();
+  for (const report of evaluation.validation) {
+    if (!report || typeof report.trialId !== 'string' || typeof report.taskId !== 'string' ||
+        !report.taskSuccess || typeof report.taskSuccess.passed !== 'boolean' ||
+        reportSplitByTrial.has(report.trialId)) {
+      throw new Error('independent-evaluation-ledger-validation-report-invalid');
+    }
+    reportSplitByTrial.set(report.trialId, 'validation');
+  }
+  for (const report of evaluation.holdout) {
+    if (!report || typeof report.trialId !== 'string' || typeof report.taskId !== 'string' ||
+        !report.taskSuccess || typeof report.taskSuccess.passed !== 'boolean' ||
+        reportSplitByTrial.has(report.trialId)) {
+      throw new Error('independent-evaluation-ledger-holdout-report-invalid');
+    }
+    reportSplitByTrial.set(report.trialId, 'holdout');
+  }
+  const expectedRuns = [
+    ...authority.validationPlan.runs.filter(run => run.method === authority.method),
+    ...authority.holdoutPlan.runs.filter(run => run.method === authority.method),
+  ];
+  if (expectedRuns.length !== bindings.length ||
+      new Set(expectedRuns.map(run => run.runId)).size !== expectedRuns.length) {
+    throw new Error('independent-evaluation-ledger-plan-coverage-incomplete');
+  }
   for (const binding of bindings) {
     if (!binding.bindingVerified || !binding.runId || !binding.plannedRunId ||
         !Number.isSafeInteger(binding.seed) || binding.seed < 0 ||
@@ -392,7 +433,8 @@ export function recordIndependentEvaluationOutcomes(
     }
     seenPlannedRuns.add(scheduled.runId);
     const report = reportByTrial.get(binding.trialId);
-    if (!report || report.taskId !== binding.taskId) {
+    if (!report || report.taskId !== binding.taskId ||
+        reportSplitByTrial.get(binding.trialId) !== binding.split) {
       throw new Error('independent-evaluation-ledger-report-binding-mismatch');
     }
     pending.push({
@@ -401,6 +443,10 @@ export function recordIndependentEvaluationOutcomes(
       passed: report.taskSuccess.passed && binding.safetyViolationCount === 0,
       evidenceRef: binding.runId,
     });
+  }
+  if (seenPlannedRuns.size !== expectedRuns.length ||
+      expectedRuns.some(run => !seenPlannedRuns.has(run.runId))) {
+    throw new Error('independent-evaluation-ledger-plan-coverage-incomplete');
   }
   // Preflight every cell before writing any rows. The canonical ledger rejects a
   // second outcome for the same task/method/seed, even if the attempt differs.
