@@ -17,14 +17,14 @@ const evaluator = createIndependentSkillCandidateEvaluator({
   tasks,
   environmentFingerprint: 'a'.repeat(64),
   executor: { async execute({ task }) { runs++; return { runId: 'run-' + task.trialId, observedStepIds: ['open', 'summarize'] }; } },
-  verifier: { async verify() { return { passed: true, coveredCapabilityIds: ['read'] }; } },
+  verifier: { async verify() { return { bindingVerified: true, passed: true, coveredCapabilityIds: ['read'] }; } },
   safetyScanner: { async scan() { return { violationCount: 0 }; } },
 });
 
 let invalidPlanExecutionCount = 0;
 const invalidPlanServices = {
   executor: { async execute() { invalidPlanExecutionCount++; return { runId: 'never', observedStepIds: ['open'] }; } },
-  verifier: { async verify() { return { passed: true, coveredCapabilityIds: ['read'] }; } },
+  verifier: { async verify() { return { bindingVerified: true, passed: true, coveredCapabilityIds: ['read'] }; } },
   safetyScanner: { async scan() { return { violationCount: 0 }; } },
 };
 assert.throws(() => createIndependentSkillCandidateEvaluator({
@@ -62,7 +62,7 @@ assert.throws(() => createIndependentSkillCandidateEvaluator({
   tasks: [tasks[0], { ...tasks[1], taskId: tasks[0].taskId }],
   environmentFingerprint: 'b'.repeat(64),
   executor: { async execute() { throw new Error('unused'); } },
-  verifier: { async verify() { return { passed: true, coveredCapabilityIds: ['read'] }; } },
+  verifier: { async verify() { return { bindingVerified: true, passed: true, coveredCapabilityIds: ['read'] }; } },
   safetyScanner: { async scan() { return { violationCount: 0 }; } },
 }), /task-leakage/);
 
@@ -91,7 +91,7 @@ assert.equal(malformedTraceResult.evaluation.provenance.runBindings[0].runId, nu
 const unsafeCandidate = createIndependentSkillCandidateEvaluator({
   tasks, environmentFingerprint: '9'.repeat(64),
   executor: { async execute({ task }) { return { runId: 'unsafe-' + task.trialId, observedStepIds: ['open', 'summarize'] }; } },
-  verifier: { async verify() { return { passed: true, coveredCapabilityIds: ['read'] }; } },
+  verifier: { async verify() { return { bindingVerified: true, passed: true, coveredCapabilityIds: ['read'] }; } },
   safetyScanner: { async scan({ task }) { return { violationCount: task.split === 'validation' ? 1 : 0 }; } },
 });
 const unsafeResult = await unsafeCandidate({ payload, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } });
@@ -117,7 +117,7 @@ assert.equal(verifierFailed.evaluation.validation[0].taskSuccess.passed, false,
 const duplicateRunId = createIndependentSkillCandidateEvaluator({
   tasks, environmentFingerprint: 'e'.repeat(64),
   executor: { async execute() { return { runId: 'reused-run', observedStepIds: ['open', 'summarize'] }; } },
-  verifier: { async verify() { return { passed: true, coveredCapabilityIds: ['read'] }; } },
+  verifier: { async verify() { return { bindingVerified: true, passed: true, coveredCapabilityIds: ['read'] }; } },
   safetyScanner: { async scan() { return { violationCount: 0 }; } },
 });
 const duplicateRuns = await duplicateRunId({ payload, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } });
@@ -131,7 +131,7 @@ const changedInputEvaluator = createIndependentSkillCandidateEvaluator({
   tasks: tasks.map((task, index) => index === 0 ? { ...task, input: { prompt: 'different input' } } : task),
   environmentFingerprint: 'a'.repeat(64),
   executor: { async execute({ task }) { return { runId: 'run-' + task.trialId, observedStepIds: ['open', 'summarize'] }; } },
-  verifier: { async verify() { return { passed: true, coveredCapabilityIds: ['read'] }; } },
+  verifier: { async verify() { return { bindingVerified: true, passed: true, coveredCapabilityIds: ['read'] }; } },
   safetyScanner: { async scan() { return { violationCount: 0 }; } },
 });
 const changedInputResult = await changedInputEvaluator({ payload, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } });
@@ -139,5 +139,36 @@ assert.notEqual(result.evaluation.provenance.planFingerprint, changedInputResult
   'task input changes must invalidate the evaluation plan fingerprint');
 assert.notEqual(result.evaluationFingerprint, changedInputResult.evaluationFingerprint,
   'identical scores on different task inputs must not share an evaluation fingerprint');
+
+// WorkPass212: a trace that cannot be independently bound to the exact
+// payload/task/environment/plan is not trusted execution evidence.
+const unboundEvaluator = createIndependentSkillCandidateEvaluator({
+  tasks,
+  environmentFingerprint: 'b'.repeat(64),
+  executor: { async execute({ task, context }) {
+    assert.equal(context.payloadFingerprint, digest(payload));
+    assert.equal(context.taskInputFingerprint, digest(task.input));
+    assert.equal(context.environmentFingerprint, 'b'.repeat(64));
+    assert.match(context.planFingerprint, /^[a-f0-9]{64}$/);
+    return { runId: 'unbound-' + task.trialId, observedStepIds: ['open', 'summarize'] };
+  } },
+  verifier: { async verify({ context }) {
+    assert.equal(context.payloadFingerprint, digest(payload));
+    return { bindingVerified: false, passed: true, coveredCapabilityIds: ['read'] };
+  } },
+  safetyScanner: { async scan() { return { violationCount: 0 }; } },
+});
+const unbound = await unboundEvaluator({
+  payload, payloadFingerprint: digest(payload),
+  baseline: { validation: [], holdout: [] },
+  previousEvaluation: { validation: [], holdout: [] },
+});
+assert.equal(unbound.evaluation.validation[0].taskSuccess.passed, false,
+  'a verifier must attest the exact execution binding before a trial can pass');
+assert.equal(unbound.evaluation.provenance.runBindings[0].runId, null,
+  'unbound run IDs must not enter trusted provenance');
+assert.equal(unbound.evaluation.provenance.runBindings[0].observedStepIds.length, 0,
+  'unbound traces must not enter trusted trajectory provenance');
+assert.equal(unbound.evaluation.provenance.runBindings[0].bindingVerified, false);
 
 console.log('WorkPass203 independent candidate evaluator: PASS');
