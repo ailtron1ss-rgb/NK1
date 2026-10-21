@@ -9,6 +9,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/PrioritizedReplaySampler.ts"
       - "runtime/neuro-kurisu/src/organism/learning/ContinualForgettingTracker.ts"
       - "runtime/neuro-kurisu/src/organism/learning/ContinualTransferTracker.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/AdaptiveWindowDriftDetector.ts"
       - "runtime/neuro-kurisu/tests/p26-*.mjs"
       - "runtime/neuro-kurisu/research/vendor/CleanRL/**"
       - "runtime/neuro-kurisu/package.json"
@@ -69,6 +70,9 @@ jobs:
       - name: Run task-level forward/backward transfer metric regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p26-continual-transfer-tracker.mjs
+      - name: Run adaptive-window concept drift regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p26-adaptive-window-drift-detector.mjs
       - name: Run existing P26 learning regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:true-learning
