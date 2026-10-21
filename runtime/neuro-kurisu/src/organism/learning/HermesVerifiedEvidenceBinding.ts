@@ -169,10 +169,16 @@ export function bindIndependentEvaluationToVerifiedShadowEvidence(
   const authority = evaluation?.provenance?.experimentAuthority;
   const bindings = evaluation?.provenance?.runBindings;
   const trustedManifestFingerprint = authority?.manifestFingerprint ?? '';
+  let recomputedEvaluationFingerprint: string | null = null;
+  try {
+    if (evaluation) recomputedEvaluationFingerprint = sha256Evidence(evaluation);
+  } catch {
+    reasons.push('independent-evaluation-envelope-not-canonicalizable');
+  }
   if (!envelope || !/^[a-f0-9]{64}$/.test(envelope.payloadFingerprint) ||
       !/^[a-f0-9]{64}$/.test(envelope.evaluationFingerprint) || !evaluation ||
       envelope.payloadFingerprint !== evaluation.provenance?.payloadFingerprint ||
-      envelope.evaluationFingerprint !== sha256Evidence(evaluation)) {
+      envelope.evaluationFingerprint !== recomputedEvaluationFingerprint) {
     reasons.push('independent-evaluation-envelope-integrity-invalid');
   }
   if (!evaluation || !Array.isArray(evaluation.validation) || !Array.isArray(evaluation.holdout) ||
