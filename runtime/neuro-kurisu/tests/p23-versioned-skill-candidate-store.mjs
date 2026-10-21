@@ -135,6 +135,7 @@ const approvalCandidate = signedApprovalStore.stageCandidate(proposal('signed-ap
 for (let i = 1; i <= 3; i++) signedApprovalStore.recordShadowObservation(approvalCandidate.candidateId, {
   runId: 'signed-approval-shadow-' + i, evidenceFingerprint: (i + 2).toString().repeat(64), passed: true, observedAt: Date.now(),
 });
+approvalClock = Date.now(); // Approval must postdate every signed shadow observation.
 const approverTime = approvalClock;
 const signedPayload = createSkillPromotionApprovalPayload(
   signedApprovalStore.snapshot().candidates[0], 'operator-key-1', 'approval-request-unique-1',
