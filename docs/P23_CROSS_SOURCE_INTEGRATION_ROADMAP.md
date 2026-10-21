@@ -17,6 +17,8 @@ Scope: continue integrating mechanisms into the existing P23 learning/revision l
 - [x] WorkPass223: return the construction-time `environmentFingerprint` snapshot in evaluator provenance, not the mutable caller-owned config field. The existing WorkPass203 regression mutates the config after construction and asserts that provenance retains the original environment identity.
 - [x] WorkPass224: fail startup in `NODE_ENV=production` when compound repair revision is enabled without a host-provided independent evaluation configuration factory; added a focused regression, package script, and learning workflow step.
 - [x] WorkPass225: added `compareMatchedIndependentEvaluations`, which validates each result envelope digest and refuses baseline/candidate comparisons unless task-plan and environment fingerprints match, experiment authority matches except for distinct method labels, and every paired task/trial has the same seed/split with independently bound, verifier-passed, safety-clean execution evidence. It then delegates metric scoring to the existing SkillLearnBench candidate gate.
+- [x] WorkPass225 follow-up: bind each provenance split to the actual validation/holdout report array before scoring; this prevents a caller from relabeling a verified validation trial as holdout (or vice versa) and recomputing the outer digest. Added a cross-split tampering regression.
+- [x] WorkPass225 integration repair: registered the regression script in `package.json` and included WorkPass224/225 in the canonical `audit:p23:cross-source-replay` command. The CI workflow already invokes the targeted regression.
 
 ## Next implementation passes
 
@@ -93,7 +95,7 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 
 | Pass | Priority | Integration work | Upstream patterns to adapt | Acceptance evidence | Status |
 |---|---|---|---|---|---|
-| WorkPass225 | P0 | Bind baseline and candidate to the same immutable task/seed/environment; reject missing, duplicate, cross-split or mismatched run identities before scoring deltas | AgentBench/WebArena task identity; SkillLearnBench trial metrics | Matched-pair join keyed by manifest/task/seed/environment/method, with negative tests | DONE (code; CI not yet verified) |
+| WorkPass225 | P0 | Bind baseline and candidate to the same immutable task/seed/environment; reject missing, duplicate, cross-split or mismatched run identities before scoring deltas | AgentBench/WebArena task identity; SkillLearnBench trial metrics | Matched-pair join keyed by manifest/task/seed/environment/method, report-array split binding, and negative tests | DONE (code; CI not yet verified) |
 | WorkPass226 | P0 | Connect the real host sandbox, independent verifier and safety scanner; reject self-attested execution and missing postconditions | OpenHands/SWE-agent execution boundaries | Real host adapter contract, no fake production defaults, fail-start tests | NEXT: trusted host wiring remains OPEN |
 | WorkPass227 | P0 | Carry signed/digested evaluation evidence through the canonical P23 staging gate; keep holdout outside generation, repair, tuning and candidate selection | DSPy/GEPA experiment discipline | Holdout-access boundary tests and gate-level evidence digest checks | OPEN |
 | WorkPass228 | P1 | Add confidence bounds, minimum sample policy and catastrophic-regression vetoes to promotion decisions | Benchmark statistics and conservative release gates | Small-sample, missing-data, regression and uncertainty tests | OPEN |
@@ -133,3 +135,11 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **DONE (regression code):** added `tests/workpass225-matched-independent-evaluation.mjs` covering successful pairing, environment mismatch, seed mismatch, unsafe evidence, and post-evaluation tampering. Registered `test:workpass225:matched-independent-evaluation` and wired it into the learning workflow path filters and job steps.
 - **PARTIAL:** code and CI wiring are committed; this pass has not executed the test/typecheck locally. CI must actually dispatch before this is considered validated.
 - **NEXT:** WorkPass226 — provide a concrete production host adapter contract for sandbox/verifier/scanner with bounded execution and independently verified postconditions; inspect the real runtime wiring and avoid dummy production implementations.
+
+
+### WorkPass225 follow-up — split provenance and audit integration
+
+- **DONE (code):** matched comparison now verifies the split recorded in every trial binding matches the array containing its report (`validation` or `holdout`) before calculating any gate metrics. This closes a data-labeling gap that could otherwise change which gate sees a report while preserving task/trial identifiers.
+- **DONE (regression code):** added a regression that relabels a candidate trial's split and recomputes the evaluation digest; the comparison must still reject it.
+- **DONE (wiring):** added the missing `test:workpass225:matched-independent-evaluation` npm script and included WorkPass224/225 in `audit:p23:cross-source-replay`. The workflow already includes the script in its job and path filters.
+- **PARTIAL:** the source/test/wiring edits exist on the PR branch; no successful execution is claimed until Actions actually runs the steps.
