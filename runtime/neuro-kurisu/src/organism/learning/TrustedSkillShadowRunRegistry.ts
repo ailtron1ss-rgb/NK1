@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { closeSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { closeSync, fsyncSync, linkSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { hostname } from 'node:os';
 import type { SkillShadowObservation, VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
@@ -109,7 +109,14 @@ export class AtomicFileTrustedSkillShadowRunRegistry {
         throw new Error('trusted run registry is locked; fail closed');
       }
       if (quarantinedRaw !== staleRaw || !this.lockOwnerIsProvablyDead(quarantinedRaw)) {
-        try { unlinkSync(quarantinePath); } catch { /* best effort */ }
+        // If the path changed after our first read, put that exact lock back
+        // without overwriting a newer owner's lock. If another owner already
+        // acquired the canonical path, preserve the quarantined record rather
+        // than deleting evidence of an in-flight owner.
+        try {
+          linkSync(quarantinePath, this.lockPath);
+          unlinkSync(quarantinePath);
+        } catch { /* fail closed; never overwrite or unlink the canonical lock */ }
         throw new Error('trusted run registry is locked; fail closed');
       }
       try { unlinkSync(quarantinePath); }
@@ -119,13 +126,21 @@ export class AtomicFileTrustedSkillShadowRunRegistry {
       try { lockFd = openSync(this.lockPath, 'wx', 0o600); }
       catch { throw new Error('trusted run registry is locked; fail closed'); }
     }
+    const ownerToken = randomUUID();
     try {
-      writeFileSync(lockFd, JSON.stringify({ pid: process.pid, hostname: hostname(), acquiredAt: Date.now() }));
+      writeFileSync(lockFd, JSON.stringify({
+        pid: process.pid, hostname: hostname(), acquiredAt: Date.now(), ownerToken,
+      }));
       fsyncSync(lockFd);
       return action();
     } finally {
       closeSync(lockFd);
-      try { unlinkSync(this.lockPath); } catch { /* preserve the primary result */ }
+      // A concurrent recovery attempt must never cause this owner to unlink a
+      // different process's replacement lock.
+      try {
+        const current = JSON.parse(readFileSync(this.lockPath, 'utf8')) as Record<string, unknown>;
+        if (current.ownerToken === ownerToken) unlinkSync(this.lockPath);
+      } catch { /* preserve the primary result and any replacement lock */ }
     }
   }
 
