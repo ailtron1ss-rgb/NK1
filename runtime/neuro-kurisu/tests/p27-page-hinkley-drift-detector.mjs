@@ -52,6 +52,7 @@ for (let i = 0; i < 80; i++) {
   });
 }
 assert.equal(report.detector.kind, 'page-hinkley');
+assert.equal(controller.snapshot().detector.totalSeen, 0, 'unselected adaptive-window detector must not be updated');
 assert.equal(report.selectedPolicy, 'balanced-stable');
 let driftReport;
 for (let i = 0; i < 80; i++) {
