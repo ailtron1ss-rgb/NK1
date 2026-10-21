@@ -8,6 +8,12 @@ export interface ReplayCandidate {
   contextKey: string;
   action: string;
   surprise?: number;
+  /** Episodic salience, e.g. verified failure or high-impact surprise. */
+  salience?: number;
+  /** Novelty in [0,1]; absent preserves the legacy surprise-only ranking. */
+  novelty?: number;
+  /** Number of prior replay selections, used to avoid repeatedly sampling one episode. */
+  replayCount?: number;
 }
 
 export interface ReplaySelectionOptions {
@@ -27,9 +33,19 @@ const bySurprise = <T extends ReplayCandidate>(a: T, b: T): number =>
 
 function effectivePriority<T extends ReplayCandidate>(item: T, newestTick: number, halfLifeTicks: number): number {
   const surprise = Math.max(0, finite(item.surprise));
-  if (!Number.isFinite(halfLifeTicks)) return surprise;
+  const hasEpisodicSignals = item.salience !== undefined || item.novelty !== undefined || item.replayCount !== undefined;
+  const novelty = Math.max(0, Math.min(1, finite(item.novelty, 1)));
+  const salience = Math.max(0, finite(item.salience));
+  const replayCount = Math.max(0, finite(item.replayCount));
+  // Preserve the previous exact ordering when callers do not provide the new
+  // cross-source signals; otherwise blend surprise, episodic salience and novelty,
+  // with a diminishing return for repeatedly replayed episodes.
+  const basePriority = hasEpisodicSignals
+    ? surprise * (0.5 + 0.5 * novelty) + salience / Math.sqrt(1 + replayCount)
+    : surprise;
+  if (!Number.isFinite(halfLifeTicks)) return basePriority;
   const age = Math.max(0, newestTick - finite(item.tick));
-  return surprise * Math.pow(0.5, age / halfLifeTicks);
+  return basePriority * Math.pow(0.5, age / halfLifeTicks);
 }
 
 /**
