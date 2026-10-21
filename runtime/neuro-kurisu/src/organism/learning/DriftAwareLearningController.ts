@@ -104,7 +104,7 @@ export class DriftAwareLearningController {
         driftDetected,
         detections: (adaptive?.detections ?? this.detector.nDetections) +
           (pageHinkley?.detections ?? (this.detectorKind === 'adaptive-window' ? 0 : this.pageHinkley.nDetections)),
-        width: adaptive?.width ?? this.detector.width,
+        width: adaptive?.width ?? pageHinkley?.count ?? this.detector.width,
         heldOutError01: chosenEstimate ?? 0,
         kind: this.detectorKind,
         adaptiveWindowDetected,
