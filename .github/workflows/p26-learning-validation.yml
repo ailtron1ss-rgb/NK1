@@ -82,6 +82,9 @@ jobs:
       - name: Run Page-Hinkley drift detector and controller regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p27-page-hinkley-drift-detector.mjs
+      - name: Benchmark drift detectors on stable, noisy, abrupt and gradual streams (5 deterministic seeds)
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p28-drift-detector-benchmark.mjs
       - name: Run existing P26 learning regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:true-learning
