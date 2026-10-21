@@ -69,9 +69,13 @@ export function retrieveSkills(query:SkillRetrievalQuery, skills:readonly Retrie
 export function retrievedSkillBias(query:SkillRetrievalQuery,skills:readonly RetrievableSkill[]):number{
   const rows=retrieveSkills({...query,limit:5},skills);
   if(!rows.length)return 0;
-  const positive=rows.filter(s=>s.status==='promoted'&&s.validationSuccess01>=.7);
-  const negative=rows.filter(s=>s.status==='rejected'&&s.validationSuccess01<=.42);
-  const pos=positive.reduce((m,s)=>Math.max(m,s.transferBias01),0);
-  const neg=negative.reduce((m,s)=>Math.max(m,Math.abs(s.transferBias01)),0);
-  return pos>0?pos:-neg;
+  // Do not let the mere presence of one successful skill erase contradictory
+  // same-action failure evidence. Aggregate only qualified, action-matched
+  // evidence and clamp the result so retrieval can nudge, never dominate policy.
+  const relevant=rows.filter(s=>
+    (query.action===undefined||s.action===query.action) &&
+    ((s.status==='promoted'&&s.validationSuccess01>=.7) ||
+     (s.status==='rejected'&&s.validationSuccess01<=.42)));
+  const net=relevant.reduce((sum,s)=>sum+s.transferBias01,0);
+  return Math.max(-.025,Math.min(.025,net));
 }
