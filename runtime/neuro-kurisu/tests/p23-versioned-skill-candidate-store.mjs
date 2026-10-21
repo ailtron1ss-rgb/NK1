@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { generateKeyPairSync } from 'node:crypto';
+import { generateKeyPairSync, sign } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,6 +8,7 @@ import { VersionedSkillCandidateStore, InMemorySkillStorePersistence } from '../
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import { ingestSignedOutcomeArtifact, signOutcomePayloadForFixture } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 import { proposeVerifiedSkillPromotion } from '../src/organism/learning/VerifiedSkillPromotion.ts';
+import { createAuthenticatedSkillPromotionApprovalVerifier, canonicalSkillPromotionApprovalPayload, createSkillPromotionApprovalPayload } from '../src/organism/learning/AuthenticatedSkillPromotionApproval.ts';
 import { createContextBoundSkillShadowEvidenceVerifier, signSkillShadowArtifactForFixture, skillShadowPayloadFingerprint } from '../src/organism/learning/VerifiedSkillShadowEvidence.ts';
 
 function proposal(id, accepted=true, authenticatedEvidenceRows=20, unauthenticatedEvidenceRows=0) {
@@ -114,6 +115,47 @@ assert.throws(() => denyStore.approveAndPromote(denyCandidate.candidateId, {
 }), /not authenticated by the configured authority/,
 'approval-shaped fields are not sufficient without an injected authenticated authority');
 assert.equal(denyStore.snapshot().active.length, 0, 'default-deny approval must not mutate active skills');
+
+// A real Ed25519 authority signature, rather than caller-supplied audit fields, is required to activate.
+const approvalKeys = generateKeyPairSync('ed25519');
+const approvalPublicPem = approvalKeys.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+const approvalPrivatePem = approvalKeys.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+const authenticatedApprovalVerifier = createAuthenticatedSkillPromotionApprovalVerifier(
+  new Map([['operator-key-1', approvalPublicPem]]),
+);
+const signedApprovalStore = new VersionedSkillCandidateStore(
+  new InMemorySkillStorePersistence(),
+  authenticatedApprovalVerifier,
+  () => true, // Only the approval authority is under test here; shadow signatures are covered above.
+);
+const approvalCandidate = signedApprovalStore.stageCandidate(proposal('signed-approval'), 'signed-approval-skill', { instruction: 'signed authority only' });
+for (let i = 1; i <= 3; i++) signedApprovalStore.recordShadowObservation(approvalCandidate.candidateId, {
+  runId: 'signed-approval-shadow-' + i, evidenceFingerprint: (i + 2).toString().repeat(64), passed: true, observedAt: Date.now(),
+});
+const approverTime = Date.now();
+const signedPayload = createSkillPromotionApprovalPayload(
+  signedApprovalStore.snapshot().candidates[0], 'operator-key-1', 'approval-request-unique-1',
+  approverTime, null, 3,
+);
+const signedArtifact = {
+  payload: signedPayload,
+  signature: sign(null, Buffer.from(canonicalSkillPromotionApprovalPayload(signedPayload), 'utf8'), approvalPrivatePem).toString('base64'),
+};
+const tamperedApproval = { approvedBy: 'operator-key-1', approvedAt: approverTime, expectedActiveVersion: null,
+  artifact: { ...signedArtifact, payload: { ...signedPayload, shadowEvidenceFingerprint: 'f'.repeat(64) } } };
+assert.throws(() => signedApprovalStore.approveAndPromote(approvalCandidate.candidateId, tamperedApproval, 3),
+  /not authenticated by the configured authority/,
+  'a signature cannot be reused after the candidate evidence digest changes');
+assert.equal(signedApprovalStore.snapshot().active.length, 0, 'tampered signature must not activate a skill');
+const validApproval = {
+  approvedBy: 'operator-key-1', approvedAt: approverTime, expectedActiveVersion: null, artifact: signedArtifact,
+};
+const signedActive = signedApprovalStore.approveAndPromote(approvalCandidate.candidateId, validApproval, 3);
+assert.equal(signedActive.version, 1);
+assert.equal(signedApprovalStore.snapshot().candidates[0].approval.artifact.payload.candidateId, approvalCandidate.candidateId);
+assert.throws(() => signedApprovalStore.approveAndPromote(approvalCandidate.candidateId, validApproval, 3),
+  /must complete shadow staging/,
+  'the same signed approval cannot activate the same candidate twice');
 
 const persistence = new InMemorySkillStorePersistence();
 const first = new VersionedSkillCandidateStore(persistence);
