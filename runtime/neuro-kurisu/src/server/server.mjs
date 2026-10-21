@@ -395,6 +395,19 @@ async function route(req, res) {
         if (url.pathname === '/health' || url.pathname === '/api/health') {
             return json(res, 200, { ok: true, ready: runtimeReady, service: 'neuro-kurisu', version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, tick: runtimeReady ? runtime.core.operationalStatusSnapshot().tick : 0, uptimeSec: Math.round(process.uptime()), bodySource: runtimeReady ? runtime.embodiment.snapshot().telemetry.source : 'initializing', actionLedger: runtimeReady ? runtime.core.actionExecutionLedgerMetrics() : null });
         }
+        if (req.method === 'POST' && url.pathname === '/api/organism/learning/compound-repair-revision') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            if (!COMPOUND_REPAIR_REVISION)
+                return json(res, 503, { ok: false, error: 'compound-repair-revision-provider-not-configured' });
+            const input = await body(req);
+            const skillId = typeof input.skillId === 'string' ? input.skillId.trim() : '';
+            if (!skillId || skillId.length > 160 || /[\\u0000-\\u001f\\u007f]/.test(skillId))
+                return json(res, 400, { ok: false, error: 'invalid-skill-id' });
+            const result = await runtime.reviseCompoundSkillsFromObservedRepairs(skillId);
+            return json(res, 200, { ok: true, result });
+        }
+
         if (req.method === 'GET' && url.pathname === '/api/embodiment/status')
             return json(res, 200, embodimentAssetStatus());
         if (req.method === 'GET' && url.pathname === '/api/organism/avatar')
