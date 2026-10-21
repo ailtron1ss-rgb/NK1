@@ -214,6 +214,45 @@ const authorityEvaluation = await authorityEvaluator({
   baseline: { validation: [], holdout: [] },
   previousEvaluation: { validation: [], holdout: [] },
 });
+// WorkPass214: authority plans are frozen into the evaluator at construction.
+// Mutating the caller-owned plan afterwards must not swap the scheduled run identity.
+const mutableAuthority = {
+  ...experimentAuthority,
+  manifest: structuredClone(experimentAuthority.manifest),
+  validationPlan: structuredClone(experimentAuthority.validationPlan),
+  holdoutPlan: structuredClone(experimentAuthority.holdoutPlan),
+};
+const expectedScheduledRun = mutableAuthority.validationPlan.runs.find(run => run.method === 'candidate');
+assert.ok(expectedScheduledRun);
+const expectedScheduledRunId = expectedScheduledRun.runId;
+const snapshotContexts = [];
+const snapshotEvaluator = createIndependentSkillCandidateEvaluator({
+  tasks: authorityTasks,
+  environmentFingerprint: 'd'.repeat(64),
+  experimentAuthority: mutableAuthority,
+  executor: { async execute({ task, context }) {
+    snapshotContexts.push({ taskId: task.taskId, plannedRunId: context.plannedRunId, experimentPlanFingerprint: context.experimentPlanFingerprint });
+    return { runId: 'snapshot-run-' + task.trialId, observedStepIds: ['open', 'summarize'] };
+  } },
+  verifier: { async verify() { return { bindingVerified: true, passed: true, coveredCapabilityIds: ['read'] }; } },
+  safetyScanner: { async scan() { return { violationCount: 0 }; } },
+});
+expectedScheduledRun.runId = 'tampered-after-construction';
+mutableAuthority.method = 'attacker-method';
+mutableAuthority.manifest[0].promptFingerprint = '0'.repeat(64);
+const snapshotResult = await snapshotEvaluator({
+  payload, payloadFingerprint: digest(payload),
+  baseline: { validation: [], holdout: [] },
+  previousEvaluation: { validation: [], holdout: [] },
+});
+assert.equal(snapshotContexts.find(row => row.taskId === 'authority-validation').plannedRunId, expectedScheduledRunId,
+  'scheduled run identity must come from the validated authority snapshot');
+assert.equal(snapshotResult.evaluation.provenance.experimentAuthority.method, 'candidate',
+  'post-construction mutation must not change the evaluator authority label');
+assert.equal(snapshotResult.evaluation.provenance.experimentAuthority.validationPlanFingerprint, validationPlan.planFingerprint,
+  'the attested plan fingerprint must remain the plan that was validated');
+assert.equal(snapshotContexts.length, 2);
+
 const tamperedEvaluation = structuredClone(authorityEvaluation);
 tamperedEvaluation.evaluation.validation[0].taskSuccess.passed = false;
 assert.throws(() => recordIndependentEvaluationOutcomes(tamperedEvaluation, experimentAuthority, 1700000000000),
