@@ -14,6 +14,12 @@ export interface ReplayCandidate {
   novelty?: number;
   /** Number of prior replay selections, used to avoid repeatedly sampling one episode. */
   replayCount?: number;
+  /** Normalized affect intensity captured when the episode was encoded. */
+  emotionalIntensity?: number;
+  /** Working-memory activation strength at encoding. */
+  activationStrength?: number;
+  /** Normalized priority of the goal that produced this episode. */
+  goalPriority?: number;
 }
 
 export interface ReplaySelectionOptions {
@@ -33,15 +39,18 @@ const bySurprise = <T extends ReplayCandidate>(a: T, b: T): number =>
 
 function effectivePriority<T extends ReplayCandidate>(item: T, newestTick: number, halfLifeTicks: number): number {
   const surprise = Math.max(0, finite(item.surprise));
-  const hasEpisodicSignals = item.salience !== undefined || item.novelty !== undefined || item.replayCount !== undefined;
+  const hasEpisodicSignals = item.salience !== undefined || item.novelty !== undefined || item.replayCount !== undefined || item.emotionalIntensity !== undefined || item.activationStrength !== undefined || item.goalPriority !== undefined;
   const novelty = Math.max(0, Math.min(1, finite(item.novelty, 1)));
   const salience = Math.max(0, finite(item.salience));
   const replayCount = Math.max(0, finite(item.replayCount));
+  const affect = Math.max(0, Math.min(1, finite(item.emotionalIntensity)));
+  const activation = Math.max(0, Math.min(1, finite(item.activationStrength)));
+  const goalPriority = Math.max(0, Math.min(1, finite(item.goalPriority)));
   // Preserve the previous exact ordering when callers do not provide the new
   // cross-source signals; otherwise blend surprise, episodic salience and novelty,
   // with a diminishing return for repeatedly replayed episodes.
   const basePriority = hasEpisodicSignals
-    ? surprise * (0.5 + 0.5 * novelty) + salience / Math.sqrt(1 + replayCount)
+    ? surprise * (0.5 + 0.5 * novelty) + (salience + 0.25 * affect + 0.15 * activation + 0.15 * goalPriority) / Math.sqrt(1 + replayCount)
     : surprise;
   if (!Number.isFinite(halfLifeTicks)) return basePriority;
   const age = Math.max(0, newestTick - finite(item.tick));
