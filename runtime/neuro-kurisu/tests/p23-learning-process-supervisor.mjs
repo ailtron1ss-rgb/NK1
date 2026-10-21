@@ -59,17 +59,41 @@ try {
     /cancelled before spawn/,
   );
 
-  // A timed-out parent must not leave a same-process-group descendant running.
-  // The descendant would create a marker after the supervisor has returned if it survived.
-  const descendantMarker = path.join(root, 'descendant-survived.txt');
-  const descendantPayload = `setTimeout(() => require('node:fs').writeFileSync(${JSON.stringify(descendantMarker)}, 'alive'), 300)`;
-  const descendantScript = `const { spawn } = require('node:child_process'); spawn(process.execPath, ['-e', ${JSON.stringify(descendantPayload)}], { stdio: 'ignore' }); setInterval(() => {}, 1000);`;
-  const treeTimed = await runLearningProcess(run, 'b'.repeat(64), {
-    ...base, timeoutMs: 80, args: ['-e', descendantScript],
-  });
-  assert.equal(treeTimed.receipt.status, 'timed-out');
-  await new Promise(resolve => setTimeout(resolve, 400));
-  await assert.rejects(() => readFile(descendantMarker, 'utf8'), error => error.code === 'ENOENT');
+  // Caller-owned command objects must not be able to change what is executed
+  // while trusted run registration is awaiting a durable host write.
+  let releaseRegistration;
+  let announceRegistration;
+  const registrationEntered = new Promise(resolve => { announceRegistration = resolve; });
+  const registrationGate = new Promise(resolve => { releaseRegistration = resolve; });
+  const mutableCommand = { ...base, args: ['-e', "process.stdout.write('original-command')"] };
+  const registeredRun = runLearningProcess(
+    { ...run, arm: 'candidate', method: 'shadow' },
+    'b'.repeat(64),
+    mutableCommand,
+    { runtimeVersion: 'test-runtime', register: async () => { announceRegistration(); await registrationGate; } },
+  );
+  await registrationEntered;
+  mutableCommand.args[1] = "process.exit(9)";
+  mutableCommand.executable = path.join(root, 'must-not-be-executed');
+  releaseRegistration();
+  const immutableCommandResult = await registeredRun;
+  assert.equal(immutableCommandResult.receipt.status, 'completed');
+  assert.equal(immutableCommandResult.receipt.stdout, 'original-command');
+
+  if (process.platform !== 'win32') {
+    // A timed-out parent must not leave a same-process-group descendant running.
+    // The descendant would create a marker after the supervisor has returned if it survived.
+    const descendantMarker = path.join(root, 'descendant-survived.txt');
+    const descendantPayload = `setTimeout(() => require('node:fs').writeFileSync(${JSON.stringify(descendantMarker)}, 'alive'), 300)`;
+    const descendantScript = `const { spawn } = require('node:child_process'); spawn(process.execPath, ['-e', ${JSON.stringify(descendantPayload)}], { stdio: 'ignore' }); setInterval(() => {}, 1000);`;
+    const treeTimed = await runLearningProcess(run, 'b'.repeat(64), {
+      ...base, timeoutMs: 80, args: ['-e', descendantScript],
+    });
+    assert.equal(treeTimed.receipt.status, 'timed-out');
+    await new Promise(resolve => setTimeout(resolve, 400));
+    await assert.rejects(() => readFile(descendantMarker, 'utf8'), error => error.code === 'ENOENT');
+  
+  }
 
   const capped = await runLearningProcess(run, 'b'.repeat(64), {
     ...base, maxOutputBytes: 32, args: ['-e', "process.stdout.write('x'.repeat(10000))"],
