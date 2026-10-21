@@ -249,6 +249,9 @@ jobs:
       - name: Require independent evaluation authorities for production revision wiring
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass224:production-independent-evaluation-required
+      - name: Run matched independent baseline/candidate evaluation regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass225:matched-independent-evaluation
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
