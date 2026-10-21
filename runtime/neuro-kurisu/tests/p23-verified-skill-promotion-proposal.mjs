@@ -51,8 +51,12 @@ assert.equal(proposal.canActivateAutomatically,false);
 assert.equal(proposal.authenticatedEvidenceRows,100);
 assert.equal(proposal.unauthenticatedEvidenceRows,0);
 assert.match(proposal.proposalId,/^[a-f0-9]{64}$/);
+assert.match(proposal.datasetFingerprint,/^[a-f0-9]{64}$/);
 assert.ok(proposal.activationRequirements.length>=4);
-assert.equal(proposeVerifiedSkillPromotion(ledger,'baseline','candidate',{minPairedTasks:8,minAbsoluteGain:.1,minCompleteSeeds:3}).proposalId,proposal.proposalId,
+const repeatedProposal=proposeVerifiedSkillPromotion(ledger,'baseline','candidate',{minPairedTasks:8,minAbsoluteGain:.1,minCompleteSeeds:3});
+assert.equal(repeatedProposal.datasetFingerprint,proposal.datasetFingerprint,
+  'verified dataset identity must be stable for an unchanged ledger');
+assert.equal(repeatedProposal.proposalId,proposal.proposalId,
   'proposal identity is stable for an unchanged manifest/outcome ledger');
 
 // An opaque evidenceRef cannot impersonate a verified signed artifact.
