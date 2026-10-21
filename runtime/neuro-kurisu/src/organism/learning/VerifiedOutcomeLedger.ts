@@ -44,6 +44,8 @@ export interface PairedMethodSummary {
   discordantCandidateWins: number;
   discordantBaselineWins: number;
   approximate95CI: [number, number] | null;
+  /** Present only for seed-clustered comparisons; resamples independent seed aggregates. */
+  bootstrap95CI?: [number, number] | null;
 }
 
 /**
@@ -51,6 +53,36 @@ export interface PairedMethodSummary {
  * reviewed outcomes are authoritative. Model self-report is retained as a
  * rejection reason rather than being silently converted into training truth.
  */
+/**
+ * Deterministic percentile bootstrap over independent seed-level aggregates.
+ * This is a sensitivity interval, not a cure for too few independent seeds.
+ */
+function bootstrapMean95CI(values: number[], identity: string, replicates = 4000): [number, number] | null {
+  if (values.length < 2) return null;
+  const digest = createHash('sha256').update(identity + '\u0000' + values.map(value => value.toFixed(12)).join(',')).digest();
+  let state = digest.readUInt32LE(0) || 0x9e3779b9;
+  const random = (): number => {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    return (state >>> 0) / 0x100000000;
+  };
+  const means = new Array<number>(replicates);
+  for (let sample = 0; sample < replicates; sample++) {
+    let total = 0;
+    for (let i = 0; i < values.length; i++) total += values[Math.floor(random() * values.length)]!;
+    means[sample] = total / values.length;
+  }
+  means.sort((a, b) => a - b);
+  const quantile = (p: number): number => {
+    const position = p * (means.length - 1);
+    const lower = Math.floor(position);
+    const fraction = position - lower;
+    return means[lower]! + (means[Math.min(lower + 1, means.length - 1)]! - means[lower]!) * fraction;
+  };
+  return [Math.max(-1, quantile(0.025)), Math.min(1, quantile(0.975))];
+}
+
 export class VerifiedOutcomeLedger {
   private readonly manifest = new Map<string, TaskManifestEntry>();
   private readonly outcomes = new Map<string, VerifiedTaskOutcome>();
@@ -209,6 +241,10 @@ export class VerifiedOutcomeLedger {
     const candidatePassRate = n ? paired.reduce((sum, row) => sum + row.candidate, 0) / n : 0;
     const differences = paired.map(row => row.candidate - row.baseline);
     const absoluteGain = n ? differences.reduce((sum, value) => sum + value, 0) / n : 0;
+    const bootstrap95CI = bootstrapMean95CI(
+      differences,
+      JSON.stringify({ baseline, candidate, split, family: family ?? null, seeds: [...bySeed.keys()].sort((a, b) => a - b) }),
+    );
     let approximate95CI: [number, number] | null = null;
     if (n > 1) {
       const variance = differences.reduce((sum, value) => sum + (value - absoluteGain) ** 2, 0) / (n - 1);
@@ -224,6 +260,7 @@ export class VerifiedOutcomeLedger {
       discordantCandidateWins: differences.filter(value => value > 0).length,
       discordantBaselineWins: differences.filter(value => value < 0).length,
       approximate95CI,
+      bootstrap95CI,
     };
   }
   private compareFiltered(
