@@ -37,6 +37,8 @@ import { RuntimePerformanceGovernor } from '../system/RuntimePerformanceGovernor
 import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/ActionGateway.ts';
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
+import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
+import type { VerifiedSkillPromotionProposal } from '../learning/VerifiedSkillPromotion.ts';
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
@@ -974,6 +976,45 @@ export class OrganismRuntime {
         })))
       .sort((a,b)=>b.observedAt-a.observedAt)
       .slice(0,96);
+  }
+
+
+  /**
+   * Feed real, verified non-holdout compound-repair observations into the existing P23
+   * revision generator and versioned candidate lifecycle. The caller must provide the
+   * authentic promotion proposal, independently produced evaluation reports, configured
+   * P23 engine/store, and generator; this method cannot mint evidence or activate a candidate.
+   */
+  async generateCompoundSkillRevision(input:{
+    engine:P23LearningEngine;
+    proposal:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[0];
+    skillId:string;
+    sourceCandidateId:string;
+    baseline:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[3];
+    candidateEvaluation:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[4];
+    generate:(request:Parameters<Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[5]>[0] & {
+      repairEvidence:ReturnType<OrganismRuntime['compoundSkillRepairEvidence']>;
+    })=>Promise<unknown>|unknown;
+    options?:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[6];
+  }){
+    if(!input?.engine || typeof input.engine.generateAndStageReflectiveSkillRevision!=='function') {
+      throw new Error('configured P23 learning engine is required');
+    }
+    if(typeof input.generate!=='function') throw new Error('configured skill revision generator is required');
+    const repairEvidence=this.compoundSkillRepairEvidence(input.skillId).filter(row=>row.revisionEligible);
+    if(repairEvidence.length===0) {
+      throw new Error('no verified non-holdout compound repair evidence is eligible for revision');
+    }
+    const result=await input.engine.generateAndStageReflectiveSkillRevision(
+      input.proposal,input.skillId,input.sourceCandidateId,input.baseline,input.candidateEvaluation,
+      request=>input.generate({...request,repairEvidence:structuredClone(repairEvidence)}),input.options,
+    );
+    await this.journal.write('info','runtime.p23.compound-repair-revision.staged',{
+      skillId:input.skillId,sourceCandidateId:input.sourceCandidateId,candidateId:result.candidate.candidateId,
+      repairEvidenceCount:repairEvidence.length,repairFingerprints:repairEvidence.map(row=>row.failureFingerprint),
+      note:'staged candidate only; independent shadow evidence and explicit promotion approval remain required',
+    }).catch(()=>{});
+    return {...result,repairEvidenceCount:repairEvidence.length};
   }
   async executeTool(id:string,input:Record<string,unknown>={},reason='runtime-tool',options:import('../system/ActionGateway.ts').ActionGatewayExecutionOptions={}){ return this.enqueue(()=>this.core.executeTool(id,input,reason,options)); }
   async reconcileToolExecution(id:string,input:Record<string,unknown>={},reason='runtime-tool-reconciliation',options:import('../system/ActionGateway.ts').ActionGatewayExecutionOptions={}){ return this.enqueue(()=>this.core.reconcileToolExecution(id,input,reason,options)); }
