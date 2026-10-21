@@ -20,6 +20,27 @@ const evaluator = createIndependentSkillCandidateEvaluator({
   verifier: { async verify() { return { passed: true, coveredCapabilityIds: ['read'] }; } },
   safetyScanner: { async scan() { return { violationCount: 0 }; } },
 });
+
+let invalidPlanExecutionCount = 0;
+const invalidPlanServices = {
+  executor: { async execute() { invalidPlanExecutionCount++; return { runId: 'never', observedStepIds: ['open'] }; } },
+  verifier: { async verify() { return { passed: true, coveredCapabilityIds: ['read'] }; } },
+  safetyScanner: { async scan() { return { violationCount: 0 }; } },
+};
+assert.throws(() => createIndependentSkillCandidateEvaluator({
+  tasks: [tasks[0], { ...tasks[1], trialId: tasks[0].trialId }],
+  environmentFingerprint: 'd'.repeat(64), ...invalidPlanServices,
+}), /duplicate-trial/);
+assert.throws(() => createIndependentSkillCandidateEvaluator({
+  tasks: [tasks[0], { ...tasks[1], requiredCapabilityIds: ['read', 'read'] }],
+  environmentFingerprint: 'e'.repeat(64), ...invalidPlanServices,
+}), /task-invalid/);
+assert.throws(() => createIndependentSkillCandidateEvaluator({
+  tasks: [tasks[0], { ...tasks[1], input: () => 'not cloneable' }],
+  environmentFingerprint: 'f'.repeat(64), ...invalidPlanServices,
+}), /task-input-invalid/);
+assert.equal(invalidPlanExecutionCount, 0,
+  'invalid plans must be rejected before any candidate code executes');
 const result = await evaluator({ payload, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } });
 assert.equal(runs, 2);
 assert.equal(result.payloadFingerprint, digest(payload));
