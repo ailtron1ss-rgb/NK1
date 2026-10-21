@@ -44,10 +44,19 @@ function validateBundle(bundle) {
     throw new Error('baselineMethod and candidateMethod must be distinct non-empty strings');
   }
   const skill = bundle.skill;
+  const ratio01 = value => Number.isFinite(value) && value >= 0 && value <= 1;
+  const safeCount = value => Number.isSafeInteger(value) && value >= 0;
   if (!isRecord(skill) || !nonEmpty(skill.id) || !nonEmpty(skill.contextKey) ||
       !['respond', 'explore', 'verify', 'rest', 'reflect', 'wait', 'defer'].includes(skill.action) ||
-      !Number.isFinite(skill.validationSuccess01) || !Number.isFinite(skill.confidence01)) {
-    throw new Error('skill payload does not satisfy the canonical P23 policy-skill shape');
+      skill.status !== 'candidate' ||
+      !safeCount(skill.totalUses) || !safeCount(skill.trainUses) || !safeCount(skill.validationUses) ||
+      skill.trainUses + skill.validationUses > skill.totalUses ||
+      !ratio01(skill.trainSuccess01) || !ratio01(skill.validationSuccess01) || !ratio01(skill.confidence01) ||
+      !Number.isFinite(skill.createdAt) || skill.createdAt <= 0 ||
+      !Number.isFinite(skill.updatedAt) || skill.updatedAt < skill.createdAt ||
+      !safeCount(skill.validationWindowStartTick) || !safeCount(skill.validationWindowEndTick) ||
+      skill.validationWindowEndTick < skill.validationWindowStartTick) {
+    throw new Error('skill payload does not satisfy canonical P23 policy-skill bounds');
   }
   return skill;
 }
