@@ -44,6 +44,18 @@ const nanThreshold = evaluateSkillRevision(tinyObservations,'baseline','candidat
 assert.equal(nanThreshold.accepted,false);
 assert.equal(nanThreshold.reason,'insufficient-independent-heldout-pairs');
 
+const smallGainObservations = [];
+for (let i=0;i<100;i++) for (const [method,passed] of [['baseline',false],['candidate',i===0]]) {
+  smallGainObservations.push({taskId:'fraction-'+i,family:'general',split:'holdout',method,seed:1,attempt:1,passed,
+    authority:'independent-verifier',verifierId:'v',expectedVerifierId:'v',evidenceRef:'fraction-'+i+'-'+method});
+}
+const nanGainThreshold = evaluateSkillRevision(smallGainObservations,'baseline','candidate',{
+  minPairedTasks:8,minAbsoluteGain:Number.NaN,
+});
+assert.equal(nanGainThreshold.accepted,false);
+assert.equal(nanGainThreshold.reason,'no-material-heldout-improvement',
+  'NaN must use the conservative 0.02 default, not silently reduce the minimum gain to zero');
+
 // An incomplete seed must not be counted as a complete paired evaluation.
 const incomplete = new VerifiedOutcomeLedger(manifest);
 for (let i=0;i<10;i++) {
