@@ -40,6 +40,7 @@ on:
       - 'runtime/neuro-kurisu/src/server/server.mjs'
       - 'runtime/neuro-kurisu/tests/p23-verified-skill-shadow-evidence.mjs'
       - 'runtime/neuro-kurisu/tests/p23-trusted-skill-shadow-run-registry.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass239-durable-signed-promotion-e2e.mjs'
       - 'runtime/neuro-kurisu/tests/p23-trusted-shadow-supervisor-registration.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/TrustedShadowLearningRunCoordinator.ts'
       - 'runtime/neuro-kurisu/tests/p23-trusted-shadow-run-coordinator.mjs'
