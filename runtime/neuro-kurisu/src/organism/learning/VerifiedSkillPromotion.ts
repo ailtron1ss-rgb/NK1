@@ -6,7 +6,6 @@ export interface VerifiedSkillPromotionOptions extends SkillRevisionGateOptions 
   /** Optional second, independent requirement for the number of complete paired seeds. */
   minCompleteSeeds?: number;
 }
-
 export interface VerifiedSkillPromotionProposal {
   schemaVersion: 1;
   proposalId: string;
@@ -22,16 +21,13 @@ export interface VerifiedSkillPromotionProposal {
   gate: SkillRevisionGateResult;
   seedClusteredEvaluation: ReturnType<VerifiedOutcomeLedger['comparePairedBySeed']>;
   familyEvaluation: ReturnType<VerifiedOutcomeLedger['comparePairedByFamilyAndSeed']>;
-  /** Always false: proposal generation never changes the active skill library. */
   canActivateAutomatically: false;
   activationRequirements: string[];
 }
+const boundedInteger = (value: number | undefined, fallback: number, min: number, max: number) =>
+  Number.isFinite(value) ? Math.max(min, Math.min(max, Math.floor(value!))) : fallback;
 
-/**
- * Convert the canonical, already-validated ledger into a reproducible revision
- * proposal. This deliberately has no skill-store dependency and cannot activate
- * a candidate; a separate approval/rollback controller must own that side effect.
- */
+/** Create a proposal from validated ledger evidence; never mutate the live skill library. */
 export function proposeVerifiedSkillPromotion(
   ledger: VerifiedOutcomeLedger,
   baselineMethod: string,
@@ -48,17 +44,9 @@ export function proposeVerifiedSkillPromotion(
     if (!task || task.version !== outcome.taskVersion || task.split !== 'holdout' ||
         (outcome.method !== baselineMethod && outcome.method !== candidateMethod)) return [];
     return [{
-      taskId: outcome.taskId,
-      family: task.family,
-      split: task.split,
-      method: outcome.method,
-      seed: outcome.seed,
-      attempt: outcome.attempt,
-      passed: outcome.passed,
-      authority: outcome.authority,
-      verifierId: outcome.verifierId,
-      expectedVerifierId: task.verifierId,
-      evidenceRef: outcome.evidenceRef,
+      taskId: outcome.taskId, family: task.family, split: task.split, method: outcome.method,
+      seed: outcome.seed, attempt: outcome.attempt, passed: outcome.passed, authority: outcome.authority,
+      verifierId: outcome.verifierId, expectedVerifierId: task.verifierId, evidenceRef: outcome.evidenceRef,
     }];
   });
   const gate = evaluateSkillRevision(observations, baselineMethod, candidateMethod, options);
@@ -70,10 +58,10 @@ export function proposeVerifiedSkillPromotion(
     methods.add(row.method);
     pairedMethodsByTaskSeed.set(key, methods);
   }
-  const uniquePairedTasks = new Set(observations
-    .filter(row => row.attempt === 1 && pairedMethodsByTaskSeed.get(JSON.stringify([row.taskId,row.seed,row.attempt]))?.has(baselineMethod) &&
-      pairedMethodsByTaskSeed.get(JSON.stringify([row.taskId,row.seed,row.attempt]))?.has(candidateMethod))
-    .map(row => row.taskId)).size;
+  const uniquePairedTasks = new Set(observations.filter(row => row.attempt === 1 &&
+    pairedMethodsByTaskSeed.get(JSON.stringify([row.taskId, row.seed, row.attempt]))?.has(baselineMethod) &&
+    pairedMethodsByTaskSeed.get(JSON.stringify([row.taskId, row.seed, row.attempt]))?.has(candidateMethod)
+  ).map(row => row.taskId)).size;
   const bySeed = new Map<number, Set<string>>();
   for (const row of observations.filter(item => item.attempt === 1)) {
     const set = bySeed.get(row.seed) ?? new Set<string>();
@@ -85,7 +73,7 @@ export function proposeVerifiedSkillPromotion(
       seen.has(taskId + '\u0000' + baselineMethod) && seen.has(taskId + '\u0000' + candidateMethod),
     ),
   ).length;
-  const minCompleteSeeds = Math.max(3, Math.min(1000, Math.floor(options.minCompleteSeeds ?? 3)));
+  const minCompleteSeeds = boundedInteger(options.minCompleteSeeds, 3, 3, 1000);
   const seedClusteredEvaluation = ledger.comparePairedBySeed(baselineMethod, candidateMethod, 'holdout');
   const familyEvaluation = ledger.comparePairedByFamilyAndSeed(baselineMethod, candidateMethod, 'holdout');
   const seedCoverageOkay = completePairedSeeds >= minCompleteSeeds && seedClusteredEvaluation.pairedN >= minCompleteSeeds;
@@ -94,7 +82,7 @@ export function proposeVerifiedSkillPromotion(
     seedClusteredEvaluation.approximate95CI !== null && seedClusteredEvaluation.approximate95CI[0] > 0;
   const maxFamilyRegression = Math.max(0, Math.min(1, Number.isFinite(options.maxFamilyRegression) ? options.maxFamilyRegression! : 0.10));
   const familyRegression = familyEvaluation.find(row => row.pairedN >= minCompleteSeeds && row.absoluteGain < -maxFamilyRegression);
-  const minPairedTasks = Math.max(2, Math.min(10000, Math.floor(options.minPairedTasks ?? 8)));
+  const minPairedTasks = boundedInteger(options.minPairedTasks, 8, 2, 10000);
   const finalGate: SkillRevisionGateResult = uniquePairedTasks < minPairedTasks ? {
     ...gate, accepted: false, reason: 'insufficient-independent-heldout-task-coverage',
   } : !seedCoverageOkay ? {
@@ -105,32 +93,22 @@ export function proposeVerifiedSkillPromotion(
     ...gate, accepted: false, reason: 'seed-clustered-gain-not-statistically-supported',
   } : gate;
   const manifestFingerprint = ledger.manifestFingerprint();
-  const outcomeFingerprint = createHash('sha256').update(JSON.stringify(
-    [...snapshot.outcomes].sort((a, b) => JSON.stringify([a.taskId,a.method,a.seed,a.attempt]).localeCompare(JSON.stringify([b.taskId,b.method,b.seed,b.attempt]))),
-  )).digest('hex');
+  const canonicalOutcomes = [...snapshot.outcomes].sort((a, b) =>
+    JSON.stringify([a.taskId, a.method, a.seed, a.attempt]).localeCompare(JSON.stringify([b.taskId, b.method, b.seed, b.attempt])),
+  );
+  const outcomeFingerprint = createHash('sha256').update(JSON.stringify(canonicalOutcomes)).digest('hex');
   const evaluatedAt = Date.now();
   const identity = JSON.stringify({
     manifestFingerprint, outcomeFingerprint, baselineMethod, candidateMethod,
     pairedN: finalGate.pairedN, absoluteGain: finalGate.absoluteGain,
-    familyGains: finalGate.familyGains, completePairedSeeds,
+    familyGains: finalGate.familyGains, completePairedSeeds, uniquePairedTasks,
     seedClusteredEvaluation, familyEvaluation,
   });
   const proposalId = createHash('sha256').update(identity).digest('hex');
   return {
-    schemaVersion: 1,
-    proposalId,
-    manifestFingerprint,
-    outcomeFingerprint,
-    baselineMethod,
-    candidateMethod,
-    evaluatedAt,
-    outcomeRowsSeen: snapshot.outcomes.length,
-    pairedTaskSeedN: finalGate.pairedN,
-    uniquePairedTasks,
-    completePairedSeeds,
-    gate: finalGate,
-    seedClusteredEvaluation,
-    familyEvaluation,
+    schemaVersion: 1, proposalId, manifestFingerprint, outcomeFingerprint, baselineMethod, candidateMethod,
+    evaluatedAt, outcomeRowsSeen: snapshot.outcomes.length, pairedTaskSeedN: finalGate.pairedN,
+    uniquePairedTasks, completePairedSeeds, gate: finalGate, seedClusteredEvaluation, familyEvaluation,
     canActivateAutomatically: false,
     activationRequirements: [
       'Revalidate the manifest fingerprint and ledger snapshot at review time.',
