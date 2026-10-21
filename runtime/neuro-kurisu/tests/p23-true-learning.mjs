@@ -148,4 +148,28 @@ assert.equal(replayedTicks.filter(tick => tick >= 564).length, 32, 'half of a la
 assert.ok(replayedTicks.some(tick => tick <= 531), 'the long-term replay quota must retain older evidence rather than only replaying recent traces');
 assert.equal(new Set(replayedTicks).size, 64, 'multi-timescale replay must not select duplicate experiences');
 
+// Production P23 replay now consumes goal-pressure, outcome salience, novelty and
+// policy update counts. Hold other factors constant: historical goal-linked traces
+// should be selected ahead of routine traces while the recent quota stays intact.
+const goalReplayLearning = new P23LearningEngine();
+const goalReplayPolicy = new AdaptivePolicyEngine();
+const goalReplayTraces = [];
+for (let i = 0; i < 80; i++) {
+  const highGoal = i < 24;
+  const trace = makeTrace(900 + i, 'verify', .6, {
+    energy:.72, cognitiveLoad:.24, uncertainty:.42, socialNeed:.32, novelty:.45,
+    identityCoherence:.86, goalPressure:highGoal ? .98 : .08,
+  });
+  goalReplayTraces.push(trace);
+  goalReplayLearning.recordExperience(trace, trace.stateBefore,
+    { success:.6, reward:.6, surprise:.2 }, goalReplayPolicy);
+}
+assert.equal(goalReplayLearning.replayPending(goalReplayTraces, goalReplayPolicy), 64);
+const goalSelectedTicks = goalReplayLearning.snapshot().replayUpdates
+  .map(update => Number(update.traceId.replace('trace-', '')));
+assert.ok(goalSelectedTicks.filter(tick => tick >= 900 && tick < 924).length >= 20,
+  'goal-relevant historical experiences should receive priority in the actual P23 replay path');
+assert.equal(goalSelectedTicks.filter(tick => tick >= 948).length, 32,
+  'goal-aware historical selection must not consume the guaranteed recent quota');
+
 console.log(`P23_TRUE_LEARNING=PASS replay=${firstReplay} promoted=${learning.topSkills().length} checksumFailures=${learning.snapshot().metrics.checksumFailures}`);
