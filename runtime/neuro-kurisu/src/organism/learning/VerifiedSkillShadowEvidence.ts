@@ -81,6 +81,10 @@ export function verifySignedSkillShadowObservation(
 }
 
 export interface TrustedShadowExecutionContext {
+  /** Values must come from the trusted run ledger/supervisor, not the signed receipt. */
+  runId: string;
+  taskId: string;
+  seed: number;
   manifestFingerprint: string;
   runtimeVersion: string;
 }
@@ -102,10 +106,17 @@ export function createContextBoundSkillShadowEvidenceVerifier(
     let context: TrustedShadowExecutionContext | null;
     try { context = resolveTrustedContext(observation, candidate); }
     catch { return false; }
-    if (!context || !/^[a-f0-9]{64}$/.test(context.manifestFingerprint) ||
+    if (!context || !context.runId?.trim() || !context.taskId?.trim() ||
+        !Number.isSafeInteger(context.seed) || context.seed < 0 ||
+        !/^[a-f0-9]{64}$/.test(context.manifestFingerprint) ||
         typeof context.runtimeVersion !== 'string' || !context.runtimeVersion.trim()) return false;
     const payload = observation.artifact!.payload;
-    return payload.manifestFingerprint === context.manifestFingerprint &&
+    // in-toto-inspired subject/provenance binding: receipt identity, task, seed,
+    // manifest and runtime must all agree with independently trusted run metadata.
+    return payload.runId === context.runId &&
+      payload.taskId === context.taskId &&
+      payload.seed === context.seed &&
+      payload.manifestFingerprint === context.manifestFingerprint &&
       payload.runtimeVersion === context.runtimeVersion;
   };
 }
