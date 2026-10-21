@@ -29,6 +29,8 @@ export interface HoldoutAggregate {
   independentSeedCount: number;
 }
 
+const MIN_HOLDOUT_AGGREGATE_OUTCOMES = 5;
+
 export interface VerifiedSessionDataset {
   schemaVersion: 1;
   manifestFingerprint: string;
@@ -91,7 +93,10 @@ export function buildVerifiedSessionDataset(ledger: VerifiedOutcomeLedger): Veri
     (task.split === 'train' ? training : validation).push(example);
   }
 
+  // Small groups can reveal individual holdout labels even when IDs are omitted.
+  // Suppress them rather than publishing a pass rate for one or two observations.
   const holdoutAggregates: HoldoutAggregate[] = [...holdout.values()]
+    .filter(row => row.n >= MIN_HOLDOUT_AGGREGATE_OUTCOMES && row.seeds.size >= MIN_HOLDOUT_AGGREGATE_OUTCOMES)
     .map(row => ({
       split: 'holdout',
       family: row.family,
