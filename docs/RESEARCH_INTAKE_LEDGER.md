@@ -143,3 +143,13 @@ Do not count a reference as “used” until a source revision/paper protocol is
 | Санитизация diagnostics, update count и timestamp | Невалидные метрики могут исказить uncertainty/exploration или сломать наблюдаемость | Диагностики конечны и ограничены; отрицательный/небезопасный update count сбрасывается | Код и regression добавлены; исполнение не подтверждено |
 
 Это дополнительная защита persisted state, а не оценка прироста обучения. Не считать тесты пройденными без живого запуска. Следующий обязательный шаг — выполнить `test:p26:learning-input-integrity`, `typecheck` и `test:p26:true-learning`, затем добавить измеримые тесты исправления ошибочной обратной связи, reversal, replay retention и no-learning baseline.
+
+
+## WorkPass81 — атомарность входной проверки trainBatch (2026-10-21)
+
+| Изменение | Риск | Критерий регрессии | Статус |
+|---|---|---|---|
+| Предварительная проверка всего пакета перед первым update | Поздний некорректный образец раньше мог оставить ранние обновления уже применёнными | Ошибка в более позднем элементе; snapshot остаётся идентичным до вызова | Код и тест добавлены; запуск не подтверждён |
+| Проверка структуры state.needs в каждом образце | Некорректный state мог выбросить исключение в процессе последовательного обучения | Повреждённый второй элемент отклоняется до первого обновления | Код и тест добавлены; запуск не подтверждён |
+
+Исследовательская опора для следующего этапа: AgentMemoryBench явно разделяет online, replay/retention, transfer и repair evaluation; MemoryAgentBench выделяет accurate retrieval, test-time learning, long-range understanding и conflict resolution. Источники: https://github.com/solomoon313/AgentMemoryBench и https://github.com/HUST-AI-HYZ/MemoryAgentBench. Внешние код/данные не импортированы; заимствована структура оценки. Требуется создать собственные лёгкие детерминированные сценарии, которые не требуют тяжёлых внешних сред или API.
