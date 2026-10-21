@@ -150,7 +150,8 @@ const trustedRuntime = 'nk1-runtime-workpass130';
 const contextVerifier = createContextBoundSkillShadowEvidenceVerifier(shadowKeys, () => ({
   manifestFingerprint: trustedManifest, runtimeVersion: trustedRuntime,
 }));
-const shadowPath = join(tempRoot, 'state', 'signed-shadow.json');
+const shadowTempRoot = mkdtempSync(join(tmpdir(), 'nk1-signed-shadow-'));
+const shadowPath = join(shadowTempRoot, 'state', 'signed-shadow.json');
 const shadowPersistence = new AtomicFileSkillStorePersistence(shadowPath);
 const shadowStore = new VersionedSkillCandidateStore(shadowPersistence, () => true, contextVerifier);
 const shadowCandidate = shadowStore.stageCandidate(proposal('h'), 'persisted-signed-shadow', { instruction: 'verified across restart' });
@@ -189,5 +190,6 @@ const acceptedAfterRestart = restoredShadowStore.approveAndPromote(shadowCandida
 }, 1);
 assert.equal(acceptedAfterRestart.version, shadowCandidate.version,
   'receipt is revalidated and accepted after restart only with matching trusted context');
+rmSync(shadowTempRoot, { recursive: true, force: true });
 
 console.log('P23_VERSIONED_SKILL_CANDIDATE_STORE=PASS');
