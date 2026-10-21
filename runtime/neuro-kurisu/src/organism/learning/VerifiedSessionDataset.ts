@@ -34,6 +34,8 @@ const MIN_HOLDOUT_AGGREGATE_OUTCOMES = 5;
 export interface VerifiedSessionDataset {
   schemaVersion: 1;
   manifestFingerprint: string;
+  /** Stable content identity, independent of export time. */
+  datasetFingerprint: string;
   generatedAt: number;
   training: VerifiedSessionTrainingExample[];
   validation: VerifiedSessionTrainingExample[];
@@ -113,14 +115,25 @@ export function buildVerifiedSessionDataset(ledger: VerifiedOutcomeLedger): Veri
     a.seed - b.seed || a.attempt - b.attempt,
   );
 
-  return {
+  const sortedTraining = sortExamples(training);
+  const sortedValidation = sortExamples(validation);
+  // Stable fingerprint lets downstream generators/evaluators bind results to the
+  // exact verified dataset rather than merely to a task manifest or export time.
+  const datasetIdentity = {
     schemaVersion: 1,
     manifestFingerprint: ledger.manifestFingerprint(),
-    generatedAt: Date.now(),
-    training: sortExamples(training),
-    validation: sortExamples(validation),
+    training: sortedTraining,
+    validation: sortedValidation,
     holdoutAggregates,
-    // The ledger rejects self-reports at insertion; preserve the count as provenance.
     rejectedSelfReports: snapshot.rejectionCounts['self-report-not-authoritative'] ?? 0,
+  };
+  const datasetFingerprint = createHash('sha256')
+    .update(JSON.stringify(datasetIdentity))
+    .digest('hex');
+
+  return {
+    ...datasetIdentity,
+    datasetFingerprint,
+    generatedAt: Date.now(),
   };
 }
