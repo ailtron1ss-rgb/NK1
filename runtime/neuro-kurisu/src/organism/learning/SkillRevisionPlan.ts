@@ -18,9 +18,23 @@ export interface SkillRevisionPlan {
   targets: SkillRevisionTarget[];
   preserve: string[];
   rationale: string[];
+  optimizerInstruction: string;
 }
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+
+export function renderSkillRevisionInstruction(plan: Readonly<SkillRevisionPlan>): string {
+  const lines = [
+    'Revise the existing skill using only the evidence-linked targets below.',
+    'Make the smallest targeted change that addresses observed failures; do not invent evidence or claim tests passed.',
+    'Preserve all listed contracts and safety constraints. Never trade safety for task success.',
+    plan.blockedBySafety ? 'STOP: a safety violation was observed. Do not optimize performance or broaden capabilities. Produce only a safety-remediation candidate for independent review.' : 'Do not change behavior outside the evidenced failure scope. Keep validation and holdout examples separate; do not tune to holdout examples.',
+    ...plan.preserve.map(item => 'PRESERVE: ' + item),
+    ...plan.targets.map((target, index) => 'TARGET ' + (index + 1) + ' [' + target.dimension + '; priority=' + target.priority01 + '; tasks=' + target.affectedTaskIds.join(',') + '; trials=' + target.evidenceIds.join(',') + ']: ' + target.directive),
+    'Return the revised skill and a concise change rationale mapped to target IDs. If evidence is insufficient, state what evidence is missing instead of guessing.',
+  ];
+  return lines.join('\n');
+}
 
 /**
  * Turn Hermes-style multi-dimensional fitness feedback into a bounded, evidence-linked
@@ -47,7 +61,9 @@ export function planSkillRevision(
   };
   if(blockedBySafety){
     add('safety',1,safetyRows.length?safetyRows:all,'Stop performance optimization. Remove or redesign the unsafe behavior, preserve explicit safety constraints, and obtain a fresh independent safety evaluation before generating another candidate.');
-    return {candidateEligible:false,blockedBySafety:true,overallFitness01:0,targets,preserve:['All existing safety constraints and refusal boundaries'],rationale:['Safety is a hard constraint; gains in other dimensions cannot compensate.']};
+    const plan:SkillRevisionPlan={candidateEligible:false,blockedBySafety:true,overallFitness01:0,targets,preserve:['All existing safety constraints and refusal boundaries'],rationale:['Safety is a hard constraint; gains in other dimensions cannot compensate.'],optimizerInstruction:''};
+    plan.optimizerInstruction=renderSkillRevisionInstruction(plan);
+    return plan;
   }
   const success=mean(validation,r=>r.taskSuccess.passRate);
   const trajectory=mean(validation,r=>r.trajectoryQuality.aggregate);
@@ -65,12 +81,15 @@ export function planSkillRevision(
   if(holdoutDelta<0) add('holdout-generalization',Math.min(1,Math.abs(holdoutDelta)*5),holdout.filter(r=>!r.taskSuccess.passed||r.trajectoryQuality.aggregate<0.8||r.skillQuality.aggregate<0.8),
     'Reduce overfitting to validation examples. Prefer the smallest procedure change that addresses the holdout failure pattern, and keep the holdout task family untouched during revision.');
   const dimensionScore=0.5*success+0.3*trajectory+0.2*mean(validation,r=>r.skillQuality.aggregate);
-  return {
+  const plan:SkillRevisionPlan = {
     candidateEligible:fitness.eligible,
     blockedBySafety:false,
     overallFitness01:Number(clamp(dimensionScore).toFixed(6)),
     targets:targets.sort((a,b)=>b.priority01-a.priority01||a.dimension.localeCompare(b.dimension)).slice(0,5),
     preserve:['Existing safety constraints','Verified task preconditions and postconditions','Unchanged behavior outside the evidenced failure scope'],
     rationale:[...fitness.reasons,...fitness.feedback].filter((x,i,a)=>a.indexOf(x)===i),
+    optimizerInstruction:'',
   };
+  plan.optimizerInstruction=renderSkillRevisionInstruction(plan);
+  return plan;
 }
