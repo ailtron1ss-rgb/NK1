@@ -65,6 +65,20 @@ export function ingestSignedOutcomeArtifact(
   artifact: SignedOutcomeArtifact,
   trustedVerifierKeys: ReadonlyMap<string, string>,
 ): { accepted: boolean; artifactFingerprint: string; rejection?: string } {
+  // The caller-supplied manifest is part of the trust boundary. Do not validate a
+  // signed row against a different task table than the one that defines the ledger.
+  // In particular, task split/family/prompt identity must not come from an unbound
+  // parallel manifest, even if taskId/version/verifier happen to match.
+  let suppliedManifestFingerprint: string;
+  try {
+    suppliedManifestFingerprint = new VerifiedOutcomeLedger(manifest).manifestFingerprint();
+  } catch {
+    return { accepted: false, artifactFingerprint: '', rejection: 'invalid-supplied-manifest' };
+  }
+  if (suppliedManifestFingerprint !== ledger.manifestFingerprint()) {
+    return { accepted: false, artifactFingerprint: '', rejection: 'supplied-manifest-mismatch' };
+  }
+
   const payload = artifact?.payload;
   if (!payload || typeof payload !== 'object' || payload.schemaVersion !== 1) {
     return { accepted: false, artifactFingerprint: '', rejection: 'invalid-artifact-schema' };
