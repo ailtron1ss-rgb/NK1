@@ -3,10 +3,33 @@ import { isAuthenticVerifiedSkillPromotionProposal, type VerifiedSkillPromotionP
 
 export type SkillCandidateStatus = 'staged' | 'shadow' | 'active' | 'superseded' | 'rolled-back';
 
+export interface SkillPromotionApprovalPayload {
+  schemaVersion: 1;
+  approvalId: string;
+  approverId: string;
+  approvedAt: number;
+  candidateId: string;
+  skillId: string;
+  candidateVersion: number;
+  payloadFingerprint: string;
+  proposalId: string;
+  proposalOutcomeFingerprint: string;
+  expectedActiveVersion: number | null;
+  minShadowRuns: number;
+  shadowEvidenceFingerprint: string;
+}
+
+export interface SignedSkillPromotionApprovalArtifact {
+  payload: SkillPromotionApprovalPayload;
+  signature: string;
+}
+
 export interface SkillPromotionApproval {
   approvedBy: string;
   approvedAt: number;
   expectedActiveVersion: number | null;
+  /** Required by the production configured verifier; optional only for test/legacy deny adapters. */
+  artifact?: SignedSkillPromotionApprovalArtifact;
 }
 
 /**
@@ -17,6 +40,7 @@ export interface SkillPromotionApproval {
 export type SkillPromotionApprovalVerifier = (
   approval: SkillPromotionApproval,
   candidate: Readonly<VersionedSkillCandidate>,
+  minShadowRuns: number,
 ) => boolean;
 
 export interface SkillShadowObservation {
@@ -193,7 +217,7 @@ export class VersionedSkillCandidateStore {
 
   approveAndPromote(
     candidateId: string,
-    approval: { approvedBy: string; approvedAt: number; expectedActiveVersion: number | null },
+    approval: SkillPromotionApproval,
     minShadowRuns = 3,
   ): ActiveSkillVersion {
     if (!approval?.approvedBy?.trim() || !Number.isFinite(approval.approvedAt) || approval.approvedAt <= 0 ||
@@ -225,7 +249,7 @@ export class VersionedSkillCandidateStore {
     // Default is deny; production must inject a verifier backed by authenticated authority.
     let approvalAuthorized = false;
     try {
-      approvalAuthorized = this.verifyApproval(clone(approval), clone(candidate));
+      approvalAuthorized = this.verifyApproval(clone(approval), clone(candidate), minShadowRuns);
     } catch {
       approvalAuthorized = false;
     }
