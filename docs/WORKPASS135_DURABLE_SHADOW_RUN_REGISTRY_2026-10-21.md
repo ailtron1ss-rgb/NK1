@@ -20,3 +20,10 @@
 1. Wire this registry and trusted key configuration into the single runtime skill lifecycle bootstrap, preserving default-deny when configuration is missing.
 2. Audit all activation paths and prove they cannot bypass the versioned candidate store or explicit authenticated approval.
 3. Execute the owning learning suite/typecheck on a functioning runner; then connect the gated candidate path to real shadow task outcomes and compare against the frozen baseline.
+
+
+## WorkPass140 — Core-owned execution seam
+
+`OrganismCore.runTrustedSkillShadowLearningProcess(...)` delegates to the trusted coordinator while supplying `core: this`; external callers therefore cannot substitute the trusted registry capability. The regression exercises the public Core method with a real child process and checks the bound context. Baseline/control and non-shadow lanes remain rejected.
+
+**Boundary:** this makes the canonical Core API available and testable. It does not prove a production scheduler invokes it; no existing caller was confirmed in the available tree/code search. Keep the PR draft and promotion default-deny until that caller, verifier keys, authenticated approval authority, and successful exact-head CI are established.

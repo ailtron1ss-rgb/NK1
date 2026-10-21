@@ -1,3 +1,8 @@
+## WorkPass140 — Core-owned trusted shadow execution entry point (2026-10-21)
+- Added `OrganismCore.runTrustedSkillShadowLearningProcess(...)` as the runtime-facing route into the trusted coordinator. Callers cannot inject a different registrar; Core supplies its own registration hook.
+- Added a regression that exercises the actual Core prototype method, checks context fields, runs a real child process, and rejects baseline/control lanes before registration.
+- Wired the regression into the verified-promotion workflow. This establishes an official Core API, but does not claim an existing scheduler or deployed caller has adopted it; that route still needs to be identified and wired.
+
 ## WorkPass139 — enforce shadow-lane identity at coordinator boundary (2026-10-21)
 
 - Restricted `runTrustedShadowLearningProcess` to the explicit `arm: candidate` + `method: shadow` identity before any registry call or child process spawn. The generic process supervisor remains reusable for ordinary benchmark/control runs; those lanes cannot accidentally gain trusted shadow provenance by using the coordinator.

@@ -12,6 +12,9 @@ on:
       - 'runtime/neuro-kurisu/tests/p23-verified-outcome-ledger.mjs'
       - 'runtime/neuro-kurisu/tests/p23-verified-outcome-promotion-gate.mjs'
       - 'runtime/neuro-kurisu/tests/p23-outcome-promotion-integration.mjs'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/TrustedShadowLearningRunCoordinator.ts'
+      - 'runtime/neuro-kurisu/tests/p23-core-trusted-shadow-entry.mjs'
       - 'runtime/neuro-kurisu/tests/p23-verified-outcome-ledger-persistence.mjs'
       - 'runtime/neuro-kurisu/tests/p23-verified-outcome-ledger-file-store.mjs'
       - 'runtime/neuro-kurisu/tests/p23-paired-outcome-identity.mjs'
@@ -54,6 +57,9 @@ jobs:
       - name: Verify signed independent outcome artifacts and reject tampering
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-signed-outcome-artifact.mjs
+      - name: Check Core-owned trusted shadow execution entry point
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-core-trusted-shadow-entry.mjs
       - name: Type-check runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck

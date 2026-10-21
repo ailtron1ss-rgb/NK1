@@ -204,6 +204,7 @@ import { TemporalContinuityEngine, defaultTemporalContinuity } from '../learning
 import { AdvancedResilienceEngine, defaultAdvancedResilience } from '../learning/AdvancedResilienceEngine.ts';
 import { P23LearningEngine, defaultP23Learning } from '../learning/P23LearningEngine.ts';
 import { createVerifiedSkillLifecycleBootstrap } from '../learning/VerifiedSkillLifecycleBootstrap.ts';
+import { runTrustedShadowLearningProcess as executeTrustedShadowLearningProcess, type TrustedShadowLearningRunInput } from '../learning/TrustedShadowLearningRunCoordinator.ts';
 import { AtomicFileTrustedSkillShadowRunRegistry } from '../learning/TrustedSkillShadowRunRegistry.ts';
 import type { TrustedShadowExecutionContext } from '../learning/VerifiedSkillShadowEvidence.ts';
 import type { SkillShadowObservation } from '../learning/VersionedSkillCandidateStore.ts';
@@ -10970,6 +10971,14 @@ export class OrganismCore {
     p24BodyWorldPrediction(minutes = 5) { return this.worldSubsystem.p24WorldIdentity.bodyWorld.predict(minutes); }
     p24ModelSwitchSnapshot() { return this.worldSubsystem.p24WorldIdentity.modelSwitchBenchmark.snapshot(); }
     p24RecordModelSwitchTrial(input: Parameters<P24WorldIdentityEngine['modelSwitchBenchmark']['compare']>[0]) { const trial = this.worldSubsystem.p24WorldIdentity.modelSwitchBenchmark.compare(input); this.persisted.facets.advanced.p24 = this.worldSubsystem.p24WorldIdentity.snapshot(); return trial; }
+    /**
+     * Canonical Core-owned entry point for candidate/shadow learner execution.
+     * Callers supply the runtime-owned version and command, but cannot replace
+     * the registrar: this Core instance records provenance before child spawn.
+     */
+    runTrustedSkillShadowLearningProcess(input: Omit<TrustedShadowLearningRunInput, 'core'>) {
+        return executeTrustedShadowLearningProcess({ ...input, core: this });
+    }
     /** Trusted execution supervisor hook: persist run context before accepting any signed shadow receipt. */
     registerTrustedSkillShadowRun(context: TrustedShadowExecutionContext) {
         if (!this.verifiedSkillShadowRunRegistry) throw new Error('trusted skill shadow registry is not configured');
