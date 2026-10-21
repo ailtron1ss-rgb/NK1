@@ -12,6 +12,12 @@ export interface ReplayExperienceReference extends ReplayCandidate {
   attempt: number;
   /** Must match an accepted outcome's evidence reference exactly. */
   evidenceRef: string;
+  /** Optional Will-style episodic signals captured at encoding time. */
+  emotionalIntensity?: number;
+  activationStrength?: number;
+  goalPriority?: number;
+  retrievalCount?: number;
+  novelty?: number;
 }
 
 export interface VerifiedReplayExperience<T extends ReplayExperienceReference = ReplayExperienceReference> {
@@ -105,11 +111,21 @@ export function selectVerifiedReplayExperiences<T extends ReplayExperienceRefere
 
   const selected = selectReplayBatch(admitted.map(item => ({
     ...item.experience,
-    // Will's episodic consolidation pattern: salient, surprising experiences get
-    // replay priority, while repeated retrieval gradually reduces redundant replay.
-    // Failures remain first-class learning episodes rather than being discarded.
-    salience: item.outcome.passed ? 0.2 : 0.8,
-    novelty: Math.max(0, Math.min(1, Number.isFinite(item.experience.surprise) ? item.experience.surprise : 0)),
+    // Bridge Will's episodic consolidator and goal manager into NK1's existing
+    // evidence-gated replay selector. Independent outcome is authoritative;
+    // affect, activation and goal priority only modulate sampling, never truth.
+    salience: Math.max(0, Math.min(1,
+      (item.outcome.passed ? 0.2 : 0.8) * 0.55 +
+      Math.max(0, Math.min(1, Number.isFinite(item.experience.emotionalIntensity) ? item.experience.emotionalIntensity! : 0)) * 0.2 +
+      Math.max(0, Math.min(1, Number.isFinite(item.experience.activationStrength) ? item.experience.activationStrength! : 0)) * 0.15 +
+      Math.max(0, Math.min(1, Number.isFinite(item.experience.goalPriority) ? item.experience.goalPriority! : 0)) * 0.1)),
+    novelty: Math.max(0, Math.min(1, Number.isFinite(item.experience.novelty) ? item.experience.novelty! :
+      Number.isFinite(item.experience.surprise) ? item.experience.surprise! : 0)),
+    replayCount: Math.max(0, Number.isFinite(item.experience.replayCount) ? item.experience.replayCount! :
+      Number.isFinite(item.experience.retrievalCount) ? item.experience.retrievalCount! : 0),
+    emotionalIntensity: item.experience.emotionalIntensity,
+    activationStrength: item.experience.activationStrength,
+    goalPriority: item.experience.goalPriority,
     // Include provenance in the selection object; it remains attached through selection.
     _verifiedReplay: item,
   })), options).map(item => item._verifiedReplay);
