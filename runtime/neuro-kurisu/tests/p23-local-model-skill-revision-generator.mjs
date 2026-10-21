@@ -10,6 +10,7 @@ const provider = {
   },
 };
 const request = {
+  datasetFingerprint: 'a'.repeat(64),
   sourcePayload: { name: 'source-skill', steps: ['safe-step'] },
   optimizerInstruction: 'Improve only the evidenced trajectory gap.',
   validationEvidence: [{ taskId: 'validation-task-1', trialId: 'validation-trial-1', pass: false }],
@@ -20,6 +21,8 @@ const result = await generateLocalSkillRevision(provider, request);
 assert.deepEqual(result, { name: 'revised-skill', steps: ['safe-step', 'improved-step'] });
 assert.equal(calls.length, 1);
 assert.ok(calls[0].user.includes('validation-task-1'));
+assert.ok(calls[0].user.includes('VERIFIED_DATASET_FINGERPRINT:'));
+assert.ok(calls[0].user.includes('a'.repeat(64)));
 assert.ok(calls[0].user.includes('"gap01":-0.1'));
 assert.ok(!calls[0].user.includes('holdout-task-secret'), 'holdout case identifiers must not be supplied');
 assert.equal(calls[0].temperature, 0.2);
@@ -36,5 +39,9 @@ await assert.rejects(
 await assert.rejects(
   () => generateLocalSkillRevision(provider, { ...request, targets: [] }),
   /p23-revision-evidence-backed-targets-required/,
+);
+await assert.rejects(
+  () => generateLocalSkillRevision(provider, { ...request, datasetFingerprint: 'not-a-digest' }),
+  /p23-revision-verified-dataset-fingerprint-required/,
 );
 console.log('P23_LOCAL_MODEL_SKILL_REVISION_GENERATOR=PASS');
