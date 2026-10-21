@@ -1,6 +1,12 @@
 import { createHash } from 'node:crypto';
 import { evaluateSkillLearnBenchTrial, type SkillLearnBenchTrialReport } from './SkillLearnBenchAdapter.ts';
 import type { RevisedCandidateEvaluator } from './P23LearningEngine.ts';
+import {
+  recordPlannedLearningOutcome,
+  validateLearningExperimentPlan,
+  type LearningExperimentPlan,
+} from './LearningExperimentPlan.ts';
+import { VerifiedOutcomeLedger, type TaskManifestEntry } from './VerifiedOutcomeLedger.ts';
 
 export interface IndependentCandidateTask {
   taskId: string;
@@ -20,6 +26,10 @@ export interface CandidateExecutionContext {
   environmentFingerprint: string;
   /** Digest of the complete fixed validation/holdout plan. */
   planFingerprint: string;
+  /** Null when no canonical matched experiment authority was supplied. */
+  experimentPlanFingerprint: string | null;
+  /** Scheduled run ID from LearningExperimentPlan, never the sandbox's runtime run ID. */
+  plannedRunId: string | null;
 }
 export interface CandidateExecutionResult {
   runId: string;
@@ -50,6 +60,16 @@ export interface IndependentCandidateEvaluationConfig {
   executor: CandidateSandboxExecutor;
   verifier: IndependentTaskVerifier;
   safetyScanner: IndependentCandidateSafetyScanner;
+  /** Optional bridge to the canonical matched experiment plan and verified-outcome ledger. */
+  experimentAuthority?: {
+    manifest: TaskManifestEntry[];
+    ledger: VerifiedOutcomeLedger;
+    validationPlan: LearningExperimentPlan;
+    holdoutPlan: LearningExperimentPlan;
+    /** Must be the method label scheduled in both plans for this candidate. */
+    method: string;
+    attempt?: number;
+  };
   /** Domain identity for runtime/tool policy; included in the report fingerprint. */
   environmentFingerprint: string;
 }
@@ -108,6 +128,40 @@ function validateConfig(config: IndependentCandidateEvaluationConfig): void {
   for (const taskId of splitTasks.validation) {
     if (splitTasks.holdout.has(taskId)) throw new Error('independent-candidate-evaluator-task-leakage');
   }
+  const authority = config.experimentAuthority;
+  if (authority) {
+    if (!Array.isArray(authority.manifest) || !(authority.ledger instanceof VerifiedOutcomeLedger) ||
+        typeof authority.method !== 'string' || !authority.method.trim() ||
+        (authority.attempt !== undefined && (!Number.isSafeInteger(authority.attempt) || authority.attempt < 1))) {
+      throw new Error('independent-candidate-experiment-authority-invalid');
+    }
+    validateLearningExperimentPlan(authority.validationPlan, authority.manifest);
+    validateLearningExperimentPlan(authority.holdoutPlan, authority.manifest);
+    if (authority.validationPlan.split !== 'validation' || authority.holdoutPlan.split !== 'holdout' ||
+        authority.ledger.manifestFingerprint() !== authority.validationPlan.manifestFingerprint ||
+        authority.ledger.manifestFingerprint() !== authority.holdoutPlan.manifestFingerprint ||
+        !authority.validationPlan.arms.some(arm => arm.method === authority.method) ||
+        !authority.holdoutPlan.arms.some(arm => arm.method === authority.method)) {
+      throw new Error('independent-candidate-experiment-plan-mismatch');
+    }
+    const manifestById = new Map(authority.manifest.map(entry => [entry.taskId, entry]));
+    for (const task of config.tasks) {
+      const manifestEntry = manifestById.get(task.taskId);
+      const prompt = task.input && typeof task.input === 'object'
+        ? (task.input as Record<string, unknown>).prompt
+        : undefined;
+      const plan = task.split === 'validation' ? authority.validationPlan : authority.holdoutPlan;
+      const scheduled = plan.runs.some(run =>
+        run.taskId === task.taskId && run.seed === task.seed && run.method === authority.method &&
+        run.split === task.split && run.manifestFingerprint === plan.manifestFingerprint);
+      if (!manifestEntry || manifestEntry.split !== task.split ||
+          typeof prompt !== 'string' ||
+          VerifiedOutcomeLedger.fingerprintPrompt(prompt) !== manifestEntry.promptFingerprint ||
+          !scheduled) {
+        throw new Error('independent-candidate-task-not-bound-to-experiment-manifest');
+      }
+    }
+  }
 }
 
 /**
@@ -134,11 +188,19 @@ export function createIndependentSkillCandidateEvaluator(
     const runBindings: Array<{ taskId: string; trialId: string; runId: string | null; seed: number; split: string; executable: boolean; observedStepIds: string[]; bindingVerified: boolean; verifierPassed: boolean; coveredCapabilityIds: string[]; safetyViolationCount: number }> = [];
     const seenRunIds = new Set<string>();
     for (const task of tasks) {
+      const authority = config.experimentAuthority;
+      const experimentPlan = authority
+        ? (task.split === 'validation' ? authority.validationPlan : authority.holdoutPlan)
+        : undefined;
+      const plannedRun = experimentPlan?.runs.find(run =>
+        run.taskId === task.taskId && run.seed === task.seed && run.method === authority?.method);
       const executionContext: CandidateExecutionContext = {
         payloadFingerprint,
         taskInputFingerprint: sha256(canonical(task.input)),
         environmentFingerprint: config.environmentFingerprint,
         planFingerprint,
+        experimentPlanFingerprint: experimentPlan?.planFingerprint ?? null,
+        plannedRunId: plannedRun?.runId ?? null,
       };
       let execution: CandidateExecutionResult | undefined;
       let verifierPassed = false;
@@ -198,6 +260,7 @@ export function createIndependentSkillCandidateEvaluator(
         // A run ID and trace are evidence only after the independent verifier binds
         // them to the exact candidate/task/environment/plan context.
         runId: bindingVerified ? execution?.runId ?? null : null,
+        plannedRunId: plannedRun?.runId ?? null,
         seed: task.seed,
         split: task.split,
         executable: executable && bindingVerified,
@@ -237,6 +300,13 @@ export function createIndependentSkillCandidateEvaluator(
         payloadFingerprint,
         environmentFingerprint: config.environmentFingerprint,
         planFingerprint,
+        experimentAuthority: authority ? {
+          manifestFingerprint: authority.validationPlan.manifestFingerprint,
+          validationPlanFingerprint: authority.validationPlan.planFingerprint,
+          holdoutPlanFingerprint: authority.holdoutPlan.planFingerprint,
+          method: authority.method,
+          attempt: authority.attempt ?? 1,
+        } : null,
         runBindings,
       },
     };
