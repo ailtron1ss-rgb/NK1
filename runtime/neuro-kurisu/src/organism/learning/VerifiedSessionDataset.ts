@@ -49,8 +49,13 @@ export interface VerifiedSessionDataset {
  * URLs, query strings or accidentally embedded credentials cannot escape.
  * Holdout is emitted only as aggregate statistics, never as per-example rows.
  */
-export function buildVerifiedSessionDataset(ledger: VerifiedOutcomeLedger): VerifiedSessionDataset {
-  const snapshot = ledger.snapshot();
+export function buildVerifiedSessionDataset(
+  ledger: VerifiedOutcomeLedger,
+  snapshotOverride?: ReturnType<VerifiedOutcomeLedger['snapshot']>,
+): VerifiedSessionDataset {
+  // Callers that derive multiple fingerprints from one evaluation must pass the same
+  // immutable snapshot through every adapter; do not silently reread a changing ledger.
+  const snapshot = snapshotOverride ?? ledger.snapshot();
   const manifest = new Map(snapshot.manifest.map(task => [task.taskId, task]));
   const training: VerifiedSessionTrainingExample[] = [];
   const validation: VerifiedSessionTrainingExample[] = [];
