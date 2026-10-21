@@ -111,6 +111,14 @@ assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, improved, {
   minimumValidationGain01: Number.NaN,
 }), /candidate-minimum-validation-gain-invalid/);
 
+assert.throws(() => evaluateSkillLearnBenchCandidate(null, improved), /candidate-evaluation-input-invalid/);
+assert.throws(() => evaluateSkillLearnBenchTrial({
+  taskId: 'missing-trajectory',
+  trialId: 't1',
+  verifierPassed: true,
+  skill: { requiredCapabilityIds: ['cap-1'], coveredCapabilityIds: ['cap-1'], executable: true, safetyViolationCount: 0 },
+}), /invalid-trajectory/);
+
 // Empty reference rubrics previously scored as perfect through ratio(0, 0).
 assert.throws(() => evaluateSkillLearnBenchTrial({
   taskId: 'empty-capability-rubric',
