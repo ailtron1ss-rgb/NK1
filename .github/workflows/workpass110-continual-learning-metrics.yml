@@ -236,6 +236,12 @@ jobs:
       - name: Run candidate-bound promotion approval request regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:create-skill-promotion-approval-request
+      - name: Run independent candidate execution and experiment-ledger regressions
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass203:independent-candidate-evaluator
+      - name: Run independent evaluation provider wiring regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass206:independent-evaluation-provider
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
