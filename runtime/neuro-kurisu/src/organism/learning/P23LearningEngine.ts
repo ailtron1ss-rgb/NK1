@@ -3,6 +3,8 @@ import type { ActionKind, IntentCandidate, OrganismDecisionTrace, OrganismState 
 import type { AdaptivePolicyEngine, AdaptivePolicyState } from './AdaptivePolicyEngine.ts';
 import { selectReplayBatch, type ReplaySelectionOptions } from './ReplaySelectionPolicy.ts';
 import { adaptiveReplayLearningRate, adaptiveReplayOptions, bellmanTarget, calibratedConfidence, forgettingRisk, repairOpportunity, scoreReplayPriority, transferConfidence, wilsonLowerBound } from './MultiSourceLearningMechanisms.ts';
+import { retrievedSkillBias } from './SkillRetrievalAugmentation.ts';
+import { rankLearningTargets, reflectOnOutcomes } from './OutcomeReflectionCurriculum.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp = (x:number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
@@ -401,6 +403,11 @@ export class P23LearningEngine {
       return 0;
     }
 
+    // Retrieval-augmented transfer ranks the small evidence-backed skill subset first.
+    // The legacy conservative neighbor path remains as a fallback if no candidate qualifies.
+    const retrievedBias = retrievedSkillBias({ contextKey:key, action, now:now(), limit:5 }, this.state.skills);
+    if (retrievedBias !== 0) return retrievedBias;
+
     // Transfer only across a tightly neighboring context and only from held-out
     // evidence. Positive evidence wins conflicts; negative transfer is smaller and
     // acts only when no validated positive neighbor exists, limiting overreaction.
@@ -429,6 +436,34 @@ export class P23LearningEngine {
   }
 
   evidenceDebt(limit=12):EvidenceDebtItem[]{return this.state.evidenceDebt.slice().sort((a,b)=>repairOpportunity({recurrence:1,severity01:b.priority01,uncertainty01:b.uncertainty01,expectedGain01:b.informationGainPerCost01,cost01:b.estimatedVerificationCost01})-repairOpportunity({recurrence:1,severity01:a.priority01,uncertainty01:a.uncertainty01,expectedGain01:a.informationGainPerCost01,cost01:a.estimatedVerificationCost01})).slice(0,limit).map(x=>structuredClone(x));}
+
+  /** Evidence-backed reflections: suggestions only, never treated as verified labels. */
+  reflectionHypotheses(limit=12) {
+    return reflectOnOutcomes(this.state.experiences.map(e=>({
+      id:e.id, contextKey:e.contextKey, action:e.action, success:e.success,
+      predictedUtility:e.predictedUtility, surprise:e.surprise, tick:e.tick, at:e.at,
+    })),limit);
+  }
+
+  /** Rank the next learning targets from current failure debt and reflection hypotheses. */
+  recommendLearningTargets(limit=10) {
+    const reflections=this.reflectionHypotheses(Math.max(12,limit));
+    const debt=this.evidenceDebt(Math.max(12,limit)).map(row=>({
+      id:row.id, family:row.action, uncertainty01:row.uncertainty01,
+      readiness01:clamp(1-row.estimatedVerificationCost01),
+      transfer01:clamp(row.informationGainPerCost01*.35),
+      novelty01:row.uncertainty01, verificationCost01:row.estimatedVerificationCost01,
+      repairValue01:row.priority01, blocked:false,
+    }));
+    const reflected=reflections.map(row=>({
+      id:`reflection:${row.key}`, family:row.action, uncertainty01:row.predictionGap01,
+      readiness01:row.confidence01, transfer01:clamp(row.occurrences/12),
+      novelty01:row.priority01, verificationCost01:.45, repairValue01:row.priority01, blocked:false,
+    }));
+    const seen=new Set<string>();
+    const candidates=[...debt,...reflected].filter(row=>{if(seen.has(row.id))return false;seen.add(row.id);return true;});
+    return rankLearningTargets(candidates,limit);
+  }
 
   private updateEvidenceDebt(e:LearningExperience):void {
     const key=`${e.contextKey}|${e.action}`;
@@ -464,8 +499,8 @@ export class P23LearningEngine {
     return ok;
   }
 
-  learningSummary():P23LearningMetrics & {topSkills:PolicySkillRecord[];evidenceDebt:EvidenceDebtItem[];checksum:CognitiveChecksum} {
-    return {...this.state.metrics,topSkills:this.topSkills(8),evidenceDebt:this.evidenceDebt(8),checksum:structuredClone(this.state.checksum)};
+  learningSummary():P23LearningMetrics & {topSkills:PolicySkillRecord[];evidenceDebt:EvidenceDebtItem[];checksum:CognitiveChecksum;reflections:ReturnType<P23LearningEngine['reflectionHypotheses']>;nextLearningTargets:ReturnType<P23LearningEngine['recommendLearningTargets']>} {
+    return {...this.state.metrics,topSkills:this.topSkills(8),evidenceDebt:this.evidenceDebt(8),checksum:structuredClone(this.state.checksum),reflections:this.reflectionHypotheses(8),nextLearningTargets:this.recommendLearningTargets(8)};
   }
 
   private recomputeMetrics():void {
