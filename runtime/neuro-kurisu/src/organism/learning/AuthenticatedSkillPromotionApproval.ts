@@ -1,5 +1,5 @@
 import { createHash, createPublicKey, verify as verifySignature } from 'node:crypto';
-import type { SkillPromotionApproval, SkillPromotionApprovalPayload, SkillPromotionApprovalVerificationPurpose, SkillPromotionApprovalVerifier, VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
+import type { ActiveSkillVersion, SkillPromotionApproval, SkillPromotionApprovalPayload, SkillPromotionApprovalVerificationPurpose, SkillPromotionApprovalVerifier, SkillRollbackApproval, SkillRollbackApprovalPayload, SkillRollbackApprovalVerificationPurpose, SkillRollbackApprovalVerifier, VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 
 export interface AuthenticatedSkillPromotionApprovalOptions {
   maxAgeMs?: number;
@@ -144,6 +144,106 @@ export function createAuthenticatedSkillPromotionApprovalVerifier(
       const key = createPublicKey(keyPem);
       return verifySignature(null, Buffer.from(canonicalSkillPromotionApprovalPayload(payload), 'utf8'), key,
         Buffer.from(approval.artifact.signature, 'base64'));
+    } catch {
+      return false;
+    }
+  };
+}
+
+
+/** Bind a rollback signature to the exact previous active payload, not merely its version number. */
+export function skillRollbackPreviousActiveFingerprint(previousActive: Readonly<ActiveSkillVersion> | null): string {
+  return createHash('sha256').update(canonical(previousActive)).digest('hex');
+}
+
+export function canonicalSkillRollbackApprovalPayload(payload: SkillRollbackApprovalPayload): string {
+  return canonical(payload);
+}
+
+/** Request payload for an external, authenticated rollback approver. */
+export function createSkillRollbackApprovalPayload(
+  candidate: Readonly<VersionedSkillCandidate>,
+  approverId: string,
+  approvalId: string,
+  approvedAt: number,
+): SkillRollbackApprovalPayload {
+  if (candidate.status !== 'active' || !nonEmpty(approverId) || !nonEmpty(approvalId) ||
+      !Number.isFinite(approvedAt) || approvedAt <= 0 ||
+      candidate.shadowObservations.some(item => !Number.isFinite(item.observedAt) || item.observedAt > approvedAt)) {
+    throw new Error('rollback approval request requires an active candidate and a current timestamp after its shadow evidence');
+  }
+  const restoreTarget = candidate.previousActive;
+  return {
+    schemaVersion: 1,
+    approvalId,
+    approverId,
+    approvedAt,
+    candidateId: candidate.candidateId,
+    skillId: candidate.skillId,
+    candidateVersion: candidate.version,
+    payloadFingerprint: candidate.payloadFingerprint,
+    proposalId: candidate.proposalId,
+    expectedActiveVersion: candidate.version,
+    restoredVersion: restoreTarget?.version ?? null,
+    restoredPayloadFingerprint: restoreTarget?.payloadFingerprint ?? null,
+    restoredProposalId: restoreTarget?.proposalId ?? null,
+    previousActiveFingerprint: skillRollbackPreviousActiveFingerprint(restoreTarget),
+    shadowEvidenceFingerprint: skillPromotionShadowEvidenceFingerprint(candidate),
+  };
+}
+
+export function createAuthenticatedSkillRollbackApprovalVerifier(
+  trustedKeys: ReadonlyMap<string, string>,
+  options: AuthenticatedSkillPromotionApprovalOptions = {},
+): SkillRollbackApprovalVerifier {
+  const now = options.now ?? Date.now;
+  const maxAgeMs = options.maxAgeMs ?? 15 * 60_000;
+  const allowedClockSkewMs = options.allowedClockSkewMs ?? 30_000;
+  if (!safeInteger(maxAgeMs, 1_000, 24 * 60 * 60_000) ||
+      !safeInteger(allowedClockSkewMs, 0, 5 * 60_000)) {
+    throw new Error('rollback approval freshness policy is out of bounds');
+  }
+  return (
+    approval: SkillRollbackApproval,
+    candidate: Readonly<VersionedSkillCandidate>,
+    restoreTarget: Readonly<ActiveSkillVersion> | null,
+    purpose: SkillRollbackApprovalVerificationPurpose = 'rollback',
+  ): boolean => {
+    try {
+      if (trustedKeys.size === 0 || !approval?.artifact || !isRecord(approval.artifact) ||
+          !isRecord(approval.artifact.payload) || typeof approval.artifact.signature !== 'string') return false;
+      const payload = approval.artifact.payload as SkillRollbackApprovalPayload;
+      if (payload.schemaVersion !== 1 || !nonEmpty(payload.approvalId) || !nonEmpty(payload.approverId) ||
+          !Number.isFinite(payload.approvedAt) || payload.approvedAt <= 0 ||
+          !fingerprint(payload.candidateId) || !nonEmpty(payload.skillId) ||
+          !safeInteger(payload.candidateVersion, 1, Number.MAX_SAFE_INTEGER) ||
+          !fingerprint(payload.payloadFingerprint) || !fingerprint(payload.proposalId) ||
+          !safeInteger(payload.expectedActiveVersion, 1, Number.MAX_SAFE_INTEGER) ||
+          !(payload.restoredVersion === null || safeInteger(payload.restoredVersion, 1, Number.MAX_SAFE_INTEGER)) ||
+          !(payload.restoredPayloadFingerprint === null || fingerprint(payload.restoredPayloadFingerprint)) ||
+          !(payload.restoredProposalId === null || fingerprint(payload.restoredProposalId)) ||
+          !fingerprint(payload.previousActiveFingerprint) || !fingerprint(payload.shadowEvidenceFingerprint)) return false;
+      if ((payload.restoredVersion === null) !== (payload.restoredPayloadFingerprint === null) ||
+          (payload.restoredVersion === null) !== (payload.restoredProposalId === null)) return false;
+      const keyPem = trustedKeys.get(payload.approverId);
+      if (!keyPem) return false;
+      if (approval.approvedBy !== payload.approverId || approval.approvedAt !== payload.approvedAt ||
+          approval.expectedActiveVersion !== payload.expectedActiveVersion) return false;
+      if (candidate.status !== 'active' && purpose === 'rollback') return false;
+      if (payload.candidateId !== candidate.candidateId || payload.skillId !== candidate.skillId ||
+          payload.candidateVersion !== candidate.version || payload.payloadFingerprint !== candidate.payloadFingerprint ||
+          payload.proposalId !== candidate.proposalId || payload.expectedActiveVersion !== candidate.version ||
+          payload.restoredVersion !== (restoreTarget?.version ?? null) ||
+          payload.restoredPayloadFingerprint !== (restoreTarget?.payloadFingerprint ?? null) ||
+          payload.restoredProposalId !== (restoreTarget?.proposalId ?? null) ||
+          payload.previousActiveFingerprint !== skillRollbackPreviousActiveFingerprint(restoreTarget) ||
+          payload.shadowEvidenceFingerprint !== skillPromotionShadowEvidenceFingerprint(candidate) ||
+          candidate.shadowObservations.some(item => item.observedAt > payload.approvedAt)) return false;
+      const timestamp = now();
+      if (!Number.isFinite(timestamp) || payload.approvedAt > timestamp + allowedClockSkewMs) return false;
+      if (purpose === 'rollback' && timestamp - payload.approvedAt > maxAgeMs) return false;
+      return verifySignature(null, Buffer.from(canonicalSkillRollbackApprovalPayload(payload), 'utf8'),
+        createPublicKey(keyPem), Buffer.from(approval.artifact.signature, 'base64'));
     } catch {
       return false;
     }
