@@ -22,8 +22,31 @@ const features = learner.features(state, undefined, 'respond');
 assert.throws(() => learner.trainFeatures({ features: features.map((v, i) => i === 2 ? Number.NaN : v), action: 'respond', target01: .9, learningRate01: .06 }), /features-must-be-finite/);
 assert.deepEqual(learner.snapshot(), initial, 'invalid feature vectors must be rejected atomically');
 
+// A persisted snapshot may be stale, hand-edited, or corrupted. Restore must
+// sanitize model parameters and diagnostics rather than reintroducing NaN values.
+const corrupted = learner.snapshot();
+corrupted.weights.respond[0] = Number.NaN;
+corrupted.weights.explore[1] = Number.POSITIVE_INFINITY;
+corrupted.bias.verify = Number.NaN;
+corrupted.tdAbsMean01 = Number.NaN;
+corrupted.trainRewardMean01 = Number.POSITIVE_INFINITY;
+corrupted.explorationRate01 = Number.NaN;
+corrupted.lastLoss01 = Number.POSITIVE_INFINITY;
+corrupted.updates = -1;
+corrupted.lastTrainedAt = Number.NaN;
+const restored = new ParametricPolicyLearner();
+restored.restore(corrupted);
+const repaired = restored.snapshot();
+assert.ok(Object.values(repaired.weights).flat().every(Number.isFinite), 'restored weights must be finite');
+assert.ok(Object.values(repaired.bias).every(Number.isFinite), 'restored biases must be finite');
+assert.ok([repaired.tdAbsMean01, repaired.trainRewardMean01, repaired.explorationRate01, repaired.lastLoss01, repaired.lastTrainedAt].every(Number.isFinite), 'restored diagnostics must be finite');
+assert.equal(repaired.updates, 0, 'invalid update count must reset safely');
+assert.equal(repaired.weights.respond[0], 0);
+assert.equal(repaired.weights.explore[1], 0);
+assert.equal(repaired.bias.verify, 0);
+
 const result = learner.train(valid);
 assert.equal(learner.snapshot().updates, 1, 'valid feedback must still update the learner');
 assert.ok(Number.isFinite(result.predictionAfter));
 assert.ok(learner.snapshot().weights.respond.every(Number.isFinite));
-console.log('P26_LEARNING_INPUT_INTEGRITY=PASS invalidSamples=5 stateMutationOnReject=0 validUpdates=1');
+console.log('P26_LEARNING_INPUT_INTEGRITY=PASS invalidSamples=5 corruptSnapshotFieldsRepaired=8 stateMutationOnReject=0 validUpdates=1');
