@@ -1710,6 +1710,7 @@
     "test:p23:stage-verified-skill-candidate": "node --experimental-strip-types tests/p23-stage-verified-skill-candidate.mjs",
     "test:p23:create-skill-promotion-approval-request": "node --experimental-strip-types tests/p23-create-skill-promotion-approval-request.mjs",
     "test:p29:hermes-reflective-candidate-gate": "node --experimental-strip-types tests/p29-hermes-reflective-candidate-gate.mjs",
-    "test:p23:hermes-reflective-diagnostics": "node --experimental-strip-types tests/p23-hermes-reflective-diagnostics.mjs"
+    "test:p23:hermes-reflective-diagnostics": "node --experimental-strip-types tests/p23-hermes-reflective-diagnostics.mjs",
+    "test:p23:hermes-verified-evidence-binding": "node --experimental-strip-types tests/p23-hermes-verified-evidence-binding.mjs"
   }
 }
