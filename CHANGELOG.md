@@ -1,3 +1,9 @@
+## WorkPass139 — enforce shadow-lane identity at coordinator boundary (2026-10-21)
+
+- Restricted `runTrustedShadowLearningProcess` to the explicit `arm: candidate` + `method: shadow` identity before any registry call or child process spawn. The generic process supervisor remains reusable for ordinary benchmark/control runs; those lanes cannot accidentally gain trusted shadow provenance by using the coordinator.
+- Extended the coordinator regression to reject baseline/control and non-shadow methods and assert the registrar is never called for rejected lanes.
+- **Boundary:** this narrows accidental misuse but does not itself authenticate the host or wire a production caller. CI remains infrastructure-failed before steps (runner ID 0, empty steps); no tests/typecheck or learning uplift are claimed.
+
 ## WorkPass138 — canonical OrganismCore-to-supervisor trusted run bridge (2026-10-21)
 
 - Added `TrustedShadowLearningRunCoordinator.ts` as the single typed host-side entry point that binds `OrganismCore.registerTrustedSkillShadowRun` to `runLearningProcess`.

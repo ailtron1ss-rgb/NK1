@@ -38,6 +38,12 @@ export function runTrustedShadowLearningProcess(
   if (typeof input.runtimeVersion !== 'string' || !input.runtimeVersion.trim()) {
     throw new Error('trusted runtime version is required');
   }
+  // Do not let a caller accidentally register baseline/control work as trusted
+  // shadow evidence. This coordinator is intentionally narrower than the generic
+  // process supervisor: only the explicitly named candidate/shadow lane qualifies.
+  if (!input.run || input.run.arm !== 'candidate' || input.run.method !== 'shadow') {
+    throw new Error('trusted shadow coordinator accepts only candidate/shadow runs');
+  }
   return runLearningProcess(input.run, input.planFingerprint, input.command, {
     runtimeVersion: input.runtimeVersion,
     register: context => input.core.registerTrustedSkillShadowRun(context),
