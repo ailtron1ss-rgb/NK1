@@ -32,8 +32,37 @@ export interface VerifiedSkillPromotionProposal {
 }
 const authenticProposals = new WeakMap<object, string>();
 
+function canonicalProposalValue(value: unknown, ancestors = new Set<object>()): string {
+  if (value === null) return 'null';
+  if (typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new Error('non-finite proposal value');
+    return JSON.stringify(value);
+  }
+  if (typeof value !== 'object') throw new Error('unsupported proposal value');
+  if (ancestors.has(value)) throw new Error('cyclic proposal value');
+  if (Array.isArray(value)) {
+    ancestors.add(value);
+    const encoded = '[' + value.map(item => canonicalProposalValue(item, ancestors)).join(',') + ']';
+    ancestors.delete(value);
+    return encoded;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) throw new Error('proposal values must be plain objects');
+  ancestors.add(value);
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const keys = Object.keys(descriptors).filter(key => descriptors[key]?.enumerable).sort();
+  const fields = keys.map(key => {
+    const descriptor = descriptors[key]!;
+    if (!('value' in descriptor)) throw new Error('proposal accessors are not permitted');
+    return JSON.stringify(key) + ':' + canonicalProposalValue(descriptor.value, ancestors);
+  });
+  ancestors.delete(value);
+  return '{' + fields.join(',') + '}';
+}
+
 function proposalDigest(value: unknown): string {
-  return createHash('sha256').update(JSON.stringify(value)).digest('hex');
+  return createHash('sha256').update(canonicalProposalValue(value)).digest('hex');
 }
 
 /** True only for the exact proposal object emitted by this module in this process. */
