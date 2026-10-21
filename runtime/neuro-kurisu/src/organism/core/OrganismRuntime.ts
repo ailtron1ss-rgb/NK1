@@ -36,6 +36,7 @@ import { ExternalPostconditionVerifier } from '../system/ExternalPostconditionVe
 import { RuntimePerformanceGovernor } from '../system/RuntimePerformanceGovernor.ts';
 import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/ActionGateway.ts';
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
+import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
@@ -138,6 +139,8 @@ export class OrganismRuntime {
   private readonly causalDomainClosureLedger = new CausalDomainClosureLedger(32);
   private readonly adaptiveConsolidationGate = new AdaptiveConsolidationGate();
   private readonly trustedShadowLearningScheduler: P23TrustedShadowLearningScheduler | null;
+  private readonly proceduralSkillLibrary = new ProceduralSkillLibrary();
+  private readonly proceduralSkillStore: JsonStateStore<SkillLibraryState>;
   private stopping = false;
   private sleepStartedAt: number | null = null;
   private sleepReason = '';
@@ -185,6 +188,8 @@ export class OrganismRuntime {
     });
     const worldPath = config.worldStateFile ?? config.stateFile.replace(/\.json$/i, '.world.json');
     this.worldStore = config.worldStateStore ?? new FileStateStore<PersistedWorld>(worldPath);
+    const skillStatePath = config.stateFile.replace(/\\.json$/i, '.procedural-skills.json');
+    this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
     this.continuityLedger = new ContinuityLedger(config.stateFile.replace(/\.json$/i, '.continuity.jsonl'));
     this.registerRuntimeClocks();
@@ -201,6 +206,7 @@ export class OrganismRuntime {
       if (this.initialized) return;
       await this.journal.write('info', 'runtime.init.begin');
       await this.core.init();
+      this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
       this.cognitiveEventFabric.restore(systemSnapshot.cognitiveEventFabric ?? undefined);
@@ -906,6 +912,32 @@ export class OrganismRuntime {
   realityLearningGateSnapshot(){ return this.realityLearningGate.snapshot(); }
   realityShadowBridgeSnapshot(){ return this.realityShadowBridge.snapshot(); }
 
+  /** Execute a persisted procedural skill through the canonical Core ActionGateway. Provenance is caller-supplied and never inferred. */
+  async executeCompoundSkill(id:string, run:{runId:string;context:string;holdout:boolean;independent:boolean;autonomous:boolean}):Promise<Awaited<ReturnType<ProceduralSkillLibrary['executeCompoundSkill']>>> {
+    return this.enqueue(async()=>{
+      if(!this.initialized) throw new Error('organism-runtime-not-initialized');
+      const runId=String(run?.runId??'').trim();
+      const context=String(run?.context??'').slice(0,180);
+      if(!runId||runId.length>180||!context||typeof run?.holdout!=='boolean'||typeof run?.independent!=='boolean'||typeof run?.autonomous!=='boolean')
+        throw new Error('compound-skill-run-provenance-required');
+      try {
+        return await this.proceduralSkillLibrary.executeCompoundSkill(id,{
+          context,holdout:run.holdout,independent:run.independent,
+          executeTool:async(toolId,toolInput,step)=>{
+            const idempotencyKey=createHash('sha256').update(`procedural-skill\\0${runId}\\0${id}\\0${step.id}\\0${toolId}`).digest('hex');
+            const execution=await this.core.executeTool(toolId,toolInput,`procedural-skill:${id}:${step.id}`,{
+              idempotencyKey,decisionId:runId,autonomous:run.autonomous,expectedOutputKeys:step.expectedOutputKeys,
+            });
+            const result=execution.result&&typeof execution.result==='object'?execution.result:{};
+            return {ok:execution.ok===true,verified:execution.verified===true,result,error:execution.ok?undefined:String(result.error??execution.audit?.reason??execution.outcomeClass),confidence01:execution.verification?.confidence01};
+          },
+        });
+      } finally {
+        await this.proceduralSkillStore.save(this.proceduralSkillLibrary.snapshot());
+      }
+    });
+  }
+  proceduralSkillLibrarySnapshot(){ return this.proceduralSkillLibrary.snapshot(); }
   async executeTool(id:string,input:Record<string,unknown>={},reason='runtime-tool',options:import('../system/ActionGateway.ts').ActionGatewayExecutionOptions={}){ return this.enqueue(()=>this.core.executeTool(id,input,reason,options)); }
   async reconcileToolExecution(id:string,input:Record<string,unknown>={},reason='runtime-tool-reconciliation',options:import('../system/ActionGateway.ts').ActionGatewayExecutionOptions={}){ return this.enqueue(()=>this.core.reconcileToolExecution(id,input,reason,options)); }
   async executeProjectTool(id:string,input:Record<string,unknown>={},reason='project-tool',options:import('../system/ActionGateway.ts').ActionGatewayExecutionOptions={}){ return this.enqueue(()=>this.core.executeProjectTool(id,input,reason,options)); }
