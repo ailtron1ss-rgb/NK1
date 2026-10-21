@@ -14,6 +14,11 @@ import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromot
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp = (x:number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
+
+/** Continuous replay salience: poor outcomes and prediction misses matter without a brittle success threshold. */
+export function outcomeReplaySalience(success:number,predictedUtility:number):number {
+  return clamp(.2+.55*(1-clamp(success))+.25*Math.abs(clamp(success)-clamp(predictedUtility)));
+}
 const now = () => Date.now();
 const safeText = (x:unknown,max=220) => String(x ?? '').slice(0,max);
 
@@ -558,7 +563,7 @@ export class P23LearningEngine {
         trace,id:trace.id,tick:trace.tick,contextKey:exp.contextKey,action:exp.action,
         surprise:priority.priority01,
         novelty:priority.novelty01,
-        salience:clamp(.2+.55*(1-exp.success)+.25*Math.abs(exp.success-exp.predictedUtility)),
+        salience:outcomeReplaySalience(exp.success,exp.predictedUtility),
         goalPriority:trace.stateBefore.needs.goalPressure,
         replayCount:priorUpdates,
       };
