@@ -371,6 +371,7 @@ export class P23LearningEngine {
       schemaVersion:1,
       sourceCandidateId:source.candidateId,
       planFingerprint:createHash('sha256').update(canonicalize(plan)).digest('hex'),
+      datasetFingerprint:proposal.datasetFingerprint,
       dimensions:plan.targets.map(target=>target.dimension),
       createdAt:now(),
     };
