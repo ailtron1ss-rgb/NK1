@@ -60,3 +60,12 @@ NK1 already compares paired outcomes at the independent seed level and computes 
 5. Keep PR #12 draft and unmerged until those gates pass.
 
 **Scientific boundary:** a narrower promotion gate is an integrity improvement. It does not demonstrate that NK1 learns better, generalizes, or retains knowledge over time.
+
+
+## Follow-up hardening after the initial report
+
+- Sorted seed aggregates by numeric seed before calculating the interval, so the bootstrap does not depend on the order in which evidence arrived.
+- Added a reverse-arrival-order regression that reconstructs the same task/seed outcomes in reverse order and requires an identical bootstrap interval.
+- Clarified API comments so the bootstrap helper is not documented as the ledger class.
+- Follow-up commits: `8e3fb2eca6e3a7be6884f9b7f5c32477cb825049` (seed-order invariance), `c8aa0f15b3dc0b838473a209e206e0798ee707be` (reverse-order regression), `449283c27becda9a3597ead6d063733ad8b6140d` (documentation correction).
+- CI retry of the existing continual-learning workflow still returns a failed job with `steps: null` and `logs_url: null`; the log endpoint returns 404 `BlobNotFound`. This is an unresolved CI observability/execution blocker, not evidence that the new tests failed or passed.
