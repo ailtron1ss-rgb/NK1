@@ -216,3 +216,12 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **DONE (regression code):** added a regression proving distinct explicit environment values produce distinct command fingerprints. Expanded the async-registration mutation test to change the caller's environment value after registration begins and assert the child still sees the original snapshotted value.
 - **PARTIAL:** tests/typecheck have not been run in this session. Current workflow jobs available through GitHub have failed before any steps execute (steps array is empty), so they neither validate nor establish a code-level failure.
 - **NEXT:** validate the process-supervisor tests in an executing runner; then finish the trusted host adapter using approved command capabilities and independent postcondition evidence.
+
+
+### WorkPass234 — pin trusted registration capability and effective working directory
+
+- **DONE (code):** LearningProcessSupervisor now snapshots the trusted registrar's function and runtime version before the first asynchronous filesystem operation. A caller retaining the registrar object cannot replace the registration method or relabel runtime identity while the supervisor prepares directories.
+- **DONE (code):** resolves the command working directory synchronously and uses that exact absolute path both for the command fingerprint and for spawn; changing the process-wide cwd during an asynchronous registration wait cannot make execution drift from the recorded directory identity.
+- **DONE (regression code):** added a mutation regression that replaces the registrar method and version immediately after scheduling a candidate/shadow run; only the originally captured registrar may run.
+- **Source-pattern integration:** this tightens explicit-capability and immutable-run-boundary principles used in sandboxed coding-agent execution (OpenHands/SWE-agent-style) while preserving NK1's single P23 supervisor and verified-outcome gate. No upstream package was vendored; this is a narrow mechanism port.
+- **PARTIAL:** code and regression are committed; this session has not executed the supervisor test or TypeScript typecheck. The real host-owned command factory, sandbox, verifier and safety-scanner wiring remains OPEN; a generic subprocess supervisor is not a sandbox.
