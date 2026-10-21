@@ -242,3 +242,15 @@ When the user says “работай над проектом”, “продол
 - **NOT VERIFIED:** tests/typecheck/CI have not been confirmed successful on the latest branch head.
 - **P0 OPEN:** wire the resolver to a trusted supervisor/run ledger, configure the production verifier key registry, wire authenticated approval authority, and audit every store constructor plus every activation path.
 - Report: [WorkPass131](docs/WORKPASS131_UPSTREAM_ATTESTATION_BINDING_2026-10-21.md).
+
+
+## WorkPass136 — production bootstrap for verified skill lifecycle (2026-10-21)
+
+- **Code wired:** `OrganismCore` now configures P23's verified-skill lifecycle during construction with durable candidate persistence and the independent trusted shadow-run registry.
+- **Evidence boundary:** signed shadow evidence is checked against a registry record keyed by run/task, with seed, manifest fingerprint and runtime version compared to trusted stored values.
+- **Key configuration:** `NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON` accepts a JSON object mapping verifier IDs to PEM public keys. If absent, the trusted key set is empty and shadow evidence remains default-deny; malformed configured JSON/key shape fails closed.
+- **Promotion:** still default-deny. This pass deliberately does not pretend `approvedBy` is authenticated; a real approval authority must be integrated before any promotion can activate.
+- **Supervisor seam:** public internal `registerTrustedSkillShadowRun` and `recordVerifiedSkillShadow` methods now exist on `OrganismCore`. The actual execution supervisor still must call registration before it accepts/produces a shadow receipt; no live shadow runs are claimed.
+- **Regression:** `test:p23:verified-skill-lifecycle-bootstrap` is registered in the continual-learning workflow.
+- **Verification:** exact-head Actions runs fail before steps start; the jobs have no step output and the logs endpoint returns `BlobNotFound`. This is consistent with the known runner/infrastructure problem, but does **not** prove the code or tests pass. Local typecheck/test execution is unavailable in this pass.
+- **Next P0:** connect the real learning/shadow supervisor to `registerTrustedSkillShadowRun` before receipt ingestion; provision trusted verifier keys; integrate authenticated approval; then get an actionable successful CI/typecheck run and audit every store creation/activation path.
