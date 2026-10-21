@@ -1,3 +1,11 @@
+## WorkPass146 — exercise signed shadow evidence through the canonical Core path (2026-10-21)
+
+- Exposed `OrganismCore.stageVerifiedSkillCandidate` and a read-only candidate lifecycle snapshot, delegating to the existing P23 engine/store. Staging still requires the exact authentic proposal object issued by `proposeVerifiedSkillPromotion`; copying a proposal JSON cannot bypass the store's module-private identity check.
+- Added an end-to-end regression that ingests signed holdout outcomes into `VerifiedOutcomeLedger`, creates a genuinely accepted proposal, stages it via Core, runs a child through the real `OrganismRuntime` clock and durable registry, and writes a signed shadow observation in the per-run directory.
+- The test asserts the observation is accepted only after Ed25519 signature verification plus candidate version, run ID, task, seed, manifest and runtime context binding; exactly one observation is appended and the candidate remains inactive (no automatic promotion).
+- Registered the integration test in `package.json` and the continual-learning workflow.
+- **Not claimed:** successful runner-backed CI/typecheck, production deployment of trusted keys/runner config, authenticated promotion authority, or any measured learning uplift. The signer in this regression is fixture-only; production private keys must remain outside NK1.
+
 ## WorkPass145 — wire production shadow runner configuration and signed observation ingestion (2026-10-21)
 
 - Production `server.mjs` now reads `NEURO_SKILL_SHADOW_SCHEDULER_JSON` through a fail-closed configuration parser and passes the validated config to `OrganismRuntime`. No setting keeps the clock disabled; enabling requires an explicit candidate ID, task/version, runtime version, manifest/plan fingerprints and child command.
