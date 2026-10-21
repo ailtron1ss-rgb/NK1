@@ -119,6 +119,17 @@ assert.throws(() => evaluateSkillLearnBenchTrial({
   skill: { requiredCapabilityIds: ['cap-1'], coveredCapabilityIds: ['cap-1'], executable: true, safetyViolationCount: 0 },
 }), /invalid-trajectory/);
 
+// Completeness must penalize unexpected actions instead of duplicating recall.
+const extraAction = evaluateSkillLearnBenchTrial({
+  taskId: 'unexpected-action',
+  trialId: 't1',
+  verifierPassed: true,
+  skill: { requiredCapabilityIds: ['cap-1'], coveredCapabilityIds: ['cap-1'], executable: true, safetyViolationCount: 0 },
+  trajectory: { expectedStepIds: ['step-1', 'step-2'], observedStepIds: ['step-1', 'step-2', 'unrequested-step'] },
+});
+assert.equal(extraAction.trajectoryQuality.keyPointRecall, 1);
+assert.equal(extraAction.trajectoryQuality.completeness, Number((4 / 5).toFixed(6)));
+
 // Empty reference rubrics previously scored as perfect through ratio(0, 0).
 assert.throws(() => evaluateSkillLearnBenchTrial({
   taskId: 'empty-capability-rubric',
