@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
+import { isAuthenticVerifiedSkillPromotionProposal, type VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
 
 export type SkillCandidateStatus = 'staged' | 'shadow' | 'active' | 'superseded' | 'rolled-back';
 
@@ -111,11 +111,11 @@ export class VersionedSkillCandidateStore {
     payload: unknown,
   ): VersionedSkillCandidate {
     if (!skillId?.trim()) throw new Error('skillId must be non-empty');
-    if (!proposal || proposal.schemaVersion !== 1 || proposal.gate?.accepted !== true ||
+    if (!isAuthenticVerifiedSkillPromotionProposal(proposal) || proposal.schemaVersion !== 1 || proposal.gate?.accepted !== true ||
         proposal.canActivateAutomatically !== false || proposal.authenticatedEvidenceRows < 1 ||
         proposal.unauthenticatedEvidenceRows !== 0 || !/^[a-f0-9]{64}$/.test(proposal.proposalId) ||
         !/^[a-f0-9]{64}$/.test(proposal.outcomeFingerprint)) {
-      throw new Error('only an accepted proposal backed exclusively by authenticated evidence can be staged');
+      throw new Error('only an authentic, accepted proposal backed exclusively by authenticated evidence can be staged');
     }
     const payloadFingerprint = fingerprint(payload);
     const current = this.persistence.read();
