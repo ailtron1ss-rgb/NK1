@@ -299,4 +299,35 @@ assert.equal(authorityLedger.snapshot().acceptedOutcomes, 2);
 assert.equal(authorityLedger.comparePaired('prior', 'candidate', 'holdout').pairedN, 0,
   'candidate evidence alone must not fabricate baseline comparison evidence');
 
-console.log('WorkPass203/212/213/214 independent evaluation, execution binding, and experiment-ledger integration: PASS');
+// WorkPass219: the sandbox cannot mutate a returned trace after handing it off.
+// Simulate a retained executor reference being changed while independent verification
+// is awaiting I/O; the evaluator must score the detached trace, not the later mutation.
+const retainedExecutionResults = [];
+const detachedTraceEvaluator = createIndependentSkillCandidateEvaluator({
+  tasks,
+  environmentFingerprint: '8'.repeat(64),
+  executor: { async execute({ task }) {
+    const result = { runId: 'detached-' + task.trialId, observedStepIds: ['open', 'summarize'] };
+    retainedExecutionResults.push(result);
+    setTimeout(() => { result.observedStepIds[0] = 'forged-after-return'; }, 0);
+    return result;
+  } },
+  verifier: { async verify() {
+    await new Promise(resolve => setTimeout(resolve, 10));
+    return { bindingVerified: true, passed: true, coveredCapabilityIds: ['read'] };
+  } },
+  safetyScanner: { async scan() { return { violationCount: 0 }; } },
+});
+const detachedTraceResult = await detachedTraceEvaluator({
+  payload, payloadFingerprint: digest(payload),
+  baseline: { validation: [], holdout: [] },
+  previousEvaluation: { validation: [], holdout: [] },
+});
+assert.equal(retainedExecutionResults[0].observedStepIds[0], 'forged-after-return',
+  'regression must actually mutate the executor-owned trace after return');
+assert.equal(detachedTraceResult.evaluation.provenance.runBindings[0].observedStepIds[0], 'open',
+  'trusted provenance must retain the trace snapshot captured before verifier I/O');
+assert.equal(detachedTraceResult.evaluation.validation[0].trajectoryScore.observedStepIds[0], 'open',
+  'scoring must not read a later-mutated executor-owned trace');
+
+console.log('WorkPass203/212/213/214/219 independent evaluation, execution binding, and experiment-ledger integration: PASS');
