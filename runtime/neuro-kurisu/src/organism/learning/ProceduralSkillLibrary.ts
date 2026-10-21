@@ -466,10 +466,10 @@ export class ProceduralSkillLibrary{
   recordVariantExecution(id:string,variantId:string,input:{success01:number;verified:boolean;independent?:boolean;holdout?:boolean;context?:string}):CompoundSkillVariant|null{
     const skill=this.state.compoundSkills.find(x=>x.id===id); const variant=skill?.variants.find(v=>v.id===variantId); if(!skill||!variant||variant.status==='rejected')return null;
     const success=clamp(input.success01); const context=String(input.context??'').slice(0,180); const similarity=jaccard(normalizeTokens(context),normalizeTokens(variant.lastContext));
-    variant.trials++; if(success>=.62)variant.successes++; if(input.verified)variant.verifiedExecutions++; if(input.independent)variant.independentExecutions++; if(input.holdout)variant.holdoutExecutions++; if(variant.trials>1&&similarity<.72)variant.distinctContexts=Math.min(32,variant.distinctContexts+1);
+    variant.trials++; if(success>=.62)variant.successes++; if(input.verified)variant.verifiedExecutions++; if(input.independent&&!input.holdout)variant.independentExecutions++; if(input.holdout)variant.holdoutExecutions++; if(variant.trials>1&&similarity<.72)variant.distinctContexts=Math.min(32,variant.distinctContexts+1);
     const reliability=Math.min(1,variant.trials/6); const evidence=clamp((variant.verifiedExecutions/Math.max(1,variant.trials))*.45+(variant.independentExecutions/Math.max(1,variant.trials))*.3+(variant.holdoutExecutions/Math.max(1,variant.trials))*.25);
     variant.confidence01=clamp(variant.confidence01*.72+reliability*.12+evidence*.16); variant.lastOutcome01=success; variant.lastContext=context;
-    if(variant.status==='candidate'&&variant.trials>=3&&variant.successes/Math.max(1,variant.trials)>=.75&&variant.verifiedExecutions>=2&&(variant.independentExecutions>=1||variant.holdoutExecutions>=1)&&variant.confidence01>=.52)this.promoteVariant(id,variantId);
+    if(variant.status==='candidate'&&variant.trials>=3&&variant.successes/Math.max(1,variant.trials)>=.75&&variant.verifiedExecutions>=2&&variant.independentExecutions>=1&&variant.confidence01>=.52)this.promoteVariant(id,variantId);
     else if(variant.status==='candidate'&&variant.trials>=4&&variant.successes/Math.max(1,variant.trials)<.5)variant.status='rejected';
     return structuredClone(variant);
   }
