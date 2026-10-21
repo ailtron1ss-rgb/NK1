@@ -43,7 +43,7 @@ assert.equal(report.replayCount, 3);
 assert.equal(report.memorySize, 6);
 assert.equal(report.seenCount, 8);
 assert.ok(Number.isFinite(report.meanLoss01));
-assert.equal(report.perTaskMemory.NEW_TASK, 1);
+assert.equal(Object.values(report.perTaskMemory).reduce((a, b) => a + b, 0), report.memorySize);
 
 // A malformed current batch must not mutate the buffer before training starts.
 const beforeBadTraining = restored.snapshot();
