@@ -1331,3 +1331,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **DONE (regression authored):** added a crash-recovery regression using a provably nonexistent same-host PID while preserving the existing live/ambiguous lock contention test.
 - **DONE (integration):** included the registry regression in the canonical `audit:p23:cross-source-replay` chain; its dedicated continual-learning workflow step/path filters already exist.
 - **PARTIAL (validation):** this pass did not execute the test or typecheck and does not claim exact-head Actions success.
+
+
+## WorkPass239 — race-safer registry recovery and durable promotion end-to-end (2026-10-21)
+
+- Hardened stale trusted-run lock recovery with a unique quarantine rename, exact-content and dead-owner recheck, exclusive reacquisition, and per-lock owner tokens so cleanup does not unlink a replacement lock.
+- Added `tests/workpass239-durable-signed-promotion-e2e.mjs`: canonical signed paired outcomes → proposal → durable candidate staging → trusted run registration → three candidate-bound signed shadow receipts → process-style restart → replay rejection → detached Ed25519 approval → CAS activation → second restart and active-state re-authentication.
+- Wired the regression into `test:workpass239:durable-signed-promotion-e2e`, `audit:p23:cross-source-replay`, and the WorkPass110 continual-learning workflow with an explicit path filter.
+- Scope: this verifies the existing durable evidence/approval/activation seam with generated test keys. It does not prove production host sandbox isolation, independent verifier/scanner deployment, multi-process crash contention, or real learning uplift.
+- Validation remains pending until the exact-head Actions job executes the new test and runtime typecheck successfully; no PASS is claimed.
