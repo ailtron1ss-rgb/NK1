@@ -12,6 +12,10 @@ for (let i = 0; i < 80; i++) {
   if (detector.update(0.9).driftDetected) { alarm = true; break; }
 }
 assert.equal(alarm, true, 'Page-Hinkley should detect a sustained upward mean shift');
+const lifetimeDetections = detector.nDetections;
+detector.update(0.9); // the next sample starts a fresh detection window
+assert.equal(detector.nDetections, lifetimeDetections, 'window reset must not erase lifetime detection count');
+assert.throws(() => detector.restore({ ...detector.snapshot(), mean: Number.NaN }), /page-hinkley-snapshot-invalid/);
 
 const downward = new PageHinkleyDriftDetector({ ...options, mode: 'down' });
 for (let i = 0; i < 80; i++) downward.update(0.9);
