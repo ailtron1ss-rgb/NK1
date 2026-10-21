@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { VerifiedOutcomeLedger } from './VerifiedOutcomeLedger.ts';
 import { hasAuthenticatedOutcomeEvidence } from './VerifiedOutcomeArtifact.ts';
 import { evaluateSkillRevision, type SkillRevisionGateOptions, type SkillRevisionGateResult } from './SkillRevisionGate.ts';
+import { buildVerifiedSessionDataset } from './VerifiedSessionDataset.ts';
 
 export interface VerifiedSkillPromotionOptions extends SkillRevisionGateOptions {
   /** Optional second, independent requirement for the number of complete paired seeds. */
@@ -12,6 +13,8 @@ export interface VerifiedSkillPromotionProposal {
   proposalId: string;
   manifestFingerprint: string;
   outcomeFingerprint: string;
+  /** Stable identity of the verified train/validation data and privacy-filtered holdout aggregates. */
+  datasetFingerprint: string;
   baselineMethod: string;
   candidateMethod: string;
   evaluatedAt: number;
@@ -114,12 +117,13 @@ export function proposeVerifiedSkillPromotion(
     ...gate, accepted: false, reason: 'seed-clustered-gain-not-statistically-supported',
   } : gate;
   const manifestFingerprint = ledger.manifestFingerprint();
+  const datasetFingerprint = buildVerifiedSessionDataset(ledger).datasetFingerprint;
   const canonicalOutcomes = [...snapshot.outcomes].sort((a, b) =>
     JSON.stringify([a.taskId, a.method, a.seed, a.attempt]).localeCompare(JSON.stringify([b.taskId, b.method, b.seed, b.attempt])),
   );
   const outcomeFingerprint = createHash('sha256').update(JSON.stringify(canonicalOutcomes)).digest('hex');
   const identity = JSON.stringify({
-    manifestFingerprint, outcomeFingerprint, baselineMethod, candidateMethod,
+    manifestFingerprint, outcomeFingerprint, datasetFingerprint, baselineMethod, candidateMethod,
     pairedN: finalGate.pairedN, absoluteGain: finalGate.absoluteGain,
     familyGains: finalGate.familyGains, completePairedSeeds, uniquePairedTasks,
     authenticatedEvidenceRows: authenticatedOutcomes.length, unauthenticatedEvidenceRows,
@@ -127,7 +131,7 @@ export function proposeVerifiedSkillPromotion(
   });
   const proposalId = createHash('sha256').update(identity).digest('hex');
   const proposal: VerifiedSkillPromotionProposal = {
-    schemaVersion: 1, proposalId, manifestFingerprint, outcomeFingerprint, baselineMethod, candidateMethod,
+    schemaVersion: 1, proposalId, manifestFingerprint, outcomeFingerprint, datasetFingerprint, baselineMethod, candidateMethod,
     evaluatedAt: Date.now(), outcomeRowsSeen: snapshot.outcomes.length,
     authenticatedEvidenceRows: authenticatedOutcomes.length, unauthenticatedEvidenceRows,
     pairedTaskSeedN: finalGate.pairedN, uniquePairedTasks, completePairedSeeds,
