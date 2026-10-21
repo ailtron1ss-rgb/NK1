@@ -497,8 +497,9 @@ export class ProceduralSkillLibrary{
     // Enforce the evidence gate at the mutation boundary, not only in the
     // observation path. Public/meta-operation callers must not bypass it.
     const verifiedNonHoldout=Number.isFinite(variant.verifiedNonHoldoutExecutions)?variant.verifiedNonHoldoutExecutions:0;
-    const successRate=variant.successes/Math.max(1,variant.trials);
-    const promotable=variant.status==='candidate'&&variant.trials>=3&&successRate>=.75&&verifiedNonHoldout>=2&&variant.independentExecutions>=1&&variant.confidence01>=.52;
+    const nonHoldoutTrials=Number.isFinite(variant.nonHoldoutTrials)?variant.nonHoldoutTrials:0;
+    const nonHoldoutSuccessRate=(Number.isFinite(variant.nonHoldoutSuccesses)?variant.nonHoldoutSuccesses:0)/Math.max(1,nonHoldoutTrials);
+    const promotable=variant.status==='candidate'&&nonHoldoutTrials>=3&&nonHoldoutSuccessRate>=.75&&verifiedNonHoldout>=2&&variant.independentExecutions>=1&&variant.confidence01>=.52;
     if(!promotable)return null;
     if(oldId){const old=skill.variants.find(v=>v.id===oldId);if(old)old.status='retired';}
     skill.steps=structuredClone(variant.steps); skill.activeVariantId=variantId; variant.status='active'; skill.mutations++; skill.repairs++; skill.lineageVersion=Math.max(skill.lineageVersion,variant.version);
