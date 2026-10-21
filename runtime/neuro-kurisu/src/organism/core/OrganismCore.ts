@@ -208,7 +208,7 @@ import { createVerifiedSkillLifecycleBootstrap } from '../learning/VerifiedSkill
 import { runTrustedShadowLearningProcess as executeTrustedShadowLearningProcess, type TrustedShadowLearningRunInput } from '../learning/TrustedShadowLearningRunCoordinator.ts';
 import { AtomicFileTrustedSkillShadowRunRegistry } from '../learning/TrustedSkillShadowRunRegistry.ts';
 import type { TrustedShadowExecutionContext } from '../learning/VerifiedSkillShadowEvidence.ts';
-import type { SkillPromotionApproval, SkillShadowObservation } from '../learning/VersionedSkillCandidateStore.ts';
+import type { SkillPromotionApproval, SkillRollbackApproval, SkillShadowObservation } from '../learning/VersionedSkillCandidateStore.ts';
 import { P24WorldIdentityEngine, defaultP24WorldIdentity } from '../developmental/P24WorldIdentityEngine.ts';
 import { P25ScientificDevelopmentEngine, defaultP25ScientificDevelopment } from '../learning/P25ScientificDevelopmentEngine.ts';
 import { P26TrueLearningEngine, defaultP26TrueLearning } from '../learning/P26TrueLearningEngine.ts';
@@ -10999,6 +10999,10 @@ export class OrganismCore {
     /** Promotion is possible only with a valid detached signature from a configured trusted authority. */
     approveVerifiedSkillCandidate(candidateId: string, approval: SkillPromotionApproval, minShadowRuns = 3) {
         return this.developmentalNeural.p23Learning.approveVerifiedSkillCandidate(candidateId, approval, minShadowRuns);
+    }
+    /** Rollback is also default-deny and requires a candidate-bound detached signature. */
+    rollbackVerifiedSkillCandidate(candidateId: string, approval: SkillRollbackApproval) {
+        return this.developmentalNeural.p23Learning.rollbackVerifiedSkillCandidate(candidateId, approval);
     }
     /** Candidate-store verifier rechecks the signed receipt against the independently persisted run context. */
     recordVerifiedSkillShadow(candidateId: string, observation: SkillShadowObservation) {
