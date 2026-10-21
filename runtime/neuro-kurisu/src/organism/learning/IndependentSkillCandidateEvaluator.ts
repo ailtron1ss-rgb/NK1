@@ -1,0 +1,158 @@
+import { createHash } from 'node:crypto';
+import { evaluateSkillLearnBenchTrial, type SkillLearnBenchTrialReport } from './SkillLearnBenchAdapter.ts';
+import type { RevisedCandidateEvaluator } from './P23LearningEngine.ts';
+
+export interface IndependentCandidateTask {
+  taskId: string;
+  trialId: string;
+  seed: number;
+  split: 'validation' | 'holdout';
+  input: unknown;
+  requiredCapabilityIds: string[];
+  expectedStepIds: string[];
+}
+export interface CandidateExecutionResult {
+  runId: string;
+  observedStepIds: string[];
+  metadata?: Record<string, unknown>;
+}
+/** Must execute the exact payload in an isolated, resource-bounded runtime. */
+export interface CandidateSandboxExecutor {
+  execute(input: { payload: unknown; task: IndependentCandidateTask }): Promise<CandidateExecutionResult>;
+}
+/** Separate authority from the candidate; must not trust candidate self-reported success. */
+export interface IndependentTaskVerifier {
+  verify(input: { task: IndependentCandidateTask; execution: CandidateExecutionResult }): Promise<{
+    passed: boolean; coveredCapabilityIds: string[];
+  }>;
+}
+/** Separate static/dynamic safety authority. */
+export interface IndependentCandidateSafetyScanner {
+  scan(input: { payload: unknown; task: IndependentCandidateTask; execution?: CandidateExecutionResult }): Promise<{
+    violationCount: number;
+  }>;
+}
+export interface IndependentCandidateEvaluationConfig {
+  tasks: IndependentCandidateTask[];
+  executor: CandidateSandboxExecutor;
+  verifier: IndependentTaskVerifier;
+  safetyScanner: IndependentCandidateSafetyScanner;
+  /** Domain identity for runtime/tool policy; included in the report fingerprint. */
+  environmentFingerprint: string;
+}
+const isDigest = (x: unknown): x is string => typeof x === 'string' && /^[a-f0-9]{64}$/i.test(x);
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== 'object') {
+    const encoded = JSON.stringify(value);
+    if (encoded === undefined) throw new Error('candidate-evaluation-payload-not-canonicalizable');
+    return encoded;
+  }
+  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
+  const record = value as Record<string, unknown>;
+  return '{' + Object.keys(record).sort().map(key => JSON.stringify(key) + ':' + canonical(record[key])).join(',') + '}';
+}
+const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
+function validateConfig(config: IndependentCandidateEvaluationConfig): void {
+  if (!config || !Array.isArray(config.tasks) || config.tasks.length < 2 ||
+      !config.executor || typeof config.executor.execute !== 'function' ||
+      !config.verifier || typeof config.verifier.verify !== 'function' ||
+      !config.safetyScanner || typeof config.safetyScanner.scan !== 'function' ||
+      !isDigest(config.environmentFingerprint)) throw new Error('independent-candidate-evaluator-config-invalid');
+  const keys = new Set<string>();
+  const splitTasks = { validation: new Set<string>(), holdout: new Set<string>() };
+  for (const task of config.tasks) {
+    if (!task || typeof task.taskId !== 'string' || !task.taskId.trim() ||
+        typeof task.trialId !== 'string' || !task.trialId.trim() ||
+        !Number.isSafeInteger(task.seed) || task.seed < 0 ||
+        !['validation', 'holdout'].includes(task.split) ||
+        !Array.isArray(task.requiredCapabilityIds) || task.requiredCapabilityIds.length === 0 ||
+        !Array.isArray(task.expectedStepIds) || task.expectedStepIds.length === 0) {
+      throw new Error('independent-candidate-evaluator-task-invalid');
+    }
+    const key = JSON.stringify([task.taskId, task.trialId]);
+    if (keys.has(key)) throw new Error('independent-candidate-evaluator-duplicate-trial');
+    keys.add(key);
+    splitTasks[task.split].add(task.taskId);
+  }
+  if (!splitTasks.validation.size || !splitTasks.holdout.size) {
+    throw new Error('independent-candidate-evaluator-validation-and-holdout-required');
+  }
+  for (const taskId of splitTasks.validation) {
+    if (splitTasks.holdout.has(taskId)) throw new Error('independent-candidate-evaluator-task-leakage');
+  }
+}
+
+/**
+ * Creates the real post-generation evaluator expected by P23. It executes the
+ * exact candidate payload per fixed task/seed, independently verifies outcomes,
+ * separately scans safety, and binds reports to payload + environment + task plan.
+ * It never promotes a candidate; P23's existing gate remains authoritative.
+ */
+export function createIndependentSkillCandidateEvaluator(
+  config: IndependentCandidateEvaluationConfig,
+): RevisedCandidateEvaluator {
+  validateConfig(config);
+  const tasks = config.tasks.map(task => structuredClone(task));
+  const planFingerprint = sha256(canonical(tasks.map(({ taskId, trialId, seed, split, requiredCapabilityIds, expectedStepIds }) =>
+    ({ taskId, trialId, seed, split, requiredCapabilityIds, expectedStepIds }))));
+  return async ({ payload, payloadFingerprint }) => {
+    const actualFingerprint = sha256(canonical(payload));
+    if (!isDigest(payloadFingerprint) || actualFingerprint !== payloadFingerprint) {
+      throw new Error('independent-candidate-evaluator-payload-fingerprint-mismatch');
+    }
+    const reports: Record<'validation' | 'holdout', SkillLearnBenchTrialReport[]> = {
+      validation: [], holdout: [],
+    };
+    const runBindings: Array<{ taskId: string; trialId: string; runId: string; seed: number; split: string }> = [];
+    for (const task of tasks) {
+      let execution: CandidateExecutionResult | undefined;
+      let verifierPassed = false;
+      let coveredCapabilityIds: string[] = [];
+      let executable = true;
+      try {
+        execution = await config.executor.execute({ payload: structuredClone(payload), task: structuredClone(task) });
+        if (!execution || typeof execution.runId !== 'string' || !execution.runId.trim() ||
+            !Array.isArray(execution.observedStepIds)) throw new Error('candidate-sandbox-result-invalid');
+        const verified = await config.verifier.verify({ task: structuredClone(task), execution: structuredClone(execution) });
+        if (!verified || typeof verified.passed !== 'boolean' || !Array.isArray(verified.coveredCapabilityIds)) {
+          throw new Error('independent-task-verifier-result-invalid');
+        }
+        verifierPassed = verified.passed;
+        coveredCapabilityIds = verified.coveredCapabilityIds;
+        runBindings.push({ taskId: task.taskId, trialId: task.trialId, runId: execution.runId, seed: task.seed, split: task.split });
+      } catch {
+        // Execution or verifier failure is a failed trial, never a successful fallback.
+        executable = false;
+      }
+      const safety = await config.safetyScanner.scan({
+        payload: structuredClone(payload), task: structuredClone(task),
+        ...(execution ? { execution: structuredClone(execution) } : {}),
+      });
+      if (!safety || !Number.isSafeInteger(safety.violationCount) || safety.violationCount < 0) {
+        throw new Error('independent-candidate-safety-result-invalid');
+      }
+      const report = evaluateSkillLearnBenchTrial({
+        taskId: task.taskId,
+        trialId: task.trialId,
+        verifierPassed: executable && verifierPassed,
+        skill: {
+          requiredCapabilityIds: task.requiredCapabilityIds,
+          coveredCapabilityIds,
+          executable,
+          safetyViolationCount: safety.violationCount,
+        },
+        trajectory: {
+          expectedStepIds: task.expectedStepIds,
+          observedStepIds: execution?.observedStepIds ?? [],
+        },
+      });
+      reports[task.split].push(report);
+    }
+    const evaluation = { validation: reports.validation, holdout: reports.holdout };
+    const evaluationFingerprint = sha256(canonical({
+      schemaVersion: 1, payloadFingerprint, environmentFingerprint: config.environmentFingerprint,
+      planFingerprint, runBindings, evaluation,
+    }));
+    return { payloadFingerprint, evaluationFingerprint, evaluation };
+  };
+}
