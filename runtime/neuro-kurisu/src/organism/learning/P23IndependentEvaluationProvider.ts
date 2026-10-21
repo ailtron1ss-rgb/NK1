@@ -49,6 +49,12 @@ export function withIndependentCandidateEvaluation(
     }
 
     const config = evaluationConfigForRepair(configInput);
+    // In production, a factory's existence alone is not sufficient: require the
+    // canonical manifest + validation/holdout plans + verified-outcome ledger so
+    // evaluation evidence is bound to scheduled runs before P23 can stage a revision.
+    if (process.env.NODE_ENV === 'production' && !config?.experimentAuthority) {
+      throw new Error('production-independent-evaluation-experiment-authority-required');
+    }
     return {
       proposal,
       sourceCandidateId: prepared.sourceCandidateId,
