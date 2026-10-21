@@ -100,7 +100,7 @@ const independentEvaluation = {
     experimentAuthority: { manifestFingerprint: 'c'.repeat(64) },
     runBindings: [
       { taskId: 'task-1', trialId: 'trial-1', runId: 'run-1', plannedRunId: 'planned-1', seed: 11, split: 'validation', bindingVerified: true, verifierPassed: true, safetyViolationCount: 0 },
-      { taskId: 'task-2', trialId: 'trial-2', runId: 'run-2', plannedRunId: 'planned-2', seed: 22, split: 'holdout', bindingVerified: true, verifierPassed: true, safetyViolationCount: 0 },
+      { taskId: 'task-2', trialId: 'trial-2', runId: 'run-2', plannedRunId: 'planned-2', seed: 22, split: 'holdout', bindingVerified: true, verifierPassed: false, safetyViolationCount: 0 },
     ],
   },
 };
