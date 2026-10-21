@@ -1,16 +1,66 @@
 import {
-  closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync,
+  closeSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync,
   unlinkSync, writeFileSync,
 } from 'node:fs';
 import { dirname } from 'node:path';
-import type { SkillStorePersistence, VersionedSkillStoreSnapshot } from './VersionedSkillCandidateStore.ts';
+import type {
+  ActiveSkillVersion, SkillPromotionApproval, SkillShadowObservation, SkillStorePersistence,
+  VersionedSkillCandidate, VersionedSkillStoreSnapshot,
+} from './VersionedSkillCandidateStore.ts';
 
 const emptySnapshot = (): VersionedSkillStoreSnapshot => ({ schemaVersion: 1, revision: 0, active: [], candidates: [] });
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+const isText = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
+const isTime = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0;
+const isVersion = (value: unknown): value is number => Number.isSafeInteger(value) && typeof value === 'number' && value >= 1;
+const isFingerprint = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value);
+
+function isActiveSkill(value: unknown): value is ActiveSkillVersion {
+  if (!isRecord(value) || !isText(value.skillId) || !isVersion(value.version) ||
+      !isFingerprint(value.payloadFingerprint) || !isFingerprint(value.proposalId) || !isTime(value.activatedAt) ||
+      !Object.prototype.hasOwnProperty.call(value, 'payload')) return false;
+  try { if (JSON.stringify(value.payload) === undefined) return false; } catch { return false; }
+  return true;
+}
+
+function isApproval(value: unknown): value is SkillPromotionApproval {
+  return isRecord(value) && isText(value.approvedBy) && isTime(value.approvedAt) &&
+    (value.expectedActiveVersion === null || isVersion(value.expectedActiveVersion));
+}
+
+function isShadowObservation(value: unknown): value is SkillShadowObservation {
+  return isRecord(value) && isText(value.runId) && isFingerprint(value.evidenceFingerprint) &&
+    typeof value.passed === 'boolean' && isTime(value.observedAt);
+}
+
+function isCandidate(value: unknown): value is VersionedSkillCandidate {
+  if (!isRecord(value) || !isFingerprint(value.candidateId) || !isText(value.skillId) ||
+      !isVersion(value.version) || !isFingerprint(value.payloadFingerprint) ||
+      !isFingerprint(value.proposalId) || !isFingerprint(value.proposalOutcomeFingerprint) ||
+      !(value.baseVersion === null || isVersion(value.baseVersion)) ||
+      !(value.previousActive === null || isActiveSkill(value.previousActive)) ||
+      !['staged', 'shadow', 'active', 'superseded', 'rolled-back'].includes(String(value.status)) ||
+      !Array.isArray(value.shadowObservations) || !value.shadowObservations.every(isShadowObservation) ||
+      !isTime(value.createdAt) || !Object.prototype.hasOwnProperty.call(value, 'payload')) return false;
+  try { if (JSON.stringify(value.payload) === undefined) return false; } catch { return false; }
+  if (value.approval !== undefined && !isApproval(value.approval)) return false;
+  if (value.promotedAt !== undefined && !isTime(value.promotedAt)) return false;
+  if (value.rolledBackAt !== undefined && !isTime(value.rolledBackAt)) return false;
+  return true;
+}
+
+function isSnapshot(value: unknown): value is VersionedSkillStoreSnapshot {
+  return isRecord(value) && value.schemaVersion === 1 && Number.isSafeInteger(value.revision) &&
+    typeof value.revision === 'number' && value.revision >= 0 &&
+    Array.isArray(value.active) && value.active.every(isActiveSkill) &&
+    Array.isArray(value.candidates) && value.candidates.every(isCandidate);
+}
 
 /**
  * Durable JSON-file adapter. Writes are temp-file + fsync + atomic rename under
- * an exclusive lock. A lock collision returns CAS=false so callers can reload
- * and retry instead of overwriting a concurrent writer.
+ * an exclusive lock. Persisted entries are validated, not just the outer arrays:
+ * a structurally corrupt skill record must never enter the runtime as valid state.
  */
 export class AtomicFileSkillStorePersistence implements SkillStorePersistence {
   private readonly lockPath: string;
@@ -43,7 +93,7 @@ export class AtomicFileSkillStorePersistence implements SkillStorePersistence {
 
   compareAndSwap(expectedRevision: number, next: VersionedSkillStoreSnapshot): boolean {
     if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0 ||
-        next.schemaVersion !== 1 || next.revision !== expectedRevision + 1) return false;
+        !isSnapshot(next) || next.revision !== expectedRevision + 1) return false;
     mkdirSync(dirname(this.filePath), { recursive: true });
     const lock = this.acquireLock();
     if (lock === null) return false;
@@ -116,11 +166,8 @@ export class AtomicFileSkillStorePersistence implements SkillStorePersistence {
   }
 
   private parse(raw: string): VersionedSkillStoreSnapshot {
-    const value = JSON.parse(raw) as VersionedSkillStoreSnapshot;
-    if (!value || value.schemaVersion !== 1 || !Number.isSafeInteger(value.revision) ||
-        value.revision < 0 || !Array.isArray(value.active) || !Array.isArray(value.candidates)) {
-      throw new Error('invalid persisted versioned skill store snapshot');
-    }
+    const value: unknown = JSON.parse(raw);
+    if (!isSnapshot(value)) throw new Error('invalid persisted versioned skill store snapshot');
     return value;
   }
 }
