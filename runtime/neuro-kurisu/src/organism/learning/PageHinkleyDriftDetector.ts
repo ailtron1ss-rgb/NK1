@@ -79,7 +79,7 @@ export class PageHinkleyDriftDetector {
   update(value: number): PageHinkleyUpdate {
     if (!finite(value)) throw new RangeError('page-hinkley-value-must-be-finite');
     // River resets an alarmed detector before accepting the next observation.
-    if (this.detected) this.reset();
+    if (this.detected) this.clearWindow(false);
     this.count += 1;
     this.mean += (value - this.mean) / this.count;
     const deviation = value - this.mean;
@@ -125,24 +125,21 @@ export class PageHinkleyDriftDetector {
   restore(raw: unknown): void {
     if (!raw || typeof raw !== 'object') throw new TypeError('page-hinkley-snapshot-invalid');
     const s = raw as Partial<PageHinkleySnapshot>;
-    const numeric = [s.mean, s.sumIncrease, s.sumDecrease, s.minIncrease, s.maxDecrease];
-    if (s.version !== 1 || !s.options || !positiveInteger(s.count) ||
-        !positiveInteger(s.detections) && s.detections !== 0 ||
-        typeof s.driftDetected !== 'boolean' || numeric.some((n) => !finite(n) && n !== Number.POSITIVE_INFINITY && n !== Number.NEGATIVE_INFINITY) ||
-        JSON.stringify(s.options) !== JSON.stringify(this.options) ||
-        (s.minIncrease !== Number.POSITIVE_INFINITY && !finite(s.minIncrease)) ||
-        (s.maxDecrease !== Number.NEGATIVE_INFINITY && !finite(s.maxDecrease))) {
-      // count=0 is a valid fresh snapshot; handled separately below.
-      if (!(s.version === 1 && s.options && s.count === 0 && s.detections === 0 &&
-        s.mean === 0 && s.sumIncrease === 0 && s.sumDecrease === 0 &&
-        s.minIncrease === Number.POSITIVE_INFINITY && s.maxDecrease === Number.NEGATIVE_INFINITY &&
-        s.driftDetected === false && JSON.stringify(s.options) === JSON.stringify(this.options))) {
-        throw new TypeError('page-hinkley-snapshot-invalid');
-      }
-    }
-    if (!Number.isSafeInteger(s.count) || Number(s.count) < 0 ||
-        !Number.isSafeInteger(s.detections) || Number(s.detections) < 0 ||
-        !finite(s.mean) || !finite(s.sumIncrease) || !finite(s.sumDecrease)) {
+    const optionsMatch = !!s.options && JSON.stringify(s.options) === JSON.stringify(this.options);
+    const validCount = Number.isSafeInteger(s.count) && Number(s.count) >= 0;
+    const validDetections = Number.isSafeInteger(s.detections) && Number(s.detections) >= 0;
+    const validExtrema =
+      (s.minIncrease === Number.POSITIVE_INFINITY || finite(s.minIncrease)) &&
+      (s.maxDecrease === Number.NEGATIVE_INFINITY || finite(s.maxDecrease));
+    const validFreshState = s.count !== 0 ||
+      (s.mean === 0 && s.sumIncrease === 0 && s.sumDecrease === 0 &&
+       s.minIncrease === Number.POSITIVE_INFINITY &&
+       s.maxDecrease === Number.NEGATIVE_INFINITY && s.driftDetected === false);
+    if (s.version !== 1 || !optionsMatch || !validCount || !validDetections ||
+        typeof s.driftDetected !== 'boolean' || !finite(s.mean) ||
+        !finite(s.sumIncrease) || !finite(s.sumDecrease) || !validExtrema ||
+        !validFreshState || (Number(s.count) > 0 &&
+          (s.minIncrease === Number.POSITIVE_INFINITY || s.maxDecrease === Number.NEGATIVE_INFINITY))) {
       throw new TypeError('page-hinkley-snapshot-invalid');
     }
     this.count = Number(s.count);
@@ -151,11 +148,11 @@ export class PageHinkleyDriftDetector {
     this.sumDecrease = Number(s.sumDecrease);
     this.minIncrease = s.minIncrease as number;
     this.maxDecrease = s.maxDecrease as number;
-    this.detected = Boolean(s.driftDetected);
+    this.detected = s.driftDetected;
     this.detections = Number(s.detections);
   }
 
-  reset(): void {
+  private clearWindow(resetDetections: boolean): void {
     this.count = 0;
     this.mean = 0;
     this.sumIncrease = 0;
@@ -163,6 +160,10 @@ export class PageHinkleyDriftDetector {
     this.minIncrease = Number.POSITIVE_INFINITY;
     this.maxDecrease = Number.NEGATIVE_INFINITY;
     this.detected = false;
-    this.detections = 0;
+    if (resetDetections) this.detections = 0;
+  }
+
+  reset(): void {
+    this.clearWindow(true);
   }
 }
