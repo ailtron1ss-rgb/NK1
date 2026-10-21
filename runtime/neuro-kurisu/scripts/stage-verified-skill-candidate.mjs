@@ -85,8 +85,9 @@ export async function stageVerifiedSkillCandidateBundle({ bundlePath, stateFile 
     throw new Error(`verified promotion proposal did not pass the evidence gate: ${proposal.gate.reason || 'rejected'}`);
   }
 
+  // Do not call core.init()/flush here: staging updates only the separately locked
+  // candidate-store file and must not rehydrate or race the live organism state file.
   const core = new OrganismCore(new FileStateStore(path.resolve(stateFile)));
-  await core.init();
   // stageVerifiedSkillCandidate rechecks the exact module-issued proposal object.
   const candidate = core.stageVerifiedSkillCandidate(proposal, skill);
   const lifecycle = core.verifiedSkillCandidateSnapshot();
