@@ -26,6 +26,15 @@ assert.ok(repaired.variants.some(v=>v.status==='candidate'&&v.toTool==='tool.fal
 assert.notEqual(repaired.activeVariantId,repaired.variants.find(v=>v.toTool==='tool.fallback')?.id,
  'recording repair evidence must stage, not activate, the new variant');
 
+const stagedCount = repaired.variants.filter(v=>v.toTool==='tool.fallback').length;
+const repeated = lib.recordCompoundRepair(autoRepair.id,{
+ stepId:'b',toolId:'tool.primary',error:'execution error',ok:false,verified:true,
+ confidence01:.9,context:'verified runtime failure',candidateTools:['tool.fallback'],selectedTool:'tool.fallback',holdout:false
+});
+assert.ok(repeated);
+assert.equal(repeated.variants.filter(v=>v.toTool==='tool.fallback').length,stagedCount,
+ 'replaying the same repair observation must not mint a new variant');
+
 // Holdout-only evidence must not be used to construct a repair candidate.
 const holdoutOnly = lib.compileCompoundSkill({projectId:'eco-101',name:'holdout-only',origin:'intrinsic',steps:[
  {id:'a',action:'explore',toolId:'tool.a'},
