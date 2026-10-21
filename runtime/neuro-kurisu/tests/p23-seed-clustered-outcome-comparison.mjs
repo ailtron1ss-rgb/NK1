@@ -49,6 +49,22 @@ assert.deepEqual(
   bySeed.bootstrap95CI,
   'bootstrap interval is deterministic for the same ledger and method pair',
 );
+const completeOnlyLedger = new VerifiedOutcomeLedger(tasks);
+for (let seed = 1; seed <= 4; seed++) {
+  for (const task of tasks.slice(0, 4)) {
+    const baselinePassed = task.taskId === 'transfer-a';
+    const candidatePassed = task.taskId === 'memory-a' || task.taskId === 'memory-b' || task.taskId === 'transfer-a';
+    for (const [method, passed] of [['baseline', baselinePassed], ['candidate', candidatePassed]]) {
+      completeOnlyLedger.record({
+        taskId: task.taskId, taskVersion: '1', method, seed, attempt: 1, passed,
+        authority: 'independent-verifier', verifierId: 'v1',
+        evidenceRef: `complete-only://${task.taskId}/${method}/${seed}`, observedAt: 4000 + seed,
+      });
+    }
+  }
+}
+assert.deepEqual(completeOnlyLedger.comparePairedBySeed('baseline', 'candidate').bootstrap95CI,
+  bySeed.bootstrap95CI, 'incomplete extra seeds cannot perturb the bootstrap interval for the same complete paired sample');
 const reverseOrderLedger = new VerifiedOutcomeLedger(tasks);
 for (let seed = 4; seed >= 1; seed--) {
   for (const task of tasks.slice(0, 4)) {
