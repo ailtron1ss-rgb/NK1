@@ -62,7 +62,7 @@ export function samplePrioritized<T extends PrioritizedCandidate>(
   const raw = candidates.map((item) => {
     if (!item || typeof item !== 'object') throw new TypeError('prioritized-candidate-must-be-object');
     const priority = item.priority01 ?? 1;
-    if (!finite(priority) || priority < 0 || priority > 1) throw new RangeError('prioritized-priority-out-of-range');
+    if (!finite(priority) || priority < 0) throw new RangeError('prioritized-priority-out-of-range');
     return Math.pow(priority + epsilon, alpha);
   });
   const total = raw.reduce((sum, value) => sum + value, 0);
