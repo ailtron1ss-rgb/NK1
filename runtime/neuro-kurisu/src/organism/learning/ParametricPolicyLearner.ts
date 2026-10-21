@@ -101,6 +101,9 @@ export class ParametricPolicyLearner{
       this.state[key]=Number.isFinite(value)?clamp(value):0;
     }
     this.state.lastTrainedAt=Number.isFinite(this.state.lastTrainedAt)&&this.state.lastTrainedAt>=0?this.state.lastTrainedAt:0;
+    // A persisted string such as "false" is truthy in JavaScript; only the
+    // literal boolean true is allowed to restore the safety freeze.
+    this.state.frozen=raw?.frozen===true;
   }
 
   snapshot():ParametricPolicyState{return structuredClone(this.state);}
