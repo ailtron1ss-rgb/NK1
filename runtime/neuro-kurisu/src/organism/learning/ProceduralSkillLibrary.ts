@@ -81,8 +81,12 @@ export interface CompoundSkillRecord {
   steps:CompoundSkillStep[];
   uses:number;
   successes:number;
+  nonHoldoutUses:number;
+  nonHoldoutSuccesses:number;
   verifiedExecutions:number;
+  nonHoldoutVerifiedExecutions:number;
   independentExecutions:number;
+  nonHoldoutIndependentExecutions:number;
   distinctContexts:number;
   confidence01:number;
   transferScore01:number;
@@ -200,8 +204,12 @@ export class ProceduralSkillLibrary{
       : [],
     uses:Math.max(0,Math.floor(Number(x.uses??0))),
     successes:Math.max(0,Math.floor(Number(x.successes??0))),
+    nonHoldoutUses:Math.max(0,Math.floor(Number(x.nonHoldoutUses??0))),
+    nonHoldoutSuccesses:Math.max(0,Math.floor(Number(x.nonHoldoutSuccesses??0))),
     verifiedExecutions:Math.max(0,Math.floor(Number(x.verifiedExecutions??0))),
+    nonHoldoutVerifiedExecutions:Math.max(0,Math.floor(Number(x.nonHoldoutVerifiedExecutions??0))),
     independentExecutions:Math.max(0,Math.floor(Number(x.independentExecutions??0))),
+    nonHoldoutIndependentExecutions:Math.max(0,Math.floor(Number(x.nonHoldoutIndependentExecutions??0))),
     distinctContexts:Math.max(1,Math.floor(Number(x.distinctContexts??1))),
     confidence01:clamp(Number(x.confidence01??0)),
     transferScore01:clamp(Number(x.transferScore01??0)),
@@ -368,7 +376,7 @@ export class ProceduralSkillLibrary{
     };
     const record:CompoundSkillRecord={
       id,name:String(input.name).slice(0,160),origin:String(input.origin).slice(0,48),projectSignature,steps,
-      uses:0,successes:0,verifiedExecutions:0,independentExecutions:0,distinctContexts:1,confidence01:.18,
+      uses:0,successes:0,nonHoldoutUses:0,nonHoldoutSuccesses:0,verifiedExecutions:0,nonHoldoutVerifiedExecutions:0,independentExecutions:0,nonHoldoutIndependentExecutions:0,distinctContexts:1,confidence01:.18,
       transferScore01:0,lastOutcome01:0,lastContext:'',status:'candidate',createdAt:now,lastUsedAt:0,
       policy:{version:1,maxTotalAttempts,maxTotalResourceCost01,requireVerified:true,minEvidence01:.72},mutations:0,
       repairs:0,successfulFallbacks:0,adaptations:[],repairsLedger:[],lineageVersion:1,
@@ -380,19 +388,33 @@ export class ProceduralSkillLibrary{
     if(firstAction){ const list=this.compoundActionIndex.get(firstAction)??[]; list.unshift(record); this.compoundActionIndex.set(firstAction,list.slice(0,64)); }
     return structuredClone(record);
   }
-  recordCompoundExecution(id:string,input:{success01:number;verified:boolean;independent?:boolean;context?:string}):CompoundSkillRecord|null{
+  recordCompoundExecution(id:string,input:{success01:number;verified:boolean;independent?:boolean;holdout?:boolean;context?:string}):CompoundSkillRecord|null{
     const skill=this.state.compoundSkills.find(x=>x.id===id); if(!skill || skill.status==='disabled')return null;
-    const success=clamp(input.success01); const context=String(input.context??'').slice(0,180);
+    const success=clamp(input.success01); const holdout=Boolean(input.holdout); const context=String(input.context??'').slice(0,180);
     const current=normalizeTokens(context); const previous=normalizeTokens(skill.lastContext); const similarity=jaccard(current,previous);
-    skill.uses++; if(success>=.62)skill.successes++; if(input.verified)skill.verifiedExecutions++; if(input.independent)skill.independentExecutions++;
-    if(skill.uses>1&&similarity<.72)skill.distinctContexts=Math.min(32,skill.distinctContexts+1);
+    skill.uses++; if(success>=.62)skill.successes++;
+    if(input.verified)skill.verifiedExecutions++; if(input.independent)skill.independentExecutions++;
+    if(!holdout){
+      skill.nonHoldoutUses=(skill.nonHoldoutUses??0)+1;
+      if(success>=.62)skill.nonHoldoutSuccesses=(skill.nonHoldoutSuccesses??0)+1;
+      if(input.verified)skill.nonHoldoutVerifiedExecutions=(skill.nonHoldoutVerifiedExecutions??0)+1;
+      if(input.independent)skill.nonHoldoutIndependentExecutions=(skill.nonHoldoutIndependentExecutions??0)+1;
+      if(skill.nonHoldoutUses>1&&similarity<.72)skill.distinctContexts=Math.min(32,skill.distinctContexts+1);
+      const reliability=Math.min(1,skill.nonHoldoutUses/8);
+      const evidenceQuality=clamp((skill.nonHoldoutVerifiedExecutions/Math.max(1,skill.nonHoldoutUses))*.62+(skill.nonHoldoutIndependentExecutions/Math.max(1,skill.nonHoldoutUses))*.38);
+      skill.confidence01=clamp(skill.confidence01*.74+reliability*.11+evidenceQuality*.15);
+    }
     skill.transferScore01=clamp(skill.transferScore01*.84+Math.max(.25,1-similarity*.25)*.16);
-    const reliability=Math.min(1,skill.uses/8); const evidenceQuality=clamp((skill.verifiedExecutions/Math.max(1,skill.uses))*.62+(skill.independentExecutions/Math.max(1,skill.uses))*.38);
-    skill.confidence01=clamp(skill.confidence01*.74+reliability*.11+evidenceQuality*.15); skill.lastOutcome01=success; skill.lastContext=context; skill.lastUsedAt=Date.now();
+    skill.lastOutcome01=success; skill.lastContext=context; skill.lastUsedAt=Date.now();
     this.compoundContextTokenCache.set(skill.id,normalizeTokens(context||skill.name));
-    const promotable=skill.uses>=3&&skill.successes/Math.max(1,skill.uses)>=.76&&skill.verifiedExecutions>=2&&skill.independentExecutions>=2&&skill.confidence01>=.52;
+    // Feed the actual execution result into the active variant's existing evidence
+    // path. Holdout remains explicitly evaluation-only at both aggregation levels.
+    if(skill.activeVariantId)this.recordVariantExecution(id,skill.activeVariantId,{success01:success,verified:input.verified,independent:input.independent,holdout,context});
+    const nonHoldoutUses=skill.nonHoldoutUses??0;
+    const nonHoldoutSuccessRate=(skill.nonHoldoutSuccesses??0)/Math.max(1,nonHoldoutUses);
+    const promotable=nonHoldoutUses>=3&&nonHoldoutSuccessRate>=.76&&(skill.nonHoldoutVerifiedExecutions??0)>=2&&(skill.nonHoldoutIndependentExecutions??0)>=2&&skill.confidence01>=.52;
     if(skill.status==='candidate'&&promotable){skill.status='reusable';this.state.compoundPromotions++;}
-    if(skill.status==='reusable'&&skill.uses>=6&&skill.successes/Math.max(1,skill.uses)<.5){skill.status='candidate';this.state.demotions++;}
+    if(skill.status==='reusable'&&nonHoldoutUses>=6&&nonHoldoutSuccessRate<.5){skill.status='candidate';this.state.demotions++;}
     return structuredClone(skill);
   }
   diagnoseCompoundFailure(input:{stepId:string;toolId:string;error?:string;ok?:boolean;verified?:boolean;context?:string;candidateTools?:string[]}):{failureFingerprint:string;diagnosis:CompoundSkillRepair['diagnosis'];contextSignature:string}{
