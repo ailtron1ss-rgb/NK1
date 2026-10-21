@@ -46,7 +46,7 @@ function proposal(id, accepted=true, authenticatedEvidenceRows=20, unauthenticat
     gate: { accepted }, canActivateAutomatically: false, authenticatedEvidenceRows, unauthenticatedEvidenceRows,
   };
 }
-const store = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence());
+const store = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => true); // explicit test-only authority adapter
 const p1 = proposal('a');
 const forgedProposal = { ...p1 };
 assert.throws(() => store.stageCandidate(forgedProposal, 'memory-repair', { instruction: 'forged' }),
@@ -93,6 +93,18 @@ assert.equal(store.snapshot().candidates.find(item => item.candidateId === c1.ca
 assert.equal(store.snapshot().candidates.find(item => item.candidateId === c2.candidateId).approval.approvedBy, 'human-reviewer-1',
   'promotion approval is retained as an audit record');
 assert.throws(() => store.rollback(c2.candidateId, 2), /currently promoted/);
+
+// The production-safe default denies promotion even if a caller fabricates plausible audit fields.
+const denyStore = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence());
+const denyCandidate = denyStore.stageCandidate(proposal('deny'), 'deny-by-default', { instruction: 'must not activate' });
+for (let i=1;i<=3;i++) denyStore.recordShadowObservation(denyCandidate.candidateId, {
+  runId: 'deny-shadow-'+i, evidenceFingerprint: (i+6).toString().repeat(64), passed: true, observedAt: Date.now(),
+});
+assert.throws(() => denyStore.approveAndPromote(denyCandidate.candidateId, {
+  approvedBy: 'human-reviewer-1', approvedAt: Date.now(), expectedActiveVersion: null,
+}), /not authenticated by the configured authority/,
+'approval-shaped fields are not sufficient without an injected authenticated authority');
+assert.equal(denyStore.snapshot().active.length, 0, 'default-deny approval must not mutate active skills');
 
 const persistence = new InMemorySkillStorePersistence();
 const first = new VersionedSkillCandidateStore(persistence);
