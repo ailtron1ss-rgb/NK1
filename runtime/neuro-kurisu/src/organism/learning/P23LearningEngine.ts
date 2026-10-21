@@ -5,6 +5,8 @@ import { selectReplayBatch, type ReplaySelectionOptions } from './ReplaySelectio
 import { adaptiveReplayLearningRate, adaptiveReplayOptions, bellmanTarget, calibratedConfidence, forgettingRisk, repairOpportunity, scoreReplayPriority, transferConfidence, wilsonLowerBound } from './MultiSourceLearningMechanisms.ts';
 import { retrievedSkillBias } from './SkillRetrievalAugmentation.ts';
 import { rankLearningTargets, reflectOnOutcomes } from './OutcomeReflectionCurriculum.ts';
+import type { VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
+import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillShadowObservation, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp = (x:number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
@@ -200,6 +202,7 @@ function canonicalize(value:unknown):string {
 export class P23LearningEngine {
   private state = defaultP23Learning();
   private replaySelectionOptions: ReplaySelectionOptions = { maxBatchSize:64, recentQuota:32 };
+  private verifiedSkillStore: VersionedSkillCandidateStore | null = null;
 
   /** Configure a bounded replay ablation; defaults remain 64 total / 32 recent. */
   configureReplaySelection(options: ReplaySelectionOptions):void {
@@ -231,6 +234,43 @@ export class P23LearningEngine {
   }
 
   snapshot():P23LearningState { return structuredClone(this.state); }
+
+  /**
+   * Opt into verified skill activation. When configured, the runtime resolver
+   * uses only active versions from this store; locally inferred promotion labels
+   * remain diagnostics and cannot affect action bias.
+   */
+  configureVerifiedSkillLifecycle(store:VersionedSkillCandidateStore):void {
+    this.verifiedSkillStore = store;
+  }
+
+  stageVerifiedSkillCandidate(proposal:VerifiedSkillPromotionProposal, skill:PolicySkillRecord):VersionedSkillCandidate {
+    if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    if(!skill || !skill.id || !skill.contextKey || !ACTIONS.includes(skill.action) ||
+       !Number.isFinite(skill.validationSuccess01) || !Number.isFinite(skill.confidence01)) {
+      throw new Error('candidate policy skill record is malformed');
+    }
+    return this.verifiedSkillStore.stageCandidate(proposal,skill.id,skill);
+  }
+
+  recordVerifiedSkillShadow(candidateId:string,observation:SkillShadowObservation):VersionedSkillCandidate {
+    if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    return this.verifiedSkillStore.recordShadowObservation(candidateId,observation);
+  }
+
+  approveVerifiedSkillCandidate(
+    candidateId:string,
+    approval:{approvedBy:string;approvedAt:number;expectedActiveVersion:number|null},
+    minShadowRuns=3,
+  ):ActiveSkillVersion {
+    if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    return this.verifiedSkillStore.approveAndPromote(candidateId,approval,minShadowRuns);
+  }
+
+  rollbackVerifiedSkillCandidate(candidateId:string,expectedActiveVersion:number,rolledBackAt=Date.now()):ActiveSkillVersion|null {
+    if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    return this.verifiedSkillStore.rollback(candidateId,expectedActiveVersion,rolledBackAt);
+  }
 
   recordExperience(trace:OrganismDecisionTrace,stateAfter:OrganismState,outcome:{success:number;reward:number;surprise:number},policy:AdaptivePolicyEngine):void {
     if (!trace.selected || this.state.processedTraceIds.includes(trace.id)) return;
@@ -389,10 +429,23 @@ export class P23LearningEngine {
     this.state.metrics.skillRejections=this.state.skills.filter(s=>s.status==='rejected').length;
   }
 
-  topSkills(limit=12):PolicySkillRecord[]{return this.state.skills.filter(s=>s.status==='promoted').slice(0,limit).map(x=>structuredClone(x));}
+  private effectiveSkills():PolicySkillRecord[] {
+    if(!this.verifiedSkillStore) return this.state.skills;
+    return this.verifiedSkillStore.snapshot().active.flatMap(active=>{
+      const value=active.payload as Partial<PolicySkillRecord>|null;
+      if(!value || value.id!==active.skillId || typeof value.contextKey!=='string' ||
+         !ACTIONS.includes(value.action as ActionKind) || !Number.isFinite(value.confidence01) ||
+         !Number.isFinite(value.validationSuccess01) || !Number.isSafeInteger(value.validationUses) ||
+         (value.validationUses as number)<1) return [];
+      return [{...(value as PolicySkillRecord),status:'promoted' as const,updatedAt:active.activatedAt}];
+    });
+  }
+
+  topSkills(limit=12):PolicySkillRecord[]{return this.effectiveSkills().filter(s=>s.status==='promoted').slice(0,limit).map(x=>structuredClone(x));}
   skillBias(state:OrganismState, action:ActionKind):number {
     const key=contextKey(state);
-    const exact=this.state.skills.find(x=>x.contextKey===key&&x.action===action);
+    const skills=this.effectiveSkills();
+    const exact=skills.find(x=>x.contextKey===key&&x.action===action);
     if(exact){
       // Skills are durable but not immortal: stale evidence gradually loses
       // influence, reaching zero after 180 days without fresh validation.
@@ -405,7 +458,7 @@ export class P23LearningEngine {
 
     // Retrieval-augmented transfer ranks the small evidence-backed skill subset first.
     // The legacy conservative neighbor path remains as a fallback if no candidate qualifies.
-    const retrievedBias = retrievedSkillBias({ contextKey:key, action, now:now(), limit:5 }, this.state.skills);
+    const retrievedBias = retrievedSkillBias({ contextKey:key, action, now:now(), limit:5 }, skills);
     if (retrievedBias !== 0) return retrievedBias;
 
     // Transfer only across a tightly neighboring context and only from held-out
@@ -413,7 +466,7 @@ export class P23LearningEngine {
     // acts only when no validated positive neighbor exists, limiting overreaction.
     let bestPositive=0;
     let bestNegative=0;
-    for(const row of this.state.skills){
+    for(const row of skills){
       if(row.action!==action || row.validationUses<4 || row.confidence01<.4) continue;
       const similarity=contextSimilarity(key,row.contextKey);
       if(similarity<5/6) continue;
