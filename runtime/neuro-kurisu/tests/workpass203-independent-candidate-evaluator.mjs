@@ -76,6 +76,18 @@ const failed = await failing({ payload, payloadFingerprint: digest(payload), bas
 assert.equal(failed.evaluation.validation[0].taskSuccess.passed, false);
 assert.equal(failed.evaluation.validation[0].skillQuality.executability, 0);
 
+const malformedTraceEvaluator = createIndependentSkillCandidateEvaluator({
+  tasks, environmentFingerprint: '8'.repeat(64),
+  executor: { async execute({ task }) { return { runId: 'malformed-' + task.trialId, observedStepIds: ['open', 'open'] }; } },
+  verifier: { async verify() { throw new Error('malformed trace must not reach verifier'); } },
+  safetyScanner: { async scan() { return { violationCount: 0 }; } },
+});
+const malformedTraceResult = await malformedTraceEvaluator({ payload, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } });
+assert.equal(malformedTraceResult.evaluation.validation[0].skillQuality.executability, 0,
+  'malformed duplicate trace steps must fail closed before verifier use');
+assert.equal(malformedTraceResult.evaluation.provenance.runBindings[0].runId, null,
+  'malformed execution results must not be recorded as trusted run identities');
+
 const unsafeCandidate = createIndependentSkillCandidateEvaluator({
   tasks, environmentFingerprint: '9'.repeat(64),
   executor: { async execute({ task }) { return { runId: 'unsafe-' + task.trialId, observedStepIds: ['open', 'summarize'] }; } },
