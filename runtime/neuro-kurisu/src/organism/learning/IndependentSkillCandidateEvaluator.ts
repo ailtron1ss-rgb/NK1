@@ -59,6 +59,7 @@ function validateConfig(config: IndependentCandidateEvaluationConfig): void {
       !config.safetyScanner || typeof config.safetyScanner.scan !== 'function' ||
       !isDigest(config.environmentFingerprint)) throw new Error('independent-candidate-evaluator-config-invalid');
   const keys = new Set<string>();
+  const trialIds = new Set<string>();
   const splitTasks = { validation: new Set<string>(), holdout: new Set<string>() };
   for (const task of config.tasks) {
     if (!task || typeof task.taskId !== 'string' || !task.taskId.trim() ||
@@ -66,12 +67,26 @@ function validateConfig(config: IndependentCandidateEvaluationConfig): void {
         !Number.isSafeInteger(task.seed) || task.seed < 0 ||
         !['validation', 'holdout'].includes(task.split) ||
         !Array.isArray(task.requiredCapabilityIds) || task.requiredCapabilityIds.length === 0 ||
-        !Array.isArray(task.expectedStepIds) || task.expectedStepIds.length === 0) {
+        task.requiredCapabilityIds.some(id => typeof id !== 'string' || !id.trim()) ||
+        new Set(task.requiredCapabilityIds).size !== task.requiredCapabilityIds.length ||
+        !Array.isArray(task.expectedStepIds) || task.expectedStepIds.length === 0 ||
+        task.expectedStepIds.some(id => typeof id !== 'string' || !id.trim()) ||
+        new Set(task.expectedStepIds).size !== task.expectedStepIds.length) {
       throw new Error('independent-candidate-evaluator-task-invalid');
     }
+    try {
+      // Fail before execution if the task cannot be safely snapshotted for provenance.
+      structuredClone(task.input);
+      canonical(task.input);
+    } catch {
+      throw new Error('independent-candidate-evaluator-task-input-invalid');
+    }
     const key = JSON.stringify([task.taskId, task.trialId]);
-    if (keys.has(key)) throw new Error('independent-candidate-evaluator-duplicate-trial');
+    if (keys.has(key) || trialIds.has(task.trialId)) {
+      throw new Error('independent-candidate-evaluator-duplicate-trial');
+    }
     keys.add(key);
+    trialIds.add(task.trialId);
     splitTasks[task.split].add(task.taskId);
   }
   if (!splitTasks.validation.size || !splitTasks.holdout.size) {
