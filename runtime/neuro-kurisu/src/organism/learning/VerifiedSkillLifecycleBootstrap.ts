@@ -1,6 +1,6 @@
 import { createPublicKey } from 'node:crypto';
 import { AtomicFileSkillStorePersistence } from './AtomicFileSkillStorePersistence.ts';
-import { createAuthenticatedSkillPromotionApprovalVerifier, parseTrustedSkillPromotionApprovalKeys } from './AuthenticatedSkillPromotionApproval.ts';
+import { createAuthenticatedSkillPromotionApprovalVerifier, createAuthenticatedSkillRollbackApprovalVerifier, parseTrustedSkillPromotionApprovalKeys } from './AuthenticatedSkillPromotionApproval.ts';
 import { AtomicFileTrustedSkillShadowRunRegistry } from './TrustedSkillShadowRunRegistry.ts';
 import { VersionedSkillCandidateStore } from './VersionedSkillCandidateStore.ts';
 import { createContextBoundSkillShadowEvidenceVerifier } from './VerifiedSkillShadowEvidence.ts';
@@ -57,6 +57,7 @@ export function createVerifiedSkillLifecycleBootstrap(
   const trustedVerifierKeys = loadTrustedVerifierKeys(rawVerifierKeys);
   const trustedApprovalKeys = parseTrustedSkillPromotionApprovalKeys(rawApprovalKeys);
   const verifyPromotionApproval = createAuthenticatedSkillPromotionApprovalVerifier(trustedApprovalKeys);
+  const verifyRollbackApproval = createAuthenticatedSkillRollbackApprovalVerifier(trustedApprovalKeys);
   const registry = new AtomicFileTrustedSkillShadowRunRegistry(trustedRunRegistryPath);
   const verifyShadowEvidence = createContextBoundSkillShadowEvidenceVerifier(
     trustedVerifierKeys,
@@ -66,6 +67,7 @@ export function createVerifiedSkillLifecycleBootstrap(
     new AtomicFileSkillStorePersistence(candidateStorePath),
     verifyPromotionApproval,
     verifyShadowEvidence,
+    verifyRollbackApproval,
   );
   return { store, registry, trustedVerifierCount: trustedVerifierKeys.size, trustedApprovalCount: trustedApprovalKeys.size };
 }
