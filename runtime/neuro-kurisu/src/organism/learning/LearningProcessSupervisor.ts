@@ -162,10 +162,16 @@ export async function runLearningProcess(
     });
   }
   if (command.signal?.aborted) throw new Error('learning process cancelled before spawn');
+  const inheritedEnvKeys = [...(command.inheritEnv ?? [])].sort();
+  const explicitEnvEntries = Object.entries(command.env ?? {}).sort(([a], [b]) => a.localeCompare(b));
+  // Fingerprint environment values as well as names: values can change execution
+  // semantics. Only the digest is persisted, so secret values are not copied into receipts.
   const commandFingerprint = sha256(JSON.stringify({
-    executable: command.executable, args: command.args, cwd: path.resolve(command.cwd),
-    inheritedEnvKeys: [...(command.inheritEnv ?? [])].sort(),
-    explicitEnvKeys: Object.keys(command.env ?? {}).sort(),
+    executable: command.executable,
+    args: command.args,
+    cwd: path.resolve(command.cwd),
+    inheritedEnv: inheritedEnvKeys.map(key => [key, env[key] ?? null]),
+    explicitEnv: explicitEnvEntries,
   }));
 
   let stdout = Buffer.alloc(0);
