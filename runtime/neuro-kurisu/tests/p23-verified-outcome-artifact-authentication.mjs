@@ -30,6 +30,24 @@ assert.equal(accepted.accepted, true);
 const evidenceRef = `signed-artifact:${validPayload.artifactId}:sha256:${outcomePayloadFingerprint(validPayload)}`;
 assert.equal(hasAuthenticatedOutcomeEvidence(ledger, evidenceRef), true);
 
+// A valid signature and task id are not enough if the caller supplies a different
+// manifest from the one bound to the ledger (e.g. a split/family/prompt substitution).
+const substitutedManifest = [{ ...task, split: 'train' }];
+const manifestSubstitution = ingestSignedOutcomeArtifact(
+  ledger, substitutedManifest, signOutcomePayloadForFixture({ ...payload(false), artifactId: 'manifest-substitution' }, privatePem),
+  new Map([[task.verifierId, publicPem]]),
+);
+assert.equal(manifestSubstitution.accepted, false);
+assert.equal(manifestSubstitution.rejection, 'supplied-manifest-mismatch');
+
+const malformedManifest = [task, { ...task, taskId: task.taskId + '-duplicate' }];
+const malformedManifestResult = ingestSignedOutcomeArtifact(
+  ledger, malformedManifest, validArtifact, new Map([[task.verifierId, publicPem]]),
+);
+assert.equal(malformedManifestResult.accepted, false);
+assert.equal(malformedManifestResult.rejection, 'supplied-manifest-mismatch',
+  'an unbound manifest must not be used to validate signed outcomes');
+
 const alteredPayload = { ...payload(false), artifactId: 'altered-artifact' };
 const alteredArtifact = { ...signOutcomePayloadForFixture(alteredPayload, privatePem), payload: { ...alteredPayload, passed: true } };
 const altered = ingestSignedOutcomeArtifact(ledger, manifest, alteredArtifact, new Map([[task.verifierId, publicPem]]));
