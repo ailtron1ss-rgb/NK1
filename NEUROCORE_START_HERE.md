@@ -1,3 +1,12 @@
+## Latest durable checkpoint — WorkPass147 (2026-10-21)
+
+- **Operational staging path:** `runtime/neuro-kurisu/scripts/stage-verified-skill-candidate.mjs` accepts a bounded `schemaVersion: 1` bundle of manifest + signed outcome artifacts + baseline/candidate method IDs + a policy skill payload.
+- The command verifies every artifact with `NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON`, binds it to the supplied manifest, creates the authentic proposal in-process and applies strict holdout evidence requirements before staging through Core. Non-Ed25519/malformed keys, an invalid signature, unknown fields, oversized or symlink bundle, rejected rows, and a failed evidence gate stop staging.
+- Candidate-store persistence is separate from the live organism state file. The CLI does not hydrate/flush live state, activate/promote the skill, or create approval; its JSON result includes the candidate ID needed by an explicitly configured shadow scheduler.
+- Added a regression for valid signed staging, durable readback from a fresh Core and rejection of tampered outcome evidence; registered it in package scripts and P23 workflow.
+- **NOT VERIFIED:** current Actions still fail before exposing actionable steps/logs; no passing tests/typecheck or measured learning uplift is claimed. Deployable independent verifier keys, signed-shadow production execution and authenticated promotion approval remain outstanding.
+- **Next P0:** exercise staging + scheduled signed shadow using deployment-managed verifier keys and an actual independent runner; add authenticated approval/rollback authority and audit all activation paths; obtain successful exact-head CI/typecheck, then measure holdout/transfer/reset retention.
+
 ## Latest durable checkpoint — WorkPass146 (2026-10-21)
 
 - **Core API:** `OrganismCore.stageVerifiedSkillCandidate` delegates candidate staging to `P23LearningEngine`/`VersionedSkillCandidateStore`, which still accepts only authentic in-process proposals backed exclusively by signed/verified outcome evidence. Added a read-only `verifiedSkillCandidateSnapshot` for local trusted runtime components.
