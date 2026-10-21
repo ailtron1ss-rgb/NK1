@@ -1187,3 +1187,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Reject malformed manifest entries at runtime, including unsupported split labels and whitespace-only identity/stratum fields.
 - Add regressions for manifest substitution, duplicate task IDs, unknown splits and invalid family labels.
 - Validation remains unconfirmed: no exact-head test/typecheck/Actions pass is claimed.
+
+
+## WorkPass135 — durable trusted shadow-run registry (2026-10-21)
+
+- Added a durable versioned run/task registry for independently trusted shadow-execution context, with idempotent registration, conflict rejection, exclusive locking, fsync/atomic rename, and fail-closed handling of contention or corrupt state.
+- Added a regression for restart recovery, signature/context binding, unknown-run rejection, lock contention and malformed persisted state; registered it in the existing continual-learning workflow.
+- Verification remains unconfirmed until the owning test, typecheck and exact-head Actions produce actionable results. Production supervisor/key/approval wiring and complete activation-path audit remain open; no learning uplift is claimed.
