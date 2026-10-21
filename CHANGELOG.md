@@ -1307,3 +1307,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added a durable versioned run/task registry for independently trusted shadow-execution context, with idempotent registration, conflict rejection, exclusive locking, fsync/atomic rename, and fail-closed handling of contention or corrupt state.
 - Added a regression for restart recovery, signature/context binding, unknown-run rejection, lock contention and malformed persisted state; registered it in the existing continual-learning workflow.
 - Verification remains unconfirmed until the owning test, typecheck and exact-head Actions produce actionable results. Production supervisor/key/approval wiring and complete activation-path audit remain open; no learning uplift is claimed.
+
+
+## WorkPass236 — exact-payload promotion-chain integration (2026-10-21)
+
+- Bind independent evaluation evidence to the exact staged candidate payload; reject cross-candidate receipt reuse.
+- Add the canonical P23 promotion entry point that rechecks candidate payload/evaluation lineage, runs the existing fitness gate on the envelope's validation/holdout reports, and binds the candidate's persisted signed receipts before delegating to the existing authenticated approval and versioned-store path.
+- Make canonical evidence serialization reject values that cannot be represented as JSON.
+- Added a focused candidate-payload mismatch regression. Validation remains unverified until the targeted test, TypeScript typecheck, and exact-head Actions execute successfully; no promotion or learning uplift is claimed.
