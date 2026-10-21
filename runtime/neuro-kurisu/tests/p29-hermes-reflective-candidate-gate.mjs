@@ -98,7 +98,7 @@ assert.throws(() => evaluateSkillLearnBenchCandidate(
 
 // Reject internally inconsistent reports instead of trusting claimed aggregates.
 const forged = trial('task-a', 'v1', 'good');
-forged.skillQuality.aggregate = 1;
+forged.skillQuality.aggregate = 0.5;
 assert.throws(() => evaluateSkillLearnBenchCandidate({
   validation: [forged, trial('task-b', 'v1', 'good')],
   holdout: baseline.holdout,
