@@ -133,3 +133,13 @@ Do not count a reference as “used” until a source revision/paper protocol is
 
 **WorkPass79 implementation note:** the policy learner now fails closed on invalid action identifiers, non-finite targets/rates/sample weights, and non-finite direct feature vectors. This is input-integrity hardening, not evidence of higher learning quality. The new regression is wired as `test:p26:learning-input-integrity`; execution and CI status must be recorded from a live run before marking it passed.
 
+
+
+## WorkPass80 — восстановление безопасного состояния policy learner (2026-10-21)
+
+| Изменение | Мотив | Тест / критерий | Статус |
+|---|---|---|---|
+| Санитизация весов и bias в `ParametricPolicyLearner.restore()` | Сохранённый snapshot может содержать NaN/Infinity и повторно загрязнить inference | После restore все веса и bias конечны; невалидные значения заменены нулём | Код и regression добавлены; исполнение не подтверждено |
+| Санитизация diagnostics, update count и timestamp | Невалидные метрики могут исказить uncertainty/exploration или сломать наблюдаемость | Диагностики конечны и ограничены; отрицательный/небезопасный update count сбрасывается | Код и regression добавлены; исполнение не подтверждено |
+
+Это дополнительная защита persisted state, а не оценка прироста обучения. Не считать тесты пройденными без живого запуска. Следующий обязательный шаг — выполнить `test:p26:learning-input-integrity`, `typecheck` и `test:p26:true-learning`, затем добавить измеримые тесты исправления ошибочной обратной связи, reversal, replay retention и no-learning baseline.
