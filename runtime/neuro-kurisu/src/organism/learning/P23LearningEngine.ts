@@ -557,7 +557,7 @@ export class P23LearningEngine {
       return {
         trace,id:trace.id,tick:trace.tick,contextKey:exp.contextKey,action:exp.action,
         surprise:priority.priority01,
-        novelty:exp.surprise,
+        novelty:priority.novelty01,
         salience:exp.success<.5?.8:.2,
         goalPriority:trace.stateBefore.needs.goalPressure,
         replayCount:priorUpdates,
