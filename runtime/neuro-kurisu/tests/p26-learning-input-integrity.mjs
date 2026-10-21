@@ -49,4 +49,4 @@ const result = learner.train(valid);
 assert.equal(learner.snapshot().updates, 1, 'valid feedback must still update the learner');
 assert.ok(Number.isFinite(result.predictionAfter));
 assert.ok(learner.snapshot().weights.respond.every(Number.isFinite));
-console.log('P26_LEARNING_INPUT_INTEGRITY=PASS invalidSamples=5 corruptSnapshotFieldsRepaired=8 stateMutationOnReject=0 validUpdates=1');
+console.log('P26_LEARNING_INPUT_INTEGRITY=PASS invalidSamples=5 corruptSnapshotFieldsRepaired=9 stateMutationOnReject=0 validUpdates=1');
