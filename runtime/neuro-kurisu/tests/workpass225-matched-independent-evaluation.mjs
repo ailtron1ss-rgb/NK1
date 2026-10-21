@@ -23,7 +23,7 @@ const makeEvaluation = async (payload, environmentFingerprint = 'a'.repeat(64), 
   return evaluator({ payload, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } });
 };
 
-const baseline = await makeEvaluation({ skill: 'baseline', version: 1 }, 'a'.repeat(64), { runPrefix: 'baseline-' });
+const baseline = await makeEvaluation({ skill: 'baseline', version: 1 }, 'a'.repeat(64), { runPrefix: 'baseline-', observed: ['open'] });
 const candidate = await makeEvaluation({ skill: 'candidate', version: 2 }, 'a'.repeat(64), { runPrefix: 'candidate-' });
 const comparison = compareMatchedIndependentEvaluations(baseline, candidate);
 assert.equal(comparison.matchedTrialCount, 2);
