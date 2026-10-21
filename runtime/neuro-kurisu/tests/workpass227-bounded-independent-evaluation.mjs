@@ -13,12 +13,13 @@ const tasks = [
   { taskId: 'holdout', trialId: 'holdout-1', seed: 2, split: 'holdout', input: { prompt: 'h' }, requiredCapabilityIds: ['read'], expectedStepIds: ['read'] },
 ];
 const payload = { version: 1 };
+let runSequence = 0;
 const payloadFingerprint = digest(payload);
 const base = {
   tasks,
   environmentFingerprint: 'a'.repeat(64),
   serviceTimeoutMs: 10,
-  executor: { async execute() { return { runId: 'run-' + Math.random(), observedStepIds: ['read'] }; } },
+  executor: { async execute() { return { runId: 'run-' + (++runSequence), observedStepIds: ['read'] }; } },
   verifier: { async verify() { return { bindingVerified: true, passed: true, coveredCapabilityIds: ['read'] }; } },
   safetyScanner: { async scan() { return { violationCount: 0 }; } },
 };
