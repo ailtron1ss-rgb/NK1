@@ -175,6 +175,10 @@ export function createIndependentSkillCandidateEvaluator(
 ): RevisedCandidateEvaluator {
   validateConfig(config);
   const tasks = config.tasks.map(task => structuredClone(task));
+  // Capture validated environment identity rather than reading it from the mutable
+  // caller-owned config on every run. Otherwise post-construction mutation can relabel
+  // an evaluation with a different runtime/tool-policy fingerprint.
+  const environmentFingerprint = config.environmentFingerprint;
   // Capture trusted service entry points too: replacing a method on the caller-owned
   // object after construction must not replace the verifier or safety authority.
   const executeCandidate = config.executor.execute.bind(config.executor);
@@ -212,7 +216,7 @@ export function createIndependentSkillCandidateEvaluator(
       const executionContext: CandidateExecutionContext = {
         payloadFingerprint,
         taskInputFingerprint: sha256(canonical(task.input)),
-        environmentFingerprint: config.environmentFingerprint,
+        environmentFingerprint,
         planFingerprint,
         experimentPlanFingerprint: experimentPlan?.planFingerprint ?? null,
         plannedRunId: plannedRun?.runId ?? null,
