@@ -64,9 +64,9 @@ assert.deepEqual(selectReplayBatch(legacySignals, { maxBatchSize: 2, recentQuota
   'callers without episodic fields retain legacy selection behavior');
 
 const affectiveGoalSignals = [
-  { id: 'routine', tick: 0, contextKey: 'routine', action: 'respond', surprise: .5, salience: .1, novelty: .5, replayCount: 0 },
+  { id: 'routine', tick: 0, contextKey: 'routine', action: 'respond', surprise: .05, salience: .1, novelty: .5, replayCount: 0 },
   { id: 'high-stakes-failure', tick: 1, contextKey: 'safety', action: 'repair', surprise: .2, salience: .45, emotionalIntensity: 1, activationStrength: .9, goalPriority: 1, replayCount: 0 },
-  ...Array.from({length: 5}, (_, i) => ({ id: `filler-affect-${i}`, tick: i + 2, contextKey: `filler-${i}`, action: 'respond', surprise: .05 })),
+  ...Array.from({length: 5}, (_, i) => ({ id: `filler-affect-${i}`, tick: i + 2, contextKey: `filler-${i}`, action: 'respond', surprise: .2 })),
 ];
 const affectiveBatch = selectReplayBatch(affectiveGoalSignals, { maxBatchSize: 2, recentQuota: 0 });
 assert.ok(affectiveBatch.some(x => x.id === 'high-stakes-failure'),
