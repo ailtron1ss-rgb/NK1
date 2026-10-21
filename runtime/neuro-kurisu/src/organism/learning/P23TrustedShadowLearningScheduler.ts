@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { lstat, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import type { SkillShadowObservation } from './VersionedSkillCandidateStore.ts';
 import type { LearningProcessCommand, LearningProcessResult, LearningProcessRun } from './LearningProcessSupervisor.ts';
 
 export interface TrustedShadowLearningScheduleConfig {
@@ -12,6 +15,10 @@ export interface TrustedShadowLearningScheduleConfig {
   taskId: string;
   taskVersion: string;
   seedBase?: number;
+  /** Existing staged skill candidate to receive independently signed shadow observations. */
+  candidateId?: string;
+  /** Basename written inside NK1_LEARNING_RUN_DIR; never an arbitrary path. */
+  observationFileName?: string;
   manifestFingerprint: string;
   planFingerprint: string;
   command: LearningProcessCommand;
@@ -24,6 +31,7 @@ export interface TrustedShadowLearningCore {
     planFingerprint: string;
     command: LearningProcessCommand;
   }): Promise<LearningProcessResult>;
+  recordVerifiedSkillShadow(candidateId: string, observation: SkillShadowObservation): unknown | Promise<unknown>;
 }
 
 export interface TrustedShadowLearningSchedulerSnapshot {
@@ -37,6 +45,8 @@ export interface TrustedShadowLearningSchedulerSnapshot {
   lastStatus: LearningProcessResult['receipt']['status'] | 'running' | 'error' | 'idle';
   lastExitCode: number | null;
   lastError: string | null;
+  lastEvidenceStatus: 'not-configured' | 'not-attempted' | 'pending' | 'accepted' | 'missing' | 'rejected';
+  lastEvidenceError: string | null;
 }
 
 const MAX_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -58,6 +68,7 @@ export class P23TrustedShadowLearningScheduler {
     enabled: true, runsStarted: 0, inFlight: false, lastRunId: null,
     lastSeed: null, lastStartedAt: 0, lastFinishedAt: 0,
     lastStatus: 'idle', lastExitCode: null, lastError: null,
+    lastEvidenceStatus: 'not-configured', lastEvidenceError: null,
   };
   readonly intervalMs: number;
   readonly initialDelayMs: number;
@@ -74,6 +85,13 @@ export class P23TrustedShadowLearningScheduler {
     if (config.seedBase !== undefined && !safeInteger(config.seedBase, 0, Number.MAX_SAFE_INTEGER)) {
       throw new Error('trusted shadow seedBase is invalid');
     }
+    if (config.candidateId !== undefined && !nonEmpty(config.candidateId)) {
+      throw new Error('trusted shadow candidateId must be non-empty when configured');
+    }
+    const observationFileName = config.observationFileName ?? 'verified-skill-shadow-observation.json';
+    if (config.candidateId && (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(observationFileName) || observationFileName === '.' || observationFileName === '..')) {
+      throw new Error('trusted shadow observation file must be a safe basename');
+    }
     this.intervalMs = config.intervalMs ?? 15 * 60_000;
     this.initialDelayMs = config.initialDelayMs ?? this.intervalMs;
     if (!safeInteger(this.intervalMs, 1_000, MAX_INTERVAL_MS) ||
@@ -87,13 +105,19 @@ export class P23TrustedShadowLearningScheduler {
     }
     this.config = {
       ...config,
+      observationFileName,
       command: {
         ...config.command,
         args: [...config.command.args],
-        ...(config.command.env ? { env: { ...config.command.env } } : {}),
+        env: {
+          ...(config.command.env ?? {}),
+          ...(config.candidateId ? { NK1_SKILL_CANDIDATE_ID: config.candidateId } : {}),
+          ...(config.candidateId ? { NK1_LEARNING_SIGNED_OBSERVATION_FILENAME: observationFileName } : {}),
+        },
         ...(config.command.inheritEnv ? { inheritEnv: [...config.command.inheritEnv] } : {}),
       },
     };
+    this.state.lastEvidenceStatus = config.candidateId ? 'not-attempted' : 'not-configured';
   }
 
   runOnce(runtimeTick: number): Promise<LearningProcessResult> {
@@ -124,6 +148,8 @@ export class P23TrustedShadowLearningScheduler {
     this.state.lastStatus = 'running';
     this.state.lastExitCode = null;
     this.state.lastError = null;
+    this.state.lastEvidenceError = null;
+    this.state.lastEvidenceStatus = this.config.candidateId ? 'pending' : 'not-configured';
     this.state.inFlight = true;
 
     let tracked: Promise<LearningProcessResult>;
@@ -132,10 +158,44 @@ export class P23TrustedShadowLearningScheduler {
       run,
       planFingerprint: this.config.planFingerprint,
       command: this.config.command,
-    })).then(result => {
+    })).then(async result => {
       this.state.lastStatus = result.receipt.status;
       this.state.lastExitCode = result.receipt.exitCode;
       this.state.lastFinishedAt = Date.now();
+      if (!this.config.candidateId) {
+        this.state.lastEvidenceStatus = 'not-configured';
+        return result;
+      }
+      if (result.receipt.status !== 'completed') {
+        this.state.lastEvidenceStatus = 'not-attempted';
+        return result;
+      }
+      const observationPath = join(result.receipt.runDirectory, this.config.observationFileName!);
+      try {
+        const stat = await lstat(observationPath);
+        if (stat.isSymbolicLink() || !stat.isFile()) {
+          throw new Error('signed shadow observation must be a regular file inside the isolated run directory');
+        }
+        const parsed: unknown = JSON.parse(await readFile(observationPath, 'utf8'));
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          throw new Error('signed shadow observation JSON must be an object');
+        }
+        const observation = parsed as SkillShadowObservation;
+        const signedRunId = observation.artifact?.payload?.runId;
+        if (observation.runId !== run.runId || signedRunId !== run.runId) {
+          throw new Error('signed shadow observation run ID does not match the supervisor-created run');
+        }
+        // Core/P23's configured candidate store performs signature, candidate-version,
+        // and independently registered task/seed/manifest/runtime checks. This adapter
+        // never treats stdout, exit code or unsigned fields as task-correctness evidence.
+        await this.core.recordVerifiedSkillShadow(this.config.candidateId, observation);
+        this.state.lastEvidenceStatus = 'accepted';
+        this.state.lastEvidenceError = null;
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException)?.code;
+        this.state.lastEvidenceStatus = code === 'ENOENT' ? 'missing' : 'rejected';
+        this.state.lastEvidenceError = String((error as Error)?.message ?? error).slice(0, 500);
+      }
       return result;
     }).catch(error => {
       this.state.lastStatus = 'error';
