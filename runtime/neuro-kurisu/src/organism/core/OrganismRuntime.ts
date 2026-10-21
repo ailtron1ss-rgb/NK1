@@ -38,6 +38,7 @@ import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/Act
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
+import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
@@ -87,6 +88,8 @@ export interface RuntimeConfig extends OrganismConfig {
   visionBackend?: VisionSemanticBackend;
   /** Explicit opt-in to scheduled, Core-owned P23 candidate/shadow learner runs. */
   trustedShadowLearning?: TrustedShadowLearningScheduleConfig;
+  /** Explicitly configure the production bridge from verified compound repairs into P23 revision staging. */
+  compoundRepairRevision?: { engine: P23LearningEngine; provideInputs: CompoundRepairRevisionInputProvider };
   /** P2836: how real device outcomes compete with the predictive simulator. */
   realityMode?: RealityGroundingMode;
 }
@@ -140,6 +143,7 @@ export class OrganismRuntime {
   private readonly causalDomainClosureLedger = new CausalDomainClosureLedger(32);
   private readonly adaptiveConsolidationGate = new AdaptiveConsolidationGate();
   private readonly trustedShadowLearningScheduler: P23TrustedShadowLearningScheduler | null;
+  private readonly compoundRepairRevisionCoordinator: P23CompoundRepairRevisionCoordinator | null;
   private readonly proceduralSkillLibrary = new ProceduralSkillLibrary();
   private readonly proceduralSkillStore: JsonStateStore<SkillLibraryState>;
   private stopping = false;
@@ -173,6 +177,9 @@ export class OrganismRuntime {
     this.core = new OrganismCore(config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile), { ...config, cycleResultMode:'operational' });
     this.trustedShadowLearningScheduler = config.trustedShadowLearning?.enabled === true
       ? new P23TrustedShadowLearningScheduler(this.core, config.trustedShadowLearning)
+      : null;
+    this.compoundRepairRevisionCoordinator = config.compoundRepairRevision
+      ? new P23CompoundRepairRevisionCoordinator(this, config.compoundRepairRevision.engine, config.compoundRepairRevision.provideInputs)
       : null;
     this.realityGrounding.setMode(config.realityMode ?? 'hybrid');
     this.plans = new PlanEngine(this.environment, {
@@ -977,6 +984,26 @@ export class OrganismRuntime {
       .slice(0,96);
   }
 
+
+  /**
+   * Production runtime entry point for the configured repair-to-P23 lifecycle.
+   * It serializes orchestration with other runtime mutations and fails closed when no
+   * trusted proposal/evaluation/generator provider was configured by the application.
+   */
+  async reviseCompoundSkillsFromObservedRepairs(skillId:string) {
+    return this.enqueue(async()=>{
+      if(!this.initialized) throw new Error('organism-runtime-not-initialized');
+      if(!this.compoundRepairRevisionCoordinator) {
+        throw new Error('compound-repair-revision-provider-not-configured');
+      }
+      const result=await this.compoundRepairRevisionCoordinator.reviseFromObservedRepairs(skillId);
+      await this.journal.write('info','runtime.p23.compound-repair-revision.completed',{
+        skillId,status:result.status,repairEvidenceCount:result.repairEvidenceCount,
+        ...(result.status==='candidate-staged'?{candidateId:result.candidateId}:{}),
+      }).catch(()=>{});
+      return result;
+    });
+  }
 
   /**
    * Feed real, verified non-holdout compound-repair observations into the existing P23
