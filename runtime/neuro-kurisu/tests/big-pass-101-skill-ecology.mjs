@@ -78,6 +78,27 @@ const rolled=lib.rollbackCompoundSkill(skill.id,'regression-test');
 assert.ok(rolled); assert.equal(lib.snapshot().compoundSkills[0].steps[1].toolId,'tool.primary');
 assert.equal(lib.skillMetaOperation('compare-variants',skill.id).length,2);
 
+// Holdout outcomes are evaluation-only: even repeated verified successes cannot
+// satisfy the independent execution requirement or promote a candidate.
+const sealedSkill = lib.compileCompoundSkill({projectId:'eco-101',name:'sealed-holdout-promotion',origin:'intrinsic',steps:[
+ {id:'a',action:'explore',toolId:'tool.a'},
+ {id:'b',action:'verify',toolId:'tool.primary',fallbackToolIds:['tool.fallback']}
+]});
+assert.ok(sealedSkill);
+const sealedVariant = lib.createRepairVariant(sealedSkill.id,{stepId:'b',toTool:'tool.fallback',reason:'holdout isolation regression'});
+assert.ok(sealedVariant);
+for (let n=0;n<5;n++) {
+  const observed=lib.recordVariantExecution(sealedSkill.id,sealedVariant.id,{
+    success01:1,verified:true,independent:true,holdout:true,context:`sealed-holdout-${n}`
+  });
+  assert.ok(observed);
+}
+const sealedAfter=lib.snapshot().compoundSkills.find(s=>s.id===sealedSkill.id);
+assert.equal(sealedAfter.variants.find(v=>v.id===sealedVariant.id).status,'candidate',
+ 'holdout-only outcomes must not promote a variant');
+assert.notEqual(sealedAfter.activeVariantId,sealedVariant.id,
+ 'holdout-only outcomes must never change the active tool');
+
 const cx=new CausalExperienceStream();
 const cr=cx.recordExternalLearningEvent({tick:7,taskId:'repair-task',action:'explore',reward01:.9,success01:1,surprise01:.55,novelty01:.6,causalStrength01:.8});
 assert.ok(cr.causalStrength01>=.79);
