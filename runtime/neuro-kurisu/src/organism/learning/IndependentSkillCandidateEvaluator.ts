@@ -175,6 +175,11 @@ export function createIndependentSkillCandidateEvaluator(
 ): RevisedCandidateEvaluator {
   validateConfig(config);
   const tasks = config.tasks.map(task => structuredClone(task));
+  // Capture trusted service entry points too: replacing a method on the caller-owned
+  // object after construction must not replace the verifier or safety authority.
+  const executeCandidate = config.executor.execute.bind(config.executor);
+  const verifyCandidate = config.verifier.verify.bind(config.verifier);
+  const scanCandidateSafety = config.safetyScanner.scan.bind(config.safetyScanner);
   // Snapshot all authority-bearing plan data at construction. Keeping caller-owned
   // plan/manifest objects live here would let post-validation mutation silently
   // change scheduled run IDs while retaining the original evaluator plan fingerprint.
@@ -218,7 +223,7 @@ export function createIndependentSkillCandidateEvaluator(
       let coveredCapabilityIds: string[] = [];
       let executable = true;
       try {
-        execution = await config.executor.execute({
+        execution = await executeCandidate({
           payload: structuredClone(payload),
           task: structuredClone(task),
           context: structuredClone(executionContext),
@@ -238,7 +243,7 @@ export function createIndependentSkillCandidateEvaluator(
       }
       if (execution) {
         try {
-          const verified = await config.verifier.verify({
+          const verified = await verifyCandidate({
             task: structuredClone(task),
             execution: structuredClone(execution),
             context: structuredClone(executionContext),
@@ -257,7 +262,7 @@ export function createIndependentSkillCandidateEvaluator(
           verifierPassed = false;
         }
       }
-      const safety = await config.safetyScanner.scan({
+      const safety = await scanCandidateSafety({
         payload: structuredClone(payload), task: structuredClone(task),
         ...(execution ? { execution: structuredClone(execution) } : {}),
       });
