@@ -19,18 +19,10 @@ const proposal = {
   schemaVersion:1, proposalId:'a'.repeat(64), outcomeFingerprint:'b'.repeat(64),
   gate:{accepted:true}, canActivateAutomatically:false, authenticatedEvidenceRows:20, unauthenticatedEvidenceRows:0,
 };
-const candidate = engine.stageVerifiedSkillCandidate(proposal, skill);
-for(let i=1;i<=3;i++) engine.recordVerifiedSkillShadow(candidate.candidateId, {
-  runId:'engine-shadow-'+i, evidenceFingerprint:String(i).repeat(64), passed:true, observedAt:Date.now(),
-});
-engine.approveVerifiedSkillCandidate(candidate.candidateId, {
-  approvedBy:'reviewer', approvedAt:Date.now(), expectedActiveVersion:null,
-});
-assert.ok(engine.skillBias(state, 'reflect') > 0, 'only an explicitly approved active version reaches the runtime resolver');
-assert.equal(engine.topSkills().length, 1);
-assert.equal(engine.snapshot().metrics.skillPromotions, 1);
-engine.rollbackVerifiedSkillCandidate(candidate.candidateId, 1, Date.now());
-assert.equal(engine.skillBias(state, 'reflect'), 0, 'rollback immediately removes the versioned skill from action bias');
-assert.equal(engine.topSkills().length, 0);
-assert.equal(engine.snapshot().metrics.skillPromotions, 0);
+assert.throws(() => engine.stageVerifiedSkillCandidate(proposal, skill),
+  /authentic, accepted proposal/,
+  'caller-constructed public fields cannot enter the live skill lifecycle');
+assert.equal(engine.skillBias(state, 'reflect'), 0, 'untrusted proposal cannot affect runtime action bias');
+assert.equal(engine.topSkills().length, 0, 'untrusted proposal cannot reach the runtime resolver');
+assert.equal(engine.snapshot().metrics.skillPromotions, 0, 'rejected proposal does not increment promotion metrics');
 console.log('P23_LEARNING_ENGINE_VERIFIED_SKILL_LIFECYCLE=PASS');
