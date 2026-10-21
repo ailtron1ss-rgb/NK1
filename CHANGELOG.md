@@ -1,3 +1,10 @@
+## WorkPass142 — close direct supervisor bypass for trusted shadow runs (2026-10-21)
+
+- Hardened `runLearningProcess`: `candidate` + `shadow` execution now fails closed unless a host-owned trusted registrar is supplied, even when callers bypass the Core coordinator.
+- Reject trusted-registration capabilities on baseline/control or other non-shadow lanes to prevent provenance contamination.
+- Extended the real child-process regression to assert an unregistered candidate/shadow process cannot start. The existing continual-learning workflow already runs this regression; no duplicate CI step was added.
+- **Not claimed:** deployed scheduler adoption of the Core API, verifier-key provisioning, authenticated approval, successful CI/typecheck, or learning uplift. These remain open P0s.
+
 ## WorkPass141 — exercise the Core-owned durable execution path (2026-10-21)
 
 - Replaced the Core-entry test double with a real `OrganismCore` backed by `FileStateStore`; the test launches a real child process through the Core-owned candidate/shadow route.
