@@ -52,6 +52,16 @@ const valid = engine.bindReflectiveCandidateEvidence([report()], [validObservati
 assert.equal(valid.accepted, true);
 assert.equal(valid.boundTrials, 1);
 assert.equal(valid.manifestFingerprint, 'c'.repeat(64));
+assert.equal(valid.boundEvidenceScope, 'identity-and-binary-outcome-only');
+assert.equal(valid.qualityMetricsAuthenticated, false);
+
+// Signed run receipts do not sign trajectory/skill-quality scores. Even a valid
+// identity/outcome binding must not be described as cryptographic score attestation.
+const inflatedQuality = structuredClone(report());
+inflatedQuality.skillQuality.aggregate = 0;
+inflatedQuality.trajectoryQuality.aggregate = 0;
+const inflated = engine.bindReflectiveCandidateEvidence([inflatedQuality], [validObservation], candidate, verifier);
+assert.equal(inflated.qualityMetricsAuthenticated, false);
 
 const mismatchedTask = engine.bindReflectiveCandidateEvidence([report('task-other')], [validObservation], candidate, verifier);
 assert.equal(mismatchedTask.accepted, false);
@@ -75,6 +85,10 @@ assert.ok(tamperRejected.reasons.includes('signed-shadow-evidence-not-trusted'))
 const duplicateRun = engine.bindReflectiveCandidateEvidence([report()], [validObservation, validObservation], candidate, verifier);
 assert.equal(duplicateRun.accepted, false);
 assert.ok(duplicateRun.reasons.includes('duplicate-observation-run-id'));
+
+const unmatchedReceipt = engine.bindReflectiveCandidateEvidence([report()], [validObservation, makeObservation({ runId: 'unmatched-run', taskId: 'task-extra' })], candidate, verifier);
+assert.equal(unmatchedReceipt.accepted, false);
+assert.ok(unmatchedReceipt.reasons.includes('unmatched-shadow-observation'));
 
 const missingVerifier = engine.bindReflectiveCandidateEvidence([report()], [validObservation], candidate, () => false);
 assert.equal(missingVerifier.accepted, false);
