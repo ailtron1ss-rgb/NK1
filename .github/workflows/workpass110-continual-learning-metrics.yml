@@ -20,6 +20,7 @@ on:
       - 'runtime/neuro-kurisu/scripts/create-learning-experiment-plan.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeArtifact.ts'
+      - 'runtime/neuro-kurisu/tests/p23-verified-outcome-artifact-authentication.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
       - 'runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs'
       - 'runtime/neuro-kurisu/tests/p23-verified-skill-promotion-proposal.mjs'
@@ -38,6 +39,7 @@ on:
       - 'runtime/neuro-kurisu/tests/p23-verified-skill-revision-gate.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillPromotion.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeArtifact.ts'
+      - 'runtime/neuro-kurisu/tests/p23-verified-outcome-artifact-authentication.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/SkillEvaluationReport.ts'
       - 'runtime/neuro-kurisu/tests/p23-skill-evaluation-report.mjs'
@@ -64,6 +66,7 @@ on:
       - 'runtime/neuro-kurisu/scripts/create-learning-experiment-plan.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeArtifact.ts'
+      - 'runtime/neuro-kurisu/tests/p23-verified-outcome-artifact-authentication.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillPromotion.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/SkillEvaluationReport.ts'
@@ -113,6 +116,9 @@ jobs:
       - name: Run ledger-bound verified skill promotion proposal regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:verified-skill-promotion-proposal
+      - name: Run signed outcome artifact authentication regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-verified-outcome-artifact-authentication.mjs
       - name: Run versioned skill candidate lifecycle regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-versioned-skill-candidate-store.mjs
