@@ -220,4 +220,4 @@ assert.equal(authorityLedger.snapshot().acceptedOutcomes, 2);
 assert.equal(authorityLedger.comparePaired('prior', 'candidate', 'holdout').pairedN, 0,
   'candidate evidence alone must not fabricate baseline comparison evidence');
 
-console.log('WorkPass203 independent candidate evaluator: PASS');
+console.log('WorkPass203/212/213 independent evaluation, execution binding, and experiment-ledger integration: PASS');
