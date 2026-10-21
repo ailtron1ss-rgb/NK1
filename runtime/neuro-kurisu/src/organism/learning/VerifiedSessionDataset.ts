@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { VerifiedOutcomeLedger, EvaluationSplit } from './VerifiedOutcomeLedger.ts';
+import { hasAuthenticatedOutcomeEvidence } from './VerifiedOutcomeArtifact.ts';
 
 export interface VerifiedSessionTrainingExample {
   schemaVersion: 1;
@@ -64,7 +65,7 @@ export function buildVerifiedSessionDataset(
   for (const outcome of snapshot.outcomes) {
     const task = manifest.get(outcome.taskId);
     if (!task || task.version !== outcome.taskVersion) continue;
-    if (outcome.authority === 'self-report') continue;
+    if (outcome.authority === 'self-report' || !hasAuthenticatedOutcomeEvidence(ledger, outcome.evidenceRef)) continue;
     if (task.split === 'holdout') {
       const key = JSON.stringify([task.family, outcome.method]);
       const aggregate = holdout.get(key) ?? { family: task.family, method: outcome.method, n: 0, passed: 0, seeds: new Set<number>() };
