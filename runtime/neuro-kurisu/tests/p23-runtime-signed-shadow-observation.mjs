@@ -106,7 +106,7 @@ try {
       intervalMs: 300_000,
       initialDelayMs: 300_000,
       runtimeVersion,
-      taskId: 'e2e-task-target',
+      taskId: 'e2e-task-0',
       taskVersion: 'v1',
       candidateId: expectedCandidateId,
       manifestFingerprint: proposal.manifestFingerprint,
