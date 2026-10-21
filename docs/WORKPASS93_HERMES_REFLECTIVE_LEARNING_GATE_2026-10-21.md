@@ -25,6 +25,8 @@ Extended the existing `SkillLearnBenchAdapter.ts` rather than creating a competi
 
 - Adds paired baseline/candidate comparison keyed by exact task ID and trial ID.
 - Keeps validation and holdout evidence separate; a missing, mismatched, or empty holdout cannot pass.
+- Rejects overlap between validation and holdout task IDs, validates component scores and aggregate consistency, checks verifier pass flags against pass rates, and uses collision-safe composite trial keys.
+- Macro-averages task scores after normalizing task IDs, so repeated trials or whitespace variants cannot silently reweight a task.
 - Uses a multi-axis score: 50% independently verified task success, 30% trajectory quality, 20% skill quality.
 - Requires a minimum validation gain (default 0.005), caps tolerated holdout regression (default 0.02), and requires at least two distinct holdout tasks by default.
 - Any candidate safety violation is a hard rejection, not something a higher aggregate score can offset.
@@ -34,7 +36,7 @@ Extended the existing `SkillLearnBenchAdapter.ts` rather than creating a competi
 
 ## Validation status
 
-The test is registered in package scripts and the learning workflow. This document does not claim the test or typecheck passed until a corresponding GitHub Actions run is observed. The gate is a deterministic evidence comparator; it is not an implementation of DSPy/GEPA and does not generate candidate mutations by itself.
+The test is registered in package scripts and the learning workflow. A deeper audit added regression cases for validation/holdout leakage and internally inconsistent aggregate evidence. GitHub Actions runs #26, #28, #30, and #33 all failed before exposing any job steps (`steps: null/[]`, no runner logs URL); this pattern spans the prerequisite PR chain, so it is not evidence that the new test itself failed. The repository's actual runner/Actions failure reason remains unavailable. This document does not claim the test or typecheck passed until a corresponding GitHub Actions run is observed. The gate is a deterministic evidence comparator; it is not an implementation of DSPy/GEPA and does not generate candidate mutations by itself.
 
 ## Approximate progress
 
