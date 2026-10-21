@@ -226,7 +226,7 @@ export class VerifiedOutcomeLedger {
       bySeed.set(outcome.seed, taskRows);
     }
     const paired: Array<{ baseline: number; candidate: number }> = [];
-    for (const taskRows of bySeed.values()) {
+    for (const [, taskRows] of [...bySeed.entries()].sort((a, b) => a[0] - b[0])) {
       // Fail closed on incomplete seed coverage: never compare different task sets.
       if (!expectedTasks.length || expectedTasks.some(taskId => {
         const methods = taskRows.get(taskId);
