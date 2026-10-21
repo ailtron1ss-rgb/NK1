@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { closeSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { hostname } from 'node:os';
@@ -67,10 +68,7 @@ export class AtomicFileTrustedSkillShadowRunRegistry {
     return parsed;
   }
 
-  private lockOwnerIsProvablyDead(): boolean {
-    let raw: string;
-    try { raw = readFileSync(this.lockPath, 'utf8'); }
-    catch { return false; }
+  private lockOwnerIsProvablyDead(raw: string): boolean {
     let owner: unknown;
     try { owner = JSON.parse(raw); } catch { return false; }
     if (!isRecord(owner) || owner.hostname !== hostname() ||
@@ -91,11 +89,33 @@ export class AtomicFileTrustedSkillShadowRunRegistry {
     try { lockFd = openSync(this.lockPath, 'wx', 0o600); }
     catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-      // Recover only a lock whose same-host PID is provably gone. Never break a
-      // live, remote-host, malformed, or legacy lock based on age alone.
-      if (!this.lockOwnerIsProvablyDead()) throw new Error('trusted run registry is locked; fail closed');
-      try { unlinkSync(this.lockPath); }
+      // Reclaim a dead owner without a check-then-unlink race. Two contenders
+      // may both inspect the stale lock, but only one can atomically rename that
+      // path. Re-read the quarantined inode before deleting it so a lock replaced
+      // between inspection and rename is never mistaken for the stale owner.
+      let staleRaw: string;
+      try { staleRaw = readFileSync(this.lockPath, 'utf8'); }
       catch { throw new Error('trusted run registry is locked; fail closed'); }
+      if (!this.lockOwnerIsProvablyDead(staleRaw)) {
+        throw new Error('trusted run registry is locked; fail closed');
+      }
+      const quarantinePath = `${this.lockPath}.stale-${process.pid}-${randomUUID()}`;
+      try { renameSync(this.lockPath, quarantinePath); }
+      catch { throw new Error('trusted run registry is locked; fail closed'); }
+      let quarantinedRaw: string;
+      try { quarantinedRaw = readFileSync(quarantinePath, 'utf8'); }
+      catch {
+        try { unlinkSync(quarantinePath); } catch { /* best effort */ }
+        throw new Error('trusted run registry is locked; fail closed');
+      }
+      if (quarantinedRaw !== staleRaw || !this.lockOwnerIsProvablyDead(quarantinedRaw)) {
+        try { unlinkSync(quarantinePath); } catch { /* best effort */ }
+        throw new Error('trusted run registry is locked; fail closed');
+      }
+      try { unlinkSync(quarantinePath); }
+      catch { throw new Error('trusted run registry is locked; fail closed'); }
+      // Another contender may win after quarantine cleanup; exclusive creation
+      // ensures at most one caller enters the critical section.
       try { lockFd = openSync(this.lockPath, 'wx', 0o600); }
       catch { throw new Error('trusted run registry is locked; fail closed'); }
     }
