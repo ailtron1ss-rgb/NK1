@@ -41,4 +41,13 @@ assert.equal(dataset.holdoutAggregates[0].outcomeCount, 5);
 assert.equal(dataset.holdoutAggregates[0].passRate, 1);
 assert.ok(!JSON.stringify(dataset.holdoutAggregates).includes('candidate'));
 assert.equal(dataset.rejectedSelfReports, 1);
+assert.match(dataset.datasetFingerprint, /^[a-f0-9]{64}$/);
+assert.equal(buildVerifiedSessionDataset(ledger).datasetFingerprint, dataset.datasetFingerprint,
+  'dataset fingerprint must be stable across exports of unchanged ledger content');
+assert.equal(ledger.record({
+  taskId: 'train-1', taskVersion: 'v1', method: 'baseline', seed: 2, attempt: 1, passed: false,
+  authority: 'independent-verifier', verifierId: 'verifier-a', evidenceRef: 'new-verified-evidence', observedAt: now + 1,
+}).accepted, true);
+assert.notEqual(buildVerifiedSessionDataset(ledger).datasetFingerprint, dataset.datasetFingerprint,
+  'new verified outcomes must change dataset fingerprint');
 console.log('P23_VERIFIED_SESSION_DATASET=PASS');
