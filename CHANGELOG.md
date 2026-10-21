@@ -1313,5 +1313,5 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 - Bind independent evaluation evidence to the exact staged candidate payload; reject cross-candidate receipt reuse.
 - Add the canonical P23 promotion entry point that rechecks candidate payload/evaluation lineage, runs the existing fitness gate on the envelope's validation/holdout reports, and binds the candidate's persisted signed receipts before delegating to the existing authenticated approval and versioned-store path.
-- Make canonical evidence serialization reject values that cannot be represented as JSON.
-- Added a focused candidate-payload mismatch regression. Validation remains unverified until the targeted test, TypeScript typecheck, and exact-head Actions execute successfully; no promotion or learning uplift is claimed.
+- Make canonical evidence serialization reject values that cannot be represented as JSON; catch malformed/cyclic envelope canonicalization and return a fail-closed binding result.
+- Added focused candidate-payload mismatch and cyclic-envelope rejection regressions. Validation remains unverified until the targeted test, TypeScript typecheck, and exact-head Actions execute successfully; no promotion or learning uplift is claimed.
