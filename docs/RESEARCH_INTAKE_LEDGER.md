@@ -195,3 +195,10 @@ Research protocol lineage: AgentMemoryBench (https://github.com/solomoon313/Agen
 | Candidate / source | URL | Mechanism inspected | Adaptation | Boundary / evidence |
 |---|---|---|---|---|
 | ContinualAI Avalanche (MIT) | https://github.com/ContinualAI/avalanche | `README.md`, `LICENSE`, `avalanche/training/plugins/replay.py`; bounded exemplar memory, mixed current+memory batches, task-balanced replay | Added native TypeScript `ContinualReplayBuffer.ts`: Algorithm-R reservoir, task-balanced sampling without replacement, all-input preflight, defensive copies, versioned snapshot/restore, training composition with the existing `ParametricPolicyLearner` | Python/PyTorch plugin not copied; MIT license and intake record preserved. Regression and workflow step added. Runtime execution/CI result remains pending; no retention or transfer uplift claimed. Production call-site integration and trusted reward provenance remain open. |
+
+
+## WorkPass86 — prioritized replay mechanism adaptation (2026-10-21)
+
+| Candidate / source | URL | Mechanism inspected | Adaptation | Boundary / evidence |
+|---|---|---|---|---|
+| OpenAI Baselines (MIT) | https://github.com/openai/baselines | `baselines/deepq/replay_buffer.py`: proportional prioritization, stratified priority-mass sampling, normalized importance weights, priority epsilon | Added native TypeScript `PrioritizedReplaySampler.ts`, TD-error-to-priority helper, deterministic RNG injection, input validation, regression and CI workflow step; retained upstream MIT license and provenance | **ADAPTED — isolated sampler only.** Does not import Python/NumPy/segment-tree dependencies and does not create a second persistent memory owner. Not wired to production feedback yet; priority must derive from observed error / verified outcome. Runtime tests and CI remain unconfirmed; no quality uplift claimed. |
