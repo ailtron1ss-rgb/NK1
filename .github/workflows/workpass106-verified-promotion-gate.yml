@@ -23,6 +23,8 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts'
       - 'runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs'
       - 'runtime/neuro-kurisu/tests/p23-hermes-reflective-diagnostics.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/HermesVerifiedEvidenceBinding.ts'
+      - 'runtime/neuro-kurisu/tests/p23-hermes-verified-evidence-binding.mjs'
       - '.github/workflows/workpass106-verified-promotion-gate.yml'
   workflow_dispatch:
 permissions:
@@ -69,6 +71,9 @@ jobs:
       - name: Check P23 Hermes reflective diagnostics wiring
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:hermes-reflective-diagnostics
+      - name: Verify Hermes reflective trials against signed shadow receipts
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:hermes-verified-evidence-binding
       - name: Type-check runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
