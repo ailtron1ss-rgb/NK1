@@ -39,12 +39,12 @@ const degraded = evaluateSkillLearnBenchTrial({
   },
 });
 assert.equal(degraded.taskSuccess.passRate, 0);
-assert.equal(degraded.skillQuality.functionalCoverage, 1 / 3);
+assert.equal(degraded.skillQuality.functionalCoverage, 0.333333);
 assert.equal(degraded.skillQuality.executability, 0);
 assert.equal(degraded.skillQuality.safety, 0);
 assert.deepEqual(degraded.skillQuality.missingCapabilityIds, ['summarize', 'cite']);
-assert.equal(degraded.trajectoryQuality.keyPointRecall, 2 / 3);
-assert.equal(degraded.trajectoryQuality.executionOrder, 1 / 3);
+assert.equal(degraded.trajectoryQuality.keyPointRecall, 0.666667);
+assert.equal(degraded.trajectoryQuality.executionOrder, 0.333333);
 assert.deepEqual(degraded.trajectoryQuality.missingStepIds, ['inspect']);
 assert.deepEqual(degraded.trajectoryQuality.unexpectedStepIds, ['unknown']);
 
