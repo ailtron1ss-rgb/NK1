@@ -19,4 +19,4 @@ Uniform replay treats every remembered example equally. Prioritized replay can s
 - The sampler is not wired into the production feedback owner yet; no second memory owner was introduced.
 - Priority must come from measured TD/prediction error or verified outcomes, not arbitrary/untrusted reward.
 - This adapts a mechanism, not the whole Baselines RL stack; NumPy/segment-tree/Python dependencies were intentionally not imported.
-- Regression and typecheck results require a live CI run. No pass or learning uplift is claimed until observed.
+- CI evidence: run 39554673362 on the earlier PR head completed with failure, but GitHub returned no job steps and the log endpoint returned `BlobNotFound`; root cause is unresolved. No run is visible for the final head yet. Treat tests/typecheck as unverified; no pass or learning uplift is claimed.
