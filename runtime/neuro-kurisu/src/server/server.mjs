@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
 import { P23LearningEngine } from '../organism/learning/P23LearningEngine.ts';
+import { generateLocalSkillRevision } from '../organism/learning/P23LocalModelSkillRevisionGenerator.ts';
 import { createVerifiedSkillLifecycleBootstrap } from '../organism/learning/VerifiedSkillLifecycleBootstrap.ts';
 import { parseTrustedShadowLearningScheduleConfig } from '../organism/learning/P23TrustedShadowLearningScheduler.ts';
 import { createSkillPromotionApprovalPayload, createSkillRollbackApprovalPayload, parseTrustedSkillPromotionApprovalKeys } from '../organism/learning/AuthenticatedSkillPromotionApproval.ts';
@@ -67,6 +68,9 @@ async function configureCompoundRepairRevision() {
         candidateStore: lifecycle.store,
         trustedRunRegistry: lifecycle.registry,
         stateDirectory: STATE,
+        // Real llama.cpp-compatible local generator. The provider module still owns
+        // authentic proposal construction and independent baseline/candidate evaluation.
+        generateSkillRevision: (request) => generateLocalSkillRevision(LLAMA_CPP_PROVIDER, request),
     });
     if (typeof provideInputs !== 'function') {
         throw new Error('compound repair revision provider factory must return an input-provider function');
