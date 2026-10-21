@@ -109,6 +109,72 @@ assert.ok(held);
 assert.equal(held.variants.filter(v=>v.toTool==='tool.fallback').length,0,
  'holdout observations must remain evaluation-only');
 
+// The library now owns a callable execution path: actual gateway results flow back into
+// compound and active-variant evidence, and step outputs can bind into later tool inputs.
+const executableSkill=lib.compileCompoundSkill({projectId:'eco-101',name:'executor-output-binding',origin:'intrinsic',steps:[
+ {id:'first',action:'explore',toolId:'tool.first'},
+ {id:'second',action:'verify',toolId:'tool.second',inputBindings:{sourceValue:'first.value'}}
+]});
+assert.ok(executableSkill);
+const executorCalls=[];
+const executed=await lib.executeCompoundSkill(executableSkill.id,{
+ context:'executor-live-context',holdout:false,independent:true,
+ executeTool:async(toolId,toolInput)=>{
+  executorCalls.push({toolId,toolInput});
+  if(toolId==='tool.first')return {ok:true,verified:true,result:{value:'bound-value'},confidence01:.95};
+  assert.equal(toolInput.sourceValue,'bound-value','later steps must receive outputs from earlier steps');
+  return {ok:true,verified:true,result:{done:true},confidence01:.95};
+ }
+});
+assert.equal(executed.ok,true);
+assert.equal(executed.verified,true);
+assert.deepEqual(executorCalls.map(x=>x.toolId),['tool.first','tool.second']);
+assert.equal(executed.outputs.second.done,true);
+assert.equal(executed.skill.nonHoldoutUses,1,'real executor result must feed compound evidence');
+assert.equal(executed.skill.nonHoldoutVerifiedExecutions,1);
+assert.equal(executed.skill.nonHoldoutIndependentExecutions,1);
+assert.equal(executed.skill.variants.find(v=>v.id===executed.skill.activeVariantId).nonHoldoutTrials,1,
+ 'real executor result must also feed active variant evidence');
+
+// A verified fallback execution stages a candidate, but holdout runs cannot create
+// a repair candidate or contribute promotion evidence.
+const fallbackSkill=lib.compileCompoundSkill({projectId:'eco-101',name:'executor-fallback',origin:'intrinsic',steps:[
+ {id:'first',action:'explore',toolId:'tool.primary'},
+ {id:'second',action:'verify',toolId:'tool.finish',fallbackToolIds:['tool.backup']}
+]});
+assert.ok(fallbackSkill);
+let primaryCalls=0;
+const fallbackRun=await lib.executeCompoundSkill(fallbackSkill.id,{
+ context:'verified-fallback-live',holdout:false,independent:true,
+ executeTool:async(toolId)=> {
+  if(toolId==='tool.primary'){primaryCalls++;return {ok:false,verified:false,error:'execution error'};}
+  return {ok:true,verified:true,result:{ok:true},confidence01:.99};
+ }
+});
+assert.equal(fallbackRun.ok,true);
+assert.equal(primaryCalls,1);
+assert.ok(fallbackRun.skill.variants.some(v=>v.status==='candidate'&&v.toTool==='tool.backup'),
+ 'verified fallback execution should stage a candidate through the real executor');
+assert.notEqual(fallbackRun.skill.activeVariantId,fallbackRun.skill.variants.find(v=>v.toTool==='tool.backup')?.id,
+ 'execution must not activate a newly generated repair candidate');
+
+const sealedExecutorSkill=lib.compileCompoundSkill({projectId:'eco-101',name:'executor-holdout',origin:'intrinsic',steps:[
+ {id:'first',action:'explore',toolId:'tool.primary'},
+ {id:'second',action:'verify',toolId:'tool.finish',fallbackToolIds:['tool.backup']}
+]});
+assert.ok(sealedExecutorSkill);
+const sealedExecution=await lib.executeCompoundSkill(sealedExecutorSkill.id,{
+ context:'executor-sealed-context',holdout:true,independent:true,
+ executeTool:async(toolId)=>toolId==='tool.primary'
+  ? {ok:false,verified:false,error:'execution error'}
+  : {ok:true,verified:true,result:{ok:true},confidence01:.99}
+});
+assert.equal(sealedExecution.ok,true);
+assert.equal(sealedExecution.skill.uses,1);
+assert.equal(sealedExecution.skill.nonHoldoutUses,0);
+assert.equal(sealedExecution.skill.variants.filter(v=>v.toTool==='tool.backup').length,0,
+ 'holdout fallback observations must not generate repair variants');
+
 const variant=lib.createRepairVariant(skill.id,{stepId:'b',toTool:'tool.fallback',reason:'verified alternative'});
 assert.ok(variant); assert.equal(variant.status,'candidate');
 // Direct promotion and the meta-operation must enforce the same evidence gate
