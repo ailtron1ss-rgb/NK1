@@ -475,7 +475,15 @@ export class ProceduralSkillLibrary{
   }
   promoteVariant(id:string,variantId:string):CompoundSkillVariant|null{
     const skill=this.state.compoundSkills.find(x=>x.id===id); const variant=skill?.variants.find(v=>v.id===variantId); if(!skill||!variant||variant.status==='rejected')return null;
-    const oldId=skill.activeVariantId; if(oldId===variantId){variant.status='active';return structuredClone(variant);} if(oldId){const old=skill.variants.find(v=>v.id===oldId);if(old)old.status='retired';}
+    const oldId=skill.activeVariantId;
+    if(oldId===variantId){variant.status='active';return structuredClone(variant);}
+    // Enforce the evidence gate at the mutation boundary, not only in the
+    // observation path. Public/meta-operation callers must not bypass it.
+    const verifiedNonHoldout=Number.isFinite(variant.verifiedNonHoldoutExecutions)?variant.verifiedNonHoldoutExecutions:0;
+    const successRate=variant.successes/Math.max(1,variant.trials);
+    const promotable=variant.status==='candidate'&&variant.trials>=3&&successRate>=.75&&verifiedNonHoldout>=2&&variant.independentExecutions>=1&&variant.confidence01>=.52;
+    if(!promotable)return null;
+    if(oldId){const old=skill.variants.find(v=>v.id===oldId);if(old)old.status='retired';}
     skill.steps=structuredClone(variant.steps); skill.activeVariantId=variantId; variant.status='active'; skill.mutations++; skill.repairs++; skill.lineageVersion=Math.max(skill.lineageVersion,variant.version);
     skill.adaptations=[{at:Date.now(),stepId:variant.stepId,fromTool:variant.fromTool,toTool:variant.toTool,reason:`variant-promoted:${variant.reason}`,verified:true,confidence01:variant.confidence01},...skill.adaptations].slice(0,32); return structuredClone(variant);
   }
