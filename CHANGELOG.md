@@ -4,7 +4,7 @@
 - This reuses the existing SkillLearnBench paired gate while requiring integrity-checked baseline and candidate envelopes, identical task plan/environment/experiment manifest, distinct method labels, one-to-one task/trial/seed/split matching, verifier-bound runs, and safety-clean evidence. A caller can no longer pass an unrelated baseline report collection to make a candidate appear eligible.
 - Added an explicit runtime guard for absent/malformed envelopes before dereferencing nested fields. The existing store still independently re-verifies persisted signed shadow receipts and the authenticated approval at activation.
 - Source patterns adapted: matched-pair experimental design, provenance-bound evidence, and fail-closed tool authority from the existing P23 evaluator and Hermes bridge; no parallel evaluator, scoring engine, or promotion store was introduced.
-- **Regression authored:** extended `p23-hermes-production-promotion-gate.mjs` to prove that caller-supplied baseline report arrays and malformed envelopes fail before approval is reached.
+- **Regression + CI wiring:** extended `p23-hermes-production-promotion-gate.mjs` to prove that caller-supplied baseline report arrays and malformed envelopes fail before approval is reached; added the test and P23LearningEngine to the learning workflow path filters and an explicit execution step.
 - **Validation caveat:** source change and regression are committed; test execution, typecheck, and exact-head Actions are not yet confirmed passing. Keep the PR draft and do not claim promotion works in production until the trusted execution path and approval service are exercised end to end.
 ## WorkPass235 — join independent P23 evaluations to signed Hermes shadow evidence (2026-10-21)
 
