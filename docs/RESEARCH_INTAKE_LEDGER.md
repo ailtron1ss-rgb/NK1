@@ -57,6 +57,13 @@ Create a row or linked detail page with all fields below before treating the can
 - **Experiment:** reproducible baseline, same data and budget, held-out cases, ablation/counterfactual, confidence interval, failure cases and rollback.
 - **Decision:** integrate / adapt / research-only / reject, with measured result and rationale.
 
+## WorkPass131 — execution-attestation context binding (2026-10-21)
+
+| Candidate / source | Mechanism observed | NK1 adaptation | Status |
+|---|---|---|---|
+| [in-toto Attestation Statement v1](https://github.com/in-toto/attestation/blob/main/spec/v1/statement.md) and [framework spec](https://github.com/in-toto/attestation/blob/main/spec/README.md) | An authenticated statement binds a claim to an explicit subject and typed predicate; consumers evaluate the binding, not just the existence of an envelope/signature. | Extended the existing signed shadow-evidence verifier so a receipt must match independently resolved run ID, task ID, seed, manifest fingerprint and runtime version, in addition to candidate/version/payload identity and Ed25519 signature. No upstream code or dependency was copied; this is a narrow contract adaptation. | **IMPLEMENTED; execution unverified** — regression covers each mismatched context field after durable-store reconstruction. Production resolver still must be wired to the trusted supervisor/run ledger. |
+| [The Update Framework security model](https://theupdateframework.github.io/security.html) | Freshness and rollback protection require state/context beyond a valid signature. | Reinforces that cryptographic authenticity alone is insufficient; NK1 continues to require durable state and revalidation before promotion. No TUF client or metadata protocol was imported. | **DESIGN INPUT** — no claim of full TUF conformance. |
+
 ## Next research pass
 
 1. Build a source-level call graph for the canonical runtime and identify one actual bottleneck from traces/tests before selecting a new architecture.
