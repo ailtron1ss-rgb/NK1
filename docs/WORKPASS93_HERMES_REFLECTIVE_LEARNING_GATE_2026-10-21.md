@@ -35,6 +35,7 @@ Extended the existing `SkillLearnBenchAdapter.ts` rather than creating a competi
 - Adds regression tests for leakage, forged aggregates, empty rubrics, duplicate trials, normalized task identity, and malformed runtime inputs; wires them into the existing P26 learning-validation workflow. No new runtime dependency is added.
 - Rejects empty required-capability and expected-trajectory rubrics instead of allowing the zero-denominator ratio helper to score an empty reference as perfect.
 - Hardens the existing aggregate API against duplicate task/trial evidence, malformed score values, and whitespace-split task groups.
+- Makes trajectory completeness a distinct F1-like measure that penalizes both missing reference steps and unexpected actions; previously it duplicated key-point recall and failed to penalize extra actions.
 
 ## Validation status
 
