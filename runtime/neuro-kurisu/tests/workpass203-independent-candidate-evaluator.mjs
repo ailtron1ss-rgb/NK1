@@ -214,10 +214,15 @@ const authorityEvaluation = await authorityEvaluator({
   baseline: { validation: [], holdout: [] },
   previousEvaluation: { validation: [], holdout: [] },
 });
-const ledgerCommit = recordIndependentEvaluationOutcomes(authorityEvaluation.evaluation, experimentAuthority, 1700000000000);
+const tamperedEvaluation = structuredClone(authorityEvaluation);
+tamperedEvaluation.evaluation.validation[0].taskSuccess.passed = false;
+assert.throws(() => recordIndependentEvaluationOutcomes(tamperedEvaluation, experimentAuthority, 1700000000000),
+  /evaluation-fingerprint-mismatch/,
+  'ledger commit must reject reports changed after independent evaluation');
+const ledgerCommit = recordIndependentEvaluationOutcomes(authorityEvaluation, experimentAuthority, 1700000000000);
 assert.equal(ledgerCommit.accepted, 2, 'both independently bound split outcomes should enter the canonical ledger');
 assert.equal(authorityLedger.snapshot().acceptedOutcomes, 2);
 assert.equal(authorityLedger.comparePaired('prior', 'candidate', 'holdout').pairedN, 0,
   'candidate evidence alone must not fabricate baseline comparison evidence');
 
-console.log('WorkPass203/212/213 independent evaluation, execution binding, and experiment-ledger integration: PASS');
+console.log('WorkPass203/212/213/214 independent evaluation, execution binding, and experiment-ledger integration: PASS');
