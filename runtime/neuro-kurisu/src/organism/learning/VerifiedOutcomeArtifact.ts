@@ -39,6 +39,21 @@ export function outcomePayloadFingerprint(payload: SignedOutcomePayload): string
   return createHash('sha256').update(canonicalOutcomePayload(payload)).digest('hex');
 }
 
+// A provenance receipt is process-local by design. A restored ledger snapshot does
+// not inherit trust: its signed artifacts must be re-ingested and re-verified.
+const authenticatedEvidence = new WeakMap<VerifiedOutcomeLedger, Map<string, string>>();
+
+export function hasAuthenticatedOutcomeEvidence(ledger: VerifiedOutcomeLedger, evidenceRef: string): boolean {
+  return authenticatedEvidence.get(ledger)?.has(evidenceRef) ?? false;
+}
+
+export function authenticatedOutcomeEvidenceFingerprint(
+  ledger: VerifiedOutcomeLedger,
+  evidenceRef: string,
+): string | undefined {
+  return authenticatedEvidence.get(ledger)?.get(evidenceRef);
+}
+
 /**
  * Accepts only artifacts signed by an explicitly trusted verifier key and bound
  * to the exact task manifest. The caller must obtain the artifact independently;
@@ -103,9 +118,13 @@ export function ingestSignedOutcomeArtifact(
     observedAt: payload.observedAt,
   };
   const result = ledger.record(outcome);
-  return result.accepted
-    ? { accepted: true, artifactFingerprint: fingerprint }
-    : { accepted: false, artifactFingerprint: fingerprint, rejection: result.rejection?.code ?? 'ledger-rejected' };
+  if (!result.accepted) {
+    return { accepted: false, artifactFingerprint: fingerprint, rejection: result.rejection?.code ?? 'ledger-rejected' };
+  }
+  const evidence = authenticatedEvidence.get(ledger) ?? new Map<string, string>();
+  evidence.set(outcome.evidenceRef, fingerprint);
+  authenticatedEvidence.set(ledger, evidence);
+  return { accepted: true, artifactFingerprint: fingerprint };
 }
 
 /** Helper for producers/tests; production private keys must never live in NK1 runtime. */
