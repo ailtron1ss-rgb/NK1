@@ -504,6 +504,50 @@ export class P23LearningEngine {
     return {active,fitness,evidenceBinding};
   }
 
+  /**
+   * Promotion entry point for a candidate evaluated by the independent P23
+   * evaluator and joined to Hermes signed shadow receipts. It binds the exact
+   * staged payload and persisted evaluation fingerprint before fitness gating;
+   * the store still re-verifies receipts and authenticated approval at commit.
+   */
+  approveIndependentlyEvaluatedSkillCandidate(
+    candidateId:string,
+    approval:SkillPromotionApproval,
+    baseline:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    evaluation:Parameters<typeof bindIndependentEvaluationToVerifiedShadowEvidence>[0],
+    verifyEvidence:SkillShadowEvidenceVerifier,
+    minShadowRuns=3,
+    options:SkillLearnBenchCandidateGateOptions={},
+  ):{active:ActiveSkillVersion;fitness:SkillLearnBenchCandidateGateReport;evidenceBinding:ReflectiveEvidenceBindingReport} {
+    if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    const snapshot=this.verifiedSkillStore.snapshot();
+    const staged=snapshot.candidates.find(item=>item.candidateId===candidateId);
+    if(!staged || staged.status!=='shadow') throw new Error('independent promotion requires an existing shadow candidate');
+    if(evaluation.payloadFingerprint!==staged.payloadFingerprint) {
+      throw new Error('independent evaluation payload does not match the exact staged candidate');
+    }
+    if(!staged.revisionProvenance?.evaluationFingerprint ||
+       staged.revisionProvenance.evaluationFingerprint!==evaluation.evaluationFingerprint) {
+      throw new Error('independent evaluation fingerprint does not match staged candidate revision provenance');
+    }
+    const candidateEvaluation={
+      validation:[...evaluation.evaluation.validation],
+      holdout:[...evaluation.evaluation.holdout],
+    };
+    const fitness=this.evaluateReflectiveSkillCandidate(baseline,candidateEvaluation,options);
+    if(!fitness.eligible) throw new Error(`independent reflective fitness gate rejected candidate: ${fitness.reasons.join(',')}`);
+    // Bind against the exact receipts persisted on the candidate; caller-supplied
+    // alternate receipts cannot be used to pass this pre-promotion check.
+    const evidenceBinding=this.bindIndependentEvaluationEvidence(
+      evaluation,staged.shadowObservations,staged,verifyEvidence,
+    );
+    if(!evidenceBinding.accepted) {
+      throw new Error(`independent evidence binding rejected candidate: ${evidenceBinding.reasons.join(',')}`);
+    }
+    const active=this.approveVerifiedSkillCandidate(candidateId,approval,minShadowRuns);
+    return {active,fitness,evidenceBinding};
+  }
+
   approveVerifiedSkillCandidate(
     candidateId:string,
     approval:SkillPromotionApproval,
