@@ -68,6 +68,19 @@ try {
   assert.equal(request.payload.shadowEvidenceFingerprint.length, 64);
   assert.match(request.warning, /does not authorize activation/);
 
+  const tamperedCandidate = {
+    ...candidate,
+    shadowObservations: candidate.shadowObservations.map((observation, index) => index === 0
+      ? { ...observation, artifact: { ...observation.artifact, signature: 'AAAA' } }
+      : observation),
+  };
+  await writeFile(storePath, JSON.stringify({ ...snapshot, candidates: [tamperedCandidate] }));
+  await assert.rejects(
+    () => createSkillPromotionApprovalRequest({ ...options, approverId: 'reviewer-1', approvalId: 'approval-tampered', now: 5000 }),
+    /fails signature or trusted-run context verification/,
+  );
+  await writeFile(storePath, JSON.stringify(snapshot));
+
   await assert.rejects(
     () => createSkillPromotionApprovalRequest({ ...options, approverId: 'reviewer-1', approvalId: 'approval-2', minShadowRuns: 4, now: 5000 }),
     /does not satisfy the requested all-passing shadow run threshold/,
