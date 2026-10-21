@@ -44,3 +44,11 @@ These references are design candidates, not a claim that every repository was ex
 - Requires paired attempt-1 outcomes on the held-out split, authoritative evidence, matching verifier identity for independent-verifier rows, a minimum sample count, material net gain, and no sufficiently sampled family regression beyond the configured bound.
 - It does not rewrite the live skill store; a passed result only authorizes a revision proposal for a separate controlled integration step.
 - Regression covers success, self-report rejection, family regression, and train/holdout separation.
+
+
+## WorkPass121 addendum — ledger-bound promotion proposals
+- Added `VerifiedSkillPromotion.ts` to derive candidate revision proposals from the canonical `VerifiedOutcomeLedger`, not caller-invented observation arrays.
+- The proposal binds to the task-manifest fingerprint, filters to holdout tasks and the two named methods, relies on ledger-accepted outcomes, reports complete paired-seed coverage, and blocks incomplete coverage.
+- Proposal generation is side-effect-free and always returns `canActivateAutomatically: false`; activation requires revalidation, explicit authority, shadow/canary comparison and a rollback-capable prior version.
+- Added a regression for accepted proposals and incomplete-seed blocking; wired it into the learning workflow.
+- This closes part of the evidence-to-proposal gap, but does not yet authenticate external artifact bytes or activate/rollback the production skill store. Those remain explicit integration work.
