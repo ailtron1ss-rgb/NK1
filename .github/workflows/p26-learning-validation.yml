@@ -5,6 +5,7 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts"
       - "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/ContinualReplayBuffer.ts"
       - "runtime/neuro-kurisu/tests/p26-*.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
@@ -49,6 +50,9 @@ jobs:
       - name: Run SkillLearnBench-compatible evaluation adapter regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p26-skilllearnbench-adapter.mjs
+      - name: Run continual experience replay regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p26-continual-replay-buffer.mjs
       - name: Run existing P26 learning regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:true-learning
