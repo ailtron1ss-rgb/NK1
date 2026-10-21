@@ -188,7 +188,7 @@ export class OrganismRuntime {
     });
     const worldPath = config.worldStateFile ?? config.stateFile.replace(/\.json$/i, '.world.json');
     this.worldStore = config.worldStateStore ?? new FileStateStore<PersistedWorld>(worldPath);
-    const skillStatePath = config.stateFile.replace(/\\.json$/i, '.procedural-skills.json');
+    const skillStatePath = `${config.stateFile}.procedural-skills.json`;
     this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
     this.continuityLedger = new ContinuityLedger(config.stateFile.replace(/\.json$/i, '.continuity.jsonl'));
@@ -933,7 +933,7 @@ export class OrganismRuntime {
         return await this.proceduralSkillLibrary.executeCompoundSkill(id,{
           context,holdout:run.holdout,independent:run.independent,
           executeTool:async(toolId,toolInput,step)=>{
-            const idempotencyKey=createHash('sha256').update(`procedural-skill\\0${runId}\\0${id}\\0${step.id}\\0${toolId}`).digest('hex');
+            const idempotencyKey=createHash('sha256').update(['procedural-skill',runId,id,step.id,toolId].join('\\u0000')).digest('hex');
             const execution=await this.core.executeTool(toolId,toolInput,`procedural-skill:${id}:${step.id}`,{
               idempotencyKey,decisionId:runId,autonomous:run.autonomous,expectedOutputKeys:step.expectedOutputKeys,
             });
