@@ -39,6 +39,8 @@ import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleCo
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
 import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
+import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEvaluationProvider.ts';
+import type { IndependentCandidateEvaluationConfig } from '../learning/IndependentSkillCandidateEvaluator.ts';
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
@@ -89,7 +91,12 @@ export interface RuntimeConfig extends OrganismConfig {
   /** Explicit opt-in to scheduled, Core-owned P23 candidate/shadow learner runs. */
   trustedShadowLearning?: TrustedShadowLearningScheduleConfig;
   /** Explicitly configure the production bridge from verified compound repairs into P23 revision staging. */
-  compoundRepairRevision?: { engine: P23LearningEngine; provideInputs: CompoundRepairRevisionInputProvider };
+  compoundRepairRevision?: {
+    engine: P23LearningEngine;
+    provideInputs: CompoundRepairRevisionInputProvider;
+    /** When supplied, replaces provider-supplied candidate evaluation with exact-payload independent execution. */
+    independentEvaluationConfigForRepair?: (input: Parameters<CompoundRepairRevisionInputProvider>[0]) => IndependentCandidateEvaluationConfig;
+  };
   /** P2836: how real device outcomes compete with the predictive simulator. */
   realityMode?: RealityGroundingMode;
 }
@@ -187,8 +194,14 @@ export class OrganismRuntime {
       if (!config.compoundRepairRevision.engine.verifiedSkillCandidateSnapshot()) {
         throw new Error('compound-repair-revision requires a configured verified P23 candidate store');
       }
+      const provideInputs = config.compoundRepairRevision.independentEvaluationConfigForRepair
+        ? withIndependentCandidateEvaluation(
+            config.compoundRepairRevision.provideInputs,
+            config.compoundRepairRevision.independentEvaluationConfigForRepair,
+          )
+        : config.compoundRepairRevision.provideInputs;
       this.compoundRepairRevisionCoordinator = new P23CompoundRepairRevisionCoordinator(
-        this, config.compoundRepairRevision.engine, config.compoundRepairRevision.provideInputs,
+        this, config.compoundRepairRevision.engine, provideInputs,
       );
     } else {
       this.compoundRepairRevisionCoordinator = null;
