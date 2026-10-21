@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { P23CompoundRepairRevisionCoordinator } from '../src/organism/learning/P23CompoundRepairRevisionCoordinator.ts';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 
 const evidence = [{
   skillId: 'skill-a', skillName: 'fallback', failureFingerprint: 'fp-a', stepId: 'step-1',
@@ -52,4 +53,26 @@ assert.deepEqual(await noEvidenceCoordinator.reviseFromObservedRepairs('skill-a'
   status: 'no-eligible-repair-evidence', skillId: 'skill-a', repairEvidenceCount: 0,
 });
 await assert.rejects(() => coordinator.reviseFromObservedRepairs('   '), /compound skill id is required/);
+// Exercise the public runtime entry point without constructing unrelated Core subsystems.
+const runtimeFacade = Object.create(OrganismRuntime.prototype);
+runtimeFacade.initialized = true;
+runtimeFacade.compoundRepairRevisionCoordinator = {
+  reviseFromObservedRepairs: async id => ({ status: 'no-eligible-repair-evidence', skillId: id, repairEvidenceCount: 0 }),
+};
+runtimeFacade.enqueue = work => work();
+runtimeFacade.journal = { write: async () => {} };
+assert.deepEqual(await runtimeFacade.reviseCompoundSkillsFromObservedRepairs('skill-empty'), {
+  status: 'no-eligible-repair-evidence', skillId: 'skill-empty', repairEvidenceCount: 0,
+});
+runtimeFacade.compoundRepairRevisionCoordinator = null;
+await assert.rejects(
+  () => runtimeFacade.reviseCompoundSkillsFromObservedRepairs('skill-empty'),
+  /compound-repair-revision-provider-not-configured/,
+);
+runtimeFacade.initialized = false;
+await assert.rejects(
+  () => runtimeFacade.reviseCompoundSkillsFromObservedRepairs('skill-empty'),
+  /organism-runtime-not-initialized/,
+);
+
 console.log('WorkPass172 coordinator regression passed');
