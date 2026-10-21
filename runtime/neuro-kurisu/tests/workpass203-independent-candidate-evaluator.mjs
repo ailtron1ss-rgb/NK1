@@ -327,7 +327,7 @@ assert.equal(retainedExecutionResults[0].observedStepIds[0], 'forged-after-retur
   'regression must actually mutate the executor-owned trace after return');
 assert.equal(detachedTraceResult.evaluation.provenance.runBindings[0].observedStepIds[0], 'open',
   'trusted provenance must retain the trace snapshot captured before verifier I/O');
-assert.equal(detachedTraceResult.evaluation.validation[0].trajectoryScore.observedStepIds[0], 'open',
+assert.equal(detachedTraceResult.evaluation.validation[0].trajectoryQuality.unexpectedStepIds[0], 'open',
   'scoring must not read a later-mutated executor-owned trace');
 
 console.log('WorkPass203/212/213/214/219 independent evaluation, execution binding, and experiment-ledger integration: PASS');
