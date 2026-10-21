@@ -67,6 +67,14 @@ assert.equal(held.variants.filter(v=>v.toTool==='tool.fallback').length,0,
 
 const variant=lib.createRepairVariant(skill.id,{stepId:'b',toTool:'tool.fallback',reason:'verified alternative'});
 assert.ok(variant); assert.equal(variant.status,'candidate');
+// Direct promotion and the meta-operation must enforce the same evidence gate
+// as automatic promotion; an untested candidate cannot replace the active variant.
+assert.equal(lib.promoteVariant(skill.id,variant.id),null,
+ 'direct promotion must reject candidates without independent verified evidence');
+assert.equal(lib.skillMetaOperation('promote-variant',skill.id,{variantId:variant.id}),null,
+ 'meta-operation promotion must not bypass the evidence gate');
+assert.equal(lib.snapshot().compoundSkills.find(s=>s.id===skill.id).activeVariantId,`base:${skill.id}`);
+assert.equal(lib.snapshot().compoundSkills.find(s=>s.id===skill.id).variants.find(v=>v.id===variant.id).status,'candidate');
 lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,independent:true,context:'holdout-1'});
 lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,context:'holdout-2'});
 const beforeFinal=lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,context:'holdout-3'});
