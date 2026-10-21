@@ -79,3 +79,34 @@ export function verifySignedSkillShadowObservation(
     return false;
   }
 }
+
+export interface TrustedShadowExecutionContext {
+  manifestFingerprint: string;
+  runtimeVersion: string;
+}
+
+/**
+ * Bind a cryptographically valid receipt to independently supplied execution
+ * context. The resolver must read trusted run records/configuration, never fields
+ * copied from the receipt itself. Missing context fails closed.
+ */
+export function createContextBoundSkillShadowEvidenceVerifier(
+  trustedVerifierKeys: ReadonlyMap<string, string>,
+  resolveTrustedContext: (
+    observation: Readonly<SkillShadowObservation>,
+    candidate: Readonly<VersionedSkillCandidate>,
+  ) => TrustedShadowExecutionContext | null,
+): (observation: Readonly<SkillShadowObservation>, candidate: Readonly<VersionedSkillCandidate>) => boolean {
+  return (observation, candidate) => {
+    if (!verifySignedSkillShadowObservation(observation, candidate, trustedVerifierKeys)) return false;
+    let context: TrustedShadowExecutionContext | null;
+    try { context = resolveTrustedContext(observation, candidate); }
+    catch { return false; }
+    if (!context || !/^[a-f0-9]{64}$/.test(context.manifestFingerprint) ||
+        typeof context.runtimeVersion !== 'string' || !context.runtimeVersion.trim()) return false;
+    const payload = observation.artifact!.payload;
+    return payload.manifestFingerprint === context.manifestFingerprint &&
+      payload.runtimeVersion === context.runtimeVersion;
+  };
+}
+
