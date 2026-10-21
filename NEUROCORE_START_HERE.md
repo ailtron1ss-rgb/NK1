@@ -7,10 +7,16 @@
 **This document is the durable instruction for future work. Read it before starting a new pass.**
 
 
-## Latest durable checkpoint — WorkPass125 (2026-10-21)
+## Latest durable checkpoint — WorkPass126 (2026-10-21)
+
+- WorkPass126 implementation report: `docs/WORKPASS126_SKILL_STORE_INTEGRITY_2026-10-21.md`. The durable skill-store adapter now rejects malformed nested active/candidate records, recomputes payload fingerprints/candidate identity, and validates CAS input. Regression cases were added for malformed records and stale payload fingerprints.
+- Commits: `1f715143725186dc0c997c4126a2231833f04868`, `62c0d115f4575f745c5b1819dfd6c25bdc2e5aab`, `7351c578e951480c20981835e061798fec0c80ac`, `6d0ea3dc46df1057374fc8acb55cea1334233ba0`, report `be841c46cdf395d437c941aa8961f6c85c86d27a`. Implementation is committed; test/typecheck/CI status is not yet PASS.
+- Run the owning failure-boundary test and runtime typecheck next, then resume the promotion-path/call-graph audit. No claim of learning uplift is justified by this persistence fix.
+
+## Previous durable checkpoint — WorkPass125 (2026-10-21)
 
 - Active learning branch: `workpass124-learning-evidence-hardening`; draft PR #12: https://github.com/ailtron1ss-rgb/NK1/pull/12. It is stacked on draft PR #11 / `workpass123-authenticated-skill-lifecycle`.
-- Read `docs/WORKPASS125_REPOSITORY_SYNC_AUDIT_2026-10-21.md` first. It records exact branch heads, rollback anchors, canonical subsystem owners, CI evidence gaps and the safe integration sequence.
+- Read `docs/WORKPASS126_SKILL_STORE_INTEGRITY_2026-10-21.md` first, then `docs/WORKPASS125_REPOSITORY_SYNC_AUDIT_2026-10-21.md`. It records exact branch heads, rollback anchors, canonical subsystem owners, CI evidence gaps and the safe integration sequence.
 - The source stack is based on `workpass70-source`; `main` is a separate 12-path release/metadata branch. GitHub compare reports no common ancestor between `main` and the source stack. Do not merge the source stack directly into `main`.
 - WorkPass124 head before this navigation refresh: `372c0bbb4d020901e1c935cf84fc63cff13c9f36`; PR #12 states that its failure-boundary regression has not yet passed CI. The synchronization-audit commit itself has no reported statuses or workflow runs; that is not a pass.
 - Refresh the live branch head, stacked PR state and exact-head Actions status before continuing. Keep PRs draft until owning tests and typecheck pass.
