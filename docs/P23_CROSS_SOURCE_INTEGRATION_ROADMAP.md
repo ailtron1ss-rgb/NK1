@@ -1,6 +1,6 @@
 # Neuro Kurisu — cross-source learning integration roadmap
 
-Latest implementation checkpoint: WorkPass235 (P23 independent-evaluation ↔ Hermes signed-shadow-evidence binding); code and regression are committed on the current draft PR branch, but execution results remain unverified.
+Latest implementation checkpoint: WorkPass236 (exact-payload binding through the existing P23 promotion path); code and regression are committed on the current draft PR branch, but execution results remain unverified.
 
 Scope: continue integrating mechanisms into the existing P23 learning/revision lifecycle. This is an implementation queue, not a promise that upstream mechanisms are already integrated. Preserve the current branch/PR boundary; do not merge to the default branch without explicit approval.
 
