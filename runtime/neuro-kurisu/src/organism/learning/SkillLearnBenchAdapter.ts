@@ -85,6 +85,7 @@ export function evaluateSkillLearnBenchTrial(
   }
   if (typeof input.verifierPassed !== 'boolean') throw new Error('invalid-verifier-result');
   if (!input.skill || typeof input.skill.executable !== 'boolean') throw new Error('invalid-skill-executability');
+  if (!input.trajectory || typeof input.trajectory !== 'object') throw new Error('invalid-trajectory');
   if (!Number.isSafeInteger(input.skill.safetyViolationCount) || input.skill.safetyViolationCount < 0) {
     throw new Error('invalid-safety-violation-count');
   }
@@ -317,6 +318,9 @@ export function evaluateSkillLearnBenchCandidate(
   },
   options: SkillLearnBenchCandidateGateOptions = {},
 ): SkillLearnBenchCandidateGateReport {
+  if (!baseline || typeof baseline !== 'object' || !candidate || typeof candidate !== 'object') {
+    throw new Error('candidate-evaluation-input-invalid');
+  }
   const minGain = options.minimumValidationGain01 ?? 0.005;
   const maxRegression = options.maximumHoldoutRegression01 ?? 0.02;
   const minHoldoutTasks = options.minimumHoldoutTasks ?? 2;
