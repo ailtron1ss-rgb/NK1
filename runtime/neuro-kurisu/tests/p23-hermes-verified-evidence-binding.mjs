@@ -144,6 +144,17 @@ const tamperedEnvelopeBound = engine.bindIndependentEvaluationEvidence(
 assert.equal(tamperedEnvelopeBound.accepted, false,
   'receipt binding must reject a modified or mismatched evaluation digest');
 assert.ok(tamperedEnvelopeBound.reasons.includes('independent-evaluation-envelope-integrity-invalid'));
+
+const cyclicEvaluation = structuredClone(independentEvaluation);
+cyclicEvaluation.provenance.self = cyclicEvaluation;
+const cyclicEnvelopeBound = engine.bindIndependentEvaluationEvidence(
+  { ...independentEnvelope, evaluation: cyclicEvaluation },
+  independentReceipts, candidate, verifier,
+);
+assert.equal(cyclicEnvelopeBound.accepted, false,
+  'cyclic or non-canonicalizable envelope data must fail closed instead of escaping the evidence gate');
+assert.ok(cyclicEnvelopeBound.reasons.includes('independent-evaluation-envelope-not-canonicalizable'));
+
 const wrongSeedEvaluation = structuredClone(independentEvaluation);
 wrongSeedEvaluation.provenance.runBindings[1].seed = 23;
 const wrongSeedEnvelope = { ...independentEnvelope, evaluation: wrongSeedEvaluation, evaluationFingerprint: digest(wrongSeedEvaluation) };
