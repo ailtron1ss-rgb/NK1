@@ -1,3 +1,17 @@
+## GitHub implementation checkpoint — WorkPass148 (2026-10-21)
+
+**Active code branch:** `workpass135-durable-shadow-run-registry` · **Draft PR:** [#22](https://github.com/ailtron1ss-rgb/NK1/pull/22) · **latest checkpoint subject:** production verified-shadow learning lifecycle. This GitHub implementation branch is tracked separately from the historical WorkPass57 archive baseline below; no new release archive or release-readiness score is asserted.
+
+- **DONE — source code:** explicit opt-in `OrganismRuntime` shadow clock and production `server.mjs` configuration, with awake/resource/budget gating.
+- **DONE — provenance/evidence path:** trusted run context is durably registered before spawn; only bounded per-run signed observation artifacts with matching run ID enter `OrganismCore.recordVerifiedSkillShadow`, whose candidate store verifies signature and the exact registered context.
+- **DONE — candidate staging:** CLI re-ingests all signed holdout outcome artifacts against an exact manifest, enforces the evaluation gate, and stages only through the Core-owned API. Candidate schema bounds are enforced. No automatic activation occurs.
+- **DONE — promotion authorization code:** separate configured Ed25519 approval authority; approval binds candidate/version/payload/proposal/outcome, CAS active version, required shadow count and the exact shadow evidence digest. API exposes lifecycle/request/apply paths under the existing authorization middleware.
+- **DONE — restore boundary:** active-skill JSON alone is not authority; active candidate/payload correspondence, signed approval and shadow evidence are rechecked when the store is reconstructed/read.
+- **PARTIAL — validation:** source regressions and workflow wiring are in the branch. Exact-head Actions jobs continue to fail before exposing steps/logs (`steps: null`, `logs_url: null`), so typecheck and test execution remain **unverified** rather than passed.
+- **OPEN P0:** production-managed verifier/approver keys and rotation/revocation policy; a truly independent runner and real verifier evidence; authenticated rollback authorization; deployment-shaped end-to-end run + restart/rollback; successful CI/typecheck; real holdout, transfer and retention uplift.
+
+The historical WorkPass57 release baseline and its 78.0% release-roadmap number are preserved below and are not recalculated from these GitHub branch changes.
+
 # Neuro-Kurisu — канонический backlog (WorkPass57, 17.10.2026)
 
 **Текущая база:** `Neuro_Kurisu_WORKPASS56_2026-10-17.zip` → результат `Neuro_Kurisu_WORKPASS57_2026-10-17.zip`. **Runtime:** `35.77.0` / schema `225`. **Статус:** implementation workpass; release approval не заявляется. Детальная дельта пробелов: `docs/ROADMAP_GAPS_TO_TARGET_WORKPASS57.md`; историческая карта WorkPass56 сохранена отдельно.
