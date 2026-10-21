@@ -9,6 +9,16 @@ const tasks = [
   { taskId: 'tool-a', family: 'tool-use', split: 'holdout', promptFingerprint: prompt('tool A'), verifierId: 'v1', version: '1' },
   { taskId: 'train-only', family: 'memory', split: 'train', promptFingerprint: prompt('train only'), verifierId: 'v1', version: '1' },
 ];
+assert.throws(
+  () => new VerifiedOutcomeLedger(tasks.map((task, index) => index === 0 ? { ...task, split: 'hidden' } : task)),
+  /invalid task manifest entry/,
+  'unknown split labels must not silently remove tasks from holdout coverage',
+);
+assert.throws(
+  () => new VerifiedOutcomeLedger(tasks.map((task, index) => index === 0 ? { ...task, family: '   ' } : task)),
+  /invalid task manifest entry/,
+  'whitespace-only family labels must not create ambiguous evaluation strata',
+);
 const ledger = new VerifiedOutcomeLedger(tasks);
 const record = (taskId, method, seed, passed, attempt = 1) => ledger.record({
   taskId, taskVersion: '1', method, seed, attempt, passed,
