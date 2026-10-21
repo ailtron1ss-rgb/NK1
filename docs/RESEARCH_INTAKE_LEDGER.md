@@ -24,6 +24,15 @@
 
 NK1 adaptation from this research in WorkPass116: add seed-clustered paired outcomes so task cells within a run do not inflate the independent sample count. This is a measurement-integrity improvement, not evidence that any learning strategy is better. The upstream benchmark datasets, task code and Docker/API integrations were not copied.
 
+## Continual-learning evaluation refresh (2026-10-21)
+
+| Candidate / source | Evidence / license | NK1 adaptation | Decision |
+|---|---|---|---|
+| retention-bench | https://github.com/symbolfarm/retention-bench ; public research workbench extending CL-Bench; repository describes a hard process reset with only an on-disk survive-directory preserved and distinguishes retained records from integrated capability. Verify the current upstream LICENSE and dependency pin before any code reuse. | NK1 already has a matched hard-reset retention evaluator (WorkPass115). Next integration is protocol-level: run real subprocess resets, separate intact-store from wiped-store arms, and report a gain curve over reset frequency; do not treat an in-process snapshot/restore test as equivalent to a hard reset. | **ADAPT PROTOCOL; NO CODE COPIED** |
+| AgentMemoryBench | https://github.com/solomoon313/AgentMemoryBench ; upstream repository reports offline, online, replay, transfer and repair modes over code-, web-, embodied- and dialogue-grounded tasks; verify exact dataset provenance and task-level licenses before importing any instances. | Map NK1's existing outcome matrix onto explicit online gain, replay forgetting, cross-family transfer and repair-after-incorrect-feedback reports. Keep external task sets held out; never train on evaluator answers/verifiers. | **ADAPT EVALUATION MATRIX; DATA NOT COPIED** |
+
+WorkPass133 code finding: the bootstrap stream identity previously included every observed seed ID, including incomplete seeds that were excluded from the estimate. That allowed irrelevant partial evidence to perturb the deterministic resampling stream even though the paired sample and point estimate were unchanged. The implementation now binds the stream identity to complete paired seeds only, and a regression compares the same complete sample with and without extra incomplete-seed rows. This is a reproducibility/evidence-isolation correction, not a learning gain.
+
 ## Language model and neural architecture candidates
 
 | Candidate / source | URL | Mechanism to inspect | Target / adaptation boundary | Current status / next evidence |
