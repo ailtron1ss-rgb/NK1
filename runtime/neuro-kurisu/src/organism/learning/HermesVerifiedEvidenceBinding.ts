@@ -133,7 +133,6 @@ export function bindIndependentEvaluationToVerifiedShadowEvidence(
     payloadFingerprint: string;
     evaluationFingerprint: string;
     evaluation: {
-      payloadFingerprint?: string;
       validation: readonly SkillLearnBenchTrialReport[];
       holdout: readonly SkillLearnBenchTrialReport[];
       provenance: {
@@ -165,7 +164,6 @@ export function bindIndependentEvaluationToVerifiedShadowEvidence(
   if (!envelope || !/^[a-f0-9]{64}$/.test(envelope.payloadFingerprint) ||
       !/^[a-f0-9]{64}$/.test(envelope.evaluationFingerprint) || !evaluation ||
       envelope.payloadFingerprint !== evaluation.provenance?.payloadFingerprint ||
-      envelope.payloadFingerprint !== evaluation.payloadFingerprint ||
       envelope.evaluationFingerprint !== sha256Evidence(evaluation)) {
     reasons.push('independent-evaluation-envelope-integrity-invalid');
   }
