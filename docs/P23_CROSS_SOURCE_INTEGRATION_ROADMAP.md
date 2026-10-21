@@ -84,3 +84,42 @@ This matrix maps the broad integration catalogue to existing NK1 seams. It is in
 - **DONE (code):** production runtime startup now rejects compound-repair revision wiring that lacks a separate independent-evaluation configuration factory; a targeted regression is registered in the learning workflow.
 - **PARTIAL:** regression commands are registered, but this connector session did not execute them or run TypeScript checks. Latest visible Actions failures occur before any job step starts (`runner_id: 0`, `steps: []`), so they do not validate or identify code-level failures.
 - **OPEN:** verify the full generation → sandbox → independent verification → safety → matched comparison → staging → shadow evidence → signed promotion path using real host-provided authorities. No fake production adapters should be added merely to make the path appear complete.
+
+
+## Large-pass execution queue for the 120-direction integration catalogue
+
+The queue below is ordered by dependency and risk, not by novelty. Existing NK1 modules remain the source of truth; external projects contribute mechanisms, not competing runtime architectures.
+
+| Pass | Priority | Integration work | Upstream patterns to adapt | Acceptance evidence | Status |
+|---|---|---|---|---|---|
+| WorkPass225 | P0 | Bind baseline and candidate to the same immutable task/seed/environment; reject missing, duplicate, cross-split or mismatched run identities before scoring deltas | AgentBench/WebArena task identity; SkillLearnBench trial metrics | Matched-pair join keyed by manifest/task/seed/environment/method, with negative tests | OPEN |
+| WorkPass226 | P0 | Connect the real host sandbox, independent verifier and safety scanner; reject self-attested execution and missing postconditions | OpenHands/SWE-agent execution boundaries | Real host adapter contract, no fake production defaults, fail-start tests | PARTIAL: evaluator interface exists; trusted host wiring remains OPEN |
+| WorkPass227 | P0 | Carry signed/digested evaluation evidence through the canonical P23 staging gate; keep holdout outside generation, repair, tuning and candidate selection | DSPy/GEPA experiment discipline | Holdout-access boundary tests and gate-level evidence digest checks | OPEN |
+| WorkPass228 | P1 | Add confidence bounds, minimum sample policy and catastrophic-regression vetoes to promotion decisions | Benchmark statistics and conservative release gates | Small-sample, missing-data, regression and uncertainty tests | OPEN |
+| WorkPass229 | P1 | Add a reproducible experiment manifest for model/tool/runtime versions, prompts, data fingerprints, seeds, budgets and retries | Reproducible research / experiment tracking | Identical manifest reproduces identical plan identity; any changed input changes digest | PARTIAL: plans/fingerprints exist; complete host manifest remains OPEN |
+| WorkPass230 | P1 | Merge Hermes/Will-style skill evidence and reflective repair into existing P23 plans and versioned skill store | Hermes, Will, Voyager | A verified failure produces a versioned candidate with traceable source evidence; no second learner | PARTIAL: evidence/repair seams exist; full trusted loop remains OPEN |
+| WorkPass231 | P1 | Connect episodic replay, goal/affect salience, memory consolidation and capability-specific retention tests | Letta/MemGPT, Voyager, cognitive replay | Replay records retain provenance; transfer/forgetting regressions cover multiple task families | PARTIAL: replay and salience mechanisms exist; causal retention evidence remains OPEN |
+| WorkPass232 | P1 | Integrate uncertainty-driven metacognition: decide when to ask, search, retry, verify or stop using observed calibration | Reflection/critic patterns; uncertainty-aware agents | Calibration metrics and action-choice outcomes, not self-reported confidence alone | OPEN |
+| WorkPass233 | P2 | Add task-family environment suites and realistic tool/browser/code tasks with postcondition verification | AgentBench, WebArena, SWE-agent | Separate per-family results, stable task versions, no aggregate-only promotion | OPEN |
+| WorkPass234 | P2 | Connect multimodal perception, speech, UI and Live2D to runtime state and actual actions | Existing vision, language and embodiment seams | UI/avatar changes correspond to observable state transitions and trace IDs | PARTIAL: runtime perception/embodiment exists; complete UI-to-state binding requires audit |
+| WorkPass235 | P2 | Add shadow-only prompt/policy optimization, verifier-guided repair and optional critic/evolutionary candidates | DSPy/GEPA and experimental search | Fixed baseline, validation-only optimization, bounded budgets, holdout isolation, no direct promotion | OPEN |
+| WorkPass236 | P2 | Unify tool permissions, sandbox limits, cancellation, idempotency, checkpoints and recovery across external tools | OpenHands/SWE-agent operational patterns | Interrupted/duplicated actions recover without duplicate side effects | PARTIAL: individual controls exist; unified production adapter remains OPEN |
+| WorkPass237 | P2 | Consolidate event/provenance contracts and deduplicate overlapping subsystem responsibilities | NK1 event bus, evidence ledgers, capability registry | One canonical authority per responsibility; compatibility migration and no premature deletion | OPEN |
+| WorkPass238 | P3 | Add provenance-bound continual learning, skill rollback, transfer/forgetting checks and bounded experiment scheduling | Voyager lifelong skill library; memory consolidation research | Every promoted version links evidence, evaluation, rollback target and retention results | PARTIAL: components exist; end-to-end governance remains OPEN |
+| WorkPass239 | P3 | Audit local model routing, VRAM/resource budgets, cache and queue behavior under mobile/low-memory profiles | Local-model serving patterns | Measured resource ceilings and graceful cancellation/fallback | OPEN |
+| WorkPass240 | P3 | Source/license/dependency review for each upstream mechanism; port narrowly rather than vendor entire projects | Hermes, Will, OpenHands, SWE-agent, DSPy, GEPA, Letta, Voyager, AgentBench, WebArena, SkillLearnBench | Source URL/commit/license, adapted files, dependency/VRAM impact and retained attribution | OPEN |
+
+### WorkPass224 follow-through
+
+- **DONE (code):** evaluator provenance uses the captured environment fingerprint; production compound-repair revision fails closed if independent evaluation authority is not configured.
+- **PARTIAL:** regression test and CI wiring are present, but successful execution has not been established in this session.
+- **OPEN:** real trusted host adapters, matched baseline/candidate evidence and holdout-isolated final promotion remain the P0 implementation targets.
+
+### Cross-source implementation rules
+
+1. Never copy a source project's whole agent loop if NK1 already has an equivalent; port the mechanism behind the canonical interface.
+2. No experimental optimizer, critic, debate, evolutionary search or self-modifying proposal may write to the trusted candidate store or promote itself.
+3. Training and validation may drive generation/tuning; holdout is exposed only to the final independent comparison and cannot feed back into the same candidate decision.
+4. Every claim of improvement must be supported by matched task/seed/environment evidence, sample policy, safety checks and a reproducible manifest.
+5. A source integration is not DONE because a class, adapter, checklist or placeholder exists. DONE requires the capability to be connected to the canonical runtime and to produce attributable evidence.
+6. Never delete overlapping code until callers, persistence formats, UI/Live2D links, licensing and migration paths have been checked.
