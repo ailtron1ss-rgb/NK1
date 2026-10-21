@@ -131,9 +131,26 @@ export function ingestSignedOutcomeArtifact(
     evidenceRef: `signed-artifact:${payload.artifactId}:sha256:${fingerprint}`,
     observedAt: payload.observedAt,
   };
-  const result = ledger.record(outcome);
-  if (!result.accepted) {
-    return { accepted: false, artifactFingerprint: fingerprint, rejection: result.rejection?.code ?? 'ledger-rejected' };
+  // A restored ledger intentionally has no in-memory trust receipts. Permit the exact
+  // signed artifact to re-establish its receipt after restart, but never overwrite or
+  // bless a conflicting outcome that happens to occupy the same task/method/seed/attempt.
+  const existing = ledger.snapshot().outcomes.find(row =>
+    row.taskId === outcome.taskId && row.method === outcome.method &&
+    row.seed === outcome.seed && row.attempt === outcome.attempt,
+  );
+  if (existing) {
+    const exactMatch = existing.taskVersion === outcome.taskVersion &&
+      existing.passed === outcome.passed && existing.authority === outcome.authority &&
+      existing.verifierId === outcome.verifierId && existing.evidenceRef === outcome.evidenceRef &&
+      existing.observedAt === outcome.observedAt;
+    if (!exactMatch) {
+      return { accepted: false, artifactFingerprint: fingerprint, rejection: 'conflicting-existing-outcome' };
+    }
+  } else {
+    const result = ledger.record(outcome);
+    if (!result.accepted) {
+      return { accepted: false, artifactFingerprint: fingerprint, rejection: result.rejection?.code ?? 'ledger-rejected' };
+    }
   }
   const evidence = authenticatedEvidence.get(ledger) ?? new Map<string, string>();
   evidence.set(outcome.evidenceRef, fingerprint);
