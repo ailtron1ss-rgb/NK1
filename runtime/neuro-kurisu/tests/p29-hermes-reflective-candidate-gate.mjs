@@ -90,6 +90,22 @@ assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, {
   validation: improved.validation,
   holdout: [],
 }), /candidate-candidate-holdout-reports-required/);
+
+assert.throws(() => evaluateSkillLearnBenchCandidate(
+  { validation: baseline.validation, holdout: baseline.validation },
+  { validation: improved.validation, holdout: improved.validation },
+), /candidate-validation-holdout-task-overlap/);
+
+// Reject internally inconsistent reports instead of trusting claimed aggregates.
+const forged = trial('task-a', 'v1', 'good');
+forged.skillQuality.aggregate = 1;
+assert.throws(() => evaluateSkillLearnBenchCandidate({
+  validation: [forged, trial('task-b', 'v1', 'good')],
+  holdout: baseline.holdout,
+}, {
+  validation: improved.validation,
+  holdout: improved.holdout,
+}), /candidate-baseline-validation-report-invalid/);
 assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, improved, {
   minimumValidationGain01: Number.NaN,
 }), /candidate-minimum-validation-gain-invalid/);
