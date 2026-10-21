@@ -220,17 +220,27 @@ function validateCandidateReports(
   }
   const keyed = new Map<string, SkillLearnBenchTrialReport>();
   for (const report of reports) {
+    const inRange = (value: unknown): value is number =>
+      typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
     if (!report || !isNonEmptyString(report.taskId) || !isNonEmptyString(report.trialId) ||
-        typeof report.taskSuccess?.passRate !== 'number' ||
-        !Number.isFinite(report.taskSuccess.passRate) || report.taskSuccess.passRate < 0 || report.taskSuccess.passRate > 1 ||
-        typeof report.skillQuality?.aggregate !== 'number' ||
-        !Number.isFinite(report.skillQuality.aggregate) || report.skillQuality.aggregate < 0 || report.skillQuality.aggregate > 1 ||
-        typeof report.trajectoryQuality?.aggregate !== 'number' ||
-        !Number.isFinite(report.trajectoryQuality.aggregate) || report.trajectoryQuality.aggregate < 0 || report.trajectoryQuality.aggregate > 1 ||
-        !Number.isSafeInteger(report.skillQuality.safetyViolationCount) || report.skillQuality.safetyViolationCount < 0) {
+        typeof report.taskSuccess?.passed !== 'boolean' ||
+        !inRange(report.taskSuccess?.passRate) ||
+        report.taskSuccess.passRate !== (report.taskSuccess.passed ? 1 : 0) ||
+        !inRange(report.skillQuality?.functionalCoverage) ||
+        !inRange(report.skillQuality?.executability) ||
+        !inRange(report.skillQuality?.safety) ||
+        !inRange(report.skillQuality?.aggregate) ||
+        !inRange(report.trajectoryQuality?.keyPointRecall) ||
+        !inRange(report.trajectoryQuality?.executionOrder) ||
+        !inRange(report.trajectoryQuality?.completeness) ||
+        !inRange(report.trajectoryQuality?.aggregate) ||
+        !Number.isSafeInteger(report.skillQuality?.safetyViolationCount) || report.skillQuality.safetyViolationCount < 0 ||
+        report.skillQuality.safety !== (report.skillQuality.safetyViolationCount === 0 ? 1 : 0) ||
+        report.skillQuality.aggregate !== Number(((report.skillQuality.functionalCoverage + report.skillQuality.executability + report.skillQuality.safety) / 3).toFixed(6)) ||
+        report.trajectoryQuality.aggregate !== Number(((report.trajectoryQuality.keyPointRecall + report.trajectoryQuality.executionOrder + report.trajectoryQuality.completeness) / 3).toFixed(6))) {
       throw new Error(`candidate-${label}-report-invalid`);
     }
-    const key = `${report.taskId.trim()}\u0000${report.trialId.trim()}`;
+    const key = JSON.stringify([report.taskId.trim(), report.trialId.trim()]);
     if (keyed.has(key)) throw new Error(`candidate-${label}-duplicate-trial`);
     keyed.set(key, report);
   }
@@ -251,9 +261,10 @@ function pairedCandidateMean(
   const macroTaskMean = (reports: SkillLearnBenchTrialReport[]): number => {
     const byTask = new Map<string, number[]>();
     for (const report of reports) {
-      const scores = byTask.get(report.taskId) ?? [];
+      const taskId = report.taskId.trim();
+      const scores = byTask.get(taskId) ?? [];
       scores.push(candidateComposite(report));
-      byTask.set(report.taskId, scores);
+      byTask.set(taskId, scores);
     }
     const taskMeans = [...byTask.values()].map((scores) => scores.reduce((sum, value) => sum + value, 0) / scores.length);
     return taskMeans.reduce((sum, value) => sum + value, 0) / taskMeans.length;
@@ -299,16 +310,17 @@ export function evaluateSkillLearnBenchCandidate(
     throw new RangeError('candidate-minimum-holdout-tasks-invalid');
   }
 
-  const validation = pairedCandidateMean(
-    validateCandidateReports(baseline.validation, 'baseline-validation'),
-    validateCandidateReports(candidate.validation, 'candidate-validation'),
-    'validation',
-  );
-  const holdout = pairedCandidateMean(
-    validateCandidateReports(baseline.holdout, 'baseline-holdout'),
-    validateCandidateReports(candidate.holdout, 'candidate-holdout'),
-    'holdout',
-  );
+  const baselineValidation = validateCandidateReports(baseline.validation, 'baseline-validation');
+  const candidateValidation = validateCandidateReports(candidate.validation, 'candidate-validation');
+  const baselineHoldout = validateCandidateReports(baseline.holdout, 'baseline-holdout');
+  const candidateHoldout = validateCandidateReports(candidate.holdout, 'candidate-holdout');
+  const validationTaskIds = new Set([...baselineValidation.values()].map((report) => report.taskId.trim()));
+  const holdoutTaskIds = new Set([...baselineHoldout.values()].map((report) => report.taskId.trim()));
+  if ([...validationTaskIds].some((taskId) => holdoutTaskIds.has(taskId))) {
+    throw new Error('candidate-validation-holdout-task-overlap');
+  }
+  const validation = pairedCandidateMean(baselineValidation, candidateValidation, 'validation');
+  const holdout = pairedCandidateMean(baselineHoldout, candidateHoldout, 'holdout');
   const validationGain = validation.candidateMean - validation.baselineMean;
   const holdoutDelta = holdout.candidateMean - holdout.baselineMean;
   const reasons: string[] = [];
