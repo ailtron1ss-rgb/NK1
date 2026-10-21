@@ -3,10 +3,18 @@ import type { SkillLearnBenchTrialReport } from './SkillLearnBenchAdapter.ts';
 import type { SkillShadowEvidenceVerifier, SkillShadowObservation, VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 
 function canonicalEvidence(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (value === null || typeof value !== 'object') {
+    const encoded = JSON.stringify(value);
+    if (encoded === undefined) throw new Error('evidence-envelope-not-json-serializable');
+    return encoded;
+  }
   if (Array.isArray(value)) return '[' + value.map(canonicalEvidence).join(',') + ']';
   const object = value as Record<string, unknown>;
-  return '{' + Object.keys(object).sort().map(key => JSON.stringify(key) + ':' + canonicalEvidence(object[key])).join(',') + '}';
+  return '{' + Object.keys(object).sort().map(key => {
+    const encodedKey = JSON.stringify(key);
+    if (encodedKey === undefined) throw new Error('evidence-envelope-key-not-json-serializable');
+    return encodedKey + ':' + canonicalEvidence(object[key]);
+  }).join(',') + '}';
 }
 
 function sha256Evidence(value: unknown): string {
@@ -175,6 +183,11 @@ export function bindIndependentEvaluationToVerifiedShadowEvidence(
   }
   if (!Array.isArray(observations) || observations.length === 0) reasons.push('signed-shadow-observations-required');
   if (!candidate || typeof candidate.candidateId !== 'string' || !candidate.candidateId.trim()) reasons.push('candidate-identity-required');
+  else if (candidate.payloadFingerprint !== envelope?.payloadFingerprint) {
+    // The independent report must evaluate this exact staged payload, not merely
+    // a different payload whose receipt happens to carry the same task/outcome.
+    reasons.push('independent-evaluation-candidate-payload-mismatch');
+  }
   if (typeof verifyEvidence !== 'function') reasons.push('trusted-evidence-verifier-required');
   if (reasons.length) return {
     accepted: false, reasons, boundTrials: 0, manifestFingerprint: null,
