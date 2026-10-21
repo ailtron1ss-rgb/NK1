@@ -1,6 +1,8 @@
 import type { LocalChatCompletionRequest, LocalChatCompletionResponse } from '../integration/local/OpenAICompatibleLocalChatProvider.ts';
 
 export interface ReflectiveRevisionRequest {
+  /** SHA-256 of the exact verified train/validation/aggregate-only holdout dataset. */
+  datasetFingerprint: string;
   sourcePayload: unknown;
   optimizerInstruction: string;
   validationEvidence: unknown[];
@@ -49,6 +51,9 @@ export async function generateLocalSkillRevision(
   if (!request || !Array.isArray(request.targets) || request.targets.length === 0) {
     throw new Error('p23-revision-evidence-backed-targets-required');
   }
+  if (typeof request.datasetFingerprint !== 'string' || !/^[a-f0-9]{64}$/i.test(request.datasetFingerprint)) {
+    throw new Error('p23-revision-verified-dataset-fingerprint-required');
+  }
   const sourcePayload = boundedJson(request.sourcePayload, MAX_SOURCE_JSON_CHARS, 'source-payload');
   const validationEvidence = boundedJson(request.validationEvidence, MAX_VALIDATION_JSON_CHARS, 'validation-evidence');
   const targetJson = boundedJson(request.targets, 12_000, 'targets');
@@ -62,8 +67,10 @@ export async function generateLocalSkillRevision(
       'Never invent evidence, tests, capabilities, or outcomes. Never weaken safety constraints.',
       'Holdout examples, identifiers, and per-case outcomes are intentionally withheld. Do not request or infer them.',
       'This output is an untrusted candidate and will undergo independent evaluation before it can be activated.',
+      'Bind all generated revision work to the supplied verified dataset fingerprint; never claim this fingerprint proves candidate quality.',
     ].join(' '),
     user: [
+      'VERIFIED_DATASET_FINGERPRINT:', request.datasetFingerprint.toLowerCase(),
       'SOURCE_PAYLOAD_JSON:', sourcePayload,
       'REVISION_INSTRUCTION:', String(request.optimizerInstruction ?? '').slice(0, 24_000),
       'VALIDATION_EVIDENCE_JSON:', validationEvidence,
