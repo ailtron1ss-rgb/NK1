@@ -141,3 +141,20 @@ For each idea, answer before implementation:
 - Is the mechanism actually necessary, or can a simpler change solve the observed failure?
 
 Do not count a reference as “used” until a source revision/paper protocol is inspected, a testable hypothesis is recorded, and an experiment or explicit rejection decision is linked.
+
+
+## WorkPass132 — bootstrap sensitivity for seed-clustered skill learning (2026-10-21)
+
+| Candidate / source | Mechanism observed | NK1 adaptation | Status |
+|---|---|---|---|
+| [SkillLearnBench (COLM 2026)](https://github.com/cxcscmu/SkillLearnBench) — MIT license declared upstream | Controlled comparisons of skill methods; separates artifact quality, execution trajectory and verified task outcome; reports gains vary by task/domain and self-feedback can drift. | Preserve NK1's separate evidence and outcome layers; do not use a single aggregate as proof that a skill generalizes. WorkPass132 adds a more conservative uncertainty requirement at the seed-cluster outcome layer. | **PROTOCOL ADAPTED; no benchmark tasks/code copied** |
+| [SkillsBench v1.1](https://www.skillsbench.ai/) | Matched with-skill/without-skill evaluation over diverse tasks shows strong variation by domain and negative deltas on some tasks. | Keep baseline pairing, task-family breakdowns and explicit no-skill/control arms; never infer uplift from skill creation or invocation alone. | **DESIGN INPUT** |
+| [Storage-aware replay evaluation protocol](https://www.mdpi.com/2504-4990/8/7/212) | Uses equal-byte budgets, strongest-baseline comparison, pre-specified non-inferiority and bootstrap confidence intervals with multiple-comparison correction. | Adapt only the bootstrap sensitivity idea to NK1's existing seed-clustered outcome deltas; no replay algorithm or external code copied. Equal-byte replay tournament and multiplicity correction remain future work. | **NARROW ADAPTATION IMPLEMENTED; not full protocol conformance** |
+
+### Code and acceptance boundary
+
+- `VerifiedOutcomeLedger.ts` now computes a deterministic 4,000-resample percentile interval over seed-level paired deltas. Its PRNG seed is derived from method/split/family identity and observed deltas so identical input yields identical output.
+- The independent unit remains the seed aggregate; incomplete seeds are excluded as before. A single independent seed produces no bootstrap interval.
+- `VerifiedSkillPromotion.ts` requires both the existing small-sample Student-t lower bound and the bootstrap lower bound to be above zero, as well as existing minimum-gain, evidence-authentication, task-coverage, seed-coverage and family-regression gates.
+- Regression tests assert determinism, interval bracketing and no confidence interval for one seed, and require the positive bootstrap lower bound in the accepted promotion fixture.
+- **Not proven:** bootstrap intervals do not fix tiny or biased samples, verifier bias, task leakage, multiple-comparison inflation, or poor benchmark representativeness. No live learning run has been measured by this change; it is a stricter admission/evaluation rule, not a performance gain.
