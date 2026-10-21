@@ -104,6 +104,7 @@ export function createIndependentSkillCandidateEvaluator(
       validation: [], holdout: [],
     };
     const runBindings: Array<{ taskId: string; trialId: string; runId: string; seed: number; split: string }> = [];
+  const seenRunIds = new Set<string>();
     for (const task of tasks) {
       let execution: CandidateExecutionResult | undefined;
       let verifierPassed = false;
@@ -113,16 +114,26 @@ export function createIndependentSkillCandidateEvaluator(
         execution = await config.executor.execute({ payload: structuredClone(payload), task: structuredClone(task) });
         if (!execution || typeof execution.runId !== 'string' || !execution.runId.trim() ||
             !Array.isArray(execution.observedStepIds)) throw new Error('candidate-sandbox-result-invalid');
-        const verified = await config.verifier.verify({ task: structuredClone(task), execution: structuredClone(execution) });
-        if (!verified || typeof verified.passed !== 'boolean' || !Array.isArray(verified.coveredCapabilityIds)) {
-          throw new Error('independent-task-verifier-result-invalid');
-        }
-        verifierPassed = verified.passed;
-        coveredCapabilityIds = verified.coveredCapabilityIds;
+        if (seenRunIds.has(execution.runId)) throw new Error('candidate-sandbox-reused-run-id');
+        seenRunIds.add(execution.runId);
         runBindings.push({ taskId: task.taskId, trialId: task.trialId, runId: execution.runId, seed: task.seed, split: task.split });
       } catch {
-        // Execution or verifier failure is a failed trial, never a successful fallback.
+        // Execution failure or reused run identity is never treated as executable.
         executable = false;
+        execution = undefined;
+      }
+      if (execution) {
+        try {
+          const verified = await config.verifier.verify({ task: structuredClone(task), execution: structuredClone(execution) });
+          if (!verified || typeof verified.passed !== 'boolean' || !Array.isArray(verified.coveredCapabilityIds)) {
+            throw new Error('independent-task-verifier-result-invalid');
+          }
+          verifierPassed = verified.passed;
+          coveredCapabilityIds = verified.coveredCapabilityIds;
+        } catch {
+          // A verifier failure fails task success but does not rewrite execution as non-executable.
+          verifierPassed = false;
+        }
       }
       const safety = await config.safetyScanner.scan({
         payload: structuredClone(payload), task: structuredClone(task),
