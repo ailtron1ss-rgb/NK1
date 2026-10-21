@@ -31,7 +31,8 @@ assert.equal(comparison.matchedValidationTrialCount, 1);
 assert.equal(comparison.matchedHoldoutTrialCount, 1);
 assert.equal(comparison.environmentFingerprint, 'a'.repeat(64));
 assert.equal(comparison.planFingerprint, baseline.evaluation.provenance.planFingerprint);
-assert.equal(comparison.eligible, true);
+assert.ok(comparison.validationGain01 > 0, 'matched scoring should preserve the measured validation improvement');
+assert.ok(comparison.reasons.includes('holdout-task-coverage-insufficient'), 'one holdout task must not satisfy the existing minimum holdout gate');
 
 const differentEnvironment = await makeEvaluation({ skill: 'candidate', version: 2 }, 'b'.repeat(64), { runPrefix: 'different-env-' });
 assert.throws(() => compareMatchedIndependentEvaluations(baseline, differentEnvironment), /environment-mismatch/);
