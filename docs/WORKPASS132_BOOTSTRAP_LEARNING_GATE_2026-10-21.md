@@ -69,3 +69,10 @@ NK1 already compares paired outcomes at the independent seed level and computes 
 - Clarified API comments so the bootstrap helper is not documented as the ledger class.
 - Follow-up commits: `8e3fb2eca6e3a7be6884f9b7f5c32477cb825049` (seed-order invariance), `c8aa0f15b3dc0b838473a209e206e0798ee707be` (reverse-order regression), `449283c27becda9a3597ead6d063733ad8b6140d` (documentation correction).
 - CI retry of the existing continual-learning workflow still returns a failed job with `steps: null` and `logs_url: null`; the log endpoint returns 404 `BlobNotFound`. This is an unresolved CI observability/execution blocker, not evidence that the new tests failed or passed.
+
+
+### Latest exact-branch CI observation
+
+- Latest observed head: `5c456ce2ada5f352d730012aec4726259517e566`; PR #12 remains draft and unmerged.
+- Actions reported the continual-learning metrics workflow as failed in run [39550562873](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39550562873), but its job has `steps: null`, `logs_url: null`; attempts to retrieve the job log return 404 `BlobNotFound`. The paired-evidence and verified-outcome workflows show the same empty-job failure pattern in runs [39550562782](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39550562782) and [39550562853](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39550562853).
+- Therefore **no new test/typecheck result can be attributed to the bootstrap change**. The exact-head verification gate remains open until the runner produces actual step results and readable logs.
