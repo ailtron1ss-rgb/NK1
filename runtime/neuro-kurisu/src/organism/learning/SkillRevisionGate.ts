@@ -35,6 +35,8 @@ export interface SkillRevisionGateResult {
   rejectedRows: number;
 }
 const clamp = (x: number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
+const boundedInteger = (value: number | undefined, fallback: number, min: number, max: number) =>
+  Number.isFinite(value) ? Math.max(min, Math.min(max, Math.floor(value!))) : fallback;
 const valid = (x: RevisionObservation) => Boolean(
   x && x.taskId?.trim() && x.family?.trim() && x.method?.trim() &&
   Number.isSafeInteger(x.seed) && x.seed >= 0 &&
@@ -55,7 +57,7 @@ export function evaluateSkillRevision(
   if (!baselineMethod?.trim() || !candidateMethod?.trim() || baselineMethod === candidateMethod) {
     throw new Error('two distinct method names are required');
   }
-  const minPairedTasks = Math.max(2, Math.min(10000, Math.floor(options.minPairedTasks ?? 8)));
+  const minPairedTasks = boundedInteger(options.minPairedTasks, 8, 2, 10000);
   const minAbsoluteGain = clamp(options.minAbsoluteGain ?? .02);
   const maxFamilyRegression = clamp(options.maxFamilyRegression ?? .10);
   const byPair = new Map<string, Map<string, RevisionObservation>>();
@@ -73,7 +75,6 @@ export function evaluateSkillRevision(
   }
   const paired = [...byPair.values()].filter(pair => {
     if (!pair.has(baselineMethod) || !pair.has(candidateMethod)) return false;
-    // Do not compare mismatched manifest-family labels even if a caller reuses task IDs.
     return pair.get(baselineMethod)!.family === pair.get(candidateMethod)!.family;
   });
   const n = paired.length;
@@ -84,7 +85,6 @@ export function evaluateSkillRevision(
   for (const pair of paired) {
     const a = pair.get(baselineMethod)!;
     const b = pair.get(candidateMethod)!;
-    // A pair is only meaningful if both runs refer to the same task family.
     if (a.family !== b.family) { rejectedRows++; continue; }
     const rows = families.get(a.family) ?? [];
     rows.push({ baseline: Number(a.passed), candidate: Number(b.passed) });
