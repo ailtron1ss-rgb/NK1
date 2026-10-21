@@ -16,13 +16,13 @@ const candidate = {
   proposalOutcomeFingerprint: 'b'.repeat(64), baseVersion: 2, previousActive: null,
   status: 'shadow', shadowObservations: [], createdAt: 100,
 };
-function makeObservation({ runId = 'run-1', taskId = 'task-1', passed = true, version = 3 } = {}) {
+function makeObservation({ runId = 'run-1', taskId = 'task-1', passed = true, version = 3, seed = 11, manifestFingerprint = 'c'.repeat(64) } = {}) {
   const payload = {
     schemaVersion: 1, artifactId: `artifact-${runId}`, candidateId: candidate.candidateId,
     skillId: candidate.skillId, candidateVersion: version,
     payloadFingerprint: candidate.payloadFingerprint,
     proposalOutcomeFingerprint: candidate.proposalOutcomeFingerprint,
-    runId, taskId, manifestFingerprint: 'c'.repeat(64), seed: 11,
+    runId, taskId, manifestFingerprint, seed,
     runtimeVersion: 'nk-test-runtime', passed, observedAt: 1700000000000,
     verifierId: 'fixture-verifier',
   };
@@ -92,4 +92,47 @@ assert.ok(unmatchedReceipt.reasons.includes('unmatched-shadow-observation'));
 
 const missingVerifier = engine.bindReflectiveCandidateEvidence([report()], [validObservation], candidate, () => false);
 assert.equal(missingVerifier.accepted, false);
-console.log('P23_HERMES_VERIFIED_EVIDENCE_BINDING=PASS cryptographicReceipt=true identityBinding=true failClosed=true');
+
+const independentEvaluation = {
+  validation: [report('task-1', 'trial-1', true)],
+  holdout: [report('task-2', 'trial-2', false)],
+  provenance: {
+    experimentAuthority: { manifestFingerprint: 'c'.repeat(64) },
+    runBindings: [
+      { taskId: 'task-1', trialId: 'trial-1', runId: 'run-1', plannedRunId: 'planned-1', seed: 11, split: 'validation', bindingVerified: true, verifierPassed: true, safetyViolationCount: 0 },
+      { taskId: 'task-2', trialId: 'trial-2', runId: 'run-2', plannedRunId: 'planned-2', seed: 22, split: 'holdout', bindingVerified: true, verifierPassed: true, safetyViolationCount: 0 },
+    ],
+  },
+};
+const independentReceipts = [
+  validObservation,
+  makeObservation({ runId: 'run-2', taskId: 'task-2', passed: false, seed: 22 }),
+];
+const independentBound = engine.bindIndependentEvaluationEvidence(
+  independentEvaluation, independentReceipts, candidate, verifier,
+);
+assert.equal(independentBound.accepted, true,
+  'P23 trial IDs must join to signed execution receipts through independently verified run bindings');
+assert.equal(independentBound.boundTrials, 2);
+assert.equal(independentBound.manifestFingerprint, 'c'.repeat(64));
+assert.equal(independentBound.qualityMetricsAuthenticated, false);
+
+const wrongSeedEvaluation = structuredClone(independentEvaluation);
+wrongSeedEvaluation.provenance.runBindings[1].seed = 23;
+const wrongSeedBound = engine.bindIndependentEvaluationEvidence(
+  wrongSeedEvaluation, independentReceipts, candidate, verifier,
+);
+assert.equal(wrongSeedBound.accepted, false,
+  'a signed receipt from another seed must not bind to an independent evaluation trial');
+assert.ok(wrongSeedBound.reasons.includes('independent-evaluation-signed-receipt-mismatch'));
+
+const missingSafetyBinding = structuredClone(independentEvaluation);
+missingSafetyBinding.provenance.runBindings[0].safetyViolationCount = 1;
+const unsafeBound = engine.bindIndependentEvaluationEvidence(
+  missingSafetyBinding, independentReceipts, candidate, verifier,
+);
+assert.equal(unsafeBound.accepted, false,
+  'signed identity evidence cannot rescue a safety-violating evaluation');
+assert.ok(unsafeBound.reasons.includes('independent-evaluation-run-untrusted'));
+
+console.log('P23_HERMES_VERIFIED_EVIDENCE_BINDING=PASS cryptographicReceipt=true identityBinding=true p23Join=true failClosed=true');
