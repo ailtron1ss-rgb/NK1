@@ -186,14 +186,15 @@ export async function runLearningProcess(
   };
   child.stdout.on('data', (chunk: Buffer) => { stdout = append(stdout, chunk, true); });
   child.stderr.on('data', (chunk: Buffer) => { stderr = append(stderr, chunk, false); });
+  // Track close before installing timeout/abort handlers so late notifications
+  // cannot rewrite the terminal state of a process that has already exited.
+  let childClosed = false;
   const timeout = setTimeout(() => {
+    if (childClosed) return;
     if (!terminalStatus) terminalStatus = 'timed-out';
     child.kill('SIGKILL');
   }, timeoutMs);
   timeout.unref?.();
-  // Track the close event explicitly: an abort racing with child close must not
-  // rewrite a completed process receipt as cancelled after the process has exited.
-  let childClosed = false;
   const onAbort = () => {
     if (childClosed || terminalStatus) return;
     terminalStatus = 'cancelled';
