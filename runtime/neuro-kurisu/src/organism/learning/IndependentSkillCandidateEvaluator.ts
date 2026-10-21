@@ -175,6 +175,17 @@ export function createIndependentSkillCandidateEvaluator(
 ): RevisedCandidateEvaluator {
   validateConfig(config);
   const tasks = config.tasks.map(task => structuredClone(task));
+  // Snapshot all authority-bearing plan data at construction. Keeping caller-owned
+  // plan/manifest objects live here would let post-validation mutation silently
+  // change scheduled run IDs while retaining the original evaluator plan fingerprint.
+  const authority = config.experimentAuthority ? {
+    manifest: structuredClone(config.experimentAuthority.manifest),
+    ledger: config.experimentAuthority.ledger,
+    validationPlan: structuredClone(config.experimentAuthority.validationPlan),
+    holdoutPlan: structuredClone(config.experimentAuthority.holdoutPlan),
+    method: config.experimentAuthority.method,
+    ...(config.experimentAuthority.attempt === undefined ? {} : { attempt: config.experimentAuthority.attempt }),
+  } : undefined;
   const planFingerprint = sha256(canonical(tasks.map(({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }) =>
     ({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }))));
   return async ({ payload, payloadFingerprint }) => {
@@ -188,7 +199,6 @@ export function createIndependentSkillCandidateEvaluator(
     const runBindings: Array<{ taskId: string; trialId: string; runId: string | null; plannedRunId: string | null; seed: number; split: string; executable: boolean; observedStepIds: string[]; bindingVerified: boolean; verifierPassed: boolean; coveredCapabilityIds: string[]; safetyViolationCount: number }> = [];
     const seenRunIds = new Set<string>();
     for (const task of tasks) {
-      const authority = config.experimentAuthority;
       const experimentPlan = authority
         ? (task.split === 'validation' ? authority.validationPlan : authority.holdoutPlan)
         : undefined;
