@@ -44,6 +44,8 @@ assert.equal(proposal.uniquePairedTasks,10);
 assert.equal(proposal.completePairedSeeds,5);
 assert.equal(proposal.seedClusteredEvaluation.pairedN,5);
 assert.ok(proposal.seedClusteredEvaluation.approximate95CI[0] > 0);
+assert.ok(proposal.seedClusteredEvaluation.bootstrap95CI[0] > 0,
+  'promotion requires positive lower bounds from both parametric and seed-cluster bootstrap intervals');
 assert.equal(proposal.familyEvaluation.length,2);
 assert.equal(proposal.canActivateAutomatically,false);
 assert.equal(proposal.authenticatedEvidenceRows,100);
