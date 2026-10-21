@@ -280,6 +280,39 @@ export class P23LearningEngine {
   }
 
   /**
+   * Turn a Hermes-style revision plan into a new versioned shadow candidate.
+   * The caller supplies the revised payload produced by its configured skill
+   * generator; this engine never fabricates skill content or edits the current
+   * candidate in place. Safety violations block staging, and the store still
+   * requires an authentic evidence-backed proposal. Promotion remains separate.
+   */
+  stageReflectiveSkillRevision(
+    proposal:VerifiedSkillPromotionProposal,
+    skillId:string,
+    revisedPayload:unknown,
+    baseline:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    candidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    options:SkillLearnBenchCandidateGateOptions={},
+  ):{candidate:VersionedSkillCandidate;fitness:SkillLearnBenchCandidateGateReport;plan:SkillRevisionPlan} {
+    if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    if(!skillId?.trim()) throw new Error('skillId must be non-empty');
+    const fitness=this.evaluateReflectiveSkillCandidate(baseline,candidateEvaluation,options);
+    const plan=this.planReflectiveSkillRevision(candidateEvaluation,fitness);
+    if(plan.blockedBySafety) throw new Error('reflective revision blocked: resolve safety violations before performance optimization');
+    if(plan.targets.length===0) throw new Error('reflective revision has no evidence-backed target; no candidate was staged');
+    const current=this.verifiedSkillStore.snapshot();
+    const active=current.active.find(item=>item.skillId===skillId);
+    if(active && canonicalize(active.payload)===canonicalize(revisedPayload)) {
+      throw new Error('reflective revision payload is unchanged from the active skill');
+    }
+    // stageCandidate validates proposal authenticity and authenticated evidence.
+    // This creates a separate staged version; shadow execution and signed human
+    // approval are still required before the runtime can activate it.
+    const candidate=this.verifiedSkillStore.stageCandidate(proposal,skillId,revisedPayload);
+    return {candidate,fitness,plan};
+  }
+
+  /**
    * Require every reflective trial to resolve to a verified signed shadow receipt.
    * This only validates provenance; it cannot stage, approve, or activate a skill.
    */
