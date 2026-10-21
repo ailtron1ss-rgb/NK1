@@ -175,9 +175,10 @@ export function bindIndependentEvaluationToVerifiedShadowEvidence(
     if (reportByKey.has(key)) reasons.push('duplicate-independent-evaluation-report');
     else reportByKey.set(key, item);
   }
-  const bindingByKey = new Map<string, (typeof bindings)[number]>();
+  const safeBindings = bindings ?? [];
+  const bindingByKey = new Map<string, (typeof safeBindings)[number]>();
   const runIds = new Set<string>();
-  for (const binding of bindings) {
+  for (const binding of safeBindings) {
     if (!binding || typeof binding.taskId !== 'string' || !binding.taskId.trim() ||
         typeof binding.trialId !== 'string' || !binding.trialId.trim() ||
         typeof binding.runId !== 'string' || !binding.runId.trim() ||
