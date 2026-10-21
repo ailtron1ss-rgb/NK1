@@ -1,0 +1,50 @@
+name: P26 Learning Validation
+
+on:
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts"
+      - "runtime/neuro-kurisu/tests/p26-*.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/p26-learning-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p26-learning-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: Typecheck runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+      - name: Validate learning input integrity
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p26:learning-input-integrity
+      - name: Run online learning and recovery probe
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p26:learning-recovery-benchmark
+      - name: Run continual curriculum matrix
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p26:learning-continual-matrix
+      - name: Run existing P26 learning regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p26:true-learning
