@@ -24,7 +24,14 @@ export interface SkillShadowObservation {
   evidenceFingerprint: string;
   passed: boolean;
   observedAt: number;
+  /** Signed execution receipt; required by the default-deny verifier in production. */
+  artifact?: import('./VerifiedSkillShadowEvidence.ts').SignedSkillShadowArtifact;
 }
+
+export type SkillShadowEvidenceVerifier = (
+  observation: Readonly<SkillShadowObservation>,
+  candidate: Readonly<VersionedSkillCandidate>,
+) => boolean;
 
 export interface ActiveSkillVersion {
   skillId: string;
@@ -108,6 +115,7 @@ export class VersionedSkillCandidateStore {
   constructor(
     private readonly persistence: SkillStorePersistence = new InMemorySkillStorePersistence(),
     private readonly verifyApproval: SkillPromotionApprovalVerifier = () => false,
+    private readonly verifyShadowEvidence: SkillShadowEvidenceVerifier = () => false,
   ) {
     const initial = persistence.read();
     if (initial.schemaVersion !== 1 || !Number.isSafeInteger(initial.revision) ||
@@ -164,6 +172,9 @@ export class VersionedSkillCandidateStore {
     const current = this.persistence.read();
     const candidate = current.candidates.find(item => item.candidateId === candidateId);
     if (!candidate || !['staged', 'shadow'].includes(candidate.status)) throw new Error('candidate is not eligible for shadow evaluation');
+    let evidenceAuthorized = false;
+    try { evidenceAuthorized = this.verifyShadowEvidence(clone(observation), clone(candidate)); } catch { evidenceAuthorized = false; }
+    if (evidenceAuthorized !== true) throw new Error('shadow observation is not authenticated by the configured evidence verifier');
     if ((activeFor(current, candidate.skillId)?.version ?? null) !== candidate.baseVersion) {
       throw new Error('active skill version changed; candidate must be restaged against the current version');
     }
@@ -203,6 +214,12 @@ export class VersionedSkillCandidateStore {
     if (candidate.shadowObservations.length < minShadowRuns ||
         candidate.shadowObservations.some(item => !item.passed)) {
       throw new Error('shadow gate requires enough runs and zero failed outcomes');
+    }
+    // Revalidate persisted receipts at promotion time; a restored snapshot is not itself trusted.
+    for (const observation of candidate.shadowObservations) {
+      let evidenceAuthorized = false;
+      try { evidenceAuthorized = this.verifyShadowEvidence(clone(observation), clone(candidate)); } catch { evidenceAuthorized = false; }
+      if (evidenceAuthorized !== true) throw new Error('persisted shadow evidence failed authentication');
     }
     // Never treat caller-supplied audit fields as proof of human authorization.
     // Default is deny; production must inject a verifier backed by authenticated authority.
