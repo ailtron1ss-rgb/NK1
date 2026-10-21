@@ -49,11 +49,6 @@ export interface PairedMethodSummary {
 }
 
 /**
- * An evidence ledger, not a learner. Only independently verifiable or human-
- * reviewed outcomes are authoritative. Model self-report is retained as a
- * rejection reason rather than being silently converted into training truth.
- */
-/**
  * Deterministic percentile bootstrap over independent seed-level aggregates.
  * This is a sensitivity interval, not a cure for too few independent seeds.
  */
@@ -83,6 +78,11 @@ function bootstrapMean95CI(values: number[], identity: string, replicates = 4000
   return [Math.max(-1, quantile(0.025)), Math.min(1, quantile(0.975))];
 }
 
+/**
+ * An evidence ledger, not a learner. Only independently verifiable or human-
+ * reviewed outcomes are authoritative. Model self-report is retained as a
+ * rejection reason rather than being silently converted into training truth.
+ */
 export class VerifiedOutcomeLedger {
   private readonly manifest = new Map<string, TaskManifestEntry>();
   private readonly outcomes = new Map<string, VerifiedTaskOutcome>();
