@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
 import { parseTrustedShadowLearningScheduleConfig } from '../organism/learning/P23TrustedShadowLearningScheduler.ts';
-import { createSkillPromotionApprovalPayload, parseTrustedSkillPromotionApprovalKeys } from '../organism/learning/AuthenticatedSkillPromotionApproval.ts';
+import { createSkillPromotionApprovalPayload, createSkillRollbackApprovalPayload, parseTrustedSkillPromotionApprovalKeys } from '../organism/learning/AuthenticatedSkillPromotionApproval.ts';
 import { ProcessLock } from '../organism/persistence/ProcessLock.ts';
 import { FileStateStore } from '../organism/persistence/FileStateStore.ts';
 import { idempotencyPreflightHttpStatus } from './idempotency-response.mjs';
@@ -1634,7 +1634,7 @@ async function route(req, res) {
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/learning/verified-skills') {
             const lifecycle = runtime.core.verifiedSkillCandidateSnapshot();
-            return json(res, 200, { ok: true, schemaVersion: 1, lifecycle, promotionPolicy: { requiresSignedEd25519Approval: true, minimumShadowRuns: 3, autoPromotion: false, authorityConfigured: TRUSTED_PROMOTION_APPROVER_IDS.size > 0 } });
+            return json(res, 200, { ok: true, schemaVersion: 1, lifecycle, promotionPolicy: { requiresSignedEd25519Approval: true, requiresSignedRollbackApproval: true, minimumShadowRuns: 3, autoPromotion: false, authorityConfigured: TRUSTED_PROMOTION_APPROVER_IDS.size > 0 } });
         }
         const promotionRequestMatch = url.pathname.match(/^\/api\/organism\/learning\/skills\/([a-f0-9]{64})\/promotion-request$/);
         if (req.method === 'POST' && promotionRequestMatch) {
@@ -1663,6 +1663,58 @@ async function route(req, res) {
                 candidate, approverId, randomUUID(), Date.now(), expectedActiveVersion, 3,
             );
             return json(res, 200, { ok: true, approvalRequest, next: 'Have the authenticated external approval authority sign canonical JSON of approvalRequest with its Ed25519 key; never place the private key in the NK1 runtime.' });
+        }
+
+        const rollbackRequestMatch = url.pathname.match(/^\/api\/organism\/learning\/skills\/([a-f0-9]{64})\/rollback-request$/);
+        if (req.method === 'POST' && rollbackRequestMatch) {
+            const input = await body(req);
+            const candidateId = rollbackRequestMatch[1];
+            const approverId = input && typeof input.approverId === 'string' ? input.approverId.trim() : '';
+            if (!approverId || approverId.length > 128 || !/^[A-Za-z0-9][A-Za-z0-9._:@-]*$/.test(approverId)) {
+                return json(res, 400, { ok: false, error: 'valid-approverId-required' });
+            }
+            if (!TRUSTED_PROMOTION_APPROVER_IDS.has(approverId)) {
+                return json(res, 403, { ok: false, error: 'rollback-approver-not-configured' });
+            }
+            const lifecycle = runtime.core.verifiedSkillCandidateSnapshot();
+            const candidate = lifecycle?.candidates.find(item => item.candidateId === candidateId);
+            if (!candidate) return json(res, 404, { ok: false, error: 'skill-candidate-not-found' });
+            if (candidate.status !== 'active') return json(res, 409, { ok: false, error: 'candidate-is-not-active' });
+            const active = lifecycle.active.find(item => item.skillId === candidate.skillId);
+            if (!active || active.version !== candidate.version) {
+                return json(res, 409, { ok: false, error: 'candidate-active-version-mismatch' });
+            }
+            try {
+                const approvalRequest = createSkillRollbackApprovalPayload(candidate, approverId, randomUUID(), Date.now());
+                return json(res, 200, { ok: true, approvalRequest, next: 'Have the authenticated external authority sign canonical JSON of approvalRequest with its Ed25519 key; never place the private key in the NK1 runtime.' });
+            } catch (error) {
+                return json(res, 409, { ok: false, error: 'rollback-request-denied', reason: String(error?.message || error).slice(0, 240) });
+            }
+        }
+        const rollbackMatch = url.pathname.match(/^\/api\/organism\/learning\/skills\/([a-f0-9]{64})\/rollback$/);
+        if (req.method === 'POST' && rollbackMatch) {
+            const input = await body(req);
+            const artifact = input?.artifact;
+            if (!artifact || typeof artifact !== 'object' || Array.isArray(artifact) ||
+                !artifact.payload || typeof artifact.payload !== 'object' || Array.isArray(artifact.payload)) {
+                return json(res, 400, { ok: false, error: 'signed-rollback-artifact-required' });
+            }
+            const candidateId = rollbackMatch[1];
+            if (artifact.payload.candidateId !== candidateId) {
+                return json(res, 400, { ok: false, error: 'rollback-candidate-id-mismatch' });
+            }
+            try {
+                const approval = {
+                    approvedBy: artifact.payload.approverId,
+                    approvedAt: artifact.payload.approvedAt,
+                    expectedActiveVersion: artifact.payload.expectedActiveVersion,
+                    artifact,
+                };
+                const restored = runtime.core.rollbackVerifiedSkillCandidate(candidateId, approval);
+                return json(res, 200, { ok: true, restored, lifecycle: runtime.core.verifiedSkillCandidateSnapshot(), note: 'signed rollback verified; previous approved version restored atomically, or active skill removed when no prior version existed' });
+            } catch (error) {
+                return json(res, 403, { ok: false, error: 'skill-rollback-denied', reason: String(error?.message || error).slice(0, 300) });
+            }
         }
         const promoteMatch = url.pathname.match(/^\/api\/organism\/learning\/skills\/([a-f0-9]{64})\/promote$/);
         if (req.method === 'POST' && promoteMatch) {
