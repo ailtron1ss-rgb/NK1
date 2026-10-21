@@ -143,6 +143,16 @@ export interface P23LearningMetrics {
   lastLearningAt:number;
 }
 
+export type RevisedCandidateEvaluator = (input: {
+  /** Exact untrusted generated payload to execute in the independent evaluation harness. */
+  payload: unknown;
+  /** SHA-256 of canonical payload bytes; the returned evaluation must bind to this exact value. */
+  payloadFingerprint: string;
+  baseline: { validation: SkillLearnBenchCandidateEvaluation['reports']; holdout: SkillLearnBenchCandidateEvaluation['reports'] };
+  previousEvaluation: { validation: SkillLearnBenchCandidateEvaluation['reports']; holdout: SkillLearnBenchCandidateEvaluation['reports'] };
+}) => Promise<{ payloadFingerprint: string; evaluation: { validation: SkillLearnBenchCandidateEvaluation['reports']; holdout: SkillLearnBenchCandidateEvaluation['reports'] } }>
+  | { payloadFingerprint: string; evaluation: { validation: SkillLearnBenchCandidateEvaluation['reports']; holdout: SkillLearnBenchCandidateEvaluation['reports'] } };
+
 export interface P23LearningState {
   version:1;
   processedTraceIds:string[];
@@ -299,10 +309,12 @@ export class P23LearningEngine {
       targets:SkillRevisionPlan['targets'];
       holdoutGeneralization:{gap01:number;requiresFreshIndependentEvaluation:true};
     })=>Promise<unknown>|unknown,
+    evaluateRevisedCandidate:RevisedCandidateEvaluator,
     options:SkillLearnBenchCandidateGateOptions={},
   ):Promise<{candidate:VersionedSkillCandidate;fitness:SkillLearnBenchCandidateGateReport;plan:SkillRevisionPlan}> {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
     if(typeof generate!=='function') throw new Error('configured skill revision generator is required');
+    if(typeof evaluateRevisedCandidate!=='function') throw new Error('independent post-generation candidate evaluator is required');
     // Reject unauthentic or failed promotion evidence before spending resources on
     // model generation. The store repeats this check at staging as a second boundary.
     if(!isAuthenticVerifiedSkillPromotionProposal(proposal) || proposal.schemaVersion!==1 ||
@@ -332,8 +344,23 @@ export class P23LearningEngine {
     if(revisedPayload===undefined || revisedPayload===null || (typeof revisedPayload==='string'&&!revisedPayload.trim())) {
       throw new Error('skill revision generator returned an empty payload');
     }
+    // Generation invalidates any prior candidate report: it describes the source
+    // candidate, not this newly generated payload. Re-run the independent harness
+    // against the exact payload and require the evaluator to echo its canonical digest.
+    const payloadFingerprint=createHash('sha256').update(canonicalize(revisedPayload)).digest('hex');
+    const fresh=await evaluateRevisedCandidate({
+      payload:structuredClone(revisedPayload),
+      payloadFingerprint,
+      baseline:structuredClone(baseline),
+      previousEvaluation:structuredClone(candidateEvaluation),
+    });
+    if(!fresh || fresh.payloadFingerprint!==payloadFingerprint ||
+       !fresh.evaluation || !Array.isArray(fresh.evaluation.validation) || fresh.evaluation.validation.length===0 ||
+       !Array.isArray(fresh.evaluation.holdout) || fresh.evaluation.holdout.length===0) {
+      throw new Error('independent evaluator did not return non-empty validation/holdout reports bound to the exact generated payload');
+    }
     return this.stageReflectiveSkillRevision(
-      proposal,skillId,sourceCandidateId,revisedPayload,baseline,candidateEvaluation,options,
+      proposal,skillId,sourceCandidateId,revisedPayload,baseline,fresh.evaluation,options,
     );
   }
 
