@@ -17,8 +17,13 @@ export function withIndependentCandidateEvaluation(
     throw new Error('independent-candidate-evaluation-provider-config-invalid');
   }
   return async input => {
-    const prepared = await provider(input);
-    const config = evaluationConfigForRepair(structuredClone(input));
+    // Keep the evaluator's authority inputs independent from provider code. A
+    // provider is allowed to prepare proposals, but it must not be able to mutate
+    // the repair evidence/fingerprints later used to choose trusted task plans.
+    const configInput = structuredClone(input);
+    const providerInput = structuredClone(input);
+    const prepared = await provider(providerInput);
+    const config = evaluationConfigForRepair(configInput);
     return {
       ...prepared,
       evaluateRevisedCandidate: createIndependentSkillCandidateEvaluator(config),
