@@ -109,6 +109,14 @@ export function selectVerifiedReplayExperiences<T extends ReplayExperienceRefere
     });
   }
 
+  // Derive novelty from the admitted replay pool's context/action rarity when
+  // no explicit novelty score was captured. Surprise is a different signal and
+  // must not be reused as a novelty proxy.
+  const contextActionFrequency = new Map<string, number>();
+  for (const item of admitted) {
+    const key = JSON.stringify([item.experience.contextKey, item.experience.action]);
+    contextActionFrequency.set(key, (contextActionFrequency.get(key) ?? 0) + 1);
+  }
   const selected = selectReplayBatch(admitted.map(item => ({
     ...item.experience,
     // Bridge Will's episodic consolidator and goal manager into NK1's existing
@@ -120,7 +128,7 @@ export function selectVerifiedReplayExperiences<T extends ReplayExperienceRefere
       Math.max(0, Math.min(1, Number.isFinite(item.experience.activationStrength) ? item.experience.activationStrength! : 0)) * 0.15 +
       Math.max(0, Math.min(1, Number.isFinite(item.experience.goalPriority) ? item.experience.goalPriority! : 0)) * 0.1)),
     novelty: Math.max(0, Math.min(1, Number.isFinite(item.experience.novelty) ? item.experience.novelty! :
-      Number.isFinite(item.experience.surprise) ? item.experience.surprise! : 0)),
+      1 / Math.sqrt(Math.max(1, contextActionFrequency.get(JSON.stringify([item.experience.contextKey, item.experience.action])) ?? 1))),
     replayCount: Math.max(0, Number.isFinite(item.experience.replayCount) ? item.experience.replayCount! :
       Number.isFinite(item.experience.retrievalCount) ? item.experience.retrievalCount! : 0),
     emotionalIntensity: item.experience.emotionalIntensity,
