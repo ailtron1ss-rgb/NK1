@@ -183,3 +183,11 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **Reuse/integration:** this is a narrow correctness fix inside the existing P23 supervisor; no parallel runner or new authority was added.
 - **PARTIAL:** the race guard is committed, but this pass has not run the targeted supervisor regression or TypeScript typecheck. A deterministic regression for close/abort ordering and actual process-tree containment remain open.
 - **NEXT:** add a deterministic race regression and continue the trusted-host adapter path; process-tree/container isolation must remain explicit rather than inferred from direct-child SIGKILL.
+
+
+### WorkPass230 — process-group cancellation for P23 learner runs
+
+- **DONE (code):** on POSIX, the existing `LearningProcessSupervisor` starts each supervised command in its own process group and routes timeout, output-limit, and abort termination through group-level `SIGKILL`, so ordinary descendants in that group are terminated alongside the direct child.
+- **DONE (race hardening):** timeout/abort handlers now ignore late notifications after the direct child has emitted `close`, preserving the terminal receipt state.
+- **PARTIAL:** Windows still uses direct-child termination; descendants that deliberately detach or escape the process group are not contained. This is not a substitute for an OS/container sandbox. Targeted regression and runtime typecheck have not been executed in this pass.
+- **NEXT:** add a descendant-process regression on POSIX, then wire the trusted host adapter to the existing ActionGateway/postcondition verifier without permitting arbitrary candidate payloads to become shell commands.
