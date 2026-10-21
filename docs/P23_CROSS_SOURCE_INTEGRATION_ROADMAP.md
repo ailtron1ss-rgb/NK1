@@ -1,6 +1,6 @@
 # Neuro Kurisu — cross-source learning integration roadmap
 
-Latest implementation checkpoint: WorkPass236 (exact-payload binding through the existing P23 promotion path); code and regression are committed on the current draft PR branch, but execution results remain unverified.
+Latest implementation checkpoint: WorkPass237 (promotion now requires matched independent baseline/candidate envelopes); code is committed on the current draft PR branch, but execution results remain unverified.
 
 Scope: continue integrating mechanisms into the existing P23 learning/revision lifecycle. This is an implementation queue, not a promise that upstream mechanisms are already integrated. Preserve the current branch/PR boundary; do not merge to the default branch without explicit approval.
 
@@ -245,3 +245,11 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **DONE (regression authored):** added exact-candidate-payload mismatch and cyclic/non-canonicalizable-envelope rejection coverage to test:p23:hermes-verified-evidence-binding; the existing learning workflow already watches both changed source files and executes this targeted test.
 - **PARTIAL:** code and regression are committed; the test, TypeScript typecheck, and exact-head GitHub Actions have not yet been observed passing. Promotion still requires production-configured trusted signing/context and authenticated human approval.
 - **OPEN next:** run the exact-head regression/typecheck; then connect and verify the trusted host's run-context resolver and approval authority in a real shadow execution, including restart/replay and duplicate prevention.
+
+### WorkPass237 — close the caller-supplied baseline gap in promotion
+
+- **DONE (code):** `approveIndependentlyEvaluatedSkillCandidate` no longer accepts an arbitrary pair of report arrays as its baseline input. It now requires the full independent baseline envelope and passes baseline + candidate through the existing `compareMatchedIndependentEvaluations` boundary before any fitness decision.
+- **DONE (integration):** reused the existing P23 independent evaluator, experiment authority and SkillLearnBench paired gate; no duplicate evaluator/scorer/store was created. Existing store-level receipt and signed approval checks still run at activation.
+- **DONE (defensive behavior):** malformed or missing envelopes are rejected before nested property access, including calls from untyped JavaScript.
+- **PARTIAL:** source and existing matched-evaluation regressions are committed, but the targeted test, typecheck and exact-head Actions have not been observed passing.
+- **OPEN:** add an end-to-end regression through the promotion method with durable registry-backed shadow receipts and authenticated approval; then exercise restart/replay and duplicate promotion against the real host runtime.
