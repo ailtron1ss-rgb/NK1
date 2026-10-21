@@ -34,6 +34,8 @@ on:
       - 'runtime/neuro-kurisu/tests/p23-runtime-signed-shadow-observation.mjs'
       - 'runtime/neuro-kurisu/scripts/stage-verified-skill-candidate.mjs'
       - 'runtime/neuro-kurisu/tests/p23-stage-verified-skill-candidate.mjs'
+      - 'runtime/neuro-kurisu/scripts/create-skill-promotion-approval-request.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-create-skill-promotion-approval-request.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
       - 'runtime/neuro-kurisu/src/server/server.mjs'
       - 'runtime/neuro-kurisu/tests/p23-verified-skill-shadow-evidence.mjs'
@@ -132,6 +134,8 @@ on:
       - 'runtime/neuro-kurisu/tests/p23-runtime-signed-shadow-observation.mjs'
       - 'runtime/neuro-kurisu/scripts/stage-verified-skill-candidate.mjs'
       - 'runtime/neuro-kurisu/tests/p23-stage-verified-skill-candidate.mjs'
+      - 'runtime/neuro-kurisu/scripts/create-skill-promotion-approval-request.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-create-skill-promotion-approval-request.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
       - 'runtime/neuro-kurisu/src/server/server.mjs'
 jobs:
@@ -221,6 +225,9 @@ jobs:
       - name: Run authenticated verified-skill candidate staging regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:stage-verified-skill-candidate
+      - name: Run candidate-bound promotion approval request regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:create-skill-promotion-approval-request
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
