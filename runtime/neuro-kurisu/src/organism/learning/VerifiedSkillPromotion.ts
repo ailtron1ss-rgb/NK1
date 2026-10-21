@@ -11,6 +11,7 @@ export interface VerifiedSkillPromotionProposal {
   schemaVersion: 1;
   proposalId: string;
   manifestFingerprint: string;
+  outcomeFingerprint: string;
   baselineMethod: string;
   candidateMethod: string;
   evaluatedAt: number;
@@ -58,7 +59,6 @@ export function proposeVerifiedSkillPromotion(
     }];
   });
   const gate = evaluateSkillRevision(observations, baselineMethod, candidateMethod, options);
-  const taskSeedPairs = new Set(observations.map(row => JSON.stringify([row.taskId, row.seed, row.attempt])));
   const holdoutTasks = snapshot.manifest.filter(task => task.split === 'holdout').map(task => task.taskId);
   const bySeed = new Map<number, Set<string>>();
   for (const row of observations) {
@@ -79,22 +79,26 @@ export function proposeVerifiedSkillPromotion(
     reason: 'insufficient-complete-holdout-seed-coverage',
   };
   const manifestFingerprint = ledger.manifestFingerprint();
+  const outcomeFingerprint = createHash('sha256').update(JSON.stringify(
+    [...snapshot.outcomes].sort((a, b) => JSON.stringify([a.taskId,a.method,a.seed,a.attempt]).localeCompare(JSON.stringify([b.taskId,b.method,b.seed,b.attempt]))),
+  )).digest('hex');
   const evaluatedAt = Date.now();
   const identity = JSON.stringify({
-    manifestFingerprint, baselineMethod, candidateMethod,
+    manifestFingerprint, outcomeFingerprint, baselineMethod, candidateMethod,
     pairedN: finalGate.pairedN, absoluteGain: finalGate.absoluteGain,
-    familyGains: finalGate.familyGains, completePairedSeeds, evaluatedAt,
+    familyGains: finalGate.familyGains, completePairedSeeds,
   });
   const proposalId = createHash('sha256').update(identity).digest('hex');
   return {
     schemaVersion: 1,
     proposalId,
     manifestFingerprint,
+    outcomeFingerprint,
     baselineMethod,
     candidateMethod,
     evaluatedAt,
     outcomeRowsSeen: snapshot.outcomes.length,
-    pairedTaskSeedN: taskSeedPairs.size,
+    pairedTaskSeedN: finalGate.pairedN,
     completePairedSeeds,
     gate: finalGate,
     canActivateAutomatically: false,
