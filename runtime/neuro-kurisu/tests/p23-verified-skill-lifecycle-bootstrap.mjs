@@ -13,6 +13,7 @@ try {
     '',
   );
   assert.equal(bootstrap.trustedVerifierCount, 0, 'no configured verifier keys must fail closed');
+  assert.equal(bootstrap.trustedApprovalCount, 0, 'no configured approval keys must keep promotion default-deny');
   assert.deepEqual(bootstrap.store.snapshot(), {
     schemaVersion: 1,
     revision: 0,
@@ -40,6 +41,22 @@ try {
   );
   assert.equal(configured.trustedVerifierCount, 1, 'valid Ed25519 verifier key should be accepted');
 
+  const approvalKeyPair = generateKeyPairSync('ed25519');
+  const validApprovalPem = approvalKeyPair.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+  const configuredApproval = createVerifiedSkillLifecycleBootstrap(
+    join(root, 'approval-candidates.json'),
+    join(root, 'approval-runs.json'),
+    JSON.stringify({ trustedVerifier: validEd25519Pem }),
+    JSON.stringify({ 'promotion-operator-1': validApprovalPem }),
+  );
+  assert.equal(configuredApproval.trustedApprovalCount, 1, 'a valid detached-signature approval authority key should be accepted');
+  assert.throws(() => createVerifiedSkillLifecycleBootstrap(
+    join(root, 'approval-bad-candidates.json'),
+    join(root, 'approval-bad-runs.json'),
+    '',
+    '{bad-json',
+  ), /NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON must be valid JSON/);
+
   const rsa = generateKeyPairSync('rsa', { modulusLength: 2048 });
   const incompatiblePem = rsa.publicKey.export({ type: 'spki', format: 'pem' }).toString();
   assert.throws(() => createVerifiedSkillLifecycleBootstrap(
@@ -47,7 +64,14 @@ try {
     join(root, 'bad3-runs.json'),
     JSON.stringify({ incompatibleVerifier: incompatiblePem }),
   ), /valid Ed25519 public keys/);
-  console.log('verified skill lifecycle bootstrap: default-deny, PEM parsing and Ed25519 enforcement PASS');
+
+  assert.throws(() => createVerifiedSkillLifecycleBootstrap(
+    join(root, 'approval-bad2-candidates.json'),
+    join(root, 'approval-bad2-runs.json'),
+    '',
+    JSON.stringify({ 'rsa-approver': incompatiblePem }),
+  ), /promotion approval keys must be valid Ed25519 public keys/);
+  console.log('verified skill lifecycle bootstrap: default-deny verifier/approval keys and Ed25519 enforcement PASS');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
