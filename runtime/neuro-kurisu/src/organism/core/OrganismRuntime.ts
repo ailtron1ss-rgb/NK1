@@ -38,7 +38,6 @@ import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/Act
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
-import type { VerifiedSkillPromotionProposal } from '../learning/VerifiedSkillPromotion.ts';
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
