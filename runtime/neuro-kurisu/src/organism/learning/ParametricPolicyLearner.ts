@@ -176,6 +176,14 @@ export class ParametricPolicyLearner{
   }
 
   trainBatch(samples:Array<Parameters<ParametricPolicyLearner['train']>[0]>){
+    // Validate the complete batch before the first update. Otherwise a malformed
+    // later sample can throw after earlier samples have already mutated the model.
+    if(!Array.isArray(samples)) throw new TypeError('policy-learning-batch-must-be-array');
+    for(const sample of samples){
+      if(!sample||typeof sample!=='object') throw new TypeError('policy-learning-batch-sample-must-be-object');
+      assertTrainingInput(sample);
+      if(!sample.state||typeof sample.state!=='object'||!sample.state.needs||typeof sample.state.needs!=='object') throw new TypeError('policy-learning-state-must-have-needs');
+    }
     let loss=0; let n=0;
     for(const sample of samples){const r=this.train(sample);loss+=r.loss01;n++;}
     return {samples:n,meanLoss01:n?loss/n:0,updates:this.state.updates};
