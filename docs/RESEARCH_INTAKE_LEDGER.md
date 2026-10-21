@@ -181,3 +181,10 @@ Research protocol lineage: AgentMemoryBench (https://github.com/solomoon313/Agen
 - Matrix reports task-order sensitivity instead of hiding it behind one aggregate. It is deterministic but deliberately small and synthetic.
 - **Execution status: FAILED / NOT VERIFIED.** GitHub Actions run 39551917147 completed with conclusion FAILURE, but the connector returned no step details and the job log endpoint returned BlobNotFound. Root cause is unresolved; no numeric outcome or quality improvement is claimed, and no test is marked passed.
 - Required next gates: run supported Node typecheck and P26 tests; preserve raw metrics; add held-out patterns and additional task orders; compare standard sequential learning with explicit replay and frozen controls; reject promotion if repair or retention regresses beyond a predeclared tolerance.
+
+
+## WorkPass84 — SkillLearnBench-compatible learning evaluation adapter (2026-10-21)
+
+| Candidate / source | URL | Mechanism inspected | NeuroCore integration target | Current status / next evidence |
+|---|---|---|---|---|
+| SkillLearnBench (MIT) | https://github.com/cxcscmu/SkillLearnBench | Task pass rate, skill functional coverage/executability/safety, trajectory key-point recall/order/completeness; one-shot, self-feedback, teacher-feedback and skill-creator baselines | `runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts`; P26 validation workflow | **ADAPTED**: deterministic native evaluator and regressions added; upstream MIT LICENSE and baseline taxonomy preserved under `runtime/neuro-kurisu/research/vendor/SkillLearnBench/`. Not full benchmark parity. Next: connect trusted production task rubrics/verifiers and collect multi-seed task-level results. No external LLM or Docker execution is performed by this adapter. |
