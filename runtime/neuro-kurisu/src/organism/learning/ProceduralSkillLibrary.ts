@@ -412,7 +412,7 @@ export class ProceduralSkillLibrary{
     // Turn verified, non-holdout repair evidence into a staged variant at the point
     // where the runtime records the repair. Holdout observations remain evaluation-only.
     // Variant creation never changes activeVariantId or activates the candidate.
-    if(!row.holdout && row.verified && row.confidence01>=skill.policy.minEvidence01 && row.selectedTool &&
+    if(!duplicate && !row.holdout && row.verified && row.confidence01>=skill.policy.minEvidence01 && row.selectedTool &&
        row.candidateTools.includes(row.selectedTool) && row.selectedTool!==row.toolId){
       this.createRepairVariant(id,{
         stepId:row.stepId,
