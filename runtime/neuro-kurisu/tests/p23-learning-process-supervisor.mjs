@@ -107,6 +107,35 @@ try {
   assert.equal(pinnedRegistrarResult.receipt.status, 'completed');
   assert.equal(originalRegistrationCalls, 1);
 
+  // Relative cwd is resolved before awaits and must not drift if process.cwd changes.
+  const originalProcessCwd = process.cwd();
+  const pinnedCwd = path.join(root, 'pinned-cwd');
+  const changedCwd = path.join(root, 'changed-cwd');
+  await import('node:fs/promises').then(({ mkdir }) => Promise.all([
+    mkdir(pinnedCwd, { recursive: true }), mkdir(changedCwd, { recursive: true }),
+  ]));
+  let releaseCwdRegistration;
+  let announceCwdRegistration;
+  const cwdRegistrationEntered = new Promise(resolve => { announceCwdRegistration = resolve; });
+  const cwdRegistrationGate = new Promise(resolve => { releaseCwdRegistration = resolve; });
+  try {
+    process.chdir(pinnedCwd);
+    const cwdRun = runLearningProcess(
+      { ...run, runId: 'run-cwd-pinned', arm: 'candidate', method: 'shadow' },
+      'b'.repeat(64),
+      { ...base, cwd: '.', runRoot: path.join(root, 'cwd-runs'), args: ['-e', 'process.stdout.write(process.cwd())'] },
+      { runtimeVersion: 'cwd-test-runtime', register: async () => { announceCwdRegistration(); await cwdRegistrationGate; } },
+    );
+    await cwdRegistrationEntered;
+    process.chdir(changedCwd);
+    releaseCwdRegistration();
+    const cwdResult = await cwdRun;
+    assert.equal(cwdResult.receipt.status, 'completed');
+    assert.equal(cwdResult.receipt.stdout, pinnedCwd);
+  } finally {
+    process.chdir(originalProcessCwd);
+  }
+
   if (process.platform !== 'win32') {
     // A timed-out parent must not leave a same-process-group descendant running.
     // The descendant would create a marker after the supervisor has returned if it survived.
