@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { createIndependentSkillCandidateEvaluator } from '../src/organism/learning/IndependentSkillCandidateEvaluator.ts';
+import { createIndependentSkillCandidateEvaluator, recordIndependentEvaluationOutcomes } from '../src/organism/learning/IndependentSkillCandidateEvaluator.ts';
+import { createLearningExperimentPlan } from '../src/organism/learning/LearningExperimentPlan.ts';
+import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 
 const canonical = value => value === null || typeof value !== 'object'
   ? JSON.stringify(value)
@@ -170,5 +172,52 @@ assert.equal(unbound.evaluation.provenance.runBindings[0].runId, null,
 assert.equal(unbound.evaluation.provenance.runBindings[0].observedStepIds.length, 0,
   'unbound traces must not enter trusted trajectory provenance');
 assert.equal(unbound.evaluation.provenance.runBindings[0].bindingVerified, false);
+
+// WorkPass213: connect the evaluator to the existing matched experiment plan
+// and canonical VerifiedOutcomeLedger without deriving task inputs from hashes.
+const authorityManifest = [
+  { taskId: 'authority-validation', family: 'summarization', split: 'validation', promptFingerprint: VerifiedOutcomeLedger.fingerprintPrompt('summarize validation'), verifierId: 'verifier-v1', version: '1' },
+  { taskId: 'authority-holdout', family: 'summarization', split: 'holdout', promptFingerprint: VerifiedOutcomeLedger.fingerprintPrompt('summarize holdout'), verifierId: 'verifier-v1', version: '1' },
+];
+const authorityLedger = new VerifiedOutcomeLedger(authorityManifest);
+const planOptions = { seeds: [11], resetEvery: [1], priorMethod: 'prior', continuousMethod: 'candidate', resetMethodPrefix: 'reset-' };
+const validationPlan = createLearningExperimentPlan(authorityManifest, { ...planOptions, split: 'validation' });
+const holdoutPlan = createLearningExperimentPlan(authorityManifest, { ...planOptions, seeds: [29], split: 'holdout' });
+const experimentAuthority = {
+  manifest: authorityManifest,
+  ledger: authorityLedger,
+  validationPlan,
+  holdoutPlan,
+  method: 'candidate',
+};
+const authorityTasks = [
+  { taskId: 'authority-validation', trialId: 'authority-trial-v', seed: 11, split: 'validation', input: { prompt: 'summarize validation' }, requiredCapabilityIds: ['read'], expectedStepIds: ['open', 'summarize'] },
+  { taskId: 'authority-holdout', trialId: 'authority-trial-h', seed: 29, split: 'holdout', input: { prompt: 'summarize holdout' }, requiredCapabilityIds: ['read'], expectedStepIds: ['open', 'summarize'] },
+];
+const authorityEvaluator = createIndependentSkillCandidateEvaluator({
+  tasks: authorityTasks,
+  environmentFingerprint: 'c'.repeat(64),
+  experimentAuthority,
+  executor: { async execute({ task, context }) {
+    assert.ok(context.plannedRunId, 'executor receives the exact scheduled experiment run');
+    assert.ok(context.experimentPlanFingerprint, 'executor receives canonical experiment plan identity');
+    return { runId: 'authority-run-' + task.trialId, observedStepIds: ['open', 'summarize'] };
+  } },
+  verifier: { async verify({ context }) {
+    assert.ok(context.plannedRunId);
+    return { bindingVerified: true, passed: true, coveredCapabilityIds: ['read'] };
+  } },
+  safetyScanner: { async scan() { return { violationCount: 0 }; } },
+});
+const authorityEvaluation = await authorityEvaluator({
+  payload, payloadFingerprint: digest(payload),
+  baseline: { validation: [], holdout: [] },
+  previousEvaluation: { validation: [], holdout: [] },
+});
+const ledgerCommit = recordIndependentEvaluationOutcomes(authorityEvaluation.evaluation, experimentAuthority, 1700000000000);
+assert.equal(ledgerCommit.accepted, 2, 'both independently bound split outcomes should enter the canonical ledger');
+assert.equal(authorityLedger.snapshot().acceptedOutcomes, 2);
+assert.equal(authorityLedger.comparePaired('prior', 'candidate', 'holdout').pairedN, 0,
+  'candidate evidence alone must not fabricate baseline comparison evidence');
 
 console.log('WorkPass203 independent candidate evaluator: PASS');
