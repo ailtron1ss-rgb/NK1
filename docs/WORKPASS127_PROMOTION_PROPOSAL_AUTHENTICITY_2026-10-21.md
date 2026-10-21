@@ -21,6 +21,7 @@
 - `runtime/neuro-kurisu/src/organism/learning/VerifiedSkillPromotion.ts`
 - `runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts`
 - `runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs`
+- `runtime/neuro-kurisu/package.json` — exposes `test:p23:versioned-skill-store` and `test:p23:skill-store-failure-boundaries` scripts.
 
 Implementation commits:
 - [225903c — bind proposal to in-process issuance](https://github.com/ailtron1ss-rgb/NK1/commit/225903c6eff87ebe38b83032abff55d52c7bf7a6)
@@ -44,7 +45,7 @@ Implementation commits:
 - [x] Add a copied-proposal regression assertion.
 - [ ] Run `node --experimental-strip-types tests/p23-versioned-skill-candidate-store.mjs` from `runtime/neuro-kurisu`.
 - [ ] Run `npm run typecheck` and owning promotion/lifecycle tests.
-- [ ] Obtain actionable successful exact-head GitHub Actions logs.
+- [ ] Obtain actionable successful exact-head GitHub Actions logs. The latest commit lookup returned no associated PR workflow runs; the latest available WorkPass105/108/110 runs still report failure without actionable job steps, so this is UNKNOWN/blocked, not PASS.
 - [ ] Finish call-graph audit for all activation entry points and shadow-evidence verification.
 
 **Status:** implementation committed; behavioral execution and full promotion-path closure remain unverified.
