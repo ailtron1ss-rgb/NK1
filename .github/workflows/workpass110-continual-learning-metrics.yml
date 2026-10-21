@@ -106,6 +106,9 @@ on:
       - 'docs/P23_WORKPASS123_AUTHENTICATED_SKILL_LIFECYCLE.md'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillLifecycleBootstrap.ts'
+      - 'runtime/neuro-kurisu/tests/p23-verified-skill-lifecycle-bootstrap.mjs'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
 jobs:
   metrics:
     runs-on: ubuntu-latest

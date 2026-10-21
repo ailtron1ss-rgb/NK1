@@ -9,7 +9,7 @@ try {
   const bootstrap = createVerifiedSkillLifecycleBootstrap(
     join(root, 'candidates.json'),
     join(root, 'trusted-runs.json'),
-    undefined,
+    '',
   );
   assert.equal(bootstrap.trustedVerifierCount, 0, 'no configured verifier keys must fail closed');
   assert.deepEqual(bootstrap.store.snapshot(), {

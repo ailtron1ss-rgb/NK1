@@ -206,7 +206,7 @@ import { P23LearningEngine, defaultP23Learning } from '../learning/P23LearningEn
 import { createVerifiedSkillLifecycleBootstrap } from '../learning/VerifiedSkillLifecycleBootstrap.ts';
 import { AtomicFileTrustedSkillShadowRunRegistry } from '../learning/TrustedSkillShadowRunRegistry.ts';
 import type { TrustedShadowExecutionContext } from '../learning/VerifiedSkillShadowEvidence.ts';
-import type { SkillShadowObservation, VersionedSkillCandidateStore } from '../learning/VersionedSkillCandidateStore.ts';
+import type { SkillShadowObservation } from '../learning/VersionedSkillCandidateStore.ts';
 import { P24WorldIdentityEngine, defaultP24WorldIdentity } from '../developmental/P24WorldIdentityEngine.ts';
 import { P25ScientificDevelopmentEngine, defaultP25ScientificDevelopment } from '../learning/P25ScientificDevelopmentEngine.ts';
 import { P26TrueLearningEngine, defaultP26TrueLearning } from '../learning/P26TrueLearningEngine.ts';
