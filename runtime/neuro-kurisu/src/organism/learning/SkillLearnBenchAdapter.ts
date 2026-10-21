@@ -115,9 +115,14 @@ export function evaluateSkillLearnBenchTrial(
   const expectedSet = new Set(expected);
   const unexpectedStepIds = observed.filter((id) => !expectedSet.has(id));
   const matchedInOrder = orderedMatches(expected, observed);
-  const keyPointRecall = ratio(expected.length - missingStepIds.length, expected.length);
+  const matchedCount = expected.length - missingStepIds.length;
+  const keyPointRecall = ratio(matchedCount, expected.length);
   const executionOrder = ratio(matchedInOrder, expected.length);
-  const completeness = ratio(expected.length - missingStepIds.length, expected.length);
+  // F1-like completeness penalizes both omitted reference steps and unexpected actions.
+  const completenessDenominator = 2 * matchedCount + missingStepIds.length + unexpectedStepIds.length;
+  const completeness = completenessDenominator === 0
+    ? 0
+    : Number((2 * matchedCount / completenessDenominator).toFixed(6));
 
   return {
     taskId: input.taskId.trim(),
