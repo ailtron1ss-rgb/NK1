@@ -15,7 +15,9 @@ const record = (taskId, method, passed, evidenceRef, seed = 1) => ledger.record(
 });
 assert.equal(record('train-1', 'baseline', true, '/private/path?token=secret').accepted, true);
 assert.equal(record('validation-1', 'candidate', false, 'https://example.invalid/evidence?api_key=secret').accepted, true);
-assert.equal(record('holdout-secret-id', 'baseline', true, 'private-holdout-ref').accepted, true);
+for (let seed = 1; seed <= 5; seed++) {
+  assert.equal(record('holdout-secret-id', 'baseline', true, `private-holdout-ref-${seed}`, seed).accepted, true);
+}
 assert.equal(record('holdout-secret-id', 'candidate', false, 'private-holdout-ref-2').accepted, true);
 const rejected = ledger.record({
   taskId: 'train-1', taskVersion: 'v1', method: 'self-report', seed: 2, attempt: 1, passed: true,
@@ -32,7 +34,11 @@ assert.ok(!JSON.stringify(dataset).includes('token=secret'));
 assert.ok(!JSON.stringify(dataset).includes('api_key=secret'));
 assert.ok(!JSON.stringify(dataset).includes('holdout-secret-id'));
 assert.ok(!JSON.stringify(dataset).includes('private-holdout-ref'));
-assert.equal(dataset.holdoutAggregates.length, 2);
-assert.equal(dataset.holdoutAggregates[0].outcomeCount, 1);
+// A single-case candidate aggregate would reveal its exact holdout label; suppress it.
+assert.equal(dataset.holdoutAggregates.length, 1);
+assert.equal(dataset.holdoutAggregates[0].method, 'baseline');
+assert.equal(dataset.holdoutAggregates[0].outcomeCount, 5);
+assert.equal(dataset.holdoutAggregates[0].passRate, 1);
+assert.ok(!JSON.stringify(dataset.holdoutAggregates).includes('candidate'));
 assert.equal(dataset.rejectedSelfReports, 1);
 console.log('P23_VERIFIED_SESSION_DATASET=PASS');
