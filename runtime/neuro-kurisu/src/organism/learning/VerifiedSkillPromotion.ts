@@ -27,6 +27,13 @@ export interface VerifiedSkillPromotionProposal {
   canActivateAutomatically: false;
   activationRequirements: string[];
 }
+const authenticProposals = new WeakSet<object>();
+
+/** True only for the exact proposal object emitted by this module in this process. */
+export function isAuthenticVerifiedSkillPromotionProposal(value: unknown): value is VerifiedSkillPromotionProposal {
+  return value !== null && typeof value === 'object' && authenticProposals.has(value as object);
+}
+
 const boundedInteger = (value: number | undefined, fallback: number, min: number, max: number) =>
   Number.isFinite(value) ? Math.max(min, Math.min(max, Math.floor(value!))) : fallback;
 
@@ -117,7 +124,7 @@ export function proposeVerifiedSkillPromotion(
     seedClusteredEvaluation, familyEvaluation,
   });
   const proposalId = createHash('sha256').update(identity).digest('hex');
-  return {
+  const proposal: VerifiedSkillPromotionProposal = {
     schemaVersion: 1, proposalId, manifestFingerprint, outcomeFingerprint, baselineMethod, candidateMethod,
     evaluatedAt: Date.now(), outcomeRowsSeen: snapshot.outcomes.length,
     authenticatedEvidenceRows: authenticatedOutcomes.length, unauthenticatedEvidenceRows,
@@ -132,4 +139,6 @@ export function proposeVerifiedSkillPromotion(
       'Re-ingest and re-verify signed outcome artifacts after process restart; restored ledger rows alone are not trusted.',
     ],
   };
+  authenticProposals.add(proposal);
+  return proposal;
 }
