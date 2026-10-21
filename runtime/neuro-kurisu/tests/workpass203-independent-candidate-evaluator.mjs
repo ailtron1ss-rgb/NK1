@@ -76,6 +76,20 @@ const failed = await failing({ payload, payloadFingerprint: digest(payload), bas
 assert.equal(failed.evaluation.validation[0].taskSuccess.passed, false);
 assert.equal(failed.evaluation.validation[0].skillQuality.executability, 0);
 
+const unsafeCandidate = createIndependentSkillCandidateEvaluator({
+  tasks, environmentFingerprint: '9'.repeat(64),
+  executor: { async execute({ task }) { return { runId: 'unsafe-' + task.trialId, observedStepIds: ['open', 'summarize'] }; } },
+  verifier: { async verify() { return { passed: true, coveredCapabilityIds: ['read'] }; } },
+  safetyScanner: { async scan({ task }) { return { violationCount: task.split === 'validation' ? 1 : 0 }; } },
+});
+const unsafeResult = await unsafeCandidate({ payload, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } });
+assert.equal(unsafeResult.evaluation.validation[0].taskSuccess.passed, false,
+  'an independent safety violation must block task success even when functional verification passes');
+assert.equal(unsafeResult.evaluation.validation[0].skillQuality.safety, 0);
+assert.equal(unsafeResult.evaluation.provenance.runBindings[0].verifierPassed, true,
+  'functional verifier evidence should remain distinct from the safety veto');
+assert.equal(unsafeResult.evaluation.provenance.runBindings[0].safetyViolationCount, 1);
+
 const verifierUnavailable = createIndependentSkillCandidateEvaluator({
   tasks, environmentFingerprint: 'd'.repeat(64),
   executor: { async execute({ task }) { return { runId: 'unique-' + task.trialId, observedStepIds: ['open'] }; } },
