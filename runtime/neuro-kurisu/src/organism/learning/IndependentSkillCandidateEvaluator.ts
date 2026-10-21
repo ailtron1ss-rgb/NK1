@@ -41,15 +41,15 @@ export interface IndependentCandidateEvaluationConfig {
   environmentFingerprint: string;
 }
 const isDigest = (x: unknown): x is string => typeof x === 'string' && /^[a-f0-9]{64}$/i.test(x);
+// Must match P23LearningEngine's canonicalize exactly or its post-generation
+// payload/evaluation digest gate will reject a genuine evaluator result.
 function canonical(value: unknown): string {
-  if (value === null || typeof value !== 'object') {
-    const encoded = JSON.stringify(value);
-    if (encoded === undefined) throw new Error('candidate-evaluation-payload-not-canonicalizable');
-    return encoded;
-  }
+  if (value === undefined) return 'null';
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
   const record = value as Record<string, unknown>;
-  return '{' + Object.keys(record).sort().map(key => JSON.stringify(key) + ':' + canonical(record[key])).join(',') + '}';
+  return '{' + Object.keys(record).filter(key => record[key] !== undefined).sort()
+    .map(key => JSON.stringify(key) + ':' + canonical(record[key])).join(',') + '}';
 }
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 function validateConfig(config: IndependentCandidateEvaluationConfig): void {
@@ -159,11 +159,20 @@ export function createIndependentSkillCandidateEvaluator(
       });
       reports[task.split].push(report);
     }
-    const evaluation = { validation: reports.validation, holdout: reports.holdout };
-    const evaluationFingerprint = sha256(canonical({
-      schemaVersion: 1, payloadFingerprint, environmentFingerprint: config.environmentFingerprint,
-      planFingerprint, runBindings, evaluation,
-    }));
+    // Provenance lives inside the canonical evaluation object so P23's existing
+    // digest contract (SHA-256 of the complete evaluation object) remains exact.
+    const evaluation = {
+      validation: reports.validation,
+      holdout: reports.holdout,
+      provenance: {
+        schemaVersion: 1,
+        payloadFingerprint,
+        environmentFingerprint: config.environmentFingerprint,
+        planFingerprint,
+        runBindings,
+      },
+    };
+    const evaluationFingerprint = sha256(canonical(evaluation));
     return { payloadFingerprint, evaluationFingerprint, evaluation };
   };
 }
