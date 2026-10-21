@@ -46,4 +46,29 @@ const failing = createIndependentSkillCandidateEvaluator({
 const failed = await failing({ payload, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } });
 assert.equal(failed.evaluation.validation[0].taskSuccess.passed, false);
 assert.equal(failed.evaluation.validation[0].skillQuality.executability, 0);
+
+const verifierUnavailable = createIndependentSkillCandidateEvaluator({
+  tasks, environmentFingerprint: 'd'.repeat(64),
+  executor: { async execute({ task }) { return { runId: 'unique-' + task.trialId, observedStepIds: ['open'] }; } },
+  verifier: { async verify() { throw new Error('verifier unavailable'); } },
+  safetyScanner: { async scan() { return { violationCount: 0 }; } },
+});
+const verifierFailed = await verifierUnavailable({ payload, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } });
+assert.equal(verifierFailed.evaluation.validation[0].skillQuality.executability, 1,
+  'verifier failure must not mislabel a successfully executed candidate as non-executable');
+assert.equal(verifierFailed.evaluation.validation[0].taskSuccess.passed, false,
+  'verifier failure must fail closed for task success');
+
+const duplicateRunId = createIndependentSkillCandidateEvaluator({
+  tasks, environmentFingerprint: 'e'.repeat(64),
+  executor: { async execute() { return { runId: 'reused-run', observedStepIds: ['open', 'summarize'] }; } },
+  verifier: { async verify() { return { passed: true, coveredCapabilityIds: ['read'] }; } },
+  safetyScanner: { async scan() { return { violationCount: 0 }; } },
+});
+const duplicateRuns = await duplicateRunId({ payload, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } });
+assert.equal(duplicateRuns.evaluation.validation[0].taskSuccess.passed, true);
+assert.equal(duplicateRuns.evaluation.holdout[0].taskSuccess.passed, false,
+  'a reused execution identity must not authenticate multiple independent trials');
+assert.equal(duplicateRuns.evaluation.holdout[0].skillQuality.executability, 0);
+
 console.log('WorkPass203 independent candidate evaluator: PASS');
