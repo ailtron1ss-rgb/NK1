@@ -280,6 +280,53 @@ export class P23LearningEngine {
   }
 
   /**
+   * Request a revision from the application's configured skill generator and stage
+   * its output through the canonical verified-candidate lifecycle. The generator
+   * receives validation evidence plus an aggregate holdout signal only; raw holdout
+   * examples and identifiers remain evaluation-only and are never sent for tuning.
+   */
+  async generateAndStageReflectiveSkillRevision(
+    proposal:VerifiedSkillPromotionProposal,
+    skillId:string,
+    sourceCandidateId:string,
+    baseline:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    candidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    generate:(request:{
+      sourcePayload:unknown;
+      optimizerInstruction:string;
+      validationEvidence:SkillLearnBenchCandidateEvaluation['reports'];
+      targets:SkillRevisionPlan['targets'];
+      holdoutGeneralization:{gap01:number;requiresFreshIndependentEvaluation:true};
+    })=>Promise<unknown>|unknown,
+    options:SkillLearnBenchCandidateGateOptions={},
+  ):Promise<{candidate:VersionedSkillCandidate;fitness:SkillLearnBenchCandidateGateReport;plan:SkillRevisionPlan}> {
+    if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    if(typeof generate!=='function') throw new Error('configured skill revision generator is required');
+    const source=this.verifiedSkillStore.snapshot().candidates.find(item=>item.candidateId===sourceCandidateId);
+    if(!source || source.skillId!==skillId || source.status==='rolled-back') {
+      throw new Error('reflective revision source candidate is missing, mismatched, or rolled back');
+    }
+    const fitness=this.evaluateReflectiveSkillCandidate(baseline,candidateEvaluation,options);
+    const plan=this.planReflectiveSkillRevision(candidateEvaluation,fitness);
+    if(plan.blockedBySafety) throw new Error('reflective revision blocked: resolve safety violations before performance optimization');
+    if(plan.targets.length===0) throw new Error('reflective revision has no evidence-backed target; no candidate was staged');
+    const revisedPayload=await generate({
+      sourcePayload:structuredClone(source.payload),
+      optimizerInstruction:plan.optimizerInstruction,
+      validationEvidence:structuredClone(candidateEvaluation.validation),
+      targets:structuredClone(plan.targets),
+      // Directional scalar only: no holdout task text, trial IDs, or per-case outcomes.
+      holdoutGeneralization:{gap01:fitness.holdoutDelta01,requiresFreshIndependentEvaluation:true},
+    });
+    if(revisedPayload===undefined || revisedPayload===null || (typeof revisedPayload==='string'&&!revisedPayload.trim())) {
+      throw new Error('skill revision generator returned an empty payload');
+    }
+    return this.stageReflectiveSkillRevision(
+      proposal,skillId,sourceCandidateId,revisedPayload,baseline,candidateEvaluation,options,
+    );
+  }
+
+  /**
    * Turn a Hermes-style revision plan into a new versioned shadow candidate.
    * The caller supplies the revised payload produced by its configured skill
    * generator; this engine never fabricates skill content or edits the current
