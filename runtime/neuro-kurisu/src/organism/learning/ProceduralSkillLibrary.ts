@@ -456,7 +456,7 @@ export class ProceduralSkillLibrary{
         const last=failed[failed.length-1];
         this.recordCompoundExecution(id,{success01:0,verified:false,independent:input.independent,holdout:input.holdout,context:input.context});
         const skill=this.state.compoundSkills.find(x=>x.id===id);
-        return {ok:false,verified:false,skill?structuredClone(skill):null,outputs,failedStepId:step.id,error:last?.error??'compound-skill-step-failed'};
+        return {ok:false,verified:false,skill:skill?structuredClone(skill):null,outputs,failedStepId:step.id,error:last?.error??'compound-skill-step-failed'};
       }
     }
     const skill=this.recordCompoundExecution(id,{success01:1,verified:allVerified,independent:input.independent,holdout:input.holdout,context:input.context});
