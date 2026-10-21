@@ -45,6 +45,21 @@ assert.equal(report.seenCount, 8);
 assert.ok(Number.isFinite(report.meanLoss01));
 assert.equal(Object.values(report.perTaskMemory).reduce((a, b) => a + b, 0), report.memorySize);
 
+
+// Prioritized replay is opt-in and trains from old samples using normalized IS weights.
+const prioritizedLearner = new ParametricPolicyLearner();
+const prioritizedReport = trainWithExperienceReplay(
+  prioritizedLearner,
+  restored,
+  [exp('PRIORITY_CURRENT', 0, .75)],
+  2,
+  { strategy: 'prioritized', alpha: .6, beta: .4 },
+);
+assert.equal(prioritizedReport.replayStrategy, 'prioritized');
+assert.equal(prioritizedReport.currentCount, 1);
+assert.equal(prioritizedReport.replayCount, 2);
+assert.ok(Number.isFinite(prioritizedReport.meanLoss01));
+
 // A malformed current batch must not mutate the buffer before training starts.
 const beforeBadTraining = restored.snapshot();
 assert.throws(() => trainWithExperienceReplay(learner, restored, [exp('BAD', 1), { ...exp('BAD', 2), features: [Infinity] }], 2), /finite-array/);
