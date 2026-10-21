@@ -7,6 +7,8 @@ import { retrievedSkillBias } from './SkillRetrievalAugmentation.ts';
 import { rankLearningTargets, reflectOnOutcomes } from './OutcomeReflectionCurriculum.ts';
 import type { VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
 import { evaluateSkillLearnBenchCandidate, type SkillLearnBenchCandidateEvaluation, type SkillLearnBenchCandidateGateOptions, type SkillLearnBenchCandidateGateReport } from './SkillLearnBenchAdapter.ts';
+import { bindReflectiveReportsToVerifiedShadowEvidence, type ReflectiveEvidenceBindingReport } from './HermesVerifiedEvidenceBinding.ts';
+import type { SkillShadowEvidenceVerifier, SkillShadowObservation, VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillRollbackApproval, type SkillShadowObservation, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
@@ -263,6 +265,19 @@ export class P23LearningEngine {
     options: SkillLearnBenchCandidateGateOptions = {},
   ): SkillLearnBenchCandidateGateReport {
     return evaluateSkillLearnBenchCandidate(baseline, candidate, options);
+  }
+
+  /**
+   * Require every reflective trial to resolve to a verified signed shadow receipt.
+   * This only validates provenance; it cannot stage, approve, or activate a skill.
+   */
+  bindReflectiveCandidateEvidence(
+    reports: SkillLearnBenchCandidateEvaluation['reports'],
+    observations: readonly SkillShadowObservation[],
+    candidate: Readonly<VersionedSkillCandidate>,
+    verifyEvidence: SkillShadowEvidenceVerifier,
+  ): ReflectiveEvidenceBindingReport {
+    return bindReflectiveReportsToVerifiedShadowEvidence(reports, observations, candidate, verifyEvidence);
   }
 
   stageVerifiedSkillCandidate(proposal:VerifiedSkillPromotionProposal, skill:PolicySkillRecord):VersionedSkillCandidate {
