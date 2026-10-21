@@ -7,7 +7,14 @@
 **This document is the durable instruction for future work. Read it before starting a new pass.**
 
 
-## Latest durable checkpoint — WorkPass127 (2026-10-21)
+## Latest durable checkpoint — WorkPass129 (2026-10-21)
+
+- Read [WorkPass129 signed shadow evidence report](docs/WORKPASS129_SIGNED_SHADOW_EVIDENCE_2026-10-21.md). Signed shadow receipts bind execution evidence to the exact candidate ID/version, payload and proposal fingerprints, run/task, manifest, seed, runtime version, outcome, verifier and timestamp. Candidate store defaults to denying shadow evidence and re-verifies persisted observations before promotion.
+- New signed-evidence module/test, npm script and learning workflow step are committed. Tests/typecheck/exact-head CI were not executed successfully in this environment; do not mark them PASS.
+- Production trusted-key registry/bootstrap wiring and full activation call-graph audit remain open. Keep PR #12 draft and do not merge to `main`.
+- **Chat reconstruction requirement:** retain and operationalize the 2026-10-17 master plan “Нейро Курису — стратегия, архитектура, исходники, исследования и дорожная карта” (previously reported as 17,779 words / 42 pages / 25 sections / 100 P0–P3 tasks). Reconcile it against current NK1 code and WorkPass124–129; historical WorkPass51–54 and archive findings are context, not proof of current implementation. The repo checkpoint is not guaranteed to be a literal full chat transcript. See WorkPass129 report for scope and next steps.
+
+## Previous durable checkpoint — WorkPass127 (2026-10-21)
 
 - WorkPass127 report: `docs/WORKPASS127_PROMOTION_PROPOSAL_AUTHENTICITY_2026-10-21.md`. Candidate staging now requires the exact proposal object issued by the canonical proposal generator in the same process; copied or caller-fabricated public fields no longer satisfy admission.
 - Code commits: `225903c6eff87ebe38b83032abff55d52c7bf7a6`, `27a267d541ab8ecfd654424ae3ed368f57c9d0a1`. Lifecycle regression fixtures now build successful proposals through signed, manifest-bound artifact ingestion; copied-object rejection regression: `399225fa696dbd1bb0dabac9efc69cfc0d0056bc`.
@@ -179,6 +186,11 @@ When the user says “работай над проектом”, “продол
 
 **Newest continuation handover:** [WorkPass78 — 2026-10-20](docs/WORKPASS78_HANDOVER_2026-10-20.md). Always check the live branch and Actions before relying on its snapshot.
 
+
+## WorkPass129 — signed shadow evidence (2026-10-21)
+- Report: `docs/WORKPASS129_SIGNED_SHADOW_EVIDENCE_2026-10-21.md`.
+- Signed shadow receipt verifier and fail-closed store hooks added; focused regression registered in npm and learning workflow.
+- Production trusted-key wiring, successful test/typecheck/CI evidence and activation call-graph audit remain open.
 
 ## WorkPass128 — promotion authority boundary (2026-10-21)
 - `VersionedSkillCandidateStore` now defaults to deny promotion unless an injected `SkillPromotionApprovalVerifier` confirms an authenticated approval; audit-shaped caller fields alone are insufficient.
