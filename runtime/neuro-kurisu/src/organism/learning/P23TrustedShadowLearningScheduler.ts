@@ -176,6 +176,9 @@ export class P23TrustedShadowLearningScheduler {
         if (stat.isSymbolicLink() || !stat.isFile()) {
           throw new Error('signed shadow observation must be a regular file inside the isolated run directory');
         }
+        if (stat.size > 1_048_576) {
+          throw new Error('signed shadow observation exceeds the 1 MiB ingestion limit');
+        }
         const parsed: unknown = JSON.parse(await readFile(observationPath, 'utf8'));
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
           throw new Error('signed shadow observation JSON must be an object');
