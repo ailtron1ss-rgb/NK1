@@ -32,11 +32,13 @@ Extended the existing `SkillLearnBenchAdapter.ts` rather than creating a competi
 - Any candidate safety violation is a hard rejection, not something a higher aggregate score can offset.
 - Produces structured feedback when task success, trajectory quality, skill quality, holdout performance, or safety is weak.
 - Does not mutate, activate, or persist candidates. Eligibility is a recommendation for the existing approval/activation/rollback route; this keeps the source optimizer separate from authority to change the live system.
-- Adds a regression test and wires it into the existing P26 learning-validation workflow. No new runtime dependency is added.
+- Adds regression tests for leakage, forged aggregates, empty rubrics, duplicate trials, normalized task identity, and malformed runtime inputs; wires them into the existing P26 learning-validation workflow. No new runtime dependency is added.
+- Rejects empty required-capability and expected-trajectory rubrics instead of allowing the zero-denominator ratio helper to score an empty reference as perfect.
+- Hardens the existing aggregate API against duplicate task/trial evidence, malformed score values, and whitespace-split task groups.
 
 ## Validation status
 
-The test is registered in package scripts and the learning workflow. A deeper audit added regression cases for validation/holdout leakage and internally inconsistent aggregate evidence. GitHub Actions runs #26, #28, #30, and #33 all failed before exposing any job steps (`steps: null/[]`, no runner logs URL); this pattern spans the prerequisite PR chain, so it is not evidence that the new test itself failed. The repository's actual runner/Actions failure reason remains unavailable. This document does not claim the test or typecheck passed until a corresponding GitHub Actions run is observed. The gate is a deterministic evidence comparator; it is not an implementation of DSPy/GEPA and does not generate candidate mutations by itself.
+The test is registered in package scripts and the learning workflow. A broader audit found the same pre-step failure on runs #32–#42 across successive commits on this PR: the job reports `runner_id: 0`, empty `runner_name`, `steps: []`, `logs_url: null`, and completion within roughly 1–4 seconds. Run #42 has the same signature. A rerun of its failed job was requested; its outcome must be checked separately. This strongly indicates the workflow job is failing before an actual runner starts, but the exact cause (repository Actions policy, hosted-runner allocation, account/quota, or GitHub-side issue) is not exposed by the available API response. It is not evidence that the new test or typecheck failed, because neither step started. Do not disable validation or weaken branch protections to mask this. No test/typecheck pass is claimed. The gate is a deterministic evidence comparator; it is not an implementation of DSPy/GEPA and does not generate candidate mutations by itself.
 
 ## Approximate progress
 
