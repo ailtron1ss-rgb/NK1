@@ -85,10 +85,10 @@ const confidenceBeforeHoldout=liveFour.confidence01;
 lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,holdout:true,context:'holdout-1'});
 const after=lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,holdout:true,context:'holdout-2'});
 assert.ok(after); assert.equal(after.confidence01,confidenceBeforeHoldout,'holdout must not inflate confidence');
-assert.equal(lib.snapshot().compoundSkills[0].activeVariantId,variant.id);
-assert.equal(lib.snapshot().compoundSkills[0].steps[1].toolId,'tool.fallback');
+assert.equal(lib.snapshot().compoundSkills.find(s=>s.id===skill.id).activeVariantId,variant.id);
+assert.equal(lib.snapshot().compoundSkills.find(s=>s.id===skill.id).steps[1].toolId,'tool.fallback');
 const rolled=lib.rollbackCompoundSkill(skill.id,'regression-test');
-assert.ok(rolled); assert.equal(lib.snapshot().compoundSkills[0].steps[1].toolId,'tool.primary');
+assert.ok(rolled); assert.equal(lib.snapshot().compoundSkills.find(s=>s.id===skill.id).steps[1].toolId,'tool.primary');
 assert.equal(lib.skillMetaOperation('compare-variants',skill.id).length,2);
 
 // Holdout outcomes are evaluation-only: even repeated verified successes cannot
@@ -163,4 +163,4 @@ assert.ok(cr.causalStrength01>=.79);
 const ul=new UnifiedLearningSubstrate();
 const us=ul.ingestExternalSignal({taskId:'repair-task',action:'explore',reward01:.9,success01:1,surprise01:.55,novelty01:.6,causalStrength01:.8,transferPotential01:.72});
 assert.ok(us.learningOpportunity01>.5);
-console.log('BIG_PASS_101_SKILL_ECOLOGY=PASS',JSON.stringify({version:lib.snapshot().version,variant:variant.id,activeVariantAfterRollback:lib.snapshot().compoundSkills[0].activeVariantId,rollbackTo:rolled.id,causalRecords:cx.summary().records,learningOpportunity01:us.learningOpportunity01}));
+console.log('BIG_PASS_101_SKILL_ECOLOGY=PASS',JSON.stringify({version:lib.snapshot().version,variant:variant.id,activeVariantAfterRollback:lib.snapshot().compoundSkills.find(s=>s.id===skill.id).activeVariantId,rollbackTo:rolled.id,causalRecords:cx.summary().records,learningOpportunity01:us.learningOpportunity01}));
