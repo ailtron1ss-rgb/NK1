@@ -30,6 +30,8 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/SkillRetrievalAugmentation.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/OutcomeReflectionCurriculum.ts'
       - 'runtime/neuro-kurisu/tests/p23-skill-retrieval-reflection-curriculum.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/SkillRevisionGate.ts'
+      - 'runtime/neuro-kurisu/tests/p23-verified-skill-revision-gate.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
   push:
@@ -87,6 +89,9 @@ jobs:
       - name: Run skill retrieval, reflection and curriculum regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:skill-retrieval-reflection-curriculum
+      - name: Run verified skill revision gate regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:verified-skill-revision-gate
       - name: Run reset-retention evaluation regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-reset-retention-evaluation.mjs
