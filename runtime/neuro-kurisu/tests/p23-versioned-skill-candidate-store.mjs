@@ -1,4 +1,8 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { AtomicFileSkillStorePersistence } from '../src/organism/learning/AtomicFileSkillStorePersistence.ts';
 import { VersionedSkillCandidateStore, InMemorySkillStorePersistence } from '../src/organism/learning/VersionedSkillCandidateStore.ts';
 
 function proposal(id, accepted=true, authenticatedEvidenceRows=20, unauthenticatedEvidenceRows=0) {
@@ -59,4 +63,18 @@ const staged = first.stageCandidate(proposal('f'), 'tool-use', { instruction: 's
 assert.equal(second.snapshot().candidates.some(item => item.candidateId === staged.candidateId), true,
   'separate store instances observe the same persistence snapshot');
 
+const tempRoot = mkdtempSync(join(tmpdir(), 'nk1-skill-store-'));
+try {
+  const filePath = join(tempRoot, 'state', 'skills.json');
+  const durable = new AtomicFileSkillStorePersistence(filePath);
+  const durableStore = new VersionedSkillCandidateStore(durable);
+  const durableCandidate = durableStore.stageCandidate(proposal('g'), 'file-backed-skill', { instruction: 'persisted' });
+  const afterRestart = new VersionedSkillCandidateStore(new AtomicFileSkillStorePersistence(filePath));
+  assert.equal(afterRestart.snapshot().candidates[0].candidateId, durableCandidate.candidateId,
+    'atomic file adapter restores candidate state across store reconstruction');
+  assert.equal(durable.compareAndSwap(0, { schemaVersion: 1, revision: 1, active: [], candidates: [] }), false,
+    'stale revisions cannot overwrite a newer durable snapshot');
+} finally {
+  rmSync(tempRoot, { recursive: true, force: true });
+}
 console.log('P23_VERSIONED_SKILL_CANDIDATE_STORE=PASS');
