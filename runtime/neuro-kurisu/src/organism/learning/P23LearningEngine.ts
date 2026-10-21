@@ -8,6 +8,7 @@ import { rankLearningTargets, reflectOnOutcomes } from './OutcomeReflectionCurri
 import { isAuthenticVerifiedSkillPromotionProposal, type VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
 import { evaluateSkillLearnBenchCandidate, type SkillLearnBenchCandidateEvaluation, type SkillLearnBenchCandidateGateOptions, type SkillLearnBenchCandidateGateReport } from './SkillLearnBenchAdapter.ts';
 import { bindIndependentEvaluationToVerifiedShadowEvidence, bindReflectiveReportsToVerifiedShadowEvidence, type ReflectiveEvidenceBindingReport } from './HermesVerifiedEvidenceBinding.ts';
+import { compareMatchedIndependentEvaluations } from './IndependentSkillCandidateEvaluator.ts';
 import { planSkillRevision, type SkillRevisionPlan } from './SkillRevisionPlan.ts';
 import type { SkillShadowEvidenceVerifier } from './VersionedSkillCandidateStore.ts';
 import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillRollbackApproval, type SkillShadowObservation, type SkillRevisionProvenance, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
@@ -513,13 +514,20 @@ export class P23LearningEngine {
   approveIndependentlyEvaluatedSkillCandidate(
     candidateId:string,
     approval:SkillPromotionApproval,
-    baseline:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
-    evaluation:Parameters<typeof bindIndependentEvaluationToVerifiedShadowEvidence>[0],
+    baseline:Parameters<typeof compareMatchedIndependentEvaluations>[0],
+    evaluation:Parameters<typeof compareMatchedIndependentEvaluations>[1] & Parameters<typeof bindIndependentEvaluationToVerifiedShadowEvidence>[0],
     verifyEvidence:SkillShadowEvidenceVerifier,
     minShadowRuns=3,
-    options:SkillLearnBenchCandidateGateOptions={},
-  ):{active:ActiveSkillVersion;fitness:SkillLearnBenchCandidateGateReport;evidenceBinding:ReflectiveEvidenceBindingReport} {
+  ):{active:ActiveSkillVersion;fitness:SkillLearnBenchCandidateGateReport & {matchedTrialCount:number;matchedValidationTrialCount:number;matchedHoldoutTrialCount:number;environmentFingerprint:string;planFingerprint:string};evidenceBinding:ReflectiveEvidenceBindingReport} {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    // Public runtime APIs can be called from untyped JavaScript despite TypeScript
+    // declarations. Reject absent/malformed envelopes before any property access.
+    if(!evaluation || typeof evaluation!=='object' || !evaluation.evaluation ||
+       typeof evaluation.evaluation!=='object' || !Array.isArray(evaluation.evaluation.validation) ||
+       !Array.isArray(evaluation.evaluation.holdout) || !evaluation.evaluation.provenance ||
+       !baseline || typeof baseline!=='object') {
+      throw new Error('matched independent baseline and candidate envelopes are required');
+    }
     const snapshot=this.verifiedSkillStore.snapshot();
     const staged=snapshot.candidates.find(item=>item.candidateId===candidateId);
     if(!staged || staged.status!=='shadow') throw new Error('independent promotion requires an existing shadow candidate');
@@ -530,11 +538,10 @@ export class P23LearningEngine {
        staged.revisionProvenance.evaluationFingerprint!==evaluation.evaluationFingerprint) {
       throw new Error('independent evaluation fingerprint does not match staged candidate revision provenance');
     }
-    const candidateEvaluation={
-      validation:[...evaluation.evaluation.validation],
-      holdout:[...evaluation.evaluation.holdout],
-    };
-    const fitness=this.evaluateReflectiveSkillCandidate(baseline,candidateEvaluation,options);
+    // Never gate on a caller-supplied collection of baseline reports. The
+    // evaluator proves one-to-one task/trial/seed/split joins and identical
+    // plan/environment/manifest before computing the paired SkillLearnBench gate.
+    const fitness=compareMatchedIndependentEvaluations(baseline,evaluation);
     if(!fitness.eligible) throw new Error(`independent reflective fitness gate rejected candidate: ${fitness.reasons.join(',')}`);
     // Bind against the exact receipts persisted on the candidate; caller-supplied
     // alternate receipts cannot be used to pass this pre-promotion check.
