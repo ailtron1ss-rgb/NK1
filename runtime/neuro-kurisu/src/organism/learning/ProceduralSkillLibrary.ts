@@ -403,10 +403,11 @@ export class ProceduralSkillLibrary{
       const reliability=Math.min(1,skill.nonHoldoutUses/8);
       const evidenceQuality=clamp((skill.nonHoldoutVerifiedExecutions/Math.max(1,skill.nonHoldoutUses))*.62+(skill.nonHoldoutIndependentExecutions/Math.max(1,skill.nonHoldoutUses))*.38);
       skill.confidence01=clamp(skill.confidence01*.74+reliability*.11+evidenceQuality*.15);
+      skill.transferScore01=clamp(skill.transferScore01*.84+Math.max(.25,1-similarity*.25)*.16);
+      skill.lastContext=context;
+      this.compoundContextTokenCache.set(skill.id,normalizeTokens(context||skill.name));
     }
-    skill.transferScore01=clamp(skill.transferScore01*.84+Math.max(.25,1-similarity*.25)*.16);
-    skill.lastOutcome01=success; skill.lastContext=context; skill.lastUsedAt=Date.now();
-    this.compoundContextTokenCache.set(skill.id,normalizeTokens(context||skill.name));
+    skill.lastOutcome01=success; skill.lastUsedAt=Date.now();
     // Feed the actual execution result into the active variant's existing evidence
     // path. Holdout remains explicitly evaluation-only at both aggregation levels.
     if(skill.activeVariantId)this.recordVariantExecution(id,skill.activeVariantId,{success01:success,verified:input.verified,independent:input.independent,holdout,context});
