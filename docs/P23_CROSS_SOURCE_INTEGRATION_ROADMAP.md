@@ -2,7 +2,7 @@
 
 Scope: continue integrating mechanisms into the existing P23 learning/revision lifecycle. This is an implementation queue, not a promise that upstream mechanisms are already integrated. Preserve the current branch/PR boundary; do not merge to the default branch without explicit approval.
 
-## Completed in this branch (through WorkPass220)
+## Completed in this branch (through WorkPass221)
 
 - [x] Reuse SkillLearnBench-style task success, skill quality, trajectory quality and macro-averaged task metrics.
 - [x] Bind evaluator runs to exact payload/task/environment/plan identity; require an independent verifier's explicit binding attestation.
@@ -11,6 +11,7 @@ Scope: continue integrating mechanisms into the existing P23 learning/revision l
 - [x] Snapshot caller-owned experiment plans and capture executor/verifier/scanner entry points.
 - [x] Detach executor results before async verifier/safety I/O and snapshot repair evidence before provider calls.
 - [x] Snapshot provider-owned proposal, baseline, and candidate-evaluation data before returning prepared revision inputs (WorkPass220); add a retained-reference mutation regression.
+- [x] Freeze the evaluator's validated runtime/environment fingerprint at construction so later caller config mutation cannot relabel runs (WorkPass221); add regression coverage for post-construction config mutation.
 - [x] Add targeted evaluator/provider regression commands to the learning CI workflow.
 
 ## Next implementation passes
