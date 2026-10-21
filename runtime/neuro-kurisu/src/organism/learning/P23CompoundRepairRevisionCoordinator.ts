@@ -20,7 +20,6 @@ export interface CompoundRepairRevisionInputs {
 export type CompoundRepairRevisionInputProvider = (
   input: {
     skillId: string;
-    sourceCandidateId: string;
     repairFingerprints: string[];
     repairEvidence: ReturnType<OrganismRuntime['compoundSkillRepairEvidence']>;
   },
@@ -54,7 +53,6 @@ export class P23CompoundRepairRevisionCoordinator {
     const fingerprints = [...new Set(repairEvidence.map(row => row.failureFingerprint))];
     const prepared = await this.provideInputs({
       skillId,
-      sourceCandidateId: '',
       repairFingerprints: fingerprints,
       repairEvidence: structuredClone(repairEvidence),
     });
