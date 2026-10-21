@@ -35,6 +35,7 @@ import { RealityShadowBridge } from '../system/RealityShadowBridge.ts';
 import { ExternalPostconditionVerifier } from '../system/ExternalPostconditionVerifier.ts';
 import { RuntimePerformanceGovernor } from '../system/RuntimePerformanceGovernor.ts';
 import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/ActionGateway.ts';
+import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
@@ -82,6 +83,8 @@ export interface RuntimeConfig extends OrganismConfig {
   worldStateStore?: JsonStateStore<PersistedWorld>;
   journal?: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
   visionBackend?: VisionSemanticBackend;
+  /** Explicit opt-in to scheduled, Core-owned P23 candidate/shadow learner runs. */
+  trustedShadowLearning?: TrustedShadowLearningScheduleConfig;
   /** P2836: how real device outcomes compete with the predictive simulator. */
   realityMode?: RealityGroundingMode;
 }
@@ -134,6 +137,7 @@ export class OrganismRuntime {
   private readonly runtimeClosure = new RuntimeClosureLedger();
   private readonly causalDomainClosureLedger = new CausalDomainClosureLedger(32);
   private readonly adaptiveConsolidationGate = new AdaptiveConsolidationGate();
+  private readonly trustedShadowLearningScheduler: P23TrustedShadowLearningScheduler | null;
   private stopping = false;
   private sleepStartedAt: number | null = null;
   private sleepReason = '';
@@ -163,6 +167,9 @@ export class OrganismRuntime {
     this.phonePolicy.worldCheckpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.worldCheckpointMaxDirtyCycles));
     this.stopping = false;
     this.core = new OrganismCore(config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile), { ...config, cycleResultMode:'operational' });
+    this.trustedShadowLearningScheduler = config.trustedShadowLearning?.enabled === true
+      ? new P23TrustedShadowLearningScheduler(this.core, config.trustedShadowLearning)
+      : null;
     this.realityGrounding.setMode(config.realityMode ?? 'hybrid');
     this.plans = new PlanEngine(this.environment, {
       predict: (action, baseReward, context) => {
@@ -247,6 +254,7 @@ export class OrganismRuntime {
       this.initialized = true;
       this.startEmbodimentClock();
       this.clockScheduler.start('reflection');
+      if (this.trustedShadowLearningScheduler) this.clockScheduler.start('trusted-shadow-learning');
       if (this.config.autoRun) this.startCognitiveClock();
       await this.journal.write('info', 'runtime.init.complete', { tick: this.core.operationalStatusSnapshot().tick });
     });
@@ -1153,6 +1161,17 @@ export class OrganismRuntime {
     });
   }
 
+  /** Run one configured P23 candidate/shadow attempt through OrganismCore's durable trust boundary. */
+  async runTrustedShadowLearningOnce() {
+    if (!this.initialized) throw new Error('OrganismRuntime.init() must be called before trusted shadow learning');
+    if (!this.trustedShadowLearningScheduler) throw new Error('trusted shadow learning is not enabled in RuntimeConfig');
+    return this.trustedShadowLearningScheduler.runOnce(this.core.operationalStatusSnapshot().tick);
+  }
+
+  trustedShadowLearningDiagnostics() {
+    return this.trustedShadowLearningScheduler?.snapshot() ?? { enabled: false as const };
+  }
+
   embodimentStatus(): ReturnType<EmbodimentRuntime['snapshot']> { return this.embodiment.snapshot(); }
   embodimentDiagnostics(){ return this.embodiment.sensorDiagnosticsSnapshot(); }
   async stop(): Promise<void> {
@@ -1163,6 +1182,7 @@ export class OrganismRuntime {
     this.stopping = true;
     this.clockScheduler.stop();
     await this.clockScheduler.drain();
+    await this.trustedShadowLearningScheduler?.drain();
     await this.queue.catch(() => undefined);
 
     // All queued cognitive work has drained, so the final flush is now serialized
@@ -1216,6 +1236,41 @@ export class OrganismRuntime {
   }
 
   private registerRuntimeClocks(): void {
+    if (this.trustedShadowLearningScheduler) {
+      this.clockScheduler.register({
+        id: 'trusted-shadow-learning',
+        initialDelayMs: this.trustedShadowLearningScheduler.initialDelayMs,
+        decide: () => {
+          const body = this.embodiment.snapshot();
+          const decision = this.runtimeDecision();
+          const battery01 = Number(body.telemetry.battery01 ?? 1);
+          const ramPressure01 = Number(body.telemetry.ramPressure01 ?? 0);
+          const resourceReady = decision.cognitiveBudget01 >= 0.65 && battery01 > 0.15 &&
+            ramPressure01 < 0.90 && body.thermalStrain01 < 0.80;
+          return {
+            delayMs: this.trustedShadowLearningScheduler!.intervalMs,
+            reason: resourceReady ? 'p23-trusted-shadow-resource-ready' : 'p23-trusted-shadow-resource-gated',
+            run: this.initialized && !this.stopping && body.awake && resourceReady,
+          };
+        },
+        task: async () => {
+          const result = await this.runTrustedShadowLearningOnce();
+          await this.journal.write(result.receipt.status === 'completed' ? 'info' : 'warn', 'runtime.p23.trusted-shadow.completed', {
+            runId: result.receipt.runId,
+            executionId: result.receipt.executionId,
+            status: result.receipt.status,
+            exitCode: result.receipt.exitCode,
+            durationMs: result.receipt.durationMs,
+            note: 'execution receipt is not verified task outcome or promotion evidence',
+          }).catch(() => {});
+        },
+        onError: async (error) => {
+          const message = String((error as any)?.message || error).slice(0, 500);
+          this.core.markRuntimeAnomaly('p23-trusted-shadow-learning:' + message);
+          await this.journal.write('warn', 'runtime.p23.trusted-shadow.failed', { message }).catch(() => {});
+        },
+      });
+    }
     this.clockScheduler.register({
       id: 'cognitive', initialDelayMs: 0,
       decide: () => {
@@ -1307,6 +1362,7 @@ export class OrganismRuntime {
     const heap=this.heapPressure01();
     return {
       ...this.core.longitudinalSnapshot(),
+      trustedShadowLearning:this.trustedShadowLearningScheduler?.snapshot() ?? { enabled:false },
       lastAutonomyStepMs:this.lastAutonomyStepAt,
       runtimeClocks:this.clockScheduler.snapshot(),
       continuityLedger:this.continuityLedger.metrics(),
@@ -1318,6 +1374,7 @@ export class OrganismRuntime {
     const heap=this.heapPressure01();
     return {
       core:this.core.persistenceMetrics(),
+      trustedShadowLearning:this.trustedShadowLearningScheduler?.snapshot() ?? { enabled:false },
       predictionLedger:this.core.predictionLedgerSnapshot(),
       continuity:this.core.continuitySnapshot(),
       world:typeof this.worldStore.metrics==='function' ? this.worldStore.metrics() : null,
