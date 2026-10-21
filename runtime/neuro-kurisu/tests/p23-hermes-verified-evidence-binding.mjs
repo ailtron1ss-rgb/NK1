@@ -1,9 +1,15 @@
+import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
 import { P23LearningEngine } from '../src/organism/learning/P23LearningEngine.ts';
 import { signSkillShadowArtifactForFixture, verifySignedSkillShadowObservation } from '../src/organism/learning/VerifiedSkillShadowEvidence.ts';
 import { skillShadowPayloadFingerprint } from '../src/organism/learning/VerifiedSkillShadowEvidence.ts';
 
+const canonical = value => value === null || typeof value !== 'object'
+  ? JSON.stringify(value)
+  : Array.isArray(value) ? '[' + value.map(canonical).join(',') + ']'
+    : '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';
+const digest = value => createHash('sha256').update(canonical(value)).digest('hex');
 const engine = new P23LearningEngine();
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');
 const publicPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
@@ -97,6 +103,7 @@ const independentEvaluation = {
   validation: [report('task-1', 'trial-1', true)],
   holdout: [report('task-2', 'trial-2', false)],
   provenance: {
+    payloadFingerprint: 'd'.repeat(64),
     experimentAuthority: { manifestFingerprint: 'c'.repeat(64) },
     runBindings: [
       { taskId: 'task-1', trialId: 'trial-1', runId: 'run-1', plannedRunId: 'planned-1', seed: 11, split: 'validation', bindingVerified: true, verifierPassed: true, safetyViolationCount: 0 },
@@ -104,12 +111,17 @@ const independentEvaluation = {
     ],
   },
 };
+const independentEnvelope = {
+  payloadFingerprint: 'd'.repeat(64),
+  evaluationFingerprint: digest(independentEvaluation),
+  evaluation: independentEvaluation,
+};
 const independentReceipts = [
   validObservation,
   makeObservation({ runId: 'run-2', taskId: 'task-2', passed: false, seed: 22 }),
 ];
 const independentBound = engine.bindIndependentEvaluationEvidence(
-  independentEvaluation, independentReceipts, candidate, verifier,
+  independentEnvelope, independentReceipts, candidate, verifier,
 );
 assert.equal(independentBound.accepted, true,
   'P23 trial IDs must join to signed execution receipts through independently verified run bindings');
@@ -117,10 +129,18 @@ assert.equal(independentBound.boundTrials, 2);
 assert.equal(independentBound.manifestFingerprint, 'c'.repeat(64));
 assert.equal(independentBound.qualityMetricsAuthenticated, false);
 
+const tamperedEnvelope = { ...independentEnvelope, evaluationFingerprint: 'f'.repeat(64) };
+const tamperedEnvelopeBound = engine.bindIndependentEvaluationEvidence(
+  tamperedEnvelope, independentReceipts, candidate, verifier,
+);
+assert.equal(tamperedEnvelopeBound.accepted, false,
+  'receipt binding must reject a modified or mismatched evaluation digest');
+assert.ok(tamperedEnvelopeBound.reasons.includes('independent-evaluation-envelope-integrity-invalid'));
 const wrongSeedEvaluation = structuredClone(independentEvaluation);
 wrongSeedEvaluation.provenance.runBindings[1].seed = 23;
+const wrongSeedEnvelope = { ...independentEnvelope, evaluation: wrongSeedEvaluation, evaluationFingerprint: digest(wrongSeedEvaluation) };
 const wrongSeedBound = engine.bindIndependentEvaluationEvidence(
-  wrongSeedEvaluation, independentReceipts, candidate, verifier,
+  wrongSeedEnvelope, independentReceipts, candidate, verifier,
 );
 assert.equal(wrongSeedBound.accepted, false,
   'a signed receipt from another seed must not bind to an independent evaluation trial');
@@ -128,8 +148,9 @@ assert.ok(wrongSeedBound.reasons.includes('independent-evaluation-signed-receipt
 
 const missingSafetyBinding = structuredClone(independentEvaluation);
 missingSafetyBinding.provenance.runBindings[0].safetyViolationCount = 1;
+const unsafeEnvelope = { ...independentEnvelope, evaluation: missingSafetyBinding, evaluationFingerprint: digest(missingSafetyBinding) };
 const unsafeBound = engine.bindIndependentEvaluationEvidence(
-  missingSafetyBinding, independentReceipts, candidate, verifier,
+  unsafeEnvelope, independentReceipts, candidate, verifier,
 );
 assert.equal(unsafeBound.accepted, false,
   'signed identity evidence cannot rescue a safety-violating evaluation');
