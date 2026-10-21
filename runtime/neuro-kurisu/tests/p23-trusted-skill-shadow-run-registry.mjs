@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync, openSync, closeSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync, openSync, closeSync, existsSync } from 'node:fs';
 import { tmpdir, hostname } from 'node:os';
 import { join } from 'node:path';
 import { AtomicFileTrustedSkillShadowRunRegistry, InMemoryTrustedSkillShadowRunRegistry } from '../src/organism/learning/TrustedSkillShadowRunRegistry.ts';
@@ -62,7 +62,7 @@ try {
   writeFileSync(file + '.lock', JSON.stringify({ pid: deadPid, hostname: hostname(), acquiredAt: Date.now() }));
   assert.equal(restored.register(context).runId, context.runId,
     'a provably stale same-host lock must not permanently block trusted-run registration');
-  assert.equal(readFileSync(file + '.lock', 'utf8').includes(String(deadPid)), false,
+  assert.equal(existsSync(file + '.lock'), false,
     'stale lock is replaced and cleaned up after successful registration');
 
   writeFileSync(file, JSON.stringify({ schemaVersion: 1, revision: 2, runs: [{ ...context, seed: -1, registeredAt: Date.now() }] }));
