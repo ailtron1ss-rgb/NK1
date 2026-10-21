@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   closeSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync,
   unlinkSync, writeFileSync,
@@ -13,15 +14,29 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 const isText = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 const isTime = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0;
-const isVersion = (value: unknown): value is number => Number.isSafeInteger(value) && typeof value === 'number' && value >= 1;
-const isFingerprint = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value);
+const isVersion = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 1;
+const isFingerprint = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+  const object = value as Record<string, unknown>;
+  return `{${Object.keys(object).sort().map(key => `${JSON.stringify(key)}:${canonical(object[key])}`).join(',')}}`;
+}
+
+function payloadFingerprint(value: unknown): string | null {
+  try {
+    const json = JSON.stringify(value);
+    if (json === undefined) return null;
+    return createHash('sha256').update(canonical(JSON.parse(json))).digest('hex');
+  } catch { return null; }
+}
 
 function isActiveSkill(value: unknown): value is ActiveSkillVersion {
   if (!isRecord(value) || !isText(value.skillId) || !isVersion(value.version) ||
       !isFingerprint(value.payloadFingerprint) || !isFingerprint(value.proposalId) || !isTime(value.activatedAt) ||
       !Object.prototype.hasOwnProperty.call(value, 'payload')) return false;
-  try { if (JSON.stringify(value.payload) === undefined) return false; } catch { return false; }
-  return true;
+  return payloadFingerprint(value.payload) === value.payloadFingerprint;
 }
 
 function isApproval(value: unknown): value is SkillPromotionApproval {
@@ -43,7 +58,11 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
       !['staged', 'shadow', 'active', 'superseded', 'rolled-back'].includes(String(value.status)) ||
       !Array.isArray(value.shadowObservations) || !value.shadowObservations.every(isShadowObservation) ||
       !isTime(value.createdAt) || !Object.prototype.hasOwnProperty.call(value, 'payload')) return false;
-  try { if (JSON.stringify(value.payload) === undefined) return false; } catch { return false; }
+  if (payloadFingerprint(value.payload) !== value.payloadFingerprint) return false;
+  const expectedId = createHash('sha256').update(JSON.stringify([
+    value.skillId, value.version, value.proposalId, value.payloadFingerprint,
+  ])).digest('hex');
+  if (value.candidateId !== expectedId) return false;
   if (value.approval !== undefined && !isApproval(value.approval)) return false;
   if (value.promotedAt !== undefined && !isTime(value.promotedAt)) return false;
   if (value.rolledBackAt !== undefined && !isTime(value.rolledBackAt)) return false;
@@ -59,8 +78,8 @@ function isSnapshot(value: unknown): value is VersionedSkillStoreSnapshot {
 
 /**
  * Durable JSON-file adapter. Writes are temp-file + fsync + atomic rename under
- * an exclusive lock. Persisted entries are validated, not just the outer arrays:
- * a structurally corrupt skill record must never enter the runtime as valid state.
+ * an exclusive lock. Persisted entries and their payload fingerprints are
+ * validated, not just the outer arrays, before they enter runtime state.
  */
 export class AtomicFileSkillStorePersistence implements SkillStorePersistence {
   private readonly lockPath: string;
