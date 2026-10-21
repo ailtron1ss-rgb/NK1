@@ -1,3 +1,11 @@
+## WorkPass132 — deterministic seed-cluster bootstrap sensitivity (2026-10-21)
+
+- Added a reproducible percentile bootstrap interval over seed-level aggregates in `VerifiedOutcomeLedger.comparePairedBySeed` and family-stratified comparisons. The resampling unit remains the independent seed, not correlated task cells or retries.
+- Skill-promotion eligibility now requires positive lower bounds from both the existing small-sample Student-t interval and the bootstrap sensitivity interval, alongside the existing gain and evidence gates.
+- Added regression assertions for deterministic intervals, interval coverage of the observed mean, no interval with a single seed, and bootstrap-backed promotion.
+- Research adaptation: the controlled-comparison and multi-level diagnosis principles from SkillLearnBench, plus bootstrap/strong-baseline discipline in replay evaluation protocols. No upstream code or dataset copied.
+- **Verification status:** code and regression sources committed; execution/typecheck/exact-head CI still pending confirmation. This changes measurement rigor, not proven learning quality.
+
 ## WorkPass131 — bind signed shadow receipts to trusted execution identity (2026-10-21)
 
 - Adapted the in-toto attestation principle of binding authenticated claims to explicit subjects: shadow receipts now have to match trusted run ID, task ID, random seed, manifest fingerprint and runtime version supplied by an independent resolver.
