@@ -75,6 +75,8 @@ export class ContinualReplayBuffer {
     };
   }
 
+  validateForTraining(raw: ReplayExperience): ReplayExperience { return this.validate(raw); }
+
   add(raw: ReplayExperience): void {
     const item = this.validate(raw);
     this.seen += 1;
