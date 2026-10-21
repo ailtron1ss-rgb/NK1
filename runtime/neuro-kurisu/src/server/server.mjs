@@ -1635,7 +1635,7 @@ async function route(req, res) {
             const lifecycle = runtime.core.verifiedSkillCandidateSnapshot();
             return json(res, 200, { ok: true, schemaVersion: 1, lifecycle, promotionPolicy: { requiresSignedEd25519Approval: true, minimumShadowRuns: 3, autoPromotion: false } });
         }
-        const promotionRequestMatch = url.pathname.match(/^\\/api\\/organism\\/learning\\/skills\\/([a-f0-9]{64})\\/promotion-request$/);
+        const promotionRequestMatch = url.pathname.match(/^\/api\/organism\/learning\/skills\/([a-f0-9]{64})\/promotion-request$/);
         if (req.method === 'POST' && promotionRequestMatch) {
             const input = await body(req);
             const candidateId = promotionRequestMatch[1];
@@ -1660,7 +1660,7 @@ async function route(req, res) {
             );
             return json(res, 200, { ok: true, approvalRequest, next: 'Have the authenticated external approval authority sign canonical JSON of approvalRequest with its Ed25519 key; never place the private key in the NK1 runtime.' });
         }
-        const promoteMatch = url.pathname.match(/^\\/api\\/organism\\/learning\\/skills\\/([a-f0-9]{64})\\/promote$/);
+        const promoteMatch = url.pathname.match(/^\/api\/organism\/learning\/skills\/([a-f0-9]{64})\/promote$/);
         if (req.method === 'POST' && promoteMatch) {
             const input = await body(req);
             const artifact = input?.artifact;
