@@ -178,3 +178,10 @@ When the user says “работай над проектом”, “продол
 
 
 **Newest continuation handover:** [WorkPass78 — 2026-10-20](docs/WORKPASS78_HANDOVER_2026-10-20.md). Always check the live branch and Actions before relying on its snapshot.
+
+
+## WorkPass128 — promotion authority boundary (2026-10-21)
+- `VersionedSkillCandidateStore` now defaults to deny promotion unless an injected `SkillPromotionApprovalVerifier` confirms an authenticated approval; audit-shaped caller fields alone are insufficient.
+- Added a regression proving default-deny cannot mutate the active skill set and adjusted the learning-engine test to reject fabricated proposal objects.
+- Report: `docs/WORKPASS128_PROMOTION_AUTHORITY_BOUNDARY_2026-10-21.md`.
+- Runtime/typecheck validation and full activation-path audit remain open; do not treat this pass as release-cleared.
