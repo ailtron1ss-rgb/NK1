@@ -180,6 +180,8 @@ const restoredShadowStore = new VersionedSkillCandidateStore(
 assert.equal(restoredShadowStore.snapshot().candidates[0].shadowObservations[0].artifact.signature,
   shadowArtifact.signature, 'signed receipt survives durable JSON reconstruction byte-for-byte');
 const mismatchedTrustedContexts = [
+  [{ runId: 7, taskId: trustedTaskId, seed: trustedSeed,
+    manifestFingerprint: trustedManifest, runtimeVersion: trustedRuntime }, 'malformed run ID'],
   [{ runId: 'different-run', taskId: trustedTaskId, seed: trustedSeed,
     manifestFingerprint: trustedManifest, runtimeVersion: trustedRuntime }, 'different run ID'],
   [{ runId: trustedRunId, taskId: 'different-task', seed: trustedSeed,
