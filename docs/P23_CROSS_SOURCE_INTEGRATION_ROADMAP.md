@@ -254,3 +254,12 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **DONE (regression + CI wiring):** extended `p23-hermes-production-promotion-gate.mjs` to assert free-form baseline report arrays and malformed envelopes are rejected before approval; added the test to the learning workflow's path filters and explicit steps, and included both Hermes regressions in `audit:p23:cross-source-replay`. Execution remains unverified.
 - **PARTIAL:** source and regression are committed, but the targeted test, typecheck and exact-head Actions have not been observed passing.
 - **OPEN:** add an end-to-end regression through the promotion method with durable registry-backed shadow receipts and authenticated approval; then exercise restart/replay and duplicate promotion against the real host runtime.
+
+### WorkPass238 — crash recovery for the durable trusted-run registry
+
+- **DONE (code):** registry lock files now identify the owning PID and hostname. When exclusive lock creation collides, the registry may reclaim the lock only if the lock is parseable, belongs to the same host, and the OS returns `ESRCH` for the recorded PID.
+- **DONE (safety):** live processes (including `EPERM`), remote-host owners, malformed/legacy lock files and ambiguous errors continue to fail closed. No age-based lock stealing was introduced; successful registrations retain the existing durable write/rename/fsync sequence.
+- **DONE (regression authored):** the trusted-run registry test now covers provably stale same-host lock recovery while retaining contention and corrupt-state cases.
+- **DONE (integration):** the existing workflow step/path filters already run the registry regression; the canonical `audit:p23:cross-source-replay` aggregate now also includes it.
+- **PARTIAL (validation):** test/typecheck and exact-head Actions have not been run/observed in this pass.
+- **OPEN:** verify on an actual runner; add a subprocess crash/restart integration case for the full signed-receipt → registry resolution → candidate-store activation path, including duplicate receipt/replay rejection under authenticated approval.
