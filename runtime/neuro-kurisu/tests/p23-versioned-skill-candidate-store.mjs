@@ -46,7 +46,7 @@ function proposal(id, accepted=true, authenticatedEvidenceRows=20, unauthenticat
     gate: { accepted }, canActivateAutomatically: false, authenticatedEvidenceRows, unauthenticatedEvidenceRows,
   };
 }
-const store = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => true); // explicit test-only authority adapter
+const store = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence(), () => true, () => true); // explicit test-only approval/evidence adapters
 const p1 = proposal('a');
 const forgedProposal = { ...p1 };
 assert.throws(() => store.stageCandidate(forgedProposal, 'memory-repair', { instruction: 'forged' }),
