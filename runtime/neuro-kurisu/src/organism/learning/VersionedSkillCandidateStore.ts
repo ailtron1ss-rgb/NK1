@@ -410,27 +410,46 @@ export class VersionedSkillCandidateStore {
     return clone(promoted);
   }
 
-  rollback(candidateId: string, expectedActiveVersion: number, rolledBackAt = Date.now()): ActiveSkillVersion | null {
-    if (!Number.isSafeInteger(expectedActiveVersion) || expectedActiveVersion < 1 ||
-        !Number.isFinite(rolledBackAt) || rolledBackAt <= 0) throw new Error('invalid rollback guard');
+  rollback(candidateId: string, approval: SkillRollbackApproval): ActiveSkillVersion | null {
+    if (!approval?.approvedBy?.trim() || !Number.isFinite(approval.approvedAt) || approval.approvedAt <= 0 ||
+        !Number.isSafeInteger(approval.expectedActiveVersion) || approval.expectedActiveVersion < 1) {
+      throw new Error('signed rollback approval identity, timestamp and active-version guard are required');
+    }
     const current = this.readTrustedSnapshot();
     const candidate = current.candidates.find(item => item.candidateId === candidateId);
     if (!candidate || candidate.status !== 'active') throw new Error('only the currently promoted candidate can be rolled back');
     const active = activeFor(current, candidate.skillId);
-    if (!active || active.version !== expectedActiveVersion || active.version !== candidate.version) {
+    if (!active || active.version !== approval.expectedActiveVersion || active.version !== candidate.version) {
       throw new Error('rollback compare-and-swap failed; active skill has changed');
     }
     const restored = candidate.previousActive ? clone(candidate.previousActive) : null;
+    let rollbackAuthorized = false;
+    try {
+      rollbackAuthorized = this.verifyRollbackApproval(clone(approval), clone(candidate), restored, 'rollback');
+    } catch { rollbackAuthorized = false; }
+    if (rollbackAuthorized !== true) {
+      throw new Error('rollback approval is not authenticated by the configured authority');
+    }
+
     const next = clone(current);
     next.revision += 1;
     next.active = next.active.filter(item => item.skillId !== candidate.skillId);
     if (restored) next.active.push(restored);
     const target = next.candidates.find(item => item.candidateId === candidateId)!;
     target.status = 'rolled-back';
-    target.rolledBackAt = rolledBackAt;
+    target.rolledBackAt = approval.approvedAt;
+    target.rollbackApproval = clone(approval);
     if (restored) {
-      const priorCandidate = next.candidates.find(item => item.skillId === candidate.skillId && item.version === restored.version);
-      if (priorCandidate?.status === 'superseded') priorCandidate.status = 'active';
+      const priorCandidate = next.candidates.find(item => item.skillId === candidate.skillId &&
+        item.version === restored.version && item.payloadFingerprint === restored.payloadFingerprint &&
+        item.proposalId === restored.proposalId);
+      if (!priorCandidate || priorCandidate.promotedAt !== restored.activatedAt) {
+        throw new Error('rollback target is not backed by its original approved candidate');
+      }
+      if (priorCandidate.status === 'superseded') priorCandidate.status = 'active';
+      else if (priorCandidate.status !== 'active') {
+        throw new Error('rollback target candidate is not eligible for restoration');
+      }
     }
     this.commit(current, next);
     return restored;
