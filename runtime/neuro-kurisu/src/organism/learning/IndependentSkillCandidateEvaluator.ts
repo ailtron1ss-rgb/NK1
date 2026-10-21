@@ -593,9 +593,23 @@ export function compareMatchedIndependentEvaluations(
   }
   const bindingsByKey = (value: typeof baseline, label: string) => {
     const map = new Map<string, (typeof value.evaluation.provenance.runBindings)[number]>();
-    const reports = [...value.evaluation.validation, ...value.evaluation.holdout];
-    const reportKeys = new Set(reports.map(report => JSON.stringify([report.taskId, report.trialId])));
-    if (reportKeys.size !== reports.length || reportKeys.size !== value.evaluation.provenance.runBindings.length) {
+    const reportSplitByKey = new Map<string, 'validation' | 'holdout'>();
+    const reports = [
+      ...value.evaluation.validation.map(report => ({ report, split: 'validation' as const })),
+      ...value.evaluation.holdout.map(report => ({ report, split: 'holdout' as const })),
+    ];
+    for (const { report, split } of reports) {
+      if (!report || typeof report.taskId !== 'string' || !report.taskId.trim() ||
+          typeof report.trialId !== 'string' || !report.trialId.trim()) {
+        throw new Error(`matched-independent-evaluation-${label}-report-invalid`);
+      }
+      const key = JSON.stringify([report.taskId, report.trialId]);
+      if (reportSplitByKey.has(key)) {
+        throw new Error(`matched-independent-evaluation-${label}-duplicate-report`);
+      }
+      reportSplitByKey.set(key, split);
+    }
+    if (reportSplitByKey.size !== value.evaluation.provenance.runBindings.length) {
       throw new Error(`matched-independent-evaluation-${label}-coverage-mismatch`);
     }
     for (const binding of value.evaluation.provenance.runBindings) {
@@ -609,8 +623,11 @@ export function compareMatchedIndependentEvaluations(
         throw new Error(`matched-independent-evaluation-${label}-untrusted-trial`);
       }
       const key = JSON.stringify([binding.taskId, binding.trialId]);
-      if (map.has(key) || !reportKeys.has(key)) {
+      if (map.has(key) || !reportSplitByKey.has(key)) {
         throw new Error(`matched-independent-evaluation-${label}-duplicate-or-orphan-binding`);
+      }
+      if (reportSplitByKey.get(key) !== binding.split) {
+        throw new Error(`matched-independent-evaluation-${label}-report-split-mismatch`);
       }
       map.set(key, binding);
     }
