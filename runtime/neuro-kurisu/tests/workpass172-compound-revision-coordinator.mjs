@@ -31,6 +31,7 @@ const coordinator = new P23CompoundRepairRevisionCoordinator(runtime, engine, as
     baseline: { validation: [], holdout: [] },
     candidateEvaluation: { validation: [], holdout: [] },
     generate: async request => ({ generatedFrom: request.optimizerInstruction }),
+    evaluateRevisedCandidate: async input => ({ payloadFingerprint: input.payloadFingerprint, evaluation: { validation: [], holdout: [] } }),
   };
 });
 const result = await coordinator.reviseFromObservedRepairs('skill-a');
@@ -97,6 +98,7 @@ const staleCoordinator = new P23CompoundRepairRevisionCoordinator(
       baseline: { validation: [], holdout: [] },
       candidateEvaluation: { validation: [], holdout: [] },
       generate: async () => ({ generated: true }),
+      evaluateRevisedCandidate: async input => ({ payloadFingerprint: input.payloadFingerprint, evaluation: { validation: [], holdout: [] } }),
     };
   },
 );
