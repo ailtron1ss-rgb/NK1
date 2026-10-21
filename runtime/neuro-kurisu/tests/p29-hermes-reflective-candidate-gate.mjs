@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  aggregateSkillLearnBenchReports,
   evaluateSkillLearnBenchCandidate,
   evaluateSkillLearnBenchTrial,
 } from '../src/organism/learning/SkillLearnBenchAdapter.ts';
@@ -110,4 +111,42 @@ assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, improved, {
   minimumValidationGain01: Number.NaN,
 }), /candidate-minimum-validation-gain-invalid/);
 
-console.log('P29_HERMES_REFLECTIVE_CANDIDATE_GATE=PASS pairedValidation=true untouchedHoldout=true safetyIsHardGate=true');
+// Empty reference rubrics previously scored as perfect through ratio(0, 0).
+assert.throws(() => evaluateSkillLearnBenchTrial({
+  taskId: 'empty-capability-rubric',
+  trialId: 't1',
+  verifierPassed: true,
+  skill: { requiredCapabilityIds: [], coveredCapabilityIds: [], executable: true, safetyViolationCount: 0 },
+  trajectory: { expectedStepIds: ['step-1'], observedStepIds: ['step-1'] },
+}), /empty-required-capability-rubric/);
+assert.throws(() => evaluateSkillLearnBenchTrial({
+  taskId: 'empty-trajectory-rubric',
+  trialId: 't1',
+  verifierPassed: true,
+  skill: { requiredCapabilityIds: ['cap-1'], coveredCapabilityIds: ['cap-1'], executable: true, safetyViolationCount: 0 },
+  trajectory: { expectedStepIds: [], observedStepIds: [] },
+}), /empty-expected-trajectory-rubric/);
+
+// Whitespace variants must not inflate the number of distinct holdout tasks.
+const oneTaskHoldout = [
+  trial('task-c', 'h1', 'good'),
+  trial(' task-c ', 'h2', 'good'),
+];
+const oneTaskGate = evaluateSkillLearnBenchCandidate(
+  { validation: baseline.validation, holdout: oneTaskHoldout },
+  { validation: improved.validation, holdout: oneTaskHoldout },
+);
+assert.equal(oneTaskGate.holdoutTaskCount, 1);
+assert.ok(oneTaskGate.reasons.includes('holdout-task-coverage-insufficient'));
+
+// Aggregate API rejects duplicate task/trial evidence and normalizes task identity.
+const duplicated = trial('task-a', 'dup', 'good');
+assert.throws(() => aggregateSkillLearnBenchReports([duplicated, { ...duplicated }]), /duplicate-report-trial/);
+const normalizedAggregate = aggregateSkillLearnBenchReports([
+  trial(' task-a ', 'a1', 'good'),
+  trial('task-a', 'a2', 'weak'),
+]);
+assert.equal(normalizedAggregate.taskCount, 1);
+assert.equal(normalizedAggregate.byTask[0].taskId, 'task-a');
+
+console.log('P29_HERMES_REFLECTIVE_CANDIDATE_GATE=PASS pairedValidation=true untouchedHoldout=true safetyIsHardGate=true emptyRubricsRejected=true');
