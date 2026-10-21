@@ -178,9 +178,21 @@ export class OrganismRuntime {
     this.trustedShadowLearningScheduler = config.trustedShadowLearning?.enabled === true
       ? new P23TrustedShadowLearningScheduler(this.core, config.trustedShadowLearning)
       : null;
-    this.compoundRepairRevisionCoordinator = config.compoundRepairRevision
-      ? new P23CompoundRepairRevisionCoordinator(this, config.compoundRepairRevision.engine, config.compoundRepairRevision.provideInputs)
-      : null;
+    if (config.compoundRepairRevision) {
+      if (typeof config.compoundRepairRevision.provideInputs !== 'function') {
+        throw new Error('compound-repair-revision requires a trusted input provider');
+      }
+      // Fail at startup instead of accepting a P23 engine that cannot stage
+      // into its canonical authenticated candidate lifecycle.
+      if (!config.compoundRepairRevision.engine.verifiedSkillCandidateSnapshot()) {
+        throw new Error('compound-repair-revision requires a configured verified P23 candidate store');
+      }
+      this.compoundRepairRevisionCoordinator = new P23CompoundRepairRevisionCoordinator(
+        this, config.compoundRepairRevision.engine, config.compoundRepairRevision.provideInputs,
+      );
+    } else {
+      this.compoundRepairRevisionCoordinator = null;
+    }
     this.realityGrounding.setMode(config.realityMode ?? 'hybrid');
     this.plans = new PlanEngine(this.environment, {
       predict: (action, baseReward, context) => {
