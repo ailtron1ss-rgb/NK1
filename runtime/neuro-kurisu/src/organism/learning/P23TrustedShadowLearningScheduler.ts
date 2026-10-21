@@ -102,7 +102,12 @@ export class P23TrustedShadowLearningScheduler {
       throw new Error('trusted shadow runtime tick is invalid');
     }
     const seedBase = this.config.seedBase ?? 0;
-    const seed = (seedBase + (runtimeTick % 1_000_000_000)) % Number.MAX_SAFE_INTEGER;
+    // Include the per-process sequence as well as the persistent organism tick:
+    // repeated maintenance-clock wakes must not silently reuse a seed just because
+    // the cognitive loop is paused or manual-only.
+    const seed = ((seedBase % 1_000_000_000) +
+      (runtimeTick % 1_000_000_000) +
+      (this.state.runsStarted % 1_000_000_000)) % 1_000_000_000;
     const run: LearningProcessRun = {
       runId: `nk1-shadow-${randomUUID()}`,
       manifestFingerprint: this.config.manifestFingerprint,
