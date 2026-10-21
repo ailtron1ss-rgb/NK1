@@ -11,7 +11,9 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/ContinualTransferTracker.ts"
       - "runtime/neuro-kurisu/src/organism/learning/AdaptiveWindowDriftDetector.ts"
       - "runtime/neuro-kurisu/src/organism/learning/DriftAwareLearningController.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/PageHinkleyDriftDetector.ts"
       - "runtime/neuro-kurisu/tests/p26-*.mjs"
+      - "runtime/neuro-kurisu/tests/p27-page-hinkley-drift-detector.mjs"
       - "runtime/neuro-kurisu/research/vendor/CleanRL/**"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
@@ -77,6 +79,9 @@ jobs:
       - name: Run drift-aware replay integration regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p26-drift-aware-learning-controller.mjs
+      - name: Run Page-Hinkley drift detector and controller regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p27-page-hinkley-drift-detector.mjs
       - name: Run existing P26 learning regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:true-learning
