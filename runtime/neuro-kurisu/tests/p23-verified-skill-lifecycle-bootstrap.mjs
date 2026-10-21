@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { generateKeyPairSync } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -29,7 +30,24 @@ try {
     join(root, 'bad2-runs.json'),
     JSON.stringify({ verifier: 'not-a-PEM-key' }),
   ), /PEM public keys/);
-  console.log('verified skill lifecycle bootstrap: default-deny and configuration validation PASS');
+
+  const ed25519 = generateKeyPairSync('ed25519');
+  const validEd25519Pem = ed25519.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+  const configured = createVerifiedSkillLifecycleBootstrap(
+    join(root, 'configured-candidates.json'),
+    join(root, 'configured-runs.json'),
+    JSON.stringify({ trustedVerifier: validEd25519Pem }),
+  );
+  assert.equal(configured.trustedVerifierCount, 1, 'valid Ed25519 verifier key should be accepted');
+
+  const rsa = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const incompatiblePem = rsa.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+  assert.throws(() => createVerifiedSkillLifecycleBootstrap(
+    join(root, 'bad3-candidates.json'),
+    join(root, 'bad3-runs.json'),
+    JSON.stringify({ incompatibleVerifier: incompatiblePem }),
+  ), /valid Ed25519 public keys/);
+  console.log('verified skill lifecycle bootstrap: default-deny, PEM parsing and Ed25519 enforcement PASS');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
