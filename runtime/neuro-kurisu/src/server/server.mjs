@@ -402,7 +402,7 @@ async function route(req, res) {
                 return json(res, 503, { ok: false, error: 'compound-repair-revision-provider-not-configured' });
             const input = await body(req);
             const skillId = typeof input.skillId === 'string' ? input.skillId.trim() : '';
-            if (!skillId || skillId.length > 160 || /[\\u0000-\\u001f\\u007f]/.test(skillId))
+            if (!skillId || skillId.length > 160 || /[\u0000-\u001f\u007f]/.test(skillId))
                 return json(res, 400, { ok: false, error: 'invalid-skill-id' });
             const result = await runtime.reviseCompoundSkillsFromObservedRepairs(skillId);
             return json(res, 200, { ok: true, result });
