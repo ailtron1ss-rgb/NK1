@@ -77,9 +77,11 @@ export function parseTrustedSkillPromotionApprovalKeys(raw: string | undefined):
   if (!isRecord(parsed)) throw new Error('promotion approval keys must be an object keyed by approver ID');
   const keys = new Map<string, string>();
   for (const [approverId, pem] of Object.entries(parsed)) {
-    if (!nonEmpty(approverId) || typeof pem !== 'string') {
-      throw new Error('promotion approval key entries must map non-empty IDs to PEM public keys');
+    if (!nonEmpty(approverId) || approverId.length > 128 ||
+        !/^[A-Za-z0-9][A-Za-z0-9._:@-]*$/.test(approverId) || typeof pem !== 'string') {
+      throw new Error('promotion approval key entries must map valid approver IDs to PEM public keys');
     }
+    if (keys.size >= 64) throw new Error('promotion approval key set exceeds the 64-key limit');
     let key;
     try { key = createPublicKey(pem); }
     catch { throw new Error('promotion approval keys must be valid Ed25519 public keys'); }
