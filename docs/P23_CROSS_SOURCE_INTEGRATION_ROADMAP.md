@@ -199,3 +199,12 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **Integration:** the existing `test:p23:learning-process-supervisor` command already includes this test file and is included in `audit:p23:cross-source-replay`; no parallel test harness or process manager was added.
 - **PARTIAL:** the regression is committed but has not been executed here. Timing and process-group behavior still need confirmation in the CI runner; Windows uses direct-child semantics, and this is not a sandbox against detached/escaped descendants.
 - **NEXT:** run the targeted supervisor regression and runtime typecheck, then wire the trusted host executor to ActionGateway/postcondition verification with explicit capability and path boundaries.
+
+
+### WorkPass232 — snapshot command identity before asynchronous registration
+
+- **DONE (code):** `runLearningProcess` now snapshots the scheduled-run record and command inputs (argument vector, environment entries, inherited-environment key list, and scalar command fields) before any asynchronous trusted-registration call. The command later spawned and fingerprinted can no longer be changed by mutating caller-owned objects during the registration await.
+- **DONE (regression code):** added a gated registration test that mutates the original command's argument vector and executable while registration is pending; the run must execute the original snapshotted command and emit its expected output.
+- **Compatibility fix:** the process-descendant regression is now POSIX-only, matching the implementation's process-group guarantee; Windows remains direct-child semantics rather than failing a test for a guarantee it does not provide.
+- **PARTIAL:** source and regression are committed, but this session has not run the test or TypeScript typecheck. CI must execute the targeted supervisor test before this is considered validated.
+- **NEXT:** inspect and bind the real trusted host command factory to approved capabilities and postcondition verification; continue the P23 → Hermes/Will integration through existing skill/evidence contracts, not a parallel learner.
