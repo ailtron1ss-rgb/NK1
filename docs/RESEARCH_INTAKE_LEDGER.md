@@ -188,3 +188,10 @@ Research protocol lineage: AgentMemoryBench (https://github.com/solomoon313/Agen
 | Candidate / source | URL | Mechanism inspected | NeuroCore integration target | Current status / next evidence |
 |---|---|---|---|---|
 | SkillLearnBench (MIT) | https://github.com/cxcscmu/SkillLearnBench | Task pass rate, skill functional coverage/executability/safety, trajectory key-point recall/order/completeness; one-shot, self-feedback, teacher-feedback and skill-creator baselines | `runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts`; P26 validation workflow | **ADAPTED**: deterministic native evaluator and regressions added; upstream MIT LICENSE and baseline taxonomy preserved under `runtime/neuro-kurisu/research/vendor/SkillLearnBench/`. Not full benchmark parity. Next: connect trusted production task rubrics/verifiers and collect multi-seed task-level results. No external LLM or Docker execution is performed by this adapter. |
+
+
+## WorkPass85 — continual experience replay adaptation (2026-10-21)
+
+| Candidate / source | URL | Mechanism inspected | Adaptation | Boundary / evidence |
+|---|---|---|---|---|
+| ContinualAI Avalanche (MIT) | https://github.com/ContinualAI/avalanche | `README.md`, `LICENSE`, `avalanche/training/plugins/replay.py`; bounded exemplar memory, mixed current+memory batches, task-balanced replay | Added native TypeScript `ContinualReplayBuffer.ts`: Algorithm-R reservoir, task-balanced sampling without replacement, all-input preflight, defensive copies, versioned snapshot/restore, training composition with the existing `ParametricPolicyLearner` | Python/PyTorch plugin not copied; MIT license and intake record preserved. Regression and workflow step added. Runtime execution/CI result remains pending; no retention or transfer uplift claimed. Production call-site integration and trusted reward provenance remain open. |
