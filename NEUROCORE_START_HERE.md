@@ -1,3 +1,11 @@
+## Latest durable checkpoint — WorkPass146 (2026-10-21)
+
+- **Core API:** `OrganismCore.stageVerifiedSkillCandidate` delegates candidate staging to `P23LearningEngine`/`VersionedSkillCandidateStore`, which still accepts only authentic in-process proposals backed exclusively by signed/verified outcome evidence. Added a read-only `verifiedSkillCandidateSnapshot` for local trusted runtime components.
+- **End-to-end path:** new `p23-runtime-signed-shadow-observation.mjs` constructs a real accepted proposal from Ed25519-signed holdout outcome artifacts, stages the candidate through Core, launches an actual child through `OrganismRuntime`, registers its run durably, signs one observation in the fresh run directory, and feeds it back through `Core.recordVerifiedSkillShadow`.
+- The regression asserts signed evidence is accepted, run/task/seed/manifest/runtime and candidate version are bound, one observation is persisted, and the active-skill set remains empty. The fixture private key exists only in the test process and child; this is **not** a production key-handling pattern.
+- **NOT VERIFIED:** exact-head GitHub Actions jobs currently fail before exposing steps/logs; no passing test/typecheck result is claimed. Real deployment key/configuration and authenticated promotion approval are still open.
+- **Next P0:** make the intended deployment supply a real staged candidate, independent verifier and runner configuration; add an authenticated human/authority approval path without weakening default-deny; obtain actionable exact-head CI/typecheck, then measure transfer and reset retention.
+
 ## Latest durable checkpoint — WorkPass145 (2026-10-21)
 
 - **Production call-site integration:** `runtime/neuro-kurisu/src/server/server.mjs` passes `NEURO_SKILL_SHADOW_SCHEDULER_JSON` through `parseTrustedShadowLearningScheduleConfig`. Missing config means no shadow process runs; malformed or incomplete enabled config fails at startup.
