@@ -191,16 +191,27 @@ export async function runLearningProcess(
     child.kill('SIGKILL');
   }, timeoutMs);
   timeout.unref?.();
+  // Track the close event explicitly: an abort racing with child close must not
+  // rewrite a completed process receipt as cancelled after the process has exited.
+  let childClosed = false;
   const onAbort = () => {
-    if (!terminalStatus) terminalStatus = 'cancelled';
+    if (childClosed || terminalStatus) return;
+    terminalStatus = 'cancelled';
     child.kill('SIGKILL');
   };
   command.signal?.addEventListener('abort', onAbort, { once: true });
   if (command.signal?.aborted) onAbort();
 
   await new Promise<void>(resolve => {
-    child.once('error', error => { spawnFailure = error.message; terminalStatus = 'spawn-error'; resolve(); });
+    child.once('error', error => {
+      if (!childClosed) {
+        spawnFailure = error.message;
+        terminalStatus = 'spawn-error';
+      }
+      resolve();
+    });
     child.once('close', (code, childSignal) => {
+      childClosed = true;
       exitCode = code;
       signal = childSignal;
       resolve();
