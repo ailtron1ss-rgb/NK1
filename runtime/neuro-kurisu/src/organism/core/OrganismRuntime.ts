@@ -947,6 +947,34 @@ export class OrganismRuntime {
     });
   }
   proceduralSkillLibrarySnapshot(){ return this.proceduralSkillLibrary.snapshot(); }
+  /**
+   * Return generator-ready repair evidence from actual persisted compound executions.
+   * Holdout observations are excluded; evidence is descriptive and never authorizes activation.
+   */
+  compoundSkillRepairEvidence(id?:string){
+    const state=this.proceduralSkillLibrary.snapshot();
+    return state.compoundSkills
+      .filter(skill=>!id||skill.id===id)
+      .flatMap(skill=>skill.repairsLedger
+        .filter(row=>!row.holdout)
+        .map(row=>({
+          skillId:skill.id,
+          skillName:skill.name,
+          failureFingerprint:row.failureFingerprint,
+          stepId:row.stepId,
+          failedTool:row.toolId,
+          diagnosis:row.diagnosis,
+          contextSignature:row.contextSignature,
+          candidateTools:[...row.candidateTools],
+          selectedTool:row.selectedTool,
+          verified:row.verified,
+          confidence01:row.confidence01,
+          observedAt:row.at,
+          revisionEligible:Boolean(row.verified&&row.selectedTool&&row.selectedTool!==row.toolId&&row.candidateTools.includes(row.selectedTool)&&row.confidence01>=skill.policy.minEvidence01),
+        })))
+      .sort((a,b)=>b.observedAt-a.observedAt)
+      .slice(0,96);
+  }
   async executeTool(id:string,input:Record<string,unknown>={},reason='runtime-tool',options:import('../system/ActionGateway.ts').ActionGatewayExecutionOptions={}){ return this.enqueue(()=>this.core.executeTool(id,input,reason,options)); }
   async reconcileToolExecution(id:string,input:Record<string,unknown>={},reason='runtime-tool-reconciliation',options:import('../system/ActionGateway.ts').ActionGatewayExecutionOptions={}){ return this.enqueue(()=>this.core.reconcileToolExecution(id,input,reason,options)); }
   async executeProjectTool(id:string,input:Record<string,unknown>={},reason='project-tool',options:import('../system/ActionGateway.ts').ActionGatewayExecutionOptions={}){ return this.enqueue(()=>this.core.executeProjectTool(id,input,reason,options)); }
