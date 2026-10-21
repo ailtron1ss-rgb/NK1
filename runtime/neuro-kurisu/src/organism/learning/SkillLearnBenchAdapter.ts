@@ -384,7 +384,7 @@ export function evaluateSkillLearnBenchCandidate(
   if (validationTaskSuccess < 0.8) feedback.push('Improve independently verified task success before promotion.');
   if (validationTrajectory < 0.8) feedback.push('Inspect missing or out-of-order trajectory steps and revise the procedure.');
   if (validationSkill < 0.8) feedback.push('Increase required-capability coverage and confirm the skill remains executable.');
-  if (holdoutDelta < 0) feedback.push('The candidate regresses on holdout; inspect task-specific failures before another attempt.');
+  if (holdoutDelta < 0) feedback.push('Aggregate holdout evaluation indicates regression; revise generality without inspecting holdout examples, then request a fresh independent evaluation.');
   if (safetyViolations > 0) feedback.push('Resolve every safety violation; safety is a hard gate, not a score trade-off.');
   if (feedback.length === 0) feedback.push('No weak dimension crossed the feedback threshold; retain paired holdout evidence for review.');
 
