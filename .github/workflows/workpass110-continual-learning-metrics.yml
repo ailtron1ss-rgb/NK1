@@ -46,6 +46,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillStorePersistence.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/SkillEvaluationReport.ts'
       - 'runtime/neuro-kurisu/tests/p23-skill-evaluation-report.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-skill-store-failure-boundaries.mjs'
       - 'runtime/neuro-kurisu/tests/p23-verified-skill-promotion-proposal.mjs'
       - 'runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs'
       - 'runtime/neuro-kurisu/tests/p23-learning-engine-verified-skill-lifecycle.mjs'
@@ -138,6 +139,9 @@ jobs:
       - name: Run three-level skill evaluation report regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-skill-evaluation-report.mjs
+      - name: Run durable skill-store failure-boundary regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:skill-store-failure-boundaries
       - name: Run reset-retention evaluation regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-reset-retention-evaluation.mjs
