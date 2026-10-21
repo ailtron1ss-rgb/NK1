@@ -99,7 +99,6 @@ async function runWithServiceDeadline<T>(
       controller.abort(new Error(label + '-timeout'));
       reject(new Error(label + '-timeout'));
     }, timeoutMs);
-    timer.unref?.();
   });
   try {
     return await Promise.race([operation(controller.signal), deadline]);
