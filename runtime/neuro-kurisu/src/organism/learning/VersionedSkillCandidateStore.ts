@@ -78,9 +78,11 @@ function canonical(value: unknown): string {
 }
 
 function fingerprint(value: unknown): string {
-  const serialized = canonical(value);
-  if (serialized === undefined) throw new Error('skill payload must be JSON-serializable');
-  return createHash('sha256').update(serialized).digest('hex');
+  let json: string | undefined;
+  try { json = JSON.stringify(value); } catch { throw new Error('skill payload must be JSON-serializable'); }
+  if (json === undefined) throw new Error('skill payload must be JSON-serializable');
+  const canonicalJson = canonical(JSON.parse(json));
+  return createHash('sha256').update(canonicalJson).digest('hex');
 }
 
 function activeFor(snapshot: VersionedSkillStoreSnapshot, skillId: string): ActiveSkillVersion | null {
@@ -101,7 +103,7 @@ export class VersionedSkillCandidateStore {
     }
   }
 
-  snapshot(): VersionedSkillStoreSnapshot { return this.persistence.read(); }
+  snapshot(): VersionedSkillStoreSnapshot { return clone(this.persistence.read()); }
 
   stageCandidate(
     proposal: VerifiedSkillPromotionProposal,
@@ -155,6 +157,7 @@ export class VersionedSkillCandidateStore {
     if (candidate.shadowObservations.some(item => item.runId === observation.runId)) {
       throw new Error('duplicate shadow run id');
     }
+    if (candidate.shadowObservations.length >= 1000) throw new Error('shadow observation limit reached');
     const next = clone(current);
     const target = next.candidates.find(item => item.candidateId === candidateId)!;
     target.shadowObservations.push(clone(observation));
