@@ -1,4 +1,4 @@
-export type RuntimeClockKind = 'cognitive' | 'embodiment' | 'reflection';
+export type RuntimeClockKind = 'cognitive' | 'embodiment' | 'reflection' | 'trusted-shadow-learning';
 
 export interface RuntimeClockDecision {
   delayMs: number;
