@@ -87,6 +87,9 @@ try {
   const restored=restarted.proceduralSkillLibrarySnapshot().compoundSkills.find(x=>x.id===skill.id);
   assert.ok(restored,'runtime-owned procedural skills must survive restart');
   assert.equal(restored.uses,1,'execution evidence must be durable before executeCompoundSkill returns');
+  const restoredRepairEvidence=restarted.compoundSkillRepairEvidence(repairSkill.id);
+  assert.equal(restoredRepairEvidence.length,1,'verified repair evidence must survive runtime restart');
+  assert.equal(restoredRepairEvidence[0].selectedTool,'test.compound.fallback');
   await restarted.stop();
   console.log('WORKPASS168_RUNTIME_COMPOUND_SKILLS=PASS');
 } finally {
