@@ -912,6 +912,15 @@ export class OrganismRuntime {
   realityLearningGateSnapshot(){ return this.realityLearningGate.snapshot(); }
   realityShadowBridgeSnapshot(){ return this.realityShadowBridge.snapshot(); }
 
+  /** Compile a bounded procedural skill into the runtime-owned library and persist it before returning. */
+  async compileCompoundSkill(input:Parameters<ProceduralSkillLibrary['compileCompoundSkill']>[0]) {
+    return this.enqueue(async()=>{
+      if(!this.initialized) throw new Error('organism-runtime-not-initialized');
+      const skill=this.proceduralSkillLibrary.compileCompoundSkill(input);
+      if(skill) await this.proceduralSkillStore.save(this.proceduralSkillLibrary.snapshot());
+      return skill;
+    });
+  }
   /** Execute a persisted procedural skill through the canonical Core ActionGateway. Provenance is caller-supplied and never inferred. */
   async executeCompoundSkill(id:string, run:{runId:string;context:string;holdout:boolean;independent:boolean;autonomous:boolean}):Promise<Awaited<ReturnType<ProceduralSkillLibrary['executeCompoundSkill']>>> {
     return this.enqueue(async()=>{
