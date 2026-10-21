@@ -75,12 +75,17 @@ assert.equal(lib.skillMetaOperation('promote-variant',skill.id,{variantId:varian
  'meta-operation promotion must not bypass the evidence gate');
 assert.equal(lib.snapshot().compoundSkills.find(s=>s.id===skill.id).activeVariantId,`base:${skill.id}`);
 assert.equal(lib.snapshot().compoundSkills.find(s=>s.id===skill.id).variants.find(v=>v.id===variant.id).status,'candidate');
-lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,independent:true,context:'holdout-1'});
-lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,context:'holdout-2'});
-const beforeFinal=lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,context:'holdout-3'});
-lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,holdout:true,context:'holdout-4'});
-const after=lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,holdout:true,context:'holdout-5'});
-assert.ok(after); assert.equal(lib.snapshot().compoundSkills[0].activeVariantId,variant.id);
+lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,independent:true,context:'live-1'});
+lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,context:'live-2'});
+const beforeFinal=lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,context:'live-3'});
+assert.equal(beforeFinal.status,'candidate','three live outcomes remain below the confidence gate');
+const liveFour=lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,context:'live-4'});
+assert.equal(liveFour.status,'active','sufficient non-holdout evidence may promote the candidate');
+const confidenceBeforeHoldout=liveFour.confidence01;
+lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,holdout:true,context:'holdout-1'});
+const after=lib.recordVariantExecution(skill.id,variant.id,{success01:1,verified:true,holdout:true,context:'holdout-2'});
+assert.ok(after); assert.equal(after.confidence01,confidenceBeforeHoldout,'holdout must not inflate confidence');
+assert.equal(lib.snapshot().compoundSkills[0].activeVariantId,variant.id);
 assert.equal(lib.snapshot().compoundSkills[0].steps[1].toolId,'tool.fallback');
 const rolled=lib.rollbackCompoundSkill(skill.id,'regression-test');
 assert.ok(rolled); assert.equal(lib.snapshot().compoundSkills[0].steps[1].toolId,'tool.primary');
@@ -117,8 +122,14 @@ for(let n=0;n<4;n++) lib.recordVariantExecution(mixedSkill.id,mixedVariant.id,{
 const mixedAfter=lib.snapshot().compoundSkills.find(s=>s.id===mixedSkill.id);
 const mixedFinal=mixedAfter.variants.find(v=>v.id===mixedVariant.id);
 assert.equal(mixedFinal.verifiedNonHoldoutExecutions,1);
+assert.equal(mixedFinal.nonHoldoutTrials,1);
+const mixedConfidence=mixedFinal.confidence01;
 assert.equal(mixedFinal.status,'candidate','holdout results cannot satisfy the second verified non-holdout witness');
 assert.notEqual(mixedAfter.activeVariantId,mixedVariant.id);
+for(let n=0;n<3;n++) lib.recordVariantExecution(mixedSkill.id,mixedVariant.id,{success01:1,verified:true,holdout:true,context:`mixed-extra-holdout-${n}`});
+const mixedAfterHoldout=lib.snapshot().compoundSkills.find(s=>s.id===mixedSkill.id).variants.find(v=>v.id===mixedVariant.id);
+assert.equal(mixedAfterHoldout.confidence01,mixedConfidence,'holdout outcomes must not increase candidate confidence');
+assert.equal(mixedAfterHoldout.nonHoldoutTrials,1);
 
 const sealedAfter=lib.snapshot().compoundSkills.find(s=>s.id===sealedSkill.id);
 assert.equal(sealedAfter.variants.find(v=>v.id===sealedVariant.id).status,'candidate',
@@ -137,10 +148,12 @@ const restoredMixed=restoredLibrary.snapshot().compoundSkills.find(s=>s.id===mix
 assert.equal(restoredMixed.variants.find(v=>v.id===mixedVariant.id).verifiedNonHoldoutExecutions,1,
  'new evidence counters must survive a save/restore cycle');
 const legacyState=structuredClone(persistedState);
-for(const s of legacyState.compoundSkills) for(const v of s.variants) delete v.verifiedNonHoldoutExecutions;
+for(const s of legacyState.compoundSkills) for(const v of s.variants) delete v.verifiedNonHoldoutExecutions; delete v.nonHoldoutTrials; delete v.nonHoldoutSuccesses;
 const restoredLegacy=new ProceduralSkillLibrary();
 restoredLegacy.restore(legacyState);
 const legacyMixed=restoredLegacy.snapshot().compoundSkills.find(s=>s.id===mixedSkill.id);
+assert.equal(legacyMixed.variants.find(v=>v.id===mixedVariant.id).nonHoldoutTrials,0,
+ 'legacy snapshots must not infer trusted non-holdout trial counts');
 assert.equal(legacyMixed.variants.find(v=>v.id===mixedVariant.id).verifiedNonHoldoutExecutions,0,
  'legacy evidence without holdout provenance must not be promoted into trusted non-holdout evidence');
 
