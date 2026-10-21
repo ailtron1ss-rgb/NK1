@@ -202,7 +202,8 @@ import { LongitudinalOrganismEngine, defaultLongitudinalOrganism } from '../lear
 import { AdaptiveDevelopmentEngine, defaultAdaptiveDevelopment } from '../learning/AdaptiveDevelopmentEngine.ts';
 import { TemporalContinuityEngine, defaultTemporalContinuity } from '../learning/TemporalContinuityEngine.ts';
 import { AdvancedResilienceEngine, defaultAdvancedResilience } from '../learning/AdvancedResilienceEngine.ts';
-import { P23LearningEngine, defaultP23Learning } from '../learning/P23LearningEngine.ts';
+import { P23LearningEngine, defaultP23Learning, type PolicySkillRecord } from '../learning/P23LearningEngine.ts';
+import type { VerifiedSkillPromotionProposal } from '../learning/VerifiedSkillPromotion.ts';
 import { createVerifiedSkillLifecycleBootstrap } from '../learning/VerifiedSkillLifecycleBootstrap.ts';
 import { runTrustedShadowLearningProcess as executeTrustedShadowLearningProcess, type TrustedShadowLearningRunInput } from '../learning/TrustedShadowLearningRunCoordinator.ts';
 import { AtomicFileTrustedSkillShadowRunRegistry } from '../learning/TrustedSkillShadowRunRegistry.ts';
@@ -10978,6 +10979,17 @@ export class OrganismCore {
      */
     runTrustedSkillShadowLearningProcess(input: Omit<TrustedShadowLearningRunInput, 'core'>) {
         return executeTrustedShadowLearningProcess({ ...input, core: this });
+    }
+    /** Read-only durable candidate lifecycle state for trusted in-process runtime components. */
+    verifiedSkillCandidateSnapshot() {
+        return this.developmentalNeural.p23Learning.verifiedSkillCandidateSnapshot();
+    }
+    /**
+     * Stage, but never activate, a candidate from an authentic in-process proposal.
+     * The P23 store rechecks module-private proposal issuance and all authenticated-evidence gates.
+     */
+    stageVerifiedSkillCandidate(proposal: VerifiedSkillPromotionProposal, skill: PolicySkillRecord) {
+        return this.developmentalNeural.p23Learning.stageVerifiedSkillCandidate(proposal, skill);
     }
     /** Trusted execution supervisor hook: persist run context before accepting any signed shadow receipt. */
     registerTrustedSkillShadowRun(context: TrustedShadowExecutionContext) {
