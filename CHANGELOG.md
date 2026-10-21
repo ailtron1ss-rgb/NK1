@@ -1,3 +1,10 @@
+## WorkPass237 — promotion requires matched independent baseline/candidate evidence (2026-10-21)
+
+- Replaced the promotion entry point's caller-supplied baseline report arrays with a complete independently evaluated baseline envelope. Promotion now delegates to the canonical `compareMatchedIndependentEvaluations` boundary before scoring or activation.
+- This reuses the existing SkillLearnBench paired gate while requiring integrity-checked baseline and candidate envelopes, identical task plan/environment/experiment manifest, distinct method labels, one-to-one task/trial/seed/split matching, verifier-bound runs, and safety-clean evidence. A caller can no longer pass an unrelated baseline report collection to make a candidate appear eligible.
+- Added an explicit runtime guard for absent/malformed envelopes before dereferencing nested fields. The existing store still independently re-verifies persisted signed shadow receipts and the authenticated approval at activation.
+- Source patterns adapted: matched-pair experimental design, provenance-bound evidence, and fail-closed tool authority from the existing P23 evaluator and Hermes bridge; no parallel evaluator, scoring engine, or promotion store was introduced.
+- **Validation caveat:** source change is committed; targeted tests, typecheck, and exact-head Actions are not yet confirmed passing. Keep the PR draft and do not claim promotion works in production until the trusted execution path and approval service are exercised end to end.
 ## WorkPass235 — join independent P23 evaluations to signed Hermes shadow evidence (2026-10-21)
 
 - Added `bindIndependentEvaluationToVerifiedShadowEvidence` and exposed it through the existing `P23LearningEngine` instead of creating a second evidence lifecycle. The bridge recomputes the canonical evaluation digest and checks the payload fingerprint before consuming any receipt.
