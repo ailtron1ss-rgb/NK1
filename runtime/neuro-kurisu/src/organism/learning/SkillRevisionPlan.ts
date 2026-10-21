@@ -49,9 +49,11 @@ export function planSkillRevision(
   if(!Array.isArray(validation)||validation.length===0) throw new Error('revision-validation-reports-required');
   if(!Array.isArray(holdout)||holdout.length===0) throw new Error('revision-holdout-reports-required');
   if(!fitness||!Array.isArray(fitness.reasons)||!Array.isArray(fitness.feedback)) throw new Error('revision-fitness-report-invalid');
-  const all=[...validation,...holdout];
-  const safetyRows=all.filter(r=>r.skillQuality.safetyViolationCount>0);
-  const blockedBySafety=safetyRows.length>0||fitness.reasons.includes('candidate-safety-violations-present');
+  // Holdout can block a revision, but its task/trial identifiers and per-case
+  // outcomes must never enter generator-facing targets or optimizer instructions.
+  const validationSafetyRows=validation.filter(r=>r.skillQuality.safetyViolationCount>0);
+  const holdoutSafetyPresent=holdout.some(r=>r.skillQuality.safetyViolationCount>0);
+  const blockedBySafety=validationSafetyRows.length>0||holdoutSafetyPresent||fitness.reasons.includes('candidate-safety-violations-present');
   const mean=(rows:readonly SkillLearnBenchTrialReport[], pick:(r:SkillLearnBenchTrialReport)=>number)=>rows.length?rows.reduce((s,r)=>s+pick(r),0)/rows.length:0;
   const targets:SkillRevisionTarget[]=[];
   const add=(dimension:SkillRevisionDimension,priority:number,rows:SkillLearnBenchTrialReport[],directive:string)=>{
@@ -60,7 +62,10 @@ export function planSkillRevision(
       evidenceCount:rows.length,evidenceIds:rows.map(r=>r.trialId).sort(),directive});
   };
   if(blockedBySafety){
-    add('safety',1,safetyRows.length?safetyRows:all,'Stop performance optimization. Remove or redesign the unsafe behavior, preserve explicit safety constraints, and obtain a fresh independent safety evaluation before generating another candidate.');
+    // Use validation-only rows even when holdout discovered the safety failure.
+    // If only holdout raised the flag, provide validation rows as the bounded scope
+    // without exposing which holdout cases failed.
+    add('safety',1,validationSafetyRows.length?validationSafetyRows:validation,'Stop performance optimization. Resolve the safety concern without inspecting or tuning to holdout examples; obtain a fresh independent safety evaluation before generating another candidate.');
     const plan:SkillRevisionPlan={candidateEligible:false,blockedBySafety:true,overallFitness01:0,targets,preserve:['All existing safety constraints and refusal boundaries'],rationale:['Safety is a hard constraint; gains in other dimensions cannot compensate.'],optimizerInstruction:''};
     plan.optimizerInstruction=renderSkillRevisionInstruction(plan);
     return plan;
