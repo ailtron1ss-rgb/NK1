@@ -22,6 +22,7 @@ export interface LearningProcessCommand {
   maxOutputBytes?: number;
   env?: Record<string, string>;
   inheritEnv?: string[];
+  signal?: AbortSignal;
 }
 export interface LearningExecutionReceipt {
   schemaVersion: 2;
@@ -33,7 +34,7 @@ export interface LearningExecutionReceipt {
   startedAt: number;
   finishedAt: number;
   durationMs: number;
-  status: 'completed' | 'failed' | 'timed-out' | 'output-limit' | 'spawn-error';
+  status: 'completed' | 'failed' | 'timed-out' | 'cancelled' | 'output-limit' | 'spawn-error';
   exitCode: number | null;
   signal: string | null;
   stdout: string;
@@ -108,6 +109,7 @@ export async function runLearningProcess(
   if (!safeInteger(timeoutMs, 1, MAX_TIMEOUT_MS)) throw new Error('timeoutMs out of bounds');
   if (!safeInteger(maxOutputBytes, 1, MAX_OUTPUT_BYTES)) throw new Error('maxOutputBytes out of bounds');
 
+  if (command.signal?.aborted) throw new Error('learning process cancelled before spawn');
   const executionId = randomUUID();
   const startedAt = Date.now();
   await mkdir(path.resolve(command.runRoot), { recursive: true });
@@ -147,6 +149,7 @@ export async function runLearningProcess(
       manifestFingerprint: run.manifestFingerprint, runtimeVersion: trustedShadowRun.runtimeVersion,
     });
   }
+  if (command.signal?.aborted) throw new Error('learning process cancelled before spawn');
   const commandFingerprint = sha256(JSON.stringify({
     executable: command.executable, args: command.args, cwd: path.resolve(command.cwd),
     inheritedEnvKeys: [...(command.inheritEnv ?? [])].sort(),
@@ -188,6 +191,12 @@ export async function runLearningProcess(
     child.kill('SIGKILL');
   }, timeoutMs);
   timeout.unref?.();
+  const onAbort = () => {
+    if (!terminalStatus) terminalStatus = 'cancelled';
+    child.kill('SIGKILL');
+  };
+  command.signal?.addEventListener('abort', onAbort, { once: true });
+  if (command.signal?.aborted) onAbort();
 
   await new Promise<void>(resolve => {
     child.once('error', error => { spawnFailure = error.message; terminalStatus = 'spawn-error'; resolve(); });
@@ -198,6 +207,7 @@ export async function runLearningProcess(
     });
   });
   clearTimeout(timeout);
+  command.signal?.removeEventListener('abort', onAbort);
   const finishedAt = Date.now();
   if (!terminalStatus) terminalStatus = exitCode === 0 ? 'completed' : 'failed';
   const receipt: LearningExecutionReceipt = {
