@@ -8,6 +8,7 @@ import { rankLearningTargets, reflectOnOutcomes } from './OutcomeReflectionCurri
 import type { VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
 import { evaluateSkillLearnBenchCandidate, type SkillLearnBenchCandidateEvaluation, type SkillLearnBenchCandidateGateOptions, type SkillLearnBenchCandidateGateReport } from './SkillLearnBenchAdapter.ts';
 import { bindReflectiveReportsToVerifiedShadowEvidence, type ReflectiveEvidenceBindingReport } from './HermesVerifiedEvidenceBinding.ts';
+import { planSkillRevision, type SkillRevisionPlan } from './SkillRevisionPlan.ts';
 import type { SkillShadowEvidenceVerifier } from './VersionedSkillCandidateStore.ts';
 import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillRollbackApproval, type SkillShadowObservation, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 
@@ -265,6 +266,17 @@ export class P23LearningEngine {
     options: SkillLearnBenchCandidateGateOptions = {},
   ): SkillLearnBenchCandidateGateReport {
     return evaluateSkillLearnBenchCandidate(baseline, candidate, options);
+  }
+
+  /**
+   * Convert candidate fitness into concrete, evidence-linked revision targets.
+   * Safety failures suppress all performance tuning; this plan never mutates a skill.
+   */
+  planReflectiveSkillRevision(
+    candidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    fitness:Readonly<SkillLearnBenchCandidateGateReport>,
+  ):SkillRevisionPlan {
+    return planSkillRevision(candidateEvaluation.validation,candidateEvaluation.holdout,fitness);
   }
 
   /**
