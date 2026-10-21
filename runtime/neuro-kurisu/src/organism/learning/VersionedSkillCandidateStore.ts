@@ -181,6 +181,12 @@ export class VersionedSkillCandidateStore {
       }
       const approval = candidate.approval;
       if (!approval) throw new Error('persisted active candidate is missing signed promotion approval');
+      if (candidate.baseVersion !== approval.expectedActiveVersion ||
+          (candidate.previousActive?.version ?? null) !== candidate.baseVersion ||
+          candidate.promotedAt !== approval.approvedAt ||
+          active.activatedAt !== approval.approvedAt) {
+        throw new Error('persisted active candidate promotion CAS/activation metadata is not bound to the signed approval');
+      }
       const minShadowRuns = approval.artifact?.payload?.minShadowRuns ?? 3;
       if (!Number.isSafeInteger(minShadowRuns) || minShadowRuns < 1 || minShadowRuns > 1000 ||
           candidate.shadowObservations.length < minShadowRuns ||
