@@ -5,6 +5,14 @@ const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wa
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const tanh=(x:number)=>Math.tanh(Number.isFinite(x)?x:0);
 const now=()=>Date.now();
+const isAction=(value:unknown):value is ActionKind=>typeof value==='string'&&ACTIONS.includes(value as ActionKind);
+function assertTrainingInput(input:{action:unknown;target01:number;learningRate01:number;sampleWeight01?:number}){
+  if(!isAction(input.action)) throw new TypeError('policy-learning-invalid-action');
+  if(!Number.isFinite(input.target01)) throw new TypeError('policy-learning-target-must-be-finite');
+  if(!Number.isFinite(input.learningRate01)) throw new TypeError('policy-learning-rate-must-be-finite');
+  if(input.sampleWeight01!==undefined&&!Number.isFinite(input.sampleWeight01)) throw new TypeError('policy-learning-sample-weight-must-be-finite');
+}
+
 
 /**
  * P26 learned function approximator.
@@ -108,6 +116,7 @@ export class ParametricPolicyLearner{
   }
 
   train(input:{state:OrganismState;action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number;extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    assertTrainingInput(input);
     if(this.state.frozen) return {predictionBefore:this.value(input.state,input.action,input.extras).value,predictionAfter:this.value(input.state,input.action,input.extras).value,loss01:0,tdError01:0};
     const x=this.features(input.state,input.extras,input.action);
     const w=this.state.weights[input.action];
@@ -132,6 +141,8 @@ export class ParametricPolicyLearner{
   }
 
   trainFeatures(input:{features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    assertTrainingInput(input);
+    if(!Array.isArray(input.features)||input.features.some(value=>!Number.isFinite(value))) throw new TypeError('policy-learning-features-must-be-finite');
     if(this.state.frozen) { const value=this.predictFromFeatures(input.features,input.action); return {predictionBefore:value,predictionAfter:value,loss01:0,tdError01:0}; }
     const x=input.features.slice(0,featureNames.length).map(clamp); while(x.length<featureNames.length)x.push(0);
     const w=this.state.weights[input.action]; if(!w)return {predictionBefore:.5,predictionAfter:.5,loss01:0,tdError01:0};
