@@ -25,5 +25,17 @@ assert.ok(retrievedSkillBias(query, [matchingRejected]) < 0,
 const matchingPromoted = { ...matchingRejected, id: 'good-summary', status: 'promoted', validationSuccess01: 0.95 };
 assert.ok(retrievedSkillBias(query, [matchingPromoted]) > 0,
   'validated same-action evidence should retain positive transfer');
+const conflictingEvidence = [
+  { ...matchingPromoted, id: 'good-summary' },
+  { ...matchingRejected, id: 'bad-summary', validationUses: 12, confidence01: 0.95 },
+];
+const conflictBias = retrievedSkillBias(query, conflictingEvidence);
+assert.ok(Number.isFinite(conflictBias) && conflictBias >= -0.025 && conflictBias <= 0.025,
+  'conflicting evidence must produce a finite, bounded aggregate rather than positive evidence erasing failures');
+assert.equal(retrievedSkillBias(query, [
+  { ...matchingPromoted, id: 'unrelated-positive', action: 'explore' },
+  matchingRejected,
+]), retrievedSkillBias(query, [matchingRejected]),
+  'unrelated positive action must not mask same-action negative evidence');
 
 console.log('WORKPASS197_SKILL_TRANSFER_SAFETY=PASS');
