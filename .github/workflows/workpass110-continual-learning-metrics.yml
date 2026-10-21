@@ -49,6 +49,8 @@ on:
       - 'runtime/neuro-kurisu/tests/p23-verified-skill-promotion-proposal.mjs'
       - 'runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs'
       - 'runtime/neuro-kurisu/tests/p23-learning-engine-verified-skill-lifecycle.mjs'
+      - 'CHANGELOG.md'
+      - 'docs/P23_WORKPASS123_AUTHENTICATED_SKILL_LIFECYCLE.md'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
   push:
@@ -90,6 +92,8 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/SkillRetrievalAugmentation.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/OutcomeReflectionCurriculum.ts'
       - 'runtime/neuro-kurisu/tests/p23-skill-retrieval-reflection-curriculum.mjs'
+      - 'CHANGELOG.md'
+      - 'docs/P23_WORKPASS123_AUTHENTICATED_SKILL_LIFECYCLE.md'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
 jobs:
