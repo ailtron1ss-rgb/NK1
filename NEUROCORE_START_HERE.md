@@ -4,7 +4,7 @@
 - The CLI does not trust an observation merely because it is present in candidate-store JSON. Before emitting the signable request, it verifies each shadow artifact with configured Ed25519 verifier keys and resolves run/task/seed/manifest/runtime from the independent trusted-run registry.
 - Requests are bound to the exact candidate payload/version, proposal outcome, complete shadow-evidence digest, minimum shadow-run count and current active-version CAS. Non-shadow candidates, insufficient/failed observations, invalid signatures/context, stale base versions and missing/invalid trust configuration fail closed.
 - Output is unsigned and cannot activate anything; the approver private key remains external. The existing server-side promotion path still verifies the detached approval signature and evidence again.
-- Added regression coverage for valid signed evidence, payload binding, insufficient shadow runs, wrong lifecycle state and stale CAS; package/workflow wiring added.
+- Added regression coverage for valid signed evidence, tampered-signature rejection, payload binding, insufficient shadow runs, wrong lifecycle state and stale CAS; package/workflow wiring added, including the aggregate verified-skill lifecycle suite.
 - **NOT VERIFIED:** no successful exact-head CI/typecheck is claimed yet. Production-managed verifier/approval key rotation, authenticated rollback flow, deployment-shaped end-to-end acceptance and measured learning uplift remain open.
 - **Next P0:** obtain actionable exact-head test/typecheck results; provision independent verifier and approval authorities; test stage → real shadow → signed approval → activation → restart → rollback on a deployment-shaped environment; then measure holdout transfer/reset retention.
 
