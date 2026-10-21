@@ -40,13 +40,13 @@ export function planSkillRevision(
   const blockedBySafety=safetyRows.length>0||fitness.reasons.includes('candidate-safety-violations-present');
   const mean=(rows:readonly SkillLearnBenchTrialReport[], pick:(r:SkillLearnBenchTrialReport)=>number)=>rows.length?rows.reduce((s,r)=>s+pick(r),0)/rows.length:0;
   const targets:SkillRevisionTarget[]=[];
-  const add=(dimension:SkillRevisionDimension,priority:number,rows:SkillLearnBenchTrialReport[],directive:string,ids:(r:SkillLearnBenchTrialReport)=>string[])=>{
+  const add=(dimension:SkillRevisionDimension,priority:number,rows:SkillLearnBenchTrialReport[],directive:string)=>{
     if(priority<=0.02||!rows.length)return;
     targets.push({dimension,priority01:Number(clamp(priority).toFixed(6)),affectedTaskIds:[...new Set(rows.map(r=>r.taskId))].sort(),
       evidenceCount:rows.length,evidenceIds:rows.map(r=>r.trialId).sort(),directive});
   };
   if(blockedBySafety){
-    add('safety',1,safetyRows.length?safetyRows:all,'Stop performance optimization. Remove or redesign the unsafe behavior, preserve explicit safety constraints, and obtain a fresh independent safety evaluation before generating another candidate.',r=>[r.trialId]);
+    add('safety',1,safetyRows.length?safetyRows:all,'Stop performance optimization. Remove or redesign the unsafe behavior, preserve explicit safety constraints, and obtain a fresh independent safety evaluation before generating another candidate.');
     return {candidateEligible:false,blockedBySafety:true,overallFitness01:0,targets,preserve:['All existing safety constraints and refusal boundaries'],rationale:['Safety is a hard constraint; gains in other dimensions cannot compensate.']};
   }
   const success=mean(validation,r=>r.taskSuccess.passRate);
