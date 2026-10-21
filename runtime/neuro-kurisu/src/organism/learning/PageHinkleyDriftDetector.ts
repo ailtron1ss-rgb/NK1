@@ -145,14 +145,14 @@ export class PageHinkleyDriftDetector {
         !finite(s.mean) || !finite(s.sumIncrease) || !finite(s.sumDecrease)) {
       throw new TypeError('page-hinkley-snapshot-invalid');
     }
-    this.count = s.count;
-    this.mean = s.mean;
-    this.sumIncrease = s.sumIncrease;
-    this.sumDecrease = s.sumDecrease;
+    this.count = Number(s.count);
+    this.mean = Number(s.mean);
+    this.sumIncrease = Number(s.sumIncrease);
+    this.sumDecrease = Number(s.sumDecrease);
     this.minIncrease = s.minIncrease as number;
     this.maxDecrease = s.maxDecrease as number;
-    this.detected = s.driftDetected;
-    this.detections = s.detections;
+    this.detected = Boolean(s.driftDetected);
+    this.detections = Number(s.detections);
   }
 
   reset(): void {
