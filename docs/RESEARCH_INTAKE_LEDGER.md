@@ -179,5 +179,5 @@ Research protocol lineage: AgentMemoryBench (https://github.com/solomoon313/Agen
 - Hardened restore semantics: persisted frozen now accepts only literal boolean true, avoiding accidental truthiness of strings such as "false".
 - Added a regression for malformed persisted freeze state and wired test:p26:learning-continual-matrix.
 - Matrix reports task-order sensitivity instead of hiding it behind one aggregate. It is deterministic but deliberately small and synthetic.
-- **Execution status: NOT RUN / NOT VERIFIED in this pass.** No numeric outcome or quality improvement is claimed.
+- **Execution status: FAILED / NOT VERIFIED.** GitHub Actions run 39551917147 completed with conclusion FAILURE, but the connector returned no step details and the job log endpoint returned BlobNotFound. Root cause is unresolved; no numeric outcome or quality improvement is claimed, and no test is marked passed.
 - Required next gates: run supported Node typecheck and P26 tests; preserve raw metrics; add held-out patterns and additional task orders; compare standard sequential learning with explicit replay and frozen controls; reject promotion if repair or retention regresses beyond a predeclared tolerance.
