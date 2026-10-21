@@ -235,3 +235,13 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **DONE (regression code):** added mutation regressions that replace the registrar method/version immediately after scheduling and change `process.cwd()` while registration awaits; only the originally captured registrar runs and the child executes in the directory already bound to its fingerprint.
 - **Source-pattern integration:** this tightens explicit-capability and immutable-run-boundary principles used in sandboxed coding-agent execution (OpenHands/SWE-agent-style) while preserving NK1's single P23 supervisor and verified-outcome gate. No upstream package was vendored; this is a narrow mechanism port.
 - **PARTIAL:** code and regression are committed; this session has not executed the supervisor test or TypeScript typecheck. The real host-owned command factory, sandbox, verifier and safety-scanner wiring remains OPEN; a generic subprocess supervisor is not a sandbox.
+
+
+## WorkPass236 — exact-payload promotion-chain integration
+
+- **DONE (code):** the P23 ↔ Hermes bridge now rejects an independent evaluation envelope whose payload fingerprint differs from the exact versioned candidate under review. Signed identity/outcome receipts cannot be borrowed to substantiate a different candidate payload.
+- **DONE (code):** added approveIndependentlyEvaluatedSkillCandidate to the existing P23LearningEngine promotion path. It requires the staged candidate's payload fingerprint and persisted revision evaluation fingerprint to match the independent envelope, evaluates the envelope's own validation/holdout reports through the existing SkillLearnBench fitness gate, and binds the candidate's persisted signed shadow observations before delegating activation to the existing authenticated approval/store path.
+- **DONE (code):** canonical evidence serialization now fails explicitly for non-JSON-serializable primitive/key values rather than passing an undefined serialization result into SHA-256.
+- **DONE (regression authored):** added exact-candidate-payload mismatch coverage to test:p23:hermes-verified-evidence-binding; the existing learning workflow already watches both changed source files and executes this targeted test.
+- **PARTIAL:** code and regression are committed; the test, TypeScript typecheck, and exact-head GitHub Actions have not yet been observed passing. Promotion still requires production-configured trusted signing/context and authenticated human approval.
+- **OPEN next:** run the exact-head regression/typecheck; then connect and verify the trusted host's run-context resolver and approval authority in a real shadow execution, including restart/replay and duplicate prevention.
