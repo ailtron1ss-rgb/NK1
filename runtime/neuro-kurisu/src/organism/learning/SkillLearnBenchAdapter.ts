@@ -246,13 +246,21 @@ function pairedCandidateMean(
   if (keys.length === 0 || keys.length !== baseline.size || keys.length !== candidate.size) {
     throw new Error(`candidate-${label}-trials-must-match-exactly`);
   }
-  const baseScores = keys.map((key) => candidateComposite(baseline.get(key)!));
+  const baselineReports = keys.map((key) => baseline.get(key)!);
   const candidateReports = keys.map((key) => candidate.get(key)!);
-  const candidateScores = candidateReports.map(candidateComposite);
-  const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
+  const macroTaskMean = (reports: SkillLearnBenchTrialReport[]): number => {
+    const byTask = new Map<string, number[]>();
+    for (const report of reports) {
+      const scores = byTask.get(report.taskId) ?? [];
+      scores.push(candidateComposite(report));
+      byTask.set(report.taskId, scores);
+    }
+    const taskMeans = [...byTask.values()].map((scores) => scores.reduce((sum, value) => sum + value, 0) / scores.length);
+    return taskMeans.reduce((sum, value) => sum + value, 0) / taskMeans.length;
+  };
   return {
-    baselineMean: mean(baseScores),
-    candidateMean: mean(candidateScores),
+    baselineMean: macroTaskMean(baselineReports),
+    candidateMean: macroTaskMean(candidateReports),
     paired: keys.length,
     taskCount: new Set(candidateReports.map((report) => report.taskId)).size,
     candidateReports,
