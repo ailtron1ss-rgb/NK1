@@ -7,6 +7,14 @@
 **This document is the durable instruction for future work. Read it before starting a new pass.**
 
 
+## Latest durable checkpoint — WorkPass130 (2026-10-21)
+
+- Read [WorkPass130 trusted-context + restart regression report](docs/WORKPASS130_SHADOW_CONTEXT_RESTART_GUARD_2026-10-21.md).
+- `VerifiedSkillShadowEvidence.ts` now exports `createContextBoundSkillShadowEvidenceVerifier`: it checks the signed receipt against the exact candidate, then compares manifest fingerprint and runtime version to an independently resolved trusted execution context; missing/throwing context fails closed.
+- The candidate-store regression now covers durable receipt persistence across store reconstruction, rejection when the trusted manifest context differs, and acceptance when context matches.
+- Code and regression are committed, but tests/typecheck have not been run successfully in this environment. Do not mark PASS until exact-head workflow logs prove it.
+- Production bootstrap/key registry/context resolver wiring and the complete candidate activation call-graph audit remain OPEN. PR #12 stays draft; do not merge to `main`.
+
 ## Latest durable checkpoint — WorkPass129 (2026-10-21)
 
 - Read [WorkPass129 signed shadow evidence report](docs/WORKPASS129_SIGNED_SHADOW_EVIDENCE_2026-10-21.md). Signed shadow receipts bind execution evidence to the exact candidate ID/version, payload and proposal fingerprints, run/task, manifest, seed, runtime version, outcome, verifier and timestamp. Candidate store defaults to denying shadow evidence and re-verifies persisted observations before promotion.
