@@ -98,6 +98,18 @@ export async function runLearningProcess(
     env: command.env ? { ...command.env } : undefined,
     inheritEnv: command.inheritEnv ? [...command.inheritEnv] : undefined,
   };
+  // Pin the registrar capability itself before the first filesystem await. A caller
+  // retaining the registration object must not be able to swap its method or runtime
+  // identity while directory preparation is in progress.
+  if (trustedShadowRun !== undefined) {
+    if (!trustedShadowRun || !nonEmpty(trustedShadowRun.runtimeVersion) ||
+        typeof trustedShadowRun.register !== 'function') {
+      throw new Error('invalid trusted shadow run registrar');
+    }
+    const runtimeVersion = trustedShadowRun.runtimeVersion;
+    const register = trustedShadowRun.register.bind(trustedShadowRun);
+    trustedShadowRun = { runtimeVersion, register };
+  }
   if (!nonEmpty(run.runId) || !/^[a-f0-9]{64}$/i.test(run.manifestFingerprint) ||
       !nonEmpty(run.taskId) || !nonEmpty(run.taskVersion) || !nonEmpty(run.arm) || !nonEmpty(run.method) ||
       !safeInteger(run.seed, 0, Number.MAX_SAFE_INTEGER)) throw new Error('invalid scheduled learning run');
@@ -116,6 +128,9 @@ export async function runLearningProcess(
     throw new Error('trusted run registration is only valid for candidate/shadow execution');
   }
 
+  // Resolve relative cwd against the caller's cwd now, not after async registration.
+  // The exact directory used for execution is the one bound into command provenance.
+  const workingDirectory = path.resolve(command.cwd);
   const timeoutMs = command.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxOutputBytes = command.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES;
   if (!safeInteger(timeoutMs, 1, MAX_TIMEOUT_MS)) throw new Error('timeoutMs out of bounds');
@@ -169,7 +184,7 @@ export async function runLearningProcess(
   const commandFingerprint = sha256(JSON.stringify({
     executable: command.executable,
     args: command.args,
-    cwd: path.resolve(command.cwd),
+    cwd: workingDirectory,
     inheritedEnv: inheritedEnvKeys.map(key => [key, env[key] ?? null]),
     explicitEnv: explicitEnvKeys.map(key => [key, env[key] ?? null]),
   }));
@@ -187,7 +202,7 @@ export async function runLearningProcess(
   // limits can terminate descendants too. Windows retains direct-child semantics;
   // strong cross-platform isolation still belongs to an OS/container sandbox.
   const child = spawn(command.executable, command.args, {
-    cwd: path.resolve(command.cwd),
+    cwd: workingDirectory,
     env,
     shell: false,
     windowsHide: true,
