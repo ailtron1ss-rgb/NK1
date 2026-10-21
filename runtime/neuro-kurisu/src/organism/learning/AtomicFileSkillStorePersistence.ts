@@ -5,7 +5,7 @@ import {
 } from 'node:fs';
 import { dirname } from 'node:path';
 import type {
-  ActiveSkillVersion, SkillPromotionApproval, SkillShadowObservation, SkillStorePersistence,
+  ActiveSkillVersion, SkillPromotionApproval, SkillRollbackApproval, SkillShadowObservation, SkillStorePersistence,
   VersionedSkillCandidate, VersionedSkillStoreSnapshot,
 } from './VersionedSkillCandidateStore.ts';
 
@@ -64,6 +64,28 @@ function isShadowObservation(value: unknown): value is SkillShadowObservation {
     typeof value.passed === 'boolean' && isTime(value.observedAt);
 }
 
+function isRollbackApproval(value: unknown): value is SkillRollbackApproval {
+  if (!isRecord(value) || !isText(value.approvedBy) || !isTime(value.approvedAt) ||
+      !isVersion(value.expectedActiveVersion)) return false;
+  if (value.artifact === undefined) return true; // Only explicit test verifier adapters may authorize unsigned fixtures.
+  const artifact = value.artifact;
+  if (!isRecord(artifact) || !isText(artifact.signature) || !isRecord(artifact.payload)) return false;
+  const payload = artifact.payload;
+  const restoredVersionValid = payload.restoredVersion === null || isVersion(payload.restoredVersion);
+  const restoredFingerprintValid = payload.restoredPayloadFingerprint === null || isFingerprint(payload.restoredPayloadFingerprint);
+  const restoredProposalValid = payload.restoredProposalId === null || isFingerprint(payload.restoredProposalId);
+  return payload.schemaVersion === 1 &&
+    isText(payload.approvalId) && isText(payload.approverId) && isTime(payload.approvedAt) &&
+    isFingerprint(payload.candidateId) && isText(payload.skillId) && isVersion(payload.candidateVersion) &&
+    isFingerprint(payload.payloadFingerprint) && isFingerprint(payload.proposalId) &&
+    isVersion(payload.expectedActiveVersion) && restoredVersionValid && restoredFingerprintValid && restoredProposalValid &&
+    ((payload.restoredVersion === null) === (payload.restoredPayloadFingerprint === null)) &&
+    ((payload.restoredVersion === null) === (payload.restoredProposalId === null)) &&
+    isFingerprint(payload.previousActiveFingerprint) && isFingerprint(payload.shadowEvidenceFingerprint) &&
+    payload.approverId === value.approvedBy && payload.approvedAt === value.approvedAt &&
+    payload.expectedActiveVersion === value.expectedActiveVersion;
+}
+
 function isCandidate(value: unknown): value is VersionedSkillCandidate {
   if (!isRecord(value) || !isFingerprint(value.candidateId) || !isText(value.skillId) ||
       !isVersion(value.version) || !isFingerprint(value.payloadFingerprint) ||
@@ -79,8 +101,12 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
   ])).digest('hex');
   if (value.candidateId !== expectedId) return false;
   if (value.approval !== undefined && !isApproval(value.approval)) return false;
+  if (value.rollbackApproval !== undefined && !isRollbackApproval(value.rollbackApproval)) return false;
   if (value.promotedAt !== undefined && !isTime(value.promotedAt)) return false;
   if (value.rolledBackAt !== undefined && !isTime(value.rolledBackAt)) return false;
+  if (value.status === 'active' && (!value.approval || !isTime(value.promotedAt) || value.rollbackApproval !== undefined)) return false;
+  if (value.status === 'rolled-back' && (!value.rollbackApproval || !isTime(value.rolledBackAt))) return false;
+  if (value.status !== 'rolled-back' && value.rollbackApproval !== undefined) return false;
   return true;
 }
 
