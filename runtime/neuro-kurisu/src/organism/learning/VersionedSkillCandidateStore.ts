@@ -220,6 +220,21 @@ export class VersionedSkillCandidateStore {
           candidate.proposalId !== active.proposalId || canonical(candidate.payload) !== canonical(active.payload)) {
         throw new Error('persisted active skill is not bound to its candidate payload/version');
       }
+      if (candidate.baseVersion !== null) {
+        const prior = current.candidates.find(item => item.skillId === candidate.skillId &&
+          item.version === candidate.baseVersion && ['active', 'superseded'].includes(item.status));
+        const expectedPrior = prior ? {
+          skillId: prior.skillId, version: prior.version, payload: prior.payload,
+          payloadFingerprint: prior.payloadFingerprint, proposalId: prior.proposalId,
+          activatedAt: prior.promotedAt,
+        } : null;
+        if (!prior || !candidate.previousActive || prior.promotedAt === undefined ||
+            canonical(candidate.previousActive) !== canonical(expectedPrior)) {
+          throw new Error('persisted active candidate rollback target is not bound to a prior approved version');
+        }
+      } else if (candidate.previousActive !== null) {
+        throw new Error('persisted initial candidate has an unexpected rollback target');
+      }
       const approval = candidate.approval;
       if (!approval) throw new Error('persisted active candidate is missing signed promotion approval');
       if (candidate.baseVersion !== approval.expectedActiveVersion ||
@@ -247,6 +262,23 @@ export class VersionedSkillCandidateStore {
         if (evidenceAuthorized !== true) {
           throw new Error('persisted active skill shadow evidence failed authentication');
         }
+      }
+    }
+    for (const rolledBack of current.candidates.filter(candidate => candidate.status === 'rolled-back')) {
+      const approval = rolledBack.rollbackApproval;
+      if (!approval || rolledBack.rolledBackAt !== approval.approvedAt ||
+          approval.expectedActiveVersion !== rolledBack.version) {
+        throw new Error('persisted rolled-back skill is missing a bound signed rollback approval');
+      }
+      let rollbackAuthorized = false;
+      try {
+        rollbackAuthorized = this.verifyRollbackApproval(
+          clone(approval), clone(rolledBack), rolledBack.previousActive ? clone(rolledBack.previousActive) : null,
+          'persisted-rollback',
+        );
+      } catch { rollbackAuthorized = false; }
+      if (rollbackAuthorized !== true) {
+        throw new Error('persisted rollback approval failed signature/context verification');
       }
     }
   }
