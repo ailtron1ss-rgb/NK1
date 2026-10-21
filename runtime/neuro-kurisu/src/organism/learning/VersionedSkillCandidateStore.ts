@@ -9,6 +9,16 @@ export interface SkillPromotionApproval {
   expectedActiveVersion: number | null;
 }
 
+/**
+ * The application must supply an authority that validates the approval against
+ * an authenticated human/session or a separately trusted approval service.
+ * An audit-shaped { approvedBy } object alone is not authorization.
+ */
+export type SkillPromotionApprovalVerifier = (
+  approval: SkillPromotionApproval,
+  candidate: Readonly<VersionedSkillCandidate>,
+) => boolean;
+
 export interface SkillShadowObservation {
   runId: string;
   evidenceFingerprint: string;
@@ -95,7 +105,10 @@ function activeFor(snapshot: VersionedSkillStoreSnapshot, skillId: string): Acti
  * This store is deliberately separate from the live runtime skill resolver.
  */
 export class VersionedSkillCandidateStore {
-  constructor(private readonly persistence: SkillStorePersistence = new InMemorySkillStorePersistence()) {
+  constructor(
+    private readonly persistence: SkillStorePersistence = new InMemorySkillStorePersistence(),
+    private readonly verifyApproval: SkillPromotionApprovalVerifier = () => false,
+  ) {
     const initial = persistence.read();
     if (initial.schemaVersion !== 1 || !Number.isSafeInteger(initial.revision) ||
         initial.revision < 0 || !Array.isArray(initial.active) || !Array.isArray(initial.candidates)) {
@@ -190,6 +203,17 @@ export class VersionedSkillCandidateStore {
     if (candidate.shadowObservations.length < minShadowRuns ||
         candidate.shadowObservations.some(item => !item.passed)) {
       throw new Error('shadow gate requires enough runs and zero failed outcomes');
+    }
+    // Never treat caller-supplied audit fields as proof of human authorization.
+    // Default is deny; production must inject a verifier backed by authenticated authority.
+    let approvalAuthorized = false;
+    try {
+      approvalAuthorized = this.verifyApproval(clone(approval), clone(candidate));
+    } catch {
+      approvalAuthorized = false;
+    }
+    if (approvalAuthorized !== true) {
+      throw new Error('promotion approval is not authenticated by the configured authority');
     }
     const promoted: ActiveSkillVersion = {
       skillId: candidate.skillId, version: candidate.version, payload: clone(candidate.payload),
