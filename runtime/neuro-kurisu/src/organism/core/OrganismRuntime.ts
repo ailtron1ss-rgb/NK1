@@ -186,6 +186,14 @@ export class OrganismRuntime {
       ? new P23TrustedShadowLearningScheduler(this.core, config.trustedShadowLearning)
       : null;
     if (config.compoundRepairRevision) {
+      // Production revision staging must not trust an evaluator supplied by the same
+      // provider that proposes the candidate. Keep legacy provider-only wiring for
+      // development, but fail startup in production unless the independent sandbox,
+      // verifier and safety authorities are configured by the trusted host.
+      if (process.env.NODE_ENV === 'production' &&
+          typeof config.compoundRepairRevision.independentEvaluationConfigForRepair !== 'function') {
+        throw new Error('production-compound-repair-revision-requires-independent-evaluation-authority');
+      }
       if (typeof config.compoundRepairRevision.provideInputs !== 'function') {
         throw new Error('compound-repair-revision requires a trusted input provider');
       }
