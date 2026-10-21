@@ -27,6 +27,10 @@ assert.equal(result.evaluation.validation.length, 1);
 assert.equal(result.evaluation.holdout.length, 1);
 assert.equal(result.evaluation.validation[0].taskSuccess.passed, true);
 assert.match(result.evaluationFingerprint, /^[a-f0-9]{64}$/);
+assert.equal(result.evaluationFingerprint, digest(result.evaluation),
+  'P23 requires the evaluation fingerprint to hash the exact returned evaluation object');
+assert.equal(result.evaluation.provenance.payloadFingerprint, result.payloadFingerprint);
+assert.equal(result.evaluation.provenance.environmentFingerprint, 'a'.repeat(64));
 
 await assert.rejects(() => evaluator({ payload: { ...payload, version: 2 }, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } }), /payload-fingerprint-mismatch/);
 assert.throws(() => createIndependentSkillCandidateEvaluator({
