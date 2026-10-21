@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { evaluateSkillLearnBenchTrial, type SkillLearnBenchTrialReport } from './SkillLearnBenchAdapter.ts';
+import { evaluateSkillLearnBenchCandidate, evaluateSkillLearnBenchTrial, type SkillLearnBenchCandidateGateReport, type SkillLearnBenchTrialReport } from './SkillLearnBenchAdapter.ts';
 import type { RevisedCandidateEvaluator } from './P23LearningEngine.ts';
 import {
   recordPlannedLearningOutcome,
@@ -492,4 +492,152 @@ export function recordIndependentEvaluationOutcomes(
     if (!result.accepted) throw new Error('independent-evaluation-ledger-rejected-outcome');
   }
   return { accepted: pending.length };
+}
+
+
+/**
+ * Compare two independently evaluated payloads only after proving that every
+ * baseline/candidate trial used the same task, trial, seed, split, plan and
+ * runtime environment. This is the matched-pair boundary for WorkPass225:
+ * matching report IDs alone is insufficient because they can hide changed
+ * inputs or cross-environment comparisons.
+ */
+export function compareMatchedIndependentEvaluations(
+  baseline: {
+    payloadFingerprint: string;
+    evaluationFingerprint: string;
+    evaluation: {
+      validation: SkillLearnBenchTrialReport[];
+      holdout: SkillLearnBenchTrialReport[];
+      provenance: {
+        payloadFingerprint: string;
+        environmentFingerprint: string;
+        planFingerprint: string;
+        experimentAuthority: {
+          manifestFingerprint: string;
+          validationPlanFingerprint: string;
+          holdoutPlanFingerprint: string;
+          method: string;
+          attempt: number;
+        } | null;
+        runBindings: Array<{
+          taskId: string; trialId: string; runId: string | null; plannedRunId: string | null;
+          seed: number; split: string; bindingVerified: boolean; verifierPassed: boolean;
+          safetyViolationCount: number;
+        }>;
+      };
+    };
+  },
+  candidate: {
+    payloadFingerprint: string;
+    evaluationFingerprint: string;
+    evaluation: {
+      validation: SkillLearnBenchTrialReport[];
+      holdout: SkillLearnBenchTrialReport[];
+      provenance: {
+        payloadFingerprint: string;
+        environmentFingerprint: string;
+        planFingerprint: string;
+        experimentAuthority: {
+          manifestFingerprint: string;
+          validationPlanFingerprint: string;
+          holdoutPlanFingerprint: string;
+          method: string;
+          attempt: number;
+        } | null;
+        runBindings: Array<{
+          taskId: string; trialId: string; runId: string | null; plannedRunId: string | null;
+          seed: number; split: string; bindingVerified: boolean; verifierPassed: boolean;
+          safetyViolationCount: number;
+        }>;
+      };
+    };
+  },
+): SkillLearnBenchCandidateGateReport & {
+  matchedTrialCount: number;
+  matchedValidationTrialCount: number;
+  matchedHoldoutTrialCount: number;
+  environmentFingerprint: string;
+  planFingerprint: string;
+} {
+  const validEnvelope = (value: typeof baseline, label: string): void => {
+    if (!value || !isDigest(value.payloadFingerprint) || !isDigest(value.evaluationFingerprint) ||
+        !value.evaluation || !value.evaluation.provenance ||
+        value.evaluation.provenance.payloadFingerprint !== value.payloadFingerprint ||
+        value.evaluationFingerprint !== sha256(canonical(value.evaluation)) ||
+        !isDigest(value.evaluation.provenance.environmentFingerprint) ||
+        !isDigest(value.evaluation.provenance.planFingerprint) ||
+        !Array.isArray(value.evaluation.validation) || !Array.isArray(value.evaluation.holdout) ||
+        !Array.isArray(value.evaluation.provenance.runBindings)) {
+      throw new Error(`matched-independent-evaluation-${label}-envelope-invalid`);
+    }
+  };
+  validEnvelope(baseline, 'baseline');
+  validEnvelope(candidate, 'candidate');
+  const bp = baseline.evaluation.provenance;
+  const cp = candidate.evaluation.provenance;
+  if (bp.environmentFingerprint !== cp.environmentFingerprint) {
+    throw new Error('matched-independent-evaluation-environment-mismatch');
+  }
+  if (bp.planFingerprint !== cp.planFingerprint) {
+    throw new Error('matched-independent-evaluation-task-plan-mismatch');
+  }
+  const ba = bp.experimentAuthority;
+  const ca = cp.experimentAuthority;
+  if (!!ba !== !!ca ||
+      (ba && ca && (ba.manifestFingerprint !== ca.manifestFingerprint ||
+        ba.validationPlanFingerprint !== ca.validationPlanFingerprint ||
+        ba.holdoutPlanFingerprint !== ca.holdoutPlanFingerprint ||
+        ba.attempt !== ca.attempt || ba.method === ca.method))) {
+    throw new Error('matched-independent-evaluation-experiment-authority-mismatch');
+  }
+  const bindingsByKey = (value: typeof baseline, label: string) => {
+    const map = new Map<string, (typeof value.evaluation.provenance.runBindings)[number]>();
+    const reports = [...value.evaluation.validation, ...value.evaluation.holdout];
+    const reportKeys = new Set(reports.map(report => JSON.stringify([report.taskId, report.trialId])));
+    if (reportKeys.size !== reports.length || reportKeys.size !== value.evaluation.provenance.runBindings.length) {
+      throw new Error(`matched-independent-evaluation-${label}-coverage-mismatch`);
+    }
+    for (const binding of value.evaluation.provenance.runBindings) {
+      if (!binding || !['validation', 'holdout'].includes(binding.split) ||
+          !Number.isSafeInteger(binding.seed) || binding.seed < 0 ||
+          typeof binding.taskId !== 'string' || !binding.taskId.trim() ||
+          typeof binding.trialId !== 'string' || !binding.trialId.trim() ||
+          !binding.bindingVerified || !binding.verifierPassed ||
+          !binding.runId || !binding.runId.trim() ||
+          !Number.isSafeInteger(binding.safetyViolationCount) || binding.safetyViolationCount !== 0) {
+        throw new Error(`matched-independent-evaluation-${label}-untrusted-trial`);
+      }
+      const key = JSON.stringify([binding.taskId, binding.trialId]);
+      if (map.has(key) || !reportKeys.has(key)) {
+        throw new Error(`matched-independent-evaluation-${label}-duplicate-or-orphan-binding`);
+      }
+      map.set(key, binding);
+    }
+    return map;
+  };
+  const baselineBindings = bindingsByKey(baseline, 'baseline');
+  const candidateBindings = bindingsByKey(candidate, 'candidate');
+  if (baselineBindings.size !== candidateBindings.size || baselineBindings.size === 0) {
+    throw new Error('matched-independent-evaluation-trial-count-mismatch');
+  }
+  for (const [key, left] of baselineBindings) {
+    const right = candidateBindings.get(key);
+    if (!right || left.taskId !== right.taskId || left.trialId !== right.trialId ||
+        left.seed !== right.seed || left.split !== right.split) {
+      throw new Error('matched-independent-evaluation-task-seed-split-mismatch');
+    }
+  }
+  const gate = evaluateSkillLearnBenchCandidate(
+    { validation: baseline.evaluation.validation, holdout: baseline.evaluation.holdout },
+    { validation: candidate.evaluation.validation, holdout: candidate.evaluation.holdout },
+  );
+  return {
+    ...gate,
+    matchedTrialCount: baselineBindings.size,
+    matchedValidationTrialCount: [...baselineBindings.values()].filter(row => row.split === 'validation').length,
+    matchedHoldoutTrialCount: [...baselineBindings.values()].filter(row => row.split === 'holdout').length,
+    environmentFingerprint: bp.environmentFingerprint,
+    planFingerprint: bp.planFingerprint,
+  };
 }
