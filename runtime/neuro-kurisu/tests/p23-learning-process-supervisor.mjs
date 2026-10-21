@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runLearningProcess, readLearningExecutionReceipt } from '../src/organism/learning/LearningProcessSupervisor.ts';
@@ -111,9 +111,9 @@ try {
   const originalProcessCwd = process.cwd();
   const pinnedCwd = path.join(root, 'pinned-cwd');
   const changedCwd = path.join(root, 'changed-cwd');
-  await import('node:fs/promises').then(({ mkdir }) => Promise.all([
+  await Promise.all([
     mkdir(pinnedCwd, { recursive: true }), mkdir(changedCwd, { recursive: true }),
-  ]));
+  ]);
   let releaseCwdRegistration;
   let announceCwdRegistration;
   const cwdRegistrationEntered = new Promise(resolve => { announceCwdRegistration = resolve; });
