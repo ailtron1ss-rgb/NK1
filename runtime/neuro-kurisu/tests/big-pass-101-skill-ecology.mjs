@@ -118,6 +118,24 @@ assert.equal(sealedAfter.variants.find(v=>v.id===sealedVariant.id).status,'candi
 assert.notEqual(sealedAfter.activeVariantId,sealedVariant.id,
  'holdout-only outcomes must never change the active tool');
 
+// Persisted candidate evidence must survive restore, while legacy snapshots
+// without the new field fail closed instead of borrowing old holdout-ambiguous counts.
+const persistedState=lib.snapshot();
+const persistedMixed=persistedState.compoundSkills.find(s=>s.id===mixedSkill.id);
+assert.ok(persistedMixed);
+const restoredLibrary=new ProceduralSkillLibrary();
+restoredLibrary.restore(persistedState);
+const restoredMixed=restoredLibrary.snapshot().compoundSkills.find(s=>s.id===mixedSkill.id);
+assert.equal(restoredMixed.variants.find(v=>v.id===mixedVariant.id).verifiedNonHoldoutExecutions,1,
+ 'new evidence counters must survive a save/restore cycle');
+const legacyState=structuredClone(persistedState);
+for(const s of legacyState.compoundSkills) for(const v of s.variants) delete v.verifiedNonHoldoutExecutions;
+const restoredLegacy=new ProceduralSkillLibrary();
+restoredLegacy.restore(legacyState);
+const legacyMixed=restoredLegacy.snapshot().compoundSkills.find(s=>s.id===mixedSkill.id);
+assert.equal(legacyMixed.variants.find(v=>v.id===mixedVariant.id).verifiedNonHoldoutExecutions,0,
+ 'legacy evidence without holdout provenance must not be promoted into trusted non-holdout evidence');
+
 const cx=new CausalExperienceStream();
 const cr=cx.recordExternalLearningEvent({tick:7,taskId:'repair-task',action:'explore',reward01:.9,success01:1,surprise01:.55,novelty01:.6,causalStrength01:.8});
 assert.ok(cr.causalStrength01>=.79);
