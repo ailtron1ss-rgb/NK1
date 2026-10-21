@@ -56,7 +56,8 @@ try {
     try { process.kill(deadPid, 0); deadPid += 1; }
     catch (error) {
       if (error?.code === 'ESRCH') break;
-      throw error;
+      // Existing or permission-protected PIDs are not evidence of a dead owner.
+      deadPid += 1;
     }
   }
   writeFileSync(file + '.lock', JSON.stringify({ pid: deadPid, hostname: hostname(), acquiredAt: Date.now() }));
