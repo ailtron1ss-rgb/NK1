@@ -68,6 +68,22 @@ try {
   assert.equal(repairEvidence[0].failedTool,'test.compound.primary-fails');
   assert.equal(repairEvidence[0].selectedTool,'test.compound.fallback');
   assert.equal(repairEvidence[0].revisionEligible,true);
+  let forwardedRepairEvidence=null;
+  const revisionResult=await runtime.generateCompoundSkillRevision({
+    engine:{
+      generateAndStageReflectiveSkillRevision:async(_proposal,_skillId,_source,_baseline,_evaluation,generate)=>({
+        candidate:{candidateId:'staged-test-candidate'},
+        fitness:{holdoutDelta01:0},plan:{targets:[{dimension:'fallback-selection'}]},
+        generated:await generate({sourcePayload:{},optimizerInstruction:'repair fallback selection',validationEvidence:[],targets:[{dimension:'fallback-selection'}],holdoutGeneralization:{gap01:0,requiresFreshIndependentEvaluation:true}}),
+      }),
+    },
+    proposal:{},skillId:repairSkill.id,sourceCandidateId:'test-source',
+    baseline:{validation:[],holdout:[]},candidateEvaluation:{validation:[],holdout:[]},
+    generate:async(request)=>{forwardedRepairEvidence=request.repairEvidence;return {revised:true};},
+  });
+  assert.equal(revisionResult.candidate.candidateId,'staged-test-candidate');
+  assert.equal(revisionResult.repairEvidenceCount,1);
+  assert.equal(forwardedRepairEvidence[0].selectedTool,'test.compound.fallback','real repair evidence must reach the revision generator');
   const holdoutSkill=await runtime.compileCompoundSkill({
     projectId:'workpass169',name:'runtime-holdout-exclusion',origin:'integration-test',
     steps:[
@@ -80,6 +96,14 @@ try {
     runId:'wp169-run-holdout',context:'holdout repair evidence test',holdout:true,independent:true,autonomous:false,
   });
   assert.equal(runtime.compoundSkillRepairEvidence(holdoutSkill.id).length,0,'holdout repair evidence must not be exposed to revision callers');
+  let holdoutGeneratorCalled=false;
+  await assert.rejects(()=>runtime.generateCompoundSkillRevision({
+    engine:{generateAndStageReflectiveSkillRevision:async()=>{throw new Error('must not run');}},
+    proposal:{},skillId:holdoutSkill.id,sourceCandidateId:'holdout-source',
+    baseline:{validation:[],holdout:[]},candidateEvaluation:{validation:[],holdout:[]},
+    generate:async()=>{holdoutGeneratorCalled=true;return {shouldNotExist:true};},
+  }),/no verified non-holdout compound repair evidence is eligible/);
+  assert.equal(holdoutGeneratorCalled,false,'holdout-only observations must never reach revision generation');
   await runtime.stop();
 
   const restarted=new OrganismRuntime({stateFile,worldStateFile,enableLanguage:false});
