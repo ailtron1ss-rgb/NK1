@@ -15,20 +15,27 @@ const tasks = [
 let configRequests = 0;
 let sandboxRuns = 0;
 const providerSuppliedEvaluator = async () => { throw new Error('provider evaluator must be replaced'); };
+let retainedProviderOutput;
 const provider = withIndependentCandidateEvaluation(
   async input => {
     // A provider must not be able to rewrite the repair context used to derive
     // independent evaluation authority.
     input.repairFingerprints[0] = 'provider-mutated-fingerprint';
     input.repairEvidence.push({ failureFingerprint: 'provider-mutated-evidence' });
-    return {
-    proposal: { proposalId: 'proposal-' + input.skillId },
-    sourceCandidateId: 'source-candidate',
-    baseline: { validation: [], holdout: [] },
-    candidateEvaluation: { validation: [], holdout: [] },
-    generate: async () => ({ payload: { code: 'candidate-v1' } }),
-    evaluateRevisedCandidate: providerSuppliedEvaluator,
+    retainedProviderOutput = {
+      proposal: { proposalId: 'proposal-' + input.skillId, metadata: { source: 'trusted-provider' } },
+      sourceCandidateId: 'source-candidate',
+      baseline: { validation: [{ taskId: 'baseline-validation', taskSuccess: { passed: true, passRate: 1 } }], holdout: [] },
+      candidateEvaluation: { validation: [], holdout: [] },
+      generate: async () => ({ payload: { code: 'candidate-v1' } }),
+      evaluateRevisedCandidate: providerSuppliedEvaluator,
     };
+    const output = retainedProviderOutput;
+    setTimeout(() => {
+      output.proposal.metadata.source = 'mutated-after-return';
+      output.baseline.validation[0].taskId = 'mutated-baseline';
+    }, 0);
+    return output;
   },
   input => {
     configRequests++;
@@ -53,6 +60,11 @@ const prepared = await provider({
 });
 assert.notEqual(prepared.evaluateRevisedCandidate, providerSuppliedEvaluator,
   'runtime wrapper must replace provider-supplied evaluator');
+await new Promise(resolve => setTimeout(resolve, 10));
+assert.equal(prepared.proposal.metadata.source, 'trusted-provider',
+  'provider-retained proposal references must not rewrite prepared revision inputs');
+assert.equal(prepared.baseline.validation[0].taskId, 'baseline-validation',
+  'provider-retained baseline references must not rewrite baseline evidence after return');
 const payload = { code: 'candidate-v1' };
 const evaluated = await prepared.evaluateRevisedCandidate({
   payload, payloadFingerprint: digest(payload),
