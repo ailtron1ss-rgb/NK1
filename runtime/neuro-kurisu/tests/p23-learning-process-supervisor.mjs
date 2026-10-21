@@ -42,6 +42,23 @@ try {
   assert.equal(timed.receipt.status, 'timed-out');
   assert.equal(timed.receipt.signal, 'SIGKILL');
 
+  const cancellation = new AbortController();
+  const running = runLearningProcess(run, 'b'.repeat(64), {
+    ...base, signal: cancellation.signal, timeoutMs: 2_000,
+    args: ['-e', 'setInterval(()=>{},1000)'],
+  });
+  setTimeout(() => cancellation.abort(new Error('test cancellation')), 40);
+  const cancelled = await running;
+  assert.equal(cancelled.receipt.status, 'cancelled');
+  assert.equal(cancelled.receipt.signal, 'SIGKILL');
+
+  const preCancelled = new AbortController();
+  preCancelled.abort();
+  await assert.rejects(
+    () => runLearningProcess(run, 'b'.repeat(64), { ...base, signal: preCancelled.signal }),
+    /cancelled before spawn/,
+  );
+
   const capped = await runLearningProcess(run, 'b'.repeat(64), {
     ...base, maxOutputBytes: 32, args: ['-e', "process.stdout.write('x'.repeat(10000))"],
   });
