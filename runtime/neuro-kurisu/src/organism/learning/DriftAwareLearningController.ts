@@ -74,15 +74,13 @@ export class DriftAwareLearningController {
     }
 
     const error = 1 - input.heldOutQuality01;
-    const adaptive = this.detector.update(error);
-    const pageHinkley = this.pageHinkley.update(error);
-    const adaptiveWindowDetected = adaptive.driftDetected;
-    const pageHinkleyDetected = pageHinkley.driftDetected;
-    const driftDetected = this.detectorKind === 'adaptive-window'
-      ? adaptiveWindowDetected
-      : this.detectorKind === 'page-hinkley'
-        ? pageHinkleyDetected
-        : adaptiveWindowDetected || pageHinkleyDetected;
+    // Avoid running the O(window²) exact-window scan when its detector is
+    // not selected. In "either" mode both algorithms are intentionally active.
+    const adaptive = this.detectorKind === 'page-hinkley' ? null : this.detector.update(error);
+    const pageHinkley = this.detectorKind === 'adaptive-window' ? null : this.pageHinkley.update(error);
+    const adaptiveWindowDetected = adaptive?.driftDetected ?? false;
+    const pageHinkleyDetected = pageHinkley?.driftDetected ?? false;
+    const driftDetected = adaptiveWindowDetected || pageHinkleyDetected;
     const replayBatchSize = driftDetected
       ? Math.min(input.buffer.capacity, Math.ceil(input.replayBatchSize * this.driftReplayMultiplier))
       : Math.min(input.buffer.capacity, input.replayBatchSize);
@@ -99,13 +97,14 @@ export class DriftAwareLearningController {
       },
     );
     const chosenEstimate = this.detectorKind === 'page-hinkley'
-      ? pageHinkley.mean
-      : adaptive.estimation;
+      ? pageHinkley?.mean
+      : adaptive?.estimation;
     return {
       detector: {
         driftDetected,
-        detections: this.detector.nDetections + this.pageHinkley.nDetections,
-        width: adaptive.width,
+        detections: (adaptive?.detections ?? this.detector.nDetections) +
+          (pageHinkley?.detections ?? (this.detectorKind === 'adaptive-window' ? 0 : this.pageHinkley.nDetections)),
+        width: adaptive?.width ?? this.detector.width,
         heldOutError01: chosenEstimate ?? 0,
         kind: this.detectorKind,
         adaptiveWindowDetected,
