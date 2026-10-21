@@ -283,6 +283,16 @@ tamperedEvaluation.evaluation.validation[0].taskSuccess.passed = false;
 assert.throws(() => recordIndependentEvaluationOutcomes(tamperedEvaluation, experimentAuthority, 1700000000000),
   /evaluation-fingerprint-mismatch/,
   'ledger commit must reject reports changed after independent evaluation');
+const partialEvaluation = structuredClone(authorityEvaluation);
+partialEvaluation.evaluation.holdout = [];
+partialEvaluation.evaluation.provenance.runBindings =
+  partialEvaluation.evaluation.provenance.runBindings.filter(binding => binding.split === 'validation');
+partialEvaluation.evaluationFingerprint = digest(partialEvaluation.evaluation);
+assert.throws(() => recordIndependentEvaluationOutcomes(partialEvaluation, experimentAuthority, 1700000000000),
+  /plan-coverage-incomplete/,
+  'a self-consistent but incomplete evaluation cannot be recorded as a complete experiment');
+assert.equal(authorityLedger.snapshot().acceptedOutcomes, 0,
+  'rejected ledger commits must not partially write outcomes');
 const ledgerCommit = recordIndependentEvaluationOutcomes(authorityEvaluation, experimentAuthority, 1700000000000);
 assert.equal(ledgerCommit.accepted, 2, 'both independently bound split outcomes should enter the canonical ledger');
 assert.equal(authorityLedger.snapshot().acceptedOutcomes, 2);
