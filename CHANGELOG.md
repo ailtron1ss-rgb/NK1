@@ -1,3 +1,10 @@
+## WorkPass133 — isolate bootstrap uncertainty from incomplete seeds (2026-10-21)
+
+- Corrected the deterministic seed-cluster bootstrap identity: only complete paired seeds that actually contribute to the estimate now determine its resampling stream. Incomplete seed records remain excluded from the estimate and no longer perturb the interval for an otherwise identical complete sample.
+- Added a regression that builds the same complete paired sample with and without extra incomplete-seed evidence and asserts identical bootstrap intervals.
+- Research refresh: inspected the published SkillLearnBench evaluation structure and the public retention-bench / AgentMemoryBench descriptions. Adapted only evaluation protocol ideas: separate skill/trajectory/outcome evidence; test hard-reset survival separately from stored-record persistence; report online, replay, transfer and repair modes independently. No upstream code or dataset was copied.
+- **Verification status:** source and regression committed to the work branch; execution, typecheck and exact-head CI still need confirmation. No measured learning uplift is claimed.
+
 ## WorkPass132 — deterministic seed-cluster bootstrap sensitivity (2026-10-21)
 
 - Added a reproducible percentile bootstrap interval over seed-level aggregates in `VerifiedOutcomeLedger.comparePairedBySeed` and family-stratified comparisons. The resampling unit remains the independent seed, not correlated task cells or retries.
