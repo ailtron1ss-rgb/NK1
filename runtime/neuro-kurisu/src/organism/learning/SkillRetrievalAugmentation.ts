@@ -41,8 +41,13 @@ export function retrieveSkills(query:SkillRetrievalQuery, skills:readonly Retrie
       const actionMatch=query.action===undefined||query.action===s.action;
       const score01=clamp(.30*similarity01+.24*outcome+.18*evidenceStrength01+
         .14*clamp(s.confidence01)+.09*recency01+.05*clamp(Math.log1p(Math.max(0,s.totalUses))/5))*(actionMatch?1:.82);
-      const transferBias01=(s.status==='promoted'?1:-1)*score01*
-        (s.status==='promoted'?.025:.009)*similarity01;
+      // A retrieved alternative may be useful to inspect, but evidence for a
+      // different action must never bias execution of the requested action.
+      // This prevents a rejected "delete" skill, for example, from penalizing
+      // an unrelated "summarize" decision merely because their contexts overlap.
+      const transferBias01=actionMatch
+        ? (s.status==='promoted'?1:-1)*score01*(s.status==='promoted'?.025:.009)*similarity01
+        : 0;
       const reasons:string[]=[];
       if(similarity01>=.8)reasons.push('context-neighbor');
       if(evidenceStrength01>=.65)reasons.push('repeat-validated');
