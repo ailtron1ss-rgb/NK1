@@ -571,7 +571,7 @@ export class ProceduralSkillLibrary{
     if(input.verified){variant.verifiedExecutions++; if(!holdout)variant.verifiedNonHoldoutExecutions=(variant.verifiedNonHoldoutExecutions??0)+1;}
     if(input.independent&&!holdout)variant.independentExecutions++;
     if(holdout)variant.holdoutExecutions++;
-    if(variant.trials>1&&similarity<.72)variant.distinctContexts=Math.min(32,variant.distinctContexts+1);
+    if(!holdout&&variant.trials>1&&similarity<.72)variant.distinctContexts=Math.min(32,variant.distinctContexts+1);
     // Holdout observations are evaluation-only: they must not alter confidence,
     // promotion fitness, or rejection decisions.
     if(!holdout){
@@ -580,7 +580,7 @@ export class ProceduralSkillLibrary{
       const evidence=clamp(((variant.verifiedNonHoldoutExecutions??0)/Math.max(1,nonHoldoutTrials))*.6+(variant.independentExecutions/Math.max(1,nonHoldoutTrials))*.4);
       variant.confidence01=clamp(variant.confidence01*.72+reliability*.12+evidence*.16);
     }
-    variant.lastOutcome01=success; variant.lastContext=context;
+    variant.lastOutcome01=success; if(!holdout)variant.lastContext=context;
     const nonHoldoutTrials=variant.nonHoldoutTrials??0;
     const nonHoldoutSuccessRate=(variant.nonHoldoutSuccesses??0)/Math.max(1,nonHoldoutTrials);
     if(variant.status==='candidate'&&nonHoldoutTrials>=3&&nonHoldoutSuccessRate>=.75&&(variant.verifiedNonHoldoutExecutions??0)>=2&&variant.independentExecutions>=1&&variant.confidence01>=.52)this.promoteVariant(id,variantId);
