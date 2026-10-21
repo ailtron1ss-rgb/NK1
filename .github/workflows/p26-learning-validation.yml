@@ -5,6 +5,7 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts"
       - "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts"
+      - "runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/ContinualReplayBuffer.ts"
       - "runtime/neuro-kurisu/src/organism/learning/PrioritizedReplaySampler.ts"
       - "runtime/neuro-kurisu/src/organism/learning/ContinualForgettingTracker.ts"
@@ -59,6 +60,9 @@ jobs:
       - name: Run SkillLearnBench-compatible evaluation adapter regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p26-skilllearnbench-adapter.mjs
+      - name: Run Hermes-inspired reflective candidate gate regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p29:hermes-reflective-candidate-gate
       - name: Run continual experience replay regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p26-continual-replay-buffer.mjs
