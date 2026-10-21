@@ -1,3 +1,9 @@
+## WorkPass131 — bind signed shadow receipts to trusted execution identity (2026-10-21)
+
+- Adapted the in-toto attestation principle of binding authenticated claims to explicit subjects: shadow receipts now have to match trusted run ID, task ID, random seed, manifest fingerprint and runtime version supplied by an independent resolver.
+- Added restart/promotion regressions for run, task, seed, manifest and runtime mismatches. No upstream code was copied and no runtime dependency was added.
+- **Verification status:** source and tests committed; local test/typecheck and exact-head CI are not yet confirmed. Production trusted-run resolver and approval authority remain open.
+
 ## WorkPass116 — seed-clustered verified learning comparisons (2026-10-20)
 
 - Added `VerifiedOutcomeLedger.comparePairedBySeed` and `comparePairedByFamilyAndSeed`. The independent statistical unit is now a seed-level aggregate rather than each correlated task cell.
