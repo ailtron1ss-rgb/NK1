@@ -1,13 +1,48 @@
 import assert from 'node:assert/strict';
+import { generateKeyPairSync } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AtomicFileSkillStorePersistence } from '../src/organism/learning/AtomicFileSkillStorePersistence.ts';
 import { VersionedSkillCandidateStore, InMemorySkillStorePersistence } from '../src/organism/learning/VersionedSkillCandidateStore.ts';
+import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
+import { ingestSignedOutcomeArtifact, signOutcomePayloadForFixture } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
+import { proposeVerifiedSkillPromotion } from '../src/organism/learning/VerifiedSkillPromotion.ts';
 
 function proposal(id, accepted=true, authenticatedEvidenceRows=20, unauthenticatedEvidenceRows=0) {
+  // Successful fixtures must come from the canonical signed-evidence pipeline.
+  if (accepted && unauthenticatedEvidenceRows === 0) {
+    const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+    const trustedKeys = new Map([['verifier-v1', publicKey.export({ type: 'spki', format: 'pem' }).toString()]]);
+    const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+    const manifest = Array.from({ length: 10 }, (_, i) => ({
+      taskId: `${id}-task-${i}`, family: i < 5 ? 'memory' : 'tool-use', split: 'holdout',
+      promptFingerprint: VerifiedOutcomeLedger.fingerprintPrompt(`${id} unique prompt ${i}`),
+      verifierId: 'verifier-v1', version: 'v1',
+    }));
+    const ledger = new VerifiedOutcomeLedger(manifest);
+    for (let seed = 1; seed <= 5; seed++) for (let i = 0; i < manifest.length; i++) {
+      for (const [method, passed] of [['baseline', i < 6], ['candidate', i < 8]]) {
+        const task = manifest[i];
+        const payload = {
+          schemaVersion: 1, artifactId: `${id}-artifact-${task.taskId}-${method}-${seed}`,
+          runId: `${id}-run-${method}-${seed}`, manifestFingerprint: ledger.manifestFingerprint(),
+          taskId: task.taskId, taskVersion: task.version, method, seed, attempt: 1, passed,
+          verifierId: task.verifierId, observedAt: Date.now(),
+        };
+        const artifact = signOutcomePayloadForFixture(payload, privateKeyPem);
+        assert.equal(ingestSignedOutcomeArtifact(ledger, manifest, artifact, trustedKeys).accepted, true);
+      }
+    }
+    const generated = proposeVerifiedSkillPromotion(ledger, 'baseline', 'candidate', {
+      minPairedTasks: 8, minAbsoluteGain: 0.1, minCompleteSeeds: 3,
+    });
+    assert.equal(generated.gate.accepted, true, 'the fixture must produce a genuinely accepted proposal');
+    return generated;
+  }
+  // Negative cases deliberately use caller-constructed objects to prove they cannot cross the trust boundary.
   return {
-    schemaVersion: 1, proposalId: id.repeat(64).slice(0,64), outcomeFingerprint: 'b'.repeat(64),
+    schemaVersion: 1, proposalId: id.repeat(64).slice(0, 64), outcomeFingerprint: 'b'.repeat(64),
     gate: { accepted }, canActivateAutomatically: false, authenticatedEvidenceRows, unauthenticatedEvidenceRows,
   };
 }
