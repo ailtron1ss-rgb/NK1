@@ -75,4 +75,35 @@ await assert.rejects(
   /organism-runtime-not-initialized/,
 );
 
+
+const mutableEvidence = [{ ...evidence[0] }];
+let staleStageCalls = 0;
+const staleRuntime = {
+  compoundSkillRepairEvidence: () => mutableEvidence,
+  generateCompoundSkillRevision: async () => {
+    staleStageCalls++;
+    throw new Error('stale evidence must never reach candidate staging');
+  },
+};
+const staleCoordinator = new P23CompoundRepairRevisionCoordinator(
+  staleRuntime,
+  engine,
+  async () => {
+    // Preserve count and failure fingerprint while changing the actual evidence payload.
+    mutableEvidence[0] = { ...mutableEvidence[0], diagnosis: 'changed after snapshot' };
+    return {
+      proposal: { authentic: true },
+      sourceCandidateId: 'source-candidate-1',
+      baseline: { validation: [], holdout: [] },
+      candidateEvaluation: { validation: [], holdout: [] },
+      generate: async () => ({ generated: true }),
+    };
+  },
+);
+await assert.rejects(
+  () => staleCoordinator.reviseFromObservedRepairs('skill-a'),
+  /compound repair evidence changed while trusted revision inputs were being prepared/,
+);
+assert.equal(staleStageCalls, 0, 'mutated evidence must be rejected before candidate staging');
+
 console.log('WorkPass172 coordinator regression passed');
