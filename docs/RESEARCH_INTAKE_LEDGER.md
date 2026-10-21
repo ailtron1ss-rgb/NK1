@@ -165,3 +165,19 @@ Do not count a reference as “used” until a source revision/paper protocol is
 | Replay retention | Изменение старого шаблона при продолжении обучения на другом шаблоне | До/после на двух ортогональных признаках | Код добавлен; это диагностическая метрика, не доказательство отсутствия забывания |
 
 Research protocol lineage: AgentMemoryBench (https://github.com/solomoon313/AgentMemoryBench) motivates online/replay/transfer/repair dimensions; MemoryAgentBench (https://github.com/HUST-AI-HYZ/MemoryAgentBench) motivates conflict and long-range task families. The new test is an original synthetic probe, not copied benchmark data or implementation. Before promotion to a release gate: execute on supported Node, run typecheck + existing P26 tests, add multiple task orders and held-out task variants, and report all metrics including negative retention deltas.
+
+
+## WorkPass83 — curriculum order sensitivity and strict snapshot restore (2026-10-21)
+
+| Source | Public protocol insight | Adaptation made | Import / license boundary |
+|---|---|---|---|
+| AgentMemoryBench — https://github.com/solomoon313/AgentMemoryBench | Separate online learning, replay retention, transfer and repair; inspect behavior across sequential task exposure rather than a single final score | Added a lightweight three-order curriculum matrix, per-task absolute error, mean error per order, order-sensitivity spread and a wrong-feedback repair phase | Protocol-inspired original test only. No upstream code, datasets, model weights or dependencies imported. The exact upstream revision/license must be reviewed before any code/data port. |
+| MemoryAgentBench — https://github.com/HUST-AI-HYZ/MemoryAgentBench | Separate accurate retrieval, test-time learning, long-range understanding and conflict resolution; use distinct task families | Reinforces the decision to report this policy learner test as a narrow synthetic learning diagnostic, not a memory-agent benchmark score | Public repository describes an MIT license; no benchmark datasets or implementation copied in this pass. Dataset terms/provenance still require separate review before reuse. |
+
+### WorkPass83 evidence and next gates
+
+- Hardened restore semantics: persisted frozen now accepts only literal boolean true, avoiding accidental truthiness of strings such as "false".
+- Added a regression for malformed persisted freeze state and wired test:p26:learning-continual-matrix.
+- Matrix reports task-order sensitivity instead of hiding it behind one aggregate. It is deterministic but deliberately small and synthetic.
+- **Execution status: NOT RUN / NOT VERIFIED in this pass.** No numeric outcome or quality improvement is claimed.
+- Required next gates: run supported Node typecheck and P26 tests; preserve raw metrics; add held-out patterns and additional task orders; compare standard sequential learning with explicit replay and frozen controls; reject promotion if repair or retention regresses beyond a predeclared tolerance.
