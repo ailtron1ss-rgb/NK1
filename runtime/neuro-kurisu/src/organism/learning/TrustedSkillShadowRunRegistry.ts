@@ -1,5 +1,6 @@
 import { closeSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { hostname } from 'node:os';
 import type { SkillShadowObservation, VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 import type { TrustedShadowExecutionContext } from './VerifiedSkillShadowEvidence.ts';
 
@@ -66,16 +67,46 @@ export class AtomicFileTrustedSkillShadowRunRegistry {
     return parsed;
   }
 
+  private lockOwnerIsProvablyDead(): boolean {
+    let raw: string;
+    try { raw = readFileSync(this.lockPath, 'utf8'); }
+    catch { return false; }
+    let owner: unknown;
+    try { owner = JSON.parse(raw); } catch { return false; }
+    if (!isRecord(owner) || owner.hostname !== hostname() ||
+        !Number.isSafeInteger(owner.pid) || (owner.pid as number) < 1) return false;
+    try {
+      process.kill(owner.pid as number, 0);
+      return false;
+    } catch (error) {
+      // EPERM means the process exists but is not signalable. Only ESRCH proves
+      // that a same-host owner no longer exists; unknown/legacy lock formats fail closed.
+      return (error as NodeJS.ErrnoException).code === 'ESRCH';
+    }
+  }
+
   private withExclusiveLock<T>(action: () => T): T {
     mkdirSync(dirname(this.filePath), { recursive: true });
     let lockFd: number;
     try { lockFd = openSync(this.lockPath, 'wx', 0o600); }
     catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'EEXIST') throw new Error('trusted run registry is locked; fail closed');
-      throw error;
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+      // Recover only a lock whose same-host PID is provably gone. Never break a
+      // live, remote-host, malformed, or legacy lock based on age alone.
+      if (!this.lockOwnerIsProvablyDead()) throw new Error('trusted run registry is locked; fail closed');
+      try { unlinkSync(this.lockPath); }
+      catch { throw new Error('trusted run registry is locked; fail closed'); }
+      try { lockFd = openSync(this.lockPath, 'wx', 0o600); }
+      catch { throw new Error('trusted run registry is locked; fail closed'); }
     }
-    try { writeFileSync(lockFd, String(process.pid)); fsyncSync(lockFd); return action(); }
-    finally { closeSync(lockFd); try { unlinkSync(this.lockPath); } catch { /* preserve the primary result */ } }
+    try {
+      writeFileSync(lockFd, JSON.stringify({ pid: process.pid, hostname: hostname(), acquiredAt: Date.now() }));
+      fsyncSync(lockFd);
+      return action();
+    } finally {
+      closeSync(lockFd);
+      try { unlinkSync(this.lockPath); } catch { /* preserve the primary result */ }
+    }
   }
 
   register(input: TrustedShadowExecutionContext): TrustedSkillShadowRunContext {
