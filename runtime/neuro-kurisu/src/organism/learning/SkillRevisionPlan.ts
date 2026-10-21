@@ -1,0 +1,76 @@
+import type { SkillLearnBenchCandidateGateReport, SkillLearnBenchTrialReport } from './SkillLearnBenchAdapter.ts';
+
+export type SkillRevisionDimension = 'safety' | 'task-success' | 'trajectory' | 'capability-coverage' | 'executability' | 'holdout-generalization';
+
+export interface SkillRevisionTarget {
+  dimension: SkillRevisionDimension;
+  priority01: number;
+  affectedTaskIds: string[];
+  evidenceCount: number;
+  evidenceIds: string[];
+  directive: string;
+}
+
+export interface SkillRevisionPlan {
+  candidateEligible: boolean;
+  blockedBySafety: boolean;
+  overallFitness01: number;
+  targets: SkillRevisionTarget[];
+  preserve: string[];
+  rationale: string[];
+}
+
+const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+
+/**
+ * Turn Hermes-style multi-dimensional fitness feedback into a bounded, evidence-linked
+ * revision curriculum. This plans edits; it does not mutate skill text or certify it.
+ * Safety failures dominate and suppress all performance-optimization suggestions.
+ */
+export function planSkillRevision(
+  validation: readonly SkillLearnBenchTrialReport[],
+  holdout: readonly SkillLearnBenchTrialReport[],
+  fitness: Readonly<SkillLearnBenchCandidateGateReport>,
+): SkillRevisionPlan {
+  if(!Array.isArray(validation)||validation.length===0) throw new Error('revision-validation-reports-required');
+  if(!Array.isArray(holdout)||holdout.length===0) throw new Error('revision-holdout-reports-required');
+  if(!fitness||!Array.isArray(fitness.reasons)||!Array.isArray(fitness.feedback)) throw new Error('revision-fitness-report-invalid');
+  const all=[...validation,...holdout];
+  const safetyRows=all.filter(r=>r.skillQuality.safetyViolationCount>0);
+  const blockedBySafety=safetyRows.length>0||fitness.reasons.includes('candidate-safety-violations-present');
+  const mean=(rows:readonly SkillLearnBenchTrialReport[], pick:(r:SkillLearnBenchTrialReport)=>number)=>rows.length?rows.reduce((s,r)=>s+pick(r),0)/rows.length:0;
+  const targets:SkillRevisionTarget[]=[];
+  const add=(dimension:SkillRevisionDimension,priority:number,rows:SkillLearnBenchTrialReport[],directive:string,ids:(r:SkillLearnBenchTrialReport)=>string[])=>{
+    if(priority<=0.02||!rows.length)return;
+    targets.push({dimension,priority01:Number(clamp(priority).toFixed(6)),affectedTaskIds:[...new Set(rows.map(r=>r.taskId))].sort(),
+      evidenceCount:rows.length,evidenceIds:rows.map(r=>r.trialId).sort(),directive});
+  };
+  if(blockedBySafety){
+    add('safety',1,safetyRows.length?safetyRows:all,'Stop performance optimization. Remove or redesign the unsafe behavior, preserve explicit safety constraints, and obtain a fresh independent safety evaluation before generating another candidate.',r=>[r.trialId]);
+    return {candidateEligible:false,blockedBySafety:true,overallFitness01:0,targets,preserve:['All existing safety constraints and refusal boundaries'],rationale:['Safety is a hard constraint; gains in other dimensions cannot compensate.']};
+  }
+  const success=mean(validation,r=>r.taskSuccess.passRate);
+  const trajectory=mean(validation,r=>r.trajectoryQuality.aggregate);
+  const coverage=mean(validation,r=>r.skillQuality.functionalCoverage);
+  const executable=mean(validation,r=>r.skillQuality.executability);
+  const holdoutDelta=fitness.holdoutDelta01;
+  add('task-success',1-success,validation.filter(r=>!r.taskSuccess.passed),
+    'Improve the procedure at the first independently observed failure point. State the required preconditions, expected postconditions, and recovery path; do not infer success from the skill output itself.',r=>[r.trialId]);
+  add('trajectory',1-trajectory,validation.filter(r=>r.trajectoryQuality.aggregate<0.8),
+    'Rewrite the procedure as an ordered sequence of observable steps. Address missingStepIds and unexpectedStepIds explicitly, remove redundant actions, and retain necessary verification steps.',r=>[r.trialId]);
+  add('capability-coverage',1-coverage,validation.filter(r=>r.skillQuality.functionalCoverage<0.9),
+    'Add only the missing required capabilities evidenced by these trials. Make each capability explicit in the instructions and avoid unrelated prompt growth.',r=>[r.trialId]);
+  add('executability',1-executable,validation.filter(r=>r.skillQuality.executability<1),
+    'Repair the concrete parsing or runtime preflight failure while preserving the existing skill contract; do not replace a failed executable artifact with descriptive text alone.',r=>[r.trialId]);
+  if(holdoutDelta<0) add('holdout-generalization',Math.min(1,Math.abs(holdoutDelta)*5),holdout.filter(r=>!r.taskSuccess.passed||r.trajectoryQuality.aggregate<0.8||r.skillQuality.aggregate<0.8),
+    'Reduce overfitting to validation examples. Prefer the smallest procedure change that addresses the holdout failure pattern, and keep the holdout task family untouched during revision.',r=>[r.trialId]);
+  const dimensionScore=0.5*success+0.3*trajectory+0.2*mean(validation,r=>r.skillQuality.aggregate);
+  return {
+    candidateEligible:fitness.eligible,
+    blockedBySafety:false,
+    overallFitness01:Number(clamp(dimensionScore).toFixed(6)),
+    targets:targets.sort((a,b)=>b.priority01-a.priority01||a.dimension.localeCompare(b.dimension)).slice(0,5),
+    preserve:['Existing safety constraints','Verified task preconditions and postconditions','Unchanged behavior outside the evidenced failure scope'],
+    rationale:[...fitness.reasons,...fitness.feedback].filter((x,i,a)=>a.indexOf(x)===i),
+  };
+}
