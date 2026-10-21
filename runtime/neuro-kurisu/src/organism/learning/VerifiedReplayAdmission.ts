@@ -44,6 +44,13 @@ export interface VerifiedReplayAdmissionResult<T extends ReplayExperienceReferen
 }
 
 const tuple = (...parts: Array<string | number>): string => JSON.stringify(parts);
+/** Novelty is explicit when measured; otherwise estimate it from context/action rarity, never from surprise. */
+export function verifiedReplayNovelty01(experience: Pick<ReplayExperienceReference, 'novelty'>, frequency: number): number {
+  if (Number.isFinite(experience.novelty)) return Math.max(0, Math.min(1, experience.novelty!));
+  const safeFrequency = Number.isFinite(frequency) ? Math.max(1, frequency) : 1;
+  return Math.max(0, Math.min(1, 1 / Math.sqrt(safeFrequency)));
+}
+
 
 /**
  * The evidence-gated bridge between verified outcomes and replay selection.
@@ -127,8 +134,8 @@ export function selectVerifiedReplayExperiences<T extends ReplayExperienceRefere
       Math.max(0, Math.min(1, Number.isFinite(item.experience.emotionalIntensity) ? item.experience.emotionalIntensity! : 0)) * 0.2 +
       Math.max(0, Math.min(1, Number.isFinite(item.experience.activationStrength) ? item.experience.activationStrength! : 0)) * 0.15 +
       Math.max(0, Math.min(1, Number.isFinite(item.experience.goalPriority) ? item.experience.goalPriority! : 0)) * 0.1)),
-    novelty: Math.max(0, Math.min(1, Number.isFinite(item.experience.novelty) ? item.experience.novelty! :
-      1 / Math.sqrt(Math.max(1, contextActionFrequency.get(JSON.stringify([item.experience.contextKey, item.experience.action])) ?? 1))),
+    novelty: verifiedReplayNovelty01(item.experience,
+      contextActionFrequency.get(JSON.stringify([item.experience.contextKey, item.experience.action])) ?? 1),
     replayCount: Math.max(0, Number.isFinite(item.experience.replayCount) ? item.experience.replayCount! :
       Number.isFinite(item.experience.retrievalCount) ? item.experience.retrievalCount! : 0),
     emotionalIntensity: item.experience.emotionalIntensity,
