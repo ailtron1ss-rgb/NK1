@@ -205,3 +205,13 @@ When the user says “работай над проектом”, “продол
 - Added a regression proving default-deny cannot mutate the active skill set and adjusted the learning-engine test to reject fabricated proposal objects.
 - Report: `docs/WORKPASS128_PROMOTION_AUTHORITY_BOUNDARY_2026-10-21.md`.
 - Runtime/typecheck validation and full activation-path audit remain open; do not treat this pass as release-cleared.
+
+
+## WorkPass131 — upstream-inspired signed evidence binding (2026-10-21)
+
+- **Code:** `VerifiedSkillShadowEvidence.ts` now binds signed shadow receipts to independently trusted `runId`, `taskId`, `seed`, `manifestFingerprint` and `runtimeVersion`, in addition to candidate/version/payload identity.
+- **Regression:** durable restart/promotion test rejects mismatches for each of those five context fields; matching context remains the acceptance path.
+- **Research adaptation:** narrow design adaptation from the [in-toto Attestation Statement](https://github.com/in-toto/attestation/blob/main/spec/v1/statement.md) subject/predicate binding model and TUF freshness/rollback principles. No upstream code copied and no new dependency.
+- **NOT VERIFIED:** tests/typecheck/CI have not been confirmed successful on the latest branch head.
+- **P0 OPEN:** wire the resolver to a trusted supervisor/run ledger, configure the production verifier key registry, wire authenticated approval authority, and audit every store constructor plus every activation path.
+- Report: [WorkPass131](docs/WORKPASS131_UPSTREAM_ATTESTATION_BINDING_2026-10-21.md).
