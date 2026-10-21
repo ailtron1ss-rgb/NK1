@@ -38,11 +38,11 @@ export interface CandidateExecutionResult {
 }
 /** Must execute the exact payload in an isolated, resource-bounded runtime. */
 export interface CandidateSandboxExecutor {
-  execute(input: { payload: unknown; task: IndependentCandidateTask; context: CandidateExecutionContext }): Promise<CandidateExecutionResult>;
+  execute(input: { payload: unknown; task: IndependentCandidateTask; context: CandidateExecutionContext; signal?: AbortSignal }): Promise<CandidateExecutionResult>;
 }
 /** Separate authority from the candidate; must not trust candidate self-reported success. */
 export interface IndependentTaskVerifier {
-  verify(input: { task: IndependentCandidateTask; execution: CandidateExecutionResult; context: CandidateExecutionContext }): Promise<{
+  verify(input: { task: IndependentCandidateTask; execution: CandidateExecutionResult; context: CandidateExecutionContext; signal?: AbortSignal }): Promise<{
     /** Independent verifier confirms this trace belongs to the exact payload/task/environment/plan. */
     bindingVerified: boolean;
     passed: boolean;
@@ -51,7 +51,7 @@ export interface IndependentTaskVerifier {
 }
 /** Separate static/dynamic safety authority. */
 export interface IndependentCandidateSafetyScanner {
-  scan(input: { payload: unknown; task: IndependentCandidateTask; execution?: CandidateExecutionResult }): Promise<{
+  scan(input: { payload: unknown; task: IndependentCandidateTask; execution?: CandidateExecutionResult; signal?: AbortSignal }): Promise<{
     violationCount: number;
   }>;
 }
@@ -72,6 +72,8 @@ export interface IndependentCandidateEvaluationConfig {
   };
   /** Domain identity for runtime/tool policy; included in the report fingerprint. */
   environmentFingerprint: string;
+  /** Per-service deadline; timeout aborts the service signal and fails closed. Defaults to 30s. */
+  serviceTimeoutMs?: number;
 }
 const isDigest = (x: unknown): x is string => typeof x === 'string' && /^[a-f0-9]{64}$/i.test(x);
 // Must match P23LearningEngine's canonicalize exactly or its post-generation
@@ -85,12 +87,33 @@ function canonical(value: unknown): string {
     .map(key => JSON.stringify(key) + ':' + canonical(record[key])).join(',') + '}';
 }
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
+async function runWithServiceDeadline<T>(
+  label: string,
+  timeoutMs: number,
+  operation: (signal: AbortSignal) => Promise<T>,
+): Promise<T> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort(new Error(label + '-timeout'));
+      reject(new Error(label + '-timeout'));
+    }, timeoutMs);
+    timer.unref?.();
+  });
+  try {
+    return await Promise.race([operation(controller.signal), deadline]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
 function validateConfig(config: IndependentCandidateEvaluationConfig): void {
   if (!config || !Array.isArray(config.tasks) || config.tasks.length < 2 ||
       !config.executor || typeof config.executor.execute !== 'function' ||
       !config.verifier || typeof config.verifier.verify !== 'function' ||
       !config.safetyScanner || typeof config.safetyScanner.scan !== 'function' ||
-      !isDigest(config.environmentFingerprint)) throw new Error('independent-candidate-evaluator-config-invalid');
+      !isDigest(config.environmentFingerprint) ||
+      (config.serviceTimeoutMs !== undefined && (!Number.isSafeInteger(config.serviceTimeoutMs) || config.serviceTimeoutMs < 10 || config.serviceTimeoutMs > 300_000))) throw new Error('independent-candidate-evaluator-config-invalid');
   const keys = new Set<string>();
   const trialIds = new Set<string>();
   const splitTasks = { validation: new Set<string>(), holdout: new Set<string>() };
@@ -179,6 +202,7 @@ export function createIndependentSkillCandidateEvaluator(
   // caller-owned config on every run. Otherwise post-construction mutation can relabel
   // an evaluation with a different runtime/tool-policy fingerprint.
   const environmentFingerprint = config.environmentFingerprint;
+  const serviceTimeoutMs = config.serviceTimeoutMs ?? 30_000;
   // Capture trusted service entry points too: replacing a method on the caller-owned
   // object after construction must not replace the verifier or safety authority.
   const executeCandidate = config.executor.execute.bind(config.executor);
@@ -230,11 +254,12 @@ export function createIndependentSkillCandidateEvaluator(
         // The executor is outside this trust boundary. Detach its returned object
         // immediately so later mutation of a retained reference cannot rewrite the
         // trace while verification or safety scanning is awaiting other services.
-        execution = structuredClone(await executeCandidate({
+        execution = structuredClone(await runWithServiceDeadline('candidate-sandbox-execution', serviceTimeoutMs, signal => executeCandidate({
           payload: structuredClone(payload),
           task: structuredClone(task),
           context: structuredClone(executionContext),
-        }));
+          signal,
+        })));
         if (!execution || typeof execution.runId !== 'string' || !execution.runId.trim() ||
             !Array.isArray(execution.observedStepIds) ||
             execution.observedStepIds.some(step => typeof step !== 'string' || !step.trim()) ||
@@ -250,11 +275,12 @@ export function createIndependentSkillCandidateEvaluator(
       }
       if (execution) {
         try {
-          const verified = await verifyCandidate({
+          const verified = await runWithServiceDeadline('independent-task-verification', serviceTimeoutMs, signal => verifyCandidate({
             task: structuredClone(task),
             execution: structuredClone(execution),
             context: structuredClone(executionContext),
-          });
+            signal,
+          }));
           if (!verified || typeof verified.bindingVerified !== 'boolean' ||
               typeof verified.passed !== 'boolean' || !Array.isArray(verified.coveredCapabilityIds) ||
               verified.coveredCapabilityIds.some(id => typeof id !== 'string' || !id.trim()) ||
@@ -269,10 +295,11 @@ export function createIndependentSkillCandidateEvaluator(
           verifierPassed = false;
         }
       }
-      const safety = await scanCandidateSafety({
+      const safety = await runWithServiceDeadline('independent-candidate-safety-scan', serviceTimeoutMs, signal => scanCandidateSafety({
         payload: structuredClone(payload), task: structuredClone(task),
         ...(execution ? { execution: structuredClone(execution) } : {}),
-      });
+        signal,
+      }));
       if (!safety || !Number.isSafeInteger(safety.violationCount) || safety.violationCount < 0) {
         throw new Error('independent-candidate-safety-result-invalid');
       }
