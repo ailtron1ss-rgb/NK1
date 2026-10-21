@@ -31,7 +31,7 @@ const coordinator = new P23CompoundRepairRevisionCoordinator(runtime, engine, as
     baseline: { validation: [], holdout: [] },
     candidateEvaluation: { validation: [], holdout: [] },
     generate: async request => ({ generatedFrom: request.optimizerInstruction }),
-    evaluateRevisedCandidate: async input => ({ payloadFingerprint: input.payloadFingerprint, evaluation: { validation: [], holdout: [] } }),
+    evaluateRevisedCandidate: async input => ({ payloadFingerprint: input.payloadFingerprint, evaluationFingerprint: 'a'.repeat(64), evaluation: { validation: [], holdout: [] } }),
   };
 });
 const result = await coordinator.reviseFromObservedRepairs('skill-a');
@@ -40,6 +40,18 @@ assert.equal(result.candidateId, 'candidate-staged-1');
 assert.equal(providerCalls, 1);
 assert.equal(stagedCalls, 1);
 assert.equal(received.sourceCandidateId, 'source-candidate-1');
+const missingEvaluatorCoordinator = new P23CompoundRepairRevisionCoordinator(runtime, engine, async () => ({
+  proposal: { authentic: true },
+  sourceCandidateId: 'source-candidate-1',
+  baseline: { validation: [], holdout: [] },
+  candidateEvaluation: { validation: [], holdout: [] },
+  generate: async () => ({ generated: true }),
+}));
+await assert.rejects(
+  () => missingEvaluatorCoordinator.reviseFromObservedRepairs('skill-a'),
+  /incomplete proposal\/evaluation\/generator inputs/,
+  'provider cannot stage a generated revision without a fresh independent evaluator',
+);
 
 const noEvidenceRuntime = {
   compoundSkillRepairEvidence: () => [{ ...evidence[0], revisionEligible: false }],
@@ -98,7 +110,7 @@ const staleCoordinator = new P23CompoundRepairRevisionCoordinator(
       baseline: { validation: [], holdout: [] },
       candidateEvaluation: { validation: [], holdout: [] },
       generate: async () => ({ generated: true }),
-      evaluateRevisedCandidate: async input => ({ payloadFingerprint: input.payloadFingerprint, evaluation: { validation: [], holdout: [] } }),
+      evaluateRevisedCandidate: async input => ({ payloadFingerprint: input.payloadFingerprint, evaluationFingerprint: 'a'.repeat(64), evaluation: { validation: [], holdout: [] } }),
     };
   },
 );
