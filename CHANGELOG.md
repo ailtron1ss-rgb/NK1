@@ -3,7 +3,7 @@
 - Added `scripts/create-skill-promotion-approval-request.mjs` for offline/deployment workflows that need a signable Ed25519 request outside the live HTTP API. It binds the request to the exact candidate/version/payload, current active-version CAS, configured shadow threshold and complete evidence fingerprint.
 - Unlike a raw JSON checklist, the CLI requires the configured trusted shadow-verifier public keys and durable trusted-run registry, verifies every stored shadow observation's Ed25519 signature and independent run/task/seed/manifest/runtime context, and refuses to create a request when any observation is untrusted.
 - It rejects non-shadow candidates, failing/insufficient runs, stale base-version CAS, missing/malformed/non-Ed25519 keys, malformed registry/store snapshots, symlink/oversized files, and invalid request identifiers. Output is explicitly an **unsigned request only**; it never embeds an approval private key or activates a skill.
-- Added regression coverage for signed context-bound evidence, approval payload binding, insufficient shadow runs, ineligible candidate state and stale active-version CAS; registered the script/test in the P23 workflow.
+- Added regression coverage for signed context-bound evidence, tampered-signature rejection, approval payload binding, insufficient shadow runs, ineligible candidate state and stale active-version CAS; registered the script/test in the P23 workflow and aggregate verified-skill lifecycle suite.
 - **Not claimed:** successful exact-head CI/typecheck or production approval service/runner evidence. Actual promotion remains gated by the separate signed-approval verifier and candidate store.
 
 ## WorkPass148 — authenticate promotion and revalidate restored active skills (2026-10-21)
