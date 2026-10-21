@@ -31,6 +31,10 @@ assert.equal(result.evaluationFingerprint, digest(result.evaluation),
   'P23 requires the evaluation fingerprint to hash the exact returned evaluation object');
 assert.equal(result.evaluation.provenance.payloadFingerprint, result.payloadFingerprint);
 assert.equal(result.evaluation.provenance.environmentFingerprint, 'a'.repeat(64));
+assert.deepEqual(result.evaluation.provenance.runBindings[0].observedStepIds, ['open', 'summarize']);
+assert.equal(result.evaluation.provenance.runBindings[0].verifierPassed, true);
+assert.equal(result.evaluation.provenance.runBindings[0].safetyViolationCount, 0,
+  'evaluation provenance must bind observed execution, independent verification, and safety evidence');
 
 await assert.rejects(() => evaluator({ payload: { ...payload, version: 2 }, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } }), /payload-fingerprint-mismatch/);
 assert.throws(() => createIndependentSkillCandidateEvaluator({
