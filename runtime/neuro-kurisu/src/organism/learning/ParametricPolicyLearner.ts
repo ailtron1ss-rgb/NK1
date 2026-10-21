@@ -86,9 +86,21 @@ export class ParametricPolicyLearner{
     this.state={...d,...(raw??{}),featureNames:[...featureNames],weights:{...d.weights,...(raw?.weights??{})},bias:{...d.bias,...(raw?.bias??{})}};
     for(const a of ACTIONS){
       const w=Array.isArray(this.state.weights[a])?this.state.weights[a]:[];
-      this.state.weights[a]=new Array(featureNames.length).fill(0).map((_,i)=>Math.max(-4,Math.min(4,Number(w[i]??0))));
-      this.state.bias[a]=Math.max(-4,Math.min(4,Number(this.state.bias[a]??0)));
+      this.state.weights[a]=new Array(featureNames.length).fill(0).map((_,i)=>{
+        const value=Number(w[i]??0);
+        return Number.isFinite(value)?Math.max(-4,Math.min(4,value)):0;
+      });
+      const bias=Number(this.state.bias[a]??0);
+      this.state.bias[a]=Number.isFinite(bias)?Math.max(-4,Math.min(4,bias)):0;
     }
+    // Persisted snapshots are untrusted input too: a corrupt diagnostic must not
+    // poison future uncertainty/exploration decisions after otherwise valid restore.
+    this.state.updates=Number.isSafeInteger(this.state.updates)&&this.state.updates>=0?this.state.updates:0;
+    for(const key of ['tdAbsMean01','trainRewardMean01','explorationRate01','lastLoss01'] as const){
+      const value=this.state[key];
+      this.state[key]=Number.isFinite(value)?clamp(value):0;
+    }
+    this.state.lastTrainedAt=Number.isFinite(this.state.lastTrainedAt)&&this.state.lastTrainedAt>=0?this.state.lastTrainedAt:0;
   }
 
   snapshot():ParametricPolicyState{return structuredClone(this.state);}
