@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { VerifiedOutcomeLedger } from './VerifiedOutcomeLedger.ts';
+import { hasAuthenticatedOutcomeEvidence } from './VerifiedOutcomeArtifact.ts';
 import { evaluateSkillRevision, type SkillRevisionGateOptions, type SkillRevisionGateResult } from './SkillRevisionGate.ts';
 
 export interface VerifiedSkillPromotionOptions extends SkillRevisionGateOptions {
@@ -15,6 +16,8 @@ export interface VerifiedSkillPromotionProposal {
   candidateMethod: string;
   evaluatedAt: number;
   outcomeRowsSeen: number;
+  authenticatedEvidenceRows: number;
+  unauthenticatedEvidenceRows: number;
   pairedTaskSeedN: number;
   uniquePairedTasks: number;
   completePairedSeeds: number;
@@ -27,7 +30,7 @@ export interface VerifiedSkillPromotionProposal {
 const boundedInteger = (value: number | undefined, fallback: number, min: number, max: number) =>
   Number.isFinite(value) ? Math.max(min, Math.min(max, Math.floor(value!))) : fallback;
 
-/** Create a proposal from validated ledger evidence; never mutate the live skill library. */
+/** Create a proposal from authenticated, manifest-bound evidence; never mutate the live skill library. */
 export function proposeVerifiedSkillPromotion(
   ledger: VerifiedOutcomeLedger,
   baselineMethod: string,
@@ -39,10 +42,17 @@ export function proposeVerifiedSkillPromotion(
   }
   const snapshot = ledger.snapshot();
   const taskById = new Map(snapshot.manifest.map(task => [task.taskId, task]));
-  const observations = snapshot.outcomes.flatMap(outcome => {
+  const relevantOutcomes = snapshot.outcomes.filter(outcome => {
     const task = taskById.get(outcome.taskId);
-    if (!task || task.version !== outcome.taskVersion || task.split !== 'holdout' ||
-        (outcome.method !== baselineMethod && outcome.method !== candidateMethod)) return [];
+    return task && task.version === outcome.taskVersion && task.split === 'holdout' &&
+      (outcome.method === baselineMethod || outcome.method === candidateMethod);
+  });
+  const authenticatedOutcomes = relevantOutcomes.filter(outcome =>
+    hasAuthenticatedOutcomeEvidence(ledger, outcome.evidenceRef));
+  const unauthenticatedEvidenceRows = relevantOutcomes.length - authenticatedOutcomes.length;
+  const observations = authenticatedOutcomes.flatMap(outcome => {
+    const task = taskById.get(outcome.taskId);
+    if (!task) return [];
     return [{
       taskId: outcome.taskId, family: task.family, split: task.split, method: outcome.method,
       seed: outcome.seed, attempt: outcome.attempt, passed: outcome.passed, authority: outcome.authority,
@@ -83,7 +93,9 @@ export function proposeVerifiedSkillPromotion(
   const maxFamilyRegression = Math.max(0, Math.min(1, Number.isFinite(options.maxFamilyRegression) ? options.maxFamilyRegression! : 0.10));
   const familyRegression = familyEvaluation.find(row => row.pairedN >= minCompleteSeeds && row.absoluteGain < -maxFamilyRegression);
   const minPairedTasks = boundedInteger(options.minPairedTasks, 8, 2, 10000);
-  const finalGate: SkillRevisionGateResult = uniquePairedTasks < minPairedTasks ? {
+  const finalGate: SkillRevisionGateResult = unauthenticatedEvidenceRows > 0 ? {
+    ...gate, accepted: false, reason: 'unauthenticated-outcome-evidence',
+  } : uniquePairedTasks < minPairedTasks ? {
     ...gate, accepted: false, reason: 'insufficient-independent-heldout-task-coverage',
   } : !seedCoverageOkay ? {
     ...gate, accepted: false, reason: 'insufficient-complete-holdout-seed-coverage',
@@ -97,24 +109,27 @@ export function proposeVerifiedSkillPromotion(
     JSON.stringify([a.taskId, a.method, a.seed, a.attempt]).localeCompare(JSON.stringify([b.taskId, b.method, b.seed, b.attempt])),
   );
   const outcomeFingerprint = createHash('sha256').update(JSON.stringify(canonicalOutcomes)).digest('hex');
-  const evaluatedAt = Date.now();
   const identity = JSON.stringify({
     manifestFingerprint, outcomeFingerprint, baselineMethod, candidateMethod,
     pairedN: finalGate.pairedN, absoluteGain: finalGate.absoluteGain,
     familyGains: finalGate.familyGains, completePairedSeeds, uniquePairedTasks,
+    authenticatedEvidenceRows: authenticatedOutcomes.length, unauthenticatedEvidenceRows,
     seedClusteredEvaluation, familyEvaluation,
   });
   const proposalId = createHash('sha256').update(identity).digest('hex');
   return {
     schemaVersion: 1, proposalId, manifestFingerprint, outcomeFingerprint, baselineMethod, candidateMethod,
-    evaluatedAt, outcomeRowsSeen: snapshot.outcomes.length, pairedTaskSeedN: finalGate.pairedN,
-    uniquePairedTasks, completePairedSeeds, gate: finalGate, seedClusteredEvaluation, familyEvaluation,
+    evaluatedAt: Date.now(), outcomeRowsSeen: snapshot.outcomes.length,
+    authenticatedEvidenceRows: authenticatedOutcomes.length, unauthenticatedEvidenceRows,
+    pairedTaskSeedN: finalGate.pairedN, uniquePairedTasks, completePairedSeeds,
+    gate: finalGate, seedClusteredEvaluation, familyEvaluation,
     canActivateAutomatically: false,
     activationRequirements: [
       'Revalidate the manifest fingerprint and ledger snapshot at review time.',
       'Require explicit human approval or a separately authenticated promotion authority.',
       'Run candidate in shadow/canary mode and compare task-family outcomes.',
       'Persist the prior skill version and provide an atomic rollback path.',
+      'Re-ingest and re-verify signed outcome artifacts after process restart; restored ledger rows alone are not trusted.',
     ],
   };
 }
