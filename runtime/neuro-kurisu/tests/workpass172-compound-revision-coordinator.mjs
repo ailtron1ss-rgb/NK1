@@ -40,6 +40,49 @@ assert.equal(result.candidateId, 'candidate-staged-1');
 assert.equal(providerCalls, 1);
 assert.equal(stagedCalls, 1);
 assert.equal(received.sourceCandidateId, 'source-candidate-1');
+
+// WorkPass222: the coordinator itself snapshots provider-owned evidence, even if
+// the provider is not wrapped by withIndependentCandidateEvaluation.
+let retainedInputs;
+let snapshotReceived;
+const snapshotRuntime = {
+  compoundSkillRepairEvidence: () => evidence,
+  generateCompoundSkillRevision: async input => {
+    snapshotReceived = input;
+    return { candidate: { candidateId: 'snapshot-candidate' }, repairEvidenceCount: 1 };
+  },
+};
+const snapshotCoordinator = new P23CompoundRepairRevisionCoordinator(
+  snapshotRuntime,
+  engine,
+  async () => {
+    retainedInputs = {
+      proposal: { metadata: { label: 'original-proposal' } },
+      baseline: { validation: [{ taskId: 'baseline-v1' }], holdout: [] },
+      candidateEvaluation: { validation: [], holdout: [] },
+      options: { attempt: 1 },
+    };
+    setTimeout(() => {
+      retainedInputs.proposal.metadata.label = 'mutated-proposal';
+      retainedInputs.baseline.validation[0].taskId = 'mutated-baseline';
+      retainedInputs.options.attempt = 99;
+    }, 0);
+    return {
+      ...retainedInputs,
+      sourceCandidateId: 'snapshot-source',
+      generate: async () => ({ generated: true }),
+      evaluateRevisedCandidate: async input => ({ payloadFingerprint: input.payloadFingerprint, evaluationFingerprint: 'b'.repeat(64), evaluation: { validation: [], holdout: [] } }),
+    };
+  },
+);
+await snapshotCoordinator.reviseFromObservedRepairs('skill-a');
+await new Promise(resolve => setTimeout(resolve, 10));
+assert.equal(snapshotReceived.proposal.metadata.label, 'original-proposal',
+  'provider-retained proposal references must not mutate staged revision evidence');
+assert.equal(snapshotReceived.baseline.validation[0].taskId, 'baseline-v1',
+  'provider-retained baseline references must not mutate staged baseline evidence');
+assert.equal(snapshotReceived.options.attempt, 1,
+  'provider-retained options must not mutate staged revision configuration');
 const missingEvaluatorCoordinator = new P23CompoundRepairRevisionCoordinator(runtime, engine, async () => ({
   proposal: { authentic: true },
   sourceCandidateId: 'source-candidate-1',
