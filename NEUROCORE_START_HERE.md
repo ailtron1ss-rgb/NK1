@@ -1,5 +1,14 @@
 # NeuroCore — persistent project charter and resume contract
 
+## Latest durable checkpoint — WorkPass133 (2026-10-21)
+
+- Report: [WorkPass133 bootstrap sample isolation](docs/WORKPASS133_BOOTSTRAP_SAMPLE_ISOLATION_2026-10-21.md).
+- Fixed a subtle reproducibility issue in `VerifiedOutcomeLedger.comparePairedBySeed`: incomplete seed IDs no longer influence the deterministic bootstrap stream for the complete paired sample. Added a regression comparing equal complete samples with/without extra incomplete seed records.
+- Research intake refreshed with retention-bench's hard-process-reset distinction and AgentMemoryBench's online/replay/transfer/repair dimensions. Protocols only; no upstream code or datasets copied.
+- **NOT VERIFIED:** runtime tests, typecheck and exact-head Actions are still unconfirmed. This pass improves evidence isolation, not measured learning quality.
+- P0s unchanged: production trusted-run resolver/key registry/approval authority; complete activation-path audit; meaningful CI logs and actual runner-backed retention/transfer experiments. PR #12 remains draft/unmerged; do not merge to `main`.
+
+
 ## Latest durable checkpoint — WorkPass132 (2026-10-21)
 
 - Report: [WorkPass132 bootstrap-backed learning gate](docs/WORKPASS132_BOOTSTRAP_LEARNING_GATE_2026-10-21.md).
