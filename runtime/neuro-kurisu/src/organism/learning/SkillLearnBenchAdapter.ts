@@ -92,6 +92,13 @@ export function evaluateSkillLearnBenchTrial(
   validateUniqueIds(input.skill.coveredCapabilityIds, 'covered-capability-ids');
   validateUniqueIds(input.trajectory?.expectedStepIds, 'expected-step-ids');
   validateUniqueIds(input.trajectory?.observedStepIds, 'observed-step-ids');
+  // Empty reference rubrics must not receive perfect scores from ratio(0, 0).
+  if (input.skill.requiredCapabilityIds.length === 0) {
+    throw new Error('empty-required-capability-rubric');
+  }
+  if (input.trajectory.expectedStepIds.length === 0) {
+    throw new Error('empty-expected-trajectory-rubric');
+  }
 
   const required = input.skill.requiredCapabilityIds;
   const covered = new Set(input.skill.coveredCapabilityIds);
@@ -147,13 +154,26 @@ export function aggregateSkillLearnBenchReports(
 } {
   if (!Array.isArray(reports) || reports.length === 0) throw new Error('reports-required');
   const groups = new Map<string, SkillLearnBenchTrialReport[]>();
+  const seenTrials = new Set<string>();
   for (const report of reports) {
-    if (!report || !isNonEmptyString(report.taskId) || !isNonEmptyString(report.trialId)) {
+    const inRange = (value: unknown): value is number =>
+      typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+    if (!report || !isNonEmptyString(report.taskId) || !isNonEmptyString(report.trialId) ||
+        typeof report.taskSuccess?.passed !== 'boolean' ||
+        !inRange(report.taskSuccess?.passRate) ||
+        report.taskSuccess.passRate !== (report.taskSuccess.passed ? 1 : 0) ||
+        !inRange(report.skillQuality?.aggregate) ||
+        !inRange(report.trajectoryQuality?.aggregate)) {
       throw new Error('invalid-report');
     }
-    const group = groups.get(report.taskId) ?? [];
+    const taskId = report.taskId.trim();
+    const trialId = report.trialId.trim();
+    const trialKey = JSON.stringify([taskId, trialId]);
+    if (seenTrials.has(trialKey)) throw new Error('duplicate-report-trial');
+    seenTrials.add(trialKey);
+    const group = groups.get(taskId) ?? [];
     group.push(report);
-    groups.set(report.taskId, group);
+    groups.set(taskId, group);
   }
   const mean = (values: number[]) => Number((values.reduce((a, b) => a + b, 0) / values.length).toFixed(6));
   const byTask = [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([taskId, rows]) => ({
@@ -273,7 +293,7 @@ function pairedCandidateMean(
     baselineMean: macroTaskMean(baselineReports),
     candidateMean: macroTaskMean(candidateReports),
     paired: keys.length,
-    taskCount: new Set(candidateReports.map((report) => report.taskId)).size,
+    taskCount: new Set(candidateReports.map((report) => report.taskId.trim())).size,
     candidateReports,
   };
 }
