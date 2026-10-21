@@ -23,10 +23,40 @@ export function withIndependentCandidateEvaluation(
     const configInput = structuredClone(input);
     const providerInput = structuredClone(input);
     const prepared = await provider(providerInput);
+    if (!prepared || typeof prepared.generate !== 'function' ||
+        typeof prepared.evaluateRevisedCandidate !== 'function') {
+      throw new Error('independent-candidate-evaluation-provider-output-invalid');
+    }
+
+    // Detach every data-bearing field before handing control to another async
+    // authority. The provider may retain references to its returned proposal or
+    // baseline and mutate them later; those objects feed the existing P23 gate.
+    // Functions are intentionally retained as capabilities, not cloned as data.
+    let proposal: typeof prepared.proposal;
+    let baseline: typeof prepared.baseline;
+    let candidateEvaluation: typeof prepared.candidateEvaluation;
+    let options: typeof prepared.options;
+    try {
+      proposal = structuredClone(prepared.proposal);
+      baseline = structuredClone(prepared.baseline);
+      candidateEvaluation = structuredClone(prepared.candidateEvaluation);
+      options = prepared.options === undefined ? undefined : structuredClone(prepared.options);
+    } catch {
+      throw new Error('independent-candidate-evaluation-provider-data-not-cloneable');
+    }
+    if (typeof prepared.sourceCandidateId !== 'string' || !prepared.sourceCandidateId.trim()) {
+      throw new Error('independent-candidate-evaluation-provider-source-candidate-invalid');
+    }
+
     const config = evaluationConfigForRepair(configInput);
     return {
-      ...prepared,
+      proposal,
+      sourceCandidateId: prepared.sourceCandidateId,
+      baseline,
+      candidateEvaluation,
+      generate: prepared.generate,
       evaluateRevisedCandidate: createIndependentSkillCandidateEvaluator(config),
+      ...(options === undefined ? {} : { options }),
     };
   };
 }
