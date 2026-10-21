@@ -1,3 +1,12 @@
+## Latest durable checkpoint — WorkPass148 (2026-10-21)
+
+- **Promotion authority:** distinct Ed25519 public keys configured through `NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON`. The signed payload binds exact candidate ID/version/payload, proposal/outcome fingerprint, current base version, minimum shadow runs and a digest of all verified shadow observations. The signer private key must remain outside the NK1 application process.
+- **Runtime API:** `GET /api/organism/learning/verified-skills` exposes the current candidate/active lifecycle under the existing API authorization gate; `POST .../skills/:candidateId/promotion-request` prepares a short-lived signable payload only for a configured approver and a candidate with at least three passing shadow observations; `POST .../skills/:candidateId/promote` verifies and applies the signed artifact through the Core-owned P23 store.
+- **Restore integrity:** a persisted active skill is now matched to its exact active candidate and payload/version, then its signed approval plus all shadow observations are revalidated. New activation approvals must be recent; already-active signed approvals remain verifiable after the freshness window expires.
+- Added Ed25519-authority, tampering, replay, and restore/freshness assertions to the candidate-store regression; bootstrap tests cover configured/malformed approval key sets. Existing default-deny behavior remains when approval keys are absent.
+- **NOT VERIFIED:** tests/typecheck still lack successful exact-head runner evidence; current Actions runs have no usable step list/logs. Production managed approval keys/service, signed rollback authority, live runner evidence and measured learning uplift remain open.
+- **Next P0:** run all affected tests/typecheck on an actionable runner; provision independent verifier + approval authorities with a documented rotation plan; add authenticated rollback request/apply flow; verify full deployment-shaped staging → shadow → approval → activation → restart/rollback and measure holdout/generalization.
+
 ## Latest durable checkpoint — WorkPass147 (2026-10-21)
 
 - **Operational staging path:** `runtime/neuro-kurisu/scripts/stage-verified-skill-candidate.mjs` accepts a bounded `schemaVersion: 1` bundle of manifest + signed outcome artifacts + baseline/candidate method IDs + a policy skill payload.
