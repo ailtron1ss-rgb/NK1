@@ -19,6 +19,8 @@ const compoundHoldout = lib.compileCompoundSkill({projectId:'eco-101',name:'comp
 ]});
 assert.ok(compoundHoldout);
 const compoundBeforeHoldout = compoundHoldout.confidence01;
+const transferBeforeHoldout = compoundHoldout.transferScore01;
+const contextBeforeHoldout = compoundHoldout.lastContext;
 for (let n=0;n<6;n++) {
   const observed=lib.recordCompoundExecution(compoundHoldout.id,{
     success01:1,verified:true,independent:true,holdout:true,context:`compound-sealed-${n}`
@@ -31,6 +33,8 @@ const holdoutSnapshot=lib.snapshot().compoundSkills.find(s=>s.id===compoundHoldo
 assert.equal(holdoutSnapshot.uses,6,'all outcomes remain visible in aggregate evaluation counters');
 assert.equal(holdoutSnapshot.nonHoldoutUses,0,'holdout outcomes must not count as promotion evidence');
 assert.equal(holdoutSnapshot.nonHoldoutVerifiedExecutions,0);
+assert.equal(holdoutSnapshot.transferScore01,transferBeforeHoldout,'holdout contexts must not train transfer scoring');
+assert.equal(holdoutSnapshot.lastContext,contextBeforeHoldout,'holdout contexts must not replace the last learning context');
 assert.equal(holdoutSnapshot.nonHoldoutIndependentExecutions,0);
 
 // Real compound execution observations also flow through the existing active-variant
