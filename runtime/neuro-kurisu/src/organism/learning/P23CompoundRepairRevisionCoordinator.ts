@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { OrganismRuntime } from '../core/OrganismRuntime.ts';
 import type { P23LearningEngine } from './P23LearningEngine.ts';
 
@@ -50,6 +51,10 @@ export class P23CompoundRepairRevisionCoordinator {
       return { status: 'no-eligible-repair-evidence' as const, skillId, repairEvidenceCount: 0 };
     }
 
+    const evidenceDigest = (rows: typeof repairEvidence) => createHash('sha256')
+      .update(JSON.stringify(rows))
+      .digest('hex');
+    const initialEvidenceDigest = evidenceDigest(repairEvidence);
     const fingerprints = [...new Set(repairEvidence.map(row => row.failureFingerprint))];
     const prepared = await this.provideInputs({
       skillId,
@@ -70,11 +75,7 @@ export class P23CompoundRepairRevisionCoordinator {
     // evidence set is a stale-input failure, never a reason to stage a candidate.
     const currentEvidence = this.runtime.compoundSkillRepairEvidence(skillId)
       .filter(row => row.revisionEligible);
-    const currentFingerprints = [...new Set(currentEvidence.map(row => row.failureFingerprint))].sort();
-    const preparedFingerprints = [...fingerprints].sort();
-    if (currentEvidence.length !== repairEvidence.length ||
-        currentFingerprints.length !== preparedFingerprints.length ||
-        currentFingerprints.some((fingerprint, index) => fingerprint !== preparedFingerprints[index])) {
+    if (evidenceDigest(currentEvidence) !== initialEvidenceDigest) {
       throw new Error('compound repair evidence changed while trusted revision inputs were being prepared; retry with a fresh evaluation');
     }
 
