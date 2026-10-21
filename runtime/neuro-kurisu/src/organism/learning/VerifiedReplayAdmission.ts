@@ -1,5 +1,6 @@
 import type { EvaluationSplit, TaskManifestEntry, VerifiedTaskOutcome } from './VerifiedOutcomeLedger.ts';
 import { VerifiedOutcomeLedger } from './VerifiedOutcomeLedger.ts';
+import { hasAuthenticatedOutcomeEvidence } from './VerifiedOutcomeArtifact.ts';
 import { selectReplayBatch, type ReplayCandidate, type ReplaySelectionOptions } from './ReplaySelectionPolicy.ts';
 
 export interface ReplayExperienceReference extends ReplayCandidate {
@@ -22,7 +23,7 @@ export interface VerifiedReplayExperience<T extends ReplayExperienceReference = 
 export interface ReplayAdmissionRejection {
   experienceId: string;
   code: 'invalid-reference' | 'unknown-task' | 'wrong-split' | 'task-version-mismatch' |
-    'outcome-not-found' | 'evidence-reference-mismatch' | 'duplicate-experience-id';
+    'outcome-not-found' | 'evidence-reference-mismatch' | 'unauthenticated-outcome' | 'duplicate-experience-id';
 }
 
 export interface VerifiedReplayAdmissionResult<T extends ReplayExperienceReference = ReplayExperienceReference> {
@@ -86,6 +87,9 @@ export function selectVerifiedReplayExperiences<T extends ReplayExperienceRefere
     const outcome = outcomeByIdentity.get(tuple(experience.taskId, experience.method, experience.seed, experience.attempt));
     if (!outcome) { reject('outcome-not-found'); continue; }
     if (outcome.evidenceRef !== experience.evidenceRef) { reject('evidence-reference-mismatch'); continue; }
+    // A ledger row's declared authority is not proof of a signature. Only the
+    // canonical signed-artifact ingestion path may authorize replay/training use.
+    if (!hasAuthenticatedOutcomeEvidence(ledger, outcome.evidenceRef)) { reject('unauthenticated-outcome'); continue; }
     admitted.push({
       experience,
       outcome: {
@@ -101,6 +105,11 @@ export function selectVerifiedReplayExperiences<T extends ReplayExperienceRefere
 
   const selected = selectReplayBatch(admitted.map(item => ({
     ...item.experience,
+    // Will's episodic consolidation pattern: salient, surprising experiences get
+    // replay priority, while repeated retrieval gradually reduces redundant replay.
+    // Failures remain first-class learning episodes rather than being discarded.
+    salience: item.outcome.passed ? 0.2 : 0.8,
+    novelty: Math.max(0, Math.min(1, Number.isFinite(item.experience.surprise) ? item.experience.surprise : 0)),
     // Include provenance in the selection object; it remains attached through selection.
     _verifiedReplay: item,
   })), options).map(item => item._verifiedReplay);
@@ -108,7 +117,7 @@ export function selectVerifiedReplayExperiences<T extends ReplayExperienceRefere
   return {
     split,
     manifestFingerprint,
-    eligibleOutcomeCount: outcomes.filter(outcome => manifestByTask.get(outcome.taskId)?.split === split).length,
+    eligibleOutcomeCount: outcomes.filter(outcome => manifestByTask.get(outcome.taskId)?.split === split && hasAuthenticatedOutcomeEvidence(ledger, outcome.evidenceRef)).length,
     admittedCount: admitted.length,
     selectedCount: selected.length,
     admitted,
