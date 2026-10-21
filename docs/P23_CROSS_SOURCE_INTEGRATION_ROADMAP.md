@@ -2,7 +2,7 @@
 
 Scope: continue integrating mechanisms into the existing P23 learning/revision lifecycle. This is an implementation queue, not a promise that upstream mechanisms are already integrated. Preserve the current branch/PR boundary; do not merge to the default branch without explicit approval.
 
-## Completed in this branch (through WorkPass223)
+## Completed in this branch (through WorkPass224)
 
 - [x] Reuse SkillLearnBench-style task success, skill quality, trajectory quality and macro-averaged task metrics.
 - [x] Bind evaluator runs to exact payload/task/environment/plan identity; require an independent verifier's explicit binding attestation.
@@ -15,6 +15,7 @@ Scope: continue integrating mechanisms into the existing P23 learning/revision l
 - [x] Snapshot proposal, baseline, candidate-evaluation data, and options inside the coordinator itself before staging, even when a caller uses a provider without the independent-evaluation wrapper (WorkPass222); add a retained-reference mutation regression.
 - [x] Add targeted evaluator/provider regression commands to the learning CI workflow.
 - [x] WorkPass223: return the construction-time `environmentFingerprint` snapshot in evaluator provenance, not the mutable caller-owned config field. The existing WorkPass203 regression mutates the config after construction and asserts that provenance retains the original environment identity.
+- [x] WorkPass224: fail startup in `NODE_ENV=production` when compound repair revision is enabled without a host-provided independent evaluation configuration factory; added a focused regression, package script, and learning workflow step.
 
 ## Next implementation passes
 
@@ -80,5 +81,6 @@ This matrix maps the broad integration catalogue to existing NK1 seams. It is in
 ### WorkPass223 disposition
 
 - **DONE (code):** corrected a provenance mismatch that allowed the returned evaluator report to read a later-mutated environment fingerprint despite the evaluator capturing the original fingerprint at construction.
-- **PARTIAL:** the existing regression covers the mutation scenario, but this connector session did not execute it or run TypeScript checks.
+- **DONE (code):** production runtime startup now rejects compound-repair revision wiring that lacks a separate independent-evaluation configuration factory; a targeted regression is registered in the learning workflow.
+- **PARTIAL:** regression commands are registered, but this connector session did not execute them or run TypeScript checks. Latest visible Actions failures occur before any job step starts (`runner_id: 0`, `steps: []`), so they do not validate or identify code-level failures.
 - **OPEN:** verify the full generation → sandbox → independent verification → safety → matched comparison → staging → shadow evidence → signed promotion path using real host-provided authorities. No fake production adapters should be added merely to make the path appear complete.
