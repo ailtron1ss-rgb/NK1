@@ -103,7 +103,7 @@ export function createIndependentSkillCandidateEvaluator(
     const reports: Record<'validation' | 'holdout', SkillLearnBenchTrialReport[]> = {
       validation: [], holdout: [],
     };
-    const runBindings: Array<{ taskId: string; trialId: string; runId: string; seed: number; split: string }> = [];
+    const runBindings: Array<{ taskId: string; trialId: string; runId: string | null; seed: number; split: string; executable: boolean; observedStepIds: string[]; verifierPassed: boolean; coveredCapabilityIds: string[]; safetyViolationCount: number }> = [];
   const seenRunIds = new Set<string>();
     for (const task of tasks) {
       let execution: CandidateExecutionResult | undefined;
@@ -116,7 +116,6 @@ export function createIndependentSkillCandidateEvaluator(
             !Array.isArray(execution.observedStepIds)) throw new Error('candidate-sandbox-result-invalid');
         if (seenRunIds.has(execution.runId)) throw new Error('candidate-sandbox-reused-run-id');
         seenRunIds.add(execution.runId);
-        runBindings.push({ taskId: task.taskId, trialId: task.trialId, runId: execution.runId, seed: task.seed, split: task.split });
       } catch {
         // Execution failure or reused run identity is never treated as executable.
         executable = false;
@@ -142,6 +141,18 @@ export function createIndependentSkillCandidateEvaluator(
       if (!safety || !Number.isSafeInteger(safety.violationCount) || safety.violationCount < 0) {
         throw new Error('independent-candidate-safety-result-invalid');
       }
+      runBindings.push({
+        taskId: task.taskId,
+        trialId: task.trialId,
+        runId: execution?.runId ?? null,
+        seed: task.seed,
+        split: task.split,
+        executable,
+        observedStepIds: execution?.observedStepIds ?? [],
+        verifierPassed: executable && verifierPassed,
+        coveredCapabilityIds,
+        safetyViolationCount: safety.violationCount,
+      });
       const report = evaluateSkillLearnBenchTrial({
         taskId: task.taskId,
         trialId: task.trialId,
