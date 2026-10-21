@@ -17,6 +17,7 @@ export interface VerifiedSkillPromotionProposal {
   evaluatedAt: number;
   outcomeRowsSeen: number;
   pairedTaskSeedN: number;
+  uniquePairedTasks: number;
   completePairedSeeds: number;
   gate: SkillRevisionGateResult;
   /** Always false: proposal generation never changes the active skill library. */
@@ -60,6 +61,17 @@ export function proposeVerifiedSkillPromotion(
   });
   const gate = evaluateSkillRevision(observations, baselineMethod, candidateMethod, options);
   const holdoutTasks = snapshot.manifest.filter(task => task.split === 'holdout').map(task => task.taskId);
+  const pairedMethodsByTaskSeed = new Map<string, Set<string>>();
+  for (const row of observations) {
+    const key = JSON.stringify([row.taskId, row.seed, row.attempt]);
+    const methods = pairedMethodsByTaskSeed.get(key) ?? new Set<string>();
+    methods.add(row.method);
+    pairedMethodsByTaskSeed.set(key, methods);
+  }
+  const uniquePairedTasks = new Set(observations
+    .filter(row => pairedMethodsByTaskSeed.get(JSON.stringify([row.taskId,row.seed,row.attempt]))?.has(baselineMethod) &&
+      pairedMethodsByTaskSeed.get(JSON.stringify([row.taskId,row.seed,row.attempt]))?.has(candidateMethod))
+    .map(row => row.taskId)).size;
   const bySeed = new Map<number, Set<string>>();
   for (const row of observations) {
     const set = bySeed.get(row.seed) ?? new Set<string>();
@@ -73,11 +85,12 @@ export function proposeVerifiedSkillPromotion(
   ).length;
   const minCompleteSeeds = Math.max(1, Math.min(1000, Math.floor(options.minCompleteSeeds ?? 1)));
   const seedCoverageOkay = completePairedSeeds >= minCompleteSeeds;
-  const finalGate: SkillRevisionGateResult = seedCoverageOkay ? gate : {
-    ...gate,
-    accepted: false,
-    reason: 'insufficient-complete-holdout-seed-coverage',
-  };
+  const minPairedTasks = Math.max(2, Math.min(10000, Math.floor(options.minPairedTasks ?? 8)));
+  const finalGate: SkillRevisionGateResult = uniquePairedTasks < minPairedTasks ? {
+    ...gate, accepted: false, reason: 'insufficient-independent-heldout-task-coverage',
+  } : !seedCoverageOkay ? {
+    ...gate, accepted: false, reason: 'insufficient-complete-holdout-seed-coverage',
+  } : gate;
   const manifestFingerprint = ledger.manifestFingerprint();
   const outcomeFingerprint = createHash('sha256').update(JSON.stringify(
     [...snapshot.outcomes].sort((a, b) => JSON.stringify([a.taskId,a.method,a.seed,a.attempt]).localeCompare(JSON.stringify([b.taskId,b.method,b.seed,b.attempt]))),
@@ -99,6 +112,7 @@ export function proposeVerifiedSkillPromotion(
     evaluatedAt,
     outcomeRowsSeen: snapshot.outcomes.length,
     pairedTaskSeedN: finalGate.pairedN,
+    uniquePairedTasks,
     completePairedSeeds,
     gate: finalGate,
     canActivateAutomatically: false,
