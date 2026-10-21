@@ -242,6 +242,7 @@ export class P23LearningEngine {
    */
   configureVerifiedSkillLifecycle(store:VersionedSkillCandidateStore):void {
     this.verifiedSkillStore = store;
+    this.state.metrics.skillPromotions = store.snapshot().active.length;
   }
 
   stageVerifiedSkillCandidate(proposal:VerifiedSkillPromotionProposal, skill:PolicySkillRecord):VersionedSkillCandidate {
@@ -264,12 +265,16 @@ export class P23LearningEngine {
     minShadowRuns=3,
   ):ActiveSkillVersion {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
-    return this.verifiedSkillStore.approveAndPromote(candidateId,approval,minShadowRuns);
+    const active = this.verifiedSkillStore.approveAndPromote(candidateId,approval,minShadowRuns);
+    this.state.metrics.skillPromotions = this.verifiedSkillStore.snapshot().active.length;
+    return active;
   }
 
   rollbackVerifiedSkillCandidate(candidateId:string,expectedActiveVersion:number,rolledBackAt=Date.now()):ActiveSkillVersion|null {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
-    return this.verifiedSkillStore.rollback(candidateId,expectedActiveVersion,rolledBackAt);
+    const restored = this.verifiedSkillStore.rollback(candidateId,expectedActiveVersion,rolledBackAt);
+    this.state.metrics.skillPromotions = this.verifiedSkillStore.snapshot().active.length;
+    return restored;
   }
 
   recordExperience(trace:OrganismDecisionTrace,stateAfter:OrganismState,outcome:{success:number;reward:number;surprise:number},policy:AdaptivePolicyEngine):void {
