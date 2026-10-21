@@ -150,8 +150,8 @@ export type RevisedCandidateEvaluator = (input: {
   payloadFingerprint: string;
   baseline: { validation: SkillLearnBenchCandidateEvaluation['reports']; holdout: SkillLearnBenchCandidateEvaluation['reports'] };
   previousEvaluation: { validation: SkillLearnBenchCandidateEvaluation['reports']; holdout: SkillLearnBenchCandidateEvaluation['reports'] };
-}) => Promise<{ payloadFingerprint: string; evaluation: { validation: SkillLearnBenchCandidateEvaluation['reports']; holdout: SkillLearnBenchCandidateEvaluation['reports'] } }>
-  | { payloadFingerprint: string; evaluation: { validation: SkillLearnBenchCandidateEvaluation['reports']; holdout: SkillLearnBenchCandidateEvaluation['reports'] } };
+}) => Promise<{ payloadFingerprint: string; evaluationFingerprint: string; evaluation: { validation: SkillLearnBenchCandidateEvaluation['reports']; holdout: SkillLearnBenchCandidateEvaluation['reports'] } }>
+  | { payloadFingerprint: string; evaluationFingerprint: string; evaluation: { validation: SkillLearnBenchCandidateEvaluation['reports']; holdout: SkillLearnBenchCandidateEvaluation['reports'] } };
 
 export interface P23LearningState {
   version:1;
@@ -355,6 +355,7 @@ export class P23LearningEngine {
       previousEvaluation:structuredClone(candidateEvaluation),
     });
     if(!fresh || fresh.payloadFingerprint!==payloadFingerprint ||
+       fresh.evaluationFingerprint!==createHash('sha256').update(canonicalize(fresh.evaluation)).digest('hex') ||
        !fresh.evaluation || !Array.isArray(fresh.evaluation.validation) || fresh.evaluation.validation.length===0 ||
        !Array.isArray(fresh.evaluation.holdout) || fresh.evaluation.holdout.length===0) {
       throw new Error('independent evaluator did not return non-empty validation/holdout reports bound to the exact generated payload');
@@ -371,13 +372,14 @@ export class P23LearningEngine {
    * candidate in place. Safety violations block staging, and the store still
    * requires an authentic evidence-backed proposal. Promotion remains separate.
    */
-  stageReflectiveSkillRevision(
+  private stageReflectiveSkillRevision(
     proposal:VerifiedSkillPromotionProposal,
     skillId:string,
     sourceCandidateId:string,
     revisedPayload:unknown,
     baseline:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
     candidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    evaluationFingerprint:string,
     options:SkillLearnBenchCandidateGateOptions={},
   ):{candidate:VersionedSkillCandidate;fitness:SkillLearnBenchCandidateGateReport;plan:SkillRevisionPlan} {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
@@ -394,8 +396,10 @@ export class P23LearningEngine {
     if(canonicalize(source.payload)===canonicalize(revisedPayload)) {
       throw new Error('reflective revision payload is unchanged from its source candidate');
     }
+    if(!/^[a-f0-9]{64}$/.test(evaluationFingerprint)) throw new Error('independent candidate evaluation fingerprint is required');
     const revisionProvenance:SkillRevisionProvenance={
       schemaVersion:1,
+      evaluationFingerprint,
       sourceCandidateId:source.candidateId,
       planFingerprint:createHash('sha256').update(canonicalize(plan)).digest('hex'),
       datasetFingerprint:proposal.datasetFingerprint,
