@@ -1,3 +1,10 @@
+## WorkPass143 — validate trusted verifier key algorithm at bootstrap (2026-10-21)
+
+- `VerifiedSkillLifecycleBootstrap` now parses each configured PEM with Node's crypto key parser and accepts only Ed25519 public keys, matching the evidence verifier's `verify(null, ...)` signature mode.
+- Malformed PEM and incompatible key algorithms now fail at startup instead of leaving a misleading non-empty trusted-verifier configuration that can never validate evidence.
+- Extended bootstrap regression coverage for valid Ed25519 acceptance and RSA rejection, while preserving default-deny behavior for an empty key set.
+- **Not claimed:** production key provisioning, authenticated promotion approval, successful CI/typecheck, scheduler integration, or learning uplift.
+
 ## WorkPass142 — close direct supervisor bypass for trusted shadow runs (2026-10-21)
 
 - Hardened `runLearningProcess`: `candidate` + `shadow` execution now fails closed unless a host-owned trusted registrar is supplied, even when callers bypass the Core coordinator.
