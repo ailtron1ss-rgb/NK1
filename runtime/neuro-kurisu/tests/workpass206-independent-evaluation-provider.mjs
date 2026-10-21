@@ -16,17 +16,27 @@ let configRequests = 0;
 let sandboxRuns = 0;
 const providerSuppliedEvaluator = async () => { throw new Error('provider evaluator must be replaced'); };
 const provider = withIndependentCandidateEvaluation(
-  async input => ({
+  async input => {
+    // A provider must not be able to rewrite the repair context used to derive
+    // independent evaluation authority.
+    input.repairFingerprints[0] = 'provider-mutated-fingerprint';
+    input.repairEvidence.push({ failureFingerprint: 'provider-mutated-evidence' });
+    return {
     proposal: { proposalId: 'proposal-' + input.skillId },
     sourceCandidateId: 'source-candidate',
     baseline: { validation: [], holdout: [] },
     candidateEvaluation: { validation: [], holdout: [] },
     generate: async () => ({ payload: { code: 'candidate-v1' } }),
     evaluateRevisedCandidate: providerSuppliedEvaluator,
-  }),
+    };
+  },
   input => {
     configRequests++;
     assert.equal(input.skillId, 'skill-summarizer');
+    assert.deepEqual(input.repairFingerprints, ['repair-fingerprint'],
+      'evaluator configuration must receive the pre-provider repair fingerprint snapshot');
+    assert.deepEqual(input.repairEvidence, [],
+      'provider mutations must not alter the repair evidence used to configure evaluation');
     return {
       tasks,
       environmentFingerprint: 'f'.repeat(64),
