@@ -75,4 +75,18 @@ assert.equal(duplicateRuns.evaluation.holdout[0].taskSuccess.passed, false,
   'a reused execution identity must not authenticate multiple independent trials');
 assert.equal(duplicateRuns.evaluation.holdout[0].skillQuality.executability, 0);
 
+
+const changedInputEvaluator = createIndependentSkillCandidateEvaluator({
+  tasks: tasks.map((task, index) => index === 0 ? { ...task, input: { prompt: 'different input' } } : task),
+  environmentFingerprint: 'a'.repeat(64),
+  executor: { async execute({ task }) { return { runId: 'run-' + task.trialId, observedStepIds: ['open', 'summarize'] }; } },
+  verifier: { async verify() { return { passed: true, coveredCapabilityIds: ['read'] }; } },
+  safetyScanner: { async scan() { return { violationCount: 0 }; } },
+});
+const changedInputResult = await changedInputEvaluator({ payload, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } });
+assert.notEqual(result.evaluation.provenance.planFingerprint, changedInputResult.evaluation.provenance.planFingerprint,
+  'task input changes must invalidate the evaluation plan fingerprint');
+assert.notEqual(result.evaluationFingerprint, changedInputResult.evaluationFingerprint,
+  'identical scores on different task inputs must not share an evaluation fingerprint');
+
 console.log('WorkPass203 independent candidate evaluator: PASS');
