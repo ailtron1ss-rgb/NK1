@@ -37,7 +37,7 @@ on:
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
   push:
-    branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals]
+    branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals, workpass122-promotion-gate-coverage-hardening]
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualLearningMetrics.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualOutcomeMatrix.ts'
