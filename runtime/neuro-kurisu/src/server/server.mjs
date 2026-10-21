@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { URL } from 'node:url';
 import { mkdir, readFile } from 'node:fs/promises';
 import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsReaddirSync, readFileSync as fsReadFileSync } from 'node:fs';
@@ -6,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
 import { parseTrustedShadowLearningScheduleConfig } from '../organism/learning/P23TrustedShadowLearningScheduler.ts';
+import { createSkillPromotionApprovalPayload } from '../organism/learning/AuthenticatedSkillPromotionApproval.ts';
 import { ProcessLock } from '../organism/persistence/ProcessLock.ts';
 import { FileStateStore } from '../organism/persistence/FileStateStore.ts';
 import { idempotencyPreflightHttpStatus } from './idempotency-response.mjs';
@@ -1627,7 +1629,61 @@ async function route(req, res) {
             return json(res, 200, { ok: true, cameraEvidence: snapshot.facets.embodiment.cameraEvidence, p41Native: snapshot.facets.embodiment.p41NativePerception.metrics, p41Semantic: runtime.core.p41PerceptionSummary(), nextPerception: runtime.core.p41NextPerception(), visionBackend: VISION_BACKEND?.id ?? null, visionEnabled: Boolean(VISION_BACKEND), note: 'Camera evidence records acquisition and low-level signal only; semantic vision is true only when an explicitly configured vision backend returns semantic output.' });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/learning') {
-            return json(res, 200, { ok: true, phase: 'P23-true-learning-counterfactual-development', learning: runtime.core.p23LearningSnapshot(), evidenceDebt: runtime.core.p23EvidenceDebt(16), topSkills: runtime.core.p23TopSkills(16) });
+            return json(res, 200, { ok: true, phase: 'P23-true-learning-counterfactual-development', learning: runtime.core.p23LearningSnapshot(), evidenceDebt: runtime.core.p23EvidenceDebt(16), topSkills: runtime.core.p23TopSkills(16), verifiedSkillLifecycle: runtime.core.verifiedSkillCandidateSnapshot() });
+        }
+        if (req.method === 'GET' && url.pathname === '/api/organism/learning/verified-skills') {
+            const lifecycle = runtime.core.verifiedSkillCandidateSnapshot();
+            return json(res, 200, { ok: true, schemaVersion: 1, lifecycle, promotionPolicy: { requiresSignedEd25519Approval: true, minimumShadowRuns: 3, autoPromotion: false } });
+        }
+        const promotionRequestMatch = url.pathname.match(/^\\/api\\/organism\\/learning\\/skills\\/([a-f0-9]{64})\\/promotion-request$/);
+        if (req.method === 'POST' && promotionRequestMatch) {
+            const input = await body(req);
+            const candidateId = promotionRequestMatch[1];
+            const approverId = typeof input.approverId === 'string' ? input.approverId.trim() : '';
+            if (!approverId || approverId.length > 128 || !/^[A-Za-z0-9][A-Za-z0-9._:@-]*$/.test(approverId)) {
+                return json(res, 400, { ok: false, error: 'valid-approverId-required' });
+            }
+            const lifecycle = runtime.core.verifiedSkillCandidateSnapshot();
+            const candidate = lifecycle?.candidates.find(item => item.candidateId === candidateId);
+            if (!candidate) return json(res, 404, { ok: false, error: 'skill-candidate-not-found' });
+            if (candidate.status !== 'shadow') return json(res, 409, { ok: false, error: 'candidate-not-in-shadow-state' });
+            const active = lifecycle.active.find(item => item.skillId === candidate.skillId);
+            const expectedActiveVersion = active?.version ?? null;
+            if (expectedActiveVersion !== candidate.baseVersion) {
+                return json(res, 409, { ok: false, error: 'candidate-base-version-stale-restage-required' });
+            }
+            if (candidate.shadowObservations.length < 3 || candidate.shadowObservations.some(item => item.passed !== true)) {
+                return json(res, 409, { ok: false, error: 'shadow-evidence-gate-not-satisfied', requiredRuns: 3, actualRuns: candidate.shadowObservations.length });
+            }
+            const approvalRequest = createSkillPromotionApprovalPayload(
+                candidate, approverId, randomUUID(), Date.now(), expectedActiveVersion, 3,
+            );
+            return json(res, 200, { ok: true, approvalRequest, next: 'Have the authenticated external approval authority sign canonical JSON of approvalRequest with its Ed25519 key; never place the private key in the NK1 runtime.' });
+        }
+        const promoteMatch = url.pathname.match(/^\\/api\\/organism\\/learning\\/skills\\/([a-f0-9]{64})\\/promote$/);
+        if (req.method === 'POST' && promoteMatch) {
+            const input = await body(req);
+            const artifact = input?.artifact;
+            if (!artifact || typeof artifact !== 'object' || Array.isArray(artifact) ||
+                !artifact.payload || typeof artifact.payload !== 'object' || Array.isArray(artifact.payload)) {
+                return json(res, 400, { ok: false, error: 'signed-approval-artifact-required' });
+            }
+            const candidateId = promoteMatch[1];
+            if (artifact.payload.candidateId !== candidateId) {
+                return json(res, 400, { ok: false, error: 'approval-candidate-id-mismatch' });
+            }
+            try {
+                const approval = {
+                    approvedBy: artifact.payload.approverId,
+                    approvedAt: artifact.payload.approvedAt,
+                    expectedActiveVersion: artifact.payload.expectedActiveVersion,
+                    artifact,
+                };
+                const active = runtime.core.approveVerifiedSkillCandidate(candidateId, approval, artifact.payload.minShadowRuns);
+                return json(res, 200, { ok: true, active, lifecycle: runtime.core.verifiedSkillCandidateSnapshot(), note: 'signed approval verified; candidate activated through the canonical P23 store with compare-and-swap and rollback metadata' });
+            } catch (error) {
+                return json(res, 403, { ok: false, error: 'skill-promotion-denied', reason: String(error?.message || error).slice(0, 300) });
+            }
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/neural-world') {
             return json(res, 200, { ok: true, phase: 'P27-learned-perception-world-foundation', p27: runtime.core.p27Snapshot(), note: 'vision/audio inputs are compact local features; semantic vision/audio backend remains an explicit external/local capability' });
