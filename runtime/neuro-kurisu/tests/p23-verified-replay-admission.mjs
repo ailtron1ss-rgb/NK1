@@ -2,9 +2,15 @@ import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import { ingestSignedOutcomeArtifact, signOutcomePayloadForFixture } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
-import { selectVerifiedReplayExperiences } from '../src/organism/learning/VerifiedReplayAdmission.ts';
+import { selectVerifiedReplayExperiences, verifiedReplayNovelty01 } from '../src/organism/learning/VerifiedReplayAdmission.ts';
 
 const fp = text => VerifiedOutcomeLedger.fingerprintPrompt(text);
+assert.equal(verifiedReplayNovelty01({ novelty: undefined }, 4), .5,
+  'missing novelty must be derived from context/action rarity, not copied from surprise');
+assert.equal(verifiedReplayNovelty01({ novelty: .23 }, 4), .23,
+  'explicit measured novelty must be preserved');
+assert.equal(verifiedReplayNovelty01({ novelty: undefined }, 0), 1,
+  'a single or unknown context observation must not receive novelty outside [0,1]');
 const manifest = [
   { taskId: 'train-pass', family: 'memory', split: 'train', promptFingerprint: fp('train pass'), verifierId: 'v1', version: 'v1' },
   { taskId: 'train-fail', family: 'tool-use', split: 'train', promptFingerprint: fp('train fail'), verifierId: 'v1', version: 'v1' },
