@@ -49,4 +49,18 @@ assert.ok(withDecay.some(x => x.id === 'new-medium'), 'finite half-life allows r
 assert.deepEqual(selectReplayBatch(temporal, { maxBatchSize: 3, recentQuota: 0, ageHalfLifeTicks: 10 }), withDecay, 'age-discounted selection remains deterministic');
 assert.deepEqual(selectReplayBatch(temporal, { maxBatchSize: 3, recentQuota: 0, ageHalfLifeTicks: 0 }), noDecay, 'invalid half-life falls back safely to legacy priority');
 
+
+const salienceInput = [
+  { id: 'high-surprise-stale', tick: 0, contextKey: 'x', action: 'repair', surprise: 1, salience: 0, novelty: 1, replayCount: 0 },
+  { id: 'verified-failure', tick: 1, contextKey: 'y', action: 'repair', surprise: .1, salience: .9, novelty: 1, replayCount: 0 },
+  { id: 'over-replayed', tick: 2, contextKey: 'z', action: 'repair', surprise: .1, salience: .9, novelty: 1, replayCount: 99 },
+  ...Array.from({length: 4}, (_, i) => ({ id: `neutral-${i}`, tick: i + 3, contextKey: `n${i}`, action: 'respond', surprise: .01 })),
+];
+const salienceBatch = selectReplayBatch(salienceInput, { maxBatchSize: 2, recentQuota: 0 });
+assert.ok(salienceBatch.some(x => x.id === 'verified-failure'), 'salient verified failures can outrank low-value routine traces');
+assert.ok(!salienceBatch.some(x => x.id === 'over-replayed'), 'replay repetition applies diminishing returns');
+const legacySignals = [make('legacy-a', 0, 'a', 'verify', 1), make('legacy-b', 1, 'b', 'verify', .6)];
+assert.deepEqual(selectReplayBatch(legacySignals, { maxBatchSize: 2, recentQuota: 0 }), legacySignals,
+  'callers without episodic fields retain legacy selection behavior');
+
 console.log('P23_REPLAY_SELECTION_POLICY=PASS');
