@@ -34,6 +34,7 @@ corrupted.explorationRate01 = Number.NaN;
 corrupted.lastLoss01 = Number.POSITIVE_INFINITY;
 corrupted.updates = -1;
 corrupted.lastTrainedAt = Number.NaN;
+corrupted.frozen = 'false'; // strings must not silently enable a safety freeze
 const restored = new ParametricPolicyLearner();
 restored.restore(corrupted);
 const repaired = restored.snapshot();
@@ -41,6 +42,7 @@ assert.ok(Object.values(repaired.weights).flat().every(Number.isFinite), 'restor
 assert.ok(Object.values(repaired.bias).every(Number.isFinite), 'restored biases must be finite');
 assert.ok([repaired.tdAbsMean01, repaired.trainRewardMean01, repaired.explorationRate01, repaired.lastLoss01, repaired.lastTrainedAt].every(Number.isFinite), 'restored diagnostics must be finite');
 assert.equal(repaired.updates, 0, 'invalid update count must reset safely');
+assert.equal(repaired.frozen, false, 'only literal boolean true may restore a frozen learner');
 assert.equal(repaired.weights.respond[0], 0);
 assert.equal(repaired.weights.explore[1], 0);
 assert.equal(repaired.bias.verify, 0);
