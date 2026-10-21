@@ -2,7 +2,7 @@
 
 Scope: continue integrating mechanisms into the existing P23 learning/revision lifecycle. This is an implementation queue, not a promise that upstream mechanisms are already integrated. Preserve the current branch/PR boundary; do not merge to the default branch without explicit approval.
 
-## Completed in this branch (through WorkPass222)
+## Completed in this branch (through WorkPass223)
 
 - [x] Reuse SkillLearnBench-style task success, skill quality, trajectory quality and macro-averaged task metrics.
 - [x] Bind evaluator runs to exact payload/task/environment/plan identity; require an independent verifier's explicit binding attestation.
@@ -14,6 +14,7 @@ Scope: continue integrating mechanisms into the existing P23 learning/revision l
 - [x] Freeze the evaluator's validated runtime/environment fingerprint at construction so later caller config mutation cannot relabel runs (WorkPass221); add regression coverage for post-construction config mutation.
 - [x] Snapshot proposal, baseline, candidate-evaluation data, and options inside the coordinator itself before staging, even when a caller uses a provider without the independent-evaluation wrapper (WorkPass222); add a retained-reference mutation regression.
 - [x] Add targeted evaluator/provider regression commands to the learning CI workflow.
+- [x] WorkPass223: return the construction-time `environmentFingerprint` snapshot in evaluator provenance, not the mutable caller-owned config field. The existing WorkPass203 regression mutates the config after construction and asserts that provenance retains the original environment identity.
 
 ## Next implementation passes
 
@@ -55,3 +56,29 @@ Scope: continue integrating mechanisms into the existing P23 learning/revision l
 - DONE means a code change exists on this branch; it does not imply CI passed.
 - PARTIAL means the seam exists but a real production authority or end-to-end path is still absent.
 - OPEN means no implementation claim is made yet.
+
+
+## Cross-source integration matrix for the 120-direction plan
+
+This matrix maps the broad integration catalogue to existing NK1 seams. It is intentionally a disposition map: a source name is a research target, not proof that its repository has been vendored or that the entire capability is production-complete.
+
+| Direction family | Existing NK1 seam to reuse | Integration disposition |
+|---|---|---|
+| Agent loop, planning, tool execution | OrganismRuntime, PlanEngine, ActionGateway, embodied action executor | Reuse the canonical runtime and add bounded adapters; do not introduce a second action loop |
+| Hermes/Will skill learning and reflection | P23LearningEngine, SkillRevisionPlan, HermesVerifiedEvidenceBinding, VersionedSkillCandidateStore | Port evidence binding, revision targets and skill-learning ideas into P23; keep promotion authority unchanged |
+| Independent evaluation and benchmark suites | IndependentSkillCandidateEvaluator, SkillLearnBenchAdapter, LearningExperimentPlan, VerifiedOutcomeLedger | Preserve exact payload/task/environment binding, matched task/trial comparisons and untouched holdout |
+| Persistent memory and consolidation | OfflineConsolidation, memory retrieval/consolidation subsystems, continuity and evidence ledgers | Connect memory records to provenance and task utility; avoid a parallel authoritative memory store |
+| Replay, continual learning, forgetting/transfer | P23LearningEngine, ReplaySelectionPolicy, MultiSourceLearningMechanisms, evidence debt | Reuse bounded replay and seed-clustered evidence; add retention/transfer comparisons before changing defaults |
+| Metacognition and uncertainty | OutcomeReflectionCurriculum, prediction calibration, evidence debt, causal trace ledger | Use measured prediction error and uncertainty to select verification work; do not treat self-reported confidence as proof |
+| Emotional/motivational state | Organism needs/state, resource economy, goal pressure and social context | Integrate as functional control signals only when a measurable behavior change can be evaluated |
+| Voice, vision and Live2D | LanguageOrgan, camera evidence processor, vision backend, embodiment and UI layers | Preserve existing perception/action interfaces; bind avatar state to real runtime state instead of animation-only imitation |
+| Browser, coding and external tools | ActionGateway, tool schemas, postcondition verifier, operational journal | Require permissions, sandboxing, postconditions, cancellation and auditable action traces |
+| Research, optimization, evolutionary search, critics | research bridge, candidate generation and P23 evaluator | Keep shadow-only; optimize on train/validation only; never grant experimental search direct promotion authority |
+| Runtime reliability and resource limits | RuntimePerformanceGovernor, scheduler, checkpointing, file state store, recovery controller | Extend existing cancellation, budget and recovery boundaries rather than layering another supervisor |
+| Security and provenance | RealityEvidenceLedger, verified outcome ledger, signed promotion approval, canonical fingerprints | Fail closed on missing identity, mismatched evidence, safety violations or unverified execution |
+
+### WorkPass223 disposition
+
+- **DONE (code):** corrected a provenance mismatch that allowed the returned evaluator report to read a later-mutated environment fingerprint despite the evaluator capturing the original fingerprint at construction.
+- **PARTIAL:** the existing regression covers the mutation scenario, but this connector session did not execute it or run TypeScript checks.
+- **OPEN:** verify the full generation → sandbox → independent verification → safety → matched comparison → staging → shadow evidence → signed promotion path using real host-provided authorities. No fake production adapters should be added merely to make the path appear complete.
