@@ -40,8 +40,23 @@ function isActiveSkill(value: unknown): value is ActiveSkillVersion {
 }
 
 function isApproval(value: unknown): value is SkillPromotionApproval {
-  return isRecord(value) && isText(value.approvedBy) && isTime(value.approvedAt) &&
-    (value.expectedActiveVersion === null || isVersion(value.expectedActiveVersion));
+  if (!isRecord(value) || !isText(value.approvedBy) || !isTime(value.approvedAt) ||
+      !(value.expectedActiveVersion === null || isVersion(value.expectedActiveVersion))) return false;
+  if (value.artifact === undefined) return true; // test-only approval adapters may omit a signed artifact.
+  const artifact = value.artifact;
+  if (!isRecord(artifact) || typeof artifact.signature !== 'string' || !artifact.signature.trim() ||
+      !isRecord(artifact.payload)) return false;
+  const payload = artifact.payload;
+  return payload.schemaVersion === 1 &&
+    isText(payload.approvalId) && isText(payload.approverId) && isTime(payload.approvedAt) &&
+    isFingerprint(payload.candidateId) && isText(payload.skillId) && isVersion(payload.candidateVersion) &&
+    isFingerprint(payload.payloadFingerprint) && isFingerprint(payload.proposalId) &&
+    isFingerprint(payload.proposalOutcomeFingerprint) &&
+    (payload.expectedActiveVersion === null || isVersion(payload.expectedActiveVersion)) &&
+    Number.isSafeInteger(payload.minShadowRuns) && Number(payload.minShadowRuns) >= 1 &&
+    Number(payload.minShadowRuns) <= 1000 && isFingerprint(payload.shadowEvidenceFingerprint) &&
+    payload.approverId === value.approvedBy && payload.approvedAt === value.approvedAt &&
+    payload.expectedActiveVersion === value.expectedActiveVersion;
 }
 
 function isShadowObservation(value: unknown): value is SkillShadowObservation {
