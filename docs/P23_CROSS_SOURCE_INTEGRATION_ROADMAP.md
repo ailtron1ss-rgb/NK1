@@ -191,3 +191,11 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **DONE (race hardening):** timeout/abort handlers now ignore late notifications after the direct child has emitted `close`, preserving the terminal receipt state.
 - **PARTIAL:** Windows still uses direct-child termination; descendants that deliberately detach or escape the process group are not contained. This is not a substitute for an OS/container sandbox. Targeted regression and runtime typecheck have not been executed in this pass.
 - **NEXT:** add a descendant-process regression on POSIX, then wire the trusted host adapter to the existing ActionGateway/postcondition verifier without permitting arbitrary candidate payloads to become shell commands.
+
+
+### WorkPass231 — descendant-process termination regression
+
+- **DONE (code):** extended the existing `tests/p23-learning-process-supervisor.mjs` with a regression where a supervised parent launches a same-process-group descendant that would write a delayed marker. After the parent's bounded timeout, the test asserts the marker never appears, exercising the POSIX process-group termination path rather than only checking the direct child's signal.
+- **Integration:** the existing `test:p23:learning-process-supervisor` command already includes this test file and is included in `audit:p23:cross-source-replay`; no parallel test harness or process manager was added.
+- **PARTIAL:** the regression is committed but has not been executed here. Timing and process-group behavior still need confirmation in the CI runner; Windows uses direct-child semantics, and this is not a sandbox against detached/escaped descendants.
+- **NEXT:** run the targeted supervisor regression and runtime typecheck, then wire the trusted host executor to ActionGateway/postcondition verification with explicit capability and path boundaries.
