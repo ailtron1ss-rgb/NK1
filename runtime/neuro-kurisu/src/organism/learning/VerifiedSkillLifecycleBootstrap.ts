@@ -1,5 +1,6 @@
 import { createPublicKey } from 'node:crypto';
 import { AtomicFileSkillStorePersistence } from './AtomicFileSkillStorePersistence.ts';
+import { createAuthenticatedSkillPromotionApprovalVerifier, parseTrustedSkillPromotionApprovalKeys } from './AuthenticatedSkillPromotionApproval.ts';
 import { AtomicFileTrustedSkillShadowRunRegistry } from './TrustedSkillShadowRunRegistry.ts';
 import { VersionedSkillCandidateStore } from './VersionedSkillCandidateStore.ts';
 import { createContextBoundSkillShadowEvidenceVerifier } from './VerifiedSkillShadowEvidence.ts';
@@ -34,6 +35,7 @@ export interface VerifiedSkillLifecycleBootstrap {
   store: VersionedSkillCandidateStore;
   registry: AtomicFileTrustedSkillShadowRunRegistry;
   trustedVerifierCount: number;
+  trustedApprovalCount: number;
 }
 
 /**
@@ -46,11 +48,14 @@ export function createVerifiedSkillLifecycleBootstrap(
   candidateStorePath: string,
   trustedRunRegistryPath: string,
   rawVerifierKeys = process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON,
+  rawApprovalKeys = process.env.NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON,
 ): VerifiedSkillLifecycleBootstrap {
   if (!candidateStorePath.trim() || !trustedRunRegistryPath.trim()) {
     throw new Error('verified skill lifecycle persistence paths are required');
   }
   const trustedVerifierKeys = loadTrustedVerifierKeys(rawVerifierKeys);
+  const trustedApprovalKeys = parseTrustedSkillPromotionApprovalKeys(rawApprovalKeys);
+  const verifyPromotionApproval = createAuthenticatedSkillPromotionApprovalVerifier(trustedApprovalKeys);
   const registry = new AtomicFileTrustedSkillShadowRunRegistry(trustedRunRegistryPath);
   const verifyShadowEvidence = createContextBoundSkillShadowEvidenceVerifier(
     trustedVerifierKeys,
@@ -58,8 +63,8 @@ export function createVerifiedSkillLifecycleBootstrap(
   );
   const store = new VersionedSkillCandidateStore(
     new AtomicFileSkillStorePersistence(candidateStorePath),
-    () => false,
+    verifyPromotionApproval,
     verifyShadowEvidence,
   );
-  return { store, registry, trustedVerifierCount: trustedVerifierKeys.size };
+  return { store, registry, trustedVerifierCount: trustedVerifierKeys.size, trustedApprovalCount: trustedApprovalKeys.size };
 }
