@@ -55,15 +55,15 @@ export function planSkillRevision(
   const executable=mean(validation,r=>r.skillQuality.executability);
   const holdoutDelta=fitness.holdoutDelta01;
   add('task-success',1-success,validation.filter(r=>!r.taskSuccess.passed),
-    'Improve the procedure at the first independently observed failure point. State the required preconditions, expected postconditions, and recovery path; do not infer success from the skill output itself.',r=>[r.trialId]);
+    'Improve the procedure at the first independently observed failure point. State the required preconditions, expected postconditions, and recovery path; do not infer success from the skill output itself.');
   add('trajectory',1-trajectory,validation.filter(r=>r.trajectoryQuality.aggregate<0.8),
-    'Rewrite the procedure as an ordered sequence of observable steps. Address missingStepIds and unexpectedStepIds explicitly, remove redundant actions, and retain necessary verification steps.',r=>[r.trialId]);
+    'Rewrite the procedure as an ordered sequence of observable steps. Address missingStepIds and unexpectedStepIds explicitly, remove redundant actions, and retain necessary verification steps.');
   add('capability-coverage',1-coverage,validation.filter(r=>r.skillQuality.functionalCoverage<0.9),
-    'Add only the missing required capabilities evidenced by these trials. Make each capability explicit in the instructions and avoid unrelated prompt growth.',r=>[r.trialId]);
+    'Add only the missing required capabilities evidenced by these trials. Make each capability explicit in the instructions and avoid unrelated prompt growth.');
   add('executability',1-executable,validation.filter(r=>r.skillQuality.executability<1),
-    'Repair the concrete parsing or runtime preflight failure while preserving the existing skill contract; do not replace a failed executable artifact with descriptive text alone.',r=>[r.trialId]);
+    'Repair the concrete parsing or runtime preflight failure while preserving the existing skill contract; do not replace a failed executable artifact with descriptive text alone.');
   if(holdoutDelta<0) add('holdout-generalization',Math.min(1,Math.abs(holdoutDelta)*5),holdout.filter(r=>!r.taskSuccess.passed||r.trajectoryQuality.aggregate<0.8||r.skillQuality.aggregate<0.8),
-    'Reduce overfitting to validation examples. Prefer the smallest procedure change that addresses the holdout failure pattern, and keep the holdout task family untouched during revision.',r=>[r.trialId]);
+    'Reduce overfitting to validation examples. Prefer the smallest procedure change that addresses the holdout failure pattern, and keep the holdout task family untouched during revision.');
   const dimensionScore=0.5*success+0.3*trajectory+0.2*mean(validation,r=>r.skillQuality.aggregate);
   return {
     candidateEligible:fitness.eligible,
