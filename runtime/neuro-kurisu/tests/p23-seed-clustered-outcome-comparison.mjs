@@ -42,6 +42,13 @@ assert.equal(bySeed.absoluteGain, 0.5);
 assert.equal(bySeed.discordantCandidateWins, 4, 'wins count seed-level aggregate differences');
 assert.equal(bySeed.discordantBaselineWins, 0);
 assert.ok(bySeed.approximate95CI);
+assert.ok(bySeed.bootstrap95CI, 'seed-cluster bootstrap interval is available with multiple independent seeds');
+assert.ok(bySeed.bootstrap95CI[0] <= bySeed.absoluteGain && bySeed.bootstrap95CI[1] >= bySeed.absoluteGain);
+assert.deepEqual(
+  ledger.comparePairedBySeed('baseline', 'candidate').bootstrap95CI,
+  bySeed.bootstrap95CI,
+  'bootstrap interval is deterministic for the same ledger and method pair',
+);
 assert.equal(ledger.comparePairedBySeed('baseline', 'candidate', 'train').pairedN, 0);
 
 const families = ledger.comparePairedByFamilyAndSeed('baseline', 'candidate');
@@ -64,6 +71,8 @@ for (const method of ['baseline', 'candidate']) {
 }
 assert.equal(oneSeedLedger.comparePairedBySeed('baseline', 'candidate').approximate95CI, null,
   'a single independent seed must not produce a confidence interval');
+assert.equal(oneSeedLedger.comparePairedBySeed('baseline', 'candidate').bootstrap95CI, null,
+  'a single independent seed must not produce a bootstrap interval');
 
 console.log('P23_SEED_CLUSTERED_OUTCOME_COMPARISON=PASS');
 console.log(JSON.stringify({ pairedSeeds: bySeed.pairedN, taskCellsPerSeed: 4, aggregateGain: bySeed.absoluteGain, families: families.map(x => ({ family: x.family, pairedSeeds: x.pairedN, gain: x.absoluteGain })) }));
