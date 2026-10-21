@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { contextSimilarity01,retrieveSkills,retrievedSkillBias } from '../src/organism/learning/SkillRetrievalAugmentation.ts';
 import { rankLearningTargets,reflectOnOutcomes } from '../src/organism/learning/OutcomeReflectionCurriculum.ts';
+import { P23LearningEngine } from '../src/organism/learning/P23LearningEngine.ts';
 const ctx='e2|c2|u2|n2|g2|s2';
 const skills=[
 {id:'near-good',contextKey:'e2|c2|u2|n2|g3|s2',action:'verify',status:'promoted',validationSuccess01:.9,validationUses:12,confidence01:.8,updatedAt:1000,totalUses:20},
@@ -25,4 +26,19 @@ const targets=rankLearningTargets([
 ]);
 assert.equal(targets[0].id,'repair');
 assert.equal(targets.find(x=>x.id==='blocked').score01,0);
+
+const engine=new P23LearningEngine();
+const policy={bias:()=>0};
+const needs={energy:.8,cognitiveLoad:.2,uncertainty:.5,novelty:.5,goalPressure:.5,socialNeed:.5};
+for(let i=0;i<8;i++){
+ const trace={id:'integration-'+i,tick:i+1,createdAt:1000+i,stateBefore:{needs},
+   selected:{action:'explore',predictedUtility:.2,confidence:.8,score:.8},
+   predictedOutcomes:[{action:'explore',utility:.2}],
+   candidates:[{action:'explore',score:.8,predictedUtility:.2}]};
+ engine.recordExperience(trace,{needs},{success:.9,reward:.9,surprise:.1},policy);
+}
+const integrated=engine.learningSummary();
+assert.ok(integrated.topSkills.some(s=>s.status==='promoted'),'validated P23 skill remains available');
+assert.ok(integrated.reflections.some(r=>r.kind==='prediction-gap'),'P23 summary exposes outcome reflections');
+assert.ok(integrated.nextLearningTargets.length>0,'P23 summary exposes actionable next learning targets');
 console.log('WorkPass119 skill retrieval + outcome reflection + curriculum: PASS');
