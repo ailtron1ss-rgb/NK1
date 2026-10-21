@@ -1148,3 +1148,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added package scripts and expanded the WorkPass110 Actions workflow to run both experiment-plan tests plus reset-retention and continual-learning regressions.
 - Research adaptation: retention-bench uses actual process-kill resets with only a designated survive-directory preserved; AgentMemoryBench adds online/replay/transfer/repair modes; MemoryAgentBench emphasizes incremental multi-turn interaction; SkillLearnBench evaluates verified skill-dependent tasks. NK1 adapts the protocol ideas, not external code or benchmark data, pending license and dataset review.
 - Explicit boundary: the planner does not execute tasks, kill/restart the learner, authenticate external evidence, or prove learning uplift. Next implementation step is a process supervisor that launches real NK1 arms, enforces survive-directory boundaries, captures receipts, and records verifier-backed outcomes.
+
+## WorkPass123 — authenticated evidence and controlled skill lifecycle (2026-10-21)
+
+- Promotion proposals now require provenance receipts issued only after signed verifier artifacts pass signature, trusted-key, task-version, and manifest checks; opaque or forged `evidenceRef` values fail closed.
+- Added a versioned candidate store for staged candidates, shadow runs, explicit approval, active-version compare-and-swap, approval audit retention, and rollback to the prior version.
+- Added a three-level holdout evaluation report for skill quality, execution trajectory, and verified task outcomes with explicit sample/task/seed and evidence coverage gates.
+- Added regression coverage for forged evidence refs, authenticated outcomes, candidate lifecycle/rollback, and report completeness; wired tests into the WorkPass110 workflow.
+- Boundaries: provenance receipts are process-local and must be re-established after restart; the candidate store currently ships with an in-memory adapter and is not yet wired to the production skill resolver. Exact-head Actions validation is pending; no learning uplift is claimed.
