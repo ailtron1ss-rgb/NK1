@@ -131,8 +131,8 @@ export function createIndependentSkillCandidateEvaluator(
     const reports: Record<'validation' | 'holdout', SkillLearnBenchTrialReport[]> = {
       validation: [], holdout: [],
     };
-    const runBindings: Array<{ taskId: string; trialId: string; runId: string | null; seed: number; split: string; executable: boolean; observedStepIds: string[]; verifierPassed: boolean; coveredCapabilityIds: string[]; safetyViolationCount: number }> = [];
-  const seenRunIds = new Set<string>();
+    const runBindings: Array<{ taskId: string; trialId: string; runId: string | null; seed: number; split: string; executable: boolean; observedStepIds: string[]; bindingVerified: boolean; verifierPassed: boolean; coveredCapabilityIds: string[]; safetyViolationCount: number }> = [];
+    const seenRunIds = new Set<string>();
     for (const task of tasks) {
       const executionContext: CandidateExecutionContext = {
         payloadFingerprint,
