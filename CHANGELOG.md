@@ -1,3 +1,11 @@
+## WorkPass144 — wire trusted shadow execution to the runtime clock (2026-10-21)
+
+- Added `P23TrustedShadowLearningScheduler` and connected it to `OrganismRuntime` as a dedicated one-shot runtime clock. The execution path now goes through the Core-owned API that persists trusted run context before spawning the candidate/shadow child process.
+- Scheduling is explicit opt-in through `RuntimeConfig.trustedShadowLearning`; no child process is launched by default. The clock gates launches on runtime lifecycle, awake state, cognitive budget, battery, RAM pressure and thermal strain.
+- The runtime exposes last-run diagnostics, writes bounded execution-status journal events, and drains in-flight shadow work during shutdown. Each scheduled attempt gets a unique run ID and a seed that changes even if only the maintenance clock advances.
+- Added a real `OrganismRuntime` integration regression that launches a child process and verifies the durable registry binds the same run/task/seed/manifest/runtime identity. Registered the regression in `package.json` and the P23 GitHub Actions workflow.
+- **Boundary:** the process receipt remains execution-only. This change does not parse/accept signed skill observations, provide verifier keys or authenticated promotion approval, prove learning uplift, or claim CI/typecheck success.
+ 
 ## WorkPass143 — validate trusted verifier key algorithm at bootstrap (2026-10-21)
 
 - `VerifiedSkillLifecycleBootstrap` now parses each configured PEM with Node's crypto key parser and accepts only Ed25519 public keys, matching the evidence verifier's `verify(null, ...)` signature mode.
