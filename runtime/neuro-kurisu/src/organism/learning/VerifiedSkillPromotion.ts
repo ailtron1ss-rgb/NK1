@@ -20,6 +20,8 @@ export interface VerifiedSkillPromotionProposal {
   uniquePairedTasks: number;
   completePairedSeeds: number;
   gate: SkillRevisionGateResult;
+  seedClusteredEvaluation: ReturnType<VerifiedOutcomeLedger['comparePairedBySeed']>;
+  familyEvaluation: ReturnType<VerifiedOutcomeLedger['comparePairedByFamilyAndSeed']>;
   /** Always false: proposal generation never changes the active skill library. */
   canActivateAutomatically: false;
   activationRequirements: string[];
@@ -83,13 +85,24 @@ export function proposeVerifiedSkillPromotion(
       seen.has(taskId + '\u0000' + baselineMethod) && seen.has(taskId + '\u0000' + candidateMethod),
     ),
   ).length;
-  const minCompleteSeeds = Math.max(1, Math.min(1000, Math.floor(options.minCompleteSeeds ?? 1)));
-  const seedCoverageOkay = completePairedSeeds >= minCompleteSeeds;
+  const minCompleteSeeds = Math.max(3, Math.min(1000, Math.floor(options.minCompleteSeeds ?? 3)));
+  const seedClusteredEvaluation = ledger.comparePairedBySeed(baselineMethod, candidateMethod, 'holdout');
+  const familyEvaluation = ledger.comparePairedByFamilyAndSeed(baselineMethod, candidateMethod, 'holdout');
+  const seedCoverageOkay = completePairedSeeds >= minCompleteSeeds && seedClusteredEvaluation.pairedN >= minCompleteSeeds;
+  const minAbsoluteGain = Math.max(0, Math.min(1, Number.isFinite(options.minAbsoluteGain) ? options.minAbsoluteGain! : 0.02));
+  const seedClusteredGainOkay = seedClusteredEvaluation.absoluteGain >= minAbsoluteGain &&
+    seedClusteredEvaluation.approximate95CI !== null && seedClusteredEvaluation.approximate95CI[0] > 0;
+  const maxFamilyRegression = Math.max(0, Math.min(1, Number.isFinite(options.maxFamilyRegression) ? options.maxFamilyRegression! : 0.10));
+  const familyRegression = familyEvaluation.find(row => row.pairedN >= minCompleteSeeds && row.absoluteGain < -maxFamilyRegression);
   const minPairedTasks = Math.max(2, Math.min(10000, Math.floor(options.minPairedTasks ?? 8)));
   const finalGate: SkillRevisionGateResult = uniquePairedTasks < minPairedTasks ? {
     ...gate, accepted: false, reason: 'insufficient-independent-heldout-task-coverage',
   } : !seedCoverageOkay ? {
     ...gate, accepted: false, reason: 'insufficient-complete-holdout-seed-coverage',
+  } : familyRegression ? {
+    ...gate, accepted: false, reason: 'seed-clustered-family-regression',
+  } : !seedClusteredGainOkay ? {
+    ...gate, accepted: false, reason: 'seed-clustered-gain-not-statistically-supported',
   } : gate;
   const manifestFingerprint = ledger.manifestFingerprint();
   const outcomeFingerprint = createHash('sha256').update(JSON.stringify(
@@ -100,6 +113,7 @@ export function proposeVerifiedSkillPromotion(
     manifestFingerprint, outcomeFingerprint, baselineMethod, candidateMethod,
     pairedN: finalGate.pairedN, absoluteGain: finalGate.absoluteGain,
     familyGains: finalGate.familyGains, completePairedSeeds,
+    seedClusteredEvaluation, familyEvaluation,
   });
   const proposalId = createHash('sha256').update(identity).digest('hex');
   return {
@@ -115,6 +129,8 @@ export function proposeVerifiedSkillPromotion(
     uniquePairedTasks,
     completePairedSeeds,
     gate: finalGate,
+    seedClusteredEvaluation,
+    familyEvaluation,
     canActivateAutomatically: false,
     activationRequirements: [
       'Revalidate the manifest fingerprint and ledger snapshot at review time.',
