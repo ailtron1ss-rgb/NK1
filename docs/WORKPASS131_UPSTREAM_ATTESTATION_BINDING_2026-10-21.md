@@ -26,12 +26,12 @@ This closes a specific gap in the prior context-bound verifier: previously, it c
 
 `runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs`
 
-The restart test persists a signed receipt, reconstructs the store from durable JSON and verifies that promotion is denied when trusted context differs by:
+The restart test persists a signed receipt, reconstructs the store from durable JSON and verifies that promotion is denied when trusted context differs or is malformed for:
 1. run ID;
 2. task ID;
 3. seed;
 4. manifest fingerprint;
-5. runtime version.
+5. runtime version; it also rejects a non-string run ID from the resolver.
 
 The matching trusted context remains the positive path. The checks execute during promotion, not just at ingestion, so a persisted snapshot is not treated as trusted merely because it parsed.
 
@@ -39,6 +39,8 @@ The matching trusted context remains the positive path. The checks execute durin
 
 - `10905afb9040c3c7929b1d1b81d62cadd75562ad` — bind receipt to trusted run/task/seed.
 - `b14c844c315261577e8d31167ac7ea2e8ab28d04` — add mismatch regression matrix.
+- `78745aa5bd87c75d021079b2feece30be4c50410` — harden malformed trusted-context type handling.
+- `102d64fa859485d2b6b8b01961c7a85a6acd5db6` — add malformed run-ID context regression.
 - `9d7b53395a825e8741c6ed81b07ee7e0f09233a2` — research intake ledger.
 - `44a1e0443db867f8a70d4696176001b3868ad22a` — changelog.
 - `d08c900547aacfcd56d5e7588d124003f9d582b5` — persistent handover.
@@ -46,7 +48,7 @@ The matching trusted context remains the positive path. The checks execute durin
 ## Status
 
 - **IMPLEMENTED:** verifier contract and regression source are committed.
-- **NOT VERIFIED:** tests, typecheck and Actions on the final exact branch head have not been confirmed successful in this pass. Do not label this change as CI-proven.
+- **NOT VERIFIED:** tests, typecheck and Actions on the final exact branch head have not been confirmed successful in this pass. Querying the available commit-workflow endpoint for final test commit `102d64fa859485d2b6b8b01961c7a85a6acd5db6` returned no PR-triggered workflow runs; this is not a pass. Do not label this change as CI-proven.
 - **P0 OPEN:** production resolver must read authoritative run records; trusted verifier-key registry/bootstrap and authenticated approval authority still need wiring.
 - **P0 OPEN:** audit all `VersionedSkillCandidateStore` constructor sites and every skill activation path, including `OrganismCore.ts`; this pass does not prove bypasses are closed.
 - **P0 OPEN:** diagnose the earlier Actions failures with readable logs and obtain a successful exact-head run.
