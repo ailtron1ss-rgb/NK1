@@ -86,7 +86,19 @@ export async function runLearningProcess(
   command: LearningProcessCommand,
   trustedShadowRun?: TrustedShadowRunRegistration,
 ): Promise<LearningProcessResult> {
-  if (!run || !nonEmpty(run.runId) || !/^[a-f0-9]{64}$/i.test(run.manifestFingerprint) ||
+  if (!run || typeof run !== 'object') throw new Error('invalid scheduled learning run');
+  // Snapshot caller-owned run/command data before any await. In particular, trusted
+  // registration may be asynchronous; it must not create a window where the command
+  // that gets spawned differs from the command whose identity was validated/fingerprinted.
+  run = { ...run };
+  if (!command || typeof command !== 'object') throw new Error('invalid process command');
+  command = {
+    ...command,
+    args: Array.isArray(command.args) ? [...command.args] : command.args,
+    env: command.env ? { ...command.env } : undefined,
+    inheritEnv: command.inheritEnv ? [...command.inheritEnv] : undefined,
+  };
+  if (!nonEmpty(run.runId) || !/^[a-f0-9]{64}$/i.test(run.manifestFingerprint) ||
       !nonEmpty(run.taskId) || !nonEmpty(run.taskVersion) || !nonEmpty(run.arm) || !nonEmpty(run.method) ||
       !safeInteger(run.seed, 0, Number.MAX_SAFE_INTEGER)) throw new Error('invalid scheduled learning run');
   if (!/^[a-f0-9]{64}$/i.test(planFingerprint)) throw new Error('invalid plan fingerprint');
