@@ -1,3 +1,12 @@
+## WorkPass235 — join independent P23 evaluations to signed Hermes shadow evidence (2026-10-21)
+
+- Added `bindIndependentEvaluationToVerifiedShadowEvidence` and exposed it through the existing `P23LearningEngine` instead of creating a second evidence lifecycle.
+- Joins experiment trial IDs to actual execution run IDs through P23's independently verified `runBindings`; validates validation/holdout membership, planned-run identity presence, seed, task, manifest fingerprint, binary outcome, unique run/receipt coverage, and zero safety violations.
+- Requires every evaluation report and binding to have a one-to-one signed receipt. Failed but independently verified trials remain bindable as negative evidence; mismatched outcomes, seeds, task IDs, manifests, duplicate receipts, untrusted bindings, or safety violations fail closed.
+- Signed receipts authenticate candidate identity and binary outcome only. Skill/trajectory quality metrics remain unauthenticated by the signature, and this bridge grants no staging, approval, or promotion authority. Existing P23 gates and the candidate store remain authoritative.
+- Extended `tests/p23-hermes-verified-evidence-binding.mjs` with cross-system joins and seed/safety mismatch regressions; the existing `test:p23:hermes-verified-evidence-binding` command already covers the file.
+- **Validation caveat:** code and regression were committed to the draft PR branch, but this session did not execute the test or TypeScript typecheck. No green CI claim is made; production signer/context authority remains external.
+
 ## WorkPass149 — prepare promotion requests only from verified shadow provenance (2026-10-21)
 
 - Added `scripts/create-skill-promotion-approval-request.mjs` for offline/deployment workflows that need a signable Ed25519 request outside the live HTTP API. It binds the request to the exact candidate/version/payload, current active-version CAS, configured shadow threshold and complete evidence fingerprint.
