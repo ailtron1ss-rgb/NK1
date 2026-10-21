@@ -111,7 +111,7 @@ export function createAuthenticatedSkillPromotionApprovalVerifier(
     try {
       if (trustedKeys.size === 0 || !approval?.artifact || !isRecord(approval.artifact) ||
           !isRecord(approval.artifact.payload) || typeof approval.artifact.signature !== 'string') return false;
-      const payload = approval.artifact.payload;
+      const payload = approval.artifact.payload as SkillPromotionApprovalPayload;
       if (payload.schemaVersion !== 1 || !nonEmpty(payload.approvalId) || !nonEmpty(payload.approverId) ||
           !Number.isFinite(payload.approvedAt) || payload.approvedAt <= 0 ||
           !(payload.expectedActiveVersion === null || safeInteger(payload.expectedActiveVersion, 1, Number.MAX_SAFE_INTEGER)) ||
