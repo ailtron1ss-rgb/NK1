@@ -1,3 +1,12 @@
+## WorkPass136 — production bootstrap for verified skill shadow lifecycle (2026-10-21)
+
+- Configure the canonical P23 learner at OrganismCore construction with durable candidate storage and a durable trusted-run registry.
+- Bind signed shadow receipts to independently persisted run/task/seed/manifest/runtime context.
+- Load trusted verifier public keys from `NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON`; absent keys reject evidence and malformed configured keys fail startup.
+- Keep promotion authorization explicitly default-deny until an authenticated approval authority is integrated.
+- Expose internal core hooks for the trusted supervisor to register run context before receipt ingestion and then submit verified shadow observations.
+- Add a focused bootstrap regression and CI wiring. Test execution and typecheck still require a successful runner.
+
 ## WorkPass133 — isolate bootstrap uncertainty from incomplete seeds (2026-10-21)
 
 - Corrected the deterministic seed-cluster bootstrap identity: only complete paired seeds that actually contribute to the estimate now determine its resampling stream. Incomplete seed records remain excluded from the estimate and no longer perturb the interval for an otherwise identical complete sample.
