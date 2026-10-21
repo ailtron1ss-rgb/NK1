@@ -1,3 +1,11 @@
+## Latest durable checkpoint — WorkPass144 (2026-10-21)
+
+- **Real integration change:** the production `OrganismRuntime` now owns a dedicated `trusted-shadow-learning` runtime clock when `RuntimeConfig.trustedShadowLearning.enabled` is explicitly true. The clock calls `runTrustedShadowLearningOnce()`, which always routes via `OrganismCore.runTrustedSkillShadowLearningProcess()` and its durable registration-before-spawn boundary.
+- Resource gates prevent scheduled child execution while asleep, under high RAM/thermal pressure, with low battery, or when the runtime cognitive budget is too low. No process runs unless operator configuration explicitly supplies the task identity, manifest/plan fingerprints and command.
+- Run status is observable in runtime diagnostics and journal records. Shutdown drains in-flight shadow execution. The new integration regression exercises a real Core/runtime and real child process, then validates the trusted registry record.
+- **NOT VERIFIED:** this source change/test have been committed, but actual test/typecheck execution remains dependent on a successful runner-backed CI. A completed process receipt is not a verified task outcome; signed observation ingestion, deployed verifier-key provisioning and authenticated approval remain open.
+- **Next P0:** configure and validate the intended production task/runner so the clock is enabled only in the correct deployment; connect its signed observation output to `recordVerifiedSkillShadow` only after signature/context verification; wire authenticated skill-promotion approval; audit all activation routes and obtain exact-head CI/typecheck evidence.
+
 ## Latest durable checkpoint — WorkPass143 (2026-10-21)
 
 - **Code change:** lifecycle bootstrap now cryptographically parses configured public keys and rejects non-Ed25519 keys, matching the signature algorithm used by `VerifiedSkillShadowEvidence`. This catches malformed deployment configuration at startup rather than silently configuring a verifier that cannot verify artifacts.
