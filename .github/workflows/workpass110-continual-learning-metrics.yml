@@ -29,6 +29,8 @@ on:
       - 'runtime/neuro-kurisu/src/organism/system/RuntimeClockScheduler.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23TrustedShadowLearningScheduler.ts'
       - 'runtime/neuro-kurisu/tests/p23-runtime-trusted-shadow-scheduler.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-trusted-shadow-runtime-config.mjs'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
       - 'runtime/neuro-kurisu/tests/p23-verified-skill-shadow-evidence.mjs'
       - 'runtime/neuro-kurisu/tests/p23-trusted-skill-shadow-run-registry.mjs'
       - 'runtime/neuro-kurisu/tests/p23-trusted-shadow-supervisor-registration.mjs'
@@ -120,6 +122,8 @@ on:
       - 'runtime/neuro-kurisu/src/organism/system/RuntimeClockScheduler.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23TrustedShadowLearningScheduler.ts'
       - 'runtime/neuro-kurisu/tests/p23-runtime-trusted-shadow-scheduler.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-trusted-shadow-runtime-config.mjs'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
 jobs:
   metrics:
     runs-on: ubuntu-latest
@@ -198,6 +202,9 @@ jobs:
       - name: Run production runtime trusted shadow scheduler integration
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:runtime-trusted-shadow-scheduler
+      - name: Run production trusted shadow config validation
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:trusted-shadow-runtime-config
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
