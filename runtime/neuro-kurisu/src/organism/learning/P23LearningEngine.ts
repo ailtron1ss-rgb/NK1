@@ -550,7 +550,18 @@ export class P23LearningEngine {
       const exp=this.state.experiences.find(x=>x.traceId===trace.id)!;
       const key=`${exp.contextKey}|${exp.action}`;
       const priority=scoreReplayPriority(exp,newestTick,frequencies.get(key)??1);
-      return {trace,id:trace.id,tick:trace.tick,contextKey:exp.contextKey,action:exp.action,surprise:priority.priority01};
+      const priorUpdates=policy.estimate(exp.contextKey,exp.action,.5).updates;
+      // Bridge Will-style goal relevance and spaced-repetition diminishing returns
+      // into the actual production replay path. These signals rank samples only;
+      // the recorded outcome remains the learning target and is not rewritten.
+      return {
+        trace,id:trace.id,tick:trace.tick,contextKey:exp.contextKey,action:exp.action,
+        surprise:priority.priority01,
+        novelty:exp.surprise,
+        salience:exp.success<.5?.8:.2,
+        goalPriority:trace.stateBefore.needs.goalPressure,
+        replayCount:priorUpdates,
+      };
     });
     const metrics=this.state.metrics;
     const options=adaptiveReplayOptions(this.replaySelectionOptions,{
