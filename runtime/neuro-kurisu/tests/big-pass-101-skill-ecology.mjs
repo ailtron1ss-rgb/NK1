@@ -35,6 +35,22 @@ assert.ok(repeated);
 assert.equal(repeated.variants.filter(v=>v.toTool==='tool.fallback').length,stagedCount,
  'replaying the same repair observation must not mint a new variant');
 
+// A different observation may arrive between retries; deduplication must still
+// search the bounded ledger, not just its newest row.
+const interleaved = lib.recordCompoundRepair(autoRepair.id,{
+ stepId:'b',toolId:'tool.primary',error:'attempt limit reached',ok:false,verified:true,
+ confidence01:.9,context:'independent repair context',candidateTools:['tool.fallback'],selectedTool:'tool.fallback',holdout:false
+});
+assert.ok(interleaved);
+const countAfterInterleaving = interleaved.variants.filter(v=>v.toTool==='tool.fallback').length;
+const replayAfterInterleaving = lib.recordCompoundRepair(autoRepair.id,{
+ stepId:'b',toolId:'tool.primary',error:'execution error',ok:false,verified:true,
+ confidence01:.9,context:'verified runtime failure',candidateTools:['tool.fallback'],selectedTool:'tool.fallback',holdout:false
+});
+assert.ok(replayAfterInterleaving);
+assert.equal(replayAfterInterleaving.variants.filter(v=>v.toTool==='tool.fallback').length,countAfterInterleaving,
+ 'an older repair observation must remain deduplicated after intervening ledger entries');
+
 // Holdout-only evidence must not be used to construct a repair candidate.
 const holdoutOnly = lib.compileCompoundSkill({projectId:'eco-101',name:'holdout-only',origin:'intrinsic',steps:[
  {id:'a',action:'explore',toolId:'tool.a'},
