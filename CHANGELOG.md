@@ -1,3 +1,11 @@
+## WorkPass147 — add verified-evidence candidate staging CLI (2026-10-21)
+
+- Added `scripts/stage-verified-skill-candidate.mjs`: reads a bounded JSON bundle containing a task manifest, signed outcome artifacts, baseline/candidate method IDs and the candidate P23 policy skill.
+- The tool validates configured trusted Ed25519 public keys, rejects symlink/oversized bundles and unknown bundle fields, re-verifies **every** supplied signed outcome against the exact manifest, and fails closed if any row is rejected or the paired holdout proposal does not pass strict minimum evidence thresholds.
+- It mints the authentic proposal in-process and stages through `OrganismCore.stageVerifiedSkillCandidate` into the same separate, atomically persisted candidate store used by the runtime. It does not initialize/flush the live organism state file, activate the candidate or create approval.
+- Added a regression that builds signed holdout fixture artifacts, stages the candidate, reconstructs a fresh Core to verify durable persistence, then tampers with a signed artifact and confirms it cannot stage a second candidate.
+- **Not claimed:** successful CI/typecheck, production verifier-key supply-chain quality, real benchmark uplift, or automatic promotion. Fixture signing keys are generated only by tests.
+
 ## WorkPass146 — exercise signed shadow evidence through the canonical Core path (2026-10-21)
 
 - Exposed `OrganismCore.stageVerifiedSkillCandidate` and a read-only candidate lifecycle snapshot, delegating to the existing P23 engine/store. Staging still requires the exact authentic proposal object issued by `proposeVerifiedSkillPromotion`; copying a proposal JSON cannot bypass the store's module-private identity check.
