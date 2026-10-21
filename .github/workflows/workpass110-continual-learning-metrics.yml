@@ -267,6 +267,9 @@ jobs:
       - name: Require matched evidence envelopes before promotion
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:hermes-production-promotion-gate
+      - name: Run durable signed promotion restart and replay regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass239:durable-signed-promotion-e2e
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
