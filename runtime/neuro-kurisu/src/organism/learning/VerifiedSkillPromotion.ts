@@ -64,18 +64,18 @@ export function proposeVerifiedSkillPromotion(
   const gate = evaluateSkillRevision(observations, baselineMethod, candidateMethod, options);
   const holdoutTasks = snapshot.manifest.filter(task => task.split === 'holdout').map(task => task.taskId);
   const pairedMethodsByTaskSeed = new Map<string, Set<string>>();
-  for (const row of observations) {
+  for (const row of observations.filter(item => item.attempt === 1)) {
     const key = JSON.stringify([row.taskId, row.seed, row.attempt]);
     const methods = pairedMethodsByTaskSeed.get(key) ?? new Set<string>();
     methods.add(row.method);
     pairedMethodsByTaskSeed.set(key, methods);
   }
   const uniquePairedTasks = new Set(observations
-    .filter(row => pairedMethodsByTaskSeed.get(JSON.stringify([row.taskId,row.seed,row.attempt]))?.has(baselineMethod) &&
+    .filter(row => row.attempt === 1 && pairedMethodsByTaskSeed.get(JSON.stringify([row.taskId,row.seed,row.attempt]))?.has(baselineMethod) &&
       pairedMethodsByTaskSeed.get(JSON.stringify([row.taskId,row.seed,row.attempt]))?.has(candidateMethod))
     .map(row => row.taskId)).size;
   const bySeed = new Map<number, Set<string>>();
-  for (const row of observations) {
+  for (const row of observations.filter(item => item.attempt === 1)) {
     const set = bySeed.get(row.seed) ?? new Set<string>();
     set.add(row.taskId + '\u0000' + row.method);
     bySeed.set(row.seed, set);
