@@ -202,3 +202,10 @@ Research protocol lineage: AgentMemoryBench (https://github.com/solomoon313/Agen
 | Candidate / source | URL | Mechanism inspected | Adaptation | Boundary / evidence |
 |---|---|---|---|---|
 | OpenAI Baselines (MIT) | https://github.com/openai/baselines | `baselines/deepq/replay_buffer.py`: proportional prioritization, stratified priority-mass sampling, normalized importance weights, priority epsilon | Added native TypeScript `PrioritizedReplaySampler.ts`, TD-error-to-priority helper, deterministic RNG injection, input validation, plus opt-in prioritized strategy in existing `trainWithExperienceReplay` using learner-derived absolute prediction error and normalized importance weights; regression and CI workflow step added, upstream MIT license and provenance retained | **ADAPTED — isolated sampler only.** Does not import Python/NumPy/segment-tree dependencies and does not create a second persistent memory owner. Not wired to production feedback yet; priority must derive from observed error / verified outcome. Runs 39554673362 and 39554756859 completed with failure; job steps/logs were unavailable (`BlobNotFound`), so root cause is unresolved. Runtime tests/typecheck remain unverified; no quality uplift claimed. |
+
+
+## WorkPass87 — reproducible replay evaluation protocol (2026-10-21)
+
+| Candidate / source | URL | Mechanism inspected | Adaptation | Boundary / evidence |
+|---|---|---|---|---|
+| CleanRL (MIT) | https://github.com/vwxyzjn/cleanrl | Repository license and reproducibility-oriented compact RL experiment/evaluation approach | Added paired no-replay vs balanced vs prioritized replay diagnostic across five deterministic task-order seeds; reports mean/std held-out task MAE, max error and update counts. Injected RNG into prioritized strategy; added CI workflow step and preserved license/provenance | Methodology adaptation only; no Python/PyTorch code copied. Synthetic diagnostic; cannot prove real-world uplift. CI must execute before results can be claimed. |
