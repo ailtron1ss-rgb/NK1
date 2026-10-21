@@ -47,6 +47,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/SkillEvaluationReport.ts'
       - 'runtime/neuro-kurisu/tests/p23-skill-evaluation-report.mjs'
       - 'runtime/neuro-kurisu/tests/p23-skill-store-failure-boundaries.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-skill-store-failure-boundaries.mjs'
       - 'runtime/neuro-kurisu/tests/p23-verified-skill-promotion-proposal.mjs'
       - 'runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs'
       - 'runtime/neuro-kurisu/tests/p23-learning-engine-verified-skill-lifecycle.mjs'
@@ -55,7 +56,7 @@ on:
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
   push:
-    branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals, workpass122-promotion-gate-coverage-hardening, workpass123-authenticated-skill-lifecycle]
+    branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals, workpass122-promotion-gate-coverage-hardening, workpass123-authenticated-skill-lifecycle, workpass124-learning-evidence-hardening]
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualLearningMetrics.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualOutcomeMatrix.ts'
