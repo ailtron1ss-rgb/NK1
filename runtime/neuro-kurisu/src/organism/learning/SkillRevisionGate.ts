@@ -34,7 +34,7 @@ export interface SkillRevisionGateResult {
   familyGains: Array<{ family: string; pairedN: number; gain: number }>;
   rejectedRows: number;
 }
-const clamp = (x: number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
+const clamp = (x: number, fallback: number) => Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : fallback;
 const boundedInteger = (value: number | undefined, fallback: number, min: number, max: number) =>
   Number.isFinite(value) ? Math.max(min, Math.min(max, Math.floor(value!))) : fallback;
 const valid = (x: RevisionObservation) => Boolean(
@@ -58,8 +58,8 @@ export function evaluateSkillRevision(
     throw new Error('two distinct method names are required');
   }
   const minPairedTasks = boundedInteger(options.minPairedTasks, 8, 2, 10000);
-  const minAbsoluteGain = clamp(options.minAbsoluteGain ?? .02);
-  const maxFamilyRegression = clamp(options.maxFamilyRegression ?? .10);
+  const minAbsoluteGain = clamp(options.minAbsoluteGain ?? .02, .02);
+  const maxFamilyRegression = clamp(options.maxFamilyRegression ?? .10, .10);
   const byPair = new Map<string, Map<string, RevisionObservation>>();
   let rejectedRows = 0;
   for (const row of observations) {
