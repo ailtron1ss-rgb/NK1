@@ -60,9 +60,14 @@ assert.equal(repeatedProposal.proposalId,proposal.proposalId,
   'proposal identity is stable for an unchanged manifest/outcome ledger');
 assert.equal(isAuthenticVerifiedSkillPromotionProposal(proposal), true);
 const tamperedProposal = proposeVerifiedSkillPromotion(ledger,'baseline','candidate',{minPairedTasks:8,minAbsoluteGain:.1,minCompleteSeeds:3});
+const originalDatasetFingerprint = tamperedProposal.datasetFingerprint;
 tamperedProposal.datasetFingerprint = 'f'.repeat(64);
 assert.equal(isAuthenticVerifiedSkillPromotionProposal(tamperedProposal), false,
   'authenticity must be invalidated when any proposal field changes after issuance');
+const originalView = { ...tamperedProposal, datasetFingerprint: originalDatasetFingerprint };
+Object.defineProperty(tamperedProposal, 'toJSON', { value: () => originalView, configurable: true });
+assert.equal(isAuthenticVerifiedSkillPromotionProposal(tamperedProposal), false,
+  'custom JSON serialization must not conceal post-issuance proposal mutation');
 
 // An opaque evidenceRef cannot impersonate a verified signed artifact.
 const forgedLedger = new VerifiedOutcomeLedger(manifest);
