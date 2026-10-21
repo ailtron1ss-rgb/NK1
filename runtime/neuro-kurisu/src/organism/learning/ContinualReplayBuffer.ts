@@ -25,6 +25,7 @@ export interface ReplayTrainingOptions {
   strategy?: 'balanced' | 'prioritized';
   alpha?: number;
   beta?: number;
+  random?: () => number;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
