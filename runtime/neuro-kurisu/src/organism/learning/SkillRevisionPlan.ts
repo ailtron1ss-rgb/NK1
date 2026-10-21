@@ -78,8 +78,14 @@ export function planSkillRevision(
     'Add only the missing required capabilities evidenced by these trials. Make each capability explicit in the instructions and avoid unrelated prompt growth.');
   add('executability',1-executable,validation.filter(r=>r.skillQuality.executability<1),
     'Repair the concrete parsing or runtime preflight failure while preserving the existing skill contract; do not replace a failed executable artifact with descriptive text alone.');
-  if(holdoutDelta<0) add('holdout-generalization',Math.min(1,Math.abs(holdoutDelta)*5),holdout.filter(r=>!r.taskSuccess.passed||r.trajectoryQuality.aggregate<0.8||r.skillQuality.aggregate<0.8),
-    'Reduce overfitting to validation examples. Prefer the smallest procedure change that addresses the holdout failure pattern, and keep the holdout task family untouched during revision.');
+  if(holdoutDelta<0) {
+    // Holdout is evaluation-only: expose a generalization warning, never holdout
+    // task IDs, trial IDs, or per-example failure details to the revision generator.
+    add('holdout-generalization',Math.min(1,Math.abs(holdoutDelta)*5),[{...validation[0],taskId:'holdout-generalization-signal',trialId:'aggregate-holdout-signal'}],
+      'Aggregate evaluation indicates a generalization gap. Improve the generality of the procedure without seeing or tuning to holdout examples; request a fresh independent holdout after revision.');
+    const target=targets.find(item=>item.dimension==='holdout-generalization');
+    if(target) { target.affectedTaskIds=[]; target.evidenceIds=[]; target.evidenceCount=0; }
+  }
   const dimensionScore=0.5*success+0.3*trajectory+0.2*mean(validation,r=>r.skillQuality.aggregate);
   const plan:SkillRevisionPlan = {
     candidateEligible:fitness.eligible,
