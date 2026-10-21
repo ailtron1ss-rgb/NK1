@@ -33,6 +33,21 @@ try {
   assert.equal(new AtomicFileSkillStorePersistence(file).read().revision, 1,
     'a reconstructed adapter observes the committed revision');
 
+  // Outer arrays alone are not a valid snapshot: malformed nested skill records
+  // must not be admitted after restart.
+  writeFileSync(file, JSON.stringify({ schemaVersion: 1, revision: 1, active: [{}], candidates: [] }));
+  assert.throws(() => persistence.read(), /invalid persisted versioned skill store snapshot/,
+    'malformed active skill records fail closed');
+  writeFileSync(file, JSON.stringify({ schemaVersion: 1, revision: 1, active: [], candidates: [{}] }));
+  assert.throws(() => persistence.read(), /invalid persisted versioned skill store snapshot/,
+    'malformed candidate lifecycle records fail closed');
+
+  // CAS must reject malformed next state before it can replace durable data.
+  assert.equal(persistence.compareAndSwap(1, {
+    schemaVersion: 1, revision: 2, active: [{}], candidates: [],
+  }), false, 'invalid nested records cannot be persisted through CAS');
+  writeFileSync(file, JSON.stringify({ schemaVersion: 1, revision: 1, active: [], candidates: [] }));
+
   writeFileSync(file, '{"schemaVersion":1,"revision":"corrupt","active":[],"candidates":[]}');
   assert.throws(() => persistence.read(), /invalid persisted versioned skill store snapshot/,
     'corrupt schema/revision must fail closed instead of silently resetting state');
