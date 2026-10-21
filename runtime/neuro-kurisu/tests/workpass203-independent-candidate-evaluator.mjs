@@ -45,8 +45,10 @@ assert.equal(invalidPlanExecutionCount, 0,
   'invalid plans must be rejected before any candidate code executes');
 // Evaluator configuration is an authority snapshot: post-construction changes must
 // not relabel the environment under which a candidate was executed.
+const mutableTasks = structuredClone(tasks);
+const expectedSnapshotPlanFingerprint = digest(mutableTasks.map(({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }) => ({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds })));
 const mutableConfig = {
-  tasks,
+  tasks: mutableTasks,
   environmentFingerprint: 'b'.repeat(64),
   executor: { async execute({ task }) { return { runId: 'snapshot-' + task.trialId, observedStepIds: ['open', 'summarize'] }; } },
   verifier: { async verify() { return { bindingVerified: true, passed: true, coveredCapabilityIds: ['read'] }; } },
@@ -59,7 +61,7 @@ const snapshotResult = await snapshotEvaluator({ payload, payloadFingerprint: di
 assert.equal(snapshotResult.evaluation.provenance.environmentFingerprint, 'b'.repeat(64),
   'runtime environment identity must remain bound to the validated evaluator config');
 assert.equal(snapshotResult.evaluation.provenance.runBindings[0].taskId, 'validation-a');
-assert.equal(snapshotResult.evaluation.provenance.planFingerprint, digest(tasks.map(({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }) => ({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }))),
+assert.equal(snapshotResult.evaluation.provenance.planFingerprint, expectedSnapshotPlanFingerprint,
   'evaluation provenance must retain the task plan captured when evaluator was created');
 
 const result = await evaluator({ payload, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } });
