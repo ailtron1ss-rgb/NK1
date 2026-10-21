@@ -336,11 +336,22 @@ export function evaluateSkillLearnBenchCandidate(
   );
   if (safetyViolations > 0) reasons.push('candidate-safety-violations-present');
 
-  const mean = (reports: SkillLearnBenchTrialReport[], selector: (r: SkillLearnBenchTrialReport) => number) =>
-    reports.reduce((sum, report) => sum + selector(report), 0) / reports.length;
-  const validationTaskSuccess = mean(validation.candidateReports, (r) => r.taskSuccess.passRate);
-  const validationTrajectory = mean(validation.candidateReports, (r) => r.trajectoryQuality.aggregate);
-  const validationSkill = mean(validation.candidateReports, (r) => r.skillQuality.aggregate);
+  const macroTaskMetric = (reports: SkillLearnBenchTrialReport[], selector: (r: SkillLearnBenchTrialReport) => number) => {
+    const byTask = new Map<string, number[]>();
+    for (const report of reports) {
+      const taskId = report.taskId.trim();
+      const values = byTask.get(taskId) ?? [];
+      values.push(selector(report));
+      byTask.set(taskId, values);
+    }
+    const taskMeans = [...byTask.values()].map((values) =>
+      values.reduce((sum, value) => sum + value, 0) / values.length,
+    );
+    return taskMeans.reduce((sum, value) => sum + value, 0) / taskMeans.length;
+  };
+  const validationTaskSuccess = macroTaskMetric(validation.candidateReports, (r) => r.taskSuccess.passRate);
+  const validationTrajectory = macroTaskMetric(validation.candidateReports, (r) => r.trajectoryQuality.aggregate);
+  const validationSkill = macroTaskMetric(validation.candidateReports, (r) => r.skillQuality.aggregate);
   if (validationTaskSuccess < 0.8) feedback.push('Improve independently verified task success before promotion.');
   if (validationTrajectory < 0.8) feedback.push('Inspect missing or out-of-order trajectory steps and revise the procedure.');
   if (validationSkill < 0.8) feedback.push('Increase required-capability coverage and confirm the skill remains executable.');
