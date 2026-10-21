@@ -10,6 +10,46 @@ const skill=lib.compileCompoundSkill({projectId:'eco-101',name:'variant-skill',o
 ]});
 assert.ok(skill);
 
+// Compound-skill promotion must use the same holdout boundary as variant promotion.
+// The overall counters remain useful for evaluation, but sealed outcomes cannot
+// raise confidence or satisfy reusable-skill promotion requirements.
+const compoundHoldout = lib.compileCompoundSkill({projectId:'eco-101',name:'compound-holdout-neutrality',origin:'intrinsic',steps:[
+ {id:'a',action:'explore',toolId:'tool.a'},
+ {id:'b',action:'verify',toolId:'tool.b'}
+]});
+assert.ok(compoundHoldout);
+const compoundBeforeHoldout = compoundHoldout.confidence01;
+for (let n=0;n<6;n++) {
+  const observed=lib.recordCompoundExecution(compoundHoldout.id,{
+    success01:1,verified:true,independent:true,holdout:true,context:`compound-sealed-${n}`
+  });
+  assert.ok(observed);
+  assert.equal(observed.status,'candidate','holdout-only outcomes must not promote compound skills');
+  assert.equal(observed.confidence01,compoundBeforeHoldout,'holdout outcomes must not increase compound-skill confidence');
+}
+const holdoutSnapshot=lib.snapshot().compoundSkills.find(s=>s.id===compoundHoldout.id);
+assert.equal(holdoutSnapshot.uses,6,'all outcomes remain visible in aggregate evaluation counters');
+assert.equal(holdoutSnapshot.nonHoldoutUses,0,'holdout outcomes must not count as promotion evidence');
+assert.equal(holdoutSnapshot.nonHoldoutVerifiedExecutions,0);
+assert.equal(holdoutSnapshot.nonHoldoutIndependentExecutions,0);
+
+// Real compound execution observations also flow through the existing active-variant
+// evidence path, without letting holdout observations affect the variant confidence.
+const activeVariantBefore=holdoutSnapshot.variants.find(v=>v.id===holdoutSnapshot.activeVariantId);
+assert.ok(activeVariantBefore);
+const compoundAfterLive=lib.recordCompoundExecution(compoundHoldout.id,{
+  success01:1,verified:true,independent:true,holdout:false,context:'compound-live-context'
+});
+assert.ok(compoundAfterLive);
+const activeVariantAfter=compoundAfterLive.variants.find(v=>v.id===compoundAfterLive.activeVariantId);
+assert.equal(activeVariantAfter.nonHoldoutTrials,1,'compound execution should update active-variant non-holdout evidence');
+
+const restoredCompoundLibrary=new ProceduralSkillLibrary();
+restoredCompoundLibrary.restore(lib.snapshot());
+const restoredHoldout=restoredCompoundLibrary.snapshot().compoundSkills.find(s=>s.id===compoundHoldout.id);
+assert.equal(restoredHoldout.nonHoldoutUses,1,'non-holdout evidence counters must survive save/restore');
+assert.equal(restoredHoldout.nonHoldoutSuccesses,1);
+
 // A verified in-distribution repair observation should materialize a staged variant
 // through the existing repair-recording path; it must not activate that variant.
 const autoRepair = lib.compileCompoundSkill({projectId:'eco-101',name:'auto-repair',origin:'intrinsic',steps:[
