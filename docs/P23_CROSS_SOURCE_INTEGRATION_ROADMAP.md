@@ -4,7 +4,7 @@ Latest implementation checkpoint: WorkPass239 (race-safer durable registry lock 
 
 Scope: continue integrating mechanisms into the existing P23 learning/revision lifecycle. This is an implementation queue, not a promise that upstream mechanisms are already integrated. Preserve the current branch/PR boundary; do not merge to the default branch without explicit approval.
 
-## Completed in this branch (through WorkPass227 code; runtime verification pending)
+## Completed in this branch (through WorkPass239 code; runtime verification pending)
 
 - [x] Reuse SkillLearnBench-style task success, skill quality, trajectory quality and macro-averaged task metrics.
 - [x] Bind evaluator runs to exact payload/task/environment/plan identity; require an independent verifier's explicit binding attestation.
