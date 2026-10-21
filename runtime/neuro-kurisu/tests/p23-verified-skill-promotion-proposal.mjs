@@ -5,7 +5,7 @@ import {
   ingestSignedOutcomeArtifact,
   signOutcomePayloadForFixture,
 } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
-import { proposeVerifiedSkillPromotion } from '../src/organism/learning/VerifiedSkillPromotion.ts';
+import { isAuthenticVerifiedSkillPromotionProposal, proposeVerifiedSkillPromotion } from '../src/organism/learning/VerifiedSkillPromotion.ts';
 import { evaluateSkillRevision } from '../src/organism/learning/SkillRevisionGate.ts';
 
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');
@@ -58,6 +58,11 @@ assert.equal(repeatedProposal.datasetFingerprint,proposal.datasetFingerprint,
   'verified dataset identity must be stable for an unchanged ledger');
 assert.equal(repeatedProposal.proposalId,proposal.proposalId,
   'proposal identity is stable for an unchanged manifest/outcome ledger');
+assert.equal(isAuthenticVerifiedSkillPromotionProposal(proposal), true);
+const tamperedProposal = proposeVerifiedSkillPromotion(ledger,'baseline','candidate',{minPairedTasks:8,minAbsoluteGain:.1,minCompleteSeeds:3});
+tamperedProposal.datasetFingerprint = 'f'.repeat(64);
+assert.equal(isAuthenticVerifiedSkillPromotionProposal(tamperedProposal), false,
+  'authenticity must be invalidated when any proposal field changes after issuance');
 
 // An opaque evidenceRef cannot impersonate a verified signed artifact.
 const forgedLedger = new VerifiedOutcomeLedger(manifest);
