@@ -153,3 +153,15 @@ Do not count a reference as “used” until a source revision/paper protocol is
 | Проверка структуры state.needs в каждом образце | Некорректный state мог выбросить исключение в процессе последовательного обучения | Повреждённый второй элемент отклоняется до первого обновления | Код и тест добавлены; запуск не подтверждён |
 
 Исследовательская опора для следующего этапа: AgentMemoryBench явно разделяет online, replay/retention, transfer и repair evaluation; MemoryAgentBench выделяет accurate retrieval, test-time learning, long-range understanding и conflict resolution. Источники: https://github.com/solomoon313/AgentMemoryBench и https://github.com/HUST-AI-HYZ/MemoryAgentBench. Внешние код/данные не импортированы; заимствована структура оценки. Требуется создать собственные лёгкие детерминированные сценарии, которые не требуют тяжёлых внешних сред или API.
+
+
+## WorkPass82 — learning/reversal/retention benchmark (2026-10-21)
+
+| Сценарий | Измерение | Контроль | Статус |
+|---|---|---|---|
+| Online learning | Начальное и конечное предсказание после согласованной обратной связи | Детерминированный probe | Код добавлен, запуск не подтверждён |
+| Reversal / repair | Сдвиг после смены цели на противоположную | Сравнение с prediction после первой фазы | Код добавлен, запуск не подтверждён |
+| No-learning | Неизменность prediction, весов, bias и updates при frozen=true | Замороженная модель | Код добавлен, запуск не подтверждён |
+| Replay retention | Изменение старого шаблона при продолжении обучения на другом шаблоне | До/после на двух ортогональных признаках | Код добавлен; это диагностическая метрика, не доказательство отсутствия забывания |
+
+Research protocol lineage: AgentMemoryBench (https://github.com/solomoon313/AgentMemoryBench) motivates online/replay/transfer/repair dimensions; MemoryAgentBench (https://github.com/HUST-AI-HYZ/MemoryAgentBench) motivates conflict and long-range task families. The new test is an original synthetic probe, not copied benchmark data or implementation. Before promotion to a release gate: execute on supported Node, run typecheck + existing P26 tests, add multiple task orders and held-out task variants, and report all metrics including negative retention deltas.
