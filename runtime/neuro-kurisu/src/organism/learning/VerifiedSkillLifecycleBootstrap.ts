@@ -41,8 +41,9 @@ export interface VerifiedSkillLifecycleBootstrap {
 /**
  * Production bootstrap for durable candidate state and independent run provenance.
  * Evidence verification is default-deny when no trusted verifier keys are configured.
- * Promotion authorization intentionally remains default-deny until an authenticated
- * approval authority is wired; caller-provided audit fields are not authorization.
+ * Promotion authorization is default-deny unless a configured Ed25519 approval
+ * public key validates the candidate/evidence-bound detached signature. Caller-provided
+ * audit fields are never authorization.
  */
 export function createVerifiedSkillLifecycleBootstrap(
   candidateStorePath: string,
