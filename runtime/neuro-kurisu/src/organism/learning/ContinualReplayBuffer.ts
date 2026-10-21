@@ -187,7 +187,7 @@ export function trainWithExperienceReplay(
       action: item.action,
       target01: item.target01,
       learningRate01: item.learningRate01,
-      sampleWeight01: item.sampleWeight01,
+      ...(item.sampleWeight01 === undefined ? {} : { sampleWeight01: item.sampleWeight01 }),
     }).loss01;
   }
   buffer.addMany(checked);
