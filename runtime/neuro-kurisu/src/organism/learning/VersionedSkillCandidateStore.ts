@@ -107,6 +107,14 @@ export interface ActiveSkillVersion {
   activatedAt: number;
 }
 
+export interface SkillRevisionProvenance {
+  schemaVersion: 1;
+  sourceCandidateId: string | null;
+  planFingerprint: string;
+  dimensions: string[];
+  createdAt: number;
+}
+
 export interface VersionedSkillCandidate {
   candidateId: string;
   skillId: string;
@@ -115,6 +123,8 @@ export interface VersionedSkillCandidate {
   payloadFingerprint: string;
   proposalId: string;
   proposalOutcomeFingerprint: string;
+  /** Non-authoritative lineage for evidence-directed revisions; never grants activation rights. */
+  revisionProvenance?: SkillRevisionProvenance;
   baseVersion: number | null;
   previousActive: ActiveSkillVersion | null;
   status: SkillCandidateStatus;
@@ -287,6 +297,7 @@ export class VersionedSkillCandidateStore {
     proposal: VerifiedSkillPromotionProposal,
     skillId: string,
     payload: unknown,
+    revisionProvenance?: SkillRevisionProvenance,
   ): VersionedSkillCandidate {
     if (!skillId?.trim()) throw new Error('skillId must be non-empty');
     if (!isAuthenticVerifiedSkillPromotionProposal(proposal) || proposal.schemaVersion !== 1 || proposal.gate?.accepted !== true ||
@@ -295,6 +306,15 @@ export class VersionedSkillCandidateStore {
         !/^[a-f0-9]{64}$/.test(proposal.outcomeFingerprint)) {
       throw new Error('only an authentic, accepted proposal backed exclusively by authenticated evidence can be staged');
     }
+    if (revisionProvenance && (
+      revisionProvenance.schemaVersion !== 1 ||
+      !(revisionProvenance.sourceCandidateId === null || /^[a-f0-9]{64}$/.test(revisionProvenance.sourceCandidateId)) ||
+      !/^[a-f0-9]{64}$/.test(revisionProvenance.planFingerprint) ||
+      !Array.isArray(revisionProvenance.dimensions) || revisionProvenance.dimensions.length === 0 ||
+      revisionProvenance.dimensions.some(d => !['safety','task-success','trajectory','capability-coverage','executability','holdout-generalization'].includes(d)) ||
+      new Set(revisionProvenance.dimensions).size !== revisionProvenance.dimensions.length ||
+      !Number.isFinite(revisionProvenance.createdAt) || revisionProvenance.createdAt <= 0
+    )) throw new Error('invalid reflective skill revision provenance');
     const payloadFingerprint = fingerprint(payload);
     const current = this.readTrustedSnapshot();
     const existing = current.candidates.find(item => item.proposalId === proposal.proposalId &&
@@ -307,10 +327,12 @@ export class VersionedSkillCandidateStore {
     ) + 1;
     const candidateId = createHash('sha256').update(JSON.stringify([
       skillId, nextVersion, proposal.proposalId, payloadFingerprint,
+      revisionProvenance ? fingerprint(revisionProvenance) : null,
     ])).digest('hex');
     const candidate: VersionedSkillCandidate = {
       candidateId, skillId, version: nextVersion, payload: clone(payload), payloadFingerprint,
       proposalId: proposal.proposalId, proposalOutcomeFingerprint: proposal.outcomeFingerprint,
+      ...(revisionProvenance ? { revisionProvenance: clone(revisionProvenance) } : {}),
       baseVersion: previousActive?.version ?? null, previousActive: previousActive ? clone(previousActive) : null,
       status: 'staged', shadowObservations: [], createdAt: Date.now(),
     };
