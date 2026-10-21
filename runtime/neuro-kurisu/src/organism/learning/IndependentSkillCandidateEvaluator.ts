@@ -93,8 +93,8 @@ export function createIndependentSkillCandidateEvaluator(
 ): RevisedCandidateEvaluator {
   validateConfig(config);
   const tasks = config.tasks.map(task => structuredClone(task));
-  const planFingerprint = sha256(canonical(tasks.map(({ taskId, trialId, seed, split, requiredCapabilityIds, expectedStepIds }) =>
-    ({ taskId, trialId, seed, split, requiredCapabilityIds, expectedStepIds }))));
+  const planFingerprint = sha256(canonical(tasks.map(({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }) =>
+    ({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }))));
   return async ({ payload, payloadFingerprint }) => {
     const actualFingerprint = sha256(canonical(payload));
     if (!isDigest(payloadFingerprint) || actualFingerprint !== payloadFingerprint) {
