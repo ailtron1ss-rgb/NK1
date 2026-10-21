@@ -11,6 +11,16 @@ export interface IndependentCandidateTask {
   requiredCapabilityIds: string[];
   expectedStepIds: string[];
 }
+export interface CandidateExecutionContext {
+  /** Exact payload handed to the sandbox. */
+  payloadFingerprint: string;
+  /** Exact immutable task input, not just task/trial IDs. */
+  taskInputFingerprint: string;
+  /** Runtime/tool-policy identity selected by the trusted host. */
+  environmentFingerprint: string;
+  /** Digest of the complete fixed validation/holdout plan. */
+  planFingerprint: string;
+}
 export interface CandidateExecutionResult {
   runId: string;
   observedStepIds: string[];
@@ -18,12 +28,15 @@ export interface CandidateExecutionResult {
 }
 /** Must execute the exact payload in an isolated, resource-bounded runtime. */
 export interface CandidateSandboxExecutor {
-  execute(input: { payload: unknown; task: IndependentCandidateTask }): Promise<CandidateExecutionResult>;
+  execute(input: { payload: unknown; task: IndependentCandidateTask; context: CandidateExecutionContext }): Promise<CandidateExecutionResult>;
 }
 /** Separate authority from the candidate; must not trust candidate self-reported success. */
 export interface IndependentTaskVerifier {
-  verify(input: { task: IndependentCandidateTask; execution: CandidateExecutionResult }): Promise<{
-    passed: boolean; coveredCapabilityIds: string[];
+  verify(input: { task: IndependentCandidateTask; execution: CandidateExecutionResult; context: CandidateExecutionContext }): Promise<{
+    /** Independent verifier confirms this trace belongs to the exact payload/task/environment/plan. */
+    bindingVerified: boolean;
+    passed: boolean;
+    coveredCapabilityIds: string[];
   }>;
 }
 /** Separate static/dynamic safety authority. */
@@ -121,12 +134,23 @@ export function createIndependentSkillCandidateEvaluator(
     const runBindings: Array<{ taskId: string; trialId: string; runId: string | null; seed: number; split: string; executable: boolean; observedStepIds: string[]; verifierPassed: boolean; coveredCapabilityIds: string[]; safetyViolationCount: number }> = [];
   const seenRunIds = new Set<string>();
     for (const task of tasks) {
+      const executionContext: CandidateExecutionContext = {
+        payloadFingerprint,
+        taskInputFingerprint: sha256(canonical(task.input)),
+        environmentFingerprint: config.environmentFingerprint,
+        planFingerprint,
+      };
       let execution: CandidateExecutionResult | undefined;
       let verifierPassed = false;
+      let bindingVerified = false;
       let coveredCapabilityIds: string[] = [];
       let executable = true;
       try {
-        execution = await config.executor.execute({ payload: structuredClone(payload), task: structuredClone(task) });
+        execution = await config.executor.execute({
+          payload: structuredClone(payload),
+          task: structuredClone(task),
+          context: structuredClone(executionContext),
+        });
         if (!execution || typeof execution.runId !== 'string' || !execution.runId.trim() ||
             !Array.isArray(execution.observedStepIds) ||
             execution.observedStepIds.some(step => typeof step !== 'string' || !step.trim()) ||
@@ -142,12 +166,20 @@ export function createIndependentSkillCandidateEvaluator(
       }
       if (execution) {
         try {
-          const verified = await config.verifier.verify({ task: structuredClone(task), execution: structuredClone(execution) });
-          if (!verified || typeof verified.passed !== 'boolean' || !Array.isArray(verified.coveredCapabilityIds)) {
+          const verified = await config.verifier.verify({
+            task: structuredClone(task),
+            execution: structuredClone(execution),
+            context: structuredClone(executionContext),
+          });
+          if (!verified || typeof verified.bindingVerified !== 'boolean' ||
+              typeof verified.passed !== 'boolean' || !Array.isArray(verified.coveredCapabilityIds) ||
+              verified.coveredCapabilityIds.some(id => typeof id !== 'string' || !id.trim()) ||
+              new Set(verified.coveredCapabilityIds).size !== verified.coveredCapabilityIds.length) {
             throw new Error('independent-task-verifier-result-invalid');
           }
-          verifierPassed = verified.passed;
-          coveredCapabilityIds = verified.coveredCapabilityIds;
+          bindingVerified = verified.bindingVerified;
+          verifierPassed = verified.passed && bindingVerified;
+          coveredCapabilityIds = bindingVerified ? verified.coveredCapabilityIds : [];
         } catch {
           // A verifier failure fails task success but does not rewrite execution as non-executable.
           verifierPassed = false;
@@ -163,17 +195,21 @@ export function createIndependentSkillCandidateEvaluator(
       runBindings.push({
         taskId: task.taskId,
         trialId: task.trialId,
-        runId: execution?.runId ?? null,
+        // A run ID and trace are evidence only after the independent verifier binds
+        // them to the exact candidate/task/environment/plan context.
+        runId: bindingVerified ? execution?.runId ?? null : null,
         seed: task.seed,
         split: task.split,
-        executable,
-        observedStepIds: execution?.observedStepIds ?? [],
-        verifierPassed: executable && verifierPassed,
+        executable: executable && bindingVerified,
+        observedStepIds: bindingVerified ? execution?.observedStepIds ?? [] : [],
+        bindingVerified,
+        verifierPassed: executable && bindingVerified && verifierPassed,
         coveredCapabilityIds,
         safetyViolationCount: safety.violationCount,
       });
-      // Unsafe behavior is a task failure even if the functional verifier passed.
-      const taskPassed = executable && verifierPassed && safety.violationCount === 0;
+      // Unbound traces, verifier failure, or unsafe behavior are task failures.
+      const trustedExecution = executable && bindingVerified;
+      const taskPassed = trustedExecution && verifierPassed && safety.violationCount === 0;
       const report = evaluateSkillLearnBenchTrial({
         taskId: task.taskId,
         trialId: task.trialId,
@@ -181,12 +217,12 @@ export function createIndependentSkillCandidateEvaluator(
         skill: {
           requiredCapabilityIds: task.requiredCapabilityIds,
           coveredCapabilityIds,
-          executable,
+          executable: trustedExecution,
           safetyViolationCount: safety.violationCount,
         },
         trajectory: {
           expectedStepIds: task.expectedStepIds,
-          observedStepIds: execution?.observedStepIds ?? [],
+          observedStepIds: bindingVerified ? execution?.observedStepIds ?? [] : [],
         },
       });
       reports[task.split].push(report);
