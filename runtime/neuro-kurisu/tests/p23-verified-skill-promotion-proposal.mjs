@@ -35,8 +35,8 @@ for (let i=0;i<10;i++) {
   incomplete.record({taskId:'task-'+i,taskVersion:'v1',method:'baseline',seed:2,attempt:1,passed:true,
     authority:'independent-verifier',verifierId:'verifier-v1',evidenceRef:'b-'+i,observedAt:Date.now()});
 }
-incomplete.record({taskId:'task-0',taskVersion:'v1',method:'candidate',seed:2,attempt:1,passed:true,
-  authority:'independent-verifier',verifierId:'verifier-v1',evidenceRef:'c-0',observedAt:Date.now()});
+for (let i=0;i<8;i++) incomplete.record({taskId:'task-'+i,taskVersion:'v1',method:'candidate',seed:2,attempt:1,passed:true,
+  authority:'independent-verifier',verifierId:'verifier-v1',evidenceRef:'c-'+i,observedAt:Date.now()});
 const blocked=proposeVerifiedSkillPromotion(incomplete,'baseline','candidate',{minPairedTasks:8,minCompleteSeeds:3});
 assert.equal(blocked.gate.accepted,false);
 assert.equal(blocked.gate.reason,'insufficient-complete-holdout-seed-coverage');
