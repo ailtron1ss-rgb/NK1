@@ -18,7 +18,7 @@ const trustedKeys = new Map([['fixture-verifier', publicPem]]);
 const candidate = {
   candidateId: 'candidate-7', skillId: 'skill-verify', version: 3,
   payload: { instructions: 'verify before acting' },
-  payloadFingerprint: 'a'.repeat(64), proposalId: 'proposal-7',
+  payloadFingerprint: digest({ instructions: 'verify before acting' }), proposalId: 'proposal-7',
   proposalOutcomeFingerprint: 'b'.repeat(64), baseVersion: 2, previousActive: null,
   status: 'shadow', shadowObservations: [], createdAt: 100,
 };
@@ -103,7 +103,7 @@ const independentEvaluation = {
   validation: [report('task-1', 'trial-1', true)],
   holdout: [report('task-2', 'trial-2', false)],
   provenance: {
-    payloadFingerprint: 'd'.repeat(64),
+    payloadFingerprint: candidate.payloadFingerprint,
     experimentAuthority: { manifestFingerprint: 'c'.repeat(64) },
     runBindings: [
       { taskId: 'task-1', trialId: 'trial-1', runId: 'run-1', plannedRunId: 'planned-1', seed: 11, split: 'validation', bindingVerified: true, verifierPassed: true, safetyViolationCount: 0 },
@@ -112,7 +112,7 @@ const independentEvaluation = {
   },
 };
 const independentEnvelope = {
-  payloadFingerprint: 'd'.repeat(64),
+  payloadFingerprint: candidate.payloadFingerprint,
   evaluationFingerprint: digest(independentEvaluation),
   evaluation: independentEvaluation,
 };
@@ -128,6 +128,14 @@ assert.equal(independentBound.accepted, true,
 assert.equal(independentBound.boundTrials, 2);
 assert.equal(independentBound.manifestFingerprint, 'c'.repeat(64));
 assert.equal(independentBound.qualityMetricsAuthenticated, false);
+
+const wrongCandidatePayload = engine.bindIndependentEvaluationEvidence(
+  independentEnvelope, independentReceipts,
+  { ...candidate, payloadFingerprint: 'e'.repeat(64) }, verifier,
+);
+assert.equal(wrongCandidatePayload.accepted, false,
+  'signed receipts for one candidate must not bind an evaluation of a different payload');
+assert.ok(wrongCandidatePayload.reasons.includes('independent-evaluation-candidate-payload-mismatch'));
 
 const tamperedEnvelope = { ...independentEnvelope, evaluationFingerprint: 'f'.repeat(64) };
 const tamperedEnvelopeBound = engine.bindIndependentEvaluationEvidence(
