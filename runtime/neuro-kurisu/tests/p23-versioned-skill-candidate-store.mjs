@@ -120,11 +120,14 @@ assert.equal(denyStore.snapshot().active.length, 0, 'default-deny approval must 
 const approvalKeys = generateKeyPairSync('ed25519');
 const approvalPublicPem = approvalKeys.publicKey.export({ type: 'spki', format: 'pem' }).toString();
 const approvalPrivatePem = approvalKeys.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+let approvalClock = Date.now();
 const authenticatedApprovalVerifier = createAuthenticatedSkillPromotionApprovalVerifier(
   new Map([['operator-key-1', approvalPublicPem]]),
+  { now: () => approvalClock },
 );
+const signedApprovalPersistence = new InMemorySkillStorePersistence();
 const signedApprovalStore = new VersionedSkillCandidateStore(
-  new InMemorySkillStorePersistence(),
+  signedApprovalPersistence,
   authenticatedApprovalVerifier,
   () => true, // Only the approval authority is under test here; shadow signatures are covered above.
 );
@@ -132,7 +135,7 @@ const approvalCandidate = signedApprovalStore.stageCandidate(proposal('signed-ap
 for (let i = 1; i <= 3; i++) signedApprovalStore.recordShadowObservation(approvalCandidate.candidateId, {
   runId: 'signed-approval-shadow-' + i, evidenceFingerprint: (i + 2).toString().repeat(64), passed: true, observedAt: Date.now(),
 });
-const approverTime = Date.now();
+const approverTime = approvalClock;
 const signedPayload = createSkillPromotionApprovalPayload(
   signedApprovalStore.snapshot().candidates[0], 'operator-key-1', 'approval-request-unique-1',
   approverTime, null, 3,
@@ -156,6 +159,12 @@ assert.equal(signedApprovalStore.snapshot().candidates[0].approval.artifact.payl
 assert.throws(() => signedApprovalStore.approveAndPromote(approvalCandidate.candidateId, validApproval, 3),
   /must complete shadow staging/,
   'the same signed approval cannot activate the same candidate twice');
+approvalClock += 24 * 60 * 60_000;
+assert.equal(signedApprovalStore.snapshot().active.length, 1,
+  'a valid active skill remains valid across restart after the 15-minute new-approval window expires');
+assert.throws(() => new VersionedSkillCandidateStore(signedApprovalPersistence, () => false, () => true),
+  /persisted active skill approval failed signature\/context verification/,
+  'restoration with an unconfigured approval authority fails closed instead of trusting persisted JSON');
 
 const persistence = new InMemorySkillStorePersistence();
 const first = new VersionedSkillCandidateStore(persistence);
