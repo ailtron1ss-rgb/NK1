@@ -5,7 +5,7 @@ import { selectReplayBatch, type ReplaySelectionOptions } from './ReplaySelectio
 import { adaptiveReplayLearningRate, adaptiveReplayOptions, bellmanTarget, calibratedConfidence, forgettingRisk, repairOpportunity, scoreReplayPriority, transferConfidence, wilsonLowerBound } from './MultiSourceLearningMechanisms.ts';
 import { retrievedSkillBias } from './SkillRetrievalAugmentation.ts';
 import { rankLearningTargets, reflectOnOutcomes } from './OutcomeReflectionCurriculum.ts';
-import type { VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
+import { isAuthenticVerifiedSkillPromotionProposal, type VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
 import { evaluateSkillLearnBenchCandidate, type SkillLearnBenchCandidateEvaluation, type SkillLearnBenchCandidateGateOptions, type SkillLearnBenchCandidateGateReport } from './SkillLearnBenchAdapter.ts';
 import { bindReflectiveReportsToVerifiedShadowEvidence, type ReflectiveEvidenceBindingReport } from './HermesVerifiedEvidenceBinding.ts';
 import { planSkillRevision, type SkillRevisionPlan } from './SkillRevisionPlan.ts';
@@ -302,6 +302,14 @@ export class P23LearningEngine {
   ):Promise<{candidate:VersionedSkillCandidate;fitness:SkillLearnBenchCandidateGateReport;plan:SkillRevisionPlan}> {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
     if(typeof generate!=='function') throw new Error('configured skill revision generator is required');
+    // Reject unauthentic or failed promotion evidence before spending resources on
+    // model generation. The store repeats this check at staging as a second boundary.
+    if(!isAuthenticVerifiedSkillPromotionProposal(proposal) || proposal.schemaVersion!==1 ||
+       proposal.gate?.accepted!==true || proposal.canActivateAutomatically!==false ||
+       proposal.authenticatedEvidenceRows<1 || proposal.unauthenticatedEvidenceRows!==0 ||
+       !/^[a-f0-9]{64}$/.test(proposal.proposalId) || !/^[a-f0-9]{64}$/.test(proposal.outcomeFingerprint)) {
+      throw new Error('reflective revision requires an authentic accepted proposal backed exclusively by authenticated evidence');
+    }
     const source=this.verifiedSkillStore.snapshot().candidates.find(item=>item.candidateId===sourceCandidateId);
     if(!source || source.skillId!==skillId || source.status==='rolled-back') {
       throw new Error('reflective revision source candidate is missing, mismatched, or rolled back');
