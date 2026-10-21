@@ -1,3 +1,12 @@
+## WorkPass148 — authenticate promotion and revalidate restored active skills (2026-10-21)
+
+- Added a detached Ed25519 promotion-approval contract separate from shadow-verifier keys: `NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON`. Signed approvals bind approver ID/time, a unique approval ID, exact candidate ID/version/payload, proposal/outcome fingerprint, expected active version, required shadow-run count and a digest of the full shadow evidence set.
+- The authenticated verifier rejects unknown approvers, malformed/non-Ed25519 keys, tampered payloads, stale new-activation approvals, mismatched candidate/CAS/evidence context and signatures re-used against altered observations. The private approval key stays outside NK1.
+- Added Core-owned `approveVerifiedSkillCandidate` and authorized API operations to inspect the verified candidate lifecycle, generate a candidate-bound promotion request, and apply its signed artifact. An unconfigured approver cannot even request a promotion payload; every API remains under the server's existing authorization gate.
+- Persisted active skills are no longer trusted merely because their JSON snapshot is structurally valid: the candidate/payload/version relationship, signed approval and every shadow observation are revalidated on restore and store reads. The 15-minute freshness applies to new activation; it does not silently expire a previously active skill.
+- Extended candidate-store regression coverage with valid Ed25519 activation, evidence-digest tampering rejection, one-use lifecycle protection, restore after approval freshness expiry, and startup denial when approval authority keys are absent. Bootstrap regressions cover approval-key parsing and Ed25519 enforcement; CI path triggers include the new module.
+- **Not claimed:** successful exact-head CI/typecheck, production key rotation/approval service, authenticated rollback authority, production runner success or learning uplift. GitHub Actions jobs continue to fail before exposing steps/logs; test execution is unverified.
+
 ## WorkPass147 — add verified-evidence candidate staging CLI (2026-10-21)
 
 - Added `scripts/stage-verified-skill-candidate.mjs`: reads a bounded JSON bundle containing a task manifest, signed outcome artifacts, baseline/candidate method IDs and the candidate P23 policy skill.
