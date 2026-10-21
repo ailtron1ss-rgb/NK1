@@ -214,6 +214,31 @@ const authorityEvaluation = await authorityEvaluator({
   baseline: { validation: [], holdout: [] },
   previousEvaluation: { validation: [], holdout: [] },
 });
+// WorkPass215: validated verifier/scanner function references cannot be swapped
+// through the caller-owned service objects after evaluator construction.
+const mutableVerifierService = {
+  async verify() { return { bindingVerified: true, passed: true, coveredCapabilityIds: ['read'] }; },
+};
+const mutableScannerService = { async scan() { return { violationCount: 0 }; } };
+const pinnedServiceEvaluator = createIndependentSkillCandidateEvaluator({
+  tasks,
+  environmentFingerprint: '9'.repeat(64),
+  executor: { async execute({ task }) { return { runId: 'pinned-' + task.trialId, observedStepIds: ['open', 'summarize'] }; } },
+  verifier: mutableVerifierService,
+  safetyScanner: mutableScannerService,
+});
+mutableVerifierService.verify = async () => ({ bindingVerified: false, passed: true, coveredCapabilityIds: ['read'] });
+mutableScannerService.scan = async () => ({ violationCount: 99 });
+const pinnedServicesResult = await pinnedServiceEvaluator({
+  payload, payloadFingerprint: digest(payload),
+  baseline: { validation: [], holdout: [] },
+  previousEvaluation: { validation: [], holdout: [] },
+});
+assert.equal(pinnedServicesResult.evaluation.validation[0].taskSuccess.passed, true,
+  'replacing a verifier method after construction must not replace the pinned verifier');
+assert.equal(pinnedServicesResult.evaluation.validation[0].skillQuality.safetyViolationCount, 0,
+  'replacing a scanner method after construction must not replace the pinned safety scanner');
+
 // WorkPass214: authority plans are frozen into the evaluator at construction.
 // Mutating the caller-owned plan afterwards must not swap the scheduled run identity.
 const mutableAuthority = {
