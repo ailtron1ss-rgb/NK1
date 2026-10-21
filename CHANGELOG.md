@@ -1,3 +1,10 @@
+## WorkPass141 — exercise the Core-owned durable execution path (2026-10-21)
+
+- Replaced the Core-entry test double with a real `OrganismCore` backed by `FileStateStore`; the test launches a real child process through the Core-owned candidate/shadow route.
+- Assert the durable trusted-run registry contains the exact run/task/seed/manifest/runtime binding and that a new Core instance re-registers the same context idempotently after restart.
+- Added fail-closed integration coverage: corrupt registry state rejects execution before the child can create its marker. Baseline/control remains rejected without changing trusted registry state.
+- This proves the Core API and durable registry boundary together in a focused regression; it still does not establish that a deployed scheduler invokes the API. CI runner provisioning remains unverified.
+ 
 ## WorkPass140 — Core-owned trusted shadow execution entry point (2026-10-21)
 - Added `OrganismCore.runTrustedSkillShadowLearningProcess(...)` as the runtime-facing route into the trusted coordinator. Callers cannot inject a different registrar; Core supplies its own registration hook.
 - Added a regression that exercises the actual Core prototype method, checks context fields, runs a real child process, and rejects baseline/control lanes before registration.
