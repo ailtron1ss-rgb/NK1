@@ -1,3 +1,11 @@
+## Latest durable checkpoint — WorkPass145 (2026-10-21)
+
+- **Production call-site integration:** `runtime/neuro-kurisu/src/server/server.mjs` passes `NEURO_SKILL_SHADOW_SCHEDULER_JSON` through `parseTrustedShadowLearningScheduleConfig`. Missing config means no shadow process runs; malformed or incomplete enabled config fails at startup.
+- **Signed evidence bridge:** an opt-in run can emit `verified-skill-shadow-observation.json` (or a configured safe basename) inside its run directory. Ingestion rejects symlinks/non-files, files above 1 MiB, malformed JSON and mismatched run IDs, then submits only the parsed artifact to `OrganismCore.recordVerifiedSkillShadow` and the configured candidate-store verifier. The child exit code/stdout never becomes evidence of correctness.
+- Added a production config regression and wired it into `workpass110-continual-learning-metrics.yml`. The runtime-level test additionally verifies that a successful process with no signed observation remains `lastEvidenceStatus: missing`.
+- **NOT VERIFIED:** no runner-backed successful CI/typecheck or passing signed-observation acceptance test has been observed yet; verifier deployment and authenticated promotion approval remain open. Do not merge this draft PR or claim learning uplift.
+- **Next P0:** verify acceptance with a staged candidate plus a real signed observation from a configured trusted verifier; add an authenticated approval authority and audit all store activation paths; obtain actionable exact-head CI/typecheck evidence.
+
 ## Latest durable checkpoint — WorkPass144 (2026-10-21)
 
 - **Real integration change:** the production `OrganismRuntime` now owns a dedicated `trusted-shadow-learning` runtime clock when `RuntimeConfig.trustedShadowLearning.enabled` is explicitly true. The clock calls `runTrustedShadowLearningOnce()`, which always routes via `OrganismCore.runTrustedSkillShadowLearningProcess()` and its durable registration-before-spawn boundary.
