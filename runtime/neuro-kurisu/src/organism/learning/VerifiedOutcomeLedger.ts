@@ -90,8 +90,15 @@ export class VerifiedOutcomeLedger {
   private readonly promptOwners = new Map<string, string>();
 
   constructor(entries: TaskManifestEntry[]) {
+    if (!Array.isArray(entries)) throw new Error('task manifest must be an array');
     for (const entry of entries) {
-      if (!entry.taskId || !entry.family || !entry.version || !entry.verifierId ||
+      if (!entry || typeof entry !== 'object' ||
+          typeof entry.taskId !== 'string' || !entry.taskId.trim() ||
+          typeof entry.family !== 'string' || !entry.family.trim() ||
+          typeof entry.version !== 'string' || !entry.version.trim() ||
+          typeof entry.verifierId !== 'string' || !entry.verifierId.trim() ||
+          !['train', 'validation', 'holdout'].includes(entry.split) ||
+          typeof entry.promptFingerprint !== 'string' ||
           !/^[a-f0-9]{64}$/i.test(entry.promptFingerprint)) {
         throw new Error('invalid task manifest entry');
       }
