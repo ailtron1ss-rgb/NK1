@@ -425,7 +425,7 @@ export class P23LearningEngine {
     }
     this.state.skills=this.state.skills.sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,256);
     this.state.metrics.skillCandidates=candidates;
-    this.state.metrics.skillPromotions=this.state.skills.filter(s=>s.status==='promoted').length;
+    this.state.metrics.skillPromotions=this.verifiedSkillStore ? this.verifiedSkillStore.snapshot().active.length : this.state.skills.filter(s=>s.status==='promoted').length;
     this.state.metrics.skillRejections=this.state.skills.filter(s=>s.status==='rejected').length;
   }
 
