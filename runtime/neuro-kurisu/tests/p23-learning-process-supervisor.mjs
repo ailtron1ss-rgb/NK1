@@ -32,6 +32,10 @@ try {
   assert.equal(success.receipt.surviveDirectory, path.resolve(base.surviveDir));
   assert.equal((await readLearningExecutionReceipt(success.receiptPath)).executionId, success.receipt.executionId);
 
+  const envOne = await runLearningProcess(run, 'b'.repeat(64), { ...base, env: { NK1_TEST_FLAG: 'one' } });
+  const envTwo = await runLearningProcess(run, 'b'.repeat(64), { ...base, env: { NK1_TEST_FLAG: 'two' } });
+  assert.notEqual(envOne.receipt.commandFingerprint, envTwo.receipt.commandFingerprint);
+
   const failed = await runLearningProcess(run, 'b'.repeat(64), { ...base, args: ['-e', 'process.exit(9)'] });
   assert.equal(failed.receipt.status, 'failed');
   assert.equal(failed.receipt.exitCode, 9);
@@ -65,7 +69,11 @@ try {
   let announceRegistration;
   const registrationEntered = new Promise(resolve => { announceRegistration = resolve; });
   const registrationGate = new Promise(resolve => { releaseRegistration = resolve; });
-  const mutableCommand = { ...base, args: ['-e', "process.stdout.write('original-command')"] };
+  const mutableCommand = {
+    ...base,
+    env: { NK1_TEST_FLAG: 'original-env' },
+    args: ['-e', "process.stdout.write(process.env.NK1_TEST_FLAG)"],
+  };
   const registeredRun = runLearningProcess(
     { ...run, arm: 'candidate', method: 'shadow' },
     'b'.repeat(64),
@@ -75,10 +83,11 @@ try {
   await registrationEntered;
   mutableCommand.args[1] = "process.exit(9)";
   mutableCommand.executable = path.join(root, 'must-not-be-executed');
+  mutableCommand.env.NK1_TEST_FLAG = 'mutated-env';
   releaseRegistration();
   const immutableCommandResult = await registeredRun;
   assert.equal(immutableCommandResult.receipt.status, 'completed');
-  assert.equal(immutableCommandResult.receipt.stdout, 'original-command');
+  assert.equal(immutableCommandResult.receipt.stdout, 'original-env');
 
   if (process.platform !== 'win32') {
     // A timed-out parent must not leave a same-process-group descendant running.
