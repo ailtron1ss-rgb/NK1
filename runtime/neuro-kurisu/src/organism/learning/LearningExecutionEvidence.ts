@@ -26,7 +26,7 @@ export function recordExecutionBackedLearningOutcome(
   }
   const run = plan.runs.find(item => item.runId === runId);
   if (!run) throw new Error('runId is not present in experiment plan');
-  if (!receipt || receipt.schemaVersion !== 1 || receipt.runId !== runId ||
+  if (!receipt || receipt.schemaVersion !== 2 || receipt.runId !== runId ||
       receipt.planFingerprint !== plan.planFingerprint ||
       receipt.manifestFingerprint !== plan.manifestFingerprint ||
       !/^[a-f0-9]{64}$/i.test(receipt.commandFingerprint) ||
