@@ -19,6 +19,10 @@ on:
       - 'runtime/neuro-kurisu/tests/p23-learning-experiment-plan-cli.mjs'
       - 'runtime/neuro-kurisu/scripts/create-learning-experiment-plan.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeArtifact.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
+      - 'runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-verified-skill-promotion-proposal.mjs'
       - 'runtime/neuro-kurisu/tests/p23-seed-clustered-outcome-comparison.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/ResetRetentionEvaluation.ts'
       - 'runtime/neuro-kurisu/tests/p23-reset-retention-evaluation.mjs'
@@ -33,11 +37,14 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/SkillRevisionGate.ts'
       - 'runtime/neuro-kurisu/tests/p23-verified-skill-revision-gate.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillPromotion.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeArtifact.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts'
       - 'runtime/neuro-kurisu/tests/p23-verified-skill-promotion-proposal.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-versioned-skill-candidate-store.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
   push:
-    branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals, workpass122-promotion-gate-coverage-hardening]
+    branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals, workpass122-promotion-gate-coverage-hardening, workpass123-authenticated-skill-lifecycle]
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualLearningMetrics.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualOutcomeMatrix.ts'
@@ -97,6 +104,9 @@ jobs:
       - name: Run ledger-bound verified skill promotion proposal regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:verified-skill-promotion-proposal
+      - name: Run versioned skill candidate lifecycle regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-versioned-skill-candidate-store.mjs
       - name: Run reset-retention evaluation regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-reset-retention-evaluation.mjs
