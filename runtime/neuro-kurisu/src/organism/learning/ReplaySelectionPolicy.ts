@@ -41,7 +41,7 @@ function effectivePriority<T extends ReplayCandidate>(item: T, newestTick: numbe
   const surprise = Math.max(0, finite(item.surprise));
   const hasEpisodicSignals = item.salience !== undefined || item.novelty !== undefined || item.replayCount !== undefined || item.emotionalIntensity !== undefined || item.activationStrength !== undefined || item.goalPriority !== undefined;
   const novelty = Math.max(0, Math.min(1, finite(item.novelty, 1)));
-  const salience = Math.max(0, finite(item.salience));
+  const salience = Math.max(0, Math.min(1, finite(item.salience)));
   const replayCount = Math.max(0, finite(item.replayCount));
   const affect = Math.max(0, Math.min(1, finite(item.emotionalIntensity)));
   const activation = Math.max(0, Math.min(1, finite(item.activationStrength)));
