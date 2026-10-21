@@ -52,3 +52,10 @@ These references are design candidates, not a claim that every repository was ex
 - Proposal generation is side-effect-free and always returns `canActivateAutomatically: false`; activation requires revalidation, explicit authority, shadow/canary comparison and a rollback-capable prior version.
 - Added a regression for accepted proposals and incomplete-seed blocking; wired it into the learning workflow.
 - This closes part of the evidence-to-proposal gap, but does not yet authenticate external artifact bytes or activate/rollback the production skill store. Those remain explicit integration work.
+
+
+## Research refresh — 2026-10-21
+- Rechecked the upstream [Memento-Skills project](https://github.com/Memento-Teams/Memento-Skills) and [paper](https://arxiv.org/abs/2603.18743): the current project description emphasizes isolated skill repair, automatic gates, and rollback as well as read/execute/reflect/write. Adapt next: candidate-version isolation and snapshot-based rollback, not unrestricted live rewrites.
+- Rechecked [MemSkill](https://github.com/ViktorAxelsen/MemSkill): its central object is a *memory-operation skill* (what to extract, preserve, retrieve, or forget), not the memory contents themselves. Adapt next: add a parallel memory-policy learning track and evaluate it on memory-specific task outcomes rather than conflating it with procedural skills.
+- Rechecked [Voyager](https://github.com/MineDojo/Voyager): retain the transferable patterns of reusable executable skills, curriculum selection, environment feedback, and self-verification; do not port Minecraft-specific execution or claim benchmark results transfer directly to NK1.
+- These were source/README-level research checks for design direction, not a full line-by-line code audit. No upstream implementation was copied in WorkPass121; license and dependency review is required before vendoring.
