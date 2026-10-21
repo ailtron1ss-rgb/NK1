@@ -1323,3 +1323,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Add the canonical P23 promotion entry point that rechecks candidate payload/evaluation lineage, runs the existing fitness gate on the envelope's validation/holdout reports, and binds the candidate's persisted signed receipts before delegating to the existing authenticated approval and versioned-store path.
 - Make canonical evidence serialization reject values that cannot be represented as JSON; catch malformed/cyclic envelope canonicalization and return a fail-closed binding result.
 - Added focused candidate-payload mismatch and cyclic-envelope rejection regressions. Validation remains unverified until the targeted test, TypeScript typecheck, and exact-head Actions execute successfully; no promotion or learning uplift is claimed.
+
+## WorkPass238 — recover provably stale trusted-run registry locks (2026-10-21)
+
+- **DONE (code):** the durable shadow-run registry now writes lock ownership as PID + hostname + acquisition time and can recover a lock only when its owner is on the same host and the OS proves that PID no longer exists.
+- **Safety boundary:** live, remote-host, malformed, legacy-format and otherwise ambiguous locks remain fail-closed; lock age alone is never used to steal a lock. The registry still uses exclusive creation, fsync, atomic replacement and directory fsync.
+- **DONE (regression authored):** added a crash-recovery regression using a provably nonexistent same-host PID while preserving the existing live/ambiguous lock contention test.
+- **DONE (integration):** included the registry regression in the canonical `audit:p23:cross-source-replay` chain; its dedicated continual-learning workflow step/path filters already exist.
+- **PARTIAL (validation):** this pass did not execute the test or typecheck and does not claim exact-head Actions success.
