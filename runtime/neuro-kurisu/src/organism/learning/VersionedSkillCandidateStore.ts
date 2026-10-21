@@ -109,6 +109,8 @@ export interface ActiveSkillVersion {
 
 export interface SkillRevisionProvenance {
   schemaVersion: 1;
+  /** Digest of the independent post-generation evaluation report; lineage only, not approval. */
+  evaluationFingerprint?: string;
   sourceCandidateId: string | null;
   planFingerprint: string;
   /** Verified dataset snapshot used when the proposal authorized this revision attempt. */
@@ -311,6 +313,7 @@ export class VersionedSkillCandidateStore {
     }
     if (revisionProvenance && (
       revisionProvenance.schemaVersion !== 1 ||
+      (revisionProvenance.evaluationFingerprint !== undefined && !/^[a-f0-9]{64}$/.test(revisionProvenance.evaluationFingerprint)) ||
       !(revisionProvenance.sourceCandidateId === null || /^[a-f0-9]{64}$/.test(revisionProvenance.sourceCandidateId)) ||
       !/^[a-f0-9]{64}$/.test(revisionProvenance.planFingerprint) ||
       !/^[a-f0-9]{64}$/.test(revisionProvenance.datasetFingerprint) ||
