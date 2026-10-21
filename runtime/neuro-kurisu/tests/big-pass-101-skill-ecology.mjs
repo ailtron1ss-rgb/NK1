@@ -93,6 +93,25 @@ for (let n=0;n<5;n++) {
   });
   assert.ok(observed);
 }
+// One verified deployment result plus many holdout successes is still
+// insufficient: holdout outcomes cannot supply the second promotion witness.
+const mixedSkill = lib.compileCompoundSkill({projectId:'eco-101',name:'mixed-holdout-promotion',origin:'intrinsic',steps:[
+ {id:'a',action:'explore',toolId:'tool.a'},
+ {id:'b',action:'verify',toolId:'tool.primary',fallbackToolIds:['tool.fallback']}
+]});
+assert.ok(mixedSkill);
+const mixedVariant = lib.createRepairVariant(mixedSkill.id,{stepId:'b',toTool:'tool.fallback',reason:'mixed evidence regression'});
+assert.ok(mixedVariant);
+lib.recordVariantExecution(mixedSkill.id,mixedVariant.id,{success01:1,verified:true,independent:true,context:'independent-live-context'});
+for(let n=0;n<4;n++) lib.recordVariantExecution(mixedSkill.id,mixedVariant.id,{
+ success01:1,verified:true,independent:true,holdout:true,context:`mixed-holdout-${n}`
+});
+const mixedAfter=lib.snapshot().compoundSkills.find(s=>s.id===mixedSkill.id);
+const mixedFinal=mixedAfter.variants.find(v=>v.id===mixedVariant.id);
+assert.equal(mixedFinal.verifiedNonHoldoutExecutions,1);
+assert.equal(mixedFinal.status,'candidate','holdout results cannot satisfy the second verified non-holdout witness');
+assert.notEqual(mixedAfter.activeVariantId,mixedVariant.id);
+
 const sealedAfter=lib.snapshot().compoundSkills.find(s=>s.id===sealedSkill.id);
 assert.equal(sealedAfter.variants.find(v=>v.id===sealedVariant.id).status,'candidate',
  'holdout-only outcomes must not promote a variant');
