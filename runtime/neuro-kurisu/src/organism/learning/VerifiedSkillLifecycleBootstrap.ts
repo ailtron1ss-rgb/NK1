@@ -1,3 +1,4 @@
+import { createPublicKey } from 'node:crypto';
 import { AtomicFileSkillStorePersistence } from './AtomicFileSkillStorePersistence.ts';
 import { AtomicFileTrustedSkillShadowRunRegistry } from './TrustedSkillShadowRunRegistry.ts';
 import { VersionedSkillCandidateStore } from './VersionedSkillCandidateStore.ts';
@@ -14,6 +15,15 @@ function loadTrustedVerifierKeys(raw: string | undefined): ReadonlyMap<string, s
   for (const [id, value] of Object.entries(parsed as Record<string, unknown>)) {
     if (!id.trim() || typeof value !== 'string' || !value.includes('BEGIN PUBLIC KEY')) {
       throw new Error('trusted shadow verifier keys must map non-empty IDs to PEM public keys');
+    }
+    // The verifier uses crypto.verify(null, ...), which is the Ed25519/Ed448
+    // signature mode. Reject incompatible or malformed keys at startup instead
+    // of silently accepting a configuration that can never verify evidence.
+    let keyType: string | undefined;
+    try { keyType = createPublicKey(value).asymmetricKeyType; }
+    catch { throw new Error('trusted shadow verifier keys must be valid Ed25519 public keys'); }
+    if (keyType !== 'ed25519') {
+      throw new Error('trusted shadow verifier keys must be valid Ed25519 public keys');
     }
     keys.set(id, value);
   }
