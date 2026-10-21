@@ -9,7 +9,7 @@ Inspected `baselines/deepq/replay_buffer.py` and its MIT `LICENSE`. The source u
 - Added absolute TD-error-to-priority conversion with positive epsilon.
 - Added proportional sampling with stratified intervals and normalized importance weights.
 - Added deterministic RNG injection and validation for malformed priorities, weights, sample count, and RNG output.
-- Added a focused regression and workflow step.
+- Added a focused sampler regression, an integration regression for the opt-in prioritized strategy in the existing replay trainer, and a workflow step.
 - Preserved upstream MIT license and provenance/intake note.
 
 ## What improves
