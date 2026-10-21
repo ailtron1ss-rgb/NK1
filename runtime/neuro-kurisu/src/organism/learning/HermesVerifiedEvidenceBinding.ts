@@ -143,6 +143,7 @@ export function bindIndependentEvaluationToVerifiedShadowEvidence(
   const reasons: string[] = [];
   const authority = evaluation?.provenance?.experimentAuthority;
   const bindings = evaluation?.provenance?.runBindings;
+  const trustedManifestFingerprint = authority?.manifestFingerprint ?? '';
   if (!evaluation || !Array.isArray(evaluation.validation) || !Array.isArray(evaluation.holdout) ||
       !Array.isArray(bindings) || !authority ||
       typeof authority.manifestFingerprint !== 'string' ||
@@ -230,8 +231,9 @@ export function bindIndependentEvaluationToVerifiedShadowEvidence(
     consumedRuns.add(binding.runId!);
     if (payload.runId !== binding.runId || observation.runId !== binding.runId ||
         payload.taskId !== binding.taskId || payload.seed !== binding.seed ||
-        payload.manifestFingerprint !== authority.manifestFingerprint ||
-        payload.passed !== reportItem.report.taskSuccess.passed) {
+        payload.manifestFingerprint !== trustedManifestFingerprint ||
+        payload.passed !== reportItem.report.taskSuccess.passed ||
+        binding.verifierPassed !== reportItem.report.taskSuccess.passed) {
       reasons.push('independent-evaluation-signed-receipt-mismatch');
       continue;
     }
@@ -251,7 +253,7 @@ export function bindIndependentEvaluationToVerifiedShadowEvidence(
     accepted: reasons.length === 0,
     reasons: [...new Set(reasons)],
     boundTrials,
-    manifestFingerprint: reasons.length === 0 ? authority.manifestFingerprint : null,
+    manifestFingerprint: reasons.length === 0 ? trustedManifestFingerprint : null,
     boundEvidenceScope: 'identity-and-binary-outcome-only',
     qualityMetricsAuthenticated: false,
   };
