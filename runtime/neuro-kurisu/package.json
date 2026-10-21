@@ -1658,6 +1658,7 @@
     "test:workpass69": "npm run typecheck && npm run test:workpass69:speech-interrupt-gateway && npm run test:workpass69:tts-concurrency && npm run test:workpass69:server-smoke && npm run test:workpass69:ui-smoke && npm run test:workpass68:tts-outcome && npm run test:workpass68:speech-gateway && npm run test:release-contract-alignment-workpass37 && node --experimental-strip-types tests/workpass64-archived-receipt-reconciliation.mjs && node --experimental-strip-types tests/action-ledger-archive-workpass38.mjs && npm run test:workpass61:receipt-revision",
     "audit:workpass69": "npm run test:workpass69 && npm run audit:contract && npm run verify:release-source && npm run audit:integrity",
     "test:workpass69:server-smoke": "node --experimental-strip-types tests/server-smoke.mjs",
-    "test:workpass69:ui-smoke": "node --experimental-strip-types tests/ui-smoke.mjs"
+    "test:workpass69:ui-smoke": "node --experimental-strip-types tests/ui-smoke.mjs",
+    "test:p26:skilllearnbench-adapter": "node --experimental-strip-types tests/p26-skilllearnbench-adapter.mjs"
   }
 }
