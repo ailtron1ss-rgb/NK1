@@ -1153,6 +1153,7 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 - Promotion proposals now require provenance receipts issued only after signed verifier artifacts pass signature, trusted-key, task-version, and manifest checks; opaque or forged `evidenceRef` values fail closed.
 - Added a versioned candidate store for staged candidates, shadow runs, explicit approval, active-version compare-and-swap, approval audit retention, and rollback to the prior version.
+- Added a durable JSON-file CAS adapter with exclusive lock, temp-file write, fsync, atomic rename, restart reconstruction and stale-revision regression coverage.
 - Added a three-level holdout evaluation report for skill quality, execution trajectory, and verified task outcomes with explicit sample/task/seed and evidence coverage gates.
 - Added regression coverage for forged evidence refs, authenticated outcomes, candidate lifecycle/rollback, and report completeness; wired tests into the WorkPass110 workflow.
-- Boundaries: provenance receipts are process-local and must be re-established after restart; the candidate store currently ships with an in-memory adapter and is not yet wired to the production skill resolver. Exact-head Actions validation is pending; no learning uplift is claimed.
+- Boundaries: provenance receipts are process-local and must be re-established after restart; the candidate store and durable adapter are not yet wired to the production skill resolver, and crash/kill contention tests remain open. Exact-head Actions validation is blocked before job steps start (GitHub reports runner_id=0 and no step logs); no learning uplift is claimed.
