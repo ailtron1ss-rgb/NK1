@@ -26,6 +26,8 @@ assert.equal(ledger.snapshot().outcomes[0].passed, true);
 assert.throws(() => recordExecutionBackedLearningOutcome(new VerifiedOutcomeLedger(manifest), plan, manifest,
   run.runId, { ...receipt, status: 'failed', exitCode: 3 }, outcome), /clean successful scheduled execution/);
 assert.throws(() => recordExecutionBackedLearningOutcome(new VerifiedOutcomeLedger(manifest), plan, manifest,
+  run.runId, { ...receipt, schemaVersion: 1 }, outcome), /clean successful scheduled execution/, 'legacy receipt schema must not bypass current supervisor/audit contract');
+assert.throws(() => recordExecutionBackedLearningOutcome(new VerifiedOutcomeLedger(manifest), plan, manifest,
   run.runId, { ...receipt, planFingerprint: 'd'.repeat(64) }, outcome), /clean successful scheduled execution/);
 assert.throws(() => recordExecutionBackedLearningOutcome(new VerifiedOutcomeLedger(manifest), plan, manifest,
   run.runId, receipt, { ...outcome, authority: 'self-report' }), /require independent verification/);
