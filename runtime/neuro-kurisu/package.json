@@ -1659,6 +1659,7 @@
     "audit:workpass69": "npm run test:workpass69 && npm run audit:contract && npm run verify:release-source && npm run audit:integrity",
     "test:workpass69:server-smoke": "node --experimental-strip-types tests/server-smoke.mjs",
     "test:workpass69:ui-smoke": "node --experimental-strip-types tests/ui-smoke.mjs",
-    "test:p26:skilllearnbench-adapter": "node --experimental-strip-types tests/p26-skilllearnbench-adapter.mjs"
+    "test:p26:skilllearnbench-adapter": "node --experimental-strip-types tests/p26-skilllearnbench-adapter.mjs",
+    "test:p29:hermes-reflective-candidate-gate": "node --experimental-strip-types tests/p29-hermes-reflective-candidate-gate.mjs"
   }
 }
