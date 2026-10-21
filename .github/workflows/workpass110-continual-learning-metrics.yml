@@ -79,6 +79,8 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/HermesVerifiedEvidenceBinding.ts'
       - 'runtime/neuro-kurisu/tests/p23-hermes-verified-evidence-binding.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23IndependentEvaluationProvider.ts'
       - 'runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs'
       - 'runtime/neuro-kurisu/tests/workpass206-independent-evaluation-provider.mjs'
@@ -262,6 +264,9 @@ jobs:
       - name: Run P23 to Hermes signed-evidence binding regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:hermes-verified-evidence-binding
+      - name: Require matched evidence envelopes before promotion
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:hermes-production-promotion-gate
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
