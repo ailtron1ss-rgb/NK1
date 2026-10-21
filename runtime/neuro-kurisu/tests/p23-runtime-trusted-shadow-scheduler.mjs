@@ -21,11 +21,12 @@ try {
       taskId: 'p23-runtime-smoke-task',
       taskVersion: 'v1',
       seedBase: 19,
+      candidateId: 'c'.repeat(64),
       manifestFingerprint: 'a'.repeat(64),
       planFingerprint: 'b'.repeat(64),
       command: {
         executable: process.execPath,
-        args: ['-e', "process.stdout.write(JSON.stringify({runId:process.env.NK1_LEARNING_RUN_ID,seed:process.env.NK1_LEARNING_SEED,arm:process.env.NK1_LEARNING_ARM,method:process.env.NK1_LEARNING_METHOD}))"],
+        args: ['-e', "process.stdout.write(JSON.stringify({runId:process.env.NK1_LEARNING_RUN_ID,seed:process.env.NK1_LEARNING_SEED,arm:process.env.NK1_LEARNING_ARM,method:process.env.NK1_LEARNING_METHOD,candidateId:process.env.NK1_SKILL_CANDIDATE_ID,observationFile:process.env.NK1_LEARNING_SIGNED_OBSERVATION_FILENAME}))"],
         cwd: process.cwd(),
         runRoot: path.join(root, 'runs'),
         surviveDir: path.join(root, 'survive'),
@@ -48,6 +49,8 @@ try {
   assert.equal(child.runId, result.receipt.runId);
   assert.equal(child.arm, 'candidate');
   assert.equal(child.method, 'shadow');
+  assert.equal(child.candidateId, 'c'.repeat(64));
+  assert.equal(child.observationFile, 'verified-skill-shadow-observation.json');
   assert.equal(Number(child.seed), runtime.trustedShadowLearningDiagnostics().lastSeed);
 
   const registryPath = `${stateFile}.trusted-skill-shadow-runs.json`;
@@ -65,6 +68,8 @@ try {
     },
   );
   assert.equal(runtime.trustedShadowLearningDiagnostics().lastStatus, 'completed');
+  assert.equal(runtime.trustedShadowLearningDiagnostics().lastEvidenceStatus, 'missing', 'a zero-exit child with no signed observation must not create learning evidence');
+  assert.match(runtime.trustedShadowLearningDiagnostics().lastEvidenceError, /ENOENT|no such file/i);
   assert.equal(runtime.trustedShadowLearningDiagnostics().runsStarted, 1);
 
   const disabled = new OrganismRuntime({
