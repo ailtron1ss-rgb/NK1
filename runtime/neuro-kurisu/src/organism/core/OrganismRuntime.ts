@@ -1261,6 +1261,7 @@ export class OrganismRuntime {
             status: result.receipt.status,
             exitCode: result.receipt.exitCode,
             durationMs: result.receipt.durationMs,
+            verifiedObservationStatus: this.trustedShadowLearningScheduler?.snapshot().lastEvidenceStatus ?? 'not-configured',
             note: 'execution receipt is not verified task outcome or promotion evidence',
           }).catch(() => {});
         },
