@@ -1726,6 +1726,7 @@
     "test:p23:verified-replay-admission": "node --experimental-strip-types tests/p23-verified-replay-admission.mjs",
     "test:p23:replay-selection-policy": "node --experimental-strip-types tests/p23-replay-selection-policy.mjs",
     "test:workpass198:skill-transfer": "node --experimental-strip-types tests/workpass197-skill-transfer-safety.mjs",
-    "audit:p23:cross-source-replay": "npm run typecheck && npm run test:p23:verified-replay-admission && npm run test:p23:replay-selection-policy && npm run test:p23:learning && npm run test:workpass198:skill-transfer && npm run test:p23:verified-session-dataset && npm run test:workpass172:compound-revision-coordinator"
+    "audit:p23:cross-source-replay": "npm run typecheck && npm run test:p23:verified-replay-admission && npm run test:p23:replay-selection-policy && npm run test:p23:learning && npm run test:workpass198:skill-transfer && npm run test:p23:verified-session-dataset && npm run test:workpass172:compound-revision-coordinator && npm run test:workpass203:independent-candidate-evaluator",
+    "test:workpass203:independent-candidate-evaluator": "node --experimental-strip-types tests/workpass203-independent-candidate-evaluator.mjs"
   }
 }
