@@ -80,6 +80,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/P23IndependentEvaluationProvider.ts'
       - 'runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs'
       - 'runtime/neuro-kurisu/tests/workpass206-independent-evaluation-provider.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass224-production-independent-evaluation-required.mjs'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
   push:
     branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals, workpass122-promotion-gate-coverage-hardening, workpass123-authenticated-skill-lifecycle, workpass124-learning-evidence-hardening, workpass135-durable-shadow-run-registry]
@@ -129,6 +130,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/P23IndependentEvaluationProvider.ts'
       - 'runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs'
       - 'runtime/neuro-kurisu/tests/workpass206-independent-evaluation-provider.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass224-production-independent-evaluation-required.mjs'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillLifecycleBootstrap.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/AuthenticatedSkillPromotionApproval.ts'
@@ -242,6 +244,9 @@ jobs:
       - name: Run independent evaluation provider wiring regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass206:independent-evaluation-provider
+      - name: Require independent evaluation authorities for production revision wiring
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass224:production-independent-evaluation-required
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
