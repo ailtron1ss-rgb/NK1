@@ -38,7 +38,26 @@ assert.deepEqual(accepted.reasons, []);
 assert.ok(accepted.validationGain01 > 0.005);
 assert.equal(accepted.holdoutTaskCount, 2);
 assert.equal(accepted.pairedValidationTrials, 2);
+
 assert.equal(accepted.pairedHoldoutTrials, 2);
+
+// Task macro-average: repeating one task must not give it extra weight.
+const imbalanced = {
+  validation: [
+    trial('task-a', 'v1', 'weak'),
+    trial('task-a', 'v2', 'weak'),
+    trial('task-b', 'v1', 'good'),
+  ],
+  holdout: [trial('task-c', 'h1', 'weak'), trial('task-d', 'h1', 'good')],
+};
+const imbalancedResult = evaluateSkillLearnBenchCandidate(imbalanced, imbalanced);
+const weakScore = 0.5 * trial('task-a', 'v1', 'weak').taskSuccess.passRate +
+  0.3 * trial('task-a', 'v1', 'weak').trajectoryQuality.aggregate +
+  0.2 * trial('task-a', 'v1', 'weak').skillQuality.aggregate;
+const goodScore = 0.5 * trial('task-b', 'v1', 'good').taskSuccess.passRate +
+  0.3 * trial('task-b', 'v1', 'good').trajectoryQuality.aggregate +
+  0.2 * trial('task-b', 'v1', 'good').skillQuality.aggregate;
+assert.equal(imbalancedResult.baselineValidation01, Number(((weakScore + goodScore) / 2).toFixed(6)));
 
 // Validation-only improvement cannot hide a meaningful held-out regression.
 const regressed = evaluateSkillLearnBenchCandidate(baseline, {
