@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
 import { parseTrustedShadowLearningScheduleConfig } from '../organism/learning/P23TrustedShadowLearningScheduler.ts';
 import { createSkillPromotionApprovalPayload } from '../organism/learning/AuthenticatedSkillPromotionApproval.ts';
+import { parseTrustedSkillPromotionApprovalKeys } from '../organism/learning/AuthenticatedSkillPromotionApproval.ts';
 import { ProcessLock } from '../organism/persistence/ProcessLock.ts';
 import { FileStateStore } from '../organism/persistence/FileStateStore.ts';
 import { idempotencyPreflightHttpStatus } from './idempotency-response.mjs';
@@ -37,6 +38,7 @@ const MAX_BODY_BYTES = Math.max(4096, Number(process.env.NEURO_MAX_BODY_BYTES ||
 const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
 // Opt-in only: malformed production settings abort startup, and absence means no shadow child process.
 const TRUSTED_SHADOW_LEARNING = parseTrustedShadowLearningScheduleConfig(process.env.NEURO_SKILL_SHADOW_SCHEDULER_JSON);
+const TRUSTED_PROMOTION_APPROVER_IDS = new Set(parseTrustedSkillPromotionApprovalKeys(process.env.NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON).keys());
 const PHONE_MODE = PHONE_POLICY.mode !== 'research';
 const INTERVAL_MS = PHONE_POLICY.baseIntervalMs;
 const SENSOR_INTERVAL_MS = PHONE_POLICY.samplerIntervalMs;
@@ -1633,15 +1635,18 @@ async function route(req, res) {
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/learning/verified-skills') {
             const lifecycle = runtime.core.verifiedSkillCandidateSnapshot();
-            return json(res, 200, { ok: true, schemaVersion: 1, lifecycle, promotionPolicy: { requiresSignedEd25519Approval: true, minimumShadowRuns: 3, autoPromotion: false } });
+            return json(res, 200, { ok: true, schemaVersion: 1, lifecycle, promotionPolicy: { requiresSignedEd25519Approval: true, minimumShadowRuns: 3, autoPromotion: false, authorityConfigured: TRUSTED_PROMOTION_APPROVER_IDS.size > 0 } });
         }
         const promotionRequestMatch = url.pathname.match(/^\/api\/organism\/learning\/skills\/([a-f0-9]{64})\/promotion-request$/);
         if (req.method === 'POST' && promotionRequestMatch) {
             const input = await body(req);
             const candidateId = promotionRequestMatch[1];
-            const approverId = typeof input.approverId === 'string' ? input.approverId.trim() : '';
+            const approverId = input && typeof input.approverId === 'string' ? input.approverId.trim() : '';
             if (!approverId || approverId.length > 128 || !/^[A-Za-z0-9][A-Za-z0-9._:@-]*$/.test(approverId)) {
                 return json(res, 400, { ok: false, error: 'valid-approverId-required' });
+            }
+            if (!TRUSTED_PROMOTION_APPROVER_IDS.has(approverId)) {
+                return json(res, 403, { ok: false, error: 'promotion-approver-not-configured' });
             }
             const lifecycle = runtime.core.verifiedSkillCandidateSnapshot();
             const candidate = lifecycle?.candidates.find(item => item.candidateId === candidateId);
