@@ -166,3 +166,12 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **IMPORTANT LIMIT:** AbortSignal is cooperative. A host executor/verifier/scanner must observe the signal and actually terminate its underlying process/request. The evaluator's deadline prevents waiting indefinitely for a response but cannot kill a non-cooperative remote process by itself. Real host adapter wiring remains OPEN.
 - **Validation:** no local execution or successful GitHub Actions result is claimed in this pass; keep PR draft until the new regression and runtime typecheck actually execute successfully.
 - **Next pass (WorkPass228):** integrate signal propagation into the actual host sandbox/process supervisor, guarantee process-tree termination and resource quotas, then bind cancellation/timeout receipts to run provenance and reject stale late results.
+
+
+### WorkPass228 — connect cooperative cancellation to the existing process supervisor (partial)
+
+- **DONE (code):** the existing LearningProcessSupervisor accepts an optional AbortSignal, rejects already-cancelled work before spawning, kills the supervised child on abort, and writes a distinct `cancelled` execution receipt. Receipt validation accepts the new terminal state.
+- **DONE (regression code):** extended the existing process-supervisor regression to cover active cancellation and cancellation before spawn.
+- **Reuse/integration:** this adapts the existing P23 process supervisor instead of introducing a competing subprocess runner. It also gives WorkPass227's evaluator deadlines a concrete host-side cancellation seam when an adapter passes the signal through.
+- **OPEN:** current `child.kill('SIGKILL')` terminates the direct child only; process-tree containment and OS/container isolation remain the responsibility of a stronger host sandbox. The evaluator still needs a concrete trusted adapter that maps candidate payload/task inputs to an approved command; do not execute arbitrary generated payloads as shell commands.
+- **Validation:** code and test wiring are committed; test/typecheck/CI success remains unverified in this pass.
