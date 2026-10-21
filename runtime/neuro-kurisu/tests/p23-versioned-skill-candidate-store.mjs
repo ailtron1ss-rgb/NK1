@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AtomicFileSkillStorePersistence } from '../src/organism/learning/AtomicFileSkillStorePersistence.ts';
@@ -8,6 +8,7 @@ import { VersionedSkillCandidateStore, InMemorySkillStorePersistence } from '../
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import { ingestSignedOutcomeArtifact, signOutcomePayloadForFixture } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 import { proposeVerifiedSkillPromotion } from '../src/organism/learning/VerifiedSkillPromotion.ts';
+import { createContextBoundSkillShadowEvidenceVerifier, signSkillShadowArtifactForFixture, skillShadowPayloadFingerprint } from '../src/organism/learning/VerifiedSkillShadowEvidence.ts';
 
 function proposal(id, accepted=true, authenticatedEvidenceRows=20, unauthenticatedEvidenceRows=0) {
   // Successful fixtures must come from the canonical signed-evidence pipeline.
@@ -135,4 +136,58 @@ try {
 } finally {
   rmSync(tempRoot, { recursive: true, force: true });
 }
+
+/**
+ * WorkPass130: signed receipts must survive JSON restart and be rechecked against
+ * trusted execution context, not merely trusted because persistence parsed them.
+ */
+const shadowKeyPair = generateKeyPairSync('ed25519');
+const shadowPublicPem = shadowKeyPair.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+const shadowPrivatePem = shadowKeyPair.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+const shadowKeys = new Map([['trusted-shadow-v1', shadowPublicPem]]);
+const trustedManifest = 'e'.repeat(64);
+const trustedRuntime = 'nk1-runtime-workpass130';
+const contextVerifier = createContextBoundSkillShadowEvidenceVerifier(shadowKeys, () => ({
+  manifestFingerprint: trustedManifest, runtimeVersion: trustedRuntime,
+}));
+const shadowPath = join(tempRoot, 'state', 'signed-shadow.json');
+const shadowPersistence = new AtomicFileSkillStorePersistence(shadowPath);
+const shadowStore = new VersionedSkillCandidateStore(shadowPersistence, () => true, contextVerifier);
+const shadowCandidate = shadowStore.stageCandidate(proposal('h'), 'persisted-signed-shadow', { instruction: 'verified across restart' });
+const shadowPayload = {
+  schemaVersion: 1, artifactId: 'wp130-shadow-artifact', candidateId: shadowCandidate.candidateId,
+  skillId: shadowCandidate.skillId, candidateVersion: shadowCandidate.version,
+  payloadFingerprint: shadowCandidate.payloadFingerprint,
+  proposalOutcomeFingerprint: shadowCandidate.proposalOutcomeFingerprint,
+  runId: 'wp130-shadow-run', taskId: 'holdout-task-1', manifestFingerprint: trustedManifest,
+  seed: 17, runtimeVersion: trustedRuntime, passed: true, observedAt: Date.now(),
+  verifierId: 'trusted-shadow-v1',
+};
+const shadowArtifact = signSkillShadowArtifactForFixture(shadowPayload, shadowPrivatePem);
+const shadowObservation = {
+  runId: shadowPayload.runId, evidenceFingerprint: skillShadowPayloadFingerprint(shadowPayload),
+  passed: true, observedAt: shadowPayload.observedAt, artifact: shadowArtifact,
+};
+shadowStore.recordShadowObservation(shadowCandidate.candidateId, shadowObservation);
+const restoredShadowStore = new VersionedSkillCandidateStore(
+  new AtomicFileSkillStorePersistence(shadowPath), () => true, contextVerifier,
+);
+assert.equal(restoredShadowStore.snapshot().candidates[0].shadowObservations[0].artifact.signature,
+  shadowArtifact.signature, 'signed receipt survives durable JSON reconstruction byte-for-byte');
+const wrongContextVerifier = createContextBoundSkillShadowEvidenceVerifier(shadowKeys, () => ({
+  manifestFingerprint: 'f'.repeat(64), runtimeVersion: trustedRuntime,
+}));
+const wrongContextStore = new VersionedSkillCandidateStore(
+  new AtomicFileSkillStorePersistence(shadowPath), () => true, wrongContextVerifier,
+);
+assert.throws(() => wrongContextStore.approveAndPromote(shadowCandidate.candidateId, {
+  approvedBy: 'fixture-authority', approvedAt: Date.now(), expectedActiveVersion: null,
+}, 1), /persisted shadow evidence failed authentication/,
+  'a correctly signed receipt for a different manifest is denied on restart');
+const acceptedAfterRestart = restoredShadowStore.approveAndPromote(shadowCandidate.candidateId, {
+  approvedBy: 'fixture-authority', approvedAt: Date.now(), expectedActiveVersion: null,
+}, 1);
+assert.equal(acceptedAfterRestart.version, shadowCandidate.version,
+  'receipt is revalidated and accepted after restart only with matching trusted context');
+
 console.log('P23_VERSIONED_SKILL_CANDIDATE_STORE=PASS');
