@@ -8,20 +8,23 @@ const manifest = Array.from({length:10},(_,i)=>({
   verifierId:'verifier-v1', version:'v1',
 }));
 const ledger = new VerifiedOutcomeLedger(manifest);
-for (let i=0;i<10;i++) {
+for (let seed=1;seed<=5;seed++) for (let i=0;i<10;i++) {
   for (const [method,passed] of [['baseline',i<6],['candidate',i<8]]) {
     const result=ledger.record({
-      taskId:'task-'+i,taskVersion:'v1',method,seed:1,attempt:1,passed,
+      taskId:'task-'+i,taskVersion:'v1',method,seed,attempt:1,passed,
       authority:'independent-verifier',verifierId:'verifier-v1',
       evidenceRef:'evidence://'+i+'/'+method,observedAt:Date.now(),
     });
     assert.equal(result.accepted,true);
   }
 }
-const proposal=proposeVerifiedSkillPromotion(ledger,'baseline','candidate',{minPairedTasks:8,minAbsoluteGain:.1});
+const proposal=proposeVerifiedSkillPromotion(ledger,'baseline','candidate',{minPairedTasks:8,minAbsoluteGain:.1,minCompleteSeeds:3});
 assert.equal(proposal.gate.accepted,true);
 assert.equal(proposal.gate.pairedN,10);
-assert.equal(proposal.completePairedSeeds,1);
+assert.equal(proposal.completePairedSeeds,5);
+assert.equal(proposal.seedClusteredEvaluation.pairedN,5);
+assert.ok(proposal.seedClusteredEvaluation.approximate95CI[0] > 0);
+assert.equal(proposal.familyEvaluation.length,2);
 assert.equal(proposal.canActivateAutomatically,false);
 assert.match(proposal.proposalId,/^[a-f0-9]{64}$/);
 assert.ok(proposal.activationRequirements.length>=3);
@@ -34,7 +37,7 @@ for (let i=0;i<10;i++) {
 }
 incomplete.record({taskId:'task-0',taskVersion:'v1',method:'candidate',seed:2,attempt:1,passed:true,
   authority:'independent-verifier',verifierId:'verifier-v1',evidenceRef:'c-0',observedAt:Date.now()});
-const blocked=proposeVerifiedSkillPromotion(incomplete,'baseline','candidate',{minPairedTasks:8,minCompleteSeeds:1});
+const blocked=proposeVerifiedSkillPromotion(incomplete,'baseline','candidate',{minPairedTasks:8,minCompleteSeeds:3});
 assert.equal(blocked.gate.accepted,false);
 assert.equal(blocked.gate.reason,'insufficient-complete-holdout-seed-coverage');
 
