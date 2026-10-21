@@ -48,6 +48,9 @@ function proposal(id, accepted=true, authenticatedEvidenceRows=20, unauthenticat
 }
 const store = new VersionedSkillCandidateStore(new InMemorySkillStorePersistence());
 const p1 = proposal('a');
+const forgedProposal = { ...p1 };
+assert.throws(() => store.stageCandidate(forgedProposal, 'memory-repair', { instruction: 'forged' }),
+  /authentic, accepted proposal/, 'copying every public proposal field cannot forge the module-private issuance identity');
 const c1 = store.stageCandidate(p1, 'memory-repair', { instruction: 'version one', schemaVersion: 1 });
 assert.equal(c1.version, 1);
 assert.equal(c1.status, 'staged');
