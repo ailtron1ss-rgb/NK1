@@ -2,7 +2,7 @@
 
 Scope: continue integrating mechanisms into the existing P23 learning/revision lifecycle. This is an implementation queue, not a promise that upstream mechanisms are already integrated. Preserve the current branch/PR boundary; do not merge to the default branch without explicit approval.
 
-## Completed in this branch (through WorkPass224)
+## Completed in this branch (through WorkPass225)
 
 - [x] Reuse SkillLearnBench-style task success, skill quality, trajectory quality and macro-averaged task metrics.
 - [x] Bind evaluator runs to exact payload/task/environment/plan identity; require an independent verifier's explicit binding attestation.
@@ -16,6 +16,7 @@ Scope: continue integrating mechanisms into the existing P23 learning/revision l
 - [x] Add targeted evaluator/provider regression commands to the learning CI workflow.
 - [x] WorkPass223: return the construction-time `environmentFingerprint` snapshot in evaluator provenance, not the mutable caller-owned config field. The existing WorkPass203 regression mutates the config after construction and asserts that provenance retains the original environment identity.
 - [x] WorkPass224: fail startup in `NODE_ENV=production` when compound repair revision is enabled without a host-provided independent evaluation configuration factory; added a focused regression, package script, and learning workflow step.
+- [x] WorkPass225: added `compareMatchedIndependentEvaluations`, which validates each result envelope digest and refuses baseline/candidate comparisons unless task-plan and environment fingerprints match, experiment authority matches except for distinct method labels, and every paired task/trial has the same seed/split with independently bound, verifier-passed, safety-clean execution evidence. It then delegates metric scoring to the existing SkillLearnBench candidate gate.
 
 ## Next implementation passes
 
@@ -92,8 +93,8 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 
 | Pass | Priority | Integration work | Upstream patterns to adapt | Acceptance evidence | Status |
 |---|---|---|---|---|---|
-| WorkPass225 | P0 | Bind baseline and candidate to the same immutable task/seed/environment; reject missing, duplicate, cross-split or mismatched run identities before scoring deltas | AgentBench/WebArena task identity; SkillLearnBench trial metrics | Matched-pair join keyed by manifest/task/seed/environment/method, with negative tests | OPEN |
-| WorkPass226 | P0 | Connect the real host sandbox, independent verifier and safety scanner; reject self-attested execution and missing postconditions | OpenHands/SWE-agent execution boundaries | Real host adapter contract, no fake production defaults, fail-start tests | PARTIAL: evaluator interface exists; trusted host wiring remains OPEN |
+| WorkPass225 | P0 | Bind baseline and candidate to the same immutable task/seed/environment; reject missing, duplicate, cross-split or mismatched run identities before scoring deltas | AgentBench/WebArena task identity; SkillLearnBench trial metrics | Matched-pair join keyed by manifest/task/seed/environment/method, with negative tests | DONE (code; CI not yet verified) |
+| WorkPass226 | P0 | Connect the real host sandbox, independent verifier and safety scanner; reject self-attested execution and missing postconditions | OpenHands/SWE-agent execution boundaries | Real host adapter contract, no fake production defaults, fail-start tests | NEXT: trusted host wiring remains OPEN |
 | WorkPass227 | P0 | Carry signed/digested evaluation evidence through the canonical P23 staging gate; keep holdout outside generation, repair, tuning and candidate selection | DSPy/GEPA experiment discipline | Holdout-access boundary tests and gate-level evidence digest checks | OPEN |
 | WorkPass228 | P1 | Add confidence bounds, minimum sample policy and catastrophic-regression vetoes to promotion decisions | Benchmark statistics and conservative release gates | Small-sample, missing-data, regression and uncertainty tests | OPEN |
 | WorkPass229 | P1 | Add a reproducible experiment manifest for model/tool/runtime versions, prompts, data fingerprints, seeds, budgets and retries | Reproducible research / experiment tracking | Identical manifest reproduces identical plan identity; any changed input changes digest | PARTIAL: plans/fingerprints exist; complete host manifest remains OPEN |
@@ -123,3 +124,12 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 4. Every claim of improvement must be supported by matched task/seed/environment evidence, sample policy, safety checks and a reproducible manifest.
 5. A source integration is not DONE because a class, adapter, checklist or placeholder exists. DONE requires the capability to be connected to the canonical runtime and to produce attributable evidence.
 6. Never delete overlapping code until callers, persistence formats, UI/Live2D links, licensing and migration paths have been checked.
+
+
+### WorkPass225 implementation checkpoint
+
+- **DONE (code):** added a canonical matched-evaluation boundary to `IndependentSkillCandidateEvaluator.ts`. It checks SHA-256 envelope integrity before trusting either evaluation, requires exact task-plan/environment identity, requires matching manifest/validation/holdout plan fingerprints and distinct baseline/candidate method labels when experiment authority is present, and joins trial bindings by task/trial while requiring equal seed/split, trusted run identity, verifier pass, and zero safety violations.
+- **DONE (integration code):** reuses `evaluateSkillLearnBenchCandidate` for the actual paired multi-axis score and holdout gate; no parallel scoring or promotion engine was added.
+- **DONE (regression code):** added `tests/workpass225-matched-independent-evaluation.mjs` covering successful pairing, environment mismatch, seed mismatch, unsafe evidence, and post-evaluation tampering. Registered `test:workpass225:matched-independent-evaluation` and wired it into the learning workflow path filters and job steps.
+- **PARTIAL:** code and CI wiring are committed; this pass has not executed the test/typecheck locally. CI must actually dispatch before this is considered validated.
+- **NEXT:** WorkPass226 — provide a concrete production host adapter contract for sandbox/verifier/scanner with bounded execution and independently verified postconditions; inspect the real runtime wiring and avoid dummy production implementations.
