@@ -1,3 +1,11 @@
+## Latest durable checkpoint — WorkPass135 (2026-10-21)
+
+- Report: [WorkPass135 durable trusted shadow-run registry](docs/WORKPASS135_DURABLE_SHADOW_RUN_REGISTRY_2026-10-21.md).
+- Added `AtomicFileTrustedSkillShadowRunRegistry` for trusted run/task context, with idempotent registration, conflicting-identity rejection, lock/temp-file/fsync/atomic-rename persistence and fail-closed corruption/lock behavior. Added regression source and learning-workflow wiring.
+- **NOT VERIFIED:** test/typecheck/exact-head Actions have not yet been observed passing.
+- P0s remain: wire registration into the actual execution supervisor and sole skill lifecycle bootstrap; provision trusted verifier keys and authenticated approval authority; audit every activation route; run real outcome-based transfer/retention experiments. PR #12 remains draft/unmerged; do not merge to `main`.
+
+
 # NeuroCore — persistent project charter and resume contract
 
 ## Latest durable checkpoint — WorkPass133 (2026-10-21)
