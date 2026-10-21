@@ -10,7 +10,7 @@ import { evaluateSkillLearnBenchCandidate, type SkillLearnBenchCandidateEvaluati
 import { bindReflectiveReportsToVerifiedShadowEvidence, type ReflectiveEvidenceBindingReport } from './HermesVerifiedEvidenceBinding.ts';
 import { planSkillRevision, type SkillRevisionPlan } from './SkillRevisionPlan.ts';
 import type { SkillShadowEvidenceVerifier } from './VersionedSkillCandidateStore.ts';
-import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillRollbackApproval, type SkillShadowObservation, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
+import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillRollbackApproval, type SkillShadowObservation, type SkillRevisionProvenance, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp = (x:number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
@@ -289,6 +289,7 @@ export class P23LearningEngine {
   stageReflectiveSkillRevision(
     proposal:VerifiedSkillPromotionProposal,
     skillId:string,
+    sourceCandidateId:string,
     revisedPayload:unknown,
     baseline:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
     candidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
@@ -301,14 +302,24 @@ export class P23LearningEngine {
     if(plan.blockedBySafety) throw new Error('reflective revision blocked: resolve safety violations before performance optimization');
     if(plan.targets.length===0) throw new Error('reflective revision has no evidence-backed target; no candidate was staged');
     const current=this.verifiedSkillStore.snapshot();
-    const active=current.active.find(item=>item.skillId===skillId);
-    if(active && canonicalize(active.payload)===canonicalize(revisedPayload)) {
-      throw new Error('reflective revision payload is unchanged from the active skill');
+    const source=current.candidates.find(item=>item.candidateId===sourceCandidateId);
+    if(!source || source.skillId!==skillId || source.status==='rolled-back') {
+      throw new Error('reflective revision source candidate is missing, mismatched, or rolled back');
     }
+    if(canonicalize(source.payload)===canonicalize(revisedPayload)) {
+      throw new Error('reflective revision payload is unchanged from its source candidate');
+    }
+    const revisionProvenance:SkillRevisionProvenance={
+      schemaVersion:1,
+      sourceCandidateId:source.candidateId,
+      planFingerprint:createHash('sha256').update(canonicalize(plan)).digest('hex'),
+      dimensions:plan.targets.map(target=>target.dimension),
+      createdAt:now(),
+    };
     // stageCandidate validates proposal authenticity and authenticated evidence.
-    // This creates a separate staged version; shadow execution and signed human
-    // approval are still required before the runtime can activate it.
-    const candidate=this.verifiedSkillStore.stageCandidate(proposal,skillId,revisedPayload);
+    // The revision lineage is persisted on the new version; shadow execution
+    // and signed human approval are still required before runtime activation.
+    const candidate=this.verifiedSkillStore.stageCandidate(proposal,skillId,revisedPayload,revisionProvenance);
     return {candidate,fitness,plan};
   }
 
