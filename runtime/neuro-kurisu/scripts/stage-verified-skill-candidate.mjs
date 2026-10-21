@@ -1,5 +1,5 @@
 import { createPublicKey } from 'node:crypto';
-import { readFile, stat } from 'node:fs/promises';
+import { lstat, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
@@ -60,8 +60,8 @@ function validateBundle(bundle) {
 export async function stageVerifiedSkillCandidateBundle({ bundlePath, stateFile }) {
   if (!nonEmpty(bundlePath) || !nonEmpty(stateFile)) throw new Error('bundlePath and stateFile are required');
   const absoluteBundlePath = path.resolve(bundlePath);
-  const bundleStat = await stat(absoluteBundlePath);
-  if (!bundleStat.isFile() || bundleStat.size > MAX_BUNDLE_BYTES) {
+  const bundleStat = await lstat(absoluteBundlePath);
+  if (bundleStat.isSymbolicLink() || !bundleStat.isFile() || bundleStat.size > MAX_BUNDLE_BYTES) {
     throw new Error('candidate bundle must be a regular file no larger than 10 MiB');
   }
   let bundle;
