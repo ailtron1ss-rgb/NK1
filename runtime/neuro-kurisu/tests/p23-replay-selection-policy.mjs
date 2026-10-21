@@ -73,6 +73,15 @@ assert.ok(affectiveBatch.some(x => x.id === 'high-stakes-failure'),
   'affective intensity, activation and goal priority influence replay ranking');
 assert.ok(!affectiveBatch.some(x => x.id === 'routine'),
   'routine traces do not displace a higher-salience goal-linked failure');
+const extremeSalience = [
+  { id: 'untrusted-extreme', tick: 0, contextKey: 'extreme', action: 'repair', surprise: 0, salience: 1e9, novelty: 0, replayCount: 0 },
+  { id: 'bounded-salience', tick: 1, contextKey: 'bounded', action: 'repair', surprise: 0, salience: 1, novelty: 0, replayCount: 0 },
+  { id: 'filler-a', tick: 2, contextKey: 'filler-a', action: 'respond', surprise: 0 },
+  { id: 'filler-b', tick: 3, contextKey: 'filler-b', action: 'respond', surprise: 0 },
+];
+const extremeBatch = selectReplayBatch(extremeSalience, { maxBatchSize: 2, recentQuota: 0 });
+assert.deepEqual(extremeBatch.map(x => x.id), ['untrusted-extreme', 'bounded-salience'],
+  'out-of-range salience must be clamped so untrusted values cannot amplify replay priority beyond the normalized maximum');
 
 
 console.log('P23_REPLAY_SELECTION_POLICY=PASS');
