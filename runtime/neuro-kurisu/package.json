@@ -1697,7 +1697,7 @@
     "test:p23:versioned-skill-candidate-store": "node --experimental-strip-types tests/p23-versioned-skill-candidate-store.mjs",
     "test:p23:skill-evaluation-report": "node --experimental-strip-types tests/p23-skill-evaluation-report.mjs",
     "test:p23:learning-engine-verified-skill-lifecycle": "node --experimental-strip-types tests/p23-learning-engine-verified-skill-lifecycle.mjs",
-    "test:p23:verified-skill-lifecycle": "npm run test:p23:verified-skill-promotion-proposal && npm run test:p23:verified-outcome-artifact-authentication && npm run test:p23:versioned-skill-candidate-store && npm run test:p23:skill-evaluation-report && npm run test:p23:learning-engine-verified-skill-lifecycle",
+    "test:p23:verified-skill-lifecycle": "npm run test:p23:verified-skill-promotion-proposal && npm run test:p23:verified-outcome-artifact-authentication && npm run test:p23:versioned-skill-candidate-store && npm run test:p23:skill-evaluation-report && npm run test:p23:learning-engine-verified-skill-lifecycle && npm run test:p23:runtime-signed-shadow-observation && npm run test:p23:stage-verified-skill-candidate && npm run test:p23:create-skill-promotion-approval-request",
     "test:p23:verified-skill-shadow-evidence": "node --experimental-strip-types tests/p23-verified-skill-shadow-evidence.mjs",
     "test:p23:trusted-skill-shadow-run-registry": "node --experimental-strip-types tests/p23-trusted-skill-shadow-run-registry.mjs",
     "test:p23:trusted-shadow-supervisor-registration": "node --experimental-strip-types tests/p23-trusted-shadow-supervisor-registration.mjs",
