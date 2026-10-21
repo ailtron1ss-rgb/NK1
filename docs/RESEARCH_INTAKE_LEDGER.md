@@ -124,3 +124,12 @@ For each idea, answer before implementation:
 - Is the mechanism actually necessary, or can a simpler change solve the observed failure?
 
 Do not count a reference as “used” until a source revision/paper protocol is inspected, a testable hypothesis is recorded, and an experiment or explicit rejection decision is linked.
+
+## WorkPass79 — continual-learning evaluation adaptation (2026-10-21)
+
+| Candidate / source | URL | Mechanism to inspect | NeuroCore integration target | Current status / next evidence |
+|---|---|---|---|---|
+| AgentMemoryBench — *Benchmarking Continual Agent Memory for Online Learning, Transfer, and Forgetting* | https://github.com/solomoon313/AgentMemoryBench | Online learning curves, replay/retention, cross-task transfer, and repair after incorrect feedback | Existing `ParametricPolicyLearner`, `P30ContinualIntelligenceEngine`, and existing retrieval experiment; no new memory owner | **ADAPT — protocol only, not imported.** Add wrong-feedback/recovery, task reversal, replay retention, and paired no-learning controls to the evaluation plan. First hardening step: reject non-finite training values before they can poison weights. Review exact upstream revision, benchmark data provenance, dependencies and license before importing code or datasets. |
+
+**WorkPass79 implementation note:** the policy learner now fails closed on invalid action identifiers, non-finite targets/rates/sample weights, and non-finite direct feature vectors. This is input-integrity hardening, not evidence of higher learning quality. The new regression is wired as `test:p26:learning-input-integrity`; execution and CI status must be recorded from a live run before marking it passed.
+
