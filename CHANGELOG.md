@@ -1,3 +1,11 @@
+## WorkPass145 — wire production shadow runner configuration and signed observation ingestion (2026-10-21)
+
+- Production `server.mjs` now reads `NEURO_SKILL_SHADOW_SCHEDULER_JSON` through a fail-closed configuration parser and passes the validated config to `OrganismRuntime`. No setting keeps the clock disabled; enabling requires an explicit candidate ID, task/version, runtime version, manifest/plan fingerprints and child command.
+- The runtime scheduler now optionally reads a signed observation from a safe basename inside the fresh per-run directory, caps it at 1 MiB, rejects symlink/non-file paths, parses a JSON object and requires both observation and signed payload run IDs to match the supervisor-created run.
+- Only then does the adapter call `OrganismCore.recordVerifiedSkillShadow`; the canonical candidate store still performs exact candidate-version, signature and independently persisted task/seed/manifest/runtime-context checks. Missing or rejected evidence is exposed through diagnostics and journal metadata.
+- Added a config-parser regression for explicit opt-in, invalid JSON, missing candidate identity, malformed fingerprints, unsafe filenames, invalid inherited environment names and unknown fields. Added it to the P23 workflow alongside the existing real-runtime child/registry integration test.
+- **Not claimed:** successful exact-head CI/typecheck, valid signed-observation end-to-end acceptance, promotion approval authority, production verifier-key provisioning, or learning uplift. Shadow scheduling remains disabled unless operators explicitly configure it.
+
 ## WorkPass144 — wire trusted shadow execution to the runtime clock (2026-10-21)
 
 - Added `P23TrustedShadowLearningScheduler` and connected it to `OrganismRuntime` as a dedicated one-shot runtime clock. The execution path now goes through the Core-owned API that persists trusted run context before spawning the candidate/shadow child process.
