@@ -15,6 +15,9 @@ WorkPass118 added adaptive replay mechanics. This pass adds three other learning
 
 These references are design candidates, not a claim that every repository was exhaustively audited or vendored. No third-party runtime code was copied in this pass. Check exact revisions and license terms before future vendoring.
 
+## Cross-component integration defect found and fixed
+- The process supervisor emits execution receipts with schema version 2 and the execution coverage audit also requires version 2, but the outcome-evidence bridge rejected every receipt except schema version 1. This made a clean real process receipt unable to reach the verified outcome ledger. The bridge now requires schema version 2, and the existing execution-evidence regression explicitly rejects schema version 1.
+
 ## Implemented
 - `SkillRetrievalAugmentation.ts`: feature-position context similarity for six-bucket state keys; filters candidate skills without sufficient validation; ranks by contextual match, held-out success, evidence volume, confidence, recency and prior use; returns reasons; bounds retrieval and reduces duplicate context/action results; computes small positive/negative transfer bias.
 - `OutcomeReflectionCurriculum.ts`: groups experiences by context/action, diagnoses prediction gap, low outcome, repeated failure and surprise; proposes controlled repair and states the independent evidence needed; ranks learning targets with blocked prerequisites excluded.
