@@ -42,6 +42,12 @@ wrongSeed.evaluation.provenance.runBindings[0].seed += 1;
 wrongSeed.evaluationFingerprint = digest(wrongSeed.evaluation);
 assert.throws(() => compareMatchedIndependentEvaluations(baseline, wrongSeed), /task-seed-split-mismatch/);
 
+const crossSplit = structuredClone(candidate);
+crossSplit.evaluation.provenance.runBindings[0].split =
+  crossSplit.evaluation.provenance.runBindings[0].split === 'validation' ? 'holdout' : 'validation';
+crossSplit.evaluationFingerprint = digest(crossSplit.evaluation);
+assert.throws(() => compareMatchedIndependentEvaluations(baseline, crossSplit), /report-split-mismatch/);
+
 const unsafe = await makeEvaluation({ skill: 'candidate', version: 3 }, 'a'.repeat(64), { runPrefix: 'unsafe-', unsafeSplit: 'validation' });
 assert.throws(() => compareMatchedIndependentEvaluations(baseline, unsafe), /untrusted-trial/);
 
