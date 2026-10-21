@@ -360,7 +360,7 @@ export class P23LearningEngine {
       throw new Error('independent evaluator did not return non-empty validation/holdout reports bound to the exact generated payload');
     }
     return this.stageReflectiveSkillRevision(
-      proposal,skillId,sourceCandidateId,revisedPayload,baseline,fresh.evaluation,options,
+      proposal,skillId,sourceCandidateId,revisedPayload,baseline,fresh.evaluation,fresh.evaluationFingerprint,options,
     );
   }
 
