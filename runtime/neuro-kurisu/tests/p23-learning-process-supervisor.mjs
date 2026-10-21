@@ -59,6 +59,22 @@ try {
     /cancelled before spawn/,
   );
 
+  // A timed-out parent must not leave a same-process-group descendant running.
+  // The descendant would create a marker after the supervisor has returned if it survived.
+  const descendantMarker = path.join(root, 'descendant-survived.txt');
+  const descendantScript = [
+    "const { spawn } = require('node:child_process');",
+    "const fs = require('node:fs');",
+    "const child = spawn(process.execPath, ['-e', \"setTimeout(() => require('node:fs').writeFileSync(process.argv[1], 'alive'), 300)\" , " + JSON.stringify(descendantMarker) + "], { stdio: 'ignore' });",
+    "setInterval(() => {}, 1000);",
+  ].join(' ');
+  const treeTimed = await runLearningProcess(run, 'b'.repeat(64), {
+    ...base, timeoutMs: 80, args: ['-e', descendantScript],
+  });
+  assert.equal(treeTimed.receipt.status, 'timed-out');
+  await new Promise(resolve => setTimeout(resolve, 400));
+  await assert.rejects(() => readFile(descendantMarker, 'utf8'), error => error.code === 'ENOENT');
+
   const capped = await runLearningProcess(run, 'b'.repeat(64), {
     ...base, maxOutputBytes: 32, args: ['-e', "process.stdout.write('x'.repeat(10000))"],
   });
