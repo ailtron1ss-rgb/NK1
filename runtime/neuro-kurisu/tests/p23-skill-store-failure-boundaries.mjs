@@ -42,6 +42,23 @@ try {
   assert.throws(() => persistence.read(), /invalid persisted versioned skill store snapshot/,
     'malformed candidate lifecycle records fail closed');
 
+  const zeros = '0'.repeat(64);
+  writeFileSync(file, JSON.stringify({
+    schemaVersion: 1, revision: 1,
+    active: [{ skillId: 'demo', version: 1, payload: { changed: true }, payloadFingerprint: zeros, proposalId: zeros, activatedAt: 1 }],
+    candidates: [],
+  }));
+  assert.throws(() => persistence.read(), /invalid persisted versioned skill store snapshot/,
+    'payload edits cannot be hidden behind a stale active-skill fingerprint');
+  writeFileSync(file, JSON.stringify({
+    schemaVersion: 1, revision: 1, active: [],
+    candidates: [{ candidateId: zeros, skillId: 'demo', version: 1, payload: { changed: true },
+      payloadFingerprint: zeros, proposalId: zeros, proposalOutcomeFingerprint: zeros,
+      baseVersion: null, previousActive: null, status: 'staged', shadowObservations: [], createdAt: 1 }],
+  }));
+  assert.throws(() => persistence.read(), /invalid persisted versioned skill store snapshot/,
+    'payload edits cannot be hidden behind a stale candidate fingerprint');
+
   // CAS must reject malformed next state before it can replace durable data.
   assert.equal(persistence.compareAndSwap(1, {
     schemaVersion: 1, revision: 2, active: [{}], candidates: [],
