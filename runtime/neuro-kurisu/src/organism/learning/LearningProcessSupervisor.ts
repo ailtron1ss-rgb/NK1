@@ -165,13 +165,33 @@ export async function runLearningProcess(
   let exitCode: number | null = null;
   let signal: string | null = null;
   let spawnFailure = '';
+  // On POSIX, give the run its own process group so timeout/cancellation/output
+  // limits can terminate descendants too. Windows retains direct-child semantics;
+  // strong cross-platform isolation still belongs to an OS/container sandbox.
   const child = spawn(command.executable, command.args, {
     cwd: path.resolve(command.cwd),
     env,
     shell: false,
     windowsHide: true,
+    detached: process.platform !== 'win32',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+  const terminateRun = () => {
+    if (process.platform !== 'win32' && child.pid !== undefined) {
+      try {
+        process.kill(-child.pid, 'SIGKILL');
+        return;
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code !== 'ESRCH') {
+          // Fall through to the direct child kill if group signaling is unavailable.
+        } else {
+          return;
+        }
+      }
+    }
+    try { child.kill('SIGKILL'); } catch { /* the child may already have exited */ }
+  };
   const append = (current: Buffer, chunk: Buffer, isStdout: boolean): Buffer => {
     if (isStdout) stdoutBytes += chunk.length;
     else stderrBytes += chunk.length;
@@ -179,7 +199,7 @@ export async function runLearningProcess(
     if (combined.length > maxOutputBytes) {
       outputTruncated = true;
       terminalStatus = 'output-limit';
-      child.kill('SIGKILL');
+      terminateRun();
       return combined.subarray(0, maxOutputBytes);
     }
     return combined;
@@ -192,7 +212,7 @@ export async function runLearningProcess(
   const timeout = setTimeout(() => {
     if (childClosed) return;
     if (!terminalStatus) terminalStatus = 'timed-out';
-    child.kill('SIGKILL');
+    terminateRun();
   }, timeoutMs);
   timeout.unref?.();
   const onAbort = () => {
