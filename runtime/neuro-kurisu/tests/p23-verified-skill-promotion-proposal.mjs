@@ -37,4 +37,16 @@ incomplete.record({taskId:'task-0',taskVersion:'v1',method:'candidate',seed:2,at
 const blocked=proposeVerifiedSkillPromotion(incomplete,'baseline','candidate',{minPairedTasks:8,minCompleteSeeds:1});
 assert.equal(blocked.gate.accepted,false);
 assert.equal(blocked.gate.reason,'insufficient-complete-holdout-seed-coverage');
+
+// Repeating seeds on a tiny set of tasks must not masquerade as broad task coverage.
+const narrow = new VerifiedOutcomeLedger(manifest);
+for (let seed=0;seed<10;seed++) for (let i=0;i<2;i++) for (const method of ['baseline','candidate']) {
+  narrow.record({taskId:'task-'+i,taskVersion:'v1',method,seed,attempt:1,passed:method==='candidate',
+    authority:'independent-verifier',verifierId:'verifier-v1',evidenceRef:'narrow-'+seed+'-'+i+'-'+method,observedAt:Date.now()});
+}
+const narrowProposal=proposeVerifiedSkillPromotion(narrow,'baseline','candidate',{minPairedTasks:8,minCompleteSeeds:1});
+assert.equal(narrowProposal.gate.accepted,false);
+assert.equal(narrowProposal.uniquePairedTasks,2);
+assert.equal(narrowProposal.gate.reason,'insufficient-independent-heldout-task-coverage');
+
 console.log('P23_VERIFIED_SKILL_PROMOTION_PROPOSAL=PASS');
