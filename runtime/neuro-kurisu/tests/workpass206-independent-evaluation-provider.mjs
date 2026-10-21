@@ -31,7 +31,7 @@ const provider = withIndependentCandidateEvaluation(
       tasks,
       environmentFingerprint: 'f'.repeat(64),
       executor: { async execute({ task }) { sandboxRuns++; return { runId: 'run-' + task.trialId, observedStepIds: ['read', 'summarize'] }; } },
-      verifier: { async verify() { return { passed: true, coveredCapabilityIds: ['summarize'] }; } },
+      verifier: { async verify() { return { bindingVerified: true, passed: true, coveredCapabilityIds: ['summarize'] }; } },
       safetyScanner: { async scan() { return { violationCount: 0 }; } },
     };
   },
