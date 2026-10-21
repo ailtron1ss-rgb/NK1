@@ -43,6 +43,9 @@ assert.ok(Object.values(repaired.bias).every(Number.isFinite), 'restored biases 
 assert.ok([repaired.tdAbsMean01, repaired.trainRewardMean01, repaired.explorationRate01, repaired.lastLoss01, repaired.lastTrainedAt].every(Number.isFinite), 'restored diagnostics must be finite');
 assert.equal(repaired.updates, 0, 'invalid update count must reset safely');
 assert.equal(repaired.frozen, false, 'only literal boolean true may restore a frozen learner');
+const explicitlyFrozen = new ParametricPolicyLearner();
+explicitlyFrozen.restore({ ...initial, frozen: true });
+assert.equal(explicitlyFrozen.snapshot().frozen, true, 'literal boolean true must preserve an intentional safety freeze');
 assert.equal(repaired.weights.respond[0], 0);
 assert.equal(repaired.weights.explore[1], 0);
 assert.equal(repaired.bias.verify, 0);
