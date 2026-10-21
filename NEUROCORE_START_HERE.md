@@ -2,18 +2,18 @@
 
 **Canonical project name:** NeuroCore / нейроядро  
 **Repository:** https://github.com/ailtron1ss-rgb/NK1  
-**Active work branch:** `workpass79-cognitive-rebuild`  
+**Active learning work branch:** `workpass124-learning-evidence-hardening` (draft PR #12, unmerged; stacked on WorkPass123)  
 **Primary intent:** build one cohesive, genuinely functional, memory-rich, learning-capable, adaptive digital organism/personality, with Makise Kurisu as the intended identity/persona direction. The historic `Neuro-Kurisu` name in directory paths is lineage, not a separate project.  
 **This document is the durable instruction for future work. Read it before starting a new pass.**
 
 
-## Latest durable checkpoint — WorkPass94 (2026-10-20)
+## Latest durable checkpoint — WorkPass125 (2026-10-21)
 
-- Active branch: `workpass79-cognitive-rebuild`; open draft PR: https://github.com/ailtron1ss-rgb/NK1/pull/1.
-- Read `docs/WORKPASS94_CHECKPOINT_2026-10-20.md` for the strict verification-input binding change, commit links, evidence status and next tasks.
-- `OutcomeVerificationService` now compares the complete expected action input using canonical structural serialization; partial inputs and mismatched nested values fail closed.
-- Focused regression and CI workflow are added. Exact-head CI and the broader runtime typecheck/regression suite remain pending until observed.
-- Refresh the live branch head, PR state and exact-head Actions status before continuing.
+- Active learning branch: `workpass124-learning-evidence-hardening`; draft PR #12: https://github.com/ailtron1ss-rgb/NK1/pull/12. It is stacked on draft PR #11 / `workpass123-authenticated-skill-lifecycle`.
+- Read `docs/WORKPASS125_REPOSITORY_SYNC_AUDIT_2026-10-21.md` first. It records exact branch heads, rollback anchors, canonical subsystem owners, CI evidence gaps and the safe integration sequence.
+- The source stack is based on `workpass70-source`; `main` is a separate 12-path release/metadata branch. GitHub compare reports no common ancestor between `main` and the source stack. Do not merge the source stack directly into `main`.
+- WorkPass124 head before this navigation refresh: `372c0bbb4d020901e1c935cf84fc63cff13c9f36`; PR #12 states that its failure-boundary regression has not yet passed CI. The synchronization-audit commit itself has no reported statuses or workflow runs; that is not a pass.
+- Refresh the live branch head, stacked PR state and exact-head Actions status before continuing. Keep PRs draft until owning tests and typecheck pass.
 
 ## 1. North-star outcome
 
