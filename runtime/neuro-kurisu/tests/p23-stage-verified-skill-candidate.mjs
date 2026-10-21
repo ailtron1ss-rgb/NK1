@@ -67,9 +67,10 @@ try {
   };
   const bundlePath = path.join(root, 'signed-outcome-bundle.json');
   const stateFile = path.join(root, 'organism.json');
-  await writeFile(bundlePath, JSON.stringify({
+  const validBundle = {
     schemaVersion: 1, manifest, baselineMethod: 'baseline', candidateMethod: 'candidate', skill, artifacts,
-  }));
+  };
+  await writeFile(bundlePath, JSON.stringify(validBundle));
   const staged = await stageVerifiedSkillCandidateBundle({ bundlePath, stateFile });
   assert.equal(staged.status, 'staged');
   assert.equal(staged.skillId, skill.id);
@@ -85,7 +86,7 @@ try {
   assert.equal(snapshot.candidates[0].status, 'staged');
   assert.deepEqual(snapshot.active, []);
 
-  const tampered = JSON.parse(await readFile(bundlePath, 'utf8'));
+  const tampered = JSON.parse(JSON.stringify(validBundle));
   tampered.artifacts[0].payload.passed = !tampered.artifacts[0].payload.passed;
   await writeFile(bundlePath, JSON.stringify(tampered));
   await assert.rejects(
@@ -95,7 +96,18 @@ try {
   const afterReject = new OrganismCore(new FileStateStore(stateFile)).verifiedSkillCandidateSnapshot();
   assert.equal(afterReject.candidates.length, 1, 'invalid signed evidence must not stage an extra candidate');
   assert.deepEqual(afterReject.active, [], 'staging never activates a skill');
-  console.log('P23_STAGE_VERIFIED_SKILL_CANDIDATE=PASS signed outcomes gate stage only and fail closed');
+
+  const invalidSkill = JSON.parse(JSON.stringify(validBundle));
+  invalidSkill.skill.confidence01 = 1.5;
+  await writeFile(bundlePath, JSON.stringify(invalidSkill));
+  await assert.rejects(
+    () => stageVerifiedSkillCandidateBundle({ bundlePath, stateFile }),
+    /canonical P23 policy-skill bounds/,
+  );
+  const afterInvalidSkill = new OrganismCore(new FileStateStore(stateFile)).verifiedSkillCandidateSnapshot();
+  assert.equal(afterInvalidSkill.candidates.length, 1, 'out-of-range skill scores cannot mutate candidate storage');
+  assert.deepEqual(afterInvalidSkill.active, []);
+  console.log('P23_STAGE_VERIFIED_SKILL_CANDIDATE=PASS signed outcomes gate canonical skill bounds tamper rejection durable stage no activation');
 } finally {
   if (previousKeys === undefined) delete process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON;
   else process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON = previousKeys;
