@@ -105,3 +105,153 @@ export function bindReflectiveReportsToVerifiedShadowEvidence(
     qualityMetricsAuthenticated: false,
   };
 }
+
+
+/**
+ * Join the independent P23 evaluation envelope to Hermes signed shadow receipts.
+ * P23 trial IDs are experiment identities; signed receipt run IDs are execution
+ * identities, so this bridge joins through the evaluator's independently bound
+ * runBindings instead of incorrectly equating those two namespaces.
+ *
+ * Receipts authenticate candidate identity and binary outcome only. Evaluation
+ * quality scores remain derived from the independent evaluator, never from the
+ * signature. This function grants no staging, approval, or promotion authority.
+ */
+export function bindIndependentEvaluationToVerifiedShadowEvidence(
+  evaluation: {
+    validation: readonly SkillLearnBenchTrialReport[];
+    holdout: readonly SkillLearnBenchTrialReport[];
+    provenance: {
+      experimentAuthority: { manifestFingerprint: string } | null;
+      runBindings: readonly {
+        taskId: string;
+        trialId: string;
+        runId: string | null;
+        plannedRunId: string | null;
+        seed: number;
+        split: 'validation' | 'holdout';
+        bindingVerified: boolean;
+        verifierPassed: boolean;
+        safetyViolationCount: number;
+      }[];
+    };
+  },
+  observations: readonly SkillShadowObservation[],
+  candidate: Readonly<VersionedSkillCandidate>,
+  verifyEvidence: SkillShadowEvidenceVerifier,
+): ReflectiveEvidenceBindingReport {
+  const reasons: string[] = [];
+  const authority = evaluation?.provenance?.experimentAuthority;
+  const bindings = evaluation?.provenance?.runBindings;
+  if (!evaluation || !Array.isArray(evaluation.validation) || !Array.isArray(evaluation.holdout) ||
+      !Array.isArray(bindings) || !authority ||
+      typeof authority.manifestFingerprint !== 'string' ||
+      !/^[a-f0-9]{64}$/.test(authority.manifestFingerprint)) {
+    reasons.push('independent-evaluation-authority-required');
+  }
+  if (!Array.isArray(observations) || observations.length === 0) reasons.push('signed-shadow-observations-required');
+  if (!candidate || typeof candidate.candidateId !== 'string' || !candidate.candidateId.trim()) reasons.push('candidate-identity-required');
+  if (typeof verifyEvidence !== 'function') reasons.push('trusted-evidence-verifier-required');
+  if (reasons.length) return {
+    accepted: false, reasons, boundTrials: 0, manifestFingerprint: null,
+    boundEvidenceScope: 'identity-and-binary-outcome-only', qualityMetricsAuthenticated: false,
+  };
+
+  const allReports = [
+    ...evaluation.validation.map(report => ({ report, split: 'validation' as const })),
+    ...evaluation.holdout.map(report => ({ report, split: 'holdout' as const })),
+  ];
+  const reportByKey = new Map<string, { report: SkillLearnBenchTrialReport; split: 'validation' | 'holdout' }>();
+  for (const item of allReports) {
+    const report = item.report;
+    if (!report || typeof report.taskId !== 'string' || !report.taskId.trim() ||
+        typeof report.trialId !== 'string' || !report.trialId.trim() ||
+        !report.taskSuccess || typeof report.taskSuccess.passed !== 'boolean' ||
+        report.taskSuccess.passRate !== (report.taskSuccess.passed ? 1 : 0)) {
+      reasons.push('independent-evaluation-report-invalid');
+      continue;
+    }
+    const key = JSON.stringify([report.taskId, report.trialId]);
+    if (reportByKey.has(key)) reasons.push('duplicate-independent-evaluation-report');
+    else reportByKey.set(key, item);
+  }
+  const bindingByKey = new Map<string, (typeof bindings)[number]>();
+  const runIds = new Set<string>();
+  for (const binding of bindings) {
+    if (!binding || typeof binding.taskId !== 'string' || !binding.taskId.trim() ||
+        typeof binding.trialId !== 'string' || !binding.trialId.trim() ||
+        typeof binding.runId !== 'string' || !binding.runId.trim() ||
+        typeof binding.plannedRunId !== 'string' || !binding.plannedRunId.trim() ||
+        !Number.isSafeInteger(binding.seed) || binding.seed < 0 ||
+        !['validation', 'holdout'].includes(binding.split) ||
+        binding.bindingVerified !== true || binding.verifierPassed !== true ||
+        !Number.isSafeInteger(binding.safetyViolationCount) || binding.safetyViolationCount !== 0) {
+      reasons.push('independent-evaluation-run-untrusted');
+      continue;
+    }
+    const key = JSON.stringify([binding.taskId, binding.trialId]);
+    if (bindingByKey.has(key) || runIds.has(binding.runId)) reasons.push('duplicate-independent-evaluation-run-binding');
+    else {
+      bindingByKey.set(key, binding);
+      runIds.add(binding.runId);
+    }
+    const report = reportByKey.get(key);
+    if (!report || report.split !== binding.split) reasons.push('independent-evaluation-report-binding-mismatch');
+  }
+  if (reportByKey.size !== bindingByKey.size || reportByKey.size === 0) reasons.push('independent-evaluation-coverage-incomplete');
+
+  const observationsByRun = new Map<string, SkillShadowObservation>();
+  const artifactIds = new Set<string>();
+  for (const observation of observations) {
+    const payload = observation?.artifact?.payload;
+    if (!payload || typeof observation.runId !== 'string' || !observation.runId.trim()) {
+      reasons.push('observation-receipt-missing');
+      continue;
+    }
+    if (observationsByRun.has(observation.runId)) reasons.push('duplicate-observation-run-id');
+    if (typeof payload.artifactId !== 'string' || !payload.artifactId.trim() || artifactIds.has(payload.artifactId)) {
+      reasons.push('duplicate-or-invalid-artifact-id');
+    }
+    observationsByRun.set(observation.runId, observation);
+    artifactIds.add(payload.artifactId);
+  }
+
+  let boundTrials = 0;
+  const consumedRuns = new Set<string>();
+  for (const [key, binding] of bindingByKey) {
+    const reportItem = reportByKey.get(key);
+    const observation = observationsByRun.get(binding.runId!);
+    const payload = observation?.artifact?.payload;
+    if (!reportItem || !observation || !payload) {
+      reasons.push('independent-evaluation-run-has-no-signed-receipt');
+      continue;
+    }
+    consumedRuns.add(binding.runId!);
+    if (payload.runId !== binding.runId || observation.runId !== binding.runId ||
+        payload.taskId !== binding.taskId || payload.seed !== binding.seed ||
+        payload.manifestFingerprint !== authority.manifestFingerprint ||
+        payload.passed !== reportItem.report.taskSuccess.passed) {
+      reasons.push('independent-evaluation-signed-receipt-mismatch');
+      continue;
+    }
+    let verified = false;
+    try { verified = verifyEvidence(observation, candidate); } catch { verified = false; }
+    if (!verified) {
+      reasons.push('signed-shadow-evidence-not-trusted');
+      continue;
+    }
+    boundTrials += 1;
+  }
+  for (const runId of observationsByRun.keys()) {
+    if (!consumedRuns.has(runId)) reasons.push('unmatched-shadow-observation');
+  }
+  if (boundTrials !== reportByKey.size) reasons.push('not-all-independent-evaluation-trials-bound');
+  return {
+    accepted: reasons.length === 0,
+    reasons: [...new Set(reasons)],
+    boundTrials,
+    manifestFingerprint: reasons.length === 0 ? authority.manifestFingerprint : null,
+    boundEvidenceScope: 'identity-and-binary-outcome-only',
+    qualityMetricsAuthenticated: false,
+  };
+}
