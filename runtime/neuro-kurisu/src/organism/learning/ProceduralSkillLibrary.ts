@@ -238,7 +238,7 @@ export class ProceduralSkillLibrary{
         requiredInputKeys:Array.isArray(step.requiredInputKeys)?step.requiredInputKeys.map((q:any)=>String(q)).slice(0,16):undefined,fallbackToolIds:Array.isArray(step.fallbackToolIds)?step.fallbackToolIds.map((q:any)=>String(q)).slice(0,4):undefined,
         maxAttempts:Math.max(1,Math.min(8,Math.floor(Number(step.maxAttempts??3)))),resourceCost01:clamp(Number(step.resourceCost01??.1))
       })):[],createdAt:Math.max(0,Number(v.createdAt??0)),status:['candidate','active','retired','rejected'].includes(v.status)?v.status:'candidate',
-      trials:Math.max(0,Math.floor(Number(v.trials??0))),successes:Math.max(0,Math.floor(Number(v.successes??0))),verifiedExecutions:Math.max(0,Math.floor(Number(v.verifiedExecutions??0))),independentExecutions:Math.max(0,Math.floor(Number(v.independentExecutions??0))),holdoutExecutions:Math.max(0,Math.floor(Number(v.holdoutExecutions??0))),distinctContexts:Math.max(1,Math.floor(Number(v.distinctContexts??1))),confidence01:clamp(Number(v.confidence01??0)),lastOutcome01:clamp(Number(v.lastOutcome01??0)),lastContext:String(v.lastContext??'')
+      trials:Math.max(0,Math.floor(Number(v.trials??0))),successes:Math.max(0,Math.floor(Number(v.successes??0))),verifiedExecutions:Math.max(0,Math.floor(Number(v.verifiedExecutions??0))),verifiedNonHoldoutExecutions:Math.max(0,Math.floor(Number(v.verifiedNonHoldoutExecutions??0))),independentExecutions:Math.max(0,Math.floor(Number(v.independentExecutions??0))),holdoutExecutions:Math.max(0,Math.floor(Number(v.holdoutExecutions??0))),distinctContexts:Math.max(1,Math.floor(Number(v.distinctContexts??1))),confidence01:clamp(Number(v.confidence01??0)),lastOutcome01:clamp(Number(v.lastOutcome01??0)),lastContext:String(v.lastContext??'')
     })):[],
     adaptations:Array.isArray(x.adaptations)
       ? x.adaptations.slice(0,32).map((a:any)=>({
@@ -255,7 +255,7 @@ export class ProceduralSkillLibrary{
   for(const skill of this.state.compoundSkills){
     if(!skill.variants.length){
       const baseId=`base:${skill.id}`;
-      skill.variants=[{id:baseId,parentId:null,version:1,stepId:'__base__',fromTool:'',toTool:'',reason:'compiled-base',steps:structuredClone(skill.steps),createdAt:skill.createdAt,status:'active',trials:skill.uses,successes:skill.successes,verifiedExecutions:skill.verifiedExecutions,independentExecutions:skill.independentExecutions,holdoutExecutions:0,distinctContexts:skill.distinctContexts,confidence01:Math.max(.35,skill.confidence01),lastOutcome01:skill.lastOutcome01,lastContext:skill.lastContext}];
+      skill.variants=[{id:baseId,parentId:null,version:1,stepId:'__base__',fromTool:'',toTool:'',reason:'compiled-base',steps:structuredClone(skill.steps),createdAt:skill.createdAt,status:'active',trials:skill.uses,successes:skill.successes,verifiedExecutions:skill.verifiedExecutions,verifiedNonHoldoutExecutions:0,independentExecutions:skill.independentExecutions,holdoutExecutions:0,distinctContexts:skill.distinctContexts,confidence01:Math.max(.35,skill.confidence01),lastOutcome01:skill.lastOutcome01,lastContext:skill.lastContext}];
       skill.activeVariantId=baseId;
     } else if(!skill.activeVariantId){
       const active=skill.variants.find(v=>v.status==='active')??skill.variants[0];
