@@ -1,3 +1,10 @@
+## WorkPass138 — canonical OrganismCore-to-supervisor trusted run bridge (2026-10-21)
+
+- Added `TrustedShadowLearningRunCoordinator.ts` as the single typed host-side entry point that binds `OrganismCore.registerTrustedSkillShadowRun` to `runLearningProcess`.
+- The coordinator requires the core registration surface and a host-supplied runtime version; it awaits durable registration before process spawn and propagates registry failures so no child is launched on failed registration.
+- Added a focused regression covering host context binding, successful launch after registration, rejection on registration failure, and missing registrar rejection; wired the test into the P23 continual-learning workflow.
+- **Boundary:** no pre-existing production caller of `runLearningProcess` was found in the current tree, so this creates the canonical integration entry point but does not prove that a deployed orchestration path invokes it. Production end-to-end execution, verifier-key provisioning, authenticated promotion approval, CI success and measured learning uplift remain unverified.
+
 ## WorkPass137 — register trusted shadow runs before learner process spawn (2026-10-21)
 
 - Added an explicit host-owned trusted registration capability to `runLearningProcess`. When supplied, it persists run/task/seed/manifest/runtime identity before spawning the child process.
