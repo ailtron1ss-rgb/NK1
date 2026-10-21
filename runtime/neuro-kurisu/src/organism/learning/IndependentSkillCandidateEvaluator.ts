@@ -223,11 +223,14 @@ export function createIndependentSkillCandidateEvaluator(
       let coveredCapabilityIds: string[] = [];
       let executable = true;
       try {
-        execution = await executeCandidate({
+        // The executor is outside this trust boundary. Detach its returned object
+        // immediately so later mutation of a retained reference cannot rewrite the
+        // trace while verification or safety scanning is awaiting other services.
+        execution = structuredClone(await executeCandidate({
           payload: structuredClone(payload),
           task: structuredClone(task),
           context: structuredClone(executionContext),
-        });
+        }));
         if (!execution || typeof execution.runId !== 'string' || !execution.runId.trim() ||
             !Array.isArray(execution.observedStepIds) ||
             execution.observedStepIds.some(step => typeof step !== 'string' || !step.trim()) ||
