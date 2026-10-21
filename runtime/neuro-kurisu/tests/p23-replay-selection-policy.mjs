@@ -61,7 +61,8 @@ assert.ok(salienceBatch.some(x => x.id === 'verified-failure'), 'salient verifie
 assert.ok(!salienceBatch.some(x => x.id === 'over-replayed'), 'replay repetition applies diminishing returns');
 const legacySignals = [make('legacy-a', 0, 'a', 'verify', 1), make('legacy-b', 1, 'b', 'verify', .6)];
 assert.deepEqual(selectReplayBatch(legacySignals, { maxBatchSize: 2, recentQuota: 0 }), legacySignals,
-  'callers without episodic fields retain legacy selection behavior');\n
+  'callers without episodic fields retain legacy selection behavior');
+
 const affectiveGoalSignals = [
   { id: 'routine', tick: 0, contextKey: 'routine', action: 'respond', surprise: .5, salience: .1, novelty: .5, replayCount: 0 },
   { id: 'high-stakes-failure', tick: 1, contextKey: 'safety', action: 'repair', surprise: .2, salience: .45, emotionalIntensity: 1, activationStrength: .9, goalPriority: 1, replayCount: 0 },
