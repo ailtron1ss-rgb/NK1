@@ -85,8 +85,7 @@ export class SelfModelEngine {
     this.model.lastRecoveryAt=at;
     this.model.continuityShock01=Math.min(1, this.model.continuityShock01*.35+.58);
     this.model.postRecoveryIntegration01=Math.max(0, Math.min(1, this.model.postRecoveryIntegration01*.55+.45));
-    this.model.identityCoherence=Math.max(0, Math.min(1, this.model.identityCoherence-.018));
-    this.model.agencyBelief=Math.max(0, Math.min(1, this.model.agencyBelief-.01));
+    // Recovery is recorded as continuity evidence, not treated as independent evidence about identity or agency.
     this.model.updatedAt=at;
   }
 
@@ -97,8 +96,7 @@ export class SelfModelEngine {
     const mean=this.model.recentErrors.reduce((a,b)=>a+b,0)/this.model.recentErrors.length;
     this.model.actionAccuracy=1-mean;
     this.model.calibrationError=0.8*this.model.calibrationError+0.2*Math.abs((1-mismatch)-confidence);
-    this.model.identityCoherence=Math.max(0,Math.min(1,previousState.needs.identityCoherence - mismatch*0.03 + (mismatch===0?0.006:0)));
-    this.model.agencyBelief=Math.max(0,Math.min(1,0.96*this.model.agencyBelief + (actual!=='wait'?0.02:0)));
+    // Prediction agreement updates calibration only. High-level identity/agency beliefs are written by the evidence-gated outcome path.
     this.model.continuityShock01=Math.max(0,this.model.continuityShock01*.94);
     this.model.postRecoveryIntegration01=Math.min(1,this.model.postRecoveryIntegration01+.025);
     this.model.updatedAt=Date.now();
