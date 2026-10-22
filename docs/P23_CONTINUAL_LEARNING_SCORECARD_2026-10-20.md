@@ -1,3 +1,12 @@
+## WorkPass264 update — external event contract validation (2026-10-22)
+
+- External causal event intake now rejects blank task identities and invalid action labels before state mutation.
+- The mechanism is based on a focused review of the older `ContinualReplayBuffer` intake contract, adapted into the current `CausalExperienceStream` rather than copying its parallel storage/training implementation.
+- **Scores unchanged pending empirical evidence:** P23 symbolic core **61%**, evidence-grounded learning maturity **36%**, project-wide lifelong-learning roadmap **30%**, overall learning engineering **57/100**.
+- Regression authored; execution and typecheck are not confirmed. The current score remains an engineering estimate, not measured learning performance.
+
+---
+
 ## WorkPass259–263 update — causal integrity, replay diversity, and runtime isolation (2026-10-22)
 
 - **WorkPass259:** bounded NFKC trace identity, persisted outcome deduplication, and state-grounded-only consolidation.
