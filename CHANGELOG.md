@@ -1,3 +1,13 @@
+## WorkPass301 — rebuild restored learning aggregates from trusted experience (2026-10-22)
+
+- `CausalExperienceStream.restore()` no longer trusts persisted rolling surprise, prediction-error, causal-strength, or learning-opportunity aggregates. It recomputes them in record order from grounded runtime outcomes only.
+- Outcome and consolidation totals continue to be derived from grounded records; a persisted scalar such as `outcomes: 999` cannot turn a quarantined row into trusted evidence.
+- Extended the evidence-lane regression with forged counters and all-one rolling metrics paired with an ungrounded record; expected restored trusted aggregates are zero.
+- This follows a core scientific-method principle: derived measurements must be reproducible from admissible observations, not accepted as proof merely because they were serialized. No new dependency.
+- Hosted validation remains unconfirmed; the retried older Actions run is queued, but it targets an earlier commit and cannot validate WorkPass298–301.
+
+---
+
 ## WorkPass300 — make imported experience retries idempotent (2026-10-22)
 
 - External experience ingestion now derives a stable SHA-256 trace identity from the normalized event payload when the upstream source omits an event ID. Re-delivery of the same tick/task/action/outcome payload collapses to the original hypothesis instead of minting a fresh timestamp-based identity.
