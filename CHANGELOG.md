@@ -1340,3 +1340,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Wired the regression into `test:workpass239:durable-signed-promotion-e2e`, `audit:p23:cross-source-replay`, and the WorkPass110 continual-learning workflow with an explicit path filter.
 - Scope: this verifies the existing durable evidence/approval/activation seam with generated test keys. It does not prove production host sandbox isolation, independent verifier/scanner deployment, multi-process crash contention, or real learning uplift.
 - Validation remains pending until the exact-head Actions job executes the new test and runtime typecheck successfully; no PASS is claimed.
+
+
+## WorkPass240 — reject self-attesting evaluator authorities (2026-10-22)
+
+- Hardened `IndependentSkillCandidateEvaluator` so executor, independent verifier and safety scanner must have distinct object identities and distinct method function identities; shared/self-attesting authorities fail closed before candidate execution.
+- Extended `tests/workpass227-bounded-independent-evaluation.mjs` with same-object and shared-function regressions, reusing existing package and workflow wiring.
+- This is a configuration-boundary hardening only: production host ownership, actual OS/container sandbox isolation and trusted verifier/scanner provisioning remain open.
+- Validation is pending exact-head Actions for the targeted regression and runtime typecheck; no test pass is claimed.
