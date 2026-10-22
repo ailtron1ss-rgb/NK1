@@ -11,6 +11,7 @@
   "scripts": {
     "test:workpass291:payload-budget": "node --experimental-strip-types tests/workpass291-reflective-payload-budget.mjs",
     "test:workpass292:evidence-lanes": "node --experimental-strip-types tests/workpass292-evidence-lanes.mjs",
+    "test:workpass293:p23-revision": "node --experimental-strip-types tests/workpass293-autonomous-p23-revision.mjs && npm run test:workpass172:compound-revision-coordinator && npm run test:workpass292:evidence-lanes",
     "test:workpass84:script-integrity": "node tests/workpass84-script-integrity.mjs",
     "test:workpass87:superseded-memory": "node --experimental-strip-types tests/workpass87-superseded-current-retrieval.mjs",
     "test:p2840:boundary": "node --experimental-strip-types tests/p2840-reality-boundary.mjs",
