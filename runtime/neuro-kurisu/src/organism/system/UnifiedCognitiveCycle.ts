@@ -1,9 +1,9 @@
 /**
- * BIG PASS 162 — Unified Cognitive Cycle contract and evidence aggregation.
+ * BIG PASS 162 / WorkPass287 — Unified Cognitive Cycle contract.
  *
- * This turns the existing event/evidence streams into a bounded acceptance
- * contract. A cycle only counts as complete when it has the causal stages needed
- * to connect experience with a consequence and subsequent adaptation.
+ * The cycle is an evidence aggregator, not a consciousness claim. It counts a
+ * cycle as complete only when required stages have bounded identities and the
+ * causal parent chain is credible. Restored counters are untrusted persistence.
  */
 export type UnifiedCycleStage='observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'self-update';
 
@@ -29,22 +29,73 @@ export interface UnifiedCognitiveCycleResult {
 }
 
 const REQUIRED:UnifiedCycleStage[]=['observation','prediction','action','outcome','learning','self-update'];
-const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const ALL_STAGES=new Set<UnifiedCycleStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update']);
+const clamp01=(x:number)=>Math.max(0,Math.min(1,x));
+const safeCounter=(value:unknown):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
+const safeMetric=(value:unknown):number=>typeof value==='number'&&Number.isFinite(value)?clamp01(value):0;
+const validStageId=(value:unknown):value is string=>typeof value==='string'&&value.length>0&&value.length<=256&&value.trim().length>0&&!/[\u0000-\u001f\u007f-\u009f]/u.test(value);
 
 export const defaultUnifiedCognitiveCycle=():UnifiedCognitiveCycleState=>({version:1,cycles:0,completeCycles:0,incompleteCycles:0,brokenLineages:0,meanStageCoverage01:0,meanCausalContinuity01:0,lastTick:-1,lastComplete:false,lastMissingStages:[...REQUIRED]});
 
 export class UnifiedCognitiveCycle {
   private state=defaultUnifiedCognitiveCycle();
-  restore(raw?:Partial<UnifiedCognitiveCycleState>|null){this.state={...defaultUnifiedCognitiveCycle(),...(raw??{}),version:1,cycles:Math.max(0,Number(raw?.cycles??0)),completeCycles:Math.max(0,Number(raw?.completeCycles??0)),incompleteCycles:Math.max(0,Number(raw?.incompleteCycles??0)),brokenLineages:Math.max(0,Number(raw?.brokenLineages??0)),meanStageCoverage01:clamp01(Number(raw?.meanStageCoverage01??0)),meanCausalContinuity01:clamp01(Number(raw?.meanCausalContinuity01??0)),lastTick:Number(raw?.lastTick??-1),lastComplete:Boolean(raw?.lastComplete),lastMissingStages:Array.isArray(raw?.lastMissingStages)?raw!.lastMissingStages as UnifiedCycleStage[]:[...REQUIRED]};}
-  evaluate(input:{tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number}):UnifiedCognitiveCycleResult{
-    const present=REQUIRED.filter(stage=>Boolean(input.stageIds[stage]));
-    const missing=REQUIRED.filter(stage=>!input.stageIds[stage]);
-    const coverage=present.length/REQUIRED.length;
-    const causal=clamp01(input.parentIntegrity01);
-    const complete=missing.length===0 && causal>=0.5;
-    const cycles=this.state.cycles+1;
-    this.state={...this.state,cycles,completeCycles:this.state.completeCycles+(complete?1:0),incompleteCycles:this.state.incompleteCycles+(complete?0:1),brokenLineages:this.state.brokenLineages+(causal<0.5?1:0),meanStageCoverage01:clamp01((this.state.meanStageCoverage01*this.state.cycles+coverage)/cycles),meanCausalContinuity01:clamp01((this.state.meanCausalContinuity01*this.state.cycles+causal)/cycles),lastTick:Math.max(0,Math.floor(input.tick)),lastComplete:complete,lastMissingStages:missing};
-    return {tick:Math.max(0,Math.floor(input.tick)),stageCoverage01:coverage,causalContinuity01:causal,complete,missingStages:missing};
+
+  restore(raw?:Partial<UnifiedCognitiveCycleState>|null):void {
+    const source=raw??{};
+    const cycles=safeCounter(source.cycles);
+    const completeCycles=Math.min(cycles,safeCounter(source.completeCycles));
+    const incompleteCycles=Math.min(cycles,safeCounter(source.incompleteCycles));
+    const rawMissing=Array.isArray(source.lastMissingStages)?source.lastMissingStages:[...REQUIRED];
+    const missing=[...new Set(rawMissing.filter((stage):stage is UnifiedCycleStage=>typeof stage==='string'&&ALL_STAGES.has(stage as UnifiedCycleStage)))];
+    const lastTick=typeof source.lastTick==='number'&&Number.isSafeInteger(source.lastTick)&&source.lastTick>=-1?source.lastTick:-1;
+    this.state={
+      version:1,
+      cycles,
+      completeCycles,
+      incompleteCycles,
+      brokenLineages:Math.min(cycles,safeCounter(source.brokenLineages)),
+      meanStageCoverage01:safeMetric(source.meanStageCoverage01),
+      meanCausalContinuity01:safeMetric(source.meanCausalContinuity01),
+      lastTick,
+      lastComplete:source.lastComplete===true&&missing.length===0,
+      lastMissingStages:missing,
+    };
   }
-  snapshot(){return structuredClone(this.state);}
+
+  evaluate(input:{tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number}):UnifiedCognitiveCycleResult {
+    if(!Number.isSafeInteger(input.tick)||input.tick<0)throw new RangeError('cognitive cycle tick must be a non-negative safe integer');
+    if(input.tick<this.state.lastTick)throw new RangeError('cognitive cycle tick must not move backwards');
+    if(typeof input.parentIntegrity01!=='number'||!Number.isFinite(input.parentIntegrity01)||input.parentIntegrity01<0||input.parentIntegrity01>1) {
+      throw new RangeError('parentIntegrity01 must be a finite value in [0, 1]');
+    }
+
+    const validIds:Partial<Record<UnifiedCycleStage,string>>={};
+    for(const stage of ALL_STAGES) {
+      const id=input.stageIds[stage];
+      if(validStageId(id))validIds[stage]=id;
+    }
+    const present=REQUIRED.filter(stage=>validIds[stage]!==undefined);
+    const missing=REQUIRED.filter(stage=>validIds[stage]===undefined);
+    const coverage=present.length/REQUIRED.length;
+    const causal=input.parentIntegrity01;
+    const complete=missing.length===0&&causal>=0.5;
+    const cycles=this.state.cycles+1;
+    this.state={
+      ...this.state,
+      cycles,
+      completeCycles:this.state.completeCycles+(complete?1:0),
+      incompleteCycles:this.state.incompleteCycles+(complete?0:1),
+      brokenLineages:this.state.brokenLineages+(causal<0.5?1:0),
+      meanStageCoverage01:(this.state.meanStageCoverage01*(cycles-1)+coverage)/cycles,
+      meanCausalContinuity01:(this.state.meanCausalContinuity01*(cycles-1)+causal)/cycles,
+      lastTick:input.tick,
+      lastComplete:complete,
+      lastMissingStages:missing,
+    };
+    return {tick:input.tick,stageCoverage01:coverage,causalContinuity01:causal,complete,missingStages:[...missing]};
+  }
+
+  snapshot():UnifiedCognitiveCycleState {
+    return structuredClone({...this.state,lastMissingStages:[...this.state.lastMissingStages]});
+  }
 }
