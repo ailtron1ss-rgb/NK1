@@ -144,6 +144,11 @@ export class UnifiedLearningSubstrate {
     this.state={...d,...r,version:4,sharedRepresentation01:Array.isArray(r.sharedRepresentation01)?r.sharedRepresentation01.slice(0,DIM).map(clamp01):d.sharedRepresentation01.slice(),patterns:Array.isArray(r.patterns)?r.patterns.slice(-128):[],externalHypotheses:restoreExternalHypotheses(r.externalHypotheses),provenanceCounts:{...d.provenanceCounts,...(r.provenanceCounts??{})},transferProbes:Array.isArray(r.transferProbes)?r.transferProbes.slice(-96):[],loop:{...d.loop,...(r.loop??{})}};
   }
   snapshot(){return structuredClone(this.state);}
+  /** Read-only oldest-first queue for independent assessment; reading never promotes or deletes a claim. */
+  pendingExternalHypotheses(limit=32):ExternalLearningHypothesis[]{
+    const wanted=Math.max(1,Math.min(128,Math.floor(Number.isFinite(limit)?limit:32)));
+    return this.state.externalHypotheses.slice(0,wanted).map(item=>structuredClone(item));
+  }
   beginCycle(){this.state.cycles++;this.state.loop={...this.state.loop,cycleId:'',phase:'idle',completed:0,total:7,lastOutcomeVerified:false,lastLearningDelta01:0,lastPolicyDelta01:0,lastTransferDelta01:0,lastRetention01:1,lastAt:Date.now()};}
 
   beginLearningLoop(input:{traceId:string;taskId:string;at?:number}){
@@ -186,7 +191,7 @@ export class UnifiedLearningSubstrate {
     // Provenance is a claim from the caller, not proof of origin. Quarantine this
     // signal as a hypothesis; only the verified runtime-outcome lane may update
     // behavioral patterns, transfer estimates, or the shared representation.
-    const claimedProvenance=input.provenance??'external';
+    const claimedProvenance=input.provenance==='experience-replay'||input.provenance==='skill-repair'?input.provenance:'external';
     this.state.provenanceCounts.external++;
     const receivedAt=Date.now();
     this.state.externalHypotheses.push({
