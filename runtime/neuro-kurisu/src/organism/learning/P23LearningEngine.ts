@@ -349,8 +349,12 @@ export class P23LearningEngine {
     })=>Promise<unknown>|unknown,
     evaluateRevisedCandidate:RevisedCandidateEvaluator,
     options:SkillLearnBenchCandidateGateOptions={},
+    sourceEvidenceFingerprint?: string,
   ):Promise<{candidate:VersionedSkillCandidate;fitness:SkillLearnBenchCandidateGateReport;plan:SkillRevisionPlan}> {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    if(sourceEvidenceFingerprint !== undefined && !/^[a-f0-9]{64}$/.test(sourceEvidenceFingerprint)) {
+      throw new Error('repair evidence fingerprint must be a canonical SHA-256 digest');
+    }
     if(typeof generate!=='function') throw new Error('configured skill revision generator is required');
     if(typeof evaluateRevisedCandidate!=='function') throw new Error('independent post-generation candidate evaluator is required');
     // Reject unauthentic or failed promotion evidence before spending resources on
@@ -404,6 +408,7 @@ export class P23LearningEngine {
     }
     return this.stageReflectiveSkillRevision(
       proposal,skillId,sourceCandidateId,revisedPayload,baseline,fresh.evaluation,fresh.evaluationFingerprint,options,
+      sourceEvidenceFingerprint,
     );
   }
 
@@ -423,6 +428,7 @@ export class P23LearningEngine {
     candidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
     evaluationFingerprint:string,
     options:SkillLearnBenchCandidateGateOptions={},
+    sourceEvidenceFingerprint?: string,
   ):{candidate:VersionedSkillCandidate;fitness:SkillLearnBenchCandidateGateReport;plan:SkillRevisionPlan} {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
     if(!skillId?.trim()) throw new Error('skillId must be non-empty');
@@ -447,6 +453,7 @@ export class P23LearningEngine {
       sourceCandidateId:source.candidateId,
       planFingerprint:createHash('sha256').update(canonicalize(plan)).digest('hex'),
       datasetFingerprint:proposal.datasetFingerprint,
+      ...(sourceEvidenceFingerprint ? { sourceEvidenceFingerprint } : {}),
       dimensions:plan.targets.map(target=>target.dimension),
       createdAt:now(),
     };
