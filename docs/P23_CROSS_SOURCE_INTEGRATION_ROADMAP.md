@@ -614,3 +614,11 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **DONE (regression authored):** malformed snapshot rows with NaN reward, an unsupported action, and control-bearing task identity are rejected and cannot enter replay.
 - **OPEN:** this schema validation is not cryptographic authenticity. A forged but well-formed `runtime-outcome` snapshot can still claim runtime provenance; host-authenticated persistence remains the next trust-boundary task.
 - **VALIDATION:** regression is authored but has not been executed on a functioning runner; exact-head CI remains unverified.
+
+
+## WorkPass278 — require valid observed state transitions
+
+- **DONE (code):** the causal outcome API now rejects unsupported selected actions, malformed/non-normalized before/after state vectors, invalid ticks, and transitions whose resulting state is not later than the pre-action state.
+- **DONE (regression authored):** non-finite pre-action energy and a same-tick post-state must not mint grounded causal evidence.
+- **OPEN:** a valid in-process transition is still not a host-authenticated durable attestation. Snapshot authentication and exact-head execution remain open.
+- **VALIDATION:** tests authored, not yet executed on a functioning runner.
