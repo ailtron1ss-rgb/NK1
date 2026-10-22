@@ -1233,7 +1233,8 @@ export class MemoryOS2{
   const hashCounts=new Map<string,number>();
   const revisionMembers=new Map<string,MemoryItem2[]>();
   const issues:Array<{code:string;severity:'error'|'warning';memoryId:string|null;detail:string}> = [];
-  const add=(code:string,severity:'error'|'warning',memoryId:string|null,detail:string)=>{if(issues.length<maxIssues)issues.push({code,severity,memoryId,detail:detail.slice(0,240)});};
+  let totalErrors=0,totalWarnings=0;
+  const add=(code:string,severity:'error'|'warning',memoryId:string|null,detail:string)=>{if(severity==='error')totalErrors++;else totalWarnings++;if(issues.length<maxIssues)issues.push({code,severity,memoryId,detail:detail.slice(0,240)});};
   for(const item of items){idCounts.set(item.id,(idCounts.get(item.id)??0)+1);}
   const ids=new Set(items.map(item=>item.id));
   let hashMismatch=0,invalidConfidence=0,invalidStatus=0,danglingRevision=0,danglingLinks=0,duplicateContent=0,futureEvidence=0,duplicateEvidenceKeys=0;
@@ -1280,8 +1281,8 @@ export class MemoryOS2{
   }
   const index=this.indexDiagnostics();
   if(!index.pass)add('index-integrity-failure','error',null,'The canonical memory indexes disagree with the persisted memory list.');
-  const errors=issues.filter(issue=>issue.severity==='error').length;
-  const warnings=issues.filter(issue=>issue.severity==='warning').length;
+  const errors=totalErrors;
+  const warnings=totalWarnings;
   return {version:1,readOnly:true,pass:errors===0,at,itemCount:items.length,issueCount:errors+warnings,errors,warnings,issues,truncated:errors+warnings>issues.length,counts:{duplicateIds:[...idCounts.values()].filter(count=>count>1).length,hashMismatch,invalidConfidence,invalidStatus,duplicateContent,danglingRevision,danglingLinks,futureEvidence,duplicateEvidenceKeys,revisionSequenceCollisions,brokenReciprocalRevisions,indexIntegrityFailures:index.pass?0:1},indexes:index};
  }
  evidenceTrail(id:string){
