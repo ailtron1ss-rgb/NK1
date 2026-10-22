@@ -1,3 +1,10 @@
+## Latest durable checkpoint — WorkPass287 (2026-10-22)
+
+- Work branch: `workpass286-multiscale-brain-system-plan`; source baseline remains the WorkPass285 stack. The WorkPass286 strategy PR is a draft and is not merged.
+- WorkPass287 adds an executable cognitive architecture source-contract test and a triage report. It validates declared map integrity/source paths when run; it does not prove that the referenced components are active in production.
+- Current status: implementation assets committed to this branch; test command not executed in this connector pass. No runtime behavior/dependencies changed and no learning score was raised.
+- Next implementation target: trace the real full-cycle and reduced-resolution call paths, then fix the highest-impact missing connection in the existing canonical owners rather than adding duplicate engines.
+
 ## Latest durable checkpoint — WorkPass286 (2026-10-22)
 
 - Current documentation branch: `workpass286-multiscale-brain-system-plan`, based on the active source stack `workpass206-runtime-evaluator-wiring` at WorkPass285 commit `0928b1c6ae4e596fef03ca0d689d81ae97144d4a`. The parent PR #55 remains draft/unmerged; this branch is a follow-on, not a merge into `main`.
