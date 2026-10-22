@@ -4,7 +4,7 @@
 - UnifiedLearningSubstrate v4 now quarantines caller-supplied replay/repair reports in a bounded hypothesis queue. External input cannot directly update the trusted pattern bank, shared representation, trusted sample counts or transfer estimates.
 - v3 learner state is reset at migration because legacy patterns/representations have no per-sample lineage and may include external claims. Durable organism memory and identity are not reset.
 - Added a read-only hypothesis queue API to OrganismCore, updated the cognitive architecture map, and removed the shortcut that equated an external outcome-source flag with independent evidence in the causal development and macro-synthesis paths.
-- Added test:workpass292:evidence-lanes plus a Node 24 workflow. The regression suite and typecheck have been committed but are not yet reported as executed/passing.
+- Added test:workpass292:evidence-lanes plus a Node 24 workflow. The latest Actions run is marked failed, but the connector returns no job step summaries/log archive, so it is unresolved whether the test command ran; no pass is claimed.
 - Research patterns adapted: Hermes Agent Self-Evolution (trace-guided bounded skill revisions and independent evaluation), Letta memory/dreaming (reviewable consolidation and durable memory), and Generative Agents (memory/reflection/planning feedback). No new runtime dependency was introduced.
 - Next: connect the hypothesis queue to existing independent evaluation; correlate action-ticket/tick evidence; preserve one canonical memory owner; carry verified experience through P23 holdout/promotion/rollback.
 
