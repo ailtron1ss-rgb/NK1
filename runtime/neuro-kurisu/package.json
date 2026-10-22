@@ -1747,6 +1747,7 @@
     "memory:doctor": "node --experimental-strip-types scripts/memory-doctor.mjs",
     "test:p318:memory-doctor-cli": "node --experimental-strip-types tests/memory-doctor-cli-workpass318.mjs",
     "test:p319:cycle-order": "node tests/workpass319-cycle-order.mjs",
-    "test:p320:cognitive-dependency-restore": "node tests/cognitive-dependency-graph-workpass320.mjs"
+    "test:p320:cognitive-dependency-restore": "node tests/cognitive-dependency-graph-workpass320.mjs",
+    "test:p321:expanded-cognitive-phase-spine": "node tests/workpass321-expanded-cognitive-phase-spine.mjs"
   }
 }
