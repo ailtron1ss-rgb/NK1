@@ -48,6 +48,14 @@ const externalInput = {
 };
 const externalFirst = externalStream.recordExternalLearningEvent(externalInput);
 assert.ok(externalFirst);
+assert.equal(externalFirst.provenance, "external",
+  "public external intake must not allow callers to impersonate runtime provenance");
+assert.equal(externalFirst.stateGrounded, false,
+  "caller-supplied stateGrounded=true must not create trusted state-transition evidence");
+assert.equal(externalFirst.replayEligible, false,
+  "unverified imported events must not enter policy replay");
+assert.equal(externalStream.consolidate(8, 1300).length, 0,
+  "high-value caller-asserted external evidence must not consolidate as grounded memory");
 const externalDuplicate = externalStream.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17",
 });
