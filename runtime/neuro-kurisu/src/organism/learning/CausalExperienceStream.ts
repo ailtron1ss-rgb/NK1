@@ -178,8 +178,10 @@ export class CausalExperienceStream {
       // Snapshot aggregates are untrusted input. Keep only bounded scalar shapes;
       // behavioral aggregates are recomputed from eligible records below.
       observations:safeCounter(r.observations),
-      outcomes:safeCounter(r.outcomes,records.length),
-      consolidated:safeCounter(r.consolidated,records.filter(record=>record.consolidated).length),
+      // Recompute trusted outcome totals from grounded records; persisted scalar
+      // aggregates can include historical external claims and are not evidence.
+      outcomes:records.filter(isGroundedRuntimeOutcome).length,
+      consolidated:records.filter(record=>isGroundedRuntimeOutcome(record)&&record.consolidated).length,
       records,
       rolling:{
         surprise01:safeMetric(rawRolling.surprise01),
@@ -336,7 +338,10 @@ export class CausalExperienceStream {
     this.recordedOutcomeTraceIds.add(traceId);
     while(this.recordedOutcomeTraceIds.size>this.maxRecordedTraceIds)this.recordedOutcomeTraceIds.delete(this.recordedOutcomeTraceIds.values().next().value!);
     this.state.recordedTraceIds=[...this.recordedOutcomeTraceIds];
-    this.state.outcomes++; this.recomputeBehavioralImpact(); this.state.rolling.surprise01=clamp01(this.state.rolling.surprise01*.92+surprise*.08); this.state.rolling.predictionError01=clamp01(this.state.rolling.predictionError01*.92+record.predictionError01*.08); this.state.rolling.causalStrength01=clamp01(this.state.rolling.causalStrength01*.9+causal*.1); this.state.rolling.learningOpportunity01=clamp01(this.state.rolling.learningOpportunity01*.9+(causal*.58+surprise*.18+novelty*.1)*.1); return structuredClone(record);
+    // Quarantined imports are retained for later adjudication, but must not alter
+    // trusted outcome totals or rolling learning signals. Only recordOutcome()
+    // can update those aggregates after a grounded state transition is admitted.
+    this.recomputeBehavioralImpact(); return structuredClone(record);
   }
   private policyFeatureVector(state:OrganismState):number[]{
     const n=state.needs;
