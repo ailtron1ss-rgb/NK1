@@ -67,6 +67,21 @@ const actionCounts=new Map();
 for(const g of goals.slice(-120))actionCounts.set(g,(actionCounts.get(g)||0)+1);
 assert.ok(actionCounts.size>3,'goal identities collapsed');
 
+
+const badIdentifierSnapshot=net.snapshot();
+badIdentifierSnapshot.goalHistory=[{
+  tick:badIdentifierSnapshot.tick,
+  id:String.fromCharCode(1),
+  vector:badIdentifierSnapshot.currentGoal,
+  action:badIdentifierSnapshot.currentAction,
+  reward01:0.5,
+  predictionError01:0.5,
+  accepted:false,
+}];
+const badIdentifierRestore=new B272EndogenousGoalGenesis();
+badIdentifierRestore.restore(badIdentifierSnapshot);
+assert.equal(badIdentifierRestore.snapshot().goalHistory.length,0,'control-bearing goal IDs must be quarantined');
+
 const tampered=new B272EndogenousGoalGenesis();
 const corrupt=snap;
 corrupt.tick=Number.NaN;

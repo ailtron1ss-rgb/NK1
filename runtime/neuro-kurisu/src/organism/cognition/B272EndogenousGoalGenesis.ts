@@ -10,7 +10,7 @@ const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&ty
 const safeCounter=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
 const isUnit=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
 const isAction=(value:unknown):value is ActionKind=>typeof value==='string'&&ACTIONS.includes(value as ActionKind);
-const isSafeId=(value:unknown):value is string=>typeof value==='string'&&value.length>0&&value.length<=256&&value.trim()===value&&!/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(value);
+const isSafeId=(value:unknown):value is string=>typeof value==='string'&&value.length>0&&value.length<=256&&value.trim()===value&&!/[\u0000-\u001f\u007f-\u009f]/u.test(value);
 const strictVector=(value:unknown,dimensions:number):number[]|null=>{
   if(!Array.isArray(value)||value.length!==dimensions||value.some(v=>typeof v!=='number'||!Number.isFinite(v)))return null;
   return value.map(v=>clamp11(v as number));

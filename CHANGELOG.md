@@ -1,3 +1,11 @@
+## WorkPass303 — repair invalid control-character regex (2026-10-22)
+
+- Fixed a malformed Unicode character-class escape in B272's persisted-ID validator. Node.js reports a syntax error for the doubled escapes, which prevents the goal-generation module from loading.
+- Added a regression restoring a snapshot containing a control-bearing goal identifier; the record must be quarantined.
+- The malformed regex was independently reproduced in Node.js 22. Full runtime suite execution remains blocked by GitHub Actions jobs failing before runner assignment.
+
+---
+
 ## WorkPass302 — make goal outcome credit idempotent and ledger-bound
 
 - Added a persisted `lastOutcomeTick` watermark. A generated goal's outcome can now update weights and memory at most once per tick; duplicate/out-of-order credits fail before any learner state mutation.
