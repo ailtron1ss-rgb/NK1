@@ -107,7 +107,7 @@ export class MicroDreamEngine{
     const cooldownMs=6*60*60*1000;
     for(const candidate of candidates){
       if(generated.length>=3)break;
-      const ids=[candidate.a.m.id,candidate.b.m.id].sort((x,y)=>x.localeCompare(y));
+      const ids=[candidate.a.m.id,candidate.b.m.id].sort();
       const existing=this.state.dreams.find(d=>d.kind==='association'&&Array.isArray(d.sourceMemoryIds)&&d.sourceMemoryIds.length===2&&[...d.sourceMemoryIds].sort().join('\u0000')===ids.join('\u0000'));
       if(existing&&Math.abs(at-existing.at)<cooldownMs){deduplicated++;continue;}
       const averageConfidence=(clamp01(candidate.a.m.confidence01??.5)+clamp01(candidate.b.m.confidence01??.5))*.5;
