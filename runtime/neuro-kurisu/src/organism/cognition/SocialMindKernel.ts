@@ -194,7 +194,7 @@ export class SocialMindKernel{
 
   observePerson(input:{id:string;displayName?:string;at:number;confidence01:number;visible01?:number;source:ObservationSource;alias?:string;position?:{x:number;y:number;z:number}|null}){
     const id=input.id.trim()||'unknown-person';
-    let person=this.state.persons.find(p=>p.id===id);
+    let person=this.state.persons.find(p=>p.id===id||p.aliases.includes(id));
     if(!person && input.position){
       const recent=this.state.persons
         .filter(p=>p.lastPosition && input.at-p.lastSeenAt < 45_000)
