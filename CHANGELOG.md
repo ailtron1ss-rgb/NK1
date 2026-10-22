@@ -1,3 +1,12 @@
+## WorkPass322 — harden persisted cognitive resource budgets (2026-10-22)
+
+- Changed `CognitiveResourceEconomy.restore()` from broad object spreading/coercion to a version-aware whitelist restore. Corrupt counters, string-valued budgets, non-finite values, invalid modes and timestamps no longer silently propagate into the organism's live compute/attention/learning/memory budgets.
+- Counter restore accepts only non-negative safe integers; unit budgets remain finite and clamped to [0,1]; timestamps/ticks are normalized; unknown persisted keys are dropped; unsupported schema versions fail before live state changes.
+- The allocation path now normalizes tick/time and saturates the persisted cycle count at JavaScript's safe-integer limit.
+- Added `tests/cognitive-resource-economy-workpass322.mjs`, registered `test:p322:cognitive-resource-restore`, and wired a dedicated WorkPass71 CI step. It is committed but not claimed as passed while hosted jobs fail before running steps.
+
+---
+
 ## WorkPass321 — expand the canonical cognitive trace to eleven connected phases (2026-10-22)
 
 - Extended the existing `CognitiveEventFabric` operational record with appraisal, attention, memory, goal and plan events. The runtime now feeds those stages from its actual homeostatic state, global workspace selection, retrieved memory context, canonical goal selection, and generated plan rather than leaving them as unrecorded parallel concepts.
