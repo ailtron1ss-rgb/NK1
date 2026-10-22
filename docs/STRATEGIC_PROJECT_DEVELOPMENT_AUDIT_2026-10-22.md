@@ -1,3 +1,11 @@
+## WorkPass271 — normalize and reconcile legacy causal snapshot identities (2026-10-22)
+
+CausalExperienceStream restore previously normalized persisted trace IDs but retained all rows whose normalized IDs were non-empty. Distinct legacy Unicode spellings could therefore become duplicate active records after NFKC. Restore now collapses exact normalized duplicate rows and quarantines all rows when records with one normalized trace ID disagree. The normalized identity remains in the bounded deduplication set even when its records are quarantined, preventing silent reinsertion after restart. Regressions cover both exact and conflicting Unicode variants.
+
+**Validation:** the code and test source are committed; exact-head execution/typecheck remains unverified because Actions logs/steps are unavailable. No dependency or learning-score change.
+
+---
+
 ## WorkPass270 — remove premature task-ID trimming at external ingestion (2026-10-22)
 
 The shared bounded normalizer correctly rejects control characters before trimming, but the external intake call site had already normalized and trimmed task IDs before invoking it. That erased boundary control characters before validation. The intake path now preserves the raw NFKC-normalized string, uses trim only to distinguish blank input, and passes the untrimmed value to the canonical validator. The existing trailing-control task-ID regression now protects the true production path.
