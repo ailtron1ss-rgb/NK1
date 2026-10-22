@@ -1,3 +1,11 @@
+## Latest durable checkpoint — WorkPass289 (2026-10-22)
+
+- Runtime fix committed on `workpass286-multiscale-brain-system-plan`: `OperationalMicroCycleRuntime` no longer interprets raw observation reward/success or generic world events as verified learning credit.
+- The micro-cycle uses neutral reward `0.5` and `verified01: false` until canonical, action-correlated verifier evidence is wired in. Other reduced-resolution continuity/homeostasis updates remain active.
+- Regression assertions were added to `tests/workpass287-cognitive-architecture-contract.mjs`; not executed here.
+- WorkPass286–289 remain on draft PR #56; no merge or CI success is claimed.
+- Next implementation: trace and reuse the existing full-cycle verifier result/correlation; then enable micro-cycle credit only for fresh, matching evidence and add behavior-level tests.
+
 ## Latest durable checkpoint — WorkPass288 (2026-10-22)
 
 - Work branch: `workpass286-multiscale-brain-system-plan`; PR #56 remains a draft and is not merged.
