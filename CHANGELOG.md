@@ -1,3 +1,15 @@
+## WorkPass250 — consolidate independent-evidence binding (2026-10-22)
+
+- **DONE (code):** extracted a single exact-context binding predicate and reused it for both independent verifier and safety-scanner responses.
+- **Structural consolidation:** payload/task/environment/plan/manifest/experiment-plan/scheduled-run/runtime-run/task/seed binding now has one implementation instead of two parallel checks, reducing the chance of future security drift.
+- **Validation:** targeted test and typecheck have not been executed in this pass; no green status is claimed.
+
+## WorkPass249 — stop cancelled authority invocations before launch (2026-10-22)
+
+- **DONE (code):** host-owned authority invocation now fails before request-directory allocation if its AbortSignal is already aborted, and rechecks after writing the private request snapshot before invoking process supervision.
+- **Integration:** reuses the existing cancellation and LearningProcessSupervisor path; no parallel runner or authority subsystem was added.
+- **Validation:** regression and typecheck remain unverified until a functioning runner executes them.
+
 ## WorkPass247 — protect host authority executable integrity (2026-10-22)
 
 - **DONE (code):** host-owned executor, verifier, and safety-scanner commands are rejected at preparation if the resolved executable is not a regular file or is group/world-writable on POSIX.
