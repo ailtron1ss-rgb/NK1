@@ -30,6 +30,7 @@
     "test:b621-b720:performance": "node --experimental-strip-types tests/b621-b720-performance.mjs",
     "test:b621-b720:integration": "node --experimental-strip-types tests/b621-b720-organism-integration.mjs",
     "test:big-pass-242-249": "node --experimental-strip-types tests/big-pass-242-249-neuro-digital-evolution.mjs",
+    "test:big-pass-90:causal-stream": "node --experimental-strip-types tests/big-pass-90-causal-learning-stream.mjs",
     "test:big-pass-116": "node --experimental-strip-types tests/big-pass-116-predictive-transfer.mjs",
     "test:big-pass-122": "node --experimental-strip-types tests/big-pass-122-personal-curriculum.mjs",
     "test:big-pass-122:core": "node --experimental-strip-types tests/big-pass-122-core-personal-curriculum.mjs",
