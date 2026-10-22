@@ -60,6 +60,12 @@ export interface P28PlasticityState {
   recentCredits:Array<{tick:number;reward01:number;surprise01:number;action:ActionKind|null;at:number}>;
 }
 
+export interface PlasticityLearningModulation {
+  entropyFloor01?:number;
+  plasticity01?:number;
+  trustRegionRadius01?:number;
+}
+
 export interface PlasticityObservation {
   vector:number[];
   modality:PlasticityModality;
@@ -68,6 +74,8 @@ export interface PlasticityObservation {
   trust01:number;
   predictionError01?:number;
   action?:ActionKind|null;
+  /** Optional EILS-derived controls from the preceding cognitive cycle. */
+  learningModulation?:Partial<PlasticityLearningModulation>;
 }
 
 export interface PlasticityResult {
@@ -141,13 +149,18 @@ export class P28PlasticitySubstrate {
     return {p:best,sim:bestSim};
   }
 
-  private ensurePrototype(modality:PlasticityModality,vector:number[],source:string,trust01:number,at:number):{p:PlasticityPrototype;novelty01:number;created:boolean}{
+  private ensurePrototype(modality:PlasticityModality,vector:number[],source:string,trust01:number,at:number,modulation?:Partial<PlasticityLearningModulation>):{p:PlasticityPrototype;novelty01:number;created:boolean}{
     const v=norm(vector); const found=this.findPrototype(modality,v);
     if(found.p){
       const novelty=clamp01((1-found.sim)*.72);
-      const threshold=.34;
+      const entropyFloor=clamp01(modulation?.entropyFloor01??0);
+      const threshold=modulation?.entropyFloor01===undefined?.34:clamp01(.34+.12*entropyFloor);
       if(found.sim>=threshold){
-        const lr=.045+.06*trust01;
+        const baselineRate=.045+.06*trust01;
+        const plasticity=clamp01(modulation?.plasticity01??.5);
+        const trustRegion=clamp01(modulation?.trustRegionRadius01??.5);
+        const modulatedRate=modulation?Math.min(.015+.12*plasticity,.01+.16*trustRegion):baselineRate;
+        const lr=Math.max(.002,Math.min(.18,modulatedRate));
         found.p.vector=norm(found.p.vector.map((x,i)=>x*(1-lr)+v[i]*lr));
         found.p.count+=1; found.p.strength01=clamp01(found.p.strength01*.992+.02*trust01);
         found.p.confidence01=clamp01(found.p.confidence01*.96+.04*trust01); found.p.lastSeenAt=at;
@@ -183,7 +196,7 @@ export class P28PlasticitySubstrate {
     if(quarantined){
       p=existing.p ?? {id:`quarantine-${input.modality}`,modality:input.modality,vector:norm(input.vector),count:0,strength01:0,confidence01:0,firstSeenAt:at,lastSeenAt:at,source:'quarantine'};
     }else{
-      const ensured=this.ensurePrototype(input.modality,input.vector,input.source,trust,at); p=ensured.p; learned=true;
+      const ensured=this.ensurePrototype(input.modality,input.vector,input.source,trust,at,input.learningModulation); p=ensured.p; learned=true;
       if(learned)this.state.prototypeUpdates++;
     }
     const activation=`${input.modality}:${p.id}`;
