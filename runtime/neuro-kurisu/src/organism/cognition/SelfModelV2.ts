@@ -28,7 +28,16 @@ export function defaultSelfModel(): SelfModelV2 {
 
 export class SelfModelEngine {
   private model=defaultSelfModel();
-  restore(m:SelfModelV2|undefined){ this.model={...defaultSelfModel(),...(m||{})}; }
+  restore(m:SelfModelV2|undefined){
+    const restored={...defaultSelfModel(),...(m||{})};
+    restored.identityGateAcceptedCount=Number.isFinite(restored.identityGateAcceptedCount)?Math.max(0,Math.floor(restored.identityGateAcceptedCount)):0;
+    restored.identityGateRejectedCount=Number.isFinite(restored.identityGateRejectedCount)?Math.max(0,Math.floor(restored.identityGateRejectedCount)):0;
+    const gate=restored.lastIdentityGate as any;
+    restored.lastIdentityGate=gate&&typeof gate==='object'&&typeof gate.accepted==='boolean'&&typeof gate.reason==='string'&&Number.isFinite(gate.at)
+      ? {accepted:gate.accepted,reason:gate.reason.slice(0,96),at:Math.max(0,gate.at),evidenceRef:typeof gate.evidenceRef==='string'?gate.evidenceRef.slice(0,240):null}
+      : null;
+    this.model=restored;
+  }
   snapshot(){ return structuredClone(this.model); }
   predict(action:ActionKind, confidence:number){ this.model.predictedAction=action; this.model.confidence=Math.max(0,Math.min(1,confidence)); this.model.updatedAt=Date.now(); }
   actionBias(action:ActionKind){
