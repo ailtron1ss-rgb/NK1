@@ -96,15 +96,38 @@ export class CausalExperienceStream {
   constructor(maxRecords=1024){ this.maxRecords=Math.max(64,Math.min(4096,Math.floor(maxRecords))); }
   restore(raw?:Partial<CausalExperienceState>|null){
     const d=defaultCausalExperienceStream(),r=raw??{};
+    const restoredRows:CausalExperienceRecord[]=Array.isArray(r.records)
+      ? r.records.slice(-this.maxRecords)
+        .map(record=>({...record,traceId:normalizeTraceId(record?.traceId)}))
+        .filter(record=>Boolean(record.traceId))
+      : [];
+    const firstByTraceId=new Map<string,CausalExperienceRecord>();
+    const conflictingTraceIds=new Set<string>();
+    const uniqueRows:CausalExperienceRecord[]=[];
+    for(const record of restoredRows){
+      const prior=firstByTraceId.get(record.traceId);
+      if(!prior){
+        firstByTraceId.set(record.traceId,record);
+        uniqueRows.push(record);
+      }else if(JSON.stringify(prior)!==JSON.stringify(record)){
+        // Distinct persisted records became the same identity after NFKC.
+        // Quarantine every row for that identity rather than choosing one result.
+        conflictingTraceIds.add(record.traceId);
+      }
+      // An exact duplicate row is safely collapsed to the first copy.
+    }
+    const records=uniqueRows.filter(record=>!conflictingTraceIds.has(record.traceId));
     this.state={
       ...d,...r,
-      records:Array.isArray(r.records)?r.records.slice(-this.maxRecords).map(record=>({...record,traceId:normalizeTraceId(record?.traceId)})).filter(record=>Boolean(record.traceId)):[],
+      records,
       rolling:{...d.rolling,...(r.rolling??{})},
       recordedTraceIds:Array.isArray(r.recordedTraceIds)?r.recordedTraceIds.map(normalizeTraceId).filter(Boolean).slice(-this.maxRecordedTraceIds):[],
     };
     this.recordedOutcomeTraceIds.clear();
     for(const id of this.state.recordedTraceIds??[])this.recordedOutcomeTraceIds.add(id);
-    for(const record of this.state.records)this.recordedOutcomeTraceIds.add(record.traceId);
+    // Keep both valid and quarantined event identities in the bounded dedup guard.
+    // This prevents a malformed historical collision from being reintroduced as new data.
+    for(const record of restoredRows)this.recordedOutcomeTraceIds.add(record.traceId);
     while(this.recordedOutcomeTraceIds.size>this.maxRecordedTraceIds)this.recordedOutcomeTraceIds.delete(this.recordedOutcomeTraceIds.values().next().value!);
     this.state.recordedTraceIds=[...this.recordedOutcomeTraceIds];
     this.recomputeBehavioralImpact();
