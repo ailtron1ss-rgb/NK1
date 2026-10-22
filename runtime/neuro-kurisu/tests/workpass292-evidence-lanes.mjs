@@ -75,6 +75,7 @@ assert.equal(experiences.recordOutcome(trace, { ...after, lastActionSuccess: nul
   reward01: 0.94, success01: 0.96, surprise01: 0.91, novelty01: 0.82,
 }), null, 'missing action outcome must not be inferred from unrelated state drift');
 
+const trustedAggregatesBeforeExternal = experiences.snapshot();
 const external = experiences.recordExternalLearningEvent({
   tick: 8,
   taskId: 'imported-skill',
@@ -90,6 +91,11 @@ const external = experiences.recordExternalLearningEvent({
 });
 assert.equal(external.provenance, 'external', 'caller-provided provenance cannot authenticate an event');
 assert.equal(external.stateGrounded, false, 'caller-provided grounding cannot authenticate an event');
+const trustedAggregatesAfterExternal = experiences.snapshot();
+assert.equal(trustedAggregatesAfterExternal.outcomes, trustedAggregatesBeforeExternal.outcomes,
+  'unverified imports must not increment the trusted outcome counter');
+assert.deepEqual(trustedAggregatesAfterExternal.rolling, trustedAggregatesBeforeExternal.rolling,
+  'unverified imports must not contaminate trusted rolling learning signals');
 
 const packet = experiences.learningPacket(32);
 assert.equal(packet.records.length, 1, 'only the grounded runtime outcome should enter the unified learning packet');
