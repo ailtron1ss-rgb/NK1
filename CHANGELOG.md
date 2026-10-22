@@ -1355,3 +1355,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added a second enforcement point inside `createIndependentSkillCandidateEvaluator`: in production, direct evaluator construction fails closed without canonical experiment authority. This prevents bypassing the existing provider wrapper by calling the evaluator factory directly.
 - Added regression coverage that temporarily sets `NODE_ENV=production`, asserts authority-free direct construction is rejected, and restores the prior environment in `finally`.
 - Targeted regression and typecheck are still awaiting an actual successful runner execution; no validation pass is claimed.
+
+
+## WorkPass241 — validate direct scheduler candidate fingerprints
+
+- Tightened `P23TrustedShadowLearningScheduler` constructor validation to require the same 64-hex candidate fingerprint accepted by the production JSON parser; malformed direct runtime configuration now fails before any child process can launch.
+- Added the regression to the existing `p23-runtime-trusted-shadow-scheduler.mjs` test, already wired into the learning workflow.
+- Validation remains unconfirmed until the exact-head regression and typecheck execute successfully.
