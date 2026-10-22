@@ -35,14 +35,32 @@ process.stdout.write(JSON.stringify({ runId: request.context.runId, observedStep
 import { readFileSync } from 'node:fs';
 const request = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 if (request.authority !== 'verifier' || request.input.execution.observedStepIds[0] !== 'step-a') process.exit(22);
-process.stdout.write(JSON.stringify({ bindingVerified: true, passed: true, coveredCapabilityIds: ['cap-a'] }));
+process.stdout.write(JSON.stringify({
+  bindingVerified: true, passed: true, coveredCapabilityIds: ['cap-a'],
+  payloadFingerprint: request.input.context.payloadFingerprint,
+  taskInputFingerprint: request.input.context.taskInputFingerprint,
+  environmentFingerprint: request.input.context.environmentFingerprint,
+  planFingerprint: request.input.context.planFingerprint,
+  runId: request.input.execution.runId,
+  taskId: request.input.task.taskId,
+  seed: request.input.task.seed,
+}));
 `],
     [scanner, `#!/usr/bin/env node
 import { readFileSync } from 'node:fs';
 const request = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 if (request.authority !== 'safety-scanner' || request.input.payload.answer !== 42 ||
     request.input.context.planFingerprint !== 'a'.repeat(64)) process.exit(23);
-process.stdout.write(JSON.stringify({ violationCount: 0 }));
+process.stdout.write(JSON.stringify({
+  violationCount: 0, bindingVerified: true,
+  payloadFingerprint: request.input.context.payloadFingerprint,
+  taskInputFingerprint: request.input.context.taskInputFingerprint,
+  environmentFingerprint: request.input.context.environmentFingerprint,
+  planFingerprint: request.input.context.planFingerprint,
+  runId: request.input.execution.runId,
+  taskId: request.input.task.taskId,
+  seed: request.input.task.seed,
+}));
 `],
   ];
   for (const [service, source] of scripts) {
