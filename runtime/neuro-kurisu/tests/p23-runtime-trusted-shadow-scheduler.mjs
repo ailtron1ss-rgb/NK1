@@ -3,6 +3,28 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { P23TrustedShadowLearningScheduler } from '../src/organism/learning/P23TrustedShadowLearningScheduler.ts';
+
+const invalidCandidateCore = {
+  async runTrustedSkillShadowLearningProcess() { throw new Error('must-not-run'); },
+  async recordVerifiedSkillShadow() {},
+};
+assert.throws(() => new P23TrustedShadowLearningScheduler(invalidCandidateCore, {
+  enabled: true,
+  runtimeVersion: 'nk1-invalid-candidate-test',
+  taskId: 'invalid-candidate-test',
+  taskVersion: 'v1',
+  candidateId: 'not-a-candidate-fingerprint',
+  manifestFingerprint: 'a'.repeat(64),
+  planFingerprint: 'b'.repeat(64),
+  command: {
+    executable: process.execPath,
+    args: [],
+    cwd: process.cwd(),
+    runRoot: path.join(os.tmpdir(), 'nk1-invalid-candidate-runs'),
+    surviveDir: path.join(os.tmpdir(), 'nk1-invalid-candidate-survive'),
+  },
+}), /candidateId must be a 64-hex candidate fingerprint/);
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'nk1-runtime-shadow-scheduler-'));
 let runtime;
