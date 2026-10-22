@@ -1,3 +1,13 @@
+## WorkPass243 — host-owned evaluation subprocess adapter (2026-10-22)
+
+- Added `HostOwnedIndependentEvaluationServices.ts`, a concrete adapter from the canonical independent evaluator to three distinct host-owned executable services: candidate executor, independent verifier, and safety scanner.
+- Reused `LearningProcessSupervisor` for no-shell child-process launch, bounded runtime/output, process-group termination on POSIX, execution receipts, and AbortSignal cancellation. Each invocation receives a private mode-0600 JSON request file and must return a strict JSON object on stdout; nonzero exit, timeout, cancellation, output overflow, malformed JSON, or malformed service results fail closed.
+- Added startup validation for absolute executable/working/storage paths, executable access, distinct resolved executables, and disjoint private run/survive roots across all three authorities.
+- Extended the evaluator safety-scanner contract to receive the same immutable task/environment/plan context as execution and verification. Added a runtime-ready async config-factory seam that prepares trusted executables once and can be passed to `RuntimeConfig.compoundRepairRevision.independentEvaluationConfigForRepair`.
+- Added `workpass243-host-owned-independent-evaluation-services.mjs` and registered it in `package.json`, the canonical `audit:p23:cross-source-replay` command, and the continual-learning workflow's path filters/test steps.
+- **Boundary:** this adapter provides real supervised process separation, not an OS sandbox by itself. The configured executor must be a trusted sandbox launcher enforcing filesystem/network/resource restrictions. The runtime caller must explicitly supply the returned factory; the existing runtime config does not silently invent production commands.
+- **Validation:** regression is authored and CI-wired, but has not been executed in this session. Exact-head Actions/typecheck status is not yet confirmed; no pass is claimed.
+
 ## WorkPass242 — freeze candidate payload across asynchronous trials (2026-10-22)
 
 - Fixed a time-of-check/time-of-use gap in the canonical independent evaluator: it now structured-clones the candidate payload once at evaluation entry, computes the payload fingerprint from that immutable snapshot, and passes clones of that same snapshot to every sandbox execution and safety scan.
