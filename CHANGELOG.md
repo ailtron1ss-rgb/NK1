@@ -1,3 +1,12 @@
+## WorkPass290 — canonical verifier trace (2026-10-22)
+
+- Traced `OutcomeVerificationService`: trusted external-postcondition receipts are process-local and bound to the complete action input, but do not currently expose an organism tick/action-ticket correlation for the micro-cycle.
+- Kept the WorkPass289 neutral micro-cycle reward/verification containment in place; no duplicate verifier/ledger and no guessed correlation were introduced.
+- Runtime integration and behavioral validation remain incomplete; tests/typecheck were not executed in this connector pass.
+- Next: thread canonical action-ticket/tick identity and the existing reality-learning decision into the micro-cycle; reject stale/mismatched evidence before restoring any verified credit.
+
+---
+
 ## WorkPass289 — micro-cycle reward provenance hardening (2026-10-22)
 
 - Changed `OperationalMicroCycleRuntime` so incoming `observation.reward`, `observation.success`, prior `lastActionSuccess`, and a generic `worldEvent` no longer grant fresh reward credit or self-certify `verified01` in the reduced-resolution neural tick.
