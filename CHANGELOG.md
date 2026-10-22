@@ -1,3 +1,10 @@
+## WorkPass264 — validate external causal event identity (2026-10-22)
+
+- **Code:** external causal ingestion now normalizes and requires a non-empty task ID and rejects action labels outside the canonical organism action set before mutating state.
+- **Source integration:** selectively adapted strict intake-validation principles from the historical continual replay buffer; no parallel replay subsystem was added.
+- **Regression authored:** invalid task/action inputs must throw and leave the causal outcome count unchanged.
+- **Validation:** targeted regression and runtime typecheck remain unconfirmed.
+
 ## WorkPass263 — reduce inherited environment leakage (2026-10-22)
 
 - **Code:** reject inherited environment keys matching common credentials, secrets, tokens, passwords, auth/session material, credential-profile paths, runtime injection variables, and dynamic-loader overrides; duplicate inherited keys are also rejected.
