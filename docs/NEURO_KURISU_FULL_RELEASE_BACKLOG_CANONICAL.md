@@ -1,3 +1,24 @@
+## GitHub implementation checkpoint — WorkPass265 strategic development plan (2026-10-22)
+
+**Checked source branch:** workpass206-runtime-evaluator-wiring  
+**Checked PR #55 HEAD:** 58e9c6a00b5835096dac3758968f5b9ce0eb08d2  
+**State:** PR open, draft and unmerged; exact-head successful CI/typecheck not confirmed.
+
+- [x] Inspected repository metadata, the current PR changed-file list, strategic audit, start-here charter, canonical backlog, source-intake ledger, P23 roadmap/scorecard, MemoryOS2 retrieval owner, P23LearningEngine, OutcomeVerificationService and Live2D/Legacy avatar paths.
+- [x] Established the publication/source topology concern: main has no common ancestor reported against the current source line. Do not merge/rewrite main automatically.
+- [x] Recorded the current evidence boundary: WorkPass255–264 code changes are present in the PR stack; successful execution and deployment-shaped proof remain unverified.
+- [x] Added an explicit multi-track end-state/acceptance map, eight-pass sequence, scientific benchmark intake and honest progress-accounting rules to the strategic audit.
+- [ ] P0 — restore actionable exact-head CI and run the owning runtime/app tests with accessible logs.
+- [ ] P0 — provision real sandbox launcher plus independently controlled verifier and safety scanner; prove the full matched-evaluation → signed shadow evidence → approval → activation/restart/rollback path.
+- [ ] P1 — run frozen independent RU/EN memory and memory-grounded-action evaluation against the same-corpus/same-budget baseline.
+- [ ] P1 — run replay/transfer/retention experiments with paired seeds, no-learning and wrong-feedback controls; keep promotion blocked until the predeclared evidence gate is met.
+- [ ] P1/P2 — execute production browser/Live2D/speech and physical Android/Termux E2E; measure target-device resources and soak.
+- [ ] P1 — synchronize branch inventory and documentation entry points; do not delete historical source branches before exact unique-diff/provenance review.
+
+Progress rule: implementation, integration, exact-head verification and measured efficacy are separate percentages. A written regression or unavailable Actions log is not a successful run and does not earn verification/efficacy credit. See [strategic execution blueprint](STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md) and [current research intake](../docs/RESEARCH_INTAKE_LEDGER.md).
+
+---
+
 ## GitHub implementation checkpoint — WorkPass254 (2026-10-22)
 
 **Active code branch:** `workpass206-runtime-evaluator-wiring` · **Draft PR:** [#55](https://github.com/ailtron1ss-rgb/NK1/pull/55) · **latest implementation group:** independent-evaluation hardening plus avatar/Live2D stability.
