@@ -105,6 +105,18 @@ assert.equal(conflictRestore.recordExternalLearningEvent({
 assert.equal(conflictRestore.summary().outcomes, 1,
   "quarantine/retry must not change the persisted outcome count");
 
+const cyclicSnapshot = externalStream.snapshot();
+const cyclicRecord = { ...externalFirst, id: "cyclic-normalized-alias", traceId: "Ｅxternal-Source-17" };
+cyclicRecord.corruption = cyclicRecord;
+cyclicSnapshot.records.push(cyclicRecord);
+const cycleSafeRestore = new CausalExperienceStream(64);
+assert.doesNotThrow(() => cycleSafeRestore.restore(cyclicSnapshot),
+  "a cyclic persisted row must be quarantined rather than crashing restore");
+assert.equal(cycleSafeRestore.recent(64).some(row => row.traceId === "External-Source-17"), false,
+  "a non-serializable collision must quarantine all rows for its normalized identity");
+assert.ok(cycleSafeRestore.snapshot().recordedTraceIds.includes("External-Source-17"),
+  "a cyclic collision must retain its normalized identity in the dedup guard");
+
 assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, taskId: "   ", traceId: "invalid-task",
 }), /causal-external-task-id-required/);
