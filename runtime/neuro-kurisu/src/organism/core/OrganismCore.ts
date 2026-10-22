@@ -10360,6 +10360,9 @@ export class OrganismCore {
     identityDevelopmentSummary() { const frame = this.cognitiveRuntime.lastDevelopmentalIdentity; return { phase: frame.phase, continuity01: frame.continuity01, integrity01: frame.integrity01, developmentalReadiness01: frame.developmentalReadiness01, revisionReadiness01: frame.revisionReadiness01, protectiveStability01: frame.protectiveStability01, beliefLineage01: frame.beliefLineage01, autobiographicalBinding01: frame.autobiographicalBinding01, socialContinuity01: frame.socialContinuity01, authorship01: frame.authorship01, causalSelf01: frame.causalSelf01, evidenceBalance01: frame.evidenceBalance01, counterEvidencePressure01: frame.counterEvidencePressure01, identityPressure01: frame.identityPressure01, reasons: frame.reasons }; }
     /** Read-only diagnostic entry point; never repairs or deletes memory implicitly. */
     memoryDoctor(options: { at?: number; maxIssues?: number } = {}) { return this.memorySubsystem.doctor(options); }
+    /** Read-only dreaming diagnostics; candidate associations are not canonical memory links. */
+    microDreamDiagnostics() { return this.cognitiveRuntime.microDreams.diagnostics(); }
+    microDreamSnapshot() { return this.cognitiveRuntime.microDreams.snapshot(); }
     motiveEcologySummary() { return structuredClone(this.cognitiveRuntime.lastMotiveEcology); }
     developmentalAttractorSummary() { return structuredClone(this.cognitiveRuntime.developmentalAttractors.summary()); }
     experienceContinuumSnapshot() { return this.memorySubsystem.experienceContinuum.snapshot(); }
