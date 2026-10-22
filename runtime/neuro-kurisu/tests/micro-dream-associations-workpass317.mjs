@@ -81,6 +81,20 @@ assert.deepEqual(
   'fixed memory input and seed should yield deterministic association hypotheses',
 );
 
+const trustFiltered = new MicroDreamEngine();
+const untrustedMemories = [
+  ...memories,
+  { id: 'quarantine-record', content: 'Calibration drift oscillator coherence quarantine contaminant.', confidence01: .99, salience01: .99, kind: 'semantic', epistemicStatus: 'quarantined', provenanceClass: 'external', sourceAuthority01: 1 },
+  { id: 'unknown-record', content: 'Calibration drift oscillator coherence unknown input.', confidence01: .99, salience01: .99, kind: 'semantic', epistemicStatus: 'unknown', provenanceClass: 'external', sourceAuthority01: 1 },
+  { id: 'recursive-dream', content: 'Calibration drift oscillator coherence self-generated dream.', confidence01: .99, salience01: .99, kind: 'dream', epistemicStatus: 'fact', provenanceClass: 'agent', sourceAuthority01: 1 },
+  { id: 'expired-record', content: 'Calibration drift oscillator coherence expired information.', confidence01: .99, salience01: .99, kind: 'semantic', epistemicStatus: 'fact', provenanceClass: 'external', sourceAuthority01: 1, validUntilAt: 999 },
+  { id: 'weak-confidence', content: 'Calibration drift oscillator coherence low confidence memory.', confidence01: .1, salience01: .99, kind: 'semantic', epistemicStatus: 'fact', provenanceClass: 'external', sourceAuthority01: 1 },
+  { id: 'untrusted-simulation', content: 'Calibration drift oscillator coherence speculative simulation.', confidence01: .99, salience01: .99, kind: 'semantic', epistemicStatus: 'fact', provenanceClass: 'simulation', sourceAuthority01: 1 },
+  { id: 'low-authority', content: 'Calibration drift oscillator coherence low authority data.', confidence01: .99, salience01: .99, kind: 'semantic', epistemicStatus: 'fact', provenanceClass: 'external', sourceAuthority01: .1 },
+];
+const filtered = trustFiltered.dreamAssociations(untrustedMemories, 'filtered-seed', { at: 5_000, uncertainty01: .6, memoryEvidence01: .8, novelty01: .75 });
+assert.equal(filtered.consideredMemories, memories.length, 'quarantined, unknown, expired, low-confidence, simulated and dream-generated memories must be excluded before association scoring');
+assert.ok(filtered.candidates.every(d => d.sourceMemoryIds.every(id => memories.some(m => m.id === id))), 'no excluded record may become a source for a dreamed association');
 const alreadyLinked = memories.map(m => ({ ...m, semanticLinks: [...m.semanticLinks] }));
 alreadyLinked[0].semanticLinks = ['memory-memory-writes'];
 const linkedKernel = new MicroDreamEngine();
