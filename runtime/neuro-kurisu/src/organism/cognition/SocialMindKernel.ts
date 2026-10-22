@@ -314,10 +314,10 @@ export class SocialMindKernel{
     const id=String(personId??'').normalize('NFKC').trim().slice(0,120);
     const kind=String(action??'').normalize('NFKC').trim().toLowerCase().slice(0,100);
     if(!id||!kind||!Number.isFinite(at)||at<0) throw new Error('valid personId, action and timestamp are required');
-    this.ensurePerson(id,at);
+    const canonicalId=this.ensurePerson(id,at).id;
     const evidence:SocialEvidence={
-      id:stable('user-action',`${id}:${kind}:${at}:${this.state.evidence.length}`),
-      personId:id,source,claim:`user-action:${kind}`,confidence01:clamp(confidence01),
+      id:stable('user-action',`${canonicalId}:${kind}:${at}:${this.state.evidence.length}`),
+      personId:canonicalId,source,claim:`user-action:${kind}`,confidence01:clamp(confidence01),
       observedAt:at,evidenceKind:'observed'
     };
     this.state.evidence=[evidence,...this.state.evidence].slice(0,512);
@@ -334,19 +334,19 @@ export class SocialMindKernel{
     const id=String(personId??'').normalize('NFKC').trim().slice(0,120);
     const normalized=String(statement??'').normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').trim().slice(0,180);
     if(!id||!normalized||!Number.isFinite(at)||at<0) throw new Error('valid personId, statement and timestamp are required');
-    this.ensurePerson(id,at);
+    const canonicalId=this.ensurePerson(id,at).id;
     const lower=normalized.toLocaleLowerCase();
-    const evidence:SocialEvidence={id:stable('user-observation',id+':'+lower+':'+at),personId:id,source,claim:'observation:'+lower,confidence01:clamp(confidence01),observedAt:at,evidenceKind:'observed'};
+    const evidence:SocialEvidence={id:stable('user-observation',canonicalId+':'+lower+':'+at),personId:canonicalId,source,claim:'observation:'+lower,confidence01:clamp(confidence01),observedAt:at,evidenceKind:'observed'};
     this.state.evidence=[evidence,...this.state.evidence.filter(e=>e.id!==evidence.id)].slice(0,512);
     this.recompute(at);
     return structuredClone(evidence);
   }
 
   reconstructUserMind(input:UserMindReconstructionInput):UserMindFrame {
-    const personId=String(input?.personId??'').normalize('NFKC').trim().slice(0,120);
+    const requestedPersonId=String(input?.personId??'').normalize('NFKC').trim().slice(0,120);
     const at=Number(input?.at);
-    if(!personId||!Number.isFinite(at)||at<0) throw new Error('valid personId and timestamp are required');
-    this.ensurePerson(personId,at);
+    if(!requestedPersonId||!Number.isFinite(at)||at<0) throw new Error('valid personId and timestamp are required');
+    const personId=this.ensurePerson(requestedPersonId,at).id;
     const support=(ids:unknown)=>{
       const wanted=new Set((Array.isArray(ids)?ids:[]).filter((x):x is string=>typeof x==='string').slice(0,16));
       return this.state.evidence.filter(e=>wanted.has(e.id)&&e.personId===personId&&e.evidenceKind==='observed'&&e.observedAt<=at&&(e.expiresAt==null||e.expiresAt>at));
@@ -402,7 +402,8 @@ export class SocialMindKernel{
   }
 
   userMindFrame(personId:string) {
-    const frame=(this.state.userMindFrames??[]).find(f=>f.personId===personId);
+    const canonicalId=this.state.persons.find(p=>p.id===personId||p.aliases.includes(personId))?.id??personId;
+    const frame=(this.state.userMindFrames??[]).find(f=>f.personId===canonicalId);
     return frame?structuredClone(frame):null;
   }
 
@@ -416,19 +417,21 @@ export class SocialMindKernel{
   }
 
   proposeRepair(personId:string='user'){
-    const p=this.state.persons.find(x=>x.id===personId);
+    const p=this.state.persons.find(x=>x.id===personId||x.aliases.includes(personId));
     if(!p)return {needed:false,reason:'unknown-person'};
     const need=clamp(p.intentUncertainty01*.45+(1-p.predictability01)*.25+(1-p.trust01)*.2+p.expectedResponseUncertainty01*.1);
     const action=need>.7?'clarify-intent':need>.5?'acknowledge-and-correct':'continue';
-    return {needed:need>.5,need01:need,action,reason:action==='continue'?'social state sufficiently predictable':'repair can reduce social uncertainty',personId};
+    return {needed:need>.5,need01:need,action,reason:action==='continue'?'social state sufficiently predictable':'repair can reduce social uncertainty',personId:p.id};
   }
 
   secondOrder(personId:string='user'){
-    return this.state.secondOrderBeliefs.filter(x=>x.claim.startsWith(`${personId}:`)).slice(0,24).map(x=>structuredClone(x));
+    const canonicalId=this.state.persons.find(p=>p.id===personId||p.aliases.includes(personId))?.id??personId;
+    return this.state.secondOrderBeliefs.filter(x=>x.claim.startsWith(`${canonicalId}:`)).slice(0,24).map(x=>structuredClone(x));
   }
 
   counterfactuals(personId?:string){
-    return this.state.counterfactuals.filter(x=>!personId||x.personId===personId).slice(0,24).map(x=>structuredClone(x));
+    const canonicalId=personId?this.state.persons.find(p=>p.id===personId||p.aliases.includes(personId))?.id??personId:undefined;
+    return this.state.counterfactuals.filter(x=>!canonicalId||x.personId===canonicalId).slice(0,24).map(x=>structuredClone(x));
   }
 
   private counterfactualAlternatives(action?:string){
@@ -449,10 +452,10 @@ export class SocialMindKernel{
   }
 
   socialDemand(personId='user'){
-    const p=this.state.persons.find(x=>x.id===personId); if(!p)return this.state.socialDemand01;
+    const p=this.state.persons.find(x=>x.id===personId||x.aliases.includes(personId)); if(!p)return this.state.socialDemand01;
     return clamp(p.visible01*.25+p.intentUncertainty01*.35+(1-p.relationshipStrength01)*.15+this.state.globalSocialUncertainty01*.25);
   }
-  person(personId:string){const p=this.state.persons.find(x=>x.id===personId);return p?structuredClone(p):null;}
+  person(personId:string){const p=this.state.persons.find(x=>x.id===personId||x.aliases.includes(personId));return p?structuredClone(p):null;}
   diagnostics(){
     return {version:1,personCount:this.state.persons.length,evidenceCount:this.state.evidence.length,episodeCount:this.state.episodes.length,secondOrderBeliefCount:this.state.secondOrderBeliefs.length,counterfactualCount:this.state.counterfactuals.length,globalSocialUncertainty01:this.state.globalSocialUncertainty01,socialDemand01:this.state.socialDemand01,people:this.state.persons.slice(0,8).map(p=>({id:p.id,continuity01:p.continuityConfidence01,trust01:p.trust01,predictability01:p.predictability01,relationship01:p.relationshipStrength01,intentUncertainty01:p.intentUncertainty01,roleSelfModel01:p.roleSelfModel01,perceivedAgency01:p.perceivedAgency01,expectedResponseUncertainty01:p.expectedResponseUncertainty01,observationCount:p.observationCount}))};
   }
