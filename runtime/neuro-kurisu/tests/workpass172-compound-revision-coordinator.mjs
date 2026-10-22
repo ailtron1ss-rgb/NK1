@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { P23CompoundRepairRevisionCoordinator } from '../src/organism/learning/P23CompoundRepairRevisionCoordinator.ts';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 
@@ -40,6 +41,8 @@ assert.equal(result.candidateId, 'candidate-staged-1');
 assert.equal(providerCalls, 1);
 assert.equal(stagedCalls, 1);
 assert.equal(received.sourceCandidateId, 'source-candidate-1');
+assert.match(received.sourceEvidenceFingerprint, /^[a-f0-9]{64}$/,
+  'exact eligible repair evidence digest must accompany the staging request');
 
 // WorkPass293: the identical eligible repair evidence must never stage again.
 const repeated = await coordinator.reviseFromObservedRepairs('skill-a');
@@ -207,5 +210,38 @@ assert.equal(concurrentResultOne.status, 'candidate-staged');
 assert.equal(concurrentResultTwo.status, 'candidate-staged');
 assert.equal(concurrentStageCalls, 1, 'concurrent callers must not create duplicate candidate stages');
 assert.strictEqual(concurrentResultOne, concurrentResultTwo, 'coalesced callers should share the same result object');
+
+// A persisted candidate carries the same source-evidence digest across coordinator restarts.
+const durableDigest = createHash('sha256').update(JSON.stringify(evidence)).digest('hex');
+let durableProviderCalls = 0;
+let durableStageCalls = 0;
+const durableCoordinator = new P23CompoundRepairRevisionCoordinator(
+  {
+    compoundSkillRepairEvidence: () => evidence,
+    generateCompoundSkillRevision: async () => {
+      durableStageCalls++;
+      throw new Error('persisted duplicate must not stage again');
+    },
+  },
+  {
+    verifiedSkillCandidateSnapshot: () => ({
+      candidates: [{
+        skillId: 'skill-a',
+        candidateId: 'persisted-candidate',
+        revisionProvenance: { sourceEvidenceFingerprint: durableDigest },
+      }],
+    }),
+  },
+  async () => {
+    durableProviderCalls++;
+    throw new Error('persisted duplicate must not rerun the provider');
+  },
+);
+const durableDuplicate = await durableCoordinator.reviseFromObservedRepairs('skill-a');
+assert.equal(durableDuplicate.status, 'already-staged-for-evidence');
+assert.equal(durableDuplicate.candidateId, 'persisted-candidate');
+assert.equal(durableDuplicate.durable, true);
+assert.equal(durableProviderCalls, 0);
+assert.equal(durableStageCalls, 0);
 
 console.log('WorkPass172 + WorkPass293 coordinator regressions completed');
