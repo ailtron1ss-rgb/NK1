@@ -244,4 +244,41 @@ assert.equal(durableDuplicate.durable, true);
 assert.equal(durableProviderCalls, 0);
 assert.equal(durableStageCalls, 0);
 
-console.log('WorkPass172 + WorkPass293 coordinator regressions completed');
+// WP294: repeated failure on the same evidence digest backs off; a new digest retries immediately.
+const retryEvidence = [structuredClone(evidence[0])];
+let failureProviderCalls = 0;
+const retryCoordinator = new P23CompoundRepairRevisionCoordinator(
+  {
+    compoundSkillRepairEvidence: () => retryEvidence,
+    generateCompoundSkillRevision: async () => {
+      throw new Error('provider must fail before candidate staging in this scenario');
+    },
+  },
+  engine,
+  async () => {
+    failureProviderCalls++;
+    throw new Error('deliberate independent evaluator/provider failure');
+  },
+);
+await assert.rejects(
+  () => retryCoordinator.reviseFromObservedRepairs('skill-a'),
+  /deliberate independent evaluator\/provider failure/,
+);
+assert.equal(failureProviderCalls, 1);
+const cooled = await retryCoordinator.reviseFromObservedRepairs('skill-a');
+assert.equal(cooled.status, 'retry-backoff-active');
+assert.equal(cooled.attempts, 1);
+assert.ok(cooled.retryInMs > 0 && cooled.retryInMs <= 30 * 60 * 1000);
+assert.equal(failureProviderCalls, 1, 'same-evidence retry must not rerun the expensive provider during cooldown');
+assert.equal(retryCoordinator.retryBackoffDiagnostics()[0].active, true);
+
+retryEvidence[0] = { ...retryEvidence[0], failureFingerprint: 'fp-new-evidence' };
+await assert.rejects(
+  () => retryCoordinator.reviseFromObservedRepairs('skill-a'),
+  /deliberate independent evaluator\/provider failure/,
+);
+assert.equal(failureProviderCalls, 2, 'new verified repair evidence must bypass the old digest cooldown');
+assert.equal(retryCoordinator.retryBackoffDiagnostics()[0].attempts, 1,
+  'new evidence gets a fresh bounded retry budget');
+
+console.log('WorkPass172 + WorkPass293 + WorkPass294 coordinator regressions completed');
