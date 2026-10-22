@@ -1,3 +1,13 @@
+## WorkPass284 — strict external causal-memory intake (2026-10-22)
+
+- **Code:** `CausalExperienceStream.recordExternalLearningEvent` now rejects non-safe/negative ticks, non-finite or out-of-range metrics, and invalid optional source-memory/evidence identities before record construction. It no longer silently coerces a malformed tick to zero or clamps invalid metrics into plausible values.
+- **Regression coverage:** added malformed tick, NaN metric and control-character source-identity cases to the existing causal-stream test.
+- **Trust boundary:** external events remain explicitly external and ungrounded regardless of caller-supplied provenance flags. This validates input shape, not source authenticity; external events do not gain runtime-outcome status.
+- **Architecture:** hardened the existing ingestion boundary, with no duplicate ledger or dependency.
+- **Validation:** regression tests were authored but not executed in this pass.
+
+---
+
 ## WorkPass283 — causal trace-to-world tick binding (2026-10-22)
 
 - **Code:** causal outcome creation now requires `trace.tick === trace.stateBefore.tick` in addition to valid before/after snapshots and a later observed state tick. This blocks pairing an old or unrelated decision trace with a different transition.
