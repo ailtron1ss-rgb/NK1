@@ -1,3 +1,12 @@
+## WorkPass281 score update (2026-10-22)
+
+- **Scores unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**.
+- WorkPass281 improves input canonicalization and execution-identity hygiene; it does not demonstrate higher task success, generalization, transfer or autonomous self-development.
+- Regressions were authored but not executed. No new upstream project or dependency was integrated in this pass.
+- No empirical score uplift claimed.
+
+---
+
 ## WorkPass279–280 score update (2026-10-22)
 
 - **Scores unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**.
