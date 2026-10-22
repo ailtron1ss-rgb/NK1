@@ -262,4 +262,18 @@ assert.equal(forgedDerivedRestore.prioritizedReplayCandidates(8).length, 0,
 assert.equal(forgedDerivedRestore.consolidate(8, 1400).length, 0,
   "non-runtime provenance must never be consolidated as grounded memory");
 
+// Imported records may inform later review, but must not masquerade as observed
+// behavioral change in the runtime policy.
+const externalBehaviorStream = new CausalExperienceStream(64);
+for (const [i, action] of ["respond", "explore", "verify", "rest"].entries()) {
+  externalBehaviorStream.recordExternalLearningEvent({
+    ...externalInput, traceId: `external-behavior-${i}`, taskId: "same-external-task", action,
+    tick: 200 + i, reward01: i / 3, success01: i / 3,
+  });
+}
+assert.equal(externalBehaviorStream.summary().behavioralContextSamples, 0,
+  "external-only action variation must not count as runtime behavioral adaptation");
+assert.equal(externalBehaviorStream.summary().behavioralImpact01, 0,
+  "untrusted imported evidence must not move the runtime behavioral-impact metric");
+
 console.log('BIG_PASS_90_CAUSAL_STREAM=PASS');
