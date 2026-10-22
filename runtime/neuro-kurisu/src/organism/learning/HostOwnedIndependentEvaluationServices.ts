@@ -82,6 +82,15 @@ async function prepareCommand(command: HostOwnedAuthorityCommand, name: string):
   };
   const executable = await realpath(command.executable);
   const executableMetadata = await stat(executable);
+  if (!executableMetadata.isFile()) {
+    throw new Error('host-owned-' + name + '-executable-must-be-regular-file');
+  }
+  // The configured authority must not be replaceable by another account through
+  // group/other write permission. This is a host executable integrity check, not
+  // a substitute for signing or an immutable deployment image.
+  if (process.platform !== 'win32' && (executableMetadata.mode & 0o022) !== 0) {
+    throw new Error('host-owned-' + name + '-executable-must-not-be-group-or-world-writable');
+  }
   const executableIdentity = process.platform === 'win32'
     ? executable.toLowerCase()
     : `${executableMetadata.dev}:${executableMetadata.ino}`;
