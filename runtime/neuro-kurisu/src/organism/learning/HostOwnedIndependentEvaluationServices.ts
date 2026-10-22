@@ -160,6 +160,20 @@ export async function createHostOwnedIndependentEvaluationServices(
   if (new Set([executorCommand.executable, verifierCommand.executable, safetyCommand.executable]).size !== 3) {
     throw new Error('host-owned-evaluation-authorities-must-use-distinct-executables');
   }
+  const storageRoots = [
+    executorCommand.runRoot, executorCommand.surviveDir,
+    verifierCommand.runRoot, verifierCommand.surviveDir,
+    safetyCommand.runRoot, safetyCommand.surviveDir,
+  ];
+  for (let i = 0; i < storageRoots.length; i += 1) {
+    for (let j = i + 1; j < storageRoots.length; j += 1) {
+      if (storageRoots[i] === storageRoots[j] ||
+          storageRoots[i].startsWith(storageRoots[j] + path.sep) ||
+          storageRoots[j].startsWith(storageRoots[i] + path.sep)) {
+        throw new Error('host-owned-evaluation-authority-storage-roots-must-be-disjoint');
+      }
+    }
+  }
   return {
     authorityIdentity: {
       executorExecutable: executorCommand.executable,
@@ -242,5 +256,41 @@ export async function createHostOwnedIndependentEvaluationConfig(input: {
     ...(input.experimentAuthority ? { experimentAuthority: input.experimentAuthority } : {}),
     ...(input.serviceTimeoutMs === undefined ? {} : { serviceTimeoutMs: input.serviceTimeoutMs }),
     authorityIdentity: services.authorityIdentity,
+  };
+}
+
+
+/**
+ * Prepares trusted host executables once, then supplies a synchronous config factory
+ * suitable for RuntimeConfig.compoundRepairRevision.independentEvaluationConfigForRepair.
+ * Task plans, environment identity and experiment authority remain owned by the host.
+ */
+export async function createHostOwnedIndependentEvaluationConfigFactory<TInput>(input: {
+  commands: HostOwnedIndependentEvaluationCommands;
+  tasksForRepair(repair: TInput): IndependentCandidateEvaluationConfig['tasks'];
+  environmentFingerprintForRepair(repair: TInput): string;
+  experimentAuthorityForRepair?(repair: TInput): IndependentCandidateEvaluationConfig['experimentAuthority'];
+  serviceTimeoutMs?: number;
+}): Promise<(repair: TInput) => IndependentCandidateEvaluationConfig & {
+  authorityIdentity: HostOwnedIndependentEvaluationServices['authorityIdentity'];
+}> {
+  const services = await createHostOwnedIndependentEvaluationServices(input.commands);
+  return repair => {
+    const tasks = input.tasksForRepair(repair);
+    const environmentFingerprint = input.environmentFingerprintForRepair(repair);
+    if (!Array.isArray(tasks) || !digest(environmentFingerprint)) {
+      throw new Error('host-owned-independent-evaluation-repair-config-invalid');
+    }
+    const experimentAuthority = input.experimentAuthorityForRepair?.(repair);
+    return {
+      tasks,
+      environmentFingerprint,
+      executor: services.executor,
+      verifier: services.verifier,
+      safetyScanner: services.safetyScanner,
+      ...(experimentAuthority ? { experimentAuthority } : {}),
+      ...(input.serviceTimeoutMs === undefined ? {} : { serviceTimeoutMs: input.serviceTimeoutMs }),
+      authorityIdentity: services.authorityIdentity,
+    };
   };
 }
