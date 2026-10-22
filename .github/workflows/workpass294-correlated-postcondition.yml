@@ -4,6 +4,7 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts'
       - 'runtime/neuro-kurisu/src/organism/system/ActionGateway.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
       - 'runtime/neuro-kurisu/tests/workpass294-correlated-postcondition.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass294-correlated-postcondition.yml'
@@ -22,6 +23,9 @@ jobs:
           package-manager-cache: false
       - name: Enforce runtime version
         run: node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
+      - name: Type-check runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
       - name: Verify exact action and decision lineage
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass294:correlated-postcondition
