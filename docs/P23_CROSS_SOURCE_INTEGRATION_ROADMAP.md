@@ -1,3 +1,13 @@
+## WorkPass247 — reject mutable host authority executables
+
+- [x] Require each resolved host authority executable to be a regular file.
+- [x] On POSIX, reject executable files with group/world write bits.
+- [x] Extend the existing host-service regression with a group-writable executable rejection case.
+- [ ] Execute the targeted host-service regression and runtime typecheck on a functioning runner.
+- [ ] Provision and verify the actual OS/container sandbox launcher and separately controlled verifier/scanner executables.
+- [ ] Run matched baseline/candidate → signed evidence → authenticated approval → durable activation against host-provisioned authorities.
+- **Boundary:** permission-bit checks are defense-in-depth, not signature verification, immutable deployment, or sandboxing.
+
 ## WorkPass246 — freeze host command authority and reject hard-link aliases
 
 - [x] Snapshot caller-owned `args`, `env`, and `inheritEnv` before the first filesystem await in host command preparation.
