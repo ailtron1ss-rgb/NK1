@@ -7,6 +7,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
       - "runtime/neuro-kurisu/tests/workpass287-unified-cycle-contract.mjs"
       - "runtime/neuro-kurisu/tests/workpass288-intrinsic-motivation-contract.mjs"
+      - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/workpass287-288-cognitive-contracts.yml"
   pull_request:
@@ -36,3 +38,6 @@ jobs:
       - name: Check intrinsic motivation contract
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass288-intrinsic-motivation-contract.mjs
+      - name: Check motivation-to-goal integration
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/big-pass-272-endogenous-goal-genesis.mjs
