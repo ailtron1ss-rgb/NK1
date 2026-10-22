@@ -1,3 +1,12 @@
+## WorkPass325 — connect all eleven phases to the live Core decision loop (2026-10-22)
+
+- Extended `OrganismCore`'s actual decision trace so appraisal, attention, memory, goal selection and planning are emitted between prediction and action. The phase payloads are derived from Core's current homeostatic state, global-workspace items/capacity, last-retrieved memory IDs, active goals and governed action candidates.
+- Replaced the prior six-stage anchor type with anchors for the five additional phases and passed all eleven event IDs into the same `verifyOperationalCycle()` and `UnifiedCognitiveCycle.evaluate()` call. The internal cognitive loop now verifies the full causal spine: observation → prediction → appraisal → attention → memory → goal → plan → action → outcome → learning → self-update.
+- This complements WorkPass321's outer grounded world/embodiment trace; WorkPass323 keeps these two temporal scopes in separate persisted namespaces, so their evidence and counters no longer overwrite each other.
+- Added `tests/workpass325-core-eleven-phase-causal-loop.mjs`, registered `test:p325:core-eleven-phase-spine`, and wired a dedicated CI step. It checks phase ordering, required parent links, anchor coverage and that the internal verifier consumes the expanded stage map. Hosted execution remains pending until Actions successfully starts job steps.
+
+---
+
 ## WorkPass324 — count cognitive interrupts as episodes, not repeated ticks (2026-10-22)
 
 - Fixed `CognitiveDependencyGraph.resolve()` so the cumulative `interrupts` metric counts a newly started or distinct interrupt episode rather than incrementing on every frame while a single interrupt remains active.
