@@ -1348,3 +1348,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Extended `tests/workpass227-bounded-independent-evaluation.mjs` with same-object and shared-function regressions, reusing existing package and workflow wiring.
 - This is a configuration-boundary hardening only: production host ownership, actual OS/container sandbox isolation and trusted verifier/scanner provisioning remain open.
 - Validation is pending exact-head Actions for the targeted regression and runtime typecheck; no test pass is claimed.
+
+
+### WorkPass240 follow-up — enforce the production gate at the evaluator itself
+
+- Added a second enforcement point inside `createIndependentSkillCandidateEvaluator`: in production, direct evaluator construction fails closed without canonical experiment authority. This prevents bypassing the existing provider wrapper by calling the evaluator factory directly.
+- Added regression coverage that temporarily sets `NODE_ENV=production`, asserts authority-free direct construction is rejected, and restores the prior environment in `finally`.
+- Targeted regression and typecheck are still awaiting an actual successful runner execution; no validation pass is claimed.
