@@ -1,3 +1,14 @@
+## WorkPass287 — harden the unified cognitive-cycle evidence contract (2026-10-22)
+
+- **Runtime:** `UnifiedCognitiveCycle` now rejects invalid, non-finite, fractional, negative, or regressing world ticks; parent-integrity input must be finite and in the range 0–1.
+- **Evidence quality:** required stage IDs must be bounded non-empty strings without control characters. Blank or control-bearing IDs cannot make a cycle appear complete.
+- **Persistence:** restored counters, metrics, tick values, and missing-stage arrays are normalized instead of allowing NaN/Infinity or unknown stage names into the cycle snapshot.
+- **Isolation:** `snapshot()` returns a detached missing-stage list so caller mutation cannot alter internal cycle state.
+- **Regression:** added `tests/workpass287-unified-cycle-contract.mjs` and registered `test:workpass287:cognitive-cycle` in the runtime package.
+- **Scope:** this is a shared-cycle contract hardening pass, not a claim of consciousness or an end-to-end autonomous loop. No dependency added. Test/typecheck execution has not been observed in this session; no pass is claimed.
+
+---
+
 ## WorkPass286 — recent engineering changes handover (2026-10-22)
 
 - Added `docs/reports/2026-10-22-recent-engineering-changes.md`, consolidating the 20–22 October change families, known validation gaps, and next implementation gates.
