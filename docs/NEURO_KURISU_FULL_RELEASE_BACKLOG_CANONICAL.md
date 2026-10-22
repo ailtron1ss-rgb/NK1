@@ -885,3 +885,11 @@ The historical WorkPass57 release baseline and its 78.0% release-roadmap number 
 - [x] Add regression fixtures for non-finite reward, unsupported action and control-bearing task ID.
 - [ ] Add host-authenticated snapshot integrity; structural validity alone cannot authenticate provenance.
 - [ ] Run the targeted regression and exact-head typecheck on a functioning runner.
+
+
+## WorkPass278 — observed-state causal admission
+
+- [x] Require supported action and valid normalized before/after state vectors before minting a runtime causal outcome.
+- [x] Require the observed post-state tick to advance beyond the pre-action state.
+- [x] Add regression coverage for NaN state and non-advancing tick.
+- [ ] Host-authenticate persisted evidence and run targeted tests/typecheck on a functioning runner.
