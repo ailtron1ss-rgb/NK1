@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { SocialMindKernel } from '../src/organism/cognition/SocialMindKernel.ts';
 import { MotiveEcologyFabric } from '../src/organism/cognition/evolution/MotiveEcologyFabric.ts';
 import { P28PlasticitySubstrate } from '../src/organism/learning/P28PlasticitySubstrate.ts';
+import { MemoryConsolidationController } from '../src/organism/memory/MemoryConsolidationController.ts';
 
 const social = new SocialMindKernel();
 const intentEvidence = social.observeText('user', 'Почему это работает? Объясни, пожалуйста.', 1000);
@@ -121,6 +122,20 @@ curious.observe({ vector: intermediateVector, modality: 'text', source: 'workpas
 baseline.observe({ vector: intermediateVector, modality: 'text', source: 'workpass313', tick: 2, trust01: .9 });
 assert.equal(curious.snapshot().prototypes.length, 2, 'curiosity entropy floor should preserve additional novel patterns');
 assert.equal(baseline.snapshot().prototypes.length, 1, 'default plasticity behavior remains unchanged when no EILS modulation is passed');
+const memoryCandidates = Array.from({ length: 20 }, (_, i) => ({
+  id: `memory-${i}`, salience01: .7, novelty01: .6, predictionError01: .4,
+  uncertainty01: .5, outcome01: .7, recency01: .8,
+}));
+const consolidation = new MemoryConsolidationController();
+const awakeBatch = consolidation.rank(memoryCandidates, { batchSize: 12, pressure01: .5, awake01: 1 });
+const sleepBatch = consolidation.rank(memoryCandidates, { batchSize: 4, pressure01: .5, awake01: 0 });
+assert.equal(awakeBatch.length, 4, 'active cycles must keep the consolidation batch small');
+assert.equal(sleepBatch.length, 12, 'sleep-time cycles can use a larger bounded consolidation batch');
+assert.equal(consolidation.diagnostics().awakeBoundedRuns, 1);
+assert.equal(consolidation.diagnostics().sleepTimeRuns, 1);
+const consolidationRestore = new MemoryConsolidationController();
+consolidationRestore.restore(consolidation.snapshot());
+assert.equal(consolidationRestore.diagnostics().sleepTimeRuns, 1, 'sleep-time counters must persist across restart');
 console.log(JSON.stringify({
   pass: true,
   workpass: 313,
