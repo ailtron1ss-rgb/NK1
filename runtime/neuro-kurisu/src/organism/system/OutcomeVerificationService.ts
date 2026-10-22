@@ -44,6 +44,16 @@ export interface OutcomeVerificationContext {
   toolId: string;
   input: Record<string, unknown>;
   result: Record<string, unknown>;
+  /** Host-owned identifiers copied from the ActionGateway execution ticket. */
+  executionId?: string;
+  decisionId?: string;
+}
+
+export interface ExpectedDecisionOutcomeBinding {
+  toolId: string;
+  input: Record<string, unknown>;
+  executionId: string;
+  decisionId: string;
 }
 
 export type OutcomeVerifier = (context: OutcomeVerificationContext) => Promise<OutcomeVerification> | OutcomeVerification;
@@ -67,6 +77,33 @@ export function isTrustedExternalPostconditionVerification(value: unknown, expec
   }
   return true;
 }
+
+/**
+ * Require an external postcondition receipt to belong to the exact gateway
+ * execution and decision. A caller-supplied {executionId, decisionId} or a
+ * persisted copy is insufficient: value must still be the exact object minted
+ * by this OutcomeVerificationService in the current process.
+ */
+export function isTrustedDecisionLinkedExternalPostcondition(
+  value: unknown,
+  expected: ExpectedDecisionOutcomeBinding,
+): value is OutcomeVerification {
+  if (!value || typeof value !== 'object' || !expected ||
+      typeof expected.toolId !== 'string' || !expected.toolId.trim() ||
+      typeof expected.executionId !== 'string' || !/^exec-[a-z0-9-]{8,80}$/i.test(expected.executionId) ||
+      typeof expected.decisionId !== 'string' || !expected.decisionId.trim() ||
+      expected.decisionId.length > 180) return false;
+  const context = trustedExternalPostconditionResults.get(value as object);
+  if (!context || assessExternalPostcondition(value as OutcomeVerification) !== 'match') return false;
+  if (context.toolId !== expected.toolId ||
+      context.executionId !== expected.executionId ||
+      context.decisionId !== expected.decisionId) return false;
+  try {
+    return stableJson(context.input) === stableJson(expected.input);
+  } catch {
+    return false;
+  }
+}
 const clamp = (x: unknown) => typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : 0;
 const boundedText = (value: unknown, max: number): string | undefined => {
   if (typeof value !== 'string') return undefined;
@@ -88,10 +125,14 @@ function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
 }
 
 function isolatedContext(context: OutcomeVerificationContext): OutcomeVerificationContext {
+  const executionId = boundedText(context?.executionId, 100);
+  const decisionId = boundedText(context?.decisionId, 180);
   const cloned = structuredClone({
     toolId: boundedText(context?.toolId, 180) ?? 'unknown-tool',
     input: context?.input ?? {},
     result: context?.result ?? {},
+    ...(executionId ? { executionId } : {}),
+    ...(decisionId ? { decisionId } : {}),
   });
   if (!cloned || typeof cloned !== 'object' || !cloned.input || typeof cloned.input !== 'object' ||
       !cloned.result || typeof cloned.result !== 'object') {
