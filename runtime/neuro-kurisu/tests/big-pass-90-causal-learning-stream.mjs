@@ -261,6 +261,28 @@ assert.equal(forgedDerivedRestore.prioritizedReplayCandidates(8).length, 0,
   "non-runtime provenance must never enter policy replay");
 assert.equal(forgedDerivedRestore.consolidate(8, 1400).length, 0,
   "non-runtime provenance must never be consolidated as grounded memory");
+  
+// Persisted rows are also untrusted input: reject malformed schema values instead
+// of allowing NaN/out-of-range metrics or invalid action/task identities downstream.
+const malformedSnapshot = externalStream.snapshot();
+malformedSnapshot.records.push({
+  ...externalFirst, id: "malformed-nan-reward", traceId: "malformed-nan-reward",
+  reward01: Number.NaN,
+});
+malformedSnapshot.records.push({
+  ...externalFirst, id: "malformed-action", traceId: "malformed-action",
+  action: "erase-memory",
+});
+malformedSnapshot.records.push({
+  ...externalFirst, id: "malformed-task", traceId: "malformed-task",
+  taskId: "unsafe" + String.fromCharCode(10) + "task",
+});
+const malformedRestore = new CausalExperienceStream(64);
+malformedRestore.restore(malformedSnapshot);
+assert.equal(malformedRestore.recent(64).some(row => row.traceId.startsWith("malformed-")), false,
+  "restore must reject records with non-finite metrics, unsupported actions, or invalid task IDs");
+assert.equal(malformedRestore.prioritizedReplayCandidates(64).length, 0,
+  "malformed persisted records must not become replay candidates");
 
 // Imported records may inform later review, but must not masquerade as observed
 // behavioral change in the runtime policy.
