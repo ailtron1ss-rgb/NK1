@@ -7,9 +7,13 @@ const containsControlCharacter=(value:string):boolean=>Array.from(value).some(ch
 });
 const normalizeBoundedId=(value:unknown,maxLength:number):string=>{
   if(typeof value!=='string')return '';
-  const normalized=value.normalize('NFKC').trim();
-  if(!normalized||normalized.length>maxLength||containsControlCharacter(normalized))return '';
-  return normalized;
+  const normalized=value.normalize('NFKC');
+  // Reject control-bearing input before trim: otherwise a leading/trailing
+  // newline or tab could be erased and alias a different valid identity.
+  if(containsControlCharacter(normalized))return '';
+  const trimmed=normalized.trim();
+  if(!trimmed||trimmed.length>maxLength)return '';
+  return trimmed;
 };
 const normalizeTraceId=(value:unknown)=>normalizeBoundedId(value,180);
 const normalizeTaskId=(value:unknown)=>normalizeBoundedId(value,120);
