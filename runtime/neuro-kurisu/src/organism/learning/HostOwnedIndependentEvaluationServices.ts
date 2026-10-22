@@ -237,29 +237,6 @@ export async function createHostOwnedIndependentEvaluationServices(
 }
 
 
-/** Convenience composition seam for the existing independent evaluator config factory. */
-export async function createHostOwnedIndependentEvaluationConfig(input: {
-  tasks: IndependentCandidateEvaluationConfig['tasks'];
-  environmentFingerprint: string;
-  commands: HostOwnedIndependentEvaluationCommands;
-  experimentAuthority?: IndependentCandidateEvaluationConfig['experimentAuthority'];
-  serviceTimeoutMs?: number;
-}): Promise<IndependentCandidateEvaluationConfig & { authorityIdentity: HostOwnedIndependentEvaluationServices['authorityIdentity'] }> {
-  if (!digest(input.environmentFingerprint)) throw new Error('host-owned-evaluation-environment-fingerprint-invalid');
-  const services = await createHostOwnedIndependentEvaluationServices(input.commands);
-  return {
-    tasks: input.tasks,
-    environmentFingerprint: input.environmentFingerprint,
-    executor: services.executor,
-    verifier: services.verifier,
-    safetyScanner: services.safetyScanner,
-    ...(input.experimentAuthority ? { experimentAuthority: input.experimentAuthority } : {}),
-    ...(input.serviceTimeoutMs === undefined ? {} : { serviceTimeoutMs: input.serviceTimeoutMs }),
-    authorityIdentity: services.authorityIdentity,
-  };
-}
-
-
 /**
  * Prepares trusted host executables once, then supplies a synchronous config factory
  * suitable for RuntimeConfig.compoundRepairRevision.independentEvaluationConfigForRepair.
