@@ -1,3 +1,11 @@
+## WorkPass289 — micro-cycle reward provenance hardening (2026-10-22)
+
+- Changed `OperationalMicroCycleRuntime` so incoming `observation.reward`, `observation.success`, prior `lastActionSuccess`, and a generic `worldEvent` no longer grant fresh reward credit or self-certify `verified01` in the reduced-resolution neural tick.
+- Micro-cycle now uses a neutral reward baseline (0.5) and `verified01: 0` until action-correlated evidence from the canonical full-cycle verifier is wired through. Homeostasis, continuity, prediction-error and recurrent unsupervised processing continue.
+- Added a regression guard to the existing WorkPass287 architecture contract test for the micro-cycle source boundary. Test execution is not available through the current GitHub file-edit workflow; do not treat it as passing.
+- Trade-off: micro-cycle reward-based adaptation is intentionally conservative until the canonical verification evidence is threaded through. Full-cycle outcome learning is not changed by this pass.
+- Next: expose the existing canonical verifier's typed result and action/tick correlation to the micro-cycle without creating a second verifier or evidence ledger.
+
 ## WorkPass288 — outcome-provenance boundary pass (2026-10-22)
 
 - Added `docs/WORKPASS288_OUTCOME_PROVENANCE_MICROCYCLE_2026-10-22.md` documenting a concrete source-level weakness: reduced-resolution learning treats a caller-provided reward/success scalar as verified outcome evidence.
