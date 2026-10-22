@@ -1,3 +1,14 @@
+## WorkPass280 — strict evidence-envelope canonicalization
+
+- [x] Reject non-finite numeric values before computing independent evaluation fingerprints.
+- [x] Reject circular references and non-plain object instances in canonical evidence envelopes.
+- [x] Add regression proving NaN quality metrics cannot pass envelope integrity by becoming JSON null.
+- [ ] Execute exact-head Hermes evidence-binding test and runtime typecheck.
+- [ ] Keep quality scores advisory unless a separate trusted authority authenticates them; signed receipts bind identity/outcome only.
+- [ ] No dependency added and no learning-score increase claimed.
+
+---
+
 ## WorkPass279 — causal memory restore and outcome validation
 
 - [x] Normalize malformed persisted aggregate counters, rolling metrics and consolidation timestamp during causal-stream restore.
