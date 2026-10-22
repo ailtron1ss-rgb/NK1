@@ -111,6 +111,14 @@ const boundedText = (value: unknown, max: number): string | undefined => {
   return text ? text.slice(0, max) : undefined;
 };
 
+/** Correlation IDs are rejected when malformed; truncation would let distinct tickets alias. */
+const boundedCorrelationId = (value: unknown, max: number): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.normalize('NFKC').trim();
+  if (!normalized || normalized.length > max || /[\\u0000-\\u001f\\u007f-\\u009f]/.test(normalized)) return undefined;
+  return normalized;
+};
+
 function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
   if (value === null || typeof value !== 'object') return value;
   const object = value as unknown as object;
@@ -125,8 +133,8 @@ function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
 }
 
 function isolatedContext(context: OutcomeVerificationContext): OutcomeVerificationContext {
-  const executionId = boundedText(context?.executionId, 100);
-  const decisionId = boundedText(context?.decisionId, 180);
+  const executionId = boundedCorrelationId(context?.executionId, 100);
+  const decisionId = boundedCorrelationId(context?.decisionId, 180);
   const cloned = structuredClone({
     toolId: boundedText(context?.toolId, 180) ?? 'unknown-tool',
     input: context?.input ?? {},
