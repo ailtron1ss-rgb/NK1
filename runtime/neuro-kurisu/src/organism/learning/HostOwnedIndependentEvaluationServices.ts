@@ -104,7 +104,7 @@ async function invoke<T>(
   command: HostOwnedAuthorityCommand & { executable: string },
   name: string,
   input: unknown,
-  context: { runId: string; taskId: string; seed: number; planFingerprint: string },
+  context: { runId: string; taskId: string; seed: number; planFingerprint: string; manifestFingerprint: string | null },
   signal?: AbortSignal,
 ): Promise<T> {
   if (!digest(context.planFingerprint) || !nonEmpty(context.runId) || !nonEmpty(context.taskId) ||
@@ -196,6 +196,7 @@ export async function createHostOwnedIndependentEvaluationServices(
             taskId: task.taskId,
             seed: task.seed,
             planFingerprint: context.planFingerprint,
+            manifestFingerprint: context.manifestFingerprint,
           }, signal);
         if (signal?.aborted) throw new Error('host-owned-executor-aborted');
         if (!nonEmpty(result.runId) || !Array.isArray(result.observedStepIds) ||
@@ -214,6 +215,7 @@ export async function createHostOwnedIndependentEvaluationServices(
         const result = await invoke<Record<string, unknown>>(verifierCommand, 'verifier',
           { task, execution, context }, {
             runId: execution.runId, taskId: task.taskId, seed: task.seed, planFingerprint: context.planFingerprint,
+            manifestFingerprint: context.manifestFingerprint,
           }, signal);
         if (signal?.aborted) throw new Error('host-owned-verifier-aborted');
         if (typeof result.bindingVerified !== 'boolean' || typeof result.passed !== 'boolean' ||
@@ -240,6 +242,7 @@ export async function createHostOwnedIndependentEvaluationServices(
           { payload, task, ...(execution ? { execution } : {}), context }, {
             runId: execution?.runId ?? randomUUID(), taskId: task.taskId, seed: task.seed,
             planFingerprint: context.planFingerprint,
+            manifestFingerprint: context.manifestFingerprint,
           }, signal);
         if (signal?.aborted) throw new Error('host-owned-safety-scanner-aborted');
         if (!Number.isSafeInteger(result.violationCount) || Number(result.violationCount) < 0) {
