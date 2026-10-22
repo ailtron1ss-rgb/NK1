@@ -294,6 +294,40 @@ assert.equal(malformedRestore.recent(64).some(row => row.traceId.startsWith("mal
 assert.equal(malformedRestore.prioritizedReplayCandidates(64).length, 0,
   "malformed persisted records must not become replay candidates");
 
+  
+// Aggregate snapshot fields are also untrusted. Normalize poisoned counters and
+// rolling metrics, and recompute behavioral aggregates from eligible runtime rows.
+const poisonedAggregates = externalStream.snapshot();
+poisonedAggregates.observations = Number.NaN;
+poisonedAggregates.outcomes = -9;
+poisonedAggregates.consolidated = Number.POSITIVE_INFINITY;
+poisonedAggregates.lastConsolidatedAt = Number.NaN;
+poisonedAggregates.rolling = {
+  surprise01: Number.NaN, predictionError01: 2,
+  causalStrength01: -1, learningOpportunity01: 0.4,
+};
+poisonedAggregates.behavioralImpact01 = 1;
+poisonedAggregates.behavioralContextSamples = 999999;
+poisonedAggregates.behavioralDivergence01 = 1;
+const aggregateRestore = new CausalExperienceStream(64);
+aggregateRestore.restore(poisonedAggregates);
+const safeAggregateSnapshot = aggregateRestore.snapshot();
+assert.equal(safeAggregateSnapshot.observations, 0, "invalid persisted observation count must be reset");
+assert.equal(safeAggregateSnapshot.outcomes, safeAggregateSnapshot.records.length,
+  "invalid persisted outcome count must fall back to retained record count");
+assert.equal(safeAggregateSnapshot.consolidated, safeAggregateSnapshot.records.filter(row => row.consolidated).length,
+  "invalid persisted consolidation count must fall back to retained consolidated rows");
+assert.equal(safeAggregateSnapshot.lastConsolidatedAt, 0, "invalid consolidation timestamp must be reset");
+assert.deepEqual(safeAggregateSnapshot.rolling, {
+  surprise01: 0, predictionError01: 0, causalStrength01: 0, learningOpportunity01: 0.4,
+}, "rolling metrics must be finite and within normalized bounds");
+assert.equal(safeAggregateSnapshot.behavioralImpact01, 0,
+  "persisted behavioral impact must be recomputed instead of trusted");
+assert.equal(safeAggregateSnapshot.behavioralContextSamples, 0,
+  "persisted behavioral sample count must be recomputed instead of trusted");
+assert.equal(safeAggregateSnapshot.behavioralDivergence01, 0,
+  "persisted behavioral divergence must be recomputed instead of trusted");
+
 // Imported records may inform later review, but must not masquerade as observed
 // behavioral change in the runtime policy.
 const externalBehaviorStream = new CausalExperienceStream(64);
