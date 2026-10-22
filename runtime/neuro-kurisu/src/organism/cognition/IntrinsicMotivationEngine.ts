@@ -76,7 +76,7 @@ export class IntrinsicMotivationEngine {
     const social = clamp(socialNeed*0.88 + (1-energy)*0.05);
     const homeostatic = clamp((1-energy)*0.72 + goalPressure*0.28);
     const entries:Record<DriveName,number> = { epistemic, novelty, competence, coherence, social, homeostatic };
-    const dominant = DRIVE_NAMES.reduce((best,name)=>entries[name]>entries[best]?name:best,'epistemic');
+    const dominant = DRIVE_NAMES.reduce<DriveName>((best,name)=>entries[name]>entries[best]?name:best,'epistemic');
     this.state = { ...entries, overall:clamp(Math.max(...Object.values(entries))), dominant, updatedAt:Date.now() };
     return this.snapshot();
   }
