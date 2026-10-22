@@ -937,6 +937,11 @@ export class OrganismRuntime {
       tick:cycle.state.tick,
       observation:{source:'runtime',external:Boolean(externalText),confidence01:.72,payload:{predictionError:cycle.state.predictionError,selectedAction:internalAction,evidenceId:observationEvidence.id}},
       prediction:{source:'reward-model',confidence01:plan.steps[0]?.confidence ?? .5,payload:{predictionId:rewardPredictionId,evidenceId:predictionEvidence.id,action:worldAction,predicted01:expectedReward,shadowModel:true}},
+      appraisal:{source:'homeostatic-appraisal',confidence01:clamp01(1-cycle.state.needs.uncertainty),payload:{energy01:cycle.state.needs.energy,cognitiveLoad01:cycle.state.needs.cognitiveLoad,uncertainty01:cycle.state.needs.uncertainty,novelty01:cycle.state.needs.novelty,socialNeed01:cycle.state.needs.socialNeed,goalPressure01:cycle.state.needs.goalPressure,predictionError01:cycle.state.predictionError}},
+      attention:{source:'global-workspace',confidence01:clamp01(cycle.workspace.selected.length/Math.max(1,cycle.decision.candidates.length)),payload:{broadcastId:cycle.workspace.broadcastId,selectedCandidateIds:cycle.workspace.selected.slice(0,16),recurrentCycles:cycle.workspace.recurrentCycles,attentionBudget01:cycle.state.attentionBudget}},
+      memory:{source:'active-memory-context',confidence01:clamp01(cycle.memories.length/8),payload:{retrievedMemoryIds:cycle.memories.slice(0,12).map(memory=>memory.id),retrievedCount:cycle.memories.length,continuity01:continuousFabric.continuity01,memoryRetention01:continuousFabric.memoryRetention01,lastSpine01:continuousFabric.lastSpine01}},
+      goal:{source:'canonical-goal-selection',confidence01:clamp01(cycle.decision.selected?.confidence ?? .5),payload:{selectedGoalId:cycle.decision.selected?.goalId ?? null,activeGoalIds:cycle.goals.slice(0,12).map(goal=>goal.id),autonomousOverride:cycle.decision.autonomousOverride}},
+      plan:{source:'plan-engine',confidence01:clamp01(plan.steps[0]?.confidence ?? .5),payload:{stepCount:plan.steps.length,nextAction:worldAction,firstStepConfidence01:plan.steps[0]?.confidence ?? null}},
       action:{source:'organism-action-gate',confidence01:cycle.decision.selected?.confidence ?? .5,payload:{evidenceId:actionEvidence.id,action:embodiedAction.action,internalAction,goalId:cycle.decision.selected?.goalId ?? null}},
       outcome:{source:grounded.source==='external'?'external-device':'shadow-simulator',external:grounded.source==='external',confidence01:grounded.evidence01,payload:{evidenceId:outcomeEvidence.id,reward01:grounded.reward01,surprise:grounded.surprise01,error01:resolvedPrediction?.error01 ?? null,verified01:grounded.verified01}},
       learning:{source:'core.feedback',confidence01:clamp01((1-(resolvedPrediction?.error01??0.5))*learningGate.learningScale01),payload:{predictionError01:resolvedPrediction?.error01??null,realitySource:grounded.source,learningPriority01:grounded.learningPriority01,learningScale01:learningGate.learningScale01}},
@@ -945,7 +950,7 @@ export class OrganismRuntime {
     });
     const fabricSnapshot = this.cognitiveEventFabric.snapshot();
     this.core.setCognitiveEventFabric(fabricSnapshot);
-    const cycleStageMap = {observation:cycleStageIds.observation,prediction:cycleStageIds.prediction,action:cycleStageIds.action,outcome:cycleStageIds.outcome,learning:cycleStageIds.learning,'self-update':cycleStageIds.selfUpdate};
+    const cycleStageMap = {observation:cycleStageIds.observation,prediction:cycleStageIds.prediction,appraisal:cycleStageIds.appraisal,attention:cycleStageIds.attention,memory:cycleStageIds.memory,goal:cycleStageIds.goal,plan:cycleStageIds.plan,action:cycleStageIds.action,outcome:cycleStageIds.outcome,learning:cycleStageIds.learning,'self-update':cycleStageIds.selfUpdate};
     const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap);
     const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:cycleStageMap,parentIntegrity01:cycleLineage.complete ? cycleLineage.integrity01 : 0});
     this.core.setUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
