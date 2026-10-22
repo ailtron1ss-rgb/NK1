@@ -154,7 +154,7 @@ export class P28PlasticitySubstrate {
     if(found.p){
       const novelty=clamp01((1-found.sim)*.72);
       const entropyFloor=clamp01(modulation?.entropyFloor01??0);
-      const threshold=modulation?.entropyFloor01===undefined?.34:clamp01(.34+.12*entropyFloor);
+      const threshold = modulation?.entropyFloor01 === undefined ? .34 : clamp01(.34 + .12 * entropyFloor);
       if(found.sim>=threshold){
         const baselineRate=.045+.06*trust01;
         const plasticity=clamp01(modulation?.plasticity01??.5);
