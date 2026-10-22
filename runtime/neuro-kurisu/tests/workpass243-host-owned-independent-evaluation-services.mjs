@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { chmod, mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { chmod, link, mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createHostOwnedIndependentEvaluationConfigFactory, createHostOwnedIndependentEvaluationServices } from '../src/organism/learning/HostOwnedIndependentEvaluationServices.ts';
@@ -78,6 +78,8 @@ process.stdout.write(JSON.stringify({
     executor, verifier, safetyScanner: scanner,
   });
   assert.equal(new Set(Object.values(services.authorityIdentity)).size, 3);
+  // Prepared services must not retain mutable argv/env arrays owned by the caller.
+  executor.args[0] = 'caller-mutated-argument';
   const task = {
     taskId: 'task-a', trialId: 'trial-a', seed: 7, split: 'validation',
     input: { prompt: 'do the task' }, requiredCapabilityIds: ['cap-a'], expectedStepIds: ['step-a'],
@@ -94,6 +96,7 @@ process.stdout.write(JSON.stringify({
   const safety = await services.safetyScanner.scan({ payload: { answer: 42 }, task, execution, context });
   assert.deepEqual(safety, { violationCount: 0 });
 
+  executor.args[0] = '{requestFile}';
   const runtimeConfigFactory = await createHostOwnedIndependentEvaluationConfigFactory({
     commands: { executor, verifier, safetyScanner: scanner },
     tasksForRepair: () => [task],
@@ -111,7 +114,16 @@ process.stdout.write(JSON.stringify({
     createHostOwnedIndependentEvaluationServices({ executor, verifier, safetyScanner: verifier }),
     /host-owned-evaluation-authorities-must-use-distinct-executables/,
   );
-  console.log('WorkPass243 host-owned evaluation service integration: PASS');
+  if (process.platform !== 'win32') {
+    const alias = path.join(root, 'executor-hardlink.mjs');
+    await link(executor.executable, alias);
+    const hardlinkedScanner = { ...scanner, executable: alias };
+    await assert.rejects(
+      createHostOwnedIndependentEvaluationServices({ executor, verifier, safetyScanner: hardlinkedScanner }),
+      /host-owned-evaluation-authorities-must-use-distinct-executables/,
+    );
+  }
+  console.log('WorkPass246 immutable host commands and executable identity: regression authored');
 } finally {
   await rm(root, { recursive: true, force: true });
 }
