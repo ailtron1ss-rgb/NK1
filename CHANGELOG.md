@@ -1,3 +1,11 @@
+## WorkPass302 — make branch completion criteria explicit (2026-10-22)
+
+- Added `docs/architecture/branch-goals.md` defining purpose, ownership boundaries, and exit gates for `main`, `rebuild`, PR #55's stacked runtime/evaluator foundation, PR #56's unified brain loop, and the Hermes/P23 skill-evolution lane.
+- The document separates code already present from end-to-end properties still unproven, especially exact action/decision/tick lineage into causal experience and independently evaluated held-out skill improvement.
+- This is a governance/coordination artifact supporting parallel work without duplicate cognitive owners; it does not claim the architecture is complete or validated.
+
+---
+
 ## WorkPass301 — rebuild restored learning aggregates from trusted experience (2026-10-22)
 
 - `CausalExperienceStream.restore()` no longer trusts persisted rolling surprise, prediction-error, causal-strength, or learning-opportunity aggregates. It recomputes them in record order from grounded runtime outcomes only.
