@@ -1,3 +1,19 @@
+## WorkPass260 — restore diverse replay and consolidation selection
+
+- [x] Select prioritized replay candidates with maximal-marginal-relevance-style task/context penalties instead of allowing one task to occupy the entire batch.
+- [x] Apply the same diversity-aware selection to consolidation while retaining the WorkPass259 state-grounding gate.
+- [x] Extend the causal stream regression to check that near-equal high-priority tasks both enter a small replay batch.
+- [ ] Execute causal stream regression and runtime typecheck on a functioning runner.
+
+## WorkPass259 — selectively reintegrate causal-learning safeguards from the older branch
+
+- [x] Compare the exclusive CausalExperienceStream implementation in workpass71-learning-integrity against the current implementation; do not merge the historical branch wholesale.
+- [x] Restore NFKC/trim/length-bounded trace identity normalization and persisted deduplication IDs that survive record eviction and restore.
+- [x] Require state-grounded records before causal consolidation, preventing an ungrounded external event from entering consolidated memory solely due to high reward/surprise.
+- [x] Extend the existing causal stream regression for restored duplicate traces and ungrounded external events.
+- [ ] Execute the causal stream regression and runtime typecheck on a functioning runner.
+- **Integration decision:** port specific missing mechanisms into the current owner; do not reintroduce the historical replay buffer as a parallel subsystem.
+
 ## WorkPass258 — pin host authority working and storage directory identity
 
 - [x] Snapshot canonical working-directory identity during host-service preparation.
