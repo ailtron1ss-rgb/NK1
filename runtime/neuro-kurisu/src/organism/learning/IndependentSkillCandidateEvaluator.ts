@@ -237,7 +237,16 @@ export function createIndependentSkillCandidateEvaluator(
   const planFingerprint = sha256(canonical(tasks.map(({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }) =>
     ({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }))));
   return async ({ payload, payloadFingerprint }) => {
-    const actualFingerprint = sha256(canonical(payload));
+    // Snapshot the candidate once, before the first asynchronous boundary. Re-cloning
+    // the caller-owned object per trial would allow a retained reference to change
+    // later trials while they still carry the fingerprint computed for the original.
+    let candidatePayload: unknown;
+    try {
+      candidatePayload = structuredClone(payload);
+    } catch {
+      throw new Error('independent-candidate-evaluator-payload-not-cloneable');
+    }
+    const actualFingerprint = sha256(canonical(candidatePayload));
     if (!isDigest(payloadFingerprint) || actualFingerprint !== payloadFingerprint) {
       throw new Error('independent-candidate-evaluator-payload-fingerprint-mismatch');
     }
@@ -270,7 +279,7 @@ export function createIndependentSkillCandidateEvaluator(
         // immediately so later mutation of a retained reference cannot rewrite the
         // trace while verification or safety scanning is awaiting other services.
         execution = structuredClone(await runWithServiceDeadline('candidate-sandbox-execution', serviceTimeoutMs, signal => executeCandidate({
-          payload: structuredClone(payload),
+          payload: structuredClone(candidatePayload),
           task: structuredClone(task),
           context: structuredClone(executionContext),
           signal,
@@ -311,7 +320,7 @@ export function createIndependentSkillCandidateEvaluator(
         }
       }
       const safety = await runWithServiceDeadline('independent-candidate-safety-scan', serviceTimeoutMs, signal => scanCandidateSafety({
-        payload: structuredClone(payload), task: structuredClone(task),
+        payload: structuredClone(candidatePayload), task: structuredClone(task),
         ...(execution ? { execution: structuredClone(execution) } : {}),
         signal,
       }));
