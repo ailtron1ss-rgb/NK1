@@ -88,6 +88,8 @@ on:
       - 'runtime/neuro-kurisu/tests/workpass224-production-independent-evaluation-required.mjs'
       - 'runtime/neuro-kurisu/tests/workpass225-matched-independent-evaluation.mjs'
       - 'runtime/neuro-kurisu/tests/workpass227-bounded-independent-evaluation.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/HostOwnedIndependentEvaluationServices.ts'
+      - 'runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
   push:
     branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals, workpass122-promotion-gate-coverage-hardening, workpass123-authenticated-skill-lifecycle, workpass124-learning-evidence-hardening, workpass135-durable-shadow-run-registry]
@@ -140,6 +142,8 @@ on:
       - 'runtime/neuro-kurisu/tests/workpass224-production-independent-evaluation-required.mjs'
       - 'runtime/neuro-kurisu/tests/workpass225-matched-independent-evaluation.mjs'
       - 'runtime/neuro-kurisu/tests/workpass227-bounded-independent-evaluation.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/HostOwnedIndependentEvaluationServices.ts'
+      - 'runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillLifecycleBootstrap.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/AuthenticatedSkillPromotionApproval.ts'
@@ -262,6 +266,9 @@ jobs:
       - name: Run bounded independent evaluation service regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass227:bounded-independent-evaluation
+      - name: Run host-owned independent evaluation subprocess integration regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass243:host-owned-independent-evaluation-services
       - name: Run P23 to Hermes signed-evidence binding regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:hermes-verified-evidence-binding
