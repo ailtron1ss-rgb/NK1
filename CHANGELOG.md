@@ -1,3 +1,10 @@
+## WorkPass284 — strict external causal-memory intake (2026-10-22)
+
+- External causal-memory ingestion now rejects invalid ticks, malformed metrics and unsafe optional source/evidence identities rather than coercing them into plausible records.
+- Added regressions for invalid external payloads. Tests/typecheck not executed; no new dependency or measured learning-score uplift.
+
+---
+
 ## WorkPass283 — causal outcome tick binding (2026-10-22)
 
 - Causal experience records now require a decision trace and its pre-action state to refer to the same world tick.
