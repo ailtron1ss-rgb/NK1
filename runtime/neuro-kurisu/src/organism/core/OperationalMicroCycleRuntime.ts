@@ -85,9 +85,12 @@ export class OperationalMicroCycleRuntime {
     developmentalNeural.longHorizonDevelopmentB302.recordMicro(state.tick, microResource.scarcity01);
 
     const microAction = (persistedState.traces[0]?.selected?.action ?? state.lastAction ?? 'wait') as ActionKind;
-    const microReward = clamp(Number(observation.reward ?? (observation.success ?? state.lastActionSuccess ?? 0.5)));
+    // A micro-tick has no canonical verifier result or action-correlated evidence.
+    // Treat incoming reward/success as claims, not verified credit. Keep the
+    // neutral baseline until the full-cycle verifier can pass its evidence here.
+    const microReward = 0.5;
     const microError = clamp(Number(observation.surprise ?? state.predictionError));
-    const microVerified = Boolean(observation.worldEvent || observation.success !== undefined || observation.reward !== undefined);
+    const microVerified = false;
     const microSeed = [
       state.needs.energy,
       state.needs.uncertainty,
@@ -100,7 +103,7 @@ export class OperationalMicroCycleRuntime {
       state.selfPredictionError,
       persistedState.facets.consciousness.identityContinuity.continuity,
       microReward,
-      Number(observation.success ?? 0.5),
+      0.5,
       thermal,
       targetCapacity,
       Number(body?.battery01 ?? state.needs.energy),
