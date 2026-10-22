@@ -73,6 +73,27 @@ export class P23CompoundRepairRevisionCoordinator {
     }
 
     const initialEvidenceDigest = this.evidenceDigest(repairEvidence);
+    // The versioned candidate store preserves this lineage across coordinator/runtime
+    // restarts. The in-memory digest map below is only a fast-path, not the durable gate.
+    const candidateSnapshot = typeof (this.engine as any).verifiedSkillCandidateSnapshot === 'function'
+      ? this.engine.verifiedSkillCandidateSnapshot()
+      : null;
+    const persistedCandidate = candidateSnapshot?.candidates?.find((candidate: any) =>
+      candidate.skillId === normalizedSkillId &&
+      candidate.revisionProvenance?.sourceEvidenceFingerprint === initialEvidenceDigest);
+    if (persistedCandidate) {
+      const completed = this.stagedEvidenceDigestsBySkill.get(normalizedSkillId) ?? new Set<string>();
+      completed.add(initialEvidenceDigest);
+      this.stagedEvidenceDigestsBySkill.set(normalizedSkillId, completed);
+      return Promise.resolve({
+        status: 'already-staged-for-evidence' as const,
+        skillId: normalizedSkillId,
+        repairEvidenceCount: repairEvidence.length,
+        evidenceDigest: initialEvidenceDigest,
+        candidateId: persistedCandidate.candidateId,
+        durable: true,
+      });
+    }
     const staged = this.stagedEvidenceDigestsBySkill.get(normalizedSkillId);
     if (staged?.has(initialEvidenceDigest)) {
       return Promise.resolve({
@@ -164,6 +185,7 @@ export class P23CompoundRepairRevisionCoordinator {
       generate,
       evaluateRevisedCandidate,
       ...(options ? { options } : {}),
+      sourceEvidenceFingerprint: initialEvidenceDigest,
     });
     return {
       status: 'candidate-staged' as const,
