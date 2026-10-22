@@ -591,3 +591,11 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **DONE (regression authored):** the existing host-authority process fixture now returns a detached run ID on demand and asserts the adapter rejects it before verifier/scanner evidence can be produced.
 - **WHY:** independent verification of a trace must not accidentally bless an executor-minted identity detached from the actual supervised invocation.
 - **OPEN:** execute the targeted host-service regression and runtime typecheck on an available runner; provision and exercise the real OS/container sandbox launcher plus independently controlled verifier/scanner; complete matched baseline/candidate activation e2e with host-issued evidence. This identity check does not itself provide OS isolation.
+
+
+## WorkPass275 — provenance-scoped causal replay and consolidation
+
+- **DONE (code):** snapshot restore now preserves grounded trust only for records explicitly marked `runtime-outcome` and carrying a valid 16+ dimensional policy-feature vector; `experience-replay` and `skill-repair` rows fail closed to external/ungrounded.
+- **DONE (code):** replay admission requires runtime-outcome provenance, `stateGrounded === true`, explicit `replayEligible === true`, and finite bounded policy features. Consolidation likewise requires runtime-outcome provenance and explicit grounded state.
+- **DONE (regression authored):** added a forged `skill-repair` snapshot with plausible features and caller-set grounding/replay flags; it must be downgraded and cannot replay or consolidate.
+- **OPEN:** this is provenance consistency hardening, not snapshot authentication. Persisted data can still forge `runtime-outcome` plus a plausible vector; trusted persistence needs host-authenticated integrity/attestation. Exact-head CI and typecheck remain unverified while Actions exposes no usable job logs.
