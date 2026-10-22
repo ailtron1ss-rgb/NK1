@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'runtime/neuro-kurisu/src/organism/core/OperationalMicroCycleRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/CognitiveArchitectureMap.ts'
       - 'runtime/neuro-kurisu/tests/workpass296-microcycle-action-attribution.mjs'
       - '.github/workflows/workpass296-microcycle-action-attribution.yml'
   workflow_dispatch:
