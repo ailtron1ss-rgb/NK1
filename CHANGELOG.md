@@ -1,3 +1,14 @@
+## WorkPass288 — harden intrinsic-drive signals and persistence (2026-10-22)
+
+- **Unified motivation state:** external uncertainty, prediction error, novelty, goal pressure, social need, energy, success and world-evidence quality are normalized to finite bounded signals before drive computation.
+- **Derived aggregate:** restored `overall` is recomputed from the six drive values rather than trusting a persisted summary that could disagree with the dominant drive.
+- **Restore safety:** invalid drive metrics are normalized, unknown dominant labels are rejected, the dominant drive is reconciled with the strongest restored signal, and invalid timestamps fall back to a safe current timestamp.
+- **Regression:** added `tests/workpass288-intrinsic-motivation-contract.mjs` and registered `test:workpass288:intrinsic-motivation`.
+- **Architecture:** keeps the existing `IntrinsicMotivationEngine` as the single drive owner; no parallel motivation subsystem or new dependency.
+- **Validation:** test/typecheck execution has not been observed in this session; no passing status or measured autonomy uplift is claimed.
+
+---
+
 ## WorkPass287 — harden the unified cognitive-cycle evidence contract (2026-10-22)
 
 - **Runtime:** `UnifiedCognitiveCycle` now rejects invalid, non-finite, fractional, negative, or regressing world ticks; parent-integrity input must be finite and in the range 0–1.
