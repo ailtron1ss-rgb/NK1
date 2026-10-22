@@ -4,7 +4,7 @@ Latest implementation checkpoint: WorkPass239 (race-safer durable registry lock 
 
 Scope: continue integrating mechanisms into the existing P23 learning/revision lifecycle. This is an implementation queue, not a promise that upstream mechanisms are already integrated. Preserve the current branch/PR boundary; do not merge to the default branch without explicit approval.
 
-## Completed in this branch (through WorkPass239 code; runtime verification pending)
+## Completed in this branch (through WorkPass240 code; runtime verification pending)
 
 - [x] Reuse SkillLearnBench-style task success, skill quality, trajectory quality and macro-averaged task metrics.
 - [x] Bind evaluator runs to exact payload/task/environment/plan identity; require an independent verifier's explicit binding attestation.
@@ -276,3 +276,12 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **PARTIAL (P2):** reuse the existing P23 process supervisor, runtime scheduler, Hermes receipt binding and SkillLearnBench gate; no third-party execution framework was vendored. Real host-owned sandbox/verifier/scanner provisioning remains OPEN rather than being simulated.
 - **PARTIAL (P3):** signed outcomes and candidate provenance now traverse a durable restart path; retention, transfer and capability-ablation experiments still need real task suites and bounded compute budgets before any learning-uplift claim.
 - **Validation:** code and workflow are committed, but this pass did not execute the new test or typecheck. Do not mark it PASS until exact-head CI runs the step successfully.
+
+
+### WorkPass240 — prevent self-attesting evaluator authority configurations (2026-10-22)
+
+- **DONE (code):** the existing independent candidate evaluator now rejects configurations where executor, verifier, and safety scanner reuse the same object or the same underlying function. Different interface labels are not accepted as proof of independent authority.
+- **DONE (regression authored):** extended the existing bounded-evaluation regression with both same-object and shared-function attacks; both must fail before candidate execution. Reused the existing test/workflow rather than adding another parallel harness.
+- **PARTIAL (P0/P2):** this closes a concrete configuration-level self-attestation gap, but cannot prove service ownership or process isolation. Production still must bind these distinct capabilities to independently controlled host services and a real OS/container sandbox; function identity checks are defense-in-depth, not a substitute for trust-boundary deployment.
+- **PARTIAL (validation):** source/test commits are on the draft PR branch. The targeted test and runtime typecheck have not been executed locally; exact-head Actions must confirm both before this pass is marked validated.
+- **OPEN next:** implement and wire a host-owned sandbox capability that provides enforceable resource limits and process-tree containment, bind the independent verifier and scanner to host-owned services, and test cancellation/timeout against real descendant processes and stale-result replay.
