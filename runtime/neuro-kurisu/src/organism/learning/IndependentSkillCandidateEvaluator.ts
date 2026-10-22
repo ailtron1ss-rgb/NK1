@@ -26,6 +26,8 @@ export interface CandidateExecutionContext {
   environmentFingerprint: string;
   /** Digest of the complete fixed validation/holdout plan. */
   planFingerprint: string;
+  /** Canonical dataset manifest digest, distinct from the evaluator-plan digest. */
+  manifestFingerprint: string | null;
   /** Null when no canonical matched experiment authority was supplied. */
   experimentPlanFingerprint: string | null;
   /** Scheduled run ID from LearningExperimentPlan, never the sandbox's runtime run ID. */
@@ -266,6 +268,7 @@ export function createIndependentSkillCandidateEvaluator(
         taskInputFingerprint: sha256(canonical(task.input)),
         environmentFingerprint,
         planFingerprint,
+        manifestFingerprint: authority?.ledger.manifestFingerprint() ?? null,
         experimentPlanFingerprint: experimentPlan?.planFingerprint ?? null,
         plannedRunId: plannedRun?.runId ?? null,
       };
