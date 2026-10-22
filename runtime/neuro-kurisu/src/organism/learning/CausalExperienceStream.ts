@@ -160,11 +160,33 @@ export class CausalExperienceStream {
       // An exact duplicate row is safely collapsed to the first copy.
     }
     const records=uniqueRows.filter(record=>!conflictingTraceIds.has(record.traceId));
+    const safeCounter=(value:unknown,fallback=0):number=>
+      typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
+    const safeMetric=(value:unknown,fallback=0):number=>
+      typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:fallback;
+    const rawRolling=r.rolling&&typeof r.rolling==='object'?r.rolling:d.rolling;
+    const normalizedRecordedIds=Array.isArray(r.recordedTraceIds)
+      ? [...new Set(r.recordedTraceIds.map(normalizeTraceId).filter(Boolean))].slice(-this.maxRecordedTraceIds)
+      : [];
     this.state={
-      ...d,...r,
+      ...d,
+      // Snapshot aggregates are untrusted input. Keep only bounded scalar shapes;
+      // behavioral aggregates are recomputed from eligible records below.
+      observations:safeCounter(r.observations),
+      outcomes:safeCounter(r.outcomes,records.length),
+      consolidated:safeCounter(r.consolidated,records.filter(record=>record.consolidated).length),
       records,
-      rolling:{...d.rolling,...(r.rolling??{})},
-      recordedTraceIds:Array.isArray(r.recordedTraceIds)?r.recordedTraceIds.map(normalizeTraceId).filter(Boolean).slice(-this.maxRecordedTraceIds):[],
+      rolling:{
+        surprise01:safeMetric(rawRolling.surprise01),
+        predictionError01:safeMetric(rawRolling.predictionError01),
+        causalStrength01:safeMetric(rawRolling.causalStrength01),
+        learningOpportunity01:safeMetric(rawRolling.learningOpportunity01),
+      },
+      lastConsolidatedAt:typeof r.lastConsolidatedAt==='number'&&Number.isFinite(r.lastConsolidatedAt)&&r.lastConsolidatedAt>=0?r.lastConsolidatedAt:0,
+      recordedTraceIds:normalizedRecordedIds,
+      behavioralImpact01:0,
+      behavioralContextSamples:0,
+      behavioralDivergence01:0,
     };
     this.recordedOutcomeTraceIds.clear();
     for(const id of this.state.recordedTraceIds??[])this.recordedOutcomeTraceIds.add(id);
