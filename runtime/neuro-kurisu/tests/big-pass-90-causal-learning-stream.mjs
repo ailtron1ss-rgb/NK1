@@ -242,4 +242,24 @@ const replayBatch = replayDiversity.prioritizedReplayCandidates(2);
 assert.ok(replayBatch.some((row) => row.taskId === "task-A"));
 assert.ok(replayBatch.some((row) => row.taskId === "task-B"),
   "a near-equal high-priority task should not be crowded out by one repeated task");
+// A plausible feature vector is not enough to make transformed/repair evidence a
+// runtime outcome. Only records minted by the observed runtime outcome path may
+// enter replay or consolidation after restore.
+const forgedDerivedSnapshot = externalStream.snapshot();
+forgedDerivedSnapshot.records[0] = {
+  ...forgedDerivedSnapshot.records[0],
+  provenance: "skill-repair",
+  stateGrounded: true,
+  replayEligible: true,
+  policyFeatures01: Array(16).fill(0.5),
+};
+const forgedDerivedRestore = new CausalExperienceStream(64);
+forgedDerivedRestore.restore(forgedDerivedSnapshot);
+assert.equal(forgedDerivedRestore.recent(64)[0].provenance, "external",
+  "skill-repair evidence must not inherit runtime trust from a feature vector");
+assert.equal(forgedDerivedRestore.prioritizedReplayCandidates(8).length, 0,
+  "non-runtime provenance must never enter policy replay");
+assert.equal(forgedDerivedRestore.consolidate(8, 1400).length, 0,
+  "non-runtime provenance must never be consolidated as grounded memory");
+
 console.log('BIG_PASS_90_CAUSAL_STREAM=PASS');
