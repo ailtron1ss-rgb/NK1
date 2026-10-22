@@ -76,7 +76,7 @@ assert.equal(sanitized.goalHistory.length,0);
 assert.equal(sanitized.outcomeHistory.length,0);
 assert.equal(Object.keys(sanitized.goalOutcomeMemory).length,0);
 const beforeUnsupported=tampered.snapshot();
-assert.throws(()=>tampered.restore({version:2} as unknown as Partial<import('../src/organism/cognition/B272EndogenousGoalGenesis.ts').B272State>),/version/);
+assert.throws(()=>tampered.restore({version:2}),/version/);
 assert.deepEqual(tampered.snapshot(),beforeUnsupported,'unsupported restore must not partially mutate state');
 
 const invalidTickNet=new B272EndogenousGoalGenesis();

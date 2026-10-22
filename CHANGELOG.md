@@ -1,3 +1,11 @@
+## WorkPass299 — keep runtime regressions valid JavaScript (2026-10-22)
+
+- Removed TypeScript-only `as` assertions accidentally introduced into `.mjs` regression files in WorkPass296/298. These files execute as JavaScript under Node and would otherwise fail at parse time before exercising the intended guards.
+- Retained the same invalid-input and unsupported-version assertions using plain JavaScript objects/null values.
+- This was a source-level static correction after reviewing the committed changes; tests remain unexecuted because the current Actions jobs fail before runner/step initialization.
+
+---
+
 ## WorkPass298 — endogenous goal-state integrity and outcome binding (2026-10-22)
 
 - Rebuilt B272 snapshot restoration around fixed-dimension vectors/matrices, allow-listed action identities, bounded finite metrics/counters, and validated histories/memory.

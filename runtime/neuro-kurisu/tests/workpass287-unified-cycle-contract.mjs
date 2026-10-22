@@ -99,11 +99,11 @@ countContradiction.restore({cycles:4,completeCycles:0,incompleteCycles:4,brokenL
 assert.equal(countContradiction.snapshot().lastComplete,false);
 
 const unsupportedVersion=new UnifiedCognitiveCycle();
-assert.throws(()=>unsupportedVersion.restore({version:2} as unknown as Partial<import('../src/organism/system/UnifiedCognitiveCycle.ts').UnifiedCognitiveCycleState>),/version/);
+assert.throws(()=>unsupportedVersion.restore({version:2}),/version/);
 assert.equal(unsupportedVersion.snapshot().cycles,0);
 
-assert.throws(()=>cycle.evaluate(null as never),/input must be an object/);
-assert.throws(()=>cycle.evaluate({tick:6,stageIds:null as never,parentIntegrity01:1}),/stageIds/);
+assert.throws(()=>cycle.evaluate(null),/input must be an object/);
+assert.throws(()=>cycle.evaluate({tick:6,stageIds:null,parentIntegrity01:1}),/stageIds/);
 const inheritedIds=Object.assign(Object.create({observation:'obs-from-prototype'}),{
   prediction:'pred-6',action:'act-6',outcome:'out-6',learning:'learn-6','self-update':'self-6',
 });
