@@ -74,6 +74,43 @@ assert.throws(() => externalStream.recordExternalLearningEvent({
 assert.equal(externalStream.summary().outcomes, 1,
   "invalid external task/action data must not mutate the causal stream");
 
+// IDs are identity keys, not display strings: truncating an overlong value could
+// collapse two independent tasks/events into one duplicate and silently lose data.
+const longTaskPrefix = "t".repeat(120);
+assert.throws(() => externalStream.recordExternalLearningEvent({
+  ...externalInput, taskId: longTaskPrefix + "A", traceId: "long-task-A",
+}), /causal-external-task-id-invalid/);
+assert.throws(() => externalStream.recordExternalLearningEvent({
+  ...externalInput, taskId: longTaskPrefix + "B", traceId: "long-task-B",
+}), /causal-external-task-id-invalid/);
+assert.throws(() => externalStream.recordExternalLearningEvent({
+  ...externalInput, traceId: "x".repeat(181),
+}), /causal-external-trace-id-invalid/);
+assert.throws(() => externalStream.recordExternalLearningEvent({
+  ...externalInput, traceId: "invalid\\ntrace",
+}), /causal-external-trace-id-invalid/);
+assert.equal(externalStream.summary().outcomes, 1,
+  "overlong or control-bearing identity keys must fail before mutating causal state");
+
+const overlongRuntimeTrace = { ...trace, id: "r".repeat(181) };
+assert.equal(externalStream.recordOutcome(
+  overlongRuntimeTrace, mkState({ tick: 22 }),
+  { reward01: .5, success01: .5, surprise01: .5, novelty01: .5 },
+), null, "an overlong runtime trace cannot be silently truncated into another identity");
+assert.equal(externalStream.summary().outcomes, 1);
+
+const corruptSnapshot = externalStream.snapshot();
+corruptSnapshot.records.push({
+  ...externalFirst, id: "corrupt-overlong-trace", traceId: "z".repeat(181),
+});
+corruptSnapshot.recordedTraceIds.push("z".repeat(181));
+const sanitizedRestore = new CausalExperienceStream(64);
+sanitizedRestore.restore(corruptSnapshot);
+assert.equal(sanitizedRestore.recent(64).some(row => row.id === "corrupt-overlong-trace"), false,
+  "restore must discard a persisted record whose trace identity violates the current bound");
+assert.equal(sanitizedRestore.snapshot().recordedTraceIds.includes("z".repeat(181)), false,
+  "restore must not reintroduce overlong deduplication identities");
+
 const replayDiversity = new CausalExperienceStream(64);
 for (let i = 0; i < 3; i++) {
   replayDiversity.recordOutcome({
