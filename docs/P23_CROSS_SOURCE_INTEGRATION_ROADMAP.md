@@ -1,3 +1,11 @@
+## WorkPass254 — resolve exclusive Live2D branch changes
+
+- [x] Compare the exact merge-base-to-tip range for `workpass94-avatar-voice-live2d-audit`.
+- [x] Confirm both exclusive commits are audit documents only; no code cherry-pick is indicated by the exclusive diff.
+- [x] Reuse current-branch findings to implement Live2D expression caching (WorkPass252) and safe Legacy storage (WorkPass253).
+- [ ] Keep browser voice vs Android/Termux voice-provider unification open until a single approved control path and status/interruption semantics are implemented.
+- [ ] Execute real browser/device E2E; retain the source branch until all potentially useful assets and UI changes are accounted for.
+
 ## WorkPass253 — harden Legacy avatar storage fallback
 
 - [x] Wrap LegacySpriteDeck localStorage reads and writes so blocked storage cannot crash the fallback component.
