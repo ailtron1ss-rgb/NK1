@@ -1,3 +1,12 @@
+## WorkPass270 — preserve raw normalized task ID until validation (2026-10-22)
+
+- **Code:** removed the pre-validation trim from the external task-ingestion path. It now checks whether the NFKC-normalized value is blank without replacing it, then passes the untrimmed normalized input to the shared bounded ID validator.
+- **Failure prevented:** trailing/leading task-ID control characters can no longer be erased at the call site before the shared C0/DEL/C1 guard sees them.
+- **Regression:** existing task-ID boundary-control case now exercises the actual runtime ingestion path rather than only the helper's trace-ID path.
+- **Validation:** exact-head runtime test/typecheck remains unverified because recent Actions jobs expose no steps or logs. No new dependency; no learning score uplift.
+
+---
+
 ## WorkPass269 — reject boundary controls before trimming causal identifiers (2026-10-22)
 
 - **Code:** bounded ID normalization now checks C0/DEL/C1 controls immediately after NFKC normalization and only then trims ordinary surrounding whitespace. Leading/trailing newline or tab characters can no longer disappear before validation.
