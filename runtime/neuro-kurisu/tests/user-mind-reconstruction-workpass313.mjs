@@ -3,6 +3,7 @@ import { SocialMindKernel } from '../src/organism/cognition/SocialMindKernel.ts'
 import { MotiveEcologyFabric } from '../src/organism/cognition/evolution/MotiveEcologyFabric.ts';
 import { P28PlasticitySubstrate } from '../src/organism/learning/P28PlasticitySubstrate.ts';
 import { MemoryConsolidationController } from '../src/organism/memory/MemoryConsolidationController.ts';
+import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
 
 const social = new SocialMindKernel();
 const intentEvidence = social.observeText('user', 'Почему это работает? Объясни, пожалуйста.', 1000);
@@ -136,6 +137,34 @@ assert.equal(consolidation.diagnostics().sleepTimeRuns, 1);
 const consolidationRestore = new MemoryConsolidationController();
 consolidationRestore.restore(consolidation.snapshot());
 assert.equal(consolidationRestore.diagnostics().sleepTimeRuns, 1, 'sleep-time counters must persist across restart');
+const memDoctor = new MemoryOS2({ signalFusionProfile: 'balanced', embeddingProvider: null });
+const doctorAt = Date.now();
+memDoctor.encode({
+  id: 'doctor-healthy-record', content: 'Unique memory doctor fixture record.', kind: 'semantic',
+  source: 'workpass313-memory-doctor', tags: [], context: {}, salience: .6, emotionalWeight: .1,
+  identityRelevance: .2, goalRelevance: .3, socialRelevance: .1, predictionError: .1,
+  confidence: .9, epistemicStatus: 'fact', entities: [], semanticLinks: [], temporalLinks: [], causalLinks: [],
+  contradictionLinks: [], validFromAt: doctorAt - 1000, observedAt: doctorAt - 500,
+});
+const healthyDoctor = memDoctor.doctor({ at: doctorAt });
+assert.equal(healthyDoctor.pass, true, 'a clean canonical memory snapshot should pass doctor');
+assert.equal(healthyDoctor.issueCount, 0, 'a clean snapshot should not report memory hygiene issues');
+const damagedMemorySnapshot = memDoctor.snapshot();
+damagedMemorySnapshot.items[0].contentHash = 'not-the-canonical-content-hash';
+damagedMemorySnapshot.items[0].semanticLinks = ['missing-memory-doctor-target'];
+damagedMemorySnapshot.items[0].supersedesId = 'missing-memory-revision';
+damagedMemorySnapshot.items[0].observedAt = doctorAt + 3_600_000;
+const damagedMemory = new MemoryOS2({ signalFusionProfile: 'balanced', embeddingProvider: null });
+damagedMemory.restore(damagedMemorySnapshot);
+const doctorReport = damagedMemory.doctor({ at: doctorAt });
+assert.equal(doctorReport.readOnly, true, 'doctor must never repair or rewrite memory automatically');
+assert.equal(doctorReport.pass, false, 'content hash inconsistency should fail doctor');
+assert.ok(doctorReport.counts.hashMismatch > 0, 'doctor should detect altered canonical content hashes');
+assert.ok(doctorReport.counts.danglingRevision > 0, 'doctor should detect unresolved revision pointers');
+assert.ok(doctorReport.counts.danglingLinks > 0, 'doctor should detect unresolved relationship links');
+assert.ok(doctorReport.counts.futureEvidence > 0, 'doctor should detect future-dated evidence');
+assert.ok(doctorReport.issues.length <= 64, 'doctor output must remain bounded');
+assert.equal(damagedMemory.snapshot().items[0].contentHash, 'not-the-canonical-content-hash', 'read-only doctor must not mutate the record it reports');
 console.log(JSON.stringify({
   pass: true,
   workpass: 313,
