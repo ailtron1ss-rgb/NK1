@@ -97,6 +97,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:p318:memory-doctor-cli
       - name: WorkPass319 causal cognitive-cycle phase ordering
         run: npm --prefix runtime/neuro-kurisu run test:p319:cycle-order
+      - name: WorkPass320 cognitive dependency restore integrity
+        run: npm --prefix runtime/neuro-kurisu run test:p320:cognitive-dependency-restore
       - name: WorkPass315 self-model evidence write gate
         run: npm --prefix runtime/neuro-kurisu run test:p315:self-model-evidence-gate
       - name: WorkPass316 HYVE-inspired relational tether
