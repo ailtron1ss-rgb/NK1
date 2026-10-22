@@ -1,3 +1,15 @@
+## Latest durable checkpoint — WorkPass266 (2026-10-22)
+
+- Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use the live PR for the current SHA.
+- WorkPass266 fixes lossy causal task/trace identity truncation, adds invalid-input/restore regressions and wires causal-stream, Legacy-avatar and Live2D regressions into WorkPass110.
+- The latest retrieved workflow job has failed without accessible step details/logs; retry requested, tests/typecheck not confirmed. Do not claim a pass from that result.
+- Next code-first target: trace the external causal-event call graph and close caller-asserted grounding authority using canonical provenance; do not break integrations before mapping their contracts.
+- Keep scores unchanged until independent task evidence demonstrates a repeatable transfer or memory-to-action gain.
+
+Read the [strategic audit](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [P23 integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md) and [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md) before the next pass.
+
+---
+
 ## Latest durable checkpoint — WorkPass265 strategic execution map (2026-10-22)
 
 - Current source branch: workpass206-runtime-evaluator-wiring; draft PR #55 remains open/unmerged; implementation baseline reviewed before this documentation checkpoint: `58e9c6a00b5835096dac3758968f5b9ce0eb08d2`. Use the live PR link for the current HEAD.
