@@ -3,8 +3,8 @@ const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 export type ConsolidationRoute='hippocampal'|'cortical'|'procedural'|'defer';
 export interface ConsolidationCandidate { id:string; kind?:string; salience01:number; novelty01:number; predictionError01:number; uncertainty01:number; outcome01:number; recency01:number; procedural01?:number; storageCost01?:number; reinforcementGate01?:number; redundancy01?:number; semanticCompression01?:number; }
 export interface ConsolidationDecision { id:string; route:ConsolidationRoute; priority01:number; reason:string; plasticity01:number; retention01:number; overconsolidationRisk01:number; reinforcement01:number; }
-export interface MemoryConsolidationState { version:1; runs:number; selected:number; deferred:number; episodicRuns:number; proceduralRuns:number; corticalRuns:number; meanPriority01:number; meanOverconsolidationRisk01:number; feedbackUpdates:number; lastFeedback?:{action:string;delta01:number;retention01:number}; lastBatch:ConsolidationDecision[]; }
-const defaults=():MemoryConsolidationState=>({version:1,runs:0,selected:0,deferred:0,episodicRuns:0,proceduralRuns:0,corticalRuns:0,meanPriority01:0,meanOverconsolidationRisk01:0,feedbackUpdates:0,lastFeedback:undefined,lastBatch:[]});
+export interface MemoryConsolidationState { version:1; runs:number; selected:number; deferred:number; episodicRuns:number; proceduralRuns:number; corticalRuns:number; meanPriority01:number; meanOverconsolidationRisk01:number; feedbackUpdates:number; awakeBoundedRuns:number; sleepTimeRuns:number; lastFeedback?:{action:string;delta01:number;retention01:number}; lastBatch:ConsolidationDecision[]; }
+const defaults=():MemoryConsolidationState=>({version:1,runs:0,selected:0,deferred:0,episodicRuns:0,proceduralRuns:0,corticalRuns:0,meanPriority01:0,meanOverconsolidationRisk01:0,feedbackUpdates:0,awakeBoundedRuns:0,sleepTimeRuns:0,lastFeedback:undefined,lastBatch:[]});
 
 /** Distribution-aware consolidation controller. This is a computational design, not an anatomical equivalence claim. */
 export class MemoryConsolidationController {
@@ -26,7 +26,13 @@ export class MemoryConsolidationController {
       const retention=clamp01((.35+.35*c.salience01+.20*(1-c.novelty01)+.10*c.outcome01) * (.72+.28*reinforcement) * (1-overconsolidationRisk*.65));
       return {id:c.id,route,priority01:priority,reason:`priority=${priority.toFixed(3)} uncertainty=${c.uncertainty01.toFixed(3)} error=${c.predictionError01.toFixed(3)} redundancy=${redundancy.toFixed(3)}`,plasticity01:plasticity,retention01:retention,overconsolidationRisk01:overconsolidationRisk,reinforcement01:reinforcement};
     }).sort((a,b)=>b.priority01-a.priority01);
-    const chosen=out.slice(0,Math.max(1,Math.min(32,Math.floor(limits.batchSize))));
+    const requestedBatch=Math.max(1,Math.min(32,Math.floor(limits.batchSize)));
+    // Letta-inspired sleep-time budget: preserve the larger maintenance window for sleeping/idle cycles.
+    // Active cycles are capped at four decisions; sleeping cycles get at least twelve, always bounded to 32.
+    const awake=limits.awake01===undefined?null:clamp01(limits.awake01);
+    const batchSize=awake===null?requestedBatch:awake>.5?Math.min(4,requestedBatch):Math.min(32,Math.max(12,requestedBatch));
+    if(awake===null){} else if(awake>.5)this.state.awakeBoundedRuns++; else this.state.sleepTimeRuns++;
+    const chosen=out.slice(0,batchSize);
     this.state.runs++;this.state.selected+=chosen.filter(x=>x.route!=='defer').length;this.state.deferred+=chosen.filter(x=>x.route==='defer').length;
     this.state.episodicRuns+=chosen.filter(x=>x.route==='hippocampal').length;
     this.state.proceduralRuns+=chosen.filter(x=>x.route==='procedural').length;
