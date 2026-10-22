@@ -80,13 +80,30 @@ export interface IndependentCandidateEvaluationConfig {
 const isDigest = (x: unknown): x is string => typeof x === 'string' && /^[a-f0-9]{64}$/i.test(x);
 // Must match P23LearningEngine's canonicalize exactly or its post-generation
 // payload/evaluation digest gate will reject a genuine evaluator result.
-function canonical(value: unknown): string {
+function canonical(value: unknown, ancestors = new Set<object>()): string {
+  if (typeof value === 'number' && !Number.isFinite(value)) {
+    throw new Error('independent-candidate-evaluator-non-finite-number');
+  }
   if (value === undefined) return 'null';
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
-  const record = value as Record<string, unknown>;
-  return '{' + Object.keys(record).filter(key => record[key] !== undefined).sort()
-    .map(key => JSON.stringify(key) + ':' + canonical(record[key])).join(',') + '}';
+  if (value === null || typeof value !== 'object') {
+    const encoded = JSON.stringify(value);
+    if (encoded === undefined) throw new Error('independent-candidate-evaluator-value-not-json-serializable');
+    return encoded;
+  }
+  if (ancestors.has(value)) throw new Error('independent-candidate-evaluator-circular-value');
+  const prototype = Object.getPrototypeOf(value);
+  if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) {
+    throw new Error('independent-candidate-evaluator-non-plain-object');
+  }
+  ancestors.add(value);
+  try {
+    if (Array.isArray(value)) return '[' + value.map(item => canonical(item, ancestors)).join(',') + ']';
+    const record = value as Record<string, unknown>;
+    return '{' + Object.keys(record).filter(key => record[key] !== undefined).sort()
+      .map(key => JSON.stringify(key) + ':' + canonical(record[key], ancestors)).join(',') + '}';
+  } finally {
+    ancestors.delete(value);
+  }
 }
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 async function runWithServiceDeadline<T>(
