@@ -1,3 +1,23 @@
+# WorkPass318 — Read-only Memory Doctor CLI
+
+`MemoryOS2.doctor()` is also exposed as a non-mutating CLI for inspecting the primary saved organism state. Run it from the repository root:
+
+```bash
+npm --prefix runtime/neuro-kurisu run memory:doctor -- /absolute/path/to/organism-state.json
+```
+
+For a state written using V8 serialization, set the same format selector used by the runtime:
+
+```bash
+NEURO_STATE_FORMAT=v8 npm --prefix runtime/neuro-kurisu run memory:doctor -- /absolute/path/to/organism-state.bin
+```
+
+The CLI reads only the specified file and audits `facets.advanced.memoryOS`. It deliberately does not repair records, write state, or silently switch to a `.bak` file. The JSON report includes bounded issue detail plus full counts; exit status is **0** when no error-severity integrity violations are present, **2** when such errors are found, **1** for read/parse/schema failures, and **64** for invalid usage. Warnings do not by themselves fail the audit.
+
+The latest branch adds dedicated CLI regression coverage for JSON and V8 serialization, capped reports, non-mutation and failure exit semantics. GitHub Actions is currently not providing a runner for the latest branch, so those tests are committed but not yet execution-verified.
+
+---
+
 ## WorkPass27 — MemoryOS2 retrieval candidate coverage + Okapi BM25 baseline
 
 - Token posting lists retain complete matches within the existing 1600-memory corpus cap. Candidate sets remain capped at 192 per query and are ranked by IDF support, term coverage, exact phrase, temporal/revision validity, recency, salience and stable IDs.
