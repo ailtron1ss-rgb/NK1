@@ -118,9 +118,22 @@ export async function collectRuns({
   let reportedTotal = null;
   let pagesFetched = 0;
   let lastPageHadFullSize = false;
+  let collectionError = null;
   for (let page = 1; page <= maxPages; page += 1) {
     const url = makeApiUrl(apiBase, repository, '/actions/runs', { per_page: perPage, page });
-    const payload = await requestJson(url, token, fetchImpl);
+    let payload;
+    try {
+      payload = await requestJson(url, token, fetchImpl);
+    } catch (error) {
+      const message = redactSecrets(error?.message ?? error);
+      // Preserve already collected pages if API throttling begins mid-scan.
+      // Authentication/configuration failures on the first page still fail closed.
+      if (unique.size > 0 && message.toLowerCase().includes('rate limit')) {
+        collectionError = message;
+        break;
+      }
+      throw error;
+    }
     const rows = Array.isArray(payload?.workflow_runs) ? payload.workflow_runs : [];
     pagesFetched += 1;
     if (Number.isFinite(payload?.total_count)) reportedTotal = payload.total_count;
@@ -131,14 +144,15 @@ export async function collectRuns({
     if (rows.length < perPage) break;
     if (reportedTotal != null && unique.size >= reportedTotal) break;
   }
-  const truncated = pagesFetched >= maxPages && lastPageHadFullSize &&
-    (reportedTotal == null || unique.size < reportedTotal);
+  const truncated = Boolean(collectionError) || (pagesFetched >= maxPages && lastPageHadFullSize &&
+    (reportedTotal == null || unique.size < reportedTotal));
   return {
     runs: [...unique.values()],
     pagesFetched,
     reportedTotal,
     uniqueRuns: unique.size,
-    truncated
+    truncated,
+    collectionError
   };
 }
 
@@ -266,7 +280,8 @@ function renderMarkdown(report) {
     '- Pages fetched: ' + report.scan.pagesFetched,
     '- Unique runs collected: ' + report.scan.uniqueRuns,
     '- API total_count: ' + String(report.scan.reportedTotal ?? 'not supplied'),
-    '- Truncated by page limit: ' + String(report.scan.truncated),
+    '- Truncated / incomplete history: ' + String(report.scan.truncated),
+    ...(report.scan.collectionError ? ['- History scan stop reason: ' + report.scan.collectionError] : []),
     '- Failed/non-success runs: ' + report.summary.suspiciousRuns,
     '- Runs with detailed job inspection: ' + report.scan.runDetailsFetched,
     '- Runs omitted from job inspection due to budget: ' + report.scan.runDetailsSkipped,
@@ -418,6 +433,7 @@ async function main() {
       uniqueRuns: collected.uniqueRuns,
       reportedTotal: collected.reportedTotal,
       truncated: collected.truncated,
+      collectionError: collected.collectionError,
       maxPages,
       suspiciousRunCount: suspicious.length,
       runDetailsFetched: details.filter(item => item?.ok).length,
