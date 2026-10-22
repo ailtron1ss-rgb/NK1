@@ -29,7 +29,8 @@ try {
 import { readFileSync } from 'node:fs';
 const request = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 if (request.authority !== 'executor' || request.input.payload.answer !== 42) process.exit(21);
-process.stdout.write(JSON.stringify({ runId: request.context.runId, observedStepIds: ['step-a'] }));
+const runId = request.input.payload.mismatchRunId ? request.context.runId + '-detached' : request.context.runId;
+process.stdout.write(JSON.stringify({ runId, observedStepIds: ['step-a'] }));
 `],
     [verifier, `#!/usr/bin/env node
 import { readFileSync } from 'node:fs';
@@ -89,6 +90,10 @@ process.stdout.write(JSON.stringify({
     environmentFingerprint: 'd'.repeat(64), planFingerprint: 'a'.repeat(64),
     manifestFingerprint: 'f'.repeat(64), experimentPlanFingerprint: null, plannedRunId: null,
   };
+  await assert.rejects(
+    services.executor.execute({ payload: { answer: 42, mismatchRunId: true }, task, context }),
+    /host-owned-executor-response-run-id-mismatch/,
+  );
   const execution = await services.executor.execute({ payload: { answer: 42 }, task, context });
   assert.deepEqual(execution.observedStepIds, ['step-a']);
   const verified = await services.verifier.verify({ task, execution, context });
