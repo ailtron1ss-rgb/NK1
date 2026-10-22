@@ -37,8 +37,27 @@ runtime.config = {
     backgroundRevision: { enabled: true, initialDelayMs: 300_000, intervalMs: 900_000 },
   },
 };
-runtime.compoundRepairRevisionCoordinator = {};
+runtime.compoundRepairRevisionCoordinator = { retryBackoffDiagnostics: () => [] };
 runtime.compoundRepairRevisionCursor = 0;
+runtime.compoundRepairRevisionMetrics = {
+  version: 1,
+  schedulerDecisions: 0,
+  resourceGated: 0,
+  noEvidence: 0,
+  notReady: 0,
+  attempts: 0,
+  staged: 0,
+  deduplicated: 0,
+  backoffSkipped: 0,
+  failures: 0,
+  lastDecisionAt: 0,
+  lastDecisionReason: 'test',
+  lastAttemptAt: 0,
+  lastSkillId: null,
+  lastStatus: 'idle',
+  lastCandidateId: null,
+  lastFailureCategory: null,
+};
 runtime.clockScheduler = { register: task => registrations.push(task) };
 runtime.embodiment = {
   snapshot: () => ({
@@ -103,6 +122,13 @@ await task.task();
 assert.deepEqual(revisedSkillIds, ['skill-b'], 'verified repair ledger bounds the candidate set while quarantined repair hypotheses may prioritize only existing skills');
 assert.equal(events.at(-1)[1], 'runtime.p23.compound-repair-revision.background');
 assert.equal(events.at(-1)[2].status, 'candidate-staged');
+const diagnostics = OrganismRuntime.prototype.compoundRepairRevisionDiagnostics.call(runtime);
+assert.equal(diagnostics.enabled, true);
+assert.equal(diagnostics.attempts, 1);
+assert.equal(diagnostics.staged, 1);
+assert.equal(diagnostics.lastSkillId, 'skill-b');
+assert.equal(diagnostics.lastCandidateId, 'staged-only');
+assert.equal(diagnostics.schedule.intervalMs, 900_000);
 
 const disabled = Object.create(OrganismRuntime.prototype);
 disabled.config = { compoundRepairRevision: { backgroundRevision: { enabled: false } } };
