@@ -64,6 +64,15 @@ restored.restore(model.snapshot());
 assert.deepEqual(restored.snapshot(), model.snapshot(),
   'identity write-gate state survives the normal snapshot/restore path');
 
+const legacySnapshot = { ...model.snapshot() };
+delete legacySnapshot.identityGateAcceptedCount;
+delete legacySnapshot.identityGateRejectedCount;
+delete legacySnapshot.lastIdentityGate;
+const legacyRestored = new SelfModelEngine();
+legacyRestored.restore(legacySnapshot);
+assert.equal(legacyRestored.snapshot().identityGateAcceptedCount, 0, 'older self-model snapshots receive safe gate defaults');
+assert.equal(legacyRestored.snapshot().identityGateRejectedCount, 0, 'older self-model snapshots receive safe reject-counter defaults');
+assert.equal(legacyRestored.snapshot().lastIdentityGate, null, 'malformed or absent gate diagnostics must not block restore');
 console.log('WORKPASS315_SELF_MODEL_EVIDENCE_GATE=PASS', JSON.stringify({
   accepted: model.snapshot().identityGateAcceptedCount,
   rejected: model.snapshot().identityGateRejectedCount,
