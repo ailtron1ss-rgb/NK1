@@ -285,3 +285,11 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **PARTIAL (P0/P2):** this closes a concrete configuration-level self-attestation gap, but cannot prove service ownership or process isolation. Production still must bind these distinct capabilities to independently controlled host services and a real OS/container sandbox; function identity checks are defense-in-depth, not a substitute for trust-boundary deployment.
 - **PARTIAL (validation):** source/test commits are on the draft PR branch. The targeted test and runtime typecheck have not been executed locally; exact-head Actions must confirm both before this pass is marked validated.
 - **OPEN next:** implement and wire a host-owned sandbox capability that provides enforceable resource limits and process-tree containment, bind the independent verifier and scanner to host-owned services, and test cancellation/timeout against real descendant processes and stale-result replay.
+
+
+#### WorkPass240 follow-up — close the direct-construction production bypass
+
+- **DONE (code):** production experiment-authority enforcement now lives inside `createIndependentSkillCandidateEvaluator` validation itself, not only in `withIndependentCandidateEvaluation`. Direct callers cannot construct the evaluator in production without the canonical manifest, validation/holdout plans and verified-outcome ledger.
+- **DONE (regression authored):** the existing bounded-evaluation test temporarily sets `NODE_ENV=production` and asserts direct construction fails before execution when authority is absent; the prior environment is restored in a `finally` block.
+- **PARTIAL:** this closes a code-path bypass, not host trust ownership. The actual executor/verifier/scanner must still be supplied by separately controlled host services and a real sandbox.
+- **Validation:** exact-head test/typecheck remains unconfirmed; do not mark PASS until Actions actually runs the test step.
