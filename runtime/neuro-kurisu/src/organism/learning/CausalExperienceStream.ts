@@ -209,6 +209,9 @@ export class CausalExperienceStream {
     if(!trace.selected||!CAUSAL_ACTIONS.includes(trace.selected.action)||
       !Number.isSafeInteger(trace.tick)||trace.tick<0||
       !hasValidObservedState(trace.stateBefore)||!hasValidObservedState(stateAfter)||
+      // The decision trace must describe the same pre-action world tick; otherwise
+      // an unrelated/old trace could be paired with a newer observed transition.
+      trace.tick!==trace.stateBefore.tick||
       stateAfter.tick<=trace.stateBefore.tick)return null;
     const boundedInput=[input.reward01,input.success01,input.surprise01,input.novelty01];
     if(!boundedInput.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1))return null;
