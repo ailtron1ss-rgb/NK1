@@ -45,6 +45,9 @@ import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndepe
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
+// External repair hints are advisory only and must be fresh; stale/future timestamps cannot bias autonomous revision order.
+const EXTERNAL_REPAIR_HINT_TTL_MS=7*24*60*60*1000;
+const EXTERNAL_REPAIR_HINT_MAX_FUTURE_SKEW_MS=5*60*1000;
 function stableSpeechEventId(channel:string,tick:number,text:string):string { return `speech-${channel}-${Math.max(0,Math.floor(Number(tick)||0))}-${createHash('sha256').update(String(text??'')).digest('hex').slice(0,24)}`; }
 
 function environmentToWorldContext(snapshot: ReturnType<WorldEnvironment['snapshot']>): WorldContext {
@@ -1489,7 +1492,12 @@ export class OrganismRuntime {
         hintedSkillIds = skillIds.filter(skillId => hypotheses.some(hypothesis =>
           hypothesis?.claimedProvenance === 'skill-repair' &&
           typeof hypothesis.taskId === 'string' &&
-          hypothesis.taskId.startsWith(`skill-repair:${skillId}:`),
+          hypothesis.taskId.length <= 160 &&
+          hypothesis.taskId.startsWith(`skill-repair:${skillId}:`) &&
+          typeof hypothesis.receivedAt === 'number' &&
+          Number.isFinite(hypothesis.receivedAt) &&
+          hypothesis.receivedAt <= Date.now() + EXTERNAL_REPAIR_HINT_MAX_FUTURE_SKEW_MS &&
+          Date.now() - hypothesis.receivedAt <= EXTERNAL_REPAIR_HINT_TTL_MS,
         ));
       }
     } catch {
