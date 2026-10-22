@@ -1,3 +1,13 @@
+## WorkPass282 — align P23 engine and evaluator fingerprint semantics (2026-10-22)
+
+- **Code:** the P23 learning engine now uses the same strict canonicalization rules as the independent candidate evaluator for generated payloads and returned evaluation reports.
+- **Why:** a digest must not silently equate NaN/Infinity with JSON null, or accept circular/non-plain values that the independent evaluator rejects. A mismatch between the producer and verifier canonicalization also obscures whether a report actually binds to the same bytes.
+- **Boundary:** ordinary JSON-like payloads retain deterministic sorted-key canonicalization; non-finite, circular, non-plain and non-serializable values fail closed.
+- **Architecture:** updated the existing canonicalizer in place; no duplicate fingerprint service and no new dependency.
+- **Validation:** source change committed; tests/typecheck not executed in this pass. No measured learning improvement claimed.
+
+---
+
 ## WorkPass281 — strict candidate-task canonicalization and sandbox run identity (2026-10-22)
 
 - **Code:** the P23 independent candidate evaluator now rejects non-finite numbers, circular structures and non-plain objects when canonicalizing task inputs or evaluation payloads. This avoids ambiguous fingerprints while preserving the existing canonical representation for valid plain JSON-like data.
