@@ -43,6 +43,8 @@ export interface B272GoalCandidate {
 export interface B272State {
   version:1;
   tick:number;
+  /** Last tick whose outcome has already been credited; -1 means none. */
+  lastOutcomeTick:number;
   steps:number;
   learningUpdates:number;
   generatedGoals:number;
@@ -73,7 +75,7 @@ export function defaultB272State():B272State{
   const selfProjectionWeights=GOAL_DIMS.map((_,i)=>Array.from({length:16},(_,j)=>clamp11(Math.sin((i+2)*(j+1)*.19)*.06)));
   const worldProjectionWeights=GOAL_DIMS.map((_,i)=>Array.from({length:16},(_,j)=>clamp11(Math.cos((i+3)*(j+2)*.17)*.06)));
   const g=defaultGoal(3);
-  return {version:1,tick:0,steps:0,learningUpdates:0,generatedGoals:0,acceptedGoals:0,rejectedGoals:0,rollbackCount:0,currentGoal:g,currentGoalId:`g-${hashVector(g)}`,currentAction:'reflect',currentConfidence01:.35,goalPressure01:.2,goalNovelty01:.25,selfConflict01:.2,internalCoherence01:.7,agency01:.4,actionPrototypeWeights,goalWeights,selfProjectionWeights,worldProjectionWeights,goalHistory:[],outcomeHistory:[],goalOutcomeMemory:{}};
+  return {version:1,tick:0,lastOutcomeTick:-1,steps:0,learningUpdates:0,generatedGoals:0,acceptedGoals:0,rejectedGoals:0,rollbackCount:0,currentGoal:g,currentGoalId:`g-${hashVector(g)}`,currentAction:'reflect',currentConfidence01:.35,goalPressure01:.2,goalNovelty01:.25,selfConflict01:.2,internalCoherence01:.7,agency01:.4,actionPrototypeWeights,goalWeights,selfProjectionWeights,worldProjectionWeights,goalHistory:[],outcomeHistory:[],goalOutcomeMemory:{}};
 }
 
 export interface B272StepInput {
@@ -143,6 +145,15 @@ export class B272EndogenousGoalGenesis {
       outcomeHistory.push({tick:item.tick,goalId:item.goalId,action:item.action,reward01:item.reward01,predictionError01:item.predictionError01});
     }
     outcomeHistory.sort((a,b)=>a.tick-b.tick);
+    // A single cognitive tick can yield at most one credited outcome. If a
+    // persisted ledger contains ambiguous duplicate ticks, quarantine every row
+    // at those ticks while still remembering the latest observed tick to block replay.
+    const outcomeTickCounts=new Map<number,number>();
+    for(const item of outcomeHistory)outcomeTickCounts.set(item.tick,(outcomeTickCounts.get(item.tick)??0)+1);
+    const observedLastOutcomeTick=outcomeHistory.reduce((latest,item)=>Math.max(latest,item.tick),-1);
+    const uniqueOutcomeHistory=outcomeHistory.filter(item=>outcomeTickCounts.get(item.tick)===1);
+    const persistedLastOutcomeTick=safeCounter(r.lastOutcomeTick,-1);
+    const lastOutcomeTick=Math.max(observedLastOutcomeTick,persistedLastOutcomeTick>=0&&persistedLastOutcomeTick<=tick?persistedLastOutcomeTick:-1);
 
     const goalOutcomeMemory:B272State['goalOutcomeMemory']={};
     const rawMemory=isRecord(r.goalOutcomeMemory)?Object.entries(r.goalOutcomeMemory).slice(-1024):[];
@@ -151,14 +162,15 @@ export class B272EndogenousGoalGenesis {
       const vector=strictVector(value.vector,GOAL_DIMS.length);
       const updates=safeCounter(value.updates,-1);
       const lastTick=safeCounter(value.lastTick,-1);
-      if(!vector||key!==`g-${hashVector(vector)}`||updates<0||lastTick<0||lastTick>tick)continue;
+      if(!vector||key!==`g-${hashVector(vector)}`||updates<1||updates>learningUpdates||lastTick<0||lastTick>tick)continue;
       if(!isUnit(value.meanReward01)||!isUnit(value.meanPredictionError01))continue;
+      if(!uniqueOutcomeHistory.some(item=>item.goalId===key&&item.tick===lastTick))continue;
       goalOutcomeMemory[key]={vector,meanReward01:value.meanReward01,meanPredictionError01:value.meanPredictionError01,updates,lastTick};
     }
 
     this.state={
       version:1,
-      tick,steps,learningUpdates,generatedGoals,acceptedGoals,rejectedGoals,rollbackCount,
+      tick,lastOutcomeTick,steps,learningUpdates,generatedGoals,acceptedGoals,rejectedGoals,rollbackCount,
       currentGoal,currentGoalId,
       currentAction:isAction(r.currentAction)?r.currentAction:d.currentAction,
       currentConfidence01:isUnit(r.currentConfidence01)?r.currentConfidence01:d.currentConfidence01,
@@ -172,7 +184,7 @@ export class B272EndogenousGoalGenesis {
       selfProjectionWeights:restoreMatrix(r.selfProjectionWeights,d.selfProjectionWeights),
       worldProjectionWeights:restoreMatrix(r.worldProjectionWeights,d.worldProjectionWeights),
       goalHistory:goalHistory.slice(-128),
-      outcomeHistory:outcomeHistory.slice(-256),
+      outcomeHistory:uniqueOutcomeHistory.slice(-256),
       goalOutcomeMemory:Object.fromEntries(Object.entries(goalOutcomeMemory).slice(-256)),
     };
   }
@@ -289,6 +301,7 @@ const learned=this.learnedGoalValue(v,input.tick);
     if(!isUnit(input.reward01)||!isUnit(input.predictionError01)||!isUnit(input.externalEvidence01))throw new RangeError('B272 outcome signals must be finite values in [0,1]');
     if(input.independentEvaluatorGain01!==undefined&&(typeof input.independentEvaluatorGain01!=='number'||!Number.isFinite(input.independentEvaluatorGain01)||input.independentEvaluatorGain01< -1||input.independentEvaluatorGain01>1))throw new RangeError('B272 independent evaluator gain must be finite and in [-1,1]');
     if(input.acceptedExternalGoal!==undefined&&typeof input.acceptedExternalGoal!=='boolean')throw new TypeError('B272 acceptedExternalGoal must be boolean');
+    if(input.tick<=this.state.lastOutcomeTick)throw new Error('B272 outcome for this tick has already been credited');
     const latest=this.state.goalHistory[this.state.goalHistory.length-1];
     if(!latest||latest.tick!==input.tick||latest.id!==this.state.currentGoalId||latest.action!==input.action)throw new Error('B272 outcome has no matching generated-goal evidence');
     if(this.state.learningUpdates>=Number.MAX_SAFE_INTEGER)throw new RangeError('B272 learning counter reached its safe integer limit');
@@ -330,6 +343,7 @@ const learned=this.learnedGoalValue(v,input.tick);
       updates:memory.updates+1,lastTick:input.tick,
     };
     this.state.outcomeHistory=[...this.state.outcomeHistory,{tick:input.tick,goalId:this.state.currentGoalId,action:input.action,reward01:input.reward01,predictionError01:input.predictionError01}].slice(-256);
+    this.state.lastOutcomeTick=input.tick;
     if(accepted)this.state.acceptedGoals++; else this.state.rejectedGoals++; if(input.independentEvaluatorGain01!=null&&input.independentEvaluatorGain01<-.04)this.state.rollbackCount++;
     this.state.learningUpdates++;
     return {learningRate:lr,gain11:gain,accepted,goalId:this.state.currentGoalId,agency01:this.state.agency01,goalNovelty01:this.state.goalNovelty01,goalPressure01:this.state.goalPressure01};

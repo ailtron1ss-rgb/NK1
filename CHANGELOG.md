@@ -1,3 +1,14 @@
+## WorkPass302 — make goal outcome credit idempotent and ledger-bound
+
+- Added a persisted `lastOutcomeTick` watermark. A generated goal's outcome can now update weights and memory at most once per tick; duplicate/out-of-order credits fail before any learner state mutation.
+- Restore now remembers the latest observed outcome tick even when a conflicting duplicate-tick row is quarantined, preventing a damaged ledger from reopening that tick for replay.
+- Duplicate outcome rows for the same tick are quarantined as a group instead of allowing ambiguous evidence into the active ledger.
+- Goal-outcome memory now requires a positive bounded update count and a matching retained outcome row with the same goal ID and last-update tick; fabricated zero-update memory is not admitted.
+- Added regressions for duplicate online credit, restore watermark persistence, zero-update memory injection, and duplicate ledger ticks.
+- Existing snapshots without the new watermark remain compatible: the watermark is reconstructed from stored outcome history. Execution is still blocked at GitHub runner initialization, so these assertions are not claimed as passing.
+
+---
+
 ## WorkPass301 — runtime clock fail-closed decisions and bounded scheduling
 
 - The runtime clock now validates registration inputs, clock identifiers, start targets and adaptive decisions before using them.

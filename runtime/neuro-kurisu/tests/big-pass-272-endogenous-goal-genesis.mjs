@@ -12,6 +12,12 @@ for(let t=0;t<360;t++){
   const lr=net.learnFromOutcome({tick:t,action:r.action,reward01:reward,predictionError01:predictionError,externalEvidence01:t%23===0?1:0,independentEvaluatorGain01:reward-.5,acceptedExternalGoal:reward>.56});
   if(lr.accepted)accepted++;
 }
+const afterCreditedOutcome=net.snapshot();
+const currentAction=net.currentGoal().action;
+assert.throws(()=>net.learnFromOutcome({tick:359,action:currentAction,reward01:.99,predictionError01:0,externalEvidence01:1,acceptedExternalGoal:true}),/already been credited/);
+assert.deepEqual(net.snapshot(),afterCreditedOutcome,'replaying the same tick must not apply learning twice');
+assert.equal(afterCreditedOutcome.lastOutcomeTick,359,'the last credited tick must persist');
+
 const d=net.diagnostics();
 assert.ok(d.learningUpdates>=340,'B272 did not learn enough');
 assert.ok(d.generatedGoals>=340,'B272 did not generate goals');
@@ -24,6 +30,23 @@ const before=net.currentGoal();
 const snap=net.snapshot();
 const restored=new B272EndogenousGoalGenesis(); restored.restore(snap);
 assert.deepEqual(restored.currentGoal(),before,'B272 goal state did not round-trip');
+assert.equal(restored.snapshot().lastOutcomeTick,snap.lastOutcomeTick,'last credited outcome tick did not round-trip');
+assert.ok(Object.keys(restored.snapshot().goalOutcomeMemory).length>0,'valid outcome memory should survive an evidence-bound restore');
+
+const forgedZeroUpdate=net.snapshot();
+const forgedId=forgedZeroUpdate.currentGoalId;
+forgedZeroUpdate.goalOutcomeMemory[forgedId]={vector:forgedZeroUpdate.currentGoal.slice(),meanReward01:1,meanPredictionError01:0,updates:0,lastTick:forgedZeroUpdate.tick};
+const forgedMemoryRestore=new B272EndogenousGoalGenesis();
+forgedMemoryRestore.restore(forgedZeroUpdate);
+assert.equal(Object.hasOwn(forgedMemoryRestore.snapshot().goalOutcomeMemory,forgedId),false,'zero-update outcome memory without valid learning count must be quarantined');
+
+const duplicateLedger=net.snapshot();
+duplicateLedger.outcomeHistory.push({...duplicateLedger.outcomeHistory[duplicateLedger.outcomeHistory.length-1],reward01:0});
+const duplicateLedgerRestore=new B272EndogenousGoalGenesis();
+duplicateLedgerRestore.restore(duplicateLedger);
+assert.equal(duplicateLedgerRestore.snapshot().outcomeHistory.some(item=>item.tick===duplicateLedger.tick),false,'ambiguous duplicate outcome ticks must be quarantined');
+assert.equal(duplicateLedgerRestore.snapshot().lastOutcomeTick,duplicateLedger.tick,'quarantining ambiguous rows must not permit outcome replay');
+
 const comparisonState=net.snapshot();
 const baselineNet=new B272EndogenousGoalGenesis(); baselineNet.restore(comparisonState);
 const drivenNet=new B272EndogenousGoalGenesis(); drivenNet.restore(comparisonState);
