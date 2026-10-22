@@ -1,3 +1,16 @@
+## WorkPass266 — reject lossy causal identities and run the active regression paths
+
+- [x] Replace silent trace/task truncation with bounded NFKC identity validation; reject empty, overlong, non-string and control-bearing identity values.
+- [x] Keep strict trace ID normalization on restore so invalid persisted trace records and deduplication keys are discarded rather than rewritten into another identity.
+- [x] Add regression coverage for distinct overlong task IDs, overlong runtime/external trace IDs, control characters, no state mutation on rejection, and restore sanitization.
+- [x] Extend the WorkPass110 workflow's PR and push path filters to cover CausalExperienceStream, its regression, LegacySpriteDeck and the Live2D viewer; add explicit causal-stream, Legacy-avatar and Live2D integrity test steps.
+- [ ] Obtain actionable exact-head workflow logs and a successful runtime typecheck/test run. The currently returned job record has no steps or log URL; do not infer source pass/failure from it.
+- **Expected result:** identity keys preserve one-to-one meaning; malformed external inputs cannot be silently aliased by truncation.
+- **No new dependency:** existing Node APIs are sufficient.
+
+---
+
+
 ## WorkPass264 — validate external causal event identity
 
 - [x] Require a non-empty NFKC-normalized task identity before recording external learning evidence.
