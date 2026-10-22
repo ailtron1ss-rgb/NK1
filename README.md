@@ -1,3 +1,15 @@
+## Current source-stack checkpoint — WorkPass266 (2026-10-22)
+
+- **Source branch:** [workpass206-runtime-evaluator-wiring](https://github.com/ailtron1ss-rgb/NK1/tree/workpass206-runtime-evaluator-wiring); **PR #55 remains open/draft/unmerged:** https://github.com/ailtron1ss-rgb/NK1/pull/55
+- **Code fix:** causal task/trace identities are rejected when overlong or invalid rather than truncated into a collision; restore applies the same trace-ID bounds.
+- **Regression reachability:** WorkPass110 now watches the active causal-stream and Legacy/Live2D paths and runs their focused regressions.
+- **Reviewed code-change baseline:** 951d7bb3f37e6c45fc63427e3edbdfed698af0f3. Later documentation commits advance branch HEAD; use the live PR for the current SHA.
+- **Validation:** latest retrieved WorkPass110 job has no exposed steps or logs; a retry was requested. Do not infer successful test/typecheck execution. Real sandbox/verifier/scanner deployment and independent memory/learning uplift remain open.
+- **Read first:** [WorkPass266 strategic audit](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [P23 integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md), [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md).
+- **Repository topology:** main remains the publication line with no common ancestor reported against the source stack; do not merge or rewrite it automatically.
+
+---
+
 ## Current source-stack checkpoint — WorkPass265 (2026-10-22)
 
 - **Current source branch:** [workpass206-runtime-evaluator-wiring](https://github.com/ailtron1ss-rgb/NK1/tree/workpass206-runtime-evaluator-wiring); **draft PR:** [#55](https://github.com/ailtron1ss-rgb/NK1/pull/55), open/unmerged.
