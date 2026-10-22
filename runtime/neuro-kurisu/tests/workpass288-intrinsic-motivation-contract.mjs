@@ -57,6 +57,6 @@ assert.equal(initiative?.evidence.observationId,'obs-2');
 assert.ok(initiative?.goal.reason.includes('intrinsic-'));
 assert.equal(engine.proposeInitiative({observationId:'obs-3',predictionId:'pred-3',worldEvidenceQuality:0.49,causalContinuity01:0.8}),null);
 assert.equal(engine.proposeInitiative({observationId:'obs-4',predictionId:'pred-4',worldEvidenceQuality:0.9,causalContinuity01:NaN}),null);
-assert.equal(engine.proposeInitiative({observationId:'bad\\nobs',predictionId:'pred-5',worldEvidenceQuality:0.9,causalContinuity01:0.8}),null);
+assert.equal(engine.proposeInitiative({observationId:'bad'+String.fromCharCode(10)+'obs',predictionId:'pred-5',worldEvidenceQuality:0.9,causalContinuity01:0.8}),null);
 
 console.log('WorkPass288-289 intrinsic motivation contract: PASS');
