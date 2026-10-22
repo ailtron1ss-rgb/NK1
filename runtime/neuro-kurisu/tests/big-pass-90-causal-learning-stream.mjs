@@ -27,6 +27,12 @@ assert.equal(stream.recordOutcome(trace, mkState({ tick: 1 }), {
   reward01: .8, success01: .8, surprise01: .7, novelty01: .75,
 }), null, "an outcome without a later observed state transition must be rejected");
 
+assert.equal(stream.recordOutcome({
+  ...trace, id: "mismatched-pre-action-tick", tick: 0,
+}, mkState({ tick: 3 }), {
+  reward01: .8, success01: .8, surprise01: .7, novelty01: .75,
+}), null, "a trace from a different world tick must not be attached to this observed transition");
+
 assert.equal(stream.recordOutcome({ ...trace, id: "nan-outcome-reward" }, mkState({ tick: 3 }), {
   reward01: Number.NaN, success01: .8, surprise01: .7, novelty01: .75,
 }), null, "non-finite outcome metrics must not be clamped into trusted evidence");
