@@ -39,6 +39,11 @@ export interface CognitiveResourceAllocation {
 }
 
 const clamp01 = (x:number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
+const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+const safeCounter=(value:unknown):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
+const safeTick=(value:unknown):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=-1?value:-1;
+const safeTimestamp=(value:unknown):number=>typeof value==='number'&&Number.isFinite(value)&&value>=0?value:0;
+const safeUnit=(value:unknown,fallback:number):number=>typeof value==='number'&&Number.isFinite(value)?clamp01(value):fallback;
 
 export const defaultCognitiveResourceEconomy = (): CognitiveResourceEconomyState => ({
   version: 1, cycles: 0,
@@ -51,23 +56,24 @@ export class CognitiveResourceEconomy {
   private state = defaultCognitiveResourceEconomy();
 
   restore(raw?: Partial<CognitiveResourceEconomyState> | null): void {
-    const base = defaultCognitiveResourceEconomy();
-    this.state = {
-      ...base,
-      ...(raw ?? {}),
-      version: 1,
-      cycles: Math.max(0, Number(raw?.cycles ?? 0)),
-      totalBudget01: clamp01(Number(raw?.totalBudget01 ?? base.totalBudget01)),
-      attentionBudget01: clamp01(Number(raw?.attentionBudget01 ?? base.attentionBudget01)),
-      simulationBudget01: clamp01(Number(raw?.simulationBudget01 ?? base.simulationBudget01)),
-      learningBudget01: clamp01(Number(raw?.learningBudget01 ?? base.learningBudget01)),
-      memoryBudget01: clamp01(Number(raw?.memoryBudget01 ?? base.memoryBudget01)),
-      externalInteractionBudget01: clamp01(Number(raw?.externalInteractionBudget01 ?? base.externalInteractionBudget01)),
-      predictionDebt01: clamp01(Number(raw?.predictionDebt01 ?? 0)),
-      scarcity01: clamp01(Number(raw?.scarcity01 ?? base.scarcity01)),
-      lastMode: ['abundant','balanced','scarce','critical'].includes(String(raw?.lastMode)) ? raw!.lastMode! : base.lastMode,
-      performancePressure01: clamp01(Number((raw as any)?.performancePressure01 ?? base.performancePressure01)),
-      lastAt: Number(raw?.lastAt ?? 0), lastTick: Number(raw?.lastTick ?? -1),
+    const source=isRecord(raw)?raw:{};
+    if(source.version!==undefined&&source.version!==1)throw new RangeError('unsupported cognitive-resource-economy state version');
+    const base=defaultCognitiveResourceEconomy();
+    this.state={
+      version:1,
+      cycles:safeCounter(source.cycles),
+      totalBudget01:safeUnit(source.totalBudget01,base.totalBudget01),
+      attentionBudget01:safeUnit(source.attentionBudget01,base.attentionBudget01),
+      simulationBudget01:safeUnit(source.simulationBudget01,base.simulationBudget01),
+      learningBudget01:safeUnit(source.learningBudget01,base.learningBudget01),
+      memoryBudget01:safeUnit(source.memoryBudget01,base.memoryBudget01),
+      externalInteractionBudget01:safeUnit(source.externalInteractionBudget01,base.externalInteractionBudget01),
+      predictionDebt01:safeUnit(source.predictionDebt01,0),
+      scarcity01:safeUnit(source.scarcity01,base.scarcity01),
+      lastMode:['abundant','balanced','scarce','critical'].includes(String(source.lastMode))?source.lastMode as CognitiveResourceEconomyState['lastMode']:base.lastMode,
+      performancePressure01:safeUnit(source.performancePressure01,base.performancePressure01),
+      lastAt:safeTimestamp(source.lastAt),
+      lastTick:safeTick(source.lastTick),
     };
   }
 
@@ -80,6 +86,8 @@ export class CognitiveResourceEconomy {
     const thermal = clamp01(input.thermalStrain01 ?? .2);
     const ram = clamp01(input.ramPressure01 ?? .2);
     const awake = input.awake !== false;
+    const tick = typeof input.tick==='number'&&Number.isFinite(input.tick)?Math.max(0,Math.min(Number.MAX_SAFE_INTEGER,Math.floor(input.tick))):0;
+    const at = typeof input.at==='number'&&Number.isFinite(input.at)&&input.at>=0?input.at:Date.now();
     const performancePressure = clamp01(input.performancePressure01 ?? this.state.performancePressure01);
 
     const scarcity = clamp01(
@@ -99,7 +107,7 @@ export class CognitiveResourceEconomy {
 
     this.state = {
       ...this.state,
-      cycles: this.state.cycles + 1,
+      cycles: Math.min(Number.MAX_SAFE_INTEGER, this.state.cycles + 1),
       totalBudget01: total,
       attentionBudget01: attention,
       simulationBudget01: simulation,
@@ -111,8 +119,8 @@ export class CognitiveResourceEconomy {
       // Diagnostic-only: preserved for observability/backward-compatible state.
       performancePressure01: performancePressure,
       lastMode: mode,
-      lastAt: Number(input.at ?? Date.now()),
-      lastTick: Math.max(0, Math.floor(input.tick)),
+      lastAt: at,
+      lastTick: tick,
     };
     return { mode, totalBudget01:total, attention01:attention, simulation01:simulation, learning01:learning, memory01:memory, externalInteraction01:external, scarcity01:scarcity, maxCounterfactualBranches, permitExpensiveLanguage };
   }
