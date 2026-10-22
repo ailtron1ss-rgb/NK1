@@ -1,3 +1,13 @@
+## WorkPass286 — multiscale brain-system integration strategy (2026-10-22)
+
+- Added `docs/WORKPASS286_MULTISCALE_BRAIN_SYSTEM_INTEGRATION_PLAN_RU_2026-10-22.md` as an execution supplement to the existing master brain-map and strategic audit.
+- Mapped neuroscience-inspired macro-functions to the existing 7 physical owners in `OrganismSystemFabric` and 14 logical domains in `CognitiveArchitectureMap`; documented micro-level contracts, canonical state/action/memory/evidence ownership and the end-to-end recurrent learning loop.
+- Defined parallel workstreams, proposed WorkPass287–294 sequencing, behavior-level acceptance criteria, scientific references and explicitly provisional evidence-based progress estimates.
+- No runtime source code or dependencies changed. This is a strategy/documentation commit, not proof that the proposed end-to-end behavior works.
+- Validation: reviewed current branch metadata and the identified architecture/learning/embodiment source entry points; no tests/typecheck were run for this documentation-only update. Exact-head runtime verification remains UNVERIFIED.
+
+---
+
 ## WorkPass285 — independent evaluator capability scope (2026-10-22)
 
 - The independent candidate evaluator now rejects verifier claims for capabilities outside a task's declared required-capability set.
