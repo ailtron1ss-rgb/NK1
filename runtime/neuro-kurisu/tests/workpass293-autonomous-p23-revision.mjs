@@ -75,9 +75,9 @@ runtime.journal = { write: async (...args) => { events.push(args); } };
 runtime.core = {
   markRuntimeAnomaly: reason => { events.push(['anomaly', reason]); },
   unifiedLearningExternalHypotheses: () => [
-    { claimedProvenance: 'skill-repair', taskId: 'skill-repair:skill-b:step-1' },
-    { claimedProvenance: 'skill-repair', taskId: 'skill-repair:untrusted-not-in-ledger:step-9' },
-    { claimedProvenance: 'external', taskId: 'skill-repair:skill-a:step-1' },
+    { claimedProvenance: 'skill-repair', taskId: 'skill-repair:skill-b:step-1', receivedAt: Date.now() },
+    { claimedProvenance: 'skill-repair', taskId: 'skill-repair:untrusted-not-in-ledger:step-9', receivedAt: Date.now() },
+    { claimedProvenance: 'external', taskId: 'skill-repair:skill-a:step-1', receivedAt: Date.now() },
   ],
 };
 const revisedSkillIds = [];
@@ -121,6 +121,30 @@ runtime.compoundSkillRepairEvidence = () => evidence;
 await task.task();
 assert.deepEqual(revisedSkillIds, ['skill-b'], 'verified repair ledger bounds the candidate set while quarantined repair hypotheses may prioritize only existing skills');
 assert.equal(events.at(-1)[1], 'runtime.p23.compound-repair-revision.background');
+
+// Old or implausibly future-dated external hints must not bias P23's skill order.
+runtime.compoundRepairRevisionCursor = 0;
+runtime.core.unifiedLearningExternalHypotheses = () => [
+  { claimedProvenance: 'skill-repair', taskId: 'skill-repair:skill-b:old', receivedAt: Date.now() - 8 * 24 * 60 * 60 * 1000 },
+];
+assert.equal(OrganismRuntime.prototype.nextCompoundRepairSkillId.call(runtime), 'skill-a',
+  'expired hypotheses are ignored and normal verified-ledger rotation is preserved');
+runtime.compoundRepairRevisionCursor = 0;
+runtime.core.unifiedLearningExternalHypotheses = () => [
+  { claimedProvenance: 'skill-repair', taskId: 'skill-repair:skill-b:future', receivedAt: Date.now() + 60 * 60 * 1000 },
+];
+assert.equal(OrganismRuntime.prototype.nextCompoundRepairSkillId.call(runtime), 'skill-a',
+  'future-dated hypotheses are ignored');
+runtime.compoundRepairRevisionCursor = 0;
+runtime.core.unifiedLearningExternalHypotheses = () => [
+  { claimedProvenance: 'skill-repair', taskId: 'skill-repair:skill-b:step-1', receivedAt: Date.now() },
+  { claimedProvenance: 'skill-repair', taskId: 'skill-repair:untrusted-not-in-ledger:step-9', receivedAt: Date.now() },
+  { claimedProvenance: 'external', taskId: 'skill-repair:skill-a:step-1', receivedAt: Date.now() },
+];
+assert.equal(OrganismRuntime.prototype.nextCompoundRepairSkillId.call(runtime), 'skill-b',
+  'fresh hypotheses may prioritize but never expand the verified repair ledger');
+
+runtime.core.unifiedLearningExternalHypotheses = () => [
 assert.equal(events.at(-1)[2].status, 'candidate-staged');
 const diagnostics = OrganismRuntime.prototype.compoundRepairRevisionDiagnostics.call(runtime);
 assert.equal(diagnostics.enabled, true);
