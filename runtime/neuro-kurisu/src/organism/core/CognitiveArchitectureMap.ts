@@ -66,6 +66,7 @@ const FLOWS:CognitiveArchitectureFlow[]=[
   {from:'memory',to:'social-model',kind:'feedforward',signal:'interaction history + source confidence'},
   {from:'social-model',to:'homeostasis-affect',kind:'feedback',signal:'social need and relationship appraisal'},
   {from:'lifecycle',to:'attention-workspace',kind:'governance',signal:'cycle mode + budget'},
+  {from:'lifecycle',to:'outcome-learning',kind:'governance',signal:'heartbeat tick is not an action receipt; no micro-cycle action credit'},
   {from:'lifecycle',to:'memory',kind:'governance',signal:'checkpoint/consolidation cadence'},
   {from:'research',to:'metacognition',kind:'provenance',signal:'candidate quality + holdout result'},
   {from:'research',to:'outcome-learning',kind:'provenance',signal:'external repair/replay claims enter an unverified hypothesis lane; no direct reward credit'},
