@@ -1,3 +1,15 @@
+## WorkPass284 — reject malformed external causal evidence
+
+- [x] Reject invalid external world ticks rather than coercing them.
+- [x] Reject NaN/Infinity and out-of-range external evidence metrics before normalization.
+- [x] Validate optional source-memory and evidence identities against control characters, blank values and size limits.
+- [x] Add regression cases for malformed tick, metric and source identity.
+- [ ] Run `test:big-pass-90:causal-stream` and runtime typecheck on the exact PR head.
+- [ ] Authenticate imported evidence with host-owned source receipts; shape validation alone does not prove provenance.
+- No dependency added; no learning-score uplift claimed.
+
+---
+
 ## WorkPass283 — bind causal outcome to its decision tick
 
 - [x] Require the trace tick to match the pre-action state tick before minting grounded causal memory.
