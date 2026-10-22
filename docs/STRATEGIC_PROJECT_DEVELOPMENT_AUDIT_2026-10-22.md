@@ -582,3 +582,27 @@ Release approval is a conjunction of gates, not a mean score. At minimum:
 
 **Next code-first work after these docs:** unblock actionable exact-head CI while implementing the real sandbox authority and preparing the frozen memory benchmark in parallel. Do not spend the next pass generating more planning documents or test inventories without correcting the deployment/verification bottlenecks described above.
 
+
+
+---
+
+## WorkPass286 — multiscale brain-system consolidation plan (2026-10-22)
+
+The new [WorkPass286 implementation blueprint](WORKPASS286_MULTISCALE_BRAIN_SYSTEM_INTEGRATION_PLAN_RU_2026-10-22.md) turns the master organism target into a multiscale architecture plan. It is an additive execution supplement, not a second architecture or a claim that all proposed links are active.
+
+### Current architecture fact pattern
+
+- `CognitiveArchitectureMap.ts` already declares 14 logical cognitive domains and read-only ownership/flow data.
+- `OrganismSystemFabric.ts` groups the runtime into seven physical owners: self, governance, memory, world, embodiment, agency and research.
+- `CognitiveKernelCoordinator.ts` contains coordinated mind/dynamics and brain-inspired gates/controllers; `OperationalMicroCycleRuntime.ts` provides a reduced-resolution path.
+- `MemoryOS2.ts` remains the canonical writable memory authority; the target plan keeps memory graphs, temporal stores and retrieval indexes as adapters/projections unless a verified migration changes ownership.
+- The target action/evidence/learning loop remains: canonical planner/arbiter → ActionGateway → independent postcondition assessment → causal experience/memory → Hermes revision proposal → P23 candidate → independent evaluator/holdout → shadow evidence and authenticated promotion.
+
+### Architecture decision
+
+Keep **macro-functions**, **logical domains** and **physical runtime owners** as separate layers. Do not create twelve additional runtime services from twelve brain analogies. First trace actual production call paths, establish state/event contract compatibility and measure which systems influence behavior. Keep independently controlled evaluator/scanner and promotion authority distinct; share evidence schemas without collapsing trust boundaries.
+
+### Next pass
+
+WorkPass287 should produce a caller/callee graph from the live source stack and label each logical domain ACTIVE, ADAPTER, READ-ONLY, RESEARCH-ONLY or UNVERIFIED. Subsequent changes should wire existing canonical owners and remove duplicates only after caller, persistence, migration, test-runner and asset-reference analysis. Exact-head execution remains subject to accessible CI logs and real runtime acceptance evidence.
+
