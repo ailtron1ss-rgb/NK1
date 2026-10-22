@@ -68,9 +68,9 @@ assert.ok(restored.metrics.learningDelta01>0.8&&restored.metrics.learningDelta01
 assert.ok(Object.values(restored.metrics).every(value=>typeof value==='number'&&Number.isFinite(value)));
 
 const beforeUnsupported=engine.snapshot();
-assert.throws(()=>engine.restore({...beforeUnsupported,version:2} as never),/version/);
+assert.throws(()=>engine.restore({...beforeUnsupported,version:2}),/version/);
 assert.deepEqual(engine.snapshot(),beforeUnsupported,'unsupported version must not mutate the live learner');
-assert.throws(()=>engine.restore([] as never),/plain object/);
+assert.throws(()=>engine.restore([]),/plain object/);
 assert.deepEqual(engine.snapshot(),beforeUnsupported,'non-object state must be rejected before mutation');
 
 console.log('WORKPASS310_P23_RESTORE_INTEGRITY=PASS');

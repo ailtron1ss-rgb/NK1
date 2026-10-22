@@ -1,3 +1,10 @@
+## WorkPass311 — keep P23 restore regression executable JavaScript
+
+- Removed TypeScript-only `as never` assertions from the `.mjs` restore regression. Node executes this file as JavaScript; those casts would have caused a parse error before any assertions ran.
+- The runtime still receives the same deliberately invalid values, so the rejection and no-partial-mutation cases remain covered.
+
+---
+
 ## WorkPass310 — sanitize P23 learning restore and correct learning-window direction
 
 - Replaced P23LearningEngine's shallow snapshot spread with schema-version checks and field-by-field reconstruction of persisted rows, checksum and metrics.
