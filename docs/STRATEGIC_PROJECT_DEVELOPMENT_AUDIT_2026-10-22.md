@@ -1,3 +1,13 @@
+## WorkPass269 — validate identity before whitespace trimming (2026-10-22)
+
+A further review found that applying trim before control-character validation could erase a leading/trailing newline or tab and silently normalize it into another accepted identity. CausalExperienceStream now performs NFKC normalization, rejects C0/DEL/C1 characters, and only then trims permitted surrounding whitespace and checks the bounded length. Regressions cover leading trace controls and trailing trace/task controls.
+
+This remains a narrow data-integrity fix inside the existing causal stream owner. No second learner/ledger or new dependency was introduced.
+
+**Validation status:** exact-head CI and runtime typecheck remain unverified; the available workflow attempts have no step/log detail. No learning effectiveness score is changed.
+
+---
+
 ## WorkPass268 — reject C1 controls and keep event deduplication across bounded eviction (2026-10-22)
 
 The causal-event identity guard now rejects C0, DEL and C1 control characters in addition to blank, non-string and overlong values. The existing canonical normalization/length boundary is retained. A behavioral regression covers C1 trace IDs and C0 task IDs.
