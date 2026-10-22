@@ -75,6 +75,21 @@ process.stdout.write(JSON.stringify({
     await chmod(service.executable, 0o700);
   }
 
+  await assert.rejects(
+    createHostOwnedIndependentEvaluationServices({
+      executor: { ...executor, inheritEnv: ['PATH', 'OPENAI_API_KEY'] },
+      verifier, safetyScanner: scanner,
+    }),
+    /host-owned-executor-inherited-environment-not-allowed/,
+  );
+  await assert.rejects(
+    createHostOwnedIndependentEvaluationServices({
+      executor: { ...executor, inheritEnv: ['PATH', 'NODE_OPTIONS'] },
+      verifier, safetyScanner: scanner,
+    }),
+    /host-owned-executor-inherited-environment-not-allowed/,
+  );
+
   const services = await createHostOwnedIndependentEvaluationServices({
     executor, verifier, safetyScanner: scanner,
   });
