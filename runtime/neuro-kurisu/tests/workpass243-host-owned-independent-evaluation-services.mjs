@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { chmod, link, mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { chmod, link, mkdtemp, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createHostOwnedIndependentEvaluationConfigFactory, createHostOwnedIndependentEvaluationServices } from '../src/organism/learning/HostOwnedIndependentEvaluationServices.ts';
@@ -136,7 +136,19 @@ process.stdout.write(JSON.stringify({
       /host-owned-executor-executable-must-not-be-group-or-world-writable/,
     );
   }
-  console.log('WorkPass247 host authority executable integrity: regression authored');
+  if (process.platform !== 'win32') {
+    // Prepared authority handles must fail closed if the executable path is
+    // replaced after setup; a distinct path at setup time is not enough.
+    const replacement = path.join(root, 'replacement-scanner.mjs');
+    await writeFile(replacement, '#!/usr/bin/env node\\nprocess.stdout.write(JSON.stringify({ violationCount: 0 }));\\n', { mode: 0o700, flag: 'wx' });
+    await chmod(replacement, 0o700);
+    await rename(replacement, scanner.executable);
+    await assert.rejects(
+      services.safetyScanner.scan({ payload: { answer: 42 }, task, execution, context }),
+      /host-owned-safety-scanner-executable-identity-changed/,
+    );
+  }
+  console.log('WorkPass251 dispatch-time authority identity regression: authored');
 } finally {
   await rm(root, { recursive: true, force: true });
 }
