@@ -1,3 +1,13 @@
+## WorkPass319 — causal ordering for the canonical cognitive cycle (2026-10-22)
+
+- Moved the authoritative operational-cycle trace and unified-cycle evaluation until after `core.feedback()`, grounded world-transition learning, embodied-consequence learning, continuous memory/identity integration, neural causal tracing, life-course update, and embodiment persistence have completed.
+- Previously, the runtime wrote `learning` and `self-update` stage events and evaluated cycle completeness before invoking `core.feedback()`. That let the causal ledger claim a completed learning/self-update stage before the mutations it represented had actually run. The stage trace now records those claims only after the real update path completes.
+- The existing `CognitiveEventFabric` and `UnifiedCognitiveCycle` remain the canonical owners; no duplicate cognitive subsystem or external dependency was added. Cycle-completeness evidence is now persisted after the post-update verification.
+- Added `tests/workpass319-cycle-order.mjs`, registered `test:p319:cycle-order`, and added a dedicated WorkPass71 validation step. The test is an architectural phase-order contract; it does not replace runtime integration tests.
+- GitHub Actions availability remains blocked before test steps start (`runner_id=0` in the recent run evidence). The regression is wired into CI but has not been executed by that hosted workflow yet.
+
+---
+
 ## WorkPass318 — standalone read-only memory doctor CLI (2026-10-22)
 
 - Added `scripts/memory-doctor.mjs` and the `npm run memory:doctor -- <state-file>` command. It audits the explicit primary state file's canonical `facets.advanced.memoryOS` projection and emits a bounded JSON report.
