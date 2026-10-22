@@ -5224,13 +5224,21 @@ export class OrganismCore {
             this.ensureHomeostaticGoal('reduce-uncertainty', 'Снизить неопределённость через исследование или проверку', n.uncertainty, n.uncertainty > 0.72);
         if (this.config.enableHomeostasis)
             this.ensureHomeostaticGoal('restore-load', 'Снизить когнитивную нагрузку', n.cognitiveLoad, n.cognitiveLoad > 0.78);
-        const experiment = this.cognitiveRuntime.experimentGenerator.generate({ uncertainty: n.uncertainty, predictionError: state.predictionError, novelty: n.novelty, goals: this.persisted.goals });
+        let experiment = this.cognitiveRuntime.experimentGenerator.generate({ uncertainty: n.uncertainty, predictionError: state.predictionError, novelty: n.novelty, goals: this.persisted.goals });
+        // A dream association may enter the ordinary verification queue, but it remains an explicitly unverified hypothesis.
+        // Existing high-pressure intrinsic experiments win unless a dream has a materially stronger information-gain estimate.
+        const queuedDreamIds = new Set((this.persisted.facets.memory.experiments as any[]).map((row: any) => String(row?.dreamId ?? '')).filter(Boolean));
+        const queuedDream = this.cognitiveRuntime.microDreams.snapshot().dreams.find(dream => dream.kind === 'association' && dream.validationStatus === 'candidate' && dream.confidence >= .45 && Array.isArray(dream.sourceMemoryIds) && dream.sourceMemoryIds.length === 2 && !queuedDreamIds.has(dream.id));
+        const dreamExperiment = queuedDream ? this.cognitiveRuntime.experimentGenerator.fromDreamAssociation(queuedDream, this.persisted.goals) : null;
+        const urgentIntrinsicQuestion = n.uncertainty > .72 || state.predictionError > .7 || n.novelty > .82;
+        if (dreamExperiment && (!experiment || (!urgentIntrinsicQuestion && dreamExperiment.expectedInformationGain >= experiment.expectedInformationGain + .12))) experiment = dreamExperiment;
         if (experiment) {
             this.persisted.facets.memory.experiments = [experiment, ...this.persisted.facets.memory.experiments].slice(0, 40);
             this.memorySubsystem.events.append(makeEvent('experiment', state.tick, experiment as any));
         }
         if (this.config.enableScientificMethod && experiment) {
-            const project = this.cognitiveRuntime.scientificMethod.create(experiment.question, experiment.hypothesis, experiment.action, ['intrinsic-experiment', `tick:${state.tick}`]);
+            const experimentSources = ['intrinsic-experiment', `tick:${state.tick}`, ...(experiment.source === 'dream-association' ? ['dream-association', `dream:${experiment.dreamId}`, ...(experiment.sourceMemoryIds ?? []).map(id => `source-memory:${id}`)] : [])];
+            const project = this.cognitiveRuntime.scientificMethod.create(experiment.question, experiment.hypothesis, experiment.action, experimentSources);
             this.persisted.facets.cognition.scientific = this.cognitiveRuntime.scientificMethod.snapshot();
             if (project.uncertainty > 0.6)
                 this.cognitiveRuntime.cognitiveField.addPressure('curiosity', `scientific question: ${project.question}`, 0.44, [project.id]);
