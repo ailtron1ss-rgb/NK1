@@ -1,3 +1,11 @@
+## WorkPass283 score update (2026-10-22)
+
+- **Scores unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**.
+- WorkPass283 strengthens causal association between decision and observed transition but does not establish authenticated event provenance or improved task outcomes.
+- Regression authored; test/typecheck not executed. No dependency added.
+
+---
+
 ## WorkPass282 score update (2026-10-22)
 
 - **Scores unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**.
