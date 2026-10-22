@@ -94,3 +94,49 @@ test('diagnostic extraction redacts common GitHub tokens', () => {
   assert.ok(!lines.some(line => line.includes('ghp_abcdefghijklmnopqrstuvwxyz0123456789')));
   assert.ok(lines[0].includes('[REDACTED_GITHUB_TOKEN]'));
 });
+
+
+test('collectRuns does not burn retry budget on permanent API errors', async () => {
+  let calls = 0;
+  const fakeFetch = async () => {
+    calls += 1;
+    return new Response(JSON.stringify({ message: 'Bad credentials' }), {
+      status: 401,
+      headers: { 'content-type': 'application/json' }
+    });
+  };
+
+  await assert.rejects(() => collectRuns({
+    repository: 'owner/repo',
+    token: 'fake-token',
+    apiBase: 'https://api.github.test',
+    perPage: 2,
+    maxPages: 1,
+    fetchImpl: fakeFetch
+  }), /GitHub API returned 401/);
+  assert.equal(calls, 1, 'a permanent 4xx response must fail immediately');
+});
+
+test('collectRuns retries a transient 5xx response before succeeding', async () => {
+  let calls = 0;
+  const fakeFetch = async () => {
+    calls += 1;
+    if (calls === 1) return new Response('temporarily unavailable', { status: 503 });
+    return new Response(JSON.stringify({ total_count: 0, workflow_runs: [] }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    });
+  };
+
+  const result = await collectRuns({
+    repository: 'owner/repo',
+    token: 'fake-token',
+    apiBase: 'https://api.github.test',
+    perPage: 2,
+    maxPages: 1,
+    fetchImpl: fakeFetch
+  });
+  assert.equal(calls, 2);
+  assert.equal(result.uniqueRuns, 0);
+  assert.equal(result.truncated, false);
+});
