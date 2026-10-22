@@ -1,3 +1,8 @@
+## WorkPass263 — reduce host-environment leakage into evaluation authorities (2026-10-22)
+
+The host-owned evaluation adapter now rejects implicit inheritance of common secret-bearing environment variables and runtime-injection settings, including API tokens, credential/profile paths, dynamic-loader overrides, and NODE_OPTIONS. Duplicate inherited keys are rejected as configuration errors. This narrows accidental secret exposure and process behavior injection, but explicit `command.env` remains trusted host configuration and the mechanism is not a sandbox. Targeted regression/typecheck execution is still unconfirmed; GitHub returned no PR-triggered workflow runs for the current HEAD.
+
+---
 ## WorkPass262 — reduce unnecessary avatar canvas resets (2026-10-22)
 
 The Legacy avatar render loop previously assigned canvas width and height every frame. Since setting either dimension resets the bitmap and drawing context, the loop now resizes only when the actual layout dimensions change. The existing sprite runtime regression was extended to guard this invariant. This improves a hot path without changing the visual asset catalog or introducing a parallel renderer. Execution and app typecheck remain unconfirmed.
