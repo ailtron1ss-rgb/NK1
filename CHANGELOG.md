@@ -1381,3 +1381,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Tightened `P23TrustedShadowLearningScheduler` constructor validation to require the same 64-hex candidate fingerprint accepted by the production JSON parser; malformed direct runtime configuration now fails before any child process can launch.
 - Added the regression to the existing `p23-runtime-trusted-shadow-scheduler.mjs` test, already wired into the learning workflow.
 - Validation remains unconfirmed until the exact-head regression and typecheck execute successfully.
+
+
+## WorkPass244 — bind host evaluation services to the canonical manifest
+
+- Added the canonical dataset manifest fingerprint to the immutable candidate execution context, sourced from the existing `VerifiedOutcomeLedger` authority; it is explicitly distinct from the evaluator-plan fingerprint.
+- Host-owned verifier and safety-scanner responses must now echo that exact manifest identity along with the existing payload, task-input, environment, plan, run, task, and seed bindings. A response bound only to the evaluator plan can no longer pass the host adapter's binding check.
+- Process-supervisor receipts use the canonical manifest digest when available. In configurations without a canonical experiment authority, the plan digest remains process bookkeeping only and is not represented as a real manifest in the service request.
+- Extended the WorkPass243 host-service fixture protocol to exercise a non-null manifest fingerprint.
+- Validation caveat: the source and regression wiring are committed, but no local test/typecheck or successful exact-head CI execution is claimed. The configured executor must still be a real host-owned OS/container sandbox launcher; independent verifier/scanner programs and deployment configuration remain host responsibilities.
