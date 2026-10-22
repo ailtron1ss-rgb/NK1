@@ -1,3 +1,13 @@
+## WorkPass317 — bounded cross-memory dreaming hypotheses (2026-10-22)
+
+- Extended the existing `MicroDreamEngine` with a deterministic, bounded associative dreaming pass that examines at most 24 recent memory records and emits at most three candidate connections per sweep.
+- Candidate scoring uses shared non-stopword concepts, rarity across the supplied memory set, input confidence/salience and topic distinctness. Pairs already joined by a canonical semantic link are excluded.
+- New associations are explicitly marked `kind: association` and `validationStatus: candidate`, retain source memory IDs and the shared-term explanation, are deduplicated for a six-hour cooldown, and are persisted in the existing MicroDream state. The dreaming pass never writes new links into canonical memory; promotion remains a separate evidence-gated step.
+- Wired the bounded sweep into the existing 12-tick microdream cycle using a 24-record view of canonical MemoryOS2 state; added a dedicated regression/CI step for deterministic IDs, duplicate suppression, restart behavior, source non-mutation and already-linked-pair exclusion.
+- In the same continuation, closed remaining high-level self-model write bypasses through predictive observation and recovery, and normalized social evidence/episodes to canonical person IDs across visual aliases. See WorkPass315–316 entries for corresponding tests and details.
+
+---
+
 ## WorkPass316 — trust-adaptive relational tether and social-state persistence fix (2026-10-22)
 
 - Added a HYVE-inspired relational tether to `SocialMindKernel`. Trust half-life adapts to current trust; relationship strength, warmth and predictability decay toward neutral during long inter-session gaps, with bounded elapsed-time and deterministic persisted timestamps.
