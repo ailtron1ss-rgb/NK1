@@ -6,6 +6,19 @@ const GOAL_DIMS = ['curiosity','truth','coherence','competence','connection','co
 type GoalDim = typeof GOAL_DIMS[number];
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const clamp11=(x:number)=>Math.max(-1,Math.min(1,Number.isFinite(x)?x:0));
+const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+const safeCounter=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
+const isUnit=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
+const isAction=(value:unknown):value is ActionKind=>typeof value==='string'&&ACTIONS.includes(value as ActionKind);
+const isSafeId=(value:unknown):value is string=>typeof value==='string'&&value.length>0&&value.length<=256&&value.trim()===value&&!/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(value);
+const strictVector=(value:unknown,dimensions:number):number[]|null=>{
+  if(!Array.isArray(value)||value.length!==dimensions||value.some(v=>typeof v!=='number'||!Number.isFinite(v)))return null;
+  return value.map(v=>clamp11(v as number));
+};
+const restoreMatrix=(value:unknown,fallback:number[][]):number[][]=>fallback.map((row,i)=>row.map((base,j)=>{
+  const candidate=Array.isArray(value)&&Array.isArray(value[i])?value[i][j]:undefined;
+  return typeof candidate==='number'&&Number.isFinite(candidate)?clamp11(candidate):base;
+}));
 const dot=(a:number[],b:number[])=>a.reduce((s,x,i)=>s+x*(b[i]??0),0);
 const norm=(a:number[])=>Math.sqrt(Math.max(1e-9,a.reduce((s,x)=>s+x*x,0)));
 const cosine=(a:number[],b:number[])=>cosineSimilarity(a,b,1e-9);
@@ -92,28 +105,75 @@ export interface B272StepResult extends B272GoalCandidate {
 export class B272EndogenousGoalGenesis {
   private state=defaultB272State();
   restore(raw?:Partial<B272State>|null){
-    const d=defaultB272State(),r:any=raw??{};
+    const d=defaultB272State();
+    const r:Record<string,unknown>=isRecord(raw)?raw:{};
+    if(r.version!==undefined&&r.version!==1)throw new RangeError('unsupported B272 state version');
+
+    const tick=safeCounter(r.tick,d.tick);
+    const steps=safeCounter(r.steps,d.steps);
+    const learningUpdates=safeCounter(r.learningUpdates,d.learningUpdates);
+    const generatedGoals=Math.min(steps,safeCounter(r.generatedGoals,d.generatedGoals));
+    // Every learning update has exactly one terminal decision. Missing/corrupt
+    // decisions are classified as rejected rather than silently disappearing.
+    const acceptedGoals=Math.min(learningUpdates,safeCounter(r.acceptedGoals,d.acceptedGoals));
+    const rejectedGoals=learningUpdates-acceptedGoals;
+    const rollbackCount=Math.min(learningUpdates,safeCounter(r.rollbackCount,d.rollbackCount));
+    const currentGoal=strictVector(r.currentGoal,GOAL_DIMS.length)??d.currentGoal.slice();
+    const currentGoalId=`g-${hashVector(currentGoal)}`;
+
+    const goalHistory:B272State['goalHistory']=[];
+    const rawGoalHistory=Array.isArray(r.goalHistory)?r.goalHistory.slice(-512):[];
+    for(const item of rawGoalHistory){
+      if(!isRecord(item))continue;
+      const vector=strictVector(item.vector,GOAL_DIMS.length);
+      if(!vector||!isSafeId(item.id)||item.id!==`g-${hashVector(vector)}`)continue;
+      if(!Number.isSafeInteger(item.tick)||typeof item.tick!=='number'||item.tick<0||item.tick>tick)continue;
+      if(!isAction(item.action)||!isUnit(item.reward01)||!isUnit(item.predictionError01)||typeof item.accepted!=='boolean')continue;
+      goalHistory.push({tick:item.tick,id:item.id,vector,action:item.action,reward01:item.reward01,predictionError01:item.predictionError01,accepted:item.accepted});
+    }
+    goalHistory.sort((a,b)=>a.tick-b.tick);
+
+    const outcomeHistory:B272State['outcomeHistory']=[];
+    const rawOutcomeHistory=Array.isArray(r.outcomeHistory)?r.outcomeHistory.slice(-1024):[];
+    for(const item of rawOutcomeHistory){
+      if(!isRecord(item))continue;
+      if(!Number.isSafeInteger(item.tick)||typeof item.tick!=='number'||item.tick<0||item.tick>tick)continue;
+      if(!isSafeId(item.goalId)||!/^g-[0-9a-f]{8}$/u.test(item.goalId)||!isAction(item.action))continue;
+      if(!isUnit(item.reward01)||!isUnit(item.predictionError01))continue;
+      outcomeHistory.push({tick:item.tick,goalId:item.goalId,action:item.action,reward01:item.reward01,predictionError01:item.predictionError01});
+    }
+    outcomeHistory.sort((a,b)=>a.tick-b.tick);
+
+    const goalOutcomeMemory:B272State['goalOutcomeMemory']={};
+    const rawMemory=isRecord(r.goalOutcomeMemory)?Object.entries(r.goalOutcomeMemory).slice(-1024):[];
+    for(const [key,value] of rawMemory){
+      if(!/^g-[0-9a-f]{8}$/u.test(key)||!isRecord(value))continue;
+      const vector=strictVector(value.vector,GOAL_DIMS.length);
+      const updates=safeCounter(value.updates,-1);
+      const lastTick=safeCounter(value.lastTick,-1);
+      if(!vector||key!==`g-${hashVector(vector)}`||updates<0||lastTick<0||lastTick>tick)continue;
+      if(!isUnit(value.meanReward01)||!isUnit(value.meanPredictionError01))continue;
+      goalOutcomeMemory[key]={vector,meanReward01:value.meanReward01,meanPredictionError01:value.meanPredictionError01,updates,lastTick};
+    }
+
     this.state={
-      ...d,
-      ...r,
       version:1,
-      currentGoal:Array.isArray(r.currentGoal)?r.currentGoal.slice(0,8):d.currentGoal,
-      currentGoalId:String(r.currentGoalId??d.currentGoalId),
-      actionPrototypeWeights:Array.isArray(r.actionPrototypeWeights)
-        ? r.actionPrototypeWeights.map((row:any[],i:number)=>Array.from({length:8},(_,j)=>clamp11(Number(row?.[j]??d.actionPrototypeWeights[i]?.[j]??0))))
-        : d.actionPrototypeWeights,
-      goalWeights:Array.isArray(r.goalWeights)
-        ? r.goalWeights.map((row:any[],i:number)=>Array.from({length:8},(_,j)=>clamp11(Number(row?.[j]??d.goalWeights[i]?.[j]??0))))
-        : d.goalWeights,
-      selfProjectionWeights:Array.isArray(r.selfProjectionWeights)
-        ? r.selfProjectionWeights.map((row:any[],i:number)=>Array.from({length:16},(_,j)=>clamp11(Number(row?.[j]??d.selfProjectionWeights[i]?.[j]??0))))
-        : d.selfProjectionWeights,
-      worldProjectionWeights:Array.isArray(r.worldProjectionWeights)
-        ? r.worldProjectionWeights.map((row:any[],i:number)=>Array.from({length:16},(_,j)=>clamp11(Number(row?.[j]??d.worldProjectionWeights[i]?.[j]??0))))
-        : d.worldProjectionWeights,
-      goalHistory:Array.isArray(r.goalHistory)?r.goalHistory.slice(-128):[],
-      outcomeHistory:Array.isArray(r.outcomeHistory)?r.outcomeHistory.slice(-256):[],
-      goalOutcomeMemory:Object.fromEntries(Object.entries(r.goalOutcomeMemory??{}).slice(-256).map(([k,v]:any)=>[String(k),{vector:Array.isArray(v?.vector)?v.vector.slice(0,8).map((x:any)=>clamp11(Number(x))):[],meanReward01:clamp01(Number(v?.meanReward01??.5)),meanPredictionError01:clamp01(Number(v?.meanPredictionError01??.5)),updates:Math.max(0,Math.floor(Number(v?.updates??0))),lastTick:Math.max(0,Math.floor(Number(v?.lastTick??0)))}]))
+      tick,steps,learningUpdates,generatedGoals,acceptedGoals,rejectedGoals,rollbackCount,
+      currentGoal,currentGoalId,
+      currentAction:isAction(r.currentAction)?r.currentAction:d.currentAction,
+      currentConfidence01:isUnit(r.currentConfidence01)?r.currentConfidence01:d.currentConfidence01,
+      goalPressure01:isUnit(r.goalPressure01)?r.goalPressure01:d.goalPressure01,
+      goalNovelty01:isUnit(r.goalNovelty01)?r.goalNovelty01:d.goalNovelty01,
+      selfConflict01:isUnit(r.selfConflict01)?r.selfConflict01:d.selfConflict01,
+      internalCoherence01:isUnit(r.internalCoherence01)?r.internalCoherence01:d.internalCoherence01,
+      agency01:isUnit(r.agency01)?r.agency01:d.agency01,
+      actionPrototypeWeights:restoreMatrix(r.actionPrototypeWeights,d.actionPrototypeWeights),
+      goalWeights:restoreMatrix(r.goalWeights,d.goalWeights),
+      selfProjectionWeights:restoreMatrix(r.selfProjectionWeights,d.selfProjectionWeights),
+      worldProjectionWeights:restoreMatrix(r.worldProjectionWeights,d.worldProjectionWeights),
+      goalHistory:goalHistory.slice(-128),
+      outcomeHistory:outcomeHistory.slice(-256),
+      goalOutcomeMemory:Object.fromEntries(Object.entries(goalOutcomeMemory).slice(-256)),
     };
   }
   snapshot(){return structuredClone(this.state);}
@@ -200,7 +260,22 @@ const learned=this.learnedGoalValue(v,input.tick);
     return scored[0]!;
   }
   step(input:B272StepInput):B272StepResult{
-    const c=this.generateCandidate(input); const idx=c.actionScores.indexOf(Math.max(...c.actionScores)); const action=ACTIONS[idx]??'reflect';
+    if(!isRecord(input))throw new TypeError('B272 step input must be an object');
+    const tick=safeCounter(input.tick,-1);
+    if(tick<0)throw new RangeError('B272 tick must be a non-negative safe integer');
+    if((this.state.steps>0||this.state.tick>0)&&tick<=this.state.tick)throw new RangeError('B272 ticks must strictly increase');
+    if(!isRecord(input.needs))throw new TypeError('B272 needs must be an object');
+    for(const key of ['energy01','uncertainty01','novelty01','goalPressure01','socialNeed01'])if(!isUnit(input.needs[key]))throw new RangeError(`B272 needs.${key} must be in [0,1]`);
+    if(!isRecord(input.traits)||!Object.values(input.traits).every(isUnit))throw new RangeError('B272 traits must contain only finite values in [0,1]');
+    for(const [name,vector] of [['selfLatent',input.selfLatent],['worldLatent',input.worldLatent]] as const){
+      if(!Array.isArray(vector)||vector.length<1||vector.length>256||vector.some(v=>typeof v!=='number'||!Number.isFinite(v)||Math.abs(v)>1_000_000))throw new RangeError(`B272 ${name} must be a bounded finite vector`);
+    }
+    for(const [name,value] of [['predictionError01',input.predictionError01],['autobiographicalContinuity01',input.autobiographicalContinuity01],['identityContinuity01',input.identityContinuity01],['intrinsicReward01',input.intrinsicReward01],['lastReward01',input.lastReward01]] as const)if(!isUnit(value))throw new RangeError(`B272 ${name} must be in [0,1]`);
+    if(input.intrinsicDrive01!==undefined&&!isUnit(input.intrinsicDrive01))throw new RangeError('B272 intrinsicDrive01 must be in [0,1]');
+    if(input.intrinsicDriveConfidence01!==undefined&&!isUnit(input.intrinsicDriveConfidence01))throw new RangeError('B272 intrinsicDriveConfidence01 must be in [0,1]');
+    if(input.lastAction!==null&&!isAction(input.lastAction))throw new RangeError('B272 lastAction is invalid');
+    if(this.state.steps>=Number.MAX_SAFE_INTEGER||this.state.generatedGoals>=Number.MAX_SAFE_INTEGER)throw new RangeError('B272 step counter reached its safe integer limit');
+    const c=this.generateCandidate({...input,tick}); const idx=c.actionScores.indexOf(Math.max(...c.actionScores)); const action=ACTIONS[idx]??'reflect';
     const selfConflict=clamp01(.55*(1-c.coherence01)+.25*input.predictionError01+.20*Math.abs(input.needs.goalPressure01-input.intrinsicReward01));
     const endogenous01=clamp01(.32*c.internalNeed01+.24*c.novelty01+.24*(1-selfConflict)+.20*c.confidence01);
     this.state.tick=input.tick;this.state.steps++;this.state.generatedGoals++;this.state.currentGoal=c.vector.slice();this.state.currentGoalId=c.id;this.state.currentAction=action;this.state.currentConfidence01=c.confidence01;this.state.goalPressure01=clamp01(.72*this.state.goalPressure01+.28*(input.needs.goalPressure01+endogenous01*.35));this.state.goalNovelty01=c.novelty01;this.state.selfConflict01=selfConflict;this.state.internalCoherence01=c.coherence01;this.state.agency01=clamp01(.82*this.state.agency01+.18*(endogenous01*(1-selfConflict)+.25));
@@ -208,8 +283,20 @@ const learned=this.learnedGoalValue(v,input.tick);
     return {...c,action,goalId:c.id,goalVector:c.vector.slice(),selfConflict01:selfConflict,agency01:this.state.agency01,endogenous01};
   }
   learnFromOutcome(input:{tick:number;action:ActionKind;reward01:number;predictionError01:number;externalEvidence01:number;independentEvaluatorGain01?:number;acceptedExternalGoal?:boolean}){
-    const gain=clamp11((input.reward01-.5)*.9+(0.5-input.predictionError01)*.35+(input.independentEvaluatorGain01??0)*.6);
-    const accepted=Boolean(input.acceptedExternalGoal)&&gain>=-.02;
+    if(!isRecord(input))throw new TypeError('B272 outcome must be an object');
+    if(!Number.isSafeInteger(input.tick)||typeof input.tick!=='number'||input.tick!==this.state.tick)throw new RangeError('B272 outcome tick must match the current goal tick');
+    if(!isAction(input.action)||input.action!==this.state.currentAction)throw new RangeError('B272 outcome action must match the generated action');
+    if(!isUnit(input.reward01)||!isUnit(input.predictionError01)||!isUnit(input.externalEvidence01))throw new RangeError('B272 outcome signals must be finite values in [0,1]');
+    if(input.independentEvaluatorGain01!==undefined&&(typeof input.independentEvaluatorGain01!=='number'||!Number.isFinite(input.independentEvaluatorGain01)||input.independentEvaluatorGain01< -1||input.independentEvaluatorGain01>1))throw new RangeError('B272 independent evaluator gain must be finite and in [-1,1]');
+    if(input.acceptedExternalGoal!==undefined&&typeof input.acceptedExternalGoal!=='boolean')throw new TypeError('B272 acceptedExternalGoal must be boolean');
+    const latest=this.state.goalHistory[this.state.goalHistory.length-1];
+    if(!latest||latest.tick!==input.tick||latest.id!==this.state.currentGoalId||latest.action!==input.action)throw new Error('B272 outcome has no matching generated-goal evidence');
+    if(this.state.learningUpdates>=Number.MAX_SAFE_INTEGER)throw new RangeError('B272 learning counter reached its safe integer limit');
+    const existingMemory=this.state.goalOutcomeMemory[this.state.currentGoalId];
+    if(existingMemory&&existingMemory.updates>=Number.MAX_SAFE_INTEGER)throw new RangeError('B272 goal outcome memory counter reached its safe integer limit');
+    const externalEvidenceBonus=input.externalEvidence01*.08;
+    const gain=clamp11((input.reward01-.5)*.9+(0.5-input.predictionError01)*.35+(input.independentEvaluatorGain01??0)*.6+externalEvidenceBonus);
+    const accepted=input.acceptedExternalGoal===true&&gain>=-.02;
     const goal=this.state.currentGoal.length?this.state.currentGoal:zeroGoal();
     const ai=ACTIONS.indexOf(input.action); const lr=.012+.018*this.state.agency01+.012*this.state.goalNovelty01;
     if(ai>=0){for(let j=0;j<8;j++){const target=goal[j]??0; const delta=lr*gain*target; this.state.actionPrototypeWeights[ai]![j]=clamp11(this.state.actionPrototypeWeights[ai]![j]+delta);}}
@@ -229,6 +316,12 @@ const learned=this.learnedGoalValue(v,input.tick);
     }
     const last=this.state.goalHistory[this.state.goalHistory.length-1]; if(last){last.reward01=input.reward01;last.predictionError01=input.predictionError01;last.accepted=accepted;}
     const memory=this.state.goalOutcomeMemory[this.state.currentGoalId]??{vector:goal.slice(0,8),meanReward01:.5,meanPredictionError01:.5,updates:0,lastTick:0};
+    // Keep the online outcome memory bounded just like its restored snapshot.
+    // Evict the oldest evidence record only when a new goal identity arrives.
+    if(!this.state.goalOutcomeMemory[this.state.currentGoalId]&&Object.keys(this.state.goalOutcomeMemory).length>=256){
+      const oldest=Object.entries(this.state.goalOutcomeMemory).sort((a,b)=>a[1].lastTick-b[1].lastTick)[0];
+      if(oldest)delete this.state.goalOutcomeMemory[oldest[0]];
+    }
     const memoryAlpha=Math.min(.32,.12+Math.min(.16,memory.updates*.01));
     this.state.goalOutcomeMemory[this.state.currentGoalId]={
       vector:goal.slice(0,8),

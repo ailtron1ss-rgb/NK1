@@ -1,3 +1,16 @@
+## WorkPass298 — endogenous goal-state integrity and outcome binding (2026-10-22)
+
+- Rebuilt B272 snapshot restoration around fixed-dimension vectors/matrices, allow-listed action identities, bounded finite metrics/counters, and validated histories/memory.
+- Unsupported schema versions now fail before state mutation; malformed event rows and outcome memories are quarantined rather than admitted to learning.
+- Current goal identity is recomputed from its normalized vector so restored IDs cannot point at a different goal representation.
+- Step input now requires a safe monotonic tick, finite bounded latent vectors, finite [0,1] needs/traits/reward signals, and valid optional intrinsic-drive confidence.
+- Outcome learning now requires exact tick, generated goal ID, and action binding; non-finite/out-of-range evidence is rejected before changing weights/counters.
+- External evidence now contributes a small, bounded positive learning-credit term instead of being an unused input.
+- Online goal-outcome memory is capped at 256 records with oldest-evidence eviction; this closes unbounded growth under long autonomous sessions.
+- Added adversarial restore, invalid input, mismatched-outcome, no-partial-mutation and evidence-credit regressions. Execution remains unverified until the repository's runner dispatch starts executing steps.
+
+---
+
 ## WorkPass297 — workflow dispatch, timeout and trigger coverage hardening (2026-10-22)
 
 - Added explicit least-privilege `contents: read` permissions to workflows that had relied on implicit defaults.

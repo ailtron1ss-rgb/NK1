@@ -43,5 +43,62 @@ assert.ok(Math.abs(untrustedValue-baselineValue)<1e-9,'untrusted intrinsic drive
 const actionCounts=new Map();
 for(const g of goals.slice(-120))actionCounts.set(g,(actionCounts.get(g)||0)+1);
 assert.ok(actionCounts.size>3,'goal identities collapsed');
+
+const tampered=new B272EndogenousGoalGenesis();
+const corrupt=snap;
+corrupt.tick=Number.NaN;
+corrupt.steps=-1;
+corrupt.learningUpdates=Number.POSITIVE_INFINITY;
+corrupt.acceptedGoals=999;
+corrupt.rejectedGoals=-3;
+corrupt.rollbackCount=Number.MAX_SAFE_INTEGER;
+corrupt.currentAction='execute-shell';
+corrupt.currentConfidence01=Number.NaN;
+corrupt.currentGoal=[Number.NaN,1];
+corrupt.actionPrototypeWeights=Array.from({length:500},()=>new Array(500).fill(Number.POSITIVE_INFINITY));
+corrupt.goalHistory=[{tick:Number.NaN,id:'forged',vector:[Number.NaN],action:'execute-shell',reward01:2,predictionError01:-1,accepted:true}];
+corrupt.outcomeHistory=[{tick:999999,goalId:'bad-id',action:'execute-shell',reward01:2,predictionError01:Number.NaN}];
+corrupt.goalOutcomeMemory={'__proto__':{vector:[1],meanReward01:2,meanPredictionError01:Number.NaN,updates:Number.POSITIVE_INFINITY,lastTick:999999}};
+tampered.restore(corrupt);
+const sanitized=tampered.snapshot();
+assert.equal(sanitized.version,1);
+assert.equal(sanitized.tick,0);
+assert.equal(sanitized.steps,0);
+assert.equal(sanitized.learningUpdates,0);
+assert.equal(sanitized.acceptedGoals,0);
+assert.equal(sanitized.rejectedGoals,0);
+assert.equal(sanitized.rollbackCount,0);
+assert.equal(sanitized.currentAction,'reflect');
+assert.ok(sanitized.currentGoal.length===8&&sanitized.currentGoal.every(Number.isFinite));
+assert.equal(sanitized.actionPrototypeWeights.length,7);
+assert.ok(sanitized.actionPrototypeWeights.every(row=>row.length===8&&row.every(Number.isFinite)));
+assert.equal(sanitized.goalHistory.length,0);
+assert.equal(sanitized.outcomeHistory.length,0);
+assert.equal(Object.keys(sanitized.goalOutcomeMemory).length,0);
+const beforeUnsupported=tampered.snapshot();
+assert.throws(()=>tampered.restore({version:2} as unknown as Partial<import('../src/organism/cognition/B272EndogenousGoalGenesis.ts').B272State>),/version/);
+assert.deepEqual(tampered.snapshot(),beforeUnsupported,'unsupported restore must not partially mutate state');
+
+const invalidTickNet=new B272EndogenousGoalGenesis();
+assert.throws(()=>invalidTickNet.step({...comparisonInput,tick:Number.NaN}),/tick/);
+assert.throws(()=>invalidTickNet.step({...comparisonInput,needs:{...comparisonInput.needs,energy01:Number.NaN}}),/energy01/);
+assert.equal(invalidTickNet.snapshot().steps,0,'invalid step must be rejected before state mutation');
+const badRestoreState=net.snapshot();
+const badRestoredNet=new B272EndogenousGoalGenesis();
+badRestoredNet.restore(badRestoreState);
+const current=badRestoredNet.currentGoal();
+const beforeBadOutcome=badRestoredNet.snapshot();
+assert.throws(()=>badRestoredNet.learnFromOutcome({tick:current.id==='never'?0:badRestoredNet.snapshot().tick-1,action:current.action,reward01:.8,predictionError01:.2,externalEvidence01:0}),/tick/);
+assert.throws(()=>badRestoredNet.learnFromOutcome({tick:badRestoredNet.snapshot().tick,action:'explore',reward01:Number.NaN,predictionError01:.2,externalEvidence01:0}),/action|signals/);
+assert.deepEqual(badRestoredNet.snapshot(),beforeBadOutcome,'rejected outcome must not mutate learner state');
+
+const evidenceLow=new B272EndogenousGoalGenesis();
+const evidenceHigh=new B272EndogenousGoalGenesis();
+const lowGoal=evidenceLow.step({...comparisonInput,tick:0});
+const highGoal=evidenceHigh.step({...comparisonInput,tick:0});
+const lowGain=evidenceLow.learnFromOutcome({tick:0,action:lowGoal.action,reward01:.7,predictionError01:.2,externalEvidence01:0}).gain11;
+const highGain=evidenceHigh.learnFromOutcome({tick:0,action:highGoal.action,reward01:.7,predictionError01:.2,externalEvidence01:1}).gain11;
+assert.ok(highGain>lowGain,'external evidence must contribute to bounded learning credit');
+
 console.log(JSON.stringify({pass:true,diagnostics:d,accepted,uniqueRecentGoals:actionCounts.size,currentGoal:before},null,2));
 function rAction(n){return n.currentGoal().action;}
