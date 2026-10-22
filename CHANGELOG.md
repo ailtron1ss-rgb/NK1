@@ -2,7 +2,7 @@
 
 - Added `tools/audit-actions-history.mjs`: it enumerates Actions run history in pages of 100, deduplicates run IDs, inspects failed/incomplete run jobs within an explicit detail budget, and records API coverage so reaching the page limit cannot be mistaken for a full scan.
 - Added bounded retrieval of failed-job log archives and diagnostic-line extraction with common token/bearer/key-value redaction. Missing runner/step metadata is reported as an evidence limitation, not misattributed to the application.
-- Added `tools/audit-actions-history.test.mjs` for pagination/deduplication, page-limit handling, job classification, status aggregation and secret redaction; documented permissions, budgets and evidence semantics in `docs/ACTIONS_HISTORY_AUDIT.md`.
+- Added `tools/audit-actions-history.test.mjs` for pagination/deduplication, page-limit handling, job classification, status aggregation, secret redaction, permanent-4xx handling, transient-5xx retry and preserving a partial inventory when rate limiting starts mid-scan; documented permissions, budgets and evidence semantics in `docs/ACTIONS_HISTORY_AUDIT.md`.
 - No runtime package/dependency changes. Node.js 24 and current Node 24-compatible GitHub Actions are used in the dedicated workflow.
 - Validation state: source and focused regression have been committed; the new workflow has not yet produced an execution result. Existing latest source-stack runs still include failed jobs with no exposed steps/log URLs, so exact-head CI remains unverified. The audit is read-only and does not re-run jobs or merge PRs.
 
