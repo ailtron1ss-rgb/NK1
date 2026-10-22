@@ -1,3 +1,15 @@
+## Latest durable checkpoint — WorkPass268 (2026-10-22)
+
+- Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use the live PR for the current SHA.
+- WorkPass266–268 reject lossy/invalid causal IDs, detect conflicting payloads under a reused trace ID, and preserve idempotency when a duplicate's original row was evicted from bounded causal history.
+- Regression code and CI path wiring exist; exact-head tests/typecheck remain unverified because available Actions jobs provide no steps or logs. Do not report a PASS without an actionable run.
+- No new dependency was needed, and learning scores remain unchanged pending independent task evidence.
+- Next code-first target: map all external causal intake call sites and replace any caller-asserted grounding/provenance used as authority with evidence from a canonical state transition/verifier, without breaking integrations before their contracts are mapped.
+
+Read the [strategic audit](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [P23 integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md), and [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md).
+
+---
+
 ## Latest durable checkpoint — WorkPass267 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use the live PR to read current HEAD.
