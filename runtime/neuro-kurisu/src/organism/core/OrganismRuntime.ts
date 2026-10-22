@@ -35,6 +35,13 @@ import { RealityShadowBridge } from '../system/RealityShadowBridge.ts';
 import { ExternalPostconditionVerifier } from '../system/ExternalPostconditionVerifier.ts';
 import { RuntimePerformanceGovernor } from '../system/RuntimePerformanceGovernor.ts';
 import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/ActionGateway.ts';
+import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
+import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
+import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
+import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
+import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEvaluationProvider.ts';
+import type { IndependentCandidateEvaluationConfig } from '../learning/IndependentSkillCandidateEvaluator.ts';
+import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndependentEvaluationFactoryOptions } from '../learning/HostOwnedIndependentEvaluationServices.ts';
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
@@ -82,6 +89,15 @@ export interface RuntimeConfig extends OrganismConfig {
   worldStateStore?: JsonStateStore<PersistedWorld>;
   journal?: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
   visionBackend?: VisionSemanticBackend;
+  /** Explicit opt-in to scheduled, Core-owned P23 candidate/shadow learner runs. */
+  trustedShadowLearning?: TrustedShadowLearningScheduleConfig;
+  /** Explicitly configure the production bridge from verified compound repairs into P23 revision staging. */
+  compoundRepairRevision?: {
+    engine: P23LearningEngine;
+    provideInputs: CompoundRepairRevisionInputProvider;
+    /** When supplied, replaces provider-supplied candidate evaluation with exact-payload independent execution. */
+    independentEvaluationConfigForRepair?: (input: Parameters<CompoundRepairRevisionInputProvider>[0]) => IndependentCandidateEvaluationConfig;
+  };
   /** P2836: how real device outcomes compete with the predictive simulator. */
   realityMode?: RealityGroundingMode;
 }
@@ -89,6 +105,29 @@ export interface RuntimeConfig extends OrganismConfig {
 export interface RuntimeStep { cycle: OrganismCycleResult; worldAction: EnvironmentAction; language?: LanguageResponse; embodiedAction?: EmbodiedActionResult; }
 
 export class OrganismRuntime {
+  /**
+   * Host-owned production composition: prepare the three separately configured
+   * executables before constructing the runtime, then bind their config factory
+   * to the existing P23 compound-repair coordinator. No default executable paths
+   * or in-process fake authorities are created here.
+   */
+  static async createWithHostOwnedIndependentEvaluation(
+    config: RuntimeConfig,
+    hostAuthorities: HostOwnedIndependentEvaluationFactoryOptions<Parameters<CompoundRepairRevisionInputProvider>[0]>,
+  ): Promise<OrganismRuntime> {
+    if (!config.compoundRepairRevision) {
+      throw new Error('host-owned-independent-evaluation-requires-compound-repair-revision');
+    }
+    const independentEvaluationConfigForRepair =
+      await createHostOwnedIndependentEvaluationConfigFactory(hostAuthorities);
+    return new OrganismRuntime({
+      ...config,
+      compoundRepairRevision: {
+        ...config.compoundRepairRevision,
+        independentEvaluationConfigForRepair,
+      },
+    });
+  }
   readonly core: OrganismCore;
   readonly environment = new WorldEnvironment();
   readonly plans: PlanEngine;
@@ -134,6 +173,10 @@ export class OrganismRuntime {
   private readonly runtimeClosure = new RuntimeClosureLedger();
   private readonly causalDomainClosureLedger = new CausalDomainClosureLedger(32);
   private readonly adaptiveConsolidationGate = new AdaptiveConsolidationGate();
+  private readonly trustedShadowLearningScheduler: P23TrustedShadowLearningScheduler | null;
+  private readonly compoundRepairRevisionCoordinator: P23CompoundRepairRevisionCoordinator | null;
+  private readonly proceduralSkillLibrary = new ProceduralSkillLibrary();
+  private readonly proceduralSkillStore: JsonStateStore<SkillLibraryState>;
   private stopping = false;
   private sleepStartedAt: number | null = null;
   private sleepReason = '';
@@ -163,6 +206,38 @@ export class OrganismRuntime {
     this.phonePolicy.worldCheckpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.worldCheckpointMaxDirtyCycles));
     this.stopping = false;
     this.core = new OrganismCore(config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile), { ...config, cycleResultMode:'operational' });
+    this.trustedShadowLearningScheduler = config.trustedShadowLearning?.enabled === true
+      ? new P23TrustedShadowLearningScheduler(this.core, config.trustedShadowLearning)
+      : null;
+    if (config.compoundRepairRevision) {
+      // Production revision staging must not trust an evaluator supplied by the same
+      // provider that proposes the candidate. Keep legacy provider-only wiring for
+      // development, but fail startup in production unless the independent sandbox,
+      // verifier and safety authorities are configured by the trusted host.
+      if (process.env.NODE_ENV === 'production' &&
+          typeof config.compoundRepairRevision.independentEvaluationConfigForRepair !== 'function') {
+        throw new Error('production-compound-repair-revision-requires-independent-evaluation-authority');
+      }
+      if (typeof config.compoundRepairRevision.provideInputs !== 'function') {
+        throw new Error('compound-repair-revision requires a trusted input provider');
+      }
+      // Fail at startup instead of accepting a P23 engine that cannot stage
+      // into its canonical authenticated candidate lifecycle.
+      if (!config.compoundRepairRevision.engine.verifiedSkillCandidateSnapshot()) {
+        throw new Error('compound-repair-revision requires a configured verified P23 candidate store');
+      }
+      const provideInputs = config.compoundRepairRevision.independentEvaluationConfigForRepair
+        ? withIndependentCandidateEvaluation(
+            config.compoundRepairRevision.provideInputs,
+            config.compoundRepairRevision.independentEvaluationConfigForRepair,
+          )
+        : config.compoundRepairRevision.provideInputs;
+      this.compoundRepairRevisionCoordinator = new P23CompoundRepairRevisionCoordinator(
+        this, config.compoundRepairRevision.engine, provideInputs,
+      );
+    } else {
+      this.compoundRepairRevisionCoordinator = null;
+    }
     this.realityGrounding.setMode(config.realityMode ?? 'hybrid');
     this.plans = new PlanEngine(this.environment, {
       predict: (action, baseReward, context) => {
@@ -178,6 +253,8 @@ export class OrganismRuntime {
     });
     const worldPath = config.worldStateFile ?? config.stateFile.replace(/\.json$/i, '.world.json');
     this.worldStore = config.worldStateStore ?? new FileStateStore<PersistedWorld>(worldPath);
+    const skillStatePath = `${config.stateFile}.procedural-skills.json`;
+    this.proceduralSkillStore = new FileStateStore<SkillLibraryState>(skillStatePath);
     this.journal = config.journal ?? new OperationalJournal(config.stateFile.replace(/\.json$/i, '.operational.jsonl'));
     this.continuityLedger = new ContinuityLedger(config.stateFile.replace(/\.json$/i, '.continuity.jsonl'));
     this.registerRuntimeClocks();
@@ -194,6 +271,7 @@ export class OrganismRuntime {
       if (this.initialized) return;
       await this.journal.write('info', 'runtime.init.begin');
       await this.core.init();
+      this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
       this.cognitiveEventFabric.restore(systemSnapshot.cognitiveEventFabric ?? undefined);
@@ -247,6 +325,7 @@ export class OrganismRuntime {
       this.initialized = true;
       this.startEmbodimentClock();
       this.clockScheduler.start('reflection');
+      if (this.trustedShadowLearningScheduler) this.clockScheduler.start('trusted-shadow-learning');
       if (this.config.autoRun) this.startCognitiveClock();
       await this.journal.write('info', 'runtime.init.complete', { tick: this.core.operationalStatusSnapshot().tick });
     });
@@ -266,7 +345,7 @@ export class OrganismRuntime {
     return {cycles:total,actions,worldTicks:this.environment.snapshot().tick,neuralLearningUpdates:Number(neural.learningUpdates??0),temporalUpdates:Number(neural.temporalUpdates??0),externalCommands:0};
   }
 
-  async step(externalText?: string, options: { deliberate?: boolean; spontaneous?: boolean } = { deliberate: true }): Promise<RuntimeStep> {
+  async step(externalText?: string, options: { deliberate?: boolean; spontaneous?: boolean; signal?: AbortSignal } = { deliberate: true }): Promise<RuntimeStep> {
     return this.enqueue(async () => {
       const stepStartedAt=Date.now();
       let stepCpuStart:any=null;
@@ -391,13 +470,14 @@ export class OrganismRuntime {
     });
   }
 
-  private async generateCognitiveProposal(cycle: OrganismCycleResult, fusedObservation: string, deliberate = false, autonomous = false): Promise<CognitiveProposal|null> {
+  private async generateCognitiveProposal(cycle: OrganismCycleResult, fusedObservation: string, deliberate = false, autonomous = false, signal?: AbortSignal): Promise<CognitiveProposal|null> {
     if (!this.config.enableLanguage || !this.config.languageInvoker) return null;
     const current = this.core.operationalStatusSnapshot();
     const budgetSnapshot = this.core.cognitiveBudgetOperationalSnapshot();
     const shouldAsk = Boolean(fusedObservation.trim()) && (deliberate || (autonomous && current.predictionError > 0.62));
     if (!shouldAsk) return null;
     const request=buildCognitiveProposalPrompt(cycle,fusedObservation,this.core.knownEntityPromptContext('user'),this.core.personalityTraitPromptContext());
+    if(signal) request.signal=signal;
     this.lastContextBudgetLedger = request.contextLedger ?? null;
     const budgetMode = budgetSnapshot?.mode ?? 'shallow';
     if (!deliberate && (budgetMode === 'sleep' || budgetMode === 'defer' || budgetMode === 'reflex')) return null;
@@ -411,13 +491,14 @@ export class OrganismRuntime {
       this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:response.backend,confidence01:.7,payload:{latencyMs:response.latencyMs,role:'cognitive-proposal'}});
       return parseCognitiveProposal(response.text,'llm');
     } catch (error) {
+      if(signal?.aborted) return parseCognitiveProposal('language request cancelled; preserve the current verified state','local-fallback');
       await this.core.recordLanguageFailure(undefined, 0).catch(()=>{});
       this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:'language-failure',confidence01:.15,payload:{role:'cognitive-proposal',message:String((error as any)?.message || error).slice(0,180)}});
       return parseCognitiveProposal('local structured fallback: verify supplied evidence before changing course','local-fallback');
     }
   }
 
-  private async stepInternal(externalText?: string, options: { deliberate?: boolean; spontaneous?: boolean } = {}): Promise<RuntimeStep> {
+  private async stepInternal(externalText?: string, options: { deliberate?: boolean; spontaneous?: boolean; signal?: AbortSignal } = {}): Promise<RuntimeStep> {
     if (!this.initialized) throw new Error('OrganismRuntime.init() must be called first');
     if (externalText) this.embodiment.userActivity();
     let body = await this.embodiment.sample();
@@ -477,7 +558,7 @@ export class OrganismRuntime {
     });
     const activePerceptionRequestId = this.core.activePerceptionPendingId();
     const fusedObservation = modalityEvents.slice(-6).map((x:any)=>`[${x.modality}] ${x.summary}`).join(' | ');
-    const cognitiveProposal = await this.generateCognitiveProposal(cycle, fusedObservation, Boolean(options.deliberate), !externalText);
+    const cognitiveProposal = await this.generateCognitiveProposal(cycle, fusedObservation, Boolean(options.deliberate), !externalText, options.signal);
     if (cognitiveProposal) {
       this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });
     }
@@ -549,6 +630,7 @@ export class OrganismRuntime {
       const request = externalText
         ? buildCognitivePrompt(cycle, transition.after.facts, externalText, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext())
         : buildAutonomousDialoguePrompt(cycle, autonomousAgenda!, transition.after.facts, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext());
+      if(options.signal) request.signal=options.signal;
       this.lastContextBudgetLedger = request.contextLedger ?? null;
       try {
         language = await this.config.languageInvoker(request);
@@ -556,7 +638,9 @@ export class OrganismRuntime {
           this.evidenceBus.publish({ tick: cycle.state.tick, kind: 'model', source: 'autonomous-dialogue-stage', confidence01: .25, payload: { initiativeId: autonomousAgenda.id, staged: false, reason: 'empty-or-stale-initiative' } });
         }
       } catch (error) {
-        if (!externalText && autonomousAgenda) {
+        if(options.signal?.aborted) {
+          this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:'language-cancelled',confidence01:.95,payload:{reason:'caller-aborted',role:'response-generation'}});
+        } else if (!externalText && autonomousAgenda) {
           this.core.deferAutonomousSocialInitiative(autonomousAgenda.id, Date.now());
           this.evidenceBus.publish({ tick: cycle.state.tick, kind: 'model', source: 'autonomous-dialogue-failure', confidence01: .2, payload: { initiativeId: autonomousAgenda.id, reason: String((error as any)?.message ?? error).slice(0, 180) } });
         } else {
@@ -893,6 +977,130 @@ export class OrganismRuntime {
   realityLearningGateSnapshot(){ return this.realityLearningGate.snapshot(); }
   realityShadowBridgeSnapshot(){ return this.realityShadowBridge.snapshot(); }
 
+  /** Compile a bounded procedural skill into the runtime-owned library and persist it before returning. */
+  async compileCompoundSkill(input:Parameters<ProceduralSkillLibrary['compileCompoundSkill']>[0]) {
+    return this.enqueue(async()=>{
+      if(!this.initialized) throw new Error('organism-runtime-not-initialized');
+      const skill=this.proceduralSkillLibrary.compileCompoundSkill(input);
+      if(skill) await this.proceduralSkillStore.save(this.proceduralSkillLibrary.snapshot());
+      return skill;
+    });
+  }
+  /** Execute a persisted procedural skill through the canonical Core ActionGateway. Provenance is caller-supplied and never inferred. */
+  async executeCompoundSkill(id:string, run:{runId:string;context:string;holdout:boolean;independent:boolean;autonomous:boolean}):Promise<Awaited<ReturnType<ProceduralSkillLibrary['executeCompoundSkill']>>> {
+    return this.enqueue(async()=>{
+      if(!this.initialized) throw new Error('organism-runtime-not-initialized');
+      const runId=String(run?.runId??'').trim();
+      const context=String(run?.context??'').slice(0,180);
+      if(!runId||runId.length>180||!context||typeof run?.holdout!=='boolean'||typeof run?.independent!=='boolean'||typeof run?.autonomous!=='boolean')
+        throw new Error('compound-skill-run-provenance-required');
+      try {
+        return await this.proceduralSkillLibrary.executeCompoundSkill(id,{
+          context,holdout:run.holdout,independent:run.independent,
+          executeTool:async(toolId,toolInput,step)=>{
+            const idempotencyKey=createHash('sha256').update(['procedural-skill',runId,id,step.id,toolId].join('\u0000')).digest('hex');
+            const execution=await this.core.executeTool(toolId,toolInput,`procedural-skill:${id}:${step.id}`,{
+              idempotencyKey,decisionId:runId,autonomous:run.autonomous,expectedOutputKeys:step.expectedOutputKeys,
+            });
+            const result=execution.result&&typeof execution.result==='object'?execution.result:{};
+            return {ok:execution.ok===true,verified:execution.verified===true,result,error:execution.ok?undefined:String(result.error??execution.audit?.reason??execution.outcomeClass),confidence01:execution.verification?.confidence01};
+          },
+        });
+      } finally {
+        await this.proceduralSkillStore.save(this.proceduralSkillLibrary.snapshot());
+      }
+    });
+  }
+  proceduralSkillLibrarySnapshot(){ return this.proceduralSkillLibrary.snapshot(); }
+  /**
+   * Return generator-ready repair evidence from actual persisted compound executions.
+   * Holdout observations are excluded; evidence is descriptive and never authorizes activation.
+   */
+  compoundSkillRepairEvidence(id?:string){
+    const state=this.proceduralSkillLibrary.snapshot();
+    return state.compoundSkills
+      .filter(skill=>!id||skill.id===id)
+      .flatMap(skill=>skill.repairsLedger
+        .filter(row=>!row.holdout)
+        .map(row=>({
+          skillId:skill.id,
+          skillName:skill.name,
+          failureFingerprint:row.failureFingerprint,
+          stepId:row.stepId,
+          failedTool:row.toolId,
+          diagnosis:row.diagnosis,
+          contextSignature:row.contextSignature,
+          candidateTools:[...row.candidateTools],
+          selectedTool:row.selectedTool,
+          verified:row.verified,
+          confidence01:row.confidence01,
+          observedAt:row.at,
+          revisionEligible:Boolean(row.verified&&row.selectedTool&&row.selectedTool!==row.toolId&&row.candidateTools.includes(row.selectedTool)&&row.confidence01>=skill.policy.minEvidence01),
+        })))
+      .sort((a,b)=>b.observedAt-a.observedAt)
+      .slice(0,96);
+  }
+
+
+  /**
+   * Production runtime entry point for the configured repair-to-P23 lifecycle.
+   * It serializes orchestration with other runtime mutations and fails closed when no
+   * trusted proposal/evaluation/generator provider was configured by the application.
+   */
+  async reviseCompoundSkillsFromObservedRepairs(skillId:string) {
+    return this.enqueue(async()=>{
+      if(!this.initialized) throw new Error('organism-runtime-not-initialized');
+      if(!this.compoundRepairRevisionCoordinator) {
+        throw new Error('compound-repair-revision-provider-not-configured');
+      }
+      const result=await this.compoundRepairRevisionCoordinator.reviseFromObservedRepairs(skillId);
+      await this.journal.write('info','runtime.p23.compound-repair-revision.completed',{
+        skillId,status:result.status,repairEvidenceCount:result.repairEvidenceCount,
+        ...(result.status==='candidate-staged'?{candidateId:result.candidateId}:{}),
+      }).catch(()=>{});
+      return result;
+    });
+  }
+
+  /**
+   * Feed real, verified non-holdout compound-repair observations into the existing P23
+   * revision generator and versioned candidate lifecycle. The caller must provide the
+   * authentic promotion proposal, independently produced evaluation reports, configured
+   * P23 engine/store, and generator; this method cannot mint evidence or activate a candidate.
+   */
+  async generateCompoundSkillRevision(input:{
+    engine:P23LearningEngine;
+    proposal:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[0];
+    skillId:string;
+    sourceCandidateId:string;
+    baseline:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[3];
+    candidateEvaluation:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[4];
+    generate:(request:Parameters<Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[5]>[0] & {
+      repairEvidence:ReturnType<OrganismRuntime['compoundSkillRepairEvidence']>;
+    })=>Promise<unknown>|unknown;
+    evaluateRevisedCandidate:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[6];
+    options?:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[7];
+  }){
+    if(!input?.engine || typeof input.engine.generateAndStageReflectiveSkillRevision!=='function') {
+      throw new Error('configured P23 learning engine is required');
+    }
+    if(typeof input.generate!=='function') throw new Error('configured skill revision generator is required');
+    const repairEvidence=this.compoundSkillRepairEvidence(input.skillId).filter(row=>row.revisionEligible);
+    if(repairEvidence.length===0) {
+      throw new Error('no verified non-holdout compound repair evidence is eligible for revision');
+    }
+    const result=await input.engine.generateAndStageReflectiveSkillRevision(
+      input.proposal,input.skillId,input.sourceCandidateId,input.baseline,input.candidateEvaluation,
+      request=>input.generate({...request,repairEvidence:structuredClone(repairEvidence)}),
+      input.evaluateRevisedCandidate,input.options,
+    );
+    await this.journal.write('info','runtime.p23.compound-repair-revision.staged',{
+      skillId:input.skillId,sourceCandidateId:input.sourceCandidateId,candidateId:result.candidate.candidateId,
+      repairEvidenceCount:repairEvidence.length,repairFingerprints:repairEvidence.map(row=>row.failureFingerprint),
+      note:'staged candidate only; independent shadow evidence and explicit promotion approval remain required',
+    }).catch(()=>{});
+    return {...result,repairEvidenceCount:repairEvidence.length};
+  }
   async executeTool(id:string,input:Record<string,unknown>={},reason='runtime-tool',options:import('../system/ActionGateway.ts').ActionGatewayExecutionOptions={}){ return this.enqueue(()=>this.core.executeTool(id,input,reason,options)); }
   async reconcileToolExecution(id:string,input:Record<string,unknown>={},reason='runtime-tool-reconciliation',options:import('../system/ActionGateway.ts').ActionGatewayExecutionOptions={}){ return this.enqueue(()=>this.core.reconcileToolExecution(id,input,reason,options)); }
   async executeProjectTool(id:string,input:Record<string,unknown>={},reason='project-tool',options:import('../system/ActionGateway.ts').ActionGatewayExecutionOptions={}){ return this.enqueue(()=>this.core.executeProjectTool(id,input,reason,options)); }
@@ -1148,6 +1356,17 @@ export class OrganismRuntime {
     });
   }
 
+  /** Run one configured P23 candidate/shadow attempt through OrganismCore's durable trust boundary. */
+  async runTrustedShadowLearningOnce() {
+    if (!this.initialized) throw new Error('OrganismRuntime.init() must be called before trusted shadow learning');
+    if (!this.trustedShadowLearningScheduler) throw new Error('trusted shadow learning is not enabled in RuntimeConfig');
+    return this.trustedShadowLearningScheduler.runOnce(this.core.operationalStatusSnapshot().tick);
+  }
+
+  trustedShadowLearningDiagnostics() {
+    return this.trustedShadowLearningScheduler?.snapshot() ?? { enabled: false as const };
+  }
+
   embodimentStatus(): ReturnType<EmbodimentRuntime['snapshot']> { return this.embodiment.snapshot(); }
   embodimentDiagnostics(){ return this.embodiment.sensorDiagnosticsSnapshot(); }
   async stop(): Promise<void> {
@@ -1158,6 +1377,7 @@ export class OrganismRuntime {
     this.stopping = true;
     this.clockScheduler.stop();
     await this.clockScheduler.drain();
+    await this.trustedShadowLearningScheduler?.drain();
     await this.queue.catch(() => undefined);
 
     // All queued cognitive work has drained, so the final flush is now serialized
@@ -1211,6 +1431,42 @@ export class OrganismRuntime {
   }
 
   private registerRuntimeClocks(): void {
+    if (this.trustedShadowLearningScheduler) {
+      this.clockScheduler.register({
+        id: 'trusted-shadow-learning',
+        initialDelayMs: this.trustedShadowLearningScheduler.initialDelayMs,
+        decide: () => {
+          const body = this.embodiment.snapshot();
+          const decision = this.runtimeDecision();
+          const battery01 = Number(body.telemetry.battery01 ?? 1);
+          const ramPressure01 = Number(body.telemetry.ramPressure01 ?? 0);
+          const resourceReady = decision.cognitiveBudget01 >= 0.65 && battery01 > 0.15 &&
+            ramPressure01 < 0.90 && body.thermalStrain01 < 0.80;
+          return {
+            delayMs: this.trustedShadowLearningScheduler!.intervalMs,
+            reason: resourceReady ? 'p23-trusted-shadow-resource-ready' : 'p23-trusted-shadow-resource-gated',
+            run: this.initialized && !this.stopping && body.awake && resourceReady,
+          };
+        },
+        task: async () => {
+          const result = await this.runTrustedShadowLearningOnce();
+          await this.journal.write(result.receipt.status === 'completed' ? 'info' : 'warn', 'runtime.p23.trusted-shadow.completed', {
+            runId: result.receipt.runId,
+            executionId: result.receipt.executionId,
+            status: result.receipt.status,
+            exitCode: result.receipt.exitCode,
+            durationMs: result.receipt.durationMs,
+            verifiedObservationStatus: this.trustedShadowLearningScheduler?.snapshot().lastEvidenceStatus ?? 'not-configured',
+            note: 'execution receipt is not verified task outcome or promotion evidence',
+          }).catch(() => {});
+        },
+        onError: async (error) => {
+          const message = String((error as any)?.message || error).slice(0, 500);
+          this.core.markRuntimeAnomaly('p23-trusted-shadow-learning:' + message);
+          await this.journal.write('warn', 'runtime.p23.trusted-shadow.failed', { message }).catch(() => {});
+        },
+      });
+    }
     this.clockScheduler.register({
       id: 'cognitive', initialDelayMs: 0,
       decide: () => {
@@ -1302,6 +1558,7 @@ export class OrganismRuntime {
     const heap=this.heapPressure01();
     return {
       ...this.core.longitudinalSnapshot(),
+      trustedShadowLearning:this.trustedShadowLearningScheduler?.snapshot() ?? { enabled:false },
       lastAutonomyStepMs:this.lastAutonomyStepAt,
       runtimeClocks:this.clockScheduler.snapshot(),
       continuityLedger:this.continuityLedger.metrics(),
@@ -1313,6 +1570,7 @@ export class OrganismRuntime {
     const heap=this.heapPressure01();
     return {
       core:this.core.persistenceMetrics(),
+      trustedShadowLearning:this.trustedShadowLearningScheduler?.snapshot() ?? { enabled:false },
       predictionLedger:this.core.predictionLedgerSnapshot(),
       continuity:this.core.continuitySnapshot(),
       world:typeof this.worldStore.metrics==='function' ? this.worldStore.metrics() : null,

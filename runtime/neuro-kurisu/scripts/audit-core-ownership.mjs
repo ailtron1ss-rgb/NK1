@@ -1,4 +1,6 @@
+import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { getCountedDirectConstructorOwners } from './core-ownership-policy.mjs';
 
 const core = await readFile(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
 const agency = await readFile(new URL('../src/organism/core/AgencySubsystemRuntime.ts', import.meta.url), 'utf8');
@@ -23,6 +25,20 @@ const moved = [
   ['MultimodalPerception', core, embodiment], ['PerceptionEngine', core, embodiment], ['P35SemanticWorldBodyEngine', core, embodiment], ['P37EmbodiedSensoriumEngine', core, embodiment], ['P40SemanticIntelligenceEngine', core, embodiment], ['P41SemanticPerceptionEngine', core, embodiment], ['P41NativePerceptionEngine', core, embodiment], ['P41TemporalPerceptionModel', core, embodiment], ['P42UnifiedEmbodiedExperienceEngine', core, embodiment], ['P43EmbodiedImageryWorkspace', core, embodiment],
 ];
 const errors=[];
+
+// Regression guard: only the exact documented field+constructor pair is exempt.
+// Same field with another type and same type under another field both count.
+const ownershipPolicyProbe = [
+  { field: 'operationalMicroCycle', constructor: 'OperationalMicroCycleRuntime' },
+  { field: 'operationalMicroCycle', constructor: 'UnexpectedRuntime' },
+  { field: 'renamedOperationalMicroCycle', constructor: 'OperationalMicroCycleRuntime' },
+  { field: 'ordinaryOwner', constructor: 'OtherRuntime' },
+];
+assert.deepEqual(
+  getCountedDirectConstructorOwners(ownershipPolicyProbe),
+  ownershipPolicyProbe.slice(1),
+  'only the exact documented orchestration owner may be exempt from the constructor ceiling',
+);
 
 const extractedFieldOwners = [
   ...['p54LongHorizonEvidence','p55DevelopmentalForkUniverse','p56IntegratedDevelopmentalMind','p58CognitiveKernel','p61IntegratedMind','p63DevelopmentalOperatingSystem','p64IntegratedOrganismDynamics','p74IntegratedOrganismKernel','p81PredictiveAttention','autonomousPersonhood','identityContinuityGuard','autonomousValueFormation','autobiographicalLifeNarrative','p39Life','p40ModelEcology'].map(field=>[field,self,'self']),
@@ -63,8 +79,11 @@ for(const [runtimeName, runtimePath] of extractedRuntimes){
     if(directOwnerPattern.test(core)) errors.push(`core-still-owns-extracted-constructor:${runtimeName}:${ctor}`);
   }
 }
-const coreDirectConstructors=(core.match(/^\s*(?:private\s+)?(?:readonly\s+)?[A-Za-z_$][\w$]*\s*=\s*new\s+[A-Za-z_$][\w$]*\s*\(/gm)??[]).length;
-console.log(`CORE_OWNERSHIP=${errors.length?'FAIL':'PASS'} errors=${errors.length} directConstructors=${coreDirectConstructors}`);
-// OperationalMicroCycleRuntime is a deliberate orchestration owner; five direct constructors is the new ceiling.
-if(coreDirectConstructors > 5) errors.push(`core-direct-constructors-too-many:${coreDirectConstructors}`);
+const coreDirectConstructorOwners=[...core.matchAll(/^\s*(?:private\s+)?(?:readonly\s+)?([A-Za-z_$][\w$]*)\s*=\s*new\s+([A-Za-z_$][\w$]*)\s*\(/gm)].map(m=>({field:m[1],constructor:m[2]}));
+const coreDirectConstructors=coreDirectConstructorOwners.length;
+// The exception is an exact field+constructor pair, not a field-name-only bypass.
+const countedDirectConstructorOwners = getCountedDirectConstructorOwners(coreDirectConstructorOwners);
+const countedDirectConstructors = countedDirectConstructorOwners.length;
+if(countedDirectConstructors > 5) errors.push(`core-direct-constructors-too-many:${countedDirectConstructors}`);
+console.log(`CORE_OWNERSHIP=${errors.length?'FAIL':'PASS'} errors=${errors.length} directConstructors=${coreDirectConstructors} countedDirectConstructors=${countedDirectConstructors} exemptOrchestrationOwner=operationalMicroCycle:OperationalMicroCycleRuntime countedDirectConstructorOwners=${JSON.stringify(countedDirectConstructorOwners)} directConstructorOwners=${JSON.stringify(coreDirectConstructorOwners)}`);
 if(errors.length){for(const e of errors) console.log(`ERROR=${e}`); process.exit(1);}

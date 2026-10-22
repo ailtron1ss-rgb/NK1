@@ -1,28 +1,824 @@
-## WorkPass70 - local release-publishing fallback (2026-10-22)
-- Added `scripts/publish-workpass70-main-sync.ps1` to create and publish a hash-verified ZIP from the exact `workpass70-source` HEAD when hosted runner provisioning is unavailable.
-- By default, the script requires a successful validation run for the exact HEAD. The optional `-AllowRunnerUnavailable` override is accepted only if GitHub reports a completed validation failure whose job has `runner_id=0` and no executed steps; the resulting release notes explicitly warn that core tests were not run and label the asset an unvalidated prerelease.
-- The script checks branch/remote SHA parity, clean working tree, a minimum tracked source count, ZIP integrity/path safety, required core files and SHA-256 for the ZIP/report. It refuses existing tags and writes the archive, report and manifest locally before calling GitHub CLI to publish.
+## WorkPass312 — reconcile P23 replay/dedupe identity caches after restore
 
-## WorkPass70 release-sync validation reachability (2026-10-22)
-- Added the release-process workflows, all main-imported metadata/scripts and the synchronization report to the core-validation path filter. Changes to this migration now request validation of the exact source HEAD rather than leaving the latest documentation-only commit outside the release gate.
-- A workflow run that cannot allocate a hosted runner remains blocked at infrastructure/account level; this path-filter fix does not represent test-pass evidence.
+- Rebuilt the processed-trace cache from restored experience rows first, then persisted cache entries; replayed-trace cache follows the same rule for replay-update rows.
+- Missing cache entries can no longer reopen a persisted trace for experience insertion or replay learning after restart.
+- Reconciled outcome counts, open evidence-debt count, skill-candidate count and promotion count with restored rows or the authoritative lifecycle store.
+- Extended the WorkPass310 regression with snapshots whose identity caches are empty but whose experience/replay rows exist.
 
-## WorkPass70 follow-up — idempotent release publishing (2026-10-22)
-- Changed both legacy hotfix and main-sync release guards to probe the GitHub Releases API with `GITHUB_TOKEN` and distinguish `200` (tag already exists; safe no-op), `404` (tag absent; publication may proceed) and unexpected HTTP responses (fail closed).
-- Existing WorkPass70 tags/assets are never overwritten, and authorization/network failures are no longer silently treated as evidence that the release tag is absent.
+---
 
-## WorkPass70 release sync follow-up — GitHub Actions Node 24 migration (2026-10-22)
-- Migrated first-party workflow actions to Node 24-compatible majors: checkout v7, setup-node v7 and upload-artifact v7.
-- Core validation now installs and tests against Node.js 24.22.0 explicitly, while the JavaScript-based Actions themselves also use Node 24.
-- This is a CI/toolchain compatibility change; it does not imply that the runner started or that test suites passed. The most recent core-validation failures ended before any job step and showed no runner assignment.
+## WorkPass311 — keep P23 restore regression executable JavaScript
 
-## WorkPass70 Main-to-release synchronization (2026-10-22)
-- Reconciled the complete current `main` file inventory against the full `workpass70-source` tree at baseline `e0d8e5b1a422c1e42db817cc37e5e1f97549c4d5`.
-- Imported every main-only file that was absent by path: the WorkPass70 hotfix publisher, source-archive inventory workflow, source-branch materializer, WorkPass64 audit summary/report/checksum manifest, WorkPass65 experimental plan, WorkPass64 publish script, and the validation-gated main-sync release publisher.
-- Preserved the current 50 KB project/runtime `README.md`; the shorter repository-operations README from `main` is retained verbatim as `NK1_REPOSITORY_README.md` instead of destructively replacing the project documentation.
-- Added a reproducible Russian sync report. The new release publisher is configured to create a **new prerelease** from the exact source commit only after the named core-validation workflow succeeds, and refuses stale heads or an existing tag.
-- This records file-level transfer; it does not claim that historical WorkPass64 checksums describe the current WorkPass70+ source tree or that unresolved production gates are closed.
-- Hardened the release publisher's duplicate-tag probe with the scoped GitHub Actions token so a missing login cannot be mistaken for an absent release; existing release assets remain protected.
+- Removed TypeScript-only `as never` assertions from the `.mjs` restore regression. Node executes this file as JavaScript; those casts would have caused a parse error before any assertions ran.
+- The runtime still receives the same deliberately invalid values, so the rejection and no-partial-mutation cases remain covered.
+
+---
+
+## WorkPass310 — sanitize P23 learning restore and correct learning-window direction
+
+- Replaced P23LearningEngine's shallow snapshot spread with schema-version checks and field-by-field reconstruction of persisted rows, checksum and metrics.
+- Invalid rows (bad identities/actions, non-finite or out-of-range signals, impossible timestamps/windows) are quarantined. ID caches are deduplicated and bounded; restored histories retain newest entries, matching the runtime's prepend-on-write ordering.
+- Unsupported versions and non-plain root values are rejected before live learner state is mutated.
+- Fixed a metric-direction bug: P23 prepends newest experiences, but recent and early error windows were sliced from opposite ends. Recent calibration now uses the head, the oldest retained window uses the tail, and replay calibration reads newest updates.
+- Added an adversarial regression for corrupted arrays/metrics/checksum, unsupported versions, no partial mutation, newest-first bounds, and an expected 0.875 learning-delta fixture.
+- Wired the regression into learning/promotion and broad core-regression workflows. CI remains unverified while jobs are queued before runner assignment.
+
+---
+
+## WorkPass309 — fence re-entrant admission decisions
+
+- Recheck the clock generation immediately after the admission callback returns. A policy that synchronously stops/restarts the scheduler can no longer return `run: true` and still launch a now-stale task.
+- Added a regression that calls `stop()` from within `decide()` and asserts zero executions.
+- Complements WorkPass304's asynchronous restart fencing and WorkPass305's null/undefined fail-closed handling.
+
+---
+
+## WorkPass308 — unify push and pull-request concurrency groups
+
+- Standardized workflow concurrency keys on the head branch name (`github.head_ref || github.ref_name`) instead of using the PR number for pull requests and the full ref for pushes.
+- The previous keys separated push-triggered and pull-request-triggered runs for the same branch, so both could remain queued despite `cancel-in-progress: true`. The shared key lets newer runs replace stale duplicate runs across those event types.
+- Applied the key consistently to the 10 active workflows with concurrency control.
+
+---
+
+## WorkPass307 — pin semantic TypeScript validation across CI jobs
+
+- Added `npm ci --prefix app --ignore-scripts --no-audit --no-fund` to WorkPass79, 94, 95, 106 and 110 before their runtime typecheck step.
+- This installs the TypeScript compiler locked by the app workspace, matching `scripts/typecheck-runtime.mjs`'s intended compiler-selection order instead of depending on an ambient runner-global `tsc` or a syntax-only fallback.
+- Expanded path filters on WorkPass94/95/106/110 to run when the app package manifest or lockfile changes, because those files supply the pinned compiler.
+- Increased WorkPass79's timeout from 8 to 15 minutes to accommodate deterministic dependency setup alongside the regression suite.
+- CI is configured for semantic checking, but actual results remain pending while the new runs are queued for runner assignment.
+
+---
+
+## WorkPass306 — align CI path filters with actual runtime configuration
+
+- Corrected the previous workflow-path patch to watch the file the typecheck script actually consumes: `runtime/neuro-kurisu/tsconfig.clean.json`, not nonexistent `tsconfig.json`.
+- Added `scripts/typecheck-runtime.mjs` to the regression triggers wherever the workflow invokes runtime typecheck, so edits to the compiler-selection/fallback logic cannot bypass those checks.
+- Added `scripts/audit-actions-runtime.mjs` to the continual-learning workflow triggers because that workflow runs this audit.
+- The correction prevents configuration edits from being silently skipped by the intended file filters. Workflows remain unvalidated until Actions can assign a runner.
+
+---
+
+## WorkPass305 — reject empty clock-policy decisions
+
+- Corrected a fail-open edge: when a configured `decide` callback returned `null` or `undefined`, the scheduler treated that as “no policy” and used the default `run: true` decision.
+- The default run decision is now used only when no callback is registered; an installed policy that returns no decision throws, is counted as a failure, and skips the task.
+- Added regression coverage for both `null` and `undefined` policy responses, asserting that neither can run a task.
+- GitHub Actions remains non-validating while jobs fail before a runner is assigned.
+
+---
+
+## WorkPass304 — fence stale runtime-clock generations and serialize wakeups (2026-10-22)
+
+- Every start/stop now advances per-clock generation tokens; a completed stale task cannot re-admit work or schedule a timer into a newer runtime generation.
+- Timer callbacks only remove their own timer handle, preventing an old callback from deleting a fresh timer entry.
+- A per-clock active-task guard keeps rapid restarts from overlapping autonomous tasks; retry wakeups remain bounded by the existing minimum cadence.
+- Added an async regression that restarts a clock while a task is active and asserts both eventual recovery and maximum same-clock concurrency of one.
+- CI still fails before runner assignment in the current GitHub Actions history; this code/test change is committed but not runtime-validated.
+
+---
+
+## WorkPass303 — repair invalid control-character regex (2026-10-22)
+
+- Fixed a malformed Unicode character-class escape in B272's persisted-ID validator. Node.js reports a syntax error for the doubled escapes, which prevents the goal-generation module from loading.
+- Added a regression restoring a snapshot containing a control-bearing goal identifier; the record must be quarantined.
+- The malformed regex was independently reproduced in Node.js 22. Full runtime suite execution remains blocked by GitHub Actions jobs failing before runner assignment.
+
+---
+
+## WorkPass302 — make goal outcome credit idempotent and ledger-bound
+
+- Added a persisted `lastOutcomeTick` watermark. A generated goal's outcome can now update weights and memory at most once per tick; duplicate/out-of-order credits fail before any learner state mutation.
+- Restore now remembers the latest observed outcome tick even when a conflicting duplicate-tick row is quarantined, preventing a damaged ledger from reopening that tick for replay.
+- Duplicate outcome rows for the same tick are quarantined as a group instead of allowing ambiguous evidence into the active ledger.
+- Goal-outcome memory now requires a positive bounded update count and a matching retained outcome row with the same goal ID and last-update tick; fabricated zero-update memory is not admitted.
+- Added regressions for duplicate online credit, restore watermark persistence, zero-update memory injection, and duplicate ledger ticks.
+- Existing snapshots without the new watermark remain compatible: the watermark is reconstructed from stored outcome history. Execution is still blocked at GitHub runner initialization, so these assertions are not claimed as passing.
+
+---
+
+## WorkPass301 — runtime clock fail-closed decisions and bounded scheduling
+
+- The runtime clock now validates registration inputs, clock identifiers, start targets and adaptive decisions before using them.
+- A thrown/invalid admission decision no longer defaults to `run: true`; the task is skipped and the clock enters a bounded retry path.
+- Post-task decision failures are caught and rescheduled rather than escaping the clock promise and silently stopping future wakeups.
+- Error-handler failures are counted but cannot prevent the clock from being rescheduled.
+- Repeated zero-delay decisions are bounded to a 50 ms cadence to prevent an accidental busy loop; valid initial delay 0 remains supported.
+- Added regression scenarios for fail-closed admission, throwing error handlers, bad start/configuration and second-decision failures.
+- Source/tests are committed; test execution remains unverified because the repository Actions jobs currently fail before runner initialization.
+
+---
+
+## WorkPass300 — JavaScript syntax audit for runtime tests
+
+- Added a conservative restore regression for snapshots where incomplete-cycle counters understate the total. Unaccounted history must be classified as incomplete, keeping complete + incomplete equal to total and broken lineages within the incomplete subset.
+- Extended WorkPass84 script-integrity audit to run `node --check` against every `.mjs` test directly referenced by package scripts. It reports the exact failing path and makes syntax errors a hard audit failure.
+- This prevents TypeScript-only syntax from silently entering JavaScript test files again. The script and regressions are committed; execution remains unverified while Actions jobs fail before runner initialization.
+
+---
+
+## WorkPass299 — keep runtime regressions valid JavaScript (2026-10-22)
+
+- Removed TypeScript-only `as` assertions accidentally introduced into `.mjs` regression files in WorkPass296/298. These files execute as JavaScript under Node and would otherwise fail at parse time before exercising the intended guards.
+- Retained the same invalid-input and unsupported-version assertions using plain JavaScript objects/null values.
+- This was a source-level static correction after reviewing the committed changes; tests remain unexecuted because the current Actions jobs fail before runner/step initialization.
+
+---
+
+## WorkPass298 — endogenous goal-state integrity and outcome binding (2026-10-22)
+
+- Rebuilt B272 snapshot restoration around fixed-dimension vectors/matrices, allow-listed action identities, bounded finite metrics/counters, and validated histories/memory.
+- Unsupported schema versions now fail before state mutation; malformed event rows and outcome memories are quarantined rather than admitted to learning.
+- Current goal identity is recomputed from its normalized vector so restored IDs cannot point at a different goal representation.
+- Step input now requires a safe monotonic tick, finite bounded latent vectors, finite [0,1] needs/traits/reward signals, and valid optional intrinsic-drive confidence.
+- Outcome learning now requires exact tick, generated goal ID, and action binding; non-finite/out-of-range evidence is rejected before changing weights/counters.
+- External evidence now contributes a small, bounded positive learning-credit term instead of being an unused input.
+- Online goal-outcome memory is capped at 256 records with oldest-evidence eviction; this closes unbounded growth under long autonomous sessions.
+- Added adversarial restore, invalid input, mismatched-outcome, no-partial-mutation and evidence-credit regressions. Execution remains unverified until the repository's runner dispatch starts executing steps.
+
+---
+
+## WorkPass297 — workflow dispatch, timeout and trigger coverage hardening (2026-10-22)
+
+- Added explicit least-privilege `contents: read` permissions to workflows that had relied on implicit defaults.
+- Added workflow-level concurrency and bounded job timeouts where absent; stale runs of the same workflow/PR are cancelled instead of competing for runners.
+- Aligned the WorkPass287-288 workflow to the maintained checkout/setup-node major and disabled implicit package-manager caching for its test-only job.
+- Activated the full WorkPass71 regression gate for pull requests into the current stacked base as well as release/source bases.
+- Corrected WorkPass79/94/95/99 branch filters so the active WorkPass206 branch/base flow is not silently bypassed.
+- Expanded trigger filters to include package lockfiles, runtime TypeScript config, Node shims, and the Node version input when relevant.
+- WorkPass99 PR triggers now cover the replay policy/engine/configuration files and every replay test invoked by its benchmark.
+- WorkPass94 triggers now cover key outcome-ledger/promotion-gate tests and sources that its job already executes.
+- These repository-owned CI fixes do not repair GitHub-hosted runner dispatch. Current jobs still report runner_id=0 and zero executed steps, so test validation remains blocked upstream of checkout.
+
+---
+
+## WorkPass296 — fail-closed cognitive snapshot and stage identity hardening (2026-10-22)
+
+- Unsupported persisted state versions now fail before mutating runtime state.
+- Snapshot counters partition every cycle; unaccounted history is conservatively classified as incomplete rather than disappearing from aggregate totals.
+- Invalid stage names/types in persisted missing-stage metadata now fail closed instead of being filtered into an empty list that could falsely certify completion.
+- Restored completion now requires at least one counted complete cycle.
+- Runtime entry checks reject null/non-object input and invalid stage-ID containers with deliberate errors.
+- Inherited/prototype-provided stage IDs no longer satisfy required cognitive-cycle evidence.
+- Cycle accounting stops before unsafe-integer overflow.
+- Added regression checks for each boundary above. CI is still not evidence of these tests passing because the currently sampled jobs failed before any runner step was recorded.
+
+---
+
+## WorkPass295 — reconcile restored cognitive-cycle history (2026-10-22)
+
+- Hardened `UnifiedCognitiveCycle.restore`: complete and incomplete counters are now disjoint subsets of total cycles; broken lineages cannot exceed incomplete cycles.
+- A restored `lastComplete` flag is accepted only when at least one cycle exists, the last tick is valid, and the missing-stage set is empty.
+- Empty missing-stage state on a zero-cycle snapshot is normalized back to the required stages, avoiding a false appearance of completed history.
+- Added regression cases for over-counted restored counters and empty-history false completion.
+- Tests and typecheck have **not** been executed in this environment; the repository's recent Actions runs are currently failing before recording steps. Do not interpret this commit as validated by CI.
+
+---
+
+## WorkPass294 — bound CI run storms and record Actions failure evidence (2026-10-22)
+
+- Audited metadata across all 52 GitHub Actions history pages (5,158 runs). The latest 2,400 runs on pages 1–24 all concluded as failures; older pages contain mixed successful/cancelled/failed results.
+- Sampled four current failed jobs; each has zero recorded steps and no runner name. Log download returned `BlobNotFound`, so the root cause is not established and no test failure is invented.
+- Added per-workflow concurrency groups to WorkPass105, WorkPass106/108, WorkPass110, and WorkPass287–288 to cancel superseded runs for the same PR/ref.
+- Aligned the WorkPass287–288 cognitive-contract workflow to Node.js 24.
+- The concurrency change reduces duplicate CI work; it does not by itself repair the unavailable job execution/logging. No CI pass or production readiness is claimed.
+- Detailed evidence and next actions: [WorkPass294 Actions history audit](docs/WORKPASS294_ACTIONS_HISTORY_AUDIT_2026-10-22.md).
+
+---
+
+## WorkPass293 — define branch-level completion gates (2026-10-22)
+
+- Added `docs/architecture/branch-goals.md` with concrete responsibilities and exit criteria for `main`, `rebuild`, the active stacked runtime/evaluator branch, and the Hermes skill-evolution lane.
+- Explicitly records that PR #55 is stacked on `workpass203-independent-candidate-evaluator`, not a direct merge to `main`; branch completion requires executable end-to-end evidence and reconciled dependencies.
+- Makes the single-owner rule explicit across core, memory, motivation/goals, embodiment, self-model, and validation. This is a roadmap artifact, not evidence that those gates are already met.
+
+---
+
+## WorkPass292 — unify intrinsic motivation with canonical endogenous goal genesis (2026-10-22)
+
+- **Structural integration:** `B272EndogenousGoalGenesis` now accepts optional `intrinsicDrive01` and `intrinsicDriveConfidence01` signals. A drive influences predicted goal value only in proportion to its bounded confidence, while the existing `intrinsicReward01` contract remains backward-compatible.
+- **Single owner:** removed the temporary standalone initiative-candidate method from `IntrinsicMotivationEngine`; it owns drive computation, while B272 remains the canonical endogenous goal generator. This avoids creating a competing goal lifecycle.
+- **Regression:** extended the B272 goal-genesis test to compare baseline, calibrated-drive, and zero-confidence cases. Added this test to the focused workflow for push and pull-request events.
+- **Research adaptation:** follows the useful separation in Letta sleep-time compute (memory/state work separate from active response) and Hermes self-evolution (candidates must be evaluated), but adapts it to NK1's existing typed goal owner rather than importing another agent framework. References: [Letta sleep-time compute](https://www.letta.com/blog/sleep-time-compute/), [Hermes Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution).
+- **Validation:** hosted Actions jobs have repeatedly failed before exposing steps, so the new regressions remain unverified. No dependency added; no learning uplift or consciousness claim.
+
+---
+
+## WorkPass291 — reject reused cognitive-stage event identities (2026-10-22)
+
+- **Causal accounting:** required stages must have distinct event IDs. Reusing the observation ID as the prediction ID (or otherwise reusing an ID across required stages) now marks the conflicting stages missing instead of counting a fabricated complete cycle.
+- **Regression:** added duplicate-identity coverage to `tests/workpass287-unified-cycle-contract.mjs` and corrected its sequential tick fixture after adding the monotonic tick guard.
+- **Boundary:** IDs are still caller-supplied; cryptographic provenance and proof that the corresponding runtime action actually happened are not yet enforced by this class.
+- **Validation:** GitHub Actions has repeatedly failed before exposing any job steps; these tests remain unexecuted/unverified in the hosted workflow. No passing status is claimed.
+
+---
+
+## WorkPass290 — enforce monotonic cognitive world ticks (2026-10-22)
+
+- **Causal ordering:** the unified cognitive-cycle recorder now rejects duplicate ticks as well as regressing ticks. Replaying the same world tick can no longer silently inflate the number of evaluated cycles or skew rolling averages.
+- **Regression:** `tests/workpass287-unified-cycle-contract.mjs` now checks duplicate and regressing tick rejection.
+- **Scope:** this protects cycle accounting; it does not prove that stage IDs correspond to real executed components. Independent event provenance and end-to-end runtime wiring remain future work.
+- **Validation:** hosted Actions jobs have repeatedly failed before exposing any steps; this regression remains unexecuted/unverified in CI. No test pass is claimed.
+
+---
+
+## WorkPass289 — connect intrinsic drives to evidence-gated initiative candidates (2026-10-22)
+
+- **Integration:** `IntrinsicMotivationEngine.proposeInitiative()` converts an active internal drive into a typed `intrinsic-goal-candidate` only when it is grounded by bounded observation/prediction identities, world-evidence quality, and causal-continuity signals.
+- **Safety boundary:** candidate creation is not tool execution, task completion, or proof of autonomy. Low-quality/missing evidence yields no candidate; external execution still belongs to the existing action/approval path.
+- **Repair:** corrected malformed template-literal syntax in goal reasons and tightened control-character checks on initiative evidence IDs.
+- **Regression:** extended `tests/workpass288-intrinsic-motivation-contract.mjs` with initiative gating, weak evidence, invalid metrics, and malformed identity cases. Existing workflow already watches these files.
+- **Validation:** GitHub Actions previously failed before exposing any steps; this pass has not yet received a confirmed test result. No dependency added and no measured autonomy uplift claimed.
+
+---
+
+## WorkPass288 — harden intrinsic-drive signals and persistence (2026-10-22)
+
+- **Unified motivation state:** external uncertainty, prediction error, novelty, goal pressure, social need, energy, success and world-evidence quality are normalized to finite bounded signals before drive computation.
+- **Derived aggregate:** restored `overall` is recomputed from the six drive values rather than trusting a persisted summary that could disagree with the dominant drive.
+- **Restore safety:** invalid drive metrics are normalized, unknown dominant labels are rejected, the dominant drive is reconciled with the strongest restored signal, and invalid timestamps fall back to a safe current timestamp.
+- **Regression:** added `tests/workpass288-intrinsic-motivation-contract.mjs` and registered `test:workpass288:intrinsic-motivation`.
+- **CI:** added `.github/workflows/workpass287-288-cognitive-contracts.yml` to run both focused contracts on relevant pushes and pull requests using Node 22.12, without adding runtime dependencies. The workflow run failed before any step appeared; GitHub reports an empty steps list for the job. The focused tests therefore remain unexecuted/unverified, and this is not evidence of a code-level test failure.
+- **Architecture:** keeps the existing `IntrinsicMotivationEngine` as the single drive owner; no parallel motivation subsystem or new dependency.
+- **Validation:** test/typecheck execution has not been observed in this session; no passing status or measured autonomy uplift is claimed.
+
+---
+
+## WorkPass287 — harden the unified cognitive-cycle evidence contract (2026-10-22)
+
+- **Runtime:** `UnifiedCognitiveCycle` now rejects invalid, non-finite, fractional, negative, or regressing world ticks; parent-integrity input must be finite and in the range 0–1.
+- **Evidence quality:** required stage IDs must be bounded non-empty strings without control characters. Blank or control-bearing IDs cannot make a cycle appear complete.
+- **Persistence:** restored counters, metrics, tick values, and missing-stage arrays are normalized instead of allowing NaN/Infinity or unknown stage names into the cycle snapshot.
+- **Isolation:** `snapshot()` returns a detached missing-stage list so caller mutation cannot alter internal cycle state.
+- **Regression:** added `tests/workpass287-unified-cycle-contract.mjs` and registered `test:workpass287:cognitive-cycle` in the runtime package.
+- **Scope:** this is a shared-cycle contract hardening pass, not a claim of consciousness or an end-to-end autonomous loop. No dependency added. Test/typecheck execution has not been observed in this session; no pass is claimed.
+
+---
+
+## WorkPass286 — recent engineering changes handover (2026-10-22)
+
+- Added `docs/reports/2026-10-22-recent-engineering-changes.md`, consolidating the 20–22 October change families, known validation gaps, and next implementation gates.
+- Explicitly distinguishes source changes from verified behavior and feature-branch work from merged `main` history.
+- No runtime behavior or dependencies changed in this documentation-only pass; WorkPass282–285 test/typecheck execution remains unverified.
+
+---
+
+## WorkPass285 — independent evaluator capability scope (2026-10-22)
+
+- The independent candidate evaluator now rejects verifier claims for capabilities outside a task's declared required-capability set.
+- Added regression coverage for out-of-scope capability claims. Tests/typecheck not executed; no new dependency or measured learning-score uplift.
+
+---
+
+## WorkPass284 — strict external causal-memory intake (2026-10-22)
+
+- External causal-memory ingestion now rejects invalid ticks, malformed metrics and unsafe optional source/evidence identities rather than coercing them into plausible records.
+- Added regressions for invalid external payloads. Tests/typecheck not executed; no new dependency or measured learning-score uplift.
+
+---
+
+## WorkPass283 — causal outcome tick binding (2026-10-22)
+
+- Causal experience records now require a decision trace and its pre-action state to refer to the same world tick.
+- Added a regression for mismatched trace/state ticks. Test execution remains unverified; no dependency or learning-score uplift claimed.
+
+---
+
+## WorkPass282 — P23 fingerprint canonicalization consistency (2026-10-22)
+
+- Unified the P23 engine's canonicalization semantics with the independent candidate evaluator for candidate payload and evaluation fingerprints.
+- Non-finite numbers, cyclic structures, non-plain objects and non-JSON-serializable values are rejected rather than fingerprinted ambiguously.
+- No dependency added. Test/typecheck execution remains unverified; no learning-score uplift claimed.
+
+---
+
+## WorkPass281 — independent evaluator input and run identity hardening (2026-10-22)
+
+- P23 evaluation fingerprinting rejects non-finite numbers, circular inputs and non-plain objects before execution.
+- Sandbox run IDs must be bounded and free of control characters before independent verification or trusted evidence binding.
+- Added regression coverage for malformed task inputs and control-bearing run IDs.
+- No dependency added. Test execution remains unverified; no learning-score uplift claimed.
+
+---
+
+## WorkPass280 — strict canonicalization of evaluation evidence (2026-10-22)
+
+- Independent evaluation evidence fingerprints now reject NaN/Infinity, circular references and non-plain objects instead of canonicalizing invalid values ambiguously.
+- Added regression coverage for NaN quality metrics in the signed-evidence binding path.
+- No dependency added. Test execution remains unverified; no learning-score uplift claimed.
+
+---
+
+## WorkPass279 — causal memory trust-boundary hardening (2026-10-22)
+
+- Causal snapshot restoration now sanitizes aggregate counters, normalized rolling metrics and timestamps, and recomputes behavioral aggregates from eligible runtime-grounded records.
+- Runtime causal outcome recording now fails closed on invalid trace ticks, malformed reward/success/surprise/novelty values and unsafe task identities.
+- Added regression coverage for poisoned persisted aggregates, NaN outcome reward and control-bearing task IDs.
+- No new dependencies. Tests have been authored but not executed; no learning-score uplift is claimed.
+
+---
+
+## WorkPass273 — remove caller-controlled trust from external causal intake (2026-10-22)
+
+- **Code:** `recordExternalLearningEvent()` now canonicalizes all imported events to `provenance: 'external'` and `stateGrounded: false`; caller-supplied provenance and grounding booleans are not authentication.
+- **Learning boundary:** imported events cannot become consolidated state-transition memories or policy-replay candidates solely because an upstream caller marks them grounded. The existing runtime `recordOutcome()` path remains the only path in this stream that mints grounded runtime-outcome evidence from a decision trace and observed post-action state.
+- **Regression:** tests now assert provenance canonicalization, forced ungrounded status, replay exclusion, and rejection from consolidation even when an external caller supplies `stateGrounded: true`.
+- **Compatibility:** the external API remains available for imported signals and scoring; those signals are retained as unverified evidence rather than discarded. No new dependency or parallel ledger.
+- **Validation:** source and regression changes are committed on the existing PR branch. Exact-head test/typecheck remains unverified until GitHub Actions exposes actionable job steps/logs. Learning scores remain unchanged; no measured task-success uplift is claimed.
+
+---
+
+## WorkPass272 — enforce storage-root separation by path and filesystem identity (2026-10-22)
+
+- **Code:** extracted one canonical storage-root separation predicate and use it for both per-authority run/survive roots and cross-authority roots.
+- **Security invariant:** roots are considered disjoint only if their resolved paths are not equal/nested and their filesystem identities are distinct. This covers alternate paths that refer to the same device/inode, such as mount aliases. Path comparisons are case-insensitive on Windows.
+- **Regression:** added pure contract assertions for same filesystem identity under different path strings, distinct independent roots, and nested roots. The existing host-owned subprocess regression is already invoked by WorkPass110 CI.
+- **Boundary:** identity checks are defense-in-depth; they do not create an OS/container sandbox or prove the verifier/scanner are independently administered.
+- **Validation:** exact-head CI/test/typecheck remains unverified because available Actions job metadata exposes no steps/logs. No dependency or learning-score increase.
+
+---
+
+## WorkPass271 — quarantine normalized trace-ID collisions during snapshot restore (2026-10-22)
+
+- **Code:** snapshot restoration now canonicalizes all bounded trace IDs before reconciling records. Exact duplicate rows that normalize to the same record are collapsed; conflicting rows that normalize to the same trace ID are all excluded from active causal history.
+- **Dedup safety:** both valid and quarantined normalized IDs remain in the bounded duplicate guard. A retry cannot recreate an ambiguous event after restore.
+- **Regression:** added legacy-snapshot cases for exact duplicate Unicode variants, conflicting payloads that collide under NFKC, quarantined-row exclusion and retry rejection without outcome-count mutation.
+- **Integration:** remains within the existing CausalExperienceStream owner; no second event store and no new dependency.
+- **Validation:** source/tests committed, but exact-head test/typecheck remains unverified because available GitHub Actions jobs expose no steps/logs. Learning scores remain unchanged.
+
+---
+
+## WorkPass270 — preserve raw normalized task ID until validation (2026-10-22)
+
+- **Code:** removed the pre-validation trim from the external task-ingestion path. It now checks whether the NFKC-normalized value is blank without replacing it, then passes the untrimmed normalized input to the shared bounded ID validator.
+- **Failure prevented:** trailing/leading task-ID control characters can no longer be erased at the call site before the shared C0/DEL/C1 guard sees them.
+- **Regression:** existing task-ID boundary-control case now exercises the actual runtime ingestion path rather than only the helper's trace-ID path.
+- **Validation:** exact-head runtime test/typecheck remains unverified because recent Actions jobs expose no steps or logs. No new dependency; no learning score uplift.
+
+---
+
+## WorkPass269 — reject boundary controls before trimming causal identifiers (2026-10-22)
+
+- **Code:** bounded ID normalization now checks C0/DEL/C1 controls immediately after NFKC normalization and only then trims ordinary surrounding whitespace. Leading/trailing newline or tab characters can no longer disappear before validation.
+- **Regression:** added leading-trace, trailing-trace and trailing-task control-character cases; all must fail before outcome state changes.
+- **Integration:** the change stays in canonical CausalExperienceStream; the existing WorkPass110 causal-stream regression step covers the test path.
+- **Validation:** exact-head runtime test/typecheck remains unverified because current Actions attempts expose no step list or logs. No new dependency and no learning-score uplift.
+
+---
+
+## WorkPass268 — broaden causal identity validation and preserve idempotency after eviction (2026-10-22)
+
+- **Code:** causal IDs now reject C0, DEL and C1 control characters as well as blank, non-string and overlong values. The existing NFKC normalization and 120/180-character limits remain.
+- **Bounded-memory behavior:** added a regression proving that when a causal record ages out of the 64-row record window, its retained deduplication identity still prevents a late retry from creating another outcome.
+- **Regression:** added C1 trace-ID and C0 task-ID cases; rejected inputs must leave outcome counts unchanged. Added a bounded-window retry test.
+- **Integration:** no duplicate storage subsystem and no new package dependency; the existing WorkPass110 workflow already watches the causal source/test paths.
+- **Validation:** code/test changes are committed, but the GitHub Actions attempts still expose no runnable steps/logs. Do not report the regression or typecheck as passed until an actionable exact-head run is available.
+- **Progress accounting:** learning scores remain unchanged; this is data-integrity/recovery hardening, not measured learning uplift.
+
+---
+
+## WorkPass267 — reject conflicting payloads under a reused causal event ID (2026-10-22)
+
+- **Code:** external causal-event idempotency now accepts a repeated normalized trace ID only when the normalized event payload agrees with the existing record. Reusing the same ID with a changed task/action/outcome/identity-relevant field raises causal-external-trace-id-conflict rather than silently returning the old outcome.
+- **Durable behavior:** the same conflict check applies when the deduplication record survives snapshot/restore. If the record itself has been evicted but the bounded trace-ID guard still remembers the ID, the stream remains fail-closed and does not create another outcome.
+- **Regression:** added same-process and restored-state tests for changed success/reward under the same trace ID; both require an explicit conflict and unchanged outcome count.
+- **Integration:** reuses CausalExperienceStream's existing owner and WorkPass110 regression path; no parallel ledger or package dependency added.
+- **Validation:** the regression source is committed, but exact-head execution/typecheck remains unverified until Actions provides actionable steps/logs. Learning score estimates remain unchanged.
+- **Next trust audit:** trace all external-ingestion call sites and replace caller-asserted grounding flags with canonical state-transition or verifier provenance after the contract is mapped.
+
+---
+
+## WorkPass266 — reject lossy causal identity normalization and wire active regressions (2026-10-22)
+
+- **Code:** CausalExperienceStream no longer truncates task/trace identity keys. NFKC-normalized empty, overlong, non-string, or control-bearing IDs are rejected; restore drops records whose trace IDs violate the same bound.
+- **Failure prevented:** distinct overlong identities could collapse to one key and be mistaken for duplicate delivery, silently losing an event or merging evidence.
+- **Regression:** added cases for two distinct overlong task IDs, overlong/control-bearing trace IDs, no mutation after rejection, invalid persisted identity cleanup, and long runtime trace IDs.
+- **CI wiring:** the WorkPass110 workflow now triggers for causal-stream and Legacy/Live2D files and includes the causal-stream, Legacy-avatar and Live2D integrity regressions; the current source branch was added to push triggers.
+- **Validation:** GitHub returned the WorkPass110 job as failed with steps=null and logs_url=null; a retry was requested. This is not a code/test PASS and does not identify a source failure. Exact-head runtime/app typechecks remain unverified.
+- **Dependencies:** no new package is required; the code change uses existing Node APIs and the standard library.
+
+
+## WorkPass264 — validate external causal event identity (2026-10-22)
+
+- **Code:** external causal ingestion now normalizes and requires a non-empty task ID and rejects action labels outside the canonical organism action set before mutating state.
+- **Source integration:** selectively adapted strict intake-validation principles from the historical continual replay buffer; no parallel replay subsystem was added.
+- **Regression authored:** invalid task/action inputs must throw and leave the causal outcome count unchanged.
+- **Validation:** targeted regression and runtime typecheck remain unconfirmed.
+
+## WorkPass263 — reduce inherited environment leakage (2026-10-22)
+
+- **Code:** reject inherited environment keys matching common credentials, secrets, tokens, passwords, auth/session material, credential-profile paths, runtime injection variables, and dynamic-loader overrides; duplicate inherited keys are also rejected.
+- **Regression authored:** secret-bearing environment keys and NODE_OPTIONS must be rejected while the existing PATH-only test launcher remains usable.
+- **Validation:** host-service regression and runtime typecheck are not confirmed passing. Current HEAD has no commit status records; three available PR-triggered workflow records failed before visible job steps and their logs are unavailable, so these results do not establish a code failure.
+
+## WorkPass262 — avoid per-frame canvas bitmap resets (2026-10-22)
+
+- **Code:** LegacySpriteDeck now updates canvas width/height only when layout dimensions change, avoiding repeated bitmap clears and drawing-context resets during every animation frame.
+- **Regression authored:** added assertions to the existing Legacy sprite runtime test.
+- **Validation:** app script regression and typecheck have not been confirmed executed.
+
+## WorkPass261 — idempotent external learning intake (2026-10-22)
+
+- **Code:** normalize external evidence trace IDs, return the original record for repeated source identities, persist those identities through snapshots, and avoid duplicate outcome counts on bridge retries.
+- **Regression:** added same-process and restore-path checks, including NFKC-equivalent identifiers.
+- **Developer workflow:** added `npm run test:big-pass-90:causal-stream` to execute the existing causal stream regression.
+- **Validation:** test/typecheck execution has not yet been confirmed.
+
+## WorkPass260 — diversify causal replay and consolidation (2026-10-22)
+
+- **Code:** ported diversity-aware maximal-marginal-relevance-style selection from the older learning-integrity branch into the current CausalExperienceStream for both prioritized replay and grounded consolidation.
+- **Regression authored:** a near-equal second task must not be crowded out by repeated examples from one task in a small replay batch.
+- **Validation:** causal-stream regression and runtime typecheck have not been confirmed passing.
+
+## WorkPass259 — selectively restore causal learning safeguards (2026-10-22)
+
+- **Source integration:** compared the historical workpass71-learning-integrity CausalExperienceStream against the current owner and ported selected safeguards instead of merging the old branch.
+- **Code:** normalized trace IDs (NFKC, trim, bounded length); persisted de-duplication IDs across bounded record eviction and restore; consolidation now accepts only state-grounded records.
+- **Regression authored:** restored outcomes cannot be recorded twice; high reward/surprise alone cannot consolidate an ungrounded external event.
+- **Validation:** causal-stream regression and runtime typecheck have not been confirmed passing.
+
+## WorkPass258 — pin host authority working and storage paths (2026-10-22)
+
+- **Code:** bind prepared authority working directory, run root, and survive root to filesystem identity; recheck identity, directory type, and private POSIX permissions at dispatch.
+- **Regression authored:** replacing the executor scratch root after setup must fail closed before request creation.
+- **Validation:** runtime regression and typecheck have not been executed on an accessible runner; no green status is claimed.
+
+## WorkPass257 — cover Legacy avatar runtime races (2026-10-22)
+
+- Added app script regression coverage for the stable canvas loop and stale image callback cancellation. Test authored, not yet executed.
+
+## WorkPass256 — prevent stale Legacy sprite loads (2026-10-22)
+
+- **Code:** obsolete sprite image callbacks are detached/cancelled on emotion or outfit change so late loads cannot overwrite the latest requested sprite.
+
+## WorkPass255 — stabilize Legacy avatar animation loop (2026-10-22)
+
+- **Code:** the canvas loop now reads current speaking/outfit values through refs and is not restarted for each emotion/speaking update, preserving its animation clock.
+
+## WorkPass254 — resolve exclusive Live2D branch changes (2026-10-22)
+
+- **DONE (branch audit):** compared the two commits exclusive to `workpass94-avatar-voice-live2d-audit`; both add audit documents only, with no exclusive code diff to cherry-pick.
+- **DONE (evidence reused):** reproduced two findings on the active source branch and addressed them through WorkPass252 (expression transition cache) and WorkPass253 (safe Legacy localStorage).
+- **OPEN:** browser Live2D/voice and Android/Termux E2E remains unverified; the source branch is retained, not deleted or merged.
+
+## WorkPass253 — harden Legacy avatar storage fallback (2026-10-22)
+
+- **DONE (code):** LegacySpriteDeck now catches unavailable/throwing localStorage on read and write, validates persisted outfit IDs against the canonical outfit catalog, and falls back to `lab_coat` without preventing the sprite UI from mounting.
+- **Integration:** the existing Legacy fallback is retained; no new avatar or persistence subsystem was introduced.
+- **Validation:** app typecheck and browser regression have not been executed on a functioning runner; no green status is claimed.
+
+## WorkPass252 — preserve Live2D expression transitions during lip-sync (2026-10-22)
+
+- **DONE (code):** the Live2D viewer now caches the last successfully applied expression and avoids reissuing the same model expression on every embodiment update. Mouth/gaze updates no longer repeatedly restart an unchanged expression animation.
+- **DONE (regression authored):** the existing Live2D asset-integrity test now guards the expression-cache and transition check.
+- **Validation:** source regression and browser/Live2D end-to-end behavior have not been executed on a functioning runner/device; no green status is claimed.
+
+## WorkPass251 — revalidate host authority executable identity at dispatch (2026-10-22)
+
+- **DONE (code):** prepared executor/verifier/scanner commands now re-resolve and re-stat the executable before request creation and again after the request snapshot is written, rejecting a replaced executable identity or newly unsafe POSIX write permissions.
+- **DONE (regression authored):** extended the existing host-owned evaluation service test to replace the scanner executable after service construction and assert fail-closed dispatch.
+- **Boundary:** this narrows executable replacement exposure but does not eliminate the final filesystem TOCTOU window and does not replace signed/immutable deployment or an OS/container sandbox.
+- **Validation:** test and typecheck have not been executed on a functioning runner; no green status is claimed.
+
+## WorkPass250 — consolidate independent-evidence binding (2026-10-22)
+
+- **DONE (code):** extracted a single exact-context binding predicate and reused it for both independent verifier and safety-scanner responses.
+- **Structural consolidation:** payload/task/environment/plan/manifest/experiment-plan/scheduled-run/runtime-run/task/seed binding now has one implementation instead of two parallel checks, reducing the chance of future security drift.
+- **Validation:** targeted test and typecheck have not been executed in this pass; no green status is claimed.
+
+## WorkPass249 — stop cancelled authority invocations before launch (2026-10-22)
+
+- **DONE (code):** host-owned authority invocation now fails before request-directory allocation if its AbortSignal is already aborted, and rechecks after writing the private request snapshot before invoking process supervision.
+- **Integration:** reuses the existing cancellation and LearningProcessSupervisor path; no parallel runner or authority subsystem was added.
+- **Validation:** regression and typecheck remain unverified until a functioning runner executes them.
+
+## WorkPass247 — protect host authority executable integrity (2026-10-22)
+
+- **DONE (code):** host-owned executor, verifier, and safety-scanner commands are rejected at preparation if the resolved executable is not a regular file or is group/world-writable on POSIX.
+- **DONE (regression authored):** extended the existing host-service regression with a POSIX group-writable executable rejection case; reused the existing test entry point.
+- **PARTIAL:** this is executable-integrity hardening only. It does not establish signatures, immutable deployment, OS/container sandboxing, or independent service ownership.
+- **Validation:** regression is committed but not executed in this pass; exact-head Actions and typecheck remain unverified.
+
+## WorkPass246 — immutable host command authorities (2026-10-22)
+
+- Closed a host-configuration TOCTOU gap: `prepareCommand` now snapshots executable arguments, environment overrides, and inherited-environment keys before its first asynchronous filesystem operation. Later caller mutation cannot silently alter a prepared executor/verifier/scanner command.
+- Strengthened authority separation beyond path-level `realpath`: on POSIX, startup now compares device/inode identity, rejecting distinct executable paths that are hard links to the same underlying file. Windows retains normalized resolved-path identity.
+- Extended the existing WorkPass243 host-service regression with post-preparation argument mutation and POSIX hard-link alias cases; reused the existing package/CI entry point rather than adding another harness.
+- **Validation:** regression code is authored and committed; it was not executed in this session. Exact-head Actions/typecheck status remains unverified. This does not replace deployment of actual independently controlled services or an OS/container sandbox.
+
+## WorkPass243 — host-owned evaluation subprocess adapter (2026-10-22)
+
+- Added `HostOwnedIndependentEvaluationServices.ts`, a concrete adapter from the canonical independent evaluator to three distinct host-owned executable services: candidate executor, independent verifier, and safety scanner.
+- Reused `LearningProcessSupervisor` for no-shell child-process launch, bounded runtime/output, process-group termination on POSIX, execution receipts, and AbortSignal cancellation. Each invocation receives a private mode-0600 JSON request file and must return a strict JSON object on stdout; nonzero exit, timeout, cancellation, output overflow, malformed JSON, or malformed service results fail closed.
+- Added startup validation for absolute executable/working/storage paths, executable access, distinct resolved executables, private POSIX storage-root permissions, and disjoint run/survive roots across all three authorities.
+- The verifier and scanner subprocess protocols must echo the exact payload/task/environment/plan fingerprints and run/task/seed identity they attest; mismatched or stale attestations are rejected before their results enter the evaluator.
+- Extended the evaluator safety-scanner contract to receive the same immutable task/environment/plan context as execution and verification. Added a runtime-ready async config-factory seam that prepares trusted executables once and can be passed to `RuntimeConfig.compoundRepairRevision.independentEvaluationConfigForRepair`.
+- Added `workpass243-host-owned-independent-evaluation-services.mjs` to exercise the three process protocols and runtime-ready factory, and registered it in `package.json`, the canonical `audit:p23:cross-source-replay` command, and the continual-learning workflow's path filters/test steps.
+- **Boundary:** this adapter provides real supervised process separation, not an OS sandbox by itself. The configured executor must be a trusted sandbox launcher enforcing filesystem/network/resource restrictions. The host must explicitly use `OrganismRuntime.createWithHostOwnedIndependentEvaluation` or provide the returned factory to runtime config; the runtime does not silently invent production commands.
+- **Validation:** regression is authored and CI-wired, but has not been executed in this session. Exact-head Actions/typecheck status is not yet confirmed; no pass is claimed.
+
+## WorkPass242 — freeze candidate payload across asynchronous trials (2026-10-22)
+
+- Fixed a time-of-check/time-of-use gap in the canonical independent evaluator: it now structured-clones the candidate payload once at evaluation entry, computes the payload fingerprint from that immutable snapshot, and passes clones of that same snapshot to every sandbox execution and safety scan.
+- Previously, a caller retaining the original object could mutate it after the first trial yielded; later trials could then execute changed content while retaining the initial payload fingerprint. That path is now closed.
+- Added a deterministic regression to the existing independent-evaluator test: it blocks the first trial, mutates the caller-owned payload while the evaluation is suspended, resumes the trial, and asserts both trials received the original payload and the result retains the original fingerprint.
+- Reused the canonical evaluator and existing CI test wiring; no parallel evaluator or test harness was added.
+- **Validation status:** code and regression are committed to the draft PR branch. Tests/typecheck and exact-head GitHub Actions have not been run/confirmed in this pass; no green result is claimed. Production host-owned sandbox/verifier/scanner provisioning remains open.
+
+## WorkPass237 — promotion requires matched independent baseline/candidate evidence (2026-10-21)
+
+- Replaced the promotion entry point's caller-supplied baseline report arrays with a complete independently evaluated baseline envelope. Promotion now delegates to the canonical `compareMatchedIndependentEvaluations` boundary before scoring or activation.
+- This reuses the existing SkillLearnBench paired gate while requiring integrity-checked baseline and candidate envelopes, identical task plan/environment/experiment manifest, distinct method labels, one-to-one task/trial/seed/split matching, verifier-bound runs, and safety-clean evidence. A caller can no longer pass an unrelated baseline report collection to make a candidate appear eligible.
+- Added an explicit runtime guard for absent/malformed envelopes before dereferencing nested fields. The existing store still independently re-verifies persisted signed shadow receipts and the authenticated approval at activation.
+- Source patterns adapted: matched-pair experimental design, provenance-bound evidence, and fail-closed tool authority from the existing P23 evaluator and Hermes bridge; no parallel evaluator, scoring engine, or promotion store was introduced.
+- **Regression + CI wiring:** extended `p23-hermes-production-promotion-gate.mjs` to prove that caller-supplied baseline report arrays and malformed envelopes fail before approval is reached; added the test and P23LearningEngine to the learning workflow path filters and an explicit execution step, and included both Hermes regressions in `audit:p23:cross-source-replay`.
+- **Validation caveat:** source change and regression are committed; test execution, typecheck, and exact-head Actions are not yet confirmed passing. Keep the PR draft and do not claim promotion works in production until the trusted execution path and approval service are exercised end to end.
+## WorkPass235 — join independent P23 evaluations to signed Hermes shadow evidence (2026-10-21)
+
+- Added `bindIndependentEvaluationToVerifiedShadowEvidence` and exposed it through the existing `P23LearningEngine` instead of creating a second evidence lifecycle. The bridge recomputes the canonical evaluation digest and checks the payload fingerprint before consuming any receipt.
+- Joins experiment trial IDs to actual execution run IDs through P23's independently verified `runBindings`; validates validation/holdout membership, planned-run identity presence, seed, task, manifest fingerprint, binary outcome, unique run/receipt coverage, and zero safety violations.
+- Requires every evaluation report and binding to have a one-to-one signed receipt. Failed but independently verified trials remain bindable as negative evidence; mismatched outcomes, seeds, task IDs, manifests, duplicate receipts, untrusted bindings, or safety violations fail closed.
+- Signed receipts authenticate candidate identity and binary outcome only. Skill/trajectory quality metrics remain unauthenticated by the signature, and this bridge grants no staging, approval, or promotion authority. Existing P23 gates and the candidate store remain authoritative.
+- Extended `tests/p23-hermes-verified-evidence-binding.mjs` with cross-system joins and seed/safety mismatch regressions; the existing `test:p23:hermes-verified-evidence-binding` command already covers the file.
+- **Validation caveat:** code and regression were committed to the draft PR branch, but this session did not execute the test or TypeScript typecheck. No green CI claim is made; production signer/context authority remains external.
+
+## WorkPass149 — prepare promotion requests only from verified shadow provenance (2026-10-21)
+
+- Added `scripts/create-skill-promotion-approval-request.mjs` for offline/deployment workflows that need a signable Ed25519 request outside the live HTTP API. It binds the request to the exact candidate/version/payload, current active-version CAS, configured shadow threshold and complete evidence fingerprint.
+- Unlike a raw JSON checklist, the CLI requires the configured trusted shadow-verifier public keys and durable trusted-run registry, verifies every stored shadow observation's Ed25519 signature and independent run/task/seed/manifest/runtime context, and refuses to create a request when any observation is untrusted.
+- It rejects non-shadow candidates, failing/insufficient runs, stale base-version CAS, missing/malformed/non-Ed25519 keys, malformed registry/store snapshots, symlink/oversized files, and invalid request identifiers. Output is explicitly an **unsigned request only**; it never embeds an approval private key or activates a skill.
+- Added regression coverage for signed context-bound evidence, tampered-signature rejection, approval payload binding, insufficient shadow runs, ineligible candidate state and stale active-version CAS; registered the script/test in the P23 workflow and aggregate verified-skill lifecycle suite.
+- **Not claimed:** successful exact-head CI/typecheck or production approval service/runner evidence. Actual promotion remains gated by the separate signed-approval verifier and candidate store.
+
+## WorkPass148 — authenticate promotion and revalidate restored active skills (2026-10-21)
+
+- Added a detached Ed25519 promotion-approval contract separate from shadow-verifier keys: `NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON`. Signed approvals bind approver ID/time, a unique approval ID, exact candidate ID/version/payload, proposal/outcome fingerprint, expected active version, required shadow-run count and a digest of the full shadow evidence set.
+- The authenticated verifier rejects unknown approvers, malformed/non-Ed25519 keys, tampered payloads, stale new-activation approvals, mismatched candidate/CAS/evidence context and signatures re-used against altered observations. The private approval key stays outside NK1.
+- Added Core-owned `approveVerifiedSkillCandidate` and authorized API operations to inspect the verified candidate lifecycle, generate a candidate-bound promotion request, and apply its signed artifact. An unconfigured approver cannot even request a promotion payload; every API remains under the server's existing authorization gate.
+- Persisted active skills are no longer trusted merely because their JSON snapshot is structurally valid: the candidate/payload/version relationship, signed approval and every shadow observation are revalidated on restore and store reads. The 15-minute freshness applies to new activation; it does not silently expire a previously active skill.
+- Extended candidate-store regression coverage with valid Ed25519 activation, evidence-digest tampering rejection, one-use lifecycle protection, restore after approval freshness expiry, and startup denial when approval authority keys are absent. Bootstrap regressions cover approval-key parsing and Ed25519 enforcement; CI path triggers include the new module.
+- **Not claimed:** successful exact-head CI/typecheck, production key rotation/approval service, authenticated rollback authority, production runner success or learning uplift. GitHub Actions jobs continue to fail before exposing steps/logs; test execution is unverified.
+
+## WorkPass147 — add verified-evidence candidate staging CLI (2026-10-21)
+
+- Added `scripts/stage-verified-skill-candidate.mjs`: reads a bounded JSON bundle containing a task manifest, signed outcome artifacts, baseline/candidate method IDs and the candidate P23 policy skill.
+- The tool validates configured trusted Ed25519 public keys, rejects symlink/oversized bundles and unknown bundle fields, re-verifies **every** supplied signed outcome against the exact manifest, and fails closed if any row is rejected or the paired holdout proposal does not pass strict minimum evidence thresholds.
+- It mints the authentic proposal in-process and stages through `OrganismCore.stageVerifiedSkillCandidate` into the same separate, atomically persisted candidate store used by the runtime. It does not initialize/flush the live organism state file, activate the candidate or create approval.
+- Added a regression that builds signed holdout fixture artifacts, stages the candidate, reconstructs a fresh Core to verify durable persistence, then tampers with a signed artifact and confirms it cannot stage a second candidate.
+- **Not claimed:** successful CI/typecheck, production verifier-key supply-chain quality, real benchmark uplift, or automatic promotion. Fixture signing keys are generated only by tests.
+
+## WorkPass146 — exercise signed shadow evidence through the canonical Core path (2026-10-21)
+
+- Exposed `OrganismCore.stageVerifiedSkillCandidate` and a read-only candidate lifecycle snapshot, delegating to the existing P23 engine/store. Staging still requires the exact authentic proposal object issued by `proposeVerifiedSkillPromotion`; copying a proposal JSON cannot bypass the store's module-private identity check.
+- Added an end-to-end regression that ingests signed holdout outcomes into `VerifiedOutcomeLedger`, creates a genuinely accepted proposal, stages it via Core, runs a child through the real `OrganismRuntime` clock and durable registry, and writes a signed shadow observation in the per-run directory.
+- The test asserts the observation is accepted only after Ed25519 signature verification plus candidate version, run ID, task, seed, manifest and runtime context binding; exactly one observation is appended and the candidate remains inactive (no automatic promotion).
+- Registered the integration test in `package.json` and the continual-learning workflow.
+- **Not claimed:** successful runner-backed CI/typecheck, production deployment of trusted keys/runner config, authenticated promotion authority, or any measured learning uplift. The signer in this regression is fixture-only; production private keys must remain outside NK1.
+
+## WorkPass145 — wire production shadow runner configuration and signed observation ingestion (2026-10-21)
+
+- Production `server.mjs` now reads `NEURO_SKILL_SHADOW_SCHEDULER_JSON` through a fail-closed configuration parser and passes the validated config to `OrganismRuntime`. No setting keeps the clock disabled; enabling requires an explicit candidate ID, task/version, runtime version, manifest/plan fingerprints and child command.
+- The runtime scheduler now optionally reads a signed observation from a safe basename inside the fresh per-run directory, caps it at 1 MiB, rejects symlink/non-file paths, parses a JSON object and requires both observation and signed payload run IDs to match the supervisor-created run.
+- Only then does the adapter call `OrganismCore.recordVerifiedSkillShadow`; the canonical candidate store still performs exact candidate-version, signature and independently persisted task/seed/manifest/runtime-context checks. Missing or rejected evidence is exposed through diagnostics and journal metadata.
+- Added a config-parser regression for explicit opt-in, invalid JSON, missing candidate identity, malformed fingerprints, unsafe filenames, invalid inherited environment names and unknown fields. Added it to the P23 workflow alongside the existing real-runtime child/registry integration test.
+- **Not claimed:** successful exact-head CI/typecheck, valid signed-observation end-to-end acceptance, promotion approval authority, production verifier-key provisioning, or learning uplift. Shadow scheduling remains disabled unless operators explicitly configure it.
+
+## WorkPass144 — wire trusted shadow execution to the runtime clock (2026-10-21)
+
+- Added `P23TrustedShadowLearningScheduler` and connected it to `OrganismRuntime` as a dedicated one-shot runtime clock. The execution path now goes through the Core-owned API that persists trusted run context before spawning the candidate/shadow child process.
+- Scheduling is explicit opt-in through `RuntimeConfig.trustedShadowLearning`; no child process is launched by default. The clock gates launches on runtime lifecycle, awake state, cognitive budget, battery, RAM pressure and thermal strain.
+- The runtime exposes last-run diagnostics, writes bounded execution-status journal events, and drains in-flight shadow work during shutdown. Each scheduled attempt gets a unique run ID and a seed that changes even if only the maintenance clock advances.
+- Added a real `OrganismRuntime` integration regression that launches a child process and verifies the durable registry binds the same run/task/seed/manifest/runtime identity. Registered the regression in `package.json` and the P23 GitHub Actions workflow.
+- **Boundary:** the process receipt remains execution-only. This change does not parse/accept signed skill observations, provide verifier keys or authenticated promotion approval, prove learning uplift, or claim CI/typecheck success.
+ 
+## WorkPass143 — validate trusted verifier key algorithm at bootstrap (2026-10-21)
+
+- `VerifiedSkillLifecycleBootstrap` now parses each configured PEM with Node's crypto key parser and accepts only Ed25519 public keys, matching the evidence verifier's `verify(null, ...)` signature mode.
+- Malformed PEM and incompatible key algorithms now fail at startup instead of leaving a misleading non-empty trusted-verifier configuration that can never validate evidence.
+- Extended bootstrap regression coverage for valid Ed25519 acceptance and RSA rejection, while preserving default-deny behavior for an empty key set.
+- **Not claimed:** production key provisioning, authenticated promotion approval, successful CI/typecheck, scheduler integration, or learning uplift.
+
+## WorkPass142 — close direct supervisor bypass for trusted shadow runs (2026-10-21)
+
+- Hardened `runLearningProcess`: `candidate` + `shadow` execution now fails closed unless a host-owned trusted registrar is supplied, even when callers bypass the Core coordinator.
+- Reject trusted-registration capabilities on baseline/control or other non-shadow lanes to prevent provenance contamination.
+- Extended the real child-process regression to assert an unregistered candidate/shadow process cannot start. The existing continual-learning workflow already runs this regression; no duplicate CI step was added.
+- **Not claimed:** deployed scheduler adoption of the Core API, verifier-key provisioning, authenticated approval, successful CI/typecheck, or learning uplift. These remain open P0s.
+
+## WorkPass141 — exercise the Core-owned durable execution path (2026-10-21)
+
+- Replaced the Core-entry test double with a real `OrganismCore` backed by `FileStateStore`; the test launches a real child process through the Core-owned candidate/shadow route.
+- Assert the durable trusted-run registry contains the exact run/task/seed/manifest/runtime binding and that a new Core instance re-registers the same context idempotently after restart.
+- Added fail-closed integration coverage: corrupt registry state rejects execution before the child can create its marker. Baseline/control remains rejected without changing trusted registry state.
+- This proves the Core API and durable registry boundary together in a focused regression; it still does not establish that a deployed scheduler invokes the API. CI runner provisioning remains unverified.
+ 
+## WorkPass140 — Core-owned trusted shadow execution entry point (2026-10-21)
+- Added `OrganismCore.runTrustedSkillShadowLearningProcess(...)` as the runtime-facing route into the trusted coordinator. Callers cannot inject a different registrar; Core supplies its own registration hook.
+- Added a regression that exercises the actual Core prototype method, checks context fields, runs a real child process, and rejects baseline/control lanes before registration.
+- Wired the regression into the verified-promotion workflow. This establishes an official Core API, but does not claim an existing scheduler or deployed caller has adopted it; that route still needs to be identified and wired.
+
+## WorkPass139 — enforce shadow-lane identity at coordinator boundary (2026-10-21)
+
+- Restricted `runTrustedShadowLearningProcess` to the explicit `arm: candidate` + `method: shadow` identity before any registry call or child process spawn. The generic process supervisor remains reusable for ordinary benchmark/control runs; those lanes cannot accidentally gain trusted shadow provenance by using the coordinator.
+- Extended the coordinator regression to reject baseline/control and non-shadow methods and assert the registrar is never called for rejected lanes.
+- **Boundary:** this narrows accidental misuse but does not itself authenticate the host or wire a production caller. CI remains infrastructure-failed before steps (runner ID 0, empty steps); no tests/typecheck or learning uplift are claimed.
+
+## WorkPass138 — canonical OrganismCore-to-supervisor trusted run bridge (2026-10-21)
+
+- Added `TrustedShadowLearningRunCoordinator.ts` as the single typed host-side entry point that binds `OrganismCore.registerTrustedSkillShadowRun` to `runLearningProcess`.
+- The coordinator requires the core registration surface and a host-supplied runtime version; it awaits durable registration before process spawn and propagates registry failures so no child is launched on failed registration.
+- Added a focused regression covering host context binding, successful launch after registration, rejection on registration failure, and missing registrar rejection; wired the test into the P23 continual-learning workflow.
+- **Boundary:** no pre-existing production caller of `runLearningProcess` was found in the current tree, so this creates the canonical integration entry point but does not prove that a deployed orchestration path invokes it. Production end-to-end execution, verifier-key provisioning, authenticated promotion approval, CI success and measured learning uplift remain unverified.
+
+## WorkPass137 — register trusted shadow runs before learner process spawn (2026-10-21)
+
+- Added an explicit host-owned trusted registration capability to `runLearningProcess`. When supplied, it persists run/task/seed/manifest/runtime identity before spawning the child process.
+- Registration failures abort before spawn, so an unavailable trusted registry cannot produce a run that downstream code mistakes for a registered shadow execution.
+- Added a focused supervisor regression and wired it into the P23 continual-learning workflow.
+- **Boundary:** the runner's registration capability must still be bound by the production orchestration caller to `OrganismCore.registerTrustedSkillShadowRun`; repository search did not identify an existing production call site that constructs this supervisor invocation. No production end-to-end shadow run or learning uplift is claimed. CI/typecheck are not yet verified.
+
+## WorkPass136 — production bootstrap for verified skill shadow lifecycle (2026-10-21)
+
+- Configure the canonical P23 learner at OrganismCore construction with durable candidate storage and a durable trusted-run registry.
+- Bind signed shadow receipts to independently persisted run/task/seed/manifest/runtime context.
+- Load trusted verifier public keys from `NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON`; absent keys reject evidence and malformed configured keys fail startup.
+- Keep promotion authorization explicitly default-deny until an authenticated approval authority is integrated.
+- Expose internal core hooks for the trusted supervisor to register run context before receipt ingestion and then submit verified shadow observations.
+- Add a focused bootstrap regression and CI wiring. Test execution and typecheck still require a successful runner.
+
+## WorkPass133 — isolate bootstrap uncertainty from incomplete seeds (2026-10-21)
+
+- Corrected the deterministic seed-cluster bootstrap identity: only complete paired seeds that actually contribute to the estimate now determine its resampling stream. Incomplete seed records remain excluded from the estimate and no longer perturb the interval for an otherwise identical complete sample.
+- Added a regression that builds the same complete paired sample with and without extra incomplete-seed evidence and asserts identical bootstrap intervals.
+- Research refresh: inspected the published SkillLearnBench evaluation structure and the public retention-bench / AgentMemoryBench descriptions. Adapted only evaluation protocol ideas: separate skill/trajectory/outcome evidence; test hard-reset survival separately from stored-record persistence; report online, replay, transfer and repair modes independently. No upstream code or dataset was copied.
+- **Verification status:** source and regression committed to the work branch; execution, typecheck and exact-head CI still need confirmation. No measured learning uplift is claimed.
+
+## WorkPass132 — deterministic seed-cluster bootstrap sensitivity (2026-10-21)
+
+- Added a reproducible percentile bootstrap interval over seed-level aggregates in `VerifiedOutcomeLedger.comparePairedBySeed` and family-stratified comparisons. The resampling unit remains the independent seed, not correlated task cells or retries.
+- Sorted seed aggregates before resampling and added a reverse-arrival-order regression, so identical evidence produces identical intervals regardless of ingestion order.
+- Skill-promotion eligibility now requires positive lower bounds from both the existing small-sample Student-t interval and the bootstrap sensitivity interval, alongside the existing gain and evidence gates.
+- Added regression assertions for deterministic intervals, interval coverage of the observed mean, no interval with a single seed, and bootstrap-backed promotion.
+- Research adaptation: the controlled-comparison and multi-level diagnosis principles from SkillLearnBench, plus bootstrap/strong-baseline discipline in replay evaluation protocols. No upstream code or dataset copied.
+- **Verification status:** code and regression sources committed; execution/typecheck/exact-head CI still pending confirmation. This changes measurement rigor, not proven learning quality.
+
+## WorkPass131 — bind signed shadow receipts to trusted execution identity (2026-10-21)
+
+- Adapted the in-toto attestation principle of binding authenticated claims to explicit subjects: shadow receipts now have to match trusted run ID, task ID, random seed, manifest fingerprint and runtime version supplied by an independent resolver.
+- Added restart/promotion regressions for run, task, seed, manifest and runtime mismatches. No upstream code was copied and no runtime dependency was added.
+- **Verification status:** source and tests committed; local test/typecheck and exact-head CI are not yet confirmed. Production trusted-run resolver and approval authority remain open.
+
+## WorkPass116 — seed-clustered verified learning comparisons (2026-10-20)
+
+- Added `VerifiedOutcomeLedger.comparePairedBySeed` and `comparePairedByFamilyAndSeed`. The independent statistical unit is now a seed-level aggregate rather than each correlated task cell.
+- Requires complete attempt-1 baseline/candidate coverage for the exact task set within a seed; incomplete seeds are excluded as a whole, and retries cannot inflate sample counts or silently replace the primary attempt.
+- Uses a small-sample Student-t interval across paired seeds and reports no interval for a single seed. Existing task-cell APIs remain available for compatibility.
+- Added `p23-seed-clustered-outcome-comparison.mjs`, registered the npm script, and wired the regression into the continual-learning workflow.
+- Evidence boundary: this fixes the statistical unit and missing-cell handling in the evaluation path; it does not demonstrate real-world learning uplift. Exact-head Actions and runtime typecheck are pending.
+
+## WorkPass115 — matched hard-reset retention evaluation (2026-10-20)
+
+- Added `ResetRetentionEvaluation.ts` to compare independently verified task outcomes across stateless prior `P`, uninterrupted ceiling `C`, and reset-survival `R(k)` arms on the same manifest/task/seed.
+- Computes normalized retention `(R-P)/(C-P)`, excludes saturated/unlearnable tasks where `C-P` is too small, stratifies by task family, and derives uncertainty from seed-level aggregates rather than treating task cells as independent samples.
+- Requires independent-verifier evidence references, score bounds, stable task-family identity, unique observations and complete matched arms. Added an adapter from the canonical `VerifiedOutcomeLedger`, binding the evaluation to its full manifest fingerprint and selecting only the requested split; duplicate attempts require an explicit selection policy rather than silent latest-wins behavior.
+- Added direct-fixture and ledger-adapter regressions and wired them into the continual-learning workflow for PR and branch pushes. The module evaluates supplied outcomes; it does not itself kill/restart the process, and deterministic fixtures are not evidence of real NK1 retention or skill abstraction. Await exact-head CI before calling this pass validated.
+
+## WorkPass114 — paired continual-learning uncertainty without pseudo-replication (2026-10-20)
+
+- Corrected `ContinualBenchmarkComparison.ts`: the prior implementation flattened every task score across paired runs before computing the confidence interval. Since tasks within a run share the same seed, that could treat correlated task cells as independent observations and make uncertainty look artificially small.
+- The comparison now averages task success and forgetting within each run first, then calculates paired deltas and 95% Student-t intervals across matched seeds. Small samples use conservative t critical values (including df=1), rather than the overly narrow normal approximation; one paired run produces no confidence interval. `pairedN` now consistently means matched independent runs for both metrics.
+- Preserved strict pairing by manifest fingerprint and seed, identical task-set checks, duplicate-run rejection, and reporting of unpaired runs. Expanded regressions for run-level sample counts, interval behavior and invalid same-method comparisons; CI triggers on push for the comparison test too.
+- This is a statistical-validity correction, not a learning-performance gain. No replay strategy or promotion threshold was changed; the learning score remains unchanged until real verifier-backed matched-seed outcomes exist.
+
+## WorkPass113 — task-family stratification for continual learning (2026-10-20)
+
+- Added family-level checkpoint summaries to `ContinualOutcomeMatrix.ts`: pooled verified pass counts/rates per stage plus family-level forgetting and backward transfer.
+- This makes aggregate regressions harder to hide: a replay strategy that improves memory tasks but harms transfer tasks can now be inspected by family instead of relying only on the overall mean.
+- Added a regression that checks family-specific final pass rates and forgetting. Pooled counts are reported without a misleading pooled confidence interval because task outcomes may not be independent.
+- CI caught two integration issues: the missing-cell fixture needed a full two-stage sequence after the new cardinality guard, and the new workflow still used deprecated Node 20-based Actions v4. Both were corrected; rerun exact-head CI before marking this pass fully validated.
+- Still measurement infrastructure only: no live learner was run, no replay policy was promoted, and the overall learning score is unchanged.
+
+## WorkPass112 — matched-seed evidence matrix and uncertainty reporting (2026-10-20)
+
+- Fixed a malformed pre-training fixture that accidentally passed a boolean as the seed ID; the test now supplies the same explicit seed set to every task/method cell.
+- Expanded the continual outcome adapter with per-task/per-stage counts, pass rates, task-family identity and Wilson 95% intervals. Small samples remain visibly uncertain instead of collapsing to a single pass-rate point estimate.
+- Added regression assertions for exact seed pairing, baseline parity, train/holdout isolation, missing baseline cells and cell-level intervals. This remains evidence-pipeline code; the fixture does not measure live learner performance.
+- Research adaptation: AgentMemoryBench separates online, replay, transfer and repair modes; SkillLearnBench separates skill quality, trajectory quality and verified task outcome; retention-bench emphasizes process resets and distinguishing stored records from integrated learning. NK1 now exposes more granular outcome evidence, but still needs a real runner, independent tasks, and process-reset experiments. No upstream code/data copied in this pass.
+
+## WorkPass111 — verifier-ledger to continual-learning matrix (2026-10-20)\n\n- Added `ContinualOutcomeMatrix.ts`, an adapter that builds task-by-checkpoint score matrices from `VerifiedOutcomeLedger` evidence instead of hand-entered scores. It filters to the selected split and attempt 1, accepts only independent-verifier or human-review authority, and binds output to the exact manifest fingerprint.\n- Enforces unique stage IDs/methods, complete task × stage coverage, and identical seed sets for every cell; retries cannot inflate scores and mismatched seed sets fail closed. Optional pre-training baseline produces forward-transfer inputs without fabricating missing values.\n- Added regression cases for matched-seed aggregation, train/holdout isolation, missing cells, duplicate stage definitions and uneven seed sets. This adapter still consumes recorded evidence; it does not execute the learner or independently retrieve/validate external artifacts.\n\n## WorkPass110 — continual-learning retention and transfer metrics (2026-10-20)
+
+- Added a reusable sequential-task metric module reporting final average score, peak-to-final forgetting, backward transfer, and forward transfer relative to an explicit reference policy.
+- Enforces a square task-by-stage score matrix, unique task identities, finite [0,1] scores and explicit handling of missing pre-training baselines; unavailable forward-transfer values remain null rather than being fabricated.
+- Added focused regression coverage and wired it into the full P23 verified-outcome suite. The module consumes measured scores; it does not itself run a model or establish NK1 performance.
+- Research adaptation: continual-learning evaluation commonly separates final competence from forgetting and transfer. This is an NK1-local metric implementation, not copied benchmark code. Use the same tasks/seeds and a fixed reference policy before comparing replay strategies; do not compare results across changed task manifests.
+
+## WorkPass109 — signed verifier outcome artifacts (2026-10-20)
+
+- Added Ed25519 signed outcome artifact verification, binding each payload to the exact task-manifest fingerprint, task version, verifier identity, run ID, task/method/seed/attempt and outcome.
+- Only keys explicitly supplied in the trusted verifier-key registry are accepted. Tampered payloads, unknown keys, manifest drift, version/verifier mismatch, malformed artifacts and duplicate attempts are rejected before they can enter the ledger.
+- Added focused fixture tests for valid signatures, tampering, wrong manifest, unknown verifier keys, version mismatch and duplicate replay; wired into the P23 suite and CI.
+- This is a verification primitive, not a production trust-root deployment: independently fetching artifacts, key rotation/revocation, verifier governance, and learner/promotion integration remain open. Private keys must stay outside NK1.
+
+## WorkPass108 — collision-safe paired evaluation and manifest binding (2026-10-20)
+
+- Replaced delimiter-concatenated paired-outcome identity with JSON tuple encoding for `[taskId, seed, attempt]`, so unusual task identifiers cannot accidentally merge independent evaluation cells.
+- Added `VerifiedOutcomeLedger.manifestFingerprint()`: a stable SHA-256 digest over sorted, versioned task-manifest fields. It changes when task prompt fingerprints, versions, verifier IDs, family assignments or evaluation splits change, and is independent of manifest insertion order.
+- Added regressions for separator-bearing task IDs, exact paired sample count, manifest order stability and digest invalidation after task/version/verifier/split/prompt changes. Wired both tests into the full P23 verified-outcomes suite and the WorkPass108 workflow.
+- This digest provides a stable manifest binding token for future verifier-run artifacts. It is not a signature and does not authenticate who generated an artifact; trusted verifier execution, artifact retrieval and production learner integration remain open.
+- No replay defaults or automatic promotion changed. Scores remain unchanged until outcome-based benchmark runs demonstrate task success, retention and transfer.
+
+## WorkPass105 — verifier-grounded outcome ledger (2026-10-20)
+
+- Added `VerifiedOutcomeLedger.ts`: versioned task manifests, normalized SHA-256 prompt fingerprints, cross-split duplicate-prompt leakage rejection, version/verifier/evidence provenance checks, self-report rejection, duplicate-attempt protection, and paired baseline/candidate comparisons.
+- Paired summaries report sample size, pass rates, absolute gain, discordant wins, and approximate 95% intervals. Pairing is keyed by task, seed, and attempt to avoid comparing mismatched trials.
+- Added `tests/p23-verified-outcome-ledger.mjs`, package script `test:p23:verified-outcomes`, and dedicated Node 24 Actions workflow.
+- Synthetic fixtures validate the evaluator contract only; they are not evidence of NK1 task performance. The ledger is not yet wired to production training or persistence; no model weights, replay defaults, or skill promotion rules changed.
+- Research adaptation: SkillLearnBench's separation of skill/trajectory/outcome evaluation and continual-learning benchmarks' same-sequence comparisons inspired the local verifier-first contract. No third-party code or datasets were copied.
+
+## WorkPass104 — multi-seed replay proxy summary (2026-10-20)
+
+- Expanded the reservoir comparator from five hand-picked seeds to 50 deterministic seeds and added mean, sample standard deviation, and approximate 95% intervals for selection-composition metrics.
+- The summary includes historical/post-shift coverage, oldest-stream representation, context/action strata, and mean surprise. Assertions check the reported seed count and interval arithmetic.
+- These intervals describe variation between this fixed set of sampler seeds only. They are not task-outcome confidence intervals and do not establish improved learning, retention, or transfer.
+- No production policy/default changed; outcome-grounded same-stream evaluation remains the P0 gap.
+
+## WorkPass103 — replay baseline robustness and CI repair (2026-10-20)
+
+- Fixed WorkPass102 workflow setup: `actions/setup-node@v7` enables package-manager caching by default, but this repository has no root npm/yarn lockfile. Disabled package-manager caching for this dependency-free Node 24 harness rather than inventing a lockfile.
+- Added a deterministic multi-seed inclusion-frequency regression for Algorithm R. Across 400 seeds it checks that no stream-position inclusion rate deviates grossly from expectation; this is a statistical sanity guard, not evidence of task-learning uplift.
+- CI was rerun after the workflow fix; the exact-head run is pending/active at commit `71c3b6a0e631aead7305b8ac28eef66d884a9497` and must not be called PASS until completed.
+- The reservoir remains an experimental baseline; no replay default or production training behavior changed.
+
+## WorkPass101 — age-aware replay ablation (2026-10-20)
+
+- Added optional logical-tick half-life discounting to historical surprise priority; the default remains unchanged.
+- Made context/action stratum identity collision-safe with JSON tuple encoding and hardened tick ordering for non-finite values.
+- Added regression cases for stale high-surprise vs recent moderate-surprise selection, invalid half-life fallback, deterministic output, and delimiter collisions.
+- The existing shared selector is still the canonical owner used by runtime and benchmark; this is not a second implementation.
+- Evidence boundary: the tests validate selection mechanics only. They do not establish higher task success, better transfer, or reduced forgetting. Keep age discount disabled until same-stream task-outcome ablations justify a setting.
+
+## WorkPass100 — shared configurable continual-learning replay (2026-10-20)
+
+- Extracted the P23 replay selection into `ReplaySelectionPolicy.ts` and wired the runtime to that shared implementation, eliminating the risk that benchmark logic and production selection drift apart.
+- Added a typed runtime configuration seam for deterministic ablations. Defaults stay at 64 samples maximum / 32 recent; configured capacity is clamped to 1–64 and recent quota to 0–capacity.
+- Added standalone regressions for selector invariants and runtime configuration; expanded the benchmark to compare recent-only, surprise-only, and multi-timescale selection with recent quotas 16, 32 and 48.
+- Updated `docs/P23_CONTINUAL_LEARNING_SCORECARD_2026-10-20.md` with current engineering estimates, research comparisons and the evidence boundary.
+- Research adaptation: ARB (AISTATS 2026) motivates future policy-alignment-aware replay, but it is not copied wholesale; adding it safely requires verified outcome provenance and controlled task-stream comparisons.
+- **Exact tested code head CI PASS:** `891e56f58373377ea6a325552fe2d1e389f6d71b`. [Replay selector + 16/32/48 quota sweep](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39421560741), [Node 24 + continual skill learning](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39421553511), [cognitive runtime regression](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39421553534), and [verification input binding](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39421553538) all passed on the same code head. Later scorecard/changelog commits are documentation-only.
+- Evidence boundary: selector coverage and synthetic batch composition are implementation evidence only; no independent task-success, retention, transfer or production-learning uplift is claimed.
+
+## WorkPass93 — harden core ownership exemption and add durable checkpoint (2026-10-20)
+
+- Replaced the field-name-only constructor exemption with an exact field + constructor policy: `operationalMicroCycle:OperationalMicroCycleRuntime`.
+- Added an executable adversarial regression guard to `audit-core-ownership.mjs`: only the exact documented pair is exempt; a mismatched constructor, renamed field or unrelated owner is counted.
+- Added durable continuation/evidence report: [WorkPass93 checkpoint](docs/WORKPASS93_CHECKPOINT_2026-10-20.md).
+- Code commits: `8bcffba1511e1327ae71f7500295d31ccffa3c73` (policy module), `ce804abde19ccd20868cd579032431550ca1c35a` (audit integration).
+- Validation boundary: exact-head CI for WorkPass93 must be checked before marking this pass validated. The prior WorkPass92 CI run is a baseline only, not evidence for these changes.
+- Remaining gates are unchanged: live llama.cpp on Dell G3, independent RU/EN retrieval uplift, learning transfer/anti-forgetting, restart-safe action proof, browser/Live2D/TTS E2E, soak, packaging and release security.
+
+## WorkPass92 — enforce core ownership audit in CI (2026-10-20)
+
+- Wired the existing audit:core-ownership into the regression workflow. The first run exposed a diagnostic defect: it printed PASS before applying the constructor ceiling, then failed. The report now computes the final status after all gates and lists the direct constructor owners.
+- The audit showed six direct constructors, including the explicitly documented OperationalMicroCycleRuntime orchestration owner. The ceiling now counts the other five and names the single explicit exception; this is not a blanket increase of the limit.
+- Exact-head CI PASS: https://github.com/ailtron1ss-rgb/NK1/actions/runs/39380982918, code head 04f16761704760a6c347a77e113a7a9221b661fe. CORE_OWNERSHIP=PASS errors=0 directConstructors=6 countedDirectConstructors=5 and all other workflow steps passed.
+- This is architecture-boundary/integrity evidence, not proof of end-to-end cognitive quality. No global readiness score is increased by the audit alone.
+
+## WorkPass91 — memory-to-action evidence path (2026-10-20)
+
+- Added a deterministic sandbox integration regression that composes the canonical MemoryOS2 current retrieval/revision/snapshot-restore path with the production ActionGateway and its durable idempotency ledger.
+- Scenarios cover an explicit preference correction, suppression of the superseded preference, retrieval after memory restore, missing evidence requiring clarification, grounded action arguments, a verified in-memory tool result, and no duplicate execution after restoring the action ledger.
+- Wired the regression into the existing cognitive Actions workflow.
+- First exact-head run exposed a test-oracle bug: the harness did not check whether the current query matched the memory's topic. The oracle now checks query-topic relevance, and the regression passes without weakening assertions.
+- **Exact-head CI PASS:** [Actions run 39380460196](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39380460196), test commit `12ed8ee0029c9c62d5abaef1141d403d68fcc34e`. Log confirms corrected preference retrieved, superseded preference suppressed, snapshot restore works, missing evidence yields `clarify`, sandbox action verified, restored receipt preserves execution ID, and executor count remains 1.
+- Evidence boundary: the scenario oracle is test-only, not proof that the live autonomous planner already performs this mapping correctly. All side effects are in-memory; no external tool is called. No retrieval uplift, learning gain, live LLM performance, or consciousness claim is made.
+
+## WorkPass88 — reject silent benchmark-label truncation (2026-10-20)
+
+- Retrieval benchmark reports now count source rows whose IDs, query text, or relevance labels exceed canonical bounds; bounded diagnostic execution is allowed, but `datasetIntegrity.validForPromotion` becomes false.
+- Bumped benchmark report schema to v5 and added a regression with 25 relevance IDs, ensuring truncating the 25th label cannot silently authorize promotion.
+- Synthetic fixture/harness-only change: no external-data quality uplift is claimed. Exact-head Actions verification is recorded in the handover below.
+
+## WorkPass83 — проверка честности retrieval benchmark (2026-10-20)
+
+- Добавлен `tests/workpass83-retrieval-benchmark-truth.mjs`: фиксированный двуязычный корпус из 12 воспоминаний, 4 train-запроса и 8 holdout-запросов, сопоставление метрик кандидата с Okapi BM25 и bootstrap-конфигурацией.
+- Регрессия подтверждает, что offline benchmark не мутирует live MemoryOS2; train/holdout query leakage блокирует promotion; статус promotion согласован с набором gates.
+- GitHub Actions run [39372815361](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39372815361) — PASS: benchmark test, memory residency, provider policy/boundary, end-to-end cancellation и server HTTP smoke.
+- Synthetic fixture получил Recall@3/MRR 1.0 у обеих сторон. Это только проверка harness и не независимое evidence retrieval uplift; наблюдаемая разница равна нулю, качество не повышено.
+- Следующий gate — независимый, версионированный RU/EN holdout с заранее зафиксированными relevance labels и сравнением Recall@k/MRR; затем live llama.cpp на Dell G3, process restart/recovery, transfer/anti-forgetting и soak.
+
+---
+
+## WorkPass79 — локальная устойчивость языкового контура (2026-10-20)
+
+- Добавлен отдельный регрессионный набор для канонического `LocalLanguageBackendPolicy`: локальный backend имеет приоритет, ошибка переводит его в cooldown, повторные ошибки увеличивают паузу по ограниченной экспоненте, посторонние сбои не приписываются llama.cpp, успешный ответ сбрасывает breaker.
+- Добавлен тест реального интерфейса `OpenAICompatibleLocalChatProvider`: фактическая идентичность модели, bounded max_tokens/temperature, HTTP 503, malformed JSON, пустой ответ, лимит 2 MiB, timeout AbortSignal и запрет не-loopback endpoint/redirect.
+- Подключены `test:workpass79:local-language-policy`, `test:workpass79:provider-boundary` и агрегирующий `test:workpass79` в runtime `package.json`.
+- Добавлен GitHub Actions workflow `.github/workflows/workpass79-cognitive-regression.yml` для policy-регрессии, границ provider и HTTP smoke существующего серверного пути с контролируемым локальным провайдером.
+- Первый Actions run подтвердил policy-тест, но выявил ошибку окружения workflow: Node 22.12 не экспортировал `node:sqlite`, который импортирует сервер. CI обновлён с жёсткого `22.12.0` на актуальную линию Node 22; это устраняет известную причину запуска, но повторный run ещё должен подтвердить результат.
+- Это узкий reliability-pass, не заявление об улучшении качества генерации, когнитивном обучении или готовности организма к релизу.
+
+---
 
 ## WorkPass72 — memory residency, verification-gated learning and source cleanup (2026-10-19)
 - Fixed a candidate-budget off-by-one in revision/graph expansion: both now check the 192-item cap before insertion, with a fail-fast invariant and diagnostic-rich regression assertion.
@@ -887,3 +1683,233 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Ambiguous speech is retained as unresolved evidence and does not increase embodiment failure streak/cooldown or produce false negative skill/reliability credit.
 - Added fake-process tests and gateway-boundary/recovery tests. Runtime typecheck and the new tests pass; archived receipt recovery suites also pass when run individually. A long nested aggregate command timed out at the execution wrapper and is not recorded as a single PASS.
 - Synchronized root integration manifest and runtime release owners at 35.88.0 / schema 225. App dependency installation remains blocked by npm registry DNS; live Android/audio and browser/Live2D E2E remain open. Memory retrieval candidate remains unpromoted at recallDelta=0; roadmap score stays 80.1%.
+
+
+## WorkPass 80 — cold-memory retrieval invariants (2026-10-20)
+
+- Added a deterministic regression with a 140-record corpus that forces an old, low-salience record into cold residency, then verifies it remains recallable by lexical retrieval without materializing a vector or silently changing residency.
+- Added snapshot/restore coverage for cold records, candidate budget (192), and canonical memory index integrity.
+- Wired the regression into runtime scripts and the WorkPass79 GitHub Actions workflow; test:workpass80 combines the new memory regression with the local-language reliability suite.
+- **Evidence status:** PASS in GitHub Actions run [39371651412](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39371651412): corpus 140, tiers hot/warm/cold 16/64/60, materialized vectors unchanged at 80, target recall and restore recall true, candidate count 140, index integrity true. This is a residency/integrity invariant, not an independent RU/EN retrieval-quality benchmark. No Recall@k, MRR, transfer-learning, or overall readiness uplift is claimed.
+
+
+## WorkPass 81 — caller cancellation for local inference (2026-10-20)
+
+- Extended the existing `OpenAICompatibleLocalChatProvider` request contract with an optional caller-owned `AbortSignal`; provider timeout and caller cancellation are composed rather than one replacing the other.
+- Added stable `llama.cpp-request-aborted` normalization for caller cancellation before dispatch, during transport, and while reading a bounded response; deadline failures normalize to `llama.cpp-timeout`.
+- Extended the provider boundary regression for in-flight and pre-aborted requests. This proves the provider boundary honors a signal when its caller supplies one; it does not prove every upstream cognitive-cycle caller currently forwards cancellation.
+- **Evidence status:** PASS in GitHub Actions run [39371651412](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39371651412): timeout abort and caller cancellation (in-flight and pre-aborted) passed alongside HTTP 503, malformed JSON, empty output, response-size limit and loopback-only checks. Real llama.cpp cancellation, upstream end-to-end signal forwarding, and process restart/recovery remain unverified.
+
+
+### WorkPass81 follow-up — deterministic timeout test harness (2026-10-20)
+
+- GitHub Actions exposed that Node's `AbortSignal.timeout()` timer is unreferenced: the test's unresolved top-level await could terminate with exit code 13 before the timeout fired. The focused test now holds the process open only for the expected timeout window and asserts the normalized `llama.cpp-timeout` outcome.
+- Follow-up run [39371651412](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39371651412) passed the cold-memory regression, policy test, provider-boundary suite and server HTTP smoke.
+
+
+## WorkPass 82 — end-to-end cancellation of in-flight language generation (2026-10-20)
+
+- Propagated the request `AbortSignal` from `/api/organism/chat` through `OrganismRuntime.step`, `LanguageRequest`, `invokeLanguage`, and the local provider. The server aborts generation when the client disconnects and avoids writing a response to a destroyed socket.
+- Local cancellation is no longer recorded as a normal llama.cpp provider failure and does not fan out into fallback generation. Kobold/Gemini fetches also compose the caller signal with their deadline, and provider iteration stops when the request has been cancelled.
+- Added `tests/workpass82-server-language-cancellation.mjs`: starts a real NK1 server plus a controlled loopback chat-completions endpoint, disconnects the client during generation, and requires the upstream provider socket to close before the 12-second provider deadline.
+- Wired the E2E cancellation test into the WorkPass79 Actions workflow. **PASS** in [Actions run 39372093088](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39372093088): the controlled provider received one request and observed one upstream disconnect after the chat client disconnected, well before the 12-second provider deadline. This controlled loopback test does not substitute for live llama.cpp or restart/soak testing.
+
+
+## WorkPass84 — целостность npm scripts и локальных тестовых целей (2026-10-20)
+
+- Добавлен `runtime/neuro-kurisu/tests/workpass84-script-integrity.mjs`: проверяет, что все `npm run <target>` из runtime `package.json` ссылаются на объявленные scripts, а все статические `tests/*.{mjs,cjs,js,ts,mts,cts}`-цели существуют внутри каталога тестов.
+- Одноразовый аудит обнаружил три настоящие битые ссылки: пропущенный префикс `test:` у `long-horizon:operational:1000`, неверное имя `test:big-pass-317` вместо существующего `test:big-pass-317:reality`, и ссылку `test:p2852:neural-continuity` вместо существующего канонического `test:p2850:neural-continuity`. Исправлены все три; assertions не ослаблялись.
+- Новый script подключён к WorkPass79 GitHub Actions workflow.
+- Предварительная проверка обновлённого manifest: 1,655 scripts; 3,334 `npm run`-ссылки без отсутствующих targets; 1,286 статических ссылок на тестовые файлы. Это локальная проверка manifest-данных, не замена ожидаемому результату Actions.
+- **PASS:** GitHub Actions run [39374168533](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39374168533) на кодовом HEAD `b95235b5696667ad96cc6f1d63c11f4b91a96ee8`: audit `WORKPASS84_SCRIPT_INTEGRITY=PASS` (1,655 scripts; 3,334 npm-run references; 1,286 static test-file references; zero missing targets/files), WorkPass80 residency, WorkPass83 benchmark truthfulness, WorkPass79 provider policy/boundary, WorkPass82 cancellation and server smoke all passed. Later commits in this PR only add research documentation; their exact-head Actions run is separate.
+- Scope: ловит отсутствующие npm script targets и отсутствующие статические test files; не доказывает достижимость/качество каждого теста и не является полным аудитом динамических import/require.
+
+
+## Research gate — long-term memory and continual learning (2026-10-20)
+
+- Added `docs/RESEARCH_GATE_MEMORY_CONTINUAL_LEARNING_2026-10-20.md`, synthesizing LongMemEval (ICLR 2025), MemoryAgentBench (2025), MemBench (ACL Findings 2025), Memora/FAMA (ACL 2026), FOREVER (ACL 2026), modular-memory continual-learning work (ICML 2026), and Titans.
+- The actionable changes are evaluation gates, not unverified architecture imports: separate retrieval from answer correctness; test temporal updates, abstention and stale-memory use; evaluate incremental learning and selective forgetting; track language-specific quality, resource cost and restart recovery; preserve independent holdout integrity.
+- Paper and dataset/code links are recorded in the research note. No external dataset or implementation was copied into the runtime; licensing/schema compatibility must be checked before any direct import.
+- **Evidence status:** research synthesis only. No NK1 quality improvement is claimed; WorkPass83 remains a synthetic harness test with zero observed uplift.
+
+
+## Verification update — research-note branch HEAD (2026-10-20)
+
+- **PASS:** [GitHub Actions run 39374347662](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39374347662) completed successfully on HEAD `b440066e49eca7cf098cbbe99267962a9eb564d6`, including WorkPass84 integrity audit, WorkPass80/83 memory tests, WorkPass79 provider tests, WorkPass82 cancellation and server smoke.
+- The run includes the research-note and handover updates; those documents do not change runtime behavior. Continue to use exact-head Actions status as the gate for any future commits.
+
+
+## WorkPass85 — abstention-aware retrieval evaluation (2026-10-20)
+
+- Extended the offline MemoryOS2-vs-BM25 benchmark to label answerable and intentionally unanswerable queries explicitly. Unanswerable examples must have an empty relevance-label set; malformed combinations are rejected rather than silently scored.
+- Recall/MRR/precision now use answerable queries only; the report separately records unanswerable-query count, unsupported retrieval rate, correct abstention rate, false-abstention count and rate. Promotion gates require the candidate's unsupported-retrieval rate not to regress against BM25.
+- Expanded the fixed RU/EN synthetic harness from 8 to 10 holdout queries (8 answerable, 2 unanswerable). This tests metric integrity only; it is not an independent human-labelled dataset and cannot support a quality-uplift claim.
+- Exact-head GitHub Actions validation is pending for this commit; do not mark WorkPass85 PASS until its run succeeds.
+
+
+## WorkPass86 — bind benchmark provenance to the exact dataset (2026-10-20)
+
+- Retrieval benchmark report schema advanced to v4 after adding abstention metrics.
+- Promotion provenance now requires a license identifier (SPDX ID or explicit repository-scoped `LicenseRef`) and a SHA-256 matching the canonical labelled-example fingerprint. Missing, malformed or mismatched hashes block promotion; they are not silently accepted as metadata.
+- Regression test derives the fixture hash from the benchmark's canonical fingerprint and verifies a deliberately wrong hash blocks promotion. The fixture's `LicenseRef` is internal test metadata, not a claim that the synthetic fixture is an externally licensed benchmark.
+- GitHub Actions is the execution authority; update this receipt only after the exact new head finishes.
+
+
+## WorkPass87 — suppress corrupt superseded memories in current retrieval (2026-10-20)
+
+- Hardened the canonical `MemoryOS2.retrieve` path: if a memory has a supersession pointer but a missing validity-end timestamp, current/point-in-time retrieval now treats it as stale and increments the existing `staleRetrievalsAvoided` counter. Explicit archival mode remains able to inspect historical records.
+- Aligned benchmark current-corpus eligibility and stale-result accounting with the same invariant.
+- Added a process-level regression that creates a real revision, corrupts only the parent's validity-end metadata in a restored snapshot, and checks current retrieval suppression, observable diagnostics, and archive-mode visibility.
+- WorkPass86 exact-head CI: [run 39376018280 — PASS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39376018280) on `192a4858cc1bbcb2b6944128c14f0170cc4caf59`. WorkPass87 exact-head CI: [run 39376255921 — PASS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39376255921) on `cd278c83002b1afcfb821836ff3ce7502fa4906e`. All steps passed, including the new superseded-memory recovery test.
+
+
+## WorkPass88 verification receipt — 2026-10-20
+
+- **PASS:** [GitHub Actions run 39378152687](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39378152687), exact head `7d56d67a9c8cec7617340f607d199be4bd5859f7`.
+- The new WorkPass88 benchmark label-truncation guard passed, as did script integrity, cold-memory residency, WorkPass87 supersession recovery, WorkPass83/85/86 benchmark integrity/abstention/provenance, local provider policy/boundary, end-to-end caller cancellation, and controlled-provider server smoke.
+- Evidence scope is regression integrity only. The run does not measure external retrieval quality, real llama.cpp latency, continual-learning gains, or consciousness.
+
+
+## 2026-10-20 — WorkPass89: confidence-bounded abstention regression
+
+- Extended the retrieval benchmark with a paired-query bootstrap interval for unsupported retrieval on explicitly unanswerable holdout queries.
+- Candidate eligibility now requires the upper confidence bound of candidate-minus-baseline unsupported retrieval to remain within a configurable tolerance (default `0`), in addition to the existing point-estimate guard.
+- Bumped the benchmark report schema to v6 and added focused assertions. This is a stricter evaluation gate, not evidence of improved retrieval quality; the current bilingual fixture remains synthetic.
+
+
+## 2026-10-20 — WorkPass90: require adequate unanswerable holdout evidence
+
+- Closed an evaluation gap: a benchmark with no or too few explicitly unanswerable holdout queries could otherwise report a zero-width abstention interval and appear to satisfy the confidence gate without meaningful abstention evidence.
+- Added `minUnanswerableHoldoutQueries` (default 4; bounded to 2–32), a dedicated `sufficientUnanswerableEvidence` promotion gate, a surfaced threshold, and the fail-closed reason `insufficient-unanswerable-holdout`.
+- The fixed synthetic fixture has only two unanswerable cases and now explicitly proves that promotion is blocked for insufficient abstention evidence. This is a conservative evaluation guard, not retrieval uplift.
+
+
+## WorkPass90 — adequate abstention evidence gate (2026-10-20)
+
+- **PASS:** exact-head GitHub Actions run [39379410664](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39379410664), branch head `f60a2c3ed314595fc4d8d8cc46b9a37c592d9628`; all workflow steps succeeded.
+- Added `minUnanswerableHoldoutQueries` (default 4, bounded 2–32), `sufficientUnanswerableEvidence`, and the fail-closed reason `insufficient-unanswerable-holdout`.
+- Regression test proves the current synthetic fixture's two unanswerable queries are insufficient to authorize an abstention promotion claim.
+- Reviewed 2026 research on MemoryBench, Mem2ActBench, Memory-R1, AgeMem, MemFit and LeanMem; updated the research gate with a next-stage memory-to-action evaluation plan. These are design inputs, not reproduced NK1 results.
+- Evidence scope: CI regression integrity only. No real local LLM run, independent human-labelled corpus, or measured cognitive-quality uplift is claimed.
+
+
+## 2026-10-20 — WorkPass102: reservoir replay baseline
+
+- Added a bounded, seeded Algorithm R reservoir sampler as an independent continual-learning replay baseline; production defaults are unchanged.
+- Added deterministic regression tests and expanded the replay-selection benchmark across five reservoir seeds.
+- Added a Node 24 GitHub Actions workflow. Report only replay composition and reproducibility until verifier-grounded task outcomes, retention, transfer and uncertainty intervals are measured.
+
+
+## WorkPass106 — verifier-outcome promotion gate (2026-10-20)
+
+- Added `VerifiedOutcomePromotionGate.ts`: explicit minimum paired sample and task-family thresholds, minimum aggregate pass-rate gain, optional strict positive 95% CI lower-bound requirement, and a per-family regression ceiling.
+- Added `tests/p23-verified-outcome-promotion-gate.mjs` covering successful evidence, small samples, weak gain, uncertain intervals, missing family pairs, regressions, duplicate family names, invalid config, and an explicitly relaxed exploratory mode.
+- Corrected `VerifiedOutcomeLedger.ts` so empty/whitespace method IDs are classified as `invalid-method`, not misreported as an invalid attempt; added regression coverage.
+- Exposed `test:p23:verified-promotion` in the runtime package and added a Node 24 Actions workflow running the ledger regression, promotion-gate regression, and runtime typecheck.
+- This is an eligibility calculation only: it does not automatically promote or alter production learning policy. Synthetic test fixtures validate gate behavior, not real task success.
+- Research adaptation: SkillLearnBench's three-level evaluation chain and deterministic task verifiers, plus continual-learning benchmarks' emphasis on transfer/retention rather than memory accumulation. No upstream benchmark data or third-party code was copied into this change.
+- Exact-head CI status must be read from Actions before this pass is marked validated.
+
+
+## WorkPass116 — reproducible learning experiment protocol (2026-10-20)
+
+- Added `LearningExperimentPlan.ts`: deterministic, manifest-bound matched P/C/R(k) run scheduling; stable per-run IDs; deterministic per-seed order randomization; exact matched task/seed/arm coverage; plan fingerprint validation; split isolation and prompt-leakage checks inherited from the canonical ledger.
+- Added `recordPlannedLearningOutcome`: outcome metadata must match a scheduled run, ledger manifest identity must match, and duplicate task/method/seed outcomes are rejected before canonical ledger recording.
+- Added `scripts/create-learning-experiment-plan.mjs` to generate a versioned plan from a task-manifest JSON file with atomic output replacement; added core and CLI regression tests.
+- Added package scripts and expanded the WorkPass110 Actions workflow to run both experiment-plan tests plus reset-retention and continual-learning regressions.
+- Research adaptation: retention-bench uses actual process-kill resets with only a designated survive-directory preserved; AgentMemoryBench adds online/replay/transfer/repair modes; MemoryAgentBench emphasizes incremental multi-turn interaction; SkillLearnBench evaluates verified skill-dependent tasks. NK1 adapts the protocol ideas, not external code or benchmark data, pending license and dataset review.
+- Explicit boundary: the planner does not execute tasks, kill/restart the learner, authenticate external evidence, or prove learning uplift. Next implementation step is a process supervisor that launches real NK1 arms, enforces survive-directory boundaries, captures receipts, and records verifier-backed outcomes.
+
+## WorkPass123 — authenticated evidence and controlled skill lifecycle (2026-10-21)
+
+- Promotion proposals now require provenance receipts issued only after signed verifier artifacts pass signature, trusted-key, task-version, and manifest checks; opaque or forged `evidenceRef` values fail closed.
+- Added a versioned candidate store for staged candidates, shadow runs, explicit approval, active-version compare-and-swap, approval audit retention, and rollback to the prior version.
+- Added a durable JSON-file CAS adapter with exclusive lock, temp-file write, fsync, atomic rename, restart reconstruction and stale-revision regression coverage.
+- Added a three-level holdout evaluation report for skill quality, execution trajectory, and verified task outcomes with explicit sample/task/seed and evidence coverage gates.
+- Added regression coverage for forged evidence refs, authenticated outcomes, candidate lifecycle/rollback, and report completeness; wired tests into the WorkPass110 workflow.
+- Boundaries: provenance receipts are process-local and must be re-established after restart; the lifecycle bridge is opt-in and application bootstrap does not yet configure the durable adapter by default; crash/kill contention tests remain open. Exact-head Actions validation is blocked before job steps start (GitHub reports runner_id=0 and no step logs); no learning uplift is claimed.
+
+
+## WorkPass134 — manifest-bound outcome evidence (2026-10-21)
+
+- Reject signed-outcome ingestion when the caller-supplied manifest is malformed or does not fingerprint-match the ledger manifest.
+- Reject malformed manifest entries at runtime, including unsupported split labels and whitespace-only identity/stratum fields.
+- Add regressions for manifest substitution, duplicate task IDs, unknown splits and invalid family labels.
+- Validation remains unconfirmed: no exact-head test/typecheck/Actions pass is claimed.
+
+
+## WorkPass135 — durable trusted shadow-run registry (2026-10-21)
+
+- Added a durable versioned run/task registry for independently trusted shadow-execution context, with idempotent registration, conflict rejection, exclusive locking, fsync/atomic rename, and fail-closed handling of contention or corrupt state.
+- Added a regression for restart recovery, signature/context binding, unknown-run rejection, lock contention and malformed persisted state; registered it in the existing continual-learning workflow.
+- Verification remains unconfirmed until the owning test, typecheck and exact-head Actions produce actionable results. Production supervisor/key/approval wiring and complete activation-path audit remain open; no learning uplift is claimed.
+
+
+## WorkPass236 — exact-payload promotion-chain integration (2026-10-21)
+
+- Bind independent evaluation evidence to the exact staged candidate payload; reject cross-candidate receipt reuse.
+- Add the canonical P23 promotion entry point that rechecks candidate payload/evaluation lineage, runs the existing fitness gate on the envelope's validation/holdout reports, and binds the candidate's persisted signed receipts before delegating to the existing authenticated approval and versioned-store path.
+- Make canonical evidence serialization reject values that cannot be represented as JSON; catch malformed/cyclic envelope canonicalization and return a fail-closed binding result.
+- Added focused candidate-payload mismatch and cyclic-envelope rejection regressions. Validation remains unverified until the targeted test, TypeScript typecheck, and exact-head Actions execute successfully; no promotion or learning uplift is claimed.
+
+## WorkPass238 — recover provably stale trusted-run registry locks (2026-10-21)
+
+- **DONE (code):** the durable shadow-run registry now writes lock ownership as PID + hostname + acquisition time and can recover a lock only when its owner is on the same host and the OS proves that PID no longer exists.
+- **Safety boundary:** live, remote-host, malformed, legacy-format and otherwise ambiguous locks remain fail-closed; lock age alone is never used to steal a lock. The registry still uses exclusive creation, fsync, atomic replacement and directory fsync.
+- **DONE (regression authored):** added a crash-recovery regression using a provably nonexistent same-host PID while preserving the existing live/ambiguous lock contention test.
+- **DONE (integration):** included the registry regression in the canonical `audit:p23:cross-source-replay` chain; its dedicated continual-learning workflow step/path filters already exist.
+- **PARTIAL (validation):** this pass did not execute the test or typecheck and does not claim exact-head Actions success.
+
+
+## WorkPass239 — race-safer registry recovery and durable promotion end-to-end (2026-10-21)
+
+- Hardened stale trusted-run lock recovery with a unique quarantine rename, exact-content and dead-owner recheck, exclusive reacquisition, and per-lock owner tokens so cleanup does not unlink a replacement lock.
+- Added `tests/workpass239-durable-signed-promotion-e2e.mjs`: canonical signed paired outcomes → proposal → durable candidate staging → trusted run registration → three candidate-bound signed shadow receipts → process-style restart → replay rejection → detached Ed25519 approval → CAS activation → second restart and active-state re-authentication.
+- Wired the regression into `test:workpass239:durable-signed-promotion-e2e`, `audit:p23:cross-source-replay`, and the WorkPass110 continual-learning workflow with an explicit path filter.
+- Scope: this verifies the existing durable evidence/approval/activation seam with generated test keys. It does not prove production host sandbox isolation, independent verifier/scanner deployment, multi-process crash contention, or real learning uplift.
+- Validation remains pending until the exact-head Actions job executes the new test and runtime typecheck successfully; no PASS is claimed.
+
+
+## WorkPass240 — reject self-attesting evaluator authorities (2026-10-22)
+
+- Hardened `IndependentSkillCandidateEvaluator` so executor, independent verifier and safety scanner must have distinct object identities and distinct method function identities; shared/self-attesting authorities fail closed before candidate execution.
+- Extended `tests/workpass227-bounded-independent-evaluation.mjs` with same-object and shared-function regressions, reusing existing package and workflow wiring.
+- This is a configuration-boundary hardening only: production host ownership, actual OS/container sandbox isolation and trusted verifier/scanner provisioning remain open.
+- Validation is pending exact-head Actions for the targeted regression and runtime typecheck; no test pass is claimed.
+
+
+### WorkPass240 follow-up — enforce the production gate at the evaluator itself
+
+- Added a second enforcement point inside `createIndependentSkillCandidateEvaluator`: in production, direct evaluator construction fails closed without canonical experiment authority. This prevents bypassing the existing provider wrapper by calling the evaluator factory directly.
+- Added regression coverage that temporarily sets `NODE_ENV=production`, asserts authority-free direct construction is rejected, and restores the prior environment in `finally`.
+- Targeted regression and typecheck are still awaiting an actual successful runner execution; no validation pass is claimed.
+
+
+## WorkPass241 — validate direct scheduler candidate fingerprints
+
+- Tightened `P23TrustedShadowLearningScheduler` constructor validation to require the same 64-hex candidate fingerprint accepted by the production JSON parser; malformed direct runtime configuration now fails before any child process can launch.
+- Added the regression to the existing `p23-runtime-trusted-shadow-scheduler.mjs` test, already wired into the learning workflow.
+- Validation remains unconfirmed until the exact-head regression and typecheck execute successfully.
+
+
+## WorkPass244 — bind host evaluation services to the canonical manifest
+
+- Added the canonical dataset manifest fingerprint to the immutable candidate execution context, sourced from the existing `VerifiedOutcomeLedger` authority; it is explicitly distinct from the evaluator-plan fingerprint.
+- Host-owned verifier and safety-scanner responses must now echo that exact manifest identity along with the existing payload, task-input, environment, plan, run, task, and seed bindings. A response bound only to the evaluator plan can no longer pass the host adapter's binding check.
+- Process-supervisor receipts use the canonical manifest digest when available. In configurations without a canonical experiment authority, the plan digest remains process bookkeeping only and is not represented as a real manifest in the service request.
+- Extended the WorkPass243 host-service fixture protocol to exercise a non-null manifest fingerprint.
+- Validation caveat: the source and regression wiring are committed, but no local test/typecheck or successful exact-head CI execution is claimed. The configured executor must still be a real host-owned OS/container sandbox launcher; independent verifier/scanner programs and deployment configuration remain host responsibilities.
+
+
+## WorkPass245 — bind canonical experiment plan and scheduled run in host attestations
+
+- Tightened host-owned verifier and scanner response binding to require exact echoes of `experimentPlanFingerprint` and `plannedRunId` in addition to the canonical manifest, evaluator plan, payload, task input, environment, run, task and seed.
+- Updated the existing host-process protocol fixture to echo the full scheduled experiment context. This keeps the trust boundary aligned with the immutable context produced by the canonical evaluator.
+- Validation remains unverified: no local test/typecheck was run; latest GitHub Actions jobs are failing before exposing usable step details. Real OS/container isolation and production authority provisioning remain open.
+
+
+## WorkPass248 — bind executor response to the supervised invocation (2026-10-22)
+
+- The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
+- Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
+- This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.

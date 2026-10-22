@@ -1,3 +1,18 @@
+# Neuro-Kurisu — текущая рабочая точка — GitHub WorkPass148 (21.10.2026)
+
+**Active implementation branch:** `workpass135-durable-shadow-run-registry` · **Draft PR:** [#22](https://github.com/ailtron1ss-rgb/NK1/pull/22). Historical WorkPass57 archive details remain below and are not re-labelled as a new release archive.
+
+### WorkPass148 — authenticated promotion and trusted restore (21.10.2026)
+- [x] Runtime's scheduled shadow runner is explicit opt-in, uses Core-owned registration before spawn, and ingests only a bounded signed observation file after matching the supervisor-created run ID.
+- [x] Candidate staging CLI validates configured Ed25519 outcome-verifier keys and all signed holdout outcomes; only a real in-process accepted proposal can stage; it writes the separate atomic candidate store and cannot auto-activate.
+- [x] Promotion approval has a separate Ed25519 authority key set. Approval is bound to exact candidate/version/payload/proposal/outcome, active-version CAS, shadow count and shadow-evidence digest.
+- [x] Runtime API exposes candidate/active state, creates a signable request only for a configured approver and passing shadow gate, and applies only a verified detached approval under the existing API authorization middleware.
+- [x] Active skills are revalidated on store restore/read; persisted JSON without a matching signed approval, candidate payload/version and authenticated shadow evidence fails closed. Approval freshness is required for new activation but not for an already-active skill's later restore.
+- [ ] Successful exact-head CI/typecheck: **unverified**; current Actions jobs have no actionable steps/logs, do not mark them passed.
+- [ ] Production verifier/approver key management and rotation/revocation; independent production shadow runner and verifier.
+- [ ] Signed rollback authority, deployment-shaped stage → shadow → approval → activate → restart/rollback E2E; measured holdout/transfer/reset-retention improvement.
+- **Release readiness:** unchanged/not recalculated; this implementation checkpoint alone is not release approval.
+
 # Neuro-Kurisu — актуальная рабочая точка — WorkPass57 (17.10.2026)
 
 **Канонический архив:** `Neuro_Kurisu_WORKPASS57_2026-10-17.zip` · **База:** `Neuro_Kurisu_WORKPASS56_2026-10-17.zip` · **Runtime:** 35.77.0 · **schema:** 225 · **Статус:** implementation workpass; релизные gates открыты. Исторические проходы ниже сохранены.

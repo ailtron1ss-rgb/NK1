@@ -1,6 +1,13 @@
 # NeuroCore — repository working rules
 
-> **New-session entry point:** read [`NEUROCORE_START_HERE.md`](NEUROCORE_START_HERE.md) first, then verify the current branch head, latest Actions status, and the open-work register in [`docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md`](docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md). The mission is persistent across chats; do not ask the user to restate it.
+> **New-session entry point:** read [`NEUROCORE_START_HERE.md`](NEUROCORE_START_HERE.md) and [WorkPass126 skill-store integrity report](docs/WORKPASS126_SKILL_STORE_INTEGRITY_2026-10-21.md) and [WorkPass125 repository synchronization audit](docs/WORKPASS125_REPOSITORY_SYNC_AUDIT_2026-10-21.md), then refresh the live branch head, stacked PR state, exact-head Actions status and open-work register. The active learning stack is WorkPass124 on top of WorkPass123; PR #12 is draft and unmerged. WorkPass126 hardens durable skill-store schema and payload-integrity validation; its tests and exact-head CI remain unverified. The release/metadata `main` branch is not the direct merge target for the source stack. The mission is persistent across chats; do not ask the user to restate it.
+
+## Latest checkpoint
+
+Read [WorkPass127 proposal authenticity report](docs/WORKPASS127_PROMOTION_PROPOSAL_AUTHENTICITY_2026-10-21.md) first. The candidate store now rejects copied or fabricated proposal objects using a module-private same-process issuance registry; successful lifecycle fixtures use signed manifest-bound artifacts. Runtime test/typecheck/CI are not yet verified, and the broader activation call-graph audit remains open.
+
+
+Read [WorkPass126 skill-store integrity report](docs/WORKPASS126_SKILL_STORE_INTEGRITY_2026-10-21.md), then [WorkPass125 repository synchronization audit](docs/WORKPASS125_REPOSITORY_SYNC_AUDIT_2026-10-21.md), before resuming. Inspect the exact-head CI and run the owning tests. Active learning work is `workpass124-learning-evidence-hardening` (PR #12, draft/unmerged), stacked on `workpass123-authenticated-skill-lifecycle` (PR #11). The full source stack is based on `workpass70-source`; `main` is a separate release/metadata branch with no common ancestor reported by GitHub compare. Do not merge directly to `main`.
 
 ## Project objective
 
@@ -11,7 +18,7 @@ Work code-first. Prefer observable, testable behavior over architectural labels.
 ## Canonical navigation
 
 - `README.md`: current repository status and release gates.
-- `docs/WORKPASS78_HANDOVER_2026-10-20.md`: latest continuation snapshot, CI evidence and prioritized unresolved queue.
+- `docs/WORKPASS93_CHECKPOINT_2026-10-20.md`: latest continuation snapshot, CI evidence and prioritized unresolved queue.
 - `docs/REPOSITORY_CLEANUP_AUDIT_WORKPASS72.md` plus its JSON manifest: exact content-duplicate audit; candidates are not deletion instructions.
 - `docs/WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md`: repository inventory, audit findings and open-work register.
 - `runtime/neuro-kurisu/`: canonical organism/runtime implementation.

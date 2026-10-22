@@ -1,0 +1,101 @@
+name: WorkPass108 paired evidence identity and verified promotion gate
+on:
+  pull_request:
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedgerStore.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedgerFileStore.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeArtifact.ts'
+      - 'runtime/neuro-kurisu/src/node-shims.d.ts'
+      - 'runtime/neuro-kurisu/tests/p23-signed-outcome-artifact.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomePromotionGate.ts'
+      - 'runtime/neuro-kurisu/tests/p23-verified-outcome-ledger.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-verified-outcome-promotion-gate.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-outcome-promotion-integration.mjs'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/TrustedShadowLearningRunCoordinator.ts'
+      - 'runtime/neuro-kurisu/tests/p23-core-trusted-shadow-entry.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-verified-outcome-ledger-persistence.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-verified-outcome-ledger-file-store.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-paired-outcome-identity.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-task-manifest-fingerprint.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts'
+      - 'runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-hermes-reflective-diagnostics.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/HermesVerifiedEvidenceBinding.ts'
+      - 'runtime/neuro-kurisu/tests/p23-hermes-verified-evidence-binding.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs'
+      - '.github/workflows/workpass106-verified-promotion-gate.yml'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/tsconfig.clean.json'
+      - '.nvmrc'
+      - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
+      - 'app/package.json'
+      - 'app/package-lock.json'
+      - 'runtime/neuro-kurisu/tests/workpass310-p23-learning-restore-integrity.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  verified-promotion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Install pinned TypeScript compiler from app lockfile
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Check evidence ledger
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-verified-outcome-ledger.mjs
+      - name: Check conservative outcome promotion gate
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-verified-outcome-promotion-gate.mjs
+      - name: Check ledger-to-promotion integration
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-outcome-promotion-integration.mjs
+      - name: Check collision-safe paired outcome identity
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-paired-outcome-identity.mjs
+      - name: Check stable task-manifest fingerprint binding
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-task-manifest-fingerprint.mjs
+      - name: Check durable ledger roundtrip and corruption rejection
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-verified-outcome-ledger-persistence.mjs
+      - name: Check atomic local-file persistence and restart restore
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-verified-outcome-ledger-file-store.mjs
+      - name: Verify signed independent outcome artifacts and reject tampering
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-signed-outcome-artifact.mjs
+      - name: Check Core-owned trusted shadow execution entry point
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-core-trusted-shadow-entry.mjs
+      - name: Check Hermes-inspired reflective candidate evaluation gate
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p29:hermes-reflective-candidate-gate
+      - name: Check P23 Hermes reflective diagnostics wiring
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:hermes-reflective-diagnostics
+      - name: Verify Hermes reflective trials against signed shadow receipts
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:hermes-verified-evidence-binding
+      - name: Verify reflective fitness blocks production promotion
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:hermes-production-promotion-gate
+      - name: Validate P23 persisted learning restore integrity
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass310:p23-restore-integrity
+      - name: Type-check runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck

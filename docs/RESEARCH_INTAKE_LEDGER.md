@@ -1,4 +1,35 @@
+## WorkPass266 — primary-source metadata check for memory and neuroscience candidates (2026-10-22)
+
+- [AMA-Bench, ICML 2026](https://proceedings.mlr.press/v306/zhao26bs.html) — publisher record describes long-horizon memory over agent/environment trajectories (states, actions, observations and tool output). Use its protocol as a candidate for trajectory-grounded evaluation; code/data integration has not been performed.
+- [Mem2ActBench, ACL 2026](https://aclanthology.org/2026.acl-long.370/) — the paper evaluates whether remembered preferences and task state ground later tool selection and parameters. This matches the planned memory-to-action task family. Upstream code/data and license still require review.
+- [Memora / From Recall to Forgetting, ACL 2026 Findings](https://aclanthology.org/2026.findings-acl.1337/) — the publisher record identifies Forgetting-Aware Memory Accuracy (FAMA), which penalizes reliance on obsolete or invalidated memory. Add stale-fact use as a distinct failure metric; do not treat the metric as already implemented.
+- [MemoryArena, ICML 2026](https://proceedings.mlr.press/v306/he26am.html) — interdependent multi-session agent/environment tasks provide a candidate for testing memory → action → feedback rather than passive recall alone.
+- [A brain-wide map of neural activity during complex behaviour, Nature 2025](https://www.nature.com/articles/s41586-025-09235-0) — large-scale standardized recordings span 621,733 neurons, 699 probes, 139 mice, 12 laboratories and 279 brain areas. These are mouse decision-task data, not a complete map of the human brain.
+- [Synaptic connectomics: status and prospects, Nature Reviews Neuroscience 2025](https://www.nature.com/articles/s41583-025-00957-8) — supports multiscale circuit research while emphasizing conceptual/technical constraints; connectome structure alone is not a working functional theory.
+
+**Status:** publisher metadata/abstract reviewed on 2026-10-22; source-code, benchmark dataset, license and reproducibility review remain OPEN. These stay RESEARCH QUEUE / SCIENTIFIC REFERENCE, not accepted dependencies. No package installation or code vendoring is implied.
+
+---
+
 # NeuroCore — upstream research and source-intake ledger
+
+## WorkPass265 — current memory/science benchmark intake (2026-10-22)
+
+The following recent sources expand the evaluation design. Their presence here records a research candidate, not verified upstream integration. Before copying code or data, check the upstream revision, dataset/model license, provenance, installation footprint and privacy requirements.
+
+| Source | Mechanism or evaluation idea | Proposed NK1 use | Status |
+|---|---|---|---|
+| [AMA-Bench, ICML 2026 / PMLR](https://proceedings.mlr.press/v306/zhao26bs.html) | Long-horizon memory over agent/environment trajectories, including states, actions, observations and tool outputs | Extend the current retrieval-only view with trajectory-linked recall and later task success; keep manifests and outcomes reproducible | RESEARCH QUEUE; protocol/data license review required |
+| [Mem2ActBench, ACL 2026](https://aclanthology.org/2026.acl-long.370/) | Whether remembered preferences and task state correctly ground later tool choice and parameters | Add a memory-to-action task family to the independent RU/EN evaluation; measure success and parameter-grounding errors | RESEARCH QUEUE; code/data/license review required |
+| [Memora, ACL 2026 Findings](https://aclanthology.org/2026.findings-acl.1337/) | Remembering, reasoning and recommending over evolving personal histories; Forgetting-Aware Memory Accuracy penalizes stale-memory reliance | Add tests for fact supersession, old preference expiry and confident use of invalidated facts | RESEARCH QUEUE; inspect metric definition and evaluation protocol first |
+| [MemoryArena, ICML 2026 / PMLR](https://proceedings.mlr.press/v306/he26am.html) | Interdependent multi-session tasks in which earlier environment interactions should improve later actions | Evaluate the closed memory → action → verified outcome loop, not passive conversation QA alone | RESEARCH QUEUE; task/license/reproducibility review required |
+| [International Brain Laboratory, Nature 2025](https://www.nature.com/articles/s41586-025-09235-0) | Standardized brain-wide recordings during a complex perceptual-decision-action task | Study interaction traces across sensation, prior expectation, feedback, choice and action; mouse data are not a human connectome | SCIENTIFIC REFERENCE; no direct architecture copy |
+| [Synaptic connectomics: status and prospects, Nature Reviews Neuroscience 2025](https://www.nature.com/articles/s41583-025-00957-8) | Limits and prospects of multiscale circuit reconstruction | Use connectomics as a constrained hypothesis source; require behavioral predictions and ablations rather than region-name analogies | SCIENTIFIC REFERENCE; no direct architecture copy |
+
+### Candidate acceptance rule
+
+For each candidate, record the exact paper/version and code/data revision, license, task families, split rules, metric definitions, baseline, compute/storage budgets and known limitations. Run a small representative slice first. Keep the candidate only if it identifies a failure or yields reproducible behavior that the current baseline misses. Never tune on the final holdout or assume a benchmark's reported result transfers automatically to NeuroCore.
+
 
 **Purpose:** keep research actionable across chats. This ledger is a queue of candidates, not a claim that all listed ideas are integrated or superior. Read [NEUROCORE_START_HERE.md](../NEUROCORE_START_HERE.md) and [AGENTS.md](../AGENTS.md) before adding candidates.
 
@@ -13,6 +44,25 @@
 | MINTEval (May 2026) | https://arxiv.org/abs/2605.18565 | Multi-target interference and aggregation across evolving evidence | Memory retrieval, learning credit, evidence fusion | **ADAPT** — test conflicting targets, order/shuffle invariance and selective forgetting |
 | AgeMem (ACL 2026) | https://aclanthology.org/2026.acl-long.981/ | Learned short-/long-term memory management | Existing memory residency and consolidation owner | **RESEARCH-ONLY** — compare learned management with deterministic policy under equal budgets; do not add another memory store |
 | Existing NeuroCore retrieval experiment | `runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalExperiment.ts` | Paired bootstrap sensitivity across fixed seeds | Canonical `MemoryOS2` | **IMPLEMENTED** — seeds resample intervals; they do not train the retriever. Prior `recallDelta=0` remains a hard block on uplift claims |
+
+## Continual skill learning and evaluation (2026-10-20)
+
+| Candidate / source | Evidence / license | NK1 adaptation | Decision |
+|---|---|---|---|
+| SkillLearnBench | https://github.com/cxcscmu/SkillLearnBench ; MIT license declared upstream. 20 verified tasks / 100 instances, with skill quality, execution trajectory and task outcome scored separately. | Use the three-stage diagnostic pattern for a future small NK1 task set: skill artifact validity, actual skill invocation/trajectory, and independently verified outcome. Do not import Docker/API-heavy runner into the dependency-light runtime without a separate harness review. | **ADAPT PROTOCOL; CODE NOT VENDORED** |
+| ContinualSkillBench | https://arxiv.org/abs/2608.03874 ; five domains with sequential, cross-task skill reuse. Reports gains vary by model/domain; explicit skill libraries do not consistently outperform retained context/feedback. | Require order variation, context-only vs explicit-skill ablations, transfer tasks and per-domain reporting. A written/promoted skill is not evidence of a reusable abstraction. | **ADAPT EVALUATION DESIGN** |
+| Berkeley Continual Learning Bench | https://sky.cs.berkeley.edu/project/continual-learning-bench/ ; expert-validated task sequences where tasks interact and the system may change during evaluation. | Prioritize versioned task streams and online update boundaries over isolated single-task fixtures; compare frozen and adaptive controls on identical sequences. | **RESEARCH-ONLY; TASK/VERIFIER LICENSE REVIEW REQUIRED** |
+
+NK1 adaptation from this research in WorkPass116: add seed-clustered paired outcomes so task cells within a run do not inflate the independent sample count. This is a measurement-integrity improvement, not evidence that any learning strategy is better. The upstream benchmark datasets, task code and Docker/API integrations were not copied.
+
+## Continual-learning evaluation refresh (2026-10-21)
+
+| Candidate / source | Evidence / license | NK1 adaptation | Decision |
+|---|---|---|---|
+| retention-bench | https://github.com/symbolfarm/retention-bench ; public research workbench extending CL-Bench; repository describes a hard process reset with only an on-disk survive-directory preserved and distinguishes retained records from integrated capability. Verify the current upstream LICENSE and dependency pin before any code reuse. | NK1 already has a matched hard-reset retention evaluator (WorkPass115). Next integration is protocol-level: run real subprocess resets, separate intact-store from wiped-store arms, and report a gain curve over reset frequency; do not treat an in-process snapshot/restore test as equivalent to a hard reset. | **ADAPT PROTOCOL; NO CODE COPIED** |
+| AgentMemoryBench | https://github.com/solomoon313/AgentMemoryBench ; upstream repository reports offline, online, replay, transfer and repair modes over code-, web-, embodied- and dialogue-grounded tasks; verify exact dataset provenance and task-level licenses before importing any instances. | Map NK1's existing outcome matrix onto explicit online gain, replay forgetting, cross-family transfer and repair-after-incorrect-feedback reports. Keep external task sets held out; never train on evaluator answers/verifiers. | **ADAPT EVALUATION MATRIX; DATA NOT COPIED** |
+
+WorkPass133 code finding: the bootstrap stream identity previously included every observed seed ID, including incomplete seeds that were excluded from the estimate. That allowed irrelevant partial evidence to perturb the deterministic resampling stream even though the paired sample and point estimate were unchanged. The implementation now binds the stream identity to complete paired seeds only, and a regression compares the same complete sample with and without extra incomplete-seed rows. This is a reproducibility/evidence-isolation correction, not a learning gain.
 
 ## Language model and neural architecture candidates
 
@@ -46,6 +96,13 @@ Create a row or linked detail page with all fields below before treating the can
 - **Risks:** hardware/runtime assumptions, memory/latency/energy costs, numerical stability, privacy, security, interference, catastrophic forgetting, licensing and maintenance burden.
 - **Experiment:** reproducible baseline, same data and budget, held-out cases, ablation/counterfactual, confidence interval, failure cases and rollback.
 - **Decision:** integrate / adapt / research-only / reject, with measured result and rationale.
+
+## WorkPass131 — execution-attestation context binding (2026-10-21)
+
+| Candidate / source | Mechanism observed | NK1 adaptation | Status |
+|---|---|---|---|
+| [in-toto Attestation Statement v1](https://github.com/in-toto/attestation/blob/main/spec/v1/statement.md) and [framework spec](https://github.com/in-toto/attestation/blob/main/spec/README.md) | An authenticated statement binds a claim to an explicit subject and typed predicate; consumers evaluate the binding, not just the existence of an envelope/signature. | Extended the existing signed shadow-evidence verifier so a receipt must match independently resolved run ID, task ID, seed, manifest fingerprint and runtime version, in addition to candidate/version/payload identity and Ed25519 signature. No upstream code or dependency was copied; this is a narrow contract adaptation. | **IMPLEMENTED; execution unverified** — regression covers each mismatched context field after durable-store reconstruction. Production resolver still must be wired to the trusted supervisor/run ledger. |
+| [The Update Framework security model](https://theupdateframework.github.io/security.html) | Freshness and rollback protection require state/context beyond a valid signature. | Reinforces that cryptographic authenticity alone is insufficient; NK1 continues to require durable state and revalidation before promotion. No TUF client or metadata protocol was imported. | **DESIGN INPUT** — no claim of full TUF conformance. |
 
 ## Next research pass
 
@@ -124,3 +181,30 @@ For each idea, answer before implementation:
 - Is the mechanism actually necessary, or can a simpler change solve the observed failure?
 
 Do not count a reference as “used” until a source revision/paper protocol is inspected, a testable hypothesis is recorded, and an experiment or explicit rejection decision is linked.
+
+
+## WorkPass132 — bootstrap sensitivity for seed-clustered skill learning (2026-10-21)
+
+| Candidate / source | Mechanism observed | NK1 adaptation | Status |
+|---|---|---|---|
+| [SkillLearnBench (COLM 2026)](https://github.com/cxcscmu/SkillLearnBench) — MIT license declared upstream | Controlled comparisons of skill methods; separates artifact quality, execution trajectory and verified task outcome; reports gains vary by task/domain and self-feedback can drift. | Preserve NK1's separate evidence and outcome layers; do not use a single aggregate as proof that a skill generalizes. WorkPass132 adds a more conservative uncertainty requirement at the seed-cluster outcome layer. | **PROTOCOL ADAPTED; no benchmark tasks/code copied** |
+| [SkillsBench v1.1](https://www.skillsbench.ai/) | Matched with-skill/without-skill evaluation over diverse tasks shows strong variation by domain and negative deltas on some tasks. | Keep baseline pairing, task-family breakdowns and explicit no-skill/control arms; never infer uplift from skill creation or invocation alone. | **DESIGN INPUT** |
+| [Storage-aware replay evaluation protocol](https://www.mdpi.com/2504-4990/8/7/212) | Uses equal-byte budgets, strongest-baseline comparison, pre-specified non-inferiority and bootstrap confidence intervals with multiple-comparison correction. | Adapt only the bootstrap sensitivity idea to NK1's existing seed-clustered outcome deltas; no replay algorithm or external code copied. Equal-byte replay tournament and multiplicity correction remain future work. | **NARROW ADAPTATION IMPLEMENTED; not full protocol conformance** |
+
+### Code and acceptance boundary
+
+- `VerifiedOutcomeLedger.ts` now computes a deterministic 4,000-resample percentile interval over seed-level paired deltas. Its PRNG seed is derived from method/split/family identity and observed deltas so identical input yields identical output.
+- The independent unit remains the seed aggregate; incomplete seeds are excluded as before. A single independent seed produces no bootstrap interval.
+- `VerifiedSkillPromotion.ts` requires both the existing small-sample Student-t lower bound and the bootstrap lower bound to be above zero, as well as existing minimum-gain, evidence-authentication, task-coverage, seed-coverage and family-regression gates.
+- Regression tests assert determinism, interval bracketing and no confidence interval for one seed, and require the positive bootstrap lower bound in the accepted promotion fixture.
+- **Not proven:** bootstrap intervals do not fix tiny or biased samples, verifier bias, task leakage, multiple-comparison inflation, or poor benchmark representativeness. No live learning run has been measured by this change; it is a stricter admission/evaluation rule, not a performance gain.
+
+
+## WorkPass134 — manifest-bound outcome ingestion (2026-10-21)
+
+- Added a canonical fingerprint equality check between the caller-supplied task manifest and the `VerifiedOutcomeLedger` manifest before signed outcome ingestion. Malformed and substituted manifests fail closed before the ledger is mutated.
+- Tightened runtime task-manifest validation: non-empty string identity fields, a supported `train|validation|holdout` split, and a SHA-256 prompt fingerprint are required. Unknown split labels can no longer silently disappear from expected evaluation coverage.
+- Added regression cases for side-manifest substitution, duplicate task IDs, unknown split labels, and whitespace-only family names.
+- Research relationship: manifest-bound, controlled evaluation and signed-provenance principles; protocol adaptation only, no upstream code or dataset copied.
+- **Verification boundary:** code and tests committed; runtime execution, typecheck and exact-head Actions are still unverified. No learning uplift is claimed.
+- Report: `docs/WORKPASS134_MANIFEST_BOUND_OUTCOME_EVIDENCE_2026-10-21.md`.

@@ -202,7 +202,13 @@ import { LongitudinalOrganismEngine, defaultLongitudinalOrganism } from '../lear
 import { AdaptiveDevelopmentEngine, defaultAdaptiveDevelopment } from '../learning/AdaptiveDevelopmentEngine.ts';
 import { TemporalContinuityEngine, defaultTemporalContinuity } from '../learning/TemporalContinuityEngine.ts';
 import { AdvancedResilienceEngine, defaultAdvancedResilience } from '../learning/AdvancedResilienceEngine.ts';
-import { P23LearningEngine, defaultP23Learning } from '../learning/P23LearningEngine.ts';
+import { P23LearningEngine, defaultP23Learning, type PolicySkillRecord } from '../learning/P23LearningEngine.ts';
+import type { VerifiedSkillPromotionProposal } from '../learning/VerifiedSkillPromotion.ts';
+import { createVerifiedSkillLifecycleBootstrap } from '../learning/VerifiedSkillLifecycleBootstrap.ts';
+import { runTrustedShadowLearningProcess as executeTrustedShadowLearningProcess, type TrustedShadowLearningRunInput } from '../learning/TrustedShadowLearningRunCoordinator.ts';
+import { AtomicFileTrustedSkillShadowRunRegistry } from '../learning/TrustedSkillShadowRunRegistry.ts';
+import type { TrustedShadowExecutionContext } from '../learning/VerifiedSkillShadowEvidence.ts';
+import type { SkillPromotionApproval, SkillRollbackApproval, SkillShadowObservation } from '../learning/VersionedSkillCandidateStore.ts';
 import { P24WorldIdentityEngine, defaultP24WorldIdentity } from '../developmental/P24WorldIdentityEngine.ts';
 import { P25ScientificDevelopmentEngine, defaultP25ScientificDevelopment } from '../learning/P25ScientificDevelopmentEngine.ts';
 import { P26TrueLearningEngine, defaultP26TrueLearning } from '../learning/P26TrueLearningEngine.ts';
@@ -1148,6 +1154,8 @@ export class OrganismCore {
     private readonly organismSystems = new OrganismSystemFabric();
     /** Owns the extracted developmental/neural execution modules; Core only orchestrates them. */
     private readonly developmentalNeural = new DevelopmentalNeuralRuntime();
+    /** Durable trust context for signed shadow evidence; only trusted supervisor code may register runs. */
+    private verifiedSkillShadowRunRegistry: AtomicFileTrustedSkillShadowRunRegistry | null = null;
     /** Bounded evidence adapter; MemoryOS2 and PolicyAuthorityLedger remain the sole memory/policy owners. */
     private readonly adaptiveMemoryStrategyReadout = new AdaptiveMemoryStrategyReadout();
     /** R23 bounded recurrent/SSM-style ablation; opt-in and causally isolated from canonical decisions. */
@@ -1228,6 +1236,15 @@ export class OrganismCore {
     private ready = false;
     constructor(store: JsonStateStore<PersistedOrganism>, config: OrganismConfig = {}) {
         this.store = store;
+        const candidateStorePath = store instanceof FileStateStore
+            ? store.siblingPath('verified-skill-candidates.json')
+            : (process.env.NEURO_SKILL_CANDIDATE_STORE_PATH || 'state/verified-skill-candidates.json');
+        const trustedRunRegistryPath = store instanceof FileStateStore
+            ? store.siblingPath('trusted-skill-shadow-runs.json')
+            : (process.env.NEURO_SKILL_SHADOW_RUN_REGISTRY_PATH || 'state/trusted-skill-shadow-runs.json');
+        const verifiedSkillLifecycle = createVerifiedSkillLifecycleBootstrap(candidateStorePath, trustedRunRegistryPath);
+        this.developmentalNeural.p23Learning.configureVerifiedSkillLifecycle(verifiedSkillLifecycle.store);
+        this.verifiedSkillShadowRunRegistry = verifiedSkillLifecycle.registry;
         if (store instanceof FileStateStore) {
             this.actionExecutionLedgerArchive = new FileActionExecutionLedgerArchive(store.siblingPath('action-ledger.jsonl'));
             this.cognitiveRuntime.actionGateway.setExecutionLedgerArchive(this.actionExecutionLedgerArchive);
@@ -10955,6 +10972,42 @@ export class OrganismCore {
     p24BodyWorldPrediction(minutes = 5) { return this.worldSubsystem.p24WorldIdentity.bodyWorld.predict(minutes); }
     p24ModelSwitchSnapshot() { return this.worldSubsystem.p24WorldIdentity.modelSwitchBenchmark.snapshot(); }
     p24RecordModelSwitchTrial(input: Parameters<P24WorldIdentityEngine['modelSwitchBenchmark']['compare']>[0]) { const trial = this.worldSubsystem.p24WorldIdentity.modelSwitchBenchmark.compare(input); this.persisted.facets.advanced.p24 = this.worldSubsystem.p24WorldIdentity.snapshot(); return trial; }
+    /**
+     * Canonical Core-owned entry point for candidate/shadow learner execution.
+     * Callers supply the runtime-owned version and command, but cannot replace
+     * the registrar: this Core instance records provenance before child spawn.
+     */
+    runTrustedSkillShadowLearningProcess(input: Omit<TrustedShadowLearningRunInput, 'core'>) {
+        return executeTrustedShadowLearningProcess({ ...input, core: this });
+    }
+    /** Read-only durable candidate lifecycle state for trusted in-process runtime components. */
+    verifiedSkillCandidateSnapshot() {
+        return this.developmentalNeural.p23Learning.verifiedSkillCandidateSnapshot();
+    }
+    /**
+     * Stage, but never activate, a candidate from an authentic in-process proposal.
+     * The P23 store rechecks module-private proposal issuance and all authenticated-evidence gates.
+     */
+    stageVerifiedSkillCandidate(proposal: VerifiedSkillPromotionProposal, skill: PolicySkillRecord) {
+        return this.developmentalNeural.p23Learning.stageVerifiedSkillCandidate(proposal, skill);
+    }
+    /** Trusted execution supervisor hook: persist run context before accepting any signed shadow receipt. */
+    registerTrustedSkillShadowRun(context: TrustedShadowExecutionContext) {
+        if (!this.verifiedSkillShadowRunRegistry) throw new Error('trusted skill shadow registry is not configured');
+        return this.verifiedSkillShadowRunRegistry.register(context);
+    }
+    /** Promotion is possible only with a valid detached signature from a configured trusted authority. */
+    approveVerifiedSkillCandidate(candidateId: string, approval: SkillPromotionApproval, minShadowRuns = 3) {
+        return this.developmentalNeural.p23Learning.approveVerifiedSkillCandidate(candidateId, approval, minShadowRuns);
+    }
+    /** Rollback is also default-deny and requires a candidate-bound detached signature. */
+    rollbackVerifiedSkillCandidate(candidateId: string, approval: SkillRollbackApproval) {
+        return this.developmentalNeural.p23Learning.rollbackVerifiedSkillCandidate(candidateId, approval);
+    }
+    /** Candidate-store verifier rechecks the signed receipt against the independently persisted run context. */
+    recordVerifiedSkillShadow(candidateId: string, observation: SkillShadowObservation) {
+        return this.developmentalNeural.p23Learning.recordVerifiedSkillShadow(candidateId, observation);
+    }
     p23LearningSnapshot() { return this.developmentalNeural.p23Learning.learningSummary(); }
     p23EvidenceDebt(limit = 12) { return this.developmentalNeural.p23Learning.evidenceDebt(limit); }
     p23TopSkills(limit = 12) { return this.developmentalNeural.p23Learning.topSkills(limit); }

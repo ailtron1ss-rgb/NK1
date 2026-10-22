@@ -1,5 +1,17 @@
 # DOUS — финальный архитектурно-семантический разбор Нейро Курису и окончательный план интеграции исходников
 
+## Continuation checkpoint — GitHub WorkPass148 (21 октября 2026)
+
+This heading is an implementation checkpoint layered on top of the historical DOUS-1.0 analysis; it does not rewrite the WorkPass42/57 archive baseline.
+
+- **Implemented in the active PR #22 branch:** P23 trusted shadow scheduler in the production runtime; explicit, fail-closed production config; per-run signed observation ingestion; CLI for staging candidates from verified holdout artifacts; distinct Ed25519 promotion-approval authority; API request/apply route; restore-time validation of active candidate, approval and evidence.
+- **Central ownership is preserved:** `OrganismCore` remains the orchestration/provenance boundary; `P23LearningEngine` and `VersionedSkillCandidateStore` remain the candidate lifecycle owners; the only promotion path is candidate-store CAS with signed approval. No parallel active-skill store was introduced.
+- **Old ActionGateway P0 re-check against the current source:** autonomous resource planning uses `this.executeTool(...)`; composite-skill execution that calls ActionGateway directly explicitly runs `finalizeToolOutcome` for unkeyed, non-replay executions, while keyed execution uses the gateway-owned finalizer; project execution constructs a durable operation/idempotency key and enters receipt reconciliation logic. This is a static source-path review, not runtime proof.
+- **Evidence boundary:** successful tests/typecheck and real production learning uplift are not established. Recent Actions jobs finish without a usable step list/logs; treat this as CI infrastructure/pre-step failure, not a test pass or a source-level test failure.
+- **Next fixed priority:** (1) obtain exact-head test/typecheck execution on an actionable runner; (2) provision independent verifier/approval keys via managed deployment configuration; (3) add authenticated rollback and run real stage → shadow → approve → activate → restore/rollback; (4) measure task-family holdout, transfer and reset retention before any quality/readiness score changes.
+
+---
+ 
 **Версия документа:** DOUS-1.0  
 **Дата:** 15 октября 2026 года  
 **Каноническая база:** `Neuro_Kurisu_WORKPASS42_2026-10-14.zip`  

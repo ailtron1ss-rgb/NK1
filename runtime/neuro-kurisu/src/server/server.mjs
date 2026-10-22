@@ -1,10 +1,16 @@
 import http from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { URL } from 'node:url';
 import { mkdir, readFile } from 'node:fs/promises';
 import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsReaddirSync, readFileSync as fsReadFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
+import { P23LearningEngine } from '../organism/learning/P23LearningEngine.ts';
+import { generateLocalSkillRevision } from '../organism/learning/P23LocalModelSkillRevisionGenerator.ts';
+import { createVerifiedSkillLifecycleBootstrap } from '../organism/learning/VerifiedSkillLifecycleBootstrap.ts';
+import { parseTrustedShadowLearningScheduleConfig } from '../organism/learning/P23TrustedShadowLearningScheduler.ts';
+import { createSkillPromotionApprovalPayload, createSkillRollbackApprovalPayload, parseTrustedSkillPromotionApprovalKeys } from '../organism/learning/AuthenticatedSkillPromotionApproval.ts';
 import { ProcessLock } from '../organism/persistence/ProcessLock.ts';
 import { FileStateStore } from '../organism/persistence/FileStateStore.ts';
 import { idempotencyPreflightHttpStatus } from './idempotency-response.mjs';
@@ -32,6 +38,47 @@ const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
 const REQUEST_TIMEOUT_MS = Math.max(5000, Number(process.env.NEURO_REQUEST_TIMEOUT_MS || 45000));
 const MAX_BODY_BYTES = Math.max(4096, Number(process.env.NEURO_MAX_BODY_BYTES || 256000));
 const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
+// Opt-in only: malformed production settings abort startup, and absence means no shadow child process.
+const TRUSTED_SHADOW_LEARNING = parseTrustedShadowLearningScheduleConfig(process.env.NEURO_SKILL_SHADOW_SCHEDULER_JSON);
+const COMPOUND_REPAIR_REVISION_PROVIDER_MODULE = String(process.env.NEURO_COMPOUND_REPAIR_REVISION_PROVIDER_MODULE || '').trim();
+async function configureCompoundRepairRevision() {
+    if (!COMPOUND_REPAIR_REVISION_PROVIDER_MODULE)
+        return undefined;
+    // Explicit opt-in only. The provider is trusted executable code that must call
+    // the application's real proposal, independent-evaluation, and generator pipeline.
+    const providerPath = path.isAbsolute(COMPOUND_REPAIR_REVISION_PROVIDER_MODULE)
+        ? COMPOUND_REPAIR_REVISION_PROVIDER_MODULE
+        : path.resolve(ROOT, COMPOUND_REPAIR_REVISION_PROVIDER_MODULE);
+    const lifecycle = createVerifiedSkillLifecycleBootstrap(
+        path.join(STATE, 'p23-verified-skill-candidates.json'),
+        path.join(STATE, 'p23-trusted-shadow-runs.json'),
+    );
+    if (lifecycle.trustedVerifierCount < 1 || lifecycle.trustedApprovalCount < 1) {
+        throw new Error('compound repair revision requires trusted shadow verifier keys and authenticated promotion approval keys');
+    }
+    const engine = new P23LearningEngine();
+    engine.configureVerifiedSkillLifecycle(lifecycle.store);
+    const providerModule = await import(pathToFileURL(providerPath).href);
+    const factory = providerModule.createCompoundRepairRevisionProvider ?? providerModule.default;
+    if (typeof factory !== 'function') {
+        throw new Error('compound repair revision provider module must export createCompoundRepairRevisionProvider() or a default factory');
+    }
+    const provideInputs = await factory({
+        engine,
+        candidateStore: lifecycle.store,
+        trustedRunRegistry: lifecycle.registry,
+        stateDirectory: STATE,
+        // Real llama.cpp-compatible local generator. The provider module still owns
+        // authentic proposal construction and independent baseline/candidate evaluation.
+        generateSkillRevision: (request) => generateLocalSkillRevision(LLAMA_CPP_PROVIDER, request),
+    });
+    if (typeof provideInputs !== 'function') {
+        throw new Error('compound repair revision provider factory must return an input-provider function');
+    }
+    return { engine, provideInputs };
+}
+const COMPOUND_REPAIR_REVISION = await configureCompoundRepairRevision();
+const TRUSTED_PROMOTION_APPROVER_IDS = new Set(parseTrustedSkillPromotionApprovalKeys(process.env.NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON).keys());
 const PHONE_MODE = PHONE_POLICY.mode !== 'research';
 const INTERVAL_MS = PHONE_POLICY.baseIntervalMs;
 const SENSOR_INTERVAL_MS = PHONE_POLICY.samplerIntervalMs;
@@ -120,6 +167,8 @@ const runtime = new OrganismRuntime({
     checkpointMaxDirtyCycles: CHECKPOINT_MAX_CYCLES,
     stateStore: new FileStateStore(stateFile, { backupEverySaves: BACKUP_EVERY_SAVES, encoding: PHONE_MODE ? 'v8' : 'json' }),
     worldStateStore: new FileStateStore(worldFile, { backupEverySaves: BACKUP_EVERY_SAVES, encoding: PHONE_MODE ? 'v8' : 'json' }),
+    ...(TRUSTED_SHADOW_LEARNING ? { trustedShadowLearning: TRUSTED_SHADOW_LEARNING } : {}),
+    ...(COMPOUND_REPAIR_REVISION ? { compoundRepairRevision: COMPOUND_REPAIR_REVISION } : {}),
 });
 let runtimeReady = false;
 const willSdk = new WillSdkFacade({ step: (message, options) => runtime.step(message, options), snapshot: () => runtime.core.snapshot(), flush: () => runtime.core.flush(), exportWillPma: () => runtime.core.exportWillPma(), validateWillPma: (pma) => runtime.core.validateWillPma(pma) }, { enqueue: (input) => runtime.core.willEnqueueEnvelope(input), ack: (input) => runtime.core.willAckEnvelope(input), searchText: (text, k) => runtime.core.willSearchVector(text, k), benchmarkVectorIndex: (queries, k, ef) => runtime.core.willBenchmarkVectorIndex(queries, k, ef), diagnostics: () => runtime.core.willIntegrationDiagnostics() }, 'kurisu');
@@ -246,12 +295,18 @@ function localFallback(request) {
         generated: false,
     };
 }
+function languageTransportSignal(request) {
+    const deadline = AbortSignal.timeout(LLM_TIMEOUT_MS);
+    return request.signal ? AbortSignal.any([deadline, request.signal]) : deadline;
+}
 async function tryLlamaCpp(request, failures) {
+    if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
     if (!LLAMA_CPP_PROVIDER.configured() || LOCAL_LANGUAGE_BACKEND_POLICY.snapshot().coolingDown) return null;
     try {
-        return await LLAMA_CPP_PROVIDER.generate({ system: request.system, user: request.user, maxTokens: request.maxTokens, temperature: request.temperature });
+        return await LLAMA_CPP_PROVIDER.generate({ system: request.system, user: request.user, maxTokens: request.maxTokens, temperature: request.temperature, signal: request.signal });
     }
     catch (error) {
+        if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
         failures.push(`llama.cpp:${error?.message || error}`);
         return null;
     }
@@ -261,7 +316,7 @@ async function tryKobold(request, failures) {
         const response = await fetch(`${KOBOLD_URL}/api/v1/generate`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+            signal: languageTransportSignal(request),
             body: JSON.stringify({
                 prompt: `${request.system}\n\n${request.user}`,
                 max_context_length: 4096,
@@ -291,7 +346,7 @@ async function tryGemini(request, failures) {
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+            signal: languageTransportSignal(request),
             body: JSON.stringify({
                 contents: [{ role: 'user', parts: [{ text: `${request.system}\n\n${request.user}` }] }],
                 generationConfig: { temperature: request.temperature ?? 0.7, maxOutputTokens: request.maxTokens ?? 512 },
@@ -312,6 +367,7 @@ async function tryGemini(request, failures) {
 }
 async function generateLanguage(request) {
     const failures = [];
+    if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
     if (request.preferredBackend === 'deterministic-policy-fallback')
         return { ...localFallback(request), failures };
     const preferred = ['llama.cpp', 'kobold', 'gemini'].includes(request.preferredBackend) ? request.preferredBackend : 'gemini';
@@ -319,10 +375,12 @@ async function generateLanguage(request) {
         : preferred === 'kobold' ? ['kobold', 'llama.cpp', 'gemini']
             : ['gemini', 'llama.cpp', 'kobold'];
     for (const provider of order) {
+        if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
         let result = null;
         if (provider === 'llama.cpp') result = await tryLlamaCpp(request, failures);
         else if (provider === 'kobold') result = await tryKobold(request, failures);
         else result = await tryGemini(request, failures);
+        if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
         if (result?.text) return { ...result, failures };
     }
     return { ...localFallback(request), failures };
@@ -341,6 +399,19 @@ async function route(req, res) {
         if (url.pathname === '/health' || url.pathname === '/api/health') {
             return json(res, 200, { ok: true, ready: runtimeReady, service: 'neuro-kurisu', version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, tick: runtimeReady ? runtime.core.operationalStatusSnapshot().tick : 0, uptimeSec: Math.round(process.uptime()), bodySource: runtimeReady ? runtime.embodiment.snapshot().telemetry.source : 'initializing', actionLedger: runtimeReady ? runtime.core.actionExecutionLedgerMetrics() : null });
         }
+        if (req.method === 'POST' && url.pathname === '/api/organism/learning/compound-repair-revision') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            if (!COMPOUND_REPAIR_REVISION)
+                return json(res, 503, { ok: false, error: 'compound-repair-revision-provider-not-configured' });
+            const input = await body(req);
+            const skillId = typeof input.skillId === 'string' ? input.skillId.trim() : '';
+            if (!skillId || skillId.length > 160 || /[\u0000-\u001f\u007f]/.test(skillId))
+                return json(res, 400, { ok: false, error: 'invalid-skill-id' });
+            const result = await runtime.reviseCompoundSkillsFromObservedRepairs(skillId);
+            return json(res, 200, { ok: true, result });
+        }
+
         if (req.method === 'GET' && url.pathname === '/api/embodiment/status')
             return json(res, 200, embodimentAssetStatus());
         if (req.method === 'GET' && url.pathname === '/api/organism/avatar')
@@ -1293,9 +1364,26 @@ async function route(req, res) {
                     return json(res,403,{ok:false,error:permission.reason||'approval-invalid'});
                 }
             }
-            const step = await runtime.step(message, { deliberate });
+            const languageController = new AbortController();
+            const abortLanguage = () => {
+                if (!res.writableEnded && !languageController.signal.aborted) languageController.abort();
+            };
+            const onRequestAborted = () => abortLanguage();
+            const onResponseClose = () => abortLanguage();
+            req.once('aborted', onRequestAborted);
+            res.once('close', onResponseClose);
+            if (req.aborted || res.destroyed) abortLanguage();
+            let step;
+            try {
+                step = await runtime.step(message, { deliberate, signal: languageController.signal });
+            } finally {
+                req.off('aborted', onRequestAborted);
+                res.off('close', onResponseClose);
+            }
+            if (res.destroyed || res.writableEnded) return;
             const language = step.language;
             const voice = speakReply && language?.text ? await runtime.speak(language.text) : false;
+            if (res.destroyed || res.writableEnded) return;
             return json(res, 200, {
                 ok: true,
                 cycle: step.cycle,
@@ -1597,7 +1685,116 @@ async function route(req, res) {
             return json(res, 200, { ok: true, cameraEvidence: snapshot.facets.embodiment.cameraEvidence, p41Native: snapshot.facets.embodiment.p41NativePerception.metrics, p41Semantic: runtime.core.p41PerceptionSummary(), nextPerception: runtime.core.p41NextPerception(), visionBackend: VISION_BACKEND?.id ?? null, visionEnabled: Boolean(VISION_BACKEND), note: 'Camera evidence records acquisition and low-level signal only; semantic vision is true only when an explicitly configured vision backend returns semantic output.' });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/learning') {
-            return json(res, 200, { ok: true, phase: 'P23-true-learning-counterfactual-development', learning: runtime.core.p23LearningSnapshot(), evidenceDebt: runtime.core.p23EvidenceDebt(16), topSkills: runtime.core.p23TopSkills(16) });
+            return json(res, 200, { ok: true, phase: 'P23-true-learning-counterfactual-development', learning: runtime.core.p23LearningSnapshot(), evidenceDebt: runtime.core.p23EvidenceDebt(16), topSkills: runtime.core.p23TopSkills(16), verifiedSkillLifecycle: runtime.core.verifiedSkillCandidateSnapshot() });
+        }
+        if (req.method === 'GET' && url.pathname === '/api/organism/learning/verified-skills') {
+            const lifecycle = runtime.core.verifiedSkillCandidateSnapshot();
+            return json(res, 200, { ok: true, schemaVersion: 1, lifecycle, promotionPolicy: { requiresSignedEd25519Approval: true, requiresSignedRollbackApproval: true, minimumShadowRuns: 3, autoPromotion: false, authorityConfigured: TRUSTED_PROMOTION_APPROVER_IDS.size > 0 } });
+        }
+        const promotionRequestMatch = url.pathname.match(/^\/api\/organism\/learning\/skills\/([a-f0-9]{64})\/promotion-request$/);
+        if (req.method === 'POST' && promotionRequestMatch) {
+            const input = await body(req);
+            const candidateId = promotionRequestMatch[1];
+            const approverId = input && typeof input.approverId === 'string' ? input.approverId.trim() : '';
+            if (!approverId || approverId.length > 128 || !/^[A-Za-z0-9][A-Za-z0-9._:@-]*$/.test(approverId)) {
+                return json(res, 400, { ok: false, error: 'valid-approverId-required' });
+            }
+            if (!TRUSTED_PROMOTION_APPROVER_IDS.has(approverId)) {
+                return json(res, 403, { ok: false, error: 'promotion-approver-not-configured' });
+            }
+            const lifecycle = runtime.core.verifiedSkillCandidateSnapshot();
+            const candidate = lifecycle?.candidates.find(item => item.candidateId === candidateId);
+            if (!candidate) return json(res, 404, { ok: false, error: 'skill-candidate-not-found' });
+            if (candidate.status !== 'shadow') return json(res, 409, { ok: false, error: 'candidate-not-in-shadow-state' });
+            const active = lifecycle.active.find(item => item.skillId === candidate.skillId);
+            const expectedActiveVersion = active?.version ?? null;
+            if (expectedActiveVersion !== candidate.baseVersion) {
+                return json(res, 409, { ok: false, error: 'candidate-base-version-stale-restage-required' });
+            }
+            if (candidate.shadowObservations.length < 3 || candidate.shadowObservations.some(item => item.passed !== true)) {
+                return json(res, 409, { ok: false, error: 'shadow-evidence-gate-not-satisfied', requiredRuns: 3, actualRuns: candidate.shadowObservations.length });
+            }
+            const approvalRequest = createSkillPromotionApprovalPayload(
+                candidate, approverId, randomUUID(), Date.now(), expectedActiveVersion, 3,
+            );
+            return json(res, 200, { ok: true, approvalRequest, next: 'Have the authenticated external approval authority sign canonical JSON of approvalRequest with its Ed25519 key; never place the private key in the NK1 runtime.' });
+        }
+
+        const rollbackRequestMatch = url.pathname.match(/^\/api\/organism\/learning\/skills\/([a-f0-9]{64})\/rollback-request$/);
+        if (req.method === 'POST' && rollbackRequestMatch) {
+            const input = await body(req);
+            const candidateId = rollbackRequestMatch[1];
+            const approverId = input && typeof input.approverId === 'string' ? input.approverId.trim() : '';
+            if (!approverId || approverId.length > 128 || !/^[A-Za-z0-9][A-Za-z0-9._:@-]*$/.test(approverId)) {
+                return json(res, 400, { ok: false, error: 'valid-approverId-required' });
+            }
+            if (!TRUSTED_PROMOTION_APPROVER_IDS.has(approverId)) {
+                return json(res, 403, { ok: false, error: 'rollback-approver-not-configured' });
+            }
+            const lifecycle = runtime.core.verifiedSkillCandidateSnapshot();
+            const candidate = lifecycle?.candidates.find(item => item.candidateId === candidateId);
+            if (!candidate) return json(res, 404, { ok: false, error: 'skill-candidate-not-found' });
+            if (candidate.status !== 'active') return json(res, 409, { ok: false, error: 'candidate-is-not-active' });
+            const active = lifecycle.active.find(item => item.skillId === candidate.skillId);
+            if (!active || active.version !== candidate.version) {
+                return json(res, 409, { ok: false, error: 'candidate-active-version-mismatch' });
+            }
+            try {
+                const approvalRequest = createSkillRollbackApprovalPayload(candidate, approverId, randomUUID(), Date.now());
+                return json(res, 200, { ok: true, approvalRequest, next: 'Have the authenticated external authority sign canonical JSON of approvalRequest with its Ed25519 key; never place the private key in the NK1 runtime.' });
+            } catch (error) {
+                return json(res, 409, { ok: false, error: 'rollback-request-denied', reason: String(error?.message || error).slice(0, 240) });
+            }
+        }
+        const rollbackMatch = url.pathname.match(/^\/api\/organism\/learning\/skills\/([a-f0-9]{64})\/rollback$/);
+        if (req.method === 'POST' && rollbackMatch) {
+            const input = await body(req);
+            const artifact = input?.artifact;
+            if (!artifact || typeof artifact !== 'object' || Array.isArray(artifact) ||
+                !artifact.payload || typeof artifact.payload !== 'object' || Array.isArray(artifact.payload)) {
+                return json(res, 400, { ok: false, error: 'signed-rollback-artifact-required' });
+            }
+            const candidateId = rollbackMatch[1];
+            if (artifact.payload.candidateId !== candidateId) {
+                return json(res, 400, { ok: false, error: 'rollback-candidate-id-mismatch' });
+            }
+            try {
+                const approval = {
+                    approvedBy: artifact.payload.approverId,
+                    approvedAt: artifact.payload.approvedAt,
+                    expectedActiveVersion: artifact.payload.expectedActiveVersion,
+                    artifact,
+                };
+                const restored = runtime.core.rollbackVerifiedSkillCandidate(candidateId, approval);
+                return json(res, 200, { ok: true, restored, lifecycle: runtime.core.verifiedSkillCandidateSnapshot(), note: 'signed rollback verified; previous approved version restored atomically, or active skill removed when no prior version existed' });
+            } catch (error) {
+                return json(res, 403, { ok: false, error: 'skill-rollback-denied', reason: String(error?.message || error).slice(0, 300) });
+            }
+        }
+        const promoteMatch = url.pathname.match(/^\/api\/organism\/learning\/skills\/([a-f0-9]{64})\/promote$/);
+        if (req.method === 'POST' && promoteMatch) {
+            const input = await body(req);
+            const artifact = input?.artifact;
+            if (!artifact || typeof artifact !== 'object' || Array.isArray(artifact) ||
+                !artifact.payload || typeof artifact.payload !== 'object' || Array.isArray(artifact.payload)) {
+                return json(res, 400, { ok: false, error: 'signed-approval-artifact-required' });
+            }
+            const candidateId = promoteMatch[1];
+            if (artifact.payload.candidateId !== candidateId) {
+                return json(res, 400, { ok: false, error: 'approval-candidate-id-mismatch' });
+            }
+            try {
+                const approval = {
+                    approvedBy: artifact.payload.approverId,
+                    approvedAt: artifact.payload.approvedAt,
+                    expectedActiveVersion: artifact.payload.expectedActiveVersion,
+                    artifact,
+                };
+                const active = runtime.core.approveVerifiedSkillCandidate(candidateId, approval, artifact.payload.minShadowRuns);
+                return json(res, 200, { ok: true, active, lifecycle: runtime.core.verifiedSkillCandidateSnapshot(), note: 'signed approval verified; candidate activated through the canonical P23 store with compare-and-swap and rollback metadata' });
+            } catch (error) {
+                return json(res, 403, { ok: false, error: 'skill-promotion-denied', reason: String(error?.message || error).slice(0, 300) });
+            }
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/neural-world') {
             return json(res, 200, { ok: true, phase: 'P27-learned-perception-world-foundation', p27: runtime.core.p27Snapshot(), note: 'vision/audio inputs are compact local features; semantic vision/audio backend remains an explicit external/local capability' });

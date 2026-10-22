@@ -1,0 +1,57 @@
+name: WorkPass94 verification input binding
+
+on:
+  push:
+    branches: [workpass79-cognitive-rebuild, workpass206-runtime-evaluator-wiring]
+  pull_request:
+    branches: [main, workpass203-independent-candidate-evaluator]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts'
+      - 'runtime/neuro-kurisu/tests/workpass94-verification-input-binding.mjs'
+      - '.github/workflows/workpass94-verification-input-binding.yml'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/tsconfig.clean.json'
+      - 'runtime/neuro-kurisu/src/node-shims.d.ts'
+      - '.nvmrc'
+      - 'runtime/neuro-kurisu/tests/p23-verified-outcome-ledger.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-verified-outcome-promotion-gate.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-outcome-promotion-integration.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomePromotionGate.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
+      - 'app/package.json'
+      - 'app/package-lock.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  verification-input-binding:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Install pinned TypeScript compiler from app lockfile
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Reject partial or altered evidence-input bindings
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/workpass94-verification-input-binding.mjs
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Outcome-verification firewall regression
+        run: npm --prefix runtime/neuro-kurisu run test:workpass57-outcome-hardening
+      - name: Pre-execution outcome firewall
+        run: npm --prefix runtime/neuro-kurisu run test:workpass59-preexecution-outcome-firewall
+      - name: Non-execution learning firewall
+        run: npm --prefix runtime/neuro-kurisu run test:workpass59-nonexecution-learning-firewall
+      - name: Action uncertainty and skill firewall
+        run: npm --prefix runtime/neuro-kurisu run test:workpass63:action-uncertainty-skill-firewall

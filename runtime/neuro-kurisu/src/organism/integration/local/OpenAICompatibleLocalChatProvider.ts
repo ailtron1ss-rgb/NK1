@@ -3,6 +3,8 @@ export interface LocalChatCompletionRequest {
   user: string;
   maxTokens?: number;
   temperature?: number;
+  /** Caller cancellation must reach the actual local HTTP transport. */
+  signal?: AbortSignal;
 }
 export interface LocalChatCompletionResponse {
   text: string;
@@ -103,10 +105,17 @@ export class OpenAICompatibleLocalChatProvider {
     const startedAt = Date.now();
     const maxTokens = Math.max(1, Math.min(8192, Math.floor(Number(request.maxTokens ?? 512) || 512)));
     const temperature = Math.max(0, Math.min(2, Number.isFinite(Number(request.temperature)) ? Number(request.temperature) : 0.7));
-    const response = await this.fetchImpl(endpoint, {
+    if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
+    const deadlineSignal = AbortSignal.timeout(this.timeoutMs);
+    const transportSignal = request.signal
+      ? AbortSignal.any([deadlineSignal, request.signal])
+      : deadlineSignal;
+    let response: Response;
+    try {
+      response = await this.fetchImpl(endpoint, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      signal: AbortSignal.timeout(this.timeoutMs),
+      signal: transportSignal,
       redirect: 'error',
       body: JSON.stringify({
         model: this.model,
@@ -118,14 +127,27 @@ export class OpenAICompatibleLocalChatProvider {
         temperature,
         stream: false,
       }),
-    });
+      });
+    } catch (error) {
+      if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
+      if (deadlineSignal.aborted) throw new Error('llama.cpp-timeout');
+      throw error;
+    }
     if (!response.ok) throw new Error(`llama.cpp-http-${response.status}`);
     const contentLength = Number(response.headers?.get?.('content-length'));
     if (Number.isFinite(contentLength) && contentLength > MAX_RESPONSE_BYTES) {
       try { await response.body?.cancel(); } catch { /* Preserve the size-limit failure. */ }
       throw new Error('llama.cpp-response-too-large');
     }
-    const rawPayload = await readBoundedResponse(response);
+    let rawPayload: string;
+    try {
+      rawPayload = await readBoundedResponse(response);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'llama.cpp-response-too-large') throw error;
+      if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
+      if (deadlineSignal.aborted) throw new Error('llama.cpp-timeout');
+      throw error;
+    }
     let payload: { choices?: Array<{ message?: { content?: unknown } }>; model?: unknown; error?: unknown };
     try { payload = JSON.parse(rawPayload) as typeof payload; } catch { throw new Error('llama.cpp-invalid-json'); }
     const text = extractText(payload?.choices?.[0]?.message?.content);
