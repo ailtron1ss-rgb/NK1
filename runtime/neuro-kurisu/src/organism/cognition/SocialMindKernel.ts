@@ -323,7 +323,7 @@ export class SocialMindKernel{
    */
   recordObservedUserStatement(personId:string, statement:string, at:number, confidence01:number, source:ObservationSource='interaction') {
     const id=String(personId??'').normalize('NFKC').trim().slice(0,120);
-    const normalized=String(statement??'').normalize('NFKC').trim().slice(0,180);
+    const normalized=String(statement??'').normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').trim().slice(0,180);
     if(!id||!normalized||!Number.isFinite(at)||at<0) throw new Error('valid personId, statement and timestamp are required');
     this.ensurePerson(id,at);
     const lower=normalized.toLocaleLowerCase();
