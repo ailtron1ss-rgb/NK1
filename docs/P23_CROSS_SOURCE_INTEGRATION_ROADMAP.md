@@ -1,3 +1,12 @@
+## WorkPass274 — legacy causal snapshot quarantine (2026-10-22)
+
+- Restore now downgrades legacy records that claim trusted provenance but lack the runtime policy-feature vector: they become external, ungrounded, and replay-ineligible.
+- Regression covers a simulated legacy row with forged runtime provenance and a grounded flag; it must not consolidate.
+- This is compatibility hardening, not cryptographic snapshot authentication. Authenticated persistence/host attestation remains open.
+- Exact-head tests/typecheck remain unverified: Actions job metadata has no steps and log downloads return 404. No dependency or learning-score increase.
+
+---
+
 ## WorkPass274 — fail closed on legacy causal rows with no runtime evidence vector (2026-10-22)
 
 - **Code:** snapshot restoration now quarantines legacy records that claim trusted provenance but lack the runtime policy-feature vector expected from `recordOutcome()`. They are canonicalized as external, ungrounded, and replay-ineligible before consolidation can see them.
