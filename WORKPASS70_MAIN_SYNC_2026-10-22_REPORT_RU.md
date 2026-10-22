@@ -46,3 +46,8 @@
 - Migrated `actions/checkout` references to `v7`, `actions/setup-node` to `v7`, and `actions/upload-artifact` to `v7` in all five source-branch workflows; matching main-branch workflows were updated in parallel.
 - The core validation workflow explicitly installs Node.js `24.22.0`. The migration follows GitHub's announced Node 20 removal (23 September 2026) and the current Node 24-compatible first-party action releases.
 - The latest Actions failures still show zero runner assignment and no executed steps; they do not constitute passing test evidence or isolate a code-test failure. A clean successful run remains a release gate.
+
+## Idempotent publication guards — 22 October 2026
+
+- The existing WorkPass70 hotfix publisher previously failed intentionally when it encountered its already-published tag, which would turn a later successful validation into an avoidable publishing failure. It now sets `publish=false` and exits successfully when that tag exists.
+- Both publishers use an authenticated REST tag lookup. HTTP 200 safely skips, HTTP 404 permits a new unique publication, and every other status fails closed. This prevents missing credentials/rate-limit/network errors from being interpreted as proof that a tag does not exist.

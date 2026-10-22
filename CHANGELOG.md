@@ -1,3 +1,7 @@
+## WorkPass70 follow-up — idempotent release publishing (2026-10-22)
+- Changed both legacy hotfix and main-sync release guards to probe the GitHub Releases API with `GITHUB_TOKEN` and distinguish `200` (tag already exists; safe no-op), `404` (tag absent; publication may proceed) and unexpected HTTP responses (fail closed).
+- Existing WorkPass70 tags/assets are never overwritten, and authorization/network failures are no longer silently treated as evidence that the release tag is absent.
+
 ## WorkPass70 release sync follow-up — GitHub Actions Node 24 migration (2026-10-22)
 - Migrated first-party workflow actions to Node 24-compatible majors: checkout v7, setup-node v7 and upload-artifact v7.
 - Core validation now installs and tests against Node.js 24.22.0 explicitly, while the JavaScript-based Actions themselves also use Node 24.
