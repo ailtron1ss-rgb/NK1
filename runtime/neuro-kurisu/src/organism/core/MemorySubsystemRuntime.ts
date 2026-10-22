@@ -93,6 +93,9 @@ export class MemorySubsystemRuntime {
     this.memoryLifecycleAuthority.restore(advanced.memoryLifecycleAuthority);
   }
 
+  /** Read-only memory hygiene report; destructive repair remains an explicit separate operation. */
+  doctor(options:{at?:number;maxIssues?:number}={}) { return this.memoryOS.doctor(options); }
+
   snapshot() { return {
     events:this.events.recent(64), memories:this.memories.snapshot({clone:false}),
     selfModel:this.selfModel.snapshot(), socialModel:this.socialModel.snapshot(), adaptiveValues:this.valuePlasticity.snapshot(),
