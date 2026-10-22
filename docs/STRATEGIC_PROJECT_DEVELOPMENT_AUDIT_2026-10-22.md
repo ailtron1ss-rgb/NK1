@@ -1,3 +1,15 @@
+## WorkPass255–258 — implementation follow-through (2026-10-22)
+
+Four implementation passes followed the strategic audit:
+
+- **WorkPass255 — Legacy avatar runtime:** stabilized the canvas animation loop across speaking/emotion/outfit updates by reading current values from refs rather than restarting the RAF loop.
+- **WorkPass256 — asset race handling:** canceled stale sprite image callbacks so slow prior requests cannot overwrite a newer emotion/outfit selection.
+- **WorkPass257 — regression coverage:** added app/scripts/legacy-sprite-deck-runtime.test.mjs for the loop-lifetime and stale-image invariants.
+- **WorkPass258 — authority path integrity:** pinned working-directory and scratch-root filesystem identities and rechecks directory type, identity, and private POSIX permissions at dispatch; extended the existing host-service regression for run-root replacement.
+
+**Not claimed:** these tests/typechecks have not yet been confirmed passing on an accessible runner. The path identity checks are defense-in-depth and do not close the final TOCTOU window or prove a real sandbox. Browser/Android voice unification and production independent evaluator deployment remain open.
+
+---
 # Стратегический аудит развития Neuro Kurisu / NK1
 
 **Дата:** 2026-10-22  
