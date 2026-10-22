@@ -1749,6 +1749,7 @@
     "test:p319:cycle-order": "node tests/workpass319-cycle-order.mjs",
     "test:p320:cognitive-dependency-restore": "node --experimental-strip-types tests/cognitive-dependency-graph-workpass320.mjs",
     "test:p321:expanded-cognitive-phase-spine": "node --experimental-strip-types tests/workpass321-expanded-cognitive-phase-spine.mjs",
-    "test:p322:cognitive-resource-restore": "node --experimental-strip-types tests/cognitive-resource-economy-workpass322.mjs"
+    "test:p322:cognitive-resource-restore": "node --experimental-strip-types tests/cognitive-resource-economy-workpass322.mjs",
+    "test:p323:cognitive-loop-persistence-scope": "node tests/workpass323-cognitive-loop-persistence-separation.mjs"
   }
 }
