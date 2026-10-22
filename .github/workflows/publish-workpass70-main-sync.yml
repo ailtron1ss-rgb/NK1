@@ -41,10 +41,27 @@ jobs:
           fi
           SHORT_SHA="${VALIDATED_SHA:0:12}"
           TAG="workpass70-main-sync-2026-10-22-$SHORT_SHA"
-          if gh release view "$TAG" --repo ailtron1ss-rgb/NK1 >/dev/null 2>&1; then
-            echo "Release $TAG already exists; refusing to overwrite it."
-            exit 1
-          fi
+          API_URL="${GITHUB_API_URL:-https://api.github.com}"
+          CHECK_FILE="$RUNNER_TEMP/release-tag-check.json"
+          HTTP_CODE="$(curl --silent --show-error --output "$CHECK_FILE" --write-out '%{http_code}' \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "$API_URL/repos/ailtron1ss-rgb/NK1/releases/tags/$TAG")"
+          case "$HTTP_CODE" in
+            200)
+              echo "publish=false" >> "$GITHUB_OUTPUT"
+              echo "Release $TAG already exists; safely skipping without overwriting it."
+              exit 0
+              ;;
+            404)
+              echo "Release tag $TAG does not exist; safe to continue."
+              ;;
+            *)
+              echo "Unable to verify release tag $TAG (HTTP $HTTP_CODE); refusing to publish."
+              cat "$CHECK_FILE"
+              exit 1
+              ;;
+          esac
           echo "publish=true" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
