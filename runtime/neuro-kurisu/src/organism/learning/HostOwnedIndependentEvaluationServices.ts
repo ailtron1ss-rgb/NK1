@@ -213,15 +213,22 @@ export async function createHostOwnedIndependentEvaluationServices(
     executor: {
       async execute({ payload, task, context, signal }): Promise<CandidateExecutionResult> {
         if (signal?.aborted) throw new Error('host-owned-executor-aborted');
+        // Keep the process receipt, executor response and canonical scheduled run
+        // on one identity. A child must not be able to mint a detached run ID that
+        // the verifier later treats as if it came from the supervised invocation.
+        const invocationRunId = context.plannedRunId ?? randomUUID();
         const result = await invoke<Record<string, unknown>>(executorCommand, 'executor',
           { payload, task, context }, {
-            runId: context.plannedRunId ?? randomUUID(),
+            runId: invocationRunId,
             taskId: task.taskId,
             seed: task.seed,
             planFingerprint: context.planFingerprint,
             manifestFingerprint: context.manifestFingerprint,
           }, signal);
         if (signal?.aborted) throw new Error('host-owned-executor-aborted');
+        if (result.runId !== invocationRunId) {
+          throw new Error('host-owned-executor-response-run-id-mismatch');
+        }
         if (!nonEmpty(result.runId) || !Array.isArray(result.observedStepIds) ||
             result.observedStepIds.some(step => !nonEmpty(step)) ||
             new Set(result.observedStepIds).size !== result.observedStepIds.length) {
