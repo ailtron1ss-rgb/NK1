@@ -1,3 +1,15 @@
+## WorkPass259–263 update — causal integrity, replay diversity, and runtime isolation (2026-10-22)
+
+- **WorkPass259:** bounded NFKC trace identity, persisted outcome deduplication, and state-grounded-only consolidation.
+- **WorkPass260:** task/context-diverse prioritized replay and consolidation selection.
+- **WorkPass261:** external causal events are idempotent across normalized source IDs and snapshot/restore; the regression is wired to `npm run test:big-pass-90:causal-stream`.
+- **WorkPass262:** Legacy avatar canvas dimensions are only reassigned when layout dimensions change.
+- **WorkPass263:** host-owned evaluator blocks inherited environment variables that commonly carry credentials or alter runtime loading, and rejects duplicate inherited keys.
+- **Validation state:** the latest HEAD has no PR-triggered workflow runs; the targeted regression scripts and runtime/app typechecks are not confirmed executed successfully.
+- **Scores intentionally unchanged:** P23 symbolic core **61%**, evidence-grounded learning maturity **36%**, project-wide lifelong-learning roadmap **30%**, overall learning engineering **57/100**. The new code improves integrity and implementation coverage, but there is not yet external-task benchmark evidence to justify increasing measured maturity estimates.
+
+---
+
 ## WorkPass116 update — seed-clustered evidence comparisons (2026-10-20)
 
 - Added seed-level paired comparison methods to the canonical `VerifiedOutcomeLedger`. The evaluator now has an explicit path where each seed contributes one aggregate observation, not one observation per correlated task cell.
