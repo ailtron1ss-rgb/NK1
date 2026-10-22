@@ -3,6 +3,11 @@ on:
   pull_request:
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualLearningMetrics.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/CausalExperienceStream.ts'
+      - 'runtime/neuro-kurisu/tests/big-pass-90-causal-learning-stream.mjs'
+      - 'app/src/legacy/avatar/LegacySpriteDeck.tsx'
+      - 'app/scripts/legacy-sprite-deck-runtime.test.mjs'
+      - 'app/public/live2d/viewer.html'
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualOutcomeMatrix.ts'
       - 'runtime/neuro-kurisu/tests/p23-continual-learning-metrics.mjs'
       - 'runtime/neuro-kurisu/tests/p23-continual-outcome-matrix.mjs'
@@ -92,9 +97,14 @@ on:
       - 'runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
   push:
-    branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals, workpass122-promotion-gate-coverage-hardening, workpass123-authenticated-skill-lifecycle, workpass124-learning-evidence-hardening, workpass135-durable-shadow-run-registry]
+    branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals, workpass122-promotion-gate-coverage-hardening, workpass123-authenticated-skill-lifecycle, workpass124-learning-evidence-hardening, workpass135-durable-shadow-run-registry, workpass206-runtime-evaluator-wiring]
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualLearningMetrics.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/CausalExperienceStream.ts'
+      - 'runtime/neuro-kurisu/tests/big-pass-90-causal-learning-stream.mjs'
+      - 'app/src/legacy/avatar/LegacySpriteDeck.tsx'
+      - 'app/scripts/legacy-sprite-deck-runtime.test.mjs'
+      - 'app/public/live2d/viewer.html'
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualOutcomeMatrix.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualBenchmarkComparison.ts'
       - 'runtime/neuro-kurisu/tests/p23-continual-learning-metrics.mjs'
@@ -170,6 +180,14 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+      - name: Run causal experience identity, replay diversity and restore regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-90:causal-stream
+      - name: Run Legacy avatar rendering lifecycle regression
+        run: node --test app/scripts/legacy-sprite-deck-runtime.test.mjs
+      - name: Run Live2D runtime and asset integrity regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/live2d-integrity.mjs
       - name: Run continual-learning metric regressions
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:continual-metrics
