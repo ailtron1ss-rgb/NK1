@@ -293,3 +293,11 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **DONE (regression authored):** the existing bounded-evaluation test temporarily sets `NODE_ENV=production` and asserts direct construction fails before execution when authority is absent; the prior environment is restored in a `finally` block.
 - **PARTIAL:** this closes a code-path bypass, not host trust ownership. The actual executor/verifier/scanner must still be supplied by separately controlled host services and a real sandbox.
 - **Validation:** exact-head test/typecheck remains unconfirmed; do not mark PASS until Actions actually runs the test step.
+
+
+### WorkPass241 — align direct scheduler candidate identity with the production parser (2026-10-22)
+
+- **DONE (code):** `P23TrustedShadowLearningScheduler` now enforces the same 64-hex candidate fingerprint contract as `parseTrustedShadowLearningScheduleConfig`. Direct construction of `OrganismRuntime` can no longer bypass the parser's candidate identity format requirement.
+- **DONE (regression authored):** extended the existing runtime trusted-shadow scheduler test with a malformed direct-construction case; it must throw before any process execution.
+- **PARTIAL (P0/P2):** this removes a config-path inconsistency but does not itself provision a staged candidate, trusted signer, sandbox or independent verifier.
+- **Validation:** exact-head Actions currently fails before any steps/logs are available; local execution/typecheck has not been performed. Keep status unverified.
