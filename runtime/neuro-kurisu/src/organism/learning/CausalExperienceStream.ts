@@ -17,6 +17,11 @@ const normalizeBoundedId=(value:unknown,maxLength:number):string=>{
 };
 const normalizeTraceId=(value:unknown)=>normalizeBoundedId(value,180);
 const normalizeTaskId=(value:unknown)=>normalizeBoundedId(value,120);
+const hasBoundedRuntimePolicyVector=(record:Partial<CausalExperienceRecord>):boolean=>
+  Array.isArray(record.policyFeatures01)&&record.policyFeatures01.length>=16&&record.policyFeatures01.length<=64&&
+  record.policyFeatures01.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1);
+const isGroundedRuntimeOutcome=(record:Partial<CausalExperienceRecord>):boolean=>
+  record.provenance==='runtime-outcome'&&record.stateGrounded===true&&hasBoundedRuntimePolicyVector(record);
 const CAUSAL_ACTIONS: readonly ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 
 export interface CausalExperienceRecord {
@@ -117,7 +122,7 @@ export class CausalExperienceStream {
             typeof record?.at==='number'&&Number.isFinite(record.at)&&record.at>=0&&
             typeof record?.id==='string'&&record.id.length>0&&record.id.length<=256;
           if(!traceId||!taskId||!validActions||!boundedMetrics||!validCounters)return [];
-          const hasRuntimePolicyFeatures=Array.isArray(record.policyFeatures01)&&record.policyFeatures01.length>=16&&
+          const hasRuntimePolicyFeatures=hasBoundedRuntimePolicyVector(record)&&
             record.policyFeatures01.length<=128&&record.policyFeatures01.every(value=>Number.isFinite(value)&&value>=0&&value<=1);
           const validReplayMetadata=record.replayEligible===undefined||typeof record.replayEligible==='boolean';
           const validOptionalMetrics=[record.learningQuality01,record.replayPriority01].every(value=>
@@ -332,7 +337,7 @@ export class CausalExperienceStream {
   }
   prioritizedReplayCandidates(limit=32,at=Date.now()){
     const now=Number.isFinite(at)?Number(at):Date.now();
-    const rows=this.state.records.filter(r=>r.provenance==='runtime-outcome'&&r.stateGrounded===true&&r.replayEligible===true&&Array.isArray(r.policyFeatures01)&&r.policyFeatures01.length>=16&&r.policyFeatures01.every(value=>Number.isFinite(value)&&value>=0&&value<=1));
+    const rows=this.state.records.filter(r=>isGroundedRuntimeOutcome(r)&&r.replayEligible===true);
     const score=(r:CausalExperienceRecord)=>{
       const ageDays=Math.max(0,now-r.at)/86400000;
       const ageBoost=clamp01(Math.min(1,ageDays/3))*.05;
@@ -375,7 +380,7 @@ export class CausalExperienceStream {
   private contextKey(r:CausalExperienceRecord){return `${r.taskId}|e${Math.floor(r.energyBefore01*4)}|u${Math.floor(r.uncertainty01*4)}|n${Math.floor(r.novelty01*4)}|g${Math.floor(r.goalPressure01*4)}`;}
   private recomputeBehavioralImpact(){
     const buckets=new Map<string,CausalExperienceRecord[]>();
-    for(const r of this.state.records){if(r.provenance!=='runtime-outcome'||r.stateGrounded!==true)continue;const k=this.contextKey(r);const arr=buckets.get(k)??[];arr.push(r);}
+    for(const r of this.state.records){if(!isGroundedRuntimeOutcome(r))continue;const k=this.contextKey(r);const arr=buckets.get(k)??[];arr.push(r);}
     let weighted=0,weight=0,divergence=0,samples=0;
     for(const rows of buckets.values()){if(rows.length<4)continue; const early=rows.slice(0,Math.max(2,Math.floor(rows.length/2))); const late=rows.slice(-Math.max(2,Math.floor(rows.length/2)));
       const share=(xs:CausalExperienceRecord[],action:ActionKind)=>xs.filter(x=>x.action===action).length/Math.max(1,xs.length);
@@ -387,13 +392,18 @@ export class CausalExperienceStream {
 
   recent(limit=64){return this.state.records.slice(-Math.max(1,Math.min(256,Math.floor(limit)))).map(x=>structuredClone(x));}
   learningPacket(limit=64):CausalLearningPacket{
-    const rows=this.recent(limit); if(!rows.length)return {records:[],learningOpportunity01:0,meanReward01:.5,meanSurprise01:0,meanCausalStrength01:0};
+    // External reports remain queryable in recent()/snapshot(), but the unified
+    // learning lane contains only state-grounded runtime outcomes with a bounded
+    // policy vector. Untrusted claims cannot inflate its sample count or mean reward.
+    const wanted=Math.max(1,Math.min(256,Math.floor(limit)));
+    const rows=this.state.records.filter(isGroundedRuntimeOutcome).slice(-wanted).map(record=>structuredClone(record));
+    if(!rows.length)return {records:[],learningOpportunity01:0,meanReward01:.5,meanSurprise01:0,meanCausalStrength01:0};
     const mean=(fn:(r:CausalExperienceRecord)=>number)=>rows.reduce((s,r)=>s+fn(r),0)/rows.length;
     return {records:rows,learningOpportunity01:clamp01(mean(r=>r.causalStrength01*.6+r.surprise01*.2+r.predictionError01*.2)),meanReward01:clamp01(mean(r=>r.reward01)),meanSurprise01:clamp01(mean(r=>r.surprise01)),meanCausalStrength01:clamp01(mean(r=>r.causalStrength01))};
   }
   consolidate(limit=32,at=Date.now()){
     // Only evidence grounded in an actual state transition may become consolidated memory.
-    const ranked=this.state.records.filter(r=>!r.consolidated&&r.provenance==='runtime-outcome'&&r.stateGrounded===true);
+    const ranked=this.state.records.filter(r=>!r.consolidated&&isGroundedRuntimeOutcome(r));
     const rows:CausalExperienceRecord[]=[];
     const taskCounts=new Map<string,number>(),contextCounts=new Map<string,number>();
     const wanted=Math.max(1,Math.min(128,Math.floor(limit)));
