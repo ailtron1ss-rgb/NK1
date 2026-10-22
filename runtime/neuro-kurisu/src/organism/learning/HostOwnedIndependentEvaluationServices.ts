@@ -54,6 +54,28 @@ const forbiddenInheritedEnvironmentKey = (key: string): boolean =>
   /^(?:NODE_OPTIONS|NODE_PATH|LD_PRELOAD|LD_LIBRARY_PATH|DYLD_INSERT_LIBRARIES|DYLD_LIBRARY_PATH|PYTHONPATH|PYTHONHOME|RUBYOPT|PERL5OPT|BASH_ENV|ENV|AWS_PROFILE|AWS_SHARED_CREDENTIALS_FILE|AWS_CONFIG_FILE|GIT_CONFIG_GLOBAL|NPM_CONFIG_USERCONFIG)$/i.test(key) ||
   /(?:TOKEN|SECRET|PASSWORD|PASSWD|PRIVATE_KEY|API_KEY|ACCESS_KEY|CREDENTIAL|AUTH|COOKIE|SESSION|DATABASE_URL|USERCONFIG)$/i.test(key);
 
+export interface HostOwnedStorageRootIdentity {
+  path: string;
+  identity: string;
+}
+
+/**
+ * Path separation alone is insufficient when two resolved paths refer to the
+ * same filesystem object (for example, alternate mount aliases). Require both
+ * lexical path separation and a distinct prepared filesystem identity.
+ */
+export function areHostOwnedStorageRootsDisjoint(
+  a: HostOwnedStorageRootIdentity,
+  b: HostOwnedStorageRootIdentity,
+): boolean {
+  if (!nonEmpty(a?.path) || !nonEmpty(b?.path) ||
+      !nonEmpty(a?.identity) || !nonEmpty(b?.identity) ||
+      a.identity === b.identity) return false;
+  return a.path !== b.path &&
+    !a.path.startsWith(b.path + path.sep) &&
+    !b.path.startsWith(a.path + path.sep);
+}
+
 function validateCommand(command: HostOwnedAuthorityCommand, name: string): void {
   if (!command || !path.isAbsolute(command.executable) || !path.isAbsolute(command.cwd) ||
       !path.isAbsolute(command.runRoot) || !path.isAbsolute(command.surviveDir) ||
@@ -132,7 +154,7 @@ async function prepareCommand(command: HostOwnedAuthorityCommand, name: string):
       identity: process.platform === 'win32' ? resolved.toLowerCase() : `${metadata.dev}:${metadata.ino}`,
     };
   }));
-  if (roots[0].path === roots[1].path || roots[0].path.startsWith(roots[1].path + path.sep) || roots[1].path.startsWith(roots[0].path + path.sep)) {
+  if (!areHostOwnedStorageRootsDisjoint(roots[0], roots[1])) {
     throw new Error('host-owned-' + name + '-storage-roots-must-be-disjoint');
   }
   return {
@@ -302,16 +324,17 @@ export async function createHostOwnedIndependentEvaluationServices(
   if (new Set([executorCommand.executableIdentity, verifierCommand.executableIdentity, safetyCommand.executableIdentity]).size !== 3) {
     throw new Error('host-owned-evaluation-authorities-must-use-distinct-executables');
   }
-  const storageRoots = [
-    executorCommand.runRoot, executorCommand.surviveDir,
-    verifierCommand.runRoot, verifierCommand.surviveDir,
-    safetyCommand.runRoot, safetyCommand.surviveDir,
+  const storageRoots: HostOwnedStorageRootIdentity[] = [
+    { path: executorCommand.runRoot, identity: executorCommand.runRootIdentity },
+    { path: executorCommand.surviveDir, identity: executorCommand.surviveDirIdentity },
+    { path: verifierCommand.runRoot, identity: verifierCommand.runRootIdentity },
+    { path: verifierCommand.surviveDir, identity: verifierCommand.surviveDirIdentity },
+    { path: safetyCommand.runRoot, identity: safetyCommand.runRootIdentity },
+    { path: safetyCommand.surviveDir, identity: safetyCommand.surviveDirIdentity },
   ];
   for (let i = 0; i < storageRoots.length; i += 1) {
     for (let j = i + 1; j < storageRoots.length; j += 1) {
-      if (storageRoots[i] === storageRoots[j] ||
-          storageRoots[i].startsWith(storageRoots[j] + path.sep) ||
-          storageRoots[j].startsWith(storageRoots[i] + path.sep)) {
+      if (!areHostOwnedStorageRootsDisjoint(storageRoots[i], storageRoots[j])) {
         throw new Error('host-owned-evaluation-authority-storage-roots-must-be-disjoint');
       }
     }
