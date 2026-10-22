@@ -1,3 +1,10 @@
+## Latest durable checkpoint — WorkPass291 (2026-10-22)
+
+- Runtime code change: P23 reflective skill candidates now have a canonical UTF-8 payload budget of 256 KiB. Source is checked before generation, generated payload before fingerprinting/evaluation, and the staging boundary checks again.
+- Regression coverage and npm script added: `runtime/neuro-kurisu/tests/workpass291-reflective-payload-budget.mjs` / `test:workpass291:payload-budget`. Not executed here; no test or typecheck pass is claimed.
+- This is a resource-boundary hardening pass inspired by the trace-driven, size-constrained candidate-evolution pattern in Hermes Agent Self-Evolution; NK1's existing independent evaluation, evidence authentication, shadow runs, approval, and rollback remain canonical.
+- Next: wire verified action/tick identity into reduced-resolution learning; then improve cross-domain initiative → experience → consolidation → skill-revision flow without duplicate owners.
+
 ## Latest durable checkpoint — WorkPass290 (2026-10-22)
 
 - Source-traced the canonical `OutcomeVerificationService`: accepted external-postcondition receipts are held as exact trusted object references in a process-local `WeakMap` and bound to the complete action input.
