@@ -1,3 +1,11 @@
+## WorkPass264 — validate external causal event identity
+
+- [x] Require a non-empty NFKC-normalized task identity before recording external learning evidence.
+- [x] Reject action values outside the canonical organism ActionKind set at the external ingestion boundary.
+- [x] Add regression cases proving malformed task/action input does not mutate outcome counts.
+- [ ] Execute the causal-stream regression and runtime typecheck on a functioning runner.
+- **Source integration:** adapted the older replay buffer's strict intake validation principle without reintroducing its separate buffer or learner.
+
 ## WorkPass263 — reduce inherited environment leakage to evaluation authorities
 
 - [x] Reject inheritance of common API tokens, secrets, passwords, credentials, auth/session variables, credential-profile paths, runtime injection variables, and dynamic-loader overrides.
