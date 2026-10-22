@@ -64,6 +64,15 @@ restored.restore(model.snapshot());
 assert.deepEqual(restored.snapshot(), model.snapshot(),
   'identity write-gate state survives the normal snapshot/restore path');
 
+const beforeObserve = model.snapshot();
+model.observe('explore', { needs: { identityCoherence: .1 } });
+assert.equal(model.snapshot().agencyBelief, beforeObserve.agencyBelief, 'prediction observations must not bypass the independent-evidence gate for agency');
+assert.equal(model.snapshot().identityCoherence, beforeObserve.identityCoherence, 'prediction observations must not bypass the evidence gate for identity coherence');
+const beforeRecovery = model.snapshot();
+model.registerRecovery({ at: 5000, recoveryCount: 1, preTick: 4, postTick: 1, reason: 'process-resume' });
+assert.equal(model.snapshot().agencyBelief, beforeRecovery.agencyBelief, 'recovery continuity signals must not directly rewrite agency belief');
+assert.equal(model.snapshot().identityCoherence, beforeRecovery.identityCoherence, 'recovery continuity signals must not directly rewrite identity coherence');
+assert.ok(model.snapshot().continuityShock01 > beforeRecovery.continuityShock01, 'recovery should still be represented in continuity-specific state');
 const legacySnapshot = { ...model.snapshot() };
 delete legacySnapshot.identityGateAcceptedCount;
 delete legacySnapshot.identityGateRejectedCount;
