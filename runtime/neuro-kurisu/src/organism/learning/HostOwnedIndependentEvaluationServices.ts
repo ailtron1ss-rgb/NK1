@@ -132,11 +132,17 @@ async function invoke<T>(
       !Number.isSafeInteger(context.seed) || context.seed < 0) {
     throw new Error('host-owned-' + name + '-context-invalid');
   }
+  // Do not create request files or touch the supervisor when the caller has
+  // already cancelled this authority invocation.
+  if (signal?.aborted) throw new Error('host-owned-' + name + '-aborted');
   const requestDirectory = await mkdtemp(path.join(command.runRoot, 'nk1-authority-request-'));
   const requestFile = path.join(requestDirectory, 'request.json');
   try {
     await writeFile(requestFile, JSON.stringify({ schemaVersion: 1, authority: name, context, input }) + '\n',
       { encoding: 'utf8', mode: 0o600, flag: 'wx' });
+    // Cancellation may arrive while the private request snapshot is being written.
+    // Avoid entering process supervision for work that is already obsolete.
+    if (signal?.aborted) throw new Error('host-owned-' + name + '-aborted');
     const args = command.args.map(arg => arg === '{requestFile}' ? requestFile : arg);
     const result = await runLearningProcess({
       runId: context.runId,
