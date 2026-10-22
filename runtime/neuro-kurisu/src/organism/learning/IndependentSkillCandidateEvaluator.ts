@@ -51,7 +51,7 @@ export interface IndependentTaskVerifier {
 }
 /** Separate static/dynamic safety authority. */
 export interface IndependentCandidateSafetyScanner {
-  scan(input: { payload: unknown; task: IndependentCandidateTask; execution?: CandidateExecutionResult; signal?: AbortSignal }): Promise<{
+  scan(input: { payload: unknown; task: IndependentCandidateTask; execution?: CandidateExecutionResult; context: CandidateExecutionContext; signal?: AbortSignal }): Promise<{
     violationCount: number;
   }>;
 }
@@ -322,6 +322,7 @@ export function createIndependentSkillCandidateEvaluator(
       const safety = await runWithServiceDeadline('independent-candidate-safety-scan', serviceTimeoutMs, signal => scanCandidateSafety({
         payload: structuredClone(candidatePayload), task: structuredClone(task),
         ...(execution ? { execution: structuredClone(execution) } : {}),
+        context: structuredClone(executionContext),
         signal,
       }));
       if (!safety || !Number.isSafeInteger(safety.violationCount) || safety.violationCount < 0) {
