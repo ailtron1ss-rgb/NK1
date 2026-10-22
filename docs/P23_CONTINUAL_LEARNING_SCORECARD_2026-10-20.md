@@ -1,3 +1,12 @@
+## WorkPass279–280 score update (2026-10-22)
+
+- **Scores unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**.
+- These passes improve causal-memory input integrity and evidence-envelope canonicalization. They do not establish improved task success, transfer, or autonomous self-development.
+- Regression cases are committed but have not been executed in this pass. The currently visible Actions runs for the relevant workflows report failures; their root cause is not established from available logs.
+- No dependency added; no empirical score uplift claimed.
+
+---
+
 ## WorkPass273 — remove caller-controlled trust from external causal intake (2026-10-22)
 
 - **Code:** `recordExternalLearningEvent()` now canonicalizes all imported events to `provenance: 'external'` and `stateGrounded: false`; caller-supplied provenance and grounding booleans are not authentication.
