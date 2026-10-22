@@ -3,7 +3,7 @@
 - Added a HYVE-inspired relational tether to `SocialMindKernel`. Trust half-life adapts to current trust; relationship strength, warmth and predictability decay toward neutral during long inter-session gaps, with bounded elapsed-time and deterministic persisted timestamps.
 - Fixed a canonical-state bug: `ensurePerson()` previously returned a clone from `observePerson()`, so `recordOutcome()`, `observeText()` and `observeRelation()` could update a detached copy instead of the stored person. It now resolves the live canonical record after observation/recomputation.
 - `observePerson()` now returns the refreshed persisted view after recomputation. Older snapshots without a relational timestamp migrate using `lastSeenAt`.
-- Added `relational-tether-workpass316.mjs` and a dedicated CI step. It tests outcome-state persistence, inter-session decay and deterministic restart behavior. CI execution still depends on an available GitHub Actions runner.
+- Added `relational-tether-workpass316.mjs` and a dedicated CI step. It tests outcome-state persistence, inter-session decay, deterministic restart behavior, and canonical ownership of evidence/episodes when multiple sensor identities resolve to one person. Fixed alias handling across observations, action/statement receipts, user-mind reconstruction, relationship lookup, and outcome learning so aliases do not fork social identity or misattribute evidence. CI execution still depends on an available GitHub Actions runner.
 
 ---
 
@@ -12,7 +12,7 @@
 - Added a CAKN-inspired write-time gate to `SelfModelEngine.learnGoalOutcome()`: action preferences continue to learn from bounded rewards, while `agencyBelief` and `identityCoherence` change only when a verified, independent outcome is bound to a non-empty receipt from the trusted world-transition or external-verification path.
 - Added accepted/rejected gate counters and a compact last-decision record for observability. Restore normalizes gate counters and the last-decision record so older persisted self-model snapshots remain compatible.
 - Wired the canonical OrganismCore outcome path to supply verification, independence, source class and a decision/tick-bound receipt. Unverified or correlated outcomes cannot revise the high-level self model through this learning path.
-- Added a dedicated `self-model-evidence-write-gate-workpass315.mjs` regression covering missing evidence, correlated evidence, source/receipt mismatch and accepted evidence, including snapshot/restore. Execution remains pending because the connected GitHub Actions jobs have been rejected before the first step starts.
+- Added a dedicated `self-model-evidence-write-gate-workpass315.mjs` regression covering missing evidence, correlated evidence, source/receipt mismatch, accepted evidence, snapshot migration, and attempted bypasses through predictive observation and recovery. Those paths now update prediction calibration/continuity state without directly rewriting high-level identity or agency beliefs; those beliefs change through the verified-independent outcome gate. Execution remains pending because GitHub Actions jobs are being rejected before the first step starts.
 
 ---
 
