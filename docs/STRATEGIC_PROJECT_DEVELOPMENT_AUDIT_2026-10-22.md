@@ -1,3 +1,11 @@
+## WorkPass270 — remove premature task-ID trimming at external ingestion (2026-10-22)
+
+The shared bounded normalizer correctly rejects control characters before trimming, but the external intake call site had already normalized and trimmed task IDs before invoking it. That erased boundary control characters before validation. The intake path now preserves the raw NFKC-normalized string, uses trim only to distinguish blank input, and passes the untrimmed value to the canonical validator. The existing trailing-control task-ID regression now protects the true production path.
+
+**Validation:** source and regression are committed; exact-head runtime execution remains unverified because Actions reports failed jobs without steps/logs. No new dependency and no learning score increase.
+
+---
+
 ## WorkPass269 — validate identity before whitespace trimming (2026-10-22)
 
 A further review found that applying trim before control-character validation could erase a leading/trailing newline or tab and silently normalize it into another accepted identity. CausalExperienceStream now performs NFKC normalization, rejects C0/DEL/C1 characters, and only then trims permitted surrounding whitespace and checks the bounded length. Regressions cover leading trace controls and trailing trace/task controls.
