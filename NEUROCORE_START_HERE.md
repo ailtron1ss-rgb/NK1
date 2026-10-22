@@ -2,6 +2,7 @@
 
 - Current documentation branch: `workpass286-multiscale-brain-system-plan`, based on the active source stack `workpass206-runtime-evaluator-wiring` at WorkPass285 commit `0928b1c6ae4e596fef03ca0d689d81ae97144d4a`. The parent PR #55 remains draft/unmerged; this branch is a follow-on, not a merge into `main`.
 - Added [WorkPass286 multiscale brain-system integration plan](docs/WORKPASS286_MULTISCALE_BRAIN_SYSTEM_INTEGRATION_PLAN_RU_2026-10-22.md). It connects the existing 14-domain `CognitiveArchitectureMap`, seven physical system owners, cognitive-kernel coordination, canonical memory, action gateway and Hermes/P23 evidence-gated learning into one target loop.
+- Draft PR [#56 — WorkPass286 multiscale brain-system integration strategy](https://github.com/ailtron1ss-rgb/NK1/pull/56) is open against `workpass206-runtime-evaluator-wiring`; it has not been merged.
 - The plan is documentation-only. No runtime change, dependency installation, test pass or learning-score increase is claimed.
 - Current next implementation target: WorkPass287 — generate/trace real production caller paths and classify each cognitive domain as ACTIVE / ADAPTER / READ-ONLY / RESEARCH-ONLY / UNVERIFIED before changing more ownership boundaries.
 - Keep the existing learning maturity estimates unchanged until paired baseline/candidate results on an independent holdout and relevant runtime evidence are available.
