@@ -95,6 +95,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:p314:memory-doctor
       - name: WorkPass315 self-model evidence write gate
         run: npm --prefix runtime/neuro-kurisu run test:p315:self-model-evidence-gate
+      - name: WorkPass316 HYVE-inspired relational tether
+        run: npm --prefix runtime/neuro-kurisu run test:p316:relational-tether
       - name: Local LLM bounded-response regression
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/local-chat-provider-workpass40.mjs
       - name: Optional live local LLM smoke (skips without explicit loopback URL)
