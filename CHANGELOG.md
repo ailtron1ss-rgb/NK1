@@ -1,3 +1,13 @@
+## WorkPass313 — evidence-grounded user-mind reconstruction and EILS control signals (2026-10-22)
+
+- Extended the existing SocialMindKernel with explicit environment, observation, belief, intention, and action tracks. These categories remain separate so inferred intent cannot silently become an observed action.
+- User-model entries retain evidence references and are bounded by same-person, non-expired observation receipts. Missing or cross-person evidence downgrades claims to unresolved, caps confidence, and records an evidence-debt label.
+- Added an explicit action-observation receipt and snapshot/restore coverage; exposed the existing canonical social kernel through the organism package index.
+- Extended the existing MotiveEcologyFabric with EILS-inspired curiosity, stress and confidence signals plus entropy-floor, plasticity and trust-region controls. Curiosity/stress modestly modulate existing explore/verify/reflect/rest biases; no new runtime dependency or parallel motivation subsystem was added.
+- Added WorkPass313 regression coverage and an npm script. Verification in GitHub Actions is pending; the code has not been represented as locally executed.
+
+---
+
 ## WorkPass312 — reconcile P23 replay/dedupe identity caches after restore
 
 - Rebuilt the processed-trace cache from restored experience rows first, then persisted cache entries; replayed-trace cache follows the same rule for replay-update rows.
