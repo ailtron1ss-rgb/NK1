@@ -1,3 +1,13 @@
+## WorkPass290 — canonical verifier trace and integration boundary (2026-10-22)
+
+- Traced the existing `OutcomeVerificationService` implementation and its hardening contract. It already normalizes verifier results, rejects unsupported evidence bases, and keeps trusted external-postcondition authorization in a process-local `WeakMap`; callers cannot recreate trust merely by restoring a serialized boolean/object.
+- The trusted check binds the verifier receipt to the complete action input (`stableJson(context.input)`) and requires an exact trusted result object with matching external postconditions. This is stronger than a public `verified: true` flag.
+- **Remaining integration gap:** the current verification context does not carry an explicit organism tick/action-ticket identifier, and the reduced-resolution micro-cycle context has no channel for the exact trusted receipt or the canonical `RealityLearningGate` decision. The current micro-cycle must therefore remain neutral (`reward01=0.5`, `verified01=0`) rather than guessing correlation from `lastAction` or a generic world event.
+- No parallel verifier or evidence ledger was added. No behavior, test pass, or runtime activation is claimed in this source-trace checkpoint; tests were not executed.
+- Next code change must thread a single canonical action-ticket/tick correlation from the existing action-verification boundary through the shared reality-learning decision into the micro-cycle. It must reject stale/mismatched receipts, preserve simulation-only learning limits, and include behavior-level tests for valid, missing, stale, and mismatched evidence.
+
+---
+
 # WorkPass288 — outcome provenance and reduced-resolution learning boundary (2026-10-22)
 
 ## Finding
