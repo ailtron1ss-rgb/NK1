@@ -98,20 +98,37 @@ export class CausalExperienceStream {
     const d=defaultCausalExperienceStream(),r=raw??{};
     const restoredRows:CausalExperienceRecord[]=Array.isArray(r.records)
       ? r.records.slice(-this.maxRecords)
-        .map(record=>{
+        .flatMap(rawRecord=>{
+          const record=rawRecord as CausalExperienceRecord;
           const traceId=normalizeTraceId(record?.traceId);
-          const hasRuntimePolicyFeatures=Array.isArray(record?.policyFeatures01)&&record.policyFeatures01.length>=16&&
-            record.policyFeatures01.every(value=>Number.isFinite(value)&&value>=0&&value<=1);
-          // Legacy snapshots may contain records written before the external
-          // intake boundary stopped trusting caller-supplied provenance/grounding.
-          // Such records have no runtime policy-feature vector; fail closed on restore.
-          const trustedRuntimeEvidence=record?.provenance==='runtime-outcome'&&hasRuntimePolicyFeatures;
-          return {
-            ...record,traceId,
+          const taskId=normalizeTaskId(record?.taskId);
+          const validActions=CAUSAL_ACTIONS.includes(record?.action);
+          const boundedMetrics=[
+            record?.reward01,record?.success01,record?.surprise01,record?.predictionError01,
+            record?.novelty01,record?.uncertainty01,record?.energyBefore01,record?.energyAfter01,
+            record?.stateDelta01,record?.causalStrength01,record?.identityRelevance01,record?.goalPressure01,
+          ].every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1);
+          const validCounters=Number.isSafeInteger(record?.tick)&&record.tick>=0&&
+            typeof record?.at==='number'&&Number.isFinite(record.at)&&record.at>=0&&
+            typeof record?.id==='string'&&record.id.length>0&&record.id.length<=256;
+          if(!traceId||!taskId||!validActions||!boundedMetrics||!validCounters)return [];
+          const hasRuntimePolicyFeatures=Array.isArray(record.policyFeatures01)&&record.policyFeatures01.length>=16&&
+            record.policyFeatures01.length<=128&&record.policyFeatures01.every(value=>Number.isFinite(value)&&value>=0&&value<=1);
+          const validReplayMetadata=record.replayEligible===undefined||typeof record.replayEligible==='boolean';
+          const validOptionalMetrics=[record.learningQuality01,record.replayPriority01].every(value=>
+            value===undefined||(typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1));
+          const validReplayCounters=[record.replayCount,record.lastReplayedAt].every(value=>
+            value===undefined||(typeof value==='number'&&Number.isSafeInteger(value)&&value>=0));
+          if(!validReplayMetadata||!validOptionalMetrics||!validReplayCounters)return [];
+          // A well-shaped record is not authenticated evidence. Preserve trusted
+          // eligibility only for the runtime-outcome provenance and bounded policy vector;
+          // the host persistence boundary still must authenticate the snapshot itself.
+          const trustedRuntimeEvidence=record.provenance==='runtime-outcome'&&hasRuntimePolicyFeatures;
+          return [{
+            ...record,traceId,taskId,
             ...(!trustedRuntimeEvidence?{provenance:'external',stateGrounded:false,replayEligible:false}:{}),
-          };
+          }];
         })
-        .filter(record=>Boolean(record.traceId))
       : [];
     const firstByTraceId=new Map<string,CausalExperienceRecord>();
     const conflictingTraceIds=new Set<string>();
