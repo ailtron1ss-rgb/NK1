@@ -1,3 +1,13 @@
+## Current source-stack checkpoint — WorkPass270 (2026-10-22)
+
+- WorkPass270 removes pre-validation trim from external task IDs, so boundary control characters reach the shared validator and are rejected rather than erased.
+- WorkPass266–270 now cover task/trace ID bounds, C0/DEL/C1 controls, conflict detection for re-used event identities, snapshot restoration, and duplicate retries after bounded eviction.
+- Code-change baseline before this documentation update: 3cdca2d280cfb2205833cce2636b419210c4bef8. Use the live PR for current HEAD.
+- Exact-head Actions/typecheck remains unverified (latest job metadata has no step list/log URL); no learning score uplift is claimed.
+- PR #55 remains draft/unmerged. Next P0: actionable CI, audit external grounding/provenance call sites, deploy independent sandbox/verifier/scanner, and run held-out RU/EN memory-to-action and learning experiments.
+
+---
+
 ## Current source-stack checkpoint — WorkPass269 (2026-10-22)
 
 - WorkPass269 closes an identity normalization edge case: C0/DEL/C1 control characters are checked before trimming, so leading/trailing newline or tab cannot be silently erased and accepted as a different ID.
