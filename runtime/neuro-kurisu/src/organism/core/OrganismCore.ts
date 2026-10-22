@@ -8011,6 +8011,11 @@ export class OrganismCore {
                 confidence01: clamp(item.confidence), salience01: clamp(item.salience),
                 semanticLinks: Array.isArray(item.semanticLinks) ? item.semanticLinks : [],
                 entities: Array.isArray(item.entities) ? item.entities : [],
+                kind: String(item.kind ?? 'unknown'),
+                epistemicStatus: item.epistemicStatus,
+                provenanceClass: item.provenanceClass,
+                sourceAuthority01: clamp(item.sourceAuthority01 ?? .5),
+                validUntilAt: item.validUntilAt,
             })), `memory-associations:${state.tick}`, {
                 at: state.at, uncertainty01: clamp(state.needs.uncertainty),
                 memoryEvidence01: dreamMemoryEvidence, novelty01: clamp(n.novelty),
