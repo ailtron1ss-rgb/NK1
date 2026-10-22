@@ -1,3 +1,11 @@
+## WorkPass308 — unify push and pull-request concurrency groups
+
+- Standardized workflow concurrency keys on the head branch name (`github.head_ref || github.ref_name`) instead of using the PR number for pull requests and the full ref for pushes.
+- The previous keys separated push-triggered and pull-request-triggered runs for the same branch, so both could remain queued despite `cancel-in-progress: true`. The shared key lets newer runs replace stale duplicate runs across those event types.
+- Applied the key consistently to the 10 active workflows with concurrency control.
+
+---
+
 ## WorkPass307 — pin semantic TypeScript validation across CI jobs
 
 - Added `npm ci --prefix app --ignore-scripts --no-audit --no-fund` to WorkPass79, 94, 95, 106 and 110 before their runtime typecheck step.

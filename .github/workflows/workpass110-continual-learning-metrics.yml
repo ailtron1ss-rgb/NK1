@@ -186,7 +186,7 @@ on:
       - 'app/package.json'
       - 'app/package-lock.json'
 concurrency:
-  group: nk1-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: nk1-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 permissions:
