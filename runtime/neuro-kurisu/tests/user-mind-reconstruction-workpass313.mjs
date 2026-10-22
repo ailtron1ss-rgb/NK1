@@ -4,6 +4,7 @@ import { MotiveEcologyFabric } from '../src/organism/cognition/evolution/MotiveE
 import { P28PlasticitySubstrate } from '../src/organism/learning/P28PlasticitySubstrate.ts';
 import { MemoryConsolidationController } from '../src/organism/memory/MemoryConsolidationController.ts';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
+import { SelfModelEngine } from '../src/organism/cognition/SelfModelV2.ts';
 
 const social = new SocialMindKernel();
 const intentEvidence = social.observeText('user', 'Почему это работает? Объясни, пожалуйста.', 1000);
@@ -137,6 +138,21 @@ assert.equal(consolidation.diagnostics().sleepTimeRuns, 1);
 const consolidationRestore = new MemoryConsolidationController();
 consolidationRestore.restore(consolidation.snapshot());
 assert.equal(consolidationRestore.diagnostics().sleepTimeRuns, 1, 'sleep-time counters must persist across restart');
+const selfModel = new SelfModelEngine();
+const selfBefore = selfModel.snapshot();
+const ungroundedSelfUpdate = selfModel.learnGoalOutcome({ action: 'explore', goalAlignment01: .9, reward01: .9, tick: 1 });
+assert.equal(ungroundedSelfUpdate.identityUpdateAccepted, false, 'unbound outcome must not update high-level self-beliefs');
+assert.equal(selfModel.snapshot().agencyBelief, selfBefore.agencyBelief, 'agency belief remains stable without independent evidence');
+assert.equal(selfModel.snapshot().identityCoherence, selfBefore.identityCoherence, 'identity coherence remains stable without independent evidence');
+assert.notEqual(selfModel.snapshot().selfConsistentAction11.explore, selfBefore.selfConsistentAction11.explore, 'action-level preference can still learn from the bounded reward');
+assert.equal(selfModel.snapshot().identityGateRejectedCount, 1);
+const correlatedSelfUpdate = selfModel.learnGoalOutcome({ action: 'explore', goalAlignment01: .95, reward01: .95, tick: 2, evidence: { verified: true, independent: false, source: 'world-transition', evidenceRef: 'world-transition:correlated' } });
+assert.equal(correlatedSelfUpdate.identityUpdateAccepted, false, 'verified but non-independent evidence cannot revise identity');
+assert.equal(selfModel.snapshot().identityGateRejectedCount, 2);
+const groundedSelfUpdate = selfModel.learnGoalOutcome({ action: 'verify', goalAlignment01: .9, reward01: .9, tick: 3, evidence: { verified: true, independent: true, source: 'world-transition', evidenceRef: 'world-transition:trace-3:tick-3' } });
+assert.equal(groundedSelfUpdate.identityUpdateAccepted, true, 'verified independent outcome bound to a receipt may update high-level self-beliefs');
+assert.equal(selfModel.snapshot().identityGateAcceptedCount, 1);
+assert.equal(selfModel.snapshot().lastIdentityGate.reason, 'verified-independent-outcome-bound');
 const memDoctor = new MemoryOS2({ signalFusionProfile: 'balanced', embeddingProvider: null });
 const doctorAt = Date.now();
 memDoctor.encode({
