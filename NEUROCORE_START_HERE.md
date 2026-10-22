@@ -1,3 +1,15 @@
+## Latest durable checkpoint — WorkPass270 (2026-10-22)
+
+- Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use the live PR for current HEAD.
+- WorkPass270 removes the last pre-validation trim from external task IDs, ensuring boundary control characters reach the canonical ID validator.
+- The identity regressions cover overlong values, embedded/leading/trailing C0/C1 controls, conflicting duplicate payloads, snapshot restoration, and late duplicates after bounded-record eviction.
+- Tests/typecheck are still unverified because Actions jobs return no steps/logs. Keep scores unchanged and do not claim a pass.
+- Next: restore actionable exact-head CI; map all external causal-ingestion call sites and the source of grounding claims; provision independent evaluator authorities; then run frozen memory-to-action and transfer/forgetting benchmarks.
+
+Read the [strategic audit](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [P23 integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md) and [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md).
+
+---
+
 ## Latest durable checkpoint — WorkPass269 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use the live PR for the current HEAD.
