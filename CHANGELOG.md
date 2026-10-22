@@ -1,3 +1,13 @@
+## WorkPass295 — expire stale external repair hints (2026-10-22)
+
+- P23 background revision triage now accepts an external repair hint only when its claimed skill-repair task ID is bounded and its receipt time is finite, no older than seven days, and no more than five minutes in the future.
+- Hints remain prioritization-only: the trusted runtime repair ledger still determines eligible skill IDs, and independent evaluation, holdout, approval, and rollback remain separate.
+- Extended the WP293 integration regression with expired, future-dated, and fresh-hint cases. Fresh hints may reorder eligible work but cannot create eligibility; stale/malformed timestamps fall back to normal verified-ledger rotation.
+- No new dependency. Validation is not yet confirmed: the associated Actions jobs have failed but the connector exposed no step summaries/logs, so this pass does not claim the regression or typecheck passed.
+- Next: retrieve an actionable CI run, fix its concrete failure, and continue action-correlated evidence through the reduced-resolution micro-cycle without introducing a second verifier or evidence ledger.
+
+---
+
 ## WorkPass293 — opt-in autonomous P23 repair revision (2026-10-22)
 
 - Added explicit, opt-in P23 background repair clock with awake/resource/thermal/RAM/battery/runtime-pressure gates; requires independently configured evaluator authorities and stages at most one eligible skill per cycle.
