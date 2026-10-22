@@ -155,6 +155,16 @@ assert.equal(cyclicEnvelopeBound.accepted, false,
   'cyclic or non-canonicalizable envelope data must fail closed instead of escaping the evidence gate');
 assert.ok(cyclicEnvelopeBound.reasons.includes('independent-evaluation-envelope-not-canonicalizable'));
 
+const nonFiniteEvaluation = structuredClone(independentEvaluation);
+nonFiniteEvaluation.validation[0].skillQuality.aggregate = Number.NaN;
+const nonFiniteEnvelopeBound = engine.bindIndependentEvaluationEvidence(
+  { ...independentEnvelope, evaluation: nonFiniteEvaluation, evaluationFingerprint: digest(nonFiniteEvaluation) },
+  independentReceipts, candidate, verifier,
+);
+assert.equal(nonFiniteEnvelopeBound.accepted, false,
+  'non-finite evaluation metrics must not collapse to JSON null and pass canonical envelope integrity');
+assert.ok(nonFiniteEnvelopeBound.reasons.includes('independent-evaluation-envelope-not-canonicalizable'));
+
 const wrongSeedEvaluation = structuredClone(independentEvaluation);
 wrongSeedEvaluation.provenance.runBindings[1].seed = 23;
 const wrongSeedEnvelope = { ...independentEnvelope, evaluation: wrongSeedEvaluation, evaluationFingerprint: digest(wrongSeedEvaluation) };
