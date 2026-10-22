@@ -8,8 +8,8 @@ import { fileURLToPath } from 'node:url';
 const API_VERSION = '2026-03-10';
 const DEFAULT_PAGE_SIZE = 100;
 const DEFAULT_MAX_PAGES = 1000;
-const DEFAULT_MAX_DETAIL_RUNS = 3000;
-const DEFAULT_MAX_LOG_JOBS = 200;
+const DEFAULT_MAX_DETAIL_RUNS = 400;
+const DEFAULT_MAX_LOG_JOBS = 150;
 
 function integerSetting(value, fallback, minimum = 1, maximum = 10000) {
   const parsed = Number.parseInt(String(value ?? ''), 10);
@@ -94,12 +94,10 @@ async function requestJson(url, token, fetchImpl = fetch, retryCount = 3) {
       throw new Error('GitHub API returned ' + response.status + ' for ' + url + ': ' + redactSecrets(body.slice(0, 500)));
     } catch (error) {
       lastError = error;
-      if (String(error?.message ?? error).includes('rate limit')) throw error;
-      if (attempt < retryCount && !(error instanceof TypeError)) {
-        await new Promise(resolve => setTimeout(resolve, Math.min(8000, 500 * (2 ** attempt))));
-        continue;
-      }
-      if (attempt < retryCount && error instanceof TypeError) {
+      const message = String(error?.message ?? error);
+      // Permanent API responses (401/403/404/etc.) must not be retried as if transient.
+      if (message.includes('rate limit') || /^GitHub API returned \d{3}\b/.test(message)) throw error;
+      if (attempt < retryCount) {
         await new Promise(resolve => setTimeout(resolve, Math.min(8000, 500 * (2 ** attempt))));
         continue;
       }
