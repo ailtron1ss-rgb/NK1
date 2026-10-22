@@ -1,3 +1,12 @@
+## WorkPass312 — reconcile P23 replay/dedupe identity caches after restore
+
+- Rebuilt the processed-trace cache from restored experience rows first, then persisted cache entries; replayed-trace cache follows the same rule for replay-update rows.
+- Missing cache entries can no longer reopen a persisted trace for experience insertion or replay learning after restart.
+- Reconciled outcome counts, open evidence-debt count, skill-candidate count and promotion count with restored rows or the authoritative lifecycle store.
+- Extended the WorkPass310 regression with snapshots whose identity caches are empty but whose experience/replay rows exist.
+
+---
+
 ## WorkPass311 — keep P23 restore regression executable JavaScript
 
 - Removed TypeScript-only `as never` assertions from the `.mjs` restore regression. Node executes this file as JavaScript; those casts would have caused a parse error before any assertions ran.

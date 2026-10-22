@@ -59,13 +59,30 @@ assert.equal(restored.processedTraceIds[0],'trace-newest','retain newest trace I
 assert.deepEqual(restored.replayedTraceIds,['replay-newest']);
 assert.equal(restored.checksum.digest,'');
 assert.equal(restored.checksum.verificationFailures,0);
-assert.equal(restored.metrics.outcomes,0);
+assert.equal(restored.metrics.outcomes,128,'outcome counter cannot be lower than persisted experience rows');
 assert.equal(restored.metrics.skillPromotions,0);
 assert.equal(restored.metrics.checksumFailures,0);
 assert.equal(restored.metrics.lastLearningAt,0);
 assert.ok(restored.metrics.learningDelta01>0.8&&restored.metrics.learningDelta01<0.9,
   'learningDelta01 must compare old high error with recent low error');
 assert.ok(Object.values(restored.metrics).every(value=>typeof value==='number'&&Number.isFinite(value)));
+
+
+const missingIdentityCaches=P23RestoreIdentityFixture();
+missingIdentityCaches.processedTraceIds=[];
+missingIdentityCaches.replayedTraceIds=[];
+missingIdentityCaches.experiences=[experiences[0]];
+missingIdentityCaches.replayUpdates=[validReplay];
+const identityEngine=new P23LearningEngine();
+identityEngine.restore(missingIdentityCaches);
+const identityRestored=identityEngine.snapshot();
+assert.ok(identityRestored.processedTraceIds.includes('trace-127'),'restored experience must remain deduplicated even when its ID cache is missing');
+assert.ok(identityRestored.replayedTraceIds.includes('replay-1'),'restored replay row must remain deduplicated even when its ID cache is missing');
+assert.equal(identityRestored.metrics.outcomes,1,'outcome metrics must cover durable experience rows');
+function P23RestoreIdentityFixture(){
+  return {...base,version:1,processedTraceIds:[],replayedTraceIds:[],experiences:[],replayUpdates:[],
+    shadow:[],skills:[],ablations:[],evidenceDebt:[],checksum:{...base.checksum},metrics:{...base.metrics}};
+}
 
 const beforeUnsupported=engine.snapshot();
 assert.throws(()=>engine.restore({...beforeUnsupported,version:2}),/version/);

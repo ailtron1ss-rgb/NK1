@@ -406,10 +406,20 @@ export class P23LearningEngine {
     const skills=sanitizeRows(source.skills,256,parsePolicySkill,row=>row.id);
     const ablations=sanitizeRows(source.ablations,512,parseAblation,row=>row.traceId);
     const evidenceDebt=sanitizeRows(source.evidenceDebt,256,parseEvidenceDebt,row=>row.id);
-    const processedTraceIds=sanitizeIdList(source.processedTraceIds,2048);
-    const replayedTraceIds=sanitizeIdList(source.replayedTraceIds,2048);
+    // Reconcile dedupe caches with durable rows; restored rows must not be applied twice.
+    const processedTraceIds=sanitizeIdList([
+      ...experiences.map(row=>row.traceId),...(Array.isArray(source.processedTraceIds)?source.processedTraceIds:[]),
+    ],2048);
+    const replayedTraceIds=sanitizeIdList([
+      ...replayUpdates.map(row=>row.traceId),...(Array.isArray(source.replayedTraceIds)?source.replayedTraceIds:[]),
+    ],2048);
     const checksum=sanitizeChecksum(source.checksum,d.checksum);
     const metrics=sanitizeMetrics(source.metrics,d.metrics);
+    metrics.outcomes=Math.max(metrics.outcomes,experiences.length);
+    metrics.evidenceDebtOpen=evidenceDebt.filter(row=>row.priority01>.45).length;
+    metrics.skillCandidates=skills.filter(row=>row.status==='candidate').length;
+    if(this.verifiedSkillStore)metrics.skillPromotions=this.verifiedSkillStore.snapshot().active.length;
+    else metrics.skillPromotions=skills.filter(row=>row.status==='promoted').length;
     const restoredLastLearningAt=metrics.lastLearningAt;
     this.state={version:1,processedTraceIds,replayedTraceIds,experiences,replayUpdates,shadow,skills,ablations,evidenceDebt,checksum,metrics};
     this.recomputeMetrics();
