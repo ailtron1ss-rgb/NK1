@@ -321,6 +321,18 @@ export class SocialMindKernel{
    * to unexpired, observed evidence owned by the same person; unsupported model claims
    * stay low-confidence hypotheses. Intentions never become actions implicitly.
    */
+  recordObservedUserStatement(personId:string, statement:string, at:number, confidence01:number, source:ObservationSource='interaction') {
+    const id=String(personId??'').normalize('NFKC').trim().slice(0,120);
+    const normalized=String(statement??'').normalize('NFKC').trim().slice(0,180);
+    if(!id||!normalized||!Number.isFinite(at)||at<0) throw new Error('valid personId, statement and timestamp are required');
+    this.ensurePerson(id,at);
+    const lower=normalized.toLocaleLowerCase();
+    const evidence:SocialEvidence={id:stable('user-observation',id+':'+lower+':'+at),personId:id,source,claim:'observation:'+lower,confidence01:clamp(confidence01),observedAt:at,evidenceKind:'observed'};
+    this.state.evidence=[evidence,...this.state.evidence.filter(e=>e.id!==evidence.id)].slice(0,512);
+    this.recompute(at);
+    return structuredClone(evidence);
+  }
+
   reconstructUserMind(input:UserMindReconstructionInput):UserMindFrame {
     const personId=String(input?.personId??'').normalize('NFKC').trim().slice(0,120);
     const at=Number(input?.at);
@@ -337,10 +349,12 @@ export class SocialMindKernel{
         const text=claim(kind==='intention'?raw?.kind:raw?.claim);
         if(!text) return [];
         const refs=support(raw?.evidenceIds);
-        const cap=refs.length?Math.max(...refs.map(e=>clamp(e.confidence01))):.2;
-        const observed=kind==='observation'&&refs.length>0;
-        const status:UserMindEvidenceStatus=observed?'direct-observation':refs.length?'evidence-backed-hypothesis':'unresolved';
-        const row:UserMindClaimFrame={claim:text,confidence01:Math.min(clamp(Number(raw?.confidence01)),cap),evidenceIds:refs.map(e=>e.id).slice(0,8),evidenceStatus:status};
+        const directRefs=kind==='observation' ? refs.filter(e=>e.claim==='observation:'+text.toLocaleLowerCase()) : [];
+        const groundingRefs=kind==='observation'?directRefs:refs;
+        const cap=groundingRefs.length?Math.max(...groundingRefs.map(e=>clamp(e.confidence01))):.2;
+        const observed=kind==='observation'&&directRefs.length>0;
+        const status:UserMindEvidenceStatus=observed?'direct-observation':groundingRefs.length?'evidence-backed-hypothesis':'unresolved';
+        const row:UserMindClaimFrame={claim:text,confidence01:Math.min(clamp(Number(raw?.confidence01)),cap),evidenceIds:groundingRefs.map(e=>e.id).slice(0,8),evidenceStatus:status};
         if(kind==='observation'&&!observed) row.confidence01=Math.min(row.confidence01,.2);
         if(kind==='environment'||kind==='belief'||kind==='intention') return [{...row,probability01:clamp(Number(raw?.probability01))}];
         return [row];
