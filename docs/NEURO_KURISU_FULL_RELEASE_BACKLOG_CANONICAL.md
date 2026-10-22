@@ -877,3 +877,11 @@ The historical WorkPass57 release baseline and its 78.0% release-roadmap number 
 - [x] Compute runtime behavioral-impact/context-divergence only from grounded `runtime-outcome` records.
 - [x] Add regression proving varied external actions do not register as runtime behavioral adaptation.
 - [ ] Calibrate the metric against longitudinal task outcomes and holdout evaluation; action-distribution change alone is not evidence of capability improvement.
+
+
+## WorkPass277 — persisted causal record schema validation
+
+- [x] Reject restored causal records with invalid identity fields, unsupported actions, invalid metric ranges, malformed timestamps/IDs, oversized feature vectors, or malformed replay metadata.
+- [x] Add regression fixtures for non-finite reward, unsupported action and control-bearing task ID.
+- [ ] Add host-authenticated snapshot integrity; structural validity alone cannot authenticate provenance.
+- [ ] Run the targeted regression and exact-head typecheck on a functioning runner.
