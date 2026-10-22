@@ -1,3 +1,11 @@
+## WorkPass280 — strict canonicalization of evaluation evidence (2026-10-22)
+
+- Independent evaluation evidence fingerprints now reject NaN/Infinity, circular references and non-plain objects instead of canonicalizing invalid values ambiguously.
+- Added regression coverage for NaN quality metrics in the signed-evidence binding path.
+- No dependency added. Test execution remains unverified; no learning-score uplift claimed.
+
+---
+
 ## WorkPass279 — causal memory trust-boundary hardening (2026-10-22)
 
 - Causal snapshot restoration now sanitizes aggregate counters, normalized rolling metrics and timestamps, and recomputes behavioral aggregates from eligible runtime-grounded records.
