@@ -5,6 +5,71 @@ import path from 'node:path';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 import { P23TrustedShadowLearningScheduler } from '../src/organism/learning/P23TrustedShadowLearningScheduler.ts';
 
+
+// Focused RuntimeClockScheduler hardening: decision failures must not run tasks,
+// and failures in either decision or error-reporting must not kill the clock loop.
+{
+  const keepAlive = setTimeout(() => {}, 300);
+  const scheduler = new (await import('../src/organism/system/RuntimeClockScheduler.ts')).RuntimeClockScheduler();
+  let taskCalls = 0;
+  let decisionCalls = 0;
+  let reportCalls = 0;
+  try {
+    scheduler.register({
+      id: 'reflection',
+      initialDelayMs: 0,
+      decide: () => { decisionCalls += 1; throw new Error('policy-unavailable'); },
+      task: () => { taskCalls += 1; },
+      onError: () => { reportCalls += 1; throw new Error('reporter-unavailable'); },
+    });
+    scheduler.start('reflection');
+    await new Promise(resolve => setTimeout(resolve, 30));
+    scheduler.stop();
+    await scheduler.drain();
+    const stats = scheduler.snapshot().reflection;
+    assert.equal(taskCalls, 0, 'a failed scheduling policy must block task execution');
+    assert.ok(decisionCalls >= 1);
+    assert.equal(reportCalls, 1);
+    assert.ok(stats.skipped >= 1);
+    assert.ok(stats.failures >= 2, 'decision and reporter errors must both be observable');
+    assert.throws(() => scheduler.start('cognitive'), /not registered/);
+    assert.throws(() => scheduler.register({ id: 'cognitive', initialDelayMs: Number.NaN, task: () => {} }), /initialDelayMs/);
+  } finally {
+    scheduler.stop();
+    clearTimeout(keepAlive);
+  }
+}
+{
+  const keepAlive = setTimeout(() => {}, 300);
+  const { RuntimeClockScheduler } = await import('../src/organism/system/RuntimeClockScheduler.ts');
+  const scheduler = new RuntimeClockScheduler();
+  let decideCalls = 0;
+  let taskCalls = 0;
+  try {
+    scheduler.register({
+      id: 'cognitive',
+      initialDelayMs: 0,
+      decide: () => {
+        decideCalls += 1;
+        if (decideCalls === 1) return { delayMs: 0, reason: 'admit-once', run: true };
+        throw new Error('cadence-policy-failed');
+      },
+      task: () => { taskCalls += 1; },
+    });
+    scheduler.start('cognitive');
+    await new Promise(resolve => setTimeout(resolve, 35));
+    scheduler.stop();
+    await scheduler.drain();
+    assert.equal(taskCalls, 1, 'the first valid decision may run exactly one task');
+    assert.ok(decideCalls >= 2, 'scheduler must exercise guarded post-run decision');
+    assert.ok(scheduler.snapshot().cognitive.failures >= 1, 'post-run decision error must be counted');
+  } finally {
+    scheduler.stop();
+    clearTimeout(keepAlive);
+  }
+}
+console.log('RUNTIME_CLOCK_FAIL_CLOSED_CONTRACT=PASS');
+
 const invalidCandidateCore = {
   async runTrustedSkillShadowLearningProcess() { throw new Error('must-not-run'); },
   async recordVerifiedSkillShadow() {},

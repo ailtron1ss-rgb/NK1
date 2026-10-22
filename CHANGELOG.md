@@ -1,3 +1,15 @@
+## WorkPass301 — runtime clock fail-closed decisions and bounded scheduling
+
+- The runtime clock now validates registration inputs, clock identifiers, start targets and adaptive decisions before using them.
+- A thrown/invalid admission decision no longer defaults to `run: true`; the task is skipped and the clock enters a bounded retry path.
+- Post-task decision failures are caught and rescheduled rather than escaping the clock promise and silently stopping future wakeups.
+- Error-handler failures are counted but cannot prevent the clock from being rescheduled.
+- Repeated zero-delay decisions are bounded to a 50 ms cadence to prevent an accidental busy loop; valid initial delay 0 remains supported.
+- Added regression scenarios for fail-closed admission, throwing error handlers, bad start/configuration and second-decision failures.
+- Source/tests are committed; test execution remains unverified because the repository Actions jobs currently fail before runner initialization.
+
+---
+
 ## WorkPass300 — JavaScript syntax audit for runtime tests
 
 - Added a conservative restore regression for snapshots where incomplete-cycle counters understate the total. Unaccounted history must be classified as incomplete, keeping complete + incomplete equal to total and broken lineages within the incomplete subset.
