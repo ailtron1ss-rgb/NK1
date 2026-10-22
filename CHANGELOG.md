@@ -1,3 +1,15 @@
+## WorkPass293 — opt-in autonomous P23 repair revision (2026-10-22)
+
+- Added explicit, opt-in P23 background repair clock with awake/resource/thermal/RAM/battery/runtime-pressure gates; requires independently configured evaluator authorities and stages at most one eligible skill per cycle.
+- Connected the quarantined WP292 external-hypothesis queue to P23 triage only: an external repair hint can prioritize a skill only when actual eligible non-holdout repair evidence already exists in the runtime ledger.
+- Added concurrent request coalescing and persistent source-evidence digest lineage through coordinator → runtime staging boundary → P23 revision provenance → versioned candidate. Repeated evidence is deduplicated even after coordinator restart if the candidate store persists.
+- Candidate activation is still not autonomous: authenticated independent evaluation, shadow evidence, explicit promotion approval and rollback authority remain separate.
+- Added tests/workpass293-autonomous-p23-revision.mjs, extended tests/workpass172-compound-revision-coordinator.mjs, registered test:workpass293:p23-revision and added the Node 24 workflow .github/workflows/workpass293-autonomous-p23-revision.yml. Aligned the existing P2700 regression to learner schema v4.
+- Source mechanism references: Hermes Self-Evolution (trace-based repair + holdout gate), Letta (durable memory/consolidation), Generative Agents (observation/reflection/planning loop). See docs/WORKPASS293_AUTONOMOUS_P23_REPAIR_LOOP_2026-10-22.md.
+- Validation is **unconfirmed**; no local test/typecheck pass is claimed. The previous WP292 Actions run was reported failed without usable job details. WP294 continues action-receipt correlation and grounded canonical memory wiring.
+
+---
+
 ## WorkPass292 — verified experience lanes and evidence provenance (2026-10-22)
 
 - Unified CausalExperienceStream experience admission, learning packets, consolidation, replay and behavioral diagnostics around the same grounded runtime-outcome predicate; restored runtime labels without grounded state evidence are downgraded.
