@@ -121,6 +121,30 @@ function parseJsonOutput<T>(stdout: string, label: string): T {
   return parsed as T;
 }
 
+/**
+ * Shared evidence-binding predicate for verifier and scanner responses.
+ * Keeping one canonical check prevents either authority from accepting a
+ * weaker subset of the payload/task/environment/experiment identity.
+ */
+function hasExactEvaluationBinding(
+  result: Record<string, unknown>,
+  context: CandidateExecutionContext,
+  task: IndependentCandidateTask,
+  expectedRunId: string | null,
+): boolean {
+  return result.bindingVerified === true &&
+    result.payloadFingerprint === context.payloadFingerprint &&
+    result.taskInputFingerprint === context.taskInputFingerprint &&
+    result.environmentFingerprint === context.environmentFingerprint &&
+    result.planFingerprint === context.planFingerprint &&
+    result.manifestFingerprint === context.manifestFingerprint &&
+    result.experimentPlanFingerprint === context.experimentPlanFingerprint &&
+    result.plannedRunId === context.plannedRunId &&
+    result.runId === expectedRunId &&
+    result.taskId === task.taskId &&
+    result.seed === task.seed;
+}
+
 async function invoke<T>(
   command: HostOwnedAuthorityCommand & { executable: string },
   name: string,
@@ -259,16 +283,9 @@ export async function createHostOwnedIndependentEvaluationServices(
             new Set(result.coveredCapabilityIds).size !== result.coveredCapabilityIds.length) {
           throw new Error('host-owned-verifier-response-invalid');
         }
-        const bound = result.bindingVerified === true &&
-          result.payloadFingerprint === context.payloadFingerprint &&
-          result.taskInputFingerprint === context.taskInputFingerprint &&
-          result.environmentFingerprint === context.environmentFingerprint &&
-          result.planFingerprint === context.planFingerprint &&
-          result.manifestFingerprint === context.manifestFingerprint &&
-          result.experimentPlanFingerprint === context.experimentPlanFingerprint &&
-          result.plannedRunId === context.plannedRunId &&
-          result.runId === execution.runId && result.taskId === task.taskId && result.seed === task.seed;
-        if (!bound) throw new Error('host-owned-verifier-response-binding-mismatch');
+        if (!hasExactEvaluationBinding(result, context, task, execution.runId)) {
+          throw new Error('host-owned-verifier-response-binding-mismatch');
+        }
         return { bindingVerified: true, passed: result.passed,
           coveredCapabilityIds: result.coveredCapabilityIds as string[] };
       },
@@ -286,16 +303,7 @@ export async function createHostOwnedIndependentEvaluationServices(
         if (!Number.isSafeInteger(result.violationCount) || Number(result.violationCount) < 0) {
           throw new Error('host-owned-safety-scanner-response-invalid');
         }
-        if (result.bindingVerified !== true ||
-            result.payloadFingerprint !== context.payloadFingerprint ||
-            result.taskInputFingerprint !== context.taskInputFingerprint ||
-            result.environmentFingerprint !== context.environmentFingerprint ||
-            result.planFingerprint !== context.planFingerprint ||
-            result.manifestFingerprint !== context.manifestFingerprint ||
-            result.experimentPlanFingerprint !== context.experimentPlanFingerprint ||
-            result.plannedRunId !== context.plannedRunId ||
-            result.taskId !== task.taskId || result.seed !== task.seed ||
-            result.runId !== (execution?.runId ?? null)) {
+        if (!hasExactEvaluationBinding(result, context, task, execution?.runId ?? null)) {
           throw new Error('host-owned-safety-scanner-response-binding-mismatch');
         }
         return { violationCount: Number(result.violationCount) };
