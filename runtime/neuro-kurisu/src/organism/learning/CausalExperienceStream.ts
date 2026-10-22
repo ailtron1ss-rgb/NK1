@@ -81,6 +81,11 @@ function vector(state:OrganismState){
   const n=state.needs;
   return [n.energy,n.cognitiveLoad,n.uncertainty,n.novelty,n.goalPressure,n.socialNeed,n.identityCoherence,state.predictionError,state.attentionBudget,state.selfPredictionError];
 }
+function hasValidObservedState(state:OrganismState):boolean{
+  const values=vector(state);
+  return Number.isSafeInteger(state.tick)&&state.tick>=0&&
+    values.every(value=>Number.isFinite(value)&&value>=0&&value<=1);
+}
 
 function distance(a:number[],b:number[]){
   const n=Math.min(a.length,b.length); if(!n)return 0;
@@ -177,7 +182,11 @@ export class CausalExperienceStream {
     // Observation is intentionally cheap: it never evicts causal records. The stream waits for outcome before creating a sample.
   }
   recordOutcome(trace:OrganismDecisionTrace,stateAfter:OrganismState,input:{reward01:number;success01:number;surprise01:number;novelty01:number}):CausalExperienceRecord|null{
-    if(!trace.selected)return null;
+    // A caller reaching this API is not enough to establish a grounded transition:
+    // require a supported selected action and valid before/after state snapshots.
+    if(!trace.selected||!CAUSAL_ACTIONS.includes(trace.selected.action)||
+      !hasValidObservedState(trace.stateBefore)||!hasValidObservedState(stateAfter)||
+      stateAfter.tick<=trace.stateBefore.tick)return null;
     const traceId=normalizeTraceId(trace.id);
     if(!traceId||this.recordedOutcomeTraceIds.has(traceId)||this.state.records.some(r=>r.traceId===traceId))return null;
     const before=vector(trace.stateBefore),after=vector(stateAfter);
