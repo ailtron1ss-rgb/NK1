@@ -1,3 +1,14 @@
+## Latest durable checkpoint — WorkPass265 strategic execution map (2026-10-22)
+
+- Current source branch: workpass206-runtime-evaluator-wiring; draft PR #55 remains open/unmerged; checked head 58e9c6a00b5835096dac3758968f5b9ce0eb08d2.
+- Read [strategic audit and execution blueprint](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [cross-source integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md), [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md) and the current PR/Actions before coding.
+- WorkPass255–264 source changes are documented in the current branch, but exact-head successful tests/typechecks and deployment-shaped evaluator authorities remain unverified.
+- P0: restore actionable exact-head CI; provision a real host sandbox and independently controlled verifier/scanner; complete matched evaluation → signed evidence → approved activation → restart/rollback.
+- In parallel, prepare frozen RU/EN memory and memory-grounded-action benchmarks and the production browser/Live2D test path; keep MemoryOS2, P23 and ActionGateway as canonical owners.
+- Track implementation, real-call-path integration, exact-head verification and external efficacy separately. Never claim consciousness or learning uplift from module counts or unrun tests.
+
+---
+
 ## Latest durable checkpoint — WorkPass149 (2026-10-21)
 
 - Added an offline approval-request CLI for deployments or external approval services: `runtime/neuro-kurisu/scripts/create-skill-promotion-approval-request.mjs`.
