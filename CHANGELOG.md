@@ -1,3 +1,13 @@
+## WorkPass295 — reconcile restored cognitive-cycle history (2026-10-22)
+
+- Hardened `UnifiedCognitiveCycle.restore`: complete and incomplete counters are now disjoint subsets of total cycles; broken lineages cannot exceed incomplete cycles.
+- A restored `lastComplete` flag is accepted only when at least one cycle exists, the last tick is valid, and the missing-stage set is empty.
+- Empty missing-stage state on a zero-cycle snapshot is normalized back to the required stages, avoiding a false appearance of completed history.
+- Added regression cases for over-counted restored counters and empty-history false completion.
+- Tests and typecheck have **not** been executed in this environment; the repository's recent Actions runs are currently failing before recording steps. Do not interpret this commit as validated by CI.
+
+---
+
 ## WorkPass294 — bound CI run storms and record Actions failure evidence (2026-10-22)
 
 - Audited metadata across all 52 GitHub Actions history pages (5,158 runs). The latest 2,400 runs on pages 1–24 all concluded as failures; older pages contain mixed successful/cancelled/failed results.
