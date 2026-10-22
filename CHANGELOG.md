@@ -1,3 +1,14 @@
+## WorkPass310 — sanitize P23 learning restore and correct learning-window direction
+
+- Replaced P23LearningEngine's shallow snapshot spread with schema-version checks and field-by-field reconstruction of persisted rows, checksum and metrics.
+- Invalid rows (bad identities/actions, non-finite or out-of-range signals, impossible timestamps/windows) are quarantined. ID caches are deduplicated and bounded; restored histories retain newest entries, matching the runtime's prepend-on-write ordering.
+- Unsupported versions and non-plain root values are rejected before live learner state is mutated.
+- Fixed a metric-direction bug: P23 prepends newest experiences, but recent and early error windows were sliced from opposite ends. Recent calibration now uses the head, the oldest retained window uses the tail, and replay calibration reads newest updates.
+- Added an adversarial regression for corrupted arrays/metrics/checksum, unsupported versions, no partial mutation, newest-first bounds, and an expected 0.875 learning-delta fixture.
+- Wired the regression into learning/promotion and broad core-regression workflows. CI remains unverified while jobs are queued before runner assignment.
+
+---
+
 ## WorkPass309 — fence re-entrant admission decisions
 
 - Recheck the clock generation immediately after the admission callback returns. A policy that synchronously stops/restarts the scheduler can no longer return `run: true` and still launch a now-stale task.

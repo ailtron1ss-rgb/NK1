@@ -103,6 +103,7 @@ on:
       - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
       - 'app/package.json'
       - 'app/package-lock.json'
+      - 'runtime/neuro-kurisu/tests/workpass310-p23-learning-restore-integrity.mjs'
   push:
     branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals, workpass122-promotion-gate-coverage-hardening, workpass123-authenticated-skill-lifecycle, workpass124-learning-evidence-hardening, workpass135-durable-shadow-run-registry, workpass206-runtime-evaluator-wiring]
     paths:
@@ -185,6 +186,7 @@ on:
       - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
       - 'app/package.json'
       - 'app/package-lock.json'
+      - 'runtime/neuro-kurisu/tests/workpass310-p23-learning-restore-integrity.mjs'
 concurrency:
   group: nk1-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
@@ -320,6 +322,9 @@ jobs:
       - name: Run durable signed promotion restart and replay regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass239:durable-signed-promotion-e2e
+      - name: Validate P23 persisted learning restore integrity
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass310:p23-restore-integrity
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck

@@ -34,6 +34,7 @@ on:
       - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
       - 'app/package.json'
       - 'app/package-lock.json'
+      - 'runtime/neuro-kurisu/tests/workpass310-p23-learning-restore-integrity.mjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -92,6 +93,9 @@ jobs:
       - name: Verify reflective fitness blocks production promotion
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:hermes-production-promotion-gate
+      - name: Validate P23 persisted learning restore integrity
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass310:p23-restore-integrity
       - name: Type-check runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
