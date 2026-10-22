@@ -215,7 +215,8 @@ export class SocialMindKernel{
     person.lastSeenAt=input.at;
     if(input.position)person.lastPosition={x:Number(input.position.x)||0,y:Number(input.position.y)||0,z:Number(input.position.z)||0};
     if(input.alias && !person.aliases.includes(input.alias))person.aliases=[input.alias,...person.aliases].slice(0,12);
-    const evidence:SocialEvidence={id:stable('social-e',`${id}:${input.source}:${input.at}:${person.observationCount}`),personId:id,source:input.source,claim:`person-present:${id}`,confidence01:clamp(input.confidence01),observedAt:input.at,evidenceKind:'observed',expiresAt:input.at+900000};
+    const canonicalId=person.id;
+    const evidence:SocialEvidence={id:stable('social-e',`${canonicalId}:${input.source}:${input.at}:${person.observationCount}`),personId:canonicalId,source:input.source,claim:`person-present:${canonicalId}`,confidence01:clamp(input.confidence01),observedAt:input.at,evidenceKind:'observed',expiresAt:input.at+900000};
     this.state.evidence=[evidence,...this.state.evidence.filter(e=>e.id!==evidence.id)].slice(0,512);
     this.recompute(input.at);
     const current=this.state.persons.find(p=>p.id===person!.id)??person;
@@ -224,12 +225,13 @@ export class SocialMindKernel{
 
   observeText(personId:string,text:string,at:number,source:ObservationSource='text'){
     const person=this.ensurePerson(personId,at);
+    const canonicalId=person.id;
     const candidates=classifyIntent(text);
     const top=candidates[0]??{kind:'unknown' as const,weight:.1};
     const second=candidates[1]?.weight??0;
     const spread=clamp((top.weight-second)*.9);
     const confidence=clamp(.38+person.predictability01*.22+person.trust01*.18+spread*.25);
-    const evidence:SocialEvidence={id:stable('social-e',`${personId}:${source}:${at}:${text.slice(0,120)}`),personId,source,claim:`intent-cue:${top.kind}`,confidence01:confidence,observedAt:at,evidenceKind:source==='text'?'observed':'model-output'};
+    const evidence:SocialEvidence={id:stable('social-e',`${canonicalId}:${source}:${at}:${text.slice(0,120)}`),personId:canonicalId,source,claim:`intent-cue:${top.kind}`,confidence01:confidence,observedAt:at,evidenceKind:source==='text'?'observed':'model-output'};
     this.state.evidence=[evidence,...this.state.evidence].slice(0,512);
     const intent:SocialIntentHypothesis={kind:top.kind,probability01:clamp(.42+top.weight*.42),confidence01:confidence,evidenceIds:[evidence.id],generatedAt:at};
     person.recentIntent=intent;
@@ -238,10 +240,10 @@ export class SocialMindKernel{
     const prior=person.knownClaims.find(c=>c.claim===claim);
     if(prior){prior.belief01=clamp(prior.belief01*.88+intent.probability01*.12);prior.confidence01=clamp(prior.confidence01*.9+confidence*.1);prior.evidenceIds=[evidence.id,...prior.evidenceIds].slice(0,16);prior.lastUpdatedAt=at;}
     else person.knownClaims.unshift({claim,belief01:intent.probability01,confidence01:confidence,evidenceIds:[evidence.id],contradictions:0,lastUpdatedAt:at});
-    const episode:SocialInteractionEpisode={id:stable('social-x',`${personId}:${at}:${text.slice(0,120)}`),personId,at,predictedIntent:intent,evidenceIds:[evidence.id],counterfactualIds:[]};
+    const episode:SocialInteractionEpisode={id:stable('social-x',`${canonicalId}:${at}:${text.slice(0,120)}`),personId:canonicalId,at,predictedIntent:intent,evidenceIds:[evidence.id],counterfactualIds:[]};
     this.state.episodes=[episode,...this.state.episodes].slice(0,256);
     const expectedAction=this.expectedResponseForIntent(top.kind);
-    this.updateSecondOrderBelief(personId,`person-expected-agent-action:${expectedAction}`,clamp(.52+intent.probability01*.32),at,[evidence.id]);
+    this.updateSecondOrderBelief(canonicalId,`person-expected-agent-action:${expectedAction}`,clamp(.52+intent.probability01*.32),at,[evidence.id]);
     person.expectedResponseUncertainty01=clamp(person.expectedResponseUncertainty01*.86+(1-intent.confidence01)*.14);
     this.recompute(at);
     return structuredClone(intent);
@@ -249,7 +251,8 @@ export class SocialMindKernel{
 
   observeRelation(personId:string,relation:string,target:string,confidence01:number,at:number,source:ObservationSource='vision'){
     const person=this.ensurePerson(personId,at);
-    const evidence:SocialEvidence={id:stable('social-r',`${personId}:${relation}:${target}:${at}`),personId,source,claim:`relation:${relation}:${target}`.slice(0,180),confidence01:clamp(confidence01),observedAt:at,evidenceKind:source==='vision'||source==='sensor'||source==='world'?'observed':'model-output'};
+    const canonicalId=person.id;
+    const evidence:SocialEvidence={id:stable('social-r',`${canonicalId}:${relation}:${target}:${at}`),personId:canonicalId,source,claim:`relation:${relation}:${target}`.slice(0,180),confidence01:clamp(confidence01),observedAt:at,evidenceKind:source==='vision'||source==='sensor'||source==='world'?'observed':'model-output'};
     this.state.evidence=[evidence,...this.state.evidence].slice(0,512);
     const claim=`relation:${relation}:${target}`;
     const prior=person.knownClaims.find(c=>c.claim===claim);
@@ -261,7 +264,8 @@ export class SocialMindKernel{
 
   recordOutcome(personId:string,input:{actualIntent?:SocialIntentKind;outcome01:number;surprise01:number;at:number;agentAction?:string;actorExpectedAction?:string;repairAttempted?:boolean}){
     const person=this.ensurePerson(personId,input.at);
-    const episode=this.state.episodes.find(x=>x.personId===personId && x.actualIntent==null);
+    const canonicalId=person.id;
+    const episode=this.state.episodes.find(x=>x.personId===canonicalId && x.actualIntent==null);
     const actual=input.actualIntent;
     let predictionError=clamp(input.surprise01);
     if(episode?.predictedIntent){
@@ -280,7 +284,7 @@ export class SocialMindKernel{
     person.relationshipStrength01=clamp(person.relationshipStrength01*.9+(.5*person.trust01+.5*person.predictability01)*.1);
     person.intentUncertainty01=clamp(person.intentUncertainty01*.85+predictionError*.15);
     if(input.actorExpectedAction){
-      this.updateSecondOrderBelief(personId, `person-expected-agent-action:${input.actorExpectedAction}`, clamp(.58+(1-predictionError)*.3), input.at, episode?.evidenceIds??[]);
+      this.updateSecondOrderBelief(canonicalId, `person-expected-agent-action:${input.actorExpectedAction}`, clamp(.58+(1-predictionError)*.3), input.at, episode?.evidenceIds??[]);
       person.expectedResponseUncertainty01=clamp(person.expectedResponseUncertainty01*.84+predictionError*.16);
     }
     if(input.agentAction){
@@ -291,7 +295,7 @@ export class SocialMindKernel{
       const alternatives=this.counterfactualAlternatives(input.agentAction);
       const ids:string[]=[];
       for(const alt of alternatives){
-        const cf:SocialCounterfactual={id:stable('social-cf',`${personId}:${input.at}:${alt}`),personId,originalAction:input.agentAction??'unknown',alternativeAction:alt,expectedOutcome01:clamp(input.outcome01+(1-predictionError)*.18),rationale:`prediction-error=${predictionError.toFixed(3)}; alternative may reduce unresolved social uncertainty`,generatedAt:input.at,sourceEpisodeId:episode?.id};
+        const cf:SocialCounterfactual={id:stable('social-cf',`${canonicalId}:${input.at}:${alt}`),personId:canonicalId,originalAction:input.agentAction??'unknown',alternativeAction:alt,expectedOutcome01:clamp(input.outcome01+(1-predictionError)*.18),rationale:`prediction-error=${predictionError.toFixed(3)}; alternative may reduce unresolved social uncertainty`,generatedAt:input.at,sourceEpisodeId:episode?.id};
         if(!this.state.counterfactuals.some(x=>x.id===cf.id)){this.state.counterfactuals.unshift(cf);ids.push(cf.id);}
       }
       if(episode)episode.counterfactualIds=[...ids,...(episode.counterfactualIds??[])].slice(0,6);
