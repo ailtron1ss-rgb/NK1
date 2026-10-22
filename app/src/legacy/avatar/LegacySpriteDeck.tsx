@@ -44,6 +44,12 @@ export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel;
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
   const blend = useRef(1);
+  // Keep the canvas loop mounted across emotion/speech changes. These refs expose
+  // current render values to the frame callback without restarting its clock.
+  const speakingRef = useRef(speaking);
+  const outfitRef = useRef(outfit);
+  speakingRef.current = speaking;
+  outfitRef.current = outfit;
 
   useEffect(() => {
     const url = resolveSpritePath(EXPRESSION[emotion] ?? "neutral", { preferLab: outfit === "lab_coat" || outfit === "formal", profile: getOutfit(outfit) });
@@ -89,15 +95,15 @@ export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel;
         ctx.fillText("Legacy sprite asset unavailable", cx, cy);
         ctx.textAlign = "start";
       }
-      if (speaking && d) {
+      if (speakingRef.current && d) {
         ctx.strokeStyle = `rgba(255,59,48,${0.20 + 0.2 * Math.sin(time * 8)})`; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.ellipse(cx, cy + d.dh * .35, d.dw * .22, 8, 0, 0, Math.PI * 2); ctx.stroke();
       }
-      ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.font = "10px monospace"; ctx.fillText(`${getOutfit(outfit).nameRu} · legacy visual`, 10, 16);
+      ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.font = "10px monospace"; ctx.fillText(`${getOutfit(outfitRef.current).nameRu} · legacy visual`, 10, 16);
       raf = requestAnimationFrame(draw);
     };
     raf = requestAnimationFrame(draw); return () => cancelAnimationFrame(raf);
-  }, [emotion, outfit, speaking]);
+  }, []);
 
   return <div className="relative overflow-hidden rounded-xl border border-border bg-bg">
     <canvas ref={canvasRef} className="h-[320px] w-full md:h-[420px]" />
