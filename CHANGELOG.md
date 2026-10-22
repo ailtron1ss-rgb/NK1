@@ -1,3 +1,10 @@
+## WorkPass247 — protect host authority executable integrity (2026-10-22)
+
+- **DONE (code):** host-owned executor, verifier, and safety-scanner commands are rejected at preparation if the resolved executable is not a regular file or is group/world-writable on POSIX.
+- **DONE (regression authored):** extended the existing host-service regression with a POSIX group-writable executable rejection case; reused the existing test entry point.
+- **PARTIAL:** this is executable-integrity hardening only. It does not establish signatures, immutable deployment, OS/container sandboxing, or independent service ownership.
+- **Validation:** regression is committed but not executed in this pass; exact-head Actions and typecheck remain unverified.
+
 ## WorkPass246 — immutable host command authorities (2026-10-22)
 
 - Closed a host-configuration TOCTOU gap: `prepareCommand` now snapshots executable arguments, environment overrides, and inherited-environment keys before its first asynchronous filesystem operation. Later caller mutation cannot silently alter a prepared executor/verifier/scanner command.
