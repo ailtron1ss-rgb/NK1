@@ -1,3 +1,11 @@
+## WorkPass300 — JavaScript syntax audit for runtime tests
+
+- Added a conservative restore regression for snapshots where incomplete-cycle counters understate the total. Unaccounted history must be classified as incomplete, keeping complete + incomplete equal to total and broken lineages within the incomplete subset.
+- Extended WorkPass84 script-integrity audit to run `node --check` against every `.mjs` test directly referenced by package scripts. It reports the exact failing path and makes syntax errors a hard audit failure.
+- This prevents TypeScript-only syntax from silently entering JavaScript test files again. The script and regressions are committed; execution remains unverified while Actions jobs fail before runner initialization.
+
+---
+
 ## WorkPass299 — keep runtime regressions valid JavaScript (2026-10-22)
 
 - Removed TypeScript-only `as` assertions accidentally introduced into `.mjs` regression files in WorkPass296/298. These files execute as JavaScript under Node and would otherwise fail at parse time before exercising the intended guards.

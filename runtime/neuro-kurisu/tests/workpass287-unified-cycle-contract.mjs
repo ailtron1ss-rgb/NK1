@@ -72,6 +72,14 @@ assert.equal(reconciled.brokenLineages,2);
 assert.equal(reconciled.completeCycles+reconciled.incompleteCycles,reconciled.cycles);
 assert.equal(reconciled.lastComplete,false);
 
+
+const undercountRestore=new UnifiedCognitiveCycle();
+undercountRestore.restore({cycles:10,completeCycles:3,incompleteCycles:1,brokenLineages:99,lastTick:8,lastComplete:false,lastMissingStages:['action']});
+const undercounted=undercountRestore.snapshot();
+assert.equal(undercounted.completeCycles+undercounted.incompleteCycles,undercounted.cycles);
+assert.equal(undercounted.incompleteCycles,7,'unaccounted restored cycles must fail closed as incomplete');
+assert.equal(undercounted.brokenLineages,7,'broken lineage count cannot exceed conservative incomplete count');
+
 const emptyRestore=new UnifiedCognitiveCycle();
 emptyRestore.restore({cycles:0,lastTick:-1,lastComplete:true,lastMissingStages:[]});
 assert.equal(emptyRestore.snapshot().lastComplete,false);
