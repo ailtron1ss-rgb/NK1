@@ -9820,7 +9820,7 @@ export class OrganismCore {
                 tick: state.tick, at: state.at, taskId, action: trace.selected.action, before: trace.stateBefore, after: state,
                 reward01: gatedReward01, success01: gatedSuccess01, surprise01: gatedSurprise01,
                 verified: Boolean(outcome.worldTransition) || projectEvidenceExternal,
-                independent: Boolean(outcome.worldTransition?.after) || projectEvidenceExternal,
+                independent: independentSources >= 2,
                 worldTransition: Boolean(outcome.worldTransition), externalEvidence: projectEvidenceExternal, contextKey: cdlContextKey,
             });
             const synthBefore = this.developmentalNeural.developmentalSynthesis.snapshot();
@@ -9829,7 +9829,7 @@ export class OrganismCore {
             const synthContext = this.developmentalNeural.causalDevelopmentLoop.contextKey(this.cognitiveRuntime.lastGroundedWorldContext, trace.stateBefore, taskId);
             const verifiedNow = Boolean(outcome.worldTransition) || projectEvidenceExternal;
             const rewardNow = gatedReward01;
-            const synthOutcome = seq.length >= 3 ? this.developmentalNeural.developmentalSynthesis.observeMacro(seq, { contextKey: synthContext, outcome01: gatedSuccess01, verified: verifiedNow, independent: verifiedNow && projectEvidenceExternal, holdout: Boolean(cdlOutcome.behavioral?.promoted?.length === 0 && verifiedNow), delayed: Boolean(state.tick - trace.stateBefore.tick >= 6), counterfactualSupport01: this.persisted.facets.advanced.p52CounterfactualDevelopment?.counterfactualCalibration01 ?? .5, at: state.at }) : { promoted: [], blocked: [], applied: 0 };
+            const synthOutcome = seq.length >= 3 ? this.developmentalNeural.developmentalSynthesis.observeMacro(seq, { contextKey: synthContext, outcome01: gatedSuccess01, verified: verifiedNow, independent: verifiedNow && independentSources >= 2, holdout: Boolean(cdlOutcome.behavioral?.promoted?.length === 0 && verifiedNow), delayed: Boolean(state.tick - trace.stateBefore.tick >= 6), counterfactualSupport01: this.persisted.facets.advanced.p52CounterfactualDevelopment?.counterfactualCalibration01 ?? .5, at: state.at }) : { promoted: [], blocked: [], applied: 0 };
             const decisionAudit = this.developmentalNeural.developmentalSynthesis.recordDecision({ tick: trace.stateAfter?.tick ?? trace.stateBefore.tick, chosen: trace.selected.action, predictedChosen01: trace.selected.predictedUtility ?? .5, predictedAlternatives: (trace.predictedOutcomes ?? []).map((x: any) => ({ action: x.action, utility01: x.utility })), realized01: clamp(success * .55 + rewardNow * .35 + (1 - surprise) * .10), at: state.at });
             const developmentExecutiveOutcome = this.developmentalNeural.developmentalExecutive.observeOutcome({ tick: state.tick, at: state.at, goalId: trace.selected.goalId ?? this.persisted.goals.find(g => g.status === 'active')?.id ?? null, action: trace.selected.action, outcome01: gatedSuccess01, verified: verifiedNow, contextKey: synthContext, delayed: Boolean(state.tick - trace.stateBefore.tick >= 6), transfer: Boolean(this.developmentalNeural.developmentalSynthesis.diagnostics().abstraction01 > .18), revisionPressure01: this.developmentalNeural.developmentalSynthesis.diagnostics().revisionPressure01 });
             const selected = trace.selected;
