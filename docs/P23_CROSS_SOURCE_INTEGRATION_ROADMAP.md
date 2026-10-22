@@ -1,6 +1,14 @@
+## WorkPass246 — freeze host command authority and reject hard-link aliases
+
+- [x] Snapshot caller-owned `args`, `env`, and `inheritEnv` before the first filesystem await in host command preparation.
+- [x] Identify executable files by device/inode on POSIX, not only resolved path, so hard links cannot masquerade as distinct authority programs; retain normalized resolved-path identity on Windows.
+- [x] Extend the existing host-service regression for mutation after service preparation and POSIX hard-link reuse.
+- [ ] Execute `test:workpass243:host-owned-independent-evaluation-services` and TypeScript typecheck on a functioning runner; no result is claimed until steps actually run.
+- [ ] Deploy and verify three genuinely independently controlled services, including a real OS/container sandbox launcher for candidate execution.
+
 # Neuro Kurisu — cross-source learning integration roadmap
 
-Latest implementation checkpoint: WorkPass243 (host-owned evaluator subprocess adapter reusing LearningProcessSupervisor, private JSON requests, bounded output/deadlines, cancellation, and separate executor/verifier/scanner processes); regression and CI wiring are committed, execution remains unverified.
+Latest implementation checkpoint: WorkPass246 (host-owned evaluator commands are snapshotted before async preparation; POSIX executable identity checks reject hard-link aliases); regression is wired through the existing WorkPass243 test entry point, execution remains unverified.
 
 Scope: continue integrating mechanisms into the existing P23 learning/revision lifecycle. This is an implementation queue, not a promise that upstream mechanisms are already integrated. Preserve the current branch/PR boundary; do not merge to the default branch without explicit approval.
 
