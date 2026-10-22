@@ -211,6 +211,19 @@ function baselineAction(state:OrganismState):{action:ActionKind;reason:string} {
   return {action:'reflect',reason:'low-pressure conservative baseline'};
 }
 
+/** Reflective skill candidates are bounded before generation and before sandbox evaluation.
+ * This is a resource/attack-surface guard, not a quality or promotion decision. */
+export const MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES = 256 * 1024;
+
+export function assertReflectiveSkillPayloadWithinBudget(value:unknown, label='candidate'):string {
+  const canonical = canonicalize(value);
+  const bytes = Buffer.byteLength(canonical, 'utf8');
+  if (bytes > MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES) {
+    throw new Error('p23-reflective-skill-payload-too-large:' + label + ':' + bytes);
+  }
+  return canonical;
+}
+
 function canonicalize(value:unknown, ancestors = new Set<object>()):string {
   // Keep the engine's payload/evaluation fingerprints byte-compatible with the
   // independent evaluator while refusing values JSON would silently collapse.
@@ -353,6 +366,7 @@ export class P23LearningEngine {
     if(!source || source.skillId!==skillId || source.status==='rolled-back') {
       throw new Error('reflective revision source candidate is missing, mismatched, or rolled back');
     }
+    assertReflectiveSkillPayloadWithinBudget(source.payload,'source');
     const fitness=this.evaluateReflectiveSkillCandidate(baseline,candidateEvaluation,options);
     const plan=this.planReflectiveSkillRevision(candidateEvaluation,fitness);
     if(plan.blockedBySafety) throw new Error('reflective revision blocked: resolve safety violations before performance optimization');
@@ -369,10 +383,13 @@ export class P23LearningEngine {
     if(revisedPayload===undefined || revisedPayload===null || (typeof revisedPayload==='string'&&!revisedPayload.trim())) {
       throw new Error('skill revision generator returned an empty payload');
     }
+    // Bound the generated artifact before hashing or passing it to an evaluator.
+    // Independent execution is not a substitute for a cheap preflight resource limit.
+    const canonicalPayload=assertReflectiveSkillPayloadWithinBudget(revisedPayload,'generated');
     // Generation invalidates any prior candidate report: it describes the source
     // candidate, not this newly generated payload. Re-run the independent harness
     // against the exact payload and require the evaluator to echo its canonical digest.
-    const payloadFingerprint=createHash('sha256').update(canonicalize(revisedPayload)).digest('hex');
+    const payloadFingerprint=createHash('sha256').update(canonicalPayload).digest('hex');
     const fresh=await evaluateRevisedCandidate({
       payload:structuredClone(revisedPayload),
       payloadFingerprint,
@@ -418,7 +435,9 @@ export class P23LearningEngine {
     if(!source || source.skillId!==skillId || source.status==='rolled-back') {
       throw new Error('reflective revision source candidate is missing, mismatched, or rolled back');
     }
-    if(canonicalize(source.payload)===canonicalize(revisedPayload)) {
+    const sourcePayload=assertReflectiveSkillPayloadWithinBudget(source.payload,'source');
+    const revisedCanonical=assertReflectiveSkillPayloadWithinBudget(revisedPayload,'staged');
+    if(sourcePayload===revisedCanonical) {
       throw new Error('reflective revision payload is unchanged from its source candidate');
     }
     if(!/^[a-f0-9]{64}$/.test(evaluationFingerprint)) throw new Error('independent candidate evaluation fingerprint is required');
