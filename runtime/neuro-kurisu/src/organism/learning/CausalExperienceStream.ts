@@ -154,8 +154,10 @@ export class CausalExperienceStream {
     return structuredClone(record);
   }
   recordExternalLearningEvent(input:{tick:number;taskId:string;action:ActionKind;reward01:number;success01:number;surprise01:number;novelty01:number;uncertainty01?:number;identityRelevance01?:number;goalPressure01?:number;causalStrength01?:number;traceId?:string;provenance?:CausalExperienceRecord['provenance'];stateGrounded?:boolean;sourceMemoryId?:string;evidenceKey?:string}):CausalExperienceRecord|null{
-    const taskCandidate=typeof input.taskId==='string'?input.taskId.normalize('NFKC').trim():'';
-    if(!taskCandidate)throw new Error('causal-external-task-id-required');
+    const taskCandidate=typeof input.taskId==='string'?input.taskId.normalize('NFKC'):'';
+    if(!taskCandidate.trim())throw new Error('causal-external-task-id-required');
+    // Preserve the raw normalized value until control-character validation;
+    // trimming here would erase a leading/trailing newline or tab.
     const taskId=normalizeTaskId(taskCandidate);
     if(!taskId)throw new Error('causal-external-task-id-invalid');
     if(!CAUSAL_ACTIONS.includes(input.action))throw new Error('causal-external-action-invalid');
