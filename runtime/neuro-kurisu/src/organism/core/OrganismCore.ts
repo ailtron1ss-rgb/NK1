@@ -5107,7 +5107,7 @@ export class OrganismCore {
         const p28InputQuarantined = Boolean(observation.text && /ignore\s+(previous|all)\s+instructions|system\s+prompt|reveal\s+secret|you\s+are\s+now/i.test(observation.text));
         for (const encoded of p27Encoded) {
             const trust = p28InputQuarantined ? 0.2 : encoded.modality === 'sensor' ? 0.88 : encoded.modality === 'world' ? 0.82 : encoded.confidence01;
-            this.developmentalNeural.p28Plasticity.observe({ vector: encoded.vector, modality: encoded.modality, source: encoded.source, tick: state.tick, trust01: trust, predictionError01: state.predictionError });
+            this.developmentalNeural.p28Plasticity.observe({ vector: encoded.vector, modality: encoded.modality, source: encoded.source, tick: state.tick, trust01: trust, predictionError01: state.predictionError, learningModulation: this.cognitiveRuntime.lastMotiveEcology.learningModulation });
         }
         this.persisted.facets.cognition.p27 = this.worldSubsystem.p27NeuralWorld.snapshot();
         (this.persisted.facets.cognition as any).brainSubstrate = this.worldSubsystem.brainSubstrate.snapshot();
