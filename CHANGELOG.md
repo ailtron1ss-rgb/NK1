@@ -4,7 +4,7 @@
 - **Derived aggregate:** restored `overall` is recomputed from the six drive values rather than trusting a persisted summary that could disagree with the dominant drive.
 - **Restore safety:** invalid drive metrics are normalized, unknown dominant labels are rejected, the dominant drive is reconciled with the strongest restored signal, and invalid timestamps fall back to a safe current timestamp.
 - **Regression:** added `tests/workpass288-intrinsic-motivation-contract.mjs` and registered `test:workpass288:intrinsic-motivation`.
-- **CI:** added `.github/workflows/workpass287-288-cognitive-contracts.yml` to run both focused contracts on relevant pushes and pull requests using Node 22.12, without adding runtime dependencies. The workflow has been committed but its result is not yet verified.
+- **CI:** added `.github/workflows/workpass287-288-cognitive-contracts.yml` to run both focused contracts on relevant pushes and pull requests using Node 22.12, without adding runtime dependencies. The workflow run failed before any step appeared; GitHub reports an empty steps list for the job. The focused tests therefore remain unexecuted/unverified, and this is not evidence of a code-level test failure.
 - **Architecture:** keeps the existing `IntrinsicMotivationEngine` as the single drive owner; no parallel motivation subsystem or new dependency.
 - **Validation:** test/typecheck execution has not been observed in this session; no passing status or measured autonomy uplift is claimed.
 
