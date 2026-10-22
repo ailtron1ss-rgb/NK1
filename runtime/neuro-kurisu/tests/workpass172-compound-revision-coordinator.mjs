@@ -41,6 +41,13 @@ assert.equal(providerCalls, 1);
 assert.equal(stagedCalls, 1);
 assert.equal(received.sourceCandidateId, 'source-candidate-1');
 
+// WorkPass293: the identical eligible repair evidence must never stage again.
+const repeated = await coordinator.reviseFromObservedRepairs('skill-a');
+assert.equal(repeated.status, 'already-staged-for-evidence');
+assert.equal(repeated.evidenceDigest.length, 64);
+assert.equal(providerCalls, 1, 'repeated evidence must not rerun the expensive provider');
+assert.equal(stagedCalls, 1, 'repeated evidence must not duplicate the candidate');
+
 // WorkPass222: the coordinator itself snapshots provider-owned evidence, even if
 // the provider is not wrapped by withIndependentCandidateEvaluation.
 let retainedInputs;
@@ -163,4 +170,42 @@ await assert.rejects(
 );
 assert.equal(staleStageCalls, 0, 'mutated evidence must be rejected before candidate staging');
 
-console.log('WorkPass172 coordinator regression passed');
+// Concurrent invocations for the same skill coalesce into one evaluation and stage.
+let releaseProvider;
+const providerBarrier = new Promise(resolve => { releaseProvider = resolve; });
+let concurrentProviderCalls = 0;
+let concurrentStageCalls = 0;
+const concurrentRuntime = {
+  compoundSkillRepairEvidence: () => evidence,
+  generateCompoundSkillRevision: async () => {
+    concurrentStageCalls++;
+    return { candidate: { candidateId: 'concurrent-candidate' }, repairEvidenceCount: 1 };
+  },
+};
+const concurrentCoordinator = new P23CompoundRepairRevisionCoordinator(
+  concurrentRuntime,
+  engine,
+  async () => {
+    concurrentProviderCalls++;
+    await providerBarrier;
+    return {
+      proposal: { authentic: true },
+      sourceCandidateId: 'concurrent-source',
+      baseline: { validation: [], holdout: [] },
+      candidateEvaluation: { validation: [], holdout: [] },
+      generate: async () => ({ generated: true }),
+      evaluateRevisedCandidate: async input => ({ payloadFingerprint: input.payloadFingerprint, evaluationFingerprint: 'c'.repeat(64), evaluation: { validation: [], holdout: [] } }),
+    };
+  },
+);
+const concurrentOne = concurrentCoordinator.reviseFromObservedRepairs('skill-a');
+const concurrentTwo = concurrentCoordinator.reviseFromObservedRepairs('skill-a');
+assert.equal(concurrentProviderCalls, 1, 'concurrent invocation must coalesce before asynchronous provider work');
+releaseProvider();
+const [concurrentResultOne, concurrentResultTwo] = await Promise.all([concurrentOne, concurrentTwo]);
+assert.equal(concurrentResultOne.status, 'candidate-staged');
+assert.equal(concurrentResultTwo.status, 'candidate-staged');
+assert.equal(concurrentStageCalls, 1, 'concurrent callers must not create duplicate candidate stages');
+assert.strictEqual(concurrentResultOne, concurrentResultTwo, 'coalesced callers should share the same result object');
+
+console.log('WorkPass172 + WorkPass293 coordinator regressions completed');
