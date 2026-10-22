@@ -1,3 +1,13 @@
+## WorkPass300 — make imported experience retries idempotent (2026-10-22)
+
+- External experience ingestion now derives a stable SHA-256 trace identity from the normalized event payload when the upstream source omits an event ID. Re-delivery of the same tick/task/action/outcome payload collapses to the original hypothesis instead of minting a fresh timestamp-based identity.
+- Explicit upstream trace IDs retain conflict detection: the same ID with changed normalized evidence raises a conflict; an ID whose row has been evicted remains covered by the bounded dedup guard.
+- Extended the WP292 evidence-lane regression with a repeated import that omits `traceId`, checking stable identity and single-record retention.
+- This is an idempotency/provenance adaptation for the experience pipeline, not copied source code. No new runtime dependency; SHA-256 uses Node's built-in `node:crypto`.
+- Validation remains unconfirmed while Actions fails before exposing useful job steps.
+
+---
+
 ## WorkPass299 — isolate external hypotheses from trusted experience aggregates (2026-10-22)
 
 - External causal-memory imports remain visible as quarantined records, but no longer increment the trusted outcome count or mutate trusted rolling surprise/prediction-error/causal-learning aggregates.
