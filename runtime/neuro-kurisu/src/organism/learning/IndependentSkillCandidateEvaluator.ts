@@ -123,6 +123,12 @@ function validateConfig(config: IndependentCandidateEvaluationConfig): void {
       new Set(authorityMethods).size !== authorityMethods.length) {
     throw new Error('independent-candidate-evaluator-authorities-must-be-distinct');
   }
+  // Production must use the canonical manifest + validation/holdout plans +
+  // verified-outcome ledger. Enforce this at the evaluator itself as well as the
+  // provider wrapper so direct construction cannot bypass the production gate.
+  if (process.env.NODE_ENV === 'production' && !config.experimentAuthority) {
+    throw new Error('production-independent-evaluation-experiment-authority-required');
+  }
   const keys = new Set<string>();
   const trialIds = new Set<string>();
   const splitTasks = { validation: new Set<string>(), holdout: new Set<string>() };
