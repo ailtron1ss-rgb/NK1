@@ -135,6 +135,23 @@ assert.equal(result.evaluation.provenance.payloadFingerprint, result.payloadFing
 assert.equal(result.evaluation.provenance.environmentFingerprint, 'a'.repeat(64));
 assert.deepEqual(result.evaluation.provenance.runBindings[0].observedStepIds, ['open', 'summarize']);
 assert.equal(result.evaluation.provenance.runBindings[0].verifierPassed, true);
+
+const outOfScopeCapabilityEvaluator = createIndependentSkillCandidateEvaluator({
+  tasks,
+  environmentFingerprint: 'a'.repeat(64),
+  executor: { async execute({ task }) { return { runId: 'scope-' + task.trialId, observedStepIds: ['open', 'summarize'] }; } },
+  verifier: { async verify() { return { bindingVerified: true, passed: true, coveredCapabilityIds: ['write'] }; } },
+  safetyScanner: { async scan() { return { violationCount: 0 }; } },
+});
+const outOfScopeCapabilityResult = await outOfScopeCapabilityEvaluator({
+  payload, payloadFingerprint: digest(payload),
+  baseline: { validation: [], holdout: [] },
+  previousEvaluation: { validation: [], holdout: [] },
+});
+assert.equal(outOfScopeCapabilityResult.evaluation.provenance.runBindings[0].verifierPassed, false,
+  'verifier claims for capabilities outside the task scope must fail closed');
+assert.deepEqual(outOfScopeCapabilityResult.evaluation.provenance.runBindings[0].coveredCapabilityIds, [],
+  'out-of-scope capability claims must not be recorded as verified coverage');
 assert.equal(result.evaluation.provenance.runBindings[0].safetyViolationCount, 0,
   'evaluation provenance must bind observed execution, independent verification, and safety evidence');
 
