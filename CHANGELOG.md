@@ -9,7 +9,7 @@
 
 - **Code:** reject inherited environment keys matching common credentials, secrets, tokens, passwords, auth/session material, credential-profile paths, runtime injection variables, and dynamic-loader overrides; duplicate inherited keys are also rejected.
 - **Regression authored:** secret-bearing environment keys and NODE_OPTIONS must be rejected while the existing PATH-only test launcher remains usable.
-- **Validation:** host-service regression and runtime typecheck are not confirmed passing; the current HEAD has no associated PR-triggered workflow run.
+- **Validation:** host-service regression and runtime typecheck are not confirmed passing. Current HEAD has no commit status records; three available PR-triggered workflow records failed before visible job steps and their logs are unavailable, so these results do not establish a code failure.
 
 ## WorkPass262 — avoid per-frame canvas bitmap resets (2026-10-22)
 
