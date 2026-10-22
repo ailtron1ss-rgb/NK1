@@ -1,3 +1,12 @@
+## WorkPass283 — causal trace-to-world tick binding (2026-10-22)
+
+- **Code:** causal outcome creation now requires `trace.tick === trace.stateBefore.tick` in addition to valid before/after snapshots and a later observed state tick. This blocks pairing an old or unrelated decision trace with a different transition.
+- **Regression:** added a mismatched pre-action tick case to the existing causal experience stream test.
+- **Architecture:** the existing causal stream remains the sole owner of grounded transition records; no parallel memory ledger or dependency.
+- **Validation:** regression authored but not executed in this pass. The change strengthens event association; it does not authenticate the caller or persisted snapshot by itself.
+
+---
+
 ## WorkPass282 — align P23 engine and evaluator fingerprint semantics (2026-10-22)
 
 - **Code:** the P23 learning engine now uses the same strict canonicalization rules as the independent candidate evaluator for generated payloads and returned evaluation reports.
