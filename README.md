@@ -1,3 +1,13 @@
+## Current source-stack checkpoint — WorkPass267 (2026-10-22)
+
+- WorkPass267 changes external causal-event deduplication: a repeated trace identity is accepted only when the normalized payload matches; a changed payload under the same identity fails closed with an explicit conflict.
+- Added same-process and restore-path regressions; WorkPass110 already watches the causal source/test.
+- Code baseline before this documentation update: 066623f12a27ea1649d971860c4c67a1690eab0e. Use the live PR for the current SHA.
+- Runtime/app tests and typecheck remain unverified because recent Actions attempts failed without exposed steps/logs; no learning score uplift is claimed.
+- PR #55 remains draft/unmerged. Next P0: actionable exact-head CI, external grounding-authority call-graph audit, real sandbox/verifier/scanner, and independent memory-to-action/learning experiments.
+
+---
+
 ## Current source-stack checkpoint — WorkPass266 (2026-10-22)
 
 - **Source branch:** [workpass206-runtime-evaluator-wiring](https://github.com/ailtron1ss-rgb/NK1/tree/workpass206-runtime-evaluator-wiring); **PR #55 remains open/draft/unmerged:** https://github.com/ailtron1ss-rgb/NK1/pull/55
