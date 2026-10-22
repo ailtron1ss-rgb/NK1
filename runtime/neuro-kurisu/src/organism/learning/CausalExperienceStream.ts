@@ -1,6 +1,7 @@
 import type { ActionKind, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
 
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const normalizeTraceId=(value:unknown)=>String(value??'').normalize('NFKC').trim().slice(0,180);
 
 export interface CausalExperienceRecord {
   id:string;
@@ -45,6 +46,7 @@ export interface CausalExperienceState {
   behavioralImpact01:number;
   behavioralContextSamples:number;
   behavioralDivergence01:number;
+  recordedTraceIds?:string[];
 }
 
 export interface CausalLearningPacket {
@@ -73,24 +75,34 @@ function distance(a:number[],b:number[]){
 export class CausalExperienceStream {
   private state=defaultCausalExperienceStream();
   private readonly maxRecords:number;
-  private readonly observedTraceIds=new Set<string>();
+  private readonly recordedOutcomeTraceIds=new Set<string>();
+  private readonly maxRecordedTraceIds=4096;
   constructor(maxRecords=1024){ this.maxRecords=Math.max(64,Math.min(4096,Math.floor(maxRecords))); }
   restore(raw?:Partial<CausalExperienceState>|null){
     const d=defaultCausalExperienceStream(),r=raw??{};
-    this.state={...d,...r,records:Array.isArray(r.records)?r.records.slice(-this.maxRecords):[],rolling:{...d.rolling,...(r.rolling??{})}};
-    this.observedTraceIds.clear();
-    for(const record of this.state.records) this.observedTraceIds.add(record.traceId);
+    this.state={
+      ...d,...r,
+      records:Array.isArray(r.records)?r.records.slice(-this.maxRecords).map(record=>({...record,traceId:normalizeTraceId(record?.traceId)})).filter(record=>Boolean(record.traceId)):[],
+      rolling:{...d.rolling,...(r.rolling??{})},
+      recordedTraceIds:Array.isArray(r.recordedTraceIds)?r.recordedTraceIds.map(normalizeTraceId).filter(Boolean).slice(-this.maxRecordedTraceIds):[],
+    };
+    this.recordedOutcomeTraceIds.clear();
+    for(const id of this.state.recordedTraceIds??[])this.recordedOutcomeTraceIds.add(id);
+    for(const record of this.state.records)this.recordedOutcomeTraceIds.add(record.traceId);
+    while(this.recordedOutcomeTraceIds.size>this.maxRecordedTraceIds)this.recordedOutcomeTraceIds.delete(this.recordedOutcomeTraceIds.values().next().value!);
+    this.state.recordedTraceIds=[...this.recordedOutcomeTraceIds];
     this.recomputeBehavioralImpact();
   }
   snapshot(){return structuredClone(this.state);}
   observe(trace:OrganismDecisionTrace):void{
     this.state.observations++;
-    this.observedTraceIds.add(trace.id);
+    // Observation alone is not an outcome and must not suppress its later record.
     // Observation is intentionally cheap: it never evicts causal records. The stream waits for outcome before creating a sample.
   }
   recordOutcome(trace:OrganismDecisionTrace,stateAfter:OrganismState,input:{reward01:number;success01:number;surprise01:number;novelty01:number}):CausalExperienceRecord|null{
     if(!trace.selected)return null;
-    if(this.state.records.some(r=>r.traceId===trace.id))return null;
+    const traceId=normalizeTraceId(trace.id);
+    if(!traceId||this.recordedOutcomeTraceIds.has(traceId)||this.state.records.some(r=>r.traceId===traceId))return null;
     const before=vector(trace.stateBefore),after=vector(stateAfter);
     const stateDelta=distance(before,after);
     const surprise=clamp01(input.surprise01);
@@ -101,9 +113,9 @@ export class CausalExperienceStream {
     const outcomeMagnitude=clamp01(Math.abs(reward-.5)*1.6+Math.abs(success-.5)*.8);
     const causalStrength=clamp01(stateDelta*.34+predictionError*.24+surprise*.18+outcomeMagnitude*.16+novelty*.08);
     const learningOpportunity=clamp01(causalStrength*.58+surprise*.18+predictionError*.14+novelty*.10);
-    const id=`cx-${trace.tick}-${trace.id}`;
+    const id=`cx-${trace.tick}-${traceId}`;
     const record:CausalExperienceRecord={
-      id, tick:trace.tick, at:Date.now(), traceId:trace.id, action:trace.selected.action,
+      id, tick:trace.tick, at:Date.now(), traceId, action:trace.selected.action,
       taskId:trace.selected.goalId??trace.selected.action, reward01:reward, success01:success,
       surprise01:surprise, predictionError01:predictionError, novelty01:novelty, uncertainty01:uncertainty,
       energyBefore01:clamp01(trace.stateBefore.needs.energy), energyAfter01:clamp01(stateAfter.needs.energy),
@@ -114,6 +126,9 @@ export class CausalExperienceStream {
       learningQuality01:clamp01(.45+causalStrength*.45+surprise*.10), replayEligible:true, replayPriority01:clamp01(.24*surprise+.20*predictionError+.18*causalStrength+.12*novelty+.10*uncertainty+.08*clamp01(trace.stateBefore.needs.identityCoherence)+.08*clamp01(trace.stateBefore.needs.goalPressure)+.06*clamp01(.45+causalStrength*.45+surprise*.10)), replayCount:0, lastReplayedAt:0,
     };
     this.state.records.push(record); if(this.state.records.length>this.maxRecords)this.state.records=this.state.records.slice(-this.maxRecords);
+    this.recordedOutcomeTraceIds.add(traceId);
+    while(this.recordedOutcomeTraceIds.size>this.maxRecordedTraceIds)this.recordedOutcomeTraceIds.delete(this.recordedOutcomeTraceIds.values().next().value!);
+    this.state.recordedTraceIds=[...this.recordedOutcomeTraceIds];
     this.state.outcomes++;
     this.state.rolling.surprise01=clamp01(this.state.rolling.surprise01*.92+surprise*.08);
     this.state.rolling.predictionError01=clamp01(this.state.rolling.predictionError01*.92+predictionError*.08);
@@ -181,7 +196,8 @@ export class CausalExperienceStream {
     return {records:rows,learningOpportunity01:clamp01(mean(r=>r.causalStrength01*.6+r.surprise01*.2+r.predictionError01*.2)),meanReward01:clamp01(mean(r=>r.reward01)),meanSurprise01:clamp01(mean(r=>r.surprise01)),meanCausalStrength01:clamp01(mean(r=>r.causalStrength01))};
   }
   consolidate(limit=32,at=Date.now()){
-    const rows=this.state.records.filter(r=>!r.consolidated).sort((a,b)=>(b.causalStrength01+b.surprise01)-(a.causalStrength01+a.surprise01)).slice(0,Math.max(1,Math.min(128,Math.floor(limit))));
+    // Only evidence grounded in an actual state transition may become consolidated memory.
+    const rows=this.state.records.filter(r=>!r.consolidated&&r.stateGrounded).sort((a,b)=>(b.causalStrength01+b.surprise01)-(a.causalStrength01+a.surprise01)).slice(0,Math.max(1,Math.min(128,Math.floor(limit))));
     const eligible=rows.filter(r=>r.causalStrength01>=.44||r.surprise01>=.55||r.identityRelevance01>=.78);
     for(const r of eligible)r.consolidated=true;
     this.state.consolidated+=eligible.length; if(eligible.length)this.state.lastConsolidatedAt=at;
