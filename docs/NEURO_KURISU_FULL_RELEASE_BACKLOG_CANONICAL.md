@@ -861,3 +861,12 @@ The historical WorkPass57 release baseline and its 78.0% release-roadmap number 
 - [ ] Browser E2E with installed app dependencies: approve/decline/expired/changed-body flows across chat, project tool, device and research surfaces.
 - [ ] Reissue/clean up orphaned pending tickets after tab reload; current continuation intentionally is not persisted with the sensitive body, so the safe recovery is expiry and fresh request.
 - [ ] Production Vite build, live provider/device postconditions, real audio-buffer lip sync, independent memory retrieval uplift, clean-room rollback, exhaustive nested-source license review and soak remain release gates. Weighted score remains 78.0%.
+
+
+## WorkPass275 — causal evidence admission hardening
+
+- [x] Restrict restored grounded causal trust to the `runtime-outcome` provenance plus a bounded finite policy-feature vector.
+- [x] Restrict policy replay to explicit runtime-outcome + grounded + replay-eligible records with valid feature vectors; restrict consolidation to grounded runtime-outcome records.
+- [x] Add regression for a forged `skill-repair` snapshot attempting to inherit runtime trust from plausible policy features.
+- [ ] Authenticate persisted causal snapshots at the host boundary; current checks do not prevent a fully forged snapshot from claiming `runtime-outcome` and fabricating a feature vector.
+- [ ] Execute exact-head typecheck and targeted regression on a functioning CI runner; current GitHub Actions result inspection has not provided actionable logs, so validation is unverified.
