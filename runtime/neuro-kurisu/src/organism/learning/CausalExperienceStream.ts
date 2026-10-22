@@ -98,7 +98,19 @@ export class CausalExperienceStream {
     const d=defaultCausalExperienceStream(),r=raw??{};
     const restoredRows:CausalExperienceRecord[]=Array.isArray(r.records)
       ? r.records.slice(-this.maxRecords)
-        .map(record=>({...record,traceId:normalizeTraceId(record?.traceId)}))
+        .map(record=>{
+          const traceId=normalizeTraceId(record?.traceId);
+          const hasRuntimePolicyFeatures=Array.isArray(record?.policyFeatures01)&&record.policyFeatures01.length>=16&&
+            record.policyFeatures01.every(value=>Number.isFinite(value)&&value>=0&&value<=1);
+          // Legacy snapshots may contain records written before the external
+          // intake boundary stopped trusting caller-supplied provenance/grounding.
+          // Such records have no runtime policy-feature vector; fail closed on restore.
+          const trustedRuntimeEvidence=record?.provenance!=='external'&&hasRuntimePolicyFeatures;
+          return {
+            ...record,traceId,
+            ...(!trustedRuntimeEvidence?{provenance:'external',stateGrounded:false,replayEligible:false}:{}),
+          };
+        })
         .filter(record=>Boolean(record.traceId))
       : [];
     const firstByTraceId=new Map<string,CausalExperienceRecord>();
