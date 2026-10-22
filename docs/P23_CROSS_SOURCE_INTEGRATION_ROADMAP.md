@@ -19,7 +19,8 @@ Scope: continue integrating mechanisms into the existing P23 learning/revision l
 - [x] Validate resolved executable identity, absolute host paths, executable access, and pairwise-disjoint per-authority run/survive storage.
 - [x] Pass the same immutable task/environment/plan context to the safety scanner, so scan evidence is not detached from the evaluation context.
 - [x] Add a runtime-ready config factory suitable for `RuntimeConfig.compoundRepairRevision.independentEvaluationConfigForRepair`; host-owned task plans, environment fingerprint, and experiment authority remain explicit inputs.
-- [x] Register the process integration regression in the existing package audit and continual-learning workflow.
+- [x] Add `OrganismRuntime.createWithHostOwnedIndependentEvaluation` to prepare the services before construction and wire the returned config factory into the existing P23 coordinator without creating parallel learning/promotion machinery.
+- [x] Register the process integration and runtime-factory regression in the existing package audit and continual-learning workflow.
 - [ ] Run the integration regression and runtime typecheck on an executing runner; Actions history has previously failed before useful steps/logs were exposed, so code execution is still unverified.
 - [ ] Provision the actual executor executable as a trusted OS/container sandbox launcher and verify filesystem/network/CPU/memory limits. This adapter does not itself provide kernel isolation.
 - [ ] Wire the returned factory into the deployed host's `OrganismRuntime` configuration and provide the independent verifier/scanner executable implementations and their deployment ownership. The runtime deliberately does not guess executable paths or create fake production authorities.
