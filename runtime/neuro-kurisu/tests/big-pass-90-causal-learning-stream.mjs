@@ -14,8 +14,18 @@ const trace={
 const stream=new CausalExperienceStream(16);
 stream.observe(trace);
 const record=stream.recordOutcome(trace,mkState({tick:2,at:1100,needs:{...mkState().needs,energy:.55,uncertainty:.4,novelty:.75}}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75});
+
 assert.ok(record);
 assert.ok(record.causalStrength01>.3);
+// Invalid state snapshots must not be clamped into apparently grounded outcomes.
+assert.equal(stream.recordOutcome({
+  ...trace, id: "invalid-before-state",
+  stateBefore: mkState({ needs: { ...mkState().needs, energy: Number.NaN } }),
+}, mkState({ tick: 3 }), { reward01: .8, success01: .8, surprise01: .7, novelty01: .75 }), null,
+  "non-finite pre-action state must not mint grounded causal evidence");
+assert.equal(stream.recordOutcome(trace, mkState({ tick: 1 }), {
+  reward01: .8, success01: .8, surprise01: .7, novelty01: .75,
+}), null, "an outcome without a later observed state transition must be rejected");
 assert.ok(stream.summary().rolling.learningOpportunity01>0);
 const packet=stream.learningPacket(8);
 assert.equal(packet.records.length,1);
