@@ -9,6 +9,7 @@ export * from './cognition/RecurrentWorkspaceV2.ts';
 export * from './cognition/SelfModelV2.ts';
 export * from './cognition/AttentionSchema.ts';
 export * from './cognition/SocialWorldModel.ts';
+export * from './cognition/SocialMindKernel.ts';
 export * from './cognition/ValuePlasticity.ts';
 export * from './cognition/SelfAuthorship.ts';
 export * from './cognition/SensorimotorLoop.ts';
