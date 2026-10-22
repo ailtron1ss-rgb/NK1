@@ -1,3 +1,14 @@
+## Current source-stack checkpoint — WorkPass265 (2026-10-22)
+
+- **Current source branch:** [workpass206-runtime-evaluator-wiring](https://github.com/ailtron1ss-rgb/NK1/tree/workpass206-runtime-evaluator-wiring); **draft PR:** [#55](https://github.com/ailtron1ss-rgb/NK1/pull/55), open/unmerged.
+- **Checked PR HEAD:** 58e9c6a00b5835096dac3758968f5b9ce0eb08d2. Exact-head CI/typecheck is not confirmed; previous visible Actions failures expose no runnable steps/logs, so do not infer either code failure or success.
+- **Current canonical next step:** unblock exact-head CI and provision the real independent evaluation sandbox/verifier/scanner, while preparing independent RU/EN memory and memory-grounded-action evaluation.
+- **Read first:** [WorkPass265 strategic audit and eight-pass plan](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [cross-source P23 roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md), [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md).
+- **Repository topology:** main remains the release/report line; GitHub has reported no common ancestor between it and the current source stack. Do not merge/rewrite main automatically.
+- **Evidence discipline:** implementation in the branch is not proof of successful tests, production sandboxing, measured learning improvement, or consciousness.
+
+---
+
 ## Latest continuation checkpoint — WorkPass96 (2026-10-20)
 
 - Active work branch: `workpass79-cognitive-rebuild`; draft PR #1 remains open and unmerged.
