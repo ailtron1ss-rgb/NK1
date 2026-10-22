@@ -1,3 +1,13 @@
+## WorkPass292 — unify intrinsic motivation with canonical endogenous goal genesis (2026-10-22)
+
+- **Structural integration:** `B272EndogenousGoalGenesis` now accepts optional `intrinsicDrive01` and `intrinsicDriveConfidence01` signals. A drive influences predicted goal value only in proportion to its bounded confidence, while the existing `intrinsicReward01` contract remains backward-compatible.
+- **Single owner:** removed the temporary standalone initiative-candidate method from `IntrinsicMotivationEngine`; it owns drive computation, while B272 remains the canonical endogenous goal generator. This avoids creating a competing goal lifecycle.
+- **Regression:** extended the B272 goal-genesis test to compare baseline, calibrated-drive, and zero-confidence cases. Added this test to the focused workflow for push and pull-request events.
+- **Research adaptation:** follows the useful separation in Letta sleep-time compute (memory/state work separate from active response) and Hermes self-evolution (candidates must be evaluated), but adapts it to NK1's existing typed goal owner rather than importing another agent framework. References: [Letta sleep-time compute](https://www.letta.com/blog/sleep-time-compute/), [Hermes Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution).
+- **Validation:** hosted Actions jobs have repeatedly failed before exposing steps, so the new regressions remain unverified. No dependency added; no learning uplift or consciousness claim.
+
+---
+
 ## WorkPass291 — reject reused cognitive-stage event identities (2026-10-22)
 
 - **Causal accounting:** required stages must have distinct event IDs. Reusing the observation ID as the prediction ID (or otherwise reusing an ID across required stages) now marks the conflicting stages missing instead of counting a fabricated complete cycle.
