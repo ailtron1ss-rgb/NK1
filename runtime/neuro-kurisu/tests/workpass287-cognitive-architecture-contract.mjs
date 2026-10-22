@@ -1,7 +1,17 @@
 import assert from 'node:assert/strict';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { buildCognitiveArchitectureSnapshot, validateCognitiveArchitecture } from '../src/organism/core/CognitiveArchitectureMap.ts';
+
+// Regression contract: micro-cycle inputs do not contain canonical verifier evidence,
+ // so claimed reward/success must not become fresh verified learning credit.
+const microCycleSource = readFileSync(resolve(rootPathForMicroCycle()), 'utf8');
+function rootPathForMicroCycle() {
+  return resolve(process.cwd(), 'src/organism/core/OperationalMicroCycleRuntime.ts');
+}
+assert.match(microCycleSource, /const microReward = 0\.5;/, 'unverified micro-cycle reward must stay neutral');
+assert.match(microCycleSource, /const microVerified = false;/, 'micro-cycle must not self-certify a claimed outcome');
+assert.doesNotMatch(microCycleSource, /const microVerified = Boolean\(observation\.(worldEvent|success|reward)/, 'caller claims must not certify outcomes');
 
 const report = buildCognitiveArchitectureSnapshot();
 const validation = validateCognitiveArchitecture();
