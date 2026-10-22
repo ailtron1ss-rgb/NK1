@@ -1,3 +1,8 @@
+## WorkPass262 — reduce unnecessary avatar canvas resets (2026-10-22)
+
+The Legacy avatar render loop previously assigned canvas width and height every frame. Since setting either dimension resets the bitmap and drawing context, the loop now resizes only when the actual layout dimensions change. The existing sprite runtime regression was extended to guard this invariant. This improves a hot path without changing the visual asset catalog or introducing a parallel renderer. Execution and app typecheck remain unconfirmed.
+
+---
 ## WorkPass261 — idempotent external learning intake (2026-10-22)
 
 The causal stream now applies the bounded NFKC trace-identity rule to external learning events as well as runtime outcomes. Duplicate upstream retries resolve to the existing record rather than increasing outcome counts, and the trace-ID set survives snapshot/restore. The regression is now directly invokable through `npm run test:big-pass-90:causal-stream`.
