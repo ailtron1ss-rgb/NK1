@@ -1,3 +1,28 @@
+## WorkPass258 — pin host authority working and storage directory identity
+
+- [x] Snapshot canonical working-directory identity during host-service preparation.
+- [x] Bind run and survive storage roots to their filesystem identity and recheck directory type, identity, and private POSIX permissions at dispatch.
+- [x] Extend the host-owned service regression to replace the prepared run root and require fail-closed behavior before request creation.
+- [ ] Execute the targeted host-owned service regression and runtime typecheck on an accessible runner.
+- **Boundary:** path/inode checks narrow replacement exposure; they do not remove final TOCTOU or replace an immutable/signed deployment and real OS/container sandbox.
+
+## WorkPass257 — cover Legacy avatar race handling
+
+- [x] Add regression coverage for a stable animation-loop lifetime and stale sprite-load rejection.
+- [ ] Execute the app script regression and app typecheck on an accessible runner.
+
+## WorkPass256 — prevent stale Legacy sprite loads
+
+- [x] Cancel obsolete image callbacks when emotion/outfit requests change; an older request cannot overwrite the current sprite after a slow load.
+- [x] Preserve the current visible sprite when the replacement asset fails.
+- [ ] Execute a browser-level race regression.
+
+## WorkPass255 — keep Legacy animation loop stable
+
+- [x] Keep the canvas animation loop mounted while emotion/speech/outfit values change; read live values through refs instead of resetting the frame clock.
+- [x] Preserve the existing avatar canvas and canonical outfit catalog.
+- [ ] Confirm behavior in browser E2E and app typecheck.
+
 ## WorkPass254 — resolve exclusive Live2D branch changes
 
 - [x] Compare the exact merge-base-to-tip range for `workpass94-avatar-voice-live2d-audit`.
