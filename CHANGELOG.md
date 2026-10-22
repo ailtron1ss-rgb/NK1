@@ -1,3 +1,11 @@
+## WorkPass286 — recent engineering changes handover (2026-10-22)
+
+- Added `docs/reports/2026-10-22-recent-engineering-changes.md`, consolidating the 20–22 October change families, known validation gaps, and next implementation gates.
+- Explicitly distinguishes source changes from verified behavior and feature-branch work from merged `main` history.
+- No runtime behavior or dependencies changed in this documentation-only pass; WorkPass282–285 test/typecheck execution remains unverified.
+
+---
+
 ## WorkPass285 — independent evaluator capability scope (2026-10-22)
 
 - The independent candidate evaluator now rejects verifier claims for capabilities outside a task's declared required-capability set.
