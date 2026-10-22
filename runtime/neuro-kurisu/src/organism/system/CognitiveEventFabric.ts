@@ -22,7 +22,9 @@ export interface CognitiveEventNode {
   payload: Record<string, unknown>;
 }
 
-export type OperationalCycleStageIds = Partial<Record<'observation'|'prediction'|'action'|'outcome'|'learning'|'self-update', string | undefined>>;
+export type OperationalCycleStageName = 'observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'self-update';
+export type OperationalCycleStageIds = Partial<Record<OperationalCycleStageName, string | undefined>>;
+type OperationalCyclePhaseInput = { source?:string; external?:boolean; confidence01?:number; payload?:Record<string,unknown> };
 
 export interface OperationalCycleLineageCheck {
   tick: number | null;
@@ -358,15 +360,122 @@ export class CognitiveEventFabric {
     return {resolved:true,replayed:false,eventId:evidence.id};
   }
 
-  recordOperationalCycle(input:{tick:number;observation?:{source?:string;external?:boolean;confidence01?:number;payload?:Record<string,unknown>};prediction?:{source?:string;confidence01?:number;payload?:Record<string,unknown>};action?:{source?:string;confidence01?:number;payload?:Record<string,unknown>};outcome?:{source?:string;confidence01?:number;external?:boolean;payload?:Record<string,unknown>};learning?:{source?:string;confidence01?:number;payload?:Record<string,unknown>};selfUpdate?:{source?:string;confidence01?:number;payload?:Record<string,unknown>};at?:number}){
-    const ids:Partial<Record<'observation'|'prediction'|'action'|'outcome'|'learning'|'selfUpdate',string>>={};
+  recordOperationalCycle(input:{
+    tick:number;
+    observation?:OperationalCyclePhaseInput;
+    prediction?:OperationalCyclePhaseInput;
+    appraisal?:OperationalCyclePhaseInput;
+    attention?:OperationalCyclePhaseInput;
+    memory?:OperationalCyclePhaseInput;
+    goal?:OperationalCyclePhaseInput;
+    plan?:OperationalCyclePhaseInput;
+    action?:OperationalCyclePhaseInput;
+    outcome?:OperationalCyclePhaseInput;
+    learning?:OperationalCyclePhaseInput;
+    selfUpdate?:OperationalCyclePhaseInput;
+    at?:number;
+  }){
+    const ids:Partial<Record<'observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'selfUpdate',string>>={};
+    const parents=(...eventIds:(string|undefined)[])=>eventIds.filter((id):id is string=>Boolean(id));
     if(input.observation){const e=this.append({tick:input.tick,stage:'observation',source:input.observation.source??'runtime',external:input.observation.external,confidence01:input.observation.confidence01,payload:input.observation.payload,at:input.at});ids.observation=e.id;}
-    if(input.prediction){const e=this.append({tick:input.tick,stage:'prediction',source:input.prediction.source??'prediction',parentIds:ids.observation?[ids.observation]:[],confidence01:input.prediction.confidence01,payload:input.prediction.payload,at:input.at});ids.prediction=e.id;}
-    if(input.action){const parents=[ids.prediction,ids.observation].filter(Boolean) as string[];const e=this.append({tick:input.tick,stage:'action',source:input.action.source??'action',parentIds:parents,confidence01:input.action.confidence01,payload:input.action.payload,at:input.at});ids.action=e.id;}
-    if(input.outcome){const parents=[ids.action,ids.prediction].filter(Boolean) as string[];const e=this.append({tick:input.tick,stage:'outcome',source:input.outcome.source??'outcome',parentIds:parents,external:input.outcome.external,confidence01:input.outcome.confidence01,payload:input.outcome.payload,at:input.at});ids.outcome=e.id;}
-    if(input.learning){const parents=[ids.outcome,ids.action].filter(Boolean) as string[];const e=this.append({tick:input.tick,stage:'learning',source:input.learning.source??'learning',parentIds:parents,confidence01:input.learning.confidence01,payload:input.learning.payload,at:input.at});ids.learning=e.id;}
-    if(input.selfUpdate){const parents=[ids.learning,ids.outcome].filter(Boolean) as string[];const e=this.append({tick:input.tick,stage:'self-update',source:input.selfUpdate.source??'self-update',parentIds:parents,confidence01:input.selfUpdate.confidence01,payload:input.selfUpdate.payload,at:input.at});ids.selfUpdate=e.id;}
+    if(input.prediction){const e=this.append({tick:input.tick,stage:'prediction',source:input.prediction.source??'prediction',parentIds:parents(ids.observation),confidence01:input.prediction.confidence01,payload:input.prediction.payload,at:input.at});ids.prediction=e.id;}
+    if(input.appraisal){const e=this.append({tick:input.tick,stage:'appraisal',source:input.appraisal.source??'appraisal',parentIds:parents(ids.observation,ids.prediction),confidence01:input.appraisal.confidence01,payload:input.appraisal.payload,at:input.at});ids.appraisal=e.id;}
+    if(input.attention){const e=this.append({tick:input.tick,stage:'attention',source:input.attention.source??'attention',parentIds:parents(ids.appraisal,ids.prediction),confidence01:input.attention.confidence01,payload:input.attention.payload,at:input.at});ids.attention=e.id;}
+    if(input.memory){const e=this.append({tick:input.tick,stage:'memory',source:input.memory.source??'memory',parentIds:parents(ids.attention,ids.observation),confidence01:input.memory.confidence01,payload:input.memory.payload,at:input.at});ids.memory=e.id;}
+    if(input.goal){const e=this.append({tick:input.tick,stage:'goal',source:input.goal.source??'goal',parentIds:parents(ids.appraisal,ids.memory,ids.prediction),confidence01:input.goal.confidence01,payload:input.goal.payload,at:input.at});ids.goal=e.id;}
+    if(input.plan){const e=this.append({tick:input.tick,stage:'plan',source:input.plan.source??'plan',parentIds:parents(ids.goal,ids.prediction),confidence01:input.plan.confidence01,payload:input.plan.payload,at:input.at});ids.plan=e.id;}
+    if(input.action){const e=this.append({tick:input.tick,stage:'action',source:input.action.source??'action',parentIds:parents(ids.plan,ids.prediction,ids.observation),confidence01:input.action.confidence01,payload:input.action.payload,at:input.at});ids.action=e.id;}
+    if(input.outcome){const e=this.append({tick:input.tick,stage:'outcome',source:input.outcome.source??'outcome',parentIds:parents(ids.action,ids.prediction),external:input.outcome.external,confidence01:input.outcome.confidence01,payload:input.outcome.payload,at:input.at});ids.outcome=e.id;}
+    if(input.learning){const e=this.append({tick:input.tick,stage:'learning',source:input.learning.source??'learning',parentIds:parents(ids.outcome,ids.action),confidence01:input.learning.confidence01,payload:input.learning.payload,at:input.at});ids.learning=e.id;}
+    if(input.selfUpdate){const e=this.append({tick:input.tick,stage:'self-update',source:input.selfUpdate.source??'self-update',parentIds:parents(ids.learning,ids.outcome),confidence01:input.selfUpdate.confidence01,payload:input.selfUpdate.payload,at:input.at});ids.selfUpdate=e.id;}
     return ids;
+  }
+
+  verifyOperationalCycle(stageIds: OperationalCycleStageIds): OperationalCycleLineageCheck {
+    const required = ['observation','prediction','action','outcome','learning','self-update'] as const;
+    const optional = ['appraisal','attention','memory','goal','plan'] as const;
+    const byId = new Map(this.events.map(event => [event.id, event] as const));
+    const found = new Map<string, CognitiveEventNode>();
+    const missingStages: string[] = [];
+    const invalidStages: string[] = [];
+    let cycleTick: number | null = null;
+
+    for (const stage of required) {
+      const id = stageIds[stage];
+      const event = id ? byId.get(id) : undefined;
+      if (!event) { missingStages.push(stage); continue; }
+      if (event.stage !== stage) { invalidStages.push(stage + ':expected-stage-' + stage + '-got-' + event.stage); continue; }
+      if (cycleTick === null) cycleTick = event.tick;
+      if (event.tick !== cycleTick) { invalidStages.push(stage + ':tick-mismatch'); continue; }
+      found.set(stage, event);
+    }
+
+    for (const stage of optional) {
+      const id = stageIds[stage];
+      if (id === undefined) continue;
+      if (typeof id !== 'string' || !id) { invalidStages.push(stage + ':invalid-id'); continue; }
+      const event = byId.get(id);
+      if (!event) { invalidStages.push(stage + ':missing-event'); continue; }
+      if (event.stage !== stage) { invalidStages.push(stage + ':expected-stage-' + stage + '-got-' + event.stage); continue; }
+      if (cycleTick === null) cycleTick = event.tick;
+      if (event.tick !== cycleTick) { invalidStages.push(stage + ':tick-mismatch'); continue; }
+      found.set(stage, event);
+    }
+
+    const requiredEdges: Array<[OperationalCycleStageName, OperationalCycleStageName, string]> = [
+      ['prediction','observation','prediction->observation'],
+      ['action','prediction','action->prediction'],
+      ['action','observation','action->observation'],
+      ['outcome','action','outcome->action'],
+      ['learning','outcome','learning->outcome'],
+      ['self-update','learning','self-update->learning'],
+    ];
+    const missingEdges: string[] = [];
+    let validEdges = 0;
+    for (const [childStage, parentStage, label] of requiredEdges) {
+      const child = found.get(childStage);
+      const parent = found.get(parentStage);
+      if (child && parent && child.parentIds.includes(parent.id)) validEdges++;
+      else missingEdges.push(label);
+    }
+
+    const extendedParents:Record<(typeof optional)[number], readonly OperationalCycleStageName[]> = {
+      appraisal:['observation','prediction'],
+      attention:['appraisal','prediction'],
+      memory:['attention','observation'],
+      goal:['appraisal','memory'],
+      plan:['goal','prediction'],
+    };
+    let extendedEdgeCount = 0;
+    for (const childStage of optional) {
+      if (stageIds[childStage] === undefined) continue;
+      const child = found.get(childStage);
+      for (const parentStage of extendedParents[childStage]) {
+        extendedEdgeCount++;
+        const parent = found.get(parentStage);
+        if (child && parent && child.parentIds.includes(parent.id)) validEdges++;
+        else missingEdges.push(childStage + '->' + parentStage);
+      }
+    }
+    // When a plan is part of the same trace, the action must cite that plan.
+    if (stageIds.plan !== undefined) {
+      extendedEdgeCount++;
+      const action = found.get('action');
+      const plan = found.get('plan');
+      if (action && plan && action.parentIds.includes(plan.id)) validEdges++;
+      else missingEdges.push('action->plan');
+    }
+
+    const requiredFoundCount = required.filter(stage => found.has(stage)).length;
+    const stageCoverage = requiredFoundCount / required.length;
+    const optionalRequestedCount = optional.filter(stage => stageIds[stage] !== undefined).length;
+    const optionalCoverage = optionalRequestedCount
+      ? optional.filter(stage => stageIds[stage] !== undefined && found.has(stage)).length / optionalRequestedCount
+      : 1;
+    const edgeCoverage = validEdges / Math.max(1, requiredEdges.length + extendedEdgeCount);
+    const integrity01 = clamp01(.50 * stageCoverage + .32 * edgeCoverage + .18 * optionalCoverage);
+    const complete = missingStages.length === 0 && invalidStages.length === 0 && missingEdges.length === 0;
+    return { tick: cycleTick, complete, integrity01: complete ? 1 : integrity01, missingStages, invalidStages, missingEdges };
   }
 
   /**
