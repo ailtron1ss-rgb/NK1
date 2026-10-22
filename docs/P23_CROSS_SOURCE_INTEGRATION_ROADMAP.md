@@ -1,3 +1,12 @@
+## WorkPass274 — fail closed on legacy causal rows with no runtime evidence vector (2026-10-22)
+
+- **Code:** snapshot restoration now quarantines legacy records that claim trusted provenance but lack the runtime policy-feature vector expected from `recordOutcome()`. They are canonicalized as external, ungrounded, and replay-ineligible before consolidation can see them.
+- **Regression:** added a simulated legacy snapshot with forged `runtime-outcome` provenance and `stateGrounded: true`; restore must downgrade it and refuse consolidation.
+- **Security boundary:** this is a compatibility hardening heuristic, not cryptographic snapshot authentication. A privileged actor able to rewrite both records and evidence fields still requires authenticated persistence / host-owned attestation, which remains open.
+- **Validation:** regression source is committed, but exact-head Actions test/typecheck is still unverified because the connector returns no job steps and log downloads fail. No dependency and no learning-score increase.
+
+---
+
 ## WorkPass273 — remove caller-controlled trust from external causal intake (2026-10-22)
 
 - **Code:** `recordExternalLearningEvent()` now canonicalizes all imported events to `provenance: 'external'` and `stateGrounded: false`; caller-supplied provenance and grounding booleans are not authentication.
