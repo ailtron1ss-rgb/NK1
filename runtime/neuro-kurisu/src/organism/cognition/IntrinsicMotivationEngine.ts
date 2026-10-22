@@ -92,7 +92,7 @@ export class IntrinsicMotivationEngine {
     worldEvidenceQuality:number;
     causalContinuity01:number;
   }):({kind:'intrinsic-goal-candidate';goal:NonNullable<ReturnType<IntrinsicMotivationEngine['proposeGoal']>>;evidence:{observationId:string;predictionId:string;worldEvidenceQuality:number;causalContinuity01:number}})|null {
-    const validId=(value:unknown):value is string=>typeof value==='string'&&value.trim().length>0&&value.length<=256&&!/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(value);
+    const validId=(value:unknown):value is string=>typeof value==='string'&&value.trim().length>0&&value.length<=256&&!/[\u0000-\u001f\u007f-\u009f]/u.test(value);
     if(!validId(evidence.observationId)||!validId(evidence.predictionId))return null;
     if(typeof evidence.worldEvidenceQuality!=='number'||!Number.isFinite(evidence.worldEvidenceQuality)||evidence.worldEvidenceQuality<0.5||evidence.worldEvidenceQuality>1)return null;
     if(typeof evidence.causalContinuity01!=='number'||!Number.isFinite(evidence.causalContinuity01)||evidence.causalContinuity01<0.5||evidence.causalContinuity01>1)return null;
