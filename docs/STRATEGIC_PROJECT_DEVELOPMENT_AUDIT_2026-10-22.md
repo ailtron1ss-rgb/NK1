@@ -1,3 +1,15 @@
+## WorkPass268 — reject C1 controls and keep event deduplication across bounded eviction (2026-10-22)
+
+The causal-event identity guard now rejects C0, DEL and C1 control characters in addition to blank, non-string and overlong values. The existing canonical normalization/length boundary is retained. A behavioral regression covers C1 trace IDs and C0 task IDs.
+
+The bounded-history contract also gained a regression: after the oldest causal record is evicted from the 64-row record window, its ID remains in the bounded deduplication set and a late retry must not increment the outcome count or create a second event. This preserves bounded storage without giving up duplicate protection within the retained ID horizon.
+
+**Validation:** changes and regression source are committed, but exact-head tests/typecheck remain unverified. GitHub Actions runs still return failed job metadata without step lists or logs, so neither a code-level failure nor a test pass can be inferred. No new dependency and no learning-score increase.
+
+**Next implementation target:** map external causal-event call sites and determine which caller-controlled grounding/provenance fields participate in learning/replay admission. Change the trust boundary only after tracing ownership and migration compatibility.
+
+---
+
 ## WorkPass267 — reject conflicting payloads under a reused causal event ID (2026-10-22)
 
 - **Code:** external causal-event idempotency now accepts a repeated normalized trace ID only when the normalized event payload agrees with the existing record. Reusing the same ID with a changed task/action/outcome/identity-relevant field raises causal-external-trace-id-conflict rather than silently returning the old outcome.
