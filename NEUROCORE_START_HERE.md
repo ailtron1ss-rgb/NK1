@@ -1,3 +1,12 @@
+## Latest durable checkpoint — WorkPass292 (2026-10-22)
+
+- CausalExperienceStream now applies one grounded-record predicate to learning packets, consolidation, replay and behavioral-drift summaries; restore downgrades runtime-outcome labels that do not retain state-grounding evidence.
+- UnifiedLearningSubstrate v4 stores external replay/repair claims as bounded hypotheses rather than learned facts. External claims cannot directly increase trusted patterns, sample count, representation or transfer metrics. Legacy v3 learner state is reset because its pattern/representation weights lack per-sample provenance; organism identity and durable memory remain untouched.
+- OrganismCore exposes the read-only unifiedLearningExternalHypotheses(limit) queue. The causal development and macro-synthesis paths now require the existing independent-source counter (at least two sources) for their independent flag.
+- Added docs/WORKPASS292_VERIFIED_EXPERIENCE_LANES_2026-10-22.md, tests/workpass292-evidence-lanes.mjs, npm script test:workpass292:evidence-lanes and Node 24 workflow .github/workflows/workpass292-evidence-lanes.yml.
+- Not yet verified: test execution, typecheck, workflow result, and whole-organism autonomous call-path readiness. No CI pass is claimed.
+- Next fixed sequence: WP293-A connect hypothesis queue to existing independent assessor; WP293-B bind action ticket/trace/tick/postcondition to the shared reality gate; WP293-C wire grounded outcomes into the canonical MemoryOS2 consolidation/replay path; WP293-D close the existing P23 revision loop with baseline/holdout/approval/rollback; WP293-E/F/G measure initiative continuity, embodiment state reflection, and clean-machine operations.
+
 ## Latest durable checkpoint — WorkPass291 (2026-10-22)
 
 - Runtime code change: P23 reflective skill candidates now have a canonical UTF-8 payload budget of 256 KiB. Source is checked before generation, generated payload before fingerprinting/evaluation, and the staging boundary checks again.
