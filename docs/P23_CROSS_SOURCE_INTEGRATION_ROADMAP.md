@@ -24,7 +24,7 @@ Scope: continue integrating mechanisms into the existing P23 learning/revision l
 - [x] Register the process integration and runtime-factory regression in the existing package audit and continual-learning workflow.
 - [ ] Run the integration regression and runtime typecheck on an executing runner; Actions history has previously failed before useful steps/logs were exposed, so code execution is still unverified.
 - [ ] Provision the actual executor executable as a trusted OS/container sandbox launcher and verify filesystem/network/CPU/memory limits. This adapter does not itself provide kernel isolation.
-- [ ] Wire the returned factory into the deployed host's `OrganismRuntime` configuration and provide the independent verifier/scanner executable implementations and their deployment ownership. The runtime deliberately does not guess executable paths or create fake production authorities.
+- [ ] Deploy the actual verifier/scanner executable implementations and their ownership/configuration. Runtime wiring now exists through `OrganismRuntime.createWithHostOwnedIndependentEvaluation`; the deployed host must explicitly call it with its trusted commands, fixed task-plan builders, environment fingerprint, and canonical experiment authority. The runtime deliberately does not guess executable paths or create fake production authorities.
 
 ## Completed in this branch (through WorkPass243 code; runtime verification pending)
 
