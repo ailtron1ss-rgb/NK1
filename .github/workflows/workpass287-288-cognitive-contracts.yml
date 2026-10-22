@@ -12,7 +12,7 @@ on:
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/workpass287-288-cognitive-contracts.yml"
       - 'runtime/neuro-kurisu/package-lock.json'
-      - 'runtime/neuro-kurisu/tsconfig.json'
+      - 'runtime/neuro-kurisu/tsconfig.clean.json'
       - 'runtime/neuro-kurisu/src/node-shims.d.ts'
       - '.nvmrc'
   pull_request:
@@ -26,7 +26,7 @@ on:
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/workpass287-288-cognitive-contracts.yml"
       - 'runtime/neuro-kurisu/package-lock.json'
-      - 'runtime/neuro-kurisu/tsconfig.json'
+      - 'runtime/neuro-kurisu/tsconfig.clean.json'
       - 'runtime/neuro-kurisu/src/node-shims.d.ts'
       - '.nvmrc'
 

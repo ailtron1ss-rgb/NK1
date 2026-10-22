@@ -11,7 +11,7 @@ on:
       - '.github/workflows/workpass94-verification-input-binding.yml'
       - 'runtime/neuro-kurisu/package.json'
       - 'runtime/neuro-kurisu/package-lock.json'
-      - 'runtime/neuro-kurisu/tsconfig.json'
+      - 'runtime/neuro-kurisu/tsconfig.clean.json'
       - 'runtime/neuro-kurisu/src/node-shims.d.ts'
       - '.nvmrc'
       - 'runtime/neuro-kurisu/tests/p23-verified-outcome-ledger.mjs'
@@ -20,6 +20,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomePromotionGate.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
 
 permissions:
   contents: read

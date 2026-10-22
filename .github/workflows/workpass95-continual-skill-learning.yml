@@ -17,8 +17,10 @@ on:
       - '.nvmrc'
       - 'runtime/neuro-kurisu/package.json'
       - 'runtime/neuro-kurisu/package-lock.json'
-      - 'runtime/neuro-kurisu/tsconfig.json'
+      - 'runtime/neuro-kurisu/tsconfig.clean.json'
       - 'runtime/neuro-kurisu/src/node-shims.d.ts'
+      - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
+      - 'runtime/neuro-kurisu/scripts/audit-actions-runtime.mjs'
 
 permissions:
   contents: read

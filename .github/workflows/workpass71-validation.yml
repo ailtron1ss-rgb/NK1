@@ -24,9 +24,10 @@ on:
       - 'app/package-lock.json'
       - 'runtime/neuro-kurisu/package.json'
       - 'runtime/neuro-kurisu/package-lock.json'
-      - 'runtime/neuro-kurisu/tsconfig.json'
+      - 'runtime/neuro-kurisu/tsconfig.clean.json'
       - 'runtime/neuro-kurisu/src/node-shims.d.ts'
       - '.nvmrc'
+      - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
   pull_request:
     branches: [main, workpass70-source, workpass203-independent-candidate-evaluator]
     paths:
@@ -35,7 +36,7 @@ on:
       - "runtime/neuro-kurisu/tests/**"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
-      - "runtime/neuro-kurisu/tsconfig.json"
+      - "runtime/neuro-kurisu/tsconfig.clean.json"
       - "runtime/neuro-kurisu/src/node-shims.d.ts"
       - "app/package.json"
       - "app/package-lock.json"
@@ -47,6 +48,7 @@ on:
       - "README.md"
       - "AGENTS.md"
       - "SUPER_VERSION.json"
+      - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
   workflow_dispatch:
 
 permissions:

@@ -29,8 +29,9 @@ on:
       - 'runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs'
       - '.github/workflows/workpass106-verified-promotion-gate.yml'
       - 'runtime/neuro-kurisu/package-lock.json'
-      - 'runtime/neuro-kurisu/tsconfig.json'
+      - 'runtime/neuro-kurisu/tsconfig.clean.json'
       - '.nvmrc'
+      - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
   workflow_dispatch:
 permissions:
   contents: read

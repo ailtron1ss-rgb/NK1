@@ -97,9 +97,10 @@ on:
       - 'runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs'
       - '.github/workflows/workpass110-continual-learning-metrics.yml'
       - 'runtime/neuro-kurisu/package-lock.json'
-      - 'runtime/neuro-kurisu/tsconfig.json'
+      - 'runtime/neuro-kurisu/tsconfig.clean.json'
       - 'runtime/neuro-kurisu/src/node-shims.d.ts'
       - '.nvmrc'
+      - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
   push:
     branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals, workpass122-promotion-gate-coverage-hardening, workpass123-authenticated-skill-lifecycle, workpass124-learning-evidence-hardening, workpass135-durable-shadow-run-registry, workpass206-runtime-evaluator-wiring]
     paths:
@@ -176,9 +177,10 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
       - 'runtime/neuro-kurisu/src/server/server.mjs'
       - 'runtime/neuro-kurisu/package-lock.json'
-      - 'runtime/neuro-kurisu/tsconfig.json'
+      - 'runtime/neuro-kurisu/tsconfig.clean.json'
       - 'runtime/neuro-kurisu/src/node-shims.d.ts'
       - '.nvmrc'
+      - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
 concurrency:
   group: nk1-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true

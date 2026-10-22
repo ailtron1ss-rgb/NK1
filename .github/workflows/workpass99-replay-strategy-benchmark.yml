@@ -12,7 +12,7 @@ on:
       - '.github/workflows/workpass99-replay-strategy-benchmark.yml'
       - 'runtime/neuro-kurisu/package.json'
       - 'runtime/neuro-kurisu/package-lock.json'
-      - 'runtime/neuro-kurisu/tsconfig.json'
+      - 'runtime/neuro-kurisu/tsconfig.clean.json'
       - 'runtime/neuro-kurisu/src/node-shims.d.ts'
       - '.nvmrc'
   pull_request:
@@ -21,7 +21,7 @@ on:
       - '.github/workflows/workpass99-replay-strategy-benchmark.yml'
       - 'runtime/neuro-kurisu/package.json'
       - 'runtime/neuro-kurisu/package-lock.json'
-      - 'runtime/neuro-kurisu/tsconfig.json'
+      - 'runtime/neuro-kurisu/tsconfig.clean.json'
       - 'runtime/neuro-kurisu/src/node-shims.d.ts'
       - '.nvmrc'
       - 'runtime/neuro-kurisu/src/organism/learning/ReplaySelectionPolicy.ts'

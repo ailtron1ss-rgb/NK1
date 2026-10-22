@@ -1,3 +1,12 @@
+## WorkPass306 — align CI path filters with actual runtime configuration
+
+- Corrected the previous workflow-path patch to watch the file the typecheck script actually consumes: `runtime/neuro-kurisu/tsconfig.clean.json`, not nonexistent `tsconfig.json`.
+- Added `scripts/typecheck-runtime.mjs` to the regression triggers wherever the workflow invokes runtime typecheck, so edits to the compiler-selection/fallback logic cannot bypass those checks.
+- Added `scripts/audit-actions-runtime.mjs` to the continual-learning workflow triggers because that workflow runs this audit.
+- The correction prevents configuration edits from being silently skipped by the intended file filters. Workflows remain unvalidated until Actions can assign a runner.
+
+---
+
 ## WorkPass305 — reject empty clock-policy decisions
 
 - Corrected a fail-open edge: when a configured `decide` callback returned `null` or `undefined`, the scheduler treated that as “no policy” and used the default `run: true` decision.

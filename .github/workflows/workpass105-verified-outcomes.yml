@@ -9,7 +9,7 @@ on:
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass105-verified-outcomes.yml'
       - 'runtime/neuro-kurisu/package-lock.json'
-      - 'runtime/neuro-kurisu/tsconfig.json'
+      - 'runtime/neuro-kurisu/tsconfig.clean.json'
       - 'runtime/neuro-kurisu/src/node-shims.d.ts'
       - '.nvmrc'
   workflow_dispatch:
