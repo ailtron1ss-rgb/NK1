@@ -41,6 +41,7 @@ import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
 import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
 import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEvaluationProvider.ts';
 import type { IndependentCandidateEvaluationConfig } from '../learning/IndependentSkillCandidateEvaluator.ts';
+import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndependentEvaluationFactoryOptions } from '../learning/HostOwnedIndependentEvaluationServices.ts';
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
@@ -104,6 +105,29 @@ export interface RuntimeConfig extends OrganismConfig {
 export interface RuntimeStep { cycle: OrganismCycleResult; worldAction: EnvironmentAction; language?: LanguageResponse; embodiedAction?: EmbodiedActionResult; }
 
 export class OrganismRuntime {
+  /**
+   * Host-owned production composition: prepare the three separately configured
+   * executables before constructing the runtime, then bind their config factory
+   * to the existing P23 compound-repair coordinator. No default executable paths
+   * or in-process fake authorities are created here.
+   */
+  static async createWithHostOwnedIndependentEvaluation(
+    config: RuntimeConfig,
+    hostAuthorities: HostOwnedIndependentEvaluationFactoryOptions<Parameters<CompoundRepairRevisionInputProvider>[0]>,
+  ): Promise<OrganismRuntime> {
+    if (!config.compoundRepairRevision) {
+      throw new Error('host-owned-independent-evaluation-requires-compound-repair-revision');
+    }
+    const independentEvaluationConfigForRepair =
+      await createHostOwnedIndependentEvaluationConfigFactory(hostAuthorities);
+    return new OrganismRuntime({
+      ...config,
+      compoundRepairRevision: {
+        ...config.compoundRepairRevision,
+        independentEvaluationConfigForRepair,
+      },
+    });
+  }
   readonly core: OrganismCore;
   readonly environment = new WorldEnvironment();
   readonly plans: PlanEngine;
