@@ -87,7 +87,7 @@ assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, traceId: "x".repeat(181),
 }), /causal-external-trace-id-invalid/);
 assert.throws(() => externalStream.recordExternalLearningEvent({
-  ...externalInput, traceId: "invalid\\ntrace",
+  ...externalInput, traceId: ["invalid", "trace"].join(String.fromCharCode(10)),
 }), /causal-external-trace-id-invalid/);
 assert.equal(externalStream.summary().outcomes, 1,
   "overlong or control-bearing identity keys must fail before mutating causal state");
