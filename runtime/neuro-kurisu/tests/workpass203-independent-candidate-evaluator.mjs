@@ -43,6 +43,25 @@ assert.throws(() => createIndependentSkillCandidateEvaluator({
 }), /task-input-invalid/);
 assert.equal(invalidPlanExecutionCount, 0,
   'invalid plans must be rejected before any candidate code executes');
+
+const nonFiniteTaskInput = { ...tasks[1], input: { prompt: Number.NaN } };
+assert.throws(() => createIndependentSkillCandidateEvaluator({
+  tasks: [tasks[0], nonFiniteTaskInput],
+  environmentFingerprint: 'f'.repeat(64), ...invalidPlanServices,
+}), /task-input-invalid/,
+  'non-finite task input must be rejected before candidate execution');
+const circularTaskInput = { ...tasks[1], input: {} };
+circularTaskInput.input.self = circularTaskInput.input;
+assert.throws(() => createIndependentSkillCandidateEvaluator({
+  tasks: [tasks[0], circularTaskInput],
+  environmentFingerprint: 'f'.repeat(64), ...invalidPlanServices,
+}), /task-input-invalid/,
+  'circular task input must be rejected before fingerprinting');
+assert.throws(() => createIndependentSkillCandidateEvaluator({
+  tasks: [tasks[0], { ...tasks[1], input: { createdAt: new Date(0) } }],
+  environmentFingerprint: 'f'.repeat(64), ...invalidPlanServices,
+}), /task-input-invalid/,
+  'non-plain task input objects must not collapse to ambiguous fingerprints');
 // Evaluator configuration is an authority snapshot: post-construction changes must
 // not relabel the environment under which a candidate was executed.
 const mutableTasks = structuredClone(tasks);
