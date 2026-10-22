@@ -253,12 +253,6 @@ export interface HostOwnedIndependentEvaluationFactoryOptions<TInput> {
 export async function createHostOwnedIndependentEvaluationConfigFactory<TInput>(
   input: HostOwnedIndependentEvaluationFactoryOptions<TInput>,
 ): Promise<(repair: TInput) => IndependentCandidateEvaluationConfig & {
-  commands: HostOwnedIndependentEvaluationCommands;
-  tasksForRepair(repair: TInput): IndependentCandidateEvaluationConfig['tasks'];
-  environmentFingerprintForRepair(repair: TInput): string;
-  experimentAuthorityForRepair?(repair: TInput): IndependentCandidateEvaluationConfig['experimentAuthority'];
-  serviceTimeoutMs?: number;
-}): Promise<(repair: TInput) => IndependentCandidateEvaluationConfig & {
   authorityIdentity: HostOwnedIndependentEvaluationServices['authorityIdentity'];
 }> {
   const services = await createHostOwnedIndependentEvaluationServices(input.commands);
