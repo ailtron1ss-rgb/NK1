@@ -27,7 +27,7 @@ assert.ok(invalidId.missingStages.includes('action'));
 assert.throws(()=>cycle.evaluate({tick:NaN,stageIds:stages,parentIntegrity01:1}),/tick/);
 assert.throws(()=>cycle.evaluate({tick:0,stageIds:stages,parentIntegrity01:1}),/backwards/);
 assert.throws(()=>cycle.evaluate({tick:3,stageIds:stages,parentIntegrity01:Infinity}),/parentIntegrity01/);
-assert.throws(()=>cycle.evaluate({tick:3,stageIds:{...stages,action:'act\n1'},parentIntegrity01:1}),/backwards/);
+const unsafeId=cycle.evaluate({tick:3,stageIds:{...stages,action:'act\\n1'},parentIntegrity01:1});\nassert.equal(unsafeId.complete,false);\nassert.ok(unsafeId.missingStages.includes('action'));
 
 const restored=new UnifiedCognitiveCycle();
 restored.restore({
