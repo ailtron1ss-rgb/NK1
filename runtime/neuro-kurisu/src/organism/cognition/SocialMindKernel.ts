@@ -330,7 +330,7 @@ export class SocialMindKernel{
       const wanted=new Set((Array.isArray(ids)?ids:[]).filter((x):x is string=>typeof x==='string').slice(0,16));
       return this.state.evidence.filter(e=>wanted.has(e.id)&&e.personId===personId&&e.evidenceKind==='observed'&&e.observedAt<=at&&(e.expiresAt==null||e.expiresAt>at));
     };
-    const claim=(raw:unknown)=>String(raw??'').normalize('NFKC').replace(/[\\u0000-\\u001f\\u007f-\\u009f]/g,' ').trim().slice(0,180);
+    const claim=(raw:unknown)=>String(raw??'').normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').trim().slice(0,180);
     const entries=(rows:unknown, kind:'environment'|'observation'|'belief'|'intention')=>{
       const list=Array.isArray(rows)?rows.slice(0,16):[];
       return list.flatMap((raw:any)=>{
