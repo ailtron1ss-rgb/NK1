@@ -1,3 +1,11 @@
+## WorkPass285 score update (2026-10-22)
+
+- **Scores unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**.
+- WorkPass285 prevents independent-evaluator capability coverage inflation but does not establish better real-task outcomes, generalization or autonomous self-development.
+- Regression authored; test/typecheck not executed. No dependency added.
+
+---
+
 ## WorkPass284 score update (2026-10-22)
 
 - **Scores unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**.
