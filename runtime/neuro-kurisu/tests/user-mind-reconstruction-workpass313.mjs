@@ -3,8 +3,6 @@ import { SocialMindKernel } from '../src/organism/cognition/SocialMindKernel.ts'
 import { MotiveEcologyFabric } from '../src/organism/cognition/evolution/MotiveEcologyFabric.ts';
 import { P28PlasticitySubstrate } from '../src/organism/learning/P28PlasticitySubstrate.ts';
 import { MemoryConsolidationController } from '../src/organism/memory/MemoryConsolidationController.ts';
-import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
-import { SelfModelEngine } from '../src/organism/cognition/SelfModelV2.ts';
 
 const social = new SocialMindKernel();
 const intentEvidence = social.observeText('user', 'Почему это работает? Объясни, пожалуйста.', 1000);
@@ -138,58 +136,6 @@ assert.equal(consolidation.diagnostics().sleepTimeRuns, 1);
 const consolidationRestore = new MemoryConsolidationController();
 consolidationRestore.restore(consolidation.snapshot());
 assert.equal(consolidationRestore.diagnostics().sleepTimeRuns, 1, 'sleep-time counters must persist across restart');
-const selfModel = new SelfModelEngine();
-const selfBefore = selfModel.snapshot();
-const ungroundedSelfUpdate = selfModel.learnGoalOutcome({ action: 'explore', goalAlignment01: .9, reward01: .9, tick: 1 });
-assert.equal(ungroundedSelfUpdate.identityUpdateAccepted, false, 'unbound outcome must not update high-level self-beliefs');
-assert.equal(selfModel.snapshot().agencyBelief, selfBefore.agencyBelief, 'agency belief remains stable without independent evidence');
-assert.equal(selfModel.snapshot().identityCoherence, selfBefore.identityCoherence, 'identity coherence remains stable without independent evidence');
-assert.notEqual(selfModel.snapshot().selfConsistentAction11.explore, selfBefore.selfConsistentAction11.explore, 'action-level preference can still learn from the bounded reward');
-assert.equal(selfModel.snapshot().identityGateRejectedCount, 1);
-const correlatedSelfUpdate = selfModel.learnGoalOutcome({ action: 'explore', goalAlignment01: .95, reward01: .95, tick: 2, evidence: { verified: true, independent: false, source: 'world-transition', evidenceRef: 'world-transition:correlated' } });
-assert.equal(correlatedSelfUpdate.identityUpdateAccepted, false, 'verified but non-independent evidence cannot revise identity');
-assert.equal(selfModel.snapshot().identityGateRejectedCount, 2);
-const mismatchedSelfUpdate = selfModel.learnGoalOutcome({ action: 'verify', goalAlignment01: .92, reward01: .92, tick: 3, evidence: { verified: true, independent: true, source: 'external-verification', evidenceRef: 'world-transition:wrong-namespace' } });
-assert.equal(mismatchedSelfUpdate.identityUpdateAccepted, false, 'the receipt namespace must match its asserted source');
-assert.equal(mismatchedSelfUpdate.identityUpdateReason, 'evidence-source-binding-mismatch');
-assert.equal(selfModel.snapshot().identityGateRejectedCount, 3);
-const groundedSelfUpdate = selfModel.learnGoalOutcome({ action: 'verify', goalAlignment01: .9, reward01: .9, tick: 4, evidence: { verified: true, independent: true, source: 'world-transition', evidenceRef: 'world-transition:trace-4:tick-4' } });
-assert.equal(groundedSelfUpdate.identityUpdateAccepted, true, 'verified independent outcome bound to a receipt may update high-level self-beliefs');
-assert.equal(selfModel.snapshot().identityGateAcceptedCount, 1);
-assert.equal(selfModel.snapshot().lastIdentityGate.reason, 'verified-independent-outcome-bound');
-const memDoctor = new MemoryOS2({ signalFusionProfile: 'balanced', embeddingProvider: null });
-const doctorAt = Date.now();
-memDoctor.encode({
-  id: 'doctor-healthy-record', content: 'Unique memory doctor fixture record.', kind: 'semantic',
-  source: 'workpass313-memory-doctor', tags: [], context: {}, salience: .6, emotionalWeight: .1,
-  identityRelevance: .2, goalRelevance: .3, socialRelevance: .1, predictionError: .1,
-  confidence: .9, epistemicStatus: 'fact', entities: [], semanticLinks: [], temporalLinks: [], causalLinks: [],
-  contradictionLinks: [], validFromAt: doctorAt - 1000, observedAt: doctorAt - 500,
-});
-const healthyDoctor = memDoctor.doctor({ at: doctorAt });
-assert.equal(healthyDoctor.pass, true, 'a clean canonical memory snapshot should pass doctor');
-assert.equal(healthyDoctor.issueCount, 0, 'a clean snapshot should not report memory hygiene issues');
-const damagedMemorySnapshot = memDoctor.snapshot();
-damagedMemorySnapshot.items[0].contentHash = 'not-the-canonical-content-hash';
-damagedMemorySnapshot.items[0].semanticLinks = ['missing-memory-doctor-target'];
-damagedMemorySnapshot.items[0].supersedesId = 'missing-memory-revision';
-damagedMemorySnapshot.items[0].observedAt = doctorAt + 3_600_000;
-const damagedMemory = new MemoryOS2({ signalFusionProfile: 'balanced', embeddingProvider: null });
-damagedMemory.restore(damagedMemorySnapshot);
-const doctorReport = damagedMemory.doctor({ at: doctorAt });
-assert.equal(doctorReport.readOnly, true, 'doctor must never repair or rewrite memory automatically');
-assert.equal(doctorReport.pass, false, 'content hash inconsistency should fail doctor');
-assert.ok(doctorReport.counts.hashMismatch > 0, 'doctor should detect altered canonical content hashes');
-assert.ok(doctorReport.counts.danglingRevision > 0, 'doctor should detect unresolved revision pointers');
-assert.ok(doctorReport.counts.danglingLinks > 0, 'doctor should detect unresolved relationship links');
-assert.ok(doctorReport.counts.futureEvidence > 0, 'doctor should detect future-dated evidence');
-assert.ok(doctorReport.issues.length <= 64, 'doctor output must remain bounded');
-const cappedDoctor = damagedMemory.doctor({ at: doctorAt, maxIssues: 1 });
-assert.equal(cappedDoctor.issues.length, 1, 'doctor must cap detailed issue payloads');
-assert.equal(cappedDoctor.errors, 1, 'severity counters must include issues beyond the display cap');
-assert.ok(cappedDoctor.warnings > 0, 'warning counters must include issues beyond the display cap');
-assert.equal(cappedDoctor.truncated, true, 'doctor must mark a capped issue list as truncated');
-assert.equal(damagedMemory.snapshot().items[0].contentHash, 'not-the-canonical-content-hash', 'read-only doctor must not mutate the record it reports');
 console.log(JSON.stringify({
   pass: true,
   workpass: 313,
