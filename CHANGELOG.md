@@ -1,7 +1,7 @@
 ## WorkPass315 — evidence-gated self-model identity updates (2026-10-22)
 
 - Added a CAKN-inspired write-time gate to `SelfModelEngine.learnGoalOutcome()`: action preferences continue to learn from bounded rewards, while `agencyBelief` and `identityCoherence` change only when a verified, independent outcome is bound to a non-empty receipt from the trusted world-transition or external-verification path.
-- Added accepted/rejected gate counters and a compact last-decision record for observability.
+- Added accepted/rejected gate counters and a compact last-decision record for observability. Restore normalizes gate counters and the last-decision record so older persisted self-model snapshots remain compatible.
 - Wired the canonical OrganismCore outcome path to supply verification, independence, source class and a decision/tick-bound receipt. Unverified or correlated outcomes cannot revise the high-level self model through this learning path.
 - Added a dedicated `self-model-evidence-write-gate-workpass315.mjs` regression covering missing evidence, correlated evidence, source/receipt mismatch and accepted evidence, including snapshot/restore. Execution remains pending because the connected GitHub Actions jobs have been rejected before the first step starts.
 
