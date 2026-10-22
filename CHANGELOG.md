@@ -1,3 +1,14 @@
+## WorkPass267 — reject conflicting payloads under a reused causal event ID (2026-10-22)
+
+- **Code:** external causal-event idempotency now accepts a repeated normalized trace ID only when the normalized event payload agrees with the existing record. Reusing the same ID with a changed task/action/outcome/identity-relevant field raises causal-external-trace-id-conflict rather than silently returning the old outcome.
+- **Durable behavior:** the same conflict check applies when the deduplication record survives snapshot/restore. If the record itself has been evicted but the bounded trace-ID guard still remembers the ID, the stream remains fail-closed and does not create another outcome.
+- **Regression:** added same-process and restored-state tests for changed success/reward under the same trace ID; both require an explicit conflict and unchanged outcome count.
+- **Integration:** reuses CausalExperienceStream's existing owner and WorkPass110 regression path; no parallel ledger or package dependency added.
+- **Validation:** the regression source is committed, but exact-head execution/typecheck remains unverified until Actions provides actionable steps/logs. Learning score estimates remain unchanged.
+- **Next trust audit:** trace all external-ingestion call sites and replace caller-asserted grounding flags with canonical state-transition or verifier provenance after the contract is mapped.
+
+---
+
 ## WorkPass266 — reject lossy causal identity normalization and wire active regressions (2026-10-22)
 
 - **Code:** CausalExperienceStream no longer truncates task/trace identity keys. NFKC-normalized empty, overlong, non-string, or control-bearing IDs are rejected; restore drops records whose trace IDs violate the same bound.
