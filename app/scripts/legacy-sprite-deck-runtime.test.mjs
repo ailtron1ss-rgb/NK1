@@ -21,3 +21,11 @@ test("stale legacy sprite image callbacks cannot replace the newest requested sp
   assert.match(source, /if \(!cancelled\) setReady\(Boolean\(currentRef\.current\)\);/);
   assert.match(source, /cancelled = true;\s*img\.onload = null;\s*img\.onerror = null;/);
 });
+
+test("legacy avatar only resizes the canvas when layout dimensions change", () => {
+  assert.match(source, /const w = canvas\.clientWidth \|\| 320;\s*const h = canvas\.clientHeight \|\| 360;/);
+  assert.match(source, /if \(canvas\.width !== w\) canvas\.width = w;/);
+  assert.match(source, /if \(canvas\.height !== h\) canvas\.height = h;/);
+  assert.doesNotMatch(source, /const w = canvas\.width = canvas\.clientWidth/);
+  assert.doesNotMatch(source, /const h = canvas\.height = canvas\.clientHeight/);
+});
