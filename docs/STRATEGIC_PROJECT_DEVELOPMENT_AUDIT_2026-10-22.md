@@ -302,7 +302,7 @@ WorkPass250 уже извлёк единый predicate `hasExactEvaluationBindin
 ## WorkPass265 — master execution blueprint and measurable completion criteria (2026-10-22)
 
 **Checked source ref:** workpass206-runtime-evaluator-wiring  
-**Checked PR head:** `58e9c6a00b5835096dac3758968f5b9ce0eb08d2` — implementation baseline reviewed before this documentation-only checkpoint; the live PR link below is authoritative for the current branch HEAD.  
+**Reviewed implementation baseline before the documentation checkpoint:** `58e9c6a00b5835096dac3758968f5b9ce0eb08d2`. The live PR is the authoritative pointer for the current branch HEAD.  
 **PR:** #55, open/draft/unmerged; base workpass203-independent-candidate-evaluator  
 **Purpose:** turn the broad organism goal into explicit, independently finishable work tracks and a multi-pass execution order. This addendum supersedes older branch-status statements in this document when they disagree with the checked PR metadata above.
 
