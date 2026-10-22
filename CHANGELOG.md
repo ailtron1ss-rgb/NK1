@@ -1,3 +1,13 @@
+## WorkPass291 — bounded reflective skill evolution (2026-10-22)
+
+- Added a 256 KiB canonical UTF-8 payload budget to the P23 reflective skill revision path. The source artifact is bounded before invoking the generator; generated output is bounded before fingerprinting/independent evaluation; the staging boundary repeats the check.
+- Oversized, cyclic, non-finite, or non-plain payloads fail closed through the existing canonicalizer. This is a resource and attack-surface limit, not a quality score or promotion approval.
+- Added `tests/workpass291-reflective-payload-budget.mjs` and the `test:workpass291:payload-budget` script. Test execution and typecheck have not been run in this GitHub connector pass.
+- Research pattern adapted (not copied as a separate runtime): Hermes Agent Self-Evolution uses trace-informed, evidence-targeted candidate revision with independent evaluation, size constraints, and human-reviewed deployment. NK1 keeps its existing P23 evidence, shadow, signed-approval, and rollback authorities: https://github.com/NousResearch/hermes-agent-self-evolution
+- No new dependency added; uses Node's built-in `Buffer.byteLength`. Next passes: action-correlated micro-cycle evidence; cross-domain initiative-to-memory-to-learning continuity; Node 24 CI migration review.
+
+---
+
 ## WorkPass290 — canonical verifier trace (2026-10-22)
 
 - Traced `OutcomeVerificationService`: trusted external-postcondition receipts are process-local and bound to the complete action input, but do not currently expose an organism tick/action-ticket correlation for the micro-cycle.
