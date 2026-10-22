@@ -100,6 +100,14 @@ assert.throws(() => externalStream.recordExternalLearningEvent({
 assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, traceId: ["invalid", "trace"].join(String.fromCharCode(10)),
 }), /causal-external-trace-id-invalid/);
+assert.throws(() => externalStream.recordExternalLearningEvent({
+  ...externalInput, traceId: ["invalid", "trace"].join(String.fromCharCode(0x85)),
+}), /causal-external-trace-id-invalid/,
+  "C1 control characters must also be rejected in trace identities");
+assert.throws(() => externalStream.recordExternalLearningEvent({
+  ...externalInput, taskId: ["external", "task"].join(String.fromCharCode(1)), traceId: "control-task-id",
+}), /causal-external-task-id-invalid/,
+  "C0 control characters must be rejected in task identities");
 assert.equal(externalStream.summary().outcomes, 1,
   "overlong or control-bearing identity keys must fail before mutating causal state");
 
@@ -121,6 +129,27 @@ assert.equal(sanitizedRestore.recent(64).some(row => row.id === "corrupt-overlon
   "restore must discard a persisted record whose trace identity violates the current bound");
 assert.equal(sanitizedRestore.snapshot().recordedTraceIds.includes("z".repeat(181)), false,
   "restore must not reintroduce overlong deduplication identities");
+
+// Even after the causal row is evicted from the bounded record window, the
+// retained event-ID guard prevents a late retry from creating a second outcome.
+const boundedDuplicateStream = new CausalExperienceStream(64);
+const boundedOriginal = boundedDuplicateStream.recordExternalLearningEvent({
+  ...externalInput, traceId: "retained-after-eviction", taskId: "bounded-original",
+});
+assert.ok(boundedOriginal);
+for (let i = 0; i < 64; i++) {
+  boundedDuplicateStream.recordExternalLearningEvent({
+    ...externalInput, traceId: `bounded-fill-${i}`, taskId: `bounded-fill-task-${i}`, tick: 100 + i,
+  });
+}
+assert.equal(boundedDuplicateStream.recent(64).some(row => row.traceId === "retained-after-eviction"), false,
+  "the first causal record should be outside the bounded record window");
+const outcomesBeforeEvictedRetry = boundedDuplicateStream.summary().outcomes;
+assert.equal(boundedDuplicateStream.recordExternalLearningEvent({
+  ...externalInput, traceId: "retained-after-eviction", taskId: "bounded-original",
+}), null, "a retained ID with an evicted record must not be recorded a second time");
+assert.equal(boundedDuplicateStream.summary().outcomes, outcomesBeforeEvictedRetry,
+  "late duplicate after bounded eviction must not change outcome counts");
 
 const replayDiversity = new CausalExperienceStream(64);
 for (let i = 0; i < 3; i++) {
