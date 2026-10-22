@@ -57,8 +57,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           AUDIT_MAX_PAGES: ${{ github.event.inputs.max_pages || '1000' }}
-          AUDIT_MAX_DETAIL_RUNS: '3000'
-          AUDIT_MAX_LOG_JOBS: ${{ github.event.inputs.max_log_jobs || '200' }}
+          AUDIT_MAX_DETAIL_RUNS: '400'
+          AUDIT_MAX_LOG_JOBS: ${{ github.event.inputs.max_log_jobs || '150' }}
           AUDIT_OUTPUT_DIR: artifacts/actions-history-audit
         run: node tools/audit-actions-history.mjs
 
