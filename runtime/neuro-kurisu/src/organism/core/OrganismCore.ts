@@ -174,6 +174,7 @@ import { NeuroSymbolicConceptCompiler } from '../cognition/NeuroSymbolicConceptC
 import { NeuralMorphogenesisEngine } from '../system/NeuralMorphogenesisEngine.ts';
 import { HybridNeuroCognitiveLoop } from '../system/HybridNeuroCognitiveLoop.ts';
 import { NeuroDigitalEvolutionEngine } from '../system/NeuroDigitalEvolutionEngine.ts';
+import { isTrustedDecisionLinkedExternalPostcondition } from '../system/OutcomeVerificationService.ts';
 import type { OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 import { OutcomeCognitionFabric } from '../system/OutcomeCognitionFabric.ts';
 import type { ExternalObservation, ExternalObservationAssessment } from '../system/ExternalObserverFabric.ts';
@@ -1255,8 +1256,8 @@ export class OrganismCore {
             this.persisted.system.actionExecutionLedger = snapshot;
             await this.checkpoint(true);
         });
-        this.cognitiveRuntime.actionGateway.setExecutionFinalizer(async ({ toolId, input, reason, result, options }) => {
-            await this.finalizeToolOutcome(toolId, input, reason, result, options);
+        this.cognitiveRuntime.actionGateway.setExecutionFinalizer(async ({ toolId, input, reason, result, options, decisionLinkedExternalPostcondition }) => {
+            await this.finalizeToolOutcome(toolId, input, reason, result, options, undefined, decisionLinkedExternalPostcondition);
         });
         this.config = {
             enableHomeostasis: true,
@@ -11724,7 +11725,21 @@ export class OrganismCore {
         result: import('../system/ActionGateway.ts').ToolExecution,
         options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {},
         inputKeys: string[] = Object.keys(input),
+        gatewayDecisionLinkedExternalPostcondition?: boolean,
     ): Promise<void> {
+        const suppliedDecisionId = typeof options.decisionId === 'string' ? options.decisionId.trim() : '';
+        const matchingDecisionTrace = suppliedDecisionId
+            ? this.persisted.traces.find(trace => trace.id === suppliedDecisionId && trace.selected !== null && trace.tick === trace.stateBefore.tick)
+            : undefined;
+        const verifierBound = gatewayDecisionLinkedExternalPostcondition === true ||
+            (Boolean(suppliedDecisionId) && isTrustedDecisionLinkedExternalPostcondition(result.verification, {
+                toolId: id, input, executionId: result.executionId, decisionId: suppliedDecisionId,
+            }));
+        // A verifier ticket is attributable only when its process-local authority,
+        // complete request, execution ID and decision ID match AND the ID is a real
+        // selected persisted trace. Otherwise keep the observation, but do not award
+        // temporal/action credit to the claimed decision.
+        const decisionLinkedExternalPostcondition = Boolean(verifierBound && matchingDecisionTrace);
         // Only outcomes from an entered executor (including its explicit failure) or
         // an authoritative provider reconciliation belong in the action/outcome graph.
         // Permission, policy, availability, competence, idempotency and receipt-store
@@ -11801,7 +11816,7 @@ export class OrganismCore {
             });
             if (!traceRevision.resolved) throw new Error(`authoritative-receipt-causal-projection-failed:${traceRevision.reason ?? 'unknown'}`);
 
-            const externalIntegration = await this.integrateVerifiedToolObservation(id, result, options, false);
+            const externalIntegration = await this.integrateVerifiedToolObservation(id, result, options, false, decisionLinkedExternalPostcondition);
             if (!externalIntegration.integrated && result.verification.externalObservation && result.verification.verified) {
                 const v = result.verification;
                 this.memorySubsystem.events.append(makeEvent('external-outcome-verified', this.persisted.state.tick, { tool: id, observationId: v.observationId, confidence01: v.confidence01, expectedPostcondition: v.expectedPostcondition, observedPostcondition: v.observedPostcondition, source: 'outcome-verifier' } as any));
@@ -11894,6 +11909,7 @@ export class OrganismCore {
         result: import('../system/ActionGateway.ts').ToolExecution,
         options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {},
         checkpoint = true,
+        decisionLinkedExternalPostcondition = false,
     ): Promise<{
         integrated: boolean;
         observation?: import('../system/ExternalObserverFabric.ts').ExternalObservation;
@@ -11915,7 +11931,7 @@ export class OrganismCore {
             metadata: { verificationBasis: v.basis, verifierObservationId: v.observationId, gatewayExecutionId: result.executionId },
             payload: { verifierObservationId: v.observationId, expectedPostcondition: v.expectedPostcondition, observedPostcondition: v.observedPostcondition },
             expectedPostcondition: v.expectedPostcondition,
-            decisionId: options.decisionId, autonomous: options.autonomous === true,
+            decisionId: decisionLinkedExternalPostcondition ? options.decisionId : undefined, autonomous: options.autonomous === true,
         }, { checkpoint });
         return { integrated: true, observation: ingested.observation, assessment: ingested.assessment ?? undefined };
     }
