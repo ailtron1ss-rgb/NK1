@@ -144,7 +144,6 @@ runtime.core.unifiedLearningExternalHypotheses = () => [
 assert.equal(OrganismRuntime.prototype.nextCompoundRepairSkillId.call(runtime), 'skill-b',
   'fresh hypotheses may prioritize but never expand the verified repair ledger');
 
-runtime.core.unifiedLearningExternalHypotheses = () => [
 assert.equal(events.at(-1)[2].status, 'candidate-staged');
 const diagnostics = OrganismRuntime.prototype.compoundRepairRevisionDiagnostics.call(runtime);
 assert.equal(diagnostics.enabled, true);
