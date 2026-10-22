@@ -25,7 +25,6 @@ assert.equal(graph.snapshot().interrupts, 3, 'a reactivated interrupt after a cl
 
 const restored = new CognitiveDependencyGraph();
 restored.restore(graph.snapshot());
-frame.call(null, 8, active);
 restored.resolve({ tick: 8, reason: 'same persisted interrupt', dirtyDomains: { self: false, world: false, memory: false, agency: false, embodiment: false, research: false, governance: false }, interrupt: active });
 assert.equal(restored.snapshot().interrupts, 3, 'a persisted active episode must not be counted again on restart');
 
