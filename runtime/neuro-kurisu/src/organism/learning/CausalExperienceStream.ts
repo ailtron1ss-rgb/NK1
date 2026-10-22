@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { ActionKind, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
 
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
@@ -305,7 +306,14 @@ export class CausalExperienceStream {
     const causal=input.causalStrength01??(surprise*.35+novelty*.15+Math.abs(reward-.5)*.25+Math.abs(success-.5)*.25);
     const at=Date.now();
     const id=`cx-ext-${eventTick}-${taskId}-${at}`;
-    const traceId=input.traceId===undefined?normalizeTraceId(id):normalizeTraceId(input.traceId);
+    // When an importer omits an upstream event ID, derive a deterministic identity
+    // from the normalized payload instead of minting a new event on every retry.
+    const derivedTraceId=input.traceId===undefined?`external-${createHash('sha256').update(JSON.stringify({
+      tick:eventTick,taskId,action:input.action,reward01:reward,success01:success,surprise01:surprise,
+      novelty01:novelty,uncertainty01:uncertainty,identityRelevance01:identityRelevance,
+      goalPressure01:goalPressure,causalStrength01:causal,sourceMemoryId,evidenceKey,
+    })).digest('hex').slice(0,40)}`:input.traceId;
+    const traceId=normalizeTraceId(derivedTraceId);
     if(!traceId)throw new Error('causal-external-trace-id-invalid');
     const prior=this.state.records.find(record=>record.traceId===traceId);
     if(prior){
