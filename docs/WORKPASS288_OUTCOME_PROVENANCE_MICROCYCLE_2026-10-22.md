@@ -11,6 +11,10 @@ const microVerified = Boolean(observation.worldEvent || observation.success !== 
 
 That boolean is forwarded as `verified01` to `developmentalNeural.neuralExperienceBranch.microTick(...)`. Therefore, a caller-supplied `success` or `reward` scalar is treated as verification in this path, despite the absence of an explicit verifier result in `OrganismObservation`. This is a concrete provenance-boundary weakness in the reduced-resolution cycle. It does not by itself prove that untrusted external input reaches this path in production; the live caller chain still needs tracing.
 
+## Implementation status after WorkPass289
+
+The first containment fix is now committed in `OperationalMicroCycleRuntime.ts`: reward is neutralized to `0.5`, `microVerified` is hard-set to `false`, and the success feature in the micro input vector is neutralized to `0.5`. Thus raw claims and generic events cannot grant fresh verified credit through this path. A source-level regression assertion was added to the architecture contract test, but the test has not been run. This deliberately trades away reward-driven micro-cycle updates until the canonical verifier evidence can be threaded through.
+
 ## Required correction
 
 Do not equate an outcome claim with independent outcome evidence. Preserve three distinct values:
