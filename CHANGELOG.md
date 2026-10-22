@@ -1,3 +1,12 @@
+## WorkPass279 — causal memory trust-boundary hardening (2026-10-22)
+
+- Causal snapshot restoration now sanitizes aggregate counters, normalized rolling metrics and timestamps, and recomputes behavioral aggregates from eligible runtime-grounded records.
+- Runtime causal outcome recording now fails closed on invalid trace ticks, malformed reward/success/surprise/novelty values and unsafe task identities.
+- Added regression coverage for poisoned persisted aggregates, NaN outcome reward and control-bearing task IDs.
+- No new dependencies. Tests have been authored but not executed; no learning-score uplift is claimed.
+
+---
+
 ## WorkPass273 — remove caller-controlled trust from external causal intake (2026-10-22)
 
 - **Code:** `recordExternalLearningEvent()` now canonicalizes all imported events to `provenance: 'external'` and `stateGrounded: false`; caller-supplied provenance and grounding booleans are not authentication.
