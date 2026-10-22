@@ -606,3 +606,11 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **DONE (code):** behavioral-impact/context-divergence aggregation now includes only grounded `runtime-outcome` rows. External/derived imports can remain visible for analysis but cannot inflate the runtime's observed adaptation metric.
 - **DONE (regression authored):** four imported events with deliberately varied actions must still produce zero runtime behavioral-context samples and zero behavioral-impact score.
 - **OPEN:** quantify behavioral-impact calibration against real longitudinal tasks; the metric remains a proxy for action-distribution change, not proof of improved competence or human-like learning.
+
+
+## WorkPass277 — validate persisted causal record shape
+
+- **DONE (code):** restore now rejects rows with invalid normalized task/trace IDs, unsupported actions, non-finite/out-of-range causal metrics, malformed timestamps/IDs, oversized policy vectors, and invalid replay metadata.
+- **DONE (regression authored):** malformed snapshot rows with NaN reward, an unsupported action, and control-bearing task identity are rejected and cannot enter replay.
+- **OPEN:** this schema validation is not cryptographic authenticity. A forged but well-formed `runtime-outcome` snapshot can still claim runtime provenance; host-authenticated persistence remains the next trust-boundary task.
+- **VALIDATION:** regression is authored but has not been executed on a functioning runner; exact-head CI remains unverified.
