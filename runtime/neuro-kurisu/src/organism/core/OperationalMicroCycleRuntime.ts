@@ -84,7 +84,11 @@ export class OperationalMicroCycleRuntime {
     const microResource = developmentalNeural.resourceAllocator.snapshot();
     developmentalNeural.longHorizonDevelopmentB302.recordMicro(state.tick, microResource.scarcity01);
 
-    const microAction = (persistedState.traces[0]?.selected?.action ?? state.lastAction ?? 'wait') as ActionKind;
+    // This reduced-resolution heartbeat does not execute a new action. Reusing the
+    // previous decision's action would falsely bind a stale action to this tick and
+    // contaminate action-conditioned neural experience. Keep the last real action
+    // in continuity/workspace metadata only; the micro-tick itself is explicitly wait.
+    const microAction: ActionKind = 'wait';
     // A micro-tick has no canonical verifier result or action-correlated evidence.
     // Treat incoming reward/success as claims, not verified credit. Keep the
     // neutral baseline until the full-cycle verifier can pass its evidence here.
