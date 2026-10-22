@@ -51,7 +51,8 @@ export interface HostOwnedIndependentEvaluationServices {
 const nonEmpty = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 const digest = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value);
 const forbiddenInheritedEnvironmentKey = (key: string): boolean =>
-  /^(?:NODE_OPTIONS|NODE_PATH|LD_PRELOAD|LD_LIBRARY_PATH|DYLD_INSERT_LIBRARIES|DYLD_LIBRARY_PATH|PYTHONPATH|PYTHONHOME|RUBYOPT|PERL5OPT|BASH_ENV|ENV|GIT_ASKPASS|SSH_ASKPASS|SSH_AUTH_SOCK|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN|AWS_PROFILE|GOOGLE_APPLICATION_CREDENTIALS|OPENAI_API_KEY|ANTHROPIC_API_KEY|GITHUB_TOKEN|GH_TOKEN|NPM_TOKEN|NPM_CONFIG_USERCONFIG|DATABASE_URL|PGPASSWORD)$/i.test(key);
+  /^(?:NODE_OPTIONS|NODE_PATH|LD_PRELOAD|LD_LIBRARY_PATH|DYLD_INSERT_LIBRARIES|DYLD_LIBRARY_PATH|PYTHONPATH|PYTHONHOME|RUBYOPT|PERL5OPT|BASH_ENV|ENV)$/i.test(key) ||
+  /(?:TOKEN|SECRET|PASSWORD|PASSWD|PRIVATE_KEY|API_KEY|ACCESS_KEY|CREDENTIAL|AUTH|COOKIE|SESSION|DATABASE_URL|USERCONFIG)$/i.test(key);
 
 function validateCommand(command: HostOwnedAuthorityCommand, name: string): void {
   if (!command || !path.isAbsolute(command.executable) || !path.isAbsolute(command.cwd) ||
