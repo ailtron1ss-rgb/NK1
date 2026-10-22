@@ -42,12 +42,10 @@ export class IntrinsicMotivationEngine {
       : (DRIVE_NAMES.find(name=>drives[name]===maximum)??'epistemic');
     this.state={
       ...drives,
-      overall:finiteInput(source.overall),
+      overall:maximum,
       dominant,
       updatedAt:safeTimestamp(source.updatedAt,Date.now()),
     };
-    // The aggregate must never understate the strongest restored drive.
-    this.state.overall=Math.max(this.state.overall,maximum);
   }
 
   update(input:{
