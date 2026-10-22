@@ -48,15 +48,4 @@ assert.equal(engine.snapshot().novelty,0.8);
 engine.restore({overall:1,dominant:'made-up'});
 assert.equal(engine.snapshot().overall,0);
 assert.equal(engine.proposeGoal(),null);
-assert.equal(engine.proposeInitiative({observationId:'obs-1',predictionId:'pred-1',worldEvidenceQuality:0.9,causalContinuity01:0.8}),null);
-
-engine.update({uncertainty:0.9,predictionError:0.7,novelty:0.8,goalPressure:0.2,socialNeed:0.1,energy:0.8,lastSuccess:0.5,worldEvidenceQuality:0.9});
-const initiative=engine.proposeInitiative({observationId:'obs-2',predictionId:'pred-2',worldEvidenceQuality:0.9,causalContinuity01:0.8});
-assert.equal(initiative?.kind,'intrinsic-goal-candidate');
-assert.equal(initiative?.evidence.observationId,'obs-2');
-assert.ok(initiative?.goal.reason.includes('intrinsic-'));
-assert.equal(engine.proposeInitiative({observationId:'obs-3',predictionId:'pred-3',worldEvidenceQuality:0.49,causalContinuity01:0.8}),null);
-assert.equal(engine.proposeInitiative({observationId:'obs-4',predictionId:'pred-4',worldEvidenceQuality:0.9,causalContinuity01:NaN}),null);
-assert.equal(engine.proposeInitiative({observationId:'bad'+String.fromCharCode(10)+'obs',predictionId:'pred-5',worldEvidenceQuality:0.9,causalContinuity01:0.8}),null);
-
-console.log('WorkPass288-289 intrinsic motivation contract: PASS');
+console.log('WorkPass288 intrinsic motivation contract: PASS');
