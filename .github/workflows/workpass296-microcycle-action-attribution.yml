@@ -1,0 +1,25 @@
+name: WorkPass296 micro-cycle action attribution
+on:
+  pull_request:
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/core/OperationalMicroCycleRuntime.ts'
+      - 'runtime/neuro-kurisu/tests/workpass296-microcycle-action-attribution.mjs'
+      - '.github/workflows/workpass296-microcycle-action-attribution.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  microcycle-action-attribution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Enforce runtime version
+        run: node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
+      - name: Check reduced-resolution action attribution
+        working-directory: runtime/neuro-kurisu
+        run: node tests/workpass296-microcycle-action-attribution.mjs
