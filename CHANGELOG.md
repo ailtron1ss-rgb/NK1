@@ -1,3 +1,12 @@
+## WorkPass316 — trust-adaptive relational tether and social-state persistence fix (2026-10-22)
+
+- Added a HYVE-inspired relational tether to `SocialMindKernel`. Trust half-life adapts to current trust; relationship strength, warmth and predictability decay toward neutral during long inter-session gaps, with bounded elapsed-time and deterministic persisted timestamps.
+- Fixed a canonical-state bug: `ensurePerson()` previously returned a clone from `observePerson()`, so `recordOutcome()`, `observeText()` and `observeRelation()` could update a detached copy instead of the stored person. It now resolves the live canonical record after observation/recomputation.
+- `observePerson()` now returns the refreshed persisted view after recomputation. Older snapshots without a relational timestamp migrate using `lastSeenAt`.
+- Added `relational-tether-workpass316.mjs` and a dedicated CI step. It tests outcome-state persistence, inter-session decay and deterministic restart behavior. CI execution still depends on an available GitHub Actions runner.
+
+---
+
 ## WorkPass315 — evidence-gated self-model identity updates (2026-10-22)
 
 - Added a CAKN-inspired write-time gate to `SelfModelEngine.learnGoalOutcome()`: action preferences continue to learn from bounded rewards, while `agencyBelief` and `identityCoherence` change only when a verified, independent outcome is bound to a non-empty receipt from the trusted world-transition or external-verification path.
