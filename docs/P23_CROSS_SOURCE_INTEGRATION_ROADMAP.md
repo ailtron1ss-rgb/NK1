@@ -357,3 +357,11 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **DONE (code):** verifier and safety-scanner response validation now requires exact `experimentPlanFingerprint` and `plannedRunId` echoes, not merely the evaluator plan digest and runtime run ID.
 - **DONE (fixture):** existing host-service protocol regression scripts echo these fields from the immutable request context.
 - **OPEN:** exact-head test/typecheck on an executing CI runner; actual OS/container sandbox; production verifier/scanner deployment; full promotion-chain e2e with host-issued evidence and authenticated approval.
+
+
+## WorkPass248 — bind executor output to the supervised run identity
+
+- **DONE (code):** the host-owned executor adapter now requires its JSON response `runId` to equal the invocation run ID used by the process supervisor, including the canonical scheduled run ID when experiment authority is configured.
+- **DONE (regression authored):** the existing host-authority process fixture now returns a detached run ID on demand and asserts the adapter rejects it before verifier/scanner evidence can be produced.
+- **WHY:** independent verification of a trace must not accidentally bless an executor-minted identity detached from the actual supervised invocation.
+- **OPEN:** execute the targeted host-service regression and runtime typecheck on an available runner; provision and exercise the real OS/container sandbox launcher plus independently controlled verifier/scanner; complete matched baseline/candidate activation e2e with host-issued evidence. This identity check does not itself provide OS isolation.
