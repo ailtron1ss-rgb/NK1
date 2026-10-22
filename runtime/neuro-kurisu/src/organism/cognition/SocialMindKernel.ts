@@ -97,12 +97,14 @@ export interface SocialMindState {
   episodes:SocialInteractionEpisode[];
   secondOrderBeliefs:SocialSecondOrderBelief[];
   counterfactuals:SocialCounterfactual[];
+  /** UserHarness-style reconstruction; optional on restore for pre-upgrade snapshots. */
+  userMindFrames?:UserMindFrame[];
   globalSocialUncertainty01:number;
   socialDemand01:number;
   lastAt:number;
 }
 
-export const defaultSocialMindState=():SocialMindState=>({version:1,persons:[],evidence:[],episodes:[],secondOrderBeliefs:[],counterfactuals:[],globalSocialUncertainty01:.5,socialDemand01:.1,lastAt:0});
+export const defaultSocialMindState=():SocialMindState=>({version:1,persons:[],evidence:[],episodes:[],secondOrderBeliefs:[],counterfactuals:[],userMindFrames:[],globalSocialUncertainty01:.5,socialDemand01:.1,lastAt:0});
 
 function stable(prefix:string,seed:string){
   let h=2166136261;
@@ -123,6 +125,48 @@ function classifyIntent(text:string):Array<{kind:SocialIntentKind,weight:number}
   return [...best.entries()].sort((a,b)=>b[1]-a[1]).map(([kind,weight])=>({kind,weight}));
 }
 
+
+export type UserMindEvidenceStatus = 'direct-observation'|'evidence-backed-hypothesis'|'unresolved';
+export interface UserMindClaimFrame {
+  claim: string;
+  confidence01: number;
+  evidenceIds: string[];
+  evidenceStatus: UserMindEvidenceStatus;
+}
+export interface UserMindProbabilityFrame extends UserMindClaimFrame {
+  probability01: number;
+}
+export interface UserMindActionFrame extends UserMindClaimFrame {
+  action: string;
+  observed: boolean;
+}
+export interface UserMindFrame {
+  id: string;
+  personId: string;
+  at: number;
+  /** NK1's current external-world hypothesis; not the user's belief about that world. */
+  environment: UserMindProbabilityFrame[];
+  /** Direct observations attributed to the user and tied to source evidence. */
+  observations: UserMindClaimFrame[];
+  /** Explicit hypotheses about what the user believes, kept separate from environment state. */
+  beliefs: UserMindProbabilityFrame[];
+  /** Explicit hypotheses about goals/intentions, not treated as actions. */
+  intentions: UserMindProbabilityFrame[];
+  /** Actions remain hypotheses unless exact action evidence exists in the ledger. */
+  actions: UserMindActionFrame[];
+  grounding01: number;
+  missingEvidence: string[];
+}
+export interface UserMindReconstructionInput {
+  personId: string;
+  at: number;
+  environment?: Array<{claim:string; probability01:number; confidence01:number; evidenceIds?:string[]}>;
+  observations?: Array<{claim:string; confidence01:number; evidenceIds?:string[]}>;
+  beliefs?: Array<{claim:string; probability01:number; confidence01:number; evidenceIds?:string[]}>;
+  intentions?: Array<{kind:string; probability01:number; confidence01:number; evidenceIds?:string[]}>;
+  actions?: Array<{kind:string; confidence01:number; evidenceIds?:string[]}>;
+}
+
 export class SocialMindKernel{
   private state=defaultSocialMindState();
 
@@ -140,7 +184,8 @@ export class SocialMindKernel{
       evidence:Array.isArray(r.evidence)?r.evidence.slice(0,512):[],
       episodes:Array.isArray(r.episodes)?r.episodes.slice(0,256):[],
       secondOrderBeliefs:Array.isArray(r.secondOrderBeliefs)?r.secondOrderBeliefs.slice(0,384):[],
-      counterfactuals:Array.isArray(r.counterfactuals)?r.counterfactuals.slice(0,192):[]};
+      counterfactuals:Array.isArray(r.counterfactuals)?r.counterfactuals.slice(0,192):[],
+      userMindFrames:Array.isArray(r.userMindFrames)?r.userMindFrames.slice(0,128).filter((f:any)=>f&&typeof f.personId==='string'&&Number.isFinite(f.at)&&Array.isArray(f.observations)&&Array.isArray(f.beliefs)&&Array.isArray(f.intentions)&&Array.isArray(f.actions)).map((f:any)=>structuredClone(f)):[]};
   }
   snapshot(){return structuredClone(this.state);}
 
@@ -252,6 +297,90 @@ export class SocialMindKernel{
     }
     this.recompute(input.at);
     return predictionError;
+  }
+
+
+  /** Record an observed user action as an evidence-ledger item before it can be marked observed. */
+  recordObservedUserAction(personId:string, action:string, at:number, confidence01:number, source:ObservationSource='interaction') {
+    const id=String(personId??'').normalize('NFKC').trim().slice(0,120);
+    const kind=String(action??'').normalize('NFKC').trim().toLowerCase().slice(0,100);
+    if(!id||!kind||!Number.isFinite(at)||at<0) throw new Error('valid personId, action and timestamp are required');
+    this.ensurePerson(id,at);
+    const evidence:SocialEvidence={
+      id:stable('user-action',`${id}:${kind}:${at}:${this.state.evidence.length}`),
+      personId:id,source,claim:`user-action:${kind}`,confidence01:clamp(confidence01),
+      observedAt:at,evidenceKind:'observed'
+    };
+    this.state.evidence=[evidence,...this.state.evidence].slice(0,512);
+    this.recompute(at);
+    return structuredClone(evidence);
+  }
+
+  /**
+   * Reconstructs four non-interchangeable ToM layers. Evidence references must point
+   * to unexpired, observed evidence owned by the same person; unsupported model claims
+   * stay low-confidence hypotheses. Intentions never become actions implicitly.
+   */
+  reconstructUserMind(input:UserMindReconstructionInput):UserMindFrame {
+    const personId=String(input?.personId??'').normalize('NFKC').trim().slice(0,120);
+    const at=Number(input?.at);
+    if(!personId||!Number.isFinite(at)||at<0) throw new Error('valid personId and timestamp are required');
+    this.ensurePerson(personId,at);
+    const support=(ids:unknown)=>{
+      const wanted=new Set((Array.isArray(ids)?ids:[]).filter((x):x is string=>typeof x==='string').slice(0,16));
+      return this.state.evidence.filter(e=>wanted.has(e.id)&&e.personId===personId&&e.evidenceKind==='observed'&&e.observedAt<=at&&(e.expiresAt==null||e.expiresAt>at));
+    };
+    const claim=(raw:unknown)=>String(raw??'').normalize('NFKC').replace(/[\\u0000-\\u001f\\u007f-\\u009f]/g,' ').trim().slice(0,180);
+    const entries=(rows:unknown, kind:'environment'|'observation'|'belief'|'intention')=>{
+      const list=Array.isArray(rows)?rows.slice(0,16):[];
+      return list.flatMap((raw:any)=>{
+        const text=claim(kind==='intention'?raw?.kind:raw?.claim);
+        if(!text) return [];
+        const refs=support(raw?.evidenceIds);
+        const cap=refs.length?Math.max(...refs.map(e=>clamp(e.confidence01))):.2;
+        const observed=kind==='observation'&&refs.length>0;
+        const status:UserMindEvidenceStatus=observed?'direct-observation':refs.length?'evidence-backed-hypothesis':'unresolved';
+        const row:UserMindClaimFrame={claim:text,confidence01:Math.min(clamp(Number(raw?.confidence01)),cap),evidenceIds:refs.map(e=>e.id).slice(0,8),evidenceStatus:status};
+        if(kind==='observation'&&!observed) row.confidence01=Math.min(row.confidence01,.2);
+        if(kind==='environment'||kind==='belief'||kind==='intention') return [{...row,probability01:clamp(Number(raw?.probability01))}];
+        return [row];
+      });
+    };
+    const actions=(Array.isArray(input.actions)?input.actions.slice(0,16):[]).flatMap((raw)=>{
+      const kind=claim(raw?.kind).toLowerCase();
+      if(!kind) return [];
+      const refs=support(raw?.evidenceIds).filter(e=>e.claim===`user-action:${kind}`);
+      const observed=refs.length>0;
+      const cap=observed?Math.max(...refs.map(e=>clamp(e.confidence01))):.2;
+      return [{action:kind,claim:`user-action:${kind}`,confidence01:Math.min(clamp(Number(raw?.confidence01)),cap),evidenceIds:refs.map(e=>e.id).slice(0,8),evidenceStatus:observed?'direct-observation' as const:'unresolved' as const,observed}];
+    });
+    const environment=entries(input.environment,'environment') as UserMindProbabilityFrame[];
+    const observations=entries(input.observations,'observation') as UserMindClaimFrame[];
+    const beliefs=entries(input.beliefs,'belief') as UserMindProbabilityFrame[];
+    const intentions=entries(input.intentions,'intention') as UserMindProbabilityFrame[];
+    const missingEvidence:string[]=[];
+    if(environment.some(x=>x.evidenceStatus==='unresolved')) missingEvidence.push('environment-evidence-missing');
+    if(observations.some(x=>x.evidenceStatus!=='direct-observation')) missingEvidence.push('observation-evidence-missing');
+    if(beliefs.some(x=>x.evidenceStatus==='unresolved')) missingEvidence.push('belief-evidence-missing');
+    if(intentions.some(x=>x.evidenceStatus==='unresolved')) missingEvidence.push('intention-evidence-missing');
+    if(actions.some(x=>!x.observed)) missingEvidence.push('action-evidence-missing');
+    const categories=[environment,observations,beliefs,intentions,actions];
+    const total=categories.reduce((sum,x)=>sum+x.length,0);
+    const grounded=environment.filter(x=>x.evidenceStatus!=='unresolved').length+
+      observations.filter(x=>x.evidenceStatus==='direct-observation').length+
+      beliefs.filter(x=>x.evidenceStatus!=='unresolved').length+
+      intentions.filter(x=>x.evidenceStatus!=='unresolved').length+
+      actions.filter(x=>x.observed).length;
+    const identity=stable('user-mind',`${personId}:${at}:${JSON.stringify(categories)}`);
+    const frame:UserMindFrame={id:identity,personId,at,environment,observations,beliefs,intentions,actions,grounding01:total?clamp(grounded/total):0,missingEvidence};
+    this.state.userMindFrames=[frame,...(this.state.userMindFrames??[]).filter(f=>f.id!==identity)].slice(0,128);
+    this.state.lastAt=Math.max(this.state.lastAt,at);
+    return structuredClone(frame);
+  }
+
+  userMindFrame(personId:string) {
+    const frame=(this.state.userMindFrames??[]).find(f=>f.personId===personId);
+    return frame?structuredClone(frame):null;
   }
 
   updateSecondOrderBelief(personId:string,claim:string,belief01:number,at:number,evidenceIds:string[]=[]){
