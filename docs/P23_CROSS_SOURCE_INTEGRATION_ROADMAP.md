@@ -1,3 +1,13 @@
+## WorkPass285 — evaluator capability-scope enforcement (2026-10-22)
+
+- **Code:** independent candidate evaluation now rejects verifier-reported capability IDs not declared by the evaluated task. Out-of-scope claims fail closed and are not included in the recorded covered-capability set.
+- **Regression:** added a two-split evaluator scenario where the verifier claims an unrequested `write` capability for tasks requiring `read`; the run must not be counted as verifier-passed.
+- **Why it matters:** prevents a faulty or misconfigured verifier from inflating a candidate's capability coverage beyond what the task manifest requested.
+- **Architecture:** this is enforced in the existing independent evaluator, before aggregation and promotion gates; no duplicate capability registry or dependency.
+- **Validation:** regression authored; test/typecheck execution not performed in this pass.
+
+---
+
 ## WorkPass284 — strict external causal-memory intake (2026-10-22)
 
 - **Code:** `CausalExperienceStream.recordExternalLearningEvent` now rejects non-safe/negative ticks, non-finite or out-of-range metrics, and invalid optional source-memory/evidence identities before record construction. It no longer silently coerces a malformed tick to zero or clamps invalid metrics into plausible values.
