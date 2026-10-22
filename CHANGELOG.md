@@ -1411,3 +1411,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Tightened host-owned verifier and scanner response binding to require exact echoes of `experimentPlanFingerprint` and `plannedRunId` in addition to the canonical manifest, evaluator plan, payload, task input, environment, run, task and seed.
 - Updated the existing host-process protocol fixture to echo the full scheduled experiment context. This keeps the trust boundary aligned with the immutable context produced by the canonical evaluator.
 - Validation remains unverified: no local test/typecheck was run; latest GitHub Actions jobs are failing before exposing usable step details. Real OS/container isolation and production authority provisioning remain open.
+
+
+## WorkPass248 — bind executor response to the supervised invocation (2026-10-22)
+
+- The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
+- Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
+- This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
