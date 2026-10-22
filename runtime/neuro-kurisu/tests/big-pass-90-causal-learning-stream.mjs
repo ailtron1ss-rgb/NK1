@@ -44,7 +44,7 @@ const externalStream = new CausalExperienceStream(64);
 const externalInput = {
   tick: 4, taskId: "external-retry", action: "explore",
   reward01: .7, success01: .8, surprise01: .6, novelty01: .4,
-  traceId: "  Ｅxternal-Source-17  ", stateGrounded: true,
+  traceId: "  Ｅxternal-Source-17  ", stateGrounded: true, provenance: "runtime-outcome",
 };
 const externalFirst = externalStream.recordExternalLearningEvent(externalInput);
 assert.ok(externalFirst);
