@@ -1,3 +1,15 @@
+## Latest durable checkpoint — WorkPass271 (2026-10-22)
+
+- Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use the live PR for the current HEAD.
+- WorkPass271 normalizes persisted trace IDs before restore reconciliation: exact duplicate rows are collapsed; conflicting records that collide under NFKC are quarantined and cannot be replayed/reintroduced by retry.
+- Existing regressions now cover task/trace bounds, C0/DEL/C1 controls including string edges, same-ID changed-payload conflicts, exact duplicate restoration, conflicting normalized snapshot records and late duplicates after bounded eviction.
+- Tests/typecheck remain unverified due to Actions jobs returning no steps/logs; keep learning estimates unchanged.
+- Next: restore actionable CI, audit caller-owned grounding/provenance inputs, deploy independent evaluation authorities, and run frozen memory-to-action/transfer/forgetting experiments.
+
+Read the [strategic audit](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [P23 integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md) and [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md).
+
+---
+
 ## Latest durable checkpoint — WorkPass270 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use the live PR for current HEAD.
