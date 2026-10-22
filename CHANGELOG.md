@@ -1,3 +1,12 @@
+## WorkPass314 — memory hygiene doctor and holdout receipt integrity (2026-10-22)
+
+- Added a bounded, read-only `MemoryOS2.doctor()` report for content-hash mismatch, duplicate IDs/content candidates, unresolved links, dangling revision pointers, non-reciprocal revision chains, repeated revision sequences, future-dated evidence, duplicate independence keys and memory-index corruption.
+- Exposed the report through the canonical `MemorySubsystemRuntime.doctor()` owner; the diagnostic path does not mutate or automatically delete memories.
+- Hardened `evaluateSkillRevision()` so the same method/verifier/evidence receipt cannot be counted more than once under different task IDs. Reused receipts are rejected before paired holdout evaluation.
+- Added regression checks for doctor non-mutation, corrupted memory records and replayed holdout receipts. Actions runner availability remains unverified: prior executions were rejected before starting any steps (runner_id=0).
+
+---
+
 ## WorkPass313 — evidence-grounded user-mind reconstruction and EILS control signals (2026-10-22)
 
 - Extended the existing SocialMindKernel with explicit environment, observation, belief, intention, and action tracks. These categories remain separate so inferred intent cannot silently become an observed action.
