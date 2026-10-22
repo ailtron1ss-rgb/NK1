@@ -87,6 +87,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: P23 persisted learning restore integrity
         run: npm --prefix runtime/neuro-kurisu run test:workpass310:p23-restore-integrity
+      - name: WorkPass313 evidence-grounded user model and EILS
+        run: npm --prefix runtime/neuro-kurisu run test:p313:user-mind-and-eils
       - name: Local LLM bounded-response regression
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/local-chat-provider-workpass40.mjs
       - name: Optional live local LLM smoke (skips without explicit loopback URL)
