@@ -1,10 +1,18 @@
 # Neuro Kurisu — cross-source learning integration roadmap
 
-Latest implementation checkpoint: WorkPass239 (race-safer durable registry lock recovery plus restart/replay/authenticated-promotion end-to-end regression); code is committed on the current draft PR branch, but execution results remain unverified.
+Latest implementation checkpoint: WorkPass242 (candidate payload snapshot held constant across asynchronous independent-evaluation trials); code and regression are committed on the current draft PR branch, but execution results remain unverified.
 
 Scope: continue integrating mechanisms into the existing P23 learning/revision lifecycle. This is an implementation queue, not a promise that upstream mechanisms are already integrated. Preserve the current branch/PR boundary; do not merge to the default branch without explicit approval.
 
-## Completed in this branch (through WorkPass240 code; runtime verification pending)
+## WorkPass242 — candidate payload TOCTOU closure
+
+- [x] Snapshot the caller-owned candidate payload synchronously at evaluator entry, before any asynchronous execution.
+- [x] Compute the payload fingerprint from that snapshot and pass per-service clones of the same snapshot to each trial executor and safety scanner.
+- [x] Add a deterministic retained-reference mutation regression to the existing independent evaluator suite.
+- [ ] Run the focused evaluator regression and TypeScript typecheck on an executing CI runner; current connector-visible runner failures have not established code success or code failure.
+- [ ] Provision and verify real host-owned sandbox, independent verifier, and safety-scanner authorities. Interface injection and distinct function identities alone do not prove independent service ownership.
+
+## Completed in this branch (through WorkPass242 code; runtime verification pending)
 
 - [x] Reuse SkillLearnBench-style task success, skill quality, trajectory quality and macro-averaged task metrics.
 - [x] Bind evaluator runs to exact payload/task/environment/plan identity; require an independent verifier's explicit binding attestation.
