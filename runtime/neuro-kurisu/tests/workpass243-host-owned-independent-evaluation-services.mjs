@@ -18,7 +18,7 @@ try {
       timeoutMs: 5000,
       maxOutputBytes: 8192,
       env: {},
-      inheritEnv: [],
+      inheritEnv: ['PATH'],
     };
   };
   const executor = await serviceRoot('executor');
