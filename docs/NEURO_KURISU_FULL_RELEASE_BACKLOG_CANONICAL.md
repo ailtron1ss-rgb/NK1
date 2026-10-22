@@ -870,3 +870,10 @@ The historical WorkPass57 release baseline and its 78.0% release-roadmap number 
 - [x] Add regression for a forged `skill-repair` snapshot attempting to inherit runtime trust from plausible policy features.
 - [ ] Authenticate persisted causal snapshots at the host boundary; current checks do not prevent a fully forged snapshot from claiming `runtime-outcome` and fabricating a feature vector.
 - [ ] Execute exact-head typecheck and targeted regression on a functioning CI runner; current GitHub Actions result inspection has not provided actionable logs, so validation is unverified.
+
+
+## WorkPass276 — prevent imported-data contamination of adaptation metrics
+
+- [x] Compute runtime behavioral-impact/context-divergence only from grounded `runtime-outcome` records.
+- [x] Add regression proving varied external actions do not register as runtime behavioral adaptation.
+- [ ] Calibrate the metric against longitudinal task outcomes and holdout evaluation; action-distribution change alone is not evidence of capability improvement.
