@@ -1,3 +1,11 @@
+## WorkPass263 — reduce inherited environment leakage to evaluation authorities
+
+- [x] Reject inheritance of common API tokens, secrets, passwords, credentials, auth/session variables, credential-profile paths, runtime injection variables, and dynamic-loader overrides.
+- [x] Reject duplicate inherited environment keys.
+- [x] Add regression coverage for secret-bearing variables and NODE_OPTIONS while preserving the existing PATH-based fixture launcher.
+- [ ] Execute the host-owned evaluation regression and runtime typecheck on a functioning runner.
+- **Boundary:** explicit `command.env` remains host-owned configuration; this check constrains implicit parent-environment inheritance. The configured executor still must provide a real OS/container sandbox.
+
 ## WorkPass262 — avoid per-frame canvas bitmap resets
 
 - [x] Resize the Legacy avatar canvas only when its rendered width/height actually change, instead of assigning canvas dimensions on every animation frame.
