@@ -219,7 +219,7 @@ export async function createHostOwnedIndependentEvaluationServices(
       },
     },
     safetyScanner: {
-      async scan({ payload, task, execution, signal }) {
+      async scan({ payload, task, execution, context, signal }) {
         if (signal?.aborted) throw new Error('host-owned-safety-scanner-aborted');
         const result = await invoke<Record<string, unknown>>(safetyCommand, 'safety-scanner',
           { payload, task, ...(execution ? { execution } : {}), context }, {
