@@ -59,3 +59,10 @@ This is a source-grounded finding and implementation contract, not a claim that 
 ## Next concrete source trace
 
 Trace the active full-cycle result around `OutcomeVerificationService`, `P51GroundedCausalWorkspace`, and `OrganismCore`; find where accepted evidence is persisted and whether the micro-cycle can receive that same evidence without invoking a duplicate verifier.
+
+
+## WorkPass296 — stale action attribution closed (2026-10-22)
+
+The reduced-resolution scheduler increments organism time and updates homeostasis, but does not execute a new external action. It now records `wait` for the micro-tick's action-conditioned neural event. The previous selected action remains available in workspace continuity metadata only. This distinction prevents the same previous action from being treated as though it were re-executed at a new tick. The micro-tick still receives neutral reward and no verified credit. A later integration must pass the exact ActionGateway execution/decision/tick binding and canonical verifier result; until then, the safe behavior is no credit.
+
+Regression added: `runtime/neuro-kurisu/tests/workpass296-microcycle-action-attribution.mjs`. Validation is unconfirmed until the new Node 24 workflow actually runs.
