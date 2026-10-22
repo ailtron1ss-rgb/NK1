@@ -21,7 +21,7 @@ assert.ok(duplicateIds.missingStages.includes('observation'));
 assert.ok(duplicateIds.missingStages.includes('prediction'));
 assert.throws(()=>cycle.evaluate({tick:1,stageIds:stages,parentIntegrity01:0.9}),/strictly increase/);
 
-const invalidId=cycle.evaluate({tick:2,stageIds:{...stages,action:'  '},parentIntegrity01:0.9});
+const invalidId=cycle.evaluate({tick:3,stageIds:{...stages,action:'  '},parentIntegrity01:0.9});
 assert.equal(invalidId.complete,false);
 assert.ok(invalidId.missingStages.includes('action'));
 
