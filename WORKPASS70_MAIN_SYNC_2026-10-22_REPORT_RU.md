@@ -40,3 +40,9 @@
 - Validation run [39806308555](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39806308555) и повторная попытка завершились `failure` до шагов. Validation run [39807146096](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39807146096) для указанного source head тоже завершился `failure` до шагов: GitHub API сообщил `runner_id=0`, пустое имя runner и пустой список шагов. Поэтому это **не свидетельство провала конкретных тестов** и не основание заявлять, что тесты пройдены; причину недоступности runner API-ответ не раскрывает.
 - Перечень GitHub Releases после проверки содержит только исходные `Neuro` и `workpass70-hotfix1-2026-10-19`; тег `workpass70-main-sync-2026-10-22-*` и новый синхронизированный ZIP отсутствуют. Старый ZIP с SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb` не перезаписывался.
 - Итоговый статус: **содержимое main синхронизировано в source-дерево; публикация нового Release-asset не подтверждена и пока не выполнена**. Новый publisher намеренно требует успешной core-validation и создаёт отдельный prerelease вместо изменения исторического тега.
+
+## CI/toolchain follow-up — 22 October 2026
+
+- Migrated `actions/checkout` references to `v7`, `actions/setup-node` to `v7`, and `actions/upload-artifact` to `v7` in all five source-branch workflows; matching main-branch workflows were updated in parallel.
+- The core validation workflow explicitly installs Node.js `24.22.0`. The migration follows GitHub's announced Node 20 removal (23 September 2026) and the current Node 24-compatible first-party action releases.
+- The latest Actions failures still show zero runner assignment and no executed steps; they do not constitute passing test evidence or isolate a code-test failure. A clean successful run remains a release gate.

@@ -1,3 +1,8 @@
+## WorkPass70 release sync follow-up — GitHub Actions Node 24 migration (2026-10-22)
+- Migrated first-party workflow actions to Node 24-compatible majors: checkout v7, setup-node v7 and upload-artifact v7.
+- Core validation now installs and tests against Node.js 24.22.0 explicitly, while the JavaScript-based Actions themselves also use Node 24.
+- This is a CI/toolchain compatibility change; it does not imply that the runner started or that test suites passed. The most recent core-validation failures ended before any job step and showed no runner assignment.
+
 ## WorkPass70 Main-to-release synchronization (2026-10-22)
 - Reconciled the complete current `main` file inventory against the full `workpass70-source` tree at baseline `e0d8e5b1a422c1e42db817cc37e5e1f97549c4d5`.
 - Imported every main-only file that was absent by path: the WorkPass70 hotfix publisher, source-archive inventory workflow, source-branch materializer, WorkPass64 audit summary/report/checksum manifest, WorkPass65 experimental plan, WorkPass64 publish script, and the validation-gated main-sync release publisher.
