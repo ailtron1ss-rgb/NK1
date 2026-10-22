@@ -1,3 +1,10 @@
+## WorkPass283 — causal outcome tick binding (2026-10-22)
+
+- Causal experience records now require a decision trace and its pre-action state to refer to the same world tick.
+- Added a regression for mismatched trace/state ticks. Test execution remains unverified; no dependency or learning-score uplift claimed.
+
+---
+
 ## WorkPass282 — P23 fingerprint canonicalization consistency (2026-10-22)
 
 - Unified the P23 engine's canonicalization semantics with the independent candidate evaluator for candidate payload and evaluation fingerprints.
