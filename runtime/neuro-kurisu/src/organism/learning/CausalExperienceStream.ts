@@ -260,17 +260,35 @@ export class CausalExperienceStream {
     const taskId=normalizeTaskId(taskCandidate);
     if(!taskId)throw new Error('causal-external-task-id-invalid');
     if(!CAUSAL_ACTIONS.includes(input.action))throw new Error('causal-external-action-invalid');
-    const eventTick=Math.max(0,Math.floor(Number.isFinite(input.tick)?input.tick:0));
-    const reward=clamp01(input.reward01),success=clamp01(input.success01),surprise=clamp01(input.surprise01),novelty=clamp01(input.novelty01),uncertainty=clamp01(input.uncertainty01??.5);
-    const identityRelevance=clamp01(input.identityRelevance01??0),goalPressure=clamp01(input.goalPressure01??0);
+    if(!Number.isSafeInteger(input.tick)||input.tick<0)throw new Error('causal-external-tick-invalid');
+    const boundedExternalMetrics=[
+      input.reward01,input.success01,input.surprise01,input.novelty01,
+      input.uncertainty01??.5,input.identityRelevance01??0,input.goalPressure01??0,
+      input.causalStrength01??(input.surprise01*.35+input.novelty01*.15+
+        Math.abs(input.reward01-.5)*.25+Math.abs(input.success01-.5)*.25),
+    ];
+    if(!boundedExternalMetrics.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1)){
+      throw new Error('causal-external-metric-invalid');
+    }
+    const validateOptionalIdentity=(value:unknown,label:string,maxLength:number):string|undefined=>{
+      if(value===undefined)return undefined;
+      if(typeof value!=='string')throw new Error(`causal-external-${label}-invalid`);
+      const normalized=normalizeBoundedId(value,maxLength);
+      if(!normalized)throw new Error(`causal-external-${label}-invalid`);
+      return normalized;
+    };
+    const sourceMemoryId=validateOptionalIdentity(input.sourceMemoryId,'source-memory-id',180);
+    const evidenceKey=validateOptionalIdentity(input.evidenceKey,'evidence-key',256);
+    const eventTick=input.tick;
+    const reward=input.reward01,success=input.success01,surprise=input.surprise01,novelty=input.novelty01,uncertainty=input.uncertainty01??.5;
+    const identityRelevance=input.identityRelevance01??0,goalPressure=input.goalPressure01??0;
     // This public ingestion boundary cannot authenticate caller-asserted provenance
     // or stateGrounded flags. Treat every imported event as external and ungrounded;
     // only recordOutcome() may mint runtime-grounded evidence from an observed
     // decision trace plus the resulting organism state transition.
     const provenance:CausalExperienceRecord['provenance']='external';
     const stateGrounded=false;
-    const sourceMemoryId=input.sourceMemoryId,evidenceKey=input.evidenceKey;
-    const causal=clamp01(input.causalStrength01??(surprise*.35+novelty*.15+Math.abs(reward-.5)*.25+Math.abs(success-.5)*.25));
+    const causal=input.causalStrength01??(surprise*.35+novelty*.15+Math.abs(reward-.5)*.25+Math.abs(success-.5)*.25);
     const at=Date.now();
     const id=`cx-ext-${eventTick}-${taskId}-${at}`;
     const traceId=input.traceId===undefined?normalizeTraceId(id):normalizeTraceId(input.traceId);
