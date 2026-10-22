@@ -1,3 +1,12 @@
+## WorkPass280 — strict canonicalization for independent evaluation evidence (2026-10-22)
+
+- **Code:** Hermes/P23 evidence binding now rejects NaN and infinities, circular references and non-plain object instances before computing the evaluation fingerprint. Non-finite numeric values can no longer collapse to JSON `null` and create an ambiguous canonical digest.
+- **Regression:** added an independent-evaluation envelope case with a NaN quality metric; it must fail closed with a canonicalization error.
+- **Integration:** strengthened the existing signed-evidence bridge; no parallel trust subsystem and no new dependency.
+- **Validation:** regression authored but not executed here. Signed receipts still authenticate identity/binary outcome only; they do not authenticate the evaluation's quality metrics. No score increase claimed.
+
+---
+
 ## WorkPass279 — sanitize restored aggregates and fail closed on invalid causal outcomes (2026-10-22)
 
 - **Code:** causal snapshot restore now normalizes persisted counters, rolling metrics and timestamps; behavioral-impact aggregates are recomputed from eligible runtime-grounded records rather than trusted from the snapshot. Restored trace IDs are deduplicated after normalization.
