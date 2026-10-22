@@ -141,7 +141,52 @@ export class UnifiedLearningSubstrate {
   private state=defaultUnifiedLearning();
   restore(raw?:Partial<UnifiedLearningState>|null){
     const d=defaultUnifiedLearning(),r=raw??{};
-    this.state={...d,...r,version:4,sharedRepresentation01:Array.isArray(r.sharedRepresentation01)?r.sharedRepresentation01.slice(0,DIM).map(clamp01):d.sharedRepresentation01.slice(),patterns:Array.isArray(r.patterns)?r.patterns.slice(-128):[],externalHypotheses:restoreExternalHypotheses(r.externalHypotheses),provenanceCounts:{...d.provenanceCounts,...(r.provenanceCounts??{})},transferProbes:Array.isArray(r.transferProbes)?r.transferProbes.slice(-96):[],loop:{...d.loop,...(r.loop??{})}};
+    // v3 patterns/representations could have been updated by caller-asserted
+    // skill-repair/replay claims. They have no per-sample evidence references,
+    // so they cannot be safely relabelled as trusted. Reset only the learned
+    // substrate on migration; durable organism memory and identity are untouched.
+    if(r.version!==4){
+      const safeCycles=typeof r.cycles==='number'&&Number.isSafeInteger(r.cycles)&&r.cycles>=0?r.cycles:0;
+      this.state={...d,cycles:safeCycles};
+      return;
+    }
+    const rawRepresentation=r.sharedRepresentation01;
+    const validRepresentation=Array.isArray(rawRepresentation)&&rawRepresentation.length===DIM&&
+      rawRepresentation.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1);
+    const safeCount=(value:unknown)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
+    const safeMetric=(value:unknown,fallback=0)=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:fallback;
+    const rawProvenance=r.provenanceCounts;
+    const provenanceCounts={
+      runtime:safeCount(rawProvenance?.runtime),
+      experienceReplay:safeCount(rawProvenance?.experienceReplay),
+      skillRepair:safeCount(rawProvenance?.skillRepair),
+      external:safeCount(rawProvenance?.external),
+    };
+    this.state={
+      ...d,
+      version:4,
+      cycles:safeCount(r.cycles),
+      samples:safeCount(r.samples),
+      updates:safeCount(r.updates),
+      sharedRepresentation01:validRepresentation?rawRepresentation as number[]:d.sharedRepresentation01.slice(),
+      representationDrift01:safeMetric(r.representationDrift01),
+      predictionAgreement01:safeMetric(r.predictionAgreement01,.5),
+      crossTaskTransfer01:safeMetric(r.crossTaskTransfer01),
+      consolidationEfficiency01:safeMetric(r.consolidationEfficiency01),
+      developmentalTransfer01:safeMetric(r.developmentalTransfer01),
+      lastDevelopmentalSignal01:safeMetric(r.lastDevelopmentalSignal01),
+      lastLearningOpportunity01:safeMetric(r.lastLearningOpportunity01),
+      lastAt:safeCount(r.lastAt),
+      patterns:Array.isArray(r.patterns)?r.patterns.slice(-128):[],
+      externalHypotheses:restoreExternalHypotheses(r.externalHypotheses),
+      provenanceCounts,
+      validatedTransferSamples:safeCount(r.validatedTransferSamples),
+      positiveTransferSamples:safeCount(r.positiveTransferSamples),
+      negativeTransferSamples:safeCount(r.negativeTransferSamples),
+      interference01:safeMetric(r.interference01),
+      transferProbes:Array.isArray(r.transferProbes)?r.transferProbes.slice(-96):[],
+      loop:r.loop&&typeof r.loop==='object'?{...d.loop,...r.loop}:d.loop,
+    };
   }
   snapshot(){return structuredClone(this.state);}
   /** Read-only oldest-first queue for independent assessment; reading never promotes or deletes a claim. */
