@@ -17,10 +17,13 @@ export interface SelfModelV2 {
   goalAlignment01: number;
   goalAlignmentEMA01: number;
   selfConsistentAction11: Record<string, number>;
+  identityGateAcceptedCount: number;
+  identityGateRejectedCount: number;
+  lastIdentityGate: { accepted: boolean; reason: string; at: number; evidenceRef: string | null } | null;
 }
 
 export function defaultSelfModel(): SelfModelV2 {
-  return { predictedAction:'none', confidence:0, actionAccuracy:0.5, calibrationError:0.5, identityCoherence:0.88, agencyBelief:0.5, recentErrors:[], preferredStrategies:[], updatedAt:Date.now(),recoveryCount:0,lastRecoveryAt:0,continuityShock01:0,postRecoveryIntegration01:0,goalAlignment01:0.5,goalAlignmentEMA01:0.5,selfConsistentAction11:{}, };
+  return { predictedAction:'none', confidence:0, actionAccuracy:0.5, calibrationError:0.5, identityCoherence:0.88, agencyBelief:0.5, recentErrors:[], preferredStrategies:[], updatedAt:Date.now(),recoveryCount:0,lastRecoveryAt:0,continuityShock01:0,postRecoveryIntegration01:0,goalAlignment01:0.5,goalAlignmentEMA01:0.5,selfConsistentAction11:{}, identityGateAcceptedCount:0, identityGateRejectedCount:0, lastIdentityGate:null, };
 }
 
 export class SelfModelEngine {
@@ -36,7 +39,7 @@ export class SelfModelEngine {
     return Math.max(-0.06, Math.min(0.06, selfConsistency*0.045 + (predictedMatch-.5)*0.028 + agency + identity));
   }
 
-  learnGoalOutcome(input:{action:ActionKind;goalAlignment01:number;reward01:number;tick:number}){
+  learnGoalOutcome(input:{action:ActionKind;goalAlignment01:number;reward01:number;tick:number;evidence?:{verified:boolean;independent:boolean;source:'world-transition'|'external-verification'|'internal';evidenceRef?:string}}){
     const alignment=Math.max(0,Math.min(1,input.goalAlignment01));
     const reward=Math.max(0,Math.min(1,input.reward01));
     const quality=0.5*alignment+0.5*reward;
@@ -46,11 +49,24 @@ export class SelfModelEngine {
     const old=this.model.selfConsistentAction11[input.action] ?? 0;
     const target=(quality-.5)*2;
     this.model.selfConsistentAction11[input.action]=Math.max(-1,Math.min(1,old*(1-lr)+target*lr));
-    this.model.agencyBelief=Math.max(0,Math.min(1,this.model.agencyBelief*.985 + (alignment-.5)*.024 + (reward-.5)*.012));
-    this.model.identityCoherence=Math.max(0,Math.min(1,this.model.identityCoherence*.99 + (alignment-.5)*.016));
+    // CAKN-inspired write-time gate: action preferences can learn from the already-gated reward,
+    // but high-level self-beliefs move only when a trusted, independent outcome is explicitly bound.
+    const evidence=input.evidence;
+    const evidenceRef=String(evidence?.evidenceRef??'').trim().slice(0,240);
+    const allowedSource=evidence?.source==='world-transition'||evidence?.source==='external-verification';
+    const gateAccepted=Boolean(evidence?.verified&&evidence.independent&&allowedSource&&evidenceRef);
+    const gateReason=gateAccepted?'verified-independent-outcome-bound':!evidence?'missing-provenance':!evidence.verified?'outcome-unverified':!evidence.independent?'outcome-not-independent':!allowedSource?'untrusted-evidence-source':'missing-evidence-reference';
+    if(gateAccepted){
+      this.model.agencyBelief=Math.max(0,Math.min(1,this.model.agencyBelief*.985 + (alignment-.5)*.024 + (reward-.5)*.012));
+      this.model.identityCoherence=Math.max(0,Math.min(1,this.model.identityCoherence*.99 + (alignment-.5)*.016));
+      this.model.identityGateAcceptedCount=(this.model.identityGateAcceptedCount??0)+1;
+    } else {
+      this.model.identityGateRejectedCount=(this.model.identityGateRejectedCount??0)+1;
+    }
+    this.model.lastIdentityGate={accepted:gateAccepted,reason:gateReason,at:Number.isFinite(input.tick)?input.tick:0,evidenceRef:gateAccepted?evidenceRef:null};
     if (input.action) this.model.preferredStrategies=[input.action,...this.model.preferredStrategies.filter(x=>x!==input.action)].slice(0,8);
     this.model.updatedAt=Date.now();
-    return {updated:true,action:input.action,quality01:quality,goalAlignment01:this.model.goalAlignment01,goalAlignmentEMA01:this.model.goalAlignmentEMA01,actionBias11:this.actionBias(input.action),agencyBelief:this.model.agencyBelief,identityCoherence:this.model.identityCoherence};
+    return {updated:true,action:input.action,quality01:quality,goalAlignment01:this.model.goalAlignment01,goalAlignmentEMA01:this.model.goalAlignmentEMA01,actionBias11:this.actionBias(input.action),agencyBelief:this.model.agencyBelief,identityCoherence:this.model.identityCoherence,identityUpdateAccepted:gateAccepted,identityUpdateReason:gateReason,identityGateAcceptedCount:this.model.identityGateAcceptedCount,identityGateRejectedCount:this.model.identityGateRejectedCount};
   }
 
   registerRecovery(input:{at?:number;recoveryCount?:number;preTick?:number;postTick?:number;reason?:string}){
