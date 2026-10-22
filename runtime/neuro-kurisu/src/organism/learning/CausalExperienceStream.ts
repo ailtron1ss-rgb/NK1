@@ -207,24 +207,28 @@ export class CausalExperienceStream {
     // A caller reaching this API is not enough to establish a grounded transition:
     // require a supported selected action and valid before/after state snapshots.
     if(!trace.selected||!CAUSAL_ACTIONS.includes(trace.selected.action)||
+      !Number.isSafeInteger(trace.tick)||trace.tick<0||
       !hasValidObservedState(trace.stateBefore)||!hasValidObservedState(stateAfter)||
       stateAfter.tick<=trace.stateBefore.tick)return null;
+    const boundedInput=[input.reward01,input.success01,input.surprise01,input.novelty01];
+    if(!boundedInput.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1))return null;
     const traceId=normalizeTraceId(trace.id);
-    if(!traceId||this.recordedOutcomeTraceIds.has(traceId)||this.state.records.some(r=>r.traceId===traceId))return null;
+    const taskId=normalizeTaskId(trace.selected.goalId??trace.selected.action);
+    if(!traceId||!taskId||this.recordedOutcomeTraceIds.has(traceId)||this.state.records.some(r=>r.traceId===traceId))return null;
     const before=vector(trace.stateBefore),after=vector(stateAfter);
     const stateDelta=distance(before,after);
-    const surprise=clamp01(input.surprise01);
+    const surprise=input.surprise01;
     const predictionError=clamp01(trace.stateBefore.predictionError);
-    const novelty=clamp01(input.novelty01);
+    const novelty=input.novelty01;
     const uncertainty=clamp01(trace.stateBefore.needs.uncertainty);
-    const reward=clamp01(input.reward01),success=clamp01(input.success01);
+    const reward=input.reward01,success=input.success01;
     const outcomeMagnitude=clamp01(Math.abs(reward-.5)*1.6+Math.abs(success-.5)*.8);
     const causalStrength=clamp01(stateDelta*.34+predictionError*.24+surprise*.18+outcomeMagnitude*.16+novelty*.08);
     const learningOpportunity=clamp01(causalStrength*.58+surprise*.18+predictionError*.14+novelty*.10);
     const id=`cx-${trace.tick}-${traceId}`;
     const record:CausalExperienceRecord={
       id, tick:trace.tick, at:Date.now(), traceId, action:trace.selected.action,
-      taskId:trace.selected.goalId??trace.selected.action, reward01:reward, success01:success,
+      taskId, reward01:reward, success01:success,
       surprise01:surprise, predictionError01:predictionError, novelty01:novelty, uncertainty01:uncertainty,
       energyBefore01:clamp01(trace.stateBefore.needs.energy), energyAfter01:clamp01(stateAfter.needs.energy),
       stateDelta01:stateDelta, causalStrength01:causalStrength,
