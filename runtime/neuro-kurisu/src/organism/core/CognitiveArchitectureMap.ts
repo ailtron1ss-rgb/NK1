@@ -59,6 +59,7 @@ const FLOWS:CognitiveArchitectureFlow[]=[
   {from:'metacognition',to:'executive',kind:'governance',signal:'risk gate + confidence + hold/defer'},
   {from:'executive',to:'embodiment-action',kind:'feedforward',signal:'governed action + idempotency key'},
   {from:'embodiment-action',to:'outcome-learning',kind:'feedforward',signal:'execution ID + result receipt'},
+  {from:'embodiment-action',to:'outcome-learning',kind:'provenance',signal:'selected action must match post-state lastAction and bounded lastActionSuccess; state drift alone earns no causal credit'},
   {from:'outcome-learning',to:'world-model',kind:'feedback',signal:'prediction error + verified world delta'},
   {from:'outcome-learning',to:'memory',kind:'feedback',signal:'verified/contradicted/unknown evidence'},
   {from:'outcome-learning',to:'self-model',kind:'feedback',signal:'attributed experience and temporal credit'},
