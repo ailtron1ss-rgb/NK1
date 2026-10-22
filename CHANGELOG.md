@@ -1,3 +1,16 @@
+## WorkPass296 — fail-closed cognitive snapshot and stage identity hardening (2026-10-22)
+
+- Unsupported persisted state versions now fail before mutating runtime state.
+- Snapshot counters partition every cycle; unaccounted history is conservatively classified as incomplete rather than disappearing from aggregate totals.
+- Invalid stage names/types in persisted missing-stage metadata now fail closed instead of being filtered into an empty list that could falsely certify completion.
+- Restored completion now requires at least one counted complete cycle.
+- Runtime entry checks reject null/non-object input and invalid stage-ID containers with deliberate errors.
+- Inherited/prototype-provided stage IDs no longer satisfy required cognitive-cycle evidence.
+- Cycle accounting stops before unsafe-integer overflow.
+- Added regression checks for each boundary above. CI is still not evidence of these tests passing because the currently sampled jobs failed before any runner step was recorded.
+
+---
+
 ## WorkPass295 — reconcile restored cognitive-cycle history (2026-10-22)
 
 - Hardened `UnifiedCognitiveCycle.restore`: complete and incomplete counters are now disjoint subsets of total cycles; broken lineages cannot exceed incomplete cycles.

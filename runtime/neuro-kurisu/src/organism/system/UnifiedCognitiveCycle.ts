@@ -47,12 +47,19 @@ export class UnifiedCognitiveCycle {
     // incomplete are disjoint subsets of cycles, and broken lineages are a
     // subset of incomplete cycles. Independent clamping can otherwise make
     // aggregate counts exceed the number of observations.
+    if(source.version!==undefined&&source.version!==1)throw new RangeError('unsupported cognitive-cycle state version');
     const completeCycles=Math.min(cycles,safeCounter(source.completeCycles));
-    const incompleteCycles=Math.min(cycles-completeCycles,safeCounter(source.incompleteCycles));
-    const rawMissing=Array.isArray(source.lastMissingStages)?source.lastMissingStages:[...REQUIRED];
+    // Partition every recorded cycle. Any count not proven complete is
+    // conservatively incomplete; otherwise a truncated/corrupt snapshot could
+    // silently drop cycles from both outcome buckets.
+    const incompleteCycles=cycles-completeCycles;
+    const hasMissingArray=Array.isArray(source.lastMissingStages);
+    const rawMissing=hasMissingArray?source.lastMissingStages as unknown[]:[...REQUIRED];
+    const malformedMissing=rawMissing.some((stage)=>typeof stage!=='string'||!ALL_STAGES.has(stage as UnifiedCycleStage));
     const filteredMissing=[...new Set(rawMissing.filter((stage):stage is UnifiedCycleStage=>typeof stage==='string'&&ALL_STAGES.has(stage as UnifiedCycleStage)))];
+    const normalizedMissing=malformedMissing?[...REQUIRED]:filteredMissing;
     const lastTick=typeof source.lastTick==='number'&&Number.isSafeInteger(source.lastTick)&&source.lastTick>=-1?source.lastTick:-1;
-    const missing=cycles===0&&filteredMissing.length===0?[...REQUIRED]:filteredMissing;
+    const missing=cycles===0&&normalizedMissing.length===0?[...REQUIRED]:normalizedMissing;
     this.state={
       version:1,
       cycles,
@@ -62,21 +69,26 @@ export class UnifiedCognitiveCycle {
       meanStageCoverage01:safeMetric(source.meanStageCoverage01),
       meanCausalContinuity01:safeMetric(source.meanCausalContinuity01),
       lastTick,
-      lastComplete:cycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
+      lastComplete:cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
       lastMissingStages:missing,
     };
   }
 
   evaluate(input:{tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number}):UnifiedCognitiveCycleResult {
+    if(input===null||typeof input!=='object')throw new TypeError('cognitive cycle input must be an object');
+    if(input.stageIds===null||typeof input.stageIds!=='object'||Array.isArray(input.stageIds))throw new TypeError('stageIds must be an object');
     if(!Number.isSafeInteger(input.tick)||input.tick<0)throw new RangeError('cognitive cycle tick must be a non-negative safe integer');
     if(input.tick<=this.state.lastTick)throw new RangeError('cognitive cycle tick must strictly increase');
     if(typeof input.parentIntegrity01!=='number'||!Number.isFinite(input.parentIntegrity01)||input.parentIntegrity01<0||input.parentIntegrity01>1) {
       throw new RangeError('parentIntegrity01 must be a finite value in [0, 1]');
     }
 
+    if(this.state.cycles>=Number.MAX_SAFE_INTEGER)throw new RangeError('cognitive cycle counter reached its safe integer limit');
     const validIds:Partial<Record<UnifiedCycleStage,string>>={};
     for(const stage of ALL_STAGES) {
-      const id=input.stageIds[stage];
+      // Only explicitly supplied stage IDs are evidence; inherited properties
+      // from polluted prototypes must never satisfy a required cognitive step.
+      const id=Object.hasOwn(input.stageIds,stage)?input.stageIds[stage]:undefined;
       if(validStageId(id))validIds[stage]=id;
     }
     // Distinct required stages must refer to distinct events. Reusing one ID

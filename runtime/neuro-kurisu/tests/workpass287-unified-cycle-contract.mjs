@@ -81,4 +81,38 @@ const leaked=cycle.snapshot();
 leaked.lastMissingStages.push('goal');
 assert.equal(cycle.snapshot().lastMissingStages.includes('goal'),false);
 
+
+const missingCountRestore=new UnifiedCognitiveCycle();
+missingCountRestore.restore({cycles:10,completeCycles:3,incompleteCycles:1,brokenLineages:9,lastTick:9,lastComplete:false,lastMissingStages:['action']});
+const countPartition=missingCountRestore.snapshot();
+assert.equal(countPartition.completeCycles+countPartition.incompleteCycles,countPartition.cycles);
+assert.equal(countPartition.incompleteCycles,7);
+assert.equal(countPartition.brokenLineages,7);
+
+const malformedHistory=new UnifiedCognitiveCycle();
+malformedHistory.restore({cycles:4,completeCycles:2,incompleteCycles:2,brokenLineages:0,lastTick:4,lastComplete:true,lastMissingStages:['not-a-stage']});
+assert.equal(malformedHistory.snapshot().lastComplete,false);
+assert.deepEqual(malformedHistory.snapshot().lastMissingStages,['observation','prediction','action','outcome','learning','self-update']);
+
+const countContradiction=new UnifiedCognitiveCycle();
+countContradiction.restore({cycles:4,completeCycles:0,incompleteCycles:4,brokenLineages:0,lastTick:4,lastComplete:true,lastMissingStages:[]});
+assert.equal(countContradiction.snapshot().lastComplete,false);
+
+const unsupportedVersion=new UnifiedCognitiveCycle();
+assert.throws(()=>unsupportedVersion.restore({version:2} as unknown as Partial<import('../src/organism/system/UnifiedCognitiveCycle.ts').UnifiedCognitiveCycleState>),/version/);
+assert.equal(unsupportedVersion.snapshot().cycles,0);
+
+assert.throws(()=>cycle.evaluate(null as never),/input must be an object/);
+assert.throws(()=>cycle.evaluate({tick:6,stageIds:null as never,parentIntegrity01:1}),/stageIds/);
+const inheritedIds=Object.assign(Object.create({observation:'obs-from-prototype'}),{
+  prediction:'pred-6',action:'act-6',outcome:'out-6',learning:'learn-6','self-update':'self-6',
+});
+const inheritedResult=cycle.evaluate({tick:6,stageIds:inheritedIds,parentIntegrity01:1});
+assert.equal(inheritedResult.complete,false);
+assert.ok(inheritedResult.missingStages.includes('observation'));
+
+const saturated=new UnifiedCognitiveCycle();
+saturated.restore({cycles:Number.MAX_SAFE_INTEGER,completeCycles:Number.MAX_SAFE_INTEGER,incompleteCycles:0,brokenLineages:0,lastTick:0,lastComplete:true,lastMissingStages:[]});
+assert.throws(()=>saturated.evaluate({tick:1,stageIds:stages,parentIntegrity01:1}),/safe integer limit/);
+
 console.log('WorkPass287 unified cognitive-cycle contract: PASS');
