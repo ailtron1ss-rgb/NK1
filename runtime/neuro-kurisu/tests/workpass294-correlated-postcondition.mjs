@@ -71,6 +71,43 @@ const missingLineage = await service.verify({
 assert.equal(isTrustedDecisionLinkedExternalPostcondition(missingLineage, expected), false,
   'a receipt with no host action ticket must never bind itself to a decision');
 
+const overlongDecision = 'd'.repeat(181);
+const malformed = await service.verify({
+  ...expected,
+  decisionId: overlongDecision,
+  result: { ok: true },
+}, async () => ({
+  verified: true,
+  basis: 'external-postcondition',
+  confidence01: 0.98,
+  externalObservation: true,
+  observationId: 'obs-3',
+  expectedPostcondition: 'fresh scene observed',
+  observedPostcondition: 'fresh scene observed',
+}));
+assert.equal(isTrustedDecisionLinkedExternalPostcondition(malformed, {
+  ...expected,
+  decisionId: overlongDecision.slice(0, 180),
+}), false, 'truncation must not alias an overlong decision ID to a different valid ticket');
+
+const controlBearing = await service.verify({
+  ...expected,
+  decisionId: 'decision:trace-42\\nforged',
+  result: { ok: true },
+}, async () => ({
+  verified: true,
+  basis: 'external-postcondition',
+  confidence01: 0.98,
+  externalObservation: true,
+  observationId: 'obs-4',
+  expectedPostcondition: 'fresh scene observed',
+  observedPostcondition: 'fresh scene observed',
+}));
+assert.equal(isTrustedDecisionLinkedExternalPostcondition(controlBearing, {
+  ...expected,
+  decisionId: 'decision:trace-42',
+}), false, 'control-bearing IDs must not be normalized into a valid ticket');
+
 console.log(JSON.stringify({
   ok: true,
   exactVerificationIdentity: true,
