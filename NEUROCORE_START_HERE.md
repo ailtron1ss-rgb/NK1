@@ -1,8 +1,7 @@
-## Latest durable checkpoint — WorkPass295 (2026-10-22)
+## Latest durable checkpoint — WorkPass296 (2026-10-22)
 
-- Added a seven-day TTL and five-minute future-skew bound for quarantined external repair hints used by the opt-in P23 revision scheduler.
-- A hint can only reorder a skill already eligible in the trusted non-holdout runtime repair ledger. Expired, future-dated, malformed, or untrusted hints cannot create repair eligibility or promotion authority.
-- Extended `tests/workpass293-autonomous-p23-revision.mjs` to cover expired/future/fresh hint ordering. Existing WorkPass293 Node 24 workflow covers the updated test path.
-- Validation remains UNCONFIRMED: recent Actions runs show failure but the connector provides no actionable job-step summaries/logs. No test/typecheck pass is claimed.
-- Next implementation: exact action-ticket/tick correlation into the micro-cycle and unified initiative → grounded experience → consolidation → P23 flow. Keep the canonical verifier, memory owner, and approval/rollback gates singular.
+- Reduced-resolution heartbeat now uses `wait` as its own action label; the prior real action is retained only in continuity/workspace context.
+- Neutral reward and `verified01=false` remain fail-closed until the canonical verifier receipt is correlated to the exact action/tick. This avoids crediting an earlier action as a newly executed micro-action.
+- Added a focused regression script and Node 24 workflow. Execution remains UNCONFIRMED because the recent Actions failures occurred before job steps were assigned.
+- Next implementation: thread gateway execution ID + decision ID + organism tick through the existing verifier into the single causal experience stream, then connect grounded consolidation to P23 eligibility. Do not create a second verifier or memory owner.
 
