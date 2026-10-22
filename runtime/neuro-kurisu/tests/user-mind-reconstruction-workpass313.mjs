@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { SocialMindKernel } from '../src/organism/cognition/SocialMindKernel.ts';
 import { MotiveEcologyFabric } from '../src/organism/cognition/evolution/MotiveEcologyFabric.ts';
+import { P28PlasticitySubstrate } from '../src/organism/learning/P28PlasticitySubstrate.ts';
 
 const social = new SocialMindKernel();
 const intentEvidence = social.observeText('user', 'Почему это работает? Объясни, пожалуйста.', 1000);
@@ -93,6 +94,33 @@ assert.ok(lowStress.learningModulation.trustRegionRadius01 > highStress.learning
 assert.ok(highStress.actionBiases.verify >= lowStress.actionBiases.verify);
 assert.ok(highStress.actionBiases.rest >= lowStress.actionBiases.rest);
 
+const originalVector = [1, ...new Array(15).fill(0)];
+const nearbyVector = [.8, .6, ...new Array(14).fill(0)];
+const vectorCosine = (a, b) => {
+  const dot = a.reduce((sum, value, i) => sum + value * (b[i] ?? 0), 0);
+  const normA = Math.sqrt(a.reduce((sum, value) => sum + value * value, 0));
+  const normB = Math.sqrt(b.reduce((sum, value) => sum + value * value, 0));
+  return dot / Math.max(1e-9, normA * normB);
+};
+const highPlasticity = new P28PlasticitySubstrate();
+const lowPlasticity = new P28PlasticitySubstrate();
+for (const substrate of [highPlasticity, lowPlasticity]) {
+  substrate.observe({ vector: originalVector, modality: 'text', source: 'workpass313', tick: 1, trust01: .9 });
+}
+highPlasticity.observe({ vector: nearbyVector, modality: 'text', source: 'workpass313', tick: 2, trust01: .9, learningModulation: { entropyFloor01: .7, plasticity01: .8, trustRegionRadius01: .8 } });
+lowPlasticity.observe({ vector: nearbyVector, modality: 'text', source: 'workpass313', tick: 2, trust01: .9, learningModulation: { entropyFloor01: .05, plasticity01: .1, trustRegionRadius01: .05 } });
+const highVector = highPlasticity.snapshot().prototypes[0].vector;
+const lowVector = lowPlasticity.snapshot().prototypes[0].vector;
+assert.ok(vectorCosine(highVector, nearbyVector) > vectorCosine(lowVector, nearbyVector), 'higher EILS plasticity with a wider trust region must produce a larger bounded prototype update');
+const curious = new P28PlasticitySubstrate();
+const baseline = new P28PlasticitySubstrate();
+const intermediateVector = [.4, Math.sqrt(.84), ...new Array(14).fill(0)];
+curious.observe({ vector: originalVector, modality: 'text', source: 'workpass313', tick: 1, trust01: .9 });
+baseline.observe({ vector: originalVector, modality: 'text', source: 'workpass313', tick: 1, trust01: .9 });
+curious.observe({ vector: intermediateVector, modality: 'text', source: 'workpass313', tick: 2, trust01: .9, learningModulation: { entropyFloor01: .8, plasticity01: .5, trustRegionRadius01: .5 } });
+baseline.observe({ vector: intermediateVector, modality: 'text', source: 'workpass313', tick: 2, trust01: .9 });
+assert.equal(curious.snapshot().prototypes.length, 2, 'curiosity entropy floor should preserve additional novel patterns');
+assert.equal(baseline.snapshot().prototypes.length, 1, 'default plasticity behavior remains unchanged when no EILS modulation is passed');
 console.log(JSON.stringify({
   pass: true,
   workpass: 313,
