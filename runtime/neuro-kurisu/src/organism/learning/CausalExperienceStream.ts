@@ -109,10 +109,19 @@ export class CausalExperienceStream {
       if(!prior){
         firstByTraceId.set(record.traceId,record);
         uniqueRows.push(record);
-      }else if(JSON.stringify(prior)!==JSON.stringify(record)){
-        // Distinct persisted records became the same identity after NFKC.
-        // Quarantine every row for that identity rather than choosing one result.
-        conflictingTraceIds.add(record.traceId);
+      }else{
+        let identical=false;
+        try {
+          identical=JSON.stringify(prior)===JSON.stringify(record);
+        } catch {
+          // Cyclic/non-serializable persisted rows are not safe evidence.
+          identical=false;
+        }
+        if(!identical){
+          // Distinct persisted records became the same identity after NFKC.
+          // Quarantine every row for that identity rather than choosing one result.
+          conflictingTraceIds.add(record.traceId);
+        }
       }
       // An exact duplicate row is safely collapsed to the first copy.
     }
