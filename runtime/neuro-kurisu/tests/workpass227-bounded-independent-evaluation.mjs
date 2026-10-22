@@ -61,4 +61,27 @@ const safetyTimeout = createIndependentSkillCandidateEvaluator({
 await assert.rejects(() => safetyTimeout({ payload, payloadFingerprint }), /independent-candidate-safety-scan-timeout/);
 
 assert.throws(() => createIndependentSkillCandidateEvaluator({ ...base, serviceTimeoutMs: 0 }), /config-invalid/);
-console.log('WorkPass227 bounded independent-evaluation services: PASS');
+// Interface-shaped names alone do not establish independent trust. A single
+// self-attesting service, or one dispatch function aliased across all roles,
+// must be rejected before any candidate execution occurs.
+const selfAttestingAuthority = {
+  async execute() { throw new Error('must-not-execute'); },
+  async verify() { return { bindingVerified: true, passed: true, coveredCapabilityIds: ['read'] }; },
+  async scan() { return { violationCount: 0 }; },
+};
+assert.throws(() => createIndependentSkillCandidateEvaluator({
+  ...base,
+  executor: selfAttestingAuthority,
+  verifier: selfAttestingAuthority,
+  safetyScanner: selfAttestingAuthority,
+}), /authorities-must-be-distinct/);
+
+const sharedAuthorityCall = async () => ({});
+assert.throws(() => createIndependentSkillCandidateEvaluator({
+  ...base,
+  executor: { execute: sharedAuthorityCall },
+  verifier: { verify: sharedAuthorityCall },
+  safetyScanner: { scan: sharedAuthorityCall },
+}), /authorities-must-be-distinct/);
+
+console.log('WorkPass227 bounded independent-evaluation services + WorkPass240 distinct-authority boundary: PASS');
