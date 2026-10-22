@@ -30,7 +30,7 @@
 - **Causal ordering:** the unified cognitive-cycle recorder now rejects duplicate ticks as well as regressing ticks. Replaying the same world tick can no longer silently inflate the number of evaluated cycles or skew rolling averages.
 - **Regression:** `tests/workpass287-unified-cycle-contract.mjs` now checks duplicate and regressing tick rejection.
 - **Scope:** this protects cycle accounting; it does not prove that stage IDs correspond to real executed components. Independent event provenance and end-to-end runtime wiring remain future work.
-- **Validation:** CI result for the updated branch is pending/unverified; no test pass is claimed.
+- **Validation:** hosted Actions jobs have repeatedly failed before exposing any steps; this regression remains unexecuted/unverified in CI. No test pass is claimed.
 
 ---
 
