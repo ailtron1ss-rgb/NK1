@@ -1,3 +1,13 @@
+## WorkPass304 — fence stale runtime-clock generations and serialize wakeups (2026-10-22)
+
+- Every start/stop now advances per-clock generation tokens; a completed stale task cannot re-admit work or schedule a timer into a newer runtime generation.
+- Timer callbacks only remove their own timer handle, preventing an old callback from deleting a fresh timer entry.
+- A per-clock active-task guard keeps rapid restarts from overlapping autonomous tasks; retry wakeups remain bounded by the existing minimum cadence.
+- Added an async regression that restarts a clock while a task is active and asserts both eventual recovery and maximum same-clock concurrency of one.
+- CI still fails before runner assignment in the current GitHub Actions history; this code/test change is committed but not runtime-validated.
+
+---
+
 ## WorkPass303 — repair invalid control-character regex (2026-10-22)
 
 - Fixed a malformed Unicode character-class escape in B272's persisted-ID validator. Node.js reports a syntax error for the doubled escapes, which prevents the goal-generation module from loading.

@@ -57,6 +57,8 @@ export class RuntimeClockScheduler {
   private readonly timers = new Map<RuntimeClockKind, ReturnType<typeof setTimeout>>();
   private readonly stats = new Map<RuntimeClockKind, RuntimeClockStats>();
   private readonly activeWakeups = new Set<Promise<void>>();
+  private readonly activeByClock = new Map<RuntimeClockKind, Promise<void>>();
+  private readonly generations = new Map<RuntimeClockKind, number>();
   private stopping = false;
 
   register(options: RuntimeClockOptions): void {
@@ -71,6 +73,7 @@ export class RuntimeClockScheduler {
     if (options.decide !== undefined && typeof options.decide !== 'function') throw new TypeError('runtime clock decide must be a function');
     if (options.onError !== undefined && typeof options.onError !== 'function') throw new TypeError('runtime clock onError must be a function');
     this.clocks.set(options.id, options);
+    this.generations.set(options.id, 0);
     this.stats.set(options.id, {
       startedAt: 0, wakeups: 0, executions: 0, skipped: 0,
       lastRunAt: 0, lastDurationMs: 0, lastDelayMs: 0,
@@ -82,13 +85,21 @@ export class RuntimeClockScheduler {
     if (id !== undefined && !this.clocks.has(id)) throw new Error(`Runtime clock is not registered: ${id}`);
     this.stopping = false;
     const ids = id ? [id] : [...this.clocks.keys()];
-    for (const clockId of ids) this.schedule(clockId, Math.max(0, this.clocks.get(clockId)?.initialDelayMs ?? 0));
+    for (const clockId of ids) {
+      const priorTimer = this.timers.get(clockId);
+      if (priorTimer) clearTimeout(priorTimer);
+      this.timers.delete(clockId);
+      const generation = (this.generations.get(clockId) ?? 0) + 1;
+      this.generations.set(clockId, generation);
+      this.schedule(clockId, Math.max(0, this.clocks.get(clockId)?.initialDelayMs ?? 0), generation);
+    }
   }
 
   stop(): void {
     this.stopping = true;
     for (const timer of this.timers.values()) clearTimeout(timer);
     this.timers.clear();
+    for (const id of this.clocks.keys()) this.generations.set(id, (this.generations.get(id) ?? 0) + 1);
   }
 
   async drain(): Promise<void> {
@@ -105,29 +116,42 @@ export class RuntimeClockScheduler {
     return Object.fromEntries([...this.stats.entries()].map(([id, value]) => [id, { ...value }])) as Record<RuntimeClockKind, RuntimeClockStats>;
   }
 
-  private schedule(id: RuntimeClockKind, delayMs: number): void {
-    if (this.stopping || this.timers.has(id)) return;
+  private schedule(id: RuntimeClockKind, delayMs: number, generation = this.generations.get(id) ?? 0): void {
+    if (this.stopping || this.timers.has(id) || generation !== (this.generations.get(id) ?? 0)) return;
     const clock = this.clocks.get(id);
     if (!clock) return;
     const stats = this.stats.get(id)!;
     stats.lastDelayMs = Math.max(0, Math.round(delayMs));
     if (!stats.startedAt) stats.startedAt = Date.now();
-    const timer = setTimeout(() => {
-      this.timers.delete(id);
-      void this.wake(id);
+    let timer: ReturnType<typeof setTimeout>;
+    timer = setTimeout(() => {
+      // An obsolete timer must never delete a newer generation's timer.
+      if (this.timers.get(id) === timer) this.timers.delete(id);
+      if (this.stopping || generation !== (this.generations.get(id) ?? 0)) return;
+      void this.wake(id, generation);
     }, Math.max(0, Math.round(delayMs)));
     (timer as any).unref?.();
     this.timers.set(id, timer);
   }
 
-  private async wake(id: RuntimeClockKind): Promise<void> {
-    if (this.stopping) return;
+  private async wake(id: RuntimeClockKind, generation: number): Promise<void> {
+    if (this.stopping || generation !== (this.generations.get(id) ?? 0)) return;
     const clock = this.clocks.get(id);
     const stats = this.stats.get(id);
     if (!clock || !stats) return;
-    const work = this.runWake(id, clock, stats);
+    // restart() can schedule a new generation while its previous task is still
+    // finishing. Never run two tasks for one clock at the same time.
+    if (this.activeByClock.has(id)) {
+      this.schedule(id, MIN_REPEAT_DELAY_MS, generation);
+      return;
+    }
+    const work = this.runWake(id, clock, stats, generation);
+    this.activeByClock.set(id, work);
     this.activeWakeups.add(work);
-    try { await work; } finally { this.activeWakeups.delete(work); }
+    try { await work; } finally {
+      this.activeWakeups.delete(work);
+      if (this.activeByClock.get(id) === work) this.activeByClock.delete(id);
+    }
   }
 
   private async reportFailure(clock: RuntimeClockOptions, stats: RuntimeClockStats, error: unknown): Promise<void> {
@@ -140,7 +164,7 @@ export class RuntimeClockScheduler {
     }
   }
 
-  private async runWake(id: RuntimeClockKind, clock: RuntimeClockOptions, stats: RuntimeClockStats): Promise<void> {
+  private async runWake(id: RuntimeClockKind, clock: RuntimeClockOptions, stats: RuntimeClockStats, generation: number): Promise<void> {
     stats.wakeups += 1;
     const fallback: RuntimeClockDecision = { delayMs: RETRY_DELAY_MS, reason: 'default-retry', run: true };
     let decision: RuntimeClockDecision;
@@ -169,7 +193,10 @@ export class RuntimeClockScheduler {
       }
     }
 
-    if (!this.stopping) {
+    // A stop/restart may have occurred while the user task or error handler
+    // was awaited. That stale wakeup may update telemetry, but not schedule or
+    // make another admission decision for the current generation.
+    if (!this.stopping && generation === (this.generations.get(id) ?? 0)) {
       let nextDelay = decision.delayMs;
       if (decisionFailed) {
         nextDelay = Math.max(RETRY_DELAY_MS, nextDelay);

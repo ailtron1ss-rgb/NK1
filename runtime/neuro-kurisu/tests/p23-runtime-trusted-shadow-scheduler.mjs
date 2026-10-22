@@ -68,6 +68,42 @@ import { P23TrustedShadowLearningScheduler } from '../src/organism/learning/P23T
     clearTimeout(keepAlive);
   }
 }
+
+{
+  const keepAlive = setTimeout(() => {}, 500);
+  const { RuntimeClockScheduler } = await import('../src/organism/system/RuntimeClockScheduler.ts');
+  const scheduler = new RuntimeClockScheduler();
+  let active = 0;
+  let maximumActive = 0;
+  let executions = 0;
+  scheduler.register({
+    id: 'reflection',
+    initialDelayMs: 0,
+    decide: () => ({ delayMs: 0, reason: 'rapid-restart-regression', run: true }),
+    task: async () => {
+      executions += 1;
+      active += 1;
+      maximumActive = Math.max(maximumActive, active);
+      await new Promise(resolve => setTimeout(resolve, 80));
+      active -= 1;
+    },
+  });
+  try {
+    scheduler.start('reflection');
+    await new Promise(resolve => setTimeout(resolve, 10));
+    scheduler.restart();
+    await new Promise(resolve => setTimeout(resolve, 230));
+    scheduler.stop();
+    await scheduler.drain();
+    assert.ok(executions >= 2, 'restart should eventually resume the clock');
+    assert.equal(maximumActive, 1, 'restart must never overlap tasks for the same clock');
+    assert.equal(active, 0, 'drain must wait until active clock work has settled');
+  } finally {
+    scheduler.stop();
+    clearTimeout(keepAlive);
+  }
+}
+
 console.log('RUNTIME_CLOCK_FAIL_CLOSED_CONTRACT=PASS');
 
 const invalidCandidateCore = {
