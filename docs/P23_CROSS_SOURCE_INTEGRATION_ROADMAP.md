@@ -599,3 +599,10 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **DONE (code):** replay admission requires runtime-outcome provenance, `stateGrounded === true`, explicit `replayEligible === true`, and finite bounded policy features. Consolidation likewise requires runtime-outcome provenance and explicit grounded state.
 - **DONE (regression authored):** added a forged `skill-repair` snapshot with plausible features and caller-set grounding/replay flags; it must be downgraded and cannot replay or consolidate.
 - **OPEN:** this is provenance consistency hardening, not snapshot authentication. Persisted data can still forge `runtime-outcome` plus a plausible vector; trusted persistence needs host-authenticated integrity/attestation. Exact-head CI and typecheck remain unverified while Actions exposes no usable job logs.
+
+
+## WorkPass276 — isolate runtime adaptation metrics from imported evidence
+
+- **DONE (code):** behavioral-impact/context-divergence aggregation now includes only grounded `runtime-outcome` rows. External/derived imports can remain visible for analysis but cannot inflate the runtime's observed adaptation metric.
+- **DONE (regression authored):** four imported events with deliberately varied actions must still produce zero runtime behavioral-context samples and zero behavioral-impact score.
+- **OPEN:** quantify behavioral-impact calibration against real longitudinal tasks; the metric remains a proxy for action-distribution change, not proof of improved competence or human-like learning.
