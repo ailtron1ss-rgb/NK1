@@ -1,3 +1,11 @@
+## WorkPass252 — preserve Live2D expression transitions during lip-sync
+
+- [x] Cache the last successfully applied expression in the existing Live2D viewer.
+- [x] Skip duplicate expression calls while high-frequency mouth/gaze updates continue.
+- [x] Extend the existing Live2D integrity regression with a guard for the transition cache.
+- [ ] Execute the asset-integrity test and browser E2E to confirm real model animation behavior.
+- [ ] Continue canonical browser/Android voice-provider unification and Legacy fallback hardening without creating a parallel avatar runtime.
+
 ## WorkPass251 — dispatch-time authority identity revalidation
 
 - [x] Re-resolve and re-stat each prepared host authority executable before creating a request snapshot.
