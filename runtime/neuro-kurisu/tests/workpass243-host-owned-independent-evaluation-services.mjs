@@ -147,8 +147,18 @@ process.stdout.write(JSON.stringify({
       services.safetyScanner.scan({ payload: { answer: 42 }, task, execution, context }),
       /host-owned-safety-scanner-executable-identity-changed/,
     );
+
+    // Replacing a prepared scratch root must fail before a request file or child
+    // process is created; the new directory inherits the same path, not identity.
+    const movedRunRoot = executor.runRoot + '-replaced';
+    await rename(executor.runRoot, movedRunRoot);
+    await mkdir(executor.runRoot, { mode: 0o700 });
+    await assert.rejects(
+      services.executor.execute({ payload: { answer: 42 }, task, context }),
+      /host-owned-executor-run-root-identity-changed/,
+    );
   }
-  console.log('WorkPass251 dispatch-time authority identity regression: authored');
+  console.log('WorkPass258 dispatch-time authority path identity regression: authored');
 } finally {
   await rm(root, { recursive: true, force: true });
 }
