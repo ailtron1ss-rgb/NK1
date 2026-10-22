@@ -1,0 +1,109 @@
+name: Publish main-synced WorkPass70 release
+
+on:
+  workflow_run:
+    workflows: ["NeuroCore core regression validation"]
+    branches: [workpass70-source]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  package-and-publish:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'workpass70-source' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact validated source commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Refuse stale validation and an existing tag
+        id: guard
+        shell: bash
+        env:
+          VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          LATEST_SHA="$(git ls-remote origin refs/heads/workpass70-source | cut -f1)"
+          if [ -z "$LATEST_SHA" ]; then
+            echo "Could not resolve current source branch"
+            exit 1
+          fi
+          if [ "$LATEST_SHA" != "$VALIDATED_SHA" ]; then
+            echo "Skipping stale validated commit $VALIDATED_SHA; current source head is $LATEST_SHA"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          SHORT_SHA="${VALIDATED_SHA:0:12}"
+          TAG="workpass70-main-sync-2026-10-22-$SHORT_SHA"
+          if gh release view "$TAG" --repo ailtron1ss-rgb/NK1 >/dev/null 2>&1; then
+            echo "Release $TAG already exists; refusing to overwrite it."
+            exit 1
+          fi
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          echo "Validated source head: $VALIDATED_SHA"
+
+      - name: Package complete source and verify ZIP integrity
+        if: steps.guard.outputs.publish == 'true'
+        shell: bash
+        env:
+          TAG: ${{ steps.guard.outputs.tag }}
+          SHORT_SHA: ${{ steps.guard.outputs.short_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ZIP="Neuro_Kurisu_WORKPASS70_MAIN_SYNC_2026-10-22-${SHORT_SHA}.zip"
+          REPORT="WORKPASS70_MAIN_SYNC_2026-10-22_REPORT_RU.md"
+          if [ ! -f "$REPORT" ]; then
+            echo "Missing release report: $REPORT"
+            exit 1
+          fi
+          git archive --format=zip --prefix="Neuro_Kurisu_WORKPASS70_MAIN_SYNC_2026-10-22-${SHORT_SHA}/" HEAD > "$RUNNER_TEMP/$ZIP"
+          unzip -t "$RUNNER_TEMP/$ZIP" | tail -1
+          python - "$RUNNER_TEMP/$ZIP" <<'PY'
+          import pathlib, sys, zipfile
+          archive = pathlib.Path(sys.argv[1])
+          with zipfile.ZipFile(archive) as z:
+              bad = z.testzip()
+              if bad:
+                  raise SystemExit(f"Bad ZIP member: {bad}")
+              names = z.namelist()
+              if not names:
+                  raise SystemExit("Empty source archive")
+              unsafe = [n for n in names if n.startswith("/") or ".." in pathlib.PurePosixPath(n).parts]
+              if unsafe:
+                  raise SystemExit(f"Unsafe paths in source archive: {unsafe[:10]}")
+              print(f"ZIP_MEMBERS={len(names)}")
+          PY
+          cp "$REPORT" "$RUNNER_TEMP/$REPORT"
+          cd "$RUNNER_TEMP"
+          sha256sum "$ZIP" "$REPORT" > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          ls -lh "$ZIP" "$REPORT" SHA256SUMS.txt
+
+      - name: Publish a new prerelease without overwriting WorkPass70
+        if: steps.guard.outputs.publish == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.guard.outputs.tag }}
+          SHORT_SHA: ${{ steps.guard.outputs.short_sha }}
+        run: |
+          set -euo pipefail
+          ZIP="Neuro_Kurisu_WORKPASS70_MAIN_SYNC_2026-10-22-${SHORT_SHA}.zip"
+          REPORT="WORKPASS70_MAIN_SYNC_2026-10-22_REPORT_RU.md"
+          gh release create "$TAG" \
+            "$RUNNER_TEMP/$ZIP" \
+            "$RUNNER_TEMP/$REPORT" \
+            "$RUNNER_TEMP/SHA256SUMS.txt" \
+            --repo ailtron1ss-rgb/NK1 \
+            --target "${{ github.event.workflow_run.head_sha }}" \
+            --title "NeuroCore WorkPass70 Main Sync (2026-10-22)" \
+            --notes "Full source snapshot after syncing the current main-branch files into the WorkPass70 release source. Integrity checked; published as a prerelease after core validation passed. This is not production approval." \
+            --prerelease

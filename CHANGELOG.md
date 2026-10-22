@@ -1,3 +1,10 @@
+## WorkPass70 Main-to-release synchronization (2026-10-22)
+- Reconciled the complete current `main` file inventory against the full `workpass70-source` tree at baseline `e0d8e5b1a422c1e42db817cc37e5e1f97549c4d5`.
+- Imported every main-only file that was absent by path: the WorkPass70 hotfix publisher, source-archive inventory workflow, source-branch materializer, WorkPass64 audit summary/report/checksum manifest, WorkPass65 experimental plan, WorkPass64 publish script, and the validation-gated main-sync release publisher.
+- Preserved the current 50 KB project/runtime `README.md`; the shorter repository-operations README from `main` is retained verbatim as `NK1_REPOSITORY_README.md` instead of destructively replacing the project documentation.
+- Added a reproducible Russian sync report. The new release publisher is configured to create a **new prerelease** from the exact source commit only after the named core-validation workflow succeeds, and refuses stale heads or an existing tag.
+- This records file-level transfer; it does not claim that historical WorkPass64 checksums describe the current WorkPass70+ source tree or that unresolved production gates are closed.
+
 ## WorkPass72 — memory residency, verification-gated learning and source cleanup (2026-10-19)
 - Fixed a candidate-budget off-by-one in revision/graph expansion: both now check the 192-item cap before insertion, with a fail-fast invariant and diagnostic-rich regression assertion.
 - Fixed a resource/residency defect in `MemoryOS2.retrieve()`: cold candidates were assigned freshly rebuilt hash vectors and promoted to warm even though the hash similarity was not part of ranking.

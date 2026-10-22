@@ -1,0 +1,95 @@
+name: WorkPass70 source inventory
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/workpass70-inventory.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Download release asset using repository token
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/octet-stream" \
+            "https://api.github.com/repos/ailtron1ss-rgb/NK1/releases/assets/656465125" \
+            --output "$RUNNER_TEMP/workpass70.zip"
+          echo "c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286  $RUNNER_TEMP/workpass70.zip" | sha256sum --check
+          ls -lh "$RUNNER_TEMP/workpass70.zip"
+
+      - name: Safely inventory archive
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, pathlib, zipfile
+          archive = pathlib.Path(os.environ["RUNNER_TEMP"]) / "workpass70.zip"
+          root = pathlib.Path(os.environ["RUNNER_TEMP"]) / "workpass70-source"
+          root.mkdir()
+          inventory = {"archive": archive.name, "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+                       "entries": [], "top_level": {}, "extensions": {}, "unsafe_entries": [],
+                       "large_files": [], "candidate_manifests": [], "candidate_tests": []}
+          with zipfile.ZipFile(archive) as z:
+              for info in z.infolist():
+                  name = info.filename
+                  p = pathlib.PurePosixPath(name)
+                  if p.is_absolute() or ".." in p.parts:
+                      inventory["unsafe_entries"].append(name)
+                      continue
+                  inventory["entries"].append({"path": name, "size": info.file_size, "compressed": info.compress_size})
+                  if p.parts:
+                      inventory["top_level"][p.parts[0]] = inventory["top_level"].get(p.parts[0], 0) + 1
+                  ext = p.suffix.lower() or "[no extension]"
+                  inventory["extensions"][ext] = inventory["extensions"].get(ext, 0) + 1
+                  if info.file_size > 10 * 1024 * 1024:
+                      inventory["large_files"].append({"path": name, "size": info.file_size})
+                  low = name.lower()
+                  if p.name.lower() in {"package.json","pnpm-lock.yaml","package-lock.json","yarn.lock","pyproject.toml","requirements.txt","cargo.toml","readme.md","tsconfig.json"}:
+                      inventory["candidate_manifests"].append(name)
+                  if any(x in low for x in ("test", "spec", "pytest", "vitest", "jest")):
+                      inventory["candidate_tests"].append(name)
+                  target = root.joinpath(*p.parts)
+                  if name.endswith("/"):
+                      target.mkdir(parents=True, exist_ok=True)
+                      continue
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  with z.open(info) as src, target.open("wb") as dst:
+                      while True:
+                          chunk = src.read(1024 * 1024)
+                          if not chunk: break
+                          dst.write(chunk)
+          inventory["entry_count"] = len(inventory["entries"])
+          inventory["unsafe_entry_count"] = len(inventory["unsafe_entries"])
+          (pathlib.Path(os.environ["RUNNER_TEMP"]) / "workpass70-inventory.json").write_text(json.dumps(inventory, indent=2), encoding="utf-8")
+          print("ARCHIVE_SHA256", inventory["sha256"])
+          print("ENTRY_COUNT", inventory["entry_count"])
+          print("UNSAFE_ENTRY_COUNT", inventory["unsafe_entry_count"])
+          print("TOP_LEVEL", json.dumps(inventory["top_level"], ensure_ascii=False, sort_keys=True))
+          print("EXTENSIONS", json.dumps(inventory["extensions"], ensure_ascii=False, sort_keys=True))
+          print("MANIFESTS", json.dumps(inventory["candidate_manifests"][:300], ensure_ascii=False))
+          print("TEST_CANDIDATES", json.dumps(inventory["candidate_tests"][:300], ensure_ascii=False))
+          print("LARGE_FILES", json.dumps(inventory["large_files"][:100], ensure_ascii=False))
+          if inventory["unsafe_entries"]:
+              raise SystemExit("Unsafe archive paths detected; unsafe entries were skipped.")
+          PY
+
+      - name: Upload inventory and verified source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: workpass70-source-bundle
+          path: |
+            ${{ runner.temp }}/workpass70-inventory.json
+            ${{ runner.temp }}/workpass70.zip
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,64 @@
+name: Materialize WorkPass70 source branch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/workpass70-source-branch.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Download and verify release archive
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --heads origin workpass70-source >/dev/null 2>&1; then
+            echo "Branch workpass70-source already exists; refusing to overwrite it."
+            exit 1
+          fi
+          curl --fail --location --retry 3 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/octet-stream" \
+            "https://api.github.com/repos/ailtron1ss-rgb/NK1/releases/assets/656465125" \
+            --output "$RUNNER_TEMP/workpass70.zip"
+          echo "c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286  $RUNNER_TEMP/workpass70.zip" | sha256sum --check
+          python - <<'PY'
+          import os, pathlib, zipfile
+          archive = pathlib.Path(os.environ["RUNNER_TEMP"]) / "workpass70.zip"
+          out = pathlib.Path(os.environ["RUNNER_TEMP"]) / "source"
+          out.mkdir()
+          with zipfile.ZipFile(archive) as z:
+              for info in z.infolist():
+                  path = pathlib.PurePosixPath(info.filename)
+                  if path.is_absolute() or ".." in path.parts:
+                      raise SystemExit(f"Unsafe archive path: {info.filename}")
+              z.extractall(out)
+          print(f"Extracted verified WorkPass70 source to {out}")
+          PY
+
+      - name: Create immutable source baseline branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git switch --orphan workpass70-source
+          git rm -rf . >/dev/null 2>&1 || true
+          rsync -a --delete --exclude='.git/' "$RUNNER_TEMP/source/" "$GITHUB_WORKSPACE/"
+          git add -f -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "Import verified NeuroCore WorkPass70 source baseline"
+          git push origin workpass70-source
+          echo "Source baseline committed to branch workpass70-source."

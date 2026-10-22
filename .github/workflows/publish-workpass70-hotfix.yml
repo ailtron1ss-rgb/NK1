@@ -1,0 +1,76 @@
+name: Publish WorkPass70 hotfix release
+
+on:
+  workflow_run:
+    workflows: ["WorkPass71 validation"]
+    branches: [workpass70-source]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  package-and-publish:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout validated source branch
+        uses: actions/checkout@v4
+        with:
+          ref: workpass70-source
+          fetch-depth: 0
+      - name: Guard against publishing a stale validation run
+        id: guard
+        shell: bash
+        env:
+          VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          LATEST_SHA="$(git ls-remote origin refs/heads/workpass70-source | cut -f1)"
+          if [ -z "$LATEST_SHA" ]; then echo "Could not resolve current source branch"; exit 1; fi
+          if [ "$LATEST_SHA" = "$VALIDATED_SHA" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "Validated commit is the current source branch tip: $LATEST_SHA"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping stale run $VALIDATED_SHA; current source tip is $LATEST_SHA"
+          fi
+      - name: Package tracked source and verify archive
+        if: steps.guard.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="workpass70-hotfix1-2026-10-19"
+          ZIP="Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip"
+          REPORT="WORKPASS70_HOTFIX_1_REPORT_RU.md"
+          if [ ! -f "$REPORT" ]; then echo "Missing report: $REPORT"; exit 1; fi
+          if gh release view "$TAG" --repo ailtron1ss-rgb/NK1 >/dev/null 2>&1; then
+            echo "Release $TAG already exists; refusing to overwrite it."
+            exit 1
+          fi
+          git archive --format=zip --prefix="Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19/" HEAD > "$RUNNER_TEMP/$ZIP"
+          unzip -t "$RUNNER_TEMP/$ZIP" | tail -1
+          cp "$REPORT" "$RUNNER_TEMP/$REPORT"
+          cd "$RUNNER_TEMP"
+          sha256sum "$ZIP" "$REPORT" > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          ls -lh "$ZIP" "$REPORT" SHA256SUMS.txt
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Create release and upload verified artifacts
+        if: steps.guard.outputs.publish == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="workpass70-hotfix1-2026-10-19"
+          gh release create "$TAG" \
+            "$RUNNER_TEMP/Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip" \
+            "$RUNNER_TEMP/WORKPASS70_HOTFIX_1_REPORT_RU.md" \
+            "$RUNNER_TEMP/SHA256SUMS.txt" \
+            --repo ailtron1ss-rgb/NK1 \
+            --title "NeuroCore WorkPass70 Hotfix 1 (2026-10-19)" \
+            --notes "Validated implementation hotfix. Fixes UTF-16/grapheme speech timeline offsets and a continuum-memory timescale precedence defect. This is not a production-approved release; see attached report for test evidence and remaining gates." \
+            --prerelease
