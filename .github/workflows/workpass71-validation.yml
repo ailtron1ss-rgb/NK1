@@ -103,6 +103,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:p321:expanded-cognitive-phase-spine
       - name: WorkPass322 cognitive resource restore integrity
         run: npm --prefix runtime/neuro-kurisu run test:p322:cognitive-resource-restore
+      - name: WorkPass323 nested cognitive-loop persistence separation
+        run: npm --prefix runtime/neuro-kurisu run test:p323:cognitive-loop-persistence-scope
       - name: WorkPass315 self-model evidence write gate
         run: npm --prefix runtime/neuro-kurisu run test:p315:self-model-evidence-gate
       - name: WorkPass316 HYVE-inspired relational tether
