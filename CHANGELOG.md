@@ -1,3 +1,12 @@
+## WorkPass305 — reject empty clock-policy decisions
+
+- Corrected a fail-open edge: when a configured `decide` callback returned `null` or `undefined`, the scheduler treated that as “no policy” and used the default `run: true` decision.
+- The default run decision is now used only when no callback is registered; an installed policy that returns no decision throws, is counted as a failure, and skips the task.
+- Added regression coverage for both `null` and `undefined` policy responses, asserting that neither can run a task.
+- GitHub Actions remains non-validating while jobs fail before a runner is assigned.
+
+---
+
 ## WorkPass304 — fence stale runtime-clock generations and serialize wakeups (2026-10-22)
 
 - Every start/stop now advances per-clock generation tokens; a completed stale task cannot re-admit work or schedule a timer into a newer runtime generation.

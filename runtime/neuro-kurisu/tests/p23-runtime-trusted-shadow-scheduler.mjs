@@ -104,6 +104,39 @@ import { P23TrustedShadowLearningScheduler } from '../src/organism/learning/P23T
   }
 }
 
+
+{
+  const keepAlive = setTimeout(() => {}, 300);
+  const { RuntimeClockScheduler } = await import('../src/organism/system/RuntimeClockScheduler.ts');
+  const scheduler = new RuntimeClockScheduler();
+  let taskCalls = 0;
+  try {
+    scheduler.register({
+      id: 'cognitive',
+      initialDelayMs: 0,
+      decide: () => undefined,
+      task: () => { taskCalls += 1; },
+    });
+    scheduler.register({
+      id: 'embodiment',
+      initialDelayMs: 0,
+      decide: () => null,
+      task: () => { taskCalls += 1; },
+    });
+    scheduler.start();
+    await new Promise(resolve => setTimeout(resolve, 35));
+    scheduler.stop();
+    await scheduler.drain();
+    const stats = scheduler.snapshot();
+    assert.equal(taskCalls, 0, 'null/undefined admission decisions must not run side-effecting tasks');
+    assert.ok(stats.cognitive.skipped >= 1 && stats.embodiment.skipped >= 1);
+    assert.ok(stats.cognitive.failures >= 1 && stats.embodiment.failures >= 1);
+  } finally {
+    scheduler.stop();
+    clearTimeout(keepAlive);
+  }
+}
+
 console.log('RUNTIME_CLOCK_FAIL_CLOSED_CONTRACT=PASS');
 
 const invalidCandidateCore = {

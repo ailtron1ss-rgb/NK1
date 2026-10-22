@@ -37,7 +37,9 @@ const RETRY_DELAY_MS = 1_000;
 const CLOCK_KINDS = new Set<RuntimeClockKind>(['cognitive','embodiment','reflection','trusted-shadow-learning']);
 
 function normalizeDecision(value: unknown, fallback: RuntimeClockDecision): RuntimeClockDecision {
-  if (value === undefined || value === null) return fallback;
+  if (value === undefined || value === null) {
+    throw new TypeError('runtime clock decision must not be null or undefined');
+  }
   if (typeof value !== 'object' || Array.isArray(value)) {
     throw new TypeError('runtime clock decision must be an object');
   }
@@ -170,7 +172,7 @@ export class RuntimeClockScheduler {
     let decision: RuntimeClockDecision;
     let decisionFailed = false;
     try {
-      decision = normalizeDecision(clock.decide?.(), fallback);
+      decision = clock.decide ? normalizeDecision(clock.decide(), fallback) : fallback;
     } catch (error) {
       decisionFailed = true;
       decision = { delayMs: RETRY_DELAY_MS, reason: 'decision-error', run: false };
@@ -203,7 +205,7 @@ export class RuntimeClockScheduler {
       } else {
         try {
           // Re-evaluate after work so clocks can adapt their cadence to updated pressure.
-          const next = normalizeDecision(clock.decide?.(), decision);
+          const next = clock.decide ? normalizeDecision(clock.decide(), decision) : decision;
           nextDelay = next.delayMs;
         } catch (error) {
           await this.reportFailure(clock, stats, error);
