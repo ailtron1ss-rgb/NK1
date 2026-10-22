@@ -28,6 +28,14 @@ for (let i=0;i<10;i++) {
 result = evaluateSkillRevision(regressed,'baseline','candidate',{minPairedTasks:8,minAbsoluteGain:0,maxFamilyRegression:.1});
 assert.equal(result.accepted,false);
 assert.equal(result.reason,'heldout-family-regression');
+// Replaying the same verifier receipt under a new task ID must not inflate the independent holdout sample.
+const replayed = [...rows,
+  { ...rows[0], taskId: 'replayed-task', evidenceRef: rows[0].evidenceRef },
+  { ...rows[1], taskId: 'replayed-task', evidenceRef: rows[1].evidenceRef },
+];
+result = evaluateSkillRevision(replayed, 'baseline', 'candidate', {minPairedTasks:8,minAbsoluteGain:.1});
+assert.equal(result.pairedN, 10, 'reused verifier receipts must not create an eleventh independent pair');
+assert.ok(result.rejectedRows >= 2, 'both replayed method receipts should be rejected');
 // Validation/train observations are deliberately excluded.
 result = evaluateSkillRevision(rows.map(x=>({...x,split:'train'})),'baseline','candidate');
 assert.equal(result.pairedN,0);
