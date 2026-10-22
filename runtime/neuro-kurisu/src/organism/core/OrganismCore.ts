@@ -10827,6 +10827,7 @@ export class OrganismCore {
     causalExperienceRecent(limit = 32) { return this.developmentalNeural.causalExperience.recent(limit); }
     causalExperienceConsolidate(limit = 32) { const rows = this.developmentalNeural.causalExperience.consolidate(limit, Date.now()); this.persisted.facets.advanced.causalExperience = this.developmentalNeural.causalExperience.snapshot(); this.persisted.facets.advanced.unifiedLearning = this.developmentalNeural.unifiedLearning.snapshot(); return rows; }
     unifiedLearningDiagnostics() { return this.developmentalNeural.unifiedLearning.diagnostics(); }
+    unifiedLearningExternalHypotheses(limit = 32) { return this.developmentalNeural.unifiedLearning.pendingExternalHypotheses(limit); }
     causalDevelopmentDiagnostics() { return this.developmentalNeural.causalDevelopmentLoop.diagnostics(); }
     developmentalSynthesisDiagnostics() { return this.developmentalNeural.developmentalSynthesis.diagnostics(); }
     developmentalExecutiveDiagnostics() { return this.developmentalNeural.developmentalExecutive.diagnostics(); }
