@@ -1,3 +1,11 @@
+## WorkPass284 score update (2026-10-22)
+
+- **Scores unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**.
+- WorkPass284 prevents malformed external inputs from being normalized into plausible-looking records. It does not authenticate their source and does not demonstrate better task outcomes or generalization.
+- Regression cases authored; test/typecheck not executed. No dependency added.
+
+---
+
 ## WorkPass283 score update (2026-10-22)
 
 - **Scores unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**.
