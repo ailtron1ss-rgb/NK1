@@ -1,3 +1,12 @@
+## WorkPass251 — dispatch-time authority identity revalidation
+
+- [x] Re-resolve and re-stat each prepared host authority executable before creating a request snapshot.
+- [x] Revalidate identity and POSIX write permissions after asynchronous request-file I/O and before entering the process supervisor.
+- [x] Extend the existing host-service regression to replace the scanner executable after service setup and assert fail-closed behavior.
+- [ ] Run the targeted host-service regression and runtime typecheck on an accessible runner.
+- [ ] Close the residual filesystem TOCTOU window through immutable/signed deployment and provision the actual OS/container sandbox launcher.
+- **Boundary:** path/inode revalidation is defense-in-depth; it does not prove independent ownership, code signing, or sandbox enforcement.
+
 ## WorkPass250 — consolidate independent-evidence binding
 
 - [x] Extract one canonical predicate for payload, task-input, environment, evaluator-plan, manifest, experiment-plan, scheduled-run, runtime-run, task, and seed identity.
