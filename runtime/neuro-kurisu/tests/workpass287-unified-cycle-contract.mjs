@@ -55,6 +55,28 @@ assert.equal(snapshot.lastTick,-1);
 assert.equal(snapshot.lastComplete,false);
 assert.deepEqual(snapshot.lastMissingStages,['action']);
 
+const inconsistentRestore=new UnifiedCognitiveCycle();
+inconsistentRestore.restore({
+  cycles:10,
+  completeCycles:8,
+  incompleteCycles:8,
+  brokenLineages:7,
+  lastTick:4,
+  lastComplete:true,
+  lastMissingStages:[],
+});
+const reconciled=inconsistentRestore.snapshot();
+assert.equal(reconciled.completeCycles,8);
+assert.equal(reconciled.incompleteCycles,2);
+assert.equal(reconciled.brokenLineages,2);
+assert.equal(reconciled.completeCycles+reconciled.incompleteCycles,reconciled.cycles);
+assert.equal(reconciled.lastComplete,false);
+
+const emptyRestore=new UnifiedCognitiveCycle();
+emptyRestore.restore({cycles:0,lastTick:-1,lastComplete:true,lastMissingStages:[]});
+assert.equal(emptyRestore.snapshot().lastComplete,false);
+assert.deepEqual(emptyRestore.snapshot().lastMissingStages,['observation','prediction','action','outcome','learning','self-update']);
+
 const leaked=cycle.snapshot();
 leaked.lastMissingStages.push('goal');
 assert.equal(cycle.snapshot().lastMissingStages.includes('goal'),false);
