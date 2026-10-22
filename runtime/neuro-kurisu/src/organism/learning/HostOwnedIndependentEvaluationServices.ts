@@ -51,7 +51,7 @@ export interface HostOwnedIndependentEvaluationServices {
 const nonEmpty = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 const digest = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value);
 const forbiddenInheritedEnvironmentKey = (key: string): boolean =>
-  /^(?:NODE_OPTIONS|NODE_PATH|LD_PRELOAD|LD_LIBRARY_PATH|DYLD_INSERT_LIBRARIES|DYLD_LIBRARY_PATH|PYTHONPATH|PYTHONHOME|RUBYOPT|PERL5OPT|BASH_ENV|ENV)$/i.test(key) ||
+  /^(?:NODE_OPTIONS|NODE_PATH|LD_PRELOAD|LD_LIBRARY_PATH|DYLD_INSERT_LIBRARIES|DYLD_LIBRARY_PATH|PYTHONPATH|PYTHONHOME|RUBYOPT|PERL5OPT|BASH_ENV|ENV|AWS_PROFILE|AWS_SHARED_CREDENTIALS_FILE|AWS_CONFIG_FILE|GIT_CONFIG_GLOBAL|NPM_CONFIG_USERCONFIG)$/i.test(key) ||
   /(?:TOKEN|SECRET|PASSWORD|PASSWD|PRIVATE_KEY|API_KEY|ACCESS_KEY|CREDENTIAL|AUTH|COOKIE|SESSION|DATABASE_URL|USERCONFIG)$/i.test(key);
 
 function validateCommand(command: HostOwnedAuthorityCommand, name: string): void {
