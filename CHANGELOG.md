@@ -1,3 +1,12 @@
+## WorkPass290 — enforce monotonic cognitive world ticks (2026-10-22)
+
+- **Causal ordering:** the unified cognitive-cycle recorder now rejects duplicate ticks as well as regressing ticks. Replaying the same world tick can no longer silently inflate the number of evaluated cycles or skew rolling averages.
+- **Regression:** `tests/workpass287-unified-cycle-contract.mjs` now checks duplicate and regressing tick rejection.
+- **Scope:** this protects cycle accounting; it does not prove that stage IDs correspond to real executed components. Independent event provenance and end-to-end runtime wiring remain future work.
+- **Validation:** CI result for the updated branch is pending/unverified; no test pass is claimed.
+
+---
+
 ## WorkPass289 — connect intrinsic drives to evidence-gated initiative candidates (2026-10-22)
 
 - **Integration:** `IntrinsicMotivationEngine.proposeInitiative()` converts an active internal drive into a typed `intrinsic-goal-candidate` only when it is grounded by bounded observation/prediction identities, world-evidence quality, and causal-continuity signals.
