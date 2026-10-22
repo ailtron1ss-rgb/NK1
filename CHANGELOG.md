@@ -1,3 +1,11 @@
+## WorkPass242 — freeze candidate payload across asynchronous trials (2026-10-22)
+
+- Fixed a time-of-check/time-of-use gap in the canonical independent evaluator: it now structured-clones the candidate payload once at evaluation entry, computes the payload fingerprint from that immutable snapshot, and passes clones of that same snapshot to every sandbox execution and safety scan.
+- Previously, a caller retaining the original object could mutate it after the first trial yielded; later trials could then execute changed content while retaining the initial payload fingerprint. That path is now closed.
+- Added a deterministic regression to the existing independent-evaluator test: it blocks the first trial, mutates the caller-owned payload while the evaluation is suspended, resumes the trial, and asserts both trials received the original payload and the result retains the original fingerprint.
+- Reused the canonical evaluator and existing CI test wiring; no parallel evaluator or test harness was added.
+- **Validation status:** code and regression are committed to the draft PR branch. Tests/typecheck and exact-head GitHub Actions have not been run/confirmed in this pass; no green result is claimed. Production host-owned sandbox/verifier/scanner provisioning remains open.
+
 ## WorkPass237 — promotion requires matched independent baseline/candidate evidence (2026-10-21)
 
 - Replaced the promotion entry point's caller-supplied baseline report arrays with a complete independently evaluated baseline envelope. Promotion now delegates to the canonical `compareMatchedIndependentEvaluations` boundary before scoring or activation.
