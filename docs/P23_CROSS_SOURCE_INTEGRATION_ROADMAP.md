@@ -1,3 +1,22 @@
+## WorkPass250 — consolidate independent-evidence binding
+
+- [x] Extract one canonical predicate for payload, task-input, environment, evaluator-plan, manifest, experiment-plan, scheduled-run, runtime-run, task, and seed identity.
+- [x] Reuse the same predicate for independent verifier and safety-scanner responses; neither authority can drift toward a weaker field subset.
+- [x] Preserve the existing evaluator, experiment ledger, and P23 promotion lifecycle rather than introducing parallel evidence/promotion subsystems.
+- [ ] Execute the host-service regression, cross-source replay audit, and runtime typecheck on a functioning runner.
+- [ ] Continue deployment work for the real OS/container sandbox and independently controlled verifier/scanner implementations.
+
+## WorkPass249 — stop cancelled authority invocations before launch
+
+- [x] Reject an already-aborted authority call before allocating a private request directory.
+- [x] Recheck cancellation after writing the private request snapshot and before entering process supervision.
+- [x] Reuse the existing AbortSignal/process-supervisor path; no new execution subsystem.
+- [ ] Run the host-service regression and runtime typecheck on a functioning runner; this change is committed but not locally executed here.
+
+## Current checkpoint
+
+WorkPass250 code is committed on `workpass206-runtime-evaluator-wiring`. Two implementation passes completed: cancellation-aware authority dispatch and consolidation of duplicated evidence-binding rules. CI/test/typecheck remain unverified. The draft PR remains unmerged; the default branch is unchanged.
+
 ## WorkPass247 — reject mutable host authority executables
 
 - [x] Require each resolved host authority executable to be a regular file.
