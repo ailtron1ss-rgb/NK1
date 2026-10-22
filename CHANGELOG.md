@@ -1,3 +1,16 @@
+## WorkPass260 — diversify causal replay and consolidation (2026-10-22)
+
+- **Code:** ported diversity-aware maximal-marginal-relevance-style selection from the older learning-integrity branch into the current CausalExperienceStream for both prioritized replay and grounded consolidation.
+- **Regression authored:** a near-equal second task must not be crowded out by repeated examples from one task in a small replay batch.
+- **Validation:** causal-stream regression and runtime typecheck have not been confirmed passing.
+
+## WorkPass259 — selectively restore causal learning safeguards (2026-10-22)
+
+- **Source integration:** compared the historical workpass71-learning-integrity CausalExperienceStream against the current owner and ported selected safeguards instead of merging the old branch.
+- **Code:** normalized trace IDs (NFKC, trim, bounded length); persisted de-duplication IDs across bounded record eviction and restore; consolidation now accepts only state-grounded records.
+- **Regression authored:** restored outcomes cannot be recorded twice; high reward/surprise alone cannot consolidate an ungrounded external event.
+- **Validation:** causal-stream regression and runtime typecheck have not been confirmed passing.
+
 ## WorkPass258 — pin host authority working and storage paths (2026-10-22)
 
 - **Code:** bind prepared authority working directory, run root, and survive root to filesystem identity; recheck identity, directory type, and private POSIX permissions at dispatch.
