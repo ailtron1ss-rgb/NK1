@@ -119,7 +119,9 @@ async function invoke<T>(
     const args = command.args.map(arg => arg === '{requestFile}' ? requestFile : arg);
     const result = await runLearningProcess({
       runId: context.runId,
-      manifestFingerprint: context.planFingerprint,
+      // Supervisor receipts require a digest. Preserve the real canonical manifest
+      // when one exists; otherwise use the plan digest only as process bookkeeping.
+      manifestFingerprint: context.manifestFingerprint ?? context.planFingerprint,
       taskId: context.taskId,
       taskVersion: 'independent-evaluation-v1',
       seed: context.seed,
@@ -224,6 +226,7 @@ export async function createHostOwnedIndependentEvaluationServices(
           result.taskInputFingerprint === context.taskInputFingerprint &&
           result.environmentFingerprint === context.environmentFingerprint &&
           result.planFingerprint === context.planFingerprint &&
+          result.manifestFingerprint === context.manifestFingerprint &&
           result.runId === execution.runId && result.taskId === task.taskId && result.seed === task.seed;
         if (!bound) throw new Error('host-owned-verifier-response-binding-mismatch');
         return { bindingVerified: true, passed: result.passed,
@@ -247,6 +250,7 @@ export async function createHostOwnedIndependentEvaluationServices(
             result.taskInputFingerprint !== context.taskInputFingerprint ||
             result.environmentFingerprint !== context.environmentFingerprint ||
             result.planFingerprint !== context.planFingerprint ||
+            result.manifestFingerprint !== context.manifestFingerprint ||
             result.taskId !== task.taskId || result.seed !== task.seed ||
             result.runId !== (execution?.runId ?? null)) {
           throw new Error('host-owned-safety-scanner-response-binding-mismatch');
