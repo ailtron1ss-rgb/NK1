@@ -70,9 +70,21 @@ function validateCommand(command: HostOwnedAuthorityCommand, name: string): void
   }
 }
 
-async function prepareCommand(command: HostOwnedAuthorityCommand, name: string): Promise<HostOwnedAuthorityCommand & { executable: string }> {
+async function prepareCommand(command: HostOwnedAuthorityCommand, name: string): Promise<HostOwnedAuthorityCommand & { executable: string; executableIdentity: string }> {
   validateCommand(command, name);
+  // Snapshot every caller-owned command field before the first await. A host that
+  // mutates its config after preparation must not be able to swap argv/env/cwd.
+  command = {
+    ...command,
+    args: [...command.args],
+    env: command.env ? { ...command.env } : undefined,
+    inheritEnv: command.inheritEnv ? [...command.inheritEnv] : undefined,
+  };
   const executable = await realpath(command.executable);
+  const executableMetadata = await stat(executable);
+  const executableIdentity = process.platform === 'win32'
+    ? executable.toLowerCase()
+    : `${executableMetadata.dev}:${executableMetadata.ino}`;
   const cwd = await realpath(command.cwd);
   await access(executable, constants.X_OK);
   const roots = await Promise.all([command.runRoot, command.surviveDir].map(async root => {
@@ -87,7 +99,7 @@ async function prepareCommand(command: HostOwnedAuthorityCommand, name: string):
   if (roots[0] === roots[1] || roots[0].startsWith(roots[1] + path.sep) || roots[1].startsWith(roots[0] + path.sep)) {
     throw new Error('host-owned-' + name + '-storage-roots-must-be-disjoint');
   }
-  return { ...command, executable, cwd, runRoot: roots[0], surviveDir: roots[1] };
+  return { ...command, executable, executableIdentity, cwd, runRoot: roots[0], surviveDir: roots[1] };
 }
 
 function parseJsonOutput<T>(stdout: string, label: string): T {
@@ -164,7 +176,9 @@ export async function createHostOwnedIndependentEvaluationServices(
     prepareCommand(configured.verifier, 'verifier'),
     prepareCommand(configured.safetyScanner, 'safety-scanner'),
   ]);
-  if (new Set([executorCommand.executable, verifierCommand.executable, safetyCommand.executable]).size !== 3) {
+  // realpath alone misses hard links: two different executable paths can still
+  // resolve to the same underlying file and therefore cannot establish authority separation.
+  if (new Set([executorCommand.executableIdentity, verifierCommand.executableIdentity, safetyCommand.executableIdentity]).size !== 3) {
     throw new Error('host-owned-evaluation-authorities-must-use-distinct-executables');
   }
   const storageRoots = [
