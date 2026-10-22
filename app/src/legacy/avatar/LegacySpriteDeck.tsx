@@ -52,11 +52,26 @@ export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel;
   outfitRef.current = outfit;
 
   useEffect(() => {
+    let cancelled = false;
     const url = resolveSpritePath(EXPRESSION[emotion] ?? "neutral", { preferLab: outfit === "lab_coat" || outfit === "formal", profile: getOutfit(outfit) });
     const img = new Image();
-    img.onload = () => { previousRef.current = currentRef.current; currentRef.current = img; blend.current = 0; setReady(true); };
-    img.onerror = () => setReady(Boolean(currentRef.current));
+    img.onload = () => {
+      // A slow prior request must not overwrite the newest emotion/outfit sprite.
+      if (cancelled) return;
+      previousRef.current = currentRef.current;
+      currentRef.current = img;
+      blend.current = 0;
+      setReady(true);
+    };
+    img.onerror = () => {
+      if (!cancelled) setReady(Boolean(currentRef.current));
+    };
     img.src = url;
+    return () => {
+      cancelled = true;
+      img.onload = null;
+      img.onerror = null;
+    };
   }, [emotion, outfit]);
 
   useEffect(() => { persistOutfit(outfit); }, [outfit]);
