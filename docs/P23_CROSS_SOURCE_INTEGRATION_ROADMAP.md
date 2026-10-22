@@ -1,3 +1,12 @@
+## WorkPass261 — make external causal evidence ingestion idempotent
+
+- [x] Normalize external trace/source IDs using the same bounded NFKC identity rule as runtime outcomes.
+- [x] Return the existing record for duplicate external-source retries rather than appending another outcome or incrementing metrics.
+- [x] Persist external IDs in the bounded deduplication set so a restart preserves idempotency.
+- [x] Add regression coverage for normalized full-width identifiers, duplicate retries, and restart replay.
+- [x] Wire the causal-stream regression into `npm run test:big-pass-90:causal-stream`.
+- [ ] Run the named regression and runtime typecheck on an accessible runner.
+
 ## WorkPass260 — restore diverse replay and consolidation selection
 
 - [x] Select prioritized replay candidates with maximal-marginal-relevance-style task/context penalties instead of allowing one task to occupy the entire batch.
