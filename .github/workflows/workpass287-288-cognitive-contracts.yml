@@ -1,0 +1,38 @@
+name: WorkPass287-288 cognitive contracts
+
+on:
+  push:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
+      - "runtime/neuro-kurisu/tests/workpass287-unified-cycle-contract.mjs"
+      - "runtime/neuro-kurisu/tests/workpass288-intrinsic-motivation-contract.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/workpass287-288-cognitive-contracts.yml"
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
+      - "runtime/neuro-kurisu/tests/workpass287-unified-cycle-contract.mjs"
+      - "runtime/neuro-kurisu/tests/workpass288-intrinsic-motivation-contract.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/workpass287-288-cognitive-contracts.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  cognitive-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.12.0"
+      - name: Check unified cognitive-cycle contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass287-unified-cycle-contract.mjs
+      - name: Check intrinsic motivation contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass288-intrinsic-motivation-contract.mjs
