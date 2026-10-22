@@ -90,7 +90,7 @@ export class MicroDreamEngine{
         const b=corpus[j]!;
         if(a.m.id===b.m.id)continue;
         if((a.m.semanticLinks??[]).includes(b.m.id)||(b.m.semanticLinks??[]).includes(a.m.id))continue;
-        const common=a.terms.filter(term=>b.terms.includes(term)).sort((x,y)=>x.localeCompare(y));
+        const common=a.terms.filter(term=>b.terms.includes(term)).sort();
         if(common.length<2)continue;
         const union=new Set([...a.terms,...b.terms]);
         const jaccard=common.length/Math.max(1,union.size);
@@ -101,14 +101,14 @@ export class MicroDreamEngine{
         candidates.push({a,b,terms:common.slice(0,8),score:quality*weighted*distinctness,distinctness});
       }
     }
-    candidates.sort((x,y)=>y.score-x.score||x.a.m.id.localeCompare(y.a.m.id)||x.b.m.id.localeCompare(y.b.m.id));
+    candidates.sort((x,y)=>y.score-x.score||(x.a.m.id<y.a.m.id?-1:x.a.m.id>y.a.m.id?1:0)||(x.b.m.id<y.b.m.id?-1:x.b.m.id>y.b.m.id?1:0));
     const generated:MicroDream[]=[];
     let deduplicated=0;
     const cooldownMs=6*60*60*1000;
     for(const candidate of candidates){
       if(generated.length>=3)break;
       const ids=[candidate.a.m.id,candidate.b.m.id].sort((x,y)=>x.localeCompare(y));
-      const existing=this.state.dreams.find(d=>d.kind==='association'&&Array.isArray(d.sourceMemoryIds)&&d.sourceMemoryIds.length===2&&[...d.sourceMemoryIds].sort((x,y)=>x.localeCompare(y)).join('\u0000')===ids.join('\u0000'));
+      const existing=this.state.dreams.find(d=>d.kind==='association'&&Array.isArray(d.sourceMemoryIds)&&d.sourceMemoryIds.length===2&&[...d.sourceMemoryIds].sort().join('\u0000')===ids.join('\u0000'));
       if(existing&&Math.abs(at-existing.at)<cooldownMs){deduplicated++;continue;}
       const averageConfidence=(clamp01(candidate.a.m.confidence01??.5)+clamp01(candidate.b.m.confidence01??.5))*.5;
       const grounding=clamp01(evidence.memoryEvidence01??.2),uncertainty=clamp01(evidence.uncertainty01??.5),novelty=clamp01(evidence.novelty01??.3);
