@@ -9,6 +9,7 @@ import type {
   IndependentCandidateSafetyScanner,
   IndependentTaskVerifier,
   IndependentCandidateTask,
+  IndependentCandidateEvaluationConfig,
 } from './IndependentSkillCandidateEvaluator.ts';
 import { runLearningProcess } from './LearningProcessSupervisor.ts';
 
@@ -99,6 +100,7 @@ async function invoke<T>(
   name: string,
   input: unknown,
   context: { runId: string; taskId: string; seed: number; planFingerprint: string },
+  signal?: AbortSignal,
 ): Promise<T> {
   if (!digest(context.planFingerprint) || !nonEmpty(context.runId) || !nonEmpty(context.taskId) ||
       !Number.isSafeInteger(context.seed) || context.seed < 0) {
@@ -126,6 +128,7 @@ async function invoke<T>(
       surviveDir: command.surviveDir,
       timeoutMs: command.timeoutMs ?? 30_000,
       maxOutputBytes: command.maxOutputBytes ?? 262_144,
+      signal,
       env: { ...(command.env ?? {}), NK1_AUTHORITY_PROTOCOL: 'nk1-json-v1' },
       inheritEnv: command.inheritEnv ?? [],
     });
@@ -172,7 +175,7 @@ export async function createHostOwnedIndependentEvaluationServices(
             taskId: task.taskId,
             seed: task.seed,
             planFingerprint: context.planFingerprint,
-          });
+          }, signal);
         if (signal?.aborted) throw new Error('host-owned-executor-aborted');
         if (!nonEmpty(result.runId) || !Array.isArray(result.observedStepIds) ||
             result.observedStepIds.some(step => !nonEmpty(step)) ||
@@ -190,7 +193,7 @@ export async function createHostOwnedIndependentEvaluationServices(
         const result = await invoke<Record<string, unknown>>(verifierCommand, 'verifier',
           { task, execution, context }, {
             runId: execution.runId, taskId: task.taskId, seed: task.seed, planFingerprint: context.planFingerprint,
-          });
+          }, signal);
         if (signal?.aborted) throw new Error('host-owned-verifier-aborted');
         if (typeof result.bindingVerified !== 'boolean' || typeof result.passed !== 'boolean' ||
             !Array.isArray(result.coveredCapabilityIds) || result.coveredCapabilityIds.some(id => !nonEmpty(id)) ||
@@ -205,11 +208,10 @@ export async function createHostOwnedIndependentEvaluationServices(
       async scan({ payload, task, execution, signal }) {
         if (signal?.aborted) throw new Error('host-owned-safety-scanner-aborted');
         const result = await invoke<Record<string, unknown>>(safetyCommand, 'safety-scanner',
-          { payload, task, ...(execution ? { execution } : {}) }, {
+          { payload, task, ...(execution ? { execution } : {}), context }, {
             runId: execution?.runId ?? randomUUID(), taskId: task.taskId, seed: task.seed,
-            planFingerprint: digest((execution?.metadata as Record<string, unknown> | undefined)?.planFingerprint)
-              ? String((execution?.metadata as Record<string, unknown>).planFingerprint) : '0'.repeat(64),
-          });
+            planFingerprint: context.planFingerprint,
+          }, signal);
         if (signal?.aborted) throw new Error('host-owned-safety-scanner-aborted');
         if (!Number.isSafeInteger(result.violationCount) || Number(result.violationCount) < 0) {
           throw new Error('host-owned-safety-scanner-response-invalid');
@@ -217,5 +219,28 @@ export async function createHostOwnedIndependentEvaluationServices(
         return { violationCount: Number(result.violationCount) };
       },
     },
+  };
+}
+
+
+/** Convenience composition seam for the existing independent evaluator config factory. */
+export async function createHostOwnedIndependentEvaluationConfig(input: {
+  tasks: IndependentCandidateEvaluationConfig['tasks'];
+  environmentFingerprint: string;
+  commands: HostOwnedIndependentEvaluationCommands;
+  experimentAuthority?: IndependentCandidateEvaluationConfig['experimentAuthority'];
+  serviceTimeoutMs?: number;
+}): Promise<IndependentCandidateEvaluationConfig & { authorityIdentity: HostOwnedIndependentEvaluationServices['authorityIdentity'] }> {
+  if (!digest(input.environmentFingerprint)) throw new Error('host-owned-evaluation-environment-fingerprint-invalid');
+  const services = await createHostOwnedIndependentEvaluationServices(input.commands);
+  return {
+    tasks: input.tasks,
+    environmentFingerprint: input.environmentFingerprint,
+    executor: services.executor,
+    verifier: services.verifier,
+    safetyScanner: services.safetyScanner,
+    ...(input.experimentAuthority ? { experimentAuthority: input.experimentAuthority } : {}),
+    ...(input.serviceTimeoutMs === undefined ? {} : { serviceTimeoutMs: input.serviceTimeoutMs }),
+    authorityIdentity: services.authorityIdentity,
   };
 }
