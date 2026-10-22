@@ -47,7 +47,7 @@ const valid = (x: RevisionObservation) => Boolean(
   (x.authority !== 'independent-verifier' || x.verifierId === x.expectedVerifierId)
 );
 
-/** Pair on exact task/version identity (taskId), seed and first attempt; retries are not independent samples. */
+/** Pair on exact task/version identity (taskId), seed and first attempt; retries and replayed evidence receipts are not independent samples. */
 export function evaluateSkillRevision(
   observations: readonly RevisionObservation[],
   baselineMethod: string,
@@ -61,12 +61,17 @@ export function evaluateSkillRevision(
   const minAbsoluteGain = clamp(options.minAbsoluteGain ?? .02, .02);
   const maxFamilyRegression = clamp(options.maxFamilyRegression ?? .10, .10);
   const byPair = new Map<string, Map<string, RevisionObservation>>();
+  // A single verifier receipt cannot be replayed under multiple task IDs to manufacture sample size.
+  const seenEvidenceReceipts = new Set<string>();
   let rejectedRows = 0;
   for (const row of observations) {
     if (!valid(row) || (row.method !== baselineMethod && row.method !== candidateMethod)) {
       rejectedRows++;
       continue;
     }
+    const receiptKey = JSON.stringify([row.method, row.verifierId, row.evidenceRef.normalize('NFKC').trim()]);
+    if (seenEvidenceReceipts.has(receiptKey)) { rejectedRows++; continue; }
+    seenEvidenceReceipts.add(receiptKey);
     const key = JSON.stringify([row.taskId, row.seed, row.attempt]);
     const pair = byPair.get(key) ?? new Map<string, RevisionObservation>();
     if (pair.has(row.method)) { rejectedRows++; continue; }
