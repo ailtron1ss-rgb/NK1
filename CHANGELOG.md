@@ -3,7 +3,7 @@
 - Added a CAKN-inspired write-time gate to `SelfModelEngine.learnGoalOutcome()`: action preferences continue to learn from bounded rewards, while `agencyBelief` and `identityCoherence` change only when a verified, independent outcome is bound to a non-empty receipt from the trusted world-transition or external-verification path.
 - Added accepted/rejected gate counters and a compact last-decision record for observability.
 - Wired the canonical OrganismCore outcome path to supply verification, independence, source class and a decision/tick-bound receipt. Unverified or correlated outcomes cannot revise the high-level self model through this learning path.
-- Extended the WorkPass313 regression with missing-evidence, correlated-evidence and accepted-evidence cases. Execution remains pending because the connected GitHub Actions jobs have been rejected before the first step starts.
+- Added a dedicated `self-model-evidence-write-gate-workpass315.mjs` regression covering missing evidence, correlated evidence, source/receipt mismatch and accepted evidence, including snapshot/restore. Execution remains pending because the connected GitHub Actions jobs have been rejected before the first step starts.
 
 ---
 
@@ -12,7 +12,7 @@
 - Added a bounded, read-only `MemoryOS2.doctor()` report for content-hash mismatch, duplicate IDs/content candidates, unresolved links, dangling revision pointers, non-reciprocal revision chains, repeated revision sequences, future-dated evidence, duplicate independence keys and memory-index corruption.
 - Exposed the report through both the canonical `MemorySubsystemRuntime.doctor()` owner and `OrganismCore.memoryDoctor()`; the diagnostic path does not mutate or automatically delete memories. Severity totals remain correct even when the detailed issue list is capped.
 - Hardened `evaluateSkillRevision()` so the same method/verifier/evidence receipt cannot be counted more than once under different task IDs. Reused receipts are rejected before paired holdout evaluation.
-- Added regression checks for doctor non-mutation, corrupted memory records and replayed holdout receipts. Actions runner availability remains unverified: prior executions were rejected before starting any steps (runner_id=0).
+- Added a dedicated `memory-doctor-workpass314.mjs` regression covering non-mutation, corrupted records, and bounded report accounting; added a separate CI step for it. Replayed holdout receipts are covered by `p23-verified-skill-revision-gate.mjs`. Actions runner availability remains unverified: prior executions were rejected before starting any steps (runner_id=0).
 
 ---
 
