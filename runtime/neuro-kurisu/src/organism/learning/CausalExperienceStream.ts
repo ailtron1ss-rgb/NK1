@@ -105,7 +105,7 @@ export class CausalExperienceStream {
           // Legacy snapshots may contain records written before the external
           // intake boundary stopped trusting caller-supplied provenance/grounding.
           // Such records have no runtime policy-feature vector; fail closed on restore.
-          const trustedRuntimeEvidence=record?.provenance!=='external'&&hasRuntimePolicyFeatures;
+          const trustedRuntimeEvidence=record?.provenance==='runtime-outcome'&&hasRuntimePolicyFeatures;
           return {
             ...record,traceId,
             ...(!trustedRuntimeEvidence?{provenance:'external',stateGrounded:false,replayEligible:false}:{}),
@@ -259,7 +259,7 @@ export class CausalExperienceStream {
   }
   prioritizedReplayCandidates(limit=32,at=Date.now()){
     const now=Number.isFinite(at)?Number(at):Date.now();
-    const rows=this.state.records.filter(r=>r.replayEligible!==false&&Array.isArray(r.policyFeatures01)&&r.policyFeatures01.length>=16);
+    const rows=this.state.records.filter(r=>r.provenance==='runtime-outcome'&&r.stateGrounded===true&&r.replayEligible===true&&Array.isArray(r.policyFeatures01)&&r.policyFeatures01.length>=16&&r.policyFeatures01.every(value=>Number.isFinite(value)&&value>=0&&value<=1));
     const score=(r:CausalExperienceRecord)=>{
       const ageDays=Math.max(0,now-r.at)/86400000;
       const ageBoost=clamp01(Math.min(1,ageDays/3))*.05;
@@ -320,7 +320,7 @@ export class CausalExperienceStream {
   }
   consolidate(limit=32,at=Date.now()){
     // Only evidence grounded in an actual state transition may become consolidated memory.
-    const ranked=this.state.records.filter(r=>!r.consolidated&&r.stateGrounded);
+    const ranked=this.state.records.filter(r=>!r.consolidated&&r.provenance==='runtime-outcome'&&r.stateGrounded===true);
     const rows:CausalExperienceRecord[]=[];
     const taskCounts=new Map<string,number>(),contextCounts=new Map<string,number>();
     const wanted=Math.max(1,Math.min(128,Math.floor(limit)));
