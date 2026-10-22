@@ -1,6 +1,8 @@
 # NeuroCore: master strategy, brain map, gaps and release plan
 
 **Status:** living engineering plan, not a claim that all listed capabilities exist.  
+**WorkPass286 execution supplement:** [multiscale brain-system integration plan](WORKPASS286_MULTISCALE_BRAIN_SYSTEM_INTEGRATION_PLAN_RU_2026-10-22.md) defines the newer macro/meso/micro mapping and proposed WorkPass287–294 implementation sequence.  
+  
 **Scope:** whole repository and runtime; branch `workpass70-source`.  
 **Read alongside:** [persistent charter](../NEUROCORE_START_HERE.md), [working rules](../AGENTS.md), [research intake ledger](RESEARCH_INTAKE_LEDGER.md), [repository surface audit](WORKPASS76_REPO_SURFACE_AUDIT_2026-10-19.md), [latest handover](WORKPASS77_HANDOVER_2026-10-19.md).
 
