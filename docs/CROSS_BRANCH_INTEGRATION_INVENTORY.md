@@ -30,3 +30,33 @@ This inventory records concrete source-history evidence gathered while preparing
 ## Current status
 
 Evidence-based branch inventory committed. No source code from the listed branches has been merged by this inventory alone; release ZIP unchanged.
+
+
+## Expanded comparison against workpass70-source
+
+A direct GitHub compare against `main` had previously reported no common ancestor for the selected branch pairs. A more useful comparison against the actual working source ref, `workpass70-source`, establishes that most of these branches **do share ancestry with that source** and can be integrated by examining their real diffs rather than treating them as unrelated histories.
+
+| Branch | Compare result vs workpass70-source | Commits ahead | Changed paths |
+|---|---|---:|---:|
+| workpass71-learning-eval-paired-seeds | diverged | 56 | 17 |
+| workpass71-learning-integrity | diverged | 32 | 10 |
+| workpass73-audit-fixes | diverged | 1 | 1 |
+| workpass79-cognitive-rebuild | diverged | 379 | 84 |
+| workpass79-learning-input-integrity | diverged | 48 | 19 |
+| workpass86-prioritized-replay | diverged | 65 | 24 |
+| workpass87-cleanrl-eval-protocol | diverged | 74 | 28 |
+| workpass88-avalanche-forgetting-metrics | diverged | 78 | 31 |
+
+All rows above reported a merge base in the GitHub comparison response. This supersedes the overly broad conclusion that all these histories lack a common ancestor: that observation applied to comparison with `main`, not to comparison with `workpass70-source`.
+
+## File-level triage findings
+
+- Learning evaluation branch adds paired holdout evaluation, bounded experience replay, continual-learning history and replay-strategy comparisons, with tests and workflow updates. Several sampled files already have identical blob SHAs in the integration workspace, so these are not missing changes to re-copy.
+- Learning-integrity branch changes the live `OrganismCore.ts`, `CausalExperienceStream.ts`, `SkillAcquisitionBenchmark.ts`, and adds a split-integrity test. These overlapping runtime files require semantic review before porting.
+- Cognitive-rebuild branch reports 84 changed paths, including new replay, verified-outcome, promotion-gate and continual-learning-metrics workflows. It is the largest candidate source and should be triaged by subsystem, not merged as a blind snapshot.
+- Learning-input-integrity, prioritized-replay, CleanRL and Avalanche branches progressively add research intake records, vendor notices/licenses, replay code and evaluation workflows. Several documentation files are already identical in the integration workspace.
+- The current workspace's `ContinualReplayBuffer.ts` blob differs from the sampled workpass79 source blob; the workspace version is longer. Do not replace it with the shorter branch snapshot without a method-level diff.
+
+## Safe merge execution policy
+
+The current GitHub connector exposes file-level reads/writes and commit/tree primitives but does not expose a confirmed bulk cherry-pick operation in the discovered tool set. Therefore integration must be performed as a sequence of explicit file-level changes or via a reviewed pull request; do not label a source branch merged solely because its name is listed here.
