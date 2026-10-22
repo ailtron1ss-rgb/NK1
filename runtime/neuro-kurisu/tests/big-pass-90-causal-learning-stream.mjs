@@ -108,6 +108,18 @@ assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, taskId: ["external", "task"].join(String.fromCharCode(1)), traceId: "control-task-id",
 }), /causal-external-task-id-invalid/,
   "C0 control characters must be rejected in task identities");
+assert.throws(() => externalStream.recordExternalLearningEvent({
+  ...externalInput, traceId: String.fromCharCode(10) + "edge-trace",
+}), /causal-external-trace-id-invalid/,
+  "leading control characters must be rejected rather than trimmed away");
+assert.throws(() => externalStream.recordExternalLearningEvent({
+  ...externalInput, traceId: "edge-trace" + String.fromCharCode(9),
+}), /causal-external-trace-id-invalid/,
+  "trailing control characters must be rejected rather than trimmed away");
+assert.throws(() => externalStream.recordExternalLearningEvent({
+  ...externalInput, taskId: "edge-task" + String.fromCharCode(10), traceId: "control-task-edge",
+}), /causal-external-task-id-invalid/,
+  "task IDs with trailing control characters must not normalize into ordinary IDs");
 assert.equal(externalStream.summary().outcomes, 1,
   "overlong or control-bearing identity keys must fail before mutating causal state");
 
