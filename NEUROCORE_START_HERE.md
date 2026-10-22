@@ -1,3 +1,15 @@
+## Latest durable checkpoint — WorkPass272 (2026-10-22)
+
+- Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use live PR for current HEAD.
+- WorkPass272 adds filesystem identity checks to the shared evaluator storage-root separation contract: lexical paths alone are not sufficient if distinct path strings point to the same device/inode; Windows path comparisons are case-insensitive.
+- Unit-level separation-contract regressions are added. The production-style host-owned subprocess test is already referenced by WorkPass110, but successful execution/typecheck remains unverified because Actions has no accessible steps/logs.
+- Keep learning scores unchanged. The mechanism improves evaluator isolation constraints but does not provide a real OS/container sandbox by itself.
+- Next: restore actionable CI, trace external grounding/provenance callers, deploy independently controlled evaluation authorities, and measure held-out memory-to-action and transfer/forgetting results.
+
+Read the [strategic audit](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [P23 integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md), and [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md).
+
+---
+
 ## Latest durable checkpoint — WorkPass271 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use the live PR for the current HEAD.
