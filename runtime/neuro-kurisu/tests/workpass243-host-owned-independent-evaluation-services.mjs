@@ -2,7 +2,22 @@ import assert from 'node:assert/strict';
 import { chmod, link, mkdtemp, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { createHostOwnedIndependentEvaluationConfigFactory, createHostOwnedIndependentEvaluationServices } from '../src/organism/learning/HostOwnedIndependentEvaluationServices.ts';
+import { areHostOwnedStorageRootsDisjoint, createHostOwnedIndependentEvaluationConfigFactory, createHostOwnedIndependentEvaluationServices } from '../src/organism/learning/HostOwnedIndependentEvaluationServices.ts';
+
+// Two different path strings are not enough when an OS exposes the same
+// underlying filesystem object through a bind mount or alternate mount alias.
+assert.equal(areHostOwnedStorageRootsDisjoint(
+  { path: '/authority/executor/runs', identity: 'dev7:inode42' },
+  { path: '/authority/verifier/runs', identity: 'dev7:inode42' },
+), false, 'storage roots sharing the same device/inode must not be treated as independent');
+assert.equal(areHostOwnedStorageRootsDisjoint(
+  { path: '/authority/executor/runs', identity: 'dev7:inode42' },
+  { path: '/authority/verifier/runs', identity: 'dev7:inode43' },
+), true, 'independent paths and filesystem identities should satisfy the separation contract');
+assert.equal(areHostOwnedStorageRootsDisjoint(
+  { path: '/authority/runs', identity: 'dev7:inode42' },
+  { path: '/authority/runs/nested', identity: 'dev7:inode43' },
+), false, 'nested storage roots must be rejected even when identities differ');
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'nk1-host-evaluation-'));
 try {
