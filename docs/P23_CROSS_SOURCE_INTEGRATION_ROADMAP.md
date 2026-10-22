@@ -16,7 +16,8 @@ Scope: continue integrating mechanisms into the existing P23 learning/revision l
 
 - [x] Add a concrete adapter that dispatches candidate execution, independent verification, and safety scanning to three distinct host-owned executables via the existing `LearningProcessSupervisor`.
 - [x] Reuse bounded subprocess execution, no-shell launch, output limits, receipts, POSIX process-group termination, and AbortSignal cancellation; private JSON request files are created with mode 0600 and removed after the call.
-- [x] Validate resolved executable identity, absolute host paths, executable access, and pairwise-disjoint per-authority run/survive storage.
+- [x] Validate resolved executable identity, absolute host paths, executable access, private POSIX storage-root permissions, and pairwise-disjoint per-authority run/survive storage.
+- [x] Require verifier/scanner response attestations to echo the exact payload/task/environment/plan fingerprints and run/task/seed identity; mismatched binding fails closed.
 - [x] Pass the same immutable task/environment/plan context to the safety scanner, so scan evidence is not detached from the evaluation context.
 - [x] Add a runtime-ready config factory suitable for `RuntimeConfig.compoundRepairRevision.independentEvaluationConfigForRepair`; host-owned task plans, environment fingerprint, and experiment authority remain explicit inputs.
 - [x] Add `OrganismRuntime.createWithHostOwnedIndependentEvaluation` to prepare the services before construction and wire the returned config factory into the existing P23 coordinator without creating parallel learning/promotion machinery.
