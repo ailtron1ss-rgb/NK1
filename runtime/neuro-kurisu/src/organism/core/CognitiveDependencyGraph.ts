@@ -20,7 +20,7 @@ const clamp01=(value:unknown):number=>typeof value==='number'&&Number.isFinite(v
 const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const cleanText=(value:unknown,fallback:string,maxLength:number):string=>{
   if(typeof value!=='string')return fallback;
-  const text=value.replace(/[\u0000-\u001f\u007f-\u009f]/gu,' ').trim().slice(0,maxLength);
+  const text=value.replace(/[\u0000-\u001f\u007f-\u009f]/gu,' ').replace(/\s+/gu,' ').trim().slice(0,maxLength);
   return text||fallback;
 };
 const validDomain=(value:unknown):value is CognitiveDomain=>typeof value==='string'&&DOMAINS.includes(value as CognitiveDomain);
