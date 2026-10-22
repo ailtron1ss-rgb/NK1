@@ -1,3 +1,14 @@
+## WorkPass285 — independent evaluator capability scope
+
+- [x] Reject verifier coverage IDs outside each task's declared required-capability set.
+- [x] Ensure out-of-scope capability claims fail closed and are not recorded as covered.
+- [x] Add validation/holdout regression coverage for an out-of-scope `write` claim on a `read` task.
+- [ ] Execute independent evaluator regression suite and runtime typecheck on exact PR head.
+- [ ] Continue wiring host-authenticated runtime evidence into durable causal-memory restoration and evaluated skill promotion.
+- No dependency added; no learning-score uplift claimed.
+
+---
+
 ## WorkPass284 — reject malformed external causal evidence
 
 - [x] Reject invalid external world ticks rather than coercing them.
