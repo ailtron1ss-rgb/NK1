@@ -1220,6 +1220,70 @@ export class MemoryOS2{
    if(!characterGramMismatch)for(const [gram,tokens] of expectedGrams){const actual=this.characterGramIndex.get(gram);if(!actual||actual.size!==tokens.size||[...tokens].some(token=>!actual.has(token))){characterGramMismatch++;break;}}
    return {pass:staleItemIndex===0&&missingItemIndex===0&&staleExact===0&&staleContent===0&&dfMismatch===0&&characterGramMismatch===0,items:this.state.items.length,itemIndexSize:this.itemIndex.size,staleItemIndex,missingItemIndex,staleExact,staleContent,dfMismatch,characterGramMismatch,characterGramVocabulary:this.characterGramIndex.size,semanticEmbeddingProvider:'none' as const,semanticVectorUsedForRanking:false};
  }
+ /**
+  * Read-only /doctor pass adapted from MemFS maintenance: checks memory identity, provenance,
+  * revision pointers and link hygiene without merging, deleting, or rewriting canonical records.
+  * Link targets can belong to an external graph, so those findings are warnings, not automatic repairs.
+  */
+ doctor(options:{at?:number;maxIssues?:number}={}){
+  const at=Number.isFinite(options.at)?Number(options.at):Date.now();
+  const maxIssues=Math.max(1,Math.min(128,Math.floor(options.maxIssues??64)));
+  const items=this.state.items;
+  const idCounts=new Map<string,number>();
+  const hashCounts=new Map<string,number>();
+  const revisionMembers=new Map<string,MemoryItem2[]>();
+  const issues:Array<{code:string;severity:'error'|'warning';memoryId:string|null;detail:string}> = [];
+  const add=(code:string,severity:'error'|'warning',memoryId:string|null,detail:string)=>{if(issues.length<maxIssues)issues.push({code,severity,memoryId,detail:detail.slice(0,240)});};
+  for(const item of items){idCounts.set(item.id,(idCounts.get(item.id)??0)+1);}
+  const ids=new Set(items.map(item=>item.id));
+  let hashMismatch=0,invalidConfidence=0,invalidStatus=0,danglingRevision=0,danglingLinks=0,duplicateContent=0,futureEvidence=0,duplicateEvidenceKeys=0;
+  for(const item of items){
+   const actualHash=memoContentHash(String(item.content??''));
+   if(!item.contentHash||item.contentHash!==actualHash){hashMismatch++;add('content-hash-mismatch','error',item.id,'Stored content hash is absent or differs from the canonical content hash.');}
+   if(!Number.isFinite(item.confidence)||item.confidence<0||item.confidence>1){invalidConfidence++;add('invalid-confidence','error',item.id,'Confidence is not a finite value in [0,1].');}
+   if(!EPISTEMIC_STATUSES.has(item.epistemicStatus)){invalidStatus++;add('invalid-epistemic-status','error',item.id,'Memory epistemic status is not in the supported enum.');}
+   if(Number.isFinite(item.observedAt)&&Number(item.observedAt)>at+300000){futureEvidence++;add('future-observation-timestamp','warning',item.id,'Observation timestamp is more than five minutes in the future.');}
+   if(Number.isFinite(item.evidenceFreshnessAt)&&Number(item.evidenceFreshnessAt)>at+300000){futureEvidence++;add('future-evidence-freshness','warning',item.id,'Evidence freshness timestamp is more than five minutes in the future.');}
+   const group=item.revisionGroupId??item.id;
+   const revisions=revisionMembers.get(group)??[];revisions.push(item);revisionMembers.set(group,revisions);
+   for(const [field,ref] of [['supersedesId',item.supersedesId],['supersededById',item.supersededById]] as Array<[string,string|null|undefined]>){
+    if(ref&& !ids.has(ref)){danglingRevision++;add('dangling-revision-pointer','warning',item.id,field+' references missing memory '+String(ref).slice(0,100));}
+   }
+   const links:Array<[string,string[]]>=[['semanticLinks',item.semanticLinks??[]],['temporalLinks',item.temporalLinks??[]],['causalLinks',item.causalLinks??[]],['contradictionLinks',item.contradictionLinks??[]]];
+   for(const [field,refs] of links){
+    if(!Array.isArray(refs))continue;
+    if(refs.includes(item.id)){danglingLinks++;add('self-referential-link','warning',item.id,field+' contains a self-link.');}
+    for(const ref of refs){if(typeof ref==='string'&&!ids.has(ref)){danglingLinks++;add('unresolved-memory-link','warning',item.id,field+' references an ID not currently present in MemoryOS2: '+ref.slice(0,96));}}
+   }
+   const evidenceKeys=new Set<string>();
+   for(const source of item.evidenceSources??[]){
+    if(Number.isFinite(source.observedAt)&&source.observedAt>at+300000){futureEvidence++;add('future-source-observation','warning',item.id,'An evidence source has an observation timestamp in the future.');}
+    const key=String(source.independenceKey??source.source??'').trim();
+    if(key&&evidenceKeys.has(key)){duplicateEvidenceKeys++;add('duplicate-evidence-source-key','warning',item.id,'The same independence key occurs multiple times in one record.');}
+    if(key)evidenceKeys.add(key);
+   }
+   const hashKey=[actualHash,item.kind,item.source,item.epistemicStatus].join('|');
+   hashCounts.set(hashKey,(hashCounts.get(hashKey)??0)+1);
+  }
+  for(const [id,count] of idCounts){if(count>1)add('duplicate-memory-id','error',id,'The snapshot contains '+count+' records with the same ID.');}
+  for(const [key,count] of hashCounts){if(count>1){duplicateContent+=count-1;add('duplicate-content-candidate','warning',null,'Same canonical content hash, kind, source and epistemic status appear '+count+' times; inspect before any merge.');}}
+  let revisionSequenceCollisions=0,brokenReciprocalRevisions=0;
+  for(const [group,rows] of revisionMembers){
+   const seqs=new Set<number>();
+   for(const item of rows){
+    const seq=Number(item.revisionSequence??1);
+    if(seqs.has(seq)){revisionSequenceCollisions++;add('duplicate-revision-sequence','warning',item.id,'Revision group '+group+' contains a repeated sequence '+seq+'.');}
+    seqs.add(seq);
+    if(item.supersedesId){const previous=items.find(other=>other.id===item.supersedesId);if(previous&&previous.supersededById!==item.id){brokenReciprocalRevisions++;add('revision-link-not-reciprocal','warning',item.id,'Previous revision does not point back through supersededById.');}}
+    if(item.supersededById){const next=items.find(other=>other.id===item.supersededById);if(next&&next.supersedesId!==item.id){brokenReciprocalRevisions++;add('revision-link-not-reciprocal','warning',item.id,'Next revision does not point back through supersedesId.');}}
+   }
+  }
+  const index=this.indexDiagnostics();
+  if(!index.pass)add('index-integrity-failure','error',null,'The canonical memory indexes disagree with the persisted memory list.');
+  const errors=issues.filter(issue=>issue.severity==='error').length;
+  const warnings=issues.filter(issue=>issue.severity==='warning').length;
+  return {version:1,readOnly:true,pass:errors===0,at,itemCount:items.length,issueCount:errors+warnings,errors,warnings,issues,truncated:errors+warnings>issues.length,counts:{duplicateIds:[...idCounts.values()].filter(count=>count>1).length,hashMismatch,invalidConfidence,invalidStatus,duplicateContent,danglingRevision,danglingLinks,futureEvidence,duplicateEvidenceKeys,revisionSequenceCollisions,brokenReciprocalRevisions,indexIntegrityFailures:index.pass?0:1},indexes:index};
+ }
  evidenceTrail(id:string){
   const item=this.itemIndex.get(String(id));if(!item)return null;
   const evidence=this.normalizeEvidenceSources(item);
