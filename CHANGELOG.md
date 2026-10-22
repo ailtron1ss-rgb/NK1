@@ -1,3 +1,10 @@
+## WorkPass285 — independent evaluator capability scope (2026-10-22)
+
+- The independent candidate evaluator now rejects verifier claims for capabilities outside a task's declared required-capability set.
+- Added regression coverage for out-of-scope capability claims. Tests/typecheck not executed; no new dependency or measured learning-score uplift.
+
+---
+
 ## WorkPass284 — strict external causal-memory intake (2026-10-22)
 
 - External causal-memory ingestion now rejects invalid ticks, malformed metrics and unsafe optional source/evidence identities rather than coercing them into plausible records.
