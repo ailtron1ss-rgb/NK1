@@ -2,7 +2,7 @@
 
 A focused review of the historical `workpass79-learning-input-integrity` branch found a useful principle in its `ContinualReplayBuffer`: validate task/action contracts before mutating memory. The current `CausalExperienceStream` now applies the relevant boundary rule directly—normalizing and requiring a non-empty external task identity and rejecting action labels outside the canonical organism action set. Regression cases assert that malformed events do not change outcome counts. The old buffer/learner was not copied; NK1 keeps one causal stream owner.
 
-The causal scorecard remains at **57/100 overall learning engineering**, **61% P23 symbolic core**, **36% evidence-grounded maturity**, and **30% project-wide lifelong-learning roadmap** until actual external-task evidence and reproducible test runs justify recalibration. The current HEAD has no associated PR-triggered workflow run; tests/typecheck remain unconfirmed.
+The causal scorecard remains at **57/100 overall learning engineering**, **61% P23 symbolic core**, **36% evidence-grounded maturity**, and **30% project-wide lifelong-learning roadmap** until actual external-task evidence and reproducible test runs justify recalibration. The current HEAD has no commit status records. Three available PR-triggered workflow records report failure with zero visible job steps; their log downloads return BlobNotFound, so the failures cannot be attributed to code. Tests/typecheck remain unconfirmed.
 
 ---
 ## WorkPass263 — reduce host-environment leakage into evaluation authorities (2026-10-22)
