@@ -673,8 +673,13 @@ export interface OrganismSystemState {
     persistentContinuityKernel?: import('../system/PersistentContinuityKernel.ts').PersistentContinuityKernelState;
     b1701B2200UnifiedLifeContinuity?: import('../system/B1701B2200UnifiedLifeContinuityCore.ts').B1701B2200State;
     b2201B2500LifeCourseSelfModel?: import('../system/B2201B2500LifeCourseSelfModelCore.ts').B2201B2500State;
+    /** Core-owned internal decision-loop state. */
     cognitiveEventFabric?: import('../system/CognitiveEventFabric.ts').CognitiveEventFabricSnapshot;
     cognitiveResourceEconomy?: import('../system/CognitiveResourceEconomy.ts').CognitiveResourceEconomyState;
+    /** Outer embodied/world-feedback loop state is separate so it cannot overwrite Core's internal loop. */
+    runtimeCognitiveEventFabric?: import('../system/CognitiveEventFabric.ts').CognitiveEventFabricSnapshot;
+    runtimeCognitiveResourceEconomy?: import('../system/CognitiveResourceEconomy.ts').CognitiveResourceEconomyState;
+    runtimeUnifiedCognitiveCycle?: import('../system/UnifiedCognitiveCycle.ts').UnifiedCognitiveCycleState;
     runtimePerformance?: import('../system/RuntimePerformanceGovernor.ts').RuntimePerformanceGovernorState;
     realityEvidenceLedger?: import('../system/RealityEvidenceLedger.ts').RealityEvidenceLedgerState;
     unifiedCognitiveCycle?: import('../system/UnifiedCognitiveCycle.ts').UnifiedCognitiveCycleState;
@@ -2344,6 +2349,9 @@ export class OrganismCore {
     cognitiveImmuneSnapshot() { return structuredClone(this.cognitiveRuntime.cognitiveImmune.snapshot()); }
     setRuntimeEvidence(snapshot: import('../system/RuntimeEvidenceBus.ts').RuntimeEvidenceSnapshot): void { this.persisted.system.runtimeEvidence = snapshot; }
     setCognitiveEventFabric(snapshot: import('../system/CognitiveEventFabric.ts').CognitiveEventFabricSnapshot): void { this.persisted.system.cognitiveEventFabric = snapshot; }
+    setRuntimeCognitiveEventFabric(snapshot: import('../system/CognitiveEventFabric.ts').CognitiveEventFabricSnapshot): void { this.persisted.system.runtimeCognitiveEventFabric = snapshot; }
+    setRuntimeCognitiveResourceEconomy(snapshot: import('../system/CognitiveResourceEconomy.ts').CognitiveResourceEconomyState): void { this.persisted.system.runtimeCognitiveResourceEconomy = snapshot; }
+    setRuntimeUnifiedCognitiveCycle(snapshot: import('../system/UnifiedCognitiveCycle.ts').UnifiedCognitiveCycleState): void { this.persisted.system.runtimeUnifiedCognitiveCycle = snapshot; }
     cognitiveEventFabricSnapshot() { return structuredClone(this.persisted.system.cognitiveEventFabric); }
     cognitiveResourceEconomySnapshot() { return structuredClone(this.persisted.system.cognitiveResourceEconomy); }
     runtimePerformanceSnapshot() { return structuredClone(this.persisted.system.runtimePerformance); }
