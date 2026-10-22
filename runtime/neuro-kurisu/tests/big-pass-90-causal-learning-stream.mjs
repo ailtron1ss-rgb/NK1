@@ -55,6 +55,12 @@ assert.equal(externalDuplicate?.id, externalFirst?.id,
   "NFKC-normalized upstream retry must resolve to the same recorded outcome");
 assert.equal(externalStream.summary().outcomes, 1,
   "duplicate external evidence must not increment outcome count");
+assert.throws(() => externalStream.recordExternalLearningEvent({
+  ...externalInput, traceId: "External-Source-17", success01: .1,
+}), /causal-external-trace-id-conflict/,
+  "reusing a trace identity with a changed outcome must surface a conflict");
+assert.equal(externalStream.summary().outcomes, 1,
+  "conflicting duplicate evidence must not mutate outcome counts");
 const externalRestored = new CausalExperienceStream(64);
 externalRestored.restore(externalStream.snapshot());
 const restoredExternalDuplicate = externalRestored.recordExternalLearningEvent({
@@ -64,6 +70,11 @@ assert.equal(restoredExternalDuplicate?.id, externalFirst?.id,
   "a restored external outcome must resolve to its original record");
 assert.equal(externalRestored.summary().outcomes, 1,
   "a restored duplicate must not increment outcome count");
+assert.throws(() => externalRestored.recordExternalLearningEvent({
+  ...externalInput, traceId: "External-Source-17", reward01: .05,
+}), /causal-external-trace-id-conflict/,
+  "the durable duplicate guard must also detect changed payload after restore");
+assert.equal(externalRestored.summary().outcomes, 1);
 
 assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, taskId: "   ", traceId: "invalid-task",
