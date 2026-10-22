@@ -28,6 +28,16 @@ export type CompoundRepairRevisionInputProvider = (
   },
 ) => Promise<CompoundRepairRevisionInputs>;
 
+interface RevisionFailureBackoff {
+  evidenceDigest: string;
+  attempts: number;
+  retryAfter: number;
+  category: 'revision-generation-or-evaluation-failed';
+}
+
+const BASE_RETRY_BACKOFF_MS = 30 * 60 * 1000;
+const MAX_RETRY_BACKOFF_MS = 24 * 60 * 60 * 1000;
+
 /**
  * Orchestrates a real runtime repair observation into P23's existing revision lifecycle.
  *
@@ -39,6 +49,7 @@ export type CompoundRepairRevisionInputProvider = (
 export class P23CompoundRepairRevisionCoordinator {
   private readonly inFlightBySkill = new Map<string, Promise<any>>();
   private readonly stagedEvidenceDigestsBySkill = new Map<string, Set<string>>();
+  private readonly retryBackoffBySkill = new Map<string, RevisionFailureBackoff>();
 
   constructor(
     private readonly runtime: OrganismRuntime,
@@ -106,9 +117,24 @@ export class P23CompoundRepairRevisionCoordinator {
     const inFlight = this.inFlightBySkill.get(normalizedSkillId);
     if (inFlight) return inFlight;
 
+    const failed = this.retryBackoffBySkill.get(normalizedSkillId);
+    if (failed?.evidenceDigest === initialEvidenceDigest && Date.now() < failed.retryAfter) {
+      return Promise.resolve({
+        status: 'retry-backoff-active' as const,
+        skillId: normalizedSkillId,
+        repairEvidenceCount: repairEvidence.length,
+        evidenceDigest: initialEvidenceDigest,
+        attempts: failed.attempts,
+        retryAfter: failed.retryAfter,
+        retryInMs: Math.max(0, failed.retryAfter - Date.now()),
+        category: failed.category,
+      });
+    }
+
     const tracked = this.reviseFromEvidenceSnapshot(normalizedSkillId, repairEvidence, initialEvidenceDigest)
       .then(result => {
         if (result.status === 'candidate-staged') {
+          this.retryBackoffBySkill.delete(normalizedSkillId);
           const completed = this.stagedEvidenceDigestsBySkill.get(normalizedSkillId) ?? new Set<string>();
           completed.add(initialEvidenceDigest);
           while (completed.size > 32) completed.delete(completed.values().next().value!);
@@ -119,11 +145,39 @@ export class P23CompoundRepairRevisionCoordinator {
         }
         return result;
       })
+      .catch(error => {
+        const prior = this.retryBackoffBySkill.get(normalizedSkillId);
+        const attempts = Math.min(12, prior?.evidenceDigest === initialEvidenceDigest ? prior.attempts + 1 : 1);
+        const retryAfter = Date.now() + Math.min(MAX_RETRY_BACKOFF_MS, BASE_RETRY_BACKOFF_MS * 2 ** (attempts - 1));
+        this.retryBackoffBySkill.set(normalizedSkillId, {
+          evidenceDigest: initialEvidenceDigest,
+          attempts,
+          retryAfter,
+          category: 'revision-generation-or-evaluation-failed',
+        });
+        while (this.retryBackoffBySkill.size > 128) {
+          this.retryBackoffBySkill.delete(this.retryBackoffBySkill.keys().next().value!);
+        }
+        throw error;
+      })
       .finally(() => {
         if (this.inFlightBySkill.get(normalizedSkillId) === tracked) this.inFlightBySkill.delete(normalizedSkillId);
       });
     this.inFlightBySkill.set(normalizedSkillId, tracked);
     return tracked;
+  }
+
+  retryBackoffDiagnostics() {
+    const now = Date.now();
+    return [...this.retryBackoffBySkill.entries()].map(([skillId, row]) => ({
+      skillId,
+      evidenceDigest: row.evidenceDigest,
+      attempts: row.attempts,
+      retryAfter: row.retryAfter,
+      remainingMs: Math.max(0, row.retryAfter - now),
+      active: now < row.retryAfter,
+      category: row.category,
+    }));
   }
 
   private async reviseFromEvidenceSnapshot(
