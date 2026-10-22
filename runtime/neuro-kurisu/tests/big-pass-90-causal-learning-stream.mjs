@@ -26,6 +26,16 @@ assert.equal(stream.recordOutcome({
 assert.equal(stream.recordOutcome(trace, mkState({ tick: 1 }), {
   reward01: .8, success01: .8, surprise01: .7, novelty01: .75,
 }), null, "an outcome without a later observed state transition must be rejected");
+
+assert.equal(stream.recordOutcome({ ...trace, id: "nan-outcome-reward" }, mkState({ tick: 3 }), {
+  reward01: Number.NaN, success01: .8, surprise01: .7, novelty01: .75,
+}), null, "non-finite outcome metrics must not be clamped into trusted evidence");
+assert.equal(stream.recordOutcome({
+  ...trace, id: "unsafe-outcome-task",
+  selected: { ...trace.selected, goalId: "unsafe" + String.fromCharCode(10) + "task" },
+}, mkState({ tick: 3 }), {
+  reward01: .8, success01: .8, surprise01: .7, novelty01: .75,
+}), null, "control-bearing task identity must not mint causal evidence");
 assert.ok(stream.summary().rolling.learningOpportunity01>0);
 const packet=stream.learningPacket(8);
 assert.equal(packet.records.length,1);
