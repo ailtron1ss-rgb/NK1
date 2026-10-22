@@ -14,11 +14,33 @@ const EXPRESSION: Record<EmotionLabel, string> = {
   protective: "focused",
 };
 
+function readStoredOutfit(): VisualProfileId {
+  if (typeof window === "undefined") return "lab_coat";
+  try {
+    const stored = window.localStorage.getItem("kurisu-visual-profile");
+    return OUTFITS.some((profile) => profile.id === stored)
+      ? stored as VisualProfileId
+      : "lab_coat";
+  } catch {
+    // Storage can be disabled or throw SecurityError in sandboxed/private contexts.
+    return "lab_coat";
+  }
+}
+
+function persistOutfit(outfit: VisualProfileId): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem("kurisu-visual-profile", outfit);
+  } catch {
+    // The visual fallback must remain usable even when persistence is unavailable.
+  }
+}
+
 export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel; speaking: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const currentRef = useRef<HTMLImageElement | null>(null);
   const previousRef = useRef<HTMLImageElement | null>(null);
-  const [outfit, setOutfit] = useState<VisualProfileId>(() => (typeof window !== "undefined" && window.localStorage.getItem("kurisu-visual-profile") as VisualProfileId) || "lab_coat");
+  const [outfit, setOutfit] = useState<VisualProfileId>(readStoredOutfit);
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
   const blend = useRef(1);
@@ -31,7 +53,7 @@ export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel;
     img.src = url;
   }, [emotion, outfit]);
 
-  useEffect(() => { if (typeof window !== "undefined") window.localStorage.setItem("kurisu-visual-profile", outfit); }, [outfit]);
+  useEffect(() => { persistOutfit(outfit); }, [outfit]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
