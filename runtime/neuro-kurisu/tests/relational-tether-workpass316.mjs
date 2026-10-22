@@ -1,6 +1,21 @@
 import assert from 'node:assert/strict';
 import { SocialMindKernel } from '../src/organism/cognition/SocialMindKernel.ts';
 
+const aliasKernel = new SocialMindKernel();
+const canonicalPerson = aliasKernel.observePerson({ id: 'camera-person-a', displayName: 'contact', at: 1000, confidence01: .9, visible01: .9, source: 'vision', position: { x: .2, y: .2, z: 1 } });
+const aliasPerson = aliasKernel.observePerson({ id: 'camera-person-b', displayName: 'contact', at: 2000, confidence01: .88, visible01: .9, source: 'vision', position: { x: .21, y: .2, z: 1 } });
+assert.equal(aliasPerson.id, canonicalPerson.id, 'nearby re-identification should preserve a canonical person ID');
+const aliasObservation = aliasKernel.snapshot().evidence.find(e => e.observedAt === 2000);
+assert.equal(aliasObservation.personId, canonicalPerson.id, 'alias observations must be filed under the canonical person ID');
+const aliasIntent = aliasKernel.observeText('camera-person-b', 'Почему это работает?', 3000);
+assert.equal(aliasKernel.snapshot().episodes[0].personId, canonicalPerson.id, 'alias conversation episodes must attach to the canonical person');
+assert.equal(aliasKernel.snapshot().evidence.find(e => e.id === aliasIntent.evidenceIds[0]).personId, canonicalPerson.id, 'intent evidence must retain canonical ownership');
+const aliasStatement = aliasKernel.recordObservedUserStatement('camera-person-b', 'Alias statement receipt', 3200, .9);
+const aliasFrame = aliasKernel.reconstructUserMind({ personId: 'camera-person-b', at: 3300, observations: [{ claim: 'Alias statement receipt', confidence01: .9, evidenceIds: [aliasStatement.id] }] });
+assert.equal(aliasFrame.personId, canonicalPerson.id, 'UserHarness reconstructions requested through an alias should remain canonical');
+assert.equal(aliasFrame.observations[0].evidenceStatus, 'direct-observation', 'canonicalized statement receipts should continue to ground the matching observation');
+assert.equal(aliasKernel.person('camera-person-b').id, canonicalPerson.id, 'alias lookups should not create a second profile');
+assert.equal(aliasKernel.diagnostics().personCount, 1, 'aliases must never duplicate the canonical profile');
 const tetherKernel = new SocialMindKernel();
 tetherKernel.observePerson({ id: 'long-term-contact', displayName: 'contact', at: 1000, confidence01: .9, visible01: .9, source: 'interaction' });
 const relationshipBeforeOutcome = tetherKernel.person('long-term-contact');
