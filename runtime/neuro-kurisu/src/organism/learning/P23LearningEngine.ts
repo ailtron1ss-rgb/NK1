@@ -159,6 +159,149 @@ export type RevisedCandidateEvaluator = (input: {
 }) => Promise<{ payloadFingerprint: string; evaluationFingerprint: string; evaluation: { validation: SkillLearnBenchCandidateEvaluation['reports']; holdout: SkillLearnBenchCandidateEvaluation['reports'] } }>
   | { payloadFingerprint: string; evaluationFingerprint: string; evaluation: { validation: SkillLearnBenchCandidateEvaluation['reports']; holdout: SkillLearnBenchCandidateEvaluation['reports'] } };
 
+const isPlainRecord=(value:unknown):value is Record<string,unknown>=>{
+  if(value===null||typeof value!=='object'||Array.isArray(value))return false;
+  const prototype=Object.getPrototypeOf(value);
+  return prototype===Object.prototype||prototype===null;
+};
+const isPersistedText=(value:unknown,max=512):value is string=>
+  typeof value==='string'&&value.length>0&&value.length<=max&&value.trim()===value&&
+  !Array.from(value).some(character=>{
+    const code=character.charCodeAt(0);
+    return code<=0x1f||code===0x7f||(code>=0x80&&code<=0x9f);
+  });
+const isPersistedCounter=(value:unknown):value is number=>
+  typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
+const isPersistedUnit=(value:unknown):value is number=>
+  typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
+const persistedCounter=(value:unknown,fallback:number):number=>
+  isPersistedCounter(value)?value:fallback;
+const persistedTime=(value:unknown,fallback:number):number=>
+  isPersistedCounter(value)?value:fallback;
+const isPersistedAction=(value:unknown):value is ActionKind=>
+  typeof value==='string'&&ACTIONS.includes(value as ActionKind);
+
+function sanitizeIdList(value:unknown,limit:number):string[]{
+  if(!Array.isArray(value))return [];
+  const result:string[]=[],seen=new Set<string>();
+  for(const item of value){
+    if(!isPersistedText(item,512)||seen.has(item))continue;
+    seen.add(item);result.push(item);
+    if(result.length>=limit)break;
+  }
+  return result;
+}
+function sanitizeRows<T>(value:unknown,limit:number,parse:(item:unknown)=>T|null,identity:(item:T)=>string):T[]{
+  if(!Array.isArray(value))return [];
+  const result:T[]=[],seen=new Set<string>();
+  for(const item of value){
+    let parsed:T|null=null;
+    try{parsed=parse(item);}catch{parsed=null;}
+    if(parsed===null)continue;
+    const key=identity(parsed);
+    if(seen.has(key))continue;
+    seen.add(key);result.push(parsed);
+    if(result.length>=limit)break;
+  }
+  return result;
+}
+function parseLearningExperience(value:unknown):LearningExperience|null{
+  if(!isPlainRecord(value))return null;
+  const x=value;
+  if(!isPersistedText(x.id,600)||!isPersistedText(x.traceId,512)||x.id!==`exp-${x.traceId}`||
+     !isPersistedCounter(x.tick)||!isPersistedCounter(x.at)||!isPersistedCounter(x.outcomeAt)||
+     !isPersistedText(x.contextKey,256)||!isPersistedText(x.nextContextKey,256)||!isPersistedAction(x.action)||
+     !isPersistedUnit(x.predictedUtility)||!isPersistedUnit(x.predictedConfidence)||
+     !isPersistedUnit(x.success)||!isPersistedUnit(x.reward)||!isPersistedUnit(x.surprise))return null;
+  return {id:x.id,traceId:x.traceId,tick:x.tick,at:x.at,contextKey:x.contextKey,nextContextKey:x.nextContextKey,
+    action:x.action,predictedUtility:x.predictedUtility,predictedConfidence:x.predictedConfidence,
+    success:x.success,reward:x.reward,surprise:x.surprise,outcomeAt:x.outcomeAt};
+}
+function parseReplayUpdate(value:unknown):ReplayUpdateRecord|null{
+  if(!isPlainRecord(value))return null;
+  const x=value;
+  if(!isPersistedText(x.id,600)||!isPersistedText(x.traceId,512)||x.id!==`replay-${x.traceId}`||
+     !isPersistedText(x.contextKey,256)||!isPersistedText(x.nextContextKey,256)||!isPersistedAction(x.action)||
+     !isPersistedUnit(x.reward)||!isPersistedUnit(x.target)||!isPersistedUnit(x.valueBefore)||!isPersistedUnit(x.valueAfter)||
+     typeof x.tdError!=='number'||!Number.isFinite(x.tdError)||x.tdError< -1||x.tdError>1||
+     !isPersistedUnit(x.learningRate)||!isPersistedCounter(x.at))return null;
+  return {id:x.id,traceId:x.traceId,contextKey:x.contextKey,nextContextKey:x.nextContextKey,action:x.action,
+    reward:x.reward,target:x.target,valueBefore:x.valueBefore,valueAfter:x.valueAfter,tdError:x.tdError,
+    learningRate:x.learningRate,at:x.at};
+}
+function parseShadowRecord(value:unknown):ShadowEvaluationRecord|null{
+  if(!isPlainRecord(value))return null;
+  const x=value;
+  if(!isPersistedText(x.traceId,512)||!isPersistedCounter(x.tick)||!isPersistedText(x.contextKey,256)||
+     !isPersistedAction(x.actual)||!isPersistedAction(x.baseline)||typeof x.agreed!=='boolean'||
+     x.agreed!==(x.actual===x.baseline)||!isPersistedUnit(x.actualSuccess)||
+     typeof x.baselineWasBetterPrediction!=='boolean'||!isPersistedText(x.baselineReason,1024)||!isPersistedCounter(x.at))return null;
+  return {traceId:x.traceId,tick:x.tick,contextKey:x.contextKey,actual:x.actual,baseline:x.baseline,agreed:x.agreed,
+    actualSuccess:x.actualSuccess,baselineWasBetterPrediction:x.baselineWasBetterPrediction,
+    baselineReason:x.baselineReason,at:x.at};
+}
+function parsePolicySkill(value:unknown):PolicySkillRecord|null{
+  if(!isPlainRecord(value))return null;
+  const x=value;
+  if(!isPersistedText(x.id,512)||!isPersistedText(x.contextKey,256)||!isPersistedAction(x.action)||
+     !isPersistedCounter(x.totalUses)||!isPersistedCounter(x.trainUses)||!isPersistedCounter(x.validationUses)||
+     x.trainUses+x.validationUses>x.totalUses||!isPersistedUnit(x.trainSuccess01)||!isPersistedUnit(x.validationSuccess01)||
+     !isPersistedUnit(x.confidence01)||!['candidate','promoted','rejected'].includes(String(x.status))||
+     !isPersistedCounter(x.createdAt)||!isPersistedCounter(x.updatedAt)||!isPersistedCounter(x.validationWindowStartTick)||
+     !isPersistedCounter(x.validationWindowEndTick)||x.validationWindowEndTick<x.validationWindowStartTick)return null;
+  return {id:x.id,contextKey:x.contextKey,action:x.action,totalUses:x.totalUses,trainUses:x.trainUses,
+    validationUses:x.validationUses,trainSuccess01:x.trainSuccess01,validationSuccess01:x.validationSuccess01,
+    confidence01:x.confidence01,status:x.status as PolicySkillRecord['status'],createdAt:x.createdAt,updatedAt:x.updatedAt,
+    validationWindowStartTick:x.validationWindowStartTick,validationWindowEndTick:x.validationWindowEndTick};
+}
+function parseAblation(value:unknown):AblationRecord|null{
+  if(!isPlainRecord(value))return null;
+  const x=value;
+  if(!isPersistedText(x.traceId,512)||!isPersistedCounter(x.tick)||x.module!=='adaptive-policy'||
+     !isPersistedAction(x.actual)||!isPersistedAction(x.ablated)||typeof x.changed!=='boolean'||
+     x.changed!==(x.actual!==x.ablated)||!isPersistedUnit(x.scoreLoss01)||!isPersistedText(x.reason,1024)||
+     !isPersistedCounter(x.at))return null;
+  return {traceId:x.traceId,tick:x.tick,module:'adaptive-policy',actual:x.actual,ablated:x.ablated,
+    changed:x.changed,scoreLoss01:x.scoreLoss01,reason:x.reason,at:x.at};
+}
+function parseEvidenceDebt(value:unknown):EvidenceDebtItem|null{
+  if(!isPlainRecord(value))return null;
+  const x=value;
+  if(!isPersistedText(x.id,768)||!isPersistedText(x.contextKey,256)||!isPersistedAction(x.action)||
+     !isPersistedUnit(x.priority01)||!isPersistedUnit(x.uncertainty01)||!isPersistedUnit(x.estimatedVerificationCost01)||
+     !isPersistedUnit(x.informationGainPerCost01)||!isPersistedText(x.reason,1024)||
+     !isPersistedCounter(x.createdAt)||!isPersistedCounter(x.lastSeenAt))return null;
+  return {id:x.id,contextKey:x.contextKey,action:x.action,priority01:x.priority01,uncertainty01:x.uncertainty01,
+    estimatedVerificationCost01:x.estimatedVerificationCost01,informationGainPerCost01:x.informationGainPerCost01,
+    reason:x.reason,createdAt:x.createdAt,lastSeenAt:x.lastSeenAt};
+}
+function sanitizeChecksum(value:unknown,fallback:CognitiveChecksum):CognitiveChecksum{
+  const x=isPlainRecord(value)?value:{};
+  const digest=typeof x.digest==='string'&&(x.digest===''||/^[a-f0-9]{64}$/.test(x.digest))?x.digest:fallback.digest;
+  return {digest,at:persistedTime(x.at,fallback.at),tick:persistedCounter(x.tick,fallback.tick),
+    verifiedAt:persistedTime(x.verifiedAt,fallback.verifiedAt),
+    verificationFailures:persistedCounter(x.verificationFailures,fallback.verificationFailures)};
+}
+function sanitizeMetrics(value:unknown,fallback:P23LearningMetrics):P23LearningMetrics{
+  const x=isPlainRecord(value)?value:{};
+  const result={...fallback};
+  const counters:(keyof P23LearningMetrics)[]=[
+    'outcomes','experiences','replayUpdates','shadowComparisons','decisionPredictionComparisons',
+    'alternativePredictionComparisons','counterfactualComparisons','skillCandidates','skillPromotions',
+    'skillRejections','ablationComparisons','checksumFailures','evidenceDebtOpen',
+  ];
+  const scores:(keyof P23LearningMetrics)[]=[
+    'shadowAgreement01','decisionPredictionCalibration01','alternativePredictionCalibration01',
+    'counterfactualCalibration01','ablationChangedRate01','learningDelta01','predictionError01',
+    'recentPredictionError01','replayMeanAbsTdError01',
+  ];
+  const target=result as unknown as Record<string,number>;
+  for(const key of counters)target[key]=persistedCounter(x[key],fallback[key]);
+  for(const key of scores)target[key]=isPersistedUnit(x[key])?x[key] as number:fallback[key];
+  target.lastLearningAt=persistedTime(x.lastLearningAt,fallback.lastLearningAt);
+  return result;
+}
+
 export interface P23LearningState {
   version:1;
   processedTraceIds:string[];
@@ -252,24 +395,25 @@ export class P23LearningEngine {
   }
 
   restore(raw?:Partial<P23LearningState>|null):void {
-    const d = defaultP23Learning();
-    this.state = {
-      ...d,
-      ...(raw ?? {}),
-      processedTraceIds:Array.isArray(raw?.processedTraceIds)?raw!.processedTraceIds.slice(-2048):[],
-      replayedTraceIds:Array.isArray(raw?.replayedTraceIds)?raw!.replayedTraceIds.slice(-2048):[],
-      experiences:Array.isArray(raw?.experiences)?raw!.experiences.slice(-1024):[],
-      replayUpdates:Array.isArray(raw?.replayUpdates)?raw!.replayUpdates.slice(-512):[],
-      shadow:Array.isArray(raw?.shadow)?raw!.shadow.slice(-512):[],
-      skills:Array.isArray(raw?.skills)?raw!.skills.slice(0,256):[],
-      ablations:Array.isArray(raw?.ablations)?raw!.ablations.slice(-512):[],
-      evidenceDebt:Array.isArray(raw?.evidenceDebt)?raw!.evidenceDebt.slice(0,256):[],
-      checksum:{...d.checksum,...(raw?.checksum ?? {})},
-      metrics:{...d.metrics,...(raw?.metrics ?? {})},
-    };
-    const restoredLastLearningAt = Number(raw?.metrics?.lastLearningAt ?? d.metrics.lastLearningAt);
+    const d=defaultP23Learning();
+    if(raw!==undefined&&raw!==null&&!isPlainRecord(raw))throw new TypeError('P23 persisted learning state must be a plain object');
+    const source=(raw??{}) as Partial<P23LearningState>;
+    if(source.version!==undefined&&source.version!==1)throw new RangeError('unsupported P23 learning state version');
+    // Parse untrusted persistence into fresh rows; newest-first histories retain their valid prefix.
+    const experiences=sanitizeRows(source.experiences,1024,parseLearningExperience,row=>row.traceId);
+    const replayUpdates=sanitizeRows(source.replayUpdates,512,parseReplayUpdate,row=>row.traceId);
+    const shadow=sanitizeRows(source.shadow,512,parseShadowRecord,row=>row.traceId);
+    const skills=sanitizeRows(source.skills,256,parsePolicySkill,row=>row.id);
+    const ablations=sanitizeRows(source.ablations,512,parseAblation,row=>row.traceId);
+    const evidenceDebt=sanitizeRows(source.evidenceDebt,256,parseEvidenceDebt,row=>row.id);
+    const processedTraceIds=sanitizeIdList(source.processedTraceIds,2048);
+    const replayedTraceIds=sanitizeIdList(source.replayedTraceIds,2048);
+    const checksum=sanitizeChecksum(source.checksum,d.checksum);
+    const metrics=sanitizeMetrics(source.metrics,d.metrics);
+    const restoredLastLearningAt=metrics.lastLearningAt;
+    this.state={version:1,processedTraceIds,replayedTraceIds,experiences,replayUpdates,shadow,skills,ablations,evidenceDebt,checksum,metrics};
     this.recomputeMetrics();
-    this.state.metrics.lastLearningAt = restoredLastLearningAt;
+    this.state.metrics.lastLearningAt=restoredLastLearningAt;
   }
 
   snapshot():P23LearningState { return structuredClone(this.state); }
@@ -892,7 +1036,8 @@ export class P23LearningEngine {
     this.state.metrics.replayUpdates=this.state.replayUpdates.length;
     this.state.metrics.shadowComparisons=this.state.shadow.length;
     this.state.metrics.shadowAgreement01=this.state.shadow.length?this.state.shadow.filter(x=>x.agreed).length/this.state.shadow.length:0;
-    const calibrated=this.state.experiences.slice(-256);
+    // New experience and replay rows are prepended, so index 0 is the newest.
+    const calibrated=this.state.experiences.slice(0,256);
     this.state.metrics.decisionPredictionComparisons=calibrated.length;
     this.state.metrics.decisionPredictionCalibration01=calibrated.length?clamp(1-calibrated.reduce((s,e)=>s+Math.abs(e.success-e.predictedUtility),0)/calibrated.length):0;
     this.state.metrics.alternativePredictionComparisons=this.state.metrics.decisionPredictionComparisons;
@@ -902,11 +1047,11 @@ export class P23LearningEngine {
     this.state.metrics.ablationComparisons=this.state.ablations.length;
     this.state.metrics.ablationChangedRate01=this.state.ablations.length?this.state.ablations.filter(x=>x.changed).length/this.state.ablations.length:0;
     const predictionErrors=this.state.experiences.map(e=>Math.abs(e.success-e.predictedUtility));
-    const recentErrors=this.state.experiences.slice(-64).map(e=>Math.abs(e.success-e.predictedUtility));
-    const replayErrors=this.state.replayUpdates.slice(-128).map(x=>Math.abs(x.tdError));
+    const recentErrors=this.state.experiences.slice(0,64).map(e=>Math.abs(e.success-e.predictedUtility));
+    const replayErrors=this.state.replayUpdates.slice(0,128).map(x=>Math.abs(x.tdError));
     const mean=predictionErrors.length?predictionErrors.reduce((s,x)=>s+x,0)/predictionErrors.length:0;
     const recentMean=recentErrors.length?recentErrors.reduce((s,x)=>s+x,0)/recentErrors.length:0;
-    const earlyErrors=this.state.experiences.slice(0,64).map(e=>Math.abs(e.success-e.predictedUtility));
+    const earlyErrors=this.state.experiences.slice(-64).map(e=>Math.abs(e.success-e.predictedUtility));
     const earlyMean=earlyErrors.length?earlyErrors.reduce((s,x)=>s+x,0)/earlyErrors.length:0;
     this.state.metrics.predictionError01=clamp(mean);
     this.state.metrics.recentPredictionError01=clamp(recentMean);
