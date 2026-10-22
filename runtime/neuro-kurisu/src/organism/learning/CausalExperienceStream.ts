@@ -146,7 +146,9 @@ export class CausalExperienceStream {
     return structuredClone(record);
   }
   recordExternalLearningEvent(input:{tick:number;taskId:string;action:ActionKind;reward01:number;success01:number;surprise01:number;novelty01:number;uncertainty01?:number;identityRelevance01?:number;goalPressure01?:number;causalStrength01?:number;traceId?:string;provenance?:CausalExperienceRecord['provenance'];stateGrounded?:boolean;sourceMemoryId?:string;evidenceKey?:string}):CausalExperienceRecord|null{
-    const taskId=normalizeTaskId(input.taskId);
+    const taskCandidate=typeof input.taskId==='string'?input.taskId.normalize('NFKC').trim():'';
+    if(!taskCandidate)throw new Error('causal-external-task-id-required');
+    const taskId=normalizeTaskId(taskCandidate);
     if(!taskId)throw new Error('causal-external-task-id-invalid');
     if(!CAUSAL_ACTIONS.includes(input.action))throw new Error('causal-external-action-invalid');
     const reward=clamp01(input.reward01),success=clamp01(input.success01),surprise=clamp01(input.surprise01),novelty=clamp01(input.novelty01),uncertainty=clamp01(input.uncertainty01??.5); const causal=clamp01(input.causalStrength01??(surprise*.35+novelty*.15+Math.abs(reward-.5)*.25+Math.abs(success-.5)*.25));
