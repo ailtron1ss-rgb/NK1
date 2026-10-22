@@ -84,8 +84,8 @@ assert.ok(relationshipAfterOutcome.trust01 > relationshipBeforeOutcome.trust01, 
 assert.ok(relationshipAfterOutcome.warmth01 > relationshipBeforeOutcome.warmth01, 'successful social outcomes must update the canonical warmth state');
 assert.ok(relationshipAfterOutcome.relationshipStrength01 > relationshipBeforeOutcome.relationshipStrength01, 'relationship-strength updates must persist after recomputation');
 const beforeSleepSnapshot = tetherKernel.snapshot();
-const 30DaysMs = 30 * 24 * 60 * 60 * 1000;
-const laterAt = 2000 + 30DaysMs;
+const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+const laterAt = 2000 + thirtyDaysMs;
 tetherKernel.observePerson({ id: 'long-term-contact', displayName: 'contact', at: laterAt, confidence01: .9, visible01: .9, source: 'interaction' });
 const fadedRelationship = tetherKernel.person('long-term-contact');
 assert.ok(fadedRelationship.trust01 < relationshipAfterOutcome.trust01, 'trust should decay gradually toward neutral between sessions');
