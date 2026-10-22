@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { MicroDreamEngine } from '../src/organism/developmental/MicroDreamEngine.ts';
+import { IntrinsicExperimentGenerator } from '../src/organism/cognition/IntrinsicExperimentGenerator.ts';
 
 const memories = [
   {
@@ -95,6 +96,18 @@ const untrustedMemories = [
 const filtered = trustFiltered.dreamAssociations(untrustedMemories, 'filtered-seed', { at: 5_000, uncertainty01: .6, memoryEvidence01: .8, novelty01: .75 });
 assert.equal(filtered.consideredMemories, memories.length, 'quarantined, unknown, expired, low-confidence, simulated and dream-generated memories must be excluded before association scoring');
 assert.ok(filtered.candidates.every(d => d.sourceMemoryIds.every(id => memories.some(m => m.id === id))), 'no excluded record may become a source for a dreamed association');
+const experimentGenerator = new IntrinsicExperimentGenerator();
+const queuedDreamExperiment = experimentGenerator.fromDreamAssociation(result.candidates[0], []);
+assert.ok(queuedDreamExperiment, 'a sufficiently grounded candidate dream should adapt into a verification experiment');
+assert.equal(queuedDreamExperiment.action, 'verify', 'dream associations must be queued for verification, not execution as facts');
+assert.equal(queuedDreamExperiment.source, 'dream-association');
+assert.equal(queuedDreamExperiment.epistemicStatus, 'hypothesis');
+assert.equal(queuedDreamExperiment.status, 'candidate');
+assert.equal(queuedDreamExperiment.verificationRequired, true);
+assert.ok(queuedDreamExperiment.hypothesis.includes('Unverified association hypothesis only'));
+assert.deepEqual(queuedDreamExperiment.sourceMemoryIds, result.candidates[0].sourceMemoryIds);
+assert.equal(experimentGenerator.fromDreamAssociation({ ...result.candidates[0], validationStatus: 'validated' }, []), null, 'only unvalidated association candidates may enter the verification queue');
+assert.equal(experimentGenerator.fromDreamAssociation({ ...result.candidates[0], confidence: .2 }, []), null, 'low-confidence dream candidates must not become experiment tasks');
 const alreadyLinked = memories.map(m => ({ ...m, semanticLinks: [...m.semanticLinks] }));
 alreadyLinked[0].semanticLinks = ['memory-memory-writes'];
 const linkedKernel = new MicroDreamEngine();
