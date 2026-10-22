@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -39,12 +38,12 @@ export function classifyJob(job) {
   const steps = Array.isArray(job?.steps) ? job.steps : [];
   const failedSteps = steps.filter(step => step?.conclusion === 'failure');
   const runnerAssigned = job?.runner_id != null || Boolean(job?.runner_name);
+  if (job?.status === 'queued' || job?.status === 'waiting' || job?.status === 'in_progress') return 'not-completed';
   if (!runnerAssigned && steps.length === 0) return 'runner-or-step-metadata-unavailable';
   if (failedSteps.length) return 'step-failure';
   if (job?.conclusion === 'timed_out') return 'job-timeout';
   if (job?.conclusion === 'cancelled') return 'cancelled';
   if (job?.conclusion === 'failure') return 'job-failure-without-failed-step';
-  if (job?.status === 'queued' || job?.status === 'waiting' || job?.status === 'in_progress') return 'not-completed';
   return 'other';
 }
 
@@ -435,7 +434,7 @@ async function main() {
     issues
   };
 
-  await (await import('node:fs/promises')).mkdir(outputDir, { recursive: true });
+  await mkdir(outputDir, { recursive: true });
   await writeFile(path.join(outputDir, 'actions-history-report.json'), JSON.stringify(report, null, 2) + '\n', 'utf8');
   await writeFile(path.join(outputDir, 'actions-history-report.md'), renderMarkdown(report), 'utf8');
   console.log(JSON.stringify({
