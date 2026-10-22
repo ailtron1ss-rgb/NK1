@@ -71,9 +71,11 @@ export function areHostOwnedStorageRootsDisjoint(
   if (!nonEmpty(a?.path) || !nonEmpty(b?.path) ||
       !nonEmpty(a?.identity) || !nonEmpty(b?.identity) ||
       a.identity === b.identity) return false;
-  return a.path !== b.path &&
-    !a.path.startsWith(b.path + path.sep) &&
-    !b.path.startsWith(a.path + path.sep);
+  const aPath=process.platform==='win32'?a.path.toLowerCase():a.path;
+  const bPath=process.platform==='win32'?b.path.toLowerCase():b.path;
+  return aPath !== bPath &&
+    !aPath.startsWith(bPath + path.sep) &&
+    !bPath.startsWith(aPath + path.sep);
 }
 
 function validateCommand(command: HostOwnedAuthorityCommand, name: string): void {
