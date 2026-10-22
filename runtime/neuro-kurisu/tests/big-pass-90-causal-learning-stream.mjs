@@ -39,4 +39,20 @@ ungrounded.recordExternalLearningEvent({
 });
 assert.equal(ungrounded.consolidate(8,1300).length,0,
   "high surprise/reward alone must not consolidate an ungrounded external event");
+
+const replayDiversity = new CausalExperienceStream(64);
+for (let i = 0; i < 3; i++) {
+  replayDiversity.recordOutcome({
+    ...trace, id: `replay-a-${i}`, tick: 10 + i,
+    selected: { ...trace.selected, goalId: "task-A" },
+  }, mkState({ tick: 11 + i }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+}
+replayDiversity.recordOutcome({
+  ...trace, id: "replay-b-0", tick: 20,
+  selected: { ...trace.selected, goalId: "task-B" },
+}, mkState({ tick: 21 }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+const replayBatch = replayDiversity.prioritizedReplayCandidates(2);
+assert.ok(replayBatch.some((row) => row.taskId === "task-A"));
+assert.ok(replayBatch.some((row) => row.taskId === "task-B"),
+  "a near-equal high-priority task should not be crowded out by one repeated task");
 console.log('BIG_PASS_90_CAUSAL_STREAM=PASS');
