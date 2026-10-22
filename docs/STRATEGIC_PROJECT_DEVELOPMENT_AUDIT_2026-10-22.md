@@ -1,3 +1,15 @@
+## WorkPass259–260 — selective reintegration from historical learning branch (2026-10-22)
+
+A focused comparison of branch-exclusive code found useful safeguards in the older workpass71-learning-integrity version of CausalExperienceStream.ts that were absent from the active owner. Rather than merging the 32-commit historical branch, two narrow ports were made into the current subsystem:
+
+- **WorkPass259:** normalized and bounded trace IDs; persisted outcome-deduplication IDs across bounded record eviction and restore; disallowed consolidation of ungrounded external records; added regression cases.
+- **WorkPass260:** restored task/context-diverse prioritized replay and consolidation selection, with a regression for a small replay batch containing near-equal candidates from different tasks.
+
+The historical branch workpass71-learning-eval-paired-seeds has 56 branch-exclusive commits including standalone paired/holdout evaluation scripts. Those scripts were not copied blindly because the active branch now owns a separate independent evaluator and experiment lifecycle. The historical workpass79-learning-input-integrity has 48 branch-exclusive commits including a standalone ContinualReplayBuffer and vendor intake documents; the exact buffer path is absent from the active branch, so it remains a selective-review item rather than being duplicated into the current replay owner.
+
+**Validation caveat:** the new/extended regressions and runtime typecheck are authored but not confirmed executed successfully. Branch commit counts are history metadata, not a measure of useful features.
+
+---
 ## WorkPass255–258 — implementation follow-through (2026-10-22)
 
 Four implementation passes followed the strategic audit:
