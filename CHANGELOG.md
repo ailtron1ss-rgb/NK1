@@ -1,3 +1,13 @@
+## WorkPass266 — reject lossy causal identity normalization and wire active regressions (2026-10-22)
+
+- **Code:** CausalExperienceStream no longer truncates task/trace identity keys. NFKC-normalized empty, overlong, non-string, or control-bearing IDs are rejected; restore drops records whose trace IDs violate the same bound.
+- **Failure prevented:** distinct overlong identities could collapse to one key and be mistaken for duplicate delivery, silently losing an event or merging evidence.
+- **Regression:** added cases for two distinct overlong task IDs, overlong/control-bearing trace IDs, no mutation after rejection, invalid persisted identity cleanup, and long runtime trace IDs.
+- **CI wiring:** the WorkPass110 workflow now triggers for causal-stream and Legacy/Live2D files and includes the causal-stream, Legacy-avatar and Live2D integrity regressions; the current source branch was added to push triggers.
+- **Validation:** GitHub returned the WorkPass110 job as failed with steps=null and logs_url=null; a retry was requested. This is not a code/test PASS and does not identify a source failure. Exact-head runtime/app typechecks remain unverified.
+- **Dependencies:** no new package is required; the code change uses existing Node APIs and the standard library.
+
+
 ## WorkPass264 — validate external causal event identity (2026-10-22)
 
 - **Code:** external causal ingestion now normalizes and requires a non-empty task ID and rejects action labels outside the canonical organism action set before mutating state.
