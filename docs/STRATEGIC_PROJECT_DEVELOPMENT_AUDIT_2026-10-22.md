@@ -1,3 +1,10 @@
+## WorkPass261 — idempotent external learning intake (2026-10-22)
+
+The causal stream now applies the bounded NFKC trace-identity rule to external learning events as well as runtime outcomes. Duplicate upstream retries resolve to the existing record rather than increasing outcome counts, and the trace-ID set survives snapshot/restore. The regression is now directly invokable through `npm run test:big-pass-90:causal-stream`.
+
+This closes a concrete integration gap in event ingestion, but does not prove exactly-once delivery across external systems: that still depends on stable upstream IDs, durable snapshots, and callers handling the nullable duplicate/evicted result correctly. Runtime tests and typecheck remain unconfirmed.
+
+---
 ## WorkPass259–260 — selective reintegration from historical learning branch (2026-10-22)
 
 A focused comparison of branch-exclusive code found useful safeguards in the older workpass71-learning-integrity version of CausalExperienceStream.ts that were absent from the active owner. Rather than merging the 32-commit historical branch, two narrow ports were made into the current subsystem:
