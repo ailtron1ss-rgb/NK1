@@ -133,7 +133,7 @@ export class CausalExperienceStream {
           // A well-shaped record is not authenticated evidence. Preserve trusted
           // eligibility only for the runtime-outcome provenance and bounded policy vector;
           // the host persistence boundary still must authenticate the snapshot itself.
-          const trustedRuntimeEvidence=record.provenance==='runtime-outcome'&&hasRuntimePolicyFeatures;
+          const trustedRuntimeEvidence=isGroundedRuntimeOutcome(record);
           return [{
             ...record,traceId,taskId,
             ...(!trustedRuntimeEvidence?{provenance:'external',stateGrounded:false,replayEligible:false}:{}),
