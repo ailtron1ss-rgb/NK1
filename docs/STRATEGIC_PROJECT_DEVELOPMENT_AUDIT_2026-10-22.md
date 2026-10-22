@@ -1,3 +1,15 @@
+## WorkPass266 — implementation follow-through: lossless identities and active regression wiring (2026-10-22)
+
+The code pass addressed a specific correctness defect in CausalExperienceStream: silently truncating task and trace identifiers could map distinct external events to the same deduplication key. The canonical owner now validates the full NFKC-normalized string, rejects values outside the bounded length/control-character contract, and applies the same strict trace check while restoring persisted state. The regression suite exercises collision attempts, no-mutation guarantees and invalid snapshot identities.
+
+The WorkPass110 workflow now includes CausalExperienceStream and its test in PR/push path filters, includes the current source branch in push triggers, and explicitly invokes the causal-stream, LegacySpriteDeck render-lifecycle and Live2D integrity regressions. No new dependency was needed.
+
+**Validation state:** retry requested for Actions run 39746182919. The retrieved job is failed but returns steps=null and logs_url=null; this does not establish either a code failure or a pass. Exact-head runtime typecheck, causal regression, app regression and physical-device/browser E2E remain unverified. PR #55 remains draft/unmerged.
+
+**Next implementation target:** audit all call sites of external causal intake and replace any caller-owned stateGrounded assertion used as authority with provenance that can be traced to an observable state transition or canonical independent verifier. Do not change that contract until call sites, ownership and migration requirements have been inspected. No learning score uplift is justified by this pass.
+
+---
+
 ## WorkPass264 — strict external causal event intake (2026-10-22)
 
 A focused review of the historical `workpass79-learning-input-integrity` branch found a useful principle in its `ContinualReplayBuffer`: validate task/action contracts before mutating memory. The current `CausalExperienceStream` now applies the relevant boundary rule directly—normalizing and requiring a non-empty external task identity and rejecting action labels outside the canonical organism action set. Regression cases assert that malformed events do not change outcome counts. The old buffer/learner was not copied; NK1 keeps one causal stream owner.
