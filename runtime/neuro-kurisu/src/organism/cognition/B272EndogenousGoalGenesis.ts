@@ -176,7 +176,7 @@ export class B272EndogenousGoalGenesis {
   private generateCandidate(input:B272StepInput):B272GoalCandidate{
     const base=this.buildInternalVector(input);
     const conflict=clamp01(.28*input.predictionError01+.24*input.needs.uncertainty01+.18*(1-input.autobiographicalContinuity01)+.16*(1-input.identityContinuity01)+.14*(1-input.needs.energy01));
-    const intrinsic=clamp01(Math.max(input.intrinsicReward01,clamp01(input.intrinsicDrive01??0)*clamp01(input.intrinsicDriveConfidence01??0)));
+    const intrinsic=Math.max(clamp01(input.intrinsicReward01),clamp01(input.intrinsicDrive01??0)*clamp01(input.intrinsicDriveConfidence01??0));
     const candidates:number[][]=[];
     for(let k=0;k<4;k++){
       const prev=this.state.currentGoal.length?this.state.currentGoal:zeroGoal();
