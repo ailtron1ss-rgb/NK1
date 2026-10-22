@@ -1,3 +1,11 @@
+## WorkPass253 — harden Legacy avatar storage fallback
+
+- [x] Wrap LegacySpriteDeck localStorage reads and writes so blocked storage cannot crash the fallback component.
+- [x] Validate stored outfit identifiers against the canonical OUTFITS catalog and default invalid values to `lab_coat`.
+- [x] Keep the existing LegacySpriteDeck and outfit catalog as the only owner; do not fork avatar state.
+- [ ] Run app typecheck and browser test with storage access throwing SecurityError.
+- [ ] Continue voice control-path unification and real browser/device validation.
+
 ## WorkPass252 — preserve Live2D expression transitions during lip-sync
 
 - [x] Cache the last successfully applied expression in the existing Live2D viewer.
