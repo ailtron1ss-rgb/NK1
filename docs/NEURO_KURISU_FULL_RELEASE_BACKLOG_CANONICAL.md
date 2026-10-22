@@ -1,3 +1,13 @@
+## WorkPass283 — bind causal outcome to its decision tick
+
+- [x] Require the trace tick to match the pre-action state tick before minting grounded causal memory.
+- [x] Add a regression for attaching a mismatched trace to an observed transition.
+- [ ] Execute the causal-stream test and exact-head runtime typecheck.
+- [ ] Trace the real runtime outcome writer and add host-owned authenticity to persisted causal snapshots; tick consistency is not caller authentication.
+- No dependency added; no learning-score uplift claimed.
+
+---
+
 ## WorkPass282 — P23 canonical fingerprint consistency
 
 - [x] Align P23 engine payload/evaluation canonicalization with the independent evaluator's strict JSON-like value rules.
