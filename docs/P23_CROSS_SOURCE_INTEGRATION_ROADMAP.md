@@ -1,3 +1,13 @@
+## WorkPass279 — sanitize restored aggregates and fail closed on invalid causal outcomes (2026-10-22)
+
+- **Code:** causal snapshot restore now normalizes persisted counters, rolling metrics and timestamps; behavioral-impact aggregates are recomputed from eligible runtime-grounded records rather than trusted from the snapshot. Restored trace IDs are deduplicated after normalization.
+- **Code:** `recordOutcome()` rejects invalid trace ticks, non-finite/out-of-range reward/success/surprise/novelty and unsafe task IDs instead of clamping malformed inputs into apparently trusted evidence.
+- **Regression:** added poison-snapshot assertions for NaN/negative/infinite counters, invalid rolling metrics and forged behavioral aggregates, plus NaN outcome and control-bearing task-ID cases.
+- **Architecture:** kept the changes inside the existing causal experience stream; no duplicate memory ledger and no dependency added. This is shape validation, not cryptographic authentication of persisted snapshots.
+- **Validation:** tests were authored but not executed in this pass; exact-head CI remains unverified. No learning score increase claimed.
+
+---
+
 ## WorkPass274 — legacy causal snapshot quarantine (2026-10-22)
 
 - Restore now downgrades legacy records that claim trusted provenance but lack the runtime policy-feature vector: they become external, ungrounded, and replay-ineligible.
