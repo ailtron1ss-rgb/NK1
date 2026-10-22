@@ -123,7 +123,15 @@ process.stdout.write(JSON.stringify({
       /host-owned-evaluation-authorities-must-use-distinct-executables/,
     );
   }
-  console.log('WorkPass246 immutable host commands and executable identity: regression authored');
+  if (process.platform !== 'win32') {
+    // Host authorities must not be replaceable by group/other writers.
+    await chmod(executor.executable, 0o720);
+    await assert.rejects(
+      createHostOwnedIndependentEvaluationServices({ executor, verifier, safetyScanner: scanner }),
+      /host-owned-executor-executable-must-not-be-group-or-world-writable/,
+    );
+  }
+  console.log('WorkPass247 host authority executable integrity: regression authored');
 } finally {
   await rm(root, { recursive: true, force: true });
 }
