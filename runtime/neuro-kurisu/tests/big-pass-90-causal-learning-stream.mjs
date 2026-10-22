@@ -95,6 +95,23 @@ assert.throws(() => externalStream.recordExternalLearningEvent({
   "reusing a trace identity with a changed outcome must surface a conflict");
 assert.equal(externalStream.summary().outcomes, 1,
   "conflicting duplicate evidence must not mutate outcome counts");
+
+assert.throws(() => externalStream.recordExternalLearningEvent({
+  tick: Number.NaN, taskId: "bad-tick", action: "explore",
+  reward01: .5, success01: .5, surprise01: .5, novelty01: .5,
+}), /causal-external-tick-invalid/,
+  "invalid external ticks must be rejected rather than coerced to zero");
+assert.throws(() => externalStream.recordExternalLearningEvent({
+  tick: 5, taskId: "bad-metric", action: "explore",
+  reward01: Number.NaN, success01: .5, surprise01: .5, novelty01: .5,
+}), /causal-external-metric-invalid/,
+  "non-finite external metrics must be rejected rather than clamped into plausible evidence");
+assert.throws(() => externalStream.recordExternalLearningEvent({
+  tick: 5, taskId: "bad-source-id", action: "explore",
+  reward01: .5, success01: .5, surprise01: .5, novelty01: .5,
+  sourceMemoryId: "source" + String.fromCharCode(10) + "spoof",
+}), /causal-external-source-memory-id-invalid/,
+  "external provenance identifiers containing control characters must be rejected");
 // Legacy persisted external rows may contain caller-forged provenance and
 // grounding from before the intake contract was hardened. Restore must quarantine
 // them rather than silently upgrading them into trusted memory.
