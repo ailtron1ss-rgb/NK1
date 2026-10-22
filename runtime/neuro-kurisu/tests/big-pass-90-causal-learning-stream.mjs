@@ -57,9 +57,13 @@ assert.equal(externalStream.summary().outcomes, 1,
   "duplicate external evidence must not increment outcome count");
 const externalRestored = new CausalExperienceStream(64);
 externalRestored.restore(externalStream.snapshot());
-assert.equal(externalRestored.recordExternalLearningEvent({
+const restoredExternalDuplicate = externalRestored.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17",
-}), null, "a restored external outcome must remain idempotent");
+});
+assert.equal(restoredExternalDuplicate?.id, externalFirst?.id,
+  "a restored external outcome must resolve to its original record");
+assert.equal(externalRestored.summary().outcomes, 1,
+  "a restored duplicate must not increment outcome count");
 
 const replayDiversity = new CausalExperienceStream(64);
 for (let i = 0; i < 3; i++) {
