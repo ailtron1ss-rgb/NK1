@@ -196,7 +196,12 @@ export class CausalExperienceStream {
     const eventTick=Math.max(0,Math.floor(Number.isFinite(input.tick)?input.tick:0));
     const reward=clamp01(input.reward01),success=clamp01(input.success01),surprise=clamp01(input.surprise01),novelty=clamp01(input.novelty01),uncertainty=clamp01(input.uncertainty01??.5);
     const identityRelevance=clamp01(input.identityRelevance01??0),goalPressure=clamp01(input.goalPressure01??0);
-    const provenance=input.provenance??'external',stateGrounded=Boolean(input.stateGrounded);
+    // This public ingestion boundary cannot authenticate caller-asserted provenance
+    // or stateGrounded flags. Treat every imported event as external and ungrounded;
+    // only recordOutcome() may mint runtime-grounded evidence from an observed
+    // decision trace plus the resulting organism state transition.
+    const provenance:CausalExperienceRecord['provenance']='external';
+    const stateGrounded=false;
     const sourceMemoryId=input.sourceMemoryId,evidenceKey=input.evidenceKey;
     const causal=clamp01(input.causalStrength01??(surprise*.35+novelty*.15+Math.abs(reward-.5)*.25+Math.abs(success-.5)*.25));
     const at=Date.now();
