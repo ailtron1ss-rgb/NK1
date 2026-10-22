@@ -1,3 +1,12 @@
+## WorkPass320 — defensive restore for the cognitive dependency graph (2026-10-22)
+
+- Hardened `CognitiveDependencyGraph.restore()` so persisted data is treated as untrusted input: unsupported schema versions fail before state mutation, counters and ticks normalize to safe non-negative integers, invalid wake-mask bits are discarded, and the derived dirty-domain count is recomputed from the normalized mask.
+- Normalized interrupt state (strict booleans, bounded priority and strings, unique known domains only), ignored unknown `domainTransitions` keys, and rejected malformed/non-finite persisted counter values instead of allowing them into live state.
+- Restored each domain's previous dirty flag from the persisted wake mask, preventing a false burst of domain-transition counts on the first equivalent frame after restart. Transition/cycle counters saturate safely at JavaScript's maximum safe integer.
+- Added `tests/cognitive-dependency-graph-workpass320.mjs`, registered `test:p320:cognitive-dependency-restore`, and wired a dedicated WorkPass71 validation step. Hosted execution remains pending because recent GitHub Actions jobs failed before any step ran (`runner_id=0`).
+
+---
+
 ## WorkPass319 — causal ordering for the canonical cognitive cycle (2026-10-22)
 
 - Moved the authoritative operational-cycle trace and unified-cycle evaluation until after `core.feedback()`, grounded world-transition learning, embodied-consequence learning, continuous memory/identity integration, neural causal tracing, life-course update, and embodiment persistence have completed.
