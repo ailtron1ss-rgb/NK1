@@ -59,8 +59,6 @@ assert.equal(frame.observations[0].evidenceStatus, 'direct-observation');
 assert.ok(frame.observations[0].confidence01 <= 0.94, 'confidence must not exceed the strongest linked observed evidence');
 assert.equal(frame.observations[1].evidenceStatus, 'unresolved', 'generic same-person intent evidence must not be mistaken for an exact observation receipt');
 assert.ok(frame.observations[1].confidence01 <= 0.2);
-assert.equal(frame.observations[1].evidenceStatus, 'unresolved', 'generic same-person intent evidence must not be mistaken for an exact observation receipt');
-assert.ok(frame.observations[1].confidence01 <= 0.2);
 assert.equal(frame.beliefs[0].evidenceStatus, 'evidence-backed-hypothesis');
 assert.equal(frame.beliefs[1].evidenceStatus, 'unresolved', 'evidence from another person must not ground this user model');
 assert.ok(frame.beliefs[1].confidence01 <= 0.2, 'unsupported belief must remain low-confidence');
