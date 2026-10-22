@@ -11,6 +11,10 @@ on:
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/workpass287-288-cognitive-contracts.yml"
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/tsconfig.json'
+      - 'runtime/neuro-kurisu/src/node-shims.d.ts'
+      - '.nvmrc'
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
@@ -21,6 +25,10 @@ on:
       - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/workpass287-288-cognitive-contracts.yml"
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/tsconfig.json'
+      - 'runtime/neuro-kurisu/src/node-shims.d.ts'
+      - '.nvmrc'
 
 permissions:
   contents: read
@@ -34,10 +42,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
+          package-manager-cache: false
       - name: Check unified cognitive-cycle contract
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass287-unified-cycle-contract.mjs

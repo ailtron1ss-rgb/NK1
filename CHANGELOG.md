@@ -1,3 +1,17 @@
+## WorkPass297 — workflow dispatch, timeout and trigger coverage hardening (2026-10-22)
+
+- Added explicit least-privilege `contents: read` permissions to workflows that had relied on implicit defaults.
+- Added workflow-level concurrency and bounded job timeouts where absent; stale runs of the same workflow/PR are cancelled instead of competing for runners.
+- Aligned the WorkPass287-288 workflow to the maintained checkout/setup-node major and disabled implicit package-manager caching for its test-only job.
+- Activated the full WorkPass71 regression gate for pull requests into the current stacked base as well as release/source bases.
+- Corrected WorkPass79/94/95/99 branch filters so the active WorkPass206 branch/base flow is not silently bypassed.
+- Expanded trigger filters to include package lockfiles, runtime TypeScript config, Node shims, and the Node version input when relevant.
+- WorkPass99 PR triggers now cover the replay policy/engine/configuration files and every replay test invoked by its benchmark.
+- WorkPass94 triggers now cover key outcome-ledger/promotion-gate tests and sources that its job already executes.
+- These repository-owned CI fixes do not repair GitHub-hosted runner dispatch. Current jobs still report runner_id=0 and zero executed steps, so test validation remains blocked upstream of checkout.
+
+---
+
 ## WorkPass296 — fail-closed cognitive snapshot and stage identity hardening (2026-10-22)
 
 - Unsupported persisted state versions now fail before mutating runtime state.

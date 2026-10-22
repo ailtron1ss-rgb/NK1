@@ -8,6 +8,7 @@ on:
     branches:
       - main
       - workpass70-source
+      - workpass203-independent-candidate-evaluator
   workflow_dispatch:
 
 permissions:

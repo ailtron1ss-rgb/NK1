@@ -21,10 +21,40 @@ on:
       - "AGENTS.md"
       - "CHANGELOG.md"
       - "SUPER_VERSION.json"
+      - 'app/package-lock.json'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/tsconfig.json'
+      - 'runtime/neuro-kurisu/src/node-shims.d.ts'
+      - '.nvmrc'
+  pull_request:
+    branches: [main, workpass70-source, workpass203-independent-candidate-evaluator]
+    paths:
+      - "app/**"
+      - "runtime/neuro-kurisu/src/**"
+      - "runtime/neuro-kurisu/tests/**"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - "runtime/neuro-kurisu/tsconfig.json"
+      - "runtime/neuro-kurisu/src/node-shims.d.ts"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - "tools/audit-assets.mjs"
+      - "tools/audit-runtime-test-coverage.mjs"
+      - ".github/workflows/workpass71-validation.yml"
+      - ".nvmrc"
+      - "CHANGELOG.md"
+      - "README.md"
+      - "AGENTS.md"
+      - "SUPER_VERSION.json"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: nk1-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   targeted-and-regression:

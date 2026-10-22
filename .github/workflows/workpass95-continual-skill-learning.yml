@@ -2,9 +2,9 @@ name: WorkPass97 Node 24 and continual skill learning
 
 on:
   push:
-    branches: [workpass79-cognitive-rebuild]
+    branches: [workpass79-cognitive-rebuild, workpass206-runtime-evaluator-wiring]
   pull_request:
-    branches: [main]
+    branches: [main, workpass203-independent-candidate-evaluator]
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts'
@@ -15,9 +15,17 @@ on:
       - 'runtime/neuro-kurisu/tests/p26-true-learning.mjs'
       - '.github/workflows/workpass95-continual-skill-learning.yml'
       - '.nvmrc'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/tsconfig.json'
+      - 'runtime/neuro-kurisu/src/node-shims.d.ts'
 
 permissions:
   contents: read
+
+concurrency:
+  group: nk1-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   continual-skill-learning:

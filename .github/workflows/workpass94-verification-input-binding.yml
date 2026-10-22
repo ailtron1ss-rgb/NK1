@@ -2,17 +2,36 @@ name: WorkPass94 verification input binding
 
 on:
   push:
-    branches: [workpass79-cognitive-rebuild]
+    branches: [workpass79-cognitive-rebuild, workpass206-runtime-evaluator-wiring]
   pull_request:
-    branches: [main]
+    branches: [main, workpass203-independent-candidate-evaluator]
     paths:
       - 'runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts'
       - 'runtime/neuro-kurisu/tests/workpass94-verification-input-binding.mjs'
       - '.github/workflows/workpass94-verification-input-binding.yml'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/tsconfig.json'
+      - 'runtime/neuro-kurisu/src/node-shims.d.ts'
+      - '.nvmrc'
+      - 'runtime/neuro-kurisu/tests/p23-verified-outcome-ledger.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-verified-outcome-promotion-gate.mjs'
+      - 'runtime/neuro-kurisu/tests/p23-outcome-promotion-integration.mjs'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomePromotionGate.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   verification-input-binding:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
