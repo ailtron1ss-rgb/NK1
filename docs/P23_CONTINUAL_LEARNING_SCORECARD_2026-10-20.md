@@ -1,3 +1,11 @@
+## WorkPass282 score update (2026-10-22)
+
+- **Scores unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**.
+- WorkPass282 reduces disagreement between the learning engine and independent evaluator over which values can be fingerprinted; it does not demonstrate improved generalization, transfer, task success or autonomous self-development.
+- Typecheck and regression tests were not run in this pass. No external dependency or upstream code was added.
+
+---
+
 ## WorkPass281 score update (2026-10-22)
 
 - **Scores unchanged:** P23 symbolic core **61%**; evidence-grounded learning maturity **36%**; project-wide lifelong-learning roadmap **30%**; overall learning engineering maturity **57/100**.
