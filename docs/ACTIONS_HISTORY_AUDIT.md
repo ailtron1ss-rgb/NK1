@@ -17,7 +17,7 @@ Required workflow permission: Actions read. The report is uploaded as an artifac
 - Extracts only deduplicated diagnostic lines. Common GitHub token formats, bearer values and secret-like key/value pairs are redacted; full logs and environment dumps are not persisted.
 - Writes both `actions-history-report.json` and `actions-history-report.md`.
 
-Inputs are environment variables: `AUDIT_MAX_PAGES` (default 1000), `AUDIT_MAX_DETAIL_RUNS` (default 3000), `AUDIT_MAX_LOG_JOBS` (default 200), `AUDIT_REPOSITORY`, and `AUDIT_OUTPUT_DIR`. The repository value defaults to `GITHUB_REPOSITORY`; `GITHUB_TOKEN` must be present. On private repositories, the workflow token needs Actions read permission.
+Inputs are environment variables: `AUDIT_MAX_PAGES` (default 1000), `AUDIT_MAX_DETAIL_RUNS` (default 400), `AUDIT_MAX_LOG_JOBS` (default 150), `AUDIT_REPOSITORY`, and `AUDIT_OUTPUT_DIR`. The repository value defaults to `GITHUB_REPOSITORY`; `GITHUB_TOKEN` must be present. On private repositories, the workflow token needs Actions read permission.
 
 The inventory scan covers every available run page. Detail and log budgets are reported explicitly, because the API may expose a very large history and a missing log must not be interpreted as a passing test. Each run's latest job attempt is inspected; earlier attempts of a rerun are not expanded independently.
 
