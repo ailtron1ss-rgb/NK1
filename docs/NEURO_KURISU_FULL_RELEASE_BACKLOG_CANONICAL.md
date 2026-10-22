@@ -1,3 +1,20 @@
+## GitHub implementation checkpoint — WorkPass254 (2026-10-22)
+
+**Active code branch:** `workpass206-runtime-evaluator-wiring` · **Draft PR:** [#55](https://github.com/ailtron1ss-rgb/NK1/pull/55) · **latest implementation group:** independent-evaluation hardening plus avatar/Live2D stability.
+
+- **DONE — WorkPass251:** host authority executable identity and POSIX write permissions revalidated before request creation and again after snapshot I/O; regression authored for scanner executable replacement after setup.
+- **DONE — WorkPass252:** Live2D viewer caches the last applied expression and avoids restarting an unchanged expression during frequent embodiment/lip-sync updates; existing asset-integrity regression extended.
+- **DONE — WorkPass253:** LegacySpriteDeck catches localStorage read/write failures and validates persisted outfit IDs against the canonical catalog, preserving the fallback when storage is blocked.
+- **DONE — WorkPass254:** audited the two commits exclusive to `workpass94-avatar-voice-live2d-audit`; both contain audit documents only. Their two relevant findings are addressed on the active source branch; the source branch is retained.
+- **DONE — tracking:** changelog, P23 roadmap, strategic audit and draft PR description updated through WorkPass254.
+- **PARTIAL — validation:** tests and typechecks are authored/identified but have not been confirmed passing on this exact head. Latest visible Actions jobs for WorkPass105/108/110 remain failed; their root cause has not been established from available logs.
+- **OPEN P0:** real OS/container sandbox launcher; independently controlled verifier and safety scanner; immutable/signed authority deployment; exact-head CI with accessible logs; matched baseline/candidate → authenticated approval → durable activation/restart/rollback.
+- **OPEN P1:** unify browser SpeechSynthesis and Android/Termux voice control/status/interruption without duplicating avatar/runtime state; execute browser/Live2D and Android device E2E; continue branch inventory without deleting source branches based on age/name.
+
+No merge to `main` was performed. The active PR remains draft and unmerged. No green test/typecheck status or release readiness is asserted.
+
+---
+
 ## GitHub implementation checkpoint — WorkPass148 (2026-10-21)
 
 **Active code branch:** `workpass135-durable-shadow-run-registry` · **Draft PR:** [#22](https://github.com/ailtron1ss-rgb/NK1/pull/22) · **latest checkpoint subject:** production verified-shadow learning lifecycle. This GitHub implementation branch is tracked separately from the historical WorkPass57 archive baseline below; no new release archive or release-readiness score is asserted.
