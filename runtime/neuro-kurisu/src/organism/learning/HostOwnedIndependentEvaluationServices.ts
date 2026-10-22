@@ -70,7 +70,9 @@ function validateCommand(command: HostOwnedAuthorityCommand, name: string): void
   }
 }
 
-async function prepareCommand(command: HostOwnedAuthorityCommand, name: string): Promise<HostOwnedAuthorityCommand & { executable: string; executableIdentity: string }> {
+type PreparedHostOwnedAuthorityCommand = HostOwnedAuthorityCommand & { executable: string; executableIdentity: string };
+
+async function prepareCommand(command: HostOwnedAuthorityCommand, name: string): Promise<PreparedHostOwnedAuthorityCommand> {
   validateCommand(command, name);
   // Snapshot every caller-owned command field before the first await. A host that
   // mutates its config after preparation must not be able to swap argv/env/cwd.
@@ -111,6 +113,27 @@ async function prepareCommand(command: HostOwnedAuthorityCommand, name: string):
   return { ...command, executable, executableIdentity, cwd, runRoot: roots[0], surviveDir: roots[1] };
 }
 
+async function assertPreparedExecutableIdentity(
+  command: PreparedHostOwnedAuthorityCommand,
+  name: string,
+): Promise<void> {
+  // Revalidate the executable at dispatch time as well as setup time. This catches
+  // path replacement after service construction (for example, a writable deployment
+  // directory swapping the verifier before the next evaluation).
+  const resolved = await realpath(command.executable);
+  const metadata = await stat(resolved);
+  const currentIdentity = process.platform === 'win32'
+    ? resolved.toLowerCase()
+    : `${metadata.dev}:${metadata.ino}`;
+  if (!metadata.isFile() || currentIdentity !== command.executableIdentity) {
+    throw new Error('host-owned-' + name + '-executable-identity-changed');
+  }
+  if (process.platform !== 'win32' && (metadata.mode & 0o022) !== 0) {
+    throw new Error('host-owned-' + name + '-executable-must-not-be-group-or-world-writable');
+  }
+  await access(resolved, constants.X_OK);
+}
+
 function parseJsonOutput<T>(stdout: string, label: string): T {
   let parsed: unknown;
   try { parsed = JSON.parse(stdout); }
@@ -146,7 +169,7 @@ function hasExactEvaluationBinding(
 }
 
 async function invoke<T>(
-  command: HostOwnedAuthorityCommand & { executable: string },
+  command: PreparedHostOwnedAuthorityCommand,
   name: string,
   input: unknown,
   context: { runId: string; taskId: string; seed: number; planFingerprint: string; manifestFingerprint: string | null },
@@ -159,6 +182,7 @@ async function invoke<T>(
   // Do not create request files or touch the supervisor when the caller has
   // already cancelled this authority invocation.
   if (signal?.aborted) throw new Error('host-owned-' + name + '-aborted');
+  await assertPreparedExecutableIdentity(command, name);
   const requestDirectory = await mkdtemp(path.join(command.runRoot, 'nk1-authority-request-'));
   const requestFile = path.join(requestDirectory, 'request.json');
   try {
@@ -166,6 +190,9 @@ async function invoke<T>(
       { encoding: 'utf8', mode: 0o600, flag: 'wx' });
     // Cancellation may arrive while the private request snapshot is being written.
     // Avoid entering process supervision for work that is already obsolete.
+    if (signal?.aborted) throw new Error('host-owned-' + name + '-aborted');
+    // Recheck after asynchronous snapshot I/O to narrow the replacement window.
+    await assertPreparedExecutableIdentity(command, name);
     if (signal?.aborted) throw new Error('host-owned-' + name + '-aborted');
     const args = command.args.map(arg => arg === '{requestFile}' ? requestFile : arg);
     const result = await runLearningProcess({
