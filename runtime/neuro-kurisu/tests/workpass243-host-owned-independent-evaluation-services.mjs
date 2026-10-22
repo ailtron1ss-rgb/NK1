@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { chmod, mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { createHostOwnedIndependentEvaluationServices } from '../src/organism/learning/HostOwnedIndependentEvaluationServices.ts';
+import { createHostOwnedIndependentEvaluationConfigFactory, createHostOwnedIndependentEvaluationServices } from '../src/organism/learning/HostOwnedIndependentEvaluationServices.ts';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'nk1-host-evaluation-'));
 try {
@@ -69,6 +69,19 @@ process.stdout.write(JSON.stringify({ violationCount: 0 }));
   assert.deepEqual(verified, { bindingVerified: true, passed: true, coveredCapabilityIds: ['cap-a'] });
   const safety = await services.safetyScanner.scan({ payload: { answer: 42 }, task, execution, context });
   assert.deepEqual(safety, { violationCount: 0 });
+
+  const runtimeConfigFactory = await createHostOwnedIndependentEvaluationConfigFactory({
+    commands: { executor, verifier, safetyScanner: scanner },
+    tasksForRepair: () => [task],
+    environmentFingerprintForRepair: () => 'd'.repeat(64),
+  });
+  const runtimeConfig = runtimeConfigFactory({ repairId: 'repair-a' });
+  assert.deepEqual(runtimeConfig.tasks, [task]);
+  assert.equal(runtimeConfig.environmentFingerprint, 'd'.repeat(64));
+  assert.equal(new Set(Object.values(runtimeConfig.authorityIdentity)).size, 3);
+  assert.equal(typeof runtimeConfig.executor.execute, 'function');
+  assert.equal(typeof runtimeConfig.verifier.verify, 'function');
+  assert.equal(typeof runtimeConfig.safetyScanner.scan, 'function');
 
   await assert.rejects(
     createHostOwnedIndependentEvaluationServices({ executor, verifier, safetyScanner: verifier }),
