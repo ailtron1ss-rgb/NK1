@@ -68,7 +68,7 @@ No new package dependency was needed in this pass. The selected patterns were ad
 
 ## Explicit limits / next passes
 
-- The new workflow/test has been committed, but execution, typecheck and CI status are **not yet confirmed** in this connector pass.
+- The GitHub Actions run is **marked failed**. The connector exposes no step summaries and the job-log endpoint returned no log archive, so I cannot establish whether the test command ran or what failed. No pass is claimed; diagnosis remains open.
 - The independent-hypothesis queue has a read-only runtime accessor, but no assessor consumes it yet. Do not auto-promote any queued claim.
 - The causal-development and macro-synthesis independence flags now use the existing two-source counter; other legacy subsystems still accept a range of evidence fields and deserve staged authority/lineage review rather than a broad, risky search-and-replace.
 - A full initiative → action ticket → canonical outcome → causal experience → MemoryOS2 consolidation → replay admission → P23 candidate/holdout → approval/rollback path must be exercised end-to-end before calling the organism autonomous.
@@ -88,6 +88,6 @@ No new package dependency was needed in this pass. The selected patterns were ad
 ## Progress ledger
 
 - WP292 implementation scope: **100% landed** (source changes, regression file, package script, Node 24 workflow, architecture map and checkpoint docs).
-- WP292 validation: **0% confirmed here** (CI/test/typecheck results have not yet been fetched; committed tests are not the same as passing tests).
+- WP292 validation: **0% passing evidence confirmed** (the Actions run is failed and step logs are unavailable through the connector; the test command/typecheck outcome is unresolved).
 - Independent hypothesis → assessor → P23 candidate chain: **partially implemented** (bounded storage/read-only handoff landed; automatic assessor/evaluation/promotion remains open).
 - Whole-organism readiness: **not assigned a precise percentage in this document**. Existing code and architecture map alone cannot establish that the whole autonomous life cycle is active or reliable; WP293 will establish numerator/denominator acceptance evidence before giving a defensible readiness score.
