@@ -1,3 +1,11 @@
+## WorkPass324 — count cognitive interrupts as episodes, not repeated ticks (2026-10-22)
+
+- Fixed `CognitiveDependencyGraph.resolve()` so the cumulative `interrupts` metric counts a newly started or distinct interrupt episode rather than incrementing on every frame while a single interrupt remains active.
+- Continuous priority changes and reordered-but-equivalent domain lists no longer inflate the counter; a new type/domain set or a reactivated interrupt after a clear starts a new episode. A persisted active episode is not counted again on restart.
+- Added `tests/cognitive-dependency-interrupt-episode-workpass324.mjs`, registered `test:p324:interrupt-episodes`, and wired a dedicated WorkPass71 CI step. Hosted execution remains unverified while Actions jobs fail before executing steps.
+
+---
+
 ## WorkPass323 — isolate nested cognitive-loop persistence (2026-10-22)
 
 - Fixed a state-ownership collision between `OrganismCore` and the outer `OrganismRuntime`: both were persisting a `CognitiveEventFabric`, `CognitiveResourceEconomy`, and `UnifiedCognitiveCycle` into the same three schema fields despite representing different decision horizons. This let the wrapper overwrite the Core's event lineage/budgets/cycle counters, and later restart could feed one loop's snapshot into the other.
