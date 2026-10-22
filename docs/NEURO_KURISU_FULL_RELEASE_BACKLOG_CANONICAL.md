@@ -1,3 +1,13 @@
+## WorkPass274 — legacy causal snapshot quarantine (2026-10-22)
+
+- [x] Restore downgrades legacy rows that claim trusted provenance but lack the runtime policy-feature vector to external, ungrounded, replay-ineligible evidence.
+- [x] Regression covers forged legacy runtime provenance and verifies consolidation rejects it.
+- [ ] Authenticate persisted evidence snapshots; current downgrade is compatibility hardening, not cryptographic integrity.
+- [ ] Obtain actionable exact-head Actions logs and run the runtime test/typecheck; current connector response contains no job steps and log download returns 404.
+- [ ] No dependency added; no measured learning-score increase.
+
+---
+
 ## WorkPass273 — remove caller-controlled trust from external causal intake (2026-10-22)
 
 - **Code:** `recordExternalLearningEvent()` now canonicalizes all imported events to `provenance: 'external'` and `stateGrounded: false`; caller-supplied provenance and grounding booleans are not authentication.
