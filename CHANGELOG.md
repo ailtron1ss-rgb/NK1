@@ -1,3 +1,11 @@
+## WorkPass293 — define branch-level completion gates (2026-10-22)
+
+- Added `docs/architecture/branch-goals.md` with concrete responsibilities and exit criteria for `main`, `rebuild`, the active stacked runtime/evaluator branch, and the Hermes skill-evolution lane.
+- Explicitly records that PR #55 is stacked on `workpass203-independent-candidate-evaluator`, not a direct merge to `main`; branch completion requires executable end-to-end evidence and reconciled dependencies.
+- Makes the single-owner rule explicit across core, memory, motivation/goals, embodiment, self-model, and validation. This is a roadmap artifact, not evidence that those gates are already met.
+
+---
+
 ## WorkPass292 — unify intrinsic motivation with canonical endogenous goal genesis (2026-10-22)
 
 - **Structural integration:** `B272EndogenousGoalGenesis` now accepts optional `intrinsicDrive01` and `intrinsicDriveConfidence01` signals. A drive influences predicted goal value only in proportion to its bounded confidence, while the existing `intrinsicReward01` contract remains backward-compatible.
