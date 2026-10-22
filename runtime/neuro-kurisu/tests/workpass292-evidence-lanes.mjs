@@ -91,6 +91,14 @@ const external = experiences.recordExternalLearningEvent({
 });
 assert.equal(external.provenance, 'external', 'caller-provided provenance cannot authenticate an event');
 assert.equal(external.stateGrounded, false, 'caller-provided grounding cannot authenticate an event');
+const retryStream = new CausalExperienceStream();
+const retryPayload = { tick: 8, taskId: 'retryable-import', action: 'verify', reward01: 0.7, success01: 0.6, surprise01: 0.4, novelty01: 0.3 };
+const firstImport = retryStream.recordExternalLearningEvent(retryPayload);
+const retriedImport = retryStream.recordExternalLearningEvent(retryPayload);
+assert.equal(retriedImport.traceId, firstImport.traceId,
+  'imports without an upstream event ID must derive a stable idempotency identity');
+assert.equal(retryStream.snapshot().records.length, 1,
+  'retrying the same external payload must not create a duplicate hypothesis');
 const trustedAggregatesAfterExternal = experiences.snapshot();
 assert.equal(trustedAggregatesAfterExternal.outcomes, trustedAggregatesBeforeExternal.outcomes,
   'unverified imports must not increment the trusted outcome counter');
