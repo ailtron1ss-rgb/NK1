@@ -1,3 +1,13 @@
+## Latest durable checkpoint — WorkPass293 (2026-10-22)
+
+- Added an opt-in P23 compound-repair revision clock. When enabled it requires independent evaluation config and gates on awake state, cognitive budget, battery, RAM, thermal and runtime-performance pressure; no eligible verified non-holdout repair means no run.
+- External WP292 repair hypotheses now prioritize only skill IDs already present in the trusted runtime repair ledger. The hints cannot create evidence or authorize staging on their own.
+- P23 coordinator now coalesces concurrent requests and persists the SHA-256 digest of exact eligible repair evidence in staged candidate revision provenance. Existing stored candidate with same digest avoids regenerating a duplicate revision after restart; digest is lineage, not authority.
+- Candidate output remains staged only. Independent holdout, authenticated shadow receipt, separate approval and rollback are still necessary; no auto-activation was added.
+- Added docs/WORKPASS293_AUTONOMOUS_P23_REPAIR_LOOP_2026-10-22.md, tests/workpass293-autonomous-p23-revision.mjs, extended tests/workpass172-compound-revision-coordinator.mjs, script test:workpass293:p23-revision, and workflow .github/workflows/workpass293-autonomous-p23-revision.yml on Node 24. Updated P2700 schema expectation to v4.
+- **Validation unresolved:** no local test/typecheck pass is claimed. Wait for the current PR head's Node 24 job logs; previous connector status alone did not establish which steps ran.
+- Next fixed order: WP294-A correlate real action ticket/trace/tick with canonical postcondition receipt before any micro-cycle reward; WP294-B connect grounded causal records into the existing sole writable MemoryOS2 lifecycle; WP294-C exercise host-owned P23 evaluation/shadow/approval/rollback; WP294-D/F measure initiative continuity, embodied state reflection and clean-machine Compose readiness.
+
 ## Latest durable checkpoint — WorkPass292 (2026-10-22)
 
 - CausalExperienceStream now applies one grounded-record predicate to learning packets, consolidation, replay and behavioral-drift summaries; restore downgrades runtime-outcome labels that do not retain state-grounding evidence.
