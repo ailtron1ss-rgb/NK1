@@ -1,3 +1,14 @@
+## Current source-stack checkpoint — WorkPass268 (2026-10-22)
+
+- WorkPass268 rejects C0/DEL/C1 control characters in causal task/trace IDs and adds a bounded-window regression proving an evicted event cannot be re-added while its identity remains in the deduplication guard.
+- WorkPass267 also rejects changed payloads that reuse a trace ID; exact normalized duplicates remain idempotent.
+- Code-change baseline before this documentation update: 58fcb0cd8b62a9f867e330247b917cb28e6400c7. Use the live PR to read current HEAD.
+- Tests/typecheck remain unverified because recent Actions runs fail with no exposed steps/logs; no learning score uplift is claimed.
+- PR #55 stays draft/unmerged pending exact-head CI and deployment-shaped evidence.
+- Next priorities: actionable exact-head CI; audit external causal-ingestion call sites and grounding authority; real sandbox/verifier/scanner; independent memory-to-action and learning benchmarks.
+
+---
+
 ## Current source-stack checkpoint — WorkPass267 (2026-10-22)
 
 - WorkPass267 changes external causal-event deduplication: a repeated trace identity is accepted only when the normalized payload matches; a changed payload under the same identity fails closed with an explicit conflict.
