@@ -1,3 +1,12 @@
+## WorkPass315 — evidence-gated self-model identity updates (2026-10-22)
+
+- Added a CAKN-inspired write-time gate to `SelfModelEngine.learnGoalOutcome()`: action preferences continue to learn from bounded rewards, while `agencyBelief` and `identityCoherence` change only when a verified, independent outcome is bound to a non-empty receipt from the trusted world-transition or external-verification path.
+- Added accepted/rejected gate counters and a compact last-decision record for observability.
+- Wired the canonical OrganismCore outcome path to supply verification, independence, source class and a decision/tick-bound receipt. Unverified or correlated outcomes cannot revise the high-level self model through this learning path.
+- Extended the WorkPass313 regression with missing-evidence, correlated-evidence and accepted-evidence cases. Execution remains pending because the connected GitHub Actions jobs have been rejected before the first step starts.
+
+---
+
 ## WorkPass314 — memory hygiene doctor and holdout receipt integrity (2026-10-22)
 
 - Added a bounded, read-only `MemoryOS2.doctor()` report for content-hash mismatch, duplicate IDs/content candidates, unresolved links, dangling revision pointers, non-reciprocal revision chains, repeated revision sequences, future-dated evidence, duplicate independence keys and memory-index corruption.
