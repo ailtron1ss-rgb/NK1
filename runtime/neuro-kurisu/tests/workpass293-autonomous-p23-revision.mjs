@@ -17,6 +17,8 @@ assert.match(runtimeSource, /cognitiveBudget01 >= 0\.70/);
 assert.match(runtimeSource, /battery01 > 0\.20/);
 assert.match(runtimeSource, /ramPressure01 < 0\.82/);
 assert.match(runtimeSource, /body\.thermalStrain01 < 0\.72/);
+assert.match(runtimeSource, /unifiedLearningExternalHypotheses\(128\)/,
+  'untrusted repair hypotheses may guide triage but cannot replace the runtime repair ledger');
 assert.match(runtimeSource, /explicit promotion approval remain required/);
 assert.match(coordinatorSource, /sourceEvidenceFingerprint: initialEvidenceDigest/,
   'the exact observed-repair digest must be carried to P23');
@@ -51,7 +53,14 @@ runtime.initialized = true;
 runtime.stopping = false;
 runtime.compoundSkillRepairEvidence = () => evidence;
 runtime.journal = { write: async (...args) => { events.push(args); } };
-runtime.core = { markRuntimeAnomaly: reason => { events.push(['anomaly', reason]); } };
+runtime.core = {
+  markRuntimeAnomaly: reason => { events.push(['anomaly', reason]); },
+  unifiedLearningExternalHypotheses: () => [
+    { claimedProvenance: 'skill-repair', taskId: 'skill-repair:skill-b:step-1' },
+    { claimedProvenance: 'skill-repair', taskId: 'skill-repair:untrusted-not-in-ledger:step-9' },
+    { claimedProvenance: 'external', taskId: 'skill-repair:skill-a:step-1' },
+  ],
+};
 const revisedSkillIds = [];
 runtime.reviseCompoundSkillsFromObservedRepairs = async skillId => {
   revisedSkillIds.push(skillId);
@@ -91,7 +100,7 @@ assert.equal(task.decide().run, false, 'no eligible repair evidence must not tri
 runtime.compoundSkillRepairEvidence = () => evidence;
 
 await task.task();
-assert.deepEqual(revisedSkillIds, ['skill-a'], 'a scheduler cycle should handle at most one skill');
+assert.deepEqual(revisedSkillIds, ['skill-b'], 'verified repair ledger bounds the candidate set while quarantined repair hypotheses may prioritize only existing skills');
 assert.equal(events.at(-1)[1], 'runtime.p23.compound-repair-revision.background');
 assert.equal(events.at(-1)[2].status, 'candidate-staged');
 
