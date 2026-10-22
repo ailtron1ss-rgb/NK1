@@ -1,3 +1,12 @@
+## WorkPass318 — standalone read-only memory doctor CLI (2026-10-22)
+
+- Added `scripts/memory-doctor.mjs` and the `npm run memory:doctor -- <state-file>` command. It audits the explicit primary state file's canonical `facets.advanced.memoryOS` projection and emits a bounded JSON report.
+- Supports JSON state and V8 serialization when `NEURO_STATE_FORMAT=v8`; JSON compatibility payloads remain readable in V8 mode. The CLI deliberately does not fall back to `.bak`, repair, or rewrite state, so it cannot quietly audit a different file than the operator requested.
+- Exit status contract: 0 = no error-severity integrity failures, 2 = doctor found integrity errors, 1 = read/parse/schema/runtime error, 64 = usage error. Warnings may exist with status 0 and are reported separately from errors.
+- Added a dedicated regression for JSON/V8 input, capped output, error status, missing input and proof that a damaged state file is not mutated; added a separate validation workflow step. Actual CI execution is still blocked by GitHub's runner not starting (`runner_id=0`, zero executed steps).
+
+---
+
 ## WorkPass317 — bounded cross-memory dreaming hypotheses (2026-10-22)
 
 - Extended the existing `MicroDreamEngine` with a deterministic, bounded associative dreaming pass that examines at most 24 recent memory records and emits at most three candidate connections per sweep.
