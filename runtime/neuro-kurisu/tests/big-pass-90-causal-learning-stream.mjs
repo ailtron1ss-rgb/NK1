@@ -76,6 +76,35 @@ assert.throws(() => externalRestored.recordExternalLearningEvent({
   "the durable duplicate guard must also detect changed payload after restore");
 assert.equal(externalRestored.summary().outcomes, 1);
 
+// Legacy snapshots may contain Unicode variants that collapse under the current
+// NFKC identity rule. Exact duplicate rows are deduplicated; conflicting rows
+// sharing a normalized ID are quarantined and cannot be reintroduced by retry.
+const exactDuplicateSnapshot = externalStream.snapshot();
+exactDuplicateSnapshot.records.push({
+  ...externalFirst, traceId: "Ｅxternal-Source-17",
+});
+const exactDuplicateRestore = new CausalExperienceStream(64);
+exactDuplicateRestore.restore(exactDuplicateSnapshot);
+assert.equal(exactDuplicateRestore.recent(64).filter(row => row.traceId === "External-Source-17").length, 1,
+  "an exact normalized duplicate in a legacy snapshot must collapse to one record");
+
+const conflictingSnapshot = externalStream.snapshot();
+conflictingSnapshot.records.push({
+  ...externalFirst, id: "conflicting-normalized-alias", traceId: "Ｅxternal-Source-17", success01: .1,
+});
+conflictingSnapshot.recordedTraceIds.push("Ｅxternal-Source-17");
+const conflictRestore = new CausalExperienceStream(64);
+conflictRestore.restore(conflictingSnapshot);
+assert.equal(conflictRestore.recent(64).some(row => row.traceId === "External-Source-17"), false,
+  "conflicting persisted rows that normalize to the same trace ID must be quarantined");
+assert.ok(conflictRestore.snapshot().recordedTraceIds.includes("External-Source-17"),
+  "the quarantined normalized identity must remain in the deduplication guard");
+assert.equal(conflictRestore.recordExternalLearningEvent({
+  ...externalInput, traceId: "External-Source-17",
+}), null, "quarantined identity must not be accepted again as a new event");
+assert.equal(conflictRestore.summary().outcomes, 1,
+  "quarantine/retry must not change the persisted outcome count");
+
 assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, taskId: "   ", traceId: "invalid-task",
 }), /causal-external-task-id-required/);
