@@ -31,6 +31,8 @@ const state = (tick, overrides = {}) => ({
 const before = state(7);
 const after = state(8, {
   needs: { ...before.needs, uncertainty: 0.22, energy: 0.75, novelty: 0.7 },
+  lastAction: 'explore',
+  lastActionSuccess: 0.96,
   predictionError: 0.31,
 });
 const trace = {
@@ -53,6 +55,16 @@ const grounded = experiences.recordOutcome(trace, after, {
 assert.ok(grounded, 'a state-grounded runtime transition should be recorded');
 assert.equal(grounded.provenance, 'runtime-outcome');
 assert.equal(grounded.stateGrounded, true);
+assert.equal(grounded.replayEligible, true);
+assert.equal(experiences.recordOutcome(trace, { ...after, lastAction: 'verify' }, {
+  reward01: 0.94, success01: 0.96, surprise01: 0.91, novelty01: 0.82,
+}), null, 'a state transition attributed to another action cannot earn this trace credit');
+assert.equal(experiences.recordOutcome(trace, { ...after, lastActionSuccess: 0.5 }, {
+  reward01: 0.94, success01: 0.96, surprise01: 0.91, novelty01: 0.82,
+}), null, 'a contradictory post-action success signal must not earn learning credit');
+assert.equal(experiences.recordOutcome(trace, { ...after, lastActionSuccess: null }, {
+  reward01: 0.94, success01: 0.96, surprise01: 0.91, novelty01: 0.82,
+}), null, 'missing action outcome must not be inferred from unrelated state drift');
 
 const external = experiences.recordExternalLearningEvent({
   tick: 8,
