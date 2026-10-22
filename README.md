@@ -1,3 +1,13 @@
+## Current source-stack checkpoint — WorkPass269 (2026-10-22)
+
+- WorkPass269 closes an identity normalization edge case: C0/DEL/C1 control characters are checked before trimming, so leading/trailing newline or tab cannot be silently erased and accepted as a different ID.
+- Regression coverage now includes boundary controls as well as overlong IDs, conflict reuse, snapshot restore and duplicate retry after bounded eviction.
+- Code-change baseline before this documentation update: 70bd1a529c76c30a345e27c632d50632275fffc7. Use the live PR for the current SHA.
+- Exact-head CI/runtime/app typecheck remains unverified; latest available Actions runs fail with no exposed steps/logs. Learning scores remain unchanged.
+- PR #55 remains draft/unmerged; the next P0 is actionable CI plus call-site audit of external grounding and a real independently controlled evaluator deployment.
+
+---
+
 ## Current source-stack checkpoint — WorkPass268 (2026-10-22)
 
 - WorkPass268 rejects C0/DEL/C1 control characters in causal task/trace IDs and adds a bounded-window regression proving an evicted event cannot be re-added while its identity remains in the deduplication guard.
