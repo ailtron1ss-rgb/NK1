@@ -87,8 +87,12 @@ export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel;
     const draw = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt;
       blend.current = Math.min(1, blend.current + dt * 2.5);
-      const w = canvas.width = canvas.clientWidth || 320;
-      const h = canvas.height = canvas.clientHeight || 360;
+      const w = canvas.clientWidth || 320;
+      const h = canvas.clientHeight || 360;
+      // Resizing clears the bitmap and resets the drawing context; only do it
+      // when the layout dimensions actually change, not on every animation frame.
+      if (canvas.width !== w) canvas.width = w;
+      if (canvas.height !== h) canvas.height = h;
       ctx.clearRect(0, 0, w, h);
       const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#14141c"); g.addColorStop(1, "#08080c"); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
       const cx = w / 2;
