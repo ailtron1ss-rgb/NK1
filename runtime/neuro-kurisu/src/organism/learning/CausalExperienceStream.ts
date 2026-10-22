@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { ActionKind, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
 
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
@@ -17,6 +18,11 @@ const normalizeBoundedId=(value:unknown,maxLength:number):string=>{
 };
 const normalizeTraceId=(value:unknown)=>normalizeBoundedId(value,180);
 const normalizeTaskId=(value:unknown)=>normalizeBoundedId(value,120);
+const hasBoundedRuntimePolicyVector=(record:Partial<CausalExperienceRecord>):boolean=>
+  Array.isArray(record.policyFeatures01)&&record.policyFeatures01.length>=16&&record.policyFeatures01.length<=64&&
+  record.policyFeatures01.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1);
+const isGroundedRuntimeOutcome=(record:Partial<CausalExperienceRecord>):boolean=>
+  record.provenance==='runtime-outcome'&&record.stateGrounded===true&&hasBoundedRuntimePolicyVector(record);
 const CAUSAL_ACTIONS: readonly ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 
 export interface CausalExperienceRecord {
@@ -117,7 +123,7 @@ export class CausalExperienceStream {
             typeof record?.at==='number'&&Number.isFinite(record.at)&&record.at>=0&&
             typeof record?.id==='string'&&record.id.length>0&&record.id.length<=256;
           if(!traceId||!taskId||!validActions||!boundedMetrics||!validCounters)return [];
-          const hasRuntimePolicyFeatures=Array.isArray(record.policyFeatures01)&&record.policyFeatures01.length>=16&&
+          const hasRuntimePolicyFeatures=hasBoundedRuntimePolicyVector(record)&&
             record.policyFeatures01.length<=128&&record.policyFeatures01.every(value=>Number.isFinite(value)&&value>=0&&value<=1);
           const validReplayMetadata=record.replayEligible===undefined||typeof record.replayEligible==='boolean';
           const validOptionalMetrics=[record.learningQuality01,record.replayPriority01].every(value=>
@@ -128,7 +134,7 @@ export class CausalExperienceStream {
           // A well-shaped record is not authenticated evidence. Preserve trusted
           // eligibility only for the runtime-outcome provenance and bounded policy vector;
           // the host persistence boundary still must authenticate the snapshot itself.
-          const trustedRuntimeEvidence=record.provenance==='runtime-outcome'&&hasRuntimePolicyFeatures;
+          const trustedRuntimeEvidence=isGroundedRuntimeOutcome(record);
           return [{
             ...record,traceId,taskId,
             ...(!trustedRuntimeEvidence?{provenance:'external',stateGrounded:false,replayEligible:false}:{}),
@@ -162,9 +168,6 @@ export class CausalExperienceStream {
     const records=uniqueRows.filter(record=>!conflictingTraceIds.has(record.traceId));
     const safeCounter=(value:unknown,fallback=0):number=>
       typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
-    const safeMetric=(value:unknown,fallback=0):number=>
-      typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:fallback;
-    const rawRolling=r.rolling&&typeof r.rolling==='object'?r.rolling:d.rolling;
     const normalizedRecordedIds=Array.isArray(r.recordedTraceIds)
       ? [...new Set(r.recordedTraceIds.map(normalizeTraceId).filter(Boolean))].slice(-this.maxRecordedTraceIds)
       : [];
@@ -173,15 +176,19 @@ export class CausalExperienceStream {
       // Snapshot aggregates are untrusted input. Keep only bounded scalar shapes;
       // behavioral aggregates are recomputed from eligible records below.
       observations:safeCounter(r.observations),
-      outcomes:safeCounter(r.outcomes,records.length),
-      consolidated:safeCounter(r.consolidated,records.filter(record=>record.consolidated).length),
+      // Recompute trusted outcome totals from grounded records; persisted scalar
+      // aggregates can include historical external claims and are not evidence.
+      outcomes:records.filter(isGroundedRuntimeOutcome).length,
+      consolidated:records.filter(record=>isGroundedRuntimeOutcome(record)&&record.consolidated).length,
       records,
-      rolling:{
-        surprise01:safeMetric(rawRolling.surprise01),
-        predictionError01:safeMetric(rawRolling.predictionError01),
-        causalStrength01:safeMetric(rawRolling.causalStrength01),
-        learningOpportunity01:safeMetric(rawRolling.learningOpportunity01),
-      },
+      rolling:records.filter(isGroundedRuntimeOutcome).reduce((acc,record)=>({
+        surprise01:clamp01(acc.surprise01*.92+record.surprise01*.08),
+        predictionError01:clamp01(acc.predictionError01*.92+record.predictionError01*.08),
+        causalStrength01:clamp01(acc.causalStrength01*.9+record.causalStrength01*.1),
+        learningOpportunity01:clamp01(acc.learningOpportunity01*.9+(
+          record.causalStrength01*.58+record.surprise01*.18+record.predictionError01*.14+record.novelty01*.10
+        )*.1),
+      }),{...d.rolling}),
       lastConsolidatedAt:typeof r.lastConsolidatedAt==='number'&&Number.isFinite(r.lastConsolidatedAt)&&r.lastConsolidatedAt>=0?r.lastConsolidatedAt:0,
       recordedTraceIds:normalizedRecordedIds,
       behavioralImpact01:0,
@@ -212,7 +219,14 @@ export class CausalExperienceStream {
       // The decision trace must describe the same pre-action world tick; otherwise
       // an unrelated/old trace could be paired with a newer observed transition.
       trace.tick!==trace.stateBefore.tick||
-      stateAfter.tick<=trace.stateBefore.tick)return null;
+      stateAfter.tick<=trace.stateBefore.tick||
+      // The resulting state must explicitly attribute the last completed action
+      // to this decision and carry a bounded outcome signal; mere state drift is
+      // not enough to create action-conditioned learning credit.
+      stateAfter.lastAction!==trace.selected.action||
+      typeof stateAfter.lastActionSuccess!=='number'||
+      !Number.isFinite(stateAfter.lastActionSuccess)||stateAfter.lastActionSuccess<0||stateAfter.lastActionSuccess>1||
+      Math.abs(stateAfter.lastActionSuccess-input.success01)>0.15)return null;
     const boundedInput=[input.reward01,input.success01,input.surprise01,input.novelty01];
     if(!boundedInput.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1))return null;
     const traceId=normalizeTraceId(trace.id);
@@ -291,7 +305,14 @@ export class CausalExperienceStream {
     const causal=input.causalStrength01??(surprise*.35+novelty*.15+Math.abs(reward-.5)*.25+Math.abs(success-.5)*.25);
     const at=Date.now();
     const id=`cx-ext-${eventTick}-${taskId}-${at}`;
-    const traceId=input.traceId===undefined?normalizeTraceId(id):normalizeTraceId(input.traceId);
+    // When an importer omits an upstream event ID, derive a deterministic identity
+    // from the normalized payload instead of minting a new event on every retry.
+    const derivedTraceId=input.traceId===undefined?`external-${createHash('sha256').update(JSON.stringify({
+      tick:eventTick,taskId,action:input.action,reward01:reward,success01:success,surprise01:surprise,
+      novelty01:novelty,uncertainty01:uncertainty,identityRelevance01:identityRelevance,
+      goalPressure01:goalPressure,causalStrength01:causal,sourceMemoryId,evidenceKey,
+    })).digest('hex').slice(0,40)}`:input.traceId;
+    const traceId=normalizeTraceId(derivedTraceId);
     if(!traceId)throw new Error('causal-external-trace-id-invalid');
     const prior=this.state.records.find(record=>record.traceId===traceId);
     if(prior){
@@ -324,7 +345,10 @@ export class CausalExperienceStream {
     this.recordedOutcomeTraceIds.add(traceId);
     while(this.recordedOutcomeTraceIds.size>this.maxRecordedTraceIds)this.recordedOutcomeTraceIds.delete(this.recordedOutcomeTraceIds.values().next().value!);
     this.state.recordedTraceIds=[...this.recordedOutcomeTraceIds];
-    this.state.outcomes++; this.recomputeBehavioralImpact(); this.state.rolling.surprise01=clamp01(this.state.rolling.surprise01*.92+surprise*.08); this.state.rolling.predictionError01=clamp01(this.state.rolling.predictionError01*.92+record.predictionError01*.08); this.state.rolling.causalStrength01=clamp01(this.state.rolling.causalStrength01*.9+causal*.1); this.state.rolling.learningOpportunity01=clamp01(this.state.rolling.learningOpportunity01*.9+(causal*.58+surprise*.18+novelty*.1)*.1); return structuredClone(record);
+    // Quarantined imports are retained for later adjudication, but must not alter
+    // trusted outcome totals or rolling learning signals. Only recordOutcome()
+    // can update those aggregates after a grounded state transition is admitted.
+    this.recomputeBehavioralImpact(); return structuredClone(record);
   }
   private policyFeatureVector(state:OrganismState):number[]{
     const n=state.needs;
@@ -332,7 +356,7 @@ export class CausalExperienceStream {
   }
   prioritizedReplayCandidates(limit=32,at=Date.now()){
     const now=Number.isFinite(at)?Number(at):Date.now();
-    const rows=this.state.records.filter(r=>r.provenance==='runtime-outcome'&&r.stateGrounded===true&&r.replayEligible===true&&Array.isArray(r.policyFeatures01)&&r.policyFeatures01.length>=16&&r.policyFeatures01.every(value=>Number.isFinite(value)&&value>=0&&value<=1));
+    const rows=this.state.records.filter(r=>isGroundedRuntimeOutcome(r)&&r.replayEligible===true);
     const score=(r:CausalExperienceRecord)=>{
       const ageDays=Math.max(0,now-r.at)/86400000;
       const ageBoost=clamp01(Math.min(1,ageDays/3))*.05;
@@ -375,7 +399,7 @@ export class CausalExperienceStream {
   private contextKey(r:CausalExperienceRecord){return `${r.taskId}|e${Math.floor(r.energyBefore01*4)}|u${Math.floor(r.uncertainty01*4)}|n${Math.floor(r.novelty01*4)}|g${Math.floor(r.goalPressure01*4)}`;}
   private recomputeBehavioralImpact(){
     const buckets=new Map<string,CausalExperienceRecord[]>();
-    for(const r of this.state.records){if(r.provenance!=='runtime-outcome'||r.stateGrounded!==true)continue;const k=this.contextKey(r);const arr=buckets.get(k)??[];arr.push(r);}
+    for(const r of this.state.records){if(!isGroundedRuntimeOutcome(r))continue;const k=this.contextKey(r);const arr=buckets.get(k)??[];arr.push(r);}
     let weighted=0,weight=0,divergence=0,samples=0;
     for(const rows of buckets.values()){if(rows.length<4)continue; const early=rows.slice(0,Math.max(2,Math.floor(rows.length/2))); const late=rows.slice(-Math.max(2,Math.floor(rows.length/2)));
       const share=(xs:CausalExperienceRecord[],action:ActionKind)=>xs.filter(x=>x.action===action).length/Math.max(1,xs.length);
@@ -387,13 +411,18 @@ export class CausalExperienceStream {
 
   recent(limit=64){return this.state.records.slice(-Math.max(1,Math.min(256,Math.floor(limit)))).map(x=>structuredClone(x));}
   learningPacket(limit=64):CausalLearningPacket{
-    const rows=this.recent(limit); if(!rows.length)return {records:[],learningOpportunity01:0,meanReward01:.5,meanSurprise01:0,meanCausalStrength01:0};
+    // External reports remain queryable in recent()/snapshot(), but the unified
+    // learning lane contains only state-grounded runtime outcomes with a bounded
+    // policy vector. Untrusted claims cannot inflate its sample count or mean reward.
+    const wanted=Math.max(1,Math.min(256,Math.floor(limit)));
+    const rows=this.state.records.filter(isGroundedRuntimeOutcome).slice(-wanted).map(record=>structuredClone(record));
+    if(!rows.length)return {records:[],learningOpportunity01:0,meanReward01:.5,meanSurprise01:0,meanCausalStrength01:0};
     const mean=(fn:(r:CausalExperienceRecord)=>number)=>rows.reduce((s,r)=>s+fn(r),0)/rows.length;
     return {records:rows,learningOpportunity01:clamp01(mean(r=>r.causalStrength01*.6+r.surprise01*.2+r.predictionError01*.2)),meanReward01:clamp01(mean(r=>r.reward01)),meanSurprise01:clamp01(mean(r=>r.surprise01)),meanCausalStrength01:clamp01(mean(r=>r.causalStrength01))};
   }
   consolidate(limit=32,at=Date.now()){
     // Only evidence grounded in an actual state transition may become consolidated memory.
-    const ranked=this.state.records.filter(r=>!r.consolidated&&r.provenance==='runtime-outcome'&&r.stateGrounded===true);
+    const ranked=this.state.records.filter(r=>!r.consolidated&&isGroundedRuntimeOutcome(r));
     const rows:CausalExperienceRecord[]=[];
     const taskCounts=new Map<string,number>(),contextCounts=new Map<string,number>();
     const wanted=Math.max(1,Math.min(128,Math.floor(limit)));

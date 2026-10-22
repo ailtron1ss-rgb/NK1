@@ -1,6 +1,12 @@
 import type { ActionKind } from '../core/types.ts';
 import { randomUUID } from 'node:crypto';
-import { OutcomeVerificationService, assessExternalPostcondition, type OutcomeVerification, type OutcomeVerifier } from './OutcomeVerificationService.ts';
+import {
+  OutcomeVerificationService,
+  assessExternalPostcondition,
+  isTrustedDecisionLinkedExternalPostcondition,
+  type OutcomeVerification,
+  type OutcomeVerifier,
+} from './OutcomeVerificationService.ts';
 import { sha256Stable, stableJson } from '../core/StableSerialization.ts';
 import type { ExternalObservationChannel, ExternalObservationSourceClass } from './ExternalObserverFabric.ts';
 
@@ -95,6 +101,8 @@ export interface ToolObservationSource {
 }
 export interface ActionExecutionFinalizationContext {
   toolId: string; input: Record<string, unknown>; reason: string; result: ToolExecution; options: ActionGatewayExecutionOptions;
+  /** Ephemeral process-local attestation computed before cloning verifier objects; never persisted as authority. */
+  decisionLinkedExternalPostcondition: boolean;
 }
 export interface ActionExecutionLedgerEntry {
   keyHash:string; requestHash:string; status:'pending'|'completed'; recordedAt:number;
@@ -644,7 +652,11 @@ export class ActionGateway {
       catch { return this.result(id,'unknown','provider-receipt-not-serializable','idempotency-recovery-required',prior.executionId,{error:'provider-receipt-not-serializable'},'provider receipt is not stable JSON and cannot be committed safely'); }
       if(bytes>48*1024) return this.result(id,'unknown','provider-receipt-too-large','idempotency-recovery-required',prior.executionId,{error:'provider-receipt-too-large',bytes},'provider result exceeds the bounded durable receipt size; adapter must return a concise canonical receipt');
       const toolOk=result.ok!==false;
-      const verification=await this.verifier.verify({toolId:id,input,result},tool.verify);
+      const verification=await this.verifier.verify({
+         toolId:id,input,result,
+         executionId:prior.executionId,
+         ...(typeof prior.decisionId==='string'?{decisionId:prior.decisionId}:{}),
+       },tool.verify);
       const classified=classifyVerifiedExecution(toolOk,verification);
       const auditReason=classified.contradicted?'external-postcondition-contradicted':reason;
       const audit=this.auditTool(id,classified.ok,auditReason,classified.verified,tool.capability,result,verification.basis,verification,prior.executionId,classified.outcomeClass);
@@ -660,7 +672,16 @@ export class ActionGateway {
       const why=String((provider as any)?.reason??'provider-receipt-status-unknown').replace(/[\r\n\t]+/g,' ').slice(0,180);
       return this.result(id,'unknown','idempotency-recovery-required','idempotency-recovery-required',prior.executionId,{error:'provider-receipt-status-unknown',reason:why,...(Number.isFinite(Number((provider as any)?.retryAfterMs))?{retryAfterMs:Math.max(0,Math.min(3_600_000,Number((provider as any).retryAfterMs)))}:{})},'provider could not authoritatively resolve the side effect; pending receipt remains unchanged');
     }
-    try { await this.executionFinalizer?.({toolId:id,input:structuredClone(input),reason:`${reason};receipt-reconciled`,result:structuredClone(response),options:structuredClone(options)}); }
+    const reconciliationDecisionId = prior.decisionId ?? options.decisionId;
+    const decisionLinkedExternalPostcondition = typeof reconciliationDecisionId === 'string' &&
+      isTrustedDecisionLinkedExternalPostcondition(response.verification, {
+        toolId: id, input, executionId: response.executionId, decisionId: reconciliationDecisionId,
+      });
+    try { await this.executionFinalizer?.({
+      toolId:id,input:structuredClone(input),reason:`${reason};receipt-reconciled`,
+      result:structuredClone(response),options:structuredClone({ ...options, ...(reconciliationDecisionId ? { decisionId: reconciliationDecisionId } : {}) }),
+      decisionLinkedExternalPostcondition,
+    }); }
     catch(error) {
       return {...response,ok:false,verified:false,outcomeClass:'idempotency-recovery-required',idempotencyStatus:'recovery-required',result:{error:'reconciliation-finalization-failed',originalExecutionId:prior.executionId,reason:String((error as Error)?.message??'finalizer-error').slice(0,160)},audit:{...response.audit,accepted:false,verified:false,outcomeClass:'idempotency-recovery-required',result:'reconciliation-finalization-failed'}};
     }
@@ -768,7 +789,14 @@ export class ActionGateway {
       response={...response,ok:false,verified:false,result:{...response.result,error:failure},verification:{verified:false,basis:'none',confidence01:0,externalObservation:false,notes:failure},outcomeClass:'execution-failed',audit:{...response.audit,accepted:false,verified:false,outcomeClass:'execution-failed',result:failure}};
     }
     try {
-      await this.executionFinalizer?.({ toolId:id, input:structuredClone(input), reason, result:structuredClone(response), options:structuredClone(options) });
+      const decisionLinkedExternalPostcondition = typeof options.decisionId === 'string' &&
+        isTrustedDecisionLinkedExternalPostcondition(response.verification, {
+          toolId: id, input, executionId: response.executionId, decisionId: options.decisionId,
+        });
+      await this.executionFinalizer?.({
+        toolId:id, input:structuredClone(input), reason, result:structuredClone(response),
+        options:structuredClone(options), decisionLinkedExternalPostcondition,
+      });
     } catch (error) {
       // The external action may already have happened. Keep the durable pending
       // receipt so retries fail closed and request explicit reconciliation.
@@ -934,7 +962,11 @@ export class ActionGateway {
         const audit=this.auditTool(id,false,'tool-failed-no-effect',false,tool.capability,failedResult,'none',verification,executionId,'failed-no-effect',competenceConfidence01);
         return {ok:false,verified:false,executionId,tool:id,capability:tool.capability,result:failedResult,audit,verification,outcomeClass:'failed-no-effect',competenceConfidence01};
       }
-      const verification=await this.verifier.verify({toolId:id,input,result},tool.verify);
+      const verification=await this.verifier.verify({
+         toolId:id,input,result,
+         executionId,
+         ...(typeof context.decisionId==='string'?{decisionId:context.decisionId}:{}),
+       },tool.verify);
       const classified=classifyVerifiedExecution(toolOk,verification);
       const auditReason=classified.contradicted?'external-postcondition-contradicted':reason;
       const audit=this.auditTool(id,classified.ok,auditReason,classified.verified,tool.capability,result,verification.basis,verification,executionId,classified.outcomeClass,competenceConfidence01);

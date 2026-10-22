@@ -354,6 +354,19 @@ function baselineAction(state:OrganismState):{action:ActionKind;reason:string} {
   return {action:'reflect',reason:'low-pressure conservative baseline'};
 }
 
+/** Reflective skill candidates are bounded before generation and before sandbox evaluation.
+ * This is a resource/attack-surface guard, not a quality or promotion decision. */
+export const MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES = 256 * 1024;
+
+export function assertReflectiveSkillPayloadWithinBudget(value:unknown, label='candidate'):string {
+  const canonical = canonicalize(value);
+  const bytes = Buffer.byteLength(canonical, 'utf8');
+  if (bytes > MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES) {
+    throw new Error('p23-reflective-skill-payload-too-large:' + label + ':' + bytes);
+  }
+  return canonical;
+}
+
 function canonicalize(value:unknown, ancestors = new Set<object>()):string {
   // Keep the engine's payload/evaluation fingerprints byte-compatible with the
   // independent evaluator while refusing values JSON would silently collapse.
@@ -490,8 +503,12 @@ export class P23LearningEngine {
     })=>Promise<unknown>|unknown,
     evaluateRevisedCandidate:RevisedCandidateEvaluator,
     options:SkillLearnBenchCandidateGateOptions={},
+    sourceEvidenceFingerprint?: string,
   ):Promise<{candidate:VersionedSkillCandidate;fitness:SkillLearnBenchCandidateGateReport;plan:SkillRevisionPlan}> {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    if(sourceEvidenceFingerprint !== undefined && !/^[a-f0-9]{64}$/.test(sourceEvidenceFingerprint)) {
+      throw new Error('repair evidence fingerprint must be a canonical SHA-256 digest');
+    }
     if(typeof generate!=='function') throw new Error('configured skill revision generator is required');
     if(typeof evaluateRevisedCandidate!=='function') throw new Error('independent post-generation candidate evaluator is required');
     // Reject unauthentic or failed promotion evidence before spending resources on
@@ -507,6 +524,7 @@ export class P23LearningEngine {
     if(!source || source.skillId!==skillId || source.status==='rolled-back') {
       throw new Error('reflective revision source candidate is missing, mismatched, or rolled back');
     }
+    assertReflectiveSkillPayloadWithinBudget(source.payload,'source');
     const fitness=this.evaluateReflectiveSkillCandidate(baseline,candidateEvaluation,options);
     const plan=this.planReflectiveSkillRevision(candidateEvaluation,fitness);
     if(plan.blockedBySafety) throw new Error('reflective revision blocked: resolve safety violations before performance optimization');
@@ -523,10 +541,13 @@ export class P23LearningEngine {
     if(revisedPayload===undefined || revisedPayload===null || (typeof revisedPayload==='string'&&!revisedPayload.trim())) {
       throw new Error('skill revision generator returned an empty payload');
     }
+    // Bound the generated artifact before hashing or passing it to an evaluator.
+    // Independent execution is not a substitute for a cheap preflight resource limit.
+    const canonicalPayload=assertReflectiveSkillPayloadWithinBudget(revisedPayload,'generated');
     // Generation invalidates any prior candidate report: it describes the source
     // candidate, not this newly generated payload. Re-run the independent harness
     // against the exact payload and require the evaluator to echo its canonical digest.
-    const payloadFingerprint=createHash('sha256').update(canonicalize(revisedPayload)).digest('hex');
+    const payloadFingerprint=createHash('sha256').update(canonicalPayload).digest('hex');
     const fresh=await evaluateRevisedCandidate({
       payload:structuredClone(revisedPayload),
       payloadFingerprint,
@@ -541,6 +562,7 @@ export class P23LearningEngine {
     }
     return this.stageReflectiveSkillRevision(
       proposal,skillId,sourceCandidateId,revisedPayload,baseline,fresh.evaluation,fresh.evaluationFingerprint,options,
+      sourceEvidenceFingerprint,
     );
   }
 
@@ -560,6 +582,7 @@ export class P23LearningEngine {
     candidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
     evaluationFingerprint:string,
     options:SkillLearnBenchCandidateGateOptions={},
+    sourceEvidenceFingerprint?: string,
   ):{candidate:VersionedSkillCandidate;fitness:SkillLearnBenchCandidateGateReport;plan:SkillRevisionPlan} {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
     if(!skillId?.trim()) throw new Error('skillId must be non-empty');
@@ -572,7 +595,9 @@ export class P23LearningEngine {
     if(!source || source.skillId!==skillId || source.status==='rolled-back') {
       throw new Error('reflective revision source candidate is missing, mismatched, or rolled back');
     }
-    if(canonicalize(source.payload)===canonicalize(revisedPayload)) {
+    const sourcePayload=assertReflectiveSkillPayloadWithinBudget(source.payload,'source');
+    const revisedCanonical=assertReflectiveSkillPayloadWithinBudget(revisedPayload,'staged');
+    if(sourcePayload===revisedCanonical) {
       throw new Error('reflective revision payload is unchanged from its source candidate');
     }
     if(!/^[a-f0-9]{64}$/.test(evaluationFingerprint)) throw new Error('independent candidate evaluation fingerprint is required');
@@ -582,6 +607,7 @@ export class P23LearningEngine {
       sourceCandidateId:source.candidateId,
       planFingerprint:createHash('sha256').update(canonicalize(plan)).digest('hex'),
       datasetFingerprint:proposal.datasetFingerprint,
+      ...(sourceEvidenceFingerprint ? { sourceEvidenceFingerprint } : {}),
       dimensions:plan.targets.map(target=>target.dimension),
       createdAt:now(),
     };

@@ -45,6 +45,9 @@ import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndepe
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
+// External repair hints are advisory only and must be fresh; stale/future timestamps cannot bias autonomous revision order.
+const EXTERNAL_REPAIR_HINT_TTL_MS=7*24*60*60*1000;
+const EXTERNAL_REPAIR_HINT_MAX_FUTURE_SKEW_MS=5*60*1000;
 function stableSpeechEventId(channel:string,tick:number,text:string):string { return `speech-${channel}-${Math.max(0,Math.floor(Number(tick)||0))}-${createHash('sha256').update(String(text??'')).digest('hex').slice(0,24)}`; }
 
 function environmentToWorldContext(snapshot: ReturnType<WorldEnvironment['snapshot']>): WorldContext {
@@ -97,6 +100,8 @@ export interface RuntimeConfig extends OrganismConfig {
     provideInputs: CompoundRepairRevisionInputProvider;
     /** When supplied, replaces provider-supplied candidate evaluation with exact-payload independent execution. */
     independentEvaluationConfigForRepair?: (input: Parameters<CompoundRepairRevisionInputProvider>[0]) => IndependentCandidateEvaluationConfig;
+    /** Optional background repair-to-P23 loop. Opt-in and independently evaluated; never auto-activates candidates. */
+    backgroundRevision?: { enabled: boolean; initialDelayMs?: number; intervalMs?: number };
   };
   /** P2836: how real device outcomes compete with the predictive simulator. */
   realityMode?: RealityGroundingMode;
@@ -175,6 +180,26 @@ export class OrganismRuntime {
   private readonly adaptiveConsolidationGate = new AdaptiveConsolidationGate();
   private readonly trustedShadowLearningScheduler: P23TrustedShadowLearningScheduler | null;
   private readonly compoundRepairRevisionCoordinator: P23CompoundRepairRevisionCoordinator | null;
+  private compoundRepairRevisionCursor = 0;
+  private readonly compoundRepairRevisionMetrics = {
+    version: 1 as const,
+    schedulerDecisions: 0,
+    resourceGated: 0,
+    noEvidence: 0,
+    notReady: 0,
+    attempts: 0,
+    staged: 0,
+    deduplicated: 0,
+    backoffSkipped: 0,
+    failures: 0,
+    lastDecisionAt: 0,
+    lastDecisionReason: 'not-configured',
+    lastAttemptAt: 0,
+    lastSkillId: null as string | null,
+    lastStatus: 'not-configured',
+    lastCandidateId: null as string | null,
+    lastFailureCategory: null as string | null,
+  };
   private readonly proceduralSkillLibrary = new ProceduralSkillLibrary();
   private readonly proceduralSkillStore: JsonStateStore<SkillLibraryState>;
   private stopping = false;
@@ -210,6 +235,18 @@ export class OrganismRuntime {
       ? new P23TrustedShadowLearningScheduler(this.core, config.trustedShadowLearning)
       : null;
     if (config.compoundRepairRevision) {
+      const backgroundRevision = config.compoundRepairRevision.backgroundRevision;
+      if (backgroundRevision && (typeof backgroundRevision.enabled !== 'boolean' ||
+          (backgroundRevision.intervalMs !== undefined &&
+            (!Number.isSafeInteger(backgroundRevision.intervalMs) || backgroundRevision.intervalMs < 60_000 || backgroundRevision.intervalMs > 86_400_000)) ||
+          (backgroundRevision.initialDelayMs !== undefined &&
+            (!Number.isSafeInteger(backgroundRevision.initialDelayMs) || backgroundRevision.initialDelayMs < 0 || backgroundRevision.initialDelayMs > 86_400_000)))) {
+        throw new Error('compound-repair-background-schedule-invalid');
+      }
+      if (backgroundRevision?.enabled === true &&
+          typeof config.compoundRepairRevision.independentEvaluationConfigForRepair !== 'function') {
+        throw new Error('background-compound-repair-revision-requires-independent-evaluation-authority');
+      }
       // Production revision staging must not trust an evaluator supplied by the same
       // provider that proposes the candidate. Keep legacy provider-only wiring for
       // development, but fail startup in production unless the independent sandbox,
@@ -1080,6 +1117,7 @@ export class OrganismRuntime {
     })=>Promise<unknown>|unknown;
     evaluateRevisedCandidate:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[6];
     options?:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[7];
+    sourceEvidenceFingerprint?: string;
   }){
     if(!input?.engine || typeof input.engine.generateAndStageReflectiveSkillRevision!=='function') {
       throw new Error('configured P23 learning engine is required');
@@ -1089,14 +1127,19 @@ export class OrganismRuntime {
     if(repairEvidence.length===0) {
       throw new Error('no verified non-holdout compound repair evidence is eligible for revision');
     }
+    const computedEvidenceFingerprint=createHash('sha256').update(JSON.stringify(repairEvidence)).digest('hex');
+    if(input.sourceEvidenceFingerprint!==undefined && input.sourceEvidenceFingerprint!==computedEvidenceFingerprint) {
+      throw new Error('compound repair evidence changed before revision provenance could be bound');
+    }
     const result=await input.engine.generateAndStageReflectiveSkillRevision(
       input.proposal,input.skillId,input.sourceCandidateId,input.baseline,input.candidateEvaluation,
       request=>input.generate({...request,repairEvidence:structuredClone(repairEvidence)}),
-      input.evaluateRevisedCandidate,input.options,
+      input.evaluateRevisedCandidate,input.options,computedEvidenceFingerprint,
     );
     await this.journal.write('info','runtime.p23.compound-repair-revision.staged',{
       skillId:input.skillId,sourceCandidateId:input.sourceCandidateId,candidateId:result.candidate.candidateId,
       repairEvidenceCount:repairEvidence.length,repairFingerprints:repairEvidence.map(row=>row.failureFingerprint),
+      sourceEvidenceFingerprint:computedEvidenceFingerprint,
       note:'staged candidate only; independent shadow evidence and explicit promotion approval remain required',
     }).catch(()=>{});
     return {...result,repairEvidenceCount:repairEvidence.length};
@@ -1430,7 +1473,120 @@ export class OrganismRuntime {
     return { ...base, nextDelayMs, sampleDelayMs, reasonCodes };
   }
 
+  private hasEligibleCompoundRepairEvidence(): boolean {
+    return this.compoundSkillRepairEvidence().some(row => row.revisionEligible);
+  }
+
+  private nextCompoundRepairSkillId(): string | null {
+    const evidence = this.compoundSkillRepairEvidence().filter(row => row.revisionEligible);
+    const skillIds = [...new Set(evidence.map(row => row.skillId))];
+    if (!skillIds.length) return null;
+
+    // External repair/replay reports are never evidence or promotion authority.
+    // A skill-repair claim may only prioritize an ID already present in the runtime's
+    // verified non-holdout repairs ledger, which P23 re-evaluates independently.
+    let hintedSkillIds: string[] = [];
+    try {
+      const hypotheses = this.core.unifiedLearningExternalHypotheses(128);
+      if (Array.isArray(hypotheses)) {
+        hintedSkillIds = skillIds.filter(skillId => hypotheses.some(hypothesis =>
+          hypothesis?.claimedProvenance === 'skill-repair' &&
+          typeof hypothesis.taskId === 'string' &&
+          hypothesis.taskId.length <= 160 &&
+          hypothesis.taskId.startsWith(`skill-repair:${skillId}:`) &&
+          typeof hypothesis.receivedAt === 'number' &&
+          Number.isFinite(hypothesis.receivedAt) &&
+          hypothesis.receivedAt <= Date.now() + EXTERNAL_REPAIR_HINT_MAX_FUTURE_SKEW_MS &&
+          Date.now() - hypothesis.receivedAt <= EXTERNAL_REPAIR_HINT_TTL_MS,
+        ));
+      }
+    } catch {
+      // Triage enrichment is optional. Trusted runtime repair evidence remains enough.
+      hintedSkillIds = [];
+    }
+    const orderedSkillIds = [
+      ...hintedSkillIds,
+      ...skillIds.filter(skillId => !hintedSkillIds.includes(skillId)),
+    ];
+    const index = this.compoundRepairRevisionCursor % orderedSkillIds.length;
+    this.compoundRepairRevisionCursor = (index + 1) % orderedSkillIds.length;
+    return orderedSkillIds[index] ?? null;
+  }
+
+  private registerCompoundRepairRevisionClock(): void {
+    const config = this.config.compoundRepairRevision?.backgroundRevision;
+    if (config?.enabled !== true || !this.compoundRepairRevisionCoordinator) return;
+    const initialDelayMs = config.initialDelayMs ?? 300_000;
+    const intervalMs = config.intervalMs ?? 900_000;
+    this.clockScheduler.register({
+      id: 'p23-compound-repair-revision',
+      initialDelayMs,
+      decide: () => {
+        const body = this.embodiment.snapshot();
+        const decision = this.runtimeDecision();
+        const battery01 = Number(body.telemetry.battery01 ?? 1);
+        const ramPressure01 = Number(body.telemetry.ramPressure01 ?? 0);
+        const pressure01 = this.runtimePerformance.decision().performancePressure01;
+        const resourceReady = decision.cognitiveBudget01 >= 0.70 &&
+          battery01 > 0.20 && ramPressure01 < 0.82 &&
+          body.thermalStrain01 < 0.72 && pressure01 < 0.78;
+        const hasEvidence = this.hasEligibleCompoundRepairEvidence();
+        const ready = this.initialized && !this.stopping && body.awake && resourceReady && hasEvidence;
+        const reason = !this.initialized || this.stopping || !body.awake
+          ? 'p23-compound-repair-not-ready'
+          : !hasEvidence ? 'p23-compound-repair-no-eligible-evidence'
+          : resourceReady ? 'p23-compound-repair-resource-ready'
+          : 'p23-compound-repair-resource-gated';
+        this.compoundRepairRevisionMetrics.schedulerDecisions++;
+        this.compoundRepairRevisionMetrics.lastDecisionAt = Date.now();
+        this.compoundRepairRevisionMetrics.lastDecisionReason = reason;
+        if (!hasEvidence) this.compoundRepairRevisionMetrics.noEvidence++;
+        else if (!ready && reason === 'p23-compound-repair-not-ready') this.compoundRepairRevisionMetrics.notReady++;
+        else if (!resourceReady) this.compoundRepairRevisionMetrics.resourceGated++;
+        if (ready) this.compoundRepairRevisionMetrics.lastStatus = 'scheduled';
+        return { delayMs: intervalMs, reason, run: ready };
+      },
+      task: async () => {
+        const skillId = this.nextCompoundRepairSkillId();
+        if (!skillId || !this.initialized || this.stopping) return;
+        this.compoundRepairRevisionMetrics.attempts++;
+        this.compoundRepairRevisionMetrics.lastAttemptAt = Date.now();
+        this.compoundRepairRevisionMetrics.lastSkillId = skillId;
+        this.compoundRepairRevisionMetrics.lastCandidateId = null;
+        this.compoundRepairRevisionMetrics.lastFailureCategory = null;
+        // This enters the existing serialized runtime queue and canonical P23 gate.
+        // Candidate staging is not activation: shadow evidence + explicit approval
+        // and rollback remain required in the versioned-skill lifecycle.
+        const result = await this.reviseCompoundSkillsFromObservedRepairs(skillId);
+        this.compoundRepairRevisionMetrics.lastStatus = result.status;
+        if (result.status === 'candidate-staged') {
+          this.compoundRepairRevisionMetrics.staged++;
+          this.compoundRepairRevisionMetrics.lastCandidateId = result.candidateId;
+        } else if (result.status === 'already-staged-for-evidence') {
+          this.compoundRepairRevisionMetrics.deduplicated++;
+        } else if (result.status === 'retry-backoff-active') {
+          this.compoundRepairRevisionMetrics.backoffSkipped++;
+        }
+        await this.journal.write(result.status === 'candidate-staged' ? 'info' : 'warn',
+          'runtime.p23.compound-repair-revision.background',
+          { skillId, status: result.status, repairEvidenceCount: result.repairEvidenceCount,
+            ...(result.status === 'candidate-staged' ? { candidateId: result.candidateId } : {}),
+            ...(result.status === 'retry-backoff-active' ? { retryInMs: result.retryInMs, attempts: result.attempts } : {}) },
+        ).catch(() => {});
+      },
+      onError: async error => {
+        const message = String((error as any)?.message || error).slice(0, 500);
+        this.compoundRepairRevisionMetrics.failures++;
+        this.compoundRepairRevisionMetrics.lastStatus = 'error';
+        this.compoundRepairRevisionMetrics.lastFailureCategory = 'revision-generation-or-evaluation-failed';
+        this.core.markRuntimeAnomaly('p23-compound-repair-revision:' + message);
+        await this.journal.write('warn', 'runtime.p23.compound-repair-revision.background.failed', { message }).catch(() => {});
+      },
+    });
+  }
+
   private registerRuntimeClocks(): void {
+    this.registerCompoundRepairRevisionClock();
     if (this.trustedShadowLearningScheduler) {
       this.clockScheduler.register({
         id: 'trusted-shadow-learning',
@@ -1554,11 +1710,26 @@ export class OrganismRuntime {
   }
   async sleepConsolidate(): Promise<ConsolidationResult> { return this.enqueue(() => this.consolidateInternal(true)); }
   consolidationGateDiagnostics(){ return this.adaptiveConsolidationGate.diagnostics(); }
+  compoundRepairRevisionDiagnostics() {
+    return {
+      ...this.compoundRepairRevisionMetrics,
+      enabled: this.config.compoundRepairRevision?.backgroundRevision?.enabled === true,
+      schedule: this.config.compoundRepairRevision?.backgroundRevision?.enabled === true
+        ? {
+            initialDelayMs: this.config.compoundRepairRevision.backgroundRevision.initialDelayMs ?? 300_000,
+            intervalMs: this.config.compoundRepairRevision.backgroundRevision.intervalMs ?? 900_000,
+          }
+        : null,
+      retryBackoff: this.compoundRepairRevisionCoordinator?.retryBackoffDiagnostics() ?? [],
+      note: 'Runtime-local counters are observational, not persistent outcome evidence; candidates remain staged until authenticated promotion approval.',
+    };
+  }
   longitudinalSnapshot(){
     const heap=this.heapPressure01();
     return {
       ...this.core.longitudinalSnapshot(),
       trustedShadowLearning:this.trustedShadowLearningScheduler?.snapshot() ?? { enabled:false },
+      compoundRepairRevision:this.compoundRepairRevisionDiagnostics(),
       lastAutonomyStepMs:this.lastAutonomyStepAt,
       runtimeClocks:this.clockScheduler.snapshot(),
       continuityLedger:this.continuityLedger.metrics(),
@@ -1571,6 +1742,7 @@ export class OrganismRuntime {
     return {
       core:this.core.persistenceMetrics(),
       trustedShadowLearning:this.trustedShadowLearningScheduler?.snapshot() ?? { enabled:false },
+      compoundRepairRevision:this.compoundRepairRevisionDiagnostics(),
       predictionLedger:this.core.predictionLedgerSnapshot(),
       continuity:this.core.continuitySnapshot(),
       world:typeof this.worldStore.metrics==='function' ? this.worldStore.metrics() : null,

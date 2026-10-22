@@ -174,6 +174,7 @@ import { NeuroSymbolicConceptCompiler } from '../cognition/NeuroSymbolicConceptC
 import { NeuralMorphogenesisEngine } from '../system/NeuralMorphogenesisEngine.ts';
 import { HybridNeuroCognitiveLoop } from '../system/HybridNeuroCognitiveLoop.ts';
 import { NeuroDigitalEvolutionEngine } from '../system/NeuroDigitalEvolutionEngine.ts';
+import { isTrustedDecisionLinkedExternalPostcondition } from '../system/OutcomeVerificationService.ts';
 import type { OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 import { OutcomeCognitionFabric } from '../system/OutcomeCognitionFabric.ts';
 import type { ExternalObservation, ExternalObservationAssessment } from '../system/ExternalObserverFabric.ts';
@@ -1255,8 +1256,8 @@ export class OrganismCore {
             this.persisted.system.actionExecutionLedger = snapshot;
             await this.checkpoint(true);
         });
-        this.cognitiveRuntime.actionGateway.setExecutionFinalizer(async ({ toolId, input, reason, result, options }) => {
-            await this.finalizeToolOutcome(toolId, input, reason, result, options);
+        this.cognitiveRuntime.actionGateway.setExecutionFinalizer(async ({ toolId, input, reason, result, options, decisionLinkedExternalPostcondition }) => {
+            await this.finalizeToolOutcome(toolId, input, reason, result, options, undefined, decisionLinkedExternalPostcondition);
         });
         this.config = {
             enableHomeostasis: true,
@@ -9820,7 +9821,7 @@ export class OrganismCore {
                 tick: state.tick, at: state.at, taskId, action: trace.selected.action, before: trace.stateBefore, after: state,
                 reward01: gatedReward01, success01: gatedSuccess01, surprise01: gatedSurprise01,
                 verified: Boolean(outcome.worldTransition) || projectEvidenceExternal,
-                independent: Boolean(outcome.worldTransition?.after) || projectEvidenceExternal,
+                independent: independentSources >= 2,
                 worldTransition: Boolean(outcome.worldTransition), externalEvidence: projectEvidenceExternal, contextKey: cdlContextKey,
             });
             const synthBefore = this.developmentalNeural.developmentalSynthesis.snapshot();
@@ -9829,7 +9830,7 @@ export class OrganismCore {
             const synthContext = this.developmentalNeural.causalDevelopmentLoop.contextKey(this.cognitiveRuntime.lastGroundedWorldContext, trace.stateBefore, taskId);
             const verifiedNow = Boolean(outcome.worldTransition) || projectEvidenceExternal;
             const rewardNow = gatedReward01;
-            const synthOutcome = seq.length >= 3 ? this.developmentalNeural.developmentalSynthesis.observeMacro(seq, { contextKey: synthContext, outcome01: gatedSuccess01, verified: verifiedNow, independent: verifiedNow && projectEvidenceExternal, holdout: Boolean(cdlOutcome.behavioral?.promoted?.length === 0 && verifiedNow), delayed: Boolean(state.tick - trace.stateBefore.tick >= 6), counterfactualSupport01: this.persisted.facets.advanced.p52CounterfactualDevelopment?.counterfactualCalibration01 ?? .5, at: state.at }) : { promoted: [], blocked: [], applied: 0 };
+            const synthOutcome = seq.length >= 3 ? this.developmentalNeural.developmentalSynthesis.observeMacro(seq, { contextKey: synthContext, outcome01: gatedSuccess01, verified: verifiedNow, independent: verifiedNow && independentSources >= 2, holdout: Boolean(cdlOutcome.behavioral?.promoted?.length === 0 && verifiedNow), delayed: Boolean(state.tick - trace.stateBefore.tick >= 6), counterfactualSupport01: this.persisted.facets.advanced.p52CounterfactualDevelopment?.counterfactualCalibration01 ?? .5, at: state.at }) : { promoted: [], blocked: [], applied: 0 };
             const decisionAudit = this.developmentalNeural.developmentalSynthesis.recordDecision({ tick: trace.stateAfter?.tick ?? trace.stateBefore.tick, chosen: trace.selected.action, predictedChosen01: trace.selected.predictedUtility ?? .5, predictedAlternatives: (trace.predictedOutcomes ?? []).map((x: any) => ({ action: x.action, utility01: x.utility })), realized01: clamp(success * .55 + rewardNow * .35 + (1 - surprise) * .10), at: state.at });
             const developmentExecutiveOutcome = this.developmentalNeural.developmentalExecutive.observeOutcome({ tick: state.tick, at: state.at, goalId: trace.selected.goalId ?? this.persisted.goals.find(g => g.status === 'active')?.id ?? null, action: trace.selected.action, outcome01: gatedSuccess01, verified: verifiedNow, contextKey: synthContext, delayed: Boolean(state.tick - trace.stateBefore.tick >= 6), transfer: Boolean(this.developmentalNeural.developmentalSynthesis.diagnostics().abstraction01 > .18), revisionPressure01: this.developmentalNeural.developmentalSynthesis.diagnostics().revisionPressure01 });
             const selected = trace.selected;
@@ -10827,6 +10828,7 @@ export class OrganismCore {
     causalExperienceRecent(limit = 32) { return this.developmentalNeural.causalExperience.recent(limit); }
     causalExperienceConsolidate(limit = 32) { const rows = this.developmentalNeural.causalExperience.consolidate(limit, Date.now()); this.persisted.facets.advanced.causalExperience = this.developmentalNeural.causalExperience.snapshot(); this.persisted.facets.advanced.unifiedLearning = this.developmentalNeural.unifiedLearning.snapshot(); return rows; }
     unifiedLearningDiagnostics() { return this.developmentalNeural.unifiedLearning.diagnostics(); }
+    unifiedLearningExternalHypotheses(limit = 32) { return this.developmentalNeural.unifiedLearning.pendingExternalHypotheses(limit); }
     causalDevelopmentDiagnostics() { return this.developmentalNeural.causalDevelopmentLoop.diagnostics(); }
     developmentalSynthesisDiagnostics() { return this.developmentalNeural.developmentalSynthesis.diagnostics(); }
     developmentalExecutiveDiagnostics() { return this.developmentalNeural.developmentalExecutive.diagnostics(); }
@@ -11723,7 +11725,21 @@ export class OrganismCore {
         result: import('../system/ActionGateway.ts').ToolExecution,
         options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {},
         inputKeys: string[] = Object.keys(input),
+        gatewayDecisionLinkedExternalPostcondition?: boolean,
     ): Promise<void> {
+        const suppliedDecisionId = typeof options.decisionId === 'string' ? options.decisionId.trim() : '';
+        const matchingDecisionTrace = suppliedDecisionId
+            ? this.persisted.traces.find(trace => trace.id === suppliedDecisionId && trace.selected !== null && trace.tick === trace.stateBefore.tick)
+            : undefined;
+        const verifierBound = gatewayDecisionLinkedExternalPostcondition === true ||
+            (Boolean(suppliedDecisionId) && isTrustedDecisionLinkedExternalPostcondition(result.verification, {
+                toolId: id, input, executionId: result.executionId, decisionId: suppliedDecisionId,
+            }));
+        // A verifier ticket is attributable only when its process-local authority,
+        // complete request, execution ID and decision ID match AND the ID is a real
+        // selected persisted trace. Otherwise keep the observation, but do not award
+        // temporal/action credit to the claimed decision.
+        const decisionLinkedExternalPostcondition = Boolean(verifierBound && matchingDecisionTrace);
         // Only outcomes from an entered executor (including its explicit failure) or
         // an authoritative provider reconciliation belong in the action/outcome graph.
         // Permission, policy, availability, competence, idempotency and receipt-store
@@ -11800,7 +11816,7 @@ export class OrganismCore {
             });
             if (!traceRevision.resolved) throw new Error(`authoritative-receipt-causal-projection-failed:${traceRevision.reason ?? 'unknown'}`);
 
-            const externalIntegration = await this.integrateVerifiedToolObservation(id, result, options, false);
+            const externalIntegration = await this.integrateVerifiedToolObservation(id, result, options, false, decisionLinkedExternalPostcondition);
             if (!externalIntegration.integrated && result.verification.externalObservation && result.verification.verified) {
                 const v = result.verification;
                 this.memorySubsystem.events.append(makeEvent('external-outcome-verified', this.persisted.state.tick, { tool: id, observationId: v.observationId, confidence01: v.confidence01, expectedPostcondition: v.expectedPostcondition, observedPostcondition: v.observedPostcondition, source: 'outcome-verifier' } as any));
@@ -11893,6 +11909,7 @@ export class OrganismCore {
         result: import('../system/ActionGateway.ts').ToolExecution,
         options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {},
         checkpoint = true,
+        decisionLinkedExternalPostcondition = false,
     ): Promise<{
         integrated: boolean;
         observation?: import('../system/ExternalObserverFabric.ts').ExternalObservation;
@@ -11914,7 +11931,7 @@ export class OrganismCore {
             metadata: { verificationBasis: v.basis, verifierObservationId: v.observationId, gatewayExecutionId: result.executionId },
             payload: { verifierObservationId: v.observationId, expectedPostcondition: v.expectedPostcondition, observedPostcondition: v.observedPostcondition },
             expectedPostcondition: v.expectedPostcondition,
-            decisionId: options.decisionId, autonomous: options.autonomous === true,
+            decisionId: decisionLinkedExternalPostcondition ? options.decisionId : undefined, autonomous: options.autonomous === true,
         }, { checkpoint });
         return { integrated: true, observation: ingested.observation, assessment: ingested.assessment ?? undefined };
     }
