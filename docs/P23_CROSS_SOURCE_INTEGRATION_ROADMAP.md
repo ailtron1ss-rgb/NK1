@@ -332,3 +332,10 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **DONE (regression update):** the host-service protocol fixture now exercises a non-null manifest digest.
 - **PARTIAL:** process receipts use the canonical manifest digest when available; configurations without canonical experiment authority use the evaluator plan digest only for supervisor bookkeeping, while the request context keeps manifest identity null.
 - **OPEN:** run exact-head regression and typecheck on a functioning CI runner; deploy real sandbox/verifier/scanner executables; verify matched baseline/candidate execution through the durable shadow-evidence and authenticated-approval path. Process separation alone is not OS sandboxing.
+
+
+## WorkPass245 — bind canonical experiment plan and scheduled run
+
+- **DONE (code):** verifier and safety-scanner response validation now requires exact `experimentPlanFingerprint` and `plannedRunId` echoes, not merely the evaluator plan digest and runtime run ID.
+- **DONE (fixture):** existing host-service protocol regression scripts echo these fields from the immutable request context.
+- **OPEN:** exact-head test/typecheck on an executing CI runner; actual OS/container sandbox; production verifier/scanner deployment; full promotion-chain e2e with host-issued evidence and authenticated approval.
