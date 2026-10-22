@@ -1,3 +1,13 @@
+## WorkPass281 — strict candidate-task canonicalization and sandbox run identity (2026-10-22)
+
+- **Code:** the P23 independent candidate evaluator now rejects non-finite numbers, circular structures and non-plain objects when canonicalizing task inputs or evaluation payloads. This avoids ambiguous fingerprints while preserving the existing canonical representation for valid plain JSON-like data.
+- **Code:** sandbox run IDs are rejected unless they are nonempty, bounded, unpadded and free of control characters. Invalid run IDs fail closed before verification and are not written into trusted run provenance.
+- **Regression:** added cases for NaN, cyclic and Date task inputs, plus a control-bearing executor run ID that must yield an untrusted failed trial.
+- **Integration:** changes remain within the existing P23 evaluator and experiment pipeline; no parallel evaluator and no new dependency.
+- **Validation:** tests were authored but not executed in this pass. No score increase claimed.
+
+---
+
 ## WorkPass280 — strict canonicalization for independent evaluation evidence (2026-10-22)
 
 - **Code:** Hermes/P23 evidence binding now rejects NaN and infinities, circular references and non-plain object instances before computing the evaluation fingerprint. Non-finite numeric values can no longer collapse to JSON `null` and create an ambiguous canonical digest.
