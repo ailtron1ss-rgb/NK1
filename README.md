@@ -1,3 +1,13 @@
+## Current source-stack checkpoint — WorkPass271 (2026-10-22)
+
+- WorkPass271 hardens snapshot recovery against Unicode identity collisions: exact normalized duplicate rows collapse to one; conflicting rows that share a normalized trace ID are quarantined from active causal history while the ID stays in the duplicate guard.
+- Regressions cover exact-duplicate legacy snapshot rows, conflicting NFKC aliases, rejection of attempts to reintroduce quarantined IDs, control-character edge cases and retries after bounded eviction.
+- Code-change baseline before this documentation update: cd16eecee86ddfe065ba5a11c28e7ab64eda185d. Use the live PR for current HEAD.
+- Current exact-head CI/runtime typecheck remains unverified: recent jobs have no step list/log URL. No learning score uplift is claimed.
+- PR #55 remains draft/unmerged pending actionable CI and deployment-shaped evidence.
+
+---
+
 ## Current source-stack checkpoint — WorkPass270 (2026-10-22)
 
 - WorkPass270 removes pre-validation trim from external task IDs, so boundary control characters reach the shared validator and are rejected rather than erased.
