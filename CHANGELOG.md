@@ -1,3 +1,13 @@
+## WorkPass307 — pin semantic TypeScript validation across CI jobs
+
+- Added `npm ci --prefix app --ignore-scripts --no-audit --no-fund` to WorkPass79, 94, 95, 106 and 110 before their runtime typecheck step.
+- This installs the TypeScript compiler locked by the app workspace, matching `scripts/typecheck-runtime.mjs`'s intended compiler-selection order instead of depending on an ambient runner-global `tsc` or a syntax-only fallback.
+- Expanded path filters on WorkPass94/95/106/110 to run when the app package manifest or lockfile changes, because those files supply the pinned compiler.
+- Increased WorkPass79's timeout from 8 to 15 minutes to accommodate deterministic dependency setup alongside the regression suite.
+- CI is configured for semantic checking, but actual results remain pending while the new runs are queued for runner assignment.
+
+---
+
 ## WorkPass306 — align CI path filters with actual runtime configuration
 
 - Corrected the previous workflow-path patch to watch the file the typecheck script actually consumes: `runtime/neuro-kurisu/tsconfig.clean.json`, not nonexistent `tsconfig.json`.

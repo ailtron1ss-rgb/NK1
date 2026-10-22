@@ -101,6 +101,8 @@ on:
       - 'runtime/neuro-kurisu/src/node-shims.d.ts'
       - '.nvmrc'
       - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
+      - 'app/package.json'
+      - 'app/package-lock.json'
   push:
     branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals, workpass122-promotion-gate-coverage-hardening, workpass123-authenticated-skill-lifecycle, workpass124-learning-evidence-hardening, workpass135-durable-shadow-run-registry, workpass206-runtime-evaluator-wiring]
     paths:
@@ -181,6 +183,8 @@ on:
       - 'runtime/neuro-kurisu/src/node-shims.d.ts'
       - '.nvmrc'
       - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
+      - 'app/package.json'
+      - 'app/package-lock.json'
 concurrency:
   group: nk1-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -198,6 +202,8 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+      - name: Install pinned TypeScript compiler from app lockfile
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Run causal experience identity, replay diversity and restore regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:big-pass-90:causal-stream

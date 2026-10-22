@@ -21,6 +21,8 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomePromotionGate.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
       - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
+      - 'app/package.json'
+      - 'app/package-lock.json'
 
 permissions:
   contents: read
@@ -39,6 +41,8 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
+      - name: Install pinned TypeScript compiler from app lockfile
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Reject partial or altered evidence-input bindings
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/workpass94-verification-input-binding.mjs
       - name: Runtime typecheck

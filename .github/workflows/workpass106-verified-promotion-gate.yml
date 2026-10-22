@@ -32,6 +32,8 @@ on:
       - 'runtime/neuro-kurisu/tsconfig.clean.json'
       - '.nvmrc'
       - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
+      - 'app/package.json'
+      - 'app/package-lock.json'
   workflow_dispatch:
 permissions:
   contents: read
@@ -49,6 +51,8 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+      - name: Install pinned TypeScript compiler from app lockfile
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Check evidence ledger
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-verified-outcome-ledger.mjs

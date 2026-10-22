@@ -21,6 +21,8 @@ on:
       - 'runtime/neuro-kurisu/src/node-shims.d.ts'
       - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
       - 'runtime/neuro-kurisu/scripts/audit-actions-runtime.mjs'
+      - 'app/package.json'
+      - 'app/package-lock.json'
 
 permissions:
   contents: read
@@ -39,6 +41,8 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
+      - name: Install pinned TypeScript compiler from app lockfile
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Enforce current Node.js runtime contract
         shell: bash
         run: |
