@@ -9,6 +9,7 @@ on:
       - "runtime/neuro-kurisu/tests/**"
       - ".github/workflows/workpass71-validation.yml"
       - "scripts/publish-workpass64.ps1"
+      - "scripts/publish-workpass70-main-sync.ps1"
       - "NK1_REPOSITORY_README.md"
       - "WORKPASS70_MAIN_SYNC_2026-10-22_REPORT_RU.md"
       - "WORKPASS65_PLAN.md"

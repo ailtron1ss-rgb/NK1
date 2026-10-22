@@ -1,3 +1,8 @@
+## WorkPass70 - local release-publishing fallback (2026-10-22)
+- Added `scripts/publish-workpass70-main-sync.ps1` to create and publish a hash-verified ZIP from the exact `workpass70-source` HEAD when hosted runner provisioning is unavailable.
+- By default, the script requires a successful validation run for the exact HEAD. The optional `-AllowRunnerUnavailable` override is accepted only if GitHub reports a completed validation failure whose job has `runner_id=0` and no executed steps; the resulting release notes explicitly warn that core tests were not run and label the asset an unvalidated prerelease.
+- The script checks branch/remote SHA parity, clean working tree, a minimum tracked source count, ZIP integrity/path safety, required core files and SHA-256 for the ZIP/report. It refuses existing tags and writes the archive, report and manifest locally before calling GitHub CLI to publish.
+
 ## WorkPass70 release-sync validation reachability (2026-10-22)
 - Added the release-process workflows, all main-imported metadata/scripts and the synchronization report to the core-validation path filter. Changes to this migration now request validation of the exact source HEAD rather than leaving the latest documentation-only commit outside the release gate.
 - A workflow run that cannot allocate a hosted runner remains blocked at infrastructure/account level; this path-filter fix does not represent test-pass evidence.

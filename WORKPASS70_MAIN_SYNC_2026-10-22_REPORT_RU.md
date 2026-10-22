@@ -64,3 +64,9 @@
 
 - `workpass71-validation.yml` now explicitly watches the synchronization report, README sidecar, all WorkPass64/65 files imported from main, the WorkPass64 publish script, and all release/inventory/materialization workflows. This closes the path-filter gap for future changes in this sync set.
 - The commit itself triggers core validation because the validation workflow is among its own path filters. Publishing still requires that exact latest-head run to complete successfully; the existing runner-provisioning block remains outside code control.
+
+## Local publishing fallback — 22 October 2026
+
+- Added `scripts/publish-workpass70-main-sync.ps1` to permit reproducible packaging and upload from an authorized local machine if hosted runners remain blocked. The local script checks current branch, local/remote HEAD parity, clean worktree, tracked source volume, ZIP integrity/path safety and required files, then writes SHA-256 records.
+- Publishing defaults to requiring successful validation for the exact source SHA. The explicit `-AllowRunnerUnavailable` path only accepts a completed run whose job has `runner_id=0` and no steps; in that case the generated Release notes state that the tests were not run and mark the artifact an unvalidated prerelease. Existing tags are never overwritten.
+- The script was committed but has not been executed on a Windows host with GitHub CLI authentication in this session.
