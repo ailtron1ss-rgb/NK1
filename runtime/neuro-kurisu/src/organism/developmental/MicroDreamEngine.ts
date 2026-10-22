@@ -25,6 +25,11 @@ export interface DreamMemoryInput {
   salience01?:number;
   semanticLinks?:string[];
   entities?:string[];
+  kind?:string;
+  epistemicStatus?:'fact'|'belief'|'hypothesis'|'unknown'|'quarantined';
+  provenanceClass?:'device'|'external'|'user'|'agent'|'derived'|'simulation'|'unknown';
+  sourceAuthority01?:number;
+  validUntilAt?:number|null;
 }
 export interface MicroDreamEvidence {
   predictionConfidence01?:number;
@@ -79,8 +84,20 @@ export class MicroDreamEngine{
    */
   dreamAssociations(memories:DreamMemoryInput[],seed:string,evidence:MicroDreamEvidence={}){
     const at=Number.isFinite(evidence.at)?Math.max(0,Number(evidence.at)):Date.now();
-    const bounded=(Array.isArray(memories)?memories:[]).slice(0,24).filter(m=>m&&typeof m.id==='string'&&m.id.trim()&&typeof m.content==='string'&&m.content.trim());
-    const corpus=bounded.map(m=>({m,terms:tokens([m.content,...(Array.isArray(m.entities)?m.entities:[])].join(' '))}));
+    const bounded=(Array.isArray(memories)?memories:[]).slice(0,96).filter(m=>{
+      if(!m||typeof m.id!=='string'||!m.id.trim()||typeof m.content!=='string'||!m.content.trim())return false;
+      // Dream hypotheses must not become their own evidence source; quarantined/unknown records,
+      // expired memories and records with weak provenance are excluded from associative synthesis.
+      if(m.kind==='dream'||m.kind==='unknown'||m.epistemicStatus==='unknown'||m.epistemicStatus==='quarantined')return false;
+      if(m.validUntilAt!=null&&Number.isFinite(m.validUntilAt)&&m.validUntilAt<=at)return false;
+      if(clamp01(m.confidence01??.5)<.35)return false;
+      if(clamp01(m.sourceAuthority01??.5)<.30)return false;
+      if(m.provenanceClass==='unknown'||m.provenanceClass==='simulation')return false;
+      return true;
+    });
+    const uniqueIds=new Set<string>();
+    const trusted=bounded.filter(m=>{if(uniqueIds.has(m.id))return false;uniqueIds.add(m.id);return true;});
+    const corpus=trusted.map(m=>({m,terms:tokens([m.content,...(Array.isArray(m.entities)?m.entities:[])].join(' '))}));
     const df=new Map<string,number>();
     for(const row of corpus)for(const term of row.terms)df.set(term,(df.get(term)??0)+1);
     const candidates:Array<{a:typeof corpus[number];b:typeof corpus[number];terms:string[];score:number;distinctness:number}>=[];
