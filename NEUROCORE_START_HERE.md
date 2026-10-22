@@ -1,3 +1,15 @@
+## Latest durable checkpoint — WorkPass269 (2026-10-22)
+
+- Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use the live PR for the current HEAD.
+- WorkPass269 rejects control characters before trimming task/trace IDs, closing the leading/trailing newline/tab normalization gap. Regression cases are added to the canonical causal-stream test.
+- WorkPass266–268 additionally reject lossy IDs, conflicting duplicate payloads and late duplicates after bounded-row eviction.
+- Current tests/typecheck are still unverified because Actions jobs provide no steps/logs. Do not claim a PASS and do not raise learning scores without independent evidence.
+- Next: restore actionable exact-head CI, map all external causal-event call sites, verify grounding provenance, provision the true sandbox/verifier/scanner, and run independent memory-to-action/learning experiments.
+
+Read the [strategic audit](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [P23 integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md) and [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md).
+
+---
+
 ## Latest durable checkpoint — WorkPass268 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use the live PR for the current SHA.
