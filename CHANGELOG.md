@@ -1,3 +1,14 @@
+## WorkPass294 — bound CI run storms and record Actions failure evidence (2026-10-22)
+
+- Audited metadata across all 52 GitHub Actions history pages (5,158 runs). The latest 2,400 runs on pages 1–24 all concluded as failures; older pages contain mixed successful/cancelled/failed results.
+- Sampled four current failed jobs; each has zero recorded steps and no runner name. Log download returned `BlobNotFound`, so the root cause is not established and no test failure is invented.
+- Added per-workflow concurrency groups to WorkPass105, WorkPass106/108, WorkPass110, and WorkPass287–288 to cancel superseded runs for the same PR/ref.
+- Aligned the WorkPass287–288 cognitive-contract workflow to Node.js 24.
+- The concurrency change reduces duplicate CI work; it does not by itself repair the unavailable job execution/logging. No CI pass or production readiness is claimed.
+- Detailed evidence and next actions: [WorkPass294 Actions history audit](docs/WORKPASS294_ACTIONS_HISTORY_AUDIT_2026-10-22.md).
+
+---
+
 ## WorkPass293 — define branch-level completion gates (2026-10-22)
 
 - Added `docs/architecture/branch-goals.md` with concrete responsibilities and exit criteria for `main`, `rebuild`, the active stacked runtime/evaluator branch, and the Hermes skill-evolution lane.
