@@ -93,6 +93,8 @@ jobs:
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/p23-verified-skill-revision-gate.mjs
       - name: WorkPass314 canonical memory doctor
         run: npm --prefix runtime/neuro-kurisu run test:p314:memory-doctor
+      - name: WorkPass318 read-only memory doctor CLI
+        run: npm --prefix runtime/neuro-kurisu run test:p318:memory-doctor-cli
       - name: WorkPass315 self-model evidence write gate
         run: npm --prefix runtime/neuro-kurisu run test:p315:self-model-evidence-gate
       - name: WorkPass316 HYVE-inspired relational tether
