@@ -137,7 +137,7 @@ export class CausalExperienceStream {
     this.recomputeBehavioralImpact();
     return structuredClone(record);
   }
-  recordExternalLearningEvent(input:{tick:number;taskId:string;action:ActionKind;reward01:number;success01:number;surprise01:number;novelty01:number;uncertainty01?:number;identityRelevance01?:number;goalPressure01?:number;causalStrength01?:number;traceId?:string;provenance?:CausalExperienceRecord['provenance'];stateGrounded?:boolean;sourceMemoryId?:string;evidenceKey?:string}):CausalExperienceRecord{
+  recordExternalLearningEvent(input:{tick:number;taskId:string;action:ActionKind;reward01:number;success01:number;surprise01:number;novelty01:number;uncertainty01?:number;identityRelevance01?:number;goalPressure01?:number;causalStrength01?:number;traceId?:string;provenance?:CausalExperienceRecord['provenance'];stateGrounded?:boolean;sourceMemoryId?:string;evidenceKey?:string}):CausalExperienceRecord|null{
     const reward=clamp01(input.reward01),success=clamp01(input.success01),surprise=clamp01(input.surprise01),novelty=clamp01(input.novelty01),uncertainty=clamp01(input.uncertainty01??.5); const causal=clamp01(input.causalStrength01??(surprise*.35+novelty*.15+Math.abs(reward-.5)*.25+Math.abs(success-.5)*.25));
     const at=Date.now();
     const id=`cx-ext-${Math.max(0,Math.floor(Number.isFinite(input.tick)?input.tick:0))}-${String(input.taskId).slice(0,120)}-${at}`;
@@ -146,7 +146,7 @@ export class CausalExperienceStream {
     if(prior||this.recordedOutcomeTraceIds.has(traceId)){
       // External evidence ingestion is idempotent by its stable source identity.
       // Do not manufacture another outcome when an upstream bridge retries.
-      return structuredClone(prior??this.state.records.find(record=>normalizeTraceId(record.traceId)===traceId)!);
+      return prior ? structuredClone(prior) : null;
     }
     const record:CausalExperienceRecord={
       id, tick:Math.max(0,Math.floor(Number.isFinite(input.tick)?input.tick:0)), at, traceId, action:input.action,
