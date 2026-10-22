@@ -1,3 +1,14 @@
+## WorkPass282 — P23 canonical fingerprint consistency
+
+- [x] Align P23 engine payload/evaluation canonicalization with the independent evaluator's strict JSON-like value rules.
+- [x] Fail closed on non-finite numbers, cycles, non-plain instances and values that JSON cannot serialize.
+- [ ] Add and execute end-to-end regression coverage for malformed generated payloads and malformed returned evaluation reports.
+- [ ] Execute P23 learning, candidate evaluator, revision lifecycle tests and runtime typecheck on the exact PR head.
+- [ ] Continue toward authenticated host-owned causal-memory persistence and an evaluated, rollback-capable candidate promotion loop.
+- No dependency added; no measured learning-score uplift claimed.
+
+---
+
 ## WorkPass281 — evaluator fingerprint and run-identity hardening
 
 - [x] Reject non-finite, circular and non-plain candidate task input structures before plan fingerprinting.
