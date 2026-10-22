@@ -24,6 +24,22 @@ const before=net.currentGoal();
 const snap=net.snapshot();
 const restored=new B272EndogenousGoalGenesis(); restored.restore(snap);
 assert.deepEqual(restored.currentGoal(),before,'B272 goal state did not round-trip');
+const comparisonState=net.snapshot();
+const baselineNet=new B272EndogenousGoalGenesis(); baselineNet.restore(comparisonState);
+const drivenNet=new B272EndogenousGoalGenesis(); drivenNet.restore(comparisonState);
+const comparisonInput={
+  tick:360,selfLatent:new Array(16).fill(0.2),worldLatent:new Array(16).fill(0.1),
+  needs:{energy01:0.7,uncertainty01:0.4,novelty01:0.5,goalPressure01:0.3,socialNeed01:0.2},
+  traits:{curiosity:0.7,'truth-seeking':0.7,'self-reflection':0.6,'self-preservation':0.7,care:0.6,'social-attunement':0.5,persistence:0.7},
+  predictionError01:0.3,autobiographicalContinuity01:0.8,identityContinuity01:0.8,
+  intrinsicReward01:0.2,lastAction:null,lastReward01:0.5,
+};
+const baselineValue=baselineNet.step({...comparisonInput,intrinsicDrive01:0,intrinsicDriveConfidence01:1}).predictedFutureValue01;
+const drivenValue=drivenNet.step({...comparisonInput,intrinsicDrive01:0.9,intrinsicDriveConfidence01:1}).predictedFutureValue01;
+assert.ok(drivenValue>baselineValue+0.1,'calibrated intrinsic drive did not influence endogenous goal value');
+const untrustedDriveNet=new B272EndogenousGoalGenesis(); untrustedDriveNet.restore(comparisonState);
+const untrustedValue=untrustedDriveNet.step({...comparisonInput,intrinsicDrive01:0.9,intrinsicDriveConfidence01:0}).predictedFutureValue01;
+assert.ok(Math.abs(untrustedValue-baselineValue)<1e-9,'untrusted intrinsic drive bypassed confidence weighting');
 const actionCounts=new Map();
 for(const g of goals.slice(-120))actionCounts.set(g,(actionCounts.get(g)||0)+1);
 assert.ok(actionCounts.size>3,'goal identities collapsed');
