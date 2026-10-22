@@ -1,3 +1,10 @@
+## WorkPass246 — immutable host command authorities (2026-10-22)
+
+- Closed a host-configuration TOCTOU gap: `prepareCommand` now snapshots executable arguments, environment overrides, and inherited-environment keys before its first asynchronous filesystem operation. Later caller mutation cannot silently alter a prepared executor/verifier/scanner command.
+- Strengthened authority separation beyond path-level `realpath`: on POSIX, startup now compares device/inode identity, rejecting distinct executable paths that are hard links to the same underlying file. Windows retains normalized resolved-path identity.
+- Extended the existing WorkPass243 host-service regression with post-preparation argument mutation and POSIX hard-link alias cases; reused the existing package/CI entry point rather than adding another harness.
+- **Validation:** regression code is authored and committed; it was not executed in this session. Exact-head Actions/typecheck status remains unverified. This does not replace deployment of actual independently controlled services or an OS/container sandbox.
+
 ## WorkPass243 — host-owned evaluation subprocess adapter (2026-10-22)
 
 - Added `HostOwnedIndependentEvaluationServices.ts`, a concrete adapter from the canonical independent evaluator to three distinct host-owned executable services: candidate executor, independent verifier, and safety scanner.
