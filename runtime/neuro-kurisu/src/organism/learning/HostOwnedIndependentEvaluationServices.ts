@@ -229,6 +229,8 @@ export async function createHostOwnedIndependentEvaluationServices(
           result.environmentFingerprint === context.environmentFingerprint &&
           result.planFingerprint === context.planFingerprint &&
           result.manifestFingerprint === context.manifestFingerprint &&
+          result.experimentPlanFingerprint === context.experimentPlanFingerprint &&
+          result.plannedRunId === context.plannedRunId &&
           result.runId === execution.runId && result.taskId === task.taskId && result.seed === task.seed;
         if (!bound) throw new Error('host-owned-verifier-response-binding-mismatch');
         return { bindingVerified: true, passed: result.passed,
@@ -254,6 +256,8 @@ export async function createHostOwnedIndependentEvaluationServices(
             result.environmentFingerprint !== context.environmentFingerprint ||
             result.planFingerprint !== context.planFingerprint ||
             result.manifestFingerprint !== context.manifestFingerprint ||
+            result.experimentPlanFingerprint !== context.experimentPlanFingerprint ||
+            result.plannedRunId !== context.plannedRunId ||
             result.taskId !== task.taskId || result.seed !== task.seed ||
             result.runId !== (execution?.runId ?? null)) {
           throw new Error('host-owned-safety-scanner-response-binding-mismatch');
