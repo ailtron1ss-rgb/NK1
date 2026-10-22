@@ -65,7 +65,8 @@ test('classifyJob separates missing runner metadata from actionable step failure
     steps: [{ name: 'checkout', conclusion: 'success' }, { name: 'typecheck', conclusion: 'failure' }]
   }), 'step-failure');
   assert.equal(classifyJob({ conclusion: 'timed_out', runner_id: 42, steps: [] }), 'job-timeout');
-  assert.equal(classifyJob({ status: 'queued', conclusion: null, runner_id: null, steps: [] }), 'runner-or-step-metadata-unavailable');
+  assert.equal(classifyJob({ status: 'queued', conclusion: null, runner_id: null, steps: [] }), 'not-completed');
+  assert.equal(classifyJob({ status: 'in_progress', conclusion: null, runner_id: null, steps: [] }), 'not-completed');
 });
 
 test('history summary counts conclusions and identifies non-success runs', () => {
