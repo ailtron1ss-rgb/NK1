@@ -140,3 +140,38 @@ test('collectRuns retries a transient 5xx response before succeeding', async () 
   assert.equal(result.uniqueRuns, 0);
   assert.equal(result.truncated, false);
 });
+
+
+test('collectRuns preserves a partial inventory when API throttling starts mid-scan', async () => {
+  const urls = [];
+  const fakeFetch = async url => {
+    const parsed = new URL(url);
+    const page = Number(parsed.searchParams.get('page'));
+    urls.push(page);
+    if (page === 1) {
+      return new Response(JSON.stringify({
+        total_count: 4,
+        workflow_runs: [{ id: 10 }, { id: 11 }]
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+    return new Response(JSON.stringify({ message: 'API rate limit exceeded' }), {
+      status: 403,
+      headers: { 'content-type': 'application/json', 'x-ratelimit-remaining': '0' }
+    });
+  };
+
+  const result = await collectRuns({
+    repository: 'owner/repo',
+    token: 'fake-token',
+    apiBase: 'https://api.github.test',
+    perPage: 2,
+    maxPages: 10,
+    fetchImpl: fakeFetch
+  });
+  assert.deepEqual(urls, [1, 2]);
+  assert.deepEqual(result.runs.map(run => run.id), [10, 11]);
+  assert.equal(result.pagesFetched, 1);
+  assert.equal(result.reportedTotal, 4);
+  assert.equal(result.truncated, true);
+  assert.match(result.collectionError, /rate limit/i);
+});
