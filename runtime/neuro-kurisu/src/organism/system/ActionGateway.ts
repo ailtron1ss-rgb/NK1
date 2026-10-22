@@ -1,6 +1,12 @@
 import type { ActionKind } from '../core/types.ts';
 import { randomUUID } from 'node:crypto';
-import { OutcomeVerificationService, assessExternalPostcondition, type OutcomeVerification, type OutcomeVerifier } from './OutcomeVerificationService.ts';
+import {
+  OutcomeVerificationService,
+  assessExternalPostcondition,
+  isTrustedDecisionLinkedExternalPostcondition,
+  type OutcomeVerification,
+  type OutcomeVerifier,
+} from './OutcomeVerificationService.ts';
 import { sha256Stable, stableJson } from '../core/StableSerialization.ts';
 import type { ExternalObservationChannel, ExternalObservationSourceClass } from './ExternalObserverFabric.ts';
 
@@ -95,6 +101,8 @@ export interface ToolObservationSource {
 }
 export interface ActionExecutionFinalizationContext {
   toolId: string; input: Record<string, unknown>; reason: string; result: ToolExecution; options: ActionGatewayExecutionOptions;
+  /** Ephemeral process-local attestation computed before cloning verifier objects; never persisted as authority. */
+  decisionLinkedExternalPostcondition: boolean;
 }
 export interface ActionExecutionLedgerEntry {
   keyHash:string; requestHash:string; status:'pending'|'completed'; recordedAt:number;
@@ -664,7 +672,16 @@ export class ActionGateway {
       const why=String((provider as any)?.reason??'provider-receipt-status-unknown').replace(/[\r\n\t]+/g,' ').slice(0,180);
       return this.result(id,'unknown','idempotency-recovery-required','idempotency-recovery-required',prior.executionId,{error:'provider-receipt-status-unknown',reason:why,...(Number.isFinite(Number((provider as any)?.retryAfterMs))?{retryAfterMs:Math.max(0,Math.min(3_600_000,Number((provider as any).retryAfterMs)))}:{})},'provider could not authoritatively resolve the side effect; pending receipt remains unchanged');
     }
-    try { await this.executionFinalizer?.({toolId:id,input:structuredClone(input),reason:`${reason};receipt-reconciled`,result:structuredClone(response),options:structuredClone(options)}); }
+    const reconciliationDecisionId = prior.decisionId ?? options.decisionId;
+    const decisionLinkedExternalPostcondition = typeof reconciliationDecisionId === 'string' &&
+      isTrustedDecisionLinkedExternalPostcondition(response.verification, {
+        toolId: id, input, executionId: response.executionId, decisionId: reconciliationDecisionId,
+      });
+    try { await this.executionFinalizer?.({
+      toolId:id,input:structuredClone(input),reason:`${reason};receipt-reconciled`,
+      result:structuredClone(response),options:structuredClone({ ...options, ...(reconciliationDecisionId ? { decisionId: reconciliationDecisionId } : {}) }),
+      decisionLinkedExternalPostcondition,
+    }); }
     catch(error) {
       return {...response,ok:false,verified:false,outcomeClass:'idempotency-recovery-required',idempotencyStatus:'recovery-required',result:{error:'reconciliation-finalization-failed',originalExecutionId:prior.executionId,reason:String((error as Error)?.message??'finalizer-error').slice(0,160)},audit:{...response.audit,accepted:false,verified:false,outcomeClass:'idempotency-recovery-required',result:'reconciliation-finalization-failed'}};
     }
@@ -772,7 +789,14 @@ export class ActionGateway {
       response={...response,ok:false,verified:false,result:{...response.result,error:failure},verification:{verified:false,basis:'none',confidence01:0,externalObservation:false,notes:failure},outcomeClass:'execution-failed',audit:{...response.audit,accepted:false,verified:false,outcomeClass:'execution-failed',result:failure}};
     }
     try {
-      await this.executionFinalizer?.({ toolId:id, input:structuredClone(input), reason, result:structuredClone(response), options:structuredClone(options) });
+      const decisionLinkedExternalPostcondition = typeof options.decisionId === 'string' &&
+        isTrustedDecisionLinkedExternalPostcondition(response.verification, {
+          toolId: id, input, executionId: response.executionId, decisionId: options.decisionId,
+        });
+      await this.executionFinalizer?.({
+        toolId:id, input:structuredClone(input), reason, result:structuredClone(response),
+        options:structuredClone(options), decisionLinkedExternalPostcondition,
+      });
     } catch (error) {
       // The external action may already have happened. Keep the durable pending
       // receipt so retries fail closed and request explicit reconciliation.
