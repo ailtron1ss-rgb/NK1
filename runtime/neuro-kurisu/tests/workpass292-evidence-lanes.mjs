@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { CausalExperienceStream } from '../src/organism/learning/CausalExperienceStream.ts';
 import { UnifiedLearningSubstrate } from '../src/organism/learning/UnifiedLearningSubstrate.ts';
 
@@ -76,6 +77,19 @@ assert.equal(packet.meanReward01, grounded.reward01, 'external reward claims mus
 assert.equal(experiences.consolidate(32).length, 1, 'grounded runtime outcome remains eligible for consolidation');
 assert.equal(experiences.prioritizedReplayCandidates(32).length, 1, 'grounded runtime outcome remains eligible for replay');
 
+const forgedPersistedExperience = experiences.snapshot();
+forgedPersistedExperience.records = [{ ...grounded, provenance: 'runtime-outcome', stateGrounded: false }];
+const restoredExperienceStream = new CausalExperienceStream();
+restoredExperienceStream.restore(forgedPersistedExperience);
+assert.equal(restoredExperienceStream.recent(4)[0].provenance, 'external', 'restore must downgrade a runtime label without grounded-state evidence');
+assert.equal(restoredExperienceStream.learningPacket(4).records.length, 0, 'forged persisted runtime label must not enter the learning packet');
+
+const organismCoreSource = readFileSync(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
+assert.match(organismCoreSource, /unifiedLearningExternalHypotheses\(limit = 32\)/, 'core runtime must expose the read-only hypothesis queue');
+assert.match(organismCoreSource, /independent:\s*independentSources\s*>=\s*2/, 'causal learning independent flag must require independent source support');
+assert.match(organismCoreSource, /independent:\s*verifiedNow\s*&&\s*independentSources\s*>=\s*2/, 'macro synthesis must use the same independent evidence gate');
+assert.doesNotMatch(organismCoreSource, /independent:\s*Boolean\(outcome\.worldTransition\?\.after\)\s*\|\|\s*projectEvidenceExternal/, 'generic external evidence must not self-certify independent evidence');
+
 const learning = new UnifiedLearningSubstrate();
 const trustedUpdate = learning.ingest(trace, after, grounded, packet);
 assert.ok(trustedUpdate.learningOpportunity01 >= 0);
@@ -122,6 +136,7 @@ assert.equal(afterState.externalHypotheses.length, 1, 'external hypothesis is re
 
 const restored = new UnifiedLearningSubstrate();
 restored.restore({
+  version: 4,
   externalHypotheses: [{
     id: 'bad-hypothesis',
     taskId: 'spoofed',
@@ -137,6 +152,21 @@ restored.restore({
   }],
 });
 assert.equal(restored.snapshot().externalHypotheses.length, 0, 'invalid persisted hypotheses are rejected during restore');
+const legacyLearning = new UnifiedLearningSubstrate();
+legacyLearning.restore({
+  version: 3,
+  cycles: 12,
+  samples: 99,
+  updates: 99,
+  sharedRepresentation01: new Array(16).fill(0.99),
+  patterns: [{ id: 'legacy-ulp-ext', key: 'spoof|explore', samples: 44, taskId: 'spoof', dominantAction: 'explore', meanReward01: 1, meanPredictionError01: 0, meanCausalStrength01: 1, meanNovelty01: 1, transferPotential01: 1, confidence01: 1, firstAt: 1, lastAt: 2 }],
+  provenanceCounts: { runtime: 5, experienceReplay: 10, skillRepair: 10, external: 0 },
+});
+assert.equal(legacyLearning.snapshot().cycles, 12, 'cycle continuity may survive learning-schema migration');
+assert.equal(legacyLearning.snapshot().samples, 0, 'untraceable legacy samples must not survive the trust-boundary migration');
+assert.equal(legacyLearning.snapshot().patterns.length, 0, 'patterns contaminated by unverified legacy claims must not survive migration');
+assert.deepEqual(legacyLearning.snapshot().sharedRepresentation01, new Array(16).fill(0.5), 'representation trained on unverified legacy claims must be reset');
+assert.deepEqual(legacyLearning.snapshot().provenanceCounts, { runtime: 0, experienceReplay: 0, skillRepair: 0, external: 0 }, 'unverifiable legacy provenance counters must be reset');
 
 console.log(JSON.stringify({
   ok: true,
