@@ -1,3 +1,12 @@
+## WorkPass321 — expand the canonical cognitive trace to eleven connected phases (2026-10-22)
+
+- Extended the existing `CognitiveEventFabric` operational record with appraisal, attention, memory, goal and plan events. The runtime now feeds those stages from its actual homeostatic state, global workspace selection, retrieved memory context, canonical goal selection, and generated plan rather than leaving them as unrecorded parallel concepts.
+- Added causal edges for the complete phase spine: observation/prediction → appraisal → attention → memory → goal → plan → action → outcome → learning → self-update. Core six-stage callers remain compatible; when optional phases are supplied, verification checks their event identity, tick ownership and required parent edges.
+- The runtime records and verifies this expanded trace only after its real feedback, learning, continuous memory/identity integration and embodiment update path, joining the WorkPass319 ordering correction to the richer graph.
+- Added `tests/workpass321-expanded-cognitive-phase-spine.mjs`, registered `test:p321:expanded-cognitive-phase-spine`, and added an independent WorkPass71 CI step. It covers all eleven event identities, parent links, snapshot/restore and six-stage backward compatibility. It is committed but hosted execution is not yet confirmed because GitHub Actions jobs are still failing before any step starts.
+
+---
+
 ## WorkPass320 — defensive restore for the cognitive dependency graph (2026-10-22)
 
 - Hardened `CognitiveDependencyGraph.restore()` so persisted data is treated as untrusted input: unsupported schema versions fail before state mutation, counters and ticks normalize to safe non-negative integers, invalid wake-mask bits are discarded, and the derived dirty-domain count is recomputed from the normalized mask.
