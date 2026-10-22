@@ -164,6 +164,11 @@ assert.ok(doctorReport.counts.danglingRevision > 0, 'doctor should detect unreso
 assert.ok(doctorReport.counts.danglingLinks > 0, 'doctor should detect unresolved relationship links');
 assert.ok(doctorReport.counts.futureEvidence > 0, 'doctor should detect future-dated evidence');
 assert.ok(doctorReport.issues.length <= 64, 'doctor output must remain bounded');
+const cappedDoctor = damagedMemory.doctor({ at: doctorAt, maxIssues: 1 });
+assert.equal(cappedDoctor.issues.length, 1, 'doctor must cap detailed issue payloads');
+assert.equal(cappedDoctor.errors, 1, 'severity counters must include issues beyond the display cap');
+assert.ok(cappedDoctor.warnings > 0, 'warning counters must include issues beyond the display cap');
+assert.equal(cappedDoctor.truncated, true, 'doctor must mark a capped issue list as truncated');
 assert.equal(damagedMemory.snapshot().items[0].contentHash, 'not-the-canonical-content-hash', 'read-only doctor must not mutate the record it reports');
 console.log(JSON.stringify({
   pass: true,
