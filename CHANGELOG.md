@@ -1,10 +1,10 @@
 ## WorkPass313 — evidence-grounded user-mind reconstruction and EILS control signals (2026-10-22)
 
 - Extended the existing SocialMindKernel with explicit environment, observation, belief, intention, and action tracks. These categories remain separate so inferred intent cannot silently become an observed action.
-- User-model entries retain evidence references and are bounded by same-person, non-expired observation receipts. Missing or cross-person evidence downgrades claims to unresolved, caps confidence, and records an evidence-debt label.
+- User-model entries retain evidence references and are bounded by same-person, non-expired observation receipts. Direct observations require an exact claim-matching receipt; generic intent cues and cross-person evidence cannot masquerade as direct facts. Missing evidence downgrades claims to unresolved and caps confidence.
 - Added an explicit action-observation receipt and snapshot/restore coverage; exposed the existing canonical social kernel through the organism package index.
-- Extended the existing MotiveEcologyFabric with EILS-inspired curiosity, stress and confidence signals plus entropy-floor, plasticity and trust-region controls. Curiosity/stress modestly modulate existing explore/verify/reflect/rest biases; no new runtime dependency or parallel motivation subsystem was added.
-- Added WorkPass313 regression coverage and an npm script. Verification in GitHub Actions is pending; the code has not been represented as locally executed.
+- Extended the existing MotiveEcologyFabric with EILS-inspired curiosity, stress and confidence signals plus entropy-floor, plasticity and trust-region controls. Curiosity/stress modulate existing explore/verify/reflect/rest biases, and these controls are passed from the live OrganismCore cycle into P28PlasticitySubstrate to affect prototype novelty thresholds and bounded learning rates; no parallel motivation subsystem was added.
+- Added WorkPass313 regression coverage for evidence separation, cross-person rejection, snapshot/restore, EILS signal direction, and real P28 prototype modulation; wired it into npm scripts and the workpass71 validation workflow. Verification remains blocked: recent Actions jobs ended with runner_id=0 and no steps/logs, so no code test has actually executed in CI or locally in this environment.
 
 ---
 
