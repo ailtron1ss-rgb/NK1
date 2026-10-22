@@ -2,19 +2,32 @@ import { createHash } from 'node:crypto';
 import type { SkillLearnBenchTrialReport } from './SkillLearnBenchAdapter.ts';
 import type { SkillShadowEvidenceVerifier, SkillShadowObservation, VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 
-function canonicalEvidence(value: unknown): string {
+function canonicalEvidence(value: unknown, ancestors = new Set<object>()): string {
+  if (typeof value === 'number' && !Number.isFinite(value)) {
+    throw new Error('evidence-envelope-non-finite-number');
+  }
   if (value === null || typeof value !== 'object') {
     const encoded = JSON.stringify(value);
     if (encoded === undefined) throw new Error('evidence-envelope-not-json-serializable');
     return encoded;
   }
-  if (Array.isArray(value)) return '[' + value.map(canonicalEvidence).join(',') + ']';
-  const object = value as Record<string, unknown>;
-  return '{' + Object.keys(object).sort().map(key => {
-    const encodedKey = JSON.stringify(key);
-    if (encodedKey === undefined) throw new Error('evidence-envelope-key-not-json-serializable');
-    return encodedKey + ':' + canonicalEvidence(object[key]);
-  }).join(',') + '}';
+  if (ancestors.has(value)) throw new Error('evidence-envelope-circular-reference');
+  const prototype = Object.getPrototypeOf(value);
+  if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) {
+    throw new Error('evidence-envelope-non-plain-object');
+  }
+  ancestors.add(value);
+  try {
+    if (Array.isArray(value)) return '[' + value.map(item => canonicalEvidence(item, ancestors)).join(',') + ']';
+    const object = value as Record<string, unknown>;
+    return '{' + Object.keys(object).sort().map(key => {
+      const encodedKey = JSON.stringify(key);
+      if (encodedKey === undefined) throw new Error('evidence-envelope-key-not-json-serializable');
+      return encodedKey + ':' + canonicalEvidence(object[key], ancestors);
+    }).join(',') + '}';
+  } finally {
+    ancestors.delete(value);
+  }
 }
 
 function sha256Evidence(value: unknown): string {
