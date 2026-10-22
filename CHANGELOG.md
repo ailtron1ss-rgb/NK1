@@ -1,3 +1,11 @@
+## WorkPass287 — cognitive architecture source-contract pass (2026-10-22)
+
+- Added `runtime/neuro-kurisu/tests/workpass287-cognitive-architecture-contract.mjs`, an executable contract check for architecture-map references, recurrent flow endpoints, canonical owner uniqueness and mapped source-path existence.
+- Added `docs/WORKPASS287_COGNITIVE_ARCHITECTURE_CALLPATH_TRIAGE_2026-10-22.md` with a 14-domain initial activation triage. All runtime activation statuses remain UNVERIFIED until caller traces or exact-head execution evidence support stronger claims.
+- Preserved recurrent feedback edges; the cognitive graph is not forced into a DAG. No runtime behavior or dependencies changed.
+- Validation command: `node --experimental-strip-types tests/workpass287-cognitive-architecture-contract.mjs` (not executed in this GitHub-only pass; pending).
+- Next code target: trace actual OrganismCore → CognitiveKernelCoordinator/planner → canonical arbiter → ActionGateway → independent postcondition → causal experience, then separately trace reduced-resolution micro-cycle semantics.
+
 ## WorkPass286 — multiscale brain-system integration strategy (2026-10-22)
 
 - Added `docs/WORKPASS286_MULTISCALE_BRAIN_SYSTEM_INTEGRATION_PLAN_RU_2026-10-22.md` as an execution supplement to the existing master brain-map and strategic audit.
