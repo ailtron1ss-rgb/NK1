@@ -45,6 +45,15 @@ const trace = {
   reasoningSignals: {},
 };
 
+const causalExperienceSource = readFileSync(new URL('../src/organism/learning/CausalExperienceStream.ts', import.meta.url), 'utf8');
+const architectureMapSource = readFileSync(new URL('../src/organism/core/CognitiveArchitectureMap.ts', import.meta.url), 'utf8');
+assert.match(causalExperienceSource, /stateAfter\.lastAction!==trace\.selected\.action/,
+  'causal reward must be bound to the action actually represented by the post-state');
+assert.match(causalExperienceSource, /Math\.abs\(stateAfter\.lastActionSuccess-input\.success01\)>0\.15/,
+  'contradictory action-success signals must not enter trusted experience');
+assert.match(architectureMapSource, /selected action must match post-state lastAction and bounded lastActionSuccess/,
+  'the architecture map must document the action-to-outcome contract');
+
 const experiences = new CausalExperienceStream();
 const grounded = experiences.recordOutcome(trace, after, {
   reward01: 0.94,
