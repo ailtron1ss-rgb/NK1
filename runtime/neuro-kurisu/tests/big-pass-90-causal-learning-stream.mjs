@@ -40,6 +40,27 @@ ungrounded.recordExternalLearningEvent({
 assert.equal(ungrounded.consolidate(8,1300).length,0,
   "high surprise/reward alone must not consolidate an ungrounded external event");
 
+const externalStream = new CausalExperienceStream(64);
+const externalInput = {
+  tick: 4, taskId: "external-retry", action: "explore",
+  reward01: .7, success01: .8, surprise01: .6, novelty01: .4,
+  traceId: "  Ｅxternal-Source-17  ", stateGrounded: true,
+};
+const externalFirst = externalStream.recordExternalLearningEvent(externalInput);
+assert.ok(externalFirst);
+const externalDuplicate = externalStream.recordExternalLearningEvent({
+  ...externalInput, traceId: "External-Source-17",
+});
+assert.equal(externalDuplicate?.id, externalFirst?.id,
+  "NFKC-normalized upstream retry must resolve to the same recorded outcome");
+assert.equal(externalStream.summary().outcomes, 1,
+  "duplicate external evidence must not increment outcome count");
+const externalRestored = new CausalExperienceStream(64);
+externalRestored.restore(externalStream.snapshot());
+assert.equal(externalRestored.recordExternalLearningEvent({
+  ...externalInput, traceId: "External-Source-17",
+}), null, "a restored external outcome must remain idempotent");
+
 const replayDiversity = new CausalExperienceStream(64);
 for (let i = 0; i < 3; i++) {
   replayDiversity.recordOutcome({
