@@ -1,3 +1,15 @@
+## WorkPass279 — causal memory restore and outcome validation
+
+- [x] Normalize malformed persisted aggregate counters, rolling metrics and consolidation timestamp during causal-stream restore.
+- [x] Recompute behavioral impact/divergence/sample counts from eligible runtime-grounded records rather than accepting snapshot aggregates.
+- [x] Reject malformed runtime outcome metrics, invalid trace ticks and control-bearing task IDs before creating grounded causal records.
+- [x] Add regression cases for poisoned aggregate snapshots, NaN reward and unsafe task identity.
+- [ ] Run the exact-head causal-stream test and TypeScript checks; these changes are committed but not yet executed here.
+- [ ] Add authenticated persistence/host attestation; shape validation alone cannot prove a persisted snapshot was not forged.
+- [ ] No new dependency and no measured learning-score increase.
+
+---
+
 ## WorkPass274 — legacy causal snapshot quarantine (2026-10-22)
 
 - [x] Restore downgrades legacy rows that claim trusted provenance but lack the runtime policy-feature vector to external, ungrounded, replay-ineligible evidence.
