@@ -1,3 +1,13 @@
+## WorkPass289 — connect intrinsic drives to evidence-gated initiative candidates (2026-10-22)
+
+- **Integration:** `IntrinsicMotivationEngine.proposeInitiative()` converts an active internal drive into a typed `intrinsic-goal-candidate` only when it is grounded by bounded observation/prediction identities, world-evidence quality, and causal-continuity signals.
+- **Safety boundary:** candidate creation is not tool execution, task completion, or proof of autonomy. Low-quality/missing evidence yields no candidate; external execution still belongs to the existing action/approval path.
+- **Repair:** corrected malformed template-literal syntax in goal reasons and tightened control-character checks on initiative evidence IDs.
+- **Regression:** extended `tests/workpass288-intrinsic-motivation-contract.mjs` with initiative gating, weak evidence, invalid metrics, and malformed identity cases. Existing workflow already watches these files.
+- **Validation:** GitHub Actions previously failed before exposing any steps; this pass has not yet received a confirmed test result. No dependency added and no measured autonomy uplift claimed.
+
+---
+
 ## WorkPass288 — harden intrinsic-drive signals and persistence (2026-10-22)
 
 - **Unified motivation state:** external uncertainty, prediction error, novelty, goal pressure, social need, energy, success and world-evidence quality are normalized to finite bounded signals before drive computation.
