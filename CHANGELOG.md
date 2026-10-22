@@ -1,3 +1,10 @@
+## WorkPass261 — idempotent external learning intake (2026-10-22)
+
+- **Code:** normalize external evidence trace IDs, return the original record for repeated source identities, persist those identities through snapshots, and avoid duplicate outcome counts on bridge retries.
+- **Regression:** added same-process and restore-path checks, including NFKC-equivalent identifiers.
+- **Developer workflow:** added `npm run test:big-pass-90:causal-stream` to execute the existing causal stream regression.
+- **Validation:** test/typecheck execution has not yet been confirmed.
+
 ## WorkPass260 — diversify causal replay and consolidation (2026-10-22)
 
 - **Code:** ported diversity-aware maximal-marginal-relevance-style selection from the older learning-integrity branch into the current CausalExperienceStream for both prioritized replay and grounded consolidation.
