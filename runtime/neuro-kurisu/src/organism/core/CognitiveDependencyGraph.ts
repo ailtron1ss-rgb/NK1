@@ -92,8 +92,13 @@ export class CognitiveDependencyGraph {
     this.state.dirtyCount=count;
     this.state.transitionCount=Math.min(Number.MAX_SAFE_INTEGER,this.state.transitionCount+transitions);
     this.state.lastReason=cleanText(frame.reason,'',256);
-    this.state.interrupt=normalizeInterrupt(frame.interrupt);
-    if(this.state.interrupt.active)this.state.interrupts=Math.min(Number.MAX_SAFE_INTEGER,this.state.interrupts+1);
+    const previousInterrupt=this.state.interrupt;
+    const nextInterrupt=normalizeInterrupt(frame.interrupt);
+    const sameInterruptDomains=previousInterrupt.domains.slice().sort().join('|')===nextInterrupt.domains.slice().sort().join('|');
+    const startsNewInterrupt=nextInterrupt.active&&(!previousInterrupt.active||previousInterrupt.type!==nextInterrupt.type||!sameInterruptDomains);
+    this.state.interrupt=nextInterrupt;
+    // Count interrupt episodes, not each tick for which one episode remains active.
+    if(startsNewInterrupt)this.state.interrupts=Math.min(Number.MAX_SAFE_INTEGER,this.state.interrupts+1);
     return {wakeMask:mask,dirtyCount:count,transitions};
   }
 
