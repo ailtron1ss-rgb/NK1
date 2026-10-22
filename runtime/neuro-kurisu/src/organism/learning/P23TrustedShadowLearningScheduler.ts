@@ -181,8 +181,8 @@ export class P23TrustedShadowLearningScheduler {
     if (config.seedBase !== undefined && !safeInteger(config.seedBase, 0, Number.MAX_SAFE_INTEGER)) {
       throw new Error('trusted shadow seedBase is invalid');
     }
-    if (config.candidateId !== undefined && !nonEmpty(config.candidateId)) {
-      throw new Error('trusted shadow candidateId must be non-empty when configured');
+    if (config.candidateId !== undefined && !/^[a-f0-9]{64}$/i.test(config.candidateId)) {
+      throw new Error('trusted shadow candidateId must be a 64-hex candidate fingerprint when configured');
     }
     const observationFileName = config.observationFileName ?? 'verified-skill-shadow-observation.json';
     if (config.candidateId && (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(observationFileName) || observationFileName === '.' || observationFileName === '..')) {
