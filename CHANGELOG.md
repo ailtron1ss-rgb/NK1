@@ -1,3 +1,9 @@
+## WorkPass253 — harden Legacy avatar storage fallback (2026-10-22)
+
+- **DONE (code):** LegacySpriteDeck now catches unavailable/throwing localStorage on read and write, validates persisted outfit IDs against the canonical outfit catalog, and falls back to `lab_coat` without preventing the sprite UI from mounting.
+- **Integration:** the existing Legacy fallback is retained; no new avatar or persistence subsystem was introduced.
+- **Validation:** app typecheck and browser regression have not been executed on a functioning runner; no green status is claimed.
+
 ## WorkPass252 — preserve Live2D expression transitions during lip-sync (2026-10-22)
 
 - **DONE (code):** the Live2D viewer now caches the last successfully applied expression and avoids reissuing the same model expression on every embodiment update. Mouth/gaze updates no longer repeatedly restart an unchanged expression animation.
