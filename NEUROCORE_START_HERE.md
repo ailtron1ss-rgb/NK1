@@ -1,3 +1,10 @@
+## Latest durable checkpoint — WorkPass288 (2026-10-22)
+
+- Work branch: `workpass286-multiscale-brain-system-plan`; PR #56 remains a draft and is not merged.
+- WorkPass288 found a concrete static provenance concern in `OperationalMicroCycleRuntime`: scalar `observation.success/reward` currently participates in the boolean forwarded as `verified01` to the neural experience branch. This must be corrected only after tracing the canonical verifier output/correlation contract.
+- Next implementation target: trace the full-cycle canonical verifier and persisted evidence into the micro-cycle; then add behavioral tests for scalar-only, stale, mismatched and valid verified outcomes.
+- No runtime code/dependency changes or test pass are claimed for WP288.
+
 ## Latest durable checkpoint — WorkPass287 (2026-10-22)
 
 - Work branch: `workpass286-multiscale-brain-system-plan`; source baseline remains the WorkPass285 stack. The WorkPass286 strategy PR is a draft and is not merged.
