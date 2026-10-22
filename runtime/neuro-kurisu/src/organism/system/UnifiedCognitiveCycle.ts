@@ -74,8 +74,15 @@ export class UnifiedCognitiveCycle {
       const id=input.stageIds[stage];
       if(validStageId(id))validIds[stage]=id;
     }
-    const present=REQUIRED.filter(stage=>validIds[stage]!==undefined);
-    const missing=REQUIRED.filter(stage=>validIds[stage]===undefined);
+    // Distinct required stages must refer to distinct events. Reusing one ID
+    // across observation/action/outcome must not manufacture a complete cycle.
+    const idCounts=new Map<string,number>();
+    for(const stage of REQUIRED) {
+      const id=validIds[stage];
+      if(id!==undefined)idCounts.set(id,(idCounts.get(id)??0)+1);
+    }
+    const present=REQUIRED.filter(stage=>validIds[stage]!==undefined&&idCounts.get(validIds[stage]!)===1);
+    const missing=REQUIRED.filter(stage=>validIds[stage]===undefined||idCounts.get(validIds[stage]!)!==1);
     const coverage=present.length/REQUIRED.length;
     const causal=input.parentIntegrity01;
     const complete=missing.length===0&&causal>=0.5;
