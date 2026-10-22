@@ -338,6 +338,13 @@ export function createIndependentSkillCandidateEvaluator(
               new Set(verified.coveredCapabilityIds).size !== verified.coveredCapabilityIds.length) {
             throw new Error('independent-task-verifier-result-invalid');
           }
+          // A verifier may confirm only capabilities this task actually requested.
+          // Otherwise a faulty/miswired verifier could inflate cross-task coverage
+          // and make the aggregate candidate appear more capable than observed.
+          const requestedCapabilities = new Set(task.requiredCapabilityIds);
+          if (verified.coveredCapabilityIds.some(id => !requestedCapabilities.has(id))) {
+            throw new Error('independent-task-verifier-capability-out-of-scope');
+          }
           bindingVerified = verified.bindingVerified;
           verifierPassed = verified.passed && bindingVerified;
           coveredCapabilityIds = bindingVerified ? verified.coveredCapabilityIds : [];
