@@ -237,12 +237,22 @@ export async function createHostOwnedIndependentEvaluationServices(
 }
 
 
+export interface HostOwnedIndependentEvaluationFactoryOptions<TInput> {
+  commands: HostOwnedIndependentEvaluationCommands;
+  tasksForRepair(repair: TInput): IndependentCandidateEvaluationConfig['tasks'];
+  environmentFingerprintForRepair(repair: TInput): string;
+  experimentAuthorityForRepair?(repair: TInput): IndependentCandidateEvaluationConfig['experimentAuthority'];
+  serviceTimeoutMs?: number;
+}
+
 /**
  * Prepares trusted host executables once, then supplies a synchronous config factory
  * suitable for RuntimeConfig.compoundRepairRevision.independentEvaluationConfigForRepair.
  * Task plans, environment identity and experiment authority remain owned by the host.
  */
-export async function createHostOwnedIndependentEvaluationConfigFactory<TInput>(input: {
+export async function createHostOwnedIndependentEvaluationConfigFactory<TInput>(
+  input: HostOwnedIndependentEvaluationFactoryOptions<TInput>,
+): Promise<(repair: TInput) => IndependentCandidateEvaluationConfig & {
   commands: HostOwnedIndependentEvaluationCommands;
   tasksForRepair(repair: TInput): IndependentCandidateEvaluationConfig['tasks'];
   environmentFingerprintForRepair(repair: TInput): string;
