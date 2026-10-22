@@ -311,11 +311,11 @@ export class OrganismRuntime {
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
-      this.cognitiveEventFabric.restore(systemSnapshot.cognitiveEventFabric ?? undefined);
-      this.resourceEconomy.restore(systemSnapshot.cognitiveResourceEconomy ?? undefined);
+      this.cognitiveEventFabric.restore(systemSnapshot.runtimeCognitiveEventFabric ?? systemSnapshot.cognitiveEventFabric ?? undefined);
+      this.resourceEconomy.restore(systemSnapshot.runtimeCognitiveResourceEconomy ?? systemSnapshot.cognitiveResourceEconomy ?? undefined);
       this.runtimePerformance.restore(systemSnapshot.runtimePerformance ?? undefined);
       this.realityEvidence.restore(systemSnapshot.realityEvidenceLedger ?? undefined);
-      this.unifiedCycle.restore(systemSnapshot.unifiedCognitiveCycle ?? undefined);
+      this.unifiedCycle.restore(systemSnapshot.runtimeUnifiedCognitiveCycle ?? systemSnapshot.unifiedCognitiveCycle ?? undefined);
       this.continuousCognitiveFabric.restore(systemSnapshot.continuousCognitiveFabric ?? undefined);
       this.realityGrounding.restore(systemSnapshot.realityGrounding ?? undefined);
       this.realityGrounding.setMode(this.config.realityMode ?? systemSnapshot.realityGrounding?.mode ?? 'hybrid');
@@ -553,7 +553,7 @@ export class OrganismRuntime {
       awake: body.awake,
     });
     this.evidenceBus.publish({tick:this.core.operationalStatusSnapshot().tick,kind:'resource',source:'cognitive-resource-economy',confidence01:.92,payload:{mode:resourceAllocation.mode,scarcity01:resourceAllocation.scarcity01,attention01:resourceAllocation.attention01,simulation01:resourceAllocation.simulation01,learning01:resourceAllocation.learning01}});
-    this.core.setCognitiveResourceEconomy(this.resourceEconomy.snapshot());
+    this.core.setRuntimeCognitiveResourceEconomy(this.resourceEconomy.snapshot());
     const previousNeural = this.core.b365UnifiedNeuroCausalDiagnostics();
     const perceptionPlan = this.core.b365PlanActivePerception({
       tick:this.core.operationalStatusSnapshot().tick,
@@ -949,11 +949,11 @@ export class OrganismRuntime {
       at:cycle.state.at,
     });
     const fabricSnapshot = this.cognitiveEventFabric.snapshot();
-    this.core.setCognitiveEventFabric(fabricSnapshot);
+    this.core.setRuntimeCognitiveEventFabric(fabricSnapshot);
     const cycleStageMap = {observation:cycleStageIds.observation,prediction:cycleStageIds.prediction,appraisal:cycleStageIds.appraisal,attention:cycleStageIds.attention,memory:cycleStageIds.memory,goal:cycleStageIds.goal,plan:cycleStageIds.plan,action:cycleStageIds.action,outcome:cycleStageIds.outcome,learning:cycleStageIds.learning,'self-update':cycleStageIds.selfUpdate};
     const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap);
     const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:cycleStageMap,parentIntegrity01:cycleLineage.complete ? cycleLineage.integrity01 : 0});
-    this.core.setUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
+    this.core.setRuntimeUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
     this.realityEvidence.record({tick:cycle.state.tick,realityClass:'derived',claim:'cognitive-cycle-completeness',confidence01:cycleVerification.complete ? .95 : .35,independenceKey:`cycle:${cycle.state.tick}`,parentIds:Object.values(cycleStageIds).filter(Boolean) as string[]});
     this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());
 
@@ -979,10 +979,10 @@ export class OrganismRuntime {
     }
 
     if(cycle.state.tick % 8 === 0 || Boolean(externalText)) this.core.setRuntimeEvidence(this.evidenceBus.snapshot());
-    this.core.setCognitiveEventFabric(this.cognitiveEventFabric.snapshot());
-    this.core.setCognitiveResourceEconomy(this.resourceEconomy.snapshot());
+    this.core.setRuntimeCognitiveEventFabric(this.cognitiveEventFabric.snapshot());
+    this.core.setRuntimeCognitiveResourceEconomy(this.resourceEconomy.snapshot());
     this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());
-    this.core.setUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
+    this.core.setRuntimeUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
 
     this.stepsSinceConsolidation += 1;
     // On a medium phone, consolidation must be budgeted as a background operation:
@@ -1186,7 +1186,7 @@ export class OrganismRuntime {
       awake: body.awake,
     });
     this.evidenceBus.publish({tick:this.core.operationalStatusSnapshot().tick,kind:'resource',source:'cognitive-resource-economy',confidence01:.92,payload:{mode:resourceAllocation.mode,scarcity01:resourceAllocation.scarcity01,attention01:resourceAllocation.attention01,simulation01:resourceAllocation.simulation01,learning01:resourceAllocation.learning01}});
-    this.core.setCognitiveResourceEconomy(this.resourceEconomy.snapshot());
+    this.core.setRuntimeCognitiveResourceEconomy(this.resourceEconomy.snapshot());
       if (before.awake && !body.awake && this.sleepStartedAt == null) { this.sleepStartedAt = Date.now(); this.sleepReason = body.wakeReason || 'resource-pressure'; }
       const sensorDiagnostics = this.embodiment.sensorDiagnosticsSnapshot();
       const telemetryFresh = body.telemetry.source === 'android-termux' && body.telemetry.staleMs === 0;
