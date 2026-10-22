@@ -25,6 +25,7 @@ jobs:
         id: guard
         shell: bash
         env:
+          GH_TOKEN: ${{ github.token }}
           VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
