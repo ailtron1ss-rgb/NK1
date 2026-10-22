@@ -12,4 +12,6 @@ assert.match(source, /const microReward\s*=\s*0\.5;/);
 assert.match(source, /const microVerified\s*=\s*false;/);
 assert.match(source, /previousDecision\?\.selected\?\.action\s*\?\?\s*state\.lastAction/);
 
+assert.match(architecture, /from:'lifecycle',to:'outcome-learning',kind:'governance',signal:'heartbeat tick is not an action receipt; no micro-cycle action credit'/);
+
 console.log('WorkPass296 micro-cycle action attribution contract: OK');
