@@ -644,7 +644,11 @@ export class ActionGateway {
       catch { return this.result(id,'unknown','provider-receipt-not-serializable','idempotency-recovery-required',prior.executionId,{error:'provider-receipt-not-serializable'},'provider receipt is not stable JSON and cannot be committed safely'); }
       if(bytes>48*1024) return this.result(id,'unknown','provider-receipt-too-large','idempotency-recovery-required',prior.executionId,{error:'provider-receipt-too-large',bytes},'provider result exceeds the bounded durable receipt size; adapter must return a concise canonical receipt');
       const toolOk=result.ok!==false;
-      const verification=await this.verifier.verify({toolId:id,input,result},tool.verify);
+      const verification=await this.verifier.verify({
+         toolId:id,input,result,
+         executionId:prior.executionId,
+         ...(typeof prior.decisionId==='string'?{decisionId:prior.decisionId}:{}),
+       },tool.verify);
       const classified=classifyVerifiedExecution(toolOk,verification);
       const auditReason=classified.contradicted?'external-postcondition-contradicted':reason;
       const audit=this.auditTool(id,classified.ok,auditReason,classified.verified,tool.capability,result,verification.basis,verification,prior.executionId,classified.outcomeClass);
@@ -934,7 +938,11 @@ export class ActionGateway {
         const audit=this.auditTool(id,false,'tool-failed-no-effect',false,tool.capability,failedResult,'none',verification,executionId,'failed-no-effect',competenceConfidence01);
         return {ok:false,verified:false,executionId,tool:id,capability:tool.capability,result:failedResult,audit,verification,outcomeClass:'failed-no-effect',competenceConfidence01};
       }
-      const verification=await this.verifier.verify({toolId:id,input,result},tool.verify);
+      const verification=await this.verifier.verify({
+         toolId:id,input,result,
+         executionId,
+         ...(typeof context.decisionId==='string'?{decisionId:context.decisionId}:{}),
+       },tool.verify);
       const classified=classifyVerifiedExecution(toolOk,verification);
       const auditReason=classified.contradicted?'external-postcondition-contradicted':reason;
       const audit=this.auditTool(id,classified.ok,auditReason,classified.verified,tool.capability,result,verification.basis,verification,executionId,classified.outcomeClass,competenceConfidence01);
