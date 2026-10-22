@@ -4,6 +4,7 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/CausalExperienceStream.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/UnifiedLearningSubstrate.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
       - 'runtime/neuro-kurisu/tests/workpass292-evidence-lanes.mjs'
       - 'runtime/neuro-kurisu/package.json'
       - '.github/workflows/workpass292-evidence-lanes.yml'
