@@ -14,7 +14,7 @@
 - **WorkPass261:** external causal events are idempotent across normalized source IDs and snapshot/restore; the regression is wired to `npm run test:big-pass-90:causal-stream`.
 - **WorkPass262:** Legacy avatar canvas dimensions are only reassigned when layout dimensions change.
 - **WorkPass263:** host-owned evaluator blocks inherited environment variables that commonly carry credentials or alter runtime loading, and rejects duplicate inherited keys.
-- **Validation state:** the latest HEAD has no PR-triggered workflow runs; the targeted regression scripts and runtime/app typechecks are not confirmed executed successfully.
+- **Validation state:** the latest HEAD has no commit status records. The available PR-triggered workflow records show three failures before any visible job steps; step lists are empty and log downloads return BlobNotFound, so they do not establish a code/test failure. Targeted regressions and runtime/app typechecks are not confirmed executed successfully.
 - **Scores intentionally unchanged:** P23 symbolic core **61%**, evidence-grounded learning maturity **36%**, project-wide lifelong-learning roadmap **30%**, overall learning engineering **57/100**. The new code improves integrity and implementation coverage, but there is not yet external-task benchmark evidence to justify increasing measured maturity estimates.
 
 ---
