@@ -1,3 +1,9 @@
+## WorkPass254 — resolve exclusive Live2D branch changes (2026-10-22)
+
+- **DONE (branch audit):** compared the two commits exclusive to `workpass94-avatar-voice-live2d-audit`; both add audit documents only, with no exclusive code diff to cherry-pick.
+- **DONE (evidence reused):** reproduced two findings on the active source branch and addressed them through WorkPass252 (expression transition cache) and WorkPass253 (safe Legacy localStorage).
+- **OPEN:** browser Live2D/voice and Android/Termux E2E remains unverified; the source branch is retained, not deleted or merged.
+
 ## WorkPass253 — harden Legacy avatar storage fallback (2026-10-22)
 
 - **DONE (code):** LegacySpriteDeck now catches unavailable/throwing localStorage on read and write, validates persisted outfit IDs against the canonical outfit catalog, and falls back to `lab_coat` without preventing the sprite UI from mounting.
