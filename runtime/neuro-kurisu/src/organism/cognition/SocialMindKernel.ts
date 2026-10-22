@@ -81,6 +81,8 @@ export interface SocialPersonState {
   guardedness01:number;
   intentUncertainty01:number;
   relationshipStrength01:number;
+  /** Timestamp for adaptive relational decay; optional for older persisted snapshots. */
+  relationshipUpdatedAt?:number;
   knownClaims:SocialBeliefState[];
   recentIntent:SocialIntentHypothesis|null;
   aliases:string[];
@@ -178,6 +180,7 @@ export class SocialMindKernel{
         roleSelfModel01:clamp(Number.isFinite(p?.roleSelfModel01)?p.roleSelfModel01:.5),
         perceivedAgency01:clamp(Number.isFinite(p?.perceivedAgency01)?p.perceivedAgency01:.5),
         expectedResponseUncertainty01:clamp(Number.isFinite(p?.expectedResponseUncertainty01)?p.expectedResponseUncertainty01:.65),
+        relationshipUpdatedAt:Number.isFinite(p?.relationshipUpdatedAt)?p.relationshipUpdatedAt:(Number.isFinite(p?.lastSeenAt)?p.lastSeenAt:0),
         aliases:Array.isArray(p?.aliases)?p.aliases.slice(0,12):[],
         knownClaims:Array.isArray(p?.knownClaims)?p.knownClaims.slice(0,48):[]
       })):[],
@@ -202,7 +205,8 @@ export class SocialMindKernel{
         if(!person.aliases.includes(id)) person.aliases=[id,...person.aliases].slice(0,12);
       }
     }
-    if(!person){person={id,displayName:input.displayName??id,continuityConfidence01:.25,observationCount:0,firstSeenAt:input.at,lastSeenAt:input.at,visible01:0,trust01:.5,predictability01:.5,warmth01:.5,guardedness01:.35,intentUncertainty01:.65,relationshipStrength01:.15,knownClaims:[],recentIntent:null,aliases:[],roleSelfModel01:.5,perceivedAgency01:.5,expectedResponseUncertainty01:.65};this.state.persons.unshift(person);}
+    if(!person){person={id,displayName:input.displayName??id,continuityConfidence01:.25,observationCount:0,firstSeenAt:input.at,lastSeenAt:input.at,visible01:0,trust01:.5,predictability01:.5,warmth01:.5,guardedness01:.35,intentUncertainty01:.65,relationshipStrength01:.15,relationshipUpdatedAt:input.at,knownClaims:[],recentIntent:null,aliases:[],roleSelfModel01:.5,perceivedAgency01:.5,expectedResponseUncertainty01:.65};this.state.persons.unshift(person);}
+    this.applyRelationalTether(person,input.at);
     person.observationCount+=1;
     const temporalGap=Math.max(0,input.at-person.lastSeenAt);
     const decay=clamp(Math.exp(-Math.min(temporalGap,3600000)/900000));
@@ -214,7 +218,8 @@ export class SocialMindKernel{
     const evidence:SocialEvidence={id:stable('social-e',`${id}:${input.source}:${input.at}:${person.observationCount}`),personId:id,source:input.source,claim:`person-present:${id}`,confidence01:clamp(input.confidence01),observedAt:input.at,evidenceKind:'observed',expiresAt:input.at+900000};
     this.state.evidence=[evidence,...this.state.evidence.filter(e=>e.id!==evidence.id)].slice(0,512);
     this.recompute(input.at);
-    return structuredClone(person);
+    const current=this.state.persons.find(p=>p.id===person!.id)??person;
+    return structuredClone(current);
   }
 
   observeText(personId:string,text:string,at:number,source:ObservationSource='text'){
@@ -448,10 +453,38 @@ export class SocialMindKernel{
     return {version:1,personCount:this.state.persons.length,evidenceCount:this.state.evidence.length,episodeCount:this.state.episodes.length,secondOrderBeliefCount:this.state.secondOrderBeliefs.length,counterfactualCount:this.state.counterfactuals.length,globalSocialUncertainty01:this.state.globalSocialUncertainty01,socialDemand01:this.state.socialDemand01,people:this.state.persons.slice(0,8).map(p=>({id:p.id,continuity01:p.continuityConfidence01,trust01:p.trust01,predictability01:p.predictability01,relationship01:p.relationshipStrength01,intentUncertainty01:p.intentUncertainty01,roleSelfModel01:p.roleSelfModel01,perceivedAgency01:p.perceivedAgency01,expectedResponseUncertainty01:p.expectedResponseUncertainty01,observationCount:p.observationCount}))};
   }
 
-  private ensurePerson(id:string,at:number){return this.observePerson({id,at,confidence01:id==='user'?.9:.55,visible01:id==='user'?1:.6,source:'interaction'});}
+  private ensurePerson(id:string,at:number){
+    this.observePerson({id,at,confidence01:id==='user'?.9:.55,visible01:id==='user'?1:.6,source:'interaction'});
+    const person=this.state.persons.find(p=>p.id===id||p.aliases.includes(id));
+    if(!person)throw new Error('social person registration failed');
+    return person;
+  }
+  private applyRelationalTether(person:SocialPersonState,at:number){
+    const dayMs=86_400_000;
+    const now=Number.isFinite(at)?Math.max(0,at):Date.now();
+    const last=Number.isFinite(person.relationshipUpdatedAt)?Number(person.relationshipUpdatedAt):Number.isFinite(person.lastSeenAt)?Number(person.lastSeenAt):now;
+    const elapsed=Math.max(0,Math.min(365*dayMs,now-last));
+    if(elapsed>0){
+      // HYVE-inspired relational tether: trust lengthens attachment half-life; relational beliefs drift toward neutral between sessions.
+      const halfLife=(14+45*clamp(person.trust01))*dayMs;
+      const strengthDecay=Math.exp(-Math.LN2*elapsed/halfLife);
+      const warmthDecay=Math.exp(-Math.LN2*elapsed/(12*dayMs));
+      const trustDecay=Math.exp(-Math.LN2*elapsed/(90*dayMs));
+      const predictabilityDecay=Math.exp(-Math.LN2*elapsed/(45*dayMs));
+      person.relationshipStrength01=clamp(.04+(person.relationshipStrength01-.04)*strengthDecay);
+      person.warmth01=clamp(.5+(person.warmth01-.5)*warmthDecay);
+      person.trust01=clamp(.5+(person.trust01-.5)*trustDecay);
+      person.predictability01=clamp(.5+(person.predictability01-.5)*predictabilityDecay);
+    }
+    person.relationshipUpdatedAt=Math.max(last,now);
+  }
+
   private recompute(at:number){
-    const now=at;
-    this.state.persons=this.state.persons.map(p=>({...p,visible01:clamp(p.visible01*Math.exp(-Math.min(Math.max(0,now-p.lastSeenAt),3600000)/1200000))}));
+    const now=Number.isFinite(at)?Math.max(0,at):Date.now();
+    this.state.persons=this.state.persons.map(p=>{
+      this.applyRelationalTether(p,now);
+      return {...p,visible01:clamp(p.visible01*Math.exp(-Math.min(Math.max(0,now-p.lastSeenAt),3600000)/1200000))};
+    });
     const active=this.state.persons.filter(p=>p.visible01>.08);
     this.state.globalSocialUncertainty01=clamp(active.length?active.reduce((s,p)=>s+p.intentUncertainty01,0)/active.length:.5);
     this.state.socialDemand01=clamp(active.reduce((s,p)=>s+this.socialDemand(p.id),0)/Math.max(1,active.length));
