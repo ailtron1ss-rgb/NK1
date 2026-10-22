@@ -1,3 +1,14 @@
+## WorkPass281 — evaluator fingerprint and run-identity hardening
+
+- [x] Reject non-finite, circular and non-plain candidate task input structures before plan fingerprinting.
+- [x] Reject unsafe sandbox run IDs before independent verification and trusted provenance creation.
+- [x] Add regressions for NaN/circular/Date task inputs and control-bearing sandbox run IDs.
+- [ ] Execute P23 evaluator tests and runtime typecheck on the exact branch head.
+- [ ] Continue wiring real host-owned isolated execution, verifier and safety authorities in deployment; adapter interfaces alone do not prove sandbox isolation.
+- [ ] No dependency added; no measured learning-score uplift claimed.
+
+---
+
 ## WorkPass280 — strict evidence-envelope canonicalization
 
 - [x] Reject non-finite numeric values before computing independent evaluation fingerprints.
