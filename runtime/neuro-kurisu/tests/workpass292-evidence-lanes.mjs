@@ -114,10 +114,18 @@ assert.equal(experiences.prioritizedReplayCandidates(32).length, 1, 'grounded ru
 
 const forgedPersistedExperience = experiences.snapshot();
 forgedPersistedExperience.records = [{ ...grounded, provenance: 'runtime-outcome', stateGrounded: false }];
+forgedPersistedExperience.outcomes = 999;
+forgedPersistedExperience.consolidated = 999;
+forgedPersistedExperience.rolling = { surprise01: 1, predictionError01: 1, causalStrength01: 1, learningOpportunity01: 1 };
 const restoredExperienceStream = new CausalExperienceStream();
 restoredExperienceStream.restore(forgedPersistedExperience);
 assert.equal(restoredExperienceStream.recent(4)[0].provenance, 'external', 'restore must downgrade a runtime label without grounded-state evidence');
 assert.equal(restoredExperienceStream.learningPacket(4).records.length, 0, 'forged persisted runtime label must not enter the learning packet');
+assert.equal(restoredExperienceStream.snapshot().outcomes, 0, 'persisted outcome counters cannot certify an ungrounded record');
+assert.equal(restoredExperienceStream.snapshot().consolidated, 0, 'persisted consolidation counters cannot certify an ungrounded record');
+assert.deepEqual(restoredExperienceStream.snapshot().rolling, {
+  surprise01: 0, predictionError01: 0, causalStrength01: 0, learningOpportunity01: 0,
+}, 'persisted rolling aggregates must be recomputed from trusted grounded records');
 
 const organismCoreSource = readFileSync(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
 assert.match(organismCoreSource, /unifiedLearningExternalHypotheses\(limit = 32\)/, 'core runtime must expose the read-only hypothesis queue');
