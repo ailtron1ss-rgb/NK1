@@ -19,5 +19,5 @@ assert.equal(closed.verifiedClosedLoopCount,1);
 const restored=new UnifiedLearningSubstrate();
 restored.restore(u.snapshot());
 assert.equal(restored.learningLoopDiagnostics().verifiedClosedLoopCount,1);
-assert.equal(restored.snapshot().version,3);
+assert.equal(restored.snapshot().version,4);
 console.log('P2700 unified learning loop PASS',JSON.stringify(restored.learningLoopDiagnostics()));
