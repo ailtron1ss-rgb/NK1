@@ -139,9 +139,17 @@ export class CausalExperienceStream {
   }
   recordExternalLearningEvent(input:{tick:number;taskId:string;action:ActionKind;reward01:number;success01:number;surprise01:number;novelty01:number;uncertainty01?:number;identityRelevance01?:number;goalPressure01?:number;causalStrength01?:number;traceId?:string;provenance?:CausalExperienceRecord['provenance'];stateGrounded?:boolean;sourceMemoryId?:string;evidenceKey?:string}):CausalExperienceRecord{
     const reward=clamp01(input.reward01),success=clamp01(input.success01),surprise=clamp01(input.surprise01),novelty=clamp01(input.novelty01),uncertainty=clamp01(input.uncertainty01??.5); const causal=clamp01(input.causalStrength01??(surprise*.35+novelty*.15+Math.abs(reward-.5)*.25+Math.abs(success-.5)*.25));
-    const id=`cx-ext-${input.tick}-${input.taskId}-${Date.now()}`;
+    const at=Date.now();
+    const id=`cx-ext-${Math.max(0,Math.floor(Number.isFinite(input.tick)?input.tick:0))}-${String(input.taskId).slice(0,120)}-${at}`;
+    const traceId=normalizeTraceId(input.traceId??id)||id;
+    const prior=this.state.records.find(record=>record.traceId===traceId);
+    if(prior||this.recordedOutcomeTraceIds.has(traceId)){
+      // External evidence ingestion is idempotent by its stable source identity.
+      // Do not manufacture another outcome when an upstream bridge retries.
+      return structuredClone(prior??this.state.records.find(record=>normalizeTraceId(record.traceId)===traceId)!);
+    }
     const record:CausalExperienceRecord={
-      id, tick:Math.max(0,Math.floor(input.tick)), at:Date.now(), traceId:String(input.traceId??id), action:input.action,
+      id, tick:Math.max(0,Math.floor(Number.isFinite(input.tick)?input.tick:0)), at, traceId, action:input.action,
       taskId:String(input.taskId).slice(0,120), reward01:reward, success01:success, surprise01:surprise,
       predictionError01:surprise*.6, novelty01:novelty, uncertainty01:uncertainty, energyBefore01:.5,
       energyAfter01:clamp01(.5-success*.08), stateDelta01:clamp01(Math.abs(success-.5)*.7+surprise*.3), causalStrength01:causal,
@@ -150,7 +158,11 @@ export class CausalExperienceStream {
       sourceMemoryId:input.sourceMemoryId, evidenceKey:input.evidenceKey,
       learningQuality01:clamp01((input.stateGrounded?0.45:0.18)+causal*.45+novelty*.10), replayEligible:Boolean(input.stateGrounded), replayPriority01:clamp01(.24*surprise+.20*(surprise*.6)+.18*causal+.12*novelty+.10*uncertainty+.08*clamp01(input.identityRelevance01??0)+.08*clamp01(input.goalPressure01??0)+.06*clamp01((input.stateGrounded?0.45:0.18)+causal*.45+novelty*.10)), replayCount:0, lastReplayedAt:0,
     };
-    this.state.records.push(record); if(this.state.records.length>this.maxRecords)this.state.records=this.state.records.slice(-this.maxRecords); this.state.outcomes++; this.recomputeBehavioralImpact(); this.state.rolling.surprise01=clamp01(this.state.rolling.surprise01*.92+surprise*.08); this.state.rolling.predictionError01=clamp01(this.state.rolling.predictionError01*.92+record.predictionError01*.08); this.state.rolling.causalStrength01=clamp01(this.state.rolling.causalStrength01*.9+causal*.1); this.state.rolling.learningOpportunity01=clamp01(this.state.rolling.learningOpportunity01*.9+(causal*.58+surprise*.18+novelty*.1)*.1); return structuredClone(record);
+    this.state.records.push(record); if(this.state.records.length>this.maxRecords)this.state.records=this.state.records.slice(-this.maxRecords);
+    this.recordedOutcomeTraceIds.add(traceId);
+    while(this.recordedOutcomeTraceIds.size>this.maxRecordedTraceIds)this.recordedOutcomeTraceIds.delete(this.recordedOutcomeTraceIds.values().next().value!);
+    this.state.recordedTraceIds=[...this.recordedOutcomeTraceIds];
+    this.state.outcomes++; this.recomputeBehavioralImpact(); this.state.rolling.surprise01=clamp01(this.state.rolling.surprise01*.92+surprise*.08); this.state.rolling.predictionError01=clamp01(this.state.rolling.predictionError01*.92+record.predictionError01*.08); this.state.rolling.causalStrength01=clamp01(this.state.rolling.causalStrength01*.9+causal*.1); this.state.rolling.learningOpportunity01=clamp01(this.state.rolling.learningOpportunity01*.9+(causal*.58+surprise*.18+novelty*.1)*.1); return structuredClone(record);
   }
   private policyFeatureVector(state:OrganismState):number[]{
     const n=state.needs;
