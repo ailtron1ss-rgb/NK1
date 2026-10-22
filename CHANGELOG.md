@@ -4,6 +4,7 @@
 - Preserved the current 50 KB project/runtime `README.md`; the shorter repository-operations README from `main` is retained verbatim as `NK1_REPOSITORY_README.md` instead of destructively replacing the project documentation.
 - Added a reproducible Russian sync report. The new release publisher is configured to create a **new prerelease** from the exact source commit only after the named core-validation workflow succeeds, and refuses stale heads or an existing tag.
 - This records file-level transfer; it does not claim that historical WorkPass64 checksums describe the current WorkPass70+ source tree or that unresolved production gates are closed.
+- Hardened the release publisher's duplicate-tag probe with the scoped GitHub Actions token so a missing login cannot be mistaken for an absent release; existing release assets remain protected.
 
 ## WorkPass72 — memory residency, verification-gated learning and source cleanup (2026-10-19)
 - Fixed a candidate-budget off-by-one in revision/graph expansion: both now check the 192-item cap before insertion, with a fail-fast invariant and diagnostic-rich regression assertion.
