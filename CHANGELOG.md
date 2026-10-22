@@ -1,3 +1,21 @@
+## WorkPass258 — pin host authority working and storage paths (2026-10-22)
+
+- **Code:** bind prepared authority working directory, run root, and survive root to filesystem identity; recheck identity, directory type, and private POSIX permissions at dispatch.
+- **Regression authored:** replacing the executor scratch root after setup must fail closed before request creation.
+- **Validation:** runtime regression and typecheck have not been executed on an accessible runner; no green status is claimed.
+
+## WorkPass257 — cover Legacy avatar runtime races (2026-10-22)
+
+- Added app script regression coverage for the stable canvas loop and stale image callback cancellation. Test authored, not yet executed.
+
+## WorkPass256 — prevent stale Legacy sprite loads (2026-10-22)
+
+- **Code:** obsolete sprite image callbacks are detached/cancelled on emotion or outfit change so late loads cannot overwrite the latest requested sprite.
+
+## WorkPass255 — stabilize Legacy avatar animation loop (2026-10-22)
+
+- **Code:** the canvas loop now reads current speaking/outfit values through refs and is not restarted for each emotion/speaking update, preserving its animation clock.
+
 ## WorkPass254 — resolve exclusive Live2D branch changes (2026-10-22)
 
 - **DONE (branch audit):** compared the two commits exclusive to `workpass94-avatar-voice-live2d-audit`; both add audit documents only, with no exclusive code diff to cherry-pick.
