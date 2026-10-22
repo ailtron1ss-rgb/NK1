@@ -10,6 +10,13 @@ import {
 const root = process.cwd();
 const gatewaySource = readFileSync(resolve(root, 'src/organism/system/ActionGateway.ts'), 'utf8');
 const serviceSource = readFileSync(resolve(root, 'src/organism/system/OutcomeVerificationService.ts'), 'utf8');
+const coreSource = readFileSync(resolve(root, 'src/organism/core/OrganismCore.ts'), 'utf8');
+assert.match(gatewaySource, /decisionLinkedExternalPostcondition/);
+assert.match(coreSource, /gatewayDecisionLinkedExternalPostcondition === true/);
+assert.match(coreSource, /trace\.tick === trace\.stateBefore\.tick/,
+  'a valid ticket alone cannot stand in for the exact persisted selected decision trace');
+assert.match(coreSource, /decisionLinkedExternalPostcondition \? options\.decisionId : undefined/,
+  'observations without the exact join may be ingested, but cannot claim decision/temporal credit');
 assert.match(gatewaySource, /executionId,\s*\.\.\.(?:typeof context\.decisionId|typeof prior\.decisionId)/,
   'gateway verification must carry the action execution and decision tickets');
 assert.match(serviceSource, /trustedExternalPostconditionResults\.get\(value as object\)/,
