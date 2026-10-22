@@ -1,0 +1,27 @@
+name: WorkPass292 verified experience lanes
+on:
+  pull_request:
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/CausalExperienceStream.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/UnifiedLearningSubstrate.ts'
+      - 'runtime/neuro-kurisu/tests/workpass292-evidence-lanes.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/workpass292-evidence-lanes.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verified-experience-lanes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Enforce runtime version
+        run: node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
+      - name: Verify causal experience isolation and learning provenance
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass292:evidence-lanes
