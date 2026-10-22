@@ -1,6 +1,6 @@
 ## Latest durable checkpoint — WorkPass265 strategic execution map (2026-10-22)
 
-- Current source branch: workpass206-runtime-evaluator-wiring; draft PR #55 remains open/unmerged; reviewed implementation baseline: `58e9c6a00b5835096dac3758968f5b9ce0eb08d2` — implementation baseline reviewed before this documentation-only checkpoint; the live PR link below is authoritative for the current branch HEAD..
+- Current source branch: workpass206-runtime-evaluator-wiring; draft PR #55 remains open/unmerged; implementation baseline reviewed before this documentation checkpoint: `58e9c6a00b5835096dac3758968f5b9ce0eb08d2`. Use the live PR link for the current HEAD.
 - Read [strategic audit and execution blueprint](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [cross-source integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md), [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md) and the current PR/Actions before coding.
 - WorkPass255–264 source changes are documented in the current branch, but exact-head successful tests/typechecks and deployment-shaped evaluator authorities remain unverified.
 - P0: restore actionable exact-head CI; provision a real host sandbox and independently controlled verifier/scanner; complete matched evaluation → signed evidence → approved activation → restart/rollback.
