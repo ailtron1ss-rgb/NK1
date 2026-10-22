@@ -1,3 +1,12 @@
+## WorkPass297 — make heartbeat/action distinction explicit in the brain map (2026-10-22)
+
+- Added a lifecycle → outcome-learning governance edge stating that a micro-cycle heartbeat is not an action receipt and cannot earn action credit.
+- Extended the WP296 source-contract regression to check both the runtime invariant and the canonical architecture map; workflow triggers now include architecture-map changes.
+- This keeps the implementation and the single-organism architecture contract aligned without introducing another verifier, memory owner, or runtime dependency.
+- Test execution remains unconfirmed until GitHub Actions assigns a runner and runs the steps.
+
+---
+
 ## WorkPass296 — prevent stale action attribution in reduced-resolution ticks (2026-10-22)
 
 - Changed `OperationalMicroCycleRuntime` to label its non-actuating heartbeat as `wait`, rather than copying the previous full-cycle selected action into the new tick's neural experience.
