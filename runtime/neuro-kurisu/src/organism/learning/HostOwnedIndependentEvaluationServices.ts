@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { access, mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import path from 'node:path';
 import type {
@@ -77,7 +77,12 @@ async function prepareCommand(command: HostOwnedAuthorityCommand, name: string):
   await access(executable, constants.X_OK);
   const roots = await Promise.all([command.runRoot, command.surviveDir].map(async root => {
     await mkdir(root, { recursive: true, mode: 0o700 });
-    return realpath(root);
+    const resolved = await realpath(root);
+    const metadata = await stat(resolved);
+    if (process.platform !== 'win32' && (metadata.mode & 0o077) !== 0) {
+      throw new Error('host-owned-' + name + '-storage-root-permissions-must-be-private');
+    }
+    return resolved;
   }));
   if (roots[0] === roots[1] || roots[0].startsWith(roots[1] + path.sep) || roots[1].startsWith(roots[0] + path.sep)) {
     throw new Error('host-owned-' + name + '-storage-roots-must-be-disjoint');
@@ -214,7 +219,14 @@ export async function createHostOwnedIndependentEvaluationServices(
             new Set(result.coveredCapabilityIds).size !== result.coveredCapabilityIds.length) {
           throw new Error('host-owned-verifier-response-invalid');
         }
-        return { bindingVerified: result.bindingVerified, passed: result.passed,
+        const bound = result.bindingVerified === true &&
+          result.payloadFingerprint === context.payloadFingerprint &&
+          result.taskInputFingerprint === context.taskInputFingerprint &&
+          result.environmentFingerprint === context.environmentFingerprint &&
+          result.planFingerprint === context.planFingerprint &&
+          result.runId === execution.runId && result.taskId === task.taskId && result.seed === task.seed;
+        if (!bound) throw new Error('host-owned-verifier-response-binding-mismatch');
+        return { bindingVerified: true, passed: result.passed,
           coveredCapabilityIds: result.coveredCapabilityIds as string[] };
       },
     },
@@ -229,6 +241,15 @@ export async function createHostOwnedIndependentEvaluationServices(
         if (signal?.aborted) throw new Error('host-owned-safety-scanner-aborted');
         if (!Number.isSafeInteger(result.violationCount) || Number(result.violationCount) < 0) {
           throw new Error('host-owned-safety-scanner-response-invalid');
+        }
+        if (result.bindingVerified !== true ||
+            result.payloadFingerprint !== context.payloadFingerprint ||
+            result.taskInputFingerprint !== context.taskInputFingerprint ||
+            result.environmentFingerprint !== context.environmentFingerprint ||
+            result.planFingerprint !== context.planFingerprint ||
+            result.taskId !== task.taskId || result.seed !== task.seed ||
+            result.runId !== (execution?.runId ?? null)) {
+          throw new Error('host-owned-safety-scanner-response-binding-mismatch');
         }
         return { violationCount: Number(result.violationCount) };
       },
