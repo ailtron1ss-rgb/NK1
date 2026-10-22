@@ -1,3 +1,10 @@
+## WorkPass251 — revalidate host authority executable identity at dispatch (2026-10-22)
+
+- **DONE (code):** prepared executor/verifier/scanner commands now re-resolve and re-stat the executable before request creation and again after the request snapshot is written, rejecting a replaced executable identity or newly unsafe POSIX write permissions.
+- **DONE (regression authored):** extended the existing host-owned evaluation service test to replace the scanner executable after service construction and assert fail-closed dispatch.
+- **Boundary:** this narrows executable replacement exposure but does not eliminate the final filesystem TOCTOU window and does not replace signed/immutable deployment or an OS/container sandbox.
+- **Validation:** test and typecheck have not been executed on a functioning runner; no green status is claimed.
+
 ## WorkPass250 — consolidate independent-evidence binding (2026-10-22)
 
 - **DONE (code):** extracted a single exact-context binding predicate and reused it for both independent verifier and safety-scanner responses.
