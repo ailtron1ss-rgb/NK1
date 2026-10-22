@@ -84,4 +84,15 @@ assert.throws(() => createIndependentSkillCandidateEvaluator({
   safetyScanner: { scan: sharedAuthorityCall },
 }), /authorities-must-be-distinct/);
 
-console.log('WorkPass227 bounded independent-evaluation services + WorkPass240 distinct-authority boundary: PASS');
+const priorNodeEnv = process.env.NODE_ENV;
+try {
+  process.env.NODE_ENV = 'production';
+  assert.throws(() => createIndependentSkillCandidateEvaluator(base),
+    /production-independent-evaluation-experiment-authority-required/,
+    'direct evaluator construction must not bypass the production experiment-authority requirement');
+} finally {
+  if (priorNodeEnv === undefined) delete process.env.NODE_ENV;
+  else process.env.NODE_ENV = priorNodeEnv;
+}
+
+console.log('WorkPass227 bounded independent-evaluation services + WorkPass240 authority-boundary regressions: PASS');
