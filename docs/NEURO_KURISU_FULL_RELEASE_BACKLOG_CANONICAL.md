@@ -1,3 +1,21 @@
+## WorkPass266 — code-level identity hardening and active workflow wiring (2026-10-22)
+
+**Source line:** workpass206-runtime-evaluator-wiring · **PR #55:** open/draft/unmerged  
+**Code-change commit baseline:** 951d7bb3f37e6c45fc63427e3edbdfed698af0f3 (documentation commits have advanced the branch after this baseline; the PR link is the live HEAD pointer).
+
+- [x] Fixed lossy identity normalization in the canonical CausalExperienceStream owner: overlong task/trace IDs are rejected instead of silently truncated; empty/non-string/control-bearing identity values fail closed.
+- [x] Tightened snapshot restoration so malformed overlong trace identities do not get truncated and reintroduced as a different event key.
+- [x] Added regression cases for two distinct overlong task IDs, overlong trace IDs, control characters, no mutation after rejection, and corrupt snapshot sanitization.
+- [x] Wired the causal-stream test, Legacy-avatar runtime regression, and Live2D integrity regression into the WorkPass110 workflow; widened both path filters and enabled the current source branch's push trigger.
+- [x] No new dependencies were introduced; the code uses existing Node APIs.
+- [ ] The latest Actions job reports failure with no step list/log URL. A retry was requested; successful exact-head runtime/app tests and typechecks remain unverified.
+- [ ] Next independent code track: close the trust gap between caller-provided external grounding claims and verified event provenance; audit real call sites before changing that contract.
+- [ ] Continue toward the deployment-owned executor/verifier/scanner, matched candidate evaluation, signed promotion, restart/rollback, and independent RU/EN memory-to-action measurements.
+
+Progress accounting: no overall score uplift is awarded for this correctness/CI-wiring pass. It improves implementation integrity and regression reachability; efficacy remains unmeasured until independent task data produce a repeatable result.
+
+---
+
 ## GitHub implementation checkpoint — WorkPass265 strategic development plan (2026-10-22)
 
 **Checked source branch:** workpass206-runtime-evaluator-wiring  
