@@ -16,6 +16,12 @@ assert.equal(aliasFrame.personId, canonicalPerson.id, 'UserHarness reconstructio
 assert.equal(aliasFrame.observations[0].evidenceStatus, 'direct-observation', 'canonicalized statement receipts should continue to ground the matching observation');
 assert.equal(aliasKernel.person('camera-person-b').id, canonicalPerson.id, 'alias lookups should not create a second profile');
 assert.equal(aliasKernel.diagnostics().personCount, 1, 'aliases must never duplicate the canonical profile');
+const trustBeforeAliasOutcome = aliasKernel.person(canonicalPerson.id).trust01;
+aliasKernel.recordOutcome('camera-person-b', { actualIntent: 'information', outcome01: .92, surprise01: .08, at: 3400, actorExpectedAction: 'verify-or-explain' });
+assert.ok(aliasKernel.person(canonicalPerson.id).trust01 > trustBeforeAliasOutcome, 'outcomes submitted through an alias must update the canonical profile');
+aliasKernel.updateSecondOrderBelief('camera-person-b', 'expects-clarification', .8, 3500, [aliasIntent.evidenceIds[0]]);
+assert.ok(aliasKernel.secondOrder(canonicalPerson.id).some(b => b.claim.includes('expects-clarification')), 'second-order beliefs must use the canonical person key');
+
 const tetherKernel = new SocialMindKernel();
 tetherKernel.observePerson({ id: 'long-term-contact', displayName: 'contact', at: 1000, confidence01: .9, visible01: .9, source: 'interaction' });
 const relationshipBeforeOutcome = tetherKernel.person('long-term-contact');
