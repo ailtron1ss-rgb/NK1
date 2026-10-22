@@ -20,7 +20,7 @@ on:
       max_log_jobs:
         description: Maximum number of failed-job log archives to inspect
         required: false
-        default: '200'
+        default: '150'
         type: string
 
 permissions:
