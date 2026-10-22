@@ -1745,6 +1745,7 @@
     "test:p316:relational-tether": "node --experimental-strip-types tests/relational-tether-workpass316.mjs",
     "test:p317:micro-dream-associations": "node --experimental-strip-types tests/micro-dream-associations-workpass317.mjs",
     "memory:doctor": "node --experimental-strip-types scripts/memory-doctor.mjs",
-    "test:p318:memory-doctor-cli": "node --experimental-strip-types tests/memory-doctor-cli-workpass318.mjs"
+    "test:p318:memory-doctor-cli": "node --experimental-strip-types tests/memory-doctor-cli-workpass318.mjs",
+    "test:p319:cycle-order": "node tests/workpass319-cycle-order.mjs"
   }
 }
