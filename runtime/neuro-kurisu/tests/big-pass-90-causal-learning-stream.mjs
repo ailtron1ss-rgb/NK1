@@ -65,6 +65,15 @@ assert.equal(restoredExternalDuplicate?.id, externalFirst?.id,
 assert.equal(externalRestored.summary().outcomes, 1,
   "a restored duplicate must not increment outcome count");
 
+assert.throws(() => externalStream.recordExternalLearningEvent({
+  ...externalInput, taskId: "   ", traceId: "invalid-task",
+}), /causal-external-task-id-required/);
+assert.throws(() => externalStream.recordExternalLearningEvent({
+  ...externalInput, action: "delete-all", traceId: "invalid-action",
+}), /causal-external-action-invalid/);
+assert.equal(externalStream.summary().outcomes, 1,
+  "invalid external task/action data must not mutate the causal stream");
+
 const replayDiversity = new CausalExperienceStream(64);
 for (let i = 0; i < 3; i++) {
   replayDiversity.recordOutcome({
