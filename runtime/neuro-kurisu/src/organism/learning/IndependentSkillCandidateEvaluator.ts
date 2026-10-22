@@ -113,6 +113,16 @@ function validateConfig(config: IndependentCandidateEvaluationConfig): void {
       !config.safetyScanner || typeof config.safetyScanner.scan !== 'function' ||
       !isDigest(config.environmentFingerprint) ||
       (config.serviceTimeoutMs !== undefined && (!Number.isSafeInteger(config.serviceTimeoutMs) || config.serviceTimeoutMs < 10 || config.serviceTimeoutMs > 300_000))) throw new Error('independent-candidate-evaluator-config-invalid');
+  // Different interface names are not independent authorities if they resolve to
+  // the same object or dispatch function. Reject self-attesting configurations
+  // before any candidate code can execute. Actual trust still depends on the host
+  // wiring these distinct capabilities to independently controlled services.
+  const authorityObjects = [config.executor, config.verifier, config.safetyScanner];
+  const authorityMethods = [config.executor.execute, config.verifier.verify, config.safetyScanner.scan];
+  if (new Set(authorityObjects).size !== authorityObjects.length ||
+      new Set(authorityMethods).size !== authorityMethods.length) {
+    throw new Error('independent-candidate-evaluator-authorities-must-be-distinct');
+  }
   const keys = new Set<string>();
   const trialIds = new Set<string>();
   const splitTasks = { validation: new Set<string>(), holdout: new Set<string>() };
