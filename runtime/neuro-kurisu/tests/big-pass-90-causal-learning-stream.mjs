@@ -69,6 +69,21 @@ assert.throws(() => externalStream.recordExternalLearningEvent({
   "reusing a trace identity with a changed outcome must surface a conflict");
 assert.equal(externalStream.summary().outcomes, 1,
   "conflicting duplicate evidence must not mutate outcome counts");
+// Legacy persisted external rows may contain caller-forged provenance and
+// grounding from before the intake contract was hardened. Restore must quarantine
+// them rather than silently upgrading them into trusted memory.
+const legacyForgedSnapshot = externalStream.snapshot();
+legacyForgedSnapshot.records[0].provenance = "runtime-outcome";
+legacyForgedSnapshot.records[0].stateGrounded = true;
+delete legacyForgedSnapshot.records[0].policyFeatures01;
+const legacyForgedRestore = new CausalExperienceStream(64);
+legacyForgedRestore.restore(legacyForgedSnapshot);
+assert.equal(legacyForgedRestore.recent(64)[0].provenance, "external");
+assert.equal(legacyForgedRestore.recent(64)[0].stateGrounded, false);
+assert.equal(legacyForgedRestore.recent(64)[0].replayEligible, false);
+assert.equal(legacyForgedRestore.consolidate(8, 1300).length, 0,
+  "legacy caller-forged provenance must not be upgraded into trusted consolidated memory");
+
 const externalRestored = new CausalExperienceStream(64);
 externalRestored.restore(externalStream.snapshot());
 const restoredExternalDuplicate = externalRestored.recordExternalLearningEvent({
