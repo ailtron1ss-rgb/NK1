@@ -1,3 +1,10 @@
+## Latest durable checkpoint — WorkPass290 (2026-10-22)
+
+- Source-traced the canonical `OutcomeVerificationService`: accepted external-postcondition receipts are held as exact trusted object references in a process-local `WeakMap` and bound to the complete action input.
+- The service/context currently lacks the explicit organism tick/action-ticket correlation needed to safely route that receipt into the reduced-resolution micro-cycle. Therefore WorkPass289's neutral reward (`0.5`) and unverified flag (`false`) remain the safe behavior.
+- No new verifier/ledger was created; no tests or typecheck were run, and no CI success is claimed.
+- Next implementation: add correlation at the existing canonical action-verification boundary and pass the same reality-learning decision to micro-cycle; test missing, stale, mismatched, and valid receipts behaviorally.
+
 ## Latest durable checkpoint — WorkPass289 (2026-10-22)
 
 - Runtime fix committed on `workpass286-multiscale-brain-system-plan`: `OperationalMicroCycleRuntime` no longer interprets raw observation reward/success or generic world events as verified learning credit.
