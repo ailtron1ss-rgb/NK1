@@ -1,10 +1,14 @@
 import type { ActionKind, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
 
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const containsControlCharacter=(value:string):boolean=>Array.from(value).some(character=>{
+  const code=character.codePointAt(0)??0;
+  return code<=0x1f||code===0x7f;
+});
 const normalizeBoundedId=(value:unknown,maxLength:number):string=>{
   if(typeof value!=='string')return '';
   const normalized=value.normalize('NFKC').trim();
-  if(!normalized||normalized.length>maxLength||/[\\u0000-\\u001f\\u007f]/u.test(normalized))return '';
+  if(!normalized||normalized.length>maxLength||containsControlCharacter(normalized))return '';
   return normalized;
 };
 const normalizeTraceId=(value:unknown)=>normalizeBoundedId(value,180);
