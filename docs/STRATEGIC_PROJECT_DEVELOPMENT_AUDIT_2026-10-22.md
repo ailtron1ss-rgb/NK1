@@ -123,7 +123,7 @@ NK1 содержит зрелую по ширине инженерную баз�
 
 Список недавних PR показывает несколько открытых draft PR подряд: #55, #54 и PR #46–#53 в основном покрывают последовательные workpass 194–205. Они не являются автоматически установленным кодом в `main`. PR #55 открыт, draft и не слит; default branch не изменён этой рабочей линией.
 
-Заголовок/описание PR #55 в доступной выдаче описывает WorkPass206–248, в то время как активная ветка продолжила WorkPass249/250. Перед переводом PR в ready состояние следует синхронизировать его описание с фактическим head, включить текущие изменения и оставить явное предупреждение о непроверенном CI и незакрытом production deployment.
+На контрольном чтении 2026-10-22 описание PR #55 уже охватывает WorkPass206–264. Это устраняет прежнее расхождение описания, но не снимает draft/unmerged статус и неподтверждённый exact-head CI/production deployment.
 
 ## 4. Архитектурная карта: что объединять, а что оставить раздельным
 
@@ -294,3 +294,220 @@ WorkPass250 уже извлёк единый predicate `hasExactEvaluationBindin
 
 ---
 **Ограничение интерпретации:** этот отчёт — приоритизированный стратегический аудит на основе доступных GitHub метаданных, выборочных branch comparisons и прочитанных ключевых документов/модулей. Он не заменяет полное построчное ревью всех эксклюзивных коммитов, запуск тестов или deployment validation. Все дальнейшие решения о merge должны опираться на точные diff и проверяемые результаты.
+
+
+---
+
+
+## WorkPass265 — master execution blueprint and measurable completion criteria (2026-10-22)
+
+**Checked source ref:** workpass206-runtime-evaluator-wiring  
+**Checked PR head:** 58e9c6a00b5835096dac3758968f5b9ce0eb08d2  
+**PR:** #55, open/draft/unmerged; base workpass203-independent-candidate-evaluator  
+**Purpose:** turn the broad organism goal into explicit, independently finishable work tracks and a multi-pass execution order. This addendum supersedes older branch-status statements in this document when they disagree with the checked PR metadata above.
+
+### 11.1 Evidence snapshot — what is and is not established
+
+Observed in the checked repository state:
+
+- PR #55 covers 36 changed files, approximately 4,165 additions and 95 deletions, across independent evaluation, learning/evidence, runtime wiring, causal experience intake, and avatar stability. This is diff volume, not a progress percentage.
+- WorkPass255–264 include real source edits: stable Legacy avatar render-loop lifetime, stale-sprite race protection, blocked-storage fallback, dispatch-time identity/permission checks for host evaluation authorities, reduced inherited environment leakage, bounded external event identity, persisted duplicate-event protection, and task/context-diverse replay selection.
+- The active branch includes a canonical MemoryOS2 owner, P23 learning/replay logic, Hermes-to-P23 candidate-revision/evidence adapters, a versioned skill candidate lifecycle, ActionGateway-centered side-effect handling, and a Live2D viewer with versioned speech/embodiment state.
+- The current causal learning scorecard states 57/100 overall learning engineering, 61% P23 symbolic core, 36% evidence-grounded learning maturity, and 30% project-wide lifelong-learning roadmap. These remain engineering estimates, not task-success measurements.
+- The latest checked PR metadata did not provide a usable successful exact-head CI result. Three visible PR-triggered workflow records were reported as failures before any visible job steps; their log retrieval was unavailable. That does not prove a code failure, and it does not prove a pass. The tests and app/runtime typechecks for this head therefore remain UNVERIFIED.
+- Host-owned executable adapters and dispatch-time filesystem checks are defense-in-depth, not an OS/container sandbox. Independent verifier and safety-scanner binaries/configuration still need deployment-level verification.
+- The README, start-here charter, canonical backlog, scorecard, integration roadmap and current audit do not all expose the same newest checkpoint. Documentation entry points must be brought into sync so a new work session does not resume from WorkPass96/149/254 while the active change line is WorkPass264.
+
+**Audit boundary:** this is a targeted strategic audit of the repository metadata, PR #55 changed-file inventory, primary navigation/backlog documents, and selected canonical memory, learning, verification and embodiment files. It is not a claim that every line, every branch, every upstream source or every dynamic execution path has been reviewed. Do not use it as evidence for a full-file audit or a successful build.
+
+### 11.2 Final system objective — functional organism, not a collection of modules
+
+The project is considered functionally mature only when one recoverable runtime can complete this observable loop:
+
+**Perceive → interpret → retrieve relevant experience → maintain a bounded working state → form/revise goals → select a plan → request permission when required → act through the canonical gateway → observe the external postcondition → reconcile uncertain outcomes → store the event → learn only from eligible evidence → consolidate selectively → use the changed capability on a later unseen task.**
+
+The loop must retain correlation IDs, event time, source/provenance, uncertainty, resource budget, cancellation identity and restart semantics at the boundaries where those fields matter. Every stage must have a known canonical owner and a behavioral acceptance case. If a mechanism cannot alter behavior in a measurable scenario, it is not promoted merely because it has a biologically inspired name.
+
+Subjective consciousness remains UNKNOWN / UNRESOLVED. The engineering plan targets persistent self-modeling, adaptive behavior, reliable memory, self-correction and bounded agency; it does not declare that these observables prove subjective experience.
+
+### 11.3 Work tracks — final function and acceptance criteria
+
+#### Track A — Repository topology, reproducible builds and execution evidence (P0)
+
+**Final function:** one named canonical source branch, a release path that can be reproduced from an immutable source/dependency state, and exact-head CI whose logs can diagnose failures.
+
+**Mechanisms:** paginated ref inventory; per-branch head SHA and merge-base mapping; unique-commit/file/test comparison; draft-PR stack map; exact-head workflow status; clean dependency installation; runtime/app typecheck and production build; test-runner reachability map; artifact hashes and rollback instructions.
+
+**Done when:** branch decisions are recorded for every discovered workpass family; the selected source branch is explicit; its tests run with accessible logs on the exact SHA; a clean-room build can reproduce the package; the release path and main branch relationship are documented. No automatic rewrite or mass-merge of unrelated history.
+
+**Immediate observation:** main is a release/report line with no common ancestor reported against the active source branch. Keep main unchanged until the repository owner chooses a documented publication model. Continue code work on the current PR/source stack.
+
+#### Track B — Language, perception and local model operation (P0/P1)
+
+**Final function:** a user request travels through the real application and runtime to the selected language backend; the response identifies the backend actually used and reports provider failures truthfully.
+
+**Mechanisms:** canonical provider policy; local-first llama.cpp adapter where configured; bounded prompts/outputs; request deadlines and cancellation; sanitized remote-provider boundary; separate provider-unavailable versus valid fallback states; correlation across request, memory retrieval and response.
+
+**Done when:** clean-start and live inference work on the target Dell G3 configuration; actual model/revision/quantization/context/GPU layers are recorded; cold/warm latency, memory and error behavior are measured; HTTP-level tests cover success, 503, timeout, malformed response, cancellation, cooldown, fallback identity and recovery. A fake provider validates routing but is not evidence of language quality.
+
+#### Track C — Canonical memory, autobiographical continuity and retrieval quality (P0/P1)
+
+**Final function:** the organism remembers events, facts, procedures, relationships, user preferences and identity-relevant state with time, provenance, revision and contradiction semantics; the system can answer current versus historical queries and can use memory to select correct later actions.
+
+**Mechanisms:** retain MemoryOS2 as the sole writable memory owner; preserve event-time and valid-time separately; explicit supersedes/revision lineage; confidence and source lineage; conflict quarantine/resolution; privacy-aware access; selective forgetting; bounded indexing/residency; task-aware episodic consolidation; separate evaluation-only retrieval experiments.
+
+**Done when:** an independent RU/EN holdout tests facts, historical/current values, superseded details, conflicting sources, unknown answers, recall under interference and memory-grounded tool parameters. Compare BM25/lexical baseline, current retrieval and a candidate on the same corpus and same budget. Report Recall@k, MRR/nDCG as appropriate, stale-memory error, memory-grounded task success, false write/missed write, latency and bytes. Retain per-case results and uncertainty intervals. The recorded recallDelta=0 is a promotion blocker until a sound independent experiment changes that evidence.
+
+**Anti-pattern:** do not call the 48-dimensional legacy hash projection a semantic embedding; do not create a second memory store just to add graph/vector features.
+
+#### Track D — Learning, replay, skill revision and evidence governance (P0/P1)
+
+**Final function:** verified experience changes a future policy/skill in a transferable and reversible way; a generated candidate cannot promote itself.
+
+**Mechanisms:** one P23 learning owner; Hermes as a source of repair/revision proposals rather than a separate authority; task/context-diverse bounded replay; outcome salience, novelty and goal relevance as sampling signals only; normalized/deduplicated causal event intake; exact task/seed/manifest/environment/run binding; separate validation and untouched holdout; signed shadow evidence; externally controlled approval; durable activation, restart validation and rollback.
+
+**Done when:** on a fixed task manifest, compare no-learning, recent replay, diverse/novelty replay and candidate revision using the same budget and paired seeds. Include wrong-feedback, corrupted evidence, task leakage, duplicate delivery, process restart, skill regression, reversal, interference, forward transfer, backward transfer and delayed retention. A candidate is promoted only under a predeclared lower-confidence-bound/minimum-gain rule, no critical task-family regression, valid evidence provenance and a working rollback path. If there is no uplift, record the negative result and keep the old policy.
+
+**Immediate observation:** the source contains extensive evaluator, ledger, registry and promotion machinery, but production sandbox authorities and exact-head tests remain unconfirmed. Implementation coverage must not be substituted for an observed learning gain.
+
+#### Track E — Goals, planning, metacognition and bounded autonomous action (P0/P1)
+
+**Final function:** the organism can select a goal, form a bounded plan, decide when to act/search/verify/ask/stop, execute approved effects, inspect the resulting world state and revise its next step.
+
+**Mechanisms:** canonical OrganismRuntime/OrganismCore and ActionGateway; preconditions/postconditions; capability-based permissions; risk/time/cost ceilings; idempotency keys; cancellation propagation; explicit pending/succeeded/contradicted/unknown/timed-out/cancelled states; independent outcome verification; delayed-evidence reconciliation; evidence debt and calibrated uncertainty.
+
+**Done when:** real side-effect tests cover approval, denial, duplicate retry, lost ACK, ambiguous outcome, external contradiction, timeout, cancellation and process death at each transition. Restart reconciliation proves no duplicate side effects and does not grant learning credit for ACK-only or forged evidence. Every relevant UI/API/tool entry point must follow the same gateway, and the call graph must show no bypass around the final policy/evidence boundary.
+
+**Immediate observation:** file-level controls exist, but an actual OS/container sandbox and external independent verifier/safety scanner are deployment requirements, not satisfied by path checks alone.
+
+#### Track F — Identity, self-model, affect and social continuity (P1)
+
+**Final function:** stable preferences, commitments, goals, known abilities, unresolved beliefs and autobiographical context persist across sessions and model/provider changes; the organism can correct its own prior beliefs without rewriting history.
+
+**Mechanisms:** versioned self-model entries tied to memory provenance; separation of observed facts, user-stated preferences, inferences and hypotheses; temporal revisions; calibrated uncertainty; explicit conflict handling; functional affect/need/goal signals that modulate attention and replay without rewriting outcome truth.
+
+**Done when:** longitudinal held-out scenarios test preference continuity, corrected facts, contradictions, capability changes, forgotten/outdated preferences, provider changes and restart recovery. Ablations show whether affect/goal signals improve task choice or memory use at fixed resource cost. An emotion label or self-report alone never establishes an internal biological state or consciousness.
+
+#### Track G — Live2D, legacy avatar, speech and UI (P1/P2)
+
+**Final function:** avatar expression, gaze, motion, speaking state, interruption and reconnect follow the runtime's real state; the interface exposes capabilities and errors instead of displaying a decorative simulation.
+
+**Mechanisms:** keep the current Live2D viewer and useful Legacy sprite/avatar layer; use one versioned embodiment-intent envelope and monotonic audio clock; reject stale speech and sprite events; avoid unnecessary expression resets and per-frame canvas resize; handle blocked storage and invalid profiles; preserve local version-pinned assets and the genuine fallback path.
+
+**Done when:** production browser tests exercise real assets, iframe recreation, multiple speech utterances, rapid expression/outfit changes, stale callbacks, visibility changes, interrupt/cancel/reconnect and error fallback. Separately verify Android/Termux audio/TTS and actual audio-to-mouth timing on a physical target. VM/source tests do not count as physical device E2E.
+
+#### Track H — Persistence, recovery, security, privacy and source provenance (P0/P1)
+
+**Final function:** state, evidence and active skills survive restart without corrupting identity, duplicating effects or promoting tampered candidates; sensitive user data and credentials remain within explicit boundaries.
+
+**Mechanisms:** schema-aware atomic state mutation; snapshots and restore validation; immutable/digested event/evaluation artifacts; signed evidence and external key authority; least-privilege executors; allow-listed environment; private scratch directories; cancellation of process groups; bounded logs and redaction; SBOM, dependency lock and asset/source hash inventory; license and attribution provenance.
+
+**Done when:** corruption/interrupted-write/migration/backup/restore/rollback tests pass; secret scans and data-flow review cover prompts, embeddings, remote providers, logs and artifacts; dependency/license/asset inventories are generated from the live source commit; all source-derived integrations have exact upstream revision and compatible license decisions.
+
+#### Track I — Resource and target-device engineering (P1/P2)
+
+**Final function:** useful behavior remains responsive and predictable within declared VRAM/RAM/CPU, storage, battery, thermal, latency and offline limits.
+
+**Mechanisms:** profile-aware admission control; bounded context/replay/cache; deadline-aware queues; graceful model fallback; cancellation/backpressure; memory residency and embedding budgets; quantization/device profiles; restart/soak telemetry.
+
+**Done when:** measure on the Dell G3 / GTX 1650 4 GB VRAM and separately on the specified Android target. Record model and asset hashes, quantization, runtime version, RAM/VRAM peaks, CPU/GPU use, cold/warm p50/p95, thermal/battery trend, timeout rate and behavior under memory pressure. Never extrapolate Android results from laptop results.
+
+#### Track J — Scientific mapping and upstream mechanism tournament (continuous; never blocks concrete fixes)
+
+**Final function:** neuroscience, cognitive science, control theory and upstream open-source projects generate specific falsifiable hypotheses for the existing owners, not anatomical renaming or blind copying.
+
+**Mechanisms:** keep a research-intake ledger with source URL/revision/date/license; extract one mechanism and its failure mode; map it to one canonical owner; compare against a simple baseline and ablations at equal resource budget; record promotion or rejection.
+
+**Done when:** every adopted candidate has an exact source revision, license/provenance review, anticipated benefit/cost, contract boundary, behavioral regression, paired baseline and result. Benchmark data must not leak into tuning. Research-only work stays isolated until measured evidence supports promotion.
+
+#### Track K — Consciousness and brain-inspired organization (research-only)
+
+**Final function:** investigate theories of integration, memory, attention, prediction and action while keeping the claims separate from software features.
+
+**Mechanisms:** compare functional requirements inspired by working memory/executive control, episodic consolidation, predictive processing, multi-scale dynamics, recurrent coordination and embodied feedback; use anatomical/connectomic data as constraints for hypotheses where justified, not direct blueprints for code.
+
+**Done when:** each proposed mechanism predicts a falsifiable behavioral result and survives ablation. Use terms such as “memory system,” “self-model” or “attention controller” as engineering descriptions. Subjective experience remains UNKNOWN / UNRESOLVED unless defensible independent scientific criteria and evidence exist.
+
+### 11.4 Upstream/benchmark refresh to add to the source-intake queue
+
+These are newly identified research targets, not claims that NK1 already contains their code, data or license approvals:
+
+- **AMA-Bench (ICML 2026 / PMLR):** long-horizon agent-memory evaluation over real/synthetic trajectories. Use it to expand memory tests from conversation QA to state/action/observation history. https://proceedings.mlr.press/v306/zhao26bs.html
+- **Mem2ActBench (ACL 2026):** checks whether remembered preferences and state correctly ground later tool selection and action parameters, not just fact recall. https://aclanthology.org/2026.acl-long.370/
+- **Memora / Forgetting-Aware Memory Accuracy (ACL 2026 Findings):** evaluates remembering, reasoning, recommending and penalties for reliance on obsolete facts. Use its principle to test correction and stale-memory failure. https://aclanthology.org/2026.findings-acl.1337/
+- **MemoryArena (ICML 2026 / PMLR):** interdependent multi-session tasks in which earlier agent/environment interactions must inform later decisions. Use it to validate memory → action → outcome loops. https://proceedings.mlr.press/v306/he26am.html
+- **International Brain Laboratory, “A brain-wide map of neural activity during complex behaviour” (Nature 2025):** standardized decision task and activity across hundreds of brain areas motivate measuring interactions across perception, feedback, choice and action rather than implementing isolated “brain regions.” The data are primarily from mice and must not be presented as a complete human connectome. https://www.nature.com/articles/s41586-025-09235-0
+- **“Synaptic connectomics: status and prospects” (Nature Reviews Neuroscience 2025):** supports a multi-scale research track while reminding that connectome structure alone does not provide a complete functional implementation recipe. https://www.nature.com/articles/s41583-025-00957-8
+
+**Intake rule:** verify the paper protocol, code/data repository, version and license before downloading or copying any dataset or implementation. Record these entries as RESEARCH QUEUE until reviewed. Prefer adapting evaluation protocols first; do not vendor an external memory database or agent runtime that would duplicate NK1's canonical owner.
+
+### 11.5 Parallel execution plan — multiple streams, one integrated runtime
+
+Run research/implementation work in parallel when the owners and touched files do not conflict. Merge the behavior into one canonical owner in a deliberate order; “parallel” must not become multiple competing sources of truth.
+
+| Stream | First deliverable | Dependency / merge rule | Gate |
+|---|---|---|---|
+| A — branch & CI | full branch/PR/head inventory and actionable exact-head workflow | do not rewrite main or merge unrelated ancestry | reproducible source ref + accessible logs |
+| B — independent evaluation | real host sandbox, independent verifier/scanner and signed evidence path | only P23 owns lifecycle/promotion | end-to-end matched evaluation and rollback |
+| C — memory quality | frozen RU/EN holdout and baseline/candidate harness | MemoryOS2 remains sole writable owner | independent retrieval and action-grounding results |
+| D — action integrity | restart/lost-ACK/postcondition trace | all side effects through ActionGateway | no duplicate effect and no unverified credit |
+| E — embodiment | browser/Live2D/speech regression and device-run guide | no cognitive state owner in UI | actual browser and device E2E |
+| F — source/research intake | branch-exclusive diff decisions and paper/repository register | record source/license/provenance; no blind cherry-picks | measured improvement or explicit rejection |
+
+### 11.6 Eight-pass horizon
+
+1. **Pass 1 — establish trustworthy baseline.** Refresh live head, PR stack, all branch pages and Actions; classify infrastructure failures versus code failures; synchronize README/start-here/backlog/scorecard. This is a gate, not a substitute for implementation.
+2. **Pass 2 — close the trusted execution authority.** Provision the actual sandbox launcher and independently controlled verifier and safety scanner; configure fail-closed production composition; exercise cancellation and executable/directory replacement.
+3. **Pass 3 — finish evidence-to-promotion lifecycle.** Run matched baseline/candidate tasks with fixed manifest, validation/holdout, seeds and budgets; link verified receipts to shadow runs; prove signed approval, durable activation, restart and rollback.
+4. **Pass 4 — memory quality tournament.** Freeze RU/EN task sets; compare current MemoryOS2 retrieval against BM25 and one candidate; include historical/current facts, forgetting, conflicts and memory-grounded action parameters; retain negative results.
+5. **Pass 5 — consolidate replay and causal intake.** Keep one normalized event identity, provenance chain, replay admission and skill owner; compare recent/diverse/multi-timescale strategies under equal storage and sampling budgets.
+6. **Pass 6 — prove real-model capability and resource limits.** Execute local llama.cpp through the actual UI/runtime, with exact model identity, timeout/cancellation and hardware traces.
+7. **Pass 7 — connect the actual embodiment.** Browser plus physical Android/Termux tests for speech clock, Live2D, interrupt/cancel, reconnect, asset loading and visible runtime state.
+8. **Pass 8 — release-hardening.** 24–72-hour soak, fault injection, clean-room install, migration/backup/restore/rollback, dependency/SBOM/license/asset provenance and a release decision from measured evidence.
+
+Some work can proceed concurrently in Passes 1–5 (especially independent source inventory, memory benchmark design and UI test harness preparation). A failed prerequisite must block only dependent deployment/promotion, not unrelated useful coding.
+
+### 11.7 Progress accounting — report percentages without manufacturing completion
+
+Maintain four separate measures per track:
+
+1. **Implementation coverage:** fraction of explicitly scoped behaviors with an owner and source path.
+2. **Integration coverage:** fraction exercised through the real production call path instead of isolated adapters or source-shaped test doubles.
+3. **Verification coverage:** fraction with a successful run on the exact current SHA and accessible output.
+4. **Functional efficacy:** benchmark deltas on untouched cases/tasks, paired seeds, confidence intervals and stated resource cost.
+
+A test file written but never executed can raise neither verification coverage nor efficacy. A passing synthetic fixture raises only the corresponding bounded verification measure. A paper link or new module does not increase implementation or efficacy. Record the exact denominator and evidence artifact for every percentage.
+
+Do not publish a new aggregate “overall project completion” until the scoped behavior inventory and weights have been reconciled on the current tree. The old master-strategy overall readiness value and the P23 57/100 score are different triage estimates and must not be averaged or presented as one current project percentage.
+
+### 11.8 Branch-goal matrix and disposition rule
+
+- **main:** keep as release/report/archive publication line until a repository topology decision is approved. Do not try to merge the source stack into it while GitHub reports no common ancestor.
+- **workpass70-source:** retain as the original source-tree baseline and comparison anchor; it is not a guarantee of the newest implementation.
+- **workpass206-runtime-evaluator-wiring / PR #55:** current integration candidate for evaluator hardening, evidence integrity, causal replay and avatar fixes. Keep draft/unmerged until the sandbox, exact-head CI and deployment-shaped evidence gates pass.
+- **workpass203-independent-candidate-evaluator and PR #54:** reference point for independent paired candidate evaluation; compare unique commits before consolidation.
+- **workpass194–202 family:** source line for verified replay, goal/affect salience and skill-transfer constraints; integrate only into the canonical replay/learning owner.
+- **workpass150–172 Hermes family:** revision proposal, repair observation and compound-skill bridge; Hermes proposes, P23 owns evidence, evaluation, staging and promotion.
+- **workpass135 durable shadow-run registry and workpass116–124 learning evidence/lifecycle family:** preserve trusted-run identity, statistics, holdout boundaries and authenticated lifecycle; do not create a second run registry or promotion authority.
+- **workpass79 cognitive-rebuild / workpass79 learning-input-integrity and workpass71 learning-integrity/eval families:** compare unique code and tests for cognitive contracts, event validation and paired/holdout protocol; port specific useful protections into canonical owners rather than merge entire historical implementations blindly.
+- **workpass86–93 replay/drift/Hermes reflection family:** use as historical design/evidence points for replay, transfer, drift and reflection gates, not as parallel production engines.
+- **workpass94-avatar-voice-live2d-audit:** retain for traceability. The checked audit found only documentation-only exclusive commits; its useful findings had already motivated fixes on the active line. Do not delete/archive until a complete branch inventory and asset/call-path check confirms there is no unique live material.
+- **All remaining workpass branches:** classify by exact head, merge-base, unique commits, unique files/tests, active callers and decision (port / preserve as reference / archive reversibly). Branch age, name and commit count are not enough to delete or merge.
+
+### 11.9 Definition of done for the whole organism
+
+Release approval is a conjunction of gates, not a mean score. At minimum:
+
+- Reproducible clean build and accessible exact-head CI.
+- Real local model inference through the app/runtime with truthful backend attribution.
+- Independent memory retrieval and memory-grounded action results with no leakage and no stale-fact regression.
+- Held-out learning transfer and retention with no-learning/wrong-feedback controls.
+- Real external-action postconditions, idempotency, cancellation and restart reconciliation.
+- Verified evaluator/sandbox/verifier/scanner deployment and authenticated skill promotion/rollback.
+- Real browser/Live2D/speech and Android/Termux E2E.
+- Target-device latency, RAM/VRAM, thermal and soak measurements.
+- Complete source/license/dependency/asset provenance review plus backup, restore and rollback proof.
+- Claims about subjective consciousness remain explicitly unresolved unless separately justified by scientific evidence.
+
+**Next code-first work after these docs:** unblock actionable exact-head CI while implementing the real sandbox authority and preparing the frozen memory benchmark in parallel. Do not spend the next pass generating more planning documents or test inventories without correcting the deployment/verification bottlenecks described above.
+
