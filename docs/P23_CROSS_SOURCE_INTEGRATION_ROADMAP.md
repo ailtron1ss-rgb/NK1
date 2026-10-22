@@ -1,6 +1,6 @@
 # Neuro Kurisu — cross-source learning integration roadmap
 
-Latest implementation checkpoint: WorkPass242 (candidate payload snapshot held constant across asynchronous independent-evaluation trials); code and regression are committed on the current draft PR branch, but execution results remain unverified.
+Latest implementation checkpoint: WorkPass243 (host-owned evaluator subprocess adapter reusing LearningProcessSupervisor, private JSON requests, bounded output/deadlines, cancellation, and separate executor/verifier/scanner processes); regression and CI wiring are committed, execution remains unverified.
 
 Scope: continue integrating mechanisms into the existing P23 learning/revision lifecycle. This is an implementation queue, not a promise that upstream mechanisms are already integrated. Preserve the current branch/PR boundary; do not merge to the default branch without explicit approval.
 
@@ -12,7 +12,19 @@ Scope: continue integrating mechanisms into the existing P23 learning/revision l
 - [ ] Run the focused evaluator regression and TypeScript typecheck on an executing CI runner; current connector-visible runner failures have not established code success or code failure.
 - [ ] Provision and verify real host-owned sandbox, independent verifier, and safety-scanner authorities. Interface injection and distinct function identities alone do not prove independent service ownership.
 
-## Completed in this branch (through WorkPass242 code; runtime verification pending)
+## WorkPass243 — host-owned independent evaluation services
+
+- [x] Add a concrete adapter that dispatches candidate execution, independent verification, and safety scanning to three distinct host-owned executables via the existing `LearningProcessSupervisor`.
+- [x] Reuse bounded subprocess execution, no-shell launch, output limits, receipts, POSIX process-group termination, and AbortSignal cancellation; private JSON request files are created with mode 0600 and removed after the call.
+- [x] Validate resolved executable identity, absolute host paths, executable access, and pairwise-disjoint per-authority run/survive storage.
+- [x] Pass the same immutable task/environment/plan context to the safety scanner, so scan evidence is not detached from the evaluation context.
+- [x] Add a runtime-ready config factory suitable for `RuntimeConfig.compoundRepairRevision.independentEvaluationConfigForRepair`; host-owned task plans, environment fingerprint, and experiment authority remain explicit inputs.
+- [x] Register the process integration regression in the existing package audit and continual-learning workflow.
+- [ ] Run the integration regression and runtime typecheck on an executing runner; Actions history has previously failed before useful steps/logs were exposed, so code execution is still unverified.
+- [ ] Provision the actual executor executable as a trusted OS/container sandbox launcher and verify filesystem/network/CPU/memory limits. This adapter does not itself provide kernel isolation.
+- [ ] Wire the returned factory into the deployed host's `OrganismRuntime` configuration and provide the independent verifier/scanner executable implementations and their deployment ownership. The runtime deliberately does not guess executable paths or create fake production authorities.
+
+## Completed in this branch (through WorkPass243 code; runtime verification pending)
 
 - [x] Reuse SkillLearnBench-style task success, skill quality, trajectory quality and macro-averaged task metrics.
 - [x] Bind evaluator runs to exact payload/task/environment/plan identity; require an independent verifier's explicit binding attestation.
