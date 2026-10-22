@@ -1,3 +1,12 @@
+## WorkPass291 — reject reused cognitive-stage event identities (2026-10-22)
+
+- **Causal accounting:** required stages must have distinct event IDs. Reusing the observation ID as the prediction ID (or otherwise reusing an ID across required stages) now marks the conflicting stages missing instead of counting a fabricated complete cycle.
+- **Regression:** added duplicate-identity coverage to `tests/workpass287-unified-cycle-contract.mjs` and corrected its sequential tick fixture after adding the monotonic tick guard.
+- **Boundary:** IDs are still caller-supplied; cryptographic provenance and proof that the corresponding runtime action actually happened are not yet enforced by this class.
+- **Validation:** GitHub Actions has repeatedly failed before exposing any job steps; these tests remain unexecuted/unverified in the hosted workflow. No passing status is claimed.
+
+---
+
 ## WorkPass290 — enforce monotonic cognitive world ticks (2026-10-22)
 
 - **Causal ordering:** the unified cognitive-cycle recorder now rejects duplicate ticks as well as regressing ticks. Replaying the same world tick can no longer silently inflate the number of evaluated cycles or skew rolling averages.
