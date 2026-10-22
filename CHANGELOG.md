@@ -1,3 +1,11 @@
+## WorkPass309 — fence re-entrant admission decisions
+
+- Recheck the clock generation immediately after the admission callback returns. A policy that synchronously stops/restarts the scheduler can no longer return `run: true` and still launch a now-stale task.
+- Added a regression that calls `stop()` from within `decide()` and asserts zero executions.
+- Complements WorkPass304's asynchronous restart fencing and WorkPass305's null/undefined fail-closed handling.
+
+---
+
 ## WorkPass308 — unify push and pull-request concurrency groups
 
 - Standardized workflow concurrency keys on the head branch name (`github.head_ref || github.ref_name`) instead of using the PR number for pull requests and the full ref for pushes.

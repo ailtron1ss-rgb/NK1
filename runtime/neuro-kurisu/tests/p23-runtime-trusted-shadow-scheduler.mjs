@@ -137,6 +137,34 @@ import { P23TrustedShadowLearningScheduler } from '../src/organism/learning/P23T
   }
 }
 
+
+{
+  const keepAlive = setTimeout(() => {}, 300);
+  const { RuntimeClockScheduler } = await import('../src/organism/system/RuntimeClockScheduler.ts');
+  const scheduler = new RuntimeClockScheduler();
+  let taskCalls = 0;
+  try {
+    scheduler.register({
+      id: 'reflection',
+      initialDelayMs: 0,
+      decide: () => {
+        scheduler.stop();
+        return { delayMs: 0, reason: 'stopped-inside-admission', run: true };
+      },
+      task: () => { taskCalls += 1; },
+    });
+    scheduler.start('reflection');
+    await new Promise(resolve => setTimeout(resolve, 25));
+    scheduler.stop();
+    await scheduler.drain();
+    assert.equal(taskCalls, 0, 'a policy invalidated during its own callback must not launch stale work');
+    assert.equal(scheduler.snapshot().reflection.executions, 0);
+  } finally {
+    scheduler.stop();
+    clearTimeout(keepAlive);
+  }
+}
+
 console.log('RUNTIME_CLOCK_FAIL_CLOSED_CONTRACT=PASS');
 
 const invalidCandidateCore = {

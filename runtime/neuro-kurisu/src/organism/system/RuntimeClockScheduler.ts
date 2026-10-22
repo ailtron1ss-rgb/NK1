@@ -179,6 +179,11 @@ export class RuntimeClockScheduler {
       await this.reportFailure(clock, stats, error);
     }
 
+    // The policy callback can re-enter this scheduler and stop/restart it.
+    // Recheck the generation after it returns so a stale decision cannot launch
+    // side effects after its runtime generation was invalidated.
+    if (this.stopping || generation !== (this.generations.get(id) ?? 0)) return;
+
     // Admission decision failures are fail-closed: no task side effects occur.
     if (!decision.run) stats.skipped += 1;
     else {
