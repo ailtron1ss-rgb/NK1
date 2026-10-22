@@ -408,7 +408,8 @@ export class SocialMindKernel{
   }
 
   updateSecondOrderBelief(personId:string,claim:string,belief01:number,at:number,evidenceIds:string[]=[]){
-    const key=`${personId}:${claim}`;
+    const canonicalId=this.state.persons.find(p=>p.id===personId||p.aliases.includes(personId))?.id??personId;
+    const key=`${canonicalId}:${claim}`;
     const prior=this.state.secondOrderBeliefs.find(x=>x.claim===key);
     if(prior){prior.belief01=clamp(prior.belief01*.84+belief01*.16);prior.confidence01=clamp(prior.confidence01*.9+belief01*.1);prior.evidenceIds=[...evidenceIds,...prior.evidenceIds].slice(0,16);prior.lastUpdatedAt=at;}
     else this.state.secondOrderBeliefs.unshift({claim:key,belief01:clamp(belief01),confidence01:clamp(.45+belief01*.45),evidenceIds:evidenceIds.slice(0,16),contradictions:0,lastUpdatedAt:at});
