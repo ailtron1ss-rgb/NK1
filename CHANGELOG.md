@@ -1,3 +1,9 @@
+## WorkPass252 — preserve Live2D expression transitions during lip-sync (2026-10-22)
+
+- **DONE (code):** the Live2D viewer now caches the last successfully applied expression and avoids reissuing the same model expression on every embodiment update. Mouth/gaze updates no longer repeatedly restart an unchanged expression animation.
+- **DONE (regression authored):** the existing Live2D asset-integrity test now guards the expression-cache and transition check.
+- **Validation:** source regression and browser/Live2D end-to-end behavior have not been executed on a functioning runner/device; no green status is claimed.
+
 ## WorkPass251 — revalidate host authority executable identity at dispatch (2026-10-22)
 
 - **DONE (code):** prepared executor/verifier/scanner commands now re-resolve and re-stat the executable before request creation and again after the request snapshot is written, rejecting a replaced executable identity or newly unsafe POSIX write permissions.
