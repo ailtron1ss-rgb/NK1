@@ -1,3 +1,13 @@
+## WorkPass296 — prevent stale action attribution in reduced-resolution ticks (2026-10-22)
+
+- Changed `OperationalMicroCycleRuntime` to label its non-actuating heartbeat as `wait`, rather than copying the previous full-cycle selected action into the new tick's neural experience.
+- The last real action remains available as continuity/workspace context, but is no longer misrepresented as an action executed during the micro-tick. Reward remains neutral (`0.5`) and verification remains false until canonical action-correlated evidence is threaded through.
+- Added `workpass296-microcycle-action-attribution.mjs` source-contract regression and a Node 24 Actions workflow. No new runtime dependency.
+- Validation is unconfirmed until Actions actually assigns a runner and executes the job; this commit does not claim a passing test or typecheck.
+- Next: thread the exact gateway ticket + tick through the canonical verifier into causal experience, then consolidate only that attributed record into P23 repair eligibility.
+
+---
+
 ## WorkPass295 — expire stale external repair hints (2026-10-22)
 
 - P23 background revision triage now accepts an external repair hint only when its claimed skill-repair task ID is bounded and its receipt time is finite, no older than seven days, and no more than five minutes in the future.
