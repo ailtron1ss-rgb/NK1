@@ -59,3 +59,8 @@
 - Next operator check: GitHub **Settings → Billing and plans → Plans and usage → Actions**; inspect included minutes, spending limit/budget and any payment/usage restriction. Official billing guide: https://docs.github.com/en/billing/concepts/product-billing/github-actions. GitHub says private repositories consume plan-specific hosted-runner minutes, while standard hosted-runner minutes for public repositories are free: https://docs.github.com/en/actions/concepts/billing-and-usage.
 - If billing/usage is within allowance, the account has no payment hold and the issue persists, contact GitHub Support with run `39808685122` and job `119928709599`; the GitHub Actions runner was never allocated from the API evidence available here.
 - No new Release tag or ZIP asset is present. Do not declare the release bundle published until a hosted or authorized self-hosted runner actually packages it, passes `unzip -t`, emits a SHA-256 manifest and the new Release asset is visible.
+
+## Validation path coverage — 22 October 2026
+
+- `workpass71-validation.yml` now explicitly watches the synchronization report, README sidecar, all WorkPass64/65 files imported from main, the WorkPass64 publish script, and all release/inventory/materialization workflows. This closes the path-filter gap for future changes in this sync set.
+- The commit itself triggers core validation because the validation workflow is among its own path filters. Publishing still requires that exact latest-head run to complete successfully; the existing runner-provisioning block remains outside code control.

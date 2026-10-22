@@ -1,3 +1,7 @@
+## WorkPass70 release-sync validation reachability (2026-10-22)
+- Added the release-process workflows, all main-imported metadata/scripts and the synchronization report to the core-validation path filter. Changes to this migration now request validation of the exact source HEAD rather than leaving the latest documentation-only commit outside the release gate.
+- A workflow run that cannot allocate a hosted runner remains blocked at infrastructure/account level; this path-filter fix does not represent test-pass evidence.
+
 ## WorkPass70 follow-up — idempotent release publishing (2026-10-22)
 - Changed both legacy hotfix and main-sync release guards to probe the GitHub Releases API with `GITHUB_TOKEN` and distinguish `200` (tag already exists; safe no-op), `404` (tag absent; publication may proceed) and unexpected HTTP responses (fail closed).
 - Existing WorkPass70 tags/assets are never overwritten, and authorization/network failures are no longer silently treated as evidence that the release tag is absent.
