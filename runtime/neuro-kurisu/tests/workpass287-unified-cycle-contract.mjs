@@ -16,18 +16,16 @@ assert.equal(complete.complete,true);
 assert.equal(complete.stageCoverage01,1);
 assert.deepEqual(complete.missingStages,[]);
 
-const invalidId=cycle.evaluate({
-  tick:2,
-  stageIds:{...stages,action:'  '},
-  parentIntegrity01:0.9,
-});
+const invalidId=cycle.evaluate({tick:2,stageIds:{...stages,action:'  '},parentIntegrity01:0.9});
 assert.equal(invalidId.complete,false);
 assert.ok(invalidId.missingStages.includes('action'));
 
 assert.throws(()=>cycle.evaluate({tick:NaN,stageIds:stages,parentIntegrity01:1}),/tick/);
 assert.throws(()=>cycle.evaluate({tick:0,stageIds:stages,parentIntegrity01:1}),/backwards/);
 assert.throws(()=>cycle.evaluate({tick:3,stageIds:stages,parentIntegrity01:Infinity}),/parentIntegrity01/);
-const unsafeId=cycle.evaluate({tick:3,stageIds:{...stages,action:'act\\n1'},parentIntegrity01:1});\nassert.equal(unsafeId.complete,false);\nassert.ok(unsafeId.missingStages.includes('action'));
+const unsafeId=cycle.evaluate({tick:3,stageIds:{...stages,action:'act\n1'},parentIntegrity01:1});
+assert.equal(unsafeId.complete,false);
+assert.ok(unsafeId.missingStages.includes('action'));
 
 const restored=new UnifiedCognitiveCycle();
 restored.restore({
