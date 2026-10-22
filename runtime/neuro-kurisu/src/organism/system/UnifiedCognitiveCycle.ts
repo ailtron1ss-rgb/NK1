@@ -43,21 +43,26 @@ export class UnifiedCognitiveCycle {
   restore(raw?:Partial<UnifiedCognitiveCycleState>|null):void {
     const source=raw??{};
     const cycles=safeCounter(source.cycles);
+    // Restored counters must describe one coherent history: complete and
+    // incomplete are disjoint subsets of cycles, and broken lineages are a
+    // subset of incomplete cycles. Independent clamping can otherwise make
+    // aggregate counts exceed the number of observations.
     const completeCycles=Math.min(cycles,safeCounter(source.completeCycles));
-    const incompleteCycles=Math.min(cycles,safeCounter(source.incompleteCycles));
+    const incompleteCycles=Math.min(cycles-completeCycles,safeCounter(source.incompleteCycles));
     const rawMissing=Array.isArray(source.lastMissingStages)?source.lastMissingStages:[...REQUIRED];
-    const missing=[...new Set(rawMissing.filter((stage):stage is UnifiedCycleStage=>typeof stage==='string'&&ALL_STAGES.has(stage as UnifiedCycleStage)))];
+    const filteredMissing=[...new Set(rawMissing.filter((stage):stage is UnifiedCycleStage=>typeof stage==='string'&&ALL_STAGES.has(stage as UnifiedCycleStage)))];
     const lastTick=typeof source.lastTick==='number'&&Number.isSafeInteger(source.lastTick)&&source.lastTick>=-1?source.lastTick:-1;
+    const missing=cycles===0&&filteredMissing.length===0?[...REQUIRED]:filteredMissing;
     this.state={
       version:1,
       cycles,
       completeCycles,
       incompleteCycles,
-      brokenLineages:Math.min(cycles,safeCounter(source.brokenLineages)),
+      brokenLineages:Math.min(incompleteCycles,safeCounter(source.brokenLineages)),
       meanStageCoverage01:safeMetric(source.meanStageCoverage01),
       meanCausalContinuity01:safeMetric(source.meanCausalContinuity01),
       lastTick,
-      lastComplete:source.lastComplete===true&&missing.length===0,
+      lastComplete:cycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
       lastMissingStages:missing,
     };
   }
