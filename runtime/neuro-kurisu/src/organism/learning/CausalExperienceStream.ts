@@ -1,7 +1,14 @@
 import type { ActionKind, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
 
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
-const normalizeTraceId=(value:unknown)=>String(value??'').normalize('NFKC').trim().slice(0,180);
+const normalizeBoundedId=(value:unknown,maxLength:number):string=>{
+  if(typeof value!=='string')return '';
+  const normalized=value.normalize('NFKC').trim();
+  if(!normalized||normalized.length>maxLength||/[\\u0000-\\u001f\\u007f]/u.test(normalized))return '';
+  return normalized;
+};
+const normalizeTraceId=(value:unknown)=>normalizeBoundedId(value,180);
+const normalizeTaskId=(value:unknown)=>normalizeBoundedId(value,120);
 const CAUSAL_ACTIONS: readonly ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 
 export interface CausalExperienceRecord {
@@ -139,13 +146,14 @@ export class CausalExperienceStream {
     return structuredClone(record);
   }
   recordExternalLearningEvent(input:{tick:number;taskId:string;action:ActionKind;reward01:number;success01:number;surprise01:number;novelty01:number;uncertainty01?:number;identityRelevance01?:number;goalPressure01?:number;causalStrength01?:number;traceId?:string;provenance?:CausalExperienceRecord['provenance'];stateGrounded?:boolean;sourceMemoryId?:string;evidenceKey?:string}):CausalExperienceRecord|null{
-    const taskId=String(input.taskId??'').normalize('NFKC').trim().slice(0,120);
-    if(!taskId)throw new Error('causal-external-task-id-required');
+    const taskId=normalizeTaskId(input.taskId);
+    if(!taskId)throw new Error('causal-external-task-id-invalid');
     if(!CAUSAL_ACTIONS.includes(input.action))throw new Error('causal-external-action-invalid');
     const reward=clamp01(input.reward01),success=clamp01(input.success01),surprise=clamp01(input.surprise01),novelty=clamp01(input.novelty01),uncertainty=clamp01(input.uncertainty01??.5); const causal=clamp01(input.causalStrength01??(surprise*.35+novelty*.15+Math.abs(reward-.5)*.25+Math.abs(success-.5)*.25));
     const at=Date.now();
     const id=`cx-ext-${Math.max(0,Math.floor(Number.isFinite(input.tick)?input.tick:0))}-${taskId}-${at}`;
-    const traceId=normalizeTraceId(input.traceId??id)||id;
+    const traceId=input.traceId===undefined?normalizeTraceId(id):normalizeTraceId(input.traceId);
+    if(!traceId)throw new Error('causal-external-trace-id-invalid');
     const prior=this.state.records.find(record=>record.traceId===traceId);
     if(prior||this.recordedOutcomeTraceIds.has(traceId)){
       // External evidence ingestion is idempotent by its stable source identity.
