@@ -1,3 +1,23 @@
+## WorkPass299 — isolate external hypotheses from trusted experience aggregates (2026-10-22)
+
+- External causal-memory imports remain visible as quarantined records, but no longer increment the trusted outcome count or mutate trusted rolling surprise/prediction-error/causal-learning aggregates.
+- On restore, trusted `outcomes` and `consolidated` counters are recomputed from records that satisfy the runtime-grounded predicate; persisted scalar counts cannot certify missing or external records.
+- Extended the existing evidence-lane regression to prove imported claims do not alter trusted aggregate counters or rolling signals. This keeps the same canonical experience stream while separating hypotheses from earned evidence.
+- Research alignment: the Generative Agents architecture uses observation, memory, reflection and planning as a connected loop; NK1 adds a stricter evidence boundary so imported/reflected claims cannot masquerade as executed experience. Source: [Park et al., UIST 2023](https://doi.org/10.1145/3586183.3606763).
+- Validation remains unconfirmed because hosted Actions runs fail before useful step logs are exposed; no pass is claimed.
+
+---
+
+## WorkPass298 — bind causal credit to the action actually recorded in post-state (2026-10-22)
+
+- `CausalExperienceStream.recordOutcome()` now rejects a transition when the post-state's `lastAction` differs from the selected action, when `lastActionSuccess` is missing/out of range, or when its value materially contradicts the supplied outcome signal (difference greater than 0.15).
+- This closes a concrete attribution gap: a state change alone no longer earns action-conditioned reward when the state does not say which action completed or its outcome is inconsistent.
+- Extended `workpass292-evidence-lanes.mjs` with mismatched-action, missing-outcome and contradictory-outcome cases, and made the canonical cognitive architecture map explicitly document the same contract.
+- This is an action-attribution guard, not a substitute for exact ActionGateway execution-ticket and independent-verifier provenance; that end-to-end linkage remains the next implementation target.
+- No new dependencies. Tests remain unverified until Actions executes the job.
+
+---
+
 ## WorkPass297 — make heartbeat/action distinction explicit in the brain map (2026-10-22)
 
 - Added a lifecycle → outcome-learning governance edge stating that a micro-cycle heartbeat is not an action receipt and cannot earn action credit.
