@@ -1,3 +1,15 @@
+## WorkPass292 — verified experience lanes and evidence provenance (2026-10-22)
+
+- Unified CausalExperienceStream experience admission, learning packets, consolidation, replay and behavioral diagnostics around the same grounded runtime-outcome predicate; restored runtime labels without grounded state evidence are downgraded.
+- UnifiedLearningSubstrate v4 now quarantines caller-supplied replay/repair reports in a bounded hypothesis queue. External input cannot directly update the trusted pattern bank, shared representation, trusted sample counts or transfer estimates.
+- v3 learner state is reset at migration because legacy patterns/representations have no per-sample lineage and may include external claims. Durable organism memory and identity are not reset.
+- Added a read-only hypothesis queue API to OrganismCore, updated the cognitive architecture map, and removed the shortcut that equated an external outcome-source flag with independent evidence in the causal development and macro-synthesis paths.
+- Added test:workpass292:evidence-lanes plus a Node 24 workflow. The regression suite and typecheck have been committed but are not yet reported as executed/passing.
+- Research patterns adapted: Hermes Agent Self-Evolution (trace-guided bounded skill revisions and independent evaluation), Letta memory/dreaming (reviewable consolidation and durable memory), and Generative Agents (memory/reflection/planning feedback). No new runtime dependency was introduced.
+- Next: connect the hypothesis queue to existing independent evaluation; correlate action-ticket/tick evidence; preserve one canonical memory owner; carry verified experience through P23 holdout/promotion/rollback.
+
+---
+
 ## WorkPass291 — bounded reflective skill evolution (2026-10-22)
 
 - Added a 256 KiB canonical UTF-8 payload budget to the P23 reflective skill revision path. The source artifact is bounded before invoking the generator; generated output is bounded before fingerprinting/independent evaluation; the staging boundary repeats the check.
