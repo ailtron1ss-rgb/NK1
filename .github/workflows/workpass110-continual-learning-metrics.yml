@@ -171,6 +171,10 @@ on:
       - 'runtime/neuro-kurisu/tests/p23-create-skill-promotion-approval-request.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
       - 'runtime/neuro-kurisu/src/server/server.mjs'
+concurrency:
+  group: nk1-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   metrics:
     runs-on: ubuntu-latest
