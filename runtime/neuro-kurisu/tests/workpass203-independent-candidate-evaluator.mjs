@@ -138,6 +138,25 @@ assert.equal(result.evaluation.provenance.runBindings[0].verifierPassed, true);
 assert.equal(result.evaluation.provenance.runBindings[0].safetyViolationCount, 0,
   'evaluation provenance must bind observed execution, independent verification, and safety evidence');
 
+const unsafeRunIdEvaluator = createIndependentSkillCandidateEvaluator({
+  tasks,
+  environmentFingerprint: 'e'.repeat(64),
+  executor: { async execute() { return { runId: 'run' + String.fromCharCode(10) + 'spoofed', observedStepIds: ['open', 'summarize'] }; } },
+  verifier: { async verify() { throw new Error('invalid run IDs must not reach the verifier'); } },
+  safetyScanner: { async scan() { return { violationCount: 0 }; } },
+});
+const unsafeRunIdResult = await unsafeRunIdEvaluator({
+  payload, payloadFingerprint: digest(payload),
+  baseline: { validation: [], holdout: [] },
+  previousEvaluation: { validation: [], holdout: [] },
+});
+assert.equal(unsafeRunIdResult.evaluation.provenance.runBindings[0].runId, null,
+  'control-bearing executor run IDs must not enter trusted provenance');
+assert.equal(unsafeRunIdResult.evaluation.provenance.runBindings[0].bindingVerified, false,
+  'invalid run IDs must fail closed before independent verification');
+assert.equal(unsafeRunIdResult.evaluation.validation[0].taskSuccess.passed, false,
+  'invalid run IDs must not count as successful candidate trials');
+
 await assert.rejects(() => evaluator({ payload: { ...payload, version: 2 }, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } }), /payload-fingerprint-mismatch/);
 assert.throws(() => createIndependentSkillCandidateEvaluator({
   tasks: [tasks[0], { ...tasks[1], taskId: tasks[0].taskId }],
