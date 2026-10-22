@@ -1738,6 +1738,7 @@
     "test:workpass224:production-independent-evaluation-required": "node --experimental-strip-types tests/workpass224-production-independent-evaluation-required.mjs",
     "test:workpass225:matched-independent-evaluation": "node --experimental-strip-types tests/workpass225-matched-independent-evaluation.mjs",
     "test:workpass227:bounded-independent-evaluation": "node --experimental-strip-types tests/workpass227-bounded-independent-evaluation.mjs",
-    "test:workpass243:host-owned-independent-evaluation-services": "node --experimental-strip-types tests/workpass243-host-owned-independent-evaluation-services.mjs"
+    "test:workpass243:host-owned-independent-evaluation-services": "node --experimental-strip-types tests/workpass243-host-owned-independent-evaluation-services.mjs",
+    "test:p313:user-mind-and-eils": "node --experimental-strip-types tests/user-mind-reconstruction-workpass313.mjs"
   }
 }
