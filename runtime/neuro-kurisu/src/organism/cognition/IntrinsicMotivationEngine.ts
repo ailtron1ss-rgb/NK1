@@ -81,35 +81,6 @@ export class IntrinsicMotivationEngine {
     return this.snapshot();
   }
 
-  /**
-   * Converts an intrinsic drive into a bounded initiative candidate only when
-   * the caller supplies minimally credible recent-world evidence. This does
-   * not execute tools or claim the candidate was acted upon.
-   */
-  proposeInitiative(evidence:{
-    observationId:string;
-    predictionId:string;
-    worldEvidenceQuality:number;
-    causalContinuity01:number;
-  }):({kind:'intrinsic-goal-candidate';goal:NonNullable<ReturnType<IntrinsicMotivationEngine['proposeGoal']>>;evidence:{observationId:string;predictionId:string;worldEvidenceQuality:number;causalContinuity01:number}})|null {
-    const validId=(value:unknown):value is string=>typeof value==='string'&&value.trim().length>0&&value.length<=256&&!/[\u0000-\u001f\u007f-\u009f]/u.test(value);
-    if(!validId(evidence.observationId)||!validId(evidence.predictionId))return null;
-    if(typeof evidence.worldEvidenceQuality!=='number'||!Number.isFinite(evidence.worldEvidenceQuality)||evidence.worldEvidenceQuality<0.5||evidence.worldEvidenceQuality>1)return null;
-    if(typeof evidence.causalContinuity01!=='number'||!Number.isFinite(evidence.causalContinuity01)||evidence.causalContinuity01<0.5||evidence.causalContinuity01>1)return null;
-    const goal=this.proposeGoal();
-    if(!goal)return null;
-    return {
-      kind:'intrinsic-goal-candidate',
-      goal,
-      evidence:{
-        observationId:evidence.observationId,
-        predictionId:evidence.predictionId,
-        worldEvidenceQuality:evidence.worldEvidenceQuality,
-        causalContinuity01:evidence.causalContinuity01,
-      },
-    };
-  }
-
   proposeGoal(): { title:string; reason:string; source:'intrinsic'|'homeostatic'; importance:number; urgency:number; confidence:number } | null {
     const d=this.state;
     if(d.overall<0.52) return null;
