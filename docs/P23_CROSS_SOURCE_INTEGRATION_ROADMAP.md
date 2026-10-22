@@ -323,3 +323,12 @@ The queue below is ordered by dependency and risk, not by novelty. Existing NK1 
 - **DONE (regression authored):** extended the existing runtime trusted-shadow scheduler test with a malformed direct-construction case; it must throw before any process execution.
 - **PARTIAL (P0/P2):** this removes a config-path inconsistency but does not itself provision a staged candidate, trusted signer, sandbox or independent verifier.
 - **Validation:** exact-head Actions currently fails before any steps/logs are available; local execution/typecheck has not been performed. Keep status unverified.
+
+
+## WorkPass244 — canonical manifest identity across host authority boundary
+
+- **DONE (code integration):** `CandidateExecutionContext` now carries `manifestFingerprint` separately from `planFingerprint`; when the canonical experiment authority exists, the value comes from `VerifiedOutcomeLedger.manifestFingerprint()`.
+- **DONE (code integration):** host verifier and safety-scanner protocol checks require an exact manifest-fingerprint echo, preventing a response bound to the plan digest alone from being misrepresented as manifest-bound evidence.
+- **DONE (regression update):** the host-service protocol fixture now exercises a non-null manifest digest.
+- **PARTIAL:** process receipts use the canonical manifest digest when available; configurations without canonical experiment authority use the evaluator plan digest only for supervisor bookkeeping, while the request context keeps manifest identity null.
+- **OPEN:** run exact-head regression and typecheck on a functioning CI runner; deploy real sandbox/verifier/scanner executables; verify matched baseline/candidate execution through the durable shadow-evidence and authenticated-approval path. Process separation alone is not OS sandboxing.
