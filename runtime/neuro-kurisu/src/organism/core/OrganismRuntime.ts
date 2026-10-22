@@ -1459,9 +1459,31 @@ export class OrganismRuntime {
     const evidence = this.compoundSkillRepairEvidence().filter(row => row.revisionEligible);
     const skillIds = [...new Set(evidence.map(row => row.skillId))];
     if (!skillIds.length) return null;
-    const index = this.compoundRepairRevisionCursor % skillIds.length;
-    this.compoundRepairRevisionCursor = (index + 1) % skillIds.length;
-    return skillIds[index] ?? null;
+
+    // External repair/replay reports are never evidence or promotion authority.
+    // A skill-repair claim may only prioritize an ID already present in the runtime's
+    // verified non-holdout repairs ledger, which P23 re-evaluates independently.
+    let hintedSkillIds: string[] = [];
+    try {
+      const hypotheses = this.core.unifiedLearningExternalHypotheses(128);
+      if (Array.isArray(hypotheses)) {
+        hintedSkillIds = skillIds.filter(skillId => hypotheses.some(hypothesis =>
+          hypothesis?.claimedProvenance === 'skill-repair' &&
+          typeof hypothesis.taskId === 'string' &&
+          hypothesis.taskId.startsWith(`skill-repair:${skillId}:`),
+        ));
+      }
+    } catch {
+      // Triage enrichment is optional. Trusted runtime repair evidence remains enough.
+      hintedSkillIds = [];
+    }
+    const orderedSkillIds = [
+      ...hintedSkillIds,
+      ...skillIds.filter(skillId => !hintedSkillIds.includes(skillId)),
+    ];
+    const index = this.compoundRepairRevisionCursor % orderedSkillIds.length;
+    this.compoundRepairRevisionCursor = (index + 1) % orderedSkillIds.length;
+    return orderedSkillIds[index] ?? null;
   }
 
   private registerCompoundRepairRevisionClock(): void {
