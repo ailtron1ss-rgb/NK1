@@ -1,3 +1,14 @@
+## WorkPass266 update — lossless event identity and regression reachability (2026-10-22)
+
+- CausalExperienceStream now rejects rather than truncates overlong task/trace identities, including control-bearing values; restore drops malformed trace identity entries.
+- Added behavioral regression cases for collision prevention, unchanged state after rejected intake, and persisted-state sanitization.
+- Wired the regression into the WorkPass110 CI workflow along with Legacy-avatar and Live2D integrity regressions.
+- **Scores unchanged:** P23 symbolic core **61%**, evidence-grounded learning maturity **36%**, project-wide lifelong-learning roadmap **30%**, overall learning engineering **57/100**. Identity integrity improves implementation quality, but no externally measured transfer or task-success gain has been produced by this pass.
+- **Validation unresolved:** the latest retrieved WorkPass110 job has a failed conclusion with steps=null and logs_url=null. A retry was requested; exact-head test/typecheck is not yet confirmed.
+
+---
+
+
 ## WorkPass264 update — external event contract validation (2026-10-22)
 
 - External causal event intake now rejects blank task identities and invalid action labels before state mutation.
