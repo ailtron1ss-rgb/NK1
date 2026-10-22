@@ -217,7 +217,14 @@ export class CausalExperienceStream {
       // The decision trace must describe the same pre-action world tick; otherwise
       // an unrelated/old trace could be paired with a newer observed transition.
       trace.tick!==trace.stateBefore.tick||
-      stateAfter.tick<=trace.stateBefore.tick)return null;
+      stateAfter.tick<=trace.stateBefore.tick||
+      // The resulting state must explicitly attribute the last completed action
+      // to this decision and carry a bounded outcome signal; mere state drift is
+      // not enough to create action-conditioned learning credit.
+      stateAfter.lastAction!==trace.selected.action||
+      typeof stateAfter.lastActionSuccess!=='number'||
+      !Number.isFinite(stateAfter.lastActionSuccess)||stateAfter.lastActionSuccess<0||stateAfter.lastActionSuccess>1||
+      Math.abs(stateAfter.lastActionSuccess-input.success01)>0.15)return null;
     const boundedInput=[input.reward01,input.success01,input.surprise01,input.novelty01];
     if(!boundedInput.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1))return null;
     const traceId=normalizeTraceId(trace.id);
