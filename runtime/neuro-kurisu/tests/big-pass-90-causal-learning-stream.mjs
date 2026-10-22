@@ -24,7 +24,19 @@ const persisted=stream.snapshot();
 const restored=new CausalExperienceStream(16);
 restored.restore(persisted);
 assert.deepEqual(restored.recent(8),stream.recent(8));
+assert.equal(restored.recordOutcome(trace,mkState({tick:2,at:1100}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75}),null,
+  "restored trace identity must prevent recording the same runtime outcome twice");
+assert.ok(Array.isArray(restored.snapshot().recordedTraceIds));
 const consolidated=restored.consolidate(8,1200);
 assert.equal(consolidated.length,1);
 assert.equal(restored.summary().consolidated,1);
+
+const ungrounded = new CausalExperienceStream(16);
+ungrounded.recordExternalLearningEvent({
+  tick: 3, taskId: "unverified-external", action: "explore",
+  reward01: 1, success01: 1, surprise01: 1, novelty01: 1,
+  traceId: "unverified-external-event", stateGrounded: false, causalStrength01: 1,
+});
+assert.equal(ungrounded.consolidate(8,1300).length,0,
+  "high surprise/reward alone must not consolidate an ungrounded external event");
 console.log('BIG_PASS_90_CAUSAL_STREAM=PASS');
