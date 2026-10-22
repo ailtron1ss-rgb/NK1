@@ -790,23 +790,6 @@ export class OrganismRuntime {
       confidence01:grounded.evidence01,parentIds:[actionEvidence.id,predictionEvidence.id],external01:grounded.source==='external',
       payload:{reward01:grounded.reward01,surprise01:grounded.surprise01,action:embodiedAction.action,reason:grounded.reason,verified01:grounded.verified01,independent01:grounded.independent01,consequence01:grounded.consequence01,predictionError01:resolvedPrediction?.error01 ?? null},
     });
-    const cycleStageIds = this.cognitiveEventFabric.recordOperationalCycle({
-      tick:cycle.state.tick,
-      observation:{source:'runtime',external:Boolean(externalText),confidence01:.72,payload:{predictionError:cycle.state.predictionError,selectedAction:internalAction,evidenceId:observationEvidence.id}},
-      prediction:{source:'reward-model',confidence01:plan.steps[0]?.confidence ?? .5,payload:{predictionId:rewardPredictionId,evidenceId:predictionEvidence.id,action:worldAction,predicted01:expectedReward,shadowModel:true}},
-      action:{source:'organism-action-gate',confidence01:cycle.decision.selected?.confidence ?? .5,payload:{evidenceId:actionEvidence.id,action:embodiedAction.action,internalAction,goalId:cycle.decision.selected?.goalId ?? null}},
-      outcome:{source:grounded.source==='external'?'external-device':'shadow-simulator',external:grounded.source==='external',confidence01:grounded.evidence01,payload:{evidenceId:outcomeEvidence.id,reward01:grounded.reward01,surprise:grounded.surprise01,error01:resolvedPrediction?.error01 ?? null,verified01:grounded.verified01}},
-      learning:{source:'core.feedback',confidence01:clamp01((1-(resolvedPrediction?.error01??0.5))*learningGate.learningScale01),payload:{predictionError01:resolvedPrediction?.error01??null,realitySource:grounded.source,learningPriority01:grounded.learningPriority01,learningScale01:learningGate.learningScale01}},
-      selfUpdate:{source:'core.lifecycle',confidence01:this.core.consciousnessSnapshot().identityContinuity.continuity,payload:{identityContinuity01:this.core.consciousnessSnapshot().identityContinuity.continuity}},
-      at:cycle.state.at,
-    });
-    const fabricSnapshot = this.cognitiveEventFabric.snapshot();
-    this.core.setCognitiveEventFabric(fabricSnapshot);
-    const cycleStageMap = {observation:cycleStageIds.observation,prediction:cycleStageIds.prediction,action:cycleStageIds.action,outcome:cycleStageIds.outcome,learning:cycleStageIds.learning,'self-update':cycleStageIds.selfUpdate};
-    const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap);
-    const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:cycleStageMap,parentIntegrity01:cycleLineage.complete ? cycleLineage.integrity01 : 0});
-    this.core.setUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
-
     await this.core.feedback({
       success: learningGate.success01,
       reward: learningRewardSigned,
@@ -876,7 +859,6 @@ export class OrganismRuntime {
     const embodiedLedgerClass = embodiedAction.realityClass === 'device-observation' ? 'device-observation' : 'derived';
     this.realityEvidence.record({tick:cycle.state.tick,realityClass:embodiedLedgerClass,claim:`embodied-action:${physicalAction}`,confidence01:grounded.evidence01,independenceKey:`embodied:${embodiedAction.at}:${embodiedAction.source}`,parentIds:[actionEvidence.id]});
     this.realityEvidence.record({tick:cycle.state.tick,realityClass:grounded.source==='external' ? 'device-observation' : 'simulator',claim:`action-consequence:${physicalAction}`,confidence01:grounded.evidence01,independenceKey:`consequence:${cycle.state.tick}:${embodiedAction.source}:${grounded.source}`,parentIds:[outcomeEvidence.id]});
-    this.realityEvidence.record({tick:cycle.state.tick,realityClass:'derived',claim:'cognitive-cycle-completeness',confidence01:cycleVerification.complete ? .95 : .35,independenceKey:`cycle:${cycle.state.tick}`,parentIds:Object.values(cycleStageIds).filter(Boolean) as string[]});
     this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());
     if(grounded.source==='external') {
       this.core.recordExternalPerceptualEvidence({
@@ -949,6 +931,27 @@ export class OrganismRuntime {
     const b380Token=this.core.b380TemporalLifeSnapshot().lastToken;
     if(b380Token){ this.core.consolidateB365Experience({tick:b380Token.tick,action:b380Token.action as import('../core/types.ts').ActionKind,reward01:b380Token.reward01,predictionError01:b380Token.predictionError01,salience01:b380Token.salience01,verified01:b380Token.physicalVerified01,independent01:b380Token.independent01,evidenceQuality01:b380Token.evidenceQuality01,continuity01:b380Token.continuity01,goalId:b380Token.goalId}); }
     await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog());
+
+    // Record causal-cycle completion only after feedback, model updates, and embodiment state updates have actually run.
+    const cycleStageIds = this.cognitiveEventFabric.recordOperationalCycle({
+      tick:cycle.state.tick,
+      observation:{source:'runtime',external:Boolean(externalText),confidence01:.72,payload:{predictionError:cycle.state.predictionError,selectedAction:internalAction,evidenceId:observationEvidence.id}},
+      prediction:{source:'reward-model',confidence01:plan.steps[0]?.confidence ?? .5,payload:{predictionId:rewardPredictionId,evidenceId:predictionEvidence.id,action:worldAction,predicted01:expectedReward,shadowModel:true}},
+      action:{source:'organism-action-gate',confidence01:cycle.decision.selected?.confidence ?? .5,payload:{evidenceId:actionEvidence.id,action:embodiedAction.action,internalAction,goalId:cycle.decision.selected?.goalId ?? null}},
+      outcome:{source:grounded.source==='external'?'external-device':'shadow-simulator',external:grounded.source==='external',confidence01:grounded.evidence01,payload:{evidenceId:outcomeEvidence.id,reward01:grounded.reward01,surprise:grounded.surprise01,error01:resolvedPrediction?.error01 ?? null,verified01:grounded.verified01}},
+      learning:{source:'core.feedback',confidence01:clamp01((1-(resolvedPrediction?.error01??0.5))*learningGate.learningScale01),payload:{predictionError01:resolvedPrediction?.error01??null,realitySource:grounded.source,learningPriority01:grounded.learningPriority01,learningScale01:learningGate.learningScale01}},
+      selfUpdate:{source:'core.lifecycle',confidence01:this.core.consciousnessSnapshot().identityContinuity.continuity,payload:{identityContinuity01:this.core.consciousnessSnapshot().identityContinuity.continuity}},
+      at:cycle.state.at,
+    });
+    const fabricSnapshot = this.cognitiveEventFabric.snapshot();
+    this.core.setCognitiveEventFabric(fabricSnapshot);
+    const cycleStageMap = {observation:cycleStageIds.observation,prediction:cycleStageIds.prediction,action:cycleStageIds.action,outcome:cycleStageIds.outcome,learning:cycleStageIds.learning,'self-update':cycleStageIds.selfUpdate};
+    const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap);
+    const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:cycleStageMap,parentIntegrity01:cycleLineage.complete ? cycleLineage.integrity01 : 0});
+    this.core.setUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
+    this.realityEvidence.record({tick:cycle.state.tick,realityClass:'derived',claim:'cognitive-cycle-completeness',confidence01:cycleVerification.complete ? .95 : .35,independenceKey:`cycle:${cycle.state.tick}`,parentIds:Object.values(cycleStageIds).filter(Boolean) as string[]});
+    this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());
+
 
     // B364: severe embodied resource pressure is now a real durability event, not only a
     // scheduling signal. When battery/thermal/RAM/awake state crosses a critical boundary,
