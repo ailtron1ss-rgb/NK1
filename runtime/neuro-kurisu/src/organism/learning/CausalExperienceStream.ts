@@ -302,7 +302,7 @@ export class CausalExperienceStream {
   private contextKey(r:CausalExperienceRecord){return `${r.taskId}|e${Math.floor(r.energyBefore01*4)}|u${Math.floor(r.uncertainty01*4)}|n${Math.floor(r.novelty01*4)}|g${Math.floor(r.goalPressure01*4)}`;}
   private recomputeBehavioralImpact(){
     const buckets=new Map<string,CausalExperienceRecord[]>();
-    for(const r of this.state.records){const k=this.contextKey(r);const arr=buckets.get(k)??[];arr.push(r);buckets.set(k,arr);}
+    for(const r of this.state.records){if(r.provenance!=='runtime-outcome'||r.stateGrounded!==true)continue;const k=this.contextKey(r);const arr=buckets.get(k)??[];arr.push(r);}
     let weighted=0,weight=0,divergence=0,samples=0;
     for(const rows of buckets.values()){if(rows.length<4)continue; const early=rows.slice(0,Math.max(2,Math.floor(rows.length/2))); const late=rows.slice(-Math.max(2,Math.floor(rows.length/2)));
       const share=(xs:CausalExperienceRecord[],action:ActionKind)=>xs.filter(x=>x.action===action).length/Math.max(1,xs.length);
