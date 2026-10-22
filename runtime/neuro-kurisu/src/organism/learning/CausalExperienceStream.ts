@@ -155,26 +155,42 @@ export class CausalExperienceStream {
     const taskId=normalizeTaskId(taskCandidate);
     if(!taskId)throw new Error('causal-external-task-id-invalid');
     if(!CAUSAL_ACTIONS.includes(input.action))throw new Error('causal-external-action-invalid');
-    const reward=clamp01(input.reward01),success=clamp01(input.success01),surprise=clamp01(input.surprise01),novelty=clamp01(input.novelty01),uncertainty=clamp01(input.uncertainty01??.5); const causal=clamp01(input.causalStrength01??(surprise*.35+novelty*.15+Math.abs(reward-.5)*.25+Math.abs(success-.5)*.25));
+    const eventTick=Math.max(0,Math.floor(Number.isFinite(input.tick)?input.tick:0));
+    const reward=clamp01(input.reward01),success=clamp01(input.success01),surprise=clamp01(input.surprise01),novelty=clamp01(input.novelty01),uncertainty=clamp01(input.uncertainty01??.5);
+    const identityRelevance=clamp01(input.identityRelevance01??0),goalPressure=clamp01(input.goalPressure01??0);
+    const provenance=input.provenance??'external',stateGrounded=Boolean(input.stateGrounded);
+    const sourceMemoryId=input.sourceMemoryId,evidenceKey=input.evidenceKey;
+    const causal=clamp01(input.causalStrength01??(surprise*.35+novelty*.15+Math.abs(reward-.5)*.25+Math.abs(success-.5)*.25));
     const at=Date.now();
-    const id=`cx-ext-${Math.max(0,Math.floor(Number.isFinite(input.tick)?input.tick:0))}-${taskId}-${at}`;
+    const id=`cx-ext-${eventTick}-${taskId}-${at}`;
     const traceId=input.traceId===undefined?normalizeTraceId(id):normalizeTraceId(input.traceId);
     if(!traceId)throw new Error('causal-external-trace-id-invalid');
     const prior=this.state.records.find(record=>record.traceId===traceId);
-    if(prior||this.recordedOutcomeTraceIds.has(traceId)){
-      // External evidence ingestion is idempotent by its stable source identity.
-      // Do not manufacture another outcome when an upstream bridge retries.
-      return prior ? structuredClone(prior) : null;
+    if(prior){
+      // Stable source identity is idempotent only for the same normalized payload.
+      // A reused ID with changed evidence must surface as a conflict, not be silently ignored.
+      const samePayload=prior.provenance===provenance&&prior.tick===eventTick&&prior.taskId===taskId&&prior.action===input.action&&
+        prior.reward01===reward&&prior.success01===success&&prior.surprise01===surprise&&prior.novelty01===novelty&&
+        prior.uncertainty01===uncertainty&&prior.identityRelevance01===identityRelevance&&prior.goalPressure01===goalPressure&&
+        prior.causalStrength01===causal&&prior.stateGrounded===stateGrounded&&
+        prior.sourceMemoryId===sourceMemoryId&&prior.evidenceKey===evidenceKey;
+      if(!samePayload)throw new Error('causal-external-trace-id-conflict');
+      return structuredClone(prior);
+    }
+    if(this.recordedOutcomeTraceIds.has(traceId)){
+      // The event is known but its bounded record has been evicted. Do not create
+      // another outcome when an upstream bridge retries an identity we still remember.
+      return null;
     }
     const record:CausalExperienceRecord={
-      id, tick:Math.max(0,Math.floor(Number.isFinite(input.tick)?input.tick:0)), at, traceId, action:input.action,
+      id, tick:eventTick, at, traceId, action:input.action,
       taskId, reward01:reward, success01:success, surprise01:surprise,
       predictionError01:surprise*.6, novelty01:novelty, uncertainty01:uncertainty, energyBefore01:.5,
       energyAfter01:clamp01(.5-success*.08), stateDelta01:clamp01(Math.abs(success-.5)*.7+surprise*.3), causalStrength01:causal,
-      identityRelevance01:clamp01(input.identityRelevance01??0), goalPressure01:clamp01(input.goalPressure01??0),
-      consolidated:false, provenance:input.provenance??'external', stateGrounded:Boolean(input.stateGrounded),
-      sourceMemoryId:input.sourceMemoryId, evidenceKey:input.evidenceKey,
-      learningQuality01:clamp01((input.stateGrounded?0.45:0.18)+causal*.45+novelty*.10), replayEligible:Boolean(input.stateGrounded), replayPriority01:clamp01(.24*surprise+.20*(surprise*.6)+.18*causal+.12*novelty+.10*uncertainty+.08*clamp01(input.identityRelevance01??0)+.08*clamp01(input.goalPressure01??0)+.06*clamp01((input.stateGrounded?0.45:0.18)+causal*.45+novelty*.10)), replayCount:0, lastReplayedAt:0,
+      identityRelevance01:identityRelevance, goalPressure01:goalPressure,
+      consolidated:false, provenance, stateGrounded,
+      sourceMemoryId, evidenceKey,
+      learningQuality01:clamp01((stateGrounded?0.45:0.18)+causal*.45+novelty*.10), replayEligible:stateGrounded, replayPriority01:clamp01(.24*surprise+.20*(surprise*.6)+.18*causal+.12*novelty+.10*uncertainty+.08*identityRelevance+.08*goalPressure+.06*clamp01((stateGrounded?0.45:0.18)+causal*.45+novelty*.10)), replayCount:0, lastReplayedAt:0,
     };
     this.state.records.push(record); if(this.state.records.length>this.maxRecords)this.state.records=this.state.records.slice(-this.maxRecords);
     this.recordedOutcomeTraceIds.add(traceId);
