@@ -1,3 +1,13 @@
+## Current source-stack checkpoint — WorkPass272 (2026-10-22)
+
+- WorkPass272 hardens evaluator authority isolation: a shared predicate now requires both non-overlapping resolved paths and distinct device/inode filesystem identities for run/survive storage roots, including case-insensitive path comparisons on Windows.
+- Added unit-level contract cases for different path strings with the same underlying identity, nested roots, and truly distinct roots; the existing WorkPass110 workflow already runs the host-owned evaluator subprocess regression.
+- Code-change baseline before this documentation update: 4b1eb790956a474c808201701b161d60e5b2d974. Use the live PR for the current HEAD.
+- Exact-head CI/typecheck remains unverified because recent Actions jobs fail without visible steps/logs. No learning score uplift is claimed.
+- PR #55 remains open/draft/unmerged. Deployment of the actual OS/container sandbox and independently controlled verifier/scanner remains an open release gate.
+
+---
+
 ## Current source-stack checkpoint — WorkPass271 (2026-10-22)
 
 - WorkPass271 hardens snapshot recovery against Unicode identity collisions: exact normalized duplicate rows collapse to one; conflicting rows that share a normalized trace ID are quarantined from active causal history while the ID stays in the duplicate guard.
