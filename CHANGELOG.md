@@ -1390,3 +1390,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Process-supervisor receipts use the canonical manifest digest when available. In configurations without a canonical experiment authority, the plan digest remains process bookkeeping only and is not represented as a real manifest in the service request.
 - Extended the WorkPass243 host-service fixture protocol to exercise a non-null manifest fingerprint.
 - Validation caveat: the source and regression wiring are committed, but no local test/typecheck or successful exact-head CI execution is claimed. The configured executor must still be a real host-owned OS/container sandbox launcher; independent verifier/scanner programs and deployment configuration remain host responsibilities.
+
+
+## WorkPass245 — bind canonical experiment plan and scheduled run in host attestations
+
+- Tightened host-owned verifier and scanner response binding to require exact echoes of `experimentPlanFingerprint` and `plannedRunId` in addition to the canonical manifest, evaluator plan, payload, task input, environment, run, task and seed.
+- Updated the existing host-process protocol fixture to echo the full scheduled experiment context. This keeps the trust boundary aligned with the immutable context produced by the canonical evaluator.
+- Validation remains unverified: no local test/typecheck was run; latest GitHub Actions jobs are failing before exposing usable step details. Real OS/container isolation and production authority provisioning remain open.
