@@ -1,3 +1,12 @@
+## WorkPass323 — isolate nested cognitive-loop persistence (2026-10-22)
+
+- Fixed a state-ownership collision between `OrganismCore` and the outer `OrganismRuntime`: both were persisting a `CognitiveEventFabric`, `CognitiveResourceEconomy`, and `UnifiedCognitiveCycle` into the same three schema fields despite representing different decision horizons. This let the wrapper overwrite the Core's event lineage/budgets/cycle counters, and later restart could feed one loop's snapshot into the other.
+- Added dedicated persisted slots and explicit setters for the outer embodied/world-feedback loop (`runtimeCognitiveEventFabric`, `runtimeCognitiveResourceEconomy`, `runtimeUnifiedCognitiveCycle`). Existing fields remain the Core-owned internal decision-loop state. The two loops now persist independently instead of fighting over the same fields.
+- Added a backward-compatible read fallback in runtime initialization: when loading older persisted state with no outer-specific slot, the wrapper seeds from the legacy field once, preserving the existing history; following saves write only to namespaced runtime slots.
+- Added `tests/workpass323-cognitive-loop-persistence-separation.mjs`, registered `test:p323:cognitive-loop-persistence-scope`, and added a dedicated CI step. The check verifies the schema/setter/restore/save boundary and prevents future reintroduction of writes into Core-owned fields. Hosted execution remains unverified because recent Actions jobs fail before their steps start.
+
+---
+
 ## WorkPass322 — harden persisted cognitive resource budgets (2026-10-22)
 
 - Changed `CognitiveResourceEconomy.restore()` from broad object spreading/coercion to a version-aware whitelist restore. Corrupt counters, string-valued budgets, non-finite values, invalid modes and timestamps no longer silently propagate into the organism's live compute/attention/learning/memory budgets.
