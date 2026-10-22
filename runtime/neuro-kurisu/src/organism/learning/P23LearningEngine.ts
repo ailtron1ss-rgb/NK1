@@ -211,12 +211,31 @@ function baselineAction(state:OrganismState):{action:ActionKind;reason:string} {
   return {action:'reflect',reason:'low-pressure conservative baseline'};
 }
 
-function canonicalize(value:unknown):string {
+function canonicalize(value:unknown, ancestors = new Set<object>()):string {
+  // Keep the engine's payload/evaluation fingerprints byte-compatible with the
+  // independent evaluator while refusing values JSON would silently collapse.
+  if (typeof value === 'number' && !Number.isFinite(value)) {
+    throw new Error('p23-canonicalization-non-finite-number');
+  }
   if (value === undefined) return 'null';
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonicalize).join(',')}]`;
-  const obj = value as Record<string,unknown>;
-  return `{${Object.keys(obj).filter(k=>obj[k]!==undefined).sort().map(k=>`${JSON.stringify(k)}:${canonicalize(obj[k])}`).join(',')}}`;
+  if (value === null || typeof value !== 'object') {
+    const encoded = JSON.stringify(value);
+    if (encoded === undefined) throw new Error('p23-canonicalization-value-not-json-serializable');
+    return encoded;
+  }
+  if (ancestors.has(value)) throw new Error('p23-canonicalization-circular-value');
+  const prototype = Object.getPrototypeOf(value);
+  if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) {
+    throw new Error('p23-canonicalization-non-plain-object');
+  }
+  ancestors.add(value);
+  try {
+    if (Array.isArray(value)) return `[${value.map(item => canonicalize(item, ancestors)).join(',')}]`;
+    const obj = value as Record<string,unknown>;
+    return `{${Object.keys(obj).filter(k=>obj[k]!==undefined).sort().map(k=>`${JSON.stringify(k)}:${canonicalize(obj[k], ancestors)}`).join(',')}}`;
+  } finally {
+    ancestors.delete(value);
+  }
 }
 
 export class P23LearningEngine {
