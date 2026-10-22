@@ -1,3 +1,13 @@
+## WorkPass272 — close path-only storage root isolation checks (2026-10-22)
+
+The host-owned independent-evaluation adapter now uses one predicate for storage-root separation. It rejects equal/nested resolved paths and roots that share the same filesystem identity, even when their path strings differ; Windows path comparisons are case-insensitive. The predicate is applied both within an authority's run/survive directories and across all executor/verifier/scanner roots. A pure test exercises same-identity/different-path, nested-path and independent-root cases.
+
+This improves the isolation contract but does not supply an OS/container sandbox or prove separate administrative control of the verifier and scanner.
+
+**Validation:** code/test source committed; successful exact-head CI and runtime typecheck remain unverified because Actions returns failed jobs without steps/logs. No new dependency; no learning-score increase.
+
+---
+
 ## WorkPass271 — normalize and reconcile legacy causal snapshot identities (2026-10-22)
 
 CausalExperienceStream restore previously normalized persisted trace IDs but retained all rows whose normalized IDs were non-empty. Distinct legacy Unicode spellings could therefore become duplicate active records after NFKC. Restore now collapses exact normalized duplicate rows and quarantines all rows when records with one normalized trace ID disagree. The normalized identity remains in the bounded deduplication set even when its records are quarantined, preventing silent reinsertion after restart. Regressions cover both exact and conflicting Unicode variants.
