@@ -81,7 +81,7 @@ process.stdout.write(JSON.stringify({
   const context = {
     payloadFingerprint: 'b'.repeat(64), taskInputFingerprint: 'c'.repeat(64),
     environmentFingerprint: 'd'.repeat(64), planFingerprint: 'a'.repeat(64),
-    manifestFingerprint: null, experimentPlanFingerprint: null, plannedRunId: null,
+    manifestFingerprint: 'f'.repeat(64), experimentPlanFingerprint: null, plannedRunId: null,
   };
   const execution = await services.executor.execute({ payload: { answer: 42 }, task, context });
   assert.deepEqual(execution.observedStepIds, ['step-a']);
