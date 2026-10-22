@@ -64,7 +64,7 @@ export class UnifiedCognitiveCycle {
 
   evaluate(input:{tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number}):UnifiedCognitiveCycleResult {
     if(!Number.isSafeInteger(input.tick)||input.tick<0)throw new RangeError('cognitive cycle tick must be a non-negative safe integer');
-    if(input.tick<this.state.lastTick)throw new RangeError('cognitive cycle tick must not move backwards');
+    if(input.tick<=this.state.lastTick)throw new RangeError('cognitive cycle tick must strictly increase');
     if(typeof input.parentIntegrity01!=='number'||!Number.isFinite(input.parentIntegrity01)||input.parentIntegrity01<0||input.parentIntegrity01>1) {
       throw new RangeError('parentIntegrity01 must be a finite value in [0, 1]');
     }
