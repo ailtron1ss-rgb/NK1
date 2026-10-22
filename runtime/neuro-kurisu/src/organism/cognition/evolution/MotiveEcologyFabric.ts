@@ -15,6 +15,10 @@ export interface MotiveEcologyFrame {
   valueAlignment01: number;
   actionBiases: Record<string, number>;
   reasons: string[];
+  /** EILS-inspired homeostatic control signals; these are computational signals, not claims of subjective emotion. */
+  eilsSignals: { curiosity01:number; stress01:number; confidence01:number };
+  /** Read-only controls for exploration entropy, update plasticity and trust-region size. */
+  learningModulation: { entropyFloor01:number; plasticity01:number; trustRegionRadius01:number };
   nonConsciousnessClaim: true;
 }
 
@@ -60,13 +64,23 @@ export class MotiveEcologyFabric {
     const top = ranked[0]?.[1] ?? 0;
     const second = ranked[1]?.[1] ?? 0;
     const conflict = clamp(Math.abs(top-second)*.22 + input.cognitiveConflict01*.48 + input.socialPredictionError01*.16 + input.developmental.counterEvidencePressure01*.14);
-    const valueAlignment = harmonic([v.truth, v.evidence, v.responsibility, input.selfConsistency01, input.developmental.integrity01]);
+const valueAlignment = harmonic([v.truth, v.evidence, v.responsibility, input.selfConsistency01, input.developmental.integrity01]);
+    // EILS-inspired signals are computed from already-owned NK1 signals; no new model or dependency is introduced.
+    const curiosity01 = clamp(.44*input.intrinsic.epistemic + .28*input.intrinsic.novelty + .16*input.uncertainty01 + .12*input.noveltyPressure01);
+    const stress01 = clamp(.26*(1-input.energy01) + .22*input.predictionError01 + .18*input.cognitiveConflict01 + .16*input.goalPressure01 + .10*(1-input.developmental.integrity01) + .08*input.uncertainty01);
+    const confidence01 = clamp(.25*input.selfConsistency01 + .22*input.developmental.integrity01 + .18*input.socialTrust01 + .18*valueAlignment + .10*(1-input.uncertainty01) + .07*(1-input.predictionError01));
+    const learningModulation = {
+      entropyFloor01: clamp(.05 + .20*curiosity01 + .06*stress01 - .05*confidence01),
+      plasticity01: clamp(.06 + .66*stress01 + .18*curiosity01 + .10*(1-confidence01)),
+      trustRegionRadius01: clamp(.04 + .34*confidence01 + .10*(1-stress01)),
+    };
+
     const actionBiases: Record<string, number> = {
-      explore: clamp((exploratory-.5)*.08 + (input.developmental.phase==='exploring'?.018:0) + (input.uncertainty01>.62?.016:0)),
-      verify: clamp((epistemic-.5)*.08 + (input.developmental.phase==='revising'?.024:0) + (input.predictionError01>.55?.018:0)),
-      reflect: clamp((coherence-.5)*.07 + (repair?.022:0) + (conflict>.45?.018:0)),
+      explore: clamp((exploratory-.5)*.08 + (input.developmental.phase==='exploring'?.018:0) + (input.uncertainty01>.62?.016:0) + Math.max(0,curiosity01-.45)*.05),
+      verify: clamp((epistemic-.5)*.08 + (input.developmental.phase==='revising'?.024:0) + (input.predictionError01>.55?.018:0) + Math.max(0,stress01-.4)*.04),
+      reflect: clamp((coherence-.5)*.07 + (repair?.022:0) + (conflict>.45?.018:0) + Math.max(0,stress01-.4)*.035),
       respond: clamp((social-.5)*.06 + (care-.5)*.04),
-      rest: clamp((homeostatic-.5)*.07),
+      rest: clamp((homeostatic-.5)*.07 + Math.max(0,stress01-.65)*.05),
       'send-message': clamp((social-.5)*.035 + (care-.5)*.02),
     };
     const reasons: string[] = [];
@@ -77,6 +91,6 @@ export class MotiveEcologyFabric {
     if(homeostatic>.62) reasons.push('homeostatic-pressure');
     if(responsibility>.62) reasons.push('commitment-pressure');
     if(input.developmental.revisionReadiness01>.62) reasons.push('developmental-revision');
-    return {version:1,epistemic01:epistemic,exploratory01:exploratory,competence01:competence,coherence01:coherence,social01:social,care01:care,autonomy01:autonomy,homeostatic01:homeostatic,responsibility01:responsibility,overall01:clamp(Math.max(...Object.values(entries))),dominant,conflict01:conflict,valueAlignment01:valueAlignment,actionBiases,reasons:[...new Set(reasons)].slice(0,10),nonConsciousnessClaim:true};
+    return {version:1,epistemic01:epistemic,exploratory01:exploratory,competence01:competence,coherence01:coherence,social01:social,care01:care,autonomy01:autonomy,homeostatic01:homeostatic,responsibility01:responsibility,overall01:clamp(Math.max(...Object.values(entries))),dominant,conflict01:conflict,valueAlignment01:valueAlignment,eilsSignals:{curiosity01,stress01,confidence01},learningModulation,actionBiases,reasons:[...new Set(reasons)].slice(0,10),nonConsciousnessClaim:true};
   }
 }
