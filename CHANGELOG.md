@@ -1,3 +1,12 @@
+## WorkPass281 — independent evaluator input and run identity hardening (2026-10-22)
+
+- P23 evaluation fingerprinting rejects non-finite numbers, circular inputs and non-plain objects before execution.
+- Sandbox run IDs must be bounded and free of control characters before independent verification or trusted evidence binding.
+- Added regression coverage for malformed task inputs and control-bearing run IDs.
+- No dependency added. Test execution remains unverified; no learning-score uplift claimed.
+
+---
+
 ## WorkPass280 — strict canonicalization of evaluation evidence (2026-10-22)
 
 - Independent evaluation evidence fingerprints now reject NaN/Infinity, circular references and non-plain objects instead of canonicalizing invalid values ambiguously.
