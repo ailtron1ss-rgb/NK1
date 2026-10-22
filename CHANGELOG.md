@@ -1,3 +1,10 @@
+## WorkPass288 — outcome-provenance boundary pass (2026-10-22)
+
+- Added `docs/WORKPASS288_OUTCOME_PROVENANCE_MICROCYCLE_2026-10-22.md` documenting a concrete source-level weakness: reduced-resolution learning treats a caller-provided reward/success scalar as verified outcome evidence.
+- Specified a safe correction using the existing canonical verifier, action/tick correlation, stale-evidence rejection, and zero verified learning credit when evidence is absent while preserving continuity/homeostasis.
+- Runtime code is unchanged: the verifier result and correlation contract must be traced before modifying interfaces. Tests not run; no dependency added.
+- Next source trace: connect existing full-cycle outcome verification/persistence to the reduced-resolution cycle without creating duplicate verification or learning authorities.
+
 ## WorkPass287 — cognitive architecture source-contract pass (2026-10-22)
 
 - Added `runtime/neuro-kurisu/tests/workpass287-cognitive-architecture-contract.mjs`, an executable contract check for architecture-map references, recurrent flow endpoints, canonical owner uniqueness and mapped source-path existence.
