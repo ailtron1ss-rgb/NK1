@@ -78,6 +78,13 @@ export interface IndependentCandidateEvaluationConfig {
   serviceTimeoutMs?: number;
 }
 const isDigest = (x: unknown): x is string => typeof x === 'string' && /^[a-f0-9]{64}$/i.test(x);
+const isSafeRunId = (value: unknown): value is string =>
+  typeof value === 'string' && value.length > 0 && value.length <= 256 &&
+  value.trim() === value &&
+  !Array.from(value).some(character => {
+    const code = character.codePointAt(0) ?? 0;
+    return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
+  });
 // Must match P23LearningEngine's canonicalize exactly or its post-generation
 // payload/evaluation digest gate will reject a genuine evaluator result.
 function canonical(value: unknown, ancestors = new Set<object>()): string {
@@ -304,7 +311,7 @@ export function createIndependentSkillCandidateEvaluator(
           context: structuredClone(executionContext),
           signal,
         })));
-        if (!execution || typeof execution.runId !== 'string' || !execution.runId.trim() ||
+        if (!execution || !isSafeRunId(execution.runId) ||
             !Array.isArray(execution.observedStepIds) ||
             execution.observedStepIds.some(step => typeof step !== 'string' || !step.trim()) ||
             new Set(execution.observedStepIds).size !== execution.observedStepIds.length) {
