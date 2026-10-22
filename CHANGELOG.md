@@ -1,3 +1,9 @@
+## WorkPass262 — avoid per-frame canvas bitmap resets (2026-10-22)
+
+- **Code:** LegacySpriteDeck now updates canvas width/height only when layout dimensions change, avoiding repeated bitmap clears and drawing-context resets during every animation frame.
+- **Regression authored:** added assertions to the existing Legacy sprite runtime test.
+- **Validation:** app script regression and typecheck have not been confirmed executed.
+
 ## WorkPass261 — idempotent external learning intake (2026-10-22)
 
 - **Code:** normalize external evidence trace IDs, return the original record for repeated source identities, persist those identities through snapshots, and avoid duplicate outcome counts on bridge retries.
