@@ -1,3 +1,11 @@
+## WorkPass282 — P23 fingerprint canonicalization consistency (2026-10-22)
+
+- Unified the P23 engine's canonicalization semantics with the independent candidate evaluator for candidate payload and evaluation fingerprints.
+- Non-finite numbers, cyclic structures, non-plain objects and non-JSON-serializable values are rejected rather than fingerprinted ambiguously.
+- No dependency added. Test/typecheck execution remains unverified; no learning-score uplift claimed.
+
+---
+
 ## WorkPass281 — independent evaluator input and run identity hardening (2026-10-22)
 
 - P23 evaluation fingerprinting rejects non-finite numbers, circular inputs and non-plain objects before execution.
