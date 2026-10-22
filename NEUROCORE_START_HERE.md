@@ -1,3 +1,15 @@
+## Latest durable checkpoint — WorkPass267 (2026-10-22)
+
+- Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use the live PR to read current HEAD.
+- WorkPass267 now distinguishes exact duplicate causal events from conflicting reuse of an existing trace identity, including after snapshot/restore; conflicting payloads fail closed without increasing outcomes.
+- Focused regression code and CI wiring exist, but successful exact-head tests/typecheck are not yet confirmed because Actions lacks accessible step logs. Do not claim a test pass.
+- Keep learning scores unchanged until independent task evidence demonstrates measurable transfer or memory-grounded action improvement.
+- Next code-first target: map all external causal-event call sites and replace caller-asserted stateGrounded/provenance with canonical state-transition or verifier evidence without breaking contracts prematurely.
+
+Read the [strategic audit](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [P23 integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md), and [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md).
+
+---
+
 ## Latest durable checkpoint — WorkPass266 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use the live PR for the current SHA.
