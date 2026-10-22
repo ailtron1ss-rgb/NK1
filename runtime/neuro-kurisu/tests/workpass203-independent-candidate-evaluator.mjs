@@ -64,6 +64,45 @@ assert.equal(snapshotResult.evaluation.provenance.runBindings[0].taskId, 'valida
 assert.equal(snapshotResult.evaluation.provenance.planFingerprint, expectedSnapshotPlanFingerprint,
   'evaluation provenance must retain the task plan captured when evaluator was created');
 
+// The candidate payload is an authority snapshot for the entire evaluation, not
+// a live caller-owned object cloned separately after each async trial.
+const mutablePayload = { steps: ['open', 'summarize'], version: 1 };
+const mutablePayloadFingerprint = digest(mutablePayload);
+let releaseFirstTrial;
+let signalFirstTrialStarted;
+const firstTrialGate = new Promise(resolve => { releaseFirstTrial = resolve; });
+const firstTrialStarted = new Promise(resolve => { signalFirstTrialStarted = resolve; });
+const payloadsSeenByTrials = [];
+const payloadSnapshotEvaluator = createIndependentSkillCandidateEvaluator({
+  tasks,
+  environmentFingerprint: 'd'.repeat(64),
+  executor: { async execute({ task, payload: trialPayload }) {
+    payloadsSeenByTrials.push({ trialId: task.trialId, payload: structuredClone(trialPayload) });
+    if (task.trialId === 'trial-1') {
+      signalFirstTrialStarted();
+      await firstTrialGate;
+    }
+    return { runId: 'payload-snapshot-' + task.trialId, observedStepIds: ['open', 'summarize'] };
+  } },
+  verifier: { async verify() { return { bindingVerified: true, passed: true, coveredCapabilityIds: ['read'] }; } },
+  safetyScanner: { async scan() { return { violationCount: 0 }; } },
+});
+const snapshotEvaluationPromise = payloadSnapshotEvaluator({
+  payload: mutablePayload,
+  payloadFingerprint: mutablePayloadFingerprint,
+  baseline: { validation: [], holdout: [] },
+  previousEvaluation: { validation: [], holdout: [] },
+});
+await firstTrialStarted;
+mutablePayload.steps[0] = 'caller-mutated-after-first-await';
+releaseFirstTrial();
+const payloadSnapshotResult = await snapshotEvaluationPromise;
+assert.equal(payloadSnapshotResult.payloadFingerprint, mutablePayloadFingerprint);
+assert.equal(payloadsSeenByTrials.length, 2);
+assert.ok(payloadsSeenByTrials.every(entry =>
+  entry.payload.steps[0] === 'open' && entry.payload.steps[1] === 'summarize'),
+  'all trials must execute the same construction-time payload snapshot even if the caller mutates its object mid-evaluation');
+
 const result = await evaluator({ payload, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } });
 assert.equal(runs, 2);
 assert.equal(result.payloadFingerprint, digest(payload));
