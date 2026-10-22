@@ -8005,6 +8005,16 @@ export class OrganismCore {
                 memoryEvidence01: dreamMemoryEvidence,
                 novelty01: clamp(n.novelty),
             });
+            const dreamMemoryItems = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items.slice(0, 24);
+            this.cognitiveRuntime.microDreams.dreamAssociations(dreamMemoryItems.map((item: any) => ({
+                id: String(item.id), content: String(item.content ?? ''),
+                confidence01: clamp(item.confidence), salience01: clamp(item.salience),
+                semanticLinks: Array.isArray(item.semanticLinks) ? item.semanticLinks : [],
+                entities: Array.isArray(item.entities) ? item.entities : [],
+            })), `memory-associations:${state.tick}`, {
+                at: state.at, uncertainty01: clamp(state.needs.uncertainty),
+                memoryEvidence01: dreamMemoryEvidence, novelty01: clamp(n.novelty),
+            });
         }
         if (state.tick % 25 === 0)
             this.cognitiveRuntime.developmentalForks.create(`tick-${state.tick}`, 'different commitment trajectory', 'future identity/preferences may diverge');
