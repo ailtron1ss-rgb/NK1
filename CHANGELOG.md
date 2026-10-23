@@ -1,3 +1,11 @@
+## NK1 WorkPass447 — harden evidence-ledger snapshot restoration (2026-10-23)
+
+- Applied the existing bounded plain-data snapshot boundary to `VerifiedOutcomeLedger.restoreSnapshot` before reading persisted schema fields. Accessor-backed snapshots, cycles, unsupported prototypes, and oversized graphs now fail closed without running getter code.
+- Added regressions for a getter-backed schema version and a cyclic snapshot. Accepted evidence, evidence authority, and the ledger schema remain unchanged; no dependency added.
+- **Verification:** regression cases are committed, but execution is unconfirmed because hosted Actions currently fail before runner allocation.
+
+---
+
 ## NK1 WorkPass444 — protect manifest initialization and reconcile evidence regressions (2026-10-23)
 
 - Extended the shared bounded plain-data boundary to `VerifiedOutcomeLedger` manifest initialization, so caller-owned getters, prototype overrides, sparse arrays, cyclic entries and oversized manifest payloads are rejected before manifest fields are read.
