@@ -17,15 +17,11 @@ permissions:
 jobs:
   autonomous-p23-revision:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 2
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: '24'
-          package-manager-cache: false
-      - name: Enforce runtime version
-        run: node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
-      - name: Run integrated P23 revision/evidence regressions
-        working-directory: runtime/neuro-kurisu
-        run: npm run test:workpass293:p23-revision
+      - name: Temporary runner allocation diagnostic (no external actions)
+        run: |
+          echo "RUNNER_STARTUP_DIAGNOSTIC=ok"
+          echo "runner_os=${RUNNER_OS}"
+          echo "runner_name=${RUNNER_NAME}"
+          test -n "${RUNNER_NAME}"
