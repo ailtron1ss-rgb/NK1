@@ -43,3 +43,8 @@ WorkPass408 добавляет reconciliation-контур. Журнал жиз�
 1. Восстановить actionable CI и выполнить новые тесты на exact HEAD.
 2. Связать подтверждённую активацию с последующими независимыми task outcomes, forgetting и regression evidence, чтобы считать не только «навык включён», но и «навык помог».
 3. Добавить signed remote journal checkpoints и reconciliation на реальной persistence backend, затем провести restart/crash/rollback soak.
+
+
+## WorkPass409 supplement — intent-only crash window
+
+A failure-injection review found that a hard process exit can occur after `activation-intent` is fsynced but before `activation-outcome-unknown` is appended. WorkPass409 closes this window by reconciling all non-terminal intents against the canonical versioned store, even when no unknown event exists. The existing integration regression now contains that abrupt-exit case. Missing/contradictory store lineage remains unresolved; reconciliation never authorizes activation. CI execution remains unverified because job logs are unavailable.
