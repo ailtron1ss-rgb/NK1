@@ -4,6 +4,19 @@ import { snapshotPlainData } from './LearningTrustBoundary.ts';
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const clean=(x:unknown,n=140)=>String(x??'').trim().replace(/\s+/g,' ').slice(0,n);
 const hash=(s:string)=>{let h=2166136261>>>0;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)>>>0;}return (h>>>0).toString(16).padStart(8,'0');};
+const isCurriculumUnit=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
+const isCurriculumTimestamp=(value:unknown):value is number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
+const isCurriculumCounter=(value:unknown):value is number=>isCurriculumTimestamp(value)&&value<=1_000_000_000;
+function snapshotCurriculumInput(value:unknown,label:string):Record<string,unknown>{
+  let detached:unknown;
+  try{detached=snapshotPlainData(value);}
+  catch{throw new Error(`personal-curriculum-${label}-data-boundary-rejected`);}
+  if(detached===null||typeof detached!=='object'||Array.isArray(detached))throw new Error(`personal-curriculum-${label}-shape-invalid`);
+  return detached as Record<string,unknown>;
+}
+function assertCurriculumUnits(value:Record<string,unknown>,keys:readonly string[],label:string):void{
+  if(!keys.every(key=>isCurriculumUnit(value[key])))throw new Error(`personal-curriculum-${label}-score-invalid`);
+}
 
 export interface CurriculumThread {
   id:string;
@@ -119,7 +132,27 @@ export class PersonalCurriculumEngine {
   }
 
   observeOutcome(input:{goal:OrganismGoal|null;outcome01:number;verified:boolean;contextKey:string;causal01:number;social01:number;identity01:number;retention01:number;transfer01:number;at?:number;sourceMomentCount?:number}):CurriculumThread|null{
-    if(!input.goal)return null;
+    input=snapshotCurriculumInput(input,'outcome') as unknown as typeof input;
+    if(input.goal===null)return null;
+    const goal=input.goal as unknown as Record<string,unknown>;
+    if(!goal||typeof goal!=='object'||Array.isArray(goal)||
+       typeof goal.id!=='string'||!goal.id.trim()||goal.id.length>256||
+       typeof goal.title!=='string'||!goal.title.trim()||goal.title.length>512||
+       typeof goal.reason!=='string'||goal.reason.length>4096||
+       typeof goal.source!=='string'||goal.source.length>120||
+       typeof goal.status!=='string'||goal.status.length>120||
+       !isCurriculumUnit(goal.importance)||!isCurriculumUnit(goal.urgency)||
+       !isCurriculumUnit(goal.confidence)||!isCurriculumUnit(goal.progress)||
+       !isCurriculumTimestamp(goal.createdAt)||!isCurriculumTimestamp(goal.updatedAt)){
+      throw new Error('personal-curriculum-goal-invalid');
+    }
+    assertCurriculumUnits(input as unknown as Record<string,unknown>,
+      ['outcome01','causal01','social01','identity01','retention01','transfer01'],'outcome');
+    if(typeof input.verified!=='boolean'||typeof input.contextKey!=='string'||input.contextKey.length>512||
+       (input.at!==undefined&&!isCurriculumTimestamp(input.at))||
+       (input.sourceMomentCount!==undefined&&!isCurriculumCounter(input.sourceMomentCount))){
+      throw new Error('personal-curriculum-outcome-invalid');
+    }
     const at=input.at??Date.now();
     const family=this.family(input.goal);
     const source:CurriculumThread['source']=input.social01>.52&&input.identity01>.48?'mixed':input.social01>.52?'social':input.identity01>.52?'autobiographical':'goal';
@@ -155,6 +188,16 @@ export class PersonalCurriculumEngine {
   }
 
   observeDevelopmentalContext(input:{action:string;source:'autobiographical'|'social'|'mixed';contextKey:string;pressure01:number;identity01:number;social01:number;causal01:number;evidence01:number;unresolved01:number;at?:number;label?:string}):CurriculumThread|null{
+    input=snapshotCurriculumInput(input,'developmental-context') as unknown as typeof input;
+    if(typeof input.action!=='string'||!input.action.trim()||input.action.length>256||
+       !['autobiographical','social','mixed'].includes(input.source)||
+       typeof input.contextKey!=='string'||input.contextKey.length>512||
+       (input.label!==undefined&&(typeof input.label!=='string'||input.label.length>512))||
+       (input.at!==undefined&&!isCurriculumTimestamp(input.at))){
+      throw new Error('personal-curriculum-developmental-context-invalid');
+    }
+    assertCurriculumUnits(input as unknown as Record<string,unknown>,
+      ['pressure01','identity01','social01','causal01','evidence01','unresolved01'],'developmental-context');
     const at=input.at??Date.now();
     const family=`context:${input.source}:${clean(input.action,48).toLowerCase()}`;
     const thread=this.findOrCreate(family,input.label||`${input.source} learning: ${input.action}`,input.source,at);
