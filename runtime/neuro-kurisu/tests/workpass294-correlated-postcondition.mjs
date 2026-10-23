@@ -19,6 +19,14 @@ assert.match(coreSource, /decisionLinkedExternalPostcondition \? options\.decisi
   'observations without the exact join may be ingested, but cannot claim decision/temporal credit');
 assert.match(gatewaySource, /executionId,\s*\.\.\.(?:typeof context\.decisionId|typeof prior\.decisionId)/,
   'gateway verification must carry the action execution and decision tickets');
+assert.match(coreSource, /const trustedEventLink = Boolean\(decisionLinkedExternalPostcondition && actionInput && linkedDecisionId/,
+  'event ID propagation requires the trusted decision/input binding, not just a caller string');
+assert.match(coreSource, /evidenceEventId: trustedEventLink && typeof v\.evidenceEventId === 'string' \? v\.evidenceEventId : undefined/,
+  'only a freshly trusted verifier result may pass its event key into the canonical observer');
+assert.match(coreSource, /this\.integrateVerifiedToolObservation\(id, result, options, false, decisionLinkedExternalPostcondition, input\)/,
+  'the canonical full action input is rebound to the exact verification before the event key is admitted');
+assert.match(coreSource, /this\.evidenceResearchSubsystem\.externalObserver\.snapshot\(\)/,
+  'the event enters the existing canonical external-observation owner rather than a parallel evidence store');
 assert.match(serviceSource, /trustedExternalPostconditionResults\.get\(value as object\)/,
   'correlation must be anchored to the exact verifier-minted object');
 
