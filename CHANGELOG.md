@@ -1,3 +1,12 @@
+## NK1 WorkPass430 — gate speech synthesis input before planning (2026-10-23)
+
+- TTS now rejects non-string speech instead of coercing arbitrary caller values and clamps raw input before normalization/planning, preventing oversized text from consuming unbounded planning work.
+- Voice context is snapshotted through the shared plain-data boundary and validates action/mode/event identifiers, confidence values and affective needs before those signals enter prosody selection.
+- Added regression cases for hostile text coercion, getter-backed context, non-finite mood/context signals and proof that rejected input never reaches the TTS dispatcher.
+- No new runtime dependency: the same bounded snapshot helper used by memory/cognition is now included in the embodiment branch. Physical TTS still needs real-device integration verification; hosted test execution remains unconfirmed.
+
+---
+
 ## NK1 WorkPass422 — serialize STT sessions and bound transcripts (2026-10-23)
 
 - Prevented concurrent STT calls from overlapping; a second listen request is refused while the first still owns the listening state.

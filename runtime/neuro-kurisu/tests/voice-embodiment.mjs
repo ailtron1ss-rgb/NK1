@@ -51,6 +51,35 @@ assert.equal(voiceState.lastError, null);
  runtime.setSpeechInputDispatcher(async () => 42);
  assert.equal(await runtime.listen(), null, 'non-string provider output must not leak into the cognitive input');
  assert.equal(runtime.voiceSnapshot().state.lastError, 'stt-invalid-result');
+
+ // WorkPass430: speech input must be bounded and plain-data checked before voice planning.
+ const speechGuard = new EmbodimentRuntime();
+ speechGuard.body = { ...defaultBodyState(), ttsAvailable: true };
+ let ttsDispatches = 0;
+ speechGuard.setSpeechGatewayDispatcher(async () => { ttsDispatches++; return { ok: true }; });
+ let coercionCalls = 0;
+ const hostileSpeechText = { toString() { coercionCalls++; return 'must not be spoken'; } };
+ assert.equal(await speechGuard.speak(hostileSpeechText), false,
+   'non-string speech requests must be rejected rather than coerced');
+ assert.equal(coercionCalls, 0, 'speech boundary must not execute custom text coercion');
+ assert.equal(ttsDispatches, 0, 'invalid speech text must never reach the TTS gateway');
+ assert.equal(speechGuard.voiceSnapshot().state.lastError, 'tts-invalid-text');
+
+ let contextGetterCalls = 0;
+ const hostileSpeechContext = Object.defineProperty({}, 'action', {
+   enumerable: true, get() { contextGetterCalls++; return 'respond'; },
+ });
+ assert.equal(await speechGuard.speak('Привет', hostileSpeechContext), false,
+   'accessor-backed voice context must be rejected before planning');
+ assert.equal(contextGetterCalls, 0, 'voice planning must not execute caller-owned context getters');
+ assert.equal(ttsDispatches, 0);
+
+ const boundedContext = { action: 'respond', mode: 'chat', continuity01: Number.NaN };
+ assert.equal(await speechGuard.speak('Привет', boundedContext), false,
+   'non-finite context confidence cannot change voice policy');
+ assert.equal(speechGuard.voiceSnapshot().state.lastError, 'tts-invalid-context');
+ assert.equal(ttsDispatches, 0);
+
  assert.equal(runtime.voiceSnapshot().state.listening, false);
  runtime.setSpeechInputDispatcher(async () => '   ');
  assert.equal(await runtime.listen(), null, 'empty normalized transcripts remain an explicit no-result');
