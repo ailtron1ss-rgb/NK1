@@ -1,3 +1,12 @@
+## NK1 WorkPass434 — schema-check emotion episode before feeling inference (2026-10-23)
+
+- Feeling inference now runs the detached episode through the same canonical normalizeEpisode schema used during persisted restore; ordinary plain objects with missing/malformed appraisal or interoception fields no longer reach nested reads.
+- Invalid emotion episodes are rejected before the live feelings history changes.
+- Added regression for a structurally malformed episode and a before/after state equality assertion. This keeps appraisal, interoception and self-report inputs on one episode contract.
+- Runtime execution remains unverified because hosted Actions has not assigned runners to recent jobs.
+
+---
+
 ## NK1 WorkPass428 — unify emotion live-input trust boundary (2026-10-23)
 
 - Added one bounded descriptor-only snapshot helper for live appraisal, interoception, outcome calibration and feeling inference, not only persisted-state restore. Accessor-backed, cyclic, exotic or oversized inputs are rejected before state mutation.

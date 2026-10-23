@@ -218,6 +218,9 @@ export class EmotionAppraisalEngine {
    * not a claim of phenomenal experience. */
   inferFeeling(episode:EmotionEpisode,input:{energy01:number;cognitiveLoad01:number;uncertainty01:number;selfFocus01?:number}):FeelingEpisode{
     episode=snapshotEmotionInput(episode,'emotion-feeling-episode-must-be-plain-data') as unknown as EmotionEpisode;
+    const normalizedEpisode=normalizeEpisode(episode);
+    if(!normalizedEpisode)throw new TypeError('emotion-feeling-episode-invalid');
+    episode=normalizedEpisode;
     input=snapshotEmotionInput(input,'emotion-feeling-input-must-be-plain-data') as unknown as typeof input;
     const bodyMismatch=this.state.interoception.lastMismatch01;
     const mismatch=c(bodyMismatch*.45 + Math.abs(episode.interoceptiveDelta.stress01-c(input.uncertainty01))*.30 + c(input.cognitiveLoad01)*.25);

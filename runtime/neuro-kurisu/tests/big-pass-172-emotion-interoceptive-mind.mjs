@@ -123,6 +123,18 @@ assert.throws(
 assert.deepEqual(accessorSafeEmotion.snapshot(), beforeInvalidEmotionInput,
   'rejected feeling input must not mutate the canonical affect state');
 
+const beforeMalformedEpisode = accessorSafeEmotion.snapshot();
+assert.throws(
+  () => accessorSafeEmotion.inferFeeling({ ...first, interoceptiveDelta: null }, {
+    energy01: .8, cognitiveLoad01: .2, uncertainty01: .3,
+  }),
+  /emotion-feeling-episode-invalid/,
+  'a plain object still must satisfy the complete emotion-episode schema',
+);
+assert.deepEqual(accessorSafeEmotion.snapshot(), beforeMalformedEpisode,
+  'malformed emotion episode must not append or modify feeling state');
+
+
 
 const h = new P66InteroceptiveHomeostasis();
 const high = h.observe({tick:1,at:1,energy01:.2,thermal01:.9,capacity01:.25,load01:.9,awake:true,uncertainty01:.8,predictionError01:.8,novelty01:.2});
