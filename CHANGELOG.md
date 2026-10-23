@@ -2113,3 +2113,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
 - Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
 - This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
+
+## NK1 WorkPass334 — release stuck voice-listening state after STT failure (2026-10-23)
+
+- **Fixed:** `EmbodimentRuntime.listen()` now resets its listening flag and refreshes its timestamp in `finally`, including provider throws; the failure is returned as a bounded diagnostic rather than leaving the voice runtime stuck.
+- **Boundary improved:** STT dispatch is injectable through the existing embodiment owner, enabling deterministic recovery tests without a live microphone. Physical speech/TTS actions remain behind the ActionGateway-backed dispatcher.
+- **Regression added:** `tests/voice-embodiment.mjs` forces an STT bridge exception, asserts listening state is released, then retries successfully and verifies the new transcript is returned.
+- **Validation boundary:** fixture is wired to the existing `npm run test:voice` script; runtime execution is not confirmed because hosted Actions currently stops before runner steps.
