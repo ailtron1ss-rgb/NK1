@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import { validateCiConfig } from "./verify-ci-reliability.mjs";
 
 const pinnedWorkflow = `name: example
+on:
+  pull_request:
+    branches:
+      - rebuild
 jobs:
   test:
     timeout-minutes: 20
@@ -62,4 +66,13 @@ test("rejects a too-short cognitive regression timeout", () => {
     nodeVersion: "22.16.0"
   });
   assert.match(errors.join("\\n"), /at least 15 minutes/);
+});
+
+test("requires cognitive CI for pull requests targeting rebuild", () => {
+  const missingTarget = pinnedWorkflow.replace("      - rebuild\\n", "");
+  const errors = validateCiConfig({
+    workflows: { "workpass79-cognitive-regression.yml": missingTarget },
+    nodeVersion: "22.16.0"
+  });
+  assert.match(errors.join("\\n"), /must run for pull requests targeting rebuild/);
 });
