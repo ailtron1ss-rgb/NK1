@@ -1,3 +1,12 @@
+## NK1 WorkPass448 — isolate semantic-memory maintenance from diagnostics failures (2026-10-23)
+
+- Wrapped optional embedding-provider diagnostics in a fail-soft boundary for both background semantic indexing and the read-only diagnostics endpoint. A faulty diagnostics hook no longer blocks embedding batches or causes memory observability itself to throw.
+- Indexing can still succeed while returning an explicit `provider-diagnostics-error` status; this fault does not trigger retry/backoff or mutate canonical memory contents. Normal provider error/backoff behavior is unchanged.
+- Added a deterministic provider fixture whose diagnostics method throws but whose embedding method works. No new dependency added.
+- **Verification:** regression source is committed; exact-head execution is not claimed due to the existing Actions runner-startup blocker.
+
+---
+
 ## NK1 WorkPass450 — guard background semantic-index maintenance options
 
 - Reused the canonical bounded plain-data snapshot boundary for `MemoryOS2.maintainSemanticIndexBatch`. Accessors, cycles, custom prototypes, unknown fields, non-finite option values, and negative timestamps are rejected before embedding-provider diagnostics, retry-ledger changes, or index work.
