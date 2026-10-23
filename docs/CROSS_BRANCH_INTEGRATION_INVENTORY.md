@@ -1,5 +1,15 @@
 # NK1 cross-branch integration inventory (2026-10-22)
 
+## Follow-up — semantic conflict repairs (2026-10-23)
+
+- Reconciled three meaningful source/target divergences instead of copying a branch file wholesale: restored P26's 18-feature named migration; restored and expanded micro-cycle finite-input normalization; replaced Core's duplicated autonomous executor-outcome list with shared `wasToolExecutorEntered` semantics.
+- Causal replay is now both connected to P23 production replay and indexed via a first-write-wins trace → experience map; existing adaptive multi-signal selection remains the final batch selector.
+- Safe avatar persistence is used by both `LegacySpriteDeck` and `AvatarStage`, with static regression coverage for both components.
+- The test aggregate includes the recovered true-learning suite and targeted wiring tests. No runtime-test pass is asserted until Actions allocates a runner and executes steps.
+
+---
+
+
 ## Follow-up — avatar persistence integration (2026-10-23)
 
 - `LegacySpriteDeck` and `AvatarStage` now use the restored `safeLocalStorage.ts` adapter for optional outfit, viewer-mode and voice preferences. A single blocked local-storage write returns `false` rather than aborting the settings effect.
