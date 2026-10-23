@@ -2152,3 +2152,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **Regression added:** malformed input fixtures cover null/objects, wrong field types, control characters, non-finite seeds, invalid method types and invalid top-level arguments.
 - **Research alignment:** preserves the trace-to-candidate-to-independent-evaluation path and paired/holdout evaluation discipline. No upstream code or dataset copied.
 - **Validation boundary:** code and tests are committed, but Actions still yield no runner steps/logs; no test pass or measured learning uplift is claimed.
+
+
+## NK1 WorkPass340 — make malformed-text regressions unambiguous
+
+- Reworked two WorkPass339 test fixtures to construct actual newline and NUL characters using `String.fromCharCode`, avoiding double-escaped source literals that could accidentally test printable backslash sequences instead of control characters.
+- This is a test-fixture correction only; no claim of runtime execution is made while the hosted job returns no steps/logs.
