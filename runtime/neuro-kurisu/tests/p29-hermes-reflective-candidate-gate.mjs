@@ -5,10 +5,11 @@ import {
   evaluateSkillLearnBenchTrial,
 } from '../src/organism/learning/SkillLearnBenchAdapter.ts';
 
-function trial(taskId, trialId, quality, safetyViolationCount = 0) {
+function trial(taskId, trialId, quality, safetyViolationCount = 0, taskFamily = undefined) {
   const good = quality === 'good';
   return evaluateSkillLearnBenchTrial({
     taskId,
+    ...(taskFamily !== undefined ? { taskFamily } : {}),
     trialId,
     verifierPassed: good,
     skill: {
@@ -82,6 +83,37 @@ const holdoutRegression = evaluateSkillLearnBenchCandidate(improved, {
 });
 assert.equal(holdoutRegression.eligible, false);
 assert.ok(holdoutRegression.reasons.includes('holdout-regression-exceeds-tolerance'));
+
+// AFTER-inspired family gate: an overall mean improvement cannot hide a severe
+// regression in one task family when the compensating gains come from another.
+const familyBaseline = {
+  validation: [trial('val-a','v1','weak'),trial('val-b','v1','weak')],
+  holdout: [
+    trial('memory-a','h1','good',0,'memory'),trial('memory-b','h1','good',0,'memory'),
+    trial('perception-a','h1','weak',0,'perception'),trial('perception-b','h1','weak',0,'perception'),
+  ],
+};
+const familyCandidate = {
+  validation: [trial('val-a','v1','good'),trial('val-b','v1','good')],
+  holdout: [
+    trial('memory-a','h1','weak',0,'memory'),trial('memory-b','h1','weak',0,'memory'),
+    trial('perception-a','h1','good',0,'perception'),trial('perception-b','h1','good',0,'perception'),
+  ],
+};
+const familyRegression = evaluateSkillLearnBenchCandidate(familyBaseline,familyCandidate);
+assert.equal(familyRegression.holdoutDelta01,0,
+  'opposing family changes can leave the aggregate holdout mean unchanged');
+assert.equal(familyRegression.holdoutFamiliesEvaluated,2);
+assert.equal(familyRegression.holdoutFamilyRegressions,1);
+assert.equal(familyRegression.eligible,false,
+  'a sufficiently sampled held-out family regression must veto candidate promotion');
+assert.ok(familyRegression.reasons.includes('holdout-family-regression-exceeds-tolerance'));
+assert.ok(familyRegression.feedback.some(line=>line.includes('task family regressed')));
+assert.ok(!familyRegression.feedback.some(line=>line.includes('memory')||line.includes('perception')),
+  'family names and holdout-specific diagnostics must not leak into optimizer-facing feedback');
+assert.equal(evaluateSkillLearnBenchCandidate(baseline,improved).holdoutFamilyRegressions,0,
+  'legacy reports without canonical task-family metadata retain aggregate-only evaluation');
+
 
 assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, {
   validation: [trial('task-a', 'v1', 'good')],
