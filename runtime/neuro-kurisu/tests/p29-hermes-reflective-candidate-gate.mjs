@@ -143,6 +143,46 @@ assert.equal(componentRegression.eligible, false);
 assert.ok(componentRegression.reasons.includes('holdout-trajectory-regression-exceeds-tolerance'));
 assert.ok(componentRegression.feedback.some((line) => line.includes('trajectory regressed')));
 
+// Each axis has its own rejection reason even when the aggregate gate is permissive.
+const fullSkillAndTrajectory = (taskId, trialId, verifierPassed) => dimensionTrial(taskId, trialId, {
+  verifierPassed,
+  coveredCapabilityIds: ['inspect', 'reason', 'verify'],
+  observedStepIds: ['inspect', 'reason', 'verify'],
+});
+const taskSuccessRegression = evaluateSkillLearnBenchCandidate(
+  { validation: baseline.validation, holdout: [
+    fullSkillAndTrajectory('task-c', 'h1', true),
+    fullSkillAndTrajectory('task-d', 'h1', true),
+  ] },
+  { validation: improved.validation, holdout: [
+    fullSkillAndTrajectory('task-c', 'h1', false),
+    fullSkillAndTrajectory('task-d', 'h1', false),
+  ] },
+  { maximumHoldoutRegression01: 1 },
+);
+assert.ok(taskSuccessRegression.reasons.includes('holdout-task-success-regression-exceeds-tolerance'));
+
+const skillQualityRegression = evaluateSkillLearnBenchCandidate(
+  { validation: baseline.validation, holdout: [
+    fullSkillAndTrajectory('task-c', 'h1', true),
+    fullSkillAndTrajectory('task-d', 'h1', true),
+  ] },
+  { validation: improved.validation, holdout: [
+    dimensionTrial('task-c', 'h1', {
+      verifierPassed: true,
+      coveredCapabilityIds: ['inspect'],
+      observedStepIds: ['inspect', 'reason', 'verify'],
+    }),
+    dimensionTrial('task-d', 'h1', {
+      verifierPassed: true,
+      coveredCapabilityIds: ['inspect'],
+      observedStepIds: ['inspect', 'reason', 'verify'],
+    }),
+  ] },
+  { maximumHoldoutRegression01: 1 },
+);
+assert.ok(skillQualityRegression.reasons.includes('holdout-skill-quality-regression-exceeds-tolerance'));
+
 assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, {
   validation: [trial('task-a', 'v1', 'good')],
   holdout: improved.holdout,
@@ -173,6 +213,12 @@ assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, improved, {
 assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, improved, {
   maximumHoldoutTrajectoryRegression01: Number.NaN,
 }), /candidate-holdout-trajectory-regression-invalid/);
+assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, improved, {
+  maximumHoldoutTaskSuccessRegression01: Number.NaN,
+}), /candidate-holdout-task-success-regression-invalid/);
+assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, improved, {
+  maximumHoldoutSkillQualityRegression01: Number.NaN,
+}), /candidate-holdout-skill-quality-regression-invalid/);
 
 assert.throws(() => evaluateSkillLearnBenchCandidate(null, improved), /candidate-evaluation-input-invalid/);
 assert.throws(() => evaluateSkillLearnBenchTrial({
