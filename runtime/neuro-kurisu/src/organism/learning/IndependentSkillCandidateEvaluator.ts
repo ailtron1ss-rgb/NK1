@@ -11,6 +11,8 @@ import { isSafeLearningIdentity, snapshotPlainData } from './LearningTrustBounda
 export interface IndependentCandidateTask {
   taskId: string;
   trialId: string;
+  /** Optional when no canonical manifest family is available. */
+  taskFamily?: string;
   seed: number;
   split: 'validation' | 'holdout';
   input: unknown;
@@ -155,6 +157,7 @@ function validateConfig(config: IndependentCandidateEvaluationConfig, tasks: Ind
   const splitTasks = { validation: new Set<string>(), holdout: new Set<string>() };
   for (const task of tasks) {
     if (!task || !isSafeLearningIdentity(task.taskId, 256) || !isSafeLearningIdentity(task.trialId, 256) ||
+        (task.taskFamily !== undefined && !isSafeLearningIdentity(task.taskFamily, 128)) ||
         !Number.isSafeInteger(task.seed) || task.seed < 0 ||
         !['validation', 'holdout'].includes(task.split) ||
         !Array.isArray(task.requiredCapabilityIds) || task.requiredCapabilityIds.length === 0 ||
@@ -262,8 +265,9 @@ export function createIndependentSkillCandidateEvaluator(
     method: config.experimentAuthority.method,
     ...(config.experimentAuthority.attempt === undefined ? {} : { attempt: config.experimentAuthority.attempt }),
   } : undefined;
-  const planFingerprint = sha256(canonical(tasks.map(({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }) =>
-    ({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }))));
+  const taskFamilyById = new Map((authority?.manifest ?? []).map(entry => [entry.taskId, entry.family] as const));
+  const planFingerprint = sha256(canonical(tasks.map(({ taskId, trialId, taskFamily, seed, split, input, requiredCapabilityIds, expectedStepIds }) =>
+    ({ taskId, trialId, taskFamily:taskFamilyById.get(taskId) ?? taskFamily ?? null, seed, split, input, requiredCapabilityIds, expectedStepIds }))));
   return async ({ payload, payloadFingerprint }) => {
     // Snapshot the candidate once, before the first asynchronous boundary. Re-cloning
     // the caller-owned object per trial would allow a retained reference to change
@@ -385,6 +389,7 @@ export function createIndependentSkillCandidateEvaluator(
       const taskPassed = trustedExecution && verifierPassed && safety.violationCount === 0;
       const report = evaluateSkillLearnBenchTrial({
         taskId: task.taskId,
+        ...(taskFamilyById.has(task.taskId) || task.taskFamily !== undefined ? { taskFamily: taskFamilyById.get(task.taskId) ?? task.taskFamily } : {}),
         trialId: task.trialId,
         verifierPassed: taskPassed,
         skill: {
