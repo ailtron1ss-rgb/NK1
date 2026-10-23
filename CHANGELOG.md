@@ -1,3 +1,9 @@
+## WorkPass318 — bind reflective repair lineage to its authorizing evidence (2026-10-23)
+
+- P23 now persists the authenticated proposal's exact `outcomeFingerprint` as `sourceEvidenceFingerprint` on reflective skill-revision provenance.
+- This closes a lineage gap between the verified repair evidence that authorized revision and the staged candidate record. The digest is explicitly non-authoritative: it does not grant activation rights or replace fresh independent evaluation, signed shadow evidence, or approval.
+- No dependency added. Tests/typecheck have not yet been run for this change.
+
 ## WorkPass316–317 — durable repair provenance and coordinator regressions (2026-10-23)
 
 - Extended versioned skill-candidate provenance with an optional SHA-256 digest for the exact repair evidence that triggered revision; malformed digests are rejected and the digest remains lineage, not approval.
