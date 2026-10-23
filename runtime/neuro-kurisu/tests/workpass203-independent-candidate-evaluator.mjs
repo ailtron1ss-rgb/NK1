@@ -447,6 +447,15 @@ assert.deepEqual(detachedTraceResult.evaluation.validation[0].trajectoryQuality.
 
 
 /* WorkPass348: descriptor-only snapshots must never execute caller getters. */
+const workpass348Base = {
+  tasks,
+  environmentFingerprint: '9'.repeat(64),
+  executor: { async execute({ task }) { return { runId: 'wp348-' + task.trialId, observedStepIds: ['open', 'summarize'] }; } },
+  verifier: { async verify() { return { bindingVerified: true, passed: true, coveredCapabilityIds: ['read'] }; } },
+  safetyScanner: { async scan() { return { violationCount: 0 }; } },
+};
+const workpass348PayloadFingerprint = digest(payload);
+
 let taskInputGetterCalls = 0;
 const hostileTaskInput = {};
 Object.defineProperty(hostileTaskInput, 'prompt', {
@@ -454,7 +463,7 @@ Object.defineProperty(hostileTaskInput, 'prompt', {
   get() { taskInputGetterCalls++; return 'must-not-be-read'; },
 });
 assert.throws(() => createIndependentSkillCandidateEvaluator({
-  ...base,
+  ...workpass348Base,
   tasks: [tasks[0], { ...tasks[1], input: hostileTaskInput }],
 }), /task-input-invalid/);
 assert.equal(taskInputGetterCalls, 0, 'task snapshotting must inspect descriptors instead of invoking getters');
@@ -466,17 +475,17 @@ Object.defineProperty(hostileTaskIdentity, 'taskId', {
   get() { taskIdentityGetterCalls++; return 'holdout-b'; },
 });
 assert.throws(() => createIndependentSkillCandidateEvaluator({
-  ...base,
+  ...workpass348Base,
   tasks: [tasks[0], hostileTaskIdentity],
 }), /task-input-invalid/);
 assert.equal(taskIdentityGetterCalls, 0, 'task identity accessors must be rejected without invocation');
 
 assert.throws(() => createIndependentSkillCandidateEvaluator({
-  ...base,
+  ...workpass348Base,
   tasks: [tasks[0], { ...tasks[1], taskId: ' holdout-b' }],
 }), /task-invalid/, 'leading/trailing whitespace cannot create a second identity spelling');
 assert.throws(() => createIndependentSkillCandidateEvaluator({
-  ...base,
+  ...workpass348Base,
   tasks: [tasks[0], { ...tasks[1], trialId: 'trial-\u0000two' }],
 }), /task-invalid/, 'control-bearing trial IDs must fail closed');
 
@@ -495,7 +504,7 @@ assert.equal(payloadGetterCalls, 0, 'candidate payload must be detached without 
 
 let executorGetterCalls = 0;
 const hostileExecutionEvaluator = createIndependentSkillCandidateEvaluator({
-  ...base,
+  ...workpass348Base,
   executor: { async execute() {
     const result = { observedStepIds: ['read'] };
     Object.defineProperty(result, 'runId', {
@@ -506,7 +515,7 @@ const hostileExecutionEvaluator = createIndependentSkillCandidateEvaluator({
   } },
 });
 const hostileExecutionResult = await hostileExecutionEvaluator({
-  payload, payloadFingerprint,
+  payload, workpass348PayloadFingerprint,
   baseline: { validation: [], holdout: [] },
   previousEvaluation: { validation: [], holdout: [] },
 });
@@ -515,7 +524,7 @@ assert.ok(hostileExecutionResult.evaluation.provenance.runBindings.every(binding
 
 let verifierGetterCalls = 0;
 const hostileVerifierEvaluator = createIndependentSkillCandidateEvaluator({
-  ...base,
+  ...workpass348Base,
   verifier: { async verify() {
     const result = { passed: true, coveredCapabilityIds: ['read'] };
     Object.defineProperty(result, 'bindingVerified', {
@@ -526,11 +535,31 @@ const hostileVerifierEvaluator = createIndependentSkillCandidateEvaluator({
   } },
 });
 const hostileVerifierResult = await hostileVerifierEvaluator({
-  payload, payloadFingerprint,
+  payload, workpass348PayloadFingerprint,
   baseline: { validation: [], holdout: [] },
   previousEvaluation: { validation: [], holdout: [] },
 });
 assert.equal(verifierGetterCalls, 0, 'verifier response accessors must not be executed');
 assert.ok(hostileVerifierResult.evaluation.provenance.runBindings.every(binding => !binding.bindingVerified && !binding.verifierPassed));
+
+
+let safetyGetterCalls = 0;
+const hostileSafetyEvaluator = createIndependentSkillCandidateEvaluator({
+  ...workpass348Base,
+  safetyScanner: { async scan() {
+    const result = {};
+    Object.defineProperty(result, 'violationCount', {
+      enumerable: true,
+      get() { safetyGetterCalls++; return 0; },
+    });
+    return result;
+  } },
+});
+await assert.rejects(() => hostileSafetyEvaluator({
+  payload, payloadFingerprint: workpass348PayloadFingerprint,
+  baseline: { validation: [], holdout: [] },
+  previousEvaluation: { validation: [], holdout: [] },
+}), /snapshot-accessor-invalid/);
+assert.equal(safetyGetterCalls, 0, 'safety-scanner response accessors must not be executed');
 
 console.log('WorkPass203/212/213/214/219/348 independent evaluation, execution binding, and experiment-ledger integration: PASS');

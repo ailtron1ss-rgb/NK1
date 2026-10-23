@@ -1,3 +1,11 @@
+## NK1 WorkPass349 — close detached-plan bypass and wire regression suites (2026-10-23)
+
+- [FIXED] Bound every manifest/schedule lookup in the independent evaluator to the detached task snapshot. The prior validation loop could still reread the caller-owned task array after the safe snapshot, undermining the invariant when inputs were mutable or accessor-backed.
+- [BOUNDED] Added an own-key limit to plain-object snapshots to prevent oversized single-level records bypassing the node/depth budget.
+- [INTEGRATED] The aggregate `test:p23:learning` command now also runs the WorkPass203 independent-evaluator regression suite and WorkPass227 timeout/trust-boundary suite, so these contracts are included in normal learning-suite runs.
+- [REGRESSION] Added a safety-scanner getter case; task, candidate, executor, verifier and safety response getter counters must stay at zero.
+- [VALIDATION] The GitHub branch update is recorded; these suites remain unverified until Actions assigns a runner and executes the workflow steps.
+
 ## NK1 WorkPass348 — harden the independent learning-evaluation boundary (2026-10-23)
 
 - [HARDENED] Added descriptor-only snapshots for task plans, generated candidate payloads, and executor/verifier/safety-scanner responses. Accessor properties are rejected without invoking getters; unsupported objects, cycles, sparse arrays, non-finite numbers, symbols and reflection failures fail closed.

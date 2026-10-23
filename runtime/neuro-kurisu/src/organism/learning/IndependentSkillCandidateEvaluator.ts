@@ -166,6 +166,7 @@ function snapshotPlainData(
     throw new Error('independent-evaluator-snapshot-object-prototype-invalid');
   }
   const keys = Reflect.ownKeys(value);
+  if (keys.length > SNAPSHOT_MAX_NODES) throw new Error('independent-evaluator-snapshot-size-limit');
   const result = Object.create(prototype === null ? null : Object.prototype) as Record<string, unknown>;
   ancestors.add(value);
   try {
@@ -292,7 +293,7 @@ function validateConfig(config: IndependentCandidateEvaluationConfig, tasks: Ind
       throw new Error('independent-candidate-experiment-plan-mismatch');
     }
     const manifestById = new Map<string, TaskManifestEntry>(authority.manifest.map(entry => [entry.taskId, entry] as const));
-    for (const task of config.tasks) {
+    for (const task of tasks) {
       const manifestEntry = manifestById.get(task.taskId);
       const prompt = task.input && typeof task.input === 'object'
         ? (task.input as Record<string, unknown>).prompt

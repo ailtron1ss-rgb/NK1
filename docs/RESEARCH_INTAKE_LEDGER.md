@@ -1,3 +1,9 @@
+## WorkPass349 — close the evaluator snapshot wiring gap (2026-10-23)
+
+- Bound the manifest/schedule validation loop to the detached task collection rather than the caller-owned configuration array, and capped own-key enumeration in object snapshots.
+- Added getter-side-effect regression coverage for safety-scanner output and wired independent evaluator + timeout/trust-boundary tests into the aggregate P23 learning command.
+- Status: committed source/test wiring only; exact-head execution remains unverified because the runner-startup issue is outside this branch.
+
 ## WorkPass348 — source-grounded learning boundary improvements (2026-10-23)
 
 - [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution) — its documented flow evolves a skill from traces and evaluates candidate variants behind regression and review gates. NK1 adaptation in this pass: keep candidate generation distinct from independent validation and promotion, and harden the trace/evaluation envelope; upstream code was not copied.
