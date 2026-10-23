@@ -1,3 +1,8 @@
+## 2026-10-23 — Integration workspace CI activation
+
+- Added `nk1-integration-workspace-2026-10-22` to the push and pull-request branch filters of `.github/workflows/workpass71-validation.yml`. The integrated branch can now trigger the existing Node.js 24 core regression suite, including WorkPass319–325 cognitive-cycle, persistence, resource-budget, interrupt-accounting, and causal-spine checks.
+- This is workflow wiring only; it does not claim that the checks have passed. The current branch's Actions run must complete before validation can be reported.
+
 ## WorkPass325 — connect all eleven phases to the live Core decision loop (2026-10-22)
 
 - Extended `OrganismCore`'s actual decision trace so appraisal, attention, memory, goal selection and planning are emitted between prediction and action. The phase payloads are derived from Core's current homeostatic state, global-workspace items/capacity, last-retrieved memory IDs, active goals and governed action candidates.
