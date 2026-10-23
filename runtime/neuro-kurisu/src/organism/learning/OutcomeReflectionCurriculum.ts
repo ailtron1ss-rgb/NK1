@@ -1,3 +1,5 @@
+import { isSafeLearningIdentity, snapshotPlainData } from './LearningTrustBoundary.ts';
+
 /**
  * Outcome-driven reflection and active curriculum for Neuro-Kurisu.
  * Reflection is a hypothesis generator, not ground truth: promotion still requires
@@ -22,15 +24,109 @@ export interface LearningTarget {
 }
 const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const num=(x:number,d=0)=>Number.isFinite(x)?x:d;
+const MAX_REFLECTION_ROWS=4096;
+const MAX_LEARNING_TARGETS=512;
+type LearningTargetInput=Omit<LearningTarget,'score01'|'rationale'>;
+
+const isPlainRecord=(value:unknown):value is Record<string,unknown>=>{
+  if(value===null||typeof value!=='object'||Array.isArray(value))return false;
+  const prototype=Object.getPrototypeOf(value);
+  return prototype===Object.prototype||prototype===null;
+};
+const isUnit=(value:unknown):value is number=>
+  typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
+
+/** Read an array through own data descriptors only. Accessors, sparse arrays,
+ * foreign prototypes, oversized batches and reflection errors fail closed. */
+function boundedArrayEntries(value:unknown,maxLength:number):unknown[]|null{
+  if(!Array.isArray(value))return null;
+  try{
+    if(Object.getPrototypeOf(value)!==Array.prototype)return null;
+    const keys=Reflect.ownKeys(value);
+    const lengthDescriptor=Object.getOwnPropertyDescriptor(value,'length');
+    const length=lengthDescriptor?.value;
+    if(!lengthDescriptor||!Number.isSafeInteger(length)||length<0||length>maxLength||keys.length!==length+1)return null;
+    const entries:unknown[]=[];
+    for(let i=0;i<length;i++){
+      const descriptor=Object.getOwnPropertyDescriptor(value,String(i));
+      if(!descriptor||!('value'in descriptor)||descriptor.get||descriptor.set||!descriptor.enumerable)return null;
+      entries.push(descriptor.value);
+    }
+    return entries;
+  }catch{return null;}
+}
+function readPersistedExperienceId(value:unknown):string|null{
+  if(value===null||typeof value!=='object'||Array.isArray(value))return null;
+  try{
+    const prototype=Object.getPrototypeOf(value);
+    if(prototype!==Object.prototype&&prototype!==null)return null;
+    const descriptor=Object.getOwnPropertyDescriptor(value,'id');
+    return descriptor&&'value'in descriptor&&isSafeLearningIdentity(descriptor.value,512)?descriptor.value:null;
+  }catch{return null;}
+}
+function snapshotReflectionExperience(value:unknown):ReflectionExperience|null{
+  try{
+    const detached=snapshotPlainData(value);
+    if(!isPlainRecord(detached))return null;
+    const x=detached;
+    if(!isSafeLearningIdentity(x.id,512)||!isSafeLearningIdentity(x.contextKey,256)||
+       !isSafeLearningIdentity(x.action,96)||!Number.isSafeInteger(x.tick)||typeof x.tick!=='number'||x.tick<0||
+       !isUnit(x.success)||!isUnit(x.predictedUtility)||!isUnit(x.surprise)||
+       (x.at!==undefined&&(!Number.isSafeInteger(x.at)||typeof x.at!=='number'||x.at<0)))return null;
+    return {id:x.id,contextKey:x.contextKey,action:x.action,success:x.success,
+      predictedUtility:x.predictedUtility,surprise:x.surprise,tick:x.tick,
+      ...(x.at===undefined?{}:{at:x.at as number})};
+  }catch{return null;}
+}
+function sameReflectionExperience(a:ReflectionExperience,b:ReflectionExperience):boolean{
+  return a.id===b.id&&a.contextKey===b.contextKey&&a.action===b.action&&a.success===b.success&&
+    a.predictedUtility===b.predictedUtility&&a.surprise===b.surprise&&a.tick===b.tick&&(a.at??null)===(b.at??null);
+}
+const TARGET_KEYS=new Set(['id','family','uncertainty01','readiness01','transfer01','novelty01','verificationCost01','repairValue01','blocked']);
+function snapshotLearningTarget(value:unknown):LearningTargetInput|null{
+  try{
+    const detached=snapshotPlainData(value);
+    if(!isPlainRecord(detached)||Object.keys(detached).some(key=>!TARGET_KEYS.has(key)))return null;
+    const x=detached;
+    if(!isSafeLearningIdentity(x.id,128)||!isSafeLearningIdentity(x.family,128)||
+       !isUnit(x.uncertainty01)||!isUnit(x.readiness01)||!isUnit(x.transfer01)||
+       !isUnit(x.novelty01)||!isUnit(x.verificationCost01)||!isUnit(x.repairValue01)||
+       (x.blocked!==undefined&&typeof x.blocked!=='boolean'))return null;
+    return {id:x.id,family:x.family,uncertainty01:x.uncertainty01,readiness01:x.readiness01,
+      transfer01:x.transfer01,novelty01:x.novelty01,verificationCost01:x.verificationCost01,
+      repairValue01:x.repairValue01,...(x.blocked===undefined?{}:{blocked:x.blocked as boolean})};
+  }catch{return null;}
+}
+
 export function reflectOnOutcomes(rows:readonly ReflectionExperience[],limit=12):ReflectionHypothesis[]{
+  const rawRows=boundedArrayEntries(rows,MAX_REFLECTION_ROWS);
+  if(!rawRows)return [];
+  const byId=new Map<string,ReflectionExperience>(),invalidIds=new Set<string>(),conflicts=new Set<string>();
+  for(const raw of rawRows){
+    const rawId=readPersistedExperienceId(raw);
+    const experience=snapshotReflectionExperience(raw);
+    if(!experience){
+      if(rawId)invalidIds.add(rawId);
+      continue;
+    }
+    if(invalidIds.has(experience.id)){conflicts.add(experience.id);continue;}
+    const prior=byId.get(experience.id);
+    if(prior){
+      if(!sameReflectionExperience(prior,experience))conflicts.add(experience.id);
+      continue; // Exact duplicates are idempotent; conflicting identities are quarantined below.
+    }
+    byId.set(experience.id,experience);
+  }
+  for(const id of invalidIds)byId.delete(id);
+  for(const id of conflicts)byId.delete(id);
   const groups=new Map<string,ReflectionExperience[]>();
-  for(const e of rows){
-    if(!e||!e.id||!e.contextKey||!e.action)continue;
-    const key=JSON.stringify([e.contextKey,e.action]),g=groups.get(key)??[];g.push(e);groups.set(key,g);
+  for(const e of byId.values()){
+    const key=JSON.stringify([e.contextKey,e.action]),g=groups.get(key)??[];
+    g.push(e);groups.set(key,g);
   }
   const out:ReflectionHypothesis[]=[];
   for(const [key,raw] of groups){
-    const ordered=[...raw].sort((a,b)=>a.tick-b.tick),recent=ordered.slice(-8);
+    const ordered=[...raw].sort((a,b)=>a.tick-b.tick||(a.at??a.tick)-(b.at??b.tick)||a.id.localeCompare(b.id)),recent=ordered.slice(-8);
     const success=recent.reduce((s,e)=>s+c(e.success),0)/recent.length;
     const predicted=recent.reduce((s,e)=>s+c(e.predictedUtility),0)/recent.length;
     const surprise=recent.reduce((s,e)=>s+c(e.surprise),0)/recent.length;
@@ -53,11 +149,11 @@ export function reflectOnOutcomes(rows:readonly ReflectionExperience[],limit=12)
   }
   return out.sort((a,b)=>b.priority01-a.priority01).slice(0,Math.max(1,Math.min(64,Math.floor(num(limit,12)))));
 }
-export function scoreLearningTarget(t:Omit<LearningTarget,'score01'|'rationale'>):LearningTarget{
+function scoreValidatedLearningTarget(t:LearningTargetInput):LearningTarget{
   const rationale:string[]=[];
   if(t.blocked)return {...t,score01:0,rationale:['blocked prerequisite']};
-  const score01=c(.23*c(t.uncertainty01)+.20*c(t.readiness01)+.18*c(t.transfer01)+
-    .12*c(t.novelty01)+.20*c(t.repairValue01)-.17*c(t.verificationCost01));
+  const score01=c(.23*t.uncertainty01+.20*t.readiness01+.18*t.transfer01+
+    .12*t.novelty01+.20*t.repairValue01-.17*t.verificationCost01);
   if(t.repairValue01>=.65)rationale.push('repairs recurring failure');
   if(t.transfer01>=.65)rationale.push('transfers to multiple task families');
   if(t.readiness01>=.6)rationale.push('ready for useful learning');
@@ -65,7 +161,15 @@ export function scoreLearningTarget(t:Omit<LearningTarget,'score01'|'rationale'>
   if(t.verificationCost01>=.7)rationale.push('expensive to verify');
   return {...t,score01,rationale};
 }
+export function scoreLearningTarget(t:Omit<LearningTarget,'score01'|'rationale'>):LearningTarget{
+  const safe=snapshotLearningTarget(t);
+  if(!safe)throw new TypeError('invalid-learning-target-input');
+  return scoreValidatedLearningTarget(safe);
+}
 export function rankLearningTargets(targets:readonly Omit<LearningTarget,'score01'|'rationale'>[],limit=10):LearningTarget[]{
-  return targets.map(scoreLearningTarget).sort((a,b)=>b.score01-a.score01||a.id.localeCompare(b.id))
+  const rawTargets=boundedArrayEntries(targets,MAX_LEARNING_TARGETS);
+  if(!rawTargets)return [];
+  const valid=rawTargets.map(snapshotLearningTarget).filter((target):target is LearningTargetInput=>target!==null);
+  return valid.map(scoreValidatedLearningTarget).sort((a,b)=>b.score01-a.score01||a.id.localeCompare(b.id))
     .slice(0,Math.max(1,Math.min(50,Math.floor(num(limit,10)))));
 }
