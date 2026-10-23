@@ -1747,6 +1747,12 @@ export class OrganismRuntime {
   }
   async sleepConsolidate(): Promise<ConsolidationResult> { return this.enqueue(() => this.consolidateInternal(true)); }
   consolidationGateDiagnostics(){ return this.adaptiveConsolidationGate.diagnostics(); }
+  /** Safe aggregate P23 learning-fitness history for dashboards; no raw evaluation rows are returned. */
+  learningFitnessJournalDiagnostics() {
+    return this.config.compoundRepairRevision?.engine.learningFitnessJournalDiagnostics()
+      ?? { configured:false as const, available:false as const };
+  }
+
   compoundRepairRevisionDiagnostics() {
     return {
       ...this.compoundRepairRevisionMetrics,
@@ -1767,6 +1773,7 @@ export class OrganismRuntime {
       ...this.core.longitudinalSnapshot(),
       trustedShadowLearning:this.trustedShadowLearningScheduler?.snapshot() ?? { enabled:false },
       compoundRepairRevision:this.compoundRepairRevisionDiagnostics(),
+      learningFitnessJournal:this.learningFitnessJournalDiagnostics(),
       lastAutonomyStepMs:this.lastAutonomyStepAt,
       runtimeClocks:this.clockScheduler.snapshot(),
       continuityLedger:this.continuityLedger.metrics(),
@@ -1780,6 +1787,7 @@ export class OrganismRuntime {
       core:this.core.persistenceMetrics(),
       trustedShadowLearning:this.trustedShadowLearningScheduler?.snapshot() ?? { enabled:false },
       compoundRepairRevision:this.compoundRepairRevisionDiagnostics(),
+      learningFitnessJournal:this.learningFitnessJournalDiagnostics(),
       predictionLedger:this.core.predictionLedgerSnapshot(),
       continuity:this.core.continuitySnapshot(),
       world:typeof this.worldStore.metrics==='function' ? this.worldStore.metrics() : null,
