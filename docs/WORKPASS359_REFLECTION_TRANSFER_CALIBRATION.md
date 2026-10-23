@@ -47,3 +47,10 @@ The upstream implementation was inspected at these specific files:
 - [`pyproject.toml`](https://github.com/NousResearch/hermes-agent-self-evolution/blob/main/pyproject.toml): declares MIT and a Python/DSPy-oriented dependency set (`dspy`, `openai`, `pyyaml`, `click`, `rich`).
 
 **Port decision:** the transferable mechanism is the proposal → independent evaluation → hard constraints → holdout gate → explicit approval sequence. NK1 already implements that sequence in the canonical TypeScript P23 engine, with authenticated evidence and versioned staging. Copying the Python optimizer or adding DSPy would create a second learning runtime rather than integrate the existing organism, so this pass ports the boundary and decision semantics—not a duplicate upstream program. Upstream license/dependency information is recorded for provenance; no vendor code was copied.
+
+## Follow-up passes — typed metrics and auditable windows
+
+- Updated the public `ReflectionHypothesis` contract to include the pass threshold, measured pass rate, descriptive Wilson interval bounds/width, explicit `sampleCount`, and window boundary ticks. This keeps API consumers aligned with the actual output shape.
+- The history count (`occurrences`) is intentionally distinct from the number of rows used in the latest metrics (`sampleCount`); the latter is at most eight. `sourceExperienceIds` lists only this analyzed window.
+- Hardened descriptor-only array/identity inspection against revoked JavaScript Proxies. The test suite checks that malformed array and row inputs return an empty result rather than escaping the error boundary.
+- Renamed the old test success marker to `P23_SKILL_RETRIEVAL_REFLECTION_CURRICULUM=PASS`. This is only the marker the test will emit when it is actually run; the current pass still has no verified execution result.
