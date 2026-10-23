@@ -37,6 +37,28 @@ const reflections=reflectOnOutcomes(outcomes);
    'equal-priority diagnoses use stable code-unit tie-breaking after evidence strength/recency',
  );
 
+
+const rewardAwareRows = Array.from({ length: 6 }, (_, i) => ({
+  id: 'costly-' + i, contextKey: ctx, action: 'explore',
+  success: .92, predictedUtility: .9, surprise: .08, reward: .12, tick: i,
+}));
+const rewardAwareReflection = reflectOnOutcomes(rewardAwareRows)[0];
+assert.equal(rewardAwareReflection.kind, 'low-reward-efficiency',
+  'repeated high-success but low-reward actions should trigger a cost-efficiency diagnosis');
+assert.equal(rewardAwareReflection.rewardObserved01, .12);
+assert.ok(rewardAwareReflection.rewardGap01 > .8);
+assert.match(rewardAwareReflection.suggestedNextStep, /resource cost/,
+  'the diagnosis should propose a targeted repair rather than label the action a success');
+const conflictingRewardIdentity = reflectOnOutcomes([
+  ...rewardAwareRows,
+  { ...rewardAwareRows[0], reward: .99 },
+]);
+assert.ok(!conflictingRewardIdentity[0]?.sourceExperienceIds.includes('costly-0'),
+  'reusing an evidence identity with a contradictory reward must quarantine it');
+const legacyRewardReflection = reflectOnOutcomes(outcomes)[0];
+assert.equal(legacyRewardReflection.rewardObserved01, undefined,
+  'legacy reflection rows without reward preserve the old score schema and ranking semantics');
+
 assert.ok(reflections.length>0);
 assert.equal(reflections[0].kind,'repeated-context-failure');
 assert.ok(reflections[0].priority01>.6);

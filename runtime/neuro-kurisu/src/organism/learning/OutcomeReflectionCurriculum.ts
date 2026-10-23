@@ -6,10 +6,10 @@ import { isSafeLearningIdentity, snapshotPlainData } from './LearningTrustBounda
  * independent validation. Inspired by Reflexion, Voyager curriculum, SkillLearnBench
  * and STATE-Bench's outcome-oriented evaluation.
  */
-export type FailureKind='prediction-gap'|'low-outcome'|'unexpected-surprise'|'repeated-context-failure'|'stale-skill'|'insufficient-evidence';
+export type FailureKind='prediction-gap'|'low-outcome'|'low-reward-efficiency'|'unexpected-surprise'|'repeated-context-failure'|'stale-skill'|'insufficient-evidence';
 export interface ReflectionExperience {
   id:string; contextKey:string; action:string; success:number; predictedUtility:number;
-  surprise:number; tick:number; at?:number;
+  surprise:number; tick:number; at?:number; reward?:number;
 }
 export interface ReflectionHypothesis {
   key:string; kind:FailureKind; contextKey:string; action:string; occurrences:number;
@@ -17,6 +17,8 @@ export interface ReflectionHypothesis {
   sampleCount:number;
   windowStartTick:number; windowEndTick:number;
   observedSuccess01:number; predictedSuccess01:number; predictionGap01:number;
+  /** Outcome reward is kept separate from task success so high-cost success can be diagnosed. */
+  rewardObserved01?:number; rewardGap01?:number;
   /** Binary pass/fail threshold used for descriptive pass-rate metrics. */
   passThreshold01:number;
   passRate01:number;
@@ -85,15 +87,16 @@ function snapshotReflectionExperience(value:unknown):ReflectionExperience|null{
     if(!isSafeLearningIdentity(x.id,512)||!isSafeLearningIdentity(x.contextKey,256)||
        !isSafeLearningIdentity(x.action,96)||!Number.isSafeInteger(x.tick)||typeof x.tick!=='number'||x.tick<0||
        !isUnit(x.success)||!isUnit(x.predictedUtility)||!isUnit(x.surprise)||
+       (x.reward!==undefined&&!isUnit(x.reward))||
        (x.at!==undefined&&(!Number.isSafeInteger(x.at)||typeof x.at!=='number'||x.at<0)))return null;
     return {id:x.id,contextKey:x.contextKey,action:x.action,success:x.success,
       predictedUtility:x.predictedUtility,surprise:x.surprise,tick:x.tick,
-      ...(x.at===undefined?{}:{at:x.at as number})};
+      ...(x.at===undefined?{}:{at:x.at as number}),...(x.reward===undefined?{}:{reward:x.reward as number})};
   }catch{return null;}
 }
 function sameReflectionExperience(a:ReflectionExperience,b:ReflectionExperience):boolean{
   return a.id===b.id&&a.contextKey===b.contextKey&&a.action===b.action&&a.success===b.success&&
-    a.predictedUtility===b.predictedUtility&&a.surprise===b.surprise&&a.tick===b.tick&&(a.at??null)===(b.at??null);
+    a.predictedUtility===b.predictedUtility&&a.surprise===b.surprise&&a.tick===b.tick&&(a.at??null)===(b.at??null)&&(a.reward??null)===(b.reward??null);
 }
 const TARGET_KEYS=new Set(['id','family','uncertainty01','readiness01','transfer01','novelty01','verificationCost01','repairValue01','blocked']);
 function snapshotLearningTarget(value:unknown):LearningTargetInput|null{
@@ -143,6 +146,8 @@ export function reflectOnOutcomes(rows:readonly ReflectionExperience[],limit=12)
     const success=recent.reduce((s,e)=>s+c(e.success),0)/recent.length;
     const predicted=recent.reduce((s,e)=>s+c(e.predictedUtility),0)/recent.length;
     const surprise=recent.reduce((s,e)=>s+c(e.surprise),0)/recent.length;
+    const rewardValues=recent.flatMap(e=>e.reward===undefined?[]:[e.reward]);
+    const rewardMean=rewardValues.length?rewardValues.reduce((s,e)=>s+c(e),0)/rewardValues.length:null;
     const gap=Math.abs(success-predicted),failures=recent.filter(e=>e.success<REFLECTION_PASS_THRESHOLD).length;
     // Use a declared binary task-success threshold for a conservative descriptive
     // interval. Evidence rows may be temporally correlated, so this interval is not
@@ -156,19 +161,23 @@ export function reflectOnOutcomes(rows:readonly ReflectionExperience[],limit=12)
     const wilsonUpper=c((center+radius)/denominator);
     const intervalWidth=c(wilsonUpper-wilsonLower);
     const kind:FailureKind=recent.length<4?'insufficient-evidence':failures>=3?'repeated-context-failure':
-      gap>=.3?'prediction-gap':success<.45?'low-outcome':surprise>=.65?'unexpected-surprise':'insufficient-evidence';
+      gap>=.3?'prediction-gap':success<.45?'low-outcome':rewardMean!==null&&rewardMean<.35?'low-reward-efficiency':surprise>=.65?'unexpected-surprise':'insufficient-evidence';
     if(kind==='insufficient-evidence'&&gap<.2&&success>=.5)continue;
-    const priority=c(.28*gap+.25*(1-success)+.17*surprise+.20*(1-wilsonLower)+.10*Math.min(1,failures/4));
+    const basePriority=c(.28*gap+.25*(1-success)+.17*surprise+.20*(1-wilsonLower)+.10*Math.min(1,failures/4));
+    // Reward is an additional objective only when present in real recorded experience;
+    // old rows retain their prior ranking while high-cost successes become diagnosable.
+    const priority=c(rewardMean===null?basePriority:basePriority*.88+(1-rewardMean)*.12);
     const confidence=c((n/(n+4))*(1-intervalWidth)*(1-gap*.30));
     const contextKey=recent[0].contextKey,action=recent[0].action;
     out.push({key,kind,contextKey,action,occurrences:ordered.length,sampleCount:recent.length,
       windowStartTick:recent[0].tick,windowEndTick:recent[recent.length-1].tick,observedSuccess01:success,
-      predictedSuccess01:predicted,predictionGap01:gap,passThreshold01:REFLECTION_PASS_THRESHOLD,passRate01:passRate,wilsonLowerPassRate01:wilsonLower,
+      predictedSuccess01:predicted,predictionGap01:gap,...(rewardMean===null?{}:{rewardObserved01:rewardMean,rewardGap01:c(1-rewardMean)}),passThreshold01:REFLECTION_PASS_THRESHOLD,passRate01:passRate,wilsonLowerPassRate01:wilsonLower,
       wilsonUpperPassRate01:wilsonUpper,passRateIntervalWidth01:intervalWidth,priority01:priority,
       suggestedNextStep:kind==='repeated-context-failure'?'Create a controlled repair variant and compare it against the current policy':
         kind==='prediction-gap'?'Calibrate the action value and collect an independently checked outcome':
         kind==='unexpected-surprise'?'Inspect the unexpected transition and add a discriminating test':
         kind==='low-outcome'?'Decompose the task and test one changed step at a time':
+        kind==='low-reward-efficiency'?'Compare outcome benefit against resource cost and reduce unnecessary steps':
         'Collect more independent outcomes before changing the skill',
       evidenceNeeded:'At least one independent verifier or human-reviewed outcome on a held-out task; self-reflection alone is insufficient',
       confidence01:confidence,sourceExperienceIds:recent.map(e=>e.id)});

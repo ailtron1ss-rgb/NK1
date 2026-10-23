@@ -1,3 +1,13 @@
+## NK1 WorkPass437 — make outcome reflection reward-aware without conflating success (2026-10-23)
+
+- Extended the existing P23 reflection evidence with optional validated reward while keeping task-success pass-rate/Wilson metrics separate.
+- Reflection now emits a low-reward-efficiency diagnosis when repeated successful actions have consistently poor reward, and supplies a specific repair suggestion to compare benefit against resource cost.
+- Candidate priority blends reward only when recorded reward exists; legacy rows preserve their prior ranking. Contradictory reward reuse under the same evidence ID is quarantined by the immutable-experience identity check.
+- P23 now forwards its recorded reward into reflection. Added direct regressions for costly success, targeted repair, conflicting event identities and legacy compatibility.
+- This is a functional Hermes-style diagnosis improvement, not proof of measured learning uplift. Exact-head runtime tests remain unexecuted.
+
+---
+
 ## NK1 WorkPass424 — deterministic autonomous reflection queue (2026-10-23)
 
 - Made outcome-reflection ordering deterministic when hypotheses have equal priority and confidence: newest evidence window wins, then context/action/key use locale-independent code-unit ordering.

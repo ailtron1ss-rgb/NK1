@@ -1564,7 +1564,7 @@ export class P23LearningEngine {
   reflectionHypotheses(limit=12) {
     return reflectOnOutcomes(this.state.experiences.map(e=>({
       id:e.id, contextKey:e.contextKey, action:e.action, success:e.success,
-      predictedUtility:e.predictedUtility, surprise:e.surprise, tick:e.tick, at:e.at,
+      predictedUtility:e.predictedUtility, surprise:e.surprise, tick:e.tick, at:e.at, reward:e.reward,
     })),limit);
   }
 
