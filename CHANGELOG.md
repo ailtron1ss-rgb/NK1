@@ -1,3 +1,14 @@
+## 2026-10-23 — Reconcile conflicting P26, micro-cycle, and tool-gateway implementations
+
+- Integrated the 18-feature P26 schema and semantic snapshot migration from `rebuild` into the current `ParametricPolicyLearner`, retaining the existing learner API and hyperparameter safeguards. The three interaction features are recomputed from energy/novelty/goal-pressure; legacy weights are migrated by feature name so `actionCost` remains attached to `actionCost` at index 17.
+- Restored `finiteOr` in `OperationalMicroCycleRuntime` and used it at the micro-cycle's sensor/observation boundary (body energy, capacity, thermal strain, surprise, battery, freshness, CPU and RAM input), with [a regression guard](runtime/neuro-kurisu/tests/operational-microcycle-finite-input.mjs). Invalid/non-finite inputs now take safe fallbacks instead of turning live state into NaN-derived extremes.
+- Replaced the autonomous tool learner's duplicated outcome list in `OrganismCore` with the already-shared `wasToolExecutorEntered` classifier. The recovered planner-route regression now checks this single policy rather than allowing Core and ActionGateway to drift apart.
+- Optimized production replay indexing: `P23LearningEngine.replayPending` now builds a first-write-wins trace-to-experience index and carries the matched experience through causal/adaptive selection, avoiding repeated full-store scans while keeping the current adaptive selector final.
+- Avatar preference storage is consolidated through `safeLocalStorage` in both `LegacySpriteDeck` and `AvatarStage`; regression coverage now checks both components. The recovered regression aggregate invokes `test:learning-replay`, the cognition/causal wiring tests, action-gateway tests, project reconciliation tests, micro-cycle checks, and the root avatar/Live2D tests.
+- These are committed code/wiring changes, not claimed test passes: hosted Actions jobs still stop before a runner is assigned (`runner_id: 0`, no steps/logs available).
+
+---
+
 ## 2026-10-23 — Centralize avatar preference storage
 
 - Rewired `LegacySpriteDeck` and `AvatarStage` to use `safeLocalStorage.ts` for optional view/outfit/voice preferences instead of accessing `window.localStorage` directly. Reads fall back to safe defaults and failed writes do not disable current-session controls.
