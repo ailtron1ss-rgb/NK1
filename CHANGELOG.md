@@ -1,3 +1,26 @@
+## NK1 Integration — unify non-main branch heads (2026-10-23)
+
+- [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
+- [MERGE] Prepared a conflict-resolved tree based on the integration workspace, preserving its `.nvmrc=24`, porting CI reliability checks/docs from WorkPass326, adding the P26 Action runtime upgrade, and preserving both parent histories for the final union merge.
+- [VALIDATION] Static configuration checks pass for WorkPass71, WorkPass79 and P26. The six updated CI-audit tests have **not** been executed on this exact integration tree because Actions jobs still terminate before runner assignment.
+- [SCOPE] The union is intended to fast-forward every non-main branch ref to the common merge commit. The `main` ref is explicitly excluded and will not be changed.
+
+## NK1 WorkPass327 — root-cause triage for Actions startup failures (2026-10-23)
+
+- [DIAGNOSIS] Compared nine fresh/representative failed jobs with one earlier successful control run. All nine failures stopped after 1–2 seconds with `runner_id=0`, blank runner name, and zero steps; the control run had a runner and eight successful steps.
+- [HYPOTHESIS] Prioritized account-level Billing & Licensing lock because a public GitHub Community case reports the same symptom and a billing-lock annotation. This is **not yet confirmed for the NK1 account** because the current connector cannot read the bodies of this run's two check-run annotations.
+- [VALIDATION] Ran the new CI policy unit tests locally on Node.js 22.16.0: 6/6 passed. Verified the two current workflow files use checkout/setup-node v7, the root .nvmrc, a runtime assertion, the rebuild PR trigger, and a 20-minute cognitive test timeout.
+- [LIMITATION] GitHub Actions still fails before the first step on the latest HEAD. Do not repeatedly rerun while runner startup is blocked; inspect Billing & Licensing first, then rerun checks only after the account condition is resolved. No release ZIP was rebuilt or published.
+
+## NK1 WorkPass326 — CI runner/runtime hardening (2026-10-23)
+
+- [HARDENED] Upgraded the WorkPass71 and WorkPass79 workflows to current first-party Actions versions compatible with the GitHub Actions Node.js 24 runtime, avoiding retired Node.js 20 action runtimes.
+- [HARDENED] Both workflows select the project's Node.js version from the root `.nvmrc` and assert that the selected runtime matches the pin before running tests.
+- [HARDENED] Raised the WorkPass79 cognitive regression job timeout from 8 to 20 minutes to reduce avoidable false failures during the existing multi-suite regression run.
+- [DOCUMENTED] Added `docs/CI_RELIABILITY_RUNBOOK_RU.md` to distinguish runner startup failures from application/test failures and to preserve precise verification/release evidence.
+- [REGRESSION] Added `tools/verify-ci-reliability.mjs` and built-in Node test cases; both validation workflows run this guard so retired Action majors, drift from `.nvmrc`, missing runtime assertions, a too-short cognitive timeout, and missing CI coverage for rebuild pull requests are rejected before the main suite.
+- [VALIDATION] Static workflow edits have been committed on `workpass326-ci-runtime-hardening`. Actions execution remains unverified because the observed account-level runs terminate before runner assignment and execute zero steps. No claim of green CI or release publication is made.
+
 ## 2026-10-23 — Reconcile conflicting P26, micro-cycle, and tool-gateway implementations
 
 - Integrated the 18-feature P26 schema and semantic snapshot migration from `rebuild` into the current `ParametricPolicyLearner`, retaining the existing learner API and hyperparameter safeguards. The three interaction features are recomputed from energy/novelty/goal-pressure; legacy weights are migrated by feature name so `actionCost` remains attached to `actionCost` at index 17.

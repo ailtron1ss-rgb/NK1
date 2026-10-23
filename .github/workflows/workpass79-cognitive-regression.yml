@@ -5,12 +5,14 @@ on:
     branches:
       - workpass79-cognitive-rebuild
       - nk1-integration-workspace-2026-10-22
+      - rebuild
   pull_request:
     branches:
       - main
       - workpass70-source
       - workpass203-independent-candidate-evaluator
       - nk1-integration-workspace-2026-10-22
+      - rebuild
   workflow_dispatch:
 
 permissions:
@@ -23,13 +25,28 @@ concurrency:
 jobs:
   local-language-resilience:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: '24'
+          node-version-file: '.nvmrc'
           package-manager-cache: false
+      - name: Verify selected Node.js matches repository pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version | sed 's/^v//')"
+          printf 'expected=%s actual=%s\n' "$expected" "$actual"
+          case "$expected" in
+            *.*.*) test "$actual" = "$expected" ;;
+            *) case "$actual" in "$expected"|"$expected".*) ;; *) echo "Node version $actual does not match .nvmrc pin $expected" >&2; exit 1 ;; esac ;;
+          esac
+      - name: Audit CI Action/runtime compatibility contract
+        run: npm run audit:ci-reliability
+      - name: Test CI reliability audit regressions
+        run: node --test tools/verify-ci-reliability.test.mjs
       - name: Install pinned TypeScript compiler from app lockfile
         run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Verify signed verifier outcome artifacts and reject tampering

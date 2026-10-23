@@ -21,6 +21,11 @@ on:
       - "AGENTS.md"
       - "CHANGELOG.md"
       - "SUPER_VERSION.json"
+      - "package.json"
+      - "tools/verify-ci-reliability.mjs"
+      - "tools/verify-ci-reliability.test.mjs"
+      - "docs/CI_RELIABILITY_RUNBOOK_RU.md"
+      - "docs/WORKPASS327_ACTIONS_STARTUP_DIAGNOSIS_RU.md"
       - 'app/package-lock.json'
       - 'runtime/neuro-kurisu/package.json'
       - 'runtime/neuro-kurisu/package-lock.json'
@@ -29,7 +34,7 @@ on:
       - '.nvmrc'
       - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
   pull_request:
-    branches: [main, workpass70-source, workpass203-independent-candidate-evaluator, nk1-integration-workspace-2026-10-22]
+    branches: [main, workpass70-source, workpass203-independent-candidate-evaluator, nk1-integration-workspace-2026-10-22, rebuild]
     paths:
       - "app/**"
       - "runtime/neuro-kurisu/src/**"
@@ -48,6 +53,11 @@ on:
       - "README.md"
       - "AGENTS.md"
       - "SUPER_VERSION.json"
+      - "package.json"
+      - "tools/verify-ci-reliability.mjs"
+      - "tools/verify-ci-reliability.test.mjs"
+      - "docs/CI_RELIABILITY_RUNBOOK_RU.md"
+      - "docs/WORKPASS327_ACTIONS_STARTUP_DIAGNOSIS_RU.md"
       - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
   workflow_dispatch:
 
@@ -66,9 +76,24 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: "24"
+          node-version-file: ".nvmrc"
           cache: npm
           cache-dependency-path: app/package-lock.json
+      - name: Verify selected Node.js matches repository pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version | sed 's/^v//')"
+          printf 'expected=%s actual=%s\n' "$expected" "$actual"
+          case "$expected" in
+            *.*.*) test "$actual" = "$expected" ;;
+            *) case "$actual" in "$expected"|"$expected".*) ;; *) echo "Node version $actual does not match .nvmrc pin $expected" >&2; exit 1 ;; esac ;;
+          esac
+      - name: Audit CI Action/runtime compatibility contract
+        run: npm run audit:ci-reliability
+      - name: Test CI reliability audit regressions
+        run: node --test tools/verify-ci-reliability.test.mjs
       - name: Install app dependencies without lifecycle scripts
         run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Audit canonical public asset ownership
