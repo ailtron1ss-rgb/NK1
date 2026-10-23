@@ -67,3 +67,28 @@ The current GitHub connector exposes file-level reads/writes and commit/tree pri
 - Compared `CausalExperienceStream.ts` at source level. The integration version contains additional safeguards absent from the older source snapshot: control-character rejection before ID trimming, bounded task IDs, validated action allowlist, observed-state validation, bounded runtime policy vectors, and a learning/consolidation lane restricted to state-grounded runtime outcomes.
 - Decision: **do not overwrite** the integration version with the older branch version. This would remove security and evidence-integrity constraints. The learning-integrity branch remains a semantic reference for the overlapping core/controller/benchmark files; any further port must be a method-level merge, not a file replacement.
 - This follow-up is a comparison result, not a claim that the source branch has been merged or that tests passed. The release ZIP remains untouched.
+
+## Follow-up verification — cognitive-rebuild, Hermes gate, multi-source and verified revision branches (2026-10-23)
+
+A recursive Git tree comparison was run against the integration head `351a60e54e9954e2ff28c8788da491d8afa80f26`, checking source/test/workflow/vendor paths in these source refs:
+
+- `workpass79-cognitive-rebuild`
+- `workpass93-hermes-reflective-learning-gate`
+- `workpass118-multi-source-learning-integration`
+- `workpass120-verified-skill-revision-gate`
+- `workpass88-avalanche-forgetting-metrics`
+
+**Result: zero source/test/workflow/vendor paths from those snapshots are missing by pathname in the integration tree.** This confirms that copying their unique filenames again would be redundant. It does not mean the Git branch histories have been merged, nor does pathname parity prove that every source-branch implementation is byte-identical or behaviorally equivalent.
+
+### Overlapping implementation rule
+
+- The integration head's `P23LearningEngine.ts` is substantially longer than the WorkPass120 snapshot and already imports the SkillLearnBench adapter, verified-promotion proposal checks, independent-evaluation/shadow-evidence bindings and reflection/retrieval curriculum mechanisms. Preserve this newer integrated implementation rather than replacing it with the older branch file.
+- `SkillRevisionGate.ts` and its test exist in the integration tree. The integration test includes additional rejection/holdout assertions compared with the sampled WorkPass120 version; keep the stronger target test.
+- These checks indicate that the main remaining merge work is **semantic reconciliation of overlapping implementations and validation**, not copying whole source trees. For each overlap, compare function behavior, call sites, trust boundaries and tests before changing the target.
+
+### Honest status boundary
+
+- **Verified:** all relevant paths checked above exist in the integration tree; sampled integration implementations contain additions beyond older source snapshots.
+- **Not verified:** complete behavioral equivalence across every branch; test suite success; successful hosted CI execution; release archive parity.
+- **Not done:** no GitHub Release ZIP was downloaded, rebuilt or replaced by this pass. The release asset remains unverified and must not be described as updated.
+
