@@ -12,6 +12,8 @@ export type EvidenceRealityClass = 'external-observation'|'device-observation'|'
 
 export interface RealityEvidenceRecord {
   id:string;
+  /** Optional upstream action/decision/observation identity shared across NK1 subsystems. */
+  eventId?:string;
   tick:number;
   at:number;
   realityClass:EvidenceRealityClass;
@@ -55,36 +57,40 @@ export class RealityEvidenceLedger {
     const candidates=Array.isArray(value.recent)?value.recent.slice(0,this.capacity):[];
     const records:RealityEvidenceRecord[]=[];
     const seen=new Set<string>();
+    const seenEvents=new Set<string>();
     for(const candidate of candidates){
-      if(!isRecord(candidate)||!validText(candidate.id,256)||!validTick(candidate.tick)||
+      if(!isRecord(candidate)||!validText(candidate.id,256)||
+         (candidate.eventId!==undefined&&!validText(candidate.eventId,256))||!validTick(candidate.tick)||
          typeof candidate.at!=='number'||!Number.isFinite(candidate.at)||candidate.at<0||
          !REALITY_CLASSES.includes(candidate.realityClass as EvidenceRealityClass)||
          !validText(candidate.claim,240)||!validScore(candidate.confidence01)||
          !validText(candidate.independenceKey,160))continue;
-      if(seen.has(candidate.id))continue;
+      if(seen.has(candidate.id)||(typeof candidate.eventId==='string'&&seenEvents.has(candidate.eventId)))continue;
       const parentIds=Array.isArray(candidate.parentIds)
         ?candidate.parentIds.filter((id):id is string=>typeof id==='string'&&id.length>0&&id.length<=256).slice(0,8):[];
       const record:RealityEvidenceRecord={
-        id:candidate.id,tick:candidate.tick,at:candidate.at,
+        id:candidate.id,...(typeof candidate.eventId==='string'?{eventId:candidate.eventId}:{}),
+        tick:candidate.tick,at:candidate.at,
         realityClass:candidate.realityClass as EvidenceRealityClass,
         claim:candidate.claim,confidence01:candidate.confidence01,
         independenceKey:candidate.independenceKey,parentIds,
       };
       records.push(record);seen.add(record.id);
+      if(record.eventId)seenEvents.add(record.eventId);
     }
     this.records=records;
     this.total=typeof value.total==='number'&&Number.isSafeInteger(value.total)&&value.total>=records.length
       ?Math.min(MAX_TOTAL,value.total):records.length;
   }
 
-  record(rawInput:{tick:number;realityClass:EvidenceRealityClass;claim:string;confidence01?:number;independenceKey:string;parentIds?:string[];at?:number}):RealityEvidenceRecord{
+  record(rawInput:{tick:number;eventId?:string;realityClass:EvidenceRealityClass;claim:string;confidence01?:number;independenceKey:string;parentIds?:string[];at?:number}):RealityEvidenceRecord{
     let input:typeof rawInput;
     try{input=snapshotPlainData(rawInput,{allowNonFiniteNumbers:true,maxDepth:8,maxNodes:128,maxStringUnits:8192});}
     catch{throw new TypeError('reality-evidence-boundary-rejected');}
     const at=input.at??Date.now();
     if(!validTick(input.tick)||typeof at!=='number'||!Number.isFinite(at)||at<0||
        !REALITY_CLASSES.includes(input.realityClass)||!validText(input.claim,240)||
-       !validText(input.independenceKey,160)||
+       !validText(input.independenceKey,160)||(input.eventId!==undefined&&!validText(input.eventId,256))||
        (input.confidence01!==undefined&&!validScore(input.confidence01))||
        (input.parentIds!==undefined&&(!Array.isArray(input.parentIds)||input.parentIds.length>8||
          input.parentIds.some(id=>typeof id!=='string'||id.length===0||id.length>256)))){
@@ -93,11 +99,20 @@ export class RealityEvidenceLedger {
     const claim=input.claim.trim(),independenceKey=input.independenceKey.trim();
     const confidence01=input.confidence01??.5;
     const parentIds=(input.parentIds??[]).slice();
+    const eventId=input.eventId?.trim();
     const identity={tick:input.tick,at,realityClass:input.realityClass,claim,confidence01,independenceKey,parentIds};
-    const id=stableEvidenceId(identity);
-    const prior=this.records.find(row=>row.id===id);
-    if(prior)return structuredClone(prior);
-    const row:RealityEvidenceRecord={id,tick:input.tick,at,realityClass:input.realityClass,claim,confidence01,independenceKey,parentIds};
+    const id=eventId
+      ?stableEvidenceId({namespace:'nk1-reality-event-v1',eventId})
+      :stableEvidenceId(identity);
+    const prior=this.records.find(row=>row.id===id||(eventId!==undefined&&row.eventId===eventId));
+    if(prior){
+      const samePayload=prior.tick===input.tick&&prior.at===at&&prior.realityClass===input.realityClass&&
+        prior.claim===claim&&prior.confidence01===confidence01&&prior.independenceKey===independenceKey&&
+        JSON.stringify(prior.parentIds)===JSON.stringify(parentIds)&&prior.eventId===eventId;
+      if(!samePayload)throw new TypeError('reality-evidence-event-identity-conflict');
+      return structuredClone(prior);
+    }
+    const row:RealityEvidenceRecord={id,...(eventId?{eventId}:{}),tick:input.tick,at,realityClass:input.realityClass,claim,confidence01,independenceKey,parentIds};
     this.records.unshift(row);
     if(this.records.length>this.capacity)this.records.length=this.capacity;
     if(this.total<MAX_TOTAL)this.total++;
