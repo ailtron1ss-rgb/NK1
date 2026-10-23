@@ -60,6 +60,31 @@ assert.equal(restored.statsLight().memoriesWithIndependentEvidence, 1);
 assert.equal(restored.inspectRecent(1)[0]?.independentEvidenceSources, 2);
 assert.equal(restored.indexDiagnostics().pass, true);
 
+// WorkPass331: corrupt persisted/resource values or plugin overrides cannot disable the memory byte budget.
+const poisonedSnapshot = structuredClone(snap);
+poisonedSnapshot.byteBudget = Number.POSITIVE_INFINITY;
+poisonedSnapshot.estimatedBytes = Number.POSITIVE_INFINITY;
+poisonedSnapshot.implicitConflictCandidates = Number.POSITIVE_INFINITY;
+poisonedSnapshot.implicitConflictsResolved = Number.NaN;
+poisonedSnapshot.staleRetrievalsAvoided = Number.POSITIVE_INFINITY;
+poisonedSnapshot.lastConflictScanAt = Number.POSITIVE_INFINITY;
+poisonedSnapshot.budgetEvictions = Number.NEGATIVE_INFINITY;
+const budgetHardened = new MemoryOS2();
+budgetHardened.restore(poisonedSnapshot);
+assert.equal(budgetHardened.budgetDiagnostics().byteBudget, 524288,
+  'an invalid persisted byte budget must fall back to the bounded default');
+assert.ok(Number.isFinite(budgetHardened.budgetDiagnostics().estimatedBytes));
+assert.equal(budgetHardened.snapshot().implicitConflictCandidates, 0);
+assert.equal(budgetHardened.snapshot().implicitConflictsResolved, 0);
+assert.equal(budgetHardened.snapshot().staleRetrievalsAvoided, 0);
+assert.equal(budgetHardened.snapshot().lastConflictScanAt, 0,
+  'an infinite conflict-scan timestamp must not suppress maintenance indefinitely');
+assert.equal(budgetHardened.snapshot().budgetEvictions, 0);
+budgetHardened.enforceByteBudget({ maxBytes: 16384 });
+const invalidOverride = budgetHardened.enforceByteBudget({ maxBytes: Number.POSITIVE_INFINITY });
+assert.equal(invalidOverride.budget, 16384,
+  'a non-finite public budget override must retain the already enforced finite budget');
+
 // The same mechanism is strictly bounded when many genuinely distinct source
 // lineages attest to one memory. It never introduces a second memory owner.
 const capped = new MemoryOS2();
