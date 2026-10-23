@@ -15,6 +15,8 @@
 - Cost is O(R) grouping + O(R log R) worst-case within-task sorting + O(R) work per metric dimension, replacing prior repeated O(T × R) filtering. Metric formulas, equal task weights and promotion gates are unchanged.
 - Exact-head test/typecheck remain unverified because current Actions jobs return failure without step logs; no measured performance or learning uplift is claimed.
 
+- **Cross-branch strategy sync:** selectively synchronized `docs/NEUROCORE_MASTER_STRATEGY_AND_BRAIN_MAP.md` from `integration` after line-by-line content comparison; its Git blob is now identical on both branches. This imports the shared status and release/CI limitations without merging the divergent branch history or touching `main`/release assets.
+
 ---
 
 ## NK1 WorkPass415 — linearize task-balanced robust metrics (2026-10-23)
