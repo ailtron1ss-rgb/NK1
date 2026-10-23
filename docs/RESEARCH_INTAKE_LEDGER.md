@@ -1,3 +1,10 @@
+## WorkPass348 — source-grounded learning boundary improvements (2026-10-23)
+
+- [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution) — its documented flow evolves a skill from traces and evaluates candidate variants behind regression and review gates. NK1 adaptation in this pass: keep candidate generation distinct from independent validation and promotion, and harden the trace/evaluation envelope; upstream code was not copied.
+- [CleanRL documentation](https://docs.cleanrl.dev/) — emphasizes reproducible experiments through explicit seeding, logged implementation detail and benchmark comparison. NK1 adaptation: bind learning runs to bounded normalized task/trial/method identities and preserve evidence provenance; this pass does not claim a CleanRL algorithm or dataset integration.
+- [Letta memory & dreaming](https://docs.letta.com/configuration/memory) — describes persistent, versioned memory and separate idle-time consolidation. Relevant future cross-branch work: map the same provenance discipline onto learning-to-memory consolidation without mixing candidate output with durable memory.
+- [Implementation status] Only the independent-evaluation data-boundary hardening is implemented in WorkPass348. These sources are research references; code/data licensing, full reproducibility study, dependency choice and measurable learning uplift remain open. No new dependency was added.
+
 ## WorkPass266 — primary-source metadata check for memory and neuroscience candidates (2026-10-22)
 
 - [AMA-Bench, ICML 2026](https://proceedings.mlr.press/v306/zhao26bs.html) — publisher record describes long-horizon memory over agent/environment trajectories (states, actions, observations and tool output). Use its protocol as a candidate for trajectory-grounded evaluation; code/data integration has not been performed.

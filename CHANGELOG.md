@@ -1,3 +1,11 @@
+## NK1 WorkPass348 — harden the independent learning-evaluation boundary (2026-10-23)
+
+- [HARDENED] Added descriptor-only snapshots for task plans, generated candidate payloads, and executor/verifier/safety-scanner responses. Accessor properties are rejected without invoking getters; unsupported objects, cycles, sparse arrays, non-finite numbers, symbols and reflection failures fail closed.
+- [HARDENED] Normalized the evaluator's identity policy: task IDs, trial IDs, capability IDs, expected step IDs, scheduled method IDs, observed step IDs and returned run IDs must be bounded, trimmed, NFKC-normalized and free of control characters.
+- [REGRESSION] Extended the existing independent-evaluator suite with getter side-effect counters, malformed task identities, hostile candidate payloads, and hostile executor/verifier responses. The suite is wired through the existing `test:workpass203:independent-candidate-evaluator` script.
+- [RESEARCH] This adapts the trace-guided proposal/evaluate/gate separation documented in [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution) and the reproducible identity/seed discipline emphasized by [CleanRL](https://docs.cleanrl.dev/). The current change does not vendor upstream code or add dependencies.
+- [VALIDATION] Source and regression changes are committed on `feature/learning`; the new tests remain **unverified** until the GitHub Actions job actually starts a runner and executes steps. No learning uplift or production readiness is claimed from source changes alone.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

@@ -445,4 +445,92 @@ assert.equal(detachedTraceResult.evaluation.provenance.runBindings[0].observedSt
 assert.deepEqual(detachedTraceResult.evaluation.validation[0].trajectoryQuality.missingStepIds, [],
   'scoring must not read a later-mutated executor-owned trace');
 
-console.log('WorkPass203/212/213/214/219 independent evaluation, execution binding, and experiment-ledger integration: PASS');
+
+/* WorkPass348: descriptor-only snapshots must never execute caller getters. */
+let taskInputGetterCalls = 0;
+const hostileTaskInput = {};
+Object.defineProperty(hostileTaskInput, 'prompt', {
+  enumerable: true,
+  get() { taskInputGetterCalls++; return 'must-not-be-read'; },
+});
+assert.throws(() => createIndependentSkillCandidateEvaluator({
+  ...base,
+  tasks: [tasks[0], { ...tasks[1], input: hostileTaskInput }],
+}), /task-input-invalid/);
+assert.equal(taskInputGetterCalls, 0, 'task snapshotting must inspect descriptors instead of invoking getters');
+
+let taskIdentityGetterCalls = 0;
+const hostileTaskIdentity = { ...tasks[1] };
+Object.defineProperty(hostileTaskIdentity, 'taskId', {
+  enumerable: true,
+  get() { taskIdentityGetterCalls++; return 'holdout-b'; },
+});
+assert.throws(() => createIndependentSkillCandidateEvaluator({
+  ...base,
+  tasks: [tasks[0], hostileTaskIdentity],
+}), /task-input-invalid/);
+assert.equal(taskIdentityGetterCalls, 0, 'task identity accessors must be rejected without invocation');
+
+assert.throws(() => createIndependentSkillCandidateEvaluator({
+  ...base,
+  tasks: [tasks[0], { ...tasks[1], taskId: ' holdout-b' }],
+}), /task-invalid/, 'leading/trailing whitespace cannot create a second identity spelling');
+assert.throws(() => createIndependentSkillCandidateEvaluator({
+  ...base,
+  tasks: [tasks[0], { ...tasks[1], trialId: 'trial-\u0000two' }],
+}), /task-invalid/, 'control-bearing trial IDs must fail closed');
+
+let payloadGetterCalls = 0;
+const hostilePayload = {};
+Object.defineProperty(hostilePayload, 'steps', {
+  enumerable: true,
+  get() { payloadGetterCalls++; return ['forged']; },
+});
+await assert.rejects(() => evaluator({
+  payload: hostilePayload, payloadFingerprint: digest(payload),
+  baseline: { validation: [], holdout: [] },
+  previousEvaluation: { validation: [], holdout: [] },
+}), /payload-not-cloneable/);
+assert.equal(payloadGetterCalls, 0, 'candidate payload must be detached without running getters');
+
+let executorGetterCalls = 0;
+const hostileExecutionEvaluator = createIndependentSkillCandidateEvaluator({
+  ...base,
+  executor: { async execute() {
+    const result = { observedStepIds: ['read'] };
+    Object.defineProperty(result, 'runId', {
+      enumerable: true,
+      get() { executorGetterCalls++; return 'forged-run'; },
+    });
+    return result;
+  } },
+});
+const hostileExecutionResult = await hostileExecutionEvaluator({
+  payload, payloadFingerprint,
+  baseline: { validation: [], holdout: [] },
+  previousEvaluation: { validation: [], holdout: [] },
+});
+assert.equal(executorGetterCalls, 0, 'sandbox response accessors must not be executed while binding evidence');
+assert.ok(hostileExecutionResult.evaluation.provenance.runBindings.every(binding => !binding.executable && !binding.bindingVerified));
+
+let verifierGetterCalls = 0;
+const hostileVerifierEvaluator = createIndependentSkillCandidateEvaluator({
+  ...base,
+  verifier: { async verify() {
+    const result = { passed: true, coveredCapabilityIds: ['read'] };
+    Object.defineProperty(result, 'bindingVerified', {
+      enumerable: true,
+      get() { verifierGetterCalls++; return true; },
+    });
+    return result;
+  } },
+});
+const hostileVerifierResult = await hostileVerifierEvaluator({
+  payload, payloadFingerprint,
+  baseline: { validation: [], holdout: [] },
+  previousEvaluation: { validation: [], holdout: [] },
+});
+assert.equal(verifierGetterCalls, 0, 'verifier response accessors must not be executed');
+assert.ok(hostileVerifierResult.evaluation.provenance.runBindings.every(binding => !binding.bindingVerified && !binding.verifierPassed));
+
+console.log('WorkPass203/212/213/214/219/348 independent evaluation, execution binding, and experiment-ledger integration: PASS');

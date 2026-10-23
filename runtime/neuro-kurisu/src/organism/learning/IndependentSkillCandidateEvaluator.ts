@@ -78,13 +78,7 @@ export interface IndependentCandidateEvaluationConfig {
   serviceTimeoutMs?: number;
 }
 const isDigest = (x: unknown): x is string => typeof x === 'string' && /^[a-f0-9]{64}$/i.test(x);
-const isSafeRunId = (value: unknown): value is string =>
-  typeof value === 'string' && value.length > 0 && value.length <= 256 &&
-  value.trim() === value &&
-  !Array.from(value).some(character => {
-    const code = character.codePointAt(0) ?? 0;
-    return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
-  });
+const isSafeRunId = (value: unknown): value is string => isSafeIdentity(value, 256);
 // Must match P23LearningEngine's canonicalize exactly or its post-generation
 // payload/evaluation digest gate will reject a genuine evaluator result.
 function canonical(value: unknown, ancestors = new Set<object>()): string {
@@ -113,6 +107,97 @@ function canonical(value: unknown, ancestors = new Set<object>()): string {
   }
 }
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
+
+/**
+ * Detach JSON-like evidence without invoking caller-owned getters. structuredClone
+ * is not a safe first read for arbitrary objects because it can execute getters.
+ * Accessor properties, symbols, sparse arrays, proxies that break reflection,
+ * non-plain instances, cycles, and non-finite numbers fail closed.
+ */
+const SNAPSHOT_MAX_DEPTH = 64;
+const SNAPSHOT_MAX_NODES = 100_000;
+function snapshotPlainData(
+  value: unknown,
+  ancestors = new Set<object>(),
+  depth = 0,
+  budget: { nodes: number } = { nodes: 0 },
+): unknown {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (value === undefined) return undefined;
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new Error('independent-evaluator-snapshot-non-finite-number');
+    return value;
+  }
+  if (typeof value !== 'object') throw new Error('independent-evaluator-snapshot-unsupported-value');
+  if (depth > SNAPSHOT_MAX_DEPTH || budget.nodes >= SNAPSHOT_MAX_NODES) {
+    throw new Error('independent-evaluator-snapshot-size-limit');
+  }
+  budget.nodes++;
+  if (ancestors.has(value)) throw new Error('independent-evaluator-snapshot-cycle');
+
+  const array = Array.isArray(value);
+  const prototype = Object.getPrototypeOf(value);
+  if (array) {
+    if (prototype !== Array.prototype) throw new Error('independent-evaluator-snapshot-array-prototype-invalid');
+    const keys = Reflect.ownKeys(value);
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+    const length = lengthDescriptor?.value;
+    if (!lengthDescriptor || !Number.isSafeInteger(length) || length < 0 ||
+        length > SNAPSHOT_MAX_NODES || keys.length !== length + 1) {
+      throw new Error('independent-evaluator-snapshot-array-shape-invalid');
+    }
+    ancestors.add(value);
+    try {
+      const result: unknown[] = [];
+      for (let i = 0; i < length; i++) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(i));
+        if (!descriptor || !('value' in descriptor) || descriptor.get || descriptor.set || !descriptor.enumerable) {
+          throw new Error('independent-evaluator-snapshot-array-entry-invalid');
+        }
+        result.push(snapshotPlainData(descriptor.value, ancestors, depth + 1, budget));
+      }
+      return result;
+    } finally {
+      ancestors.delete(value);
+    }
+  }
+
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new Error('independent-evaluator-snapshot-object-prototype-invalid');
+  }
+  const keys = Reflect.ownKeys(value);
+  const result = Object.create(prototype === null ? null : Object.prototype) as Record<string, unknown>;
+  ancestors.add(value);
+  try {
+    for (const key of keys) {
+      if (typeof key !== 'string') throw new Error('independent-evaluator-snapshot-symbol-key-invalid');
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || !('value' in descriptor) || descriptor.get || descriptor.set) {
+        throw new Error('independent-evaluator-snapshot-accessor-invalid');
+      }
+      if (!descriptor.enumerable) continue;
+      const copied = snapshotPlainData(descriptor.value, ancestors, depth + 1, budget);
+      // Keep the evaluator's canonical representation: undefined object values
+      // are omitted, while undefined array entries canonicalize as null.
+      if (copied === undefined) continue;
+      Object.defineProperty(result, key, {
+        value: copied, enumerable: true, configurable: true, writable: true,
+      });
+    }
+    return result;
+  } finally {
+    ancestors.delete(value);
+  }
+}
+
+function isSafeIdentity(value: unknown, maxLength = 256): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= maxLength &&
+    value.trim() === value && value.normalize('NFKC') === value &&
+    !Array.from(value).some(character => {
+      const code = character.codePointAt(0) ?? 0;
+      return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
+    });
+}
 async function runWithServiceDeadline<T>(
   label: string,
   timeoutMs: number,
@@ -132,8 +217,8 @@ async function runWithServiceDeadline<T>(
     if (timer !== undefined) clearTimeout(timer);
   }
 }
-function validateConfig(config: IndependentCandidateEvaluationConfig): void {
-  if (!config || !Array.isArray(config.tasks) || config.tasks.length < 2 ||
+function validateConfig(config: IndependentCandidateEvaluationConfig, tasks: IndependentCandidateTask[]): void {
+  if (!config || !Array.isArray(tasks) || tasks.length < 2 ||
       !config.executor || typeof config.executor.execute !== 'function' ||
       !config.verifier || typeof config.verifier.verify !== 'function' ||
       !config.safetyScanner || typeof config.safetyScanner.scan !== 'function' ||
@@ -158,22 +243,20 @@ function validateConfig(config: IndependentCandidateEvaluationConfig): void {
   const keys = new Set<string>();
   const trialIds = new Set<string>();
   const splitTasks = { validation: new Set<string>(), holdout: new Set<string>() };
-  for (const task of config.tasks) {
-    if (!task || typeof task.taskId !== 'string' || !task.taskId.trim() ||
-        typeof task.trialId !== 'string' || !task.trialId.trim() ||
+  for (const task of tasks) {
+    if (!task || !isSafeIdentity(task.taskId, 256) || !isSafeIdentity(task.trialId, 256) ||
         !Number.isSafeInteger(task.seed) || task.seed < 0 ||
         !['validation', 'holdout'].includes(task.split) ||
         !Array.isArray(task.requiredCapabilityIds) || task.requiredCapabilityIds.length === 0 ||
-        task.requiredCapabilityIds.some(id => typeof id !== 'string' || !id.trim()) ||
+        task.requiredCapabilityIds.some(id => !isSafeIdentity(id, 256)) ||
         new Set(task.requiredCapabilityIds).size !== task.requiredCapabilityIds.length ||
         !Array.isArray(task.expectedStepIds) || task.expectedStepIds.length === 0 ||
-        task.expectedStepIds.some(id => typeof id !== 'string' || !id.trim()) ||
+        task.expectedStepIds.some(id => !isSafeIdentity(id, 256)) ||
         new Set(task.expectedStepIds).size !== task.expectedStepIds.length) {
       throw new Error('independent-candidate-evaluator-task-invalid');
     }
     try {
-      // Fail before execution if the task cannot be safely snapshotted for provenance.
-      structuredClone(task.input);
+      // Task inputs were detached through descriptor-only reads before validation.
       canonical(task.input);
     } catch {
       throw new Error('independent-candidate-evaluator-task-input-invalid');
@@ -195,7 +278,7 @@ function validateConfig(config: IndependentCandidateEvaluationConfig): void {
   const authority = config.experimentAuthority;
   if (authority) {
     if (!Array.isArray(authority.manifest) || !(authority.ledger instanceof VerifiedOutcomeLedger) ||
-        typeof authority.method !== 'string' || !authority.method.trim() ||
+        !isSafeIdentity(authority.method, 180) ||
         (authority.attempt !== undefined && (!Number.isSafeInteger(authority.attempt) || authority.attempt < 1))) {
       throw new Error('independent-candidate-experiment-authority-invalid');
     }
@@ -237,8 +320,17 @@ function validateConfig(config: IndependentCandidateEvaluationConfig): void {
 export function createIndependentSkillCandidateEvaluator(
   config: IndependentCandidateEvaluationConfig,
 ): RevisedCandidateEvaluator {
-  validateConfig(config);
-  const tasks = config.tasks.map(task => structuredClone(task));
+  let tasks: IndependentCandidateTask[];
+  try {
+    const detachedTasks = snapshotPlainData(config?.tasks);
+    if (!Array.isArray(detachedTasks)) throw new Error('tasks-not-array');
+    tasks = detachedTasks as IndependentCandidateTask[];
+  } catch {
+    // Accessors are rejected without invocation; malformed task inputs cannot reach
+    // the sandbox or rewrite their fingerprints during asynchronous evaluation.
+    throw new Error('independent-candidate-evaluator-task-input-invalid');
+  }
+  validateConfig(config, tasks);
   // Capture validated environment identity rather than reading it from the mutable
   // caller-owned config on every run. Otherwise post-construction mutation can relabel
   // an evaluation with a different runtime/tool-policy fingerprint.
@@ -253,10 +345,10 @@ export function createIndependentSkillCandidateEvaluator(
   // plan/manifest objects live here would let post-validation mutation silently
   // change scheduled run IDs while retaining the original evaluator plan fingerprint.
   const authority = config.experimentAuthority ? {
-    manifest: structuredClone(config.experimentAuthority.manifest),
+    manifest: snapshotPlainData(config.experimentAuthority.manifest) as TaskManifestEntry[],
     ledger: config.experimentAuthority.ledger,
-    validationPlan: structuredClone(config.experimentAuthority.validationPlan),
-    holdoutPlan: structuredClone(config.experimentAuthority.holdoutPlan),
+    validationPlan: snapshotPlainData(config.experimentAuthority.validationPlan) as LearningExperimentPlan,
+    holdoutPlan: snapshotPlainData(config.experimentAuthority.holdoutPlan) as LearningExperimentPlan,
     method: config.experimentAuthority.method,
     ...(config.experimentAuthority.attempt === undefined ? {} : { attempt: config.experimentAuthority.attempt }),
   } : undefined;
@@ -268,7 +360,7 @@ export function createIndependentSkillCandidateEvaluator(
     // later trials while they still carry the fingerprint computed for the original.
     let candidatePayload: unknown;
     try {
-      candidatePayload = structuredClone(payload);
+      candidatePayload = snapshotPlainData(payload);
     } catch {
       throw new Error('independent-candidate-evaluator-payload-not-cloneable');
     }
@@ -305,15 +397,15 @@ export function createIndependentSkillCandidateEvaluator(
         // The executor is outside this trust boundary. Detach its returned object
         // immediately so later mutation of a retained reference cannot rewrite the
         // trace while verification or safety scanning is awaiting other services.
-        execution = structuredClone(await runWithServiceDeadline('candidate-sandbox-execution', serviceTimeoutMs, signal => executeCandidate({
+        execution = snapshotPlainData(await runWithServiceDeadline('candidate-sandbox-execution', serviceTimeoutMs, signal => executeCandidate({
           payload: structuredClone(candidatePayload),
           task: structuredClone(task),
           context: structuredClone(executionContext),
           signal,
-        })));
+        }))) as CandidateExecutionResult;
         if (!execution || !isSafeRunId(execution.runId) ||
             !Array.isArray(execution.observedStepIds) ||
-            execution.observedStepIds.some(step => typeof step !== 'string' || !step.trim()) ||
+            execution.observedStepIds.some(step => !isSafeIdentity(step, 256)) ||
             new Set(execution.observedStepIds).size !== execution.observedStepIds.length) {
           throw new Error('candidate-sandbox-result-invalid');
         }
@@ -326,15 +418,15 @@ export function createIndependentSkillCandidateEvaluator(
       }
       if (execution) {
         try {
-          const verified = await runWithServiceDeadline('independent-task-verification', serviceTimeoutMs, signal => verifyCandidate({
+          const verified = snapshotPlainData(await runWithServiceDeadline('independent-task-verification', serviceTimeoutMs, signal => verifyCandidate({
             task: structuredClone(task),
             execution: structuredClone(execution),
             context: structuredClone(executionContext),
             signal,
-          }));
+          }))) as { bindingVerified: boolean; passed: boolean; coveredCapabilityIds: string[] };
           if (!verified || typeof verified.bindingVerified !== 'boolean' ||
               typeof verified.passed !== 'boolean' || !Array.isArray(verified.coveredCapabilityIds) ||
-              verified.coveredCapabilityIds.some(id => typeof id !== 'string' || !id.trim()) ||
+              verified.coveredCapabilityIds.some(id => !isSafeIdentity(id, 256)) ||
               new Set(verified.coveredCapabilityIds).size !== verified.coveredCapabilityIds.length) {
             throw new Error('independent-task-verifier-result-invalid');
           }
@@ -353,12 +445,12 @@ export function createIndependentSkillCandidateEvaluator(
           verifierPassed = false;
         }
       }
-      const safety = await runWithServiceDeadline('independent-candidate-safety-scan', serviceTimeoutMs, signal => scanCandidateSafety({
+      const safety = snapshotPlainData(await runWithServiceDeadline('independent-candidate-safety-scan', serviceTimeoutMs, signal => scanCandidateSafety({
         payload: structuredClone(candidatePayload), task: structuredClone(task),
         ...(execution ? { execution: structuredClone(execution) } : {}),
         context: structuredClone(executionContext),
         signal,
-      }));
+      }))) as { violationCount: number };
       if (!safety || !Number.isSafeInteger(safety.violationCount) || safety.violationCount < 0) {
         throw new Error('independent-candidate-safety-result-invalid');
       }
