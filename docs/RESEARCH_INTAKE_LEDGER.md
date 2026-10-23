@@ -1,3 +1,13 @@
+## WorkPass448 — bound bootstrap computational work (2026-10-23)
+
+- **Risk:** the bootstrap utility bounded the resample count but not the product of sample count × resamples; a permitted high resample setting combined with a large evidence vector could spend excessive CPU.
+- **Change:** set a 16,000,000-draw per-invocation budget. The utility validates this product after the plain-data snapshot and numeric/config validation, but before allocating the bootstrap result array and entering the nested resampling loops.
+- **Behavior:** over-budget input fails closed with `paired-seed-bootstrap-work-budget-exceeded`; settings are not silently modified, preserving the interpretation of accepted confidence intervals. Accepted-range RNG/percentile behavior is unchanged.
+- **Regression:** WorkPass404 bootstrap test asserts a 5,000 × 4,000 workload is rejected. No new package/dependency.
+- **Verification:** change and regression are committed; exact-head runtime test/typecheck not confirmed.
+
+---
+
 ## WorkPass447 — task-cluster bootstrap uncertainty in robust learning diagnostics (2026-10-23)
 
 - **Gap:** IQM, median, optimality gap and paired probability of improvement describe observed results but do not show the uncertainty of an aggregate mean difference across heterogeneous task families.
