@@ -104,9 +104,10 @@ export class VerifiedOutcomeLedger {
     for (const entry of entries) {
       if (!entry || typeof entry !== 'object' ||
           typeof entry.taskId !== 'string' || !entry.taskId.trim() ||
-          typeof entry.family !== 'string' || !entry.family.trim() ||
-          typeof entry.version !== 'string' || !entry.version.trim() ||
-          typeof entry.verifierId !== 'string' || !entry.verifierId.trim() ||
+          typeof entry.taskId !== 'string' || entry.taskId.length>180 ||
+          typeof entry.family !== 'string' || !entry.family.trim() || entry.family.length>96 ||
+          typeof entry.version !== 'string' || !entry.version.trim() || entry.version.length>96 ||
+          typeof entry.verifierId !== 'string' || !entry.verifierId.trim() || entry.verifierId.length>160 ||
           !['train', 'validation', 'holdout'].includes(entry.split) ||
           typeof entry.promptFingerprint !== 'string' ||
           !/^[a-f0-9]{64}$/i.test(entry.promptFingerprint)) {
@@ -176,15 +177,16 @@ export class VerifiedOutcomeLedger {
     const task = this.manifest.get(safeTaskId);
     let code: OutcomeRejection['code'] | undefined;
     let detail = '';
-    if (!outcome || typeof outcome !== 'object' || typeof outcome.taskId !== 'string' ||
-        typeof outcome.taskVersion !== 'string' || typeof outcome.verifierId !== 'string' ||
-        typeof outcome.evidenceRef !== 'string' || typeof outcome.passed !== 'boolean' ||
+    if (!outcome || typeof outcome !== 'object' || typeof outcome.taskId !== 'string' || outcome.taskId.length>180 ||
+        typeof outcome.taskVersion !== 'string' || outcome.taskVersion.length>96 ||
+        typeof outcome.verifierId !== 'string' || outcome.verifierId.length>160 ||
+        typeof outcome.evidenceRef !== 'string' || outcome.evidenceRef.length>4096 || typeof outcome.passed !== 'boolean' ||
         !['independent-verifier', 'human-review', 'self-report'].includes(outcome.authority)) {
-      code = 'invalid-outcome'; detail = 'outcome shape or authority fields are malformed';
+      code = 'invalid-outcome'; detail = 'outcome shape, authority fields or bounded text fields are malformed';
     }
     else if (!task) { code = 'unknown-task'; detail = 'task is not in the versioned manifest'; }
     else if (task.version !== outcome.taskVersion) { code = 'version-mismatch'; detail = 'outcome references a different task version'; }
-    else if (typeof outcome.method !== 'string' || !outcome.method.trim()) { code = 'invalid-method'; detail = 'method must be a non-empty string'; }
+    else if (typeof outcome.method !== 'string' || !outcome.method.trim() || outcome.method.length>96) { code = 'invalid-method'; detail = 'method must be a non-empty string of at most 96 characters'; }
     else if (!Number.isSafeInteger(outcome.seed) || outcome.seed < 0) { code = 'invalid-seed'; detail = 'seed must be a non-negative safe integer'; }
     else if (!Number.isSafeInteger(outcome.attempt) || outcome.attempt < 1) { code = 'invalid-attempt'; detail = 'attempt must be a positive safe integer'; }
     else if (outcome.authority === 'self-report') { code = 'self-report-not-authoritative'; detail = 'self-assessed success cannot become ground truth'; }
