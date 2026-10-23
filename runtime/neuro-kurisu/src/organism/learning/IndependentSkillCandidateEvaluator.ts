@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { evaluateSkillLearnBenchCandidate, evaluateSkillLearnBenchTrial, type SkillLearnBenchCandidateGateReport, type SkillLearnBenchTrialReport } from './SkillLearnBenchAdapter.ts';
+import { evaluateSkillLearnBenchCandidate, evaluateSkillLearnBenchTrial, type SkillLearnBenchCandidateGateOptions, type SkillLearnBenchCandidateGateReport, type SkillLearnBenchTrialReport } from './SkillLearnBenchAdapter.ts';
 import type { RevisedCandidateEvaluator } from './P23LearningEngine.ts';
 import {
   validateLearningExperimentPlan,
@@ -656,6 +656,7 @@ export function compareMatchedIndependentEvaluations(
       };
     };
   },
+  gateOptions: SkillLearnBenchCandidateGateOptions = {},
 ): SkillLearnBenchCandidateGateReport & {
   matchedTrialCount: number;
   matchedValidationTrialCount: number;
@@ -751,6 +752,7 @@ export function compareMatchedIndependentEvaluations(
   const gate = evaluateSkillLearnBenchCandidate(
     { validation: baseline.evaluation.validation, holdout: baseline.evaluation.holdout },
     { validation: candidate.evaluation.validation, holdout: candidate.evaluation.holdout },
+    gateOptions,
   );
   return {
     ...gate,
