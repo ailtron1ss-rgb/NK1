@@ -86,6 +86,9 @@ export function buildContinualOutcomeMatrix(
   if (options.preTrainingMethod !== undefined && (!options.preTrainingMethod.trim() || methods.has(options.preTrainingMethod))) {
     throw new Error('pre-training method must be non-empty and distinct from checkpoint methods');
   }
+  if (options.preTrainingMethod !== undefined && options.referenceScore === undefined) {
+    throw new Error('referenceScore is required when preTrainingMethod is set; use a fixed baseline measured on the same protocol');
+  }
   const split = options.split ?? 'holdout';
   const snapshot = ledger.snapshot();
   const manifest = snapshot.manifest as TaskManifestEntry[];
