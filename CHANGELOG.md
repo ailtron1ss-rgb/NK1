@@ -1,3 +1,9 @@
+## NK1 WorkPass329 — validate operational micro-cycle ingress (2026-10-23)
+
+- **Fixed:** the reduced-resolution operational micro-cycle now calls the shared `assertCognitiveCycleBoundaryInput(..., 'operational')` contract before acquiring host context or touching persisted state. This closes a gap between full-cycle ingress validation and direct micro-cycle entry.
+- **Regression added:** the operational micro-cycle input test now supplies null, undefined, arrays and primitive values, then asserts the host context was never acquired for rejected input.
+- **Validation boundary:** implementation and regression are committed; hosted Actions still fails before runner steps, so no runtime test pass or green CI is claimed.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
