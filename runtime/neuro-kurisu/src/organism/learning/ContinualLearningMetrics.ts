@@ -27,24 +27,41 @@ function assertScore(value: number, label: string): void {
  * retention/forgetting. Forward transfer is preTrainingScore minus referenceScore.
  * Supply a meaningful fixed/random-policy reference; default 0 is only a fallback.
  */
-export function evaluateContinualLearning(tasks: ContinualTask[], referenceScore = 0): ContinualLearningMetrics {
+export function evaluateContinualLearning(tasks: ContinualTask[], referenceScore?: number): ContinualLearningMetrics {
   if (!Array.isArray(tasks) || tasks.length === 0) throw new Error('at least one task is required');
-  assertScore(referenceScore, 'referenceScore');
+  // JavaScript arrays can contain holes; map/forEach silently skip them and can
+  // otherwise under-count tasks while still reporting tasks.length as the sample size.
+  for (let index = 0; index < tasks.length; index++) {
+    if (!Object.prototype.hasOwnProperty.call(tasks, index)) throw new Error(`task list contains an empty slot at index ${index}`);
+  }
+  if (referenceScore !== undefined) assertScore(referenceScore, 'referenceScore');
+  const hasForwardTransfer = tasks.some(task => task?.preTrainingScore !== undefined);
+  // FWT is meaningful only relative to a measured fixed/random-policy baseline.
+  // Defaulting that baseline to zero makes omitted experimental setup look like
+  // genuine transfer, so fail closed when pre-training scores are supplied.
+  if (hasForwardTransfer && referenceScore === undefined) {
+    throw new Error('referenceScore is required when preTrainingScore is supplied');
+  }
   const ids = new Set<string>();
   const stageCount = tasks[0]?.scoreByStage?.length ?? 0;
   if (stageCount === 0 || stageCount !== tasks.length) throw new Error('score matrix must have one stage per task');
   const perTask = tasks.map((task, taskIndex) => {
-    if (!task || typeof task.taskId !== 'string' || !task.taskId.trim()) throw new Error(`task ${taskIndex} requires a non-empty taskId`);
+    if (!task || typeof task.taskId !== 'string' || !task.taskId.trim() || task.taskId.length > 128 || /[\\u0000-\\u001f\\u007f-\\u009f]/u.test(task.taskId)) {
+      throw new Error(`task ${taskIndex} requires a valid non-empty taskId`);
+    }
     if (ids.has(task.taskId)) throw new Error(`duplicate taskId: ${task.taskId}`);
     ids.add(task.taskId);
     if (!Array.isArray(task.scoreByStage) || task.scoreByStage.length !== stageCount) throw new Error(`task ${task.taskId} must have exactly ${stageCount} stage scores`);
-    task.scoreByStage.forEach((score, stage) => assertScore(score, `${task.taskId}.scoreByStage[${stage}]`));
+    for (let stage = 0; stage < stageCount; stage++) {
+      if (!Object.prototype.hasOwnProperty.call(task.scoreByStage, stage)) throw new Error(`score matrix contains an empty slot: ${task.taskId}.scoreByStage[${stage}]`);
+      assertScore(task.scoreByStage[stage]!, `${task.taskId}.scoreByStage[${stage}]`);
+    }
     if (task.preTrainingScore !== undefined) assertScore(task.preTrainingScore, `${task.taskId}.preTrainingScore`);
     const finalScore = task.scoreByStage[stageCount - 1]!;
     const peakPostLearningScore = Math.max(...task.scoreByStage.slice(taskIndex));
     const forgetting = Math.max(0, peakPostLearningScore - finalScore);
     const backwardTransfer = finalScore - task.scoreByStage[taskIndex]!;
-    const forwardTransfer = task.preTrainingScore === undefined ? null : task.preTrainingScore - referenceScore;
+    const forwardTransfer = task.preTrainingScore === undefined ? null : task.preTrainingScore - referenceScore!;
     return { taskId: task.taskId, finalScore, peakPostLearningScore, forgetting, backwardTransfer, forwardTransfer };
   });
   const mean = (values: number[]) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
