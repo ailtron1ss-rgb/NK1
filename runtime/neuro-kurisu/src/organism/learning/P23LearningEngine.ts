@@ -11,6 +11,7 @@ import { isAuthenticVerifiedSkillPromotionProposal, type VerifiedSkillPromotionP
 import { evaluateSkillLearnBenchCandidate, type SkillLearnBenchCandidateEvaluation, type SkillLearnBenchCandidateGateOptions, type SkillLearnBenchCandidateGateReport } from './SkillLearnBenchAdapter.ts';
 import { bindIndependentEvaluationToVerifiedShadowEvidence, bindReflectiveReportsToVerifiedShadowEvidence, type ReflectiveEvidenceBindingReport } from './HermesVerifiedEvidenceBinding.ts';
 import { compareMatchedIndependentEvaluations } from './IndependentSkillCandidateEvaluator.ts';
+import type { LearningFitnessJournalSink } from './LearningFitnessJournal.ts';
 import { planSkillRevision, type SkillRevisionPlan } from './SkillRevisionPlan.ts';
 import type { SkillShadowEvidenceVerifier } from './VersionedSkillCandidateStore.ts';
 import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillRollbackApproval, type SkillShadowObservation, type SkillRevisionProvenance, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
@@ -463,6 +464,7 @@ export class P23LearningEngine {
   private state = defaultP23Learning();
   private replaySelectionOptions: ReplaySelectionOptions = { maxBatchSize:64, recentQuota:32 };
   private verifiedSkillStore: VersionedSkillCandidateStore | null = null;
+  private learningFitnessJournal: LearningFitnessJournalSink | null = null;
 
   /** Configure a bounded replay ablation; defaults remain 64 total / 32 recent. */
   configureReplaySelection(options: ReplaySelectionOptions):void {
@@ -514,6 +516,17 @@ export class P23LearningEngine {
   configureVerifiedSkillLifecycle(store:VersionedSkillCandidateStore):void {
     this.verifiedSkillStore = store;
     this.state.metrics.skillPromotions = store.snapshot().active.length;
+  }
+
+  /**
+   * Attach an optional append-only, hash-chained journal for production fitness decisions.
+   * Journal failures fail closed before promotion; no prompt/task/individual holdout rows are recorded.
+   */
+  configureLearningFitnessJournal(journal:LearningFitnessJournalSink|null):void {
+    if(journal!==null && (!journal || typeof journal.recordFitnessDecision!=='function')) {
+      throw new Error('P23 learning fitness journal sink invalid');
+    }
+    this.learningFitnessJournal=journal;
   }
 
   /** Read-only view of the durable staged/active skill lifecycle; null means not configured. */
@@ -862,6 +875,40 @@ export class P23LearningEngine {
       minimumHoldoutFamilySeeds:3,
       confidenceLevel:0.95,
       bootstrapResamples:2000,
+    });
+    this.learningFitnessJournal?.recordFitnessDecision({
+      recordedAt:now(),
+      candidateId:staged.candidateId,
+      payloadFingerprint:staged.payloadFingerprint,
+      evaluationFingerprint:evaluation.evaluationFingerprint,
+      planFingerprint:fitness.planFingerprint,
+      environmentFingerprint:fitness.environmentFingerprint,
+      decision:fitness.eligible?'fitness-accepted':'fitness-rejected',
+      reasonCodes:[...fitness.reasons],
+      matchedTrialCount:fitness.matchedTrialCount,
+      matchedValidationTrialCount:fitness.matchedValidationTrialCount,
+      matchedHoldoutTrialCount:fitness.matchedHoldoutTrialCount,
+      minimumPairedSeedsPerFamily:3,
+      confidenceLevel:0.95,
+      bootstrapResamples:2000,
+      validation:{
+        familiesEvaluated:fitness.validationFamiliesEvaluatedForConfidenceInterval,
+        familiesWithSufficientSeeds:fitness.validationFamiliesWithSufficientSeeds,
+        seedCoverageFailures:fitness.validationFamilySeedCoverageFailures,
+        confidenceBoundFailures:fitness.validationFamilyConfidenceBoundFailures,
+        meanDelta:fitness.validationFamilyMeanDelta,
+        minimumLowerBound:fitness.validationFamilyLowerBoundMinimum,
+        maximumUpperBound:fitness.validationFamilyUpperBoundMaximum,
+      },
+      holdout:{
+        familiesEvaluated:fitness.holdoutFamiliesEvaluatedForConfidenceInterval,
+        familiesWithSufficientSeeds:fitness.holdoutFamiliesWithSufficientSeeds,
+        seedCoverageFailures:fitness.holdoutFamilySeedCoverageFailures,
+        confidenceBoundFailures:fitness.holdoutFamilyConfidenceBoundFailures,
+        meanDelta:fitness.holdoutFamilyMeanDelta,
+        minimumLowerBound:fitness.holdoutFamilyLowerBoundMinimum,
+        maximumUpperBound:fitness.holdoutFamilyUpperBoundMaximum,
+      },
     });
     if(!fitness.eligible) throw new Error(`independent reflective fitness gate rejected candidate: ${fitness.reasons.join(',')}`);
     // Bind against the exact receipts persisted on the candidate; caller-supplied
