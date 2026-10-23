@@ -28,4 +28,23 @@ assert.throws(() => bootstrapMeanConfidenceInterval([0.1, 0.2], { confidenceLeve
 assert.throws(() => bootstrapMeanConfidenceInterval([0.1, 0.2], { resamples: 99 }), /paired-seed-bootstrap-resamples-invalid/);
 assert.throws(() => bootstrapMeanConfidenceInterval([0.1, 0.2], { seed: -1 }), /paired-seed-bootstrap-seed-invalid/);
 
-console.log('WORKPASS404_PAIRED_SEED_CONFIDENCE=PASS deterministic=true positiveInterval=true noisyMeanDetected=true invalidInputsRejected=true');
+let valueGetterCalls = 0;
+const getterValues = [0.1, 0.2];
+Object.defineProperty(getterValues, '0', {
+  configurable: true, enumerable: true,
+  get() { valueGetterCalls++; return 0.1; },
+});
+assert.throws(() => bootstrapMeanConfidenceInterval(getterValues), /paired-seed-bootstrap-data-boundary-rejected/);
+assert.equal(valueGetterCalls, 0, 'bootstrap data accessors must be rejected without invocation');
+
+let optionGetterCalls = 0;
+const getterOptions = {};
+Object.defineProperty(getterOptions, 'seed', {
+  configurable: true, enumerable: true,
+  get() { optionGetterCalls++; return 7; },
+});
+assert.throws(() => bootstrapMeanConfidenceInterval([0.1, 0.2], getterOptions),
+  /paired-seed-bootstrap-data-boundary-rejected/);
+assert.equal(optionGetterCalls, 0, 'bootstrap policy accessors must be rejected without invocation');
+
+console.log('WORKPASS404_PAIRED_SEED_CONFIDENCE=PASS deterministic=true positiveInterval=true noisyMeanDetected=true invalidInputsRejected=true hostileAccessorsRejected=true');
