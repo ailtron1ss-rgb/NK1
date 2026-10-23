@@ -124,6 +124,19 @@ assert.equal(replicated.validationFamilySeedCoverageFailures, 0);
 assert.equal(replicated.holdoutFamilySeedCoverageFailures, 0);
 assert.equal(replicated.eligible, true, JSON.stringify(replicated));
 
+assert.throws(() => compareMatchedIndependentEvaluations(
+  twoSeedBaseline, twoSeedCandidate, familyPolicy,
+  { minimumValidationFamilySeeds: Number.NaN, minimumHoldoutFamilySeeds: 3 },
+), /matched-independent-evaluation-minimum-validation-family-seeds-invalid/);
+assert.throws(() => compareMatchedIndependentEvaluations(
+  twoSeedBaseline, twoSeedCandidate, familyPolicy,
+  { minimumValidationFamilySeeds: 3, minimumHoldoutFamilySeeds: 1.5 },
+), /matched-independent-evaluation-minimum-holdout-family-seeds-invalid/);
+assert.throws(() => compareMatchedIndependentEvaluations(
+  twoSeedBaseline, twoSeedCandidate, familyPolicy,
+  { minimumValidationFamilySeeds: 1001, minimumHoldoutFamilySeeds: 3 },
+), /matched-independent-evaluation-minimum-validation-family-seeds-invalid/);
+
 const differentEnvironment = await makeEvaluation({ skill: 'candidate', version: 2 }, 'b'.repeat(64), { runPrefix: 'different-env-' });
 assert.throws(() => compareMatchedIndependentEvaluations(baseline, differentEnvironment), /environment-mismatch/);
 
@@ -145,4 +158,4 @@ const tampered = structuredClone(candidate);
 tampered.evaluation.validation[0].taskSuccess.passed = false;
 assert.throws(() => compareMatchedIndependentEvaluations(baseline, tampered), /envelope-invalid/);
 
-console.log('WorkPass225 matched independent evaluation regressions passed; strict family policy propagation and seed replication verified');
+console.log('WorkPass225 matched independent evaluation regressions passed; strict family policy propagation, paired-seed coverage, and invalid-option rejection verified');
