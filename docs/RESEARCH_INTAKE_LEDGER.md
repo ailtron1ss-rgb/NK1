@@ -1,3 +1,10 @@
+## WorkPass350 — unify learning evidence trust boundaries (2026-10-23)
+
+- Reused a single NK1-owned snapshot/identity policy at both candidate execution evaluation and the verified-outcome ledger instead of allowing each subsystem to interpret mutable JavaScript objects independently.
+- Added receipt-level uniqueness to the ledger: one evidence reference can support one accepted measurement only. This prevents replaying the same artifact as distinct method/seed outcomes from fabricating a paired-learning signal.
+- Research fit: Hermes Agent Self-Evolution's trace-to-revision-to-evaluation separation and CleanRL's reproducibility discipline support this design direction; upstream source code was not copied. No external runtime dependency was added.
+- Verification status: code and regression wiring committed, exact-head tests unrun because Actions runner startup remains blocked. Learning gains remain unmeasured.
+
 ## WorkPass349 — close the evaluator snapshot wiring gap (2026-10-23)
 
 - Bound the manifest/schedule validation loop to the detached task collection rather than the caller-owned configuration array, and capped own-key enumeration in object snapshots.

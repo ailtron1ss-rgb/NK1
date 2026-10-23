@@ -54,3 +54,50 @@ assert.throws(() => recordPlannedLearningOutcome(new VerifiedOutcomeLedger(manif
   taskId: 't-1', attempt: 1, passed: true, authority: 'independent-verifier',
   evidenceRef: 'artifact://experiment/wrong-task', observedAt: 1_800_000_000_000,
 }), /metadata does not match scheduled run/);
+
+
+// WorkPass350: manifest/outcome accessors must be rejected without running getters.
+let manifestGetterCalls = 0;
+const hostileManifestEntry = { ...manifest[0] };
+Object.defineProperty(hostileManifestEntry, 'taskId', {
+  enumerable: true,
+  get() { manifestGetterCalls++; return 'm-1'; },
+});
+assert.throws(() => new VerifiedOutcomeLedger([hostileManifestEntry, ...manifest.slice(1)]),
+  /task manifest data boundary/);
+assert.equal(manifestGetterCalls, 0, 'manifest snapshots must never execute caller-owned getters');
+
+let outcomeGetterCalls = 0;
+const hostileOutcome = {
+  taskId: 'm-1', taskVersion: '1', method: 'prior-v1', seed: 3, attempt: 1,
+  authority: 'independent-verifier', verifierId: 'v1',
+  evidenceRef: 'artifact://getter-backed', observedAt: 1_800_000_000_000,
+};
+Object.defineProperty(hostileOutcome, 'passed', {
+  enumerable: true,
+  get() { outcomeGetterCalls++; return true; },
+});
+const hostileOutcomeLedger = new VerifiedOutcomeLedger(manifest);
+const hostileOutcomeResult = hostileOutcomeLedger.record(hostileOutcome);
+assert.equal(hostileOutcomeResult.accepted, false);
+assert.equal(hostileOutcomeResult.rejection?.code, 'invalid-outcome');
+assert.equal(outcomeGetterCalls, 0, 'outcome snapshots must never execute caller-owned getters');
+
+const uniqueReceiptLedger = new VerifiedOutcomeLedger(manifest);
+const uniqueReceipt = {
+  taskId: 'm-1', taskVersion: '1', method: 'prior-v1', seed: 3, attempt: 1,
+  passed: true, authority: 'independent-verifier', verifierId: 'v1',
+  evidenceRef: 'artifact://single-measurement', observedAt: 1_800_000_000_000,
+};
+assert.equal(uniqueReceiptLedger.record(uniqueReceipt).accepted, true);
+const reusedReceipt = uniqueReceiptLedger.record({
+  ...uniqueReceipt, method: 'candidate-v1', seed: 9,
+});
+assert.equal(reusedReceipt.accepted, false,
+  'the same evidence receipt cannot attest a second method or seed');
+assert.equal(reusedReceipt.rejection?.code, 'duplicate-evidence-ref');
+
+assert.equal(new VerifiedOutcomeLedger(manifest).record({
+  ...uniqueReceipt, evidenceRef: ' artifact://surrounded ',
+}).rejection?.code, 'invalid-evidence-reference',
+'evidence receipt identities must be trimmed and normalized');

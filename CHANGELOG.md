@@ -1,3 +1,12 @@
+## NK1 WorkPass350 — unify learning trust boundary and evidence receipt identity (2026-10-23)
+
+- [REFACTORED] Extracted bounded descriptor-only data snapshots and normalized identity checks into `LearningTrustBoundary.ts`, now shared by candidate evaluation and the canonical verified-outcome ledger.
+- [HARDENED] Manifest construction and outcome recording snapshot untrusted records before property access. Accessors/getters, cycles, unsupported prototypes, control-bearing identities and oversized structures are rejected fail-closed.
+- [INTEGRATED] The ledger now enforces global evidence-reference uniqueness: a single receipt cannot be reused to attest another method, seed, task or attempt. Accepted records persist a validated field-by-field snapshot rather than spreading the caller's object.
+- [REGRESSION] Added getter-side-effect and receipt-reuse cases to `test:p23:learning-experiment-plan`. The aggregate `test:p23:learning` now includes the independent evaluator, bounded-evaluation, experiment-plan and execution-evidence suites.
+- [DEPENDENCIES] No new package dependency added; this uses existing Node.js primitives and current experiment contracts.
+- [VALIDATION] These new and existing suites are still **unverified** until GitHub Actions runs the exact head with an assigned runner. A committed regression test is not evidence that it passed.
+
 ## NK1 WorkPass349 — close detached-plan bypass and wire regression suites (2026-10-23)
 
 - [FIXED] Bound every manifest/schedule lookup in the independent evaluator to the detached task snapshot. The prior validation loop could still reread the caller-owned task array after the safe snapshot, undermining the invariant when inputs were mutable or accessor-backed.
