@@ -124,6 +124,19 @@ const targets=rankLearningTargets([
 ]);
 assert.equal(targets[0].id,'repair');
 assert.equal(targets.find(x=>x.id==='blocked').score01,0);
+assert.ok(targets.every(target => target.score01 >= 0 && target.score01 <= 1),
+  'score01 must remain normalized even when verification cost dominates value');
+const diverseTargets = rankLearningTargets([
+  {id:'memory-high',family:'memory',uncertainty01:1,readiness01:1,transfer01:1,novelty01:1,verificationCost01:0,repairValue01:1},
+  {id:'memory-next',family:'memory',uncertainty01:.8,readiness01:.8,transfer01:.8,novelty01:.8,verificationCost01:.1,repairValue01:.8},
+  {id:'perception-high',family:'perception',uncertainty01:.7,readiness01:.7,transfer01:.7,novelty01:.7,verificationCost01:.1,repairValue01:.7},
+  {id:'perception-next',family:'perception',uncertainty01:.4,readiness01:.4,transfer01:.4,novelty01:.4,verificationCost01:.2,repairValue01:.4},
+  {id:'emotion-high',family:'emotion',uncertainty01:.5,readiness01:.5,transfer01:.5,novelty01:.5,verificationCost01:.2,repairValue01:.5},
+], 5);
+assert.equal(diverseTargets[0].id,'memory-high',
+  'family diversity must preserve the globally best immediate repair target');
+assert.equal(new Set(diverseTargets.slice(0,3).map(target=>target.family)).size,3,
+  'curriculum interleaving should cover distinct eligible families before repeating a family');
 
 const engine=new P23LearningEngine();
 const policy={bias:()=>0};
