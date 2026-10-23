@@ -6,6 +6,7 @@
 - **Regression wiring:** `runtime/neuro-kurisu/tests/workpass406-learning-robust-metrics.mjs` is part of `npm run test:p23:learning`. See [WorkPass406 implementation note](docs/WORKPASS406_TASK_BALANCED_ROBUST_METRICS_RU.md).
 - **Research:** adapts reporting ideas from [RLiable](https://github.com/google-research/rliable) and lifecycle separation from [Hermes Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution); no extra runtime dependency or upstream code added.
 - **Validation boundary:** code, test and documentation are committed; exact-head test/typecheck/CI remain unconfirmed, and no measured learning uplift is claimed. `main` and the GitHub Release ZIP remain unchanged.
+- **Category progress:** implementation completeness is estimated at 77%, with production readiness around 45%; these are explicitly heuristic estimates. The scorecard separates implementation from verified operation and lists remaining release gates: [learning progress scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md). The new metric test is now an explicit P26 step.
 
 ---
 
