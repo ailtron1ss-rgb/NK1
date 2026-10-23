@@ -57,7 +57,7 @@ const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length > 0;
 const isSafeTaskFamily = (value: unknown): value is string =>
   typeof value === 'string' && value.length > 0 && value.length <= 128 &&
-  value.trim() === value &&
+  value.trim() === value && value.normalize('NFKC') === value &&
   !Array.from(value).some(character => {
     const code=character.codePointAt(0)??0;
     return code<=0x1f||(code>=0x7f&&code<=0x9f);
@@ -94,7 +94,7 @@ export function evaluateSkillLearnBenchTrial(
   if (!input || !isNonEmptyString(input.taskId) || !isNonEmptyString(input.trialId)) {
     throw new Error('invalid-trial-identity');
   }
-  if (input.taskFamily !== undefined && !isSafeTaskFamily(input.taskFamily.normalize('NFKC').trim())) throw new Error('invalid-task-family');
+  if (input.taskFamily !== undefined && (typeof input.taskFamily !== 'string' || !isSafeTaskFamily(input.taskFamily.normalize('NFKC').trim()))) throw new Error('invalid-task-family');
   if (typeof input.verifierPassed !== 'boolean') throw new Error('invalid-verifier-result');
   if (!input.skill || typeof input.skill.executable !== 'boolean') throw new Error('invalid-skill-executability');
   if (!input.trajectory || typeof input.trajectory !== 'object') throw new Error('invalid-trajectory');
@@ -174,6 +174,7 @@ export function aggregateSkillLearnBenchReports(
   if (!Array.isArray(reports) || reports.length === 0) throw new Error('reports-required');
   const groups = new Map<string, SkillLearnBenchTrialReport[]>();
   const seenTrials = new Set<string>();
+  const familyByTask = new Map<string,string>();
   for (const report of reports) {
     const inRange = (value: unknown): value is number =>
       typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
@@ -188,6 +189,11 @@ export function aggregateSkillLearnBenchReports(
     }
     const taskId = report.taskId.trim();
     const trialId = report.trialId.trim();
+    if(report.taskFamily!==undefined){
+      const priorFamily=familyByTask.get(taskId);
+      if(priorFamily!==undefined&&priorFamily!==report.taskFamily)throw new Error('conflicting-report-task-family');
+      familyByTask.set(taskId,report.taskFamily);
+    }
     const trialKey = JSON.stringify([taskId, trialId]);
     if (seenTrials.has(trialKey)) throw new Error('duplicate-report-trial');
     seenTrials.add(trialKey);
@@ -267,6 +273,7 @@ function validateCandidateReports(
     throw new Error(`candidate-${label}-reports-required`);
   }
   const keyed = new Map<string, SkillLearnBenchTrialReport>();
+  const familyByTask = new Map<string,string>();
   for (const report of reports) {
     const inRange = (value: unknown): value is number =>
       typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
@@ -289,7 +296,13 @@ function validateCandidateReports(
         report.trajectoryQuality.aggregate !== Number(((report.trajectoryQuality.keyPointRecall + report.trajectoryQuality.executionOrder + report.trajectoryQuality.completeness) / 3).toFixed(6))) {
       throw new Error(`candidate-${label}-report-invalid`);
     }
-    const key = JSON.stringify([report.taskId.trim(), report.trialId.trim()]);
+    const taskId=report.taskId.trim();
+    if(report.taskFamily!==undefined){
+      const priorFamily=familyByTask.get(taskId);
+      if(priorFamily!==undefined&&priorFamily!==report.taskFamily)throw new Error(`candidate-${label}-task-family-conflict`);
+      familyByTask.set(taskId,report.taskFamily);
+    }
+    const key = JSON.stringify([taskId, report.trialId.trim()]);
     if (keyed.has(key)) throw new Error(`candidate-${label}-duplicate-trial`);
     keyed.set(key, report);
   }
