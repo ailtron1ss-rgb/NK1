@@ -9,7 +9,7 @@
 ### Letta / MemFS — versioned memory as an architectural reference
 - Primary sources: https://docs.letta.com/configuration/memory and https://github.com/letta-ai/letta-code. Their docs describe reviewable, git-backed memory files, cross-session continuity, and consolidation/dreaming.
 - **NK1 decision:** keep `runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts` as the sole canonical memory owner; do not add a parallel MemFS store. Preserve provenance, temporal validity, revision lineage, bounded restore/query behavior, and reviewable consolidation as the transferable properties.
-- **Adapted in this pass:** WorkPass447/commit `14b12d738c35ba14891a2d474f8d23ccd6ecdfeb` hardens temporal retrieval-control ingestion before counters or indexes mutate. This is a trust-boundary improvement, not a claim that Letta code was copied.
+- **Adapted in this pass:** WorkPass447/commit `14b12d738c35ba14891a2d474f8d23ccd6ecdfeb` hardens temporal retrieval-control ingestion; WorkPass450/commit `97d329bc208aa8c7e4097947070b32dd17718fd0` validates the background semantic-index maintenance options before provider inspection or work. Both preserve the canonical MemoryOS2 owner and add no dependency; neither is claimed as copied Letta code.
 
 ### Voyager — compositional skill reuse and feedback-guided revision
 - Primary source: https://github.com/MineDojo/Voyager (MIT license; README describes automatic curriculum, an executable compositional skill library, checkpoint/resume, and iterative repair using environment feedback, errors, and self-verification).
@@ -22,7 +22,7 @@
 - `feature/feedback` — `45758ede29ee884cd2eaf3b24b5b7baf979fa923` and `4cacd0bb177dba5033f00d4b8d67fb972cfcd36d`: verified-outcome and manifest ingress guards.
 - `feature/visual-embodiment` — `5e1fa2523b13f1e9596848e160fec89b5a3aace7`: persisted body-schema normalization before runtime start.
 - `feature/personality` — `6d0cb1a2d6eb9fe9c36a1f0b5e572e0696260892`: live self-agency observation guard.
-- `feature/memory` — `14b12d738c35ba14891a2d474f8d23ccd6ecdfeb`: temporal retrieval options boundary.
+- `feature/memory` — `14b12d738c35ba14891a2d474f8d23ccd6ecdfeb` (temporal retrieval) and `97d329bc208aa8c7e4097947070b32dd17718fd0` (background semantic-index maintenance options).
 - `feature/emotions` — `8c86aa1b315f1e73e44668d42a7e21585dec912e`: prototype-safe emotion action calibration.
 - **License discipline:** code is adapted by mechanism rather than copied wholesale. Before adding upstream source files/dependencies, re-check the exact repository/license/revision and preserve provenance. Do not vendor AGPL Darwinian Evolver into NK1 by default.
 - **Verification truth:** regression tests were added but exact-head execution is not verified; current Actions examples terminate before the first step with `runner_id=0` and zero steps. No learning or runtime-quality uplift is claimed.

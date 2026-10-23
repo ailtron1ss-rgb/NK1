@@ -80,7 +80,7 @@ The human-brain analogy is functional only: global-workspace/broadcast ideas inf
 - `feature/feedback` — `45758ede29ee884cd2eaf3b24b5b7baf979fa923`, `4cacd0bb177dba5033f00d4b8d67fb972cfcd36d`: safe outcome and task-manifest intake.
 - `feature/visual-embodiment` — `5e1fa2523b13f1e9596848e160fec89b5a3aace7`: strict body-state normalization on initialization.
 - `feature/personality` — `6d0cb1a2d6eb9fe9c36a1f0b5e572e0696260892`: safe live self-agency observations.
-- `feature/memory` — `14b12d738c35ba14891a2d474f8d23ccd6ecdfeb`: validated temporal retrieval controls.
+- `feature/memory` — `14b12d738c35ba14891a2d474f8d23ccd6ecdfeb` (validated temporal retrieval) and `97d329bc208aa8c7e4097947070b32dd17718fd0` (guarded background semantic-index options).
 - `feature/emotions` — `8c86aa1b315f1e73e44668d42a7e21585dec912e`: prototype-safe action calibration and lookup.
 - No new dependencies were introduced by these changes. Code, regression additions and changelog notes are stored together in their owning branches.
 
@@ -99,4 +99,4 @@ The human-brain analogy is functional only: global-workspace/broadcast ideas inf
 - Each inspected job finished with `runner_id=0`, blank runner name and zero steps. This is a runner-startup failure; it does not identify a failing assertion or prove the new code passes.
 - Keep category PRs draft until a runner is provisioned and the owning test/typecheck plus cross-category contract suite execute on the exact SHA. Do not spend more runs retrying the same pre-step failure.
 
-`main` and the binary release archive have not been changed. The next highest-value step is to restore a real runner, execute the new regression suites, then resolve any actual application failures before integration.
+`main` and the binary release archive have not been changed. Release metadata was rechecked: stable tag `Neuro` still points to `Neuro_Kurisu_WORKPASS70_2026-10-19.zip` (135,290,615 bytes; SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`); later prerelease `workpass70-hotfix1-2026-10-19` has `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip` (136,354,713 bytes; SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`). Neither binary contains the 2026-10-23 category commits. Available GitHub actions expose text-file commits and release metadata reads, but no binary release-asset replacement operation; the archive update remains blocked. Next highest-value step: restore a real runner, execute the new regression suites, then resolve any actual application failures before integration.

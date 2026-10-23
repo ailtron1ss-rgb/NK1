@@ -1,3 +1,12 @@
+## NK1 WorkPass451 — refresh memory-branch status and release-artifact evidence
+
+- Updated the planning ledger with the latest `feature/memory` commit `97d329bc208aa8c7e4097947070b32dd17718fd0`, covering the canonical background semantic-index maintenance boundary.
+- Recorded the existing stable WorkPass70 release ZIP and later WorkPass70 Hotfix1 prerelease by exact size and SHA-256. Both were published on 2026-10-19; neither contains the 2026-10-23 category commits.
+- Explicitly documented the binary release-asset replacement blocker: available GitHub actions can commit repository text and read release metadata but do not expose a binary release-asset upload/replace operation. No archive update is claimed.
+- Overall readiness remains 46/100; exact-head execution remains unverified because representative Actions jobs fail before receiving a runner. `main` unchanged.
+
+---
+
 ## NK1 WorkPass449 — reconcile seven category passes and upstream research provenance (2026-10-23)
 
 - Refreshed the persistent branch-goal scorecard with the exact current category commit SHAs, regression-authored state, PR/integration status, and runner-startup evidence.
