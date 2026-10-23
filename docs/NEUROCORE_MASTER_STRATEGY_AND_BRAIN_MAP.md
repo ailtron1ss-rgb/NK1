@@ -1,4 +1,39 @@
 # NeuroCore: master strategy, brain map, gaps and release plan
+## Live engineering checkpoint — 2026-10-23 (WorkPass328–332)
+
+This is a **working-state update**, not a new readiness claim. Five focused robustness changes have been committed to the existing category branches and proposed for `integration`; they are not merged yet.
+
+| Category branch | Change | Draft pull request | Current boundary |
+|---|---|---|---|
+| `feature/learning` | Coalesce P23 repair attempts by canonical evidence digest; a newer evidence snapshot retries after the stale attempt fails closed; regression covers latest-digest staging | [#79](https://github.com/ailtron1ss-rgb/NK1/pull/79) | Runtime regression not executed yet |
+| `feature/perception` | Validate the operational micro-cycle observation at the shared ingress boundary before host-context/state access | [#80](https://github.com/ailtron1ss-rgb/NK1/pull/80) | Runtime regression not executed yet |
+| `feature/emotions` | Sanitize restored affect state and reject invalid ticks/timestamps; malformed episodes/calibration rows are filtered | [#81](https://github.com/ailtron1ss-rgb/NK1/pull/81) | Runtime regression not executed yet |
+| `feature/memory` | Reject non-finite restored byte budgets/counters; invalid `maxBytes` cannot disable MemoryOS2 eviction | [#82](https://github.com/ailtron1ss-rgb/NK1/pull/82) | Runtime regression not executed yet |
+| `feature/personality` | Normalize restored self-agency vectors/matrices and metadata; invalid learned weights cannot poison predictions after restart | [#83](https://github.com/ailtron1ss-rgb/NK1/pull/83) | Runtime regression not executed yet |
+
+Each branch also has its matching behavioral-regression change and CHANGELOG record. Log entries were moved to the **end** of each branch's CHANGELOG so concurrent category PRs do not compete to insert at the top. The current GitHub API reports all five pull requests as mergeable; none has been merged by this pass.
+
+### Progress accounting
+
+- **Overall engineering-readiness baseline: 46/100 — unchanged.** The existing scorecard is an engineering triage estimate, not a scientific measure of consciousness or intelligence.
+- **Branch coverage this pass: 5 of 9 named category branches touched (about 56%).** This is only a measure of category work touched, not percent completion of the organism.
+- **Behavioral changes committed: 5**, with focused regression coverage added in the learning, perception, emotion, memory and self-agency owners.
+- The global score is deliberately not raised until the new tests and full integration path execute. A commit or a test fixture alone is not evidence of end-to-end behavior.
+
+### CI and release blockers
+
+The new branch heads triggered GitHub Actions, but the latest affected jobs complete with **zero runner steps**. This does not demonstrate that the new code failed a test; it means no test result was produced. Runner/account configuration must be investigated before code-level validation can be trusted.
+
+The newest large release asset found is `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip` (approximately 136 MB), tagged `workpass70-hotfix1-2026-10-19`. **It has not been refreshed by this pass.** The connected GitHub action set supports repository reads and text-file/commit operations, but it does not expose a binary release-asset upload/replace operation; direct retrieval also failed in this environment because `github.com` could not be resolved. Do not treat these category-branch commits or the PRs as changes already present in the release ZIP.
+
+### External mechanism review and adaptation policy
+
+- [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution) explores controlled evolutionary improvement of skills/prompts/code with DSPy + GEPA. NK1's P23 path adapts the closed-loop principle (observed failure → evidence-bound repair candidate → validation/holdout evaluation → separately gated staging/promotion); no source file was copied verbatim in WorkPass328.
+- [Letta memory & dreaming](https://docs.letta.com/configuration/memory) documents persistent, versioned memory and sleep-time consolidation/review. NK1 keeps MemoryOS2 as one writable memory owner and focuses this pass on bounded, corruption-resistant restoration rather than adding a second store.
+- [Generative Agents](https://arxiv.org/abs/2304.03442) reports ablation evidence that observation, planning and reflection each contribute to believable simulated behavior. This is a design reference for the integrated cycle, **not evidence of human-equivalent consciousness**.
+
+Any future score increase must record commit, script, model/device/corpus, baseline, raw outcomes and uncertainty. The next sequence is: resolve runner availability; execute the added regressions; merge the five reviewed category PRs into `integration`; then rebuild/replace the large release asset using an environment with verified binary upload access and run the clean-install/E2E gates. Keep `main` unchanged unless the publication-branch design is deliberately reconciled.
+
 
 **Status:** living engineering plan, not a claim that all listed capabilities exist.  
 **Scope:** whole repository and runtime; branch `workpass70-source`.  
