@@ -1,3 +1,12 @@
+## NK1 WorkPass442 — harden unified cognitive-cycle persistence ingress (2026-10-23)
+
+- Reused the existing bounded `PlainDataSnapshot` boundary in `UnifiedCognitiveCycle.restore`, matching the defensive persistence contract already used by emotion, memory, and self-agency subsystems.
+- Accessor-backed, cyclic, over-budget, or non-plain checkpoint state no longer executes caller getters or partially mutates cycle history; rejected checkpoint input resets the cycle monitor to a clean default state. Unsupported explicit schema versions remain rejected.
+- Added behavioral regressions for valid snapshot round-trip, getter non-execution, and cyclic state recovery. No new dependency or duplicate state owner was introduced.
+- **Verification status:** change committed to `feature/perception`; runtime tests and hosted CI are unconfirmed because current Actions fail before runner assignment.
+
+---
+
 ## NK1 WorkPass432 — correct full-cycle wiring regression expressions (2026-10-23)
 
 - Corrected the WorkPass425 runtime-wiring test's over-escaped regular-expression literals. They now match actual whitespace/brace/path text in JavaScript instead of looking for literal backslash sequences.

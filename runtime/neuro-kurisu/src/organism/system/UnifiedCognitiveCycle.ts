@@ -1,3 +1,5 @@
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
+
 /**
  * BIG PASS 162 / WorkPass287 — Unified Cognitive Cycle contract.
  *
@@ -41,7 +43,20 @@ export class UnifiedCognitiveCycle {
   private state=defaultUnifiedCognitiveCycle();
 
   restore(raw?:Partial<UnifiedCognitiveCycleState>|null):void {
-    const source=raw??{};
+    let source:Partial<UnifiedCognitiveCycleState>;
+    try {
+      source=snapshotPlainData<Partial<UnifiedCognitiveCycleState>>(raw??{}, {
+        allowNonFiniteNumbers:true, maxDepth:12, maxNodes:4096, maxStringUnits:64*1024,
+      });
+    } catch {
+      // Invalid persisted state must not execute getters or corrupt the live cycle.
+      this.state=defaultUnifiedCognitiveCycle();
+      return;
+    }
+    if(source===null||typeof source!=='object'||Array.isArray(source)) {
+      this.state=defaultUnifiedCognitiveCycle();
+      return;
+    }
     const cycles=safeCounter(source.cycles);
     // Restored counters must describe one coherent history: complete and
     // incomplete are disjoint subsets of cycles, and broken lineages are a

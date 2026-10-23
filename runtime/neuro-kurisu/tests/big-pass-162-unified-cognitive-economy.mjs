@@ -17,6 +17,24 @@ let result=cycle.evaluate({tick:1,stageIds:{observation:ids.observation,predicti
 assert.equal(result.complete,true);
 assert.equal(result.missingStages.length,0);
 
+// Persisted cognitive-cycle state is untrusted: restore must not run getters.
+const restoreProbe=new UnifiedCognitiveCycle();
+restoreProbe.restore(cycle.snapshot());
+assert.deepEqual(restoreProbe.snapshot(),cycle.snapshot(),'well-formed cycle state should round-trip');
+let cycleRestoreGetterReads=0;
+const getterBackedCycleState=cycle.snapshot();
+Object.defineProperty(getterBackedCycleState,'cycles',{
+  configurable:true, enumerable:true,
+  get(){cycleRestoreGetterReads++;return 999;},
+});
+restoreProbe.restore(getterBackedCycleState);
+assert.equal(cycleRestoreGetterReads,0,'restore must reject accessor-backed state without executing the getter');
+assert.equal(restoreProbe.snapshot().cycles,0,'invalid restore must recover to a clean default state');
+const cyclicCycleState={...cycle.snapshot()};
+cyclicCycleState.cycleSelf=cyclicCycleState;
+restoreProbe.restore(cyclicCycleState);
+assert.equal(restoreProbe.snapshot().cycles,0,'cyclic persisted state must fail closed to defaults');
+
 const economy=new CognitiveResourceEconomy();
 const abundant=economy.allocate({tick:1,energy01:.9,cognitiveLoad01:.1,uncertainty01:.2,novelty01:.5,predictionDebt01:.1,thermalStrain01:.1,ramPressure01:.1,awake:true});
 const scarce=economy.allocate({tick:2,energy01:.18,cognitiveLoad01:.88,uncertainty01:.8,novelty01:.2,predictionDebt01:.9,thermalStrain01:.9,ramPressure01:.92,awake:true});
