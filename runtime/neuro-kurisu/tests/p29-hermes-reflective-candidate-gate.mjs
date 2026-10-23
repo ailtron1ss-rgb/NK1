@@ -159,7 +159,7 @@ const accessorReport = Object.defineProperty(trial('task-a','accessor-report','g
 });
 assert.throws(()=>evaluateSkillLearnBenchCandidate({
   validation:[accessorReport,baseline.validation[1]],holdout:baseline.holdout,
-},improved),/candidate-baseline-validation-reports-data-boundary-rejected/);
+},improved),/candidate-evaluation-data-boundary-rejected/);
 assert.equal(familyAccessorCalls,0,'report accessors must not run while calculating the candidate gate');
 const baselineEnvelope = {};
 Object.defineProperties(baselineEnvelope, {
@@ -176,7 +176,7 @@ assert.equal(familyAccessorCalls,0,'gate-option getters must not run');
 const sparseReportBatch = [trial('task-a','sparse-batch','good'),,];
 assert.throws(()=>evaluateSkillLearnBenchCandidate({
   validation:sparseReportBatch,holdout:baseline.holdout,
-},improved),/candidate-baseline-validation-reports-data-boundary-rejected/,
+},improved),/candidate-evaluation-data-boundary-rejected/,
 'sparse report batches must not skip family/evidence validation');
 
 assert.throws(() => evaluateSkillLearnBenchTrial({
