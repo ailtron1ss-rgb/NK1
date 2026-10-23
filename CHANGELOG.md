@@ -1,3 +1,8 @@
+## WorkPass323 — expose evidence-lineage regression test (2026-10-23)
+
+- Registered `npm run test:workpass322:repair-evidence-lineage` to run the existing P23 candidate-store regression suite that covers exact source-evidence binding and mismatch rejection.
+- This makes the provenance guard easier to run directly; registration is not evidence that the suite passes. Test execution and typecheck remain unverified in this environment.
+
 ## WorkPass322 — make numeric fallback itself finite (2026-10-23)
 
 - Hardened the micro-cycle numeric boundary in both directions: invalid observations use a safe fallback, and a non-finite fallback is normalized to `0` so `NaN`/infinity cannot escape through the fallback path.
