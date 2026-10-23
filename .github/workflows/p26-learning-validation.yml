@@ -12,6 +12,11 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/ContinualTransferTracker.ts"
       - "runtime/neuro-kurisu/src/organism/learning/AdaptiveWindowDriftDetector.ts"
       - "runtime/neuro-kurisu/src/organism/learning/DriftAwareLearningController.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/OutcomeReflectionCurriculum.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningTrustBoundary.ts"
+      - "runtime/neuro-kurisu/tests/p23-true-learning.mjs"
+      - "runtime/neuro-kurisu/tests/p23-skill-retrieval-reflection-curriculum.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/PageHinkleyDriftDetector.ts"
       - "runtime/neuro-kurisu/tests/p26-*.mjs"
       - "runtime/neuro-kurisu/tests/p27-page-hinkley-drift-detector.mjs"
@@ -90,6 +95,12 @@ jobs:
       - name: Benchmark drift detectors on stable, noisy, abrupt and gradual streams (5 deterministic seeds)
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p28-drift-detector-benchmark.mjs
+      - name: Run P23 learning replay-integrity regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-true-learning.mjs
+      - name: Run P23 reflection and diverse-curriculum regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-skill-retrieval-reflection-curriculum.mjs
       - name: Run existing P26 learning regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:true-learning
