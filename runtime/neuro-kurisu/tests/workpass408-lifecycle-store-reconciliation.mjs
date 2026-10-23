@@ -28,9 +28,15 @@ try {
       payloadFingerprint: '3'.repeat(64), evaluationFingerprint: '4'.repeat(64),
       planFingerprint: '5'.repeat(64), environmentFingerprint: '6'.repeat(64),
     },
+    {
+      attemptId: '4dd2d2b4-8e24-4b1f-81e9-6bf8da0dfb1c',
+      candidateId: 'candidate:crash-after-intent', skillId: 'skill-crash-recovery', candidateVersion: 4,
+      payloadFingerprint: '7'.repeat(64), evaluationFingerprint: '8'.repeat(64),
+      planFingerprint: '9'.repeat(64), environmentFingerprint: 'a'.repeat(64),
+    },
   ];
   let timestamp = now;
-  for (const row of rows) {
+  for (const row of rows.slice(0, 3)) {
     journal.recordLifecycleEvent({
       ...row, recordedAt: timestamp++, event: 'activation-intent',
       reasonCodes: [], activatedVersion: null,
@@ -40,16 +46,28 @@ try {
       reasonCodes: ['activation-result-uncertain'], activatedVersion: null,
     });
   }
+  // Simulate a hard process exit immediately after the durable intent, before an
+  // activation-outcome-unknown event could be appended.
+  journal.recordLifecycleEvent({
+    ...rows[3], recordedAt: timestamp++, event: 'activation-intent',
+    reasonCodes: [], activatedVersion: null,
+  });
 
   // This fixture mirrors the authoritative read shape returned by the versioned
   // store. The reconciliation path compares candidate identity AND payload digest.
   const authoritativeSnapshot = {
     schemaVersion: 1,
     revision: 8,
-    active: [{
-      skillId: 'skill-active', version: 2, payload: { kind: 'active' },
-      payloadFingerprint: rows[0].payloadFingerprint, proposalId: 'proposal-active', activatedAt: now,
-    }],
+    active: [
+      {
+        skillId: 'skill-active', version: 2, payload: { kind: 'active' },
+        payloadFingerprint: rows[0].payloadFingerprint, proposalId: 'proposal-active', activatedAt: now,
+      },
+      {
+        skillId: 'skill-crash-recovery', version: 4, payload: { kind: 'crash-recovered' },
+        payloadFingerprint: rows[3].payloadFingerprint, proposalId: 'proposal-crash', activatedAt: now + 1,
+      },
+    ],
     candidates: [
       {
         candidateId: rows[0].candidateId, skillId: rows[0].skillId, version: rows[0].candidateVersion,
@@ -58,6 +76,10 @@ try {
       {
         candidateId: rows[1].candidateId, skillId: rows[1].skillId, version: rows[1].candidateVersion,
         payloadFingerprint: rows[1].payloadFingerprint, status: 'shadow',
+      },
+      {
+        candidateId: rows[3].candidateId, skillId: rows[3].skillId, version: rows[3].candidateVersion,
+        payloadFingerprint: rows[3].payloadFingerprint, status: 'active',
       },
     ],
   };
@@ -70,8 +92,9 @@ try {
   assert.deepEqual(result, {
     configured: true,
     available: true,
+    observedPending: 4,
     observedUnknown: 3,
-    reconciledActive: 1,
+    reconciledActive: 2,
     reconciledNotCurrentlyActive: 1,
     unresolved: 1,
   });
@@ -92,21 +115,25 @@ try {
   assert.deepEqual(attempts.get(rows[2].attemptId), [
     'activation-intent', 'activation-outcome-unknown',
   ], 'unknown candidate lineage must remain pending rather than be guessed');
+  assert.deepEqual(attempts.get(rows[3].attemptId), [
+    'activation-intent', 'activation-reconciled-active',
+  ], 'intent-only crash recovery must reconcile from authoritative active state');
 
   const diagnostics = journal.snapshotDiagnostics();
-  assert.equal(diagnostics.activationReconciledActiveCount, 1);
+  assert.equal(diagnostics.activationReconciledActiveCount, 2);
   assert.equal(diagnostics.activationReconciledNotCurrentlyActiveCount, 1);
   assert.equal(diagnostics.pendingActivationCount, 1);
 
   // Repeating reconciliation is idempotent and must not append duplicate terminals.
   const repeat = engine.reconcileLearningLifecycleOutcomes();
+  assert.equal(repeat.observedPending, 1);
   assert.equal(repeat.observedUnknown, 1);
   assert.equal(repeat.reconciledActive, 0);
   assert.equal(repeat.reconciledNotCurrentlyActive, 0);
   assert.equal(repeat.unresolved, 1);
   assert.equal(journal.readAll().length, events.length);
 
-  console.log('WORKPASS408_LIFECYCLE_STORE_RECONCILIATION=PASS exactActiveMatch=true shadowNotActive=true missingLineageStaysPending=true repeatIdempotent=true');
+  console.log('WORKPASS408_LIFECYCLE_STORE_RECONCILIATION=PASS exactActiveMatch=true intentOnlyCrashRecovered=true shadowNotActive=true missingLineageStaysPending=true repeatIdempotent=true');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
