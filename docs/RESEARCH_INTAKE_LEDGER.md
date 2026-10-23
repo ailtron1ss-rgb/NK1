@@ -1,3 +1,15 @@
+## WorkPass402 — wire family coverage into the actual P23 promotion authority (2026-10-23)
+
+- **Discovery:** WorkPass400/401 correctly added family regression and coverage controls to the common candidate gate, but the authoritative `P23LearningEngine.approveIndependentlyEvaluatedSkillCandidate` called `compareMatchedIndependentEvaluations` with the default options. That left production activation compatible with reports whose family-level check was not performed.
+- **Fix:** `compareMatchedIndependentEvaluations` now accepts and forwards `SkillLearnBenchCandidateGateOptions`. The actual P23 promotion entry point hardcodes `minimumValidationFamilies: 1`, `minimumHoldoutFamilies: 1`, `minimumValidationFamilyTasks: 2`, and `minimumHoldoutFamilyTasks: 2`; no candidate-controlled option can weaken this rule. Missing/insufficient family evidence fails closed before promotion.
+- **Provenance:** The evaluator resolves task families from the canonical `experimentAuthority.manifest` rather than trusting caller-supplied task labels; the WorkPass213 regression in `workpass203-independent-candidate-evaluator.mjs` verifies canonical `summarization` overwrites a caller-forged label.
+- **Regression/CI:** `workpass225-matched-independent-evaluation.mjs` now tests that strict minima flow through the comparator and missing family labels produce both validation and holdout coverage failures. P26 is wired to this test and Node.js 24 remains in use.
+- **Research evidence:** [SkillLearnBench](https://arxiv.org/abs/2604.20087) evaluates skill quality, trajectory and task outcome across verified tasks from 15 subdomains and reports nonuniform gains; [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution) emphasizes candidate guardrails separate from promotion.
+- **Limitations:** Two tasks in one family per split are a minimum provenance/coverage check, not sufficient statistical evidence. Production calibration still needs paired seeds, uncertainty intervals, and a versioned canonical manifest. Current Actions runs fail without exposed steps/logs; runtime success is unverified.
+- **Artifact:** [WorkPass402 production family gate](WORKPASS402_PRODUCTION_FAMILY_GATE_RU.md).
+
+---
+
 ## WorkPass401 — explicit strict mode for task-family provenance (2026-10-23)
 
 - **NK1 gap:** WorkPass400 computes family-level regression only when canonical `taskFamily` metadata is present. Guessing family from task ID would be unsafe, but a production caller also needs a way to ensure expected family-level evaluation did not silently become a no-op.
