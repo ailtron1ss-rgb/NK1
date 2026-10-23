@@ -16,6 +16,14 @@ const makeInput = (source, independenceKey, extra = {}) => ({
 });
 
 const memory = new MemoryOS2();
+const authorityCapMemory=new MemoryOS2();
+const authorityCapRow=authorityCapMemory.encode(makeInput('authority-cap-publisher','authority-cap-lineage',{
+  content:'Provenance class caps an explicit caller-provided authority request.',
+  sourceAuthority01:1,confidence:.5,
+}),{clone:false});
+assert.equal(authorityCapRow.sourceAuthority01,.9,'an external memory row must not self-promote above external provenance trust');
+assert.equal(authorityCapRow.evidenceSources?.[0]?.sourceAuthority01,.9,
+  'the normalized source trail must enforce the same trust ceiling as the parent memory');
 const initial = memory.encode(makeInput('publisher-a.example', 'story-lineage-A'), { clone: false });
 const baselineConfidence = initial.confidence;
 assert.equal(initial.evidenceSources?.length, 1, 'new memory should keep its first evidence lineage');
