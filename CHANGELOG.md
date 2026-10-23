@@ -1,3 +1,12 @@
+## NK1 WorkPass435 — protect endogenous motivation state and signals (2026-10-23)
+
+- The intrinsic drive engine now reuses the canonical PlainDataSnapshot boundary for both persisted restore and live drive updates.
+- Accessor/cyclic/exotic/oversized snapshots fail closed on restore; live update rejects unsafe graphs before any drive or goal signal changes. Finite/range fallback semantics for ordinary numeric observations are preserved.
+- Added regressions for restore getter non-execution, live getter/cycle rejection and no partial state mutation.
+- This strengthens the motivation-to-endogenous-goal path without introducing a competing motivation store or package dependency. Hosted execution remains unverified.
+
+---
+
 ## NK1 WorkPass429 — reject unknown self-agency actions before prediction (2026-10-23)
 
 - The self-agency substrate previously used Math.max(0, ACTIONS.indexOf(action)); a runtime-invalid action therefore silently mapped to row zero (respond) and could pollute the wrong learned policy.
