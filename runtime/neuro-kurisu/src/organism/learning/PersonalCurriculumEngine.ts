@@ -265,8 +265,8 @@ export class PersonalCurriculumEngine {
       if(!isCurriculumIdentity(goal.id,256)||
          !isCurriculumText(goal.title,512)||
          !isCurriculumText(goal.reason,4096,true)||
-         !['intrinsic','external','learned','homeostatic'].includes(goal.source)||
-         !['candidate','active','paused','completed','abandoned'].includes(goal.status)||
+         (typeof goal.source!=='string'||!['intrinsic','external','learned','homeostatic'].includes(goal.source))||
+         (typeof goal.status!=='string'||!['candidate','active','paused','completed','abandoned'].includes(goal.status))||
          !isCurriculumUnit(goal.importance)||!isCurriculumUnit(goal.urgency)||
          !isCurriculumUnit(goal.confidence)||!isCurriculumUnit(goal.progress)||
          !isCurriculumTimestamp(goal.createdAt)||!isCurriculumTimestamp(goal.updatedAt)||
