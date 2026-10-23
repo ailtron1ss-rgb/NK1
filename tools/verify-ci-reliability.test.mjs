@@ -1,0 +1,51 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { validateCiConfig } from "./verify-ci-reliability.mjs";
+
+const pinnedWorkflow = `name: example
+jobs:
+  test:
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+      - name: Verify selected Node.js matches repository pin
+        run: |
+          expected="v$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version)"
+          test "$actual" = "$expected"
+`;
+
+test("accepts current first-party Actions and an asserted repository Node pin", () => {
+  const errors = validateCiConfig({
+    workflows: { "workpass79-cognitive-regression.yml": pinnedWorkflow },
+    nodeVersion: "22.16.0\n"
+  });
+  assert.deepEqual(errors, []);
+});
+
+test("rejects retired checkout/setup-node action majors", () => {
+  const errors = validateCiConfig({
+    workflows: { "old.yml": "steps:\n  - uses: actions/checkout@v4\n  - uses: actions/setup-node@v4\n" },
+    nodeVersion: "22.16.0"
+  });
+  assert.equal(errors.length, 2);
+  assert.match(errors.join("\n"), /checkout@v4/);
+  assert.match(errors.join("\n"), /setup-node@v4/);
+});
+
+test("requires setup-node to use and assert the shared .nvmrc", () => {
+  const errors = validateCiConfig({
+    workflows: { "unsafe.yml": "steps:\n  - uses: actions/setup-node@v7\n    with:\n      node-version: '22'\n" },
+    nodeVersion: "22.16.0"
+  });
+  assert.match(errors.join("\n"), /from root \.nvmrc/);
+  assert.match(errors.join("\n"), /runtime assertion/);
+});
+
+test("rejects a missing or imprecise Node pin", () => {
+  const errors = validateCiConfig({ workflows: { "minimal.yml": "run: echo ok\n" }, nodeVersion: "22" });
+  assert.match(errors.join("\n"), /exact Node\.js version/);
+});
