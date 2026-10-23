@@ -71,6 +71,7 @@ const malformedRows = [
   {...rows[0], expectedVerifierId: null},
   {...rows[0], evidenceRef: 'bad' + String.fromCharCode(10) + 'receipt'},
   {...rows[0], taskId: 'task-with-' + String.fromCharCode(0) + '-control'},
+  {...rows[0], taskId: 'Ｔａｓｋ－ａｌｉａｓ－１'},
   {...rows[0], seed: Number.POSITIVE_INFINITY},
 ];
 result = evaluateSkillRevision([...rows, ...malformedRows], 'baseline', 'candidate');

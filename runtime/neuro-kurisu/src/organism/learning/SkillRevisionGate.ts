@@ -41,7 +41,8 @@ const boundedInteger = (value: number | undefined, fallback: number, min: number
   Number.isFinite(value) ? Math.max(min, Math.min(max, Math.floor(value!))) : fallback;
 const isBoundedText = (value: unknown, max: number): value is string =>
   typeof value === 'string' && value.length > 0 && value.length <= max &&
-  value.trim() === value && !Array.from(value).some(character => {
+  value.trim() === value && value.normalize('NFKC') === value &&
+  !Array.from(value).some(character => {
     const code = character.charCodeAt(0);
     return code <= 0x1f || code === 0x7f || (code >= 0x80 && code <= 0x9f);
   });

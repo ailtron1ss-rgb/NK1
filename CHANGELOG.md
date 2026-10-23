@@ -2183,3 +2183,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **Reason:** first-write-wins scoring made the outcome depend on the ordering of caller-supplied rows. Collision rejection is conservative and prevents one reused receipt or conflicting duplicate from deciding a candidate score.
 - **Regression updated:** duplicated original/replayed receipts are all excluded (not only later copies); cross-method reused evidence removes both colliding observations.
 - **Validation boundary:** code/tests committed; no runtime PASS is claimed until GitHub Actions can execute the suite on a runner.
+
+
+## NK1 WorkPass344 — reject non-canonical learning identity aliases
+
+- **Hardened:** evaluation identifiers must already be NFKC-normalized in addition to being bounded, trimmed and free of control characters. This blocks compatibility-form aliases from creating distinct task/method identities when they encode the same normalized identifier.
+- **Regression added:** full-width compatibility characters are rejected as malformed task IDs and cannot increase the paired-sample count.
+- **Validation boundary:** source and regression are committed. Runtime test/typecheck remain unverified until GitHub Actions jobs acquire a runner.

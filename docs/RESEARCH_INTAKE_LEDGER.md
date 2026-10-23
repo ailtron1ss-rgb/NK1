@@ -255,3 +255,11 @@ Do not count a reference as “used” until a source revision/paper protocol is
 - This removes an input-order channel in which conflicting outcomes or a receipt reused across tasks/methods could influence the score. Clean evidence keeps the same scoring path.
 - Regression covers duplicates both within a task/method key and across task/method labels. Signed-ledger authentication and task-version binding remain required upstream.
 - **Unverified:** the owning test suite and typecheck have not run; Actions exposes no runner steps/logs.
+
+
+## WorkPass140 — canonical identity guard at the evaluation boundary (2026-10-23)
+
+- Reject task/version/family/method/verifier/evidence identifiers that are not already NFKC-normalized, rather than allowing compatibility-form aliases to produce distinct pairing keys.
+- Regression uses full-width compatibility characters as a malformed task ID and requires the row to be excluded without changing the valid comparison.
+- This is a narrow identity-integrity control for matched learning evidence; it does not establish external verifier correctness or measured learning uplift.
+- **Unverified:** exact-head runtime tests/typecheck remain blocked by Actions jobs with no executable steps.
