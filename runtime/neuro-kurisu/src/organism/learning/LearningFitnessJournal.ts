@@ -125,6 +125,10 @@ function safeMetric(value: unknown): value is number | null {
   return value === null || (typeof value === 'number' && Number.isFinite(value) && value >= -1 && value <= 1);
 }
 
+function safeTolerance(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
 function hasExactKeys(value: Record<string, unknown>, expected: readonly string[]): boolean {
   const actual = Object.keys(value).sort();
   const wanted = [...expected].sort();
@@ -184,10 +188,10 @@ function validateInput(value: unknown): asserts value is LearningFitnessJournalI
       !safeInteger(x.minimumHoldoutFamilies, 10_000) || x.minimumHoldoutFamilies < 1 ||
       !safeInteger(x.minimumValidationFamilyTasks, 10_000) || x.minimumValidationFamilyTasks < 1 ||
       !safeInteger(x.minimumHoldoutFamilyTasks, 10_000) || x.minimumHoldoutFamilyTasks < 1 ||
-      !safeMetric(x.maximumValidationTaskRegression01) || x.maximumValidationTaskRegression01 === null ||
-      !safeMetric(x.maximumValidationFamilyRegression01) || x.maximumValidationFamilyRegression01 === null ||
-      !safeMetric(x.maximumHoldoutRegression01) || x.maximumHoldoutRegression01 === null ||
-      !safeMetric(x.maximumHoldoutFamilyRegression01) || x.maximumHoldoutFamilyRegression01 === null ||
+      !safeTolerance(x.maximumValidationTaskRegression01) ||
+      !safeTolerance(x.maximumValidationFamilyRegression01) ||
+      !safeTolerance(x.maximumHoldoutRegression01) ||
+      !safeTolerance(x.maximumHoldoutFamilyRegression01) ||
       !safeInteger(x.minimumValidationFamilySeeds, 1000) || x.minimumValidationFamilySeeds < 1 ||
       !safeInteger(x.minimumHoldoutFamilySeeds, 1000) || x.minimumHoldoutFamilySeeds < 1 ||
       typeof x.confidenceLevel !== 'number' || !Number.isFinite(x.confidenceLevel) || x.confidenceLevel <= 0.5 || x.confidenceLevel >= 1 ||
