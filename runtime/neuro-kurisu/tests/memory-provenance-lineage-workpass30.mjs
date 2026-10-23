@@ -24,6 +24,30 @@ const authorityCapRow=authorityCapMemory.encode(makeInput('authority-cap-publish
 assert.equal(authorityCapRow.sourceAuthority01,.9,'an external memory row must not self-promote above external provenance trust');
 assert.equal(authorityCapRow.evidenceSources?.[0]?.sourceAuthority01,.9,
   'the normalized source trail must enforce the same trust ceiling as the parent memory');
+
+// Restored snapshots are untrusted ingress too. Simulate a legacy/manual edit
+// that raises both the parent record and its serialized evidence above policy.
+const lowerAuthorityRow=authorityCapMemory.encode(makeInput('lower-trust-source','lower-trust-lineage',{
+  content:'An explicitly lower trust level must survive the restore boundary.',
+  sourceAuthority01:.2, confidence:.5,
+}),{clone:false});
+const poisonedAuthoritySnapshot=structuredClone(authorityCapMemory.snapshot());
+const poisonedAuthority=poisonedAuthoritySnapshot.items.find(item=>item.id===authorityCapRow.id);
+assert.ok(poisonedAuthority);
+poisonedAuthority.provenanceClass='external';
+poisonedAuthority.sourceAuthority01=1;
+for(const evidence of poisonedAuthority.evidenceSources??[]){
+  evidence.provenanceClass='external';
+  evidence.sourceAuthority01=1;
+}
+const restoredAuthorityCap=new MemoryOS2();
+restoredAuthorityCap.restore(poisonedAuthoritySnapshot);
+assert.equal(restoredAuthorityCap.get(authorityCapRow.id).sourceAuthority01,.9,
+  'restoring persisted state must re-apply the external provenance ceiling');
+assert.equal(restoredAuthorityCap.evidenceTrail(authorityCapRow.id).sources[0].sourceAuthority01,.9,
+  'restored evidence trail rows must stay under the same provenance ceiling');
+assert.equal(restoredAuthorityCap.get(lowerAuthorityRow.id).sourceAuthority01,.2,
+  'restore must preserve a valid lower, explicitly declared authority');
 const initial = memory.encode(makeInput('publisher-a.example', 'story-lineage-A'), { clone: false });
 const baselineConfidence = initial.confidence;
 assert.equal(initial.evidenceSources?.length, 1, 'new memory should keep its first evidence lineage');
