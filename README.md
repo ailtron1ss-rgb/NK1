@@ -1,3 +1,13 @@
+## Current source-stack checkpoint — WorkPass448 (2026-10-23)
+
+- **Bootstrap resource bound:** the shared `PairedSeedConfidence.ts` now rejects workloads above 16 million draw operations before entering the bootstrap loop or allocating resample results.
+- **Fail-closed behavior:** an excessive `sampleCount × resamples` request returns the explicit `paired-seed-bootstrap-work-budget-exceeded` error rather than running potentially unbounded CPU work or silently reducing a requested confidence setting.
+- **Regression:** the existing bootstrap utility test now checks rejection of a 5,000-value × 4,000-resample workload; accepted workloads preserve their existing output shape/algorithm.
+- **Guardrail:** this is input-workload hardening, not an accuracy/performance benchmark. Tests/typecheck are still not confirmed on exact HEAD; progress remains 83% implementation and ~45% confirmed production readiness. `main` and Release ZIP are unchanged.
+- Details: [WorkPass448 bootstrap work budget](docs/WORKPASS448_BOOTSTRAP_WORK_BUDGET_RU.md), [WorkPass447 task-cluster interval](docs/WORKPASS447_TASK_CLUSTER_BOOTSTRAP_RU.md).
+
+---
+
 ## Current source-stack checkpoint — WorkPass447 (2026-10-23)
 
 - **Task-level uncertainty:** robust diagnostics now include a deterministic percentile-bootstrap interval for the equal-weight mean candidate-minus-baseline delta, independently for task success, skill quality and trajectory quality.
