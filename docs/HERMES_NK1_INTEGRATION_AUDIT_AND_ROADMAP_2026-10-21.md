@@ -1,3 +1,15 @@
+# Addendum WorkPass330 — production host evaluator wiring (2026-10-23)
+
+WorkPass330 fixes a concrete runtime composition gap found while tracing the real P23 path. The server previously supplied the revision provider and candidate store but omitted the independent-evaluation factory that `OrganismRuntime` requires in production. Production mode still fails closed when no separate host evaluator config is set; the guard was not weakened.
+
+The new `NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE` loads a distinct host-owned config whose `createIndependentEvaluationHostConfig({ stateDirectory })` returns three separate host-owned commands, a task builder, environment fingerprint and production experiment authority. It is prepared by the existing host-owned services factory, then connected to the already-canonical P23 revision coordinator. The config is not given engine/store/registry capabilities.
+
+An optional `NEURO_COMPOUND_REPAIR_BACKGROUND_REVISION_JSON` enables the existing resource-aware scheduler. The scheduler only creates staged candidates from verified non-holdout repair evidence and does not bypass independent evaluation, signed shadow evidence or authenticated approval.
+
+The new wiring contract test is committed and included in root quick audit and WorkPass71 CI, but exact-head execution remains unverified because hosted jobs still stop before executing steps. This does **not** complete the deployment-specific host authority setup or establish measurable learning uplift. See [WorkPass330 report](WORKPASS330_PRODUCTION_REVISION_WIRING_2026-10-23.md).
+
+---
+
 # Addendum WorkPass329 — multi-dimensional holdout guard (2026-10-23)
 
 This addendum supersedes neither the examined HEAD nor the production-path findings below; it records a later, narrow code change in the canonical P23 learning path.
