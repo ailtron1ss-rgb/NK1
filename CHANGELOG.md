@@ -4,6 +4,7 @@
 - [GATE] Added tools/verify-upstream-donor-registry.mjs and tools/verify-upstream-donor-registry.test.mjs. Runtime dependencies/adoption are rejected unless source, license, tests, and benchmark evidence each have linked reports; the license record also needs SPDX or compatibility evidence and test evidence needs a reproducible command.
 - [DOCS] Added docs/NEUROCORE_DONOR_MAP_2026-10-23.md mapping donor mechanisms to canonical NK1 ownership and setting research priorities.
 - [WIRING] Added audit:upstream-donors and test:upstream-donors scripts and wired both into audit:quick.
+- [CI] Updated WorkPass71 validation path filters and added direct registry-audit and regression-test steps so donor-registry changes are checked by core CI.
 - [EVIDENCE] Static file inspection found 27 unique donor IDs/URLs. This does not mean the upstream projects have been independently audited, code has been ported, the Node tests ran, or performance improved.
 - [BLOCKER] Exact-head Actions and tests remain unverified because recent Actions jobs stop before runner assignment. Resolve the account-level startup condition and run the commands on the exact head.
 - [RELEASE] No release ZIP was downloaded, rebuilt, or published. main and the existing release asset were not changed.
