@@ -1,12 +1,12 @@
-## Current source-stack checkpoint — WorkPass400 (2026-10-23)
+## Current source-stack checkpoint — WorkPass401 (2026-10-23)
 
-- **Validation family gate:** paired candidate evaluation now blocks adequately sampled validation task-family regressions above `maximumValidationFamilyRegression01` (default 0.10) even if gains from another family make the total validation average rise.
-- **Shared aggregation:** repeat trials are averaged within each task; task means are then weighted equally within the family. The previous WorkPass399 per-task threshold (0.20) remains active, and WorkPass400 reports `validationFamiliesEvaluated` / `validationFamilyRegressions`.
-- **Adversarial P29 regression:** family A loses 0.16 on each task—below the single-task veto—while family B's gain raises the overall validation score. Candidate is blocked by the family gate; invalid thresholds fail closed.
-- **Research/limitations:** motivated by SkillLearnBench's verified multi-subdomain tasks and three-level evaluation, plus Hermes Self-Evolution's separate candidate guardrails. Threshold 0.10 is an engineering default requiring paired multi-seed calibration, not a benchmark result.
-- **Promotion input safety (WorkPass398):** P23 snapshots baseline, evaluation and approval as plain data before field inspection/store use; focused adversarial tests cover accessors.
-- **Verification state:** source, tests and docs are committed on `feature/learning`, but exact-head Actions tests/typecheck remain unverified because jobs provide no runner-step logs. No score uplift is claimed.
-- **Research/release:** `docs/RESEARCH_INTAKE_LEDGER.md` records decisions and caveats; external mechanisms are adapted to NK1's contracts, not pulled in as a disconnected architecture. `main` and the Release ZIP remain unchanged. See [WorkPass400 validation-family gate](docs/WORKPASS400_VALIDATION_FAMILY_REGRESSION_RU.md).
+- **Validation family gate (WorkPass400):** paired candidate evaluation blocks adequately sampled validation-family regression above `maximumValidationFamilyRegression01` (default 0.10) even if another family raises the total validation mean.
+- **Strict family provenance (WorkPass401):** benchmark profiles may set `minimumValidationFamilies` and `minimumHoldoutFamilies` to 1+; a missing family-label split then blocks eligibility instead of silently skipping family-level checks. Defaults remain 0 for legacy-data compatibility.
+- **Shared aggregation:** trials are averaged within each task, then tasks are equally weighted inside each family. The WorkPass399 per-task veto (0.20) stays active. P29 covers hidden task/family regressions, missing family labels under strict mode, and invalid settings.
+- **Research/limitations:** inspired by SkillLearnBench's verified multi-domain tasks and three-axis evaluation and Hermes Self-Evolution's guarded candidate promotion. Thresholds are engineering defaults and require paired multi-seed calibration; no benchmark gain is claimed.
+- **Promotion input safety (WorkPass398):** P23 snapshots baseline, evaluation and approval as plain data before field inspection/store use; adversarial tests cover accessors.
+- **Verification state:** code, tests and docs are committed to `feature/learning`; exact-head Actions tests/typecheck remain unverified because jobs expose no steps/logs. No score uplift is claimed.
+- **Research/release:** `docs/RESEARCH_INTAKE_LEDGER.md` captures source rationale and limits. `main` and the Release ZIP remain unchanged. See [WorkPass401 strict family coverage](docs/WORKPASS401_STRICT_FAMILY_COVERAGE_RU.md) and [WorkPass400 validation-family gate](docs/WORKPASS400_VALIDATION_FAMILY_REGRESSION_RU.md).
 
 ---
 
