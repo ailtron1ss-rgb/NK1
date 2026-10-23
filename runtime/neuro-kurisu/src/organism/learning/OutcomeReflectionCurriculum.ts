@@ -13,6 +13,9 @@ export interface ReflectionExperience {
 }
 export interface ReflectionHypothesis {
   key:string; kind:FailureKind; contextKey:string; action:string; occurrences:number;
+  /** Number of unique valid observations used for the reported recent-window metrics. */
+  sampleCount:number;
+  windowStartTick:number; windowEndTick:number;
   observedSuccess01:number; predictedSuccess01:number; predictionGap01:number;
   /** Binary pass/fail threshold used for descriptive pass-rate metrics. */
   passThreshold01:number;
@@ -157,7 +160,8 @@ export function reflectOnOutcomes(rows:readonly ReflectionExperience[],limit=12)
     const priority=c(.28*gap+.25*(1-success)+.17*surprise+.20*(1-wilsonLower)+.10*Math.min(1,failures/4));
     const confidence=c((n/(n+4))*(1-intervalWidth)*(1-gap*.30));
     const contextKey=recent[0].contextKey,action=recent[0].action;
-    out.push({key,kind,contextKey,action,occurrences:ordered.length,observedSuccess01:success,
+    out.push({key,kind,contextKey,action,occurrences:ordered.length,sampleCount:recent.length,
+      windowStartTick:recent[0].tick,windowEndTick:recent[recent.length-1].tick,observedSuccess01:success,
       predictedSuccess01:predicted,predictionGap01:gap,passThreshold01:REFLECTION_PASS_THRESHOLD,passRate01:passRate,wilsonLowerPassRate01:wilsonLower,
       wilsonUpperPassRate01:wilsonUpper,passRateIntervalWidth01:intervalWidth,priority01:priority,
       suggestedNextStep:kind==='repeated-context-failure'?'Create a controlled repair variant and compare it against the current policy':
