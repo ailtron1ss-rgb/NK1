@@ -1,3 +1,12 @@
+## NK1 WorkPass359 — calibrate reflective uncertainty and stop inferring transfer from recurrence (2026-10-23)
+
+- [FIXED] `ReflectionHypothesis` now reports the explicit 0.5 pass threshold, observed pass rate, descriptive Wilson lower/upper bounds and interval width from the recent evidence window.
+- [FIXED] Reflection confidence accounts for sample-window size and interval width; repair priority combines prediction mismatch, observed outcome, surprise and conservative pass-rate risk. The interval is explicitly descriptive because experience rows may be correlated; it is not a claim of calibrated confidence.
+- [FIXED] `P23LearningEngine.recommendLearningTargets()` no longer treats `occurrences / 12` as skill-transfer evidence. Repeated errors inside one context influence repair priority but set transfer to zero until matched cross-context/held-out outcomes support a transfer claim.
+- [RESEARCH] Added `docs/WORKPASS359_REFLECTION_TRANSFER_CALIBRATION.md` summarizing inspected Hermes Agent Self-Evolution, Reflexion, Voyager and CleanRL patterns and how they were adapted to NK1's existing TypeScript candidate/evaluation lifecycle. No upstream implementation code was copied and no new dependency was added.
+- [REGRESSION] Extended the P23 reflection/curriculum regression with interval, threshold and transfer-separation assertions. It remains wired into `test:p23:learning`.
+- [VALIDATION] Source and regression changes are committed; exact-head execution remains unverified because exposed Actions attempts fail before useful steps are available. No measured performance uplift is claimed. `main` and the release ZIP remain untouched.
+
 ## NK1 WorkPass358 — de-duplicate curriculum targets by immutable identity (2026-10-23)
 
 - [FIXED] The ranked learning curriculum now counts one target identity once; repeated identical proposals cannot occupy multiple top-k positions.
