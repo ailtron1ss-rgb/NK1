@@ -1,3 +1,12 @@
+## NK1 WorkPass461 — reconcile current branches and validation limits (2026-10-23)
+
+- Updated the source-intake ledger and Russian master audit against current branch refs and open PR heads, including the latest memory trust ceilings, P67/P68 goal-state guards, event-ID continuity in perception, and bounded verified-outcome fields.
+- Confirmed that changes remain on category branch tips; `main` and `integration` were not changed. All category PRs remain drafts.
+- Exact-head tests remain unverified: GitHub Actions jobs have `runner_id=0` and no steps, and a local repository clone could not resolve github.com via DNS. No test pass or performance uplift is claimed; no dependency added and no release ZIP replacement claimed.
+- Scorecard remains 7/7 core branches with implementation/regression source, 0/7 exact-head suites confirmed passing, 0/7 PR merges, 0/1 release ZIP refreshed/hash-verified, readiness 46/100.
+
+---
+
 ## NK1 WorkPass455 — map Hexis principles into existing NK1 owners (2026-10-23)
 
 - Inspected the MIT-licensed QuixiAI/Hexis primary docs for memory architecture/provenance, persistent identity/worldview, resource-bounded OODA/heartbeat, and subconscious observations feeding conscious decisions.
