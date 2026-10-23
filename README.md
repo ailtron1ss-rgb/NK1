@@ -1,3 +1,14 @@
+## Current source-stack checkpoint — WorkPass416 (2026-10-23)
+
+- **Deterministic numeric aggregation:** trial rows are grouped by task and then sorted by stable `trialId` before summation. This prevents input insertion order from moving a task mean's final rounded decimal due to floating-point addition order.
+- **Regression:** WorkPass406's metrics test now includes a 5-task × 37-seed fractional corpus and asserts identical summaries for reverse/scrambled row order.
+- **Efficiency:** one O(R) grouping pass replaces repeated O(T × R) full-list filtering; canonical per-task sorting adds O(R log R) worst-case total and each score dimension scans grouped rows once.
+- **Metrics:** the diagnostic-only schema still reports task-balanced IQM, median, optimality gap and paired probability of improvement for task success, skill quality and trajectory quality. Promotion gates are unchanged.
+- **Progress:** learning-category implementation estimated at **83%**; production readiness remains **~45%**. Exact-head runtime tests/typecheck remain unconfirmed because hosted Actions logs are unavailable. `main` and the Release ZIP remain unchanged.
+- Details: [RLiable metrics note](docs/WORKPASS412_RLIABLE_METRIC_DEPTH_RU.md) and [learning scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md).
+
+---
+
 ## Current source-stack checkpoint — WorkPass415 (2026-10-23)
 
 - **Metric efficiency:** `LearningRobustMetrics.ts` now groups matched baseline/candidate trial rows by task once. All three score dimensions reuse the grouping rather than rescanning all trials for every task; this removes repeated O(tasks × trials) filtering while preserving task weights and metric formulas.
