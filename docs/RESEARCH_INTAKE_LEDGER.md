@@ -1,3 +1,23 @@
+## WorkPass461 — reconcile latest live category heads and implementation evidence (2026-10-23)
+
+### Current branch tips / open draft PRs
+- `feature/learning` — `09b801e7ec77320b9915d201df29b0720aaaef28` ([PR #79](https://github.com/ailtron1ss-rgb/NK1/pull/79)).
+- `feature/perception` — `c365c48bd64c023bbef9696a95452f8c7deb1466` ([PR #80](https://github.com/ailtron1ss-rgb/NK1/pull/80)); the unified-cycle receipt now returns the exact accepted per-stage event IDs and explicit observation anchor produced by the current evidence handoff.
+- `feature/emotions` — `be344d0599e66c9d3305ec2023a88fe016c673b7` ([PR #81](https://github.com/ailtron1ss-rgb/NK1/pull/81)).
+- `feature/memory` — `eff640e51f96d2f4ef9e50db5ffb5ef55cec437b` ([PR #82](https://github.com/ailtron1ss-rgb/NK1/pull/82)); residual belief revision, evidence-lineage de-duplication, provenance trust ceilings and audit persistence are present on the current ref.
+- `feature/personality` — `48e36266f6349fe69efa14ee54b187e0dcd4350e` ([PR #83](https://github.com/ailtron1ss-rgb/NK1/pull/83)); P67/P68 safe goal state and idempotent goal decisions are present on the current ref.
+- `feature/visual-embodiment` — `927629a433eff63d01397dd370a68a666093ff78` ([PR #84](https://github.com/ailtron1ss-rgb/NK1/pull/84)); pre-/post-action sensing failure semantics remain present alongside current avatar-affect coupling work.
+- `feature/experiments` — `6c75864ff5311101782f5d1bfe1d323f95396542` ([PR #85](https://github.com/ailtron1ss-rgb/NK1/pull/85)).
+- `feature/feedback` — `28c930ae0f559796780ff844e0830078d4f4d2cf` ([PR #87](https://github.com/ailtron1ss-rgb/NK1/pull/87)); evidence ledger field bounds are present.
+- `planning/master-audit-roadmap` — current pass is committed in PR [#88](https://github.com/ailtron1ss-rgb/NK1/pull/88).
+
+### Execution/release truth
+All nine PRs remain open drafts against `integration`; current integration remains `2a2b89bebc49243b6196b8c9e75b65f64ae21c64`, and `main` remains `84119539afca904a91d5617b86ae334917a9e578`. Neither was changed by these implementation passes. Existing hosted jobs still terminate before step execution (`runner_id=0`, no steps). A local shallow clone was also unavailable in this environment because DNS resolution for github.com failed; therefore no exact-head test is claimed as run or passed. The binary release asset has not been replaced or hash-refreshed. Scorecard is unchanged: category implementation/regression source 7/7; exact-head suites proven passing 0/7; PRs merged 0/7; release ZIP refreshed/hash-verified 0/1; overall engineering readiness **46/100**.
+
+No package dependency was added. The next work order stays: obtain a real runner → execute owning suites/typecheck → integrate category PRs in reviewable order → cross-category E2E/holdout benchmarks → rebuild and hash-verify the primary release ZIP.
+
+---
+
 ## WorkPass457 — inspect Hexis goal/belief mechanisms and adapt them into NK1 (2026-10-23)
 
 ### Primary-source inspection and license
