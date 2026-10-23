@@ -18,10 +18,9 @@ export function validateCiConfig({ workflows, nodeVersion }) {
     for (const match of text.matchAll(actionPattern)) {
       const actionName = match[1];
       const ref = match[2];
-      const major = /^v(\d+)$/i.exec(ref);
-      const immutableSha = /^[a-f0-9]{40}$/i.test(ref);
-      if (!immutableSha && (!major || Number(major[1]) < 7)) {
-        errors.push(`${name}: actions/${actionName}@${ref} is not a Node.js-24-compatible v7+ reference or a full immutable SHA; upgrade/review it.`);
+      const major = /^v(\d+)(?:\.\d+(?:\.\d+)?)?$/i.exec(ref);
+      if (!major || Number(major[1]) < 7) {
+        errors.push(`${name}: actions/${actionName}@${ref} is not an approved Node.js-24-compatible v7+ release tag; review non-tag refs separately.`);
       }
     }
 
