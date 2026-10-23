@@ -25,6 +25,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
       - "runtime/neuro-kurisu/src/organism/learning/PairedSeedConfidence.ts"
       - "runtime/neuro-kurisu/src/organism/learning/LearningRobustMetrics.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningLifecycleJournal.ts"
+      - "runtime/neuro-kurisu/tests/workpass407-learning-lifecycle-journal.mjs"
       - "runtime/neuro-kurisu/tests/workpass406-learning-robust-metrics.mjs"
       - "runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs"
       - "runtime/neuro-kurisu/tests/workpass225-matched-independent-evaluation.mjs"
@@ -154,6 +156,9 @@ jobs:
       - name: Run hash-chained learning fitness journal regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass405-learning-fitness-journal.mjs
+      - name: Run P23 activation lifecycle journal regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass407:learning-lifecycle-journal
 
       - name: Run P23 production promotion strict family gate end-to-end regression
         working-directory: runtime/neuro-kurisu
