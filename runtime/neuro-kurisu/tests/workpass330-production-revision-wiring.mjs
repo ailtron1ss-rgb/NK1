@@ -20,7 +20,7 @@ const hostModule = ({ experimentAuthority = true, complete = true, methods = tru
 export async function createIndependentEvaluationHostConfig(input) {
   globalThis.__nk1HostConfigReceivedStateDirectory = input.stateDirectory;
   return ${complete ? `{
-    ${methods ? "baselineMethod: 'active-baseline-v1',\\n    sourceCandidateMethod: 'source-candidate-v1',\\n" : ''}commands: {
+    ${methods ? "baselineMethod: 'active-baseline-v1',\n    sourceCandidateMethod: 'source-candidate-v1',\n" : ''}commands: {
       executor: { executable: '/host/executor', args: ['{requestFile}'], cwd: '/host', runRoot: '/host/executor-runs', surviveDir: '/host/executor-survive' },
       verifier: { executable: '/host/verifier', args: ['{requestFile}'], cwd: '/host', runRoot: '/host/verifier-runs', surviveDir: '/host/verifier-survive' },
       safetyScanner: { executable: '/host/scanner', args: ['{requestFile}'], cwd: '/host', runRoot: '/host/scanner-runs', surviveDir: '/host/scanner-survive' }
