@@ -26,6 +26,7 @@ const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const num=(x:number,d=0)=>Number.isFinite(x)?x:d;
 const MAX_REFLECTION_ROWS=4096;
 const MAX_LEARNING_TARGETS=512;
+const REFLECTION_PASS_THRESHOLD=0.5;
 type LearningTargetInput=Omit<LearningTarget,'score01'|'rationale'>;
 
 const isPlainRecord=(value:unknown):value is Record<string,unknown>=>{
@@ -130,11 +131,11 @@ export function reflectOnOutcomes(rows:readonly ReflectionExperience[],limit=12)
     const success=recent.reduce((s,e)=>s+c(e.success),0)/recent.length;
     const predicted=recent.reduce((s,e)=>s+c(e.predictedUtility),0)/recent.length;
     const surprise=recent.reduce((s,e)=>s+c(e.surprise),0)/recent.length;
-    const gap=Math.abs(success-predicted),failures=recent.filter(e=>e.success<.45).length;
+    const gap=Math.abs(success-predicted),failures=recent.filter(e=>e.success<REFLECTION_PASS_THRESHOLD).length;
     // Use a declared binary task-success threshold for a conservative descriptive
     // interval. Evidence rows may be temporally correlated, so this interval is not
     // an independently calibrated confidence claim or a promotion credential.
-    const passCount=recent.filter(e=>e.success>=.5).length;
+    const passCount=recent.filter(e=>e.success>=REFLECTION_PASS_THRESHOLD).length;
     const passRate=passCount/recent.length,z=1.96,z2=z*z,n=recent.length;
     const denominator=1+z2/n;
     const center=passRate+z2/(2*n);
@@ -149,7 +150,7 @@ export function reflectOnOutcomes(rows:readonly ReflectionExperience[],limit=12)
     const confidence=c((n/(n+4))*(1-intervalWidth)*(1-gap*.30));
     const contextKey=recent[0].contextKey,action=recent[0].action;
     out.push({key,kind,contextKey,action,occurrences:ordered.length,observedSuccess01:success,
-      predictedSuccess01:predicted,predictionGap01:gap,passRate01:passRate,wilsonLowerPassRate01:wilsonLower,
+      predictedSuccess01:predicted,predictionGap01:gap,passThreshold01:REFLECTION_PASS_THRESHOLD,passRate01:passRate,wilsonLowerPassRate01:wilsonLower,
       wilsonUpperPassRate01:wilsonUpper,passRateIntervalWidth01:intervalWidth,priority01:priority,
       suggestedNextStep:kind==='repeated-context-failure'?'Create a controlled repair variant and compare it against the current policy':
         kind==='prediction-gap'?'Calibrate the action value and collect an independently checked outcome':
