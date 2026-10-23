@@ -114,6 +114,21 @@ assert.ok(!familyRegression.feedback.some(line=>line.includes('memory')||line.in
 assert.equal(evaluateSkillLearnBenchCandidate(baseline,improved).holdoutFamilyRegressions,0,
   'legacy reports without canonical task-family metadata retain aggregate-only evaluation');
 
+const oneSidedFamilyBaseline = {
+  validation: baseline.validation,
+  holdout: [trial('task-c','h1','good',0,'memory'),trial('task-d','h1','good',0,'memory')],
+};
+const oneSidedFamilyCandidate = {
+  validation: improved.validation,
+  holdout: [trial('task-c','h1','good'),trial('task-d','h1','good')],
+};
+assert.throws(()=>evaluateSkillLearnBenchCandidate(oneSidedFamilyBaseline,oneSidedFamilyCandidate),
+  /candidate-holdout-task-family-mismatch/,
+  'removing family provenance on only one side must not silently bypass a paired family gate');
+assert.throws(()=>evaluateSkillLearnBenchCandidate(baseline,improved,null),
+  /candidate-evaluation-data-boundary-rejected/,
+  'invalid root gate options must fail closed after snapshotting');
+
 
 assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, {
   validation: [trial('task-a', 'v1', 'good')],
