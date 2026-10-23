@@ -2128,3 +2128,8 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **Regression added:** the existing continual metrics and outcome-matrix tests cover missing/invalid baselines, sparse arrays, unsafe task IDs, and preservation of the missing matched-seed test.
 - **Validation boundary:** regression wiring is committed, but runtime execution is unconfirmed while GitHub Actions jobs fail before any runner step.
 
+## NK1 WorkPass337 — restore missing learning CI script wiring (2026-10-23)
+
+- Added npm aliases to the existing runtime package for three P26 regression files, the WorkPass293 P23 revision/coordinator path, and the WorkPass291/292/294 regression files whose workflows referenced missing script names.
+- The script definitions match the corresponding additions in `feature/experiments`, avoiding package.json differences between the two proposed integration PRs.
+- Static inspection confirmed the previously identified script names are declared; no runtime test has been executed or claimed to pass because Actions jobs still fail before runner assignment.
