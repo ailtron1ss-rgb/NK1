@@ -1,3 +1,9 @@
+## WorkPass353 — provider capability/data separation (2026-10-23)
+
+- The autonomous repair coordinator now uses a shared envelope boundary that separates JSON-like provider data from two retained function capabilities (revision generator and independent evaluator). Arbitrary provider getters cannot mutate the evidence snapshot by being read during validation.
+- This completes a key safety adaptation of Hermes-style trace→revision→independent evaluation: provider suggestions remain untrusted data, while generation/evaluation functions remain explicit capabilities; neither grants promotion authority.
+- No upstream code was copied and no dependency added. Exact-head test execution remains unverified.
+
 ## WorkPass352 — bounded evidence payloads (2026-10-23)
 
 - Extended the shared learning trust boundary with an aggregate text budget in addition to depth/node limits, so large primitive strings and many medium-sized fields cannot evade structural size controls.

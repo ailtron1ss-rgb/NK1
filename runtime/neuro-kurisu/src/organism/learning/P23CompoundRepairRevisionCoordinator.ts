@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { OrganismRuntime } from '../core/OrganismRuntime.ts';
 import type { P23LearningEngine } from './P23LearningEngine.ts';
+import { snapshotPlainData, snapshotPlainDataEnvelope } from './LearningTrustBoundary.ts';
 
 type RevisionArgs = Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>;
 type Proposal = RevisionArgs[0];
@@ -200,35 +201,40 @@ export class P23CompoundRepairRevisionCoordinator {
     initialEvidenceDigest: string,
   ) {
     const fingerprints = [...new Set(repairEvidence.map(row => row.failureFingerprint))];
-    const prepared = await this.provideInputs({
+    const rawPrepared = await this.provideInputs({
       skillId,
       repairFingerprints: fingerprints,
-      repairEvidence: structuredClone(repairEvidence),
+      repairEvidence: snapshotPlainData(repairEvidence) as ReturnType<OrganismRuntime['compoundSkillRepairEvidence']>,
     });
-    if (!prepared || typeof prepared.sourceCandidateId !== 'string' || !prepared.sourceCandidateId.trim()) {
+    // Read provider-owned fields only from descriptors. structuredClone() can invoke
+    // getters, so it is not a safe boundary for a provider that the coordinator treats
+    // as mutable/untrusted data. Keep exactly two function-valued capabilities.
+    let prepared: CompoundRepairRevisionInputs;
+    try {
+      const envelope = snapshotPlainDataEnvelope(rawPrepared, ['generate', 'evaluateRevisedCandidate']);
+      prepared = {
+        proposal: envelope.data.proposal as Proposal,
+        sourceCandidateId: envelope.data.sourceCandidateId as string,
+        baseline: envelope.data.baseline as Baseline,
+        candidateEvaluation: envelope.data.candidateEvaluation as CandidateEvaluation,
+        generate: envelope.capabilities.generate as Generator,
+        evaluateRevisedCandidate: envelope.capabilities.evaluateRevisedCandidate as Evaluator,
+        options: envelope.data.options as Options | undefined,
+      };
+    } catch {
+      throw new Error('compound-repair-revision-provider-data-boundary-rejected');
+    }
+    if (typeof prepared.sourceCandidateId !== 'string' || !prepared.sourceCandidateId.trim()) {
       throw new Error('trusted revision input provider must return a source candidate id');
     }
     if (!prepared.proposal || !prepared.baseline || !prepared.candidateEvaluation ||
         typeof prepared.generate !== 'function' || typeof prepared.evaluateRevisedCandidate !== 'function') {
       throw new Error('trusted revision input provider returned incomplete proposal/evaluation/generator inputs');
     }
-
-    // Treat provider output as untrusted mutable data even when the caller did not
-    // opt into withIndependentCandidateEvaluation. Snapshot the data envelope before
-    // any further runtime calls; retain only the generator/evaluator functions as
-    // explicit capabilities. Fail closed rather than stage evidence we cannot detach.
-    let proposal: typeof prepared.proposal;
-    let baseline: typeof prepared.baseline;
-    let candidateEvaluation: typeof prepared.candidateEvaluation;
-    let options: typeof prepared.options;
-    try {
-      proposal = structuredClone(prepared.proposal);
-      baseline = structuredClone(prepared.baseline);
-      candidateEvaluation = structuredClone(prepared.candidateEvaluation);
-      options = prepared.options === undefined ? undefined : structuredClone(prepared.options);
-    } catch {
-      throw new Error('compound-repair-revision-provider-data-not-cloneable');
-    }
+    const proposal = prepared.proposal;
+    const baseline = prepared.baseline;
+    const candidateEvaluation = prepared.candidateEvaluation;
+    const options = prepared.options;
     const sourceCandidateId = prepared.sourceCandidateId;
     const generate = prepared.generate;
     const evaluateRevisedCandidate = prepared.evaluateRevisedCandidate;

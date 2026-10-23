@@ -1,3 +1,11 @@
+## NK1 WorkPass353 — reuse the trust boundary for autonomous repair providers (2026-10-23)
+
+- [REFACTORED] Added `snapshotPlainDataEnvelope()`: it safely detaches provider data while preserving only explicitly allow-listed callable capabilities, using own data descriptors without executing accessors.
+- [HARDENED] `P23CompoundRepairRevisionCoordinator` no longer reads untrusted provider fields before detaching them and no longer uses `structuredClone()` as a getter safety boundary. Top-level/nested getter-backed evidence now fails before staging; repair evidence is copied through the shared snapshot boundary too.
+- [REGRESSION] Extended the compound-repair coordinator suite with top-level and nested getter side-effect counters and assertions that no candidate staging occurs.
+- [INTEGRATION] This applies the same trust policy to the autonomous repair route as the independent evaluator and verified outcome ledger.
+- [VALIDATION] Test assertions are committed but remain unverified; current Actions jobs fail before runner assignment (runner ID 0, zero steps).
+
 ## NK1 WorkPass352 — bound total learning snapshot size and remove stale import (2026-10-23)
 
 - [HARDENED] The shared trust boundary now bounds aggregate string/key volume as well as depth and node count. This closes the case where a single huge string bypassed the previous object-node limits.

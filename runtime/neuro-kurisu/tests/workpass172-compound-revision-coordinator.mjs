@@ -336,4 +336,71 @@ assert.equal(failureProviderCalls, 2, 'new verified repair evidence must bypass 
 assert.equal(retryCoordinator.retryBackoffDiagnostics()[0].attempts, 1,
   'new evidence gets a fresh bounded retry budget');
 
-console.log('WorkPass172 + WorkPass293 + WorkPass294 coordinator regressions completed');
+
+let hostileProviderGetterCalls = 0;
+let hostileProviderStageCalls = 0;
+const hostileProviderRuntime = {
+  compoundSkillRepairEvidence: () => evidence,
+  generateCompoundSkillRevision: async () => {
+    hostileProviderStageCalls++;
+    return { candidate: { candidateId: 'should-never-stage' }, repairEvidenceCount: 1 };
+  },
+};
+const hostileProviderResult = {
+  proposal: { authentic: true },
+  sourceCandidateId: 'hostile-provider-source',
+  baseline: { validation: [], holdout: [] },
+  candidateEvaluation: { validation: [], holdout: [] },
+  generate: async () => ({ generated: true }),
+  evaluateRevisedCandidate: async input => ({
+    payloadFingerprint: input.payloadFingerprint,
+    evaluationFingerprint: 'f'.repeat(64),
+    evaluation: { validation: [], holdout: [] },
+  }),
+};
+Object.defineProperty(hostileProviderResult, 'sourceCandidateId', {
+  enumerable: true,
+  get() { hostileProviderGetterCalls++; return 'must-not-be-read'; },
+});
+const hostileProviderCoordinator = new P23CompoundRepairRevisionCoordinator(
+  hostileProviderRuntime, engine, async () => hostileProviderResult,
+);
+await assert.rejects(
+  () => hostileProviderCoordinator.reviseFromObservedRepairs('skill-a'),
+  /provider-data-boundary-rejected/,
+);
+assert.equal(hostileProviderGetterCalls, 0,
+  'the coordinator must inspect provider descriptors without invoking getters');
+assert.equal(hostileProviderStageCalls, 0,
+  'untrusted provider envelopes must fail before candidate staging');
+
+let nestedProviderGetterCalls = 0;
+const hostileNestedProposal = { authentic: true };
+Object.defineProperty(hostileNestedProposal, 'hidden', {
+  enumerable: true,
+  get() { nestedProviderGetterCalls++; return 'must-not-be-read'; },
+});
+const nestedProviderCoordinator = new P23CompoundRepairRevisionCoordinator(
+  hostileProviderRuntime,
+  engine,
+  async () => ({
+    proposal: hostileNestedProposal,
+    sourceCandidateId: 'nested-hostile-source',
+    baseline: { validation: [], holdout: [] },
+    candidateEvaluation: { validation: [], holdout: [] },
+    generate: async () => ({ generated: true }),
+    evaluateRevisedCandidate: async input => ({
+      payloadFingerprint: input.payloadFingerprint,
+      evaluationFingerprint: 'f'.repeat(64),
+      evaluation: { validation: [], holdout: [] },
+    }),
+  }),
+);
+await assert.rejects(
+  () => nestedProviderCoordinator.reviseFromObservedRepairs('skill-a'),
+  /provider-data-boundary-rejected/,
+);
+assert.equal(nestedProviderGetterCalls, 0,
+  'nested provider data must be snapshotted recursively without invoking getters');
+
+console.log('WorkPass172 + WorkPass293 + WorkPass294 + WorkPass353 coordinator regressions completed');
