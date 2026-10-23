@@ -101,3 +101,31 @@ assert.equal(new VerifiedOutcomeLedger(manifest).record({
   ...uniqueReceipt, evidenceRef: ' artifact://surrounded ',
 }).rejection?.code, 'invalid-evidence-reference',
 'evidence receipt identities must be trimmed and normalized');
+
+
+// WorkPass351: experiment ledger batch writes are all-or-nothing across receipt collisions.
+const atomicLedger = new VerifiedOutcomeLedger(manifest);
+const receiptA = {
+  taskId: 'm-1', taskVersion: '1', method: 'prior-v1', seed: 5, attempt: 1,
+  passed: true, authority: 'independent-verifier', verifierId: 'v1',
+  evidenceRef: 'artifact://atomic-receipt-a', observedAt: 1_800_000_000_000,
+};
+const atomicFailure = atomicLedger.recordBatch([
+  receiptA,
+  { ...receiptA, method: 'candidate-v1', seed: 8 },
+]);
+assert.equal(atomicFailure.accepted, 0);
+assert.equal(atomicFailure.rejection?.code, 'duplicate-evidence-ref');
+assert.equal(atomicLedger.snapshot().outcomes.length, 0,
+  'a later rejected row must not leave earlier rows from the same experiment committed');
+
+const atomicSuccess = atomicLedger.recordBatch([
+  receiptA,
+  {
+    taskId: 't-1', taskVersion: '2', method: 'candidate-v1', seed: 5, attempt: 1,
+    passed: true, authority: 'independent-verifier', verifierId: 'v2',
+    evidenceRef: 'artifact://atomic-receipt-b', observedAt: 1_800_000_000_001,
+  },
+]);
+assert.equal(atomicSuccess.accepted, 2);
+assert.equal(atomicLedger.snapshot().outcomes.length, 2);

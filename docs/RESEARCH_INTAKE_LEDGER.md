@@ -1,3 +1,9 @@
+## WorkPass351 — atomic experiment evidence commits (2026-10-23)
+
+- The learning evaluator now submits its whole validation/holdout outcome set to one ledger transaction. This preserves the experiment as a single evidence unit and prevents late duplicate-receipt rejection from leaving partial measurements.
+- Adaptation from reproducible-experiment practice: a run is accepted only when the complete, internally consistent evidence batch is valid. This is an NK1 implementation change; no third-party code has been vendored.
+- Exact-head tests remain unverified due the previously observed GitHub runner-allocation failure.
+
 ## WorkPass350 — unify learning evidence trust boundaries (2026-10-23)
 
 - Reused a single NK1-owned snapshot/identity policy at both candidate execution evaluation and the verified-outcome ledger instead of allowing each subsystem to interpret mutable JavaScript objects independently.

@@ -1,3 +1,11 @@
+## NK1 WorkPass351 — atomic commits for verified learning batches (2026-10-23)
+
+- [INTEGRATED] Added `VerifiedOutcomeLedger.recordBatch()`: all outcomes in a batch are snapshotted and validated against existing rows and one another before any are stored.
+- [FIXED] `recordIndependentEvaluationOutcomes()` now commits all validation/holdout evidence through the atomic ledger batch instead of writing each cell sequentially. A late duplicate receipt or invalid row cannot leave a partially recorded experiment.
+- [REGRESSION] Added batch-collision atomicity coverage: duplicate receipts reject the entire batch with zero accepted writes; a fully valid two-row batch commits both.
+- [SCOPE] This pass strengthens the learning→evaluation→evidence spine; no new dependencies or promotion bypasses were introduced.
+- [VALIDATION] Source and tests are committed, but this suite remains unverified until an Actions runner executes the exact commit.
+
 ## NK1 WorkPass350 — unify learning trust boundary and evidence receipt identity (2026-10-23)
 
 - [REFACTORED] Extracted bounded descriptor-only data snapshots and normalized identity checks into `LearningTrustBoundary.ts`, now shared by candidate evaluation and the canonical verified-outcome ledger.

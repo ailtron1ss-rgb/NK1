@@ -6,7 +6,7 @@ import {
   validateLearningExperimentPlan,
   type LearningExperimentPlan,
 } from './LearningExperimentPlan.ts';
-import { VerifiedOutcomeLedger, type TaskManifestEntry } from './VerifiedOutcomeLedger.ts';
+import { VerifiedOutcomeLedger, type TaskManifestEntry, type VerifiedTaskOutcome } from './VerifiedOutcomeLedger.ts';
 import { isSafeLearningIdentity, snapshotPlainData } from './LearningTrustBoundary.ts';
 
 export interface IndependentCandidateTask {
@@ -570,17 +570,27 @@ export function recordIndependentEvaluationOutcomes(
       throw new Error('independent-evaluation-ledger-cell-already-recorded');
     }
   }
-  for (const item of pending) {
-    const result = recordPlannedLearningOutcome(authority.ledger, item.plan, item.runId, {
+  const batch: VerifiedTaskOutcome[] = pending.map(item => {
+    const scheduled = item.plan.runs.find(candidate => candidate.runId === item.runId);
+    if (!scheduled) throw new Error('independent-evaluation-ledger-run-not-scheduled');
+    return {
+      taskId: scheduled.taskId,
+      taskVersion: scheduled.taskVersion,
+      method: scheduled.method,
+      seed: scheduled.seed,
       attempt,
       passed: item.passed,
       authority: 'independent-verifier',
+      verifierId: scheduled.verifierId,
       evidenceRef: item.evidenceRef,
       observedAt,
-    });
-    if (!result.accepted) throw new Error('independent-evaluation-ledger-rejected-outcome');
+    };
+  });
+  const batchResult = authority.ledger.recordBatch(batch);
+  if (batchResult.accepted !== batch.length) {
+    throw new Error('independent-evaluation-ledger-atomic-batch-rejected');
   }
-  return { accepted: pending.length };
+  return { accepted: batchResult.accepted };
 }
 
 

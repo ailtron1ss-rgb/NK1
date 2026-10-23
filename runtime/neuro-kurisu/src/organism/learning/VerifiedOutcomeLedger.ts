@@ -150,19 +150,21 @@ export class VerifiedOutcomeLedger {
     return createHash('sha256').update(normalized).digest('hex');
   }
 
-  record(rawOutcome: VerifiedTaskOutcome): { accepted: boolean; rejection?: OutcomeRejection } {
+  private prepareOutcome(
+    rawOutcome: unknown,
+    seenKeys: ReadonlySet<string>,
+    seenEvidenceRefs: ReadonlySet<string>,
+  ): { key: string; outcome: VerifiedTaskOutcome } | { rejection: OutcomeRejection } {
     let detached: unknown;
     try {
       detached = snapshotPlainData(rawOutcome);
     } catch {
-      const rejection: OutcomeRejection = {
+      return { rejection: {
         code: 'invalid-outcome',
         taskId: '',
         method: '',
         detail: 'outcome data boundary rejected accessor, cyclic, unsupported or oversized input',
-      };
-      this.rejections.push(rejection);
-      return { accepted: false, rejection };
+      } };
     }
 
     const outcome = detached && typeof detached === 'object' && !Array.isArray(detached)
@@ -193,21 +195,22 @@ export class VerifiedOutcomeLedger {
     else if (!Number.isFinite(outcome.observedAt) || (outcome.observedAt as number) <= 0) { code = 'invalid-time'; detail = 'observedAt must be a positive finite timestamp'; }
 
     const trustedOutcome = outcome as VerifiedTaskOutcome | null;
-    const key = code || !trustedOutcome ? '' : this.key(trustedOutcome);
-    if (!code && trustedOutcome && this.evidenceRefs.has(trustedOutcome.evidenceRef)) {
-      code = 'duplicate-evidence-ref';
-      detail = 'one evidence receipt cannot attest multiple ledger outcomes';
-    }
-    if (!code && key && this.outcomes.has(key)) {
-      code = 'duplicate-attempt';
-      detail = 'this task/method/seed/attempt already has an outcome';
-    }
     if (code || !trustedOutcome) {
-      const rejection: OutcomeRejection = { code: code ?? 'invalid-outcome', taskId: safeTaskId, method: safeMethod, detail: detail || 'outcome is malformed' };
-      this.rejections.push(rejection);
-      return { accepted: false, rejection };
+      return { rejection: { code: code ?? 'invalid-outcome', taskId: safeTaskId, method: safeMethod, detail: detail || 'outcome is malformed' } };
     }
-
+    const key = this.key(trustedOutcome);
+    if (seenEvidenceRefs.has(trustedOutcome.evidenceRef)) {
+      return { rejection: {
+        code: 'duplicate-evidence-ref', taskId: safeTaskId, method: safeMethod,
+        detail: 'one evidence receipt cannot attest multiple ledger outcomes',
+      } };
+    }
+    if (seenKeys.has(key)) {
+      return { rejection: {
+        code: 'duplicate-attempt', taskId: safeTaskId, method: safeMethod,
+        detail: 'this task/method/seed/attempt already has an outcome',
+      } };
+    }
     const accepted: VerifiedTaskOutcome = {
       taskId: trustedOutcome.taskId,
       taskVersion: trustedOutcome.taskVersion,
@@ -220,10 +223,64 @@ export class VerifiedOutcomeLedger {
       evidenceRef: trustedOutcome.evidenceRef,
       observedAt: trustedOutcome.observedAt,
     };
-    this.outcomes.set(key, Object.freeze(accepted));
-    this.evidenceRefs.set(accepted.evidenceRef, key);
+    return { key, outcome: accepted };
+  }
+
+  record(rawOutcome: VerifiedTaskOutcome): { accepted: boolean; rejection?: OutcomeRejection } {
+    const prepared = this.prepareOutcome(rawOutcome, new Set(this.outcomes.keys()), new Set(this.evidenceRefs.keys()));
+    if ('rejection' in prepared) {
+      this.rejections.push(prepared.rejection);
+      return { accepted: false, rejection: prepared.rejection };
+    }
+    this.outcomes.set(prepared.key, Object.freeze(prepared.outcome));
+    this.evidenceRefs.set(prepared.outcome.evidenceRef, prepared.key);
     return { accepted: true };
   }
+
+  /**
+   * Atomically record one experiment's outcomes. All rows are detached and validated
+   * against both existing ledger contents and each other before any row is committed.
+   * If one row fails, the ledger's accepted outcomes remain unchanged.
+   */
+  recordBatch(rawOutcomes: readonly VerifiedTaskOutcome[]): { accepted: number; rejection?: OutcomeRejection } {
+    let detached: unknown;
+    try {
+      detached = snapshotPlainData(rawOutcomes);
+    } catch {
+      const rejection: OutcomeRejection = {
+        code: 'invalid-outcome', taskId: '', method: '',
+        detail: 'outcome batch data boundary rejected accessor, cyclic, unsupported or oversized input',
+      };
+      this.rejections.push(rejection);
+      return { accepted: 0, rejection };
+    }
+    if (!Array.isArray(detached)) {
+      const rejection: OutcomeRejection = {
+        code: 'invalid-outcome', taskId: '', method: '', detail: 'outcome batch must be an array',
+      };
+      this.rejections.push(rejection);
+      return { accepted: 0, rejection };
+    }
+    const seenKeys = new Set(this.outcomes.keys());
+    const seenEvidenceRefs = new Set(this.evidenceRefs.keys());
+    const preparedRows: Array<{ key: string; outcome: VerifiedTaskOutcome }> = [];
+    for (const raw of detached) {
+      const prepared = this.prepareOutcome(raw, seenKeys, seenEvidenceRefs);
+      if ('rejection' in prepared) {
+        this.rejections.push(prepared.rejection);
+        return { accepted: 0, rejection: prepared.rejection };
+      }
+      preparedRows.push(prepared);
+      seenKeys.add(prepared.key);
+      seenEvidenceRefs.add(prepared.outcome.evidenceRef);
+    }
+    for (const prepared of preparedRows) {
+      this.outcomes.set(prepared.key, Object.freeze(prepared.outcome));
+      this.evidenceRefs.set(prepared.outcome.evidenceRef, prepared.key);
+    }
+    return { accepted: preparedRows.length };
+  }
+
   comparePaired(baseline: string, candidate: string, split: EvaluationSplit = 'holdout'): PairedMethodSummary {
     return this.compareFiltered(baseline, candidate, split);
   }
