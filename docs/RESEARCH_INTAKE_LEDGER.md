@@ -1,3 +1,13 @@
+## WorkPass416 — make per-task metric aggregation insertion-order deterministic (2026-10-23)
+
+- **Failure mode:** IEEE-754 addition is not associative. Grouping rows is not enough if each group's mean still sums scores in caller-supplied row order; a value near a rounding boundary may change the last reported decimal.
+- **Code:** every task group in `LearningRobustMetrics.ts` is now sorted by a stable code-unit `trialId` comparator before computing its baseline/candidate means. Existing canonical ID validation prevents duplicate trial keys.
+- **Regression:** `workpass406-learning-robust-metrics.mjs` now compares summary outputs from a five-task, 37-seed, varying fractional-score corpus against reverse/scrambled input order.
+- **Cost:** O(R) grouping + O(R log R) worst-case total within-task sorting + O(R) per dimension; still avoids previous repeated O(T × R) full-row filtering. Formulas, task weights and promotion policy remain unchanged.
+- **Verification:** source/test wiring committed; exact-HEAD runtime execution remains unconfirmed because GitHub Actions exposes failures without step logs.
+
+---
+
 ## WorkPass415 — linearize robust-metric grouping (2026-10-23)
 
 - **Issue:** `LearningRobustMetrics.ts` originally called `rows.filter(row => row.taskId === taskId)` for each task and each dimension, repeatedly scanning the full matched trial list.
