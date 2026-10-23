@@ -1,3 +1,12 @@
+## Additional implementation follow-up — emotion calibration and CI runtime policy (2026-10-23)
+
+- **Emotion regulation / evidence-bounded calibration:** source commit `23b66f101076b4d4680bb602550fb9da73a4cae4` (`feature/emotions`, PR [#81](https://github.com/ailtron1ss-rgb/NK1/pull/81)) validates outcome success, surprise, and regulation-cost values as finite numbers in [0,1] before changing the action-calibration row. NaN/string/out-of-range inputs no longer silently become training signals. Regression commit: `dc8b48479ebaed988564f4b5b7f2ae74fae367e8`.
+- **Experiments / Node.js 24 compatibility guard:** source commit `0527d811e30657aed0a8323ef830144277d25c80` (`feature/experiments`, PR [#85](https://github.com/ailtron1ss-rgb/NK1/pull/85)) extends the existing policy audit to cover artifact upload/download actions as well as checkout/setup-node, so a v4 downgrade is caught. The current workflows inspected on this branch already use Node 24 and v7-compatible first-party Actions where applicable; this closes a validator gap rather than rewriting those workflows. Regression commit: `fd6340781cc02e9d49f07e58a841df78b7a9e488`.
+- **Primary-source code inspection:** inspected Hermes' `evolution/skills/evolve_skill.py` (fetched blob SHA `2a79a670aaa632fe720b2fef0fc9ce62ee7d281f`) and `PLAN.md` (blob SHA `48f9ef147e5b47d3d24d712d5360f41d31340ce6`). Transferable mechanics are dataset splitting, baseline constraint validation, candidate evaluation and approval/revert. NK1 already has native holdout/approval gates; the additional size bounds and action-runtime audit are native adaptations, not a wholesale vendor import.
+- No package dependency was added. Tests remain unexecuted on these exact heads; this is source-code progress, not verified uplift.
+
+---
+
 ## Follow-up implementation pass — cross-category boundary and fault-tolerance work (2026-10-23)
 
 This follow-up extends the existing category branches; it does not introduce a second memory owner, learner, planner, or action gateway.
