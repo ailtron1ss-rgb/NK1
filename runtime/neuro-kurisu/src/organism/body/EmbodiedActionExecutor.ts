@@ -86,7 +86,22 @@ export class EmbodiedActionExecutor {
       };
     }
     input=normalized;
-    const preSample=await this.embodiment.sample({force:true,requestedSensors:['battery','thermal','network']});
+    let preSample:Awaited<ReturnType<EmbodimentRuntime['sample']>>;
+    try {
+      preSample=await this.embodiment.sample({force:true,requestedSensors:['battery','thermal','network']});
+    } catch(error) {
+      // Without a pre-action sample the executor cannot safely reason about device
+      // freshness or resource state. Fail closed before entering any action branch.
+      const body=this.embodiment.snapshot();
+      const base={battery01:body.telemetry.battery01,thermal01:body.thermalStrain01,cognitiveCapacity01:body.cognitiveCapacity01,awake:body.awake,source:body.telemetry.source};
+      const detail=String(error instanceof Error?error.message:error).slice(0,120);
+      return {
+        version:1,action:safeAction,status:'failed',realityClass:'derived',source:body.telemetry.source,at:Date.now(),
+        before:base,after:{...base},stateDelta:{battery01:0,thermal01:0,cognitiveCapacity01:0,awakeChanged:false},
+        effect01:0,reason:`embodied-pre-action-sample-failed:${detail}`,capability:null,
+        consequenceVerification:{attempted:false,independent:false,verified:false,sourceStable:false,freshBefore01:0,freshAfter01:0,changed01:0,reason:'pre-action-measurement-failed-action-not-dispatched',verificationMode:'none'},
+      };
+    }
     const before=this.embodiment.snapshot();
     const at=Date.now();
     const base={battery01:before.telemetry.battery01,thermal01:before.thermalStrain01,cognitiveCapacity01:before.cognitiveCapacity01,awake:before.awake,source:before.telemetry.source};
@@ -169,12 +184,19 @@ export class EmbodiedActionExecutor {
     } catch(error){
       status='failed'; reason=`embodied-action-error:${String((error as any)?.message||error).slice(0,160)}`;
     }
-    const after=await this.embodiment.sample({force:true,requestedSensors:['battery','thermal','network']});
+    let postSampleFailed=false;
+    try {
+      await this.embodiment.sample({force:true,requestedSensors:['battery','thermal','network']});
+    } catch {
+      // Preserve the action outcome even if independent post-action sensing fails.
+      // The lack of a fresh observation must remove verification credit.
+      postSampleFailed=true;
+    }
     const afterBody=this.embodiment.snapshot();
     const beforeFresh=preSample.telemetry.source==='android-termux' && preSample.telemetry.staleMs===0 ? 1 : 0;
-    const afterFresh=after.telemetry.source==='android-termux' && after.telemetry.staleMs===0 ? 1 : 0;
-    const sourceStable=before.telemetry.source===after.telemetry.source;
-    const independent=after.telemetry.sampledAt>before.telemetry.sampledAt;
+    const afterFresh=!postSampleFailed&&afterBody.telemetry.source==='android-termux'&&afterBody.telemetry.staleMs===0?1:0;
+    const sourceStable=before.telemetry.source===afterBody.telemetry.source;
+    const independent=!postSampleFailed&&afterBody.telemetry.sampledAt>before.telemetry.sampledAt;
     const delta={battery01:afterBody.telemetry.battery01-before.telemetry.battery01,thermal01:afterBody.thermalStrain01-before.thermalStrain01,cognitiveCapacity01:afterBody.cognitiveCapacity01-before.cognitiveCapacity01,awakeChanged:afterBody.awake!==before.awake};
     const changed01=clamp(Math.abs(delta.battery01)*.25+Math.abs(delta.thermal01)*.35+Math.abs(delta.cognitiveCapacity01)*.25+(delta.awakeChanged?.15:0));
     const deviceFresh=beforeFresh===1 && afterFresh===1 && sourceStable && independent;
@@ -185,7 +207,7 @@ export class EmbodiedActionExecutor {
     const verified=Boolean(deviceFresh && status==='executed' && observationAction);
     const verificationMode:EmbodiedActionResult['consequenceVerification']['verificationMode']=
       verified ? 'independent-observation' : (actuationAction && status==='executed' ? 'actuation-receipt-only' : (action==='rest' ? 'derived-state-transition' : (status==='executed' ? 'none' : 'none')));
-    const consequenceReason=verified?'independent-live-device-post-action-measurement':(actuationAction&&status==='executed'?'device-command-acknowledged-without-independent-effect-verification':(status==='ambiguous'?'tts-result-unknown-do-not-retry-or-credit':(status==='executed'?'action-executed-without-independent-device-proof':'no-independent-device-consequence-proof')));
+    const consequenceReason=verified?'independent-live-device-post-action-measurement':(postSampleFailed?'post-action-measurement-failed-effect-unverified':(actuationAction&&status==='executed'?'device-command-acknowledged-without-independent-effect-verification':(status==='ambiguous'?'tts-result-unknown-do-not-retry-or-credit':(status==='executed'?'action-executed-without-independent-device-proof':'no-independent-device-consequence-proof'))));
     const effect01=clamp(changed01*(verified?.9:.15));
     const realityClass:EmbodiedRealityClass=verified?'device-observation':(actuationAction&&(status==='executed'||status==='ambiguous')&&afterBody.telemetry.source==='android-termux'?'device-actuation':'derived');
     return {version:1,action,status,realityClass,source:afterBody.telemetry.source,at,before:base,after:{battery01:afterBody.telemetry.battery01,thermal01:afterBody.thermalStrain01,cognitiveCapacity01:afterBody.cognitiveCapacity01,awake:afterBody.awake,source:afterBody.telemetry.source},stateDelta:delta,effect01,reason,capability,artifact,consequenceVerification:{attempted:true,independent,verified,sourceStable,freshBefore01:beforeFresh,freshAfter01:afterFresh,changed01,reason:consequenceReason,verificationMode}};
