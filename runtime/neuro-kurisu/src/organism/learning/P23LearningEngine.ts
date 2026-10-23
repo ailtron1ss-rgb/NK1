@@ -11,7 +11,7 @@ import { isAuthenticVerifiedSkillPromotionProposal, type VerifiedSkillPromotionP
 import { evaluateSkillLearnBenchCandidate, type SkillLearnBenchCandidateEvaluation, type SkillLearnBenchCandidateGateOptions, type SkillLearnBenchCandidateGateReport } from './SkillLearnBenchAdapter.ts';
 import { bindIndependentEvaluationToVerifiedShadowEvidence, bindReflectiveReportsToVerifiedShadowEvidence, type ReflectiveEvidenceBindingReport } from './HermesVerifiedEvidenceBinding.ts';
 import { compareMatchedIndependentEvaluations } from './IndependentSkillCandidateEvaluator.ts';
-import type { LearningFitnessJournalSink } from './LearningFitnessJournal.ts';
+import type { LearningFitnessJournalDiagnostics, LearningFitnessJournalSink } from './LearningFitnessJournal.ts';
 import { planSkillRevision, type SkillRevisionPlan } from './SkillRevisionPlan.ts';
 import type { SkillShadowEvidenceVerifier } from './VersionedSkillCandidateStore.ts';
 import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillRollbackApproval, type SkillShadowObservation, type SkillRevisionProvenance, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
@@ -535,6 +535,16 @@ export class P23LearningEngine {
       throw new Error('P23 learning fitness journal sink invalid');
     }
     if(this.learningFitnessJournal===null) this.learningFitnessJournal=journal;
+  }
+
+  /** Safe aggregate view of fitness learning history for diagnostics/dashboard consumers. */
+  learningFitnessJournalDiagnostics():
+    LearningFitnessJournalDiagnostics | {configured:false;available:false} | {configured:true;available:false} {
+    if(!this.learningFitnessJournal) return {configured:false,available:false};
+    if(typeof this.learningFitnessJournal.snapshotDiagnostics!=='function') {
+      return {configured:true,available:false};
+    }
+    return this.learningFitnessJournal.snapshotDiagnostics();
   }
 
   /** Read-only view of the durable staged/active skill lifecycle; null means not configured. */
