@@ -59,6 +59,17 @@ The human-brain analogy is functional only: global-workspace/broadcast ideas inf
 
 ## Progress accounting
 
+### WorkPass459–465 — current multi-pass execution report (2026-10-23)
+
+- **Overall engineering readiness: 46/100 (46%) — unchanged.** Do not increase the score from commit count. The unified-organism goal still requires clean compilation, cross-branch integration, exact-head regression execution, end-to-end autonomy evidence and an updated/hash-verified release artifact.
+- **Learning-system implementation maturity: 40/100 (engineering estimate, not a benchmark).** P23/Hermes evidence binding, replay, independent evaluation, holdout separation and candidate promotion gates exist in the source tree; this pass strengthened envelope integrity, trust provenance and typed runtime wiring. No measured learning uplift is claimed because the workflow stops before its behavioral tests.
+- **Independent learning gain demonstrated by this pass: not established (0 verified benchmark runs).** This means no measured claim has been produced here; it does not mean the learner has zero capability.
+- **Source branches changed:** `feature/memory` (restore-time provenance ceiling, regression and Hexis intake record), `feature/learning` (bounded Hermes/P23 canonical evidence, hostile-input regressions and log), and `feature/perception` (replay-safe evidence restore, deterministic event projection IDs wired through six existing runtime projections, cognitive/runtime/learning compile blockers and expanded local Node API declarations). These are branch commits, not merges into `integration`.
+- **Exact-head validation:** the latest inspected P26 run [40017335645](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40017335645) executed on `7a0b45f6285b10c208503ed7cd56471f31f53e99`: checkout and locked dependency install passed, typecheck ran but failed with 13 diagnostics, all in the oversized `OrganismCore.ts` (nullable `cxReplay`, `cx`, `causalRepair`, plus the `TrustedShadowRunRegistrar` return contract). Tests after typecheck were skipped. This supersedes older notes that some hosted jobs failed before step execution.
+- **Regression source committed:** memory snapshot trust-boundary tests, Hermes/P23 hostile-envelope tests, and reality-ledger conflict/replay tests have been added or extended. **Execution status remains 0 confirmed passing suites in this pass.**
+- **Release / integration:** category PRs are still separate; no merge to `integration`, no change to `main`, and no release ZIP replacement/hash verification. The available GitHub connector can update text files but does not expose binary release-asset replacement. Do not claim a refreshed release.
+
+---
 ### WorkPass461 — live branch-head reconciliation (2026-10-23)
 Current open-draft PR heads on the latest read are #79 `09b801e7` (learning), #80 `d5dd7584` (perception), #81 `be344d05` (emotions), #82 `f2c8b66b` (memory), #83 `48e36266` (personality), #84 `927629a4` (visual embodiment), #85 `6c75864f` (experiments), and #87 `28b1e691` (feedback). Planning PR #88 is also open draft at `8e00fe30`. The latest code includes evidence-based confidence revision with provenance limits; replay-safe goal lifecycle; bounded outcome fields; safer action sensing; and an explicit event-ID return from the unified cognitive-cycle boundary. These source/test changes are present on category branch tips, not merged to integration.
 - Verification remains unchanged: exact-head suites confirmed passing 0/7, category PRs merged 0/7, release ZIP updated/hash-verified 0/1, readiness 46/100. Hosted jobs fail before step execution; a local clone was not possible because GitHub hostname DNS did not resolve in the execution environment.
@@ -100,10 +111,11 @@ Current open-draft PR heads on the latest read are #79 `09b801e7` (learning), #8
 | Current release ZIP updated and hash-verified | 0/1 (0%) | `main` and the binary release artifact are unchanged. |
 | Overall engineering readiness estimate | 46/100 (46%) | Preserve prior baseline until exact-head CI and end-to-end evidence exist. |
 
-### Infrastructure blocker
-- Representative exact-head runs: [P26 learning validation](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40000062972), [cognitive contracts](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40000505529), [verified outcomes](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40000767939), and [embodiment validation](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40000952156).
-- Each inspected job finished with `runner_id=0`, blank runner name and zero steps. This is a runner-startup failure; it does not identify a failing assertion or prove the new code passes.
-- Keep category PRs draft until a runner is provisioned and the owning test/typecheck plus cross-category contract suite execute on the exact SHA. Do not spend more runs retrying the same pre-step failure.
+### Infrastructure blocker — updated after actual runner execution
+- Recent runs now receive a runner and execute checkout, Node setup and `npm ci`; the current blocker is a real typecheck failure, not runner allocation. The latest inspected evidence is [P26 learning validation](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40017335645), head `7a0b45f6285b10c208503ed7cd56471f31f53e99`.
+- The compile errors have fallen from 89 to 15 and then 13 across consecutive passes. The remaining 13 diagnostics are concentrated in `OrganismCore.ts`: nullable replay/causal-repair results and the trusted-shadow registrar return contract. Do not treat skipped downstream tests as passes.
+- The connector returns empty content for `OrganismCore.ts` even when narrow line ranges are requested, so those exact source lines remain an explicit blocker for this API-only editing pass. Fix through a source environment that can safely read/edit the large file, then rerun typecheck and the owning suites on the resulting exact SHA.
+- Keep category PRs draft until clean typecheck plus cross-category behavioral evidence exist. Historical `runner_id=0` jobs above describe earlier runs only, not the current state.
 
 `main` and the binary release archive have not been changed. Release metadata was rechecked: stable tag `Neuro` still points to `Neuro_Kurisu_WORKPASS70_2026-10-19.zip` (135,290,615 bytes; SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`); later prerelease `workpass70-hotfix1-2026-10-19` has `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip` (136,354,713 bytes; SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`). Neither binary contains the 2026-10-23 category commits. Available GitHub actions expose text-file commits and release metadata reads, but no binary release-asset replacement operation; the archive update remains blocked. Next highest-value step: restore a real runner, execute the new regression suites, then resolve any actual application failures before integration.
 
@@ -120,7 +132,7 @@ Recent category changes, all still separate from integration:
 - feature/feedback WorkPass454: built-in action contracts can be strengthened but their evidence thresholds and required observation/actuation flags cannot be downgraded.
 - planning/master-audit-roadmap WorkPass455: records the shared evidence/decision lifecycle and next passes.
 
-Regression sources were added/wired on the category branches; exact-head runtime/typecheck execution is still unconfirmed due runner startup failures. Per-pass details are in the owning branch CHANGELOGs and implementation notes.
+Regression sources were added/wired on category branches; current runners execute the jobs, but exact-head typecheck still fails before tests. See the WorkPass459–465 scorecard above and per-pass details in owning branch CHANGELOGs.
 
 ### Fixed-order next passes
 1. WorkPass456–457 — shared evidence-event boundary (partially implemented): RealityEvidenceLedger accepts an upstream eventId and rejects changed-payload reuse. OutcomeVerificationService now emits a stable evidenceEventId only for a correctly shaped external postcondition tied to exact execution/decision/tool/input/observation lineage. Remaining: wire the same verifier-owned ID through the real core call site into the ledger, P65 evidenceId and outcome/reflection, checking authority at every hop.
