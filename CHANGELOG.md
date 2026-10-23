@@ -2120,3 +2120,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **Safety preserved:** the older attempt still fails closed if its evidence changed during asynchronous preparation. Only the fresh digest is permitted to reach candidate staging; the follow-up does not inherit an old evaluation result.
 - **Regression added:** `runtime/neuro-kurisu/tests/workpass172-compound-revision-coordinator.mjs` now covers this race and asserts stale-attempt rejection, successful retry, single staging, and exact latest-digest provenance. The existing npm script `test:workpass172:compound-revision-coordinator` already reaches this test.
 - **Validation boundary:** code and regression are committed; hosted Actions currently stop before any runner step, so this pass does **not** claim a runtime test pass or green CI.
+
+## NK1 WorkPass335 — make continual-learning transfer evidence strict (2026-10-23)
+
+- **Scientific validity fix:** forward transfer is no longer calculated against an implicit zero baseline. If pre-training scores are provided, `evaluateContinualLearning` requires an explicit measured `referenceScore`; the outcome-matrix adapter enforces the same requirement when a pre-training method is selected.
+- **Input integrity fix:** sparse task lists and sparse stage arrays are rejected rather than silently skipped by `map`/`forEach`; task identifiers are bounded and control-character checked.
+- **Regression added:** the existing continual metrics and outcome-matrix tests cover missing/invalid baselines, sparse arrays, unsafe task IDs, and preservation of the missing matched-seed test.
+- **Validation boundary:** regression wiring is committed, but runtime execution is unconfirmed while GitHub Actions jobs fail before any runner step.
+
