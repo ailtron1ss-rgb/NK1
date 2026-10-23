@@ -113,5 +113,9 @@ const reflectedTarget = integrated.nextLearningTargets.find(target => target.id.
 assert.ok(reflectedTarget, 'P23 curriculum must surface at least one reflected repair target');
 assert.equal(reflectedTarget.transfer01, 0,
   'repeating a failure in one context must not be misreported as cross-context skill transfer');
+const debtTarget = integrated.nextLearningTargets.find(target => target.id.startsWith('debt-'));
+assert.ok(debtTarget, 'P23 curriculum must surface outstanding verification debt');
+assert.equal(debtTarget.transfer01, 0,
+  'information gain per verification cost is not evidence of skill transfer');
 assert.ok(reflectedTarget.uncertainty01 > 0, 'reflection targets must include conservative observed failure risk');
 console.log('WorkPass119 skill retrieval + outcome reflection + curriculum: PASS');
