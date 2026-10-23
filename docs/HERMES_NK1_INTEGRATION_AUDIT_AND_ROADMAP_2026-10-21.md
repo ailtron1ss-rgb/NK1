@@ -1,3 +1,21 @@
+# Addendum WorkPass329 — multi-dimensional holdout guard (2026-10-23)
+
+This addendum supersedes neither the examined HEAD nor the production-path findings below; it records a later, narrow code change in the canonical P23 learning path.
+
+## Implemented from Hermes Agent Self-Evolution
+
+- **Pinned upstream reference:** [`0a929e3aa20e15cf04dc7c28492a7d41a5139125`](https://github.com/NousResearch/hermes-agent-self-evolution/commit/0a929e3aa20e15cf04dc7c28492a7d41a5139125). Relevant files inspected: `evolution/skills/evolve_skill.py`, `evolution/core/fitness.py`, `evolution/core/constraints.py`, and `pyproject.toml`.
+- **Adapted mechanism:** multi-dimensional quality and explicit constraints instead of relying solely on the donor's 50/30/20 composite. NK1's existing `SkillLearnBenchAdapter` now independently gates normalized holdout declines for task success, trajectory quality and skill quality (default tolerance 0.02 per axis).
+- **Failure mode addressed:** a candidate could have an improved aggregate score while execution trajectory quality fell materially. The new behavioral regression explicitly creates this trade-off and requires rejection even when the aggregate decline threshold is permissive.
+- **Lifecycle boundary:** no new learner, second evaluation service or parallel store; existing matched evaluation, hard safety gate, P23 candidate storage, signed shadow evidence and authenticated approval are still required. This gate does not autonomously activate candidates.
+- **Wiring:** focused regression added to root `audit:quick` and WorkPass71 core CI. The upstream donor is recorded in the registry/map as a **native adaptation**, not a vendored runtime dependency.
+- **License/dependencies:** upstream README and project metadata declare MIT; a standalone `LICENSE` file was not retrievable at the pinned path, so the review is partial. No upstream file was copied and no dependency was added.
+- **Validation:** the test and runtime typecheck are not yet confirmed on the exact new head. Current hosted Actions runs terminate before runner assignment (`runner_id=0`, zero steps/logs), so neither PASS nor code failure is inferred.
+
+Implementation/evidence report: [WorkPass329](WORKPASS329_HERMES_MULTIAXIS_HOLDOUT_GATE_2026-10-23.md). Preserve the prior critical finding below: production provider bootstrap and the full real execution → independent evaluation → signed evidence → approval path remain the larger open integration objective.
+
+---
+
 # Hermes → NK1: полный аудит интеграции и план дальнейшей работы
 
 **Дата аудита:** 2026-10-21  
