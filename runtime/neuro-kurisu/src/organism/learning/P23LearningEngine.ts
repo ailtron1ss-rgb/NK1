@@ -826,7 +826,16 @@ export class P23LearningEngine {
     // Never gate on a caller-supplied collection of baseline reports. The
     // evaluator proves one-to-one task/trial/seed/split joins and identical
     // plan/environment/manifest before computing the paired SkillLearnBench gate.
-    const fitness=compareMatchedIndependentEvaluations(baseline,evaluation);
+    // Production activation must exercise domain-level checks on BOTH splits:
+    // canonical task-family labels come from the evaluator's trusted manifest,
+    // not from the skill/caller. Diagnostic callers can remain legacy-compatible,
+    // but the promotion authority must not silently skip family generalization.
+    const fitness=compareMatchedIndependentEvaluations(baseline,evaluation,{
+      minimumValidationFamilies:1,
+      minimumHoldoutFamilies:1,
+      minimumValidationFamilyTasks:2,
+      minimumHoldoutFamilyTasks:2,
+    });
     if(!fitness.eligible) throw new Error(`independent reflective fitness gate rejected candidate: ${fitness.reasons.join(',')}`);
     // Bind against the exact receipts persisted on the candidate; caller-supplied
     // alternate receipts cannot be used to pass this pre-promotion check.
