@@ -30,7 +30,13 @@ const accepted = ingestSignedOutcomeArtifact(ledger, manifest, artifactFor(valid
 assert.equal(accepted.accepted, true);
 assert.match(accepted.artifactFingerprint, /^[a-f0-9]{64}$/);
 assert.equal(ledger.snapshot().acceptedOutcomes, 1);
-assert.equal(ingestSignedOutcomeArtifact(ledger, manifest, artifactFor(validPayload), keys).rejection, 'duplicate-attempt');
+const replayed = ingestSignedOutcomeArtifact(ledger, manifest, artifactFor(validPayload), keys);
+assert.equal(replayed.accepted, true, 'the exact signed artifact must be idempotent and may re-establish its process-local trust receipt');
+assert.equal(replayed.artifactFingerprint, accepted.artifactFingerprint);
+assert.equal(ledger.snapshot().acceptedOutcomes, 1, 'replay of the same artifact must not duplicate the ledger outcome');
+const conflictingAttempt = makePayload({ artifactId: 'artifact-conflict', runId: 'run-conflict', passed: false });
+assert.equal(ingestSignedOutcomeArtifact(ledger, manifest, artifactFor(conflictingAttempt), keys).rejection, 'conflicting-existing-outcome',
+  'a different signed result for the same task/method/seed/attempt must not overwrite the accepted outcome');
 
 const changed = makePayload({ artifactId: 'artifact-002', passed: false });
 const forged = artifactFor(changed);
