@@ -6,7 +6,7 @@ The new `NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE` loads a distinct host-o
 
 An optional `NEURO_COMPOUND_REPAIR_BACKGROUND_REVISION_JSON` enables the existing resource-aware scheduler. The scheduler only creates staged candidates from verified non-holdout repair evidence and does not bypass independent evaluation, signed shadow evidence or authenticated approval.
 
-The 11-case wiring contract test is committed and included in root quick audit and WorkPass71 CI. The host evaluator module is now required to be a regular file outside mutable state, not group/world-writable on POSIX, and distinct from the repair provider. Exact-head execution remains unverified because hosted jobs still stop before executing steps. This does **not** complete the deployment-specific host authority setup or establish measurable learning uplift. See [WorkPass330 report](WORKPASS330_PRODUCTION_REVISION_WIRING_2026-10-23.md).
+The 12-case wiring contract test is committed and included in root quick audit and WorkPass71 CI. The host evaluator module is now required to be a regular file outside mutable state, not group/world-writable on POSIX, and distinct from the repair provider. The production host config must also declare distinct baseline/source/revision methods present in both experiment plans. Exact-head execution remains unverified because hosted jobs still stop before executing steps. This does **not** complete the deployment-specific host authority setup or establish measurable learning uplift. See [WorkPass330 report](WORKPASS330_PRODUCTION_REVISION_WIRING_2026-10-23.md).
 
 ---
 
