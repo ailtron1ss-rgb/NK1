@@ -39,7 +39,7 @@ export class P67AutonomousGoalGenesis {
   const r=detached as Record<string,unknown>;
   if(r.version!==undefined&&r.version!==1){this.state=d;return;}
   const generatedIds=[...new Set((Array.isArray(r.generatedIds)?r.generatedIds:[])
-    .filter((id):id is string=>typeof id==='string'&&/^p67:\\d+:[0-9a-f]{1,8}$/i.test(id)))].slice(-256);
+    .filter((id):id is string=>typeof id==='string'&&/^p67:\d+:[0-9a-f]{1,8}$/i.test(id)))].slice(-256);
   const idSet=new Set(generatedIds);
   const history=(Array.isArray(r.history)?r.history:[])
     .map(row=>normalizeCandidate(row,idSet)).filter((row):row is P67Candidate=>row!==null).slice(-96);
