@@ -529,6 +529,14 @@ export class P23LearningEngine {
     this.learningFitnessJournal=journal;
   }
 
+  /** Configure the runtime default without replacing a sink explicitly supplied by the host. */
+  configureLearningFitnessJournalIfAbsent(journal:LearningFitnessJournalSink):void {
+    if(!journal || typeof journal.recordFitnessDecision!=='function') {
+      throw new Error('P23 learning fitness journal sink invalid');
+    }
+    if(this.learningFitnessJournal===null) this.learningFitnessJournal=journal;
+  }
+
   /** Read-only view of the durable staged/active skill lifecycle; null means not configured. */
   verifiedSkillCandidateSnapshot() {
     return this.verifiedSkillStore?.snapshot() ?? null;
