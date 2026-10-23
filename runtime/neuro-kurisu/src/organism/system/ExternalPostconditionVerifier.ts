@@ -42,7 +42,20 @@ export class ExternalPostconditionVerifier {
     if(safe.minIndependent01!==undefined&&(typeof safe.minIndependent01!=='number'||!Number.isFinite(safe.minIndependent01)||safe.minIndependent01<0||safe.minIndependent01>1)){
       throw new RangeError('postcondition-independent-threshold-invalid');
     }
-    Object.defineProperty(this.matrix,action,{value:{observation:safe.observation??false,actuation:safe.actuation??false,minIndependent01:clamp(safe.minIndependent01??.7)},writable:true,enumerable:true,configurable:true});
+    const existing=Object.prototype.hasOwnProperty.call(this.matrix,action)?this.matrix[action]:undefined;
+    // Registered policy may strengthen a built-in contract but never weaken it:
+    // callers cannot downgrade the default independent-proof floor for verify/
+    // respond/rest or turn a required observation/actuation channel off.
+    const nextContract:PostconditionActionContract=existing?{
+      observation:existing.observation===true||safe.observation===true,
+      actuation:existing.actuation===true||safe.actuation===true,
+      minIndependent01:Math.max(existing.minIndependent01??0,safe.minIndependent01??(existing.minIndependent01??.7)),
+    }:{
+      observation:safe.observation??false,
+      actuation:safe.actuation??false,
+      minIndependent01:clamp(safe.minIndependent01??.7),
+    };
+    Object.defineProperty(this.matrix,action,{value:nextContract,writable:true,enumerable:true,configurable:true});
   }
   actionContract(action:string){
     if(typeof action!=='string')return {observation:false,actuation:false,minIndependent01:.75};
