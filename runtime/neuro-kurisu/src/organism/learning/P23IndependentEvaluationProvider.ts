@@ -238,10 +238,17 @@ function validateRevisionMethods(config: RevisionEvaluationConfig): asserts conf
 }
 
 /**
- * Wraps the trusted repair-input provider and replaces its evaluator with one
- * that executes the exact generated payload through independent runtime authorities.
- * Proposal, source candidate, baseline and generator remain owned by the trusted
- * provider; caller-supplied candidate evaluation is never used.
+ * Keep proposal generation in the configured repair provider, but route evaluation
+ * through host-owned executor/verifier/safety authorities.
+ *
+ * In production, baseline and source-candidate reports are regenerated from the
+ * canonical active/source payloads returned by the trusted P23 store resolver.
+ * The provider's supplied report objects and evaluator are ignored. The active
+ * baseline and source candidate must share fixed task IDs, trial IDs, seeds,
+ * split boundaries, manifest, plans and environment with the generated candidate.
+ *
+ * Development-only compatibility can retain provider-supplied reports when the
+ * caller has not opted into canonical source evaluation. Production cannot.
  */
 export function withIndependentCandidateEvaluation(
   provider: CompoundRepairRevisionInputProvider,
