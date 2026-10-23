@@ -1,3 +1,14 @@
+## Latest durable checkpoint — WorkPass313 Actions-history diagnostic (2026-10-22)
+
+- **Audit branch:** `workpass313-actions-history-audit`; **draft PR #57:** https://github.com/ailtron1ss-rgb/NK1/pull/57, stacked on `workpass206-runtime-evaluator-wiring`. Do not merge into `main`, which is a separate release/report line.
+- A paginated Actions auditor now lives at `tools/audit-actions-history.mjs`; tests at `tools/audit-actions-history.test.mjs`; workflow at `.github/workflows/actions-history-audit.yml`; operating notes at `docs/ACTIONS_HISTORY_AUDIT.md`; detailed evidence at `docs/WORKPASS313_CHECKPOINT_2026-10-22.md`.
+- The workflow is intended to inventory all exposed run pages (100 runs/page), then inspect failed/incomplete jobs within bounded request budgets and publish sanitized JSON/Markdown. If API rate limiting begins mid-scan, already collected pages are retained in an explicitly partial report. Node.js 24; no runtime dependency added.
+- **Execution is not yet verified in this session.** Existing sampled failures repeatedly return `steps=null`, no runner name and no logs URL; a log download returned `BlobNotFound`. Treat this as unavailable CI evidence, not proof of a code failure.
+- Run 39270770457 is a genuine success for its 10 main steps; run 39746182919 is a metrics failure with no accessible step/log detail. Neither alone validates the current source HEAD.
+- Start from the WorkPass313 checkpoint; after an observable audit workflow run, inspect its artifact, report actual page/run totals and split actionable step failures from runner/log-metadata gaps. Keep progress/learning scores unchanged until exact-head tests and independent behavior evidence exist.
+
+---
+
 ## Latest durable checkpoint — WorkPass272 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use live PR for current HEAD.
