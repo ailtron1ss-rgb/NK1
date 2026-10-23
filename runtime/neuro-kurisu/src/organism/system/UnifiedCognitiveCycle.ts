@@ -89,9 +89,24 @@ export class UnifiedCognitiveCycle {
     };
   }
 
-  evaluate(input:{tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number}):UnifiedCognitiveCycleResult {
-    if(input===null||typeof input!=='object')throw new TypeError('cognitive cycle input must be an object');
+  evaluate(rawInput:{tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number}):UnifiedCognitiveCycleResult {
+    // Snapshot before dereferencing any caller-owned property: TypeScript types do
+    // not protect this public runtime boundary from getters, proxies, cycles or
+    // oversized payloads. Invalid ingress must not execute code or mutate state.
+    type CycleInput={tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number};
+    let input:CycleInput;
+    try {
+      input=snapshotPlainData<CycleInput>(rawInput,{
+        maxDepth:6,maxNodes:128,maxStringUnits:16*1024,
+      });
+    } catch {
+      throw new TypeError('cognitive cycle input data boundary rejected');
+    }
+    if(input===null||typeof input!=='object'||Array.isArray(input))throw new TypeError('cognitive cycle input must be an object');
+    const allowedInputKeys=new Set(['tick','stageIds','parentIntegrity01']);
+    if(Object.keys(input).some(key=>!allowedInputKeys.has(key)))throw new TypeError('cognitive cycle input contains unknown fields');
     if(input.stageIds===null||typeof input.stageIds!=='object'||Array.isArray(input.stageIds))throw new TypeError('stageIds must be an object');
+    if(Object.keys(input.stageIds).some(stage=>!ALL_STAGES.has(stage as UnifiedCycleStage)))throw new TypeError('stageIds contains an unknown cognitive stage');
     if(!Number.isSafeInteger(input.tick)||input.tick<0)throw new RangeError('cognitive cycle tick must be a non-negative safe integer');
     if(input.tick<=this.state.lastTick)throw new RangeError('cognitive cycle tick must strictly increase');
     if(typeof input.parentIntegrity01!=='number'||!Number.isFinite(input.parentIntegrity01)||input.parentIntegrity01<0||input.parentIntegrity01>1) {
