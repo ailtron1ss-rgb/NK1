@@ -1,3 +1,14 @@
+## Current source-stack checkpoint — WorkPass406 (2026-10-23)
+
+- **New evaluation diagnostics:** `compareMatchedIndependentEvaluations` reports task-balanced interquartile mean (IQM), IQM delta and paired probability of improvement separately for task success, skill quality and trajectory quality on validation and holdout.
+- **Integration boundary:** metrics are explicitly diagnostic-only (`diagnosticOnly: true`); they do not authorize promotion or modify the existing eligibility predicate. P23's confidence, source/evidence binding, safety, family/seed coverage, signed receipt and authenticated approval gates remain authoritative.
+- **Input integrity:** exact task/trial pairing is required; score values must be finite and within [0, 1]; plain-data snapshots prevent caller accessors from executing. Seed observations are aggregated within each task before equally-weighting tasks.
+- **Regression wiring:** `runtime/neuro-kurisu/tests/workpass406-learning-robust-metrics.mjs` is part of `npm run test:p23:learning`. See [WorkPass406 implementation note](docs/WORKPASS406_TASK_BALANCED_ROBUST_METRICS_RU.md).
+- **Research:** adapts reporting ideas from [RLiable](https://github.com/google-research/rliable) and lifecycle separation from [Hermes Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution); no extra runtime dependency or upstream code added.
+- **Validation boundary:** code, test and documentation are committed; exact-head test/typecheck/CI remain unconfirmed, and no measured learning uplift is claimed. `main` and the GitHub Release ZIP remain unchanged.
+
+---
+
 ## Current source-stack checkpoint — WorkPass405 (2026-10-23)
 
 - **P23 production promotion gate:** canonical family coverage, minimum two tasks per family, 3 common paired seeds, per-family 95% percentile-bootstrap intervals / 2,000 resamples, with conservative validation and holdout bounds.
