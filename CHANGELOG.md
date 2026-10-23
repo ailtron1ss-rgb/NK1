@@ -1,3 +1,29 @@
+## NK1 WorkPass369 — diversify curriculum candidates and normalize scores (2026-10-23)
+- [CHANGED] Ranked learning targets now interleave score-ordered candidate families so diverse eligible repair opportunities are not starved by one recurring family; the globally best candidate remains first.
+- [FIXED] Public `score01` stays inside its declared `[0,1]` range when verification cost outweighs the estimated benefit.
+- [TEST ADDED] Added ranking regressions for normalized score bounds, top-target preservation, and multi-family coverage. Execution is not yet independently confirmed.
+
+## NK1 WorkPass368 — family-aware active learning curriculum (2026-10-23)
+- [CHANGED] Integrated family-aware interleaving into the existing reflection curriculum rather than introducing a parallel scheduler; when only one family exists, its internal score order is preserved.
+- [RESEARCH] Adapted the automatic-curriculum/diverse-skill principle from Voyager at the ranking boundary; no upstream dependency or copied source file was added.
+
+## NK1 WorkPass367 — reject malformed feedback before learning (2026-10-23)
+- [FIXED] P23 now rejects out-of-range feedback and non-finite/out-of-range predicted utility/confidence instead of silently clamping malformed values into plausible-looking training evidence.
+- [TEST ADDED] Added regressions for out-of-range outcomes and non-finite predicted utility.
+
+## NK1 WorkPass366 — validate incoming learning evidence (2026-10-23)
+- [FIXED] Experience ingestion now requires a bounded trace identity, safe tick/time, valid action, and normalized predicted values before recording an outcome.
+- [RATIONALE] Calibration is only meaningful when prediction and outcome labels retain the same explicit numeric contract.
+
+## NK1 WorkPass365 — replay identity regression coverage (2026-10-23)
+- [TEST ADDED] Covered same-ID/different-action and stale-tick trace rejection, snapshot shape, and the original trace continuing to replay after rejected joins.
+
+## NK1 WorkPass364 — bind replay to persisted outcomes (2026-10-23)
+- [CHANGED] P23 records the goal-pressure score, causal-strength score, and 16-dimensional replay feature vector alongside the outcome; the replay selector uses that snapshot instead of mutable trace labels/features on the new-data path.
+- [FIXED] Replay candidates must match the stored experience on trace ID, tick, selected action, and discretized context; malformed/stale candidate objects fail closed.
+- [COMPATIBILITY] Added fields are optional in schema-v1 persisted rows; legacy rows use a checked matching trace fallback while the persisted reward/outcome remains authoritative.
+- [SAFETY] This hardens evidence integrity; it does not by itself prove improved learned performance. CI remains unverified.
+
 ## NK1 WorkPass362 — make reflection windows auditable (2026-10-23)
 
 - [FIXED] Reflection output now distinguishes lifetime `occurrences` from `sampleCount`, the exact recent window used for the reported metrics, and records `windowStartTick`/`windowEndTick`.
