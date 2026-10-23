@@ -1,3 +1,10 @@
+## NK1 WorkPass389 — end-to-end revision boundary regression (2026-10-23)
+- [TEST ADDED] Added a P23 integration fixture using a real signed-evidence promotion proposal and versioned candidate store. It verifies that generator-returned accessors are rejected before evaluation, evaluator-returned accessors are rejected before fingerprint inspection, neither can stage a candidate, and a detached payload with a valid independent evaluation can still stage as a separate candidate.
+- [CI] Wired the integration test into the existing P26 Learning Validation workflow and path filter.
+
+## NK1 WorkPass388 — make snapshot type contracts explicit (2026-10-23)
+- [MAINTENANCE] Removed self-referential `typeof` assertions for baseline/evaluation/fresh-report snapshots; their detached values are now asserted against the input and evaluator return contracts directly.
+
 ## NK1 WorkPass387 — unify continual-metric trust boundary (2026-10-23)
 - [CHANGED] ContinualLearningMetrics now snapshots the task/score matrix through the shared LearningTrustBoundary before inspecting properties or calculating a curve.
 - [SAFETY] Accessors, cyclic/non-plain records and malformed arrays fail closed; sparse score arrays keep an actionable diagnostic, and non-finite score matrices are rejected at the boundary.
