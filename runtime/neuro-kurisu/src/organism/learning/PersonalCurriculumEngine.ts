@@ -62,6 +62,7 @@ export class PersonalCurriculumEngine {
     const r=detached as Record<string,unknown>;
     const safeCount=(v:unknown,fallback:number)=>typeof v==='number'&&Number.isSafeInteger(v)&&v>=0&&v<=1_000_000_000?v:fallback;
     const safeUnit=(v:unknown,fallback:number)=>typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=1?v:fallback;
+    const safeTimestamp=(v:unknown,fallback:number)=>typeof v==='number'&&Number.isSafeInteger(v)&&v>=0?v:fallback;
     const threads:CurriculumThread[]=[];
     const ids=new Set<string>(),families=new Set<string>();
     const rows=Array.isArray(r.threads)?r.threads.slice(-64):[];
@@ -76,7 +77,7 @@ export class PersonalCurriculumEngine {
          !Array.isArray(x.contextKeys)||x.contextKeys.length>24||
          x.contextKeys.some(k=>typeof k!=='string'||!k.trim()||k.length>180)||
          !metrics.every(k=>typeof x[k]==='number'&&Number.isFinite(x[k])&&x[k]>=0&&x[k]<=1)||
-         !['occurrences','verified','successes','failures','contexts','lastAt'].every(k=>typeof x[k]==='number'&&Number.isSafeInteger(x[k])&&x[k]>=0&&x[k]<=1_000_000_000))continue;
+         !['occurrences','verified','successes','failures','contexts'].every(k=>typeof x[k]==='number'&&Number.isSafeInteger(x[k])&&x[k]>=0&&x[k]<=1_000_000_000)||typeof x.lastAt!=='number'||!Number.isSafeInteger(x.lastAt)||x.lastAt<0)continue;
       const contextKeys=Array.from(new Set(x.contextKeys as string[]));
       if(contextKeys.length!==(x.contextKeys as string[]).length||x.contexts!==contextKeys.length||
          Number(x.verified)>Number(x.occurrences)||Number(x.successes)>Number(x.occurrences)||Number(x.failures)>Number(x.occurrences))continue;
@@ -96,7 +97,7 @@ export class PersonalCurriculumEngine {
       transferReadiness01:safeUnit(r.transferReadiness01,defaults.transferReadiness01),
       completedThreads:safeCount(r.completedThreads,defaults.completedThreads),
       suppressedThreads:safeCount(r.suppressedThreads,defaults.suppressedThreads),
-      lastAt:safeCount(r.lastAt,defaults.lastAt)
+      lastAt:safeTimestamp(r.lastAt,defaults.lastAt)
     };
   }
   snapshot(){return structuredClone(this.state);}
