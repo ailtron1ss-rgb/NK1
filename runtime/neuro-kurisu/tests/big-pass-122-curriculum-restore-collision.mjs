@@ -44,7 +44,7 @@ assert.equal(restoredFamily.snapshot().threads.length, 0,
 
 const ranking = new PersonalCurriculumEngine();
 assert.throws(() => ranking.rankGoals({
-  goals: [goal], identity01: Number.NaN, social01: 0.2, novelty01: 0.3, uncertainty01: 0.4,
+  goals: [goal], identity01: 2, social01: 0.2, novelty01: 0.3, uncertainty01: 0.4,
 }), /personal-curriculum-goal-ranking-score-invalid/);
 assert.equal(ranking.snapshot().focusGoalId, null, 'invalid ranking input must not mutate focus');
 
