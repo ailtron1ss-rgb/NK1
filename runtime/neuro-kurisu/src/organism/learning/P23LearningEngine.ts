@@ -1055,7 +1055,9 @@ export class P23LearningEngine {
     const debt=this.evidenceDebt(Math.max(12,limit)).map(row=>({
       id:row.id, family:row.action, uncertainty01:row.uncertainty01,
       readiness01:clamp(1-row.estimatedVerificationCost01),
-      transfer01:clamp(row.informationGainPerCost01*.35),
+      // Information gain per cost estimates the value of checking this item;
+      // it is not evidence that the skill transfers to another task family.
+      transfer01:0,
       novelty01:row.uncertainty01, verificationCost01:row.estimatedVerificationCost01,
       repairValue01:row.priority01, blocked:false,
     }));
