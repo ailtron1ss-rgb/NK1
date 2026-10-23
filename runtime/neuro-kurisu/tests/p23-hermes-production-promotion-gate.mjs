@@ -87,6 +87,39 @@ const candidateEnvelope = {
   evaluationFingerprint: 'c'.repeat(64),
   evaluation: { validation: [], holdout: [], provenance: { payloadFingerprint: candidate.payloadFingerprint } },
 };
+
+ // Both caller-owned envelopes are snapshotted before reads. Property getters
+ // must be rejected by descriptor inspection and must never execute.
+let baselineGetterCalls = 0;
+const getterBaseline = {};
+Object.defineProperty(getterBaseline, 'validation', {
+  enumerable: true,
+  get() { baselineGetterCalls += 1; return validation; },
+});
+assert.throws(() => engine.approveIndependentlyEvaluatedSkillCandidate(
+  candidate.candidateId,
+  { approvedBy: 'reviewer', approvedAt: 100, expectedActiveVersion: null },
+  getterBaseline,
+  candidateEnvelope,
+  () => true,
+), /independent promotion input data-boundary rejected/);
+assert.equal(baselineGetterCalls, 0, 'baseline accessors must be rejected without execution');
+
+let evaluationGetterCalls = 0;
+const getterEnvelope = {};
+Object.defineProperty(getterEnvelope, 'evaluation', {
+  enumerable: true,
+  get() { evaluationGetterCalls += 1; return candidateEnvelope.evaluation; },
+});
+assert.throws(() => engine.approveIndependentlyEvaluatedSkillCandidate(
+  candidate.candidateId,
+  { approvedBy: 'reviewer', approvedAt: 100, expectedActiveVersion: null },
+  { validation, holdout },
+  getterEnvelope,
+  () => true,
+), /independent promotion input data-boundary rejected/);
+assert.equal(evaluationGetterCalls, 0, 'candidate-envelope accessors must be rejected without execution');
+assert.equal(approvalCalls, 0, 'hostile envelopes cannot invoke the promotion store');
 assert.throws(() => engine.approveIndependentlyEvaluatedSkillCandidate(
   candidate.candidateId,
   { approvedBy: 'reviewer', approvedAt: 100, expectedActiveVersion: null },
