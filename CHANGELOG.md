@@ -1,3 +1,8 @@
+## NK1 WorkPass391 — keep diagnostic repair memory separate from revision-eligible evidence (2026-10-23)
+- [FIXED] OrganismRuntime no longer applies the strict revision-candidate canonicalizer to every repair observation. A legitimate failed attempt with no selected replacement remains in the bounded diagnostic ledger, while only rows marked `revisionEligible` proceed into the coordinator's strict canonicalizer/fingerprint.
+- [FIXED] Candidate-tool ordering is normalized when runtime observations are shaped; newest-96 ordering remains deterministic before the evidence window is returned.
+- [TEST ADDED] The runtime-level 120-row fixture now includes a newest ineligible observation with an empty candidate-tool set and confirms it remains in diagnostic memory without being promoted to a revision candidate.
+
 ## NK1 WorkPass390 — reject no-op revisions before evaluation (2026-10-23)
 - [FIXED] P23 now compares the canonical detached generated payload to the source candidate before launching the independent evaluator. An unchanged artifact fails immediately, avoiding wasted sandbox execution; the stage-time no-op check remains as a second guard.
 - [TEST ADDED] The signed-evidence generator-boundary integration fixture verifies that the no-op is rejected, the evaluator is never called and no extra candidate version is written.
