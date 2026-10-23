@@ -71,6 +71,26 @@ try {
     activatedVersion: null,
   });
   assert.equal(rejected.sequence, 3);
+
+  // A store call can fail after a side effect has become durable (for example,
+  // when a subsequent diagnostic snapshot fails). Preserve uncertainty rather
+  // than incorrectly labelling that attempt as definitely activated or failed.
+  const uncertainAttempt = '4cc71b70-5679-4ab9-a047-a3ec84f58477';
+  journal.recordLifecycleEvent({
+    ...base, attemptId: uncertainAttempt, recordedAt: base.recordedAt + 400,
+    candidateId: 'candidate:skill-v4', candidateVersion: 4,
+    event: 'activation-intent', reasonCodes: [], activatedVersion: null,
+  });
+  journal.recordLifecycleEvent({
+    ...base, attemptId: uncertainAttempt, recordedAt: base.recordedAt + 401,
+    candidateId: 'candidate:skill-v4', candidateVersion: 4,
+    event: 'activation-outcome-unknown', reasonCodes: ['activation-result-uncertain'], activatedVersion: null,
+  });
+  const afterUncertain = journal.snapshotDiagnostics();
+  assert.equal(afterUncertain.activationOutcomeUnknownCount, 1);
+  assert.equal(afterUncertain.pendingActivationCount, 0,
+    'unknown outcome is terminal but remains separately observable');
+
   assert.equal(journal.snapshotDiagnostics().promotionRejectedCount, 1);
   assert.throws(() => journal.recordLifecycleEvent({
     ...base,
@@ -129,7 +149,7 @@ try {
   assert.equal(existsSync(lockPath), true, 'a competing writer lock must not be removed');
   rmSync(lockPath, { force: true });
 
-  console.log('WORKPASS407_LEARNING_LIFECYCLE_JOURNAL=PASS hashChain=true idempotentIntent=true pendingReconciled=true illegalTransitionsRejected=true identityBound=true accessorsRejected=true tamperingRejected=true');
+  console.log('WORKPASS407_LEARNING_LIFECYCLE_JOURNAL=PASS hashChain=true idempotentIntent=true pendingReconciled=true uncertainOutcomePreserved=true illegalTransitionsRejected=true identityBound=true accessorsRejected=true tamperingRejected=true');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
