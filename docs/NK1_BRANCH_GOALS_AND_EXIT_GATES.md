@@ -101,3 +101,27 @@ The human-brain analogy is functional only: global-workspace/broadcast ideas inf
 - Keep category PRs draft until a runner is provisioned and the owning test/typecheck plus cross-category contract suite execute on the exact SHA. Do not spend more runs retrying the same pre-step failure.
 
 `main` and the binary release archive have not been changed. Release metadata was rechecked: stable tag `Neuro` still points to `Neuro_Kurisu_WORKPASS70_2026-10-19.zip` (135,290,615 bytes; SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`); later prerelease `workpass70-hotfix1-2026-10-19` has `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip` (136,354,713 bytes; SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`). Neither binary contains the 2026-10-23 category commits. Available GitHub actions expose text-file commits and release metadata reads, but no binary release-asset replacement operation; the archive update remains blocked. Next highest-value step: restore a real runner, execute the new regression suites, then resolve any actual application failures before integration.
+
+## WorkPass455 — Hexis-inspired cross-domain wiring and next passes (2026-10-23)
+
+Hexis source documents were inspected for stratified memory/provenance, durable identity/worldview, resource-bounded observe-orient-decide-act/heartbeat, and subconscious observation versus conscious action. NK1 adopts those principles in existing owners; it does not clone Hexis's PostgreSQL/Python stack or create parallel owners.
+
+Recent category changes, all still separate from integration:
+- feature/memory WorkPass449: P65 belief evidence revisions are source-aware, duplicate-ID idempotent, contradiction-sensitive, auditable and restore-bounded.
+- feature/personality WorkPass450: canonical self-agency restore cannot overwrite invariant keys from persisted data; corrupt state blocks identity integrity.
+- feature/perception WorkPass451: RealityEvidenceLedger is bounded and uses stable identity so exact replay is idempotent; simulator and external evidence stay distinct.
+- feature/emotions WorkPass452: action outcomes are calibrated by action × emotion × homeostatic-pressure band rather than leaking reward across mismatched states.
+- feature/visual-embodiment WorkPass453: continuous affect channels use monotonic smoothing in the existing unified intent; audio-boundary visemes remain clock-driven.
+- feature/feedback WorkPass454: built-in action contracts can be strengthened but their evidence thresholds and required observation/actuation flags cannot be downgraded.
+- planning/master-audit-roadmap WorkPass455: records the shared evidence/decision lifecycle and next passes.
+
+Regression sources were added/wired on the category branches; exact-head runtime/typecheck execution is still unconfirmed due runner startup failures. Per-pass details are in the owning branch CHANGELOGs and implementation notes.
+
+### Fixed-order next passes
+1. WorkPass456 — shared evidence-event identity: reuse exact action/decision/receipt identity through postcondition → RealityEvidenceLedger → P65 → reward/reflection. Replay must not inflate evidence; conflicting payloads under one identity quarantine.
+2. WorkPass457 — state-to-decision bridge: one bounded read-only context carries energy/load, prediction error, affect, uncertainty, identity integrity and memory freshness to the canonical planner. Drives influence ranking only; Ethics and ActionGateway remain authoritative.
+3. WorkPass458 — held-out memory-to-behavior benchmark: a fixed RU/EN corpus proves retrieval changes expected responses/plans and improves grounded accuracy/recall without test-set leakage or unbounded latency.
+4. WorkPass459 — complete self-repair cycle: typed external failure → causal diagnosis → targeted repair → staged candidate → isolated matched evaluation → per-axis holdout → approval/rollback → receipt-backed consolidation.
+5. WorkPass460 — integration and release: obtain actual CI steps/logs, integrate reviewed category PRs in small units, test the common exact SHA, then rebuild, inspect and hash-verify the release ZIP.
+
+The completion goal table above remains the canonical responsibility map. Do not merge divergent histories wholesale or raise readiness because files merely exist. Overall engineering readiness remains 46/100 until exact-head execution and end-to-end evidence support a change.
