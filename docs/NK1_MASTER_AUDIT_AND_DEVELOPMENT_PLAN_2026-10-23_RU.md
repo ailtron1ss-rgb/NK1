@@ -564,15 +564,15 @@ Detailed mapping: [WorkPass455 Hexis → NK1 cross-domain contract](HEXIS_NK1_CR
 
 ### Fixed-order implementation route
 
-456 (partially implemented): RealityEvidenceLedger can accept a shared upstream eventId, deduplicate exact replay and reject changed-payload identity reuse. Remaining work is actual call-site propagation from the verifier-owned receipt through the ledger, P65 and reward/reflection; do not mark the end-to-end chain complete yet.
+456–457 (partial boundary work): RealityEvidenceLedger accepts a shared upstream eventId, deduplicates exact replay and rejects changed-payload identity reuse. OutcomeVerificationService mints a stable evidenceEventId only when a well-shaped external postcondition is bound to the exact tool/input/execution/decision/observation tuple. Remaining work is actual core call-site propagation from that verifier-owned result through the ledger, P65 and reward/reflection. The hash ID is not authority; each consumer must retain its existing verifier/trust-boundary check.
 
-457: expose one bounded, read-only cognitive context with body/homeostatic state, affect, uncertainty, identity integrity and retrieval freshness to the canonical decision layer. Preserve planner → EthicalGate → ActionGateway authority.
+458: expose one bounded, read-only cognitive context with body/homeostatic state, affect, uncertainty, identity integrity and retrieval freshness to the canonical decision layer. Preserve planner → EthicalGate → ActionGateway authority.
 
-458: build a fixed bilingual held-out retrieval corpus and measure grounded recall/precision, behavior impact, latency and resource costs. Do not tune against test labels.
+459: build a fixed bilingual held-out retrieval corpus and measure grounded recall/precision, behavior impact, latency and resource costs. Do not tune against test labels.
 
-459: close the verified self-repair route from typed external failure through targeted repair, isolated candidate/baseline matched evaluation, per-axis holdout, explicit approval/rollback and evidence-backed memory consolidation.
+460: close the verified self-repair route from typed external failure through targeted repair, isolated candidate/baseline matched evaluation, per-axis holdout, explicit approval/rollback and evidence-backed memory consolidation.
 
-460: restore actual runner execution; merge category PRs only in small reviewable units; rerun exact-head combined tests; then build, inspect and hash-verify the primary Release ZIP. A draft PR or file in a feature branch does not count as integrated/shipped.
+461: restore actual runner execution; merge category PRs only in small reviewable units; rerun exact-head combined tests; then build, inspect and hash-verify the primary Release ZIP. A draft PR or file in a feature branch does not count as integrated/shipped.
 
 ### Truthful status
 
