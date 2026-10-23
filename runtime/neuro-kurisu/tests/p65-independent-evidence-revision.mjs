@@ -97,5 +97,14 @@ assert.equal(ledger.record({
   confidence01: 0.7, source: 'web',
 }), '');
 assert.equal(ledger.snapshot().claims, scoreBeforeInvalidRecord);
+assert.equal(ledger.record({
+  tick: 2, at: 152, kind: 'prediction', content: 'invalid predicted score',
+  confidence01: 0.7, predicted01: 2, source: 'web',
+}), '', 'out-of-range prediction values must be rejected rather than clamped into evidence');
+assert.equal(ledger.record({
+  tick: 2, at: 153, kind: 'belief', content: 'invalid parent lineage',
+  confidence01: 0.7, source: 'web', parentIds: ['valid-parent', ''],
+}), '', 'malformed parent references must be rejected rather than silently removed');
+
 
 console.log('P65_INDEPENDENT_EVIDENCE_REVISION=PASS sourceDedup=true logOddsUpdate=true contradictionErodesConfidence=true restoreSanitized=true accessorRejected=true');
