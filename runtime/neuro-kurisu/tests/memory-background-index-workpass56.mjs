@@ -35,6 +35,24 @@ const add = (id, content, salience = .5) => memory.encode({
 add('memory-kurisu', 'Kurisu personality and curiosity shape which scientific topics she explores.', .9);
 add('memory-goals', 'A memory of research goals helps the next planning cycle.', .6);
 const canonicalBefore = memory.snapshot();
+let maintenanceGetterReads = 0;
+const hostileMaintenanceOptions = Object.defineProperty({}, 'now', {
+  enumerable: true,
+  get() { maintenanceGetterReads++; return now; },
+});
+await assert.rejects(
+  () => memory.maintainSemanticIndexBatch(hostileMaintenanceOptions),
+  /memory-index-maintenance-options-invalid/,
+  'semantic-index maintenance must reject accessor-backed options before inspecting the provider',
+);
+assert.equal(maintenanceGetterReads, 0, 'maintenance input validation must never execute caller-owned getters');
+assert.deepEqual(memory.snapshot(), canonicalBefore, 'rejected maintenance options must not mutate canonical memory');
+assert.equal(provider.requests, 0, 'invalid maintenance options must not dispatch embedding work');
+await assert.rejects(
+  () => memory.maintainSemanticIndexBatch({ now, unexpected: true }),
+  /memory-index-maintenance-options-invalid/,
+  'unknown maintenance fields must not be silently accepted',
+);
 const first = await memory.maintainSemanticIndexBatch({ maxItems: 1, providerTimeoutMs: 1200, now });
 assert.equal(first.enabled, true);
 assert.equal(first.considered, 1);

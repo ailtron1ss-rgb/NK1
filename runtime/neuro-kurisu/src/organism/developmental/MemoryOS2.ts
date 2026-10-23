@@ -342,8 +342,28 @@ export class MemoryOS2{
   * MemoryOS2 store: memory writes never wait, derived vectors are cached, failures back off,
   * and lexical recall remains available throughout.
   */
- async maintainSemanticIndexBatch(options:{maxItems?:number;providerTimeoutMs?:number;now?:number}={}):Promise<SemanticIndexMaintenanceResult>{
-  const now=Number.isFinite(Number(options.now))?Number(options.now):Date.now();
+ async maintainSemanticIndexBatch(rawOptions:{maxItems?:number;providerTimeoutMs?:number;now?:number}={}):Promise<SemanticIndexMaintenanceResult>{
+  // Maintenance options cross a public runtime boundary. Detach and allowlist them
+  // before coercion, provider inspection, retry-state mutation, or index maintenance.
+  let detachedOptions:unknown;
+  try {
+   detachedOptions=snapshotPlainData<unknown>(rawOptions,{maxDepth:4,maxNodes:16,maxStringUnits:1024});
+  } catch {
+   throw new TypeError('memory-index-maintenance-options-invalid');
+  }
+  if(!detachedOptions||typeof detachedOptions!=='object'||Array.isArray(detachedOptions)) {
+   throw new TypeError('memory-index-maintenance-options-invalid');
+  }
+  const optionKeys=Object.keys(detachedOptions);
+  const optionRecord=detachedOptions as Record<string,unknown>;
+  if(optionKeys.some(key=>!['maxItems','providerTimeoutMs','now'].includes(key))||
+     ['maxItems','providerTimeoutMs','now'].some(key=>
+       optionRecord[key]!==undefined&&(typeof optionRecord[key]!=='number'||!Number.isFinite(optionRecord[key] as number)))||
+     (optionRecord.now!==undefined&&(optionRecord.now as number)<0)) {
+   throw new TypeError('memory-index-maintenance-options-invalid');
+  }
+  const options=optionRecord as {maxItems?:number;providerTimeoutMs?:number;now?:number};
+  const now=options.now??Date.now();
   const provider=this.embeddingProvider;
   const providerDiag=provider?.diagnostics();
   const baseDiag=(enabled:boolean,code:string|null=null):SemanticIndexMaintenanceResult=>({

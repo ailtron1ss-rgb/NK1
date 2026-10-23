@@ -1,3 +1,11 @@
+## NK1 WorkPass450 — guard background semantic-index maintenance options
+
+- Reused the canonical bounded plain-data snapshot boundary for `MemoryOS2.maintainSemanticIndexBatch`. Accessors, cycles, custom prototypes, unknown fields, non-finite option values, and negative timestamps are rejected before embedding-provider diagnostics, retry-ledger changes, or index work.
+- Preserved normal bounded batching, timeouts, content-bound retry/backoff, and lexical fallback semantics for valid option values; no new dependency and no second memory worker was introduced.
+- Added regressions proving getter non-execution, no memory-state mutation, no embedding request on rejected input, and rejection of unknown option fields. Exact-head execution remains unverified while Actions does not assign a runner.
+
+---
+
 ## NK1 WorkPass447 — harden MemoryOS2 temporal query controls
 
 - The canonical retrieval owner now snapshots and allowlists temporal query options before reading them or mutating retrieval counters/index diagnostics. Accessor-backed, cyclic, custom-prototype, unknown-key and malformed temporal options are rejected with an explicit boundary error.
