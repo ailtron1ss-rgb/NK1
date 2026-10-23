@@ -90,8 +90,17 @@ export class VerifiedOutcomeLedger {
   private readonly rejections: OutcomeRejection[] = [];
   private readonly promptOwners = new Map<string, string>();
 
-  constructor(entries: TaskManifestEntry[]) {
-    if (!Array.isArray(entries)) throw new Error('task manifest must be an array');
+  constructor(rawEntries: TaskManifestEntry[]) {
+    let detached: unknown;
+    try {
+      detached = snapshotPlainData<TaskManifestEntry[]>(rawEntries, {
+        maxDepth:8, maxNodes:8192, maxStringUnits:1024*1024,
+      });
+    } catch {
+      throw new Error('invalid task manifest data boundary');
+    }
+    if (!Array.isArray(detached)) throw new Error('task manifest must be an array');
+    const entries = detached;
     for (const entry of entries) {
       if (!entry || typeof entry !== 'object' ||
           typeof entry.taskId !== 'string' || !entry.taskId.trim() ||

@@ -1,3 +1,11 @@
+## NK1 WorkPass444 — protect manifest initialization and reconcile evidence regressions (2026-10-23)
+
+- Extended the shared bounded plain-data boundary to `VerifiedOutcomeLedger` manifest initialization, so caller-owned getters, prototype overrides, sparse arrays, cyclic entries and oversized manifest payloads are rejected before manifest fields are read.
+- Added a regression proving an accessor-backed manifest entry is rejected without executing its getter, and corrected the ledger fixture's expected rejected-outcome count to include the two hostile outcome cases added in WorkPass443.
+- No evidence authority or holdout policy changed; no new dependency. Test execution remains unconfirmed because hosted Actions still fail before a runner is assigned.
+
+---
+
 ## NK1 WorkPass443 — close unsafe coercion and accessor paths in verified outcome intake (2026-10-23)
 
 - `VerifiedOutcomeLedger.record` now snapshots an incoming outcome through the existing bounded plain-data boundary before reading any fields. Accessors, custom prototypes, cycles, and over-budget objects are rejected as `invalid-outcome` without running caller-controlled getters.

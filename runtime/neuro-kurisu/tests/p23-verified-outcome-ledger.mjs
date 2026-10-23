@@ -25,6 +25,14 @@ assert.throws(() => new VerifiedOutcomeLedger([
   { ...manifest[1], promptFingerprint:hash(' remember the BLUE key. ') },
 ]), /cross-split prompt leakage/);
 assert.throws(() => new VerifiedOutcomeLedger([manifest[0], manifest[0]]), /duplicate task id/);
+let manifestGetterReads = 0;
+const getterBackedManifestEntry = { ...manifest[0] };
+Object.defineProperty(getterBackedManifestEntry, 'taskId', {
+  enumerable: true, configurable: true,
+  get() { manifestGetterReads++; return 'task-a'; },
+});
+assert.throws(() => new VerifiedOutcomeLedger([getterBackedManifestEntry]), /invalid task manifest data boundary/);
+assert.equal(manifestGetterReads, 0, 'manifest ingress must reject accessors without invoking getters');
 
 assert.equal(ledger.record(outcome()).accepted, true);
 assert.equal(ledger.record(outcome()).rejection.code, 'duplicate-attempt');
@@ -76,7 +84,7 @@ const snapshot = ledger.snapshot();
 assert.equal(snapshot.manifestCount, 3);
 assert.equal(snapshot.rejectionCounts['self-report-not-authoritative'], 1);
 assert.equal(snapshot.acceptedOutcomes, 41);
-assert.equal(snapshot.rejectedOutcomes, 8);
+assert.equal(snapshot.rejectedOutcomes, 10, 'two malformed hostile-input fixtures are counted as rejected outcomes');
 snapshot.outcomes[0].passed = !snapshot.outcomes[0].passed;
 assert.notEqual(snapshot.outcomes[0].passed, ledger.snapshot().outcomes[0].passed, 'snapshot must not mutate ledger state');
 console.log('P23_VERIFIED_OUTCOME_LEDGER=PASS');
