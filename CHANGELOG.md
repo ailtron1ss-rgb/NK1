@@ -1,3 +1,12 @@
+## NK1 WorkPass387 — unify continual-metric trust boundary (2026-10-23)
+- [CHANGED] ContinualLearningMetrics now snapshots the task/score matrix through the shared LearningTrustBoundary before inspecting properties or calculating a curve.
+- [SAFETY] Accessors, cyclic/non-plain records and malformed arrays fail closed; sparse score arrays keep an actionable diagnostic, and non-finite score matrices are rejected at the boundary.
+- [TEST ADDED] Verifies that a getter is never invoked and that non-finite score arrays are rejected; prior task, forgetting, transfer and growth-curve cases are retained.
+
+## NK1 WorkPass386 — bound repair history before canonicalization (2026-10-23)
+- [FIXED] OrganismRuntime now chooses the deterministic newest 96 repair records before calling the strict canonicalizer. A legitimate longer history no longer trips the canonicalizer's input bound before windowing.
+- [TEST ADDED] A runtime-level fixture with 120 eligible repair rows checks that precisely the newest 96 are retained and ordered from newest to oldest.
+
 ## NK1 WorkPass385 — add longitudinal learning-curve metrics (2026-10-23)
 - [CHANGED] ContinualLearningMetrics now returns the mean score at each sequential checkpoint, normalized trapezoidal area under the curve, and final-minus-first checkpoint score.
 - [WHY] A final score can hide temporary regressions and instability. The curve captures measured intermediate performance without inferring causality or treating memory growth as learning.
