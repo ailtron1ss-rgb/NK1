@@ -42,3 +42,8 @@ WorkPass406 показывал task-balanced IQM и парную вероятн�
 1. Получить реальные шаги CI и выполнить test/typecheck на точном HEAD.
 2. Прогнать метрики на заранее определённом, versioned наборе task families и независимых seed; сохранять baseline/candidate summary и стоимость.
 3. Использовать агрегаты для приоритизации следующих экспериментов, но никогда не разрешать ими promotion.
+
+
+## WorkPass415 — reduce aggregation cost without changing metric values
+
+The matched rows are now grouped by `taskId` once into a reusable map. Previously each dimension scanned every trial row once per task with `rows.filter(...)`, making the grouping phase O(tasks × trials) for each score dimension. The shared grouping pass is O(trials), and each dimension then reads only its task's rows, giving O(trials) aggregation work per dimension after grouping. Ordering, task weights and metric formulas are unchanged. The existing row-order-invariance regression remains a contract for this refactor; exact-HEAD runtime execution is still not confirmed.
