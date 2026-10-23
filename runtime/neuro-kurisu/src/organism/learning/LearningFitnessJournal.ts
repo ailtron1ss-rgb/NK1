@@ -191,6 +191,11 @@ function verifyEntry(value: unknown, expectedSequence: number, expectedPrevious:
  * or individual holdout rows. Any malformed/tampered existing chain fails closed.
  */
 export class JsonlLearningFitnessJournal implements LearningFitnessJournalSink {
+  private cache: {
+    size: number; mtimeMs: number; ctimeMs: number; ino: number;
+    entries: LearningFitnessJournalEntry[];
+  } | null = null;
+
   constructor(private readonly filePath: string, private readonly maxBytes = DEFAULT_MAX_BYTES) {
     if (typeof filePath !== 'string' || !filePath.trim() || filePath.includes('\u0000') ||
         !safeInteger(maxBytes) || maxBytes < 1024 || maxBytes > 512 * 1024 * 1024) {
@@ -199,10 +204,17 @@ export class JsonlLearningFitnessJournal implements LearningFitnessJournalSink {
   }
 
   readAll(): LearningFitnessJournalEntry[] {
-    if (!existsSync(this.filePath)) return [];
+    if (!existsSync(this.filePath)) {
+      this.cache = null;
+      return [];
+    }
     const stat = lstatSync(this.filePath);
     if (stat.isSymbolicLink() || !stat.isFile()) throw new Error('learning-fitness-journal-file-type-invalid');
     if (stat.size > this.maxBytes) throw new Error('learning-fitness-journal-size-limit');
+    if (this.cache && this.cache.size === stat.size && this.cache.mtimeMs === stat.mtimeMs &&
+        this.cache.ctimeMs === stat.ctimeMs && this.cache.ino === stat.ino) {
+      return this.cache.entries.map(entry => structuredClone(entry));
+    }
     const text = readFileSync(this.filePath, 'utf8');
     if (text && !text.endsWith('\n')) throw new Error('learning-fitness-journal-truncated-final-line');
     const rawLines = text.split('\n');
@@ -217,7 +229,16 @@ export class JsonlLearningFitnessJournal implements LearningFitnessJournalSink {
       const entry = verifyEntry(parsed, index + 1, previous);
       entries.push(entry); previous = entry.digest;
     }
-    return entries;
+    const after = lstatSync(this.filePath);
+    if (after.isSymbolicLink() || after.size !== stat.size || after.mtimeMs !== stat.mtimeMs ||
+        after.ctimeMs !== stat.ctimeMs || after.ino !== stat.ino) {
+      throw new Error('learning-fitness-journal-concurrent-modification');
+    }
+    this.cache = {
+      size: after.size, mtimeMs: after.mtimeMs, ctimeMs: after.ctimeMs, ino: after.ino,
+      entries: entries.map(entry => structuredClone(entry)),
+    };
+    return entries.map(entry => structuredClone(entry));
   }
 
   snapshotDiagnostics(recentLimit = 20): LearningFitnessJournalDiagnostics {
@@ -307,6 +328,15 @@ export class JsonlLearningFitnessJournal implements LearningFitnessJournalSink {
       fileFd = openSync(this.filePath, 'a', 0o600);
       writeFileSync(fileFd, line, 'utf8');
       fsyncSync(fileFd);
+      const after = lstatSync(this.filePath);
+      if (after.isSymbolicLink() || !after.isFile() || after.size !== existingBytes + Buffer.byteLength(line, 'utf8')) {
+        this.cache = null;
+        throw new Error('learning-fitness-journal-append-not-atomic');
+      }
+      this.cache = {
+        size: after.size, mtimeMs: after.mtimeMs, ctimeMs: after.ctimeMs, ino: after.ino,
+        entries: [...existing, entry].map(row => structuredClone(row)),
+      };
       return entry;
     } finally {
       if (fileFd !== null) closeSync(fileFd);
