@@ -63,6 +63,16 @@ export interface LearningLifecycleJournalDiagnostics {
   recent: LearningLifecycleJournalRecentEvent[];
 }
 
+/** Resolve a distinct JSONL sibling without ever reusing the organism state file. */
+export function learningLifecycleJournalPathForStateFile(stateFile: string): string {
+  if (typeof stateFile !== 'string' || !stateFile.trim() || stateFile.includes('\\u0000')) {
+    throw new Error('learning-lifecycle-journal-state-path-invalid');
+  }
+  return stateFile.toLowerCase().endsWith('.json')
+    ? stateFile.replace(/\\.json$/i, '.learning-lifecycle.jsonl')
+    : `${stateFile}.learning-lifecycle.jsonl`;
+}
+
 export interface LearningLifecycleJournalSink {
   /** Persist an exact, privacy-filtered lifecycle transition. */
   recordLifecycleEvent(input: LearningLifecycleEventInput): LearningLifecycleEventEntry;
