@@ -1,3 +1,14 @@
+## Current source-stack checkpoint — WorkPass409 (2026-10-23)
+
+- **Crash window closed:** reconciliation now scans every pending `activation-intent`, not only attempts that managed to append `activation-outcome-unknown`. If the process died immediately after intent, the current versioned skill store can still reconcile the result.
+- **Evidence handling:** an explicit unknown event is preferred when present; otherwise intent alone is checked. The journal validates both legal transition shapes. Metrics distinguish total pending intents from the subset with explicit unknown outcomes.
+- **Regression:** the existing `workpass408-lifecycle-store-reconciliation.mjs` now includes an abrupt-exit fixture with only a durable intent, verifying exact active match recovery, non-active state, missing lineage remaining pending and repeat idempotency. The P26 step already invokes this test.
+- **Progress:** learning-category implementation estimated at 82%; production readiness stays ~45%, because exact-HEAD CI, production evaluator isolation and real multi-seed uplift are still unverified.
+- **Validation boundary:** current GitHub Actions failure still exposes no step logs. The crash-window fix is committed but is not represented as CI-verified or as an improvement in learned task performance. `main` and the Release ZIP remain unchanged.
+- Details: [WorkPass408 reconciliation design](docs/WORKPASS408_LIFECYCLE_STORE_RECONCILIATION_RU.md) and [learning progress scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md).
+
+---
+
 ## Current source-stack checkpoint — WorkPass408 (2026-10-23)
 
 - **Recovery loop added:** `P23LearningEngine.reconcileLearningLifecycleOutcomes()` compares uncertain activation intents against the authoritative versioned skill store and appends a reconciled event only when candidate identity, skill/version and payload fingerprint match.
