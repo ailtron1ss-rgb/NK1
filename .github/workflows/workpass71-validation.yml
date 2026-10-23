@@ -132,6 +132,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:p313:user-mind-and-eils
       - name: WorkPass314 verified skill holdout receipt gate
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/p23-verified-skill-revision-gate.mjs
+      - name: WorkPass330 production compound-revision authority wiring
+        run: npm --prefix runtime/neuro-kurisu run test:workpass330:production-revision-wiring
       - name: WorkPass314 canonical memory doctor
         run: npm --prefix runtime/neuro-kurisu run test:p314:memory-doctor
       - name: WorkPass318 read-only memory doctor CLI
