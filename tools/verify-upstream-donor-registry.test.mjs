@@ -10,9 +10,15 @@ const clone = (value) => structuredClone(value);
 test('checked-in donor registry is structurally valid without claiming external audits', () => {
   const errors = validateDonorRegistry(sourceRegistry);
   assert.deepEqual(errors, []);
-  assert.equal(sourceRegistry.donors.length, 27);
+  assert.equal(sourceRegistry.donors.length, 28);
   assert.ok(sourceRegistry.donors.every((donor) =>
     donor.integration.mode !== 'runtime-dependency' && donor.decision !== 'adopt'));
+  const hermesEvolution = sourceRegistry.donors.find((donor) => donor.id === 'hermes-agent-self-evolution');
+  assert.ok(hermesEvolution, 'native Hermes self-evolution adaptation must be recorded');
+  assert.equal(hermesEvolution.integration.mode, 'native-adaptation');
+  assert.equal(hermesEvolution.sourceCodeAudit.status, 'partial');
+  assert.equal(hermesEvolution.licenseAudit.status, 'partial');
+  assert.equal(hermesEvolution.benchmark.status, 'pending');
 });
 
 test('duplicate donor IDs are rejected', () => {
