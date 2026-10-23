@@ -599,6 +599,63 @@ export function recordIndependentEvaluationOutcomes(
 
 
 /**
+ * Optional multi-seed replication policy for independently bound candidate comparisons.
+ * A seed counts only when every sufficiently sampled task in a family has a paired
+ * baseline/candidate report at that seed. Caller task names are not used to infer families.
+ */
+export interface IndependentEvaluationFamilySeedCoverageOptions {
+  /** Minimum common paired seeds required for each sufficiently sampled validation family; 0 disables the extra check. */
+  minimumValidationFamilySeeds?: number;
+  /** Minimum common paired seeds required for each sufficiently sampled holdout family; 0 disables the extra check. */
+  minimumHoldoutFamilySeeds?: number;
+}
+
+interface IndependentFamilySeedCoverageReport {
+  familiesEvaluated: number;
+  familiesWithSufficientSeeds: number;
+  familySeedCoverageFailures: number;
+}
+
+function independentFamilySeedCoverage(
+  reports: SkillLearnBenchTrialReport[],
+  bindings: Map<string, { seed: number }>,
+  minimumTasks: number,
+  minimumSeeds: number,
+): IndependentFamilySeedCoverageReport {
+  const byFamily = new Map<string, Map<string, Set<number>>>();
+  for (const report of reports) {
+    const family = report.taskFamily;
+    if (!family) continue;
+    const key = JSON.stringify([report.taskId, report.trialId]);
+    const binding = bindings.get(key);
+    if (!binding) throw new Error('matched-independent-evaluation-family-seed-binding-missing');
+    const taskId = report.taskId.trim();
+    const taskSeeds = byFamily.get(family) ?? new Map<string, Set<number>>();
+    const seeds = taskSeeds.get(taskId) ?? new Set<number>();
+    seeds.add(binding.seed);
+    taskSeeds.set(taskId, seeds);
+    byFamily.set(family, taskSeeds);
+  }
+
+  let familiesEvaluated = 0;
+  let familiesWithSufficientSeeds = 0;
+  let familySeedCoverageFailures = 0;
+  for (const taskSeeds of byFamily.values()) {
+    if (taskSeeds.size < minimumTasks) continue;
+    familiesEvaluated++;
+    const seedSets = [...taskSeeds.values()];
+    const commonSeeds = [...seedSets[0]].filter(seed => seedSets.every(seeds => seeds.has(seed)));
+    if (commonSeeds.length >= minimumSeeds) familiesWithSufficientSeeds++;
+    else familySeedCoverageFailures++;
+  }
+
+  // A requested seed policy must not silently pass when no canonical family
+  // is evaluable (missing labels or too few distinct tasks).
+  if (minimumSeeds > 0 && familiesEvaluated === 0) familySeedCoverageFailures = 1;
+  return { familiesEvaluated, familiesWithSufficientSeeds, familySeedCoverageFailures };
+}
+
+/**
  * Compare two independently evaluated payloads only after proving that every
  * baseline/candidate trial used the same task, trial, seed, split, plan and
  * runtime environment. This is the matched-pair boundary for WorkPass225:
@@ -657,10 +714,17 @@ export function compareMatchedIndependentEvaluations(
     };
   },
   gateOptions: SkillLearnBenchCandidateGateOptions = {},
+  seedCoverageOptions: IndependentEvaluationFamilySeedCoverageOptions = {},
 ): SkillLearnBenchCandidateGateReport & {
   matchedTrialCount: number;
   matchedValidationTrialCount: number;
   matchedHoldoutTrialCount: number;
+  validationFamiliesEvaluatedForSeedCoverage: number;
+  holdoutFamiliesEvaluatedForSeedCoverage: number;
+  validationFamiliesWithSufficientSeeds: number;
+  holdoutFamiliesWithSufficientSeeds: number;
+  validationFamilySeedCoverageFailures: number;
+  holdoutFamilySeedCoverageFailures: number;
   environmentFingerprint: string;
   planFingerprint: string;
 } {
@@ -749,16 +813,57 @@ export function compareMatchedIndependentEvaluations(
       throw new Error('matched-independent-evaluation-task-seed-split-mismatch');
     }
   }
+  const seedOptions = snapshotPlainData(seedCoverageOptions) as IndependentEvaluationFamilySeedCoverageOptions;
+  if (!seedOptions || typeof seedOptions !== 'object' || Array.isArray(seedOptions)) {
+    throw new Error('matched-independent-evaluation-seed-coverage-options-invalid');
+  }
+  const minimumValidationFamilySeeds = seedOptions.minimumValidationFamilySeeds ?? 0;
+  const minimumHoldoutFamilySeeds = seedOptions.minimumHoldoutFamilySeeds ?? 0;
+  for (const [value, label] of [
+    [minimumValidationFamilySeeds, 'validation'],
+    [minimumHoldoutFamilySeeds, 'holdout'],
+  ] as const) {
+    if (!Number.isSafeInteger(value) || value < 0 || value > 1000) {
+      throw new RangeError(`matched-independent-evaluation-minimum-${label}-family-seeds-invalid`);
+    }
+  }
   const gate = evaluateSkillLearnBenchCandidate(
     { validation: baseline.evaluation.validation, holdout: baseline.evaluation.holdout },
     { validation: candidate.evaluation.validation, holdout: candidate.evaluation.holdout },
     gateOptions,
   );
+  const validationSeedCoverage = independentFamilySeedCoverage(
+    candidate.evaluation.validation, candidateBindings,
+    gateOptions.minimumValidationFamilyTasks ?? 2, minimumValidationFamilySeeds,
+  );
+  const holdoutSeedCoverage = independentFamilySeedCoverage(
+    candidate.evaluation.holdout, candidateBindings,
+    gateOptions.minimumHoldoutFamilyTasks ?? 2, minimumHoldoutFamilySeeds,
+  );
+  const reasons = [...gate.reasons];
+  const feedback = [...gate.feedback];
+  if (validationSeedCoverage.familySeedCoverageFailures > 0) {
+    reasons.push('validation-family-seed-coverage-insufficient');
+    feedback.push('At least one sufficiently sampled validation family lacks the required common paired seeds; collect more independent runs before promotion.');
+  }
+  if (holdoutSeedCoverage.familySeedCoverageFailures > 0) {
+    reasons.push('holdout-family-seed-coverage-insufficient');
+    feedback.push('At least one sufficiently sampled holdout family lacks the required common paired seeds; collect more independent runs before promotion.');
+  }
   return {
     ...gate,
+    eligible: reasons.length === 0,
+    reasons,
+    feedback,
     matchedTrialCount: baselineBindings.size,
     matchedValidationTrialCount: [...baselineBindings.values()].filter(row => row.split === 'validation').length,
     matchedHoldoutTrialCount: [...baselineBindings.values()].filter(row => row.split === 'holdout').length,
+    validationFamiliesEvaluatedForSeedCoverage: validationSeedCoverage.familiesEvaluated,
+    holdoutFamiliesEvaluatedForSeedCoverage: holdoutSeedCoverage.familiesEvaluated,
+    validationFamiliesWithSufficientSeeds: validationSeedCoverage.familiesWithSufficientSeeds,
+    holdoutFamiliesWithSufficientSeeds: holdoutSeedCoverage.familiesWithSufficientSeeds,
+    validationFamilySeedCoverageFailures: validationSeedCoverage.familySeedCoverageFailures,
+    holdoutFamilySeedCoverageFailures: holdoutSeedCoverage.familySeedCoverageFailures,
     environmentFingerprint: bp.environmentFingerprint,
     planFingerprint: bp.planFingerprint,
   };
