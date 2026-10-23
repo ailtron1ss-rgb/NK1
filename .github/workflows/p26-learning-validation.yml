@@ -31,7 +31,7 @@ concurrency:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -43,6 +43,8 @@ jobs:
           cache: npm
           cache-dependency-path: runtime/neuro-kurisu/package-lock.json
       - name: Enforce repository Node.js baseline
+        run: node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
+      - name: Enforce Node.js major version
         run: node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
       - name: Install locked dependencies
         working-directory: runtime/neuro-kurisu
