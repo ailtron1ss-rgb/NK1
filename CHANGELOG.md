@@ -1,3 +1,11 @@
+## NK1 WorkPass453 — record affect calibration and Node 24 audit changes (2026-10-23)
+
+- Synced the planning ledger to the latest commits on `feature/emotions` and `feature/experiments`; recorded primary-source inspection of Hermes' GEPA skill-evolution workflow and its dataset/constraint/evaluation/approval phases.
+- Hardened affect-learning ingress against non-finite or out-of-range outcome values and expanded CI policy checks to include artifact actions.
+- Kept the verified evidence score unchanged: 7/7 core branches with implementation/regression source, 0/7 exact-head suites confirmed passing, 0/7 category PR merges, 0/1 release ZIP refreshed/hash-verified, overall readiness 46/100. `main` and `integration` remain untouched; no dependencies added.
+
+---
+
 ## NK1 WorkPass452 — record multi-branch fault-tolerance follow-up (2026-10-23)
 
 - Updated the research intake ledger with the latest code commits on learning, perception, memory, personality, embodiment, and feedback, and rechecked primary guidance from Hermes Self-Evolution/GEPA, Letta memory/dreaming, and OpenAI evaluation best practices.
