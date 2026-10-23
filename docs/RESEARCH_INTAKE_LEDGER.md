@@ -1,3 +1,9 @@
+## WorkPass372 — replay snapshot persistence and legacy recovery (2026-10-23)
+
+- Added regression coverage for schema-v1 round-trip behavior: new replay feature vectors survive snapshot/restore, restored snapshot-bearing experiences remain replayable, and older experience rows that omit the optional fields still restore and use the compatibility fallback.
+- This directly applies the reproducibility principle from [CleanRL](https://docs.cleanrl.dev/) to persisted agent-learning state: a saved experience should preserve the features that influenced sampling, rather than silently depending on a later trace object.
+- No schema version bump or dependency change was needed because the new fields are optional and bounded by the current parser. Tests are committed, not claimed as executed; current Actions runs have not exposed step-level results.
+
 ## WorkPass371 — minimal-trace compatibility follow-up (2026-10-23)
 
 - Inspection of the compact P23 integration fixtures showed that some trusted trace shapes omit reasoningSignals. Replay feature capture now uses optional access and a neutral causal-strength prior when this metadata is absent.
