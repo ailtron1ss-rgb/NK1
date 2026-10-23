@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { finiteOr } from '../src/organism/core/OperationalMicroCycleRuntime.ts';
+import { OperationalMicroCycleRuntime, finiteOr } from '../src/organism/core/OperationalMicroCycleRuntime.ts';
 
 assert.equal(finiteOr(0.4, 0.2), 0.4);
 assert.equal(finiteOr('0.7', 0.2), 0.7);
@@ -26,5 +26,20 @@ for (const guardedBoundary of [
 ]) {
   assert.ok(runtimeSource.includes(guardedBoundary), `micro-cycle must normalize ${guardedBoundary}`);
 }
+// Invalid entry-point payloads must be rejected before host context acquisition/state mutation.
+let contextReads = 0;
+const guardedRuntime = new OperationalMicroCycleRuntime(() => {
+  contextReads++;
+  throw new Error('host context must not be requested for invalid observations');
+});
+for (const invalidObservation of [null, undefined, [], 'invalid', 42, true]) {
+  await assert.rejects(
+    () => guardedRuntime.run(invalidObservation),
+    /cognitive-cycle-observation-must-be-object/,
+    'malformed operational observations must fail at the shared boundary',
+  );
+}
+assert.equal(contextReads, 0, 'rejected payloads must not acquire or mutate host runtime state');
+
 console.log('OperationalMicroCycleRuntime boundary wiring passed');
 console.log('OperationalMicroCycleRuntime finite input contract passed');
