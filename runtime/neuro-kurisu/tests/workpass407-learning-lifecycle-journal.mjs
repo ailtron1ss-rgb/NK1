@@ -93,8 +93,18 @@ try {
   });
   const afterUncertain = journal.snapshotDiagnostics();
   assert.equal(afterUncertain.activationOutcomeUnknownCount, 1);
-  assert.equal(afterUncertain.pendingActivationCount, 0,
-    'unknown outcome is terminal but remains separately observable');
+  assert.equal(afterUncertain.pendingActivationCount, 1,
+    'unknown outcome remains pending until the canonical store is consulted');
+  const reconciled = journal.recordLifecycleEvent({
+    ...base, attemptId: uncertainAttempt, recordedAt: base.recordedAt + 402,
+    candidateId: 'candidate:skill-v4', candidateVersion: 4,
+    event: 'activation-reconciled-active', reasonCodes: [], activatedVersion: 4,
+  });
+  assert.equal(reconciled.sequence, 7);
+  const afterReconciliation = journal.snapshotDiagnostics();
+  assert.equal(afterReconciliation.activationReconciledActiveCount, 1);
+  assert.equal(afterReconciliation.pendingActivationCount, 0,
+    'an exact store reconciliation closes the pending lifecycle attempt');
 
   assert.equal(journal.snapshotDiagnostics().promotionRejectedCount, 1);
   assert.throws(() => journal.recordLifecycleEvent({
@@ -154,7 +164,7 @@ try {
   assert.equal(existsSync(lockPath), true, 'a competing writer lock must not be removed');
   rmSync(lockPath, { force: true });
 
-  console.log('WORKPASS407_LEARNING_LIFECYCLE_JOURNAL=PASS pathIsolation=true hashChain=true idempotentIntent=true pendingReconciled=true uncertainOutcomePreserved=true illegalTransitionsRejected=true identityBound=true accessorsRejected=true tamperingRejected=true');
+  console.log('WORKPASS407_LEARNING_LIFECYCLE_JOURNAL=PASS pathIsolation=true hashChain=true idempotentIntent=true pendingReconciled=true storeReconciliationTransition=true uncertainOutcomePreserved=true illegalTransitionsRejected=true identityBound=true accessorsRejected=true tamperingRejected=true');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
