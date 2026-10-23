@@ -1,3 +1,12 @@
+## NK1 WorkPass462 — wire shared runtime event lineage into reality evidence (2026-10-23)
+
+- Exported `realityEvidenceEventId(originEventId, role, discriminator)`: a bounded, deterministic projection ID derived from an existing runtime event. It rejects malformed inputs; its documentation explicitly says the identifier is a join key, not a trust token.
+- Wired six `OrganismRuntime` projections to existing observation, prediction, action, outcome and cognitive-cycle event identities: body-resource sample, shadow transition, embodied action, action consequence, neural-learning input and cognitive-cycle completeness. Existing parent links remain intact.
+- Extended the already-wired `workpass451-reality-evidence-ledger.mjs` regression with deterministic replay, role separation, discriminator separation and malformed-source-ID cases. The same test path still owns the ledger contract; no added dependency or competing store.
+- **Boundary:** this improves trace lineage across the runtime-to-ledger handoff. It does not claim that all P65/reward/reflection consumers now share the verifier-minted ID, nor that current tests have executed.
+
+---
+
 ## NK1 WorkPass461 — quarantine conflicting reality-evidence restore identities (2026-10-23)
 
 - `RealityEvidenceLedger.restore` now validates the retained rows as a set before committing restored state. If one saved record ID or upstream `eventId` is bound to multiple payloads, every row in that conflict group is quarantined instead of preserving whichever row appeared first.
