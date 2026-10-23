@@ -6,7 +6,7 @@ import type { OrganismSystemFabric } from './OrganismSystemFabric.ts';
 import type { PersistenceRuntime } from './PersistenceRuntime.ts';
 import type { WorldSubsystemRuntime } from './WorldSubsystemRuntime.ts';
 import { clamp, goalVectorFallback } from './ExecutionPrimitives.ts';
-import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
+import { normalizeCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
 
 export function finiteOr(value: unknown, fallback: number): number {
   // Keep the safety boundary total: neither input nor fallback may leak NaN/Infinity.
@@ -45,7 +45,7 @@ export class OperationalMicroCycleRuntime {
   async run(observation: OrganismObservation): Promise<OrganismCycleResult> {
     // The reduced-resolution path is a public runtime boundary too: reject malformed
     // JavaScript/plugin inputs before reading host context or mutating persisted state.
-    assertCognitiveCycleBoundaryInput(observation, 'operational');
+    observation = normalizeCognitiveCycleBoundaryInput(observation, 'operational') as unknown as OrganismObservation;
     const host = this.contextProvider();
     const { persisted: persistedState, cognitiveRuntime, organismSystems, developmentalNeural, worldSubsystem, persistence } = host;
     const state = persistedState.state;

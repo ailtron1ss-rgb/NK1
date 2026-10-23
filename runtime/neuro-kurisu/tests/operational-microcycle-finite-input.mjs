@@ -41,5 +41,27 @@ for (const invalidObservation of [null, undefined, [], 'invalid', 42, true]) {
 }
 assert.equal(contextReads, 0, 'rejected payloads must not acquire or mutate host runtime state');
 
+
+let nestedGetterReads = 0;
+const getterObservation = { embodiment: {} };
+Object.defineProperty(getterObservation.embodiment, 'bodyEnergy01', {
+  configurable: true, enumerable: true,
+  get() { nestedGetterReads += 1; return 0.9; },
+});
+await assert.rejects(
+  () => guardedRuntime.run(getterObservation),
+  /cognitive-cycle-observation-must-be-plain-data/,
+  'nested getter-backed observations must fail before runtime access',
+);
+assert.equal(nestedGetterReads, 0, 'boundary validation must inspect descriptors instead of invoking getters');
+const cyclicObservation = { embodiment: {} };
+cyclicObservation.embodiment.self = cyclicObservation;
+await assert.rejects(
+  () => guardedRuntime.run(cyclicObservation),
+  /cognitive-cycle-observation-must-be-plain-data/,
+  'cyclic observations must fail closed',
+);
+assert.equal(contextReads, 0, 'invalid object graphs must not acquire host context');
+
 console.log('OperationalMicroCycleRuntime boundary wiring passed');
 console.log('OperationalMicroCycleRuntime finite input contract passed');

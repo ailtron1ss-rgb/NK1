@@ -1,3 +1,12 @@
+## NK1 WorkPass419 — bound and detach cognitive-cycle ingress (2026-10-23)
+
+- Added a reusable plain-data snapshot boundary for runtime observations; accessors, sparse arrays, cycles, symbol keys and custom prototypes are rejected before host context acquisition.
+- The operational micro-cycle now consumes a detached normalized snapshot rather than rereading caller-owned objects.
+- Added regressions for nested getter execution and cyclic observation graphs.
+- Validation is pending because hosted CI jobs currently terminate with no assigned runner and no executed steps.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
