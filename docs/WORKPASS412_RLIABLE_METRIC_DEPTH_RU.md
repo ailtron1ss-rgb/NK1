@@ -47,3 +47,10 @@ WorkPass406 показывал task-balanced IQM и парную вероятн�
 ## WorkPass415 — reduce aggregation cost without changing metric values
 
 The matched rows are now grouped by `taskId` once into a reusable map. Previously each dimension scanned every trial row once per task with `rows.filter(...)`, making the grouping phase O(tasks × trials) for each score dimension. The shared grouping pass is O(trials), and each dimension then reads only its task's rows, giving O(trials) aggregation work per dimension after grouping. Ordering, task weights and metric formulas are unchanged. The existing row-order-invariance regression remains a contract for this refactor; exact-HEAD runtime execution is still not confirmed.
+
+
+## WorkPass416 — canonical summation order
+
+Although rows were grouped by task once, each group's aggregation still followed caller insertion order. Since floating-point addition is not associative, a reordered trial array could theoretically change a rounded mean at the last reported decimal. Each group is now sorted by stable code-unit `trialId` before summation; duplicate task/trial identities are already rejected. A second heterogeneous, multi-seed fractional-score regression compares reversed/scrambled input order with the baseline summary.
+
+**Complexity note:** grouping remains O(R), deterministic per-task sorting adds at most O(R log R) total, and each metric dimension traverses the grouped rows once (O(R)). This avoids the previous O(T × R) repeated full-list scans while keeping the numerical summation order stable.
