@@ -11,7 +11,8 @@ export type LearningLifecycleEventKind =
   | 'promotion-rejected'
   | 'activation-intent'
   | 'activation-confirmed'
-  | 'activation-failed';
+  | 'activation-failed'
+  | 'activation-outcome-unknown';
 
 export interface LearningLifecycleEventInput {
   recordedAt: number;
@@ -54,6 +55,7 @@ export interface LearningLifecycleJournalDiagnostics {
   activationIntentCount: number;
   activationConfirmedCount: number;
   activationFailedCount: number;
+  activationOutcomeUnknownCount: number;
   pendingActivationCount: number;
   latestEventAt: number | null;
   lastSequence: number;
@@ -104,7 +106,7 @@ const INPUT_KEYS = [
 ] as const;
 const ENTRY_KEYS = ['schemaVersion', 'sequence', ...INPUT_KEYS, 'previousDigest', 'digest'] as const;
 const EVENT_KINDS: readonly LearningLifecycleEventKind[] = [
-  'promotion-rejected', 'activation-intent', 'activation-confirmed', 'activation-failed',
+  'promotion-rejected', 'activation-intent', 'activation-confirmed', 'activation-failed', 'activation-outcome-unknown',
 ];
 
 function validateInput(raw: unknown): asserts raw is LearningLifecycleEventInput {
@@ -131,7 +133,7 @@ function validateInput(raw: unknown): asserts raw is LearningLifecycleEventInput
   const version = value.activatedVersion as number | null;
   if ((event === 'activation-intent' && (version !== null || reasons.length !== 0)) ||
       (event === 'activation-confirmed' && (version === null || reasons.length !== 0)) ||
-      ((event === 'promotion-rejected' || event === 'activation-failed') && (version !== null || reasons.length === 0))) {
+      ((event === 'promotion-rejected' || event === 'activation-failed' || event === 'activation-outcome-unknown') && (version !== null || reasons.length === 0))) {
     throw new Error('learning-lifecycle-journal-event-shape-invalid');
   }
 }
@@ -154,7 +156,7 @@ function sameAttemptIdentity(a: LearningLifecycleEventInput, b: LearningLifecycl
     a.environmentFingerprint === b.environmentFingerprint;
 }
 
-function validateTransition(entries: readonly LearningLifecycleEventEntry[], next: LearningLifecycleEventInput): void {
+function validateTransition(entries: readonly LearningLifecycleEventEntry[], next: LearningLifecycleEventInput, allowIdenticalDuplicate = true): void {
   const prior = entries.map(entry => inputFromEntry(entry)).filter(input => input.attemptId === next.attemptId);
   if (prior.some(input => !sameAttemptIdentity(input, next))) {
     throw new Error('learning-lifecycle-journal-attempt-identity-conflict');
@@ -164,6 +166,7 @@ function validateTransition(entries: readonly LearningLifecycleEventEntry[], nex
     if (eventFingerprint(duplicate) !== eventFingerprint(next)) {
       throw new Error('learning-lifecycle-journal-event-conflict');
     }
+    if (!allowIdenticalDuplicate) throw new Error('learning-lifecycle-journal-duplicate-chain-event');
     return;
   }
   const terminal = prior.some(input =>
@@ -241,7 +244,7 @@ export class JsonlLearningLifecycleJournal implements LearningLifecycleJournalSi
       try { parsed = JSON.parse(lines[index]); }
       catch { throw new Error('learning-lifecycle-journal-json-invalid'); }
       const entry = verifyEntry(parsed, index + 1, previous);
-      validateTransition(entries, inputFromEntry(entry));
+      validateTransition(entries, inputFromEntry(entry), false);
       entries.push(entry);
       previous = entry.digest;
     }
@@ -327,7 +330,7 @@ export class JsonlLearningLifecycleJournal implements LearningLifecycleJournalSi
     const entries = this.readAll();
     const inputs = entries.map(entry => inputFromEntry(entry));
     const terminalAttemptIds = new Set(inputs.filter(input =>
-      input.event === 'promotion-rejected' || input.event === 'activation-confirmed' || input.event === 'activation-failed',
+      input.event === 'promotion-rejected' || input.event === 'activation-confirmed' || input.event === 'activation-failed' || input.event === 'activation-outcome-unknown',
     ).map(input => input.attemptId));
     const last = entries[entries.length - 1] ?? null;
     return {
@@ -338,6 +341,7 @@ export class JsonlLearningLifecycleJournal implements LearningLifecycleJournalSi
       activationIntentCount: inputs.filter(input => input.event === 'activation-intent').length,
       activationConfirmedCount: inputs.filter(input => input.event === 'activation-confirmed').length,
       activationFailedCount: inputs.filter(input => input.event === 'activation-failed').length,
+      activationOutcomeUnknownCount: inputs.filter(input => input.event === 'activation-outcome-unknown').length,
       pendingActivationCount: inputs.filter(input => input.event === 'activation-intent' && !terminalAttemptIds.has(input.attemptId)).length,
       latestEventAt: last?.recordedAt ?? null,
       lastSequence: last?.sequence ?? 0,
