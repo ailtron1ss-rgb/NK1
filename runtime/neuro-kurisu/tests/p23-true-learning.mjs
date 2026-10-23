@@ -228,6 +228,13 @@ assert.equal(legacyReplayLearning.snapshot().experiences.length, 1,
   'older schema-v1 experience rows without replay snapshots must still restore');
 assert.equal(legacyReplayLearning.replayPending([replayIntegrityTrace], new AdaptivePolicyEngine()), 1,
   'older schema-v1 experience rows must retain the checked matching-trace fallback');
+const sparseSnapshotState = structuredClone(roundTripState);
+sparseSnapshotState.experiences[0].replayFeatures01 = new Array(16).fill(.5);
+delete sparseSnapshotState.experiences[0].replayFeatures01[7];
+const sparseSnapshotLearning = new P23LearningEngine();
+sparseSnapshotLearning.restore(sparseSnapshotState);
+assert.equal(sparseSnapshotLearning.snapshot().experiences.length, 0,
+  'a sparse replay feature vector must be quarantined instead of bypassing validation');
 assert.equal(replayIntegrityLearning.replayPending([replayIntegrityTrace], replayIntegrityPolicy), 1,
   'the original trace identity remains eligible after mismatched inputs are rejected');
 
