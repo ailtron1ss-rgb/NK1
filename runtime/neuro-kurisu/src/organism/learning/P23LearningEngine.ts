@@ -829,7 +829,7 @@ export class P23LearningEngine {
     if(!evidenceBinding.accepted) {
       throw new Error(`independent evidence binding rejected candidate: ${evidenceBinding.reasons.join(',')}`);
     }
-    const active=this.approveVerifiedSkillCandidate(candidateId,approval,minShadowRuns);
+    const active=this.promoteVerifiedSkillCandidateAfterGate(candidateId,approval,minShadowRuns);
     return {active,fitness,evidenceBinding};
   }
 
@@ -839,8 +839,25 @@ export class P23LearningEngine {
     minShadowRuns=3,
   ):ActiveSkillVersion {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
-    const active = this.verifiedSkillStore.approveAndPromote(candidateId,approval,minShadowRuns);
-    this.state.metrics.skillPromotions = this.verifiedSkillStore.snapshot().active.length;
+    const staged=this.verifiedSkillStore.snapshot().candidates.find(item=>item.candidateId===candidateId);
+    // Reflective revisions carry evaluation provenance and must pass the matched
+    // independent-evaluation gate above. Do not let callers skip it via this
+    // lower-level compatibility API after shadow execution.
+    if(staged?.revisionProvenance) {
+      throw new Error('reflective revision candidates require the independent evaluation promotion gate');
+    }
+    return this.promoteVerifiedSkillCandidateAfterGate(candidateId,approval,minShadowRuns);
+  }
+
+  /** Finalize only after a public entry point has already enforced its policy gate. */
+  private promoteVerifiedSkillCandidateAfterGate(
+    candidateId:string,
+    approval:SkillPromotionApproval,
+    minShadowRuns:number,
+  ):ActiveSkillVersion {
+    if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    const active=this.verifiedSkillStore.approveAndPromote(candidateId,approval,minShadowRuns);
+    this.state.metrics.skillPromotions=this.verifiedSkillStore.snapshot().active.length;
     return active;
   }
 
