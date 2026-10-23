@@ -6,10 +6,28 @@ import { isSafeLearningIdentity, snapshotPlainData } from './LearningTrustBounda
  * independent validation. Inspired by Reflexion, Voyager curriculum, SkillLearnBench
  * and STATE-Bench's outcome-oriented evaluation.
  */
+export type ReflectionFailureClass='tool-error'|'timeout'|'permission-denied'|'safety-block'|'postcondition-mismatch'|'resource-exhaustion'|'low-confidence';
+export function isReflectionFailureClass(value:unknown):value is ReflectionFailureClass {
+  return typeof value==='string'&&(['tool-error','timeout','permission-denied','safety-block','postcondition-mismatch','resource-exhaustion','low-confidence'] as const).includes(value as ReflectionFailureClass);
+}
+/** Retain only a compact failure taxonomy; never persist free-form feedback text in P23. */
+export function classifyLearningFailureReason(notes:unknown):ReflectionFailureClass|undefined {
+  if(typeof notes!=='string')return undefined;
+  const reason=notes.slice(0,512).toLowerCase();
+  if(!reason.trim())return undefined;
+  if(/safety|ethical.?gate|policy.?block|blocked by policy|запрет|этическ|заблокир.*политик/.test(reason))return 'safety-block';
+  if(/postcondition|post-condition|effect not observed|consequence.*mismatch|expected effect.*(missing|mismatch)|не подтвержд.*результ|расхожд.*последств/.test(reason))return 'postcondition-mismatch';
+  if(/timeout|timed out|deadline|таймаут|временн.*лимит|истек.*врем/.test(reason))return 'timeout';
+  if(/permission denied|unauthori[sz]ed|forbidden|no permission|нет доступа|не авториз|не разрешено/.test(reason))return 'permission-denied';
+  if(/out of memory|resource.?exhaust|budget exceeded|resource limit|cardinality limit|исчерпан.*ресурс|превышен.*лимит/.test(reason))return 'resource-exhaustion';
+  if(/low confidence|insufficient evidence|no evidence|confidence too low|низк.*уверенн|недостаточн.*данн|нет доказательств/.test(reason))return 'low-confidence';
+  if(/tool error|provider error|gateway error|tool failed|adapter error|ошибк.*инструмент|ошибк.*провайдер|ошибк.*шлюз/.test(reason))return 'tool-error';
+  return undefined;
+}
 export type FailureKind='prediction-gap'|'low-outcome'|'low-reward-efficiency'|'unexpected-surprise'|'repeated-context-failure'|'stale-skill'|'insufficient-evidence';
 export interface ReflectionExperience {
   id:string; contextKey:string; action:string; success:number; predictedUtility:number;
-  surprise:number; tick:number; at?:number; reward?:number;
+  surprise:number; tick:number; at?:number; reward?:number; failureClass?:ReflectionFailureClass;
 }
 export interface ReflectionHypothesis {
   key:string; kind:FailureKind; contextKey:string; action:string; occurrences:number;
@@ -27,7 +45,7 @@ export interface ReflectionHypothesis {
   wilsonUpperPassRate01:number;
   passRateIntervalWidth01:number;
   priority01:number; suggestedNextStep:string; evidenceNeeded:string;
-  confidence01:number; sourceExperienceIds:string[];
+  confidence01:number; sourceExperienceIds:string[]; dominantFailureClass?:ReflectionFailureClass; failureClassOccurrences?:number;
 }
 export interface LearningTarget {
   id:string; family:string; uncertainty01:number; readiness01:number; transfer01:number;
@@ -87,16 +105,16 @@ function snapshotReflectionExperience(value:unknown):ReflectionExperience|null{
     if(!isSafeLearningIdentity(x.id,512)||!isSafeLearningIdentity(x.contextKey,256)||
        !isSafeLearningIdentity(x.action,96)||!Number.isSafeInteger(x.tick)||typeof x.tick!=='number'||x.tick<0||
        !isUnit(x.success)||!isUnit(x.predictedUtility)||!isUnit(x.surprise)||
-       (x.reward!==undefined&&!isUnit(x.reward))||
+       (x.reward!==undefined&&!isUnit(x.reward))||(x.failureClass!==undefined&&!isReflectionFailureClass(x.failureClass))||
        (x.at!==undefined&&(!Number.isSafeInteger(x.at)||typeof x.at!=='number'||x.at<0)))return null;
     return {id:x.id,contextKey:x.contextKey,action:x.action,success:x.success,
       predictedUtility:x.predictedUtility,surprise:x.surprise,tick:x.tick,
-      ...(x.at===undefined?{}:{at:x.at as number}),...(x.reward===undefined?{}:{reward:x.reward as number})};
+      ...(x.at===undefined?{}:{at:x.at as number}),...(x.reward===undefined?{}:{reward:x.reward as number}),...(x.failureClass===undefined?{}:{failureClass:x.failureClass as ReflectionFailureClass})};
   }catch{return null;}
 }
 function sameReflectionExperience(a:ReflectionExperience,b:ReflectionExperience):boolean{
   return a.id===b.id&&a.contextKey===b.contextKey&&a.action===b.action&&a.success===b.success&&
-    a.predictedUtility===b.predictedUtility&&a.surprise===b.surprise&&a.tick===b.tick&&(a.at??null)===(b.at??null)&&(a.reward??null)===(b.reward??null);
+    a.predictedUtility===b.predictedUtility&&a.surprise===b.surprise&&a.tick===b.tick&&(a.at??null)===(b.at??null)&&(a.reward??null)===(b.reward??null)&&(a.failureClass??null)===(b.failureClass??null);
 }
 const TARGET_KEYS=new Set(['id','family','uncertainty01','readiness01','transfer01','novelty01','verificationCost01','repairValue01','blocked']);
 function snapshotLearningTarget(value:unknown):LearningTargetInput|null{
@@ -148,6 +166,12 @@ export function reflectOnOutcomes(rows:readonly ReflectionExperience[],limit=12)
     const surprise=recent.reduce((s,e)=>s+c(e.surprise),0)/recent.length;
     const rewardValues=recent.flatMap(e=>e.reward===undefined?[]:[e.reward]);
     const rewardMean=rewardValues.length?rewardValues.reduce((s,e)=>s+c(e),0)/rewardValues.length:null;
+    const failureClassCounts=new Map<ReflectionFailureClass,number>();
+    for(const e of recent)if(e.failureClass)failureClassCounts.set(e.failureClass,(failureClassCounts.get(e.failureClass)??0)+1);
+    const failureClassRows=[...failureClassCounts.entries()].sort((a,b)=>b[1]-a[1]||compareText(a[0],b[0]));
+    const dominantFailureClass=failureClassRows[0]&&failureClassRows[0][1]>=2?failureClassRows[0][0]:undefined;
+    const dominantFailureClassCount=dominantFailureClass?failureClassCounts.get(dominantFailureClass)??0:0;
+    const reasonRecurrence01=dominantFailureClass?dominantFailureClassCount/recent.length:0;
     const gap=Math.abs(success-predicted),failures=recent.filter(e=>e.success<REFLECTION_PASS_THRESHOLD).length;
     // Use a declared binary task-success threshold for a conservative descriptive
     // interval. Evidence rows may be temporally correlated, so this interval is not
@@ -166,21 +190,29 @@ export function reflectOnOutcomes(rows:readonly ReflectionExperience[],limit=12)
     const basePriority=c(.28*gap+.25*(1-success)+.17*surprise+.20*(1-wilsonLower)+.10*Math.min(1,failures/4));
     // Reward is an additional objective only when present in real recorded experience;
     // old rows retain their prior ranking while high-cost successes become diagnosable.
-    const priority=c(rewardMean===null?basePriority:basePriority*.88+(1-rewardMean)*.12);
+    const rewardAdjustedPriority=rewardMean===null?basePriority:basePriority*.88+(1-rewardMean)*.12;
+    const priority=c(dominantFailureClass?rewardAdjustedPriority*.92+reasonRecurrence01*.08:rewardAdjustedPriority);
     const confidence=c((n/(n+4))*(1-intervalWidth)*(1-gap*.30));
     const contextKey=recent[0].contextKey,action=recent[0].action;
     out.push({key,kind,contextKey,action,occurrences:ordered.length,sampleCount:recent.length,
       windowStartTick:recent[0].tick,windowEndTick:recent[recent.length-1].tick,observedSuccess01:success,
       predictedSuccess01:predicted,predictionGap01:gap,...(rewardMean===null?{}:{rewardObserved01:rewardMean,rewardGap01:c(1-rewardMean)}),passThreshold01:REFLECTION_PASS_THRESHOLD,passRate01:passRate,wilsonLowerPassRate01:wilsonLower,
       wilsonUpperPassRate01:wilsonUpper,passRateIntervalWidth01:intervalWidth,priority01:priority,
-      suggestedNextStep:kind==='repeated-context-failure'?'Create a controlled repair variant and compare it against the current policy':
+      suggestedNextStep:dominantFailureClass==='safety-block'?'Inspect the safety-gate preconditions and redesign the action without bypassing the policy':
+        dominantFailureClass==='postcondition-mismatch'?'Repair the expected-effect contract and require a fresh observed postcondition before promotion':
+        dominantFailureClass==='timeout'?'Isolate the slow step, reduce bounded work and retry only within the declared deadline':
+        dominantFailureClass==='permission-denied'?'Check the granted capability and preserve least privilege; do not bypass the permission gate':
+        dominantFailureClass==='resource-exhaustion'?'Reduce context, batch or trajectory cardinality and rerun under the same resource budget':
+        dominantFailureClass==='low-confidence'?'Gather independent held-out evidence and recalibrate confidence before changing the skill':
+        dominantFailureClass==='tool-error'?'Check the adapter contract and typed error, then add bounded retry/backoff if idempotent':
+        kind==='repeated-context-failure'?'Create a controlled repair variant and compare it against the current policy':
         kind==='prediction-gap'?'Calibrate the action value and collect an independently checked outcome':
         kind==='unexpected-surprise'?'Inspect the unexpected transition and add a discriminating test':
         kind==='low-outcome'?'Decompose the task and test one changed step at a time':
         kind==='low-reward-efficiency'?'Compare outcome benefit against resource cost and reduce unnecessary steps':
         'Collect more independent outcomes before changing the skill',
       evidenceNeeded:'At least one independent verifier or human-reviewed outcome on a held-out task; self-reflection alone is insufficient',
-      confidence01:confidence,sourceExperienceIds:recent.map(e=>e.id)});
+      confidence01:confidence,sourceExperienceIds:recent.map(e=>e.id),...(dominantFailureClass?{dominantFailureClass,failureClassOccurrences:dominantFailureClassCount}:{})});
   }
   return out.sort((a,b)=>b.priority01-a.priority01||b.confidence01-a.confidence01||b.windowEndTick-a.windowEndTick||compareText(a.contextKey,b.contextKey)||compareText(a.action,b.action)||compareText(a.key,b.key)).slice(0,Math.max(1,Math.min(64,Math.floor(num(limit,12)))));
 }

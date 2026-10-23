@@ -59,6 +59,27 @@ const legacyRewardReflection = reflectOnOutcomes(outcomes)[0];
 assert.equal(legacyRewardReflection.rewardObserved01, undefined,
   'legacy reflection rows without reward preserve the old score schema and ranking semantics');
 
+assert.equal(classifyLearningFailureReason('tool gateway timed out after deadline'), 'timeout');
+assert.equal(classifyLearningFailureReason('safety policy blocked action'), 'safety-block');
+assert.equal(classifyLearningFailureReason({ toString() { throw new Error('must not coerce'); } }), undefined,
+  'failure-reason classification must ignore non-string inputs without coercion');
+const reasonRows = Array.from({ length: 5 }, (_, i) => ({
+  id: 'timeout-' + i, contextKey: ctx, action: 'explore',
+  success: .2, predictedUtility: .75, surprise: .8, reward: .2, failureClass:'timeout', tick:i,
+}));
+const reasonReflection = reflectOnOutcomes(reasonRows)[0];
+assert.equal(reasonReflection.dominantFailureClass, 'timeout');
+assert.equal(reasonReflection.failureClassOccurrences, 5);
+assert.match(reasonReflection.suggestedNextStep, /deadline/,
+  'repeated typed failures should yield a matching repair plan');
+const conflictingFailureIdentity = reflectOnOutcomes([
+  ...reasonRows,
+  { ...reasonRows[0], failureClass:'safety-block' },
+]);
+assert.ok(!conflictingFailureIdentity[0]?.sourceExperienceIds.includes('timeout-0'),
+  'contradictory failure classification for one immutable event ID must be quarantined');
+
+
 assert.ok(reflections.length>0);
 assert.equal(reflections[0].kind,'repeated-context-failure');
 assert.ok(reflections[0].priority01>.6);

@@ -1,3 +1,13 @@
+## NK1 WorkPass438 — carry typed failure diagnoses into the reflective repair loop (2026-10-23)
+
+- The existing core feedback-to-P23 call now forwards `outcome.notes` as ephemeral diagnostic input; P23 classifies at most the first 512 characters into a compact taxonomy and never persists the raw free-form notes in learning experience rows.
+- Reflection now recognizes repeated typed causes (tool error, timeout, permission denial, safety block, postcondition mismatch, resource exhaustion and low confidence), boosts priority modestly when a cause repeats, and proposes cause-specific repair steps that preserve safety/least-privilege constraints.
+- Immutable event IDs now include the failure class in their duplicate/conflict decision; a contradictory diagnosis for the same experience is quarantined.
+- Added direct reason-classification/reflection regressions and a source-wiring contract test for the real Core feedback -> P23 path.
+- No new dependencies or parallel memory store. Runtime tests remain unexecuted because this environment cannot resolve github.com and hosted Actions has no assigned runners; no learning uplift is claimed.
+
+---
+
 ## NK1 WorkPass437 — make outcome reflection reward-aware without conflating success (2026-10-23)
 
 - Extended the existing P23 reflection evidence with optional validated reward while keeping task-success pass-rate/Wilson metrics separate.

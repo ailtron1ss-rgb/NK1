@@ -6,7 +6,7 @@ import { selectReplayBatch, type ReplaySelectionOptions } from './ReplaySelectio
 import { selectCausalReplayBatch } from './CausalReplaySampler.ts';
 import { adaptiveReplayLearningRate, adaptiveReplayOptions, bellmanTarget, calibratedConfidence, forgettingRisk, repairOpportunity, scoreReplayPriority, transferConfidence, wilsonLowerBound } from './MultiSourceLearningMechanisms.ts';
 import { retrievedSkillBias } from './SkillRetrievalAugmentation.ts';
-import { rankLearningTargets, reflectOnOutcomes } from './OutcomeReflectionCurriculum.ts';
+import { classifyLearningFailureReason, isReflectionFailureClass, rankLearningTargets, reflectOnOutcomes, type ReflectionFailureClass } from './OutcomeReflectionCurriculum.ts';
 import { isAuthenticVerifiedSkillPromotionProposal, type VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
 import { evaluateSkillLearnBenchCandidate, type SkillLearnBenchCandidateEvaluation, type SkillLearnBenchCandidateGateOptions, type SkillLearnBenchCandidateGateReport } from './SkillLearnBenchAdapter.ts';
 import { bindIndependentEvaluationToVerifiedShadowEvidence, bindReflectiveReportsToVerifiedShadowEvidence, type ReflectiveEvidenceBindingReport } from './HermesVerifiedEvidenceBinding.ts';
@@ -66,6 +66,8 @@ export interface LearningExperience {
   goalPressure01?:number;
   causalStrength01?:number;
   replayFeatures01?:number[];
+  /** Compact reason class only; raw feedback notes are never persisted in P23 experience rows. */
+  failureClass?:ReflectionFailureClass;
 }
 
 export interface ReplayUpdateRecord {
@@ -241,7 +243,8 @@ function parseLearningExperience(value:unknown):LearningExperience|null{
      !isPersistedUnit(x.predictedUtility)||!isPersistedUnit(x.predictedConfidence)||
      !isPersistedUnit(x.success)||!isPersistedUnit(x.reward)||!isPersistedUnit(x.surprise)||
      (x.goalPressure01!==undefined&&!isPersistedUnit(x.goalPressure01))||
-     (x.causalStrength01!==undefined&&!isPersistedUnit(x.causalStrength01)))return null;
+     (x.causalStrength01!==undefined&&!isPersistedUnit(x.causalStrength01))||
+     (x.failureClass!==undefined&&!isReflectionFailureClass(x.failureClass)))return null;
   const replayFeatures=x.replayFeatures01;
   if(replayFeatures!==undefined&&(!Array.isArray(replayFeatures)||replayFeatures.length!==16||Array.from({length:replayFeatures.length},(_,index)=>replayFeatures[index]).some(value=>!isPersistedUnit(value))))return null;
   return {id:x.id,traceId:x.traceId,tick:x.tick,at:x.at,contextKey:x.contextKey,nextContextKey:x.nextContextKey,
@@ -249,7 +252,7 @@ function parseLearningExperience(value:unknown):LearningExperience|null{
     success:x.success,reward:x.reward,surprise:x.surprise,outcomeAt:x.outcomeAt,
     ...(x.goalPressure01===undefined?{}:{goalPressure01:x.goalPressure01}),
     ...(x.causalStrength01===undefined?{}:{causalStrength01:x.causalStrength01}),
-    ...(replayFeatures===undefined?{}:{replayFeatures01:[...replayFeatures]})};
+    ...(replayFeatures===undefined?{}:{replayFeatures01:[...replayFeatures]}),...(x.failureClass===undefined?{}:{failureClass:x.failureClass})};
 }
 function parseReplayUpdate(value:unknown):ReplayUpdateRecord|null{
   if(!isPlainRecord(value))return null;
@@ -1264,7 +1267,7 @@ export class P23LearningEngine {
     return restored;
   }
 
-  recordExperience(trace:OrganismDecisionTrace,stateAfter:OrganismState,outcome:{success:number;reward:number;surprise:number},policy:AdaptivePolicyEngine):void {
+  recordExperience(trace:OrganismDecisionTrace,stateAfter:OrganismState,outcome:{success:number;reward:number;surprise:number;notes?:unknown},policy:AdaptivePolicyEngine):void {
     if (!trace?.selected||!isPersistedText(trace.id,512)||!isPersistedCounter(trace.tick)||
         !isPersistedCounter(trace.createdAt)||!ACTIONS.includes(trace.selected.action)||
         !isPersistedUnit(trace.selected.predictedUtility)||!isPersistedUnit(trace.selected.confidence)||
@@ -1287,6 +1290,7 @@ export class P23LearningEngine {
       reward:clamp(outcome.reward),
       surprise:clamp(outcome.surprise),
       outcomeAt:now(),
+      ...(classifyLearningFailureReason(outcome.notes)?{failureClass:classifyLearningFailureReason(outcome.notes)}:{}),
        goalPressure01:clamp(trace.stateBefore.needs.goalPressure),
        causalStrength01:clamp(trace.reasoningSignals?.causalConfidence01 ?? trace.reasoningSignals?.causalStrength01 ?? .5),
        replayFeatures01:[
@@ -1564,7 +1568,7 @@ export class P23LearningEngine {
   reflectionHypotheses(limit=12) {
     return reflectOnOutcomes(this.state.experiences.map(e=>({
       id:e.id, contextKey:e.contextKey, action:e.action, success:e.success,
-      predictedUtility:e.predictedUtility, surprise:e.surprise, tick:e.tick, at:e.at, reward:e.reward,
+      predictedUtility:e.predictedUtility, surprise:e.surprise, tick:e.tick, at:e.at, reward:e.reward, failureClass:e.failureClass,
     })),limit);
   }
 
