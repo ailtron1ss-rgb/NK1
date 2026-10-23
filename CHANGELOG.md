@@ -1,6 +1,6 @@
 ## NK1 WorkPass404 — gate noisy family improvements on bootstrap confidence (2026-10-23)
 
-- [NEW] Added `PairedSeedConfidence.ts`, a dependency-free deterministic percentile-bootstrap interval for paired-seed mean deltas; input, resample-count, confidence-level and seed bounds fail closed.
+- [NEW] Added `PairedSeedConfidence.ts`, a dependency-free deterministic percentile-bootstrap interval for paired-seed mean deltas; input, resample-count, confidence-level and seed bounds fail closed. The helper snapshots caller-owned input arrays and options through `LearningTrustBoundary` before reads, rejecting accessors without invocation.
 - [INTEGRATION] Independent family evaluation now computes intervals over common-seed family-wide deltas, averaging repeats within task/seed and weighting tasks equally within family. Bootstrap random streams are deterministic by plan/split/family.
 - [PROMOTION] Under the existing strict P23 policy, validation requires a positive lower bootstrap bound per adequately replicated family; holdout requires the lower bound to stay above the family regression tolerance. Uncertain validation gain and noisy holdout regression each have explicit gate reason codes.
 - [REGRESSION] `workpass404-paired-seed-confidence.mjs` covers repeatability, stable positive, noisy-positive-mean and all-negative samples plus malformed options. WorkPass225 now covers an apparently positive validation mean with an adverse seed that makes the family interval unsafe.
