@@ -1,3 +1,14 @@
+# WorkPass328 checkpoint — upstream donor map and adoption gates (2026-10-23)
+
+- Current working branch: workpass328-upstream-donor-gate based on workpass70-source. Do not target main.
+- Added structured donor registry (27 entries), validator, tests, and Russian integration map. New donor implementations remain unapproved; runtime-adoption requires evidence for source code, licensing, reproducible tests, and independent benchmark.
+- Main next target remains an end-to-end P23 verified learning path and held-out memory-to-action uplift. Don’t increase learning scores while retrieval reports recallDelta=0/not-promoted.
+- Current Actions runner-startup issue is unresolved; recent jobs stopped with runner_id=0 and no steps. No exact-head test pass or updated release ZIP is claimed.
+- See docs/NEUROCORE_DONOR_MAP_2026-10-23.md, research/upstream-donors/registry.json and docs/RESEARCH_INTAKE_LEDGER.md.
+- Continue with the older handover sections below for architecture detail and previous work.
+
+---
+
 ## Latest durable checkpoint — WorkPass272 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use live PR for current HEAD.
