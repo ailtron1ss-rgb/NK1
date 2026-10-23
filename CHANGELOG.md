@@ -1,3 +1,12 @@
+## NK1 WorkPass447 — harden MemoryOS2 temporal query controls
+
+- The canonical retrieval owner now snapshots and allowlists temporal query options before reading them or mutating retrieval counters/index diagnostics. Accessor-backed, cyclic, custom-prototype, unknown-key and malformed temporal options are rejected with an explicit boundary error.
+- Historical mode now requires a finite, non-negative `asOfAt`; unknown temporal policies no longer silently behave as current retrieval. Query and result-cap protections from WorkPass427 remain unchanged.
+- Added regressions for zero getter execution, no state mutation after rejected options, unknown mode rejection, and invalid historical timestamps. No new store/dependency.
+- **Verification:** committed to `feature/memory`; exact-head tests and typecheck remain unverified while hosted Actions fails before runner assignment.
+
+---
+
 ## NK1 WorkPass427 — bound public memory retrieval ingress (2026-10-23)
 
 - The canonical MemoryOS2 retrieval boundary now rejects non-string queries before coercion (so plugin-defined toString/valueOf cannot run) and rejects queries above 16 KiB before tokenization/index work.

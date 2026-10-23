@@ -61,6 +61,31 @@ assert.equal(
   'non-finite result limits must use the safe default instead of propagating NaN',
 );
 
+const beforeInvalidTemporalOptions = ordered.snapshot();
+let temporalGetterReads = 0;
+const hostileTemporalOptions = Object.defineProperty({}, 'temporalMode', {
+  enumerable: true,
+  get() { temporalGetterReads++; return 'at'; },
+});
+assert.throws(
+  () => ordered.retrieve(query, 8, 0, 0, hostileTemporalOptions),
+  /memory-temporal-options-invalid/,
+  'temporal retrieval controls must reject accessor-backed options at ingress',
+);
+assert.equal(temporalGetterReads, 0, 'temporal validation must not execute caller-owned getters');
+assert.deepEqual(ordered.snapshot(), beforeInvalidTemporalOptions,
+  'invalid temporal controls must be rejected before retrieval counters or indexes mutate');
+assert.throws(
+  () => ordered.retrieve(query, 8, 0, 0, { temporalMode: 'rewind-all' }),
+  /memory-temporal-options-invalid/,
+  'unknown temporal policies must not silently fall back to current memory semantics',
+);
+assert.throws(
+  () => ordered.retrieve(query, 8, 0, 0, { temporalMode: 'at', asOfAt: Number.NaN }),
+  /memory-temporal-options-invalid/,
+  'historical retrieval time must be finite and non-negative',
+);
+
 
 // The query should materially separate true token overlap from unrelated records;
 // this guards against giving orthogonal hashed vectors a free 0.5 semantic score.

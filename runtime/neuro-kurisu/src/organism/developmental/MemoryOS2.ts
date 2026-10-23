@@ -757,6 +757,27 @@ export class MemoryOS2{
    // protection. Never coerce arbitrary objects: custom toString/valueOf can execute.
    if(typeof query!=='string')throw new TypeError('memory-query-must-be-string');
    if(query.length>MAX_MEMORY_QUERY_UNITS)throw new RangeError('memory-query-size-limit');
+   // Temporal controls are also untrusted runtime input. Snapshot before any property
+   // access so a getter cannot run after validation or mutate retrieval state.
+   let detachedTemporal:unknown;
+   try {
+     detachedTemporal=snapshotPlainData<unknown>(temporalOptions,{
+       maxDepth:4,maxNodes:16,maxStringUnits:1024,
+     });
+   } catch {
+     throw new TypeError('memory-temporal-options-invalid');
+   }
+   if(!detachedTemporal||typeof detachedTemporal!=='object'||Array.isArray(detachedTemporal)) {
+     throw new TypeError('memory-temporal-options-invalid');
+   }
+   const temporalKeys=Object.keys(detachedTemporal);
+   const temporal=detachedTemporal as Record<string,unknown>;
+   if(temporalKeys.some(key=>key!=='temporalMode'&&key!=='asOfAt')||
+      (temporal.temporalMode!==undefined&&!['current','at','all'].includes(String(temporal.temporalMode)))||
+      (temporal.asOfAt!==undefined&&(typeof temporal.asOfAt!=='number'||!Number.isFinite(temporal.asOfAt)||temporal.asOfAt<0))) {
+     throw new TypeError('memory-temporal-options-invalid');
+   }
+   temporalOptions=temporal as MemoryTemporalQueryOptions;
    const safeLimit=typeof limit==='number'&&Number.isFinite(limit)
      ?Math.max(1,Math.min(MAX_MEMORY_RETRIEVAL_RESULTS,Math.floor(limit))):8;
    const qTokens=this.tokensFor(query);
