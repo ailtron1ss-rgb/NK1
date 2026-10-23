@@ -9,6 +9,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/ContinualReplayBuffer.ts"
       - "runtime/neuro-kurisu/src/organism/learning/PrioritizedReplaySampler.ts"
       - "runtime/neuro-kurisu/src/organism/learning/ContinualForgettingTracker.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/ContinualLearningMetrics.ts"
+      - "runtime/neuro-kurisu/tests/p23-continual-learning-metrics.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/ContinualTransferTracker.ts"
       - "runtime/neuro-kurisu/src/organism/learning/AdaptiveWindowDriftDetector.ts"
       - "runtime/neuro-kurisu/src/organism/learning/DriftAwareLearningController.ts"
@@ -83,6 +85,9 @@ jobs:
       - name: Run replay strategy ablation benchmark (5 deterministic seeds)
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p26-replay-ablation-benchmark.mjs
+      - name: Run sequential continual-learning metrics and longitudinal growth curve regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-continual-learning-metrics.mjs
       - name: Run task-level continual forgetting metric regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p26-continual-forgetting-tracker.mjs
