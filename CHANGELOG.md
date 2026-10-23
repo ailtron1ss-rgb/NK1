@@ -1,3 +1,13 @@
+## NK1 WorkPass375 — deterministic repair-evidence fingerprints (2026-10-23)
+- [FIXED] Candidate-tools are fingerprinted as a canonical set, and repair records use deterministic tie-breaking when timestamps match. Property insertion order and row ordering no longer create distinct revision provenance for equivalent evidence.
+- [CHANGED] The runtime and P23 coordinator now share the same canonicalization/fingerprint functions, including the newest-96 evidence budget boundary.
+- [TEST ADDED] Covered row/property/tool ordering invariance and verified that a material diagnosis change still changes the fingerprint.
+- [CI] Added the runtime/coordinator sources to the P26 path filter and an explicit regression step for compound repair evidence fingerprinting. Test execution remains unverified until runner logs are available.
+
+## NK1 WorkPass374 — unify evidence fingerprint semantics (2026-10-23)
+- [CHANGED] Introduced one canonical representation for compound repair evidence. Revisions now use stable row ordering, stable property order, and sorted candidate-tool sets.
+- [SAFETY] A real diagnosis or outcome-evidence change still changes the digest and forces a fresh revision; only representational changes are normalized.
+
 ## NK1 WorkPass373 — reject sparse replay snapshots (2026-10-23)
 - [FIXED] Persisted replay feature vectors can no longer pass validation with missing sparse-array elements; all 16 positions must be present and normalized.
 - [TEST ADDED] Added a restore regression proving sparse vectors are quarantined instead of becoming replay evidence.
