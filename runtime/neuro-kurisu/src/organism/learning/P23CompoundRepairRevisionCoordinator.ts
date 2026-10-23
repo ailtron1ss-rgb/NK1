@@ -55,6 +55,7 @@ export interface CompoundRepairRetryBackoffStore {
 
 const BASE_RETRY_BACKOFF_MS = 30 * 60 * 1000;
 const MAX_RETRY_BACKOFF_MS = 24 * 60 * 60 * 1000;
+const isSha256Digest=(value:unknown):value is string=>typeof value==='string'&&/^[a-f0-9]{64}$/i.test(value);
 
 export type CompoundRepairEvidenceRow = ReturnType<OrganismRuntime['compoundSkillRepairEvidence']>[number];
 
@@ -181,7 +182,7 @@ export class P23CompoundRepairRevisionCoordinator {
       const row = raw as Record<string, unknown>;
       if (Object.keys(row).sort().join(',') !== 'attempts,category,evidenceDigest,retryAfter,skillId' ||
           !isSafeLearningIdentity(row.skillId, 180) ||
-          !isDigest(row.evidenceDigest) ||
+          !isSha256Digest(row.evidenceDigest) ||
           !Number.isSafeInteger(row.attempts) || Number(row.attempts) < 1 || Number(row.attempts) > 12 ||
           !Number.isSafeInteger(row.retryAfter) || Number(row.retryAfter) < 0 ||
           row.category !== 'revision-generation-or-evaluation-failed' ||
