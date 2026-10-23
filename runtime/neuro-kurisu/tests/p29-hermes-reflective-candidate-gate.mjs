@@ -297,4 +297,56 @@ const normalizedAggregate = aggregateSkillLearnBenchReports([
 assert.equal(normalizedAggregate.taskCount, 1);
 assert.equal(normalizedAggregate.byTask[0].taskId, 'task-a');
 
-console.log('P29_HERMES_REFLECTIVE_CANDIDATE_GATE=PASS pairedValidation=true untouchedHoldout=true safetyIsHardGate=true emptyRubricsRejected=true');
+// A family-wide decline can be hidden by gains in another family even when no single task crosses its veto.
+const moderateFamilyRegression = (report) => ({
+  ...report,
+  trajectoryQuality: {
+    ...report.trajectoryQuality,
+    keyPointRecall: 0.6,
+    executionOrder: 0.6,
+    completeness: 0.6,
+    aggregate: 0.6,
+  },
+  skillQuality: {
+    ...report.skillQuality,
+    functionalCoverage: 0.7,
+    executability: 0.7,
+    safety: 1,
+    aggregate: Number(((0.7 + 0.7 + 1) / 3).toFixed(6)),
+  },
+});
+const familyBaseline = {
+  validation: [
+    trial('family-a-task-1', 'v1', 'good', 0, 'family-a'),
+    trial('family-a-task-2', 'v1', 'good', 0, 'family-a'),
+    trial('family-b-task-1', 'v1', 'weak', 0, 'family-b'),
+    trial('family-b-task-2', 'v1', 'weak', 0, 'family-b'),
+    trial('family-b-task-3', 'v1', 'weak', 0, 'family-b'),
+  ],
+  holdout: baseline.holdout,
+};
+const familyCandidate = {
+  validation: [
+    moderateFamilyRegression(trial('family-a-task-1', 'v1', 'good', 0, 'family-a')),
+    moderateFamilyRegression(trial('family-a-task-2', 'v1', 'good', 0, 'family-a')),
+    trial('family-b-task-1', 'v1', 'good', 0, 'family-b'),
+    trial('family-b-task-2', 'v1', 'good', 0, 'family-b'),
+    trial('family-b-task-3', 'v1', 'good', 0, 'family-b'),
+  ],
+  holdout: baseline.holdout,
+};
+const familyRegressionGate = evaluateSkillLearnBenchCandidate(familyBaseline, familyCandidate);
+assert.ok(familyRegressionGate.validationGain01 > 0.005,
+  'improvements in family B should make macro validation improve');
+assert.equal(familyRegressionGate.validationTaskRegressions, 0,
+  'the decline on each family-A task stays within the per-task tolerance');
+assert.equal(familyRegressionGate.validationFamiliesEvaluated, 2);
+assert.equal(familyRegressionGate.validationFamilyRegressions, 1);
+assert.ok(familyRegressionGate.reasons.includes('validation-family-regression-exceeds-tolerance'));
+assert.equal(familyRegressionGate.eligible, false,
+  'broad regressions within one task family must not be hidden by improvements in another family');
+assert.throws(() => evaluateSkillLearnBenchCandidate(familyBaseline, familyCandidate, {
+  maximumValidationFamilyRegression01: Number.NaN,
+}), /candidate-maximum-validation-family-regression-invalid/);
+
+console.log('P29_HERMES_REFLECTIVE_CANDIDATE_GATE=PASS pairedValidation=true untouchedHoldout=true safetyIsHardGate=true emptyRubricsRejected=true validationFamilyRegression=true');
