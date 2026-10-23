@@ -798,8 +798,15 @@ export class P23LearningEngine {
     minShadowRuns=3,
   ):{active:ActiveSkillVersion;fitness:SkillLearnBenchCandidateGateReport & {matchedTrialCount:number;matchedValidationTrialCount:number;matchedHoldoutTrialCount:number;environmentFingerprint:string;planFingerprint:string};evidenceBinding:ReflectiveEvidenceBindingReport} {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
-    // Public runtime APIs can be called from untyped JavaScript despite TypeScript
-    // declarations. Reject absent/malformed envelopes before any property access.
+    // Detach hostile caller-owned envelopes before any property access. In
+    // particular, do not let getters/Proxies run before the independent evaluator's
+    // own canonical digest boundary is reached.
+    try {
+      baseline=snapshotPlainData(baseline) as typeof baseline;
+      evaluation=snapshotPlainData(evaluation) as typeof evaluation;
+    } catch {
+      throw new Error('independent promotion input data-boundary rejected');
+    }
     if(!evaluation || typeof evaluation!=='object' || !evaluation.evaluation ||
        typeof evaluation.evaluation!=='object' || !Array.isArray(evaluation.evaluation.validation) ||
        !Array.isArray(evaluation.evaluation.holdout) || !evaluation.evaluation.provenance ||
