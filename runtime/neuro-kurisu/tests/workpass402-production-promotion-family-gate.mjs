@@ -56,6 +56,10 @@ let fallbackJournalCalls = 0;
 engine.configureLearningFitnessJournal({
   recordFitnessDecision(entry) { journalEvents.push(structuredClone(entry)); },
 });
+const lifecycleEvents = [];
+engine.configureLearningLifecycleJournal({
+  recordLifecycleEvent(entry) { lifecycleEvents.push(structuredClone(entry)); },
+});
 engine.configureLearningFitnessJournalIfAbsent({
   recordFitnessDecision() { fallbackJournalCalls++; },
 });
@@ -120,6 +124,12 @@ assert.equal(approvalCalls, 0,
   'production promotion must fail closed before asking the store to activate a family-unverified candidate');
 assert.equal(journalEvents.length, 1, 'the rejected production fitness decision must reach the configured journal');
 assert.equal(journalEvents[0].decision, 'fitness-rejected');
+assert.equal(lifecycleEvents.length, 1, 'fitness rejection must be bound into the skill lifecycle journal');
+assert.equal(lifecycleEvents[0].event, 'promotion-rejected');
+assert.equal(lifecycleEvents[0].reasonCodes[0], 'fitness-gate-rejected');
+assert.equal(lifecycleEvents[0].payloadFingerprint, staged.payloadFingerprint);
+assert.equal(lifecycleEvents[0].evaluationFingerprint, candidateEvaluation.evaluationFingerprint);
+
 assert.equal(Object.isFrozen(P23_REFLECTIVE_PROMOTION_POLICY), true);
 for (const key of [
   'minimumValidationFamilies', 'minimumHoldoutFamilies',
@@ -227,4 +237,4 @@ assert.ok(journalEvents[1].reasonCodes.includes('holdout-family-seed-coverage-in
 assert.equal(fallbackJournalCalls, 0,
   'runtime default configuration must not replace an explicit host-provided sink');
 
-console.log('WORKPASS402_PRODUCTION_PROMOTION_FAMILY_GATE=PASS strictFamilyCoverage=true noApprovalSideEffect=true pairedSeedCoverage=true journalConnected=true hostSinkPreserved=true diagnosticsFailSoft=true');
+console.log('WORKPASS402_PRODUCTION_PROMOTION_FAMILY_GATE=PASS strictFamilyCoverage=true noApprovalSideEffect=true pairedSeedCoverage=true journalConnected=true lifecycleRejectionBound=true hostSinkPreserved=true diagnosticsFailSoft=true');
