@@ -62,7 +62,7 @@ export class P68GoalEcology {
   const safe=detached as Record<string,unknown>;
   if(!Number.isSafeInteger(safe.tick)||Number(safe.tick)<0||typeof safe.at!=='number'||!Number.isFinite(safe.at)||safe.at<0||
      !Array.isArray(safe.goals)||safe.goals.length>256||typeof safe.lastAction!=='string'||safe.lastAction.length>96||
-     (safe.lastSuccess!==null&&(typeof safe.lastSuccess!=='number'||!Number.isFinite(safe.lastSuccess)||safe.lastSuccess<0||safe.lastSuccess>1))||
+     (safe.lastSuccess!=null&&(typeof safe.lastSuccess!=='number'||!Number.isFinite(safe.lastSuccess)||safe.lastSuccess<0||safe.lastSuccess>1))||
      typeof safe.mode!=='string'||safe.mode.length>96||
      typeof safe.homeostaticPressure01!=='number'||!Number.isFinite(safe.homeostaticPressure01)||safe.homeostaticPressure01<0||safe.homeostaticPressure01>1||
      typeof safe.identity01!=='number'||!Number.isFinite(safe.identity01)||safe.identity01<0||safe.identity01>1||
