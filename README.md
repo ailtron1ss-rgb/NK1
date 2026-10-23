@@ -1,3 +1,13 @@
+## Current source-stack checkpoint — WorkPass447 (2026-10-23)
+
+- **Task-level uncertainty:** robust diagnostics now include a deterministic percentile-bootstrap interval for the equal-weight mean candidate-minus-baseline delta, independently for task success, skill quality and trajectory quality.
+- **Correct resampling unit:** trials are averaged inside task before bootstrapping across tasks, so a task with many repeated seeds does not count as many independent tasks. One-task inputs produce no between-task interval.
+- **Guardrail:** this is diagnostic-only, the metric summary is schema v2, and promotion / safety / approval policy is unchanged. It is not proof of a learning improvement or a replacement for the untouched holdout.
+- **Regression coverage:** interval bounds, uncertainty despite a positive point estimate, row-order stability and the one-task edge case were added to the existing WorkPass406 test. Exact-HEAD execution remains unconfirmed; learning implementation estimate remains **83%**, production readiness **~45%**. `main` and the Release ZIP remain unchanged.
+- Details: [WorkPass447 design note](docs/WORKPASS447_TASK_CLUSTER_BOOTSTRAP_RU.md), [learning scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md).
+
+---
+
 ## Current source-stack checkpoint — WorkPass416 (2026-10-23)
 
 - **Deterministic numeric aggregation:** trial rows are grouped by task and then sorted by stable `trialId` before summation. This prevents input insertion order from moving a task mean's final rounded decimal due to floating-point addition order.
