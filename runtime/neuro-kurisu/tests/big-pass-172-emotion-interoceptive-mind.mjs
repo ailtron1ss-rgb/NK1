@@ -82,6 +82,48 @@ assert.equal(accessorSafeEmotion.snapshot().episodes, 0);
 assert.equal(accessorSafeEmotion.snapshot().lastLabel, 'calm');
 assert.deepEqual(accessorSafeEmotion.snapshot().outcomes, {});
 
+let appraisalGetterReads = 0;
+const getterAppraisal = Object.defineProperty({}, 'tick', {
+  enumerable: true,
+  get() { appraisalGetterReads++; return 10; },
+});
+assert.throws(
+  () => accessorSafeEmotion.appraise(getterAppraisal),
+  /emotion-appraisal-input-must-be-plain-data/,
+  'appraisal must reject accessor-backed live observations',
+);
+assert.equal(appraisalGetterReads, 0, 'appraisal must snapshot descriptors without executing getters');
+
+let interoceptionGetterReads = 0;
+const getterInteroception = Object.defineProperty({}, 'energy01', {
+  enumerable: true,
+  get() { interoceptionGetterReads++; return .99; },
+});
+assert.throws(
+  () => accessorSafeEmotion.observeInteroception(getterInteroception),
+  /emotion-interoception-input-must-be-plain-data/,
+);
+assert.equal(interoceptionGetterReads, 0, 'interoception ingress must not execute getters');
+
+let outcomeActionCoercions = 0;
+const coercibleAction = { toString() { outcomeActionCoercions++; return 'rest'; } };
+assert.throws(
+  () => accessorSafeEmotion.recordOutcome({ action: coercibleAction, success01: .9, surprise01: .1 }),
+  /emotion-outcome-input-must-be-plain-data/,
+  'outcome action metadata must not permit custom object coercion',
+);
+assert.equal(outcomeActionCoercions, 0, 'outcome ingestion must reject custom coercion before use');
+const beforeInvalidEmotionInput = accessorSafeEmotion.snapshot();
+const circularFeelingInput = { energy01: .7, cognitiveLoad01: .2, uncertainty01: .3 };
+circularFeelingInput.self = circularFeelingInput;
+assert.throws(
+  () => accessorSafeEmotion.inferFeeling(first, circularFeelingInput),
+  /emotion-feeling-input-must-be-plain-data/,
+);
+assert.deepEqual(accessorSafeEmotion.snapshot(), beforeInvalidEmotionInput,
+  'rejected feeling input must not mutate the canonical affect state');
+
+
 const h = new P66InteroceptiveHomeostasis();
 const high = h.observe({tick:1,at:1,energy01:.2,thermal01:.9,capacity01:.25,load01:.9,awake:true,uncertainty01:.8,predictionError01:.8,novelty01:.2});
 assert.equal(high.mode,'recover'); assert.ok(high.pressure01>.5);

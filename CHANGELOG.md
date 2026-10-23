@@ -1,3 +1,12 @@
+## NK1 WorkPass428 — unify emotion live-input trust boundary (2026-10-23)
+
+- Added one bounded descriptor-only snapshot helper for live appraisal, interoception, outcome calibration and feeling inference, not only persisted-state restore. Accessor-backed, cyclic, exotic or oversized inputs are rejected before state mutation.
+- Outcome action identity now must be a trimmed bounded string; custom object coercion can no longer create calibration keys.
+- Added regressions for getter non-execution, malicious action coercion and no state mutation after rejected input.
+- The affect subsystem remains a functional control-signal model, not evidence of phenomenal feeling. Runtime tests/typecheck remain unverified until hosted runners execute.
+
+---
+
 ## NK1 WorkPass420 — protect affect-state restoration from executable objects (2026-10-23)
 
 - Emotion restore now snapshots bounded plain data before reading episode, interoception or calibration fields.

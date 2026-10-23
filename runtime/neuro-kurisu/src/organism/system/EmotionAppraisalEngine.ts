@@ -53,6 +53,17 @@ export interface EmotionAppraisalState {
 
 const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+function snapshotEmotionInput(value:unknown,errorCode:string):Record<string,unknown>{
+  try{
+    const detached=snapshotPlainData<Record<string,unknown>>(value,{
+      allowNonFiniteNumbers:true,maxDepth:12,maxNodes:512,maxStringUnits:16*1024,
+    });
+    if(!isRecord(detached))throw new Error('not-a-record');
+    return detached;
+  }catch{
+    throw new TypeError(errorCode);
+  }
+}
 const safeCounter=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
 const safeTimestamp=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isFinite(value)&&value>=0?value:fallback;
 const safeUnit=(value:unknown,fallback:number):number=>typeof value==='number'&&Number.isFinite(value)?c(value):fallback;
@@ -149,6 +160,7 @@ export class EmotionAppraisalEngine {
   snapshot(){return structuredClone(this.state);}
 
   observeInteroception(input:{energy01:number;thermal01:number;capacity01:number;load01:number;homeostaticPressure01?:number}):InteroceptiveAffectState{
+    input=snapshotEmotionInput(input,'emotion-interoception-input-must-be-plain-data') as unknown as typeof input;
     const st=this.state.interoception;
     const actual={energy01:c(input.energy01),thermal01:c(input.thermal01),capacity01:c(input.capacity01),load01:c(input.load01)};
     const errors=[Math.abs(actual.energy01-st.predicted.energy01),Math.abs(actual.thermal01-st.predicted.thermal01),Math.abs(actual.capacity01-st.predicted.capacity01),Math.abs(actual.load01-st.predicted.load01)];
@@ -168,7 +180,9 @@ export class EmotionAppraisalEngine {
   }
 
   recordOutcome(input:{emotionId?:string;action:string;success01:number;surprise01:number;regulationCost01?:number}):EmotionOutcomeCalibration{
-    const key=String(input.action); const prev=this.state.outcomes[key]??{attempts:0,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5};
+    input=snapshotEmotionInput(input,'emotion-outcome-input-must-be-plain-data') as unknown as typeof input;
+    if(typeof input.action!=='string'||input.action.length===0||input.action.length>96||input.action.trim()!==input.action)throw new TypeError('emotion-outcome-action-invalid');
+    const key=input.action; const prev=this.state.outcomes[key]??{attempts:0,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5};
     const benefit=c(input.success01*.62+(1-input.surprise01)*.24+(1-c(input.regulationCost01??0))*.14);
     const n=prev.attempts+1; const row={attempts:n,meanSuccess01:c(prev.meanSuccess01*(n-1)/n+c(input.success01)/n),meanSurprise01:c(prev.meanSurprise01*(n-1)/n+c(input.surprise01)/n),meanBenefit01:c(prev.meanBenefit01*(n-1)/n+benefit/n)};
     this.state.outcomes={...this.state.outcomes,[key]:row}; return structuredClone(row);
@@ -176,6 +190,7 @@ export class EmotionAppraisalEngine {
 
   outcomeCalibration(action:string):EmotionOutcomeCalibration|null{return this.state.outcomes[String(action)]?structuredClone(this.state.outcomes[String(action)]):null;}
   appraise(input:{tick:number;at?:number;goalPressure01?:number;goalCongruence01?:number;controllability01?:number;novelty01?:number;selfRelevance01?:number;socialMeaning01?:number;uncertainty01?:number;predictionError01?:number;homeostaticPressure01?:number;energy01?:number;success01?:number;external?:boolean}):EmotionEpisode{
+    input=snapshotEmotionInput(input,'emotion-appraisal-input-must-be-plain-data') as unknown as typeof input;
     if(!input||typeof input!=='object'||!Number.isSafeInteger(input.tick)||input.tick<0)throw new RangeError('emotion-appraisal-tick-must-be-a-non-negative-safe-integer');
     if(input.at!==undefined&&(typeof input.at!=='number'||!Number.isFinite(input.at)||input.at<0))throw new RangeError('emotion-appraisal-timestamp-must-be-finite-and-non-negative');
     const a={relevance01:c(Math.max(input.goalPressure01??0,input.predictionError01??0,input.homeostaticPressure01??0)),goalCongruence01:c(input.goalCongruence01??(input.success01??.5)),controllability01:c(input.controllability01??(1-(input.uncertainty01??.35))),novelty01:c(input.novelty01??.35),selfRelevance01:c(input.selfRelevance01??.5),socialMeaning01:c(input.socialMeaning01??0),uncertainty01:c(input.uncertainty01??.35)};
@@ -202,6 +217,8 @@ export class EmotionAppraisalEngine {
    * body-linked self-report candidate. It represents access to an internal episode,
    * not a claim of phenomenal experience. */
   inferFeeling(episode:EmotionEpisode,input:{energy01:number;cognitiveLoad01:number;uncertainty01:number;selfFocus01?:number}):FeelingEpisode{
+    episode=snapshotEmotionInput(episode,'emotion-feeling-episode-must-be-plain-data') as unknown as EmotionEpisode;
+    input=snapshotEmotionInput(input,'emotion-feeling-input-must-be-plain-data') as unknown as typeof input;
     const bodyMismatch=this.state.interoception.lastMismatch01;
     const mismatch=c(bodyMismatch*.45 + Math.abs(episode.interoceptiveDelta.stress01-c(input.uncertainty01))*.30 + c(input.cognitiveLoad01)*.25);
     const bodilyFocus=c(.35+episode.interoceptiveDelta.attentionCapture01*.35+c(input.selfFocus01??.5)*.30);
