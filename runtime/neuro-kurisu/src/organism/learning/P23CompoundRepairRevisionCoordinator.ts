@@ -84,13 +84,14 @@ export function canonicalCompoundRepairEvidence(
        !Number.isSafeInteger(row.observedAt)||Number(row.observedAt)<0) {
       throw new Error('compound-repair-evidence-row-invalid');
     }
+    const candidateTools=row.candidateTools as string[];
     return {
-      skillId:row.skillId,skillName:row.skillName,failureFingerprint:row.failureFingerprint,
-      stepId:row.stepId,failedTool:row.failedTool,diagnosis:row.diagnosis,
-      contextSignature:row.contextSignature,
-      candidateTools:[...(row.candidateTools as string[])].sort(compareCanonicalText),
-      selectedTool:row.selectedTool,verified:row.verified,confidence01:row.confidence01,
-      observedAt:row.observedAt,revisionEligible:row.revisionEligible,
+      skillId:row.skillId as string,skillName:row.skillName as string,failureFingerprint:row.failureFingerprint as string,
+      stepId:row.stepId as string,failedTool:row.failedTool as string,diagnosis:row.diagnosis as string,
+      contextSignature:row.contextSignature as string,
+      candidateTools:[...candidateTools].sort(compareCanonicalText),
+      selectedTool:row.selectedTool as string,verified:row.verified as boolean,confidence01:row.confidence01 as number,
+      observedAt:row.observedAt as number,revisionEligible:row.revisionEligible as boolean,
     };
   });
   return canonical.sort((a,b) =>
