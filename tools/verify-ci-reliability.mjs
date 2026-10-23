@@ -39,6 +39,10 @@ export function validateCiConfig({ workflows, nodeVersion }) {
       if (!timeoutMatch || Number(timeoutMatch[1]) < 15) {
         errors.push(`${name}: cognitive regression timeout must be at least 15 minutes to avoid premature cancellation.`);
       }
+      const pullRequestBlock = /^  pull_request:\s*\n((?:(?: {4,}[^\n]*)\n)*)/m.exec(text)?.[1] ?? "";
+      if (!/^\s*-\s*rebuild\s*$/m.test(pullRequestBlock)) {
+        errors.push(`${name}: cognitive regression workflow must run for pull requests targeting rebuild.`);
+      }
     }
 
     if (/ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION\s*[:=]\s*true/i.test(text)) {
