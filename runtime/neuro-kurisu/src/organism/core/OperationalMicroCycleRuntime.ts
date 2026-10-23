@@ -7,7 +7,10 @@ import type { PersistenceRuntime } from './PersistenceRuntime.ts';
 import type { WorldSubsystemRuntime } from './WorldSubsystemRuntime.ts';
 import { clamp, goalVectorFallback } from './ExecutionPrimitives.ts';
 
-function finiteOr(value: unknown, fallback: number): number {
+export function finiteOr(value: unknown, fallback: number): number {
+  // Do not let null, booleans, or empty strings silently become a valid zero.
+  if (typeof value !== 'number' && typeof value !== 'string') return fallback;
+  if (typeof value === 'string' && value.trim().length === 0) return fallback;
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : fallback;
 }
