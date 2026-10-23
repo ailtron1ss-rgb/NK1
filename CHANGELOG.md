@@ -1,3 +1,13 @@
+## NK1 WorkPass411 — make learning CI script wiring self-auditing (2026-10-23)
+
+- **Cross-branch integration:** selectively ported the workflow-to-package script resolver from `feature/experiments`; did not merge its divergent branch history.
+- **Runtime improvement:** the reliability audit now maps each `npm run` invocation to the root, app, or runtime package using step-level `working-directory`, `npm --prefix`, and inline `cd` context. A root script can no longer falsely satisfy a missing runtime/app alias.
+- **Regression:** added tests for correct context resolution, missing aliases and backward-compatible policy-only calls.
+- **CI integration:** the P26 learning workflow runs the audit tests and full static workflow/script audit before `npm ci`, and now triggers when the audit code/tests or relevant package manifests change.
+- **Validation boundary:** code is committed, but GitHub reports no status checks on the exact latest commit and the hosted jobs returned by the connector are historical PR runs. No local test/typecheck or exact-HEAD CI pass is claimed.
+
+---
+
 ## NK1 WorkPass410 — introduce Pareto-frontier learning-target selection (2026-10-23)
 
 - **Code:** added deterministic non-dominated layering for the P23 curriculum across six objectives; preserves complementary high-value learning targets instead of filling the queue with a dominated near-duplicate. Existing weighted-score mode remains backward-compatible.
