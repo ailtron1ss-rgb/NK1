@@ -45,9 +45,38 @@ export interface LearningFitnessJournalEntry extends LearningFitnessJournalInput
   digest: string;
 }
 
+export interface LearningFitnessJournalRecentDecision {
+  sequence: number;
+  recordedAt: number;
+  decision: LearningFitnessDecision;
+  reasonCodes: string[];
+  validation: Pick<LearningFitnessSplitSummary, 'meanDelta' | 'minimumLowerBound' | 'maximumUpperBound' | 'confidenceBoundFailures' | 'seedCoverageFailures'>;
+  holdout: Pick<LearningFitnessSplitSummary, 'meanDelta' | 'minimumLowerBound' | 'maximumUpperBound' | 'confidenceBoundFailures' | 'seedCoverageFailures'>;
+}
+
+export interface LearningFitnessJournalDiagnostics {
+  configured: true;
+  available: true;
+  totalDecisions: number;
+  acceptedDecisions: number;
+  rejectedDecisions: number;
+  acceptanceRate01: number;
+  rejectionCounts: Record<string, number>;
+  meanValidationDelta: number | null;
+  meanHoldoutDelta: number | null;
+  latestValidationLowerBoundMinimum: number | null;
+  latestHoldoutLowerBoundMinimum: number | null;
+  lastDecisionAt: number | null;
+  lastSequence: number;
+  chainHead: string;
+  recent: LearningFitnessJournalRecentDecision[];
+}
+
 export interface LearningFitnessJournalSink {
   /** Synchronously persist a privacy-filtered, hash-chained fitness decision. */
   recordFitnessDecision(input: LearningFitnessJournalInput): LearningFitnessJournalEntry;
+  /** Optional readback for runtime metrics; implementations must never expose raw tasks/families. */
+  snapshotDiagnostics?(recentLimit?: number): LearningFitnessJournalDiagnostics;
 }
 
 function canonical(value: unknown): string {
@@ -189,6 +218,63 @@ export class JsonlLearningFitnessJournal implements LearningFitnessJournalSink {
       entries.push(entry); previous = entry.digest;
     }
     return entries;
+  }
+
+  snapshotDiagnostics(recentLimit = 20): LearningFitnessJournalDiagnostics {
+    if (!Number.isSafeInteger(recentLimit) || recentLimit < 1 || recentLimit > 100) {
+      throw new RangeError('learning-fitness-journal-diagnostics-recent-limit-invalid');
+    }
+    const entries = this.readAll();
+    const accepted = entries.filter(entry => entry.decision === 'fitness-accepted');
+    const rejected = entries.filter(entry => entry.decision === 'fitness-rejected');
+    const rejectionCounts: Record<string, number> = {};
+    for (const entry of rejected) {
+      for (const reason of entry.reasonCodes) rejectionCounts[reason] = (rejectionCounts[reason] ?? 0) + 1;
+    }
+    const mean = (values: Array<number | null>) => {
+      const available = values.filter((value): value is number => value !== null);
+      return available.length
+        ? Number((available.reduce((sum, value) => sum + value, 0) / available.length).toFixed(6))
+        : null;
+    };
+    const last = entries[entries.length - 1] ?? null;
+    const recent = entries.slice(-recentLimit).map(entry => ({
+      sequence: entry.sequence,
+      recordedAt: entry.recordedAt,
+      decision: entry.decision,
+      reasonCodes: [...entry.reasonCodes],
+      validation: {
+        meanDelta: entry.validation.meanDelta,
+        minimumLowerBound: entry.validation.minimumLowerBound,
+        maximumUpperBound: entry.validation.maximumUpperBound,
+        confidenceBoundFailures: entry.validation.confidenceBoundFailures,
+        seedCoverageFailures: entry.validation.seedCoverageFailures,
+      },
+      holdout: {
+        meanDelta: entry.holdout.meanDelta,
+        minimumLowerBound: entry.holdout.minimumLowerBound,
+        maximumUpperBound: entry.holdout.maximumUpperBound,
+        confidenceBoundFailures: entry.holdout.confidenceBoundFailures,
+        seedCoverageFailures: entry.holdout.seedCoverageFailures,
+      },
+    }));
+    return {
+      configured: true,
+      available: true,
+      totalDecisions: entries.length,
+      acceptedDecisions: accepted.length,
+      rejectedDecisions: rejected.length,
+      acceptanceRate01: entries.length ? Number((accepted.length / entries.length).toFixed(6)) : 0,
+      rejectionCounts: Object.fromEntries(Object.entries(rejectionCounts).sort(([a], [b]) => a.localeCompare(b))),
+      meanValidationDelta: mean(entries.map(entry => entry.validation.meanDelta)),
+      meanHoldoutDelta: mean(entries.map(entry => entry.holdout.meanDelta)),
+      latestValidationLowerBoundMinimum: last?.validation.minimumLowerBound ?? null,
+      latestHoldoutLowerBoundMinimum: last?.holdout.minimumLowerBound ?? null,
+      lastDecisionAt: last?.recordedAt ?? null,
+      lastSequence: last?.sequence ?? 0,
+      chainHead: last?.digest ?? ZERO_DIGEST,
+      recent,
+    };
   }
 
   recordFitnessDecision(rawInput: LearningFitnessJournalInput): LearningFitnessJournalEntry {
