@@ -6,6 +6,8 @@
  * can be reproduced. Few-seed intervals are descriptive and do not replace
  * larger benchmark suites or preregistered analysis.
  */
+import { snapshotPlainData } from './LearningTrustBoundary.ts';
+
 export interface BootstrapMeanInterval {
   sampleCount: number;
   resamples: number;
@@ -45,13 +47,24 @@ export function bootstrapMeanConfidenceInterval(
   rawValues: readonly number[],
   options: BootstrapMeanIntervalOptions = {},
 ): BootstrapMeanInterval {
-  if (!Array.isArray(rawValues) || rawValues.length < 2 ||
-      rawValues.some(value => typeof value !== 'number' || !Number.isFinite(value) || value < -1 || value > 1)) {
+  let values: unknown;
+  let config: BootstrapMeanIntervalOptions;
+  try {
+    values = snapshotPlainData(rawValues);
+    config = snapshotPlainData(options) as BootstrapMeanIntervalOptions;
+  } catch {
+    throw new Error('paired-seed-bootstrap-data-boundary-rejected');
+  }
+  if (!Array.isArray(values) || values.length < 2 ||
+      values.some(value => typeof value !== 'number' || !Number.isFinite(value) || value < -1 || value > 1)) {
     throw new Error('paired-seed-bootstrap-values-invalid');
   }
-  const confidenceLevel = options.confidenceLevel ?? 0.95;
-  const resamples = options.resamples ?? 2000;
-  const seed = options.seed ?? 1;
+  if (!config || typeof config !== 'object' || Array.isArray(config)) {
+    throw new Error('paired-seed-bootstrap-data-boundary-rejected');
+  }
+  const confidenceLevel = config.confidenceLevel ?? 0.95;
+  const resamples = config.resamples ?? 2000;
+  const seed = config.seed ?? 1;
   if (!Number.isFinite(confidenceLevel) || confidenceLevel <= 0.5 || confidenceLevel >= 1) {
     throw new RangeError('paired-seed-bootstrap-confidence-level-invalid');
   }
@@ -63,21 +76,22 @@ export function bootstrapMeanConfidenceInterval(
   }
 
   const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
-  const average = mean([...rawValues]);
+  const safeValues = values as number[];
+  const average = mean([...safeValues]);
   const random = createRandom(seed);
   const bootstrapMeans = new Array<number>(resamples);
   for (let sampleIndex = 0; sampleIndex < resamples; sampleIndex++) {
     let sum = 0;
-    for (let draw = 0; draw < rawValues.length; draw++) {
-      sum += rawValues[Math.floor(random() * rawValues.length)];
+    for (let draw = 0; draw < safeValues.length; draw++) {
+      sum += safeValues[Math.floor(random() * safeValues.length)];
     }
-    bootstrapMeans[sampleIndex] = sum / rawValues.length;
+    bootstrapMeans[sampleIndex] = sum / safeValues.length;
   }
   bootstrapMeans.sort((left, right) => left - right);
   const tail = (1 - confidenceLevel) / 2;
   const rounded = (value: number) => Number(value.toFixed(6));
   return {
-    sampleCount: rawValues.length,
+    sampleCount: safeValues.length,
     resamples,
     confidenceLevel,
     mean: rounded(average),
