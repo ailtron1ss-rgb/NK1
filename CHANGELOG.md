@@ -1,3 +1,12 @@
+## NK1 WorkPass357 — fail-closed outcome reflection and curriculum inputs (2026-10-23)
+
+- [FIXED] Outcome reflection now snapshots input through the shared `LearningTrustBoundary`; caller-owned accessors are rejected without invoking getters.
+- [FIXED] Reflection evidence IDs are immutable: exact duplicates are idempotent, conflicting payloads or malformed reuse quarantine the identity, and reflection counts use only unique valid observations.
+- [BOUNDED] Reflection accepts at most 4,096 rows and curriculum ranking at most 512 targets; oversized or structurally ambiguous arrays fail closed rather than silently biasing a truncated sample.
+- [FIXED] Reflection metrics, identities, timestamps, and learning-target scores are checked before aggregation. Invalid target rows cannot become ranked actions; direct scoring rejects malformed targets.
+- [INTEGRATION] Added these regressions to the P23 aggregate learning command. No new package dependency was introduced.
+- [VALIDATION] Source/test changes are committed; exact-head execution and CI remain unverified until a runner completes the learning suite. No measured learning uplift is claimed.
+
 ## NK1 WorkPass356 — report learning experiment suite success only after every assertion
 
 - [FIXED] Moved the `P23_LEARNING_EXPERIMENT_PLAN=PASS` marker to the end of the experiment-plan test file. WorkPass350–352 regression assertions previously followed an earlier success log, so a later assertion could fail after the suite had already printed a misleading PASS line.
