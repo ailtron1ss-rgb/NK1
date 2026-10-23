@@ -126,7 +126,7 @@ function indexReports(rawReports: unknown, label: string): Map<string, ReturnTyp
 }
 
 function summarizeDimension(
-  rows: readonly MatchedScore[],
+  rowsByTask: ReadonlyMap<string, readonly MatchedScore[]>,
   key: MetricKey,
   taskIds: readonly string[],
 ): LearningRobustMetricDimension {
@@ -135,8 +135,8 @@ function summarizeDimension(
   const taskImprovementProbabilities: number[] = [];
 
   for (const taskId of taskIds) {
-    const taskRows = rows.filter(row => row.taskId === taskId);
-    if (taskRows.length === 0) throw new Error('learning-robust-metrics-task-group-empty');
+    const taskRows = rowsByTask.get(taskId);
+    if (!taskRows || taskRows.length === 0) throw new Error('learning-robust-metrics-task-group-empty');
     const baselineMean = taskRows.reduce((sum, row) => sum + row.baseline[key], 0) / taskRows.length;
     const candidateMean = taskRows.reduce((sum, row) => sum + row.candidate[key], 0) / taskRows.length;
     const pairwiseWins = taskRows.reduce((sum, row) => {
@@ -203,13 +203,24 @@ export function summarizeLearningRobustMetrics(
   const taskIds = [...new Set(rows.map(row => row.taskId))].sort();
   if (taskIds.length === 0) throw new Error('learning-robust-metrics-task-count-empty');
 
+  // Group once and reuse across every score dimension. The previous repeated
+  // rows.filter(...) was O(tasks × trials) per dimension and became quadratic
+  // as task coverage grew.
+  const mutableRowsByTask = new Map<string, MatchedScore[]>();
+  for (const row of rows) {
+    const taskRows = mutableRowsByTask.get(row.taskId) ?? [];
+    taskRows.push(row);
+    mutableRowsByTask.set(row.taskId, taskRows);
+  }
+  const rowsByTask: ReadonlyMap<string, readonly MatchedScore[]> = mutableRowsByTask;
+
   return {
     schemaVersion: 1,
     diagnosticOnly: true,
     taskCount: taskIds.length,
     matchedTrialCount: rows.length,
-    taskSuccess: summarizeDimension(rows, 'taskSuccess', taskIds),
-    skillQuality: summarizeDimension(rows, 'skillQuality', taskIds),
-    trajectoryQuality: summarizeDimension(rows, 'trajectoryQuality', taskIds),
+    taskSuccess: summarizeDimension(rowsByTask, 'taskSuccess', taskIds),
+    skillQuality: summarizeDimension(rowsByTask, 'skillQuality', taskIds),
+    trajectoryQuality: summarizeDimension(rowsByTask, 'trajectoryQuality', taskIds),
   };
 }
