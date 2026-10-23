@@ -244,6 +244,10 @@ export interface SkillLearnBenchCandidateGateOptions {
   minimumValidationTasks?: number;
   /** Maximum tolerated regression on any one paired validation task after averaging repeated trials. */
   maximumValidationTaskRegression01?: number;
+  /** Maximum tolerated macro-average regression for adequately sampled validation task families. */
+  maximumValidationFamilyRegression01?: number;
+  /** Minimum distinct validation tasks in one family before that family's regression can veto promotion. */
+  minimumValidationFamilyTasks?: number;
   /** Maximum tolerated macro-average holdout regression. */
   maximumHoldoutRegression01?: number;
   /** Minimum number of distinct holdout tasks; empty holdout must never pass. */
@@ -262,6 +266,10 @@ export interface SkillLearnBenchCandidateGateReport {
   validationGain01: number;
   /** Number of distinct validation tasks that crossed the per-task regression tolerance. */
   validationTaskRegressions: number;
+  /** Number of sufficiently sampled validation task families. */
+  validationFamiliesEvaluated: number;
+  /** Count of validation-family regressions; family identities/scores stay out of repair feedback. */
+  validationFamilyRegressions: number;
   baselineHoldout01: number;
   candidateHoldout01: number;
   holdoutDelta01: number;
@@ -369,6 +377,41 @@ function pairedCandidateMean(
 }
 
 /**
+ * Summarize matched paired task scores at family level without weighting a
+ * family by its number of repeated trials. Missing family provenance is kept
+ * out of this veto rather than guessed from task names.
+ */
+function summarizeFamilyRegressions(
+  pairs: Array<{ baseline: SkillLearnBenchTrialReport; candidate: SkillLearnBenchTrialReport }>,
+  minimumTasks: number,
+  maximumRegression: number,
+): { evaluated: number; regressions: number } {
+  const familyRows = new Map<string, Map<string, { baseline: number[]; candidate: number[] }>>();
+  for (const pair of pairs) {
+    const family = pair.candidate.taskFamily ?? pair.baseline.taskFamily;
+    if (!family) continue;
+    const taskId = pair.candidate.taskId.trim();
+    const tasks = familyRows.get(family) ?? new Map<string, { baseline: number[]; candidate: number[] }>();
+    const scores = tasks.get(taskId) ?? { baseline: [], candidate: [] };
+    scores.baseline.push(candidateComposite(pair.baseline));
+    scores.candidate.push(candidateComposite(pair.candidate));
+    tasks.set(taskId, scores);
+    familyRows.set(family, tasks);
+  }
+  const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
+  const familyStats = [...familyRows.entries()].map(([family, tasks]) => {
+    const rows = [...tasks.values()];
+    const baselineMean = mean(rows.map(row => mean(row.baseline)));
+    const candidateMean = mean(rows.map(row => mean(row.candidate)));
+    return { family, taskCount: tasks.size, delta: candidateMean - baselineMean };
+  }).filter(row => row.taskCount >= minimumTasks);
+  return {
+    evaluated: familyStats.length,
+    regressions: familyStats.filter(row => row.delta < -maximumRegression).length,
+  };
+}
+
+/**
  * Hermes Self-Evolution-inspired candidate gate for SkillLearnBench reports.
  *
  * Uses paired, task/trial-matched evidence, a multi-axis fitness score, a
@@ -405,6 +448,8 @@ export function evaluateSkillLearnBenchCandidate(
   const minGain = options.minimumValidationGain01 ?? 0.005;
   const minValidationTasks = options.minimumValidationTasks ?? 2;
   const maxValidationTaskRegression = options.maximumValidationTaskRegression01 ?? 0.20;
+  const maxValidationFamilyRegression = options.maximumValidationFamilyRegression01 ?? 0.10;
+  const minValidationFamilyTasks = options.minimumValidationFamilyTasks ?? 2;
   const maxRegression = options.maximumHoldoutRegression01 ?? 0.02;
   const minHoldoutTasks = options.minimumHoldoutTasks ?? 2;
   if (!Number.isFinite(minGain) || minGain < 0 || minGain > 1) {
@@ -415,6 +460,12 @@ export function evaluateSkillLearnBenchCandidate(
   }
   if (!Number.isFinite(maxValidationTaskRegression) || maxValidationTaskRegression < 0 || maxValidationTaskRegression > 1) {
     throw new RangeError('candidate-maximum-validation-task-regression-invalid');
+  }
+  if (!Number.isFinite(maxValidationFamilyRegression) || maxValidationFamilyRegression < 0 || maxValidationFamilyRegression > 1) {
+    throw new RangeError('candidate-maximum-validation-family-regression-invalid');
+  }
+  if (!Number.isSafeInteger(minValidationFamilyTasks) || minValidationFamilyTasks < 1) {
+    throw new RangeError('candidate-minimum-validation-family-tasks-invalid');
   }
   if (!Number.isFinite(maxRegression) || maxRegression < 0 || maxRegression > 1) {
     throw new RangeError('candidate-maximum-holdout-regression-invalid');
@@ -442,25 +493,13 @@ export function evaluateSkillLearnBenchCandidate(
   }
   const validation = pairedCandidateMean(baselineValidation, candidateValidation, 'validation');
   const holdout = pairedCandidateMean(baselineHoldout, candidateHoldout, 'holdout');
-  const familyRows = new Map<string, Map<string, { baseline:number[]; candidate:number[] }>>();
-  for (const pair of holdout.pairs) {
-    const family=pair.candidate.taskFamily ?? pair.baseline.taskFamily;
-    if (!family) continue; // Legacy reports without family provenance keep the aggregate gate only.
-    const taskId=pair.candidate.taskId.trim();
-    const tasks=familyRows.get(family)??new Map<string,{baseline:number[];candidate:number[]}>();
-    const scores=tasks.get(taskId)??{baseline:[],candidate:[]};
-    scores.baseline.push(candidateComposite(pair.baseline));
-    scores.candidate.push(candidateComposite(pair.candidate));
-    tasks.set(taskId,scores);familyRows.set(family,tasks);
-  }
-  const familyStats=[...familyRows.entries()].map(([family,tasks])=>{
-    const rows=[...tasks.values()];
-    const mean=(values:number[])=>values.reduce((sum,value)=>sum+value,0)/values.length;
-    const baselineMean=mean(rows.map(row=>mean(row.baseline)));
-    const candidateMean=mean(rows.map(row=>mean(row.candidate)));
-    return {family,taskCount:tasks.size,delta:candidateMean-baselineMean};
-  }).filter(row=>row.taskCount>=minFamilyTasks);
-  const holdoutFamilyRegressions=familyStats.filter(row=>row.delta < -maxFamilyRegression).length;
+  const validationFamilySummary = summarizeFamilyRegressions(
+    validation.pairs, minValidationFamilyTasks, maxValidationFamilyRegression,
+  );
+  const holdoutFamilySummary = summarizeFamilyRegressions(
+    holdout.pairs, minFamilyTasks, maxFamilyRegression,
+  );
+  const holdoutFamilyRegressions = holdoutFamilySummary.regressions;
   const validationGain = validation.candidateMean - validation.baselineMean;
   const holdoutDelta = holdout.candidateMean - holdout.baselineMean;
   // Score each task's repeated trials as a unit. Aggregate gains must not hide a
@@ -483,6 +522,7 @@ export function evaluateSkillLearnBenchCandidate(
   if (validationGain < minGain) reasons.push('validation-improvement-below-threshold');
   if (validation.taskCount < minValidationTasks) reasons.push('validation-task-coverage-insufficient');
   if (validationTaskRegressions > 0) reasons.push('validation-task-regression-exceeds-tolerance');
+  if (validationFamilySummary.regressions > 0) reasons.push('validation-family-regression-exceeds-tolerance');
   if (holdout.taskCount < minHoldoutTasks) reasons.push('holdout-task-coverage-insufficient');
   if (holdoutDelta < -maxRegression) reasons.push('holdout-regression-exceeds-tolerance');
   if (holdoutFamilyRegressions > 0) reasons.push('holdout-family-regression-exceeds-tolerance');
@@ -513,6 +553,7 @@ export function evaluateSkillLearnBenchCandidate(
   if (validationTrajectory < 0.8) feedback.push('Inspect missing or out-of-order trajectory steps and revise the procedure.');
   if (validationSkill < 0.8) feedback.push('Increase required-capability coverage and confirm the skill remains executable.');
   if (validationTaskRegressions > 0) feedback.push('A paired validation task regressed beyond tolerance; diagnose the task-specific trade-off before proposing another candidate.');
+  if (validationFamilySummary.regressions > 0) feedback.push('A sufficiently sampled validation task family regressed beyond tolerance; diagnose the family-level trade-off before proposing another candidate.');
   if (holdoutDelta < 0) feedback.push('Aggregate holdout evaluation indicates regression; revise generality without inspecting holdout examples, then request a fresh independent evaluation.');
   if (holdoutFamilyRegressions > 0) feedback.push('At least one sufficiently sampled holdout task family regressed; improve generality without inspecting holdout examples and request a fresh independent evaluation.');
   if (safetyViolations > 0) feedback.push('Resolve every safety violation; safety is a hard gate, not a score trade-off.');
@@ -526,6 +567,8 @@ export function evaluateSkillLearnBenchCandidate(
     candidateValidation01: rounded(validation.candidateMean),
     validationGain01: rounded(validationGain),
     validationTaskRegressions,
+    validationFamiliesEvaluated: validationFamilySummary.evaluated,
+    validationFamilyRegressions: validationFamilySummary.regressions,
     baselineHoldout01: rounded(holdout.baselineMean),
     candidateHoldout01: rounded(holdout.candidateMean),
     holdoutDelta01: rounded(holdoutDelta),
