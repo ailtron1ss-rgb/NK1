@@ -1,10 +1,10 @@
 ## NK1 WorkPass330 — host-owned evaluator wiring for autonomous P23 revision (2026-10-23)
 
 - [FIX] Closed the production config gap where `server.mjs` passed P23 engine/provider inputs but omitted the independent-evaluation factory required by `OrganismRuntime` in production.
-- [HOST-BOUNDARY] Added `NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE`, loaded from a module distinct from the repair provider. Its host factory defines the three independent command authorities, task builder, environment fingerprint and mandatory production experiment authority; no in-process fallback was added.
+- [HOST-BOUNDARY] Added `NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE`, loaded from a module distinct from the repair provider. Its host factory defines the three independent command authorities, task builder, environment fingerprint, mandatory production experiment authority, and distinct baseline/source/revision method names scheduled in both plans; no in-process fallback was added.
 - [LEAST-PRIVILEGE] Host-config module receives only `stateDirectory`, not the P23 engine, candidate store or trusted-run registry.
 - [AUTONOMY] Added opt-in `NEURO_COMPOUND_REPAIR_BACKGROUND_REVISION_JSON` to schedule verified repair-to-candidate staging through the existing runtime scheduler. Candidates remain staged; no automatic activation.
-- [REGRESSION] Added eleven contract/wiring cases in `test:workpass330:production-revision-wiring`; covers absent production authority, module identity/mode/state-path restrictions, host factory contract, schedule validation and server-to-runtime wiring. Connected the test to root `audit:quick` and WorkPass71 CI.
+- [REGRESSION] Added twelve contract/wiring cases in `test:workpass330:production-revision-wiring`; covers absent production authority, module identity/mode/state-path restrictions, host factory contract, schedule validation and server-to-runtime wiring. Connected the test to root `audit:quick` and WorkPass71 CI.
 - [HARDENING] The separate evaluator config must resolve to a regular file, be outside the mutable state directory and not be group/world-writable on POSIX.
 - [VALIDATION] Test/typecheck and Actions execution on the exact head remain unverified: jobs still fail before running steps. The deployment-specific host evaluator module and measured held-out task results remain open; no learning score increase is claimed.
 - [DEPENDENCIES/RELEASE] No dependency added, `main` unchanged, release ZIP not rebuilt or published.
