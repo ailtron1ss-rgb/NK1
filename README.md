@@ -1,4 +1,14 @@
-## Current source-stack checkpoint — WorkPass394 (2026-10-23)
+## Current source-stack checkpoint — WorkPass397 (2026-10-23)
+
+- **P23 promotion authority:** the report-only `approveReflectiveVerifiedSkillCandidate` API fails closed. Signed shadow receipts bind run/task identity and binary outcome, not trajectory or skill-quality metrics.
+- **Second bypass closed:** the general `approveVerifiedSkillCandidate` method now refuses staged candidates with `revisionProvenance`. Reflective revisions must use `approveIndependentlyEvaluatedSkillCandidate`, which passes the matched independent-evaluation/provenance and signed-evidence gates before reaching its private finalizer.
+- **Adversarial regression:** `runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs` demonstrates that advisory fitness can look eligible yet must not authorize the report-only path; it also proves the lower-level generic API cannot bypass the revision gate. P26 Learning Validation runs this test.
+- **Research integration:** principles from [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution) are adapted inside NK1's existing P23 lifecycle; no upstream source file was copied and no runtime dependency was added.
+- **Verification state:** code/tests/workflow/docs are committed on `feature/learning`. Hosted Actions has returned failed jobs with no runner steps/log URL, so the test and typecheck are not claimed as passed. No learning uplift is claimed.
+- **Release state:** this pass does not change `main` or regenerate the large GitHub Release ZIP. See [WorkPass394 detail](docs/WORKPASS394_PROMOTION_AUTHORITY_FIREWALL_RU.md) and [WorkPass397 detail](docs/WORKPASS397_DIRECT_PROMOTION_GATE_RU.md).
+
+---
+
 
 - **Learning safety fix:** the report-only `approveReflectiveVerifiedSkillCandidate` API now fails closed. Signed shadow receipts bind run/task identity and binary outcome, not trajectory or skill-quality metrics; caller-supplied scores can no longer authorize production promotion through this legacy route.
 - **Canonical promotion path:** use `approveIndependentlyEvaluatedSkillCandidate` with a fingerprinted independent evaluation envelope matched to the exact staged payload, task/trial/seed/split/environment/manifest and trusted signed receipts, followed by authenticated approval.
