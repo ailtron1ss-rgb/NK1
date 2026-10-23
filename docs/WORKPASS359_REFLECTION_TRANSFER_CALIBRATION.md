@@ -37,3 +37,13 @@ Status: implementation committed; exact-head execution unverified.
 ## Follow-up pass — evidence debt is not transfer evidence
 
 The subsequent WorkPass360 correction also sets evidence-debt-derived targets to `transfer01 = 0`. `informationGainPerCost01` remains a useful signal for selecting an informative verification action, but it does not measure a skill's performance across task families. The P23 regression now checks both reflection-derived and evidence-debt-derived targets. Transfer estimates should be added only with matched, independently verified cross-context outcomes and a baseline comparison.
+
+## Source-code extraction review (not a vendoring claim)
+
+The upstream implementation was inspected at these specific files:
+
+- [`evolution/skills/evolve_skill.py`](https://github.com/NousResearch/hermes-agent-self-evolution/blob/main/evolution/skills/evolve_skill.py): load an existing skill, build/load a train/validation/holdout dataset, run GEPA with a MIPROv2 fallback, enforce post-mutation constraints, compare baseline and candidate on holdout, and retain failed variants for inspection rather than deploy them.
+- [`PLAN.md`](https://github.com/NousResearch/hermes-agent-self-evolution/blob/main/PLAN.md): skill-size limits, complete test-gate expectations, semantic-preservation guardrails, avoidance of mid-conversation mutation and a reviewable PR as the promotion path.
+- [`pyproject.toml`](https://github.com/NousResearch/hermes-agent-self-evolution/blob/main/pyproject.toml): declares MIT and a Python/DSPy-oriented dependency set (`dspy`, `openai`, `pyyaml`, `click`, `rich`).
+
+**Port decision:** the transferable mechanism is the proposal → independent evaluation → hard constraints → holdout gate → explicit approval sequence. NK1 already implements that sequence in the canonical TypeScript P23 engine, with authenticated evidence and versioned staging. Copying the Python optimizer or adding DSPy would create a second learning runtime rather than integrate the existing organism, so this pass ports the boundary and decision semantics—not a duplicate upstream program. Upstream license/dependency information is recorded for provenance; no vendor code was copied.
