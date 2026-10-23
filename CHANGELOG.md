@@ -1,3 +1,14 @@
+## NK1 WorkPass397 — close lower-level reflective promotion bypass (2026-10-23)
+
+- [FIXED] The general `approveVerifiedSkillCandidate` API now rejects staged candidates carrying `revisionProvenance`; reflective revisions cannot skip matched independent-evaluation checks after shadow staging.
+- [INTEGRATED] `approveIndependentlyEvaluatedSkillCandidate` now enters a private finalizer only after exact payload/fingerprint/provenance, matched baseline/candidate and signed-evidence checks. Non-reflective candidates retain the general path.
+- [REGRESSION] Extended `p23-hermes-production-promotion-gate.mjs` to attempt direct activation via the lower-level API and verify that the store approval callback is untouched.
+- [CI] Reuses the P26 Learning Validation path/step added in WorkPass394; no duplicate workflow was introduced.
+- [VALIDATION] Source and test commits are present; Actions continues to provide no runner step details for the latest P26 attempt. Runtime test/typecheck is not claimed as passed.
+- [SCOPE] `main` and the GitHub Release ZIP remain unchanged.
+
+---
+
 ## NK1 WorkPass396 — verify exact generated payload writeback and staged-only authority (2026-10-23)
 - [TEST ADDED] The end-to-end P23 revision fixture now asserts the versioned store contains the exact revised payload that was independently evaluated, not just a different fingerprint.
 - [SAFETY] The same regression asserts that a successful evaluation leaves the candidate in `staged` state and the active-skill set empty; promotion still requires the separate approval path.
