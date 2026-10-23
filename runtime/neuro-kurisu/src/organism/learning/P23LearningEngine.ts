@@ -540,11 +540,11 @@ export class P23LearningEngine {
   /** Safe aggregate view of fitness learning history for diagnostics/dashboard consumers. */
   learningFitnessJournalDiagnostics():
     LearningFitnessJournalDiagnostics | {configured:false;available:false} | {configured:true;available:false} {
-    if(!this.learningFitnessJournal) return {configured:false,available:false};
-    if(typeof this.learningFitnessJournal.snapshotDiagnostics!=='function') {
-      return {configured:true,available:false};
-    }
-    return this.learningFitnessJournal.snapshotDiagnostics();
+    const journal=this.learningFitnessJournal;
+    if(!journal) return {configured:false,available:false};
+    const snapshot=journal.snapshotDiagnostics;
+    if(typeof snapshot!=='function') return {configured:true,available:false};
+    return snapshot.call(journal);
   }
 
   /** Read-only view of the durable staged/active skill lifecycle; null means not configured. */
