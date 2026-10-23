@@ -73,7 +73,7 @@
     "test:big-pass-96": "node --experimental-strip-types tests/big-pass-96-developmental-self.mjs",
     "test:big-pass-96:integration": "node --experimental-strip-types tests/big-pass-96-developmental-integration.mjs",
     "audit:pass96": "npm run test:big-pass-96 && npm run test:big-pass-96:integration && npm run audit:full && npm run audit:legacy && npm run audit:archive",
-    "test:p23:learning": "node --experimental-strip-types tests/p23-true-learning.mjs && npm run test:workpass203:independent-candidate-evaluator && npm run test:workpass227:bounded-independent-evaluation && npm run test:p23:learning-experiment-plan && npm run test:p23:learning-execution-evidence && npm run test:p23:revision-plan-holdout-isolation && npm run test:p23:local-model-skill-revision-generator && npm run test:p23:skill-retrieval-reflection-curriculum && npm run test:workpass406:robust-metrics",
+    "test:p23:learning": "node --experimental-strip-types tests/p23-true-learning.mjs && npm run test:workpass203:independent-candidate-evaluator && npm run test:workpass227:bounded-independent-evaluation && npm run test:p23:learning-experiment-plan && npm run test:p23:learning-execution-evidence && npm run test:p23:revision-plan-holdout-isolation && npm run test:p23:local-model-skill-revision-generator && npm run test:p23:skill-retrieval-reflection-curriculum && npm run test:workpass406:robust-metrics && npm run test:workpass407:learning-lifecycle-journal",
     "test:workpass197:skill-transfer-safety": "node --experimental-strip-types tests/workpass197-skill-transfer-safety.mjs",
     "test:p23:verified-outcomes": "node --experimental-strip-types tests/p23-verified-outcome-ledger.mjs",
     "test:p23:versioned-skill-store": "node --experimental-strip-types tests/p23-versioned-skill-candidate-store.mjs",
@@ -1776,6 +1776,7 @@
     "test:p324:interrupt-episodes": "node --experimental-strip-types tests/cognitive-dependency-interrupt-episode-workpass324.mjs",
     "test:p325:core-eleven-phase-spine": "node tests/workpass325-core-eleven-phase-causal-loop.mjs",
     "test:cognitive-cycle-boundary-runtime-wiring": "node tests/cognitive-cycle-boundary-runtime-wiring.mjs",
-    "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs"
+    "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs",
+    "test:workpass407:learning-lifecycle-journal": "node --experimental-strip-types tests/workpass407-learning-lifecycle-journal.mjs"
   }
 }
