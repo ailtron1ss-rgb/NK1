@@ -178,4 +178,27 @@ assert.ok(goalSelectedTicks.filter(tick => tick >= 900 && tick < 924).length >= 
 assert.equal(goalSelectedTicks.filter(tick => tick >= 948).length, 32,
   'goal-aware historical selection must not consume the guaranteed recent quota');
 
+// Replay joins incoming trace handles to the exact persisted outcome identity before selection.
+const replayIntegrityLearning = new P23LearningEngine();
+const replayIntegrityPolicy = new AdaptivePolicyEngine();
+const replayIntegrityTrace = makeTrace(1200, 'verify', .2, { uncertainty:.72 });
+replayIntegrityLearning.recordExperience(replayIntegrityTrace, replayIntegrityTrace.stateBefore,
+  { success:.2, reward:.2, surprise:.45 }, replayIntegrityPolicy);
+const persistedReplayExperience = replayIntegrityLearning.snapshot().experiences[0];
+assert.equal(persistedReplayExperience.replayFeatures01.length, 16,
+  'new experiences must persist the bounded replay feature vector beside outcome evidence');
+assert.equal(persistedReplayExperience.goalPressure01, replayIntegrityTrace.stateBefore.needs.goalPressure);
+const mismatchedReplayAction = structuredClone(replayIntegrityTrace);
+mismatchedReplayAction.selected.action = 'respond';
+assert.equal(replayIntegrityLearning.replayPending([mismatchedReplayAction], replayIntegrityPolicy), 0,
+  'a same-ID trace with a different selected action must not enter the replay batch');
+const staleReplayTick = structuredClone(replayIntegrityTrace);
+staleReplayTick.tick += 1;
+assert.equal(replayIntegrityLearning.replayPending([staleReplayTick], replayIntegrityPolicy), 0,
+  'a stale trace tick must not be joined to a persisted experience');
+assert.equal(replayIntegrityLearning.snapshot().replayUpdates.length, 0,
+  'rejected trace joins must not mutate replay state');
+assert.equal(replayIntegrityLearning.replayPending([replayIntegrityTrace], replayIntegrityPolicy), 1,
+  'the original trace identity remains eligible after mismatched inputs are rejected');
+
 console.log(`P23_TRUE_LEARNING=PASS replay=${firstReplay} promoted=${learning.topSkills().length} checksumFailures=${learning.snapshot().metrics.checksumFailures}`);
