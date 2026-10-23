@@ -1,3 +1,8 @@
+## NK1 WorkPass372 — protect replay snapshot round-trips (2026-10-23)
+- [TEST ADDED] Added schema-v1 save/restore coverage for the new replay feature snapshot and tested that snapshot-bearing experiences remain replayable after restore.
+- [COMPATIBILITY] Added regressions for older schema-v1 experiences without the optional replay fields; the bounded matching-trace fallback remains available.
+- [VALIDATION] Assertions are committed but remain unverified until the runner exposes execution steps/logs.
+
 ## NK1 WorkPass371 — preserve minimal trace compatibility (2026-10-23)
 - [FIXED] Replay snapshot capture tolerates valid legacy/minimal traces that omit reasoningSignals; causal strength defaults to a neutral prior instead of throwing during ingestion.
 - [COMPATIBILITY] Existing P23 curriculum integration tests include this compact trace shape; its new replay feature fields remain optional when restoring old schema-v1 state.
