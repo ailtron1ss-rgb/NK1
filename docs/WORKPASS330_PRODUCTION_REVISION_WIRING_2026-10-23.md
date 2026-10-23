@@ -24,6 +24,7 @@
 
 - `commands.executor`, `commands.verifier`, `commands.safetyScanner` — три независимых host-owned процесса; каждый имеет абсолютные пути к executable, рабочей директории и раздельным `runRoot`/`surviveDir`; в argv ровно один placeholder `{requestFile}`;
 - `tasksForRepair(repair)` — возвращает фиксированный набор задач с обоими split: validation и holdout;
+- `baselineMethod` и `sourceCandidateMethod` — разные method labels из экспериментальных планов для оценки active baseline и source candidate; `experimentAuthorityForRepair(repair).method` задаёт третий, revised-candidate метод. Все три метода должны присутствовать в обоих планах и отличаться.
 - `environmentFingerprintForRepair(repair)` — digest используемой среды;
 - `experimentAuthorityForRepair(repair)` — в production обязателен; связывает tasks с каноническим manifest, validation/holdout plans и verified-outcome ledger;
 - опционально `serviceTimeoutMs`.
@@ -62,7 +63,7 @@
 
 ## 4. Регрессии и подключение к workflow
 
-Добавлен `runtime/neuro-kurisu/tests/workpass330-production-revision-wiring.mjs`. Его 11 контрактных случаев охватывают:
+Добавлен `runtime/neuro-kurisu/tests/workpass330-production-revision-wiring.mjs`. Его 12 контрактных случаев охватывают:
 
 1. запрет production-режима без host evaluator config;
 2. сохранение dev-режима, в котором feature не включён автоматически;
@@ -73,8 +74,9 @@
 7. отказ при отсутствии одной из трёх service-команд;
 8. отсутствие фонового расписания по умолчанию и проверку допустимых значений;
 9. отказ от writable host evaluator module и отказ от файла внутри state directory;
-10. отказ от неполной service-конфигурации и неверного production authority;
-11. привязку реального `server.mjs` к evaluator factory и background config в runtime-конфигурации.
+10. отказ от production-конфигурации без раздельных baseline/source method labels;
+11. отказ от неполной service-конфигурации и неверного production authority;
+12. привязку реального `server.mjs` к evaluator factory и background config в runtime-конфигурации.
 
 Тест зарегистрирован как `test:workpass330:production-revision-wiring`, включён в корневой `audit:quick` и WorkPass71 core CI. Написанный regression-тест не следует считать успешно исполненным, пока job действительно не выполнит его.
 
