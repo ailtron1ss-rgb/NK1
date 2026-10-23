@@ -34,6 +34,20 @@ export interface TransferProbe {
   at:number;
 }
 
+export interface ExternalLearningHypothesis {
+  id:string;
+  taskId:string;
+  action:ActionKind;
+  reward01:number;
+  success01:number;
+  surprise01:number;
+  novelty01:number;
+  causalStrength01:number;
+  transferPotential01:number;
+  claimedProvenance:'experience-replay'|'skill-repair'|'external';
+  receivedAt:number;
+}
+
 export interface UnifiedLearningLoopState {
   cycleId:string;
   phase:'idle'|'experience'|'memory'|'replay'|'learning'|'policy'|'verification'|'consolidation';
@@ -51,7 +65,7 @@ export interface UnifiedLearningLoopState {
 }
 
 export interface UnifiedLearningState {
-  version:3;
+  version:4;
   cycles:number;
   samples:number;
   updates:number;
@@ -65,6 +79,8 @@ export interface UnifiedLearningState {
   lastLearningOpportunity01:number;
   lastAt:number;
   patterns:UnifiedLearningPattern[];
+  /** Unverified external inputs are retained separately and never train core patterns directly. */
+  externalHypotheses:ExternalLearningHypothesis[];
   provenanceCounts:{runtime:number;experienceReplay:number;skillRepair:number;external:number};
   validatedTransferSamples:number;
   positiveTransferSamples:number;
@@ -83,9 +99,9 @@ export interface UnifiedLearningSignal {
 }
 
 export const defaultUnifiedLearning=():UnifiedLearningState=>({
-  version:3,cycles:0,samples:0,updates:0,sharedRepresentation01:new Array(DIM).fill(.5),
+  version:4,cycles:0,samples:0,updates:0,sharedRepresentation01:new Array(DIM).fill(.5),
   representationDrift01:0,predictionAgreement01:.5,crossTaskTransfer01:0,consolidationEfficiency01:0,developmentalTransfer01:0,lastDevelopmentalSignal01:0,
-  lastLearningOpportunity01:0,lastAt:0,patterns:[],provenanceCounts:{runtime:0,experienceReplay:0,skillRepair:0,external:0},validatedTransferSamples:0,positiveTransferSamples:0,negativeTransferSamples:0,interference01:0,transferProbes:[],loop:{cycleId:'',phase:'idle',completed:0,total:7,lastOutcomeVerified:false,lastLearningDelta01:0,lastPolicyDelta01:0,lastTransferDelta01:0,lastRetention01:1,closedLoopCount:0,verifiedClosedLoopCount:0,failedClosedLoopCount:0,lastAt:0},
+  lastLearningOpportunity01:0,lastAt:0,patterns:[],externalHypotheses:[],provenanceCounts:{runtime:0,experienceReplay:0,skillRepair:0,external:0},validatedTransferSamples:0,positiveTransferSamples:0,negativeTransferSamples:0,interference01:0,transferProbes:[],loop:{cycleId:'',phase:'idle',completed:0,total:7,lastOutcomeVerified:false,lastLearningDelta01:0,lastPolicyDelta01:0,lastTransferDelta01:0,lastRetention01:1,closedLoopCount:0,verifiedClosedLoopCount:0,failedClosedLoopCount:0,lastAt:0},
 });
 
 function stateVector(state:OrganismState):number[]{
@@ -96,13 +112,88 @@ function stateVector(state:OrganismState):number[]{
 function centroid(oldV:number[],newV:number[],alpha:number){return newV.map((v,i)=>clamp01((oldV[i]??.5)*(1-alpha)+v*alpha));}
 function distance(a:number[],b:number[]){let s=0,n=Math.min(a.length,b.length);for(let i=0;i<n;i++)s+=(clamp01(a[i])-clamp01(b[i]))**2;return n?clamp01(Math.sqrt(s/n)*1.8):0;}
 
+function isGroundedRuntimeOutcome(record:CausalExperienceRecord):boolean{
+  const metrics=[record.reward01,record.success01,record.surprise01,record.predictionError01,record.novelty01,
+    record.uncertainty01,record.energyBefore01,record.energyAfter01,record.stateDelta01,record.causalStrength01,
+    record.identityRelevance01,record.goalPressure01];
+  return record.provenance==='runtime-outcome'&&record.stateGrounded===true&&
+    typeof record.traceId==='string'&&record.traceId.length>0&&record.traceId.length<=180&&
+    Number.isSafeInteger(record.tick)&&record.tick>=0&&ACTIONS.includes(record.action)&&
+    metrics.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1)&&
+    Array.isArray(record.policyFeatures01)&&record.policyFeatures01.length>=16&&record.policyFeatures01.length<=64&&
+    record.policyFeatures01.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1);
+}
+
+function restoreExternalHypotheses(value:unknown):ExternalLearningHypothesis[]{
+  if(!Array.isArray(value))return [];
+  return value.filter((item:unknown):item is ExternalLearningHypothesis=>{
+    if(!item||typeof item!=='object')return false;
+    const h=item as Partial<ExternalLearningHypothesis>;
+    return typeof h.id==='string'&&h.id.length>0&&h.id.length<=160&&
+      typeof h.taskId==='string'&&h.taskId.length>0&&h.taskId.length<=96&&ACTIONS.includes(h.action as ActionKind)&&
+      [h.reward01,h.success01,h.surprise01,h.novelty01,h.causalStrength01,h.transferPotential01].every(v=>typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=1)&&
+      (h.claimedProvenance==='experience-replay'||h.claimedProvenance==='skill-repair'||h.claimedProvenance==='external')&&
+      typeof h.receivedAt==='number'&&Number.isFinite(h.receivedAt)&&h.receivedAt>=0;
+  }).slice(-128).map(h=>({...h,id:h.id.slice(0,160),taskId:h.taskId.slice(0,96)}));
+}
+
 export class UnifiedLearningSubstrate {
   private state=defaultUnifiedLearning();
   restore(raw?:Partial<UnifiedLearningState>|null){
     const d=defaultUnifiedLearning(),r=raw??{};
-    this.state={...d,...r,version:3,sharedRepresentation01:Array.isArray(r.sharedRepresentation01)?r.sharedRepresentation01.slice(0,DIM).map(clamp01):d.sharedRepresentation01.slice(),patterns:Array.isArray(r.patterns)?r.patterns.slice(-128):[],provenanceCounts:{...d.provenanceCounts,...(r.provenanceCounts??{})},transferProbes:Array.isArray(r.transferProbes)?r.transferProbes.slice(-96):[],loop:{...d.loop,...(r.loop??{})}};
+    // v3 patterns/representations could have been updated by caller-asserted
+    // skill-repair/replay claims. They have no per-sample evidence references,
+    // so they cannot be safely relabelled as trusted. Reset only the learned
+    // substrate on migration; durable organism memory and identity are untouched.
+    if(r.version!==4){
+      const safeCycles=typeof r.cycles==='number'&&Number.isSafeInteger(r.cycles)&&r.cycles>=0?r.cycles:0;
+      this.state={...d,cycles:safeCycles};
+      return;
+    }
+    const rawRepresentation=r.sharedRepresentation01;
+    const validRepresentation=Array.isArray(rawRepresentation)&&rawRepresentation.length===DIM&&
+      rawRepresentation.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1);
+    const safeCount=(value:unknown)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
+    const safeMetric=(value:unknown,fallback=0)=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:fallback;
+    const rawProvenance=r.provenanceCounts;
+    const provenanceCounts={
+      runtime:safeCount(rawProvenance?.runtime),
+      experienceReplay:safeCount(rawProvenance?.experienceReplay),
+      skillRepair:safeCount(rawProvenance?.skillRepair),
+      external:safeCount(rawProvenance?.external),
+    };
+    this.state={
+      ...d,
+      version:4,
+      cycles:safeCount(r.cycles),
+      samples:safeCount(r.samples),
+      updates:safeCount(r.updates),
+      sharedRepresentation01:validRepresentation?rawRepresentation as number[]:d.sharedRepresentation01.slice(),
+      representationDrift01:safeMetric(r.representationDrift01),
+      predictionAgreement01:safeMetric(r.predictionAgreement01,.5),
+      crossTaskTransfer01:safeMetric(r.crossTaskTransfer01),
+      consolidationEfficiency01:safeMetric(r.consolidationEfficiency01),
+      developmentalTransfer01:safeMetric(r.developmentalTransfer01),
+      lastDevelopmentalSignal01:safeMetric(r.lastDevelopmentalSignal01),
+      lastLearningOpportunity01:safeMetric(r.lastLearningOpportunity01),
+      lastAt:safeCount(r.lastAt),
+      patterns:Array.isArray(r.patterns)?r.patterns.slice(-128):[],
+      externalHypotheses:restoreExternalHypotheses(r.externalHypotheses),
+      provenanceCounts,
+      validatedTransferSamples:safeCount(r.validatedTransferSamples),
+      positiveTransferSamples:safeCount(r.positiveTransferSamples),
+      negativeTransferSamples:safeCount(r.negativeTransferSamples),
+      interference01:safeMetric(r.interference01),
+      transferProbes:Array.isArray(r.transferProbes)?r.transferProbes.slice(-96):[],
+      loop:r.loop&&typeof r.loop==='object'?{...d.loop,...r.loop}:d.loop,
+    };
   }
   snapshot(){return structuredClone(this.state);}
+  /** Read-only oldest-first queue for independent assessment; reading never promotes or deletes a claim. */
+  pendingExternalHypotheses(limit=32):ExternalLearningHypothesis[]{
+    const wanted=Math.max(1,Math.min(128,Math.floor(Number.isFinite(limit)?limit:32)));
+    return this.state.externalHypotheses.slice(0,wanted).map(item=>structuredClone(item));
+  }
   beginCycle(){this.state.cycles++;this.state.loop={...this.state.loop,cycleId:'',phase:'idle',completed:0,total:7,lastOutcomeVerified:false,lastLearningDelta01:0,lastPolicyDelta01:0,lastTransferDelta01:0,lastRetention01:1,lastAt:Date.now()};}
 
   beginLearningLoop(input:{traceId:string;taskId:string;at?:number}){
@@ -141,34 +232,44 @@ export class UnifiedLearningSubstrate {
     const reward=clamp01(input.reward01),success=clamp01(input.success01),surprise=clamp01(input.surprise01),novelty=clamp01(input.novelty01),causal=clamp01(input.causalStrength01);
     const transfer=clamp01(input.transferPotential01??(.45*causal+.25*novelty+.30*success));
     const opportunity=clamp01(.50*causal+.22*surprise+.18*novelty+.10*transfer);
-    const provenance=input.provenance??'external'; this.state.provenanceCounts[provenance==='experience-replay'?'experienceReplay':provenance==='skill-repair'?'skillRepair':'external']++;
     const priority=clamp01(.58*opportunity+.42*transfer);
-    this.state.crossTaskTransfer01=clamp01(this.state.crossTaskTransfer01*.95+transfer*.05);
-    this.state.lastLearningOpportunity01=opportunity;
-    this.state.consolidationEfficiency01=clamp01(this.state.consolidationEfficiency01*.97+(priority>.5?1:0)*.03);
-    this.state.samples++;this.state.updates++;this.state.lastAt=Date.now();
-    const key=`${String(input.taskId).slice(0,96)}|${input.action}`;
-    const existing=this.state.patterns.find(p=>p.key===key);
-    if(existing){
-      const a=1/Math.max(2,existing.samples+1);existing.samples++;existing.meanReward01=existing.meanReward01*(1-a)+reward*a;existing.meanPredictionError01=existing.meanPredictionError01*(1-a)+surprise*a;existing.meanCausalStrength01=existing.meanCausalStrength01*(1-a)+causal*a;existing.meanNovelty01=existing.meanNovelty01*(1-a)+novelty*a;existing.transferPotential01=existing.transferPotential01*(1-a)+transfer*a;existing.confidence01=clamp01(existing.confidence01*.9+.1*clamp01(.4+existing.samples/24));existing.lastAt=Date.now();
-    } else {
-      this.state.patterns.push({id:`ulp-ext-${this.state.patterns.length+1}-${Date.now()}`,key,samples:1,taskId:String(input.taskId).slice(0,96),dominantAction:input.action,meanReward01:reward,meanPredictionError01:surprise,meanCausalStrength01:causal,meanNovelty01:novelty,transferPotential01:transfer,confidence01:.38,firstAt:Date.now(),lastAt:Date.now()});
-      if(this.state.patterns.length>128)this.state.patterns=this.state.patterns.slice(-128);
-    }
-    return {learningOpportunity01:opportunity,consolidationPriority01:priority,transferPotential01:transfer};
+    // Provenance is a claim from the caller, not proof of origin. Quarantine this
+    // signal as a hypothesis; only the verified runtime-outcome lane may update
+    // behavioral patterns, transfer estimates, or the shared representation.
+    const claimedProvenance=input.provenance==='experience-replay'||input.provenance==='skill-repair'?input.provenance:'external';
+    this.state.provenanceCounts.external++;
+    const receivedAt=Date.now();
+    this.state.externalHypotheses.push({
+      id:`ulh-${this.state.externalHypotheses.length+1}-${receivedAt}`,
+      taskId:String(input.taskId??'').normalize('NFKC').trim().slice(0,96)||'unknown-task',
+      action:ACTIONS.includes(input.action)?input.action:'wait',
+      reward01:reward,success01:success,surprise01:surprise,novelty01:novelty,
+      causalStrength01:causal,transferPotential01:transfer,
+      claimedProvenance:claimedProvenance,receivedAt,
+    });
+    if(this.state.externalHypotheses.length>128)this.state.externalHypotheses=this.state.externalHypotheses.slice(-128);
+    return {learningOpportunity01:opportunity,consolidationPriority01:priority,transferPotential01:transfer,acceptedAs:'unverified-hypothesis' as const,coreLearningUpdated:false};
   }
-
   ingest(trace:OrganismDecisionTrace,after:OrganismState,record:CausalExperienceRecord|null,packet:CausalLearningPacket):UnifiedLearningSignal{
     const before=stateVector(trace.stateBefore),afterV=stateVector(after);
     const drift=distance(before,afterV);
     const repNovelty=distance(this.state.sharedRepresentation01,afterV);
-    const causal=record?.causalStrength01??packet.learningOpportunity01;
-    const prediction=record?.predictionError01??trace.stateBefore.predictionError;
-    const uncertainty=record?.uncertainty01??trace.stateBefore.needs.uncertainty;
-    const novelty=record?.novelty01??trace.stateBefore.needs.novelty;
-    const transfer=clamp01(.45*(1-Math.abs((record?.reward01??.5)-.5)*1.2)+.3*causal+.25*repNovelty);
+    const trustedRecord=record&&isGroundedRuntimeOutcome(record)&&
+      record.traceId===trace.id&&record.tick===trace.tick&&record.action===trace.selected?.action
+      ?record:null;
+    const trustedPacketRecords=Array.isArray(packet?.records)?packet.records.filter(isGroundedRuntimeOutcome):[];
+    const packetOpportunity=trustedPacketRecords.length
+      ?trustedPacketRecords.reduce((sum,row)=>sum+row.causalStrength01*.6+row.surprise01*.2+row.predictionError01*.2,0)/trustedPacketRecords.length
+      :0;
+    const prediction=clamp01(trace.stateBefore.predictionError);
+    const novelty=clamp01(trace.stateBefore.needs.novelty);
+    // Without a record bound to this exact decision and a grounded state change,
+    // learn only representation/prediction structure; do not import reward credit.
+    const causal=trustedRecord?.causalStrength01??clamp01(.45*drift+.35*prediction+.20*packetOpportunity);
+    const reward=trustedRecord?.reward01??.5;
+    const transfer=clamp01(.45*(1-Math.abs(reward-.5)*1.2)+.3*causal+.25*repNovelty);
     const opportunity=clamp01(.48*causal+.2*prediction+.16*novelty+.16*repNovelty);
-    const consolidationPriority=clamp01(opportunity*.55+Math.min(1,packet.records.length/12)*.25+transfer*.2);
+    const consolidationPriority=clamp01(opportunity*.55+Math.min(1,trustedPacketRecords.length/12)*.25+transfer*.2);
     const alpha=.04+.10*opportunity;
     this.state.sharedRepresentation01=centroid(this.state.sharedRepresentation01,afterV,alpha);
     this.state.representationDrift01=clamp01(this.state.representationDrift01*.9+drift*.1);
@@ -177,7 +278,7 @@ export class UnifiedLearningSubstrate {
     this.state.consolidationEfficiency01=clamp01(this.state.consolidationEfficiency01*.97+(consolidationPriority>0.5?1:0)*.03);
     this.state.lastLearningOpportunity01=opportunity;
     this.state.samples++;this.state.updates++;this.state.lastAt=Date.now();
-    if(record)this.upsertPattern(record,transfer);
+    if(trustedRecord)this.upsertPattern(trustedRecord,transfer);
     return {latent01:this.state.sharedRepresentation01.slice(),learningOpportunity01:opportunity,representationNovelty01:repNovelty,transferPotential01:transfer,consolidationPriority01:consolidationPriority};
   }
 
@@ -258,7 +359,7 @@ export class UnifiedLearningSubstrate {
       crossTaskTransfer01:this.state.crossTaskTransfer01,consolidationEfficiency01:this.state.consolidationEfficiency01,
       developmentalTransfer01:this.state.developmentalTransfer01,lastDevelopmentalSignal01:this.state.lastDevelopmentalSignal01,
       lastLearningOpportunity01:this.state.lastLearningOpportunity01,patternCount:this.state.patterns.length,
-      provenanceCounts:this.state.provenanceCounts,validatedTransferSamples:this.state.validatedTransferSamples,
+      provenanceCounts:this.state.provenanceCounts,externalHypothesisCount:this.state.externalHypotheses.length,validatedTransferSamples:this.state.validatedTransferSamples,
       positiveTransferSamples:this.state.positiveTransferSamples,negativeTransferSamples:this.state.negativeTransferSamples,
       interference01:this.state.interference01,transferProbes:this.state.transferProbes.length,learningLoop:this.state.loop,topPatterns:this.state.patterns.slice(0,8)
     };
