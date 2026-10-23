@@ -20,6 +20,9 @@ on:
       - "runtime/neuro-kurisu/tests/p23-local-model-skill-revision-generator.mjs"
       - "runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/OutcomeReflectionCurriculum.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/PersonalCurriculumEngine.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-122-personal-curriculum.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-122-core-personal-curriculum.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/LearningTrustBoundary.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionCoordinator.ts"
       - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
@@ -155,6 +158,14 @@ jobs:
       - name: Run P23 reflection and diverse-curriculum regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-skill-retrieval-reflection-curriculum.mjs
+
+      - name: Run personal curriculum state restore regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-122
+
+      - name: Run personal curriculum core persistence regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-122:core
       - name: Run P23 compound repair evidence fingerprint regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass172-compound-revision-coordinator.mjs
