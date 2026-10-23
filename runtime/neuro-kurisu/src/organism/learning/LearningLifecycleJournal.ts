@@ -194,7 +194,10 @@ function validateTransition(entries: readonly LearningLifecycleEventEntry[], nex
     return;
   }
   if (next.event === 'activation-reconciled-active' || next.event === 'activation-reconciled-not-currently-active') {
-    if (prior.length !== 2 || prior[0].event !== 'activation-intent' || prior[1].event !== 'activation-outcome-unknown') {
+    const crashAfterIntent = prior.length === 1 && prior[0].event === 'activation-intent';
+    const explicitUnknown = prior.length === 2 &&
+      prior[0].event === 'activation-intent' && prior[1].event === 'activation-outcome-unknown';
+    if (!crashAfterIntent && !explicitUnknown) {
       throw new Error('learning-lifecycle-journal-transition-invalid');
     }
     return;
