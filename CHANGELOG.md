@@ -1,3 +1,12 @@
+## NK1 WorkPass420 — protect affect-state restoration from executable objects (2026-10-23)
+
+- Emotion restore now snapshots bounded plain data before reading episode, interoception or calibration fields.
+- Accessor-backed/cyclic/exotic snapshots fail closed to the defined neutral affect state without running getters.
+- Added a regression proving corrupt persistence cannot execute a getter or seed emotion bias.
+- Validation remains pending until the current branch HEAD can run tests and typecheck in GitHub Actions.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

@@ -1,3 +1,4 @@
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 /**
  * BIG PASS 164 — Appraisal-based emotion episodes.
  *
@@ -88,7 +89,14 @@ export class EmotionAppraisalEngine {
   private state=empty();
   restore(raw?:Partial<EmotionAppraisalState>|null){
     const d=empty();
-    const r=isRecord(raw)?raw:{};
+    let detached: unknown;
+    try {
+      detached = snapshotPlainData(raw ?? {}, { allowNonFiniteNumbers: true, maxDepth: 24, maxNodes: 10_000, maxStringUnits: 1024 * 1024 });
+    } catch {
+      this.state = d;
+      return;
+    }
+    const r=isRecord(detached)?detached:{};
     const rawInteroception=isRecord(r.interoception)?r.interoception:{};
     const rawObserved=isRecord(rawInteroception.lastObserved)?rawInteroception.lastObserved:{};
     const rawPredicted=isRecord(rawInteroception.predicted)?rawInteroception.predicted:{};

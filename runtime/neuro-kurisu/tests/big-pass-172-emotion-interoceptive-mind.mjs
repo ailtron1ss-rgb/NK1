@@ -69,6 +69,19 @@ assert.throws(() => corruptedEmotion.appraise({ tick: Number.NaN }), /emotion-ap
 assert.throws(() => corruptedEmotion.appraise({ tick: 1, at: Number.POSITIVE_INFINITY }), /emotion-appraisal-timestamp/);
 assert.equal(corruptedEmotion.appraise({ tick: 1, at: 1004, novelty01: .8, uncertainty01: .5 }).tick, 1);
 
+let emotionGetterReads = 0;
+const accessorEmotionState = { episodes: 99, lastAt: 9999 };
+Object.defineProperty(accessorEmotionState, 'lastLabel', {
+  configurable: true, enumerable: true,
+  get() { emotionGetterReads += 1; return 'anger'; },
+});
+const accessorSafeEmotion = new EmotionAppraisalEngine();
+accessorSafeEmotion.restore(accessorEmotionState);
+assert.equal(emotionGetterReads, 0, 'emotion restore must not execute persisted getters');
+assert.equal(accessorSafeEmotion.snapshot().episodes, 0);
+assert.equal(accessorSafeEmotion.snapshot().lastLabel, 'calm');
+assert.deepEqual(accessorSafeEmotion.snapshot().outcomes, {});
+
 const h = new P66InteroceptiveHomeostasis();
 const high = h.observe({tick:1,at:1,energy01:.2,thermal01:.9,capacity01:.25,load01:.9,awake:true,uncertainty01:.8,predictionError01:.8,novelty01:.2});
 assert.equal(high.mode,'recover'); assert.ok(high.pressure01>.5);
