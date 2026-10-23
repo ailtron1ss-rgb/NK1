@@ -5,6 +5,18 @@ const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const clean=(x:unknown,n=140)=>String(x??'').trim().replace(/\s+/g,' ').slice(0,n);
 const hash=(s:string)=>{let h=2166136261>>>0;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)>>>0;}return (h>>>0).toString(16).padStart(8,'0');};
 const isCurriculumUnit=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
+const isCurriculumIdentity=(value:unknown,maxLength:number):value is string=>
+  typeof value==='string'&&value.length>0&&value.length<=maxLength&&value.trim()===value&&
+  value.normalize('NFKC')===value&&!Array.from(value).some(character=>{
+    const code=character.codePointAt(0)??0;
+    return code<=0x1f||(code>=0x7f&&code<=0x9f);
+  });
+const isCurriculumText=(value:unknown,maxLength:number,allowEmpty=false):value is string=>
+  typeof value==='string'&&value.length<=maxLength&&(allowEmpty||value.length>0)&&
+  !Array.from(value).some(character=>{
+    const code=character.codePointAt(0)??0;
+    return code<=0x08||(code>=0x0b&&code<=0x1f)||(code>=0x7f&&code<=0x9f);
+  });
 const isCurriculumTimestamp=(value:unknown):value is number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
 const isCurriculumCounter=(value:unknown):value is number=>isCurriculumTimestamp(value)&&value<=1_000_000_000;
 function snapshotCurriculumInput(value:unknown,label:string):Record<string,unknown>{
@@ -98,7 +110,7 @@ export class PersonalCurriculumEngine {
          idCounts.get(x.id)!==1||familyCounts.get(x.family)!==1||
          typeof x.title!=='string'||!x.title.trim()||x.title.length>140||!source||!status||
          !Array.isArray(x.contextKeys)||x.contextKeys.length>24||
-         x.contextKeys.some(k=>typeof k!=='string'||!k.trim()||k.length>180)||
+         x.contextKeys.some(k=>!isCurriculumIdentity(k,180))||
          !metrics.every(k=>typeof x[k]==='number'&&Number.isFinite(x[k])&&x[k]>=0&&x[k]<=1)||
          !['occurrences','verified','successes','failures','contexts'].every(k=>typeof x[k]==='number'&&Number.isSafeInteger(x[k])&&x[k]>=0&&x[k]<=1_000_000_000)||typeof x.lastAt!=='number'||!Number.isSafeInteger(x.lastAt)||x.lastAt<0)continue;
       const contextKeys=Array.from(new Set(x.contextKeys as string[]));
@@ -112,7 +124,7 @@ export class PersonalCurriculumEngine {
     this.state={
       version:1,cycles:safeCount(r.cycles,defaults.cycles),threads,
       focusThreadId:focus,
-      focusGoalId:typeof r.focusGoalId==='string'&&r.focusGoalId.trim()&&r.focusGoalId.length<=256?r.focusGoalId:null,
+      focusGoalId:isCurriculumIdentity(r.focusGoalId,256)?r.focusGoalId:null,
       curriculumPressure01:safeUnit(r.curriculumPressure01,defaults.curriculumPressure01),
       socialLearning01:safeUnit(r.socialLearning01,defaults.socialLearning01),
       autobiographicalLearning01:safeUnit(r.autobiographicalLearning01,defaults.autobiographicalLearning01),
@@ -146,9 +158,9 @@ export class PersonalCurriculumEngine {
     if(input.goal===null)return null;
     const goal=input.goal as unknown as Record<string,unknown>;
     if(!goal||typeof goal!=='object'||Array.isArray(goal)||
-       typeof goal.id!=='string'||!goal.id.trim()||goal.id.length>256||
-       typeof goal.title!=='string'||!goal.title.trim()||goal.title.length>512||
-       typeof goal.reason!=='string'||goal.reason.length>4096||
+       !isCurriculumIdentity(goal.id,256)||
+       !isCurriculumText(goal.title,512)||
+       !isCurriculumText(goal.reason,4096,true)||
        !['intrinsic','external','learned','homeostatic'].includes(goal.source as string)||
        !['candidate','active','paused','completed','abandoned'].includes(goal.status as string)||
        !isCurriculumUnit(goal.importance)||!isCurriculumUnit(goal.urgency)||
@@ -158,7 +170,7 @@ export class PersonalCurriculumEngine {
     }
     assertCurriculumUnits(input as unknown as Record<string,unknown>,
       ['outcome01','causal01','social01','identity01','retention01','transfer01'],'outcome');
-    if(typeof input.verified!=='boolean'||typeof input.contextKey!=='string'||input.contextKey.length>512||
+    if(typeof input.verified!=='boolean'||!isCurriculumText(input.contextKey,512,true)||
        (input.at!==undefined&&!isCurriculumTimestamp(input.at))||
        (input.sourceMomentCount!==undefined&&!isCurriculumCounter(input.sourceMomentCount))){
       throw new Error('personal-curriculum-outcome-invalid');
@@ -199,10 +211,10 @@ export class PersonalCurriculumEngine {
 
   observeDevelopmentalContext(input:{action:string;source:'autobiographical'|'social'|'mixed';contextKey:string;pressure01:number;identity01:number;social01:number;causal01:number;evidence01:number;unresolved01:number;at?:number;label?:string}):CurriculumThread|null{
     input=snapshotCurriculumInput(input,'developmental-context') as unknown as typeof input;
-    if(typeof input.action!=='string'||!input.action.trim()||input.action.length>256||
+    if(!isCurriculumText(input.action,256)||
        !['autobiographical','social','mixed'].includes(input.source)||
-       typeof input.contextKey!=='string'||input.contextKey.length>512||
-       (input.label!==undefined&&(typeof input.label!=='string'||input.label.length>512))||
+       !isCurriculumText(input.contextKey,512,true)||
+       (input.label!==undefined&&!isCurriculumText(input.label,512,true))||
        (input.at!==undefined&&!isCurriculumTimestamp(input.at))){
       throw new Error('personal-curriculum-developmental-context-invalid');
     }
@@ -242,15 +254,15 @@ export class PersonalCurriculumEngine {
     for(const rawGoal of input.goals){
       if(rawGoal===null||typeof rawGoal!=='object'||Array.isArray(rawGoal))throw new Error('personal-curriculum-goal-ranking-goal-invalid');
       const goal=rawGoal as unknown as Record<string,unknown>;
-      if(typeof goal.id!=='string'||!goal.id.trim()||goal.id.length>256||
-         typeof goal.title!=='string'||!goal.title.trim()||goal.title.length>512||
-         typeof goal.reason!=='string'||goal.reason.length>4096||
+      if(!isCurriculumIdentity(goal.id,256)||
+         !isCurriculumText(goal.title,512)||
+         !isCurriculumText(goal.reason,4096,true)||
          !['intrinsic','external','learned','homeostatic'].includes(goal.source)||
          !['candidate','active','paused','completed','abandoned'].includes(goal.status)||
          !isCurriculumUnit(goal.importance)||!isCurriculumUnit(goal.urgency)||
          !isCurriculumUnit(goal.confidence)||!isCurriculumUnit(goal.progress)||
          !isCurriculumTimestamp(goal.createdAt)||!isCurriculumTimestamp(goal.updatedAt)||
-         (goal.parentId!==undefined&&(typeof goal.parentId!=='string'||goal.parentId.length>256))||
+         (goal.parentId!==undefined&&!isCurriculumIdentity(goal.parentId,256))||
          goalIds.has(goal.id)){
         throw new Error('personal-curriculum-goal-ranking-goal-invalid');
       }
