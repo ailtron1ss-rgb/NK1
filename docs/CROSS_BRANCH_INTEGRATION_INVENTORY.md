@@ -1,5 +1,13 @@
 # NK1 cross-branch integration inventory (2026-10-22)
 
+## Follow-up — avatar persistence integration (2026-10-23)
+
+- `LegacySpriteDeck` and `AvatarStage` now use the restored `safeLocalStorage.ts` adapter for optional outfit, viewer-mode and voice preferences. A single blocked local-storage write returns `false` rather than aborting the settings effect.
+- Extended the adapter regression test to cover both React components. The same root regression aggregate already invokes it, so no duplicate CI workflow step is needed.
+
+---
+
+
 ## Follow-up — production wiring (2026-10-23)
 
 - The restored `CognitiveCycleBoundary` is now called by `OrganismRuntime.stepInternal` directly after `environment.toOrganismObservation()`; a regression script checks import, call placement and runtime input guards.
