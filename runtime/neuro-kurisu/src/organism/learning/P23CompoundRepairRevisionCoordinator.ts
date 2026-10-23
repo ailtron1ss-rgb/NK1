@@ -55,7 +55,7 @@ export interface CompoundRepairRetryBackoffStore {
 
 const BASE_RETRY_BACKOFF_MS = 30 * 60 * 1000;
 const MAX_RETRY_BACKOFF_MS = 24 * 60 * 60 * 1000;
-const isSha256Digest=(value:unknown):value is string=>typeof value==='string'&&/^[a-f0-9]{64}$/i.test(value);
+const isSha256Digest=(value:unknown):value is string=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
 
 export type CompoundRepairEvidenceRow = ReturnType<OrganismRuntime['compoundSkillRepairEvidence']>[number];
 
