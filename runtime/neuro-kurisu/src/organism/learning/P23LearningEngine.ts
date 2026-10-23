@@ -16,6 +16,24 @@ import { planSkillRevision, type SkillRevisionPlan } from './SkillRevisionPlan.t
 import type { SkillShadowEvidenceVerifier } from './VersionedSkillCandidateStore.ts';
 import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillRollbackApproval, type SkillShadowObservation, type SkillRevisionProvenance, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 
+/**
+ * Single source of truth for the guarded reflective-skill promotion policy.
+ * Metrics, independent evaluation and the durable journal read these same values.
+ */
+export const P23_REFLECTIVE_PROMOTION_POLICY = Object.freeze({
+  minimumValidationFamilies: 1,
+  minimumHoldoutFamilies: 1,
+  minimumValidationFamilyTasks: 2,
+  minimumHoldoutFamilyTasks: 2,
+  maximumValidationTaskRegression01: 0.20,
+  maximumValidationFamilyRegression01: 0.10,
+  maximumHoldoutRegression01: 0.02,
+  maximumHoldoutFamilyRegression01: 0.10,
+  minimumValidationFamilySeeds: 3,
+  minimumHoldoutFamilySeeds: 3,
+  confidenceLevel: 0.95,
+  bootstrapResamples: 2000,
+});
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp = (x:number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
 
@@ -891,16 +909,21 @@ export class P23LearningEngine {
     // canonical task-family labels come from the evaluator's trusted manifest,
     // not from the skill/caller. Diagnostic callers can remain legacy-compatible,
     // but the promotion authority must not silently skip family generalization.
+    const policy=P23_REFLECTIVE_PROMOTION_POLICY;
     const fitness=compareMatchedIndependentEvaluations(baseline,evaluation,{
-      minimumValidationFamilies:1,
-      minimumHoldoutFamilies:1,
-      minimumValidationFamilyTasks:2,
-      minimumHoldoutFamilyTasks:2,
+      minimumValidationFamilies:policy.minimumValidationFamilies,
+      minimumHoldoutFamilies:policy.minimumHoldoutFamilies,
+      minimumValidationFamilyTasks:policy.minimumValidationFamilyTasks,
+      minimumHoldoutFamilyTasks:policy.minimumHoldoutFamilyTasks,
+      maximumValidationTaskRegression01:policy.maximumValidationTaskRegression01,
+      maximumValidationFamilyRegression01:policy.maximumValidationFamilyRegression01,
+      maximumHoldoutRegression01:policy.maximumHoldoutRegression01,
+      maximumHoldoutFamilyRegression01:policy.maximumHoldoutFamilyRegression01,
     },{
-      minimumValidationFamilySeeds:3,
-      minimumHoldoutFamilySeeds:3,
-      confidenceLevel:0.95,
-      bootstrapResamples:2000,
+      minimumValidationFamilySeeds:policy.minimumValidationFamilySeeds,
+      minimumHoldoutFamilySeeds:policy.minimumHoldoutFamilySeeds,
+      confidenceLevel:policy.confidenceLevel,
+      bootstrapResamples:policy.bootstrapResamples,
     });
     this.learningFitnessJournal?.recordFitnessDecision({
       recordedAt:now(),
