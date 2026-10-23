@@ -39,7 +39,7 @@ import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/Act
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
-import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
+import { P23CompoundRepairRevisionCoordinator, canonicalCompoundRepairEvidence, fingerprintCompoundRepairEvidence, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
 import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEvaluationProvider.ts';
 import type { IndependentCandidateEvaluationConfig } from '../learning/IndependentSkillCandidateEvaluator.ts';
 import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndependentEvaluationFactoryOptions } from '../learning/HostOwnedIndependentEvaluationServices.ts';
@@ -1066,7 +1066,7 @@ export class OrganismRuntime {
    */
   compoundSkillRepairEvidence(id?:string){
     const state=this.proceduralSkillLibrary.snapshot();
-    return state.compoundSkills
+    const rows=state.compoundSkills
       .filter(skill=>!id||skill.id===id)
       .flatMap(skill=>skill.repairsLedger
         .filter(row=>!row.holdout)
@@ -1084,9 +1084,10 @@ export class OrganismRuntime {
           confidence01:row.confidence01,
           observedAt:row.at,
           revisionEligible:Boolean(row.verified&&row.selectedTool&&row.selectedTool!==row.toolId&&row.candidateTools.includes(row.selectedTool)&&row.confidence01>=skill.policy.minEvidence01),
-        })))
-      .sort((a,b)=>b.observedAt-a.observedAt)
-      .slice(0,96);
+        })));
+    // Keep only the newest evidence budget, but make ties and unordered candidate
+    // tool sets deterministic before this evidence is fingerprinted downstream.
+    return canonicalCompoundRepairEvidence(rows).slice(0,96);
   }
 
 
@@ -1134,11 +1135,11 @@ export class OrganismRuntime {
       throw new Error('configured P23 learning engine is required');
     }
     if(typeof input.generate!=='function') throw new Error('configured skill revision generator is required');
-    const repairEvidence=this.compoundSkillRepairEvidence(input.skillId).filter(row=>row.revisionEligible);
+    const repairEvidence=canonicalCompoundRepairEvidence(this.compoundSkillRepairEvidence(input.skillId).filter(row=>row.revisionEligible));
     if(repairEvidence.length===0) {
       throw new Error('no verified non-holdout compound repair evidence is eligible for revision');
     }
-    const computedEvidenceFingerprint=createHash('sha256').update(JSON.stringify(repairEvidence)).digest('hex');
+    const computedEvidenceFingerprint=fingerprintCompoundRepairEvidence(repairEvidence);
     if(input.sourceEvidenceFingerprint!==undefined && input.sourceEvidenceFingerprint!==computedEvidenceFingerprint) {
       throw new Error('compound repair evidence changed before revision provenance could be bound');
     }
