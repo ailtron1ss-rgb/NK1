@@ -1,3 +1,12 @@
+## NK1 WorkPass454 — preserve built-in postcondition proof floors (2026-10-23)
+
+- `ExternalPostconditionVerifier.registerAction` may strengthen a known action contract but can no longer lower its independent-proof threshold or disable required observation/actuation flags.
+- Prevents later runtime registration from weakening built-in `verify`, `respond` or `rest` policy; new action keys remain supported behind bounded validation.
+- Added regressions that attempt policy downgrades and verifies strengthening remains possible.
+- No new dependencies and no relaxation of existing freshness/source/evidence checks. Exact-head tests remain unverified.
+
+---
+
 ## NK1 WorkPass447 — harden evidence-ledger snapshot restoration (2026-10-23)
 
 - Applied the existing bounded plain-data snapshot boundary to `VerifiedOutcomeLedger.restoreSnapshot` before reading persisted schema fields. Accessor-backed snapshots, cycles, unsupported prototypes, and oversized graphs now fail closed without running getter code.
