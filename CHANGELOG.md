@@ -1,3 +1,9 @@
+## NK1 WorkPass440 — simplify one-time P23 failure classification (2026-10-23)
+
+- Replaced an inline classifier expression with a named local computed once before the immutable experience record is assembled. No behavioral change; improves reviewability and keeps the single normalized result explicit.
+
+---
+
 ## NK1 WorkPass439 — repair the failure-reason regression import and avoid duplicate classification (2026-10-23)
 
 - Corrected the P23 reflection regression's import list so the new reason-taxonomy assertions resolve their classifier.

@@ -1276,6 +1276,7 @@ export class P23LearningEngine {
     // clamp malformed external feedback into apparently valid evidence.
     if (![outcome.success,outcome.reward,outcome.surprise].every(isPersistedUnit)) return;
     const key=contextKey(trace.stateBefore), nextKey=contextKey(stateAfter);
+    const failureClass=classifyLearningFailureReason(outcome.notes);
     const record:LearningExperience={
       id:`exp-${trace.id}`,
       traceId:trace.id,
@@ -1290,7 +1291,7 @@ export class P23LearningEngine {
       reward:clamp(outcome.reward),
       surprise:clamp(outcome.surprise),
       outcomeAt:now(),
-      ...((failureClassForExperience)=>failureClassForExperience?{failureClass:failureClassForExperience}:{ })(classifyLearningFailureReason(outcome.notes)),
+      ...(failureClass?{failureClass}:{}),
        goalPressure01:clamp(trace.stateBefore.needs.goalPressure),
        causalStrength01:clamp(trace.reasoningSignals?.causalConfidence01 ?? trace.reasoningSignals?.causalStrength01 ?? .5),
        replayFeatures01:[
