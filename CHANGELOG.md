@@ -1,7 +1,7 @@
 ## NK1 WorkPass340 — extend CI runtime audit to artifact actions (2026-10-23)
 
 - Extended the existing CI compatibility audit to cover `actions/upload-artifact` and `actions/download-artifact` as well as checkout/setup-node. This closes a blind spot where artifact action downgrades could bypass the Node.js 24 runtime policy.
-- Updated fixtures so Node 24-compatible v7 action tags are accepted and v4 versions of all four actions are rejected. Existing workflows on `feature/experiments` already use Node 24 / v7 where applicable; no workflow downgrade or dependency was introduced.
+- Updated fixtures so Node 24-compatible v7 action tags are accepted and v4 versions of all four actions are rejected; the generated multiline inputs use valid JavaScript newline escapes. Existing workflows on `feature/experiments` already use Node 24 / v7 where applicable; no workflow downgrade or dependency was introduced.
 - **Verification:** regression source is committed but not executed on this exact head. Recent hosted jobs stop before the first step with `runner_id=0`.
 
 ---
