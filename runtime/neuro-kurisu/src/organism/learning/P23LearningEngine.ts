@@ -838,6 +838,8 @@ export class P23LearningEngine {
     },{
       minimumValidationFamilySeeds:3,
       minimumHoldoutFamilySeeds:3,
+      confidenceLevel:0.95,
+      bootstrapResamples:2000,
     });
     if(!fitness.eligible) throw new Error(`independent reflective fitness gate rejected candidate: ${fitness.reasons.join(',')}`);
     // Bind against the exact receipts persisted on the candidate; caller-supplied
