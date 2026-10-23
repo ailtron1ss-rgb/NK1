@@ -47,7 +47,7 @@ const manyRepairRows=Array.from({length:120},(_,index)=>({
   // It is useful diagnostic memory but must not be a skill-revision candidate.
   candidateTools:index===119?[]:['fallback'],
   selectedTool:index===119?'':'fallback',
-  verified:index!==119,confidence01:index===119?.2:.9,at:index,
+  verified:index!==119,confidence01:index===119 ? 0.2 : 0.9,at:index,
 }));
 const runtimeEvidenceView=Object.create(OrganismRuntime.prototype);
 runtimeEvidenceView.proceduralSkillLibrary={snapshot:()=>({compoundSkills:[{
