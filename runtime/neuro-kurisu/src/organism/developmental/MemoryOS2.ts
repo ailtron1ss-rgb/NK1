@@ -298,9 +298,12 @@ function normalizeConfidenceRevisionHistory(value:unknown):MemoryConfidenceRevis
   const at=Number(row.at),prior=Number(row.priorConfidence),posterior=Number(row.posteriorConfidence),authority=Number(row.authority01);
   const sourceKey=typeof row.sourceKey==='string'?row.sourceKey.slice(0,320):'';
   const source=typeof row.source==='string'?row.source.slice(0,240):'';
-  if(!Number.isFinite(at)||at<0||![prior,posterior,authority].every(n=>Number.isFinite(n)&&n>=0&&n<=1)||!sourceKey||!source)return [];
-  if(!['applied','duplicate_source','protected'].includes(row.reason))return [];
-  return [{at,stance:row.stance as MemoryConfidenceStance,priorConfidence:prior,posteriorConfidence:posterior,authority01:authority,sourceKey,source,applied:row.applied===true,reason:row.reason as MemoryConfidenceRevision['reason'],policy:'residual_v1' as const}];
+  if(!Number.isFinite(at)||at<0||![prior,posterior,authority].every(n=>Number.isFinite(n)&&n>=0&&n<=1)||!sourceKey||sourceKey.length>320||!source||source.length>240)return [];
+  if(!['applied','duplicate_source','protected'].includes(row.reason)||typeof row.applied!=='boolean'||(row.applied!== (row.reason==='applied')))return [];
+  if(row.reason!=='applied'&&posterior!==prior)return [];
+  if(row.reason==='applied'&&row.stance==='supports'&&posterior<prior)return [];
+  if(row.reason==='applied'&&row.stance==='contradicts'&&posterior>prior)return [];
+  return [{at,stance:row.stance as MemoryConfidenceStance,priorConfidence:prior,posteriorConfidence:posterior,authority01:authority,sourceKey,source,applied:row.applied,reason:row.reason as MemoryConfidenceRevision['reason'],policy:'residual_v1' as const}];
  });
 }
 type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'> & Partial<Pick<MemoryItem2,'revisionHistory'|'confidenceRevisionHistory'>>;
@@ -668,12 +671,12 @@ export class MemoryOS2{
   const observedAt=Number.isFinite(Number(item?.observedAt))?Number(item.observedAt):Number(item?.createdAt??Date.now());
   const evidenceFreshnessAt=Number.isFinite(Number(item?.evidenceFreshnessAt))?Number(item.evidenceFreshnessAt):observedAt;
   const validStance=(stance:unknown):MemoryConfidenceStance|undefined=>stance==='supports'||stance==='contradicts'?stance:undefined;
-  const primary:MemoryEvidenceSource={source,provenanceClass,sourceAuthority01:clamp(Number(item?.sourceAuthority01??this.sourceAuthorityDefault(provenanceClass))),independenceKey:item?.independenceKey==null?undefined:String(item.independenceKey).trim().slice(0,96)||undefined,observedAt,evidenceFreshnessAt,stance:validStance(item?.stance)};
+  const primary:MemoryEvidenceSource={source,provenanceClass,sourceAuthority01:Math.min(clamp(Number(item?.sourceAuthority01??this.sourceAuthorityDefault(provenanceClass))),this.sourceAuthorityDefault(provenanceClass)),independenceKey:item?.independenceKey==null?undefined:String(item.independenceKey).trim().slice(0,96)||undefined,observedAt,evidenceFreshnessAt,stance:validStance(item?.stance)};
   const raw=Array.isArray(item?.evidenceSources)?item.evidenceSources.slice(0,32):[];
   const normalizedRaw:MemoryEvidenceSource[]=raw.map((row:any)=>{
    const cls=this.provenanceClassFor(String(row?.source??source),row?.provenanceClass);
    const obs=Number.isFinite(Number(row?.observedAt))?Number(row.observedAt):observedAt;
-   return {source:String(row?.source??source).slice(0,240)||source,provenanceClass:cls,sourceAuthority01:clamp(Number(row?.sourceAuthority01??this.sourceAuthorityDefault(cls))),independenceKey:row?.independenceKey==null?undefined:String(row.independenceKey).trim().slice(0,96)||undefined,observedAt:obs,evidenceFreshnessAt:Number.isFinite(Number(row?.evidenceFreshnessAt))?Number(row.evidenceFreshnessAt):obs,stance:validStance(row?.stance)};
+   return {source:String(row?.source??source).slice(0,240)||source,provenanceClass:cls,sourceAuthority01:Math.min(clamp(Number(row?.sourceAuthority01??this.sourceAuthorityDefault(cls))),this.sourceAuthorityDefault(cls)),independenceKey:row?.independenceKey==null?undefined:String(row.independenceKey).trim().slice(0,96)||undefined,observedAt:obs,evidenceFreshnessAt:Number.isFinite(Number(row?.evidenceFreshnessAt))?Number(row.evidenceFreshnessAt):obs,stance:validStance(row?.stance)};
   });
   // When the serialized trail already contains the primary lineage, prefer its
   // publisher-bound source label to the generic owning subsystem label.
@@ -816,7 +819,7 @@ export class MemoryOS2{
     revisionGroupId:String(input.revisionGroupId??(input.id??identity.stableId)),
     revisionSequence:Math.max(1,Math.floor(Number(input.revisionSequence??1))),
     provenanceClass,
-    sourceAuthority01:clamp(Number(input.sourceAuthority01??defaults[provenanceClass]??.5)),
+    sourceAuthority01:Math.min(clamp(Number(input.sourceAuthority01??defaults[provenanceClass]??.5)),defaults[provenanceClass]??.5),
     independenceKey:input.independenceKey?.slice(0,96),
     evidenceFreshnessAt:Number.isFinite(Number(input.evidenceFreshnessAt))?Number(input.evidenceFreshnessAt):Number(input.observedAt??now),
     evidenceSources, evidenceLineageKeys,confidenceRevisionHistory:[],
