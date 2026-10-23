@@ -42,7 +42,7 @@ for (const row of scores) {
 }
 
 const metrics = summarizeLearningRobustMetrics(baseline, candidate);
-assert.equal(metrics.schemaVersion, 1);
+assert.equal(metrics.schemaVersion, 2);
 assert.equal(metrics.diagnosticOnly, true);
 assert.equal(metrics.taskCount, 4);
 assert.equal(metrics.matchedTrialCount, 8);
@@ -56,6 +56,13 @@ assert.equal(metrics.taskSuccess.baselineTaskBalancedOptimalityGap, 0.5);
 assert.equal(metrics.taskSuccess.candidateTaskBalancedOptimalityGap, 0.475);
 assert.equal(metrics.taskSuccess.taskBalancedOptimalityGapDelta, -0.025);
 assert.equal(metrics.taskSuccess.pairedProbabilityOfImprovement, 0.625);
+assert.equal(metrics.taskSuccess.taskBalancedMeanDeltaBootstrapInterval.sampleCount, 4);
+assert.equal(metrics.taskSuccess.taskBalancedMeanDeltaBootstrapInterval.resamples, 2000);
+assert.equal(metrics.taskSuccess.taskBalancedMeanDeltaBootstrapInterval.confidenceLevel, 0.95);
+assert.ok(metrics.taskSuccess.taskBalancedMeanDeltaBootstrapInterval.lower <= metrics.taskSuccess.taskBalancedMeanDeltaBootstrapInterval.mean);
+assert.ok(metrics.taskSuccess.taskBalancedMeanDeltaBootstrapInterval.mean <= metrics.taskSuccess.taskBalancedMeanDeltaBootstrapInterval.upper);
+assert.ok(metrics.taskSuccess.taskBalancedMeanDeltaBootstrapInterval.lower <= 0,
+  'task-level uncertainty should show that a positive point estimate can remain uncertain');
 assert.equal(metrics.skillQuality.baselineTaskBalancedIqm, 0.5);
 assert.equal(metrics.skillQuality.candidateTaskBalancedIqm, 0.5);
 assert.equal(metrics.skillQuality.taskBalancedIqmDelta, 0);
@@ -98,6 +105,15 @@ assert.deepEqual(
   'task means must be deterministic when fractional trial rows are permuted',
 );
 
+const singleTaskSummary = summarizeLearningRobustMetrics(
+  [report('single-task', 1, 0.4, 0.4, 0.4), report('single-task', 2, 0.5, 0.5, 0.5)],
+  [report('single-task', 1, 0.6, 0.6, 0.6), report('single-task', 2, 0.7, 0.7, 0.7)],
+);
+for (const dimension of [singleTaskSummary.taskSuccess, singleTaskSummary.skillQuality, singleTaskSummary.trajectoryQuality]) {
+  assert.equal(dimension.taskBalancedMeanDeltaBootstrapInterval, null,
+    'one task is insufficient to estimate between-task uncertainty');
+}
+
 // A missing matched seed cannot be silently dropped from one side.
 assert.throws(() => summarizeLearningRobustMetrics(baseline, candidate.slice(1)),
   /learning-robust-metrics-trial-count-mismatch/);
@@ -131,6 +147,9 @@ for (const dimension of [ceilingMetrics.taskSuccess, ceilingMetrics.skillQuality
   assert.equal(dimension.baselineTaskBalancedOptimalityGap, 0);
   assert.equal(dimension.candidateTaskBalancedOptimalityGap, 0);
   assert.equal(dimension.taskBalancedOptimalityGapDelta, 0);
+  assert.equal(dimension.taskBalancedMeanDeltaBootstrapInterval.mean, 0);
+  assert.equal(dimension.taskBalancedMeanDeltaBootstrapInterval.lower, 0);
+  assert.equal(dimension.taskBalancedMeanDeltaBootstrapInterval.upper, 0);
 }
 
 console.log('WORKPASS406_LEARNING_ROBUST_METRICS=PASS taskBalancedIqm=true taskBalancedMedian=true optimalityGap=true pairedImprovement=true variedFractionalTrialOrderInvariant=true malformedEvidenceRejected=true accessorNotInvoked=true diagnosticOnly=true');
