@@ -7,7 +7,7 @@
 - [DEPENDENCIES] No new dependency and no copied/vendor upstream source; native adaptation uses the existing TypeScript/P23 lifecycle. Upstream license review remains partial because the separate `LICENSE` path was not retrievable, although README and `pyproject.toml` declare MIT.
 - [VALIDATION] Focused test and runtime typecheck are **not yet confirmed as executed** on the exact head. Current Actions startup runs have been stopping before runner assignment (`runner_id=0`, zero steps/logs); do not interpret this as a test pass or failure.
 - [METRICS] No learning uplift is claimed. Keep scores unchanged pending an independent paired-seed run on a frozen holdout.
-- [RELEASE] No release ZIP was downloaded, rebuilt, or published. `main` remains untouched.
+- [RELEASE] Latest Release API metadata still points to `Neuro_Kurisu_WORKPASS70_2026-10-19.zip` (135,290,615 bytes, tag `Neuro`, published 2026-10-19). The available GitHub access path supports UTF-8 text but not binary asset download/upload, so the archive was not refreshed; `main` remains untouched.
 
 ---
 
