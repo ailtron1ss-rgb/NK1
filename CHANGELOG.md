@@ -2134,3 +2134,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
 - Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
 - This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
+
+## NK1 WorkPass339 — runner-label fallback experiment (2026-10-23)
+
+- Changed the P26 validation workflow to explicitly request `ubuntu-24.04` rather than the moving `ubuntu-latest` label and Node.js 24 rather than 22.12.
+- Added a Node-major preflight before dependency installation. The workflow already includes `workflow_dispatch`; this commit also changes a path watched by the pull-request trigger, giving GitHub a fresh automatic scheduling attempt.
+- **Experiment, not a proven fix:** previous failures had `runner_id=0` and no steps. Pinning the runner image tests whether the moving runner label is involved; it cannot resolve an account-wide hosted-runner outage or quota restriction.
+- Runtime validation is pending the newly scheduled run; no pass is claimed.
