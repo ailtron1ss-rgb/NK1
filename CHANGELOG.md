@@ -1,3 +1,8 @@
+## NK1 WorkPass392 — require independent task coverage in validation (2026-10-23)
+- [FIXED] The SkillLearnBench candidate gate now requires at least two distinct paired validation tasks by default, configurable through `minimumValidationTasks`. Repeating trials on one task no longer substitutes for task-level validation coverage.
+- [CHANGED] Gate output includes `validationTaskCount`; insufficient coverage returns `validation-task-coverage-insufficient` while preserving the existing paired score and holdout-family checks.
+- [TEST ADDED] An apparent improvement over multiple repeats of a single task is rejected; invalid minimum-task configuration also fails closed.
+
 ## NK1 WorkPass391 — keep diagnostic repair memory separate from revision-eligible evidence (2026-10-23)
 - [FIXED] OrganismRuntime no longer applies the strict revision-candidate canonicalizer to every repair observation. A legitimate failed attempt with no selected replacement remains in the bounded diagnostic ledger, while only rows marked `revisionEligible` proceed into the coordinator's strict canonicalizer/fingerprint.
 - [FIXED] Candidate-tool ordering is normalized when runtime observations are shaped; newest-96 ordering remains deterministic before the evidence window is returned.
