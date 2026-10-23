@@ -744,7 +744,9 @@ export class MemoryOS2{
   if(evidenceInput.observedAt!==undefined&&(typeof evidenceInput.observedAt!=='number'||!Number.isFinite(evidenceInput.observedAt)||evidenceInput.observedAt<0))throw new TypeError('memory-belief-evidence-invalid');
   if(evidenceInput.evidenceFreshnessAt!==undefined&&(typeof evidenceInput.evidenceFreshnessAt!=='number'||!Number.isFinite(evidenceInput.evidenceFreshnessAt)||evidenceInput.evidenceFreshnessAt<0))throw new TypeError('memory-belief-evidence-invalid');
   const provenanceClass=this.provenanceClassFor(evidenceInput.source,evidenceInput.provenanceClass as MemoryProvenanceClass|undefined);
-  const evidence:MemoryEvidenceSource={source:evidenceInput.source,provenanceClass,sourceAuthority01:Number(evidenceInput.sourceAuthority01??this.sourceAuthorityDefault(provenanceClass)),independenceKey:evidenceInput.independenceKey as string|undefined,observedAt:Number(evidenceInput.observedAt??at),evidenceFreshnessAt:Number(evidenceInput.evidenceFreshnessAt??evidenceInput.observedAt??at),stance:stance as MemoryConfidenceStance};
+  const defaultAuthority=this.sourceAuthorityDefault(provenanceClass);
+  const evidenceAuthority=Math.min(Number(evidenceInput.sourceAuthority01??defaultAuthority),defaultAuthority);
+  const evidence:MemoryEvidenceSource={source:evidenceInput.source,provenanceClass,sourceAuthority01:evidenceAuthority,independenceKey:evidenceInput.independenceKey as string|undefined,observedAt:Number(evidenceInput.observedAt??at),evidenceFreshnessAt:Number(evidenceInput.evidenceFreshnessAt??evidenceInput.observedAt??at),stance:stance as MemoryConfidenceStance};
   const sourceKey=this.evidenceKey(evidence);
   const item=this.itemIndex.get(memoryId);
   if(!item)return {memoryId,stance:stance as MemoryConfidenceStance,applied:false,reason:'not_found',independent:false,priorConfidence:null,posteriorConfidence:null,authority01:evidence.sourceAuthority01,sourceKey,at};
