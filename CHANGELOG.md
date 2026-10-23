@@ -1,3 +1,12 @@
+## NK1 WorkPass443 — close unsafe coercion and accessor paths in verified outcome intake (2026-10-23)
+
+- `VerifiedOutcomeLedger.record` now snapshots an incoming outcome through the existing bounded plain-data boundary before reading any fields. Accessors, custom prototypes, cycles, and over-budget objects are rejected as `invalid-outcome` without running caller-controlled getters.
+- `fingerprintPrompt` now accepts only actual strings and caps prompt length at 16 KiB before Unicode normalization, eliminating implicit `String(...)` coercion and bounding hash work at the public helper boundary.
+- Added regressions for getter-backed outcomes, cyclic outcome data, non-string prompt coercion, and overlong prompts. Existing evidence authority, manifest/version binding, pairing, and holdout rules remain unchanged; no new dependency.
+- **Verification status:** source, regression and changelog committed to `feature/feedback`; runtime execution is unconfirmed while hosted Actions jobs terminate before runner assignment.
+
+---
+
 ## NK1 WorkPass431 — make independent outcome proof explicit and quantitative (2026-10-23)
 
 - Reworked ExternalPostconditionVerifier to consume a bounded detached snapshot of the action result; accessor-backed, cyclic, non-plain and malformed result graphs fail closed with zero verified credit.

@@ -14,6 +14,12 @@ const outcome = (overrides={}) => ({
   evidenceRef:'artifact://trial-1', observedAt:1000, ...overrides,
 });
 assert.equal(VerifiedOutcomeLedger.fingerprintPrompt('  REMEMBER   the blue key. '), hash('Remember the blue key.'));
+let promptCoercions = 0;
+assert.throws(() => VerifiedOutcomeLedger.fingerprintPrompt({
+  toString() { promptCoercions++; return 'coerced prompt'; },
+}), /prompt-must-be-string/);
+assert.equal(promptCoercions, 0, 'prompt fingerprinting must reject non-strings before coercion');
+assert.throws(() => VerifiedOutcomeLedger.fingerprintPrompt('x'.repeat(16 * 1024 + 1)), /prompt-length-limit-exceeded/);
 assert.throws(() => new VerifiedOutcomeLedger([
   manifest[0],
   { ...manifest[1], promptFingerprint:hash(' remember the BLUE key. ') },
@@ -22,6 +28,21 @@ assert.throws(() => new VerifiedOutcomeLedger([manifest[0], manifest[0]]), /dupl
 
 assert.equal(ledger.record(outcome()).accepted, true);
 assert.equal(ledger.record(outcome()).rejection.code, 'duplicate-attempt');
+
+// Runtime inputs are not trusted merely because the TypeScript parameter is typed.
+let outcomeGetterReads = 0;
+const getterBackedOutcome = outcome({ method: 'getter-attack' });
+Object.defineProperty(getterBackedOutcome, 'taskId', {
+  configurable: true, enumerable: true,
+  get() { outcomeGetterReads++; return 'task-b'; },
+});
+const getterRejection = ledger.record(getterBackedOutcome);
+assert.equal(getterRejection.rejection.code, 'invalid-outcome');
+assert.equal(outcomeGetterReads, 0, 'ledger ingestion must reject getters without invoking them');
+const cyclicOutcome = outcome({ method: 'cyclic-attack' });
+cyclicOutcome.self = cyclicOutcome;
+assert.equal(ledger.record(cyclicOutcome).rejection.code, 'invalid-outcome',
+  'cyclic outcome data must be quarantined before outcome fields are inspected');
 assert.equal(ledger.record(outcome({ method:'self-judge', authority:'self-report' })).rejection.code, 'self-report-not-authoritative');
 assert.equal(ledger.record(outcome({ method:'wrong-version', taskVersion:'2' })).rejection.code, 'version-mismatch');
 assert.equal(ledger.record(outcome({ method:'   ' })).rejection.code, 'invalid-method');

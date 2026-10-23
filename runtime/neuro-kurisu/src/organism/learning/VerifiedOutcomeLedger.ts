@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 
 export type OutcomeAuthority = 'independent-verifier' | 'human-review' | 'self-report';
 export type EvaluationSplit = 'train' | 'validation' | 'holdout';
@@ -132,13 +133,37 @@ export class VerifiedOutcomeLedger {
   }
 
   static fingerprintPrompt(prompt: string): string {
-    const normalized = String(prompt).normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
+    if (typeof prompt !== 'string') throw new TypeError('prompt-must-be-string');
+    if (prompt.length > 16 * 1024) throw new RangeError('prompt-length-limit-exceeded');
+    const normalized = prompt.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
     return createHash('sha256').update(normalized).digest('hex');
   }
 
-  record(outcome: VerifiedTaskOutcome): { accepted: boolean; rejection?: OutcomeRejection } {
-    const safeTaskId = typeof outcome?.taskId === 'string' ? outcome.taskId : '';
-    const safeMethod = typeof outcome?.method === 'string' ? outcome.method : '';
+  record(rawOutcome: VerifiedTaskOutcome): { accepted: boolean; rejection?: OutcomeRejection } {
+    let detached: unknown;
+    try {
+      detached = snapshotPlainData<VerifiedTaskOutcome>(rawOutcome, {
+        allowNonFiniteNumbers: true, maxDepth: 8, maxNodes: 128, maxStringUnits: 32 * 1024,
+      });
+    } catch {
+      const rejection: OutcomeRejection = {
+        code: 'invalid-outcome', taskId: '', method: '',
+        detail: 'outcome must be bounded plain data without accessors or cycles',
+      };
+      this.rejections.push(rejection);
+      return { accepted: false, rejection };
+    }
+    if (!detached || typeof detached !== 'object' || Array.isArray(detached)) {
+      const rejection: OutcomeRejection = {
+        code: 'invalid-outcome', taskId: '', method: '',
+        detail: 'outcome shape or authority fields are malformed',
+      };
+      this.rejections.push(rejection);
+      return { accepted: false, rejection };
+    }
+    const outcome = detached as VerifiedTaskOutcome;
+    const safeTaskId = typeof outcome.taskId === 'string' ? outcome.taskId : '';
+    const safeMethod = typeof outcome.method === 'string' ? outcome.method : '';
     const task = this.manifest.get(safeTaskId);
     let code: OutcomeRejection['code'] | undefined;
     let detail = '';
