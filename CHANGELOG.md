@@ -1,3 +1,11 @@
+## NK1 WorkPass467 — fail closed when causal experience recording rejects an event (2026-10-23)
+
+- Patched the large canonical `OrganismCore.ts` through Git blob/tree APIs after normal file-range retrieval proved insufficient for this 1.3 MB source. Three learning paths now conditionally ingest into `unifiedLearning` only when `CausalExperienceStream.recordExternalLearningEvent` returned a valid record: experience replay, independently verified replay validation, and skill-repair feedback.
+- A rejected/null causal row can no longer cause a TypeScript null dereference or send a partially grounded learning signal without its causal event. This preserves the event-to-learning lineage boundary.
+- **Verification:** source edit committed as `f1b297d082711ffc081aa9ab998a3f7589cc0196`; the fresh exact-head workflow has not yet been inspected to completion. Do not assume tests pass from the source change alone.
+
+---
+
 ## NK1 WorkPass466 — reconcile trusted shadow registrar contract (2026-10-23)
 
 - `TrustedShadowLearningRunCoordinator` now models the real registrar behavior: `registerTrustedSkillShadowRun` may return a context synchronously or a promise. This lets the caller use the registration receipt/context without an incompatible `void | Promise<unknown>` contract.
