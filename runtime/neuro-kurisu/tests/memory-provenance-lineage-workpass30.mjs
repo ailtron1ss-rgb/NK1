@@ -196,8 +196,8 @@ assert.equal(protectedResult.reason,'protected');
 assert.equal(beliefMemory.get(protectedBelief.id).confidence,protectedPrior);
 assert.ok(beliefMemory.evidenceTrail(protectedBelief.id).sources.some(row=>row.stance==='contradicts'),
   'protected contradictory evidence remains visible without silently rewriting confidence');
-const hostileEvidence=Object.defineProperty({},'source',{enumerable:true,get(){throw new Error('evidence getter must not run');}});
 let evidenceGetterReads=0;
+const hostileEvidence={};
 Object.defineProperty(hostileEvidence,'source',{enumerable:true,configurable:true,get(){evidenceGetterReads++;return 'unsafe-source';}});
 const beliefBeforeHostile=beliefMemory.snapshot();
 assert.throws(()=>beliefMemory.reviseConfidenceFromEvidence(belief.id,hostileEvidence,'supports',at+4),/memory-belief-evidence-invalid/);
