@@ -1,3 +1,15 @@
+## NK1 WorkPass406 — task-balanced robust learning diagnostics (2026-10-23)
+
+- **Added:** task-balanced interquartile mean (IQM), IQM delta and paired probability-of-improvement summaries for task success, skill quality and trajectory quality on validation and holdout.
+- **Integrated:** `compareMatchedIndependentEvaluations` publishes these as `learningRobustDiagnostics`. They are descriptive-only and do not alter eligibility or promotion.
+- **Guardrails:** require exact task/trial pairing, plain-data snapshots, bounded finite scores and order-invariant summaries; no third-party runtime dependency added.
+- **Regression:** `tests/workpass406-learning-robust-metrics.mjs` is wired into `npm run test:p23:learning`; covers IQM arithmetic, paired win/tie/loss probability, row-order invariance, missing/mismatched pairs, invalid scores and accessor rejection.
+- **Research:** adapts reporting ideas from [Google Research RLiable](https://github.com/google-research/rliable) and the generation/evaluation/promotion separation described by [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution). No upstream code was copied.
+- **Verification boundary:** implementation and wiring are committed; exact-HEAD runtime test, TypeScript check and CI have not yet been confirmed. No measured learning uplift is claimed.
+- Details: [WorkPass406 implementation note](docs/WORKPASS406_TASK_BALANCED_ROBUST_METRICS_RU.md).
+
+---
+
 ## NK1 WorkPass405 — persist privacy-filtered P23 fitness decisions (2026-10-23)
 
 - [NEW] Added `LearningFitnessJournal.ts`: hash-chained JSONL records with schema version, ordered sequence, prior digest, SHA-256 digest, capped file size, lock-file serialization, append+fsync and full-chain validation on reads.
