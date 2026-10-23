@@ -1,3 +1,15 @@
+# Addendum WorkPass331 — canonical baseline provenance for P23 reflective learning (2026-10-23)
+
+WorkPass331 fixes a trust gap inside the previously identified production revision path. The repair provider could supply baseline and source-candidate evaluation rows that influenced repair targets and the baseline-vs-revision score gate, even though only the freshly generated candidate was executed by the configured independent evaluator.
+
+Production now resolves the active skill payload and requested source candidate payload from the canonical versioned P23 candidate store. Both are evaluated by the host-owned evaluator, and the provider's baseline/source report arrays and evaluator are ignored. The generated revision is then independently evaluated as a third method. All three method names must appear distinctly in both fixed validation/holdout plans, and their reports must match task/trial IDs, seeds, split, manifest, plans, attempt and environment fingerprints.
+
+The runtime rechecks the active/source version and payload fingerprints before returning the new candidate's evaluation. A changed active baseline fails closed. Actual task failures and safety findings remain in the score data and still flow through existing P23 gating; no outcome is promoted merely because a report is well-shaped.
+
+Regression: `test:workpass331:canonical-revision-baseline`, registered in root quick audit and WorkPass71 CI. Test and typecheck have not been confirmed on the exact head because hosted Actions jobs continue to stop before steps. See [WorkPass331 report](WORKPASS331_CANONICAL_REVISION_BASELINE_2026-10-23.md). Deployment-owned evaluator services and a frozen paired-seed benchmark remain open; no learning uplift is claimed.
+
+---
+
 # Addendum WorkPass330 — production host evaluator wiring (2026-10-23)
 
 WorkPass330 fixes a concrete runtime composition gap found while tracing the real P23 path. The server previously supplied the revision provider and candidate store but omitted the independent-evaluation factory that `OrganismRuntime` requires in production. Production mode still fails closed when no separate host evaluator config is set; the guard was not weakened.
