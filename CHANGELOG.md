@@ -1,3 +1,11 @@
+## 2026-10-23 — Multi-branch integration checkpoint
+
+- Created merge commit [3f99f58](https://github.com/ailtron1ss-rgb/NK1/commit/3f99f58ab15fbb5c4ce29fd0f58fdc5ef8a49518) on `nk1-integration-workspace-2026-10-22`, recording the cognitive rebuild and continual-learning source histories as parents: `workpass120-verified-skill-revision-gate`, `workpass93-hermes-reflective-learning-gate`, `workpass71-learning-integrity`, `workpass71-learning-eval-paired-seeds`, and `workpass73-audit-fixes`.
+- Kept the integration tree as the merge result because the audited source paths already exist in the target tree and inspected target versions are more expansive than their older source-branch snapshots (notably `P23LearningEngine.ts`, `VerifiedOutcomeLedger.ts`, `package.json`, and their associated tests). This avoids rolling back stronger integrated behavior.
+- This commit unifies Git history while retaining the current source snapshot; it does **not** claim that every line-level difference across all branches has been semantically reconciled or that tests passed. Remaining work is to audit residual file-level behavior differences and get hosted Actions jobs to execute.
+
+---
+
 ## 2026-10-23 — Cross-branch source-path coverage verified
 
 - Compared the integration tree recursively with `workpass79-cognitive-rebuild`, `workpass93-hermes-reflective-learning-gate`, `workpass118-multi-source-learning-integration`, `workpass120-verified-skill-revision-gate`, and `workpass88-avalanche-forgetting-metrics`.
