@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import { bootstrapMeanConfidenceInterval } from '../src/organism/learning/PairedSeedConfidence.ts';
+
+const stable = [0.08, 0.11, 0.09, 0.12, 0.10];
+const first = bootstrapMeanConfidenceInterval(stable, { seed: 42, resamples: 4000, confidenceLevel: 0.95 });
+const replay = bootstrapMeanConfidenceInterval(stable, { seed: 42, resamples: 4000, confidenceLevel: 0.95 });
+assert.deepEqual(first, replay, 'the same paired-seed evidence must generate a reproducible interval');
+assert.equal(first.sampleCount, 5);
+assert.equal(first.resamples, 4000);
+assert.equal(first.confidenceLevel, 0.95);
+assert.ok(first.lower <= first.mean && first.mean <= first.upper);
+assert.ok(first.lower > 0, 'consistent positive paired-seed deltas should retain a positive lower bootstrap bound');
+
+const noisy = bootstrapMeanConfidenceInterval([-0.15, 0.14, 0.15], {
+  seed: 7, resamples: 10000, confidenceLevel: 0.95,
+});
+assert.ok(noisy.mean > 0, 'the point estimate is positive despite one adverse seed');
+assert.ok(noisy.lower <= 0,
+  'the bootstrap interval must reveal that positive mean improvement is not robust to seed variability');
+
+const negative = bootstrapMeanConfidenceInterval([-0.2, -0.1, -0.15, -0.05], { seed: 7 });
+assert.ok(negative.upper < 0, 'uniformly regressing paired-seed deltas should have a negative upper bound');
+
+assert.throws(() => bootstrapMeanConfidenceInterval([]), /paired-seed-bootstrap-values-invalid/);
+assert.throws(() => bootstrapMeanConfidenceInterval([0.1, Number.NaN]), /paired-seed-bootstrap-values-invalid/);
+assert.throws(() => bootstrapMeanConfidenceInterval([0.1, 1.1]), /paired-seed-bootstrap-values-invalid/);
+assert.throws(() => bootstrapMeanConfidenceInterval([0.1, 0.2], { confidenceLevel: 1 }), /paired-seed-bootstrap-confidence-level-invalid/);
+assert.throws(() => bootstrapMeanConfidenceInterval([0.1, 0.2], { resamples: 99 }), /paired-seed-bootstrap-resamples-invalid/);
+assert.throws(() => bootstrapMeanConfidenceInterval([0.1, 0.2], { seed: -1 }), /paired-seed-bootstrap-seed-invalid/);
+
+console.log('WORKPASS404_PAIRED_SEED_CONFIDENCE=PASS deterministic=true positiveInterval=true noisyMeanDetected=true invalidInputsRejected=true');
