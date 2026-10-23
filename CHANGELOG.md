@@ -1,3 +1,12 @@
+## NK1 WorkPass456 — harden goal ecology restore and live ingress (2026-10-23)
+
+- Added the canonical bounded plain-data boundary to P68 goal lifecycle input and persistence restore. Getter-backed/cyclic state fails closed before lifecycle counters or goal fields change; restored counters, modes and history are normalized to finite schema-valid values.
+- Preserved the current core contract: once the input passes descriptor validation, P68 continues to apply valid lifecycle/progress transitions to original goal objects in-place.
+- Added regressions for getter non-execution, no cycle advancement after rejected input, malformed persisted rows and safe restore. No dependency added.
+- **Verification:** regression source is committed but not executed on the exact HEAD because hosted Actions still fails before runner allocation.
+
+---
+
 ## NK1 WorkPass455 — make endogenous goal lifecycle replay-safe and restore-safe (2026-10-23)
 
 - Adapted Hexis-style durable-goal governance into the existing P67 owner: persisted candidate history now has bounded schema normalization, generated-ID linkage and decision receipt normalization; accessor/cyclic restore payloads fall back safely to default state.
