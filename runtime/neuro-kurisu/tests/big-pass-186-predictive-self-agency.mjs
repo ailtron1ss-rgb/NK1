@@ -28,6 +28,57 @@ const restored=new PredictiveSelfAgencySubstrate();
 restored.restore(snap);
 assert.deepEqual(restored.snapshot(),snap,'predictive self/agency snapshot must restore exactly');
 
+// WorkPass332: corrupt persisted weights/counters must not poison next-step agency predictions.
+const corruptedBrain = new PredictiveSelfAgencySubstrate();
+corruptedBrain.restore({
+  version: 1,
+  selfLatent: [Number.NaN, Number.POSITIVE_INFINITY, 'not-a-number'],
+  previousSelfLatent: [Number.NEGATIVE_INFINITY],
+  intention: [Number.NaN],
+  predictions: [Number.POSITIVE_INFINITY, Number.NaN],
+  actionRows: [[Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]],
+  actionBias: [Number.NaN],
+  selfWeights: [[Number.POSITIVE_INFINITY]],
+  stateWeights: [[Number.NaN]],
+  learningSteps: Number.POSITIVE_INFINITY,
+  predictionSamples: -1,
+  predictionError01: Number.NaN,
+  agencyError01: Number.POSITIVE_INFINITY,
+  ownership01: Number.NaN,
+  authorship01: -3,
+  selfContinuity01: Number.POSITIVE_INFINITY,
+  lastAction: 'unregistered-action',
+  lastPredictedOutcome01: Number.NEGATIVE_INFINITY,
+  lastPredictedSelfState: [Number.NaN],
+  lastObservedSelfState: [Number.POSITIVE_INFINITY],
+  lastTick: Number.NaN,
+  lastAt: Number.POSITIVE_INFINITY,
+});
+const cleanBrain = corruptedBrain.snapshot();
+assert.equal(cleanBrain.learningSteps, 0);
+assert.equal(cleanBrain.predictionSamples, 0);
+assert.equal(cleanBrain.predictionError01, .5);
+assert.equal(cleanBrain.agencyError01, .5);
+assert.equal(cleanBrain.ownership01, .5);
+assert.equal(cleanBrain.authorship01, 0);
+assert.equal(cleanBrain.selfContinuity01, .5);
+assert.equal(cleanBrain.lastAction, 'wait');
+assert.equal(cleanBrain.lastTick, 0);
+assert.equal(cleanBrain.lastAt, 0);
+const restoredNumericValues = [
+  ...cleanBrain.selfLatent, ...cleanBrain.previousSelfLatent, ...cleanBrain.intention, ...cleanBrain.predictions,
+  ...cleanBrain.actionBias, ...cleanBrain.lastPredictedSelfState, ...cleanBrain.lastObservedSelfState,
+  ...cleanBrain.actionRows.flat(), ...cleanBrain.selfWeights.flat(), ...cleanBrain.stateWeights.flat(),
+  cleanBrain.predictionError01, cleanBrain.agencyError01, cleanBrain.ownership01, cleanBrain.authorship01,
+  cleanBrain.selfContinuity01, cleanBrain.lastPredictedOutcome01,
+];
+assert.ok(restoredNumericValues.every(Number.isFinite), 'every restored self-model weight and signal must be finite');
+const safePrediction = corruptedBrain.predict('explore');
+assert.ok([safePrediction.intention01, safePrediction.predictedOutcome01, safePrediction.ownershipPrior01,
+  safePrediction.confidence01, safePrediction.selfContinuity01].every(Number.isFinite),
+  'restored state must produce finite next-step agency predictions');
+assert.throws(() => corruptedBrain.restore({ version: 2 }), /unsupported predictive self-agency state version/);
+
 const core=new OrganismCore(new MemoryStateStore());
 await core.init();
 const world=(tick)=>({tick,location:'self-agency-lab',energy:.84,attention:.8,uncertainty:.2,facts:['self','agency','prediction'],objects:['agent'],events:['action']});
