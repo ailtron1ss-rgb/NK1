@@ -23,10 +23,13 @@ export class EmbodimentRuntime {
   private speechGatewayDispatcher:SpeechGatewayDispatcher|null=null;
   private speechInterruptGatewayDispatcher:SpeechInterruptGatewayDispatcher|null=null;
   private activeSpeechEventId:string|null=null;
+  private speechInputDispatcher: (()=>Promise<string|null>) = synthesizeSpeechInput;
 
   /** The only permitted routes to physical TTS and interruption are ActionGateway-backed dispatchers. */
   setSpeechGatewayDispatcher(dispatcher:SpeechGatewayDispatcher|null):void { this.speechGatewayDispatcher=dispatcher; }
   setSpeechInterruptGatewayDispatcher(dispatcher:SpeechInterruptGatewayDispatcher|null):void { this.speechInterruptGatewayDispatcher=dispatcher; }
+  /** Injectable STT boundary for platform adapters and deterministic recovery tests. */
+  setSpeechInputDispatcher(dispatcher:(()=>Promise<string|null>)|null):void { this.speechInputDispatcher=dispatcher??synthesizeSpeechInput; }
 
   async init(persisted?: OrganismBodyState | null): Promise<void> {
     this.body = persisted?.schemaVersion === 1 ? structuredClone(persisted) : defaultBodyState();
@@ -150,9 +153,18 @@ export class EmbodimentRuntime {
   async listen(): Promise<string | null> {
     if(!this.body.sttAvailable) { this.voice.lastError='stt-unavailable'; this.voice.lastAt=Date.now(); return null; }
     this.voice.listening=true; this.voice.listenCount+=1; this.voice.lastAt=Date.now(); this.voice.lastError=null;
-    const text=await synthesizeSpeechInput();
-    this.voice.listening=false; this.voice.lastAt=Date.now(); if(!text) this.voice.lastError='stt-empty-or-failed';
-    return text;
+    try {
+      const text=await this.speechInputDispatcher();
+      if(!text) this.voice.lastError='stt-empty-or-failed';
+      return text;
+    } catch(error) {
+      this.voice.lastError=`stt-provider-failed:${String((error as Error)?.message??error).replace(/[\\r\\n\\t]+/g,' ').slice(0,100)}`;
+      return null;
+    } finally {
+      // The UI/runtime must leave listening state on every resolved or thrown provider path.
+      this.voice.listening=false;
+      this.voice.lastAt=Date.now();
+    }
   }
 
   async markVoiceInterruption(reason='manual'): Promise<boolean> {
