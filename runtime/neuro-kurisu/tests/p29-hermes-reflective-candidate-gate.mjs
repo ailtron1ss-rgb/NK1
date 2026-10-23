@@ -39,9 +39,23 @@ assert.equal(accepted.eligible, true);
 assert.deepEqual(accepted.reasons, []);
 assert.ok(accepted.validationGain01 > 0.005);
 assert.equal(accepted.holdoutTaskCount, 2);
-assert.equal(accepted.pairedValidationTrials, 2);
-
+assert.equal(accepted.validationTaskCount, 2);
 assert.equal(accepted.pairedHoldoutTrials, 2);
+
+// A large gain on repeated trials from one validation task is still narrow evidence.
+const narrowValidationBaseline={
+  validation:[trial('task-a','v1','weak'),trial('task-a','v2','weak')],
+  holdout:baseline.holdout,
+};
+const narrowValidationCandidate={
+  validation:[trial('task-a','v1','good'),trial('task-a','v2','good')],
+  holdout:improved.holdout,
+};
+const narrowValidationGate=evaluateSkillLearnBenchCandidate(narrowValidationBaseline,narrowValidationCandidate);
+assert.equal(narrowValidationGate.validationTaskCount,1);
+assert.ok(narrowValidationGate.reasons.includes('validation-task-coverage-insufficient'),
+  'duplicate trials from one task must not substitute for independent validation task coverage');
+assert.equal(narrowValidationGate.eligible,false);
 
 // Task macro-average: repeating one task must not give it extra weight.
 const imbalanced = {
@@ -157,6 +171,9 @@ assert.throws(() => evaluateSkillLearnBenchCandidate({
 assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, improved, {
   minimumValidationGain01: Number.NaN,
 }), /candidate-minimum-validation-gain-invalid/);
+assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, improved, {
+  minimumValidationTasks: 0,
+}), /candidate-minimum-validation-tasks-invalid/);
 
 assert.throws(() => evaluateSkillLearnBenchCandidate(null, improved), /candidate-evaluation-input-invalid/);
 let familyAccessorCalls = 0;
