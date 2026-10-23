@@ -6,7 +6,7 @@
 - Architecture: preserve MemoryOS2/MemoryFabric as canonical memory owners and P23/VersionedSkillCandidateStore as the native skill lifecycle. Avoid parallel Hexis/Cognee/Graphiti/Mem0 stores or a second Hermes/LangGraph/Microsoft orchestration authority.
 - Verification state: registry metadata was checked statically through GitHub file reads; exact-head Node tests, typecheck, and Actions are not yet confirmed. WorkPass327 observed pre-runner failures (runner_id=0, no steps/logs); resolve account-level Actions startup issue before treating CI as evidence.
 - Release state: no ZIP was downloaded/rebuilt/replaced. Do not claim release asset updated.
-- Read docs/NEUROCORE_DONOR_MAP_2026-10-23.md and research/upstream-donors/registry.json before continuing this intake.
+- Read docs/NEUROCORE_DONOR_MAP_2026-10-23.md, docs/WORKPASS328_DONOR_GATE_VALIDATION_2026-10-23.md, and research/upstream-donors/registry.json before continuing this intake.
 
 ---
 
