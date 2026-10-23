@@ -1,3 +1,12 @@
+## NK1 WorkPass469–470 — make P26 learning input rejection atomic and restore-safe (2026-10-23)
+
+- `ParametricPolicyLearner.train` and `trainFeatures` reject non-finite targets, learning rates, sample weights, features, invalid actions and malformed state before learning. Batch training preflights every sample so a bad later item cannot leave a partially updated model.
+- Restore now sanitizes all learner diagnostics, the update counter, timestamp and `frozen` flag in addition to weights/biases. Only literal boolean `true` can restore a freeze; invalid metrics fall back to safe defaults.
+- The runtime's P26 workflow already has its three referenced scripts on this category branch. A real runner reports `TYPECHECK=PASS`; the first input-integrity attempt exposed the restore-diagnostics gap. A new run is queued on the updated branch.
+- **Verification boundary:** no learning-performance uplift is claimed until all behavioral benchmark steps complete.
+
+---
+
 ## NK1 WorkPass460 — harden Hermes/P23 evaluation envelope canonicalization (2026-10-23)
 
 - Hardened the reflective evidence binder before it reads evaluation fields: accessor-backed envelope properties are rejected by descriptor inspection, and a canonicalization failure returns immediately so the rejected accessor is not later invoked by validation code.
