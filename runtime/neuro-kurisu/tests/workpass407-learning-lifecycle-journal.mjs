@@ -2,9 +2,14 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { JsonlLearningLifecycleJournal } from '../src/organism/learning/LearningLifecycleJournal.ts';
+import { JsonlLearningLifecycleJournal, learningLifecycleJournalPathForStateFile } from '../src/organism/learning/LearningLifecycleJournal.ts';
 
 const root = mkdtempSync(join(tmpdir(), 'nk1-workpass407-lifecycle-'));
+assert.equal(learningLifecycleJournalPathForStateFile('/state/organism.json'), '/state/organism.learning-lifecycle.jsonl');
+assert.equal(learningLifecycleJournalPathForStateFile('/state/ORGANISM.JSON'), '/state/ORGANISM.learning-lifecycle.jsonl');
+assert.equal(learningLifecycleJournalPathForStateFile('/state/organism.state'), '/state/organism.state.learning-lifecycle.jsonl');
+assert.throws(() => learningLifecycleJournalPathForStateFile('/state/' + String.fromCharCode(0)),
+  /learning-lifecycle-journal-state-path-invalid/);
 const base = {
   recordedAt: 1_800_000_000_000,
   attemptId: '1dd2d2b4-8e24-4b1f-81e9-6bf8da0dfb1c',
@@ -149,7 +154,7 @@ try {
   assert.equal(existsSync(lockPath), true, 'a competing writer lock must not be removed');
   rmSync(lockPath, { force: true });
 
-  console.log('WORKPASS407_LEARNING_LIFECYCLE_JOURNAL=PASS hashChain=true idempotentIntent=true pendingReconciled=true uncertainOutcomePreserved=true illegalTransitionsRejected=true identityBound=true accessorsRejected=true tamperingRejected=true');
+  console.log('WORKPASS407_LEARNING_LIFECYCLE_JOURNAL=PASS pathIsolation=true hashChain=true idempotentIntent=true pendingReconciled=true uncertainOutcomePreserved=true illegalTransitionsRejected=true identityBound=true accessorsRejected=true tamperingRejected=true');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
