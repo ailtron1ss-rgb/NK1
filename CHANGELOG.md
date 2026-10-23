@@ -1,3 +1,9 @@
+## WorkPass319 — regression coverage for reflective repair lineage (2026-10-23)
+
+- Added candidate-store regression cases proving that the exact proposal evidence fingerprint survives staging, while a mismatched but well-formed SHA-256 and a malformed digest are rejected.
+- The test uses an authenticated proposal from the signed fixture pipeline; it does not treat caller-constructed metadata as trusted evidence.
+- Tests have been authored but not executed in this environment; no passing result is claimed.
+
 ## WorkPass318 — bind reflective repair lineage to its authorizing evidence (2026-10-23)
 
 - P23 now persists the authenticated proposal's exact `outcomeFingerprint` as `sourceEvidenceFingerprint` on reflective skill-revision provenance.
