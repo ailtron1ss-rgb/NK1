@@ -240,6 +240,8 @@ export interface SkillLearnBenchCandidateEvaluation {
 export interface SkillLearnBenchCandidateGateOptions {
   /** Minimum macro-average validation improvement required to recommend promotion. */
   minimumValidationGain01?: number;
+  /** Minimum number of distinct paired validation tasks; narrow evidence must not pass by default. */
+  minimumValidationTasks?: number;
   /** Maximum tolerated macro-average holdout regression. */
   maximumHoldoutRegression01?: number;
   /** Minimum number of distinct holdout tasks; empty holdout must never pass. */
@@ -260,6 +262,7 @@ export interface SkillLearnBenchCandidateGateReport {
   candidateHoldout01: number;
   holdoutDelta01: number;
   pairedValidationTrials: number;
+  validationTaskCount: number;
   pairedHoldoutTrials: number;
   holdoutTaskCount: number;
   /** Number of families with sufficient matched holdout task coverage. */
@@ -396,10 +399,14 @@ export function evaluateSkillLearnBenchCandidate(
     throw new Error('candidate-evaluation-data-boundary-rejected');
   }
   const minGain = options.minimumValidationGain01 ?? 0.005;
+  const minValidationTasks = options.minimumValidationTasks ?? 2;
   const maxRegression = options.maximumHoldoutRegression01 ?? 0.02;
   const minHoldoutTasks = options.minimumHoldoutTasks ?? 2;
   if (!Number.isFinite(minGain) || minGain < 0 || minGain > 1) {
     throw new RangeError('candidate-minimum-validation-gain-invalid');
+  }
+  if (!Number.isSafeInteger(minValidationTasks) || minValidationTasks < 1) {
+    throw new RangeError('candidate-minimum-validation-tasks-invalid');
   }
   if (!Number.isFinite(maxRegression) || maxRegression < 0 || maxRegression > 1) {
     throw new RangeError('candidate-maximum-holdout-regression-invalid');
@@ -452,6 +459,7 @@ export function evaluateSkillLearnBenchCandidate(
   const feedback: string[] = [];
 
   if (validationGain < minGain) reasons.push('validation-improvement-below-threshold');
+  if (validation.taskCount < minValidationTasks) reasons.push('validation-task-coverage-insufficient');
   if (holdout.taskCount < minHoldoutTasks) reasons.push('holdout-task-coverage-insufficient');
   if (holdoutDelta < -maxRegression) reasons.push('holdout-regression-exceeds-tolerance');
   if (holdoutFamilyRegressions > 0) reasons.push('holdout-family-regression-exceeds-tolerance');
@@ -497,6 +505,7 @@ export function evaluateSkillLearnBenchCandidate(
     candidateHoldout01: rounded(holdout.candidateMean),
     holdoutDelta01: rounded(holdoutDelta),
     pairedValidationTrials: validation.paired,
+    validationTaskCount: validation.taskCount,
     pairedHoldoutTrials: holdout.paired,
     holdoutTaskCount: holdout.taskCount,
     holdoutFamiliesEvaluated: familyStats.length,
