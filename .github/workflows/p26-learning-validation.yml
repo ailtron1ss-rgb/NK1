@@ -45,6 +45,7 @@ on:
       - "runtime/neuro-kurisu/tests/p27-page-hinkley-drift-detector.mjs"
       - "runtime/neuro-kurisu/tests/p28-drift-detector-benchmark.mjs"
       - "runtime/neuro-kurisu/research/vendor/CleanRL/**"
+      - ".nvmrc"
       - "package.json"
       - "app/package.json"
       - "tools/verify-ci-reliability.mjs"
@@ -78,6 +79,15 @@ jobs:
         run: node --test tools/verify-ci-reliability.test.mjs
       - name: Audit workflow npm commands against package manifests
         run: npm run audit:ci-reliability
+
+      - name: Enforce Node.js runtime baseline from .nvmrc
+        run: |
+          expected="$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version | sed 's/^v//')"
+          case "$expected" in
+            *.*.*) test "$actual" = "$expected" ;;
+            *) case "$actual" in "$expected"|"$expected".*) ;; *) echo "Expected Node.js $expected but got $actual"; exit 1 ;; esac ;;
+          esac
 
       - name: Install locked dependencies
         working-directory: runtime/neuro-kurisu
