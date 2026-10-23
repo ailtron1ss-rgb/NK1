@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { snapshotPlainData } from './LearningTrustBoundary.ts';
 import type { ActionKind, IntentCandidate, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
 import type { AdaptivePolicyEngine, AdaptivePolicyState } from './AdaptivePolicyEngine.ts';
 import { selectReplayBatch, type ReplaySelectionOptions } from './ReplaySelectionPolicy.ts';
@@ -371,7 +372,10 @@ function baselineAction(state:OrganismState):{action:ActionKind;reason:string} {
 export const MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES = 256 * 1024;
 
 export function assertReflectiveSkillPayloadWithinBudget(value:unknown, label='candidate'):string {
-  const canonical = canonicalize(value);
+  let detached: unknown;
+  try { detached=snapshotPlainData(value); }
+  catch { throw new Error('p23-reflective-skill-payload-data-boundary-rejected:' + label); }
+  const canonical = canonicalize(detached);
   const bytes = Buffer.byteLength(canonical, 'utf8');
   if (bytes > MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES) {
     throw new Error('p23-reflective-skill-payload-too-large:' + label + ':' + bytes);
@@ -379,9 +383,19 @@ export function assertReflectiveSkillPayloadWithinBudget(value:unknown, label='c
   return canonical;
 }
 
-function canonicalize(value:unknown, ancestors = new Set<object>()):string {
-  // Keep the engine's payload/evaluation fingerprints byte-compatible with the
-  // independent evaluator while refusing values JSON would silently collapse.
+function canonicalize(
+  value:unknown,
+  ancestors = new Set<object>(),
+  depth=0,
+  budget:{nodes:number;textUnits:number}={nodes:0,textUnits:0},
+):string {
+  // Keep payload/evaluation fingerprints byte-compatible for JSON-like data while
+  // refusing getters, sparse arrays, hidden/symbol fields, non-plain values and bombs.
+  if (typeof value === 'string') {
+    budget.textUnits+=value.length;
+    if(budget.textUnits>4*1024*1024)throw new Error('p23-canonicalization-size-limit');
+    return JSON.stringify(value);
+  }
   if (typeof value === 'number' && !Number.isFinite(value)) {
     throw new Error('p23-canonicalization-non-finite-number');
   }
@@ -391,16 +405,50 @@ function canonicalize(value:unknown, ancestors = new Set<object>()):string {
     if (encoded === undefined) throw new Error('p23-canonicalization-value-not-json-serializable');
     return encoded;
   }
+  if(depth>64||budget.nodes>=100_000)throw new Error('p23-canonicalization-size-limit');
+  budget.nodes++;
   if (ancestors.has(value)) throw new Error('p23-canonicalization-circular-value');
+  const isArray=Array.isArray(value);
   const prototype = Object.getPrototypeOf(value);
-  if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) {
+  if(isArray&&prototype!==Array.prototype)throw new Error('p23-canonicalization-array-prototype-invalid');
+  if (!isArray && prototype !== Object.prototype && prototype !== null) {
     throw new Error('p23-canonicalization-non-plain-object');
   }
   ancestors.add(value);
   try {
-    if (Array.isArray(value)) return `[${value.map(item => canonicalize(item, ancestors)).join(',')}]`;
-    const obj = value as Record<string,unknown>;
-    return `{${Object.keys(obj).filter(k=>obj[k]!==undefined).sort().map(k=>`${JSON.stringify(k)}:${canonicalize(obj[k], ancestors)}`).join(',')}}`;
+    if (isArray) {
+      const keys=Reflect.ownKeys(value);
+      const lengthDescriptor=Object.getOwnPropertyDescriptor(value,'length');
+      const length=lengthDescriptor?.value;
+      if(!lengthDescriptor||!Number.isSafeInteger(length)||length<0||length>100_000||keys.length!==length+1) {
+        throw new Error('p23-canonicalization-array-shape-invalid');
+      }
+      const encoded:string[]=[];
+      for(let index=0;index<length;index++){
+        const descriptor=Object.getOwnPropertyDescriptor(value,String(index));
+        if(!descriptor||!('value' in descriptor)||descriptor.get||descriptor.set||!descriptor.enumerable) {
+          throw new Error('p23-canonicalization-array-entry-invalid');
+        }
+        encoded.push(canonicalize(descriptor.value,ancestors,depth+1,budget));
+      }
+      return '['+encoded.join(',')+']';
+    }
+    const keys=Reflect.ownKeys(value);
+    const fields:Array<[string,unknown]>=[];
+    for(const key of keys){
+      if(typeof key!=='string')throw new Error('p23-canonicalization-symbol-key-invalid');
+      budget.textUnits+=key.length;
+      if(budget.textUnits>4*1024*1024)throw new Error('p23-canonicalization-size-limit');
+      const descriptor=Object.getOwnPropertyDescriptor(value,key);
+      if(!descriptor||!('value' in descriptor)||descriptor.get||descriptor.set) {
+        throw new Error('p23-canonicalization-accessor-invalid');
+      }
+      if(!descriptor.enumerable)continue;
+      if(descriptor.value===undefined)continue;
+      fields.push([key,descriptor.value]);
+    }
+    fields.sort(([a],[b])=>a<b?-1:a>b?1:0);
+    return '{'+fields.map(([key,fieldValue])=>JSON.stringify(key)+':'+canonicalize(fieldValue,ancestors,depth+1,budget)).join(',')+'}';
   } finally {
     ancestors.delete(value);
   }
