@@ -1,3 +1,15 @@
+# NK1 WorkPass417 — curriculum integrity checkpoint (2026-10-23)
+
+## Обновление прогресса
+- **Оценка реализации категории learning: 83% — без повышения в этом проходе.** Код восстановления и приема observations стал строже, однако корректность ещё не подтверждена исполняемыми тестами на точном HEAD.
+- **Подтверждённая production-готовность: около 45% — без повышения.** Свежий Actions run [WorkPass417 Personal Curriculum Integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39975425148) дважды завершился до назначения runner: `runner_id=0`, `steps=[]`. Это не PASS и не подтверждает ошибку в коде; причина инфраструктурного отказа не установлена.
+- **Внесённый код:** безопасное восстановление persisted personal curriculum; проверка диапазонов числовых оценок, счетчиков, идентичностей, контекстов и временных меток; проверка исходных goal/outcome/developmental-context данных перед мутацией состояния.
+- **Интеграция:** новые регрессии подключены через существующий `test:big-pass-122`, а сфокусированный WorkPass417 workflow запускает typecheck, curriculum restore/input checks и core-restart persistence check. Runtime-зависимости не добавлялись.
+- **Открытый checkpoint:** draft PR [#79 — Harden P23 learning and verified skill evolution](https://github.com/ailtron1ss-rgb/NK1/pull/79), ветка `feature/learning` → `integration`. Не создавать дублирующий PR и не считать его готовым к merge, пока точные тесты не запустились.
+- **Следующий проход:** восстановить исполняемый Actions runner; затем выполнить точный-head typecheck и curriculum/P23 tests. После этого перейти к проверяемому end-to-end результату полного цикла `outcome → diagnosis → candidate → independent holdout → approval/rollback → durable feedback`. Эмпирического прироста обучения пока не заявлять.
+
+---
+
 # NK1 WorkPass416 — оценка прогресса ветки обучения
 
 Дата снимка: 23 октября 2026 года. Рабочая ветка: `feature/learning`.
