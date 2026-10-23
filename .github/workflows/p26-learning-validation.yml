@@ -15,6 +15,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/AdaptiveWindowDriftDetector.ts"
       - "runtime/neuro-kurisu/src/organism/learning/DriftAwareLearningController.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P23LocalModelSkillRevisionGenerator.ts"
+      - "runtime/neuro-kurisu/tests/p23-local-model-skill-revision-generator.mjs"
       - "runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/OutcomeReflectionCurriculum.ts"
       - "runtime/neuro-kurisu/src/organism/learning/LearningTrustBoundary.ts"
@@ -108,6 +110,9 @@ jobs:
       - name: Benchmark drift detectors on stable, noisy, abrupt and gradual streams (5 deterministic seeds)
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p28-drift-detector-benchmark.mjs
+      - name: Run local skill-revision generator trust-boundary regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:local-model-skill-revision-generator
       - name: Run end-to-end P23 revision generator/evaluator boundary regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass383-p23-revision-generator-boundary.mjs
