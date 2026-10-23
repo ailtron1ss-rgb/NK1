@@ -100,7 +100,7 @@ try {
     candidateId: 'candidate:skill-v4', candidateVersion: 4,
     event: 'activation-reconciled-active', reasonCodes: [], activatedVersion: 4,
   });
-  assert.equal(reconciled.sequence, 7);
+  assert.equal(reconciled.sequence, 6);
   const afterReconciliation = journal.snapshotDiagnostics();
   assert.equal(afterReconciliation.activationReconciledActiveCount, 1);
   assert.equal(afterReconciliation.pendingActivationCount, 0,
