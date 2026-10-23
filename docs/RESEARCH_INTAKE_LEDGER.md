@@ -1,3 +1,9 @@
+## WorkPass373 — sparse replay snapshot quarantine (2026-10-23)
+
+- Hardened persisted replay-vector parsing against a JavaScript edge case: Array.prototype.every skips missing sparse slots, which could make a nominally 16-element array contain fewer than 16 actual feature values.
+- The parser now explicitly materializes/checks all 16 indices against the normalized numeric contract; malformed rows are rejected by the existing state restore sanitizer. A regression test covers this quarantine behavior.
+- This is a data-integrity safeguard, not a learning-quality gain claim. Latest checked Actions rerun finished with failure but still exposed no steps or logs, so test execution remains unverified.
+
 ## WorkPass372 — replay snapshot persistence and legacy recovery (2026-10-23)
 
 - Added regression coverage for schema-v1 round-trip behavior: new replay feature vectors survive snapshot/restore, restored snapshot-bearing experiences remain replayable, and older experience rows that omit the optional fields still restore and use the compatibility fallback.
