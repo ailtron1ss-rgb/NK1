@@ -1,7 +1,17 @@
 import assert from 'node:assert/strict';
-import { RealityEvidenceLedger } from '../src/organism/system/RealityEvidenceLedger.ts';
+import { RealityEvidenceLedger, realityEvidenceEventId } from '../src/organism/system/RealityEvidenceLedger.ts';
 
 const ledger = new RealityEvidenceLedger(128);
+
+// Runtime trace projections derive IDs from an existing event ID + typed role.
+// Replays are stable, while different roles/discriminators cannot collapse into
+// the same canonical evidence identity. This ID is a join key, not a trust token.
+const outcomeOrigin='runtime-outcome:cycle-17';
+const consequenceEventId=realityEvidenceEventId(outcomeOrigin,'action-consequence','explore:device:external');
+assert.equal(consequenceEventId,realityEvidenceEventId(outcomeOrigin,'action-consequence','explore:device:external'));
+assert.notEqual(consequenceEventId,realityEvidenceEventId(outcomeOrigin,'neural-learning-input','external'));
+assert.notEqual(consequenceEventId,realityEvidenceEventId(outcomeOrigin,'action-consequence','inspect:device:external'));
+assert.throws(()=>realityEvidenceEventId('runtime-outcome\nforged','action-consequence','explore'),/reality-evidence-event-identity-invalid/);
 const first = ledger.record({
   tick: 12, at: 1200, realityClass: 'external-observation',
   claim: 'The front camera observed a door open.',
