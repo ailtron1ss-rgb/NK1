@@ -79,6 +79,29 @@ assert.ok([safePrediction.intention01, safePrediction.predictedOutcome01, safePr
   'restored state must produce finite next-step agency predictions');
 assert.throws(() => corruptedBrain.restore({ version: 2 }), /unsupported predictive self-agency state version/);
 
+let selfGetterReads = 0;
+const accessorSelfState = { version: 1 };
+Object.defineProperty(accessorSelfState, 'selfLatent', {
+  configurable: true, enumerable: true,
+  get() { selfGetterReads += 1; return new Array(24).fill(0.9); },
+});
+const accessorSafeBrain = new PredictiveSelfAgencySubstrate();
+accessorSafeBrain.restore(accessorSelfState);
+assert.equal(selfGetterReads, 0, 'self-model restore must not execute caller-owned getters');
+assert.equal(accessorSafeBrain.snapshot().learningSteps, 0);
+assert.deepEqual(accessorSafeBrain.snapshot().selfLatent, new Array(24).fill(0));
+
+let vectorGetterReads = 0;
+const accessorVector = new Array(24).fill(0);
+Object.defineProperty(accessorVector, '0', {
+  configurable: true, enumerable: true,
+  get() { vectorGetterReads += 1; return 1; },
+});
+const accessorVectorBrain = new PredictiveSelfAgencySubstrate();
+accessorVectorBrain.restore({ version: 1, selfLatent: accessorVector });
+assert.equal(vectorGetterReads, 0, 'matrix/vector accessors must be rejected before indexing');
+assert.deepEqual(accessorVectorBrain.snapshot().selfLatent, new Array(24).fill(0));
+
 const core=new OrganismCore(new MemoryStateStore());
 await core.init();
 const world=(tick)=>({tick,location:'self-agency-lab',energy:.84,attention:.8,uncertainty:.2,facts:['self','agency','prediction'],objects:['agent'],events:['action']});

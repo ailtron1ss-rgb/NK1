@@ -1,3 +1,4 @@
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 import type { ActionKind, OrganismState } from '../core/types.ts';
 
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
@@ -68,7 +69,15 @@ export class PredictiveSelfAgencySubstrate {
   private state=defaults();
   snapshot(){return structuredClone(this.state);}
   restore(raw?:Partial<PredictiveSelfAgencyState>|null){
-    const d=defaults(),r=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw as Partial<PredictiveSelfAgencyState>:{};
+    const d=defaults();
+    let detached: unknown;
+    try {
+      detached = snapshotPlainData(raw ?? {}, { allowNonFiniteNumbers: true, maxDepth: 12, maxNodes: 4096, maxStringUnits: 64 * 1024 });
+    } catch {
+      this.state = d;
+      return;
+    }
+    const r=detached&&typeof detached==='object'&&!Array.isArray(detached)?detached as Partial<PredictiveSelfAgencyState>:{};
     if(r.version!==undefined&&r.version!==1)throw new RangeError('unsupported predictive self-agency state version');
     const vector=(value:unknown,fallback:number[],mode:'signed'|'unit'='signed')=>Array.from({length:fallback.length},(_,i)=>{
       const candidate=Array.isArray(value)?value[i]:undefined;

@@ -1,3 +1,12 @@
+## NK1 WorkPass421 — isolate predictive self-model restore from caller objects (2026-10-23)
+
+- `PredictiveSelfAgencySubstrate.restore()` now reads a bounded detached snapshot and falls back to initialized state if the input contains accessors, cycles or unsupported object graphs.
+- Numeric corruption still follows the existing per-field finite/range fallbacks; this change prevents getter execution and aliasing during restore.
+- Added regressions for root accessors and accessor-backed matrix/vector arrays.
+- Validation is pending because current hosted jobs have no runner assignment or executed test steps.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
