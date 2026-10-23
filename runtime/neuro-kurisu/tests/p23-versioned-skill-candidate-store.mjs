@@ -64,6 +64,23 @@ assert.throws(() => store.stageCandidate(forgedProposal, 'memory-repair', { inst
 const c1 = store.stageCandidate(p1, 'memory-repair', { instruction: 'version one', schemaVersion: 1 });
 assert.equal(c1.version, 1);
 assert.equal(c1.status, 'staged');
+
+// Reflective repair provenance must bind to the exact authenticated proposal evidence.
+const lineage = {
+  schemaVersion: 1, evaluationFingerprint: 'a'.repeat(64), sourceCandidateId: null,
+  planFingerprint: 'c'.repeat(64), datasetFingerprint: 'd'.repeat(64),
+  sourceEvidenceFingerprint: p1.outcomeFingerprint,
+  dimensions: ['task-success', 'trajectory'], createdAt: Date.now(),
+};
+const lineageCandidate = store.stageCandidate(p1, 'memory-repair-lineage', { instruction: 'lineage-bound candidate' }, lineage);
+assert.equal(lineageCandidate.revisionProvenance.sourceEvidenceFingerprint, p1.outcomeFingerprint,
+  'candidate retains the exact proposal evidence fingerprint');
+assert.throws(() => store.stageCandidate(p1, 'memory-repair-forged-lineage', { instruction: 'mismatched lineage' }, {
+  ...lineage, sourceEvidenceFingerprint: 'e'.repeat(64),
+}), /revision provenance/, 'a valid-shaped but unrelated evidence digest must be rejected');
+assert.throws(() => store.stageCandidate(p1, 'memory-repair-malformed-lineage', { instruction: 'malformed lineage' }, {
+  ...lineage, sourceEvidenceFingerprint: 'not-a-sha256',
+}), /revision provenance/, 'malformed evidence lineage must be rejected');
 assert.equal(store.stageCandidate(p1, 'memory-repair', { instruction: 'version one', schemaVersion: 1 }).candidateId, c1.candidateId,
   'repeating the same stage request is idempotent');
 assert.throws(() => store.stageCandidate(proposal('c', false), 'memory-repair', { instruction: 'bad' }), /accepted proposal/);
