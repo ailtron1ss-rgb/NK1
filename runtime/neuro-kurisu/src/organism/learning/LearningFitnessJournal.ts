@@ -199,8 +199,10 @@ export class JsonlLearningFitnessJournal implements LearningFitnessJournalSink {
       return entry;
     } finally {
       if (fileFd !== null) closeSync(fileFd);
-      if (lockFd !== null) closeSync(lockFd);
-      if (existsSync(lockPath)) rmSync(lockPath, { force: true });
+      if (lockFd !== null) {
+        closeSync(lockFd);
+        rmSync(lockPath, { force: true });
+      }
     }
   }
 }
