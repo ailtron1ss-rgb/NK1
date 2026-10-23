@@ -1,3 +1,7 @@
+## NK1 WorkPass395 — preserve prototype-backed provider compatibility (2026-10-23)
+- [TEST ADDED] Added a fixture whose `configured` and `generate` capabilities live on its prototype, proving that descriptor-based capability resolution still supports class-style provider implementations while rejecting accessor-backed capabilities.
+- [COMPATIBILITY] Keeps the direct-generator boundary compatible with NK1's host-owned OpenAI-compatible local chat provider.
+
 ## NK1 WorkPass394 — close the direct local-generator trust-boundary path (2026-10-23)
 - [FIXED] `P23LocalModelSkillRevisionGenerator` now snapshots the request before reading fields or serializing source/validation data; generator response data is snapshotted before reading `response.text`.
 - [SAFETY] Host provider methods are resolved from property descriptors and accessor-backed `configured`/`generate` capabilities are rejected without invoking getters. Missing/unconfigured providers retain the established not-configured error contract.
