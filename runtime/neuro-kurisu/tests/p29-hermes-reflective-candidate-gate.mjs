@@ -144,6 +144,29 @@ assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, improved, {
 }), /candidate-minimum-validation-gain-invalid/);
 
 assert.throws(() => evaluateSkillLearnBenchCandidate(null, improved), /candidate-evaluation-input-invalid/);
+let familyAccessorCalls = 0;
+const accessorTrialInput = Object.defineProperties({
+  taskId:'accessor-task', trialId:'t1', verifierPassed:true,
+  skill:{requiredCapabilityIds:['cap'],coveredCapabilityIds:['cap'],executable:true,safetyViolationCount:0},
+  trajectory:{expectedStepIds:['step'],observedStepIds:['step']},
+}, {
+  taskFamily:{enumerable:true,get(){familyAccessorCalls++;return 'secret-family';}},
+});
+assert.throws(()=>evaluateSkillLearnBenchTrial(accessorTrialInput),/invalid-trial-data-boundary/);
+assert.equal(familyAccessorCalls,0,'trial input accessors must not run before report validation');
+const accessorReport = Object.defineProperty(trial('task-a','accessor-report','good'),'taskFamily',{
+  enumerable:true,get(){familyAccessorCalls++;return 'secret-family';},
+});
+assert.throws(()=>evaluateSkillLearnBenchCandidate({
+  validation:[accessorReport,baseline.validation[1]],holdout:baseline.holdout,
+},improved),/candidate-baseline-validation-reports-data-boundary-rejected/);
+assert.equal(familyAccessorCalls,0,'report accessors must not run while calculating the candidate gate');
+const sparseReportBatch = [trial('task-a','sparse-batch','good'),,];
+assert.throws(()=>evaluateSkillLearnBenchCandidate({
+  validation:sparseReportBatch,holdout:baseline.holdout,
+},improved),/candidate-baseline-validation-reports-data-boundary-rejected/,
+'sparse report batches must not skip family/evidence validation');
+
 assert.throws(() => evaluateSkillLearnBenchTrial({
   taskId: 'missing-trajectory',
   trialId: 't1',
