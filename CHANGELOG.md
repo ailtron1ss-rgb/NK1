@@ -1,3 +1,15 @@
+## NK1 WorkPass377 — prevent aggregate-masked task-family regressions (2026-10-23)
+- [CHANGED] Independent candidate evaluation now binds the task-family label from the canonical task manifest into each measured trial report and its evaluation-plan fingerprint; a caller-supplied family label cannot override the manifest.
+- [FIXED] SkillLearnBench candidate gating now macro-averages results by task and checks each adequately sampled holdout family separately. A severe family regression blocks eligibility even when gains in another family leave the aggregate score unchanged.
+- [SAFETY] Family names and family-specific holdout scores are not included in optimizer-facing feedback; only a generic generalization warning and aggregate counts are exposed.
+- [TEST ADDED] Added an aggregate-neutral scenario where memory tasks regress and perception tasks improve; the candidate must be rejected. Added regression coverage for manifest-authoritative family attribution.
+- [CI] Added independent-evaluator family provenance source/test paths and a focused regression step to the existing Node.js 24 validation workflow. Execution is not yet confirmed.
+
+## NK1 WorkPass376 — task-family-aware holdout gate (2026-10-23)
+- [CHANGED] SkillLearnBench evaluation reports can carry bounded canonical task-family provenance, preserving backward compatibility for legacy reports without family labels.
+- [FIXED] Candidate promotion eligibility now includes a configurable holdout family regression tolerance (default 0.10) and minimum family coverage (default 2 distinct tasks); insufficiently sampled families do not act as a veto.
+- [SAFETY] Family attribution must remain consistent across trials and paired baseline/candidate reports. Holdout family details stay out of generator-facing plans.
+
 ## NK1 WorkPass375 — deterministic repair-evidence fingerprints (2026-10-23)
 - [FIXED] Candidate-tools are fingerprinted as a canonical set, and repair records use deterministic tie-breaking when timestamps match. Property insertion order and row ordering no longer create distinct revision provenance for equivalent evidence.
 - [CHANGED] The runtime and P23 coordinator now share the same canonicalization/fingerprint functions, including the newest-96 evidence budget boundary.
