@@ -51,6 +51,10 @@ const candidateEvaluation = await makeEvaluation(candidatePayload, 'candidate-',
 // Without family coverage enforcement the independent paired reports show a
 // real validation gain, sufficient task counts, clean safety and improved holdout.
 const engine = new P23LearningEngine();
+const journalEvents = [];
+engine.configureLearningFitnessJournal({
+  recordFitnessDecision(entry) { journalEvents.push(structuredClone(entry)); },
+});
 const advisoryFitness = engine.evaluateReflectiveSkillCandidate(
   { validation: baseline.evaluation.validation, holdout: baseline.evaluation.holdout },
   { validation: candidateEvaluation.evaluation.validation, holdout: candidateEvaluation.evaluation.holdout },
@@ -99,6 +103,14 @@ assert.throws(() => engine.approveIndependentlyEvaluatedSkillCandidate(
 });
 assert.equal(approvalCalls, 0,
   'production promotion must fail closed before asking the store to activate a family-unverified candidate');
+assert.equal(journalEvents.length, 1, 'the rejected production fitness decision must reach the configured journal');
+assert.equal(journalEvents[0].decision, 'fitness-rejected');
+assert.ok(journalEvents[0].reasonCodes.includes('validation-family-coverage-insufficient'));
+assert.equal(journalEvents[0].matchedTrialCount, 4);
+assert.equal(journalEvents[0].validation.minimumLowerBound, null);
+assert.equal(journalEvents[0].holdout.minimumLowerBound, null);
+assert.equal('taskId' in journalEvents[0], false,
+  'the fitness journal must not retain individual task identifiers');
 
 // WorkPass403: canonical family labels and two distinct tasks are still not
 // enough when that family has only two common paired seeds. Production requires
@@ -181,5 +193,9 @@ assert.throws(() => engine.approveIndependentlyEvaluatedSkillCandidate(
 });
 assert.equal(approvalCalls, 0,
   'two matched seeds per task family must be rejected before store approval when three are required');
+assert.equal(journalEvents.length, 2, 'seed-coverage failure must also be journaled');
+assert.equal(journalEvents[1].decision, 'fitness-rejected');
+assert.ok(journalEvents[1].reasonCodes.includes('validation-family-seed-coverage-insufficient'));
+assert.ok(journalEvents[1].reasonCodes.includes('holdout-family-seed-coverage-insufficient'));
 
-console.log('WORKPASS402_PRODUCTION_PROMOTION_FAMILY_GATE=PASS strictFamilyCoverage=true noApprovalSideEffect=true pairedSeedCoverage=true');
+console.log('WORKPASS402_PRODUCTION_PROMOTION_FAMILY_GATE=PASS strictFamilyCoverage=true noApprovalSideEffect=true pairedSeedCoverage=true journalConnected=true');
