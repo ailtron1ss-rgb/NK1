@@ -1,3 +1,10 @@
+## NK1 WorkPass426 — keep boundary regression executable as JavaScript (2026-10-23)
+
+- Corrected the newly added .mjs regression to use JavaScript property access rather than a TypeScript-only assertion. The underlying detached-snapshot runtime change from WorkPass425 is unchanged.
+- Static correction only; test execution is still blocked by unavailable runner assignment.
+
+---
+
 ## NK1 WorkPass425 — consume the detached full-cycle observation (2026-10-23)
 
 - Fixed a time-of-check/time-of-use gap: the full runtime previously validated the environment observation but then retained and consumed the original caller-owned object. It now replaces that value with the boundary's bounded detached snapshot before reading nested fields or calling Core.

@@ -18,7 +18,7 @@ const detachedInput = normalizeCognitiveCycleBoundaryInput(nestedInput, 'full');
 assert.notStrictEqual(detachedInput, nestedInput, 'normalized observation must be a detached root object');
 assert.notStrictEqual(detachedInput.nested, nestedInput.nested, 'nested observations must be detached too');
 nestedInput.nested.value = 99;
-assert.equal((detachedInput.nested as { value: number }).value, 1,
+assert.equal(detachedInput.nested.value, 1,
   'post-validation caller mutation must not alter the observation consumed by the cognitive cycle');
 let observationGetterCalls = 0;
 const getterInput = Object.defineProperty({}, 'text', {
