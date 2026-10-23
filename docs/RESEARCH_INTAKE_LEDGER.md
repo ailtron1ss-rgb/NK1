@@ -1,3 +1,22 @@
+## WorkPass382–385 — complete more of the learning evidence chain (2026-10-23)
+
+### New sources checked
+- **EvoAgentBench** — [repository](https://github.com/EverMind-AI/EvoAgentBench), [paper](https://arxiv.org/abs/2607.05202). The project measures longitudinal self-evolution through growth curves, ability transfer and error avoidance rather than relying on one final snapshot. NK1 already had a checkpoint/task matrix, forgetting and transfer measurements; this pass adds a normalized area-under-learning-curve score and endpoint delta into that same metrics object.
+- **Hermes Agent Self-Evolution** — [repository](https://github.com/NousResearch/hermes-agent-self-evolution) and examples from [issue/PR history around no-op/failed evolution wiring](https://github.com/NousResearch/hermes-agent-self-evolution/pulls). The current upstream project highlights why generated output must be validated end-to-end: a candidate can appear to run while the optimized output is unchanged or discarded. NK1 keeps its own explicit unchanged-payload rejection and this pass strengthens the data boundary on the exact generated artifact before independent evaluation and staging.
+- **AFTER** — [repository](https://github.com/DavydenkoGr/AFTER). Its emphasis on transfer across task families remains reflected in NK1's manifest-bound family holdout gate.
+
+### Implemented
+- Compound-repair canonicalization now accepts a bounded plain-data batch only, validates identity/diagnosis/context/action fields, requires unique valid candidate-tool IDs, unit confidence and a nonnegative safe-integer observation timestamp, then applies locale-independent ordering before the digest.
+- P23 payload canonicalization now performs descriptor-only reads, rejects sparse/custom arrays and accessors, bounds recursion/node/text usage, and preserves the established error codes for cycles and non-finite numbers.
+- `generateAndStageReflectiveSkillRevision` snapshots baseline/candidate/options before evaluation, snapshots the generator result before hashing, and snapshots independent-evaluator output before reading fingerprints or report arrays. The exact detached payload is fingerprinted, independently evaluated, then passed to staging; staging still requires separate verified evidence and promotion approval.
+- Continual metrics now include per-checkpoint mean performance, normalized trapezoidal area under that curve, and first-to-last checkpoint delta. Area for a single checkpoint is defined as that one observed score.
+- Added explicit regressions for hostile payloads/evidence, sparse arrays, accessor non-invocation, malformed repair confidence/tool lists, longitudinal growth curves, and the single-stage edge case.
+- Extended the existing Node.js 24 P26 workflow so these regressions run when their source/test files change. No additional dependency or copied upstream source file was required; the useful mechanisms were integrated into the current NK1 interfaces.
+
+### Integration / validation caveat
+- Source and regression updates are committed, but tests are **not execution-verified**. The current GitHub Actions connector still returns failure conclusions with `steps: null` / `logs_url: null`; those statuses do not identify a failing test or prove a compiler error.
+- Before claiming functional completion, obtain actual step-level output for typecheck and the focused regressions. The new area-under-curve value is descriptive evidence, not causal attribution or proof of autonomous consciousness.
+
 ## WorkPass380–381 — host-independent ordering for reproducible learning (2026-10-23)
 
 - Canonical compound-repair evidence fingerprints and learning-curriculum tie-breaks now use direct UTF-16 code-unit ordering instead of locale-sensitive `localeCompare`. Host locale differences cannot silently change the sort order and alter a SHA-256 digest or next-task ordering.
