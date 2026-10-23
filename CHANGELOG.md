@@ -1,3 +1,11 @@
+## NK1 WorkPass414 — harden Pareto curriculum regression coverage (2026-10-23)
+
+- Extended the P23 curriculum regression with two cases: a blocked prerequisite has a maximal scalar score but must still rank after every eligible Pareto layer; and equal-objective candidate ordering is invariant to input insertion order.
+- These tests exercise selection semantics only; they do not substitute for a TypeScript/runtime execution.
+- Exact-head CI and test status remain unconfirmed because connector-visible Actions jobs have no step records.
+
+---
+
 ## NK1 WorkPass413 — stabilize the learning CI runner and runtime pin (2026-10-23)
 
 - Changed the P26 learning workflow to use the explicit `ubuntu-24.04` image rather than a moving `ubuntu-latest` alias.
