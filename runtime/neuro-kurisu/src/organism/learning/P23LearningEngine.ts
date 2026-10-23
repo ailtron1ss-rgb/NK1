@@ -863,7 +863,13 @@ export class P23LearningEngine {
     minShadowRuns:number,
   ):ActiveSkillVersion {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
-    const active=this.verifiedSkillStore.approveAndPromote(candidateId,approval,minShadowRuns);
+    let detachedApproval:SkillPromotionApproval;
+    try { detachedApproval=snapshotPlainData(approval) as SkillPromotionApproval; }
+    catch { throw new Error('skill promotion approval data-boundary rejected'); }
+    if(!detachedApproval || typeof detachedApproval!=='object' || Array.isArray(detachedApproval)) {
+      throw new Error('skill promotion approval data-boundary rejected');
+    }
+    const active=this.verifiedSkillStore.approveAndPromote(candidateId,detachedApproval,minShadowRuns);
     this.state.metrics.skillPromotions=this.verifiedSkillStore.snapshot().active.length;
     return active;
   }
