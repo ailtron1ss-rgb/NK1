@@ -108,6 +108,15 @@ function canonical(value) {
   return '{'+Object.keys(value).filter(key=>value[key]!==undefined).sort()
     .map(key=>JSON.stringify(key)+':'+canonical(value[key])).join(',')+'}';
 }
+let noOpEvaluatorCalls=0;
+await assert.rejects(()=>engine.generateAndStageReflectiveSkillRevision(
+  proposal,skillId,source.candidateId,baseline,previousEvaluation,
+  ()=>sourcePayload,
+  async()=>{noOpEvaluatorCalls++;throw new Error('no-op payload must not reach the evaluator');},
+),/reflective revision payload is unchanged from its source candidate/);
+assert.equal(noOpEvaluatorCalls,0,'unchanged generated payload must be rejected before expensive independent execution');
+assert.equal(store.snapshot().candidates.length,1,'no-op revisions cannot add a candidate version');
+
 const staged=await engine.generateAndStageReflectiveSkillRevision(
   proposal,skillId,source.candidateId,baseline,previousEvaluation,
   ()=>revisedPayload,
