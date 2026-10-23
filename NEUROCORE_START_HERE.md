@@ -1,3 +1,18 @@
+## Latest durable checkpoint — WorkPass417 (2026-10-23)
+
+- **Continue on the existing category branch `feature/learning` and draft PR #79 → `integration`. Do not create a duplicate branch/PR for this pass.**
+- Hardened `PersonalCurriculumEngine.restore()`: persisted curriculum data is snapshotted through the shared learning trust boundary; bad score/counter/context records are excluded, duplicate IDs/families are ignored, and timestamps are validated separately from ordinary counters.
+- Hardened the live curriculum input path: `observeOutcome()` and `observeDevelopmentalContext()` now snapshot inputs and validate score ranges, goal fields, timestamps, and text bounds before updating the curriculum.
+- Added restore-boundary regression cases and `tests/big-pass-122-personal-curriculum-observation-boundary.mjs`; `test:big-pass-122` now includes both the existing curriculum regression and the new observation-boundary test.
+- Added `.github/workflows/workpass417-personal-curriculum-integrity.yml` to run Node 24, runtime typecheck, restoration/input regressions, and core restart persistence on relevant pushes to `feature/learning`.
+- **Validation blocker:** latest focused run [39975425148](https://github.com/ailtron1ss-rgb/NK1/actions/runs/39975425148) failed twice before runner allocation (`runner_id=0`, zero steps/logs). Do not label tests or typecheck as passing; cause is not proven from available evidence.
+- **Progress unchanged:** learning implementation estimate 83%; confirmed production readiness ~45%. Code completeness is not measured learning uplift.
+- **Next work:** restore an actionable CI runner; run exact-head tests; then close remaining end-to-end learning gaps (live runtime reachability, held-out gains/transfer, independent sandbox/evaluator deployment, and crash/rollback proof). Keep `main` and Release ZIP untouched until a verified release rebuild is possible.
+
+Read `docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md`, `docs/FEATURE_LEARNING_WORKPASS329.md`, `docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md` and `docs/RESEARCH_INTAKE_LEDGER.md`.
+
+---
+
 ## Latest durable checkpoint — WorkPass272 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use live PR for current HEAD.
