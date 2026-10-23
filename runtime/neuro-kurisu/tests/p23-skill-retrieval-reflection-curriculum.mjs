@@ -145,6 +145,20 @@ const equalScoreTargets = rankLearningTargets([
 assert.deepEqual(equalScoreTargets.map(target=>target.id),['Zulu','alpha','Älpha'],
   'equal-score curriculum tie-breaking must use deterministic code-unit order, independent of host locale');
 
+// GEPA-inspired frontier selection: preserve a complementary learning direction
+// before filling the queue with a dominated near-duplicate of the top target.
+const frontierFixtures = [
+  {id:'frontier-repair',family:'same',uncertainty01:.95,readiness01:.6,transfer01:.8,novelty01:.3,verificationCost01:.4,repairValue01:.9},
+  {id:'dominated-near-clone',family:'same',uncertainty01:.9,readiness01:.55,transfer01:.75,novelty01:.25,verificationCost01:.5,repairValue01:.85},
+  {id:'complementary-novelty',family:'same',uncertainty01:.4,readiness01:.3,transfer01:.2,novelty01:1,verificationCost01:.7,repairValue01:.3},
+];
+assert.deepEqual(rankLearningTargets(frontierFixtures,3).map(target=>target.id),
+  ['frontier-repair','dominated-near-clone','complementary-novelty'],
+  'the default weighted-score strategy remains backward-compatible');
+assert.deepEqual(rankLearningTargets(frontierFixtures,3,'pareto-frontier').map(target=>target.id),
+  ['frontier-repair','complementary-novelty','dominated-near-clone'],
+  'Pareto-frontier mode must keep complementary strengths ahead of dominated near-duplicates');
+
 const engine=new P23LearningEngine();
 const policy={bias:()=>0};
 const needs={energy:.8,cognitiveLoad:.2,uncertainty:.5,novelty:.5,goalPressure:.5,socialNeed:.5};
@@ -161,10 +175,14 @@ assert.ok(integrated.reflections.some(r=>r.kind==='prediction-gap'),'P23 summary
 assert.ok(integrated.nextLearningTargets.length>0,'P23 summary exposes actionable next learning targets');
 const reflectedTarget = integrated.nextLearningTargets.find(target => target.id.startsWith('reflection:'));
 assert.ok(reflectedTarget, 'P23 curriculum must surface at least one reflected repair target');
+assert.equal(reflectedTarget.family,'reflection:prediction-gap:explore',
+  'runtime curriculum families must encode the diagnosed failure mechanism, not only the selected action');
 assert.equal(reflectedTarget.transfer01, 0,
   'repeating a failure in one context must not be misreported as cross-context skill transfer');
 const debtTarget = integrated.nextLearningTargets.find(target => target.id.startsWith('debt-'));
 assert.ok(debtTarget, 'P23 curriculum must surface outstanding verification debt');
+assert.equal(debtTarget.family,'verification-debt:explore',
+  'verification debt must not collapse into the reflection family merely because both reference the same action');
 assert.equal(debtTarget.transfer01, 0,
   'information gain per verification cost is not evidence of skill transfer');
 assert.ok(reflectedTarget.uncertainty01 > 0, 'reflection targets must include conservative observed failure risk');
