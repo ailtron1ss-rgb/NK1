@@ -343,8 +343,20 @@ export class VerifiedOutcomeLedger {
   }
 
   static restoreSnapshot(value: unknown): VerifiedOutcomeLedger {
-    if (!value || typeof value !== 'object') throw new Error('invalid ledger snapshot');
-    const snapshot = value as {
+    // Persistence is an untrusted input boundary too: inspect a bounded detached
+    // data graph before reading schema fields so accessors/cycles never execute.
+    let detached: unknown;
+    try {
+      detached=snapshotPlainData(value,{
+        allowNonFiniteNumbers:true,maxDepth:16,maxNodes:250_000,maxStringUnits:16*1024*1024,
+      });
+    } catch {
+      throw new Error('invalid ledger snapshot data boundary');
+    }
+    if (!detached || typeof detached !== 'object' || Array.isArray(detached)) {
+      throw new Error('invalid ledger snapshot');
+    }
+    const snapshot = detached as {
       schemaVersion?: unknown; manifest?: unknown; manifestCount?: unknown;
       acceptedOutcomes?: unknown; rejectedOutcomes?: unknown;
       outcomes?: unknown; rejections?: unknown;
