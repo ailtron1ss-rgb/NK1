@@ -1,3 +1,15 @@
+## NK1 WorkPass403 — require paired-seed replication within each skill family (2026-10-23)
+
+- [FIXED] The independent-evaluation comparator now supports `minimumValidationFamilySeeds` and `minimumHoldoutFamilySeeds`. A seed counts only when it is shared by every task in a sufficiently sampled family; seed counts from different tasks are not unioned into fake replication.
+- [PROMOTION] P23 production activation now requires 3 common paired seeds per family on both validation and holdout, in addition to canonical family provenance and at least 2 distinct tasks per family. This policy is fixed in the promotion authority, not candidate-controlled.
+- [REPORTING] Reports now include family seed-coverage counts and failure counts. Requested seed coverage with zero eligible family metadata fails closed; invalid minima fail closed.
+- [REGRESSION] WorkPass225 covers a two-seed candidate that is blocked and a three-seed case that passes coverage. WorkPass402's end-to-end production test also verifies that the true P23 activation entry point rejects two-seed family evidence before store approval.
+- [RESEARCH] Adapted RLiable's recommendation to quantify uncertainty and run variability, SkillLearnBench's multidomain/three-axis assessment, and Hermes' guarded candidate promotion. Three seeds are a structural floor, not statistical proof; bootstrap intervals / IQM and larger seed counts remain future work.
+- [CI] Existing P26 path/step wiring runs both affected regression scripts under Node.js 24; no new runtime dependency was introduced.
+- [VALIDATION] Changes are committed on `feature/learning`; exact-head tests/typecheck are still runtime-unverified because Actions jobs have no exposed step logs.
+
+---
+
 ## NK1 WorkPass402 — enforce family coverage at production promotion (2026-10-23)
 
 - [FIXED] The authoritative P23 activation path `approveIndependentlyEvaluatedSkillCandidate` no longer uses the permissive default evaluation profile. It requires at least one sufficiently sampled canonical task family in both validation and holdout: 2 distinct tasks per family, minimum one family per split.
