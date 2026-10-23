@@ -146,4 +146,70 @@ assert.equal(core.memorySubsystem.memoryOS.indexDiagnostics().pass, true);
  assert.equal(memoryGetterReads, 0, 'restore must not execute a caller-owned getter');
  assert.equal(accessorRestoredMemory.budgetDiagnostics().byteBudget, 524288);
 
-console.log('MEMORY_PROVENANCE_LINEAGE_WORKPASS30=PASS', JSON.stringify({ canonicalMemoryCount: restored.size(), independentSources: restoredTrail?.independentSources, confidenceAfterIndependentSupport: afterIndependentConfidence, boundedTrail: capped.evidenceTrail(row.id)?.independentSources, replayGuardKeys: capped.snapshot().items.find(item => item.id === row.id).evidenceLineageKeys.length, researchRows: researchRows.length, mirroredLineageVotes: core.memorySubsystem.memoryOS.evidenceTrail(familyA.id)?.independentSources, memorySchema: snap.version }));
+// Hexis-inspired residual evidence revision is owned by the same canonical memory row.
+const beliefMemory = new MemoryOS2();
+const belief = beliefMemory.encode(makeInput('belief-seed', 'belief-seed-lineage', {
+  content:'A semantic belief uses independent evidence to revise confidence without rewriting memory history.',
+  confidence:.45, sourceAuthority01:.9, context:{domain:'belief-revision-lab'},
+}), { clone:false });
+const beliefBefore = belief.confidence;
+const support = beliefMemory.reviseConfidenceFromEvidence(belief.id, {
+  source:'reviewed-paper-a', provenanceClass:'external', sourceAuthority01:.8,
+  independenceKey:'paper-lineage-a', observedAt:at, evidenceFreshnessAt:at,
+}, 'supports', at);
+assert.equal(support.applied,true);
+assert.equal(support.reason,'applied');
+assert.ok(Math.abs(support.posteriorConfidence-(beliefBefore+(1-beliefBefore)*.35*.8))<1e-9,
+  'support should close a fixed fraction of remaining doubt');
+const afterSupport = support.posteriorConfidence;
+const duplicateSupport=beliefMemory.reviseConfidenceFromEvidence(belief.id,{
+  source:'mirror-of-paper-a',provenanceClass:'external',sourceAuthority01:1,
+  independenceKey:'paper-lineage-a',observedAt:at+1,evidenceFreshnessAt:at+1,
+},'supports',at+1);
+assert.equal(duplicateSupport.applied,false);
+assert.equal(duplicateSupport.reason,'duplicate_source');
+assert.equal(beliefMemory.get(belief.id).confidence,afterSupport,
+  'replaying the same lineage cannot add another support vote');
+const contradiction=beliefMemory.reviseConfidenceFromEvidence(belief.id,{
+  source:'reviewed-paper-b',provenanceClass:'external',sourceAuthority01:.8,
+  independenceKey:'paper-lineage-b',observedAt:at+2,evidenceFreshnessAt:at+2,
+},'contradicts',at+2);
+assert.equal(contradiction.applied,true);
+assert.ok(Math.abs(contradiction.posteriorConfidence-afterSupport*(1-.35*.8))<1e-9,
+  'contradicting evidence should erode current confidence symmetrically');
+assert.equal(beliefMemory.reviseConfidenceFromEvidence(belief.id,{
+  source:'paper-a-flipped-stance',provenanceClass:'external',sourceAuthority01:1,
+  independenceKey:'paper-lineage-a',observedAt:at+3,evidenceFreshnessAt:at+3,
+},'contradicts',at+3).reason,'duplicate_source',
+'one lineage cannot vote twice by changing stance');
+const protectedBelief=beliefMemory.encode(makeInput('protected-seed','protected-origin-lineage',{
+  content:'A protected origin statement remains revisable only by an explicit identity policy.',
+  context:{protected:'true'},confidence:.7,
+}),{clone:false});
+const protectedPrior=protectedBelief.confidence;
+const protectedResult=beliefMemory.reviseConfidenceFromEvidence(protectedBelief.id,{
+  source:'independent-contradiction',provenanceClass:'external',sourceAuthority01:1,
+  independenceKey:'protected-contradiction',observedAt:at,evidenceFreshnessAt:at,
+},'contradicts',at);
+assert.equal(protectedResult.applied,false);
+assert.equal(protectedResult.reason,'protected');
+assert.equal(beliefMemory.get(protectedBelief.id).confidence,protectedPrior);
+assert.ok(beliefMemory.evidenceTrail(protectedBelief.id).sources.some(row=>row.stance==='contradicts'),
+  'protected contradictory evidence remains visible without silently rewriting confidence');
+const hostileEvidence=Object.defineProperty({},'source',{enumerable:true,get(){throw new Error('evidence getter must not run');}});
+let evidenceGetterReads=0;
+Object.defineProperty(hostileEvidence,'source',{enumerable:true,configurable:true,get(){evidenceGetterReads++;return 'unsafe-source';}});
+const beliefBeforeHostile=beliefMemory.snapshot();
+assert.throws(()=>beliefMemory.reviseConfidenceFromEvidence(belief.id,hostileEvidence,'supports',at+4),/memory-belief-evidence-invalid/);
+assert.equal(evidenceGetterReads,0);
+assert.deepEqual(beliefMemory.snapshot(),beliefBeforeHostile,
+  'rejected evidence must not mutate canonical memory or confidence audit');
+const persistedBelief=beliefMemory.snapshot();
+const restoredBeliefs=new MemoryOS2();
+restoredBeliefs.restore(structuredClone(persistedBelief));
+assert.deepEqual(restoredBeliefs.evidenceTrail(belief.id).lastConfidenceRevision,
+  beliefMemory.evidenceTrail(belief.id).lastConfidenceRevision,
+  'confidence-revision audit must survive persistence restore');
+assert.ok(restoredBeliefs.budgetDiagnostics().estimatedBytes===persistedBelief.estimatedBytes,
+  'audit rows must be part of the canonical byte budget');
+console.log('MEMORY_PROVENANCE_LINEAGE_WORKPASS30=PASS', JSON.stringify({ canonicalMemoryCount: restored.size(), independentSources: restoredTrail?.independentSources, confidenceAfterIndependentSupport: afterIndependentConfidence, boundedTrail: capped.evidenceTrail(row.id)?.independentSources, replayGuardKeys: capped.snapshot().items.find(item => item.id === row.id).evidenceLineageKeys.length, researchRows: researchRows.length, mirroredLineageVotes: core.memorySubsystem.memoryOS.evidenceTrail(familyA.id)?.independentSources, memorySchema: persistedBelief.version, confidenceRevisions: restoredBeliefs.evidenceTrail(belief.id).confidenceRevisionCount }));
