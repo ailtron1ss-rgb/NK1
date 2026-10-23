@@ -596,6 +596,9 @@ export class P23LearningEngine {
       sourceCandidateId:source.candidateId,
       planFingerprint:createHash('sha256').update(canonicalize(plan)).digest('hex'),
       datasetFingerprint:proposal.datasetFingerprint,
+      // Preserve the exact authenticated outcome-evidence digest that authorized this repair.
+      // It is provenance only: the candidate still needs independent evaluation, shadow receipts, and approval.
+      sourceEvidenceFingerprint:proposal.outcomeFingerprint,
       dimensions:plan.targets.map(target=>target.dimension),
       createdAt:now(),
     };
