@@ -1,8 +1,26 @@
 import assert from 'node:assert/strict';
 import { buildVoicePlan, detectVoiceBreathMode } from '../src/organism/body/VoiceEmbodiment.ts';
 import { EmbodimentRuntime } from '../src/organism/body/EmbodimentRuntime.ts';
-import { defaultBodyState } from '../src/organism/body/EmbodiedBody.ts';
+import { defaultBodyState, normalizePersistedBodyState } from '../src/organism/body/EmbodiedBody.ts';
 const body=defaultBodyState();
+assert.deepEqual(normalizePersistedBodyState(body), body, 'valid persisted body snapshots should round-trip through the canonical schema');
+let bodyRestoreGetterReads = 0;
+const getterBackedBody = { ...body };
+Object.defineProperty(getterBackedBody, 'schemaVersion', {
+  enumerable: true, configurable: true,
+  get() { bodyRestoreGetterReads++; return 1; },
+});
+assert.equal(normalizePersistedBodyState(getterBackedBody), null);
+assert.equal(bodyRestoreGetterReads, 0, 'body checkpoint validation must not execute caller-owned getters');
+const cyclicBody = { ...body };
+cyclicBody.self = cyclicBody;
+assert.equal(normalizePersistedBodyState(cyclicBody), null, 'cyclic body snapshots must be rejected');
+assert.equal(normalizePersistedBodyState({
+  ...body, telemetry: { ...body.telemetry, battery01: Number.NaN },
+}), null, 'non-finite body telemetry must not enter live resource regulation');
+assert.equal(normalizePersistedBodyState({
+  ...body, sleep: 'deep-sleep', awake: true,
+}), null, 'inconsistent sleep/awake state must fail closed');
 assert.equal(detectVoiceBreathMode('Привет, Курису'), 'ping');
 assert.equal(detectVoiceBreathMode('Почему это работает?'), 'lecture');
 assert.equal(detectVoiceBreathMode('Ты настоящая или нет?'), 'confess');

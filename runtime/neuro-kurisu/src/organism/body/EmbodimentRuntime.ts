@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 import { sampleAndroidTelemetryDetailed, type TermuxCapabilities, type TermuxTtsOptions, detectTermuxCapabilities, synthesizeSpeechInput, type AndroidTelemetryDiagnostics } from './AndroidEmbodimentBridge.ts';
 import { buildVoicePlan, defaultVoiceRuntimeState, type VoiceRuntimeState, type VoicePlan } from './VoiceEmbodiment.ts';
-import { defaultBodyState, synthesizeBody, type OrganismBodyEvent, type OrganismBodyState, shouldEnterSleep } from './EmbodiedBody.ts';
+import { defaultBodyState, normalizePersistedBodyState, synthesizeBody, type OrganismBodyEvent, type OrganismBodyState, shouldEnterSleep } from './EmbodiedBody.ts';
 import type { OrganismState } from '../core/types.ts';
 import type { AndroidSamplingPlan } from './AndroidEmbodimentBridge.ts';
 
@@ -33,7 +33,7 @@ export class EmbodimentRuntime {
   setSpeechInputDispatcher(dispatcher:(()=>Promise<string|null>)|null):void { this.speechInputDispatcher=dispatcher??synthesizeSpeechInput; }
 
   async init(persisted?: OrganismBodyState | null): Promise<void> {
-    this.body = persisted?.schemaVersion === 1 ? structuredClone(persisted) : defaultBodyState();
+    this.body = normalizePersistedBodyState(persisted) ?? defaultBodyState();
     this.capabilities = await detectTermuxCapabilities();
     this.body.ttsAvailable = this.capabilities.tts;
     this.body.sttAvailable = this.capabilities.stt;

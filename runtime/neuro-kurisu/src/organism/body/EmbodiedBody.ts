@@ -1,4 +1,5 @@
 import type { OrganismState } from '../core/types.ts';
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 
 export type SleepState = 'awake' | 'light-sleep' | 'deep-sleep' | 'waking';
 export type SensorSource = 'android-termux' | 'node-host' | 'simulated';
@@ -37,6 +38,82 @@ export interface OrganismBodyState {
   sttAvailable: boolean;
   cameraAvailable: boolean;
   microphoneAvailable: boolean;
+}
+
+const isRecord = (value:unknown):value is Record<string,unknown> => value!==null && typeof value==='object' && !Array.isArray(value);
+const unit01 = (value:unknown):value is number => typeof value==='number' && Number.isFinite(value) && value>=0 && value<=1;
+const timestamp = (value:unknown):value is number => typeof value==='number' && Number.isSafeInteger(value) && value>=0;
+const nullableUnit01 = (value:unknown):boolean => value===null || unit01(value);
+const nullableBoolean = (value:unknown):boolean => value===null || typeof value==='boolean';
+
+/**
+ * Validate a persisted body checkpoint before it can influence sensing, sleep,
+ * resource regulation, speech planning, or action selection.
+ *
+ * Snapshotting comes first so malformed plugin/persistence objects cannot run
+ * getters or survive through structuredClone into the live body state.
+ */
+export function normalizePersistedBodyState(raw:unknown):OrganismBodyState|null {
+  let value:unknown;
+  try {
+    value=snapshotPlainData<unknown>(raw,{
+      maxDepth:16,maxNodes:1024,maxStringUnits:8192,
+    });
+  } catch {
+    return null;
+  }
+  if(!isRecord(value)||value.schemaVersion!==1||!isRecord(value.telemetry))return null;
+  const t=value.telemetry;
+  if(!['awake','light-sleep','deep-sleep','waking'].includes(String(value.sleep))||
+     typeof value.awake!=='boolean'||
+     (value.awake && !['awake','waking'].includes(String(value.sleep)))||
+     (!value.awake && !['light-sleep','deep-sleep'].includes(String(value.sleep)))||
+     !timestamp(value.lastExternalEventAt)||!timestamp(value.lastUserActivityAt)||
+     !(value.wakeReason===null||(typeof value.wakeReason==='string'&&value.wakeReason.length<=200))||
+     !unit01(value.bodyEnergy01)||!unit01(value.thermalStrain01)||!unit01(value.sensoryFreshness01)||
+     !unit01(value.cognitiveCapacity01)||!unit01(value.circadian01)||
+     typeof value.ttsAvailable!=='boolean'||typeof value.sttAvailable!=='boolean'||
+     typeof value.cameraAvailable!=='boolean'||typeof value.microphoneAvailable!=='boolean'||
+     !unit01(t.battery01)||
+     !(t.batteryTemperatureC===null||(typeof t.batteryTemperatureC==='number'&&Number.isFinite(t.batteryTemperatureC)&&t.batteryTemperatureC>=-50&&t.batteryTemperatureC<=125))||
+     !unit01(t.thermalPressure01)||!unit01(t.cpuLoad01)||!unit01(t.ramPressure01)||
+     !nullableBoolean(t.networkOnline)||!nullableBoolean(t.screenInteractive)||
+     !nullableUnit01(t.ambientLight01)||!nullableUnit01(t.proximity01)||!nullableUnit01(t.motion01)||
+     !nullableBoolean(t.charging)||!timestamp(t.sampledAt)||!timestamp(t.staleMs)||
+     !['android-termux','node-host','simulated'].includes(String(t.source)))return null;
+  return {
+    schemaVersion:1,
+    sleep:value.sleep as SleepState,
+    awake:value.awake,
+    telemetry:{
+      battery01:t.battery01 as number,
+      batteryTemperatureC:t.batteryTemperatureC as number|null,
+      thermalPressure01:t.thermalPressure01 as number,
+      cpuLoad01:t.cpuLoad01 as number,
+      ramPressure01:t.ramPressure01 as number,
+      networkOnline:t.networkOnline as boolean|null,
+      screenInteractive:t.screenInteractive as boolean|null,
+      ambientLight01:t.ambientLight01 as number|null,
+      proximity01:t.proximity01 as number|null,
+      motion01:t.motion01 as number|null,
+      charging:t.charging as boolean|null,
+      sampledAt:t.sampledAt as number,
+      source:t.source as SensorSource,
+      staleMs:t.staleMs as number,
+    },
+    lastExternalEventAt:value.lastExternalEventAt,
+    lastUserActivityAt:value.lastUserActivityAt,
+    wakeReason:value.wakeReason as string|null,
+    bodyEnergy01:value.bodyEnergy01,
+    thermalStrain01:value.thermalStrain01,
+    sensoryFreshness01:value.sensoryFreshness01,
+    cognitiveCapacity01:value.cognitiveCapacity01,
+    circadian01:value.circadian01,
+    ttsAvailable:value.ttsAvailable,
+    sttAvailable:value.sttAvailable,
+    cameraAvailable:value.cameraAvailable,
+    microphoneAvailable:value.microphoneAvailable,
+  };
 }
 
 export interface OrganismBodyEvent {

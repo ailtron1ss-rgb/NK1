@@ -1,3 +1,12 @@
+## NK1 WorkPass445 — normalize persisted embodiment state before runtime initialization (2026-10-23)
+
+- Added a canonical `normalizePersistedBodyState` for the existing body schema. It snapshots bounded plain data before reads, rejects accessor/cyclic/oversized input, validates all persisted telemetry, confidence/resource ranges, timestamp/source enums, and sleep/awake consistency, then reconstructs only allowed fields.
+- `EmbodimentRuntime.init` now uses the normalizer and falls back to a fresh default body rather than cloning any object with `schemaVersion === 1`. Invalid stored values therefore cannot directly seed resource regulation, sleep state, or voice planning.
+- Added regressions for valid round-trip, getter non-execution, cycle rejection, non-finite telemetry, and inconsistent sleep state. No new dependencies; hardware behavior still needs device-level validation.
+- **Verification status:** source/test/changelog committed to `feature/visual-embodiment`; hosted Actions execution is not confirmed because runners are not being assigned.
+
+---
+
 ## NK1 WorkPass433 — reject malformed embodiment commands before I/O (2026-10-23)
 
 - Added descriptor-based normalization of the EmbodiedActionExecutor payload with an allowlist of fields; accessors, custom/inherited prototypes, unknown keys, coercible non-string speech, and oversized identifiers fail closed.
