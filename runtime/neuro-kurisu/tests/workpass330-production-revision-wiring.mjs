@@ -67,7 +67,6 @@ test('loads host config from a distinct module and delegates authority construct
       root,
       providerModulePath: providerPath,
       stateDirectory: path.join(root, 'state'),
-      providerContext: { stateDirectory: '/provider-overridden-state', engine: { marker: 'engine' } },
       production: true,
       createHostOwnedFactory: async options => {
         captured = options;
