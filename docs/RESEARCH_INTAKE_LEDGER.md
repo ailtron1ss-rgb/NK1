@@ -1,3 +1,25 @@
+## WorkPass364–369 — replay provenance and diverse active curriculum (2026-10-23)
+
+### Sources reviewed this pass
+- **Hermes Agent Self-Evolution** — [repository](https://github.com/NousResearch/hermes-agent-self-evolution) and [plan](https://github.com/NousResearch/hermes-agent-self-evolution/blob/main/PLAN.md). The documented direction emphasizes evidence datasets, train/validation/holdout separation, size constraints, semantic preservation, and review before activation. NK1 retains the stronger existing verified-promotion boundary; generated content remains a proposal rather than runtime authority.
+- **Reflexion** — [arXiv:2303.11366](https://arxiv.org/abs/2303.11366). Reflective text/feedback is retained as experience to affect future decisions without requiring weight updates. NK1 adaptation: do not turn a reflection into a verified label, and preserve the source outcome/feature snapshot used for later replay.
+- **Voyager** — [paper](https://arxiv.org/abs/2305.16291) and [project](https://voyager.minedojo.org/). Its automatic curriculum and reusable skill library inform NK1's family-aware ranking so one repeated failure class does not monopolize the next-learning queue.
+- **CleanRL** — [official documentation](https://docs.cleanrl.dev/). Reproducibility and explicit benchmark implementation inform our distinction between code changed, test assertions added, and measured pass/effect evidence. No benchmark gain is claimed by this patch.
+
+### Decisions and implementation
+- P23 LearningExperience now optionally stores a bounded replay feature vector, goal-pressure score, and causal-strength score alongside the recorded outcome. These are captured at ingestion, making new replay selection less dependent on a later mutable trace object.
+- The replay entry-point now joins incoming trace handles to stored experiences by ID, tick, selected action, and context. Failed joins are excluded before selection; the persisted experience supplies reward/outcome features.
+- Schema version remains 1 with optional fields and a checked fallback for pre-existing records; no migration that invalidates old state was introduced.
+- Experience ingestion rejects non-canonical identity/time/action data and non-unit predictions or outcome labels instead of clamping invalid external values into training examples.
+- Learning targets now have normalized scores and are interleaved by family after score-sorting within each family. The top overall repair remains first; if only one family is available, ranking remains score-ordered.
+- Tests added for forged/stale replay joins, feature snapshot shape, out-of-range labels, non-finite predictions, score bounds, and family coverage. These test cases are committed, but their execution is not claimed until CI or a local test run returns a verifiable result.
+- No upstream source code was copied, and no external runtime dependency was added. These are architecture adaptations to existing NK1 interfaces.
+
+### Completion evidence / remaining work
+- **Implemented:** 6 source/test/documentation passes (WorkPass364–369) on feature/learning.
+- **Not yet measured:** test execution, type-check, real replay-quality uplift, independent benchmark results, live skill-generation/evaluation run, full end-to-end autonomous learning loop.
+- **Next:** run the focused P23 scripts in an environment where the GitHub runner actually executes steps; resolve any failures from real logs; then measure baseline-vs-new replay selection on a fixed dataset and only retain changes that preserve holdout/regression gates.
+
 ## WorkPass361–362 — reflection confidence, provenance and transfer semantics (2026-10-23)
 
 ### Reviewed sources
