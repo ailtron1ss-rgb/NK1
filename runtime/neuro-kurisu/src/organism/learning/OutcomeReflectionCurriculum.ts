@@ -208,7 +208,58 @@ function sameLearningTarget(a:LearningTargetInput,b:LearningTargetInput):boolean
     a.verificationCost01===b.verificationCost01&&a.repairValue01===b.repairValue01&&
     (a.blocked??false)===(b.blocked??false);
 }
-export function rankLearningTargets(targets:readonly Omit<LearningTarget,'score01'|'rationale'>[],limit=10):LearningTarget[]{
+/** True when a is no worse than b on every learning objective and strictly better on at least one. */
+function dominatesLearningTarget(a:LearningTarget,b:LearningTarget):boolean{
+  if(a.blocked||b.blocked)return false;
+  const left=[a.uncertainty01,a.readiness01,a.transfer01,a.novelty01,1-a.verificationCost01,a.repairValue01];
+  const right=[b.uncertainty01,b.readiness01,b.transfer01,b.novelty01,1-b.verificationCost01,b.repairValue01];
+  let strict=false;
+  for(let i=0;i<left.length;i++){
+    if(left[i]<right[i])return false;
+    if(left[i]>right[i])strict=true;
+  }
+  return strict;
+}
+
+/**
+ * Compute Pareto layers in O(n²) time using a dominance DAG. This preserves
+ * candidates with complementary strengths instead of collapsing them into one
+ * weighted score; blocked targets are intentionally placed after all eligible ones.
+ */
+function learningTargetParetoLayers(targets:readonly LearningTarget[]):Map<string,number>{
+  const dominated=targets.map(()=>[] as number[]);
+  const incoming=targets.map(()=>0);
+  for(let i=0;i<targets.length;i++){
+    if(targets[i].blocked)continue;
+    for(let j=0;j<targets.length;j++){
+      if(i===j||targets[j].blocked)continue;
+      if(dominatesLearningTarget(targets[i],targets[j])){
+        dominated[i].push(j);
+        incoming[j]++;
+      }
+    }
+  }
+  let frontier:number[]=[];
+  for(let i=0;i<targets.length;i++)if(!targets[i].blocked&&incoming[i]===0)frontier.push(i);
+  const layers=new Map<string,number>();
+  let depth=0;
+  while(frontier.length){
+    const next:number[]=[];
+    for(const index of frontier){
+      layers.set(targets[index].id,depth);
+      for(const child of dominated[index]){
+        incoming[child]--;
+        if(incoming[child]===0)next.push(child);
+      }
+    }
+    frontier=next;
+    depth++;
+  }
+  for(const target of targets)if(target.blocked||!layers.has(target.id))layers.set(target.id,Number.MAX_SAFE_INTEGER);
+  return layers;
+}
+
+export function rankLearningTargets(targets:readonly Omit<LearningTarget,'score01'|'rationale'>[],limit=10,strategy:'weighted-score'|'pareto-frontier'='weighted-score'):LearningTarget[]{
   const rawTargets=boundedArrayEntries(targets,MAX_LEARNING_TARGETS);
   if(!rawTargets)return [];
   const byId=new Map<string,LearningTargetInput>(),invalidIds=new Set<string>(),conflicts=new Set<string>();
@@ -230,8 +281,16 @@ export function rankLearningTargets(targets:readonly Omit<LearningTarget,'score0
   for(const id of invalidIds)byId.delete(id);
   for(const id of conflicts)byId.delete(id);
   const maximum=Math.max(1,Math.min(50,Math.floor(num(limit,10))));
-  const scored=[...byId.values()].map(scoreValidatedLearningTarget)
-    .sort((a,b)=>b.score01-a.score01||compareText(a.id,b.id));
+  const scored=[...byId.values()].map(scoreValidatedLearningTarget);
+  const paretoLayers=strategy==='pareto-frontier'?learningTargetParetoLayers(scored):null;
+  const compareRanked=(a:LearningTarget,b:LearningTarget):number=>{
+    if(paretoLayers){
+      const layerDelta=(paretoLayers.get(a.id)??Number.MAX_SAFE_INTEGER)-(paretoLayers.get(b.id)??Number.MAX_SAFE_INTEGER);
+      if(layerDelta!==0)return layerDelta;
+    }
+    return b.score01-a.score01||compareText(a.id,b.id);
+  };
+  scored.sort(compareRanked);
   // Voyager-style automatic curricula should not fill every slot with repeated
   // variants of a single family when other eligible families have evidence-backed
   // work. Keep each family internally score-ordered, then interleave family heads;
@@ -245,7 +304,7 @@ export function rankLearningTargets(targets:readonly Omit<LearningTarget,'score0
   const ranked:LearningTarget[]=[];
   while(ranked.length<maximum){
     const heads=[...families.entries()].filter(([,rows])=>rows.length>0)
-      .sort((a,b)=>b[1][0].score01-a[1][0].score01||compareText(a[1][0].id,b[1][0].id));
+      .sort((a,b)=>compareRanked(a[1][0],b[1][0]));
     if(!heads.length)break;
     if(heads.length===1){
       ranked.push(...heads[0][1].splice(0,maximum-ranked.length));
