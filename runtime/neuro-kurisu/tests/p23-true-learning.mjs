@@ -210,6 +210,24 @@ assert.equal(replayIntegrityLearning.replayPending([staleReplayTick], replayInte
   'a stale trace tick must not be joined to a persisted experience');
 assert.equal(replayIntegrityLearning.snapshot().replayUpdates.length, 0,
   'rejected trace joins must not mutate replay state');
+const roundTripState = replayIntegrityLearning.snapshot();
+const restoredReplayLearning = new P23LearningEngine();
+restoredReplayLearning.restore(roundTripState);
+assert.deepEqual(restoredReplayLearning.snapshot().experiences[0].replayFeatures01,
+  persistedReplayExperience.replayFeatures01,
+  'schema-v1 restore must preserve the stored replay feature snapshot');
+assert.equal(restoredReplayLearning.replayPending([replayIntegrityTrace], new AdaptivePolicyEngine()), 1,
+  'restored snapshot-bearing experiences must remain replayable');
+const legacyReplayState = structuredClone(roundTripState);
+delete legacyReplayState.experiences[0].goalPressure01;
+delete legacyReplayState.experiences[0].causalStrength01;
+delete legacyReplayState.experiences[0].replayFeatures01;
+const legacyReplayLearning = new P23LearningEngine();
+legacyReplayLearning.restore(legacyReplayState);
+assert.equal(legacyReplayLearning.snapshot().experiences.length, 1,
+  'older schema-v1 experience rows without replay snapshots must still restore');
+assert.equal(legacyReplayLearning.replayPending([replayIntegrityTrace], new AdaptivePolicyEngine()), 1,
+  'older schema-v1 experience rows must retain the checked matching-trace fallback');
 assert.equal(replayIntegrityLearning.replayPending([replayIntegrityTrace], replayIntegrityPolicy), 1,
   'the original trace identity remains eligible after mismatched inputs are rejected');
 
