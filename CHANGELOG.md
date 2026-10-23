@@ -1,3 +1,11 @@
+## NK1 WorkPass456 — cap Hexis-style evidence weight by canonical provenance trust (2026-10-23)
+
+- Confidence revision now caps caller-declared evidence authority at the canonical default for its declared provenance class: external .90, user .86, agent .68, derived .52, simulation .28, unknown .50, device .95.
+- Lower explicit authority is still honored; a caller cannot set authority above the provenance policy just by supplying a high numeric field. This is a native guardrail around the residual revision mechanism, not a claim that the label itself is cryptographically authenticated.
+- Added a regression for an external source claiming authority 1.0 and verified that the formula uses the .90 ceiling. Existing lineage de-duplication and audit behavior remain intact. Execution on the exact HEAD is still unverified.
+
+---
+
 ## NK1 WorkPass455 — fix accessor-backed belief test fixture (2026-10-23)
 
 - Corrected the hostile-evidence regression fixture so its accessor is configurable from the start and the test reaches the intended memory ingress instead of throwing during fixture construction.
