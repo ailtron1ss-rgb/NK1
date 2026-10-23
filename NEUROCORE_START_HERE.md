@@ -1,3 +1,16 @@
+## Latest durable checkpoint — WorkPass419 (2026-10-23)
+
+- Continue on existing `feature/learning` / draft PR #79 → `integration`; do not create a duplicate PR.
+- P23 repair retry cooldown is no longer memory-only: `P23CompoundRepairRevisionCoordinator` persists exact-evidence digest, attempt count and retry deadline through a `FileStateStore` sidecar, restored during `OrganismRuntime.init()`.
+- Same-evidence revision attempts remain throttled after a process restart; a new verified-evidence fingerprint is eligible to retry immediately. Candidate-store lineage still owns duplicate-stage suppression.
+- The sidecar schema is bounded (128 skills), strict and fail-closed. Diagnostics report whether retry persistence is configured/healthy.
+- `workpass172-compound-revision-coordinator.mjs` now covers persistence/restart cooldown and corrupted record rejection; P26 path filters watch relevant runtime/coordinator/tests.
+- **CI blocker persists:** exact-head Actions failures show `runner_id=0` and zero steps. Typecheck/tests remain unconfirmed; no measured learning uplift.
+- **Estimates unchanged:** learning implementation 83%; confirmed production readiness ~45%.
+- Next: obtain an actionable CI runner, validate backup/restore and storage-failure cases, then continue held-out end-to-end P23 learning/transfer proof. `main` and Release ZIP remain unchanged.
+
+---
+
 ## Latest durable checkpoint — WorkPass418 (2026-10-23)
 
 - Continue on existing `feature/learning` / open draft PR #79 to `integration`; do not create a duplicate PR.
