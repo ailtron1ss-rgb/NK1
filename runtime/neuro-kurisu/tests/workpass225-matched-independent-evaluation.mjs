@@ -136,6 +136,12 @@ assert.equal(replicated.validationFamiliesEvaluatedForConfidenceInterval, 1);
 assert.equal(replicated.holdoutFamiliesEvaluatedForConfidenceInterval, 1);
 assert.equal(replicated.validationFamilyConfidenceBoundFailures, 0);
 assert.equal(replicated.holdoutFamilyConfidenceBoundFailures, 0);
+assert.ok(typeof replicated.validationFamilyMeanDelta === 'number' && replicated.validationFamilyMeanDelta > 0);
+assert.ok(typeof replicated.validationFamilyLowerBoundMinimum === 'number' && replicated.validationFamilyLowerBoundMinimum > 0);
+assert.ok(typeof replicated.validationFamilyUpperBoundMaximum === 'number');
+assert.ok(typeof replicated.holdoutFamilyMeanDelta === 'number' && replicated.holdoutFamilyMeanDelta > 0);
+assert.ok(typeof replicated.holdoutFamilyLowerBoundMinimum === 'number' && replicated.holdoutFamilyLowerBoundMinimum >= -0.10);
+assert.ok(typeof replicated.holdoutFamilyUpperBoundMaximum === 'number');
 
 // WorkPass404: positive macro means alone are not enough when one of three
 // seed-level outcomes goes strongly backwards. The paired bootstrap lower bound
@@ -160,6 +166,10 @@ assert.ok(noisyComparison.reasons.includes('validation-family-improvement-confid
 assert.ok(noisyComparison.reasons.includes('holdout-family-confidence-bound-regression-exceeds-tolerance'),
   'holdout confidence bounds must also prevent a noisy average from hiding a risky seed');
 assert.equal(noisyComparison.eligible, false);
+assert.ok(typeof noisyComparison.validationFamilyLowerBoundMinimum === 'number');
+assert.ok(noisyComparison.validationFamilyLowerBoundMinimum <= 0);
+assert.ok(typeof noisyComparison.holdoutFamilyLowerBoundMinimum === 'number');
+assert.ok(noisyComparison.holdoutFamilyLowerBoundMinimum < -0.10);
 
 
 assert.throws(() => compareMatchedIndependentEvaluations(
