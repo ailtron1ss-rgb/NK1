@@ -75,7 +75,7 @@ export class P65EpistemicLedger{
    counterfactuals:safeCounter(r.counterfactuals,d.counterfactuals),resolvedPredictions:safeCounter(r.resolvedPredictions,d.resolvedPredictions),
    meanConfidence01:typeof r.meanConfidence01==='number'&&Number.isFinite(r.meanConfidence01)?clamp(r.meanConfidence01):d.meanConfidence01,
    meanPredictionError01:typeof r.meanPredictionError01==='number'&&Number.isFinite(r.meanPredictionError01)?clamp(r.meanPredictionError01):d.meanPredictionError01,
-   unresolved:safeCounter(r.unresolved,d.unresolved),claimsData:normalized.slice(-256),
+   unresolved:safeCounter(r.unresolved,d.unresolved),claimsData:normalized.slice(0,256),
    recentIds:Array.isArray(r.recentIds)?[...new Set(r.recentIds.filter((v):v is string=>typeof v==='string'&&v.length>0&&v.length<=256))].slice(-512):[],
    beliefHalfLifeMs:typeof r.beliefHalfLifeMs==='number'&&Number.isFinite(r.beliefHalfLifeMs)&&r.beliefHalfLifeMs>=60_000&&r.beliefHalfLifeMs<=365*24*60*60*1000?r.beliefHalfLifeMs:d.beliefHalfLifeMs,
    expiredBeliefs:safeCounter(r.expiredBeliefs,d.expiredBeliefs),staleBeliefs:safeCounter(r.staleBeliefs,d.staleBeliefs),
