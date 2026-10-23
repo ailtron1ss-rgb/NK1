@@ -1,3 +1,8 @@
+## NK1 WorkPass370 — wire P23 learning edits into CI (2026-10-23)
+- [FIXED] The P26 learning-validation workflow now triggers when P23 learning-engine, curriculum, trust-boundary, and their focused test files change.
+- [CHANGED] Added explicit workflow steps for the P23 replay-integrity and reflection/curriculum regressions on the existing Node.js 24 workflow.
+- [VALIDATION] Workflow configuration is committed; actual test execution remains unconfirmed until GitHub Actions returns step-level results.
+
 ## NK1 WorkPass369 — diversify curriculum candidates and normalize scores (2026-10-23)
 - [CHANGED] Ranked learning targets now interleave score-ordered candidate families so diverse eligible repair opportunities are not starved by one recurring family; the globally best candidate remains first.
 - [FIXED] Public `score01` stays inside its declared `[0,1]` range when verification cost outweighs the estimated benefit.
