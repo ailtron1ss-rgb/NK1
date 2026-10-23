@@ -27,6 +27,10 @@ assert.throws(() => bootstrapMeanConfidenceInterval([0.1, 1.1]), /paired-seed-bo
 assert.throws(() => bootstrapMeanConfidenceInterval([0.1, 0.2], { confidenceLevel: 1 }), /paired-seed-bootstrap-confidence-level-invalid/);
 assert.throws(() => bootstrapMeanConfidenceInterval([0.1, 0.2], { resamples: 99 }), /paired-seed-bootstrap-resamples-invalid/);
 assert.throws(() => bootstrapMeanConfidenceInterval([0.1, 0.2], { seed: -1 }), /paired-seed-bootstrap-seed-invalid/);
+assert.throws(() => bootstrapMeanConfidenceInterval(
+  Array.from({ length: 5000 }, (_, index) => index / 5000), { resamples: 4000 },
+), /paired-seed-bootstrap-work-budget-exceeded/,
+'large sample × resample combinations must be rejected before bootstrap loops allocate or run');
 
 let valueGetterCalls = 0;
 const getterValues = [0.1, 0.2];
@@ -47,4 +51,4 @@ assert.throws(() => bootstrapMeanConfidenceInterval([0.1, 0.2], getterOptions),
   /paired-seed-bootstrap-data-boundary-rejected/);
 assert.equal(optionGetterCalls, 0, 'bootstrap policy accessors must be rejected without invocation');
 
-console.log('WORKPASS404_PAIRED_SEED_CONFIDENCE=PASS deterministic=true positiveInterval=true noisyMeanDetected=true invalidInputsRejected=true hostileAccessorsRejected=true');
+console.log('WORKPASS404_PAIRED_SEED_CONFIDENCE=PASS deterministic=true positiveInterval=true noisyMeanDetected=true invalidInputsRejected=true hostileAccessorsRejected=true workBudgetRejected=true');
