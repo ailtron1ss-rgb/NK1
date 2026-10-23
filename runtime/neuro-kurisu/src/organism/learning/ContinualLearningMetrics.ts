@@ -18,6 +18,12 @@ export interface ContinualLearningMetrics {
   forwardTransferTaskCount: number;
   perTask: Array<{ taskId: string; finalScore: number; peakPostLearningScore: number; forgetting: number; backwardTransfer: number; forwardTransfer: number | null }>;
 }
+function hasControlChars(value: string): boolean {
+  return [...value].some(character => {
+    const code = character.charCodeAt(0);
+    return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
+  });
+}
 function assertScore(value: number, label: string): void {
   if (!Number.isFinite(value) || value < 0 || value > 1) throw new Error(`${label} must be a finite number in [0, 1]`);
 }
@@ -46,7 +52,7 @@ export function evaluateContinualLearning(tasks: ContinualTask[], referenceScore
   const stageCount = tasks[0]?.scoreByStage?.length ?? 0;
   if (stageCount === 0 || stageCount !== tasks.length) throw new Error('score matrix must have one stage per task');
   const perTask = tasks.map((task, taskIndex) => {
-    if (!task || typeof task.taskId !== 'string' || !task.taskId.trim() || task.taskId.length > 128 || /[\\u0000-\\u001f\\u007f-\\u009f]/u.test(task.taskId)) {
+    if (!task || typeof task.taskId !== 'string' || !task.taskId.trim() || task.taskId.length > 128 || hasControlChars(task.taskId)) {
       throw new Error(`task ${taskIndex} requires a valid non-empty taskId`);
     }
     if (ids.has(task.taskId)) throw new Error(`duplicate taskId: ${task.taskId}`);
