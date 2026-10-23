@@ -1,3 +1,9 @@
+## WorkPass316–317 — durable repair provenance and coordinator regressions (2026-10-23)
+
+- Extended versioned skill-candidate provenance with an optional SHA-256 digest for the exact repair evidence that triggered revision; malformed digests are rejected and the digest remains lineage, not approval.
+- Expanded compound-revision coordinator regressions for duplicate evidence, concurrent request coalescing, persisted candidate deduplication, bounded retry backoff, and immediate retry on new evidence.
+- Validation remains incomplete: GitHub Actions reruns still terminate with failed jobs and no exposed steps/log URLs, so the failure cannot yet be attributed to assertions or code. No passing test/typecheck claim is made.
+
 ## WorkPass306–314 — unified learning and action-evidence integration (2026-10-23)
 
 - Integrated the cognitive architecture map and operational micro-cycle attribution, then added architecture/causal-evidence documentation and focused regression suites for trusted evidence lanes, autonomous P23 repair, correlated postconditions, and action attribution.
