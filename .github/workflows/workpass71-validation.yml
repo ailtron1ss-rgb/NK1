@@ -43,8 +43,12 @@ jobs:
           set -euo pipefail
           expected="v$(tr -d '[:space:]' < .nvmrc)"
           actual="$(node --version)"
-          printf 'expected=%s actual=%s\\n' "$expected" "$actual"
+          printf 'expected=%s actual=%s\n' "$expected" "$actual"
           test "$actual" = "$expected"
+      - name: Audit CI Action/runtime compatibility contract
+        run: npm run audit:ci-reliability
+      - name: Test CI reliability audit regressions
+        run: node --test tools/verify-ci-reliability.test.mjs
       - name: Install app dependencies without lifecycle scripts
         run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Audit canonical public asset ownership
