@@ -1,3 +1,16 @@
+## Current source-stack checkpoint — WorkPass407 (2026-10-23)
+
+- **Lifecycle gap closed:** new `LearningLifecycleJournal.ts` records durable P23 promotion rejection, pre-activation intent, confirmed activation, and explicitly uncertain outcomes in a separate hash-chained JSONL journal.
+- **Correct ordering:** intent must be persisted before a skill activation side effect; if this write fails, activation is not attempted. A post-store exception is recorded as `activation-outcome-unknown`, not falsely classified as success or failure.
+- **Runtime integration:** `P23LearningEngine` and `OrganismRuntime` expose bounded aggregate lifecycle diagnostics in longitudinal and persistence snapshots. A centralized, regression-tested path resolver keeps the journal separate from the organism state file.
+- **Regression/CI:** `tests/workpass407-learning-lifecycle-journal.mjs` is part of `npm run test:p23:learning` and a dedicated P26 Learning Validation step; WorkPass402 checks that production promotion rejection is bound to the staged payload/evaluation fingerprint.
+- **Open-source source inspection:** directly reviewed [Hermes Self-Evolution README](https://github.com/NousResearch/hermes-agent-self-evolution/blob/main/README.md), [PLAN.md](https://github.com/NousResearch/hermes-agent-self-evolution/blob/main/PLAN.md), and [`evolve_skill.py`](https://github.com/NousResearch/hermes-agent-self-evolution/blob/main/evolution/skills/evolve_skill.py). Adapted the separate gate/holdout/failure-preservation mechanisms to NK1's TypeScript lifecycle; no Python framework dependency or incompatible upstream source was imported.
+- **Progress:** category implementation is estimated at 79%; production readiness remains ~45%. These are heuristic estimates; the [WorkPass407 scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md) records the limits.
+- **Validation boundary:** full exact-HEAD CI/runtime typecheck remains unconfirmed. GitHub Actions still returns failed jobs without accessible steps/logs; no benchmark uplift, complete release readiness or subjective consciousness is claimed. `main` and the Release ZIP remain unchanged.
+- Details: [WorkPass407 activation lifecycle note](docs/WORKPASS407_P23_ACTIVATION_OUTCOME_JOURNAL_RU.md).
+
+---
+
 ## Current source-stack checkpoint — WorkPass406 (2026-10-23)
 
 - **New evaluation diagnostics:** `compareMatchedIndependentEvaluations` reports task-balanced interquartile mean (IQM), IQM delta and paired probability of improvement separately for task success, skill quality and trajectory quality on validation and holdout.
