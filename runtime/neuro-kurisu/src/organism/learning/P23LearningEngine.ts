@@ -374,7 +374,12 @@ export const MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES = 256 * 1024;
 export function assertReflectiveSkillPayloadWithinBudget(value:unknown, label='candidate'):string {
   let detached: unknown;
   try { detached=snapshotPlainData(value); }
-  catch { throw new Error('p23-reflective-skill-payload-data-boundary-rejected:' + label); }
+  catch (error) {
+    const message=error instanceof Error?error.message:'';
+    if(message==='independent-evaluator-snapshot-cycle') throw new Error('p23-canonicalization-circular-value');
+    if(message==='independent-evaluator-snapshot-non-finite-number') throw new Error('p23-canonicalization-non-finite-number');
+    throw new Error('p23-reflective-skill-payload-data-boundary-rejected:' + label);
+  }
   const canonical = canonicalize(detached);
   const bytes = Buffer.byteLength(canonical, 'utf8');
   if (bytes > MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES) {
