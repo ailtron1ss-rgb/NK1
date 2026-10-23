@@ -83,6 +83,20 @@ try {
   assert.throws(() => new JsonlLearningFitnessJournal(tamperedPath).readAll(),
     /learning-fitness-journal-digest-mismatch/);
 
+  const privacyTampered = JSON.parse(serialized.split('\n')[0]);
+  privacyTampered.holdoutPrompt = 'must never enter aggregate journal';
+  const privacyPath = join(root, 'privacy-tampered.jsonl');
+  writeFileSync(privacyPath, JSON.stringify(privacyTampered) + '\n');
+  assert.throws(() => new JsonlLearningFitnessJournal(privacyPath).readAll(),
+    /learning-fitness-journal-entry-fields-invalid/,
+    'unknown top-level fields must not be accepted as journal payload');
+  const nestedPrivacyTampered = JSON.parse(serialized.split('\n')[0]);
+  nestedPrivacyTampered.validation.familyName = 'private-family';
+  const nestedPrivacyPath = join(root, 'nested-privacy-tampered.jsonl');
+  writeFileSync(nestedPrivacyPath, JSON.stringify(nestedPrivacyTampered) + '\n');
+  assert.throws(() => new JsonlLearningFitnessJournal(nestedPrivacyPath).readAll(),
+    /learning-fitness-journal-entry-fields-invalid|learning-fitness-journal-digest-mismatch/);
+
   const truncatedPath = join(root, 'truncated.jsonl');
   writeFileSync(truncatedPath, serialized.trimEnd());
   assert.throws(() => new JsonlLearningFitnessJournal(truncatedPath).readAll(),
@@ -93,7 +107,7 @@ try {
   assert.throws(() => new JsonlLearningFitnessJournal(blankPath).readAll(),
     /learning-fitness-journal-blank-line/);
 
-  console.log('WORKPASS405_LEARNING_FITNESS_JOURNAL=PASS chainVerified=true accessorRejected=true lockPreserved=true tamperingRejected=true');
+  console.log('WORKPASS405_LEARNING_FITNESS_JOURNAL=PASS chainVerified=true accessorRejected=true lockPreserved=true tamperingRejected=true unknownFieldsRejected=true');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
