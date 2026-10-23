@@ -1,0 +1,26 @@
+name: WorkPass291 reflective payload budget
+on:
+  pull_request:
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/tests/workpass291-reflective-payload-budget.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/workpass291-reflective-payload-budget.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reflective-payload-budget:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Enforce runtime version
+        run: node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
+      - name: Validate reflective skill payload budget
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass291:payload-budget
