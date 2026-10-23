@@ -1,3 +1,12 @@
+## NK1 WorkPass455 — map Hexis principles into existing NK1 owners (2026-10-23)
+
+- Inspected the MIT-licensed QuixiAI/Hexis primary docs for memory architecture/provenance, persistent identity/worldview, resource-bounded OODA/heartbeat, and subconscious observations feeding conscious decisions.
+- Added a source-attributed integration map that keeps NK1's existing MemoryOS2, ActionGateway, P23 lifecycle and EmbodimentIntentV1 as canonical owners rather than cloning the donor stack or adding dependencies.
+- Recorded category commits WorkPass449–454 and a fixed-order route: event identity → unified state-to-decision context → held-out memory benchmark → verified self-repair loop → small-PR integration and release hash check.
+- Readiness remains 46/100; latest CI evidence still lacks executed steps/logs, so no category tests are reported as passing. Main, integration and the Release ZIP were not changed by this pass.
+
+---
+
 ## NK1 WorkPass457 — integrate Hexis-inspired belief and goal-governance mechanisms (2026-10-23)
 
 - Inspected current Hexis MIT sources for evidence-based belief revision, goal-progress recording and energy-aware heartbeat execution. Added provenance with source file/blob references to the research intake ledger.
