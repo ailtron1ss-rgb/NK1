@@ -26,6 +26,49 @@ assert.ok((e.outcomeCalibration('rest')?.attempts??0)===4);
 assert.ok(e.actionBias('rest')>e.actionBias('explore'),'high interoceptive pressure plus good rest outcomes should favor regulation');
 const es=e.snapshot(); const er=new EmotionAppraisalEngine(); er.restore(es); assert.deepEqual(er.snapshot(),es);
 
+// WorkPass330: restored affect state must not accept invalid counters, timestamps or malformed episodes.
+const corruptedEmotion = new EmotionAppraisalEngine();
+corruptedEmotion.restore({
+  episodes: Number.MAX_SAFE_INTEGER + 1,
+  lastTick: Number.NaN,
+  lastAt: Number.POSITIVE_INFINITY,
+  lastLabel: 'not-an-emotion',
+  meanArousal01: Number.NaN,
+  meanValence01: 2,
+  meanStress01: Number.NEGATIVE_INFINITY,
+  meanAttentionCapture01: 'high',
+  history: [{ id: 'broken-episode', tick: Number.NaN }],
+  feelings: [{ id: 'broken-feeling' }],
+  interoception: {
+    cycles: Number.POSITIVE_INFINITY,
+    meanMismatch01: Number.NaN,
+    lastMismatch01: -5,
+    regulationPressure01: Number.POSITIVE_INFINITY,
+    stability01: 'stable',
+    recovery01: Number.NaN,
+    predictionCalibration01: 3,
+    lastObserved: { energy01: Number.NaN, thermal01: 5 },
+    predicted: { energy01: Number.POSITIVE_INFINITY },
+  },
+  outcomes: { rest: { attempts: Number.POSITIVE_INFINITY, meanSuccess01: Number.NaN } },
+});
+const recoveredEmotion = corruptedEmotion.snapshot();
+assert.equal(recoveredEmotion.episodes, 0);
+assert.equal(recoveredEmotion.lastTick, -1);
+assert.equal(recoveredEmotion.lastAt, 0);
+assert.equal(recoveredEmotion.lastLabel, 'calm');
+assert.equal(recoveredEmotion.history.length, 0, 'malformed emotion episodes must not enter live history');
+assert.equal(recoveredEmotion.feelings.length, 0, 'malformed feeling episodes must not enter live history');
+assert.equal(recoveredEmotion.interoception.cycles, 0);
+assert.equal(recoveredEmotion.interoception.lastMismatch01, 0);
+assert.equal(recoveredEmotion.interoception.lastObserved.energy01, .68);
+assert.equal(recoveredEmotion.interoception.lastObserved.thermal01, 1);
+assert.deepEqual(recoveredEmotion.outcomes, {}, 'corrupt calibration rows must not bias action selection');
+assert.doesNotThrow(() => corruptedEmotion.actionBias('rest'));
+assert.throws(() => corruptedEmotion.appraise({ tick: Number.NaN }), /emotion-appraisal-tick/);
+assert.throws(() => corruptedEmotion.appraise({ tick: 1, at: Number.POSITIVE_INFINITY }), /emotion-appraisal-timestamp/);
+assert.equal(corruptedEmotion.appraise({ tick: 1, at: 1004, novelty01: .8, uncertainty01: .5 }).tick, 1);
+
 const h = new P66InteroceptiveHomeostasis();
 const high = h.observe({tick:1,at:1,energy01:.2,thermal01:.9,capacity01:.25,load01:.9,awake:true,uncertainty01:.8,predictionError01:.8,novelty01:.2});
 assert.equal(high.mode,'recover'); assert.ok(high.pressure01>.5);
