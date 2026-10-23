@@ -74,6 +74,30 @@ assert.deepEqual(
   metrics,
 );
 
+/* A heterogeneous multi-seed corpus protects deterministic summation order,
+ * not only the simple two-equal-seed arithmetic above. */
+const precisionBaseline = [];
+const precisionCandidate = [];
+for (let taskIndex = 0; taskIndex < 5; taskIndex++) {
+  for (let seed = 1; seed <= 37; seed++) {
+    const taskId = `precision-task-${taskIndex}`;
+    const baselineScore = (((seed * (taskIndex * 29 + 17)) % 997) + 0.125) / 997;
+    const adjustment = ((seed % 5) - 2) * 0.00001;
+    const candidateScore = Math.max(0, Math.min(1, baselineScore + adjustment));
+    precisionBaseline.push(report(taskId, seed, baselineScore, baselineScore, baselineScore));
+    precisionCandidate.push(report(taskId, seed, candidateScore, candidateScore, candidateScore));
+  }
+}
+const precisionMetrics = summarizeLearningRobustMetrics(precisionBaseline, precisionCandidate);
+assert.deepEqual(
+  summarizeLearningRobustMetrics(
+    [...precisionBaseline].reverse(),
+    [...precisionCandidate].sort((a, b) => b.trialId.localeCompare(a.trialId)),
+  ),
+  precisionMetrics,
+  'task means must be deterministic when fractional trial rows are permuted',
+);
+
 // A missing matched seed cannot be silently dropped from one side.
 assert.throws(() => summarizeLearningRobustMetrics(baseline, candidate.slice(1)),
   /learning-robust-metrics-trial-count-mismatch/);
@@ -109,4 +133,4 @@ for (const dimension of [ceilingMetrics.taskSuccess, ceilingMetrics.skillQuality
   assert.equal(dimension.taskBalancedOptimalityGapDelta, 0);
 }
 
-console.log('WORKPASS406_LEARNING_ROBUST_METRICS=PASS taskBalancedIqm=true taskBalancedMedian=true optimalityGap=true pairedImprovement=true rowOrderInvariant=true malformedEvidenceRejected=true accessorNotInvoked=true diagnosticOnly=true');
+console.log('WORKPASS406_LEARNING_ROBUST_METRICS=PASS taskBalancedIqm=true taskBalancedMedian=true optimalityGap=true pairedImprovement=true variedFractionalTrialOrderInvariant=true malformedEvidenceRejected=true accessorNotInvoked=true diagnosticOnly=true');
