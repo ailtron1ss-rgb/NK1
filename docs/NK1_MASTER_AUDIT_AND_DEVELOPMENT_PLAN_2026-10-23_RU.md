@@ -558,7 +558,7 @@ Detailed mapping: [WorkPass455 Hexis → NK1 cross-domain contract](HEXIS_NK1_CR
 
 ### Fixed-order implementation route
 
-456: propagate one event/execution/decision identity through external postcondition, reality evidence, P65 epistemic revision and reward/reflection. Exact replay must be idempotent; conflicting payload reuse must quarantine.
+456 (partially implemented): RealityEvidenceLedger can accept a shared upstream eventId, deduplicate exact replay and reject changed-payload identity reuse. Remaining work is actual call-site propagation from the verifier-owned receipt through the ledger, P65 and reward/reflection; do not mark the end-to-end chain complete yet.
 
 457: expose one bounded, read-only cognitive context with body/homeostatic state, affect, uncertainty, identity integrity and retrieval freshness to the canonical decision layer. Preserve planner → EthicalGate → ActionGateway authority.
 
