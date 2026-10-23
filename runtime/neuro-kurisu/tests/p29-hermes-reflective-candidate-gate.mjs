@@ -42,6 +42,33 @@ assert.equal(accepted.holdoutTaskCount, 2);
 assert.equal(accepted.validationTaskCount, 2);
 assert.equal(accepted.pairedHoldoutTrials, 2);
 
+ // A macro-average gain must not conceal a material regression on one validation
+ // task. Per-task deltas average repeated trials first, so duplicated samples cannot
+ // manufacture extra votes.
+const mixedValidationBaseline = {
+  validation: [
+    trial('regressing-task', 'v1', 'good'),
+    trial('improving-task-a', 'v1', 'weak'),
+    trial('improving-task-b', 'v1', 'weak'),
+  ],
+  holdout: baseline.holdout,
+};
+const mixedValidationCandidate = {
+  validation: [
+    trial('regressing-task', 'v1', 'weak'),
+    trial('improving-task-a', 'v1', 'good'),
+    trial('improving-task-b', 'v1', 'good'),
+  ],
+  holdout: baseline.holdout,
+};
+const taskRegressionGate = evaluateSkillLearnBenchCandidate(mixedValidationBaseline, mixedValidationCandidate);
+assert.ok(taskRegressionGate.validationGain01 > 0.005,
+  'the overall validation mean should improve, otherwise this would not test a hidden regression');
+assert.equal(taskRegressionGate.validationTaskRegressions, 1);
+assert.ok(taskRegressionGate.reasons.includes('validation-task-regression-exceeds-tolerance'));
+assert.equal(taskRegressionGate.eligible, false,
+  'a large task-local regression cannot be washed out by gains on other tasks');
+
 // A large gain on repeated trials from one validation task is still narrow evidence.
 const narrowValidationBaseline={
   validation:[trial('task-a','v1','weak'),trial('task-a','v2','weak')],
@@ -174,6 +201,9 @@ assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, improved, {
 assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, improved, {
   minimumValidationTasks: 0,
 }), /candidate-minimum-validation-tasks-invalid/);
+assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, improved, {
+  maximumValidationTaskRegression01: Number.NaN,
+}), /candidate-maximum-validation-task-regression-invalid/);
 
 assert.throws(() => evaluateSkillLearnBenchCandidate(null, improved), /candidate-evaluation-input-invalid/);
 let familyAccessorCalls = 0;
