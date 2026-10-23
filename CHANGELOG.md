@@ -5,6 +5,7 @@
 - [REGRESSION] The P29 candidate-gate suite adds a mixed result where the overall validation score improves, but one task degrades sharply while two others improve; the candidate is rejected.
 - [CI] P26 Learning Validation already triggers on the SkillLearnBench adapter and P29 regression path and runs the candidate-gate script; no additional dependency or duplicate workflow was added.
 - [RESEARCH] The change complements SkillLearnBench's outcome/trajectory/skill-quality split and its finding that continual skill-learning gains vary across tasks; the threshold is an NK1 engineering guard and requires multi-seed calibration.
+- [RESEARCH LEDGER] Recorded the source review, gap, adaptation and benchmark-calibration limitation in `docs/RESEARCH_INTAKE_LEDGER.md`.
 - [VALIDATION] Code/test/docs are committed on `feature/learning`. Exact-head test/typecheck execution remains unconfirmed while Actions jobs expose no runner steps/logs.
 
 ---
