@@ -56,13 +56,12 @@ restored.restore({
     first,
     { ...first, id: 'invalid-score', confidence01: Number.POSITIVE_INFINITY },
     { ...first, id: 'unknown-class', realityClass: 'simulator-ish' },
-    { ...first, id: 'duplicate-row' },
+    { ...first },
   ],
 });
-assert.equal(restored.snapshot().total, 2, 'invalid rows are quarantined and invalid totals fall back to retained data size');
-assert.equal(restored.snapshot().recent.length, 2);
+assert.equal(restored.snapshot().total, 1, 'invalid totals fall back to retained data size and duplicate IDs are collapsed');
+assert.equal(restored.snapshot().recent.length, 1);
 assert.equal(restored.snapshot().recent[0].id, first.id);
-assert.equal(restored.snapshot().recent[1].id, 'duplicate-row');
 
 let restoreGetterCalls = 0;
 const hostileState = {};
