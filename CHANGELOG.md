@@ -1,3 +1,11 @@
+## 2026-10-23 — Restore missing files and connect regression coverage
+
+- Added 31 files that were absent from the integration tree: rebuild's `CognitiveCycleBoundary.ts` and `CausalReplaySampler.ts`, their tests/benchmarks, action-finalizer/planner/reconciliation receipt tests, schema/holdout/replay evaluations, avatar-storage helper and test, Live2D expression-cache test, rebuild handover/checkpoint docs, avatar/voice audit artifacts, and the WorkPass318 branch-consolidation and finite-input regression artifacts.
+- Registered 14 runtime commands including `test:rebuild-recovered`, added app commands `test:avatar-storage` and `test:live2d-expression-cache`, added the root `test:rebuild-recovered` entry point, and wired it into `workpass71-validation.yml`.
+- Static manifest check confirmed all 14 underlying test files exist and are referenced by their package scripts. Hosted Actions has been triggered, but the latest jobs fail before receiving a runner (`runner_id: 0`, no steps, no downloadable job log); this is not evidence that these tests failed and no pass is claimed.
+
+---
+
 ## 2026-10-23 — Multi-branch integration checkpoint
 
 - Created merge commit [3f99f58](https://github.com/ailtron1ss-rgb/NK1/commit/3f99f58ab15fbb5c4ce29fd0f58fdc5ef8a49518) on `nk1-integration-workspace-2026-10-22`, recording the cognitive rebuild and continual-learning source histories as parents: `workpass120-verified-skill-revision-gate`, `workpass93-hermes-reflective-learning-gate`, `workpass71-learning-integrity`, `workpass71-learning-eval-paired-seeds`, and `workpass73-audit-fixes`.
