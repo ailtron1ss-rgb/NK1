@@ -68,12 +68,45 @@ export async function createIndependentEvaluationConfigFactory(input) {
   if (production && typeof hostOptions.experimentAuthorityForRepair !== 'function') {
     throw new Error('production-independent-evaluation-requires-host-owned-experiment-authority');
   }
+  const baselineMethod = hostOptions.baselineMethod;
+  const sourceCandidateMethod = hostOptions.sourceCandidateMethod;
+  if (production &&
+      (typeof baselineMethod !== 'string' || !baselineMethod.trim() ||
+       typeof sourceCandidateMethod !== 'string' || !sourceCandidateMethod.trim() ||
+       baselineMethod === sourceCandidateMethod)) {
+    throw new Error('production-independent-evaluation-baseline-and-source-methods-required');
+  }
 
   const factory = await input.createHostOwnedFactory(hostOptions);
   if (typeof factory !== 'function') {
     throw new Error('host-owned-independent-evaluation-factory-invalid');
   }
-  return factory;
+  return repair => {
+    const config = factory(repair);
+    if (!config || typeof config !== 'object') {
+      throw new Error('host-owned-independent-evaluation-config-invalid');
+    }
+    const revisionMethod = config.experimentAuthority?.method;
+    const methods = [baselineMethod, sourceCandidateMethod, revisionMethod];
+    if (production &&
+        (methods.some(method => typeof method !== 'string' || !method.trim()) ||
+         new Set(methods).size !== methods.length)) {
+      throw new Error('production-independent-evaluation-methods-must-be-distinct');
+    }
+    if (production) {
+      for (const plan of [config.experimentAuthority.validationPlan, config.experimentAuthority.holdoutPlan]) {
+        const scheduled = new Set(plan.arms.map(arm => arm.method));
+        if (methods.some(method => !scheduled.has(method))) {
+          throw new Error('production-independent-evaluation-method-not-in-experiment-plan');
+        }
+      }
+    }
+    return {
+      ...config,
+      ...(typeof baselineMethod === 'string' ? { baselineMethod } : {}),
+      ...(typeof sourceCandidateMethod === 'string' ? { sourceCandidateMethod } : {}),
+    };
+  };
 }
 
 /**
