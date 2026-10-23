@@ -49,11 +49,23 @@ assert.equal(metrics.matchedTrialCount, 8);
 assert.equal(metrics.taskSuccess.baselineTaskBalancedIqm, 0.5);
 assert.equal(metrics.taskSuccess.candidateTaskBalancedIqm, 0.6);
 assert.equal(metrics.taskSuccess.taskBalancedIqmDelta, 0.1);
+assert.equal(metrics.taskSuccess.baselineTaskBalancedMedian, 0.5);
+assert.equal(metrics.taskSuccess.candidateTaskBalancedMedian, 0.6);
+assert.equal(metrics.taskSuccess.taskBalancedMedianDelta, 0.1);
+assert.equal(metrics.taskSuccess.baselineTaskBalancedOptimalityGap, 0.5);
+assert.equal(metrics.taskSuccess.candidateTaskBalancedOptimalityGap, 0.475);
+assert.equal(metrics.taskSuccess.taskBalancedOptimalityGapDelta, -0.025);
 assert.equal(metrics.taskSuccess.pairedProbabilityOfImprovement, 0.625);
 assert.equal(metrics.skillQuality.baselineTaskBalancedIqm, 0.5);
 assert.equal(metrics.skillQuality.candidateTaskBalancedIqm, 0.5);
 assert.equal(metrics.skillQuality.taskBalancedIqmDelta, 0);
+assert.equal(metrics.skillQuality.baselineTaskBalancedMedian, 0.5);
+assert.equal(metrics.skillQuality.candidateTaskBalancedMedian, 0.5);
+assert.equal(metrics.skillQuality.baselineTaskBalancedOptimalityGap, 0.5);
+assert.equal(metrics.skillQuality.candidateTaskBalancedOptimalityGap, 0.475);
 assert.equal(metrics.trajectoryQuality.taskBalancedIqmDelta, 0.1);
+assert.equal(metrics.trajectoryQuality.taskBalancedMedianDelta, 0.1);
+assert.equal(metrics.trajectoryQuality.taskBalancedOptimalityGapDelta, -0.05);
 assert.equal(metrics.trajectoryQuality.pairedProbabilityOfImprovement, 0.75);
 
 // Permutation of input rows cannot change task weighting or results.
@@ -88,4 +100,13 @@ assert.throws(() => summarizeLearningRobustMetrics(hostile, candidate),
   /learning-robust-metrics-baseline-data-boundary-rejected/);
 assert.equal(getterCalls, 0);
 
-console.log('WORKPASS406_LEARNING_ROBUST_METRICS=PASS taskBalancedIqm=true pairedImprovement=true rowOrderInvariant=true malformedEvidenceRejected=true accessorNotInvoked=true diagnosticOnly=true');
+const ceilingBaseline = Array.from({ length: 4 }, (_, index) => report(`ceiling-${index}`, 1, 1, 1, 1));
+const ceilingCandidate = Array.from({ length: 4 }, (_, index) => report(`ceiling-${index}`, 1, 1, 1, 1));
+const ceilingMetrics = summarizeLearningRobustMetrics(ceilingBaseline, ceilingCandidate);
+for (const dimension of [ceilingMetrics.taskSuccess, ceilingMetrics.skillQuality, ceilingMetrics.trajectoryQuality]) {
+  assert.equal(dimension.baselineTaskBalancedOptimalityGap, 0);
+  assert.equal(dimension.candidateTaskBalancedOptimalityGap, 0);
+  assert.equal(dimension.taskBalancedOptimalityGapDelta, 0);
+}
+
+console.log('WORKPASS406_LEARNING_ROBUST_METRICS=PASS taskBalancedIqm=true taskBalancedMedian=true optimalityGap=true pairedImprovement=true rowOrderInvariant=true malformedEvidenceRejected=true accessorNotInvoked=true diagnosticOnly=true');
