@@ -1,3 +1,8 @@
+## WorkPass322 — make numeric fallback itself finite (2026-10-23)
+
+- Hardened the micro-cycle numeric boundary in both directions: invalid observations use a safe fallback, and a non-finite fallback is normalized to `0` so `NaN`/infinity cannot escape through the fallback path.
+- Expanded the finite-input contract test to cover invalid fallback values. Test source is updated; execution and typecheck have not been run here.
+
 ## WorkPass321 — harden micro-cycle numeric input contract (2026-10-23)
 
 - Tightened the reduced-resolution heartbeat's numeric fallback: only finite numbers and non-empty numeric strings are accepted. `null`, booleans, empty strings, NaN, infinities, and nonnumeric strings now fall back to the current prediction-error estimate instead of silently coercing to zero.
