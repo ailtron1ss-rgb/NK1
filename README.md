@@ -1,3 +1,14 @@
+## Current source-stack checkpoint — WorkPass418 (2026-10-23)
+
+- **Personal curriculum restore/intake:** invalid state is filtered before it can guide learning. Duplicate saved IDs/families are quarantined as complete conflict sets rather than resolved by array ordering.
+- **Goal selection:** ranking validates canonical goal status/source and numeric domains before updating focus; ties sort by stable goal ID.
+- **Lifecycle counts:** completion/suppression diagnostics are reconciled from unique thread status to avoid inflation through repeated outcomes.
+- **Regressions:** the WorkPass417 `test:big-pass-122` script now includes the online input-boundary and restore-collision tests; focused CI watches the collision-test path.
+- **Progress unchanged:** learning implementation estimate 83%, confirmed production readiness ~45%. Tests/typecheck remain unverified because GitHub Actions jobs fail before runner allocation with zero steps; no measured learning uplift is claimed.
+- **Architecture:** no extra learning engine or runtime dependency; continues using NK1's shared trust boundary. `main` and the Release ZIP are unchanged.
+
+---
+
 ## Current source-stack checkpoint — WorkPass448 (2026-10-23)
 
 - **Bootstrap resource bound:** the shared `PairedSeedConfidence.ts` now rejects workloads above 16 million draw operations before entering the bootstrap loop or allocating resample results.
