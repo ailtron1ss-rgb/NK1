@@ -1,3 +1,10 @@
+## NK1 WorkPass330 — harden affective-state recovery (2026-10-23)
+
+- **Fixed:** `EmotionAppraisalEngine.restore` now reconstructs bounded numeric state, counters, interoceptive measurements, emotion/feeling histories, and action-outcome calibration instead of blindly spreading corrupt persisted values into the live controller.
+- **Fixed:** `appraise` rejects non-safe ticks and non-finite/negative timestamps rather than emitting emotion episodes whose temporal identity is invalid.
+- **Regression added:** the existing WorkPass172 emotion/interoception scenario now restores deliberately corrupted snapshots, verifies safe defaults/bounds, verifies malformed history/calibration rows are discarded, and checks invalid timestamp rejection.
+- **Validation boundary:** changes are committed; execution is unconfirmed because current hosted Actions runs fail before runner allocation. No test-pass or CI-green claim.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
