@@ -1,3 +1,16 @@
+## NK1 WorkPass407 — persist the real P23 activation outcome (2026-10-23)
+
+- Added a separate hash-chained `LearningLifecycleJournal.ts`: promotion rejection, pre-side-effect activation intent, confirmed activation, and explicit unknown outcomes.
+- Wired it through `P23LearningEngine` and `OrganismRuntime`, including optional host sink injection and aggregate diagnostics in longitudinal/persistence snapshots.
+- Lifecycle transitions are validated; duplicate identical writes are idempotent, conflicting evidence bindings or illegal transitions fail closed, and raw candidate payloads/task/holdout rows are not persisted.
+- Made activation intent mandatory before activation when a lifecycle sink is configured. If a store exception does not prove whether a side effect occurred, record `activation-outcome-unknown` instead of inventing a failure; a missing terminal journal event remains pending for later reconciliation.
+- Added path resolver to ensure lifecycle JSONL never reuses the organism state filename; tests cover lowercase/uppercase `.json`, no-extension and NUL cases.
+- Added `workpass407-learning-lifecycle-journal.mjs`, wired into `test:p23:learning` and P26 Learning Validation; extended WorkPass402 to assert lifecycle rejection fingerprints.
+- Directly inspected Hermes Self-Evolution README/PLAN/`evolve_skill.py` files and adapted its constraint/holdout/failure-preservation principles; no upstream runtime code or dependency was imported.
+- Verification remains unconfirmed on exact HEAD: Actions jobs return failure without accessible steps/logs. No measured learning uplift is claimed. See [WorkPass407 implementation notes](docs/WORKPASS407_P23_ACTIVATION_OUTCOME_JOURNAL_RU.md).
+
+---
+
 ## NK1 WorkPass406 follow-through — API and CI integration (2026-10-23)
 
 - **Public API:** `P23LearningEngine.approveIndependentlyEvaluatedSkillCandidate` now preserves the typed `learningRobustDiagnostics` shape in returned `fitness`.
