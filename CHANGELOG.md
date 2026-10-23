@@ -1,3 +1,7 @@
+## NK1 WorkPass390 — reject no-op revisions before evaluation (2026-10-23)
+- [FIXED] P23 now compares the canonical detached generated payload to the source candidate before launching the independent evaluator. An unchanged artifact fails immediately, avoiding wasted sandbox execution; the stage-time no-op check remains as a second guard.
+- [TEST ADDED] The signed-evidence generator-boundary integration fixture verifies that the no-op is rejected, the evaluator is never called and no extra candidate version is written.
+
 ## NK1 WorkPass389 — end-to-end revision boundary regression (2026-10-23)
 - [TEST ADDED] Added a P23 integration fixture using a real signed-evidence promotion proposal and versioned candidate store. It verifies that generator-returned accessors are rejected before evaluation, evaluator-returned accessors are rejected before fingerprint inspection, neither can stage a candidate, and a detached payload with a valid independent evaluation can still stage as a separate candidate.
 - [CI] Wired the integration test into the existing P26 Learning Validation workflow and path filter.
