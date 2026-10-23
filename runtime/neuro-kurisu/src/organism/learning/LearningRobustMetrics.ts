@@ -1,4 +1,5 @@
 import { isSafeLearningIdentity, snapshotPlainData } from './LearningTrustBoundary.ts';
+import { bootstrapMeanConfidenceInterval, type BootstrapMeanInterval } from './PairedSeedConfidence.ts';
 
 export interface LearningRobustMetricDimension {
   baselineTaskBalancedIqm: number;
@@ -14,10 +15,12 @@ export interface LearningRobustMetricDimension {
   taskBalancedOptimalityGapDelta: number;
   /** Equal task weighting; within each task, a tied paired seed contributes 0.5. */
   pairedProbabilityOfImprovement: number;
+  /** Percentile bootstrap over task-level candidate-minus-baseline means; null with <2 tasks. */
+  taskBalancedMeanDeltaBootstrapInterval: BootstrapMeanInterval | null;
 }
 
 export interface LearningRobustMetricSummary {
-  schemaVersion: 1;
+  schemaVersion: 2;
   /** These descriptive statistics never authorize skill promotion. */
   diagnosticOnly: true;
   taskCount: number;
@@ -39,6 +42,23 @@ interface MatchedScore {
 function roundMetric(value: number): number {
   if (!Number.isFinite(value)) throw new Error('learning-robust-metrics-non-finite-result');
   return Number(value.toFixed(6));
+}
+
+function stableBootstrapSeed(metric: MetricKey, taskIds: readonly string[]): number {
+  // FNV-1a over canonical task identities yields a reproducible stream without
+  // allocating one potentially large concatenated string.
+  let hash = 2166136261;
+  const update = (value: string) => {
+    for (let index = 0; index < value.length; index++) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    hash ^= 0;
+    hash = Math.imul(hash, 16777619);
+  };
+  update(metric);
+  for (const taskId of taskIds) update(taskId);
+  return hash >>> 0;
 }
 
 function scoreInUnitInterval(value: unknown): value is number {
@@ -157,6 +177,14 @@ function summarizeDimension(
   const candidateGap = taskBalancedOptimalityGap(candidateTaskMeans);
   const probability = taskImprovementProbabilities.reduce((sum, value) => sum + value, 0) /
     taskImprovementProbabilities.length;
+  // Resample tasks—not individual repeated trials—so one task with many seeds
+  // cannot masquerade as many independent units. This interval is descriptive
+  // only and intentionally does not participate in candidate promotion.
+  const taskBalancedMeanDeltaBootstrapInterval = taskIds.length < 2 ? null :
+    bootstrapMeanConfidenceInterval(
+      candidateTaskMeans.map((value, index) => value - baselineTaskMeans[index]),
+      { confidenceLevel: 0.95, resamples: 2000, seed: stableBootstrapSeed(key, taskIds) },
+    );
   return {
     baselineTaskBalancedIqm: roundMetric(baselineIqm),
     candidateTaskBalancedIqm: roundMetric(candidateIqm),
@@ -168,6 +196,7 @@ function summarizeDimension(
     candidateTaskBalancedOptimalityGap: roundMetric(candidateGap),
     taskBalancedOptimalityGapDelta: roundMetric(candidateGap - baselineGap),
     pairedProbabilityOfImprovement: roundMetric(probability),
+    taskBalancedMeanDeltaBootstrapInterval,
   };
 }
 
@@ -221,7 +250,7 @@ export function summarizeLearningRobustMetrics(
   const rowsByTask: ReadonlyMap<string, readonly MatchedScore[]> = mutableRowsByTask;
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     diagnosticOnly: true,
     taskCount: taskIds.length,
     matchedTrialCount: rows.length,
