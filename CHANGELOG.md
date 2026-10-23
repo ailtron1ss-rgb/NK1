@@ -1,3 +1,10 @@
+## 2026-10-23 — Cross-branch source-path coverage verified
+
+- Compared the integration tree recursively with `workpass79-cognitive-rebuild`, `workpass93-hermes-reflective-learning-gate`, `workpass118-multi-source-learning-integration`, `workpass120-verified-skill-revision-gate`, and `workpass88-avalanche-forgetting-metrics`.
+- All checked source, test, workflow, and vendor paths from these snapshots already exist by pathname in the integration tree; no duplicate file-copy operation was needed.
+- Reviewed representative learning overlaps: the integration `P23LearningEngine.ts` contains additional promotion/evaluation/evidence bindings beyond the WorkPass120 snapshot, and the target skill-revision test contains additional checks. Older snapshots must not overwrite these versions.
+- This is source-tree/path and sampled-file verification only. It does not claim full branch-history merge, passing tests, successful hosted CI, or an updated Release ZIP.
+
 ## 2026-10-23 — Integration workspace CI activation
 
 - Added `nk1-integration-workspace-2026-10-22` to the push and pull-request branch filters of `.github/workflows/workpass71-validation.yml`. The integrated branch can now trigger the existing Node.js 24 core regression suite, including WorkPass319–325 cognitive-cycle, persistence, resource-budget, interrupt-accounting, and causal-spine checks.
