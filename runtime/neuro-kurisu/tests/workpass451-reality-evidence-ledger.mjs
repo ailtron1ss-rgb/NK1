@@ -9,6 +9,14 @@ const first = ledger.record({
 });
 const totalAfterFirst = ledger.snapshot().total;
 
+const replay = ledger.record({
+  tick: 12, at: 1200, realityClass: 'external-observation',
+  claim: 'The front camera observed a door open.',
+  confidence01: 0.91, independenceKey: 'device:camera-front', parentIds: ['decision:12'],
+});
+assert.deepEqual(replay, first, 'identical evidence identity must be idempotent');
+assert.equal(ledger.snapshot().total, totalAfterFirst);
+
 // A caller may reuse the same upstream event ID across RealityEvidenceLedger,
 // P65, and outcome reflection. Exact replay is idempotent, but re-binding that
 // identity to a different claim is rejected rather than counted as new proof.
@@ -32,13 +40,6 @@ assert.throws(() => ledger.record({
   confidence01: 0.82, independenceKey: 'device:android-battery',
 }), /reality-evidence-event-identity-conflict/);
 
-const replay = ledger.record({
-  tick: 12, at: 1200, realityClass: 'external-observation',
-  claim: 'The front camera observed a door open.',
-  confidence01: 0.91, independenceKey: 'device:camera-front', parentIds: ['decision:12'],
-});
-assert.deepEqual(replay, first, 'identical evidence identity must be idempotent');
-assert.equal(ledger.snapshot().total, totalAfterFirst);
 assert.equal(ledger.claimAssessment(first.claim).externalSamples, 1);
 assert.equal(ledger.claimAssessment(first.claim).independentExternalSources, 1);
 
