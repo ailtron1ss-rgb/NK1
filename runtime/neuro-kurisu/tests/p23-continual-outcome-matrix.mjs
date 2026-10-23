@@ -81,5 +81,11 @@ for (const seed of [1,2]) {
     if (taskId === 'a') missingBaseline.record({taskId,taskVersion:'1',method:'baseline',seed,attempt:1,passed:true,authority:'independent-verifier',verifierId:'v1',evidenceRef:`verifier://${taskId}/baseline/${seed}`,observedAt:4000+seed});
   }
 }
-assert.throws(()=>buildContinualOutcomeMatrix(missingBaseline,[{stageId:'s1',method:'stage-1'},{stageId:'s2',method:'stage-2'}],{preTrainingMethod:'baseline'}),/pre-training method lacks matched seeds for task b/);
+assert.throws(()=>buildContinualOutcomeMatrix(missingBaseline,[{stageId:'s1',method:'stage-1'},{stageId:'s2',method:'stage-2'}],{preTrainingMethod:'baseline',referenceScore:0.25}),/pre-training method lacks matched seeds for task b/);
+// Forward-transfer results are blocked unless a measured fixed/random-policy baseline is supplied.
+assert.throws(() => buildContinualOutcomeMatrix(ledger, [
+  {stageId:'after-task-1',method:'checkpoint-1'},
+  {stageId:'after-task-2',method:'checkpoint-2'},
+], {split:'holdout', preTrainingMethod:'pretrain'}), /referenceScore is required/);
+
 console.log('PASS continual outcome matrix: matched seeds, split isolation, baseline parity, cell-level Wilson intervals, task-family stratification');
