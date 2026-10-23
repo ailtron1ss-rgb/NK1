@@ -1572,7 +1572,7 @@ export class P23LearningEngine {
   recommendLearningTargets(limit=10) {
     const reflections=this.reflectionHypotheses(Math.max(12,limit));
     const debt=this.evidenceDebt(Math.max(12,limit)).map(row=>({
-      id:row.id, family:row.action, uncertainty01:row.uncertainty01,
+      id:row.id, family:`verification-debt:${row.action}`, uncertainty01:row.uncertainty01,
       readiness01:clamp(1-row.estimatedVerificationCost01),
       // Information gain per cost estimates the value of checking this item;
       // it is not evidence that the skill transfers to another task family.
@@ -1581,7 +1581,7 @@ export class P23LearningEngine {
       repairValue01:row.priority01, blocked:false,
     }));
     const reflected=reflections.map(row=>({
-      id:`reflection:${row.key}`, family:row.action,
+      id:`reflection:${row.key}`, family:`reflection:${row.kind}:${row.action}`,
       // Prioritise both calibration error and conservative observed failure risk.
       // The Wilson interval is descriptive only; the evidence may be correlated.
       uncertainty01:clamp(.45*row.predictionGap01+.55*(1-row.wilsonLowerPassRate01)),
@@ -1594,7 +1594,7 @@ export class P23LearningEngine {
     }));
     const seen=new Set<string>();
     const candidates=[...debt,...reflected].filter(row=>{if(seen.has(row.id))return false;seen.add(row.id);return true;});
-    return rankLearningTargets(candidates,limit);
+    return rankLearningTargets(candidates,limit,'pareto-frontier');
   }
 
   private updateEvidenceDebt(e:LearningExperience):void {
