@@ -1,3 +1,9 @@
+## NK1 WorkPass394 — close the direct local-generator trust-boundary path (2026-10-23)
+- [FIXED] `P23LocalModelSkillRevisionGenerator` now snapshots the request before reading fields or serializing source/validation data; generator response data is snapshotted before reading `response.text`.
+- [SAFETY] Host provider methods are resolved from property descriptors and accessor-backed `configured`/`generate` capabilities are rejected without invoking getters. Missing/unconfigured providers retain the established not-configured error contract.
+- [TEST ADDED] Added regressions for request getter non-invocation, response getter non-invocation, provider capability getters and absent-provider compatibility.
+- [CI] P26 Learning Validation path filters and steps now include the local model revision generator and its regression test.
+
 ## NK1 WorkPass394 — block report-only reflective promotion (2026-10-23)
 
 - [FIXED] Disabled the legacy `approveReflectiveVerifiedSkillCandidate` production path. Caller-owned fitness arrays plus signed run receipts cannot authorize activation because receipts bind identity/binary outcome, not skill-quality or trajectory metrics.
