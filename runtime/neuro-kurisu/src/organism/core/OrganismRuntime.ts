@@ -1061,8 +1061,10 @@ export class OrganismRuntime {
   }
   proceduralSkillLibrarySnapshot(){ return this.proceduralSkillLibrary.snapshot(); }
   /**
-   * Return generator-ready repair evidence from actual persisted compound executions.
-   * Holdout observations are excluded; evidence is descriptive and never authorizes activation.
+   * Return a bounded diagnostic ledger of persisted non-holdout repair observations.
+   * Failed/ineligible attempts remain available for diagnosis. The P23 coordinator
+   * filters revisionEligible and strictly canonicalizes that smaller set before
+   * generation; this method does not certify evidence or authorize activation.
    */
   compoundSkillRepairEvidence(id?:string){
     const state=this.proceduralSkillLibrary.snapshot();
