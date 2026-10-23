@@ -528,3 +528,38 @@ NK1 уже содержит широкую реализационную базу
 При каждом следующем обращении к NK1 обновлять фактический GitHub state, использовать этот документ как фиксированный порядок, затем выполнять крупные реальные изменения с приоритетом production value. Сначала интегрировать и исправлять то, что влияет на работающую систему; анализ/отчёт служит для выбора и доказательства, а не заменяет код. Отдельно отчитываться: выполнено, подключено, проверено, измерено, осталось.
 
 **Текущий статус мастер-плана (обновлён 2026-10-23):** документ хранится в `planning/master-audit-roadmap`. Семь действующих категорий получили новые коммиты в своих ветках: learning, perception, feedback, visual-embodiment, personality, memory и emotions. Их PR остаются открытыми draft против `integration`; изменения ещё не объединены и не являются частью подтверждённой сборки релиза. У каждого целевого направления добавлены регрессии, однако exact-head test/typecheck остаются **UNVERIFIED**: четыре проверенных запуска Actions завершились за 1–9 секунд с `runner_id=0`, пустым именем runner и нулём шагов. Общий инженерный readiness не повышается с прежних 46/100 до получения настоящих результатов. Релизный ZIP WorkPass70 и более поздний prerelease Hotfix1 от 19 октября остаются неизменёнными; точные SHA-256 и отсутствие доступного действия для замены бинарного release asset зафиксированы в `docs/NK1_BRANCH_GOALS_AND_EXIT_GATES.md`. `main` не изменялся.
+
+
+---
+
+## Addendum WorkPass449–455 (2026-10-23): cross-domain changes and Hexis source adaptation
+
+The six latest category passes are now reflected in their owning branches, with code, regression source and CHANGELOG entries:
+- feature/memory — P65 source-aware belief revision, replay deduplication and bounded audit history.
+- feature/personality — allowlisted self-agency state restoration and protected canonical invariants.
+- feature/perception — stable idempotent reality-evidence identity and quarantined restore.
+- feature/emotions — contextual outcome learning conditioned on emotion label and homeostatic pressure.
+- feature/visual-embodiment — monotonic exponential smoothing for expression, gaze, head pose and voice emphasis, with visemes still following the audio clock.
+- feature/feedback — built-in postcondition proof thresholds and required channels can be strengthened but not weakened by runtime registration.
+
+### Primary-source decision: Hexis
+
+Inspected QuixiAI/Hexis's MIT-licensed memory, identity/worldview, heartbeat and self-development documentation. The port is principle/mechanism-level, not a repo clone: use provenance-aware semantic revision, deliberate separation of durable identity from adaptive traits, resource-bounded observe/orient/decide/act, and observation-first background maintenance. NK1 retains MemoryOS2, the canonical ActionGateway, P23 learning lifecycle and unified EmbodimentIntentV1 as existing owners; no dependency was added.
+
+Detailed mapping: [WorkPass455 Hexis → NK1 cross-domain contract](HEXIS_NK1_CROSS_DOMAIN_INTEGRATION_WORKPASS455_RU.md).
+
+### Fixed-order implementation route
+
+456: propagate one event/execution/decision identity through external postcondition, reality evidence, P65 epistemic revision and reward/reflection. Exact replay must be idempotent; conflicting payload reuse must quarantine.
+
+457: expose one bounded, read-only cognitive context with body/homeostatic state, affect, uncertainty, identity integrity and retrieval freshness to the canonical decision layer. Preserve planner → EthicalGate → ActionGateway authority.
+
+458: build a fixed bilingual held-out retrieval corpus and measure grounded recall/precision, behavior impact, latency and resource costs. Do not tune against test labels.
+
+459: close the verified self-repair route from typed external failure through targeted repair, isolated candidate/baseline matched evaluation, per-axis holdout, explicit approval/rollback and evidence-backed memory consolidation.
+
+460: restore actual runner execution; merge category PRs only in small reviewable units; rerun exact-head combined tests; then build, inspect and hash-verify the primary Release ZIP. A draft PR or file in a feature branch does not count as integrated/shipped.
+
+### Truthful status
+
+The added test cases are committed but not confirmed as executed PASS. Recent GitHub Actions runs still terminate with runner startup failure (runner_id=0, zero steps/no logs). The prior overall engineering-readiness baseline remains 46/100; no increase is justified before verified exact-head checks, held-out benchmarks and common-runtime evidence. Main/integration/release assets were not changed by these passes.
