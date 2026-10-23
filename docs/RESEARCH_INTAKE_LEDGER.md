@@ -1,3 +1,15 @@
+## WorkPass403 — paired-seed replication inside candidate task families (2026-10-23)
+
+- **Source evidence:** Google's [RLiable](https://github.com/google-research/rliable) recommends interval estimates and robust aggregates rather than only point estimates when runs are few, and provides stratified-bootstrap confidence intervals, IQM, performance profiles and probability-of-improvement metrics. [SkillLearnBench](https://arxiv.org/abs/2604.20087) measures skill quality, trajectory and task outcome across verified tasks and reports nonuniform gains between tasks/methods. [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution) keeps candidate evaluation and promotion behind separate guardrails.
+- **NK1 gap:** WorkPass402 required two distinct tasks per canonical family on each split, but those tasks could each have only one seed. Family coverage was present, yet replication across random initialization / stochastic execution was absent.
+- **Adaptation:** `IndependentSkillCandidateEvaluator.ts` adds `IndependentEvaluationFamilySeedCoverageOptions`. A seed counts only when the candidate's trusted run bindings show that same seed for every distinct task in a family. The comparator uses common seeds, not a union across task-local seeds; missing labels/too few tasks cannot silently pass a requested seed gate. New report counters distinguish families evaluated, families with adequate seed coverage, and failures.
+- **Production integration:** `P23LearningEngine.approveIndependentlyEvaluatedSkillCandidate` now hardcodes a minimum of three common paired seeds for each sufficiently sampled family in both validation and holdout, alongside two-task/one-family structural coverage. Caller-generated payloads cannot weaken this requirement.
+- **Regression/CI:** WorkPass225 creates an improved two-seed family candidate and proves it remains ineligible under a three-seed policy, while a paired three-seed case passes coverage. WorkPass402 end-to-end promotion test additionally proves a two-seed candidate is blocked before store approval. P26 already triggers on/runs both test files.
+- **Limitations:** Three seeds are only a structural minimum, not a significance threshold. The RLiable approach suggests the next research pass should add stratified bootstrap confidence intervals, IQM / probability of improvement, and deterministic paired-seed reports on a larger task set. No performance improvement is claimed; Actions logs are unavailable.
+- **Artifact:** [WorkPass403 paired-seed family coverage](WORKPASS403_PAIRED_SEED_FAMILY_COVERAGE_RU.md).
+
+---
+
 ## WorkPass402 — wire family coverage into the actual P23 promotion authority (2026-10-23)
 
 - **Discovery:** WorkPass400/401 correctly added family regression and coverage controls to the common candidate gate, but the authoritative `P23LearningEngine.approveIndependentlyEvaluatedSkillCandidate` called `compareMatchedIndependentEvaluations` with the default options. That left production activation compatible with reports whose family-level check was not performed.
