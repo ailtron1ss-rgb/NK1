@@ -85,6 +85,8 @@ jobs:
         run: npm --prefix app run build:dev
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Recovered rebuild, causal replay, avatar storage, and Live2D regressions
+        run: npm run test:rebuild-recovered
       - name: P23 persisted learning restore integrity
         run: npm --prefix runtime/neuro-kurisu run test:workpass310:p23-restore-integrity
       - name: WorkPass313 user model, EILS, and bounded sleep consolidation
