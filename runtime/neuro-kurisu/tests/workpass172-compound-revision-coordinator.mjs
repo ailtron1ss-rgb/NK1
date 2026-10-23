@@ -211,6 +211,61 @@ assert.equal(concurrentResultTwo.status, 'candidate-staged');
 assert.equal(concurrentStageCalls, 1, 'concurrent callers must not create duplicate candidate stages');
 assert.strictEqual(concurrentResultOne, concurrentResultTwo, 'coalesced callers should share the same result object');
 
+// WorkPass328: a concurrent request with NEW evidence must not be swallowed by a stale in-flight revision.
+const changingEvidence = [structuredClone(evidence[0])];
+let releaseOldEvidenceProvider;
+const oldEvidenceBarrier = new Promise(resolve => { releaseOldEvidenceProvider = resolve; });
+let changingProviderCalls = 0;
+let changingStageCalls = 0;
+let stagedEvidenceDigest = null;
+const changingCoordinator = new P23CompoundRepairRevisionCoordinator(
+  {
+    compoundSkillRepairEvidence: () => changingEvidence,
+    generateCompoundSkillRevision: async input => {
+      changingStageCalls++;
+      stagedEvidenceDigest = input.sourceEvidenceFingerprint;
+      return { candidate: { candidateId: 'fresh-evidence-candidate' }, repairEvidenceCount: 1 };
+    },
+  },
+  engine,
+  async () => {
+    changingProviderCalls++;
+    const attempt = changingProviderCalls;
+    if (attempt === 1) await oldEvidenceBarrier;
+    return {
+      proposal: { authentic: true, attempt },
+      sourceCandidateId: `source-candidate-${attempt}`,
+      baseline: { validation: [], holdout: [] },
+      candidateEvaluation: { validation: [], holdout: [] },
+      generate: async () => ({ generated: true, attempt }),
+      evaluateRevisedCandidate: async input => ({
+        payloadFingerprint: input.payloadFingerprint,
+        evaluationFingerprint: (attempt === 1 ? 'd' : 'e').repeat(64),
+        evaluation: { validation: [], holdout: [] },
+      }),
+    };
+  },
+);
+const staleAttempt = changingCoordinator.reviseFromObservedRepairs('skill-a');
+assert.equal(changingProviderCalls, 1, 'first evidence snapshot must enter the provider');
+changingEvidence[0] = {
+  ...changingEvidence[0],
+  failureFingerprint: 'fp-newer',
+  diagnosis: 'a newer independently observed repair changes the evidence snapshot',
+};
+const latestDigest = createHash('sha256').update(JSON.stringify(changingEvidence)).digest('hex');
+const latestAttempt = changingCoordinator.reviseFromObservedRepairs('skill-a');
+assert.equal(changingProviderCalls, 1, 'new-evidence request waits for the currently running snapshot');
+releaseOldEvidenceProvider();
+const [staleSettled, latestSettled] = await Promise.allSettled([staleAttempt, latestAttempt]);
+assert.equal(staleSettled.status, 'rejected', 'the old snapshot must fail closed after the ledger changes');
+assert.match(String(staleSettled.reason), /compound repair evidence changed while trusted revision inputs were being prepared/);
+assert.equal(latestSettled.status, 'fulfilled', 'the queued request must retry using the newer ledger snapshot');
+assert.equal(latestSettled.value.status, 'candidate-staged');
+assert.equal(changingProviderCalls, 2, 'new evidence must trigger a fresh provider/evaluation attempt');
+assert.equal(changingStageCalls, 1, 'only the fresh snapshot may reach candidate staging');
+assert.equal(stagedEvidenceDigest, latestDigest, 'staged provenance must bind to the current evidence digest');
+
 // A persisted candidate carries the same source-evidence digest across coordinator restarts.
 const durableDigest = createHash('sha256').update(JSON.stringify(evidence)).digest('hex');
 let durableProviderCalls = 0;
