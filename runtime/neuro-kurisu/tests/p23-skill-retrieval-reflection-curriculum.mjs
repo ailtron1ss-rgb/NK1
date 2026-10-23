@@ -148,4 +148,4 @@ assert.ok(debtTarget, 'P23 curriculum must surface outstanding verification debt
 assert.equal(debtTarget.transfer01, 0,
   'information gain per verification cost is not evidence of skill transfer');
 assert.ok(reflectedTarget.uncertainty01 > 0, 'reflection targets must include conservative observed failure risk');
-console.log('WorkPass119 skill retrieval + outcome reflection + curriculum: PASS');
+console.log('P23_SKILL_RETRIEVAL_REFLECTION_CURRICULUM=PASS');
