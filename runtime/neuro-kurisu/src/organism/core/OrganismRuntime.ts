@@ -1615,7 +1615,7 @@ export class OrganismRuntime {
         this.compoundRepairRevisionMetrics.lastStatus = result.status;
         if (result.status === 'candidate-staged') {
           this.compoundRepairRevisionMetrics.staged++;
-          this.compoundRepairRevisionMetrics.lastCandidateId = result.candidateId;
+          this.compoundRepairRevisionMetrics.lastCandidateId = result.candidateId ?? null;
         } else if (result.status === 'already-staged-for-evidence') {
           this.compoundRepairRevisionMetrics.deduplicated++;
         } else if (result.status === 'retry-backoff-active') {
