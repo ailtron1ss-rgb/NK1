@@ -41,7 +41,7 @@ import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/Act
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
-import { P23CompoundRepairRevisionCoordinator, canonicalCompoundRepairEvidence, fingerprintCompoundRepairEvidence, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
+import { P23CompoundRepairRevisionCoordinator, canonicalCompoundRepairEvidence, fingerprintCompoundRepairEvidence, type CompoundRepairRevisionInputProvider, type CompoundRepairRetryBackoffSnapshot } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
 import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEvaluationProvider.ts';
 import type { IndependentCandidateEvaluationConfig } from '../learning/IndependentSkillCandidateEvaluator.ts';
 import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndependentEvaluationFactoryOptions } from '../learning/HostOwnedIndependentEvaluationServices.ts';
@@ -296,8 +296,11 @@ export class OrganismRuntime {
             config.compoundRepairRevision.independentEvaluationConfigForRepair,
           )
         : config.compoundRepairRevision.provideInputs;
+      const retryBackoffStore = new FileStateStore<CompoundRepairRetryBackoffSnapshot>(
+        `${config.stateFile}.p23-compound-repair-retry-backoff.json`,
+      );
       this.compoundRepairRevisionCoordinator = new P23CompoundRepairRevisionCoordinator(
-        this, config.compoundRepairRevision.engine, provideInputs,
+        this, config.compoundRepairRevision.engine, provideInputs, retryBackoffStore,
       );
     } else {
       this.compoundRepairRevisionCoordinator = null;
@@ -335,6 +338,7 @@ export class OrganismRuntime {
       if (this.initialized) return;
       await this.journal.write('info', 'runtime.init.begin');
       await this.core.init();
+      if (this.compoundRepairRevisionCoordinator) await this.compoundRepairRevisionCoordinator.restoreRetryBackoff();
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
