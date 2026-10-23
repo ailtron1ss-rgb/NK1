@@ -1,12 +1,12 @@
-## Current source-stack checkpoint — WorkPass403 (2026-10-23)
+## Current source-stack checkpoint — WorkPass404 (2026-10-23)
 
-- **P23 production promotion gate:** requires canonical validation and holdout family coverage (WorkPass402) plus at least 3 common paired seeds for each sufficiently sampled family on both splits. Each seed must be present for every task in that family; unrelated task-local seeds are not summed.
-- **Option separation:** the independent comparator accepts `IndependentEvaluationFamilySeedCoverageOptions` separately from the normal SkillLearnBench fitness options. Caller-controlled generated skill content cannot loosen P23's fixed production settings.
-- **Reporting and fail-closed behavior:** comparator reports per-split family seed coverage and failures. If strict seed coverage is requested but there is no eligible family, it fails closed. Invalid minima are rejected.
-- **Regressions:** WorkPass225 tests the same two-task family with two paired seeds (blocked under a three-seed rule) and three paired seeds (coverage passes). WorkPass402 end-to-end activation test checks a two-seed candidate cannot reach store approval. P26 runs both under Node.js 24.
-- **Research basis:** RLiable recommends uncertainty-aware evaluation and robust aggregates for small-run settings; SkillLearnBench highlights nonuniform skill-learning gains across domains; Hermes separates generated candidates from guarded promotion. Three seeds is a structural floor only; stratified-bootstrap CIs/IQM and larger task/seed sets remain future work.
-- **Verification:** source and tests are committed to `feature/learning`, but exact-head Actions tests/typecheck remain unverified due failure jobs without exposed step logs. No benchmark gain is claimed.
-- **Release:** `main` and the GitHub Release ZIP remain unchanged. See [WorkPass403 paired-seed family coverage](docs/WORKPASS403_PAIRED_SEED_FAMILY_COVERAGE_RU.md) and [WorkPass402 production family gate](docs/WORKPASS402_PRODUCTION_FAMILY_GATE_RU.md).
+- **P23 family promotion policy:** production candidate activation requires canonical task families, at least two distinct tasks per family, three common paired seeds per sufficiently sampled family on both validation and holdout, and a reproducible per-family bootstrap interval.
+- **Uncertainty-aware gate:** new `PairedSeedConfidence.ts` computes dependency-free deterministic percentile-bootstrap intervals over common-seed family deltas. Validation needs a positive lower bound; holdout's lower bound must stay above the configured family regression floor. Seed uncertainty cannot be hidden by a positive macro-average alone.
+- **Data integrity:** intervals use matched baseline/candidate reports joined to trusted run bindings by task/trial/seed/split. Repeated trials are averaged per task/seed, then tasks are weighted equally. Bootstrap stream is stable for a plan/split/family; malformed numerical settings fail closed.
+- **Regression/CI:** `workpass404-paired-seed-confidence.mjs` tests reproducibility and noisy input; WorkPass225 covers a positive-mean candidate with one adverse seed whose family CI is unsafe. P26 path filters and Node.js 24 step wiring cover both.
+- **Research basis:** RLiable recommends uncertainty intervals and robust aggregates for small-run evaluations; SkillLearnBench reports nonuniform skill-learning effects across tasks/domains; Hermes inspires independent candidate guardrails. Three seeds and percentile bootstrap are preliminary safeguards, not statistical proof. Larger suites, IQM and probability-of-improvement remain future work.
+- **Verification:** source, focused regression and docs are committed on `feature/learning`; exact-head runtime tests/typecheck remain unverified because Actions jobs finish with failure but expose no step logs. No improvement benchmark is claimed.
+- **Release:** `main` and the GitHub Release ZIP remain unchanged. See [WorkPass404 bootstrap confidence gate](docs/WORKPASS404_BOOTSTRAP_CONFIDENCE_GATE_RU.md) and [WorkPass403 paired-seed family coverage](docs/WORKPASS403_PAIRED_SEED_FAMILY_COVERAGE_RU.md).
 
 ---
 
