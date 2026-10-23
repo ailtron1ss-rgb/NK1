@@ -159,6 +159,22 @@ assert.deepEqual(rankLearningTargets(frontierFixtures,3,'pareto-frontier').map(t
   ['frontier-repair','complementary-novelty','dominated-near-clone'],
   'Pareto-frontier mode must keep complementary strengths ahead of dominated near-duplicates');
 
+const blockedFrontier = rankLearningTargets([
+  {id:'blocked-super-score',family:'memory',uncertainty01:1,readiness01:1,transfer01:1,novelty01:1,verificationCost01:0,repairValue01:1,blocked:true},
+  {id:'eligible-lower-score',family:'memory',uncertainty01:.6,readiness01:.6,transfer01:.5,novelty01:.4,verificationCost01:.3,repairValue01:.7},
+],2,'pareto-frontier');
+assert.deepEqual(blockedFrontier.map(target=>target.id),['eligible-lower-score','blocked-super-score'],
+  'blocked prerequisites must remain behind every eligible Pareto layer even when their weighted score is higher');
+
+const deterministicFrontierInput = [
+  {id:'zeta',family:'alpha',uncertainty01:.5,readiness01:.5,transfer01:.5,novelty01:.5,verificationCost01:.2,repairValue01:.5},
+  {id:'alpha',family:'alpha',uncertainty01:.5,readiness01:.5,transfer01:.5,novelty01:.5,verificationCost01:.2,repairValue01:.5},
+];
+assert.deepEqual(
+  rankLearningTargets(deterministicFrontierInput,2,'pareto-frontier').map(target=>target.id),
+  rankLearningTargets([...deterministicFrontierInput].reverse(),2,'pareto-frontier').map(target=>target.id),
+  'Pareto ordering must not depend on caller insertion order when candidates have equal objective vectors');
+
 const engine=new P23LearningEngine();
 const policy={bias:()=>0};
 const needs={energy:.8,cognitiveLoad:.2,uncertainty:.5,novelty:.5,goalPressure:.5,socialNeed:.5};
