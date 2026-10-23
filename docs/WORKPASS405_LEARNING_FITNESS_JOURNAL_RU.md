@@ -24,7 +24,7 @@ WorkPass400–404 усилили production fitness gate, но на каждом
 
 ## Интеграция в единый цикл
 
-`P23LearningEngine.configureLearningFitnessJournal(...)` принимает внедрённый sink. Реальный `approveIndependentlyEvaluatedSkillCandidate` записывает решение fitness gate до проверки подписанных shadow receipts и до атомарной активации. И успешная fitness-оценка, и отказ из-за семейного покрытия/seed/confidence отражаются в журнале. Если настроенный журнал не может безопасно записать событие, исключение не даёт пройти к promotion.
+`P23LearningEngine.configureLearningFitnessJournal(...)` принимает внедрённый sink; `configureLearningFitnessJournalIfAbsent(...)` позволяет runtime добавить значение по умолчанию, не заменяя уже настроенный host sink. Если `OrganismRuntime` сконфигурирован с `compoundRepairRevision.engine`, он по умолчанию создаёт sibling-файл `<stateFile stem>.learning-fitness.jsonl`, либо использует явно переданный `RuntimeConfig.learningFitnessJournal`. Реальный `approveIndependentlyEvaluatedSkillCandidate` записывает решение fitness gate до проверки подписанных shadow receipts и до атомарной активации. И успешная fitness-оценка, и отказ из-за семейного покрытия/seed/confidence отражаются в журнале. Если настроенный журнал не может безопасно записать событие, исключение не даёт пройти к promotion.
 
 Журнал фиксирует именно **fitness decision**, а не утверждает, что навык активирован: успешный fitness gate ещё должен пройти проверку подписанных свидетельств, authenticated approval и хранилище версий.
 
