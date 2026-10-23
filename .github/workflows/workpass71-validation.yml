@@ -2,7 +2,7 @@ name: NeuroCore core regression validation
 
 on:
   push:
-    branches: [workpass70-source]
+    branches: [workpass70-source, nk1-integration-workspace-2026-10-22]
     paths:
       - "app/**"
       - "runtime/neuro-kurisu/src/**"
@@ -29,7 +29,7 @@ on:
       - '.nvmrc'
       - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
   pull_request:
-    branches: [main, workpass70-source, workpass203-independent-candidate-evaluator]
+    branches: [main, workpass70-source, workpass203-independent-candidate-evaluator, nk1-integration-workspace-2026-10-22]
     paths:
       - "app/**"
       - "runtime/neuro-kurisu/src/**"
