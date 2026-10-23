@@ -60,6 +60,27 @@ assert.equal(accepted.holdoutTaskCount, 2);
 assert.equal(accepted.validationTaskCount, 2);
 assert.equal(accepted.pairedHoldoutTrials, 2);
 
+// The indexed order matcher must preserve the old ordered-match semantics.
+const reordered=evaluateSkillLearnBenchTrial({
+  taskId:'order-check',trialId:'t1',verifierPassed:true,
+  skill:{requiredCapabilityIds:['cap'],coveredCapabilityIds:['cap'],executable:true,safetyViolationCount:0},
+  trajectory:{expectedStepIds:['a','b','c','d'],observedStepIds:['c','a','d','b']},
+});
+assert.equal(reordered.trajectoryQuality.keyPointRecall,1);
+assert.equal(reordered.trajectoryQuality.executionOrder,0.5);
+
+// Bound rubric work and identifier memory independently of upstream report size.
+assert.throws(()=>evaluateSkillLearnBenchTrial({
+  taskId:'oversized-rubric',trialId:'t1',verifierPassed:true,
+  skill:{requiredCapabilityIds:Array.from({length:4097},(_,i)=>`cap-${i}`),coveredCapabilityIds:[],executable:true,safetyViolationCount:0},
+  trajectory:{expectedStepIds:['step'],observedStepIds:[]},
+}),/invalid-required-capability-ids/);
+assert.throws(()=>evaluateSkillLearnBenchTrial({
+  taskId:'long-rubric-id',trialId:'t1',verifierPassed:true,
+  skill:{requiredCapabilityIds:['x'.repeat(257)],coveredCapabilityIds:[],executable:true,safetyViolationCount:0},
+  trajectory:{expectedStepIds:['step'],observedStepIds:[]},
+}),/invalid-required-capability-ids/);
+
  // A macro-average gain must not conceal a material regression on one validation
  // task. Per-task deltas average repeated trials first, so duplicated samples cannot
  // manufacture extra votes.
