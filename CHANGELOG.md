@@ -1,3 +1,11 @@
+## NK1 WorkPass456 — record shared evidence identity bridge as partial (2026-10-23)
+
+- The perception branch now supports an optional upstream eventId in RealityEvidenceLedger and blocks reuse of that identity with changed payload.
+- This is a prepared boundary, not the completed runtime wire: ActionGateway/postcondition → ledger → P65 → reward/reflection propagation is still outstanding and remains WorkPass457's first integration objective.
+- Updated branch goals and master audit so the end-to-end connection is explicitly marked partial. Overall readiness remains 46/100; exact-head test execution and Release ZIP remain unverified/unchanged.
+
+---
+
 ## NK1 WorkPass461 — reconcile current branches and validation limits (2026-10-23)
 
 - Updated the source-intake ledger and Russian master audit against current branch refs and open PR heads, including the latest memory trust ceilings, P67/P68 goal-state guards, event-ID continuity in perception, and bounded verified-outcome fields.
