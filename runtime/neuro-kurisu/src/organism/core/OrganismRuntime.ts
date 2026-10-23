@@ -281,7 +281,7 @@ export class OrganismRuntime {
         );
       }
       const defaultLifecycleJournalPath = config.stateFile.toLowerCase().endsWith('.json')
-        ? config.stateFile.replace(/\\.json$/i, '.learning-lifecycle.jsonl')
+        ? config.stateFile.replace(/\.json$/i, '.learning-lifecycle.jsonl')
         : `${config.stateFile}.learning-lifecycle.jsonl`;
       if (config.learningLifecycleJournal) {
         config.compoundRepairRevision.engine.configureLearningLifecycleJournal(config.learningLifecycleJournal);
