@@ -264,12 +264,55 @@ export class OrganismRuntime {
       if (!config.compoundRepairRevision.engine.verifiedSkillCandidateSnapshot()) {
         throw new Error('compound-repair-revision requires a configured verified P23 candidate store');
       }
-      const provideInputs = config.compoundRepairRevision.independentEvaluationConfigForRepair
+      const revisionConfig = config.compoundRepairRevision;
+      const provideInputs = revisionConfig.independentEvaluationConfigForRepair
         ? withIndependentCandidateEvaluation(
-            config.compoundRepairRevision.provideInputs,
-            config.compoundRepairRevision.independentEvaluationConfigForRepair,
+            revisionConfig.provideInputs,
+            revisionConfig.independentEvaluationConfigForRepair,
+            {
+              requireCanonicalSourceEvaluation: process.env.NODE_ENV === 'production',
+              resolveCanonicalPayloads: (input, { sourceCandidateId }) => {
+                const skillId = input.skillId;
+                const readCanonicalVersions = () => {
+                  const store = revisionConfig.engine.verifiedSkillCandidateSnapshot();
+                  if (!store) throw new Error('canonical-revision-candidate-store-unavailable');
+                  const source = store.candidates.find(item =>
+                    item.candidateId === sourceCandidateId && item.skillId === skillId);
+                  const baseline = store.active.find(item => item.skillId === skillId);
+                  if (!source || source.status === 'rolled-back') {
+                    throw new Error('canonical-revision-source-candidate-missing-or-rolled-back');
+                  }
+                  if (!baseline) {
+                    throw new Error('canonical-revision-active-baseline-required');
+                  }
+                  if (!/^[a-f0-9]{64}$/i.test(source.payloadFingerprint) ||
+                      !/^[a-f0-9]{64}$/i.test(baseline.payloadFingerprint)) {
+                    throw new Error('canonical-revision-payload-fingerprint-invalid');
+                  }
+                  return { source, baseline };
+                };
+                const { source, baseline } = readCanonicalVersions();
+                const expectedSource = { version: source.version, payloadFingerprint: source.payloadFingerprint };
+                const expectedBaseline = { version: baseline.version, payloadFingerprint: baseline.payloadFingerprint };
+                return {
+                  baselinePayload: structuredClone(baseline.payload),
+                  sourceCandidatePayload: structuredClone(source.payload),
+                  baselinePayloadFingerprint: baseline.payloadFingerprint,
+                  sourceCandidatePayloadFingerprint: source.payloadFingerprint,
+                  assertStillCurrent: () => {
+                    const current = readCanonicalVersions();
+                    if (current.source.version !== expectedSource.version ||
+                        current.source.payloadFingerprint !== expectedSource.payloadFingerprint ||
+                        current.baseline.version !== expectedBaseline.version ||
+                        current.baseline.payloadFingerprint !== expectedBaseline.payloadFingerprint) {
+                      throw new Error('canonical-revision-source-or-active-baseline-changed-during-evaluation');
+                    }
+                  },
+                };
+              },
+            },
           )
-        : config.compoundRepairRevision.provideInputs;
+        : revisionConfig.provideInputs;
       this.compoundRepairRevisionCoordinator = new P23CompoundRepairRevisionCoordinator(
         this, config.compoundRepairRevision.engine, provideInputs,
       );

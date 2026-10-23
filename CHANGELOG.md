@@ -1,3 +1,56 @@
+## NK1 WorkPass331 — canonical baseline/source evidence for reflective P23 revision (2026-10-23)
+
+- [TRUST BOUNDARY] Found that provider-supplied `baseline` and `candidateEvaluation` report arrays influenced the P23 revision plan and later fitness gate, even though only the generated candidate was freshly evaluated. Production now ignores those report objects and the provider's own evaluator.
+- [CANONICAL INPUTS] `OrganismRuntime` resolves the active baseline payload and selected source-candidate payload from `verifiedSkillCandidateSnapshot()`; it checks candidate identity/status and the stored fingerprints before evaluating either payload.
+- [INDEPENDENT EVALUATION] The existing host-owned evaluator now scores active baseline, source candidate and newly generated revision under three distinct method identities declared in both validation and holdout plans. The comparisons bind the same manifest/plans/environment, task/trial IDs, seeds, split labels and payload/evaluation digests.
+- [FRESHNESS] The active/source version and payload fingerprints are re-read during the cycle. A change during candidate evaluation fails closed rather than allowing stale baseline fitness to flow into staging.
+- [REGRESSION] Added `test:workpass331:canonical-revision-baseline`, covering provider-report poisoning, real source-candidate failure preservation, fresh revision evaluation, stale-state rejection and production resolver requirements. The test is wired into root `audit:quick` and WorkPass71 core CI.
+- [VALIDATION] The regression and runtime typecheck have **not** been confirmed as executed on the exact head. GitHub Actions is still failing before any steps run; do not infer PASS or code failure. Keep learning metrics unchanged.
+- [LIMITATIONS] Host-owned executor/verifier/scanner deployments and frozen task manifests remain deployment responsibilities. No measured learning uplift or complete autonomous loop is claimed.
+- [DEPENDENCIES/RELEASE] No dependency added, `main` untouched, and release ZIP unchanged.
+
+---
+
+## NK1 WorkPass330 — host-owned evaluator wiring for autonomous P23 revision (2026-10-23)
+
+- [FIX] Closed the production config gap where `server.mjs` passed P23 engine/provider inputs but omitted the independent-evaluation factory required by `OrganismRuntime` in production.
+- [HOST-BOUNDARY] Added `NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE`, loaded from a module distinct from the repair provider. Its host factory defines the three independent command authorities, task builder, environment fingerprint, mandatory production experiment authority, and distinct baseline/source/revision method names scheduled in both plans; no in-process fallback was added.
+- [LEAST-PRIVILEGE] Host-config module receives only `stateDirectory`, not the P23 engine, candidate store or trusted-run registry.
+- [AUTONOMY] Added opt-in `NEURO_COMPOUND_REPAIR_BACKGROUND_REVISION_JSON` to schedule verified repair-to-candidate staging through the existing runtime scheduler. Candidates remain staged; no automatic activation.
+- [REGRESSION] Added twelve contract/wiring cases in `test:workpass330:production-revision-wiring`; covers absent production authority, module identity/mode/state-path restrictions, host factory contract, schedule validation and server-to-runtime wiring. Connected the test to root `audit:quick` and WorkPass71 CI.
+- [HARDENING] The separate evaluator config must resolve to a regular file, be outside the mutable state directory and not be group/world-writable on POSIX.
+- [VALIDATION] Test/typecheck and Actions execution on the exact head remain unverified: jobs still fail before running steps. The deployment-specific host evaluator module and measured held-out task results remain open; no learning score increase is claimed.
+- [DEPENDENCIES/RELEASE] No dependency added, `main` unchanged, release ZIP not rebuilt or published.
+
+---
+
+## NK1 WorkPass329 — Hermes-inspired multi-axis holdout gate (2026-10-23)
+
+- [UPSTREAM] Inspected the pinned Hermes Agent Self-Evolution implementation at `0a929e3aa20e15cf04dc7c28492a7d41a5139125`: reflective optimization, 50/30/20 multi-dimensional fitness, explicit candidate constraints, and separate holdout evaluation. Recorded paths and licensing limits in `docs/WORKPASS329_HERMES_MULTIAXIS_HOLDOUT_GATE_2026-10-23.md`.
+- [CODE] Extended the canonical `SkillLearnBenchAdapter` with component-wise holdout regression caps for task success, trajectory quality, and skill quality (default maximum decline 0.02 on each normalized dimension). A positive weighted composite cannot override a per-dimension regression.
+- [REGRESSION] Added the composite-masking trade-off case plus independent rejection cases for task-success, trajectory and skill-quality regression; all three thresholds reject invalid values.
+- [WIRING] Registered the upstream donor, wired the focused test into root `audit:quick` and WorkPass71 core CI, and updated the donor map to 28 candidates.
+- [DEPENDENCIES] No new dependency and no copied/vendor upstream source; native adaptation uses the existing TypeScript/P23 lifecycle. Upstream license review remains partial because the separate `LICENSE` path was not retrievable, although README and `pyproject.toml` declare MIT.
+- [VALIDATION] Focused test and runtime typecheck are **not yet confirmed as executed** on the exact head. Current Actions startup runs have been stopping before runner assignment (`runner_id=0`, zero steps/logs); do not interpret this as a test pass or failure.
+- [METRICS] No learning uplift is claimed. Keep scores unchanged pending an independent paired-seed run on a frozen holdout.
+- [RELEASE] Latest Release API metadata still points to `Neuro_Kurisu_WORKPASS70_2026-10-19.zip` (135,290,615 bytes, tag `Neuro`, published 2026-10-19). The available GitHub access path supports UTF-8 text but not binary asset download/upload, so the archive was not refreshed; `main` remains untouched.
+
+---
+
+## NK1 WorkPass328 — structured upstream donor intake and adoption gate (2026-10-23)
+
+- [RESEARCH] Added research/upstream-donors/registry.json with 27 donor/benchmark candidates and explicit targets, overlap risks, current audit status, and a next review gate.
+- [GATE] Added tools/verify-upstream-donor-registry.mjs and tools/verify-upstream-donor-registry.test.mjs. Runtime dependencies/adoption are rejected unless source, license, tests, and benchmark evidence each have linked reports; the license record also needs SPDX or compatibility evidence and test evidence needs a reproducible command.
+- [DOCS] Added docs/NEUROCORE_DONOR_MAP_2026-10-23.md mapping donor mechanisms to canonical NK1 ownership and setting research priorities.
+- [WIRING] Added audit:upstream-donors and test:upstream-donors scripts and wired both into audit:quick.
+- [CI] Updated WorkPass71 validation path filters and added direct registry-audit and regression-test steps so donor-registry changes are checked by core CI.
+- [EVIDENCE] Static file inspection found 27 unique donor IDs/URLs. This does not mean the upstream projects have been independently audited, code has been ported, the Node tests ran, or performance improved.
+- [CHECKPOINT] Recorded exact-head pre-runner failures and the next verification steps in docs/WORKPASS328_DONOR_GATE_VALIDATION_2026-10-23.md.
+- [BLOCKER] Exact-head Actions and tests remain unverified because recent Actions jobs stop before runner assignment. Resolve the account-level startup condition and run the commands on the exact head.
+- [RELEASE] No release ZIP was downloaded, rebuilt, or published. main and the existing release asset were not changed.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

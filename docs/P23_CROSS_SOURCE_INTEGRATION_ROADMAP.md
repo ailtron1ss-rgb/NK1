@@ -1,3 +1,39 @@
+## WorkPass331 — regenerate reflective revision baselines from the canonical P23 store (2026-10-23)
+
+- **Observed trust gap:** the provider-supplied `baseline` and `candidateEvaluation` reports were copied through to the P23 revision planner unchanged, while only the newly generated payload went through the independent evaluator. These report arrays influenced repair targets and the baseline-vs-revision fitness gate.
+- **Code:** production `withIndependentCandidateEvaluation` now resolves the active payload and source-candidate payload from `P23LearningEngine.verifiedSkillCandidateSnapshot()`. It independently evaluates both, replaces provider report arrays with these generated results, then independently evaluates the newly generated revision. The provider's own evaluator is never invoked on this path.
+- **Matching gate:** validates payload/evaluation fingerprints, environment, manifest/validation/holdout plan fingerprints, attempt, distinct method identities, task/trial ID coverage, split and seed alignment. Task failures and safety signals remain their actual values; the envelope check is not a success gate.
+- **Method contract:** production evaluator config declares `baselineMethod`, `sourceCandidateMethod`, and the existing revision `experimentAuthority.method`. These must be unique and scheduled in both validation and holdout plans.
+- **Freshness:** active/source version and payload fingerprints are rechecked before returning the revision evaluation. Changed active state fails closed instead of reusing stale baseline metrics.
+- **Regression:** added `workpass331-canonical-revision-baseline.mjs`, registered runtime script `test:workpass331:canonical-revision-baseline`, root `audit:quick`, and WorkPass71 CI step. Exact-head test/typecheck remain unverified because workflow jobs stop before steps.
+- **Boundary:** production deployment still has to provide real host-owned executor/verifier/scanner processes and frozen tasks. No measured improvement is claimed. Full contract: [WorkPass331 report](WORKPASS331_CANONICAL_REVISION_BASELINE_2026-10-23.md).
+
+---
+
+## WorkPass330 — connect production P23 repair staging to host-owned evaluation (2026-10-23)
+
+- **Observed defect:** `server.mjs` could construct the repair provider and candidate store but did not pass the independent evaluation factory required by `OrganismRuntime` under production. The existing guard correctly rejected this incomplete configuration.
+- **Code:** added a separate host evaluator config module contract (`NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE`) that supplies host-owned executor/verifier/safety-scanner processes, task scheduling, environment identity and production experiment authority. It is loaded as a different real module path from the candidate repair provider.
+- **Least privilege:** the host config factory receives only `stateDirectory`; no runtime engine/store/registry capabilities are passed. Existing `createHostOwnedIndependentEvaluationConfigFactory` remains responsible for authority and storage-root checks.
+- **Autonomy:** added explicit `NEURO_COMPOUND_REPAIR_BACKGROUND_REVISION_JSON`. It is disabled unless configured and only schedules candidate staging from eligible verified non-holdout repair evidence under the existing resource governor. It never auto-activates a candidate.
+- **Hardening:** host evaluator config is required to be a regular file outside mutable state, resolved through `realpath`, and not group/world-writable on POSIX; it must also be distinct from the repair provider. The production plan must declare separate baseline/source/revision method names in both validation and holdout plans.
+- **Regression/wiring:** added 12 contract cases in `workpass330-production-revision-wiring.mjs`, registered its runtime package script, root `audit:quick`, and WorkPass71 CI step.
+- **Evidence boundary:** test/typecheck/CI remain unverified because Actions jobs continue to stop before executing steps. A deployment-owned evaluator module, independent host processes, fixed experiment manifests, real signed shadow receipts and a frozen paired-seed benchmark remain open. No learning metric is raised.
+- Full contract and environment-variable documentation: [WorkPass330 report](WORKPASS330_PRODUCTION_REVISION_WIRING_2026-10-23.md).
+
+---
+
+## WorkPass329 — prevent component regression masked by composite skill fitness (2026-10-23)
+
+- **Upstream adaptation:** reviewed Hermes Agent Self-Evolution at `0a929e3aa20e15cf04dc7c28492a7d41a5139125` (`evolve_skill.py`, `fitness.py`, `constraints.py`, `pyproject.toml`). Adapted the constraint idea natively; no upstream source was copied and no runtime dependency was added.
+- **Code:** canonical `SkillLearnBenchAdapter` keeps the paired composite and adds separate maximum holdout-decline controls for task success, trajectory quality, and skill quality (defaults: 0.02 on each normalized axis). It computes baseline/candidate macro means over matched reports.
+- **Behavioral regression:** `tests/p29-hermes-reflective-candidate-gate.mjs` constructs a trade-off where the overall composite improves while trajectory quality drops. The aggregate-only threshold is neutralized in that fixture so the component-specific rejection is exercised. Threshold validation is also covered.
+- **Integration:** root `audit:quick` and `WorkPass71` core CI run the focused regression; donor register and map now record 28 candidates including this native adaptation.
+- **Evidence:** implementation and CI wiring are committed. The focused test and runtime typecheck remain **unverified** because recent hosted Actions runs stop before runner assignment (`runner_id=0`, no steps/logs). Do not raise learning score based on authored tests or source changes.
+- **Limitations:** no measured learning uplift, no production lifecycle completion, and no release ZIP update. Continue tracing actual generation/execution/verification/approval callers and obtain independent frozen paired-seed holdout evidence before promotion.
+
+---
+
 ## WorkPass285 — evaluator capability-scope enforcement (2026-10-22)
 
 - **Code:** independent candidate evaluation now rejects verifier-reported capability IDs not declared by the evaluated task. Out-of-scope claims fail closed and are not included in the recorded covered-capability set.

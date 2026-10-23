@@ -1,3 +1,45 @@
+# Addendum WorkPass331 — canonical baseline provenance for P23 reflective learning (2026-10-23)
+
+WorkPass331 fixes a trust gap inside the previously identified production revision path. The repair provider could supply baseline and source-candidate evaluation rows that influenced repair targets and the baseline-vs-revision score gate, even though only the freshly generated candidate was executed by the configured independent evaluator.
+
+Production now resolves the active skill payload and requested source candidate payload from the canonical versioned P23 candidate store. Both are evaluated by the host-owned evaluator, and the provider's baseline/source report arrays and evaluator are ignored. The generated revision is then independently evaluated as a third method. All three method names must appear distinctly in both fixed validation/holdout plans, and their reports must match task/trial IDs, seeds, split, manifest, plans, attempt and environment fingerprints.
+
+The runtime rechecks the active/source version and payload fingerprints before returning the new candidate's evaluation. A changed active baseline fails closed. Actual task failures and safety findings remain in the score data and still flow through existing P23 gating; no outcome is promoted merely because a report is well-shaped.
+
+Regression: `test:workpass331:canonical-revision-baseline`, registered in root quick audit and WorkPass71 CI. Test and typecheck have not been confirmed on the exact head because hosted Actions jobs continue to stop before steps. See [WorkPass331 report](WORKPASS331_CANONICAL_REVISION_BASELINE_2026-10-23.md). Deployment-owned evaluator services and a frozen paired-seed benchmark remain open; no learning uplift is claimed.
+
+---
+
+# Addendum WorkPass330 — production host evaluator wiring (2026-10-23)
+
+WorkPass330 fixes a concrete runtime composition gap found while tracing the real P23 path. The server previously supplied the revision provider and candidate store but omitted the independent-evaluation factory that `OrganismRuntime` requires in production. Production mode still fails closed when no separate host evaluator config is set; the guard was not weakened.
+
+The new `NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE` loads a distinct host-owned config whose `createIndependentEvaluationHostConfig({ stateDirectory })` returns three separate host-owned commands, a task builder, environment fingerprint and production experiment authority. It is prepared by the existing host-owned services factory, then connected to the already-canonical P23 revision coordinator. The config is not given engine/store/registry capabilities.
+
+An optional `NEURO_COMPOUND_REPAIR_BACKGROUND_REVISION_JSON` enables the existing resource-aware scheduler. The scheduler only creates staged candidates from verified non-holdout repair evidence and does not bypass independent evaluation, signed shadow evidence or authenticated approval.
+
+The 12-case wiring contract test is committed and included in root quick audit and WorkPass71 CI. The host evaluator module is now required to be a regular file outside mutable state, not group/world-writable on POSIX, and distinct from the repair provider. The production host config must also declare distinct baseline/source/revision methods present in both experiment plans. Exact-head execution remains unverified because hosted jobs still stop before executing steps. This does **not** complete the deployment-specific host authority setup or establish measurable learning uplift. See [WorkPass330 report](WORKPASS330_PRODUCTION_REVISION_WIRING_2026-10-23.md).
+
+---
+
+# Addendum WorkPass329 — multi-dimensional holdout guard (2026-10-23)
+
+This addendum supersedes neither the examined HEAD nor the production-path findings below; it records a later, narrow code change in the canonical P23 learning path.
+
+## Implemented from Hermes Agent Self-Evolution
+
+- **Pinned upstream reference:** [`0a929e3aa20e15cf04dc7c28492a7d41a5139125`](https://github.com/NousResearch/hermes-agent-self-evolution/commit/0a929e3aa20e15cf04dc7c28492a7d41a5139125). Relevant files inspected: `evolution/skills/evolve_skill.py`, `evolution/core/fitness.py`, `evolution/core/constraints.py`, and `pyproject.toml`.
+- **Adapted mechanism:** multi-dimensional quality and explicit constraints instead of relying solely on the donor's 50/30/20 composite. NK1's existing `SkillLearnBenchAdapter` now independently gates normalized holdout declines for task success, trajectory quality and skill quality (default tolerance 0.02 per axis).
+- **Failure mode addressed:** a candidate could have an improved aggregate score while execution trajectory quality fell materially. The new behavioral regression explicitly creates this trade-off and requires rejection even when the aggregate decline threshold is permissive.
+- **Lifecycle boundary:** no new learner, second evaluation service or parallel store; existing matched evaluation, hard safety gate, P23 candidate storage, signed shadow evidence and authenticated approval are still required. This gate does not autonomously activate candidates.
+- **Wiring:** focused regression added to root `audit:quick` and WorkPass71 core CI. The upstream donor is recorded in the registry/map as a **native adaptation**, not a vendored runtime dependency.
+- **License/dependencies:** upstream README and project metadata declare MIT; a standalone `LICENSE` file was not retrievable at the pinned path, so the review is partial. No upstream file was copied and no dependency was added.
+- **Validation:** the test and runtime typecheck are not yet confirmed on the exact new head. Current hosted Actions runs terminate before runner assignment (`runner_id=0`, zero steps/logs), so neither PASS nor code failure is inferred.
+
+Implementation/evidence report: [WorkPass329](WORKPASS329_HERMES_MULTIAXIS_HOLDOUT_GATE_2026-10-23.md). Preserve the prior critical finding below: production provider bootstrap and the full real execution → independent evaluation → signed evidence → approval path remain the larger open integration objective.
+
+---
+
 # Hermes → NK1: полный аудит интеграции и план дальнейшей работы
 
 **Дата аудита:** 2026-10-21  

@@ -1,3 +1,16 @@
+## WorkPass328 — structured upstream donor intake and adoption gate (2026-10-23)
+
+- [IMPLEMENTED] Added the structured registry at research/upstream-donors/registry.json with 27 research/evaluation candidates across identity, memory, skills, execution, neural learning, reasoning, and benchmarks.
+- [IMPLEMENTED] Added tools/verify-upstream-donor-registry.mjs and regression cases in tools/verify-upstream-donor-registry.test.mjs. The validator blocks any donor marked adopt/runtime-dependency until source-code audit, license audit, reproducible tests, and benchmark evidence each have a report.
+- [CI WIRING] WorkPass71 core validation now triggers on registry/tool changes and runs both donor commands directly before the wider regression suite; execution remains unconfirmed while runners fail to start.
+- [INTEGRATION POLICY] No new runtime dependency is approved in this pass. Hermes remains a native adaptation target for P23; Hexis/Letta/Cognee/Graphiti/Mem0 remain comparative candidates, not five live memory stores. A-Mem code revision/license still need independent review.
+- [STATIC CHECK] Registry has 27 records with unique IDs and URLs, and each current candidate is still pending/partial rather than adopted. This is metadata validation, not an upstream source/license audit, actual Node.js test execution, or measured performance result.
+- [UNRESOLVED] Current GitHub Actions jobs have been failing before runner assignment (runner_id=0, zero steps). Verify account Billing & Licensing/check-run annotation and rerun exact-head checks only after a real runner is available.
+- [NEXT] Run node tools/verify-upstream-donor-registry.mjs; run node --test tools/verify-upstream-donor-registry.test.mjs; then run P23 skill-store / shadow-evidence / typecheck suites and measure held-out memory-to-action, transfer, retention, forgetting, latency, and cost before promoting a donor.
+- [REPORT] docs/NEUROCORE_DONOR_MAP_2026-10-23.md and docs/WORKPASS328_DONOR_GATE_VALIDATION_2026-10-23.md. Registry and gate are on branch workpass328-upstream-donor-gate; no release ZIP was rebuilt or published.
+
+---
+
 ## WorkPass266 — primary-source metadata check for memory and neuroscience candidates (2026-10-22)
 
 - [AMA-Bench, ICML 2026](https://proceedings.mlr.press/v306/zhao26bs.html) — publisher record describes long-horizon memory over agent/environment trajectories (states, actions, observations and tool output). Use its protocol as a candidate for trajectory-grounded evaluation; code/data integration has not been performed.

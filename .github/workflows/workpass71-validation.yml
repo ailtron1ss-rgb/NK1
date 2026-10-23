@@ -22,6 +22,10 @@ on:
       - "CHANGELOG.md"
       - "SUPER_VERSION.json"
       - "package.json"
+      - "research/upstream-donors/**"
+      - "tools/verify-upstream-donor-registry.mjs"
+      - "tools/verify-upstream-donor-registry.test.mjs"
+      - "docs/NEUROCORE_DONOR_MAP_*.md"
       - "tools/verify-ci-reliability.mjs"
       - "tools/verify-ci-reliability.test.mjs"
       - "docs/CI_RELIABILITY_RUNBOOK_RU.md"
@@ -54,6 +58,10 @@ on:
       - "AGENTS.md"
       - "SUPER_VERSION.json"
       - "package.json"
+      - "research/upstream-donors/**"
+      - "tools/verify-upstream-donor-registry.mjs"
+      - "tools/verify-upstream-donor-registry.test.mjs"
+      - "docs/NEUROCORE_DONOR_MAP_*.md"
       - "tools/verify-ci-reliability.mjs"
       - "tools/verify-ci-reliability.test.mjs"
       - "docs/CI_RELIABILITY_RUNBOOK_RU.md"
@@ -90,6 +98,12 @@ jobs:
             *.*.*) test "$actual" = "$expected" ;;
             *) case "$actual" in "$expected"|"$expected".*) ;; *) echo "Node version $actual does not match .nvmrc pin $expected" >&2; exit 1 ;; esac ;;
           esac
+      - name: Verify upstream donor adoption gate
+        run: npm run audit:upstream-donors
+      - name: Test upstream donor adoption gate
+        run: npm run test:upstream-donors
+      - name: P23 Hermes multi-axis holdout regression gate
+        run: npm --prefix runtime/neuro-kurisu run test:p29:hermes-reflective-candidate-gate
       - name: Audit CI Action/runtime compatibility contract
         run: npm run audit:ci-reliability
       - name: Test CI reliability audit regressions
@@ -118,6 +132,10 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:p313:user-mind-and-eils
       - name: WorkPass314 verified skill holdout receipt gate
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/p23-verified-skill-revision-gate.mjs
+      - name: WorkPass330 production compound-revision authority wiring
+        run: npm --prefix runtime/neuro-kurisu run test:workpass330:production-revision-wiring
+      - name: WorkPass331 canonical P23 revision baseline provenance
+        run: npm --prefix runtime/neuro-kurisu run test:workpass331:canonical-revision-baseline
       - name: WorkPass314 canonical memory doctor
         run: npm --prefix runtime/neuro-kurisu run test:p314:memory-doctor
       - name: WorkPass318 read-only memory doctor CLI

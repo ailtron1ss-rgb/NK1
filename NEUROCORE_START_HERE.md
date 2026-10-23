@@ -1,3 +1,53 @@
+# WorkPass331 continuation checkpoint — canonical P23 baseline/source evaluation (2026-10-23)
+
+- **Active source branch:** `workpass328-upstream-donor-gate`, based on `workpass70-source`; draft PR #86 targets `rebuild`; do not change `main`.
+- **Trust gap fixed in code:** the provider's baseline/source evaluation arrays are no longer trusted in production. After the provider proposes a `sourceCandidateId`, runtime reads the active baseline and source payload from the canonical versioned P23 store, then independently evaluates both plus the newly generated revision.
+- **Experiment matching:** host config now requires distinct `baselineMethod`, `sourceCandidateMethod`, and `experimentAuthority.method` names, each declared in both fixed validation and holdout plans. Pair checks bind payload/evaluation fingerprints, environment, manifest/plans, attempt, task/trial IDs, seed and split. Failed outcomes remain failed diagnostic data.
+- **Freshness:** active/source versions and payload fingerprints are rechecked before returning the new revision evaluation; stale runs fail rather than use outdated baseline fitness.
+- **Regression:** `test:workpass331:canonical-revision-baseline` is included in runtime package, root `audit:quick` and WorkPass71 core CI. It tests ignored forged reports, actual source failures, independent revised evaluation and stale-state rejection.
+- **Validation:** exact-head tests/typecheck remain unverified because recent hosted workflow jobs have zero executed steps. Keep quality scores unchanged.
+- **Remaining work:** configure real deployment-owned sandbox/verifier/scanner processes and fixed manifests, restore actionable CI, then execute frozen paired-seed validation/holdout. The full autonomous learning loop is not yet proven.
+- Read [WorkPass331 report](docs/WORKPASS331_CANONICAL_REVISION_BASELINE_2026-10-23.md), [WorkPass330 report](docs/WORKPASS330_PRODUCTION_REVISION_WIRING_2026-10-23.md), and the [P23 roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md).
+
+---
+
+# Previous checkpoint — WorkPass330 host-owned P23 revision wiring (2026-10-23)
+
+- **Active source branch:** `workpass328-upstream-donor-gate`, based on `workpass70-source`; draft PR #86 targets `rebuild`; do not change `main`.
+- **Production wiring fixed:** when `NEURO_COMPOUND_REPAIR_REVISION_PROVIDER_MODULE` is configured, production also requires separate `NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE`. The server loads its host factory via `createIndependentEvaluationHostConfig({ stateDirectory })` and passes its prepared independent evaluator config into the existing OrganismRuntime contract.
+- **Least privilege:** provider/evaluator config file paths must be distinct; the evaluator config receives no engine, candidate-store, or trusted-run-registry objects. Host-owned executable services and frozen experiment authority remain mandatory.
+- **Background initiative:** `NEURO_COMPOUND_REPAIR_BACKGROUND_REVISION_JSON` is opt-in; absent means disabled. Enabled jobs only stage candidates from verified non-holdout repair evidence, under existing resource gates and approval boundaries.
+- **Regression:** `test:workpass330:production-revision-wiring` is connected to root `audit:quick` and WorkPass71 CI. Exact-head test/typecheck remain unverified because recent workflow jobs execute zero steps.
+- **Remaining critical dependency:** NK1 does not yet ship a deployment-specific host evaluator module with real sandbox/verifier/scanner executables, fixed task manifest and validation/holdout plans. No measured learning gain or complete production learning loop is claimed.
+- Read [WorkPass330 host evaluator wiring report](docs/WORKPASS330_PRODUCTION_REVISION_WIRING_2026-10-23.md), [WorkPass329 holdout gate report](docs/WORKPASS329_HERMES_MULTIAXIS_HOLDOUT_GATE_2026-10-23.md), [P23 integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md), and refresh exact-head Actions before claiming validation.
+
+---
+
+# WorkPass329 continuation checkpoint — multi-axis P23 holdout gate (2026-10-23)
+
+- **Active source branch:** `workpass328-upstream-donor-gate`, based on `workpass70-source`; draft PR #86 targets `rebuild`. Keep the separate `main` release/metadata line untouched.
+- **Implemented:** `SkillLearnBenchAdapter.ts` now has separate holdout regression gates for task success, trajectory quality and skill quality. Default permitted decline is 0.02 per normalized axis; a higher weighted composite cannot override a component regression.
+- **Regression/wiring:** a test now exercises composite improvement paired with trajectory regression; root `audit:quick` and WorkPass71 CI invoke it.
+- **Upstream integration:** inspected Hermes Agent Self-Evolution at `0a929e3aa20e15cf04dc7c28492a7d41a5139125`; adapted the relevant constraint mechanism natively. Added donor registry record (28 entries) and [full report](docs/WORKPASS329_HERMES_MULTIAXIS_HOLDOUT_GATE_2026-10-23.md).
+- **Validation:** exact-head Node regression and runtime typecheck remain unverified because recent Actions runs stop before runner assignment (`runner_id=0`, no steps/logs). Do not call these changes tested until an actionable run executes.
+- **Research/license:** upstream README and `pyproject.toml` declare MIT, but standalone `LICENSE` was not retrievable through the contents API. No upstream source was copied; no dependency was added.
+- **Metrics/release:** keep learning and retrieval scores unchanged; the previously recorded retrieval `recallDelta=0` remains a blocker for promotion. No release ZIP was downloaded/rebuilt/replaced.
+- **Next:** resolve the hosted runner startup condition, run `test:p29:hermes-reflective-candidate-gate` and runtime typecheck on the exact head, then trace the true production skill-revision lifecycle and evaluate on a frozen, paired-seed holdout before changing scores.
+- **Donor/research navigation:** [donor map](docs/NEUROCORE_DONOR_MAP_2026-10-23.md), [WorkPass328 validation](docs/WORKPASS328_DONOR_GATE_VALIDATION_2026-10-23.md), [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md).
+
+---
+
+# WorkPass328 checkpoint — upstream donor map and adoption gates (2026-10-23)
+
+- Current working branch: workpass328-upstream-donor-gate based on workpass70-source. Do not target main.
+- Added structured donor registry (27 entries), validator, tests, and Russian integration map. New donor implementations remain unapproved; runtime-adoption requires evidence for source code, licensing, reproducible tests, and independent benchmark. WorkPass71 core CI now runs the donor audit and regression test directly and watches these paths.
+- Main next target remains an end-to-end P23 verified learning path and held-out memory-to-action uplift. Don’t increase learning scores while retrieval reports recallDelta=0/not-promoted.
+- Current Actions runner-startup issue is unresolved; recent jobs stopped with runner_id=0 and no steps. No exact-head test pass or updated release ZIP is claimed.
+- See docs/NEUROCORE_DONOR_MAP_2026-10-23.md, docs/WORKPASS328_DONOR_GATE_VALIDATION_2026-10-23.md, research/upstream-donors/registry.json and docs/RESEARCH_INTAKE_LEDGER.md.
+- Continue with the older handover sections below for architecture detail and previous work.
+
+---
+
 ## Latest durable checkpoint — WorkPass272 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use live PR for current HEAD.

@@ -3,6 +3,8 @@ import { CausalExperienceStream } from '../src/organism/learning/CausalExperienc
 
 const mkState=(overrides={})=>({
   tick:1,at:1000,predictionError:.6,attentionBudget:.8,selfPredictionError:.2,autonomyScore:.6,
+  // The stream requires explicit attribution of the observed post-action state.
+  lastAction:'explore',lastActionSuccess:.8,
   needs:{energy:.7,cognitiveLoad:.3,uncertainty:.65,novelty:.7,goalPressure:.6,socialNeed:.4,identityCoherence:.82},
   ...overrides,
 });
@@ -87,8 +89,8 @@ const externalDuplicate = externalStream.recordExternalLearningEvent({
 });
 assert.equal(externalDuplicate?.id, externalFirst?.id,
   "NFKC-normalized upstream retry must resolve to the same recorded outcome");
-assert.equal(externalStream.summary().outcomes, 1,
-  "duplicate external evidence must not increment outcome count");
+assert.equal(externalStream.summary().outcomes, 0,
+  "unverified external records must not count as trusted runtime outcomes");
 assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17", success01: .1,
 }), /causal-external-trace-id-conflict/,
@@ -134,8 +136,8 @@ const restoredExternalDuplicate = externalRestored.recordExternalLearningEvent({
 });
 assert.equal(restoredExternalDuplicate?.id, externalFirst?.id,
   "a restored external outcome must resolve to its original record");
-assert.equal(externalRestored.summary().outcomes, 1,
-  "a restored duplicate must not increment outcome count");
+assert.equal(externalRestored.summary().outcomes, 0,
+  "restored external evidence must remain outside the trusted runtime-outcome counter");
 assert.throws(() => externalRestored.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17", reward01: .05,
 }), /causal-external-trace-id-conflict/,
@@ -168,8 +170,8 @@ assert.ok(conflictRestore.snapshot().recordedTraceIds.includes("External-Source-
 assert.equal(conflictRestore.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17",
 }), null, "quarantined identity must not be accepted again as a new event");
-assert.equal(conflictRestore.summary().outcomes, 1,
-  "quarantine/retry must not change the persisted outcome count");
+assert.equal(conflictRestore.summary().outcomes, 0,
+  "quarantined external identities must not change the trusted runtime-outcome counter");
 
 const cyclicSnapshot = externalStream.snapshot();
 const cyclicRecord = { ...externalFirst, id: "cyclic-normalized-alias", traceId: "Ｅxternal-Source-17" };

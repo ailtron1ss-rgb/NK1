@@ -211,8 +211,14 @@ export interface SkillLearnBenchCandidateEvaluation {
 export interface SkillLearnBenchCandidateGateOptions {
   /** Minimum macro-average validation improvement required to recommend promotion. */
   minimumValidationGain01?: number;
-  /** Maximum tolerated macro-average holdout regression. */
+  /** Maximum tolerated macro-average composite holdout regression. */
   maximumHoldoutRegression01?: number;
+  /** Maximum tolerated macro-average task-success regression on holdout. Defaults to 0.02. */
+  maximumHoldoutTaskSuccessRegression01?: number;
+  /** Maximum tolerated macro-average trajectory-quality regression on holdout. Defaults to 0.02. */
+  maximumHoldoutTrajectoryRegression01?: number;
+  /** Maximum tolerated macro-average skill-quality regression on holdout. Defaults to 0.02. */
+  maximumHoldoutSkillQualityRegression01?: number;
   /** Minimum number of distinct holdout tasks; empty holdout must never pass. */
   minimumHoldoutTasks?: number;
 }
@@ -277,7 +283,7 @@ function pairedCandidateMean(
   baseline: Map<string, SkillLearnBenchTrialReport>,
   candidate: Map<string, SkillLearnBenchTrialReport>,
   label: string,
-): { baselineMean: number; candidateMean: number; paired: number; taskCount: number; candidateReports: SkillLearnBenchTrialReport[] } {
+): { baselineMean: number; candidateMean: number; paired: number; taskCount: number; baselineReports: SkillLearnBenchTrialReport[]; candidateReports: SkillLearnBenchTrialReport[] } {
   const keys = [...baseline.keys()].filter((key) => candidate.has(key)).sort();
   if (keys.length === 0 || keys.length !== baseline.size || keys.length !== candidate.size) {
     throw new Error(`candidate-${label}-trials-must-match-exactly`);
@@ -300,6 +306,7 @@ function pairedCandidateMean(
     candidateMean: macroTaskMean(candidateReports),
     paired: keys.length,
     taskCount: new Set(candidateReports.map((report) => report.taskId.trim())).size,
+    baselineReports,
     candidateReports,
   };
 }
@@ -328,12 +335,24 @@ export function evaluateSkillLearnBenchCandidate(
   }
   const minGain = options.minimumValidationGain01 ?? 0.005;
   const maxRegression = options.maximumHoldoutRegression01 ?? 0.02;
+  const maxTaskSuccessRegression = options.maximumHoldoutTaskSuccessRegression01 ?? 0.02;
+  const maxTrajectoryRegression = options.maximumHoldoutTrajectoryRegression01 ?? 0.02;
+  const maxSkillQualityRegression = options.maximumHoldoutSkillQualityRegression01 ?? 0.02;
   const minHoldoutTasks = options.minimumHoldoutTasks ?? 2;
   if (!Number.isFinite(minGain) || minGain < 0 || minGain > 1) {
     throw new RangeError('candidate-minimum-validation-gain-invalid');
   }
   if (!Number.isFinite(maxRegression) || maxRegression < 0 || maxRegression > 1) {
     throw new RangeError('candidate-maximum-holdout-regression-invalid');
+  }
+  if (!Number.isFinite(maxTaskSuccessRegression) || maxTaskSuccessRegression < 0 || maxTaskSuccessRegression > 1) {
+    throw new RangeError('candidate-holdout-task-success-regression-invalid');
+  }
+  if (!Number.isFinite(maxTrajectoryRegression) || maxTrajectoryRegression < 0 || maxTrajectoryRegression > 1) {
+    throw new RangeError('candidate-holdout-trajectory-regression-invalid');
+  }
+  if (!Number.isFinite(maxSkillQualityRegression) || maxSkillQualityRegression < 0 || maxSkillQualityRegression > 1) {
+    throw new RangeError('candidate-holdout-skill-quality-regression-invalid');
   }
   if (!Number.isSafeInteger(minHoldoutTasks) || minHoldoutTasks < 1) {
     throw new RangeError('candidate-minimum-holdout-tasks-invalid');
@@ -378,6 +397,25 @@ export function evaluateSkillLearnBenchCandidate(
     );
     return taskMeans.reduce((sum, value) => sum + value, 0) / taskMeans.length;
   };
+  // A weighted composite can rise while one essential capability degrades.
+  // Keep the aggregate gate, but also constrain each independent holdout axis
+  // using macro task means so repeated trials of one task cannot dominate.
+  const baselineHoldoutTaskSuccess = macroTaskMetric(holdout.baselineReports, (r) => r.taskSuccess.passRate);
+  const candidateHoldoutTaskSuccess = macroTaskMetric(holdout.candidateReports, (r) => r.taskSuccess.passRate);
+  const baselineHoldoutTrajectory = macroTaskMetric(holdout.baselineReports, (r) => r.trajectoryQuality.aggregate);
+  const candidateHoldoutTrajectory = macroTaskMetric(holdout.candidateReports, (r) => r.trajectoryQuality.aggregate);
+  const baselineHoldoutSkill = macroTaskMetric(holdout.baselineReports, (r) => r.skillQuality.aggregate);
+  const candidateHoldoutSkill = macroTaskMetric(holdout.candidateReports, (r) => r.skillQuality.aggregate);
+  if (candidateHoldoutTaskSuccess - baselineHoldoutTaskSuccess < -maxTaskSuccessRegression) {
+    reasons.push('holdout-task-success-regression-exceeds-tolerance');
+  }
+  if (candidateHoldoutTrajectory - baselineHoldoutTrajectory < -maxTrajectoryRegression) {
+    reasons.push('holdout-trajectory-regression-exceeds-tolerance');
+  }
+  if (candidateHoldoutSkill - baselineHoldoutSkill < -maxSkillQualityRegression) {
+    reasons.push('holdout-skill-quality-regression-exceeds-tolerance');
+  }
+
   const validationTaskSuccess = macroTaskMetric(validation.candidateReports, (r) => r.taskSuccess.passRate);
   const validationTrajectory = macroTaskMetric(validation.candidateReports, (r) => r.trajectoryQuality.aggregate);
   const validationSkill = macroTaskMetric(validation.candidateReports, (r) => r.skillQuality.aggregate);
@@ -385,6 +423,15 @@ export function evaluateSkillLearnBenchCandidate(
   if (validationTrajectory < 0.8) feedback.push('Inspect missing or out-of-order trajectory steps and revise the procedure.');
   if (validationSkill < 0.8) feedback.push('Increase required-capability coverage and confirm the skill remains executable.');
   if (holdoutDelta < 0) feedback.push('Aggregate holdout evaluation indicates regression; revise generality without inspecting holdout examples, then request a fresh independent evaluation.');
+  if (reasons.includes('holdout-task-success-regression-exceeds-tolerance')) {
+    feedback.push('Holdout task success regressed beyond tolerance; a higher composite score cannot override this constraint.');
+  }
+  if (reasons.includes('holdout-trajectory-regression-exceeds-tolerance')) {
+    feedback.push('Holdout execution trajectory regressed beyond tolerance; inspect the validation feedback and request a fresh independent evaluation.');
+  }
+  if (reasons.includes('holdout-skill-quality-regression-exceeds-tolerance')) {
+    feedback.push('Holdout skill quality regressed beyond tolerance; the weighted composite cannot override this constraint.');
+  }
   if (safetyViolations > 0) feedback.push('Resolve every safety violation; safety is a hard gate, not a score trade-off.');
   if (feedback.length === 0) feedback.push('No weak dimension crossed the feedback threshold; retain paired holdout evidence for review.');
 

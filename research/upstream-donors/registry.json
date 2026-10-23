@@ -1,0 +1,857 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-10-23",
+  "purpose": "External donor intake for NK1: compare mechanisms, adapt selectively, and block unreviewed code or dependencies from being treated as production-ready.",
+  "policy": {
+    "canonicalOwnerPerCapability": true,
+    "noParallelAgentArchitectures": true,
+    "codeAdoptionRequires": [
+      "sourceCodeAudit.status=complete with reportPath",
+      "licenseAudit.status=complete with SPDX/compatible grant and reportPath",
+      "tests.status=complete with reproducible command and reportPath",
+      "benchmark.status=complete for behavior-changing integrations",
+      "explicit integration.mode=runtime-dependency only after all required gates pass"
+    ],
+    "evidenceRule": "A repository description, star count, paper claim, local fixture, or file existence is not proof of NK1 runtime improvement."
+  },
+  "donors": [
+    {
+      "id": "hexis",
+      "name": "Hexis",
+      "primaryUrl": "https://github.com/QuixiAI/Hexis",
+      "class": "identity-memory",
+      "mechanism": "belief provenance, typed long-term memory, goals, internal state and bounded autonomous cycle",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts",
+        "runtime/neuro-kurisu/src/organism/learning/TemporalContinuityEngine.ts"
+      ],
+      "decision": "benchmark",
+      "integration": {
+        "mode": "none",
+        "notes": "Compare data contracts and evidence-backed belief revision; do not introduce a second identity or memory owner."
+      },
+      "overlapRisk": "high",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Inspect exact upstream revision, schema, real call path, license and tests; compare against current NK1 memory/identity contracts."
+    },
+    {
+      "id": "hermes-agent",
+      "name": "Hermes Agent",
+      "primaryUrl": "https://github.com/NousResearch/hermes-agent",
+      "class": "execution-skills",
+      "mechanism": "tool contracts, reusable skills, error feedback, task execution and skill revision",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts",
+        "runtime/neuro-kurisu/src/organism/learning/HermesVerifiedEvidenceBinding.ts",
+        "runtime/neuro-kurisu/src/organism/learning/VersionedSkillCandidateStore.ts"
+      ],
+      "decision": "adapt",
+      "integration": {
+        "mode": "native-adaptation",
+        "notes": "NK1 already contains native Hermes-inspired mechanisms. This does not assert that upstream source files were copied or that the production end-to-end path is complete."
+      },
+      "overlapRisk": "medium",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "partial",
+        "reportPath": "docs/HERMES_NK1_INTEGRATION_AUDIT_AND_ROADMAP_2026-10-21.md"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Trace production provider bootstrap through candidate execution, independent baseline/candidate evaluation, signed shadow evidence and explicit approval; verify upstream revision and license before any code port."
+    },
+    {
+      "id": "letta-code",
+      "name": "Letta Code",
+      "primaryUrl": "https://github.com/letta-ai/letta-code",
+      "class": "stateful-agent",
+      "mechanism": "persistent agent state, editable memory/skills, long-horizon continuity",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/learning/TemporalContinuityEngine.ts",
+        "runtime/neuro-kurisu/src/organism/learning/ProceduralSkillLibrary.ts"
+      ],
+      "decision": "benchmark",
+      "integration": {
+        "mode": "none",
+        "notes": "Compare lifecycle and continuity patterns with the current runtime; do not add a second always-on agent harness."
+      },
+      "overlapRisk": "high",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Compare restart/recovery, skill mutation, memory versioning and approval boundaries against NK1."
+    },
+    {
+      "id": "cognee",
+      "name": "Cognee",
+      "primaryUrl": "https://github.com/topoteretes/cognee",
+      "class": "knowledge-memory",
+      "mechanism": "knowledge extraction and graph-oriented retrieval over documents, conversations and code",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts",
+        "runtime/neuro-kurisu/src/organism/memory/SemanticMemoryGraph.ts",
+        "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      ],
+      "decision": "benchmark",
+      "integration": {
+        "mode": "none",
+        "notes": "Benchmark adapters/algorithms against the canonical memory owner before introducing a graph database or runtime dependency."
+      },
+      "overlapRisk": "high",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Run the same sanitized corpus and queries against NK1 baseline and a thin Cognee adapter; measure retrieval precision, recall, staleness and resource cost."
+    },
+    {
+      "id": "graphiti",
+      "name": "Graphiti",
+      "primaryUrl": "https://github.com/getzep/graphiti",
+      "class": "temporal-knowledge-graph",
+      "mechanism": "time-aware facts, temporal relations and evidence-linked graph retrieval",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/memory/SemanticMemoryGraph.ts",
+        "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      ],
+      "decision": "benchmark",
+      "integration": {
+        "mode": "none",
+        "notes": "Adapt temporal algorithms only if tests show value; avoid a second graph store unless measured scale requires it."
+      },
+      "overlapRisk": "high",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Test conflicting facts, event-time versus ingestion-time, stale-fact rejection and source lineage."
+    },
+    {
+      "id": "mem0",
+      "name": "Mem0",
+      "primaryUrl": "https://github.com/mem0ai/mem0",
+      "class": "lightweight-memory",
+      "mechanism": "memory extraction, semantic/keyword retrieval and compact memory updates",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts",
+        "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts"
+      ],
+      "decision": "benchmark",
+      "integration": {
+        "mode": "evaluation-only",
+        "notes": "Use as a comparative baseline, not as another concurrently authoritative memory store."
+      },
+      "overlapRisk": "high",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Establish a reproducible baseline on one corpus and identical query set; separate open SDK results from hosted-service claims."
+    },
+    {
+      "id": "a-mem",
+      "name": "A-Mem / Agentic Memory",
+      "primaryUrl": "https://proceedings.neurips.cc/paper_files/paper/2025/hash/19909c36f51abc4856b4560aff3d36d6-Abstract-Conference.html",
+      "class": "adaptive-memory-research",
+      "mechanism": "dynamic links and revision of older memory notes when new evidence arrives",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/memory/SemanticMemoryGraph.ts",
+        "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      ],
+      "decision": "isolated-research",
+      "integration": {
+        "mode": "isolated-experiment",
+        "notes": "Use the official paper record as a lead; locate and audit an accessible code revision before porting implementation."
+      },
+      "overlapRisk": "high",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Prototype link/update policy against fixed memory cases; test whether dynamic edits improve retrieval without corrupting provenance."
+    },
+    {
+      "id": "generative-agents",
+      "name": "Generative Agents",
+      "primaryUrl": "https://github.com/joonspk-research/generative_agents",
+      "class": "memory-reflection-planning",
+      "mechanism": "event memories, salience/retrieval, reflection and action planning",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/memory/AutobiographicalMemory.ts",
+        "runtime/neuro-kurisu/src/organism/learning/OutcomeReflectionCurriculum.ts"
+      ],
+      "decision": "isolated-research",
+      "integration": {
+        "mode": "isolated-experiment",
+        "notes": "Use as a reference and scenario source, not as a parallel production agent."
+      },
+      "overlapRisk": "medium",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Map each mechanism to an existing owner and build a small behavioral comparison with no new runtime dependency."
+    },
+    {
+      "id": "voyager",
+      "name": "Voyager",
+      "primaryUrl": "https://github.com/MineDojo/Voyager",
+      "class": "skill-learning",
+      "mechanism": "reusable executable skills, environment feedback, error-driven repair and transfer",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/learning/ProceduralSkillLibrary.ts",
+        "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
+      ],
+      "decision": "adapt",
+      "integration": {
+        "mode": "native-adaptation",
+        "notes": "Compare its skill search/repair loop with the existing versioned, verified NK1 skill lifecycle; do not bypass approval or holdout."
+      },
+      "overlapRisk": "medium",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Measure reuse on unseen task variants, regression rate, rollback rate and cost per successful task."
+    },
+    {
+      "id": "dspy",
+      "name": "DSPy",
+      "primaryUrl": "https://github.com/stanfordnlp/dspy",
+      "class": "procedure-optimization",
+      "mechanism": "metric-driven optimization of model programs using examples and feedback",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/learning/LearningExperimentPlan.ts",
+        "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
+      ],
+      "decision": "isolated-research",
+      "integration": {
+        "mode": "isolated-experiment",
+        "notes": "Optimize offline on training/validation data only; keep an immutable untouched holdout and require rollback/regression checks."
+      },
+      "overlapRisk": "medium",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "First establish a metric and split protocol; prohibit holdout examples or verifier payload from the candidate generator."
+    },
+    {
+      "id": "tinytroupe",
+      "name": "TinyTroupe",
+      "primaryUrl": "https://github.com/microsoft/TinyTroupe",
+      "class": "persona-simulation",
+      "mechanism": "scenario simulation with differentiated synthetic persona attributes",
+      "nk1Target": [
+        "runtime/neuro-kurisu/tests/",
+        "docs/"
+      ],
+      "decision": "benchmark",
+      "integration": {
+        "mode": "evaluation-only",
+        "notes": "Use for test scenario generation and behavior consistency probes; simulated users are not ground-truth evidence."
+      },
+      "overlapRisk": "low",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Review current project maturity/license, then use generated scenarios only with independently authored expected outcomes."
+    },
+    {
+      "id": "langgraph",
+      "name": "LangGraph",
+      "primaryUrl": "https://github.com/langchain-ai/langgraph",
+      "class": "workflow-orchestration",
+      "mechanism": "explicit state machines, checkpoints, resume and human-in-the-loop flows",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/"
+      ],
+      "decision": "alternative",
+      "integration": {
+        "mode": "none",
+        "notes": "Alternative execution orchestration only; do not run alongside Hermes as a second execution authority."
+      },
+      "overlapRisk": "high",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Compare only if the native action/recovery flow fails a documented requirement."
+    },
+    {
+      "id": "microsoft-agent-framework",
+      "name": "Microsoft Agent Framework",
+      "primaryUrl": "https://github.com/microsoft/agent-framework",
+      "class": "workflow-orchestration",
+      "mechanism": "stateful workflows, transfers, multi-agent coordination and observability",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/"
+      ],
+      "decision": "alternative",
+      "integration": {
+        "mode": "none",
+        "notes": "Alternative to evaluate against the chosen executor; not a concurrent control plane."
+      },
+      "overlapRisk": "high",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Benchmark recovery, observability and required host integration only if a concrete gap remains."
+    },
+    {
+      "id": "smolagents",
+      "name": "smolagents",
+      "primaryUrl": "https://github.com/huggingface/smolagents",
+      "class": "lightweight-agent-loop",
+      "mechanism": "compact tool-use/agent loop and code-action abstractions",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/"
+      ],
+      "decision": "benchmark",
+      "integration": {
+        "mode": "evaluation-only",
+        "notes": "Use as a complexity and action-loop baseline; production tools must still pass NK1 policy gates."
+      },
+      "overlapRisk": "medium",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Compare on the same sandboxed task suite with tool safety, recovery, latency and cost metrics."
+    },
+    {
+      "id": "openhands-sdk",
+      "name": "OpenHands Software Agent SDK",
+      "primaryUrl": "https://github.com/OpenHands/software-agent-sdk",
+      "class": "software-task-execution",
+      "mechanism": "isolated software workspaces, event streams, execution and software-agent APIs",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/"
+      ],
+      "decision": "alternative",
+      "integration": {
+        "mode": "none",
+        "notes": "Use only if NK1 lacks required engineering workspace features; not required in the cognitive kernel."
+      },
+      "overlapRisk": "medium",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Review sandbox model, permissions, secret handling, license and tool boundary before any adapter."
+    },
+    {
+      "id": "avalanche",
+      "name": "Avalanche",
+      "primaryUrl": "https://github.com/ContinualAI/avalanche",
+      "class": "neural-continual-learning",
+      "mechanism": "continual-learning strategies and forgetting/transfer evaluation for PyTorch",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/learning/ContinualForgettingTracker.ts",
+        "runtime/neuro-kurisu/src/organism/learning/ContinualTransferTracker.ts"
+      ],
+      "decision": "isolated-research",
+      "integration": {
+        "mode": "isolated-experiment",
+        "notes": "Keep neural weight/adaptor training separate from L1 memory and L2 skill/procedure learning."
+      },
+      "overlapRisk": "low",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Prototype replay/regularization baselines offline; measure forgetting, transfer, compute and compatibility."
+    },
+    {
+      "id": "ai-scientist",
+      "name": "The AI Scientist",
+      "primaryUrl": "https://github.com/SakanaAI/AI-Scientist",
+      "class": "automated-research",
+      "mechanism": "hypothesis generation, experiment execution and report-based evaluation",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/research/",
+        "research/"
+      ],
+      "decision": "isolated-research",
+      "integration": {
+        "mode": "isolated-experiment",
+        "notes": "Use for controlled research orchestration only; generated code runs in an external sandbox and never directly updates production state."
+      },
+      "overlapRisk": "medium",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Read the exact Responsible AI License and model/data terms; prove code isolation before experimenting."
+    },
+    {
+      "id": "hyperon",
+      "name": "OpenCog Hyperon",
+      "primaryUrl": "https://github.com/OzCog/hyperon-experimental",
+      "class": "neurosymbolic-reasoning",
+      "mechanism": "symbolic representations, MeTTa and inspectable rule-based inference",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/research/",
+        "runtime/neuro-kurisu/src/organism/memory/SemanticMemoryGraph.ts"
+      ],
+      "decision": "isolated-research",
+      "integration": {
+        "mode": "isolated-experiment",
+        "notes": "Evaluate a narrow inference task before considering a second knowledge representation at runtime."
+      },
+      "overlapRisk": "medium",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Test contradiction detection and bounded inference against explicit expected results."
+    },
+    {
+      "id": "continuous-thought-machines",
+      "name": "Continuous Thought Machines",
+      "primaryUrl": "https://github.com/SakanaAI/continuous-thought-machines",
+      "class": "neural-architecture-research",
+      "mechanism": "temporal dynamics and synchronization inside a recurrent neural architecture",
+      "nk1Target": [
+        "research/"
+      ],
+      "decision": "defer",
+      "integration": {
+        "mode": "isolated-experiment",
+        "notes": "Separate research on model architecture from cognitive algorithms implemented around the current language model."
+      },
+      "overlapRisk": "low",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Defer until a reproducible baseline, suitable hardware budget and task-specific acceptance criteria exist."
+    },
+    {
+      "id": "rwkv-lm",
+      "name": "RWKV-LM",
+      "primaryUrl": "https://github.com/BlinkDL/RWKV-LM",
+      "class": "model-architecture",
+      "mechanism": "recurrent/linear-time language model families",
+      "nk1Target": [
+        "research/"
+      ],
+      "decision": "alternative",
+      "integration": {
+        "mode": "isolated-experiment",
+        "notes": "Model-provider comparison only; weights and runtime architectures are not drop-in code modules."
+      },
+      "overlapRisk": "low",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Compare compatible quantized model checkpoints on the same memory/planning/tool-use suite and record model/license terms."
+    },
+    {
+      "id": "mamba",
+      "name": "Mamba",
+      "primaryUrl": "https://github.com/state-spaces/mamba",
+      "class": "model-architecture",
+      "mechanism": "selective state-space models for sequence processing",
+      "nk1Target": [
+        "research/"
+      ],
+      "decision": "alternative",
+      "integration": {
+        "mode": "isolated-experiment",
+        "notes": "Treat as a base-model research track, not a plug-in to Hermes or the memory system."
+      },
+      "overlapRisk": "low",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Check kernels, hardware requirements, checkpoint license and inference performance before any implementation."
+    },
+    {
+      "id": "qwen-agent",
+      "name": "Qwen-Agent",
+      "primaryUrl": "https://github.com/QwenLM/Qwen-Agent",
+      "class": "model-tool-adapter",
+      "mechanism": "tool calling, MCP/RAG and Qwen ecosystem adapters",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/integration/local/"
+      ],
+      "decision": "benchmark",
+      "integration": {
+        "mode": "evaluation-only",
+        "notes": "Compare provider/tool adapters only if NK1's existing provider contracts leave a concrete compatibility gap."
+      },
+      "overlapRisk": "medium",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Test model-initiated tool-call correctness and failure handling; do not transfer incompatible model weights."
+    },
+    {
+      "id": "longmemeval",
+      "name": "LongMemEval",
+      "primaryUrl": "https://github.com/xiaowu0162/LongMemEval",
+      "class": "memory-evaluation",
+      "mechanism": "long-term conversational memory evaluation",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts",
+        "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalExperiment.ts"
+      ],
+      "decision": "benchmark",
+      "integration": {
+        "mode": "evaluation-only",
+        "notes": "Adapt the official protocol transparently and keep a versioned untouched holdout."
+      },
+      "overlapRisk": "low",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Inspect data license, official scoring, contamination/leakage constraints and the feasibility of running the benchmark."
+    },
+    {
+      "id": "locomo",
+      "name": "LoCoMo",
+      "primaryUrl": "https://github.com/snap-research/locomo",
+      "class": "memory-evaluation",
+      "mechanism": "long conversations, temporal and multi-session memory evaluation",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts"
+      ],
+      "decision": "benchmark",
+      "integration": {
+        "mode": "evaluation-only",
+        "notes": "Keep official results separate from any NK1-specific changes to prompt, dataset or scoring."
+      },
+      "overlapRisk": "low",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Pin dataset/code revisions, validate licensing and add a documented NK1 adapter without modifying canonical samples."
+    },
+    {
+      "id": "mem2actbench",
+      "name": "Mem2ActBench",
+      "primaryUrl": "https://aclanthology.org/2026.acl-long.370/",
+      "class": "memory-to-action-evaluation",
+      "mechanism": "checking whether remembered preferences/state ground subsequent tool choice and parameters",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts",
+        "runtime/neuro-kurisu/src/organism/"
+      ],
+      "decision": "benchmark",
+      "integration": {
+        "mode": "evaluation-only",
+        "notes": "High-value gap test: measure whether recalled data actually changes a correct action rather than only improving text recall."
+      },
+      "overlapRisk": "low",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Locate official code/data and license, then define a fixed memory-to-action suite with action correctness as the outcome."
+    },
+    {
+      "id": "swe-bench",
+      "name": "SWE-bench",
+      "primaryUrl": "https://github.com/SWE-bench/SWE-bench",
+      "class": "software-task-evaluation",
+      "mechanism": "repository-grounded software bug-fix tasks and test-based outcome verification",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/"
+      ],
+      "decision": "benchmark",
+      "integration": {
+        "mode": "evaluation-only",
+        "notes": "Use only for evaluating the engineering executor; report task subset, instance count, environment and hidden-test caveats."
+      },
+      "overlapRisk": "low",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Pin exact benchmark split and environment; ensure candidate code is isolated and evaluation cannot see hidden tests."
+    },
+    {
+      "id": "swe-agent",
+      "name": "SWE-agent",
+      "primaryUrl": "https://github.com/SWE-agent/SWE-agent",
+      "class": "software-task-execution",
+      "mechanism": "repository navigation, edit/test cycles and software-agent interaction design",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/"
+      ],
+      "decision": "benchmark",
+      "integration": {
+        "mode": "evaluation-only",
+        "notes": "Compare execution workflow patterns; avoid adding a second engineer agent if current gateway can support the required tasks."
+      },
+      "overlapRisk": "medium",
+      "sourceCodeAudit": {
+        "status": "pending"
+      },
+      "licenseAudit": {
+        "status": "pending"
+      },
+      "tests": {
+        "status": "pending"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Evaluate on a narrow reproducible set with the same tools, sandbox and time limits."
+    },
+    {
+      "id": "hermes-agent-self-evolution",
+      "name": "Hermes Agent Self-Evolution",
+      "primaryUrl": "https://github.com/NousResearch/hermes-agent-self-evolution",
+      "class": "reflective-skill-evolution",
+      "mechanism": "Reflective skill revision with multi-dimensional fitness, separate validation/holdout evaluation, constraint gates and reviewable candidate changes",
+      "nk1Target": [
+        "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts",
+        "runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs",
+        "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
+      ],
+      "decision": "adapt",
+      "integration": {
+        "mode": "native-adaptation",
+        "notes": "Native adaptation of per-dimension holdout regression gates at upstream revision 0a929e3aa20e15cf04dc7c28492a7d41a5139125. No upstream source is vendored and no Python/DSPy dependency is added to NK1 runtime."
+      },
+      "overlapRisk": "medium",
+      "sourceCodeAudit": {
+        "status": "partial",
+        "reportPath": "docs/WORKPASS329_HERMES_MULTIAXIS_HOLDOUT_GATE_2026-10-23.md"
+      },
+      "licenseAudit": {
+        "status": "partial",
+        "reportPath": "docs/WORKPASS329_HERMES_MULTIAXIS_HOLDOUT_GATE_2026-10-23.md",
+        "compatibilityEvidence": "Upstream pyproject.toml and README declare MIT; a standalone LICENSE file was not retrievable at the pinned path. This pass uses a native adaptation and copies no upstream source."
+      },
+      "tests": {
+        "status": "partial",
+        "reportPath": "docs/WORKPASS329_HERMES_MULTIAXIS_HOLDOUT_GATE_2026-10-23.md",
+        "command": "npm --prefix runtime/neuro-kurisu run test:p29:hermes-reflective-candidate-gate"
+      },
+      "benchmark": {
+        "status": "pending"
+      },
+      "nextGate": "Run the focused regression and runtime typecheck on the exact head, then measure task success and all holdout dimensions on a frozen paired-seed task manifest before any promotion."
+    }
+  ]
+}
