@@ -1,3 +1,12 @@
+## NK1 WorkPass446 — bound skill-evaluation work and remove quadratic trajectory matching (2026-10-23)
+
+- Replaced repeated suffix scans in trajectory-order evaluation with a position index, preserving the prior ordered-match semantics while changing worst-case matching from quadratic to linear time.
+- Capped each capability/trajectory rubric at 4,096 identifiers and each identifier at 256 characters, failing closed before aggregate score calculation to bound evaluator inputs.
+- Added regressions for order-score parity, oversized rubrics, and oversized identifiers. No new dependency.
+- **Verification:** source and regression changes are committed; hosted test execution remains unconfirmed while runner allocation is blocked.
+
+---
+
 ## NK1 WorkPass441 — independent per-axis holdout promotion guard (2026-10-23)
 
 - Ported the useful WorkPass329 mechanism from the donor-gate workstream into the more advanced feature/learning implementation without replacing its task/family gates.
