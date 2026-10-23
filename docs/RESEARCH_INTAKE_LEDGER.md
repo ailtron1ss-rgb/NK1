@@ -1,3 +1,9 @@
+## WorkPass379 — family-provenance downgrade prevention (2026-10-23)
+
+- Matched baseline/candidate trial reports now require exact family-provenance parity: both may omit family for legacy aggregate-only evaluation, or both must carry the same canonical family. If only one side carries a family, candidate evaluation fails closed.
+- The candidate gate validates the detached baseline/candidate/options envelope after snapshotting, so null, array or otherwise invalid runtime inputs produce a bounded boundary error rather than an unhelpful downstream property-access failure.
+- Added regressions for one-sided family-label omission and null gate options. These are integrity/diagnostic improvements, not measured learning gains; the test runner remains unverified because workflow jobs do not expose step-level logs.
+
 ## WorkPass378 — shared trust boundary for candidate evaluation inputs (2026-10-23)
 
 - Reused the existing NK1 LearningTrustBoundary snapshot primitive in SkillLearnBench rather than creating a parallel validator.
