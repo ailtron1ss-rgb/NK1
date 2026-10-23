@@ -33,6 +33,8 @@ WorkPass400–404 усилили production fitness gate, но на каждом
 
 `tests/workpass405-learning-fitness-journal.mjs` покрывает добавление и чтение двух записей, последовательность/hash-chain, privacy fields, caller accessors, lock contention, изменённый digest, extra fields и truncation. `workpass402-production-promotion-family-gate.mjs` проверяет, что фактический P23 production path передаёт reject решения в настроенный sink и всё равно не активирует неподходящий candidate.
 
+`P23LearningEngine.learningFitnessJournalDiagnostics()` предоставляет агрегированную сводку; `OrganismRuntime.learningFitnessJournalDiagnostics()` публикует её в `longitudinalSnapshot()` и `persistenceMetrics()` для dashboard/observability-потребителей. Сводка не включает candidate IDs, task IDs, family names или исходные holdout rows.
+
 P26 workflow path-filters новый модуль и тест и запускает его на Node.js 24.
 
 ## Ограничения
