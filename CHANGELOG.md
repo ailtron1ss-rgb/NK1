@@ -1,3 +1,13 @@
+## NK1 WorkPass456 — shared upstream evidence-event identity (2026-10-23)
+
+- Extended RealityEvidenceLedger.record with an optional upstream eventId so existing action/decision/observation lineage can be preserved rather than replaced by an unrelated content hash.
+- Identical payload replays under the same eventId are idempotent; reuse of one identity for a contradictory/different evidence payload is rejected with a stable conflict reason. Legacy content-derived IDs remain compatible.
+- Extended the existing reality-evidence regression with exact event-ID replay and identity-collision cases; confirmed package wiring through the P2841 suite.
+- Important limit: this establishes the ledger boundary, not completed end-to-end propagation from ActionGateway through P65/reward/reflection. That call-site wiring remains next.
+- Exact-head execution remains unverified; no learning/provenance uplift claimed.
+
+---
+
 ## NK1 WorkPass460 — preserve event identity across the unified cognitive-cycle boundary (2026-10-23)
 
 - Extended the unified cognitive-cycle result with the accepted per-stage event IDs and a dedicated observation anchor. This lets downstream memory, outcome and self-update adapters join against the exact event identities already produced by CognitiveEventFabric instead of inferring lineage from tick numbers.
