@@ -714,7 +714,7 @@ function independentFamilyConfidenceBounds(
   const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
   let familiesEvaluated = 0;
   let confidenceBoundFailures = 0;
-  for (const tasks of byFamily.values()) {
+  for (const [family, tasks] of byFamily.entries()) {
     if (tasks.size < minimumTasks) continue;
     const seedSets = [...tasks.values()].map(seeds => new Set(seeds.keys()));
     const commonSeeds = [...seedSets[0]].filter(seed => seedSets.every(seeds => seeds.has(seed))).sort((a, b) => a - b);
@@ -727,7 +727,7 @@ function independentFamilyConfidenceBounds(
       return mean(perTask.map(row => row.candidate)) - mean(perTask.map(row => row.baseline));
     });
     const deterministicSeed = createHash('sha256')
-      .update(JSON.stringify([planFingerprint, split, commonSeeds, deltas.length]))
+      .update(JSON.stringify([planFingerprint, split, family, commonSeeds, deltas.length]))
       .digest().readUInt32BE(0);
     const interval = bootstrapMeanConfidenceInterval(deltas, {
       confidenceLevel, resamples, seed: deterministicSeed,
@@ -963,7 +963,7 @@ export function compareMatchedIndependentEvaluations(
     feedback.push('At least one sufficiently sampled holdout family lacks the required common paired seeds; collect more independent runs before promotion.');
   }
   if (validationConfidence.confidenceBoundFailures > 0) {
-    reasons.push('validation-family-confidence-bound-regression-exceeds-tolerance');
+    reasons.push('validation-family-improvement-confidence-insufficient');
     feedback.push('At least one validation family lacks a positive lower bootstrap bound for paired-seed improvement; collect or inspect more independent runs before promotion.');
   }
   if (holdoutConfidence.confidenceBoundFailures > 0) {
