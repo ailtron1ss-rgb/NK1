@@ -13,6 +13,7 @@ import { EmbodimentRuntime } from '../body/EmbodimentRuntime.ts';
 import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
 import { JsonlLearningFitnessJournal, type LearningFitnessJournalSink } from '../learning/LearningFitnessJournal.ts';
+import { JsonlLearningLifecycleJournal, type LearningLifecycleJournalSink } from '../learning/LearningLifecycleJournal.ts';
 import type { JsonStateStore } from '../persistence/FileStateStore.ts';
 import { choosePhonePolicyDelay, type PhonePolicyConfig } from '../system/PhoneRuntimePolicy.ts';
 import { RuntimeClockScheduler, RUNTIME_CLOCK_IDS, type RuntimeClockDecision } from '../system/RuntimeClockScheduler.ts';
@@ -95,6 +96,8 @@ export interface RuntimeConfig extends OrganismConfig {
   journal?: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
   /** Optional explicit sink; when omitted, the P23 fitness journal is written beside stateFile. */
   learningFitnessJournal?: LearningFitnessJournalSink;
+  /** Optional explicit append-only sink for P23 activation intent/results. */
+  learningLifecycleJournal?: LearningLifecycleJournalSink;
   visionBackend?: VisionSemanticBackend;
   /** Explicit opt-in to scheduled, Core-owned P23 candidate/shadow learner runs. */
   trustedShadowLearning?: TrustedShadowLearningScheduleConfig;
@@ -275,6 +278,16 @@ export class OrganismRuntime {
       } else {
         config.compoundRepairRevision.engine.configureLearningFitnessJournalIfAbsent(
           new JsonlLearningFitnessJournal(defaultFitnessJournalPath),
+        );
+      }
+      const defaultLifecycleJournalPath = config.stateFile.toLowerCase().endsWith('.json')
+        ? config.stateFile.replace(/\\.json$/i, '.learning-lifecycle.jsonl')
+        : `${config.stateFile}.learning-lifecycle.jsonl`;
+      if (config.learningLifecycleJournal) {
+        config.compoundRepairRevision.engine.configureLearningLifecycleJournal(config.learningLifecycleJournal);
+      } else {
+        config.compoundRepairRevision.engine.configureLearningLifecycleJournalIfAbsent(
+          new JsonlLearningLifecycleJournal(defaultLifecycleJournalPath),
         );
       }
       const provideInputs = config.compoundRepairRevision.independentEvaluationConfigForRepair
@@ -1774,6 +1787,8 @@ export class OrganismRuntime {
       trustedShadowLearning:this.trustedShadowLearningScheduler?.snapshot() ?? { enabled:false },
       compoundRepairRevision:this.compoundRepairRevisionDiagnostics(),
       learningFitnessJournal:this.learningFitnessJournalDiagnostics(),
+      learningLifecycleJournal:this.config.compoundRepairRevision?.engine.learningLifecycleJournalDiagnostics()
+        ?? {configured:false as const,available:false as const},
       lastAutonomyStepMs:this.lastAutonomyStepAt,
       runtimeClocks:this.clockScheduler.snapshot(),
       continuityLedger:this.continuityLedger.metrics(),
@@ -1788,6 +1803,8 @@ export class OrganismRuntime {
       trustedShadowLearning:this.trustedShadowLearningScheduler?.snapshot() ?? { enabled:false },
       compoundRepairRevision:this.compoundRepairRevisionDiagnostics(),
       learningFitnessJournal:this.learningFitnessJournalDiagnostics(),
+      learningLifecycleJournal:this.config.compoundRepairRevision?.engine.learningLifecycleJournalDiagnostics()
+        ?? {configured:false as const,available:false as const},
       predictionLedger:this.core.predictionLedgerSnapshot(),
       continuity:this.core.continuitySnapshot(),
       world:typeof this.worldStore.metrics==='function' ? this.worldStore.metrics() : null,
