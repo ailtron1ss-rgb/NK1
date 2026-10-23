@@ -124,4 +124,26 @@ const inspectorRow = core.memoryInspectorSnapshot(32).find(item => item.id === f
 assert.equal(inspectorRow?.independentEvidenceSources, 1, 'the existing Runtime Atlas memory inspector exposes evidence-lineage count');
 assert.equal(core.memorySubsystem.memoryOS.indexDiagnostics().pass, true);
 
+ // WorkPass418: valid-but-excessive budgets must not disable eviction.
+ const oversizedPersistedBudget = structuredClone(snap);
+ oversizedPersistedBudget.byteBudget = 16 * 1024 * 1024;
+ const boundedPersistedBudget = new MemoryOS2();
+ boundedPersistedBudget.restore(oversizedPersistedBudget);
+ assert.equal(boundedPersistedBudget.budgetDiagnostics().byteBudget, 524288,
+   'an over-cap persisted byte budget must fall back to the finite default');
+ const oversizedOverrideResult = boundedPersistedBudget.enforceByteBudget({ maxBytes: Number.MAX_SAFE_INTEGER });
+ assert.equal(oversizedOverrideResult.budget, 524288,
+   'an over-cap runtime override must preserve the current finite budget');
+
+ let memoryGetterReads = 0;
+ const accessorSnapshot = structuredClone(snap);
+ Object.defineProperty(accessorSnapshot, 'byteBudget', {
+   configurable: true, enumerable: true,
+   get() { memoryGetterReads += 1; return Number.MAX_SAFE_INTEGER; },
+ });
+ const accessorRestoredMemory = new MemoryOS2();
+ accessorRestoredMemory.restore(accessorSnapshot);
+ assert.equal(memoryGetterReads, 0, 'restore must not execute a caller-owned getter');
+ assert.equal(accessorRestoredMemory.budgetDiagnostics().byteBudget, 524288);
+
 console.log('MEMORY_PROVENANCE_LINEAGE_WORKPASS30=PASS', JSON.stringify({ canonicalMemoryCount: restored.size(), independentSources: restoredTrail?.independentSources, confidenceAfterIndependentSupport: afterIndependentConfidence, boundedTrail: capped.evidenceTrail(row.id)?.independentSources, replayGuardKeys: capped.snapshot().items.find(item => item.id === row.id).evidenceLineageKeys.length, researchRows: researchRows.length, mirroredLineageVotes: core.memorySubsystem.memoryOS.evidenceTrail(familyA.id)?.independentSources, memorySchema: snap.version }));

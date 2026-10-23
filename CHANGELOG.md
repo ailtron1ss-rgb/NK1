@@ -1,3 +1,12 @@
+## NK1 WorkPass418 — cap memory budgets and harden restore ingress (2026-10-23)
+
+- Added a bounded plain-data snapshot boundary to memory restoration. Accessor-backed, cyclic, sparse, symbol-keyed and exotic object graphs fail closed without executing getters.
+- Capped persisted and caller-supplied memory byte budgets at 8 MiB; excessive values fall back to the existing finite budget instead of disabling eviction.
+- Added regressions for over-cap persisted budgets, over-cap overrides and getter-backed snapshots.
+- Tests/typecheck are pending; recent hosted jobs terminate before runner assignment.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

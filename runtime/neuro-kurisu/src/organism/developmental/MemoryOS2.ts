@@ -1,3 +1,4 @@
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 import { MemoryResidencyGovernor, type MemoryResidencyTier } from './MemoryResidencyGovernor.ts';
 import { MemorySignalFusion, type MemoryFusionProfile } from './MemorySignalFusion.ts';
 import { AdaptiveMemoryPolicy, type MemoryPolicyName } from './AdaptiveMemoryPolicy.ts';
@@ -112,7 +113,8 @@ export interface MemoryEvictionWitness {
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const safeCounter=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
 const safeTimestamp=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
-const safeByteBudget=(value:unknown,fallback=524288):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?Math.max(16384,value):fallback;
+const MAX_MEMORY_BYTE_BUDGET = 8 * 1024 * 1024;
+const safeByteBudget=(value:unknown,fallback=524288):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0&&value<=MAX_MEMORY_BYTE_BUDGET?Math.max(16384,value):fallback;
 // Keep single-digit numeric tokens: status codes, ratings, short versions and measured values are meaningful retrieval terms. Single-letter words remain excluded.
 const tokenize=(text:string)=>text.toLocaleLowerCase().normalize('NFKC').match(/[\p{L}\p{N}]{2,}|\p{N}/gu)??[];
 const characterGramCache=new Map<string,Set<string>>();
@@ -496,6 +498,12 @@ export class MemoryOS2{
    }
  }
  restore(s:MemoryOSState2|undefined){
+  try {
+   s = snapshotPlainData<MemoryOSState2 | undefined>(s, { allowNonFiniteNumbers: true, maxDepth: 64, maxNodes: 200_000, maxStringUnits: 16 * 1024 * 1024 });
+  } catch {
+   // Never invoke external getters or restore an ambiguous/cyclic snapshot into the canonical store.
+   s = undefined;
+  }
   const rawItems=Array.isArray(s?.items)?s!.items.slice(0,1600):[];
   const legacyEstimate=rawItems.reduce((n:any,m:any)=>n+estimateMemoryBytes({
     content:String(m?.content??''),tags:Array.isArray(m?.tags)?m.tags:[],context:m?.context,
