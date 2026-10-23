@@ -25,6 +25,9 @@ assert.throws(() => new VerifiedOutcomeLedger([
   { ...manifest[1], promptFingerprint:hash(' remember the BLUE key. ') },
 ]), /cross-split prompt leakage/);
 assert.throws(() => new VerifiedOutcomeLedger([manifest[0], manifest[0]]), /duplicate task id/);
+assert.throws(() => new VerifiedOutcomeLedger([
+  { ...manifest[0], taskId:'t'.repeat(181) },
+]), /invalid task manifest entry/, 'manifest IDs are bounded before index construction');
 let manifestGetterReads = 0;
 const getterBackedManifestEntry = { ...manifest[0] };
 Object.defineProperty(getterBackedManifestEntry, 'taskId', {
@@ -87,6 +90,10 @@ assert.equal(snapshot.acceptedOutcomes, 41);
 assert.equal(snapshot.rejectedOutcomes, 10, 'two malformed hostile-input fixtures are counted as rejected outcomes');
 snapshot.outcomes[0].passed = !snapshot.outcomes[0].passed;
 assert.notEqual(snapshot.outcomes[0].passed, ledger.snapshot().outcomes[0].passed, 'snapshot must not mutate ledger state');
+assert.equal(ledger.record(outcome({method:'m'.repeat(97)})).rejection.code,'invalid-method',
+  'outcome method size must be rejected before it enters the identity index');
+assert.equal(ledger.record(outcome({evidenceRef:'e'.repeat(4097)})).rejection.code,'invalid-outcome',
+  'oversized evidence locators must not persist into the outcome ledger');
 
 // Restoring persisted evidence must not invoke getters or traverse cyclic input.
 let restoreSnapshotGetterReads=0;
