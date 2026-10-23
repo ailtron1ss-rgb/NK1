@@ -39,10 +39,9 @@ export async function createIndependentEvaluationConfigFactory(input) {
     throw new Error('independent-evaluation-config-module-must-export-createIndependentEvaluationHostConfig');
   }
 
-  const hostOptions = await createHostConfig({
-    ...(isRecord(input.providerContext) ? input.providerContext : {}),
-    stateDirectory: input.stateDirectory,
-  });
+  // Give this module no engine/store/registry capability; it owns only evaluator
+  // process configuration, task plans and the fixed experiment authority.
+  const hostOptions = await createHostConfig({ stateDirectory: input.stateDirectory });
   if (!isRecord(hostOptions) || !isRecord(hostOptions.commands) ||
       !isRecord(hostOptions.commands.executor) ||
       !isRecord(hostOptions.commands.verifier) ||
