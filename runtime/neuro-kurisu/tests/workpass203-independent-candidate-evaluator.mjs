@@ -306,8 +306,8 @@ const experimentAuthority = {
   method: 'candidate',
 };
 const authorityTasks = [
-  { taskId: 'authority-validation', trialId: 'authority-trial-v', seed: 11, split: 'validation', input: { prompt: 'summarize validation' }, requiredCapabilityIds: ['read'], expectedStepIds: ['open', 'summarize'] },
-  { taskId: 'authority-holdout', trialId: 'authority-trial-h', seed: 29, split: 'holdout', input: { prompt: 'summarize holdout' }, requiredCapabilityIds: ['read'], expectedStepIds: ['open', 'summarize'] },
+  { taskId: 'authority-validation', trialId: 'authority-trial-v', seed: 11, split: 'validation', taskFamily: 'caller-forged-family', input: { prompt: 'summarize validation' }, requiredCapabilityIds: ['read'], expectedStepIds: ['open', 'summarize'] },
+  { taskId: 'authority-holdout', trialId: 'authority-trial-h', seed: 29, split: 'holdout', taskFamily: 'caller-forged-family', input: { prompt: 'summarize holdout' }, requiredCapabilityIds: ['read'], expectedStepIds: ['open', 'summarize'] },
 ];
 const authorityEvaluator = createIndependentSkillCandidateEvaluator({
   tasks: authorityTasks,
@@ -329,6 +329,10 @@ const authorityEvaluation = await authorityEvaluator({
   baseline: { validation: [], holdout: [] },
   previousEvaluation: { validation: [], holdout: [] },
 });
+assert.equal(authorityEvaluation.evaluation.validation[0].taskFamily, 'summarization',
+  'task family must be sourced from the canonical manifest rather than caller-supplied task metadata');
+assert.equal(authorityEvaluation.evaluation.holdout[0].taskFamily, 'summarization',
+  'holdout family attribution must use the same canonical manifest');
 // WorkPass215: validated verifier/scanner function references cannot be swapped
 // through the caller-owned service objects after evaluator construction.
 const mutableVerifierService = {
