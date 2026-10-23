@@ -22,7 +22,7 @@
 
 - В `runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts` добавлены независимые holdout-пределы ухудшения task success, trajectory quality и skill quality. По умолчанию каждая размерность не может просесть более чем на `0.02` по шкале 0–1.
 - Сохранены paired task/trial matching, macro-average по заданиям, существующий composite-gate, hard safety gate и авторизованный P23 lifecycle. Второй learner/evaluator/store не добавлялся.
-- `runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs` содержит сценарий, в котором composite улучшается, а качество траектории ухудшается; теперь он должен быть отклонён покомпонентным gate.
+- `runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs` содержит сценарий, в котором composite улучшается, а качество траектории ухудшается, плюс независимые проверки отклонения по task success и skill quality и невалидных порогов; всё это покрыто авторским regression-кодом, но пока не подтверждено исполнением.
 - Регрессия включена в root `audit:quick` и WorkPass71 CI. Команды написаны и связаны с CI, но не считаются пройденными: последние Actions запуски завершались до назначения runner.
 - Отчёт об исходнике, лицензии, изменениях и оставшихся проверках: [WorkPass329](WORKPASS329_HERMES_MULTIAXIS_HOLDOUT_GATE_2026-10-23.md). upstream заявляет MIT в README/`pyproject.toml`, однако отдельный `LICENSE` по закреплённому пути не найден; аудит лицензии поэтому остаётся частичным. Исходники донора не копировались, новые зависимости не добавлялись.
 
