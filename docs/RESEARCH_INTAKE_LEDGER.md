@@ -1,3 +1,13 @@
+## WorkPass388–389 — verify the revision loop as one connected lifecycle (2026-10-23)
+
+- Replaced self-referential `typeof` casts on detached baseline/candidate/fresh-evaluation snapshots with explicit input/return-type contracts to reduce ambiguity in the TypeScript boundary.
+- Added `workpass383-p23-revision-generator-boundary.mjs`: the fixture creates a real signed-evidence promotion proposal, stages a source candidate in the versioned store, then tests three connected outcomes:
+  1. An accessor-bearing generator result is rejected before it reaches the independent evaluator, without invoking its getter or staging a candidate.
+  2. An accessor-bearing independent-evaluator result is rejected before its fingerprint/reports are read, without invoking its getter or staging a candidate.
+  3. A detached generated payload with a matching evaluation fingerprint and nonempty validation/holdout reports can stage as a new versioned candidate while the source remains distinct.
+- The test is wired into P26 Learning Validation and its path filter on Node.js 24. It is a focused integration regression using fixture evidence/verifier services—not a production learning benchmark.
+- Attempted repository-local validation is still blocked: the environment has no checkout and cannot resolve github.com from the shell. GitHub Actions has also returned failure conclusions without step lists or log URLs; I retried the latest P26 job once and the replacement job again exposed no steps/logs. The test is committed but not execution-verified.
+
 ## WorkPass386–387 — bounded windows and shared measurement trust boundary (2026-10-23)
 
 - **Repair-history bounded window:** the runtime collects its newest 96 eligible repair observations before applying the strict canonical validator. Equal-timestamp ties use a stable canonical JSON row key and locale-independent ordering. This preserves the original bounded-history contract while keeping digests deterministic.
