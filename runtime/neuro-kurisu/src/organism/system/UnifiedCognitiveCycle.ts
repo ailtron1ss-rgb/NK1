@@ -28,6 +28,10 @@ export interface UnifiedCognitiveCycleResult {
   causalContinuity01:number;
   complete:boolean;
   missingStages:UnifiedCycleStage[];
+  /** Accepted event identities carried forward from the canonical event fabric. */
+  stageIds:Partial<Record<UnifiedCycleStage,string>>;
+  /** Explicit observation anchor for downstream memory/action evidence joins. */
+  observationId:string|null;
 }
 
 const REQUIRED:UnifiedCycleStage[]=['observation','prediction','action','outcome','learning','self-update'];
@@ -146,7 +150,10 @@ export class UnifiedCognitiveCycle {
       lastComplete:complete,
       lastMissingStages:missing,
     };
-    return {tick:input.tick,stageCoverage01:coverage,causalContinuity01:causal,complete,missingStages:[...missing]};
+    return {
+      tick:input.tick,stageCoverage01:coverage,causalContinuity01:causal,complete,
+      missingStages:[...missing],stageIds:{...validIds},observationId:validIds.observation??null,
+    };
   }
 
   snapshot():UnifiedCognitiveCycleState {
