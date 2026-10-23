@@ -1,4 +1,4 @@
-import { realpath } from 'node:fs/promises';
+import { realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -26,6 +26,21 @@ export async function createIndependentEvaluationConfigFactory(input) {
 
   const configuredPath = path.isAbsolute(setting) ? path.resolve(setting) : path.resolve(input.root, setting);
   const evaluationPath = await realpath(configuredPath);
+  const moduleMetadata = await stat(evaluationPath);
+  if (!moduleMetadata.isFile()) {
+    throw new Error('compound-repair-independent-evaluator-module-must-be-regular-file');
+  }
+  if (process.platform !== 'win32' && (moduleMetadata.mode & 0o022) !== 0) {
+    throw new Error('compound-repair-independent-evaluator-module-must-not-be-group-or-world-writable');
+  }
+  // The authority config is executable policy: never load it from the mutable
+  // organism state directory where learned data or runtime artifacts may be written.
+  const statePath = path.resolve(input.stateDirectory);
+  const stateRelative = path.relative(statePath, evaluationPath);
+  if (stateRelative === '' || (!stateRelative.startsWith('..' + path.sep) &&
+      stateRelative !== '..' && !path.isAbsolute(stateRelative))) {
+    throw new Error('compound-repair-independent-evaluator-module-must-be-outside-state-directory');
+  }
   if (input.providerModulePath) {
     const providerPath = await realpath(path.resolve(input.providerModulePath));
     if (evaluationPath === providerPath) {
