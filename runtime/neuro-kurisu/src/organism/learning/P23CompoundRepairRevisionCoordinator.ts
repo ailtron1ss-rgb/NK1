@@ -228,7 +228,7 @@ export class P23CompoundRepairRevisionCoordinator {
   retryBackoffPersistenceDiagnostics() {
     return {
       configured: Boolean(this.retryBackoffStore),
-      available: this.retryBackoffPersistenceFailure === null,
+      available: Boolean(this.retryBackoffStore) && this.retryBackoffPersistenceFailure === null,
       lastFailure: this.retryBackoffPersistenceFailure,
       entryCount: this.retryBackoffBySkill.size,
     };
