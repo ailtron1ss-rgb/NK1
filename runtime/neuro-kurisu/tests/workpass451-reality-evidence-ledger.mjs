@@ -8,6 +8,30 @@ const first = ledger.record({
   confidence01: 0.91, independenceKey: 'device:camera-front', parentIds: ['decision:12'],
 });
 const totalAfterFirst = ledger.snapshot().total;
+
+// A caller may reuse the same upstream event ID across RealityEvidenceLedger,
+// P65, and outcome reflection. Exact replay is idempotent, but re-binding that
+// identity to a different claim is rejected rather than counted as new proof.
+const eventBound = ledger.record({
+  tick: 16, at: 1600, eventId: 'execution:device:42',
+  realityClass: 'device-observation', claim: 'Battery fell after the command.',
+  confidence01: 0.82, independenceKey: 'device:android-battery',
+});
+assert.equal(eventBound.eventId, 'execution:device:42');
+const eventTotal = ledger.snapshot().total;
+const eventReplay = ledger.record({
+  tick: 16, at: 1600, eventId: 'execution:device:42',
+  realityClass: 'device-observation', claim: 'Battery fell after the command.',
+  confidence01: 0.82, independenceKey: 'device:android-battery',
+});
+assert.deepEqual(eventReplay, eventBound);
+assert.equal(ledger.snapshot().total, eventTotal);
+assert.throws(() => ledger.record({
+  tick: 16, at: 1600, eventId: 'execution:device:42',
+  realityClass: 'device-observation', claim: 'Actually, a different effect occurred.',
+  confidence01: 0.82, independenceKey: 'device:android-battery',
+}), /reality-evidence-event-identity-conflict/);
+
 const replay = ledger.record({
   tick: 12, at: 1200, realityClass: 'external-observation',
   claim: 'The front camera observed a door open.',
