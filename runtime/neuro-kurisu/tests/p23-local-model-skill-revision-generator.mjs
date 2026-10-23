@@ -51,4 +51,47 @@ await assert.rejects(
   /p23-revision-holdout-results-must-remain-withheld/,
   'legacy numeric holdout feedback must not be accepted by the generator',
 );
+let requestGetterCalls=0;
+const accessorRequest={...request};
+Object.defineProperty(accessorRequest,'sourcePayload',{
+  enumerable:true,get(){requestGetterCalls++;return {name:'forged-source'};},
+});
+await assert.rejects(
+  ()=>generateLocalSkillRevision(provider,accessorRequest),
+  /p23-revision-request-data-boundary-rejected/,
+  'public generator entry must snapshot request fields without executing caller getters',
+);
+assert.equal(requestGetterCalls,0);
+
+let responseGetterCalls=0;
+const accessorResponseProvider={
+  configured:()=>true,
+  async generate(){
+    const response={backend:'test',model:'fixture',latencyMs:1};
+    Object.defineProperty(response,'text',{
+      enumerable:true,get(){responseGetterCalls++;return JSON.stringify({name:'should-not-be-read'});},
+    });
+    return response;
+  },
+};
+await assert.rejects(
+  ()=>generateLocalSkillRevision(accessorResponseProvider,request),
+  /p23-revision-generator-response-data-boundary-rejected/,
+  'provider response text must be detached before access or JSON parsing',
+);
+assert.equal(responseGetterCalls,0);
+
+let providerGetterCalls=0;
+const accessorProvider={
+  generate:async()=>({text:JSON.stringify({name:'unused'})}),
+};
+Object.defineProperty(accessorProvider,'configured',{
+  enumerable:true,get(){providerGetterCalls++;return ()=>true;},
+});
+await assert.rejects(
+  ()=>generateLocalSkillRevision(accessorProvider,request),
+  /p23-revision-local-provider-capability-invalid/,
+  'provider methods are capabilities and cannot be accessor-backed',
+);
+assert.equal(providerGetterCalls,0);
 console.log('P23_LOCAL_MODEL_SKILL_REVISION_GENERATOR=PASS');
