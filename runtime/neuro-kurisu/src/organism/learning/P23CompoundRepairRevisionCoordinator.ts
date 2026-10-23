@@ -48,6 +48,9 @@ const MAX_RETRY_BACKOFF_MS = 24 * 60 * 60 * 1000;
  */
 export class P23CompoundRepairRevisionCoordinator {
   private readonly inFlightBySkill = new Map<string, Promise<any>>();
+  // Bind coalescing to the evidence snapshot, not just the skill identity.
+  // A request for newer evidence must not disappear behind a stale in-flight attempt.
+  private readonly inFlightEvidenceDigestBySkill = new Map<string, string>();
   private readonly stagedEvidenceDigestsBySkill = new Map<string, Set<string>>();
   private readonly retryBackoffBySkill = new Map<string, RevisionFailureBackoff>();
 
@@ -115,7 +118,14 @@ export class P23CompoundRepairRevisionCoordinator {
       });
     }
     const inFlight = this.inFlightBySkill.get(normalizedSkillId);
-    if (inFlight) return inFlight;
+    if (inFlight) {
+      if (this.inFlightEvidenceDigestBySkill.get(normalizedSkillId) === initialEvidenceDigest) return inFlight;
+      // A newer evidence snapshot arrived while the old revision was preparing.
+      // Wait for the stale attempt to settle, then re-read the canonical ledger and
+      // process the latest digest. Swallow only the predecessor's error here; its
+      // original caller still receives it and the fresh attempt has its own gates.
+      return inFlight.catch(() => undefined).then(() => this.reviseFromObservedRepairs(normalizedSkillId));
+    }
 
     const failed = this.retryBackoffBySkill.get(normalizedSkillId);
     if (failed?.evidenceDigest === initialEvidenceDigest && Date.now() < failed.retryAfter) {
@@ -161,9 +171,13 @@ export class P23CompoundRepairRevisionCoordinator {
         throw error;
       })
       .finally(() => {
-        if (this.inFlightBySkill.get(normalizedSkillId) === tracked) this.inFlightBySkill.delete(normalizedSkillId);
+        if (this.inFlightBySkill.get(normalizedSkillId) === tracked) {
+          this.inFlightBySkill.delete(normalizedSkillId);
+          this.inFlightEvidenceDigestBySkill.delete(normalizedSkillId);
+        }
       });
     this.inFlightBySkill.set(normalizedSkillId, tracked);
+    this.inFlightEvidenceDigestBySkill.set(normalizedSkillId, initialEvidenceDigest);
     return tracked;
   }
 
