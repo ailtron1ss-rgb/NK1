@@ -44,4 +44,13 @@ const sparseStages = new Array(1);
 assert.throws(() => evaluateContinualLearning([{ taskId: 'sparse', scoreByStage: sparseStages }]), /empty slot/);
 assert.throws(() => evaluateContinualLearning([{ taskId: 'bad\u0000id', scoreByStage: [.5] }]), /valid non-empty taskId/);
 
+let metricGetterCalls=0;
+const getterTask=Object.defineProperty({taskId:'getter-task',scoreByStage:[.5]},'preTrainingScore',{
+  enumerable:true,get(){metricGetterCalls++;return .4;},
+});
+assert.throws(()=>evaluateContinualLearning([getterTask]),/continual learning input data-boundary rejected/);
+assert.equal(metricGetterCalls,0,'continual-learning metrics must snapshot task data before invoking any property getter');
+assert.throws(()=>evaluateContinualLearning([{taskId:'bad-score',scoreByStage:[Number.NaN]}]),/finite numbers in \\[0, 1\\]/,
+  'non-finite recorded metrics must be rejected at the trust boundary');
+
 console.log('PASS continual-learning metrics: final score, forgetting, backward/forward transfer, validation');
