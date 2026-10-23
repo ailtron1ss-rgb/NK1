@@ -1,3 +1,7 @@
+## NK1 WorkPass393 — align runtime repair-ledger API with eligibility semantics (2026-10-23)
+- [DOC FIXED] Clarified that `OrganismRuntime.compoundSkillRepairEvidence` returns a bounded diagnostic ledger, including noneligible failed attempts, while the coordinator alone filters `revisionEligible` and passes the eligible subset through the strict canonicalization/fingerprint gate.
+- [WHY] Diagnostic experience and promotion evidence have different contracts; preserving a failed attempt must not imply that it is approved for skill generation.
+
 ## NK1 WorkPass392 — require independent task coverage in validation (2026-10-23)
 - [FIXED] The SkillLearnBench candidate gate now requires at least two distinct paired validation tasks by default, configurable through `minimumValidationTasks`. Repeating trials on one task no longer substitutes for task-level validation coverage.
 - [CHANGED] Gate output includes `validationTaskCount`; insufficient coverage returns `validation-task-coverage-insufficient` while preserving the existing paired score and holdout-family checks.
