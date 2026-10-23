@@ -68,11 +68,41 @@ export class PredictiveSelfAgencySubstrate {
   private state=defaults();
   snapshot(){return structuredClone(this.state);}
   restore(raw?:Partial<PredictiveSelfAgencyState>|null){
-    const d=defaults(),r=raw??{}; const arr=(v:any,n:number)=>Array.isArray(v)?v.slice(0,n).concat(new Array(Math.max(0,n-v.length)).fill(0)).slice(0,n):new Array(n).fill(0);
-    const mat=(v:any,rows:number,cols:number,seed:number,scale:number)=>Array.from({length:rows},(_,i)=>Array.isArray(v?.[i])?arr(v[i],cols):new Array(cols).fill(0).map((__,j)=>initWeight(i+seed,j,scale)));
-    this.state={...d,...r,selfLatent:arr(r.selfLatent,24),previousSelfLatent:arr(r.previousSelfLatent,24),intention:arr(r.intention,24),predictions:arr(r.predictions,4),
-      actionRows:mat(r.actionRows,ACTIONS.length,24,1,.028),actionBias:arr(r.actionBias,ACTIONS.length),selfWeights:mat(r.selfWeights,24,24,31,.022),stateWeights:mat(r.stateWeights,24,24,61,.024),
-      lastPredictedSelfState:arr(r.lastPredictedSelfState,24),lastObservedSelfState:arr(r.lastObservedSelfState,24)};
+    const d=defaults(),r=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw as Partial<PredictiveSelfAgencyState>:{};
+    if(r.version!==undefined&&r.version!==1)throw new RangeError('unsupported predictive self-agency state version');
+    const vector=(value:unknown,fallback:number[],mode:'signed'|'unit'='signed')=>Array.from({length:fallback.length},(_,i)=>{
+      const candidate=Array.isArray(value)?value[i]:undefined;
+      if(typeof candidate!=='number'||!Number.isFinite(candidate))return fallback[i]??0;
+      return mode==='unit'?clamp01(candidate):clamp11(candidate);
+    });
+    const matrix=(value:unknown,fallback:number[][])=>fallback.map((row,i)=>vector(Array.isArray(value)?value[i]:undefined,row));
+    const counter=(value:unknown)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
+    const unit=(value:unknown,fallback:number)=>typeof value==='number'&&Number.isFinite(value)?clamp01(value):fallback;
+    const timestamp=(value:unknown,fallback:number)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
+    this.state={
+      version:1,
+      selfLatent:vector(r.selfLatent,d.selfLatent),
+      previousSelfLatent:vector(r.previousSelfLatent,d.previousSelfLatent),
+      intention:vector(r.intention,d.intention),
+      predictions:vector(r.predictions,d.predictions,'unit'),
+      actionRows:matrix(r.actionRows,d.actionRows),
+      actionBias:vector(r.actionBias,d.actionBias),
+      selfWeights:matrix(r.selfWeights,d.selfWeights),
+      stateWeights:matrix(r.stateWeights,d.stateWeights),
+      learningSteps:counter(r.learningSteps),
+      predictionSamples:counter(r.predictionSamples),
+      predictionError01:unit(r.predictionError01,d.predictionError01),
+      agencyError01:unit(r.agencyError01,d.agencyError01),
+      ownership01:unit(r.ownership01,d.ownership01),
+      authorship01:unit(r.authorship01,d.authorship01),
+      selfContinuity01:unit(r.selfContinuity01,d.selfContinuity01),
+      lastAction:ACTIONS.includes(r.lastAction as ActionKind)?r.lastAction as ActionKind:d.lastAction,
+      lastPredictedOutcome01:unit(r.lastPredictedOutcome01,d.lastPredictedOutcome01),
+      lastPredictedSelfState:vector(r.lastPredictedSelfState,d.lastPredictedSelfState),
+      lastObservedSelfState:vector(r.lastObservedSelfState,d.lastObservedSelfState),
+      lastTick:timestamp(r.lastTick,d.lastTick),
+      lastAt:timestamp(r.lastAt,d.lastAt),
+    };
   }
   private features(i:SelfAgencyInput){
     const base=[...i.self,...i.body,...i.world,...i.memory,...i.motivation];
