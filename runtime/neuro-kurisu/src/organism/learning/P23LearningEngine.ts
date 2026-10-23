@@ -221,7 +221,7 @@ function parseLearningExperience(value:unknown):LearningExperience|null{
      (x.goalPressure01!==undefined&&!isPersistedUnit(x.goalPressure01))||
      (x.causalStrength01!==undefined&&!isPersistedUnit(x.causalStrength01)))return null;
   const replayFeatures=x.replayFeatures01;
-  if(replayFeatures!==undefined&&(!Array.isArray(replayFeatures)||replayFeatures.length!==16||!replayFeatures.every(isPersistedUnit)))return null;
+  if(replayFeatures!==undefined&&(!Array.isArray(replayFeatures)||replayFeatures.length!==16||Array.from({length:replayFeatures.length},(_,index)=>replayFeatures[index]).some(value=>!isPersistedUnit(value))))return null;
   return {id:x.id,traceId:x.traceId,tick:x.tick,at:x.at,contextKey:x.contextKey,nextContextKey:x.nextContextKey,
     action:x.action,predictedUtility:x.predictedUtility,predictedConfidence:x.predictedConfidence,
     success:x.success,reward:x.reward,surprise:x.surprise,outcomeAt:x.outcomeAt,
