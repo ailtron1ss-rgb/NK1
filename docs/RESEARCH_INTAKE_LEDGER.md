@@ -1,3 +1,11 @@
+## WorkPass394 — harden the direct local-model generator boundary (2026-10-23)
+
+- **Implementation gap found:** the P23 engine protected the main reflective revision flow, but `generateLocalSkillRevision` is also a callable module entry point. Direct callers could previously pass accessor-backed request data that `JSON.stringify` would read, or a provider response whose `text` getter executed during parsing.
+- **Fix:** request data is detached through `LearningTrustBoundary.snapshotPlainData` before field reads/JSON serialization. The provider's `configured` and `generate` methods are resolved from property descriptors (own or prototype) so accessor capabilities are rejected without invoking getters. Provider response objects are detached before their `text` field is read. Missing providers preserve the original not-configured diagnostic.
+- **Tests:** added request getter, response getter and provider capability getter regressions, each asserting the getter count stays zero; retained the absent-provider and unconfigured-provider error cases.
+- **CI:** the existing Node.js 24 P26 workflow now triggers on the local generator source/test and runs `test:p23:local-model-skill-revision-generator` explicitly. This covers the direct generator entry point as well as the P23 engine's outer boundary.
+- No new dependency/upstream file copy was needed. Tests remain execution-unverified while current Actions jobs expose failure conclusions without step lists/log URLs.
+
 ## WorkPass393 — runtime API contract: diagnostic memory versus eligible evidence (2026-10-23)
 
 - Updated the `OrganismRuntime.compoundSkillRepairEvidence` API comment to state that it returns bounded non-holdout diagnostic observations, including failed/ineligible attempts. It does not certify them for generation.
