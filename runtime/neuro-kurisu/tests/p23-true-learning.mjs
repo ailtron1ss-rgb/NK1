@@ -127,6 +127,18 @@ const invalidEvidenceLearning = new P23LearningEngine();
 const invalidEvidenceTrace = makeTrace(450, 'verify', .9, { uncertainty:.72 });
 invalidEvidenceLearning.recordExperience(invalidEvidenceTrace, invalidEvidenceTrace.stateBefore, {success:NaN,reward:.9,surprise:.1}, new AdaptivePolicyEngine());
 assert.equal(invalidEvidenceLearning.snapshot().experiences.length, 0, 'invalid outcome labels must not enter the learning dataset');
+const outOfRangeEvidenceLearning = new P23LearningEngine();
+outOfRangeEvidenceLearning.recordExperience(invalidEvidenceTrace, invalidEvidenceTrace.stateBefore,
+  { success:1.2, reward:.9, surprise:.1 }, new AdaptivePolicyEngine());
+assert.equal(outOfRangeEvidenceLearning.snapshot().experiences.length, 0,
+  'out-of-range feedback must be rejected rather than clamped into false positive evidence');
+const invalidPredictionLearning = new P23LearningEngine();
+const invalidPredictionTrace = makeTrace(451, 'verify', .9, { uncertainty:.72 });
+invalidPredictionTrace.selected.predictedUtility = Number.NaN;
+invalidPredictionLearning.recordExperience(invalidPredictionTrace, invalidPredictionTrace.stateBefore,
+  { success:.9, reward:.9, surprise:.1 }, new AdaptivePolicyEngine());
+assert.equal(invalidPredictionLearning.snapshot().experiences.length, 0,
+  'non-finite predictions must not create misleading calibration evidence');
 
 // Large consolidation queues are bounded and stratified rather than dominated
 // by repeated examples from one easy context.
