@@ -19,6 +19,7 @@ assert.ok(reflections.length>0);
 assert.equal(reflections[0].kind,'repeated-context-failure');
 assert.ok(reflections[0].priority01>.6);
 assert.ok(reflections[0].evidenceNeeded.includes('independent'));
+assert.equal(reflections[0].passThreshold01, .5, 'the pass/fail boundary must be explicit and stable');
 assert.equal(reflections[0].passRate01, 0, 'task-success pass rate uses the explicit 0.5 threshold');
  assert.equal(reflections[0].wilsonLowerPassRate01, 0, 'all-failure windows must not manufacture a positive lower success bound');
  assert.ok(reflections[0].wilsonUpperPassRate01 > 0 && reflections[0].wilsonUpperPassRate01 < 1,
