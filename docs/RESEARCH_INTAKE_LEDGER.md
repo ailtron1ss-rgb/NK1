@@ -247,3 +247,11 @@ Do not count a reference as “used” until a source revision/paper protocol is
 - Regression ensures a reused baseline receipt does not contribute a candidate outcome; paired task/version sampling remains bound to the manifest version.
 - This is an evidence-integrity adaptation to NK1's signed outcome lifecycle. No upstream code was copied.
 - **Unverified:** executable regression and typecheck await a functioning Actions runner.
+
+
+## WorkPass139 — order-independent collision rejection for skill evidence
+
+- The reflective evaluation gate now counts task/method/seed and evidence-reference collisions before scoring. Every collision is excluded rather than selecting whichever row arrives first.
+- This removes an input-order channel in which conflicting outcomes or a receipt reused across tasks/methods could influence the score. Clean evidence keeps the same scoring path.
+- Regression covers duplicates both within a task/method key and across task/method labels. Signed-ledger authentication and task-version binding remain required upstream.
+- **Unverified:** the owning test suite and typecheck have not run; Actions exposes no runner steps/logs.

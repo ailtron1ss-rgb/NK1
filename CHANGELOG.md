@@ -2175,3 +2175,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **Regression added:** reusing the baseline receipt as the candidate receipt removes that would-be pair and increments the rejected-row count.
 - **Compatibility:** the authenticated outcome path already emits per-outcome evidence references; normal distinct receipts retain their existing scoring behavior.
 - **Validation boundary:** source and regression are committed; tests and typecheck remain unverified because hosted Actions have returned jobs with zero steps/logs.
+
+
+## NK1 WorkPass343 — make evidence-collision handling order-independent
+
+- **Reworked:** the reflective revision gate now groups observations before scoring. Duplicate task/method/seed attempts invalidate every colliding row instead of silently selecting the first; duplicate evidence references invalidate every row carrying that receipt, regardless of method, claimed verifier or input ordering.
+- **Reason:** first-write-wins scoring made the outcome depend on the ordering of caller-supplied rows. Collision rejection is conservative and prevents one reused receipt or conflicting duplicate from deciding a candidate score.
+- **Regression updated:** duplicated original/replayed receipts are all excluded (not only later copies); cross-method reused evidence removes both colliding observations.
+- **Validation boundary:** code/tests committed; no runtime PASS is claimed until GitHub Actions can execute the suite on a runner.

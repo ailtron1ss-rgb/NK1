@@ -34,8 +34,8 @@ const replayed = [...rows,
   { ...rows[1], taskId: 'replayed-task', evidenceRef: rows[1].evidenceRef },
 ];
 result = evaluateSkillRevision(replayed, 'baseline', 'candidate', {minPairedTasks:8,minAbsoluteGain:.1});
-assert.equal(result.pairedN, 10, 'reused verifier receipts must not create an eleventh independent pair');
-assert.ok(result.rejectedRows >= 2, 'both replayed method receipts should be rejected');
+assert.equal(result.pairedN, 9, 'all colliding original/replayed receipts must be excluded independent of row order');
+assert.ok(result.rejectedRows >= 4, 'every copy of each duplicated method receipt should be rejected');
 
 // The same task ID can be re-used after its manifest/prompt version changes.
 // Baseline v1 must never pair with candidate v2.
@@ -53,7 +53,7 @@ const sharedReceipt = rows.map(row => row.taskId === 'task-0' && row.method === 
   : row);
 result = evaluateSkillRevision(sharedReceipt, 'baseline', 'candidate');
 assert.equal(result.pairedN, 9, 'one receipt cannot be counted for both methods');
-assert.ok(result.rejectedRows >= 1, 'cross-method evidence reuse must be counted as a rejected row');
+assert.ok(result.rejectedRows >= 2, 'every row using the colliding cross-method receipt must be rejected');
 // Validation/train observations are deliberately excluded.
 result = evaluateSkillRevision(rows.map(x=>({...x,split:'train'})),'baseline','candidate');
 assert.equal(result.pairedN,0);

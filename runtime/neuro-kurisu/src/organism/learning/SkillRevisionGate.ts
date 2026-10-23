@@ -88,30 +88,51 @@ export function evaluateSkillRevision(
   const minPairedTasks = boundedInteger(options.minPairedTasks, 8, 2, 10000);
   const minAbsoluteGain = clamp(options.minAbsoluteGain ?? .02, .02);
   const maxFamilyRegression = clamp(options.maxFamilyRegression ?? .10, .10);
-  const byPair = new Map<string, Map<string, RevisionObservation>>();
-  // A single verifier receipt cannot be replayed under multiple task IDs to manufacture sample size.
-  const seenEvidenceReceipts = new Set<string>();
+  const byPair = new Map<string, Map<string, RevisionObservation[]>>();
+  const receiptCounts = new Map<string, number>();
   let rejectedRows = 0;
   for (const row of observations) {
     if (!valid(row) || (row.method !== baselineMethod && row.method !== candidateMethod)) {
       rejectedRows++;
       continue;
     }
-    // Evidence identity is global within a comparison: a receipt cannot be relabelled
-    // as another method/verifier or replayed under another task to manufacture a pair.
     const receiptKey = row.evidenceRef.normalize('NFKC').trim();
-    if (seenEvidenceReceipts.has(receiptKey)) { rejectedRows++; continue; }
-    seenEvidenceReceipts.add(receiptKey);
+    receiptCounts.set(receiptKey, (receiptCounts.get(receiptKey) ?? 0) + 1);
     const key = JSON.stringify([row.taskId, row.taskVersion, row.seed, row.attempt]);
-    const pair = byPair.get(key) ?? new Map<string, RevisionObservation>();
-    if (pair.has(row.method)) { rejectedRows++; continue; }
-    pair.set(row.method, row);
+    const pair = byPair.get(key) ?? new Map<string, RevisionObservation[]>();
+    const methodRows = pair.get(row.method) ?? [];
+    methodRows.push(row);
+    pair.set(row.method, methodRows);
     byPair.set(key, pair);
   }
-  const paired = [...byPair.values()].filter(pair => {
-    if (!pair.has(baselineMethod) || !pair.has(candidateMethod)) return false;
-    return pair.get(baselineMethod)!.family === pair.get(candidateMethod)!.family;
-  });
+
+  // Duplicate identities invalidate every colliding row. First-write-wins would
+  // make the score depend on attacker-controlled input order.
+  const duplicateReceipts = new Set([...receiptCounts.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([receipt]) => receipt));
+  const paired: Array<Map<string, RevisionObservation>> = [];
+  for (const byMethod of byPair.values()) {
+    const usable = new Map<string, RevisionObservation>();
+    for (const [method, methodRows] of byMethod) {
+      if (methodRows.length !== 1) {
+        rejectedRows += methodRows.length;
+        continue;
+      }
+      const row = methodRows[0]!;
+      if (duplicateReceipts.has(row.evidenceRef.normalize('NFKC').trim())) {
+        rejectedRows++;
+        continue;
+      }
+      usable.set(method, row);
+    }
+    if (!usable.has(baselineMethod) || !usable.has(candidateMethod)) continue;
+    if (usable.get(baselineMethod)!.family !== usable.get(candidateMethod)!.family) {
+      rejectedRows += 2;
+      continue;
+    }
+    paired.push(usable);
+  }
   const n = paired.length;
   const baselinePassRate = n ? paired.reduce((s, p) => s + Number(p.get(baselineMethod)!.passed), 0) / n : 0;
   const candidatePassRate = n ? paired.reduce((s, p) => s + Number(p.get(candidateMethod)!.passed), 0) / n : 0;
