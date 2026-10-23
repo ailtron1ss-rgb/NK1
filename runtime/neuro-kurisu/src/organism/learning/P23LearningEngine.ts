@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { snapshotPlainData } from './LearningTrustBoundary.ts';
 import type { ActionKind, IntentCandidate, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
 import type { AdaptivePolicyEngine, AdaptivePolicyState } from './AdaptivePolicyEngine.ts';
@@ -12,6 +12,7 @@ import { evaluateSkillLearnBenchCandidate, type SkillLearnBenchCandidateEvaluati
 import { bindIndependentEvaluationToVerifiedShadowEvidence, bindReflectiveReportsToVerifiedShadowEvidence, type ReflectiveEvidenceBindingReport } from './HermesVerifiedEvidenceBinding.ts';
 import { compareMatchedIndependentEvaluations } from './IndependentSkillCandidateEvaluator.ts';
 import type { LearningFitnessJournalDiagnostics, LearningFitnessJournalSink } from './LearningFitnessJournal.ts';
+import type { LearningLifecycleEventInput, LearningLifecycleJournalDiagnostics, LearningLifecycleJournalSink } from './LearningLifecycleJournal.ts';
 import type { LearningRobustMetricSummary } from './LearningRobustMetrics.ts';
 import { planSkillRevision, type SkillRevisionPlan } from './SkillRevisionPlan.ts';
 import type { SkillShadowEvidenceVerifier } from './VersionedSkillCandidateStore.ts';
@@ -484,6 +485,7 @@ export class P23LearningEngine {
   private replaySelectionOptions: ReplaySelectionOptions = { maxBatchSize:64, recentQuota:32 };
   private verifiedSkillStore: VersionedSkillCandidateStore | null = null;
   private learningFitnessJournal: LearningFitnessJournalSink | null = null;
+  private learningLifecycleJournal: LearningLifecycleJournalSink | null = null;
 
   /** Configure a bounded replay ablation; defaults remain 64 total / 32 recent. */
   configureReplaySelection(options: ReplaySelectionOptions):void {
@@ -570,6 +572,37 @@ export class P23LearningEngine {
     } catch {
       // Diagnostics should surface a bounded health status; promotion itself remains
       // fail-closed because recordFitnessDecision errors are not swallowed.
+      return {configured:true,available:false,reason:'journal-read-failed'};
+    }
+  }
+
+  /** Attach an append-only journal for final activation/rejection outcomes. */
+  configureLearningLifecycleJournal(journal:LearningLifecycleJournalSink|null):void {
+    if(journal!==null && (!journal || typeof journal.recordLifecycleEvent!=='function')) {
+      throw new Error('P23 learning lifecycle journal sink invalid');
+    }
+    this.learningLifecycleJournal=journal;
+  }
+
+  /** Configure the runtime default without replacing an explicitly supplied host sink. */
+  configureLearningLifecycleJournalIfAbsent(journal:LearningLifecycleJournalSink):void {
+    if(!journal || typeof journal.recordLifecycleEvent!=='function') {
+      throw new Error('P23 learning lifecycle journal sink invalid');
+    }
+    if(this.learningLifecycleJournal===null) this.learningLifecycleJournal=journal;
+  }
+
+  /** Privacy-filtered aggregate status; pending intents indicate unresolved post-activation evidence. */
+  learningLifecycleJournalDiagnostics():
+    LearningLifecycleJournalDiagnostics |
+    {configured:false;available:false} |
+    {configured:true;available:false;reason:'readback-unavailable'|'journal-read-failed'} {
+    const journal=this.learningLifecycleJournal;
+    if(!journal) return {configured:false,available:false};
+    if(typeof journal.snapshotDiagnostics!=='function') return {configured:true,available:false,reason:'readback-unavailable'};
+    try {
+      return journal.snapshotDiagnostics();
+    } catch {
       return {configured:true,available:false,reason:'journal-read-failed'};
     }
   }
@@ -970,16 +1003,104 @@ export class P23LearningEngine {
         maximumUpperBound:fitness.holdoutFamilyUpperBoundMaximum,
       },
     });
-    if(!fitness.eligible) throw new Error(`independent reflective fitness gate rejected candidate: ${fitness.reasons.join(',')}`);
+    const lifecycleAttemptId=randomUUID();
+    if(!fitness.eligible) {
+      try {
+        this.learningLifecycleJournal?.recordLifecycleEvent({
+          recordedAt:now(),
+          attemptId:lifecycleAttemptId,
+          candidateId:staged.candidateId,
+          skillId:staged.skillId,
+          candidateVersion:staged.version,
+          payloadFingerprint:staged.payloadFingerprint,
+          evaluationFingerprint:evaluation.evaluationFingerprint,
+          planFingerprint:fitness.planFingerprint,
+          environmentFingerprint:fitness.environmentFingerprint,
+          event:'promotion-rejected',
+          reasonCodes:['fitness-gate-rejected'],
+          activatedVersion:null,
+        });
+      } catch { /* Preserve the authoritative rejection; no activation side effect occurred. */ }
+      throw new Error(`independent reflective fitness gate rejected candidate: ${fitness.reasons.join(',')}`);
+    }
     // Bind against the exact receipts persisted on the candidate; caller-supplied
     // alternate receipts cannot be used to pass this pre-promotion check.
     const evidenceBinding=this.bindIndependentEvaluationEvidence(
       evaluation,staged.shadowObservations,staged,verifyEvidence,
     );
     if(!evidenceBinding.accepted) {
+      try {
+        this.learningLifecycleJournal?.recordLifecycleEvent({
+          recordedAt:now(),
+          attemptId:lifecycleAttemptId,
+          candidateId:staged.candidateId,
+          skillId:staged.skillId,
+          candidateVersion:staged.version,
+          payloadFingerprint:staged.payloadFingerprint,
+          evaluationFingerprint:evaluation.evaluationFingerprint,
+          planFingerprint:fitness.planFingerprint,
+          environmentFingerprint:fitness.environmentFingerprint,
+          event:'promotion-rejected',
+          reasonCodes:['verified-shadow-evidence-binding-rejected'],
+          activatedVersion:null,
+        });
+      } catch { /* Preserve the authoritative rejection; no activation side effect occurred. */ }
       throw new Error(`independent evidence binding rejected candidate: ${evidenceBinding.reasons.join(',')}`);
     }
-    const active=this.promoteVerifiedSkillCandidateAfterGate(candidateId,approval,minShadowRuns);
+    // Durable intent is required before the irreversible activation step. If this
+    // write fails, activation is not attempted and the caller can safely retry.
+    this.learningLifecycleJournal?.recordLifecycleEvent({
+      recordedAt:now(),
+      attemptId:lifecycleAttemptId,
+      candidateId:staged.candidateId,
+      skillId:staged.skillId,
+      candidateVersion:staged.version,
+      payloadFingerprint:staged.payloadFingerprint,
+      evaluationFingerprint:evaluation.evaluationFingerprint,
+      planFingerprint:fitness.planFingerprint,
+      environmentFingerprint:fitness.environmentFingerprint,
+      event:'activation-intent',
+      reasonCodes:[],
+      activatedVersion:null,
+    });
+    let active:ActiveSkillVersion;
+    try {
+      active=this.promoteVerifiedSkillCandidateAfterGate(candidateId,approval,minShadowRuns);
+    } catch (error) {
+      try {
+        this.learningLifecycleJournal?.recordLifecycleEvent({
+          recordedAt:now(),
+          attemptId:lifecycleAttemptId,
+          candidateId:staged.candidateId,
+          skillId:staged.skillId,
+          candidateVersion:staged.version,
+          payloadFingerprint:staged.payloadFingerprint,
+          evaluationFingerprint:evaluation.evaluationFingerprint,
+          planFingerprint:fitness.planFingerprint,
+          environmentFingerprint:fitness.environmentFingerprint,
+          event:'activation-failed',
+          reasonCodes:['skill-store-activation-failed'],
+          activatedVersion:null,
+        });
+      } catch { /* Preserve the original activation failure; pending intent remains visible. */ }
+      throw error;
+    }
+    try {
+      this.learningLifecycleJournal?.recordLifecycleEvent({
+        recordedAt:now(),
+        attemptId:lifecycleAttemptId,
+        candidateId:staged.candidateId,
+        skillId:staged.skillId,
+        candidateVersion:staged.version,
+        payloadFingerprint:staged.payloadFingerprint,
+        evaluationFingerprint:evaluation.evaluationFingerprint,
+        planFingerprint:fitness.planFingerprint,
+        environmentFingerprint:fitness.environmentFingerprint,
+        event:'activation-confirmed',
+        reasonCodes:[],
+        activatedVersion:active.version,
+      });
+    } catch { /* Never turn a committed activation into a reported failure. Pending intent exposes missing final evidence. */ }
     return {active,fitness,evidenceBinding};
   }
 
