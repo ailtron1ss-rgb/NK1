@@ -1,3 +1,17 @@
+## Latest durable checkpoint — WorkPass418 (2026-10-23)
+
+- Continue on existing `feature/learning` / open draft PR #79 to `integration`; do not create a duplicate PR.
+- Personal curriculum restore now quarantines all persisted rows sharing an ID/family and checks counters, score ranges, context count and metadata before admitting rows. Online observations and goal ranking use NK1's `LearningTrustBoundary` plain-data snapshot before reading external inputs.
+- Goal source/status are checked against `OrganismGoal`; invalid goal identities/context controls and non-unit scores are rejected. Equal-scoring goals use stable goal-ID ordering.
+- Lifecycle diagnostics count unique currently satisfied/suppressed threads, reconciled from saved rows rather than trusting possibly inconsistent counter snapshots.
+- Tests are wired through `test:big-pass-122`; WorkPass417 focused workflow includes Node 24, typecheck, input/restore tests and core restart persistence.
+- **CI blocker persists:** latest Actions failure shows `runner_id=0` and zero job steps. Exact-head tests/typecheck are not confirmed; do not label them passing. No learning uplift claimed.
+- **Estimates unchanged:** learning implementation 83%; confirmed production readiness ~45%.
+- Next: obtain an actionable runner result, then trace caller provenance for curriculum's `verified` flag and bind it to evidence from the canonical P23 ledger, followed by measured held-out transfer/retention and durable revision/rollback cycles.
+- `main` and the Release ZIP remain unchanged.
+
+---
+
 ## Latest durable checkpoint — WorkPass417 (2026-10-23)
 
 - **Continue on the existing category branch `feature/learning` and draft PR #79 → `integration`. Do not create a duplicate branch/PR for this pass.**
