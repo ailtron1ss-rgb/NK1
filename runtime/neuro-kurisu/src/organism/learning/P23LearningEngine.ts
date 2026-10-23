@@ -1078,8 +1078,8 @@ export class P23LearningEngine {
           evaluationFingerprint:evaluation.evaluationFingerprint,
           planFingerprint:fitness.planFingerprint,
           environmentFingerprint:fitness.environmentFingerprint,
-          event:'activation-failed',
-          reasonCodes:['skill-store-activation-failed'],
+          event:'activation-outcome-unknown',
+          reasonCodes:['activation-result-uncertain'],
           activatedVersion:null,
         });
       } catch { /* Preserve the original activation failure; pending intent remains visible. */ }
