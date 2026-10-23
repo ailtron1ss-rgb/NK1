@@ -1,3 +1,15 @@
+## WorkPass401 — explicit strict mode for task-family provenance (2026-10-23)
+
+- **NK1 gap:** WorkPass400 computes family-level regression only when canonical `taskFamily` metadata is present. Guessing family from task ID would be unsafe, but a production caller also needs a way to ensure expected family-level evaluation did not silently become a no-op.
+- **Adaptation:** `SkillLearnBenchAdapter.ts` adds `minimumValidationFamilies` and `minimumHoldoutFamilies`. Each counts only families with enough distinct tasks according to the configured per-family task minimum. Coverage below a requested floor rejects the candidate using explicit reason codes.
+- **Compatibility:** Defaults are 0 so older/test-only reports without family provenance preserve behavior; benchmark/production profiles should set a positive minimum and supply family labels from the canonical manifest. Family identity is never invented.
+- **Regression:** P29 now asserts that missing family labels produce zero evaluated families and block eligibility when strict validation and holdout coverage are required. Negative and fractional minimums are rejected.
+- **Research connection:** SkillLearnBench's multi-domain task structure supports explicit stratified evaluation; Hermes Self-Evolution's separation of candidate improvement and guarded promotion motivates making the evaluator profile explicit.
+- **Limitations:** This code does not prove a supplied family label is canonical on its own; production should bind it from the independent evaluator/manifest fingerprint. Actual test/typecheck runs remain unverified because GitHub Actions jobs expose no step logs.
+- **Artifact:** [WorkPass401 strict family coverage](WORKPASS401_STRICT_FAMILY_COVERAGE_RU.md).
+
+---
+
 ## WorkPass400 — prevent regression across a validation task family (2026-10-23)
 
 - **Source evidence:** [SkillLearnBench](https://arxiv.org/abs/2604.20087) uses 20 verified tasks across 15 sub-domains and evaluates skill quality, execution trajectory and task outcome; its results report that gains vary across tasks and model setups. [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution) describes candidate evaluation under explicit test/size/semantic guardrails before review/promotion.
