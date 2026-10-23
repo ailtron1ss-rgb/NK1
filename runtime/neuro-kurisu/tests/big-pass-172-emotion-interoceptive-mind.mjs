@@ -120,6 +120,18 @@ assert.throws(() => accessorSafeEmotion.recordOutcome({
 'prototype property names cannot be treated as learned action outcomes');
 assert.deepEqual(accessorSafeEmotion.snapshot(), emotionPrototypeBefore,
   'rejected prototype-like action names must not mutate emotion calibration');
+
+const emotionOutcomeStateBeforeRangeFailure=accessorSafeEmotion.snapshot();
+assert.throws(()=>accessorSafeEmotion.recordOutcome({
+  action:'rest',success01:Number.NaN,surprise01:.1,regulationCost01:.2,
+}),/emotion-outcome-values-invalid/,
+'non-finite outcome evidence must not silently become a low calibration score');
+assert.throws(()=>accessorSafeEmotion.recordOutcome({
+  action:'rest',success01:.9,surprise01:.1,regulationCost01:1.01,
+}),/emotion-outcome-values-invalid/,
+'out-of-range homeostatic cost must be rejected instead of clamped');
+assert.deepEqual(accessorSafeEmotion.snapshot(),emotionOutcomeStateBeforeRangeFailure,
+  'invalid affect-outcome values must not change action calibration or affect state');
 let lookupActionCoercions = 0;
 const hostileLookupAction = { toString() { lookupActionCoercions++; return 'rest'; } };
 assert.equal(accessorSafeEmotion.outcomeCalibration(hostileLookupAction), null);
