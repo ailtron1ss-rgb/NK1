@@ -15,6 +15,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
+      - uses: actions/upload-artifact@v7
+      - uses: actions/download-artifact@v7
       - name: Verify selected Node.js matches repository pin
         run: |
           expected="$(tr -d '[:space:]' < .nvmrc)"
@@ -38,19 +40,21 @@ test("accepts current first-party Actions and an asserted repository Node pin", 
   assert.deepEqual(exactPinErrors, []);
 });
 
-test("rejects retired checkout/setup-node action majors", () => {
+test("rejects retired first-party Node-based action majors", () => {
   const errors = validateCiConfig({
-    workflows: { "old.yml": "steps:\n  - uses: actions/checkout@v4\n  - uses: actions/setup-node@v4\n" },
-    nodeVersion: "22.16.0"
+    workflows: { "old.yml": "steps:\\n  - uses: actions/checkout@v4\\n  - uses: actions/setup-node@v4\\n  - uses: actions/upload-artifact@v4\\n  - uses: actions/download-artifact@v4\\n" },
+    nodeVersion: "24"
   });
-  assert.ok(errors.length >= 2, `expected action-version errors, got: ${errors.join("\n")}`);
-  assert.match(errors.join("\n"), /checkout@v4/);
-  assert.match(errors.join("\n"), /setup-node@v4/);
+  assert.ok(errors.length >= 4, `expected action-version errors, got: ${errors.join("\\n")}`);
+  assert.match(errors.join("\\n"), /checkout@v4/);
+  assert.match(errors.join("\\n"), /setup-node@v4/);
+  assert.match(errors.join("\\n"), /upload-artifact@v4/);
+  assert.match(errors.join("\\n"), /download-artifact@v4/);
   const pinnedShaErrors = validateCiConfig({
-    workflows: { "sha-pinned.yml": "steps:\n  - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567\n" },
-    nodeVersion: "22.16.0"
+    workflows: { "sha-pinned.yml": "steps:\\n  - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567\\n" },
+    nodeVersion: "24"
   });
-  assert.match(pinnedShaErrors.join("\n"), /approved Node.js-24-compatible v7\+ release tag/);
+  assert.match(pinnedShaErrors.join("\\n"), /approved Node.js-24-compatible v7\\+ release tag/);
 });
 
 test("requires setup-node to use and assert the shared .nvmrc", () => {
