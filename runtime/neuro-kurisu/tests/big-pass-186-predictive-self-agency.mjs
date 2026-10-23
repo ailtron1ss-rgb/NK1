@@ -95,6 +95,34 @@ assert.throws(
 assert.deepEqual(corruptedBrain.snapshot(), beforeUnknownAgencyAction,
   'invalid-action outcome rejection must happen before any self-model update');
 
+// Malformed reward/causal evidence and hostile observed-state objects cannot mutate
+// self-agency weights or increase prediction samples before they are rejected.
+assert.throws(
+  () => corruptedBrain.learnOutcome('explore', Number.NaN, state(3, 1003), false, .5),
+  /predictive-self-agency-outcome-invalid/,
+);
+assert.deepEqual(corruptedBrain.snapshot(), beforeUnknownAgencyAction,
+  'non-finite reward rejection must happen before prediction or weight updates');
+assert.throws(
+  () => corruptedBrain.learnOutcome('explore', .8, state(3, 1003), false, 1.01),
+  /predictive-self-agency-causal-match-invalid/,
+);
+assert.deepEqual(corruptedBrain.snapshot(), beforeUnknownAgencyAction,
+  'out-of-range causal evidence must not mutate the model');
+let observedStateGetterReads=0;
+const getterObservedState={...state(3,1003)};
+Object.defineProperty(getterObservedState,'needs',{
+  enumerable:true,configurable:true,
+  get(){observedStateGetterReads++;return state(3,1003).needs;},
+});
+assert.throws(
+  () => corruptedBrain.learnOutcome('explore', .8, getterObservedState, false, .5),
+  /predictive-self-agency-outcome-state-invalid/,
+);
+assert.equal(observedStateGetterReads,0,'learning must reject getter-backed outcome state before reading it');
+assert.deepEqual(corruptedBrain.snapshot(), beforeUnknownAgencyAction,
+  'hostile outcome state must be rejected before any self-agency mutation');
+
 
 let selfGetterReads = 0;
 const accessorSelfState = { version: 1 };
