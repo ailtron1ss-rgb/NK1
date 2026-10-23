@@ -60,3 +60,10 @@ All rows above reported a merge base in the GitHub comparison response. This sup
 ## Safe merge execution policy
 
 The current GitHub connector exposes file-level reads/writes and commit/tree primitives but does not expose a confirmed bulk cherry-pick operation in the discovered tool set. Therefore integration must be performed as a sequence of explicit file-level changes or via a reviewed pull request; do not label a source branch merged solely because its name is listed here.
+
+## Follow-up verification — learning-integrity overlap (2026-10-23)
+
+- Enumerated the full `runtime/neuro-kurisu/src/organism/learning/` directory in both `workpass71-learning-integrity` and this integration workspace. The source branch has **no learning-module filenames missing from the workspace**; the workspace has 46 additional learning modules not present in that older branch snapshot.
+- Compared `CausalExperienceStream.ts` at source level. The integration version contains additional safeguards absent from the older source snapshot: control-character rejection before ID trimming, bounded task IDs, validated action allowlist, observed-state validation, bounded runtime policy vectors, and a learning/consolidation lane restricted to state-grounded runtime outcomes.
+- Decision: **do not overwrite** the integration version with the older branch version. This would remove security and evidence-integrity constraints. The learning-integrity branch remains a semantic reference for the overlapping core/controller/benchmark files; any further port must be a method-level merge, not a file replacement.
+- This follow-up is a comparison result, not a claim that the source branch has been merged or that tests passed. The release ZIP remains untouched.
