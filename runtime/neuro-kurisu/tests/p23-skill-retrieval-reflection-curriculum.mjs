@@ -57,6 +57,19 @@ assert.ok(reflections[0].evidenceNeeded.includes('independent'));
    { id: 'invalid-target', family: 'memory', uncertainty01: Number.NaN, readiness01: .8, transfer01: .6, novelty01: .4, verificationCost01: .2, repairValue01: .9 },
  ]);
  assert.deepEqual(screenedTargets.map(target => target.id), ['valid-target'], 'malformed target scores must not enter priority ranking');
+assert.deepEqual(rankLearningTargets([
+   { id: 'duplicate-target', family: 'memory', uncertainty01: .7, readiness01: .8, transfer01: .6, novelty01: .4, verificationCost01: .2, repairValue01: .9 },
+   { id: 'duplicate-target', family: 'memory', uncertainty01: .7, readiness01: .8, transfer01: .6, novelty01: .4, verificationCost01: .2, repairValue01: .9 },
+ ]).map(target => target.id), ['duplicate-target'], 'an exact duplicate target must not occupy two curriculum slots');
+ assert.deepEqual(rankLearningTargets([
+   { id: 'conflict-target', family: 'memory', uncertainty01: .7, readiness01: .8, transfer01: .6, novelty01: .4, verificationCost01: .2, repairValue01: .9 },
+   { id: 'conflict-target', family: 'memory', uncertainty01: .99, readiness01: .99, transfer01: .99, novelty01: .99, verificationCost01: 0, repairValue01: .99 },
+   { id: 'independent-target', family: 'personality', uncertainty01: .6, readiness01: .7, transfer01: .5, novelty01: .3, verificationCost01: .3, repairValue01: .7 },
+ ]).map(target => target.id), ['independent-target'], 'conflicting target IDs must be excluded instead of selecting whichever row scores higher');
+ assert.deepEqual(rankLearningTargets([
+   { id: 'malformed-target', family: 'memory', uncertainty01: .7, readiness01: .8, transfer01: .6, novelty01: .4, verificationCost01: .2, repairValue01: .9 },
+   { id: 'malformed-target', family: 'memory', uncertainty01: Number.NaN, readiness01: .8, transfer01: .6, novelty01: .4, verificationCost01: .2, repairValue01: .9 },
+ ]), [], 'a malformed row cannot leave a same-ID valid row eligible');
  let targetGetterCalls = 0;
  const getterTarget = Object.defineProperties({}, {
    id: { enumerable: true, get() { targetGetterCalls++; return 'getter-target'; } },
