@@ -50,9 +50,9 @@ export class OperationalMicroCycleRuntime {
     state.at = at;
     state.tick += 1;
     const body = observation.embodiment;
-    const targetEnergy = body?.bodyEnergy01 ?? state.needs.energy;
-    const targetCapacity = body?.cognitiveCapacity01 ?? (1 - state.needs.cognitiveLoad);
-    const thermal = body?.thermalStrain01 ?? state.needs.cognitiveLoad;
+    const targetEnergy = clamp(finiteOr(body?.bodyEnergy01, state.needs.energy));
+    const targetCapacity = clamp(finiteOr(body?.cognitiveCapacity01, 1 - state.needs.cognitiveLoad));
+    const thermal = clamp(finiteOr(body?.thermalStrain01, state.needs.cognitiveLoad));
     state.needs.energy = clamp(state.needs.energy * 0.94 + targetEnergy * 0.06);
     state.needs.cognitiveLoad = clamp(state.needs.cognitiveLoad * 0.90 + (1 - targetCapacity) * 0.10 + (thermal > 0.72 ? 0.02 : 0));
     state.needs.uncertainty = clamp(state.needs.uncertainty * 0.985);
@@ -88,7 +88,7 @@ export class OperationalMicroCycleRuntime {
       identity01: microIdentity01,
       grounding01: microP51.groundingQuality01,
       causalAlignment01: microP50.selfWorldAlignment01,
-      stress01: 1 - clamp(body?.cognitiveCapacity01 ?? 0.8),
+      stress01: 1 - clamp(finiteOr(body?.cognitiveCapacity01, 0.8)),
     });
     persistedState.system.temporalResolution = cognitiveRuntime.temporalResolutionGovernor.snapshot();
     const microResource = developmentalNeural.resourceAllocator.snapshot();
@@ -120,10 +120,10 @@ export class OperationalMicroCycleRuntime {
       0.5,
       thermal,
       targetCapacity,
-      Number(body?.battery01 ?? state.needs.energy),
-      Number(body?.sensoryFreshness01 ?? 0.8),
-      Number(body?.cpuLoad01 ?? state.needs.cognitiveLoad),
-      Number(body?.ramPressure01 ?? microResource.ramPressure01),
+      finiteOr(body?.battery01, state.needs.energy),
+      finiteOr(body?.sensoryFreshness01, 0.8),
+      finiteOr(body?.cpuLoad01, state.needs.cognitiveLoad),
+      finiteOr(body?.ramPressure01, microResource.ramPressure01),
       state.attentionBudget,
       persistedState.facets.consciousness.identityContinuity.goalContinuity,
       Math.sin(state.tick * 0.071) * 0.5 + 0.5,
@@ -145,7 +145,7 @@ export class OperationalMicroCycleRuntime {
       goalPressure01: state.needs.goalPressure,
       identityGap01: clamp(1 - persistedState.facets.consciousness.identityContinuity.continuity),
       identityVector: developmentalNeural.neuralAutobiographicalIdentityB284.identityLatent(),
-      sensorFreshness01: Number(body?.sensoryFreshness01 ?? 0.8),
+      sensorFreshness01: clamp(finiteOr(body?.sensoryFreshness01, 0.8)),
       worldConfidence01: clamp(0.35 + (1 - state.needs.uncertainty) * 0.25),
       selfContinuity01: clamp(persistedState.facets.consciousness.identityContinuity.continuity),
     });
