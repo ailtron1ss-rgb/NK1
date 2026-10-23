@@ -1,3 +1,34 @@
+## WorkPass449 — verified upstream mechanisms and current implementation delta (2026-10-23)
+
+### Hermes Agent Self-Evolution / GEPA — mechanism adapted, not vendored
+- Primary source: https://github.com/NousResearch/hermes-agent-self-evolution (the repository README identifies the project as MIT-licensed and describes trace-driven reflective mutation, candidate evaluation, test/size/semantic constraints, and reviewable PR-based promotion).
+- NK1 source donor inspected: https://github.com/ailtron1ss-rgb/NK1/tree/workpass328-upstream-donor-gate, especially `runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts` and `tests/p29-hermes-reflective-candidate-gate.mjs`.
+- **Adapted in code:** WorkPass441/commit `780d774f4fb29963d99ad08bda51a84f5a39b263` ports independent holdout regression limits for task success, trajectory quality, and skill quality into `feature/learning`, preserving existing paired trials, family-level regression, safety gate, and approval boundary. This is a native NK1 adaptation; no external Python optimizer or new dependency was installed.
+- **Still open:** trace-to-repair-to-candidate end-to-end provider wiring, exact-head evaluation, rollback proof, and matched real-task learning-uplift measurements. Unit fixtures are not measured uplift.
+
+### Letta / MemFS — versioned memory as an architectural reference
+- Primary sources: https://docs.letta.com/configuration/memory and https://github.com/letta-ai/letta-code. Their docs describe reviewable, git-backed memory files, cross-session continuity, and consolidation/dreaming.
+- **NK1 decision:** keep `runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts` as the sole canonical memory owner; do not add a parallel MemFS store. Preserve provenance, temporal validity, revision lineage, bounded restore/query behavior, and reviewable consolidation as the transferable properties.
+- **Adapted in this pass:** WorkPass447/commit `14b12d738c35ba14891a2d474f8d23ccd6ecdfeb` hardens temporal retrieval-control ingestion before counters or indexes mutate. This is a trust-boundary improvement, not a claim that Letta code was copied.
+
+### Voyager — compositional skill reuse and feedback-guided revision
+- Primary source: https://github.com/MineDojo/Voyager (MIT license; README describes automatic curriculum, an executable compositional skill library, checkpoint/resume, and iterative repair using environment feedback, errors, and self-verification).
+- **Reusable lesson:** learned behavior must be versioned, retrievable by task/context, composed under dependency constraints, and improved against execution feedback; reuse must be demonstrated on unseen NK1 task families, not Minecraft-specific reward logic.
+- **Disposition:** protocol/design reference only in this pass; no Voyager runtime/dependencies vendored, and no performance claim is made.
+
+### Current NK1 commits in this follow-up
+- `feature/learning` — `780d774f4fb29963d99ad08bda51a84f5a39b263`: candidate per-axis holdout regression gate.
+- `feature/perception` — `8a38fd74c10f1863da995692e334238e15e4849e`: bounded snapshot on unified-cycle restore.
+- `feature/feedback` — `45758ede29ee884cd2eaf3b24b5b7baf979fa923` and `4cacd0bb177dba5033f00d4b8d67fb972cfcd36d`: verified-outcome and manifest ingress guards.
+- `feature/visual-embodiment` — `5e1fa2523b13f1e9596848e160fec89b5a3aace7`: persisted body-schema normalization before runtime start.
+- `feature/personality` — `6d0cb1a2d6eb9fe9c36a1f0b5e572e0696260892`: live self-agency observation guard.
+- `feature/memory` — `14b12d738c35ba14891a2d474f8d23ccd6ecdfeb`: temporal retrieval options boundary.
+- `feature/emotions` — `8c86aa1b315f1e73e44668d42a7e21585dec912e`: prototype-safe emotion action calibration.
+- **License discipline:** code is adapted by mechanism rather than copied wholesale. Before adding upstream source files/dependencies, re-check the exact repository/license/revision and preserve provenance. Do not vendor AGPL Darwinian Evolver into NK1 by default.
+- **Verification truth:** regression tests were added but exact-head execution is not verified; current Actions examples terminate before the first step with `runner_id=0` and zero steps. No learning or runtime-quality uplift is claimed.
+
+---
+
 ## WorkPass266 — primary-source metadata check for memory and neuroscience candidates (2026-10-22)
 
 - [AMA-Bench, ICML 2026](https://proceedings.mlr.press/v306/zhao26bs.html) — publisher record describes long-horizon memory over agent/environment trajectories (states, actions, observations and tool output). Use its protocol as a candidate for trajectory-grounded evaluation; code/data integration has not been performed.

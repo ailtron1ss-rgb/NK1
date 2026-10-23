@@ -72,8 +72,31 @@ The human-brain analogy is functional only: global-workspace/broadcast ideas inf
 - **Voyager:** adapt feedback-guided repair, compositional skill retrieval and automatic curricula; validate on NK1 tasks rather than transplanting Minecraft-specific reward logic.
 - **Neuroscience analogies:** use GNW/workspace, predictive processing, interoception/homeostasis, episodic replay and executive control as hypotheses for interfaces and ablations. They are not proof that the runtime is conscious or a reason to add biological mechanisms without measured benefit.
 
-## Current-session gate status (2026-10-23)
+## Follow-up execution status (2026-10-23)
 
-- 17 commits were added to existing category branches across WorkPass424–440, including reward-aware reflection, reason-coded repair suggestions, bounded live-input ingress and explicit independent postcondition proof.
-- Regression files and changelog entries are present, but runtime execution/typecheck for these exact heads is unconfirmed while runner assignment fails before job steps. Keep affected PRs draft.
-- PRs #79–84 and #87 remain drafts for their respective category changes. `main` remains unchanged. The binary release archive has not been updated in this pass.
+### Commits delivered to the existing category branches
+- `feature/learning` — `780d774f4fb29963d99ad08bda51a84f5a39b263`: independent holdout gates for three learning-quality axes.
+- `feature/perception` — `8a38fd74c10f1863da995692e334238e15e4849e`: safe unified-cycle checkpoint restore.
+- `feature/feedback` — `45758ede29ee884cd2eaf3b24b5b7baf979fa923`, `4cacd0bb177dba5033f00d4b8d67fb972cfcd36d`: safe outcome and task-manifest intake.
+- `feature/visual-embodiment` — `5e1fa2523b13f1e9596848e160fec89b5a3aace7`: strict body-state normalization on initialization.
+- `feature/personality` — `6d0cb1a2d6eb9fe9c36a1f0b5e572e0696260892`: safe live self-agency observations.
+- `feature/memory` — `14b12d738c35ba14891a2d474f8d23ccd6ecdfeb`: validated temporal retrieval controls.
+- `feature/emotions` — `8c86aa1b315f1e73e44668d42a7e21585dec912e`: prototype-safe action calibration and lookup.
+- No new dependencies were introduced by these changes. Code, regression additions and changelog notes are stored together in their owning branches.
+
+### Evidence and delivery scorecard
+| Measure | Current result | Meaning |
+|---|---:|---|
+| Target category branches with a new implementation commit | 7/7 (100%) | Code has been committed to category branches; this is not merged coverage. |
+| Target branches with regression cases added | 7/7 (100%) | Regression source exists; it has not yet been executed on these exact heads. |
+| Exact-head suites confirmed passing in this pass | 0/7 (0%) | Unverified, not green. |
+| Category PRs merged into `integration` | 0/7 (0%) | PRs remain separate to respect branch ownership and avoid unverified merges. |
+| Current release ZIP updated and hash-verified | 0/1 (0%) | `main` and the binary release artifact are unchanged. |
+| Overall engineering readiness estimate | 46/100 (46%) | Preserve prior baseline until exact-head CI and end-to-end evidence exist. |
+
+### Infrastructure blocker
+- Representative exact-head runs: [P26 learning validation](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40000062972), [cognitive contracts](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40000505529), [verified outcomes](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40000767939), and [embodiment validation](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40000952156).
+- Each inspected job finished with `runner_id=0`, blank runner name and zero steps. This is a runner-startup failure; it does not identify a failing assertion or prove the new code passes.
+- Keep category PRs draft until a runner is provisioned and the owning test/typecheck plus cross-category contract suite execute on the exact SHA. Do not spend more runs retrying the same pre-step failure.
+
+`main` and the binary release archive have not been changed. The next highest-value step is to restore a real runner, execute the new regression suites, then resolve any actual application failures before integration.

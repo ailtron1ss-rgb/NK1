@@ -1,3 +1,13 @@
+## NK1 WorkPass449 — reconcile seven category passes and upstream research provenance (2026-10-23)
+
+- Refreshed the persistent branch-goal scorecard with the exact current category commit SHAs, regression-authored state, PR/integration status, and runner-startup evidence.
+- Added a research-intake record tying the three follow-up mechanisms to primary sources: Hermes Self-Evolution/GEPA for trace-guided candidate evolution, Letta/MemFS for versioned/reviewable memory consolidation, and Voyager for compositional skill reuse and feedback-guided repair. Adaptation vs. source-code vendoring is explicitly distinguished.
+- Corrected the Russian master plan's stale statement that category branches had no feature commits. Seven category branches now have implementation commits; zero category PRs are merged and zero exact-head suites are confirmed passing in this follow-up.
+- Preserved the previous overall readiness baseline of 46/100; code commits and authored regressions are not treated as test passes, measured learning uplift, integrated runtime readiness, or release completeness.
+- `main` and the binary release ZIP remain unchanged.
+
+---
+
 ## NK1 WorkPass441 — explicit branch goals, brain wiring and exit gates (2026-10-23)
 
 - Added `docs/NK1_BRANCH_GOALS_AND_EXIT_GATES.md` on the existing planning branch. It defines the finish state of each current category branch, cross-domain interfaces, evidence-based exit gates, the unified cognitive/action/learning loop and a sequenced next-pass plan.
