@@ -1,3 +1,12 @@
+## NK1 WorkPass458 — unify provenance authority ceilings across memory ingress (2026-10-23)
+
+- Extended the same Hexis-inspired provenance ceiling to every MemoryOS2 ingress path: the canonical memory row, its primary evidence row, serialized evidence-trail rows, and the explicit residual confidence-revision API. Explicit lower trust values are preserved; caller-supplied authority cannot exceed the default maximum of its declared provenance class.
+- Tightened the restored confidence-revision receipt validator: impossible applied/reason combinations and un-applied rows that change confidence are discarded; support receipts cannot lower confidence and contradiction receipts cannot raise it.
+- Added a regression proving an external input with sourceAuthority01=1.0 is normalized to the .90 external-source ceiling on both memory and its evidence trail. No dependencies added.
+- **Verification:** new regression source committed; exact-head execution still unverified due to the hosted-runner startup blocker.
+
+---
+
 ## NK1 WorkPass449 — audited source-aware belief revision (2026-10-23)
 
 - Added `P65EpistemicLedger.reviseBeliefFromEvidence`: evidence IDs are idempotent, independent sources update belief confidence in log-odds space, contradictions reduce confidence, and repeated same-source evidence cannot repeatedly inflate confidence.
