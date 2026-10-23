@@ -65,8 +65,12 @@ const isSafeTaskFamily = (value: unknown): value is string =>
     return code<=0x1f||(code>=0x7f&&code<=0x9f);
   });
 
+const MAX_RUBRIC_ITEMS=4096;
+const MAX_RUBRIC_ID_LENGTH=256;
+
 function validateUniqueIds(ids: unknown, field: string): asserts ids is string[] {
-  if (!Array.isArray(ids) || ids.some((id) => !isNonEmptyString(id))) {
+  if (!Array.isArray(ids) || ids.length>MAX_RUBRIC_ITEMS ||
+      ids.some((id) => !isNonEmptyString(id) || id.length>MAX_RUBRIC_ID_LENGTH)) {
     throw new Error(`invalid-${field}`);
   }
   if (new Set(ids).size !== ids.length) throw new Error(`duplicate-${field}`);
@@ -76,15 +80,19 @@ function ratio(numerator: number, denominator: number): number {
   return denominator === 0 ? 1 : Number((numerator / denominator).toFixed(6));
 }
 
-/** Count reference steps observed in reference order (not merely present). */
+/** Count reference steps observed in reference order in linear rather than quadratic time. */
 function orderedMatches(expected: string[], observed: string[]): number {
-  let cursor = 0;
-  let matched = 0;
-  for (const step of expected) {
-    const index = observed.indexOf(step, cursor);
-    if (index >= 0) {
-      matched += 1;
-      cursor = index + 1;
+  // observed IDs are validated as unique, so an index preserves indexOf(step,
+  // cursor) semantics while avoiding a full suffix scan for every missing step.
+  const positions=new Map<string,number>();
+  for(let i=0;i<observed.length;i++)positions.set(observed[i]!,i);
+  let cursor=0;
+  let matched=0;
+  for(const step of expected) {
+    const index=positions.get(step);
+    if(index!==undefined&&index>=cursor) {
+      matched++;
+      cursor=index+1;
     }
   }
   return matched;
