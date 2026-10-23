@@ -1,3 +1,15 @@
+## WorkPass331 — regenerate reflective revision baselines from the canonical P23 store (2026-10-23)
+
+- **Observed trust gap:** the provider-supplied `baseline` and `candidateEvaluation` reports were copied through to the P23 revision planner unchanged, while only the newly generated payload went through the independent evaluator. These report arrays influenced repair targets and the baseline-vs-revision fitness gate.
+- **Code:** production `withIndependentCandidateEvaluation` now resolves the active payload and source-candidate payload from `P23LearningEngine.verifiedSkillCandidateSnapshot()`. It independently evaluates both, replaces provider report arrays with these generated results, then independently evaluates the newly generated revision. The provider's own evaluator is never invoked on this path.
+- **Matching gate:** validates payload/evaluation fingerprints, environment, manifest/validation/holdout plan fingerprints, attempt, distinct method identities, task/trial ID coverage, split and seed alignment. Task failures and safety signals remain their actual values; the envelope check is not a success gate.
+- **Method contract:** production evaluator config declares `baselineMethod`, `sourceCandidateMethod`, and the existing revision `experimentAuthority.method`. These must be unique and scheduled in both validation and holdout plans.
+- **Freshness:** active/source version and payload fingerprints are rechecked before returning the revision evaluation. Changed active state fails closed instead of reusing stale baseline metrics.
+- **Regression:** added `workpass331-canonical-revision-baseline.mjs`, registered runtime script `test:workpass331:canonical-revision-baseline`, root `audit:quick`, and WorkPass71 CI step. Exact-head test/typecheck remain unverified because workflow jobs stop before steps.
+- **Boundary:** production deployment still has to provide real host-owned executor/verifier/scanner processes and frozen tasks. No measured improvement is claimed. Full contract: [WorkPass331 report](WORKPASS331_CANONICAL_REVISION_BASELINE_2026-10-23.md).
+
+---
+
 ## WorkPass330 — connect production P23 repair staging to host-owned evaluation (2026-10-23)
 
 - **Observed defect:** `server.mjs` could construct the repair provider and candidate store but did not pass the independent evaluation factory required by `OrganismRuntime` under production. The existing guard correctly rejected this incomplete configuration.
