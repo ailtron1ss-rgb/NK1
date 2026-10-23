@@ -8,6 +8,8 @@
 export type RevisionAuthority = 'independent-verifier' | 'human-review' | 'self-report';
 export interface RevisionObservation {
   taskId: string;
+  /** Version of the exact manifest task; task IDs may be reused when prompts evolve. */
+  taskVersion: string;
   family: string;
   split: 'train' | 'validation' | 'holdout';
   method: string;
@@ -55,6 +57,7 @@ const valid = (value: unknown): value is RevisionObservation => {
   if (!isPlainRecord(value)) return false;
   const row = value;
   if (!isBoundedText(row.taskId, 256) ||
+      !isBoundedText(row.taskVersion, 128) ||
       !isBoundedText(row.family, 128) ||
       !isBoundedText(row.method, 128) ||
       !isBoundedText(row.verifierId, 128) ||
@@ -69,7 +72,7 @@ const valid = (value: unknown): value is RevisionObservation => {
   return row.authority !== 'independent-verifier' || row.verifierId === row.expectedVerifierId;
 };
 
-/** Pair on exact task/version identity (taskId), seed and first attempt; retries and replayed evidence receipts are not independent samples. */
+/** Pair on exact task ID + manifest version + seed + first attempt; retries and replayed evidence receipts are not independent samples. */
 export function evaluateSkillRevision(
   observations: readonly RevisionObservation[],
   baselineMethod: string,
@@ -97,7 +100,7 @@ export function evaluateSkillRevision(
     const receiptKey = JSON.stringify([row.method, row.verifierId, row.evidenceRef.normalize('NFKC').trim()]);
     if (seenEvidenceReceipts.has(receiptKey)) { rejectedRows++; continue; }
     seenEvidenceReceipts.add(receiptKey);
-    const key = JSON.stringify([row.taskId, row.seed, row.attempt]);
+    const key = JSON.stringify([row.taskId, row.taskVersion, row.seed, row.attempt]);
     const pair = byPair.get(key) ?? new Map<string, RevisionObservation>();
     if (pair.has(row.method)) { rejectedRows++; continue; }
     pair.set(row.method, row);

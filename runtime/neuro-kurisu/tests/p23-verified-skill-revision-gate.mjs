@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { evaluateSkillRevision } from '../src/organism/learning/SkillRevisionGate.ts';
 const rows = [];
-const add = (taskId, family, method, passed, seed=1, authority='independent-verifier') => rows.push({
-  taskId, family, split:'holdout', method, seed, attempt:1, passed, authority,
+const add = (taskId, family, method, passed, seed=1, authority='independent-verifier', taskVersion='v1') => rows.push({
+  taskId, taskVersion, family, split:'holdout', method, seed, attempt:1, passed, authority,
   verifierId:'verifier-v1', expectedVerifierId:'verifier-v1', evidenceRef:`artifact://${taskId}/${method}`
 });
 for (let i=0;i<10;i++) {
@@ -22,8 +22,8 @@ assert.ok(result.rejectedRows >= 1);
 const regressed = [];
 for (let i=0;i<10;i++) {
   const family = i<5?'memory':'tool-use';
-  regressed.push({taskId:`r-${i}`,family,split:'holdout',method:'baseline',seed:1,attempt:1,passed:true,authority:'human-review',verifierId:'human',expectedVerifierId:'v',evidenceRef:`b-${i}`});
-  regressed.push({taskId:`r-${i}`,family,split:'holdout',method:'candidate',seed:1,attempt:1,passed:i<5,authority:'human-review',verifierId:'human',expectedVerifierId:'v',evidenceRef:`c-${i}`});
+  regressed.push({taskId:`r-${i}`,taskVersion:'v1',family,split:'holdout',method:'baseline',seed:1,attempt:1,passed:true,authority:'human-review',verifierId:'human',expectedVerifierId:'v',evidenceRef:`b-${i}`});
+  regressed.push({taskId:`r-${i}`,taskVersion:'v1',family,split:'holdout',method:'candidate',seed:1,attempt:1,passed:i<5,authority:'human-review',verifierId:'human',expectedVerifierId:'v',evidenceRef:`c-${i}`});
 }
 result = evaluateSkillRevision(regressed,'baseline','candidate',{minPairedTasks:8,minAbsoluteGain:0,maxFamilyRegression:.1});
 assert.equal(result.accepted,false);
@@ -36,6 +36,15 @@ const replayed = [...rows,
 result = evaluateSkillRevision(replayed, 'baseline', 'candidate', {minPairedTasks:8,minAbsoluteGain:.1});
 assert.equal(result.pairedN, 10, 'reused verifier receipts must not create an eleventh independent pair');
 assert.ok(result.rejectedRows >= 2, 'both replayed method receipts should be rejected');
+
+// The same task ID can be re-used after its manifest/prompt version changes.
+// Baseline v1 must never pair with candidate v2.
+const versionMixed = rows.map(row => row.taskId === 'task-0' && row.method === 'candidate'
+  ? {...row, taskVersion:'v2'}
+  : row);
+result = evaluateSkillRevision(versionMixed, 'baseline', 'candidate');
+assert.equal(result.pairedN, 9, 'cross-version task identity must not contribute a paired sample');
+assert.equal(result.accepted, true, 'the remaining nine valid task/version pairs remain independently sufficient');
 // Validation/train observations are deliberately excluded.
 result = evaluateSkillRevision(rows.map(x=>({...x,split:'train'})),'baseline','candidate');
 assert.equal(result.pairedN,0);
@@ -46,6 +55,7 @@ const malformedRows = [
   null,
   {},
   {...rows[0], taskId: 42},
+  {...rows[0], taskVersion: null},
   {...rows[0], family: {label:'memory'}},
   {...rows[0], method: ['candidate']},
   {...rows[0], verifierId: {trim: 'not-a-function'}},

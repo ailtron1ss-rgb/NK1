@@ -2158,3 +2158,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 - Reworked two WorkPass339 test fixtures to construct actual newline and NUL characters using `String.fromCharCode`, avoiding double-escaped source literals that could accidentally test printable backslash sequences instead of control characters.
 - This is a test-fixture correction only; no claim of runtime execution is made while the hosted job returns no steps/logs.
+
+
+## NK1 WorkPass341 — bind reflective comparisons to task versions
+
+- **Fixed:** `RevisionObservation` now carries the exact `taskVersion`; the paired-sample key is `taskId + taskVersion + seed + attempt`. Reused task IDs with different manifest versions can no longer be counted as a matched baseline/candidate observation.
+- **Integrated:** `VerifiedSkillPromotion` now carries the active manifest task version into the canonical revision gate instead of dropping it during adaptation.
+- **Regression added:** the revision gate checks that baseline v1 and candidate v2 for the same task ID do not form a pair; malformed missing task-version values are rejected.
+- **Research principle:** paired controlled evaluation must compare the same task definition and avoid sample inflation when task definitions evolve. This follows the project's existing manifest-bound evaluation architecture; no external implementation copied.
+- **Validation boundary:** changes and tests are committed; hosted Actions still have no executable steps/logs, so runtime test status remains unverified.

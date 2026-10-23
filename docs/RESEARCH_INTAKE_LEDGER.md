@@ -231,3 +231,11 @@ Do not count a reference as “used” until a source revision/paper protocol is
 - Malformed extra rows are rejected and counted; they cannot crash a batch or inflate the independent paired sample. Invalid top-level collection/config shapes fail explicitly.
 - Upstream context: Hermes Agent Self-Evolution uses trace-guided candidate generation behind test/constraint gates; CleanRL emphasizes controlled, reproducible comparison. NK1 retains its own independent signed-evidence and holdout lifecycle. These are design references, not code copied in this pass.
 - **Unverified:** runtime tests and typecheck await actionable GitHub Actions runner logs.
+
+
+## WorkPass137 — preserve manifest version through skill-revision scoring (2026-10-23)
+
+- Propagated the exact manifest `taskVersion` into each observation passed to the revision gate.
+- The gate now pairs only identical `taskId + taskVersion + seed + first-attempt` records, preventing a reused task ID from making different prompt/task definitions look like a matched experiment.
+- Regression covers mixed-version baseline/candidate rows and malformed version identity. The main promotion path still requires signed evidence, current-manifest matching, seed-level confidence bounds and separate explicit approval.
+- **Unverified:** runtime tests and typecheck have not executed because the current Actions job exposes no runner steps/logs.
