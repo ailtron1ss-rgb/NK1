@@ -42,8 +42,12 @@ assert.deepEqual(canonicalCompoundRepairEvidence(sameTimeEvidence).map(row=>row.
 const manyRepairRows=Array.from({length:120},(_,index)=>({
   holdout:false,failureFingerprint:`repair-${String(index).padStart(3,'0')}`,
   stepId:`step-${index}`,toolId:'primary',diagnosis:`verified diagnosis ${index}`,
-  contextSignature:'ctx-a',candidateTools:['fallback'],selectedTool:'fallback',
-  verified:true,confidence01:.9,at:index,
+  contextSignature:'ctx-a',
+  // The newest row is a legitimate failed attempt with no selected replacement.
+  // It is useful diagnostic memory but must not be a skill-revision candidate.
+  candidateTools:index===119?[]:['fallback'],
+  selectedTool:index===119?'':'fallback',
+  verified:index!==119,confidence01:index===119?.2:.9,at:index,
 }));
 const runtimeEvidenceView=Object.create(OrganismRuntime.prototype);
 runtimeEvidenceView.proceduralSkillLibrary={snapshot:()=>({compoundSkills:[{
@@ -55,6 +59,10 @@ assert.equal(newestRepairWindow.length,96,
 assert.equal(newestRepairWindow[0].observedAt,119);
 assert.equal(newestRepairWindow.at(-1).observedAt,24,
   'the retained bounded window must contain the newest repair evidence, not fail on the full ledger size');
+assert.equal(newestRepairWindow[0].revisionEligible,false,
+  'ineligible diagnostic observations remain available without being admitted to revision generation');
+assert.deepEqual(newestRepairWindow[0].candidateTools,[],
+  'a failed attempt without a viable replacement remains in the runtime evidence window');
 
 let providerCalls = 0;
 let stagedCalls = 0;
