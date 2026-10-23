@@ -383,6 +383,13 @@ export function evaluateSkillLearnBenchCandidate(
   if (!baseline || typeof baseline !== 'object' || !candidate || typeof candidate !== 'object') {
     throw new Error('candidate-evaluation-input-invalid');
   }
+  try {
+    baseline=snapshotPlainData(baseline) as typeof baseline;
+    candidate=snapshotPlainData(candidate) as typeof candidate;
+    options=snapshotPlainData(options) as SkillLearnBenchCandidateGateOptions;
+  } catch {
+    throw new Error('candidate-evaluation-data-boundary-rejected');
+  }
   const minGain = options.minimumValidationGain01 ?? 0.005;
   const maxRegression = options.maximumHoldoutRegression01 ?? 0.02;
   const minHoldoutTasks = options.minimumHoldoutTasks ?? 2;
