@@ -1,3 +1,14 @@
+## Current source-stack checkpoint — WorkPass394 (2026-10-23)
+
+- **Learning safety fix:** the report-only `approveReflectiveVerifiedSkillCandidate` API now fails closed. Signed shadow receipts bind run/task identity and binary outcome, not trajectory or skill-quality metrics; caller-supplied scores can no longer authorize production promotion through this legacy route.
+- **Canonical promotion path:** use `approveIndependentlyEvaluatedSkillCandidate` with a fingerprinted independent evaluation envelope matched to the exact staged payload, task/trial/seed/split/environment/manifest and trusted signed receipts, followed by authenticated approval.
+- **Regression/CI:** `runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs` includes an adversarial case whose metrics pass the advisory scorer but whose legacy promotion call must fail before verifier/store access. P26 Learning Validation now watches and runs this test.
+- **Research:** the design is adapted from the independent evaluation and explicit guardrail principles in [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution); no source code was copied and no dependency was added.
+- **Verification state:** source, regression, CI wiring and documentation are committed on `feature/learning`. The test and typecheck have **not** been executed on this exact HEAD in the current environment; no performance uplift is claimed. See [WorkPass394 detail](docs/WORKPASS394_PROMOTION_AUTHORITY_FIREWALL_RU.md).
+- **Release state:** this pass does not modify `main` or replace the large ZIP asset under GitHub Releases.
+
+---
+
 ## Current source-stack checkpoint — WorkPass272 (2026-10-22)
 
 - WorkPass272 hardens evaluator authority isolation: a shared predicate now requires both non-overlapping resolved paths and distinct device/inode filesystem identities for run/survive storage roots, including case-insensitive path comparisons on Windows.
