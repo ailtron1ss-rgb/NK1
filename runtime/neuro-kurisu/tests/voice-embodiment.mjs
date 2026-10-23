@@ -131,4 +131,33 @@ assert.equal(voiceState.lastError, null);
  assert.equal(speechCalls, 0, 'rejected motor input must not reach TTS');
  assert.equal(cameraCalls, 0);
 
+// WorkPass448: a failed pre-action sample returns an explicit receipt and cannot
+// dispatch an action; a failed post-action sample removes proof without erasing action.
+const preflightFailureRuntime = new EmbodimentRuntime();
+preflightFailureRuntime.body = { ...defaultBodyState() };
+preflightFailureRuntime.sample = async () => { throw new Error('sensor bridge unavailable'); };
+const preflightFailureExecutor = new EmbodiedActionExecutor(preflightFailureRuntime);
+const preflightFailure = await preflightFailureExecutor.execute('rest');
+assert.equal(preflightFailure.status, 'failed');
+assert.match(preflightFailure.reason, /^embodied-pre-action-sample-failed:sensor bridge unavailable/);
+assert.equal(preflightFailure.consequenceVerification.attempted, false,
+  'action execution must not start when the required pre-action sample failed');
+
+const postflightFailureRuntime = new EmbodimentRuntime();
+postflightFailureRuntime.body = { ...defaultBodyState() };
+let postflightSampleCalls = 0;
+postflightFailureRuntime.sample = async () => {
+  postflightSampleCalls++;
+  if (postflightSampleCalls === 3) throw new Error('post-action sensor failure');
+  return postflightFailureRuntime.snapshot();
+};
+const postflightFailureExecutor = new EmbodiedActionExecutor(postflightFailureRuntime);
+const postflightFailure = await postflightFailureExecutor.execute('rest');
+assert.equal(postflightFailure.status, 'executed',
+  'action state transition remains visible when follow-up observation fails');
+assert.equal(postflightFailure.reason, 'embodied-rest-state-transition');
+assert.equal(postflightFailure.consequenceVerification.verified, false);
+assert.equal(postflightFailure.consequenceVerification.reason, 'post-action-measurement-failed-effect-unverified');
+assert.equal(postflightSampleCalls, 3);
+
 console.log('VOICE_EMBODIMENT=PASS');
