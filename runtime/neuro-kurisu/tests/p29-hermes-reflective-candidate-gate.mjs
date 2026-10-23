@@ -25,6 +25,24 @@ function trial(taskId, trialId, quality, safetyViolationCount = 0, taskFamily = 
   });
 }
 
+function dimensionTrial(taskId, trialId, { verifierPassed, coveredCapabilityIds, observedStepIds }) {
+  return evaluateSkillLearnBenchTrial({
+    taskId,
+    trialId,
+    verifierPassed,
+    skill: {
+      requiredCapabilityIds: ['inspect', 'reason', 'verify'],
+      coveredCapabilityIds,
+      executable: true,
+      safetyViolationCount: 0,
+    },
+    trajectory: {
+      expectedStepIds: ['inspect', 'reason', 'verify'],
+      observedStepIds,
+    },
+  });
+}
+
 const baseline = {
   validation: [trial('task-a', 'v1', 'weak'), trial('task-b', 'v1', 'weak')],
   holdout: [trial('task-c', 'h1', 'weak'), trial('task-d', 'h1', 'weak')],
@@ -124,6 +142,78 @@ const holdoutRegression = evaluateSkillLearnBenchCandidate(improved, {
 });
 assert.equal(holdoutRegression.eligible, false);
 assert.ok(holdoutRegression.reasons.includes('holdout-regression-exceeds-tolerance'));
+
+// Do not allow the composite score to conceal a trajectory-quality regression.
+const fullSkillAndTrajectory = (taskId, trialId, verifierPassed) => dimensionTrial(taskId, trialId, {
+  verifierPassed,
+  coveredCapabilityIds: ['inspect', 'reason', 'verify'],
+  observedStepIds: ['inspect', 'reason', 'verify'],
+});
+const tradeoffBaseline = {
+  validation: baseline.validation,
+  holdout: [
+    fullSkillAndTrajectory('task-c', 'h1', false),
+    fullSkillAndTrajectory('task-d', 'h1', false),
+  ],
+};
+const tradeoffCandidate = {
+  validation: improved.validation,
+  holdout: [
+    dimensionTrial('task-c', 'h1', {
+      verifierPassed: true,
+      coveredCapabilityIds: ['inspect', 'reason', 'verify'],
+      observedStepIds: ['verify', 'reason', 'inspect'],
+    }),
+    dimensionTrial('task-d', 'h1', {
+      verifierPassed: true,
+      coveredCapabilityIds: ['inspect', 'reason', 'verify'],
+      observedStepIds: ['verify', 'reason', 'inspect'],
+    }),
+  ],
+};
+const componentRegression = evaluateSkillLearnBenchCandidate(tradeoffBaseline, tradeoffCandidate, {
+  maximumHoldoutRegression01: 1,
+});
+assert.ok(componentRegression.holdoutDelta01 > 0,
+  'the composite can improve even when trajectory quality regresses');
+assert.equal(componentRegression.holdoutTrajectoryDelta01 < 0, true);
+assert.equal(componentRegression.eligible, false);
+assert.ok(componentRegression.reasons.includes('holdout-trajectory-regression-exceeds-tolerance'));
+
+// Keep the other two dimensions independently gated as well.
+const taskSuccessRegression = evaluateSkillLearnBenchCandidate(
+  { validation: baseline.validation, holdout: [
+    fullSkillAndTrajectory('task-c', 'h1', true),
+    fullSkillAndTrajectory('task-d', 'h1', true),
+  ] },
+  { validation: improved.validation, holdout: [
+    fullSkillAndTrajectory('task-c', 'h1', false),
+    fullSkillAndTrajectory('task-d', 'h1', false),
+  ] },
+  { maximumHoldoutRegression01: 1 },
+);
+assert.ok(taskSuccessRegression.reasons.includes('holdout-task-success-regression-exceeds-tolerance'));
+
+const skillQualityRegression = evaluateSkillLearnBenchCandidate(
+  { validation: baseline.validation, holdout: [
+    fullSkillAndTrajectory('task-c', 'h1', true),
+    fullSkillAndTrajectory('task-d', 'h1', true),
+  ] },
+  { validation: improved.validation, holdout: [
+    dimensionTrial('task-c', 'h1', {
+      verifierPassed: true,
+      coveredCapabilityIds: ['inspect'],
+      observedStepIds: ['inspect', 'reason', 'verify'],
+    }),
+    dimensionTrial('task-d', 'h1', {
+      verifierPassed: true,
+      coveredCapabilityIds: ['inspect'],
+      observedStepIds: ['inspect', 'reason', 'verify'],
+    }),
+  ] },
+  { maximumHoldoutRegression01: 1 },
+);
+assert.ok(skillQualityRegression.reasons.includes('holdout-skill-quality-regression-exceeds-tolerance'));
 
 // AFTER-inspired family gate: an overall mean improvement cannot hide a severe
 // regression in one task family when the compensating gains come from another.

@@ -1,3 +1,13 @@
+## NK1 WorkPass441 — independent per-axis holdout promotion guard (2026-10-23)
+
+- Ported the useful WorkPass329 mechanism from the donor-gate workstream into the more advanced feature/learning implementation without replacing its task/family gates.
+- A candidate must now stay within separate holdout regression limits for independently verified task success, execution-trajectory quality, and skill quality; improvements to the 50/30/20 composite cannot override any of those hard axis-level checks.
+- Holdout deltas use paired evidence and macro-averages per task, preventing repeated trials from dominating one task's contribution. Default tolerated regression is 0.02 per dimension and each threshold is range-validated.
+- Added behavioral cases for a composite gain that hides trajectory regression plus independent task-success and skill-quality regressions. No new runtime dependency was introduced.
+- **Verification status:** source/test/changelog changes committed together; hosted Actions execution remains unconfirmed. No measured learning uplift is claimed.
+
+---
+
 ## NK1 WorkPass440 — simplify one-time P23 failure classification (2026-10-23)
 
 - Replaced an inline classifier expression with a named local computed once before the immutable experience record is assembled. No behavioral change; improves reviewability and keeps the single normalized result explicit.
