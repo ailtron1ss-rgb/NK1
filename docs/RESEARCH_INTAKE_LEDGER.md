@@ -1,3 +1,10 @@
+## WorkPass390 — reject unchanged skill revisions before expensive evaluation (2026-10-23)
+
+- **Upstream mechanism/risk reviewed:** [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution) uses an iterative generate → evaluate → refine skill loop. The loop is only meaningful when the generated artifact is actually different, fingerprinted, and passed through independent evaluation; accepting unchanged output wastes execution budget and can make a supposed evolution pass a no-op.
+- **NK1 implementation:** P23 now canonicalizes and compares the detached generated payload with the exact source-candidate payload before the independent evaluator is invoked. An unchanged artifact raises the existing `reflective revision payload is unchanged from its source candidate` error before sandbox spend. The later stage-time equality check remains as defense in depth.
+- **End-to-end regression:** the WorkPass389 integration fixture uses signed Ed25519 outcome artifacts, a genuine evidence-backed promotion proposal and the real versioned candidate store. It asserts that accessor-bearing generator/evaluator responses do not invoke their getters or stage candidates, that a no-op payload never calls the evaluator, and that a changed, detached payload with a matching independent-evaluation fingerprint can stage as a shadow candidate.
+- **Scope/validation:** this is a local integration regression using fixture keys and fixture verifier services, not a production benchmark or measured learning gain. The P26 Node.js 24 workflow is wired to run it. Actual test execution remains unverified while Actions job records do not provide step lists or retrievable logs.
+
 ## WorkPass388–389 — verify the revision loop as one connected lifecycle (2026-10-23)
 
 - Replaced self-referential `typeof` casts on detached baseline/candidate/fresh-evaluation snapshots with explicit input/return-type contracts to reduce ambiguity in the TypeScript boundary.
