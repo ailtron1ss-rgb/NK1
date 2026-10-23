@@ -7,6 +7,7 @@ import { LocalEmbeddingProvider, type TextEmbeddingProvider } from './LocalEmbed
 import { cosineSimilarity, fnv1a32 } from '../core/NumericPrimitives.ts';
 export type EpistemicStatus='fact'|'belief'|'hypothesis'|'unknown'|'quarantined';
 export type MemoryProvenanceClass='device'|'external'|'user'|'agent'|'derived'|'simulation'|'unknown';
+export type MemoryConfidenceStance='supports'|'contradicts';
 export interface MemoryEvidenceSource {
  source:string;
  provenanceClass:MemoryProvenanceClass;
@@ -14,6 +15,32 @@ export interface MemoryEvidenceSource {
  independenceKey?:string;
  observedAt:number;
  evidenceFreshnessAt:number;
+ /** The evidence role is explicit; it never changes confidence merely by being stored. */
+ stance?:MemoryConfidenceStance;
+}
+export interface MemoryConfidenceRevision {
+ at:number;
+ stance:MemoryConfidenceStance;
+ priorConfidence:number;
+ posteriorConfidence:number;
+ authority01:number;
+ sourceKey:string;
+ source:string;
+ applied:boolean;
+ reason:'applied'|'duplicate_source'|'protected';
+ policy:'residual_v1';
+}
+export interface MemoryConfidenceRevisionResult {
+ memoryId:string;
+ stance:MemoryConfidenceStance;
+ applied:boolean;
+ reason:'applied'|'duplicate_source'|'protected'|'not_found'|'not_semantic'|'stale_or_inactive';
+ independent:boolean;
+ priorConfidence:number|null;
+ posteriorConfidence:number|null;
+ authority01:number;
+ sourceKey:string;
+ at:number;
 }
 export interface MemoryItem2 { id:string;
 content:string;
@@ -55,6 +82,8 @@ evidenceFreshnessAt?: number;
 evidenceSources?:MemoryEvidenceSource[];
 /** Compact replay guard for lineages trimmed from the visible eight-source trail. */
 evidenceLineageKeys?:string[];
+/** Bounded, durable explanation for each semantic confidence revision. */
+confidenceRevisionHistory?:MemoryConfidenceRevision[];
 dormant:boolean;
 retrievalCount:number;
 semanticVector:number[];
@@ -249,7 +278,7 @@ function bm25Score(queryTokens:string[],content:string,docCount:number,documentF
   for(const q of uniqueQ){const f=tf.get(q)||0;if(!f)continue;const df=documentFrequency.get(q)||0;const idf=Math.log(1+(docCount-df+0.5)/(df+0.5));const denom=f+k1*(1-b+b*dl/avgLen);score+=idf*((f*(k1+1))/denom);}
   return Math.max(0,score);
 }
-type MemoryEncodeInput=Omit<MemoryItem2,'id'|'createdAt'|'lastAccessAt'|'retrievalCount'|'revisionHistory'|'dormant'|'semanticVector'|'temperature01'|'residencyTier'> & {id?:string};
+type MemoryEncodeInput=Omit<MemoryItem2,'id'|'createdAt'|'lastAccessAt'|'retrievalCount'|'revisionHistory'|'confidenceRevisionHistory'|'dormant'|'semanticVector'|'temperature01'|'residencyTier'> & {id?:string};
 export const defaultMemoryOS2=():MemoryOSState2=>({items:[],forgetCount:0,reconsolidations:0,quarantined:0,lastMaintenanceAt:0,semanticQueries:0,semanticHits:0,linkUpdates:0,version:7,implicitConflictCandidates:0,implicitConflictsResolved:0,staleRetrievalsAvoided:0,lastConflictScanAt:0,implicitConflictsDeferred:0,provenanceProtected:0,estimatedBytes:0,byteBudget:524288,budgetEvictions:0,budgetMisses:0,meanEvictionRegret01:0,evictionWitnesses:[]});
 const MAX_MEMORY_REVISION_HISTORY=64;
 const EPISTEMIC_STATUSES=new Set<EpistemicStatus>(['fact','belief','hypothesis','unknown','quarantined']);
@@ -261,8 +290,21 @@ function normalizeRevisionHistory(value:unknown):MemoryItem2['revisionHistory']{
   return [{at,from:row.from as EpistemicStatus,to:row.to as EpistemicStatus,reason:String(row.reason??'').slice(0,240)}];
  });
 }
-type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'> & Partial<Pick<MemoryItem2,'revisionHistory'>>;
-const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,r:normalizeRevisionHistory(m.revisionHistory)})).byteLength);
+const MAX_MEMORY_CONFIDENCE_REVISION_HISTORY=32;
+function normalizeConfidenceRevisionHistory(value:unknown):MemoryConfidenceRevision[]{
+ if(!Array.isArray(value))return [];
+ return value.slice(-MAX_MEMORY_CONFIDENCE_REVISION_HISTORY).flatMap((row:any)=>{
+  if(!row||typeof row!=='object'||!['supports','contradicts'].includes(row.stance)||row.policy!=='residual_v1')return [];
+  const at=Number(row.at),prior=Number(row.priorConfidence),posterior=Number(row.posteriorConfidence),authority=Number(row.authority01);
+  const sourceKey=typeof row.sourceKey==='string'?row.sourceKey.slice(0,320):'';
+  const source=typeof row.source==='string'?row.source.slice(0,240):'';
+  if(!Number.isFinite(at)||at<0||![prior,posterior,authority].every(n=>Number.isFinite(n)&&n>=0&&n<=1)||!sourceKey||!source)return [];
+  if(!['applied','duplicate_source','protected'].includes(row.reason))return [];
+  return [{at,stance:row.stance as MemoryConfidenceStance,priorConfidence:prior,posteriorConfidence:posterior,authority01:authority,sourceKey,source,applied:row.applied===true,reason:row.reason as MemoryConfidenceRevision['reason'],policy:'residual_v1' as const}];
+ });
+}
+type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'> & Partial<Pick<MemoryItem2,'revisionHistory'|'confidenceRevisionHistory'>>;
+const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,r:normalizeRevisionHistory(m.revisionHistory),cr:normalizeConfidenceRevisionHistory(m.confidenceRevisionHistory)})).byteLength);
 export type MemoryTemporalMode='current'|'at'|'all';
 export interface MemoryTemporalQueryOptions { temporalMode?:MemoryTemporalMode; asOfAt?:number; }
 export interface SemanticMemoryPreview { items:MemoryItem2[]; semantic:{enabled:boolean;provider:string;model:string;indexedItems:number;corpusItems:number;coverage01:number;newlyIndexed:number;fallbackReason:string|null;cacheEntries:number;requests:number;failures:number;lastLatencyMs:number}; }
@@ -587,6 +629,7 @@ export class MemoryOS2{
     evidenceFreshnessAt:Number.isFinite(Number(m?.evidenceFreshnessAt))?Number(m.evidenceFreshnessAt):Number(m?.observedAt??m?.createdAt??Date.now()),
     evidenceSources:this.normalizeEvidenceSources(m),
     evidenceLineageKeys:[...new Set([...(Array.isArray(m?.evidenceLineageKeys)?m.evidenceLineageKeys.map((x:any)=>String(x).slice(0,160)).filter(Boolean):[]),...this.normalizeEvidenceSources(m).map(row=>this.evidenceKey(row))])].slice(-32),
+    confidenceRevisionHistory:normalizeConfidenceRevisionHistory(m?.confidenceRevisionHistory),
     temperature01:clamp(Number(m?.temperature01??0)),
     residencyTier:(m?.residencyTier==='hot'||m?.residencyTier==='warm'||m?.residencyTier==='cold')?m.residencyTier:(Array.isArray(m?.semanticVector)&&m.semanticVector.length?'warm':'cold'),
   }))};
@@ -624,12 +667,13 @@ export class MemoryOS2{
   const provenanceClass=this.provenanceClassFor(source,item?.provenanceClass);
   const observedAt=Number.isFinite(Number(item?.observedAt))?Number(item.observedAt):Number(item?.createdAt??Date.now());
   const evidenceFreshnessAt=Number.isFinite(Number(item?.evidenceFreshnessAt))?Number(item.evidenceFreshnessAt):observedAt;
-  const primary:MemoryEvidenceSource={source,provenanceClass,sourceAuthority01:clamp(Number(item?.sourceAuthority01??this.sourceAuthorityDefault(provenanceClass))),independenceKey:item?.independenceKey==null?undefined:String(item.independenceKey).trim().slice(0,96)||undefined,observedAt,evidenceFreshnessAt};
+  const validStance=(stance:unknown):MemoryConfidenceStance|undefined=>stance==='supports'||stance==='contradicts'?stance:undefined;
+  const primary:MemoryEvidenceSource={source,provenanceClass,sourceAuthority01:clamp(Number(item?.sourceAuthority01??this.sourceAuthorityDefault(provenanceClass))),independenceKey:item?.independenceKey==null?undefined:String(item.independenceKey).trim().slice(0,96)||undefined,observedAt,evidenceFreshnessAt,stance:validStance(item?.stance)};
   const raw=Array.isArray(item?.evidenceSources)?item.evidenceSources.slice(0,32):[];
   const normalizedRaw:MemoryEvidenceSource[]=raw.map((row:any)=>{
    const cls=this.provenanceClassFor(String(row?.source??source),row?.provenanceClass);
    const obs=Number.isFinite(Number(row?.observedAt))?Number(row.observedAt):observedAt;
-   return {source:String(row?.source??source).slice(0,240)||source,provenanceClass:cls,sourceAuthority01:clamp(Number(row?.sourceAuthority01??this.sourceAuthorityDefault(cls))),independenceKey:row?.independenceKey==null?undefined:String(row.independenceKey).trim().slice(0,96)||undefined,observedAt:obs,evidenceFreshnessAt:Number.isFinite(Number(row?.evidenceFreshnessAt))?Number(row.evidenceFreshnessAt):obs};
+   return {source:String(row?.source??source).slice(0,240)||source,provenanceClass:cls,sourceAuthority01:clamp(Number(row?.sourceAuthority01??this.sourceAuthorityDefault(cls))),independenceKey:row?.independenceKey==null?undefined:String(row.independenceKey).trim().slice(0,96)||undefined,observedAt:obs,evidenceFreshnessAt:Number.isFinite(Number(row?.evidenceFreshnessAt))?Number(row.evidenceFreshnessAt):obs,stance:validStance(row?.stance)};
   });
   // When the serialized trail already contains the primary lineage, prefer its
   // publisher-bound source label to the generic owning subsystem label.
@@ -648,9 +692,10 @@ export class MemoryOS2{
    return score(b)-score(a)||b.observedAt-a.observedAt||this.evidenceKey(a).localeCompare(this.evidenceKey(b));
   }).slice(0,8);
  }
- private mergeIncomingEvidence(item:MemoryItem2,input:MemoryEncodeInput,now:number):{addedIndependentSource:boolean;independentSources:number}{
+ private mergeIncomingEvidence(item:MemoryItem2,input:MemoryEncodeInput,now:number):{addedIndependentSource:boolean;independentSources:number;addedEvidence:MemoryEvidenceSource|null}{
   const previous=this.normalizeEvidenceSources(item);
-  const incoming=this.normalizeEvidenceSources({...input,observedAt:input.observedAt??now,evidenceFreshnessAt:input.evidenceFreshnessAt??input.observedAt??now});
+  const supportingSources=Array.isArray(input.evidenceSources)?input.evidenceSources.map(row=>({...row,stance:'supports' as const})):[];
+  const incoming=this.normalizeEvidenceSources({...input,stance:'supports',evidenceSources:supportingSources,observedAt:input.observedAt??now,evidenceFreshnessAt:input.evidenceFreshnessAt??input.observedAt??now});
   const previousSeenKeys=new Set([...(Array.isArray(item.evidenceLineageKeys)?item.evidenceLineageKeys:[]),...previous.map(e=>this.evidenceKey(e))]);
   const combined=this.normalizeEvidenceSources({...item,evidenceSources:[...previous,...incoming]});
   item.evidenceSources=combined;
@@ -658,10 +703,71 @@ export class MemoryOS2{
   item.evidenceLineageKeys=[...new Set([...(item.evidenceLineageKeys??[]),...previous.map(e=>this.evidenceKey(e)),...incomingKeys])].slice(-32);
   const newKeys=incomingKeys.filter(key=>!previousSeenKeys.has(key));
   const retainedKeys=new Set(combined.map(e=>this.evidenceKey(e)));
-  const addedIndependentSource=newKeys.some(key=>retainedKeys.has(key));
-  return {addedIndependentSource,independentSources:combined.length};
+  const retainedNewKeys=new Set(newKeys.filter(key=>retainedKeys.has(key)));
+  const addedEvidence=incoming.filter(row=>retainedNewKeys.has(this.evidenceKey(row))).sort((a,b)=>b.sourceAuthority01-a.sourceAuthority01||b.evidenceFreshnessAt-a.evidenceFreshnessAt)[0]??null;
+  return {addedIndependentSource:Boolean(addedEvidence),independentSources:combined.length,addedEvidence};
  }
  private independentEvidenceCount(item:MemoryItem2){return this.normalizeEvidenceSources(item).length;}
+ private recordConfidenceRevision(item:MemoryItem2,evidence:MemoryEvidenceSource,stance:MemoryConfidenceStance,at:number,sourceKey:string,forcedReason?:'duplicate_source'|'protected'):MemoryConfidenceRevisionResult{
+  const prior=typeof item.confidence==='number'&&Number.isFinite(item.confidence)?clamp(item.confidence):.5;
+  const authority=clamp(Number(evidence.sourceAuthority01));
+  const protectedBelief=stance==='contradicts'&&(item.kind==='identity'||item.context?.protected==='true');
+  const reason=forcedReason??(protectedBelief?'protected':'applied');
+  const applied=reason==='applied';
+  const posterior=applied?(stance==='supports'?Math.min(.99,prior+(1-prior)*.35*authority):Math.max(.05,prior*(1-.35*authority))):prior;
+  if(applied)item.confidence=posterior;
+  const row:MemoryConfidenceRevision={at,stance,priorConfidence:prior,posteriorConfidence:posterior,authority01:authority,sourceKey,source:evidence.source,applied,reason,policy:'residual_v1'};
+  item.confidenceRevisionHistory=[...normalizeConfidenceRevisionHistory(item.confidenceRevisionHistory),row].slice(-MAX_MEMORY_CONFIDENCE_REVISION_HISTORY);
+  return {memoryId:item.id,stance,applied,reason,independent:reason!=='duplicate_source',priorConfidence:prior,posteriorConfidence:posterior,authority01:authority,sourceKey,at};
+ }
+ /**
+  * Revise one active semantic belief using one independent evidence lineage.
+  * Replays never change confidence; support closes a fraction of remaining doubt,
+  * contradiction removes a fraction of current confidence. The bounded audit lives
+  * on the same canonical memory record, not in a parallel store.
+  */
+ reviseConfidenceFromEvidence(memoryId:unknown,rawEvidence:unknown,stance:unknown,at=Date.now()):MemoryConfidenceRevisionResult{
+  if(typeof memoryId!=='string'||!memoryId.trim()||memoryId.trim()!==memoryId||memoryId.length>180)throw new TypeError('memory-belief-id-invalid');
+  if(stance!=='supports'&&stance!=='contradicts')throw new TypeError('memory-belief-stance-invalid');
+  if(typeof at!=='number'||!Number.isFinite(at)||at<0)throw new TypeError('memory-belief-time-invalid');
+  let detached:unknown;
+  try{detached=snapshotPlainData<unknown>(rawEvidence,{maxDepth:4,maxNodes:24,maxStringUnits:2048});}
+  catch{throw new TypeError('memory-belief-evidence-invalid');}
+  if(!detached||typeof detached!=='object'||Array.isArray(detached))throw new TypeError('memory-belief-evidence-invalid');
+  const evidenceInput=detached as Record<string,unknown>;
+  const allowed=new Set(['source','provenanceClass','sourceAuthority01','independenceKey','observedAt','evidenceFreshnessAt']);
+  if(Object.keys(evidenceInput).some(key=>!allowed.has(key)))throw new TypeError('memory-belief-evidence-invalid');
+  if(typeof evidenceInput.source!=='string'||!evidenceInput.source.trim()||evidenceInput.source.length>240||evidenceInput.source.trim()!==evidenceInput.source)throw new TypeError('memory-belief-evidence-invalid');
+  if(evidenceInput.provenanceClass!==undefined&&!['device','external','user','agent','derived','simulation','unknown'].includes(String(evidenceInput.provenanceClass)))throw new TypeError('memory-belief-evidence-invalid');
+  if(evidenceInput.sourceAuthority01!==undefined&&(typeof evidenceInput.sourceAuthority01!=='number'||!Number.isFinite(evidenceInput.sourceAuthority01)||evidenceInput.sourceAuthority01<0||evidenceInput.sourceAuthority01>1))throw new TypeError('memory-belief-evidence-invalid');
+  if(evidenceInput.independenceKey!==undefined&&(typeof evidenceInput.independenceKey!=='string'||!evidenceInput.independenceKey.trim()||evidenceInput.independenceKey.length>96||evidenceInput.independenceKey.trim()!==evidenceInput.independenceKey))throw new TypeError('memory-belief-evidence-invalid');
+  if(evidenceInput.observedAt!==undefined&&(typeof evidenceInput.observedAt!=='number'||!Number.isFinite(evidenceInput.observedAt)||evidenceInput.observedAt<0))throw new TypeError('memory-belief-evidence-invalid');
+  if(evidenceInput.evidenceFreshnessAt!==undefined&&(typeof evidenceInput.evidenceFreshnessAt!=='number'||!Number.isFinite(evidenceInput.evidenceFreshnessAt)||evidenceInput.evidenceFreshnessAt<0))throw new TypeError('memory-belief-evidence-invalid');
+  const provenanceClass=this.provenanceClassFor(evidenceInput.source,evidenceInput.provenanceClass as MemoryProvenanceClass|undefined);
+  const evidence:MemoryEvidenceSource={source:evidenceInput.source,provenanceClass,sourceAuthority01:Number(evidenceInput.sourceAuthority01??this.sourceAuthorityDefault(provenanceClass)),independenceKey:evidenceInput.independenceKey as string|undefined,observedAt:Number(evidenceInput.observedAt??at),evidenceFreshnessAt:Number(evidenceInput.evidenceFreshnessAt??evidenceInput.observedAt??at),stance:stance as MemoryConfidenceStance};
+  const sourceKey=this.evidenceKey(evidence);
+  const item=this.itemIndex.get(memoryId);
+  if(!item)return {memoryId,stance:stance as MemoryConfidenceStance,applied:false,reason:'not_found',independent:false,priorConfidence:null,posteriorConfidence:null,authority01:evidence.sourceAuthority01,sourceKey,at};
+  const prior=typeof item.confidence==='number'&&Number.isFinite(item.confidence)?clamp(item.confidence):.5;
+  if(item.kind!=='semantic')return {memoryId,stance:stance as MemoryConfidenceStance,applied:false,reason:'not_semantic',independent:false,priorConfidence:prior,posteriorConfidence:prior,authority01:evidence.sourceAuthority01,sourceKey,at};
+  if(item.dormant||item.epistemicStatus==='quarantined'||!this.validAt(item,at))return {memoryId,stance:stance as MemoryConfidenceStance,applied:false,reason:'stale_or_inactive',independent:false,priorConfidence:prior,posteriorConfidence:prior,authority01:evidence.sourceAuthority01,sourceKey,at};
+  const previousBytes=estimateMemoryBytes(item);
+  const seen=new Set([...(item.evidenceLineageKeys??[]),...this.normalizeEvidenceSources(item).map(row=>this.evidenceKey(row))]);
+  if(seen.has(sourceKey)){
+   const receipt=this.recordConfidenceRevision(item,evidence,stance as MemoryConfidenceStance,at,sourceKey,'duplicate_source');
+   this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-previousBytes+estimateMemoryBytes(item));
+   this.enforceByteBudget({maxBytes:this.state.byteBudget,protectedIds:[item.id],reason:'belief-revision-audit-budget'});
+   return receipt;
+  }
+  item.evidenceSources=this.normalizeEvidenceSources({...item,evidenceSources:[...(item.evidenceSources??[]),evidence]});
+  item.evidenceLineageKeys=[...new Set([...(item.evidenceLineageKeys??[]),sourceKey])].slice(-32);
+  const protectedBelief=stance==='contradicts'&&(item.kind==='identity'||item.context?.protected==='true');
+  const receipt=this.recordConfidenceRevision(item,evidence,stance as MemoryConfidenceStance,at,sourceKey,protectedBelief?'protected':undefined);
+  this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-previousBytes+estimateMemoryBytes(item));
+  this.state.reconsolidations++;
+  this.enforceByteBudget({maxBytes:this.state.byteBudget,protectedIds:[item.id],reason:'belief-revision-audit-budget'});
+  return receipt;
+ }
  private implicitConflictSignals(newer:MemoryItem2, older:MemoryItem2){
   if(newer.id===older.id)return {score:0,contextConflict:false,polarityConflict:false,entityOverlap:0,semantic:0};
   const semantic=cosine(newer.semanticVector.length?newer.semanticVector:vectorize(newer.content),older.semanticVector.length?older.semanticVector:vectorize(older.content));
@@ -711,7 +817,7 @@ export class MemoryOS2{
     sourceAuthority01:clamp(Number(input.sourceAuthority01??defaults[provenanceClass]??.5)),
     independenceKey:input.independenceKey?.slice(0,96),
     evidenceFreshnessAt:Number.isFinite(Number(input.evidenceFreshnessAt))?Number(input.evidenceFreshnessAt):Number(input.observedAt??now),
-    evidenceSources, evidenceLineageKeys,
+    evidenceSources, evidenceLineageKeys,confidenceRevisionHistory:[],
   };
  }
 
@@ -734,7 +840,10 @@ export class MemoryOS2{
     existing.salience=clamp(existing.salience*.8+input.salience*.2);
     // A repeated import from the same source/lineage is not independent evidence
     // and must not drive confidence towards 1 by replaying the same observation.
-    if(evidenceMerge.addedIndependentSource)existing.confidence=clamp(existing.confidence*.82+input.confidence*.18);
+    if(evidenceMerge.addedEvidence){
+      const evidence=evidenceMerge.addedEvidence;
+      this.recordConfidenceRevision(existing,evidence,'supports',now,this.evidenceKey(evidence));
+    }
     existing.predictionError=clamp(existing.predictionError*.75+input.predictionError*.25);
     existing.temperature01=memoryTemperature(existing);
     existing.temperature01=clamp(existing.temperature01*.82+memoryTemperature({...existing,...input,lastAccessAt:now} as MemoryItem2,now)*.18);
@@ -1359,7 +1468,8 @@ export class MemoryOS2{
  evidenceTrail(id:string){
   const item=this.itemIndex.get(String(id));if(!item)return null;
   const evidence=this.normalizeEvidenceSources(item);
-  return {memoryId:item.id,independentSources:evidence.length,sources:structuredClone(evidence),corroborationBonus01:Math.min(.10,Math.max(0,evidence.length-1)*.025)};
+  const revisions=normalizeConfidenceRevisionHistory(item.confidenceRevisionHistory);
+  return {memoryId:item.id,confidence:item.confidence,independentSources:evidence.length,sources:structuredClone(evidence),corroborationBonus01:Math.min(.10,Math.max(0,evidence.length-1)*.025),confidenceRevisionCount:revisions.length,lastConfidenceRevision:revisions.length?structuredClone(revisions[revisions.length-1]):null};
  }
  statsLight(){const evidenceCounts=this.state.items.map(m=>this.independentEvidenceCount(m));return {items:this.state.items.length,dormant:this.state.items.reduce((n,m)=>n+(m.dormant?1:0),0),forgetCount:this.state.forgetCount,reconsolidations:this.state.reconsolidations,quarantined:this.state.quarantined,memoriesWithIndependentEvidence:evidenceCounts.filter(n=>n>1).length,independentEvidenceEntries:evidenceCounts.reduce((n,x)=>n+x,0)};}
  implicitConflictDiagnostics(){return {candidates:this.state.implicitConflictCandidates,resolved:this.state.implicitConflictsResolved,deferred:this.state.implicitConflictsDeferred,provenanceProtected:this.state.provenanceProtected,staleRetrievalsAvoided:this.state.staleRetrievalsAvoided,lastScanAt:this.state.lastConflictScanAt};}
