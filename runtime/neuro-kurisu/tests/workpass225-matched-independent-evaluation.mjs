@@ -71,13 +71,22 @@ function makeFamilyTasks(seedCount) {
   }
   return rows;
 }
-async function makeFamilyEvaluation(payload, seedCount, runPrefix, observedStepIds) {
+async function makeFamilyEvaluation(
+  payload, seedCount, runPrefix, observedStepIds, coveredCapabilitiesByTask = ['read'],
+) {
   const familyTasks = makeFamilyTasks(seedCount);
   const evaluator = createIndependentSkillCandidateEvaluator({
     tasks: familyTasks,
     environmentFingerprint: 'd'.repeat(64),
-    executor: { async execute({ task }) { return { runId: runPrefix + task.trialId, observedStepIds }; } },
-    verifier: { async verify() { return { bindingVerified: true, passed: true, coveredCapabilityIds: ['read'] }; } },
+    executor: { async execute({ task }) {
+      const observed = typeof observedStepIds === 'function' ? observedStepIds(task) : observedStepIds;
+      return { runId: runPrefix + task.trialId, observedStepIds: observed };
+    } },
+    verifier: { async verify({ task }) {
+      const coveredCapabilityIds = typeof coveredCapabilitiesByTask === 'function'
+        ? coveredCapabilitiesByTask(task) : coveredCapabilitiesByTask;
+      return { bindingVerified: true, passed: true, coveredCapabilityIds };
+    } },
     safetyScanner: { async scan() { return { violationCount: 0 }; } },
   });
   return evaluator({
@@ -123,6 +132,35 @@ assert.equal(replicated.holdoutFamiliesWithSufficientSeeds, 1);
 assert.equal(replicated.validationFamilySeedCoverageFailures, 0);
 assert.equal(replicated.holdoutFamilySeedCoverageFailures, 0);
 assert.equal(replicated.eligible, true, JSON.stringify(replicated));
+assert.equal(replicated.validationFamiliesEvaluatedForConfidenceInterval, 1);
+assert.equal(replicated.holdoutFamiliesEvaluatedForConfidenceInterval, 1);
+assert.equal(replicated.validationFamilyConfidenceBoundFailures, 0);
+assert.equal(replicated.holdoutFamilyConfidenceBoundFailures, 0);
+
+// WorkPass404: positive macro means alone are not enough when one of three
+// seed-level outcomes goes strongly backwards. The paired bootstrap lower bound
+// must reveal that the gain is not reliable for either split.
+const noisyBaseline = await makeFamilyEvaluation(
+  { skill: 'baseline', version: 1 }, 3, 'noisy-base-', ['open'], ['read'],
+);
+const noisyCandidate = await makeFamilyEvaluation(
+  { skill: 'candidate', version: 2 }, 3, 'noisy-candidate-',
+  task => task.seed % 100 === 3 ? ['unexpected'] : ['open', 'summarize'],
+  task => task.seed % 100 === 3 ? [] : ['read'],
+);
+const noisyComparison = compareMatchedIndependentEvaluations(
+  noisyBaseline, noisyCandidate, familyPolicy, seedCoverageOptions,
+);
+assert.ok(noisyComparison.validationGain01 > 0.005,
+  'the positive family mean should make this a confidence test rather than a mean-score test');
+assert.equal(noisyComparison.validationTaskRegressions, 0,
+  'the regression on one seed is not a severe average regression for a whole task');
+assert.ok(noisyComparison.reasons.includes('validation-family-improvement-confidence-insufficient'),
+  'validation promotion requires a positive lower bootstrap confidence bound per family');
+assert.ok(noisyComparison.reasons.includes('holdout-family-confidence-bound-regression-exceeds-tolerance'),
+  'holdout confidence bounds must also prevent a noisy average from hiding a risky seed');
+assert.equal(noisyComparison.eligible, false);
+
 
 assert.throws(() => compareMatchedIndependentEvaluations(
   twoSeedBaseline, twoSeedCandidate, familyPolicy,
@@ -158,4 +196,4 @@ const tampered = structuredClone(candidate);
 tampered.evaluation.validation[0].taskSuccess.passed = false;
 assert.throws(() => compareMatchedIndependentEvaluations(baseline, tampered), /envelope-invalid/);
 
-console.log('WorkPass225 matched independent evaluation regressions passed; strict family policy propagation, paired-seed coverage, and invalid-option rejection verified');
+console.log('WorkPass225 matched independent evaluation regressions passed; strict family policy, paired-seed coverage, bootstrap confidence gate, and invalid-option rejection verified');
