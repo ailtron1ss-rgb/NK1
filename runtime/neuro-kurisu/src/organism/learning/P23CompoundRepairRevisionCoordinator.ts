@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { OrganismRuntime } from '../core/OrganismRuntime.ts';
 import type { P23LearningEngine } from './P23LearningEngine.ts';
-import { snapshotPlainData, snapshotPlainDataEnvelope } from './LearningTrustBoundary.ts';
+import { isSafeLearningIdentity, snapshotPlainData, snapshotPlainDataEnvelope } from './LearningTrustBoundary.ts';
 
 type RevisionArgs = Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>;
 type Proposal = RevisionArgs[0];
@@ -52,23 +52,47 @@ function compareCanonicalText(a: string, b: string): number {
  * semantic evidence differences and must not manufacture new candidate revisions.
  */
 export function canonicalCompoundRepairEvidence(
-  rows: readonly CompoundRepairEvidenceRow[],
+  rawRows: readonly CompoundRepairEvidenceRow[],
 ): CompoundRepairEvidenceRow[] {
-  const canonical = rows.map(row => ({
-    skillId: row.skillId,
-    skillName: row.skillName,
-    failureFingerprint: row.failureFingerprint,
-    stepId: row.stepId,
-    failedTool: row.failedTool,
-    diagnosis: row.diagnosis,
-    contextSignature: row.contextSignature,
-    candidateTools: [...row.candidateTools].sort(compareCanonicalText),
-    selectedTool: row.selectedTool,
-    verified: row.verified,
-    confidence01: row.confidence01,
-    observedAt: row.observedAt,
-    revisionEligible: row.revisionEligible,
-  }));
+  let detached: unknown;
+  try { detached=snapshotPlainData(rawRows); }
+  catch { throw new Error('compound-repair-evidence-data-boundary-rejected'); }
+  if(!Array.isArray(detached)||detached.length>96) {
+    throw new Error('compound-repair-evidence-shape-invalid');
+  }
+  const canonical=detached.map((raw):CompoundRepairEvidenceRow=>{
+    if(raw===null||typeof raw!=='object'||Array.isArray(raw)) {
+      throw new Error('compound-repair-evidence-row-invalid');
+    }
+    const row=raw as Record<string,unknown>;
+    const boundedText=(value:unknown,max:number)=>typeof value==='string'&&value.length<=max&&value.trim()===value;
+    if(!isSafeLearningIdentity(row.skillId,180)||
+       !isSafeLearningIdentity(row.skillName,256)||
+       !isSafeLearningIdentity(row.failureFingerprint,256)||
+       !isSafeLearningIdentity(row.stepId,256)||
+       !isSafeLearningIdentity(row.failedTool,180)||
+       !boundedText(row.diagnosis,8192)||
+       typeof row.contextSignature!=='string'||row.contextSignature.length>1024||
+       !Array.isArray(row.candidateTools)||row.candidateTools.length===0||row.candidateTools.length>128||
+       row.candidateTools.some((tool:unknown)=>!isSafeLearningIdentity(tool,180))||
+       new Set(row.candidateTools).size!==row.candidateTools.length||
+       !isSafeLearningIdentity(row.selectedTool,180)||
+       !row.candidateTools.includes(row.selectedTool)||
+       typeof row.verified!=='boolean'||
+       typeof row.revisionEligible!=='boolean'||
+       typeof row.confidence01!=='number'||!Number.isFinite(row.confidence01)||row.confidence01<0||row.confidence01>1||
+       !Number.isSafeInteger(row.observedAt)||Number(row.observedAt)<0) {
+      throw new Error('compound-repair-evidence-row-invalid');
+    }
+    return {
+      skillId:row.skillId,skillName:row.skillName,failureFingerprint:row.failureFingerprint,
+      stepId:row.stepId,failedTool:row.failedTool,diagnosis:row.diagnosis,
+      contextSignature:row.contextSignature,
+      candidateTools:[...(row.candidateTools as string[])].sort(compareCanonicalText),
+      selectedTool:row.selectedTool,verified:row.verified,confidence01:row.confidence01,
+      observedAt:row.observedAt,revisionEligible:row.revisionEligible,
+    };
+  });
   return canonical.sort((a,b) =>
     b.observedAt-a.observedAt ||
     compareCanonicalText(a.skillId,b.skillId) ||
@@ -80,7 +104,6 @@ export function canonicalCompoundRepairEvidence(
     compareCanonicalText(JSON.stringify(a),JSON.stringify(b))
   );
 }
-
 export function fingerprintCompoundRepairEvidence(
   rows: readonly CompoundRepairEvidenceRow[],
 ): string {
