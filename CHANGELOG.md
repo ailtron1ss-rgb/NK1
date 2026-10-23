@@ -1,3 +1,13 @@
+## NK1 WorkPass417 — protect persistent and online personal-curriculum evidence (2026-10-23)
+
+- **Restore path:** snapshots pass through the shared plain-data boundary; accessor-backed, cyclic or unsupported snapshots fall back to a clean curriculum state without invoking accessors.
+- **History integrity:** persisted thread rows with invalid counters/scores, inconsistent context counts, duplicate IDs/families or malformed context keys are excluded. Numeric curriculum aggregates are range-checked; timestamp validation stays separate from ordinary bounded counters.
+- **Online learning path:** outcome and developmental-context observations are snapshotted and validated before state mutation; scores, identifiers, timestamps and goal fields must satisfy their contracts.
+- **CI wiring:** the P26 Learning Validation workflow now watches the curriculum engine and its existing direct/core-persistence tests, and invokes both curriculum regressions.
+- **Validation boundary:** regression cases for restoration are committed. The input-gate changes and exact-head suite have not yet been executed in a runner; no empirical learning uplift is claimed. No new runtime dependency was added.
+
+---
+
 ## NK1 WorkPass416 — deterministic trial-order numeric summaries (2026-10-23)
 
 - Canonically sort each task's matched trials by stable `trialId` before computing fractional score means; this prevents floating-point summation order from changing the rounded summary under row permutations.
