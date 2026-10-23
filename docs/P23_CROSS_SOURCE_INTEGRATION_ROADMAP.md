@@ -1,3 +1,14 @@
+## WorkPass329 — prevent component regression masked by composite skill fitness (2026-10-23)
+
+- **Upstream adaptation:** reviewed Hermes Agent Self-Evolution at `0a929e3aa20e15cf04dc7c28492a7d41a5139125` (`evolve_skill.py`, `fitness.py`, `constraints.py`, `pyproject.toml`). Adapted the constraint idea natively; no upstream source was copied and no runtime dependency was added.
+- **Code:** canonical `SkillLearnBenchAdapter` keeps the paired composite and adds separate maximum holdout-decline controls for task success, trajectory quality, and skill quality (defaults: 0.02 on each normalized axis). It computes baseline/candidate macro means over matched reports.
+- **Behavioral regression:** `tests/p29-hermes-reflective-candidate-gate.mjs` constructs a trade-off where the overall composite improves while trajectory quality drops. The aggregate-only threshold is neutralized in that fixture so the component-specific rejection is exercised. Threshold validation is also covered.
+- **Integration:** root `audit:quick` and `WorkPass71` core CI run the focused regression; donor register and map now record 28 candidates including this native adaptation.
+- **Evidence:** implementation and CI wiring are committed. The focused test and runtime typecheck remain **unverified** because recent hosted Actions runs stop before runner assignment (`runner_id=0`, no steps/logs). Do not raise learning score based on authored tests or source changes.
+- **Limitations:** no measured learning uplift, no production lifecycle completion, and no release ZIP update. Continue tracing actual generation/execution/verification/approval callers and obtain independent frozen paired-seed holdout evidence before promotion.
+
+---
+
 ## WorkPass285 — evaluator capability-scope enforcement (2026-10-22)
 
 - **Code:** independent candidate evaluation now rejects verifier-reported capability IDs not declared by the evaluated task. Out-of-scope claims fail closed and are not included in the recorded covered-capability set.
