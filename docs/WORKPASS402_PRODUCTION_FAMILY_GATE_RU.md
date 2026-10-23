@@ -25,9 +25,11 @@ WorkPass400 добавил veto для регрессий validation-family, а 
 
 ### 3. Регрессия и CI
 
-`tests/workpass225-matched-independent-evaluation.mjs` теперь передаёт строгие minima в comparator с отчётами без family metadata и проверяет нулевую coverage плюс обе причины отказа. P26 workflow добавлен в path filter для этой тестовой оболочки и запускает её отдельным шагом на Node.js 24.
+`tests/workpass225-matched-independent-evaluation.mjs` передаёт строгие minima в comparator с отчётами без family metadata и проверяет нулевую coverage плюс обе причины отказа.
 
-Другой существующий тест `workpass203-independent-candidate-evaluator.mjs` проверяет, что labels получаются из canonical manifest, а не из вызывающего кода. Вместе эти проверки закрывают связь от источника family identity до фактической promotion policy.
+Добавлен сквозной тест `tests/workpass402-production-promotion-family-gate.mjs`. Он строит валидные baseline/candidate envelopes независимого оценщика без family labels. Advisory-оценка с совместимыми default-параметрами принимает улучшенный кандидат, но фактический `approveIndependentlyEvaluatedSkillCandidate` должен отвергнуть активацию с обеими family-coverage причинами и не обращаться к `approveAndPromote` хранилища. Это проверяет реальный production entry point, а не только передачу параметров comparator.
+
+P26 workflow содержит path-фильтры и отдельные шаги для обеих тестовых оболочек и использует Node.js 24. `workpass203-independent-candidate-evaluator.mjs` отдельно проверяет, что family labels берутся из canonical manifest, а не из caller-provided метаданных. Вместе эти проверки закрывают связь от источника family identity до фактической promotion policy.
 
 ## Связь с исследованиями
 
