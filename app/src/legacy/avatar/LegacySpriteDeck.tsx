@@ -14,24 +14,67 @@ const EXPRESSION: Record<EmotionLabel, string> = {
   protective: "focused",
 };
 
+function readStoredOutfit(): VisualProfileId {
+  if (typeof window === "undefined") return "lab_coat";
+  try {
+    const stored = window.localStorage.getItem("kurisu-visual-profile");
+    return OUTFITS.some((profile) => profile.id === stored)
+      ? stored as VisualProfileId
+      : "lab_coat";
+  } catch {
+    // Storage can be disabled or throw SecurityError in sandboxed/private contexts.
+    return "lab_coat";
+  }
+}
+
+function persistOutfit(outfit: VisualProfileId): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem("kurisu-visual-profile", outfit);
+  } catch {
+    // The visual fallback must remain usable even when persistence is unavailable.
+  }
+}
+
 export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel; speaking: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const currentRef = useRef<HTMLImageElement | null>(null);
   const previousRef = useRef<HTMLImageElement | null>(null);
-  const [outfit, setOutfit] = useState<VisualProfileId>(() => (typeof window !== "undefined" && window.localStorage.getItem("kurisu-visual-profile") as VisualProfileId) || "lab_coat");
+  const [outfit, setOutfit] = useState<VisualProfileId>(readStoredOutfit);
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
   const blend = useRef(1);
+  // Keep the canvas loop mounted across emotion/speech changes. These refs expose
+  // current render values to the frame callback without restarting its clock.
+  const speakingRef = useRef(speaking);
+  const outfitRef = useRef(outfit);
+  speakingRef.current = speaking;
+  outfitRef.current = outfit;
 
   useEffect(() => {
+    let cancelled = false;
     const url = resolveSpritePath(EXPRESSION[emotion] ?? "neutral", { preferLab: outfit === "lab_coat" || outfit === "formal", profile: getOutfit(outfit) });
     const img = new Image();
-    img.onload = () => { previousRef.current = currentRef.current; currentRef.current = img; blend.current = 0; setReady(true); };
-    img.onerror = () => setReady(Boolean(currentRef.current));
+    img.onload = () => {
+      // A slow prior request must not overwrite the newest emotion/outfit sprite.
+      if (cancelled) return;
+      previousRef.current = currentRef.current;
+      currentRef.current = img;
+      blend.current = 0;
+      setReady(true);
+    };
+    img.onerror = () => {
+      if (!cancelled) setReady(Boolean(currentRef.current));
+    };
     img.src = url;
+    return () => {
+      cancelled = true;
+      img.onload = null;
+      img.onerror = null;
+    };
   }, [emotion, outfit]);
 
-  useEffect(() => { if (typeof window !== "undefined") window.localStorage.setItem("kurisu-visual-profile", outfit); }, [outfit]);
+  useEffect(() => { persistOutfit(outfit); }, [outfit]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -44,8 +87,12 @@ export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel;
     const draw = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt;
       blend.current = Math.min(1, blend.current + dt * 2.5);
-      const w = canvas.width = canvas.clientWidth || 320;
-      const h = canvas.height = canvas.clientHeight || 360;
+      const w = canvas.clientWidth || 320;
+      const h = canvas.clientHeight || 360;
+      // Resizing clears the bitmap and resets the drawing context; only do it
+      // when the layout dimensions actually change, not on every animation frame.
+      if (canvas.width !== w) canvas.width = w;
+      if (canvas.height !== h) canvas.height = h;
       ctx.clearRect(0, 0, w, h);
       const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#14141c"); g.addColorStop(1, "#08080c"); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
       const cx = w / 2;
@@ -67,15 +114,15 @@ export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel;
         ctx.fillText("Legacy sprite asset unavailable", cx, cy);
         ctx.textAlign = "start";
       }
-      if (speaking && d) {
+      if (speakingRef.current && d) {
         ctx.strokeStyle = `rgba(255,59,48,${0.20 + 0.2 * Math.sin(time * 8)})`; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.ellipse(cx, cy + d.dh * .35, d.dw * .22, 8, 0, 0, Math.PI * 2); ctx.stroke();
       }
-      ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.font = "10px monospace"; ctx.fillText(`${getOutfit(outfit).nameRu} · legacy visual`, 10, 16);
+      ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.font = "10px monospace"; ctx.fillText(`${getOutfit(outfitRef.current).nameRu} · legacy visual`, 10, 16);
       raf = requestAnimationFrame(draw);
     };
     raf = requestAnimationFrame(draw); return () => cancelAnimationFrame(raf);
-  }, [emotion, outfit, speaking]);
+  }, []);
 
   return <div className="relative overflow-hidden rounded-xl border border-border bg-bg">
     <canvas ref={canvasRef} className="h-[320px] w-full md:h-[420px]" />

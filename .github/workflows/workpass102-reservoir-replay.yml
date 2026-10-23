@@ -6,12 +6,22 @@ on:
       - 'runtime/neuro-kurisu/tests/p23-reservoir-replay-policy.mjs'
       - 'runtime/neuro-kurisu/tests/p23-replay-strategy-benchmark.mjs'
       - '.github/workflows/workpass102-reservoir-replay.yml'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/tsconfig.clean.json'
+      - 'runtime/neuro-kurisu/src/node-shims.d.ts'
+      - '.nvmrc'
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: nk1-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   reservoir-replay:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

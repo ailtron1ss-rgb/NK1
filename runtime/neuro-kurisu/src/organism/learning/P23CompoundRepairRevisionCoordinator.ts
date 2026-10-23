@@ -71,6 +71,26 @@ export class P23CompoundRepairRevisionCoordinator {
       throw new Error('trusted revision input provider returned incomplete proposal/evaluation/generator inputs');
     }
 
+    // Treat provider output as untrusted mutable data even when the caller did not
+    // opt into withIndependentCandidateEvaluation. Snapshot the data envelope before
+    // any further runtime calls; retain only the generator/evaluator functions as
+    // explicit capabilities. Fail closed rather than stage evidence we cannot detach.
+    let proposal: typeof prepared.proposal;
+    let baseline: typeof prepared.baseline;
+    let candidateEvaluation: typeof prepared.candidateEvaluation;
+    let options: typeof prepared.options;
+    try {
+      proposal = structuredClone(prepared.proposal);
+      baseline = structuredClone(prepared.baseline);
+      candidateEvaluation = structuredClone(prepared.candidateEvaluation);
+      options = prepared.options === undefined ? undefined : structuredClone(prepared.options);
+    } catch {
+      throw new Error('compound-repair-revision-provider-data-not-cloneable');
+    }
+    const sourceCandidateId = prepared.sourceCandidateId;
+    const generate = prepared.generate;
+    const evaluateRevisedCandidate = prepared.evaluateRevisedCandidate;
+
     // The provider may perform asynchronous work. Re-read the runtime ledger before
     // staging so the proposal/evaluation cannot silently drift away from the repairs
     // that justified this revision. Runtime entry is queue-serialized; a changed
@@ -83,14 +103,14 @@ export class P23CompoundRepairRevisionCoordinator {
 
     const result = await this.runtime.generateCompoundSkillRevision({
       engine: this.engine,
-      proposal: prepared.proposal,
+      proposal,
       skillId,
-      sourceCandidateId: prepared.sourceCandidateId,
-      baseline: prepared.baseline,
-      candidateEvaluation: prepared.candidateEvaluation,
-      generate: prepared.generate,
-      evaluateRevisedCandidate: prepared.evaluateRevisedCandidate,
-      ...(prepared.options ? { options: prepared.options } : {}),
+      sourceCandidateId,
+      baseline,
+      candidateEvaluation,
+      generate,
+      evaluateRevisedCandidate,
+      ...(options ? { options } : {}),
     });
     return {
       status: 'candidate-staged' as const,

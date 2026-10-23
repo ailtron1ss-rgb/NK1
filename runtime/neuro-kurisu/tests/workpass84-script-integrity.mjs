@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +10,7 @@ const scripts = packageJson.scripts ?? {};
 const scriptNames = new Set(Object.keys(scripts));
 const missingScriptRefs = [];
 const missingFileRefs = [];
+const referencedMjsFiles = new Set();
 let scriptReferenceCount = 0;
 let fileReferenceCount = 0;
 
@@ -29,7 +31,25 @@ for (const [owner, command] of Object.entries(scripts)) {
     const resolved = path.resolve(packageRoot, relativeTarget);
     if (!resolved.startsWith(path.join(packageRoot, 'tests') + path.sep) || !existsSync(resolved)) {
       missingFileRefs.push({ owner, target: relativeTarget });
+    } else if (relativeTarget.endsWith('.mjs')) {
+      referencedMjsFiles.add(resolved);
     }
+  }
+}
+
+const mjsSyntaxFailures = [];
+for (const target of [...referencedMjsFiles].sort()) {
+  try {
+    // Parse .mjs files as JavaScript before runtime execution. This catches
+    // TypeScript-only assertions accidentally added to scripts/tests even when
+    // CI fails before Node starts.
+    execFileSync(process.execPath, ['--check', target], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  } catch (error) {
+    const detail = String(error?.stderr || error?.message || error).slice(0, 500);
+    mjsSyntaxFailures.push({ target: path.relative(packageRoot, target), detail });
   }
 }
 
@@ -41,10 +61,13 @@ const report = {
   scriptCount: scriptNames.size,
   npmRunReferencesChecked: scriptReferenceCount,
   localTestFileReferencesChecked: fileReferenceCount,
+  mjsSyntaxFilesChecked: referencedMjsFiles.size,
+  mjsSyntaxFailures,
   missingScriptTargets: uniqueMissingScripts,
   missingTestFiles: uniqueMissingFiles,
 };
 
-console.log('WORKPASS84_SCRIPT_INTEGRITY=' + (uniqueMissingScripts.length === 0 && uniqueMissingFiles.length === 0 ? 'PASS ' : 'FAIL ') + JSON.stringify(report));
+console.log('WORKPASS84_SCRIPT_INTEGRITY=' + (uniqueMissingScripts.length === 0 && uniqueMissingFiles.length === 0 && mjsSyntaxFailures.length === 0 ? 'PASS ' : 'FAIL ') + JSON.stringify(report));
 assert.deepEqual(uniqueMissingScripts, [], 'Every npm run target referenced by package scripts must exist.');
 assert.deepEqual(uniqueMissingFiles, [], 'Every local tests/* file referenced by package scripts must exist.');
+assert.deepEqual(mjsSyntaxFailures, [], 'Every .mjs test referenced by package scripts must parse as JavaScript.');

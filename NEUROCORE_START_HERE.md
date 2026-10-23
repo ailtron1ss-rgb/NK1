@@ -1,3 +1,98 @@
+## Latest durable checkpoint — WorkPass272 (2026-10-22)
+
+- Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use live PR for current HEAD.
+- WorkPass272 adds filesystem identity checks to the shared evaluator storage-root separation contract: lexical paths alone are not sufficient if distinct path strings point to the same device/inode; Windows path comparisons are case-insensitive.
+- Unit-level separation-contract regressions are added. The production-style host-owned subprocess test is already referenced by WorkPass110, but successful execution/typecheck remains unverified because Actions has no accessible steps/logs.
+- Keep learning scores unchanged. The mechanism improves evaluator isolation constraints but does not provide a real OS/container sandbox by itself.
+- Next: restore actionable CI, trace external grounding/provenance callers, deploy independently controlled evaluation authorities, and measure held-out memory-to-action and transfer/forgetting results.
+
+Read the [strategic audit](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [P23 integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md), and [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md).
+
+---
+
+## Latest durable checkpoint — WorkPass271 (2026-10-22)
+
+- Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use the live PR for the current HEAD.
+- WorkPass271 normalizes persisted trace IDs before restore reconciliation: exact duplicate rows are collapsed; conflicting records that collide under NFKC are quarantined and cannot be replayed/reintroduced by retry.
+- Existing regressions now cover task/trace bounds, C0/DEL/C1 controls including string edges, same-ID changed-payload conflicts, exact duplicate restoration, conflicting normalized snapshot records and late duplicates after bounded eviction.
+- Tests/typecheck remain unverified due to Actions jobs returning no steps/logs; keep learning estimates unchanged.
+- Next: restore actionable CI, audit caller-owned grounding/provenance inputs, deploy independent evaluation authorities, and run frozen memory-to-action/transfer/forgetting experiments.
+
+Read the [strategic audit](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [P23 integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md) and [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md).
+
+---
+
+## Latest durable checkpoint — WorkPass270 (2026-10-22)
+
+- Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use the live PR for current HEAD.
+- WorkPass270 removes the last pre-validation trim from external task IDs, ensuring boundary control characters reach the canonical ID validator.
+- The identity regressions cover overlong values, embedded/leading/trailing C0/C1 controls, conflicting duplicate payloads, snapshot restoration, and late duplicates after bounded-record eviction.
+- Tests/typecheck are still unverified because Actions jobs return no steps/logs. Keep scores unchanged and do not claim a pass.
+- Next: restore actionable exact-head CI; map all external causal-ingestion call sites and the source of grounding claims; provision independent evaluator authorities; then run frozen memory-to-action and transfer/forgetting benchmarks.
+
+Read the [strategic audit](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [P23 integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md) and [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md).
+
+---
+
+## Latest durable checkpoint — WorkPass269 (2026-10-22)
+
+- Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use the live PR for the current HEAD.
+- WorkPass269 rejects control characters before trimming task/trace IDs, closing the leading/trailing newline/tab normalization gap. Regression cases are added to the canonical causal-stream test.
+- WorkPass266–268 additionally reject lossy IDs, conflicting duplicate payloads and late duplicates after bounded-row eviction.
+- Current tests/typecheck are still unverified because Actions jobs provide no steps/logs. Do not claim a PASS and do not raise learning scores without independent evidence.
+- Next: restore actionable exact-head CI, map all external causal-event call sites, verify grounding provenance, provision the true sandbox/verifier/scanner, and run independent memory-to-action/learning experiments.
+
+Read the [strategic audit](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [P23 integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md) and [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md).
+
+---
+
+## Latest durable checkpoint — WorkPass268 (2026-10-22)
+
+- Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use the live PR for the current SHA.
+- WorkPass266–268 reject lossy/invalid causal IDs, detect conflicting payloads under a reused trace ID, and preserve idempotency when a duplicate's original row was evicted from bounded causal history.
+- Regression code and CI path wiring exist; exact-head tests/typecheck remain unverified because available Actions jobs provide no steps or logs. Do not report a PASS without an actionable run.
+- No new dependency was needed, and learning scores remain unchanged pending independent task evidence.
+- Next code-first target: map all external causal intake call sites and replace any caller-asserted grounding/provenance used as authority with evidence from a canonical state transition/verifier, without breaking integrations before their contracts are mapped.
+
+Read the [strategic audit](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [P23 integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md), and [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md).
+
+---
+
+## Latest durable checkpoint — WorkPass267 (2026-10-22)
+
+- Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use the live PR to read current HEAD.
+- WorkPass267 now distinguishes exact duplicate causal events from conflicting reuse of an existing trace identity, including after snapshot/restore; conflicting payloads fail closed without increasing outcomes.
+- Focused regression code and CI wiring exist, but successful exact-head tests/typecheck are not yet confirmed because Actions lacks accessible step logs. Do not claim a test pass.
+- Keep learning scores unchanged until independent task evidence demonstrates measurable transfer or memory-grounded action improvement.
+- Next code-first target: map all external causal-event call sites and replace caller-asserted stateGrounded/provenance with canonical state-transition or verifier evidence without breaking contracts prematurely.
+
+Read the [strategic audit](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [P23 integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md), and [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md).
+
+---
+
+## Latest durable checkpoint — WorkPass266 (2026-10-22)
+
+- Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use the live PR for the current SHA.
+- WorkPass266 fixes lossy causal task/trace identity truncation, adds invalid-input/restore regressions and wires causal-stream, Legacy-avatar and Live2D regressions into WorkPass110.
+- The latest retrieved workflow job has failed without accessible step details/logs; retry requested, tests/typecheck not confirmed. Do not claim a pass from that result.
+- Next code-first target: trace the external causal-event call graph and close caller-asserted grounding authority using canonical provenance; do not break integrations before mapping their contracts.
+- Keep scores unchanged until independent task evidence demonstrates a repeatable transfer or memory-to-action gain.
+
+Read the [strategic audit](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [P23 integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md) and [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md) before the next pass.
+
+---
+
+## Latest durable checkpoint — WorkPass265 strategic execution map (2026-10-22)
+
+- Current source branch: workpass206-runtime-evaluator-wiring; draft PR #55 remains open/unmerged; implementation baseline reviewed before this documentation checkpoint: `58e9c6a00b5835096dac3758968f5b9ce0eb08d2`. Use the live PR link for the current HEAD.
+- Read [strategic audit and execution blueprint](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [cross-source integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md), [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md) and the current PR/Actions before coding.
+- WorkPass255–264 source changes are documented in the current branch, but exact-head successful tests/typechecks and deployment-shaped evaluator authorities remain unverified.
+- P0: restore actionable exact-head CI; provision a real host sandbox and independently controlled verifier/scanner; complete matched evaluation → signed evidence → approved activation → restart/rollback.
+- In parallel, prepare frozen RU/EN memory and memory-grounded-action benchmarks and the production browser/Live2D test path; keep MemoryOS2, P23 and ActionGateway as canonical owners.
+- Track implementation, real-call-path integration, exact-head verification and external efficacy separately. Never claim consciousness or learning uplift from module counts or unrun tests.
+
+---
+
 ## Latest durable checkpoint — WorkPass149 (2026-10-21)
 
 - Added an offline approval-request CLI for deployments or external approval services: `runtime/neuro-kurisu/scripts/create-skill-promotion-approval-request.mjs`.

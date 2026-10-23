@@ -1,4 +1,35 @@
+## WorkPass266 — primary-source metadata check for memory and neuroscience candidates (2026-10-22)
+
+- [AMA-Bench, ICML 2026](https://proceedings.mlr.press/v306/zhao26bs.html) — publisher record describes long-horizon memory over agent/environment trajectories (states, actions, observations and tool output). Use its protocol as a candidate for trajectory-grounded evaluation; code/data integration has not been performed.
+- [Mem2ActBench, ACL 2026](https://aclanthology.org/2026.acl-long.370/) — the paper evaluates whether remembered preferences and task state ground later tool selection and parameters. This matches the planned memory-to-action task family. Upstream code/data and license still require review.
+- [Memora / From Recall to Forgetting, ACL 2026 Findings](https://aclanthology.org/2026.findings-acl.1337/) — the publisher record identifies Forgetting-Aware Memory Accuracy (FAMA), which penalizes reliance on obsolete or invalidated memory. Add stale-fact use as a distinct failure metric; do not treat the metric as already implemented.
+- [MemoryArena, ICML 2026](https://proceedings.mlr.press/v306/he26am.html) — interdependent multi-session agent/environment tasks provide a candidate for testing memory → action → feedback rather than passive recall alone.
+- [A brain-wide map of neural activity during complex behaviour, Nature 2025](https://www.nature.com/articles/s41586-025-09235-0) — large-scale standardized recordings span 621,733 neurons, 699 probes, 139 mice, 12 laboratories and 279 brain areas. These are mouse decision-task data, not a complete map of the human brain.
+- [Synaptic connectomics: status and prospects, Nature Reviews Neuroscience 2025](https://www.nature.com/articles/s41583-025-00957-8) — supports multiscale circuit research while emphasizing conceptual/technical constraints; connectome structure alone is not a working functional theory.
+
+**Status:** publisher metadata/abstract reviewed on 2026-10-22; source-code, benchmark dataset, license and reproducibility review remain OPEN. These stay RESEARCH QUEUE / SCIENTIFIC REFERENCE, not accepted dependencies. No package installation or code vendoring is implied.
+
+---
+
 # NeuroCore — upstream research and source-intake ledger
+
+## WorkPass265 — current memory/science benchmark intake (2026-10-22)
+
+The following recent sources expand the evaluation design. Their presence here records a research candidate, not verified upstream integration. Before copying code or data, check the upstream revision, dataset/model license, provenance, installation footprint and privacy requirements.
+
+| Source | Mechanism or evaluation idea | Proposed NK1 use | Status |
+|---|---|---|---|
+| [AMA-Bench, ICML 2026 / PMLR](https://proceedings.mlr.press/v306/zhao26bs.html) | Long-horizon memory over agent/environment trajectories, including states, actions, observations and tool outputs | Extend the current retrieval-only view with trajectory-linked recall and later task success; keep manifests and outcomes reproducible | RESEARCH QUEUE; protocol/data license review required |
+| [Mem2ActBench, ACL 2026](https://aclanthology.org/2026.acl-long.370/) | Whether remembered preferences and task state correctly ground later tool choice and parameters | Add a memory-to-action task family to the independent RU/EN evaluation; measure success and parameter-grounding errors | RESEARCH QUEUE; code/data/license review required |
+| [Memora, ACL 2026 Findings](https://aclanthology.org/2026.findings-acl.1337/) | Remembering, reasoning and recommending over evolving personal histories; Forgetting-Aware Memory Accuracy penalizes stale-memory reliance | Add tests for fact supersession, old preference expiry and confident use of invalidated facts | RESEARCH QUEUE; inspect metric definition and evaluation protocol first |
+| [MemoryArena, ICML 2026 / PMLR](https://proceedings.mlr.press/v306/he26am.html) | Interdependent multi-session tasks in which earlier environment interactions should improve later actions | Evaluate the closed memory → action → verified outcome loop, not passive conversation QA alone | RESEARCH QUEUE; task/license/reproducibility review required |
+| [International Brain Laboratory, Nature 2025](https://www.nature.com/articles/s41586-025-09235-0) | Standardized brain-wide recordings during a complex perceptual-decision-action task | Study interaction traces across sensation, prior expectation, feedback, choice and action; mouse data are not a human connectome | SCIENTIFIC REFERENCE; no direct architecture copy |
+| [Synaptic connectomics: status and prospects, Nature Reviews Neuroscience 2025](https://www.nature.com/articles/s41583-025-00957-8) | Limits and prospects of multiscale circuit reconstruction | Use connectomics as a constrained hypothesis source; require behavioral predictions and ablations rather than region-name analogies | SCIENTIFIC REFERENCE; no direct architecture copy |
+
+### Candidate acceptance rule
+
+For each candidate, record the exact paper/version and code/data revision, license, task families, split rules, metric definitions, baseline, compute/storage budgets and known limitations. Run a small representative slice first. Keep the candidate only if it identifies a failure or yields reproducible behavior that the current baseline misses. Never tune on the final holdout or assume a benchmark's reported result transfers automatically to NeuroCore.
+
 
 **Purpose:** keep research actionable across chats. This ledger is a queue of candidates, not a claim that all listed ideas are integrated or superior. Read [NEUROCORE_START_HERE.md](../NEUROCORE_START_HERE.md) and [AGENTS.md](../AGENTS.md) before adding candidates.
 

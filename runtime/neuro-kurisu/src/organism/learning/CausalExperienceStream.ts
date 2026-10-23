@@ -1,6 +1,23 @@
 import type { ActionKind, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
 
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const containsControlCharacter=(value:string):boolean=>Array.from(value).some(character=>{
+  const code=character.codePointAt(0)??0;
+  return code<=0x1f||(code>=0x7f&&code<=0x9f);
+});
+const normalizeBoundedId=(value:unknown,maxLength:number):string=>{
+  if(typeof value!=='string')return '';
+  const normalized=value.normalize('NFKC');
+  // Reject control-bearing input before trim: otherwise a leading/trailing
+  // newline or tab could be erased and alias a different valid identity.
+  if(containsControlCharacter(normalized))return '';
+  const trimmed=normalized.trim();
+  if(!trimmed||trimmed.length>maxLength)return '';
+  return trimmed;
+};
+const normalizeTraceId=(value:unknown)=>normalizeBoundedId(value,180);
+const normalizeTaskId=(value:unknown)=>normalizeBoundedId(value,120);
+const CAUSAL_ACTIONS: readonly ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 
 export interface CausalExperienceRecord {
   id:string;
@@ -45,6 +62,7 @@ export interface CausalExperienceState {
   behavioralImpact01:number;
   behavioralContextSamples:number;
   behavioralDivergence01:number;
+  recordedTraceIds?:string[];
 }
 
 export interface CausalLearningPacket {
@@ -63,6 +81,11 @@ function vector(state:OrganismState){
   const n=state.needs;
   return [n.energy,n.cognitiveLoad,n.uncertainty,n.novelty,n.goalPressure,n.socialNeed,n.identityCoherence,state.predictionError,state.attentionBudget,state.selfPredictionError];
 }
+function hasValidObservedState(state:OrganismState):boolean{
+  const values=vector(state);
+  return Number.isSafeInteger(state.tick)&&state.tick>=0&&
+    values.every(value=>Number.isFinite(value)&&value>=0&&value<=1);
+}
 
 function distance(a:number[],b:number[]){
   const n=Math.min(a.length,b.length); if(!n)return 0;
@@ -73,38 +96,142 @@ function distance(a:number[],b:number[]){
 export class CausalExperienceStream {
   private state=defaultCausalExperienceStream();
   private readonly maxRecords:number;
-  private readonly observedTraceIds=new Set<string>();
+  private readonly recordedOutcomeTraceIds=new Set<string>();
+  private readonly maxRecordedTraceIds=4096;
   constructor(maxRecords=1024){ this.maxRecords=Math.max(64,Math.min(4096,Math.floor(maxRecords))); }
   restore(raw?:Partial<CausalExperienceState>|null){
     const d=defaultCausalExperienceStream(),r=raw??{};
-    this.state={...d,...r,records:Array.isArray(r.records)?r.records.slice(-this.maxRecords):[],rolling:{...d.rolling,...(r.rolling??{})}};
-    this.observedTraceIds.clear();
-    for(const record of this.state.records) this.observedTraceIds.add(record.traceId);
+    const restoredRows:CausalExperienceRecord[]=Array.isArray(r.records)
+      ? r.records.slice(-this.maxRecords)
+        .flatMap(rawRecord=>{
+          const record=rawRecord as CausalExperienceRecord;
+          const traceId=normalizeTraceId(record?.traceId);
+          const taskId=normalizeTaskId(record?.taskId);
+          const validActions=CAUSAL_ACTIONS.includes(record?.action);
+          const boundedMetrics=[
+            record?.reward01,record?.success01,record?.surprise01,record?.predictionError01,
+            record?.novelty01,record?.uncertainty01,record?.energyBefore01,record?.energyAfter01,
+            record?.stateDelta01,record?.causalStrength01,record?.identityRelevance01,record?.goalPressure01,
+          ].every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1);
+          const validCounters=Number.isSafeInteger(record?.tick)&&record.tick>=0&&
+            typeof record?.at==='number'&&Number.isFinite(record.at)&&record.at>=0&&
+            typeof record?.id==='string'&&record.id.length>0&&record.id.length<=256;
+          if(!traceId||!taskId||!validActions||!boundedMetrics||!validCounters)return [];
+          const hasRuntimePolicyFeatures=Array.isArray(record.policyFeatures01)&&record.policyFeatures01.length>=16&&
+            record.policyFeatures01.length<=128&&record.policyFeatures01.every(value=>Number.isFinite(value)&&value>=0&&value<=1);
+          const validReplayMetadata=record.replayEligible===undefined||typeof record.replayEligible==='boolean';
+          const validOptionalMetrics=[record.learningQuality01,record.replayPriority01].every(value=>
+            value===undefined||(typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1));
+          const validReplayCounters=[record.replayCount,record.lastReplayedAt].every(value=>
+            value===undefined||(typeof value==='number'&&Number.isSafeInteger(value)&&value>=0));
+          if(!validReplayMetadata||!validOptionalMetrics||!validReplayCounters)return [];
+          // A well-shaped record is not authenticated evidence. Preserve trusted
+          // eligibility only for the runtime-outcome provenance and bounded policy vector;
+          // the host persistence boundary still must authenticate the snapshot itself.
+          const trustedRuntimeEvidence=record.provenance==='runtime-outcome'&&hasRuntimePolicyFeatures;
+          return [{
+            ...record,traceId,taskId,
+            ...(!trustedRuntimeEvidence?{provenance:'external',stateGrounded:false,replayEligible:false}:{}),
+          }];
+        })
+      : [];
+    const firstByTraceId=new Map<string,CausalExperienceRecord>();
+    const conflictingTraceIds=new Set<string>();
+    const uniqueRows:CausalExperienceRecord[]=[];
+    for(const record of restoredRows){
+      const prior=firstByTraceId.get(record.traceId);
+      if(!prior){
+        firstByTraceId.set(record.traceId,record);
+        uniqueRows.push(record);
+      }else{
+        let identical=false;
+        try {
+          identical=JSON.stringify(prior)===JSON.stringify(record);
+        } catch {
+          // Cyclic/non-serializable persisted rows are not safe evidence.
+          identical=false;
+        }
+        if(!identical){
+          // Distinct persisted records became the same identity after NFKC.
+          // Quarantine every row for that identity rather than choosing one result.
+          conflictingTraceIds.add(record.traceId);
+        }
+      }
+      // An exact duplicate row is safely collapsed to the first copy.
+    }
+    const records=uniqueRows.filter(record=>!conflictingTraceIds.has(record.traceId));
+    const safeCounter=(value:unknown,fallback=0):number=>
+      typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
+    const safeMetric=(value:unknown,fallback=0):number=>
+      typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:fallback;
+    const rawRolling=r.rolling&&typeof r.rolling==='object'?r.rolling:d.rolling;
+    const normalizedRecordedIds=Array.isArray(r.recordedTraceIds)
+      ? [...new Set(r.recordedTraceIds.map(normalizeTraceId).filter(Boolean))].slice(-this.maxRecordedTraceIds)
+      : [];
+    this.state={
+      ...d,
+      // Snapshot aggregates are untrusted input. Keep only bounded scalar shapes;
+      // behavioral aggregates are recomputed from eligible records below.
+      observations:safeCounter(r.observations),
+      outcomes:safeCounter(r.outcomes,records.length),
+      consolidated:safeCounter(r.consolidated,records.filter(record=>record.consolidated).length),
+      records,
+      rolling:{
+        surprise01:safeMetric(rawRolling.surprise01),
+        predictionError01:safeMetric(rawRolling.predictionError01),
+        causalStrength01:safeMetric(rawRolling.causalStrength01),
+        learningOpportunity01:safeMetric(rawRolling.learningOpportunity01),
+      },
+      lastConsolidatedAt:typeof r.lastConsolidatedAt==='number'&&Number.isFinite(r.lastConsolidatedAt)&&r.lastConsolidatedAt>=0?r.lastConsolidatedAt:0,
+      recordedTraceIds:normalizedRecordedIds,
+      behavioralImpact01:0,
+      behavioralContextSamples:0,
+      behavioralDivergence01:0,
+    };
+    this.recordedOutcomeTraceIds.clear();
+    for(const id of this.state.recordedTraceIds??[])this.recordedOutcomeTraceIds.add(id);
+    // Keep both valid and quarantined event identities in the bounded dedup guard.
+    // This prevents a malformed historical collision from being reintroduced as new data.
+    for(const record of restoredRows)this.recordedOutcomeTraceIds.add(record.traceId);
+    while(this.recordedOutcomeTraceIds.size>this.maxRecordedTraceIds)this.recordedOutcomeTraceIds.delete(this.recordedOutcomeTraceIds.values().next().value!);
+    this.state.recordedTraceIds=[...this.recordedOutcomeTraceIds];
     this.recomputeBehavioralImpact();
   }
   snapshot(){return structuredClone(this.state);}
   observe(trace:OrganismDecisionTrace):void{
     this.state.observations++;
-    this.observedTraceIds.add(trace.id);
+    // Observation alone is not an outcome and must not suppress its later record.
     // Observation is intentionally cheap: it never evicts causal records. The stream waits for outcome before creating a sample.
   }
   recordOutcome(trace:OrganismDecisionTrace,stateAfter:OrganismState,input:{reward01:number;success01:number;surprise01:number;novelty01:number}):CausalExperienceRecord|null{
-    if(!trace.selected)return null;
-    if(this.state.records.some(r=>r.traceId===trace.id))return null;
+    // A caller reaching this API is not enough to establish a grounded transition:
+    // require a supported selected action and valid before/after state snapshots.
+    if(!trace.selected||!CAUSAL_ACTIONS.includes(trace.selected.action)||
+      !Number.isSafeInteger(trace.tick)||trace.tick<0||
+      !hasValidObservedState(trace.stateBefore)||!hasValidObservedState(stateAfter)||
+      // The decision trace must describe the same pre-action world tick; otherwise
+      // an unrelated/old trace could be paired with a newer observed transition.
+      trace.tick!==trace.stateBefore.tick||
+      stateAfter.tick<=trace.stateBefore.tick)return null;
+    const boundedInput=[input.reward01,input.success01,input.surprise01,input.novelty01];
+    if(!boundedInput.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1))return null;
+    const traceId=normalizeTraceId(trace.id);
+    const taskId=normalizeTaskId(trace.selected.goalId??trace.selected.action);
+    if(!traceId||!taskId||this.recordedOutcomeTraceIds.has(traceId)||this.state.records.some(r=>r.traceId===traceId))return null;
     const before=vector(trace.stateBefore),after=vector(stateAfter);
     const stateDelta=distance(before,after);
-    const surprise=clamp01(input.surprise01);
+    const surprise=input.surprise01;
     const predictionError=clamp01(trace.stateBefore.predictionError);
-    const novelty=clamp01(input.novelty01);
+    const novelty=input.novelty01;
     const uncertainty=clamp01(trace.stateBefore.needs.uncertainty);
-    const reward=clamp01(input.reward01),success=clamp01(input.success01);
+    const reward=input.reward01,success=input.success01;
     const outcomeMagnitude=clamp01(Math.abs(reward-.5)*1.6+Math.abs(success-.5)*.8);
     const causalStrength=clamp01(stateDelta*.34+predictionError*.24+surprise*.18+outcomeMagnitude*.16+novelty*.08);
     const learningOpportunity=clamp01(causalStrength*.58+surprise*.18+predictionError*.14+novelty*.10);
-    const id=`cx-${trace.tick}-${trace.id}`;
+    const id=`cx-${trace.tick}-${traceId}`;
     const record:CausalExperienceRecord={
-      id, tick:trace.tick, at:Date.now(), traceId:trace.id, action:trace.selected.action,
-      taskId:trace.selected.goalId??trace.selected.action, reward01:reward, success01:success,
+      id, tick:trace.tick, at:Date.now(), traceId, action:trace.selected.action,
+      taskId, reward01:reward, success01:success,
       surprise01:surprise, predictionError01:predictionError, novelty01:novelty, uncertainty01:uncertainty,
       energyBefore01:clamp01(trace.stateBefore.needs.energy), energyAfter01:clamp01(stateAfter.needs.energy),
       stateDelta01:stateDelta, causalStrength01:causalStrength,
@@ -114,6 +241,9 @@ export class CausalExperienceStream {
       learningQuality01:clamp01(.45+causalStrength*.45+surprise*.10), replayEligible:true, replayPriority01:clamp01(.24*surprise+.20*predictionError+.18*causalStrength+.12*novelty+.10*uncertainty+.08*clamp01(trace.stateBefore.needs.identityCoherence)+.08*clamp01(trace.stateBefore.needs.goalPressure)+.06*clamp01(.45+causalStrength*.45+surprise*.10)), replayCount:0, lastReplayedAt:0,
     };
     this.state.records.push(record); if(this.state.records.length>this.maxRecords)this.state.records=this.state.records.slice(-this.maxRecords);
+    this.recordedOutcomeTraceIds.add(traceId);
+    while(this.recordedOutcomeTraceIds.size>this.maxRecordedTraceIds)this.recordedOutcomeTraceIds.delete(this.recordedOutcomeTraceIds.values().next().value!);
+    this.state.recordedTraceIds=[...this.recordedOutcomeTraceIds];
     this.state.outcomes++;
     this.state.rolling.surprise01=clamp01(this.state.rolling.surprise01*.92+surprise*.08);
     this.state.rolling.predictionError01=clamp01(this.state.rolling.predictionError01*.92+predictionError*.08);
@@ -122,20 +252,79 @@ export class CausalExperienceStream {
     this.recomputeBehavioralImpact();
     return structuredClone(record);
   }
-  recordExternalLearningEvent(input:{tick:number;taskId:string;action:ActionKind;reward01:number;success01:number;surprise01:number;novelty01:number;uncertainty01?:number;identityRelevance01?:number;goalPressure01?:number;causalStrength01?:number;traceId?:string;provenance?:CausalExperienceRecord['provenance'];stateGrounded?:boolean;sourceMemoryId?:string;evidenceKey?:string}):CausalExperienceRecord{
-    const reward=clamp01(input.reward01),success=clamp01(input.success01),surprise=clamp01(input.surprise01),novelty=clamp01(input.novelty01),uncertainty=clamp01(input.uncertainty01??.5); const causal=clamp01(input.causalStrength01??(surprise*.35+novelty*.15+Math.abs(reward-.5)*.25+Math.abs(success-.5)*.25));
-    const id=`cx-ext-${input.tick}-${input.taskId}-${Date.now()}`;
+  recordExternalLearningEvent(input:{tick:number;taskId:string;action:ActionKind;reward01:number;success01:number;surprise01:number;novelty01:number;uncertainty01?:number;identityRelevance01?:number;goalPressure01?:number;causalStrength01?:number;traceId?:string;provenance?:CausalExperienceRecord['provenance'];stateGrounded?:boolean;sourceMemoryId?:string;evidenceKey?:string}):CausalExperienceRecord|null{
+    const taskCandidate=typeof input.taskId==='string'?input.taskId.normalize('NFKC'):'';
+    if(!taskCandidate.trim())throw new Error('causal-external-task-id-required');
+    // Preserve the raw normalized value until control-character validation;
+    // trimming here would erase a leading/trailing newline or tab.
+    const taskId=normalizeTaskId(taskCandidate);
+    if(!taskId)throw new Error('causal-external-task-id-invalid');
+    if(!CAUSAL_ACTIONS.includes(input.action))throw new Error('causal-external-action-invalid');
+    if(!Number.isSafeInteger(input.tick)||input.tick<0)throw new Error('causal-external-tick-invalid');
+    const boundedExternalMetrics=[
+      input.reward01,input.success01,input.surprise01,input.novelty01,
+      input.uncertainty01??.5,input.identityRelevance01??0,input.goalPressure01??0,
+      input.causalStrength01??(input.surprise01*.35+input.novelty01*.15+
+        Math.abs(input.reward01-.5)*.25+Math.abs(input.success01-.5)*.25),
+    ];
+    if(!boundedExternalMetrics.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1)){
+      throw new Error('causal-external-metric-invalid');
+    }
+    const validateOptionalIdentity=(value:unknown,label:string,maxLength:number):string|undefined=>{
+      if(value===undefined)return undefined;
+      if(typeof value!=='string')throw new Error(`causal-external-${label}-invalid`);
+      const normalized=normalizeBoundedId(value,maxLength);
+      if(!normalized)throw new Error(`causal-external-${label}-invalid`);
+      return normalized;
+    };
+    const sourceMemoryId=validateOptionalIdentity(input.sourceMemoryId,'source-memory-id',180);
+    const evidenceKey=validateOptionalIdentity(input.evidenceKey,'evidence-key',256);
+    const eventTick=input.tick;
+    const reward=input.reward01,success=input.success01,surprise=input.surprise01,novelty=input.novelty01,uncertainty=input.uncertainty01??.5;
+    const identityRelevance=input.identityRelevance01??0,goalPressure=input.goalPressure01??0;
+    // This public ingestion boundary cannot authenticate caller-asserted provenance
+    // or stateGrounded flags. Treat every imported event as external and ungrounded;
+    // only recordOutcome() may mint runtime-grounded evidence from an observed
+    // decision trace plus the resulting organism state transition.
+    const provenance:CausalExperienceRecord['provenance']='external';
+    const stateGrounded=false;
+    const causal=input.causalStrength01??(surprise*.35+novelty*.15+Math.abs(reward-.5)*.25+Math.abs(success-.5)*.25);
+    const at=Date.now();
+    const id=`cx-ext-${eventTick}-${taskId}-${at}`;
+    const traceId=input.traceId===undefined?normalizeTraceId(id):normalizeTraceId(input.traceId);
+    if(!traceId)throw new Error('causal-external-trace-id-invalid');
+    const prior=this.state.records.find(record=>record.traceId===traceId);
+    if(prior){
+      // Stable source identity is idempotent only for the same normalized payload.
+      // A reused ID with changed evidence must surface as a conflict, not be silently ignored.
+      const samePayload=prior.provenance===provenance&&prior.tick===eventTick&&prior.taskId===taskId&&prior.action===input.action&&
+        prior.reward01===reward&&prior.success01===success&&prior.surprise01===surprise&&prior.novelty01===novelty&&
+        prior.uncertainty01===uncertainty&&prior.identityRelevance01===identityRelevance&&prior.goalPressure01===goalPressure&&
+        prior.causalStrength01===causal&&prior.stateGrounded===stateGrounded&&
+        prior.sourceMemoryId===sourceMemoryId&&prior.evidenceKey===evidenceKey;
+      if(!samePayload)throw new Error('causal-external-trace-id-conflict');
+      return structuredClone(prior);
+    }
+    if(this.recordedOutcomeTraceIds.has(traceId)){
+      // The event is known but its bounded record has been evicted. Do not create
+      // another outcome when an upstream bridge retries an identity we still remember.
+      return null;
+    }
     const record:CausalExperienceRecord={
-      id, tick:Math.max(0,Math.floor(input.tick)), at:Date.now(), traceId:String(input.traceId??id), action:input.action,
-      taskId:String(input.taskId).slice(0,120), reward01:reward, success01:success, surprise01:surprise,
+      id, tick:eventTick, at, traceId, action:input.action,
+      taskId, reward01:reward, success01:success, surprise01:surprise,
       predictionError01:surprise*.6, novelty01:novelty, uncertainty01:uncertainty, energyBefore01:.5,
       energyAfter01:clamp01(.5-success*.08), stateDelta01:clamp01(Math.abs(success-.5)*.7+surprise*.3), causalStrength01:causal,
-      identityRelevance01:clamp01(input.identityRelevance01??0), goalPressure01:clamp01(input.goalPressure01??0),
-      consolidated:false, provenance:input.provenance??'external', stateGrounded:Boolean(input.stateGrounded),
-      sourceMemoryId:input.sourceMemoryId, evidenceKey:input.evidenceKey,
-      learningQuality01:clamp01((input.stateGrounded?0.45:0.18)+causal*.45+novelty*.10), replayEligible:Boolean(input.stateGrounded), replayPriority01:clamp01(.24*surprise+.20*(surprise*.6)+.18*causal+.12*novelty+.10*uncertainty+.08*clamp01(input.identityRelevance01??0)+.08*clamp01(input.goalPressure01??0)+.06*clamp01((input.stateGrounded?0.45:0.18)+causal*.45+novelty*.10)), replayCount:0, lastReplayedAt:0,
+      identityRelevance01:identityRelevance, goalPressure01:goalPressure,
+      consolidated:false, provenance, stateGrounded,
+      sourceMemoryId, evidenceKey,
+      learningQuality01:clamp01((stateGrounded?0.45:0.18)+causal*.45+novelty*.10), replayEligible:stateGrounded, replayPriority01:clamp01(.24*surprise+.20*(surprise*.6)+.18*causal+.12*novelty+.10*uncertainty+.08*identityRelevance+.08*goalPressure+.06*clamp01((stateGrounded?0.45:0.18)+causal*.45+novelty*.10)), replayCount:0, lastReplayedAt:0,
     };
-    this.state.records.push(record); if(this.state.records.length>this.maxRecords)this.state.records=this.state.records.slice(-this.maxRecords); this.state.outcomes++; this.recomputeBehavioralImpact(); this.state.rolling.surprise01=clamp01(this.state.rolling.surprise01*.92+surprise*.08); this.state.rolling.predictionError01=clamp01(this.state.rolling.predictionError01*.92+record.predictionError01*.08); this.state.rolling.causalStrength01=clamp01(this.state.rolling.causalStrength01*.9+causal*.1); this.state.rolling.learningOpportunity01=clamp01(this.state.rolling.learningOpportunity01*.9+(causal*.58+surprise*.18+novelty*.1)*.1); return structuredClone(record);
+    this.state.records.push(record); if(this.state.records.length>this.maxRecords)this.state.records=this.state.records.slice(-this.maxRecords);
+    this.recordedOutcomeTraceIds.add(traceId);
+    while(this.recordedOutcomeTraceIds.size>this.maxRecordedTraceIds)this.recordedOutcomeTraceIds.delete(this.recordedOutcomeTraceIds.values().next().value!);
+    this.state.recordedTraceIds=[...this.recordedOutcomeTraceIds];
+    this.state.outcomes++; this.recomputeBehavioralImpact(); this.state.rolling.surprise01=clamp01(this.state.rolling.surprise01*.92+surprise*.08); this.state.rolling.predictionError01=clamp01(this.state.rolling.predictionError01*.92+record.predictionError01*.08); this.state.rolling.causalStrength01=clamp01(this.state.rolling.causalStrength01*.9+causal*.1); this.state.rolling.learningOpportunity01=clamp01(this.state.rolling.learningOpportunity01*.9+(causal*.58+surprise*.18+novelty*.1)*.1); return structuredClone(record);
   }
   private policyFeatureVector(state:OrganismState):number[]{
     const n=state.needs;
@@ -143,7 +332,7 @@ export class CausalExperienceStream {
   }
   prioritizedReplayCandidates(limit=32,at=Date.now()){
     const now=Number.isFinite(at)?Number(at):Date.now();
-    const rows=this.state.records.filter(r=>r.replayEligible!==false&&Array.isArray(r.policyFeatures01)&&r.policyFeatures01.length>=16);
+    const rows=this.state.records.filter(r=>r.provenance==='runtime-outcome'&&r.stateGrounded===true&&r.replayEligible===true&&Array.isArray(r.policyFeatures01)&&r.policyFeatures01.length>=16&&r.policyFeatures01.every(value=>Number.isFinite(value)&&value>=0&&value<=1));
     const score=(r:CausalExperienceRecord)=>{
       const ageDays=Math.max(0,now-r.at)/86400000;
       const ageBoost=clamp01(Math.min(1,ageDays/3))*.05;
@@ -152,7 +341,29 @@ export class CausalExperienceStream {
       const quality=clamp01(r.learningQuality01??.5);
       return clamp01(.24*r.surprise01+.20*r.predictionError01+.18*r.causalStrength01+.12*r.novelty01+.10*r.uncertainty01+.08*r.identityRelevance01+.08*r.goalPressure01+.06*quality+ageBoost-repeatPenalty-recencyPenalty);
     };
-    return rows.map(r=>({...r,replayPriority01:score(r)})).sort((a,b)=>(b.replayPriority01??0)-(a.replayPriority01??0)).slice(0,Math.max(1,Math.min(64,Math.floor(limit)))).map(r=>structuredClone(r));
+    const ranked=rows.map(r=>({...r,replayPriority01:score(r)}));
+    const selected:typeof ranked=[];
+    const taskCounts=new Map<string,number>(),contextCounts=new Map<string,number>();
+    const wanted=Math.max(1,Math.min(64,Math.floor(limit)));
+    // Maximal-marginal-relevance selection: retain high-value surprises while
+    // stopping one task/context from consuming the whole replay batch.
+    while(selected.length<wanted&&ranked.length){
+      let bestIndex=0,bestAdjusted=-Infinity;
+      for(let i=0;i<ranked.length;i++){
+        const candidate=ranked[i];
+        const base=candidate.replayPriority01??0;
+        const taskSeen=taskCounts.get(candidate.taskId)??0;
+        const contextSeen=contextCounts.get(this.contextKey(candidate))??0;
+        const adjusted=base-Math.min(.42,taskSeen*.24+contextSeen*.08);
+        if(adjusted>bestAdjusted){bestAdjusted=adjusted;bestIndex=i;}
+      }
+      const [chosen]=ranked.splice(bestIndex,1);
+      selected.push(chosen);
+      taskCounts.set(chosen.taskId,(taskCounts.get(chosen.taskId)??0)+1);
+      const key=this.contextKey(chosen);
+      contextCounts.set(key,(contextCounts.get(key)??0)+1);
+    }
+    return selected.map(r=>structuredClone(r));
   }
   policyReplayCandidates(limit=32,at=Date.now()){ return this.prioritizedReplayCandidates(limit,at); }
   markReplay(ids:string[],at=Date.now()){
@@ -164,7 +375,7 @@ export class CausalExperienceStream {
   private contextKey(r:CausalExperienceRecord){return `${r.taskId}|e${Math.floor(r.energyBefore01*4)}|u${Math.floor(r.uncertainty01*4)}|n${Math.floor(r.novelty01*4)}|g${Math.floor(r.goalPressure01*4)}`;}
   private recomputeBehavioralImpact(){
     const buckets=new Map<string,CausalExperienceRecord[]>();
-    for(const r of this.state.records){const k=this.contextKey(r);const arr=buckets.get(k)??[];arr.push(r);buckets.set(k,arr);}
+    for(const r of this.state.records){if(r.provenance!=='runtime-outcome'||r.stateGrounded!==true)continue;const k=this.contextKey(r);const arr=buckets.get(k)??[];arr.push(r);}
     let weighted=0,weight=0,divergence=0,samples=0;
     for(const rows of buckets.values()){if(rows.length<4)continue; const early=rows.slice(0,Math.max(2,Math.floor(rows.length/2))); const late=rows.slice(-Math.max(2,Math.floor(rows.length/2)));
       const share=(xs:CausalExperienceRecord[],action:ActionKind)=>xs.filter(x=>x.action===action).length/Math.max(1,xs.length);
@@ -181,7 +392,26 @@ export class CausalExperienceStream {
     return {records:rows,learningOpportunity01:clamp01(mean(r=>r.causalStrength01*.6+r.surprise01*.2+r.predictionError01*.2)),meanReward01:clamp01(mean(r=>r.reward01)),meanSurprise01:clamp01(mean(r=>r.surprise01)),meanCausalStrength01:clamp01(mean(r=>r.causalStrength01))};
   }
   consolidate(limit=32,at=Date.now()){
-    const rows=this.state.records.filter(r=>!r.consolidated).sort((a,b)=>(b.causalStrength01+b.surprise01)-(a.causalStrength01+a.surprise01)).slice(0,Math.max(1,Math.min(128,Math.floor(limit))));
+    // Only evidence grounded in an actual state transition may become consolidated memory.
+    const ranked=this.state.records.filter(r=>!r.consolidated&&r.provenance==='runtime-outcome'&&r.stateGrounded===true);
+    const rows:CausalExperienceRecord[]=[];
+    const taskCounts=new Map<string,number>(),contextCounts=new Map<string,number>();
+    const wanted=Math.max(1,Math.min(128,Math.floor(limit)));
+    while(rows.length<wanted&&ranked.length){
+      let bestIndex=0,bestAdjusted=-Infinity;
+      for(let i=0;i<ranked.length;i++){
+        const candidate=ranked[i];
+        const taskSeen=taskCounts.get(candidate.taskId)??0;
+        const contextSeen=contextCounts.get(this.contextKey(candidate))??0;
+        const adjusted=candidate.causalStrength01+candidate.surprise01-Math.min(1.1,taskSeen*.55+contextSeen*.20);
+        if(adjusted>bestAdjusted){bestAdjusted=adjusted;bestIndex=i;}
+      }
+      const [chosen]=ranked.splice(bestIndex,1);
+      rows.push(chosen);
+      taskCounts.set(chosen.taskId,(taskCounts.get(chosen.taskId)??0)+1);
+      const key=this.contextKey(chosen);
+      contextCounts.set(key,(contextCounts.get(key)??0)+1);
+    }
     const eligible=rows.filter(r=>r.causalStrength01>=.44||r.surprise01>=.55||r.identityRelevance01>=.78);
     for(const r of eligible)r.consolidated=true;
     this.state.consolidated+=eligible.length; if(eligible.length)this.state.lastConsolidatedAt=at;

@@ -2,9 +2,9 @@ name: WorkPass97 Node 24 and continual skill learning
 
 on:
   push:
-    branches: [workpass79-cognitive-rebuild]
+    branches: [workpass79-cognitive-rebuild, workpass206-runtime-evaluator-wiring]
   pull_request:
-    branches: [main]
+    branches: [main, workpass203-independent-candidate-evaluator]
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts'
@@ -15,9 +15,22 @@ on:
       - 'runtime/neuro-kurisu/tests/p26-true-learning.mjs'
       - '.github/workflows/workpass95-continual-skill-learning.yml'
       - '.nvmrc'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/tsconfig.clean.json'
+      - 'runtime/neuro-kurisu/src/node-shims.d.ts'
+      - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
+      - 'runtime/neuro-kurisu/scripts/audit-actions-runtime.mjs'
+      - 'app/package.json'
+      - 'app/package-lock.json'
 
+      - 'runtime/neuro-kurisu/tests/workpass310-p23-learning-restore-integrity.mjs'
 permissions:
   contents: read
+
+concurrency:
+  group: nk1-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   continual-skill-learning:
@@ -29,6 +42,8 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
+      - name: Install pinned TypeScript compiler from app lockfile
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Enforce current Node.js runtime contract
         shell: bash
         run: |
@@ -48,6 +63,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:p23:learning
       - name: Validate core skill-learning persistence and restart recovery
         run: npm --prefix runtime/neuro-kurisu run test:p23:integration
+      - name: Validate P23 persisted learning restore integrity
+        run: npm --prefix runtime/neuro-kurisu run test:workpass310:p23-restore-integrity
       - name: Validate parametric learning generalization and finite-state guards
         run: npm --prefix runtime/neuro-kurisu run test:p26:true-learning
       - name: Validate continual transfer calibration

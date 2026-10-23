@@ -1,3 +1,217 @@
+## WorkPass285 — independent evaluator capability scope
+
+- [x] Reject verifier coverage IDs outside each task's declared required-capability set.
+- [x] Ensure out-of-scope capability claims fail closed and are not recorded as covered.
+- [x] Add validation/holdout regression coverage for an out-of-scope `write` claim on a `read` task.
+- [ ] Execute independent evaluator regression suite and runtime typecheck on exact PR head.
+- [ ] Continue wiring host-authenticated runtime evidence into durable causal-memory restoration and evaluated skill promotion.
+- No dependency added; no learning-score uplift claimed.
+
+---
+
+## WorkPass284 — reject malformed external causal evidence
+
+- [x] Reject invalid external world ticks rather than coercing them.
+- [x] Reject NaN/Infinity and out-of-range external evidence metrics before normalization.
+- [x] Validate optional source-memory and evidence identities against control characters, blank values and size limits.
+- [x] Add regression cases for malformed tick, metric and source identity.
+- [ ] Run `test:big-pass-90:causal-stream` and runtime typecheck on the exact PR head.
+- [ ] Authenticate imported evidence with host-owned source receipts; shape validation alone does not prove provenance.
+- No dependency added; no learning-score uplift claimed.
+
+---
+
+## WorkPass283 — bind causal outcome to its decision tick
+
+- [x] Require the trace tick to match the pre-action state tick before minting grounded causal memory.
+- [x] Add a regression for attaching a mismatched trace to an observed transition.
+- [ ] Execute the causal-stream test and exact-head runtime typecheck.
+- [ ] Trace the real runtime outcome writer and add host-owned authenticity to persisted causal snapshots; tick consistency is not caller authentication.
+- No dependency added; no learning-score uplift claimed.
+
+---
+
+## WorkPass282 — P23 canonical fingerprint consistency
+
+- [x] Align P23 engine payload/evaluation canonicalization with the independent evaluator's strict JSON-like value rules.
+- [x] Fail closed on non-finite numbers, cycles, non-plain instances and values that JSON cannot serialize.
+- [ ] Add and execute end-to-end regression coverage for malformed generated payloads and malformed returned evaluation reports.
+- [ ] Execute P23 learning, candidate evaluator, revision lifecycle tests and runtime typecheck on the exact PR head.
+- [ ] Continue toward authenticated host-owned causal-memory persistence and an evaluated, rollback-capable candidate promotion loop.
+- No dependency added; no measured learning-score uplift claimed.
+
+---
+
+## WorkPass281 — evaluator fingerprint and run-identity hardening
+
+- [x] Reject non-finite, circular and non-plain candidate task input structures before plan fingerprinting.
+- [x] Reject unsafe sandbox run IDs before independent verification and trusted provenance creation.
+- [x] Add regressions for NaN/circular/Date task inputs and control-bearing sandbox run IDs.
+- [ ] Execute P23 evaluator tests and runtime typecheck on the exact branch head.
+- [ ] Continue wiring real host-owned isolated execution, verifier and safety authorities in deployment; adapter interfaces alone do not prove sandbox isolation.
+- [ ] No dependency added; no measured learning-score uplift claimed.
+
+---
+
+## WorkPass280 — strict evidence-envelope canonicalization
+
+- [x] Reject non-finite numeric values before computing independent evaluation fingerprints.
+- [x] Reject circular references and non-plain object instances in canonical evidence envelopes.
+- [x] Add regression proving NaN quality metrics cannot pass envelope integrity by becoming JSON null.
+- [ ] Execute exact-head Hermes evidence-binding test and runtime typecheck.
+- [ ] Keep quality scores advisory unless a separate trusted authority authenticates them; signed receipts bind identity/outcome only.
+- [ ] No dependency added and no learning-score increase claimed.
+
+---
+
+## WorkPass279 — causal memory restore and outcome validation
+
+- [x] Normalize malformed persisted aggregate counters, rolling metrics and consolidation timestamp during causal-stream restore.
+- [x] Recompute behavioral impact/divergence/sample counts from eligible runtime-grounded records rather than accepting snapshot aggregates.
+- [x] Reject malformed runtime outcome metrics, invalid trace ticks and control-bearing task IDs before creating grounded causal records.
+- [x] Add regression cases for poisoned aggregate snapshots, NaN reward and unsafe task identity.
+- [ ] Run the exact-head causal-stream test and TypeScript checks; these changes are committed but not yet executed here.
+- [ ] Add authenticated persistence/host attestation; shape validation alone cannot prove a persisted snapshot was not forged.
+- [ ] No new dependency and no measured learning-score increase.
+
+---
+
+## WorkPass274 — legacy causal snapshot quarantine (2026-10-22)
+
+- [x] Restore downgrades legacy rows that claim trusted provenance but lack the runtime policy-feature vector to external, ungrounded, replay-ineligible evidence.
+- [x] Regression covers forged legacy runtime provenance and verifies consolidation rejects it.
+- [ ] Authenticate persisted evidence snapshots; current downgrade is compatibility hardening, not cryptographic integrity.
+- [ ] Obtain actionable exact-head Actions logs and run the runtime test/typecheck; current connector response contains no job steps and log download returns 404.
+- [ ] No dependency added; no measured learning-score increase.
+
+---
+
+## WorkPass273 — remove caller-controlled trust from external causal intake (2026-10-22)
+
+- **Code:** `recordExternalLearningEvent()` now canonicalizes all imported events to `provenance: 'external'` and `stateGrounded: false`; caller-supplied provenance and grounding booleans are not authentication.
+- **Learning boundary:** imported events cannot become consolidated state-transition memories or policy-replay candidates solely because an upstream caller marks them grounded. The existing runtime `recordOutcome()` path remains the only path in this stream that mints grounded runtime-outcome evidence from a decision trace and observed post-action state.
+- **Regression:** tests now assert provenance canonicalization, forced ungrounded status, replay exclusion, and rejection from consolidation even when an external caller supplies `stateGrounded: true`.
+- **Compatibility:** the external API remains available for imported signals and scoring; those signals are retained as unverified evidence rather than discarded. No new dependency or parallel ledger.
+- **Validation:** source and regression changes are committed on the existing PR branch. Exact-head test/typecheck remains unverified until GitHub Actions exposes actionable job steps/logs. Learning scores remain unchanged; no measured task-success uplift is claimed.
+
+---
+
+## WorkPass272 — enforce storage-root separation by path and filesystem identity (2026-10-22)
+
+- **Code:** extracted one canonical storage-root separation predicate and use it for both per-authority run/survive roots and cross-authority roots.
+- **Security invariant:** roots are considered disjoint only if their resolved paths are not equal/nested and their filesystem identities are distinct. This covers alternate paths that refer to the same device/inode, such as mount aliases. Path comparisons are case-insensitive on Windows.
+- **Regression:** added pure contract assertions for same filesystem identity under different path strings, distinct independent roots, and nested roots. The existing host-owned subprocess regression is already invoked by WorkPass110 CI.
+- **Boundary:** identity checks are defense-in-depth; they do not create an OS/container sandbox or prove the verifier/scanner are independently administered.
+- **Validation:** exact-head CI/test/typecheck remains unverified because available Actions job metadata exposes no steps/logs. No dependency or learning-score increase.
+
+---
+
+## WorkPass271 — quarantine normalized trace-ID collisions during snapshot restore (2026-10-22)
+
+- **Code:** snapshot restoration now canonicalizes all bounded trace IDs before reconciling records. Exact duplicate rows that normalize to the same record are collapsed; conflicting rows that normalize to the same trace ID are all excluded from active causal history.
+- **Dedup safety:** both valid and quarantined normalized IDs remain in the bounded duplicate guard. A retry cannot recreate an ambiguous event after restore.
+- **Regression:** added legacy-snapshot cases for exact duplicate Unicode variants, conflicting payloads that collide under NFKC, quarantined-row exclusion and retry rejection without outcome-count mutation.
+- **Integration:** remains within the existing CausalExperienceStream owner; no second event store and no new dependency.
+- **Validation:** source/tests committed, but exact-head test/typecheck remains unverified because available GitHub Actions jobs expose no steps/logs. Learning scores remain unchanged.
+
+---
+
+## WorkPass270 — preserve raw normalized task ID until validation (2026-10-22)
+
+- **Code:** removed the pre-validation trim from the external task-ingestion path. It now checks whether the NFKC-normalized value is blank without replacing it, then passes the untrimmed normalized input to the shared bounded ID validator.
+- **Failure prevented:** trailing/leading task-ID control characters can no longer be erased at the call site before the shared C0/DEL/C1 guard sees them.
+- **Regression:** existing task-ID boundary-control case now exercises the actual runtime ingestion path rather than only the helper's trace-ID path.
+- **Validation:** exact-head runtime test/typecheck remains unverified because recent Actions jobs expose no steps or logs. No new dependency; no learning score uplift.
+
+---
+
+## WorkPass269 — reject boundary controls before trimming causal identifiers (2026-10-22)
+
+- **Code:** bounded ID normalization now checks C0/DEL/C1 controls immediately after NFKC normalization and only then trims ordinary surrounding whitespace. Leading/trailing newline or tab characters can no longer disappear before validation.
+- **Regression:** added leading-trace, trailing-trace and trailing-task control-character cases; all must fail before outcome state changes.
+- **Integration:** the change stays in canonical CausalExperienceStream; the existing WorkPass110 causal-stream regression step covers the test path.
+- **Validation:** exact-head runtime test/typecheck remains unverified because current Actions attempts expose no step list or logs. No new dependency and no learning-score uplift.
+
+---
+
+## WorkPass268 — broaden causal identity validation and preserve idempotency after eviction (2026-10-22)
+
+- **Code:** causal IDs now reject C0, DEL and C1 control characters as well as blank, non-string and overlong values. The existing NFKC normalization and 120/180-character limits remain.
+- **Bounded-memory behavior:** added a regression proving that when a causal record ages out of the 64-row record window, its retained deduplication identity still prevents a late retry from creating another outcome.
+- **Regression:** added C1 trace-ID and C0 task-ID cases; rejected inputs must leave outcome counts unchanged. Added a bounded-window retry test.
+- **Integration:** no duplicate storage subsystem and no new package dependency; the existing WorkPass110 workflow already watches the causal source/test paths.
+- **Validation:** code/test changes are committed, but the GitHub Actions attempts still expose no runnable steps/logs. Do not report the regression or typecheck as passed until an actionable exact-head run is available.
+- **Progress accounting:** learning scores remain unchanged; this is data-integrity/recovery hardening, not measured learning uplift.
+
+---
+
+## WorkPass267 — reject conflicting payloads under a reused causal event ID (2026-10-22)
+
+- **Code:** external causal-event idempotency now accepts a repeated normalized trace ID only when the normalized event payload agrees with the existing record. Reusing the same ID with a changed task/action/outcome/identity-relevant field raises causal-external-trace-id-conflict rather than silently returning the old outcome.
+- **Durable behavior:** the same conflict check applies when the deduplication record survives snapshot/restore. If the record itself has been evicted but the bounded trace-ID guard still remembers the ID, the stream remains fail-closed and does not create another outcome.
+- **Regression:** added same-process and restored-state tests for changed success/reward under the same trace ID; both require an explicit conflict and unchanged outcome count.
+- **Integration:** reuses CausalExperienceStream's existing owner and WorkPass110 regression path; no parallel ledger or package dependency added.
+- **Validation:** the regression source is committed, but exact-head execution/typecheck remains unverified until Actions provides actionable steps/logs. Learning score estimates remain unchanged.
+- **Next trust audit:** trace all external-ingestion call sites and replace caller-asserted grounding flags with canonical state-transition or verifier provenance after the contract is mapped.
+
+---
+
+## WorkPass266 — code-level identity hardening and active workflow wiring (2026-10-22)
+
+**Source line:** workpass206-runtime-evaluator-wiring · **PR #55:** open/draft/unmerged  
+**Code-change commit baseline:** 951d7bb3f37e6c45fc63427e3edbdfed698af0f3 (documentation commits have advanced the branch after this baseline; the PR link is the live HEAD pointer).
+
+- [x] Fixed lossy identity normalization in the canonical CausalExperienceStream owner: overlong task/trace IDs are rejected instead of silently truncated; empty/non-string/control-bearing identity values fail closed.
+- [x] Tightened snapshot restoration so malformed overlong trace identities do not get truncated and reintroduced as a different event key.
+- [x] Added regression cases for two distinct overlong task IDs, overlong trace IDs, control characters, no mutation after rejection, and corrupt snapshot sanitization.
+- [x] Wired the causal-stream test, Legacy-avatar runtime regression, and Live2D integrity regression into the WorkPass110 workflow; widened both path filters and enabled the current source branch's push trigger.
+- [x] No new dependencies were introduced; the code uses existing Node APIs.
+- [ ] The latest Actions job reports failure with no step list/log URL. A retry was requested; successful exact-head runtime/app tests and typechecks remain unverified.
+- [ ] Next independent code track: close the trust gap between caller-provided external grounding claims and verified event provenance; audit real call sites before changing that contract.
+- [ ] Continue toward the deployment-owned executor/verifier/scanner, matched candidate evaluation, signed promotion, restart/rollback, and independent RU/EN memory-to-action measurements.
+
+Progress accounting: no overall score uplift is awarded for this correctness/CI-wiring pass. It improves implementation integrity and regression reachability; efficacy remains unmeasured until independent task data produce a repeatable result.
+
+---
+
+## GitHub implementation checkpoint — WorkPass265 strategic development plan (2026-10-22)
+
+**Checked source branch:** workpass206-runtime-evaluator-wiring  
+**Reviewed implementation baseline:** `58e9c6a00b5835096dac3758968f5b9ce0eb08d2` — implementation baseline reviewed before this documentation-only checkpoint; the live PR link below is authoritative for the current branch HEAD.  
+**State:** PR open, draft and unmerged; exact-head successful CI/typecheck not confirmed.
+
+- [x] Inspected repository metadata, the current PR changed-file list, strategic audit, start-here charter, canonical backlog, source-intake ledger, P23 roadmap/scorecard, MemoryOS2 retrieval owner, P23LearningEngine, OutcomeVerificationService and Live2D/Legacy avatar paths.
+- [x] Established the publication/source topology concern: main has no common ancestor reported against the current source line. Do not merge/rewrite main automatically.
+- [x] Recorded the current evidence boundary: WorkPass255–264 code changes are present in the PR stack; successful execution and deployment-shaped proof remain unverified.
+- [x] Added an explicit multi-track end-state/acceptance map, eight-pass sequence, scientific benchmark intake and honest progress-accounting rules to the strategic audit.
+- [ ] P0 — restore actionable exact-head CI and run the owning runtime/app tests with accessible logs.
+- [ ] P0 — provision real sandbox launcher plus independently controlled verifier and safety scanner; prove the full matched-evaluation → signed shadow evidence → approval → activation/restart/rollback path.
+- [ ] P1 — run frozen independent RU/EN memory and memory-grounded-action evaluation against the same-corpus/same-budget baseline.
+- [ ] P1 — run replay/transfer/retention experiments with paired seeds, no-learning and wrong-feedback controls; keep promotion blocked until the predeclared evidence gate is met.
+- [ ] P1/P2 — execute production browser/Live2D/speech and physical Android/Termux E2E; measure target-device resources and soak.
+- [ ] P1 — synchronize branch inventory and documentation entry points; do not delete historical source branches before exact unique-diff/provenance review.
+
+Progress rule: implementation, integration, exact-head verification and measured efficacy are separate percentages. A written regression or unavailable Actions log is not a successful run and does not earn verification/efficacy credit. See [strategic execution blueprint](STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md) and [current research intake](../docs/RESEARCH_INTAKE_LEDGER.md).
+
+---
+
+## GitHub implementation checkpoint — WorkPass254 (2026-10-22)
+
+**Active code branch:** `workpass206-runtime-evaluator-wiring` · **Draft PR:** [#55](https://github.com/ailtron1ss-rgb/NK1/pull/55) · **latest implementation group:** independent-evaluation hardening plus avatar/Live2D stability.
+
+- **DONE — WorkPass251:** host authority executable identity and POSIX write permissions revalidated before request creation and again after snapshot I/O; regression authored for scanner executable replacement after setup.
+- **DONE — WorkPass252:** Live2D viewer caches the last applied expression and avoids restarting an unchanged expression during frequent embodiment/lip-sync updates; existing asset-integrity regression extended.
+- **DONE — WorkPass253:** LegacySpriteDeck catches localStorage read/write failures and validates persisted outfit IDs against the canonical catalog, preserving the fallback when storage is blocked.
+- **DONE — WorkPass254:** audited the two commits exclusive to `workpass94-avatar-voice-live2d-audit`; both contain audit documents only. Their two relevant findings are addressed on the active source branch; the source branch is retained.
+- **DONE — tracking:** changelog, P23 roadmap, strategic audit and draft PR description updated through WorkPass254.
+- **PARTIAL — validation:** tests and typechecks are authored/identified but have not been confirmed passing on this exact head. Latest visible Actions jobs for WorkPass105/108/110 remain failed; their root cause has not been established from available logs.
+- **OPEN P0:** real OS/container sandbox launcher; independently controlled verifier and safety scanner; immutable/signed authority deployment; exact-head CI with accessible logs; matched baseline/candidate → authenticated approval → durable activation/restart/rollback.
+- **OPEN P1:** unify browser SpeechSynthesis and Android/Termux voice control/status/interruption without duplicating avatar/runtime state; execute browser/Live2D and Android device E2E; continue branch inventory without deleting source branches based on age/name.
+
+No merge to `main` was performed. The active PR remains draft and unmerged. No green test/typecheck status or release readiness is asserted.
+
+---
+
 ## GitHub implementation checkpoint — WorkPass148 (2026-10-21)
 
 **Active code branch:** `workpass135-durable-shadow-run-registry` · **Draft PR:** [#22](https://github.com/ailtron1ss-rgb/NK1/pull/22) · **latest checkpoint subject:** production verified-shadow learning lifecycle. This GitHub implementation branch is tracked separately from the historical WorkPass57 archive baseline below; no new release archive or release-readiness score is asserted.
@@ -725,3 +939,35 @@ The historical WorkPass57 release baseline and its 78.0% release-roadmap number 
 - [ ] Browser E2E with installed app dependencies: approve/decline/expired/changed-body flows across chat, project tool, device and research surfaces.
 - [ ] Reissue/clean up orphaned pending tickets after tab reload; current continuation intentionally is not persisted with the sensitive body, so the safe recovery is expiry and fresh request.
 - [ ] Production Vite build, live provider/device postconditions, real audio-buffer lip sync, independent memory retrieval uplift, clean-room rollback, exhaustive nested-source license review and soak remain release gates. Weighted score remains 78.0%.
+
+
+## WorkPass275 — causal evidence admission hardening
+
+- [x] Restrict restored grounded causal trust to the `runtime-outcome` provenance plus a bounded finite policy-feature vector.
+- [x] Restrict policy replay to explicit runtime-outcome + grounded + replay-eligible records with valid feature vectors; restrict consolidation to grounded runtime-outcome records.
+- [x] Add regression for a forged `skill-repair` snapshot attempting to inherit runtime trust from plausible policy features.
+- [ ] Authenticate persisted causal snapshots at the host boundary; current checks do not prevent a fully forged snapshot from claiming `runtime-outcome` and fabricating a feature vector.
+- [ ] Execute exact-head typecheck and targeted regression on a functioning CI runner; current GitHub Actions result inspection has not provided actionable logs, so validation is unverified.
+
+
+## WorkPass276 — prevent imported-data contamination of adaptation metrics
+
+- [x] Compute runtime behavioral-impact/context-divergence only from grounded `runtime-outcome` records.
+- [x] Add regression proving varied external actions do not register as runtime behavioral adaptation.
+- [ ] Calibrate the metric against longitudinal task outcomes and holdout evaluation; action-distribution change alone is not evidence of capability improvement.
+
+
+## WorkPass277 — persisted causal record schema validation
+
+- [x] Reject restored causal records with invalid identity fields, unsupported actions, invalid metric ranges, malformed timestamps/IDs, oversized feature vectors, or malformed replay metadata.
+- [x] Add regression fixtures for non-finite reward, unsupported action and control-bearing task ID.
+- [ ] Add host-authenticated snapshot integrity; structural validity alone cannot authenticate provenance.
+- [ ] Run the targeted regression and exact-head typecheck on a functioning runner.
+
+
+## WorkPass278 — observed-state causal admission
+
+- [x] Require supported action and valid normalized before/after state vectors before minting a runtime causal outcome.
+- [x] Require the observed post-state tick to advance beyond the pre-action state.
+- [x] Add regression coverage for NaN state and non-advancing tick.
+- [ ] Host-authenticate persisted evidence and run targeted tests/typecheck on a functioning runner.

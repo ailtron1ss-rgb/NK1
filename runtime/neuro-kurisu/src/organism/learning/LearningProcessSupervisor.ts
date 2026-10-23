@@ -22,6 +22,7 @@ export interface LearningProcessCommand {
   maxOutputBytes?: number;
   env?: Record<string, string>;
   inheritEnv?: string[];
+  signal?: AbortSignal;
 }
 export interface LearningExecutionReceipt {
   schemaVersion: 2;
@@ -33,7 +34,7 @@ export interface LearningExecutionReceipt {
   startedAt: number;
   finishedAt: number;
   durationMs: number;
-  status: 'completed' | 'failed' | 'timed-out' | 'output-limit' | 'spawn-error';
+  status: 'completed' | 'failed' | 'timed-out' | 'cancelled' | 'output-limit' | 'spawn-error';
   exitCode: number | null;
   signal: string | null;
   stdout: string;
@@ -85,7 +86,31 @@ export async function runLearningProcess(
   command: LearningProcessCommand,
   trustedShadowRun?: TrustedShadowRunRegistration,
 ): Promise<LearningProcessResult> {
-  if (!run || !nonEmpty(run.runId) || !/^[a-f0-9]{64}$/i.test(run.manifestFingerprint) ||
+  if (!run || typeof run !== 'object') throw new Error('invalid scheduled learning run');
+  // Snapshot caller-owned run/command data before any await. In particular, trusted
+  // registration may be asynchronous; it must not create a window where the command
+  // that gets spawned differs from the command whose identity was validated/fingerprinted.
+  run = { ...run };
+  if (!command || typeof command !== 'object') throw new Error('invalid process command');
+  command = {
+    ...command,
+    args: Array.isArray(command.args) ? [...command.args] : command.args,
+    env: command.env ? { ...command.env } : undefined,
+    inheritEnv: command.inheritEnv ? [...command.inheritEnv] : undefined,
+  };
+  // Pin the registrar capability itself before the first filesystem await. A caller
+  // retaining the registration object must not be able to swap its method or runtime
+  // identity while directory preparation is in progress.
+  if (trustedShadowRun !== undefined) {
+    if (!trustedShadowRun || !nonEmpty(trustedShadowRun.runtimeVersion) ||
+        typeof trustedShadowRun.register !== 'function') {
+      throw new Error('invalid trusted shadow run registrar');
+    }
+    const runtimeVersion = trustedShadowRun.runtimeVersion;
+    const register = trustedShadowRun.register.bind(trustedShadowRun);
+    trustedShadowRun = { runtimeVersion, register };
+  }
+  if (!nonEmpty(run.runId) || !/^[a-f0-9]{64}$/i.test(run.manifestFingerprint) ||
       !nonEmpty(run.taskId) || !nonEmpty(run.taskVersion) || !nonEmpty(run.arm) || !nonEmpty(run.method) ||
       !safeInteger(run.seed, 0, Number.MAX_SAFE_INTEGER)) throw new Error('invalid scheduled learning run');
   if (!/^[a-f0-9]{64}$/i.test(planFingerprint)) throw new Error('invalid plan fingerprint');
@@ -103,11 +128,15 @@ export async function runLearningProcess(
     throw new Error('trusted run registration is only valid for candidate/shadow execution');
   }
 
+  // Resolve relative cwd against the caller's cwd now, not after async registration.
+  // The exact directory used for execution is the one bound into command provenance.
+  const workingDirectory = path.resolve(command.cwd);
   const timeoutMs = command.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxOutputBytes = command.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES;
   if (!safeInteger(timeoutMs, 1, MAX_TIMEOUT_MS)) throw new Error('timeoutMs out of bounds');
   if (!safeInteger(maxOutputBytes, 1, MAX_OUTPUT_BYTES)) throw new Error('maxOutputBytes out of bounds');
 
+  if (command.signal?.aborted) throw new Error('learning process cancelled before spawn');
   const executionId = randomUUID();
   const startedAt = Date.now();
   await mkdir(path.resolve(command.runRoot), { recursive: true });
@@ -147,10 +176,17 @@ export async function runLearningProcess(
       manifestFingerprint: run.manifestFingerprint, runtimeVersion: trustedShadowRun.runtimeVersion,
     });
   }
+  if (command.signal?.aborted) throw new Error('learning process cancelled before spawn');
+  const inheritedEnvKeys = [...(command.inheritEnv ?? [])].sort();
+  const explicitEnvKeys = Object.keys(command.env ?? {}).sort();
+  // Fingerprint environment values as well as names: values can change execution
+  // semantics. Only the digest is persisted, so secret values are not copied into receipts.
   const commandFingerprint = sha256(JSON.stringify({
-    executable: command.executable, args: command.args, cwd: path.resolve(command.cwd),
-    inheritedEnvKeys: [...(command.inheritEnv ?? [])].sort(),
-    explicitEnvKeys: Object.keys(command.env ?? {}).sort(),
+    executable: command.executable,
+    args: command.args,
+    cwd: workingDirectory,
+    inheritedEnv: inheritedEnvKeys.map(key => [key, env[key] ?? null]),
+    explicitEnv: explicitEnvKeys.map(key => [key, env[key] ?? null]),
   }));
 
   let stdout = Buffer.alloc(0);
@@ -162,13 +198,33 @@ export async function runLearningProcess(
   let exitCode: number | null = null;
   let signal: string | null = null;
   let spawnFailure = '';
+  // On POSIX, give the run its own process group so timeout/cancellation/output
+  // limits can terminate descendants too. Windows retains direct-child semantics;
+  // strong cross-platform isolation still belongs to an OS/container sandbox.
   const child = spawn(command.executable, command.args, {
-    cwd: path.resolve(command.cwd),
+    cwd: workingDirectory,
     env,
     shell: false,
     windowsHide: true,
+    detached: process.platform !== 'win32',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+  const terminateRun = () => {
+    if (process.platform !== 'win32' && child.pid !== undefined) {
+      try {
+        process.kill(-child.pid, 'SIGKILL');
+        return;
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code !== 'ESRCH') {
+          // Fall through to the direct child kill if group signaling is unavailable.
+        } else {
+          return;
+        }
+      }
+    }
+    try { child.kill('SIGKILL'); } catch { /* the child may already have exited */ }
+  };
   const append = (current: Buffer, chunk: Buffer, isStdout: boolean): Buffer => {
     if (isStdout) stdoutBytes += chunk.length;
     else stderrBytes += chunk.length;
@@ -176,28 +232,47 @@ export async function runLearningProcess(
     if (combined.length > maxOutputBytes) {
       outputTruncated = true;
       terminalStatus = 'output-limit';
-      child.kill('SIGKILL');
+      terminateRun();
       return combined.subarray(0, maxOutputBytes);
     }
     return combined;
   };
   child.stdout.on('data', (chunk: Buffer) => { stdout = append(stdout, chunk, true); });
   child.stderr.on('data', (chunk: Buffer) => { stderr = append(stderr, chunk, false); });
+  // Track close before installing timeout/abort handlers so late notifications
+  // cannot rewrite the terminal state of a process that has already exited.
+  let childClosed = false;
   const timeout = setTimeout(() => {
+    if (childClosed) return;
     if (!terminalStatus) terminalStatus = 'timed-out';
-    child.kill('SIGKILL');
+    terminateRun();
   }, timeoutMs);
   timeout.unref?.();
+  const onAbort = () => {
+    if (childClosed || terminalStatus) return;
+    terminalStatus = 'cancelled';
+    terminateRun();
+  };
+  command.signal?.addEventListener('abort', onAbort, { once: true });
+  if (command.signal?.aborted) onAbort();
 
   await new Promise<void>(resolve => {
-    child.once('error', error => { spawnFailure = error.message; terminalStatus = 'spawn-error'; resolve(); });
+    child.once('error', error => {
+      if (!childClosed) {
+        spawnFailure = error.message;
+        terminalStatus = 'spawn-error';
+      }
+      resolve();
+    });
     child.once('close', (code, childSignal) => {
+      childClosed = true;
       exitCode = code;
       signal = childSignal;
       resolve();
     });
   });
   clearTimeout(timeout);
+  command.signal?.removeEventListener('abort', onAbort);
   const finishedAt = Date.now();
   if (!terminalStatus) terminalStatus = exitCode === 0 ? 'completed' : 'failed';
   const receipt: LearningExecutionReceipt = {
@@ -244,7 +319,7 @@ export async function readLearningExecutionReceipt(receiptPath: string): Promise
   if (receipt.schemaVersion !== 2 || !nonEmpty(receipt.executionId) || !nonEmpty(receipt.runId) ||
       !/^[a-f0-9]{64}$/i.test(receipt.planFingerprint) ||
       !/^[a-f0-9]{64}$/i.test(receipt.commandFingerprint) ||
-      !['completed', 'failed', 'timed-out', 'output-limit', 'spawn-error'].includes(receipt.status) ||
+      !['completed', 'failed', 'timed-out', 'cancelled', 'output-limit', 'spawn-error'].includes(receipt.status) ||
       !Number.isFinite(receipt.startedAt) || !Number.isFinite(receipt.finishedAt) ||
       receipt.finishedAt < receipt.startedAt || !Number.isSafeInteger(receipt.stdoutBytes) ||
       !Number.isSafeInteger(receipt.stderrBytes) || typeof receipt.outputTruncated !== 'boolean') {

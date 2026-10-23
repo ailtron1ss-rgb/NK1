@@ -8,25 +8,28 @@ on:
     branches:
       - main
       - workpass70-source
+      - workpass203-independent-candidate-evaluator
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: workpass79-${{ github.ref }}
+  group: nk1-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
   local-language-resilience:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
           package-manager-cache: false
+      - name: Install pinned TypeScript compiler from app lockfile
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Verify signed verifier outcome artifacts and reject tampering
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-signed-outcome-artifact.mjs

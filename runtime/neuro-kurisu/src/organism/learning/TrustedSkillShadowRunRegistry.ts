@@ -1,5 +1,7 @@
-import { closeSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { closeSync, fsyncSync, linkSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { hostname } from 'node:os';
 import type { SkillShadowObservation, VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 import type { TrustedShadowExecutionContext } from './VerifiedSkillShadowEvidence.ts';
 
@@ -66,16 +68,80 @@ export class AtomicFileTrustedSkillShadowRunRegistry {
     return parsed;
   }
 
+  private lockOwnerIsProvablyDead(raw: string): boolean {
+    let owner: unknown;
+    try { owner = JSON.parse(raw); } catch { return false; }
+    if (!isRecord(owner) || owner.hostname !== hostname() ||
+        !Number.isSafeInteger(owner.pid) || (owner.pid as number) < 1) return false;
+    try {
+      process.kill(owner.pid as number, 0);
+      return false;
+    } catch (error) {
+      // EPERM means the process exists but is not signalable. Only ESRCH proves
+      // that a same-host owner no longer exists; unknown/legacy lock formats fail closed.
+      return (error as NodeJS.ErrnoException).code === 'ESRCH';
+    }
+  }
+
   private withExclusiveLock<T>(action: () => T): T {
     mkdirSync(dirname(this.filePath), { recursive: true });
     let lockFd: number;
     try { lockFd = openSync(this.lockPath, 'wx', 0o600); }
     catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'EEXIST') throw new Error('trusted run registry is locked; fail closed');
-      throw error;
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+      // Reclaim a dead owner without a check-then-unlink race. Two contenders
+      // may both inspect the stale lock, but only one can atomically rename that
+      // path. Re-read the quarantined inode before deleting it so a lock replaced
+      // between inspection and rename is never mistaken for the stale owner.
+      let staleRaw: string;
+      try { staleRaw = readFileSync(this.lockPath, 'utf8'); }
+      catch { throw new Error('trusted run registry is locked; fail closed'); }
+      if (!this.lockOwnerIsProvablyDead(staleRaw)) {
+        throw new Error('trusted run registry is locked; fail closed');
+      }
+      const quarantinePath = `${this.lockPath}.stale-${process.pid}-${randomUUID()}`;
+      try { renameSync(this.lockPath, quarantinePath); }
+      catch { throw new Error('trusted run registry is locked; fail closed'); }
+      let quarantinedRaw: string;
+      try { quarantinedRaw = readFileSync(quarantinePath, 'utf8'); }
+      catch {
+        try { unlinkSync(quarantinePath); } catch { /* best effort */ }
+        throw new Error('trusted run registry is locked; fail closed');
+      }
+      if (quarantinedRaw !== staleRaw || !this.lockOwnerIsProvablyDead(quarantinedRaw)) {
+        // If the path changed after our first read, put that exact lock back
+        // without overwriting a newer owner's lock. If another owner already
+        // acquired the canonical path, preserve the quarantined record rather
+        // than deleting evidence of an in-flight owner.
+        try {
+          linkSync(quarantinePath, this.lockPath);
+          unlinkSync(quarantinePath);
+        } catch { /* fail closed; never overwrite or unlink the canonical lock */ }
+        throw new Error('trusted run registry is locked; fail closed');
+      }
+      try { unlinkSync(quarantinePath); }
+      catch { throw new Error('trusted run registry is locked; fail closed'); }
+      // Another contender may win after quarantine cleanup; exclusive creation
+      // ensures at most one caller enters the critical section.
+      try { lockFd = openSync(this.lockPath, 'wx', 0o600); }
+      catch { throw new Error('trusted run registry is locked; fail closed'); }
     }
-    try { writeFileSync(lockFd, String(process.pid)); fsyncSync(lockFd); return action(); }
-    finally { closeSync(lockFd); try { unlinkSync(this.lockPath); } catch { /* preserve the primary result */ } }
+    const ownerToken = randomUUID();
+    try {
+      writeFileSync(lockFd, JSON.stringify({
+        pid: process.pid, hostname: hostname(), acquiredAt: Date.now(), ownerToken,
+      }));
+      fsyncSync(lockFd);
+      return action();
+    } finally {
+      closeSync(lockFd);
+      // A concurrent recovery attempt must never cause this owner to unlink a
+      // different process's replacement lock.
+      try {
+        const current = JSON.parse(readFileSync(this.lockPath, 'utf8')) as Record<string, unknown>;
+        if (current.ownerToken === ownerToken) unlinkSync(this.lockPath);
+      } catch { /* preserve the primary result and any replacement lock */ }
+    }
   }
 
   register(input: TrustedShadowExecutionContext): TrustedSkillShadowRunContext {

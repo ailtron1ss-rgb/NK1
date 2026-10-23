@@ -1,3 +1,87 @@
+## Current source-stack checkpoint — WorkPass272 (2026-10-22)
+
+- WorkPass272 hardens evaluator authority isolation: a shared predicate now requires both non-overlapping resolved paths and distinct device/inode filesystem identities for run/survive storage roots, including case-insensitive path comparisons on Windows.
+- Added unit-level contract cases for different path strings with the same underlying identity, nested roots, and truly distinct roots; the existing WorkPass110 workflow already runs the host-owned evaluator subprocess regression.
+- Code-change baseline before this documentation update: 4b1eb790956a474c808201701b161d60e5b2d974. Use the live PR for the current HEAD.
+- Exact-head CI/typecheck remains unverified because recent Actions jobs fail without visible steps/logs. No learning score uplift is claimed.
+- PR #55 remains open/draft/unmerged. Deployment of the actual OS/container sandbox and independently controlled verifier/scanner remains an open release gate.
+
+---
+
+## Current source-stack checkpoint — WorkPass271 (2026-10-22)
+
+- WorkPass271 hardens snapshot recovery against Unicode identity collisions: exact normalized duplicate rows collapse to one; conflicting rows that share a normalized trace ID are quarantined from active causal history while the ID stays in the duplicate guard.
+- Regressions cover exact-duplicate legacy snapshot rows, conflicting NFKC aliases, rejection of attempts to reintroduce quarantined IDs, control-character edge cases and retries after bounded eviction.
+- Code-change baseline before this documentation update: cd16eecee86ddfe065ba5a11c28e7ab64eda185d. Use the live PR for current HEAD.
+- Current exact-head CI/runtime typecheck remains unverified: recent jobs have no step list/log URL. No learning score uplift is claimed.
+- PR #55 remains draft/unmerged pending actionable CI and deployment-shaped evidence.
+
+---
+
+## Current source-stack checkpoint — WorkPass270 (2026-10-22)
+
+- WorkPass270 removes pre-validation trim from external task IDs, so boundary control characters reach the shared validator and are rejected rather than erased.
+- WorkPass266–270 now cover task/trace ID bounds, C0/DEL/C1 controls, conflict detection for re-used event identities, snapshot restoration, and duplicate retries after bounded eviction.
+- Code-change baseline before this documentation update: 3cdca2d280cfb2205833cce2636b419210c4bef8. Use the live PR for current HEAD.
+- Exact-head Actions/typecheck remains unverified (latest job metadata has no step list/log URL); no learning score uplift is claimed.
+- PR #55 remains draft/unmerged. Next P0: actionable CI, audit external grounding/provenance call sites, deploy independent sandbox/verifier/scanner, and run held-out RU/EN memory-to-action and learning experiments.
+
+---
+
+## Current source-stack checkpoint — WorkPass269 (2026-10-22)
+
+- WorkPass269 closes an identity normalization edge case: C0/DEL/C1 control characters are checked before trimming, so leading/trailing newline or tab cannot be silently erased and accepted as a different ID.
+- Regression coverage now includes boundary controls as well as overlong IDs, conflict reuse, snapshot restore and duplicate retry after bounded eviction.
+- Code-change baseline before this documentation update: 70bd1a529c76c30a345e27c632d50632275fffc7. Use the live PR for the current SHA.
+- Exact-head CI/runtime/app typecheck remains unverified; latest available Actions runs fail with no exposed steps/logs. Learning scores remain unchanged.
+- PR #55 remains draft/unmerged; the next P0 is actionable CI plus call-site audit of external grounding and a real independently controlled evaluator deployment.
+
+---
+
+## Current source-stack checkpoint — WorkPass268 (2026-10-22)
+
+- WorkPass268 rejects C0/DEL/C1 control characters in causal task/trace IDs and adds a bounded-window regression proving an evicted event cannot be re-added while its identity remains in the deduplication guard.
+- WorkPass267 also rejects changed payloads that reuse a trace ID; exact normalized duplicates remain idempotent.
+- Code-change baseline before this documentation update: 58fcb0cd8b62a9f867e330247b917cb28e6400c7. Use the live PR to read current HEAD.
+- Tests/typecheck remain unverified because recent Actions runs fail with no exposed steps/logs; no learning score uplift is claimed.
+- PR #55 stays draft/unmerged pending exact-head CI and deployment-shaped evidence.
+- Next priorities: actionable exact-head CI; audit external causal-ingestion call sites and grounding authority; real sandbox/verifier/scanner; independent memory-to-action and learning benchmarks.
+
+---
+
+## Current source-stack checkpoint — WorkPass267 (2026-10-22)
+
+- WorkPass267 changes external causal-event deduplication: a repeated trace identity is accepted only when the normalized payload matches; a changed payload under the same identity fails closed with an explicit conflict.
+- Added same-process and restore-path regressions; WorkPass110 already watches the causal source/test.
+- Code baseline before this documentation update: 066623f12a27ea1649d971860c4c67a1690eab0e. Use the live PR for the current SHA.
+- Runtime/app tests and typecheck remain unverified because recent Actions attempts failed without exposed steps/logs; no learning score uplift is claimed.
+- PR #55 remains draft/unmerged. Next P0: actionable exact-head CI, external grounding-authority call-graph audit, real sandbox/verifier/scanner, and independent memory-to-action/learning experiments.
+
+---
+
+## Current source-stack checkpoint — WorkPass266 (2026-10-22)
+
+- **Source branch:** [workpass206-runtime-evaluator-wiring](https://github.com/ailtron1ss-rgb/NK1/tree/workpass206-runtime-evaluator-wiring); **PR #55 remains open/draft/unmerged:** https://github.com/ailtron1ss-rgb/NK1/pull/55
+- **Code fix:** causal task/trace identities are rejected when overlong or invalid rather than truncated into a collision; restore applies the same trace-ID bounds.
+- **Regression reachability:** WorkPass110 now watches the active causal-stream and Legacy/Live2D paths and runs their focused regressions.
+- **Reviewed code-change baseline:** 951d7bb3f37e6c45fc63427e3edbdfed698af0f3. Later documentation commits advance branch HEAD; use the live PR for the current SHA.
+- **Validation:** latest retrieved WorkPass110 job has no exposed steps or logs; a retry was requested. Do not infer successful test/typecheck execution. Real sandbox/verifier/scanner deployment and independent memory/learning uplift remain open.
+- **Read first:** [WorkPass266 strategic audit](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [P23 integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md), [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md).
+- **Repository topology:** main remains the publication line with no common ancestor reported against the source stack; do not merge or rewrite it automatically.
+
+---
+
+## Current source-stack checkpoint — WorkPass265 (2026-10-22)
+
+- **Current source branch:** [workpass206-runtime-evaluator-wiring](https://github.com/ailtron1ss-rgb/NK1/tree/workpass206-runtime-evaluator-wiring); **draft PR:** [#55](https://github.com/ailtron1ss-rgb/NK1/pull/55), open/unmerged.
+- **Reviewed implementation baseline (before this documentation checkpoint):** `58e9c6a00b5835096dac3758968f5b9ce0eb08d2`. Documentation commits have advanced the branch since then; use the live PR link for the current HEAD. Exact-head CI/typecheck is not confirmed; previous visible Actions failures expose no runnable steps/logs, so do not infer either code failure or success.
+- **Current canonical next step:** unblock exact-head CI and provision the real independent evaluation sandbox/verifier/scanner, while preparing independent RU/EN memory and memory-grounded-action evaluation.
+- **Read first:** [WorkPass265 strategic audit and eight-pass plan](docs/STRATEGIC_PROJECT_DEVELOPMENT_AUDIT_2026-10-22.md), [canonical backlog](docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md), [cross-source P23 roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md), [research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md).
+- **Repository topology:** main remains the release/report line; GitHub has reported no common ancestor between it and the current source stack. Do not merge/rewrite main automatically.
+- **Evidence discipline:** implementation in the branch is not proof of successful tests, production sandboxing, measured learning improvement, or consciousness.
+
+---
+
 ## Latest continuation checkpoint — WorkPass96 (2026-10-20)
 
 - Active work branch: `workpass79-cognitive-rebuild`; draft PR #1 remains open and unmerged.

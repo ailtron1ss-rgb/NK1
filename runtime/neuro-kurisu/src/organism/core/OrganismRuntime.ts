@@ -39,6 +39,9 @@ import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleCo
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
 import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
+import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEvaluationProvider.ts';
+import type { IndependentCandidateEvaluationConfig } from '../learning/IndependentSkillCandidateEvaluator.ts';
+import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndependentEvaluationFactoryOptions } from '../learning/HostOwnedIndependentEvaluationServices.ts';
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
@@ -89,7 +92,12 @@ export interface RuntimeConfig extends OrganismConfig {
   /** Explicit opt-in to scheduled, Core-owned P23 candidate/shadow learner runs. */
   trustedShadowLearning?: TrustedShadowLearningScheduleConfig;
   /** Explicitly configure the production bridge from verified compound repairs into P23 revision staging. */
-  compoundRepairRevision?: { engine: P23LearningEngine; provideInputs: CompoundRepairRevisionInputProvider };
+  compoundRepairRevision?: {
+    engine: P23LearningEngine;
+    provideInputs: CompoundRepairRevisionInputProvider;
+    /** When supplied, replaces provider-supplied candidate evaluation with exact-payload independent execution. */
+    independentEvaluationConfigForRepair?: (input: Parameters<CompoundRepairRevisionInputProvider>[0]) => IndependentCandidateEvaluationConfig;
+  };
   /** P2836: how real device outcomes compete with the predictive simulator. */
   realityMode?: RealityGroundingMode;
 }
@@ -97,6 +105,29 @@ export interface RuntimeConfig extends OrganismConfig {
 export interface RuntimeStep { cycle: OrganismCycleResult; worldAction: EnvironmentAction; language?: LanguageResponse; embodiedAction?: EmbodiedActionResult; }
 
 export class OrganismRuntime {
+  /**
+   * Host-owned production composition: prepare the three separately configured
+   * executables before constructing the runtime, then bind their config factory
+   * to the existing P23 compound-repair coordinator. No default executable paths
+   * or in-process fake authorities are created here.
+   */
+  static async createWithHostOwnedIndependentEvaluation(
+    config: RuntimeConfig,
+    hostAuthorities: HostOwnedIndependentEvaluationFactoryOptions<Parameters<CompoundRepairRevisionInputProvider>[0]>,
+  ): Promise<OrganismRuntime> {
+    if (!config.compoundRepairRevision) {
+      throw new Error('host-owned-independent-evaluation-requires-compound-repair-revision');
+    }
+    const independentEvaluationConfigForRepair =
+      await createHostOwnedIndependentEvaluationConfigFactory(hostAuthorities);
+    return new OrganismRuntime({
+      ...config,
+      compoundRepairRevision: {
+        ...config.compoundRepairRevision,
+        independentEvaluationConfigForRepair,
+      },
+    });
+  }
   readonly core: OrganismCore;
   readonly environment = new WorldEnvironment();
   readonly plans: PlanEngine;
@@ -179,6 +210,14 @@ export class OrganismRuntime {
       ? new P23TrustedShadowLearningScheduler(this.core, config.trustedShadowLearning)
       : null;
     if (config.compoundRepairRevision) {
+      // Production revision staging must not trust an evaluator supplied by the same
+      // provider that proposes the candidate. Keep legacy provider-only wiring for
+      // development, but fail startup in production unless the independent sandbox,
+      // verifier and safety authorities are configured by the trusted host.
+      if (process.env.NODE_ENV === 'production' &&
+          typeof config.compoundRepairRevision.independentEvaluationConfigForRepair !== 'function') {
+        throw new Error('production-compound-repair-revision-requires-independent-evaluation-authority');
+      }
       if (typeof config.compoundRepairRevision.provideInputs !== 'function') {
         throw new Error('compound-repair-revision requires a trusted input provider');
       }
@@ -187,8 +226,14 @@ export class OrganismRuntime {
       if (!config.compoundRepairRevision.engine.verifiedSkillCandidateSnapshot()) {
         throw new Error('compound-repair-revision requires a configured verified P23 candidate store');
       }
+      const provideInputs = config.compoundRepairRevision.independentEvaluationConfigForRepair
+        ? withIndependentCandidateEvaluation(
+            config.compoundRepairRevision.provideInputs,
+            config.compoundRepairRevision.independentEvaluationConfigForRepair,
+          )
+        : config.compoundRepairRevision.provideInputs;
       this.compoundRepairRevisionCoordinator = new P23CompoundRepairRevisionCoordinator(
-        this, config.compoundRepairRevision.engine, config.compoundRepairRevision.provideInputs,
+        this, config.compoundRepairRevision.engine, provideInputs,
       );
     } else {
       this.compoundRepairRevisionCoordinator = null;
