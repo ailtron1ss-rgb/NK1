@@ -14,7 +14,7 @@ export function validateCiConfig({ workflows, nodeVersion }) {
 
   for (const [name, source] of Object.entries(workflows ?? {})) {
     const text = String(source ?? "");
-    const actionPattern = /^\s*uses:\s*actions\/(checkout|setup-node)@([^\s#]+)/gm;
+    const actionPattern = /^\s*(?:-\s*)?uses:\s*actions\/(checkout|setup-node)@([^\s#]+)/gm;
     for (const match of text.matchAll(actionPattern)) {
       const actionName = match[1];
       const ref = match[2];
