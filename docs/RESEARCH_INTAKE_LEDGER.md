@@ -1,3 +1,14 @@
+## WorkPass419 — durable retry cooldown for reflective skill revision (2026-10-23)
+
+- **Failure mode:** `P23CompoundRepairRevisionCoordinator.retryBackoffBySkill` was memory-only. A process restart could immediately re-run a repeatedly failing generator/evaluator against unchanged repair evidence.
+- **Code:** added a bounded versioned retry snapshot using NK1's existing `FileStateStore` sidecar. Runtime loads it during initialization before background revision becomes available; failure writes persist the evidence digest, bounded attempt count, retry deadline, and fixed failure category.
+- **Safety:** restart restoration validates plain data, exact row fields, identity, SHA-256 digest, attempt range and deadline. Corrupt snapshots fail closed. A new evidence digest can retry immediately; duplicate candidate suppression remains governed by the durable versioned candidate store.
+- **Regression:** extended `workpass172-compound-revision-coordinator.mjs` for restart/reload cooldown, provider-call suppression and malformed persisted record rejection; P26 workflow watches code and test paths.
+- **Upstream/dependency:** this pass adapts durable state semantics from NK1's existing atomic `FileStateStore`; no source code copied from a donor and no dependency added.
+- **Verification boundary:** static wiring confirmed; exact-head CI/typecheck/runtime execution remains unverified because Actions returns failures before runner allocation. No performance/learning uplift claimed.
+
+---
+
 ## WorkPass418 — deterministic personal-curriculum state and target selection (2026-10-23)
 
 - **Existing NK1 mechanism reused:** `LearningTrustBoundary.snapshotPlainData` now guards persisted curriculum restoration, outcome observations, developmental-context observations, and goal-ranking inputs. This avoids introducing a second sanitizer or a parallel learning store.
