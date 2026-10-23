@@ -1,3 +1,12 @@
+## NK1 WorkPass415 — linearize task-balanced robust metrics (2026-10-23)
+
+- Replaced repeated `rows.filter(...taskId...)` scans with one `Map` grouping pass over matched trials; all score dimensions reuse the same grouping.
+- Reduces aggregation setup from repeated O(tasks × trials) filtering to O(trials) grouping plus a linear scan of the grouped rows per dimension. Metric values, task weighting, and tie-breaking remain unchanged.
+- WorkPass406 regression keeps an input-order-invariance assertion and exact arithmetic cases for IQM, median, optimality gap, and paired improvement.
+- No new runtime dependencies. Exact-head runtime test/typecheck remain unverified because hosted Actions logs are unavailable; no measured learning uplift claimed.
+
+---
+
 ## NK1 WorkPass414 — harden Pareto curriculum regression coverage (2026-10-23)
 
 - Extended the P23 curriculum regression with two cases: a blocked prerequisite has a maximal scalar score but must still rank after every eligible Pareto layer; and equal-objective candidate ordering is invariant to input insertion order.
