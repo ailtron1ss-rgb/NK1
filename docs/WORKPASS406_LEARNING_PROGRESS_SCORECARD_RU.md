@@ -1,3 +1,24 @@
+# NK1 WorkPass418 — оценка прогресса ветки обучения
+
+## Результат этого прохода
+- **Код:** защита восстановления контекста личного обучения, карантин конфликтующих ID/семейств, проверка входов наблюдений и ранжирования целей; детерминированный порядок при одинаковом score; счётчики жизненного цикла синхронизируются с уникальными текущими темами.
+- **Регрессии:** дополнены `big-pass-122-personal-curriculum.mjs`, `big-pass-122-personal-curriculum-observation-boundary.mjs` и `big-pass-122-curriculum-restore-collision.mjs`; единый скрипт `test:big-pass-122` подключает наблюдательные и collision-сценарии.
+- **Счётчики и статистика:** реализация получила дополнительные инварианты, но фактическое качество обучения этим не измерено.
+
+## Оценка без необоснованного повышения
+- **Реализация категории learning:** 83% (не изменена).
+- **Подтверждённая production-готовность:** около 45% (не изменена).
+- **Exact-head typecheck/tests:** не подтверждены: последующие GitHub Actions всё ещё завершаются до назначения runner — `runner_id=0`, `steps=[]`. Это не доказывает ошибку кода и не является успешным запуском.
+- **Runtime dependencies:** новых зависимостей нет; применён общий `LearningTrustBoundary`.
+- **Main/release:** `main` и Release ZIP не изменены.
+
+## Следующий кодовый проход
+1. Восстановить исполняемый CI/runner и получить точный результат typecheck + трёх curriculum-регрессий.
+2. Проверить реальный runtime путь: от аутентифицированного outcome/evidence к обновлению curriculum, а не принимать caller-supplied `verified` как самостоятельное доказательство.
+3. Затем продолжить end-to-end P23: observed outcome → diagnosis → bounded revision → independent validation/holdout → approved activation/rollback → durable learning feedback.
+
+---
+
 # NK1 WorkPass448 — bounded bootstrap-work checkpoint (2026-10-23)
 
 ## Обновление
