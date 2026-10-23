@@ -1,3 +1,9 @@
+## WorkPass370 — CI coverage for the modified P23 learning path (2026-10-23)
+
+- The existing P26 Learning Validation workflow did not include the P23 learning-engine, reflection-curriculum, shared trust-boundary, or the two affected P23 test files in its pull-request path filter. This meant P23-only edits would not reliably trigger that workflow.
+- Added those sources/tests to the path filter and added two explicit execution steps for replay-integrity and reflection/curriculum regressions. The workflow already pins Node.js 24.
+- Prior associated runs show failed conclusions but expose neither step lists nor retrievable logs (steps: null, log download returns BlobNotFound). This is an observability/execution blocker, not proof that the new P23 tests failed. After this workflow commit, verify fresh runs have a runner and named steps before treating CI as a valid signal.
+
 ## WorkPass364–369 — replay provenance and diverse active curriculum (2026-10-23)
 
 ### Sources reviewed this pass
