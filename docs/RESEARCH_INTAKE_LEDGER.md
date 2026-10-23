@@ -1,3 +1,11 @@
+## WorkPass386–387 — bounded windows and shared measurement trust boundary (2026-10-23)
+
+- **Repair-history bounded window:** the runtime collects its newest 96 eligible repair observations before applying the strict canonical validator. Equal-timestamp ties use a stable canonical JSON row key and locale-independent ordering. This preserves the original bounded-history contract while keeping digests deterministic.
+- **Regression evidence:** the coordinator regression now exercises the real `OrganismRuntime.prototype.compoundSkillRepairEvidence` method with 120 valid eligible repair rows and checks that the newest 96 are retained; it also covers malformed row inputs.
+- **Longitudinal metric trust:** `ContinualLearningMetrics` now reuses `LearningTrustBoundary.snapshotPlainData` so task/score data is detached before aggregation. Accessors do not execute, invalid/cyclic/sparse records fail closed, and non-finite scores are rejected before the growth curve is computed.
+- **Research linkage:** [EvoAgentBench](https://github.com/EverMind-AI/EvoAgentBench) treats growth over repeated checkpoints as a key self-evolution evaluation axis. NK1's normalized area-under-curve and first-to-last delta complement final score, forgetting and transfer. These are descriptive metrics; no causal uplift claim is inferred.
+- **CI path:** P26 Learning Validation already includes the runtime/coordinator and continual metric sources/tests; the focused regression steps are wired to Node.js 24. Execution is still unverified because the available Actions records have no step list/log URL.
+
 ## WorkPass382–385 — complete more of the learning evidence chain (2026-10-23)
 
 ### New sources checked
