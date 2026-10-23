@@ -12,6 +12,7 @@ import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
 import { EmbodimentRuntime } from '../body/EmbodimentRuntime.ts';
 import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
+import { JsonlLearningFitnessJournal, type LearningFitnessJournalSink } from '../learning/LearningFitnessJournal.ts';
 import type { JsonStateStore } from '../persistence/FileStateStore.ts';
 import { choosePhonePolicyDelay, type PhonePolicyConfig } from '../system/PhoneRuntimePolicy.ts';
 import { RuntimeClockScheduler, RUNTIME_CLOCK_IDS, type RuntimeClockDecision } from '../system/RuntimeClockScheduler.ts';
@@ -92,6 +93,8 @@ export interface RuntimeConfig extends OrganismConfig {
   stateStore?: JsonStateStore<PersistedOrganism>;
   worldStateStore?: JsonStateStore<PersistedWorld>;
   journal?: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
+  /** Optional explicit sink; when omitted, the P23 fitness journal is written beside stateFile. */
+  learningFitnessJournal?: LearningFitnessJournalSink;
   visionBackend?: VisionSemanticBackend;
   /** Explicit opt-in to scheduled, Core-owned P23 candidate/shadow learner runs. */
   trustedShadowLearning?: TrustedShadowLearningScheduleConfig;
@@ -264,6 +267,12 @@ export class OrganismRuntime {
       if (!config.compoundRepairRevision.engine.verifiedSkillCandidateSnapshot()) {
         throw new Error('compound-repair-revision requires a configured verified P23 candidate store');
       }
+      const defaultFitnessJournalPath = config.stateFile.toLowerCase().endsWith('.json')
+        ? config.stateFile.replace(/\.json$/i, '.learning-fitness.jsonl')
+        : `${config.stateFile}.learning-fitness.jsonl`;
+      config.compoundRepairRevision.engine.configureLearningFitnessJournal(
+        config.learningFitnessJournal ?? new JsonlLearningFitnessJournal(defaultFitnessJournalPath),
+      );
       const provideInputs = config.compoundRepairRevision.independentEvaluationConfigForRepair
         ? withIndependentCandidateEvaluation(
             config.compoundRepairRevision.provideInputs,
