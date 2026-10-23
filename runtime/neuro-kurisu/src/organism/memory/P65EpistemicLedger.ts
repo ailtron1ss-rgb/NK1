@@ -56,14 +56,15 @@ export class P65EpistemicLedger{
    }
    const at=value.at as number;
    const lastSupportedAt=typeof value.lastSupportedAt==='number'&&Number.isFinite(value.lastSupportedAt)&&value.lastSupportedAt>=0?value.lastSupportedAt:at;
-   const score=(x:unknown)=>typeof x==='number'&&Number.isFinite(x)&&x>=0&&x<=1?x:undefined;
+   const score=(x:unknown):number|undefined=>typeof x==='number'&&Number.isFinite(x)&&x>=0&&x<=1?x:undefined;
+   const predicted=score(value.predicted01),actual=score(value.actual01),error=score(value.error01);
    const status=validStatus(value.status)?value.status:(value.resolved?'resolved':'active');
    normalized.push({
     id,tick:value.tick as number,at,kind:value.kind,content,confidence01:clamp(value.confidence01),source,
     resolved:value.resolved,parentIds,lastSupportedAt,supportCount:safeCounter(value.supportCount,1),status,
-    ...(score(value.predicted01)!==undefined?{predicted01:score(value.predicted01)}:value.kind==='prediction'?{predicted01:clamp(value.confidence01)}:{}),
-    ...(score(value.actual01)!==undefined?{actual01:score(value.actual01)}:{}),
-    ...(score(value.error01)!==undefined?{error01:score(value.error01)}:{}),
+    ...(predicted!==undefined?{predicted01:predicted}:value.kind==='prediction'?{predicted01:clamp(value.confidence01)}:{}),
+    ...(actual!==undefined?{actual01:actual}:{}),
+    ...(error!==undefined?{error01:error}:{}),
     evidenceSources,evidenceKeys,revisionHistory,
    });
   }
@@ -96,7 +97,10 @@ export class P65EpistemicLedger{
   if(!input||!Number.isSafeInteger(input.tick)||input.tick<0||typeof input.at!=='number'||!Number.isFinite(input.at)||input.at<0||
      !validKind(input.kind)||typeof input.confidence01!=='number'||!Number.isFinite(input.confidence01)||input.confidence01<0||input.confidence01>1||
      typeof input.source!=='string'||input.source.trim().length===0||input.source.length>160||
-     typeof input.content!=='string')return '';
+     typeof input.content!=='string'||
+     (input.predicted01!==undefined&&(typeof input.predicted01!=='number'||!Number.isFinite(input.predicted01)||input.predicted01<0||input.predicted01>1))||
+     (input.parentIds!==undefined&&(!Array.isArray(input.parentIds)||input.parentIds.length>8||
+       input.parentIds.some(parent=>typeof parent!=='string'||parent.length===0||parent.length>256))))return '';
   const content=input.content.trim().slice(0,320);if(!content)return '';
   const source=input.source.trim();
   const id=stableId(input.tick,input.kind,content,source);if(this.state.recentIds.includes(id))return id;
