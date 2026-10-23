@@ -1,3 +1,15 @@
+## NK1 WorkPass400 — block validation-family regressions (2026-10-23)
+
+- [FIXED] SkillLearnBench candidate evaluation now also checks macro-average change by sufficiently sampled validation task family; moderate losses across a family cannot be hidden by gains in another family when each individual loss remains below the per-task limit.
+- [METRICS] Added `maximumValidationFamilyRegression01` (default 0.10), `minimumValidationFamilyTasks` (default 2), `validationFamiliesEvaluated` and `validationFamilyRegressions`. Invalid limits fail closed.
+- [REFACTOR] Validation and holdout family gates now share one paired family aggregation helper: average repeated trials within each task, then weight tasks equally. Holdout family counts and gate behavior are preserved.
+- [REGRESSION] P29 demonstrates a positive overall validation gain and zero per-task vetoes while a sufficiently sampled family declines by 0.16; family-level gate rejects the candidate. It also checks invalid threshold rejection.
+- [RESEARCH] SkillLearnBench's 20 verified tasks across 15 sub-domains and three-level evaluation motivates guarding uneven task/domain gains; Hermes Self-Evolution motivates independent evaluation with separate promotion guardrails. The 0.10 threshold is an NK1 engineering default and needs paired multi-seed calibration.
+- [CI] Existing P26 Learning Validation path/step wiring already includes the modified adapter and P29 test. No extra dependency or duplicate workflow was introduced.
+- [VALIDATION] Source, adversarial test, documentation and research ledger are committed on `feature/learning`; exact-head runtime execution/typecheck is not yet verified because GitHub Actions jobs expose no step logs.
+
+---
+
 ## NK1 WorkPass399 — block hidden validation task regressions (2026-10-23)
 
 - [FIXED] The SkillLearnBench-compatible candidate gate computes each validation task's paired baseline/candidate mean across its repeats. A macro-average gain no longer hides a task-local regression greater than configurable `maximumValidationTaskRegression01` (default 0.20).
