@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:rebuild-recovered": "npm --prefix runtime/neuro-kurisu run test:rebuild-recovered && npm --prefix app run test:avatar-storage && npm --prefix app run test:live2d-expression-cache",
     "dev": "node tools/super-dev.mjs",
     "start": "node tools/super-start.mjs",
     "build": "npm --prefix app run build",
