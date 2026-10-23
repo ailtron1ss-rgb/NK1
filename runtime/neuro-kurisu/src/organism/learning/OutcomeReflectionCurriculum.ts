@@ -34,6 +34,7 @@ export interface LearningTarget {
 }
 const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const num=(x:number,d=0)=>Number.isFinite(x)?x:d;
+const compareText=(a:string,b:string)=>a<b?-1:a>b?1:0;
 const MAX_REFLECTION_ROWS=4096;
 const MAX_LEARNING_TARGETS=512;
 const REFLECTION_PASS_THRESHOLD=0.5;
@@ -138,7 +139,7 @@ export function reflectOnOutcomes(rows:readonly ReflectionExperience[],limit=12)
   }
   const out:ReflectionHypothesis[]=[];
   for(const [key,raw] of groups){
-    const ordered=[...raw].sort((a,b)=>a.tick-b.tick||(a.at??a.tick)-(b.at??b.tick)||a.id.localeCompare(b.id)),recent=ordered.slice(-8);
+    const ordered=[...raw].sort((a,b)=>a.tick-b.tick||(a.at??a.tick)-(b.at??b.tick)||compareText(a.id,b.id)),recent=ordered.slice(-8);
     const success=recent.reduce((s,e)=>s+c(e.success),0)/recent.length;
     const predicted=recent.reduce((s,e)=>s+c(e.predictedUtility),0)/recent.length;
     const surprise=recent.reduce((s,e)=>s+c(e.surprise),0)/recent.length;
@@ -230,7 +231,7 @@ export function rankLearningTargets(targets:readonly Omit<LearningTarget,'score0
   for(const id of conflicts)byId.delete(id);
   const maximum=Math.max(1,Math.min(50,Math.floor(num(limit,10))));
   const scored=[...byId.values()].map(scoreValidatedLearningTarget)
-    .sort((a,b)=>b.score01-a.score01||a.id.localeCompare(b.id));
+    .sort((a,b)=>b.score01-a.score01||compareText(a.id,b.id));
   // Voyager-style automatic curricula should not fill every slot with repeated
   // variants of a single family when other eligible families have evidence-backed
   // work. Keep each family internally score-ordered, then interleave family heads;
@@ -244,7 +245,7 @@ export function rankLearningTargets(targets:readonly Omit<LearningTarget,'score0
   const ranked:LearningTarget[]=[];
   while(ranked.length<maximum){
     const heads=[...families.entries()].filter(([,rows])=>rows.length>0)
-      .sort((a,b)=>b[1][0].score01-a[1][0].score01||a[1][0].id.localeCompare(b[1][0].id));
+      .sort((a,b)=>b[1][0].score01-a[1][0].score01||compareText(a[1][0].id,b[1][0].id));
     if(!heads.length)break;
     if(heads.length===1){
       ranked.push(...heads[0][1].splice(0,maximum-ranked.length));
