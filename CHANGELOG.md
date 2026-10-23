@@ -1,3 +1,15 @@
+## NK1 WorkPass419 — durable P23 repair retry backoff (2026-10-23)
+
+- **Failure recovery:** P23 compound-repair generation/evaluation cooldown now persists in a dedicated sidecar through NK1's existing atomic `FileStateStore`; it is restored during runtime initialization before revision requests can run.
+- **Bounded schema:** one record per skill binds an exact SHA-256 repair-evidence digest, retry count (1–12), deadline, and fixed failure category; at most 128 records are retained. Persisted snapshots are plain-data checked and strictly validated; malformed snapshots/rows fail closed instead of silently resetting cooldown.
+- **Lifecycle:** a same-evidence retry remains blocked across coordinator/runtime restarts; new evidence digest bypasses the old cooldown as before. Successful candidate staging best-effort clears retry state, while the versioned candidate store remains authoritative for duplicate-stage suppression.
+- **Observability:** retry diagnostics distinguish configured/durable persistence from ephemeral in-memory mode and expose persistence-health status.
+- **Regression:** extended `workpass172-compound-revision-coordinator.mjs` to simulate a failed provider, persisted cooldown, fresh coordinator restore, blocked duplicate retry, and malformed persisted state. Existing P26 Learning Validation watches the coordinator/runtime/test files and runs the regression.
+- **Dependencies:** none added; reused existing `FileStateStore`.
+- **Validation boundary:** implementation and regression wiring are committed, but exact-head typecheck/runtime tests remain unconfirmed because Actions jobs continue to fail before runner allocation (`runner_id=0`, zero steps/logs). No learning uplift is claimed; estimates unchanged at 83% learning implementation / ~45% production readiness.
+
+---
+
 ## NK1 WorkPass418 — deterministic and evidence-safe personal curriculum (2026-10-23)
 
 - **Restore integrity:** persisted curriculum rows sharing an ID or family are quarantined as a set, so array ordering cannot choose the surviving conflicting memory. Numeric fields, counters, context cardinality and text/identity boundaries are validated before restore.
