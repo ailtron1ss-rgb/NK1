@@ -1,4 +1,17 @@
-# WorkPass330 continuation checkpoint — host-owned P23 revision wiring (2026-10-23)
+# WorkPass331 continuation checkpoint — canonical P23 baseline/source evaluation (2026-10-23)
+
+- **Active source branch:** `workpass328-upstream-donor-gate`, based on `workpass70-source`; draft PR #86 targets `rebuild`; do not change `main`.
+- **Trust gap fixed in code:** the provider's baseline/source evaluation arrays are no longer trusted in production. After the provider proposes a `sourceCandidateId`, runtime reads the active baseline and source payload from the canonical versioned P23 store, then independently evaluates both plus the newly generated revision.
+- **Experiment matching:** host config now requires distinct `baselineMethod`, `sourceCandidateMethod`, and `experimentAuthority.method` names, each declared in both fixed validation and holdout plans. Pair checks bind payload/evaluation fingerprints, environment, manifest/plans, attempt, task/trial IDs, seed and split. Failed outcomes remain failed diagnostic data.
+- **Freshness:** active/source versions and payload fingerprints are rechecked before returning the new revision evaluation; stale runs fail rather than use outdated baseline fitness.
+- **Regression:** `test:workpass331:canonical-revision-baseline` is included in runtime package, root `audit:quick` and WorkPass71 core CI. It tests ignored forged reports, actual source failures, independent revised evaluation and stale-state rejection.
+- **Validation:** exact-head tests/typecheck remain unverified because recent hosted workflow jobs have zero executed steps. Keep quality scores unchanged.
+- **Remaining work:** configure real deployment-owned sandbox/verifier/scanner processes and fixed manifests, restore actionable CI, then execute frozen paired-seed validation/holdout. The full autonomous learning loop is not yet proven.
+- Read [WorkPass331 report](docs/WORKPASS331_CANONICAL_REVISION_BASELINE_2026-10-23.md), [WorkPass330 report](docs/WORKPASS330_PRODUCTION_REVISION_WIRING_2026-10-23.md), and the [P23 roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md).
+
+---
+
+# Previous checkpoint — WorkPass330 host-owned P23 revision wiring (2026-10-23)
 
 - **Active source branch:** `workpass328-upstream-donor-gate`, based on `workpass70-source`; draft PR #86 targets `rebuild`; do not change `main`.
 - **Production wiring fixed:** when `NEURO_COMPOUND_REPAIR_REVISION_PROVIDER_MODULE` is configured, production also requires separate `NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE`. The server loads its host factory via `createIndependentEvaluationHostConfig({ stateDirectory })` and passes its prepared independent evaluator config into the existing OrganismRuntime contract.
