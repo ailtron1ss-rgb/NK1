@@ -42,6 +42,20 @@ const validTick=(value:unknown):value is number=>typeof value==='number'&&Number
 const stableEvidenceId=(value:unknown):string=>'rel:'+createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0,40);
 const MAX_TOTAL=Number.MAX_SAFE_INTEGER;
 
+/**
+ * Derive a deterministic, bounded evidence identifier from an existing upstream
+ * runtime event. It joins projections; it never grants trust or external status.
+ */
+export function realityEvidenceEventId(originEventId:string,role:string,discriminator:string):string{
+  const validPart=(value:unknown,max:number):value is string=>typeof value==='string'&&value.length>0&&value===value.trim()&&value.length<=max&&!/[\\u0000-\\u001f\\u007f-\\u009f]/.test(value);
+  if(!validPart(originEventId,256)||!validPart(discriminator,256)||typeof role!=='string'||! /^[a-z][a-z0-9-]{0,39}$/.test(role)){
+    throw new TypeError('reality-evidence-event-identity-invalid');
+  }
+  const digest=createHash('sha256').update(JSON.stringify(['nk1-reality-event-v1',originEventId,role,discriminator])).digest('hex').slice(0,48);
+  return `nk1-reality:${role}:${digest}`;
+}
+
+
 export class RealityEvidenceLedger {
   private readonly capacity:number;
   private records:RealityEvidenceRecord[]=[];
