@@ -12,6 +12,12 @@ export interface ContinualLearningMetrics {
   taskCount: number;
   stageCount: number;
   finalAverageScore: number;
+  /** Macro-average measured score per sequential checkpoint, including temporary dips. */
+  learningCurve01: number[];
+  /** Trapezoidal area under the normalized mean learning curve (0..1). */
+  normalizedAreaUnderLearningCurve01: number;
+  /** Difference between final and first checkpoint score; not a causal uplift claim. */
+  netLearningGain01: number;
   averageForgetting: number;
   averageBackwardTransfer: number;
   averageForwardTransfer: number | null;
@@ -72,9 +78,19 @@ export function evaluateContinualLearning(tasks: ContinualTask[], referenceScore
   });
   const mean = (values: number[]) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
   const forwardValues = perTask.flatMap(item => item.forwardTransfer === null ? [] : [item.forwardTransfer]);
+  const learningCurve01 = Array.from({length:stageCount},(_,stage)=>
+    mean(tasks.map(task=>task.scoreByStage[stage]!)));
+  const normalizedAreaUnderLearningCurve01 = stageCount===1
+    ? learningCurve01[0]
+    : learningCurve01.slice(1).reduce((area,score,index)=>
+        area+(learningCurve01[index]!+score)/2,0)/(stageCount-1);
+  const netLearningGain01 = learningCurve01[stageCount-1]!-learningCurve01[0]!;
   return {
     taskCount: tasks.length, stageCount,
     finalAverageScore: mean(perTask.map(item => item.finalScore)),
+    learningCurve01,
+    normalizedAreaUnderLearningCurve01,
+    netLearningGain01,
     averageForgetting: mean(perTask.map(item => item.forgetting)),
     averageBackwardTransfer: mean(perTask.map(item => item.backwardTransfer)),
     averageForwardTransfer: forwardValues.length ? mean(forwardValues) : null,
