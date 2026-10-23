@@ -1,3 +1,15 @@
+## WorkPass447 — task-cluster bootstrap uncertainty in robust learning diagnostics (2026-10-23)
+
+- **Gap:** IQM, median, optimality gap and paired probability of improvement describe observed results but do not show the uncertainty of an aggregate mean difference across heterogeneous task families.
+- **Change:** `LearningRobustMetrics.ts` now bootstraps the paired candidate-minus-baseline difference after averaging trials within each task. The task, not the repeated trial/seed, is the resampling unit so uneven repeated-run counts do not inflate the apparent independent sample size.
+- **Reproducibility:** a fixed FNV-1a seed is derived from metric dimension and canonical sorted task identities. Bootstrap settings are fixed at 2,000 resamples / 95% percentile interval to make the diagnostic replayable.
+- **Small sample policy:** fewer than two tasks returns `null` for the interval; a low task count remains a limitation and this descriptive interval is not a substitute for an independent holdout, family-aware inference or paired-seed analysis.
+- **Safety boundary:** diagnostic schema bumped to v2; interval cannot authorize promotion and does not change P23 eligibility / safety / approval gates.
+- **Regression/wiring:** WorkPass406 test adds interval bounds, row-order invariance, zero-gap and one-task checks. Existing `test:workpass406:robust-metrics` package script remains the entry point.
+- **Verification:** implementation and regression committed; exact-head runtime test and typecheck remain unconfirmed because the current hosted runner has not supplied executable logs.
+
+---
+
 ## WorkPass416 — make per-task metric aggregation insertion-order deterministic (2026-10-23)
 
 - **Failure mode:** IEEE-754 addition is not associative. Grouping rows is not enough if each group's mean still sums scores in caller-supplied row order; a value near a rounding boundary may change the last reported decimal.
