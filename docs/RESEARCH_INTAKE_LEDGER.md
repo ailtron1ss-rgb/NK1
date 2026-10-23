@@ -7,7 +7,7 @@
 - [STATIC CHECK] Registry has 27 records with unique IDs and URLs, and each current candidate is still pending/partial rather than adopted. This is metadata validation, not an upstream source/license audit, actual Node.js test execution, or measured performance result.
 - [UNRESOLVED] Current GitHub Actions jobs have been failing before runner assignment (runner_id=0, zero steps). Verify account Billing & Licensing/check-run annotation and rerun exact-head checks only after a real runner is available.
 - [NEXT] Run node tools/verify-upstream-donor-registry.mjs; run node --test tools/verify-upstream-donor-registry.test.mjs; then run P23 skill-store / shadow-evidence / typecheck suites and measure held-out memory-to-action, transfer, retention, forgetting, latency, and cost before promoting a donor.
-- [REPORT] docs/NEUROCORE_DONOR_MAP_2026-10-23.md. Registry and gate are on branch workpass328-upstream-donor-gate; no release ZIP was rebuilt or published.
+- [REPORT] docs/NEUROCORE_DONOR_MAP_2026-10-23.md and docs/WORKPASS328_DONOR_GATE_VALIDATION_2026-10-23.md. Registry and gate are on branch workpass328-upstream-donor-gate; no release ZIP was rebuilt or published.
 
 ---
 
