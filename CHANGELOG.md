@@ -1,3 +1,11 @@
+## NK1 WorkPass457 — integrate Hexis-inspired belief and goal-governance mechanisms (2026-10-23)
+
+- Inspected current Hexis MIT sources for evidence-based belief revision, goal-progress recording and energy-aware heartbeat execution. Added provenance with source file/blob references to the research intake ledger.
+- Updated the memory branch with residual confidence revision, source-lineage de-duplication across support/contradiction, a bounded persistent revision receipt and a provenance-class trust ceiling. Updated the personality branch with P67 replay-safe goal decisions and P68 trust-bounded lifecycle ingress/restore. No Hexis database/runtime or new dependency was vendored.
+- Synced branch exit-gates and the Russian master audit to the latest PR #82/#83 heads. The verified scorecard remains 7/7 core branches with code/regression source, 0/7 exact-head suites confirmed passing, 0/7 PRs merged, 0/1 release ZIP refreshed/hash-verified, readiness 46/100. `main` and `integration` unchanged.
+
+---
+
 ## NK1 WorkPass453 — record affect calibration and Node 24 audit changes (2026-10-23)
 
 - Synced the planning ledger to the latest commits on `feature/emotions` and `feature/experiments`; recorded primary-source inspection of Hermes' GEPA skill-evolution workflow and its dataset/constraint/evaluation/approval phases.
