@@ -1,3 +1,9 @@
+## WorkPass324 — pin P23 CI actions immutably (2026-10-23)
+
+- Pinned the P23 workflow's checkout and Node setup actions to full commit SHAs from the verified upstream releases `actions/checkout v7.0.1` and `actions/setup-node v7.1.0`, retaining Node.js 24.
+- Evidence motivating this targeted experiment: failed workflow jobs complete in ~2 seconds with `runner_id=0`, no runner name, and no steps; the failure therefore precedes test execution. The connector cannot read the check-run annotation bodies, so the exact policy rejection is not yet proven.
+- This changes the workflow to immutable action references, addressing strict full-SHA action policies and protecting against moving tags. The new workflow run must confirm whether this resolved the startup failure.
+
 ## WorkPass323 — expose evidence-lineage regression test (2026-10-23)
 
 - Registered `npm run test:workpass322:repair-evidence-lineage` to run the existing P23 candidate-store regression suite that covers exact source-evidence binding and mismatch rejection.
