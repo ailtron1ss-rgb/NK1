@@ -14,6 +14,13 @@ export interface ReflectionExperience {
 export interface ReflectionHypothesis {
   key:string; kind:FailureKind; contextKey:string; action:string; occurrences:number;
   observedSuccess01:number; predictedSuccess01:number; predictionGap01:number;
+  /** Binary pass/fail threshold used for descriptive pass-rate metrics. */
+  passThreshold01:number;
+  passRate01:number;
+  /** Descriptive Wilson interval; not calibrated inference when rows are correlated. */
+  wilsonLowerPassRate01:number;
+  wilsonUpperPassRate01:number;
+  passRateIntervalWidth01:number;
   priority01:number; suggestedNextStep:string; evidenceNeeded:string;
   confidence01:number; sourceExperienceIds:string[];
 }
@@ -40,8 +47,9 @@ const isUnit=(value:unknown):value is number=>
 /** Read an array through own data descriptors only. Accessors, sparse arrays,
  * foreign prototypes, oversized batches and reflection errors fail closed. */
 function boundedArrayEntries(value:unknown,maxLength:number):unknown[]|null{
-  if(!Array.isArray(value))return null;
   try{
+    // Array.isArray can throw for a revoked Proxy; keep the complete boundary fail-closed.
+    if(!Array.isArray(value))return null;
     if(Object.getPrototypeOf(value)!==Array.prototype)return null;
     const keys=Reflect.ownKeys(value);
     const lengthDescriptor=Object.getOwnPropertyDescriptor(value,'length');
@@ -57,8 +65,8 @@ function boundedArrayEntries(value:unknown,maxLength:number):unknown[]|null{
   }catch{return null;}
 }
 function readPersistedExperienceId(value:unknown):string|null{
-  if(value===null||typeof value!=='object'||Array.isArray(value))return null;
   try{
+    if(value===null||typeof value!=='object'||Array.isArray(value))return null;
     const prototype=Object.getPrototypeOf(value);
     if(prototype!==Object.prototype&&prototype!==null)return null;
     const descriptor=Object.getOwnPropertyDescriptor(value,'id');
@@ -180,8 +188,8 @@ export function scoreLearningTarget(t:Omit<LearningTarget,'score01'|'rationale'>
   return scoreValidatedLearningTarget(safe);
 }
 function readTargetIdentity(value:unknown):string|null{
-  if(value===null||typeof value!=='object'||Array.isArray(value))return null;
   try{
+    if(value===null||typeof value!=='object'||Array.isArray(value))return null;
     const prototype=Object.getPrototypeOf(value);
     if(prototype!==Object.prototype&&prototype!==null)return null;
     const descriptor=Object.getOwnPropertyDescriptor(value,'id');
