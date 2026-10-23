@@ -1,3 +1,9 @@
+## WorkPass321 — harden micro-cycle numeric input contract (2026-10-23)
+
+- Tightened the reduced-resolution heartbeat's numeric fallback: only finite numbers and non-empty numeric strings are accepted. `null`, booleans, empty strings, NaN, infinities, and nonnumeric strings now fall back to the current prediction-error estimate instead of silently coercing to zero.
+- Added `tests/operational-microcycle-finite-input.mjs` and registered `npm run test:workpass321:microcycle-finite-input`.
+- The test has been authored and registered but has not been executed in this environment.
+
 ## WorkPass320 — reject non-finite micro-cycle surprise values (2026-10-23)
 
 - The reduced-resolution heartbeat now falls back to the organism's existing prediction-error estimate when an incoming `observation.surprise` cannot be converted to a finite number.
