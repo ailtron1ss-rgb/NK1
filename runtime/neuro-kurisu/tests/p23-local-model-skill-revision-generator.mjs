@@ -35,6 +35,11 @@ await assert.rejects(
   /p23-revision-local-model-not-configured/,
 );
 await assert.rejects(
+  () => generateLocalSkillRevision(null, request),
+  /p23-revision-local-model-not-configured/,
+  'missing host provider keeps the established not-configured error contract',
+);
+await assert.rejects(
   () => generateLocalSkillRevision({ configured: () => true, async generate() { return { text: 'not JSON' }; } }, request),
   /p23-revision-generator-must-return-valid-json/,
 );
