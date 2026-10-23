@@ -47,6 +47,27 @@ const verification = await service.verify({
 });
 
 assert.equal(isTrustedExternalPostconditionVerification(verification, expected.input), true);
+assert.match(verification.evidenceEventId ?? '', /^outcome:[a-f0-9]{40}$/,
+  'verified external evidence with exact gateway IDs should expose a stable shared event key');
+const replayedVerification = await service.verify({
+  ...expected, result: { ok: true, observationId: 'obs-1' },
+}, async () => ({
+  verified: true, basis: 'external-postcondition', confidence01: 0.98,
+  externalObservation: true, observationId: 'obs-1',
+  expectedPostcondition: 'fresh scene observed', observedPostcondition: 'fresh scene observed',
+}));
+assert.equal(replayedVerification.evidenceEventId, verification.evidenceEventId,
+  'same exact execution/decision/input/observation produces the same cross-consumer event ID');
+const alternateDecision = await service.verify({
+  ...expected, decisionId: 'decision:other-trace', result: { ok: true, observationId: 'obs-1' },
+}, async () => ({
+  verified: true, basis: 'external-postcondition', confidence01: 0.98,
+  externalObservation: true, observationId: 'obs-1',
+  expectedPostcondition: 'fresh scene observed', observedPostcondition: 'fresh scene observed',
+}));
+assert.notEqual(alternateDecision.evidenceEventId, verification.evidenceEventId,
+  'the same sensor observation cannot be rebound to another decision identity');
+
 assert.equal(isTrustedDecisionLinkedExternalPostcondition(verification, expected), true);
 assert.equal(isTrustedDecisionLinkedExternalPostcondition(verification, { ...expected, executionId: 'exec-ffffffffffffffff' }), false,
   'a valid observation cannot be replayed under a different execution ID');
@@ -77,6 +98,8 @@ const missingLineage = await service.verify({
 }));
 assert.equal(isTrustedDecisionLinkedExternalPostcondition(missingLineage, expected), false,
   'a receipt with no host action ticket must never bind itself to a decision');
+assert.equal(missingLineage.evidenceEventId, undefined,
+  'an external observation without the exact host execution/decision join cannot mint a shared event ID');
 
 const overlongDecision = 'd'.repeat(181);
 const malformed = await service.verify({
