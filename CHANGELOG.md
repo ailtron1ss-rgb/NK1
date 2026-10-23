@@ -1,3 +1,11 @@
+## NK1 WorkPass460 — preserve event identity across the unified cognitive-cycle boundary (2026-10-23)
+
+- Extended the unified cognitive-cycle result with the accepted per-stage event IDs and a dedicated observation anchor. This lets downstream memory, outcome and self-update adapters join against the exact event identities already produced by CognitiveEventFabric instead of inferring lineage from tick numbers.
+- Existing completeness, distinct-required-stage, causal-integrity and bounded-ingress policies remain unchanged. The new fields are additive; no dependency or parallel event store was introduced.
+- Added a regression asserting that the exact observation/action/outcome/learning/self-update IDs survive the event-fabric to unified-cycle handoff. Exact-head runtime execution remains unverified because hosted Actions has not allocated a runner.
+
+---
+
 ## NK1 WorkPass451 — idempotent reality evidence provenance (2026-10-23)
 
 - Hardened `RealityEvidenceLedger` record/restore input with the existing plain-data boundary and strict validation for tick/time, reality class, claim, confidence, source key and parent IDs.
