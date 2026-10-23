@@ -392,6 +392,58 @@ assert.equal(retryCoordinator.retryBackoffDiagnostics()[0].attempts, 1,
   'new evidence gets a fresh bounded retry budget');
 
 
+// WorkPass419: retry cooldown survives coordinator/runtime restart through the existing state-store contract.
+let persistedRetryState = null;
+const retryStateStore = {
+  load: async () => persistedRetryState === null ? null : structuredClone(persistedRetryState),
+  save: async value => { persistedRetryState = structuredClone(value); },
+};
+const restartEvidence = [structuredClone(evidence[0])];
+let restartProviderCalls = 0;
+const restartRuntime = {
+  compoundSkillRepairEvidence: () => restartEvidence,
+  generateCompoundSkillRevision: async () => { throw new Error('must not stage after retry restore'); },
+};
+const firstRetryCoordinator = new P23CompoundRepairRevisionCoordinator(
+  restartRuntime,
+  engine,
+  async () => {
+    restartProviderCalls++;
+    throw new Error('persistent cooldown seed failure');
+  },
+  retryStateStore,
+);
+await assert.rejects(() => firstRetryCoordinator.reviseFromObservedRepairs('skill-a'),
+  /persistent cooldown seed failure/);
+assert.equal(persistedRetryState.schemaVersion, 1);
+assert.equal(persistedRetryState.entries.length, 1);
+assert.equal(persistedRetryState.entries[0].attempts, 1);
+
+const restartedCoordinator = new P23CompoundRepairRevisionCoordinator(
+  restartRuntime,
+  engine,
+  async () => {
+    restartProviderCalls++;
+    throw new Error('must remain in cooldown after restart');
+  },
+  retryStateStore,
+);
+await restartedCoordinator.restoreRetryBackoff();
+const persistedCooldown = await restartedCoordinator.reviseFromObservedRepairs('skill-a');
+assert.equal(persistedCooldown.status, 'retry-backoff-active',
+  'a coordinator restart must not erase the cooldown for identical failing evidence');
+assert.equal(restartProviderCalls, 1, 'restored cooldown must skip expensive provider work');
+assert.equal(restartedCoordinator.retryBackoffDiagnostics()[0].durable, true);
+assert.equal(restartedCoordinator.retryBackoffPersistenceDiagnostics().available, true);
+
+const corruptRetryCoordinator = new P23CompoundRepairRevisionCoordinator(
+  restartRuntime, engine, async () => { throw new Error('must not execute'); },
+  { load: async () => ({ schemaVersion: 1, entries: [{ skillId: 'skill-a', evidenceDigest: 'a'.repeat(64), attempts: 99, retryAfter: Date.now() + 1000, category: 'revision-generation-or-evaluation-failed' }] }), save: async () => {} },
+);
+await assert.rejects(() => corruptRetryCoordinator.restoreRetryBackoff(),
+  /compound-repair-retry-backoff-entry-invalid/,
+  'malformed persisted retry state must fail closed rather than silently resetting the cooldown');
+
 let hostileProviderGetterCalls = 0;
 let hostileProviderStageCalls = 0;
 const hostileProviderRuntime = {
