@@ -1,4 +1,5 @@
 import type { AdaptiveValueWeights } from '../cognition/ValuePlasticity.ts';
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 /**
  * P67 — Autonomous Goal Genesis.
  *
@@ -8,14 +9,76 @@ import type { AdaptiveValueWeights } from '../cognition/ValuePlasticity.ts';
  */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 export interface P67Candidate {id:string;tick:number;at:number;title:string;reason:string;source:'intrinsic'|'homeostatic'|'learned';importance:number;urgency:number;confidence:number;parentId?:string;valueFocus?:string;valueAlignment01?:number;}
-export interface P67State {version:1;cycles:number;proposals:number;promoted:number;rejected:number;cooldowns:number;lastGeneratedAt:number;generatedIds:string[];history:P67Candidate[];}
-export const defaultP67=():P67State=>({version:1,cycles:0,proposals:0,promoted:0,rejected:0,cooldowns:0,lastGeneratedAt:0,generatedIds:[],history:[]});
+export interface P67DecisionReceipt {id:string;decision:'promoted'|'rejected';at:number;}
+export interface P67State {version:1;cycles:number;proposals:number;promoted:number;rejected:number;cooldowns:number;lastGeneratedAt:number;generatedIds:string[];history:P67Candidate[];decisions:P67DecisionReceipt[];}
+export const defaultP67=():P67State=>({version:1,cycles:0,proposals:0,promoted:0,rejected:0,cooldowns:0,lastGeneratedAt:0,generatedIds:[],history:[],decisions:[]});
+const isUnit=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
+const safeCount=(value:unknown,fallback=0)=>Number.isSafeInteger(value)&&Number(value)>=0?Number(value):fallback;
 function stableId(tick:number,title:string){let h=2166136261>>>0;for(const c of `${tick}|${title}`)h=Math.imul(h^c.charCodeAt(0),16777619)>>>0;return `p67:${tick}:${h.toString(16)}`;}
+function normalizeCandidate(raw:unknown,generatedIds:Set<string>):P67Candidate|null{
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+ const r=raw as Record<string,unknown>;
+ const id=typeof r.id==='string'?r.id:'';
+ const tick=r.tick,at=r.at,title=r.title,reason=r.reason,source=r.source;
+ if(!generatedIds.has(id)||!Number.isSafeInteger(tick)||Number(tick)<0||typeof at!=='number'||!Number.isFinite(at)||at<0||
+    typeof title!=='string'||!title.trim()||title.length>240||typeof reason!=='string'||!reason.trim()||reason.length>512||
+    !['intrinsic','homeostatic','learned'].includes(String(source))||
+    !isUnit(r.importance)||!isUnit(r.urgency)||!isUnit(r.confidence))return null;
+ if(r.parentId!==undefined&&(typeof r.parentId!=='string'||r.parentId.length>180))return null;
+ if(r.valueFocus!==undefined&&(typeof r.valueFocus!=='string'||r.valueFocus.length>96))return null;
+ if(r.valueAlignment01!==undefined&&!isUnit(r.valueAlignment01))return null;
+ return {id,tick:Number(tick),at,title,reason,source:source as P67Candidate['source'],importance:r.importance as number,urgency:r.urgency as number,confidence:r.confidence as number,parentId:r.parentId as string|undefined,valueFocus:r.valueFocus as string|undefined,valueAlignment01:r.valueAlignment01 as number|undefined};
+}
 export class P67AutonomousGoalGenesis {
  private state=defaultP67();
- restore(raw?:Partial<P67State>|null){const d=defaultP67(),r=raw??{};this.state={...d,...r,generatedIds:Array.isArray(r.generatedIds)?r.generatedIds.slice(-256):[],history:Array.isArray(r.history)?r.history.slice(-96):[]};}
+ restore(raw?:Partial<P67State>|null){
+  const d=defaultP67();let detached:unknown;
+  try{detached=snapshotPlainData<unknown>(raw??{}, {maxDepth:12,maxNodes:4096,maxStringUnits:512*1024});}
+  catch{this.state=d;return;}
+  if(!detached||typeof detached!=='object'||Array.isArray(detached)){this.state=d;return;}
+  const r=detached as Record<string,unknown>;
+  if(r.version!==undefined&&r.version!==1){this.state=d;return;}
+  const generatedIds=[...new Set((Array.isArray(r.generatedIds)?r.generatedIds:[])
+    .filter((id):id is string=>typeof id==='string'&&/^p67:\\d+:[0-9a-f]{1,8}$/i.test(id)))].slice(-256);
+  const idSet=new Set(generatedIds);
+  const history=(Array.isArray(r.history)?r.history:[])
+    .map(row=>normalizeCandidate(row,idSet)).filter((row):row is P67Candidate=>row!==null).slice(-96);
+  const decisions: P67DecisionReceipt[]=[];
+  const seenDecisions=new Set<string>();
+  for(const row of (Array.isArray(r.decisions)?r.decisions:[]).slice(-512)){
+   if(!row||typeof row!=='object'||Array.isArray(row))continue;
+   const decision=row as Record<string,unknown>;
+   if(typeof decision.id!=='string'||!idSet.has(decision.id)||
+      (decision.decision!=='promoted'&&decision.decision!=='rejected')||
+      !Number.isSafeInteger(decision.at)||Number(decision.at)<0||seenDecisions.has(decision.id))continue;
+   seenDecisions.add(decision.id);
+   decisions.push({id:decision.id,decision:decision.decision,at:Number(decision.at)});
+  }
+  this.state={
+   version:1,cycles:safeCount(r.cycles),proposals:safeCount(r.proposals),promoted:r.decisions===undefined?safeCount(r.promoted):decisions.filter(x=>x.decision==='promoted').length,
+   rejected:r.decisions===undefined?safeCount(r.rejected):decisions.filter(x=>x.decision==='rejected').length,cooldowns:safeCount(r.cooldowns),
+   lastGeneratedAt:safeCount(r.lastGeneratedAt),generatedIds,history,decisions,
+  };
+ }
  snapshot(){return structuredClone(this.state);}
- propose(input:{tick:number;at:number;energy01:number;uncertainty01:number;predictionError01:number;novelty01:number;socialNeed01:number;goalPressure01:number;homeostaticPressure01:number;epistemicUnresolved:number;identity01:number;activeGoalCount:number;lastMode:string;identityDecision:'allow'|'caution'|'veto';motiveOverall01?:number;motiveConflict01?:number;motiveDominant?:string;attractorOverall01?:number;attractorConflict01?:number;attractorDominant?:string;valueWeights?:AdaptiveValueWeights;curriculumPressure01?:number;historyUnresolved01?:number;socialLearning01?:number;worldTransitionConfidence01?:number;worldTransitionError01?:number;worldTransitionNovelty01?:number;neuralConfidence01?:number}):P67Candidate|null{
+ propose(rawInput:{tick:number;at:number;energy01:number;uncertainty01:number;predictionError01:number;novelty01:number;socialNeed01:number;goalPressure01:number;homeostaticPressure01:number;epistemicUnresolved:number;identity01:number;activeGoalCount:number;lastMode:string;identityDecision:'allow'|'caution'|'veto';motiveOverall01?:number;motiveConflict01?:number;motiveDominant?:string;attractorOverall01?:number;attractorConflict01?:number;attractorDominant?:string;valueWeights?:AdaptiveValueWeights;curriculumPressure01?:number;historyUnresolved01?:number;socialLearning01?:number;worldTransitionConfidence01?:number;worldTransitionError01?:number;worldTransitionNovelty01?:number;neuralConfidence01?:number}):P67Candidate|null{
+  let input:typeof rawInput;
+  try{input=snapshotPlainData<typeof rawInput>(rawInput,{maxDepth:8,maxNodes:256,maxStringUnits:8192});}
+  catch{throw new TypeError('p67-goal-input-invalid');}
+  if(!input||typeof input!=='object'||Array.isArray(input))throw new TypeError('p67-goal-input-invalid');
+  const allowedKeys=new Set(['tick','at','energy01','uncertainty01','predictionError01','novelty01','socialNeed01','goalPressure01','homeostaticPressure01','epistemicUnresolved','identity01','activeGoalCount','lastMode','identityDecision','motiveOverall01','motiveConflict01','motiveDominant','attractorOverall01','attractorConflict01','attractorDominant','valueWeights','curriculumPressure01','historyUnresolved01','socialLearning01','worldTransitionConfidence01','worldTransitionError01','worldTransitionNovelty01','neuralConfidence01']);
+  const unitKeys=['energy01','uncertainty01','predictionError01','novelty01','socialNeed01','goalPressure01','homeostaticPressure01','identity01','motiveOverall01','motiveConflict01','attractorOverall01','attractorConflict01','curriculumPressure01','historyUnresolved01','socialLearning01','worldTransitionConfidence01','worldTransitionError01','worldTransitionNovelty01','neuralConfidence01'];
+  if(Object.keys(input).some(key=>!allowedKeys.has(key))||
+     !Number.isSafeInteger(input.tick)||input.tick<0||typeof input.at!=='number'||!Number.isFinite(input.at)||input.at<0||
+     unitKeys.some(key=>(input as any)[key]!==undefined&&!isUnit((input as any)[key]))||
+     !Number.isSafeInteger(input.epistemicUnresolved)||input.epistemicUnresolved<0||input.epistemicUnresolved>100_000||
+     !Number.isSafeInteger(input.activeGoalCount)||input.activeGoalCount<0||input.activeGoalCount>1000||
+     typeof input.lastMode!=='string'||input.lastMode.length>96||
+     !['allow','caution','veto'].includes(input.identityDecision)||
+     ['motiveDominant','attractorDominant'].some(key=>(input as any)[key]!==undefined&&(typeof (input as any)[key]!=='string'||(input as any)[key].length>96))||
+     (input.valueWeights!==undefined&&(!input.valueWeights||typeof input.valueWeights!=='object'||Object.values(input.valueWeights).length>32||Object.values(input.valueWeights).some(value=>!isUnit(value))))) {
+   throw new TypeError('p67-goal-input-invalid');
+  }
   this.state.cycles++;
   if(input.activeGoalCount>=4 || input.tick-this.state.lastGeneratedAt<16 || input.identityDecision==='veto') return null;
   const values:Partial<AdaptiveValueWeights>=input.valueWeights??{};
@@ -52,8 +115,16 @@ export class P67AutonomousGoalGenesis {
   const candidate:P67Candidate={id,tick:input.tick,at:input.at,title,reason:`${top.reason}${dominantSuffix}`,source:top.source,importance:clamp(.35+blendedScore*.5),urgency:clamp(.2+blendedScore*.62),confidence:clamp(.35+blendedScore*.55),valueFocus:top.valueFocus,valueAlignment01:top.valueAlignment01};
   this.state.proposals++;this.state.generatedIds=[id,...this.state.generatedIds].slice(0,256);this.state.history=[candidate,...this.state.history].slice(0,96);this.state.lastGeneratedAt=input.tick;return structuredClone(candidate);
  }
- markPromoted(id:string){if(this.state.generatedIds.includes(id))this.state.promoted++;}
- markRejected(id:string){if(this.state.generatedIds.includes(id))this.state.rejected++;}
+ markPromoted(id:string){
+  if(typeof id!=='string'||!this.state.generatedIds.includes(id)||this.state.decisions.some(row=>row.id===id))return false;
+  this.state.decisions=[...this.state.decisions,{id,decision:'promoted',at:this.state.lastGeneratedAt}].slice(-256);
+  this.state.promoted++;return true;
+ }
+ markRejected(id:string){
+  if(typeof id!=='string'||!this.state.generatedIds.includes(id)||this.state.decisions.some(row=>row.id===id))return false;
+  this.state.decisions=[...this.state.decisions,{id,decision:'rejected',at:this.state.lastGeneratedAt}].slice(-256);
+  this.state.rejected++;return true;
+ }
  recalibrateActiveGoals(input:{tick:number;goals:Array<{id:string;title:string;source:string;importance:number;urgency:number;confidence:number;status:string}>;valueWeights:AdaptiveValueWeights;identityStability01?:number;worldConfidence01?:number;neuralConfidence01?:number}){
   if(input.tick%8!==0)return [];
   const v=input.valueWeights; const value=(k:keyof AdaptiveValueWeights)=>clamp(Number(v[k]??.5));
