@@ -785,10 +785,13 @@ export class P23LearningEngine {
   }
 
   recordExperience(trace:OrganismDecisionTrace,stateAfter:OrganismState,outcome:{success:number;reward:number;surprise:number},policy:AdaptivePolicyEngine):void {
-    if (!trace.selected || this.state.processedTraceIds.includes(trace.id)) return;
-    // Invalid feedback is not evidence: reject non-finite labels instead of
-    // silently converting NaN/Infinity into apparently valid zero-reward data.
-    if (![outcome.success,outcome.reward,outcome.surprise].every(Number.isFinite)) return;
+    if (!trace?.selected||!isPersistedText(trace.id,512)||!isPersistedCounter(trace.tick)||
+        !isPersistedCounter(trace.createdAt)||!ACTIONS.includes(trace.selected.action)||
+        !isPersistedUnit(trace.selected.predictedUtility)||!isPersistedUnit(trace.selected.confidence)||
+        this.state.processedTraceIds.includes(trace.id)) return;
+    // Outcome labels and predicted probabilities share a [0,1] contract. Do not
+    // clamp malformed external feedback into apparently valid evidence.
+    if (![outcome.success,outcome.reward,outcome.surprise].every(isPersistedUnit)) return;
     const key=contextKey(trace.stateBefore), nextKey=contextKey(stateAfter);
     const record:LearningExperience={
       id:`exp-${trace.id}`,
