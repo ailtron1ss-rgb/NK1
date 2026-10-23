@@ -166,10 +166,43 @@ export function scoreLearningTarget(t:Omit<LearningTarget,'score01'|'rationale'>
   if(!safe)throw new TypeError('invalid-learning-target-input');
   return scoreValidatedLearningTarget(safe);
 }
+function readTargetIdentity(value:unknown):string|null{
+  if(value===null||typeof value!=='object'||Array.isArray(value))return null;
+  try{
+    const prototype=Object.getPrototypeOf(value);
+    if(prototype!==Object.prototype&&prototype!==null)return null;
+    const descriptor=Object.getOwnPropertyDescriptor(value,'id');
+    return descriptor&&'value'in descriptor&&isSafeLearningIdentity(descriptor.value,128)?descriptor.value:null;
+  }catch{return null;}
+}
+function sameLearningTarget(a:LearningTargetInput,b:LearningTargetInput):boolean{
+  return a.id===b.id&&a.family===b.family&&a.uncertainty01===b.uncertainty01&&
+    a.readiness01===b.readiness01&&a.transfer01===b.transfer01&&a.novelty01===b.novelty01&&
+    a.verificationCost01===b.verificationCost01&&a.repairValue01===b.repairValue01&&
+    (a.blocked??false)===(b.blocked??false);
+}
 export function rankLearningTargets(targets:readonly Omit<LearningTarget,'score01'|'rationale'>[],limit=10):LearningTarget[]{
   const rawTargets=boundedArrayEntries(targets,MAX_LEARNING_TARGETS);
   if(!rawTargets)return [];
-  const valid=rawTargets.map(snapshotLearningTarget).filter((target):target is LearningTargetInput=>target!==null);
-  return valid.map(scoreValidatedLearningTarget).sort((a,b)=>b.score01-a.score01||a.id.localeCompare(b.id))
+  const byId=new Map<string,LearningTargetInput>(),invalidIds=new Set<string>(),conflicts=new Set<string>();
+  for(const raw of rawTargets){
+    const rawId=readTargetIdentity(raw);
+    const target=snapshotLearningTarget(raw);
+    if(!target){
+      if(rawId)invalidIds.add(rawId);
+      continue;
+    }
+    if(invalidIds.has(target.id)){conflicts.add(target.id);continue;}
+    const previous=byId.get(target.id);
+    if(previous){
+      if(!sameLearningTarget(previous,target))conflicts.add(target.id);
+      continue; // repeated identical proposals cannot occupy multiple curriculum slots
+    }
+    byId.set(target.id,target);
+  }
+  for(const id of invalidIds)byId.delete(id);
+  for(const id of conflicts)byId.delete(id);
+  return [...byId.values()].map(scoreValidatedLearningTarget)
+    .sort((a,b)=>b.score01-a.score01||a.id.localeCompare(b.id))
     .slice(0,Math.max(1,Math.min(50,Math.floor(num(limit,10)))));
 }
