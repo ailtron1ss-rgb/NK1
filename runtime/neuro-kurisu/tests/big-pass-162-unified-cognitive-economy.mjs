@@ -17,6 +17,28 @@ let result=cycle.evaluate({tick:1,stageIds:{observation:ids.observation,predicti
 assert.equal(result.complete,true);
 assert.equal(result.missingStages.length,0);
 
+// Live ingress is untrusted just like restored state: accessor-backed fields
+// must be rejected before their code runs, and rejected events must not advance
+// the cycle counter.
+let cycleInputGetterReads=0;
+const getterBackedCycleInput={
+  tick:2,
+  stageIds:{observation:'o-2',prediction:'p-2',action:'a-2',outcome:'r-2',learning:'l-2','self-update':'s-2'},
+  parentIntegrity01:1,
+};
+Object.defineProperty(getterBackedCycleInput,'tick',{
+  enumerable:true,configurable:true,
+  get(){cycleInputGetterReads++;return 2;},
+});
+const ingressProbe=new UnifiedCognitiveCycle();
+assert.throws(()=>ingressProbe.evaluate(getterBackedCycleInput),/cognitive cycle input data boundary rejected/);
+assert.equal(cycleInputGetterReads,0,'live cognitive ingress must not invoke caller-owned getters');
+assert.equal(ingressProbe.snapshot().cycles,0,'rejected cognitive ingress must not mutate cycle state');
+assert.throws(()=>ingressProbe.evaluate({
+  tick:1,stageIds:{observation:'o',unknownStage:'hidden'},parentIntegrity01:1,
+}),/unknown cognitive stage/);
+assert.equal(ingressProbe.snapshot().cycles,0,'unknown stage identifiers must fail before the cycle is advanced');
+
 // Persisted cognitive-cycle state is untrusted: restore must not run getters.
 const restoreProbe=new UnifiedCognitiveCycle();
 restoreProbe.restore(cycle.snapshot());
