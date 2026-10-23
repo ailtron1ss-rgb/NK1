@@ -223,3 +223,11 @@ Do not count a reference as “used” until a source revision/paper protocol is
 - Added behavioral regression coverage for invalid and valid overlapping calls.
 - P26 learning validation workflow is aligned to Node.js 24.
 - **Unverified:** no executed test result, performance uplift, autonomous learning improvement or promotion quality is claimed until the owning job can run on an assigned runner.
+
+
+## WorkPass136 — defensive parsing at the reflective-evaluation boundary (2026-10-23)
+
+- The skill-revision evaluator validates actual runtime observation objects instead of calling string methods on unchecked values.
+- Malformed extra rows are rejected and counted; they cannot crash a batch or inflate the independent paired sample. Invalid top-level collection/config shapes fail explicitly.
+- Upstream context: Hermes Agent Self-Evolution uses trace-guided candidate generation behind test/constraint gates; CleanRL emphasizes controlled, reproducible comparison. NK1 retains its own independent signed-evidence and holdout lifecycle. These are design references, not code copied in this pass.
+- **Unverified:** runtime tests and typecheck await actionable GitHub Actions runner logs.

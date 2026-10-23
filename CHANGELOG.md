@@ -2143,3 +2143,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **Research boundary:** records lessons from Hermes reflective candidate evolution and CleanRL's reproducible-seed discipline; this pass copies no upstream source code or datasets. It relies on NK1's existing exact-payload, independent-evaluation and signed-evidence lifecycle.
 - **Verification boundary:** source and regression are committed, but runtime execution is **not confirmed**. The latest exact-head Actions jobs ended before runner assignment (no runner and no steps), so this changelog does not claim a passing test, typecheck, or CI run.
 - Report: `docs/WORKPASS338_LEARNING_SCHEDULER_CONTRACT_2026-10-23.md`.
+
+
+## NK1 WorkPass339 — fail closed on malformed revision observations
+
+- **Fixed:** the skill-revision gate validates runtime observation data instead of calling string methods on unchecked values. Non-objects, wrong field types, oversized/control-character text, invalid seed/attempt values and invalid authority labels are rejected as rows rather than crashing with errors such as `trim is not a function`.
+- **Boundary hardened:** baseline/candidate method IDs, observation collections and options containers are validated before scoring. Invalid rows cannot enter a paired sample or raise the promotion score.
+- **Regression added:** malformed input fixtures cover null/objects, wrong field types, control characters, non-finite seeds, invalid method types and invalid top-level arguments.
+- **Research alignment:** preserves the trace-to-candidate-to-independent-evaluation path and paired/holdout evaluation discipline. No upstream code or dataset copied.
+- **Validation boundary:** code and tests are committed, but Actions still yield no runner steps/logs; no test pass or measured learning uplift is claimed.

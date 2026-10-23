@@ -39,4 +39,27 @@ assert.ok(result.rejectedRows >= 2, 'both replayed method receipts should be rej
 // Validation/train observations are deliberately excluded.
 result = evaluateSkillRevision(rows.map(x=>({...x,split:'train'})),'baseline','candidate');
 assert.equal(result.pairedN,0);
+
+// Runtime payloads are not trusted just because the TypeScript API has a static type.
+// Malformed rows must be rejected individually, never crash evaluation or add sample size.
+const malformedRows = [
+  null,
+  {},
+  {...rows[0], taskId: 42},
+  {...rows[0], family: {label:'memory'}},
+  {...rows[0], method: ['candidate']},
+  {...rows[0], verifierId: {trim: 'not-a-function'}},
+  {...rows[0], expectedVerifierId: null},
+  {...rows[0], evidenceRef: 'bad\\nreceipt'},
+  {...rows[0], taskId: 'task-with-\\u0000-control'},
+  {...rows[0], seed: Number.POSITIVE_INFINITY},
+];
+result = evaluateSkillRevision([...rows, ...malformedRows], 'baseline', 'candidate');
+assert.equal(result.accepted, true, 'invalid extra rows must not alter a valid independent comparison');
+assert.equal(result.pairedN, 10);
+assert.equal(result.rejectedRows, malformedRows.length);
+assert.throws(() => evaluateSkillRevision(null, 'baseline', 'candidate'), /observations must be an array/);
+assert.throws(() => evaluateSkillRevision(rows, {}, 'candidate'), /bounded method names/);
+assert.throws(() => evaluateSkillRevision(rows, 'baseline', 'candidate', null), /options must be a plain object/);
+
 console.log('P23_VERIFIED_SKILL_REVISION_GATE=PASS');

@@ -37,15 +37,37 @@ export interface SkillRevisionGateResult {
 const clamp = (x: number, fallback: number) => Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : fallback;
 const boundedInteger = (value: number | undefined, fallback: number, min: number, max: number) =>
   Number.isFinite(value) ? Math.max(min, Math.min(max, Math.floor(value!))) : fallback;
-const valid = (x: RevisionObservation) => Boolean(
-  x && x.taskId?.trim() && x.family?.trim() && x.method?.trim() &&
-  Number.isSafeInteger(x.seed) && x.seed >= 0 &&
-  Number.isSafeInteger(x.attempt) && x.attempt === 1 &&
-  x.split === 'holdout' && typeof x.passed === 'boolean' &&
-  (x.authority === 'independent-verifier' || x.authority === 'human-review') &&
-  x.verifierId?.trim() && x.evidenceRef?.trim() &&
-  (x.authority !== 'independent-verifier' || x.verifierId === x.expectedVerifierId)
-);
+const isBoundedText = (value: unknown, max: number): value is string =>
+  typeof value === 'string' && value.length > 0 && value.length <= max &&
+  value.trim() === value && !Array.from(value).some(character => {
+    const code = character.charCodeAt(0);
+    return code <= 0x1f || code === 0x7f || (code >= 0x80 && code <= 0x9f);
+  });
+
+const isPlainRecord = (value: unknown): value is Record<string, unknown> => {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+};
+
+/** Validate runtime data, not just TypeScript types: evidence can cross process boundaries. */
+const valid = (value: unknown): value is RevisionObservation => {
+  if (!isPlainRecord(value)) return false;
+  const row = value;
+  if (!isBoundedText(row.taskId, 256) ||
+      !isBoundedText(row.family, 128) ||
+      !isBoundedText(row.method, 128) ||
+      !isBoundedText(row.verifierId, 128) ||
+      !isBoundedText(row.expectedVerifierId, 128) ||
+      !isBoundedText(row.evidenceRef, 512) ||
+      !Number.isSafeInteger(row.seed) || (row.seed as number) < 0 ||
+      !Number.isSafeInteger(row.attempt) || row.attempt !== 1 ||
+      row.split !== 'holdout' || typeof row.passed !== 'boolean' ||
+      (row.authority !== 'independent-verifier' && row.authority !== 'human-review')) {
+    return false;
+  }
+  return row.authority !== 'independent-verifier' || row.verifierId === row.expectedVerifierId;
+};
 
 /** Pair on exact task/version identity (taskId), seed and first attempt; retries and replayed evidence receipts are not independent samples. */
 export function evaluateSkillRevision(
@@ -54,9 +76,12 @@ export function evaluateSkillRevision(
   candidateMethod: string,
   options: SkillRevisionGateOptions = {},
 ): SkillRevisionGateResult {
-  if (!baselineMethod?.trim() || !candidateMethod?.trim() || baselineMethod === candidateMethod) {
-    throw new Error('two distinct method names are required');
+  if (!isBoundedText(baselineMethod, 128) || !isBoundedText(candidateMethod, 128) ||
+      baselineMethod === candidateMethod) {
+    throw new Error('two distinct bounded method names are required');
   }
+  if (!Array.isArray(observations)) throw new Error('revision observations must be an array');
+  if (!isPlainRecord(options)) throw new Error('revision gate options must be a plain object');
   const minPairedTasks = boundedInteger(options.minPairedTasks, 8, 2, 10000);
   const minAbsoluteGain = clamp(options.minAbsoluteGain ?? .02, .02);
   const maxFamilyRegression = clamp(options.maxFamilyRegression ?? .10, .10);
