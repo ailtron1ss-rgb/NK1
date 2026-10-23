@@ -1,4 +1,17 @@
-## Current source-stack checkpoint — WorkPass272 (2026-10-22)
+## Historical source-stack checkpoint — WorkPass330 production P23 wiring (2026-10-23)
+
+- **Source branch:** `workpass328-upstream-donor-gate`, based on `workpass70-source`; PR [#86](https://github.com/ailtron1ss-rgb/NK1/pull/86) remains draft, base `rebuild`. The release/metadata `main` branch is not the working runtime baseline.
+- **Production defect fixed in code:** the server previously loaded the P23 repair provider and verified candidate store without configuring the independent evaluator required by `OrganismRuntime` in production. A configured provider now uses a separate `NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE` to prepare host-owned executor, verifier, safety scanner, task plans and experiment authority.
+- **Least privilege:** the provider and host-config module must be distinct real paths; the host config receives only `stateDirectory`, not the P23 engine/store/registry. The existing host-owned service factory retains responsibility for executable identity, command environment and storage-root separation.
+- **Background initiative:** `NEURO_COMPOUND_REPAIR_BACKGROUND_REVISION_JSON` is an explicit opt-in. The existing scheduler only stages candidates from eligible verified non-holdout repair evidence and cannot bypass signed shadow evidence or authenticated promotion.
+- **Regression wiring:** `test:workpass330:production-revision-wiring` (nine contract cases) is registered in the runtime package, root `audit:quick`, and WorkPass71 core CI.
+- **Verification:** exact-head tests/typecheck are still **UNVERIFIED**. Recent GitHub Actions jobs finish with zero executed steps, so there is no PASS or test-failure evidence. Do not raise learning-quality scores from code presence alone.
+- **Remaining critical work:** deployment must provide the independent host config with real sandbox/verifier/scanner executables and a fixed manifest/validation/holdout plan; then run a frozen paired-seed benchmark and verify signed real execution receipts.
+- **Release boundary:** no release ZIP was downloaded, rebuilt, or replaced through this pass; `main` remains untouched. See [WorkPass330](docs/WORKPASS330_PRODUCTION_REVISION_WIRING_2026-10-23.md), [WorkPass329](docs/WORKPASS329_HERMES_MULTIAXIS_HOLDOUT_GATE_2026-10-23.md), and [CI reliability runbook](docs/CI_RELIABILITY_RUNBOOK_RU.md).
+
+---
+
+## Historical source-stack checkpoint — WorkPass272 (2026-10-22)
 
 - WorkPass272 hardens evaluator authority isolation: a shared predicate now requires both non-overlapping resolved paths and distinct device/inode filesystem identities for run/survive storage roots, including case-insensitive path comparisons on Windows.
 - Added unit-level contract cases for different path strings with the same underlying identity, nested roots, and truly distinct roots; the existing WorkPass110 workflow already runs the host-owned evaluator subprocess regression.
@@ -8,7 +21,7 @@
 
 ---
 
-## Current source-stack checkpoint — WorkPass271 (2026-10-22)
+## Historical source-stack checkpoint — WorkPass271 (2026-10-22)
 
 - WorkPass271 hardens snapshot recovery against Unicode identity collisions: exact normalized duplicate rows collapse to one; conflicting rows that share a normalized trace ID are quarantined from active causal history while the ID stays in the duplicate guard.
 - Regressions cover exact-duplicate legacy snapshot rows, conflicting NFKC aliases, rejection of attempts to reintroduce quarantined IDs, control-character edge cases and retries after bounded eviction.
@@ -18,7 +31,7 @@
 
 ---
 
-## Current source-stack checkpoint — WorkPass270 (2026-10-22)
+## Historical source-stack checkpoint — WorkPass270 (2026-10-22)
 
 - WorkPass270 removes pre-validation trim from external task IDs, so boundary control characters reach the shared validator and are rejected rather than erased.
 - WorkPass266–270 now cover task/trace ID bounds, C0/DEL/C1 controls, conflict detection for re-used event identities, snapshot restoration, and duplicate retries after bounded eviction.
@@ -28,7 +41,7 @@
 
 ---
 
-## Current source-stack checkpoint — WorkPass269 (2026-10-22)
+## Historical source-stack checkpoint — WorkPass269 (2026-10-22)
 
 - WorkPass269 closes an identity normalization edge case: C0/DEL/C1 control characters are checked before trimming, so leading/trailing newline or tab cannot be silently erased and accepted as a different ID.
 - Regression coverage now includes boundary controls as well as overlong IDs, conflict reuse, snapshot restore and duplicate retry after bounded eviction.
@@ -38,7 +51,7 @@
 
 ---
 
-## Current source-stack checkpoint — WorkPass268 (2026-10-22)
+## Historical source-stack checkpoint — WorkPass268 (2026-10-22)
 
 - WorkPass268 rejects C0/DEL/C1 control characters in causal task/trace IDs and adds a bounded-window regression proving an evicted event cannot be re-added while its identity remains in the deduplication guard.
 - WorkPass267 also rejects changed payloads that reuse a trace ID; exact normalized duplicates remain idempotent.
@@ -49,7 +62,7 @@
 
 ---
 
-## Current source-stack checkpoint — WorkPass267 (2026-10-22)
+## Historical source-stack checkpoint — WorkPass267 (2026-10-22)
 
 - WorkPass267 changes external causal-event deduplication: a repeated trace identity is accepted only when the normalized payload matches; a changed payload under the same identity fails closed with an explicit conflict.
 - Added same-process and restore-path regressions; WorkPass110 already watches the causal source/test.
@@ -59,7 +72,7 @@
 
 ---
 
-## Current source-stack checkpoint — WorkPass266 (2026-10-22)
+## Historical source-stack checkpoint — WorkPass266 (2026-10-22)
 
 - **Source branch:** [workpass206-runtime-evaluator-wiring](https://github.com/ailtron1ss-rgb/NK1/tree/workpass206-runtime-evaluator-wiring); **PR #55 remains open/draft/unmerged:** https://github.com/ailtron1ss-rgb/NK1/pull/55
 - **Code fix:** causal task/trace identities are rejected when overlong or invalid rather than truncated into a collision; restore applies the same trace-ID bounds.
@@ -71,7 +84,7 @@
 
 ---
 
-## Current source-stack checkpoint — WorkPass265 (2026-10-22)
+## Historical source-stack checkpoint — WorkPass265 (2026-10-22)
 
 - **Current source branch:** [workpass206-runtime-evaluator-wiring](https://github.com/ailtron1ss-rgb/NK1/tree/workpass206-runtime-evaluator-wiring); **draft PR:** [#55](https://github.com/ailtron1ss-rgb/NK1/pull/55), open/unmerged.
 - **Reviewed implementation baseline (before this documentation checkpoint):** `58e9c6a00b5835096dac3758968f5b9ce0eb08d2`. Documentation commits have advanced the branch since then; use the live PR link for the current HEAD. Exact-head CI/typecheck is not confirmed; previous visible Actions failures expose no runnable steps/logs, so do not infer either code failure or success.
