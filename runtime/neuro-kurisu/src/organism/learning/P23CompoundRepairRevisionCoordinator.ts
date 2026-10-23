@@ -36,6 +36,21 @@ interface RevisionFailureBackoff {
   category: 'revision-generation-or-evaluation-failed';
 }
 
+export interface CompoundRepairRevisionOutcome {
+  status: 'no-eligible-repair-evidence'|'already-staged-for-evidence'|'retry-backoff-active'|'candidate-staged';
+  skillId: string;
+  repairEvidenceCount: number;
+  evidenceDigest?: string;
+  candidateId?: string;
+  durable?: boolean;
+  attempts?: number;
+  retryAfter?: number;
+  retryInMs?: number;
+  category?: 'revision-generation-or-evaluation-failed';
+  repairFingerprints?: string[];
+  result?: unknown;
+}
+
 export interface CompoundRepairRetryBackoffSnapshot {
   schemaVersion: 1;
   entries: Array<{
@@ -105,7 +120,7 @@ export function canonicalCompoundRepairEvidence(
     const candidateTools=row.candidateTools as string[];
     return {
       skillId:row.skillId as string,skillName:row.skillName as string,failureFingerprint:row.failureFingerprint as string,
-      stepId:row.stepId as string,failedTool:row.failedTool as string,diagnosis:row.diagnosis as string,
+      stepId:row.stepId as string,failedTool:row.failedTool as string,diagnosis:row.diagnosis as CompoundRepairEvidenceRow['diagnosis'],
       contextSignature:row.contextSignature as string,
       candidateTools:[...candidateTools].sort(compareCanonicalText),
       selectedTool:row.selectedTool as string,verified:row.verified as boolean,confidence01:row.confidence01 as number,
@@ -119,7 +134,7 @@ export function canonicalCompoundRepairEvidence(
     compareCanonicalText(a.stepId,b.stepId) ||
     compareCanonicalText(a.contextSignature,b.contextSignature) ||
     compareCanonicalText(a.failedTool,b.failedTool) ||
-    compareCanonicalText(a.selectedTool,b.selectedTool) ||
+    compareCanonicalText(a.selectedTool ?? '',b.selectedTool ?? '') ||
     compareCanonicalText(JSON.stringify(a),JSON.stringify(b))
   );
 }
@@ -138,7 +153,7 @@ export function fingerprintCompoundRepairEvidence(
  * validating the proposal, reports, candidate source, fitness and staging gate.
  */
 export class P23CompoundRepairRevisionCoordinator {
-  private readonly inFlightBySkill = new Map<string, Promise<any>>();
+  private readonly inFlightBySkill = new Map<string, Promise<CompoundRepairRevisionOutcome>>();
   // Bind coalescing to the evidence snapshot, not just the skill identity.
   // A request for newer evidence must not disappear behind a stale in-flight attempt.
   private readonly inFlightEvidenceDigestBySkill = new Map<string, string>();
@@ -239,7 +254,7 @@ export class P23CompoundRepairRevisionCoordinator {
    * digest within this coordinator lifetime. New repair evidence creates a new digest.
    * The P23 gate and explicit activation approval remain separate authorities.
    */
-  reviseFromObservedRepairs(skillId: string) {
+  reviseFromObservedRepairs(skillId: string): Promise<CompoundRepairRevisionOutcome> {
     if (typeof skillId !== 'string' || skillId.trim().length === 0) {
       throw new Error('compound skill id is required');
     }
@@ -380,7 +395,7 @@ export class P23CompoundRepairRevisionCoordinator {
     skillId: string,
     repairEvidence: ReturnType<OrganismRuntime['compoundSkillRepairEvidence']>,
     initialEvidenceDigest: string,
-  ) {
+  ): Promise<CompoundRepairRevisionOutcome> {
     const fingerprints = [...new Set(repairEvidence.map(row => row.failureFingerprint))];
     const rawPrepared = await this.provideInputs({
       skillId,
