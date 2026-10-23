@@ -604,7 +604,16 @@ export class MemoryOS2{
    budgetMisses:safeCounter((s as any)?.budgetMisses),
    meanEvictionRegret01:clamp(Number((s as any)?.meanEvictionRegret01??0)),
    evictionWitnesses:Array.isArray((s as any)?.evictionWitnesses)?(s as any).evictionWitnesses.slice(-256):[],
-   items:rawItems.map((m:any)=>({
+   items:rawItems.map((m:any)=>{
+    const restoredProvenanceClass:MemoryProvenanceClass = (['device','external','user','agent','derived','simulation','unknown'].includes(m?.provenanceClass)
+      ? m.provenanceClass : this.provenanceClassFor(String(m?.source??'unknown')));
+    // Persisted snapshots are an ingress boundary too: old or edited state must
+    // not restore authority above the ceiling enforced by live memory ingestion.
+    // Preserve finite, lower declared authority; use the class default only when absent/invalid.
+    const declaredAuthority = typeof m?.sourceAuthority01==='number' && Number.isFinite(m.sourceAuthority01)
+      ? m.sourceAuthority01 : this.sourceAuthorityDefault(restoredProvenanceClass);
+    const restoredAuthority01 = Math.min(clamp(declaredAuthority), this.sourceAuthorityDefault(restoredProvenanceClass));
+    return ({
     ...m,
     // P2697: cold residency is allowed to remain truly cold across restore.
     // Re-materialize vectors lazily only for candidates that actually reach
@@ -626,8 +635,8 @@ export class MemoryOS2{
     revisionHistory:normalizeRevisionHistory(m?.revisionHistory),
     revisionGroupId:m?.revisionGroupId?String(m.revisionGroupId):String(m?.id??m?.contentHash??'revision'),
     revisionSequence:Math.max(1,Math.floor(Number(m?.revisionSequence??1))),
-    provenanceClass:(['device','external','user','agent','derived','simulation','unknown'].includes(m?.provenanceClass)?m.provenanceClass:'unknown') as MemoryProvenanceClass,
-    sourceAuthority01:clamp(Number(m?.sourceAuthority01??.5)),
+    provenanceClass:restoredProvenanceClass,
+    sourceAuthority01:restoredAuthority01,
     independenceKey:m?.independenceKey==null?undefined:String(m.independenceKey).slice(0,96),
     evidenceFreshnessAt:Number.isFinite(Number(m?.evidenceFreshnessAt))?Number(m.evidenceFreshnessAt):Number(m?.observedAt??m?.createdAt??Date.now()),
     evidenceSources:this.normalizeEvidenceSources(m),
@@ -635,7 +644,7 @@ export class MemoryOS2{
     confidenceRevisionHistory:normalizeConfidenceRevisionHistory(m?.confidenceRevisionHistory),
     temperature01:clamp(Number(m?.temperature01??0)),
     residencyTier:(m?.residencyTier==='hot'||m?.residencyTier==='warm'||m?.residencyTier==='cold')?m.residencyTier:(Array.isArray(m?.semanticVector)&&m.semanticVector.length?'warm':'cold'),
-  }))};
+  });};
   // Recompute serialized footprint because older snapshots did not count provenance trails.
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
   this.adaptivePolicy.restore(this.state.adaptiveMemoryPolicy);
