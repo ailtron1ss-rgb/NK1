@@ -1,3 +1,12 @@
+## NK1 WorkPass468–470 — repair P26 workflow contract and learner input integrity (2026-10-23)
+
+- Added the three npm script entries missing from the P26 workflow (`test:p26:learning-input-integrity`, `test:p26:learning-recovery-benchmark`, `test:p26:learning-continual-matrix`); the corresponding test source files already existed. CI had typecheck passing but previously stopped before running any learning test because the script was missing.
+- Hardened `ParametricPolicyLearner` inputs to reject invalid targets, rates, weights, state features and explicit feature arrays; batches now preflight every sample before mutating model state.
+- Hardened snapshot restoration of learner diagnostics, update counter, timestamp and strict boolean freeze. Invalid serialized diagnostics can no longer re-enter the model as `NaN` or a truthy string.
+- **Verification:** the P26 job on the earlier package-script commit passed TypeScript but its learner integrity regression caught the diagnostics-restoration issue. Both fixes are committed; a new behavioral run is pending. Later P26 suites are not yet claimed as passes.
+
+---
+
 ## NK1 WorkPass467 — fail closed when causal experience recording rejects an event (2026-10-23)
 
 - Patched the large canonical `OrganismCore.ts` through Git blob/tree APIs after normal file-range retrieval proved insufficient for this 1.3 MB source. Three learning paths now conditionally ingest into `unifiedLearning` only when `CausalExperienceStream.recordExternalLearningEvent` returned a valid record: experience replay, independently verified replay validation, and skill-repair feedback.
