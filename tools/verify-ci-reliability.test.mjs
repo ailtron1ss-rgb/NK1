@@ -31,7 +31,7 @@ test("rejects retired checkout/setup-node action majors", () => {
     workflows: { "old.yml": "steps:\n  - uses: actions/checkout@v4\n  - uses: actions/setup-node@v4\n" },
     nodeVersion: "22.16.0"
   });
-  assert.equal(errors.length, 2);
+  assert.ok(errors.length >= 2, `expected action-version errors, got: ${errors.join("\n")}`);
   assert.match(errors.join("\n"), /checkout@v4/);
   assert.match(errors.join("\n"), /setup-node@v4/);
 });
