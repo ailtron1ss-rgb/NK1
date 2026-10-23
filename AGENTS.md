@@ -1,3 +1,15 @@
+## Latest durable checkpoint — WorkPass328 upstream donor gate (2026-10-23)
+
+- Working branch: workpass328-upstream-donor-gate, based on workpass70-source; main remains untouched. This is an intake/governance pass, not a donor implementation or a production release.
+- Added research/upstream-donors/registry.json (27 candidates), docs/NEUROCORE_DONOR_MAP_2026-10-23.md, tools/verify-upstream-donor-registry.mjs, and tools/verify-upstream-donor-registry.test.mjs. Root package scripts now invoke the registry check and its built-in Node tests in audit:quick.
+- Adoption gate: any future adopt/runtime-dependency record must link source audit, license compatibility report, reproducible test command/report, and benchmark report. The validator does not verify the truth of attached reports and does not claim external projects were copied or audited.
+- Architecture: preserve MemoryOS2/MemoryFabric as canonical memory owners and P23/VersionedSkillCandidateStore as the native skill lifecycle. Avoid parallel Hexis/Cognee/Graphiti/Mem0 stores or a second Hermes/LangGraph/Microsoft orchestration authority.
+- Verification state: registry metadata was checked statically through GitHub file reads; exact-head Node tests, typecheck, and Actions are not yet confirmed. WorkPass327 observed pre-runner failures (runner_id=0, no steps/logs); resolve account-level Actions startup issue before treating CI as evidence.
+- Release state: no ZIP was downloaded/rebuilt/replaced. Do not claim release asset updated.
+- Read docs/NEUROCORE_DONOR_MAP_2026-10-23.md and research/upstream-donors/registry.json before continuing this intake.
+
+---
+
 # NeuroCore — repository working rules
 
 > **New-session entry point:** read [`NEUROCORE_START_HERE.md`](NEUROCORE_START_HERE.md) and [WorkPass126 skill-store integrity report](docs/WORKPASS126_SKILL_STORE_INTEGRITY_2026-10-21.md) and [WorkPass125 repository synchronization audit](docs/WORKPASS125_REPOSITORY_SYNC_AUDIT_2026-10-21.md), then refresh the live branch head, stacked PR state, exact-head Actions status and open-work register. The active learning stack is WorkPass124 on top of WorkPass123; PR #12 is draft and unmerged. WorkPass126 hardens durable skill-store schema and payload-integrity validation; its tests and exact-head CI remain unverified. The release/metadata `main` branch is not the direct merge target for the source stack. The mission is persistent across chats; do not ask the user to restate it.
