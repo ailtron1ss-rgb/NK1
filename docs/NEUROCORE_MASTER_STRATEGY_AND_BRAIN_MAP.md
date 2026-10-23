@@ -1,4 +1,39 @@
 # NeuroCore: master strategy, brain map, gaps and release plan
+## Live engineering checkpoint — 2026-10-23 (WorkPass328–332)
+
+This is a **working-state update**, not a new readiness claim. Five focused robustness changes have been committed to the existing category branches and proposed for `integration`; they are not merged yet.
+
+| Category branch | Change | Draft pull request | Current boundary |
+|---|---|---|---|
+| `feature/learning` | Coalesce P23 repair attempts by canonical evidence digest; a newer evidence snapshot retries after the stale attempt fails closed; regression covers latest-digest staging | [#79](https://github.com/ailtron1ss-rgb/NK1/pull/79) | Runtime regression not executed yet |
+| `feature/perception` | Validate the operational micro-cycle observation at the shared ingress boundary before host-context/state access | [#80](https://github.com/ailtron1ss-rgb/NK1/pull/80) | Runtime regression not executed yet |
+| `feature/emotions` | Sanitize restored affect state and reject invalid ticks/timestamps; malformed episodes/calibration rows are filtered | [#81](https://github.com/ailtron1ss-rgb/NK1/pull/81) | Runtime regression not executed yet |
+| `feature/memory` | Reject non-finite restored byte budgets/counters; invalid `maxBytes` cannot disable MemoryOS2 eviction | [#82](https://github.com/ailtron1ss-rgb/NK1/pull/82) | Runtime regression not executed yet |
+| `feature/personality` | Normalize restored self-agency vectors/matrices and metadata; invalid learned weights cannot poison predictions after restart | [#83](https://github.com/ailtron1ss-rgb/NK1/pull/83) | Runtime regression not executed yet |
+
+Each branch also has its matching behavioral-regression change and CHANGELOG record. Log entries were moved to the **end** of each branch's CHANGELOG so concurrent category PRs do not compete to insert at the top. The current GitHub API reports all five pull requests as mergeable; none has been merged by this pass.
+
+### Progress accounting
+
+- **Overall engineering-readiness baseline: 46/100 — unchanged.** The existing scorecard is an engineering triage estimate, not a scientific measure of consciousness or intelligence.
+- **Branch coverage this pass: 5 of 9 named category branches touched (about 56%).** This is only a measure of category work touched, not percent completion of the organism.
+- **Behavioral changes committed: 5**, with focused regression coverage added in the learning, perception, emotion, memory and self-agency owners.
+- The global score is deliberately not raised until the new tests and full integration path execute. A commit or a test fixture alone is not evidence of end-to-end behavior.
+
+### CI and release blockers
+
+The new branch heads triggered GitHub Actions, but the latest affected jobs complete with **zero runner steps**. This does not demonstrate that the new code failed a test; it means no test result was produced. Runner/account configuration must be investigated before code-level validation can be trusted.
+
+The newest large release asset found is `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip` (approximately 136 MB), tagged `workpass70-hotfix1-2026-10-19`. **It has not been refreshed by this pass.** The connected GitHub action set supports repository reads and text-file/commit operations, but it does not expose a binary release-asset upload/replace operation; direct retrieval also failed in this environment because `github.com` could not be resolved. Do not treat these category-branch commits or the PRs as changes already present in the release ZIP.
+
+### External mechanism review and adaptation policy
+
+- [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution) explores controlled evolutionary improvement of skills/prompts/code with DSPy + GEPA. NK1's P23 path adapts the closed-loop principle (observed failure → evidence-bound repair candidate → validation/holdout evaluation → separately gated staging/promotion); no source file was copied verbatim in WorkPass328.
+- [Letta memory & dreaming](https://docs.letta.com/configuration/memory) documents persistent, versioned memory and sleep-time consolidation/review. NK1 keeps MemoryOS2 as one writable memory owner and focuses this pass on bounded, corruption-resistant restoration rather than adding a second store.
+- [Generative Agents](https://arxiv.org/abs/2304.03442) reports ablation evidence that observation, planning and reflection each contribute to believable simulated behavior. This is a design reference for the integrated cycle, **not evidence of human-equivalent consciousness**.
+
+Any future score increase must record commit, script, model/device/corpus, baseline, raw outcomes and uncertainty. The next sequence is: resolve runner availability; execute the added regressions; merge the five reviewed category PRs into `integration`; then rebuild/replace the large release asset using an environment with verified binary upload access and run the clean-install/E2E gates. Keep `main` unchanged unless the publication-branch design is deliberately reconciled.
+
 
 **Status:** living engineering plan, not a claim that all listed capabilities exist.  
 **Scope:** whole repository and runtime; branch `workpass70-source`.  
@@ -342,3 +377,31 @@ A “consciousness” claim is not a release gate that can be checked off by ord
 12. Start a 24–72h soak and target-device resource profile after core failure paths are stable.
 
 **Next-chat command contract:** if the user says “работай над проектом”, “продолжай NeuroCore”, “@GitHub продолжай” or equivalent, read the current charter, rules, live handover, open-work register and research ledger; inspect live branch/Actions; continue from the highest-impact unresolved item; make real code/test changes where possible; commit and update evidence. Do not ask the user to repeat the goal.
+
+
+### Follow-up update — WorkPass334 voice/STT recovery (2026-10-23)
+
+A sixth existing category branch, `feature/visual-embodiment`, now has a draft integration PR: [#84](https://github.com/ailtron1ss-rgb/NK1/pull/84). `EmbodimentRuntime.listen()` releases the listening flag in a `finally` block when the STT adapter fails, emits a bounded failure diagnostic, and permits a later retry. The existing `npm run test:voice` entry point now contains a deterministic failure → cleanup → success scenario. Code commit: [bb9fbc7](https://github.com/ailtron1ss-rgb/NK1/commit/bb9fbc75ee3bd5e1e33b221a86da8621eef2a3f2); regression commit: [318e510](https://github.com/ailtron1ss-rgb/NK1/commit/318e5102ce3339b624bbc40c57bd50bfd4ff5b96); CHANGELOG commit: [0913725](https://github.com/ailtron1ss-rgb/NK1/commit/0913725a30510682b2805388c4f00cea09587134).
+
+Category coverage is now **7 of 9 (about 78%)** across this work series: learning, perception, emotions, memory, personality, visual embodiment, and experiments/CI. This percentage counts category branches touched, not functional completion. This percentage measures only the named category branches touched in this pass series; it is **not** the completion percentage of Neuro Kurisu. The readiness score remains **46/100** because no new regression has executed yet and the six draft PRs are not merged. The latest release ZIP remains unchanged. Continue with runner recovery, exact-head tests/typecheck, integration merge, and only then a rebuilt/verified release asset.
+
+### CI + continual-learning update — WorkPass335–336 (2026-10-23)
+
+- **CL evidence validity:** `ContinualLearningMetrics.evaluateContinualLearning` no longer silently assumes `referenceScore=0` when `preTrainingScore` is present. Forward-transfer output requires a measured fixed/random-policy reference. `ContinualOutcomeMatrix` now enforces the same contract when a pre-training method is selected.
+- **CL data integrity:** sparse task/stage arrays and unsafe task IDs are rejected instead of silently skipping samples. New assertions are wired into the existing `test:p23:continual-metrics` script.
+- **CI runtime consistency:** P26 learning validation is updated from Node.js 22.12 to Node.js 24, in line with root `.nvmrc` and the newer WorkPass110/P23 workflows. The workflow adds an explicit Node-major preflight check and retains its lockfile-based install/concurrency behavior. Proposed change: [PR #85](https://github.com/ailtron1ss-rgb/NK1/pull/85).
+- **Learning branch PR:** [PR #79](https://github.com/ailtron1ss-rgb/NK1/pull/79) now includes both the earlier evidence-digest race fix and these CL metric integrity changes.
+- **CI reality:** exact-head Actions runs for both branches continue to fail before any runner step, including the P26 workflow after its Node 24 update. Job metadata shows runner ID 0 and an empty step list. The available evidence does not identify the underlying cause, so do not label this as a source-code test failure or assume billing is the cause; investigate repository/account/hosted-runner availability in GitHub settings. No new runtime test is recorded as passed.
+- **Release boundary:** the large GitHub Release ZIP is unchanged; these are proposed source-branch changes, not a refreshed release artifact.
+
+Progress accounting: branch work added a strict baseline requirement and sparse-input rejection. The readiness estimate remains **46/100** pending executed tests, merged PRs, end-to-end integration, and a rebuilt/verified release ZIP. Metric-correctness changes deliberately do not inflate the project completion percentage.
+
+### CI wiring and continual-learning update — WorkPass337–338 (2026-10-23)
+
+- **Missing script references repaired:** the existing P26 regression files now have package aliases for learning-input integrity, recovery benchmark and continual matrix; P23 has a WorkPass293 coordinator alias; WorkPass291, WorkPass292 and WorkPass294 now have aliases matching their existing regression files. The changes exist on `feature/learning` and `feature/experiments` with identical runtime package-script additions.
+- **CI audit now checks script resolution:** `tools/verify-ci-reliability.mjs` loads the root, app and runtime `package.json` files and compares workflow `npm run` references against the correct context. It accounts for per-step `working-directory`, shell `cd` and `npm --prefix`, and reports the workflow/context if the name is undefined. Unit tests cover valid context mapping and three representative missing-script cases.
+- **Related PRs:** [#79](https://github.com/ailtron1ss-rgb/NK1/pull/79) combines the P23 evidence-snapshot race fix, strict CL metric baseline requirement, sparse-array input checks and runtime test aliases. [#85](https://github.com/ailtron1ss-rgb/NK1/pull/85) combines Node 24 alignment for P26, the aliases and the cross-package CI script audit.
+- **Static inspection only:** the specific missing P26/P23/WP291/WP292/WP294 aliases were found and are now declared in the runtime package. The new cross-package audit code/test has not been executed, so do not claim it has passed across all workflows yet.
+- **Hosted execution remains unresolved:** a retry of P26 was accepted but again completed in about three seconds with `runner_id=0` and an empty step list. That shows no npm install, typecheck or regression command executed; the actual hosted-runner cause remains unconfirmed.
+- **CL quality boundary:** forward transfer now requires an explicit measured reference score whenever pre-training measurements are supplied; zero is no longer silently assumed. This improves experiment validity but does not show that NK1's learning improved empirically.
+- **Release boundary:** the large release ZIP has not been rebuilt/replaced. The readiness estimate remains **46/100** until these tests actually execute, cross-branch integration is checked and the release artifact is rebuilt and verified.
