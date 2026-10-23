@@ -1,3 +1,12 @@
+## 2026-10-23 — Wire recovered cognition boundary and causal replay into runtime
+
+- `OrganismRuntime.stepInternal` now calls `assertCognitiveCycleBoundaryInput(observation, 'full')` immediately after the environment observation is materialized and before the runtime dereferences nested observation data or sends it to `OrganismCore.observe`. Added `cognitive-cycle-boundary-runtime-wiring.mjs` so the validator cannot quietly become an unused helper again.
+- Connected `CausalReplaySampler` to `P23LearningEngine.replayPending` as a bounded prefilter over a 16-value state/outcome feature vector. The existing adaptive `selectReplayBatch` remains the final selector, preserving its health-adaptive capacity, recency handling, salience, novelty, replay-count and goal-priority ranking. The causal sampler uses diversity/causal/learning-quality signals only to constrain the candidate pool; it does not rewrite outcomes or claim a measured learning improvement.
+- Added `causal-replay-runtime-wiring.mjs` and registered it in `test:rebuild-recovered`.
+- Code and command wiring are committed. Hosted CI remains unverified because recent Actions jobs terminate before runner allocation (`runner_id: 0`, no steps, unavailable log blobs); these tests are not claimed as passed.
+
+---
+
 ## 2026-10-23 — Restore missing files and connect regression coverage
 
 - Added 31 files that were absent from the integration tree: rebuild's `CognitiveCycleBoundary.ts` and `CausalReplaySampler.ts`, their tests/benchmarks, action-finalizer/planner/reconciliation receipt tests, schema/holdout/replay evaluations, avatar-storage helper and test, Live2D expression-cache test, rebuild handover/checkpoint docs, avatar/voice audit artifacts, and the WorkPass318 branch-consolidation and finite-input regression artifacts.
