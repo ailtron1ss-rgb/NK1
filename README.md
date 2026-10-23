@@ -1,12 +1,12 @@
-## Current source-stack checkpoint — WorkPass402 (2026-10-23)
+## Current source-stack checkpoint — WorkPass403 (2026-10-23)
 
-- **Production learning gate:** the real activation entry point `approveIndependentlyEvaluatedSkillCandidate` now hardcodes strict family coverage for both validation and holdout: at least one family with two distinct canonical tasks on each split. Missing metadata blocks promotion.
-- **Option propagation:** `compareMatchedIndependentEvaluations` accepts typed gate settings and forwards them into SkillLearnBench evaluation. Diagnostic calls keep legacy defaults; a generated candidate cannot downgrade the production policy.
-- **Evidence integrity:** independent evaluation family labels come from the trusted experiment manifest, not caller-supplied task metadata. WorkPass213 already tests that a forged family name gets replaced by canonical manifest family.
-- **Regression/CI:** WorkPass225 tests strict comparator propagation; `workpass402-production-promotion-family-gate.mjs` proves the real P23 activation route rejects missing family provenance before store approval even when advisory scoring accepts the improvement. P26 triggers and runs both tests under Node.js 24. WorkPass400/401 cover hidden per-family regressions and strict coverage controls.
-- **Research/limits:** motivated by SkillLearnBench's verified multi-domain, three-axis evaluation and Hermes' guarded promotion pattern. Two tasks per family are only a structural floor; paired multi-seed/uncertainty calibration remains outstanding.
-- **Verification:** changes/docs are committed on `feature/learning`; exact-head Actions tests and typecheck remain unverified because jobs return failure without steps/logs. No measured score gain is claimed.
-- **Release:** `main` and the GitHub Release ZIP remain unchanged. See [WorkPass402 production family gate](docs/WORKPASS402_PRODUCTION_FAMILY_GATE_RU.md), [WorkPass401 strict family coverage](docs/WORKPASS401_STRICT_FAMILY_COVERAGE_RU.md), and [WorkPass400 family regression](docs/WORKPASS400_VALIDATION_FAMILY_REGRESSION_RU.md).
+- **P23 production promotion gate:** requires canonical validation and holdout family coverage (WorkPass402) plus at least 3 common paired seeds for each sufficiently sampled family on both splits. Each seed must be present for every task in that family; unrelated task-local seeds are not summed.
+- **Option separation:** the independent comparator accepts `IndependentEvaluationFamilySeedCoverageOptions` separately from the normal SkillLearnBench fitness options. Caller-controlled generated skill content cannot loosen P23's fixed production settings.
+- **Reporting and fail-closed behavior:** comparator reports per-split family seed coverage and failures. If strict seed coverage is requested but there is no eligible family, it fails closed. Invalid minima are rejected.
+- **Regressions:** WorkPass225 tests the same two-task family with two paired seeds (blocked under a three-seed rule) and three paired seeds (coverage passes). WorkPass402 end-to-end activation test checks a two-seed candidate cannot reach store approval. P26 runs both under Node.js 24.
+- **Research basis:** RLiable recommends uncertainty-aware evaluation and robust aggregates for small-run settings; SkillLearnBench highlights nonuniform skill-learning gains across domains; Hermes separates generated candidates from guarded promotion. Three seeds is a structural floor only; stratified-bootstrap CIs/IQM and larger task/seed sets remain future work.
+- **Verification:** source and tests are committed to `feature/learning`, but exact-head Actions tests/typecheck remain unverified due failure jobs without exposed step logs. No benchmark gain is claimed.
+- **Release:** `main` and the GitHub Release ZIP remain unchanged. See [WorkPass403 paired-seed family coverage](docs/WORKPASS403_PAIRED_SEED_FAMILY_COVERAGE_RU.md) and [WorkPass402 production family gate](docs/WORKPASS402_PRODUCTION_FAMILY_GATE_RU.md).
 
 ---
 
