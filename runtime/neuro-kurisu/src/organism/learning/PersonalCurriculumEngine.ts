@@ -134,8 +134,15 @@ export class PersonalCurriculumEngine {
       suppressedThreads:safeCount(r.suppressedThreads,defaults.suppressedThreads),
       lastAt:safeTimestamp(r.lastAt,defaults.lastAt)
     };
+    this.syncLifecycleCounts();
   }
   snapshot(){return structuredClone(this.state);}
+
+  /** Aggregate lifecycle counts from unique live threads, not repeated observations. */
+  private syncLifecycleCounts(){
+    this.state.completedThreads=this.state.threads.filter(thread=>thread.status==='satisfied').length;
+    this.state.suppressedThreads=this.state.threads.filter(thread=>thread.status==='suppressed').length;
+  }
 
   beginCycle(){
     this.state.cycles++;
@@ -197,9 +204,9 @@ export class PersonalCurriculumEngine {
     thread.learningNeed01=clamp(thread.unresolved01*.34+(1-thread.retention01)*.18+(1-thread.transfer01)*.16+(1-thread.confidence01)*.14+thread.socialRelevance01*.08+thread.identityRelevance01*.10);
     thread.confidence01=clamp(thread.confidence01*.9+evidence*.07+thread.retention01*.03);
     thread.priority01=clamp(thread.learningNeed01*.42+thread.identityRelevance01*.18+thread.socialRelevance01*.13+thread.causalStrength01*.12+thread.transfer01*.08+(input.goal.importance*.04)+(input.goal.urgency*.03));
-    if(thread.occurrences>=6&&thread.contexts>=3&&thread.verified>=3&&rate>=.72&&thread.retention01>=.62&&thread.transfer01>=.42&&thread.unresolved01<.32){ if(thread.status!=='satisfied')this.state.completedThreads++; thread.status='satisfied'; }
+    if(thread.occurrences>=6&&thread.contexts>=3&&thread.verified>=3&&rate>=.72&&thread.retention01>=.62&&thread.transfer01>=.42&&thread.unresolved01<.32)thread.status='satisfied';
     else if(thread.status!=='suppressed')thread.status=thread.priority01>.42?'active':'emerging';
-    if(thread.status==='suppressed')this.state.suppressedThreads++;
+    this.syncLifecycleCounts();
     this.state.curriculumPressure01=clamp(this.state.curriculumPressure01*.94+thread.learningNeed01*.06);
     this.state.socialLearning01=clamp(this.state.socialLearning01*.95+thread.socialRelevance01*.05);
     this.state.autobiographicalLearning01=clamp(this.state.autobiographicalLearning01*.95+thread.unresolved01*.05);
@@ -243,6 +250,7 @@ export class PersonalCurriculumEngine {
     this.state.identityLearning01=clamp(this.state.identityLearning01*.94+thread.identityRelevance01*.06);
     this.state.transferReadiness01=clamp(this.state.transferReadiness01*.94+thread.transfer01*.06);
     this.state.lastAt=at;
+    this.syncLifecycleCounts();
     return structuredClone(thread);
   }
 
