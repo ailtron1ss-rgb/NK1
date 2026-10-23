@@ -1,3 +1,12 @@
+## NK1 WorkPass425 — consume the detached full-cycle observation (2026-10-23)
+
+- Fixed a time-of-check/time-of-use gap: the full runtime previously validated the environment observation but then retained and consumed the original caller-owned object. It now replaces that value with the boundary's bounded detached snapshot before reading nested fields or calling Core.
+- Extended the boundary regression to verify deep detachment, caller mutation isolation, and getter non-execution; rewired the runtime integration test to require actual snapshot consumption, not only validation.
+- This unifies full and operational cycle semantics around one input contract; it does not change planner policy or add dependencies.
+- The tests are committed but hosted exact-head execution is still unconfirmed because Actions currently fail before runner assignment.
+
+---
+
 ## NK1 WorkPass419 — bound and detach cognitive-cycle ingress (2026-10-23)
 
 - Added a reusable plain-data snapshot boundary for runtime observations; accessors, sparse arrays, cycles, symbol keys and custom prototypes are rejected before host context acquisition.

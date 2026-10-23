@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
+import { normalizeCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
 import { FileStateStore } from '../persistence/FileStateStore.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
 import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
@@ -582,9 +582,9 @@ export class OrganismRuntime {
       await this.consolidateInternal();
     await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog());
     }
-    const observation = this.environment.toOrganismObservation();
-    // Validate the actual runtime-to-core observation boundary before nested fields are read.
-    assertCognitiveCycleBoundaryInput(observation, 'full');
+    const observation = normalizeCognitiveCycleBoundaryInput(
+      this.environment.toOrganismObservation(), 'full',
+    ) as unknown as ReturnType<WorldEnvironment['toOrganismObservation']>;
     const modalityEvents = [];
     if (externalText) modalityEvents.push(this.core.recordMultimodalObservation({ modality:'text', summary:externalText.slice(0,500), confidence:.88, salience:.72, evidence:['user-input'], content:externalText }));
     modalityEvents.push(this.core.recordMultimodalObservation({ modality:'sensor', summary:this.embodiment.resourceSummary(), confidence:body.sensoryFreshness01*.82, salience:Math.max(.18,Math.abs(body.telemetry.motion01 ?? 0)+.15), evidence:['device-telemetry'] }));
