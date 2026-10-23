@@ -1,3 +1,10 @@
+## WorkPass396 — end-to-end writeback and explicit activation separation (2026-10-23)
+
+- **Fresh upstream issue/PR review:** the [Hermes Agent Self-Evolution issue list](https://github.com/NousResearch/hermes-agent-self-evolution/issues) currently includes reports that evolution can become a no-op (#141) or fail to write the optimized skill text back (#172, #175), and its PR history includes fixes to validate the complete skill file including frontmatter (#185, #187). These are failure modes of the evolution loop, not just benchmark concerns.
+- **NK1 regression adaptation:** the P23 end-to-end fixture already used genuine signed outcome evidence, a real promotion proposal, independent evaluation and the versioned candidate store. It now additionally asserts that the exact changed payload passed to the independent evaluator is the payload persisted on the staged candidate.
+- The same test asserts that candidate status remains `staged` and the active set stays empty after evaluation. The generator cannot activate its own output; authenticated shadow evidence and the separate explicit approval path remain required.
+- No upstream source file was copied; the lesson was added as a regression to NK1's native candidate lifecycle. Test execution is still unverified while GitHub Actions jobs expose no step-level logs.
+
 ## WorkPass395 — compatibility check for host-owned class providers (2026-10-23)
 
 - Added an integration fixture whose `configured` and `generate` methods live on the provider prototype, matching the shape of the existing `OpenAICompatibleLocalChatProvider` class.
