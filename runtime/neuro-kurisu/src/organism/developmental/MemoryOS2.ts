@@ -365,12 +365,17 @@ export class MemoryOS2{
   const options=optionRecord as {maxItems?:number;providerTimeoutMs?:number;now?:number};
   const now=options.now??Date.now();
   const provider=this.embeddingProvider;
-  const providerDiag=provider?.diagnostics();
+  let providerDiag:ReturnType<TextEmbeddingProvider['diagnostics']>|undefined;
+  let providerDiagnosticsFailed=false;
+  // Diagnostics are observational: a broken optional adapter must not prevent
+  // semantic maintenance from running or make lexical memory unavailable.
+  try { providerDiag=provider?.diagnostics(); }
+  catch { providerDiagnosticsFailed=Boolean(provider); }
   const baseDiag=(enabled:boolean,code:string|null=null):SemanticIndexMaintenanceResult=>({
    enabled,provider:providerDiag?.provider??'none',model:providerDiag?.model??'',considered:0,indexed:0,failed:0,staleSkipped:0,
    indexedItems:this.semanticEmbeddingIndex.size,corpusItems:this.state.items.length,remaining:this.state.items.length,waitingForRetry:0,nextRetryAt:null,
    lastRunAt:this.lastSemanticIndexMaintenance.lastRunAt,lastDurationMs:this.lastSemanticIndexMaintenance.lastDurationMs,
-   lastErrorCode:code??this.lastSemanticIndexMaintenance.lastErrorCode,redactedInputs:Number(providerDiag?.redactedInputs??0),
+   lastErrorCode:code??(providerDiagnosticsFailed?'provider-diagnostics-error':this.lastSemanticIndexMaintenance.lastErrorCode),redactedInputs:Number(providerDiag?.redactedInputs??0),
   });
   if(!provider)return baseDiag(false,'embedding-provider-disabled');
   const maxItems=Math.max(1,Math.min(16,Math.floor(Number.isFinite(options.maxItems)?Number(options.maxItems):8)));
@@ -430,16 +435,20 @@ export class MemoryOS2{
   const duration=Math.max(0,Date.now()-started);this.lastSemanticIndexMaintenance={lastRunAt:now,lastDurationMs:duration,lastIndexed:indexed,lastFailed:failed,lastStaleSkipped:staleSkipped,lastErrorCode:errorCode};
   const indexedItems=corpus.filter(currentVector).length;
   const retryRows=corpus.map(item=>this.semanticEmbeddingRetry.get(item.id)).filter((row):row is {contentHash:string;attempts:number;retryAt:number}=>Boolean(row&&row.retryAt>now));
-  return {enabled:true,provider:providerDiag?.provider??'unknown',model:providerDiag?.model??'',considered:candidates.length,indexed,failed,staleSkipped,indexedItems,corpusItems:corpus.length,remaining:Math.max(0,corpus.length-indexedItems),waitingForRetry:retryRows.length,nextRetryAt:retryRows.length?Math.min(...retryRows.map(row=>row.retryAt)):null,lastRunAt:now,lastDurationMs:duration,lastErrorCode:errorCode,redactedInputs:Number(providerDiag?.redactedInputs??0)};
+  return {enabled:true,provider:providerDiag?.provider??'unknown',model:providerDiag?.model??'',considered:candidates.length,indexed,failed,staleSkipped,indexedItems,corpusItems:corpus.length,remaining:Math.max(0,corpus.length-indexedItems),waitingForRetry:retryRows.length,nextRetryAt:retryRows.length?Math.min(...retryRows.map(row=>row.retryAt)):null,lastRunAt:now,lastDurationMs:duration,lastErrorCode:errorCode??(providerDiagnosticsFailed?'provider-diagnostics-error':null),redactedInputs:Number(providerDiag?.redactedInputs??0)};
  }
 
  semanticEmbeddingMaintenanceDiagnostics():SemanticIndexMaintenanceResult{
-  const providerDiag=this.embeddingProvider?.diagnostics();const now=Date.now();
+  let providerDiag:ReturnType<TextEmbeddingProvider['diagnostics']>|undefined;
+  let providerDiagnosticsFailed=false;
+  try { providerDiag=this.embeddingProvider?.diagnostics(); }
+  catch { providerDiagnosticsFailed=Boolean(this.embeddingProvider); }
+  const now=Date.now();
   const corpus=this.state.items.filter(item=>!item.dormant&&item.epistemicStatus!=='quarantined'&&Number(item.validFromAt??item.createdAt)<=now&&(item.validUntilAt==null||now<Number(item.validUntilAt)));
   const indexed=corpus.filter(item=>{const row=this.semanticEmbeddingIndex.get(item.id);return Boolean(row&&row.providerId===this.embeddingProvider?.providerId&&row.contentHash===memoContentHash(item.content)&&row.vector.length>0);}).length;
   const pending=corpus.filter(item=>{const row=this.semanticEmbeddingIndex.get(item.id);return !row||row.providerId!==this.embeddingProvider?.providerId||row.contentHash!==memoContentHash(item.content)||!row.vector.length;});
   const retries=pending.map(item=>this.semanticEmbeddingRetry.get(item.id)).filter((row):row is {contentHash:string;attempts:number;retryAt:number}=>Boolean(row&&row.retryAt>now));
-  return {enabled:Boolean(this.embeddingProvider),provider:providerDiag?.provider??'none',model:providerDiag?.model??'',considered:0,indexed:0,failed:this.lastSemanticIndexMaintenance.lastFailed,staleSkipped:this.lastSemanticIndexMaintenance.lastStaleSkipped,indexedItems:indexed,corpusItems:corpus.length,remaining:Math.max(0,corpus.length-indexed),waitingForRetry:retries.length,nextRetryAt:retries.length?Math.min(...retries.map(row=>row.retryAt)):null,lastRunAt:this.lastSemanticIndexMaintenance.lastRunAt,lastDurationMs:this.lastSemanticIndexMaintenance.lastDurationMs,lastErrorCode:this.lastSemanticIndexMaintenance.lastErrorCode,redactedInputs:Number(providerDiag?.redactedInputs??0)};
+  return {enabled:Boolean(this.embeddingProvider),provider:providerDiag?.provider??'none',model:providerDiag?.model??'',considered:0,indexed:0,failed:this.lastSemanticIndexMaintenance.lastFailed,staleSkipped:this.lastSemanticIndexMaintenance.lastStaleSkipped,indexedItems:indexed,corpusItems:corpus.length,remaining:Math.max(0,corpus.length-indexed),waitingForRetry:retries.length,nextRetryAt:retries.length?Math.min(...retries.map(row=>row.retryAt)):null,lastRunAt:this.lastSemanticIndexMaintenance.lastRunAt,lastDurationMs:this.lastSemanticIndexMaintenance.lastDurationMs,lastErrorCode:this.lastSemanticIndexMaintenance.lastErrorCode??(providerDiagnosticsFailed?'provider-diagnostics-error':null),redactedInputs:Number(providerDiag?.redactedInputs??0)};
  }
 
  /**
