@@ -52,8 +52,12 @@ const candidateEvaluation = await makeEvaluation(candidatePayload, 'candidate-',
 // real validation gain, sufficient task counts, clean safety and improved holdout.
 const engine = new P23LearningEngine();
 const journalEvents = [];
+let fallbackJournalCalls = 0;
 engine.configureLearningFitnessJournal({
   recordFitnessDecision(entry) { journalEvents.push(structuredClone(entry)); },
+});
+engine.configureLearningFitnessJournalIfAbsent({
+  recordFitnessDecision() { fallbackJournalCalls++; },
 });
 const advisoryFitness = engine.evaluateReflectiveSkillCandidate(
   { validation: baseline.evaluation.validation, holdout: baseline.evaluation.holdout },
@@ -197,5 +201,7 @@ assert.equal(journalEvents.length, 2, 'seed-coverage failure must also be journa
 assert.equal(journalEvents[1].decision, 'fitness-rejected');
 assert.ok(journalEvents[1].reasonCodes.includes('validation-family-seed-coverage-insufficient'));
 assert.ok(journalEvents[1].reasonCodes.includes('holdout-family-seed-coverage-insufficient'));
+assert.equal(fallbackJournalCalls, 0,
+  'runtime default configuration must not replace an explicit host-provided sink');
 
-console.log('WORKPASS402_PRODUCTION_PROMOTION_FAMILY_GATE=PASS strictFamilyCoverage=true noApprovalSideEffect=true pairedSeedCoverage=true journalConnected=true');
+console.log('WORKPASS402_PRODUCTION_PROMOTION_FAMILY_GATE=PASS strictFamilyCoverage=true noApprovalSideEffect=true pairedSeedCoverage=true journalConnected=true hostSinkPreserved=true');
