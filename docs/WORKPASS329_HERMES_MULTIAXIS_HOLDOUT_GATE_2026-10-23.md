@@ -67,7 +67,7 @@ npm run audit:upstream-donors
 npm run test:upstream-donors
 ```
 
-No learning score should be raised and no candidate may bypass the existing independent evaluation, signed evidence or authenticated approval path. The wider project still needs an independent paired-seed benchmark with a frozen holdout and observable task-level outcomes; the last documented retrieval experiment had `recallDelta=0` and was not promoted. No release ZIP was downloaded, rebuilt or published in this pass, and `main` remains untouched.
+No learning score should be raised and no candidate may bypass the existing independent evaluation, signed evidence or authenticated approval path. The wider project still needs an independent paired-seed benchmark with a frozen holdout and observable task-level outcomes; the last documented retrieval experiment had `recallDelta=0` and was not promoted. The latest Release API metadata still points to tag `Neuro` / asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip` (135,290,615 bytes; published 19 October 2026). That binary was not downloaded or rebuilt: the available GitHub access path here returns UTF-8 text and exposes no release-asset upload operation. No release ZIP was published, and `main` remains untouched.
 
 ## Next engineering passes
 
