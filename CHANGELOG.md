@@ -1,3 +1,16 @@
+## NK1 WorkPass337 — restore missing CI script wiring (2026-10-23)
+
+- **P26 workflow fixed:** added `test:p26:learning-input-integrity`, `test:p26:learning-recovery-benchmark`, and `test:p26:learning-continual-matrix` npm aliases for their existing regression files.
+- **P23 workflow fixed:** added `test:workpass293:p23-revision`, running the existing WorkPass293 autonomous-revision test followed by the P23 coordinator/evidence-concurrency regression.
+- This is script-wiring work only; it does not change the underlying learning algorithm or claim test success.
+- **Validation boundary:** static workflow-to-script comparison confirmed that the identified missing aliases are now present. Runtime tests remain unexecuted because recent GitHub Actions jobs fail before runner assignment (runner ID zero, no steps).
+
+## NK1 WorkPass336 — align P26 CI with Node.js 24 (2026-10-23)
+
+- **CI consistency:** the P26 learning-validation workflow now uses Node.js 24, matching the repository `.nvmrc` and the newer continual-learning/P23 workflows.
+- **Early failure clarity:** the workflow explicitly checks the major runtime version before installing dependencies or executing the learning suite.
+- **Validation boundary:** the workflow change is committed, but it cannot be verified until Actions obtains a hosted runner; recent failed jobs report runner ID zero and no steps.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
@@ -2113,10 +2126,3 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
 - Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
 - This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
-
-## NK1 WorkPass336 — align P26 CI with Node.js 24 (2026-10-23)
-
-- **CI consistency:** the P26 learning-validation workflow now uses Node.js 24, matching the repository `.nvmrc` and the newer continual-learning/P23 workflows.
-- **Early failure clarity:** the workflow explicitly checks the major runtime version before installing dependencies or executing the learning suite.
-- **Validation boundary:** the workflow change is committed, but it cannot be verified until Actions obtains a hosted runner; recent failed jobs report runner ID zero and no steps.
-
