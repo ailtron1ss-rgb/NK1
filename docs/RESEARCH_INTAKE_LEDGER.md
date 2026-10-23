@@ -1,3 +1,24 @@
+## WorkPass457 — inspect Hexis goal/belief mechanisms and adapt them into NK1 (2026-10-23)
+
+### Primary-source inspection and license
+Repository: [QuixiAI/Hexis](https://github.com/QuixiAI/Hexis). The repository LICENSE was fetched and confirms MIT (blob SHA `790aa39fefe3dfcba304ea00e1a69d261602c975`). Relevant upstream source files inspected:
+- [`db/59_belief_revision.sql`](https://github.com/QuixiAI/Hexis/blob/main/db/59_belief_revision.sql), blob SHA `d984392ba8a567fa8f907a39db7d990e44e0d370`: residual confidence revision, de-duplication across support/contradict evidence, protected-belief handling and a durable audit.
+- [`db/08_functions_goals.sql`](https://github.com/QuixiAI/Hexis/blob/main/db/08_functions_goals.sql), blob SHA `7f3cf98abadaa064adc4f91244015f57e777d194`: goal progress as recorded events and a bounded active-goal population.
+- [`db/07_functions_heartbeat.sql`](https://github.com/QuixiAI/Hexis/blob/main/db/07_functions_heartbeat.sql), blob SHA `62f4c48b2441347d29d266c39056c267c27c1a72`, and [`services/heartbeat_agentic.py`](https://github.com/QuixiAI/Hexis/blob/main/services/heartbeat_agentic.py), blob SHA `88c670e9f55cdd3c1c1452f258cfa4de979015ba`: a heartbeat is a real tool-using loop with energy/economy constraints and claim release on failure, not merely a periodic prompt.
+
+### NK1 native adaptations now committed
+- **Canonical memory / residual belief revision:** [PR #82](https://github.com/ailtron1ss-rgb/NK1/pull/82), current HEAD `0661cab1e8c5f5553b89ace430316fd653dab05e`. Added `MemoryOS2.reviseConfidenceFromEvidence`: independent support closes 35% of remaining doubt scaled by bounded provenance authority; contradiction removes 35% of current confidence; bounds stay at 0.05–0.99. A lineage can vote only once across both stances, protected semantic/identity assertions retain contradictory evidence without silent confidence change, and up to 32 revision receipts are persisted within the same canonical memory/byte budget. External authority claims are capped at the existing provenance-class default. Existing generic ingestion now uses the same support formula instead of an unrelated 0.82/0.18 blend. Regression source covers formulas, replay/stance-flip de-duplication, protected contradictions, hostile getters, restore and byte-budget accounting. No Postgres or second memory database was added.
+- **P67 endogenous goals:** [PR #83](https://github.com/ailtron1ss-rgb/NK1/pull/83), current HEAD `38848c405bb64f15cc479e59043ec0115dc402ba`. Proposal signals and restored goal candidates are snapshot/schema bounded before counters change; promotion/rejection decisions use durable idempotent receipts so replay cannot inflate the self-development metrics. The ID validator was corrected to match the actual stable P67 IDs.
+- **P68 goal ecology:** same [PR #83](https://github.com/ailtron1ss-rgb/NK1/pull/83). Live tick ingress and restored lifecycle state are validated through the shared plain-data boundary. Accessor-backed or malformed state cannot advance lifecycle counters; after successful validation the existing goal objects are still updated in place so the core wiring remains intact.
+
+### Transfer boundary
+Only mechanisms were adapted. Hexis's PostgreSQL-native state, SQL migrations, Python runtime and heartbeat scheduler were **not** vendored; no runtime dependency was added. NK1 retains one memory owner (`MemoryOS2`), one existing P67 goal creator, the P68 lifecycle owner, and the canonical action gateway. Independent-source evidence remains different from independently verified external-action outcomes.
+
+### Verification and progress truth
+These implementation/test commits are present on the existing category branches; they are not proven passes yet. Exact-head suites remain confirmed passing `0/7`, category PR merges `0/7`, verified release ZIP updates `0/1`. Overall engineering readiness remains **46/100** until test execution, cross-branch integration and release evidence exist. No measured autonomy, memory quality or learning-uplift claim is made.
+
+---
+
 ## Additional implementation follow-up — emotion calibration and CI runtime policy (2026-10-23)
 
 - **Emotion regulation / evidence-bounded calibration:** source commit `23b66f101076b4d4680bb602550fb9da73a4cae4` (`feature/emotions`, PR [#81](https://github.com/ailtron1ss-rgb/NK1/pull/81)) validates outcome success, surprise, and regulation-cost values as finite numbers in [0,1] before changing the action-calibration row. NaN/string/out-of-range inputs no longer silently become training signals. Regression commit: `dc8b48479ebaed988564f4b5b7f2ae74fae367e8`.
