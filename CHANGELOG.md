@@ -1,3 +1,11 @@
+## NK1 WorkPass463 — refresh branch-head truth after parallel updates (2026-10-23)
+
+- Re-read all current category refs, open PR heads, `main`, and `integration`; detected new heads on memory and perception beyond the previous status snapshot.
+- Confirmed the Hexis-inspired belief-revision/provenance mechanism and the event-ID/observation-anchor result contract remain present on the two new live heads. Synced research intake, branch goals and the Russian master audit to avoid stale SHA reporting.
+- Validation status is unchanged: exact-head tests remain unverified because Actions never assigns a runner and a local clone failed due DNS resolution. No dependency or release asset change; `main`/`integration` unchanged; readiness 46/100.
+
+---
+
 ## NK1 WorkPass456 — record shared evidence identity bridge as partial (2026-10-23)
 
 - The perception branch now supports an optional upstream eventId in RealityEvidenceLedger and blocks reuse of that identity with changed payload.
