@@ -162,6 +162,20 @@ assert.equal(support.reason,'applied');
 assert.ok(Math.abs(support.posteriorConfidence-(beliefBefore+(1-beliefBefore)*.35*.8))<1e-9,
   'support should close a fixed fraction of remaining doubt');
 const afterSupport = support.posteriorConfidence;
+
+// A caller cannot amplify evidence beyond the default trust ceiling for its
+// declared provenance class (a high sourceAuthority field is only an upper request).
+const cappedTrustMemory=new MemoryOS2();
+const cappedTrustBelief=cappedTrustMemory.encode(makeInput('authority-cap-seed','authority-cap-seed',{
+  content:'Declared evidence trust is capped by the canonical provenance policy.',
+  provenanceClass:'external',sourceAuthority01:1,confidence:.5,
+}),{clone:false});
+const cappedTrustResult=cappedTrustMemory.reviseConfidenceFromEvidence(cappedTrustBelief.id,{
+  source:'external-paper-c',provenanceClass:'external',sourceAuthority01:1,
+  independenceKey:'external-paper-c-lineage',observedAt:at,evidenceFreshnessAt:at,
+},'supports',at);
+assert.equal(cappedTrustResult.authority01,.9,'external evidence may not self-promote above the configured class default');
+assert.ok(Math.abs(cappedTrustResult.posteriorConfidence-(cappedTrustBelief.confidence+(1-cappedTrustBelief.confidence)*.35*.9))<1e-9);
 const duplicateSupport=beliefMemory.reviseConfidenceFromEvidence(belief.id,{
   source:'mirror-of-paper-a',provenanceClass:'external',sourceAuthority01:1,
   independenceKey:'paper-lineage-a',observedAt:at+1,evidenceFreshnessAt:at+1,
