@@ -589,8 +589,8 @@ export class P23LearningEngine {
     let candidateEvaluation: {validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']};
     let options: SkillLearnBenchCandidateGateOptions;
     try {
-      baseline=snapshotPlainData(rawBaseline) as typeof baseline;
-      candidateEvaluation=snapshotPlainData(rawCandidateEvaluation) as typeof candidateEvaluation;
+      baseline=snapshotPlainData(rawBaseline) as typeof rawBaseline;
+      candidateEvaluation=snapshotPlainData(rawCandidateEvaluation) as typeof rawCandidateEvaluation;
       options=snapshotPlainData(rawOptions) as SkillLearnBenchCandidateGateOptions;
     } catch {
       throw new Error('reflective revision input data-boundary rejected');
@@ -633,7 +633,7 @@ export class P23LearningEngine {
       previousEvaluation:snapshotPlainData(candidateEvaluation),
     });
     let fresh: Awaited<ReturnType<RevisedCandidateEvaluator>>;
-    try { fresh=snapshotPlainData(rawFresh) as typeof fresh; }
+    try { fresh=snapshotPlainData(rawFresh) as Awaited<ReturnType<RevisedCandidateEvaluator>>; }
     catch { throw new Error('independent evaluator returned data outside the plain-data boundary'); }
     if(!fresh || typeof fresh!=='object' || fresh.payloadFingerprint!==payloadFingerprint ||
        fresh.evaluationFingerprint!==createHash('sha256').update(canonicalize(fresh.evaluation)).digest('hex') ||
