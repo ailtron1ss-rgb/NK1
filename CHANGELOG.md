@@ -1,3 +1,13 @@
+## NK1 WorkPass451 — idempotent reality evidence provenance (2026-10-23)
+
+- Hardened `RealityEvidenceLedger` record/restore input with the existing plain-data boundary and strict validation for tick/time, reality class, claim, confidence, source key and parent IDs.
+- Evidence records now use a stable SHA-256 identity. An exact replay returns the same record instead of incrementing the evidence count; malformed/duplicate restored rows are filtered without collapsing simulator evidence into external observation.
+- Added `workpass451-reality-evidence-ledger.mjs` and wired it into the existing `test:p2841` path.
+- Adapted Hexis's source-provenance and contradiction-audit principles within the NK1 real-world evidence ledger; no new runtime dependency.
+- Exact-head tests remain unverified, and deterministic IDs do not themselves prove an observation is true.
+
+---
+
 ## NK1 WorkPass445 — harden the live cognitive-cycle ingress boundary (2026-10-23)
 
 - Snapshot runtime cycle input through the shared bounded plain-data boundary before reading tick, stage map, or parent-integrity fields. Caller-owned getters, cycles, unsupported object prototypes, and oversized inputs are rejected without invoking user code or mutating the cycle.
