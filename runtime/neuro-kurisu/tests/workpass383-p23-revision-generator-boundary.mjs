@@ -132,6 +132,10 @@ const staged=await engine.generateAndStageReflectiveSkillRevision(
 assert.equal(staged.candidate.status,'staged');
 assert.equal(staged.candidate.skillId,skillId);
 assert.notEqual(staged.candidate.payloadFingerprint,source.payloadFingerprint);
+assert.deepEqual(staged.candidate.payload,revisedPayload,
+  'the exact revised payload that was independently evaluated must be durably staged, not discarded or replaced with source text');
 assert.equal(store.snapshot().candidates.length,2,'only the detached, independently evaluated revision should stage');
+assert.deepEqual(store.snapshot().active,[],
+  'a successful evaluation can stage a candidate but cannot activate it without the separate approval path');
 assert.ok(staged.plan.targets.length>0);
 console.log('WORKPASS383_P23_REVISION_GENERATOR_BOUNDARY=PASS genuineProposal=true detachedPayload=true independentEvaluation=true stagedOnlyAfterGate=true');
