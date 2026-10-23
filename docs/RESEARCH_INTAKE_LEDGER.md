@@ -1,3 +1,9 @@
+## WorkPass371 — minimal-trace compatibility follow-up (2026-10-23)
+
+- Inspection of the compact P23 integration fixtures showed that some trusted trace shapes omit reasoningSignals. Replay feature capture now uses optional access and a neutral causal-strength prior when this metadata is absent.
+- The focused P23 curriculum fixture is already part of the committed regression script and exercises a compact state/trace. A fresh successful execution is still required; I did not infer a pass from source inspection.
+- Current PR comparison remains divergent from integration (73 commits ahead, 5 behind at the latest inspected head). Do not merge until the ancestry discrepancy is reconciled and the new learning regressions produce step-level evidence.
+
 ## WorkPass370 — CI coverage for the modified P23 learning path (2026-10-23)
 
 - The existing P26 Learning Validation workflow did not include the P23 learning-engine, reflection-curriculum, shared trust-boundary, or the two affected P23 test files in its pull-request path filter. This meant P23-only edits would not reliably trigger that workflow.
