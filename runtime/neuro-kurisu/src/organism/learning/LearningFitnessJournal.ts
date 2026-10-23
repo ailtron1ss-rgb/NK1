@@ -73,10 +73,34 @@ function safeMetric(value: unknown): value is number | null {
   return value === null || (typeof value === 'number' && Number.isFinite(value) && value >= -1 && value <= 1);
 }
 
+function hasExactKeys(value: Record<string, unknown>, expected: readonly string[]): boolean {
+  const actual = Object.keys(value).sort();
+  const wanted = [...expected].sort();
+  return actual.length === wanted.length && actual.every((key, index) => key === wanted[index]);
+}
+
+const SPLIT_KEYS = [
+  'familiesEvaluated', 'familiesWithSufficientSeeds', 'seedCoverageFailures',
+  'confidenceBoundFailures', 'meanDelta', 'minimumLowerBound', 'maximumUpperBound',
+] as const;
+
+const INPUT_KEYS = [
+  'recordedAt', 'candidateId', 'payloadFingerprint', 'evaluationFingerprint',
+  'planFingerprint', 'environmentFingerprint', 'decision', 'reasonCodes',
+  'matchedTrialCount', 'matchedValidationTrialCount', 'matchedHoldoutTrialCount',
+  'minimumPairedSeedsPerFamily', 'confidenceLevel', 'bootstrapResamples',
+  'validation', 'holdout',
+] as const;
+
+const ENTRY_KEYS = [
+  'schemaVersion', 'sequence', ...INPUT_KEYS, 'previousDigest', 'digest',
+] as const;
+
 function validateSplit(value: unknown): value is LearningFitnessSplitSummary {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const split = value as Record<string, unknown>;
-  return safeInteger(split.familiesEvaluated, 10_000) &&
+  return hasExactKeys(split, SPLIT_KEYS) &&
+    safeInteger(split.familiesEvaluated, 10_000) &&
     safeInteger(split.familiesWithSufficientSeeds, 10_000) &&
     split.familiesWithSufficientSeeds <= split.familiesEvaluated &&
     safeInteger(split.seedCoverageFailures, 10_000) &&
@@ -87,6 +111,7 @@ function validateSplit(value: unknown): value is LearningFitnessSplitSummary {
 function validateInput(value: unknown): asserts value is LearningFitnessJournalInput {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('learning-fitness-journal-input-invalid');
   const x = value as Record<string, unknown>;
+  if (!hasExactKeys(x, INPUT_KEYS)) throw new Error('learning-fitness-journal-input-fields-invalid');
   const digestPattern = /^[a-f0-9]{64}$/;
   if (!safeInteger(x.recordedAt) || typeof x.candidateId !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,255}$/.test(x.candidateId) ||
       typeof x.payloadFingerprint !== 'string' || !digestPattern.test(x.payloadFingerprint) ||
@@ -116,6 +141,9 @@ function verifyEntry(value: unknown, expectedSequence: number, expectedPrevious:
   catch { throw new Error('learning-fitness-journal-entry-data-boundary-rejected'); }
   if (!detached || typeof detached !== 'object' || Array.isArray(detached)) throw new Error('learning-fitness-journal-entry-invalid');
   const x = detached as LearningFitnessJournalEntry;
+  if (!hasExactKeys(x as unknown as Record<string, unknown>, ENTRY_KEYS)) {
+    throw new Error('learning-fitness-journal-entry-fields-invalid');
+  }
   const { digest: storedDigest, ...body } = x;
   if (x.schemaVersion !== JOURNAL_SCHEMA_VERSION || x.sequence !== expectedSequence ||
       x.previousDigest !== expectedPrevious || typeof storedDigest !== 'string' || !/^[a-f0-9]{64}$/.test(storedDigest)) {
