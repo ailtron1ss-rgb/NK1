@@ -20,7 +20,16 @@ try {
     matchedTrialCount: 12,
     matchedValidationTrialCount: 6,
     matchedHoldoutTrialCount: 6,
-    minimumPairedSeedsPerFamily: 3,
+    minimumValidationFamilies: 1,
+    minimumHoldoutFamilies: 1,
+    minimumValidationFamilyTasks: 2,
+    minimumHoldoutFamilyTasks: 2,
+    maximumValidationTaskRegression01: 0.20,
+    maximumValidationFamilyRegression01: 0.10,
+    maximumHoldoutRegression01: 0.02,
+    maximumHoldoutFamilyRegression01: 0.10,
+    minimumValidationFamilySeeds: 3,
+    minimumHoldoutFamilySeeds: 3,
     confidenceLevel: 0.95,
     bootstrapResamples: 2000,
     validation: {
@@ -39,6 +48,13 @@ try {
   assert.equal(first.previousDigest, '0'.repeat(64));
   assert.match(first.digest, /^[a-f0-9]{64}$/);
   assert.equal(journal.readAll().length, 1);
+
+  // Repeated gate checks after a retry/restart should not skew acceptance rates.
+  const duplicate = journal.recordFitnessDecision({ ...base, recordedAt: base.recordedAt + 99 });
+  assert.equal(duplicate.sequence, first.sequence);
+  assert.equal(duplicate.digest, first.digest);
+  assert.equal(journal.readAll().length, 1,
+    'a decision with identical fingerprints, policy, reason codes and aggregate metrics must be idempotent');
 
   const rejected = journal.recordFitnessDecision({
     ...base,
@@ -90,6 +106,7 @@ try {
   writeFileSync(lockPath, 'other-process');
   assert.throws(() => journal.recordFitnessDecision({
     ...base, recordedAt: base.recordedAt + 2,
+    decision: 'fitness-rejected', reasonCodes: ['test-lock-contention'],
   }), /learning-fitness-journal-write-lock-held/);
   assert.equal(existsSync(lockPath), true, 'a competing writer lock must remain untouched');
   rmSync(lockPath, { force: true });
