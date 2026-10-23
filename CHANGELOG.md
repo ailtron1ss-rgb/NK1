@@ -1,3 +1,11 @@
+## NK1 WorkPass466 — reconcile trusted shadow registrar contract (2026-10-23)
+
+- `TrustedShadowLearningRunCoordinator` now models the real registrar behavior: `registerTrustedSkillShadowRun` may return a context synchronously or a promise. This lets the caller use the registration receipt/context without an incompatible `void | Promise<unknown>` contract.
+- Child-process event callbacks in `LearningProcessSupervisor` now have explicit error/close parameter types, and optional timer `unref` is accessed through a narrow runtime-guarded cast because this runtime currently compiles with browser timer declarations and no `@types/node` package.
+- **Validation state:** follow-up P26 run on `a5766fc68c6bba7cd9ab697b0ff6f3bbdf7a259e` was still in progress when this note was prepared; do not claim typecheck or downstream regression success from the prior `7a0b45f6` run, which still had 13 errors in `OrganismCore.ts`.
+
+---
+
 ## NK1 WorkPass464–465 — unblock cognitive, learning and Node-runtime contracts (2026-10-23)
 
 - Fixed malformed control-character validation in `OutcomeVerificationService` that caused a regex parse/typecheck failure. Consolidated duplicate `CognitiveEventFabric.verifyOperationalCycle` implementations into one validator that retains required and optional cognitive-stage lineage checks.
