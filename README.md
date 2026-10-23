@@ -1,3 +1,14 @@
+## Current source-stack checkpoint — WorkPass398 (2026-10-23)
+
+- **Promotion input hardening:** P23 snapshots caller-owned independent baseline/evaluation envelopes through the plain-data boundary before property access; hostile accessors/proxies are rejected without executing getters.
+- **Approval hardening:** the private promotion finalizer snapshots the approval object before forwarding it to the versioned skill store; the store still requires authenticated approval and signed shadow evidence.
+- **Coverage:** the P23 promotion regression now includes getter non-invocation cases for baseline, candidate envelope and approval, plus checks that malformed input does not reach the store. P26 Learning Validation already runs that regression.
+- **Research linkage:** builds on the trust-boundary and evidence-separated revision design inspired by Hermes Agent Self-Evolution, Reflexion and SkillLearnBench. No new runtime dependency or external source file was added.
+- **Verification state:** source, regression and changelog are committed; execution on the actual Node 24 runner remains unverified because Actions exposes failed jobs without step logs. No learning uplift is claimed.
+- **Scope:** category branch `feature/learning`; `main` and the large Release ZIP remain untouched. See [WorkPass398 implementation notes](docs/WORKPASS398_PROMOTION_INPUT_TRUST_BOUNDARY_RU.md).
+
+---
+
 ## Current source-stack checkpoint — WorkPass397 (2026-10-23)
 
 - **P23 promotion authority:** the report-only `approveReflectiveVerifiedSkillCandidate` API fails closed. Signed shadow receipts bind run/task identity and binary outcome, not trajectory or skill-quality metrics.
