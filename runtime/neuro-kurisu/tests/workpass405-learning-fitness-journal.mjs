@@ -51,6 +51,23 @@ try {
   assert.equal(rejected.previousDigest, first.digest);
   assert.deepEqual(journal.readAll().map(row => row.decision), ['fitness-accepted', 'fitness-rejected']);
 
+  const diagnostics = journal.snapshotDiagnostics();
+  assert.equal(diagnostics.configured, true);
+  assert.equal(diagnostics.available, true);
+  assert.equal(diagnostics.totalDecisions, 2);
+  assert.equal(diagnostics.acceptedDecisions, 1);
+  assert.equal(diagnostics.rejectedDecisions, 1);
+  assert.equal(diagnostics.acceptanceRate01, 0.5);
+  assert.equal(diagnostics.rejectionCounts['validation-family-improvement-confidence-insufficient'], 1);
+  assert.equal(diagnostics.meanValidationDelta, 0.12);
+  assert.equal(diagnostics.meanHoldoutDelta, 0.07);
+  assert.equal(diagnostics.lastSequence, 2);
+  assert.equal(diagnostics.chainHead, rejected.digest);
+  assert.equal('candidateId' in diagnostics.recent[0], false,
+    'dashboard diagnostics must omit candidate identity and all raw evaluation rows');
+  assert.throws(() => journal.snapshotDiagnostics(0),
+    /learning-fitness-journal-diagnostics-recent-limit-invalid/);
+
   // No prompt, raw task identifier, family name or per-task score is persisted.
   const serialized = readFileSync(path, 'utf8');
   assert.equal(serialized.includes('prompt'), false);
@@ -109,7 +126,7 @@ try {
   assert.throws(() => new JsonlLearningFitnessJournal(blankPath).readAll(),
     /learning-fitness-journal-blank-line/);
 
-  console.log('WORKPASS405_LEARNING_FITNESS_JOURNAL=PASS chainVerified=true accessorRejected=true lockPreserved=true tamperingRejected=true unknownFieldsRejected=true');
+  console.log('WORKPASS405_LEARNING_FITNESS_JOURNAL=PASS chainVerified=true accessorRejected=true lockPreserved=true tamperingRejected=true unknownFieldsRejected=true diagnosticsAggregated=true');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
