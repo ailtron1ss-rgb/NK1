@@ -485,8 +485,8 @@ export class P23LearningEngine {
   /**
    * Request a revision from the application's configured skill generator and stage
    * its output through the canonical verified-candidate lifecycle. The generator
-   * receives validation evidence plus an aggregate holdout signal only; raw holdout
-   * examples and identifiers remain evaluation-only and are never sent for tuning.
+   * receives validation evidence only. Holdout scores and case data are gate-only and
+   * remain opaque to optimization to prevent iterative tuning against the test set.
    */
   async generateAndStageReflectiveSkillRevision(
     proposal:VerifiedSkillPromotionProposal,
@@ -500,7 +500,7 @@ export class P23LearningEngine {
       optimizerInstruction:string;
       validationEvidence:SkillLearnBenchCandidateEvaluation['reports'];
       targets:SkillRevisionPlan['targets'];
-      holdoutGeneralization:{gap01:number;requiresFreshIndependentEvaluation:true};
+      holdoutPolicy:{resultsWithheld:true;requiresFreshIndependentEvaluation:true};
     })=>Promise<unknown>|unknown,
     evaluateRevisedCandidate:RevisedCandidateEvaluator,
     options:SkillLearnBenchCandidateGateOptions={},
@@ -536,8 +536,8 @@ export class P23LearningEngine {
       optimizerInstruction:plan.optimizerInstruction,
       validationEvidence:structuredClone(candidateEvaluation.validation),
       targets:structuredClone(plan.targets),
-      // Directional scalar only: no holdout task text, trial IDs, or per-case outcomes.
-      holdoutGeneralization:{gap01:fitness.holdoutDelta01,requiresFreshIndependentEvaluation:true},
+      // Holdout results are gate-only. Never feed their scores, direction, or case data back into optimization.
+      holdoutPolicy:{resultsWithheld:true,requiresFreshIndependentEvaluation:true},
     });
     if(revisedPayload===undefined || revisedPayload===null || (typeof revisedPayload==='string'&&!revisedPayload.trim())) {
       throw new Error('skill revision generator returned an empty payload');

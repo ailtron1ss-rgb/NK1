@@ -7,7 +7,8 @@ export interface ReflectiveRevisionRequest {
   optimizerInstruction: string;
   validationEvidence: unknown[];
   targets: Array<{ dimension: string; priority01: number; affectedTaskIds: string[]; evidenceCount: number; evidenceIds: string[]; directive: string }>;
-  holdoutGeneralization: { gap01: number; requiresFreshIndependentEvaluation: true };
+  /** Policy assertion only; numeric or directional holdout feedback is forbidden here. */
+  holdoutPolicy: { resultsWithheld: true; requiresFreshIndependentEvaluation: true };
 }
 
 export interface SkillRevisionChatProvider {
@@ -57,15 +58,17 @@ export async function generateLocalSkillRevision(
   const sourcePayload = boundedJson(request.sourcePayload, MAX_SOURCE_JSON_CHARS, 'source-payload');
   const validationEvidence = boundedJson(request.validationEvidence, MAX_VALIDATION_JSON_CHARS, 'validation-evidence');
   const targetJson = boundedJson(request.targets, 12_000, 'targets');
-  const gap = Number(request.holdoutGeneralization?.gap01);
-  if (!Number.isFinite(gap) || gap < -1 || gap > 1) throw new Error('p23-revision-holdout-signal-invalid');
+  if (request.holdoutPolicy?.resultsWithheld !== true ||
+      request.holdoutPolicy?.requiresFreshIndependentEvaluation !== true) {
+    throw new Error('p23-revision-holdout-results-must-remain-withheld');
+  }
   const response = await provider.generate({
     system: [
       'You are a constrained skill-revision generator inside a verified learning pipeline.',
       'Return ONLY one valid JSON value representing the revised skill payload; no markdown, prose, or claims of test success.',
       'Preserve the source payload schema and unrelated fields. Make the smallest change supported by the provided validation evidence and targets.',
       'Never invent evidence, tests, capabilities, or outcomes. Never weaken safety constraints.',
-      'Holdout examples, identifiers, and per-case outcomes are intentionally withheld. Do not request or infer them.',
+      'All holdout results, including aggregate scores and regression direction, are withheld from optimization. Do not request or infer them.',
       'This output is an untrusted candidate and will undergo independent evaluation before it can be activated.',
       'Bind all generated revision work to the supplied verified dataset fingerprint; never claim this fingerprint proves candidate quality.',
     ].join(' '),
@@ -75,8 +78,8 @@ export async function generateLocalSkillRevision(
       'REVISION_INSTRUCTION:', String(request.optimizerInstruction ?? '').slice(0, 24_000),
       'VALIDATION_EVIDENCE_JSON:', validationEvidence,
       'EVIDENCE_BACKED_TARGETS_JSON:', targetJson,
-      'AGGREGATE_HOLDOUT_SIGNAL_JSON:', JSON.stringify({
-        gap01: Number(gap.toFixed(6)),
+      'HOLDOUT_RESULTS_WITHHELD:', JSON.stringify({
+        resultsWithheld: true,
         requiresFreshIndependentEvaluation: true,
       }),
       'Return the revised payload as JSON only.',

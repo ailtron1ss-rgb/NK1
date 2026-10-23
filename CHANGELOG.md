@@ -1,3 +1,12 @@
+## NK1 WorkPass355 — stop holdout-score leakage into skill optimization (2026-10-23)
+
+- [FIXED] Removed the numeric `holdoutDelta01` feedback channel from the reflective revision generator contract. The generator receives a policy flag that results are withheld, not scores, direction, or case details.
+- [FIXED] Removed the `holdout-generalization` optimizer target and stopped copying gate reasons/feedback into the revision plan rationale, since those strings can reveal holdout-derived regression/coverage signals. Hard holdout safety failures still block optimization, and the independent gate still decides eligibility.
+- [HARDENED] The local-model generator now rejects the legacy numeric holdout contract and tells the model that aggregate scores and regression direction are withheld.
+- [REGRESSION] Updated plan isolation and local-model generator tests to assert absence of the score field, old aggregate channel, holdout-derived reasons, and holdout target. Added those suites to the aggregate `test:p23:learning` command.
+- [SCOPE] This prevents iterative optimization from learning on a nominal holdout via repeated aggregate feedback; final holdout evaluation remains a gate, not a tuning signal.
+- [VALIDATION] Committed regression coverage is present, but CI/test execution remains unverified until Actions runs on an assigned runner.
+
 ## NK1 WorkPass354 — preserve optional configuration typing and gate callable properties
 
 - [FIXED] Built the detached provider config with an omitted `options` property when absent, preserving strict TypeScript `exactOptionalPropertyTypes` semantics instead of assigning explicit `undefined`.

@@ -1,3 +1,10 @@
+## WorkPass355 — strict train/validation/holdout separation
+
+- Corrected a subtle evaluation leakage: the local skill optimizer previously received numeric holdout deltas and a holdout-specific target. Repeated cycles could use that feedback to tune to the supposedly untouched test set despite withholding individual cases.
+- NK1 adaptation: optimizer inputs now contain validation evidence only plus a fixed policy assertion that holdout results are withheld; holdout aggregate values, regression direction, reasons and target weights are not sent to the generator. The evaluator still uses holdout internally for the final eligibility/safety gate.
+- This is consistent with leakage-resistant experimental practice: keep test data for final comparison, not iterative model selection. No external code or dependency added.
+- Regression tests are wired into the main P23 learning command but remain unverified due to CI jobs failing before runner assignment.
+
 ## WorkPass354 — capability-envelope contract
 
 - Explicit function capabilities in autonomous repair-provider envelopes must themselves be own data properties. Accessor-backed generator fields are rejected without invocation; the normalized optional config field is omitted when not supplied.
