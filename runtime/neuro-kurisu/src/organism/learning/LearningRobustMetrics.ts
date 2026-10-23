@@ -212,6 +212,12 @@ export function summarizeLearningRobustMetrics(
     taskRows.push(row);
     mutableRowsByTask.set(row.taskId, taskRows);
   }
+  // Canonicalize summation order as well as task order. Floating-point addition
+  // is not associative; stable trial ordering prevents permuted input rows from
+  // changing the last rounded decimal of task means.
+  for (const taskRows of mutableRowsByTask.values()) {
+    taskRows.sort((a, b) => a.trialId < b.trialId ? -1 : a.trialId > b.trialId ? 1 : 0);
+  }
   const rowsByTask: ReadonlyMap<string, readonly MatchedScore[]> = mutableRowsByTask;
 
   return {
