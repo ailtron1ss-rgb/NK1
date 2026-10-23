@@ -31,7 +31,7 @@ function assertScore(value: number, label: string): void {
  * scoreByStage[i] is a task's score after sequential stage i. For task i,
  * scoreByStage[i] is its score immediately after learning; later scores expose
  * retention/forgetting. Forward transfer is preTrainingScore minus referenceScore.
- * Supply a meaningful fixed/random-policy reference; default 0 is only a fallback.
+ * Forward transfer is intentionally withheld unless a measured fixed/random-policy reference is supplied.
  */
 export function evaluateContinualLearning(tasks: ContinualTask[], referenceScore?: number): ContinualLearningMetrics {
   if (!Array.isArray(tasks) || tasks.length === 0) throw new Error('at least one task is required');
