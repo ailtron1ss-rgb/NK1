@@ -1,3 +1,14 @@
+## NK1 WorkPass409 — recover lifecycle attempts interrupted after intent (2026-10-23)
+
+- Found and closed a crash-recovery gap: a process could exit after persisting `activation-intent` but before writing `activation-outcome-unknown`, leaving the prior reconciler unable to see that attempt.
+- `P23LearningEngine.reconcileLearningLifecycleOutcomes()` now reconciles every non-terminal intent against the authoritative versioned skill store. If present, the explicit unknown event is preferred; the initial intent is sufficient evidence for a store-based reconciliation after abrupt exit.
+- `LearningLifecycleJournal` accepts only legal reconciliation sequences: `intent → unknown → reconciliation` or `intent → reconciliation`. Pending-intent and explicit-unknown counts are reported separately.
+- Extended `workpass408-lifecycle-store-reconciliation.mjs` with an intent-only crash simulation; confirms exact active fingerprint recovery, non-active candidate outcome, missing lineage remaining pending, and repeat idempotency. Existing P26 workflow runs this regression.
+- Estimated learning implementation coverage updated to 82%; production readiness remains ~45%. These remain engineering estimates, not benchmark outcomes.
+- Exact-HEAD CI/typecheck are still not confirmed: Actions jobs return failure without available steps/logs. No tests are claimed as passing and no learning uplift is claimed.
+
+---
+
 ## NK1 WorkPass408 — reconcile uncertain activation attempts against the versioned store (2026-10-23)
 
 - Added `P23LearningEngine.reconcileLearningLifecycleOutcomes()`: uncertain activations are reconciled only against the canonical skill-store snapshot, using exact candidate/skill/version/payload fingerprint bindings.
