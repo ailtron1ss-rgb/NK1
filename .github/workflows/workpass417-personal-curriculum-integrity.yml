@@ -8,6 +8,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/PersonalCurriculumEngine.ts"
       - "runtime/neuro-kurisu/tests/big-pass-122-personal-curriculum.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-122-personal-curriculum-observation-boundary.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-122-curriculum-restore-collision.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-122-core-personal-curriculum.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
