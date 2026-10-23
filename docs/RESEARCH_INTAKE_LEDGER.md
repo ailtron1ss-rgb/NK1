@@ -1,3 +1,11 @@
+## WorkPass378 — shared trust boundary for candidate evaluation inputs (2026-10-23)
+
+- Reused the existing NK1 LearningTrustBoundary snapshot primitive in SkillLearnBench rather than creating a parallel validator.
+- Trial inputs, aggregate report lists, baseline/candidate gate envelopes and gate options are detached before field access. The canonical family label therefore cannot invoke a getter or be rewritten by a retained reference during aggregate/family scoring.
+- Sparse arrays and accessor/proxy-backed values fail closed; no behavior relies on calling `structuredClone` on untrusted objects.
+- Added regression assertions that getter-backed task family, report fields, gate envelope and options are never invoked, and that sparse report batches are rejected. The shared P26 Node.js 24 workflow already covers the relevant adapter and P29 test paths.
+- This is a safety/integrity improvement only; it is not evidence of better task performance. CI/local test execution remains unverified because recent GitHub Actions job records have not exposed steps or retrievable logs.
+
 ## WorkPass376–377 — manifest-bound family-level holdout gate (2026-10-23)
 
 ### Source mechanisms adapted
