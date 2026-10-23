@@ -177,6 +177,7 @@ export function reflectOnOutcomes(rows:readonly ReflectionExperience[],limit=12)
 function scoreValidatedLearningTarget(t:LearningTargetInput):LearningTarget{
   const rationale:string[]=[];
   if(t.blocked)return {...t,score01:0,rationale:['blocked prerequisite']};
+  // Costs are a penalty, but score01 is a public normalized metric and must stay in [0,1].
   const score01=c(.23*t.uncertainty01+.20*t.readiness01+.18*t.transfer01+
     .12*t.novelty01+.20*t.repairValue01-.17*t.verificationCost01);
   if(t.repairValue01>=.65)rationale.push('repairs recurring failure');
@@ -227,7 +228,32 @@ export function rankLearningTargets(targets:readonly Omit<LearningTarget,'score0
   }
   for(const id of invalidIds)byId.delete(id);
   for(const id of conflicts)byId.delete(id);
-  return [...byId.values()].map(scoreValidatedLearningTarget)
-    .sort((a,b)=>b.score01-a.score01||a.id.localeCompare(b.id))
-    .slice(0,Math.max(1,Math.min(50,Math.floor(num(limit,10)))));
+  const maximum=Math.max(1,Math.min(50,Math.floor(num(limit,10))));
+  const scored=[...byId.values()].map(scoreValidatedLearningTarget)
+    .sort((a,b)=>b.score01-a.score01||a.id.localeCompare(b.id));
+  // Voyager-style automatic curricula should not fill every slot with repeated
+  // variants of a single family when other eligible families have evidence-backed
+  // work. Keep each family internally score-ordered, then interleave family heads;
+  // the globally best target remains first and a single-family queue is unchanged.
+  const families=new Map<string,LearningTarget[]>();
+  for(const target of scored){
+    const rows=families.get(target.family)??[];
+    rows.push(target);
+    families.set(target.family,rows);
+  }
+  const ranked:LearningTarget[]=[];
+  while(ranked.length<maximum){
+    const heads=[...families.entries()].filter(([,rows])=>rows.length>0)
+      .sort((a,b)=>b[1][0].score01-a[1][0].score01||a[1][0].id.localeCompare(b[1][0].id));
+    if(!heads.length)break;
+    if(heads.length===1){
+      ranked.push(...heads[0][1].splice(0,maximum-ranked.length));
+      break;
+    }
+    for(const [,rows] of heads){
+      if(ranked.length>=maximum)break;
+      ranked.push(rows.shift()!);
+    }
+  }
+  return ranked;
 }
