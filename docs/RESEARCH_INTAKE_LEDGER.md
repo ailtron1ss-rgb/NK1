@@ -1,3 +1,12 @@
+## WorkPass391 — separate diagnostic repair memory from revision evidence (2026-10-23)
+
+- **Design principle:** error-memory should preserve useful observations even when an attempt is not yet suitable for automated skill revision. A failed repair with no valid alternate tool is still diagnostic experience, but must not be promoted to a generator input.
+- **Implementation:** `OrganismRuntime.compoundSkillRepairEvidence` now returns the deterministic bounded newest-96 diagnostic window, including noneligible records, instead of passing every record through the promotion-only canonicalizer. The coordinator first filters by `revisionEligible` and only then invokes `canonicalCompoundRepairEvidence`, which remains strict about identities, selected/candidate tool membership, confidence and timestamp.
+- Candidate-tool sets are normalized at the runtime observation boundary; deterministic ordering for same-time records remains. This avoids allowing a legitimate empty-choice failed attempt to break the whole repair-observation API while preserving the trust boundary for skill revision.
+- **Regression:** the 120-row runtime fixture now includes a newest noneligible record with an empty candidate-tool set and confirms it remains visible in diagnostic memory while marked `revisionEligible: false`. The coordinator still fingerprints only the eligible rows.
+- This adapts evidence/experience separation principles reflected in [Reflexion](https://arxiv.org/abs/2303.11366), [Voyager](https://arxiv.org/abs/2305.16291), and [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution). No upstream code was copied and no dependency was added.
+- CI remains wired but execution-unverified; current Actions jobs still have no retrievable step logs, so this regression must be confirmed by an actual runner before declaring the branch complete.
+
 ## WorkPass390 — reject unchanged skill revisions before expensive evaluation (2026-10-23)
 
 - **Upstream mechanism/risk reviewed:** [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution) uses an iterative generate → evaluate → refine skill loop. The loop is only meaningful when the generated artifact is actually different, fingerprinted, and passed through independent evaluation; accepting unchanged output wastes execution budget and can make a supposed evolution pass a no-op.
