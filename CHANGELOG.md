@@ -1,3 +1,9 @@
+## NK1 WorkPass378 — snapshot candidate evaluation inputs safely (2026-10-23)
+- [FIXED] SkillLearnBench trial inputs, aggregate report batches, candidate baseline/candidate report sets, gate envelopes and gate options are detached via the shared learning trust boundary before fields are read.
+- [SAFETY] Accessors, sparse arrays, invalid object prototypes and reflection failures are rejected without invoking caller-owned getters; family metadata follows the same trust boundary as outcome scores.
+- [TEST ADDED] Added regressions for accessor-backed task family, report family, baseline envelope and gate option, plus sparse report batches. The existing Node.js 24 P26 workflow includes the adapter and P29 regression paths.
+- [VALIDATION] Static source/API verification only; execution remains unconfirmed while Actions reports fail without step-level logs.
+
 ## NK1 WorkPass377 — prevent aggregate-masked task-family regressions (2026-10-23)
 - [CHANGED] Independent candidate evaluation now binds the task-family label from the canonical task manifest into each measured trial report and its evaluation-plan fingerprint; a caller-supplied family label cannot override the manifest.
 - [FIXED] SkillLearnBench candidate gating now macro-averages results by task and checks each adequately sampled holdout family separately. A severe family regression blocks eligibility even when gains in another family leave the aggregate score unchanged.
