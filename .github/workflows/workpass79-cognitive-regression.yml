@@ -21,12 +21,20 @@ concurrency:
 jobs:
   local-language-resilience:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version-file: '.nvmrc'
+      - name: Verify selected Node.js matches repository pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="v$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version)"
+          printf 'expected=%s actual=%s\\n' "$expected" "$actual"
+          test "$actual" = "$expected"
       - name: Verify Live2D expression transitions do not restart unchanged expressions
         run: node app/scripts/test-live2d-expression-cache.mjs
       - name: Test legacy avatar preference storage failure handling
