@@ -39,9 +39,11 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "22.12.0"
+          node-version: "24"
           cache: npm
           cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Enforce repository Node.js baseline
+        run: node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
       - name: Install locked dependencies
         working-directory: runtime/neuro-kurisu
         run: npm ci
