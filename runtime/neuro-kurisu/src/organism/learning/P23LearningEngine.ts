@@ -40,6 +40,10 @@ export interface LearningExperience {
   reward:number;
   surprise:number;
   outcomeAt:number;
+  /** Immutable replay features captured with the outcome; optional for v1 legacy rows. */
+  goalPressure01?:number;
+  causalStrength01?:number;
+  replayFeatures01?:number[];
 }
 
 export interface ReplayUpdateRecord {
@@ -213,10 +217,17 @@ function parseLearningExperience(value:unknown):LearningExperience|null{
      !isPersistedCounter(x.tick)||!isPersistedCounter(x.at)||!isPersistedCounter(x.outcomeAt)||
      !isPersistedText(x.contextKey,256)||!isPersistedText(x.nextContextKey,256)||!isPersistedAction(x.action)||
      !isPersistedUnit(x.predictedUtility)||!isPersistedUnit(x.predictedConfidence)||
-     !isPersistedUnit(x.success)||!isPersistedUnit(x.reward)||!isPersistedUnit(x.surprise))return null;
+     !isPersistedUnit(x.success)||!isPersistedUnit(x.reward)||!isPersistedUnit(x.surprise)||
+     (x.goalPressure01!==undefined&&!isPersistedUnit(x.goalPressure01))||
+     (x.causalStrength01!==undefined&&!isPersistedUnit(x.causalStrength01)))return null;
+  const replayFeatures=x.replayFeatures01;
+  if(replayFeatures!==undefined&&(!Array.isArray(replayFeatures)||replayFeatures.length!==16||!replayFeatures.every(isPersistedUnit)))return null;
   return {id:x.id,traceId:x.traceId,tick:x.tick,at:x.at,contextKey:x.contextKey,nextContextKey:x.nextContextKey,
     action:x.action,predictedUtility:x.predictedUtility,predictedConfidence:x.predictedConfidence,
-    success:x.success,reward:x.reward,surprise:x.surprise,outcomeAt:x.outcomeAt};
+    success:x.success,reward:x.reward,surprise:x.surprise,outcomeAt:x.outcomeAt,
+    ...(x.goalPressure01===undefined?{}:{goalPressure01:x.goalPressure01}),
+    ...(x.causalStrength01===undefined?{}:{causalStrength01:x.causalStrength01}),
+    ...(replayFeatures===undefined?{}:{replayFeatures01:[...replayFeatures]})};
 }
 function parseReplayUpdate(value:unknown):ReplayUpdateRecord|null{
   if(!isPlainRecord(value))return null;
@@ -793,6 +804,17 @@ export class P23LearningEngine {
       reward:clamp(outcome.reward),
       surprise:clamp(outcome.surprise),
       outcomeAt:now(),
+       goalPressure01:clamp(trace.stateBefore.needs.goalPressure),
+       causalStrength01:clamp(trace.reasoningSignals.causalConfidence01 ?? trace.reasoningSignals.causalStrength01 ?? .5),
+       replayFeatures01:[
+         clamp(trace.stateBefore.needs.energy),clamp(trace.stateBefore.needs.cognitiveLoad),clamp(trace.stateBefore.needs.uncertainty),
+         clamp(trace.stateBefore.needs.socialNeed),clamp(trace.stateBefore.needs.novelty),clamp(trace.stateBefore.needs.identityCoherence),
+         clamp(trace.stateBefore.needs.goalPressure),clamp(trace.stateBefore.predictionError),
+         clamp(trace.stateBefore.attentionBudget),clamp(trace.stateBefore.autonomyScore),
+         clamp(trace.stateBefore.selfPredictionError),clamp(trace.stateBefore.lastPredictionConfidence),
+         clamp(outcome.success),clamp(outcome.reward),clamp(outcome.surprise),
+         clamp(1-Math.abs(clamp(outcome.success)-clamp(trace.selected.predictedUtility))),
+       ],
     };
     this.state.experiences=[record,...this.state.experiences].slice(0,1024);
     this.state.processedTraceIds=[record.traceId,...this.state.processedTraceIds.filter(id=>id!==record.traceId)].slice(0,2048);
@@ -815,7 +837,17 @@ export class P23LearningEngine {
       if(!experiencesByTraceId.has(experience.traceId)) experiencesByTraceId.set(experience.traceId,experience);
     }
     const replayedTraceIds=new Set(this.state.replayedTraceIds);
-    const eligible=traces.filter(trace=>trace.selected && trace.outcome && !replayedTraceIds.has(trace.id) && experiencesByTraceId.has(trace.id));
+    const eligible=traces.filter(trace=>{
+      try {
+        if(!trace?.selected||!trace.outcome||replayedTraceIds.has(trace.id))return false;
+        const exp=experiencesByTraceId.get(trace.id);
+        // A caller-supplied trace object is only a lookup handle, not the outcome
+        // authority. Reject stale or same-ID/different-action/context rows before
+        // their auxiliary features can influence replay selection.
+        return Boolean(exp&&trace.id===exp.traceId&&trace.tick===exp.tick&&
+          trace.selected.action===exp.action&&contextKey(trace.stateBefore)===exp.contextKey);
+      } catch { return false; }
+    });
     // Selection is shared with the standalone benchmark so production and evaluation
     // exercise the same policy. Recent quota is configurable at the selector boundary.
     const newestTick=eligible.reduce((latest,trace)=>Math.max(latest,trace.tick),0);
@@ -855,23 +887,27 @@ export class P23LearningEngine {
       const trace=item.trace;
       const exp=item.experience;
       const needs=trace.stateBefore.needs;
-      const causalStrength=clamp(trace.reasoningSignals.causalConfidence01 ?? trace.reasoningSignals.causalStrength01 ?? .5);
+      const causalStrength=clamp(exp.causalStrength01 ?? trace.reasoningSignals.causalConfidence01 ?? trace.reasoningSignals.causalStrength01 ?? .5);
       const learningQuality=clamp(1-Math.abs(exp.success-exp.predictedUtility));
+      // New rows replay from the immutable feature snapshot stored with their
+      // outcome. Older v1 rows predate that snapshot, so they use the matched trace
+      // only as a compatibility fallback; their reward/labels still come from exp.
+      const policyFeatures01=exp.replayFeatures01 ?? [
+        clamp(needs.energy),clamp(needs.cognitiveLoad),clamp(needs.uncertainty),
+        clamp(needs.socialNeed),clamp(needs.novelty),clamp(needs.identityCoherence),
+        clamp(needs.goalPressure),clamp(trace.stateBefore.predictionError),
+        clamp(trace.stateBefore.attentionBudget),clamp(trace.stateBefore.autonomyScore),
+        clamp(trace.stateBefore.selfPredictionError),clamp(trace.stateBefore.lastPredictionConfidence),
+        exp.success,exp.reward,exp.surprise,learningQuality,
+      ];
       return {
         ...item,
         surprise01:clamp(item.surprise),
         causalStrength01:causalStrength,
         learningQuality01:learningQuality,
         replayPriority01:clamp(.60*item.surprise+.20*causalStrength+.20*learningQuality),
-        policyFeatures01:[
-          clamp(needs.energy),clamp(needs.cognitiveLoad),clamp(needs.uncertainty),
-          clamp(needs.socialNeed),clamp(needs.novelty),clamp(needs.identityCoherence),
-          clamp(needs.goalPressure),clamp(trace.stateBefore.predictionError),
-          clamp(trace.stateBefore.attentionBudget),clamp(trace.stateBefore.autonomyScore),
-          clamp(trace.stateBefore.selfPredictionError),clamp(trace.stateBefore.lastPredictionConfidence),
-          clamp(trace.outcome?.success ?? exp.success),clamp(trace.outcome?.reward ?? exp.reward),
-          clamp(trace.outcome?.surprise ?? exp.surprise),learningQuality,
-        ],
+        goalPriority:exp.goalPressure01 ?? needs.goalPressure,
+        policyFeatures01:policyFeatures01.map(clamp),
       };
     });
     const adaptiveCapacity=Math.max(1,Math.min(64,options.maxBatchSize??64));
