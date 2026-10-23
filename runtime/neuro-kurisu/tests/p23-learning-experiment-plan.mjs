@@ -31,7 +31,7 @@ assert.throws(() => createLearningExperimentPlan(leaked, options), /cross-split 
 assert.throws(() => validateLearningExperimentPlan({ ...plan, counts: { ...plan.counts, tasks: 999 } }, manifest), /summary counts/);
 assert.throws(() => validateLearningExperimentPlan({ ...plan, seedIds: [17, 3, 9] }, manifest), /sorted/);
 assert.throws(() => validateLearningExperimentPlan({ ...plan, arms: [...plan.arms, plan.arms[0]] }, manifest), /prior, continuous and reset arms|unique labels/);
-console.log('P23_LEARNING_EXPERIMENT_PLAN=PASS');
+
 
 const ledger = new VerifiedOutcomeLedger(manifest);
 const scheduled = plan.runs.find(run => run.taskId === 'm-1' && run.seed === 3 && run.arm === 'P');
@@ -142,3 +142,5 @@ assert.throws(() => snapshotPlainData({
 }),
 /snapshot-size-limit/,
 'aggregate strings must be bounded across a structured record');
+
+console.log('P23_LEARNING_EXPERIMENT_PLAN=PASS');

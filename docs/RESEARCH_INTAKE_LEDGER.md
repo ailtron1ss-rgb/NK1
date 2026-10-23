@@ -1,3 +1,8 @@
+## WorkPass356 — trustworthy regression reporting
+
+- Corrected the experiment-plan regression runner so its success marker is emitted only after all appended trust-boundary, evidence-replay, atomicity and size-budget assertions finish.
+- No dependency added. Actual CI execution is still unavailable until GitHub Actions assigns a runner.
+
 ## WorkPass355 — strict train/validation/holdout separation
 
 - Corrected a subtle evaluation leakage: the local skill optimizer previously received numeric holdout deltas and a holdout-specific target. Repeated cycles could use that feedback to tune to the supposedly untouched test set despite withholding individual cases.

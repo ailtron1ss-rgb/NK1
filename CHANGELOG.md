@@ -1,3 +1,9 @@
+## NK1 WorkPass356 — report learning experiment suite success only after every assertion
+
+- [FIXED] Moved the `P23_LEARNING_EXPERIMENT_PLAN=PASS` marker to the end of the experiment-plan test file. WorkPass350–352 regression assertions previously followed an earlier success log, so a later assertion could fail after the suite had already printed a misleading PASS line.
+- [INTEGRATED] Test output now reflects completion of the entire file, including getter, replay, atomic batch and snapshot-budget regressions.
+- [VALIDATION] Source ordering is inspected and committed; execution remains unverified due the runner-allocation problem.
+
 ## NK1 WorkPass355 — stop holdout-score leakage into skill optimization (2026-10-23)
 
 - [FIXED] Removed the numeric `holdoutDelta01` feedback channel from the reflective revision generator contract. The generator receives a policy flag that results are withheld, not scores, direction, or case details.
