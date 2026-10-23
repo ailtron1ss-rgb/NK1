@@ -1,3 +1,13 @@
+## NK1 WorkPass448 — bound bootstrap computation cost (2026-10-23)
+
+- Added a hard cap of 16,000,000 bootstrap draws per invocation in `PairedSeedConfidence.ts`. The requested resample count and sample count are checked before the resampling loop/temporary result allocation.
+- Oversized `sampleCount × resamples` combinations fail closed with `paired-seed-bootstrap-work-budget-exceeded`; the cap bounds the computation rather than silently shrinking the caller's confidence settings.
+- Added a regression with 5,000 values × 4,000 resamples to ensure the request is rejected before the large bootstrap loop.
+- Existing confidence intervals inside the budget keep the same RNG, resampling algorithm, quantile calculation and output. No new dependency and no promotion-policy change.
+- **Verification:** source/test committed; exact-head runtime execution still unconfirmed.
+
+---
+
 ## NK1 WorkPass447 — task-cluster bootstrap interval for robust learning diagnostics (2026-10-23)
 
 - Extended `LearningRobustMetrics.ts` with a deterministic percentile-bootstrap interval for the equal-weight macro-mean of per-task candidate-minus-baseline deltas across task success, skill quality and trajectory quality.
