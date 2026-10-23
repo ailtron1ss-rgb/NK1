@@ -1,3 +1,12 @@
+## NK1 WorkPass452 — context-bound affective action learning (2026-10-23)
+
+- Added context-specific outcome calibration keyed by action, emotion label and low/medium/high homeostatic-pressure band, while preserving the legacy global aggregate.
+- When an action has contextual history, its global reward cannot leak into an unmatched emotion/body-state context. Explicit `emotionId` attribution is validated so delayed outcomes update the episode they refer to.
+- Extended `big-pass-172-emotion-interoceptive-mind.mjs` to verify that an outcome attributed to an earlier emotion cannot rewrite the current stressed-context calibration.
+- Uses Hexis's principle that drives/emotional context shape action pressure without acting as deterministic orders; no new dependencies. Exact-head test not yet execution-verified.
+
+---
+
 ## NK1 WorkPass449 — reject malformed affect outcome evidence before calibration (2026-10-23)
 
 - Hardened the emotional outcome-calibration ingress: success, surprise, and optional regulation cost must be finite numbers inside the normalized [0,1] contract. NaN, numeric strings, infinities, and out-of-range values no longer silently bias the running action calibration through coercion/clamping.
