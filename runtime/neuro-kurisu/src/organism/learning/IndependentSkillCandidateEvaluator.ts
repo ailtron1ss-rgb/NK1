@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto';
 import { evaluateSkillLearnBenchCandidate, evaluateSkillLearnBenchTrial, type SkillLearnBenchCandidateGateReport, type SkillLearnBenchTrialReport } from './SkillLearnBenchAdapter.ts';
 import type { RevisedCandidateEvaluator } from './P23LearningEngine.ts';
 import {
-  recordPlannedLearningOutcome,
   validateLearningExperimentPlan,
   type LearningExperimentPlan,
 } from './LearningExperimentPlan.ts';

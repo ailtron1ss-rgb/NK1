@@ -1,3 +1,9 @@
+## WorkPass352 — bounded evidence payloads (2026-10-23)
+
+- Extended the shared learning trust boundary with an aggregate text budget in addition to depth/node limits, so large primitive strings and many medium-sized fields cannot evade structural size controls.
+- Added regression coverage for per-value and aggregate overflow. No third-party code or package dependency added.
+- The suite is committed but remains unverified until a hosted runner executes it.
+
 ## WorkPass351 — atomic experiment evidence commits (2026-10-23)
 
 - The learning evaluator now submits its whole validation/holdout outcome set to one ledger transaction. This preserves the experiment as a single evidence unit and prevents late duplicate-receipt rejection from leaving partial measurements.

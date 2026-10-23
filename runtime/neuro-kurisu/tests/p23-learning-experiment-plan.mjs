@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createLearningExperimentPlan, recordPlannedLearningOutcome, validateLearningExperimentPlan } from '../src/organism/learning/LearningExperimentPlan.ts';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
+import { snapshotPlainData } from '../src/organism/learning/LearningTrustBoundary.ts';
 
 const manifest = [
   { taskId: 'm-1', family: 'memory', split: 'holdout', promptFingerprint: VerifiedOutcomeLedger.fingerprintPrompt('remember a stable fact'), verifierId: 'v1', version: '1' },
@@ -129,3 +130,15 @@ const atomicSuccess = atomicLedger.recordBatch([
 ]);
 assert.equal(atomicSuccess.accepted, 2);
 assert.equal(atomicLedger.snapshot().outcomes.length, 2);
+
+
+// WorkPass352: the snapshot budget must bound total text, not only graph depth/node count.
+assert.throws(() => snapshotPlainData('x'.repeat(4 * 1024 * 1024 + 1)),
+  /snapshot-size-limit/,
+  'one oversized string must not bypass the learning trust boundary size budget');
+assert.throws(() => snapshotPlainData({
+  a: 'x'.repeat(2 * 1024 * 1024),
+  b: 'y'.repeat(2 * 1024 * 1024),
+}),
+/snapshot-size-limit/,
+'aggregate strings must be bounded across a structured record');

@@ -1,3 +1,10 @@
+## NK1 WorkPass352 — bound total learning snapshot size and remove stale import (2026-10-23)
+
+- [HARDENED] The shared trust boundary now bounds aggregate string/key volume as well as depth and node count. This closes the case where a single huge string bypassed the previous object-node limits.
+- [INTEGRATED] Candidate-evaluator and ledger inputs use the same ceiling; tests cover both one oversized string and aggregate content over the limit.
+- [CLEANUP] Removed the now-unused sequential outcome-write import after switching independent evaluation commits to the atomic batch API.
+- [VALIDATION] Source review confirms the new size guards and test wiring are present. Runtime test execution is still unverified because Actions jobs stop before runner assignment.
+
 ## NK1 WorkPass351 — atomic commits for verified learning batches (2026-10-23)
 
 - [INTEGRATED] Added `VerifiedOutcomeLedger.recordBatch()`: all outcomes in a batch are snapshotted and validated against existing rows and one another before any are stored.

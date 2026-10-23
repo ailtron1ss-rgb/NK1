@@ -12,13 +12,22 @@
  */
 const SNAPSHOT_MAX_DEPTH = 64;
 const SNAPSHOT_MAX_NODES = 100_000;
-export function snapshotPlainData(
+const SNAPSHOT_MAX_TEXT_UNITS = 4 * 1024 * 1024;
+type SnapshotBudget = { nodes: number; textUnits: number };
+function snapshotPlainDataInner(
   value: unknown,
   ancestors = new Set<object>(),
   depth = 0,
-  budget: { nodes: number } = { nodes: 0 },
+  budget: SnapshotBudget,
 ): unknown {
-  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    budget.textUnits += value.length;
+    if (budget.textUnits > SNAPSHOT_MAX_TEXT_UNITS) {
+      throw new Error('independent-evaluator-snapshot-size-limit');
+    }
+    return value;
+  }
+  if (value === null || typeof value === 'boolean') return value;
   if (value === undefined) return undefined;
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) throw new Error('independent-evaluator-snapshot-non-finite-number');
@@ -50,7 +59,7 @@ export function snapshotPlainData(
         if (!descriptor || !('value' in descriptor) || descriptor.get || descriptor.set || !descriptor.enumerable) {
           throw new Error('independent-evaluator-snapshot-array-entry-invalid');
         }
-        result.push(snapshotPlainData(descriptor.value, ancestors, depth + 1, budget));
+        result.push(snapshotPlainDataInner(descriptor.value, ancestors, depth + 1, budget));
       }
       return result;
     } finally {
@@ -68,12 +77,16 @@ export function snapshotPlainData(
   try {
     for (const key of keys) {
       if (typeof key !== 'string') throw new Error('independent-evaluator-snapshot-symbol-key-invalid');
+      budget.textUnits += key.length;
+      if (budget.textUnits > SNAPSHOT_MAX_TEXT_UNITS) {
+        throw new Error('independent-evaluator-snapshot-size-limit');
+      }
       const descriptor = Object.getOwnPropertyDescriptor(value, key);
       if (!descriptor || !('value' in descriptor) || descriptor.get || descriptor.set) {
         throw new Error('independent-evaluator-snapshot-accessor-invalid');
       }
       if (!descriptor.enumerable) continue;
-      const copied = snapshotPlainData(descriptor.value, ancestors, depth + 1, budget);
+      const copied = snapshotPlainDataInner(descriptor.value, ancestors, depth + 1, budget);
       // Keep the evaluator's canonical representation: undefined object values
       // are omitted, while undefined array entries canonicalize as null.
       if (copied === undefined) continue;
@@ -86,6 +99,11 @@ export function snapshotPlainData(
     ancestors.delete(value);
   }
 }
+
+export function snapshotPlainData(value: unknown): unknown {
+  return snapshotPlainDataInner(value, new Set<object>(), 0, { nodes: 0, textUnits: 0 });
+}
+
 
 export function isSafeLearningIdentity(value: unknown, maxLength = 256): value is string {
   return typeof value === 'string' && value.length > 0 && value.length <= maxLength &&
