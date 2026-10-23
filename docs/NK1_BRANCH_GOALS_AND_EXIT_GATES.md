@@ -123,7 +123,7 @@ Recent category changes, all still separate from integration:
 Regression sources were added/wired on the category branches; exact-head runtime/typecheck execution is still unconfirmed due runner startup failures. Per-pass details are in the owning branch CHANGELOGs and implementation notes.
 
 ### Fixed-order next passes
-1. WorkPass456 — shared evidence-event identity: reuse exact action/decision/receipt identity through postcondition → RealityEvidenceLedger → P65 → reward/reflection. Replay must not inflate evidence; conflicting payloads under one identity quarantine.
+1. WorkPass456 — shared evidence-event identity (in progress): RealityEvidenceLedger now accepts an upstream eventId and rejects changed-payload reuse. Remaining: pass the same verifier-owned execution/decision ID from ActionGateway/postcondition into the reality ledger, P65 evidenceId and outcome/reflection; exact replay must not inflate evidence.
 2. WorkPass457 — state-to-decision bridge: one bounded read-only context carries energy/load, prediction error, affect, uncertainty, identity integrity and memory freshness to the canonical planner. Drives influence ranking only; Ethics and ActionGateway remain authoritative.
 3. WorkPass458 — held-out memory-to-behavior benchmark: a fixed RU/EN corpus proves retrieval changes expected responses/plans and improves grounded accuracy/recall without test-set leakage or unbounded latency.
 4. WorkPass459 — complete self-repair cycle: typed external failure → causal diagnosis → targeted repair → staged candidate → isolated matched evaluation → per-axis holdout → approval/rollback → receipt-backed consolidation.
