@@ -377,3 +377,10 @@ A “consciousness” claim is not a release gate that can be checked off by ord
 12. Start a 24–72h soak and target-device resource profile after core failure paths are stable.
 
 **Next-chat command contract:** if the user says “работай над проектом”, “продолжай NeuroCore”, “@GitHub продолжай” or equivalent, read the current charter, rules, live handover, open-work register and research ledger; inspect live branch/Actions; continue from the highest-impact unresolved item; make real code/test changes where possible; commit and update evidence. Do not ask the user to repeat the goal.
+
+
+### Follow-up update — WorkPass334 voice/STT recovery (2026-10-23)
+
+A sixth existing category branch, `feature/visual-embodiment`, now has a draft integration PR: [#84](https://github.com/ailtron1ss-rgb/NK1/pull/84). `EmbodimentRuntime.listen()` releases the listening flag in a `finally` block when the STT adapter fails, emits a bounded failure diagnostic, and permits a later retry. The existing `npm run test:voice` entry point now contains a deterministic failure → cleanup → success scenario. Code commit: [bb9fbc7](https://github.com/ailtron1ss-rgb/NK1/commit/bb9fbc75ee3bd5e1e33b221a86da8621eef2a3f2); regression commit: [318e510](https://github.com/ailtron1ss-rgb/NK1/commit/318e5102ce3339b624bbc40c57bd50bfd4ff5b96); CHANGELOG commit: [0913725](https://github.com/ailtron1ss-rgb/NK1/commit/0913725a30510682b2805388c4f00cea09587134).
+
+Category coverage is now **6 of 9 (about 67%)**: learning, perception, emotions, memory, personality, and visual embodiment. This percentage measures only the named category branches touched in this pass series; it is **not** the completion percentage of Neuro Kurisu. The readiness score remains **46/100** because no new regression has executed yet and the six draft PRs are not merged. The latest release ZIP remains unchanged. Continue with runner recovery, exact-head tests/typecheck, integration merge, and only then a rebuilt/verified release asset.
