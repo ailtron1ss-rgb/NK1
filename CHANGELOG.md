@@ -2198,3 +2198,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **Options hardened:** gate thresholds are read from the same plain-data snapshot, so a caller-defined getter cannot run during evaluation.
 - **Regression added:** hostile proxy traps, throwing identity getters and throwing options getters are rejected; existing valid paired observations retain their prior scoring.
 - **Validation boundary:** source and regressions committed; runtime execution remains unverified while GitHub Actions fails before runner assignment.
+
+
+## NK1 WorkPass346 — register the autonomous P23 repair clock
+
+- **Fixed:** `OrganismRuntime.registerCompoundRepairRevisionClock()` uses the runtime clock ID `p23-compound-repair-revision`, but `RuntimeClockScheduler` previously allowed only cognitive, embodiment, reflection and trusted-shadow-learning. Explicitly enabling background repair therefore failed registration with `Unknown runtime clock`.
+- **Integrated:** added the P23 repair clock to the scheduler's typed clock-kind union and runtime allow-list.
+- **Regression added:** `runtime-clocks.mjs` registers the production P23 clock ID, admits its task and checks that it executes.
+- **Impact:** removes a hard runtime blocker from the opt-in autonomous repair-to-P23 scheduling path; it does not claim that candidate generation/promotion is automatically enabled or that learning quality increased.
+- **Validation boundary:** source/test are committed. Hosted Actions still do not allocate a runner, so execution remains unverified.

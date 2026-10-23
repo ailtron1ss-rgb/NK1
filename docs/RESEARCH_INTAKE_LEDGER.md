@@ -270,3 +270,11 @@ Do not count a reference as “used” until a source revision/paper protocol is
 - Evidence rows and evaluation options are snapshotted from plain own data properties. Getters/accessors are rejected without execution; thrown proxy reflection traps are converted to invalid-row rejections.
 - This keeps input parsing deterministic and prevents external object behavior from running inside the scorer. It complements task-version pairing, global evidence-reference uniqueness and order-independent duplicate rejection.
 - **Unverified:** executable regression and typecheck await a runner-backed Actions result.
+
+
+## WorkPass142 — connect P23 background repair to the canonical clock registry (2026-10-23)
+
+- Reconciled `OrganismRuntime` and `RuntimeClockScheduler`: the P23 compound-repair clock ID now appears in both the `RuntimeClockKind` type and runtime allow-list.
+- Added a regression against the exact production clock ID and its execution counter.
+- This makes the opt-in scheduled repair path registrable; resource gating, independent candidate evaluation, signed shadow evidence and explicit activation approval remain separate controls.
+- **Unverified:** the clock regression/typecheck awaits an executable Actions runner.
