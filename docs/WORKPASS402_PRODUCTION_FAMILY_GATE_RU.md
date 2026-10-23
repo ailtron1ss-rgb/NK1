@@ -35,6 +35,8 @@ P26 workflow содержит path-фильтры и отдельные шаги
 
 [SkillLearnBench](https://arxiv.org/abs/2604.20087) оценивает skill quality, trajectory quality и task outcome на verified задачах из 15 поддоменов; получаемые улучшения не универсальны для всех задач. [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution) мотивирует separation между генерацией, тестированием и promotion под guardrails. NK1 адаптирует проверку доменного покрытия в свой существующий evidence-bound pipeline, а не вводит отдельную параллельную систему.
 
+**Продолжение:** WorkPass403 добавил в отдельный независимый comparator обязательные три общих paired seed на семейство для production activation. Поэтому описанные здесь два task на семейство — структурное требование, но сейчас уже не единственное: production gate требует также повторяемость на нескольких seed. См. [WorkPass403](WORKPASS403_PAIRED_SEED_FAMILY_COVERAGE_RU.md).
+
 ## Ограничения
 
 - Один family с двумя задачами на split — минимальный структурный gate, а не достаточная статистическая мощность для доказательства generalization.
