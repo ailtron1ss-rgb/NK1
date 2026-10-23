@@ -22,6 +22,10 @@ on:
       - "CHANGELOG.md"
       - "SUPER_VERSION.json"
       - "package.json"
+      - "research/upstream-donors/**"
+      - "tools/verify-upstream-donor-registry.mjs"
+      - "tools/verify-upstream-donor-registry.test.mjs"
+      - "docs/NEUROCORE_DONOR_MAP_*.md"
       - "tools/verify-ci-reliability.mjs"
       - "tools/verify-ci-reliability.test.mjs"
       - "docs/CI_RELIABILITY_RUNBOOK_RU.md"
@@ -54,6 +58,10 @@ on:
       - "AGENTS.md"
       - "SUPER_VERSION.json"
       - "package.json"
+      - "research/upstream-donors/**"
+      - "tools/verify-upstream-donor-registry.mjs"
+      - "tools/verify-upstream-donor-registry.test.mjs"
+      - "docs/NEUROCORE_DONOR_MAP_*.md"
       - "tools/verify-ci-reliability.mjs"
       - "tools/verify-ci-reliability.test.mjs"
       - "docs/CI_RELIABILITY_RUNBOOK_RU.md"
@@ -90,6 +98,10 @@ jobs:
             *.*.*) test "$actual" = "$expected" ;;
             *) case "$actual" in "$expected"|"$expected".*) ;; *) echo "Node version $actual does not match .nvmrc pin $expected" >&2; exit 1 ;; esac ;;
           esac
+      - name: Verify upstream donor adoption gate
+        run: npm run audit:upstream-donors
+      - name: Test upstream donor adoption gate
+        run: npm run test:upstream-donors
       - name: Audit CI Action/runtime compatibility contract
         run: npm run audit:ci-reliability
       - name: Test CI reliability audit regressions
