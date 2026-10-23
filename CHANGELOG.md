@@ -1,3 +1,11 @@
+## NK1 WorkPass459 — bound verified-outcome identifiers and evidence locators (2026-10-23)
+
+- Added explicit text bounds before manifest indexing and outcome admission: task IDs 180 chars, families 96, versions 96, verifier IDs 160, method IDs 96, and evidence references 4,096. This keeps accepted-evidence keys and persisted receipts bounded even when callers are typed adapters.
+- Oversized outcome metadata fails closed and is retained only as a compact rejection reason; accepted outcomes and statistical comparisons retain their prior schema and semantics.
+- Added regressions for an oversized manifest task ID, method, and evidence locator. No dependency added; exact-head execution remains unverified due to runner provisioning failure.
+
+---
+
 ## NK1 WorkPass454 — preserve built-in postcondition proof floors (2026-10-23)
 
 - `ExternalPostconditionVerifier.registerAction` may strengthen a known action contract but can no longer lower its independent-proof threshold or disable required observation/actuation flags.
