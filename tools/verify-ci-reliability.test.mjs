@@ -49,3 +49,12 @@ test("rejects a missing or imprecise Node pin", () => {
   const errors = validateCiConfig({ workflows: { "minimal.yml": "run: echo ok\n" }, nodeVersion: "22" });
   assert.match(errors.join("\n"), /exact Node\.js version/);
 });
+
+test("rejects a too-short cognitive regression timeout", () => {
+  const shortWorkflow = pinnedWorkflow.replace("timeout-minutes: 20", "timeout-minutes: 8");
+  const errors = validateCiConfig({
+    workflows: { "workpass79-cognitive-regression.yml": shortWorkflow },
+    nodeVersion: "22.16.0"
+  });
+  assert.match(errors.join("\\n"), /at least 15 minutes/);
+});
