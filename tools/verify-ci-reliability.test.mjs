@@ -42,19 +42,19 @@ test("accepts current first-party Actions and an asserted repository Node pin", 
 
 test("rejects retired first-party Node-based action majors", () => {
   const errors = validateCiConfig({
-    workflows: { "old.yml": "steps:\\n  - uses: actions/checkout@v4\\n  - uses: actions/setup-node@v4\\n  - uses: actions/upload-artifact@v4\\n  - uses: actions/download-artifact@v4\\n" },
+    workflows: { "old.yml": "steps:\n  - uses: actions/checkout@v4\n  - uses: actions/setup-node@v4\n  - uses: actions/upload-artifact@v4\n  - uses: actions/download-artifact@v4\n" },
     nodeVersion: "24"
   });
-  assert.ok(errors.length >= 4, `expected action-version errors, got: ${errors.join("\\n")}`);
-  assert.match(errors.join("\\n"), /checkout@v4/);
-  assert.match(errors.join("\\n"), /setup-node@v4/);
-  assert.match(errors.join("\\n"), /upload-artifact@v4/);
-  assert.match(errors.join("\\n"), /download-artifact@v4/);
+  assert.ok(errors.length >= 4, `expected action-version errors, got: ${errors.join("\n")}`);
+  assert.match(errors.join("\n"), /checkout@v4/);
+  assert.match(errors.join("\n"), /setup-node@v4/);
+  assert.match(errors.join("\n"), /upload-artifact@v4/);
+  assert.match(errors.join("\n"), /download-artifact@v4/);
   const pinnedShaErrors = validateCiConfig({
-    workflows: { "sha-pinned.yml": "steps:\\n  - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567\\n" },
+    workflows: { "sha-pinned.yml": "steps:\n  - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567\n" },
     nodeVersion: "24"
   });
-  assert.match(pinnedShaErrors.join("\\n"), /approved Node.js-24-compatible v7\\+ release tag/);
+  assert.match(pinnedShaErrors.join("\n"), /approved Node.js-24-compatible v7\+ release tag/);
 });
 
 test("requires setup-node to use and assert the shared .nvmrc", () => {
