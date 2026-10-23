@@ -88,6 +88,39 @@ assert.equal(restored.snapshot().total, 1, 'invalid totals fall back to retained
 assert.equal(restored.snapshot().recent.length, 1);
 assert.equal(restored.snapshot().recent[0].id, first.id);
 
+// A corrupted persisted snapshot must not win by array order when one upstream
+// event ID is bound to conflicting payloads. Both candidates are quarantined.
+const collisionEvent = ledger.record({
+  tick: 21, at: 2100, eventId: 'restore-event-conflict',
+  realityClass: 'device-observation', claim: 'The actuator completed the requested action.',
+  confidence01: .8, independenceKey: 'device:actuator',
+});
+const conflictingEvent = {
+  ...collisionEvent,
+  claim: 'The actuator did not complete the requested action.',
+};
+for (const rows of [
+  [first, collisionEvent, conflictingEvent],
+  [first, conflictingEvent, collisionEvent],
+]) {
+  const collisionRestore = new RealityEvidenceLedger();
+  collisionRestore.restore({ version: 1, total: rows.length, recent: rows });
+  assert.deepEqual(collisionRestore.snapshot().recent.map(row => row.id), [first.id],
+    'all rows in a conflicting event-ID group must be removed irrespective of snapshot order');
+}
+
+// The same order-independence rule applies to one record ID carrying two payloads.
+const conflictingIdRow = { ...first, claim: 'Conflicting claim under the same record identity.' };
+for (const rows of [
+  [first, conflictingIdRow],
+  [conflictingIdRow, first],
+]) {
+  const idCollisionRestore = new RealityEvidenceLedger();
+  idCollisionRestore.restore({ version: 1, total: rows.length, recent: rows });
+  assert.equal(idCollisionRestore.snapshot().recent.length, 0,
+    'conflicting payloads under one persisted record ID must both be quarantined');
+}
+
 let restoreGetterCalls = 0;
 const hostileState = {};
 Object.defineProperty(hostileState, 'recent', {
