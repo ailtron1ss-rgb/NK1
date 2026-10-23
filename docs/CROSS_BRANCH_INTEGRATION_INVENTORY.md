@@ -1,5 +1,14 @@
 # NK1 cross-branch integration inventory (2026-10-22)
 
+## Follow-up — production wiring (2026-10-23)
+
+- The restored `CognitiveCycleBoundary` is now called by `OrganismRuntime.stepInternal` directly after `environment.toOrganismObservation()`; a regression script checks import, call placement and runtime input guards.
+- The restored `CausalReplaySampler` now runs inside `P23LearningEngine.replayPending` using state/outcome features. Its bounded diverse candidate pool feeds the existing adaptive `selectReplayBatch` final selector rather than replacing that more expressive policy. A regression script checks the production call path and feature vector construction.
+- Both wiring regressions are registered in `runtime/neuro-kurisu/package.json` and included in `test:rebuild-recovered`. CI execution remains blocked before runner startup; static wiring/manifest checks are not represented as test passes.
+
+---
+
+
 ## Follow-up — recovered file paths and test wiring (2026-10-23)
 
 - Source trees audited: `rebuild`, `workpass94-avatar-voice-live2d-audit`, and `workpass318-repair-evidence-lineage`.
