@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -170,6 +170,16 @@ test('background revision remains disabled when absent and validates explicit sc
   assert.throws(() => parseCompoundRepairBackgroundRevisionConfig('{"enabled":"yes"}'), /compound-repair-background-revision-config-invalid/);
   assert.throws(() => parseCompoundRepairBackgroundRevisionConfig('{"enabled":true,"intervalMs":5000}'), /compound-repair-background-revision-interval-invalid/);
   assert.throws(() => parseCompoundRepairBackgroundRevisionConfig('{"enabled":true,"unknown":1}'), /compound-repair-background-revision-config-invalid/);
+});
+
+test('server attaches the separate host evaluator and explicit schedule to the runtime config', async () => {
+  const server = await readFile(new URL('../src/server/server.mjs', import.meta.url), 'utf8');
+  assert.match(server, /NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE/);
+  assert.match(server, /createIndependentEvaluationConfigFactory\(\{/);
+  assert.match(server, /independentEvaluationConfigForRepair/);
+  assert.match(server, /backgroundRevision: COMPOUND_REPAIR_BACKGROUND_REVISION/);
+  assert.match(server, /compoundRepairRevision: COMPOUND_REPAIR_REVISION/);
+  assert.doesNotMatch(server, /providerContext:\s*\{\s*engine,\s*candidateStore/);
 });
 
 console.log('WorkPass330 production revision wiring contracts passed');
