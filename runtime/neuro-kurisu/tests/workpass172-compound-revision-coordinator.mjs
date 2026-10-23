@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { P23CompoundRepairRevisionCoordinator } from '../src/organism/learning/P23CompoundRepairRevisionCoordinator.ts';
+import { P23CompoundRepairRevisionCoordinator, fingerprintCompoundRepairEvidence } from '../src/organism/learning/P23CompoundRepairRevisionCoordinator.ts';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 
 const evidence = [{
@@ -9,6 +8,21 @@ const evidence = [{
   candidateTools: ['fallback'], selectedTool: 'fallback', verified: true, confidence01: .9,
   observedAt: 10, revisionEligible: true,
 }];
+
+const sameTimeEvidence = [
+  evidence[0],
+  { ...evidence[0], failureFingerprint:'fp-b', stepId:'step-2', diagnosis:'different verified failure',
+    candidateTools:['tool-z','tool-a'] },
+];
+const permutedEvidence = [...sameTimeEvidence].reverse().map(row => ({
+  ...Object.fromEntries(Object.entries(row).reverse()),
+  candidateTools:[...row.candidateTools].reverse(),
+}));
+assert.equal(fingerprintCompoundRepairEvidence(sameTimeEvidence), fingerprintCompoundRepairEvidence(permutedEvidence),
+  'row order, property insertion order and candidate-tool set order must not manufacture a new repair-evidence revision');
+assert.notEqual(fingerprintCompoundRepairEvidence(sameTimeEvidence),
+  fingerprintCompoundRepairEvidence(sameTimeEvidence.map((row,index) => index===0 ? {...row,diagnosis:'materially changed diagnosis'} : row)),
+  'a material change in repair evidence must change the revision fingerprint');
 let providerCalls = 0;
 let stagedCalls = 0;
 let received = null;
@@ -253,7 +267,7 @@ changingEvidence[0] = {
   failureFingerprint: 'fp-newer',
   diagnosis: 'a newer independently observed repair changes the evidence snapshot',
 };
-const latestDigest = createHash('sha256').update(JSON.stringify(changingEvidence)).digest('hex');
+const latestDigest = fingerprintCompoundRepairEvidence(changingEvidence);
 const latestAttempt = changingCoordinator.reviseFromObservedRepairs('skill-a');
 assert.equal(changingProviderCalls, 1, 'new-evidence request waits for the currently running snapshot');
 releaseOldEvidenceProvider();
@@ -267,7 +281,7 @@ assert.equal(changingStageCalls, 1, 'only the fresh snapshot may reach candidate
 assert.equal(stagedEvidenceDigest, latestDigest, 'staged provenance must bind to the current evidence digest');
 
 // A persisted candidate carries the same source-evidence digest across coordinator restarts.
-const durableDigest = createHash('sha256').update(JSON.stringify(evidence)).digest('hex');
+const durableDigest = fingerprintCompoundRepairEvidence(evidence);
 let durableProviderCalls = 0;
 let durableStageCalls = 0;
 const durableCoordinator = new P23CompoundRepairRevisionCoordinator(
