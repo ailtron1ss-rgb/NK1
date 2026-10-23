@@ -1,3 +1,14 @@
+## NK1 WorkPass408 — reconcile uncertain activation attempts against the versioned store (2026-10-23)
+
+- Added `P23LearningEngine.reconcileLearningLifecycleOutcomes()`: uncertain activations are reconciled only against the canonical skill-store snapshot, using exact candidate/skill/version/payload fingerprint bindings.
+- Added lifecycle terminal events `activation-reconciled-active` and `activation-reconciled-not-currently-active`; unknown attempts stay pending until a safe reconciliation. Conflicting/missing lineage is not guessed.
+- Runtime invokes conservative reconciliation on startup and exposes an explicit method to retry. It never promotes, approves or rolls back a skill as a side effect of reconciliation.
+- Added end-to-end integration regression for exact active match, shadow/non-active record, absent candidate lineage and idempotent repeat; wired into `test:p23:learning` and P26 Learning Validation.
+- Added [WorkPass408 implementation note](docs/WORKPASS408_LIFECYCLE_STORE_RECONCILIATION_RU.md); category completion estimate updates to 81%, production readiness remains ~45% pending actionable CI, real restart/rollback soak and measured external-task uplift.
+- Validation remains unconfirmed: Actions jobs return failure without step logs; do not infer either green tests or a code failure from the unavailable runner output.
+
+---
+
 ## NK1 WorkPass407 — persist the real P23 activation outcome (2026-10-23)
 
 - Added a separate hash-chained `LearningLifecycleJournal.ts`: promotion rejection, pre-side-effect activation intent, confirmed activation, and explicit unknown outcomes.
