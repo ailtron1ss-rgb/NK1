@@ -65,11 +65,11 @@ export interface LearningLifecycleJournalDiagnostics {
 
 /** Resolve a distinct JSONL sibling without ever reusing the organism state file. */
 export function learningLifecycleJournalPathForStateFile(stateFile: string): string {
-  if (typeof stateFile !== 'string' || !stateFile.trim() || stateFile.includes('\\u0000')) {
+  if (typeof stateFile !== 'string' || !stateFile.trim() || stateFile.includes('\u0000')) {
     throw new Error('learning-lifecycle-journal-state-path-invalid');
   }
   return stateFile.toLowerCase().endsWith('.json')
-    ? stateFile.replace(/\\.json$/i, '.learning-lifecycle.jsonl')
+    ? stateFile.replace(/\.json$/i, '.learning-lifecycle.jsonl')
     : `${stateFile}.learning-lifecycle.jsonl`;
 }
 
