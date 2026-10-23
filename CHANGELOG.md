@@ -1,3 +1,14 @@
+## NK1 WorkPass402 — enforce family coverage at production promotion (2026-10-23)
+
+- [FIXED] The authoritative P23 activation path `approveIndependentlyEvaluatedSkillCandidate` no longer uses the permissive default evaluation profile. It requires at least one sufficiently sampled canonical task family in both validation and holdout: 2 distinct tasks per family, minimum one family per split.
+- [INTEGRATION] `compareMatchedIndependentEvaluations` now accepts typed `SkillLearnBenchCandidateGateOptions` and forwards them to the existing SkillLearnBench gate. Diagnostic callers retain legacy-compatible defaults; production activation sets the policy internally and cannot be downgraded by a generated skill.
+- [PROVENANCE] Canonical family metadata is sourced from the trusted experiment manifest by the independent evaluator; existing WorkPass213 coverage checks reject caller-forged family labels.
+- [REGRESSION/CI] WorkPass225 tests strict comparator options with missing family labels. P26 path filters and a dedicated Node.js 24 test step now run `tests/workpass225-matched-independent-evaluation.mjs` when relevant paths change.
+- [RESEARCH] Adapts SkillLearnBench's multi-domain/three-axis evaluation findings and Hermes' candidate guardrail separation. The 2-task floor is structural coverage, not proof of statistical generalization; paired multi-seed calibration is still required.
+- [VALIDATION] Source, regression, P26 wiring, docs and research notes are committed to `feature/learning`; exact-head tests/typecheck remain unverified because Actions jobs expose no steps or logs. No result uplift is claimed.
+
+---
+
 ## NK1 WorkPass401 — make task-family coverage explicitly enforceable (2026-10-23)
 
 - [FIXED] Added opt-in strict coverage requirements `minimumValidationFamilies` and `minimumHoldoutFamilies`, so a benchmark/production profile can reject missing task-family provenance rather than silently skip family-level checks.
