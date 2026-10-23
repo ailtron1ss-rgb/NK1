@@ -663,6 +663,12 @@ function independentFamilySeedCoverage<TBinding extends { seed: number }>(
 interface IndependentFamilyConfidenceReport {
   familiesEvaluated: number;
   confidenceBoundFailures: number;
+  /** Worst lower bound across covered families; null means no family could be evaluated. */
+  minimumLowerBound: number | null;
+  /** Worst upper bound across covered families; null means no family could be evaluated. */
+  maximumUpperBound: number | null;
+  /** Equal-weight mean of per-family paired-seed mean deltas, not a task-pooled mean. */
+  meanDelta: number | null;
 }
 
 function independentFamilyConfidenceBounds<TBaselineBinding extends { seed: number }, TCandidateBinding extends { seed: number }>(
@@ -679,7 +685,10 @@ function independentFamilyConfidenceBounds<TBaselineBinding extends { seed: numb
   maximumRegression: number,
   requirePositiveLowerBound: boolean,
 ): IndependentFamilyConfidenceReport {
-  if (minimumSeeds === 0) return { familiesEvaluated: 0, confidenceBoundFailures: 0 };
+  if (minimumSeeds === 0) return {
+    familiesEvaluated: 0, confidenceBoundFailures: 0,
+    minimumLowerBound: null, maximumUpperBound: null, meanDelta: null,
+  };
   const baselineByKey = new Map(baselineReports.map(report => [
     JSON.stringify([report.taskId.trim(), report.trialId.trim()]), report,
   ] as const));
@@ -714,6 +723,9 @@ function independentFamilyConfidenceBounds<TBaselineBinding extends { seed: numb
   const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
   let familiesEvaluated = 0;
   let confidenceBoundFailures = 0;
+  const lowerBounds: number[] = [];
+  const upperBounds: number[] = [];
+  const familyMeanDeltas: number[] = [];
   for (const [family, tasks] of byFamily.entries()) {
     if (tasks.size < minimumTasks) continue;
     const seedSets = [...tasks.values()].map(seeds => new Set(seeds.keys()));
@@ -733,12 +745,23 @@ function independentFamilyConfidenceBounds<TBaselineBinding extends { seed: numb
       confidenceLevel, resamples, seed: deterministicSeed,
     });
     familiesEvaluated++;
+    lowerBounds.push(interval.lower);
+    upperBounds.push(interval.upper);
+    familyMeanDeltas.push(interval.mean);
     const failed = requirePositiveLowerBound
       ? interval.lower <= 0
       : interval.lower < -maximumRegression;
     if (failed) confidenceBoundFailures++;
   }
-  return { familiesEvaluated, confidenceBoundFailures };
+  return {
+    familiesEvaluated,
+    confidenceBoundFailures,
+    minimumLowerBound: lowerBounds.length ? Number(Math.min(...lowerBounds).toFixed(6)) : null,
+    maximumUpperBound: upperBounds.length ? Number(Math.max(...upperBounds).toFixed(6)) : null,
+    meanDelta: familyMeanDeltas.length
+      ? Number((familyMeanDeltas.reduce((sum, value) => sum + value, 0) / familyMeanDeltas.length).toFixed(6))
+      : null,
+  };
 }
 
 /**
@@ -815,6 +838,12 @@ export function compareMatchedIndependentEvaluations(
   holdoutFamiliesEvaluatedForConfidenceInterval: number;
   validationFamilyConfidenceBoundFailures: number;
   holdoutFamilyConfidenceBoundFailures: number;
+  validationFamilyMeanDelta: number | null;
+  validationFamilyLowerBoundMinimum: number | null;
+  validationFamilyUpperBoundMaximum: number | null;
+  holdoutFamilyMeanDelta: number | null;
+  holdoutFamilyLowerBoundMinimum: number | null;
+  holdoutFamilyUpperBoundMaximum: number | null;
   environmentFingerprint: string;
   planFingerprint: string;
 } {
@@ -988,6 +1017,12 @@ export function compareMatchedIndependentEvaluations(
     holdoutFamiliesEvaluatedForConfidenceInterval: holdoutConfidence.familiesEvaluated,
     validationFamilyConfidenceBoundFailures: validationConfidence.confidenceBoundFailures,
     holdoutFamilyConfidenceBoundFailures: holdoutConfidence.confidenceBoundFailures,
+    validationFamilyMeanDelta: validationConfidence.meanDelta,
+    validationFamilyLowerBoundMinimum: validationConfidence.minimumLowerBound,
+    validationFamilyUpperBoundMaximum: validationConfidence.maximumUpperBound,
+    holdoutFamilyMeanDelta: holdoutConfidence.meanDelta,
+    holdoutFamilyLowerBoundMinimum: holdoutConfidence.minimumLowerBound,
+    holdoutFamilyUpperBoundMaximum: holdoutConfidence.maximumUpperBound,
     environmentFingerprint: bp.environmentFingerprint,
     planFingerprint: bp.planFingerprint,
   };
