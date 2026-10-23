@@ -73,4 +73,14 @@ assert.throws(() => ranking.rankGoals({
 }), /personal-curriculum-goal-ranking-data-boundary-rejected/);
 assert.equal(rankGetterCalls, 0, 'ranking boundary must not execute input getters');
 assert.equal(ranking.snapshot().focusGoalId, null);
+const tieEngine = new PersonalCurriculumEngine();
+const goalA = { ...goal, id: 'goal-a', title: 'Equal priority goal A' };
+const goalZ = { ...goal, id: 'goal-z', title: 'Equal priority goal Z' };
+const rankingArgs = {
+  goals: [goalZ, goalA], identity01: 0.3, social01: 0.3, novelty01: 0.3, uncertainty01: 0.3,
+};
+const forwardRank = tieEngine.rankGoals(rankingArgs).map(row => row.goalId);
+const reverseRank = tieEngine.rankGoals({ ...rankingArgs, goals: [goalA, goalZ] }).map(row => row.goalId);
+assert.deepEqual(forwardRank, ['goal-a', 'goal-z'], 'equal scores use stable goal identity as tie-break');
+assert.deepEqual(reverseRank, forwardRank, 'curriculum focus order must not depend on input insertion order');
 console.log('BIG_PASS_122_CURRICULUM_RESTORE_COLLISION=PASS');
