@@ -1,3 +1,13 @@
+## Current source-stack checkpoint — WorkPass419 (2026-10-23)
+
+- **P23 restart resilience:** compound repair revision retry cooldown now persists to an atomic `FileStateStore` sidecar and is restored during runtime startup. The cooldown is keyed by exact repair-evidence SHA-256, so unchanged failing evidence is throttled after restart while genuinely new evidence can proceed.
+- **Fail-closed restoration:** snapshot schema and entries are bounded/validated; corrupted retry records cannot silently reset to an immediate retry. Diagnostics indicate whether persistence is configured and healthy.
+- **Regression:** P23 coordinator test now covers failure → persisted cooldown → new coordinator → blocked duplicate attempt, plus malformed persisted-state rejection. P26 tracks the coordinator, runtime and test.
+- **Progress remains:** learning implementation estimate 83%, production readiness ~45%; tests and typecheck still unconfirmed because hosted Actions jobs fail before runner allocation. No measured learning uplift claimed.
+- **Architecture:** reused the existing atomic `FileStateStore`; no new runtime dependency or duplicate learner. `main` and the Release ZIP remain unchanged.
+
+---
+
 ## Current source-stack checkpoint — WorkPass418 (2026-10-23)
 
 - **Personal curriculum restore/intake:** invalid state is filtered before it can guide learning. Duplicate saved IDs/families are quarantined as complete conflict sets rather than resolved by array ordering.
