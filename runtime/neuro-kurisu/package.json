@@ -9,6 +9,7 @@
     "npm": ">=10.8.0"
   },
   "scripts": {
+    "test:workpass321:microcycle-finite-input": "node --experimental-strip-types tests/operational-microcycle-finite-input.mjs",
     "test:workpass292:motivation-to-goal": "node --experimental-strip-types tests/big-pass-272-endogenous-goal-genesis.mjs",
     "test:workpass288:intrinsic-motivation": "node --experimental-strip-types tests/workpass288-intrinsic-motivation-contract.mjs",
     "test:workpass287:cognitive-cycle": "node --experimental-strip-types tests/workpass287-unified-cycle-contract.mjs",
