@@ -1,3 +1,11 @@
+## WorkPass392 — distinguish repeated trials from independent task coverage (2026-10-23)
+
+- **Research rationale:** [AFTER](https://github.com/DavydenkoGr/AFTER) and [SkillLearnBench](https://github.com/cxcscmu/SkillLearnBench) emphasize generalization across task families/contexts and task-level evaluation, rather than allowing repeated runs of a single easy case to dominate the evidence.
+- **Implementation:** the SkillLearnBench candidate gate now requires at least two distinct paired validation tasks by default. The `minimumValidationTasks` option is configurable, validated as a positive safe integer, and the report includes `validationTaskCount`. Repeats increase paired trial count but not distinct-task coverage.
+- **Decision:** under-covered validation adds `validation-task-coverage-insufficient` and blocks eligibility even if the validation gain is large and the holdout gate would otherwise pass. Existing macro-average scoring, paired exact trial matching, safety hard-gate, family-level holdout regression and explicit approval remain intact.
+- **Regression:** the P29 gate test now repeats two trials for one task, demonstrates improved outcomes relative to baseline, and confirms the candidate remains ineligible because only one distinct validation task is represented. Invalid zero task minimum is also rejected.
+- The P26 workflow already runs the updated P29 gate test on Node.js 24. The test is committed but not execution-verified due to unavailable job step logs.
+
 ## WorkPass391 — separate diagnostic repair memory from revision evidence (2026-10-23)
 
 - **Design principle:** error-memory should preserve useful observations even when an attempt is not yet suitable for automated skill revision. A failed repair with no valid alternate tool is still diagnostic experience, but must not be promoted to a generator input.
