@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { P23LearningEngine } from '../src/organism/learning/P23LearningEngine.ts';
+import { P23LearningEngine, P23_REFLECTIVE_PROMOTION_POLICY } from '../src/organism/learning/P23LearningEngine.ts';
 import { createIndependentSkillCandidateEvaluator } from '../src/organism/learning/IndependentSkillCandidateEvaluator.ts';
 
 const canonical = value => value === null || typeof value !== 'object'
@@ -120,6 +120,18 @@ assert.equal(approvalCalls, 0,
   'production promotion must fail closed before asking the store to activate a family-unverified candidate');
 assert.equal(journalEvents.length, 1, 'the rejected production fitness decision must reach the configured journal');
 assert.equal(journalEvents[0].decision, 'fitness-rejected');
+assert.equal(Object.isFrozen(P23_REFLECTIVE_PROMOTION_POLICY), true);
+for (const key of [
+  'minimumValidationFamilies', 'minimumHoldoutFamilies',
+  'minimumValidationFamilyTasks', 'minimumHoldoutFamilyTasks',
+  'maximumValidationTaskRegression01', 'maximumValidationFamilyRegression01',
+  'maximumHoldoutRegression01', 'maximumHoldoutFamilyRegression01',
+  'minimumValidationFamilySeeds', 'minimumHoldoutFamilySeeds',
+  'confidenceLevel', 'bootstrapResamples',
+]) {
+  assert.equal(journalEvents[0][key], P23_REFLECTIVE_PROMOTION_POLICY[key],
+    `fitness journal must record the same production policy value: ${key}`);
+}
 assert.ok(journalEvents[0].reasonCodes.includes('validation-family-coverage-insufficient'));
 assert.equal(journalEvents[0].matchedTrialCount, 4);
 assert.equal(journalEvents[0].validation.minimumLowerBound, null);
