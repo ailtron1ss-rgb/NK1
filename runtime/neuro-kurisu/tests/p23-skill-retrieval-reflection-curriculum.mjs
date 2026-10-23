@@ -19,6 +19,54 @@ assert.ok(reflections.length>0);
 assert.equal(reflections[0].kind,'repeated-context-failure');
 assert.ok(reflections[0].priority01>.6);
 assert.ok(reflections[0].evidenceNeeded.includes('independent'));
+
+ // Observation identities are immutable: duplicates are idempotent and conflicting reuse is quarantined.
+ const exactDuplicate = reflectOnOutcomes([...outcomes, { ...outcomes[0] }]);
+ assert.equal(exactDuplicate[0].occurrences, 7, 'replayed identical evidence must not inflate reflection confidence');
+ assert.equal(new Set(exactDuplicate[0].sourceExperienceIds).size, 7, 'reflection evidence IDs must remain unique');
+ const identityConflict = reflectOnOutcomes([...outcomes, { ...outcomes[0], success: .99 }]);
+ assert.equal(identityConflict[0].occurrences, 6, 'conflicting payloads sharing one event ID must quarantine that identity');
+ assert.ok(!identityConflict[0].sourceExperienceIds.includes('x0'));
+ const invalidIdentityReuse = reflectOnOutcomes([...outcomes, { ...outcomes[0], success: Number.NaN }]);
+ assert.equal(invalidIdentityReuse[0].occurrences, 6, 'malformed reuse must not let an earlier valid row survive');
+ assert.ok(!invalidIdentityReuse[0].sourceExperienceIds.includes('x0'));
+
+ // Reflection and curriculum must never execute caller-owned getters.
+ let experienceGetterCalls = 0;
+ const getterExperience = Object.defineProperties({}, {
+   id: { enumerable: true, get() { experienceGetterCalls++; return 'getter-experience'; } },
+   contextKey: { enumerable: true, value: ctx },
+   action: { enumerable: true, value: 'explore' },
+   success: { enumerable: true, value: .1 },
+   predictedUtility: { enumerable: true, value: .9 },
+   surprise: { enumerable: true, value: .9 },
+   tick: { enumerable: true, value: 1 },
+ });
+ assert.deepEqual(reflectOnOutcomes([getterExperience]), []);
+ assert.equal(experienceGetterCalls, 0, 'an accessor-backed evidence ID must not run');
+ let arrayGetterCalls = 0;
+ const getterArray = new Array(1);
+ Object.defineProperty(getterArray, '0', { enumerable: true, configurable: true, get() { arrayGetterCalls++; return outcomes[0]; } });
+ assert.deepEqual(reflectOnOutcomes(getterArray), []);
+ assert.equal(arrayGetterCalls, 0, 'array accessors must be rejected without being invoked');
+ assert.deepEqual(reflectOnOutcomes(Array.from({ length: 4097 }, (_, i) => ({ ...outcomes[0], id: 'oversized-' + i }))), [],
+   'oversized reflection batches must fail closed instead of truncating into a biased sample');
+
+ const screenedTargets = rankLearningTargets([
+   { id: 'valid-target', family: 'memory', uncertainty01: .7, readiness01: .8, transfer01: .6, novelty01: .4, verificationCost01: .2, repairValue01: .9 },
+   { id: 'invalid-target', family: 'memory', uncertainty01: Number.NaN, readiness01: .8, transfer01: .6, novelty01: .4, verificationCost01: .2, repairValue01: .9 },
+ ]);
+ assert.deepEqual(screenedTargets.map(target => target.id), ['valid-target'], 'malformed target scores must not enter priority ranking');
+ let targetGetterCalls = 0;
+ const getterTarget = Object.defineProperties({}, {
+   id: { enumerable: true, get() { targetGetterCalls++; return 'getter-target'; } },
+   family: { enumerable: true, value: 'memory' },
+   uncertainty01: { enumerable: true, value: .8 }, readiness01: { enumerable: true, value: .8 },
+   transfer01: { enumerable: true, value: .8 }, novelty01: { enumerable: true, value: .8 },
+   verificationCost01: { enumerable: true, value: .1 }, repairValue01: { enumerable: true, value: .9 },
+ });
+ assert.deepEqual(rankLearningTargets([getterTarget]), []);
+ assert.equal(targetGetterCalls, 0, 'target accessors must never run during curriculum ranking');
 const targets=rankLearningTargets([
 {id:'blocked',family:'a',uncertainty01:1,readiness01:1,transfer01:1,novelty01:1,verificationCost01:0,repairValue01:1,blocked:true},
 {id:'repair',family:'b',uncertainty01:.7,readiness01:.8,transfer01:.7,novelty01:.6,verificationCost01:.2,repairValue01:.9},
