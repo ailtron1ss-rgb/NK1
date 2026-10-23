@@ -1,3 +1,16 @@
+## NK1 WorkPass329 — Hermes-inspired multi-axis holdout gate (2026-10-23)
+
+- [UPSTREAM] Inspected the pinned Hermes Agent Self-Evolution implementation at `0a929e3aa20e15cf04dc7c28492a7d41a5139125`: reflective optimization, 50/30/20 multi-dimensional fitness, explicit candidate constraints, and separate holdout evaluation. Recorded paths and licensing limits in `docs/WORKPASS329_HERMES_MULTIAXIS_HOLDOUT_GATE_2026-10-23.md`.
+- [CODE] Extended the canonical `SkillLearnBenchAdapter` with component-wise holdout regression caps for task success, trajectory quality, and skill quality (default maximum decline 0.02 on each normalized dimension). A positive weighted composite cannot override a per-dimension regression.
+- [REGRESSION] Added a trade-off case where weighted composite improves while trajectory quality drops, and a negative threshold-validation case.
+- [WIRING] Registered the upstream donor, wired the focused test into root `audit:quick` and WorkPass71 core CI, and updated the donor map to 28 candidates.
+- [DEPENDENCIES] No new dependency and no copied/vendor upstream source; native adaptation uses the existing TypeScript/P23 lifecycle. Upstream license review remains partial because the separate `LICENSE` path was not retrievable, although README and `pyproject.toml` declare MIT.
+- [VALIDATION] Focused test and runtime typecheck are **not yet confirmed as executed** on the exact head. Current Actions startup runs have been stopping before runner assignment (`runner_id=0`, zero steps/logs); do not interpret this as a test pass or failure.
+- [METRICS] No learning uplift is claimed. Keep scores unchanged pending an independent paired-seed run on a frozen holdout.
+- [RELEASE] No release ZIP was downloaded, rebuilt, or published. `main` remains untouched.
+
+---
+
 ## NK1 WorkPass328 — structured upstream donor intake and adoption gate (2026-10-23)
 
 - [RESEARCH] Added research/upstream-donors/registry.json with 27 donor/benchmark candidates and explicit targets, overlap risks, current audit status, and a next review gate.
