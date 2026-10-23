@@ -16,17 +16,17 @@ const temporary = async run => {
     await rm(root, { recursive: true, force: true });
   }
 };
-const hostModule = ({ experimentAuthority = true, complete = true } = {}) => `
+const hostModule = ({ experimentAuthority = true, complete = true, methods = true } = {}) => `
 export async function createIndependentEvaluationHostConfig(input) {
   globalThis.__nk1HostConfigReceivedStateDirectory = input.stateDirectory;
   return ${complete ? `{
-    commands: {
+    ${methods ? "baselineMethod: 'active-baseline-v1',\\n    sourceCandidateMethod: 'source-candidate-v1',\\n" : ''}commands: {
       executor: { executable: '/host/executor', args: ['{requestFile}'], cwd: '/host', runRoot: '/host/executor-runs', surviveDir: '/host/executor-survive' },
       verifier: { executable: '/host/verifier', args: ['{requestFile}'], cwd: '/host', runRoot: '/host/verifier-runs', surviveDir: '/host/verifier-survive' },
       safetyScanner: { executable: '/host/scanner', args: ['{requestFile}'], cwd: '/host', runRoot: '/host/scanner-runs', surviveDir: '/host/scanner-survive' }
     },
     tasksForRepair: () => [{ taskId: 'validation-a', trialId: 'v-1', seed: 1, split: 'validation', input: { prompt: 'inspect' }, requiredCapabilityIds: ['read'], expectedStepIds: ['inspect'] }, { taskId: 'holdout-b', trialId: 'h-1', seed: 2, split: 'holdout', input: { prompt: 'inspect' }, requiredCapabilityIds: ['read'], expectedStepIds: ['inspect'] }],
-    environmentFingerprintForRepair: () => '${digest}'${experimentAuthority ? `, experimentAuthorityForRepair: () => ({ manifest: [], ledger: {}, validationPlan: {}, holdoutPlan: {}, method: 'candidate' })` : ''}
+    environmentFingerprintForRepair: () => '${digest}'${experimentAuthority ? `, experimentAuthorityForRepair: () => ({ manifest: [], ledger: {}, validationPlan: {}, holdoutPlan: {}, method: 'revision-candidate-v1' })` : ''}
   }` : '{}'}
 }
 `;
@@ -70,7 +70,20 @@ test('loads host config from a distinct module and delegates authority construct
       production: true,
       createHostOwnedFactory: async options => {
         captured = options;
-        return repair => ({ repair, authorityCount: 3 });
+        const plan = { arms: [
+          { method: 'active-baseline-v1' },
+          { method: 'source-candidate-v1' },
+          { method: 'revision-candidate-v1' },
+        ] };
+        return repair => ({
+          repair,
+          authorityCount: 3,
+          experimentAuthority: {
+            method: 'revision-candidate-v1',
+            validationPlan: plan,
+            holdoutPlan: plan,
+          },
+        });
       },
     });
     assert.equal(typeof factory, 'function');
@@ -78,7 +91,12 @@ test('loads host config from a distinct module and delegates authority construct
     assert.equal(captured.commands.executor.executable, '/host/executor');
     assert.equal(typeof captured.tasksForRepair, 'function');
     assert.equal(typeof captured.experimentAuthorityForRepair, 'function');
-    assert.deepEqual(factory({ skillId: 'skill-a' }), { repair: { skillId: 'skill-a' }, authorityCount: 3 });
+    assert.equal(captured.baselineMethod, 'active-baseline-v1');
+    assert.equal(captured.sourceCandidateMethod, 'source-candidate-v1');
+    const built = factory({ skillId: 'skill-a' });
+    assert.equal(built.baselineMethod, 'active-baseline-v1');
+    assert.equal(built.sourceCandidateMethod, 'source-candidate-v1');
+    assert.equal(built.experimentAuthority.method, 'revision-candidate-v1');
   });
 });
 
@@ -161,6 +179,32 @@ test('rejects an evaluator module without the declared host factory', async () =
         createHostOwnedFactory: async () => () => ({}),
       }),
       /independent-evaluation-config-module-must-export-createIndependentEvaluationHostConfig/,
+    );
+  });
+});
+
+test('production host config must declare distinct baseline and source evaluation methods', async () => {
+  await temporary(async root => {
+    const providerPath = path.join(root, 'provider.mjs');
+    const evaluatorPath = path.join(root, 'evaluator.mjs');
+    await writeFile(providerPath, 'export default async () => () => ({})\\n');
+    await writeFile(evaluatorPath, hostModule({ methods: false }));
+    await assert.rejects(
+      createIndependentEvaluationConfigFactory({
+        moduleSetting: evaluatorPath,
+        root,
+        providerModulePath: providerPath,
+        stateDirectory: path.join(root, 'state'),
+        production: true,
+        createHostOwnedFactory: async () => () => ({
+          experimentAuthority: {
+            method: 'revision-candidate-v1',
+            validationPlan: { arms: [{ method: 'revision-candidate-v1' }] },
+            holdoutPlan: { arms: [{ method: 'revision-candidate-v1' }] },
+          },
+        }),
+      }),
+      /production-independent-evaluation-baseline-and-source-methods-required/,
     );
   });
 });
