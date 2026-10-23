@@ -1,3 +1,13 @@
+## NK1 WorkPass455 — make endogenous goal lifecycle replay-safe and restore-safe (2026-10-23)
+
+- Adapted Hexis-style durable-goal governance into the existing P67 owner: persisted candidate history now has bounded schema normalization, generated-ID linkage and decision receipt normalization; accessor/cyclic restore payloads fall back safely to default state.
+- Goal proposal input is detached through the shared bounded plain-data boundary and allowlisted before the cycle counter changes. Invalid ranges, unknown fields and accessor-backed internal-drive signals are rejected without partial mutation.
+- Promotion/rejection decisions now carry idempotent receipts: a generated goal can receive only one final decision, preventing retries or replay from inflating self-development metrics. The goal engine still only proposes goals; it does not bypass identity gates or execute actions.
+- Added regressions for accessor/non-schema ingress, invalid restored goal rows, round-trip persistence and duplicate promotion/rejection accounting. No new dependency.
+- **Verification:** source and regression changes are committed; hosted execution remains unverified due to runner allocation failure.
+
+---
+
 ## NK1 WorkPass449 — make self-agency learning outcomes atomic and evidence-bounded (2026-10-23)
 
 - Validated reward, external-request flag, causal-match confidence, and detached observed-state data before prediction or any weight/counter mutation.
