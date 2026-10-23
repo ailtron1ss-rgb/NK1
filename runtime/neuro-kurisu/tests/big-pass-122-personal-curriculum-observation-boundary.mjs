@@ -37,4 +37,11 @@ assert.throws(() => engine.observeOutcome({
 }), /personal-curriculum-outcome-invalid/);
 assert.deepEqual(engine.snapshot(), before, 'invalid timestamps must not mutate curriculum state');
 
+assert.throws(() => engine.observeOutcome({
+  goal: { ...goal, status: 'not-a-canonical-goal-state' },
+  outcome01: 0.8, verified: true, contextKey: 'invalid-goal-state',
+  causal01: 0.7, social01: 0.7, identity01: 0.7, retention01: 0.7, transfer01: 0.7,
+}), /personal-curriculum-goal-invalid/);
+assert.deepEqual(engine.snapshot(), before, 'invalid canonical goal fields must not mutate curriculum state');
+
 console.log('BIG_PASS_122_CURRICULUM_OBSERVATION_BOUNDARY=PASS');
