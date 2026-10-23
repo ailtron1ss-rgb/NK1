@@ -19,6 +19,20 @@ assert.ok(reflections.length>0);
 assert.equal(reflections[0].kind,'repeated-context-failure');
 assert.ok(reflections[0].priority01>.6);
 assert.ok(reflections[0].evidenceNeeded.includes('independent'));
+assert.equal(reflections[0].occurrences, 7);
+assert.equal(reflections[0].sampleCount, 7, 'sampleCount must describe the exact window used for the metrics');
+assert.equal(reflections[0].windowStartTick, 0);
+assert.equal(reflections[0].windowEndTick, 6);
+const longWindowRows = Array.from({ length: 12 }, (_, i) => ({
+  id: 'long-window-' + i, contextKey: ctx, action: 'explore',
+  success: .1, predictedUtility: .8, surprise: .7, tick: i,
+}));
+const longWindowReflection = reflectOnOutcomes(longWindowRows)[0];
+assert.equal(longWindowReflection.occurrences, 12, 'occurrences retains the full valid history count');
+assert.equal(longWindowReflection.sampleCount, 8, 'metrics explicitly report the capped recent window');
+assert.equal(longWindowReflection.windowStartTick, 4);
+assert.equal(longWindowReflection.windowEndTick, 11);
+assert.equal(longWindowReflection.sourceExperienceIds.length, longWindowReflection.sampleCount);
 assert.equal(reflections[0].passThreshold01, .5, 'the pass/fail boundary must be explicit and stable');
 assert.equal(reflections[0].passRate01, 0, 'task-success pass rate uses the explicit 0.5 threshold');
  assert.equal(reflections[0].wilsonLowerPassRate01, 0, 'all-failure windows must not manufacture a positive lower success bound');
