@@ -1,5 +1,16 @@
 # NK1 cross-branch integration inventory (2026-10-22)
 
+## Follow-up — recovered file paths and test wiring (2026-10-23)
+
+- Source trees audited: `rebuild`, `workpass94-avatar-voice-live2d-audit`, and `workpass318-repair-evidence-lineage`.
+- Restored 31 non-conflicting paths that were not present in the integration tree: 27 from `rebuild`, two avatar/voice audit artifacts, and two WorkPass318 evidence/finite-input artifacts. Existing files were retained from the integration tree instead of overwriting them with branch snapshots.
+- Wired runtime regression commands for cognitive-cycle boundary, causal replay selection/benchmark, feature schema migration, holdout provenance, sequential learning benchmark, replay policy sweep, restored action receipts, finalizer boundary, autonomous planner routing, project reconciliation, and finite-microcycle inputs. Added app test commands for safe avatar storage and Live2D expression cache.
+- The integration branch's tree is now the merge result; the merge commit has parents for the verified-learning, Hermes/cognitive-rebuild, rebuild, avatar/voice-audit, runtime-evaluator, multiscale-plan, and WorkPass318 evidence-lineage histories. This is history + non-conflicting file recovery, not a claim that every divergent implementation was semantically identical.
+- CI wiring is in place; execution remains blocked before the GitHub runner starts. Do not mark the recovered tests passed until jobs have real steps/results.
+
+---
+
+
 This inventory records concrete source-history evidence gathered while preparing the integration. It is intentionally not labelled a completed code merge.
 
 ## Source refs and observed CHANGELOG state
