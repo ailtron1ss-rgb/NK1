@@ -1,3 +1,14 @@
+## NK1 WorkPass410 — introduce Pareto-frontier learning-target selection (2026-10-23)
+
+- **Code:** added deterministic non-dominated layering for the P23 curriculum across six objectives; preserves complementary high-value learning targets instead of filling the queue with a dominated near-duplicate. Existing weighted-score mode remains backward-compatible.
+- **Integration:** P23 recommendations now opt into Pareto-frontier ordering; reflection target families encode the diagnosed failure kind plus action, while evidence-debt targets use a separate verification-debt family.
+- **Regression:** added fixtures proving that a complementary frontier target is selected before a dominated near-clone, and pinned the new runtime family identities.
+- **Research adaptation:** inspected GEPA's Pareto-efficient reflective-search code/docs and Hermes Agent Self-Evolution's candidate workflow; adapted the selection principle to NK1 TypeScript rather than adding an incompatible Python optimizer dependency. References and boundaries are recorded in `docs/NK1_LEARNING_PARETO_FRONTIER_2026-10-23.md`.
+- **Safety:** selection does not promote or activate candidates; the existing independent evaluation, signed evidence and promotion gate remain mandatory.
+- **Validation:** tests/typecheck have not been executed in this connector pass. No CI pass or measured learning uplift is claimed.
+
+---
+
 ## NK1 WorkPass409 — recover lifecycle attempts interrupted after intent (2026-10-23)
 
 - Found and closed a crash-recovery gap: a process could exit after persisting `activation-intent` but before writing `activation-outcome-unknown`, leaving the prior reconciler unable to see that attempt.
@@ -8,15 +19,6 @@
 - Exact-HEAD CI/typecheck are still not confirmed: Actions jobs return failure without available steps/logs. No tests are claimed as passing and no learning uplift is claimed.
 
 ---
-
-## NK1 WorkPass409 — introduce Pareto-frontier learning-target selection (2026-10-23)
-
-- **Code:** added deterministic non-dominated layering for the P23 curriculum across six objectives; preserves complementary high-value learning targets instead of filling the queue with a dominated near-duplicate. Existing weighted-score mode remains backward-compatible.
-- **Integration:** P23 recommendations now opt into Pareto-frontier ordering; reflection target families encode the diagnosed failure kind plus action, while evidence-debt targets use a separate verification-debt family.
-- **Regression:** added fixtures proving that a complementary frontier target is selected before a dominated near-clone, and pinned the new runtime family identities.
-- **Research adaptation:** inspected GEPA's Pareto-efficient reflective-search code/docs and Hermes Agent Self-Evolution's candidate workflow; adapted the selection principle to NK1 TypeScript rather than adding an incompatible Python optimizer dependency. References and boundaries are recorded in `docs/NK1_LEARNING_PARETO_FRONTIER_2026-10-23.md`.
-- **Safety:** selection does not promote or activate candidates; the existing independent evaluation, signed evidence and promotion gate remain mandatory.
-- **Validation:** tests/typecheck have not been executed in this connector pass. No CI pass or measured learning uplift is claimed.
 
 ## NK1 WorkPass408 — reconcile uncertain activation attempts against the versioned store (2026-10-23)
 
