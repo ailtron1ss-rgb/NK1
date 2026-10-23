@@ -83,6 +83,14 @@ export interface IndependentCandidateEvaluationConfig {
 }
 const isDigest = (x: unknown): x is string => typeof x === 'string' && /^[a-f0-9]{64}$/i.test(x);
 const isSafeRunId = (value: unknown): value is string => isSafeLearningIdentity(value, 256);
+
+// Explicit cardinality limits complement byte/depth limits: cheap-to-encode arrays can still
+// cause excessive Set construction, equality checks, verifier work, and report amplification.
+const MAX_INDEPENDENT_EVALUATION_TASKS = 4096;
+const MAX_TASK_CAPABILITY_IDS = 128;
+const MAX_EXPECTED_STEP_IDS = 512;
+const MAX_OBSERVED_STEP_IDS = 512;
+const MAX_VERIFIED_CAPABILITY_IDS = 128;
 // Must match P23LearningEngine's canonicalize exactly or its post-generation
 // payload/evaluation digest gate will reject a genuine evaluator result.
 function canonical(value: unknown, ancestors = new Set<object>()): string {
@@ -132,7 +140,10 @@ async function runWithServiceDeadline<T>(
   }
 }
 function validateConfig(config: IndependentCandidateEvaluationConfig, tasks: IndependentCandidateTask[]): void {
-  if (!config || !Array.isArray(tasks) || tasks.length < 2 ||
+  if (!Array.isArray(tasks) || tasks.length > MAX_INDEPENDENT_EVALUATION_TASKS) {
+    throw new Error('independent-candidate-evaluator-task-count-limit');
+  }
+  if (!config || tasks.length < 2 ||
       !config.executor || typeof config.executor.execute !== 'function' ||
       !config.verifier || typeof config.verifier.verify !== 'function' ||
       !config.safetyScanner || typeof config.safetyScanner.scan !== 'function' ||
@@ -158,6 +169,10 @@ function validateConfig(config: IndependentCandidateEvaluationConfig, tasks: Ind
   const trialIds = new Set<string>();
   const splitTasks = { validation: new Set<string>(), holdout: new Set<string>() };
   for (const task of tasks) {
+    if (task && ((Array.isArray(task.requiredCapabilityIds) && task.requiredCapabilityIds.length > MAX_TASK_CAPABILITY_IDS) ||
+        (Array.isArray(task.expectedStepIds) && task.expectedStepIds.length > MAX_EXPECTED_STEP_IDS))) {
+      throw new Error('independent-candidate-evaluator-task-shape-limit');
+    }
     if (!task || !isSafeLearningIdentity(task.taskId, 256) || !isSafeLearningIdentity(task.trialId, 256) ||
         (task.taskFamily !== undefined && !isSafeLearningIdentity(task.taskFamily, 128)) ||
         !Number.isSafeInteger(task.seed) || task.seed < 0 ||
@@ -320,7 +335,7 @@ export function createIndependentSkillCandidateEvaluator(
           signal,
         }))) as CandidateExecutionResult;
         if (!execution || !isSafeRunId(execution.runId) ||
-            !Array.isArray(execution.observedStepIds) ||
+            !Array.isArray(execution.observedStepIds) || execution.observedStepIds.length > MAX_OBSERVED_STEP_IDS ||
             execution.observedStepIds.some(step => !isSafeLearningIdentity(step, 256)) ||
             new Set(execution.observedStepIds).size !== execution.observedStepIds.length) {
           throw new Error('candidate-sandbox-result-invalid');
@@ -342,6 +357,7 @@ export function createIndependentSkillCandidateEvaluator(
           }))) as { bindingVerified: boolean; passed: boolean; coveredCapabilityIds: string[] };
           if (!verified || typeof verified.bindingVerified !== 'boolean' ||
               typeof verified.passed !== 'boolean' || !Array.isArray(verified.coveredCapabilityIds) ||
+              verified.coveredCapabilityIds.length > MAX_VERIFIED_CAPABILITY_IDS ||
               verified.coveredCapabilityIds.some(id => !isSafeLearningIdentity(id, 256)) ||
               new Set(verified.coveredCapabilityIds).size !== verified.coveredCapabilityIds.length) {
             throw new Error('independent-task-verifier-result-invalid');

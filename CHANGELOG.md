@@ -1,3 +1,12 @@
+## NK1 WorkPass423 — bound independent-evaluation cardinality (2026-10-23)
+
+- Added hard cardinality limits before expensive work: at most 4,096 planned tasks per candidate evaluation, 128 required or verifier-claimed capabilities, and 512 expected/observed trajectory steps per task.
+- Oversized plans and task contracts are rejected before execution; overlong sandbox traces are marked non-executable and cannot contribute verified evidence.
+- Extended the existing bounded-evaluator regression for oversized plans, expected-step vectors and returned execution traces. No new evaluator or parallel promotion path was introduced.
+- Exact-head test/typecheck remain unverified while hosted Actions jobs fail before runner assignment; this is a resource-boundary implementation, not a learning-uplift claim.
+
+---
+
 ## NK1 WorkPass417 — protect persistent and online personal-curriculum evidence (2026-10-23)
 
 - **Restore path:** snapshots pass through the shared plain-data boundary; accessor-backed, cyclic or unsupported snapshots fall back to a clean curriculum state without invoking accessors.
