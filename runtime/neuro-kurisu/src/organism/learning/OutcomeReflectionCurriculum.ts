@@ -131,14 +131,26 @@ export function reflectOnOutcomes(rows:readonly ReflectionExperience[],limit=12)
     const predicted=recent.reduce((s,e)=>s+c(e.predictedUtility),0)/recent.length;
     const surprise=recent.reduce((s,e)=>s+c(e.surprise),0)/recent.length;
     const gap=Math.abs(success-predicted),failures=recent.filter(e=>e.success<.45).length;
+    // Use a declared binary task-success threshold for a conservative descriptive
+    // interval. Evidence rows may be temporally correlated, so this interval is not
+    // an independently calibrated confidence claim or a promotion credential.
+    const passCount=recent.filter(e=>e.success>=.5).length;
+    const passRate=passCount/recent.length,z=1.96,z2=z*z,n=recent.length;
+    const denominator=1+z2/n;
+    const center=passRate+z2/(2*n);
+    const radius=z*Math.sqrt((passRate*(1-passRate)+z2/(4*n))/n);
+    const wilsonLower=c((center-radius)/denominator);
+    const wilsonUpper=c((center+radius)/denominator);
+    const intervalWidth=c(wilsonUpper-wilsonLower);
     const kind:FailureKind=recent.length<4?'insufficient-evidence':failures>=3?'repeated-context-failure':
       gap>=.3?'prediction-gap':success<.45?'low-outcome':surprise>=.65?'unexpected-surprise':'insufficient-evidence';
     if(kind==='insufficient-evidence'&&gap<.2&&success>=.5)continue;
-    const priority=c(.34*gap+.30*(1-success)+.20*surprise+.16*Math.min(1,failures/4));
-    const confidence=c((1-Math.exp(-recent.length/5))*(1-gap*.45));
+    const priority=c(.28*gap+.25*(1-success)+.17*surprise+.20*(1-wilsonLower)+.10*Math.min(1,failures/4));
+    const confidence=c((n/(n+4))*(1-intervalWidth)*(1-gap*.30));
     const contextKey=recent[0].contextKey,action=recent[0].action;
     out.push({key,kind,contextKey,action,occurrences:ordered.length,observedSuccess01:success,
-      predictedSuccess01:predicted,predictionGap01:gap,priority01:priority,
+      predictedSuccess01:predicted,predictionGap01:gap,passRate01:passRate,wilsonLowerPassRate01:wilsonLower,
+      wilsonUpperPassRate01:wilsonUpper,passRateIntervalWidth01:intervalWidth,priority01:priority,
       suggestedNextStep:kind==='repeated-context-failure'?'Create a controlled repair variant and compare it against the current policy':
         kind==='prediction-gap'?'Calibrate the action value and collect an independently checked outcome':
         kind==='unexpected-surprise'?'Inspect the unexpected transition and add a discriminating test':
