@@ -336,7 +336,7 @@ function pairedCandidateMean(
   for (let index=0; index<keys.length; index++) {
     const baselineFamily=baselineReports[index].taskFamily;
     const candidateFamily=candidateReports[index].taskFamily;
-    if (baselineFamily!==undefined && candidateFamily!==undefined && baselineFamily!==candidateFamily) {
+    if ((baselineFamily!==undefined || candidateFamily!==undefined) && baselineFamily!==candidateFamily) {
       throw new Error(`candidate-${label}-task-family-mismatch`);
     }
   }
@@ -388,6 +388,11 @@ export function evaluateSkillLearnBenchCandidate(
     candidate=snapshotPlainData(candidate) as typeof candidate;
     options=snapshotPlainData(options) as SkillLearnBenchCandidateGateOptions;
   } catch {
+    throw new Error('candidate-evaluation-data-boundary-rejected');
+  }
+  if (!baseline || typeof baseline!=='object' || Array.isArray(baseline) ||
+      !candidate || typeof candidate!=='object' || Array.isArray(candidate) ||
+      !options || typeof options!=='object' || Array.isArray(options)) {
     throw new Error('candidate-evaluation-data-boundary-rejected');
   }
   const minGain = options.minimumValidationGain01 ?? 0.005;
