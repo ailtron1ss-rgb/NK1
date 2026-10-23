@@ -270,9 +270,13 @@ export class OrganismRuntime {
       const defaultFitnessJournalPath = config.stateFile.toLowerCase().endsWith('.json')
         ? config.stateFile.replace(/\.json$/i, '.learning-fitness.jsonl')
         : `${config.stateFile}.learning-fitness.jsonl`;
-      config.compoundRepairRevision.engine.configureLearningFitnessJournal(
-        config.learningFitnessJournal ?? new JsonlLearningFitnessJournal(defaultFitnessJournalPath),
-      );
+      if (config.learningFitnessJournal) {
+        config.compoundRepairRevision.engine.configureLearningFitnessJournal(config.learningFitnessJournal);
+      } else {
+        config.compoundRepairRevision.engine.configureLearningFitnessJournalIfAbsent(
+          new JsonlLearningFitnessJournal(defaultFitnessJournalPath),
+        );
+      }
       const provideInputs = config.compoundRepairRevision.independentEvaluationConfigForRepair
         ? withIndependentCandidateEvaluation(
             config.compoundRepairRevision.provideInputs,
