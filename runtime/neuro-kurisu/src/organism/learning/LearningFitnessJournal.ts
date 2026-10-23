@@ -31,7 +31,16 @@ export interface LearningFitnessJournalInput {
   matchedTrialCount: number;
   matchedValidationTrialCount: number;
   matchedHoldoutTrialCount: number;
-  minimumPairedSeedsPerFamily: number;
+  minimumValidationFamilies: number;
+  minimumHoldoutFamilies: number;
+  minimumValidationFamilyTasks: number;
+  minimumHoldoutFamilyTasks: number;
+  maximumValidationTaskRegression01: number;
+  maximumValidationFamilyRegression01: number;
+  maximumHoldoutRegression01: number;
+  maximumHoldoutFamilyRegression01: number;
+  minimumValidationFamilySeeds: number;
+  minimumHoldoutFamilySeeds: number;
   confidenceLevel: number;
   bootstrapResamples: number;
   validation: LearningFitnessSplitSummary;
@@ -94,6 +103,20 @@ function digest(value: unknown): string {
   return createHash('sha256').update(canonical(value)).digest('hex');
 }
 
+/** Retries of an identical gate decision do not inflate the learning trend. */
+function decisionFingerprint(value: LearningFitnessJournalInput): string {
+  const normalized = { ...value, recordedAt: 0 };
+  return digest(normalized);
+}
+
+function decisionInputFromEntry(entry: LearningFitnessJournalEntry): LearningFitnessJournalInput {
+  const {
+    schemaVersion: _schemaVersion, sequence: _sequence,
+    previousDigest: _previousDigest, digest: _digest, ...input
+  } = entry;
+  return input;
+}
+
 function safeInteger(value: unknown, maximum = Number.MAX_SAFE_INTEGER): value is number {
   return Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= maximum;
 }
@@ -117,8 +140,12 @@ const INPUT_KEYS = [
   'recordedAt', 'candidateId', 'payloadFingerprint', 'evaluationFingerprint',
   'planFingerprint', 'environmentFingerprint', 'decision', 'reasonCodes',
   'matchedTrialCount', 'matchedValidationTrialCount', 'matchedHoldoutTrialCount',
-  'minimumPairedSeedsPerFamily', 'confidenceLevel', 'bootstrapResamples',
-  'validation', 'holdout',
+  'minimumValidationFamilies', 'minimumHoldoutFamilies',
+  'minimumValidationFamilyTasks', 'minimumHoldoutFamilyTasks',
+  'maximumValidationTaskRegression01', 'maximumValidationFamilyRegression01',
+  'maximumHoldoutRegression01', 'maximumHoldoutFamilyRegression01',
+  'minimumValidationFamilySeeds', 'minimumHoldoutFamilySeeds',
+  'confidenceLevel', 'bootstrapResamples', 'validation', 'holdout',
 ] as const;
 
 const ENTRY_KEYS = [
@@ -153,7 +180,16 @@ function validateInput(value: unknown): asserts value is LearningFitnessJournalI
       !safeInteger(x.matchedTrialCount, 1_000_000) || !safeInteger(x.matchedValidationTrialCount, 1_000_000) ||
       !safeInteger(x.matchedHoldoutTrialCount, 1_000_000) ||
       x.matchedValidationTrialCount + x.matchedHoldoutTrialCount !== x.matchedTrialCount ||
-      !safeInteger(x.minimumPairedSeedsPerFamily, 1000) || x.minimumPairedSeedsPerFamily < 1 ||
+      !safeInteger(x.minimumValidationFamilies, 10_000) || x.minimumValidationFamilies < 1 ||
+      !safeInteger(x.minimumHoldoutFamilies, 10_000) || x.minimumHoldoutFamilies < 1 ||
+      !safeInteger(x.minimumValidationFamilyTasks, 10_000) || x.minimumValidationFamilyTasks < 1 ||
+      !safeInteger(x.minimumHoldoutFamilyTasks, 10_000) || x.minimumHoldoutFamilyTasks < 1 ||
+      !safeMetric(x.maximumValidationTaskRegression01) || x.maximumValidationTaskRegression01 === null ||
+      !safeMetric(x.maximumValidationFamilyRegression01) || x.maximumValidationFamilyRegression01 === null ||
+      !safeMetric(x.maximumHoldoutRegression01) || x.maximumHoldoutRegression01 === null ||
+      !safeMetric(x.maximumHoldoutFamilyRegression01) || x.maximumHoldoutFamilyRegression01 === null ||
+      !safeInteger(x.minimumValidationFamilySeeds, 1000) || x.minimumValidationFamilySeeds < 1 ||
+      !safeInteger(x.minimumHoldoutFamilySeeds, 1000) || x.minimumHoldoutFamilySeeds < 1 ||
       typeof x.confidenceLevel !== 'number' || !Number.isFinite(x.confidenceLevel) || x.confidenceLevel <= 0.5 || x.confidenceLevel >= 1 ||
       !safeInteger(x.bootstrapResamples, 50_000) || x.bootstrapResamples < 100 ||
       !validateSplit(x.validation) || !validateSplit(x.holdout)) {
@@ -313,6 +349,9 @@ export class JsonlLearningFitnessJournal implements LearningFitnessJournalSink {
       writeFileSync(lockFd, String(process.pid), 'utf8');
       fsyncSync(lockFd);
       const existing = this.readAll();
+      const fingerprint = decisionFingerprint(detached as LearningFitnessJournalInput);
+      const duplicate = existing.find(entry => decisionFingerprint(decisionInputFromEntry(entry)) === fingerprint);
+      if (duplicate) return structuredClone(duplicate);
       const prior = existing[existing.length - 1];
       const body = {
         schemaVersion: JOURNAL_SCHEMA_VERSION,
