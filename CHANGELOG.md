@@ -1,3 +1,14 @@
+## NK1 WorkPass398 — snapshot promotion envelopes and approval before access (2026-10-23)
+
+- [FIXED] `approveIndependentlyEvaluatedSkillCandidate` now snapshots the caller-owned baseline and evaluation envelopes through NK1's plain-data trust boundary before reading properties or comparing fingerprints. Accessor/Proxy boundary failures are rejected closed.
+- [FIXED] The private promotion finalizer detaches the approval object before passing it to the skill store; caller-defined getters cannot execute during field inspection.
+- [REGRESSION] Extended `p23-hermes-production-promotion-gate.mjs` to assert that getters on the baseline, candidate envelope and approval are never invoked, and that malformed approval input does not reach the store.
+- [CI] The P26 Learning Validation workflow already covers the P23 source path and focused promotion-gate test path; no duplicate workflow or dependency was added.
+- [RESEARCH] Continues the evidence-boundary model used in NK1's P23 lifecycle and Hermes-inspired candidate pipeline. The patch strengthens input handling but does not claim learning-score improvement.
+- [VALIDATION] Source/test/docs are committed on `feature/learning`; hosted runtime/typecheck execution remains unconfirmed because Actions job records expose no steps/logs.
+
+---
+
 ## NK1 WorkPass397 — close lower-level reflective promotion bypass (2026-10-23)
 
 - [FIXED] The general `approveVerifiedSkillCandidate` API now rejects staged candidates carrying `revisionProvenance`; reflective revisions cannot skip matched independent-evaluation checks after shadow staging.
