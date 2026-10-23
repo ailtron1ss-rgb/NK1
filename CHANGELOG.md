@@ -1,3 +1,11 @@
+## 2026-10-23 — Centralize avatar preference storage
+
+- Rewired `LegacySpriteDeck` and `AvatarStage` to use `safeLocalStorage.ts` for optional view/outfit/voice preferences instead of accessing `window.localStorage` directly. Reads fall back to safe defaults and failed writes do not disable current-session controls.
+- Expanded `safeLocalStorage.test.mjs` to enforce that both components use the adapter for their persisted preferences and do not regress to direct storage access. The existing root regression aggregate already includes `test:avatar-storage`.
+- Source-level checks confirm neither component contains direct `window.localStorage.getItem/setItem` calls and both import the shared adapter. The test itself has not been run because GitHub Actions jobs are still failing before a runner starts.
+
+---
+
 ## 2026-10-23 — Wire recovered cognition boundary and causal replay into runtime
 
 - `OrganismRuntime.stepInternal` now calls `assertCognitiveCycleBoundaryInput(observation, 'full')` immediately after the environment observation is materialized and before the runtime dereferences nested observation data or sends it to `OrganismCore.observe`. Added `cognitive-cycle-boundary-runtime-wiring.mjs` so the validator cannot quietly become an unused helper again.
