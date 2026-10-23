@@ -47,6 +47,83 @@ assert.ok(strictFamilyComparison.reasons.includes('holdout-family-coverage-insuf
 assert.equal(strictFamilyComparison.eligible, false,
   'strict family policy must be propagated through the matched independent evaluator');
 
+// WorkPass403: task/family coverage must also replicate across common matched seeds.
+function makeFamilyTasks(seedCount) {
+  const rows = [];
+  for (const [split, ids] of [
+    ['validation', ['validation-family-task-a', 'validation-family-task-b']],
+    ['holdout', ['holdout-family-task-a', 'holdout-family-task-b']],
+  ]) {
+    for (const taskId of ids) {
+      for (let seed = 1; seed <= seedCount; seed++) {
+        rows.push({
+          taskId,
+          trialId: `${taskId}-seed-${seed}`,
+          seed: (split === 'validation' ? 100 : 200) + seed,
+          split,
+          taskFamily: 'canonical-test-family',
+          input: { prompt: `execute ${taskId}` },
+          requiredCapabilityIds: ['read'],
+          expectedStepIds: ['open', 'summarize'],
+        });
+      }
+    }
+  }
+  return rows;
+}
+async function makeFamilyEvaluation(payload, seedCount, runPrefix, observedStepIds) {
+  const familyTasks = makeFamilyTasks(seedCount);
+  const evaluator = createIndependentSkillCandidateEvaluator({
+    tasks: familyTasks,
+    environmentFingerprint: 'd'.repeat(64),
+    executor: { async execute({ task }) { return { runId: runPrefix + task.trialId, observedStepIds }; } },
+    verifier: { async verify() { return { bindingVerified: true, passed: true, coveredCapabilityIds: ['read'] }; } },
+    safetyScanner: { async scan() { return { violationCount: 0 }; } },
+  });
+  return evaluator({
+    payload,
+    payloadFingerprint: digest(payload),
+    baseline: { validation: [], holdout: [] },
+    previousEvaluation: { validation: [], holdout: [] },
+  });
+}
+const twoSeedBaseline = await makeFamilyEvaluation({ skill: 'baseline', version: 1 }, 2, 'seed-baseline-', ['open']);
+const twoSeedCandidate = await makeFamilyEvaluation({ skill: 'candidate', version: 2 }, 2, 'seed-candidate-', ['open', 'summarize']);
+const seedCoverageOptions = {
+  minimumValidationFamilySeeds: 3,
+  minimumHoldoutFamilySeeds: 3,
+};
+const familyPolicy = {
+  minimumValidationFamilies: 1,
+  minimumHoldoutFamilies: 1,
+  minimumValidationFamilyTasks: 2,
+  minimumHoldoutFamilyTasks: 2,
+};
+const underReplicated = compareMatchedIndependentEvaluations(
+  twoSeedBaseline, twoSeedCandidate, familyPolicy, seedCoverageOptions,
+);
+assert.ok(underReplicated.validationGain01 > 0.005,
+  'two-seed candidate must show an aggregate improvement so the test isolates replication coverage');
+assert.equal(underReplicated.validationFamiliesEvaluatedForSeedCoverage, 1);
+assert.equal(underReplicated.holdoutFamiliesEvaluatedForSeedCoverage, 1);
+assert.equal(underReplicated.validationFamiliesWithSufficientSeeds, 0);
+assert.equal(underReplicated.holdoutFamiliesWithSufficientSeeds, 0);
+assert.ok(underReplicated.reasons.includes('validation-family-seed-coverage-insufficient'));
+assert.ok(underReplicated.reasons.includes('holdout-family-seed-coverage-insufficient'));
+assert.equal(underReplicated.eligible, false,
+  'two common seeds cannot satisfy a production policy requiring three paired seeds per family');
+
+const threeSeedBaseline = await makeFamilyEvaluation({ skill: 'baseline', version: 1 }, 3, 'seed3-baseline-', ['open']);
+const threeSeedCandidate = await makeFamilyEvaluation({ skill: 'candidate', version: 2 }, 3, 'seed3-candidate-', ['open', 'summarize']);
+const replicated = compareMatchedIndependentEvaluations(
+  threeSeedBaseline, threeSeedCandidate, familyPolicy, seedCoverageOptions,
+);
+assert.equal(replicated.validationFamiliesWithSufficientSeeds, 1);
+assert.equal(replicated.holdoutFamiliesWithSufficientSeeds, 1);
+assert.equal(replicated.validationFamilySeedCoverageFailures, 0);
+assert.equal(replicated.holdoutFamilySeedCoverageFailures, 0);
+assert.equal(replicated.eligible, true, JSON.stringify(replicated));
+
 const differentEnvironment = await makeEvaluation({ skill: 'candidate', version: 2 }, 'b'.repeat(64), { runPrefix: 'different-env-' });
 assert.throws(() => compareMatchedIndependentEvaluations(baseline, differentEnvironment), /environment-mismatch/);
 
@@ -68,4 +145,4 @@ const tampered = structuredClone(candidate);
 tampered.evaluation.validation[0].taskSuccess.passed = false;
 assert.throws(() => compareMatchedIndependentEvaluations(baseline, tampered), /envelope-invalid/);
 
-console.log('WorkPass225 matched independent evaluation regressions passed; strict family policy propagation verified');
+console.log('WorkPass225 matched independent evaluation regressions passed; strict family policy propagation and seed replication verified');
