@@ -621,9 +621,9 @@ interface IndependentFamilySeedCoverageReport {
   familySeedCoverageFailures: number;
 }
 
-function independentFamilySeedCoverage(
+function independentFamilySeedCoverage<TBinding extends { seed: number }>(
   reports: SkillLearnBenchTrialReport[],
-  bindings: Map<string, { seed: number }>,
+  bindings: Map<string, TBinding>,
   minimumTasks: number,
   minimumSeeds: number,
 ): IndependentFamilySeedCoverageReport {
@@ -665,11 +665,11 @@ interface IndependentFamilyConfidenceReport {
   confidenceBoundFailures: number;
 }
 
-function independentFamilyConfidenceBounds(
+function independentFamilyConfidenceBounds<TBaselineBinding extends { seed: number }, TCandidateBinding extends { seed: number }>(
   baselineReports: SkillLearnBenchTrialReport[],
   candidateReports: SkillLearnBenchTrialReport[],
-  baselineBindings: Map<string, { seed: number }>,
-  candidateBindings: Map<string, { seed: number }>,
+  baselineBindings: Map<string, TBaselineBinding>,
+  candidateBindings: Map<string, TCandidateBinding>,
   minimumTasks: number,
   minimumSeeds: number,
   confidenceLevel: number,
