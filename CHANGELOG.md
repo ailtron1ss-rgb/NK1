@@ -1,3 +1,11 @@
+## NK1 WorkPass457 — add verifier-owned shared event identity (2026-10-23)
+
+- The feedback branch's OutcomeVerificationService now mints a stable evidenceEventId for external evidence only when the exact execution/decision/tool/input/observation tuple is available and valid.
+- WorkPass456's reality ledger accepts that kind of upstream eventId; however, the live OrganismCore call-site has not yet been changed to pass it through every consumer. The cross-subsystem wire therefore remains partial.
+- Planning docs now distinguish an emitted correlation key from trusted evidence authority. Readiness remains 46/100 pending exact-head CI and actual end-to-end propagation.
+
+---
+
 ## NK1 WorkPass463 — refresh branch-head truth after parallel updates (2026-10-23)
 
 - Re-read all current category refs, open PR heads, `main`, and `integration`; detected new heads on memory and perception beyond the previous status snapshot.
