@@ -49,7 +49,7 @@ assert.throws(() => ranking.rankGoals({
 assert.equal(ranking.snapshot().focusGoalId, null, 'invalid ranking input must not mutate focus');
 
 assert.throws(() => ranking.rankGoals({
-  goals: [goal, { ...goal, id: goal.id + '-duplicate' }],
+  goals: [goal, { ...goal, title: goal.title + ' duplicate row' }],
   identity01: 0.2, social01: 0.2, novelty01: 0.3, uncertainty01: 0.4,
 }), /personal-curriculum-goal-ranking-goal-invalid/);
 assert.equal(ranking.snapshot().focusGoalId, null, 'duplicate goal identity must not select a focus');
