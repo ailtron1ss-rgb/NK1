@@ -758,9 +758,16 @@ export class P23LearningEngine {
   }
 
   /**
-   * Production promotion path for Hermes-style reflective evaluation.
-   * Fitness and evidence binding are mandatory preconditions; activation still
-   * delegates to the configured store's signed approval and shadow-evidence verifiers.
+   * Legacy report-only promotion route intentionally disabled.
+   *
+   * Signed shadow receipts bind candidate/run/task identity and binary outcome;
+   * they do not authenticate trajectory or skill-quality metrics. A caller-owned
+   * report array therefore cannot authorize production promotion, even if its
+   * arithmetic is internally consistent. Use approveIndependentlyEvaluatedSkillCandidate,
+   * which checks the fingerprinted independent evaluation envelope and its matched
+   * task/seed/split/environment/manifest provenance before activation.
+   *
+   * @deprecated Report-only reflective fitness is advisory and must not promote.
    */
   approveReflectiveVerifiedSkillCandidate(
     candidateId:string,
@@ -771,23 +778,9 @@ export class P23LearningEngine {
     minShadowRuns=3,
     options:SkillLearnBenchCandidateGateOptions={},
   ):{active:ActiveSkillVersion;fitness:SkillLearnBenchCandidateGateReport;evidenceBinding:ReflectiveEvidenceBindingReport} {
-    if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
-    const snapshot=this.verifiedSkillStore.snapshot();
-    const staged=snapshot.candidates.find(item=>item.candidateId===candidateId);
-    if(!staged || staged.status!=='shadow') throw new Error('reflective promotion requires an existing shadow candidate');
-    const fitness=this.evaluateReflectiveSkillCandidate(baseline,candidateEvaluation,options);
-    if(!fitness.eligible) throw new Error(`reflective fitness gate rejected candidate: ${fitness.reasons.join(',')}`);
-    const reports=[...candidateEvaluation.validation,...candidateEvaluation.holdout];
-    const evidenceBinding=this.bindReflectiveCandidateEvidence(
-      reports,staged.shadowObservations,staged,verifyEvidence,
+    throw new Error(
+      'report-only reflective promotion is disabled; use approveIndependentlyEvaluatedSkillCandidate with a fingerprinted independent evaluation envelope',
     );
-    if(!evidenceBinding.accepted) {
-      throw new Error(`reflective evidence binding rejected candidate: ${evidenceBinding.reasons.join(',')}`);
-    }
-    // The store independently re-verifies signed receipts and the authenticated
-    // approval at the point of activation; this gate cannot replace either check.
-    const active=this.approveVerifiedSkillCandidate(candidateId,approval,minShadowRuns);
-    return {active,fitness,evidenceBinding};
   }
 
   /**
