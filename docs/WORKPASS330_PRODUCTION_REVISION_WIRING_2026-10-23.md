@@ -18,7 +18,7 @@
 
 ## 2. Новая конфигурация host evaluator
 
-Добавлен `runtime/neuro-kurisu/src/server/compound-repair-revision-host-config.mjs`.
+Добавлен `runtime/neuro-kurisu/src/server/compound-repair-revision-host-config.mjs`. Загрузчик дополнительно требует, чтобы конфигурационный модуль был обычным файлом, не доступным на запись группе/прочим пользователям (POSIX), и находился вне изменяемого `STATE_DIR`; symlink сначала разрешается через `realpath`.
 
 При заданном `NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE` сервер загружает отдельный host-config модуль. Он должен экспортировать `createIndependentEvaluationHostConfig({ stateDirectory })` либо default factory. Эта factory возвращает контракт `HostOwnedIndependentEvaluationFactoryOptions`:
 
@@ -62,7 +62,7 @@
 
 ## 4. Регрессии и подключение к workflow
 
-Добавлен `runtime/neuro-kurisu/tests/workpass330-production-revision-wiring.mjs`. Его контрактные случаи охватывают:
+Добавлен `runtime/neuro-kurisu/tests/workpass330-production-revision-wiring.mjs`. Его 11 контрактных случаев охватывают:
 
 1. запрет production-режима без host evaluator config;
 2. сохранение dev-режима, в котором feature не включён автоматически;
@@ -72,7 +72,9 @@
 6. обязательный host-owned experiment authority в production;
 7. отказ при отсутствии одной из трёх service-команд;
 8. отсутствие фонового расписания по умолчанию и проверку допустимых значений;
-9. привязку реального `server.mjs` к evaluator factory и background config в runtime-конфигурации.
+9. отказ от writable host evaluator module и отказ от файла внутри state directory;
+10. отказ от неполной service-конфигурации и неверного production authority;
+11. привязку реального `server.mjs` к evaluator factory и background config в runtime-конфигурации.
 
 Тест зарегистрирован как `test:workpass330:production-revision-wiring`, включён в корневой `audit:quick` и WorkPass71 core CI. Написанный regression-тест не следует считать успешно исполненным, пока job действительно не выполнит его.
 
