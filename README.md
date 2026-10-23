@@ -1,3 +1,14 @@
+## Current source-stack checkpoint — WorkPass408 (2026-10-23)
+
+- **Recovery loop added:** `P23LearningEngine.reconcileLearningLifecycleOutcomes()` compares uncertain activation intents against the authoritative versioned skill store and appends a reconciled event only when candidate identity, skill/version and payload fingerprint match.
+- **Outcomes:** exact active record → `activation-reconciled-active`; candidate exists but is not currently active → `activation-reconciled-not-currently-active`; missing/contradictory lineage stays unresolved. This never promotes or rolls back a skill.
+- **Runtime integration:** reconciliation runs during startup after the journal/store are configured and is exposed as `OrganismRuntime.reconcileLearningLifecycleOutcomes()` for explicit retry.
+- **Regression/CI:** `tests/workpass408-lifecycle-store-reconciliation.mjs` verifies exact active match, non-active candidate, missing lineage and repeat idempotency. It is wired into `npm run test:p23:learning` and P26 Learning Validation.
+- **Progress:** category implementation is estimated at 81%; production readiness remains ~45%. Details: [WorkPass408 lifecycle reconciliation](docs/WORKPASS408_LIFECYCLE_STORE_RECONCILIATION_RU.md) and [learning progress scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md).
+- **Validation boundary:** exact-head test/typecheck/CI remain unconfirmed because Actions jobs return failure without step logs. No measured learning uplift is claimed; `main` and the Release ZIP remain unchanged.
+
+---
+
 ## Current source-stack checkpoint — WorkPass407 (2026-10-23)
 
 - **Lifecycle gap closed:** new `LearningLifecycleJournal.ts` records durable P23 promotion rejection, pre-activation intent, confirmed activation, and explicitly uncertain outcomes in a separate hash-chained JSONL journal.
