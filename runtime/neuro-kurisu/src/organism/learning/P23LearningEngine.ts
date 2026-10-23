@@ -796,7 +796,29 @@ export class P23LearningEngine {
     evaluation:Parameters<typeof compareMatchedIndependentEvaluations>[1] & Parameters<typeof bindIndependentEvaluationToVerifiedShadowEvidence>[0],
     verifyEvidence:SkillShadowEvidenceVerifier,
     minShadowRuns=3,
-  ):{active:ActiveSkillVersion;fitness:SkillLearnBenchCandidateGateReport & {matchedTrialCount:number;matchedValidationTrialCount:number;matchedHoldoutTrialCount:number;environmentFingerprint:string;planFingerprint:string};evidenceBinding:ReflectiveEvidenceBindingReport} {
+  ):{active:ActiveSkillVersion;fitness:SkillLearnBenchCandidateGateReport & {
+    matchedTrialCount:number;
+    matchedValidationTrialCount:number;
+    matchedHoldoutTrialCount:number;
+    validationFamiliesEvaluatedForSeedCoverage:number;
+    holdoutFamiliesEvaluatedForSeedCoverage:number;
+    validationFamiliesWithSufficientSeeds:number;
+    holdoutFamiliesWithSufficientSeeds:number;
+    validationFamilySeedCoverageFailures:number;
+    holdoutFamilySeedCoverageFailures:number;
+    validationFamiliesEvaluatedForConfidenceInterval:number;
+    holdoutFamiliesEvaluatedForConfidenceInterval:number;
+    validationFamilyConfidenceBoundFailures:number;
+    holdoutFamilyConfidenceBoundFailures:number;
+    validationFamilyMeanDelta:number|null;
+    validationFamilyLowerBoundMinimum:number|null;
+    validationFamilyUpperBoundMaximum:number|null;
+    holdoutFamilyMeanDelta:number|null;
+    holdoutFamilyLowerBoundMinimum:number|null;
+    holdoutFamilyUpperBoundMaximum:number|null;
+    environmentFingerprint:string;
+    planFingerprint:string;
+  };evidenceBinding:ReflectiveEvidenceBindingReport} {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
     // Detach hostile caller-owned envelopes before any property access. In
     // particular, do not let getters/Proxies run before the independent evaluator's
