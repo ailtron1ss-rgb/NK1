@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { EmotionLabel, OrganismSnapshot } from "@/organism/types";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
+import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
 import {
   appendVisemeClockAnchor,
   buildVisemeTimeline,
@@ -74,22 +75,12 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const [live, setLive] = useState(false);
   const [viewerReadyRevision, setViewerReadyRevision] = useState(0);
   // Native speech is opt-in. Opening the app never starts speaking historical chat.
-  const [voiceEnabled, setVoiceEnabled] = useState(() => {
-    if (typeof window === "undefined") return false;
-    try { return window.localStorage.getItem("kurisu-avatar-voice-enabled") === "true"; } catch { return false; }
-  });
-  const [voiceName, setVoiceName] = useState(() => {
-    if (typeof window === "undefined") return "";
-    try { return window.localStorage.getItem("kurisu-avatar-voice-name") ?? ""; } catch { return ""; }
-  });
+  const [voiceEnabled, setVoiceEnabled] = useState(() => readAvatarPreference("kurisu-avatar-voice-enabled") === "true");
+  const [voiceName, setVoiceName] = useState(() => readAvatarPreference("kurisu-avatar-voice-name") ?? "");
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceStatus, setVoiceStatus] = useState<"off" | "ready" | "unsupported" | "speaking" | "unknown">(() => typeof window !== "undefined" && "speechSynthesis" in window ? "off" : "unsupported");
   const [mouthPose, setMouthPose] = useState<MouthPose>(CLOSED_MOUTH);
-  const [mode, setMode] = useState<ViewMode>(() => {
-    if (typeof window === "undefined") return "live2d";
-    try { return window.localStorage.getItem("kurisu-avatar-mode") === "legacy" ? "legacy" : "live2d"; }
-    catch { return "live2d"; }
-  });
+  const [mode, setMode] = useState<ViewMode>(() => readAvatarPreference("kurisu-avatar-mode") === "legacy" ? "legacy" : "live2d");
   const lastTurn = snap.chat[snap.chat.length - 1];
   const turnKey = lastTurn?.role === "kurisu" ? `${String(lastTurn.id ?? lastTurn.at)}:${String(lastTurn.at)}:${lastTurn.text}` : "";
 
@@ -128,11 +119,10 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   }, []);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem("kurisu-avatar-mode", mode);
-      window.localStorage.setItem("kurisu-avatar-voice-enabled", String(voiceEnabled));
-      window.localStorage.setItem("kurisu-avatar-voice-name", voiceName);
-    } catch { /* settings still work for the current session when storage is unavailable */ }
+    // Each preference is best-effort: a blocked storage write must not prevent avatar/voice controls.
+    writeAvatarPreference("kurisu-avatar-mode", mode);
+    writeAvatarPreference("kurisu-avatar-voice-enabled", String(voiceEnabled));
+    writeAvatarPreference("kurisu-avatar-voice-name", voiceName);
   }, [mode, voiceEnabled, voiceName]);
 
   useEffect(() => {
