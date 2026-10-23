@@ -235,6 +235,28 @@ export class PersonalCurriculumEngine {
   }
 
   rankGoals(input:{goals:OrganismGoal[];identity01:number;social01:number;novelty01:number;uncertainty01:number}):Array<{goalId:string;score01:number;threadId:string|null;learningNeed01:number;historyFit01:number;socialFit01:number;identityFit01:number;reason:string}>{
+    input=snapshotCurriculumInput(input,'goal-ranking') as unknown as typeof input;
+    assertCurriculumUnits(input as unknown as Record<string,unknown>,['identity01','social01','novelty01','uncertainty01'],'goal-ranking');
+    if(!Array.isArray(input.goals)||input.goals.length>256)throw new Error('personal-curriculum-goal-ranking-goals-invalid');
+    const goalIds=new Set<string>();
+    for(const rawGoal of input.goals){
+      if(rawGoal===null||typeof rawGoal!=='object'||Array.isArray(rawGoal))throw new Error('personal-curriculum-goal-ranking-goal-invalid');
+      const goal=rawGoal as unknown as Record<string,unknown>;
+      if(typeof goal.id!=='string'||!goal.id.trim()||goal.id.length>256||
+         typeof goal.title!=='string'||!goal.title.trim()||goal.title.length>512||
+         typeof goal.reason!=='string'||goal.reason.length>4096||
+         typeof goal.source!=='string'||goal.source.length>120||
+         typeof goal.status!=='string'||goal.status.length>120||
+         !['active','paused','completed','abandoned','blocked'].includes(goal.status)||
+         !isCurriculumUnit(goal.importance)||!isCurriculumUnit(goal.urgency)||
+         !isCurriculumUnit(goal.confidence)||!isCurriculumUnit(goal.progress)||
+         !isCurriculumTimestamp(goal.createdAt)||!isCurriculumTimestamp(goal.updatedAt)||
+         (goal.parentId!==undefined&&(typeof goal.parentId!=='string'||goal.parentId.length>256))||
+         goalIds.has(goal.id)){
+        throw new Error('personal-curriculum-goal-ranking-goal-invalid');
+      }
+      goalIds.add(goal.id);
+    }
     const ranked=input.goals.filter(g=>g.status==='active').map(goal=>{
       const family=this.family(goal); const thread=this.state.threads.find(t=>t.family===family);
       const historyFit=thread?clamp(thread.causalStrength01*.35+thread.retention01*.2+thread.transfer01*.2+(1-thread.unresolved01)*.25):0;
