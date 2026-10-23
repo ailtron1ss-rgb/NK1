@@ -2,7 +2,7 @@
 
 ## Что изменено
 
-Введён новый utility `PairedSeedConfidence.ts`, который считает percentile bootstrap confidence interval для среднего изменения качества на парных seed. Реализация локальная, без новой runtime-зависимости. Для воспроизводимости используется явный seed, детерминированный PRNG, заданный уровень доверия и ограниченное число resamples.
+Введён новый utility `PairedSeedConfidence.ts`, который считает percentile bootstrap confidence interval для среднего изменения качества на парных seed. Реализация локальная, без новой runtime-зависимости. До чтения полей входные score-массив и опции копируются через `LearningTrustBoundary.snapshotPlainData`; accessor/proxy и некорректные массивы отвергаются без вызова пользовательских getter. Для воспроизводимости используется явный seed, детерминированный PRNG, заданный уровень доверия и ограниченное число resamples.
 
 В `IndependentSkillCandidateEvaluator.ts` оценка разбивает результаты по split и каноническому семейству. Внутри семейства повторные trials усредняются в пределах пары task/seed; затем score кандидата и baseline сопоставляются по одним и тем же seed. Для каждого seed считается family-wide delta с одинаковым весом каждой задачи, а bootstrap выполняется по этим парным deltas.
 
@@ -16,7 +16,7 @@
 
 ## Регрессионные проверки
 
-- `workpass404-paired-seed-confidence.mjs` проверяет детерминированность, положительный интервал на одинаково позитивных deltas, шумный положительный mean с нижней границей ниже нуля, полностью отрицательный набор и некорректные входы.
+- `workpass404-paired-seed-confidence.mjs` проверяет детерминированность, положительный интервал на одинаково позитивных deltas, шумный положительный mean с нижней границей ниже нуля, полностью отрицательный набор, некорректные входы и то, что getter на score/options отвергается без выполнения.
 - `workpass225-matched-independent-evaluation.mjs` проверяет интеграцию gate: семейство с тремя seed и устойчивым приростом проходит confidence-проверку; noisy family с положительным общим mean, но одним сильным adverse seed, отклоняется на validation и holdout confidence bounds.
 - P26 Learning Validation имеет path-фильтры для новой реализации и unit-теста, отдельный шаг на Node.js 24 и уже включает WorkPass225 интеграционный тест.
 
