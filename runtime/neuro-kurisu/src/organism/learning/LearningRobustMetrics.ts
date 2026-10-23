@@ -81,7 +81,7 @@ function reportScore(raw: unknown): { taskId: string; trialId: string; score: Sc
       !scoreInUnitInterval(score.trajectoryQuality)) {
     throw new Error('learning-robust-metrics-score-invalid');
   }
-  return { taskId, trialId, score };
+  return { taskId, trialId, score: score as ScoreMap };
 }
 
 function indexReports(rawReports: unknown, label: string): Map<string, ReturnType<typeof reportScore>> {
