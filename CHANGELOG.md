@@ -1,3 +1,13 @@
+## NK1 WorkPass381 — deterministic curriculum ordering (2026-10-23)
+- [FIXED] Outcome-reflection and curriculum tie-breaks now use locale-independent code-unit comparison for stable identifier ordering across hosts.
+- [TEST ADDED] Equal-score Unicode/case-mixed target IDs have an explicit deterministic order regression.
+- [RATIONALE] Reproducibility must include tie-break ordering, not only deterministic scores. This does not claim a measured learning uplift.
+
+## NK1 WorkPass380 — locale-independent repair evidence fingerprints (2026-10-23)
+- [FIXED] Canonical repair-evidence sorting no longer depends on locale-specific `localeCompare` collation. Candidate tool sets and every identity/tie-break field use deterministic code-unit order before fingerprinting.
+- [SAFETY] Equivalent evidence now hashes consistently across different host locales; materially different evidence remains distinguishable.
+- [VALIDATION] Source and focused regressions are committed; execution remains unverified while Actions exposes no step logs.
+
 ## NK1 WorkPass379 — close family-provenance downgrade paths (2026-10-23)
 - [FIXED] Matched baseline/candidate reports must now agree exactly on whether a canonical task family is present and, when present, its value. Removing the family label from just one side cannot silently fall back to aggregate-only scoring.
 - [FIXED] Malformed post-snapshot candidate-gate roots/options are rejected with a bounded data-boundary error instead of failing later during metric access.
