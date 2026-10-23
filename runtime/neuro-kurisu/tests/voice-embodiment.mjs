@@ -84,4 +84,33 @@ assert.equal(voiceState.lastError, null);
  runtime.setSpeechInputDispatcher(async () => '   ');
  assert.equal(await runtime.listen(), null, 'empty normalized transcripts remain an explicit no-result');
 
+
+ // WorkPass433: validate motor-executor payload before sampling device telemetry or coercing text.
+ const { EmbodiedActionExecutor, normalizeEmbodiedActionInput } = await import('../src/organism/body/EmbodiedActionExecutor.ts');
+ assert.equal(normalizeEmbodiedActionInput({ spokenText: 'hello', allowCamera: false })?.spokenText, 'hello');
+ let inputGetterCalls = 0;
+ const getterMotorInput = Object.defineProperty({}, 'spokenText', {
+   enumerable: true, get() { inputGetterCalls++; return 'do not speak'; },
+ });
+ assert.equal(normalizeEmbodiedActionInput(getterMotorInput), null);
+ assert.equal(inputGetterCalls, 0, 'motor input descriptors must be validated without invoking accessors');
+ assert.equal(normalizeEmbodiedActionInput({ spokenText: { toString() { throw new Error('must not coerce'); } } }), null);
+ assert.equal(normalizeEmbodiedActionInput(Object.assign(Object.create({ allowCamera: true }), { spokenText: 'hello' })), null,
+   'inherited properties cannot silently authorize a physical capability');
+ assert.equal(normalizeEmbodiedActionInput({ speechEventId: 'x'.repeat(141) }), null);
+ 
+ const actionBody = new EmbodimentRuntime();
+ actionBody.body = { ...defaultBodyState(), telemetry: { ...defaultBodyState().telemetry, source: 'mock' } };
+ let sampleCalls = 0;
+ actionBody.sample = async () => { sampleCalls++; return actionBody.snapshot(); };
+ let cameraCalls = 0, speechCalls = 0;
+ actionBody.speak = async () => { speechCalls++; return true; };
+ const executor = new EmbodiedActionExecutor(actionBody);
+ const rejectedMotorResult = await executor.execute('respond', getterMotorInput);
+ assert.equal(rejectedMotorResult.status, 'failed');
+ assert.equal(rejectedMotorResult.reason, 'embodied-action-input-invalid');
+ assert.equal(sampleCalls, 0, 'rejected motor inputs must be blocked before telemetry or I/O');
+ assert.equal(speechCalls, 0, 'rejected motor input must not reach TTS');
+ assert.equal(cameraCalls, 0);
+
 console.log('VOICE_EMBODIMENT=PASS');

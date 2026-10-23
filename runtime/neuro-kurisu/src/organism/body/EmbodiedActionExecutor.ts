@@ -4,6 +4,46 @@ import type { EmbodimentRuntime } from './EmbodimentRuntime.ts';
 export type EmbodiedExecutionStatus = 'executed'|'unavailable'|'skipped'|'failed'|'ambiguous';
 export type EmbodiedRealityClass = 'device-observation'|'device-actuation'|'external-observation'|'derived';
 
+export interface EmbodiedActionInput {
+  spokenText?: string;
+  speechEventId?: string;
+  allowCamera?: boolean;
+  /** Trusted runtime adapter; it must already route through the durable ActionGateway. */
+  captureCamera?: (cameraId:number,retain:boolean)=>Promise<{ok:boolean;path?:string;size?:number;hash?:string;error?:string;executionId?:string;providerReceiptId?:string}>;
+}
+
+/** Descriptor-based normalization avoids invoking caller-owned field getters. */
+export function normalizeEmbodiedActionInput(value:unknown):EmbodiedActionInput|null {
+  if(value===undefined)return {};
+  try {
+    if(value===null||typeof value!=='object'||Array.isArray(value))return null;
+    const prototype=Object.getPrototypeOf(value);
+    if(prototype!==Object.prototype&&prototype!==null)return null;
+    const keys=Reflect.ownKeys(value);
+    const allowed=new Set(['spokenText','speechEventId','allowCamera','captureCamera']);
+    if(keys.some(key=>typeof key!=='string'||!allowed.has(key)))return null;
+    const read=(key:string):unknown=>{
+      const descriptor=Object.getOwnPropertyDescriptor(value,key);
+      if(!descriptor)return undefined;
+      if(!('value'in descriptor)||descriptor.get||descriptor.set||!descriptor.enumerable)return Symbol.for('nk1.invalid-action-input-field');
+      return descriptor.value;
+    };
+    const spokenText=read('spokenText'),speechEventId=read('speechEventId'),allowCamera=read('allowCamera'),captureCamera=read('captureCamera');
+    const invalid=Symbol.for('nk1.invalid-action-input-field');
+    if([spokenText,speechEventId,allowCamera,captureCamera].includes(invalid))return null;
+    if(spokenText!==undefined&&(typeof spokenText!=='string'||spokenText.length>8192))return null;
+    if(speechEventId!==undefined&&(typeof speechEventId!=='string'||speechEventId.length>140||speechEventId.trim()!==speechEventId))return null;
+    if(allowCamera!==undefined&&typeof allowCamera!=='boolean')return null;
+    if(captureCamera!==undefined&&typeof captureCamera!=='function')return null;
+    return {
+      ...(spokenText===undefined?{}:{spokenText}),
+      ...(speechEventId===undefined?{}:{speechEventId}),
+      ...(allowCamera===undefined?{}:{allowCamera}),
+      ...(captureCamera===undefined?{}:{captureCamera}),
+    };
+  } catch { return null; }
+}
+
 export interface EmbodiedActionResult {
   version:1;
   action:string;
@@ -32,7 +72,20 @@ export class EmbodiedActionExecutor {
   private readonly embodiment: EmbodimentRuntime;
   constructor(embodiment: EmbodimentRuntime) { this.embodiment = embodiment; }
 
-  async execute(action:string, input:{spokenText?:string;speechEventId?:string;allowCamera?:boolean;captureCamera?:(cameraId:number,retain:boolean)=>Promise<{ok:boolean;path?:string;size?:number;hash?:string;error?:string;executionId?:string;providerReceiptId?:string}>}={}):Promise<EmbodiedActionResult>{
+  async execute(action:string, input:EmbodiedActionInput={}):Promise<EmbodiedActionResult>{
+    const normalized=normalizeEmbodiedActionInput(input);
+    const safeAction=typeof action==='string'&&action.length>0&&action.length<=96&&action.trim()===action?action:'unknown';
+    if(!normalized||safeAction==='unknown'){
+      const body=this.embodiment.snapshot();
+      const base={battery01:body.telemetry.battery01,thermal01:body.thermalStrain01,cognitiveCapacity01:body.cognitiveCapacity01,awake:body.awake,source:body.telemetry.source};
+      return {
+        version:1,action:safeAction,status:'failed',realityClass:'derived',source:body.telemetry.source,at:Date.now(),
+        before:base,after:{...base},stateDelta:{battery01:0,thermal01:0,cognitiveCapacity01:0,awakeChanged:false},
+        effect01:0,reason:'embodied-action-input-invalid',capability:null,
+        consequenceVerification:{attempted:false,independent:false,verified:false,sourceStable:false,freshBefore01:0,freshAfter01:0,changed01:0,reason:'input-rejected-before-device-or-gateway-access',verificationMode:'none'},
+      };
+    }
+    input=normalized;
     const preSample=await this.embodiment.sample({force:true,requestedSensors:['battery','thermal','network']});
     const before=this.embodiment.snapshot();
     const at=Date.now();
@@ -78,13 +131,13 @@ export class EmbodiedActionExecutor {
           break;
         }
         case 'respond': {
-          if(!String(input.spokenText??'').trim()){
+          if(typeof input.spokenText!=='string'||!input.spokenText.trim()){
             status='skipped'; reason='no-speech-payload'; capability='android.tts'; break;
           }
           if(!before.ttsAvailable || before.telemetry.source!=='android-termux'){
             status='unavailable'; reason='live-tts-unavailable'; capability='android.tts'; break;
           }
-          const ok=await this.embodiment.speak(String(input.spokenText),{speechEventId:input.speechEventId,action:'respond'});
+          const ok=await this.embodiment.speak(input.spokenText,{speechEventId:input.speechEventId,action:'respond'});
           const voiceError=String(this.embodiment.voiceSnapshot().state.lastError??'');
           if(ok){status='executed';reason='live-android-tts-command-accepted';}
           else if(voiceError.includes('tts-outcome-unknown-reconciliation-required')){status='ambiguous';reason='tts-outcome-unknown-reconciliation-required';}

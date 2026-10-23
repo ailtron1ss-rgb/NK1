@@ -1,3 +1,12 @@
+## NK1 WorkPass433 — reject malformed embodiment commands before I/O (2026-10-23)
+
+- Added descriptor-based normalization of the EmbodiedActionExecutor payload with an allowlist of fields; accessors, custom/inherited prototypes, unknown keys, coercible non-string speech, and oversized identifiers fail closed.
+- Invalid payloads produce an explicit zero-proof failed result before telemetry, TTS or camera dispatch; valid camera callbacks remain the runtime-provided ActionGateway path.
+- Removed redundant String() conversion of spoken text after validation to keep a single trustworthy speech boundary.
+- Added regressions for getters, coercion objects, inherited capability flags, oversized IDs, and no telemetry/TTS dispatch on rejection. Hosted tests remain unverified due the existing Actions runner startup issue.
+
+---
+
 ## NK1 WorkPass430 — gate speech synthesis input before planning (2026-10-23)
 
 - TTS now rejects non-string speech instead of coercing arbitrary caller values and clamps raw input before normalization/planning, preventing oversized text from consuming unbounded planning work.
