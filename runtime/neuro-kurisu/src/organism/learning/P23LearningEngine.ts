@@ -808,7 +808,7 @@ export class P23LearningEngine {
       surprise:clamp(outcome.surprise),
       outcomeAt:now(),
        goalPressure01:clamp(trace.stateBefore.needs.goalPressure),
-       causalStrength01:clamp(trace.reasoningSignals.causalConfidence01 ?? trace.reasoningSignals.causalStrength01 ?? .5),
+       causalStrength01:clamp(trace.reasoningSignals?.causalConfidence01 ?? trace.reasoningSignals?.causalStrength01 ?? .5),
        replayFeatures01:[
          clamp(trace.stateBefore.needs.energy),clamp(trace.stateBefore.needs.cognitiveLoad),clamp(trace.stateBefore.needs.uncertainty),
          clamp(trace.stateBefore.needs.socialNeed),clamp(trace.stateBefore.needs.novelty),clamp(trace.stateBefore.needs.identityCoherence),
