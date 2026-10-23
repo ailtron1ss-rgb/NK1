@@ -242,6 +242,8 @@ export interface SkillLearnBenchCandidateGateOptions {
   minimumValidationGain01?: number;
   /** Minimum number of distinct paired validation tasks; narrow evidence must not pass by default. */
   minimumValidationTasks?: number;
+  /** Maximum tolerated regression on any one paired validation task after averaging repeated trials. */
+  maximumValidationTaskRegression01?: number;
   /** Maximum tolerated macro-average holdout regression. */
   maximumHoldoutRegression01?: number;
   /** Minimum number of distinct holdout tasks; empty holdout must never pass. */
@@ -258,6 +260,8 @@ export interface SkillLearnBenchCandidateGateReport {
   baselineValidation01: number;
   candidateValidation01: number;
   validationGain01: number;
+  /** Number of distinct validation tasks that crossed the per-task regression tolerance. */
+  validationTaskRegressions: number;
   baselineHoldout01: number;
   candidateHoldout01: number;
   holdoutDelta01: number;
@@ -400,6 +404,7 @@ export function evaluateSkillLearnBenchCandidate(
   }
   const minGain = options.minimumValidationGain01 ?? 0.005;
   const minValidationTasks = options.minimumValidationTasks ?? 2;
+  const maxValidationTaskRegression = options.maximumValidationTaskRegression01 ?? 0.20;
   const maxRegression = options.maximumHoldoutRegression01 ?? 0.02;
   const minHoldoutTasks = options.minimumHoldoutTasks ?? 2;
   if (!Number.isFinite(minGain) || minGain < 0 || minGain > 1) {
@@ -407,6 +412,9 @@ export function evaluateSkillLearnBenchCandidate(
   }
   if (!Number.isSafeInteger(minValidationTasks) || minValidationTasks < 1) {
     throw new RangeError('candidate-minimum-validation-tasks-invalid');
+  }
+  if (!Number.isFinite(maxValidationTaskRegression) || maxValidationTaskRegression < 0 || maxValidationTaskRegression > 1) {
+    throw new RangeError('candidate-maximum-validation-task-regression-invalid');
   }
   if (!Number.isFinite(maxRegression) || maxRegression < 0 || maxRegression > 1) {
     throw new RangeError('candidate-maximum-holdout-regression-invalid');
@@ -455,11 +463,26 @@ export function evaluateSkillLearnBenchCandidate(
   const holdoutFamilyRegressions=familyStats.filter(row=>row.delta < -maxFamilyRegression).length;
   const validationGain = validation.candidateMean - validation.baselineMean;
   const holdoutDelta = holdout.candidateMean - holdout.baselineMean;
+  // Score each task's repeated trials as a unit. Aggregate gains must not hide a
+  // material regression on one task that is being compensated by another task.
+  const validationTaskScores = new Map<string, { baseline: number[]; candidate: number[] }>();
+  for (const pair of validation.pairs) {
+    const taskId = pair.candidate.taskId.trim();
+    const row = validationTaskScores.get(taskId) ?? { baseline: [], candidate: [] };
+    row.baseline.push(candidateComposite(pair.baseline));
+    row.candidate.push(candidateComposite(pair.candidate));
+    validationTaskScores.set(taskId, row);
+  }
+  const mean = (scores: number[]) => scores.reduce((sum, score) => sum + score, 0) / scores.length;
+  const validationTaskRegressions = [...validationTaskScores.values()].filter(row =>
+    mean(row.candidate) - mean(row.baseline) < -maxValidationTaskRegression,
+  ).length;
   const reasons: string[] = [];
   const feedback: string[] = [];
 
   if (validationGain < minGain) reasons.push('validation-improvement-below-threshold');
   if (validation.taskCount < minValidationTasks) reasons.push('validation-task-coverage-insufficient');
+  if (validationTaskRegressions > 0) reasons.push('validation-task-regression-exceeds-tolerance');
   if (holdout.taskCount < minHoldoutTasks) reasons.push('holdout-task-coverage-insufficient');
   if (holdoutDelta < -maxRegression) reasons.push('holdout-regression-exceeds-tolerance');
   if (holdoutFamilyRegressions > 0) reasons.push('holdout-family-regression-exceeds-tolerance');
@@ -489,6 +512,7 @@ export function evaluateSkillLearnBenchCandidate(
   if (validationTaskSuccess < 0.8) feedback.push('Improve independently verified task success before promotion.');
   if (validationTrajectory < 0.8) feedback.push('Inspect missing or out-of-order trajectory steps and revise the procedure.');
   if (validationSkill < 0.8) feedback.push('Increase required-capability coverage and confirm the skill remains executable.');
+  if (validationTaskRegressions > 0) feedback.push('A paired validation task regressed beyond tolerance; diagnose the task-specific trade-off before proposing another candidate.');
   if (holdoutDelta < 0) feedback.push('Aggregate holdout evaluation indicates regression; revise generality without inspecting holdout examples, then request a fresh independent evaluation.');
   if (holdoutFamilyRegressions > 0) feedback.push('At least one sufficiently sampled holdout task family regressed; improve generality without inspecting holdout examples and request a fresh independent evaluation.');
   if (safetyViolations > 0) feedback.push('Resolve every safety violation; safety is a hard gate, not a score trade-off.');
@@ -501,6 +525,7 @@ export function evaluateSkillLearnBenchCandidate(
     baselineValidation01: rounded(validation.baselineMean),
     candidateValidation01: rounded(validation.candidateMean),
     validationGain01: rounded(validationGain),
+    validationTaskRegressions,
     baselineHoldout01: rounded(holdout.baselineMean),
     candidateHoldout01: rounded(holdout.candidateMean),
     holdoutDelta01: rounded(holdoutDelta),
