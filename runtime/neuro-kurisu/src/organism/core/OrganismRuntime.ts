@@ -1078,28 +1078,26 @@ export class OrganismRuntime {
           failedTool:row.toolId,
           diagnosis:row.diagnosis,
           contextSignature:row.contextSignature,
-          candidateTools:[...row.candidateTools],
+          candidateTools:[...row.candidateTools].sort((a,b)=>a<b?-1:a>b?1:0),
           selectedTool:row.selectedTool,
           verified:row.verified,
           confidence01:row.confidence01,
           observedAt:row.at,
           revisionEligible:Boolean(row.verified&&row.selectedTool&&row.selectedTool!==row.toolId&&row.candidateTools.includes(row.selectedTool)&&row.confidence01>=skill.policy.minEvidence01),
         })));
-    // Bound the set BEFORE invoking the strict canonicalizer (which intentionally
-    // accepts at most 96 rows). Otherwise an ordinary long repair ledger would make
-    // every revision fail instead of using its newest evidence window.
-    const stableKey=(row:typeof rows[number])=>JSON.stringify({
-      ...row,
-      candidateTools:[...row.candidateTools].sort((a,b)=>a<b?-1:a>b?1:0),
-    });
-    const newestBounded=rows.sort((a,b)=>{
+    // This API returns the bounded observation ledger, including ineligible repairs
+    // needed for diagnostics. Do not run the promotion-only canonicalizer on all rows:
+    // a real failed attempt may have no selected tool and still belongs in memory.
+    // The coordinator filters revisionEligible first, then validates/fingerprints only
+    // the rows that are allowed to reach generation.
+    const stableKey=(row:typeof rows[number])=>JSON.stringify(row);
+    return rows.sort((a,b)=>{
       const atA=Number.isSafeInteger(a.observedAt)&&a.observedAt>=0?a.observedAt:-1;
       const atB=Number.isSafeInteger(b.observedAt)&&b.observedAt>=0?b.observedAt:-1;
       if(atA!==atB)return atB-atA;
       const left=stableKey(a),right=stableKey(b);
       return left<right?-1:left>right?1:0;
     }).slice(0,96);
-    return canonicalCompoundRepairEvidence(newestBounded);
   }
 
 
