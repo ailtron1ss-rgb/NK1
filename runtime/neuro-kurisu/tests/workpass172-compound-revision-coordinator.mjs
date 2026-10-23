@@ -38,6 +38,24 @@ assert.throws(()=>canonicalCompoundRepairEvidence([{...evidence[0],candidateTool
   'duplicate candidate tools must not change revision provenance');
 assert.deepEqual(canonicalCompoundRepairEvidence(sameTimeEvidence).map(row=>row.failureFingerprint),
   ['fp-a','fp-b'],'valid repair evidence remains accepted and deterministically ordered');
+
+const manyRepairRows=Array.from({length:120},(_,index)=>({
+  holdout:false,failureFingerprint:`repair-${String(index).padStart(3,'0')}`,
+  stepId:`step-${index}`,toolId:'primary',diagnosis:`verified diagnosis ${index}`,
+  contextSignature:'ctx-a',candidateTools:['fallback'],selectedTool:'fallback',
+  verified:true,confidence01:.9,at:index,
+}));
+const runtimeEvidenceView=Object.create(OrganismRuntime.prototype);
+runtimeEvidenceView.proceduralSkillLibrary={snapshot:()=>({compoundSkills:[{
+  id:'skill-a',name:'fallback',repairsLedger:manyRepairRows,policy:{minEvidence01:.5},
+}]})};
+const newestRepairWindow=OrganismRuntime.prototype.compoundSkillRepairEvidence.call(runtimeEvidenceView,'skill-a');
+assert.equal(newestRepairWindow.length,96,
+  'a longer legitimate repair ledger must be reduced to the 96-row evidence window before canonical validation');
+assert.equal(newestRepairWindow[0].observedAt,119);
+assert.equal(newestRepairWindow.at(-1).observedAt,24,
+  'the retained bounded window must contain the newest repair evidence, not fail on the full ledger size');
+
 let providerCalls = 0;
 let stagedCalls = 0;
 let received = null;
