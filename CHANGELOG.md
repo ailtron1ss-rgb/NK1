@@ -4,7 +4,7 @@
 - [HARDENED] Both workflows select the project's Node.js version from the root `.nvmrc` and assert that the selected runtime matches the pin before running tests.
 - [HARDENED] Raised the WorkPass79 cognitive regression job timeout from 8 to 20 minutes to reduce avoidable false failures during the existing multi-suite regression run.
 - [DOCUMENTED] Added `docs/CI_RELIABILITY_RUNBOOK_RU.md` to distinguish runner startup failures from application/test failures and to preserve precise verification/release evidence.
-- [REGRESSION] Added `tools/verify-ci-reliability.mjs` and built-in Node test cases; both validation workflows run this guard so retired Action majors, drift from `.nvmrc`, missing runtime assertions, and a too-short cognitive timeout are rejected before the main suite.
+- [REGRESSION] Added `tools/verify-ci-reliability.mjs` and built-in Node test cases; both validation workflows run this guard so retired Action majors, drift from `.nvmrc`, missing runtime assertions, a too-short cognitive timeout, and missing CI coverage for rebuild pull requests are rejected before the main suite.
 - [VALIDATION] Static workflow edits have been committed on `workpass326-ci-runtime-hardening`. Actions execution remains unverified because the observed account-level runs terminate before runner assignment and execute zero steps. No claim of green CI or release publication is made.
 
 ## NK1 learning WorkPass106 — multi-seed replay-policy sweep (2026-10-20)
@@ -230,7 +230,7 @@
 ## NK1 v2.0 rebuild — legacy avatar storage hardening (2026-10-20)
 
 - [FIXED] LegacySpriteDeck no longer accesses `window.localStorage` directly; optional outfit preference read/write failures now fall back safely instead of breaking the avatar.
-- Added five regression tests for unavailable storage, throwing reads/writes, normal persistence and component wiring; added `test:avatar-storage` and wired the test into rebuild CI.
+- Added six regression tests for unavailable storage, throwing reads/writes, normal persistence and component wiring; added `test:avatar-storage` and wired the test into rebuild CI.
 - Checkpoint: [avatar storage hardening](docs/REBUILD_CHECKPOINT_AVATAR_STORAGE_2026-10-20.md). Browser-level rendering and real device acceptance remain open.
 
 ## NK1 v2.0 rebuild — stage 1 core boundary (2026-10-20)
