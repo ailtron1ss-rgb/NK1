@@ -1,3 +1,15 @@
+## NK1 WorkPass404 — gate noisy family improvements on bootstrap confidence (2026-10-23)
+
+- [NEW] Added `PairedSeedConfidence.ts`, a dependency-free deterministic percentile-bootstrap interval for paired-seed mean deltas; input, resample-count, confidence-level and seed bounds fail closed.
+- [INTEGRATION] Independent family evaluation now computes intervals over common-seed family-wide deltas, averaging repeats within task/seed and weighting tasks equally within family. Bootstrap random streams are deterministic by plan/split/family.
+- [PROMOTION] Under the existing strict P23 policy, validation requires a positive lower bootstrap bound per adequately replicated family; holdout requires the lower bound to stay above the family regression tolerance. Uncertain validation gain and noisy holdout regression each have explicit gate reason codes.
+- [REGRESSION] `workpass404-paired-seed-confidence.mjs` covers repeatability, stable positive, noisy-positive-mean and all-negative samples plus malformed options. WorkPass225 now covers an apparently positive validation mean with an adverse seed that makes the family interval unsafe.
+- [RESEARCH] Adapted RLiable's uncertainty-aware evaluation recommendations alongside SkillLearnBench's task-level variability and Hermes' guarded promotion. Three seeds remain a minimum structural screen, not statistical proof; IQM, probability of improvement, larger seed suites and cost reporting remain follow-up work.
+- [CI] P26 now watches the confidence utility and test file and runs the confidence regression under Node.js 24; no runtime package dependency was added.
+- [VALIDATION] Committed to `feature/learning`; actual test/typecheck execution remains unverified because GitHub Actions jobs do not expose step logs.
+
+---
+
 ## NK1 WorkPass403 — require paired-seed replication within each skill family (2026-10-23)
 
 - [FIXED] The independent-evaluation comparator now supports `minimumValidationFamilySeeds` and `minimumHoldoutFamilySeeds`. A seed counts only when it is shared by every task in a sufficiently sampled family; seed counts from different tasks are not unioned into fake replication.
