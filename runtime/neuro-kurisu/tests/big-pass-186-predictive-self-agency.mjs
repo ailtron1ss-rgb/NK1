@@ -79,6 +79,23 @@ assert.ok([safePrediction.intention01, safePrediction.predictedOutcome01, safePr
   'restored state must produce finite next-step agency predictions');
 assert.throws(() => corruptedBrain.restore({ version: 2 }), /unsupported predictive self-agency state version/);
 
+const beforeUnknownAgencyAction = corruptedBrain.snapshot();
+assert.throws(
+  () => corruptedBrain.predict('execute-shell'),
+  /predictive-self-agency-action-invalid/,
+  'an unknown action must not alias the first learned action row',
+);
+assert.deepEqual(corruptedBrain.snapshot(), beforeUnknownAgencyAction,
+  'unknown action rejection must not mutate predictive agency state');
+assert.throws(
+  () => corruptedBrain.learnOutcome('execute-shell', .99, state(3, 1003), false, 1),
+  /predictive-self-agency-action-invalid/,
+  'unregistered actions cannot receive outcome learning credit',
+);
+assert.deepEqual(corruptedBrain.snapshot(), beforeUnknownAgencyAction,
+  'invalid-action outcome rejection must happen before any self-model update');
+
+
 let selfGetterReads = 0;
 const accessorSelfState = { version: 1 };
 Object.defineProperty(accessorSelfState, 'selfLatent', {

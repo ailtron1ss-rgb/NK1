@@ -1,3 +1,12 @@
+## NK1 WorkPass429 — reject unknown self-agency actions before prediction (2026-10-23)
+
+- The self-agency substrate previously used Math.max(0, ACTIONS.indexOf(action)); a runtime-invalid action therefore silently mapped to row zero (respond) and could pollute the wrong learned policy.
+- predict() now rejects unknown action identifiers before mutating predicted state. learnOutcome() reaches the same guard before changing weights, credit or ownership estimates.
+- Added state-equality regressions for invalid prediction and invalid outcome credit. This preserves one canonical action vocabulary across cognition and learning; no new dependency.
+- Tests/typecheck are still unexecuted on the hosted runner, so the change is not described as validated.
+
+---
+
 ## NK1 WorkPass421 — isolate predictive self-model restore from caller objects (2026-10-23)
 
 - `PredictiveSelfAgencySubstrate.restore()` now reads a bounded detached snapshot and falls back to initialized state if the input contains accessors, cycles or unsupported object graphs.

@@ -129,7 +129,10 @@ export class PredictiveSelfAgencySubstrate {
   }
   private learnSelf(target:number[],x:number[]){const lr=.015/Math.sqrt(1+this.state.learningSteps/4000),p=this.state.lastPredictedSelfState;for(let i=0;i<24;i++){const e=target[i]-(p[i]??0);for(let j=0;j<24;j++){const local=e*(1-(p[i]??0)**2);this.state.selfWeights[i][j]=clamp11(this.state.selfWeights[i][j]+lr*local*(this.state.previousSelfLatent[j]??0));this.state.stateWeights[i][j]=clamp11(this.state.stateWeights[i][j]+lr*local*(x[j]??0));}}}
   predict(action:ActionKind) {
-    const idx=Math.max(0,ACTIONS.indexOf(action));
+    // Compile-time ActionKind is not a runtime trust boundary: JS callers must not
+    // silently map unknown actions onto ACTIONS[0] and learn against that row.
+    if(!ACTIONS.includes(action))throw new TypeError('predictive-self-agency-action-invalid');
+    const idx=ACTIONS.indexOf(action);
     const row=this.state.actionRows[idx]??[];
     const z=(this.state.actionBias[idx]??0)+row.reduce(
       (sum,value,j)=>sum+(value??0)*(this.state.selfLatent[j]??0),0,
