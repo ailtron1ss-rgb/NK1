@@ -1,3 +1,6 @@
+import { createHash } from 'node:crypto';
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
+
 /**
  * BIG PASS 162 — Reality / Simulation evidence separation.
  *
@@ -28,7 +31,14 @@ export interface RealityEvidenceLedgerState {
 }
 
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
+const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+const REALITY_CLASSES:readonly EvidenceRealityClass[]=['external-observation','device-observation','simulator','derived','model-generated','user-reported'];
 const EXTERNAL=new Set<EvidenceRealityClass>(['external-observation','device-observation','user-reported']);
+const validText=(value:unknown,max:number):value is string=>typeof value==='string'&&value.trim().length>0&&value.trim().length<=max;
+const validScore=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
+const validTick=(value:unknown):value is number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
+const stableEvidenceId=(value:unknown):string=>'rel:'+createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0,40);
+const MAX_TOTAL=Number.MAX_SAFE_INTEGER;
 
 export class RealityEvidenceLedger {
   private readonly capacity:number;
@@ -38,14 +48,60 @@ export class RealityEvidenceLedger {
   constructor(capacity=384){this.capacity=Math.max(128,Math.min(2048,Math.floor(capacity)));}
 
   restore(raw?:Partial<RealityEvidenceLedgerState>|null):void{
-    const list=Array.isArray(raw?.recent)?raw!.recent.slice(0,this.capacity).map((x:any)=>({...x,parentIds:Array.isArray(x.parentIds)?x.parentIds.slice(0,8):[],confidence01:clamp01(Number(x.confidence01??.5))})) : [];
-    this.records=list; this.total=Math.max(list.length,Number(raw?.total??list.length));
+    let detached:unknown;
+    try{detached=snapshotPlainData(raw??{},{allowNonFiniteNumbers:true,maxDepth:16,maxNodes:20_000,maxStringUnits:2*1024*1024});}
+    catch{this.records=[];this.total=0;return;}
+    const value=isRecord(detached)?detached:{};
+    const candidates=Array.isArray(value.recent)?value.recent.slice(0,this.capacity):[];
+    const records:RealityEvidenceRecord[]=[];
+    const seen=new Set<string>();
+    for(const candidate of candidates){
+      if(!isRecord(candidate)||!validText(candidate.id,256)||!validTick(candidate.tick)||
+         typeof candidate.at!=='number'||!Number.isFinite(candidate.at)||candidate.at<0||
+         !REALITY_CLASSES.includes(candidate.realityClass as EvidenceRealityClass)||
+         !validText(candidate.claim,240)||!validScore(candidate.confidence01)||
+         !validText(candidate.independenceKey,160))continue;
+      if(seen.has(candidate.id))continue;
+      const parentIds=Array.isArray(candidate.parentIds)
+        ?candidate.parentIds.filter((id):id is string=>typeof id==='string'&&id.length>0&&id.length<=256).slice(0,8):[];
+      const record:RealityEvidenceRecord={
+        id:candidate.id,tick:candidate.tick,at:candidate.at,
+        realityClass:candidate.realityClass as EvidenceRealityClass,
+        claim:candidate.claim,confidence01:candidate.confidence01,
+        independenceKey:candidate.independenceKey,parentIds,
+      };
+      records.push(record);seen.add(record.id);
+    }
+    this.records=records;
+    this.total=typeof value.total==='number'&&Number.isSafeInteger(value.total)&&value.total>=records.length
+      ?Math.min(MAX_TOTAL,value.total):records.length;
   }
 
-  record(input:{tick:number;realityClass:EvidenceRealityClass;claim:string;confidence01?:number;independenceKey:string;parentIds?:string[];at?:number}):RealityEvidenceRecord{
-    const at=Number(input.at??Date.now());
-    const row:RealityEvidenceRecord={id:`rel:${at}:${input.tick}:${Math.random().toString(16).slice(2)}`,tick:Math.max(0,Math.floor(input.tick)),at,realityClass:input.realityClass,claim:String(input.claim||'').slice(0,240),confidence01:clamp01(input.confidence01??.5),independenceKey:String(input.independenceKey||'unknown').slice(0,160),parentIds:(input.parentIds??[]).map(String).slice(0,8)};
-    this.records.unshift(row); if(this.records.length>this.capacity)this.records.length=this.capacity; this.total++; return structuredClone(row);
+  record(rawInput:{tick:number;realityClass:EvidenceRealityClass;claim:string;confidence01?:number;independenceKey:string;parentIds?:string[];at?:number}):RealityEvidenceRecord{
+    let input:typeof rawInput;
+    try{input=snapshotPlainData(rawInput,{allowNonFiniteNumbers:true,maxDepth:8,maxNodes:128,maxStringUnits:8192});}
+    catch{throw new TypeError('reality-evidence-boundary-rejected');}
+    const at=input.at??Date.now();
+    if(!validTick(input.tick)||typeof at!=='number'||!Number.isFinite(at)||at<0||
+       !REALITY_CLASSES.includes(input.realityClass)||!validText(input.claim,240)||
+       !validText(input.independenceKey,160)||
+       (input.confidence01!==undefined&&!validScore(input.confidence01))||
+       (input.parentIds!==undefined&&(!Array.isArray(input.parentIds)||input.parentIds.length>8||
+         input.parentIds.some(id=>typeof id!=='string'||id.length===0||id.length>256)))){
+      throw new TypeError('reality-evidence-input-invalid');
+    }
+    const claim=input.claim.trim(),independenceKey=input.independenceKey.trim();
+    const confidence01=input.confidence01??.5;
+    const parentIds=(input.parentIds??[]).slice();
+    const identity={tick:input.tick,at,realityClass:input.realityClass,claim,confidence01,independenceKey,parentIds};
+    const id=stableEvidenceId(identity);
+    const prior=this.records.find(row=>row.id===id);
+    if(prior)return structuredClone(prior);
+    const row:RealityEvidenceRecord={id,tick:input.tick,at,realityClass:input.realityClass,claim,confidence01,independenceKey,parentIds};
+    this.records.unshift(row);
+    if(this.records.length>this.capacity)this.records.length=this.capacity;
+    if(this.total<MAX_TOTAL)this.total++;
+    return structuredClone(row);
   }
 
   recent(limit=64){return structuredClone(this.records.slice(0,Math.max(1,Math.min(256,Math.floor(limit)))));}
