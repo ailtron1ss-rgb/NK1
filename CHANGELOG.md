@@ -1,3 +1,13 @@
+## NK1 WorkPass406 follow-through — API and CI integration (2026-10-23)
+
+- **Public API:** `P23LearningEngine.approveIndependentlyEvaluatedSkillCandidate` now preserves the typed `learningRobustDiagnostics` shape in returned `fitness`.
+- **CI reachability:** added the new metrics module/test to P26 path filters and an explicit regression step invoking `npm run test:workpass406:robust-metrics`.
+- **Progress accounting:** added [WorkPass406 learning progress scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md), separating estimated implementation completeness (77%) from estimated production readiness (~45%).
+- **Local-only validation:** an isolated regression harness and strict TypeScript check for the new utility passed. This is not a full runtime checkout/build or exact-HEAD CI pass.
+- **CI status:** P26 on the current branch HEAD reports failure without available steps/logs; do not attribute the failure to the code without evidence. No measured learning uplift is claimed.
+
+---
+
 ## NK1 WorkPass406 — task-balanced robust learning diagnostics (2026-10-23)
 
 - **Added:** task-balanced interquartile mean (IQM), IQM delta and paired probability-of-improvement summaries for task success, skill quality and trajectory quality on validation and holdout.
