@@ -1,3 +1,14 @@
+## NK1 WorkPass412 — richer task-balanced learning metrics (2026-10-23)
+
+- Extended `LearningRobustMetrics.ts` with task-balanced median and task-balanced optimality gap against ceiling=1, with deltas for baseline/candidate comparisons.
+- The diagnostics now expose IQM, median, optimality gap and paired probability-of-improvement for task success, skill quality and trajectory quality.
+- Directly inspected `google-research/rliable/rliable/metrics.py` (blob `dc206a180c822eaf3bc8524a63b127aeb1e60fe7`, Apache-2.0); adapted statistical measures without copying upstream code or adding Python dependencies.
+- Extended WorkPass406's test for median, gap and ceiling cases; existing P23/P26 wiring already invokes it.
+- All metrics remain diagnostic-only; no promotion policy changed. Exact-HEAD tests/typecheck remain unverified because hosted Actions logs are unavailable. No performance uplift is claimed.
+- Details: [WorkPass412 implementation note](docs/WORKPASS412_RLIABLE_METRIC_DEPTH_RU.md).
+
+---
+
 ## NK1 WorkPass411 — make learning CI script wiring self-auditing (2026-10-23)
 
 - **Cross-branch integration:** selectively ported the workflow-to-package script resolver from `feature/experiments`; did not merge its divergent branch history.
