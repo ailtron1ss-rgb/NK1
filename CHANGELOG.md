@@ -1,3 +1,12 @@
+## NK1 WorkPass416 — deterministic trial-order numeric summaries (2026-10-23)
+
+- Canonically sort each task's matched trials by stable `trialId` before computing fractional score means; this prevents floating-point summation order from changing the rounded summary under row permutations.
+- Extended WorkPass406's regression with 5 task families × 37 seeds, heterogeneous fractional scores and reverse/scrambled input order; summary equality is asserted.
+- Cost is O(R) grouping + O(R log R) worst-case within-task sorting + O(R) work per metric dimension, replacing prior repeated O(T × R) filtering. Metric formulas, equal task weights and promotion gates are unchanged.
+- Exact-head test/typecheck remain unverified because current Actions jobs return failure without step logs; no measured performance or learning uplift is claimed.
+
+---
+
 ## NK1 WorkPass415 — linearize task-balanced robust metrics (2026-10-23)
 
 - Replaced repeated `rows.filter(...taskId...)` scans with one `Map` grouping pass over matched trials; all score dimensions reuse the same grouping.
