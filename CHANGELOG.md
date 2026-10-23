@@ -1,3 +1,9 @@
+## WorkPass320 — reject non-finite micro-cycle surprise values (2026-10-23)
+
+- The reduced-resolution heartbeat now falls back to the organism's existing prediction-error estimate when an incoming `observation.surprise` cannot be converted to a finite number.
+- This prevents `NaN` from propagating through the micro-cycle's clamped prediction-error signal into neural experience updates. The heartbeat remains explicitly unverified and keeps neutral reward; this does not turn an observation claim into verified action evidence.
+- Tests/typecheck have not been run for this change.
+
 ## WorkPass319 — regression coverage for reflective repair lineage (2026-10-23)
 
 - Added candidate-store regression cases proving that the exact proposal evidence fingerprint survives staging, while a mismatched but well-formed SHA-256 and a malformed digest are rejected.
