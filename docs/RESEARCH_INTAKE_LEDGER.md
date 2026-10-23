@@ -1,10 +1,18 @@
+## WorkPass463 — refresh two category heads after parallel branch advances (2026-10-23)
+
+- Re-read live refs and the current open PR list after additional parallel commits were pushed to the existing branches. `feature/memory` is now `f2c8b66b2a785279936f21ec0bea329891d6acda` (PR #82) and `feature/perception` is now `d5dd7584f416183e83779f5c19ff717ea994a25b` (PR #80). The previously reported core mechanisms were checked on the newer files: residual confidence revision/provenance ceiling/audit trail still exist in MemoryOS2 and accepted event IDs/observation anchor still exist in UnifiedCognitiveCycle.
+- Other current category tips remain learning `09b801e7ec77320b9915d201df29b0720aaaef28`, emotions `be344d0599e66c9d3305ec2023a88fe016c673b7`, personality `48e36266f6349fe69efa14ee54b187e0dcd4350e`, visual-embodiment `927629a433eff63d01397dd370a68a666093ff78`, experiments `6c75864ff5311101782f5d1bfe1d323f95396542`, feedback `28b1e691ff4e0f5c8d2ef73382d0dcc7aa48adb1`; planning HEAD at the start of this update was `8e00fe30faa74b030bd98573045d24dce26d400e`.
+- All nine PRs remain open drafts against `integration`; `main` `84119539afca904a91d5617b86ae334917a9e578` and `integration` `2a2b89bebc49243b6196b8c9e75b65f64ae21c64` are unchanged. Tests remain unverified (Actions jobs have `runner_id=0` and no steps; local clone failed at DNS resolution); no release ZIP asset was updated. Scorecard remains 7/7 implementation/regression-source categories, 0/7 exact-head suites confirmed passing, 0/7 category PR merges, 0/1 release ZIP refreshed/hash-verified, readiness 46/100.
+
+---
+
 ## WorkPass461 — reconcile latest live category heads and implementation evidence (2026-10-23)
 
 ### Current branch tips / open draft PRs
 - `feature/learning` — `09b801e7ec77320b9915d201df29b0720aaaef28` ([PR #79](https://github.com/ailtron1ss-rgb/NK1/pull/79)).
-- `feature/perception` — `c365c48bd64c023bbef9696a95452f8c7deb1466` ([PR #80](https://github.com/ailtron1ss-rgb/NK1/pull/80)); the unified-cycle receipt now returns the exact accepted per-stage event IDs and explicit observation anchor produced by the current evidence handoff.
+- `feature/perception` — current live HEAD `d5dd7584f416183e83779f5c19ff717ea994a25b` ([PR #80](https://github.com/ailtron1ss-rgb/NK1/pull/80)); the unified-cycle receipt now returns the exact accepted per-stage event IDs and explicit observation anchor produced by the current evidence handoff.
 - `feature/emotions` — `be344d0599e66c9d3305ec2023a88fe016c673b7` ([PR #81](https://github.com/ailtron1ss-rgb/NK1/pull/81)).
-- `feature/memory` — `eff640e51f96d2f4ef9e50db5ffb5ef55cec437b` ([PR #82](https://github.com/ailtron1ss-rgb/NK1/pull/82)); residual belief revision, evidence-lineage de-duplication, provenance trust ceilings and audit persistence are present on the current ref.
+- `feature/memory` — current live HEAD `f2c8b66b2a785279936f21ec0bea329891d6acda` ([PR #82](https://github.com/ailtron1ss-rgb/NK1/pull/82)); residual belief revision, evidence-lineage de-duplication, provenance trust ceilings and audit persistence remain present on the current ref.
 - `feature/personality` — `48e36266f6349fe69efa14ee54b187e0dcd4350e` ([PR #83](https://github.com/ailtron1ss-rgb/NK1/pull/83)); P67/P68 safe goal state and idempotent goal decisions are present on the current ref.
 - `feature/visual-embodiment` — `927629a433eff63d01397dd370a68a666093ff78` ([PR #84](https://github.com/ailtron1ss-rgb/NK1/pull/84)); pre-/post-action sensing failure semantics remain present alongside current avatar-affect coupling work.
 - `feature/experiments` — `6c75864ff5311101782f5d1bfe1d323f95396542` ([PR #85](https://github.com/ailtron1ss-rgb/NK1/pull/85)).
