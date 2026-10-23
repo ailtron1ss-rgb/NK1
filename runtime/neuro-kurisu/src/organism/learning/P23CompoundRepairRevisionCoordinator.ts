@@ -39,6 +39,49 @@ interface RevisionFailureBackoff {
 const BASE_RETRY_BACKOFF_MS = 30 * 60 * 1000;
 const MAX_RETRY_BACKOFF_MS = 24 * 60 * 60 * 1000;
 
+export type CompoundRepairEvidenceRow = ReturnType<OrganismRuntime['compoundSkillRepairEvidence']>[number];
+
+/**
+ * Canonical representation of eligible repair evidence shared by the coordinator
+ * and runtime. Row order, object insertion order, and candidateTools order are not
+ * semantic evidence differences and must not manufacture new candidate revisions.
+ */
+export function canonicalCompoundRepairEvidence(
+  rows: readonly CompoundRepairEvidenceRow[],
+): CompoundRepairEvidenceRow[] {
+  const canonical = rows.map(row => ({
+    skillId: row.skillId,
+    skillName: row.skillName,
+    failureFingerprint: row.failureFingerprint,
+    stepId: row.stepId,
+    failedTool: row.failedTool,
+    diagnosis: row.diagnosis,
+    contextSignature: row.contextSignature,
+    candidateTools: [...row.candidateTools].sort((a,b) => a.localeCompare(b)),
+    selectedTool: row.selectedTool,
+    verified: row.verified,
+    confidence01: row.confidence01,
+    observedAt: row.observedAt,
+    revisionEligible: row.revisionEligible,
+  }));
+  return canonical.sort((a,b) =>
+    b.observedAt-a.observedAt ||
+    a.skillId.localeCompare(b.skillId) ||
+    a.failureFingerprint.localeCompare(b.failureFingerprint) ||
+    a.stepId.localeCompare(b.stepId) ||
+    a.contextSignature.localeCompare(b.contextSignature) ||
+    a.failedTool.localeCompare(b.failedTool) ||
+    a.selectedTool.localeCompare(b.selectedTool) ||
+    JSON.stringify(a).localeCompare(JSON.stringify(b))
+  );
+}
+
+export function fingerprintCompoundRepairEvidence(
+  rows: readonly CompoundRepairEvidenceRow[],
+): string {
+  return createHash('sha256').update(JSON.stringify(canonicalCompoundRepairEvidence(rows))).digest('hex');
+}
+
 /**
  * Orchestrates a real runtime repair observation into P23's existing revision lifecycle.
  *
@@ -62,7 +105,7 @@ export class P23CompoundRepairRevisionCoordinator {
   ) {}
 
   private evidenceDigest(rows: ReturnType<OrganismRuntime['compoundSkillRepairEvidence']>): string {
-    return createHash('sha256').update(JSON.stringify(rows)).digest('hex');
+    return fingerprintCompoundRepairEvidence(rows);
   }
 
   /**
@@ -81,8 +124,9 @@ export class P23CompoundRepairRevisionCoordinator {
     })) {
       throw new Error('compound skill id is invalid');
     }
-    const repairEvidence = this.runtime.compoundSkillRepairEvidence(normalizedSkillId)
-      .filter(row => row.revisionEligible);
+    const repairEvidence = canonicalCompoundRepairEvidence(
+      this.runtime.compoundSkillRepairEvidence(normalizedSkillId).filter(row => row.revisionEligible),
+    );
     if (repairEvidence.length === 0) {
       return Promise.resolve({ status: 'no-eligible-repair-evidence' as const, skillId: normalizedSkillId, repairEvidenceCount: 0 });
     }
