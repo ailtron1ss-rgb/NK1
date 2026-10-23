@@ -13,6 +13,17 @@
 
 # NeuroCore — upstream research and source-intake ledger
 
+## WorkPass459 — Hexis source recheck and memory-ingress follow-through (2026-10-23)
+
+- **Upstream identity:** [QuixiAI/Hexis](https://github.com/QuixiAI/Hexis), MIT license; inspected upstream main commit `9e718951dc2a50dfcdc6f22513a1916315840132` (2026-10-18) and `db/59_belief_revision.sql`.
+- **Mechanism extracted/adapted:** a belief is revised only for new evidence lineage; support closes part of the remaining uncertainty, contradiction removes part of current confidence, duplicates do not move confidence, and each decision retains prior/posterior values plus a reason. This pattern is native to NK1's existing canonical `MemoryOS2` revision API and its bounded audit rather than being copied as a new Postgres subsystem.
+- **Additional NK1 correction:** a restored snapshot was a second ingress route that could preserve a caller-edited `sourceAuthority01` above the declared provenance ceiling. WorkPass459 applies the existing trust ceiling during restore and tests both the parent row and stored evidence trail. Valid lower authority is preserved.
+- **Reuse boundary:** do not import Hexis's database schema or dependencies wholesale. Continue extracting per mechanism into the owning NK1 subsystem, preserve attribution, and promote only after exact-head regressions / integration evidence. The source identity/claim was checked against upstream metadata; this is not a full review of every upstream module.
+- **Not yet proven:** measurable memory-to-action improvement, external-source independence beyond explicit lineage keys, full HMX round-trip fidelity, live heartbeat autonomy, and production-grade outbound policy integration. No learning score is increased on the strength of code presence alone.
+
+---
+
+
 ## WorkPass265 — current memory/science benchmark intake (2026-10-22)
 
 The following recent sources expand the evaluation design. Their presence here records a research candidate, not verified upstream integration. Before copying code or data, check the upstream revision, dataset/model license, provenance, installation footprint and privacy requirements.
@@ -80,7 +91,7 @@ WorkPass133 code finding: the bootstrap stream identity previously included ever
 | Source | Repository / path | Intended use | Current status / next evidence |
 |---|---|---|---|
 | Will | https://github.com/mindot-ai/will; retained source under `legacy/input-archives/will-main-2026-10-08/` | Adapt useful action/runtime/tool protocol ideas through existing Will adapters | **IMPLEMENTED / VERIFY PER CAPABILITY** — source presence is not enough; test actual call path, error behavior, idempotency and permissions |
-| Hexis | retained source under `legacy/input-archives/hexis-main-2026-10-08/` | Inspect memory ingestion, retrieval evaluation, embeddings and provenance patterns | **RESEARCH-ONLY / PARTIAL ADAPTATION** — audit license and exact source lineage; existing code comments identify deferred embedding-worker inspiration, but each port needs attribution and regression |
+| Hexis | MIT-licensed upstream `https://github.com/QuixiAI/Hexis` (reviewed main commit `9e718951dc2a50dfcdc6f22513a1916315840132`, 2026-10-18); archived snapshot at `legacy/input-archives/hexis-main-2026-10-08/` | Evidence lineage, residual belief revision, audited confidence changes, temporal supersession, bounded retention/forgetting, energy-aware heartbeat, consent/policy gate, idempotent outbox and staged HMX import | **PARTIAL ADAPTATION** — canonical `MemoryOS2` already owns persistent memory and residual confidence updates; `P65EpistemicLedger` records independent evidence/revisions; `HexisAdaptationFabric` preserves a typed adapter surface. WorkPass459 closes parent-row authority re-escalation during snapshot restore. Current integration is selective: no Hexis SQL runtime or second memory store imported; heartbeat, retention fidelity, HMX and outbound policy still need owning-call-path/behavioral evidence. |
 | NeuroCore v126 and earlier snapshots | `legacy/snapshots/neurocore-v126/` and `legacy/snapshots/neuro-kurisu-35.30/` | Preserve prior behavior, compare implementations and recover provenance | **REFERENCE ONLY** — do not make snapshots a second production owner |
 | Existing local language backend | `runtime/neuro-kurisu/src/server/local-language-backend-policy.mjs` and provider adapters | Route configured local `llama.cpp` first with bounded cooldown and explicit fallback | **IMPLEMENTED; LIVE INFERENCE UNPROVEN** — run opt-in fake-provider HTTP smoke, then actual local model smoke on Dell G3 |
 | MemoryOS2 canonical owner | `runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts` | One writable memory store with lexical/fuzzy/concept/entity/graph/temporal ranking and explicit semantic-index maintenance | **IMPLEMENTED; UPLIFT UNPROVEN** — do not call legacy 48-dimensional hash vectors semantic embeddings |
