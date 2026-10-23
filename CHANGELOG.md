@@ -1,3 +1,10 @@
+## NK1 WorkPass358 — de-duplicate curriculum targets by immutable identity (2026-10-23)
+
+- [FIXED] The ranked learning curriculum now counts one target identity once; repeated identical proposals cannot occupy multiple top-k positions.
+- [FIXED] Conflicting target payloads under the same ID are quarantined. A malformed target row with a valid identity also invalidates that identity for the current ranking batch instead of allowing the earlier row to survive.
+- [INTEGRATION] Added exact-duplicate, conflicting-score and malformed-reuse regressions to the P23 curriculum suite already wired into `test:p23:learning`.
+- [VALIDATION] GitHub source/test commits are present; live test execution is still unverified because this environment cannot resolve `github.com` for a local checkout and the exposed Actions runs are failing before useful job evidence. No empirical learning uplift is claimed.
+
 ## NK1 WorkPass357 — fail-closed outcome reflection and curriculum inputs (2026-10-23)
 
 - [FIXED] Outcome reflection now snapshots input through the shared `LearningTrustBoundary`; caller-owned accessors are rejected without invoking getters.
