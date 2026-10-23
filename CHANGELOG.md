@@ -1,3 +1,16 @@
+## NK1 WorkPass418 — deterministic and evidence-safe personal curriculum (2026-10-23)
+
+- **Restore integrity:** persisted curriculum rows sharing an ID or family are quarantined as a set, so array ordering cannot choose the surviving conflicting memory. Numeric fields, counters, context cardinality and text/identity boundaries are validated before restore.
+- **Online intake:** outcomes and developmental-context inputs are snapshotted through NK1's shared learning trust boundary and checked before mutating state. Goal source/status fields must match the canonical organism types.
+- **Autonomous target stability:** goal-ranking inputs are validated before focus mutation; duplicate goal IDs are rejected, and equal-scoring goals use a stable ID tie-break so shuffled input does not change focus order.
+- **Lifecycle diagnostics:** completion/suppression counts are now derived from unique current thread states and reconciled on restore; repeated feedback no longer inflates counters.
+- **Regression coverage:** added identity-conflict, invalid-input, non-active-goal compatibility, deterministic tie-order and lifecycle-count cases. The existing `test:big-pass-122` script runs the added curriculum regressions, and WorkPass417's focused workflow watches the new test.
+- **Research/architecture:** reuse NK1's existing `LearningTrustBoundary` and canonical curriculum/P23 paths; no parallel learner or new runtime dependency.
+- **Validation boundary:** exact-head runtime tests and typecheck remain unconfirmed. The visible Actions jobs continue to fail before runner allocation (runner ID 0, no steps/logs), so no PASS or empirical learning improvement is claimed. Learning estimates remain implementation 83%, production readiness ~45%.
+- Details: [learning scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md).
+
+---
+
 ## NK1 WorkPass448 — bound bootstrap computation cost (2026-10-23)
 
 - Added a hard cap of 16,000,000 bootstrap draws per invocation in `PairedSeedConfidence.ts`. The requested resample count and sample count are checked before the resampling loop/temporary result allocation.
