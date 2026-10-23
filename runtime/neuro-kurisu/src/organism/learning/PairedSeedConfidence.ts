@@ -23,6 +23,10 @@ export interface BootstrapMeanIntervalOptions {
   seed?: number;
 }
 
+// A hard draw budget keeps hostile or accidentally huge inputs from multiplying
+// into unbounded CPU work when callers request many resamples.
+const MAX_BOOTSTRAP_TOTAL_DRAWS = 16_000_000;
+
 function quantile(sorted: number[], probability: number): number {
   const position = (sorted.length - 1) * probability;
   const lowerIndex = Math.floor(position);
@@ -75,8 +79,12 @@ export function bootstrapMeanConfidenceInterval(
     throw new RangeError('paired-seed-bootstrap-seed-invalid');
   }
 
-  const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
   const safeValues = values as number[];
+  if (safeValues.length > Math.floor(MAX_BOOTSTRAP_TOTAL_DRAWS / resamples)) {
+    throw new RangeError('paired-seed-bootstrap-work-budget-exceeded');
+  }
+
+  const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
   const average = mean([...safeValues]);
   const random = createRandom(seed);
   const bootstrapMeans = new Array<number>(resamples);
