@@ -1,3 +1,15 @@
+## WorkPass330 — connect production P23 repair staging to host-owned evaluation (2026-10-23)
+
+- **Observed defect:** `server.mjs` could construct the repair provider and candidate store but did not pass the independent evaluation factory required by `OrganismRuntime` under production. The existing guard correctly rejected this incomplete configuration.
+- **Code:** added a separate host evaluator config module contract (`NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE`) that supplies host-owned executor/verifier/safety-scanner processes, task scheduling, environment identity and production experiment authority. It is loaded as a different real module path from the candidate repair provider.
+- **Least privilege:** the host config factory receives only `stateDirectory`; no runtime engine/store/registry capabilities are passed. Existing `createHostOwnedIndependentEvaluationConfigFactory` remains responsible for authority and storage-root checks.
+- **Autonomy:** added explicit `NEURO_COMPOUND_REPAIR_BACKGROUND_REVISION_JSON`. It is disabled unless configured and only schedules candidate staging from eligible verified non-holdout repair evidence under the existing resource governor. It never auto-activates a candidate.
+- **Regression/wiring:** added `workpass330-production-revision-wiring.mjs`, registered its runtime package script, root `audit:quick`, and WorkPass71 CI step.
+- **Evidence boundary:** test/typecheck/CI remain unverified because Actions jobs continue to stop before executing steps. A deployment-owned evaluator module, independent host processes, fixed experiment manifests, real signed shadow receipts and a frozen paired-seed benchmark remain open. No learning metric is raised.
+- Full contract and environment-variable documentation: [WorkPass330 report](WORKPASS330_PRODUCTION_REVISION_WIRING_2026-10-23.md).
+
+---
+
 ## WorkPass329 — prevent component regression masked by composite skill fitness (2026-10-23)
 
 - **Upstream adaptation:** reviewed Hermes Agent Self-Evolution at `0a929e3aa20e15cf04dc7c28492a7d41a5139125` (`evolve_skill.py`, `fitness.py`, `constraints.py`, `pyproject.toml`). Adapted the constraint idea natively; no upstream source was copied and no runtime dependency was added.
