@@ -1,3 +1,9 @@
+## NK1 WorkPass379 — close family-provenance downgrade paths (2026-10-23)
+- [FIXED] Matched baseline/candidate reports must now agree exactly on whether a canonical task family is present and, when present, its value. Removing the family label from just one side cannot silently fall back to aggregate-only scoring.
+- [FIXED] Malformed post-snapshot candidate-gate roots/options are rejected with a bounded data-boundary error instead of failing later during metric access.
+- [TEST ADDED] Covered one-sided family-label omission and invalid null gate options.
+- [VALIDATION] Source and regression commits are present; execution still awaits CI steps/logs.
+
 ## NK1 WorkPass378 — snapshot candidate evaluation inputs safely (2026-10-23)
 - [FIXED] SkillLearnBench trial inputs, aggregate report batches, candidate baseline/candidate report sets, gate envelopes and gate options are detached via the shared learning trust boundary before fields are read.
 - [SAFETY] Accessors, sparse arrays, invalid object prototypes and reflection failures are rejected without invoking caller-owned getters; family metadata follows the same trust boundary as outcome scores.
