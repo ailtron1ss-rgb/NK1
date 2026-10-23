@@ -1,3 +1,27 @@
+## Follow-up implementation pass — cross-category boundary and fault-tolerance work (2026-10-23)
+
+This follow-up extends the existing category branches; it does not introduce a second memory owner, learner, planner, or action gateway.
+
+- **Learning / Hermes-inspired evaluation guardrails:** source commit `350d06aa6b5242496f3316b98914149d4828a00e` (`feature/learning`, PR [#79](https://github.com/ailtron1ss-rgb/NK1/pull/79)). Trajectory-order matching now uses an index (linear worst-case rather than repeated suffix scans); skill/capability rubrics are bounded to 4,096 IDs with 256-character ID caps. This adapts the upstream emphasis on candidate size limits, evaluation and semantic-preservation gates without copying the external optimizer or adding dependencies. Primary source: https://github.com/NousResearch/hermes-agent-self-evolution.
+- **Perception / live cognitive ingress:** source commit `4c7ed4d54c2178d51a68300bcb48f8c145bd78dc` (`feature/perception`, PR [#80](https://github.com/ailtron1ss-rgb/NK1/pull/80)). The unified cycle snapshots and allowlists input before reading it; unknown stages and hostile getters are rejected before state mutation.
+- **Feedback / evidence restore:** source commit `807454005c260eab807bc38c7ca77c8f489e55d4` (`feature/feedback`, PR [#87](https://github.com/ailtron1ss-rgb/NK1/pull/87)). Ledger checkpoints are detached through the bounded plain-data boundary before schema reads, rejecting accessor-backed and cyclic restore payloads.
+- **Memory / diagnostics isolation:** source commit `8553b9619a30e2b5af0dfabc0cf03b01343a6375` (`feature/memory`, PR [#82](https://github.com/ailtron1ss-rgb/NK1/pull/82)). A broken optional embedding-provider diagnostics hook no longer prevents valid semantic-index batches or makes the read-only diagnostics method throw. The canonical `MemoryOS2` store and lexical fallback remain the sole memory path.
+- **Personality / atomic self-model updates:** source commit `ed53ca53040b04bfac55a0ad234cfc7364ab6b02` (`feature/personality`, PR [#83](https://github.com/ailtron1ss-rgb/NK1/pull/83)). Reward, causal-match and outcome-state fields are detached and validated before prediction mutates self-agency weights/counters.
+- **Embodiment / action receipt integrity:** source commit `f21bcfab5dd94b93b57181961a095d26bf7b0e35` (`feature/visual-embodiment`, PR [#84](https://github.com/ailtron1ss-rgb/NK1/pull/84)). Required pre-action sensor failure blocks dispatch and returns an explicit failed receipt; a failed post-action sample withholds independent-verification credit without hiding an action result already produced.
+
+### External mechanism intake verified on 2026-10-23
+
+- [Hermes Agent Self-Evolution / GEPA](https://github.com/NousResearch/hermes-agent-self-evolution): the README describes trace-driven reflection, candidate generation/evaluation, size/test/semantic constraints and PR review. NK1 reused the guardrail principle, not the full upstream runtime.
+- [Letta memory & dreaming](https://docs.letta.com/configuration/memory): the documentation describes git-backed memory and background consolidation/dreaming with review. NK1 keeps `MemoryOS2` as the canonical owner; no MemFS side store was added.
+- [OpenAI evaluation best practices](https://developers.openai.com/api/docs/guides/evaluation-best-practices): task-specific evaluation data, retained logs, automation and human calibration support NK1's direction toward paired/held-out evidence rather than subjective “looks better” claims.
+- No new package or runtime dependency was introduced in this follow-up. Research links and design transfer are provenance, not proof of measured performance gain.
+
+### Truthful status after this pass
+
+All seven intended category branches still have implementation commits and regression-source additions (7/7, 100%). Exact-head suite execution remains confirmed on 0/7 (0%); category PR merges remain 0/7; the release ZIP remains updated/hash-verified 0/1. Overall readiness therefore remains **46/100** rather than increasing based on code volume. Latest PR heads are refreshed in GitHub; PRs remain drafts against `integration`, which was not modified. Actions jobs still have the runner-provisioning blocker described below.
+
+---
+
 ## WorkPass449 — verified upstream mechanisms and current implementation delta (2026-10-23)
 
 ### Hermes Agent Self-Evolution / GEPA — mechanism adapted, not vendored
