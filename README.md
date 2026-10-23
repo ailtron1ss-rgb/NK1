@@ -5,6 +5,7 @@
 - **Efficiency:** one O(R) grouping pass replaces repeated O(T × R) full-list filtering; canonical per-task sorting adds O(R log R) worst-case total and each score dimension scans grouped rows once.
 - **Metrics:** the diagnostic-only schema still reports task-balanced IQM, median, optimality gap and paired probability of improvement for task success, skill quality and trajectory quality. Promotion gates are unchanged.
 - **Progress:** learning-category implementation estimated at **83%**; production readiness remains **~45%**. Exact-head runtime tests/typecheck remain unconfirmed because hosted Actions logs are unavailable. `main` and the Release ZIP remain unchanged.
+- **Cross-branch strategy map:** `docs/NEUROCORE_MASTER_STRATEGY_AND_BRAIN_MAP.md` was selectively synchronized from `integration` after a line-level diff confirmed integration contained additions and no deleted learning-branch content; the resulting blob matches integration exactly. Branch histories remain divergent, so this was a document sync, not a merge.
 - Details: [RLiable metrics note](docs/WORKPASS412_RLIABLE_METRIC_DEPTH_RU.md) and [learning scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md).
 
 ---
