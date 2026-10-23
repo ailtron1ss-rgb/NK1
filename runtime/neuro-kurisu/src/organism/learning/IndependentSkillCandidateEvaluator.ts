@@ -8,6 +8,7 @@ import {
 } from './LearningExperimentPlan.ts';
 import { VerifiedOutcomeLedger, type TaskManifestEntry, type VerifiedTaskOutcome } from './VerifiedOutcomeLedger.ts';
 import { isSafeLearningIdentity, snapshotPlainData } from './LearningTrustBoundary.ts';
+import { summarizeLearningRobustMetrics, type LearningRobustMetricSummary } from './LearningRobustMetrics.ts';
 
 export interface IndependentCandidateTask {
   taskId: string;
@@ -846,6 +847,11 @@ export function compareMatchedIndependentEvaluations(
   holdoutFamilyUpperBoundMaximum: number | null;
   environmentFingerprint: string;
   planFingerprint: string;
+  learningRobustDiagnostics: {
+    diagnosticOnly: true;
+    validation: LearningRobustMetricSummary;
+    holdout: LearningRobustMetricSummary;
+  };
 } {
   const validEnvelope = (value: typeof baseline, label: string): void => {
     if (!value || !isDigest(value.payloadFingerprint) || !isDigest(value.evaluationFingerprint) ||
@@ -981,6 +987,17 @@ export function compareMatchedIndependentEvaluations(
     confidenceLevel, bootstrapResamples, bp.planFingerprint, 'holdout',
     gateOptions.maximumHoldoutFamilyRegression01 ?? 0.10, false,
   );
+  // RLiable-inspired robust summaries are observable diagnostics only. The promotion
+  // decision above remains owned by the existing confidence/coverage/safety gates.
+  const learningRobustDiagnostics = {
+    diagnosticOnly: true as const,
+    validation: summarizeLearningRobustMetrics(
+      baseline.evaluation.validation, candidate.evaluation.validation,
+    ),
+    holdout: summarizeLearningRobustMetrics(
+      baseline.evaluation.holdout, candidate.evaluation.holdout,
+    ),
+  };
   const reasons = [...gate.reasons];
   const feedback = [...gate.feedback];
   if (validationSeedCoverage.familySeedCoverageFailures > 0) {
@@ -1025,5 +1042,6 @@ export function compareMatchedIndependentEvaluations(
     holdoutFamilyUpperBoundMaximum: holdoutConfidence.maximumUpperBound,
     environmentFingerprint: bp.environmentFingerprint,
     planFingerprint: bp.planFingerprint,
+    learningRobustDiagnostics,
   };
 }
