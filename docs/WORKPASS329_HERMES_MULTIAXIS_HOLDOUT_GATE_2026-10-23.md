@@ -36,13 +36,14 @@ The implementation remains in the canonical `runtime/neuro-kurisu/src/organism/l
 - Computes each comparison from the matched baseline and candidate reports with a task-macro mean, so tasks with more repeated trials do not gain extra weight.
 - Emits a specific rejection reason and actionable feedback for each component that exceeds its regression budget. The aggregate composite cannot override those component constraints.
 - The helper now retains matched baseline reports internally to support the component comparisons; the external report shape and existing approval/activation lifecycle stay unchanged.
-- Added a regression scenario in which weighted holdout composite improves while trajectory quality drops. The test neutralizes the aggregate-only threshold and asserts that the component gate still rejects the candidate. Also added invalid-threshold coverage.
+- Added a regression scenario in which weighted holdout composite improves while trajectory quality drops. The test neutralizes the aggregate-only threshold and asserts that the component gate still rejects the candidate. Separate cases cover task-success and skill-quality rejection paths, plus invalid-threshold validation for all three controls.
 - Wired the focused regression into the root `audit:quick` command and the WorkPass71 core validation workflow.
 
 ### NK1 commits
 
 - Adapter/gate: [`b9dfe3ea4859031cb64840d536c04cf98d265895`](https://github.com/ailtron1ss-rgb/NK1/commit/b9dfe3ea4859031cb64840d536c04cf98d265895)
-- Regression: [`8cdf72ba5fd23954e462dbccd68136a2f18c8fdd`](https://github.com/ailtron1ss-rgb/NK1/commit/8cdf72ba5fd23954e462dbccd68136a2f18c8fdd)
+- Initial regression: [`8cdf72ba5fd23954e462dbccd68136a2f18c8fdd`](https://github.com/ailtron1ss-rgb/NK1/commit/8cdf72ba5fd23954e462dbccd68136a2f18c8fdd)
+- Expanded task-success/trajectory/skill-quality rejection coverage: [`22e33cfa4f699a0c242e904d52b4cf92ad1a5712`](https://github.com/ailtron1ss-rgb/NK1/commit/22e33cfa4f699a0c242e904d52b4cf92ad1a5712)
 - Root audit wiring: [`43b2129684b7a7350cfc18451caaede8c27f8c74`](https://github.com/ailtron1ss-rgb/NK1/commit/43b2129684b7a7350cfc18451caaede8c27f8c74)
 - Core CI wiring: [`85cfc7e761c15a20879267c022c8011481e05daa`](https://github.com/ailtron1ss-rgb/NK1/commit/85cfc7e761c15a20879267c022c8011481e05daa)
 
