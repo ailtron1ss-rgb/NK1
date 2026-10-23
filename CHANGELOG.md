@@ -1,10 +1,3 @@
-## NK1 WorkPass331 — fail closed on corrupted memory budgets (2026-10-23)
-
-- **Fixed:** `MemoryOS2.restore` now validates persisted count/timestamp fields and restores a non-finite or invalid `byteBudget` to the bounded default instead of preserving Infinity/NaN in the live memory controller.
-- **Fixed:** `enforceByteBudget({ maxBytes })` ignores invalid non-finite overrides and keeps the current finite budget, preventing a JS/plugin caller from using Infinity to bypass eviction.
-- **Regression added:** `memory-provenance-lineage-workpass30.mjs` restores a poisoned snapshot and tests corrupt counters, an infinite maintenance timestamp, invalid budget and an infinite runtime override.
-- **Validation boundary:** code and regression are committed; current hosted Actions failures occur before runner assignment, so execution remains unconfirmed.
-
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
@@ -2120,3 +2113,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
 - Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
 - This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
+
+## NK1 WorkPass331 — fail closed on corrupted memory budgets (2026-10-23)
+
+- **Fixed:** `MemoryOS2.restore` now validates persisted count/timestamp fields and restores a non-finite or invalid `byteBudget` to the bounded default instead of preserving Infinity/NaN in the live memory controller.
+- **Fixed:** `enforceByteBudget({ maxBytes })` ignores invalid non-finite overrides and keeps the current finite budget, preventing a JS/plugin caller from using Infinity to bypass eviction.
+- **Regression added:** `memory-provenance-lineage-workpass30.mjs` restores a poisoned snapshot and tests corrupt counters, an infinite maintenance timestamp, invalid budget and an infinite runtime override.
+- **Validation boundary:** code and regression are committed; current hosted Actions failures occur before runner assignment, so execution remains unconfirmed.
