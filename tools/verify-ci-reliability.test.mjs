@@ -34,6 +34,11 @@ test("rejects retired checkout/setup-node action majors", () => {
   assert.ok(errors.length >= 2, `expected action-version errors, got: ${errors.join("\n")}`);
   assert.match(errors.join("\n"), /checkout@v4/);
   assert.match(errors.join("\n"), /setup-node@v4/);
+  const pinnedShaErrors = validateCiConfig({
+    workflows: { "sha-pinned.yml": "steps:\n  - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567\n" },
+    nodeVersion: "22.16.0"
+  });
+  assert.match(pinnedShaErrors.join("\n"), /approved Node.js-24-compatible v7\+ release tag/);
 });
 
 test("requires setup-node to use and assert the shared .nvmrc", () => {
