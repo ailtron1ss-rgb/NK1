@@ -115,6 +115,8 @@ export interface SkillRevisionProvenance {
   planFingerprint: string;
   /** Verified dataset snapshot used when the proposal authorized this revision attempt. */
   datasetFingerprint: string;
+  /** Digest of exact eligible repair evidence; lineage only, never approval. */
+  sourceEvidenceFingerprint?: string;
   dimensions: string[];
   createdAt: number;
 }
@@ -317,6 +319,7 @@ export class VersionedSkillCandidateStore {
       !(revisionProvenance.sourceCandidateId === null || /^[a-f0-9]{64}$/.test(revisionProvenance.sourceCandidateId)) ||
       !/^[a-f0-9]{64}$/.test(revisionProvenance.planFingerprint) ||
       !/^[a-f0-9]{64}$/.test(revisionProvenance.datasetFingerprint) ||
+      (revisionProvenance.sourceEvidenceFingerprint !== undefined && !/^[a-f0-9]{64}$/.test(revisionProvenance.sourceEvidenceFingerprint)) ||
       !Array.isArray(revisionProvenance.dimensions) || revisionProvenance.dimensions.length === 0 ||
       revisionProvenance.dimensions.some(d => !['safety','task-success','trajectory','capability-coverage','executability','holdout-generalization'].includes(d)) ||
       new Set(revisionProvenance.dimensions).size !== revisionProvenance.dimensions.length ||
