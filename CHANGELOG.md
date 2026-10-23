@@ -1,3 +1,17 @@
+## NK1 WorkPass362 — make reflection windows auditable (2026-10-23)
+
+- [FIXED] Reflection output now distinguishes lifetime `occurrences` from `sampleCount`, the exact recent window used for the reported metrics, and records `windowStartTick`/`windowEndTick`.
+- [INTEGRATED] Added regression coverage for a 12-observation history where statistics use only the newest eight; source evidence IDs must match `sampleCount`.
+- [SCOPE] The output metadata prevents downstream dashboards and planners from confusing full history volume with the smaller recent sample. No scoring gate uses the lifetime count as transfer evidence.
+- [VALIDATION] Code/test changes committed; test/typecheck execution remains unverified because current Actions runs expose no runnable steps.
+
+## NK1 WorkPass361 — align the reflection contract and harden hostile proxy inputs (2026-10-23)
+
+- [FIXED] Added newly emitted pass-threshold, pass-rate and Wilson-interval fields to the public `ReflectionHypothesis` interface, matching the object actually returned by the implementation.
+- [HARDENED] Moved `Array.isArray` checks for reflection/curriculum arrays and raw identities inside exception boundaries. Revoked Proxies now fail closed instead of throwing before the shared snapshot boundary can reject them.
+- [REGRESSION] Added revoked-array and revoked-object Proxy cases for both reflection and learning-target ranking; renamed the old stale test marker so logs identify the current P23 suite.
+- [VALIDATION] The branch contents are committed and API-verified, but no runtime pass is claimed.
+
 ## NK1 WorkPass360 — keep information gain separate from demonstrated transfer (2026-10-23)
 
 - [FIXED] Evidence-debt targets no longer map `informationGainPerCost01` into the `transfer01` field. Information gain estimates whether checking an item is worthwhile; it does not demonstrate cross-task generalization.
