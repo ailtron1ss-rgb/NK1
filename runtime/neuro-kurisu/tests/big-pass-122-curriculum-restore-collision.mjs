@@ -54,6 +54,14 @@ assert.throws(() => ranking.rankGoals({
 }), /personal-curriculum-goal-ranking-goal-invalid/);
 assert.equal(ranking.snapshot().focusGoalId, null, 'duplicate goal identity must not select a focus');
 
+const nonActive = ranking.rankGoals({
+  goals: [{ ...goal, status: 'candidate' }, { ...goal, id: 'paused-goal', status: 'paused' }],
+  identity01: 0.2, social01: 0.2, novelty01: 0.3, uncertainty01: 0.4,
+});
+assert.deepEqual(nonActive, [], 'canonical non-active goal statuses must be accepted but not ranked');
+assert.equal(ranking.snapshot().focusGoalId, null);
+
+
 let rankGetterCalls = 0;
 const hostileGoal = { ...goal };
 Object.defineProperty(hostileGoal, 'importance', {
