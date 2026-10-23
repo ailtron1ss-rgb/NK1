@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { bootstrapMeanConfidenceInterval } from './PairedSeedConfidence.ts';
 import { evaluateSkillLearnBenchCandidate, evaluateSkillLearnBenchTrial, type SkillLearnBenchCandidateGateOptions, type SkillLearnBenchCandidateGateReport, type SkillLearnBenchTrialReport } from './SkillLearnBenchAdapter.ts';
 import type { RevisedCandidateEvaluator } from './P23LearningEngine.ts';
 import {
@@ -608,6 +609,10 @@ export interface IndependentEvaluationFamilySeedCoverageOptions {
   minimumValidationFamilySeeds?: number;
   /** Minimum common paired seeds required for each sufficiently sampled holdout family; 0 disables the extra check. */
   minimumHoldoutFamilySeeds?: number;
+  /** Confidence level for deterministic bootstrap intervals; default 0.95. */
+  confidenceLevel?: number;
+  /** Number of deterministic bootstrap resamples; default 2000. */
+  bootstrapResamples?: number;
 }
 
 interface IndependentFamilySeedCoverageReport {
@@ -653,6 +658,87 @@ function independentFamilySeedCoverage(
   // is evaluable (missing labels or too few distinct tasks).
   if (minimumSeeds > 0 && familiesEvaluated === 0) familySeedCoverageFailures = 1;
   return { familiesEvaluated, familiesWithSufficientSeeds, familySeedCoverageFailures };
+}
+
+interface IndependentFamilyConfidenceReport {
+  familiesEvaluated: number;
+  confidenceBoundFailures: number;
+}
+
+function independentFamilyConfidenceBounds(
+  baselineReports: SkillLearnBenchTrialReport[],
+  candidateReports: SkillLearnBenchTrialReport[],
+  baselineBindings: Map<string, { seed: number }>,
+  candidateBindings: Map<string, { seed: number }>,
+  minimumTasks: number,
+  minimumSeeds: number,
+  confidenceLevel: number,
+  resamples: number,
+  planFingerprint: string,
+  split: 'validation' | 'holdout',
+  maximumRegression: number,
+  requirePositiveLowerBound: boolean,
+): IndependentFamilyConfidenceReport {
+  if (minimumSeeds === 0) return { familiesEvaluated: 0, confidenceBoundFailures: 0 };
+  const baselineByKey = new Map(baselineReports.map(report => [
+    JSON.stringify([report.taskId.trim(), report.trialId.trim()]), report,
+  ] as const));
+  const byFamily = new Map<string, Map<string, Map<number, { baseline: number[]; candidate: number[] }>>>();
+  for (const candidateReport of candidateReports) {
+    const family = candidateReport.taskFamily;
+    if (!family) continue;
+    const key = JSON.stringify([candidateReport.taskId.trim(), candidateReport.trialId.trim()]);
+    const baselineReport = baselineByKey.get(key);
+    const candidateBinding = candidateBindings.get(key);
+    const baselineBinding = baselineBindings.get(key);
+    if (!baselineReport || !candidateBinding || !baselineBinding ||
+        candidateBinding.seed !== baselineBinding.seed) {
+      throw new Error('matched-independent-evaluation-family-confidence-binding-missing');
+    }
+    if (baselineReport.taskFamily !== family) {
+      throw new Error('matched-independent-evaluation-family-confidence-mismatch');
+    }
+    const taskId = candidateReport.taskId.trim();
+    const tasks = byFamily.get(family) ?? new Map<string, Map<number, { baseline: number[]; candidate: number[] }>>();
+    const seeds = tasks.get(taskId) ?? new Map<number, { baseline: number[]; candidate: number[] }>();
+    const values = seeds.get(candidateBinding.seed) ?? { baseline: [], candidate: [] };
+    values.baseline.push(0.5 * baselineReport.taskSuccess.passRate +
+      0.3 * baselineReport.trajectoryQuality.aggregate + 0.2 * baselineReport.skillQuality.aggregate);
+    values.candidate.push(0.5 * candidateReport.taskSuccess.passRate +
+      0.3 * candidateReport.trajectoryQuality.aggregate + 0.2 * candidateReport.skillQuality.aggregate);
+    seeds.set(candidateBinding.seed, values);
+    tasks.set(taskId, seeds);
+    byFamily.set(family, tasks);
+  }
+
+  const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
+  let familiesEvaluated = 0;
+  let confidenceBoundFailures = 0;
+  for (const tasks of byFamily.values()) {
+    if (tasks.size < minimumTasks) continue;
+    const seedSets = [...tasks.values()].map(seeds => new Set(seeds.keys()));
+    const commonSeeds = [...seedSets[0]].filter(seed => seedSets.every(seeds => seeds.has(seed))).sort((a, b) => a - b);
+    if (commonSeeds.length < minimumSeeds) continue; // covered by the seed-coverage gate
+    const deltas = commonSeeds.map(seed => {
+      const perTask = [...tasks.values()].map(seeds => {
+        const values = seeds.get(seed)!;
+        return { baseline: mean(values.baseline), candidate: mean(values.candidate) };
+      });
+      return mean(perTask.map(row => row.candidate)) - mean(perTask.map(row => row.baseline));
+    });
+    const deterministicSeed = createHash('sha256')
+      .update(JSON.stringify([planFingerprint, split, commonSeeds, deltas.length]))
+      .digest().readUInt32BE(0);
+    const interval = bootstrapMeanConfidenceInterval(deltas, {
+      confidenceLevel, resamples, seed: deterministicSeed,
+    });
+    familiesEvaluated++;
+    const failed = requirePositiveLowerBound
+      ? interval.lower <= 0
+      : interval.lower < -maximumRegression;
+    if (failed) confidenceBoundFailures++;
+  }
+  return { familiesEvaluated, confidenceBoundFailures };
 }
 
 /**
@@ -725,6 +811,10 @@ export function compareMatchedIndependentEvaluations(
   holdoutFamiliesWithSufficientSeeds: number;
   validationFamilySeedCoverageFailures: number;
   holdoutFamilySeedCoverageFailures: number;
+  validationFamiliesEvaluatedForConfidenceInterval: number;
+  holdoutFamiliesEvaluatedForConfidenceInterval: number;
+  validationFamilyConfidenceBoundFailures: number;
+  holdoutFamilyConfidenceBoundFailures: number;
   environmentFingerprint: string;
   planFingerprint: string;
 } {
@@ -827,6 +917,14 @@ export function compareMatchedIndependentEvaluations(
       throw new RangeError(`matched-independent-evaluation-minimum-${label}-family-seeds-invalid`);
     }
   }
+  const confidenceLevel = seedOptions.confidenceLevel ?? 0.95;
+  const bootstrapResamples = seedOptions.bootstrapResamples ?? 2000;
+  if (!Number.isFinite(confidenceLevel) || confidenceLevel <= 0.5 || confidenceLevel >= 1) {
+    throw new RangeError('matched-independent-evaluation-confidence-level-invalid');
+  }
+  if (!Number.isSafeInteger(bootstrapResamples) || bootstrapResamples < 100 || bootstrapResamples > 50_000) {
+    throw new RangeError('matched-independent-evaluation-bootstrap-resamples-invalid');
+  }
   const gate = evaluateSkillLearnBenchCandidate(
     { validation: baseline.evaluation.validation, holdout: baseline.evaluation.holdout },
     { validation: candidate.evaluation.validation, holdout: candidate.evaluation.holdout },
@@ -840,6 +938,20 @@ export function compareMatchedIndependentEvaluations(
     candidate.evaluation.holdout, candidateBindings,
     gateOptions.minimumHoldoutFamilyTasks ?? 2, minimumHoldoutFamilySeeds,
   );
+  const validationConfidence = independentFamilyConfidenceBounds(
+    baseline.evaluation.validation, candidate.evaluation.validation,
+    baselineBindings, candidateBindings,
+    gateOptions.minimumValidationFamilyTasks ?? 2, minimumValidationFamilySeeds,
+    confidenceLevel, bootstrapResamples, bp.planFingerprint, 'validation',
+    gateOptions.maximumValidationFamilyRegression01 ?? 0.10, true,
+  );
+  const holdoutConfidence = independentFamilyConfidenceBounds(
+    baseline.evaluation.holdout, candidate.evaluation.holdout,
+    baselineBindings, candidateBindings,
+    gateOptions.minimumHoldoutFamilyTasks ?? 2, minimumHoldoutFamilySeeds,
+    confidenceLevel, bootstrapResamples, bp.planFingerprint, 'holdout',
+    gateOptions.maximumHoldoutFamilyRegression01 ?? 0.10, false,
+  );
   const reasons = [...gate.reasons];
   const feedback = [...gate.feedback];
   if (validationSeedCoverage.familySeedCoverageFailures > 0) {
@@ -849,6 +961,14 @@ export function compareMatchedIndependentEvaluations(
   if (holdoutSeedCoverage.familySeedCoverageFailures > 0) {
     reasons.push('holdout-family-seed-coverage-insufficient');
     feedback.push('At least one sufficiently sampled holdout family lacks the required common paired seeds; collect more independent runs before promotion.');
+  }
+  if (validationConfidence.confidenceBoundFailures > 0) {
+    reasons.push('validation-family-confidence-bound-regression-exceeds-tolerance');
+    feedback.push('At least one validation family lacks a positive lower bootstrap bound for paired-seed improvement; collect or inspect more independent runs before promotion.');
+  }
+  if (holdoutConfidence.confidenceBoundFailures > 0) {
+    reasons.push('holdout-family-confidence-bound-regression-exceeds-tolerance');
+    feedback.push('At least one holdout family lower bootstrap bound exceeds the tolerated regression; improve robustness without tuning against holdout examples.');
   }
   return {
     ...gate,
@@ -864,6 +984,10 @@ export function compareMatchedIndependentEvaluations(
     holdoutFamiliesWithSufficientSeeds: holdoutSeedCoverage.familiesWithSufficientSeeds,
     validationFamilySeedCoverageFailures: validationSeedCoverage.familySeedCoverageFailures,
     holdoutFamilySeedCoverageFailures: holdoutSeedCoverage.familySeedCoverageFailures,
+    validationFamiliesEvaluatedForConfidenceInterval: validationConfidence.familiesEvaluated,
+    holdoutFamiliesEvaluatedForConfidenceInterval: holdoutConfidence.familiesEvaluated,
+    validationFamilyConfidenceBoundFailures: validationConfidence.confidenceBoundFailures,
+    holdoutFamilyConfidenceBoundFailures: holdoutConfidence.confidenceBoundFailures,
     environmentFingerprint: bp.environmentFingerprint,
     planFingerprint: bp.planFingerprint,
   };
