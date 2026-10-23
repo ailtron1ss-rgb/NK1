@@ -37,6 +37,31 @@ assert.deepEqual(a, b, 'candidate and result ranking must remain independent of 
 assert.equal(ordered.retrievalDiagnostics().candidateCount, 192);
 assert.equal(ordered.retrievalDiagnostics().candidateSelection, 'idf-coverage-fuzzy-concept-rrf-stable-id');
 
+let queryCoercions = 0;
+const hostileQuery = { toString() { queryCoercions++; return query; } };
+assert.throws(
+  () => ordered.retrieve(hostileQuery, 8, 0, 0, { temporalMode: 'at', asOfAt: now }),
+  /memory-query-must-be-string/,
+  'the public retrieval boundary must reject objects instead of coercing plugin input',
+);
+assert.equal(queryCoercions, 0, 'retrieval validation must not execute a caller-owned toString');
+assert.throws(
+  () => ordered.retrieve('x'.repeat(16 * 1024 + 1), 8, 0, 0, { temporalMode: 'at', asOfAt: now }),
+  /memory-query-size-limit/,
+  'overlong search strings must be rejected before token/index work',
+);
+assert.equal(
+  ordered.retrieve(query, 1000, 0, 0, { temporalMode: 'at', asOfAt: now }).length,
+  64,
+  'oversized result requests must be clamped to the canonical retrieval ceiling',
+);
+assert.equal(
+  ordered.retrieve(query, Number.NaN, 0, 0, { temporalMode: 'at', asOfAt: now }).length,
+  8,
+  'non-finite result limits must use the safe default instead of propagating NaN',
+);
+
+
 // The query should materially separate true token overlap from unrelated records;
 // this guards against giving orthogonal hashed vectors a free 0.5 semantic score.
 const isolated = new MemoryOS2();

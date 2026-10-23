@@ -114,6 +114,9 @@ const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const safeCounter=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
 const safeTimestamp=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
 const MAX_MEMORY_BYTE_BUDGET = 8 * 1024 * 1024;
+// Bound hostile/plugin query cost and output amplification at the canonical memory owner.
+const MAX_MEMORY_QUERY_UNITS = 16 * 1024;
+const MAX_MEMORY_RETRIEVAL_RESULTS = 64;
 const safeByteBudget=(value:unknown,fallback=524288):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0&&value<=MAX_MEMORY_BYTE_BUDGET?Math.max(16384,value):fallback;
 // Keep single-digit numeric tokens: status codes, ratings, short versions and measured values are meaningful retrieval terms. Single-letter words remain excluded.
 const tokenize=(text:string)=>text.toLocaleLowerCase().normalize('NFKC').match(/[\p{L}\p{N}]{2,}|\p{N}/gu)??[];
@@ -750,6 +753,12 @@ export class MemoryOS2{
    if(item.epistemicStatus==='quarantined')this.state.quarantined++;return options.clone===false?(item as MemoryItem2):structuredClone(item as MemoryItem2);
  }
  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={},clone=true){
+   // Runtime callers include JS/plugin boundaries where the TS annotation provides no
+   // protection. Never coerce arbitrary objects: custom toString/valueOf can execute.
+   if(typeof query!=='string')throw new TypeError('memory-query-must-be-string');
+   if(query.length>MAX_MEMORY_QUERY_UNITS)throw new RangeError('memory-query-size-limit');
+   const safeLimit=typeof limit==='number'&&Number.isFinite(limit)
+     ?Math.max(1,Math.min(MAX_MEMORY_RETRIEVAL_RESULTS,Math.floor(limit))):8;
    const qTokens=this.tokensFor(query);
    const conceptQuery=expandMemoryQueryConcepts(qTokens);
    const queryEntities=extractEntities(query);
@@ -930,7 +939,7 @@ export class MemoryOS2{
      const conceptBoost01=row.conceptCoverage*.10;
      fused.score01=clamp(fused.score01+policyBias+intentBoost01+conceptBoost01);
      return {m:row.m,score:fused.score01,bm25:row.bm25,entity:row.entity,lexical,intentBoost01,conceptBoost01};
-   }).sort((a,b)=>b.score-a.score||a.m.id.localeCompare(b.m.id)).slice(0,Math.max(1,limit));
+   }).sort((a,b)=>b.score-a.score||a.m.id.localeCompare(b.m.id)).slice(0,safeLimit);
    rows.push(...topRows);
    this.lastHybridDiagnostics={...this.lastHybridDiagnostics,bm25Enabled:true,bm25CandidateCount:rawRows.filter(x=>x.bm25>0).length,bm25Max:maxBm25,rrfEnabled:true,identifierBias,temporalMode,asOfAt:now,queryIntentMode,maxQueryIntentBoost01:Math.max(0,...topRows.map(x=>x.intentBoost01)),candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:fuzzyCandidateIds.size,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit']};
    // semanticHits is retained only for persisted-state compatibility. It is not

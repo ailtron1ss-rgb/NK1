@@ -1,3 +1,12 @@
+## NK1 WorkPass427 — bound public memory retrieval ingress (2026-10-23)
+
+- The canonical MemoryOS2 retrieval boundary now rejects non-string queries before coercion (so plugin-defined toString/valueOf cannot run) and rejects queries above 16 KiB before tokenization/index work.
+- Result limits are normalized to 1–64, with the existing default of 8 applied to non-finite/non-number limits; retrieval cannot amplify output simply because a caller passed Infinity or a huge integer.
+- Added regression coverage for hostile coercion, overlong query rejection, bounded result count and NaN limit fallback. This hardens the existing memory owner; no second memory store or runtime dependency was introduced.
+- Regression is committed but has not been executed on the hosted runner; no retrieval-quality uplift is claimed.
+
+---
+
 ## NK1 WorkPass418 — cap memory budgets and harden restore ingress (2026-10-23)
 
 - Added a bounded plain-data snapshot boundary to memory restoration. Accessor-backed, cyclic, sparse, symbol-keyed and exotic object graphs fail closed without executing getters.
