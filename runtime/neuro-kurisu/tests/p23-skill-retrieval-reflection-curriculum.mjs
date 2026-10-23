@@ -56,6 +56,22 @@ assert.equal(reflections[0].passRate01, 0, 'task-success pass rate uses the expl
  Object.defineProperty(getterArray, '0', { enumerable: true, configurable: true, get() { arrayGetterCalls++; return outcomes[0]; } });
  assert.deepEqual(reflectOnOutcomes(getterArray), []);
  assert.equal(arrayGetterCalls, 0, 'array accessors must be rejected without being invoked');
+ const revokedExperienceArray = Proxy.revocable([], {});
+ revokedExperienceArray.revoke();
+ assert.deepEqual(reflectOnOutcomes(revokedExperienceArray.proxy), [],
+   'a revoked input-array proxy must be rejected rather than escaping the trust boundary');
+ const revokedExperience = Proxy.revocable({ id: 'revoked-object' }, {});
+ revokedExperience.revoke();
+ assert.deepEqual(reflectOnOutcomes([revokedExperience.proxy]), [],
+   'a revoked event proxy must be rejected rather than escaping the trust boundary');
+ const revokedTargetArray = Proxy.revocable([], {});
+ revokedTargetArray.revoke();
+ assert.deepEqual(rankLearningTargets(revokedTargetArray.proxy), [],
+   'a revoked curriculum-array proxy must be rejected rather than escaping the trust boundary');
+ const revokedTarget = Proxy.revocable({ id: 'revoked-target' }, {});
+ revokedTarget.revoke();
+ assert.deepEqual(rankLearningTargets([revokedTarget.proxy]), [],
+   'a revoked target proxy must be rejected without throwing');
  assert.deepEqual(reflectOnOutcomes(Array.from({ length: 4097 }, (_, i) => ({ ...outcomes[0], id: 'oversized-' + i }))), [],
    'oversized reflection batches must fail closed instead of truncating into a biased sample');
 
