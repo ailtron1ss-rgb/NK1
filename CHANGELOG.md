@@ -1,3 +1,10 @@
+## NK1 WorkPass332 — sanitize restored self-agency model (2026-10-23)
+
+- **Fixed:** `PredictiveSelfAgencySubstrate.restore` no longer spreads arbitrary persisted values into the live self-model. It reconstructs fixed-size vectors/matrices, falls back to seeded weights for invalid cells, bounds predictions/errors/ownership signals, and validates action names, counters, timestamps and schema version.
+- **Regression added:** WorkPass186 now restores NaN/Infinity, invalid counters, a fake action and malformed weights, then asserts finite model state and finite next-step predictions; unsupported schema versions are rejected.
+- **Architecture:** no second self-model is introduced; the existing self-agency substrate remains the single owner for its prediction and authorship state.
+- **Validation boundary:** implementation/regression are committed; Actions currently stops before runner allocation, so no test pass is claimed.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
