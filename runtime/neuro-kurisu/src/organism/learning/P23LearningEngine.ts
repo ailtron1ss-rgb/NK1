@@ -808,7 +808,14 @@ export class P23LearningEngine {
 
   replayPending(traces:OrganismDecisionTrace[],policy:AdaptivePolicyEngine):number {
     let updates=0;
-    const eligible=traces.filter(trace=>trace.selected && trace.outcome && !this.state.replayedTraceIds.includes(trace.id) && this.state.experiences.some(x=>x.traceId===trace.id));
+    // Build a first-write-wins trace index once; replay batches can include many traces
+    // and should not repeatedly scan the full experience store for the same identity.
+    const experiencesByTraceId=new Map<string,LearningExperience>();
+    for(const experience of this.state.experiences){
+      if(!experiencesByTraceId.has(experience.traceId)) experiencesByTraceId.set(experience.traceId,experience);
+    }
+    const replayedTraceIds=new Set(this.state.replayedTraceIds);
+    const eligible=traces.filter(trace=>trace.selected && trace.outcome && !replayedTraceIds.has(trace.id) && experiencesByTraceId.has(trace.id));
     // Selection is shared with the standalone benchmark so production and evaluation
     // exercise the same policy. Recent quota is configurable at the selector boundary.
     const newestTick=eligible.reduce((latest,trace)=>Math.max(latest,trace.tick),0);
@@ -818,7 +825,7 @@ export class P23LearningEngine {
       frequencies.set(key,(frequencies.get(key)??0)+1);
     }
     const ranked=eligible.map(trace=>{
-      const exp=this.state.experiences.find(x=>x.traceId===trace.id)!;
+      const exp=experiencesByTraceId.get(trace.id)!;
       const key=`${exp.contextKey}|${exp.action}`;
       const priority=scoreReplayPriority(exp,newestTick,frequencies.get(key)??1);
       const priorUpdates=policy.estimate(exp.contextKey,exp.action,.5).updates;
@@ -826,7 +833,7 @@ export class P23LearningEngine {
       // into the actual production replay path. These signals rank samples only;
       // the recorded outcome remains the learning target and is not rewritten.
       return {
-        trace,id:trace.id,tick:trace.tick,contextKey:exp.contextKey,action:exp.action,
+        trace,experience:exp,id:trace.id,tick:trace.tick,contextKey:exp.contextKey,action:exp.action,
         surprise:priority.priority01,
         novelty:priority.novelty01,
         salience:outcomeReplaySalience(exp.success,exp.predictedUtility),
@@ -846,7 +853,7 @@ export class P23LearningEngine {
     // salience, novelty, goal-priority, replay-count, and health-adaptive ranking.
     const causalCandidates=ranked.map(item=>{
       const trace=item.trace;
-      const exp=this.state.experiences.find(x=>x.traceId===trace.id)!;
+      const exp=item.experience;
       const needs=trace.stateBefore.needs;
       const causalStrength=clamp(trace.reasoningSignals.causalConfidence01 ?? trace.reasoningSignals.causalStrength01 ?? .5);
       const learningQuality=clamp(1-Math.abs(exp.success-exp.predictedUtility));
@@ -872,10 +879,10 @@ export class P23LearningEngine {
       maxBatchSize:Math.min(128,Math.max(adaptiveCapacity,adaptiveCapacity*2)),
       recentQuota:Math.min(128,Math.max(0,(options.recentQuota??0)*2)),
     });
-    const ordered=selectReplayBatch(causalCandidatesSelected,options).map(item=>item.trace);
-    for (const trace of ordered) {
-      const exp=this.state.experiences.find(x=>x.traceId===trace.id);
-      if(!exp) continue;
+    const ordered=selectReplayBatch(causalCandidatesSelected,options);
+    for (const item of ordered) {
+      const trace=item.trace;
+      const exp=item.experience;
       const before=policy.estimate(exp.contextKey,exp.action,.5);
       const nextValues=ACTIONS.map(a=>policy.estimate(exp.nextContextKey,a,.5).value);
       const target=bellmanTarget(exp.reward,nextValues,.76);
