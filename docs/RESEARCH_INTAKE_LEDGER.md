@@ -1,3 +1,14 @@
+## WorkPass418 — deterministic personal-curriculum state and target selection (2026-10-23)
+
+- **Existing NK1 mechanism reused:** `LearningTrustBoundary.snapshotPlainData` now guards persisted curriculum restoration, outcome observations, developmental-context observations, and goal-ranking inputs. This avoids introducing a second sanitizer or a parallel learning store.
+- **Research-derived design rule:** reflective/curriculum scores are *prioritization evidence*, not proof of successful learning. Invalid ranges, identity collisions, unsupported goal lifecycle values and accessor-backed inputs must not mutate state or select a focus.
+- **Implementation:** restore quarantines complete sets of records with duplicate IDs/families; goal-ranking input is validated before focus changes and equal scores are broken by canonical goal ID; completion/suppression diagnostics are recomputed from unique current thread states to avoid repeated-feedback inflation.
+- **Regression:** P23's existing `test:big-pass-122` now contains restoration, online observation, conflicting identity, stable tie-order, canonical status, and lifecycle-count assertions. The focused WorkPass417 workflow watches all relevant curriculum files and runs Node 24, runtime typecheck, and curriculum/core persistence tests.
+- **Upstream/licensing:** no donor source was copied in this pass; this is a local adaptation of NK1's shared trust boundary. No dependency added. Prior RLiable/Hermes references remain research inspirations, not newly installed frameworks.
+- **Verification status:** source/test/workflow wiring committed, but exact-head runtime execution remains unconfirmed. The latest visible Actions failures have `runner_id=0` and no steps; this is an infrastructure blocker, not evidence that tests passed or that this code failed. No learning uplift claimed.
+
+---
+
 ## WorkPass448 — bound bootstrap computational work (2026-10-23)
 
 - **Risk:** the bootstrap utility bounded the resample count but not the product of sample count × resamples; a permitted high resample setting combined with a large evidence vector could spend excessive CPU.
