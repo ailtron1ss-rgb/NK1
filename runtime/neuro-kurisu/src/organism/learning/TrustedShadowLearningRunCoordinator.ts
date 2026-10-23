@@ -46,6 +46,6 @@ export function runTrustedShadowLearningProcess(
   }
   return runLearningProcess(input.run, input.planFingerprint, input.command, {
     runtimeVersion: input.runtimeVersion,
-    register: context => input.core.registerTrustedSkillShadowRun(context),
+    register: async context => { await input.core.registerTrustedSkillShadowRun(context); },
   });
 }
