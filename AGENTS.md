@@ -1,3 +1,15 @@
+## Latest durable checkpoint — WorkPass329 multi-axis holdout gate (2026-10-23)
+
+- Active working branch: `workpass328-upstream-donor-gate`, based on `workpass70-source`; draft PR #86 targets `rebuild`. Keep `main` (the separate release/metadata line) untouched.
+- Adapted a narrow mechanism from [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution) at revision `0a929e3aa20e15cf04dc7c28492a7d41a5139125`: the canonical P23 SkillLearnBench gate now rejects excessive holdout regression separately for task success, trajectory quality, and skill quality, even when the aggregate composite improves.
+- Added a regression fixture for the composite-masking failure and wired it into root `audit:quick` and WorkPass71 CI. Added the upstream to the 28-entry donor register and documented the adaptation.
+- Exact-head focused test/typecheck are **not verified**: current GitHub Actions attempts have been stopping before runner assignment (`runner_id=0`, zero steps/logs). Do not infer a passing or failing test.
+- Upstream license evidence is partial: README and `pyproject.toml` declare MIT, but the standalone `LICENSE` path was not retrievable. No source was copied and no dependency was added.
+- Keep learning/retrieval scores unchanged until an independent frozen paired-seed holdout shows measured improvement. Existing release gates remain open; no ZIP was downloaded, rebuilt, or published.
+- Read [WorkPass329 adaptation/evidence report](docs/WORKPASS329_HERMES_MULTIAXIS_HOLDOUT_GATE_2026-10-23.md), the [donor map](docs/NEUROCORE_DONOR_MAP_2026-10-23.md), and the research intake ledger before the next pass.
+
+---
+
 ## Latest durable checkpoint — WorkPass328 upstream donor gate (2026-10-23)
 
 - Working branch: workpass328-upstream-donor-gate, based on workpass70-source; main remains untouched. This is an intake/governance pass, not a donor implementation or a production release.
@@ -12,7 +24,7 @@
 
 # NeuroCore — repository working rules
 
-> **New-session entry point:** read [`NEUROCORE_START_HERE.md`](NEUROCORE_START_HERE.md) and [WorkPass126 skill-store integrity report](docs/WORKPASS126_SKILL_STORE_INTEGRITY_2026-10-21.md) and [WorkPass125 repository synchronization audit](docs/WORKPASS125_REPOSITORY_SYNC_AUDIT_2026-10-21.md), then refresh the live branch head, stacked PR state, exact-head Actions status and open-work register. The active learning stack is WorkPass124 on top of WorkPass123; PR #12 is draft and unmerged. WorkPass126 hardens durable skill-store schema and payload-integrity validation; its tests and exact-head CI remain unverified. The release/metadata `main` branch is not the direct merge target for the source stack. The mission is persistent across chats; do not ask the user to restate it.
+> **New-session entry point:** read [`NEUROCORE_START_HERE.md`](NEUROCORE_START_HERE.md), [WorkPass329 evidence report](docs/WORKPASS329_HERMES_MULTIAXIS_HOLDOUT_GATE_2026-10-23.md), [WorkPass328 donor gate validation](docs/WORKPASS328_DONOR_GATE_VALIDATION_2026-10-23.md), and the research intake ledger. Refresh the live head, draft PR #86, exact-head Actions status, and open-work register before coding. Current source work stays on `workpass328-upstream-donor-gate` (based on `workpass70-source`); `main` is the separate release/metadata line, not an automatic merge target. Older WorkPass reports are historical unless the latest checkpoint explicitly identifies them as active. The project mission and working rules persist; do not ask the user to restate them.
 
 ## Latest checkpoint
 
