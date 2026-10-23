@@ -33,8 +33,12 @@ jobs:
           set -euo pipefail
           expected="v$(tr -d '[:space:]' < .nvmrc)"
           actual="$(node --version)"
-          printf 'expected=%s actual=%s\\n' "$expected" "$actual"
+          printf 'expected=%s actual=%s\n' "$expected" "$actual"
           test "$actual" = "$expected"
+      - name: Audit CI Action/runtime compatibility contract
+        run: npm run audit:ci-reliability
+      - name: Test CI reliability audit regressions
+        run: node --test tools/verify-ci-reliability.test.mjs
       - name: Verify Live2D expression transitions do not restart unchanged expressions
         run: node app/scripts/test-live2d-expression-cache.mjs
       - name: Test legacy avatar preference storage failure handling
