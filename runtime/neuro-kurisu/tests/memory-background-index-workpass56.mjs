@@ -65,6 +65,25 @@ assert.equal(second.indexedItems, 2, 'a later maintenance step should incrementa
 assert.equal(second.remaining, 0);
 assert.equal(provider.requests, 2, 'one bounded provider batch is sent per maintenance step');
 
+// Observability must never become a failure dependency: a custom/local provider
+// may have a broken diagnostics hook while embedding itself continues to work.
+const brokenDiagnosticsProvider = new DeterministicProvider();
+brokenDiagnosticsProvider.diagnostics = () => { throw new Error('diagnostics adapter failure'); };
+const diagnosticsMemory = new MemoryOS2({ embeddingProvider: brokenDiagnosticsProvider });
+diagnosticsMemory.encode({
+  id:'diagnostics-memory',content:'A failed optional diagnostics hook must not break canonical memory.',
+  kind:'semantic',source:'diagnostics-failure-fixture',tags:[],context:{},salience:.7,
+  emotionalWeight:.1,identityRelevance:.2,goalRelevance:.2,socialRelevance:.1,predictionError:.1,
+  confidence:.9,epistemicStatus:'fact',entities:[],semanticLinks:[],temporalLinks:[],causalLinks:[],
+  contradictionLinks:[],validFromAt:now-100,createdAt:now-50,
+});
+const diagnosticsRecovery = await diagnosticsMemory.maintainSemanticIndexBatch({maxItems:1,now});
+assert.equal(diagnosticsRecovery.indexed,1,'embedding can still succeed when diagnostics fail');
+assert.equal(diagnosticsRecovery.lastErrorCode,'provider-diagnostics-error');
+assert.equal(diagnosticsMemory.snapshot().items.length,1,'diagnostics failure must not alter canonical memories');
+assert.equal(diagnosticsMemory.semanticEmbeddingMaintenanceDiagnostics().lastErrorCode,'provider-diagnostics-error',
+  'read-only diagnostics should report the adapter fault without throwing');
+
 const offlineProvider = new DeterministicProvider();
 offlineProvider.fail = true;
 const offline = new MemoryOS2({ embeddingProvider: offlineProvider });
