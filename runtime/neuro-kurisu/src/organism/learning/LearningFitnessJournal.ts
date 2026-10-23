@@ -110,11 +110,6 @@ function validateInput(value: unknown): asserts value is LearningFitnessJournalI
   }
 }
 
-function entryBody(entry: LearningFitnessJournalEntry): Omit<LearningFitnessJournalEntry, 'digest'> {
-  const { digest: _digest, ...body } = entry;
-  return body;
-}
-
 function verifyEntry(value: unknown, expectedSequence: number, expectedPrevious: string): LearningFitnessJournalEntry {
   let detached: unknown;
   try { detached = snapshotPlainData(value); }
@@ -153,7 +148,9 @@ export class JsonlLearningFitnessJournal implements LearningFitnessJournalSink {
     if (stat.size > this.maxBytes) throw new Error('learning-fitness-journal-size-limit');
     const text = readFileSync(this.filePath, 'utf8');
     if (text && !text.endsWith('\n')) throw new Error('learning-fitness-journal-truncated-final-line');
-    const lines = text.split('\n').filter(line => line.length > 0);
+    const rawLines = text.split('\n');
+    const lines = text ? rawLines.slice(0, -1) : [];
+    if (lines.some(line => line.trim().length === 0)) throw new Error('learning-fitness-journal-blank-line');
     const entries: LearningFitnessJournalEntry[] = [];
     let previous = ZERO_DIGEST;
     for (let index = 0; index < lines.length; index++) {
