@@ -12,6 +12,7 @@ import { evaluateSkillLearnBenchCandidate, type SkillLearnBenchCandidateEvaluati
 import { bindIndependentEvaluationToVerifiedShadowEvidence, bindReflectiveReportsToVerifiedShadowEvidence, type ReflectiveEvidenceBindingReport } from './HermesVerifiedEvidenceBinding.ts';
 import { compareMatchedIndependentEvaluations } from './IndependentSkillCandidateEvaluator.ts';
 import type { LearningFitnessJournalDiagnostics, LearningFitnessJournalSink } from './LearningFitnessJournal.ts';
+import type { LearningRobustMetricSummary } from './LearningRobustMetrics.ts';
 import { planSkillRevision, type SkillRevisionPlan } from './SkillRevisionPlan.ts';
 import type { SkillShadowEvidenceVerifier } from './VersionedSkillCandidateStore.ts';
 import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillRollbackApproval, type SkillShadowObservation, type SkillRevisionProvenance, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
@@ -875,6 +876,7 @@ export class P23LearningEngine {
     holdoutFamilyUpperBoundMaximum:number|null;
     environmentFingerprint:string;
     planFingerprint:string;
+    learningRobustDiagnostics:{diagnosticOnly:true;validation:LearningRobustMetricSummary;holdout:LearningRobustMetricSummary};
   };evidenceBinding:ReflectiveEvidenceBindingReport} {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
     // Detach hostile caller-owned envelopes before any property access. In
