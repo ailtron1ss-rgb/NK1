@@ -1,3 +1,9 @@
+## WorkPass395 — compatibility check for host-owned class providers (2026-10-23)
+
+- Added an integration fixture whose `configured` and `generate` methods live on the provider prototype, matching the shape of the existing `OpenAICompatibleLocalChatProvider` class.
+- The direct generator trust boundary now has coverage for both sides of the compatibility contract: descriptor-based resolution must accept normal prototype methods, while request/response/provider accessors must be rejected without executing getters.
+- The P26 workflow's new local generator regression step runs this test because the source/test paths are now part of the trigger filter. The check is committed but not executed successfully yet due the continuing missing Action step/log records.
+
 ## WorkPass394 — harden the direct local-model generator boundary (2026-10-23)
 
 - **Implementation gap found:** the P23 engine protected the main reflective revision flow, but `generateLocalSkillRevision` is also a callable module entry point. Direct callers could previously pass accessor-backed request data that `JSON.stringify` would read, or a provider response whose `text` getter executed during parsing.
