@@ -4,6 +4,14 @@ export interface LearningRobustMetricDimension {
   baselineTaskBalancedIqm: number;
   candidateTaskBalancedIqm: number;
   taskBalancedIqmDelta: number;
+  baselineTaskBalancedMedian: number;
+  candidateTaskBalancedMedian: number;
+  taskBalancedMedianDelta: number;
+  /** With a fixed score ceiling of 1, lower values mean less distance to the ceiling. */
+  baselineTaskBalancedOptimalityGap: number;
+  candidateTaskBalancedOptimalityGap: number;
+  /** Negative deltas indicate the candidate moved closer to the fixed score ceiling. */
+  taskBalancedOptimalityGapDelta: number;
   /** Equal task weighting; within each task, a tied paired seed contributes 0.5. */
   pairedProbabilityOfImprovement: number;
 }
@@ -51,6 +59,22 @@ function interquartileMean(values: readonly number[]): number {
     weightedSum += sorted[index] * overlap;
   }
   return weightedSum / (to - from);
+}
+
+/** Median of task-level means; unlike pooled rows it gives each task one vote. */
+function taskMedian(values: readonly number[]): number {
+  if (values.length === 0) throw new Error('learning-robust-metrics-empty-values');
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1
+    ? sorted[middle]
+    : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+/** RLiable-inspired optimality gap for the validated [0, 1] score scale. */
+function taskBalancedOptimalityGap(taskMeans: readonly number[]): number {
+  if (taskMeans.length === 0) throw new Error('learning-robust-metrics-empty-values');
+  return 1 - taskMeans.reduce((sum, value) => sum + value, 0) / taskMeans.length;
 }
 
 function reportScore(raw: unknown): { taskId: string; trialId: string; score: ScoreMap } {
@@ -127,12 +151,22 @@ function summarizeDimension(
 
   const baselineIqm = interquartileMean(baselineTaskMeans);
   const candidateIqm = interquartileMean(candidateTaskMeans);
+  const baselineMedian = taskMedian(baselineTaskMeans);
+  const candidateMedian = taskMedian(candidateTaskMeans);
+  const baselineGap = taskBalancedOptimalityGap(baselineTaskMeans);
+  const candidateGap = taskBalancedOptimalityGap(candidateTaskMeans);
   const probability = taskImprovementProbabilities.reduce((sum, value) => sum + value, 0) /
     taskImprovementProbabilities.length;
   return {
     baselineTaskBalancedIqm: roundMetric(baselineIqm),
     candidateTaskBalancedIqm: roundMetric(candidateIqm),
     taskBalancedIqmDelta: roundMetric(candidateIqm - baselineIqm),
+    baselineTaskBalancedMedian: roundMetric(baselineMedian),
+    candidateTaskBalancedMedian: roundMetric(candidateMedian),
+    taskBalancedMedianDelta: roundMetric(candidateMedian - baselineMedian),
+    baselineTaskBalancedOptimalityGap: roundMetric(baselineGap),
+    candidateTaskBalancedOptimalityGap: roundMetric(candidateGap),
+    taskBalancedOptimalityGapDelta: roundMetric(candidateGap - baselineGap),
     pairedProbabilityOfImprovement: roundMetric(probability),
   };
 }
