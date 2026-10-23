@@ -73,6 +73,8 @@ const malformedRows = [
   {...rows[0], taskId: 'task-with-' + String.fromCharCode(0) + '-control'},
   {...rows[0], taskId: 'Ｔａｓｋ－ａｌｉａｓ－１'},
   {...rows[0], seed: Number.POSITIVE_INFINITY},
+  new Proxy(rows[0], { getPrototypeOf() { throw new Error('untrusted proxy trap'); } }),
+  Object.defineProperty({...rows[0]}, 'taskId', { get() { throw new Error('untrusted getter'); } }),
 ];
 result = evaluateSkillRevision([...rows, ...malformedRows], 'baseline', 'candidate');
 assert.equal(result.accepted, true, 'invalid extra rows must not alter a valid independent comparison');
@@ -80,6 +82,8 @@ assert.equal(result.pairedN, 10);
 assert.equal(result.rejectedRows, malformedRows.length);
 assert.throws(() => evaluateSkillRevision(null, 'baseline', 'candidate'), /observations must be an array/);
 assert.throws(() => evaluateSkillRevision(rows, {}, 'candidate'), /bounded method names/);
-assert.throws(() => evaluateSkillRevision(rows, 'baseline', 'candidate', null), /options must be a plain object/);
+assert.throws(() => evaluateSkillRevision(rows, 'baseline', 'candidate', null), /options must be a plain data object/);
+const throwingOption = Object.defineProperty({}, 'minPairedTasks', { get() { throw new Error('untrusted option getter'); } });
+assert.throws(() => evaluateSkillRevision(rows, 'baseline', 'candidate', throwingOption), /options must be a plain data object/);
 
 console.log('P23_VERIFIED_SKILL_REVISION_GATE=PASS');

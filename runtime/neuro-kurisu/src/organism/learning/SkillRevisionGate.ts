@@ -47,30 +47,70 @@ const isBoundedText = (value: unknown, max: number): value is string =>
     return code <= 0x1f || code === 0x7f || (code >= 0x80 && code <= 0x9f);
   });
 
-const isPlainRecord = (value: unknown): value is Record<string, unknown> => {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
-  const prototype = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
+const toPlainDataRecord = (value: unknown): Record<string, unknown> | undefined => {
+  try {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return undefined;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const record: Record<string, unknown> = Object.create(null);
+    for (const [key, descriptor] of Object.entries(descriptors)) {
+      // Never invoke untrusted getters while evaluating evidence. Snapshot own
+      // data properties before reading any identity or outcome field.
+      if (!Object.prototype.hasOwnProperty.call(descriptor, 'value')) return undefined;
+      record[key] = descriptor.value;
+    }
+    return record;
+  } catch {
+    // Proxies and exotic objects can throw during reflection; treat them as invalid rows.
+    return undefined;
+  }
 };
 
-/** Validate runtime data, not just TypeScript types: evidence can cross process boundaries. */
-const valid = (value: unknown): value is RevisionObservation => {
-  if (!isPlainRecord(value)) return false;
-  const row = value;
-  if (!isBoundedText(row.taskId, 256) ||
-      !isBoundedText(row.taskVersion, 128) ||
-      !isBoundedText(row.family, 128) ||
-      !isBoundedText(row.method, 128) ||
-      !isBoundedText(row.verifierId, 128) ||
-      !isBoundedText(row.expectedVerifierId, 128) ||
-      !isBoundedText(row.evidenceRef, 512) ||
-      !Number.isSafeInteger(row.seed) || (row.seed as number) < 0 ||
-      !Number.isSafeInteger(row.attempt) || row.attempt !== 1 ||
-      row.split !== 'holdout' || typeof row.passed !== 'boolean' ||
-      (row.authority !== 'independent-verifier' && row.authority !== 'human-review')) {
-    return false;
+/** Validate and detach untrusted runtime data, not just the TypeScript surface type. */
+const parseObservation = (value: unknown): RevisionObservation | undefined => {
+  const row = toPlainDataRecord(value);
+  if (!row) return undefined;
+  const taskId = row.taskId;
+  const taskVersion = row.taskVersion;
+  const family = row.family;
+  const split = row.split;
+  const method = row.method;
+  const seed = row.seed;
+  const attempt = row.attempt;
+  const passed = row.passed;
+  const authority = row.authority;
+  const verifierId = row.verifierId;
+  const expectedVerifierId = row.expectedVerifierId;
+  const evidenceRef = row.evidenceRef;
+  if (!isBoundedText(taskId, 256) ||
+      !isBoundedText(taskVersion, 128) ||
+      !isBoundedText(family, 128) ||
+      !isBoundedText(method, 128) ||
+      !isBoundedText(verifierId, 128) ||
+      !isBoundedText(expectedVerifierId, 128) ||
+      !isBoundedText(evidenceRef, 512) ||
+      !Number.isSafeInteger(seed) || (seed as number) < 0 ||
+      !Number.isSafeInteger(attempt) || attempt !== 1 ||
+      split !== 'holdout' || typeof passed !== 'boolean' ||
+      (authority !== 'independent-verifier' && authority !== 'human-review')) {
+    return undefined;
   }
-  return row.authority !== 'independent-verifier' || row.verifierId === row.expectedVerifierId;
+  if (authority === 'independent-verifier' && verifierId !== expectedVerifierId) return undefined;
+  return {
+    taskId,
+    taskVersion,
+    family,
+    split,
+    method,
+    seed: seed as number,
+    attempt: attempt as number,
+    passed,
+    authority,
+    verifierId,
+    expectedVerifierId,
+    evidenceRef,
+  };
 };
 
 /** Pair on exact task ID + manifest version + seed + first attempt; retries and replayed evidence receipts are not independent samples. */
@@ -85,15 +125,17 @@ export function evaluateSkillRevision(
     throw new Error('two distinct bounded method names are required');
   }
   if (!Array.isArray(observations)) throw new Error('revision observations must be an array');
-  if (!isPlainRecord(options)) throw new Error('revision gate options must be a plain object');
-  const minPairedTasks = boundedInteger(options.minPairedTasks, 8, 2, 10000);
-  const minAbsoluteGain = clamp(options.minAbsoluteGain ?? .02, .02);
-  const maxFamilyRegression = clamp(options.maxFamilyRegression ?? .10, .10);
+  const optionValues = toPlainDataRecord(options);
+  if (!optionValues) throw new Error('revision gate options must be a plain data object');
+  const minPairedTasks = boundedInteger(optionValues.minPairedTasks as number | undefined, 8, 2, 10000);
+  const minAbsoluteGain = clamp((optionValues.minAbsoluteGain as number | undefined) ?? .02, .02);
+  const maxFamilyRegression = clamp((optionValues.maxFamilyRegression as number | undefined) ?? .10, .10);
   const byPair = new Map<string, Map<string, RevisionObservation[]>>();
   const receiptCounts = new Map<string, number>();
   let rejectedRows = 0;
-  for (const row of observations) {
-    if (!valid(row) || (row.method !== baselineMethod && row.method !== candidateMethod)) {
+  for (const input of observations) {
+    const row = parseObservation(input);
+    if (!row || (row.method !== baselineMethod && row.method !== candidateMethod)) {
       rejectedRows++;
       continue;
     }

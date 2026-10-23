@@ -263,3 +263,10 @@ Do not count a reference as “used” until a source revision/paper protocol is
 - Regression uses full-width compatibility characters as a malformed task ID and requires the row to be excluded without changing the valid comparison.
 - This is a narrow identity-integrity control for matched learning evidence; it does not establish external verifier correctness or measured learning uplift.
 - **Unverified:** exact-head runtime tests/typecheck remain blocked by Actions jobs with no executable steps.
+
+
+## WorkPass141 — data-only object boundary for reflective learning evaluation (2026-10-23)
+
+- Evidence rows and evaluation options are snapshotted from plain own data properties. Getters/accessors are rejected without execution; thrown proxy reflection traps are converted to invalid-row rejections.
+- This keeps input parsing deterministic and prevents external object behavior from running inside the scorer. It complements task-version pairing, global evidence-reference uniqueness and order-independent duplicate rejection.
+- **Unverified:** executable regression and typecheck await a runner-backed Actions result.

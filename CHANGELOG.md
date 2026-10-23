@@ -2190,3 +2190,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **Hardened:** evaluation identifiers must already be NFKC-normalized in addition to being bounded, trimmed and free of control characters. This blocks compatibility-form aliases from creating distinct task/method identities when they encode the same normalized identifier.
 - **Regression added:** full-width compatibility characters are rejected as malformed task IDs and cannot increase the paired-sample count.
 - **Validation boundary:** source and regression are committed. Runtime test/typecheck remain unverified until GitHub Actions jobs acquire a runner.
+
+
+## NK1 WorkPass345 — avoid invoking getters and proxy traps in learning evidence
+
+- **Hardened:** the revision evaluator snapshots only own data properties from plain input objects before reading evidence fields. Accessor properties are rejected without invocation; reflection errors from proxy/exotic objects become rejected rows instead of aborting the scoring call.
+- **Options hardened:** gate thresholds are read from the same plain-data snapshot, so a caller-defined getter cannot run during evaluation.
+- **Regression added:** hostile proxy traps, throwing identity getters and throwing options getters are rejected; existing valid paired observations retain their prior scoring.
+- **Validation boundary:** source and regressions committed; runtime execution remains unverified while GitHub Actions fails before runner assignment.
