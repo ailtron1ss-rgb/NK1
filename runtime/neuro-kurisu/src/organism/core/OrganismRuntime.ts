@@ -287,6 +287,9 @@ export class OrganismRuntime {
           new JsonlLearningLifecycleJournal(learningLifecycleJournalPathForStateFile(config.stateFile)),
         );
       }
+      // Resolve prior uncertain intents from the canonical versioned store on startup.
+      // Reconciliation is conservative and never promotes a candidate.
+      config.compoundRepairRevision.engine.reconcileLearningLifecycleOutcomes();
       const provideInputs = config.compoundRepairRevision.independentEvaluationConfigForRepair
         ? withIndependentCandidateEvaluation(
             config.compoundRepairRevision.provideInputs,
@@ -1761,6 +1764,11 @@ export class OrganismRuntime {
   learningFitnessJournalDiagnostics() {
     return this.config.compoundRepairRevision?.engine.learningFitnessJournalDiagnostics()
       ?? { configured:false as const, available:false as const };
+  }
+  /** Explicitly retry reconciliation of uncertain lifecycle intents against the versioned store. */
+  reconcileLearningLifecycleOutcomes() {
+    return this.config.compoundRepairRevision?.engine.reconcileLearningLifecycleOutcomes()
+      ?? { configured:false as const, available:false as const, reason:'store-unconfigured' as const };
   }
 
   compoundRepairRevisionDiagnostics() {
