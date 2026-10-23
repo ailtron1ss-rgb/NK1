@@ -149,8 +149,8 @@ export class PersonalCurriculumEngine {
        typeof goal.id!=='string'||!goal.id.trim()||goal.id.length>256||
        typeof goal.title!=='string'||!goal.title.trim()||goal.title.length>512||
        typeof goal.reason!=='string'||goal.reason.length>4096||
-       typeof goal.source!=='string'||goal.source.length>120||
-       typeof goal.status!=='string'||goal.status.length>120||
+       !['intrinsic','external','learned','homeostatic'].includes(goal.source as string)||
+       !['candidate','active','paused','completed','abandoned'].includes(goal.status as string)||
        !isCurriculumUnit(goal.importance)||!isCurriculumUnit(goal.urgency)||
        !isCurriculumUnit(goal.confidence)||!isCurriculumUnit(goal.progress)||
        !isCurriculumTimestamp(goal.createdAt)||!isCurriculumTimestamp(goal.updatedAt)){
@@ -245,8 +245,7 @@ export class PersonalCurriculumEngine {
       if(typeof goal.id!=='string'||!goal.id.trim()||goal.id.length>256||
          typeof goal.title!=='string'||!goal.title.trim()||goal.title.length>512||
          typeof goal.reason!=='string'||goal.reason.length>4096||
-         !['intrinsic','external','learned','homeostatic'].includes(String(goal.source))||
-         !['candidate','active','paused','completed','abandoned'].includes(String(goal.status))||
+         !['intrinsic','external','learned','homeostatic'].includes(goal.source)||
          !['candidate','active','paused','completed','abandoned'].includes(goal.status)||
          !isCurriculumUnit(goal.importance)||!isCurriculumUnit(goal.urgency)||
          !isCurriculumUnit(goal.confidence)||!isCurriculumUnit(goal.progress)||
