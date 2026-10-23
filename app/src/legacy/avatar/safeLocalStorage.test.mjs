@@ -54,3 +54,13 @@ test("LegacySpriteDeck routes optional outfit persistence through the safe adapt
   assert.match(component, /writeAvatarPreference\("kurisu-visual-profile", outfit\)/);
   assert.doesNotMatch(component, /window\.localStorage\.(?:getItem|setItem)/);
 });
+
+test("AvatarStage routes mode and voice preferences through the safe adapter", async () => {
+  const component = await readFile(new URL("../../components/AvatarStage.tsx", import.meta.url), "utf8");
+  assert.match(component, /import \{ readAvatarPreference, writeAvatarPreference \} from "@\/legacy\/avatar\/safeLocalStorage"/);
+  for (const key of ["kurisu-avatar-mode", "kurisu-avatar-voice-enabled", "kurisu-avatar-voice-name"]) {
+    assert.ok(component.includes(`readAvatarPreference("${key}")`) || component.includes(`writeAvatarPreference("${key}",`),
+      `AvatarStage must route ${key} through the safe adapter`);
+  }
+  assert.doesNotMatch(component, /window\.localStorage\.(?:getItem|setItem)/);
+});
