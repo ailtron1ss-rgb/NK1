@@ -1,3 +1,10 @@
+## NK1 WorkPass360 — keep information gain separate from demonstrated transfer (2026-10-23)
+
+- [FIXED] Evidence-debt targets no longer map `informationGainPerCost01` into the `transfer01` field. Information gain estimates whether checking an item is worthwhile; it does not demonstrate cross-task generalization.
+- [INTEGRATED] Both reflection-derived and evidence-debt-derived targets now report zero transfer until independent cross-context/held-out measurements are available. Their uncertainty, novelty, verification cost and repair value still drive the curriculum.
+- [REGRESSION] Added a check that the normal P23 curriculum does not label a verification-debt target as transferable based only on its information-gain score.
+- [VALIDATION] Source/test commits are present, but new-head CI and runtime execution remain unverified while Actions jobs expose zero runnable steps. No transfer uplift is claimed; `main` and the release asset are untouched.
+
 ## NK1 WorkPass359 — calibrate reflective uncertainty and stop inferring transfer from recurrence (2026-10-23)
 
 - [FIXED] `ReflectionHypothesis` now reports the explicit 0.5 pass threshold, observed pass rate, descriptive Wilson lower/upper bounds and interval width from the recent evidence window.
