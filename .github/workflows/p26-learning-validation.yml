@@ -45,6 +45,10 @@ on:
       - "runtime/neuro-kurisu/tests/p27-page-hinkley-drift-detector.mjs"
       - "runtime/neuro-kurisu/tests/p28-drift-detector-benchmark.mjs"
       - "runtime/neuro-kurisu/research/vendor/CleanRL/**"
+      - "package.json"
+      - "app/package.json"
+      - "tools/verify-ci-reliability.mjs"
+      - "tools/verify-ci-reliability.test.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
       - ".github/workflows/p26-learning-validation.yml"
@@ -70,6 +74,11 @@ jobs:
           node-version: "24"
           cache: npm
           cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Test CI reliability policy and script resolver
+        run: node --test tools/verify-ci-reliability.test.mjs
+      - name: Audit workflow npm commands against package manifests
+        run: npm run audit:ci-reliability
+
       - name: Install locked dependencies
         working-directory: runtime/neuro-kurisu
         run: npm ci
