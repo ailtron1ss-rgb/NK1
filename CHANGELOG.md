@@ -1,15 +1,16 @@
 ## WorkPass325 — isolate runner allocation from action setup (2026-10-23)
 
-- Temporarily changed the existing P23 workflow to one shell-only step with no `uses:` actions, so the test can run from a workflow already present on the base branch.
-- The previous attempt used a newly-added workflow file, which GitHub did not surface in the current PR checks; the existing workflow now isolates runner allocation before checkout, Node setup, or project tests.
-- The run result will distinguish runner/account-level startup failures from failures caused by action setup. Restore the full P23 test workflow immediately after observing this diagnostic.
+- Ran a minimal workflow containing one shell step and no external `uses:` actions. GitHub still marked it failed in about one second with `runner_id=0`, blank `runner_name`, and `steps: []`.
+- This demonstrates that the current failure occurs before checkout, Node setup, or NK1 tests and is not repaired by changing action tags to immutable SHAs.
+- Removed the temporary diagnostic workflow and restored the full P23 test steps. The remaining plausible causes are runner provisioning or repository/account Actions policy/billing; the connector cannot expose the check-run annotation bodies or change these account-level settings.
 
 
 ## WorkPass324 — pin P23 CI actions immutably (2026-10-23)
 
-- Pinned the P23 workflow's checkout and Node setup actions to full commit SHAs from the verified upstream releases `actions/checkout v7.0.1` and `actions/setup-node v7.1.0`, retaining Node.js 24.
-- Evidence motivating this targeted experiment: failed workflow jobs complete in ~2 seconds with `runner_id=0`, no runner name, and no steps; the failure therefore precedes test execution. The connector cannot read the check-run annotation bodies, so the exact policy rejection is not yet proven.
-- This changes the workflow to immutable action references, addressing strict full-SHA action policies and protecting against moving tags. The new workflow run must confirm whether this resolved the startup failure.
+- Pinned the P23 workflow's checkout and Node setup actions to full commit SHAs from verified upstream releases `actions/checkout v7.0.1` and `actions/setup-node v7.1.0`, retaining Node.js 24.
+- This is retained as a supply-chain hardening change, but it did not resolve the runner-startup failure: a separate workflow with no external actions failed identically before receiving a runner.
+- The exact account/runner-level cause remains unconfirmed because check-run annotation bodies and account billing/Actions settings are not accessible through the available GitHub operations.
+
 
 ## WorkPass323 — expose evidence-lineage regression test (2026-10-23)
 
