@@ -1,3 +1,15 @@
+## WorkPass400 — prevent regression across a validation task family (2026-10-23)
+
+- **Source evidence:** [SkillLearnBench](https://arxiv.org/abs/2604.20087) uses 20 verified tasks across 15 sub-domains and evaluates skill quality, execution trajectory and task outcome; its results report that gains vary across tasks and model setups. [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution) describes candidate evaluation under explicit test/size/semantic guardrails before review/promotion.
+- **NK1 gap:** WorkPass399 vetoed large regressions on individual validation tasks, but a collection of moderate regressions within one task family (each below the per-task tolerance) could still be hidden by larger gains in another family.
+- **Adaptation:** `SkillLearnBenchAdapter.ts` now uses shared `summarizeFamilyRegressions` for validation and holdout. It averages repeat trials per task, averages task-level means per family, and applies `maximumValidationFamilyRegression01` (default 0.10) when at least `minimumValidationFamilyTasks` (default 2) tasks have family provenance. Report additions: `validationFamiliesEvaluated`, `validationFamilyRegressions`; the gate rejects with `validation-family-regression-exceeds-tolerance`.
+- **Regression:** P29 builds two families where family A's tasks each decline by 0.16 (under the 0.20 per-task veto) but family B improves enough for the overall mean to rise. Validation task regressions remain zero; family regression is counted and eligibility is rejected. Also covers NaN threshold fail-closed behavior.
+- **Compatibility and limits:** Family labels are not inferred from task names. Missing family provenance stays outside the family veto, but the existing paired aggregate/task gates still apply. Defaults are engineering choices and require paired multi-seed calibration and noise estimation; no experimental improvement is claimed.
+- **CI:** P26 path/step wiring already includes this adapter and P29 test. Action execution remains unverified while current jobs expose no step list/log URL.
+- **Artifact:** [WorkPass400 implementation notes](WORKPASS400_VALIDATION_FAMILY_REGRESSION_RU.md).
+
+---
+
 ## WorkPass399 — reject hidden validation-task regressions (2026-10-23)
 
 - **Source evidence:** [SkillLearnBench paper](https://arxiv.org/abs/2604.20087) evaluates skill quality, trajectory and task outcome across verified tasks; it also reports that continual-learning gains are not consistent across tasks/methods. [Project benchmark description](https://github.com/cxcscmu/SkillLearnBench) motivates task-level rather than only aggregate reporting.
