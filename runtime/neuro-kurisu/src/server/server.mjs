@@ -96,7 +96,6 @@ async function configureCompoundRepairRevision() {
         root: ROOT,
         providerModulePath: providerPath,
         stateDirectory: STATE,
-        providerContext: { engine, candidateStore: lifecycle.store, trustedRunRegistry: lifecycle.registry },
         production: process.env.NODE_ENV === 'production',
         createHostOwnedFactory: createHostOwnedIndependentEvaluationConfigFactory,
     });
