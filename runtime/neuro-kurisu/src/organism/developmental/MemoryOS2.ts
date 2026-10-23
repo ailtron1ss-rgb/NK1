@@ -110,6 +110,9 @@ export interface MemoryEvictionWitness {
  id:string; kind:MemoryItem2['kind']; at:number; tick:number; bytes:number; value01:number; netValuePerByte01:number; reason:string; tokens:string[]; matchedQueries:number; realizedRegret01:number; counterfactualRegret01:number;
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const safeCounter=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
+const safeTimestamp=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
+const safeByteBudget=(value:unknown,fallback=524288):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?Math.max(16384,value):fallback;
 // Keep single-digit numeric tokens: status codes, ratings, short versions and measured values are meaningful retrieval terms. Single-letter words remain excluded.
 const tokenize=(text:string)=>text.toLocaleLowerCase().normalize('NFKC').match(/[\p{L}\p{N}]{2,}|\p{N}/gu)??[];
 const characterGramCache=new Map<string,Set<string>>();
@@ -504,16 +507,16 @@ export class MemoryOS2{
   const savedEstimate=Math.max(0,Math.floor(Number((s as any)?.estimatedBytes??legacyEstimate)));
   this.state={
    ...defaultMemoryOS2(),...(s??{}),version:7,
-   implicitConflictCandidates:Math.max(0,Math.floor(Number((s as any)?.implicitConflictCandidates??0))),
-   implicitConflictsResolved:Math.max(0,Math.floor(Number((s as any)?.implicitConflictsResolved??0))),
-   staleRetrievalsAvoided:Math.max(0,Math.floor(Number((s as any)?.staleRetrievalsAvoided??0))),
-   lastConflictScanAt:Number((s as any)?.lastConflictScanAt??0),
-   implicitConflictsDeferred:Math.max(0,Math.floor(Number((s as any)?.implicitConflictsDeferred??0))),
-   provenanceProtected:Math.max(0,Math.floor(Number((s as any)?.provenanceProtected??0))),
-   estimatedBytes:savedEstimate,
-   byteBudget:Math.max(16384,Math.floor(Number((s as any)?.byteBudget??524288))),
-   budgetEvictions:Math.max(0,Math.floor(Number((s as any)?.budgetEvictions??0))),
-   budgetMisses:Math.max(0,Math.floor(Number((s as any)?.budgetMisses??0))),
+   implicitConflictCandidates:safeCounter((s as any)?.implicitConflictCandidates),
+   implicitConflictsResolved:safeCounter((s as any)?.implicitConflictsResolved),
+   staleRetrievalsAvoided:safeCounter((s as any)?.staleRetrievalsAvoided),
+   lastConflictScanAt:safeTimestamp((s as any)?.lastConflictScanAt),
+   implicitConflictsDeferred:safeCounter((s as any)?.implicitConflictsDeferred),
+   provenanceProtected:safeCounter((s as any)?.provenanceProtected),
+   estimatedBytes:Number.isSafeInteger(savedEstimate)&&savedEstimate>=0?savedEstimate:0,
+   byteBudget:safeByteBudget((s as any)?.byteBudget),
+   budgetEvictions:safeCounter((s as any)?.budgetEvictions),
+   budgetMisses:safeCounter((s as any)?.budgetMisses),
    meanEvictionRegret01:clamp(Number((s as any)?.meanEvictionRegret01??0)),
    evictionWitnesses:Array.isArray((s as any)?.evictionWitnesses)?(s as any).evictionWitnesses.slice(-256):[],
    items:rawItems.map((m:any)=>({
@@ -1050,7 +1053,8 @@ export class MemoryOS2{
    return true;
  }
   enforceByteBudget(options:{maxBytes?:number;tick?:number;protectedIds?:string[];reason?:string}={}){
-   const budget=Math.max(16384,Math.floor(Number(options.maxBytes??this.state.byteBudget??524288)));
+   // Public callers may be plain JS/plugin inputs; NaN/Infinity must not disable eviction.
+   const budget=safeByteBudget(options.maxBytes,this.state.byteBudget);
    this.state.byteBudget=budget;
    const protectedIds=new Set(options.protectedIds??[]);
    const removed:string[]=[];
