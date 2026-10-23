@@ -2,8 +2,16 @@
 
 - **P26 workflow fixed:** added `test:p26:learning-input-integrity`, `test:p26:learning-recovery-benchmark`, and `test:p26:learning-continual-matrix` npm aliases for their existing regression files.
 - **P23 workflow fixed:** added `test:workpass293:p23-revision`, running the existing WorkPass293 autonomous-revision test followed by the P23 coordinator/evidence-concurrency regression.
-- This is script-wiring work only; it does not change the underlying learning algorithm or claim test success.
-- **Validation boundary:** static workflow-to-script comparison confirmed that the identified missing aliases are now present. Runtime tests remain unexecuted because recent GitHub Actions jobs fail before runner assignment (runner ID zero, no steps).
+- **Additional workflows fixed:** added the existing test-file aliases `test:workpass291:payload-budget`, `test:workpass292:evidence-lanes`, and `test:workpass294:correlated-postcondition`.
+- This is workflow-script wiring only; it does not change the underlying learning algorithm or claim test success.
+- **Validation boundary:** static workflow-to-package comparison found and corrected these missing aliases. Runtime tests remain unexecuted because recent GitHub Actions jobs fail before runner assignment (runner ID zero, no steps).
+
+## NK1 WorkPass338 — make workflow script wiring self-auditing (2026-10-23)
+
+- Extended `tools/verify-ci-reliability.mjs` to load the root, app, and runtime package manifests and compare workflow `npm run` references to the scripts available in the actual execution context.
+- The audit respects per-step `working-directory`, package prefixes such as `npm --prefix app run …` and `npm --prefix runtime/neuro-kurisu run …`, and root-level commands. It reports the workflow and package context for an undefined script instead of waiting for a hosted runner to fail.
+- Added regression tests for correct multi-package resolution, missing runtime/app aliases, and backward-compatible policy-only calls.
+- **Validation boundary:** source and tests are committed, but the audit/test suite has not been executed locally or in CI. Hosted Actions currently finishes affected jobs before runner assignment, with runner ID zero and no steps.
 
 ## NK1 WorkPass336 — align P26 CI with Node.js 24 (2026-10-23)
 
