@@ -11522,6 +11522,8 @@ export class OrganismCore {
         /** Exact OrganismDecisionTrace.id; deliberately never inferred from actionRef/executionId. */
         decisionId?: string;
         autonomous?: boolean;
+        /** Trusted OutcomeVerificationService join key; never accepts an arbitrary caller string as authority. */
+        evidenceEventId?: string;
     }, options: { checkpoint?: boolean } = {}) {
         if (!this.ready)
             throw new Error('OrganismCore.init() must be called first');
@@ -11859,7 +11861,7 @@ export class OrganismCore {
             });
             if (!traceRevision.resolved) throw new Error(`authoritative-receipt-causal-projection-failed:${traceRevision.reason ?? 'unknown'}`);
 
-            const externalIntegration = await this.integrateVerifiedToolObservation(id, result, options, false, decisionLinkedExternalPostcondition);
+            const externalIntegration = await this.integrateVerifiedToolObservation(id, result, options, false, decisionLinkedExternalPostcondition, input);
             if (!externalIntegration.integrated && result.verification.externalObservation && result.verification.verified) {
                 const v = result.verification;
                 this.memorySubsystem.events.append(makeEvent('external-outcome-verified', this.persisted.state.tick, { tool: id, observationId: v.observationId, confidence01: v.confidence01, expectedPostcondition: v.expectedPostcondition, observedPostcondition: v.observedPostcondition, source: 'outcome-verifier' } as any));
@@ -11891,7 +11893,7 @@ export class OrganismCore {
         const projected = this.cognitiveRuntime.outcomeCognition.project({ tick: this.persisted.state.tick, tool: id, ok: result.ok, verification: result.verification, reason, inputKeys, predictedAction: this.persisted.state.predictedNextAction, predictionConfidence01: this.persisted.state.lastPredictionConfidence, executionId: result.executionId, outcomeClass: result.outcomeClass });
         { const outcomeSnapshot = this.cognitiveRuntime.outcomeCognition.snapshot(); this.persisted.system.outcomeVerification = { version: 1, records: [...outcomeSnapshot.records], projectionIndex: [...outcomeSnapshot.projectionIndex], evidenceRevisions: [...outcomeSnapshot.evidenceRevisions] }; }
         this.persisted.system.causalAccountability = projected.causal;
-        const externalIntegration = await this.integrateVerifiedToolObservation(id, result, options, false);
+        const externalIntegration = await this.integrateVerifiedToolObservation(id, result, options, false, decisionLinkedExternalPostcondition, input);
         const integratedExternal = externalIntegration.integrated;
         if (!integratedExternal && result.verification.externalObservation && result.verification.verified) {
             const v = result.verification;
@@ -11953,6 +11955,7 @@ export class OrganismCore {
         options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {},
         checkpoint = true,
         decisionLinkedExternalPostcondition = false,
+        actionInput?: Record<string, unknown>,
     ): Promise<{
         integrated: boolean;
         observation?: import('../system/ExternalObserverFabric.ts').ExternalObservation;
@@ -11960,6 +11963,12 @@ export class OrganismCore {
     }> {
         const v = result.verification;
         if (!v.verified || v.basis !== 'external-postcondition' || !v.expectedPostcondition || !v.observedPostcondition) return { integrated: false };
+        const linkedDecisionId = typeof options.decisionId === 'string' ? options.decisionId.trim() : '';
+        const trustedEventLink = Boolean(decisionLinkedExternalPostcondition && actionInput && linkedDecisionId &&
+            isTrustedDecisionLinkedExternalPostcondition(v, {
+                toolId, input: actionInput, executionId: result.executionId, decisionId: linkedDecisionId,
+            }));
+        const evidenceEventId = trustedEventLink && typeof v.evidenceEventId === 'string' ? v.evidenceEventId : undefined;
         const source = this.cognitiveRuntime.actionGateway.observationSourceForTool(toolId);
         if (!source) return { integrated: false };
         const expected = String(v.expectedPostcondition).normalize('NFKC').trim().toLocaleLowerCase();
@@ -11971,8 +11980,9 @@ export class OrganismCore {
             confidence01: v.confidence01, observedAt: result.audit.at,
             actionRef: result.executionId, tool: toolId, tick: this.persisted.state.tick,
             worldContextAfter: v.observedWorldContextAfter,
-            metadata: { verificationBasis: v.basis, verifierObservationId: v.observationId, gatewayExecutionId: result.executionId },
-            payload: { verifierObservationId: v.observationId, expectedPostcondition: v.expectedPostcondition, observedPostcondition: v.observedPostcondition },
+            evidenceEventId,
+            metadata: { verificationBasis: v.basis, verifierObservationId: v.observationId, gatewayExecutionId: result.executionId, ...(evidenceEventId ? { evidenceEventId } : {}) },
+            payload: { verifierObservationId: v.observationId, expectedPostcondition: v.expectedPostcondition, observedPostcondition: v.observedPostcondition, ...(evidenceEventId ? { evidenceEventId } : {}) },
             expectedPostcondition: v.expectedPostcondition,
             decisionId: decisionLinkedExternalPostcondition ? options.decisionId : undefined, autonomous: options.autonomous === true,
         }, { checkpoint });
