@@ -1,3 +1,15 @@
+## NK1 WorkPass330 — host-owned evaluator wiring for autonomous P23 revision (2026-10-23)
+
+- [FIX] Closed the production config gap where `server.mjs` passed P23 engine/provider inputs but omitted the independent-evaluation factory required by `OrganismRuntime` in production.
+- [HOST-BOUNDARY] Added `NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE`, loaded from a module distinct from the repair provider. Its host factory defines the three independent command authorities, task builder, environment fingerprint and mandatory production experiment authority; no in-process fallback was added.
+- [LEAST-PRIVILEGE] Host-config module receives only `stateDirectory`, not the P23 engine, candidate store or trusted-run registry.
+- [AUTONOMY] Added opt-in `NEURO_COMPOUND_REPAIR_BACKGROUND_REVISION_JSON` to schedule verified repair-to-candidate staging through the existing runtime scheduler. Candidates remain staged; no automatic activation.
+- [REGRESSION] Added nine contract/wiring cases in `test:workpass330:production-revision-wiring`; connected the test to root `audit:quick` and WorkPass71 CI.
+- [VALIDATION] Test/typecheck and Actions execution on the exact head remain unverified: jobs still fail before running steps. The deployment-specific host evaluator module and measured held-out task results remain open; no learning score increase is claimed.
+- [DEPENDENCIES/RELEASE] No dependency added, `main` unchanged, release ZIP not rebuilt or published.
+
+---
+
 ## NK1 WorkPass329 — Hermes-inspired multi-axis holdout gate (2026-10-23)
 
 - [UPSTREAM] Inspected the pinned Hermes Agent Self-Evolution implementation at `0a929e3aa20e15cf04dc7c28492a7d41a5139125`: reflective optimization, 50/30/20 multi-dimensional fitness, explicit candidate constraints, and separate holdout evaluation. Recorded paths and licensing limits in `docs/WORKPASS329_HERMES_MULTIAXIS_HOLDOUT_GATE_2026-10-23.md`.
