@@ -372,7 +372,7 @@ export class P23CompoundRepairRevisionCoordinator {
       active: now < row.retryAfter,
       category: row.category,
       durable: Boolean(this.retryBackoffStore),
-      persistenceHealthy: this.retryBackoffPersistenceFailure === null,
+      persistenceHealthy: Boolean(this.retryBackoffStore) && this.retryBackoffPersistenceFailure === null,
     }));
   }
 
