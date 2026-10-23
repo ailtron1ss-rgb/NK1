@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { contextSimilarity01,retrieveSkills,retrievedSkillBias } from '../src/organism/learning/SkillRetrievalAugmentation.ts';
-import { rankLearningTargets,reflectOnOutcomes } from '../src/organism/learning/OutcomeReflectionCurriculum.ts';
+import { classifyLearningFailureReason, rankLearningTargets,reflectOnOutcomes } from '../src/organism/learning/OutcomeReflectionCurriculum.ts';
 import { P23LearningEngine } from '../src/organism/learning/P23LearningEngine.ts';
 const ctx='e2|c2|u2|n2|g2|s2';
 const skills=[

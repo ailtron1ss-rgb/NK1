@@ -1,3 +1,11 @@
+## NK1 WorkPass439 — repair the failure-reason regression import and avoid duplicate classification (2026-10-23)
+
+- Corrected the P23 reflection regression's import list so the new reason-taxonomy assertions resolve their classifier.
+- Ensured the record builder evaluates the classifier once and adds only the compact recognized category; raw notes remain transient.
+- Static follow-up only. Runner execution remains unconfirmed.
+
+---
+
 ## NK1 WorkPass438 — carry typed failure diagnoses into the reflective repair loop (2026-10-23)
 
 - The existing core feedback-to-P23 call now forwards `outcome.notes` as ephemeral diagnostic input; P23 classifies at most the first 512 characters into a compact taxonomy and never persists the raw free-form notes in learning experience rows.

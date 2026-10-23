@@ -1290,7 +1290,7 @@ export class P23LearningEngine {
       reward:clamp(outcome.reward),
       surprise:clamp(outcome.surprise),
       outcomeAt:now(),
-      ...(classifyLearningFailureReason(outcome.notes)?{failureClass:classifyLearningFailureReason(outcome.notes)}:{}),
+      ...((failureClassForExperience)=>failureClassForExperience?{failureClass:failureClassForExperience}:{ })(classifyLearningFailureReason(outcome.notes)),
        goalPressure01:clamp(trace.stateBefore.needs.goalPressure),
        causalStrength01:clamp(trace.reasoningSignals?.causalConfidence01 ?? trace.reasoningSignals?.causalStrength01 ?? .5),
        replayFeatures01:[
