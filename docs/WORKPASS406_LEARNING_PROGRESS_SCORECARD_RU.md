@@ -1,4 +1,4 @@
-# NK1 WorkPass407 — оценка прогресса ветки обучения
+# NK1 WorkPass408 — оценка прогресса ветки обучения
 
 Дата снимка: 23 октября 2026 года. Рабочая ветка: `feature/learning`.
 
@@ -7,12 +7,12 @@
 | Область | Оценка реализации | Что входит / почему не 100% |
 |---|---:|---|
 | Сбор опыта, replay и continual learning | 80% | Есть приоритизированный/стратифицированный replay, forgetting/transfer/drift-системы; полный независимый live-benchmark по реальным задачам пока не подтверждён |
-| Жизненный цикл навыка и promotion gate | 92% | Есть staged candidates, независимая оценка, разделение validation/holdout, signed evidence, authenticated approval, rollback и отдельный журнал фактического результата активации; production sandbox/verifier/scanner остаётся отдельным gate |
-| Целостность оценки и происхождение evidence | 90% | Есть точные fingerprints, canonical task/seed/split joins, trust boundary, hash-chained fitness journal и hash-chained lifecycle transitions; подписанные удалённые checkpoints и независимое развёртывание evaluator authority пока не подтверждены |
-| Метрики качества и наблюдаемость | 86% | Есть P23 family confidence bounds, fitness journal, WorkPass406 task-balanced IQM/paired improvement и WorkPass407 activation-intent/outcome diagnostics; требуется reconciliation после crash и история по реальным независимым циклам |
+| Жизненный цикл навыка и promotion gate | 94% | Есть staged candidates, независимая оценка, разделение validation/holdout, signed evidence, authenticated approval, rollback и отдельный журнал фактического результата активации; production sandbox/verifier/scanner остаётся отдельным gate |
+| Целостность оценки и происхождение evidence | 92% | Есть точные fingerprints, canonical task/seed/split joins, trust boundary, hash-chained fitness journal и hash-chained lifecycle transitions; подписанные удалённые checkpoints и независимое развёртывание evaluator authority пока не подтверждены |
+| Метрики качества и наблюдаемость | 89% | Есть P23 family confidence bounds, fitness journal, WorkPass406 task-balanced IQM/paired improvement и WorkPass407 activation-intent/outcome diagnostics; требуется reconciliation после crash и история по реальным независимым циклам |
 | Воспроизводимость production-проверок | 42% | Регрессионные контракты и workflow подключены, но Actions на точном текущем HEAD сообщают failure без доступных steps/logs; полный независимый multi-seed uplift не доказан |
 
-**Сводная инженерная оценка полноты реализации категории: 79%.** Расчёт — взвешенное экспертное резюме по приведённым направлениям, а не автоматически измеренная метрика и не оценка интеллекта.
+**Сводная инженерная оценка полноты реализации категории: 81%.** Расчёт — взвешенное экспертное резюме по приведённым направлениям, а не автоматически измеренная метрика и не оценка интеллекта.
 
 **Подтверждённая production-готовность категории: около 45%.** Этот показатель ниже, потому что он учитывает реальное исполнение проверок на точном HEAD, развёртывание независимых evaluator authorities, подтверждённые gains и длительные интеграционные прогоны. Пока CI не предоставляет запускаемые шаги и логи, высокий процент реализованного кода нельзя считать подтверждённой готовностью.
 
@@ -35,6 +35,18 @@ WorkPass406 не демонстрирует фактического улучш�
 ## Конечная цель ветки обучения
 
 Условие готовности — не наличие новых файлов. Категория считается завершённой после того, как полный цикл «реальный исход/ошибка → разбор траектории → план ремонта → кандидат → выполнение в изолированном окружении → независимая оценка на фиксированных validation и нетронутом holdout → подтверждённое решение → наблюдаемый результат/rollback» выполняется воспроизводимо; точные тесты и typecheck зелёные на одном HEAD; устойчивый выигрыш подтверждён заранее зарегистрированными независимыми seed/task families без недопустимого регресса; длинный soak, privacy/license review и production evaluator isolation закрыты.
+
+## WorkPass408 — восстановление состояния после неопределённой активации
+
+- `P23LearningEngine.reconcileLearningLifecycleOutcomes()` связывает `activation-outcome-unknown` с авторитетным versioned skill store по точному candidate/skill/version/payload fingerprint.
+- Точное matching активной версии получает `activation-reconciled-active`; найденный кандидат без matching active row получает `activation-reconciled-not-currently-active`; отсутствующий/противоречивый lineage остаётся pending.
+- Runtime запускает reconciliation при старте и предоставляет явный API для повторной сверки. Reconciliation не активирует навык и не меняет promotion authority.
+- Добавлена интеграционная регрессия `workpass408-lifecycle-store-reconciliation.mjs` (matching active, shadow/non-active, absent lineage, repeat idempotency), включена в P23 aggregate и P26 CI.
+- **Статус проверки:** wiring committed; exact-HEAD runtime tests/CI remain unverified due to unavailable Action steps/logs. Production readiness does not rise until tests and real store restart/rollback soak are confirmed.
+
+Сводная инженерная оценка после прохода — **81% реализации категории**, production readiness — **~45%** (экспертные оценки, не автоматические показатели).
+
+---
 
 ## WorkPass407 — замкнутый журнал фактической активации
 
