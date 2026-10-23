@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { B365UnifiedNeuroCausalCore } from '../src/organism/cognition/B365UnifiedNeuroCausalCore.ts';
+import { P68GoalEcology } from '../src/organism/developmental/P68GoalEcology.ts';
 const actions=['respond','explore','verify','rest','reflect','wait','defer'];
 const vector=t=>Array.from({length:64},(_,i)=>Math.sin((i+t)*.13)*.42+Math.cos((i*0.17+t)*.07)*.21);
 const ctx=()=>Object.fromEntries(actions.map((a,i)=>[a,{worldUtility01:.55+(a==='explore'?.12:0)+(a==='verify'?.05:0),worldConfidence01:.78,worldUncertainty01:.22,needRelief01:a==='verify'?.65:.40,predictedCost01:a==='explore'?.28:.24}]));
@@ -46,4 +47,30 @@ const run=()=>{
   assert(initialProgress<=after.currentProgress01 || after.completed>=1);
   return {pass:true,cycles:22,initialProgress,final:{activeId:after.activeId,completed:after.completed,abandoned:after.abandoned,paused:after.paused,resumed:after.resumed,revisions:after.revisions,autonomousCycles:after.autonomousCycles,selfContinuationCycles:after.selfContinuationCycles,successorCreations:after.successorCreations,persistence01:after.persistence01,competitionEntropy01:after.competitionEntropy01,memory:after.memories.map(m=>({id:m.id,status:m.status,progress01:m.progress01,attempts:m.attempts,successes:m.successes,failures:m.failures}))},restartEqual:JSON.stringify(restored.snapshot().goalEcology)===JSON.stringify(resumed.goalEcology),off:{completed:off.goalEcologyDiagnostics().completed,successorCreations:off.goalEcologyDiagnostics().successorCreations}};
 };
+
+// Persistent-goal governance is also a trust boundary: malformed live control data
+// must not advance the lifecycle, and hostile restore must fail closed.
+const p68=new P68GoalEcology();
+const p68Goal={id:'goal-evidence',title:'Inspect evidence lineage',reason:'Resolve a repeated unknown',source:'learned',status:'active',importance:.8,urgency:.7,confidence:.8,progress:.4,createdAt:100,updatedAt:100};
+const p68Result=p68.tick({tick:1,at:1000,goals:[p68Goal],lastAction:'explore',lastSuccess:.8,mode:'observe',homeostaticPressure01:.2,identity01:.8});
+assert.equal(p68Result.activeCount,1);
+assert.ok(p68Goal.progress>.4,'valid goal progress remains visible to the canonical caller');
+const p68BeforeHostile=p68.snapshot();
+let p68GetterReads=0;
+const p68Hostile={tick:2,at:2000,goals:[],lastAction:'wait',lastSuccess:null,mode:'observe',homeostaticPressure01:.2,identity01:.8};
+Object.defineProperty(p68Hostile,'tick',{enumerable:true,configurable:true,get(){p68GetterReads++;return 2;}});
+assert.throws(()=>p68.tick(p68Hostile),/p68-goal-input-invalid/);
+assert.equal(p68GetterReads,0);
+assert.deepEqual(p68.snapshot(),p68BeforeHostile,'rejected P68 input must not advance lifecycle state');
+const p68RestoreHostile={...p68.snapshot()};
+let p68RestoreGetterReads=0;
+Object.defineProperty(p68RestoreHostile,'cycles',{enumerable:true,configurable:true,get(){p68RestoreGetterReads++;return 999;}});
+const p68RestoredHostile=new P68GoalEcology();p68RestoredHostile.restore(p68RestoreHostile);
+assert.equal(p68RestoreGetterReads,0);
+assert.equal(p68RestoredHostile.snapshot().cycles,0,'ambiguous P68 restore should fail closed');
+const p68CorruptedRestore=new P68GoalEcology();
+p68CorruptedRestore.restore({...p68.snapshot(),cycles:Number.POSITIVE_INFINITY,history:[{id:'bad',title:'Bad',status:'forged',vitality01:2,staleness01:0,conflict01:0,progress01:0}]});
+assert.equal(p68CorruptedRestore.snapshot().cycles,0);
+assert.equal(p68CorruptedRestore.snapshot().history.length,0);
+
 console.log(JSON.stringify(run(),null,2));
