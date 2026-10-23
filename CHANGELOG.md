@@ -1,3 +1,14 @@
+## NK1 WorkPass401 — make task-family coverage explicitly enforceable (2026-10-23)
+
+- [FIXED] Added opt-in strict coverage requirements `minimumValidationFamilies` and `minimumHoldoutFamilies`, so a benchmark/production profile can reject missing task-family provenance rather than silently skip family-level checks.
+- [COMPATIBILITY] Both minimums default to 0 to preserve legacy test reports; strict profiles should set 1+ and supply canonical family metadata. Family names are never inferred from task IDs.
+- [METRICS] Missing required coverage yields `validation-family-coverage-insufficient` / `holdout-family-coverage-insufficient`. Invalid negative, fractional or unsafe minima fail closed.
+- [REGRESSION] P29 verifies an unlabeled validation/holdout pair fails under strict coverage settings while legacy default behavior stays compatible.
+- [CI] Existing P26 Learning Validation source/test filters already cover the adapter and P29 script. No package dependency or new workflow added.
+- [VALIDATION] Code, adversarial regression, docs and research intake are committed on `feature/learning`; exact-head execution/typecheck remains unverified due missing Actions step logs.
+
+---
+
 ## NK1 WorkPass400 — block validation-family regressions (2026-10-23)
 
 - [FIXED] SkillLearnBench candidate evaluation now also checks macro-average change by sufficiently sampled validation task family; moderate losses across a family cannot be hidden by gains in another family when each individual loss remains below the per-task limit.
