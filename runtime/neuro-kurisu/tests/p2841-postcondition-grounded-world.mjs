@@ -27,6 +27,19 @@ const wrongModeClaim = verifier.assess({
 assert.notEqual(wrongModeClaim.proofClass, 'independent-observation',
   'receipt-only mode is not independent observation even if other booleans are forged');
 verifier.registerAction('high-threshold-observe', { observation: true, minIndependent01: .95 });
+verifier.registerAction('verify', { observation: false, actuation: false, minIndependent01: 0 });
+assert.deepEqual(verifier.actionContract('verify'), {
+  observation: true, actuation: false, minIndependent01: .70,
+}, 'custom registration cannot disable a built-in observation channel or lower its evidence floor');
+verifier.registerAction('respond', { observation: true, actuation: false, minIndependent01: .01 });
+assert.deepEqual(verifier.actionContract('respond'), {
+  observation: true, actuation: true, minIndependent01: .80,
+}, 'custom registration can only strengthen, never downgrade, the built-in actuation contract');
+verifier.registerAction('verify', { observation: true, minIndependent01: .95 });
+assert.deepEqual(verifier.actionContract('verify'), {
+  observation: true, actuation: false, minIndependent01: .95,
+}, 'registration may strengthen a built-in policy');
+
 const belowThresholdClaim = verifier.assess({
   ...strong,
   action: 'high-threshold-observe',
