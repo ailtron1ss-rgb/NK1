@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { ActionKind, IntentCandidate, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
 import type { AdaptivePolicyEngine, AdaptivePolicyState } from './AdaptivePolicyEngine.ts';
 import { selectReplayBatch, type ReplaySelectionOptions } from './ReplaySelectionPolicy.ts';
+import { selectCausalReplayBatch } from './CausalReplaySampler.ts';
 import { adaptiveReplayLearningRate, adaptiveReplayOptions, bellmanTarget, calibratedConfidence, forgettingRisk, repairOpportunity, scoreReplayPriority, transferConfidence, wilsonLowerBound } from './MultiSourceLearningMechanisms.ts';
 import { retrievedSkillBias } from './SkillRetrievalAugmentation.ts';
 import { rankLearningTargets, reflectOnOutcomes } from './OutcomeReflectionCurriculum.ts';
@@ -839,7 +840,39 @@ export class P23LearningEngine {
       replayTdError01:metrics.replayMeanAbsTdError01,evidenceDebt01:clamp(metrics.evidenceDebtOpen/16),
       memoryPressure01:clamp(this.state.experiences.length/1024),energy01:1,
     },ranked.length);
-    const ordered=selectReplayBatch(ranked,options).map(item=>item.trace);
+    // Use the causal sampler as a bounded diversity prefilter, then retain the
+    // adaptive multi-signal selector as the final authority for the replay batch.
+    // This connects causal/recent-stratum coverage without discarding existing
+    // salience, novelty, goal-priority, replay-count, and health-adaptive ranking.
+    const causalCandidates=ranked.map(item=>{
+      const trace=item.trace;
+      const exp=this.state.experiences.find(x=>x.traceId===trace.id)!;
+      const needs=trace.stateBefore.needs;
+      const causalStrength=clamp(trace.reasoningSignals.causalConfidence01 ?? trace.reasoningSignals.causalStrength01 ?? .5);
+      const learningQuality=clamp(1-Math.abs(exp.success-exp.predictedUtility));
+      return {
+        ...item,
+        surprise01:clamp(item.surprise),
+        causalStrength01:causalStrength,
+        learningQuality01:learningQuality,
+        replayPriority01:clamp(.60*item.surprise+.20*causalStrength+.20*learningQuality),
+        policyFeatures01:[
+          clamp(needs.energy),clamp(needs.cognitiveLoad),clamp(needs.uncertainty),
+          clamp(needs.socialNeed),clamp(needs.novelty),clamp(needs.identityCoherence),
+          clamp(needs.goalPressure),clamp(trace.stateBefore.predictionError),
+          clamp(trace.stateBefore.attentionBudget),clamp(trace.stateBefore.autonomyScore),
+          clamp(trace.stateBefore.selfPredictionError),clamp(trace.stateBefore.lastPredictionConfidence),
+          clamp(trace.outcome?.success ?? exp.success),clamp(trace.outcome?.reward ?? exp.reward),
+          clamp(trace.outcome?.surprise ?? exp.surprise),learningQuality,
+        ],
+      };
+    });
+    const adaptiveCapacity=Math.max(1,Math.min(64,options.maxBatchSize??64));
+    const causalCandidatesSelected=selectCausalReplayBatch(causalCandidates,{
+      maxBatchSize:Math.min(128,Math.max(adaptiveCapacity,adaptiveCapacity*2)),
+      recentQuota:Math.min(128,Math.max(0,(options.recentQuota??0)*2)),
+    });
+    const ordered=selectReplayBatch(causalCandidatesSelected,options).map(item=>item.trace);
     for (const trace of ordered) {
       const exp=this.state.experiences.find(x=>x.traceId===trace.id);
       if(!exp) continue;
