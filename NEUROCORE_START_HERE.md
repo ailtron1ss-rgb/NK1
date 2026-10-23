@@ -1,3 +1,15 @@
+# WorkPass330 continuation checkpoint — host-owned P23 revision wiring (2026-10-23)
+
+- **Active source branch:** `workpass328-upstream-donor-gate`, based on `workpass70-source`; draft PR #86 targets `rebuild`; do not change `main`.
+- **Production wiring fixed:** when `NEURO_COMPOUND_REPAIR_REVISION_PROVIDER_MODULE` is configured, production also requires separate `NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE`. The server loads its host factory via `createIndependentEvaluationHostConfig({ stateDirectory })` and passes its prepared independent evaluator config into the existing OrganismRuntime contract.
+- **Least privilege:** provider/evaluator config file paths must be distinct; the evaluator config receives no engine, candidate-store, or trusted-run-registry objects. Host-owned executable services and frozen experiment authority remain mandatory.
+- **Background initiative:** `NEURO_COMPOUND_REPAIR_BACKGROUND_REVISION_JSON` is opt-in; absent means disabled. Enabled jobs only stage candidates from verified non-holdout repair evidence, under existing resource gates and approval boundaries.
+- **Regression:** `test:workpass330:production-revision-wiring` is connected to root `audit:quick` and WorkPass71 CI. Exact-head test/typecheck remain unverified because recent workflow jobs execute zero steps.
+- **Remaining critical dependency:** NK1 does not yet ship a deployment-specific host evaluator module with real sandbox/verifier/scanner executables, fixed task manifest and validation/holdout plans. No measured learning gain or complete production learning loop is claimed.
+- Read [WorkPass330 host evaluator wiring report](docs/WORKPASS330_PRODUCTION_REVISION_WIRING_2026-10-23.md), [WorkPass329 holdout gate report](docs/WORKPASS329_HERMES_MULTIAXIS_HOLDOUT_GATE_2026-10-23.md), [P23 integration roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md), and refresh exact-head Actions before claiming validation.
+
+---
+
 # WorkPass329 continuation checkpoint — multi-axis P23 holdout gate (2026-10-23)
 
 - **Active source branch:** `workpass328-upstream-donor-gate`, based on `workpass70-source`; draft PR #86 targets `rebuild`. Keep the separate `main` release/metadata line untouched.
