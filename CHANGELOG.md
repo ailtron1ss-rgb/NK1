@@ -2113,3 +2113,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
 - Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
 - This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
+
+## NK1 WorkPass336 — align P26 CI with Node.js 24 (2026-10-23)
+
+- **CI consistency:** the P26 learning-validation workflow now uses Node.js 24, matching the repository `.nvmrc` and the newer continual-learning/P23 workflows.
+- **Early failure clarity:** the workflow explicitly checks the major runtime version before installing dependencies or executing the learning suite.
+- **Validation boundary:** the workflow change is committed, but it cannot be verified until Actions obtains a hosted runner; recent failed jobs report runner ID zero and no steps.
+
