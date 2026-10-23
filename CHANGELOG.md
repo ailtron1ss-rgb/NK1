@@ -1,3 +1,14 @@
+## NK1 WorkPass447 — task-cluster bootstrap interval for robust learning diagnostics (2026-10-23)
+
+- Extended `LearningRobustMetrics.ts` with a deterministic percentile-bootstrap interval for the equal-weight macro-mean of per-task candidate-minus-baseline deltas across task success, skill quality and trajectory quality.
+- Bootstrap units are **tasks**, not repeated trials. This avoids treating many seeds from one task as if they were independent task families; per-task scores still use all validated matched trials.
+- The interval records sample count, resamples (2,000), confidence level (95%), point estimate and bounds. A one-task sample returns `null` instead of manufacturing between-task uncertainty.
+- Bumped the diagnostics shape to schema version 2. New fields remain under the explicitly diagnostic-only summary; no promotion, eligibility, safety or approval logic consumes the interval.
+- Added regressions for interval ordering/reproducibility through row-order permutation, positive point estimates with task-level uncertainty, all-zero ceiling cases and the one-task boundary. Existing test script wiring is reused; no new dependency was added.
+- **Verification boundary:** code and tests are committed, but the exact-HEAD test/typecheck has not been executed successfully in this environment. No statistically confirmed learning gain is claimed.
+
+---
+
 ## NK1 WorkPass446 — bound skill-evaluation work and remove quadratic trajectory matching (2026-10-23)
 
 - Replaced repeated suffix scans in trajectory-order evaluation with a position index, preserving the prior ordered-match semantics while changing worst-case matching from quadratic to linear time.
