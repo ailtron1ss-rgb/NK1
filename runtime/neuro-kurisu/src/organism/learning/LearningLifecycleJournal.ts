@@ -180,7 +180,7 @@ function validateTransition(entries: readonly LearningLifecycleEventEntry[], nex
     return;
   }
   const terminal = prior.some(input =>
-    input.event === 'promotion-rejected' || input.event === 'activation-confirmed' || input.event === 'activation-failed');
+    input.event === 'promotion-rejected' || input.event === 'activation-confirmed' || input.event === 'activation-failed' || input.event === 'activation-outcome-unknown');
   if (terminal) throw new Error('learning-lifecycle-journal-terminal-attempt');
   if (next.event === 'promotion-rejected' || next.event === 'activation-intent') {
     if (prior.length !== 0) throw new Error('learning-lifecycle-journal-transition-invalid');
