@@ -1025,9 +1025,30 @@ export class P23LearningEngine {
     }
     // Bind against the exact receipts persisted on the candidate; caller-supplied
     // alternate receipts cannot be used to pass this pre-promotion check.
-    const evidenceBinding=this.bindIndependentEvaluationEvidence(
-      evaluation,staged.shadowObservations,staged,verifyEvidence,
-    );
+    let evidenceBinding:ReflectiveEvidenceBindingReport;
+    try {
+      evidenceBinding=this.bindIndependentEvaluationEvidence(
+        evaluation,staged.shadowObservations,staged,verifyEvidence,
+      );
+    } catch (error) {
+      try {
+        this.learningLifecycleJournal?.recordLifecycleEvent({
+          recordedAt:now(),
+          attemptId:lifecycleAttemptId,
+          candidateId:staged.candidateId,
+          skillId:staged.skillId,
+          candidateVersion:staged.version,
+          payloadFingerprint:staged.payloadFingerprint,
+          evaluationFingerprint:evaluation.evaluationFingerprint,
+          planFingerprint:fitness.planFingerprint,
+          environmentFingerprint:fitness.environmentFingerprint,
+          event:'promotion-rejected',
+          reasonCodes:['verified-shadow-evidence-binding-error'],
+          activatedVersion:null,
+        });
+      } catch { /* Preserve the authoritative binding error; no activation side effect occurred. */ }
+      throw error;
+    }
     if(!evidenceBinding.accepted) {
       try {
         this.learningLifecycleJournal?.recordLifecycleEvent({
