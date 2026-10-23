@@ -1,0 +1,176 @@
+import assert from 'node:assert/strict';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import {
+  createIndependentEvaluationConfigFactory,
+  parseCompoundRepairBackgroundRevisionConfig,
+} from '../src/server/compound-repair-revision-host-config.mjs';
+
+const digest = 'a'.repeat(64);
+const temporary = async run => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'nk1-p23-host-config-'));
+  try {
+    await run(root);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+};
+const hostModule = ({ experimentAuthority = true, complete = true } = {}) => `
+export async function createIndependentEvaluationHostConfig(input) {
+  globalThis.__nk1HostConfigReceivedStateDirectory = input.stateDirectory;
+  return ${complete ? `{
+    commands: {
+      executor: { executable: '/host/executor', args: ['{requestFile}'], cwd: '/host', runRoot: '/host/executor-runs', surviveDir: '/host/executor-survive' },
+      verifier: { executable: '/host/verifier', args: ['{requestFile}'], cwd: '/host', runRoot: '/host/verifier-runs', surviveDir: '/host/verifier-survive' },
+      safetyScanner: { executable: '/host/scanner', args: ['{requestFile}'], cwd: '/host', runRoot: '/host/scanner-runs', surviveDir: '/host/scanner-survive' }
+    },
+    tasksForRepair: () => [{ taskId: 'validation-a', trialId: 'v-1', seed: 1, split: 'validation', input: { prompt: 'inspect' }, requiredCapabilityIds: ['read'], expectedStepIds: ['inspect'] }, { taskId: 'holdout-b', trialId: 'h-1', seed: 2, split: 'holdout', input: { prompt: 'inspect' }, requiredCapabilityIds: ['read'], expectedStepIds: ['inspect'] }],
+    environmentFingerprintForRepair: () => '${digest}'${experimentAuthority ? `, experimentAuthorityForRepair: () => ({ manifest: [], ledger: {}, validationPlan: {}, holdoutPlan: {}, method: 'candidate' })` : ''}
+  }` : '{}'}
+}
+`;
+
+test('production requires an explicit host-owned independent evaluation module', async () => {
+  await assert.rejects(
+    createIndependentEvaluationConfigFactory({
+      moduleSetting: '',
+      root: '/repo',
+      stateDirectory: '/state',
+      production: true,
+      createHostOwnedFactory: async () => () => ({}),
+    }),
+    /production-compound-repair-revision-requires-independent-evaluation-config-module/,
+  );
+});
+
+test('development keeps revision provider-only mode opt-in and backward compatible', async () => {
+  const result = await createIndependentEvaluationConfigFactory({
+    moduleSetting: '',
+    root: '/repo',
+    stateDirectory: '/state',
+    production: false,
+    createHostOwnedFactory: async () => () => ({}),
+  });
+  assert.equal(result, undefined);
+});
+
+test('loads host config from a distinct module and delegates authority construction to the host factory', async () => {
+  await temporary(async root => {
+    const providerPath = path.join(root, 'provider.mjs');
+    const evaluatorPath = path.join(root, 'evaluator.mjs');
+    await writeFile(providerPath, 'export default async () => () => ({})\n');
+    await writeFile(evaluatorPath, hostModule());
+    let captured;
+    const factory = await createIndependentEvaluationConfigFactory({
+      moduleSetting: 'evaluator.mjs',
+      root,
+      providerModulePath: providerPath,
+      stateDirectory: path.join(root, 'state'),
+      providerContext: { stateDirectory: '/provider-overridden-state', engine: { marker: 'engine' } },
+      production: true,
+      createHostOwnedFactory: async options => {
+        captured = options;
+        return repair => ({ repair, authorityCount: 3 });
+      },
+    });
+    assert.equal(typeof factory, 'function');
+    assert.equal(globalThis.__nk1HostConfigReceivedStateDirectory, path.join(root, 'state'));
+    assert.equal(captured.commands.executor.executable, '/host/executor');
+    assert.equal(typeof captured.tasksForRepair, 'function');
+    assert.equal(typeof captured.experimentAuthorityForRepair, 'function');
+    assert.deepEqual(factory({ skillId: 'skill-a' }), { repair: { skillId: 'skill-a' }, authorityCount: 3 });
+  });
+});
+
+test('rejects using one module as both repair provider and evaluator authority config', async () => {
+  await temporary(async root => {
+    const samePath = path.join(root, 'same.mjs');
+    await writeFile(samePath, hostModule());
+    await assert.rejects(
+      createIndependentEvaluationConfigFactory({
+        moduleSetting: samePath,
+        root,
+        providerModulePath: samePath,
+        stateDirectory: path.join(root, 'state'),
+        production: true,
+        createHostOwnedFactory: async () => () => ({}),
+      }),
+      /compound-repair-provider-and-independent-evaluator-modules-must-be-distinct/,
+    );
+  });
+});
+
+test('rejects an evaluator module without the declared host factory', async () => {
+  await temporary(async root => {
+    const providerPath = path.join(root, 'provider.mjs');
+    const evaluatorPath = path.join(root, 'evaluator.mjs');
+    await writeFile(providerPath, 'export default async () => () => ({})\n');
+    await writeFile(evaluatorPath, 'export const unrelated = true;\n');
+    await assert.rejects(
+      createIndependentEvaluationConfigFactory({
+        moduleSetting: evaluatorPath,
+        root,
+        providerModulePath: providerPath,
+        stateDirectory: path.join(root, 'state'),
+        production: true,
+        createHostOwnedFactory: async () => () => ({}),
+      }),
+      /independent-evaluation-config-module-must-export-createIndependentEvaluationHostConfig/,
+    );
+  });
+});
+
+test('production host config must own an experiment authority callback', async () => {
+  await temporary(async root => {
+    const providerPath = path.join(root, 'provider.mjs');
+    const evaluatorPath = path.join(root, 'evaluator.mjs');
+    await writeFile(providerPath, 'export default async () => () => ({})\n');
+    await writeFile(evaluatorPath, hostModule({ experimentAuthority: false }));
+    await assert.rejects(
+      createIndependentEvaluationConfigFactory({
+        moduleSetting: evaluatorPath,
+        root,
+        providerModulePath: providerPath,
+        stateDirectory: path.join(root, 'state'),
+        production: true,
+        createHostOwnedFactory: async () => () => ({}),
+      }),
+      /production-independent-evaluation-requires-host-owned-experiment-authority/,
+    );
+  });
+});
+
+test('host config cannot omit one of the three independent service commands', async () => {
+  await temporary(async root => {
+    const providerPath = path.join(root, 'provider.mjs');
+    const evaluatorPath = path.join(root, 'evaluator.mjs');
+    await writeFile(providerPath, 'export default async () => () => ({})\n');
+    await writeFile(evaluatorPath, hostModule({ complete: false }));
+    await assert.rejects(
+      createIndependentEvaluationConfigFactory({
+        moduleSetting: evaluatorPath,
+        root,
+        providerModulePath: providerPath,
+        stateDirectory: path.join(root, 'state'),
+        production: false,
+        createHostOwnedFactory: async () => () => ({}),
+      }),
+      /independent-evaluation-host-config-incomplete/,
+    );
+  });
+});
+
+test('background revision remains disabled when absent and validates explicit schedule', () => {
+  assert.equal(parseCompoundRepairBackgroundRevisionConfig(undefined), undefined);
+  assert.deepEqual(
+    parseCompoundRepairBackgroundRevisionConfig('{"enabled":true,"initialDelayMs":1000,"intervalMs":60000}'),
+    { enabled: true, initialDelayMs: 1000, intervalMs: 60000 },
+  );
+  assert.throws(() => parseCompoundRepairBackgroundRevisionConfig('{oops'), /compound-repair-background-revision-json-invalid/);
+  assert.throws(() => parseCompoundRepairBackgroundRevisionConfig('{"enabled":"yes"}'), /compound-repair-background-revision-config-invalid/);
+  assert.throws(() => parseCompoundRepairBackgroundRevisionConfig('{"enabled":true,"intervalMs":5000}'), /compound-repair-background-revision-interval-invalid/);
+  assert.throws(() => parseCompoundRepairBackgroundRevisionConfig('{"enabled":true,"unknown":1}'), /compound-repair-background-revision-config-invalid/);
+});
+
+console.log('WorkPass330 production revision wiring contracts passed');
