@@ -1085,9 +1085,21 @@ export class OrganismRuntime {
           observedAt:row.at,
           revisionEligible:Boolean(row.verified&&row.selectedTool&&row.selectedTool!==row.toolId&&row.candidateTools.includes(row.selectedTool)&&row.confidence01>=skill.policy.minEvidence01),
         })));
-    // Keep only the newest evidence budget, but make ties and unordered candidate
-    // tool sets deterministic before this evidence is fingerprinted downstream.
-    return canonicalCompoundRepairEvidence(rows).slice(0,96);
+    // Bound the set BEFORE invoking the strict canonicalizer (which intentionally
+    // accepts at most 96 rows). Otherwise an ordinary long repair ledger would make
+    // every revision fail instead of using its newest evidence window.
+    const stableKey=(row:typeof rows[number])=>JSON.stringify({
+      ...row,
+      candidateTools:[...row.candidateTools].sort((a,b)=>a<b?-1:a>b?1:0),
+    });
+    const newestBounded=rows.sort((a,b)=>{
+      const atA=Number.isSafeInteger(a.observedAt)&&a.observedAt>=0?a.observedAt:-1;
+      const atB=Number.isSafeInteger(b.observedAt)&&b.observedAt>=0?b.observedAt:-1;
+      if(atA!==atB)return atB-atA;
+      const left=stableKey(a),right=stableKey(b);
+      return left<right?-1:left>right?1:0;
+    }).slice(0,96);
+    return canonicalCompoundRepairEvidence(newestBounded);
   }
 
 
