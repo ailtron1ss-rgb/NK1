@@ -16,6 +16,12 @@ const cycle=new UnifiedCognitiveCycle();
 let result=cycle.evaluate({tick:1,stageIds:{observation:ids.observation,prediction:ids.prediction,action:ids.action,outcome:ids.outcome,learning:ids.learning,'self-update':ids.selfUpdate},parentIntegrity01:1});
 assert.equal(result.complete,true);
 assert.equal(result.missingStages.length,0);
+assert.equal(result.observationId,ids.observation,
+  'the observation anchor must survive the event-fabric to unified-cycle handoff');
+assert.deepEqual(result.stageIds,{
+  observation:ids.observation,prediction:ids.prediction,action:ids.action,
+  outcome:ids.outcome,learning:ids.learning,'self-update':ids.selfUpdate,
+},'the unified cycle must return the exact accepted event IDs consumed by its evidence contract');
 
 // Live ingress is untrusted just like restored state: accessor-backed fields
 // must be rejected before their code runs, and rejected events must not advance
