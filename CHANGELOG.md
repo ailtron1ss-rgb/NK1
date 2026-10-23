@@ -1,3 +1,12 @@
+## NK1 WorkPass448 — preserve action outcomes across sensor failures (2026-10-23)
+
+- Wrapped required pre-action telemetry sampling in a fail-closed boundary. A sampling exception now yields an explicit failed action receipt before any action branch can dispatch a device capability.
+- Made final post-action sampling fail-soft: an action already executed remains reported, but independent consequence verification is withheld and the receipt records `post-action-measurement-failed-effect-unverified`.
+- Added deterministic regressions for both failure positions. No dependency added; no device effect is fabricated and no verification credit is granted without a successful fresh sample.
+- **Verification:** regression source is committed; exact-head execution remains unconfirmed because hosted Actions fail before runner allocation.
+
+---
+
 ## NK1 WorkPass445 — normalize persisted embodiment state before runtime initialization (2026-10-23)
 
 - Added a canonical `normalizePersistedBodyState` for the existing body schema. It snapshots bounded plain data before reads, rejects accessor/cyclic/oversized input, validates all persisted telemetry, confidence/resource ranges, timestamp/source enums, and sleep/awake consistency, then reconstructs only allowed fields.
