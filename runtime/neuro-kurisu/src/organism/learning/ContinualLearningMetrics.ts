@@ -1,3 +1,5 @@
+import { snapshotPlainData } from './LearningTrustBoundary.ts';
+
 /**
  * Continual-learning metrics for sequential task evaluation.
  * Scores must be externally measured on one fixed task protocol; this module
@@ -39,12 +41,27 @@ function assertScore(value: number, label: string): void {
  * retention/forgetting. Forward transfer is preTrainingScore minus referenceScore.
  * Forward transfer is intentionally withheld unless a measured fixed/random-policy reference is supplied.
  */
-export function evaluateContinualLearning(tasks: ContinualTask[], referenceScore?: number): ContinualLearningMetrics {
-  if (!Array.isArray(tasks) || tasks.length === 0) throw new Error('at least one task is required');
-  // JavaScript arrays can contain holes; map/forEach silently skip them and can
-  // otherwise under-count tasks while still reporting tasks.length as the sample size.
-  for (let index = 0; index < tasks.length; index++) {
-    if (!Object.prototype.hasOwnProperty.call(tasks, index)) throw new Error(`task list contains an empty slot at index ${index}`);
+export function evaluateContinualLearning(rawTasks: ContinualTask[], referenceScore?: number): ContinualLearningMetrics {
+  if (!Array.isArray(rawTasks) || rawTasks.length === 0) throw new Error('at least one task is required');
+  // Preserve the precise top-level sparse-list diagnostic before taking the shared
+  // descriptor-only snapshot. Nested reports are then detached before any field read.
+  for (let index = 0; index < rawTasks.length; index++) {
+    if (!Object.prototype.hasOwnProperty.call(rawTasks, index)) throw new Error(`task list contains an empty slot at index ${index}`);
+  }
+  let tasks: ContinualTask[];
+  try {
+    const detached=snapshotPlainData(rawTasks);
+    if(!Array.isArray(detached))throw new Error('task list is not an array');
+    tasks=detached as ContinualTask[];
+  } catch(error) {
+    const message=error instanceof Error?error.message:'';
+    if(message==='independent-evaluator-snapshot-array-shape-invalid'||message==='independent-evaluator-snapshot-array-entry-invalid') {
+      throw new Error('score matrix contains an empty slot or invalid array shape');
+    }
+    if(message==='independent-evaluator-snapshot-non-finite-number') {
+      throw new Error('score matrix values must be finite numbers in [0, 1]');
+    }
+    throw new Error('continual learning input data-boundary rejected');
   }
   if (referenceScore !== undefined) assertScore(referenceScore, 'referenceScore');
   const hasForwardTransfer = tasks.some(task => task?.preTrainingScore !== undefined);
