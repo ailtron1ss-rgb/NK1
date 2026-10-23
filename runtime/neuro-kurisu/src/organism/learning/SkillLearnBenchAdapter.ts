@@ -248,6 +248,8 @@ export interface SkillLearnBenchCandidateGateOptions {
   maximumValidationFamilyRegression01?: number;
   /** Minimum distinct validation tasks in one family before that family's regression can veto promotion. */
   minimumValidationFamilyTasks?: number;
+  /** Optional strict minimum count of validation families with sufficient task coverage; default 0 preserves legacy reports. */
+  minimumValidationFamilies?: number;
   /** Maximum tolerated macro-average holdout regression. */
   maximumHoldoutRegression01?: number;
   /** Minimum number of distinct holdout tasks; empty holdout must never pass. */
@@ -256,6 +258,8 @@ export interface SkillLearnBenchCandidateGateOptions {
   maximumHoldoutFamilyRegression01?: number;
   /** Minimum distinct tasks in one family before that family's regression can veto promotion. */
   minimumHoldoutFamilyTasks?: number;
+  /** Optional strict minimum count of holdout families with sufficient task coverage; default 0 preserves legacy reports. */
+  minimumHoldoutFamilies?: number;
 }
 
 export interface SkillLearnBenchCandidateGateReport {
@@ -450,8 +454,10 @@ export function evaluateSkillLearnBenchCandidate(
   const maxValidationTaskRegression = options.maximumValidationTaskRegression01 ?? 0.20;
   const maxValidationFamilyRegression = options.maximumValidationFamilyRegression01 ?? 0.10;
   const minValidationFamilyTasks = options.minimumValidationFamilyTasks ?? 2;
+  const minValidationFamilies = options.minimumValidationFamilies ?? 0;
   const maxRegression = options.maximumHoldoutRegression01 ?? 0.02;
   const minHoldoutTasks = options.minimumHoldoutTasks ?? 2;
+  const minHoldoutFamilies = options.minimumHoldoutFamilies ?? 0;
   if (!Number.isFinite(minGain) || minGain < 0 || minGain > 1) {
     throw new RangeError('candidate-minimum-validation-gain-invalid');
   }
@@ -467,6 +473,9 @@ export function evaluateSkillLearnBenchCandidate(
   if (!Number.isSafeInteger(minValidationFamilyTasks) || minValidationFamilyTasks < 1) {
     throw new RangeError('candidate-minimum-validation-family-tasks-invalid');
   }
+  if (!Number.isSafeInteger(minValidationFamilies) || minValidationFamilies < 0) {
+    throw new RangeError('candidate-minimum-validation-families-invalid');
+  }
   if (!Number.isFinite(maxRegression) || maxRegression < 0 || maxRegression > 1) {
     throw new RangeError('candidate-maximum-holdout-regression-invalid');
   }
@@ -480,6 +489,9 @@ export function evaluateSkillLearnBenchCandidate(
   }
   if (!Number.isSafeInteger(minFamilyTasks) || minFamilyTasks < 1) {
     throw new RangeError('candidate-minimum-holdout-family-tasks-invalid');
+  }
+  if (!Number.isSafeInteger(minHoldoutFamilies) || minHoldoutFamilies < 0) {
+    throw new RangeError('candidate-minimum-holdout-families-invalid');
   }
 
   const baselineValidation = validateCandidateReports(baseline.validation, 'baseline-validation');
@@ -522,8 +534,10 @@ export function evaluateSkillLearnBenchCandidate(
   if (validationGain < minGain) reasons.push('validation-improvement-below-threshold');
   if (validation.taskCount < minValidationTasks) reasons.push('validation-task-coverage-insufficient');
   if (validationTaskRegressions > 0) reasons.push('validation-task-regression-exceeds-tolerance');
+  if (validationFamilySummary.evaluated < minValidationFamilies) reasons.push('validation-family-coverage-insufficient');
   if (validationFamilySummary.regressions > 0) reasons.push('validation-family-regression-exceeds-tolerance');
   if (holdout.taskCount < minHoldoutTasks) reasons.push('holdout-task-coverage-insufficient');
+  if (holdoutFamilySummary.evaluated < minHoldoutFamilies) reasons.push('holdout-family-coverage-insufficient');
   if (holdoutDelta < -maxRegression) reasons.push('holdout-regression-exceeds-tolerance');
   if (holdoutFamilyRegressions > 0) reasons.push('holdout-family-regression-exceeds-tolerance');
 
@@ -553,7 +567,9 @@ export function evaluateSkillLearnBenchCandidate(
   if (validationTrajectory < 0.8) feedback.push('Inspect missing or out-of-order trajectory steps and revise the procedure.');
   if (validationSkill < 0.8) feedback.push('Increase required-capability coverage and confirm the skill remains executable.');
   if (validationTaskRegressions > 0) feedback.push('A paired validation task regressed beyond tolerance; diagnose the task-specific trade-off before proposing another candidate.');
+  if (validationFamilySummary.evaluated < minValidationFamilies) feedback.push('Validation family provenance is insufficient for the configured coverage requirement; supply canonical family labels before promotion.');
   if (validationFamilySummary.regressions > 0) feedback.push('A sufficiently sampled validation task family regressed beyond tolerance; diagnose the family-level trade-off before proposing another candidate.');
+  if (holdoutFamilySummary.evaluated < minHoldoutFamilies) feedback.push('Holdout family provenance is insufficient for the configured coverage requirement; supply canonical family labels before promotion.');
   if (holdoutDelta < 0) feedback.push('Aggregate holdout evaluation indicates regression; revise generality without inspecting holdout examples, then request a fresh independent evaluation.');
   if (holdoutFamilyRegressions > 0) feedback.push('At least one sufficiently sampled holdout task family regressed; improve generality without inspecting holdout examples and request a fresh independent evaluation.');
   if (safetyViolations > 0) feedback.push('Resolve every safety violation; safety is a hard gate, not a score trade-off.');
