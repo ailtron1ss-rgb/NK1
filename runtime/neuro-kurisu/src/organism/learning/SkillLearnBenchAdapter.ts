@@ -8,6 +8,8 @@
  */
 export interface SkillLearnBenchTrialInput {
   taskId: string;
+  /** Canonical task family from a trusted benchmark/experiment manifest when available. */
+  taskFamily?: string;
   trialId: string;
   /** Result from an independent task verifier, never inferred from the skill. */
   verifierPassed: boolean;
@@ -29,6 +31,8 @@ export interface SkillLearnBenchTrialInput {
 
 export interface SkillLearnBenchTrialReport {
   taskId: string;
+  /** Omitted only for legacy reports lacking canonical family provenance. */
+  taskFamily?: string;
   trialId: string;
   taskSuccess: { passed: boolean; passRate: number };
   skillQuality: {
@@ -51,6 +55,13 @@ export interface SkillLearnBenchTrialReport {
 
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length > 0;
+const isSafeTaskFamily = (value: unknown): value is string =>
+  typeof value === 'string' && value.length > 0 && value.length <= 128 &&
+  value.trim() === value &&
+  !Array.from(value).some(character => {
+    const code=character.codePointAt(0)??0;
+    return code<=0x1f||(code>=0x7f&&code<=0x9f);
+  });
 
 function validateUniqueIds(ids: unknown, field: string): asserts ids is string[] {
   if (!Array.isArray(ids) || ids.some((id) => !isNonEmptyString(id))) {
@@ -83,6 +94,7 @@ export function evaluateSkillLearnBenchTrial(
   if (!input || !isNonEmptyString(input.taskId) || !isNonEmptyString(input.trialId)) {
     throw new Error('invalid-trial-identity');
   }
+  if (input.taskFamily !== undefined && !isSafeTaskFamily(input.taskFamily.normalize('NFKC').trim())) throw new Error('invalid-task-family');
   if (typeof input.verifierPassed !== 'boolean') throw new Error('invalid-verifier-result');
   if (!input.skill || typeof input.skill.executable !== 'boolean') throw new Error('invalid-skill-executability');
   if (!input.trajectory || typeof input.trajectory !== 'object') throw new Error('invalid-trajectory');
@@ -126,6 +138,7 @@ export function evaluateSkillLearnBenchTrial(
 
   return {
     taskId: input.taskId.trim(),
+    ...(input.taskFamily !== undefined ? { taskFamily: input.taskFamily.normalize('NFKC').trim() } : {}),
     trialId: input.trialId.trim(),
     taskSuccess: { passed: input.verifierPassed, passRate: input.verifierPassed ? 1 : 0 },
     skillQuality: {
@@ -165,6 +178,7 @@ export function aggregateSkillLearnBenchReports(
     const inRange = (value: unknown): value is number =>
       typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
     if (!report || !isNonEmptyString(report.taskId) || !isNonEmptyString(report.trialId) ||
+        (report.taskFamily !== undefined && !isSafeTaskFamily(report.taskFamily)) ||
         typeof report.taskSuccess?.passed !== 'boolean' ||
         !inRange(report.taskSuccess?.passRate) ||
         report.taskSuccess.passRate !== (report.taskSuccess.passed ? 1 : 0) ||
@@ -215,6 +229,10 @@ export interface SkillLearnBenchCandidateGateOptions {
   maximumHoldoutRegression01?: number;
   /** Minimum number of distinct holdout tasks; empty holdout must never pass. */
   minimumHoldoutTasks?: number;
+  /** Maximum tolerated regression for adequately sampled held-out task families. */
+  maximumHoldoutFamilyRegression01?: number;
+  /** Minimum distinct tasks in one family before that family's regression can veto promotion. */
+  minimumHoldoutFamilyTasks?: number;
 }
 
 export interface SkillLearnBenchCandidateGateReport {
@@ -229,6 +247,10 @@ export interface SkillLearnBenchCandidateGateReport {
   pairedValidationTrials: number;
   pairedHoldoutTrials: number;
   holdoutTaskCount: number;
+  /** Number of families with sufficient matched holdout task coverage. */
+  holdoutFamiliesEvaluated: number;
+  /** Count of sufficiently sampled family regressions; names/scores stay out of optimizer feedback. */
+  holdoutFamilyRegressions: number;
   feedback: string[];
 }
 
@@ -249,6 +271,7 @@ function validateCandidateReports(
     const inRange = (value: unknown): value is number =>
       typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
     if (!report || !isNonEmptyString(report.taskId) || !isNonEmptyString(report.trialId) ||
+        (report.taskFamily !== undefined && !isSafeTaskFamily(report.taskFamily)) ||
         typeof report.taskSuccess?.passed !== 'boolean' ||
         !inRange(report.taskSuccess?.passRate) ||
         report.taskSuccess.passRate !== (report.taskSuccess.passed ? 1 : 0) ||
@@ -277,13 +300,20 @@ function pairedCandidateMean(
   baseline: Map<string, SkillLearnBenchTrialReport>,
   candidate: Map<string, SkillLearnBenchTrialReport>,
   label: string,
-): { baselineMean: number; candidateMean: number; paired: number; taskCount: number; candidateReports: SkillLearnBenchTrialReport[] } {
+): { baselineMean: number; candidateMean: number; paired: number; taskCount: number; candidateReports: SkillLearnBenchTrialReport[]; pairs: Array<{ baseline: SkillLearnBenchTrialReport; candidate: SkillLearnBenchTrialReport }> } {
   const keys = [...baseline.keys()].filter((key) => candidate.has(key)).sort();
   if (keys.length === 0 || keys.length !== baseline.size || keys.length !== candidate.size) {
     throw new Error(`candidate-${label}-trials-must-match-exactly`);
   }
   const baselineReports = keys.map((key) => baseline.get(key)!);
   const candidateReports = keys.map((key) => candidate.get(key)!);
+  for (let index=0; index<keys.length; index++) {
+    const baselineFamily=baselineReports[index].taskFamily;
+    const candidateFamily=candidateReports[index].taskFamily;
+    if (baselineFamily!==undefined && candidateFamily!==undefined && baselineFamily!==candidateFamily) {
+      throw new Error(`candidate-${label}-task-family-mismatch`);
+    }
+  }
   const macroTaskMean = (reports: SkillLearnBenchTrialReport[]): number => {
     const byTask = new Map<string, number[]>();
     for (const report of reports) {
@@ -301,6 +331,7 @@ function pairedCandidateMean(
     paired: keys.length,
     taskCount: new Set(candidateReports.map((report) => report.taskId.trim())).size,
     candidateReports,
+    pairs: keys.map(key=>({baseline:baseline.get(key)!,candidate:candidate.get(key)!})),
   };
 }
 
@@ -338,6 +369,14 @@ export function evaluateSkillLearnBenchCandidate(
   if (!Number.isSafeInteger(minHoldoutTasks) || minHoldoutTasks < 1) {
     throw new RangeError('candidate-minimum-holdout-tasks-invalid');
   }
+  const maxFamilyRegression = options.maximumHoldoutFamilyRegression01 ?? 0.10;
+  const minFamilyTasks = options.minimumHoldoutFamilyTasks ?? 2;
+  if (!Number.isFinite(maxFamilyRegression) || maxFamilyRegression < 0 || maxFamilyRegression > 1) {
+    throw new RangeError('candidate-maximum-holdout-family-regression-invalid');
+  }
+  if (!Number.isSafeInteger(minFamilyTasks) || minFamilyTasks < 1) {
+    throw new RangeError('candidate-minimum-holdout-family-tasks-invalid');
+  }
 
   const baselineValidation = validateCandidateReports(baseline.validation, 'baseline-validation');
   const candidateValidation = validateCandidateReports(candidate.validation, 'candidate-validation');
@@ -350,6 +389,25 @@ export function evaluateSkillLearnBenchCandidate(
   }
   const validation = pairedCandidateMean(baselineValidation, candidateValidation, 'validation');
   const holdout = pairedCandidateMean(baselineHoldout, candidateHoldout, 'holdout');
+  const familyRows = new Map<string, Map<string, { baseline:number[]; candidate:number[] }>>();
+  for (const pair of holdout.pairs) {
+    const family=pair.candidate.taskFamily ?? pair.baseline.taskFamily;
+    if (!family) continue; // Legacy reports without family provenance keep the aggregate gate only.
+    const taskId=pair.candidate.taskId.trim();
+    const tasks=familyRows.get(family)??new Map<string,{baseline:number[];candidate:number[]}>();
+    const scores=tasks.get(taskId)??{baseline:[],candidate:[]};
+    scores.baseline.push(candidateComposite(pair.baseline));
+    scores.candidate.push(candidateComposite(pair.candidate));
+    tasks.set(taskId,scores);familyRows.set(family,tasks);
+  }
+  const familyStats=[...familyRows.entries()].map(([family,tasks])=>{
+    const rows=[...tasks.values()];
+    const mean=(values:number[])=>values.reduce((sum,value)=>sum+value,0)/values.length;
+    const baselineMean=mean(rows.map(row=>mean(row.baseline)));
+    const candidateMean=mean(rows.map(row=>mean(row.candidate)));
+    return {family,taskCount:tasks.size,delta:candidateMean-baselineMean};
+  }).filter(row=>row.taskCount>=minFamilyTasks);
+  const holdoutFamilyRegressions=familyStats.filter(row=>row.delta < -maxFamilyRegression).length;
   const validationGain = validation.candidateMean - validation.baselineMean;
   const holdoutDelta = holdout.candidateMean - holdout.baselineMean;
   const reasons: string[] = [];
@@ -358,6 +416,7 @@ export function evaluateSkillLearnBenchCandidate(
   if (validationGain < minGain) reasons.push('validation-improvement-below-threshold');
   if (holdout.taskCount < minHoldoutTasks) reasons.push('holdout-task-coverage-insufficient');
   if (holdoutDelta < -maxRegression) reasons.push('holdout-regression-exceeds-tolerance');
+  if (holdoutFamilyRegressions > 0) reasons.push('holdout-family-regression-exceeds-tolerance');
 
   const allCandidateReports = [...validation.candidateReports, ...holdout.candidateReports];
   const safetyViolations = allCandidateReports.reduce(
@@ -385,6 +444,7 @@ export function evaluateSkillLearnBenchCandidate(
   if (validationTrajectory < 0.8) feedback.push('Inspect missing or out-of-order trajectory steps and revise the procedure.');
   if (validationSkill < 0.8) feedback.push('Increase required-capability coverage and confirm the skill remains executable.');
   if (holdoutDelta < 0) feedback.push('Aggregate holdout evaluation indicates regression; revise generality without inspecting holdout examples, then request a fresh independent evaluation.');
+  if (holdoutFamilyRegressions > 0) feedback.push('At least one sufficiently sampled holdout task family regressed; improve generality without inspecting holdout examples and request a fresh independent evaluation.');
   if (safetyViolations > 0) feedback.push('Resolve every safety violation; safety is a hard gate, not a score trade-off.');
   if (feedback.length === 0) feedback.push('No weak dimension crossed the feedback threshold; retain paired holdout evidence for review.');
 
@@ -401,6 +461,8 @@ export function evaluateSkillLearnBenchCandidate(
     pairedValidationTrials: validation.paired,
     pairedHoldoutTrials: holdout.paired,
     holdoutTaskCount: holdout.taskCount,
+    holdoutFamiliesEvaluated: familyStats.length,
+    holdoutFamilyRegressions,
     feedback,
   };
 }
