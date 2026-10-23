@@ -1754,6 +1754,7 @@
     "test:workpass227:bounded-independent-evaluation": "node --experimental-strip-types tests/workpass227-bounded-independent-evaluation.mjs",
     "test:workpass243:host-owned-independent-evaluation-services": "node --experimental-strip-types tests/workpass243-host-owned-independent-evaluation-services.mjs",
     "test:workpass330:production-revision-wiring": "node tests/workpass330-production-revision-wiring.mjs",
+    "test:workpass331:canonical-revision-baseline": "node --experimental-strip-types tests/workpass331-canonical-revision-baseline.mjs",
     "test:p313:user-mind-and-eils": "node --experimental-strip-types tests/user-mind-reconstruction-workpass313.mjs",
     "test:p314:memory-doctor": "node --experimental-strip-types tests/memory-doctor-workpass314.mjs",
     "test:p315:self-model-evidence-gate": "node --experimental-strip-types tests/self-model-evidence-write-gate-workpass315.mjs",
