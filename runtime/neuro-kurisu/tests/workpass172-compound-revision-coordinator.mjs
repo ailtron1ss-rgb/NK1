@@ -403,4 +403,32 @@ await assert.rejects(
 assert.equal(nestedProviderGetterCalls, 0,
   'nested provider data must be snapshotted recursively without invoking getters');
 
-console.log('WorkPass172 + WorkPass293 + WorkPass294 + WorkPass353 coordinator regressions completed');
+
+let generatorCapabilityGetterCalls = 0;
+const hostileCapabilityResult = {
+  proposal: { authentic: true },
+  sourceCandidateId: 'capability-hostile-source',
+  baseline: { validation: [], holdout: [] },
+  candidateEvaluation: { validation: [], holdout: [] },
+  generate: async () => ({ generated: true }),
+  evaluateRevisedCandidate: async input => ({
+    payloadFingerprint: input.payloadFingerprint,
+    evaluationFingerprint: 'a'.repeat(64),
+    evaluation: { validation: [], holdout: [] },
+  }),
+};
+Object.defineProperty(hostileCapabilityResult, 'generate', {
+  enumerable: true,
+  get() { generatorCapabilityGetterCalls++; return async () => ({ generated: true }); },
+});
+const hostileCapabilityCoordinator = new P23CompoundRepairRevisionCoordinator(
+  hostileProviderRuntime, engine, async () => hostileCapabilityResult,
+);
+await assert.rejects(
+  () => hostileCapabilityCoordinator.reviseFromObservedRepairs('skill-a'),
+  /provider-data-boundary-rejected/,
+);
+assert.equal(generatorCapabilityGetterCalls, 0,
+  'callable capabilities must be own data properties too; accessors never become capabilities');
+
+console.log('WorkPass172 + WorkPass293 + WorkPass294 + WorkPass353/354 coordinator regressions completed');

@@ -219,7 +219,7 @@ export class P23CompoundRepairRevisionCoordinator {
         candidateEvaluation: envelope.data.candidateEvaluation as CandidateEvaluation,
         generate: envelope.capabilities.generate as Generator,
         evaluateRevisedCandidate: envelope.capabilities.evaluateRevisedCandidate as Evaluator,
-        options: envelope.data.options as Options | undefined,
+        ...(envelope.data.options !== undefined ? { options: envelope.data.options as Options } : {}),
       };
     } catch {
       throw new Error('compound-repair-revision-provider-data-boundary-rejected');

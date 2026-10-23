@@ -1,3 +1,8 @@
+## WorkPass354 — capability-envelope contract
+
+- Explicit function capabilities in autonomous repair-provider envelopes must themselves be own data properties. Accessor-backed generator fields are rejected without invocation; the normalized optional config field is omitted when not supplied.
+- This preserves the boundary between untrusted repair evidence and callable generation/evaluation permissions. No external dependency or copied source code.
+
 ## WorkPass353 — provider capability/data separation (2026-10-23)
 
 - The autonomous repair coordinator now uses a shared envelope boundary that separates JSON-like provider data from two retained function capabilities (revision generator and independent evaluator). Arbitrary provider getters cannot mutate the evidence snapshot by being read during validation.

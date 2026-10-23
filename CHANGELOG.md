@@ -1,3 +1,9 @@
+## NK1 WorkPass354 — preserve optional configuration typing and gate callable properties
+
+- [FIXED] Built the detached provider config with an omitted `options` property when absent, preserving strict TypeScript `exactOptionalPropertyTypes` semantics instead of assigning explicit `undefined`.
+- [REGRESSION] Added a hostile generator-accessor case: callback capabilities are accepted only as own data properties, never by invoking getters.
+- [VALIDATION] Code/test additions are committed; exact-head typecheck and test execution remain unverified due runner allocation failures.
+
 ## NK1 WorkPass353 — reuse the trust boundary for autonomous repair providers (2026-10-23)
 
 - [REFACTORED] Added `snapshotPlainDataEnvelope()`: it safely detaches provider data while preserving only explicitly allow-listed callable capabilities, using own data descriptors without executing accessors.
