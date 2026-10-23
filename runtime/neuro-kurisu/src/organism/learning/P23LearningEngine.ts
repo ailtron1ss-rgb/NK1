@@ -604,7 +604,7 @@ export class P23LearningEngine {
     if(!source || source.skillId!==skillId || source.status==='rolled-back') {
       throw new Error('reflective revision source candidate is missing, mismatched, or rolled back');
     }
-    assertReflectiveSkillPayloadWithinBudget(source.payload,'source');
+    const sourceCanonicalPayload=assertReflectiveSkillPayloadWithinBudget(source.payload,'source');
     const fitness=this.evaluateReflectiveSkillCandidate(baseline,candidateEvaluation,options);
     const plan=this.planReflectiveSkillRevision(candidateEvaluation,fitness);
     if(plan.blockedBySafety) throw new Error('reflective revision blocked: resolve safety violations before performance optimization');
@@ -625,6 +625,11 @@ export class P23LearningEngine {
       throw new Error('skill revision generator returned an empty payload');
     }
     const canonicalPayload=assertReflectiveSkillPayloadWithinBudget(revisedPayload,'generated');
+    // Do not spend an independent sandbox evaluation on a no-op artifact. The
+    // staging method repeats this invariant after evaluation as a second boundary.
+    if(canonicalPayload===sourceCanonicalPayload) {
+      throw new Error('reflective revision payload is unchanged from its source candidate');
+    }
     const payloadFingerprint=createHash('sha256').update(canonicalPayload).digest('hex');
     const rawFresh=await evaluateRevisedCandidate({
       payload:snapshotPlainData(revisedPayload),
