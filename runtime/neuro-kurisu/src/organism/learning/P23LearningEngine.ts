@@ -826,8 +826,8 @@ export class P23LearningEngine {
     const rawFresh=await evaluateRevisedCandidate({
       payload:snapshotPlainData(revisedPayload),
       payloadFingerprint,
-      baseline:snapshotPlainData(baseline),
-      previousEvaluation:snapshotPlainData(candidateEvaluation),
+      baseline:snapshotPlainData(baseline) as typeof baseline,
+      previousEvaluation:snapshotPlainData(candidateEvaluation) as typeof candidateEvaluation,
     });
     let fresh: Awaited<ReturnType<RevisedCandidateEvaluator>>;
     try { fresh=snapshotPlainData(rawFresh) as Awaited<ReturnType<RevisedCandidateEvaluator>>; }
