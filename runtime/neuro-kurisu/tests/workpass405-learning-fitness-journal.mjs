@@ -79,7 +79,9 @@ try {
 
   // Recomputed content without a matching hash is rejected on restore.
   const tamperedPath = join(root, 'tampered.jsonl');
-  writeFileSync(tamperedPath, serialized.replace('fitness-accepted', 'fitness-rejected'));
+  const tamperedEntry = JSON.parse(serialized.split('\n')[0]);
+  tamperedEntry.payloadFingerprint = 'e'.repeat(64);
+  writeFileSync(tamperedPath, JSON.stringify(tamperedEntry) + '\n');
   assert.throws(() => new JsonlLearningFitnessJournal(tamperedPath).readAll(),
     /learning-fitness-journal-digest-mismatch/);
 
@@ -95,7 +97,7 @@ try {
   const nestedPrivacyPath = join(root, 'nested-privacy-tampered.jsonl');
   writeFileSync(nestedPrivacyPath, JSON.stringify(nestedPrivacyTampered) + '\n');
   assert.throws(() => new JsonlLearningFitnessJournal(nestedPrivacyPath).readAll(),
-    /learning-fitness-journal-entry-fields-invalid|learning-fitness-journal-digest-mismatch/);
+    /learning-fitness-journal-input-invalid|learning-fitness-journal-entry-fields-invalid|learning-fitness-journal-digest-mismatch/);
 
   const truncatedPath = join(root, 'truncated.jsonl');
   writeFileSync(truncatedPath, serialized.trimEnd());
