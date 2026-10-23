@@ -59,6 +59,17 @@ engine.configureLearningFitnessJournal({
 engine.configureLearningFitnessJournalIfAbsent({
   recordFitnessDecision() { fallbackJournalCalls++; },
 });
+assert.deepEqual(engine.learningFitnessJournalDiagnostics(), {
+  configured: true, available: false, reason: 'readback-unavailable',
+});
+const brokenDiagnosticsEngine = new P23LearningEngine();
+brokenDiagnosticsEngine.configureLearningFitnessJournal({
+  recordFitnessDecision() {},
+  snapshotDiagnostics() { throw new Error('malformed journal'); },
+});
+assert.deepEqual(brokenDiagnosticsEngine.learningFitnessJournalDiagnostics(), {
+  configured: true, available: false, reason: 'journal-read-failed',
+});
 const advisoryFitness = engine.evaluateReflectiveSkillCandidate(
   { validation: baseline.evaluation.validation, holdout: baseline.evaluation.holdout },
   { validation: candidateEvaluation.evaluation.validation, holdout: candidateEvaluation.evaluation.holdout },
@@ -204,4 +215,4 @@ assert.ok(journalEvents[1].reasonCodes.includes('holdout-family-seed-coverage-in
 assert.equal(fallbackJournalCalls, 0,
   'runtime default configuration must not replace an explicit host-provided sink');
 
-console.log('WORKPASS402_PRODUCTION_PROMOTION_FAMILY_GATE=PASS strictFamilyCoverage=true noApprovalSideEffect=true pairedSeedCoverage=true journalConnected=true hostSinkPreserved=true');
+console.log('WORKPASS402_PRODUCTION_PROMOTION_FAMILY_GATE=PASS strictFamilyCoverage=true noApprovalSideEffect=true pairedSeedCoverage=true journalConnected=true hostSinkPreserved=true diagnosticsFailSoft=true');
