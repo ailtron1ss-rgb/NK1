@@ -36,6 +36,23 @@ interface RevisionFailureBackoff {
   category: 'revision-generation-or-evaluation-failed';
 }
 
+export interface CompoundRepairRetryBackoffSnapshot {
+  schemaVersion: 1;
+  entries: Array<{
+    skillId: string;
+    evidenceDigest: string;
+    attempts: number;
+    retryAfter: number;
+    category: 'revision-generation-or-evaluation-failed';
+  }>;
+}
+
+/** Implemented by NK1's existing atomic FileStateStore; no second storage framework. */
+export interface CompoundRepairRetryBackoffStore {
+  load(): Promise<unknown>;
+  save(value: CompoundRepairRetryBackoffSnapshot): Promise<void>;
+}
+
 const BASE_RETRY_BACKOFF_MS = 30 * 60 * 1000;
 const MAX_RETRY_BACKOFF_MS = 24 * 60 * 60 * 1000;
 
@@ -126,15 +143,94 @@ export class P23CompoundRepairRevisionCoordinator {
   private readonly inFlightEvidenceDigestBySkill = new Map<string, string>();
   private readonly stagedEvidenceDigestsBySkill = new Map<string, Set<string>>();
   private readonly retryBackoffBySkill = new Map<string, RevisionFailureBackoff>();
+  private retryBackoffPersistenceFailure: string | null = null;
 
   constructor(
     private readonly runtime: OrganismRuntime,
     private readonly engine: P23LearningEngine,
     private readonly provideInputs: CompoundRepairRevisionInputProvider,
+    private readonly retryBackoffStore?: CompoundRepairRetryBackoffStore,
   ) {}
 
   private evidenceDigest(rows: ReturnType<OrganismRuntime['compoundSkillRepairEvidence']>): string {
     return fingerprintCompoundRepairEvidence(rows);
+  }
+
+  /** Restore the last retry deadline per skill before background revision becomes available. */
+  async restoreRetryBackoff(): Promise<void> {
+    if (!this.retryBackoffStore) return;
+    const stored = await this.retryBackoffStore.load();
+    if (stored === null || stored === undefined) return;
+    let detached: unknown;
+    try { detached = snapshotPlainData(stored); }
+    catch { throw new Error('compound-repair-retry-backoff-state-data-boundary-rejected'); }
+    if (!detached || typeof detached !== 'object' || Array.isArray(detached)) {
+      throw new Error('compound-repair-retry-backoff-state-invalid');
+    }
+    const snapshot = detached as Record<string, unknown>;
+    if (snapshot.schemaVersion !== 1 || !Array.isArray(snapshot.entries) ||
+        snapshot.entries.length > 128 ||
+        Object.keys(snapshot).sort().join(',') !== 'entries,schemaVersion') {
+      throw new Error('compound-repair-retry-backoff-state-invalid');
+    }
+    const restored = new Map<string, RevisionFailureBackoff>();
+    for (const raw of snapshot.entries) {
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+        throw new Error('compound-repair-retry-backoff-entry-invalid');
+      }
+      const row = raw as Record<string, unknown>;
+      if (Object.keys(row).sort().join(',') !== 'attempts,category,evidenceDigest,retryAfter,skillId' ||
+          !isSafeLearningIdentity(row.skillId, 180) ||
+          !isDigest(row.evidenceDigest) ||
+          !Number.isSafeInteger(row.attempts) || Number(row.attempts) < 1 || Number(row.attempts) > 12 ||
+          !Number.isSafeInteger(row.retryAfter) || Number(row.retryAfter) < 0 ||
+          row.category !== 'revision-generation-or-evaluation-failed' ||
+          restored.has(row.skillId as string)) {
+        throw new Error('compound-repair-retry-backoff-entry-invalid');
+      }
+      restored.set(row.skillId as string, {
+        evidenceDigest: row.evidenceDigest as string,
+        attempts: row.attempts as number,
+        retryAfter: row.retryAfter as number,
+        category: 'revision-generation-or-evaluation-failed',
+      });
+    }
+    this.retryBackoffBySkill.clear();
+    for (const [skillId, row] of restored) this.retryBackoffBySkill.set(skillId, row);
+    this.retryBackoffPersistenceFailure = null;
+  }
+
+  private retryBackoffSnapshot(): CompoundRepairRetryBackoffSnapshot {
+    const entries = [...this.retryBackoffBySkill.entries()]
+      .sort(([a], [b]) => compareCanonicalText(a, b))
+      .map(([skillId, row]) => ({
+        skillId,
+        evidenceDigest: row.evidenceDigest,
+        attempts: row.attempts,
+        retryAfter: row.retryAfter,
+        category: row.category,
+      }));
+    return { schemaVersion: 1, entries };
+  }
+
+  private async persistRetryBackoff(): Promise<void> {
+    if (!this.retryBackoffStore) return;
+    try {
+      await this.retryBackoffStore.save(this.retryBackoffSnapshot());
+      this.retryBackoffPersistenceFailure = null;
+    } catch {
+      this.retryBackoffPersistenceFailure = 'retry-backoff-state-save-failed';
+      throw new Error('compound-repair-retry-backoff-state-save-failed');
+    }
+  }
+
+  retryBackoffPersistenceDiagnostics() {
+    return {
+      configured: Boolean(this.retryBackoffStore),
+      available: this.retryBackoffPersistenceFailure === null,
+      lastFailure: this.retryBackoffPersistenceFailure,
+      entryCount: this.retryBackoffBySkill.size,
+    };
   }
 
   /**
@@ -216,7 +312,7 @@ export class P23CompoundRepairRevisionCoordinator {
     }
 
     const tracked = this.reviseFromEvidenceSnapshot(normalizedSkillId, repairEvidence, initialEvidenceDigest)
-      .then(result => {
+      .then(async result => {
         if (result.status === 'candidate-staged') {
           this.retryBackoffBySkill.delete(normalizedSkillId);
           const completed = this.stagedEvidenceDigestsBySkill.get(normalizedSkillId) ?? new Set<string>();
@@ -226,10 +322,12 @@ export class P23CompoundRepairRevisionCoordinator {
           while (this.stagedEvidenceDigestsBySkill.size > 128) {
             this.stagedEvidenceDigestsBySkill.delete(this.stagedEvidenceDigestsBySkill.keys().next().value!);
           }
+          // Candidate-store provenance remains the duplicate-stage authority if this best-effort cleanup fails.
+          try { await this.persistRetryBackoff(); } catch { /* surfaced by persistence diagnostics */ }
         }
         return result;
       })
-      .catch(error => {
+      .catch(async error => {
         const prior = this.retryBackoffBySkill.get(normalizedSkillId);
         const attempts = Math.min(12, prior?.evidenceDigest === initialEvidenceDigest ? prior.attempts + 1 : 1);
         const retryAfter = Date.now() + Math.min(MAX_RETRY_BACKOFF_MS, BASE_RETRY_BACKOFF_MS * 2 ** (attempts - 1));
@@ -241,6 +339,13 @@ export class P23CompoundRepairRevisionCoordinator {
         });
         while (this.retryBackoffBySkill.size > 128) {
           this.retryBackoffBySkill.delete(this.retryBackoffBySkill.keys().next().value!);
+        }
+        try {
+          await this.persistRetryBackoff();
+        } catch {
+          const persistenceError = new Error('compound-repair-revision-failed-and-retry-backoff-was-not-persisted');
+          Object.assign(persistenceError, { originalError: error });
+          throw persistenceError;
         }
         throw error;
       })
@@ -265,6 +370,8 @@ export class P23CompoundRepairRevisionCoordinator {
       remainingMs: Math.max(0, row.retryAfter - now),
       active: now < row.retryAfter,
       category: row.category,
+      durable: Boolean(this.retryBackoffStore),
+      persistenceHealthy: this.retryBackoffPersistenceFailure === null,
     }));
   }
 
