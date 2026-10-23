@@ -1,3 +1,5 @@
+import { snapshotPlainData } from './LearningTrustBoundary.ts';
+
 /**
  * SkillLearnBench-compatible evaluation adapter.
  *
@@ -89,8 +91,11 @@ function orderedMatches(expected: string[], observed: string[]): number {
 }
 
 export function evaluateSkillLearnBenchTrial(
-  input: SkillLearnBenchTrialInput,
+  rawInput: SkillLearnBenchTrialInput,
 ): SkillLearnBenchTrialReport {
+  let input: SkillLearnBenchTrialInput;
+  try { input=snapshotPlainData(rawInput) as SkillLearnBenchTrialInput; }
+  catch { throw new Error('invalid-trial-data-boundary'); }
   if (!input || !isNonEmptyString(input.taskId) || !isNonEmptyString(input.trialId)) {
     throw new Error('invalid-trial-identity');
   }
@@ -171,11 +176,15 @@ export function aggregateSkillLearnBenchReports(
   meanTrajectoryQuality: number;
   byTask: Array<{ taskId: string; trialCount: number; taskSuccessRate: number; meanSkillQuality: number; meanTrajectoryQuality: number }>;
 } {
-  if (!Array.isArray(reports) || reports.length === 0) throw new Error('reports-required');
+  let detached: unknown;
+  try { detached=snapshotPlainData(reports); }
+  catch { throw new Error('aggregate-reports-data-boundary-rejected'); }
+  if (!Array.isArray(detached) || detached.length === 0) throw new Error('reports-required');
+  const safeReports=detached as SkillLearnBenchTrialReport[];
   const groups = new Map<string, SkillLearnBenchTrialReport[]>();
   const seenTrials = new Set<string>();
   const familyByTask = new Map<string,string>();
-  for (const report of reports) {
+  for (const report of safeReports) {
     const inRange = (value: unknown): value is number =>
       typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
     if (!report || !isNonEmptyString(report.taskId) || !isNonEmptyString(report.trialId) ||
@@ -211,7 +220,7 @@ export function aggregateSkillLearnBenchReports(
   }));
   // Macro-average task-level scores, so tasks with more trials do not dominate.
   return {
-    trialCount: reports.length,
+    trialCount: safeReports.length,
     taskCount: byTask.length,
     taskSuccessRate: mean(byTask.map((r) => r.taskSuccessRate)),
     meanSkillQuality: mean(byTask.map((r) => r.meanSkillQuality)),
@@ -269,12 +278,16 @@ function validateCandidateReports(
   reports: SkillLearnBenchTrialReport[],
   label: string,
 ): Map<string, SkillLearnBenchTrialReport> {
-  if (!Array.isArray(reports) || reports.length === 0) {
+  let detached: unknown;
+  try { detached=snapshotPlainData(reports); }
+  catch { throw new Error(`candidate-${label}-reports-data-boundary-rejected`); }
+  if (!Array.isArray(detached) || detached.length === 0) {
     throw new Error(`candidate-${label}-reports-required`);
   }
+  const safeReports=detached as SkillLearnBenchTrialReport[];
   const keyed = new Map<string, SkillLearnBenchTrialReport>();
   const familyByTask = new Map<string,string>();
-  for (const report of reports) {
+  for (const report of safeReports) {
     const inRange = (value: unknown): value is number =>
       typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
     if (!report || !isNonEmptyString(report.taskId) || !isNonEmptyString(report.trialId) ||
