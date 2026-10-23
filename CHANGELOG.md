@@ -1,3 +1,11 @@
+## NK1 WorkPass326 — CI runner/runtime hardening (2026-10-23)
+
+- [HARDENED] Upgraded the WorkPass71 and WorkPass79 workflows to current first-party Actions versions compatible with the GitHub Actions Node.js 24 runtime, avoiding retired Node.js 20 action runtimes.
+- [HARDENED] Both workflows select the project's Node.js version from the root `.nvmrc` and assert that the selected runtime matches the pin before running tests.
+- [HARDENED] Raised the WorkPass79 cognitive regression job timeout from 8 to 20 minutes to reduce avoidable false failures during the existing multi-suite regression run.
+- [DOCUMENTED] Added `docs/CI_RELIABILITY_RUNBOOK_RU.md` to distinguish runner startup failures from application/test failures and to preserve precise verification/release evidence.
+- [VALIDATION] Static workflow edits have been committed on `workpass326-ci-runtime-hardening`. Actions execution remains unverified because the observed account-level runs terminate before runner assignment and execute zero steps. No claim of green CI or release publication is made.
+
 ## NK1 learning WorkPass106 — multi-seed replay-policy sweep (2026-10-20)
 
 - Added `p26-replay-policy-sweep.mjs`: a deterministic three-seed comparison of online-only, interleaving every 8 updates, every 4 updates, and every update. It measures old-task retention, new-task plasticity, replay update counts, conflict blocks and bounded screening comparisons.
