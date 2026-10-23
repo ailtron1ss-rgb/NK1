@@ -41,6 +41,7 @@ on:
       - "runtime/neuro-kurisu/tests/workpass405-learning-fitness-journal.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/workpass172-compound-revision-coordinator.mjs"
+      - "runtime/neuro-kurisu/tests/workpass419-p23-retry-backoff-store.mjs"
       - "runtime/neuro-kurisu/tests/p23-true-learning.mjs"
       - "runtime/neuro-kurisu/tests/workpass291-reflective-payload-budget.mjs"
       - "runtime/neuro-kurisu/tests/workpass383-p23-revision-generator-boundary.mjs"
@@ -171,6 +172,10 @@ jobs:
       - name: Run P23 compound repair evidence fingerprint regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass172-compound-revision-coordinator.mjs
+
+      - name: Verify file-backed P23 retry cooldown survives restart
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass419:retry-backoff-store
       - name: Run independent evaluator task-family provenance regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass203-independent-candidate-evaluator.mjs
