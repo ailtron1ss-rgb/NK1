@@ -1,3 +1,22 @@
+## NK1 WorkPass385 — add longitudinal learning-curve metrics (2026-10-23)
+- [CHANGED] ContinualLearningMetrics now returns the mean score at each sequential checkpoint, normalized trapezoidal area under the curve, and final-minus-first checkpoint score.
+- [WHY] A final score can hide temporary regressions and instability. The curve captures measured intermediate performance without inferring causality or treating memory growth as learning.
+- [TEST ADDED] Covered the deterministic curve, area calculation, net endpoint change and the one-checkpoint edge case.
+- [CI] Added the metric implementation/test to P26 path filtering and an explicit test step.
+
+## NK1 WorkPass384 — preserve canonicalization error contracts (2026-10-23)
+- [FIXED] The shared trust-boundary snapshot now rejects payload getters, sparse arrays, array extra-properties, cycles and non-finite numbers before hashing or sandbox evaluation.
+- [COMPATIBILITY] Cyclic/non-finite payloads retain their established canonicalization error codes; other invalid plain-data shapes return a bounded data-boundary error.
+- [TEST ADDED] Extended the reflective payload budget regression and ran it through P26 Learning Validation.
+
+## NK1 WorkPass383 — harden P23 revision generator/evaluator boundary (2026-10-23)
+- [FIXED] Candidate baseline/reports/options are snapshotted after authentic proposal checks; generator output is detached and size-bounded before hashing/evaluation; independent-evaluator output is detached before fingerprint and report inspection.
+- [SAFETY] The exact detached payload used for the fingerprint is the one passed to the independent evaluator and subsequently staged. Malformed reports cannot invoke property getters or change through a retained reference across an await.
+
+## NK1 WorkPass382 — validate compound repair evidence before fingerprinting (2026-10-23)
+- [FIXED] Canonical evidence hashing now snapshots and validates each row, caps the evidence batch at 96, and rejects accessor/sparse/malformed inputs, duplicate candidate tools, invalid timestamps and out-of-range confidence.
+- [TEST ADDED] Added regressions for no-getter execution, sparse evidence, invalid confidence, duplicate tool identities, and canonical valid ordering.
+
 ## NK1 WorkPass381 — deterministic curriculum ordering (2026-10-23)
 - [FIXED] Outcome-reflection and curriculum tie-breaks now use locale-independent code-unit comparison for stable identifier ordering across hosts.
 - [TEST ADDED] Equal-score Unicode/case-mixed target IDs have an explicit deterministic order regression.
