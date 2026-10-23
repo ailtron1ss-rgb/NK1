@@ -185,6 +185,11 @@ export class EmotionAppraisalEngine {
        ['__proto__','prototype','constructor','toString','hasOwnProperty'].includes(input.action)) {
       throw new TypeError('emotion-outcome-action-invalid');
     }
+    const unitInterval=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
+    if(!unitInterval(input.success01)||!unitInterval(input.surprise01)||
+       (input.regulationCost01!==undefined&&!unitInterval(input.regulationCost01))) {
+      throw new RangeError('emotion-outcome-values-invalid');
+    }
     const key=input.action;
     const prev=Object.prototype.hasOwnProperty.call(this.state.outcomes,key)
       ?this.state.outcomes[key]
