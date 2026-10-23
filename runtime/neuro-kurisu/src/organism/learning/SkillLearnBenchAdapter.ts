@@ -576,7 +576,7 @@ export function evaluateSkillLearnBenchCandidate(
     validationTaskCount: validation.taskCount,
     pairedHoldoutTrials: holdout.paired,
     holdoutTaskCount: holdout.taskCount,
-    holdoutFamiliesEvaluated: familyStats.length,
+    holdoutFamiliesEvaluated: holdoutFamilySummary.evaluated,
     holdoutFamilyRegressions,
     feedback,
   };
