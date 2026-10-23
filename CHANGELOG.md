@@ -1,3 +1,13 @@
+## NK1 WorkPass431 — make independent outcome proof explicit and quantitative (2026-10-23)
+
+- Reworked ExternalPostconditionVerifier to consume a bounded detached snapshot of the action result; accessor-backed, cyclic, non-plain and malformed result graphs fail closed with zero verified credit.
+- Independent outcome credit now requires attempted + verified + independent + stable fresh samples + explicit independent-observation mode, as well as the per-action numeric freshness/independence-strength threshold. A boolean can no longer masquerade as a continuous score.
+- Hardened the public action-contract registry against invalid names/prototype keys and accessor-backed/invalid contract values.
+- Added regressions for unverified samples, forged verification mode, numeric threshold enforcement, prototype-like names and getter non-execution. This protects the chain from device outcome to grounded world to learning evidence.
+- Runtime suite remains unexecuted on the hosted runner; no verification pass is claimed.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

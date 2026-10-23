@@ -13,6 +13,42 @@ assert.ok(a.evidence01>b.evidence01);
 assert.equal(b.proofClass,'stable-device-receipt');
 assert.equal(b.verified01,0);
 
+const unverifiedClaim = verifier.assess({
+  ...strong,
+  consequenceVerification: { ...strong.consequenceVerification, verified: false },
+});
+assert.notEqual(unverifiedClaim.proofClass, 'independent-observation',
+  'independence/freshness flags cannot override a failed verification result');
+assert.equal(unverifiedClaim.verified01, 0);
+const wrongModeClaim = verifier.assess({
+  ...strong,
+  consequenceVerification: { ...strong.consequenceVerification, verificationMode: 'actuation-receipt-only' },
+});
+assert.notEqual(wrongModeClaim.proofClass, 'independent-observation',
+  'receipt-only mode is not independent observation even if other booleans are forged');
+verifier.registerAction('high-threshold-observe', { observation: true, minIndependent01: .95 });
+const belowThresholdClaim = verifier.assess({
+  ...strong,
+  action: 'high-threshold-observe',
+  consequenceVerification: { ...strong.consequenceVerification, freshBefore01: .9, freshAfter01: .9 },
+});
+assert.notEqual(belowThresholdClaim.proofClass, 'independent-observation',
+  'the per-action minimum independence strength must be numerically enforced');
+assert.throws(() => verifier.registerAction('__proto__', { observation: true }), /postcondition-action-name-invalid/);
+assert.equal(verifier.actionContract('__proto__').observation, false,
+  'prototype-like action names cannot alter the action contract lookup');
+let postconditionGetterCalls = 0;
+const getterBackedResult = { ...strong };
+Object.defineProperty(getterBackedResult, 'effect01', {
+  enumerable: true,
+  get() { postconditionGetterCalls++; return .7; },
+});
+const rejectedAssessment = verifier.assess(getterBackedResult);
+assert.equal(postconditionGetterCalls, 0, 'postcondition boundary must reject accessors without invoking them');
+assert.equal(rejectedAssessment.proofClass, 'none');
+assert.equal(rejectedAssessment.verified01, 0);
+
+
 const { RealityGroundingController }=await import('../src/organism/system/RealityGroundingController.ts');
 const holdout=new RealityGroundingController();
 const action='explore';
