@@ -1,3 +1,12 @@
+## NK1 WorkPass445 — harden the live cognitive-cycle ingress boundary (2026-10-23)
+
+- Snapshot runtime cycle input through the shared bounded plain-data boundary before reading tick, stage map, or parent-integrity fields. Caller-owned getters, cycles, unsupported object prototypes, and oversized inputs are rejected without invoking user code or mutating the cycle.
+- Reject unknown top-level fields and unknown cognitive-stage identifiers so extensions cannot silently enter the core cycle contract.
+- Added regressions for getter non-execution, unchanged state after rejection, and unknown-stage rejection. No dependency added.
+- **Verification:** regression cases are committed but not claimed as executed; hosted Actions has previously failed before runner allocation.
+
+---
+
 ## NK1 WorkPass442 — harden unified cognitive-cycle persistence ingress (2026-10-23)
 
 - Reused the existing bounded `PlainDataSnapshot` boundary in `UnifiedCognitiveCycle.restore`, matching the defensive persistence contract already used by emotion, memory, and self-agency subsystems.
