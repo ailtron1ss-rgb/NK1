@@ -1,3 +1,12 @@
+## WorkPass306–314 — unified learning and action-evidence integration (2026-10-23)
+
+- Integrated the cognitive architecture map and operational micro-cycle attribution, then added architecture/causal-evidence documentation and focused regression suites for trusted evidence lanes, autonomous P23 repair, correlated postconditions, and action attribution.
+- Added package scripts for the payload-budget, evidence-lane, autonomous P23 revision, and correlated-postcondition regressions without removing existing scripts.
+- Added a 256 KiB canonical UTF-8 payload ceiling for reflective P23 skill candidates before generation/evaluation.
+- Bound external outcome evidence to host-owned execution and decision identifiers; the verification service only trusts the exact in-process verifier result associated with the same tool, full input, execution ticket, and decision. ActionGateway now threads these identifiers through normal execution and idempotency reconciliation.
+- Research adaptation: Hermes Self-Evolution's trace-guided candidate mutation and constrained evaluation; Letta's asynchronous sleep-time memory consolidation. NK1 keeps its own runtime and promotion gates; no second agent runtime or new runtime dependency was imported.
+- Validation: source changes and PR merges are confirmed. The associated GitHub Actions workflows currently report failures; passing typecheck, regression, and end-to-end results are **not** claimed. Diagnose runner/job failures and run the exact integration head before release.
+
 ## WorkPass313 — paginated GitHub Actions history diagnostics (2026-10-22)
 
 - Added `tools/audit-actions-history.mjs`: it enumerates Actions run history in pages of 100, deduplicates run IDs, inspects failed/incomplete run jobs within an explicit detail budget, and records API coverage so reaching the page limit cannot be mistaken for a full scan.
