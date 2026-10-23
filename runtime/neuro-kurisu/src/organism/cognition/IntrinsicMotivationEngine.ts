@@ -1,4 +1,4 @@
-import { snapshotPlainData } from './PlainDataSnapshot.ts';
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 
 export interface IntrinsicDriveState {
   epistemic: number;

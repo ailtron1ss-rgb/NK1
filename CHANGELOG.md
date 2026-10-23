@@ -1,3 +1,10 @@
+## NK1 WorkPass436 — correct canonical motivation-boundary import (2026-10-23)
+
+- Corrected the shared snapshot helper path in IntrinsicMotivationEngine to its canonical sibling under organism/core. No behavior change; this is a source-level integration correction discovered during follow-up inspection.
+- Typecheck and runtime suite remain pending because the hosted Actions runner has not executed job steps.
+
+---
+
 ## NK1 WorkPass435 — protect endogenous motivation state and signals (2026-10-23)
 
 - The intrinsic drive engine now reuses the canonical PlainDataSnapshot boundary for both persisted restore and live drive updates.
