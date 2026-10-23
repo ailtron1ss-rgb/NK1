@@ -33,3 +33,7 @@ Status: implementation committed; exact-head execution unverified.
 2. Estimate transfer only from matched cross-context trials compared with the no-transfer baseline; report uncertainty, per-family results and regressions.
 3. Validate the reflection → repair-plan → generated candidate → independent evaluation → authenticated staging sequence end to end.
 4. Run the exact-head P23 suite and runtime typecheck after the Actions runner scheduling issue is resolved.
+
+## Follow-up pass — evidence debt is not transfer evidence
+
+The subsequent WorkPass360 correction also sets evidence-debt-derived targets to `transfer01 = 0`. `informationGainPerCost01` remains a useful signal for selecting an informative verification action, but it does not measure a skill's performance across task families. The P23 regression now checks both reflection-derived and evidence-debt-derived targets. Transfer estimates should be added only with matched, independently verified cross-context outcomes and a baseline comparison.
