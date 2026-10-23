@@ -1,3 +1,11 @@
+## NK1 WorkPass452 — record multi-branch fault-tolerance follow-up (2026-10-23)
+
+- Updated the research intake ledger with the latest code commits on learning, perception, memory, personality, embodiment, and feedback, and rechecked primary guidance from Hermes Self-Evolution/GEPA, Letta memory/dreaming, and OpenAI evaluation best practices.
+- Refreshed the branch goals and Russian master-audit narrative to distinguish code committed from code executed, integrated, benchmarked, or shipped.
+- Kept engineering readiness at 46/100 because exact-head suites remain unverified (0/7), merges remain 0/7, and release-asset replacement remains unavailable through the current GitHub connector. No dependency was added; `main` and `integration` unchanged.
+
+---
+
 ## NK1 WorkPass451 — refresh memory-branch status and release-artifact evidence
 
 - Updated the planning ledger with the latest `feature/memory` commit `97d329bc208aa8c7e4097947070b32dd17718fd0`, covering the canonical background semantic-index maintenance boundary.
