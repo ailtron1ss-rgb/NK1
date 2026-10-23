@@ -46,5 +46,33 @@ const accessorGuarded=new PersonalCurriculumEngine(); accessorGuarded.restore(ho
 assert.equal(restoreGetterCalls,0);
 assert.equal(accessorGuarded.snapshot().cycles,0);
 assert.equal(accessorGuarded.snapshot().threads.length,0);
+assert.equal(s.completedThreads, 1, 'completion count must represent the unique currently-satisfied thread');
+assert.equal(s.suppressedThreads, 0);
+
+const reopened = new PersonalCurriculumEngine();
+reopened.restore(s);
+reopened.observeOutcome({
+  goal, outcome01: 0.1, verified: true, contextKey: 'ctx-reopen',
+  causal01: 0.72, social01: 0.82, identity01: 0.86, retention01: 0.72, transfer01: 0.62, at: 2000,
+});
+assert.notEqual(reopened.snapshot().threads[0].status, 'satisfied');
+assert.equal(reopened.snapshot().completedThreads, 0,
+  'a thread reopened by new failure evidence must no longer count as currently completed');
+
+const suppressedState = structuredClone(s);
+suppressedState.threads[0].status = 'suppressed';
+suppressedState.completedThreads = 456;
+suppressedState.suppressedThreads = 789;
+const suppressedEngine = new PersonalCurriculumEngine();
+suppressedEngine.restore(suppressedState);
+assert.equal(suppressedEngine.snapshot().completedThreads, 0);
+assert.equal(suppressedEngine.snapshot().suppressedThreads, 1,
+  'restored lifecycle totals must be reconciled against unique valid thread records');
+suppressedEngine.observeOutcome({
+  goal, outcome01: 0.2, verified: true, contextKey: 'suppressed-context',
+  causal01: 0.72, social01: 0.82, identity01: 0.86, retention01: 0.72, transfer01: 0.62, at: 2001,
+});
+assert.equal(suppressedEngine.snapshot().suppressedThreads, 1,
+  'repeated observations must not inflate the suppressed-thread count');
 console.log('BIG_PASS_122_PERSONAL_CURRICULUM=PASS');
 console.log(JSON.stringify({threads:s.threads.length,contexts:s.threads[0].contexts,priority01:s.threads[0].priority01,learningNeed01:s.threads[0].learningNeed01,curriculumPressure01:s.curriculumPressure01,identityLearning01:s.identityLearning01},null,2));
