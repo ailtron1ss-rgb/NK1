@@ -1,3 +1,11 @@
+## NK1 WorkPass449 — reject malformed affect outcome evidence before calibration (2026-10-23)
+
+- Hardened the emotional outcome-calibration ingress: success, surprise, and optional regulation cost must be finite numbers inside the normalized [0,1] contract. NaN, numeric strings, infinities, and out-of-range values no longer silently bias the running action calibration through coercion/clamping.
+- Validation runs before the outcome row or counters change. Added regressions for NaN success, an out-of-range regulation cost, and full state preservation after rejection. No dependency added.
+- **Verification:** regression source is committed, but exact-head execution is not claimed while hosted Actions fail before runner allocation.
+
+---
+
 ## NK1 WorkPass448 — make emotion action lookups prototype-safe
 
 - Prevented prototype-inherited object members such as `constructor` from being mistaken for an existing learned action outcome. Outcome writes now use own-property lookup and reject prototype-like action names.
