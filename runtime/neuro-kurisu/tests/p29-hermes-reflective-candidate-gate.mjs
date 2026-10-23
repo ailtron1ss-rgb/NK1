@@ -161,6 +161,18 @@ assert.throws(()=>evaluateSkillLearnBenchCandidate({
   validation:[accessorReport,baseline.validation[1]],holdout:baseline.holdout,
 },improved),/candidate-baseline-validation-reports-data-boundary-rejected/);
 assert.equal(familyAccessorCalls,0,'report accessors must not run while calculating the candidate gate');
+const baselineEnvelope = {};
+Object.defineProperties(baselineEnvelope, {
+  validation:{enumerable:true,get(){familyAccessorCalls++;return baseline.validation;}},
+  holdout:{enumerable:true,value:baseline.holdout},
+});
+assert.throws(()=>evaluateSkillLearnBenchCandidate(baselineEnvelope,improved),/candidate-evaluation-data-boundary-rejected/);
+assert.equal(familyAccessorCalls,0,'candidate-gate envelope getters must not run');
+const getterOptions = Object.defineProperty({},'maximumHoldoutFamilyRegression01',{
+  enumerable:true,get(){familyAccessorCalls++;return .1;},
+});
+assert.throws(()=>evaluateSkillLearnBenchCandidate(baseline,improved,getterOptions),/candidate-evaluation-data-boundary-rejected/);
+assert.equal(familyAccessorCalls,0,'gate-option getters must not run');
 const sparseReportBatch = [trial('task-a','sparse-batch','good'),,];
 assert.throws(()=>evaluateSkillLearnBenchCandidate({
   validation:sparseReportBatch,holdout:baseline.holdout,
