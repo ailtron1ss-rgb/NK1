@@ -1,3 +1,28 @@
+## WorkPass399 — reject hidden validation-task regressions (2026-10-23)
+
+- **Source evidence:** [SkillLearnBench paper](https://arxiv.org/abs/2604.20087) evaluates skill quality, trajectory and task outcome across verified tasks; it also reports that continual-learning gains are not consistent across tasks/methods. [Project benchmark description](https://github.com/cxcscmu/SkillLearnBench) motivates task-level rather than only aggregate reporting.
+- **NK1 gap:** paired macro-average validation improvement could hide a strong regression on one task when gains on other tasks compensate. NK1 already had minimum distinct validation coverage, aggregate holdout regression, safety veto and sampled holdout-family regression, but no per-task validation veto.
+- **Adaptation:** add configurable `maximumValidationTaskRegression01` (default 0.20). Average repeated trials per task, compute paired baseline/candidate composite delta for each task, and reject eligibility if any task crosses the tolerance. The report now includes `validationTaskRegressions`; invalid thresholds fail closed.
+- **Regression/CI:** P29 includes a case with two improving tasks and one sharply regressing task where the overall mean still improves. Existing P26 path/step wiring includes this test.
+- **Limits:** 0.20 is an NK1 engineering default, not a constant prescribed by SkillLearnBench. It must be calibrated using paired seeds and a fixed task suite; test execution remains unverified while current Actions jobs expose no steps/logs.
+
+## WorkPass398 — snapshot promotion envelopes and approval before property access (2026-10-23)
+
+- **Source evidence:** [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution) uses a reviewable evolution workflow with explicit testing/size/semantic guardrails and separate promotion; [Reflexion](https://arxiv.org/abs/2303.11366) treats reflections as experience-guided proposals rather than self-verified truth.
+- **NK1 gap:** `approveIndependentlyEvaluatedSkillCandidate` accessed caller-owned baseline/evaluation fields before taking a plain-data snapshot; a getter/Proxy could execute before digest/provenance checks. The finalizer passed the caller's approval object directly to the store.
+- **Adaptation:** snapshot both evaluation envelopes through `LearningTrustBoundary.snapshotPlainData` before field access and snapshot the approval before the store call. Add focused regressions asserting getter counts remain zero and malformed input cannot reach store activation.
+- **Scope:** no upstream source code or new runtime dependency was copied. Signatures, independent evaluation fingerprints, exact staged-payload matching and the store's authenticated approval/shadow checks remain the promotion authorities.
+- **Limits:** plain-data checks guard input handling; they do not substitute for a production-isolated evaluator/verifier/safety scanner. Exact-head tests/typecheck remain unverified.
+
+## WorkPass397 — close lower-level promotion bypass for reflective revisions (2026-10-23)
+
+- **Gap:** disabling report-only `approveReflectiveVerifiedSkillCandidate` did not by itself stop a caller from using the generic `approveVerifiedSkillCandidate` API on a staged reflective revision.
+- **Adaptation:** reject revision candidates carrying `revisionProvenance` in the generic API and make the independently evaluated path call a private finalizer after the matched-envelope/evidence/approval gates have passed.
+- **Regression:** the P23 promotion-gate test verifies the generic call fails before the backing store's approval callback. This complements WorkPass394's report-only path denial.
+- **Limits:** runtime test/typecheck execution has not been confirmed; no promotion or learning performance claim is made.
+
+---
+
 ## WorkPass396 — end-to-end writeback and explicit activation separation (2026-10-23)
 
 - **Fresh upstream issue/PR review:** the [Hermes Agent Self-Evolution issue list](https://github.com/NousResearch/hermes-agent-self-evolution/issues) currently includes reports that evolution can become a no-op (#141) or fail to write the optimized skill text back (#172, #175), and its PR history includes fixes to validate the complete skill file including frontmatter (#185, #187). These are failure modes of the evolution loop, not just benchmark concerns.
