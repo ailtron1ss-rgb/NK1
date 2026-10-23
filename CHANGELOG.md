@@ -1,3 +1,16 @@
+## NK1 WorkPass331 — canonical baseline/source evidence for reflective P23 revision (2026-10-23)
+
+- [TRUST BOUNDARY] Found that provider-supplied `baseline` and `candidateEvaluation` report arrays influenced the P23 revision plan and later fitness gate, even though only the generated candidate was freshly evaluated. Production now ignores those report objects and the provider's own evaluator.
+- [CANONICAL INPUTS] `OrganismRuntime` resolves the active baseline payload and selected source-candidate payload from `verifiedSkillCandidateSnapshot()`; it checks candidate identity/status and the stored fingerprints before evaluating either payload.
+- [INDEPENDENT EVALUATION] The existing host-owned evaluator now scores active baseline, source candidate and newly generated revision under three distinct method identities declared in both validation and holdout plans. The comparisons bind the same manifest/plans/environment, task/trial IDs, seeds, split labels and payload/evaluation digests.
+- [FRESHNESS] The active/source version and payload fingerprints are re-read during the cycle. A change during candidate evaluation fails closed rather than allowing stale baseline fitness to flow into staging.
+- [REGRESSION] Added `test:workpass331:canonical-revision-baseline`, covering provider-report poisoning, real source-candidate failure preservation, fresh revision evaluation, stale-state rejection and production resolver requirements. The test is wired into root `audit:quick` and WorkPass71 core CI.
+- [VALIDATION] The regression and runtime typecheck have **not** been confirmed as executed on the exact head. GitHub Actions is still failing before any steps run; do not infer PASS or code failure. Keep learning metrics unchanged.
+- [LIMITATIONS] Host-owned executor/verifier/scanner deployments and frozen task manifests remain deployment responsibilities. No measured learning uplift or complete autonomous loop is claimed.
+- [DEPENDENCIES/RELEASE] No dependency added, `main` untouched, and release ZIP unchanged.
+
+---
+
 ## NK1 WorkPass330 — host-owned evaluator wiring for autonomous P23 revision (2026-10-23)
 
 - [FIX] Closed the production config gap where `server.mjs` passed P23 engine/provider inputs but omitted the independent-evaluation factory required by `OrganismRuntime` in production.
