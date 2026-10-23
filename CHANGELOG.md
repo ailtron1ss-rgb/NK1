@@ -1,3 +1,11 @@
+## NK1 WorkPass462a — correct event-ID control-character guard (2026-10-23)
+
+- Corrected the regex escaping in `realityEvidenceEventId` so the input guard tests actual control characters rather than a double-escaped character class.
+- The identity helper still rejects malformed input before hashing. This follow-up is a source correction to WorkPass462, not an additional feature claim.
+- **Verification:** source is committed; runtime/typecheck execution remains unconfirmed.
+
+---
+
 ## NK1 WorkPass462 — wire shared runtime event lineage into reality evidence (2026-10-23)
 
 - Exported `realityEvidenceEventId(originEventId, role, discriminator)`: a bounded, deterministic projection ID derived from an existing runtime event. It rejects malformed inputs; its documentation explicitly says the identifier is a join key, not a trust token.
