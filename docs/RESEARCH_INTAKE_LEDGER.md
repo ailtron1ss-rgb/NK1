@@ -1,3 +1,23 @@
+## WorkPass376–377 — manifest-bound family-level holdout gate (2026-10-23)
+
+### Source mechanisms adapted
+- **AFTER — A Benchmark for Skill Evolution Frameworks** — [GitHub](https://github.com/DavydenkoGr/AFTER). Task/role/context transfer is a distinct property from aggregate success; a candidate needs task-family evidence, not only an average score.
+- **SkillLearnBench** — [GitHub](https://github.com/cxcscmu/SkillLearnBench) and [paper](https://arxiv.org/abs/2604.20087). Keep task success, trajectory quality and skill quality separate, macro-average by task, and evaluate generated skills against independent baselines.
+- This combines with NK1's existing canonical manifest and untouched validation/holdout split; no upstream code was copied and no new dependency was introduced.
+
+### Implementation
+- SkillLearnBench trial reports now optionally carry task-family provenance. The independent evaluator sources the family from the canonical VerifiedOutcomeLedger task manifest, overriding caller-supplied family strings when the manifest is present.
+- Task family is included in the independent evaluation-plan fingerprint, so changing family attribution changes the evaluation identity instead of silently relabeling outcomes.
+- The candidate gate now calculates paired macro means per family when that family has at least the configured number of distinct holdout tasks (default two). A family regression larger than the configured tolerance (default 0.10) blocks candidate eligibility even if the aggregate holdout score is unchanged.
+- Missing family provenance on legacy reports keeps the existing aggregate gate and does not fabricate family labels. Conflicting family labels within a task or across matched baseline/candidate reports are rejected.
+- Detailed family names and per-family holdout scores are not exposed in optimizer-facing feedback. The gate emits only a generic generalization warning plus aggregate counts, preserving the holdout isolation contract.
+
+### Regression coverage / remaining evidence
+- Added a contrived but important anti-masking case: two memory tasks regress, two perception tasks improve by a compensating amount, so overall holdout delta is exactly zero; the family gate must still reject the candidate.
+- Added a test that caller-supplied task families cannot override canonical manifest family labels.
+- Wired the independent evaluator regression into the focused P26 workflow, alongside family-gate test coverage already run by the Hermes candidate-gate step. The workflow uses Node.js 24.
+- Test execution remains unverified: Action runs have continued failing without step lists/log downloads. Once a working runner is available, confirm these regressions and the runtime typecheck before considering this gate complete.
+
 ## WorkPass374–375 — canonical revision evidence + skill-evolution research (2026-10-23)
 
 ### Newly reviewed systems and research
