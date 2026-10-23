@@ -15,6 +15,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/AdaptiveWindowDriftDetector.ts"
       - "runtime/neuro-kurisu/src/organism/learning/DriftAwareLearningController.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
+      - "runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/OutcomeReflectionCurriculum.ts"
       - "runtime/neuro-kurisu/src/organism/learning/LearningTrustBoundary.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionCoordinator.ts"
@@ -125,6 +126,9 @@ jobs:
       - name: Run independent evaluator task-family provenance regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass203-independent-candidate-evaluator.mjs
+      - name: Run reflective promotion authority firewall regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-hermes-production-promotion-gate.mjs
       - name: Run existing P26 learning regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:true-learning
