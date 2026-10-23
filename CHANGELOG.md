@@ -1,3 +1,10 @@
+## NK1 WorkPass327 — root-cause triage for Actions startup failures (2026-10-23)
+
+- [DIAGNOSIS] Compared nine fresh/representative failed jobs with one earlier successful control run. All nine failures stopped after 1–2 seconds with `runner_id=0`, blank runner name, and zero steps; the control run had a runner and eight successful steps.
+- [HYPOTHESIS] Prioritized account-level Billing & Licensing lock because a public GitHub Community case reports the same symptom and a billing-lock annotation. This is **not yet confirmed for the NK1 account** because the current connector cannot read the bodies of this run's two check-run annotations.
+- [VALIDATION] Ran the new CI policy unit tests locally on Node.js 22.16.0: 6/6 passed. Verified the two current workflow files use checkout/setup-node v7, the root .nvmrc, a runtime assertion, the rebuild PR trigger, and a 20-minute cognitive test timeout.
+- [LIMITATION] GitHub Actions still fails before the first step on the latest HEAD. Do not repeatedly rerun while runner startup is blocked; inspect Billing & Licensing first, then rerun checks only after the account condition is resolved. No release ZIP was rebuilt or published.
+
 ## NK1 WorkPass326 — CI runner/runtime hardening (2026-10-23)
 
 - [HARDENED] Upgraded the WorkPass71 and WorkPass79 workflows to current first-party Actions versions compatible with the GitHub Actions Node.js 24 runtime, avoiding retired Node.js 20 action runtimes.
