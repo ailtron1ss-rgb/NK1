@@ -4,6 +4,7 @@
 - [HARDENED] Both workflows select the project's Node.js version from the root `.nvmrc` and assert that the selected runtime matches the pin before running tests.
 - [HARDENED] Raised the WorkPass79 cognitive regression job timeout from 8 to 20 minutes to reduce avoidable false failures during the existing multi-suite regression run.
 - [DOCUMENTED] Added `docs/CI_RELIABILITY_RUNBOOK_RU.md` to distinguish runner startup failures from application/test failures and to preserve precise verification/release evidence.
+- [REGRESSION] Added `tools/verify-ci-reliability.mjs` and built-in Node test cases; both validation workflows run this guard so retired Action majors, drift from `.nvmrc`, missing runtime assertions, and a too-short cognitive timeout are rejected before the main suite.
 - [VALIDATION] Static workflow edits have been committed on `workpass326-ci-runtime-hardening`. Actions execution remains unverified because the observed account-level runs terminate before runner assignment and execute zero steps. No claim of green CI or release publication is made.
 
 ## NK1 learning WorkPass106 — multi-seed replay-policy sweep (2026-10-20)
