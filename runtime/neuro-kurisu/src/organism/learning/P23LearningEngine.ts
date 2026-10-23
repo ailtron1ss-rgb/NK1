@@ -1060,9 +1060,16 @@ export class P23LearningEngine {
       repairValue01:row.priority01, blocked:false,
     }));
     const reflected=reflections.map(row=>({
-      id:`reflection:${row.key}`, family:row.action, uncertainty01:row.predictionGap01,
-      readiness01:row.confidence01, transfer01:clamp(row.occurrences/12),
-      novelty01:row.priority01, verificationCost01:.45, repairValue01:row.priority01, blocked:false,
+      id:`reflection:${row.key}`, family:row.action,
+      // Prioritise both calibration error and conservative observed failure risk.
+      // The Wilson interval is descriptive only; the evidence may be correlated.
+      uncertainty01:clamp(.45*row.predictionGap01+.55*(1-row.wilsonLowerPassRate01)),
+      readiness01:row.confidence01,
+      // Same-context recurrence demonstrates a repair opportunity, not transfer.
+      // Transfer stays unavailable until multi-context/held-out evidence is supplied.
+      transfer01:0,
+      novelty01:clamp(.65*row.priority01+.35*(1-row.passRate01)),
+      verificationCost01:.45, repairValue01:row.priority01, blocked:false,
     }));
     const seen=new Set<string>();
     const candidates=[...debt,...reflected].filter(row=>{if(seen.has(row.id))return false;seen.add(row.id);return true;});
