@@ -1,3 +1,12 @@
+## NK1 WorkPass461 — quarantine conflicting reality-evidence restore identities (2026-10-23)
+
+- `RealityEvidenceLedger.restore` now validates the retained rows as a set before committing restored state. If one saved record ID or upstream `eventId` is bound to multiple payloads, every row in that conflict group is quarantined instead of preserving whichever row appeared first.
+- Exact duplicate snapshots remain idempotent; unrelated valid evidence is preserved. Restore now matches the live `record()` rule that rejects reusing an event ID for a different claim.
+- Added order-permutation regressions for both upstream event-ID conflicts and record-ID conflicts. No dependencies or second evidence store.
+- **Verification:** source and regressions are committed; exact-head test/typecheck execution is not confirmed.
+
+---
+
 ## NK1 WorkPass456 — shared upstream evidence-event identity (2026-10-23)
 
 - Extended RealityEvidenceLedger.record with an optional upstream eventId so existing action/decision/observation lineage can be preserved rather than replaced by an unrelated content hash.
