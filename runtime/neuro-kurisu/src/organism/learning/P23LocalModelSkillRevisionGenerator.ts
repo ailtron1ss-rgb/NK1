@@ -76,6 +76,7 @@ export async function generateLocalSkillRevision(
   provider: SkillRevisionChatProvider,
   rawRequest: ReflectiveRevisionRequest,
 ): Promise<unknown> {
+  if(!provider)throw new Error('p23-revision-local-model-not-configured');
   const configured=bindProviderMethod(provider,'configured');
   const generate=bindProviderMethod(provider,'generate');
   if (!configured()) throw new Error('p23-revision-local-model-not-configured');
