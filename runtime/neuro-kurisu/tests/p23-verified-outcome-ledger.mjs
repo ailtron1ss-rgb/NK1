@@ -87,5 +87,19 @@ assert.equal(snapshot.acceptedOutcomes, 41);
 assert.equal(snapshot.rejectedOutcomes, 10, 'two malformed hostile-input fixtures are counted as rejected outcomes');
 snapshot.outcomes[0].passed = !snapshot.outcomes[0].passed;
 assert.notEqual(snapshot.outcomes[0].passed, ledger.snapshot().outcomes[0].passed, 'snapshot must not mutate ledger state');
+
+// Restoring persisted evidence must not invoke getters or traverse cyclic input.
+let restoreSnapshotGetterReads=0;
+const getterBackedSnapshot=ledger.snapshot();
+Object.defineProperty(getterBackedSnapshot,'schemaVersion',{
+  enumerable:true,configurable:true,
+  get(){restoreSnapshotGetterReads++;return 2;},
+});
+assert.throws(()=>VerifiedOutcomeLedger.restoreSnapshot(getterBackedSnapshot),/invalid ledger snapshot data boundary/);
+assert.equal(restoreSnapshotGetterReads,0,'ledger restore must reject accessors before reading snapshot fields');
+const cyclicSnapshot=ledger.snapshot();
+cyclicSnapshot.self=cyclicSnapshot;
+assert.throws(()=>VerifiedOutcomeLedger.restoreSnapshot(cyclicSnapshot),/invalid ledger snapshot data boundary/);
+
 console.log('P23_VERIFIED_OUTCOME_LEDGER=PASS');
 console.log(JSON.stringify({paired, counts:{accepted:ledger.snapshot().acceptedOutcomes,rejected:ledger.snapshot().rejectedOutcomes}}));
