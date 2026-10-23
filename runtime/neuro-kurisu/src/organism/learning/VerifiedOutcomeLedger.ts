@@ -103,8 +103,7 @@ export class VerifiedOutcomeLedger {
     const entries = detached;
     for (const entry of entries) {
       if (!entry || typeof entry !== 'object' ||
-          typeof entry.taskId !== 'string' || !entry.taskId.trim() ||
-          typeof entry.taskId !== 'string' || entry.taskId.length>180 ||
+          typeof entry.taskId !== 'string' || !entry.taskId.trim() || entry.taskId.length>180 ||
           typeof entry.family !== 'string' || !entry.family.trim() || entry.family.length>96 ||
           typeof entry.version !== 'string' || !entry.version.trim() || entry.version.length>96 ||
           typeof entry.verifierId !== 'string' || !entry.verifierId.trim() || entry.verifierId.length>160 ||
