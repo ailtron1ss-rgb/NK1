@@ -5,6 +5,7 @@
 - **CI/research:** P26 already runs P29 on changes to the adapter and test. The mechanism is informed by SkillLearnBench's three-level evaluation and task-variable continual-learning results, plus Hermes' independent-evaluation/guardrail principles; threshold calibration remains future benchmark work.
 - **Promotion input safety (WorkPass398):** P23 snapshots baseline, evaluation and approval as plain data before field inspection/store use, and focused tests verify accessors are not executed.
 - **Verification state:** committed implementation/test/docs are present on `feature/learning`, but exact-head Actions tests and typecheck have not been verified due missing runner-step logs. No score uplift is claimed.
+- **Research intake:** `docs/RESEARCH_INTAKE_LEDGER.md` records the WorkPass397–399 reasoning, evidence and limitations; public research is adapted into NK1's existing contracts rather than imported as a separate architecture.
 - **Release state:** `main` and the Release ZIP remain unchanged. See [WorkPass399 task regression gate](docs/WORKPASS399_TASK_REGRESSION_GATE_RU.md) and [WorkPass398 trust boundary](docs/WORKPASS398_PROMOTION_INPUT_TRUST_BOUNDARY_RU.md).
 
 ---
