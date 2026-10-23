@@ -55,9 +55,7 @@ export class RealityEvidenceLedger {
     catch{this.records=[];this.total=0;return;}
     const value=isRecord(detached)?detached:{};
     const candidates=Array.isArray(value.recent)?value.recent.slice(0,this.capacity):[];
-    const records:RealityEvidenceRecord[]=[];
-    const seen=new Set<string>();
-    const seenEvents=new Set<string>();
+    const parsedRecords:RealityEvidenceRecord[]=[];
     for(const candidate of candidates){
       if(!isRecord(candidate)||!validText(candidate.id,256)||
          (candidate.eventId!==undefined&&!validText(candidate.eventId,256))||!validTick(candidate.tick)||
@@ -65,18 +63,42 @@ export class RealityEvidenceLedger {
          !REALITY_CLASSES.includes(candidate.realityClass as EvidenceRealityClass)||
          !validText(candidate.claim,240)||!validScore(candidate.confidence01)||
          !validText(candidate.independenceKey,160))continue;
-      if(seen.has(candidate.id)||(typeof candidate.eventId==='string'&&seenEvents.has(candidate.eventId)))continue;
       const parentIds=Array.isArray(candidate.parentIds)
         ?candidate.parentIds.filter((id):id is string=>typeof id==='string'&&id.length>0&&id.length<=256).slice(0,8):[];
-      const record:RealityEvidenceRecord={
+      parsedRecords.push({
         id:candidate.id,...(typeof candidate.eventId==='string'?{eventId:candidate.eventId}:{}),
         tick:candidate.tick,at:candidate.at,
         realityClass:candidate.realityClass as EvidenceRealityClass,
         claim:candidate.claim,confidence01:candidate.confidence01,
         independenceKey:candidate.independenceKey,parentIds,
-      };
-      records.push(record);seen.add(record.id);
-      if(record.eventId)seenEvents.add(record.eventId);
+      });
+    }
+    // Do not let serialized row order pick a winner for contradictory identities.
+    // Live record() already rejects eventId reuse with a changed payload; restore
+    // must apply the same rule and quarantine every conflicting row in the group.
+    const byId=new Map<string,RealityEvidenceRecord[]>();
+    const byEventId=new Map<string,RealityEvidenceRecord[]>();
+    const serialized=(record:RealityEvidenceRecord)=>JSON.stringify(record);
+    for(const record of parsedRecords){
+      const idGroup=byId.get(record.id)??[];
+      idGroup.push(record);byId.set(record.id,idGroup);
+      if(record.eventId){
+        const eventGroup=byEventId.get(record.eventId)??[];
+        eventGroup.push(record);byEventId.set(record.eventId,eventGroup);
+      }
+    }
+    const conflictedIds=new Set<string>();
+    const conflictedEvents=new Set<string>();
+    for(const [id,group] of byId)if(new Set(group.map(serialized)).size>1)conflictedIds.add(id);
+    for(const [eventId,group] of byEventId)if(new Set(group.map(serialized)).size>1)conflictedEvents.add(eventId);
+    const records:RealityEvidenceRecord[]=[];
+    const acceptedPayloads=new Set<string>();
+    for(const record of parsedRecords){
+      if(conflictedIds.has(record.id)||(record.eventId&&conflictedEvents.has(record.eventId)))continue;
+      const key=serialized(record);
+      if(acceptedPayloads.has(key))continue;
+      acceptedPayloads.add(key);
+      records.push(record);
     }
     this.records=records;
     this.total=typeof value.total==='number'&&Number.isSafeInteger(value.total)&&value.total>=records.length
