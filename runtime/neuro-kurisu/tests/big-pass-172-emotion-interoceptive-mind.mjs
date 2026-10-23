@@ -24,6 +24,33 @@ assert.ok(feeling.interoceptiveMismatch01>.1 && feeling.bodilyFocus01>.5);
 for(let i=0;i<4;i++) e.recordOutcome({action:'rest',success01:.9,surprise01:.1,regulationCost01:.2});
 assert.ok((e.outcomeCalibration('rest')?.attempts??0)===4);
 assert.ok(e.actionBias('rest')>e.actionBias('explore'),'high interoceptive pressure plus good rest outcomes should favor regulation');
+
+// WorkPass452: action outcomes are bound to the emotion/pressure context that
+// preceded them, not generalized indiscriminately across all affective states.
+const contextBefore = e.snapshot();
+const stressRestKey = Object.keys(contextBefore.contextualOutcomes).find(key => {
+  const parsed = JSON.parse(key);
+  return parsed[0] === 'rest' && parsed[1] === stressed.label;
+});
+assert.ok(stressRestKey, 'outcomes from the current stress episode must create a context-bound row');
+assert.equal(contextBefore.contextualOutcomes[stressRestKey].attempts, 4);
+const stressRestBiasBefore = e.actionBias('rest');
+e.recordOutcome({emotionId:first.id,action:'rest',success01:.1,surprise01:.8,regulationCost01:.8});
+const contextAfter = e.snapshot();
+const curiosityRestKey = Object.keys(contextAfter.contextualOutcomes).find(key => {
+  const parsed = JSON.parse(key);
+  return parsed[0] === 'rest' && parsed[1] === first.label;
+});
+assert.ok(curiosityRestKey);
+assert.notEqual(curiosityRestKey, stressRestKey);
+assert.equal(contextAfter.contextualOutcomes[stressRestKey].attempts, 4,
+  'outcome attributed to an earlier emotion must not mutate the current stressed-context history');
+assert.equal(contextAfter.contextualOutcomes[curiosityRestKey].attempts, 1);
+assert.equal(e.actionBias('rest'), stressRestBiasBefore,
+  'an outcome from another emotion context must not leak into the active action bias');
+assert.throws(() => e.recordOutcome({
+  emotionId:'emotion-does-not-exist',action:'rest',success01:.5,surprise01:.5,
+}), /emotion-outcome-emotion-link-invalid/);
 const es=e.snapshot(); const er=new EmotionAppraisalEngine(); er.restore(es); assert.deepEqual(er.snapshot(),es);
 
 // WorkPass330: restored affect state must not accept invalid counters, timestamps or malformed episodes.
