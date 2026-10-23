@@ -1,3 +1,13 @@
+## NK1 WorkPass459 — reapply provenance authority ceilings on snapshot restore (2026-10-23)
+
+- Fixed a persisted-state bypass in the canonical `MemoryOS2` owner: restored memory rows now re-derive the provenance class and cap persisted authority at that class's default ceiling, just as live ingestion does.
+- A finite, explicitly lower authority remains intact. Missing or malformed authority falls back to the class default; external records cannot restore a caller-edited score above `0.90`.
+- Added regression coverage that poisons both the canonical memory row and its serialized evidence trail, then verifies the restored parent and evidence remain capped while a valid `0.20` authority stays lower.
+- No new dependency or second memory owner was introduced. This closes a trust-boundary inconsistency in the Hexis-inspired evidence-revision path; it is not a measured memory or learning uplift.
+- **Verification:** runtime code and regression were committed on `feature/memory`; exact-head test/typecheck execution remains unverified because the hosted-runner startup issue has been reported by prior checkpoints.
+
+---
+
 ## NK1 WorkPass458 — unify provenance authority ceilings across memory ingress (2026-10-23)
 
 - Extended the same Hexis-inspired provenance ceiling to every MemoryOS2 ingress path: the canonical memory row, its primary evidence row, serialized evidence-trail rows, and the explicit residual confidence-revision API. Explicit lower trust values are preserved; caller-supplied authority cannot exceed the default maximum of its declared provenance class.
