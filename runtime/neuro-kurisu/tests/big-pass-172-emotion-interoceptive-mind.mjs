@@ -113,6 +113,19 @@ assert.throws(
   'outcome action metadata must not permit custom object coercion',
 );
 assert.equal(outcomeActionCoercions, 0, 'outcome ingestion must reject custom coercion before use');
+const emotionPrototypeBefore = accessorSafeEmotion.snapshot();
+assert.throws(() => accessorSafeEmotion.recordOutcome({
+  action: 'constructor', success01: .9, surprise01: .1,
+}), /emotion-outcome-action-invalid/,
+'prototype property names cannot be treated as learned action outcomes');
+assert.deepEqual(accessorSafeEmotion.snapshot(), emotionPrototypeBefore,
+  'rejected prototype-like action names must not mutate emotion calibration');
+let lookupActionCoercions = 0;
+const hostileLookupAction = { toString() { lookupActionCoercions++; return 'rest'; } };
+assert.equal(accessorSafeEmotion.outcomeCalibration(hostileLookupAction), null);
+assert.equal(accessorSafeEmotion.actionBias(hostileLookupAction), 0);
+assert.equal(lookupActionCoercions, 0,
+  'read-only emotion lookups must not coerce arbitrary caller objects');
 const beforeInvalidEmotionInput = accessorSafeEmotion.snapshot();
 const circularFeelingInput = { energy01: .7, cognitiveLoad01: .2, uncertainty01: .3 };
 circularFeelingInput.self = circularFeelingInput;

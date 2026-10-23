@@ -1,3 +1,12 @@
+## NK1 WorkPass448 — make emotion action lookups prototype-safe
+
+- Prevented prototype-inherited object members such as `constructor` from being mistaken for an existing learned action outcome. Outcome writes now use own-property lookup and reject prototype-like action names.
+- Removed implicit `String(action)` coercion from emotion calibration lookup and made both calibration lookup and action-bias scoring fail closed for non-string/invalid action identifiers.
+- Added regressions for prototype-key writes, state preservation after rejection, and zero execution of custom `toString` in read-only action lookups. Existing affect/homeostasis semantics and action scores for valid names are unchanged.
+- **Verification:** committed to `feature/emotions`; tests/typecheck remain unverified because Actions jobs terminate before runner assignment.
+
+---
+
 ## NK1 WorkPass434 — schema-check emotion episode before feeling inference (2026-10-23)
 
 - Feeling inference now runs the detached episode through the same canonical normalizeEpisode schema used during persisted restore; ordinary plain objects with missing/malformed appraisal or interoception fields no longer reach nested reads.
