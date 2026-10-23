@@ -70,9 +70,13 @@ const staged = {
   revisionProvenance: { schemaVersion: 1, evaluationFingerprint: candidateEvaluation.evaluationFingerprint },
 };
 let approvalCalls = 0;
+let stagedWithInsufficientSeeds = null;
 const fakeStore = {
   snapshot() {
-    return { schemaVersion: 1, revision: 0, active: [], candidates: [staged] };
+    return {
+      schemaVersion: 1, revision: 0, active: [],
+      candidates: stagedWithInsufficientSeeds ? [staged, stagedWithInsufficientSeeds] : [staged],
+    };
   },
   approveAndPromote() {
     approvalCalls++;
@@ -96,4 +100,86 @@ assert.throws(() => engine.approveIndependentlyEvaluatedSkillCandidate(
 assert.equal(approvalCalls, 0,
   'production promotion must fail closed before asking the store to activate a family-unverified candidate');
 
-console.log('WORKPASS402_PRODUCTION_PROMOTION_FAMILY_GATE=PASS advisoryCompatible=true strictProductionCoverage=true noApprovalSideEffect=true');
+// WorkPass403: canonical family labels and two distinct tasks are still not
+// enough when that family has only two common paired seeds. Production requires
+// three seeds shared across every task in each adequately covered family.
+function makeFamilyTasks(seedCount) {
+  const rows = [];
+  for (const [split, ids, seedBase] of [
+    ['validation', ['family-validation-a', 'family-validation-b'], 100],
+    ['holdout', ['family-holdout-a', 'family-holdout-b'], 200],
+  ]) {
+    for (const taskId of ids) {
+      for (let seedIndex = 1; seedIndex <= seedCount; seedIndex++) {
+        rows.push({
+          taskId,
+          trialId: `${taskId}-seed-${seedIndex}`,
+          seed: seedBase + seedIndex,
+          split,
+          taskFamily: 'canonical-test-family',
+          input: { prompt: `independently execute ${taskId}` },
+          requiredCapabilityIds: ['read'],
+          expectedStepIds: ['open', 'summarize'],
+        });
+      }
+    }
+  }
+  return rows;
+}
+async function makeFamilyEvaluation(payload, seedCount, prefix, observedStepIds) {
+  const evaluator = createIndependentSkillCandidateEvaluator({
+    tasks: makeFamilyTasks(seedCount),
+    environmentFingerprint: 'b'.repeat(64),
+    executor: { async execute({ task }) { return { runId: prefix + task.trialId, observedStepIds }; } },
+    verifier: { async verify() { return { bindingVerified: true, passed: true, coveredCapabilityIds: ['read'] }; } },
+    safetyScanner: { async scan() { return { violationCount: 0 }; } },
+  });
+  return evaluator({
+    payload,
+    payloadFingerprint: digest(payload),
+    baseline: { validation: [], holdout: [] },
+    previousEvaluation: { validation: [], holdout: [] },
+  });
+}
+const seedSourcePayload = { skill: 'family-aware-summarize', version: 1 };
+const seedCandidatePayload = { skill: 'family-aware-summarize', version: 2, improved: true };
+const seedBaselineEvaluation = await makeFamilyEvaluation(seedSourcePayload, 2, 'family-baseline-', ['open']);
+const seedCandidateEvaluation = await makeFamilyEvaluation(seedCandidatePayload, 2, 'family-candidate-', ['open', 'summarize']);
+const seedAdvisoryFitness = engine.evaluateReflectiveSkillCandidate(
+  { validation: seedBaselineEvaluation.evaluation.validation, holdout: seedBaselineEvaluation.evaluation.holdout },
+  { validation: seedCandidateEvaluation.evaluation.validation, holdout: seedCandidateEvaluation.evaluation.holdout },
+);
+assert.equal(seedAdvisoryFitness.eligible, true, JSON.stringify(seedAdvisoryFitness));
+assert.equal(seedAdvisoryFitness.validationFamiliesEvaluated, 1);
+assert.equal(seedAdvisoryFitness.holdoutFamiliesEvaluated, 1);
+assert.equal(seedAdvisoryFitness.validationTaskRegressions, 0);
+
+stagedWithInsufficientSeeds = {
+  candidateId: 'candidate-with-only-two-family-seeds',
+  skillId: 'summarization-skill',
+  version: 2,
+  payload: seedCandidatePayload,
+  payloadFingerprint: seedCandidateEvaluation.payloadFingerprint,
+  status: 'shadow',
+  shadowObservations: [],
+  revisionProvenance: {
+    schemaVersion: 1,
+    evaluationFingerprint: seedCandidateEvaluation.evaluationFingerprint,
+  },
+};
+assert.throws(() => engine.approveIndependentlyEvaluatedSkillCandidate(
+  stagedWithInsufficientSeeds.candidateId,
+  { approvedBy: 'test-reviewer', approvedAt: 101, expectedActiveVersion: null },
+  seedBaselineEvaluation,
+  seedCandidateEvaluation,
+  () => true,
+), error => {
+  assert.match(error.message, /independent reflective fitness gate rejected candidate/);
+  assert.match(error.message, /validation-family-seed-coverage-insufficient/);
+  assert.match(error.message, /holdout-family-seed-coverage-insufficient/);
+  return true;
+});
+assert.equal(approvalCalls, 0,
+  'two matched seeds per task family must be rejected before store approval when three are required');
+
+console.log('WORKPASS402_PRODUCTION_PROMOTION_FAMILY_GATE=PASS strictFamilyCoverage=true noApprovalSideEffect=true pairedSeedCoverage=true');
