@@ -1,3 +1,13 @@
+## NK1 WorkPass449 — audited source-aware belief revision (2026-10-23)
+
+- Added `P65EpistemicLedger.reviseBeliefFromEvidence`: evidence IDs are idempotent, independent sources update belief confidence in log-odds space, contradictions reduce confidence, and repeated same-source evidence cannot repeatedly inflate confidence.
+- Bound live input and restore through the existing plain-data trust boundary; malformed claims and histories are quarantined, evidence/revision buffers are capped, and legacy P65 snapshots remain readable.
+- Added `p65-independent-evidence-revision.mjs` and wired it into `test:p64:p65`.
+- Adapted the evidence provenance/audited belief-revision principle from the MIT-licensed [QuixiAI/Hexis memory architecture](https://github.com/QuixiAI/Hexis/blob/main/docs/concepts/memory-architecture.md); no source file or runtime dependency copied.
+- Verification boundary: exact-head tests/typecheck have not been confirmed. No measured retrieval/learning uplift claimed.
+
+---
+
 ## NK1 WorkPass456 — cap Hexis-style evidence weight by canonical provenance trust (2026-10-23)
 
 - Confidence revision now caps caller-declared evidence authority at the canonical default for its declared provenance class: external .90, user .86, agent .68, derived .52, simulation .28, unknown .50, device .95.
