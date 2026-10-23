@@ -271,7 +271,8 @@ export class OrganismRuntime {
             revisionConfig.independentEvaluationConfigForRepair,
             {
               requireCanonicalSourceEvaluation: process.env.NODE_ENV === 'production',
-              resolveCanonicalPayloads: ({ skillId, sourceCandidateId }) => {
+              resolveCanonicalPayloads: (input, { sourceCandidateId }) => {
+                const skillId = input.skillId;
                 const readCanonicalVersions = () => {
                   const store = revisionConfig.engine.verifiedSkillCandidateSnapshot();
                   if (!store) throw new Error('canonical-revision-candidate-store-unavailable');
