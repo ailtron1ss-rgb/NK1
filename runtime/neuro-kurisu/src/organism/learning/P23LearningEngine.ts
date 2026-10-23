@@ -613,7 +613,7 @@ export class P23LearningEngine {
    * Only an exact skill/version/payload match can be recorded as active.
    */
   reconcileLearningLifecycleOutcomes():
-    {configured:true;available:true;observedUnknown:number;reconciledActive:number;reconciledNotCurrentlyActive:number;unresolved:number} |
+    {configured:true;available:true;observedPending:number;observedUnknown:number;reconciledActive:number;reconciledNotCurrentlyActive:number;unresolved:number} |
     {configured:false;available:false;reason:'journal-unconfigured'|'store-unconfigured'} |
     {configured:true;available:false;reason:'readback-unavailable'|'journal-reconciliation-failed'} {
     const journal=this.learningLifecycleJournal;
@@ -624,16 +624,25 @@ export class P23LearningEngine {
       const entries:LearningLifecycleEventEntry[]=journal.readAll();
       const store=this.verifiedSkillStore.snapshot();
       const terminalAttempts=new Set(entries.filter(entry =>
+        entry.event==='promotion-rejected' ||
+        entry.event==='activation-confirmed' ||
+        entry.event==='activation-failed' ||
         entry.event==='activation-reconciled-active' ||
         entry.event==='activation-reconciled-not-currently-active',
       ).map(entry=>entry.attemptId));
-      const unresolvedEvents=entries.filter(entry =>
-        entry.event==='activation-outcome-unknown' && !terminalAttempts.has(entry.attemptId),
+      const unknownByAttempt=new Map(entries
+        .filter(entry=>entry.event==='activation-outcome-unknown')
+        .map(entry=>[entry.attemptId,entry] as const));
+      // An abrupt process exit can leave only the durable intent. Reconcile it too,
+      // but prefer the explicit unknown event when one exists for the same attempt.
+      const pendingIntents=entries.filter(entry =>
+        entry.event==='activation-intent' && !terminalAttempts.has(entry.attemptId),
       );
       let reconciledActive=0;
       let reconciledNotCurrentlyActive=0;
       let unresolved=0;
-      for(const event of unresolvedEvents) {
+      for(const intent of pendingIntents) {
+        const event=unknownByAttempt.get(intent.attemptId) ?? intent;
         const candidate=store.candidates.find(item =>
           item.candidateId===event.candidateId &&
           item.skillId===event.skillId &&
@@ -685,7 +694,8 @@ export class P23LearningEngine {
       return {
         configured:true,
         available:true,
-        observedUnknown:unresolvedEvents.length,
+        observedPending:pendingIntents.length,
+        observedUnknown:pendingIntents.filter(intent=>unknownByAttempt.has(intent.attemptId)).length,
         reconciledActive,
         reconciledNotCurrentlyActive,
         unresolved,
