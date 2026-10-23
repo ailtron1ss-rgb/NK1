@@ -11,9 +11,11 @@ import {
   sampleMonotonicAudioClock,
   sampleVisemeClock,
   sampleVisemeTimeline,
+  smoothEmbodimentAffect,
   timelineOffsetForCharIndex,
   type VisemeClockAnchor,
   type EmbodimentIntentV1,
+  type EmbodimentAffectState,
   type MouthPose,
   type SpeechPhase,
   type VisemeFrame,
@@ -72,6 +74,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const activeSpeechSessionRef = useRef<BrowserSpeechSession | null>(null);
   const lastSpeechSessionRef = useRef<BrowserSpeechSession | null>(null);
   const speechPhaseRef = useRef<SpeechPhase>("idle");
+  const affectSmoothingRef = useRef<EmbodimentAffectState | null>(null);
   const [live, setLive] = useState(false);
   const [viewerReadyRevision, setViewerReadyRevision] = useState(0);
   // Native speech is opt-in. Opening the app never starts speaking historical chat.
@@ -311,6 +314,16 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     const activeSession = activeSpeechSessionRef.current;
     const session = activeSession ?? lastSpeechSessionRef.current;
     const activeUtterance = Boolean(activeSession && speechPhaseRef.current === "speaking" && voiceStatus === "speaking");
+    // Affect changes follow the monotonic display clock. Mouth/visemes stay tied
+    // directly to audio boundaries and are deliberately not smoothed here.
+    const affectState = smoothEmbodimentAffect(affectSmoothingRef.current, {
+      expressionIntensity: affectState.expressionIntensity,
+      gazeX: Math.max(-0.4, Math.min(0.4, gaze.x + valenceOffset)),
+      gazeY: gaze.y,
+      headTilt: affectState.headTilt,
+      voiceEmphasis: affectState.voiceEmphasis,
+    }, performance.now());
+    affectSmoothingRef.current = affectState;
     const freshTextTurn = speechPhaseRef.current !== "cancelled" && speechPhaseRef.current !== "unknown" && lastTurn?.role === "kurisu" && Date.now() - Number(lastTurn.at || 0) < 5_000;
     const bodyGestureActive = Boolean(activeUtterance || thinking || freshTextTurn);
     const motionGroup = activeUtterance || freshTextTurn ? "Special" : thinking ? "TapHead" : "Idle";
@@ -334,7 +347,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       expression,
       expressionIntensity: snap.emotion.arousal,
       mouth: activeUtterance ? mouthPose : CLOSED_MOUTH,
-      gaze: { x: Math.max(-0.4, Math.min(0.4, gaze.x + valenceOffset)), y: gaze.y, driven: true },
+      gaze: { x: affectState.gazeX, y: affectState.gazeY, driven: true },
       body: {
         headTilt: headTiltByEmotion[snap.emotion.label],
         gesture: bodyGestureActive,
