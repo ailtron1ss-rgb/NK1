@@ -1,3 +1,12 @@
+## NK1 WorkPass453 — smoothed affect on one avatar intent clock (2026-10-23)
+
+- Added `smoothEmbodimentAffect`, a bounded exponential interpolation for expression intensity, gaze, head tilt and voice emphasis using monotonic sample time.
+- Integrated the smoothed channels into the existing unified `EmbodimentIntentV1` emitted by `AvatarStage`; mouth/viseme timing remains attached directly to the audio clock and observed SpeechSynthesis boundaries.
+- Expanded `embodiment-timeline.test.mjs` for monotonic/no-rewind behavior, bounds and real AvatarStage wiring.
+- No new package dependency; exact-head browser/unit suite has not been confirmed as passing.
+
+---
+
 ## NK1 WorkPass448 — preserve action outcomes across sensor failures (2026-10-23)
 
 - Wrapped required pre-action telemetry sampling in a fail-closed boundary. A sampling exception now yields an explicit failed action receipt before any action branch can dispatch a device capability.
