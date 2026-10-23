@@ -1,3 +1,9 @@
+## WorkPass325 — isolate runner allocation from action setup (2026-10-23)
+
+- Added a one-step diagnostic workflow that intentionally uses no third-party actions. It checks whether a plain GitHub-hosted Ubuntu runner can be assigned before any checkout, Node setup, or project test runs.
+- This isolates the current failure signature: completed jobs have `runner_id=0`, blank `runner_name`, and no steps. The attempted immutable action pinning did not clear that symptom.
+- The diagnosis is not complete until this action-free workflow's check result is observed; repository/account-level policy, runner availability, and spending limits remain candidate causes.
+
 ## WorkPass324 — pin P23 CI actions immutably (2026-10-23)
 
 - Pinned the P23 workflow's checkout and Node setup actions to full commit SHAs from the verified upstream releases `actions/checkout v7.0.1` and `actions/setup-node v7.1.0`, retaining Node.js 24.
