@@ -12,7 +12,7 @@ import { evaluateSkillLearnBenchCandidate, type SkillLearnBenchCandidateEvaluati
 import { bindIndependentEvaluationToVerifiedShadowEvidence, bindReflectiveReportsToVerifiedShadowEvidence, type ReflectiveEvidenceBindingReport } from './HermesVerifiedEvidenceBinding.ts';
 import { compareMatchedIndependentEvaluations } from './IndependentSkillCandidateEvaluator.ts';
 import type { LearningFitnessJournalDiagnostics, LearningFitnessJournalSink } from './LearningFitnessJournal.ts';
-import type { LearningLifecycleJournalDiagnostics, LearningLifecycleJournalSink } from './LearningLifecycleJournal.ts';
+import type { LearningLifecycleEventEntry, LearningLifecycleJournalDiagnostics, LearningLifecycleJournalSink } from './LearningLifecycleJournal.ts';
 import type { LearningRobustMetricSummary } from './LearningRobustMetrics.ts';
 import { planSkillRevision, type SkillRevisionPlan } from './SkillRevisionPlan.ts';
 import type { SkillShadowEvidenceVerifier } from './VersionedSkillCandidateStore.ts';
@@ -604,6 +604,94 @@ export class P23LearningEngine {
       return journal.snapshotDiagnostics();
     } catch {
       return {configured:true,available:false,reason:'journal-read-failed'};
+    }
+  }
+
+  /**
+   * Reconcile uncertain activation attempts against the authoritative versioned
+   * skill store. The journal's own event history is not promotion authority.
+   * Only an exact skill/version/payload match can be recorded as active.
+   */
+  reconcileLearningLifecycleOutcomes():
+    {configured:true;available:true;observedUnknown:number;reconciledActive:number;reconciledNotCurrentlyActive:number;unresolved:number} |
+    {configured:false;available:false;reason:'journal-unconfigured'|'store-unconfigured'} |
+    {configured:true;available:false;reason:'readback-unavailable'|'journal-reconciliation-failed'} {
+    const journal=this.learningLifecycleJournal;
+    if(!journal) return {configured:false,available:false,reason:'journal-unconfigured'};
+    if(!this.verifiedSkillStore) return {configured:false,available:false,reason:'store-unconfigured'};
+    if(typeof journal.readAll!=='function') return {configured:true,available:false,reason:'readback-unavailable'};
+    try {
+      const entries:LearningLifecycleEventEntry[]=journal.readAll();
+      const store=this.verifiedSkillStore.snapshot();
+      const terminalAttempts=new Set(entries.filter(entry =>
+        entry.event==='activation-reconciled-active' ||
+        entry.event==='activation-reconciled-not-currently-active',
+      ).map(entry=>entry.attemptId));
+      const unresolvedEvents=entries.filter(entry =>
+        entry.event==='activation-outcome-unknown' && !terminalAttempts.has(entry.attemptId),
+      );
+      let reconciledActive=0;
+      let reconciledNotCurrentlyActive=0;
+      let unresolved=0;
+      for(const event of unresolvedEvents) {
+        const candidate=store.candidates.find(item =>
+          item.candidateId===event.candidateId &&
+          item.skillId===event.skillId &&
+          item.version===event.candidateVersion &&
+          item.payloadFingerprint===event.payloadFingerprint,
+        );
+        if(!candidate) {
+          unresolved++;
+          continue;
+        }
+        const active=store.active.find(item =>
+          item.skillId===event.skillId &&
+          item.version===event.candidateVersion &&
+          item.payloadFingerprint===event.payloadFingerprint,
+        );
+        const common={
+          recordedAt:now(),
+          attemptId:event.attemptId,
+          candidateId:event.candidateId,
+          skillId:event.skillId,
+          candidateVersion:event.candidateVersion,
+          payloadFingerprint:event.payloadFingerprint,
+          evaluationFingerprint:event.evaluationFingerprint,
+          planFingerprint:event.planFingerprint,
+          environmentFingerprint:event.environmentFingerprint,
+        };
+        if(active) {
+          journal.recordLifecycleEvent({
+            ...common,
+            event:'activation-reconciled-active',
+            reasonCodes:[],
+            activatedVersion:active.version,
+          });
+          reconciledActive++;
+        } else if(candidate.status!=='active') {
+          journal.recordLifecycleEvent({
+            ...common,
+            event:'activation-reconciled-not-currently-active',
+            reasonCodes:['store-confirms-not-currently-active'],
+            activatedVersion:null,
+          });
+          reconciledNotCurrentlyActive++;
+        } else {
+          // An active candidate without the matching active record is inconsistent;
+          // never turn it into a success or a failure based on an incomplete snapshot.
+          unresolved++;
+        }
+      }
+      return {
+        configured:true,
+        available:true,
+        observedUnknown:unresolvedEvents.length,
+        reconciledActive,
+        reconciledNotCurrentlyActive,
+        unresolved,
+      };
+    } catch {
+      return {configured:true,available:false,reason:'journal-reconciliation-failed'};
     }
   }
 
