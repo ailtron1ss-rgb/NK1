@@ -208,3 +208,18 @@ Do not count a reference as “used” until a source revision/paper protocol is
 - Research relationship: manifest-bound, controlled evaluation and signed-provenance principles; protocol adaptation only, no upstream code or dataset copied.
 - **Verification boundary:** code and tests committed; runtime execution, typecheck and exact-head Actions are still unverified. No learning uplift is claimed.
 - Report: `docs/WORKPASS134_MANIFEST_BOUND_OUTCOME_EVIDENCE_2026-10-21.md`.
+
+
+## WorkPass135 — reflective revision and reproducible learning intake (2026-10-23)
+
+| Source | Mechanism inspected | NK1 mapping / decision | Status |
+|---|---|---|---|
+| [NousResearch Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution) | Uses execution traces to guide targeted skill revisions, then evaluates variants behind constraints before selecting a candidate. Its README describes a PR/review boundary for changes. | NK1 already has a canonical revision path in `P23LearningEngine.generateAndStageReflectiveSkillRevision`: the generated payload is fingerprinted, independently re-evaluated on validation and holdout, then staged as a new candidate; promotion remains separate. Keep this separation and do not auto-promote from a process exit code or self-reported score. No upstream code or datasets copied in this pass. | **MECHANISM MAPPED; no new algorithm claimed** |
+| [CleanRL](https://github.com/vwxyzjn/cleanrl) | Emphasizes seeded, reproducible experiments and benchmarked algorithm comparisons. | Preserve deterministic seed accounting and same-baseline comparisons; test the scheduler's single-flight boundary so concurrent wakes do not launch duplicate executions or hide bad caller state. | **PROTOCOL REFERENCE; no source copied** |
+
+### WorkPass338 outcome
+
+- Runtime input validation now precedes in-flight deduplication; valid concurrent requests still coalesce to a single process run.
+- Added behavioral regression coverage for invalid and valid overlapping calls.
+- P26 learning validation workflow is aligned to Node.js 24.
+- **Unverified:** no executed test result, performance uplift, autonomous learning improvement or promotion quality is claimed until the owning job can run on an assigned runner.

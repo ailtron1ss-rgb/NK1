@@ -2133,3 +2133,13 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added npm aliases to the existing runtime package for three P26 regression files, the WorkPass293 P23 revision/coordinator path, and the WorkPass291/292/294 regression files whose workflows referenced missing script names.
 - The script definitions match the corresponding additions in `feature/experiments`, avoiding package.json differences between the two proposed integration PRs.
 - Static inspection confirmed the previously identified script names are declared; no runtime test has been executed or claimed to pass because Actions jobs still fail before runner assignment.
+
+
+## NK1 WorkPass338 — validate learning scheduler input before single-flight reuse (2026-10-23)
+
+- **Fixed:** `P23TrustedShadowLearningScheduler.runOnce()` now validates `runtimeTick` before returning an already-running promise. Previously, a caller that supplied `NaN` or another invalid tick while a run was in flight silently received the existing promise, masking malformed input.
+- **Regression added:** the runtime scheduler test checks that invalid concurrent input rejects, valid overlapping calls still share one promise, and only one process execution is initiated.
+- **Runtime alignment:** `p26-learning-validation.yml` now uses Node.js 24, consistent with the current package engine range and the newer learning workflow.
+- **Research boundary:** records lessons from Hermes reflective candidate evolution and CleanRL's reproducible-seed discipline; this pass copies no upstream source code or datasets. It relies on NK1's existing exact-payload, independent-evaluation and signed-evidence lifecycle.
+- **Verification boundary:** source and regression are committed, but runtime execution is **not confirmed**. The latest exact-head Actions jobs ended before runner assignment (no runner and no steps), so this changelog does not claim a passing test, typecheck, or CI run.
+- Report: `docs/WORKPASS338_LEARNING_SCHEDULER_CONTRACT_2026-10-23.md`.

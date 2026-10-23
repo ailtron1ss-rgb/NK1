@@ -217,10 +217,12 @@ export class P23TrustedShadowLearningScheduler {
   }
 
   runOnce(runtimeTick: number): Promise<LearningProcessResult> {
-    if (this.inFlight) return this.inFlight;
+    // Validate every caller's input before single-flight coalescing. Otherwise an
+    // invalid tick during an active run silently inherits the in-flight promise.
     if (!safeInteger(runtimeTick, 0, Number.MAX_SAFE_INTEGER)) {
       throw new Error('trusted shadow runtime tick is invalid');
     }
+    if (this.inFlight) return this.inFlight;
     const seedBase = this.config.seedBase ?? 0;
     // Include the per-process sequence as well as the persistent organism tick:
     // repeated maintenance-clock wakes must not silently reuse a seed just because
