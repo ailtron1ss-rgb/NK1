@@ -1,3 +1,14 @@
+## Current source-stack checkpoint — WorkPass399 (2026-10-23)
+
+- **Task-level learning gate:** SkillLearnBench candidate evaluation now rejects candidates whose paired validation mean regresses by more than `maximumValidationTaskRegression01` on any single task (default tolerance 0.20). Repeated trials are first averaged per task; aggregate gains cannot wash away severe task-local regressions.
+- **New evidence metric:** the gate returns `validationTaskRegressions`; invalid thresholds fail closed. P29 has an adversarial case where total validation improves while one task regresses and two improve.
+- **CI/research:** P26 already runs P29 on changes to the adapter and test. The mechanism is informed by SkillLearnBench's three-level evaluation and task-variable continual-learning results, plus Hermes' independent-evaluation/guardrail principles; threshold calibration remains future benchmark work.
+- **Promotion input safety (WorkPass398):** P23 snapshots baseline, evaluation and approval as plain data before field inspection/store use, and focused tests verify accessors are not executed.
+- **Verification state:** committed implementation/test/docs are present on `feature/learning`, but exact-head Actions tests and typecheck have not been verified due missing runner-step logs. No score uplift is claimed.
+- **Release state:** `main` and the Release ZIP remain unchanged. See [WorkPass399 task regression gate](docs/WORKPASS399_TASK_REGRESSION_GATE_RU.md) and [WorkPass398 trust boundary](docs/WORKPASS398_PROMOTION_INPUT_TRUST_BOUNDARY_RU.md).
+
+---
+
 ## Current source-stack checkpoint — WorkPass398 (2026-10-23)
 
 - **Promotion input hardening:** P23 snapshots caller-owned independent baseline/evaluation envelopes through the plain-data boundary before property access; hostile accessors/proxies are rejected without executing getters.
