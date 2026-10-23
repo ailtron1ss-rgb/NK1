@@ -1,3 +1,10 @@
+## NK1 WorkPass462 — consolidate verified manifest input bounds (2026-10-23)
+
+- Removed a redundant task ID type check introduced while adding the length cap; behavior is unchanged and the manifest guard now expresses type, non-empty and size validation in one condition.
+- The change is a source cleanup within the existing verified-outcome ledger. Exact-head execution remains unverified; no new dependency.
+
+---
+
 ## NK1 WorkPass459 — bound verified-outcome identifiers and evidence locators (2026-10-23)
 
 - Added explicit text bounds before manifest indexing and outcome admission: task IDs 180 chars, families 96, versions 96, verifier IDs 160, method IDs 96, and evidence references 4,096. This keeps accepted-evidence keys and persisted receipts bounded even when callers are typed adapters.
