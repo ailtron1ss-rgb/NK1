@@ -1,18 +1,18 @@
-# NK1 WorkPass409 — оценка прогресса ветки обучения
+# NK1 WorkPass412 — оценка прогресса ветки обучения
 
 Дата снимка: 23 октября 2026 года. Рабочая ветка: `feature/learning`.
 
-## Текущая оценка (после WorkPass409)
+## Текущая оценка (после WorkPass412)
 
 | Область | Оценка реализации | Что входит / почему не 100% |
 |---|---:|---|
 | Сбор опыта, replay и continual learning | 80% | Есть приоритизированный/стратифицированный replay, forgetting/transfer/drift-системы; полный независимый live-benchmark по реальным задачам пока не подтверждён |
 | Жизненный цикл навыка и promotion gate | 95% | Есть staged candidates, независимая оценка, разделение validation/holdout, signed evidence, authenticated approval, rollback и отдельный журнал фактического результата активации; production sandbox/verifier/scanner остаётся отдельным gate |
 | Целостность оценки и происхождение evidence | 93% | Есть точные fingerprints, canonical task/seed/split joins, trust boundary, hash-chained fitness journal и hash-chained lifecycle transitions; подписанные удалённые checkpoints и независимое развёртывание evaluator authority пока не подтверждены |
-| Метрики качества и наблюдаемость | 89% | Есть P23 family confidence bounds, fitness journal, WorkPass406 task-balanced IQM/paired improvement и WorkPass407 activation-intent/outcome diagnostics; требуется reconciliation после crash и история по реальным независимым циклам |
+| Метрики качества и наблюдаемость | 91% | Есть P23 family confidence bounds, fitness journal, WorkPass406 task-balanced IQM/paired improvement и WorkPass407 activation-intent/outcome diagnostics; требуется reconciliation после crash и история по реальным независимым циклам |
 | Воспроизводимость production-проверок | 42% | Регрессионные контракты и workflow подключены, но Actions на точном текущем HEAD сообщают failure без доступных steps/logs; полный независимый multi-seed uplift не доказан |
 
-**Сводная инженерная оценка полноты реализации категории: 82%.** Расчёт — взвешенное экспертное резюме по приведённым направлениям, а не автоматически измеренная метрика и не оценка интеллекта.
+**Сводная инженерная оценка полноты реализации категории: 83%.** Расчёт — взвешенное экспертное резюме по приведённым направлениям, а не автоматически измеренная метрика и не оценка интеллекта.
 
 **Подтверждённая production-готовность категории: около 45%.** Этот показатель ниже, потому что он учитывает реальное исполнение проверок на точном HEAD, развёртывание независимых evaluator authorities, подтверждённые gains и длительные интеграционные прогоны. Пока CI не предоставляет запускаемые шаги и логи, высокий процент реализованного кода нельзя считать подтверждённой готовностью.
 
@@ -35,6 +35,17 @@ WorkPass406 не демонстрирует фактического улучш�
 ## Конечная цель ветки обучения
 
 Условие готовности — не наличие новых файлов. Категория считается завершённой после того, как полный цикл «реальный исход/ошибка → разбор траектории → план ремонта → кандидат → выполнение в изолированном окружении → независимая оценка на фиксированных validation и нетронутом holdout → подтверждённое решение → наблюдаемый результат/rollback» выполняется воспроизводимо; точные тесты и typecheck зелёные на одном HEAD; устойчивый выигрыш подтверждён заранее зарегистрированными независимыми seed/task families без недопустимого регресса; длинный soak, privacy/license review и production evaluator isolation закрыты.
+
+## WorkPass412 — метрики распределения по задачам
+
+- Расширен `LearningRobustMetrics.ts`: теперь отчёт по task success, skill quality и trajectory quality содержит task-balanced IQM, task-balanced median, optimality gap до ceiling=1 и их дельты плюс paired probability-of-improvement.
+- Метрики вычисляются на matched baseline/candidate trials после валидации score ∈ [0,1]. Repeats усредняются внутри задачи, затем задачи получают равный вес.
+- Источник напрямую прочитан: `google-research/rliable/rliable/metrics.py` (blob `dc206a180c822eaf3bc8524a63b127aeb1e60fe7`). Адаптированы идеи агрегатов, код не скопирован; NK1's task-balanced IQM намеренно отличается от pooled IQM RLiable.
+- Regression в `workpass406-learning-robust-metrics.mjs` проверяет медиану, ceiling gap и дельты. Existing P23/P26 wiring уже включает обновлённый тест.
+- Новые поля остаются `diagnosticOnly: true`; они не влияют на promotion, не заменяют confidence gates и не являются доказательством улучшения. Exact-HEAD тесты пока не подтверждены.
+- Оценка реализации категории после прохода — **83%**, production readiness — **~45%**.
+
+---
 
 ## WorkPass409 — восстановление после аварии между intent и result
 
