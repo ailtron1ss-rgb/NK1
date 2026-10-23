@@ -1,3 +1,10 @@
+## NK1 WorkPass455 — fix accessor-backed belief test fixture (2026-10-23)
+
+- Corrected the hostile-evidence regression fixture so its accessor is configurable from the start and the test reaches the intended memory ingress instead of throwing during fixture construction.
+- This is a test-fixture correction only; no runtime behavior changed. Exact-head execution remains unverified due to the Actions runner-allocation blocker.
+
+---
+
 ## NK1 WorkPass454 — integrate Hexis-inspired auditable belief revision into canonical memory (2026-10-23)
 
 - Added a residual evidence-revision policy to the existing `MemoryOS2` owner: independent support closes 35% of remaining doubt scaled by source authority; independent contradiction removes 35% of current confidence scaled by authority. Confidence is bounded to [0.05, 0.99].
