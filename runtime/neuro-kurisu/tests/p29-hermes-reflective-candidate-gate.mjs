@@ -349,4 +349,22 @@ assert.throws(() => evaluateSkillLearnBenchCandidate(familyBaseline, familyCandi
   maximumValidationFamilyRegression01: Number.NaN,
 }), /candidate-maximum-validation-family-regression-invalid/);
 
-console.log('P29_HERMES_REFLECTIVE_CANDIDATE_GATE=PASS pairedValidation=true untouchedHoldout=true safetyIsHardGate=true emptyRubricsRejected=true validationFamilyRegression=true');
+// Strict mode can require family provenance; legacy reports remain accepted only when the caller leaves the minimum at zero.
+const missingFamilyCoverage = evaluateSkillLearnBenchCandidate(baseline, improved, {
+  minimumValidationFamilies: 1,
+  minimumHoldoutFamilies: 1,
+});
+assert.equal(missingFamilyCoverage.validationFamiliesEvaluated, 0);
+assert.equal(missingFamilyCoverage.holdoutFamiliesEvaluated, 0);
+assert.ok(missingFamilyCoverage.reasons.includes('validation-family-coverage-insufficient'));
+assert.ok(missingFamilyCoverage.reasons.includes('holdout-family-coverage-insufficient'));
+assert.equal(missingFamilyCoverage.eligible, false,
+  'configured strict family coverage must not silently pass on unlabeled legacy reports');
+assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, improved, {
+  minimumValidationFamilies: -1,
+}), /candidate-minimum-validation-families-invalid/);
+assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, improved, {
+  minimumHoldoutFamilies: 1.5,
+}), /candidate-minimum-holdout-families-invalid/);
+
+console.log('P29_HERMES_REFLECTIVE_CANDIDATE_GATE=PASS pairedValidation=true untouchedHoldout=true safetyIsHardGate=true emptyRubricsRejected=true validationFamilyRegression=true strictFamilyCoverage=true');
