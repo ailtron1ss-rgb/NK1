@@ -4,11 +4,13 @@ on:
   push:
     branches:
       - workpass79-cognitive-rebuild
+      - nk1-integration-workspace-2026-10-22
   pull_request:
     branches:
       - main
       - workpass70-source
       - workpass203-independent-candidate-evaluator
+      - nk1-integration-workspace-2026-10-22
   workflow_dispatch:
 
 permissions:
