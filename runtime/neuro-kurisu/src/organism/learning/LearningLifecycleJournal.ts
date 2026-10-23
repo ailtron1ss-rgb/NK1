@@ -12,7 +12,9 @@ export type LearningLifecycleEventKind =
   | 'activation-intent'
   | 'activation-confirmed'
   | 'activation-failed'
-  | 'activation-outcome-unknown';
+  | 'activation-outcome-unknown'
+  | 'activation-reconciled-active'
+  | 'activation-reconciled-not-currently-active';
 
 export interface LearningLifecycleEventInput {
   recordedAt: number;
@@ -56,6 +58,8 @@ export interface LearningLifecycleJournalDiagnostics {
   activationConfirmedCount: number;
   activationFailedCount: number;
   activationOutcomeUnknownCount: number;
+  activationReconciledActiveCount: number;
+  activationReconciledNotCurrentlyActiveCount: number;
   pendingActivationCount: number;
   latestEventAt: number | null;
   lastSequence: number;
@@ -78,6 +82,7 @@ export interface LearningLifecycleJournalSink {
   recordLifecycleEvent(input: LearningLifecycleEventInput): LearningLifecycleEventEntry;
   /** Aggregates only; no payloads, prompts, task rows, or raw receipts. */
   snapshotDiagnostics?(recentLimit?: number): LearningLifecycleJournalDiagnostics;
+  readAll?(): LearningLifecycleEventEntry[];
 }
 
 function canonical(value: unknown): string {
@@ -117,6 +122,7 @@ const INPUT_KEYS = [
 const ENTRY_KEYS = ['schemaVersion', 'sequence', ...INPUT_KEYS, 'previousDigest', 'digest'] as const;
 const EVENT_KINDS: readonly LearningLifecycleEventKind[] = [
   'promotion-rejected', 'activation-intent', 'activation-confirmed', 'activation-failed', 'activation-outcome-unknown',
+  'activation-reconciled-active', 'activation-reconciled-not-currently-active',
 ];
 
 function validateInput(raw: unknown): asserts raw is LearningLifecycleEventInput {
@@ -143,7 +149,8 @@ function validateInput(raw: unknown): asserts raw is LearningLifecycleEventInput
   const version = value.activatedVersion as number | null;
   if ((event === 'activation-intent' && (version !== null || reasons.length !== 0)) ||
       (event === 'activation-confirmed' && (version === null || reasons.length !== 0)) ||
-      ((event === 'promotion-rejected' || event === 'activation-failed' || event === 'activation-outcome-unknown') && (version !== null || reasons.length === 0))) {
+      ((event === 'promotion-rejected' || event === 'activation-failed' || event === 'activation-outcome-unknown' || event === 'activation-reconciled-not-currently-active') && (version !== null || reasons.length === 0)) ||
+      ((event === 'activation-reconciled-active') && (version === null || reasons.length !== 0))) {
     throw new Error('learning-lifecycle-journal-event-shape-invalid');
   }
 }
@@ -180,11 +187,20 @@ function validateTransition(entries: readonly LearningLifecycleEventEntry[], nex
     return;
   }
   const terminal = prior.some(input =>
-    input.event === 'promotion-rejected' || input.event === 'activation-confirmed' || input.event === 'activation-failed' || input.event === 'activation-outcome-unknown');
+    input.event === 'promotion-rejected' || input.event === 'activation-confirmed' || input.event === 'activation-failed' || input.event === 'activation-reconciled-active' || input.event === 'activation-reconciled-not-currently-active');
   if (terminal) throw new Error('learning-lifecycle-journal-terminal-attempt');
   if (next.event === 'promotion-rejected' || next.event === 'activation-intent') {
     if (prior.length !== 0) throw new Error('learning-lifecycle-journal-transition-invalid');
     return;
+  }
+  if (next.event === 'activation-reconciled-active' || next.event === 'activation-reconciled-not-currently-active') {
+    if (prior.length !== 2 || prior[0].event !== 'activation-intent' || prior[1].event !== 'activation-outcome-unknown') {
+      throw new Error('learning-lifecycle-journal-transition-invalid');
+    }
+    return;
+  }
+  if (prior.length === 2 && prior[0].event === 'activation-intent' && prior[1].event === 'activation-outcome-unknown') {
+    throw new Error('learning-lifecycle-journal-reconciliation-required');
   }
   if (prior.length !== 1 || prior[0].event !== 'activation-intent') {
     throw new Error('learning-lifecycle-journal-transition-invalid');
@@ -340,7 +356,7 @@ export class JsonlLearningLifecycleJournal implements LearningLifecycleJournalSi
     const entries = this.readAll();
     const inputs = entries.map(entry => inputFromEntry(entry));
     const terminalAttemptIds = new Set(inputs.filter(input =>
-      input.event === 'promotion-rejected' || input.event === 'activation-confirmed' || input.event === 'activation-failed' || input.event === 'activation-outcome-unknown',
+      input.event === 'promotion-rejected' || input.event === 'activation-confirmed' || input.event === 'activation-failed' || input.event === 'activation-reconciled-active' || input.event === 'activation-reconciled-not-currently-active',
     ).map(input => input.attemptId));
     const last = entries[entries.length - 1] ?? null;
     return {
@@ -352,6 +368,8 @@ export class JsonlLearningLifecycleJournal implements LearningLifecycleJournalSi
       activationConfirmedCount: inputs.filter(input => input.event === 'activation-confirmed').length,
       activationFailedCount: inputs.filter(input => input.event === 'activation-failed').length,
       activationOutcomeUnknownCount: inputs.filter(input => input.event === 'activation-outcome-unknown').length,
+      activationReconciledActiveCount: inputs.filter(input => input.event === 'activation-reconciled-active').length,
+      activationReconciledNotCurrentlyActiveCount: inputs.filter(input => input.event === 'activation-reconciled-not-currently-active').length,
       pendingActivationCount: inputs.filter(input => input.event === 'activation-intent' && !terminalAttemptIds.has(input.attemptId)).length,
       latestEventAt: last?.recordedAt ?? null,
       lastSequence: last?.sequence ?? 0,
