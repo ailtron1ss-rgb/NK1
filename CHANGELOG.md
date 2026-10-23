@@ -1,3 +1,14 @@
+## NK1 WorkPass394 — block report-only reflective promotion (2026-10-23)
+
+- [FIXED] Disabled the legacy `approveReflectiveVerifiedSkillCandidate` production path. Caller-owned fitness arrays plus signed run receipts cannot authorize activation because receipts bind identity/binary outcome, not skill-quality or trajectory metrics.
+- [INTEGRATED] The supported promotion route is explicit: a fingerprinted P23 independent-evaluation envelope, exact staged-payload/provenance match, paired task/seed/split/environment/manifest checks, signed shadow evidence and trusted approval.
+- [REGRESSION] The promotion-gate test now constructs a candidate that passes the advisory aggregate fitness calculation, then proves the legacy path fails before receipt verification and before the store's approval method can be reached.
+- [CI] Added the regression file to P26 Learning Validation's path filter and execution steps.
+- [RESEARCH] Applied the trace-to-revision, independent-evaluation and guardrail principle from Hermes Agent Self-Evolution inside the existing NK1 learning lifecycle; no upstream source code or new dependency was copied in this pass.
+- [VALIDATION] Code/test/CI/docs are committed on `feature/learning`. Hosted test execution on this exact HEAD remains unconfirmed; no learning uplift or production readiness is claimed.
+
+---
+
 ## NK1 WorkPass393 — align runtime repair-ledger API with eligibility semantics (2026-10-23)
 - [DOC FIXED] Clarified that `OrganismRuntime.compoundSkillRepairEvidence` returns a bounded diagnostic ledger, including noneligible failed attempts, while the coordinator alone filters `revisionEligible` and passes the eligible subset through the strict canonicalization/fingerprint gate.
 - [WHY] Diagnostic experience and promotion evidence have different contracts; preserving a failed attempt must not imply that it is approved for skill generation.
