@@ -1,3 +1,13 @@
+## NK1 WorkPass460 — harden Hermes/P23 evaluation envelope canonicalization (2026-10-23)
+
+- Hardened the reflective evidence binder before it reads evaluation fields: accessor-backed envelope properties are rejected by descriptor inspection, and a canonicalization failure returns immediately so the rejected accessor is not later invoked by validation code.
+- Canonical evidence encoding now rejects accessor-backed fields, sparse arrays, unsupported enumerable symbol/array keys, non-plain objects, non-finite numbers, circular data, and oversized/deep envelopes. Explicit node, depth, collection, key and total-string budgets bound work before a report can be joined to signed shadow receipts.
+- Added regressions for outer and nested getters (asserting zero getter calls), sparse arrays that could otherwise collide with empty-array encodings, and depth-budget exhaustion. Existing `test:p23:hermes-verified-evidence-binding` remains the owning test script; no dependency added.
+- The signature still authenticates only receipt identity and binary outcome, not candidate quality scores. This is an input-integrity correction, not a learning gain or promotion.
+- **Verification:** source and regression committed on `feature/learning`; runtime execution and exact-head typecheck are unverified in this environment because network access to the repository is unavailable here and recent hosted Actions runs have reported runner-allocation failures.
+
+---
+
 ## NK1 WorkPass419 — durable P23 repair retry backoff (2026-10-23)
 
 - **Failure recovery:** P23 compound-repair generation/evaluation cooldown now persists in a dedicated sidecar through NK1's existing atomic `FileStateStore`; it is restored during runtime initialization before revision requests can run.
