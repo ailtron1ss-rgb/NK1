@@ -34,6 +34,19 @@ assert.equal(comparison.planFingerprint, baseline.evaluation.provenance.planFing
 assert.ok(comparison.validationGain01 > 0, 'matched scoring should preserve the measured validation improvement');
 assert.ok(comparison.reasons.includes('holdout-task-coverage-insufficient'), 'one holdout task must not satisfy the existing minimum holdout gate');
 
+const strictFamilyComparison = compareMatchedIndependentEvaluations(baseline, candidate, {
+  minimumValidationFamilies: 1,
+  minimumHoldoutFamilies: 1,
+});
+assert.equal(strictFamilyComparison.validationFamiliesEvaluated, 0);
+assert.equal(strictFamilyComparison.holdoutFamiliesEvaluated, 0);
+assert.ok(strictFamilyComparison.reasons.includes('validation-family-coverage-insufficient'),
+  'strict evaluation must not pass the validation split without canonical family labels');
+assert.ok(strictFamilyComparison.reasons.includes('holdout-family-coverage-insufficient'),
+  'strict evaluation must not pass the holdout split without canonical family labels');
+assert.equal(strictFamilyComparison.eligible, false,
+  'strict family policy must be propagated through the matched independent evaluator');
+
 const differentEnvironment = await makeEvaluation({ skill: 'candidate', version: 2 }, 'b'.repeat(64), { runPrefix: 'different-env-' });
 assert.throws(() => compareMatchedIndependentEvaluations(baseline, differentEnvironment), /environment-mismatch/);
 
@@ -55,4 +68,4 @@ const tampered = structuredClone(candidate);
 tampered.evaluation.validation[0].taskSuccess.passed = false;
 assert.throws(() => compareMatchedIndependentEvaluations(baseline, tampered), /envelope-invalid/);
 
-console.log('WorkPass225 matched independent evaluation regressions passed');
+console.log('WorkPass225 matched independent evaluation regressions passed; strict family policy propagation verified');
