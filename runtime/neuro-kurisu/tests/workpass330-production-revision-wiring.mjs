@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -96,6 +96,51 @@ test('rejects using one module as both repair provider and evaluator authority c
         createHostOwnedFactory: async () => () => ({}),
       }),
       /compound-repair-provider-and-independent-evaluator-modules-must-be-distinct/,
+    );
+  });
+});
+
+test('rejects a writable host evaluator module on POSIX', async () => {
+  if (process.platform === 'win32') return;
+  await temporary(async root => {
+    const providerPath = path.join(root, 'provider.mjs');
+    const evaluatorPath = path.join(root, 'evaluator.mjs');
+    await writeFile(providerPath, 'export default async () => () => ({})\\n');
+    await writeFile(evaluatorPath, hostModule());
+    await chmod(evaluatorPath, 0o666);
+    await assert.rejects(
+      createIndependentEvaluationConfigFactory({
+        moduleSetting: evaluatorPath,
+        root,
+        providerModulePath: providerPath,
+        stateDirectory: path.join(root, 'state'),
+        production: true,
+        createHostOwnedFactory: async () => () => ({}),
+      }),
+      /compound-repair-independent-evaluator-module-must-not-be-group-or-world-writable/,
+    );
+  });
+});
+
+test('rejects an evaluator config stored inside mutable organism state', async () => {
+  await temporary(async root => {
+    const stateDirectory = path.join(root, 'state');
+    const providerPath = path.join(root, 'provider.mjs');
+    const evaluatorPath = path.join(stateDirectory, 'evaluator.mjs');
+    const { mkdir } = await import('node:fs/promises');
+    await mkdir(stateDirectory);
+    await writeFile(providerPath, 'export default async () => () => ({})\\n');
+    await writeFile(evaluatorPath, hostModule());
+    await assert.rejects(
+      createIndependentEvaluationConfigFactory({
+        moduleSetting: evaluatorPath,
+        root,
+        providerModulePath: providerPath,
+        stateDirectory,
+        production: true,
+        createHostOwnedFactory: async () => () => ({}),
+      }),
+      /compound-repair-independent-evaluator-module-must-be-outside-state-directory/,
     );
   });
 });
