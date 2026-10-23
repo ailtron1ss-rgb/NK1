@@ -4,7 +4,7 @@
 
 Введён новый utility `PairedSeedConfidence.ts`, который считает percentile bootstrap confidence interval для среднего изменения качества на парных seed. Реализация локальная, без новой runtime-зависимости. До чтения полей входные score-массив и опции копируются через `LearningTrustBoundary.snapshotPlainData`; accessor/proxy и некорректные массивы отвергаются без вызова пользовательских getter. Для воспроизводимости используется явный seed, детерминированный PRNG, заданный уровень доверия и ограниченное число resamples.
 
-В `IndependentSkillCandidateEvaluator.ts` оценка разбивает результаты по split и каноническому семейству. Внутри семейства повторные trials усредняются в пределах пары task/seed; затем score кандидата и baseline сопоставляются по одним и тем же seed. Для каждого seed считается family-wide delta с одинаковым весом каждой задачи, а bootstrap выполняется по этим парным deltas.
+В `IndependentSkillCandidateEvaluator.ts` оценка разбивает результаты по split и каноническому семейству. Внутри семейства повторные trials усредняются в пределах пары task/seed; затем score кандидата и baseline сопоставляются по одним и тем же seed. Для каждого seed считается family-wide delta с одинаковым весом каждой задачи, а bootstrap выполняется по этим парным deltas. Production entry point P23 явно фиксирует 95% percentile interval и 2000 bootstrap resamples, чтобы эти значения не менялись неявно из-за параметров вызывающего кода.
 
 ## Условие продвижения
 
