@@ -317,11 +317,11 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     // Affect changes follow the monotonic display clock. Mouth/visemes stay tied
     // directly to audio boundaries and are deliberately not smoothed here.
     const affectState = smoothEmbodimentAffect(affectSmoothingRef.current, {
-      expressionIntensity: affectState.expressionIntensity,
+      expressionIntensity: snap.emotion.arousal,
       gazeX: Math.max(-0.4, Math.min(0.4, gaze.x + valenceOffset)),
       gazeY: gaze.y,
-      headTilt: affectState.headTilt,
-      voiceEmphasis: affectState.voiceEmphasis,
+      headTilt: headTiltByEmotion[snap.emotion.label],
+      voiceEmphasis: activeUtterance ? Math.min(1, snap.emotion.arousal + 0.15) : 0,
     }, performance.now());
     affectSmoothingRef.current = affectState;
     const freshTextTurn = speechPhaseRef.current !== "cancelled" && speechPhaseRef.current !== "unknown" && lastTurn?.role === "kurisu" && Date.now() - Number(lastTurn.at || 0) < 5_000;
@@ -345,17 +345,17 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       priority: speechPhaseRef.current === "cancelled" ? 100 : activeUtterance ? 70 : thinking ? 45 : 30,
       cancellationToken: session ? `cancel:${session.speechEventId}` : null,
       expression,
-      expressionIntensity: snap.emotion.arousal,
+      expressionIntensity: affectState.expressionIntensity,
       mouth: activeUtterance ? mouthPose : CLOSED_MOUTH,
       gaze: { x: affectState.gazeX, y: affectState.gazeY, driven: true },
       body: {
-        headTilt: headTiltByEmotion[snap.emotion.label],
+        headTilt: affectState.headTilt,
         gesture: bodyGestureActive,
         motionGroup,
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
         motionToken: Number.isSafeInteger(motionToken) && motionToken > 0 ? motionToken : 0,
       },
-      voiceEmphasis: activeUtterance ? Math.min(1, snap.emotion.arousal + 0.15) : 0,
+      voiceEmphasis: affectState.voiceEmphasis,
     };
     win.postMessage(intent, window.location.origin);
   }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
