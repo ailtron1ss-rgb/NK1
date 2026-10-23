@@ -8,11 +8,13 @@ import type { WorldSubsystemRuntime } from './WorldSubsystemRuntime.ts';
 import { clamp, goalVectorFallback } from './ExecutionPrimitives.ts';
 
 export function finiteOr(value: unknown, fallback: number): number {
+  // Keep the safety boundary total: neither input nor fallback may leak NaN/Infinity.
+  const safeFallback = Number.isFinite(fallback) ? fallback : 0;
   // Do not let null, booleans, or empty strings silently become a valid zero.
-  if (typeof value !== 'number' && typeof value !== 'string') return fallback;
-  if (typeof value === 'string' && value.trim().length === 0) return fallback;
+  if (typeof value !== 'number' && typeof value !== 'string') return safeFallback;
+  if (typeof value === 'string' && value.trim().length === 0) return safeFallback;
   const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : fallback;
+  return Number.isFinite(numeric) ? numeric : safeFallback;
 }
 
 /**
