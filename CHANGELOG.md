@@ -1,3 +1,8 @@
+## NK1 WorkPass396 — verify exact generated payload writeback and staged-only authority (2026-10-23)
+- [TEST ADDED] The end-to-end P23 revision fixture now asserts the versioned store contains the exact revised payload that was independently evaluated, not just a different fingerprint.
+- [SAFETY] The same regression asserts that a successful evaluation leaves the candidate in `staged` state and the active-skill set empty; promotion still requires the separate approval path.
+- [RESEARCH] This targets a real upstream risk pattern in Hermes Agent Self-Evolution issue history: unchanged optimizer output and evolved skill text not being written back to the skill artifact.
+
 ## NK1 WorkPass395 — preserve prototype-backed provider compatibility (2026-10-23)
 - [TEST ADDED] Added a fixture whose `configured` and `generate` capabilities live on its prototype, proving that descriptor-based capability resolution still supports class-style provider implementations while rejecting accessor-backed capabilities.
 - [COMPATIBILITY] Keeps the direct-generator boundary compatible with NK1's host-owned OpenAI-compatible local chat provider.
