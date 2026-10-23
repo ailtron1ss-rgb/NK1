@@ -59,8 +59,9 @@ The human-brain analogy is functional only: global-workspace/broadcast ideas inf
 
 ## Progress accounting
 
-- The current working pass (WorkPass424–440) contains real commits across the pre-existing learning, perception, memory, emotion, personality, embodiment and feedback branches. That is implementation progress on branch tips, not complete integration.
-- The repository’s existing readiness scorecard currently places overall readiness near **46/100**. Keep this score unchanged until stronger evidence exists; adding more mechanisms is not by itself a score increase.
+- The recorded implementation history through WorkPass451 has real commits across learning, perception, memory, emotion, personality, embodiment and feedback. The October 23 follow-up added more code, regression fixtures, and changelog updates to six of those categories: bounded linear skill-evaluation, live cognitive-cycle ingress validation, evidence-ledger restore validation, memory provider-diagnostics fault isolation, atomic self-agency outcome validation, and embodiment pre-/post-sensor failure handling. These are commits on category branch tips, not complete integration.
+- The repository’s overall engineering readiness remains **46/100**. Do not raise it based on code volume: the newly authored regressions still need execution on exact HEADs, cross-category integration evidence, and release-asset replacement/hash verification.
+- Current evidence breakdown remains: category branches with implementation commits 7/7 (100%); branches with regression source 7/7 (100%); exact-head suites confirmed passing 0/7 (0%); category PRs merged to `integration` 0/7 (0%); release ZIP updated/hash-verified 0/1 (0%).
 - For each category, report separately: (a) implementation change committed, (b) regression authored, (c) exact-head test execution, (d) end-to-end/benchmark evidence, and (e) merged/release state.
 - Any job that never receives a runner is **unverified**, not green and not a failing code test. Any benchmark without an independently held-out baseline is exploratory only.
 - No code or report may claim subjective consciousness from simulated affect, persistent identity or plausible conversation. The target is a progressively more autonomous, coherent and evidence-accountable digital organism.
