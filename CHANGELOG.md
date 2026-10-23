@@ -1,3 +1,13 @@
+## NK1 WorkPass454 — integrate Hexis-inspired auditable belief revision into canonical memory (2026-10-23)
+
+- Added a residual evidence-revision policy to the existing `MemoryOS2` owner: independent support closes 35% of remaining doubt scaled by source authority; independent contradiction removes 35% of current confidence scaled by authority. Confidence is bounded to [0.05, 0.99].
+- A source lineage is counted once across both stances. Replayed evidence and changed-stance replays cannot move confidence; explicitly protected semantic memories retain contradictory evidence without silent confidence rewrite.
+- Confidence revisions persist as a bounded 32-entry audit on the same memory record and count toward the canonical byte budget. Existing generic ingestion now reuses the same residual support policy rather than the older ad-hoc 0.82/0.18 confidence blend.
+- Added regressions for exact formulas, duplicate-source stance flips, protected contradiction retention, getter rejection, persistence restore, and byte-budget accounting. Adapted from the mechanism in [QuixiAI/Hexis db/59_belief_revision.sql](https://github.com/QuixiAI/Hexis/blob/main/db/59_belief_revision.sql); no SQL database or new package was introduced.
+- **Verification:** source and test changes are committed; exact-head execution remains unverified while hosted Actions fails before runner allocation.
+
+---
+
 ## NK1 WorkPass448 — isolate semantic-memory maintenance from diagnostics failures (2026-10-23)
 
 - Wrapped optional embedding-provider diagnostics in a fail-soft boundary for both background semantic indexing and the read-only diagnostics endpoint. A faulty diagnostics hook no longer blocks embedding batches or causes memory observability itself to throw.
