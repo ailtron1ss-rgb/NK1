@@ -120,7 +120,36 @@ export class PredictiveSelfAgencySubstrate {
     for(let k=0;k<out.length;k++){const x=Number(base[k%Math.max(1,base.length)]??0);const y=Number(base[(k*7+3)%Math.max(1,base.length)]??0);out[k]=clamp11(x*.7+y*.3);} return out;
   }
   private stepSelf(x:number[]){const prev=this.state.selfLatent,next=new Array(24).fill(0);for(let i=0;i<24;i++){let z=0;for(let j=0;j<24;j++)z+=(this.state.selfWeights[i][j]??0)*(prev[j]??0)+(this.state.stateWeights[i][j]??0)*(x[j]??0);next[i]=tanh(z);}return next;}
-  observe(input:SelfAgencyInput){
+  observe(rawInput:SelfAgencyInput){
+    // Runtime callers may be JavaScript adapters, restored state or plugins;
+    // detach descriptors before spreading arrays or reading nested state.
+    let detached: unknown;
+    try {
+      detached=snapshotPlainData<SelfAgencyInput>(rawInput,{
+        maxDepth:16,maxNodes:2048,maxStringUnits:32*1024,
+      });
+    } catch {
+      throw new TypeError('predictive-self-agency-input-invalid');
+    }
+    if(!detached||typeof detached!=='object'||Array.isArray(detached)) {
+      throw new TypeError('predictive-self-agency-input-invalid');
+    }
+    const input=detached as SelfAgencyInput;
+    const vectors=[input.self,input.body,input.world,input.memory,input.motivation];
+    if(vectors.some(vector=>!Array.isArray(vector)||vector.length>256||
+      vector.some(value=>typeof value!=='number'||!Number.isFinite(value)))) {
+      throw new TypeError('predictive-self-agency-vectors-invalid');
+    }
+    if(typeof input.externalRequested!=='boolean'||!input.state||
+      typeof input.state!=='object'||!input.state.needs||
+      typeof input.state.needs!=='object'||
+      !Number.isSafeInteger(input.state.tick)||input.state.tick<0||
+      !Number.isFinite(input.state.at)||input.state.at<0||
+      !['energy','cognitiveLoad','uncertainty','novelty','goalPressure','socialNeed','identityCoherence']
+        .every(key=>typeof input.state.needs[key as keyof typeof input.state.needs]==='number'&&
+          Number.isFinite(input.state.needs[key as keyof typeof input.state.needs]))) {
+      throw new TypeError('predictive-self-agency-state-invalid');
+    }
     const x=this.features(input),prev=this.state.selfLatent.slice(),next=this.stepSelf(x);
     if(this.state.learningSteps>0){const prevTarget=this.state.lastObservedSelfState;const err=prevTarget.reduce((s,v,i)=>s+Math.abs(v-(this.state.lastPredictedSelfState[i]??0)),0)/(24*2);this.state.predictionError01=clamp01(this.state.predictionError01*.96+err*.04);this.learnSelf(prevTarget,x);}
     this.state.previousSelfLatent=prev;this.state.selfLatent=next;this.state.intention=next.slice();this.state.lastObservedSelfState=x.slice();this.state.learningSteps++;this.state.predictionSamples++;

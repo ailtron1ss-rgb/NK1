@@ -1,3 +1,12 @@
+## NK1 WorkPass446 — validate live self-agency observations before feature extraction
+
+- Extended the same descriptor-based plain-data boundary already used for self-model restoration to the live `PredictiveSelfAgencySubstrate.observe` path. It now detaches the entire observation before spreading vectors or reading nested organism state.
+- Rejects getter-backed/cyclic/exotic payloads, non-finite or oversized modality vectors, invalid tick/time, non-boolean external-request metadata and malformed need signals before any learned state can change.
+- Added regressions proving getter non-execution, state non-mutation after rejected observations, rejection of NaN vectors and the 256-value per-modality bound. No new dependency or duplicate self-model was introduced.
+- **Verification:** committed to `feature/personality`; exact-head test and typecheck remain unverified due the repository's runner-assignment failure.
+
+---
+
 ## NK1 WorkPass436 — correct canonical motivation-boundary import (2026-10-23)
 
 - Corrected the shared snapshot helper path in IntrinsicMotivationEngine to its canonical sibling under organism/core. No behavior change; this is a source-level integration correction discovered during follow-up inspection.

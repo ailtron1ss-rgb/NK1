@@ -119,6 +119,28 @@ accessorVectorBrain.restore({ version: 1, selfLatent: accessorVector });
 assert.equal(vectorGetterReads, 0, 'matrix/vector accessors must be rejected before indexing');
 assert.deepEqual(accessorVectorBrain.snapshot().selfLatent, new Array(24).fill(0));
 
+// The live observation path is a separate trust boundary from checkpoint restore.
+const beforeInvalidObservation = accessorSafeBrain.snapshot();
+let liveInputGetterReads = 0;
+const getterLiveInput = { ...input(1, 1001, false) };
+Object.defineProperty(getterLiveInput, 'self', {
+  enumerable: true, configurable: true,
+  get() { liveInputGetterReads++; return new Array(24).fill(0.8); },
+});
+assert.throws(() => accessorSafeBrain.observe(getterLiveInput),
+  /predictive-self-agency-input-invalid/);
+assert.equal(liveInputGetterReads, 0, 'live self-agency ingress must reject getters before feature extraction');
+assert.deepEqual(accessorSafeBrain.snapshot(), beforeInvalidObservation,
+  'rejected self-agency observations must not mutate the learned state');
+assert.throws(() => accessorSafeBrain.observe({
+  ...input(2, 1002, false), world: [0.1, Number.NaN],
+}), /predictive-self-agency-vectors-invalid/);
+assert.deepEqual(accessorSafeBrain.snapshot(), beforeInvalidObservation,
+  'non-finite feature vectors must be rejected without partial learning');
+const oversizedSelfInput = { ...input(3, 1003, false), memory: new Array(257).fill(0) };
+assert.throws(() => accessorSafeBrain.observe(oversizedSelfInput),
+  /predictive-self-agency-vectors-invalid/);
+
 const core=new OrganismCore(new MemoryStateStore());
 await core.init();
 const world=(tick)=>({tick,location:'self-agency-lab',energy:.84,attention:.8,uncertainty:.2,facts:['self','agency','prediction'],objects:['agent'],events:['action']});
