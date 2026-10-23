@@ -1,3 +1,13 @@
+## NK1 WorkPass457 — mint stable verifier-bound evidence event IDs (2026-10-23)
+
+- OutcomeVerificationService now emits an optional SHA-256-derived evidenceEventId only for properly shaped external postcondition evidence tied to a valid host execution ID, decision ID, tool, observation ID and full action input.
+- The same canonical tuple yields the same event ID across exact replays; changing the decision/execution/input/tool/observation changes the ID. Missing or malformed host lineage cannot mint one.
+- Extended workpass294-correlated-postcondition.mjs to test stable replays, decision separation and missing-lineage behavior. Existing process-local WeakMap authority and strict trust binding remain required; the ID string is not authority by itself.
+- Prepared for WorkPass456's RealityEvidenceLedger.eventId field. **Full call-site propagation into the ledger/P65/feedback is still not complete.**
+- No new dependency or gate relaxation. Exact-head test/typecheck execution remains unconfirmed.
+
+---
+
 ## NK1 WorkPass462 — consolidate verified manifest input bounds (2026-10-23)
 
 - Removed a redundant task ID type check introduced while adding the length cap; behavior is unchanged and the manifest guard now expresses type, non-empty and size validation in one condition.
