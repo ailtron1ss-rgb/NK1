@@ -1,3 +1,16 @@
+## Current source-stack checkpoint — WorkPass331 canonical P23 revision evaluation (2026-10-23)
+
+- **Source branch:** `workpass328-upstream-donor-gate`, based on `workpass70-source`; PR [#86](https://github.com/ailtron1ss-rgb/NK1/pull/86) remains draft, base `rebuild`. `main` remains untouched.
+- **Core change:** production no longer accepts the repair provider's baseline/source report arrays as the basis for reflective revision planning. The runtime resolves the active baseline and source candidate directly from the canonical versioned P23 store and runs both through the host-owned independent evaluator, followed by a fresh evaluation of the generated revision.
+- **Plan/identity boundary:** the host evaluator config must declare three distinct methods—`baselineMethod`, `sourceCandidateMethod`, and `experimentAuthority.method`—present in both fixed validation/holdout plans. Pair validation binds payload/evaluation digests, manifest/plan/environment, attempt, task/trial IDs, seeds and split labels. Failed source-candidate outcomes stay failed; they are not rewritten as successful evidence.
+- **Stale baseline prevention:** runtime re-reads active/source versions and payload fingerprints during the loop and rejects evaluation if either changes.
+- **Regression wiring:** `test:workpass331:canonical-revision-baseline` verifies provider-report poisoning is ignored, the canonical source candidate is genuinely evaluated, generated candidates are independently evaluated, and stale baselines fail. The test is registered in root `audit:quick` and WorkPass71 CI.
+- **Verification:** exact-head test/typecheck remain **UNVERIFIED** because the latest Actions jobs still finish with zero executed steps. No learning-quality score increase or task-success uplift is claimed.
+- **Remaining critical work:** deployment must provide independent host processes and frozen task manifests, restore actionable CI, and produce reproducible paired-seed holdout results. The full autonomous loop is not yet proven.
+- See [WorkPass331 report](docs/WORKPASS331_CANONICAL_REVISION_BASELINE_2026-10-23.md), [WorkPass330 report](docs/WORKPASS330_PRODUCTION_REVISION_WIRING_2026-10-23.md), [P23 roadmap](docs/P23_CROSS_SOURCE_INTEGRATION_ROADMAP.md). No dependency was added and the release ZIP was not refreshed.
+
+---
+
 ## Historical source-stack checkpoint — WorkPass330 production P23 wiring (2026-10-23)
 
 - **Source branch:** `workpass328-upstream-donor-gate`, based on `workpass70-source`; PR [#86](https://github.com/ailtron1ss-rgb/NK1/pull/86) remains draft, base `rebuild`. The release/metadata `main` branch is not the working runtime baseline.
