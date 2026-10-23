@@ -48,6 +48,8 @@ export interface EmotionAppraisalState {
   feelings:FeelingEpisode[];
   interoception:InteroceptiveAffectState;
   outcomes:Record<string,EmotionOutcomeCalibration>;
+  /** Outcome calibrations bound to action + emotion label + regulation-pressure band. */
+  contextualOutcomes:Record<string,EmotionOutcomeCalibration>;
 }
 
 
@@ -69,6 +71,9 @@ const safeTimestamp=(value:unknown,fallback=0):number=>typeof value==='number'&&
 const safeUnit=(value:unknown,fallback:number):number=>typeof value==='number'&&Number.isFinite(value)?c(value):fallback;
 const EMOTION_LABELS:readonly EmotionLabel[]=['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective'];
 const ACTION_TENDENCIES:readonly EmotionActionTendency[]=['explore','engage','verify','reflect','rest','protect','withdraw','approach'];
+type RegulationBand='low'|'medium'|'high';
+const regulationBand=(value:number):RegulationBand=>value<.34?'low':value<.67?'medium':'high';
+const contextOutcomeKey=(action:string,label:EmotionLabel,pressure01:number)=>JSON.stringify([action,label,regulationBand(pressure01)]);
 const unitFieldsAreValid=(value:unknown,fields:readonly string[]):value is Record<string,number>=>isRecord(value)&&fields.every(field=>typeof value[field]==='number'&&Number.isFinite(value[field])&&(value[field] as number)>=0&&(value[field] as number)<=1);
 const normalizeEpisode=(value:unknown):EmotionEpisode|null=>{
   if(!isRecord(value)||typeof value.id!=='string'||value.id.length===0||value.id.length>256||
@@ -94,7 +99,7 @@ const emptyInteroception=():InteroceptiveAffectState=>({
   lastObserved:{energy01:.68,thermal01:.2,capacity01:.72,load01:.38},
   predicted:{energy01:.68,thermal01:.2,capacity01:.72,load01:.38},
 });
-const empty=():EmotionAppraisalState=>({version:2,episodes:0,lastTick:-1,lastAt:0,lastLabel:'calm',meanArousal01:0.22,meanValence01:0.5,meanStress01:0.2,meanAttentionCapture01:0.2,history:[],feelings:[],interoception:emptyInteroception(),outcomes:{}});
+const empty=():EmotionAppraisalState=>({version:2,episodes:0,lastTick:-1,lastAt:0,lastLabel:'calm',meanArousal01:0.22,meanValence01:0.5,meanStress01:0.2,meanAttentionCapture01:0.2,history:[],feelings:[],interoception:emptyInteroception(),outcomes:{},contextualOutcomes:{}});
 
 export class EmotionAppraisalEngine {
   private state=empty();
@@ -112,12 +117,24 @@ export class EmotionAppraisalEngine {
     const rawObserved=isRecord(rawInteroception.lastObserved)?rawInteroception.lastObserved:{};
     const rawPredicted=isRecord(rawInteroception.predicted)?rawInteroception.predicted:{};
     const rawOutcomes=isRecord(r.outcomes)?r.outcomes:{};
+    const rawContextualOutcomes=isRecord(r.contextualOutcomes)?r.contextualOutcomes:{};
     const outcomes:Record<string,EmotionOutcomeCalibration>={};
+    const contextualOutcomes:Record<string,EmotionOutcomeCalibration>={};
     for(const [key,value] of Object.entries(rawOutcomes).slice(0,128)){
       if(!key||key.length>96||!isRecord(value))continue;
       if(typeof value.attempts!=='number'||!Number.isSafeInteger(value.attempts)||value.attempts<0)continue;
       if(!unitFieldsAreValid(value,['meanSuccess01','meanSurprise01','meanBenefit01']))continue;
       outcomes[key]={attempts:value.attempts,meanSuccess01:value.meanSuccess01,meanSurprise01:value.meanSurprise01,meanBenefit01:value.meanBenefit01};
+    }
+    for(const [key,value] of Object.entries(rawContextualOutcomes).slice(0,512)){
+      if(!key||key.length>256||!isRecord(value))continue;
+      let context:unknown;
+      try{context=JSON.parse(key);}catch{continue;}
+      if(!Array.isArray(context)||context.length!==3||typeof context[0]!=='string'||context[0].length===0||context[0].length>96||
+         !EMOTION_LABELS.includes(context[1] as EmotionLabel)||!['low','medium','high'].includes(String(context[2])))continue;
+      if(typeof value.attempts!=='number'||!Number.isSafeInteger(value.attempts)||value.attempts<0)continue;
+      if(!unitFieldsAreValid(value,['meanSuccess01','meanSurprise01','meanBenefit01']))continue;
+      contextualOutcomes[key]={attempts:value.attempts,meanSuccess01:value.meanSuccess01,meanSurprise01:value.meanSurprise01,meanBenefit01:value.meanBenefit01};
     }
     const history=Array.isArray(r.history)?r.history.map(normalizeEpisode).filter((row):row is EmotionEpisode=>row!==null).slice(0,128):[];
     const feelings=Array.isArray(r.feelings)?r.feelings.map(normalizeFeeling).filter((row):row is FeelingEpisode=>row!==null).slice(0,128):[];
@@ -155,6 +172,7 @@ export class EmotionAppraisalEngine {
         },
       },
       outcomes,
+      contextualOutcomes,
     };
   }
   snapshot(){return structuredClone(this.state);}
@@ -190,13 +208,33 @@ export class EmotionAppraisalEngine {
        (input.regulationCost01!==undefined&&!unitInterval(input.regulationCost01))) {
       throw new RangeError('emotion-outcome-values-invalid');
     }
+    if(input.emotionId!==undefined&&(typeof input.emotionId!=='string'||input.emotionId.length===0||input.emotionId.length>256)){
+      throw new TypeError('emotion-outcome-emotion-link-invalid');
+    }
+    const linkedEmotion=input.emotionId===undefined?this.state.history[0]:this.state.history.find(row=>row.id===input.emotionId);
+    if(input.emotionId!==undefined&&!linkedEmotion)throw new TypeError('emotion-outcome-emotion-link-invalid');
     const key=input.action;
     const prev=Object.prototype.hasOwnProperty.call(this.state.outcomes,key)
       ?this.state.outcomes[key]
       :{attempts:0,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5};
     const benefit=c(input.success01*.62+(1-input.surprise01)*.24+(1-c(input.regulationCost01??0))*.14);
     const n=prev.attempts+1; const row={attempts:n,meanSuccess01:c(prev.meanSuccess01*(n-1)/n+c(input.success01)/n),meanSurprise01:c(prev.meanSurprise01*(n-1)/n+c(input.surprise01)/n),meanBenefit01:c(prev.meanBenefit01*(n-1)/n+benefit/n)};
-    this.state.outcomes={...this.state.outcomes,[key]:row}; return structuredClone(row);
+    this.state.outcomes={...this.state.outcomes,[key]:row};
+    if(linkedEmotion){
+      const contextualKey=contextOutcomeKey(key,linkedEmotion.label,this.state.interoception.regulationPressure01);
+      const previous=Object.prototype.hasOwnProperty.call(this.state.contextualOutcomes,contextualKey)
+        ?this.state.contextualOutcomes[contextualKey]
+        :{attempts:0,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5};
+      const contextN=previous.attempts+1;
+      const contextualRow={
+        attempts:contextN,
+        meanSuccess01:c(previous.meanSuccess01*(contextN-1)/contextN+c(input.success01)/contextN),
+        meanSurprise01:c(previous.meanSurprise01*(contextN-1)/contextN+c(input.surprise01)/contextN),
+        meanBenefit01:c(previous.meanBenefit01*(contextN-1)/contextN+benefit/contextN),
+      };
+      this.state.contextualOutcomes={...this.state.contextualOutcomes,[contextualKey]:contextualRow};
+    }
+    return structuredClone(row);
   }
 
   outcomeCalibration(action:string):EmotionOutcomeCalibration|null{
@@ -258,14 +296,22 @@ export class EmotionAppraisalEngine {
     const match:Record<string,number>={explore:e.label==='curiosity'?0.08:0,verify:e.label==='anxiety'||e.label==='frustration'?0.06:0,reflect:e.label==='frustration'?0.055:0,rest:e.label==='protective'||e.label==='sadness'?0.04:0,protect:e.label==='protective'||e.label==='anger'?0.07:0,approach:e.label==='joy'?0.05:0,withdraw:e.label==='sadness'?0.06:0,engage:e.label==='calm'||e.label==='joy'?0.025:0};
     const intero=this.state.interoception;
     const regulation:Record<string,number>={rest:intero.regulationPressure01*.075,protect:intero.regulationPressure01*.055,verify:intero.regulationPressure01*.025,reflect:intero.regulationPressure01*.015,explore:-intero.regulationPressure01*.055,approach:-intero.regulationPressure01*.02,engage:-intero.regulationPressure01*.015,withdraw:intero.regulationPressure01*.01};
-    const calibration=Object.prototype.hasOwnProperty.call(this.state.outcomes,action)?this.state.outcomes[action]:undefined;
+    const contextualKey=contextOutcomeKey(action,e.label,this.state.interoception.regulationPressure01);
+    const contextualCalibration=Object.prototype.hasOwnProperty.call(this.state.contextualOutcomes,contextualKey)
+      ?this.state.contextualOutcomes[contextualKey]:undefined;
+    const hasContextualCalibrationForAction=Object.keys(this.state.contextualOutcomes).some(key=>{
+      try{const parsed=JSON.parse(key);return Array.isArray(parsed)&&parsed[0]===action;}catch{return false;}
+    });
+    // Once an action has context-bound outcome history, do not leak its global
+    // reward into a distinct emotional/homeostatic context with no matched data.
+    const calibration=contextualCalibration??(!hasContextualCalibrationForAction&&Object.prototype.hasOwnProperty.call(this.state.outcomes,action)?this.state.outcomes[action]:undefined);
     const matchBias=Object.prototype.hasOwnProperty.call(match,action)?match[action]:0;
     const regulationBias=Object.prototype.hasOwnProperty.call(regulation,action)?regulation[action]:0;
-    const learned=calibration&&calibration.attempts>=3 ? (calibration.meanBenefit01-.5)*.045 : 0;
+    const learned=calibration&&calibration.attempts>=3 ? (calibration.meanBenefit01-.5)*(contextualCalibration?.045:.015) : 0;
     return c(Math.max(0,matchBias+regulationBias+learned))*c(.55+e.interoceptiveDelta.attentionCapture01*.45);
   }
 
-  summary(){return {episodes:this.state.episodes,lastLabel:this.state.lastLabel,meanArousal01:this.state.meanArousal01,meanValence01:this.state.meanValence01,meanStress01:this.state.meanStress01,meanAttentionCapture01:this.state.meanAttentionCapture01,interoception:structuredClone(this.state.interoception),outcomes:structuredClone(this.state.outcomes)};}
+  summary(){return {episodes:this.state.episodes,lastLabel:this.state.lastLabel,meanArousal01:this.state.meanArousal01,meanValence01:this.state.meanValence01,meanStress01:this.state.meanStress01,meanAttentionCapture01:this.state.meanAttentionCapture01,interoception:structuredClone(this.state.interoception),outcomes:structuredClone(this.state.outcomes),contextualOutcomeContexts:Object.keys(this.state.contextualOutcomes).length};}
 
 }
 export const defaultEmotionAppraisalState=()=>empty();
