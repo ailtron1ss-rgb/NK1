@@ -1,3 +1,14 @@
+## NK1 WorkPass464–465 — unblock cognitive, learning and Node-runtime contracts (2026-10-23)
+
+- Fixed malformed control-character validation in `OutcomeVerificationService` that caused a regex parse/typecheck failure. Consolidated duplicate `CognitiveEventFabric.verifyOperationalCycle` implementations into one validator that retains required and optional cognitive-stage lineage checks.
+- Registered the existing `p23-compound-repair-revision` work clock in `RuntimeClockScheduler` instead of leaving a live runtime registration outside its type/allowlist.
+- Corrected replay option ownership (`ReplaySelectionOptions` comes from `ReplaySelectionPolicy`), renamed the stale forgetting-risk input from `usageGapMs` to `gapMs`, initialized `verifiedNonHoldoutExecutions`, fixed optional retrieval numbers, and preserved literal types in verified session/holdout datasets.
+- Tightened type narrowing in intrinsic dream-association source filters, endogenous goal need dimensions, cognitive dependency restore counters, and optional causal-feature replay vectors.
+- Expanded the runtime's existing hand-maintained Node declarations to cover actually used `node:fs`, `fs/promises`, `path`, `crypto`, child-process, `process.platform`, `NodeJS` error/environment/timeout types, and `Buffer` APIs. No package was installed because the runtime deliberately uses local shims and the lockfile contains no `@types/node`.
+- **Verification:** edits committed on the existing `feature/perception` category branch. The previously observed run `P26 Learning Validation` stopped at typecheck, so its later functional tests were skipped. That run predates these fixes; the updated head must still pass a fresh typecheck before the learning regressions can be claimed as passing.
+
+---
+
 ## NK1 WorkPass462a — correct event-ID control-character guard (2026-10-23)
 
 - Corrected the regex escaping in `realityEvidenceEventId` so the input guard tests actual control characters rather than a double-escaped character class.
