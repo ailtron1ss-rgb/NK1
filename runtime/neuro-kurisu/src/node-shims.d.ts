@@ -70,8 +70,7 @@ declare module 'node:child_process' {
     stdout:{on(event:'data',handler:(chunk:Buffer)=>void):void};
     stderr:{on(event:'data',handler:(chunk:Buffer)=>void):void};
     kill(signal?:string):boolean;
-    once(event:'error',handler:(error:Error)=>void):this;
-    once(event:'close',handler:(code:number|null,signal:string|null)=>void):this;
+    once(event:string,handler:(...args:any[])=>void):this;
   }
   export function spawn(command:string,args?:string[],options?:any):ChildProcessLike;
   export function execFile(command:string,args?:string[],options?:any,callback?:any):any;
