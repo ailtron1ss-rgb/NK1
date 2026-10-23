@@ -17,7 +17,7 @@
     "test:hermes-holdout-dimension-gate": "npm --prefix runtime/neuro-kurisu run test:p29:hermes-reflective-candidate-gate",
     "audit:assets": "node tools/audit-assets.mjs",
     "inventory": "node tools/super-inventory.mjs",
-    "audit:quick": "npm run audit:upstream-donors && npm run test:upstream-donors && npm run test:hermes-holdout-dimension-gate && npm run inventory && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:architecture && npm --prefix runtime/neuro-kurisu run audit:hygiene && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run audit:syntax",
+    "audit:quick": "npm run audit:upstream-donors && npm run test:upstream-donors && npm run test:hermes-holdout-dimension-gate && npm --prefix runtime/neuro-kurisu run test:workpass330:production-revision-wiring && npm run inventory && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:architecture && npm --prefix runtime/neuro-kurisu run audit:hygiene && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run audit:syntax",
     "doctor": "node tools/super-doctor.mjs",
     "install:all": "node tools/super-install.mjs",
     "backup": "node tools/super-backup.mjs",
