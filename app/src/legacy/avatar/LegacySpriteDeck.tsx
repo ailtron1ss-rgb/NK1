@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getOutfit, type VisualProfileId, OUTFITS } from "./outfitCatalog";
 import { resolveSpritePath } from "./spriteEngine";
+import { readAvatarPreference, writeAvatarPreference } from "./safeLocalStorage";
 import type { EmotionLabel } from "@/organism/types";
 
 const EXPRESSION: Record<EmotionLabel, string> = {
@@ -15,25 +16,15 @@ const EXPRESSION: Record<EmotionLabel, string> = {
 };
 
 function readStoredOutfit(): VisualProfileId {
-  if (typeof window === "undefined") return "lab_coat";
-  try {
-    const stored = window.localStorage.getItem("kurisu-visual-profile");
-    return OUTFITS.some((profile) => profile.id === stored)
-      ? stored as VisualProfileId
-      : "lab_coat";
-  } catch {
-    // Storage can be disabled or throw SecurityError in sandboxed/private contexts.
-    return "lab_coat";
-  }
+  const stored = readAvatarPreference("kurisu-visual-profile");
+  return OUTFITS.some((profile) => profile.id === stored)
+    ? stored as VisualProfileId
+    : "lab_coat";
 }
 
 function persistOutfit(outfit: VisualProfileId): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem("kurisu-visual-profile", outfit);
-  } catch {
-    // The visual fallback must remain usable even when persistence is unavailable.
-  }
+  // Persistence is optional: the visual selector remains usable without browser storage.
+  writeAvatarPreference("kurisu-visual-profile", outfit);
 }
 
 export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel; speaking: boolean }) {
