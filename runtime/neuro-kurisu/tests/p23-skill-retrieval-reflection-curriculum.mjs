@@ -137,6 +137,13 @@ assert.equal(diverseTargets[0].id,'memory-high',
   'family diversity must preserve the globally best immediate repair target');
 assert.equal(new Set(diverseTargets.slice(0,3).map(target=>target.family)).size,3,
   'curriculum interleaving should cover distinct eligible families before repeating a family');
+const equalScoreTargets = rankLearningTargets([
+  {id:'alpha',family:'single',uncertainty01:.5,readiness01:.5,transfer01:.5,novelty01:.5,verificationCost01:.2,repairValue01:.5},
+  {id:'Älpha',family:'single',uncertainty01:.5,readiness01:.5,transfer01:.5,novelty01:.5,verificationCost01:.2,repairValue01:.5},
+  {id:'Zulu',family:'single',uncertainty01:.5,readiness01:.5,transfer01:.5,novelty01:.5,verificationCost01:.2,repairValue01:.5},
+],3);
+assert.deepEqual(equalScoreTargets.map(target=>target.id),['Zulu','alpha','Älpha'],
+  'equal-score curriculum tie-breaking must use deterministic code-unit order, independent of host locale');
 
 const engine=new P23LearningEngine();
 const policy={bias:()=>0};
