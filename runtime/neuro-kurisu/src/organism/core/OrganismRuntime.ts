@@ -14,7 +14,7 @@ import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../languag
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
 import type { JsonStateStore } from '../persistence/FileStateStore.ts';
 import { choosePhonePolicyDelay, type PhonePolicyConfig } from '../system/PhoneRuntimePolicy.ts';
-import { RuntimeClockScheduler, type RuntimeClockDecision } from '../system/RuntimeClockScheduler.ts';
+import { RuntimeClockScheduler, RUNTIME_CLOCK_IDS, type RuntimeClockDecision } from '../system/RuntimeClockScheduler.ts';
 import { ContinuityLedger } from '../system/ContinuityLedger.ts';
 import { RuntimeEvidenceBus } from '../system/RuntimeEvidenceBus.ts';
 import { CognitiveEventFabric } from '../system/CognitiveEventFabric.ts';
@@ -362,8 +362,8 @@ export class OrganismRuntime {
       await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog(), { sensorFailures: snap.facets.embodiment?.sensorFailures ?? 0 });
       this.initialized = true;
       this.startEmbodimentClock();
-      this.clockScheduler.start('reflection');
-      if (this.trustedShadowLearningScheduler) this.clockScheduler.start('trusted-shadow-learning');
+      this.clockScheduler.start(RUNTIME_CLOCK_IDS.reflection);
+      if (this.trustedShadowLearningScheduler) this.clockScheduler.start(RUNTIME_CLOCK_IDS.trustedShadowLearning);
       if (this.config.autoRun) this.startCognitiveClock();
       await this.journal.write('info', 'runtime.init.complete', { tick: this.core.operationalStatusSnapshot().tick });
     });
@@ -1530,7 +1530,7 @@ export class OrganismRuntime {
     const initialDelayMs = config.initialDelayMs ?? 300_000;
     const intervalMs = config.intervalMs ?? 900_000;
     this.clockScheduler.register({
-      id: 'p23-compound-repair-revision',
+      id: RUNTIME_CLOCK_IDS.p23CompoundRepairRevision,
       initialDelayMs,
       decide: () => {
         const body = this.embodiment.snapshot();
@@ -1600,7 +1600,7 @@ export class OrganismRuntime {
     this.registerCompoundRepairRevisionClock();
     if (this.trustedShadowLearningScheduler) {
       this.clockScheduler.register({
-        id: 'trusted-shadow-learning',
+        id: RUNTIME_CLOCK_IDS.trustedShadowLearning,
         initialDelayMs: this.trustedShadowLearningScheduler.initialDelayMs,
         decide: () => {
           const body = this.embodiment.snapshot();
@@ -1635,7 +1635,7 @@ export class OrganismRuntime {
       });
     }
     this.clockScheduler.register({
-      id: 'cognitive', initialDelayMs: 0,
+      id: RUNTIME_CLOCK_IDS.cognitive, initialDelayMs: 0,
       decide: () => {
         const p = this.runtimeDecision();
         return { delayMs: p.nextDelayMs, reason: p.reasonCodes.join(','), run: p.cognitiveBudget01 >= 0.45 && this.embodiment.snapshot().awake };
@@ -1653,13 +1653,13 @@ export class OrganismRuntime {
       },
     });
     this.clockScheduler.register({
-      id: 'embodiment', initialDelayMs: this.sensorIntervalMs,
+      id: RUNTIME_CLOCK_IDS.embodiment, initialDelayMs: this.sensorIntervalMs,
       decide: () => { const p=this.runtimeDecision(); return { delayMs:p.sampleDelayMs, reason:`sensor-cadence:${p.reasonCodes.join(',')}`, run:!this.stopping }; },
       task: async () => { await this.sampleEmbodiment(); },
       onError: async (error) => { await this.journal.write('warn', 'runtime.clock.failed', { clock: 'embodiment', message: String((error as any)?.message || error) }).catch(() => {}); },
     });
     this.clockScheduler.register({
-      id: 'reflection', initialDelayMs: this.reflectionIntervalMs(),
+      id: RUNTIME_CLOCK_IDS.reflection, initialDelayMs: this.reflectionIntervalMs(),
       decide: () => ({ delayMs: this.reflectionIntervalMs(), reason: 'reflection-cadence', run: this.initialized && !this.stopping }),
       task: async () => { if (this.embodiment.snapshot().awake && this.stepsSinceConsolidation >= 12) await this.sleepConsolidate(); },
       onError: async (error) => { await this.journal.write('warn', 'runtime.clock.failed', { clock: 'reflection', message: String((error as any)?.message || error) }).catch(() => {}); },
@@ -1680,8 +1680,8 @@ export class OrganismRuntime {
     return Math.max(60_000, Math.round(base * (this.embodiment.snapshot().awake ? 1 : 2)));
   }
 
-  private startCognitiveClock(): void { if (this.initialized) this.clockScheduler.start('cognitive'); }
-  private startEmbodimentClock(): void { if (this.initialized) this.clockScheduler.start('embodiment'); }
+  private startCognitiveClock(): void { if (this.initialized) this.clockScheduler.start(RUNTIME_CLOCK_IDS.cognitive); }
+  private startEmbodimentClock(): void { if (this.initialized) this.clockScheduler.start(RUNTIME_CLOCK_IDS.embodiment); }
 
   private shouldCheckpointWorld(force = false): boolean {
     if (force || this.lastWorldCheckpointAt === 0) return true;

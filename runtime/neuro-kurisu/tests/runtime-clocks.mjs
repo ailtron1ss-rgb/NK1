@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
-import { RuntimeClockScheduler } from '../src/organism/system/RuntimeClockScheduler.ts';
+import { RuntimeClockScheduler, RUNTIME_CLOCK_IDS } from '../src/organism/system/RuntimeClockScheduler.ts';
+assert.equal(RUNTIME_CLOCK_IDS.p23CompoundRepairRevision, 'p23-compound-repair-revision',
+  'the P23 runtime clock ID remains a canonical scheduler contract');
 
 const scheduler = new RuntimeClockScheduler();
 let calls = 0;
-scheduler.register({ id: 'cognitive', initialDelayMs: 1, decide: () => ({ delayMs: 10, reason: 'test', run: true }), task: () => { calls += 1; } });
-scheduler.register({ id: 'embodiment', initialDelayMs: 1, decide: () => ({ delayMs: 10, reason: 'test', run: false }), task: () => { calls += 100; } });
-scheduler.register({ id: 'reflection', initialDelayMs: 1, decide: () => ({ delayMs: 10, reason: 'test', run: false }), task: () => { calls += 1000; } });
+scheduler.register({ id: RUNTIME_CLOCK_IDS.cognitive, initialDelayMs: 1, decide: () => ({ delayMs: 10, reason: 'test', run: true }), task: () => { calls += 1; } });
+scheduler.register({ id: RUNTIME_CLOCK_IDS.embodiment, initialDelayMs: 1, decide: () => ({ delayMs: 10, reason: 'test', run: false }), task: () => { calls += 100; } });
+scheduler.register({ id: RUNTIME_CLOCK_IDS.reflection, initialDelayMs: 1, decide: () => ({ delayMs: 10, reason: 'test', run: false }), task: () => { calls += 1000; } });
 scheduler.register({
-  id: 'p23-compound-repair-revision',
+  id: RUNTIME_CLOCK_IDS.p23CompoundRepairRevision,
   initialDelayMs: 1,
   decide: () => ({ delayMs: 10, reason: 'p23-background-repair-test', run: true }),
   task: () => { calls += 10; },

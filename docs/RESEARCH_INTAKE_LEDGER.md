@@ -278,3 +278,10 @@ Do not count a reference as “used” until a source revision/paper protocol is
 - Added a regression against the exact production clock ID and its execution counter.
 - This makes the opt-in scheduled repair path registrable; resource gating, independent candidate evaluation, signed shadow evidence and explicit activation approval remain separate controls.
 - **Unverified:** the clock regression/typecheck awaits an executable Actions runner.
+
+
+## WorkPass143 — single-source registry for runtime scheduler identities (2026-10-23)
+
+- Made runtime clock identifiers a single exported constant map; the type union and allow-list derive from the same source.
+- Rewired OrganismRuntime registration and start calls to those constants, including the P23 background repair clock, preventing duplicated string literals drifting apart again.
+- **Unverified:** actual execution/typecheck remains blocked by runner allocation failures.

@@ -2207,3 +2207,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **Regression added:** `runtime-clocks.mjs` registers the production P23 clock ID, admits its task and checks that it executes.
 - **Impact:** removes a hard runtime blocker from the opt-in autonomous repair-to-P23 scheduling path; it does not claim that candidate generation/promotion is automatically enabled or that learning quality increased.
 - **Validation boundary:** source/test are committed. Hosted Actions still do not allocate a runner, so execution remains unverified.
+
+
+## NK1 WorkPass347 — centralize runtime clock identity
+
+- **Refactored:** exported one canonical `RUNTIME_CLOCK_IDS` registry and derived `RuntimeClockKind` plus the scheduler allow-list from it.
+- **Integrated:** `OrganismRuntime` now references the same constants when registering and starting cognitive, embodiment, reflection, trusted-shadow and P23 compound-repair clocks. This prevents another type/allow-list/caller drift like the one fixed in WorkPass346.
+- **Regression:** runtime clock tests consume the shared constants and pin the P23 repair ID as a stable contract.
+- **Validation boundary:** source and test changes are committed; Actions still end before runner steps, so typecheck/runtime status is not yet verified.

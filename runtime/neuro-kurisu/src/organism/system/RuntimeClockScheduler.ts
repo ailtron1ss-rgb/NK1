@@ -1,4 +1,12 @@
-export type RuntimeClockKind = 'cognitive' | 'embodiment' | 'reflection' | 'trusted-shadow-learning' | 'p23-compound-repair-revision';
+export const RUNTIME_CLOCK_IDS = Object.freeze({
+  cognitive: 'cognitive',
+  embodiment: 'embodiment',
+  reflection: 'reflection',
+  trustedShadowLearning: 'trusted-shadow-learning',
+  p23CompoundRepairRevision: 'p23-compound-repair-revision',
+} as const);
+
+export type RuntimeClockKind = (typeof RUNTIME_CLOCK_IDS)[keyof typeof RUNTIME_CLOCK_IDS];
 
 export interface RuntimeClockDecision {
   delayMs: number;
@@ -34,7 +42,7 @@ export interface RuntimeClockOptions {
 const MAX_CLOCK_DELAY_MS = 24 * 60 * 60 * 1000;
 const MIN_REPEAT_DELAY_MS = 50;
 const RETRY_DELAY_MS = 1_000;
-const CLOCK_KINDS = new Set<RuntimeClockKind>(['cognitive','embodiment','reflection','trusted-shadow-learning','p23-compound-repair-revision']);
+const CLOCK_KINDS = new Set<RuntimeClockKind>(Object.values(RUNTIME_CLOCK_IDS));
 
 function normalizeDecision(value: unknown, fallback: RuntimeClockDecision): RuntimeClockDecision {
   if (value === undefined || value === null) {
