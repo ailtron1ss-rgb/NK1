@@ -1,3 +1,12 @@
+## NK1 WorkPass441 — explicit branch goals, brain wiring and exit gates (2026-10-23)
+
+- Added `docs/NK1_BRANCH_GOALS_AND_EXIT_GATES.md` on the existing planning branch. It defines the finish state of each current category branch, cross-domain interfaces, evidence-based exit gates, the unified cognitive/action/learning loop and a sequenced next-pass plan.
+- The document preserves the existing readiness estimate at 46/100 and distinguishes code committed, tests authored, tests executed, end-to-end evidence and release integration.
+- It adds research intake rules for Hermes/GEPA, Letta/MemFS and Voyager, including license and architecture cautions.
+- `main` and the release archive are unchanged.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
