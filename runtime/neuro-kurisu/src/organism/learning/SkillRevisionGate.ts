@@ -97,7 +97,9 @@ export function evaluateSkillRevision(
       rejectedRows++;
       continue;
     }
-    const receiptKey = JSON.stringify([row.method, row.verifierId, row.evidenceRef.normalize('NFKC').trim()]);
+    // Evidence identity is global within a comparison: a receipt cannot be relabelled
+    // as another method/verifier or replayed under another task to manufacture a pair.
+    const receiptKey = row.evidenceRef.normalize('NFKC').trim();
     if (seenEvidenceReceipts.has(receiptKey)) { rejectedRows++; continue; }
     seenEvidenceReceipts.add(receiptKey);
     const key = JSON.stringify([row.taskId, row.taskVersion, row.seed, row.attempt]);

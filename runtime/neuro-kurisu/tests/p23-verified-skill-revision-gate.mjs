@@ -45,6 +45,15 @@ const versionMixed = rows.map(row => row.taskId === 'task-0' && row.method === '
 result = evaluateSkillRevision(versionMixed, 'baseline', 'candidate');
 assert.equal(result.pairedN, 9, 'cross-version task identity must not contribute a paired sample');
 assert.equal(result.accepted, true, 'the remaining nine valid task/version pairs remain independently sufficient');
+
+// One evidence reference cannot represent both the baseline and candidate method.
+// The duplicate is rejected before it can create a matched pair.
+const sharedReceipt = rows.map(row => row.taskId === 'task-0' && row.method === 'candidate'
+  ? {...row, evidenceRef: 'artifact://task-0/baseline'}
+  : row);
+result = evaluateSkillRevision(sharedReceipt, 'baseline', 'candidate');
+assert.equal(result.pairedN, 9, 'one receipt cannot be counted for both methods');
+assert.ok(result.rejectedRows >= 1, 'cross-method evidence reuse must be counted as a rejected row');
 // Validation/train observations are deliberately excluded.
 result = evaluateSkillRevision(rows.map(x=>({...x,split:'train'})),'baseline','candidate');
 assert.equal(result.pairedN,0);

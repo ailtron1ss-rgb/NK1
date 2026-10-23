@@ -239,3 +239,11 @@ Do not count a reference as “used” until a source revision/paper protocol is
 - The gate now pairs only identical `taskId + taskVersion + seed + first-attempt` records, preventing a reused task ID from making different prompt/task definitions look like a matched experiment.
 - Regression covers mixed-version baseline/candidate rows and malformed version identity. The main promotion path still requires signed evidence, current-manifest matching, seed-level confidence bounds and separate explicit approval.
 - **Unverified:** runtime tests and typecheck have not executed because the current Actions job exposes no runner steps/logs.
+
+
+## WorkPass138 — global receipt identity at the reflective evaluation gate (2026-10-23)
+
+- Treat normalized `evidenceRef` as the unique receipt identity across method labels, verifier labels and task rows. A single receipt can never manufacture a baseline/candidate pair by being relabelled.
+- Regression ensures a reused baseline receipt does not contribute a candidate outcome; paired task/version sampling remains bound to the manifest version.
+- This is an evidence-integrity adaptation to NK1's signed outcome lifecycle. No upstream code was copied.
+- **Unverified:** executable regression and typecheck await a functioning Actions runner.

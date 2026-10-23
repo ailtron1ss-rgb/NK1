@@ -2167,3 +2167,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - **Regression added:** the revision gate checks that baseline v1 and candidate v2 for the same task ID do not form a pair; malformed missing task-version values are rejected.
 - **Research principle:** paired controlled evaluation must compare the same task definition and avoid sample inflation when task definitions evolve. This follows the project's existing manifest-bound evaluation architecture; no external implementation copied.
 - **Validation boundary:** changes and tests are committed; hosted Actions still have no executable steps/logs, so runtime test status remains unverified.
+
+
+## NK1 WorkPass342 — prevent one evidence receipt from representing two methods
+
+- **Fixed:** revision evidence deduplication now keys on the normalized evidence reference itself, rather than `method + verifier + reference`. A single signed receipt cannot be relabelled as both baseline and candidate or rebound to another verifier/task to fabricate matched evidence.
+- **Regression added:** reusing the baseline receipt as the candidate receipt removes that would-be pair and increments the rejected-row count.
+- **Compatibility:** the authenticated outcome path already emits per-outcome evidence references; normal distinct receipts retain their existing scoring behavior.
+- **Validation boundary:** source and regression are committed; tests and typecheck remain unverified because hosted Actions have returned jobs with zero steps/logs.
