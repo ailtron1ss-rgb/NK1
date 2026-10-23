@@ -1,3 +1,25 @@
+## WorkPass361–362 — reflection confidence, provenance and transfer semantics (2026-10-23)
+
+### Reviewed sources
+
+- **Hermes Agent Self-Evolution**, [skill evolution orchestrator](https://github.com/NousResearch/hermes-agent-self-evolution/blob/main/evolution/skills/evolve_skill.py), [plan](https://github.com/NousResearch/hermes-agent-self-evolution/blob/main/PLAN.md), [package manifest](https://github.com/NousResearch/hermes-agent-self-evolution/blob/main/pyproject.toml), MIT-listed project. Relevant mechanisms: generate/evolve candidate skills, measure baseline and candidate, keep validation separate from holdout, enforce size/safety constraints and refuse deployment when constraints fail.
+- **Reflexion**, [paper](https://arxiv.org/abs/2303.11366). Relevant mechanism: keep natural-language/feedback reflections in episodic memory to guide later attempts. In NK1 a reflection is only a hypothesis, never a trusted label.
+- **Voyager**, [paper](https://arxiv.org/abs/2305.16291). Relevant mechanisms: automatic curriculum, persistent executable skill library, iterative refinement from environment/error feedback and self-verification.
+- **CleanRL**, [documentation](https://docs.cleanrl.dev/). Relevant research practices: reproducible seeded experiments, transparent implementations and measured benchmarks.
+
+### NK1 adaptation decision
+
+- Kept one canonical TypeScript P23 engine and its existing verified candidate / independent-evaluator / signed-shadow / explicit-approval lifecycle. No duplicate Python/DSPy optimization runtime or upstream code was vendored in this pass.
+- Added a descriptive Wilson pass-rate interval to reflection outputs while explicitly marking that temporal dependence may invalidate classical independent-sample interpretation. Its interval only widens/reduces heuristic confidence; it never grants candidate promotion.
+- Made the pass threshold explicit and aligned the public `ReflectionHypothesis` interface with emitted metric fields.
+- Added provenance identifying the total valid occurrence count separately from the recent sample count and its tick window; evidence IDs now correspond to the exact sample used for those metrics.
+- Separated recurrence/repair value and information gain from transfer evidence. Both reflection and evidence-debt targets report `transfer01=0` absent independently measured cross-context/held-out transfer.
+- Extended P23 regressions for identity collisions, malformed scores, accessors, revoked proxies, oversized inputs, the recent-window boundary and transfer semantics; corrected the suite completion marker.
+
+### Validation state
+
+The source, test and documentation changes are committed on `feature/learning`, and the P23 aggregate command includes the focused regression file. Actions API results available during this pass show workflow jobs failing with no exposed steps/log detail. Thus the new suite/typecheck remains **unverified**, not passed. No performance/transfer uplift or consciousness claim is made. `main` and the Release ZIP remain unchanged.
+
 ## WorkPass356 — trustworthy regression reporting
 
 - Corrected the experiment-plan regression runner so its success marker is emitted only after all appended trust-boundary, evidence-replay, atomicity and size-budget assertions finish.
