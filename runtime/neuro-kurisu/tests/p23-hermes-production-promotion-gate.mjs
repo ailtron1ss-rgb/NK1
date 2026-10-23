@@ -74,6 +74,14 @@ assert.equal(approvalCalls, 0,
 // The independent promotion path rejects caller-invented baseline report arrays;
 // it requires complete evaluator envelopes to prove task/seed/split/environment/manifest identity.
 candidate.revisionProvenance = { schemaVersion: 1, evaluationFingerprint: 'c'.repeat(64) };
+// A caller must not bypass the disabled report-only API via the lower-level
+// compatibility promotion method once a candidate is known to be a reflective revision.
+assert.throws(() => engine.approveVerifiedSkillCandidate(
+  candidate.candidateId,
+  { approvedBy: 'reviewer', approvedAt: 100, expectedActiveVersion: null },
+), /reflective revision candidates require the independent evaluation promotion gate/);
+assert.equal(approvalCalls, 0,
+  'the generic promotion API must not bypass the independent fitness/provenance gate for reflective revisions');
 const candidateEnvelope = {
   payloadFingerprint: candidate.payloadFingerprint,
   evaluationFingerprint: 'c'.repeat(64),
