@@ -7,6 +7,16 @@ import type { PersistenceRuntime } from './PersistenceRuntime.ts';
 import type { WorldSubsystemRuntime } from './WorldSubsystemRuntime.ts';
 import { clamp, goalVectorFallback } from './ExecutionPrimitives.ts';
 
+export function finiteOr(value: unknown, fallback: number): number {
+  // Keep the safety boundary total: neither input nor fallback may leak NaN/Infinity.
+  const safeFallback = Number.isFinite(fallback) ? fallback : 0;
+  // Do not let null, booleans, or empty strings silently become a valid zero.
+  if (typeof value !== 'number' && typeof value !== 'string') return safeFallback;
+  if (typeof value === 'string' && value.trim().length === 0) return safeFallback;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : safeFallback;
+}
+
 /**
  * Capability-limited host surface for reduced-resolution life ticks.
  * The micro-cycle can mutate canonical organism state and update the same
@@ -93,7 +103,7 @@ export class OperationalMicroCycleRuntime {
     // Treat incoming reward/success as claims, not verified credit. Keep the
     // neutral baseline until the full-cycle verifier can pass its evidence here.
     const microReward = 0.5;
-    const microError = clamp(Number(observation.surprise ?? state.predictionError));
+    const microError = clamp(finiteOr(observation.surprise, state.predictionError));
     const microVerified = false;
     const microSeed = [
       state.needs.energy,
