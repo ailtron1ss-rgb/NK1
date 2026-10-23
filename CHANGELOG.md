@@ -1,3 +1,13 @@
+## NK1 WorkPass450 — canonical identity restore boundary (2026-10-23)
+
+- Replaced the unchecked persisted-state spread in `CanonicalSelfAgencyAuthority.restore` with a bounded `PlainDataSnapshot` plus explicit field/score/counter validation.
+- Canonical identity invariants/fingerprint are always reconstructed from the built-in Kurisu canon; persisted data cannot overwrite them. Invalid counters/traits or a mismatched fingerprint set identity integrity to zero and enter `identity-block`.
+- Unknown forward-compatible trait keys are ignored; accessor-backed/cyclic/oversized data fails closed without invoking getters.
+- Expanded the existing `canonical-self-agency-authority.mjs` regression; no new runtime dependency.
+- Inspired by Hexis's distinction between evolving worldview/personality memories and persistent identity contracts; no Hexis code copied. Exact-head execution remains unverified.
+
+---
+
 ## NK1 WorkPass456 — harden goal ecology restore and live ingress (2026-10-23)
 
 - Added the canonical bounded plain-data boundary to P68 goal lifecycle input and persistence restore. Getter-backed/cyclic state fails closed before lifecycle counters or goal fields change; restored counters, modes and history are normalized to finite schema-valid values.
