@@ -195,8 +195,38 @@ export class PredictiveSelfAgencySubstrate {
     externallyRequested:boolean,
     causalMatch01:number,
   ) {
+    // Validate every external learning signal before prediction mutates the model.
+    // Malformed reward data or hostile state getters must yield zero learning.
+    if(!ACTIONS.includes(action))throw new TypeError('predictive-self-agency-action-invalid');
+    if(typeof outcome01!=='number'||!Number.isFinite(outcome01)||outcome01<0||outcome01>1) {
+      throw new RangeError('predictive-self-agency-outcome-invalid');
+    }
+    if(typeof externallyRequested!=='boolean')throw new TypeError('predictive-self-agency-request-flag-invalid');
+    if(typeof causalMatch01!=='number'||!Number.isFinite(causalMatch01)||causalMatch01<0||causalMatch01>1) {
+      throw new RangeError('predictive-self-agency-causal-match-invalid');
+    }
+    let detachedState:unknown;
+    try {
+      detachedState=snapshotPlainData<OrganismState>(observedState,{
+        maxDepth:16,maxNodes:2048,maxStringUnits:32*1024,
+      });
+    } catch {
+      throw new TypeError('predictive-self-agency-outcome-state-invalid');
+    }
+    if(!detachedState||typeof detachedState!=='object'||Array.isArray(detachedState)) {
+      throw new TypeError('predictive-self-agency-outcome-state-invalid');
+    }
+    const cleanObservedState=detachedState as OrganismState;
+    if(!Number.isSafeInteger(cleanObservedState.tick)||cleanObservedState.tick<0||
+       typeof cleanObservedState.at!=='number'||!Number.isFinite(cleanObservedState.at)||cleanObservedState.at<0||
+       !cleanObservedState.needs||typeof cleanObservedState.needs!=='object'||
+       !['energy','cognitiveLoad','uncertainty','novelty','goalPressure','socialNeed','identityCoherence']
+         .every(key=>typeof cleanObservedState.needs[key as keyof typeof cleanObservedState.needs]==='number'&&
+           Number.isFinite(cleanObservedState.needs[key as keyof typeof cleanObservedState.needs]))) {
+      throw new TypeError('predictive-self-agency-outcome-state-invalid');
+    }
     const p=this.predict(action);
-    const err=clamp01(outcome01)-p.predictedOutcome01;
+    const err=outcome01-p.predictedOutcome01;
     const lr=.026/Math.sqrt(1+this.state.predictionSamples/2500);
     const idx=Math.max(0,ACTIONS.indexOf(action));
     const d=err*p.predictedOutcome01*(1-p.predictedOutcome01);
@@ -219,7 +249,7 @@ export class PredictiveSelfAgencySubstrate {
     );
     this.state.predictionSamples++;
     this.state.lastObservedSelfState=this.features({
-      self:[],body:[],world:[],memory:[],motivation:[],state:observedState,
+      self:[],body:[],world:[],memory:[],motivation:[],state:cleanObservedState,
       externalRequested:externallyRequested,
     });
     return {
