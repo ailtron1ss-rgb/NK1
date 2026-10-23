@@ -1,3 +1,11 @@
+## NK1 WorkPass432 — correct full-cycle wiring regression expressions (2026-10-23)
+
+- Corrected the WorkPass425 runtime-wiring test's over-escaped regular-expression literals. They now match actual whitespace/brace/path text in JavaScript instead of looking for literal backslash sequences.
+- The full-cycle runtime still consumes the detached normalized observation; only the regression patterns were changed.
+- This is a test correction. Hosted execution remains unconfirmed while Actions jobs fail before runner assignment.
+
+---
+
 ## NK1 WorkPass426 — keep boundary regression executable as JavaScript (2026-10-23)
 
 - Corrected the newly added .mjs regression to use JavaScript property access rather than a TypeScript-only assertion. The underlying detached-snapshot runtime change from WorkPass425 is unchanged.
