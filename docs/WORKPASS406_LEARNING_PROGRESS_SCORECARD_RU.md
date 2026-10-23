@@ -1,18 +1,18 @@
-# NK1 WorkPass406 — оценка прогресса ветки обучения
+# NK1 WorkPass407 — оценка прогресса ветки обучения
 
 Дата снимка: 23 октября 2026 года. Рабочая ветка: `feature/learning`.
 
-## Текущая оценка
+## Текущая оценка (после WorkPass407)
 
 | Область | Оценка реализации | Что входит / почему не 100% |
 |---|---:|---|
 | Сбор опыта, replay и continual learning | 80% | Есть приоритизированный/стратифицированный replay, forgetting/transfer/drift-системы; полный независимый live-benchmark по реальным задачам пока не подтверждён |
-| Жизненный цикл навыка и promotion gate | 90% | Есть staged candidates, независимая оценка, разделение validation/holdout, signed evidence, authenticated approval и rollback; реальное внешнее исполнение sandbox/verifier/scanner остаётся отдельным gate |
-| Целостность оценки и происхождение evidence | 88% | Есть точные fingerprints, canonical task/seed/split joins, trust boundary и hash-chained fitness journal; независимое развёртывание evaluator authority пока не подтверждено |
-| Метрики качества и наблюдаемость | 82% | Есть P23 family confidence bounds, журнал fitness-решений и WorkPass406 task-balanced IQM/paired improvement; требуется исторический прогон на данных реальных циклов и валидация калибровки |
-| Воспроизводимость production-проверок | 40% | Регрессионные контракты и workflow подключены, но Actions на точном текущем HEAD сообщают failure без доступных steps/logs; полный независимый multi-seed uplift не доказан |
+| Жизненный цикл навыка и promotion gate | 92% | Есть staged candidates, независимая оценка, разделение validation/holdout, signed evidence, authenticated approval, rollback и отдельный журнал фактического результата активации; production sandbox/verifier/scanner остаётся отдельным gate |
+| Целостность оценки и происхождение evidence | 90% | Есть точные fingerprints, canonical task/seed/split joins, trust boundary, hash-chained fitness journal и hash-chained lifecycle transitions; подписанные удалённые checkpoints и независимое развёртывание evaluator authority пока не подтверждены |
+| Метрики качества и наблюдаемость | 86% | Есть P23 family confidence bounds, fitness journal, WorkPass406 task-balanced IQM/paired improvement и WorkPass407 activation-intent/outcome diagnostics; требуется reconciliation после crash и история по реальным независимым циклам |
+| Воспроизводимость production-проверок | 42% | Регрессионные контракты и workflow подключены, но Actions на точном текущем HEAD сообщают failure без доступных steps/logs; полный независимый multi-seed uplift не доказан |
 
-**Сводная инженерная оценка полноты реализации категории: 77%.** Расчёт — взвешенное экспертное резюме по приведённым направлениям, а не автоматически измеренная метрика и не оценка интеллекта.
+**Сводная инженерная оценка полноты реализации категории: 79%.** Расчёт — взвешенное экспертное резюме по приведённым направлениям, а не автоматически измеренная метрика и не оценка интеллекта.
 
 **Подтверждённая production-готовность категории: около 45%.** Этот показатель ниже, потому что он учитывает реальное исполнение проверок на точном HEAD, развёртывание независимых evaluator authorities, подтверждённые gains и длительные интеграционные прогоны. Пока CI не предоставляет запускаемые шаги и логи, высокий процент реализованного кода нельзя считать подтверждённой готовностью.
 
@@ -30,11 +30,23 @@
 
 На проверенном commit P26 Learning Validation завершился со статусом `failure`, но API возвращает для job пустой список шагов, `logs_url=null`, а загрузка логов — `BlobNotFound`. Поэтому причину нельзя честно приписать этому коду или runner, и результат нельзя считать PASS.
 
-WorkPass406 не демонстрирует фактического улучшения навыков сам по себе: метрики описательные и явно помечены `diagnosticOnly: true`. Они не меняют `eligible`, не обходят paired-seed confidence, safety, provenance, signed-evidence и approval gates.
+WorkPass406 не демонстрирует фактического улучшения навыков сам по себе: метрики описательные и явно помечены `diagnosticOnly: true`. WorkPass407 закрывает только журналирование решения и его фактического lifecycle-исхода; это тоже не доказывает прирост навыка. Метрики не меняют `eligible`, а lifecycle-журнал не заменяет paired-seed confidence, safety, provenance, signed-evidence и approval gates.
 
 ## Конечная цель ветки обучения
 
 Условие готовности — не наличие новых файлов. Категория считается завершённой после того, как полный цикл «реальный исход/ошибка → разбор траектории → план ремонта → кандидат → выполнение в изолированном окружении → независимая оценка на фиксированных validation и нетронутом holdout → подтверждённое решение → наблюдаемый результат/rollback» выполняется воспроизводимо; точные тесты и typecheck зелёные на одном HEAD; устойчивый выигрыш подтверждён заранее зарегистрированными независимыми seed/task families без недопустимого регресса; длинный soak, privacy/license review и production evaluator isolation закрыты.
+
+## WorkPass407 — замкнутый журнал фактической активации
+
+- Отдельный `LearningLifecycleJournal.ts` пишет events `promotion-rejected`, `activation-intent`, `activation-confirmed` и явный `activation-outcome-unknown` в hash-chained JSONL.
+- P23 пишет долговременный intent после evidence binding, но до активации. Ошибка записи intent блокирует side effect; ошибка записи confirmed после успешного store не превращается в ложную ошибку API — остаётся visible pending intent.
+- Исключение из store обозначается как outcome unknown, поскольку вызывающая сторона не всегда может доказать, что side effect не состоялся.
+- Runtime публикует безопасные агрегаты в `longitudinalSnapshot()` и `persistenceMetrics()`. Отдельный path resolver и тест защищают основной state file от перезаписи JSONL.
+- Upstream напрямую исследованы файлы Hermes Self-Evolution: `README.md` (blob `c59f9a6`), `PLAN.md` (blob `48f9ef1`) и `evolution/skills/evolve_skill.py` (blob `2a79a67`). Принципы constraint gate, раздельной оценки holdout и сохранения failed candidates адаптированы в NK1; несовместимый Python optimizer-код и новые сторонние runtime-зависимости не импортировались.
+- Регрессия подключена в P23 aggregate command и P26 Learning Validation; WorkPass402 также проверяет привязку production rejection к кандидатному payload/evaluation fingerprint.
+- **Статус проверки:** implementation/CI wiring committed, but actual exact-HEAD run remains unverified because Actions returns a failed job without step list/log URL. No measured skill improvement is claimed.
+
+Сводная инженерная оценка после прохода — **79% реализации категории**, production readiness — **~45%** (экспертные оценки, не автоматические показатели).
 
 ## Следующие приоритеты
 
