@@ -49,6 +49,7 @@ const environmentFingerprint = 'e'.repeat(64);
 let sandboxRuns = 0;
 let stale = false;
 let resolverCalls = 0;
+let freshnessChecks = 0;
 let providerEvaluatorCalls = 0;
 
 const configFactory = () => ({
@@ -115,6 +116,7 @@ const provider = withIndependentCandidateEvaluation(
         baselinePayloadFingerprint: fingerprint({ kind: 'active-baseline', body: 'trusted active skill' }),
         sourceCandidatePayloadFingerprint: fingerprint({ kind: 'source-candidate', body: 'trusted source version' }),
         assertStillCurrent() {
+          freshnessChecks++;
           if (stale) throw new Error('canonical active/source identity changed during evaluation');
         },
       };
@@ -156,7 +158,8 @@ assert.equal(revised.evaluation.validation.length, 4);
 assert.equal(revised.evaluation.holdout.length, 4);
 assert.equal(sandboxRuns, tasks.length * 3, 'the revised payload must receive its own independent execution');
 assert.equal(providerEvaluatorCalls, 0);
-assert.equal(resolverCalls, 2, 'canonical source and active versions must be rechecked after fresh evaluation');
+assert.equal(resolverCalls, 1, 'payloads are resolved only from the canonical-store callback');
+assert.equal(freshnessChecks, 2, 'active/source versions must be rechecked after source and fresh evaluation');
 assert.ok(revised.evaluation.validation.every(report => report.taskSuccess.passed));
 
 // A source/active store revision during generation cannot reuse stale baseline metrics.
