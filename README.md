@@ -1,3 +1,16 @@
+## Current source-stack checkpoint — WorkPass412 (2026-10-23)
+
+- **Richer learning diagnostics:** `LearningRobustMetrics.ts` now reports task-balanced IQM, task-balanced median, task-balanced optimality gap (score ceiling = 1), all three deltas, and paired probability of improvement for task success, skill quality and trajectory quality.
+- **Fair task weighting:** matched repeated trials are averaged within task before the robust summaries, so a task with more repeat runs does not dominate. Scores pass the existing [0,1] boundary. This is a task-balanced adaptation of metric ideas from RLiable, not copied code.
+- **Upstream inspection:** directly read [`google-research/rliable/rliable/metrics.py`](https://github.com/google-research/rliable/blob/master/rliable/metrics.py) (blob `dc206a180c822eaf3bc8524a63b127aeb1e60fe7`); its mean/median, optimality-gap, IQM and probability-of-improvement estimators inform the schema.
+- **Integration/safety:** metrics flow through the existing P23 independent evaluator and remain `diagnosticOnly: true`. They do not alter eligibility, safety, evidence binding or promotion approval.
+- **Regression/CI:** `workpass406-learning-robust-metrics.mjs` now covers median/gap/delta and zero-gap ceiling behavior. Its existing P23/P26 execution wiring remains in place; the latest workflow-to-package audit also checks command context.
+- **Progress estimate:** learning-category implementation **83%**; production readiness **~45%**. Estimates remain engineering judgments, not benchmark outcomes.
+- **Validation boundary:** exact-HEAD test/typecheck still unconfirmed; GitHub Actions reports failure without available step logs. No measured learning uplift is claimed; `main` and Release ZIP remain unchanged.
+- Details: [WorkPass412 implementation note](docs/WORKPASS412_RLIABLE_METRIC_DEPTH_RU.md) and [learning progress scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md).
+
+---
+
 ## Current source-stack checkpoint — WorkPass409 (2026-10-23)
 
 - **Crash window closed:** reconciliation now scans every pending `activation-intent`, not only attempts that managed to append `activation-outcome-unknown`. If the process died immediately after intent, the current versioned skill store can still reconcile the result.
