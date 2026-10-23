@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { P23CompoundRepairRevisionCoordinator, fingerprintCompoundRepairEvidence } from '../src/organism/learning/P23CompoundRepairRevisionCoordinator.ts';
+import { P23CompoundRepairRevisionCoordinator, canonicalCompoundRepairEvidence, fingerprintCompoundRepairEvidence } from '../src/organism/learning/P23CompoundRepairRevisionCoordinator.ts';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 
 const evidence = [{
@@ -12,7 +12,7 @@ const evidence = [{
 const sameTimeEvidence = [
   evidence[0],
   { ...evidence[0], failureFingerprint:'fp-b', stepId:'step-2', diagnosis:'different verified failure',
-    candidateTools:['tool-z','tool-a'] },
+    candidateTools:['tool-z','fallback','tool-a'] },
 ];
 const permutedEvidence = [...sameTimeEvidence].reverse().map(row => ({
   ...Object.fromEntries(Object.entries(row).reverse()),
@@ -23,6 +23,21 @@ assert.equal(fingerprintCompoundRepairEvidence(sameTimeEvidence), fingerprintCom
 assert.notEqual(fingerprintCompoundRepairEvidence(sameTimeEvidence),
   fingerprintCompoundRepairEvidence(sameTimeEvidence.map((row,index) => index===0 ? {...row,diagnosis:'materially changed diagnosis'} : row)),
   'a material change in repair evidence must change the revision fingerprint');
+
+let canonicalAccessorCalls=0;
+const accessorEvidenceRow=Object.defineProperty({...evidence[0]},'diagnosis',{
+  enumerable:true,get(){canonicalAccessorCalls++;return 'forged diagnosis';},
+});
+assert.throws(()=>canonicalCompoundRepairEvidence([accessorEvidenceRow]),/compound-repair-evidence-data-boundary-rejected/);
+assert.equal(canonicalAccessorCalls,0,'canonical evidence snapshot must reject getters without invoking them');
+assert.throws(()=>canonicalCompoundRepairEvidence([evidence[0],,]),/compound-repair-evidence-data-boundary-rejected/,
+  'sparse evidence rows must not be skipped by canonicalization');
+assert.throws(()=>canonicalCompoundRepairEvidence([{...evidence[0],confidence01:1.01}]),/compound-repair-evidence-row-invalid/,
+  'out-of-range evidence confidence must not contribute to a revision fingerprint');
+assert.throws(()=>canonicalCompoundRepairEvidence([{...evidence[0],candidateTools:['fallback','fallback']}]),/compound-repair-evidence-row-invalid/,
+  'duplicate candidate tools must not change revision provenance');
+assert.deepEqual(canonicalCompoundRepairEvidence(sameTimeEvidence).map(row=>row.failureFingerprint),
+  ['fp-a','fp-b'],'valid repair evidence remains accepted and deterministically ordered');
 let providerCalls = 0;
 let stagedCalls = 0;
 let received = null;
