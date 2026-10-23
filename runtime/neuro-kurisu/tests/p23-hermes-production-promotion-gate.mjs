@@ -71,6 +71,17 @@ assert.equal(receiptVerifierCalls, 0,
 assert.equal(approvalCalls, 0,
   'even a forged-looking perfect holdout score report must not reach promotion approval');
 
+let approvalGetterCalls = 0;
+const getterApproval = { approvedAt: 100, expectedActiveVersion: null };
+Object.defineProperty(getterApproval, 'approvedBy', {
+  enumerable: true,
+  get() { approvalGetterCalls += 1; return 'reviewer'; },
+});
+assert.throws(() => engine.approveVerifiedSkillCandidate(candidate.candidateId, getterApproval),
+  /skill promotion approval data-boundary rejected/);
+assert.equal(approvalGetterCalls, 0, 'approval accessors must be rejected without execution');
+assert.equal(approvalCalls, 0, 'a malformed approval must not reach the backing skill store');
+
 // The independent promotion path rejects caller-invented baseline report arrays;
 // it requires complete evaluator envelopes to prove task/seed/split/environment/manifest identity.
 candidate.revisionProvenance = { schemaVersion: 1, evaluationFingerprint: 'c'.repeat(64) };
