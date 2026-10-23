@@ -1,3 +1,15 @@
+## Latest durable checkpoint — WorkPass330 production revision wiring (2026-10-23)
+
+- Continue on `workpass328-upstream-donor-gate`, based on `workpass70-source`; draft PR #86 targets `rebuild`. Keep `main` untouched.
+- WorkPass330 fixes the server → P23 production configuration gap: a configured compound-repair provider now must be paired with a separate `NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE` in production. That module supplies three host-owned evaluator commands, a task builder, an environment fingerprint and a host-owned experiment authority.
+- The evaluator config loads from a different real module path than the candidate repair provider and receives only `stateDirectory`, not engine/store/registry capabilities. Existing host-owned evaluator preparation performs executable, environment and disjoint-storage checks.
+- Added opt-in `NEURO_COMPOUND_REPAIR_BACKGROUND_REVISION_JSON`. When enabled with provider + independent evaluator config, the existing runtime scheduler may stage candidates from verified non-holdout repair evidence; it does not activate them.
+- Added `test:workpass330:production-revision-wiring`, registered in root `audit:quick` and WorkPass71 CI. Test/typecheck execution on the exact head is **unverified** because hosted Actions jobs still terminate before executing steps.
+- The deployment-specific host evaluator module, fixed manifest/validation/holdout plans and real independent task results are not supplied by this change; do not claim the full autonomous learning loop is live.
+- No dependency was added; `main` and the release ZIP were not updated. Read [WorkPass330](docs/WORKPASS330_PRODUCTION_REVISION_WIRING_2026-10-23.md) and [WorkPass329](docs/WORKPASS329_HERMES_MULTIAXIS_HOLDOUT_GATE_2026-10-23.md) before continuing.
+
+---
+
 ## Latest durable checkpoint — WorkPass329 multi-axis holdout gate (2026-10-23)
 
 - Active working branch: `workpass328-upstream-donor-gate`, based on `workpass70-source`; draft PR #86 targets `rebuild`. Keep `main` (the separate release/metadata line) untouched.
