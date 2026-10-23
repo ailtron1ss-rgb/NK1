@@ -15,6 +15,28 @@ assert.equal(retrieveSkills({contextKey:ctx,action:'verify',now:2000},skills).so
 assert.ok(retrievedSkillBias({contextKey:ctx,action:'verify',now:2000},skills)>0);
 const outcomes=Array.from({length:7},(_,i)=>({id:'x'+i,contextKey:ctx,action:'explore',success:i<2?0:.1,predictedUtility:.8,surprise:.9,tick:i}));
 const reflections=reflectOnOutcomes(outcomes);
+
+ // Equal-priority diagnoses must have identical order regardless of the order in which
+ // provider/replay batches arrive. This keeps the autonomous repair queue reproducible.
+ const tiedReflectionRows = ['z-context', 'a-context'].flatMap(contextKey =>
+   Array.from({ length: 4 }, (_, i) => ({
+     id: contextKey + '-' + i, contextKey, action: 'reflect', success: .1,
+     predictedUtility: .8, surprise: .9, tick: i,
+   })),
+ );
+ const tiedReflectionForward = reflectOnOutcomes(tiedReflectionRows);
+ const tiedReflectionReverse = reflectOnOutcomes([...tiedReflectionRows].reverse());
+ assert.deepEqual(
+   tiedReflectionReverse.map(item => item.key),
+   tiedReflectionForward.map(item => item.key),
+   'equal-priority reflection queue ordering must not depend on input arrival order',
+ );
+ assert.deepEqual(
+   tiedReflectionForward.map(item => item.contextKey),
+   ['a-context', 'z-context'],
+   'equal-priority diagnoses use stable code-unit tie-breaking after evidence strength/recency',
+ );
+
 assert.ok(reflections.length>0);
 assert.equal(reflections[0].kind,'repeated-context-failure');
 assert.ok(reflections[0].priority01>.6);

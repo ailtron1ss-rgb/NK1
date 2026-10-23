@@ -173,7 +173,7 @@ export function reflectOnOutcomes(rows:readonly ReflectionExperience[],limit=12)
       evidenceNeeded:'At least one independent verifier or human-reviewed outcome on a held-out task; self-reflection alone is insufficient',
       confidence01:confidence,sourceExperienceIds:recent.map(e=>e.id)});
   }
-  return out.sort((a,b)=>b.priority01-a.priority01).slice(0,Math.max(1,Math.min(64,Math.floor(num(limit,12)))));
+  return out.sort((a,b)=>b.priority01-a.priority01||b.confidence01-a.confidence01||b.windowEndTick-a.windowEndTick||compareText(a.contextKey,b.contextKey)||compareText(a.action,b.action)||compareText(a.key,b.key)).slice(0,Math.max(1,Math.min(64,Math.floor(num(limit,12)))));
 }
 function scoreValidatedLearningTarget(t:LearningTargetInput):LearningTarget{
   const rationale:string[]=[];

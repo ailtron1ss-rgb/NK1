@@ -1,3 +1,12 @@
+## NK1 WorkPass424 — deterministic autonomous reflection queue (2026-10-23)
+
+- Made outcome-reflection ordering deterministic when hypotheses have equal priority and confidence: newest evidence window wins, then context/action/key use locale-independent code-unit ordering.
+- Added a replay-order permutation regression so identical evidence produces the same repair queue regardless of provider or batch insertion order. This prevents nondeterministic autonomous repair targeting when scores tie.
+- No new dependency or promotion shortcut. Reflection remains a hypothesis generator; held-out independent evaluation and authenticated promotion gates remain mandatory.
+- The new test is committed but exact-head execution remains unconfirmed while Actions jobs fail before runner assignment; no learning uplift is claimed.
+
+---
+
 ## NK1 WorkPass423 — bound independent-evaluation cardinality (2026-10-23)
 
 - Added hard cardinality limits before expensive work: at most 4,096 planned tasks per candidate evaluation, 128 required or verifier-claimed capabilities, and 512 expected/observed trajectory steps per task.
