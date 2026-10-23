@@ -1,10 +1,3 @@
-## NK1 WorkPass328 — preserve concurrent learning requests for new evidence (2026-10-23)
-
-- **Fixed:** P23 revision requests for one skill no longer coalesce solely by skill ID. Identical evidence snapshots still share a single in-flight evaluation; requests carrying a different verified evidence digest wait for the predecessor to settle, then re-read the canonical repair ledger and retry with current evidence.
-- **Safety preserved:** the older attempt still fails closed if its evidence changed during asynchronous preparation. Only the fresh digest is permitted to reach candidate staging; the follow-up does not inherit an old evaluation result.
-- **Regression added:** `runtime/neuro-kurisu/tests/workpass172-compound-revision-coordinator.mjs` now covers this race and asserts stale-attempt rejection, successful retry, single staging, and exact latest-digest provenance. The existing npm script `test:workpass172:compound-revision-coordinator` already reaches this test.
-- **Validation boundary:** code and regression are committed; hosted Actions currently stop before any runner step, so this pass does **not** claim a runtime test pass or green CI.
-
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
@@ -2120,3 +2113,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
 - Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
 - This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
+
+## NK1 WorkPass328 — preserve concurrent learning requests for new evidence (2026-10-23)
+
+- **Fixed:** P23 revision requests for one skill no longer coalesce solely by skill ID. Identical evidence snapshots still share a single in-flight evaluation; requests carrying a different verified evidence digest wait for the predecessor to settle, then re-read the canonical repair ledger and retry with current evidence.
+- **Safety preserved:** the older attempt still fails closed if its evidence changed during asynchronous preparation. Only the fresh digest is permitted to reach candidate staging; the follow-up does not inherit an old evaluation result.
+- **Regression added:** `runtime/neuro-kurisu/tests/workpass172-compound-revision-coordinator.mjs` now covers this race and asserts stale-attempt rejection, successful retry, single staging, and exact latest-digest provenance. The existing npm script `test:workpass172:compound-revision-coordinator` already reaches this test.
+- **Validation boundary:** code and regression are committed; hosted Actions currently stop before any runner step, so this pass does **not** claim a runtime test pass or green CI.
