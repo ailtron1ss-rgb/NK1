@@ -152,10 +152,14 @@ export class EmbodimentRuntime {
   }
   async listen(): Promise<string | null> {
     if(!this.body.sttAvailable) { this.voice.lastError='stt-unavailable'; this.voice.lastAt=Date.now(); return null; }
+    if(this.voice.listening) { this.voice.lastError='stt-listen-already-active'; this.voice.lastAt=Date.now(); return null; }
     this.voice.listening=true; this.voice.listenCount+=1; this.voice.lastAt=Date.now(); this.voice.lastError=null;
     try {
-      const text=await this.speechInputDispatcher();
-      if(!text) this.voice.lastError='stt-empty-or-failed';
+      const providerText: unknown = await this.speechInputDispatcher();
+      if(typeof providerText!=='string') { this.voice.lastError='stt-invalid-result'; return null; }
+      const text=providerText.replace(/[\r\n\t]+/g,' ').trim().slice(0,4000);
+      if(!text) { this.voice.lastError='stt-empty-or-failed'; return null; }
+      this.voice.lastError=null;
       return text;
     } catch(error) {
       this.voice.lastError=`stt-provider-failed:${String((error as Error)?.message??error).replace(/[\\r\\n\\t]+/g,' ').slice(0,100)}`;

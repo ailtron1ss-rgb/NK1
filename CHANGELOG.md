@@ -1,3 +1,12 @@
+## NK1 WorkPass422 — serialize STT sessions and bound transcripts (2026-10-23)
+
+- Prevented concurrent STT calls from overlapping; a second listen request is refused while the first still owns the listening state.
+- STT provider results are now type-checked, normalized and bounded to 4,000 characters before being returned to the cognition layer.
+- Added regressions for overlapping listens, malformed provider output and retry behavior.
+- Validation is pending: source and tests are committed, but current hosted test jobs have not obtained a runner.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

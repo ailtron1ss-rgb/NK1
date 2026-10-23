@@ -31,4 +31,28 @@ voiceState = runtime.voiceSnapshot().state;
 assert.equal(voiceState.listening, false);
 assert.equal(voiceState.listenCount, 2);
 assert.equal(voiceState.lastError, null);
+
+ // WorkPass422: one listening lease at a time; completion of one request must not clear another.
+ let finishFirstListen;
+ runtime.setSpeechInputDispatcher(() => new Promise((resolve) => { finishFirstListen = resolve; }));
+ const firstListen = runtime.listen();
+ assert.equal(runtime.voiceSnapshot().state.listening, true);
+ assert.equal(await runtime.listen(), null, 'a concurrent STT request must not start a second microphone operation');
+ assert.equal(runtime.voiceSnapshot().state.listening, true, 'the rejected overlap must not release the active listen state');
+ assert.match(runtime.voiceSnapshot().state.lastError ?? '', /stt-listen-already-active/);
+ finishFirstListen('  первая строка\nвторая строка  ');
+ assert.equal(await firstListen, 'первая строка вторая строка', 'transcripts are normalized before entering cognition');
+ voiceState = runtime.voiceSnapshot().state;
+ assert.equal(voiceState.listening, false);
+ assert.equal(voiceState.listenCount, 3, 'rejected overlap must not increment the accepted-listen counter');
+ assert.equal(voiceState.lastError, null);
+
+ // JavaScript/platform adapters can violate TypeScript declarations at runtime.
+ runtime.setSpeechInputDispatcher(async () => 42);
+ assert.equal(await runtime.listen(), null, 'non-string provider output must not leak into the cognitive input');
+ assert.equal(runtime.voiceSnapshot().state.lastError, 'stt-invalid-result');
+ assert.equal(runtime.voiceSnapshot().state.listening, false);
+ runtime.setSpeechInputDispatcher(async () => '   ');
+ assert.equal(await runtime.listen(), null, 'empty normalized transcripts remain an explicit no-result');
+
 console.log('VOICE_EMBODIMENT=PASS');
