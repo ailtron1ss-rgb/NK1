@@ -266,7 +266,15 @@ export function bindIndependentEvaluationToVerifiedShadowEvidence(
     };
   }
   const evaluation = evaluationValue as typeof envelope.evaluation | undefined;
-  const authority = evaluation?.provenance?.experimentAuthority;
+  if (!evaluation) return {
+    accepted: false,
+    reasons: ['independent-evaluation-envelope-not-canonicalizable'],
+    boundTrials: 0,
+    manifestFingerprint: null,
+    boundEvidenceScope: 'identity-and-binary-outcome-only',
+    qualityMetricsAuthenticated: false,
+  };
+  const authority = evaluation.provenance?.experimentAuthority;
   const bindings = evaluation?.provenance?.runBindings;
   const trustedManifestFingerprint = authority?.manifestFingerprint ?? '';
   if (!envelope || !/^[a-f0-9]{64}$/.test(envelope.payloadFingerprint) ||
