@@ -19,6 +19,12 @@ assert.ok(reflections.length>0);
 assert.equal(reflections[0].kind,'repeated-context-failure');
 assert.ok(reflections[0].priority01>.6);
 assert.ok(reflections[0].evidenceNeeded.includes('independent'));
+assert.equal(reflections[0].passRate01, 0, 'task-success pass rate uses the explicit 0.5 threshold');
+ assert.equal(reflections[0].wilsonLowerPassRate01, 0, 'all-failure windows must not manufacture a positive lower success bound');
+ assert.ok(reflections[0].wilsonUpperPassRate01 > 0 && reflections[0].wilsonUpperPassRate01 < 1,
+   'small samples must report a non-zero uncertainty interval rather than certainty');
+ assert.ok(reflections[0].passRateIntervalWidth01 > 0 && reflections[0].passRateIntervalWidth01 <= 1);
+ assert.ok(reflections[0].confidence01 < 1, 'repeat observations must not be interpreted as certainty');
 
  // Observation identities are immutable: duplicates are idempotent and conflicting reuse is quarantined.
  const exactDuplicate = reflectOnOutcomes([...outcomes, { ...outcomes[0] }]);
@@ -102,4 +108,9 @@ const integrated=engine.learningSummary();
 assert.ok(integrated.topSkills.some(s=>s.status==='promoted'),'validated P23 skill remains available');
 assert.ok(integrated.reflections.some(r=>r.kind==='prediction-gap'),'P23 summary exposes outcome reflections');
 assert.ok(integrated.nextLearningTargets.length>0,'P23 summary exposes actionable next learning targets');
+const reflectedTarget = integrated.nextLearningTargets.find(target => target.id.startsWith('reflection:'));
+assert.ok(reflectedTarget, 'P23 curriculum must surface at least one reflected repair target');
+assert.equal(reflectedTarget.transfer01, 0,
+  'repeating a failure in one context must not be misreported as cross-context skill transfer');
+assert.ok(reflectedTarget.uncertainty01 > 0, 'reflection targets must include conservative observed failure risk');
 console.log('WorkPass119 skill retrieval + outcome reflection + curriculum: PASS');
