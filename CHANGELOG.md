@@ -1,3 +1,11 @@
+## NK1 WorkPass413 — stabilize the learning CI runner and runtime pin (2026-10-23)
+
+- Changed the P26 learning workflow to use the explicit `ubuntu-24.04` image rather than a moving `ubuntu-latest` alias.
+- The workflow path filters include root `.nvmrc`, root/app manifests and the CI-audit script/test. A pre-install step verifies the runner's Node.js version against that shared pin.
+- Static review confirms every P26 workflow `npm run` command resolves in the package selected by `working-directory` or `--prefix`. The actual runner/test outcome remains unverified: representative connector-visible failed jobs return zero steps.
+
+---
+
 ## NK1 WorkPass412 — richer task-balanced learning metrics (2026-10-23)
 
 - Extended `LearningRobustMetrics.ts` with task-balanced median and task-balanced optimality gap against ceiling=1, with deltas for baseline/candidate comparisons.
