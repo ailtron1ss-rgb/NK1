@@ -79,6 +79,15 @@ export class PersonalCurriculumEngine {
     const threads:CurriculumThread[]=[];
     const ids=new Set<string>(),families=new Set<string>();
     const rows=Array.isArray(r.threads)?r.threads.slice(-64):[];
+    // If a persisted identity collides, quarantine every row with that ID/family.
+    // Do not let serialization order decide which conflicting memory survives.
+    const idCounts=new Map<string,number>(),familyCounts=new Map<string,number>();
+    for(const value of rows){
+      if(!value||typeof value!=='object'||Array.isArray(value))continue;
+      const row=value as Record<string,unknown>;
+      if(typeof row.id==='string')idCounts.set(row.id,(idCounts.get(row.id)??0)+1);
+      if(typeof row.family==='string')familyCounts.set(row.family,(familyCounts.get(row.family)??0)+1);
+    }
     for(const value of rows){
       if(!value||typeof value!=='object'||Array.isArray(value))continue;
       const x=value as Record<string,unknown>;
@@ -86,6 +95,7 @@ export class PersonalCurriculumEngine {
       const status=['emerging','active','satisfied','suppressed'].includes(String(x.status))?x.status as CurriculumThread['status']:null;
       const metrics=['socialRelevance01','identityRelevance01','causalStrength01','unresolved01','retention01','transfer01','learningNeed01','confidence01','priority01','lastOutcome01'];
       if(typeof x.id!=='string'||!x.id.trim()||x.id.length>128||typeof x.family!=='string'||!x.family.trim()||x.family.length>180||
+         idCounts.get(x.id)!==1||familyCounts.get(x.family)!==1||
          typeof x.title!=='string'||!x.title.trim()||x.title.length>140||!source||!status||
          !Array.isArray(x.contextKeys)||x.contextKeys.length>24||
          x.contextKeys.some(k=>typeof k!=='string'||!k.trim()||k.length>180)||
