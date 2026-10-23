@@ -9,6 +9,8 @@ import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
 import { P23LearningEngine } from '../organism/learning/P23LearningEngine.ts';
 import { generateLocalSkillRevision } from '../organism/learning/P23LocalModelSkillRevisionGenerator.ts';
 import { createVerifiedSkillLifecycleBootstrap } from '../organism/learning/VerifiedSkillLifecycleBootstrap.ts';
+import { createHostOwnedIndependentEvaluationConfigFactory } from '../organism/learning/HostOwnedIndependentEvaluationServices.ts';
+import { createIndependentEvaluationConfigFactory, parseCompoundRepairBackgroundRevisionConfig } from './compound-repair-revision-host-config.mjs';
 import { parseTrustedShadowLearningScheduleConfig } from '../organism/learning/P23TrustedShadowLearningScheduler.ts';
 import { createSkillPromotionApprovalPayload, createSkillRollbackApprovalPayload, parseTrustedSkillPromotionApprovalKeys } from '../organism/learning/AuthenticatedSkillPromotionApproval.ts';
 import { ProcessLock } from '../organism/persistence/ProcessLock.ts';
@@ -41,9 +43,20 @@ const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
 // Opt-in only: malformed production settings abort startup, and absence means no shadow child process.
 const TRUSTED_SHADOW_LEARNING = parseTrustedShadowLearningScheduleConfig(process.env.NEURO_SKILL_SHADOW_SCHEDULER_JSON);
 const COMPOUND_REPAIR_REVISION_PROVIDER_MODULE = String(process.env.NEURO_COMPOUND_REPAIR_REVISION_PROVIDER_MODULE || '').trim();
+const COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE = String(process.env.NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE || '').trim();
+const COMPOUND_REPAIR_BACKGROUND_REVISION = parseCompoundRepairBackgroundRevisionConfig(
+    process.env.NEURO_COMPOUND_REPAIR_BACKGROUND_REVISION_JSON,
+);
 async function configureCompoundRepairRevision() {
-    if (!COMPOUND_REPAIR_REVISION_PROVIDER_MODULE)
+    if (!COMPOUND_REPAIR_REVISION_PROVIDER_MODULE) {
+        if (COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE) {
+            throw new Error('compound-repair-independent-evaluation-config-requires-revision-provider');
+        }
+        if (COMPOUND_REPAIR_BACKGROUND_REVISION?.enabled) {
+            throw new Error('compound-repair-background-revision-requires-revision-provider');
+        }
         return undefined;
+    }
     // Explicit opt-in only. The provider is trusted executable code that must call
     // the application's real proposal, independent-evaluation, and generator pipeline.
     const providerPath = path.isAbsolute(COMPOUND_REPAIR_REVISION_PROVIDER_MODULE)
@@ -75,7 +88,27 @@ async function configureCompoundRepairRevision() {
     if (typeof provideInputs !== 'function') {
         throw new Error('compound repair revision provider factory must return an input-provider function');
     }
-    return { engine, provideInputs };
+    // Production may stage candidates only through host-owned executor/verifier/scanner
+    // processes and a host-owned fixed experiment authority. The repair provider cannot
+    // supply these authorities itself; its module path must differ from the host config.
+    const independentEvaluationConfigForRepair = await createIndependentEvaluationConfigFactory({
+        moduleSetting: COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE,
+        root: ROOT,
+        providerModulePath: providerPath,
+        stateDirectory: STATE,
+        providerContext: { engine, candidateStore: lifecycle.store, trustedRunRegistry: lifecycle.registry },
+        production: process.env.NODE_ENV === 'production',
+        createHostOwnedFactory: createHostOwnedIndependentEvaluationConfigFactory,
+    });
+    if (COMPOUND_REPAIR_BACKGROUND_REVISION?.enabled && !independentEvaluationConfigForRepair) {
+        throw new Error('compound-repair-background-revision-requires-independent-evaluation-authority');
+    }
+    return {
+        engine,
+        provideInputs,
+        ...(independentEvaluationConfigForRepair ? { independentEvaluationConfigForRepair } : {}),
+        ...(COMPOUND_REPAIR_BACKGROUND_REVISION ? { backgroundRevision: COMPOUND_REPAIR_BACKGROUND_REVISION } : {}),
+    };
 }
 const COMPOUND_REPAIR_REVISION = await configureCompoundRepairRevision();
 const TRUSTED_PROMOTION_APPROVER_IDS = new Set(parseTrustedSkillPromotionApprovalKeys(process.env.NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON).keys());
