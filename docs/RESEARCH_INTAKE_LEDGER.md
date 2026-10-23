@@ -1,3 +1,10 @@
+## WorkPass380–381 — host-independent ordering for reproducible learning (2026-10-23)
+
+- Canonical compound-repair evidence fingerprints and learning-curriculum tie-breaks now use direct UTF-16 code-unit ordering instead of locale-sensitive `localeCompare`. Host locale differences cannot silently change the sort order and alter a SHA-256 digest or next-task ordering.
+- Added a focused curriculum regression for equal-score, case-mixed/Unicode identifiers. Existing coordinator regressions cover evidence-row, property insertion and candidate-tool ordering invariance.
+- The research connection is reproducibility as a learning-system property: deterministic replay and stable skill provenance require the same input evidence to produce the same canonical decision on different hosts. No new dependency or upstream source code was added.
+- Test cases are committed but remain unverified in execution: current Actions job records report failure without step entries or retrievable logs.
+
 ## WorkPass379 — family-provenance downgrade prevention (2026-10-23)
 
 - Matched baseline/candidate trial reports now require exact family-provenance parity: both may omit family for legacy aggregate-only evaluation, or both must carry the same canonical family. If only one side carries a family, candidate evaluation fails closed.
