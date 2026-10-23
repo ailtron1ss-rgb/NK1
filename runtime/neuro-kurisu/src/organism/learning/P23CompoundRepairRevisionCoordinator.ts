@@ -41,6 +41,11 @@ const MAX_RETRY_BACKOFF_MS = 24 * 60 * 60 * 1000;
 
 export type CompoundRepairEvidenceRow = ReturnType<OrganismRuntime['compoundSkillRepairEvidence']>[number];
 
+/** Locale-independent UTF-16 code-unit order keeps SHA-256 fingerprints stable across hosts. */
+function compareCanonicalText(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
 /**
  * Canonical representation of eligible repair evidence shared by the coordinator
  * and runtime. Row order, object insertion order, and candidateTools order are not
@@ -57,7 +62,7 @@ export function canonicalCompoundRepairEvidence(
     failedTool: row.failedTool,
     diagnosis: row.diagnosis,
     contextSignature: row.contextSignature,
-    candidateTools: [...row.candidateTools].sort((a,b) => a.localeCompare(b)),
+    candidateTools: [...row.candidateTools].sort(compareCanonicalText),
     selectedTool: row.selectedTool,
     verified: row.verified,
     confidence01: row.confidence01,
@@ -66,13 +71,13 @@ export function canonicalCompoundRepairEvidence(
   }));
   return canonical.sort((a,b) =>
     b.observedAt-a.observedAt ||
-    a.skillId.localeCompare(b.skillId) ||
-    a.failureFingerprint.localeCompare(b.failureFingerprint) ||
-    a.stepId.localeCompare(b.stepId) ||
-    a.contextSignature.localeCompare(b.contextSignature) ||
-    a.failedTool.localeCompare(b.failedTool) ||
-    a.selectedTool.localeCompare(b.selectedTool) ||
-    JSON.stringify(a).localeCompare(JSON.stringify(b))
+    compareCanonicalText(a.skillId,b.skillId) ||
+    compareCanonicalText(a.failureFingerprint,b.failureFingerprint) ||
+    compareCanonicalText(a.stepId,b.stepId) ||
+    compareCanonicalText(a.contextSignature,b.contextSignature) ||
+    compareCanonicalText(a.failedTool,b.failedTool) ||
+    compareCanonicalText(a.selectedTool,b.selectedTool) ||
+    compareCanonicalText(JSON.stringify(a),JSON.stringify(b))
   );
 }
 
