@@ -354,6 +354,18 @@ function baselineAction(state:OrganismState):{action:ActionKind;reason:string} {
   return {action:'reflect',reason:'low-pressure conservative baseline'};
 }
 
+/** Bound reflective skill material before generation/evaluation to limit memory and CPU exposure. */
+export const MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES = 256 * 1024;
+
+export function assertReflectiveSkillPayloadWithinBudget(value: unknown, label = 'candidate'): string {
+  const canonical = canonicalize(value);
+  const bytes = Buffer.byteLength(canonical, 'utf8');
+  if (bytes > MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES) {
+    throw new Error('p23-reflective-skill-payload-too-large:' + label + ':' + bytes);
+  }
+  return canonical;
+}
+
 function canonicalize(value:unknown, ancestors = new Set<object>()):string {
   // Keep the engine's payload/evaluation fingerprints byte-compatible with the
   // independent evaluator while refusing values JSON would silently collapse.
@@ -511,6 +523,7 @@ export class P23LearningEngine {
     const plan=this.planReflectiveSkillRevision(candidateEvaluation,fitness);
     if(plan.blockedBySafety) throw new Error('reflective revision blocked: resolve safety violations before performance optimization');
     if(plan.targets.length===0) throw new Error('reflective revision has no evidence-backed target; no candidate was staged');
+    assertReflectiveSkillPayloadWithinBudget(source.payload,'source');
     const revisedPayload=await generate({
       sourcePayload:structuredClone(source.payload),
       datasetFingerprint:proposal.datasetFingerprint,
@@ -526,7 +539,8 @@ export class P23LearningEngine {
     // Generation invalidates any prior candidate report: it describes the source
     // candidate, not this newly generated payload. Re-run the independent harness
     // against the exact payload and require the evaluator to echo its canonical digest.
-    const payloadFingerprint=createHash('sha256').update(canonicalize(revisedPayload)).digest('hex');
+    const canonicalPayload=assertReflectiveSkillPayloadWithinBudget(revisedPayload,'generated');
+    const payloadFingerprint=createHash('sha256').update(canonicalPayload).digest('hex');
     const fresh=await evaluateRevisedCandidate({
       payload:structuredClone(revisedPayload),
       payloadFingerprint,
