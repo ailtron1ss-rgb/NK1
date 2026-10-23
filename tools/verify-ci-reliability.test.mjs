@@ -133,13 +133,13 @@ test("reports undefined scripts in their correct package instead of a false root
     },
   });
   assert.equal(errors.length, 3);
-  assert.match(errors.join("\\n"), /missing-runtime-test is not defined in the runtime package.json/);
-  assert.match(errors.join("\\n"), /missing-prefixed-test is not defined in the runtime package.json/);
-  assert.match(errors.join("\\n"), /missing-app-test is not defined in the app package.json/);
+  assert.match(errors.join("\n"), /missing-runtime-test is not defined in the runtime package.json/);
+  assert.match(errors.join("\n"), /missing-prefixed-test is not defined in the runtime package.json/);
+  assert.match(errors.join("\n"), /missing-app-test is not defined in the app package.json/);
 });
 
 test("keeps legacy policy-only unit callers backward-compatible when script maps are omitted", () => {
   assert.deepEqual(validateWorkflowScriptReferences({
-    workflows: { "old-test.yml": "run: npm run intentionally-unmapped\\n" },
+    workflows: { "old-test.yml": "run: npm run intentionally-unmapped\n" },
   }), []);
 });
