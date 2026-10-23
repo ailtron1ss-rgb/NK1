@@ -1,3 +1,12 @@
+## WorkPass415 — linearize robust-metric grouping (2026-10-23)
+
+- **Issue:** `LearningRobustMetrics.ts` originally called `rows.filter(row => row.taskId === taskId)` for each task and each dimension, repeatedly scanning the full matched trial list.
+- **Change:** matched rows are now grouped by task once in a `Map`, then task success, skill quality and trajectory quality share that grouping. The grouping pass is O(trials); each metric dimension traverses the groups' rows once. This reduces repeated work without changing task balance, sort/tie policy, formulas, score rounding or outputs.
+- **Regression guard:** WorkPass406 test still asserts result invariance to permuted baseline/candidate row order, and contains expected IQM, median, optimality-gap and paired-improvement arithmetic.
+- **Verification boundary:** implementation and docs committed; cannot claim exact-HEAD runtime test/typecheck PASS because current Actions jobs expose failure with no step logs.
+
+---
+
 ## WorkPass412 — расширить устойчивые метрики оценки навыков (2026-10-23)
 
 - **Upstream file inspected:** `google-research/rliable/rliable/metrics.py`, blob SHA `dc206a180c822eaf3bc8524a63b127aeb1e60fe7`, Apache-2.0. It exposes task mean/median, optimality gap, IQM and probability-of-improvement estimators.
