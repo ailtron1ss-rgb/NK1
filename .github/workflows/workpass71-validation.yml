@@ -102,6 +102,8 @@ jobs:
         run: npm run audit:upstream-donors
       - name: Test upstream donor adoption gate
         run: npm run test:upstream-donors
+      - name: P23 Hermes multi-axis holdout regression gate
+        run: npm --prefix runtime/neuro-kurisu run test:p29:hermes-reflective-candidate-gate
       - name: Audit CI Action/runtime compatibility contract
         run: npm run audit:ci-reliability
       - name: Test CI reliability audit regressions
