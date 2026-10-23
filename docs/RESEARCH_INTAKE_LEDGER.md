@@ -1,3 +1,9 @@
+## WorkPass393 — runtime API contract: diagnostic memory versus eligible evidence (2026-10-23)
+
+- Updated the `OrganismRuntime.compoundSkillRepairEvidence` API comment to state that it returns bounded non-holdout diagnostic observations, including failed/ineligible attempts. It does not certify them for generation.
+- The P23 coordinator owns the eligibility transition: filter `revisionEligible` → run the strict canonical snapshot/validator → fingerprint → prepare generator/evaluator inputs → candidate staging gate.
+- This aligns implementation and documentation after WorkPass391, prevents future callers from treating every returned row as generator-ready, and preserves useful error experience without weakening activation/promotion authority.
+
 ## WorkPass392 — distinguish repeated trials from independent task coverage (2026-10-23)
 
 - **Research rationale:** [AFTER](https://github.com/DavydenkoGr/AFTER) and [SkillLearnBench](https://github.com/cxcscmu/SkillLearnBench) emphasize generalization across task families/contexts and task-level evaluation, rather than allowing repeated runs of a single easy case to dominate the evidence.
