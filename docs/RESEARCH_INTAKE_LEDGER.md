@@ -1,3 +1,15 @@
+## WorkPass412 — расширить устойчивые метрики оценки навыков (2026-10-23)
+
+- **Upstream file inspected:** `google-research/rliable/rliable/metrics.py`, blob SHA `dc206a180c822eaf3bc8524a63b127aeb1e60fe7`, Apache-2.0. It exposes task mean/median, optimality gap, IQM and probability-of-improvement estimators.
+- **Adaptation:** NK1 extends `LearningRobustMetrics.ts` with task-balanced median and task-balanced optimality gap beside existing task-balanced IQM and paired probability of improvement. Scores are already validated in [0,1], so the fixed optimality ceiling is 1; a negative gap delta means the candidate is closer to that ceiling.
+- **Weighting policy:** repeated trials are averaged inside each task before summary, preventing tasks with larger repeat counts from dominating; this deliberately differs from RLiable's pooled run/task IQM implementation.
+- **Integration:** the expanded dimension schema flows through existing `learningRobustDiagnostics` in the independent candidate evaluator and P23 return type. Every new value stays under `diagnosticOnly: true`; no eligibility, confidence or safety gate changed.
+- **Regression:** extended `workpass406-learning-robust-metrics.mjs` for medians, gap arithmetic, deltas and the zero-gap ceiling case. Existing P23 and P26 wiring already includes this test; the newest workflow-to-package audit cross-checks npm script resolution.
+- **Boundaries:** no RLiable source code or Python dependencies copied. Exact-HEAD tests/typecheck are still not verified: Actions returned failure without step logs. No measured learning gain is claimed.
+- Details: [WorkPass412 implementation note](WORKPASS412_RLIABLE_METRIC_DEPTH_RU.md).
+
+---
+
 ## WorkPass405 — persist privacy-filtered fitness decisions through the P23 promotion path (2026-10-23)
 
 - **NK1 gap:** WorkPass400–404 added family/task/seed/confidence gates but only returned transient evaluation summaries. It was difficult to trace how one staged candidate's plan/evaluation fingerprints and uncertainty metrics led to an accepted/rejected gate decision across time.
