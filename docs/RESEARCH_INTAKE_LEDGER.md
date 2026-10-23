@@ -1,3 +1,23 @@
+## WorkPass374–375 — canonical revision evidence + skill-evolution research (2026-10-23)
+
+### Newly reviewed systems and research
+- **WikiSkill: Compiling Agent Experience into Persistent Knowledge for Skill Evolution** — [arXiv:2608.27454](https://arxiv.org/abs/2608.27454). The paper emphasizes separating raw execution experience, accumulated reusable knowledge, and executable skills, then consolidating the knowledge between attempts. NK1 already has distinct experience rows, repair evidence, reflective hypotheses, and versioned skill candidates; this pass tightened the evidence identity between those stages rather than merging all of them into one untyped prompt.
+- **AFTER — A Benchmark for Skill Evolution Frameworks** — [repository](https://github.com/DavydenkoGr/AFTER). Its emphasis on transfer across role/task/context and holdout boundaries supports NK1's decision not to call repeated same-context errors “transfer”; the curriculum's family mix must be measured separately from task success.
+- **Meta-Agent — Continual harness optimization** — [repository](https://github.com/canvas-org/meta-agent). Its fast task-harness loop and slower proposer/skill evolution are a useful split for future NK1 work; the current patch preserves the existing trusted generator/evaluator boundary and does not allow generated skills to activate themselves.
+- **SkillLearnBench** — [repository](https://github.com/cxcscmu/SkillLearnBench) and [benchmark paper](https://arxiv.org/abs/2604.20087). Its separation of task success, trajectory quality, and skill quality informs future evaluation needs; no numeric uplift is asserted without measured baseline/candidate reports.
+
+### WorkPass374–375 implementation
+- Added a shared canonicalizer and fingerprint function for P23 compound-repair evidence. Both the coordinator and runtime now use the exact same representation.
+- Canonicalization stabilizes the row ordering (including equal timestamps), property layout, and the ordering of candidate tool sets. The runtime still retains only the newest 96 eligible repair records.
+- This prevents harmless storage/order variations from appearing as new repair evidence and producing duplicate skill-revision attempts; a material evidence/diagnosis change still changes the SHA-256 fingerprint.
+- Regression coverage now checks row-order, property-insertion-order, and candidate-tool-order invariance, plus sensitivity to a real diagnosis change.
+- The focused coordinator regression is included in the P26 Learning Validation workflow path filter and run steps. The workflow is configured on Node.js 24.
+- No upstream source file was copied and no runtime dependency was added; the extracted ideas were adapted to NK1's typed evidence and candidate-lifecycle contracts.
+
+### Validation status
+- Test changes and workflow config are committed but **not execution-verified**. Recent GitHub Actions runs continue to expose `steps: null` and no retrievable logs. This prevents distinguishing runner integration failure from a program/test failure.
+- Next priority: obtain an actual runner with step-level logs; then run the P23 engine, compound repair coordinator, SkillLearnBench adapter, paired holdout and replay ablation checks on a fixed protocol. Preserve candidate promotion as a separate signed approval operation.
+
 ## WorkPass373 — sparse replay snapshot quarantine (2026-10-23)
 
 - Hardened persisted replay-vector parsing against a JavaScript edge case: Array.prototype.every skips missing sparse slots, which could make a nominally 16-element array contain fewer than 16 actual feature values.
