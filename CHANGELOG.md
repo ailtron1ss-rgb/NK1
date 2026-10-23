@@ -1,3 +1,12 @@
+## NK1 WorkPass449 — make self-agency learning outcomes atomic and evidence-bounded (2026-10-23)
+
+- Validated reward, external-request flag, causal-match confidence, and detached observed-state data before prediction or any weight/counter mutation.
+- NaN/out-of-range reward or causal evidence and accessor-backed observed-state payloads now fail closed; learning consumes only the detached, finite state snapshot. The valid reward scale remains [0,1].
+- Added regressions asserting malformed reward/causal/state inputs leave the complete self-model snapshot unchanged and never invoke caller-owned getters. No dependency added.
+- **Verification:** tests and code committed; exact-head execution is unconfirmed while GitHub Actions fails before runner allocation.
+
+---
+
 ## NK1 WorkPass446 — validate live self-agency observations before feature extraction
 
 - Extended the same descriptor-based plain-data boundary already used for self-model restoration to the live `PredictiveSelfAgencySubstrate.observe` path. It now detaches the entire observation before spreading vectors or reading nested organism state.
