@@ -1,18 +1,18 @@
-# NK1 WorkPass408 — оценка прогресса ветки обучения
+# NK1 WorkPass409 — оценка прогресса ветки обучения
 
 Дата снимка: 23 октября 2026 года. Рабочая ветка: `feature/learning`.
 
-## Текущая оценка (после WorkPass407)
+## Текущая оценка (после WorkPass409)
 
 | Область | Оценка реализации | Что входит / почему не 100% |
 |---|---:|---|
 | Сбор опыта, replay и continual learning | 80% | Есть приоритизированный/стратифицированный replay, forgetting/transfer/drift-системы; полный независимый live-benchmark по реальным задачам пока не подтверждён |
-| Жизненный цикл навыка и promotion gate | 94% | Есть staged candidates, независимая оценка, разделение validation/holdout, signed evidence, authenticated approval, rollback и отдельный журнал фактического результата активации; production sandbox/verifier/scanner остаётся отдельным gate |
-| Целостность оценки и происхождение evidence | 92% | Есть точные fingerprints, canonical task/seed/split joins, trust boundary, hash-chained fitness journal и hash-chained lifecycle transitions; подписанные удалённые checkpoints и независимое развёртывание evaluator authority пока не подтверждены |
+| Жизненный цикл навыка и promotion gate | 95% | Есть staged candidates, независимая оценка, разделение validation/holdout, signed evidence, authenticated approval, rollback и отдельный журнал фактического результата активации; production sandbox/verifier/scanner остаётся отдельным gate |
+| Целостность оценки и происхождение evidence | 93% | Есть точные fingerprints, canonical task/seed/split joins, trust boundary, hash-chained fitness journal и hash-chained lifecycle transitions; подписанные удалённые checkpoints и независимое развёртывание evaluator authority пока не подтверждены |
 | Метрики качества и наблюдаемость | 89% | Есть P23 family confidence bounds, fitness journal, WorkPass406 task-balanced IQM/paired improvement и WorkPass407 activation-intent/outcome diagnostics; требуется reconciliation после crash и история по реальным независимым циклам |
 | Воспроизводимость production-проверок | 42% | Регрессионные контракты и workflow подключены, но Actions на точном текущем HEAD сообщают failure без доступных steps/logs; полный независимый multi-seed uplift не доказан |
 
-**Сводная инженерная оценка полноты реализации категории: 81%.** Расчёт — взвешенное экспертное резюме по приведённым направлениям, а не автоматически измеренная метрика и не оценка интеллекта.
+**Сводная инженерная оценка полноты реализации категории: 82%.** Расчёт — взвешенное экспертное резюме по приведённым направлениям, а не автоматически измеренная метрика и не оценка интеллекта.
 
 **Подтверждённая production-готовность категории: около 45%.** Этот показатель ниже, потому что он учитывает реальное исполнение проверок на точном HEAD, развёртывание независимых evaluator authorities, подтверждённые gains и длительные интеграционные прогоны. Пока CI не предоставляет запускаемые шаги и логи, высокий процент реализованного кода нельзя считать подтверждённой готовностью.
 
@@ -36,6 +36,18 @@ WorkPass406 не демонстрирует фактического улучш�
 
 Условие готовности — не наличие новых файлов. Категория считается завершённой после того, как полный цикл «реальный исход/ошибка → разбор траектории → план ремонта → кандидат → выполнение в изолированном окружении → независимая оценка на фиксированных validation и нетронутом holdout → подтверждённое решение → наблюдаемый результат/rollback» выполняется воспроизводимо; точные тесты и typecheck зелёные на одном HEAD; устойчивый выигрыш подтверждён заранее зарегистрированными независимыми seed/task families без недопустимого регресса; длинный soak, privacy/license review и production evaluator isolation закрыты.
 
+## WorkPass409 — восстановление после аварии между intent и result
+
+- Проверка обнаружила новый crash-window: процесс мог завершиться после долговременного `activation-intent`, но до записи `activation-outcome-unknown`. Прошлая reconciliation обходила только явные unknown events, поэтому такой intent оставался бы pending бесконечно.
+- Исправлено: `P23LearningEngine.reconcileLearningLifecycleOutcomes()` теперь начинает с каждого незавершённого `activation-intent`, предпочитает связанный unknown event, если он есть, и сверяет оба варианта с авторитетным versioned skill store.
+- `LearningLifecycleJournal` разрешает reconciliation после `intent → unknown` и после одного лишь `intent`, что закрывает аварийный сценарий без промежуточной записи. Статистика отдельно показывает число pending intents и число явно unknown.
+- Тест `workpass408-lifecycle-store-reconciliation.mjs` расширен сценарием hard exit после intent: точная активная версия восстанавливается, неактивный кандидат остаётся корректно описан, отсутствующий lineage остаётся pending, повтор не дублирует событие. Workflow уже запускает эту регрессию.
+- **Проверка:** реализация и тестовая проводка внесены, но exact-HEAD Actions/typecheck не подтверждены; runner steps/logs по-прежнему недоступны. Production readiness остаётся около 45%.
+
+Сводная инженерная оценка после WorkPass409 — **82% реализации категории**, production readiness — **~45%** (экспертные оценки, не автоматические показатели).
+
+---
+
 ## WorkPass408 — восстановление состояния после неопределённой активации
 
 - `P23LearningEngine.reconcileLearningLifecycleOutcomes()` связывает `activation-outcome-unknown` с авторитетным versioned skill store по точному candidate/skill/version/payload fingerprint.
@@ -44,7 +56,7 @@ WorkPass406 не демонстрирует фактического улучш�
 - Добавлена интеграционная регрессия `workpass408-lifecycle-store-reconciliation.mjs` (matching active, shadow/non-active, absent lineage, repeat idempotency), включена в P23 aggregate и P26 CI.
 - **Статус проверки:** wiring committed; exact-HEAD runtime tests/CI remain unverified due to unavailable Action steps/logs. Production readiness does not rise until tests and real store restart/rollback soak are confirmed.
 
-Сводная инженерная оценка после прохода — **81% реализации категории**, production readiness — **~45%** (экспертные оценки, не автоматические показатели).
+Сводная инженерная оценка после прохода — **82% реализации категории**, production readiness — **~45%** (экспертные оценки, не автоматические показатели).
 
 ---
 
