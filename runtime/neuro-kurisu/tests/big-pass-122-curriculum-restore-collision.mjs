@@ -42,4 +42,27 @@ restoredFamily.restore(duplicateFamily);
 assert.equal(restoredFamily.snapshot().threads.length, 0,
   'conflicting rows sharing a family must all be quarantined, independent of array order');
 
+const ranking = new PersonalCurriculumEngine();
+assert.throws(() => ranking.rankGoals({
+  goals: [goal], identity01: Number.NaN, social01: 0.2, novelty01: 0.3, uncertainty01: 0.4,
+}), /personal-curriculum-goal-ranking-score-invalid/);
+assert.equal(ranking.snapshot().focusGoalId, null, 'invalid ranking input must not mutate focus');
+
+assert.throws(() => ranking.rankGoals({
+  goals: [goal, { ...goal, id: goal.id + '-duplicate' }],
+  identity01: 0.2, social01: 0.2, novelty01: 0.3, uncertainty01: 0.4,
+}), /personal-curriculum-goal-ranking-goal-invalid/);
+assert.equal(ranking.snapshot().focusGoalId, null, 'duplicate goal identity must not select a focus');
+
+let rankGetterCalls = 0;
+const hostileGoal = { ...goal };
+Object.defineProperty(hostileGoal, 'importance', {
+  enumerable: true,
+  get() { rankGetterCalls++; return 1; },
+});
+assert.throws(() => ranking.rankGoals({
+  goals: [hostileGoal], identity01: 0.2, social01: 0.2, novelty01: 0.3, uncertainty01: 0.4,
+}), /personal-curriculum-goal-ranking-data-boundary-rejected/);
+assert.equal(rankGetterCalls, 0, 'ranking boundary must not execute input getters');
+assert.equal(ranking.snapshot().focusGoalId, null);
 console.log('BIG_PASS_122_CURRICULUM_RESTORE_COLLISION=PASS');
