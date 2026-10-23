@@ -60,7 +60,7 @@ The human-brain analogy is functional only: global-workspace/broadcast ideas inf
 ## Progress accounting
 
 ### WorkPass461 — live branch-head reconciliation (2026-10-23)
-Current open-draft PR heads are #79 `09b801e7` (learning), #80 `c365c48b` (perception), #81 `be344d05` (emotions), #82 `eff640e5` (memory), #83 `48e36266` (personality), #84 `927629a4` (visual embodiment), #85 `6c75864f` (experiments), and #87 `28c930ae` (feedback). Planning PR #88 is also open draft. The latest code includes evidence-based confidence revision with provenance limits; replay-safe goal lifecycle; bounded outcome fields; safer action sensing; and an explicit event-ID return from the unified cognitive-cycle boundary. These source/test changes are present on category branch tips, not merged to integration.
+Current open-draft PR heads on the latest read are #79 `09b801e7` (learning), #80 `d5dd7584` (perception), #81 `be344d05` (emotions), #82 `f2c8b66b` (memory), #83 `48e36266` (personality), #84 `927629a4` (visual embodiment), #85 `6c75864f` (experiments), and #87 `28b1e691` (feedback). Planning PR #88 is also open draft at `8e00fe30`. The latest code includes evidence-based confidence revision with provenance limits; replay-safe goal lifecycle; bounded outcome fields; safer action sensing; and an explicit event-ID return from the unified cognitive-cycle boundary. These source/test changes are present on category branch tips, not merged to integration.
 - Verification remains unchanged: exact-head suites confirmed passing 0/7, category PRs merged 0/7, release ZIP updated/hash-verified 0/1, readiness 46/100. Hosted jobs fail before step execution; a local clone was not possible because GitHub hostname DNS did not resolve in the execution environment.
 
 
