@@ -264,7 +264,7 @@ export class PersonalCurriculumEngine {
       const identityFit=thread?thread.identityRelevance01:input.identity01*.35;
       const score=clamp(goal.importance*.18+goal.urgency*.12+learningNeed*.28+historyFit*.16+socialFit*.08+identityFit*.12+this.state.curriculumPressure01*.06);
       return {goalId:goal.id,score01:score,threadId:thread?.id??null,learningNeed01:learningNeed,historyFit01:historyFit,socialFit01:socialFit,identityFit01:identityFit,reason:thread?`history-thread:${thread.id}`:learningNeed>.6?'new-learning-gap':'goal-priority'};
-    }).sort((a,b)=>b.score01-a.score01);
+    }).sort((a,b)=>b.score01-a.score01||(a.goalId<b.goalId?-1:a.goalId>b.goalId?1:0));
     const top=ranked[0];
     this.state.focusGoalId=top?.goalId??null;
     this.state.focusThreadId=top?.threadId??null;
