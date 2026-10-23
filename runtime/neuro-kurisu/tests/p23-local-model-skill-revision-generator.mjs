@@ -30,6 +30,16 @@ assert.ok(!calls[0].user.includes('holdout-task-secret'), 'holdout case identifi
 assert.equal(calls[0].temperature, 0.2);
 assert.equal(calls[0].maxTokens, 4096);
 
+const inheritedProvider=Object.create({
+  configured(){return true;},
+  async generate(){
+    return {text:JSON.stringify({name:'inherited-provider-skill',steps:['verified-step']}),backend:'test',model:'fixture',latencyMs:1};
+  },
+});
+assert.deepEqual(await generateLocalSkillRevision(inheritedProvider,request),
+  {name:'inherited-provider-skill',steps:['verified-step']},
+  'descriptor-based capability lookup must preserve class/prototype-backed host providers');
+
 await assert.rejects(
   () => generateLocalSkillRevision({ ...provider, configured: () => false }, request),
   /p23-revision-local-model-not-configured/,
