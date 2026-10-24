@@ -74,7 +74,7 @@ export class MemorySubsystemRuntime {
     // and this subsystem's own snapshot() shape. The latter is used by tests,
     // isolated persistence adapters and restart recovery paths.
     const fromPersisted=(advancedKey:string, flatKey=advancedKey, memoryKey=flatKey, systemKey=flatKey) =>
-      advanced[advancedKey] ?? memory[memoryKey] ?? system[systemKey] ?? flat[flatKey];
+      advanced[advancedKey] ?? advanced[flatKey] ?? memory[memoryKey] ?? memory[flatKey] ?? system[systemKey] ?? system[flatKey] ?? flat[flatKey];
     this.events.restore(memory.eventLog ?? flat.events);
     this.memories.restore(memory.autobiographicalMemories ?? flat.memories);
     this.selfModel.restore(memory.selfModel ?? flat.selfModel);
