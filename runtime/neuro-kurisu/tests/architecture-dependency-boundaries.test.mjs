@@ -1,0 +1,221 @@
+import assert from "node:assert/strict";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import path from "node:path";
+import { tmpdir } from "node:os";
+import { spawnSync } from "node:child_process";
+import test from "node:test";
+import { fileURLToPath } from "node:url";
+import { collectDependencyBoundaryViolations } from "../scripts/dependency-boundary-policy.mjs";
+
+const runtimeRoot = fileURLToPath(new URL("..", import.meta.url));
+const auditor = fileURLToPath(new URL("../scripts/audit-architecture.mjs", import.meta.url));
+
+function makePolicyFixture() {
+  const root = path.resolve("/fixture/repository/runtime/neuro-kurisu");
+  const canonicalRoot = path.join(root, "src", "organism");
+  const appSourceRoot = path.resolve(root, "../../app/src");
+  const appServerRoot = path.resolve(root, "../../app/server");
+  const runtimeServerRoot = path.join(root, "src", "server");
+  const core = path.join(canonicalRoot, "core", "Brain.ts");
+  const safeContract = path.join(canonicalRoot, "contracts", "CognitivePorts.ts");
+  const ui = path.join(appSourceRoot, "App.tsx");
+  const runtimeServer = path.join(runtimeServerRoot, "server.mjs");
+  const appServer = path.join(appServerRoot, "routes.mjs");
+  const research = path.resolve(root, "../../research", "prototype", "index.mjs");
+  const legacy = path.resolve(root, "../../legacy", "archive", "old-core.ts");
+
+  const inspect = edges => collectDependencyBoundaryViolations({
+    root,
+    files: [core, safeContract, ui],
+    graph: new Map([
+      [core, edges],
+      [safeContract, []],
+      [ui, []],
+    ]),
+    canonicalRoot,
+    appSourceRoot,
+    appServerRoot,
+    runtimeServerRoot,
+  });
+
+  return { inspect, core, safeContract, ui, runtimeServer, appServer, research, legacy };
+}
+
+test("dependency boundary policy permits core-to-contract imports", () => {
+  const fixture = makePolicyFixture();
+  assert.deepEqual(fixture.inspect([fixture.safeContract]), []);
+});
+
+test("dependency boundary policy reports each forbidden core edge", () => {
+  const fixture = makePolicyFixture();
+  const violations = fixture.inspect([
+    fixture.ui,
+    fixture.appServer,
+    fixture.runtimeServer,
+    fixture.research,
+    fixture.legacy,
+  ]);
+  const signatures = new Set(violations.map(item => item.rule + ":" + (item.boundary ?? "")));
+
+  assert.ok(signatures.has("canonical-core-to-outward-layer:app-source"));
+  assert.ok(signatures.has("canonical-core-to-outward-layer:app-server"));
+  assert.ok(signatures.has("canonical-core-to-outward-layer:runtime-server"));
+  assert.ok(signatures.has("canonical-core-to-external-research:"));
+  assert.ok(signatures.has("canonical-core-to-legacy:"));
+});
+
+test("dependency boundary policy rejects UI imports into private runtime source", () => {
+  const fixture = makePolicyFixture();
+  const graph = new Map([
+    [fixture.core, []],
+    [fixture.safeContract, []],
+    [fixture.ui, [fixture.core]],
+  ]);
+  const root = path.resolve("/fixture/repository/runtime/neuro-kurisu");
+  const violations = collectDependencyBoundaryViolations({
+    root,
+    files: [fixture.core, fixture.safeContract, fixture.ui],
+    graph,
+    canonicalRoot: path.join(root, "src", "organism"),
+    appSourceRoot: path.resolve(root, "../../app/src"),
+    appServerRoot: path.resolve(root, "../../app/server"),
+    runtimeServerRoot: path.join(root, "src", "server"),
+  });
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].rule, "app-source-to-runtime-private-import");
+});
+
+test("dependency boundary policy ignores similarly named directories and sibling prefixes", () => {
+  const fixture = makePolicyFixture();
+  const root = path.resolve("/fixture/repository/runtime/neuro-kurisu");
+  const nearApp = path.resolve(root, "../../app/source-archive/LegacyWidget.tsx");
+  const namedResearch = path.resolve(root, "../../research-adapter/ResearchShim.ts");
+  const namedLegacy = path.resolve(root, "../../legacy-code/OldCompat.ts");
+  const safeTarget = path.join(root, "src", "organism", "contracts", "PublicPorts.ts");
+  const violations = fixture.inspect([nearApp, namedResearch, namedLegacy, safeTarget]);
+
+  assert.deepEqual(violations, []);
+});
+
+test("persistence default factories have one stable domain owner", async () => {
+  const persistenceRoot = new URL("../src/organism/persistence/", import.meta.url);
+  const migrations = await readFile(new URL("StateMigrations.ts", persistenceRoot), "utf8");
+  const facade = await readFile(new URL("StateFacetDefaults.ts", persistenceRoot), "utf8");
+  const domains = [
+    ["defaultMemoryFacet", "state-defaults/MemoryFacetDefaults.ts"],
+    ["defaultEmbodimentFacet", "state-defaults/EmbodimentFacetDefaults.ts"],
+    ["defaultLearningFacet", "state-defaults/LearningFacetDefaults.ts"],
+    ["defaultConsciousnessFacet", "state-defaults/ConsciousnessFacetDefaults.ts"],
+    ["defaultEvolutionFacet", "state-defaults/EvolutionFacetDefaults.ts"],
+    ["defaultAdvancedFacet", "state-defaults/AdvancedFacetDefaults.ts"],
+    ["defaultCognitionFacet", "state-defaults/CognitionFacetDefaults.ts"],
+  ];
+
+  assert.match(migrations, /import \{[^}]*defaultNeeds[^}]*defaultMemoryFacet[^}]*defaultEmbodimentFacet[^}]*defaultLearningFacet[^}]*defaultConsciousnessFacet[^}]*defaultEvolutionFacet[^}]*defaultAdvancedFacet[^}]*defaultCognitionFacet[^}]*\} from ["']\.\/StateFacetDefaults\.ts["']/);
+  assert.match(facade, /export const defaultNeeds\s*=/);
+
+  for (const [factory, relativePath] of domains) {
+    const moduleText = await readFile(new URL(relativePath, persistenceRoot), "utf8");
+    assert.ok(
+      facade.includes("export { " + factory + " } from './" + relativePath + "';"),
+      "facade must re-export exactly one domain owner for " + factory,
+    );
+    assert.match(moduleText, new RegExp("export const " + factory + "\\s*="));
+    assert.doesNotMatch(migrations, new RegExp("(?:^|\\n)\\s*(?:export\\s+)?const " + factory + "\\s*=", "m"));
+  }
+
+  const advancedFacade = await readFile(new URL("state-defaults/AdvancedFacetDefaults.ts", persistenceRoot), "utf8");
+  const advancedGroups = [
+    ["defaultAdvancedContextFacet", "state-defaults/AdvancedContextFacetDefaults.ts", ["groundedWorld:", "memoryOS:", "consequenceAttribution:"]],
+    ["defaultAdvancedEvolutionFacet", "state-defaults/AdvancedEvolutionFacetDefaults.ts", ["p49TemporalLife:", "p79EmbodiedSituationModel:"]],
+    ["defaultAdvancedResearchFacet", "state-defaults/AdvancedResearchFacetDefaults.ts", ["causalExperience:", "causalDevelopmentLoop:", "cognitiveResearchBattery:"]],
+  ];
+  assert.ok(advancedFacade.includes("import { defaultAdvancedContextFacet } from './AdvancedContextFacetDefaults.ts';"));
+  assert.ok(advancedFacade.includes("import { defaultAdvancedEvolutionFacet } from './AdvancedEvolutionFacetDefaults.ts';"));
+  assert.ok(advancedFacade.includes("import { defaultAdvancedResearchFacet } from './AdvancedResearchFacetDefaults.ts';"));
+  assert.ok(advancedFacade.includes("...defaultAdvancedContextFacet()"));
+  assert.ok(advancedFacade.includes("...defaultAdvancedEvolutionFacet()"));
+  assert.ok(advancedFacade.includes("...defaultAdvancedResearchFacet()"));
+  assert.doesNotMatch(advancedFacade, /defaultMemoryOS2|defaultP49|defaultCausalExperienceStream/);
+  for (const [factory, relativePath, expectedKeys] of advancedGroups) {
+    const moduleText = await readFile(new URL(relativePath, persistenceRoot), "utf8");
+    assert.ok(moduleText.includes("export const " + factory + " ="), "missing factory owner " + factory);
+    for (const key of expectedKeys) {
+      assert.ok(moduleText.includes(key), "domain default field " + key + " missing from " + factory);
+    }
+  }
+
+  for (const factory of ["defaultNeeds", ...domains.map(([name]) => name)]) {
+    assert.match(migrations, new RegExp("\\b" + factory + "\\s*\\("), "migration must consume the canonical " + factory + " factory");
+  }
+});
+
+test("full architecture audit enforces dependency boundaries and exports a JSON graph", async () => {
+  const inheritedReport = process.env.NK1_DEPENDENCY_GRAPH_REPORT;
+  const tempDir = inheritedReport ? null : await mkdtemp(path.join(tmpdir(), "nk1-dependency-graph-"));
+  const reportPath = inheritedReport ?? path.join(tempDir, "dependency-graph.json");
+
+  try {
+    const result = spawnSync(process.execPath, [auditor], {
+      cwd: runtimeRoot,
+      encoding: "utf8",
+      maxBuffer: 8 * 1024 * 1024,
+      env: { ...process.env, NK1_DEPENDENCY_GRAPH_REPORT: reportPath },
+    });
+
+    assert.equal(result.error, undefined, result.error?.message);
+    assert.equal(
+      result.status,
+      0,
+      "architecture audit failed:\n" + String(result.stdout) + "\n" + String(result.stderr),
+    );
+    assert.match(result.stdout, /CLEAN_ARCHITECTURE=PASS/);
+    assert.match(result.stdout, /dependencyEdges=\d+/);
+    assert.match(result.stdout, /boundaryViolations=0/);
+    assert.match(result.stdout, /DEPENDENCY_BUDGET=PASS/);
+    assert.match(result.stdout, /DEPENDENCY_GRAPH_REPORT=/);
+    assert.doesNotMatch(result.stdout, /dependency boundary violations|dependency budget violations|canonical leakage|import cycles detected|missing relative imports/);
+
+    const report = JSON.parse(await readFile(reportPath, "utf8"));
+    assert.equal(report.schemaVersion, 3);
+    assert.ok(report.summary.sourceFiles > 0);
+    assert.ok(report.summary.canonicalFiles > 0);
+    assert.equal(report.edges.length, report.summary.dependencyEdges);
+    assert.ok(report.nodes.length >= report.summary.sourceFiles);
+    assert.ok(report.layerCoupling.length > 0);
+    assert.equal(report.summary.missingImports, 0);
+    assert.equal(report.summary.cycles, 0);
+    assert.equal(report.summary.boundaryViolations, 0);
+    assert.equal(report.summary.dependencyBudgetViolations, 0);
+    assert.ok(report.dependencyBudget.checks.some(check => check.metric === "runtimeOutDegree"));
+    assert.ok(report.dependencyBudget.checks.some(check => check.metric === "productionRuntimeInDegree"));
+    assert.ok(report.dependencyBudget.checks.some(check => check.metric === "productionTypeOnlyInDegree"));
+    assert.equal(report.dependencyBudget.violations.length, 0);
+    assert.ok(report.dependencyBudget.checks.length >= 10);
+    assert.equal(report.dependencyBudget.checks.every(check => check.withinBudget && check.observed <= check.maximum), true);
+    assert.equal(report.edges.every(edge => edge.from && edge.to && edge.fromLayer && edge.toLayer), true);
+    assert.equal(report.edges.every(edge => ["runtime-import", "typescript-type-import", "runtime-and-type"].includes(edge.kind)), true);
+    assert.equal(report.summary.runtimeEdges + report.summary.typeOnlyEdges, report.edges.length);
+    assert.equal(report.summary.runtimeEdges, report.edges.filter(edge => edge.kind !== "typescript-type-import").length);
+    assert.equal(report.summary.typeEdges, report.edges.filter(edge => edge.kind !== "runtime-import").length);
+    assert.equal(report.summary.dualKindEdges, report.edges.filter(edge => edge.kind === "runtime-and-type").length);
+    assert.equal(report.summary.productionEdges + report.summary.testEdges, report.edges.length);
+    assert.equal(report.nodes.reduce((total, node) => total + node.runtimeOutDegree, 0), report.summary.runtimeEdges);
+    assert.equal(report.nodes.reduce((total, node) => total + node.typeOutDegree, 0), report.summary.typeEdges);
+    assert.equal(report.nodes.reduce((total, node) => total + node.productionTypeOnlyInDegree, 0), report.summary.productionTypeOnlyEdges);
+    assert.ok(report.hotSpots.highRuntimeFanOut.length > 0);
+    assert.ok(report.hotSpots.highProductionRuntimeFanIn.length > 0);
+    assert.equal(report.productionLayerCoupling.length > 0, true);
+    assert.equal(report.nodes.reduce((total, node) => total + node.outDegree, 0), report.edges.length);
+    assert.equal(report.nodes.reduce((total, node) => total + node.inDegree, 0), report.edges.length);
+    assert.ok(report.hotSpots.highFanOut.length > 0);
+    assert.ok(report.hotSpots.highProductionFanIn.length > 0);
+    assert.ok(report.hotSpots.highFanOut[0].outDegree > 0);
+    assert.ok(report.hotSpots.highProductionFanIn[0].productionInDegree > 0);
+    assert.equal(report.hotSpots.highFanOut[0].outDegree, report.summary.maxCanonicalOutDegree);
+    assert.equal(report.hotSpots.highProductionFanIn[0].productionInDegree, report.summary.maxCanonicalProductionInDegree);
+    console.log(result.stdout.trim());
+  } finally {
+    if (tempDir) await rm(tempDir, { recursive: true, force: true });
+  }
+});

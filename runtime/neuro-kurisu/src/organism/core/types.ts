@@ -1,5 +1,5 @@
 import type { OrganismBodyState, OrganismBodyEvent } from '../body/EmbodiedBody.ts';
-import { RELEASE_CONTRACT } from '../system/ReleaseContract.ts';
+import type { RELEASE_CONTRACT } from '../system/ReleaseContract.ts';
 
 export type GoalSource = 'intrinsic' | 'external' | 'learned' | 'homeostatic';
 export type OrganismGoalStatus = 'candidate' | 'active' | 'paused' | 'completed' | 'abandoned';

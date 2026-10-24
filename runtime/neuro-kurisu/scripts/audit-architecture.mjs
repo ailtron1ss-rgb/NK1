@@ -1,6 +1,8 @@
-import { readdir, readFile } from 'node:fs/promises';
+import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { collectDependencyBoundaryViolations } from './dependency-boundary-policy.mjs';
+import { collectRelativeImportSpecifiers, collectRelativeTypeImportSpecifiers, stripComments } from './import-specifier-scanner.mjs';
 const root=process.cwd(); const files=[];
 async function walk(d){for(const e of await readdir(d,{withFileTypes:true})){const p=path.join(d,e.name); if(e.isDirectory()){if(['legacy-original','legacy','state','node_modules','history','.git','dist','coverage','.grok'].includes(e.name))continue; await walk(p)} else if(/\.(ts|tsx|mts|cts|mjs|cjs|js|jsx)$/.test(e.name)) files.push(p)}}
 // Runtime integration tests deliberately import a few canonical React/API source
@@ -10,23 +12,253 @@ async function walk(d){for(const e of await readdir(d,{withFileTypes:true})){con
 const roots=[path.join(root,'src'),path.join(root,'scripts'),path.join(root,'tests'),path.join(root,'research'),
   path.resolve(root,'../../app/src'),path.resolve(root,'../../app/scripts'),path.resolve(root,'../../app/server')].filter(p=>existsSync(p));
 for(const sourceRoot of roots) await walk(sourceRoot);
-const pat=/(?:from\s*|import\()(['\"])(\.\.?\/[^'\"]+)\1/g;
-const graph=new Map(files.map(f=>[f,[]])); const missing=[]; const canonicalRoot=path.join(root,'src','organism');
-function resolve(base,spec){const clean=String(spec).split('?')[0]; const p=path.resolve(path.dirname(base),clean); const c=[p,...['.ts','.tsx','.mts','.cts','.mjs','.cjs','.js','.jsx'].map(e=>p+e),path.join(p,'index.ts'),path.join(p,'index.tsx')]; const indexed=c.find(x=>graph.has(x)||files.includes(x)); if(indexed)return indexed; try{return statSync(p).isFile()?p:undefined}catch{return undefined}}
+const fileSet=new Set(files); const graph=new Map(files.map(f=>[f,[]])); const runtimeGraph=new Map(files.map(f=>[f,[]])); const edgeKindByPair=new Map(); const missing=[]; const canonicalRoot=path.join(root,'src','organism');
+function resolve(base,spec){
+  const clean=String(spec).split(/[?#]/,1)[0];
+  const p=path.resolve(path.dirname(base),clean);
+  const extensions=['.ts','.tsx','.mts','.cts','.mjs','.cjs','.js','.jsx','.json','.css','.svg'];
+  const c=[p,...extensions.map(e=>p+e),path.join(p,'index.ts'),path.join(p,'index.tsx'),path.join(p,'index.mjs'),path.join(p,'index.js')];
+  const emittedSuffix=p.match(/\.(mjs|cjs|js|jsx)$/i)?.[0];
+  if(emittedSuffix){const stem=p.slice(0,-emittedSuffix.length); c.push(stem+'.ts',stem+'.tsx',stem+'.mts',stem+'.cts');}
+  const indexed=c.find(x=>graph.has(x)||fileSet.has(x));
+  if(indexed)return indexed;
+  try{return statSync(p).isFile()?p:undefined}catch{return undefined}
+}
 for(const f of files){
   const t=await readFile(f,'utf8');
-  const runtimeText=t.replace(/import\s+type\s+[^;\n]+from\s+['\"][^'\"]+['\"]\s*;?/g,'');
-  let m; while((m=pat.exec(runtimeText))){
-    const spec=m[2]; const r=resolve(f,spec); if(r) graph.get(f).push(r); else missing.push([path.relative(root,f),spec]);
+  const runtimeText=stripComments(t);
+  const runtimeSpecs=new Set(collectRelativeImportSpecifiers(runtimeText));
+  const typeSpecs=new Set(collectRelativeTypeImportSpecifiers(runtimeText));
+  const allSpecs=new Set([...runtimeSpecs,...typeSpecs]);
+  for(const spec of allSpecs){
+    const r=resolve(f,spec);
+    if(!r){missing.push([path.relative(root,f),spec]);continue;}
+    if(!graph.get(f).includes(r)) graph.get(f).push(r);
+    if(runtimeSpecs.has(spec)&&!runtimeGraph.get(f).includes(r)) runtimeGraph.get(f).push(r);
+    const pair=f+'\0'+r;
+    const nextKind=runtimeSpecs.has(spec)&&typeSpecs.has(spec)?'runtime-and-type':runtimeSpecs.has(spec)?'runtime-import':'typescript-type-import';
+    const oldKind=edgeKindByPair.get(pair);
+    if(!oldKind) edgeKindByPair.set(pair,nextKind);
+    else{
+      const hasRuntime=[oldKind,nextKind].some(kind=>kind!=='typescript-type-import');
+      const hasType=[oldKind,nextKind].some(kind=>kind!=='runtime-import');
+      edgeKindByPair.set(pair,hasRuntime&&hasType?'runtime-and-type':hasRuntime?'runtime-import':'typescript-type-import');
+    }
   }
 }
 if(missing.length) throw new Error(`missing relative imports: ${JSON.stringify(missing.slice(0,10))}`);
 const canonicalFiles=files.filter(f=>f.startsWith(canonicalRoot+path.sep));
-const leakage=[];
-for(const f of canonicalFiles){for(const dep of graph.get(f)){if(dep.includes(`${path.sep}legacy-original${path.sep}`)||dep.includes(`${path.sep}research${path.sep}`)) leakage.push([path.relative(root,f),path.relative(root,dep)]);}}
-if(leakage.length) throw new Error(`canonical leakage: ${JSON.stringify(leakage)}`);
+const appSourceRoot=path.resolve(root,'../../app/src');
+const appServerRoot=path.resolve(root,'../../app/server');
+const runtimeServerRoot=path.join(root,'src','server');
+const boundaryViolations=collectDependencyBoundaryViolations({
+  root, files, graph, canonicalRoot, appSourceRoot, appServerRoot, runtimeServerRoot,
+});
+if(boundaryViolations.length){
+  throw new Error('dependency boundary violations: '+JSON.stringify(boundaryViolations.slice(0,50))+(boundaryViolations.length>50?' (truncated)':''));
+}
 const visiting=new Set(), visited=new Set(), cycles=[];
-function dfs(n,stack=[]){if(visiting.has(n)){const i=stack.indexOf(n); cycles.push(stack.slice(i).concat(n)); return;} if(visited.has(n)) return; visiting.add(n); for(const d of graph.get(n)||[]) dfs(d,stack.concat(n)); visiting.delete(n); visited.add(n);}
+function dfs(n,stack=[]){if(visiting.has(n)){const i=stack.indexOf(n); cycles.push(stack.slice(i).concat(n)); return;} if(visited.has(n)) return; visiting.add(n); for(const d of runtimeGraph.get(n)||[]) dfs(d,stack.concat(n)); visiting.delete(n); visited.add(n);}
 for(const f of files) dfs(f,[]);
-if(cycles.length) throw new Error(`import cycles detected: ${JSON.stringify(cycles.slice(0,5).map(c=>c.map(x=>path.relative(root,x))) )}`);
-console.log(`CLEAN_ARCHITECTURE=PASS sourceFiles=${files.length} canonicalFiles=${canonicalFiles.length} missing=0 cycles=0 legacyLeakage=0`);
+if(cycles.length) throw new Error(`runtime import cycles detected: ${JSON.stringify(cycles.slice(0,5).map(c=>c.map(x=>path.relative(root,x))) )}`);
+const dependencyEdges=[...graph.values()].reduce((total,edges)=>total+edges.length,0);
+const repoRoot=path.resolve(root,'../..');
+const sourceSet=new Set(files);
+const allNodes=new Set(files);
+for(const dependencies of graph.values()) for(const dependency of dependencies) allNodes.add(dependency);
+const pathIsWithin=(file,directory)=>{
+  const rel=path.relative(directory,file);
+  return rel==='' || (rel!=='..' && !rel.startsWith('..'+path.sep) && !path.isAbsolute(rel));
+};
+const layerRoots=[
+  ['canonical-organism',canonicalRoot],
+  ['runtime-server',path.join(root,'src','server')],
+  ['runtime-scripts',path.join(root,'scripts')],
+  ['runtime-tests',path.join(root,'tests')],
+  ['runtime-research',path.join(root,'research')],
+  ['app-source',path.resolve(root,'../../app/src')],
+  ['app-scripts',path.resolve(root,'../../app/scripts')],
+  ['app-server',path.resolve(root,'../../app/server')],
+];
+const layerOf=file=>{
+  for(const [layer,directory] of layerRoots) if(pathIsWithin(file,directory)) return layer;
+  return sourceSet.has(file)?'other-runtime-source':'local-target-only';
+};
+const repoPath=file=>path.relative(repoRoot,file).split(path.sep).join('/');
+const nodes=[...allNodes].map(file=>({
+  id:repoPath(file),
+  layer:layerOf(file),
+  kind:sourceSet.has(file)?'source':'resolved-local-target',
+})).sort((a,b)=>a.id.localeCompare(b.id));
+const edges=[];
+const layerLinks=new Map();
+const productionLayerLinks=new Map();
+for(const [from,dependencies] of graph){
+  for(const to of dependencies){
+    const fromLayer=layerOf(from);
+    const toLayer=layerOf(to);
+    const key=fromLayer+' -> '+toLayer;
+    layerLinks.set(key,(layerLinks.get(key)||0)+1);
+    if(fromLayer!=='runtime-tests') productionLayerLinks.set(key,(productionLayerLinks.get(key)||0)+1);
+    const kind=edgeKindByPair.get(from+'\0'+to)||'runtime-import';
+    edges.push({from:repoPath(from),to:repoPath(to),fromLayer,toLayer,kind});
+  }
+}
+const inDegreeByPath=new Map();
+const outDegreeByPath=new Map();
+const productionInDegreeByPath=new Map();
+const runtimeInDegreeByPath=new Map();
+const runtimeOutDegreeByPath=new Map();
+const productionRuntimeInDegreeByPath=new Map();
+const productionTypeOnlyInDegreeByPath=new Map();
+const typeInDegreeByPath=new Map();
+const typeOutDegreeByPath=new Map();
+for(const edge of edges){
+  outDegreeByPath.set(edge.from,(outDegreeByPath.get(edge.from)||0)+1);
+  inDegreeByPath.set(edge.to,(inDegreeByPath.get(edge.to)||0)+1);
+  if(edge.fromLayer!=='runtime-tests'){
+    productionInDegreeByPath.set(edge.to,(productionInDegreeByPath.get(edge.to)||0)+1);
+  }
+  if(edge.kind!=='typescript-type-import'){
+    runtimeOutDegreeByPath.set(edge.from,(runtimeOutDegreeByPath.get(edge.from)||0)+1);
+    runtimeInDegreeByPath.set(edge.to,(runtimeInDegreeByPath.get(edge.to)||0)+1);
+    if(edge.fromLayer!=='runtime-tests'){
+      productionRuntimeInDegreeByPath.set(edge.to,(productionRuntimeInDegreeByPath.get(edge.to)||0)+1);
+    }
+  }else if(edge.fromLayer!=='runtime-tests'){
+    productionTypeOnlyInDegreeByPath.set(edge.to,(productionTypeOnlyInDegreeByPath.get(edge.to)||0)+1);
+  }
+  if(edge.kind!=='runtime-import'){
+    typeOutDegreeByPath.set(edge.from,(typeOutDegreeByPath.get(edge.from)||0)+1);
+    typeInDegreeByPath.set(edge.to,(typeInDegreeByPath.get(edge.to)||0)+1);
+  }
+}
+for(const node of nodes){
+  node.inDegree=inDegreeByPath.get(node.id)||0;
+  node.outDegree=outDegreeByPath.get(node.id)||0;
+  node.productionInDegree=productionInDegreeByPath.get(node.id)||0;
+  node.runtimeInDegree=runtimeInDegreeByPath.get(node.id)||0;
+  node.runtimeOutDegree=runtimeOutDegreeByPath.get(node.id)||0;
+  node.productionRuntimeInDegree=productionRuntimeInDegreeByPath.get(node.id)||0;
+  node.productionTypeOnlyInDegree=productionTypeOnlyInDegreeByPath.get(node.id)||0;
+  node.typeInDegree=typeInDegreeByPath.get(node.id)||0;
+  node.typeOutDegree=typeOutDegreeByPath.get(node.id)||0;
+}
+const canonicalSources=nodes.filter(node=>node.kind==='source'&&node.layer==='canonical-organism');
+const rankNodes=metric=>canonicalSources
+  .filter(node=>node[metric]>0)
+  .sort((a,b)=>b[metric]-a[metric]||a.id.localeCompare(b.id))
+  .slice(0,25)
+  .map(node=>({
+    id:node.id,layer:node.layer,inDegree:node.inDegree,
+    productionInDegree:node.productionInDegree,outDegree:node.outDegree,
+    runtimeInDegree:node.runtimeInDegree,runtimeOutDegree:node.runtimeOutDegree,
+    productionRuntimeInDegree:node.productionRuntimeInDegree,productionTypeOnlyInDegree:node.productionTypeOnlyInDegree,
+    typeInDegree:node.typeInDegree,typeOutDegree:node.typeOutDegree,
+  }));
+const hotSpots={
+  highFanOut:rankNodes('outDegree'),
+  highProductionFanIn:rankNodes('productionInDegree'),
+  highRuntimeFanOut:rankNodes('runtimeOutDegree'),
+  highProductionRuntimeFanIn:rankNodes('productionRuntimeInDegree'),
+};
+const dependencyBudgetPath=path.resolve(root,'../../contracts/module-dependency-budgets.json');
+const dependencyBudget=JSON.parse(await readFile(dependencyBudgetPath,'utf8'));
+if(dependencyBudget.schemaVersion!==1||!Array.isArray(dependencyBudget.modules)){
+  throw new Error('invalid module dependency budget schema: '+dependencyBudgetPath);
+}
+const nodesById=new Map(nodes.map(node=>[node.id,node]));
+const budgetChecks=[];
+const budgetViolations=[];
+for(const budget of dependencyBudget.modules){
+  const node=nodesById.get(budget.path);
+  if(!node||node.kind!=='source'){
+    budgetViolations.push({path:budget.path,rule:'tracked-source-missing'});
+    continue;
+  }
+  const budgetMetrics=[
+    ['maxOutDegree','outDegree'],
+    ['maxRuntimeOutDegree','runtimeOutDegree'],
+    ['maxTypeOutDegree','typeOutDegree'],
+    ['maxProductionRuntimeInDegree','productionRuntimeInDegree'],
+    ['maxProductionTypeOnlyInDegree','productionTypeOnlyInDegree'],
+  ];
+  for(const [limitKey,metric] of budgetMetrics){
+    if(budget[limitKey]===undefined) continue;
+    const check={
+      path:budget.path,
+      metric,
+      observed:node[metric],
+      maximum:budget[limitKey],
+      withinBudget:node[metric]<=budget[limitKey],
+    };
+    budgetChecks.push(check);
+    if(!check.withinBudget) budgetViolations.push({...check,rule:'dependency-budget-exceeded'});
+  }
+}
+const runtimeEdges=edges.filter(edge=>edge.kind!=='typescript-type-import').length;
+const typeOnlyEdges=edges.filter(edge=>edge.kind==='typescript-type-import').length;
+const dualKindEdges=edges.filter(edge=>edge.kind==='runtime-and-type').length;
+const typeEdges=edges.filter(edge=>edge.kind!=='runtime-import').length;
+const productionEdges=edges.filter(edge=>edge.fromLayer!=='runtime-tests').length;
+const testEdges=edges.length-productionEdges;
+const productionRuntimeEdges=edges.filter(edge=>edge.fromLayer!=='runtime-tests'&&edge.kind!=='typescript-type-import').length;
+const productionTypeOnlyEdges=edges.filter(edge=>edge.fromLayer!=='runtime-tests'&&edge.kind==='typescript-type-import').length;
+const sourceLayerCounts={};
+for(const file of files){
+  const layer=layerOf(file);
+  sourceLayerCounts[layer]=(sourceLayerCounts[layer]||0)+1;
+}
+const report={
+  schemaVersion:3,
+  generatedAt:new Date().toISOString(),
+  repositoryRoot:'.',
+  summary:{
+    sourceFiles:files.length,
+    canonicalFiles:canonicalFiles.length,
+    dependencyEdges,
+    runtimeEdges,
+    typeEdges,
+    typeOnlyEdges,
+    dualKindEdges,
+    productionEdges,
+    testEdges,
+    productionRuntimeEdges,
+    productionTypeOnlyEdges,
+    resolvedNodes:nodes.length,
+    missingImports:missing.length,
+    cycles:cycles.length,
+    boundaryViolations:boundaryViolations.length,
+    maxCanonicalOutDegree:hotSpots.highFanOut[0]?.outDegree||0,
+    maxCanonicalProductionInDegree:hotSpots.highProductionFanIn[0]?.productionInDegree||0,
+    maxCanonicalRuntimeOutDegree:hotSpots.highRuntimeFanOut[0]?.runtimeOutDegree||0,
+    maxCanonicalProductionRuntimeInDegree:hotSpots.highProductionRuntimeFanIn[0]?.productionRuntimeInDegree||0,
+    dependencyBudgetChecks:budgetChecks.length,
+    dependencyBudgetViolations:budgetViolations.length,
+  },
+  dependencyBudget:{schemaVersion:dependencyBudget.schemaVersion,checks:budgetChecks,violations:budgetViolations},
+  sourceLayerCounts,
+  hotSpots,
+  layerCoupling:[...layerLinks.entries()]
+    .map(([link,count])=>({link,count}))
+    .sort((a,b)=>b.count-a.count||a.link.localeCompare(b.link)),
+  productionLayerCoupling:[...productionLayerLinks.entries()]
+    .map(([link,count])=>({link,count}))
+    .sort((a,b)=>b.count-a.count||a.link.localeCompare(b.link)),
+  nodes,
+  edges,
+};
+const reportPath=process.env.NK1_DEPENDENCY_GRAPH_REPORT;
+if(reportPath){
+  const absoluteReportPath=path.resolve(reportPath);
+  await writeFile(absoluteReportPath,JSON.stringify(report,null,2)+String.fromCharCode(10),'utf8');
+  console.log('DEPENDENCY_GRAPH_REPORT='+absoluteReportPath+' nodes='+nodes.length+' edges='+edges.length+' runtimeEdges='+runtimeEdges+' typeOnlyEdges='+typeOnlyEdges+' canonicalHubs='+hotSpots.highFanOut.length);
+}
+if(budgetViolations.length){
+  console.error('DEPENDENCY_BUDGET=FAIL checks='+budgetChecks.length+' violations='+JSON.stringify(budgetViolations));
+  console.log('CLEAN_ARCHITECTURE=FAIL sourceFiles='+files.length+' canonicalFiles='+canonicalFiles.length+' dependencyEdges='+dependencyEdges+' runtimeEdges='+runtimeEdges+' typeOnlyEdges='+typeOnlyEdges+' dependencyBudgetViolations='+budgetViolations.length);
+  process.exitCode=1;
+}else{
+  console.log('DEPENDENCY_BUDGET=PASS checks='+budgetChecks.length+' violations=0');
+  console.log('CLEAN_ARCHITECTURE=PASS sourceFiles='+files.length+' canonicalFiles='+canonicalFiles.length+' dependencyEdges='+dependencyEdges+' runtimeEdges='+runtimeEdges+' typeOnlyEdges='+typeOnlyEdges+' missing=0 cycles=0 legacyLeakage=0 boundaryViolations=0 dependencyBudgetViolations=0');
+}
