@@ -89,14 +89,37 @@ export class EmotionAppraisalEngine {
     return structuredClone(this.state.interoception);
   }
 
-  recordOutcome(input:{emotionId?:string;action:string;success01:number;surprise01:number;regulationCost01?:number}):EmotionOutcomeCalibration{
-    const key=String(input.action); const prev=this.state.outcomes[key]??{attempts:0,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5};
+  private emotionOutcomeKey(label:EmotionLabel,action:string):string{return `@emotion:${label}:${action}`;}
+
+  private updateOutcomeCalibration(key:string,input:{success01:number;surprise01:number;regulationCost01?:number}):EmotionOutcomeCalibration{
+    const prev=this.state.outcomes[key]??{attempts:0,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5};
     const benefit=c(input.success01*.62+(1-input.surprise01)*.24+(1-c(input.regulationCost01??0))*.14);
-    const n=prev.attempts+1; const row={attempts:n,meanSuccess01:c(prev.meanSuccess01*(n-1)/n+c(input.success01)/n),meanSurprise01:c(prev.meanSurprise01*(n-1)/n+c(input.surprise01)/n),meanBenefit01:c(prev.meanBenefit01*(n-1)/n+benefit/n)};
-    this.state.outcomes={...this.state.outcomes,[key]:row}; return structuredClone(row);
+    const n=prev.attempts+1;
+    const row={attempts:n,meanSuccess01:c(prev.meanSuccess01*(n-1)/n+c(input.success01)/n),meanSurprise01:c(prev.meanSurprise01*(n-1)/n+c(input.surprise01)/n),meanBenefit01:c(prev.meanBenefit01*(n-1)/n+benefit/n)};
+    this.state.outcomes={...this.state.outcomes,[key]:row};
+    return row;
   }
 
-  outcomeCalibration(action:string):EmotionOutcomeCalibration|null{return this.state.outcomes[String(action)]?structuredClone(this.state.outcomes[String(action)]):null;}
+  recordOutcome(input:{emotionId?:string;action:string;success01:number;surprise01:number;regulationCost01?:number}):EmotionOutcomeCalibration{
+    const action=String(input.action);
+    // Keep the cross-context baseline for older callers, but bind contextual learning
+    // only when the supplied emotion ID refers to an episode produced by this engine.
+    const baseline=this.updateOutcomeCalibration(action,input);
+    const episodeId=String(input.emotionId??'');
+    const episode=episodeId ? this.state.history.find(item=>item.id===episodeId) : undefined;
+    if(episode)this.updateOutcomeCalibration(this.emotionOutcomeKey(episode.label,action),input);
+    return structuredClone(baseline);
+  }
+
+  outcomeCalibration(action:string,emotionId?:string):EmotionOutcomeCalibration|null{
+    if(emotionId!==undefined){
+      const episode=this.state.history.find(item=>item.id===String(emotionId));
+      if(!episode)return null;
+      const contextual=this.state.outcomes[this.emotionOutcomeKey(episode.label,String(action))];
+      return contextual?structuredClone(contextual):null;
+    }
+    return this.state.outcomes[String(action)]?structuredClone(this.state.outcomes[String(action)]):null;
+  }
   appraise(input:{tick:number;at?:number;goalPressure01?:number;goalCongruence01?:number;controllability01?:number;novelty01?:number;selfRelevance01?:number;socialMeaning01?:number;uncertainty01?:number;predictionError01?:number;homeostaticPressure01?:number;energy01?:number;success01?:number;external?:boolean}):EmotionEpisode{
     const a={relevance01:c(Math.max(input.goalPressure01??0,input.predictionError01??0,input.homeostaticPressure01??0)),goalCongruence01:c(input.goalCongruence01??(input.success01??.5)),controllability01:c(input.controllability01??(1-(input.uncertainty01??.35))),novelty01:c(input.novelty01??.35),selfRelevance01:c(input.selfRelevance01??.5),socialMeaning01:c(input.socialMeaning01??0),uncertainty01:c(input.uncertainty01??.35)};
     const arousal=c(a.relevance01*.20+a.novelty01*.19+a.uncertainty01*.20+(input.predictionError01??0)*.17+(input.homeostaticPressure01??0)*.15+this.state.interoception.regulationPressure01*.09);
@@ -139,8 +162,14 @@ export class EmotionAppraisalEngine {
     const match:Record<string,number>={explore:e.label==='curiosity'?0.08:0,verify:e.label==='anxiety'||e.label==='frustration'?0.06:0,reflect:e.label==='frustration'?0.055:0,rest:e.label==='protective'||e.label==='sadness'?0.04:0,protect:e.label==='protective'||e.label==='anger'?0.07:0,approach:e.label==='joy'?0.05:0,withdraw:e.label==='sadness'?0.06:0,engage:e.label==='calm'||e.label==='joy'?0.025:0};
     const intero=this.state.interoception;
     const regulation:Record<string,number>={rest:intero.regulationPressure01*.075,protect:intero.regulationPressure01*.055,verify:intero.regulationPressure01*.025,reflect:intero.regulationPressure01*.015,explore:-intero.regulationPressure01*.055,approach:-intero.regulationPressure01*.02,engage:-intero.regulationPressure01*.015,withdraw:intero.regulationPressure01*.01};
-    const calibration=this.state.outcomes[action];
-    const learned=calibration&&calibration.attempts>=3 ? (calibration.meanBenefit01-.5)*.045 : 0;
+    // Prefer outcome evidence gathered under the same emotional appraisal.
+    // The global action estimate is only a fallback until this context has enough data.
+    const contextual=this.state.outcomes[this.emotionOutcomeKey(e.label,action)];
+    const baseline=this.state.outcomes[action];
+    const calibration=contextual&&contextual.attempts>=3?contextual:baseline;
+    const learned=calibration&&calibration.attempts>=3
+      ? (calibration.meanBenefit01-.5)*.10*Math.min(1,calibration.attempts/6)
+      : 0;
     return c(Math.max(0,(match[action]??0)+regulation[action]+learned))*c(.55+e.interoceptiveDelta.attentionCapture01*.45);
   }
 
