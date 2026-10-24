@@ -51,8 +51,10 @@ jobs:
         working-directory: runtime/neuro-kurisu
         run: npm run test:p2842:runtime
       - name: Audit runtime npm script targets and test file existence
+        if: always()
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass84:script-integrity
       - name: Type-check canonical runtime
+        if: always()
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
