@@ -19,6 +19,15 @@ on:
       - "runtime/neuro-kurisu/research/vendor/CleanRL/**"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
+      - "runtime/neuro-kurisu/scripts/typecheck-runtime.mjs"
+      - "runtime/neuro-kurisu/tsconfig.clean.json"
+      - "runtime/neuro-kurisu/tsconfig.shim.json"
+      - "runtime/neuro-kurisu/src/node-shims.d.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/CorrectionRuleMemory.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts"
+      - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
       - ".github/workflows/p26-learning-validation.yml"
   workflow_dispatch:
 
