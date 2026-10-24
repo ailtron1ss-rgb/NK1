@@ -1,3 +1,9 @@
+# NK1 CI repair — WorkPass292 evidence-lanes script (2026-10-24)
+
+- [FIXED] The WorkPass292 workflow called `test:workpass292:evidence-lanes`, but the runtime package did not define that script even though the corresponding test file existed.
+- [WIRED] Added the missing runtime package script to execute `tests/workpass292-evidence-lanes.mjs` under the project's Node.js 24 strip-types command.
+- [VALIDATION] The package manifest parses as valid JSON. The workflow must re-run the test on this new head; no test pass is claimed before that run completes.
+
 # WorkPass331 follow-up — deterministic replay and cycle integrity (2026-10-24)
 
 - [HARDENED] Cognitive kernel stage events now use stable identities scoped to the logical tick and stage, so repeated delivery of identical input does not append duplicate causal events.
