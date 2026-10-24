@@ -1,3 +1,11 @@
+## NK1 WorkPass99 — runtime Live2D wiring and local SDK ownership (2026-10-24)
+
+- Fixed the runtime avatar's state feed: it now consumes `/api/organism/ui-snapshot` rather than treating the asset-only avatar endpoint as a cognitive snapshot. Added a bounded mapper from the live organism action/emotion/voice snapshot to model expression, gaze, motion, and lip-sync.
+- Promoted Pixi, Cubism Core, and the display adapter to canonical runtime-owned vendor files, hash-locked all three in the public-asset manifest, and kept the app vendor files as verified shadows. The runtime viewer no longer boots remote CDN scripts.
+- Added finite-value and parent-source checks, expression transition caching, idle/active frame budgets, visibility pause/resume, mapping/integrity regressions, and a Chromium end-to-end test for mobile/quality profiles plus snapshot-to-avatar wiring.
+- Source/test/workflow head at report creation: `6b36e6aa6c8bd6a37122b60ab977e0ed4d7e3d52`. Exact-head Actions run [40129428404](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40129428404) was queued at report creation; verification status will be updated only after it finishes.
+- Report: [WORKPASS99_LIVE2D_RUNTIME_WIRING_2026-10-24.md](https://github.com/ailtron1ss-rgb/NK1/blob/feature/visual-embodiment/docs/WORKPASS99_LIVE2D_RUNTIME_WIRING_2026-10-24.md).
+
 ## NK1 WorkPass98 — fail-closed Live2D intent validation (2026-10-24)
 
 - Hardened the app-owned Live2D intent sanitizer: nested pose values must be plain records, all timing/affect scalar fields must be finite, event time cannot be negative, and `speaking` requires a real audio clock source.
