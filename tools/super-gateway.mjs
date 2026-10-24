@@ -1,34 +1,146 @@
 import http from 'node:http';
-import { request as httpRequest } from 'node:http';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import process from 'node:process';
 
-const PORT = Number(process.env.SUPER_GATEWAY_PORT || 8080);
-const UI_PORT = Number(process.env.SUPER_UI_PORT || 8081);
-const RUNTIME_PORT = Number(process.env.SUPER_RUNTIME_PORT || 3310);
-const RESEARCH_PORT = Number(process.env.SUPER_RESEARCH_PORT || 8765);
+const DEFAULT_UPSTREAM_TIMEOUT_MS = 30_000;
+const MAX_UPSTREAM_TIMEOUT_MS = 120_000;
+const HOP_BY_HOP_HEADERS = new Set([
+  'connection',
+  'keep-alive',
+  'proxy-authenticate',
+  'proxy-authorization',
+  'te',
+  'trailer',
+  'transfer-encoding',
+  'upgrade',
+]);
 
-const forward = (req, res, targetPort, targetHost = '127.0.0.1') => {
-  const upstream = httpRequest({
-    hostname: targetHost,
-    port: targetPort,
-    path: req.url,
-    method: req.method,
-    headers: { ...req.headers, host: `${targetHost}:${targetPort}` },
-  }, (upstreamRes) => {
-    res.writeHead(upstreamRes.statusCode ?? 502, upstreamRes.headers);
-    upstreamRes.pipe(res);
+function stripHopByHopHeaders(headers = {}) {
+  const connectionNamedHeaders = new Set(
+    String(headers.connection ?? '')
+      .split(',')
+      .map((header) => header.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const result = {};
+  for (const [name, value] of Object.entries(headers)) {
+    const normalized = name.toLowerCase();
+    if (normalized === 'host' || HOP_BY_HOP_HEADERS.has(normalized) || connectionNamedHeaders.has(normalized)) continue;
+    result[name] = value;
+  }
+  return result;
+}
+
+export function readUpstreamTimeout(raw = process.env.SUPER_GATEWAY_UPSTREAM_TIMEOUT_MS) {
+  const value = raw === undefined || raw === '' ? DEFAULT_UPSTREAM_TIMEOUT_MS : Number(raw);
+  if (!Number.isSafeInteger(value) || value < 1_000 || value > MAX_UPSTREAM_TIMEOUT_MS) {
+    throw new Error(`SUPER_GATEWAY_UPSTREAM_TIMEOUT_MS must be an integer from 1000 to ${MAX_UPSTREAM_TIMEOUT_MS}`);
+  }
+  return value;
+}
+
+export function createGatewayServer({
+  uiPort,
+  runtimePort,
+  researchPort,
+  targetHost = '127.0.0.1',
+  upstreamTimeoutMs = DEFAULT_UPSTREAM_TIMEOUT_MS,
+} = {}) {
+  if (![uiPort, runtimePort, researchPort].every((port) => Number.isInteger(port) && port >= 1 && port <= 65535)) {
+    throw new Error('UI, runtime, and research ports must be integers in the range 1..65535');
+  }
+  if (!Number.isInteger(upstreamTimeoutMs) || upstreamTimeoutMs < 1_000 || upstreamTimeoutMs > MAX_UPSTREAM_TIMEOUT_MS) {
+    throw new Error(`upstreamTimeoutMs must be an integer from 1000 to ${MAX_UPSTREAM_TIMEOUT_MS}`);
+  }
+
+  const forward = (req, res, targetPort) => {
+    const upstream = http.request({
+      hostname: targetHost,
+      port: targetPort,
+      path: req.url || '/',
+      method: req.method,
+      headers: stripHopByHopHeaders(req.headers),
+    }, (upstreamRes) => {
+      if (res.destroyed) {
+        upstreamRes.destroy();
+        return;
+      }
+      res.writeHead(upstreamRes.statusCode ?? 502, stripHopByHopHeaders(upstreamRes.headers));
+      upstreamRes.on('error', () => {
+        if (!res.destroyed) res.destroy();
+      });
+      upstreamRes.pipe(res);
+    });
+
+    upstream.setTimeout(upstreamTimeoutMs, () => {
+      const error = new Error(`Upstream request timed out after ${upstreamTimeoutMs}ms`);
+      error.code = 'ETIMEDOUT';
+      upstream.destroy(error);
+    });
+
+    upstream.on('error', (error) => {
+      if (res.destroyed || res.writableEnded) return;
+      const timedOut = error?.code === 'ETIMEDOUT';
+      const status = timedOut ? 504 : 502;
+      const body = timedOut ? 'super-project upstream timed out' : 'super-project upstream unavailable';
+      res.writeHead(status, {
+        'content-type': 'text/plain; charset=utf-8',
+        'content-length': Buffer.byteLength(body),
+        'cache-control': 'no-store',
+      });
+      res.end(body);
+    });
+
+    req.once('aborted', () => upstream.destroy());
+    res.once('close', () => {
+      if (!res.writableEnded) upstream.destroy();
+    });
+    upstream.once('close', () => {
+      req.removeListener('aborted', abortUpstream);
+      res.removeListener('close', abortOnClientClose);
+    });
+
+    function abortUpstream() { upstream.destroy(); }
+    function abortOnClientClose() {
+      if (!res.writableEnded) upstream.destroy();
+    }
+
+    req.pipe(upstream);
+  };
+
+  return http.createServer((req, res) => {
+    const pathname = String(req.url || '/');
+    if (pathname.startsWith('/api/organism')) return forward(req, res, runtimePort);
+    if (pathname.startsWith('/api/research')) return forward(req, res, researchPort);
+    return forward(req, res, uiPort);
   });
-  upstream.on('error', () => {
-    if (!res.headersSent) res.writeHead(502, { 'content-type': 'text/plain; charset=utf-8' });
-    res.end('super-project upstream unavailable');
-  });
-  req.pipe(upstream);
-};
+}
 
-http.createServer((req, res) => {
-  const path = String(req.url || '/');
-  if (path.startsWith('/api/organism')) return forward(req, res, RUNTIME_PORT);
-  if (path.startsWith('/api/research')) return forward(req, res, RESEARCH_PORT);
-  return forward(req, res, UI_PORT);
-}).listen(PORT, '127.0.0.1', () => {
-  console.log(`[super-gateway] http://127.0.0.1:${PORT}`);
-});
+export function startGateway(env = process.env) {
+  const port = Number(env.SUPER_GATEWAY_PORT || 8080);
+  const uiPort = Number(env.SUPER_UI_PORT || 8081);
+  const runtimePort = Number(env.SUPER_RUNTIME_PORT || 3310);
+  const researchPort = Number(env.SUPER_RESEARCH_PORT || 8765);
+  const upstreamTimeoutMs = readUpstreamTimeout(env.SUPER_GATEWAY_UPSTREAM_TIMEOUT_MS);
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    throw new Error('SUPER_GATEWAY_PORT must be an integer in the range 0..65535');
+  }
+
+  const server = createGatewayServer({ uiPort, runtimePort, researchPort, upstreamTimeoutMs });
+  server.listen(port, '127.0.0.1', () => {
+    const address = server.address();
+    const boundPort = typeof address === 'object' && address ? address.port : port;
+    console.log(`[super-gateway] http://127.0.0.1:${boundPort} upstreamTimeoutMs=${upstreamTimeoutMs}`);
+  });
+  return server;
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    startGateway();
+  } catch (error) {
+    console.error(`[super-gateway] configuration error: ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+  }
+}
