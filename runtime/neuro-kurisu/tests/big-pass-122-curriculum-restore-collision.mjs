@@ -83,4 +83,28 @@ const forwardRank = tieEngine.rankGoals(rankingArgs).map(row => row.goalId);
 const reverseRank = tieEngine.rankGoals({ ...rankingArgs, goals: [goalA, goalZ] }).map(row => row.goalId);
 assert.deepEqual(forwardRank, ['goal-a', 'goal-z'], 'equal scores use stable goal identity as tie-break');
 assert.deepEqual(reverseRank, forwardRank, 'curriculum focus order must not depend on input insertion order');
+const invalidIdentity = structuredClone(validState);
+invalidIdentity.threads[0].id = 'curriculum-row\\nforged';
+const restoredInvalidIdentity = new PersonalCurriculumEngine();
+restoredInvalidIdentity.restore(invalidIdentity);
+assert.equal(restoredInvalidIdentity.snapshot().threads.length, 0,
+  'persisted row identities containing control characters must be rejected');
+
+const invalidContextKey = structuredClone(validState);
+invalidContextKey.threads[0].contextKeys = ['context-a\\nforged'];
+invalidContextKey.threads[0].contexts = 1;
+const restoredInvalidContextKey = new PersonalCurriculumEngine();
+restoredInvalidContextKey.restore(invalidContextKey);
+assert.equal(restoredInvalidContextKey.snapshot().threads.length, 0,
+  'persisted context keys must be canonical single-line identities');
+
+const impossibleOutcomes = structuredClone(validState);
+impossibleOutcomes.threads[0].successes = 1;
+impossibleOutcomes.threads[0].failures = 1;
+impossibleOutcomes.threads[0].occurrences = 1;
+const restoredImpossibleOutcomes = new PersonalCurriculumEngine();
+restoredImpossibleOutcomes.restore(impossibleOutcomes);
+assert.equal(restoredImpossibleOutcomes.snapshot().threads.length, 0,
+  'success and failure counts cannot exceed their disjoint observed outcomes');
+
 console.log('BIG_PASS_122_CURRICULUM_RESTORE_COLLISION=PASS');
