@@ -13,7 +13,7 @@ export interface RuntimeClosureCheck {
 export interface RuntimeClosureRecord {
   at: number;
   tick: number;
-  phase: 'step' | 'durable' | 'restore';
+  phase: 'step' | 'durable' | 'restore' | 'failure';
   status: RuntimeClosureStatus;
   checks: RuntimeClosureCheck[];
   behaviorHash: string;
@@ -47,6 +47,9 @@ export interface RuntimeClosureStepInput {
   identityContinuity01?: number;
   predictionError01?: number;
   action?: string;
+  cognitiveCycleComplete?: boolean;
+  cognitiveCycleTick?: number;
+  missingCognitiveStages?: string[];
 }
 
 export interface RuntimeClosureDurabilityInput {
@@ -88,6 +91,47 @@ function statusOf(checks: RuntimeClosureCheck[]): RuntimeClosureStatus {
   return 'PASS';
 }
 
+
+const VALID_CLOSURE_STATUSES = new Set<RuntimeClosureStatus>(['PASS','DEGRADED','FAIL']);
+const VALID_CLOSURE_PHASES = new Set<RuntimeClosureRecord['phase']>(['step','durable','restore','failure']);
+const safeCounter = (value: unknown): number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0;
+
+function normalizeClosureRecord(raw: unknown): RuntimeClosureRecord | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const record = raw as Partial<RuntimeClosureRecord>;
+  if (typeof record.at !== 'number' || !Number.isFinite(record.at) ||
+      typeof record.tick !== 'number' || !Number.isSafeInteger(record.tick) || record.tick < 0 ||
+      !VALID_CLOSURE_PHASES.has(record.phase as RuntimeClosureRecord['phase']) ||
+      !VALID_CLOSURE_STATUSES.has(record.status as RuntimeClosureStatus) ||
+      typeof record.behaviorHash !== 'string' || !Array.isArray(record.checks)) return null;
+  const checks = record.checks.flatMap((rawCheck) => {
+    if (!rawCheck || typeof rawCheck !== 'object' || typeof rawCheck.name !== 'string' || typeof rawCheck.ok !== 'boolean') return [];
+    const check = rawCheck as RuntimeClosureCheck;
+    const safeScalar = (value: unknown): string | number | boolean | null | undefined => {
+      if (value === null || value === undefined || typeof value === 'string' || typeof value === 'boolean') return value;
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+      return String(value).slice(0, 180);
+    };
+    return [{
+      name: check.name.slice(0, 180),
+      ok: check.ok,
+      value: safeScalar(check.value),
+      expected: safeScalar(check.expected),
+      detail: typeof check.detail === 'string' ? check.detail.slice(0, 240) : undefined,
+    }];
+  }).slice(-32);
+  if (!checks.length) return null;
+  const normalizedStatus: RuntimeClosureStatus = record.status === 'FAIL' || checks.some((check) => !check.ok)
+    ? 'FAIL'
+    : record.status === 'DEGRADED' || checks.some((check) => check.detail?.startsWith('degraded'))
+      ? 'DEGRADED'
+      : 'PASS';
+  return {
+    at: record.at, tick: record.tick, phase: record.phase as RuntimeClosureRecord['phase'],
+    status: normalizedStatus, checks, behaviorHash: record.behaviorHash.slice(0, 160),
+    durableHash: typeof record.durableHash === 'string' ? record.durableHash.slice(0, 160) : undefined,
+  };
+}
 export class RuntimeClosureLedger {
   private state: RuntimeClosureSnapshot = {
     version: 1,
@@ -104,10 +148,31 @@ export class RuntimeClosureLedger {
 
   restore(snapshot?: Partial<RuntimeClosureSnapshot> | null): void {
     if (!snapshot || Number(snapshot.version) !== 1) return;
+    const records = Array.isArray(snapshot.records)
+      ? snapshot.records.map(normalizeClosureRecord).filter((record): record is RuntimeClosureRecord => record !== null).slice(-24)
+      : [];
+    const lastCycleRecord = [...records].reverse().find((record) => record.phase === 'step' || record.phase === 'failure');
+    const reportedStatus = VALID_CLOSURE_STATUSES.has(snapshot.lastStatus as RuntimeClosureStatus)
+      ? snapshot.lastStatus as RuntimeClosureStatus
+      : 'DEGRADED';
+    const rank: Record<RuntimeClosureStatus, number> = { PASS: 0, DEGRADED: 1, FAIL: 2 };
+    // A contradictory summary must never be less severe than its latest retained cycle evidence.
+    const lastStatus: RuntimeClosureStatus = lastCycleRecord && rank[lastCycleRecord.status] > rank[reportedStatus]
+      ? lastCycleRecord.status
+      : reportedStatus;
+    const failedTerminal = lastStatus === 'FAIL' && lastCycleRecord?.status === 'FAIL' ? lastCycleRecord : null;
+    const terminalOverridesSummary = Boolean(lastCycleRecord && rank[lastCycleRecord.status] > rank[reportedStatus]);
     this.state = {
-      ...this.state,
-      ...snapshot,
-      records: Array.isArray(snapshot.records) ? snapshot.records.slice(-24) : [],
+      version: 1,
+      checks: safeCounter(snapshot.checks),
+      passes: safeCounter(snapshot.passes),
+      degraded: safeCounter(snapshot.degraded),
+      failures: Math.max(safeCounter(snapshot.failures), failedTerminal ? 1 : 0),
+      lastTick: safeCounter(snapshot.lastTick),
+      lastStatus,
+      lastBehaviorHash: (terminalOverridesSummary ? lastCycleRecord?.behaviorHash : failedTerminal?.behaviorHash) ?? (typeof snapshot.lastBehaviorHash === 'string' ? snapshot.lastBehaviorHash.slice(0, 160) : ''),
+      lastDurableHash: typeof snapshot.lastDurableHash === 'string' ? snapshot.lastDurableHash.slice(0, 160) : '',
+      records,
     };
   }
 
@@ -123,6 +188,18 @@ export class RuntimeClosureLedger {
     const validActions = new Set(['observe','inspect','move','collect','rest','communicate']);
     checks.push({ name: 'action-valid', ok: input.action == null || validActions.has(input.action), value: input.action ?? null, expected: 'EnvironmentAction' });
     if (input.continuousTick != null) checks.push({ name: 'continuous-fabric-aligned', ok: input.continuousTick === input.stateTick, value: input.continuousTick, expected: input.stateTick });
+    if (input.cognitiveCycleComplete !== undefined) {
+      const cognitiveTickAligned = input.cognitiveCycleTick == null || input.cognitiveCycleTick === input.stateTick;
+      const cognitiveComplete = input.cognitiveCycleComplete === true && cognitiveTickAligned;
+      const missing = Array.isArray(input.missingCognitiveStages) ? input.missingCognitiveStages.slice(0, 11).join(',') : '';
+      checks.push({
+        name: 'unified-cognitive-cycle-complete',
+        ok: cognitiveComplete,
+        value: input.cognitiveCycleComplete,
+        expected: true,
+        detail: cognitiveComplete ? undefined : `incomplete-or-misaligned:${missing || (cognitiveTickAligned ? 'cycle-contract' : 'tick-mismatch')}`
+      });
+    }
     const status = statusOf(checks);
     const behaviorHash = fastFingerprint({
       tick: input.stateTick,
@@ -135,12 +212,35 @@ export class RuntimeClosureLedger {
       uncertainty01: finite01(input.uncertainty01),
       identityContinuity01: finite01(input.identityContinuity01),
       predictionError01: finite01(input.predictionError01),
+      cognitiveCycleComplete: input.cognitiveCycleComplete ?? null,
+      cognitiveCycleTick: input.cognitiveCycleTick ?? null,
+      missingCognitiveStages: Array.isArray(input.missingCognitiveStages) ? input.missingCognitiveStages.slice(0, 11) : [],
     });
     const record: RuntimeClosureRecord = { at: input.at, tick: input.stateTick, phase: 'step', status, checks, behaviorHash };
     this.commit(record);
     return structuredClone(record);
   }
 
+  fail(input: { at: number; tick: number; reason: string }): RuntimeClosureRecord {
+    const tick = Number.isSafeInteger(input.tick) && input.tick >= 0 ? input.tick : 0;
+    const reason = (typeof input.reason === 'string' ? input.reason : 'cycle execution failed')
+      .replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ')
+      .trim()
+      .slice(0, 240) || 'cycle execution failed';
+    const record: RuntimeClosureRecord = {
+      at: Number.isFinite(input.at) ? input.at : Date.now(),
+      tick,
+      phase: 'failure',
+      status: 'FAIL',
+      checks: [
+        { name: 'cycle-execution-completed', ok: false, value: 'failed', expected: 'completed', detail: reason },
+        { name: 'failure-tick-valid', ok: Number.isSafeInteger(input.tick) && input.tick >= 0, value: tick, expected: 'non-negative safe integer' },
+      ],
+      behaviorHash: fastFingerprint({ tick, phase: 'failure', reason }),
+    };
+    this.commit(record);
+    return structuredClone(record);
+  }
   durable(input: RuntimeClosureDurabilityInput): RuntimeClosureRecord {
     const checks: RuntimeClosureCheck[] = [
       { name: 'durable-state-tick', ok: input.stateTick === input.tick, value: input.stateTick, expected: input.tick },
@@ -205,8 +305,13 @@ export class RuntimeClosureLedger {
     else if (record.status === 'DEGRADED') this.state.degraded += record.checks.filter((check) => check.detail?.startsWith('degraded')).length || 1;
     else this.state.failures += record.checks.filter((check) => !check.ok).length || 1;
     this.state.lastTick = record.tick;
-    this.state.lastStatus = record.status;
-    if (updateBehavior) this.state.lastBehaviorHash = record.behaviorHash;
+    // Durable receipts and restore verification are bookkeeping, not a new
+    // cognitive attempt. They must not erase a terminal FAIL or DEGRADED status;
+    // only a later actual step may replace the preceding cycle's result.
+    const preserveTerminalStatus = (record.phase === 'durable' || record.phase === 'restore')
+      && this.state.lastStatus !== 'PASS';
+    if (!preserveTerminalStatus) this.state.lastStatus = record.status;
+    if (updateBehavior && !preserveTerminalStatus) this.state.lastBehaviorHash = record.behaviorHash;
     this.state.records = [...this.state.records, record].slice(-24);
   }
 }

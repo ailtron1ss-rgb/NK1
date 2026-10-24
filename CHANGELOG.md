@@ -1,3 +1,32 @@
+## NK1 WorkPass333 — Repair restore-contract and CI wiring defects (2026-10-24)
+
+- [RESTORE] Preserve valid persisted cognitive stages when a mixed stage list contains an invalid entry; fall back to all required stages only when no stored stage can be trusted. Fixes the exact WorkPass287 assertion in current CI.
+- [RESTORE] A later WorkPass287 run on PR head `cbe7bb4b8373d995408d07cdcf7cf0c45e92bef8` exposed another inconsistent-snapshot case: `lastComplete=true` was retained when the persisted complete/incomplete/broken counters contradicted one another. `UnifiedCognitiveCycle.restore()` now marks the latest cycle incomplete when those supplied aggregates are inconsistent, while consistent aggregates may still preserve a verified complete latest cycle.
+- [CI] Restore `test:workpass293:p23-revision` npm alias to the existing `tests/workpass293-autonomous-p23-revision.mjs` test, matching the workflow's command.
+- [VALIDATION] Earlier runs showed separate blockers: App typecheck failed on untouched `app/src/legacy/avatar/safeLocalStorage.test.mjs`; WorkPass79 failed `tests/p23-signed-outcome-artifact.mjs` at the duplicate-attempt assertion; Runtime/P26 typecheck reported numerous existing Node-shim and unrelated typing errors. A later WorkPass287 run on PR head `cbe7bb4b8373d995408d07cdcf7cf0c45e92bef8` failed `tests/workpass287-unified-cycle-contract.mjs:73` because aggregate contradictions did not invalidate `lastComplete`. This is fixed on the newer head; that head's re-run is still pending, so no new tests are claimed green.
+
+---
+
+## NK1 WorkPass328 — Close failed cognitive cycles explicitly (2026-10-24)
+
+- [CLOSED-LOOP] Added a terminal `failure` phase to `RuntimeClosureLedger`. Durability/restore bookkeeping cannot erase the last cycle's `FAIL`; a later actual step can replace it.
+- [CLOSED-LOOP] Added `CausalDomainClosureLedger.failPending()` for exceptions/cancellations before normal closure, preserving a bounded failure reason and denying causal success credit.
+- [CLOSED-LOOP] Added `failLatest()` so batch-finalization or emergency-checkpoint failures downgrade an already-recorded cycle instead of leaving stale PASS evidence, while preserving observed world/learning facts and revoking only unproven durability claims.
+- [INTEGRATION] `OrganismRuntime` now supplies the current `UnifiedCognitiveCycle` result to both terminal ledgers; missing/misaligned stage closure is a hard `FAIL` with zero causal score, including after durable finalization.
+- [INTERRUPT] `OrganismRuntime.stepInternal` now checks `AbortSignal` at cycle entry, after awaited perception/observation/proposal boundaries, and immediately before embodied-action dispatch; early cancellation avoids unnecessary inference, and late cancellation fails closed before physical actuation.
+- [LIFECYCLE] `OrganismRuntime.stop()` now shares one in-flight shutdown promise across concurrent callers. Failed shutdown persistence records a terminal runtime failure, attempts a best-effort failure flush, and always flushes/closes the continuity journal.
+- [ADMISSION] A `beginBatch()` failure now creates an explicit causal `FAIL` record rather than appearing only in the runtime error journal.
+- [BACKGROUND-CYCLE] Registered and started the opt-in `p23-compound-repair-revision` clock in `RuntimeClockScheduler`; `tests/runtime-clocks.mjs` now exercises this clock, and the test is part of `test:rebuild-recovered`.
+- [COGNITIVE-LINEAGE] Removed the duplicate `CognitiveEventFabric.verifyOperationalCycle` implementation, keeping the extended single verifier that checks both required and supplied optional-stage edges.
+- [EVIDENCE-BOUNDARY] Corrected the malformed control-character regex in `OutcomeVerificationService` which prevented TypeScript compilation.
+- [CI-ORDER] Updated `workpass71-validation.yml` so focused P328 and runtime-clock regressions run after dependencies install but before the separate App typecheck can skip all runtime checks.
+- [VALIDATION] Added `audit:p328:closed-loop-failure-closure` (`typecheck` + regression) as a single acceptance command. Current observed Actions logs are from the earlier PR head `2990f2cf…`: typecheck and unrelated P23 artifact checks failed; the new loop-specific fixes have not yet been validated on the latest head.
+- [REGRESSION] Added `tests/closed-loop-failure-closure.mjs` and connected `test:p328:closed-loop-failure-closure` plus `test:runtime-clocks` to `test:rebuild-recovered`; new-head regression execution remains unverified.
+- [DOCUMENTATION] Added `docs/CLOSED_LOOP_SYSTEM_AUDIT_2026-10-24.md` with the cross-module cycle map, invariants, remaining validation gaps and release gates.
+- [LIMITATION] This is a source-branch implementation checkpoint, not a regenerated release ZIP or a production-approval claim. Exact-head targeted regressions and broad TypeScript/replay gates remain to be confirmed; held-out learning, Android/Live2D E2E and long-soak gates are still open.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

@@ -96,6 +96,9 @@ jobs:
         run: node --test tools/verify-ci-reliability.test.mjs
       - name: Install app dependencies without lifecycle scripts
         run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Targeted runtime closed-loop regressions (before app typecheck)
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p328:closed-loop-failure-closure && npm run test:runtime-clocks
       - name: Audit canonical public asset ownership
         run: node tools/audit-assets.mjs
       - name: Audit runtime test reachability and required coverage

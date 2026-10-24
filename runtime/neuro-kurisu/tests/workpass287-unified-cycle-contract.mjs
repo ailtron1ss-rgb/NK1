@@ -72,6 +72,10 @@ assert.equal(reconciled.brokenLineages,2);
 assert.equal(reconciled.completeCycles+reconciled.incompleteCycles,reconciled.cycles);
 assert.equal(reconciled.lastComplete,false);
 
+const coherentRestore=new UnifiedCognitiveCycle();
+coherentRestore.restore({cycles:10,completeCycles:8,incompleteCycles:2,brokenLineages:2,lastTick:4,lastComplete:true,lastMissingStages:[]});
+assert.equal(coherentRestore.snapshot().lastComplete,true,'consistent aggregates with a complete latest cycle may preserve lastComplete');
+
 
 const undercountRestore=new UnifiedCognitiveCycle();
 undercountRestore.restore({cycles:10,completeCycles:3,incompleteCycles:1,brokenLineages:99,lastTick:8,lastComplete:false,lastMissingStages:['action']});
