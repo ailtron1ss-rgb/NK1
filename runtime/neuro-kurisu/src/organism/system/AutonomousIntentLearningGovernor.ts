@@ -43,7 +43,7 @@ export type AILGPromotionEvidence = {
 };
 
 export type AILGSnapshot = {
-  version: 1;
+  version: 2;
   decisions: AILGDecision[];
   outcomes: AILGOutcome[];
   executedIntentIds: string[];
@@ -260,7 +260,7 @@ export class AutonomousIntentLearningGovernor {
   snapshot(): AILGSnapshot & { outcomeCoverage01: number } {
     const executableCount = [...this.decisions.values()].filter(v => v.status === 'act').length;
     return {
-      version: 1,
+      version: 2,
       decisions: [...this.decisions.values()].map(v => ({ ...v })),
       outcomes: [...this.outcomes.values()].map(v => ({ ...v })),
       executedIntentIds: [...this.executionReceipts.keys()],
@@ -280,7 +280,7 @@ export class AutonomousIntentLearningGovernor {
     this.executionReceipts.clear();
     this.approvalReceipts.clear();
     const snapshot = readDataRecord(raw);
-    if (snapshot?.version !== 1) return;
+    if (snapshot?.version !== 2) return;
     const decisionRows = readDataArray(snapshot.decisions);
     if (!decisionRows) return;
 
