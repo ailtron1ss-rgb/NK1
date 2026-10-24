@@ -1,3 +1,10 @@
+## NK1 Architecture — enforce dependency directions (2026-10-24)
+
+- [ADDED] Extracted a pure, testable dependency boundary policy in `runtime/neuro-kurisu/scripts/dependency-boundary-policy.mjs`.
+- [ENFORCED] The architecture audit now rejects canonical organism imports into UI/app source, app server routing, runtime server routing, research trees, or legacy trees. It also rejects app source imports directly into private runtime source.
+- [REGRESSION] Expanded `tests/architecture-dependency-boundaries.test.mjs` with fixture-based policy tests for allowed contract dependencies and each forbidden edge, plus a full-tree audit invocation. The existing `audit:architecture` command now runs this gate.
+- [LIMITATION] Policy fixtures and saved sources were verified, but the full source-tree audit and the integrated Node test have not been executed locally or in CI in this pass. Existing imports that violate the newly formalized target rules may still need migration.
+
 ## NK1 Architecture — complete dependency-edge parsing (2026-10-24)
 
 - [HARDENED] Updated `runtime/neuro-kurisu/scripts/audit-architecture.mjs` to include side-effect imports and literal CommonJS requires in the dependency graph, in addition to static imports, re-exports, and literal dynamic imports.
