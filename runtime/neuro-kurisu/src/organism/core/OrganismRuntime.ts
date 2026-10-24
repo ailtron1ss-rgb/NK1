@@ -46,6 +46,16 @@ import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndepe
 
 function currentBudgetAllowsLanguage(mode: string | undefined): boolean { return mode !== 'sleep' && mode !== 'defer'; }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
+
+function throwIfAborted(signal: AbortSignal | undefined, stage: string): void {
+  if (!signal?.aborted) return;
+  const detail = typeof signal.reason === 'string'
+    ? signal.reason.replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').trim().slice(0, 120)
+    : '';
+  const error = new Error('cognitive-cycle-aborted:' + stage + (detail ? ':' + detail : ''));
+  error.name = 'AbortError';
+  throw error;
+}
 // External repair hints are advisory only and must be fresh; stale/future timestamps cannot bias autonomous revision order.
 const EXTERNAL_REPAIR_HINT_TTL_MS=7*24*60*60*1000;
 const EXTERNAL_REPAIR_HINT_MAX_FUTURE_SKEW_MS=5*60*1000;
@@ -388,9 +398,22 @@ export class OrganismRuntime {
       const stepStartedAt=Date.now();
       let stepCpuStart:any=null;
       try { stepCpuStart=(process as any).cpuUsage?.(); } catch {}
-      await this.core.beginBatch();
+      try {
+        await this.core.beginBatch();
+      } catch (error: any) {
+        const reason = String(error?.message || error).replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').slice(0, 240);
+        this.runtimeClosure.fail({ at: Date.now(), tick: Number(this.core.operationalStatusSnapshot().tick) || 0, reason });
+        this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+        await this.journal.write('error', 'runtime.batch.begin.failed', { message: reason }).catch(() => {});
+        throw error;
+      }
       const worldBeforeTick=Number(this.environment.snapshot().tick);
       const domainBefore=this.core.causalDomainOperationalSnapshot(worldBeforeTick);
+      let causalClosureEnded=false;
+      let stepFailure: unknown;
+      let failureReason='';
+      let failureWasThrown=false;
+      let failureRecorded=false;
       this.causalDomainClosureLedger.begin({
         at: Date.now(),
         tick: Number(domainBefore.tick)+1,
@@ -450,16 +473,89 @@ export class OrganismRuntime {
           memoryCount:domainAfter.memoryCount,worldTick:domainAfter.worldTick,identityRevision:domainAfter.identityRevision,agencyDecisions:domainAfter.agencyDecisions,
           learningUpdates:domainAfter.learningUpdates,selfChangeCount:domainAfter.selfChangeCount,lifeGraphCompleteChains:domainAfter.lifeGraphCompleteChains,
         },evidence});
+        causalClosureEnded = closureRecord !== null;
         this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
         if (closureRecord && closureRecord.status==='FAIL') {
           await this.journal.write('warn','runtime.causal-domain-closure.degraded',{tick:closureRecord.tick,score01:closureRecord.score01,chain:closureRecord.causalChain});
         }
         return result;
       } catch (error: any) {
-        await this.journal.write('error', 'runtime.step.failed', { message: String(error?.message || error) });
+        stepFailure = error;
+        failureWasThrown = true;
+        failureReason = String(error?.message || error).replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').slice(0, 240);
+        this.runtimeClosure.fail({
+          at: Date.now(),
+          tick: Number(this.core.operationalStatusSnapshot().tick) || 0,
+          reason: failureReason || 'cycle execution failed',
+        });
+        this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+        failureRecorded = true;
+        await this.journal.write('error', 'runtime.step.failed', { message: failureReason, aborted: options.signal?.aborted === true }).catch(() => {});
+        if (options.signal?.aborted) {
+          await this.journal.write('warn', 'runtime.step.aborted', {
+            tick: Number(this.core.operationalStatusSnapshot().tick) || 0,
+            reason: failureReason || 'caller-aborted',
+          }).catch(() => {});
+        }
         throw error;
       } finally {
-        await this.core.endBatch();
+        // A begun cycle must always reach a terminal causal record. Failure closes
+        // the pending record without granting causal credit or learning evidence.
+        if (!causalClosureEnded) {
+          try {
+            const failedDomain = this.core.causalDomainOperationalSnapshot(Number(this.environment.snapshot().tick));
+            const failedClosure = this.causalDomainClosureLedger.failPending({
+              reason: failureReason || 'cycle-exited-without-causal-closure',
+              counters: {
+                memoryCount: failedDomain.memoryCount,
+                worldTick: failedDomain.worldTick,
+                identityRevision: failedDomain.identityRevision,
+                agencyDecisions: failedDomain.agencyDecisions,
+                learningUpdates: failedDomain.learningUpdates,
+                selfChangeCount: failedDomain.selfChangeCount,
+                lifeGraphCompleteChains: failedDomain.lifeGraphCompleteChains,
+              },
+            });
+            causalClosureEnded = failedClosure !== null;
+            if (failedClosure) {
+              this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
+              await this.journal.write('warn', 'runtime.causal-domain-closure.aborted', {
+                tick: failedClosure.tick,
+                reason: failedClosure.failureReason,
+              }).catch(() => {});
+            }
+          } catch (closureError: any) {
+            const fallback = this.causalDomainClosureLedger.failPending({
+              reason: failureReason || 'causal-closure-finalizer-failed',
+            });
+            if (fallback) {
+              causalClosureEnded = true;
+              this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
+            }
+            await this.journal.write('error', 'runtime.causal-domain-closure.close-failed', {
+              message: String(closureError?.message || closureError).slice(0, 180),
+            }).catch(() => {});
+          }
+        }
+        try {
+          await this.core.endBatch();
+        } catch (error: any) {
+          const reason = String(error?.message || error).replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').slice(0, 240);
+          if (stepFailure === undefined) {
+            stepFailure = error;
+            failureReason = reason || 'cycle batch finalization failed';
+            if (!failureRecorded) {
+              this.runtimeClosure.fail({
+                at: Date.now(),
+                tick: Number(this.core.operationalStatusSnapshot().tick) || 0,
+                reason: failureReason,
+              });
+              this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+              failureRecorded = true;
+            }
+          }
+          await this.journal.write('error', 'runtime.batch.end.failed', { message: reason }).catch(() => {});
+        }
         let cpuMs=0;
         try { if(stepCpuStart && (process as any).cpuUsage) { const cpu=(process as any).cpuUsage(stepCpuStart); cpuMs=(Number(cpu?.user??0)+Number(cpu?.system??0))/1000; } } catch {}
         const mem=process.memoryUsage();
@@ -469,13 +565,31 @@ export class OrganismRuntime {
         if (this.pendingEmergencyCheckpointReason !== null) {
           const reason = this.pendingEmergencyCheckpointReason;
           const tick = this.pendingEmergencyCheckpointTick;
-          this.pendingEmergencyCheckpointReason = null;
-          this.pendingEmergencyCheckpointTick = -1;
-          await this.core.flush();
-          this.lastEmergencyCheckpointTick = tick;
-          this.emergencyCheckpointCount += 1;
-          this.lastEmergencyCheckpointReason = reason;
-          await this.journal.write('warn','runtime.emergency-checkpoint',{tick,reason});
+          try {
+            await this.core.flush();
+            this.pendingEmergencyCheckpointReason = null;
+            this.pendingEmergencyCheckpointTick = -1;
+            this.lastEmergencyCheckpointTick = tick;
+            this.emergencyCheckpointCount += 1;
+            this.lastEmergencyCheckpointReason = reason;
+            await this.journal.write('warn','runtime.emergency-checkpoint',{tick,reason}).catch(() => {});
+          } catch (checkpointError: any) {
+            const message = String(checkpointError?.message || checkpointError).replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').slice(0, 240);
+            if (stepFailure === undefined) {
+              stepFailure = checkpointError;
+              failureReason = message || 'emergency checkpoint failed';
+              if (!failureRecorded) {
+                this.runtimeClosure.fail({
+                  at: Date.now(),
+                  tick: Number(this.core.operationalStatusSnapshot().tick) || 0,
+                  reason: failureReason,
+                });
+                this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+                failureRecorded = true;
+              }
+            }
+            await this.journal.write('error', 'runtime.emergency-checkpoint.failed', { tick, reason, message }).catch(() => {});
+          }
         }
         const runtimeView = this.core.runtimeClosureOperationalSnapshot();
         this.runtimeClosure.durable({
@@ -504,6 +618,7 @@ export class OrganismRuntime {
           processed: causalView.continuousProcessed,
         });
         this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
+        if (stepFailure !== undefined && !failureWasThrown) throw stepFailure;
       }
     });
   }
@@ -690,6 +805,7 @@ export class OrganismRuntime {
     } else if (autonomousAgenda) {
       this.core.deferAutonomousSocialInitiative(autonomousAgenda.id, Date.now());
     }
+    throwIfAborted(options.signal, 'before-embodied-action');
     const actionAdvice = this.embodiedRecovery.advise(internalAction);
     const physicalAction = actionAdvice.allowed ? internalAction : 'wait';
     if (!actionAdvice.allowed && physicalAction !== internalAction) this.embodiedRecovery.noteRetry(internalAction);
