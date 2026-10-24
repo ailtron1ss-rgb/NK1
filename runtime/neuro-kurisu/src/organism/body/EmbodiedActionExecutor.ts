@@ -1,4 +1,5 @@
 import type { EnvironmentAction } from '../world/WorldEnvironment.ts';
+import { createStableEvidenceEventId } from '../system/EvidenceEventIdentity.ts';
 import type { EmbodimentRuntime } from './EmbodimentRuntime.ts';
 
 export type EmbodiedExecutionStatus = 'executed'|'unavailable'|'skipped'|'failed'|'ambiguous';
@@ -11,6 +12,8 @@ export interface EmbodiedActionResult {
   realityClass:EmbodiedRealityClass;
   source:string;
   at:number;
+  /** Stable event join key for idempotency; it is not proof of external success. */
+  eventId?:string;
   before:{battery01:number;thermal01:number;cognitiveCapacity01:number;awake:boolean;source:string};
   after:{battery01:number;thermal01:number;cognitiveCapacity01:number;awake:boolean;source:string};
   stateDelta:{battery01:number;thermal01:number;cognitiveCapacity01:number;awakeChanged:boolean};
@@ -135,6 +138,10 @@ export class EmbodiedActionExecutor {
     const consequenceReason=verified?'independent-live-device-post-action-measurement':(actuationAction&&status==='executed'?'device-command-acknowledged-without-independent-effect-verification':(status==='ambiguous'?'tts-result-unknown-do-not-retry-or-credit':(status==='executed'?'action-executed-without-independent-device-proof':'no-independent-device-consequence-proof')));
     const effect01=clamp(changed01*(verified?.9:.15));
     const realityClass:EmbodiedRealityClass=verified?'device-observation':(actuationAction&&(status==='executed'||status==='ambiguous')&&afterBody.telemetry.source==='android-termux'?'device-actuation':'derived');
-    return {version:1,action,status,realityClass,source:afterBody.telemetry.source,at,before:base,after:{battery01:afterBody.telemetry.battery01,thermal01:afterBody.thermalStrain01,cognitiveCapacity01:afterBody.cognitiveCapacity01,awake:afterBody.awake,source:afterBody.telemetry.source},stateDelta:delta,effect01,reason,capability,artifact,consequenceVerification:{attempted:true,independent,verified,sourceStable,freshBefore01:beforeFresh,freshAfter01:afterFresh,changed01,reason:consequenceReason,verificationMode}};
+    const afterState={battery01:afterBody.telemetry.battery01,thermal01:afterBody.thermalStrain01,cognitiveCapacity01:afterBody.cognitiveCapacity01,awake:afterBody.awake,source:afterBody.telemetry.source};
+    const consequenceVerification={attempted:true,independent,verified,sourceStable,freshBefore01:beforeFresh,freshAfter01:afterFresh,changed01,reason:consequenceReason,verificationMode};
+    const result:EmbodiedActionResult={version:1,action,status,realityClass,source:afterBody.telemetry.source,at,before:base,after:afterState,stateDelta:delta,effect01,reason,capability,artifact,consequenceVerification};
+    const eventId=createStableEvidenceEventId('embodied',[action,at,status,realityClass,afterBody.telemetry.source,base,afterState,delta,effect01,reason,capability,artifact??null,consequenceVerification]);
+    return eventId?{...result,eventId}:result;
   }
 }
