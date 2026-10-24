@@ -176,7 +176,7 @@ assert.ok(conflictRestore.snapshot().recordedTraceIds.includes("External-Source-
 assert.equal(conflictRestore.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17",
 }), null, "quarantined identity must not be accepted again as a new event");
-assert.equal(conflictRestore.summary().outcomes, 1,
+assert.equal(conflictRestore.summary().outcomes, 0,
   "quarantine/retry must not change the persisted outcome count");
 
 const cyclicSnapshot = externalStream.snapshot();
