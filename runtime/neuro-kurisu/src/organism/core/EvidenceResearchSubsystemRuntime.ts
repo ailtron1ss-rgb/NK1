@@ -135,13 +135,47 @@ export class EvidenceResearchSubsystemRuntime {
     this.longHorizonPrediction.restore(raw.longHorizonPrediction);
     this.p38Research.restore((raw as any).p38Research);
     this.p53DevelopmentalSelfModification.restore((raw as any).p53DevelopmentalSelfModification);
-    this.realityEvidenceLedger.restore((raw as any).realityEvidenceLedger);
-    this.externalObserver.restore((raw as any).externalObserver);
-    // Reconcile observer rows only when their source identity is present and consistent.
-    // A persisted observation alone must not mint/impersonate a trusted source while
-    // backfilling the canonical ledger. Older rows without independenceKey inherit the
-    // registered source key rather than falling back to a potentially weaker row ID.
+    // Keep the persisted ledger from granting authority to observer events
+    // whose source identity is no longer accepted by the strict restore policy.
+    // Collect both stable row IDs and verifier-minted event IDs before validation.
+    const rawObserverState=(raw as any).externalObserver;
+    const persistedObserverEventIds=new Set<string>();
+    const collectObserverEventIds=(rows:unknown[])=>{
+      for(const value of rows){
+        if(!value||typeof value!=='object'||Array.isArray(value))continue;
+        const row=value as any;
+        if(typeof row.id==='string'&&row.id.trim())persistedObserverEventIds.add(row.id);
+        if(typeof row.evidenceEventId==='string'&&row.evidenceEventId.trim())persistedObserverEventIds.add(row.evidenceEventId);
+      }
+    };
+    if(Array.isArray(rawObserverState?.observations))collectObserverEventIds(rawObserverState.observations);
+    this.externalObserver.restore(rawObserverState);
+    // Reconcile trust before restoring the ledger. Rejected/disabled-source events
+    // are removed from the active evidence projection instead of surviving in a
+    // previously persisted ledger after their observer row has been discarded.
     const observerState=this.externalObserver.snapshot();
+    const acceptedObserverEventIds=new Set<string>();
+    for(const observation of observerState.observations){
+      if(typeof observation.id==='string'&&observation.id.trim())acceptedObserverEventIds.add(observation.id);
+      if(typeof observation.evidenceEventId==='string'&&observation.evidenceEventId.trim())acceptedObserverEventIds.add(observation.evidenceEventId);
+    }
+    const orphanedObserverEventIds=new Set([...persistedObserverEventIds].filter(id=>!acceptedObserverEventIds.has(id)));
+    let ledgerToRestore=(raw as any).realityEvidenceLedger;
+    if(orphanedObserverEventIds.size>0&&ledgerToRestore&&typeof ledgerToRestore==='object'&&
+       !Array.isArray(ledgerToRestore)&&Array.isArray(ledgerToRestore.recent)){
+      ledgerToRestore={
+        ...ledgerToRestore,
+        recent:ledgerToRestore.recent.filter((value:unknown)=>{
+          if(!value||typeof value!=='object'||Array.isArray(value))return true;
+          const row=value as any;
+          const eventId=typeof row.eventId==='string'?row.eventId:typeof row.id==='string'?row.id:undefined;
+          return eventId===undefined||!orphanedObserverEventIds.has(eventId);
+        }),
+      };
+    }
+    this.realityEvidenceLedger.restore(ledgerToRestore);
+    // Older valid rows without independenceKey inherit the registered source key
+    // rather than falling back to a potentially weaker row ID.
     const registeredSources=new Map(observerState.sources.map(source=>[source.id,source]));
     for(const observation of observerState.observations){
       const source=registeredSources.get(observation.sourceId);
