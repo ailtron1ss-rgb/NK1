@@ -1,3 +1,11 @@
+## NK1 WorkPass472 — reject duplicate live goal identities before ecology updates (2026-10-24)
+
+- P68 now rejects duplicate goal IDs during its bounded, accessor-safe validation phase. Previously, two live goal objects with the same ID could collide in the token-set map and each advance lifecycle counters, creating ambiguous progress/completion evidence.
+- Added a regression fixture asserting that duplicate IDs throw before the ecology snapshot changes. This strengthens Hexis-inspired goal event/idempotency semantics without importing Hexis's PostgreSQL scheduler or adding a second goal owner.
+- Exact-head execution is not claimed; regression source is committed for the existing branch suite.
+
+---
+
 ## NK1 WorkPass450 — canonical identity restore boundary (2026-10-23)
 
 - Replaced the unchecked persisted-state spread in `CanonicalSelfAgencyAuthority.restore` with a bounded `PlainDataSnapshot` plus explicit field/score/counter validation.
