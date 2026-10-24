@@ -2,7 +2,7 @@
 
 - Hardened the app-owned Live2D intent sanitizer: nested pose values must be plain records, all timing/affect scalar fields must be finite, event time cannot be negative, and `speaking` requires a real audio clock source.
 - Added Chromium negative probes proving malformed NaN affect and missing-clock speech messages do not advance the accepted state version; added static asset-test contracts for the validator.
-- Source commits: `ea2f50dbbea1a00476121e55be68e1272bf79eed`, `a4e38e3d0c70ff937ad9ebaae5ad06630d4f48a2`, `1fde12d60b036ebb7787cf301a6cf78cd4f7f2f1`. Validation run: [40128198611](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40128198611) — pending at report creation; do not infer a pass until it completes.
+- Source commits: `ea2f50dbbea1a00476121e55be68e1272bf79eed`, `a4e38e3d0c70ff937ad9ebaae5ad06630d4f48a2`, `1fde12d60b036ebb7787cf301a6cf78cd4f7f2f1`. Exact-head code/test/workflow run [40128198611](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40128198611) **passed**: asset sync/integrity, Chromium smoke, expression cache, 14/14 embodiment timeline tests and typecheck. Browser smoke detected 68,465 bright pixels in mobile and 68,506 in quality.
 - Scope boundary: this is the app iframe renderer. The distinct runtime-local legacy viewer still uses remote CDN scripts and remains a separate migration/release gate.
 
 ## NK1 WorkPass97 — Live2D browser smoke and viewer recovery (2026-10-24)
