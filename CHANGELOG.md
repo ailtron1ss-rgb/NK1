@@ -1,3 +1,9 @@
+## NK1 WorkPass557 — move reality-to-learning regression to Node.js 24 (2026-10-24)
+
+- Updated the focused reality-to-learning workflow to `actions/checkout@v7` and `actions/setup-node@v7`, using Node.js 24 so this workflow no longer relies on the older Node.js 22 test runtime.
+- Kept the same four observer/ledger/promotion regression commands and path filters; this is a runtime modernization, not a change to promotion policy.
+- **Validation boundary:** workflow configuration is committed on `feature/feedback`. The previous successful run (#39) validates the older workflow revision only; this new head requires a fresh hosted Actions run before Node.js 24 compatibility or the current regression suite can be marked verified.
+
 ## NK1 WorkPass556 — authorize source registration through trusted tool declarations (2026-10-24)
 
 - `ExternalObserverFabric` strict mode now requires every new registered source identity to be approved by an injected registrar policy. It rejects arbitrary source IDs, refuses identity mismatches, and treats strict-mode registration as identity lookup rather than an API for changing reliability/enablement. New strict-mode sources start at the conservative class prior.
