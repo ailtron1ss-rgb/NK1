@@ -1,10 +1,11 @@
 ## Current source-stack checkpoint — Mem0 integration WorkPass 1 (2026-10-24)
 
-- Draft PR [#100](https://github.com/ailtron1ss-rgb/NK1/pull/100) adds a dependency-free, opt-in Mem0 Platform recall adapter on top of workpass70-source.
-- MemoryOS2 remains the only canonical NK1 memory owner. The authenticated hybrid-search route returns local records and remote, provenance-labelled, unverified candidates separately; it does not alter persistent memory or live prompts.
-- The adapter is disabled by default, requires a server-side per-user scope and key, rejects non-HTTPS endpoints, bounds request timeout/response bytes, minimizes common secrets/PII, and requires an explicit environment gate plus operation approval for conversation export. No HTTP write route or automatic export exists.
-- Unit regression harness, docs, package scripts and research-intake record are committed. Exact-head test execution/typecheck/server smoke and live Mem0 behavior remain **UNVERIFIED**; no current workflow run or combined status was reported for the base commit in this pass. No retrieval improvement or release readiness is claimed.
-- No changes to main or release assets. Do not merge PR #100 until actionable validation results and the separate live-provider / independent RU/EN holdout gates are completed.
+- Draft PR [#100](https://github.com/ailtron1ss-rgb/NK1/pull/100) adds the Mem0 Platform adapter and a scoped hybrid-recall API on top of `workpass70-source`.
+- MemoryOS2 remains authoritative. Remote results stay separate in the API; an independent second gate lets the runtime use at most three sanitized Mem0 notes as low-priority, explicitly untrusted context only when both `NK_MEM0_ENABLED=1` and `NK_MEM0_COGNITIVE_RECALL=1` are configured. No automatic writes/promotions or conversation export.
+- Adapter and prompt-context regressions cover opt-out, per-user scope, masking, export approval, HTTPS/response limits/errors, and the untrusted prompt boundary. A dedicated Node 24 Actions workflow checks server syntax and runs the isolated suite independently of broad repository regressions.
+- **Validation:** the current-head isolated workflow was still in progress when this checkpoint was written. A preceding broad typecheck had many existing errors outside the Mem0 adapter and is not evidence that the latest changes pass. No retrieval improvement or production readiness is claimed.
+- No changes to `main` or the release asset. Keep PR #100 draft until current-head targeted tests, live provider behavior, retention/deletion review, and independent RU/EN quality measurement are complete.
+
 
 ---
 
