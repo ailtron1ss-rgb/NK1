@@ -1,3 +1,13 @@
+## NK1 WorkPass529 — separate P36 maturity evidence lane (2026-10-24)
+
+- Removed P36 maturity updates based on the generic `verifiedNow` boolean from internal world-transition/reward feedback. Those signals remain available to other learning loops but are not independent developmental-maturity proof.
+- Added canonical `kind: 'developmental-outcome'` binding to the normalized maturity evidence tuple and a dedicated route in `OrganismCore.finalizeToolOutcome`: external baseline/treatment/holdout records go to `recordExternalEvidence`; maturity records go to `observeDevelopmentalOutcome`.
+- Added guarded public Core method `p36RecordDevelopmentalOutcome`, using the same reserved evaluator ID, exact in-process receipt, execution/decision tuple and persisted selected-trace check. An already-applied exact maturity receipt stays idempotent and is not reported as a trust rejection.
+- Expanded `p36-integration.mjs` to test unlinked maturity receipt rejection, linked maturity receipt acceptance, persistence, and public method replay. Updated unit regression for exact maturity receipt replay.
+- **Verification boundary:** source, test and documentation updates are committed; tests and runtime typecheck have not been confirmed on the current HEAD. A production host-owned evaluator is still not deployed by this pass. No learning uplift is claimed. `main` and the Release ZIP remain unchanged.
+
+---
+
 ## NK1 WorkPass528 — connect P36 to the ActionGateway evidence path (2026-10-24)
 
 - Added the reserved tool identity `organism.learning.p36.evaluate-evidence`. The main `OrganismCore.finalizeToolOutcome` routes that tool's evaluation output into P36 using the exact in-process verification receipt, execution ID and decision ID from `ActionGateway`. The public `p36RecordExternalEvidence` wrapper applies the same canonical-evaluator and selected-trace checks before accepting proof.
