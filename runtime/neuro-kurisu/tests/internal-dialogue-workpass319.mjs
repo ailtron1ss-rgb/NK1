@@ -53,6 +53,43 @@ assert.equal(unsupported.status, 'needs-evidence');
 assert.ok(unsupported.unresolvedQuestions.some((x) => /no linked evidence/.test(x)));
 assert.equal(unsupported.suggestedAction, 'verify');
 
+const mixedCoverage = engine.deliberate({
+  tick: 7, focus: 'Calibrate gaps across multiple candidates',
+  claims: [
+    { id: 'evidence-backed', action: 'verify', priorConfidence01: .6, supportingEvidenceIds: ['clear-outcome'] },
+    { id: 'no-evidence', action: 'respond', priorConfidence01: .7 },
+  ],
+  evidence: [{ id: 'clear-outcome', kind: 'outcome', confidence01: 1, sourceGroup: 'run-one' }],
+});
+assert.ok(mixedCoverage.evidenceCoverage01 > .39 && mixedCoverage.evidenceCoverage01 < .41,
+  'an unsupported candidate counts as one zero-coverage row, not a second multiplicative penalty');
+
+const sameEvidenceConflict = engine.deliberate({
+  tick: 8, focus: 'One evidence identity declared both supportive and contradictory',
+  claims: [{ id: 'ambiguous', action: 'respond', priorConfidence01: .9, actionability01: .8, risk01: .1, supportingEvidenceIds: ['same-row'], contradictingEvidenceIds: ['same-row'] }],
+  evidence: [{ id: 'same-row', kind: 'outcome', confidence01: .95 }],
+});
+assert.equal(sameEvidenceConflict.candidateScores[0].supportingEvidenceCount, 0,
+  'contradiction wins when one identity is declared in both evidence sets');
+assert.equal(sameEvidenceConflict.candidateScores[0].contradictingEvidenceCount, 1);
+assert.equal(sameEvidenceConflict.recommendedNextStep, 'seek-evidence');
+
+const contradictionOnlyOneSource = engine.deliberate({
+  tick: 9, focus: 'Contradictions must not earn an independent-support bonus',
+  claims: [{ id: 'bad', action: 'verify', priorConfidence01: .5, actionability01: .5, risk01: .5, contradictingEvidenceIds: ['bad-1'] }],
+  evidence: [{ id: 'bad-1', kind: 'outcome', confidence01: .9, sourceGroup: 'bad-source-one' }],
+});
+const contradictionOnlyTwoSources = engine.deliberate({
+  tick: 10, focus: 'Multiple contradictory sources must not improve the candidate score',
+  claims: [{ id: 'bad', action: 'verify', priorConfidence01: .5, actionability01: .5, risk01: .5, contradictingEvidenceIds: ['bad-1', 'bad-2'] }],
+  evidence: [
+    { id: 'bad-1', kind: 'outcome', confidence01: .9, sourceGroup: 'bad-source-one' },
+    { id: 'bad-2', kind: 'outcome', confidence01: .9, sourceGroup: 'bad-source-two' },
+  ],
+});
+assert.equal(contradictionOnlyOneSource.candidateScores[0].score01, contradictionOnlyTwoSources.candidateScores[0].score01,
+  'independent-source bonus counts support, never contradictions');
+
 const empty = engine.deliberate({ tick: 4, focus: 'No hypotheses yet', claims: [], evidence: [], maxTurns: 4 });
 assert.equal(empty.suggestedAction, 'explore');
 assert.equal(empty.turnCount, 4);
