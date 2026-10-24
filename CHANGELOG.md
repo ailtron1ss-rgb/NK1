@@ -2118,6 +2118,7 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 ## [2026-10-24] Operation Omega — Hexis source transfer and review-inbox adaptation
 
 - Added an Ed25519-authenticated review-decision verifier and made the promotion-request CLI require a trusted signed decision artifact bound to the exact review packet and decision; unkeyed inbox digests alone no longer satisfy the review gate.
+- Added `create-skill-review-decision-signing-request.mjs` to emit the canonical unsigned payload from the durable review record for an external signer; added regression coverage so NK1 never handles the private review key.
 
 - Updated the targeted CI path filters so archive, source-manifest, changelog and integration-note commits also get a current Node 24 review-inbox regression run.
 

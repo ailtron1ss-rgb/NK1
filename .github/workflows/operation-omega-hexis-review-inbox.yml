@@ -18,6 +18,7 @@ on:
       - 'docs/OPERATION_OMEGA_HEXIS_INTEGRATION_2026-10-24.md'
       - 'CHANGELOG.md'
       - 'runtime/neuro-kurisu/scripts/create-skill-promotion-approval-request.mjs'
+      - 'runtime/neuro-kurisu/scripts/create-skill-review-decision-signing-request.mjs'
       - 'runtime/neuro-kurisu/package.json'
   push:
     branches: [rebuild]
@@ -37,6 +38,7 @@ on:
       - 'docs/OPERATION_OMEGA_HEXIS_INTEGRATION_2026-10-24.md'
       - 'CHANGELOG.md'
       - 'runtime/neuro-kurisu/scripts/create-skill-promotion-approval-request.mjs'
+      - 'runtime/neuro-kurisu/scripts/create-skill-review-decision-signing-request.mjs'
       - 'runtime/neuro-kurisu/package.json'
 permissions:
   contents: read

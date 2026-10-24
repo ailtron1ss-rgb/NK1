@@ -7,7 +7,8 @@ import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeL
 import { AtomicFileTrustedSkillShadowRunRegistry } from '../src/organism/learning/TrustedSkillShadowRunRegistry.ts';
 import { signSkillShadowArtifactForFixture, skillShadowPayloadFingerprint } from '../src/organism/learning/VerifiedSkillShadowEvidence.ts';
 import { createReviewedSkillPromotionApprovalRequest } from '../scripts/create-skill-promotion-approval-request.mjs';
-import { canonicalSkillReviewDecisionPayload, createSkillReviewDecisionSigningPayload } from '../src/organism/learning/AuthenticatedSkillReviewDecision.ts';
+import { canonicalSkillReviewDecisionPayload } from '../src/organism/learning/AuthenticatedSkillReviewDecision.ts';
+import { createSkillReviewDecisionSigningRequest } from '../scripts/create-skill-review-decision-signing-request.mjs';
 import {
   ingestSignedOutcomeArtifact, signOutcomePayloadForFixture,
 } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
@@ -151,8 +152,14 @@ try {
     schemaVersion: 1, revision: 3, active: [], candidates: [candidate],
   }), 'utf8');
   const reviewSigningKeyId = 'omega-review-signer';
-  const signedReviewPayload = createSkillReviewDecisionSigningPayload(approved, reviewSigningKeyId);
+  const signingRequest = await createSkillReviewDecisionSigningRequest({
+    reviewInboxPath: inboxPath, reviewId: approved.packet.reviewId, keyId: reviewSigningKeyId,
+  });
+  const signedReviewPayload = signingRequest.payload;
   const canonicalReviewPayload = canonicalSkillReviewDecisionPayload(signedReviewPayload);
+  assert.equal(signingRequest.status, 'unsigned-review-decision-signing-request');
+  assert.equal(signingRequest.canonicalPayload, canonicalReviewPayload);
+  assert.match(signingRequest.warning, /never put that private key into NK1/);
   const signedReviewArtifact = {
     payload: signedReviewPayload,
     signature: signSignature(null, Buffer.from(canonicalReviewPayload, 'utf8'), reviewPrivateKey).toString('base64'),
