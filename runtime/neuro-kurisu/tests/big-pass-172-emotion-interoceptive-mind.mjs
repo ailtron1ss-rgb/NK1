@@ -188,6 +188,18 @@ assert.deepEqual(accessorSafeEmotion.snapshot(), beforeMalformedEpisode,
 
 
 
+// WorkPass509: invalid body telemetry must not silently clamp into plausible state.
+const beforeInvalidInteroception = accessorSafeEmotion.snapshot();
+for (const invalidBody of [
+  { energy01: Number.NaN, thermal01: .2, capacity01: .8, load01: .1 },
+  { energy01: .8, thermal01: .2, capacity01: .8, load01: 1.01 },
+  { energy01: .8, thermal01: .2, capacity01: .8, load01: .1, homeostaticPressure01: 'high' },
+]) {
+  assert.throws(() => accessorSafeEmotion.observeInteroception(invalidBody), /emotion-interoception-values-invalid/);
+  assert.deepEqual(accessorSafeEmotion.snapshot(), beforeInvalidInteroception,
+    'rejected body telemetry must not alter affect or prediction state');
+}
+
 const h = new P66InteroceptiveHomeostasis();
 const high = h.observe({tick:1,at:1,energy01:.2,thermal01:.9,capacity01:.25,load01:.9,awake:true,uncertainty01:.8,predictionError01:.8,novelty01:.2});
 assert.equal(high.mode,'recover'); assert.ok(high.pressure01>.5);
