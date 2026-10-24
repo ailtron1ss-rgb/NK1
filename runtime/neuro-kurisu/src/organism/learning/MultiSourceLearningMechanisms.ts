@@ -33,8 +33,8 @@ export function scoreReplayPriority(e:LearningExperience,newestTick:number,frequ
 export function adaptiveReplayOptions(base:ReplaySelectionOptions,h:LearningHealth,count:number):ReplaySelectionOptions{
  const cap=Math.max(1,Math.min(64,Math.floor(f(base.maxBatchSize??64,64))));
  const pressure=c(.35*h.recentPredictionError01+.25*h.replayTdError01+.2*h.evidenceDebt01+.2*h.memoryPressure01);
- const energy=h.energy01<.2?.5:h.energy01<.4?.75:1;
- const size=Math.max(1,Math.min(cap,Math.max(0,count),Math.round(cap*energy*(.65+.35*pressure))));
+ // Keep the configured hard cap stable for reproducible ablations; health affects ranking and decay, not requested batch size.
+ const size=Math.max(1,Math.min(cap,Math.max(0,count)));
  const ratio=c(.35+.25*h.recentPredictionError01+.15*h.evidenceDebt01-.15*h.memoryPressure01);
  return{maxBatchSize:size,recentQuota:Math.max(0,Math.min(size,Math.round(size*ratio))),ageHalfLifeTicks:pressure>.7?512:Number.POSITIVE_INFINITY};
 }
