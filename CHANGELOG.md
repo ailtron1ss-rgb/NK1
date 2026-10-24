@@ -1,3 +1,9 @@
+# NK1 CI repair — WorkPass291/293 test-script wiring (2026-10-24)
+
+- [FIXED] WorkPass291 and WorkPass293 workflows invoked test names that were absent from the runtime package manifest although their test files existed.
+- [WIRED] Added `test:workpass291:payload-budget` and `test:workpass293:p23-revision` commands, using the existing Node.js 24 strip-types convention.
+- [VALIDATION] The updated package manifest parses as JSON. CI must execute both tests on the current head before their behavior is considered verified; no test pass is implied by script wiring alone.
+
 # NK1 CI repair — WorkPass292 evidence-lanes script (2026-10-24)
 
 - [FIXED] The WorkPass292 workflow called `test:workpass292:evidence-lanes`, but the runtime package did not define that script even though the corresponding test file existed.
