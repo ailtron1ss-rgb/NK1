@@ -1778,7 +1778,9 @@
     "test:workpass291:payload-budget": "node --experimental-transform-types tests/workpass291-reflective-payload-budget.mjs",
     "test:workpass292:evidence-lanes": "node --experimental-strip-types tests/workpass292-evidence-lanes.mjs",
     "test:workpass293:p23-revision": "node --experimental-transform-types tests/workpass172-compound-revision-coordinator.mjs && node --experimental-transform-types tests/workpass292-evidence-lanes.mjs && node --experimental-transform-types tests/workpass293-autonomous-p23-revision.mjs",
-    "test:unified-cognitive-loop-ingress": "node --experimental-strip-types tests/unified-cognitive-loop-ingress.mjs"
+    "test:unified-cognitive-loop-ingress": "node --experimental-strip-types tests/unified-cognitive-loop-ingress.mjs",
+    "test:workpass510:reality-evidence-quarantine": "node --experimental-strip-types tests/workpass510-reality-evidence-quarantine.mjs",
+    "test:workpass510": "npm run typecheck && npm run test:workpass510:reality-evidence-quarantine && npm run test:workpass451:reality-evidence-ledger && npm run test:workpass488:evidence-event-identity"
   },
   "devDependencies": {
     "@types/node": "22.20.4"
