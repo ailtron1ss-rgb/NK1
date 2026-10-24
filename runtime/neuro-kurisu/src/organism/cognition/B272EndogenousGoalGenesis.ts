@@ -262,7 +262,12 @@ export class B272EndogenousGoalGenesis {
       const actionScores=this.state.actionPrototypeWeights.map(row=>clamp11(dot(row,v)/Math.max(1,norm(row)*norm(v))));
 const learned=this.learnedGoalValue(v,input.tick);
       const learnedClosure=(learned.reward01-.5)*.20 + (learned.evidence01*(.52-learned.predictionError01))*.10;
-      const predictedFutureValue=clamp01(.5+.32*dot(v,base)+.18*intrinsic+.16*(1-conflict)+.08*k+learnedClosure);
+      // Keep grounded prediction and intrinsic drive as separate calibrated
+      // factors. Adding drive to an already saturated score hid high-confidence
+      // internal motivation; the convex blend preserves useful headroom while
+      // confidence-weighting remains enforced in the intrinsic signal above.
+      const groundedFutureValue=clamp01(.5+.32*dot(v,base)+.16*(1-conflict)+.08*k+learnedClosure);
+      const predictedFutureValue=clamp01(.72*groundedFutureValue+.28*intrinsic);
       const coherence=clamp01(.5+.25*cosine(v,base)+.25*(1-conflict));
       const novelty01=clamp01(.25+.45*(1-Math.abs(cosine(v,this.state.currentGoal)))+.30*(k/3));
       const internalNeed=clamp01(.5+.35*Math.abs(dot(v,base))+.15*conflict);
