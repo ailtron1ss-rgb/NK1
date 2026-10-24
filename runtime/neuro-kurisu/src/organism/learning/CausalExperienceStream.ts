@@ -312,9 +312,6 @@ export class CausalExperienceStream {
     const causal=input.causalStrength01??(surprise*.35+novelty*.15+Math.abs(reward-.5)*.25+Math.abs(success-.5)*.25);
     const at=Date.now();
     const id=`cx-ext-${eventTick}-${taskId}-${at}`;
-    // Use the same projection-identity contract as the reality ledger: one upstream
-    // trace gets one stable learning-event key across retries and snapshot restore.
-    const evidenceEventId=createRealityEvidenceEventId(traceId,'learning-external','causal-record');
     // When an importer omits an upstream event ID, derive a deterministic identity
     // from the normalized payload instead of minting a new event on every retry.
     const derivedTraceId=input.traceId===undefined?`external-${createHash('sha256').update(JSON.stringify({
@@ -324,6 +321,8 @@ export class CausalExperienceStream {
     })).digest('hex').slice(0,40)}`:input.traceId;
     const traceId=normalizeTraceId(derivedTraceId);
     if(!traceId)throw new Error('causal-external-trace-id-invalid');
+    // Use the shared projection-identity contract only after source identity is validated.
+    const evidenceEventId=createRealityEvidenceEventId(traceId,'learning-external','causal-record');
     const prior=this.state.records.find(record=>record.traceId===traceId);
     if(prior){
       // Stable source identity is idempotent only for the same normalized payload.
