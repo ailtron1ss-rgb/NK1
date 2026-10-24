@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { ActionKind, OrganismGoal, OrganismState } from '../core/types.ts';
 import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 
@@ -247,7 +248,7 @@ export class AutonomousCognitiveLifeEngine {
     this.requireUnitSignals([clean.predicted01,clean.confidence01],'autonomous-life-decision-signal-invalid');
     if(clean.contextKey!==undefined&&(typeof clean.contextKey!=='string'||clean.contextKey.length===0||clean.contextKey.length>180||clean.contextKey.trim()!==clean.contextKey)) throw new TypeError('autonomous-life-decision-context-invalid');
     if(clean.at!==undefined&&(!Number.isFinite(clean.at)||clean.at<0)) throw new RangeError('autonomous-life-decision-time-invalid');
-    const row:PredictionRecord={id:`pred-${this.state.cycles}-${this.state.predictions.length}`,action:clean.action,contextKey:clean.contextKey??'default',predicted01:clean.predicted01,confidence01:clean.confidence01,at:clean.at??now()};
+    const row:PredictionRecord={id:`pred-${randomUUID()}`,action:clean.action,contextKey:clean.contextKey??'default',predicted01:clean.predicted01,confidence01:clean.confidence01,at:clean.at??now()};
     this.state.predictions.unshift(row);this.state.lastAction=clean.action;this.state.predictions=this.state.predictions.slice(0,256);return structuredClone(row);
   }
   recordOutcome(input:{actual01:number;verified01:number;causal01:number;transfer01:number;social01:number;identity01:number;learning01:number;surprise01:number;action?:ActionKind;at?:number}){
@@ -278,7 +279,14 @@ export class AutonomousCognitiveLifeEngine {
   }
   selectPerception(){return this.state.perceptionQueue[0]??null;}
   addCommitment(input:{goalId?:string|null;action:ActionKind;dueAt?:number;reliability01?:number}){
-    const c:AgencyCommitment={id:`commit-${this.state.cycles}-${this.state.commitments.length}`,goalId:input.goalId??null,action:input.action,createdAt:now(),dueAt:Number(input.dueAt??now()+86400000),reliability01:clamp(input.reliability01??.5),status:'open'};this.state.commitments.unshift(c);this.state.commitments=this.state.commitments.slice(0,32);return c;
+    const clean=this.detachSignalInput(input,'autonomous-life-commitment-input-invalid');
+    if(!actions.includes(clean.action)) throw new TypeError('autonomous-life-commitment-action-invalid');
+    if(clean.goalId!==undefined&&clean.goalId!==null&&(typeof clean.goalId!=='string'||!clean.goalId.trim()||clean.goalId.length>180||clean.goalId.trim()!==clean.goalId)) throw new TypeError('autonomous-life-commitment-goal-invalid');
+    if(clean.dueAt!==undefined&&(!Number.isFinite(clean.dueAt)||clean.dueAt<0)) throw new RangeError('autonomous-life-commitment-time-invalid');
+    if(clean.reliability01!==undefined&&(typeof clean.reliability01!=='number'||!Number.isFinite(clean.reliability01)||clean.reliability01<0||clean.reliability01>1)) throw new RangeError('autonomous-life-commitment-reliability-invalid');
+    const createdAt=now();
+    const c:AgencyCommitment={id:`commit-${randomUUID()}`,goalId:clean.goalId??null,action:clean.action,createdAt,dueAt:clean.dueAt??createdAt+86400000,reliability01:clean.reliability01??.5,status:'open'};
+    this.state.commitments.unshift(c);this.state.commitments=this.state.commitments.slice(0,32);return structuredClone(c);
   }
   updatePersonality(ctx:AutonomousCognitiveLifeContext){
     const prev=this.state.personality;
