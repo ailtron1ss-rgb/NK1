@@ -211,7 +211,7 @@ const isHmxRecord = (value: unknown): value is Record<string, unknown> =>
     value !== null && typeof value === 'object' && !Array.isArray(value);
 const isHmxText = (value: unknown, max = 256): value is string =>
     typeof value === 'string' && value.trim().length > 0 && value.length <= max &&
-    !/[\\u0000-\\u001f\\u007f]/.test(value);
+    !/[\u0000-\u001f\u007f]/.test(value);
 export function defaultHexisAdaptationState(): HexisAdaptationState {
     return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], outbox: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
 }
@@ -362,11 +362,9 @@ export class HexisAdaptationFabric {
     }): HexisHmxStage {
         const conflicts: HexisHmxStage['conflicts'] = [];
         let document: Record<string, unknown> = {};
-        let serializedDocument = '';
         try {
             const encoded = JSON.stringify(input?.document);
             if (typeof encoded !== 'string') throw new Error('document is not JSON-serializable');
-            serializedDocument = encoded;
             if (encoded.length > HMX_MAX_DOCUMENT_CHARS) {
                 conflicts.push({
                     path: '$',
@@ -395,7 +393,7 @@ export class HexisAdaptationFabric {
         }
 
         const version = document.hmx_version;
-        const versionMatch = typeof version === 'string' ? /^(\\d+)\\.(\\d+)(?:\\.(\\d+))?$/.exec(version) : null;
+        const versionMatch = typeof version === 'string' ? /^(\d+)\.(\d+)(?:\.(\d+))?$/.exec(version) : null;
         if (!versionMatch) {
             conflicts.push({ path: 'hmx_version', kind: 'schema', detail: 'hmx_version is required and must be a numeric major.minor version' });
         } else if (versionMatch[1] !== '1') {
