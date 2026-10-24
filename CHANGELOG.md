@@ -1,3 +1,13 @@
+## NK1 Architecture — schema v3 dependency graph and type-only cycle separation (2026-10-24)
+
+- [PASS] Focused dependency workflow [40129470402](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40129470402) completed successfully on commit `19862298626b60ceb809d801920df4b2b7ca6bb1`.
+- [PASS] Server runtime-import graph: 572 reachable files, 1,186 edges, zero unresolved local imports; scanner/server suite: 6/6 passed.
+- [PASS] Full architecture graph: 2,222 source files, 630 canonical-organism files, 4,595 unique relationships: 3,896 runtime/dual-kind edges plus 699 type-only edges. No missing imports, runtime cycles, legacy leakage, boundary violations, or budget violations.
+- [PASS] All 45 dependency budget checks passed, including separate limits for runtime fan-out, type fan-out, production runtime incoming links, and production type-only incoming links.
+- [FIXED] `core/types.ts` now imports `RELEASE_CONTRACT` with `import type`, removing its only runtime import edge. The enforced budget now requires `core/types.ts` to have zero runtime out-degree.
+- [ARTIFACT] Updated schema v3 graph artifact `nk1-module-dependency-graph` (artifact ID `12574162498`, SHA-256 `e8f0954d4aef8c18e30cd85aa6754d67b1ac4f141090fe70c303e88ca5b77485`, expires 2026-11-07).
+- [BASELINE] Updated `contracts/module-dependency-budgets.json` to reference the passing run and the separate runtime/type-only metrics.
+
 ## NK1 Architecture — JSON dependency graph export (2026-10-24)
 
 - [ADDED] The architecture audit can now export a schema-versioned JSON graph through `NK1_DEPENDENCY_GRAPH_REPORT`: nodes, source layers, relative-import edges, layer-to-layer coupling counts, and summary metrics.
