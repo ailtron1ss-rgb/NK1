@@ -9,6 +9,7 @@ import { organismSystemContract, organismSystemContracts, type OrganismSystemCon
 import { WillIntegrationBridge } from '../integration/will/WillIntegrationBridge.ts';
 import { LuminaAdaptationFabric } from '../integration/lumina/LuminaAdaptationFabric.ts';
 import { HexisAdaptationFabric } from '../integration/hexis/HexisAdaptationFabric.ts';
+import { HexisCanonicalMemoryProjector } from '../integration/hexis/HexisCanonicalMemoryProjector.mjs';
 import { LettaGovernanceAdaptationFabric } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import { buildCognitiveArchitectureSnapshot } from './CognitiveArchitectureMap.ts';
@@ -77,6 +78,8 @@ export class OrganismSystemFabric {
     this.willIntegration=input.willIntegration ?? new WillIntegrationBridge();
     this.luminaAdaptation=input.luminaAdaptation ?? new LuminaAdaptationFabric();
     this.hexisAdaptation=input.hexisAdaptation ?? new HexisAdaptationFabric();
+    const canonicalMemoryProjector = new HexisCanonicalMemoryProjector(this.memory.fabric, this.memory.semanticMemory);
+    this.hexisAdaptation.bindCanonicalMemoryApply(stage => canonicalMemoryProjector.apply(stage));
     this.lettaGovernanceAdaptation=input.lettaGovernanceAdaptation ?? new LettaGovernanceAdaptationFabric();
     this.conscioAdaptation=input.conscioAdaptation ?? new ConscioAdaptationFabric();
     this.resolvedContracts = organismSystemContracts().map(contract => {

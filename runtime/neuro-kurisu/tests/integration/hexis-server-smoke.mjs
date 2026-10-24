@@ -7,7 +7,7 @@ const root = path.resolve(process.cwd());
 const stateDir = await mkdtemp(path.join(tmpdir(), 'nk-hexis-'));
 const port = 35600 + Math.floor(Math.random() * 800);
 const env = { ...process.env, HOST: '127.0.0.1', PORT: String(port), STATE_DIR: stateDir };
-const child = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+const child = spawn(process.execPath, ['--experimental-transform-types', 'src/server/server.mjs'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
 let output = '';
 child.stdout.on('data', d => output += d);
 child.stderr.on('data', d => output += d);
@@ -34,10 +34,46 @@ try {
   }
   const exportRes = await (await fetch(`${base}/api/organism/integration/hexis/hmx/export`)).json();
   if (!exportRes.ok || exportRes.document?.hmx_version !== '1.7' || !Array.isArray(exportRes.document?.sections?.memories)) throw new Error('hexis-hmx-export');
-  const stageRes = await (await post('/api/organism/integration/hexis/hmx/stage', { document: exportRes.document, intent: 'port', strategy: 'additive' })).json();
-  if (!stageRes.ok || stageRes.stage?.status !== 'staged') throw new Error('hexis-hmx-stage');
+  const importDocument = structuredClone(exportRes.document);
+  const importExportId = importDocument.export_id;
+  importDocument.sections.memories = [
+    ...(Array.isArray(importDocument.sections.memories) ? importDocument.sections.memories : []),
+    {
+      ref: `${importExportId}:server-smoke-canonical-memory`,
+      type: 'semantic',
+      status: 'active',
+      content: 'Hexis integration smoke: approved memory reaches NK1 canonical MemoryOS2.',
+      importance: 0.72,
+      trust_level: 0.78,
+      metadata: { tags: ['server-smoke', 'hexis-import'] },
+      provenance: { source_id: 'nk1-server-smoke', confidence: 0.78 },
+    },
+  ];
+  const stageRes = await (await post('/api/organism/integration/hexis/hmx/stage', { document: importDocument, intent: 'port', strategy: 'additive' })).json();
+  if (!stageRes.ok || stageRes.stage?.status !== 'staged' || stageRes.stage?.conflicts?.length) throw new Error(`hexis-hmx-stage:${JSON.stringify(stageRes.stage?.conflicts)}`);
   const acceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'accept' })).json();
-  if (!acceptRes.ok || acceptRes.stage?.status !== 'accepted') throw new Error('hexis-hmx-accept');
+  if (!acceptRes.ok || acceptRes.stage?.status !== 'accepted') throw new Error(`hexis-hmx-accept:${JSON.stringify({ stage: stageRes.stage, accepted: acceptRes.stage })}`);
+  if (acceptRes.appliedToCanonicalMemory !== false || !String(acceptRes.note || '').includes('has not yet been mutated')) throw new Error('hexis-review-is-not-memory-application');
+  const applyRes = await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'apply' });
+  const applyResult = await applyRes.json();
+  if (!applyResult.ok || applyResult.stage?.status !== 'applied' || applyResult.appliedToCanonicalMemory !== true) {
+    throw new Error(`hexis-canonical-memory-apply:${JSON.stringify({ status: applyRes.status, body: applyResult })}`);
+  }
+  if (applyResult.application?.importedCount < 1 || !applyResult.application?.memoryIds?.length) {
+    throw new Error(`hexis-canonical-memory-receipt:${JSON.stringify(applyResult.application)}`);
+  }
+  if (!applyResult.application?.deferredSections?.identity) throw new Error('hexis-identity-section-must-remain-explicitly-deferred');
+  const replayApply = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'apply' })).json();
+  if (!replayApply.ok || replayApply.application?.digest !== applyResult.application?.digest) throw new Error('hexis-canonical-apply-replay-not-idempotent');
+
+  const malformedDocument = structuredClone(exportRes.document);
+  delete malformedDocument.source.embedding_model;
+  const malformedStageResponse = await post('/api/organism/integration/hexis/hmx/stage', { document: malformedDocument, intent: 'port', strategy: 'additive' });
+  const malformedStage = await malformedStageResponse.json();
+  if (!malformedStage.ok || !malformedStage.stage?.conflicts?.some(conflict => conflict.path === 'source')) throw new Error('hexis-hmx-missing-source-rejected');
+  const blockedAcceptResponse = await post('/api/organism/integration/hexis/hmx/decide', { stagingId: malformedStage.stage.stagingId, decision: 'accept' });
+  const blockedAccept = await blockedAcceptResponse.json();
+  if (blockedAcceptResponse.status !== 409 || blockedAccept.ok !== false || blockedAccept.stage?.status !== 'staged' || blockedAccept.appliedToCanonicalMemory !== false) throw new Error('hexis-hmx-conflict-not-accepted');
   if (memoryIndex.memoryIndex[0]?.id) {
     const proposal = await (await post('/api/organism/integration/hexis/retention/propose', { memoryId: memoryIndex.memoryIndex[0].id, action: 'archive', reason: 'server-smoke' })).json();
     if (!proposal.ok || !proposal.proposal?.id) throw new Error('hexis-retention-propose');

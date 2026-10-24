@@ -2160,3 +2160,36 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 - CI-driven compatibility repair: converted the canonical `VersionedSkillCandidateStore` constructor away from TypeScript parameter properties so Node's strip-only runtime can import it; moved the new filesystem adapter to plain `.mjs` to keep the TypeScript learning service free of additional filesystem type-stub requirements.
 - Validation status: code and test are committed for exact-head CI; local execution was not available through the GitHub write connector. No test pass or production acceptance is claimed. The review-inbox-to-authenticated-UI / signed-approval-request wiring remains open.
+
+
+## 2026-10-24 — WorkPass330: Hexis HMX import-boundary hardening
+
+- Tightened `HexisAdaptationFabric.stageHmx()` against the upstream HMX 1.x envelope: required version/export ID/export metadata, source lineage fields, and supported section shapes are now checked before a candidate can be accepted.
+- Added explicit size boundaries (1,000,000-character document, 256 records per array section, 1,024 total staged records); truncated/unsupported/malformed content carries conflicts and remains non-acceptable.
+- Expanded `tests/integration/hexis-adaptation.mjs` for missing provenance, unknown future sections, oversized imports, and invalid intent. Updated the HMX fixtures to provide a complete envelope.
+- Added `docs/OPERATION_OMEGA_HEXIS_DEEP_PASS_2026-10-24.md` with the source baseline, integration rationale, code changes and validation boundary.
+- Validation status: changes are committed to the dedicated continuation branch. Tests have **not** yet been run on the exact branch head; no test-pass or production-readiness claim is made.
+
+- Follow-up CI pass: the HMX adapter regression passed under Node 24. The server smoke was first blocked by Node's strip-only TS loader, so its child runtime now uses `--experimental-transform-types`; after startup was unblocked, the smoke reached HMX acceptance and exposed a real conflict-path mismatch. The acceptance assertion now prints the complete staged conflict set for diagnosis. Exact-head server acceptance is still pending; this is not marked green.
+
+
+- **WorkPass330 live-export follow-up:** added `Nk1HmxExportAdapter.mjs` and wired the server HMX export endpoint to produce an HMX 1.7 envelope instead of forwarding the NK1-native object unchanged. It maps native skills to procedural memories, converts identity/goals/relationships, normalizes provenance/reference IDs, emits required HMX metadata, and preserves unsupported/malformed native payloads under `config.nk1NativeSections` or record metadata.
+- Aligned `capabilities`, `privacy`, `export_scope`, and `statistics` fields with the upstream HMX 1.7 schema. Text-only exports state that vectors are absent and must be re-embedded.
+- Added a native-export round-trip regression that checks HMX metadata requirements, preservation of the native extension, skill mapping, reference IDs, and acceptance through the strict stage gate. Updated CI path filters to include the adapter and server route.
+- Validation update: the Node 24 GitHub Actions run at commit `040a124cdb53d9030a77d82d18192bc0b46a9b0e` completed all five Hexis workflow steps successfully, including live server HMX export/stage/accept. Newer tests now also assert the upstream envelope metadata; exact-head CI for the latest extension is still the final gate. The independent WorkPass110 workflow failure remains a separate `big-pass-90-causal-learning-stream.mjs:18` assertion and is not attributed to Hexis.
+
+
+- **HMX boundary follow-up:** the native export now declares `privacy.redaction_policy: none` and warns that no automatic redaction is performed. The export adapter emits the required HMX 1.7 metadata and records missing embeddings honestly.
+- Tightened `POST /api/organism/integration/hexis/hmx/decide`: invalid arguments return 400, unknown stages return 404, and attempts to accept a conflicting stage return 409 with `ok: false`. The API explicitly returns `appliedToCanonicalMemory: false`; a review decision must not be mistaken for a mutation of NK1's canonical memory.
+- Extended the live server smoke to verify both the accepted-for-review/not-applied boundary and the rejection of a conflicted HMX candidate. Exact-head CI after this addition is pending; intermediate runs passed the format adapter and live export/stage/accept path. The remaining architectural item is a separately audited, rollback-capable apply/projection step into the cognitive memory substrate.
+
+
+## 2026-10-24 — WorkPass331: Canonical Hexis memory projection
+
+- Added `HexisCanonicalMemoryProjector.mjs` and bound it to the canonical `MemorySubsystemRuntime.fabric` from `OrganismSystemFabric`. Approved HMX memories now enter NK1 through `MemoryFabric.encode()` into `MemoryOS2`; no direct persisted-JSON edits or second memory store are introduced.
+- Added a distinct `apply` decision after `accept`. The server returns the persisted application receipt and identifies deferred sections; an acceptance decision alone still does not change canonical memory.
+- Imported memory rows preserve lineage/ref/provenance in context, map external trust to bounded confidence, and are not promoted to facts. HMX identity values are stored as ordinary recallable semantic content when present in the memories section; the structural identity section stays deferred.
+- Added stable source/ref/content identity, a persistent command ID per application attempt, deduplication across repeated imports, bounded application receipts, and compensating canonical forget commands for newly-created records when a batch write fails. Failed applies leave the stage accepted and retryable.
+- Expanded regressions to cover actual MemoryFabric/MemoryOS2 writes, approval-vs-apply separation, repeat-import deduplication, rollback under injected mid-batch failure, and retry after rollback. Expanded the server smoke to exercise the full HTTP export → stage → accept → apply flow and verify deferred identity reporting.
+- Validation: Node 24 Hexis workflow run `40127219359` at code commit `7363c8c490af9b28f41901a32cb85fc3ae02ee4d` passed all five Hexis steps, including canonical apply and server smoke. Exact-head CI is rerunning after this documentation/checkpoint commit. The parallel WorkPass110 metrics test still has an independent failure at `tests/big-pass-90-causal-learning-stream.mjs:18` (`record` is null).
+- Remaining: goals, relationships, narrative, audit and protected identity are reported as deferred, not falsely counted as fully imported; those need separate canonical projections and fidelity/consent tests. No learning uplift is claimed.

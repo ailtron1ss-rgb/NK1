@@ -23,6 +23,7 @@ import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local
 import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
+import { normalizeNk1HmxExport } from '../organism/integration/hexis/Nk1HmxExportAdapter.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
 const PUBLIC = path.join(ROOT, 'public');
@@ -902,7 +903,8 @@ async function route(req, res) {
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/hmx/export') {
             try {
-                const document = runtime.core.hexisExportHmx();
+                const nativeDocument = runtime.core.hexisExportHmx();
+                const document = normalizeNk1HmxExport(nativeDocument, { intent: url.searchParams.get('intent') || 'port' });
                 return json(res, 200, { ok: true, document });
             }
             catch (error) {
@@ -922,10 +924,46 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/decide') {
             const input = await body(req);
-            const decision = input.decision === 'accept' ? 'accept' : 'reject';
-            const result = runtime.core.hexisDecideHmx(String(input.stagingId || ''), decision);
+            const decision = ['accept', 'reject', 'apply'].includes(String(input.decision)) ? String(input.decision) : null;
+            const stagingId = String(input.stagingId || '').trim();
+            if (!decision || !stagingId)
+                return json(res, 400, { ok: false, error: 'stagingId-and-valid-decision-required' });
+            let result;
+            try {
+                result = runtime.core.hexisDecideHmx(stagingId, decision);
+            }
+            catch (error) {
+                await runtime.core.flush().catch(() => undefined);
+                return json(res, 422, {
+                    ok: false,
+                    error: String(error?.message ?? error),
+                    appliedToCanonicalMemory: false,
+                });
+            }
             await runtime.core.flush();
-            return json(res, 200, { ok: Boolean(result), stage: result });
+            if (!result)
+                return json(res, 404, { ok: false, error: 'hmx-stage-not-found', appliedToCanonicalMemory: false });
+            const expectedStatus = decision === 'accept' ? 'accepted' : decision === 'reject' ? 'rejected' : 'applied';
+            if (result.status !== expectedStatus)
+                return json(res, 409, {
+                    ok: false,
+                    error: result.conflicts?.length ? 'hmx-import-conflicts' : decision === 'apply' && result.status === 'staged' ? 'hmx-stage-not-approved' : 'hmx-stage-not-pending',
+                    stage: result,
+                    appliedToCanonicalMemory: false,
+                });
+            return json(res, 200, {
+                ok: true,
+                stage: result,
+                application: decision === 'apply' ? result.application ?? null : null,
+                appliedToCanonicalMemory: decision === 'apply' && result.status === 'applied' && result.application?.status !== 'noop',
+                note: decision === 'apply'
+                    ? result.application?.status === 'noop'
+                        ? 'The apply decision completed, but the candidate contained no memory records; canonical NK1 memory was not mutated.'
+                        : 'HMX memory records were projected through the canonical MemoryFabric/MemoryOS2 write path; deferred sections are listed in the application receipt.'
+                    : decision === 'accept'
+                        ? 'HMX candidate is approved for explicit application; canonical NK1 memory has not yet been mutated.'
+                        : 'HMX candidate was rejected; canonical NK1 memory has not been mutated.',
+            });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/outbox') {
             return json(res, 200, { ok: true, outbox: runtime.core.hexisOutbox?.() ?? [], hexis: runtime.core.hexisDiagnostics() });
