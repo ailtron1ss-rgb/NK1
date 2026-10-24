@@ -135,4 +135,31 @@ const admittedObservation = guardedRuntime.externalObserver.observe({
 assert.equal(admittedObservation.sourceId, 'registered-camera');
 assert.equal(guardedRuntime.realityEvidenceLedger.snapshot().total, 1, 'registered source observation must still reach the canonical ledger');
 
+// Restore reconciliation must not launder an orphan observation into the canonical ledger.
+const cleanLedger = new EvidenceResearchSubsystemRuntime().realityEvidenceLedger.snapshot();
+const orphanSnapshot = structuredClone(guardedRuntime.snapshot());
+orphanSnapshot.externalObserver.sources = [];
+orphanSnapshot.realityEvidenceLedger = cleanLedger;
+const orphanRestore = new EvidenceResearchSubsystemRuntime();
+orphanRestore.restore(orphanSnapshot);
+assert.equal(orphanRestore.realityEvidenceLedger.snapshot().total, 0, 'orphan observations must not be backfilled without a registered source');
+
+const mismatchedSnapshot = structuredClone(guardedRuntime.snapshot());
+mismatchedSnapshot.externalObserver.sources[0].sourceClass = 'user';
+mismatchedSnapshot.externalObserver.sources[0].channel = 'user';
+mismatchedSnapshot.externalObserver.sources[0].independenceKey = 'user:forged';
+mismatchedSnapshot.realityEvidenceLedger = cleanLedger;
+const mismatchedRestore = new EvidenceResearchSubsystemRuntime();
+mismatchedRestore.restore(mismatchedSnapshot);
+assert.equal(mismatchedRestore.realityEvidenceLedger.snapshot().total, 0, 'restored rows cannot override the registered source class/channel');
+
+const legacySnapshot = structuredClone(guardedRuntime.snapshot());
+delete legacySnapshot.externalObserver.observations[0].independenceKey;
+legacySnapshot.realityEvidenceLedger = cleanLedger;
+const legacyRestore = new EvidenceResearchSubsystemRuntime();
+legacyRestore.restore(legacySnapshot);
+const legacyLedgerRow = legacyRestore.realityEvidenceLedger.snapshot().recent[0];
+assert.equal(legacyRestore.realityEvidenceLedger.snapshot().total, 1, 'legacy rows with a known source remain recoverable');
+assert.equal(legacyLedgerRow.independenceKey, 'camera:front', 'legacy rows inherit independence identity from the registry');
+
 console.log('WorkPass548 observer source identity regression: PASS');
