@@ -1,3 +1,15 @@
+## NK1 WorkPass331 — repository ordering and source-of-truth map (2026-10-24)
+
+- [DOCUMENTED] Added `docs/PROJECT_MAP_AND_ORDERING.md` as the navigation page for canonical ownership, branch ancestry, release-asset status, historical documentation, and the staged cleanup order. Added `docs/BRANCH_INVENTORY_2026-10-24.md`, which enumerates the 104 branch refs observed during this pass and records selected head/comparison evidence.
+- [NAVIGATION] Refreshed `AGENTS.md`, `README.md`, and `NEUROCORE_START_HERE.md` so readers reach the map first and no longer mistake old continuation snapshots for current GitHub state.
+- [TOOLING] Added a dependency-free Markdown/HTML local-link auditor with a regression suite, `test:markdown-links`, `audit:markdown-links` and strict `audit:canonical-links` commands, plus a Node.js 24-compatible GitHub Actions workflow for the canonical navigation gate.
+- [BRANCH EVIDENCE] Compare of `integration` and `operation-omega-hexis-2026-10-24` returned divergent history (39 commits on the operation side and 17 on the integration side not shared by the other). `workpass331-unified-cognitive-kernel-2026-10-24` is 61 commits ahead of the operation branch (0 behind) but itself diverges from `integration`; `architecture/dependency-contracts-2026-10-24` and `optimization/deep-pass-2026-10-24` also remain divergent. These results support selective, branch-aware reconciliation only. No wholesale merge, branch deletion, or force-push was performed.
+- [RELEASE EVIDENCE] The latest release assets observed through GitHub were WorkPass70 archives dated 2026-10-19. No binary release asset was uploaded or replaced by this documentation change.
+- [VALIDATION] Repository files and the branch inventory were read back through GitHub. The new link-auditor regression suite and strict canonical-link check are wired into Actions; record their exact-head run result separately. No runtime cognition tests were run, and runtime/release readiness is not claimed.
+- [SCOPE] Historical documents and branches were preserved. Bulk file moves remain gated on link/reference and provenance inventory.
+
+---
+
 # NK1 follow-up — durable identity, independent evaluator and final integration verification (2026-10-24)
 
 - [FIXED] WorkPass203 independent-candidate evaluator regression declared `snapshotEvaluator` twice in one ES module. Renamed the authority-snapshot case variables and rebound every dependent assertion to the isolated fixture so the regression parses and evaluates the intended snapshot rather than failing on a duplicate declaration or stale references.
