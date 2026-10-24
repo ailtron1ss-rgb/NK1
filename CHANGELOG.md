@@ -1,3 +1,9 @@
+## NK1 WorkPass524 — validate embodiment continuity events (2026-10-24)
+
+- User activity timestamps and external-event records are validated before changing continuity, wake or sleep state; invalid clocks, invalid importance and non-string/control-bearing detail are rejected without creating an event.
+- Sleep/wake reasons and the shared event log reject unsafe text without implicit coercion, protecting the runtime from malformed platform/plugin payloads.
+- Added regression cases in `tests/voice-embodiment.mjs`. Existing TTS/STT/gateway methods were preserved; execution is not claimed by this pass.
+
 ## NK1 WorkPass454 — share safe runtime type and correlation boundaries (2026-10-24)
 
 - Synced the shared runtime typecheck boundary with the actual app dependency installation and excluded fallback Node declarations from semantic checking.
