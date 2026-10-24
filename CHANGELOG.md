@@ -1,3 +1,11 @@
+## NK1 WorkPass499 — separate user reports from grounded evidence
+
+- `RealityEvidenceLedger` no longer counts `user-reported` records as external/device evidence for promotion. They remain visible as a separate `userReportedSamples` diagnostic.
+- Added a regression scenario asserting that a high-confidence user report alone cannot satisfy the external-grounding promotion requirement.
+- This is a trust-boundary hardening change; the focused test was updated but has not yet been executed in this pass.
+
+---
+
 ## NK1 WorkPass498 — finalize shared boundaries and restore semantics (2026-10-24)
 
 - Corrected the restored-external-outcome regression to expect zero grounded outcomes: imported evidence remains preserved for adjudication but cannot increment trusted outcome counters after restore.
