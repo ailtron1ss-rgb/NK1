@@ -37,6 +37,10 @@ The core accepts only the allowlisted affect label, valence in -1..1, arousal/co
 
 `NEURO_AUTORUN_ENABLED` defaults to `1` and preserves autonomous runtime ticks. Setting it to `0` disables background autonomous ticks for deterministic maintenance/tests; it does not switch the server into this mode by default.
 
+## Outcome attribution guard
+
+The focused server smoke exposed an existing B272 contract violation: the goal generator can propose one action while the final policy executes another. B272's learner deliberately rejects credit for an action other than its own proposal. The core now calls `learnFromOutcome` only when both actions match; otherwise it records a bounded `outcomeActionMismatches` counter and the latest `{tick, generatedAction, executedAction}` evidence without changing B272 weights. The learner's strict rejection remains intact, so mismatched outcomes are visible and cannot be falsely attributed.
+
 ## Integration points
 
 - `runtime/neuro-kurisu/src/server/LocalSmallModelHub.mjs` owns capability metadata, task dispatch, schema checks and safe counters.
@@ -108,6 +112,6 @@ Set `NK_LOCAL_CONTEXT_SIGNALS_ENABLED=0` to disable specialist calls from the la
 
 ## Validation status
 
-Dedicated regressions cover local-first routing/cooldown, strict classification and affect schemas, prompt redaction, embedding batch caps, shared memory-provider configuration, bounded diagnostics, context-signal degradation, explicit vision fallback and malformed output rejection. A local-vision regression exercises loopback enforcement, multimodal payload shape, image/response size limits and output normalization. The live-server smoke starts NK1 with fake loopback model endpoints and verifies diagnostics plus classification, affect and embedding HTTP routes end to end. The suite is registered in the runtime package, WorkPass71 CI and a focused CI workflow.
+Dedicated regressions cover local-first routing/cooldown, strict classification and affect schemas, prompt redaction, embedding batch caps, shared memory-provider configuration, bounded diagnostics, context-signal degradation, explicit vision fallback, scheduler backpressure and malformed output rejection. The B272 suite additionally verifies action-attribution mismatch evidence survives restore without granting learning credit. The live-server smoke starts NK1 with fake loopback model endpoints and verifies diagnostics plus classification, affect and embedding HTTP routes end to end. The suite is registered in the runtime package, WorkPass71 CI and a focused CI workflow.
 
 **Do not treat this document or a configured endpoint as proof of model quality.** The suite still needs to execute successfully on the exact branch; actual device inference, latency/RAM measurements, retrieval uplift against an untouched holdout, and long-soak behavior remain separate validation gates.
