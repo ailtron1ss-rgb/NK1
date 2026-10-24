@@ -7,9 +7,9 @@
  */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 export type P65Kind='observation'|'inference'|'belief'|'prediction'|'counterfactual';
-export type P65ProvenanceTrust = 'verified'|'corroborated'|'inferred'|'unverified';
+export type P65EvidenceClass = 'direct-observation'|'corroborated'|'inferred'|'unverified';
 export interface P65ClaimProvenance {
- sourceId:string; sourceKind:string; capturedAt:number; trustClass:P65ProvenanceTrust;
+ sourceId:string; sourceKind:string; capturedAt:number; evidenceClass:P65EvidenceClass;
  contentFingerprint?:string; citation?:string;
 }
 export interface P65Claim {id:string;tick:number;at:number;kind:P65Kind;content:string;confidence01:number;source:string;resolved:boolean;parentIds:string[];predicted01?:number;actual01?:number;error01?:number;lastSupportedAt:number;supportCount:number;status:'active'|'stale'|'expired'|'resolved';provenance?:P65ClaimProvenance;}
@@ -23,16 +23,16 @@ function normalizeP65Provenance(value:unknown):P65ClaimProvenance|undefined{
  if(value===undefined||value===null)return undefined;
  if(!isRecord(value)||!cleanText(value.sourceId,192)||!cleanText(value.sourceKind,64)||
     !Number.isSafeInteger(value.capturedAt)||Number(value.capturedAt)<0||
-    !['verified','corroborated','inferred','unverified'].includes(String(value.trustClass)))return undefined;
+    !['direct-observation','corroborated','inferred','unverified'].includes(String(value.evidenceClass)))return undefined;
  if(value.contentFingerprint!==undefined&&!isFingerprint(value.contentFingerprint))return undefined;
  if(value.citation!==undefined&&!cleanText(value.citation,256))return undefined;
  return {sourceId:value.sourceId.trim(),sourceKind:value.sourceKind.trim(),capturedAt:Number(value.capturedAt),
-   trustClass:value.trustClass as P65ProvenanceTrust,
+   evidenceClass:value.evidenceClass as P65EvidenceClass,
    ...(value.contentFingerprint?{contentFingerprint:value.contentFingerprint as string}:{}),
    ...(value.citation?{citation:value.citation.trim() as string}:{})};
 }
 function stableId(tick:number,kind:P65Kind,content:string,source:string,provenance?:P65ClaimProvenance){
- const provenanceKey=provenance?`|${provenance.sourceKind}|${provenance.sourceId}|${provenance.contentFingerprint??''}|${provenance.trustClass}`:'';
+ const provenanceKey=provenance?`|${provenance.sourceKind}|${provenance.sourceId}|${provenance.contentFingerprint??''}|${provenance.evidenceClass}`:'';
  let h=2166136261>>>0;for(const c of `${tick}|${kind}|${source}|${content.slice(0,220)}${provenanceKey}`)h=Math.imul(h^c.charCodeAt(0),16777619)>>>0;return `p65:${tick}:${kind}:${h.toString(16)}`;
 }
 export class P65EpistemicLedger{

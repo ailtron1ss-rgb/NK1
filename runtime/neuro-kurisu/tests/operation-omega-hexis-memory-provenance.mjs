@@ -5,7 +5,7 @@ const provenanceA = {
   sourceId: 'hexis-memory:conversation-17:item-4',
   sourceKind: 'user-memory',
   capturedAt: 1_800_000_000_100,
-  trustClass: 'corroborated',
+  evidenceClass: 'corroborated',
   contentFingerprint: 'a'.repeat(64),
   citation: 'conversation-17:item-4',
 };
@@ -25,13 +25,13 @@ const inferenceId = ledger.record({
   tick: 11, at: 1_800_000_000_200, kind: 'inference',
   content: 'The preference may still apply.',
   confidence01: 0.6, source: 'organism', parentIds: [observationId],
-  provenance: { ...provenanceB, trustClass: 'inferred' },
+  provenance: { ...provenanceB, evidenceClass: 'inferred' },
 });
 assert.ok(observationId);
 assert.ok(inferenceId);
 assert.notEqual(observationId, inferenceId);
 assert.equal(ledger.snapshot().claimsData.find(c => c.id === observationId).provenance.sourceId, provenanceA.sourceId);
-assert.equal(ledger.snapshot().claimsData.find(c => c.id === observationId).provenance.trustClass, 'corroborated');
+assert.equal(ledger.snapshot().claimsData.find(c => c.id === observationId).provenance.evidenceClass, 'corroborated');
 
 const lineage = ledger.sourceLineage(inferenceId, 8);
 assert.deepEqual(lineage.map(c => c.id), [inferenceId, observationId],
@@ -56,7 +56,7 @@ assert.throws(() => ledger.record({
   tick: 12, at: 1_800_000_000_300, kind: 'observation',
   content: 'Invalid provenance must fail closed.',
   confidence01: 0.5, source: 'external-api',
-  provenance: { sourceId: 'broken', sourceKind: 'external', capturedAt: -1, trustClass: 'verified' },
+  provenance: { sourceId: 'broken', sourceKind: 'external', capturedAt: 1_800_000_000_300, evidenceClass: 'authenticated' },
 }), /invalid epistemic source provenance/);
 
 const legacyA = new P65EpistemicLedger();
