@@ -1,3 +1,11 @@
+## NK1 WorkPass504 — refresh Hexis assimilation plan against latest passes
+
+- Reconciled the integration checkpoint with the current planning branch, including WorkPass499–503: user-reported evidence stays below the external-grounding promotion boundary, UnifiedCognitiveLoop ingress hardening is aligned between feedback/perception, and the missing P26 learning-input test alias plus Node 24 diagnostics flag are addressed in source.
+- Marked the related CI reruns as pending rather than passed. The next code milestone is a single causal envelope from action receipt through postcondition verification and evidence ledger into MemoryOS2/P65/P23, with provenance and replay/restore identity preserved.
+- No category PR merge, production readiness, or Release ZIP replacement is inferred.
+
+---
+
 ## NK1 WorkPass500 — multiscale replay research mapped to runtime
 
 - Added `research/WORKPASS500_MULTISCALE_COGNITION_AND_REPLAY.md` mapping hippocampal replay/planning research, predictive-processing caveats, Voyager skill refinement and Letta/MemGPT memory tiers to existing NK1 subsystems.
