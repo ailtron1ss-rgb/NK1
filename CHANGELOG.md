@@ -1,3 +1,12 @@
+## NK1 WorkPass488 — adopt common reality-projection identity (2026-10-24)
+
+- `RealityEvidenceLedger.realityEvidenceEventId` now delegates to `EvidenceEventIdentity.createRealityEvidenceEventId`; public function shape and the prior deterministic `nk1-reality:<role>:<48-hex>` encoding are preserved.
+- Added `tests/reality-evidence-event-identity.mjs` for stable IDs, role/discriminator separation, malformed input rejection and control-character rejection; wired it into `test:p2841`.
+- The helper content matches the implementation on `feature/feedback` to prevent a same-path helper conflict when the current draft PRs are later integrated.
+- This makes the projection-ID utility shared, but does not complete the receipt-to-MemoryOS2/P65/P23 propagation or prove tests passed on hosted CI.
+
+---
+
 ## NK1 WorkPass471 — align runtime validation with real Node types (2026-10-24)
 
 - Updated the canonical runtime typecheck to reuse the repository's existing `app/node_modules/@types/node` installation and explicitly exclude the narrow Node fallback shims from semantic tsc. This addresses the mismatch between the app-locked compiler/runtime environment and the runtime package's type resolution.
