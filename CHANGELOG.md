@@ -1,4 +1,6 @@
-## NK1 WorkPass512 — align trusted shadow and signed-evidence contracts (2026-10-24)
+## NK1 WorkPass512 — make memory restore safe at the collection boundary (2026-10-24)
+
+- Added descriptor-only reading for the persisted episode collection itself, not just each record. Sparse, custom-prototype, oversized or accessor-backed arrays are discarded before any ## NK1 WorkPass512 — align trusted shadow and signed-evidence contracts (2026-10-24)
 
 - Ported feedback/perception's async trusted-shadow coordinator contract into the memory/learning copies. Invalid baseline/control runs reject the Promise before spawn; the test now asserts that contract and confirms no extra registration is written.
 - Replaced generic `Buffer<ArrayBufferLike>` annotations with portable `Buffer` annotations for the runtime type-shim path.
