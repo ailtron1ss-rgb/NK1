@@ -1,3 +1,12 @@
+## NK1 WorkPass506 — make the reality ledger replay-safe and identity-aware
+
+- Reconciled the learning branch's older `RealityEvidenceLedger` with the hardened feedback-branch implementation: bounded plain-data ingress, event-ID validation, duplicate retry idempotency, conflicting-payload quarantine and safe snapshot restore.
+- Added `eventId` as a join key without treating it as proof. `user-reported` observations remain distinct from external/device-observed evidence in trust aggregates.
+- Exposed `RealityEvidenceLedger.realityEvidenceEventId(...)` as a thin delegate to the shared identity helper, and added tests for retry idempotency, conflict quarantine and restore collisions.
+- Changes are committed on `feature/learning`; current GitHub status has no workflow runs attached to the WorkPass505 head. WorkPass506 test execution/typecheck is not yet confirmed.
+
+---
+
 ## NK1 WorkPass505 — unify causal learning event identity across subsystems
 
 - Ported the shared `EvidenceEventIdentity` contract into `feature/learning`; IDs remain deterministic, domain-separated join keys and never count as proof that an event is true.
