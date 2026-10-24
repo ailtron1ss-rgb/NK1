@@ -2113,3 +2113,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
 - Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
 - This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
+
+
+## [2026-10-24] Operation Omega — Hexis source transfer and review-inbox adaptation
+
+- Added a fresh, pinned copy of selected MIT-licensed Hexis agent, skill, memory, and skill-improvement review sources under `legacy/input-archives/hexis-selected-2026-10-24/`; preserved the existing older snapshot unchanged and recorded upstream commit, Git blob SHAs, file sizes and attribution.
+- Added `HexisSkillReviewInbox.ts`: digest-bound review packets, source/candidate matching, durable atomic JSON persistence, reviewer decision audit records, and stale-evidence rejection. Review approval is explicitly not activation authority; the existing NK1 signed promotion and shadow-evidence gates remain mandatory.
+- Added a focused regression that constructs signed independent evaluation outcomes, creates an authentic accepted proposal, verifies review persistence, idempotency, decision transitions, stale-candidate denial and tamper rejection.
+- Added source/adaptation notes in `docs/OPERATION_OMEGA_HEXIS_INTEGRATION_2026-10-24.md`.
+- Validation status: code and test are committed for exact-head CI; local execution was not available through the GitHub write connector. No test pass or production acceptance is claimed. The review-inbox-to-authenticated-UI / signed-approval-request wiring remains open.
