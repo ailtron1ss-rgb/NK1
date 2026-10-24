@@ -1,3 +1,11 @@
+## NK1 WorkPass491 — regression contracts match fail-closed behavior (2026-10-24)
+
+- Added the missing `test:workpass294:correlated-postcondition` npm alias referenced by the workflow, so the postcondition regression proceeds after its semantic typecheck.
+- Corrected the P26 true-learning test: non-finite learning rates are rejected before mutation, rather than silently treated as a successful update; the regression now asserts unchanged finite weights, biases, and update count.
+- The unified-cycle restore guard now rejects inconsistent aggregate counters as a basis for `lastComplete` (see WorkPass490).
+
+---
+
 ## NK1 WorkPass490 — restore safe typing and exact cognitive-cycle semantics (2026-10-24)
 
 - Ported official Node typings into `feature/feedback`: pinned `@types/node 22.20.4`, synced lockfile, excluded the legacy shim from semantic TypeScript, and reused the typecheck script that explicitly selects official Node declarations.
