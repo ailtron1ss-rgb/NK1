@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { lstat, readFile, realpath, stat } from "node:fs/promises";
+import { lstat, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { hydrateCanonicalPublicAssets } from "./sync-canonical-public-assets.mjs";
@@ -11,13 +11,13 @@ const publicRoot = path.join(appRoot, "public", "live2d");
 const manifestPath = path.join(repoRoot, "contracts/inventory/canonical-public-assets-workpass42.json");
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
-function resolveSafe(root, relative) {
+function resolveSafe(root, relative, { allowParent = false } = {}) {
   assert.equal(typeof relative, "string", "asset references must be strings");
   assert.ok(relative.length > 0, "asset references must not be empty");
   assert.ok(!path.isAbsolute(relative), `absolute asset reference rejected: ${relative}`);
-  assert.ok(!relative.includes("\\\\"), `Windows separator rejected in asset reference: ${relative}`);
+  assert.ok(!relative.includes("\\"), `Windows separator rejected in asset reference: ${relative}`);
   const parts = relative.split("/");
-  assert.ok(!parts.some((part) => part === "" || part === "."), `non-canonical asset reference: ${relative}`);
+  assert.ok(!parts.some((part) => part === "" || part === "." || (!allowParent && part === "..")), `non-canonical asset reference: ${relative}`);
   const resolved = path.resolve(root, ...parts);
   const rel = path.relative(root, resolved);
   assert.ok(rel && !rel.startsWith("..") && !path.isAbsolute(rel), `asset reference escapes model root: ${relative}`);
@@ -84,8 +84,8 @@ for (const variant of variants) {
   assert.ok(expressionRefs.length >= 7, `${variant.name}: expression coverage regressed`);
   assert.ok(motionRefs.length >= 4, `${variant.name}: motion coverage regressed`);
 
-  for (const reference of relativeRefs) {
-    const filePath = resolveSafe(variant.dir, reference);
+    assert.ok(!path.isAbsolute(reference) && !reference.includes("\\"), `${variant.name}: unsafe model reference ${reference}`);
+    const filePath = resolveSafe(variant.dir, reference, { allowParent: true });
     await assertRegularFile(filePath, `${variant.name} reference ${reference}`);
     const info = await stat(filePath);
     assert.ok(info.size > 0, `${variant.name}: empty referenced asset ${reference}`);
@@ -106,8 +106,8 @@ assert.deepEqual(Object.keys(loaded[0].refs.Motions ?? {}).sort(), Object.keys(l
 const viewerPath = path.join(publicRoot, "viewer.html");
 const viewer = await readFile(viewerPath, "utf8");
 for (const localRuntime of ["./vendor/pixi.min.js", "./vendor/live2dcubismcore.min.js", "./vendor/cubism4.min.js"]) {
-  const scriptPath = resolveSafe(publicRoot, localRuntime);
-  assert.match(viewer, new RegExp(localRuntime.replace(/[.*+?^${}()|[\]\\]/gu, "\\\\$&")), `viewer must reference ${localRuntime}`);
+  const scriptPath = resolveSafe(publicRoot, localRuntime.slice(2));
+  assert.ok(viewer.includes(`loadScript('${localRuntime}')`), `viewer must reference ${localRuntime}`);
   await assertRegularFile(scriptPath, localRuntime);
   assert.ok((await stat(scriptPath)).size > 10_000, `vendored runtime unexpectedly small: ${localRuntime}`);
 }
