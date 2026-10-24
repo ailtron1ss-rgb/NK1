@@ -1,5 +1,9 @@
 # WorkPass338 — preserve successful reflective revision lineage (2026-10-24)
 
+- [TYPECHECK FIX] The focused CI typecheck exposed incorrectly inferred empty-object fallback types in `InnerImperativeController.ts`. Normalized `needs` and `embodiment` are now explicitly partial contract types, preserving the previous bounded-default runtime behavior while satisfying strict property access.
+- [TEST] Added coverage for entirely missing and partially populated homeostasis inputs; the focused workflow now runs this regression and includes the controller in its path filters.
+- [VALIDATION] The three learning-growth / revision-lineage regressions passed on the previous exact head. The first new typecheck run failed on the controller fields listed above; this has been corrected, and the new exact-head run is pending.
+
 - [FIXED] Reflective revision staging now retains the exact evidence-backed plan used to generate the candidate. The persisted plan fingerprint and repair dimensions no longer get replaced by a post-revision diagnosis.
 - [FIXED] A fresh independently evaluated candidate with no remaining performance targets can be staged when the source repair plan was non-empty and the fresh evaluation has no safety blocker. An empty post-revision target list is treated as possible successful repair, not as missing source evidence.
 - [OBSERVABILITY] The revision result distinguishes the original generation plan from the post-revision plan, so callers can see both intended changes and remaining deficits.
