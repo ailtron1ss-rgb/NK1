@@ -1,3 +1,9 @@
+## NK1 WorkPass526 — preserve all corroborating events across restore (2026-10-24)
+
+- Corrected the observer-ledger bridge regression after WorkPass524 expanded the fixture from one observation to three distinct source events.
+- The restore assertion now expects all three evidence rows and verifies that each verifier event ID survives observer/ledger reconciliation without duplicate rows.
+- Hosted CI has not yet been confirmed for this updated head.
+
 ## NK1 WorkPass524 — require confidence-qualified independent corroboration (2026-10-24)
 
 - Tightened the additive consequential-promotion signal: at least two *distinct* external independence keys must each have confidence of at least 0.75. A strong source can no longer mask a second weak source via a max-confidence aggregate.
