@@ -32,9 +32,53 @@ for(const f of files){
 }
 if(missing.length) throw new Error(`missing relative imports: ${JSON.stringify(missing.slice(0,10))}`);
 const canonicalFiles=files.filter(f=>f.startsWith(canonicalRoot+path.sep));
-const leakage=[];
-for(const f of canonicalFiles){for(const dep of graph.get(f)){if(dep.includes(`${path.sep}legacy-original${path.sep}`)||dep.includes(`${path.sep}research${path.sep}`)) leakage.push([path.relative(root,f),path.relative(root,dep)]);}}
-if(leakage.length) throw new Error(`canonical leakage: ${JSON.stringify(leakage)}`);
+const pathIsInside=(file, directory)=>{
+  const rel=path.relative(directory,file);
+  return rel==='' || (rel!=='..' && !rel.startsWith('..'+path.sep) && !path.isAbsolute(rel));
+};
+const hasPathSegment=(file, segment)=>path.normalize(file).split(path.sep).includes(segment);
+const appSourceRoot=path.resolve(root,'../../app/src');
+const appServerRoot=path.resolve(root,'../../app/server');
+const runtimeServerRoot=path.join(root,'src','server');
+const boundaryViolations=[];
+
+// The canonical organism implementation may depend on core contracts and
+// adapters, but never on delivery/UI code, server routing, research snapshots,
+// or legacy trees. These edges create reverse dependencies and duplicate owners.
+const coreForbiddenRoots=[
+  ['app-source',appSourceRoot],
+  ['app-server',appServerRoot],
+  ['runtime-server',runtimeServerRoot],
+];
+for(const f of canonicalFiles){
+  for(const dep of graph.get(f)||[]){
+    const from=path.relative(root,f);
+    const to=path.relative(root,dep);
+    for(const [boundary, targetRoot] of coreForbiddenRoots){
+      if(pathIsInside(dep,targetRoot)) boundaryViolations.push({rule:'canonical-core-to-outward-layer',boundary,from,to});
+    }
+    if(hasPathSegment(dep,'research')) boundaryViolations.push({rule:'canonical-core-to-research',from,to});
+    if(hasPathSegment(dep,'legacy')||hasPathSegment(dep,'legacy-original')) boundaryViolations.push({rule:'canonical-core-to-legacy',from,to});
+  }
+}
+
+// The app is an API consumer. A direct source import from the UI into the
+// runtime bypasses the versioned HTTP boundary and makes the browser a second
+// runtime owner. Test code lives outside app/src and is not covered by this rule.
+for(const f of files.filter(file=>pathIsInside(file,appSourceRoot))){
+  for(const dep of graph.get(f)||[]){
+    if(pathIsInside(dep,path.join(root,'src'))){
+      boundaryViolations.push({
+        rule:'app-source-to-runtime-private-import',
+        from:path.relative(root,f),
+        to:path.relative(root,dep),
+      });
+    }
+  }
+}
+if(boundaryViolations.length){
+  throw new Error('dependency boundary violations: '+JSON.stringify(boundaryViolations.slice(0,50))+(boundaryViolations.length>50?' (truncated)':''));
+}
 const visiting=new Set(), visited=new Set(), cycles=[];
 function dfs(n,stack=[]){if(visiting.has(n)){const i=stack.indexOf(n); cycles.push(stack.slice(i).concat(n)); return;} if(visited.has(n)) return; visiting.add(n); for(const d of graph.get(n)||[]) dfs(d,stack.concat(n)); visiting.delete(n); visited.add(n);}
 for(const f of files) dfs(f,[]);
