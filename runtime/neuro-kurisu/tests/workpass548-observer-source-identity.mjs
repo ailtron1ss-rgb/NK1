@@ -27,6 +27,19 @@ assert.throws(() => fabric.registerSource({
   independenceKey: 'physical-sensor-bank-a',
 }), /external-observer-source-identity-conflict/);
 
+ // Observation ingress must reject caller labels that disagree with the registry,
+ // rather than silently accepting a mislabeled observation under a trusted ID.
+assert.throws(() => fabric.observe({
+  sourceId: 'device-primary',
+  sourceClass: 'external-api',
+  channel: 'http',
+  independenceKey: 'pretend-independent-source',
+  claimKey: 'door=open',
+  observedPostcondition: 'door=open',
+  confidence01: 0.99,
+}), /external-observer-source-identity-conflict/);
+assert.equal(fabric.snapshot().observations.length, 0);
+
 const afterRejectedChanges = fabric.snapshot().sources.find(source => source.id === 'device-primary');
 assert.equal(afterRejectedChanges.sourceClass, 'device');
 assert.equal(afterRejectedChanges.channel, 'sensor');
