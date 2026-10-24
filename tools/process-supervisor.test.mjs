@@ -29,6 +29,30 @@ test('runCommand bounds output while preserving the newest diagnostic tail', asy
   assert.equal(result.outTruncated, true);
 });
 
+test('runCommand can stream live output while keeping a bounded diagnostic tail', async () => {
+  const observed = [];
+  const originalWrite = process.stdout.write;
+  process.stdout.write = function (chunk, ...args) {
+    observed.push(Buffer.isBuffer(chunk) ? chunk.toString('utf8') : String(chunk));
+    return Reflect.apply(originalWrite, this, [chunk, ...args]);
+  };
+
+  let result;
+  try {
+    result = await runCommand(process.execPath, [
+      '-e',
+      'process.stdout.write("streamed-live-output");',
+    ], { timeoutMs: 2_000, maxOutputBytes: 8, streamOutput: true });
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+
+  assert.equal(result.code, 0);
+  assert.equal(result.out, 'live-output'.slice(-8));
+  assert.equal(result.outTruncated, true);
+  assert.ok(observed.join('').includes('streamed-live-output'));
+});
+
 test('runCommand reports executable startup failures instead of hanging', async () => {
   const missingExecutable = process.platform === 'win32'
     ? 'Z:\\nk1-missing-executable.exe'
