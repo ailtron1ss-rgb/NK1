@@ -425,7 +425,7 @@ export class MemoryOS2{
   if(!provider)return baseDiag(false,'embedding-provider-disabled');
   const maxItems=Math.max(1,Math.min(16,Math.floor(Number.isFinite(options.maxItems)?Number(options.maxItems):8)));
   const timeoutMs=Math.max(500,Math.min(5000,Math.floor(Number.isFinite(options.providerTimeoutMs)?Number(options.providerTimeoutMs):2200)));
-  const corpus=this.state.items.filter(item=>!item.dormant&&item.epistemicStatus!=='quarantined'&&Number(item.validFromAt??item.createdAt)<=now&&(item.validUntilAt==null||now<Number(item.validUntilAt)));
+  const corpus=this.state.items.filter(item=>!item.dormant&&item.epistemicStatus!=='quarantined'&&!(item.supersededById!=null&&item.validUntilAt==null)&&Number(item.validFromAt??item.createdAt)<=now&&(item.validUntilAt==null||now<Number(item.validUntilAt)));
   const corpusById=new Map(corpus.map(item=>[item.id,item]));
   const currentVector=(item:MemoryItem2)=>{const row=this.semanticEmbeddingIndex.get(item.id);return Boolean(row&&row.providerId===provider.providerId&&row.contentHash===memoContentHash(item.content)&&row.vector.length>0);};
   for(const [id,row] of this.semanticEmbeddingIndex){const item=corpusById.get(id);if(!item||row.providerId!==provider.providerId||row.contentHash!==memoContentHash(item.content))this.semanticEmbeddingIndex.delete(id);}
@@ -489,7 +489,7 @@ export class MemoryOS2{
   try { providerDiag=this.embeddingProvider?.diagnostics(); }
   catch { providerDiagnosticsFailed=Boolean(this.embeddingProvider); }
   const now=Date.now();
-  const corpus=this.state.items.filter(item=>!item.dormant&&item.epistemicStatus!=='quarantined'&&Number(item.validFromAt??item.createdAt)<=now&&(item.validUntilAt==null||now<Number(item.validUntilAt)));
+  const corpus=this.state.items.filter(item=>!item.dormant&&item.epistemicStatus!=='quarantined'&&!(item.supersededById!=null&&item.validUntilAt==null)&&Number(item.validFromAt??item.createdAt)<=now&&(item.validUntilAt==null||now<Number(item.validUntilAt)));
   const indexed=corpus.filter(item=>{const row=this.semanticEmbeddingIndex.get(item.id);return Boolean(row&&row.providerId===this.embeddingProvider?.providerId&&row.contentHash===memoContentHash(item.content)&&row.vector.length>0);}).length;
   const pending=corpus.filter(item=>{const row=this.semanticEmbeddingIndex.get(item.id);return !row||row.providerId!==this.embeddingProvider?.providerId||row.contentHash!==memoContentHash(item.content)||!row.vector.length;});
   const retries=pending.map(item=>this.semanticEmbeddingRetry.get(item.id)).filter((row):row is {contentHash:string;attempts:number;retryAt:number}=>Boolean(row&&row.retryAt>now));
@@ -513,7 +513,7 @@ export class MemoryOS2{
    }
    const now=typeof temporalOptions.asOfAt==='number'&&Number.isFinite(temporalOptions.asOfAt)?temporalOptions.asOfAt:Date.now();
    const temporalMode=temporalOptions.temporalMode??'current';
-   const eligible=(item:MemoryItem2)=>!item.dormant&&item.epistemicStatus!=='quarantined'&&(temporalMode==='all'||(Number(item.validFromAt??item.createdAt)<=now&&(item.validUntilAt==null||now<Number(item.validUntilAt))));
+   const eligible=(item:MemoryItem2)=>!item.dormant&&item.epistemicStatus!=='quarantined'&&(temporalMode==='all'||(!(item.supersededById!=null&&item.validUntilAt==null)&&Number(item.validFromAt??item.createdAt)<=now&&(item.validUntilAt==null||now<Number(item.validUntilAt))));
    const corpus=this.state.items.filter(eligible);
    const corpusIds=new Set(corpus.map(item=>item.id));
    for(const id of this.semanticEmbeddingIndex.keys())if(!corpusIds.has(id))this.semanticEmbeddingIndex.delete(id);
