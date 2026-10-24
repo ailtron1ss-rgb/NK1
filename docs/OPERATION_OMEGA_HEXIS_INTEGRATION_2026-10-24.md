@@ -31,6 +31,6 @@ NK1 already has a Node/TypeScript canonical P23 learning engine, evidence ledger
 
 ## Boundaries / remaining work
 
-- The review inbox and separate `.mjs` filesystem adapter are implemented and have a focused regression test. It is a service seam; wiring an authenticated product UI / operator command into the inbox and making the signed-approval request CLI require the matching approved review remains a separate integration step.
+- The review inbox and separate `.mjs` filesystem adapter are implemented and have a focused regression test, with a dedicated Node 24 GitHub Actions workflow. It is a service seam; wiring an authenticated product UI / operator command into the inbox and making the signed-approval request CLI require the matching approved review remains a separate integration step.
 - The imported Hexis SQL routines have not been executed against NK1 and should not be.
 - This change does not claim real learning uplift, subjective consciousness, or production readiness. CI/local tests must still run on the exact PR head before merge.

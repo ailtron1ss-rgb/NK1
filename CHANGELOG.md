@@ -2121,6 +2121,7 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added `HexisSkillReviewInbox.ts`: digest-bound review packets, source/candidate matching, durable atomic JSON persistence, reviewer decision audit records, and stale-evidence rejection. Review approval is explicitly not activation authority; the existing NK1 signed promotion and shadow-evidence gates remain mandatory.
 - Added a focused regression that constructs signed independent evaluation outcomes, creates an authentic accepted proposal, verifies review persistence, idempotency, decision transitions, stale-candidate denial and tamper rejection.
 - Added source/adaptation notes in `docs/OPERATION_OMEGA_HEXIS_INTEGRATION_2026-10-24.md`.
+- Added a focused Node 24 GitHub Actions workflow for the signed-evidence -> proposal packet -> durable review-decision regression.
 
 - CI-driven compatibility repair: converted the canonical `VersionedSkillCandidateStore` constructor away from TypeScript parameter properties so Node's strip-only runtime can import it; moved the new filesystem adapter to plain `.mjs` to keep the TypeScript learning service free of additional filesystem type-stub requirements.
 - Validation status: code and test are committed for exact-head CI; local execution was not available through the GitHub write connector. No test pass or production acceptance is claimed. The review-inbox-to-authenticated-UI / signed-approval-request wiring remains open.
