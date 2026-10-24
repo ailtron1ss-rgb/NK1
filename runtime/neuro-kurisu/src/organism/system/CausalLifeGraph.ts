@@ -145,6 +145,8 @@ export class CausalLifeGraph {
     at?: number;
     experience?: { id: string; label: string; confidence01?: number; external01?: number; metadata?: Record<string, unknown> };
     emotion?: { id: string; label: string; confidence01?: number; external01?: number; metadata?: Record<string, unknown> };
+    /** Emotion that preceded action selection; kept distinct from the reaction to its outcome. */
+    decisionEmotion?: { id: string; label: string; confidence01?: number; external01?: number; metadata?: Record<string, unknown> };
     memory?: { id: string; label: string; confidence01?: number; external01?: number; metadata?: Record<string, unknown> };
     decision?: { id: string; label: string; confidence01?: number; metadata?: Record<string, unknown> };
     action?: { id: string; label: string; confidence01?: number; metadata?: Record<string, unknown> };
@@ -163,6 +165,7 @@ export class CausalLifeGraph {
     }> = [];
     if (input.experience) refs.push({ kind: 'experience', ...input.experience });
     if (input.emotion) refs.push({ kind: 'emotion', ...input.emotion });
+    if (input.decisionEmotion) refs.push({ kind: 'emotion', ...input.decisionEmotion });
     if (input.memory) refs.push({ kind: 'memory', ...input.memory });
     if (input.decision) refs.push({ kind: 'decision', ...input.decision });
     if (input.action) refs.push({ kind: 'action', ...input.action });
@@ -185,7 +188,6 @@ export class CausalLifeGraph {
       ['experience', 'emotion', 'evoked'],
       ['experience', 'memory', 'encoded-as'],
       ['memory', 'decision', 'retrieved-for'],
-      ['emotion', 'decision', 'interpreted-as'],
       ['decision', 'action', 'selected'],
       ['action', 'outcome', 'resulted-in'],
       ['outcome', 'learning', 'learned-from'],
@@ -195,6 +197,16 @@ export class CausalLifeGraph {
       const x = refs.find(r => r.kind === a);
       const y = refs.find(r => r.kind === b);
       if (x && y) this.linkInternal({ kind: a, refId: x.id }, { kind: b, refId: y.id }, k, 0.68, 0.66, input.tick, at, false, false);
+    }
+    // The decision must point to the appraisal that preceded it, not automatically to
+    // the distinct emotional reaction generated after its outcome was observed.
+    const decisionEmotion = input.decisionEmotion ?? input.emotion;
+    if (decisionEmotion && input.decision) {
+      this.linkInternal(
+        { kind: 'emotion', refId: decisionEmotion.id },
+        { kind: 'decision', refId: input.decision.id },
+        'interpreted-as', 0.68, clamp(decisionEmotion.confidence01 ?? 0.5), input.tick, at, false, false,
+      );
     }
     this.recompute();
     return options.snapshot === false ? undefined : this.snapshot();
