@@ -66,6 +66,11 @@ export class P67AutonomousGoalGenesis {
   try{input=snapshotPlainData<typeof rawInput>(rawInput,{maxDepth:8,maxNodes:256,maxStringUnits:8192});}
   catch{throw new TypeError('p67-goal-input-invalid');}
   if(!input||typeof input!=='object'||Array.isArray(input))throw new TypeError('p67-goal-input-invalid');
+  // The live Core uses null for "no current dominant drive/attractor". Normalize only
+  // these nullable optional labels after the plain-data snapshot has rejected accessors.
+  // All other fields still pass through the strict validation below.
+  if((input as any).motiveDominant===null)(input as any).motiveDominant=undefined;
+  if((input as any).attractorDominant===null)(input as any).attractorDominant=undefined;
   const allowedKeys=new Set(['tick','at','energy01','uncertainty01','predictionError01','novelty01','socialNeed01','goalPressure01','homeostaticPressure01','epistemicUnresolved','identity01','activeGoalCount','lastMode','identityDecision','motiveOverall01','motiveConflict01','motiveDominant','attractorOverall01','attractorConflict01','attractorDominant','valueWeights','curriculumPressure01','historyUnresolved01','socialLearning01','worldTransitionConfidence01','worldTransitionError01','worldTransitionNovelty01','neuralConfidence01']);
   const unitKeys=['energy01','uncertainty01','predictionError01','novelty01','socialNeed01','goalPressure01','homeostaticPressure01','identity01','motiveOverall01','motiveConflict01','attractorOverall01','attractorConflict01','curriculumPressure01','historyUnresolved01','socialLearning01','worldTransitionConfidence01','worldTransitionError01','worldTransitionNovelty01','neuralConfidence01'];
   if(Object.keys(input).some(key=>!allowedKeys.has(key))||
