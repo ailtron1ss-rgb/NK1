@@ -18,7 +18,7 @@ const normalizeBoundedId=(value:unknown,maxLength:number):string=>{
 };
 const normalizeTraceId=(value:unknown)=>normalizeBoundedId(value,180);
 const normalizeTaskId=(value:unknown)=>normalizeBoundedId(value,120);
-const hasBoundedRuntimePolicyVector=(record:Partial<CausalExperienceRecord>):boolean=>
+const hasBoundedRuntimePolicyVector=(record:Partial<CausalExperienceRecord>):record is Partial<CausalExperienceRecord>&{policyFeatures01:number[]}=>
   Array.isArray(record.policyFeatures01)&&record.policyFeatures01.length>=16&&record.policyFeatures01.length<=64&&
   record.policyFeatures01.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1);
 const isGroundedRuntimeOutcome=(record:Partial<CausalExperienceRecord>):boolean=>

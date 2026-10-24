@@ -40,3 +40,18 @@ Changes committed on `compat/avatar-storage-strict-types-20261024`:
 - Update the causal-stream test fixture to carry `lastAction` and `lastActionSuccess`; the runtime evidence gate was not relaxed.
 
 **Status: implementation committed; CI verification pending.** Exact-head app and runtime checks must pass before this repair can be considered validated. The release ZIP was not rebuilt or changed.
+
+## Third strict-compatibility batch
+
+The latest exact-head CI run passed the app regression suite, app typecheck and app development build. Runtime typecheck then revealed additional strictness defects after the partial Node shims were removed:
+- dynamic goal-need keys were typed as arbitrary strings;
+- dream-association filters returned `string | false` instead of booleans;
+- restored cognitive dependency counters were indexed through an untyped object;
+- compound-repair clock IDs and registrar return types were missing from contracts;
+- replay and skill-repair causal imports were nullable, so rejected/deduplicated imports could still be dereferenced in the unified-learning path;
+- the bounded policy-vector guard did not narrow the optional vector type;
+- Node Buffer accumulator inference was too narrow for stream chunks.
+
+These are now corrected on the PR branch. The causal regression also had stale assertions that treated external imports as trusted outcomes. It now tests the actual current contract: imported rows are idempotently stored for later adjudication but do not count as trusted outcomes or replay-eligible evidence.
+
+**Status remains IMPLEMENTED, CI pending.** No runtime or learning pass is claimed until a new exact-head run validates the third batch. The release artifact remains unchanged.

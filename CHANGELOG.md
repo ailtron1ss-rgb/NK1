@@ -1,3 +1,12 @@
+
+## Strict runtime compatibility — causal nullability and external evidence (2026-10-24)
+
+- [FIX] Guarded unified-learning ingestion when the canonical causal ledger declines an external event with `null`; deduplicated, conflicted, or otherwise rejected evidence no longer dereferences a missing record or leaks into a second learner path.
+- [FIX] Made the bounded runtime-policy-vector validator a type predicate so the restore path only reads the vector after the guard proves it exists.
+- [FIX] Aligned cognitive goal-key narrowing, dream-input boolean filters, persisted dependency-transition typing, runtime clock-kind registration, trusted-run registrar return semantics, and Node Buffer output accumulator types.
+- [TEST] Updated causal-stream expectations to reflect the trust boundary: externally imported events are retained for deduplication/adjudication but do not increase the trusted `outcomes` count or become replay eligible. The suite now checks stored-row counts to verify duplicate suppression separately from trusted outcome counts.
+- [EVIDENCE] Prior exact-head run passed app typecheck and development build; runtime typecheck then reported remaining strict errors and the causal test identified this stale count expectation. The fixes are committed on the draft compatibility PR; fresh exact-head runtime and learning tests remain required.
+
 ## Runtime compatibility follow-up (2026-10-24)
 
 - [FIX] Runtime typecheck now resolves the full Node.js declarations from the already-pinned `@types/node` dependency in the canonical app lockfile. Removed partial ambient stubs that masked missing APIs and caused false module/global type shapes; `strict` remains enabled.
