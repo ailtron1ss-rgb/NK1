@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import { AutonomousIntentLearningGovernor } from '../src/organism/system/AutonomousIntentLearningGovernor.ts';
 
-const governor = new AutonomousIntentLearningGovernor();
+const authority = {
+  verifyApprovalReceipt: (intentId, receipt) => receipt === `approval:${intentId}`,
+  verifyExecutionReceipt: (intentId, receipt) => receipt === `execution:${intentId}`,
+  trustPersistedApproval: (intentId) => intentId === 'external-write-1',
+  trustPersistedExecution: (intentId) => ['external-write-1', 'memory-repair-1'].includes(intentId),
+};
+const governor = new AutonomousIntentLearningGovernor(authority);
 const accepted = governor.propose({
   id: 'memory-repair-1',
   goal: 'investigate a repeated retrieval failure',
@@ -13,6 +19,15 @@ const accepted = governor.propose({
   externalSideEffect: false,
 }, 100);
 assert.equal(accepted.status, 'act');
+const noAuthority = new AutonomousIntentLearningGovernor();
+const gatedWithoutAuthority = noAuthority.propose({
+  id: 'unverified-external', goal: 'publish without trusted services', triggerEvidence: ['test'],
+  expectedBenefit01: .9, uncertainty01: .1, cost01: .1, risk01: .1, externalSideEffect: true,
+}, 100);
+assert.equal(gatedWithoutAuthority.status, 'approval-required');
+assert.deepEqual(noAuthority.authorize('unverified-external', 'approval:unverified-external'), {
+  accepted: false, reason: 'approval-verifier-unavailable',
+}, 'external effect must fail closed when no trusted approval authority is injected');
 
 assert.throws(() => governor.propose({
   id: 'memory-repair-1', goal: 'duplicate', triggerEvidence: ['evidence'],
@@ -40,13 +55,13 @@ assert.deepEqual(governor.recordOutcome({
 assert.deepEqual(governor.recordOutcome({
   intentId: 'external-write-1', observedBenefit01: 1, evidence: 'verified', observedAt: 103,
 }), { accepted: false, reason: 'intent-not-executed' });
-assert.deepEqual(governor.authorize('external-write-1', 'approval:review-44'), { accepted: true, reason: 'authorized' });
-assert.deepEqual(governor.recordExecution('external-write-1', 'execution:tool-run-44'), { accepted: true, reason: 'execution-recorded' });
+assert.deepEqual(governor.authorize('external-write-1', 'approval:external-write-1'), { accepted: true, reason: 'authorized' });
+assert.deepEqual(governor.recordExecution('external-write-1', 'execution:external-write-1'), { accepted: true, reason: 'execution-recorded' });
 
 assert.deepEqual(governor.recordOutcome({
   intentId: 'memory-repair-1', observedBenefit01: .8, evidence: 'verified', observedAt: 103,
 }), { accepted: false, reason: 'intent-not-executed' });
-assert.deepEqual(governor.recordExecution('memory-repair-1', 'execution:task-12'), { accepted: true, reason: 'execution-recorded' });
+assert.deepEqual(governor.recordExecution('memory-repair-1', 'execution:memory-repair-1'), { accepted: true, reason: 'execution-recorded' });
 const outcome = { intentId: 'memory-repair-1', observedBenefit01: .8, evidence: 'holdout-task-pass', observedAt: 104 };
 assert.deepEqual(governor.recordOutcome(outcome), { accepted: true, reason: 'outcome-recorded' });
 assert.deepEqual(governor.recordOutcome(outcome), { accepted: false, reason: 'duplicate-outcome' });
@@ -74,7 +89,7 @@ assert.throws(() => governor.propose({
 }, Number.NaN), /decision time/);
 
 const saved = governor.snapshot();
-const recovered = new AutonomousIntentLearningGovernor();
+const recovered = new AutonomousIntentLearningGovernor(authority);
 recovered.restore(saved);
 assert.equal(recovered.snapshot().decisions.length, saved.decisions.length);
 assert.equal(recovered.snapshot().outcomes.length, 1, 'restore should preserve accepted outcome evidence');
