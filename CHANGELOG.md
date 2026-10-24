@@ -1,3 +1,8 @@
+## NK1 CI — unify push and PR regression concurrency by source branch (2026-10-24)
+
+- The reality-to-learning workflow concurrency key now uses the pull request's source branch when the event is a PR, otherwise the pushed branch name. A push and a PR update for the same feature branch therefore supersede each other's stale runs rather than occupying separate concurrency groups.
+- **Validation boundary:** workflow configuration is committed; the triggered run must confirm the YAML and the current regression suite pass.
+
 ## NK1 Feedback — preserve event idempotency beyond the active evidence window (2026-10-24)
 
 - `RealityEvidenceLedger` now keeps a bounded, persisted replay-receipt index (up to 2,048 event identities) alongside the active evidence window.
