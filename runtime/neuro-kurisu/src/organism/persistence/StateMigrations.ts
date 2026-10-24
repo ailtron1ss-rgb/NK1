@@ -40,7 +40,7 @@ import { defaultAdaptiveDevelopment } from '../learning/AdaptiveDevelopmentEngin
 import { defaultTemporalContinuity } from '../learning/TemporalContinuityEngine.ts';
 import { defaultP35SemanticWorldBody } from '../body/P35SemanticWorldBody.ts';
 import { defaultP37EmbodiedSensorium } from '../body/P37EmbodiedSensorium.ts';
-import { defaultP36SelfDevelopment } from '../learning/P36AutonomousSelfDevelopment.ts';
+import { P36AutonomousSelfDevelopmentEngine, defaultP36SelfDevelopment } from '../learning/P36AutonomousSelfDevelopment.ts';
 
 import { defaultMemoryOS2 } from '../developmental/MemoryOS2.ts';
 import { defaultWorldModel2 } from '../developmental/WorldModel2.ts';
@@ -656,62 +656,12 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
     rollback:{...p30Default.rollback,...(p30Raw.rollback??{})},
     metrics:{...p30Default.metrics,...(p30Raw.metrics??{})},
   };
-  const p36Default = defaultP36SelfDevelopment();
   const p36Raw = (raw.facets as any)?.learning?.p36 ?? raw.p36?.selfDevelopment ?? {};
-  // P36 proof objects are process-local capabilities. JSON migration may retain the history,
-  // but it must never restore learned effects or promotion authority from serialized claims.
-  const p36SourceHypotheses:any[] = Array.isArray(p36Raw.hypotheses) ? p36Raw.hypotheses.slice(-96) : [];
-  const p36RevokedHypothesisIds = new Set<string>();
-  const p36Hypotheses = p36SourceHypotheses.map((hypothesis:any) => {
-    const needsFreshEvidence = hypothesis?.status === 'completed' ||
-      ['external-verified','holdout-verified','replicated'].includes(hypothesis?.evidenceGate);
-    if (!needsFreshEvidence) return hypothesis;
-    if (typeof hypothesis?.id === 'string') p36RevokedHypothesisIds.add(hypothesis.id);
-    return { ...hypothesis, status:'awaiting-evidence', evidenceGate:'none', result01:null, completedAt:0 };
-  });
-  const p36DevelopmentCycles:any[] = Array.isArray(p36Raw.developmentCycles) ? p36Raw.developmentCycles.slice(-64).map((cycle:any) => ({
-    ...cycle,
-    stage:p36RevokedHypothesisIds.has(cycle?.hypothesisId)||cycle?.stage==='replicated'||cycle?.stage==='holdout-verified'
-      ? 'awaiting-evidence' : cycle?.stage,
-    verifiedEvidenceCount:0,
-    lastEvidenceAt:0,
-  })) : [];
-  const p36MaturityHistory:any[] = Array.isArray(p36Raw.developmentalMaturity?.history)
-    ? p36Raw.developmentalMaturity.history.slice(-64).map((item:any) => ({ ...item, verified01:0, retention01:0, transfer01:0, failed01:0 }))
-    : [];
-  learning.p36 = {
-    ...p36Default,
-    ...p36Raw,
-    version:6,
-    currentHypothesisId:typeof p36Raw.currentHypothesisId === 'string' &&
-      p36Hypotheses.some((hypothesis:any) => hypothesis.id === p36Raw.currentHypothesisId &&
-        ['proposed','running','awaiting-evidence'].includes(hypothesis.status))
-      ? p36Raw.currentHypothesisId : null,
-    agenda:{...p36Default.agenda},
-    hypotheses:p36Hypotheses,
-    experiments:Array.isArray(p36Raw.experiments)
-      ? p36Raw.experiments.slice(-128).map((experiment:any) => ({ ...experiment, replicated:false, status:'insufficient', evidenceGate:'sandbox-preview' }))
-      : [],
-    developmentCycles:p36DevelopmentCycles,
-    externalEvidence:Array.isArray(p36Raw.externalEvidence)
-      ? p36Raw.externalEvidence.slice(-512).map((row:any) => ({ ...row, independentVerified:false, observationId:undefined }))
-      : [],
-    developmentalEvidenceReceiptIds:Array.isArray(p36Raw.developmentalEvidenceReceiptIds)
-      ? p36Raw.developmentalEvidenceReceiptIds.filter((id:unknown):id is string => typeof id === 'string' && id.length <= 256).slice(-512)
-      : [],
-    developmentalEvidenceObservationIds:Array.isArray(p36Raw.developmentalEvidenceObservationIds)
-      ? [...new Set(p36Raw.developmentalEvidenceObservationIds.filter((id:unknown):id is string => typeof id === 'string' && id.length <= 180))].slice(-512)
-      : [],
-    metrics:{...p36Default.metrics},
-    developmentalMaturity:{...p36Default.developmentalMaturity, history:p36MaturityHistory},
-    curriculum:{...p36Default.curriculum, mastery:{...p36Default.curriculum.mastery}, plannedSteps:0, completedSteps:0},
-    actionBias:{...p36Default.actionBias},
-    acceptedChanges:0,
-    spentBudget01:0,
-    unverifiedEvidenceAttempts:Number.isSafeInteger(p36Raw.unverifiedEvidenceAttempts) ? Math.max(0,Math.min(1_000_000_000,p36Raw.unverifiedEvidenceAttempts)) : 0,
-    rejectedMaturityReceipts:Number.isSafeInteger(p36Raw.rejectedMaturityReceipts) ? Math.max(0,Math.min(1_000_000_000,p36Raw.rejectedMaturityReceipts)) : 0,
-    investmentDecisions:Array.isArray(p36Raw.investmentDecisions)?p36Raw.investmentDecisions.slice(-96):[],
-  };
+  // Keep migration and live restore semantics identical: the P36 owner revokes
+  // serialized promotion trust and sanitizes the retained developmental agenda.
+  const p36Migrator = new P36AutonomousSelfDevelopmentEngine();
+  p36Migrator.restore(p36Raw);
+  learning.p36 = p36Migrator.snapshot();
   const p38Default = defaultP38Research();
   const p38Raw = (raw.facets as any)?.learning?.p38 ?? (raw as any).p38?.autonomousCausalResearch ?? {};
   learning.p38 = { ...p38Default, ...p38Raw, version:1, hypotheses:Array.isArray(p38Raw.hypotheses)?p38Raw.hypotheses.slice(-96):[], trials:Array.isArray(p38Raw.trials)?p38Raw.trials.slice(-192):[], evidence:Array.isArray(p38Raw.evidence)?p38Raw.evidence.slice(-192):[], actionBias:{...p38Default.actionBias,...(p38Raw.actionBias??{})}, metrics:{...p38Default.metrics,...(p38Raw.metrics??{})} };
