@@ -6,6 +6,7 @@ import {
   isTrustedDecisionLinkedExternalPostcondition,
   isTrustedExternalPostconditionVerification,
 } from '../src/organism/system/OutcomeVerificationService.ts';
+import { OutcomeCognitionFabric } from '../src/organism/system/OutcomeCognitionFabric.ts';
 
 const root = process.cwd();
 const gatewaySource = readFileSync(resolve(root, 'src/organism/system/ActionGateway.ts'), 'utf8');
@@ -145,6 +146,71 @@ assert.equal(isTrustedDecisionLinkedExternalPostcondition(controlBearing, {
   ...expected,
   decisionId: 'decision:trace-42',
 }), false, 'control-bearing IDs must not be normalized into a valid ticket');
+
+
+const fabric = new OutcomeCognitionFabric();
+const eventKey = 'outcome:' + 'a'.repeat(40);
+const projected = fabric.project({
+  tick: 12,
+  tool: expected.toolId,
+  ok: true,
+  executionId: expected.executionId,
+  verification: {
+    verified: true, basis: 'external-postcondition', confidence01: 0.98,
+    externalObservation: true, observationId: 'obs-1',
+    evidenceEventId: eventKey,
+    expectedPostcondition: 'fresh scene observed',
+    observedPostcondition: 'fresh scene observed',
+  },
+});
+assert.equal(projected.verificationRecord.evidenceEventId, eventKey,
+  'the canonical outcome projection must preserve the verifier event key');
+const restoredFabric = new OutcomeCognitionFabric();
+restoredFabric.restore(fabric.snapshot());
+const replayedProjection = restoredFabric.project({
+  tick: 12,
+  tool: expected.toolId,
+  ok: true,
+  executionId: expected.executionId,
+  verification: {
+    verified: true, basis: 'external-postcondition', confidence01: 0.98,
+    externalObservation: true, observationId: 'obs-1',
+    evidenceEventId: eventKey,
+    expectedPostcondition: 'fresh scene observed',
+    observedPostcondition: 'fresh scene observed',
+  },
+});
+assert.equal(replayedProjection.verificationRecord.evidenceEventId, eventKey,
+  'event identity must survive snapshot/restart and exact replay');
+assert.throws(() => restoredFabric.project({
+  tick: 12,
+  tool: expected.toolId,
+  ok: true,
+  executionId: expected.executionId,
+  verification: {
+    verified: true, basis: 'external-postcondition', confidence01: 0.98,
+    externalObservation: true, observationId: 'obs-1',
+    evidenceEventId: 'outcome:' + 'b'.repeat(40),
+    expectedPostcondition: 'fresh scene observed',
+    observedPostcondition: 'fresh scene observed',
+  },
+}), /outcome-execution-id-conflict/,
+  'one execution cannot be rebound to a different evidence event key');
+const malformedEvent = fabric.project({
+  tick: 13,
+  tool: expected.toolId,
+  ok: true,
+  executionId: 'exec-abcdef0123456789',
+  verification: {
+    verified: true, basis: 'external-postcondition', confidence01: 0.98,
+    externalObservation: true, observationId: 'obs-2',
+    evidenceEventId: 'outcome:not-a-digest',
+    expectedPostcondition: 'fresh scene observed',
+    observedPostcondition: 'fresh scene observed',
+  },
+});
+assert.equal(malformedEvent.verificationRecord.evidenceEventId, undefined,
+  'malformed event keys must not enter the causal projection');
 
 console.log(JSON.stringify({
   ok: true,
