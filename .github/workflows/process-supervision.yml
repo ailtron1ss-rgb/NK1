@@ -9,6 +9,9 @@ on:
       - "tools/super-dev.mjs"
       - "tools/super-start.mjs"
       - "tools/super-install.mjs"
+      - "tools/super-install.test.mjs"
+      - "tools/runtime-requirements.mjs"
+      - "tools/runtime-requirements.test.mjs"
       - "tools/super-doctor.mjs"
       - "tools/verify-final-release.mjs"
       - "tools/verify-integration.mjs"
@@ -23,6 +26,9 @@ on:
       - "tools/super-dev.mjs"
       - "tools/super-start.mjs"
       - "tools/super-install.mjs"
+      - "tools/super-install.test.mjs"
+      - "tools/runtime-requirements.mjs"
+      - "tools/runtime-requirements.test.mjs"
       - "tools/super-doctor.mjs"
       - "tools/verify-final-release.mjs"
       - "tools/verify-integration.mjs"
@@ -69,5 +75,7 @@ jobs:
           node --check tools/verify-integration.mjs
       - name: Environment doctor smoke
         run: npm run doctor
+      - name: Runtime prerequisites and installer regressions
+        run: npm run test:runtime-prerequisites
       - name: Process supervision and readiness regressions
         run: npm run test:process-supervisor
