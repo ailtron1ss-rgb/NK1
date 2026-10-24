@@ -1,3 +1,10 @@
+## NK1 WorkPass523 — separate basic grounding from independent promotion corroboration (2026-10-24)
+
+- Extended `RealityEvidenceLedger.claimAssessment` with `independentPromotionAllowed` and a machine-readable `promotionReason`.
+- Preserved existing `promotionAllowed` semantics for compatibility: one reliable external source can ground a claim, but the stronger promotion signal now requires at least two distinct external independence keys and confidence of at least 0.75.
+- Added observer-to-ledger regression coverage proving one source is not independent corroboration and two distinct high-confidence source keys can satisfy the stronger threshold.
+- This is an assessment signal only; it does not bypass P23's independent evaluation or approval requirements. Hosted CI remains unconfirmed until the resulting head has a workflow run.
+
 ## NK1 WorkPass522 — wire external observations into the canonical reality ledger (2026-10-24)
 
 - Added an optional observation sink to `ExternalObserverFabric`; exact replays are forwarded again so a partially persisted state can heal through the ledger's event-ID idempotency.
