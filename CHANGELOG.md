@@ -1,3 +1,9 @@
+## NK1 WorkPass547 — veto promotion on a conflicting candidate fingerprint (2026-10-24)
+
+- Extended the P23 reality-gate regression: after two independent qualified sources corroborate one staged payload fingerprint, a qualified external claim for a different fingerprint must be detected as a contradiction and veto promotion of the original candidate.
+- This distinguishes “the other payload has no support” from the stronger and safer rule “conflicting external evidence blocks this candidate.”
+- **Validation boundary:** regression and changelog are committed on `feature/feedback`; the Node test and hosted Actions have not been executed/confirmed in this pass.
+
 ## NK1 WorkPass546 — bind reality corroboration to the exact candidate payload (2026-10-24)
 
 - P23 now requires the structured reality claim to be exactly `payload_fingerprint=<staged SHA-256>`; unrelated corroborated facts can no longer satisfy this precondition for a different candidate.
