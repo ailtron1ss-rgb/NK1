@@ -1,3 +1,13 @@
+## NK1 WorkPass496 — close follow-up evidence and payload regressions (2026-10-24)
+
+- Corrected the reflective payload boundary fixture to account for the two JSON string delimiters, so the canonical encoded payload equals the 256 KiB limit.
+- Kept unverified imported events separate from grounded outcome counters; canonicalized duplicate external trace IDs remain idempotent and conflict on changed content.
+- The trusted shadow-process boundary now awaits the Core-owned registration callback while intentionally discarding its value, preserving registration-before-spawn and the supervisor's void/promise contract.
+- Feedback now performs a process-local authenticated-receipt check before ledger lookup; perception has the same guard. Re-ingestion after ledger restore remains possible because restored ledgers have no process-local receipt.
+- Earlier fresh runs confirmed WorkPass99/293/294 and selected memory/evidence workflows green on perception; remaining runs are being refreshed after these follow-ups.
+
+---
+
 ## NK1 WorkPass495 — synchronize assertions with actual safety contracts (2026-10-24)
 
 - Updated causal learning fixture to include the observed `lastAction` and matching `lastActionSuccess`; the runtime now rejects uncorrelated state changes instead of fabricating action-conditioned evidence.
