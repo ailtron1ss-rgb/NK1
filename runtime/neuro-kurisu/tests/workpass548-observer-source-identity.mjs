@@ -167,20 +167,26 @@ assert.equal(guardedRuntime.realityEvidenceLedger.snapshot().total, 1, 'register
 const cleanLedger = new EvidenceResearchSubsystemRuntime().realityEvidenceLedger.snapshot();
 const orphanSnapshot = structuredClone(guardedRuntime.snapshot());
 orphanSnapshot.externalObserver.sources = [];
-orphanSnapshot.realityEvidenceLedger = cleanLedger;
+// Deliberately retain the previously persisted ledger event: strict observer
+// restore must revoke its active evidence when the trusted source disappears.
 const orphanRestore = new EvidenceResearchSubsystemRuntime({ authorizeSourceRegistration });
 orphanRestore.restore(orphanSnapshot);
-assert.equal(orphanRestore.realityEvidenceLedger.snapshot().total, 0, 'orphan observations must not be backfilled without a registered source');
+assert.equal(orphanRestore.realityEvidenceLedger.snapshot().externalCount, 0,
+  'orphan observer events already present in the ledger must lose external-confirmation authority');
+assert.equal(orphanRestore.realityEvidenceLedger.snapshot().recent.length, 0,
+  'orphan observer events must be removed from the active evidence window');
 assert.equal(orphanRestore.externalObserver.snapshot().observations.length, 0, 'orphan rows must be removed from strict observer state, not just hidden from the ledger');
 
 const mismatchedSnapshot = structuredClone(guardedRuntime.snapshot());
 mismatchedSnapshot.externalObserver.sources[0].sourceClass = 'user';
 mismatchedSnapshot.externalObserver.sources[0].channel = 'user';
 mismatchedSnapshot.externalObserver.sources[0].independenceKey = 'user:forged';
-mismatchedSnapshot.realityEvidenceLedger = cleanLedger;
+// Keep the old ledger row to ensure a forged source identity cannot leave a stale
+// external record behind after the matching observer row is rejected.
 const mismatchedRestore = new EvidenceResearchSubsystemRuntime({ authorizeSourceRegistration });
 mismatchedRestore.restore(mismatchedSnapshot);
-assert.equal(mismatchedRestore.realityEvidenceLedger.snapshot().total, 0, 'restored rows cannot override the registered source class/channel');
+assert.equal(mismatchedRestore.realityEvidenceLedger.snapshot().externalCount, 0, 'restored rows cannot override the registered source class/channel');
+assert.equal(mismatchedRestore.realityEvidenceLedger.snapshot().recent.length, 0, 'rejected observer evidence must not remain active in the canonical ledger');
 assert.equal(mismatchedRestore.externalObserver.snapshot().observations.length, 0, 'identity-mismatched rows must not remain in internal consensus calculations');
 
 const legacySnapshot = structuredClone(guardedRuntime.snapshot());
