@@ -79,7 +79,7 @@ const child = spawn(process.execPath, ['--import', path.join(runtimeRoot, 'scrip
     NK_LOCAL_CLASSIFIER_MODEL: 'tiny-classifier-smoke',
     NK_LOCAL_EMOTION_URL: providerUrl,
     NK_LOCAL_EMOTION_MODEL: 'tiny-affect-smoke',
-    NK_LOCAL_CONTEXT_SIGNALS_ENABLED: '0',
+    NK_LOCAL_CONTEXT_SIGNALS_ENABLED: '1',
     NK_EMBEDDINGS_ENABLED: '1',
     NK_EMBEDDINGS_PROVIDER: 'openai-compatible',
     NK_EMBEDDINGS_BASE_URL: providerUrl,
@@ -124,7 +124,7 @@ try {
   assert.equal(body.language?.backend, 'llama.cpp:neurocore-http-smoke-model', 'reported backend must identify the provider that actually answered');
   assert.equal(body.language?.preferredBackend, 'llama.cpp', 'configured local provider should be preferred while healthy');
   assert.ok(Number.isFinite(body.language?.latencyMs) && body.language.latencyMs >= 0, 'language invocation must report finite non-negative latency');
-  assert.equal(providerRequests, 1, 'one chat request should reach the local provider exactly once');
+  assert.equal(providerRequests, 3, 'the language request plus the enabled classifier and affect signals should reach the fake local provider');
   assert.equal(lastProviderPayload?.model, 'neurocore-http-smoke-model', 'configured model identity must reach the provider');
   assert.ok(Array.isArray(lastProviderPayload?.messages) && lastProviderPayload.messages.some(message => message.role === 'user' && message.content.includes('configured local model')), 'user prompt must reach the local provider');
   assert.equal(lastProviderPayload?.stream, false, 'smoke provider request should use the bounded non-streaming response path');
@@ -138,6 +138,8 @@ try {
   assert.equal(diagnosticsBody.hub?.models?.find(model => model.id === 'local-emotion')?.configured, true);
   assert.equal(diagnosticsBody.hub?.models?.find(model => model.id === 'local-embeddings')?.configured, true);
   assert.equal(diagnosticsBody.hub?.models?.find(model => model.id === 'local-embeddings')?.provider, 'openai-compatible');
+  assert.equal(diagnosticsBody.integration?.coreAffectHint?.emotion, 'curiosity', 'the local affect model should reach canonical cognitive appraisal');
+  assert.equal(diagnosticsBody.integration?.coreAffectHint?.confidence01, 0.82, 'the core bridge should preserve bounded confidence metadata');
 
   const classifyResponse = await fetch(`http://127.0.0.1:${appPort}/api/local-models/classify`, {
     method: 'POST',
