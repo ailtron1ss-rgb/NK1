@@ -2117,6 +2117,8 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 ## [2026-10-24] Operation Omega — Hexis source transfer and review-inbox adaptation
 
+- Corrected the Core-owned shadow-entry regression harness to assert both synchronous fail-closed preflight throws and asynchronous execution rejections without weakening the candidate/shadow-only policy.
+
 - Removed a second Node 24 strip-only incompatibility from `AtomicFileSkillStorePersistence`; the Core-owned shadow-entry test now reaches the lifecycle logic instead of failing while parsing a TypeScript parameter property.
 
 - Replaced an invalid escaped control-character regex in `OutcomeVerificationService` with an explicit code-point check; this restores the Core-owned trusted-shadow-entry regression under Node 24.
