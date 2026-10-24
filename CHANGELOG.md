@@ -1,3 +1,13 @@
+## NK1 WorkPass Mem0-1 — opt-in Mem0 recall bridge (2026-10-24)
+
+- Added a dependency-free Mem0 Platform REST adapter with explicit enablement, fixed server-configured user scope, HTTPS-only base URL, bounded timeout and response size, safe error codes, scope mismatch rejection, and secret-free diagnostics.
+- Added an authenticated hybrid recall endpoint that returns canonical MemoryOS2 results separately from Mem0 external candidates. External candidates are provenance-labelled, unverified, marked as data rather than instructions, and are not inserted into live prompts or promoted to canonical memory.
+- Added an explicit conversation-export method requiring both a write-enable environment gate and per-operation approval. No automatic export or HTTP write route was introduced; targeted secret/PII masking is defense-in-depth, not a complete classifier.
+- Added adapter regressions for disabled-by-default behavior, fixed user scope, redaction, explicit export approval, HTTPS enforcement, provider-error sanitization and response-size limits; added the audit command and integration guide.
+- **Not claimed:** typecheck/test/HTTP smoke execution on this exact branch, live Mem0 credentials, independent retrieval uplift, or full cognitive-cycle injection. GitHub Actions runner availability is not assumed. The latest release ZIP metadata reports the same SHA-256 as the repository README, but the 136-MB asset could not be downloaded through the available file channel, so its bytes were not independently hashed or inspected.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
