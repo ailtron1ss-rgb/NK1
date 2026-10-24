@@ -233,6 +233,35 @@ try {
     await sendIntent(1, "angry", "TapHead", 0);
     await sendIntent(2, "happy", "Special", 1);
     await frame.waitForFunction(() => window.__nk1LastAcceptedIntent?.stateVersion === 2, null, { timeout: 5000 });
+
+    // Invalid nested values must not be silently coerced to zero or advance the
+    // accepted state version. The probes run through the production viewer handler.
+    const postProbe = async (payload) => page.locator("#viewer").evaluate(
+      (iframe, value) => iframe.contentWindow.postMessage(value, window.location.origin), payload,
+    );
+    const baseIntent = {
+      type: "kurisu_embodiment_intent", protocolVersion: 1, stateVersion: 3,
+      sentAtEpochMs: Date.now(), speechEventId: null, audioClockId: null,
+      speechPhase: "idle", audioTimeMs: 0, clockSource: "none", priority: 30,
+      cancellationToken: null, expression: "happy", expressionIntensity: 0.72,
+      mouth: { open: 0.24, form: 0.18, viseme: "wide" },
+      gaze: { x: 0.18, y: -0.12, driven: true },
+      body: { headTilt: 0.025, gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 3 },
+      voiceEmphasis: 0,
+    };
+    await postProbe({ ...baseIntent, expressionIntensity: Number.NaN });
+    await page.waitForTimeout(80);
+    let observedVersion = await frame.evaluate(() => window.__nk1LastAcceptedIntent?.stateVersion);
+    assert.equal(observedVersion, 2, profile + ": non-finite affect values must be rejected without advancing state");
+
+    await postProbe({
+      ...baseIntent, speechPhase: "speaking", speechEventId: "smoke-speech",
+      audioClockId: "smoke-clock", clockSource: "none", audioTimeMs: 10,
+    });
+    await page.waitForTimeout(80);
+    observedVersion = await frame.evaluate(() => window.__nk1LastAcceptedIntent?.stateVersion);
+    assert.equal(observedVersion, 2, profile + ": speaking requires an explicit monotonic audio clock source");
+
     await frame.waitForFunction(() => window.__nk1LastExpression === "Stanby Smile", null, { timeout: 5000 });
     await frame.waitForFunction(() => window.__nk1LastMotion?.group === "Special" && window.__nk1LastMotion?.index === 1 && window.__nk1LastMotion?.token === 2, null, { timeout: 5000 });
     const appliedIntent = await frame.evaluate(() => ({
