@@ -278,17 +278,19 @@ for (let i = 0; i < 3; i++) {
   replayDiversity.recordOutcome({
     ...trace, id: `replay-a-${i}`, tick: 10 + i,
     stateBefore: mkState({ tick: 10 + i }),
-    selected: { ...trace.selected, goalId: "task-A" },
-  }, mkState({ tick: 11 + i }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+    selected: { ...trace.selected, goalId: "task-a" },
+  }, mkState({ tick: 11 + i, lastActionSuccess: .7 }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+  assert.ok(replayDiversity.snapshot().records.some(row => row.traceId === `replay-a-${i}`), `task-a observed outcome ${i} should be recorded`);
 }
 replayDiversity.recordOutcome({
   ...trace, id: "replay-b-0", tick: 20,
   stateBefore: mkState({ tick: 20 }),
-  selected: { ...trace.selected, goalId: "task-B" },
-}, mkState({ tick: 21 }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+  selected: { ...trace.selected, goalId: "task-b" },
+}, mkState({ tick: 21, lastActionSuccess: .7 }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+assert.ok(replayDiversity.snapshot().records.some(row => row.traceId === "replay-b-0"), "task-b observed outcome should be recorded");
 const replayBatch = replayDiversity.prioritizedReplayCandidates(2);
-assert.ok(replayBatch.some((row) => row.taskId === "task-A"));
-assert.ok(replayBatch.some((row) => row.taskId === "task-B"),
+assert.ok(replayBatch.some((row) => row.taskId === "task-a"));
+assert.ok(replayBatch.some((row) => row.taskId === "task-b"),
   "a near-equal high-priority task should not be crowded out by one repeated task");
 // A plausible feature vector is not enough to make transformed/repair evidence a
 // runtime outcome. Only records minted by the observed runtime outcome path may
@@ -351,8 +353,8 @@ const aggregateRestore = new CausalExperienceStream(64);
 aggregateRestore.restore(poisonedAggregates);
 const safeAggregateSnapshot = aggregateRestore.snapshot();
 assert.equal(safeAggregateSnapshot.observations, 0, "invalid persisted observation count must be reset");
-assert.equal(safeAggregateSnapshot.outcomes, safeAggregateSnapshot.records.length,
-  "invalid persisted outcome count must fall back to retained record count");
+assert.equal(safeAggregateSnapshot.outcomes, safeAggregateSnapshot.records.filter(row => row.provenance === "runtime-outcome" && row.stateGrounded === true && Array.isArray(row.policyFeatures01) && row.policyFeatures01.length >= 16 && row.policyFeatures01.length <= 64).length,
+  "invalid persisted outcome count must fall back to retained trusted runtime rows, not every retained external claim");
 assert.equal(safeAggregateSnapshot.consolidated, safeAggregateSnapshot.records.filter(row => row.consolidated).length,
   "invalid persisted consolidation count must fall back to retained consolidated rows");
 assert.equal(safeAggregateSnapshot.lastConsolidatedAt, 0, "invalid consolidation timestamp must be reset");
