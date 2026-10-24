@@ -112,6 +112,33 @@ const hotSpots={
   highFanOut:rankNodes('outDegree'),
   highProductionFanIn:rankNodes('productionInDegree'),
 };
+const dependencyBudgetPath=path.resolve(root,'../../contracts/module-dependency-budgets.json');
+const dependencyBudget=JSON.parse(await readFile(dependencyBudgetPath,'utf8'));
+if(dependencyBudget.schemaVersion!==1||!Array.isArray(dependencyBudget.modules)){
+  throw new Error('invalid module dependency budget schema: '+dependencyBudgetPath);
+}
+const nodesById=new Map(nodes.map(node=>[node.id,node]));
+const budgetChecks=[];
+const budgetViolations=[];
+for(const budget of dependencyBudget.modules){
+  const node=nodesById.get(budget.path);
+  if(!node||node.kind!=='source'){
+    budgetViolations.push({path:budget.path,rule:'tracked-source-missing'});
+    continue;
+  }
+  for(const [limitKey,metric] of [['maxOutDegree','outDegree'],['maxProductionInDegree','productionInDegree']]){
+    if(budget[limitKey]===undefined) continue;
+    const check={
+      path:budget.path,
+      metric,
+      observed:node[metric],
+      maximum:budget[limitKey],
+      withinBudget:node[metric]<=budget[limitKey],
+    };
+    budgetChecks.push(check);
+    if(!check.withinBudget) budgetViolations.push({...check,rule:'dependency-budget-exceeded'});
+  }
+}
 const sourceLayerCounts={};
 for(const file of files){
   const layer=layerOf(file);
@@ -131,7 +158,10 @@ const report={
     boundaryViolations:boundaryViolations.length,
     maxCanonicalOutDegree:hotSpots.highFanOut[0]?.outDegree||0,
     maxCanonicalProductionInDegree:hotSpots.highProductionFanIn[0]?.productionInDegree||0,
+    dependencyBudgetChecks:budgetChecks.length,
+    dependencyBudgetViolations:budgetViolations.length,
   },
+  dependencyBudget:{schemaVersion:dependencyBudget.schemaVersion,checks:budgetChecks,violations:budgetViolations},
   sourceLayerCounts,
   hotSpots,
   layerCoupling:[...layerLinks.entries()]
@@ -146,4 +176,11 @@ if(reportPath){
   await writeFile(absoluteReportPath,JSON.stringify(report,null,2)+String.fromCharCode(10),'utf8');
   console.log('DEPENDENCY_GRAPH_REPORT='+absoluteReportPath+' nodes='+nodes.length+' edges='+edges.length+' canonicalHubs='+hotSpots.highFanOut.length);
 }
-console.log('CLEAN_ARCHITECTURE=PASS sourceFiles='+files.length+' canonicalFiles='+canonicalFiles.length+' dependencyEdges='+dependencyEdges+' missing=0 cycles=0 legacyLeakage=0 boundaryViolations=0');
+if(budgetViolations.length){
+  console.error('DEPENDENCY_BUDGET=FAIL checks='+budgetChecks.length+' violations='+JSON.stringify(budgetViolations));
+  console.log('CLEAN_ARCHITECTURE=FAIL sourceFiles='+files.length+' canonicalFiles='+canonicalFiles.length+' dependencyEdges='+dependencyEdges+' dependencyBudgetViolations='+budgetViolations.length);
+  process.exitCode=1;
+}else{
+  console.log('DEPENDENCY_BUDGET=PASS checks='+budgetChecks.length+' violations=0');
+  console.log('CLEAN_ARCHITECTURE=PASS sourceFiles='+files.length+' canonicalFiles='+canonicalFiles.length+' dependencyEdges='+dependencyEdges+' missing=0 cycles=0 legacyLeakage=0 boundaryViolations=0 dependencyBudgetViolations=0');
+}
