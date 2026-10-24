@@ -201,7 +201,10 @@ export class LettaMemoryBridge {
       ? input.tags.filter((tag): tag is string => typeof tag === 'string')
           .map((tag) => {
             const result = redactSecrets(tag.trim().slice(0, 80));
-            if (result.redacted) this.snapshotState.metrics.redactions += 1;
+            if (result.redacted) {
+              this.snapshotState.metrics.redactions += 1;
+              inputRedacted = true;
+            }
             return result.text;
           }).filter(Boolean).slice(0, 24)
       : [];
