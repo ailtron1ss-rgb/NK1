@@ -1,3 +1,13 @@
+## NK1 WorkPass512 — unify trusted-run Promise contract and signed-evidence failure tests (2026-10-24)
+
+- Aligned the trusted shadow coordinator with the asynchronous contract already used by feedback/perception: invalid registrar/runtime/lane inputs now reject the returned Promise, while the candidate+shadow-only gate and registration-before-spawn rule remain unchanged.
+- Kept Node 24 typechecking portable across the full Node definitions and NK1 fallback shim by using non-generic `Buffer` annotations.
+- Strengthened the Hermes signed-receipt tamper test: it recomputes the unsigned outer payload fingerprint after mutating the signed payload, forcing the verifier to detect the stale signature instead of short-circuiting on the easy-to-detect fingerprint mismatch.
+- The duplicate-attempt ledger test now uses a unique evidence reference and separately tests reused evidence references. WorkPass511 also updates unverified external outcome assertions to preserve the zero-trusted-outcome invariant.
+- CI reruns for the exact latest head are still required before these fixes can be called green.
+
+---
+
 ## NK1 WorkPass511 — restore typecheck portability and sharpen outcome contracts (2026-10-24)
 
 - Removed generic `Buffer<ArrayBufferLike>` annotations from learning-process output accumulators. Portable `Buffer` annotations work with the installed Node types and NK1's fallback shim, addressing the exact type errors observed after the CognitiveEventFabric predicate repair.
