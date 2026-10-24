@@ -1,0 +1,113 @@
+import assert from 'node:assert/strict';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { RuntimeClosureLedger } from '../src/organism/system/RuntimeClosureLedger.ts';
+import { CausalDomainClosureLedger } from '../src/organism/system/CausalDomainClosureLedger.ts';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+
+// A failed cycle remains failed even when a successful durability receipt is emitted
+// for the same tick after the failure record.
+const runtimeLedger = new RuntimeClosureLedger();
+const failure = runtimeLedger.fail({ at: Date.now(), tick: 7, reason: 'fixture-aborted' });
+assert.equal(failure.phase, 'failure');
+assert.equal(failure.status, 'FAIL');
+runtimeLedger.durable({ at: Date.now(), tick: 7, stateTick: 7, replaySignature: 'fixture-signature', continuousTick: 7, continuityProcessed: 7 });
+assert.equal(runtimeLedger.diagnostics().lastStatus, 'FAIL');
+
+// A failure must close a pending causal cycle, preserve its reason, and never
+// acquire success credit during later durable finalization.
+const before = { memoryCount: 1, worldTick: 1, identityRevision: 1, agencyDecisions: 1, learningUpdates: 1, selfChangeCount: 1, lifeGraphCompleteChains: 1 };
+const causal = new CausalDomainClosureLedger();
+causal.begin({ tick: 2, counters: before });
+const failed = causal.failPending({ reason: 'fixture-aborted', counters: before });
+assert.equal(failed?.status, 'FAIL');
+assert.equal(failed?.complete, false);
+assert.equal(failed?.failureReason, 'fixture-aborted');
+assert.equal(causal.failPending({ reason: 'duplicate-close' }), null, 'a cycle should only close once');
+causal.durable({ tick: 2, stateTick: 2, replaySignature: 'fixture-signature', continuousTick: 2, processed: 2 });
+const finalized = causal.finalizeDurable({ tick: 2, stateTick: 2, replaySignature: 'fixture-signature', continuousTick: 2, processed: 2 });
+assert.equal(finalized?.status, 'FAIL');
+assert.equal(finalized?.complete, false);
+assert.equal(finalized?.failureReason, 'fixture-aborted');
+assert.equal(causal.snapshot().failures, 1);
+
+// Even a cycle that previously reached normal closure must be downgraded when
+// batch/checkpoint finalization subsequently fails.
+const lateFailure = new CausalDomainClosureLedger();
+lateFailure.begin({ tick: 1, counters: before });
+const good = lateFailure.end({
+  counters: { memoryCount: 2, worldTick: 2, identityRevision: 2, agencyDecisions: 2, learningUpdates: 2, selfChangeCount: 2, lifeGraphCompleteChains: 2 },
+  evidence: {
+    memoryChanged: true, worldChanged: true, agencyChanged: true, learningChanged: true, selfChanged: true,
+    memoryWorldVerified: true, worldAgencyLearningVerified: true, causalLifeGraphChain: true,
+    replaySignaturePresent: true, durableStateAligned: true,
+  },
+});
+assert.equal(good?.status, 'PASS');
+const downgraded = lateFailure.failLatest({ reason: 'checkpoint-failed', tick: 1 });
+assert.equal(downgraded?.status, 'FAIL');
+assert.equal(downgraded?.complete, false);
+assert.equal(downgraded?.score01, 0);
+assert.equal(downgraded?.failureReason, 'checkpoint-failed');
+assert.equal(lateFailure.snapshot().completeCycles, 0);
+assert.equal(lateFailure.snapshot().failures, 1);
+assert.equal(lateFailure.snapshot().meanScore01, 0);
+
+// Guard the live physical-action path against cancellation that arrives after
+// planning but before actuation.
+const runtimeSource = await readFile(new URL('../src/organism/core/OrganismRuntime.ts', import.meta.url), 'utf8');
+const abortGate = runtimeSource.indexOf("throwIfAborted(options.signal, 'before-embodied-action');");
+const actionDispatch = runtimeSource.indexOf('this.embodiedActions.execute(physicalAction,');
+assert.ok(abortGate >= 0 && actionDispatch > abortGate, 'the abort gate must precede embodied action dispatch');
+assert.match(runtimeSource, /causalDomainClosureLedger\.failPending\(/);
+assert.match(runtimeSource, /causalDomainClosureLedger\.failLatest\(/);
+assert.match(runtimeSource, /runtime\.step\.aborted/);
+
+// Exercise the actual runtime abort path and inspect the persisted closure state.
+const work = await mkdtemp(path.join(tmpdir(), 'neuro-kurisu-p328-'));
+const stateFile = path.join(work, 'organism.json');
+let runtime;
+try {
+  runtime = new OrganismRuntime({
+    stateFile,
+    intervalMs: 5_000,
+    enableLanguage: false,
+    autoRun: false,
+    performanceProfile: 'mobile',
+    cycleResultMode: 'summary',
+  });
+  await runtime.init();
+  const priorFailures = runtime.causalDomainClosureSnapshot().failures;
+  const controller = new AbortController();
+  controller.abort('fixture-abort-before-action');
+  await assert.rejects(
+    runtime.step(undefined, { deliberate: false, signal: controller.signal }),
+    /cognitive-cycle-aborted:before-embodied-action/,
+  );
+  const closure = runtime.causalDomainClosureSnapshot();
+  assert(closure.failures > priorFailures, 'the aborted runtime cycle must be accounted as a causal failure');
+  assert.equal(closure.recent[0]?.status, 'FAIL');
+  assert.match(closure.recent[0]?.failureReason ?? '', /cognitive-cycle-aborted:before-embodied-action/);
+  assert.equal(runtime.runtimeClosureDiagnostics().lastStatus, 'FAIL');
+
+  await runtime.flush();
+  const persisted = JSON.parse(await readFile(stateFile, 'utf8'));
+  assert.equal(persisted.system?.runtimeClosure?.lastStatus, 'FAIL');
+  assert.equal(persisted.system?.causalDomainClosureLedger?.lastStatus, 'FAIL');
+  assert.match(persisted.system?.causalDomainClosureLedger?.recent?.[0]?.failureReason ?? '', /cognitive-cycle-aborted/);
+
+  console.log(JSON.stringify({
+    pass: true,
+    status: 'P328_CLOSED_LOOP_FAILURE_CLOSURE_PASS',
+    directRuntimeClosure: runtimeLedger.diagnostics().lastStatus,
+    pendingCycle: finalized?.status,
+    lateFinalization: downgraded?.status,
+    runtimeCycle: closure.recent[0]?.status,
+    persistedRuntimeClosure: persisted.system?.runtimeClosure?.lastStatus,
+    persistedCausalClosure: persisted.system?.causalDomainClosureLedger?.lastStatus,
+  }, null, 2));
+} finally {
+  await runtime?.stop();
+  await rm(work, { recursive: true, force: true });
+}
