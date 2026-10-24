@@ -1,3 +1,13 @@
+## NK1 WorkPass328 — optional Letta memory bridge (2026-10-24)
+
+- [INTEGRATED] Added a lazy, opt-in TypeScript adapter for the active Letta Agent SDK with MemFS-enabled persistent agent creation/reuse, experience submission, recall, serialized calls, bounded payloads, secret redaction, and metrics.
+- [WIRED] Connected the adapter to MemorySubsystemRuntime and included the provider identity/metrics in its snapshot and restore boundary.
+- [SAFETY] Letta remains an external memory provider; NK1 is still the canonical owner of memory policy, goals, self-model, and actions. Recall results are explicitly marked as untrusted candidates and provider assertions are not treated as proof of durable writes.
+- [CONTRACT] Updated LETTA_INTEGRATION_POLICY.json to separate the historic Letta archive from the active SDK adapter and preserve manual artifact-promotion gates.
+- [TEST] Added a fake-client bridge regression test covering opt-in behavior, agent reuse, MemFS configuration, redaction, snapshot/restore, and recall trust labeling. The test has not been executed in the full project runtime in this pass.
+- [LIMITATION] The external SDK has not yet been added to the runtime package lock through a reproducible install. A local/cloud Letta E2E, native+Letta retrieval uplift, restart persistence against the actual provider, and production release validation remain open.
+- [RELEASE] No Release asset was downloaded, rebuilt, replaced, or published by this pass.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
