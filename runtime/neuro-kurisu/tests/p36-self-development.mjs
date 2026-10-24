@@ -24,12 +24,13 @@ assert.equal(d.acceptedChanges,0,'safe sandbox previews must not count as accept
 const gateway=new ActionGateway({live:true});
 let receiptSequence=0;
 let forcedObservationId;
+let forceNegativeResult=false;
 let issuedObservationCount=0;
 gateway.registerTool({
   id:P36_EXTERNAL_EVIDENCE_TOOL_ID,
   capability:'learning.evaluation',
   destructive:false,
-  execute:async()=>({ok:true,observationId:forcedObservationId??('p36-independent-proof-'+(++issuedObservationCount))}),
+  execute:async()=>({ok:!forceNegativeResult,observationId:forcedObservationId??('p36-independent-proof-'+(++issuedObservationCount))}),
   verify:({result})=>{
     const observationId=String(result.observationId??'');
     return {
@@ -39,13 +40,14 @@ gateway.registerTool({
     };
   },
 });
-async function mintProof(binding, suppliedObservationId){
+async function mintProof(binding, suppliedObservationId, expectVerified=true){
   const ticket=++receiptSequence;
   forcedObservationId=suppliedObservationId;
   const decisionId=`p36-development-decision-${ticket}`;
   const result=await gateway.executeTool(P36_EXTERNAL_EVIDENCE_TOOL_ID,binding,'p36-independent-development-evaluation',{decisionId});
   forcedObservationId=undefined;
-  assert.equal(result.verified,true,'fixture evaluator result must pass through ActionGateway verification');
+  if(expectVerified) assert.equal(result.verified,true,'fixture evaluator result must pass through ActionGateway verification');
+  else assert.equal(result.ok,false,'negative fixture must preserve the failed executor result');
   return {toolId:result.tool,executionId:result.executionId,decisionId,verification:result.verification};
 }
 function prepareHypothesis(engine,tick){
@@ -57,6 +59,17 @@ function prepareHypothesis(engine,tick){
 function evidence(hypothesisId,contextKey,holdout,delayMs,source='external-evaluator'){
   return {hypothesisId,contextKey,control01:.4,treatment01:.6,holdout,delayMs,evaluatorVersion:'fixture-eval-v1',evidenceSource:source};
 }
+
+// A verifier claim cannot override an explicit failed executor result.
+const failedEngine=new P36AutonomousSelfDevelopmentEngine();
+const failedHypothesis=prepareHypothesis(failedEngine,105);
+const failedPayload=evidence(failedHypothesis.id,'failed-action-context',false,0);
+forceNegativeResult=true;
+const failedActionProof=await mintProof(developmentEvidenceVerificationInput(failedPayload),undefined,false);
+forceNegativeResult=false;
+const failedActionCredit=failedEngine.recordExternalEvidence({...failedPayload,...failedActionProof});
+assert.equal(failedActionCredit.independentCount,0,'verified postcondition receipt on a failed action cannot authorize learning');
+assert.equal(failedEngine.diagnostics().acceptedChanges,0);
 
 // Caller booleans, copied receipts, and manual observations cannot authorize learning.
 const guardEngine=new P36AutonomousSelfDevelopmentEngine();
