@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { collectRelativeImportSpecifiers, stripComments } from "../scripts/import-specifier-scanner.mjs";
+import { collectRelativeImportSpecifiers, collectRelativeTypeImportSpecifiers, stripComments } from "../scripts/import-specifier-scanner.mjs";
 
 test("comment masking preserves quoted URLs and removes comment-only imports", () => {
   const source = [
@@ -43,6 +43,20 @@ test("scanner ignores import-like examples inside strings and regex literals", (
   ].join("\n");
 
   assert.deepEqual(collectRelativeImportSpecifiers(source), ["./actual.js"]);
+});
+
+test("scanner separates TypeScript import-type queries from runtime imports", () => {
+  const source = [
+    "type State = import('./state-types.ts').State;",
+    "interface Context { memory?: import('../memory-types.ts').MemoryState; }",
+    "const lazy = import('./runtime-module.ts').then(module => module.value);",
+  ].join("\n");
+
+  assert.deepEqual(collectRelativeImportSpecifiers(source), ["./runtime-module.ts"]);
+  assert.deepEqual(collectRelativeTypeImportSpecifiers(source), [
+    "./state-types.ts",
+    "../memory-types.ts",
+  ]);
 });
 
 test("scanner de-duplicates repeated local import edges", () => {
