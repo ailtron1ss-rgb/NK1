@@ -1770,8 +1770,9 @@
     "test:cognitive-cycle-boundary-runtime-wiring": "node tests/cognitive-cycle-boundary-runtime-wiring.mjs",
     "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs",
     "test:local-small-model-hub": "node --experimental-strip-types tests/local-small-model-hub-workpass.mjs",
-    "audit:local-small-model-hub": "npm run test:local-small-model-hub && npm run test:local-vision-backend && npm run test:server-local-small-model-http && npm run test:workpass56-embedding-privacy && node tests/local-llm-selection-workpass74.mjs && npm run typecheck",
+    "audit:local-small-model-hub": "npm run test:local-small-model-hub && npm run test:local-vision-backend && npm run test:local-affect-appraisal-bridge && npm run test:server-local-small-model-http && npm run test:workpass56-embedding-privacy && node tests/local-llm-selection-workpass74.mjs && npm run typecheck",
     "test:local-vision-backend": "node --experimental-strip-types tests/local-vision-backend-workpass.mjs",
-    "test:server-local-small-model-http": "node --experimental-strip-types tests/server-language-http-fake-provider.mjs"
+    "test:server-local-small-model-http": "node --experimental-strip-types tests/server-language-http-fake-provider.mjs",
+    "test:local-affect-appraisal-bridge": "node --experimental-strip-types tests/local-affect-appraisal-bridge-workpass.mjs"
   }
 }
