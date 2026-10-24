@@ -6,7 +6,7 @@
 - Observation IDs cannot be reused across evidence contexts or between experiment evidence and maturity scoring. An untrusted duplicate cannot block a later properly verified row.
 - Restore demotes serialized external-proof booleans and resets cached maturity aggregates; the saved history remains non-evidentiary. Durable signed-proof re-ingestion and production call-site migration are still open.
 - Added `runtime/neuro-kurisu/tests/p36-self-development.mjs` cases and connected P36 self-development/migration/integration/performance tests to `.github/workflows/p26-learning-validation.yml`.
-- **Verification:** the GitHub API returned no PR-triggered workflow runs for code/test HEAD `22b777bbb7d6b3772f17f50d349f0a1321619fa8` or current documentation checkpoint HEAD `1f460015de22f4f6388e9aac19767fe3ed787ca2` during the pass. New tests and current typecheck are **not confirmed passing**. Do not raise learning-effectiveness/readiness estimates until exact-head CI and independent holdout experiments provide evidence.
+- **Verification:** no PR-triggered workflow run or check result was returned for the WorkPass526 code/tests or subsequent documentation commits during this pass. New tests and runtime typecheck are **not confirmed passing**. Do not raise learning-effectiveness/readiness estimates until exact-head CI and independent holdout experiments provide evidence.
 - Full notes: [WorkPass526 P36 self-development report](docs/WORKPASS526_P36_SELF_DEVELOPMENT_EVIDENCE_PROVENANCE_RU.md).
 
 ---
