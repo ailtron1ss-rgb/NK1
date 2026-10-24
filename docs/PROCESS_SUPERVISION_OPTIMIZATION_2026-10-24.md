@@ -77,3 +77,5 @@ npm run test:integration
 - При обрыве клиентского запроса upstream отменяется; если upstream ломается после начала ответа, соединение закрывается вместо попытки записать второй HTTP-заголовок.
 - Hop-by-hop заголовки и заголовки, перечисленные в `Connection`, не пересылаются между hop'ами. Это снижает риск некорректных прокси-соединений.
 - Добавлены Node-тесты для маршрутов UI/Runtime/Research, 504 при зависшем upstream и проверки диапазона timeout-конфигурации. Эти тесты включены в focused workflow.
+- The gateway's timeout is a **wall-clock total deadline**, not only an inactivity timer: responses that keep sending small chunks cannot keep a request alive indefinitely. If the response has already started, the gateway closes the downstream socket on timeout because it cannot safely change an already-sent status to 504. A regression covers this trickle-response case.
+
