@@ -25,6 +25,10 @@ export interface SkillRevisionGateOptions {
   minPairedTasks?: number;
   minAbsoluteGain?: number;
   maxFamilyRegression?: number;
+  /** Minimum distinct random seeds represented in paired holdout evidence. */
+  minIndependentSeeds?: number;
+  /** Reject a candidate with a seed-level pass-rate regression beyond this budget. */
+  maxSeedRegression?: number;
 }
 export interface SkillRevisionGateResult {
   accepted: boolean;
@@ -34,6 +38,8 @@ export interface SkillRevisionGateResult {
   candidatePassRate: number;
   absoluteGain: number;
   familyGains: Array<{ family: string; pairedN: number; gain: number }>;
+  seedGains: Array<{ seed: number; pairedN: number; gain: number }>;
+  independentSeedN: number;
   rejectedRows: number;
 }
 const clamp = (x: number, fallback: number) => Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : fallback;
@@ -130,6 +136,8 @@ export function evaluateSkillRevision(
   const minPairedTasks = boundedInteger(optionValues.minPairedTasks as number | undefined, 8, 2, 10000);
   const minAbsoluteGain = clamp((optionValues.minAbsoluteGain as number | undefined) ?? .02, .02);
   const maxFamilyRegression = clamp((optionValues.maxFamilyRegression as number | undefined) ?? .10, .10);
+  const minIndependentSeeds = boundedInteger(optionValues.minIndependentSeeds as number | undefined, 3, 1, 10000);
+  const maxSeedRegression = clamp((optionValues.maxSeedRegression as number | undefined) ?? .50, .50);
   const byPair = new Map<string, Map<string, RevisionObservation[]>>();
   const receiptCounts = new Map<string, number>();
   let rejectedRows = 0;
@@ -193,11 +201,29 @@ export function evaluateSkillRevision(
     family, pairedN: rows.length,
     gain: rows.reduce((s, row) => s + row.candidate - row.baseline, 0) / rows.length,
   }));
+  const bySeed = new Map<number, Array<{ baseline: number; candidate: number }>>();
+  for (const pair of paired) {
+    const baseline = pair.get(baselineMethod)!;
+    const candidate = pair.get(candidateMethod)!;
+    const rows = bySeed.get(baseline.seed) ?? [];
+    rows.push({ baseline: Number(baseline.passed), candidate: Number(candidate.passed) });
+    bySeed.set(baseline.seed, rows);
+  }
+  const seedGains = [...bySeed.entries()].sort(([a], [b]) => a - b).map(([seed, rows]) => ({
+    seed,
+    pairedN: rows.length,
+    gain: rows.reduce((sum, row) => sum + row.candidate - row.baseline, 0) / rows.length,
+  }));
+  const independentSeedN = seedGains.length;
   const severeRegression = familyGains.find(row => row.pairedN >= 2 && row.gain < -maxFamilyRegression);
-  const accepted = n >= minPairedTasks && absoluteGain >= minAbsoluteGain && !severeRegression;
+  const severeSeedRegression = seedGains.find(row => row.pairedN >= 2 && row.gain < -maxSeedRegression);
+  const accepted = n >= minPairedTasks && independentSeedN >= minIndependentSeeds &&
+    absoluteGain >= minAbsoluteGain && !severeRegression && !severeSeedRegression;
   const reason = n < minPairedTasks ? 'insufficient-independent-heldout-pairs' :
+    independentSeedN < minIndependentSeeds ? 'insufficient-independent-seeds' :
     severeRegression ? 'heldout-family-regression' :
+    severeSeedRegression ? 'heldout-seed-regression' :
     absoluteGain < minAbsoluteGain ? 'no-material-heldout-improvement' :
     'heldout-gate-passed-proposal-only';
-  return { accepted, reason, pairedN: n, baselinePassRate, candidatePassRate, absoluteGain, familyGains, rejectedRows };
+  return { accepted, reason, pairedN: n, baselinePassRate, candidatePassRate, absoluteGain, familyGains, seedGains, independentSeedN, rejectedRows };
 }
