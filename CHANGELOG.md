@@ -1,3 +1,8 @@
+## NK1 Architecture — dependency-policy false-positive guard (2026-10-24)
+
+- [REGRESSION] Added a fifth fixture test ensuring the policy does not confuse sibling path prefixes or similarly named directories (`app/source-archive`, `research-adapter`, `legacy-code`) with forbidden target roots.
+- [MAINTENANCE] Normalized import-resolver formatting without changing behavior.
+
 ## NK1 Architecture — dependency graph observability (2026-10-24)
 
 - [OBSERVABILITY] The architecture audit success line now reports `dependencyEdges` and `boundaryViolations=0` alongside source-file and cycle/missing-import counts.
