@@ -4,18 +4,36 @@ on:
   push:
     paths:
       - "runtime/neuro-kurisu/src/organism/core/CanonicalCognitiveKernel.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel-runtime-wiring.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
       - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
       - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel.mjs"
+      - ".nvmrc"
+      - "package.json"
+      - "tools/runtime-requirements.mjs"
+      - "tools/runtime-requirements.test.mjs"
+      - "tools/super-doctor.mjs"
+      - "tools/super-install.mjs"
+      - "tools/super-install.test.mjs"
       - ".github/workflows/workpass331-unified-cognitive-kernel.yml"
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/core/CanonicalCognitiveKernel.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel-runtime-wiring.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
       - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
       - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel.mjs"
+      - ".nvmrc"
+      - "package.json"
+      - "tools/runtime-requirements.mjs"
+      - "tools/runtime-requirements.test.mjs"
+      - "tools/super-doctor.mjs"
+      - "tools/super-install.mjs"
+      - "tools/super-install.test.mjs"
       - ".github/workflows/workpass331-unified-cognitive-kernel.yml"
 
 permissions:
@@ -28,13 +46,20 @@ concurrency:
 jobs:
   canonical-cognitive-kernel:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           package-manager-cache: false
+      - name: Verify Node/npm engine floor and clean installer
+        run: npm run test:runtime-prerequisites
+      - name: Verify clean-checkout startup preflight
+        run: npm run doctor
       - name: Verify canonical decision-to-learning causal loop
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/canonical-cognitive-kernel.mjs
+      - name: Verify live runtime uses the canonical kernel
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/canonical-cognitive-kernel-runtime-wiring.mjs

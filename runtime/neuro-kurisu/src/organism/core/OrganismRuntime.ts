@@ -18,6 +18,7 @@ import { RuntimeClockScheduler, type RuntimeClockDecision } from '../system/Runt
 import { ContinuityLedger } from '../system/ContinuityLedger.ts';
 import { RuntimeEvidenceBus } from '../system/RuntimeEvidenceBus.ts';
 import { CognitiveEventFabric } from '../system/CognitiveEventFabric.ts';
+import { CanonicalCognitiveKernel } from './CanonicalCognitiveKernel.ts';
 import { CognitiveResourceEconomy } from '../system/CognitiveResourceEconomy.ts';
 import { RealityEvidenceLedger } from '../system/RealityEvidenceLedger.ts';
 import { UnifiedCognitiveCycle } from '../system/UnifiedCognitiveCycle.ts';
@@ -169,6 +170,7 @@ export class OrganismRuntime {
   private readonly resourceEconomy = new CognitiveResourceEconomy();
   private readonly realityEvidence = new RealityEvidenceLedger(384);
   private readonly unifiedCycle = new UnifiedCognitiveCycle();
+  private readonly canonicalCognitiveKernel = new CanonicalCognitiveKernel(this.cognitiveEventFabric, this.unifiedCycle);
   private readonly continuousCognitiveFabric = new ContinuousCognitiveFabric();
   private readonly realityGrounding = new RealityGroundingController();
   private readonly neuralCausalTrace = new NeuralCausalTraceLedger();
@@ -936,8 +938,9 @@ export class OrganismRuntime {
     await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog());
 
     // Record causal-cycle completion only after feedback, model updates, and embodiment state updates have actually run.
-    const cycleStageIds = this.cognitiveEventFabric.recordOperationalCycle({
-      tick:cycle.state.tick,
+    const cycleDecision = this.canonicalCognitiveKernel.beginDecisionCycle({
+      tick: cycle.state.tick,
+      at: cycle.state.at,
       observation:{source:'runtime',external:Boolean(externalText),confidence01:.72,payload:{predictionError:cycle.state.predictionError,selectedAction:internalAction,evidenceId:observationEvidence.id}},
       prediction:{source:'reward-model',confidence01:plan.steps[0]?.confidence ?? .5,payload:{predictionId:rewardPredictionId,evidenceId:predictionEvidence.id,action:worldAction,predicted01:expectedReward,shadowModel:true}},
       appraisal:{source:'homeostatic-appraisal',confidence01:clamp01(1-cycle.state.needs.uncertainty),payload:{energy01:cycle.state.needs.energy,cognitiveLoad01:cycle.state.needs.cognitiveLoad,uncertainty01:cycle.state.needs.uncertainty,novelty01:cycle.state.needs.novelty,socialNeed01:cycle.state.needs.socialNeed,goalPressure01:cycle.state.needs.goalPressure,predictionError01:cycle.state.predictionError}},
@@ -946,16 +949,39 @@ export class OrganismRuntime {
       goal:{source:'canonical-goal-selection',confidence01:clamp01(cycle.decision.selected?.confidence ?? .5),payload:{selectedGoalId:cycle.decision.selected?.goalId ?? null,activeGoalIds:cycle.goals.slice(0,12).map(goal=>goal.id),autonomousOverride:cycle.decision.autonomousOverride}},
       plan:{source:'plan-engine',confidence01:clamp01(plan.steps[0]?.confidence ?? .5),payload:{stepCount:plan.steps.length,nextAction:worldAction,firstStepConfidence01:plan.steps[0]?.confidence ?? null}},
       action:{source:'organism-action-gate',confidence01:cycle.decision.selected?.confidence ?? .5,payload:{evidenceId:actionEvidence.id,action:embodiedAction.action,internalAction,goalId:cycle.decision.selected?.goalId ?? null}},
+    });
+    const cycleCompletion = this.canonicalCognitiveKernel.completeCycle({
+      anchors: cycleDecision.anchors,
+      fallbackTick: cycle.state.tick,
+      at: cycle.state.at,
       outcome:{source:grounded.source==='external'?'external-device':'shadow-simulator',external:grounded.source==='external',confidence01:grounded.evidence01,payload:{evidenceId:outcomeEvidence.id,reward01:grounded.reward01,surprise:grounded.surprise01,error01:resolvedPrediction?.error01 ?? null,verified01:grounded.verified01}},
       learning:{source:'core.feedback',confidence01:clamp01((1-(resolvedPrediction?.error01??0.5))*learningGate.learningScale01),payload:{predictionError01:resolvedPrediction?.error01??null,realitySource:grounded.source,learningPriority01:grounded.learningPriority01,learningScale01:learningGate.learningScale01}},
       selfUpdate:{source:'core.lifecycle',confidence01:this.core.consciousnessSnapshot().identityContinuity.continuity,payload:{identityContinuity01:this.core.consciousnessSnapshot().identityContinuity.continuity}},
-      at:cycle.state.at,
     });
+    const cycleStageIds = {
+      observation: cycleDecision.anchors.observation,
+      prediction: cycleDecision.anchors.prediction,
+      appraisal: cycleDecision.anchors.appraisal,
+      attention: cycleDecision.anchors.attention,
+      memory: cycleDecision.anchors.memory,
+      goal: cycleDecision.anchors.goal,
+      plan: cycleDecision.anchors.plan,
+      action: cycleDecision.anchors.action,
+      outcome: cycleCompletion.outcomeEvent.id,
+      learning: cycleCompletion.learningEvent.id,
+      selfUpdate: cycleCompletion.selfUpdateEvent.id,
+    };
     const fabricSnapshot = this.cognitiveEventFabric.snapshot();
     this.core.setRuntimeCognitiveEventFabric(fabricSnapshot);
     const cycleStageMap = {observation:cycleStageIds.observation,prediction:cycleStageIds.prediction,appraisal:cycleStageIds.appraisal,attention:cycleStageIds.attention,memory:cycleStageIds.memory,goal:cycleStageIds.goal,plan:cycleStageIds.plan,action:cycleStageIds.action,outcome:cycleStageIds.outcome,learning:cycleStageIds.learning,'self-update':cycleStageIds.selfUpdate};
-    const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap);
-    const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:cycleStageMap,parentIntegrity01:cycleLineage.complete ? cycleLineage.integrity01 : 0});
+    const cycleLineage = cycleCompletion.cycleLineage;
+    const cycleVerification = cycleCompletion.cycleResult ?? {
+      tick: cycle.state.tick,
+      stageCoverage01: 0,
+      causalContinuity01: cycleLineage.integrity01,
+      complete: false,
+      missingStages: [...cycleLineage.missingStages],
+    };
     this.core.setRuntimeUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
     this.realityEvidence.record({tick:cycle.state.tick,realityClass:'derived',claim:'cognitive-cycle-completeness',confidence01:cycleVerification.complete ? .95 : .35,independenceKey:`cycle:${cycle.state.tick}`,parentIds:Object.values(cycleStageIds).filter(Boolean) as string[]});
     this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());

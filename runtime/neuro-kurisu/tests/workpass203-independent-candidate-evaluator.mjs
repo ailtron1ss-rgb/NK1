@@ -230,6 +230,12 @@ assert.equal(verifierFailed.evaluation.validation[0].skillQuality.executability,
   'verifier failure must not mislabel a successfully executed candidate as non-executable');
 assert.equal(verifierFailed.evaluation.validation[0].taskSuccess.passed, false,
   'verifier failure must fail closed for task success');
+assert.equal(verifierFailed.evaluation.provenance.runBindings[0].executable, true,
+  'execution validity must remain distinct from verification and provenance binding');
+assert.equal(verifierFailed.evaluation.provenance.runBindings[0].bindingVerified, false);
+assert.equal(verifierFailed.evaluation.provenance.runBindings[0].verifierPassed, false);
+assert.equal(verifierFailed.evaluation.provenance.runBindings[0].runId, null,
+  'a valid execution without verifier binding must not expose its run ID as trusted provenance');
 
 const duplicateRunId = createIndependentSkillCandidateEvaluator({
   tasks, environmentFingerprint: 'e'.repeat(64),
@@ -282,6 +288,11 @@ const unbound = await unboundEvaluator({
 });
 assert.equal(unbound.evaluation.validation[0].taskSuccess.passed, false,
   'a verifier must attest the exact execution binding before a trial can pass');
+assert.equal(unbound.evaluation.validation[0].skillQuality.executability, 1,
+  'a completed sandbox execution remains executable even when its trace cannot be independently bound');
+assert.equal(unbound.evaluation.provenance.runBindings[0].executable, true);
+assert.equal(unbound.evaluation.provenance.runBindings[0].runId, null,
+  'unbound execution must not export its run ID as trusted provenance');
 assert.equal(unbound.evaluation.provenance.runBindings[0].runId, null,
   'unbound run IDs must not enter trusted provenance');
 assert.equal(unbound.evaluation.provenance.runBindings[0].observedStepIds.length, 0,
