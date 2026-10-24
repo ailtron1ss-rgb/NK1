@@ -1,3 +1,10 @@
+## NK1 WorkPass552 — prevent observer-source registry eviction (2026-10-24)
+
+- `ExternalObserverFabric.registerSource(...)` now rejects brand-new source IDs when the bounded registry reaches capacity instead of silently evicting the oldest registered identity. Existing source configuration updates still work when identity fields match.
+- Added a regression that fills the 16-source minimum registry, attempts to inject a new observation/source, and asserts rejection, no observation persistence, and preservation of the oldest source ID.
+- The focused `reality-learning-regression.yml` already watches both the observer implementation and this regression file, so the test remains in the existing CI path.
+- **Validation boundary:** implementation, regression, and changelog are committed to `feature/feedback`; this pass did not execute the Node test, and hosted Actions status must be checked separately. This prevents source-ID churn from evicting registered identities, but is not yet caller authentication for brand-new source registration.
+
 ## NK1 WorkPass551 — separate sample confidence from source trust (2026-10-24)
 
 - New observer sources now start from the conservative reliability prior for their declared source class instead of inheriting the first caller-supplied observation confidence. A single self-reported `confidence01: 0.99` can no longer mint an `external-api` source with persistent reliability 0.99.
