@@ -1,4 +1,4 @@
-name: Markdown link integrity
+name: Documentation links and dependency boundaries
 
 on:
   pull_request:
@@ -70,5 +70,6 @@ jobs:
             README.md AGENTS.md NEUROCORE_START_HERE.md \
             docs/PROJECT_MAP_AND_ORDERING.md \
             docs/BRANCH_INVENTORY_2026-10-24.md \
+            docs/architecture/module-dependency-contracts-ru.md \
             docs/INTEGRATION_WORKSPACE.md docs/ARCHITECTURE.md \
             docs/RESEARCH_INTAKE_LEDGER.md
