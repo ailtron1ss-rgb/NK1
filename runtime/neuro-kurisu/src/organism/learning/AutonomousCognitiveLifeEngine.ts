@@ -229,24 +229,48 @@ export class AutonomousCognitiveLifeEngine {
   }
   private intentPersistenceBonus(action:ActionKind){const rs=this.state.activeIntentions.filter(x=>x.status==='active'&&x.action===action);return rs.length?mean(rs.map(x=>x.persistence01)):0;
   }
+  private detachSignalInput<T>(input:T,code:string):T {
+    try {
+      const detached=snapshotPlainData<T>(input,{allowNonFiniteNumbers:true,maxDepth:8,maxNodes:128,maxStringUnits:4096});
+      if(!detached || typeof detached!=='object' || Array.isArray(detached)) throw new Error('not-record');
+      return detached;
+    } catch {
+      throw new TypeError(code);
+    }
+  }
+  private requireUnitSignals(values:unknown[],code:string):void {
+    if(values.some(value=>typeof value!=='number'||!Number.isFinite(value)||value<0||value>1)) throw new RangeError(code);
+  }
   recordDecision(input:{action:ActionKind;predicted01:number;confidence01:number;contextKey?:string;at?:number}){
-    const row:PredictionRecord={id:`pred-${this.state.cycles}-${this.state.predictions.length}`,action:input.action,contextKey:input.contextKey??'default',predicted01:clamp(input.predicted01),confidence01:clamp(input.confidence01),at:input.at??now()};this.state.predictions.unshift(row);this.state.lastAction=input.action;this.state.predictions=this.state.predictions.slice(0,256);return row;
+    const clean=this.detachSignalInput(input,'autonomous-life-decision-input-invalid');
+    if(!actions.includes(clean.action)) throw new TypeError('autonomous-life-decision-action-invalid');
+    this.requireUnitSignals([clean.predicted01,clean.confidence01],'autonomous-life-decision-signal-invalid');
+    if(clean.contextKey!==undefined&&(typeof clean.contextKey!=='string'||clean.contextKey.length===0||clean.contextKey.length>180||clean.contextKey.trim()!==clean.contextKey)) throw new TypeError('autonomous-life-decision-context-invalid');
+    if(clean.at!==undefined&&(!Number.isFinite(clean.at)||clean.at<0)) throw new RangeError('autonomous-life-decision-time-invalid');
+    const row:PredictionRecord={id:`pred-${this.state.cycles}-${this.state.predictions.length}`,action:clean.action,contextKey:clean.contextKey??'default',predicted01:clean.predicted01,confidence01:clean.confidence01,at:clean.at??now()};
+    this.state.predictions.unshift(row);this.state.lastAction=clean.action;this.state.predictions=this.state.predictions.slice(0,256);return structuredClone(row);
   }
   recordOutcome(input:{actual01:number;verified01:number;causal01:number;transfer01:number;social01:number;identity01:number;learning01:number;surprise01:number;action?:ActionKind;at?:number}){
-    const row=this.state.predictions.find(p=>!('actual01' in p)&&(!input.action||p.action===input.action));
-    const error=row?Math.abs(clamp(row.predicted01)-clamp(input.actual01)):clamp(input.surprise01);
-    if(row){row.actual01=clamp(input.actual01);row.error01=error;row.verified01=clamp(input.verified01);row.causalRole=input.causal01>.65?'cause':input.causal01>.35?'correlate':'uncertain';}
-    this.state.lastPredictionError01=error;this.state.lastCausalAttribution01=clamp(input.causal01);this.state.lastInformationGain01=clamp(input.surprise01);
-    this.state.metrics.closedLoop01=clamp(this.state.metrics.closedLoop01*.9+(1-error)*.06+input.verified01*.02+input.causal01*.02);
-    this.state.metrics.causalLearning01=clamp(this.state.metrics.causalLearning01*.92+input.causal01*.04+input.learning01*.04);
-    this.state.metrics.transfer01=clamp(this.state.metrics.transfer01*.93+input.transfer01*.07);
-    this.state.metrics.metacognition01=clamp(this.state.metrics.metacognition01*.93+(1-error)*.04+input.verified01*.03);
-    this.state.metrics.socialModel01=clamp(this.state.metrics.socialModel01*.94+input.social01*.03+(1-input.surprise01)*.03);
-    this.state.metrics.selfModel01=clamp(this.state.metrics.selfModel01*.94+input.identity01*.03+(1-error)*.03);
+    const clean=this.detachSignalInput(input,'autonomous-life-outcome-input-invalid');
+    this.requireUnitSignals([clean.actual01,clean.verified01,clean.causal01,clean.transfer01,clean.social01,clean.identity01,clean.learning01,clean.surprise01],'autonomous-life-outcome-signal-invalid');
+    if(clean.action!==undefined&&!actions.includes(clean.action)) throw new TypeError('autonomous-life-outcome-action-invalid');
+    if(clean.at!==undefined&&(!Number.isFinite(clean.at)||clean.at<0)) throw new RangeError('autonomous-life-outcome-time-invalid');
+    // Validate the complete payload before consuming a pending prediction or updating
+    // longitudinal learning metrics. Invalid telemetry/reward must be a no-op.
+    const row=this.state.predictions.find(p=>!('actual01' in p)&&(!clean.action||p.action===clean.action));
+    const error=row?Math.abs(row.predicted01-clean.actual01):clean.surprise01;
+    if(row){row.actual01=clean.actual01;row.error01=error;row.verified01=clean.verified01;row.causalRole=clean.causal01>.65?'cause':clean.causal01>.35?'correlate':'uncertain';}
+    this.state.lastPredictionError01=error;this.state.lastCausalAttribution01=clean.causal01;this.state.lastInformationGain01=clean.surprise01;
+    this.state.metrics.closedLoop01=clamp(this.state.metrics.closedLoop01*.9+(1-error)*.06+clean.verified01*.02+clean.causal01*.02);
+    this.state.metrics.causalLearning01=clamp(this.state.metrics.causalLearning01*.92+clean.causal01*.04+clean.learning01*.04);
+    this.state.metrics.transfer01=clamp(this.state.metrics.transfer01*.93+clean.transfer01*.07);
+    this.state.metrics.metacognition01=clamp(this.state.metrics.metacognition01*.93+(1-error)*.04+clean.verified01*.03);
+    this.state.metrics.socialModel01=clamp(this.state.metrics.socialModel01*.94+clean.social01*.03+(1-clean.surprise01)*.03);
+    this.state.metrics.selfModel01=clamp(this.state.metrics.selfModel01*.94+clean.identity01*.03+(1-error)*.03);
     this.state.metrics.autonomy01=clamp(this.state.metrics.autonomy01*.95+this.state.metrics.closedLoop01*.02+this.intentPersistenceBonus(this.state.lastAction??'wait')*.015+this.state.metrics.planning01*.015);
-    if(input.action){const c=this.state.commitments.find(x=>x.action===input.action&&x.status==='open');if(c){c.reliability01=clamp(c.reliability01*.9+input.actual01*.1);if(input.verified01>.7&&input.actual01>.58)c.status='fulfilled';}}
-    if(input.identity01>.7)this.state.personality.autonomy01=clamp(this.state.personality.autonomy01*.98+this.state.metrics.autonomy01*.02);
-    return {predictionError01:error,verified01:clamp(input.verified01),causalAttribution01:this.state.lastCausalAttribution01};
+    if(clean.action){const c=this.state.commitments.find(x=>x.action===clean.action&&x.status==='open');if(c){c.reliability01=clamp(c.reliability01*.9+clean.actual01*.1);if(clean.verified01>.7&&clean.actual01>.58)c.status='fulfilled';}}
+    if(clean.identity01>.7)this.state.personality.autonomy01=clamp(this.state.personality.autonomy01*.98+this.state.metrics.autonomy01*.02);
+    return {predictionError01:error,verified01:clean.verified01,causalAttribution01:this.state.lastCausalAttribution01};
   }
   autonomousTick(ctx:AutonomousCognitiveLifeContext){
     this.state.autonomousTicks++;const evals=this.integrate(ctx);const selected=evals.slice().sort((a,b)=>b.score01-a.score01)[0];
