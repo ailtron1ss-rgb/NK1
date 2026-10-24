@@ -1,3 +1,11 @@
+## NK1 WorkPass95 — Live2D render budget and visibility lifecycle (2026-10-24)
+
+- Start the Pixi application only after the model is loaded; cap real ticker rendering at 14 FPS idle and 30 FPS during speech, gestures, or high affect.
+- Pause automatic Pixi rendering while the iframe document is hidden and resume with the latest embodiment state.
+- Extend the Live2D regression harness for expression transition caching, frame-budget switching, and hidden/visible lifecycle transitions.
+- Wire Live2D expression and embodiment-timeline tests into the app test entry points; add a Node.js 24 GitHub Actions workflow for focused tests and typecheck.
+- Validation boundary: source/test/workflow changes are committed; automated workflow execution and real browser/physical-audio E2E are not claimed until confirmed on the exact head.
+
 ## NK1 WorkPass524 — validate embodiment continuity events (2026-10-24)
 
 - User activity timestamps and external-event records are validated before changing continuity, wake or sleep state; invalid clocks, invalid importance and non-string/control-bearing detail are rejected without creating an event.
