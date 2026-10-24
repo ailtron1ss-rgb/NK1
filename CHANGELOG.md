@@ -1,3 +1,13 @@
+## NK1 WorkPass474 — reviewed correction memory with Hexis-style escalation (2026-10-24)
+
+- Added `CorrectionRuleMemory` to the P23 learning runtime. It stores bounded, structured corrections only when a host-configured reviewer verifier accepts the record; free-form prompt/conversation content is not persisted.
+- Correction lifecycle is explicit: soft rule → reinforced rule → gate-review candidate. Ambiguous rules, instruction conflicts and edge cases recommend clarification rather than brittle enforcement. Critical or repeated high-impact binary context-pressure corrections can request an independent gate review.
+- Gate candidates never activate a hard gate in this module. Reviewer verification defaults to deny; saved evidence is re-verified on restore; duplicate observations are idempotent and conflicting reused IDs are quarantined.
+- P23 snapshots retain the new field additively; older version-1 snapshots restore with an empty correction memory. Registered `test:hexis:correction-memory` and appended it to `test:p23:learning`. No package dependency was needed.
+- **Verification status:** source/tests/package and this changelog are committed on `feature/learning`; the test suite and exact-head TypeScript check have not been run in this environment. No learning-uplift or production-readiness claim is made.
+
+---
+
 ## NK1 WorkPass473 — make autonomous life-state restore fail closed (2026-10-24)
 
 - Hardened `AutonomousCognitiveLifeEngine.restore` with NK1's shared bounded plain-data snapshot. Getter-backed and cyclic persistence no longer executes accessors or gets spread into the live state.
