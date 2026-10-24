@@ -1,3 +1,10 @@
+## NK1 Feedback — keep source trust learning idempotent (2026-10-24)
+
+- Each observation now records the registered source reliability used at capture; strict restore clamps this field to the restored trusted registry, and replay can only retain or reduce the original evidence confidence.
+- Source reliability updates now use sample confidence and freshness once instead of feeding back a confidence value that already contains source reliability. Definitive matches can improve source reputation; definitive contradictions reduce it; ambiguous assessments do not tune trust.
+- Added a regression proving that a verified match improves source reliability while retrying the same external event keeps its original evidence confidence and does not quarantine its event ID.
+- **Validation boundary:** code and regression are committed; the new hosted run must pass before this iteration is marked validated.
+
 ## NK1 Feedback — separate evidence validity from observer-cache capacity (2026-10-24)
 
 - Strict observer restore now discards observations registered to a disabled source, keeping them out of consensus state as well as out of the canonical evidence ledger.
