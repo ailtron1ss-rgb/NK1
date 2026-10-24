@@ -275,4 +275,19 @@ assert.throws(() => restoredReplayLedger.record({
 assert.ok(restoredReplayLedger.snapshot().quarantinedEventIds?.includes(oldestReplayRow.eventId),
   'event-id reuse after eviction must persist quarantine');
 
-console.log('WORKPASS521_OBSERVER_LEDGER_BRIDGE=PASS liveBridge=true idempotentReplay=true userReportNotExternal=true restoreReconciliation=true noisyLedgerRestore=true replayWindowDedup=true');
+// Poisoned retries must not make the event quarantine grow without a bound.
+const noisyQuarantine = new RealityEvidenceLedger(128);
+for (let index = 0; index < 620; index += 1) {
+  const eventId = `event:quarantine-bound-${index}`;
+  const valid = {
+    eventId, tick: index, at: 2000 + index, realityClass: 'device-observation',
+    claim: 'status=ready', confidence01: 0.9, independenceKey: 'sensor:bounded', parentIds: [],
+  };
+  noisyQuarantine.record(valid);
+  assert.throws(() => noisyQuarantine.record({ ...valid, claim: 'status=blocked' }),
+    /reality-evidence-event-id-conflict/);
+}
+assert.equal(noisyQuarantine.snapshot().quarantinedEventIds.length, 512,
+  'the quarantine tombstone set must remain bounded by the configured receipt capacity');
+
+console.log('WORKPASS521_OBSERVER_LEDGER_BRIDGE=PASS liveBridge=true idempotentReplay=true userReportNotExternal=true restoreReconciliation=true noisyLedgerRestore=true replayWindowDedup=true boundedQuarantine=true');
