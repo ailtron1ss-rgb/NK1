@@ -70,6 +70,13 @@ export class EmotionAppraisalEngine {
   }
   snapshot(){return structuredClone(this.state);}
 
+  episodeById(id:string):EmotionEpisode|null{
+    const key=String(id??'');
+    if(!key)return null;
+    const episode=this.state.history.find(item=>item.id===key);
+    return episode?structuredClone(episode):null;
+  }
+
   observeInteroception(input:{energy01:number;thermal01:number;capacity01:number;load01:number;homeostaticPressure01?:number}):InteroceptiveAffectState{
     const st=this.state.interoception;
     const actual={energy01:c(input.energy01),thermal01:c(input.thermal01),capacity01:c(input.capacity01),load01:c(input.load01)};
