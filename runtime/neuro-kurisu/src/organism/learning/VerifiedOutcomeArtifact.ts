@@ -146,6 +146,11 @@ export function ingestSignedOutcomeArtifact(
     if (!exactMatch) {
       return { accepted: false, artifactFingerprint: fingerprint, rejection: 'conflicting-existing-outcome' };
     }
+    // Exact replay is only allowed to restore a process-local trust receipt after
+    // ledger restart. Within one live ledger, the same authenticated attempt is a duplicate.
+    if (authenticatedEvidence.get(ledger)?.has(outcome.evidenceRef)) {
+      return { accepted: false, artifactFingerprint: fingerprint, rejection: 'duplicate-attempt' };
+    }
   } else {
     const result = ledger.record(outcome);
     if (!result.accepted) {
