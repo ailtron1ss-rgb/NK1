@@ -89,16 +89,18 @@ export class CausalDomainClosureLedger {
     const rawRecent=Array.isArray(raw?.recent)?raw!.recent.slice(0,cap):[];
     const recent=rawRecent.map(x=>this.cleanRecord(x));
     const latest=recent[0];
-    const rawStatus=['PASS','DEGRADED','FAIL'].includes(raw?.lastStatus as any)?raw!.lastStatus!:'PASS';
+    const rawStatus:CausalClosureStatus=['PASS','DEGRADED','FAIL'].includes(raw?.lastStatus as any)?raw!.lastStatus!:'PASS';
+    const rank:Record<CausalClosureStatus,number>={PASS:0,DEGRADED:1,FAIL:2};
     const failedLatest=Boolean(latest&&(latest.status==='FAIL'||latest.failureReason||latest.evidence.cognitiveCycleComplete===false));
-    const lastStatus:CausalClosureStatus=rawStatus==='FAIL'||failedLatest?'FAIL':rawStatus;
+    const lastStatus:CausalClosureStatus=latest&&rank[latest.status]>rank[rawStatus]?latest.status:rawStatus;
+    const latestOverridesSummary=Boolean(latest&&rank[latest.status]>rank[rawStatus]);
     const rawLatest=rawRecent[0] as any;
     let completeCycles=Math.min(totalCycles,safeCount(raw?.completeCycles));
     let degradedCycles=safeCount(raw?.degradedCycles);
     let failures=Math.max(safeCount(raw?.failures),failedLatest?1:0);
-    // When the bounded window contains the full history, derive counters from
+    // When the bounded window contains the full non-empty history, derive counters from
     // normalized terminal records instead of trusting contradictory summaries.
-    if(recent.length===totalCycles){
+    if(totalCycles>0&&recent.length===totalCycles){
       completeCycles=recent.filter(record=>record.complete&&record.status==='PASS').length;
       degradedCycles=recent.filter(record=>record.status==='DEGRADED').length;
       failures=recent.filter(record=>record.status==='FAIL').length;
@@ -115,7 +117,7 @@ export class CausalDomainClosureLedger {
       meanScore01,
       lastTick:finiteCount(raw?.lastTick),
       lastStatus,
-      lastBehaviorHash:failedLatest&&latest?latest.behaviorHash:String(raw?.lastBehaviorHash??'').slice(0,160),
+      lastBehaviorHash:latestOverridesSummary&&latest?latest.behaviorHash:failedLatest&&latest?latest.behaviorHash:String(raw?.lastBehaviorHash??'').slice(0,160),
       lastDurableHash:String(raw?.lastDurableHash??'').slice(0,160),
       recent:recent.slice(0,cap),
     };
