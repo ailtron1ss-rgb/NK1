@@ -76,14 +76,14 @@ export class HexisCanonicalMemoryProjector {
     this.semanticGraph = semanticGraph;
   }
 
-  ensureSemanticNode(ref, content, nativeType, salience, nodeIdsByRef) {
+  ensureSemanticNode(ref, content, nativeType, salience, nodeIdsByRef, sourceKey = '') {
     if (!this.semanticGraph || nodeIdsByRef.has(ref)) return nodeIdsByRef.get(ref) ?? null;
     const label = semanticLabel(content);
     if (!label) return null;
     const type = semanticNodeType(nativeType);
     // Reuse graph nodes instead of reinforcing them on every re-import.
-    const existing = this.semanticGraph.snapshot().nodes.find(node => node.label === label && node.type === type);
-    const node = existing ?? this.semanticGraph.upsertNode(content, type, salience);
+    const existing = this.semanticGraph.snapshot().nodes.find(node => node.label === label && node.type === type && String(node.sourceKey ?? '') === String(sourceKey ?? ''));
+    const node = existing ?? this.semanticGraph.upsertNode(content, type, salience, sourceKey);
     nodeIdsByRef.set(ref, node.id);
     return node.id;
   }
@@ -144,13 +144,14 @@ export class HexisCanonicalMemoryProjector {
         // HMX refs are export-scoped. Use the stable record suffix plus lineage/content
         // for memory identity so re-exporting the same source does not create duplicates.
         const stableRefKey = ref.replace(/^exp_[a-f0-9]{16}:/, '');
+        const graphSourceKey = 'hexis:' + hash(lineageId).slice(0, 12) + ':' + hash(stableRefKey + '\0' + contentHash).slice(0, 24);
         const source = 'hexis:' + hash(lineageId).slice(0, 12) + ':' + hash(stableRefKey + '\0' + contentHash).slice(0, 24);
         const existingKey = source + '\0' + stableRecordContent(memoryText);
         const salience = clamp01(Number.isFinite(Number(row.importance)) ? Number(row.importance) : 0.55);
         if (existingImportKeys.has(existingKey)) {
           const duplicate = existingItems.find(candidate => candidate.source === source && stableRecordContent(candidate.content) === stableRecordContent(memoryText));
           if (duplicate?.id) importedIds.push(duplicate.id);
-          this.ensureSemanticNode(ref, memoryText, nativeType, salience, semanticNodeIdsByRef);
+          this.ensureSemanticNode(ref, memoryText, nativeType, salience, semanticNodeIdsByRef, graphSourceKey);
           deduplicatedCount++;
           continue;
         }
@@ -226,7 +227,7 @@ export class HexisCanonicalMemoryProjector {
           beforeIds.add(inserted.id);
           importedCount++;
         }
-        this.ensureSemanticNode(ref, memoryText, nativeType, salience, semanticNodeIdsByRef);
+        this.ensureSemanticNode(ref, memoryText, nativeType, salience, semanticNodeIdsByRef, graphSourceKey);
         existingImportKeys.add(existingKey);
       }
 
