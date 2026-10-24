@@ -7,7 +7,7 @@ import { selectReplayBatch, type ReplaySelectionOptions } from './ReplaySelectio
 import { selectCausalReplayBatch } from './CausalReplaySampler.ts';
 import { adaptiveReplayLearningRate, adaptiveReplayOptions, bellmanTarget, calibratedConfidence, forgettingRisk, repairOpportunity, scoreReplayPriority, transferConfidence, wilsonLowerBound } from './MultiSourceLearningMechanisms.ts';
 import { retrievedSkillBias } from './SkillRetrievalAugmentation.ts';
-import { classifyLearningFailureReason, isReflectionFailureClass, rankLearningTargets, reflectOnOutcomes, type ReflectionFailureClass } from './OutcomeReflectionCurriculum.ts';
+import { classifyLearningFailureReason, isReflectionFailureClass, rankLearningTargets, reflectOnOutcomes, type LearningTarget, type ReflectionFailureClass } from './OutcomeReflectionCurriculum.ts';
 import { isAuthenticVerifiedSkillPromotionProposal, type VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
 import { evaluateSkillLearnBenchCandidate, type SkillLearnBenchCandidateEvaluation, type SkillLearnBenchCandidateGateOptions, type SkillLearnBenchCandidateGateReport } from './SkillLearnBenchAdapter.ts';
 import { bindIndependentEvaluationToVerifiedShadowEvidence, bindReflectiveReportsToVerifiedShadowEvidence, type ReflectiveEvidenceBindingReport } from './HermesVerifiedEvidenceBinding.ts';
@@ -562,6 +562,33 @@ export class P23LearningEngine {
   /** Read correction-rule maturity for the cognition/goal planner; recommendations never activate gates. */
   correctionRules():CorrectionRuleAssessment[] {
     return this.correctionRuleMemory.rules();
+  }
+
+  /**
+   * Turn reviewed corrections into ordinary planner-compatible learning targets.
+   * This surfaces repair work to the existing Pareto curriculum without making a
+   * correction a policy override or silently activating a gate.
+   */
+  correctionLearningTargets(limit=8):LearningTarget[] {
+    const severityValue:Record<CorrectionRuleAssessment['severity'],number>={
+      low:.25,medium:.5,high:.8,critical:1,
+    };
+    const proposals=this.correctionRuleMemory.rules().map(rule=>{
+      const rootCause=rule.rootCauses[0]??'other';
+      const recurrence=Math.min(1,rule.observationCount/4);
+      return {
+        id:'correction-rule-'+rule.ruleId,
+        family:'correction-'+rootCause,
+        uncertainty01:1/(rule.observationCount+1),
+        readiness01:rule.stage==='gate-candidate'?1:rule.observationCount>=2?.72:.45,
+        transfer01:rootCause==='context-pressure'?.72:.42,
+        novelty01:rootCause==='edge-case'?.62:.36,
+        verificationCost01:rule.requiresIndependentApproval?.85:.45,
+        repairValue01:Math.max(severityValue[rule.severity],.25+.55*recurrence),
+        blocked:false,
+      };
+    });
+    return rankLearningTargets(proposals,limit,'pareto-frontier');
   }
 
   /**
