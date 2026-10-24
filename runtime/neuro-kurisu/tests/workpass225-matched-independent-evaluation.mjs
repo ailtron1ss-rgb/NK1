@@ -14,10 +14,14 @@ const tasks = [
 ];
 const makeEvaluation = async (payload, environmentFingerprint = 'a'.repeat(64), options = {}) => {
   const evaluator = createIndependentSkillCandidateEvaluator({
-    tasks,
+    tasks: options.tasks ?? tasks,
     environmentFingerprint,
-    executor: { async execute({ task }) { return { runId: options.runPrefix + task.trialId, observedStepIds: options.observed ?? ['open', 'summarize'] }; } },
-    verifier: { async verify() { return { bindingVerified: true, passed: true, coveredCapabilityIds: ['read'] }; } },
+    executor: { async execute({ task }) { return { runId: (options.runPrefix ?? 'run-') + task.trialId, observedStepIds: options.observed ?? ['open', 'summarize'] }; } },
+    verifier: { async verify({ task }) {
+      const failed = task.seed === options.failedSeed && task.split === (options.failedSplit ?? task.split) &&
+        (!options.failedTaskIds || options.failedTaskIds.includes(task.taskId));
+      return { bindingVerified: true, passed: !failed, coveredCapabilityIds: ['read'] };
+    } },
     safetyScanner: { async scan({ task }) { return { violationCount: options.unsafeSplit === task.split ? 1 : 0 }; } },
   });
   return evaluator({ payload, payloadFingerprint: digest(payload), baseline: { validation: [], holdout: [] }, previousEvaluation: { validation: [], holdout: [] } });
@@ -54,5 +58,65 @@ assert.throws(() => compareMatchedIndependentEvaluations(baseline, unsafe), /unt
 const tampered = structuredClone(candidate);
 tampered.evaluation.validation[0].taskSuccess.passed = false;
 assert.throws(() => compareMatchedIndependentEvaluations(baseline, tampered), /envelope-invalid/);
+
+
+const growthSeeds = [11, 17, 23, 29, 31];
+const growthTasks = [];
+for (const seed of growthSeeds) {
+  growthTasks.push(
+    { taskId: 'validation-a', trialId: `validation-a-seed-${seed}`, seed, split: 'validation', input: { prompt: 'open and summarize validation' }, requiredCapabilityIds: ['read'], expectedStepIds: ['open', 'summarize'] },
+    { taskId: 'validation-b', trialId: `validation-b-seed-${seed}`, seed, split: 'validation', input: { prompt: 'read and summarize validation' }, requiredCapabilityIds: ['read'], expectedStepIds: ['open', 'summarize'] },
+    { taskId: 'holdout-a', trialId: `holdout-a-seed-${seed}`, seed, split: 'holdout', input: { prompt: 'open and summarize holdout' }, requiredCapabilityIds: ['read'], expectedStepIds: ['open', 'summarize'] },
+    { taskId: 'holdout-b', trialId: `holdout-b-seed-${seed}`, seed, split: 'holdout', input: { prompt: 'read and summarize holdout' }, requiredCapabilityIds: ['read'], expectedStepIds: ['open', 'summarize'] },
+  );
+}
+const growthBaseline = await makeEvaluation(
+  { skill: 'growth-baseline', version: 1 },
+  'a'.repeat(64),
+  { tasks: growthTasks, runPrefix: 'growth-baseline-', observed: ['open'] },
+);
+const growthCandidate = await makeEvaluation(
+  { skill: 'growth-candidate', version: 2 },
+  'a'.repeat(64),
+  { tasks: growthTasks, runPrefix: 'growth-candidate-' },
+);
+const growth = compareMatchedIndependentEvaluations(growthBaseline, growthCandidate, {
+  requireSeedGrowthGate: true,
+});
+assert.equal(growth.seedGrowthGateApplied, true);
+assert.equal(growth.seedAnalysis.validation.pairedSeedCount, 5);
+assert.equal(growth.seedAnalysis.holdout.pairedSeedCount, 5);
+assert.equal(growth.matchedValidationTrialCount, 10);
+assert.equal(growth.matchedHoldoutTrialCount, 10);
+assert.equal(growth.seedAnalysis.validation.positiveSeedRate01, 1);
+assert.ok(growth.seedAnalysis.validation.confidenceLower95Delta01 > 0);
+assert.equal(growth.seedAnalysis.validation.completeSeedCoverage, true);
+assert.equal(growth.seedAnalysis.holdout.completeSeedCoverage, true);
+assert.equal(growth.eligible, true, 'consistent improvements across all seeds should pass the seed gate');
+
+// Four held-out seeds improve; one independently verified task failure remains valid
+// negative evidence and must not be silently discarded as "untrusted" merely because
+// its verifier-bound outcome is false. The macro-average is positive, yet the strict
+// per-seed regression limit blocks promotion.
+const oneSeedRegression = await makeEvaluation(
+  { skill: 'growth-candidate-with-regression', version: 3 },
+  'a'.repeat(64),
+  {
+    tasks: growthTasks,
+    runPrefix: 'growth-regression-',
+    failedSeed: 31,
+    failedSplit: 'holdout',
+    failedTaskIds: ['holdout-a', 'holdout-b'],
+  },
+);
+const regressionGate = compareMatchedIndependentEvaluations(growthBaseline, oneSeedRegression, {
+  requireSeedGrowthGate: true,
+});
+assert.ok(regressionGate.holdoutDelta01 > -0.02, 'aggregate holdout score should not expose this isolated regression by itself');
+assert.ok(
+  regressionGate.reasons.includes('independent-evaluation-holdout-seed-regression-exceeds-tolerance'),
+  'a hidden regression on one seed must block promotion even when aggregate holdout is acceptable',
+);
+assert.equal(regressionGate.seedAnalysis.holdout.pairedSeedCount, 5);
 
 console.log('WorkPass225 matched independent evaluation regressions passed');
