@@ -1,3 +1,11 @@
+## NK1 WorkPass471 — linearize Hexis-inspired memory doctor revision checks (2026-10-24)
+
+- Optimized the read-only memory integrity doctor: revision-link checks now resolve predecessor/successor IDs through a first-wins map instead of scanning the full memory list for every revision edge. This changes worst-case revision-link diagnostics from quadratic to linear in memory count while preserving the old first-match behavior for duplicate IDs.
+- This is a focused scalability adaptation of Hexis's audited belief/revision history applied to NK1's canonical `MemoryOS2`; no database or dependency was added.
+- Existing CLI regression source remains in place. Exact-head execution is still unverified due to the hosted runner provisioning issue.
+
+---
+
 ## NK1 WorkPass459 — reapply provenance authority ceilings on snapshot restore (2026-10-23)
 
 - Fixed a persisted-state bypass in the canonical `MemoryOS2` owner: restored memory rows now re-derive the provenance class and cap persisted authority at that class's default ceiling, just as live ingestion does.
