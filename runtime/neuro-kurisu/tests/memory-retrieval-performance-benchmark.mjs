@@ -87,7 +87,6 @@ function benchmarkTemporalChain(size) {
     validFromAt: chainStartAt,
     observedAt: chainStartAt,
   }, { clone: false, forceDistinct: true });
-  const expectedIds = [current.id];
   const targetChainLength = 8;
   for (let revision = 2; revision <= targetChainLength; revision++) {
     const next = memory.reviseContent(current.id,
