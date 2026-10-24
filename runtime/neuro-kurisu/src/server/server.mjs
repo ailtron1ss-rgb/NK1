@@ -20,7 +20,7 @@ import { resolvePhonePolicyConfig } from '../organism/system/PhoneRuntimePolicy.
 import { authorizeApiRequest } from '../organism/system/ApiSecurityPolicy.ts';
 import { GeminiVisionSemanticBackend } from '../organism/body/GeminiVisionSemanticBackend.ts';
 import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
-import { LocalEmbeddingProvider } from '../organism/developmental/LocalEmbeddingProvider.ts';
+import { sharedLocalEmbeddingProvider } from '../organism/developmental/MemoryOS2.ts';
 import { LocalSmallModelHub } from './LocalSmallModelHub.mjs';
 import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
@@ -37,7 +37,7 @@ const KOBOLD_URL = String(process.env.KOBOLD_URL || 'http://127.0.0.1:5001').rep
 const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 15000);
 const LLAMA_CPP_PROVIDER = new OpenAICompatibleLocalChatProvider({ baseUrl: process.env.LLAMA_CPP_URL, model: process.env.LLAMA_CPP_MODEL || 'local-model', timeoutMs: LLM_TIMEOUT_MS });
 const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
-const LOCAL_EMBEDDING_PROVIDER = LocalEmbeddingProvider.fromEnvironment(process.env);
+const LOCAL_EMBEDDING_PROVIDER = sharedLocalEmbeddingProvider;
 function optionalLocalRoleProvider(baseUrlKey, modelKey, fallbackModel) {
     const baseUrl = String(process.env[baseUrlKey] ?? '').trim();
     if (!baseUrl)
