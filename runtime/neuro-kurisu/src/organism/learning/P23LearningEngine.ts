@@ -678,11 +678,6 @@ export class P23LearningEngine {
   }
 
   /**
-   * Production promotion path for Hermes-style reflective evaluation.
-   * Fitness and evidence binding are mandatory preconditions; activation still
-   * delegates to the configured store's signed approval and shadow-evidence verifiers.
-   */
-  /**
    * Legacy diagnostic shape retained for source compatibility only.
    * Raw arrays have no evaluator provenance, paired seed plan, or immutable
    * environment identity, so they must never authorize activation. Use
