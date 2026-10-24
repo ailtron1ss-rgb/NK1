@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { HexisAdaptationFabric, defaultHexisAdaptationState } from '../../src/organism/integration/hexis/HexisAdaptationFabric.ts';
 import { normalizeNk1HmxExport } from '../../src/organism/integration/hexis/Nk1HmxExportAdapter.mjs';
+import { HexisCanonicalMemoryProjector } from '../../src/organism/integration/hexis/HexisCanonicalMemoryProjector.mjs';
+import { MemorySubsystemRuntime } from '../../src/organism/core/MemorySubsystemRuntime.ts';
 
 const nativeNk1Export = {
   hmx_version: '1.7',
@@ -58,6 +60,70 @@ const normalizedStage = importedNormalizedExport.stageHmx({
 assert.deepEqual(normalizedStage.conflicts, [], 'NK1 native export adapter must emit a conflict-free HMX 1.7 envelope');
 assert.equal(importedNormalizedExport.decideHmx(normalizedStage.stagingId, 'accept')?.status, 'accepted');
 
+// Approved HMX memories enter the canonical MemoryFabric -> MemoryOS2 path only
+// through the explicit apply decision. The identity and goals sections remain deferred.
+const canonicalMemoryRuntime = new MemorySubsystemRuntime();
+const canonicalProjector = new HexisCanonicalMemoryProjector(canonicalMemoryRuntime.fabric);
+const applyFabric = new HexisAdaptationFabric();
+applyFabric.bindCanonicalMemoryApply(candidate => canonicalProjector.apply(candidate));
+const applyStage = applyFabric.stageHmx({ document: normalizedNk1Export, intent: 'port', strategy: 'additive' });
+assert.deepEqual(applyStage.conflicts, []);
+const canonicalBeforeApproval = canonicalMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:'));
+assert.equal(canonicalBeforeApproval.length, 0, 'staging an import must not mutate canonical memory');
+assert.equal(applyFabric.decideHmx(applyStage.stagingId, 'accept')?.status, 'accepted');
+assert.equal(canonicalMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 0,
+  'approval remains separate from applying the import');
+const appliedStage = applyFabric.decideHmx(applyStage.stagingId, 'apply');
+assert.equal(appliedStage?.status, 'applied');
+assert.equal(appliedStage?.application?.importedCount, 2);
+assert.equal(appliedStage?.application?.memoryIds.length, 2);
+assert.equal(appliedStage?.application?.status, 'partial', 'unmapped identity/goals/relationship/config sections must be disclosed, not claimed as imported');
+assert(appliedStage?.application?.deferredSections.identity > 0);
+const canonicalImported = canonicalMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:'));
+assert.equal(canonicalImported.length, 2);
+assert(canonicalImported.every(item => item.epistemicStatus !== 'fact'), 'foreign memory does not become an NK1 fact merely because it was imported');
+assert(canonicalImported.some(item => item.kind === 'procedural'), 'Hexis skills mapped to procedural memories must be retrievable through canonical memory');
+assert.equal(applyFabric.decideHmx(applyStage.stagingId, 'apply')?.application?.digest, appliedStage?.application?.digest,
+  'replaying an applied stage returns the same application receipt without another mutation');
+
+// Re-importing the same lineage/ref/content is deduplicated across distinct staging sessions.
+const duplicateApplyFabric = new HexisAdaptationFabric();
+duplicateApplyFabric.bindCanonicalMemoryApply(candidate => canonicalProjector.apply(candidate));
+const duplicateStage = duplicateApplyFabric.stageHmx({ document: normalizedNk1Export, intent: 'port', strategy: 'additive' });
+assert.equal(duplicateApplyFabric.decideHmx(duplicateStage.stagingId, 'accept')?.status, 'accepted');
+const duplicateApply = duplicateApplyFabric.decideHmx(duplicateStage.stagingId, 'apply');
+assert.equal(duplicateApply?.application?.importedCount, 0);
+assert.equal(duplicateApply?.application?.deduplicatedCount, 2);
+assert.equal(canonicalMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 2);
+
+// Fault injection: if a batch write fails halfway, newly created memories are compensated
+// through MemoryFabric's canonical forget command and the accepted stage remains retryable.
+const rollbackMemoryRuntime = new MemorySubsystemRuntime();
+let failingWrites = 0;
+const rollbackFabric = {
+  canonicalSnapshot: () => rollbackMemoryRuntime.fabric.canonicalSnapshot(),
+  encode: (input, options) => {
+    failingWrites += 1;
+    if (failingWrites === 2) throw new Error('injected-hmx-write-failure');
+    return rollbackMemoryRuntime.fabric.encode(input, options);
+  },
+  forgetById: (...args) => rollbackMemoryRuntime.fabric.forgetById(...args),
+};
+const rollbackProjector = new HexisCanonicalMemoryProjector(rollbackFabric);
+const rollbackHexisFabric = new HexisAdaptationFabric();
+rollbackHexisFabric.bindCanonicalMemoryApply(candidate => rollbackProjector.apply(candidate));
+const rollbackStage = rollbackHexisFabric.stageHmx({ document: normalizedNk1Export, intent: 'port', strategy: 'additive' });
+rollbackHexisFabric.decideHmx(rollbackStage.stagingId, 'accept');
+assert.throws(() => rollbackHexisFabric.decideHmx(rollbackStage.stagingId, 'apply'), /hmx-canonical-apply-failed/);
+assert.equal(rollbackHexisFabric.getHmxStage(rollbackStage.stagingId)?.status, 'accepted',
+  'a failed apply must not mark the stage complete');
+assert.equal(rollbackMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 0,
+  'partially inserted HMX memories must be rolled back');
+const retryAfterRollback = rollbackHexisFabric.decideHmx(rollbackStage.stagingId, 'apply');
+assert.equal(retryAfterRollback?.status, 'applied', 'the same approved stage must remain safely retryable after compensation');
+assert.equal(rollbackMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 2);
+
+
 const fabric = new HexisAdaptationFabric();
 assert.equal(fabric.snapshot().version, 1);
 
@@ -93,7 +159,7 @@ const review = fabric.createLearningReview({periodStart:0,periodEnd:1,summary:'t
 const decided = fabric.decideLearningReview(review.id,review.items[0].id,'approve');
 assert.equal(decided?.status,'approved');
 
-const stage = fabric.stageHmx({document:makeHmxDocument('exp_0123456789abcdef',{memories:[{id:'m'}],goals:[{id:'g'}]}),intent:'port',strategy:'additive'});
+const stage = fabric.stageHmx({document:makeHmxDocument('exp_0123456789abcdef',{memories:[{ref:'exp_0123456789abcdef:mem-1',type:'semantic',content:'HMX memory fixture.'}],goals:[{id:'g'}]}),intent:'port',strategy:'additive'});
 assert.equal(stage.status,'staged');
 assert.equal(fabric.decideHmx(stage.stagingId,'accept')?.status,'accepted');
 
