@@ -17,6 +17,16 @@ runtimeLedger.durable({ at: Date.now(), tick: 7, stateTick: 7, replaySignature: 
 runtimeLedger.durable({ at: Date.now(), tick: 7, stateTick: 7, replaySignature: 'fixture-signature-2', continuousTick: 7, continuityProcessed: 7 });
 assert.equal(runtimeLedger.diagnostics().lastStatus, 'FAIL', 'repeated durability flushes must not mask the failure');
 
+// A normal step can itself fail its closure checks; durability must not turn it green.
+const failedStepLedger = new RuntimeClosureLedger();
+const failedStep = failedStepLedger.step({ at: Date.now(), previousTick: 0, stateTick: 1, cycleTick: 2, continuousTick: 1, processed: 1, previousProcessed: 0, continuity01: .72, energy01: .8, uncertainty01: .2, identityContinuity01: .9, predictionError01: .1, action: 'observe' });
+assert.equal(failedStep.status, 'FAIL');
+failedStepLedger.durable({ at: Date.now(), tick: 1, stateTick: 1, replaySignature: 'fixture-signature', continuousTick: 1, continuityProcessed: 1 });
+assert.equal(failedStepLedger.diagnostics().lastStatus, 'FAIL');
+const recoveredStep = failedStepLedger.step({ at: Date.now(), previousTick: 1, stateTick: 2, cycleTick: 2, continuousTick: 2, processed: 2, previousProcessed: 1, continuity01: .72, energy01: .8, uncertainty01: .2, identityContinuity01: .9, predictionError01: .1, action: 'observe' });
+assert.equal(recoveredStep.status, 'PASS');
+assert.equal(failedStepLedger.diagnostics().lastStatus, 'PASS', 'a new step may replace the prior cycle status');
+
 // A failure must close a pending causal cycle, preserve its reason, and never
 // acquire success credit during later durable finalization.
 const before = { memoryCount: 1, worldTick: 1, identityRevision: 1, agencyDecisions: 1, learningUpdates: 1, selfChangeCount: 1, lifeGraphCompleteChains: 1 };
