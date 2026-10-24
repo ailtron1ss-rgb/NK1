@@ -1,10 +1,11 @@
 ## NK1 WorkPass319 — bounded internal dialogue (2026-10-24)
 
 - [ADDED] Introduced `InternalDialogueEngine` with a bounded six-pass review: framing, hypothesis comparison, skeptic, evidence audit, metacognitive calibration and synthesis.
-- [INTEGRATED] Wired the review into `buildCognitiveProposalPrompt`, before provider proposal generation. It compares planner candidates using explicit evidence links and treats predictions as weaker than observed outcomes.
-- [SAFETY] The review is advisory-only; `OrganismCore` and existing safety gates retain action authority. The output is summary-only, ignores duplicate evidence identities after the first occurrence, and filters obvious secret/contact-bearing text from unresolved questions.
-- [REGRESSION] Added `test:internal-dialogue-workpass319` to exercise evidence ranking, contradictory evidence, missing evidence, bounded turns, privacy filtering and proposal wiring.
-- [VALIDATION] A local contract harness for the engine design passed 10 scenarios on Node.js 22.16.0; this is not a run of the exact GitHub checkout. The committed integration regression, exact-head typecheck/CI and release-archive rebuild remain to be verified; no learning uplift or production readiness is claimed.
+- [INTEGRATED] Added `CognitiveEventEvidenceBridge`, which imports the canonical `CognitiveEventFabric` snapshot and binds outcomes to a candidate only through an explicit action-parent edge and a recognized action identity. Late independent observations require the full tool-action → tool-outcome → external-evidence chain, exact execution identity, independent source identity, and corroborated/contradicted status.
+- [INTEGRATED] Wired the review into `buildCognitiveProposalPrompt`, before provider proposal generation. Prediction-only support remains low-weighted; the old heuristic that treated a matching `lastActionSuccess` as directly relevant evidence was removed. The CEF snapshot can be supplied as an optional review context.
+- [SAFETY] The review is advisory-only; `OrganismCore` and existing safety gates retain action authority. Raw event payload text is never forwarded by the bridge. Duplicate event identities, missing lineage, unknown outcomes, and external observations without independence keys are rejected or ignored.
+- [REGRESSION] Added causal bridge cases for operational outcomes, delayed independent observations, missing independence identity, dangling action parents, as well as the existing ranking, contradiction, privacy, bounded-turn, and proposal-wiring cases. Registered in `test:rebuild-recovered`.
+- [VALIDATION] Local isolated harnesses against copied engine/bridge source passed. The exact integrated test, exact-head typecheck/CI and release-archive rebuild remain unverified; no learning uplift or production readiness is claimed.
 
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
