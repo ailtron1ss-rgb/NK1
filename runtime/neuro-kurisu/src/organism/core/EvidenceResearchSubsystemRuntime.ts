@@ -67,7 +67,7 @@ export class EvidenceResearchSubsystemRuntime {
       realityClass,claim,confidence01:observation.confidence01,independenceKey,parentIds,
     });
   }
-  readonly externalObserver = new ExternalObserverFabric({onObservation:observation=>this.recordExternalObservationEvidence(observation)});
+  readonly externalObserver = new ExternalObserverFabric({requireRegisteredSources:true,onObservation:observation=>this.recordExternalObservationEvidence(observation)});
 
   snapshot() {
     return {
