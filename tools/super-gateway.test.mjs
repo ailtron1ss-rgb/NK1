@@ -80,6 +80,27 @@ test('gateway turns an inactive upstream into a bounded 504 response', async (t)
   assert.ok(Date.now() - startedAt < 4_000, 'gateway timeout should be shorter than the client safety deadline');
 });
 
+test('gateway enforces total deadlines when an upstream keeps trickling data', async (t) => {
+  const { baseUrl } = await withGateway(t, {
+    timeoutMs: 1_000,
+    runtimeHandler: (_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/plain' });
+      res.write('start');
+      const timer = setInterval(() => res.write('tick'), 650);
+      res.on('close', () => clearInterval(timer));
+    },
+  });
+
+  const startedAt = Date.now();
+  const response = await fetch(new URL('/api/organism/trickle', baseUrl), {
+    signal: AbortSignal.timeout(5_000),
+  });
+  assert.equal(response.status, 200);
+  await assert.rejects(response.text());
+  assert.ok(Date.now() - startedAt < 4_000,
+    'total request deadline must not reset whenever the upstream sends another chunk');
+});
+
 test('gateway timeout configuration has a safe default and rejects invalid values', () => {
   assert.equal(readUpstreamTimeout(undefined), 30_000);
   assert.equal(readUpstreamTimeout('15000'), 15_000);
