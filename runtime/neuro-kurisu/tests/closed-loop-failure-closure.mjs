@@ -100,6 +100,12 @@ const incompleteFinal = incompleteCausal.finalizeDurable({ tick: 3, stateTick: 3
 assert.equal(incompleteFinal?.status, 'FAIL');
 assert.equal(incompleteFinal?.complete, false);
 assert.equal(incompleteFinal?.score01, 0);
+const restoredIncompleteCausal = new CausalDomainClosureLedger();
+restoredIncompleteCausal.restore(incompleteCausal.snapshot());
+assert.equal(restoredIncompleteCausal.snapshot().recent[0]?.evidence.cognitiveCycleComplete, false);
+const restoredIncompleteFinal = restoredIncompleteCausal.finalizeDurable({ tick: 3, stateTick: 3, replaySignature: 'fixture-signature-after-restart', continuousTick: 3, processed: 3 });
+assert.equal(restoredIncompleteFinal?.status, 'FAIL', 'restart must not promote an incomplete cognitive cycle');
+assert.equal(restoredIncompleteFinal?.score01, 0);
 
 // Guard the live physical-action path against cancellation that arrives after
 // planning but before actuation.
@@ -195,6 +201,9 @@ try {
   await Promise.all([runtime.stop(), runtime.stop()]);
   assert.equal(stopDurableWrites, 1, 'concurrent stop calls must share one durable shutdown transaction');
   runtime = null;
+  const afterStop = JSON.parse(await readFile(stateFile, 'utf8'));
+  assert.equal(afterStop.system?.runtimeClosure?.lastStatus, 'FAIL', 'shutdown durability must preserve the terminal runtime failure');
+  assert.equal(afterStop.system?.causalDomainClosureLedger?.lastStatus, 'FAIL', 'shutdown durability must preserve the terminal causal failure');
 
   console.log(JSON.stringify({
     pass: true,
