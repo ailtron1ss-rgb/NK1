@@ -1,3 +1,11 @@
+## NK1 WorkPass539 — exercise rollback with authenticated approval
+
+- Updated the versioned skill-store regression to reflect the current rollback API: a rollback needs a signed, candidate-bound, timestamped active-version approval, not a positional version number.
+- Added an explicit default-deny assertion proving audit-shaped fields cannot roll back an active skill, plus a valid Ed25519 signature fixture that restores version 1 from version 2 and preserves lifecycle status.
+- The store's rollback guard is not weakened; the test now exercises the intended trust boundary.
+
+---
+
 ## NK1 WorkPass538 — standardize WorkPass110 Node 24 TypeScript test mode
 
 - Standardized TypeScript-backed direct test commands in the WorkPass110 continual-learning workflow to `--experimental-transform-types`.
