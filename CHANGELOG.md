@@ -2,6 +2,7 @@
 
 - [OPTIMIZED] Reused the pre-materialized query-token array during hybrid memory ranking instead of allocating it once per candidate.
 - [OPTIMIZED] Added a bounded 512-entry term-frequency cache alongside the existing token cache, so BM25 scoring reuses tokenization results and iterates the already-unique query terms instead of retokenizing each ranked candidate.
+- [HARDENED] Fixed bounded-cache eviction for an empty-string key: capacity enforcement now checks for an undefined key rather than treating the empty string as a missing entry. The regression fixture exercises that case.
 - [REGRESSION] Extended `tests/optimization-indexed-memory-lookup.mjs` to check frequency counts, bounded cache size, and index integrity after cache churn.
 - [OPTIMIZED] Added a read-only `MemoryOS2.peek(id)` lookup backed by the canonical `itemIndex`. Updated the memory fabric lifecycle lookup, `revise`, `updateSignals`, and `get` to use the existing ID index instead of linear scans or a full snapshot lookup where possible.
 - [OPTIMIZED] Semantic-index maintenance now builds one fresh ID map after the asynchronous embedding call and validates each returned row in O(1), replacing repeated full-array searches while preserving stale-write checks.
