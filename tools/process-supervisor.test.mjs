@@ -53,6 +53,28 @@ test('runCommand can stream live output while keeping a bounded diagnostic tail'
   assert.ok(observed.join('').includes('streamed-live-output'));
 });
 
+test('runCommand does not label an exact-capacity capture as truncated', async () => {
+  const result = await runCommand(process.execPath, [
+    '-e',
+    'process.stdout.write("x".repeat(64));',
+  ], { maxOutputBytes: 64, timeoutMs: 2_000 });
+
+  assert.equal(result.code, 0);
+  assert.equal(result.out, 'x'.repeat(64));
+  assert.equal(result.outTruncated, false);
+});
+
+test('runCommand supports a zero-byte capture without retaining child output', async () => {
+  const result = await runCommand(process.execPath, [
+    '-e',
+    'process.stdout.write("sensitive-output");',
+  ], { maxOutputBytes: 0, timeoutMs: 2_000 });
+
+  assert.equal(result.code, 0);
+  assert.equal(result.out, '');
+  assert.equal(result.outTruncated, true);
+});
+
 test('runCommand reports executable startup failures instead of hanging', async () => {
   const missingExecutable = process.platform === 'win32'
     ? 'Z:\\nk1-missing-executable.exe'
