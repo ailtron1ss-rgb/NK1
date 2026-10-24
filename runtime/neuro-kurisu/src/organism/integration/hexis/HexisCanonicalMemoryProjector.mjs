@@ -120,16 +120,20 @@ export class HexisCanonicalMemoryProjector {
     }
 
     const existingItems = this.memoryFabric.canonicalSnapshot().items ?? [];
+    const semanticGraphBefore = this.semanticGraph?.snapshot();
+    const semanticNodeIdsByRef = new Map();
     const beforeIds = new Set(existingItems.map(item => item.id));
     const existingImportKeys = new Set(existingItems
       .filter(item => String(item.source ?? '').startsWith('hexis:'))
       .map(item => String(item.source) + '\0' + stableRecordContent(item.content)));
     const createdIds = [];
-    const touchedIds = [];
     const warnings = [];
     const importedIds = [];
+    const semanticEdgeIds = [];
     let importedCount = 0;
     let deduplicatedCount = 0;
+    let projectedRelationships = 0;
+    let deferredRelationships = 0;
     const appliedAt = Date.now();
     const attempt = Math.max(1, Math.floor(Number(stage.applicationAttempts ?? 1)));
 
@@ -139,9 +143,11 @@ export class HexisCanonicalMemoryProjector {
         const nativeType = type.toLowerCase();
         const source = 'hexis:' + hash(lineageId).slice(0, 12) + ':' + hash(ref + '\0' + contentHash).slice(0, 24);
         const existingKey = source + '\0' + stableRecordContent(memoryText);
+        const salience = clamp01(Number.isFinite(Number(row.importance)) ? Number(row.importance) : 0.55);
         if (existingImportKeys.has(existingKey)) {
           const duplicate = existingItems.find(candidate => candidate.source === source && stableRecordContent(candidate.content) === stableRecordContent(memoryText));
           if (duplicate?.id) importedIds.push(duplicate.id);
+          this.ensureSemanticNode(ref, memoryText, nativeType, salience, semanticNodeIdsByRef);
           deduplicatedCount++;
           continue;
         }
@@ -151,7 +157,6 @@ export class HexisCanonicalMemoryProjector {
         const validUntilAt = dateMs(row.valid_until ?? row.validUntil);
         const trustValue = row.trust_level ?? row.trustLevel ?? row.provenance?.confidence;
         const confidence = clamp01(Number.isFinite(Number(trustValue)) ? Number(trustValue) : 0.45);
-        const salience = clamp01(Number.isFinite(Number(row.importance)) ? Number(row.importance) : 0.55);
         const tags = [...new Set([
           'hexis-import',
           'hexis:' + nativeType.slice(0, 64),
@@ -217,7 +222,25 @@ export class HexisCanonicalMemoryProjector {
           beforeIds.add(inserted.id);
           importedCount++;
         }
+        this.ensureSemanticNode(ref, memoryText, nativeType, salience, semanticNodeIdsByRef);
         existingImportKeys.add(existingKey);
+      }
+
+      const relationshipRows = Array.isArray(sections.relationships) ? sections.relationships : [];
+      for (const relationship of relationshipRows) {
+        const fromRef = asText(relationship?.source_ref, 512);
+        const toRef = asText(relationship?.target_ref, 512);
+        const from = semanticNodeIdsByRef.get(fromRef);
+        const to = semanticNodeIdsByRef.get(toRef);
+        if (!this.semanticGraph || !from || !to || from === to) {
+          deferredRelationships++;
+          continue;
+        }
+        const relation = semanticRelationType(relationship?.edge_type);
+        const prior = this.semanticGraph.snapshot().edges.find(edge => edge.from === from && edge.to === to && edge.relation === relation);
+        const edge = prior ?? this.semanticGraph.connect(from, to, relation, clamp01(relationship?.properties?.weight ?? relationship?.properties?.confidence ?? 0.55));
+        semanticEdgeIds.push(edge.id);
+        projectedRelationships++;
       }
     } catch (error) {
       const rollbackErrors = [];
@@ -230,13 +253,25 @@ export class HexisCanonicalMemoryProjector {
           rollbackErrors.push(String(rollbackError?.message ?? rollbackError).slice(0, 240));
         }
       }
+      if (this.semanticGraph && semanticGraphBefore) {
+        try {
+          this.semanticGraph.restore(semanticGraphBefore);
+        } catch (graphRollbackError) {
+          rollbackErrors.push('semantic-graph:' + String(graphRollbackError?.message ?? graphRollbackError).slice(0, 220));
+        }
+      }
       const reason = String(error?.message ?? error).slice(0, 500);
       throw new Error('hmx-canonical-apply-failed:' + reason + (rollbackErrors.length ? ';rollback-failures=' + rollbackErrors.join('|') : ''));
     }
 
     const deferredSections = deferredSectionCounts(sections);
+    if (Array.isArray(sections.relationships)) {
+      if (deferredRelationships > 0) deferredSections.relationships = deferredRelationships;
+      else delete deferredSections.relationships;
+    }
+    if (projectedRelationships > 0) warnings.push('Relationships whose endpoints were both present in the imported memories section were projected into the canonical semantic graph.');
     if (Object.keys(deferredSections).length) {
-      warnings.push('Only the memories section is projected into canonical MemoryOS2 in this pass; other non-empty sections remain approved-but-deferred.');
+      warnings.push('Canonical memories and relationships between imported memory endpoints are projected in this pass; other non-empty sections remain approved-but-deferred.');
     }
     if (normalized.length === 0) warnings.push('The accepted HMX document contained no memory records to apply.');
     const base = {
@@ -253,6 +288,9 @@ export class HexisCanonicalMemoryProjector {
       uniqueMemoryRecords: normalized.length,
       importedCount,
       deduplicatedCount,
+      projectedRelationships,
+      deferredRelationships,
+      semanticEdgeIds: [...new Set(semanticEdgeIds)].slice(0, 512),
       memoryIds: [...new Set(importedIds)].slice(0, 256),
       createdMemoryIds: [...new Set(createdIds)].slice(0, 256),
       deferredSections,
