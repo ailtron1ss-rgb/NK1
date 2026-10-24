@@ -404,6 +404,7 @@ export class OrganismRuntime {
         const reason = String(error?.message || error).replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').slice(0, 240);
         this.runtimeClosure.fail({ at: Date.now(), tick: Number(this.core.operationalStatusSnapshot().tick) || 0, reason });
         this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+        await this.core.flush().catch(() => {});
         await this.journal.write('error', 'runtime.batch.begin.failed', { message: reason }).catch(() => {});
         throw error;
       }
