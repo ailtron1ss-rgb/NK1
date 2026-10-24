@@ -7,6 +7,9 @@ on:
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
       - 'runtime/neuro-kurisu/tests/workpass294-correlated-postcondition.mjs'
       - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/tsconfig.clean.json'
+      - 'runtime/neuro-kurisu/src/node-shims.d.ts'
       - '.github/workflows/workpass294-correlated-postcondition.yml'
   workflow_dispatch:
 permissions:
@@ -23,6 +26,9 @@ jobs:
           package-manager-cache: false
       - name: Enforce runtime version
         run: node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
       - name: Type-check runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck

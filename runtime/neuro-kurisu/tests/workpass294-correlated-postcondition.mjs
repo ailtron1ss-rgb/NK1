@@ -6,6 +6,7 @@ import {
   isTrustedDecisionLinkedExternalPostcondition,
   isTrustedExternalPostconditionVerification,
 } from '../src/organism/system/OutcomeVerificationService.ts';
+import { OutcomeCognitionFabric } from '../src/organism/system/OutcomeCognitionFabric.ts';
 
 const root = process.cwd();
 const gatewaySource = readFileSync(resolve(root, 'src/organism/system/ActionGateway.ts'), 'utf8');
@@ -17,8 +18,16 @@ assert.match(coreSource, /trace\.tick === trace\.stateBefore\.tick/,
   'a valid ticket alone cannot stand in for the exact persisted selected decision trace');
 assert.match(coreSource, /decisionLinkedExternalPostcondition \? options\.decisionId : undefined/,
   'observations without the exact join may be ingested, but cannot claim decision/temporal credit');
-assert.match(gatewaySource, /executionId,\s*\.\.\.(?:typeof context\.decisionId|typeof prior\.decisionId)/,
+assert.match(gatewaySource, /executionId,\s*\.\.\.\(?(?:typeof context\.decisionId|typeof prior\.decisionId)/,
   'gateway verification must carry the action execution and decision tickets');
+assert.match(coreSource, /const trustedEventLink = Boolean\(decisionLinkedExternalPostcondition && actionInput && linkedDecisionId/,
+  'event ID propagation requires the trusted decision/input binding, not just a caller string');
+assert.match(coreSource, /const evidenceEventId = trustedEventLink && typeof v\.evidenceEventId === 'string' \? v\.evidenceEventId : undefined/,
+  'only a freshly trusted verifier result may pass its event key into the canonical observer');
+assert.match(coreSource, /this\.integrateVerifiedToolObservation\(id, result, options, false, decisionLinkedExternalPostcondition, input\)/,
+  'the canonical full action input is rebound to the exact verification before the event key is admitted');
+assert.match(coreSource, /this\.evidenceResearchSubsystem\.externalObserver\.snapshot\(\)/,
+  'the event enters the existing canonical external-observation owner rather than a parallel evidence store');
 assert.match(serviceSource, /trustedExternalPostconditionResults\.get\(value as object\)/,
   'correlation must be anchored to the exact verifier-minted object');
 
@@ -47,6 +56,27 @@ const verification = await service.verify({
 });
 
 assert.equal(isTrustedExternalPostconditionVerification(verification, expected.input), true);
+assert.match(verification.evidenceEventId ?? '', /^outcome:[a-f0-9]{40}$/,
+  'verified external evidence with exact gateway IDs should expose a stable shared event key');
+const replayedVerification = await service.verify({
+  ...expected, result: { ok: true, observationId: 'obs-1' },
+}, async () => ({
+  verified: true, basis: 'external-postcondition', confidence01: 0.98,
+  externalObservation: true, observationId: 'obs-1',
+  expectedPostcondition: 'fresh scene observed', observedPostcondition: 'fresh scene observed',
+}));
+assert.equal(replayedVerification.evidenceEventId, verification.evidenceEventId,
+  'same exact execution/decision/input/observation produces the same cross-consumer event ID');
+const alternateDecision = await service.verify({
+  ...expected, decisionId: 'decision:other-trace', result: { ok: true, observationId: 'obs-1' },
+}, async () => ({
+  verified: true, basis: 'external-postcondition', confidence01: 0.98,
+  externalObservation: true, observationId: 'obs-1',
+  expectedPostcondition: 'fresh scene observed', observedPostcondition: 'fresh scene observed',
+}));
+assert.notEqual(alternateDecision.evidenceEventId, verification.evidenceEventId,
+  'the same sensor observation cannot be rebound to another decision identity');
+
 assert.equal(isTrustedDecisionLinkedExternalPostcondition(verification, expected), true);
 assert.equal(isTrustedDecisionLinkedExternalPostcondition(verification, { ...expected, executionId: 'exec-ffffffffffffffff' }), false,
   'a valid observation cannot be replayed under a different execution ID');
@@ -77,6 +107,8 @@ const missingLineage = await service.verify({
 }));
 assert.equal(isTrustedDecisionLinkedExternalPostcondition(missingLineage, expected), false,
   'a receipt with no host action ticket must never bind itself to a decision');
+assert.equal(missingLineage.evidenceEventId, undefined,
+  'an external observation without the exact host execution/decision join cannot mint a shared event ID');
 
 const overlongDecision = 'd'.repeat(181);
 const malformed = await service.verify({
@@ -114,6 +146,71 @@ assert.equal(isTrustedDecisionLinkedExternalPostcondition(controlBearing, {
   ...expected,
   decisionId: 'decision:trace-42',
 }), false, 'control-bearing IDs must not be normalized into a valid ticket');
+
+
+const fabric = new OutcomeCognitionFabric();
+const eventKey = 'outcome:' + 'a'.repeat(40);
+const projected = fabric.project({
+  tick: 12,
+  tool: expected.toolId,
+  ok: true,
+  executionId: expected.executionId,
+  verification: {
+    verified: true, basis: 'external-postcondition', confidence01: 0.98,
+    externalObservation: true, observationId: 'obs-1',
+    evidenceEventId: eventKey,
+    expectedPostcondition: 'fresh scene observed',
+    observedPostcondition: 'fresh scene observed',
+  },
+});
+assert.equal(projected.verificationRecord.evidenceEventId, eventKey,
+  'the canonical outcome projection must preserve the verifier event key');
+const restoredFabric = new OutcomeCognitionFabric();
+restoredFabric.restore(fabric.snapshot());
+const replayedProjection = restoredFabric.project({
+  tick: 12,
+  tool: expected.toolId,
+  ok: true,
+  executionId: expected.executionId,
+  verification: {
+    verified: true, basis: 'external-postcondition', confidence01: 0.98,
+    externalObservation: true, observationId: 'obs-1',
+    evidenceEventId: eventKey,
+    expectedPostcondition: 'fresh scene observed',
+    observedPostcondition: 'fresh scene observed',
+  },
+});
+assert.equal(replayedProjection.verificationRecord.evidenceEventId, eventKey,
+  'event identity must survive snapshot/restart and exact replay');
+assert.throws(() => restoredFabric.project({
+  tick: 12,
+  tool: expected.toolId,
+  ok: true,
+  executionId: expected.executionId,
+  verification: {
+    verified: true, basis: 'external-postcondition', confidence01: 0.98,
+    externalObservation: true, observationId: 'obs-1',
+    evidenceEventId: 'outcome:' + 'b'.repeat(40),
+    expectedPostcondition: 'fresh scene observed',
+    observedPostcondition: 'fresh scene observed',
+  },
+}), /outcome-execution-id-conflict/,
+  'one execution cannot be rebound to a different evidence event key');
+const malformedEvent = fabric.project({
+  tick: 13,
+  tool: expected.toolId,
+  ok: true,
+  executionId: 'exec-abcdef0123456789',
+  verification: {
+    verified: true, basis: 'external-postcondition', confidence01: 0.98,
+    externalObservation: true, observationId: 'obs-2',
+    evidenceEventId: 'outcome:not-a-digest',
+    expectedPostcondition: 'fresh scene observed',
+    observedPostcondition: 'fresh scene observed',
+  },
+});
+assert.equal(malformedEvent.verificationRecord.evidenceEventId, undefined,
+  'malformed event keys must not enter the causal projection');
 
 console.log(JSON.stringify({
   ok: true,

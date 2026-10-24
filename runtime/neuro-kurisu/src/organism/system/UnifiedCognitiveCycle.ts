@@ -1,3 +1,4 @@
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 /**
  * BIG PASS 162 / WorkPass287 — Unified Cognitive Cycle contract.
  *
@@ -48,7 +49,10 @@ export class UnifiedCognitiveCycle {
     // subset of incomplete cycles. Independent clamping can otherwise make
     // aggregate counts exceed the number of observations.
     if(source.version!==undefined&&source.version!==1)throw new RangeError('unsupported cognitive-cycle state version');
-    const completeCycles=Math.min(cycles,safeCounter(source.completeCycles));
+    const rawCompleteCycles=safeCounter(source.completeCycles);
+    const rawIncompleteCycles=safeCounter(source.incompleteCycles);
+    const rawBrokenLineages=safeCounter(source.brokenLineages);
+    const completeCycles=Math.min(cycles,rawCompleteCycles);
     // Partition every recorded cycle. Any count not proven complete is
     // conservatively incomplete; otherwise a truncated/corrupt snapshot could
     // silently drop cycles from both outcome buckets.
@@ -58,6 +62,11 @@ export class UnifiedCognitiveCycle {
     const malformedMissing=rawMissing.some((stage)=>typeof stage!=='string'||!ALL_STAGES.has(stage as UnifiedCycleStage));
     const filteredMissing=[...new Set(rawMissing.filter((stage):stage is UnifiedCycleStage=>typeof stage==='string'&&ALL_STAGES.has(stage as UnifiedCycleStage)))];
     const normalizedMissing=malformedMissing?[...REQUIRED]:filteredMissing;
+    const aggregateCountsConsistent =
+      source.cycles===cycles && source.completeCycles===rawCompleteCycles &&
+      source.incompleteCycles===rawIncompleteCycles && source.brokenLineages===rawBrokenLineages &&
+      rawCompleteCycles<=cycles && rawCompleteCycles+rawIncompleteCycles===cycles &&
+      rawBrokenLineages<=rawIncompleteCycles;
     const lastTick=typeof source.lastTick==='number'&&Number.isSafeInteger(source.lastTick)&&source.lastTick>=-1?source.lastTick:-1;
     const missing=cycles===0&&normalizedMissing.length===0?[...REQUIRED]:normalizedMissing;
     this.state={
@@ -69,14 +78,27 @@ export class UnifiedCognitiveCycle {
       meanStageCoverage01:safeMetric(source.meanStageCoverage01),
       meanCausalContinuity01:safeMetric(source.meanCausalContinuity01),
       lastTick,
-      lastComplete:cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
+      lastComplete:aggregateCountsConsistent&&cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
       lastMissingStages:missing,
     };
   }
 
-  evaluate(input:{tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number}):UnifiedCognitiveCycleResult {
-    if(input===null||typeof input!=='object')throw new TypeError('cognitive cycle input must be an object');
+  evaluate(rawInput:{tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number}):UnifiedCognitiveCycleResult {
+    // Detach caller-owned data before reading its properties. This rejects getters,
+    // proxy/cycle payloads and polluted prototypes without letting them mutate state.
+    type CycleInput={tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number};
+    if(rawInput===null||typeof rawInput!=='object')throw new TypeError('cognitive cycle input must be an object');
+    let input:CycleInput;
+    try {
+      input=snapshotPlainData<CycleInput>(rawInput,{maxDepth:6,maxNodes:128,maxStringUnits:16*1024});
+    } catch {
+      throw new TypeError('cognitive cycle input data boundary rejected');
+    }
+    if(input===null||typeof input!=='object'||Array.isArray(input))throw new TypeError('cognitive cycle input must be an object');
+    const allowedInputKeys=new Set(['tick','stageIds','parentIntegrity01']);
+    if(Object.keys(input).some(key=>!allowedInputKeys.has(key)))throw new TypeError('cognitive cycle input contains unknown fields');
     if(input.stageIds===null||typeof input.stageIds!=='object'||Array.isArray(input.stageIds))throw new TypeError('stageIds must be an object');
+    if(Object.keys(input.stageIds).some(stage=>!ALL_STAGES.has(stage as UnifiedCycleStage)))throw new TypeError('stageIds contains an unknown cognitive stage');
     if(!Number.isSafeInteger(input.tick)||input.tick<0)throw new RangeError('cognitive cycle tick must be a non-negative safe integer');
     if(input.tick<=this.state.lastTick)throw new RangeError('cognitive cycle tick must strictly increase');
     if(typeof input.parentIntegrity01!=='number'||!Number.isFinite(input.parentIntegrity01)||input.parentIntegrity01<0||input.parentIntegrity01>1) {

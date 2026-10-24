@@ -1,4 +1,5 @@
 import type { EnvironmentAction } from '../world/WorldEnvironment.ts';
+import { createStableEvidenceEventId } from '../system/EvidenceEventIdentity.ts';
 import type { EmbodimentRuntime } from './EmbodimentRuntime.ts';
 
 export type EmbodiedExecutionStatus = 'executed'|'unavailable'|'skipped'|'failed'|'ambiguous';
@@ -11,6 +12,8 @@ export interface EmbodiedActionResult {
   realityClass:EmbodiedRealityClass;
   source:string;
   at:number;
+  /** Stable event join key for idempotency; it is not proof of external success. */
+  eventId?:string;
   before:{battery01:number;thermal01:number;cognitiveCapacity01:number;awake:boolean;source:string};
   after:{battery01:number;thermal01:number;cognitiveCapacity01:number;awake:boolean;source:string};
   stateDelta:{battery01:number;thermal01:number;cognitiveCapacity01:number;awakeChanged:boolean};
@@ -32,7 +35,7 @@ export class EmbodiedActionExecutor {
   private readonly embodiment: EmbodimentRuntime;
   constructor(embodiment: EmbodimentRuntime) { this.embodiment = embodiment; }
 
-  async execute(action:string, input:{spokenText?:string;speechEventId?:string;allowCamera?:boolean;captureCamera?:(cameraId:number,retain:boolean)=>Promise<{ok:boolean;path?:string;size?:number;hash?:string;error?:string;executionId?:string;providerReceiptId?:string}>}={}):Promise<EmbodiedActionResult>{
+  async execute(action:string, input:{decisionId?:string;spokenText?:string;speechEventId?:string;allowCamera?:boolean;captureCamera?:(cameraId:number,retain:boolean)=>Promise<{ok:boolean;path?:string;size?:number;hash?:string;error?:string;executionId?:string;providerReceiptId?:string}>}={}):Promise<EmbodiedActionResult>{
     const preSample=await this.embodiment.sample({force:true,requestedSensors:['battery','thermal','network']});
     const before=this.embodiment.snapshot();
     const at=Date.now();
@@ -135,6 +138,15 @@ export class EmbodiedActionExecutor {
     const consequenceReason=verified?'independent-live-device-post-action-measurement':(actuationAction&&status==='executed'?'device-command-acknowledged-without-independent-effect-verification':(status==='ambiguous'?'tts-result-unknown-do-not-retry-or-credit':(status==='executed'?'action-executed-without-independent-device-proof':'no-independent-device-consequence-proof')));
     const effect01=clamp(changed01*(verified?.9:.15));
     const realityClass:EmbodiedRealityClass=verified?'device-observation':(actuationAction&&(status==='executed'||status==='ambiguous')&&afterBody.telemetry.source==='android-termux'?'device-actuation':'derived');
-    return {version:1,action,status,realityClass,source:afterBody.telemetry.source,at,before:base,after:{battery01:afterBody.telemetry.battery01,thermal01:afterBody.thermalStrain01,cognitiveCapacity01:afterBody.cognitiveCapacity01,awake:afterBody.awake,source:afterBody.telemetry.source},stateDelta:delta,effect01,reason,capability,artifact,consequenceVerification:{attempted:true,independent,verified,sourceStable,freshBefore01:beforeFresh,freshAfter01:afterFresh,changed01,reason:consequenceReason,verificationMode}};
+    const afterState={battery01:afterBody.telemetry.battery01,thermal01:afterBody.thermalStrain01,cognitiveCapacity01:afterBody.cognitiveCapacity01,awake:afterBody.awake,source:afterBody.telemetry.source};
+    const consequenceVerification={attempted:true,independent,verified,sourceStable,freshBefore01:beforeFresh,freshAfter01:afterFresh,changed01,reason:consequenceReason,verificationMode};
+    const result:EmbodiedActionResult={version:1,action,status,realityClass,source:afterBody.telemetry.source,at,before:base,after:afterState,stateDelta:delta,effect01,reason,capability,artifact,consequenceVerification};
+    const decisionText=input.decisionId;
+    const hasControl=typeof decisionText==='string'&&Array.from(decisionText).some(character=>{const code=character.codePointAt(0)??0;return code<=0x1f||(code>=0x7f&&code<=0x9f);});
+    const decisionId=typeof decisionText==='string'&&decisionText.length>0&&decisionText.length<=180&&decisionText.trim()===decisionText&&!hasControl?decisionText.normalize('NFKC'):undefined;
+    // Stable occurrence identity is input/decision-bound, not wall-clock or outcome-bound.
+    // A changed result for this same decision therefore conflicts in RealityEvidenceLedger.
+    const eventId=decisionId?createStableEvidenceEventId('embodied',[decisionId]):undefined;
+    return eventId?{...result,eventId}:result;
   }
 }

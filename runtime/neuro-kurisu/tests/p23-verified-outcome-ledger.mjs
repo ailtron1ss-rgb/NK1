@@ -14,14 +14,46 @@ const outcome = (overrides={}) => ({
   evidenceRef:'artifact://trial-1', observedAt:1000, ...overrides,
 });
 assert.equal(VerifiedOutcomeLedger.fingerprintPrompt('  REMEMBER   the blue key. '), hash('Remember the blue key.'));
+let promptCoercions = 0;
+assert.throws(() => VerifiedOutcomeLedger.fingerprintPrompt({
+  toString() { promptCoercions++; return 'coerced prompt'; },
+}), /prompt-must-be-string/);
+assert.equal(promptCoercions, 0, 'prompt fingerprinting must reject non-strings before coercion');
+assert.throws(() => VerifiedOutcomeLedger.fingerprintPrompt('x'.repeat(16 * 1024 + 1)), /prompt-length-limit-exceeded/);
 assert.throws(() => new VerifiedOutcomeLedger([
   manifest[0],
   { ...manifest[1], promptFingerprint:hash(' remember the BLUE key. ') },
 ]), /cross-split prompt leakage/);
 assert.throws(() => new VerifiedOutcomeLedger([manifest[0], manifest[0]]), /duplicate task id/);
+assert.throws(() => new VerifiedOutcomeLedger([
+  { ...manifest[0], taskId:'t'.repeat(181) },
+]), /invalid task manifest entry/, 'manifest IDs are bounded before index construction');
+let manifestGetterReads = 0;
+const getterBackedManifestEntry = { ...manifest[0] };
+Object.defineProperty(getterBackedManifestEntry, 'taskId', {
+  enumerable: true, configurable: true,
+  get() { manifestGetterReads++; return 'task-a'; },
+});
+assert.throws(() => new VerifiedOutcomeLedger([getterBackedManifestEntry]), /invalid task manifest data boundary/);
+assert.equal(manifestGetterReads, 0, 'manifest ingress must reject accessors without invoking getters');
 
 assert.equal(ledger.record(outcome()).accepted, true);
 assert.equal(ledger.record(outcome()).rejection.code, 'duplicate-attempt');
+
+// Runtime inputs are not trusted merely because the TypeScript parameter is typed.
+let outcomeGetterReads = 0;
+const getterBackedOutcome = outcome({ method: 'getter-attack' });
+Object.defineProperty(getterBackedOutcome, 'taskId', {
+  configurable: true, enumerable: true,
+  get() { outcomeGetterReads++; return 'task-b'; },
+});
+const getterRejection = ledger.record(getterBackedOutcome);
+assert.equal(getterRejection.rejection.code, 'invalid-outcome');
+assert.equal(outcomeGetterReads, 0, 'ledger ingestion must reject getters without invoking them');
+const cyclicOutcome = outcome({ method: 'cyclic-attack' });
+cyclicOutcome.self = cyclicOutcome;
+assert.equal(ledger.record(cyclicOutcome).rejection.code, 'invalid-outcome',
+  'cyclic outcome data must be quarantined before outcome fields are inspected');
 assert.equal(ledger.record(outcome({ method:'self-judge', authority:'self-report' })).rejection.code, 'self-report-not-authoritative');
 assert.equal(ledger.record(outcome({ method:'wrong-version', taskVersion:'2' })).rejection.code, 'version-mismatch');
 assert.equal(ledger.record(outcome({ method:'   ' })).rejection.code, 'invalid-method');
@@ -55,8 +87,26 @@ const snapshot = ledger.snapshot();
 assert.equal(snapshot.manifestCount, 3);
 assert.equal(snapshot.rejectionCounts['self-report-not-authoritative'], 1);
 assert.equal(snapshot.acceptedOutcomes, 41);
-assert.equal(snapshot.rejectedOutcomes, 8);
+assert.equal(snapshot.rejectedOutcomes, 10, 'two malformed hostile-input fixtures are counted as rejected outcomes');
 snapshot.outcomes[0].passed = !snapshot.outcomes[0].passed;
 assert.notEqual(snapshot.outcomes[0].passed, ledger.snapshot().outcomes[0].passed, 'snapshot must not mutate ledger state');
+assert.equal(ledger.record(outcome({method:'m'.repeat(97)})).rejection.code,'invalid-method',
+  'outcome method size must be rejected before it enters the identity index');
+assert.equal(ledger.record(outcome({evidenceRef:'e'.repeat(4097)})).rejection.code,'invalid-outcome',
+  'oversized evidence locators must not persist into the outcome ledger');
+
+// Restoring persisted evidence must not invoke getters or traverse cyclic input.
+let restoreSnapshotGetterReads=0;
+const getterBackedSnapshot=ledger.snapshot();
+Object.defineProperty(getterBackedSnapshot,'schemaVersion',{
+  enumerable:true,configurable:true,
+  get(){restoreSnapshotGetterReads++;return 2;},
+});
+assert.throws(()=>VerifiedOutcomeLedger.restoreSnapshot(getterBackedSnapshot),/invalid ledger snapshot data boundary/);
+assert.equal(restoreSnapshotGetterReads,0,'ledger restore must reject accessors before reading snapshot fields');
+const cyclicSnapshot=ledger.snapshot();
+cyclicSnapshot.self=cyclicSnapshot;
+assert.throws(()=>VerifiedOutcomeLedger.restoreSnapshot(cyclicSnapshot),/invalid ledger snapshot data boundary/);
+
 console.log('P23_VERIFIED_OUTCOME_LEDGER=PASS');
 console.log(JSON.stringify({paired, counts:{accepted:ledger.snapshot().acceptedOutcomes,rejected:ledger.snapshot().rejectedOutcomes}}));

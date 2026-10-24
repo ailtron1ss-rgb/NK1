@@ -21,7 +21,7 @@ export interface OutcomeCognitionProjectionInput {
 export interface OutcomeCognitionProjection {
   verificationRecord:{
     at:number; tick:number; tool:string; ok:boolean; verified:boolean;
-    basis:OutcomeVerification['basis']; confidence01:number; observationId?:string;
+    basis:OutcomeVerification['basis']; confidence01:number; observationId?:string; evidenceEventId?:string;
     externalObservation:boolean; expectedPostcondition?:string; observedPostcondition?:string; executionId?:string; predictionId?:string; outcomeClass?:ActionOutcomeClass;
     externalObservations?:Array<{observationId:string;verified:boolean;confidence01:number;expectedPostcondition?:string;observedPostcondition?:string;at:number;reason?:string;assessment?:'match'|'mismatch'|'unknown';sourceId?:string;sourceClass?:'os'|'device'|'user'|'external-api'|'world'|'organism'|'simulator'|'unknown';independenceKey?:string}>;
     externalEvidenceStatus?:'none'|'corroborated'|'contradicted'|'mixed';
@@ -70,6 +70,8 @@ export type OutcomeEvidenceRevisionResult =
   | {resolved:false;reason:'execution-id-required'|'provider-receipt-id-required'|'provider-receipt-invalid'|'no-matching-outcome'|'execution-tool-mismatch'|'outcome-execution-id-conflict'|'evidence-revision-conflict'|'evidence-revision-ledger-full'|'causal-revision-conflict'};
 
 const cap=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const boundedEvidenceEventId=(value:unknown):string|undefined=>
+  typeof value==='string'&&/^outcome:[a-f0-9]{40}$/.test(value)?value:undefined;
 const boundedText=(value:unknown,max:number):string|undefined=>{
   if(typeof value!=='string')return undefined;
   const text=value.trim();
@@ -97,7 +99,8 @@ export class OutcomeCognitionFabric {
       if(!value||typeof value!=='object')return false;
       const row=value as OutcomeCognitionProjection['verificationRecord'];
       return Number.isFinite(Number(row.at))&&typeof row.tool==='string'&&row.tool.length>0&&row.tool.length<=180&&
-        ['none','tool-contract','external-postcondition'].includes(row.basis)&&typeof row.ok==='boolean'&&typeof row.verified==='boolean';
+        ['none','tool-contract','external-postcondition'].includes(row.basis)&&typeof row.ok==='boolean'&&typeof row.verified==='boolean'&&
+        (row.evidenceEventId===undefined||boundedEvidenceEventId(row.evidenceEventId)===row.evidenceEventId);
     };
     this.records=Array.isArray(snapshot?.records)?snapshot.records.filter(validRecord).slice(-this.maxRecords).map(r=>structuredClone(r)):[];
     this.projectionIndex.clear();
@@ -126,7 +129,7 @@ export class OutcomeCognitionFabric {
   }
 
   private fingerprintFromRecord(record:OutcomeCognitionProjection['verificationRecord']):string{
-    return sha256Stable({executionId:record.executionId??'',tool:record.tool,ok:Boolean(record.ok),outcomeClass:record.outcomeClass??null,verification:{verified:Boolean(record.verified),basis:record.basis,confidence01:cap(record.confidence01),externalObservation:Boolean(record.externalObservation),observationId:record.observationId??null,expectedPostcondition:record.expectedPostcondition??null,observedPostcondition:record.observedPostcondition??null}});
+    return sha256Stable({executionId:record.executionId??'',tool:record.tool,ok:Boolean(record.ok),outcomeClass:record.outcomeClass??null,verification:{verified:Boolean(record.verified),basis:record.basis,confidence01:cap(record.confidence01),externalObservation:Boolean(record.externalObservation),observationId:record.observationId??null,...(record.evidenceEventId?{evidenceEventId:record.evidenceEventId}:{}),expectedPostcondition:record.expectedPostcondition??null,observedPostcondition:record.observedPostcondition??null}});
   }
 
   private trimProjectionIndex(){while(this.projectionIndex.size>this.maxProjectionIndex){const oldest=this.projectionIndex.keys().next().value as string|undefined;if(!oldest)break;this.projectionIndex.delete(oldest);}}
@@ -139,6 +142,8 @@ export class OutcomeCognitionFabric {
     const executionId=boundedText(input.executionId,180);
     const allowedBasis=raw?.basis==='none'||raw?.basis==='tool-contract'||raw?.basis==='external-postcondition';
     const observationId=boundedText(raw?.observationId,180);
+    // The event key is a join identity, not proof. Preserve it only alongside a valid external-observation shape.
+    const evidenceEventId=boundedEvidenceEventId(raw?.evidenceEventId);
     const invalidExternalClaim=raw?.externalObservation===true&&raw?.basis!=='external-postcondition';
     const invalidVerifiedClaim=raw?.verified===true&&(!allowedBasis||raw.basis==='none');
     const missingExternalIdentity=raw?.basis==='external-postcondition'&&raw?.externalObservation===true&&!observationId;
@@ -149,11 +154,13 @@ export class OutcomeCognitionFabric {
       ? {verified:false,basis:'none',confidence01:0,externalObservation:false,notes:'invalid-verification-contract; evidence downgraded to unknown'}
       : {
           ...raw,
+          evidenceEventId:undefined,
           verified:raw?.verified===true&&raw.basis!=='none',
           basis:allowedBasis?raw.basis:'none',
           confidence01:cap(raw?.confidence01??0),
           externalObservation:raw?.basis==='external-postcondition'&&raw?.externalObservation===true&&Boolean(observationId),
           ...(observationId?{observationId}:{}),
+          ...(raw?.basis==='external-postcondition'&&raw?.externalObservation===true&&observationId&&evidenceEventId?{evidenceEventId}:{}),
           ...(expectedPostcondition?{expectedPostcondition}:{}),
           ...(observedPostcondition?{observedPostcondition}:{}),
         };
@@ -162,7 +169,7 @@ export class OutcomeCognitionFabric {
     const actionVerified=assessment==='match'||(assessment==='not-external'&&v.basis==='tool-contract'&&v.verified===true&&input.ok===true);
     const outcomeOk=Boolean(input.ok)&&!explicitlyContradicted;
     const verifiedExternal=Boolean(outcomeOk&&assessment==='match'&&actionVerified);
-    const fingerprint=executionId?sha256Stable({executionId,tool,ok:outcomeOk,outcomeClass:input.outcomeClass??null,verification:{verified:actionVerified,basis:v.basis,confidence01:cap(v.confidence01),externalObservation:Boolean(v.externalObservation),observationId:v.observationId??null,expectedPostcondition:v.expectedPostcondition??null,observedPostcondition:v.observedPostcondition??null}}):undefined;
+    const fingerprint=executionId?sha256Stable({executionId,tool,ok:outcomeOk,outcomeClass:input.outcomeClass??null,verification:{verified:actionVerified,basis:v.basis,confidence01:cap(v.confidence01),externalObservation:Boolean(v.externalObservation),observationId:v.observationId??null,...(v.evidenceEventId?{evidenceEventId:v.evidenceEventId}:{}),expectedPostcondition:v.expectedPostcondition??null,observedPostcondition:v.observedPostcondition??null}}):undefined;
     if(executionId){
       const prior=this.projectionIndex.get(executionId);
       if(prior){
@@ -173,7 +180,7 @@ export class OutcomeCognitionFabric {
 
     const row:OutcomeCognitionProjection['verificationRecord']={
       at:Date.now(),tick:input.tick,tool,ok:outcomeOk,verified:actionVerified,
-      basis:v.basis,confidence01:cap(v.confidence01),observationId:v.observationId,
+      basis:v.basis,confidence01:cap(v.confidence01),observationId:v.observationId,evidenceEventId:v.evidenceEventId,
       externalObservation:Boolean(v.externalObservation),expectedPostcondition:v.expectedPostcondition,
       observedPostcondition:v.observedPostcondition,executionId,predictionId:undefined,outcomeClass:input.outcomeClass,
       externalObservations:[],externalEvidenceStatus:'none',
@@ -186,7 +193,7 @@ export class OutcomeCognitionFabric {
       observationId:v.observationId,confidence01:v.confidence01,
       expectedPostcondition:v.expectedPostcondition,observedPostcondition:v.observedPostcondition,
       externalObservation:Boolean(v.externalObservation),contradicted:explicitlyContradicted,executionId,predictionId,decisionId,
-      data:{basis:v.basis,executionId,outcomeClass:input.outcomeClass},
+      data:{basis:v.basis,executionId,evidenceEventId:v.evidenceEventId??null,outcomeClass:input.outcomeClass},
     });
     // An action receipt is accountability evidence, not by itself a learning
     // assignment. Learning credit is created below only when an external observer

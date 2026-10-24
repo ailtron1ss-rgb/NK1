@@ -1,3 +1,400 @@
+## NK1 WorkPass518 — carry verifier event identity through the causal outcome spine (2026-10-24)
+
+- Extended the existing `OutcomeCognitionFabric` projection to retain the verifier's stable `evidenceEventId` alongside the execution, observation and postcondition fields; the event key is explicitly a join/idempotency key, not proof of truth.
+- Included the event key in the immutable execution fingerprint and causal event data, so reusing one execution ID with a different evidence key fails as an outcome identity conflict instead of silently rebinding ancestry.
+- Recovery validates persisted event-key shape and preserves valid identity across snapshot/restart; malformed keys are excluded from the projection. Older records without the optional field remain compatible.
+- Added regression coverage for propagation, exact replay after restore, changed-key conflict and malformed-key rejection in the existing correlated-postcondition test.
+- **Validation boundary:** committed on `feature/feedback`; this pass did not execute the runtime test, typecheck or hosted Actions. Do not mark the regression PASS until it runs at the exact head. No claim of real-world learning uplift or full end-to-end P65 propagation is made.
+
+## NK1 WorkPass542 — align signed-shadow E2E fixture with canonical candidate identity
+
+- Updated the signed-shadow runtime E2E fixture to compute candidate IDs using the current canonical five-element identity tuple, including the explicit `null` provenance fingerprint for a candidate without revision provenance.
+- This keeps the runtime test aligned with the production store and ensures the child-signed observation names the exact candidate staged by Core. No runtime check or trust boundary is weakened.
+
+---
+
+## NK1 WorkPass541 — align durable candidate identity with provenance and preserve legacy reads
+
+- Fixed `AtomicFileSkillStorePersistence` candidate validation to match the canonical VersionedSkillCandidateStore identity, including the fifth provenance fingerprint for provenance-bearing candidates.
+- Added strict shape validation for provenance schema version, fingerprints, dimension allowlist/uniqueness and timestamp before hashing it into candidate identity.
+- Preserved backward reads for the legacy four-field candidate ID only when provenance is absent; current writes with no provenance continue using the explicit fifth `null` component, while provenance-bearing IDs must match their fingerprint.
+- Extended the durable restart regression to stage and restore both a normal candidate and a provenance-bearing revision candidate. This closes the observed bug where valid file-backed staging failed as an atomic-write conflict.
+
+---
+
+## NK1 WorkPass540 — assert the earliest snapshot-integrity denial
+
+- Updated the malformed active-snapshot regression to assert the concrete first guard: changing the active candidate's base version to a nonexistent predecessor fails the persisted rollback-target binding check.
+- The previous expectation named a later CAS/signature guard that this fixture never reached. The earlier validation is stricter for this malformed target and remains unchanged.
+
+---
+
+## NK1 WorkPass539 — exercise rollback with authenticated approval
+
+- Updated the versioned skill-store regression to reflect the current rollback API: a rollback needs a signed, candidate-bound, timestamped active-version approval, not a positional version number.
+- Added an explicit default-deny assertion proving audit-shaped fields cannot roll back an active skill, plus a valid Ed25519 signature fixture that restores version 1 from version 2 and preserves lifecycle status.
+- The store's rollback guard is not weakened; the test now exercises the intended trust boundary.
+
+---
+
+## NK1 WorkPass538 — standardize WorkPass110 Node 24 TypeScript test mode
+
+- Standardized TypeScript-backed direct test commands in the WorkPass110 continual-learning workflow to `--experimental-transform-types`.
+- Updated the directly invoked npm test aliases and their nested test aliases used by this workflow so a constructor parameter property cannot stop the suite before behavioral assertions run.
+- This is runner compatibility only. It preserves test assertions, verifier authority, promotion policy and metric thresholds.
+
+---
+
+## NK1 WorkPass537 — run trusted shadow registry regression in TypeScript transform mode
+
+- Switched `test:p23:trusted-skill-shadow-run-registry` to `--experimental-transform-types`; the imported `TrustedSkillShadowRunRegistry` defines a TypeScript constructor parameter property and therefore cannot run under Node 24 strip-only mode.
+- Test-launch compatibility only; runtime registry behavior is unchanged.
+
+---
+
+## NK1 WorkPass536 — run skill-store dependent P23 test in Node TypeScript transform mode
+
+- Updated the skill-retrieval/reflection/curriculum regression alias to `--experimental-transform-types`. Its imported `VersionedSkillCandidateStore` uses TypeScript parameter properties, which Node 24's strip-only mode cannot execute.
+- This fixes the test command contract; no behavior, learning score, or promotion policy changes.
+
+---
+
+## NK1 WorkPass535 — preserve full recent ID caches and recover missing durable identities
+
+- Refined P23 restore reconciliation: keep the persisted newest-first deduplication cache intact when durable row IDs are already represented; when a durable identity is missing, evict only the oldest cache entry to make room. This retains bounded capacity while guaranteeing durable experience/replay rows remain deduplicated after restart.
+- Added full-capacity regression fixtures covering both processed-trace and replay IDs, including preservation of the newest cached key and recovery of a missing durable key.
+- Exact-head CI remains the verification authority; no overall readiness or learning uplift is claimed.
+
+---
+
+## NK1 WorkPass534 — preserve newest restored IDs and make metrics fixtures valid
+
+- P23 restore now prioritizes the persisted newest-first deduplication caches, then appends IDs recovered from sanitized durable experience/replay rows. This prevents old retained rows from displacing the cache's newest valid IDs while still rebuilding an empty cache after restore.
+- Extended P23 restore assertions to cover newest-cache precedence and recovery of a replay ID absent from the cache.
+- Corrected the reverse-arrival bootstrap fixture to use the manifest-authorized verifier ID (`v1`); previous `verify-v1` outcomes were rejected by the real authority gate, so the test never compared equivalent paired samples.
+- Replaced a brittle exact floating-point comparison in the stationary drift fixture with a tight tolerance. No learning-uplift or release-readiness claim is inferred from these fixes.
+
+---
+
+## NK1 WorkPass533 — restore idempotent Live2D expressions and stable CI contracts
+
+- The runtime Live2D viewer now caches the last applied expression and skips reapplying the same expression during repeated embodiment updates, avoiding needless expression resets while mouth/gaze signals change.
+- Fixed a floating-point exact-equality assertion in continual-transfer metrics by using a tight numerical tolerance.
+- Switched the P23 persisted-learning-restore test to TypeScript transform mode because its imported versioned skill store uses parameter properties.
+- These changes improve animation stability and validation reliability; browser/device E2E and physical lip-sync remain separate release gates.
+
+---
+
+## NK1 WorkPass532 — finish Node TypeScript test-mode compatibility and trusted replay metrics
+
+- Updated P26's direct TypeScript-backed test invocations to `--experimental-transform-types`, covering continual replay, replay ablation, transfer/forgetting and drift tests that may import constructor parameter properties.
+- Switched the Hermes production-promotion gate alias to transform mode; its candidate store transitively uses TypeScript parameter properties.
+- Corrected the external-only restore fixture to expect a zero rolling learning signal. Only verified runtime outcomes may seed rolling learning metrics, even when an imported record remains queryable.
+- No promotion gate was relaxed; exact-head CI remains the authority for closure.
+
+---
+
+## NK1 WorkPass531 — align replay validation with runtime contracts
+
+- Switched the P26 continual-replay regression to Node's TypeScript transform mode because its imported `ContinualReplayBuffer` uses a constructor parameter property, unsupported by strip-only mode.
+- Corrected poisoned-aggregate restore assertions: retained external events remain queryable but cannot be counted as grounded outcomes or consolidated memory. Trusted counters are recomputed from verified runtime records, not all rows.
+- Exact-head workflows will determine whether downstream learning and replay regressions are resolved.
+
+---
+
+## NK1 WorkPass530 — make Hermes signed-receipt tamper test isolate signature integrity
+
+- The tamper fixture now changes a signed seed field rather than the binary pass result. Changing `passed` was rejected earlier by the report/outcome consistency gate, so the assertion did not reach the signed-observation verifier.
+- The revised test keeps task/run/outcome aligned while corrupting the signed payload, directly exercising signature rejection.
+
+---
+
+## NK1 WorkPass529 — reconnect P26 validation commands and grounded replay fixture
+
+- Added the two npm aliases already required by `p26-learning-validation.yml`: recovery benchmark and continual-learning matrix. Both point to existing test files.
+- Corrected replay-diversity traces so each pre-action state tick matches the trace tick; the runtime deliberately rejects mismatched lineage rather than emitting replayable evidence.
+- Validation is delegated to exact-head Actions; no benchmark uplift is inferred from fixture repair.
+
+---
+
+## NK1 WorkPass528 — sanitize P26 restore diagnostics and ground replay fixtures (2026-10-24)
+
+- `ParametricPolicyLearner.restore()` now validates the update counter, finite bounded metrics, training timestamp and literal boolean freeze state, in addition to existing weight/bias sanitization.
+- Corrected replay-diversity fixtures to include the post-action state attribution required by `recordOutcome()`; ungrounded transitions are intentionally rejected before replay.
+- Validation remains pending on the exact PR head; no learning-uplift or whole-release claim is made.
+
+---
+
+## NK1 WorkPass527 — make P26 training input validation fail closed and batches atomic (2026-10-24)
+
+- `ParametricPolicyLearner.train()` and `trainFeatures()` now reject non-finite targets, learning rates, sample weights, feature vectors, invalid actions, malformed state needs and non-finite state features before training or diagnostics can mutate.
+- `trainBatch()` validates every sample before the first update, preventing a valid early sample from training the model when a later sample is malformed.
+- Updated causal-stream regression assertions to compare full pre/post snapshots rather than incorrectly assuming unverified external events contribute one trusted outcome.
+- These changes improve input integrity and failure atomicity; they make no claim of measured learning uplift.
+
+---
+
+## NK1 WorkPass526 — use Node 24 TypeScript transform mode for Hermes evidence binding
+
+- Corrected the P23 Hermes verified-evidence-binding npm alias to use `--experimental-transform-types`. Its imported skill store uses TypeScript parameter properties, which Node's strip-only mode rejects before the regression can execute.
+- No runtime behavior or promotion authority changed; this restores the test's intended execution path.
+
+---
+
+## NK1 WorkPass525 — align regressions with canonical trust boundaries (2026-10-24)
+
+- Causal-stream invalid-input regression now compares the whole snapshot before/after instead of assuming unverified external observations count as grounded outcomes.
+- Unified cognitive-cycle tests now expect the plain-data boundary to reject non-finite inputs before field-specific validation, and prove the rejection is state-preserving.
+- Corrected the correlated-postcondition source assertion to match the actual local variable assignment (`const evidenceEventId = ...`) while retaining the trusted-link requirement.
+- These are test-contract corrections; they do not relax evidence admission or action authorization. Exact-head Actions is still the final check.
+
+---
+
+## NK1 WorkPass524 — release live history slots on evidence conflict (2026-10-24)
+
+- A write-time event-ID payload conflict now immediately removes the quarantined event from the retained history, matching the restore-time retention fix.
+- Added a regression that fills the 128-entry ledger, conflicts its newest event, then writes a new event; the unrelated oldest valid record must remain available and the active window must stay full.
+- Exact-head Actions checks are the validation authority; this commit makes no local-execution or whole-project readiness claim.
+
+---
+
+## NK1 WorkPass523 — keep quarantined evidence out of retention budget (2026-10-24)
+
+- Fixed `RealityEvidenceLedger.restore()` so identity-conflicted event rows are removed before the bounded history capacity is applied.
+- Extended the existing WorkPass479 regression with a capacity-overflow fixture: a conflicting newest event must not reduce the number of valid active rows or evict another event.
+- Validation boundary: exact-head CI must run after this commit; no local test execution is claimed by this change.
+
+---
+
+## NK1 WorkPass510 — make evidence-ledger read limits predictable (2026-10-24)
+
+- `RealityEvidenceLedger.recent(0)` now returns an empty list instead of silently returning one evidence record; negative finite limits also return none, while non-finite/non-numeric limits safely fall back to the documented default.
+- Added a focused regression to the existing event-idempotency suite and registered that suite as a package script so the contract is directly runnable.
+- This is API consistency and bounded-read hardening; it does not change evidence trust or promotion rules. Exact-head execution remains unverified.
+
+---
+
+## NK1 WorkPass503 — repair missing validation alias and Node 24 diagnostics runner
+
+- Added `test:p26:learning-input-integrity`, which was referenced by the P26 CI workflow but missing from the package scripts.
+- Switched `test:p23:hermes-reflective-diagnostics` to `--experimental-transform-types` because its imported candidate store uses TypeScript parameter properties unsupported by strip-only mode.
+- Confirmed the causal stream quarantine test already expects zero trusted outcomes after restore; the earlier stale assertion is fixed in the perception branch as well. CI reruns are pending.
+
+---
+
+## NK1 WorkPass502 — finish brain-fusion input hardening and evidence counts (2026-10-24)
+
+- Removed the ambiguous control-character regular expression from `UnifiedCognitiveLoop.validateEvent`; explicit code-point checks reject C0/C1 controls while preserving the strict own-data/prototype boundary.
+- The same hardened `UnifiedCognitiveLoop` implementation is now byte-aligned on feedback and perception, replacing the older unvalidated event path.
+- Corrected the conflict-restore regression to expect zero trusted outcomes for unverified external records; quarantine preserves the deduplication identity but does not promote it into verified-outcome metrics.
+
+---
+
+## NK1 WorkPass499 — separate user reports from grounded evidence
+
+- `RealityEvidenceLedger` no longer counts `user-reported` records as external/device evidence for promotion. They remain visible as a separate `userReportedSamples` diagnostic.
+- Added a regression scenario asserting that a high-confidence user report alone cannot satisfy the external-grounding promotion requirement.
+- This is a trust-boundary hardening change; the focused test was updated but has not yet been executed in this pass.
+
+---
+
+## NK1 WorkPass498 — finalize shared boundaries and restore semantics (2026-10-24)
+
+- Corrected the restored-external-outcome regression to expect zero grounded outcomes: imported evidence remains preserved for adjudication but cannot increment trusted outcome counters after restore.
+- Made `runTrustedShadowLearningProcess` async so invalid registrar/runtime/run-lane inputs consistently reject its Promise; this preserves the existing `assert.rejects` caller contract without weakening the candidate/shadow-only gate.
+- Aligned `UnifiedCognitiveCycle` across feedback/perception on the strict plain-data ingress boundary. Inherited prototypes/getters/cyclic or non-plain input are rejected before state mutation; tests now require that exact rejection.
+- Repaired event identity computation order in `CausalExperienceStream` so imported event identity is created only after source trace normalization/validation. Runtime and imported projections retain separate identity domains.
+- CI has passed the 287/288 cognitive contract suite and the key 99/102/105/291/292/293/294/296 slices on at least one recent perception head; WorkPass110 and WorkPass108 failures were traced to the above follow-up contracts and are now rerunning on newer commits. This is not a claim that every workflow passes.
+
+---
+
+## NK1 WorkPass497 — share event identity with the P23 causal learning stream (2026-10-24)
+
+- Added optional `evidenceEventId` to causal experience records and derived it with the shared `createRealityEvidenceEventId` contract: grounded action outcomes use the `learning` role; caller-imported events use the distinct `learning-external` role.
+- Legacy snapshots reconstruct the deterministic ID from normalized trace identity during restore; retry tests require the external event key to survive NFKC normalization and restore.
+- This bridges common identity into P23's causal evidence stream while preserving legacy `cx-...` record IDs. The larger receipt → RealityEvidenceLedger → MemoryOS2/P65 flow remains an open integration boundary; IDs are correlation keys, not proof of truth.
+
+---
+
+## NK1 WorkPass496 — close follow-up evidence and payload regressions (2026-10-24)
+
+- Corrected the reflective payload boundary fixture to account for the two JSON string delimiters, so the canonical encoded payload equals the 256 KiB limit.
+- Kept unverified imported events separate from grounded outcome counters; canonicalized duplicate external trace IDs remain idempotent and conflict on changed content.
+- The trusted shadow-process boundary now awaits the Core-owned registration callback while intentionally discarding its value, preserving registration-before-spawn and the supervisor's void/promise contract.
+- Feedback now performs a process-local authenticated-receipt check before ledger lookup; perception has the same guard. Re-ingestion after ledger restore remains possible because restored ledgers have no process-local receipt.
+- Earlier fresh runs confirmed WorkPass99/293/294 and selected memory/evidence workflows green on perception; remaining runs are being refreshed after these follow-ups.
+
+---
+
+## NK1 WorkPass495 — synchronize assertions with actual safety contracts (2026-10-24)
+
+- Updated causal learning fixture to include the observed `lastAction` and matching `lastActionSuccess`; the runtime now rejects uncorrelated state changes instead of fabricating action-conditioned evidence.
+- Reverted the inherited-stage test from expecting a thrown exception to verifying the real contract: inherited prototype fields cannot satisfy the missing required observation stage and the cycle remains incomplete.
+- Converted WorkPass106 promotion-gate checks and WorkPass291 payload-budget test to Node's TypeScript transform mode where imported source uses constructor parameter properties.
+- Added an early process-local authenticated-receipt check to signed outcome ingestion so duplicate signed artifacts are rejected before ledger lookup; restore-time verification remains a separate path.
+
+---
+
+## NK1 WorkPass493 — semantic TypeScript and causality guards (2026-10-24)
+
+- Fixed remaining small strict-mode issues in endogenous-goal input validation, dream association predicates, cognition dependency restore typing, optional causal policy features and verified-dataset schema literals.
+- Registered `p23-compound-repair-revision` in the runtime clock registry and widened the trusted shadow registrar return contract to support the durable registration receipt.
+- Causal replay and repair signals now reach the unified learner only when the causal-experience ledger actually accepted/returned a record; the supervisor's output buffers use explicit Node Buffer typing.
+- Earlier WorkPass491 aliases now cover WorkPass291/292/293/294's workflow commands. Current CI will determine the remaining strict type errors and behavioral regressions.
+
+---
+
+## NK1 WorkPass492 — additional strict typing repairs (2026-10-24)
+
+- Replaced dynamic indexing on the restored dependency-domain map with an explicit `Record<string, unknown>` boundary.
+- Fixed dream-association string filters to return a strict boolean predicate, narrowed optional causal policy feature vectors before access, and preserved the verified dataset schema version as literal `1`.
+- These changes target real strict-mode diagnostics after installing official Node typings; workflow results remain pending/partially failing until the refreshed commit is validated.
+
+---
+
+## NK1 WorkPass491 — regression contracts match fail-closed behavior (2026-10-24)
+
+- Added the missing `test:workpass294:correlated-postcondition` npm alias referenced by the workflow, so the postcondition regression proceeds after its semantic typecheck.
+- Corrected the P26 true-learning test: non-finite learning rates are rejected before mutation, rather than silently treated as a successful update; the regression now asserts unchanged finite weights, biases, and update count.
+- The unified-cycle restore guard now rejects inconsistent aggregate counters as a basis for `lastComplete` (see WorkPass490).
+
+---
+
+## NK1 WorkPass490 — restore safe typing and exact cognitive-cycle semantics (2026-10-24)
+
+- Ported official Node typings into `feature/feedback`: pinned `@types/node 22.20.4`, synced lockfile, excluded the legacy shim from semantic TypeScript, and reused the typecheck script that explicitly selects official Node declarations.
+- Updated WorkPass294 workflow on feedback and perception to install locked runtime dependencies before typecheck and to rerun for lock/config/shim changes.
+- Fixed verified dataset literal narrowing, optional retrieval numeric normalization, and missing `verifiedNonHoldoutExecutions` in the compiled base skill variant.
+- Reconciled WorkPass287 assertions with the actual fail-closed boundary: malformed persisted stage arrays normalize to all required stages, inconsistent counters cannot keep `lastComplete=true`, and inherited-prototype input is rejected instead of treated as plain data.
+- Fresh workflows have been triggered; status is pending. No test pass is claimed until those runs finish.
+
+---
+
+## NK1 WorkPass489 — record shared helper convergence and type fixes (2026-10-24)
+
+- Kept `createRealityEvidenceEventId` byte-identical on `feature/feedback` and `feature/perception`; validated input uses explicit control-code checks, and the legacy tuple hashing / output format is preserved.
+- The feedback branch now has one `verifyOperationalCycle` implementation, fail-closed restore expectations, corrected evidence text validation, an explicit optional independence threshold fallback, and the P23 gap-field/import fixes from WorkPass487.
+- The shared projection identity function is not itself proof and does not replace decision-bound outcome IDs. Full verifier → ledger → MemoryOS2/P65/P23 propagation remains outstanding.
+- No exact-head test pass is claimed; hosted CI evidence is still unavailable from the current commit-status/workflow lookup.
+
+---
+
+## NK1 WorkPass488 — share the reality-projection identity contract (2026-10-24)
+
+- Extended `EvidenceEventIdentity.ts` with a validated `createRealityEvidenceEventId(originEventId, role, discriminator)` utility that preserves the WorkPass456 ID encoding and 48-hex digest.
+- Kept outcome/decision identity separate from projection identity: outcome IDs remain decision-bound for conflict detection; reality projections are keyed by upstream event + role + discriminator.
+- The implementation is intended to be identical on `feature/perception` and `feature/feedback` so the common helper can converge cleanly through the existing draft PRs; no branch is merged by this commit.
+- Exact-head CI remains unverified; the corresponding regression is wired to the perception P2841 suite.
+
+---
+
+## NK1 WorkPass487 — feedback/cognitive type blockers (2026-10-24)
+
+- Removed the duplicate `CognitiveEventFabric.verifyOperationalCycle` implementation, retaining the richer implementation that checks optional cognitive stages and their causal edges.
+- Corrected the WorkPass287 restore regression to expect the six required stages when the saved missing-stage array is malformed; runtime behavior remains fail-closed.
+- Replaced malformed escaped control-character regex ranges in external evidence ID/text validation with explicit code-point checks.
+- Added a conservative default for optional `minIndependent01`, aligned `P23LearningEngine` with `forgettingRisk.gapMs`, and imported `ReplaySelectionOptions` from its canonical `ReplaySelectionPolicy` module.
+- These are code-level fixes with regression assertions, not a claim that the latest full CI has passed; confirm on the final commit SHA.
+
+---
+
+## NK1 WorkPass482 — make decision identity fail closed and action-independent
+
+- Finalized the WorkPass481 event key as a domain-separated hash of the stable decision ID alone. Since the decision produces one embodied result per cycle, changing the action/result under the same decision now reuses the key and is caught as a payload conflict instead of minting a new event ID.
+- Replaced control-character regex handling with explicit Unicode code-point checks before normalization, consistent with NK1's identity-boundary policy. Removed the now-unused artifact identity builder.
+- Exact-head test/typecheck remains unverified.
+
+---
+
+## NK1 WorkPass481 — bind embodied event IDs to the originating decision (2026-10-24)
+
+- Fixed a flaw in WorkPass479 identity construction: the event key no longer depends on wall-clock time, sensor values, or the action result itself.
+- `EmbodiedActionExecutor` now mints an `embodied:<40-hex>` event ID from the normalized, bounded `decisionId` plus action, and only when that stable identity exists. `OrganismRuntime` supplies the originating decision ID.
+- Same-decision replays now use the same event ID; if payload changes across retries, `RealityEvidenceLedger` detects same-ID/different-payload conflict and quarantines it rather than treating it as another independent observation.
+- Updated regression assertions for decision-bound identity. Exact-head execution/typecheck remains unverified; event IDs remain idempotency keys, not proof of truth.
+
+---
+
+## NK1 WorkPass479 — stable embodied evidence IDs and conflict quarantine (2026-10-24)
+
+- Extracted a shared domain-separated SHA-256 event-ID helper and reused it for the existing OutcomeVerificationService tuple, preserving the `outcome:<40-hex>` format while making the identity contract reusable by embodiment.
+- EmbodiedActionExecutor now attaches an idempotency/join `eventId` to the exact normalized action result. It is explicitly not proof of a successful external effect.
+- RealityEvidenceLedger accepts optional event IDs, returns the existing row on identical replay, quarantines conflicting payload reuse, and excludes quarantined events from claim promotion/counts. Restore now snapshots bounded plain data, validates records, detects conflicting event IDs, and preserves the quarantine list compatibly.
+- OrganismRuntime binds the same embodied event ID to separate action/consequence evidence rows with domain suffixes; this prevents a restarted/replayed result from counting twice while keeping distinct claims distinct.
+- Added `test:workpass479:reality-evidence` and chained it after the existing P2841 persistence regression in the P2841 evidence suite.
+- **Validation status:** code and regression source are committed; exact-head execution/typecheck remains unverified. Stable IDs are deduplication keys, never trust/authority on their own; no learning uplift or production-readiness claim is made.
+
+---
+
+## NK1 WorkPass457 — mint stable verifier-bound evidence event IDs (2026-10-23)
+
+- OutcomeVerificationService now emits an optional SHA-256-derived evidenceEventId only for properly shaped external postcondition evidence tied to a valid host execution ID, decision ID, tool, observation ID and full action input.
+- The same canonical tuple yields the same event ID across exact replays; changing the decision/execution/input/tool/observation changes the ID. Missing or malformed host lineage cannot mint one.
+- Extended workpass294-correlated-postcondition.mjs to test stable replays, decision separation and missing-lineage behavior. Existing process-local WeakMap authority and strict trust binding remain required; the ID string is not authority by itself.
+- Prepared for WorkPass456's RealityEvidenceLedger.eventId field. **Full call-site propagation into the ledger/P65/feedback is still not complete.**
+- No new dependency or gate relaxation. Exact-head test/typecheck execution remains unconfirmed.
+
+---
+
+## NK1 WorkPass462 — consolidate verified manifest input bounds (2026-10-23)
+
+- Removed a redundant task ID type check introduced while adding the length cap; behavior is unchanged and the manifest guard now expresses type, non-empty and size validation in one condition.
+- The change is a source cleanup within the existing verified-outcome ledger. Exact-head execution remains unverified; no new dependency.
+
+---
+
+## NK1 WorkPass459 — bound verified-outcome identifiers and evidence locators (2026-10-23)
+
+- Added explicit text bounds before manifest indexing and outcome admission: task IDs 180 chars, families 96, versions 96, verifier IDs 160, method IDs 96, and evidence references 4,096. This keeps accepted-evidence keys and persisted receipts bounded even when callers are typed adapters.
+- Oversized outcome metadata fails closed and is retained only as a compact rejection reason; accepted outcomes and statistical comparisons retain their prior schema and semantics.
+- Added regressions for an oversized manifest task ID, method, and evidence locator. No dependency added; exact-head execution remains unverified due to runner provisioning failure.
+
+---
+
+## NK1 WorkPass454 — preserve built-in postcondition proof floors (2026-10-23)
+
+- `ExternalPostconditionVerifier.registerAction` may strengthen a known action contract but can no longer lower its independent-proof threshold or disable required observation/actuation flags.
+- Prevents later runtime registration from weakening built-in `verify`, `respond` or `rest` policy; new action keys remain supported behind bounded validation.
+- Added regressions that attempt policy downgrades and verifies strengthening remains possible.
+- No new dependencies and no relaxation of existing freshness/source/evidence checks. Exact-head tests remain unverified.
+
+---
+
+## NK1 WorkPass447 — harden evidence-ledger snapshot restoration (2026-10-23)
+
+- Applied the existing bounded plain-data snapshot boundary to `VerifiedOutcomeLedger.restoreSnapshot` before reading persisted schema fields. Accessor-backed snapshots, cycles, unsupported prototypes, and oversized graphs now fail closed without running getter code.
+- Added regressions for a getter-backed schema version and a cyclic snapshot. Accepted evidence, evidence authority, and the ledger schema remain unchanged; no dependency added.
+- **Verification:** regression cases are committed, but execution is unconfirmed because hosted Actions currently fail before runner allocation.
+
+---
+
+## NK1 WorkPass444 — protect manifest initialization and reconcile evidence regressions (2026-10-23)
+
+- Extended the shared bounded plain-data boundary to `VerifiedOutcomeLedger` manifest initialization, so caller-owned getters, prototype overrides, sparse arrays, cyclic entries and oversized manifest payloads are rejected before manifest fields are read.
+- Added a regression proving an accessor-backed manifest entry is rejected without executing its getter, and corrected the ledger fixture's expected rejected-outcome count to include the two hostile outcome cases added in WorkPass443.
+- No evidence authority or holdout policy changed; no new dependency. Test execution remains unconfirmed because hosted Actions still fail before a runner is assigned.
+
+---
+
+## NK1 WorkPass443 — close unsafe coercion and accessor paths in verified outcome intake (2026-10-23)
+
+- `VerifiedOutcomeLedger.record` now snapshots an incoming outcome through the existing bounded plain-data boundary before reading any fields. Accessors, custom prototypes, cycles, and over-budget objects are rejected as `invalid-outcome` without running caller-controlled getters.
+- `fingerprintPrompt` now accepts only actual strings and caps prompt length at 16 KiB before Unicode normalization, eliminating implicit `String(...)` coercion and bounding hash work at the public helper boundary.
+- Added regressions for getter-backed outcomes, cyclic outcome data, non-string prompt coercion, and overlong prompts. Existing evidence authority, manifest/version binding, pairing, and holdout rules remain unchanged; no new dependency.
+- **Verification status:** source, regression and changelog committed to `feature/feedback`; runtime execution is unconfirmed while hosted Actions jobs terminate before runner assignment.
+
+---
+
+## NK1 WorkPass431 — make independent outcome proof explicit and quantitative (2026-10-23)
+
+- Reworked ExternalPostconditionVerifier to consume a bounded detached snapshot of the action result; accessor-backed, cyclic, non-plain and malformed result graphs fail closed with zero verified credit.
+- Independent outcome credit now requires attempted + verified + independent + stable fresh samples + explicit independent-observation mode, as well as the per-action numeric freshness/independence-strength threshold. A boolean can no longer masquerade as a continuous score.
+- Hardened the public action-contract registry against invalid names/prototype keys and accessor-backed/invalid contract values.
+- Added regressions for unverified samples, forged verification mode, numeric threshold enforcement, prototype-like names and getter non-execution. This protects the chain from device outcome to grounded world to learning evidence.
+- Runtime suite remains unexecuted on the hosted runner; no verification pass is claimed.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

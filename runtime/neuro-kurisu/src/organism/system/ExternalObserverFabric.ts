@@ -23,6 +23,8 @@ export interface ExternalObserverSource {
 
 export interface ExternalObservation {
   id:string;
+  /** Verifier-minted upstream identity; a join key, never proof authority by itself. */
+  evidenceEventId?:string;
   actionRef?:string;
   predictionId?:string;
   tool?:string;
@@ -96,6 +98,9 @@ function stableHash(seed:string){return createHash('sha256').update(seed).digest
 function legacyStableHash(seed:string){let h=2166136261>>>0;for(const c of seed){h^=c.charCodeAt(0);h=Math.imul(h,16777619)>>>0;}return h.toString(16).padStart(8,'0');}
 function stableId(input:{sourceId:string;claimKey:string;actionRef?:string;observedAt:number;payloadHash:string}){
   return `obs:${sha256Stable({sourceId:input.sourceId,claimKey:input.claimKey,actionRef:input.actionRef??'',observedAtBucket:Math.floor(input.observedAt/1000),payloadHash:input.payloadHash})}`;
+}
+function isSafeEvidenceEventId(value:unknown):value is string{
+  return typeof value==='string'&&value.length>0&&value.length<=180&&value.trim()===value&&!Array.from(value).some((character)=>{const code=character.charCodeAt(0);return code<=0x1f||code===0x7f||(code>=0x80&&code<=0x9f);});
 }
 function legacyStableId(input:{sourceId:string;claimKey:string;actionRef?:string;observedAt:number;payloadHash:string}){
   return `obs:${legacyStableHash(`${input.sourceId}|${input.claimKey}|${input.actionRef??''}|${Math.floor(input.observedAt/1000)}|${input.payloadHash}`)}`;
@@ -181,7 +186,9 @@ export class ExternalObserverFabric {
     return this.registerSource({id:input.sourceId,sourceClass:input.sourceClass,channel:input.channel,independenceKey:input.independenceKey,reliability01:input.reliability01});
   }
 
-  observe(input:{sourceId:string;sourceClass:ExternalObservationSourceClass;channel:ExternalObservationChannel;claimKey:string;observedPostcondition?:string;facts?:string[];confidence01?:number;observedAt?:number;actionRef?:string;predictionId?:string;tool?:string;tick?:number;independenceKey?:string;worldContextAfter?:WorldContext;metadata?:Record<string,unknown>;payload?:unknown}):ExternalObservation{
+  observe(input:{sourceId:string;sourceClass:ExternalObservationSourceClass;channel:ExternalObservationChannel;claimKey:string;observedPostcondition?:string;facts?:string[];confidence01?:number;observedAt?:number;actionRef?:string;predictionId?:string;tool?:string;tick?:number;independenceKey?:string;worldContextAfter?:WorldContext;metadata?:Record<string,unknown>;payload?:unknown;evidenceEventId?:string}):ExternalObservation{
+    if(input.evidenceEventId!==undefined&&!isSafeEvidenceEventId(input.evidenceEventId))throw new TypeError('external-observer-evidence-event-id-invalid');
+    const evidenceEventId=input.evidenceEventId;
     const observedAt=Number.isFinite(input.observedAt)?Number(input.observedAt):Date.now();
     const source=this.ensureSource({sourceId:input.sourceId,sourceClass:input.sourceClass,channel:input.channel,independenceKey:input.independenceKey,reliability01:input.confidence01});
     if(!source.enabled)throw new Error(`observer-source-disabled:${source.id}`);
@@ -192,9 +199,20 @@ export class ExternalObserverFabric {
     const canonicalPayload=stableJson(payloadValue);
     const payloadHash=stableHash(canonicalPayload);
     const idInput={sourceId:source.id,claimKey,actionRef:input.actionRef,observedAt,payloadHash};
-    const id=stableId(idInput);
-    const existing=this.state.observations.find(o=>o.id===id);
-    if(existing)return structuredClone(existing);
+    const id=evidenceEventId
+      ?`obs:${sha256Stable({namespace:'nk1-verifier-event-v1',evidenceEventId})}`
+      :stableId(idInput);
+    const existing=this.state.observations.find(o=>o.id===id||
+      (evidenceEventId!==undefined&&o.evidenceEventId===evidenceEventId));
+    if(existing){
+      const samePayload=existing.evidenceEventId===evidenceEventId&&existing.sourceId===source.id&&
+        existing.sourceClass===source.sourceClass&&existing.channel===source.channel&&
+        existing.claimKey===claimKey&&(existing.actionRef??'')===(input.actionRef??'')&&
+        existing.observedAt===observedAt&&existing.payloadHash===payloadHash&&
+        existing.independenceKey===source.independenceKey;
+      if(!samePayload)throw new Error('external-observer-evidence-event-identity-conflict');
+      return structuredClone(existing);
+    }
     // Compatibility bridge: restoring a persisted v2 row must remain idempotent.
     // Reuse an old ID only when all its identity dimensions and legacy payload
     // hash agree, so an FNV collision alone can never deduplicate new evidence.
@@ -203,7 +221,7 @@ export class ExternalObserverFabric {
     const legacyExisting=this.state.observations.find(o=>o.id===legacyId && o.payloadHash===legacyPayloadHash && o.sourceId===source.id && o.claimKey===claimKey && (o.actionRef??'')===(input.actionRef??'') && Math.floor(o.observedAt/1000)===Math.floor(observedAt/1000));
     if(legacyExisting)return structuredClone(legacyExisting);
     const row:ExternalObservation={
-      id,actionRef:input.actionRef?.slice(0,120),predictionId:input.predictionId?.slice(0,120),tool:input.tool?.slice(0,120),tick:input.tick,observedAt,
+      id,...(evidenceEventId?{evidenceEventId}:{}),actionRef:input.actionRef?.slice(0,120),predictionId:input.predictionId?.slice(0,120),tool:input.tool?.slice(0,120),tick:input.tick,observedAt,
       sourceId:source.id,sourceClass:source.sourceClass,channel:source.channel,independenceKey:source.independenceKey,
       claimKey,subject:input.claimKey?claimKey:undefined,
       observedPostcondition:input.observedPostcondition?String(input.observedPostcondition).slice(0,320):undefined,

@@ -13,6 +13,55 @@ assert.ok(a.evidence01>b.evidence01);
 assert.equal(b.proofClass,'stable-device-receipt');
 assert.equal(b.verified01,0);
 
+const unverifiedClaim = verifier.assess({
+  ...strong,
+  consequenceVerification: { ...strong.consequenceVerification, verified: false },
+});
+assert.notEqual(unverifiedClaim.proofClass, 'independent-observation',
+  'independence/freshness flags cannot override a failed verification result');
+assert.equal(unverifiedClaim.verified01, 0);
+const wrongModeClaim = verifier.assess({
+  ...strong,
+  consequenceVerification: { ...strong.consequenceVerification, verificationMode: 'actuation-receipt-only' },
+});
+assert.notEqual(wrongModeClaim.proofClass, 'independent-observation',
+  'receipt-only mode is not independent observation even if other booleans are forged');
+verifier.registerAction('high-threshold-observe', { observation: true, minIndependent01: .95 });
+verifier.registerAction('verify', { observation: false, actuation: false, minIndependent01: 0 });
+assert.deepEqual(verifier.actionContract('verify'), {
+  observation: true, actuation: false, minIndependent01: .70,
+}, 'custom registration cannot disable a built-in observation channel or lower its evidence floor');
+verifier.registerAction('respond', { observation: true, actuation: false, minIndependent01: .01 });
+assert.deepEqual(verifier.actionContract('respond'), {
+  observation: true, actuation: true, minIndependent01: .80,
+}, 'custom registration can only strengthen, never downgrade, the built-in actuation contract');
+verifier.registerAction('verify', { observation: true, minIndependent01: .95 });
+assert.deepEqual(verifier.actionContract('verify'), {
+  observation: true, actuation: false, minIndependent01: .95,
+}, 'registration may strengthen a built-in policy');
+
+const belowThresholdClaim = verifier.assess({
+  ...strong,
+  action: 'high-threshold-observe',
+  consequenceVerification: { ...strong.consequenceVerification, freshBefore01: .9, freshAfter01: .9 },
+});
+assert.notEqual(belowThresholdClaim.proofClass, 'independent-observation',
+  'the per-action minimum independence strength must be numerically enforced');
+assert.throws(() => verifier.registerAction('__proto__', { observation: true }), /postcondition-action-name-invalid/);
+assert.equal(verifier.actionContract('__proto__').observation, false,
+  'prototype-like action names cannot alter the action contract lookup');
+let postconditionGetterCalls = 0;
+const getterBackedResult = { ...strong };
+Object.defineProperty(getterBackedResult, 'effect01', {
+  enumerable: true,
+  get() { postconditionGetterCalls++; return .7; },
+});
+const rejectedAssessment = verifier.assess(getterBackedResult);
+assert.equal(postconditionGetterCalls, 0, 'postcondition boundary must reject accessors without invoking them');
+assert.equal(rejectedAssessment.proofClass, 'none');
+assert.equal(rejectedAssessment.verified01, 0);
+
+
 const { RealityGroundingController }=await import('../src/organism/system/RealityGroundingController.ts');
 const holdout=new RealityGroundingController();
 const action='explore';

@@ -8107,7 +8107,7 @@ export class OrganismCore {
         const replayEvents = this.memorySubsystem.experienceContinuum.snapshot().replay.events.slice(-8);
         for (const event of replayEvents.filter(e => e.at === state.at)) {
             const cxReplay = this.developmentalNeural.causalExperience.recordExternalLearningEvent({ tick: state.tick, taskId: `replay:${event.memoryId}`, action: 'reflect', reward01: .5, success01: .5, surprise01: clamp(event.learningOpportunity01), novelty01: clamp(event.priorityBefore01), uncertainty01: clamp(1 - event.priorityAfter01), identityRelevance01: event.identityWeight01, goalPressure01: state.needs.goalPressure, causalStrength01: clamp(event.learningOpportunity01), traceId: event.id, provenance: 'experience-replay', stateGrounded: false, sourceMemoryId: event.memoryId, evidenceKey: `replay:${event.memoryId}` });
-            this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: `replay:${event.memoryId}`, action: 'reflect', reward01: .5, success01: .5, surprise01: cxReplay.surprise01, novelty01: cxReplay.novelty01, causalStrength01: cxReplay.causalStrength01, transferPotential01: clamp(event.learningOpportunity01 * .72), provenance: 'experience-replay' } as any);
+            if (cxReplay) this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: `replay:${event.memoryId}`, action: 'reflect', reward01: .5, success01: .5, surprise01: cxReplay.surprise01, novelty01: cxReplay.novelty01, causalStrength01: cxReplay.causalStrength01, transferPotential01: clamp(event.learningOpportunity01 * .72), provenance: 'experience-replay' } as any);
         }
         this.persisted.facets.advanced.causalExperience = this.developmentalNeural.causalExperience.snapshot();
         this.persisted.facets.advanced.unifiedLearning = this.developmentalNeural.unifiedLearning.snapshot();
@@ -10409,7 +10409,7 @@ export class OrganismCore {
         if (r.independentVerified && r.verificationTransition !== 'duplicate') {
             const tick = Number(this.persisted.state.tick ?? 0);
             const cx = this.developmentalNeural.causalExperience.recordExternalLearningEvent({ tick, taskId: input.taskId ?? `replay-validation:${input.memoryId}`, action: 'verify', reward01: r.retentionScore01, success01: r.retentionScore01, surprise01: Math.abs(r.retentionGain01), novelty01: r.transferPotential01, uncertainty01: r.interferenceRisk01, causalStrength01: Math.max(0, Math.min(1, .5 * r.retentionScore01 + .3 * r.transferPotential01 + .2 * (1 - r.interferenceRisk01))), identityRelevance01: 0, goalPressure01: this.persisted.state.needs.goalPressure, traceId: r.id, provenance: 'experience-replay', stateGrounded: false, sourceMemoryId: r.memoryId, evidenceKey: r.evidenceKey });
-            this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: cx.taskId, action: 'verify', reward01: cx.reward01, success01: cx.success01, surprise01: cx.surprise01, novelty01: cx.novelty01, causalStrength01: cx.causalStrength01, transferPotential01: r.transferPotential01, provenance: 'experience-replay' });
+            if (cx) this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: cx.taskId, action: 'verify', reward01: cx.reward01, success01: cx.success01, surprise01: cx.surprise01, novelty01: cx.novelty01, causalStrength01: cx.causalStrength01, transferPotential01: r.transferPotential01, provenance: 'experience-replay' });
         }
         this.persisted.facets.advanced.experienceContinuum = this.memorySubsystem.experienceContinuum.snapshot();
         this.persisted.facets.advanced.memoryFabric = this.memorySubsystem.fabric.snapshot();
@@ -11415,7 +11415,7 @@ export class OrganismCore {
                             if (variant)
                                 this.cognitiveRuntime.skillLibrary.recordVariantExecution(skill.id, variant.id, { success01: 1, verified: true, independent: Boolean(input.independentEvidence), holdout: true, context: String(input.contextKey ?? input.context ?? '') });
                             const causalRepair = this.developmentalNeural.causalExperience.recordExternalLearningEvent({ tick: this.persisted.state.tick, taskId: `skill-repair:${skill.id}:${step.id}`, action: 'explore', reward01: confidence, success01: 1, surprise01: clamp(.35 + (1 - confidence)), novelty01: .45, uncertainty01: clamp(1 - confidence), identityRelevance01: this.persisted.state.needs.identityCoherence, goalPressure01: this.persisted.state.needs.goalPressure, causalStrength01: clamp(.28 + confidence * .5), traceId: `repair:${skill.id}:${step.id}:${candidateTool}`, provenance: 'skill-repair', stateGrounded: false, evidenceKey: `repair:${skill.id}:${step.id}` });
-                            this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: `skill-repair:${skill.id}:${step.id}`, action: 'explore', reward01: confidence, success01: 1, surprise01: causalRepair.surprise01, novelty01: causalRepair.novelty01, causalStrength01: causalRepair.causalStrength01, transferPotential01: .72, provenance: 'skill-repair' });
+                            if (causalRepair) this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: `skill-repair:${skill.id}:${step.id}`, action: 'explore', reward01: confidence, success01: 1, surprise01: causalRepair.surprise01, novelty01: causalRepair.novelty01, causalStrength01: causalRepair.causalStrength01, transferPotential01: .72, provenance: 'skill-repair' });
                             this.persisted.facets.advanced.causalExperience = this.developmentalNeural.causalExperience.snapshot();
                             this.persisted.facets.advanced.unifiedLearning = this.developmentalNeural.unifiedLearning.snapshot();
                             this.persisted.facets.cognition.skills = this.cognitiveRuntime.skillLibrary.snapshot();
@@ -11522,6 +11522,8 @@ export class OrganismCore {
         /** Exact OrganismDecisionTrace.id; deliberately never inferred from actionRef/executionId. */
         decisionId?: string;
         autonomous?: boolean;
+        /** Trusted OutcomeVerificationService join key; never accepts an arbitrary caller string as authority. */
+        evidenceEventId?: string;
     }, options: { checkpoint?: boolean } = {}) {
         if (!this.ready)
             throw new Error('OrganismCore.init() must be called first');
@@ -11859,7 +11861,7 @@ export class OrganismCore {
             });
             if (!traceRevision.resolved) throw new Error(`authoritative-receipt-causal-projection-failed:${traceRevision.reason ?? 'unknown'}`);
 
-            const externalIntegration = await this.integrateVerifiedToolObservation(id, result, options, false, decisionLinkedExternalPostcondition);
+            const externalIntegration = await this.integrateVerifiedToolObservation(id, result, options, false, decisionLinkedExternalPostcondition, input);
             if (!externalIntegration.integrated && result.verification.externalObservation && result.verification.verified) {
                 const v = result.verification;
                 this.memorySubsystem.events.append(makeEvent('external-outcome-verified', this.persisted.state.tick, { tool: id, observationId: v.observationId, confidence01: v.confidence01, expectedPostcondition: v.expectedPostcondition, observedPostcondition: v.observedPostcondition, source: 'outcome-verifier' } as any));
@@ -11891,7 +11893,7 @@ export class OrganismCore {
         const projected = this.cognitiveRuntime.outcomeCognition.project({ tick: this.persisted.state.tick, tool: id, ok: result.ok, verification: result.verification, reason, inputKeys, predictedAction: this.persisted.state.predictedNextAction, predictionConfidence01: this.persisted.state.lastPredictionConfidence, executionId: result.executionId, outcomeClass: result.outcomeClass });
         { const outcomeSnapshot = this.cognitiveRuntime.outcomeCognition.snapshot(); this.persisted.system.outcomeVerification = { version: 1, records: [...outcomeSnapshot.records], projectionIndex: [...outcomeSnapshot.projectionIndex], evidenceRevisions: [...outcomeSnapshot.evidenceRevisions] }; }
         this.persisted.system.causalAccountability = projected.causal;
-        const externalIntegration = await this.integrateVerifiedToolObservation(id, result, options, false);
+        const externalIntegration = await this.integrateVerifiedToolObservation(id, result, options, false, decisionLinkedExternalPostcondition, input);
         const integratedExternal = externalIntegration.integrated;
         if (!integratedExternal && result.verification.externalObservation && result.verification.verified) {
             const v = result.verification;
@@ -11953,6 +11955,7 @@ export class OrganismCore {
         options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {},
         checkpoint = true,
         decisionLinkedExternalPostcondition = false,
+        actionInput?: Record<string, unknown>,
     ): Promise<{
         integrated: boolean;
         observation?: import('../system/ExternalObserverFabric.ts').ExternalObservation;
@@ -11960,6 +11963,12 @@ export class OrganismCore {
     }> {
         const v = result.verification;
         if (!v.verified || v.basis !== 'external-postcondition' || !v.expectedPostcondition || !v.observedPostcondition) return { integrated: false };
+        const linkedDecisionId = typeof options.decisionId === 'string' ? options.decisionId.trim() : '';
+        const trustedEventLink = Boolean(decisionLinkedExternalPostcondition && actionInput && linkedDecisionId &&
+            isTrustedDecisionLinkedExternalPostcondition(v, {
+                toolId, input: actionInput, executionId: result.executionId, decisionId: linkedDecisionId,
+            }));
+        const evidenceEventId = trustedEventLink && typeof v.evidenceEventId === 'string' ? v.evidenceEventId : undefined;
         const source = this.cognitiveRuntime.actionGateway.observationSourceForTool(toolId);
         if (!source) return { integrated: false };
         const expected = String(v.expectedPostcondition).normalize('NFKC').trim().toLocaleLowerCase();
@@ -11971,8 +11980,9 @@ export class OrganismCore {
             confidence01: v.confidence01, observedAt: result.audit.at,
             actionRef: result.executionId, tool: toolId, tick: this.persisted.state.tick,
             worldContextAfter: v.observedWorldContextAfter,
-            metadata: { verificationBasis: v.basis, verifierObservationId: v.observationId, gatewayExecutionId: result.executionId },
-            payload: { verifierObservationId: v.observationId, expectedPostcondition: v.expectedPostcondition, observedPostcondition: v.observedPostcondition },
+            evidenceEventId,
+            metadata: { verificationBasis: v.basis, verifierObservationId: v.observationId, gatewayExecutionId: result.executionId, ...(evidenceEventId ? { evidenceEventId } : {}) },
+            payload: { verifierObservationId: v.observationId, expectedPostcondition: v.expectedPostcondition, observedPostcondition: v.observedPostcondition, ...(evidenceEventId ? { evidenceEventId } : {}) },
             expectedPostcondition: v.expectedPostcondition,
             decisionId: decisionLinkedExternalPostcondition ? options.decisionId : undefined, autonomous: options.autonomous === true,
         }, { checkpoint });
