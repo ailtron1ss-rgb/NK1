@@ -238,4 +238,41 @@ noisyLedger.restore({
 });
 assert.deepEqual(noisyLedger.snapshot().recent.map(row => row.eventId), ['event:trusted-ledger-row'],
   'invalid rows must not use up the raw scan limit and crowd a valid external evidence record out');
-console.log('WORKPASS521_OBSERVER_LEDGER_BRIDGE=PASS liveBridge=true idempotentReplay=true userReportNotExternal=true restoreReconciliation=true noisyLedgerRestore=true');
+
+// Event identity remains idempotent after its evidence row ages out of the
+// active ledger window, and the compact receipt survives a save/restore cycle.
+const replayLedger = new RealityEvidenceLedger(128);
+const oldestReplayRow = {
+  eventId: 'event:receipt-window-oldest', tick: 1, at: 1000,
+  realityClass: 'device-observation', claim: 'door=status:open',
+  confidence01: 0.9, independenceKey: 'camera:front', parentIds: [],
+};
+for (let index = 0; index < 130; index += 1) {
+  replayLedger.record({
+    ...(index === 0 ? oldestReplayRow : {
+      eventId: `event:receipt-window-${index}`, tick: index + 1, at: 1000 + index,
+      realityClass: 'device-observation', claim: `door=status:open`,
+      confidence01: 0.9, independenceKey: 'camera:front', parentIds: [],
+    }),
+  });
+}
+assert.equal(replayLedger.snapshot().total, 130);
+assert.equal(replayLedger.recent(256).some(row => row.eventId === oldestReplayRow.eventId), false,
+  'oldest event should be evicted from the active evidence window');
+assert.equal(replayLedger.findByEventId(oldestReplayRow.eventId)?.claim, oldestReplayRow.claim,
+  'bounded receipt index must still recognize the evicted event ID');
+const restoredReplayLedger = new RealityEvidenceLedger(128);
+restoredReplayLedger.restore(replayLedger.snapshot());
+restoredReplayLedger.record(oldestReplayRow);
+assert.equal(restoredReplayLedger.snapshot().total, 130,
+  'replaying an evicted event after restore must not inflate the canonical event count');
+assert.equal(restoredReplayLedger.recent(256).some(row => row.eventId === oldestReplayRow.eventId), false,
+  'a replayed old event must not be reinserted as fresh evidence');
+assert.throws(() => restoredReplayLedger.record({
+  ...oldestReplayRow, claim: 'door=status:closed',
+}), /reality-evidence-event-id-conflict/,
+  'a conflicting payload must be rejected even after the original row leaves the active window');
+assert.ok(restoredReplayLedger.snapshot().quarantinedEventIds?.includes(oldestReplayRow.eventId),
+  'event-id reuse after eviction must persist quarantine');
+
+console.log('WORKPASS521_OBSERVER_LEDGER_BRIDGE=PASS liveBridge=true idempotentReplay=true userReportNotExternal=true restoreReconciliation=true noisyLedgerRestore=true replayWindowDedup=true');
