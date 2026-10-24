@@ -308,6 +308,7 @@
     "test:memory-substrate": "node --experimental-strip-types tests/memory-substrate-coordinator.mjs",
     "test:memory-subsystem-runtime-persistence": "node --experimental-strip-types tests/memory-subsystem-runtime-persistence.mjs",
     "test:memory-causal-persistence-projection": "node --experimental-strip-types tests/memory-causal-persistence-projection.mjs",
+    "test:memory-canonical-store-checkpoint": "node --experimental-strip-types tests/memory-canonical-store-checkpoint.mjs",
     "test:checkpoint-hotpath": "node --experimental-strip-types tests/checkpoint-hotpath.mjs",
     "test:memory-state-store-codec": "node --experimental-strip-types tests/memory-state-store-codec.mjs",
     "test:persistence:projection": "node --experimental-strip-types tests/persistence-projection-tiering.mjs && node --experimental-strip-types tests/persistence-projection-governor.mjs",
