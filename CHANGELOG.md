@@ -1,3 +1,11 @@
+## NK1 WorkPass500 — multiscale replay research mapped to runtime
+
+- Added `research/WORKPASS500_MULTISCALE_COGNITION_AND_REPLAY.md` mapping hippocampal replay/planning research, predictive-processing caveats, Voyager skill refinement and Letta/MemGPT memory tiers to existing NK1 subsystems.
+- Defines measurable engineering targets and explicit non-claims: analogies to brain mechanisms do not prove subjective consciousness.
+- Sets next integration targets around causal identity across action outcomes, episodic replay, candidate provenance and independent ablation.
+
+---
+
 ## NK1 WorkPass490 — Hermes self-evolution donor analysis
 
 - Added `research/WORKPASS490_HERMES_SELF_EVOLUTION_ADAPTATION.md` with upstream links, implemented-vs-planned boundaries, integration lessons, and a source-license verification rule.
