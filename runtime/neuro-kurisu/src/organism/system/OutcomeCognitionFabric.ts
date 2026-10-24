@@ -99,7 +99,8 @@ export class OutcomeCognitionFabric {
       if(!value||typeof value!=='object')return false;
       const row=value as OutcomeCognitionProjection['verificationRecord'];
       return Number.isFinite(Number(row.at))&&typeof row.tool==='string'&&row.tool.length>0&&row.tool.length<=180&&
-        ['none','tool-contract','external-postcondition'].includes(row.basis)&&typeof row.ok==='boolean'&&typeof row.verified==='boolean';
+        ['none','tool-contract','external-postcondition'].includes(row.basis)&&typeof row.ok==='boolean'&&typeof row.verified==='boolean'&&
+        (row.evidenceEventId===undefined||boundedEvidenceEventId(row.evidenceEventId)===row.evidenceEventId);
     };
     this.records=Array.isArray(snapshot?.records)?snapshot.records.filter(validRecord).slice(-this.maxRecords).map(r=>structuredClone(r)):[];
     this.projectionIndex.clear();
@@ -153,6 +154,7 @@ export class OutcomeCognitionFabric {
       ? {verified:false,basis:'none',confidence01:0,externalObservation:false,notes:'invalid-verification-contract; evidence downgraded to unknown'}
       : {
           ...raw,
+          evidenceEventId:undefined,
           verified:raw?.verified===true&&raw.basis!=='none',
           basis:allowedBasis?raw.basis:'none',
           confidence01:cap(raw?.confidence01??0),
