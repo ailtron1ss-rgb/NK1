@@ -1,3 +1,16 @@
+# NK1 integration hardening — CI contracts, replay and runtime boundaries (2026-10-24)
+
+- [FIXED] Wired missing WorkPass291, WorkPass292 and WorkPass293 runtime package scripts to their existing regression files.
+- [FIXED] Removed Node.js 24 strip-only-incompatible parameter properties from P23 scheduler/coordinator classes.
+- [FIXED] Made P23 reflective-payload boundary test count the canonical serialized UTF-8 bytes, including the JSON string delimiters.
+- [FIXED] Changed stale WorkPass287 restore expectation to match the implementation's fail-closed reset when persisted stage history is malformed.
+- [FIXED] Clarified the P23 replay test contract: adaptive selection may choose fewer samples than the configured cap, but never exceed the hard maximum.
+- [HARDENED] Added an explicit P23 compound-repair clock kind to the runtime clock contract and allow-list.
+- [HARDENED] Narrowed optional numeric skill-retrieval inputs before arithmetic and aligned Android child-process error callback typing with Node.js.
+- [HARDENED] Aligned the trusted shadow-run registrar return type with its durable registry implementation.
+- [HARDENED] Added null guards before forwarding replay/validation/verified-repair causal records into unified learning. Missing causal records no longer cause an exception or become fabricated learning evidence.
+- [VALIDATION] WorkPass291, WorkPass292 and WorkPass293 passed on the prior code head `53850d54cfafdcf20030db60e23738796bc06862`; later changes require revalidation on the new head. Broad typecheck, kernel test, retrieval benchmark and remaining holdout gates are still being evaluated; no release-ready claim is made.
+
 # NK1 P23 runtime fixes — Node.js 24 strip-only and payload boundary (2026-10-24)
 
 - [FIXED] Removed TypeScript parameter-property syntax from the trusted shadow-learning scheduler and compound-repair revision coordinator. Node.js 24's built-in `--experimental-strip-types` loader rejects parameter properties because it strips types without transforming TypeScript syntax that requires runtime code generation.
