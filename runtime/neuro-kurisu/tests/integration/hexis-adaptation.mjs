@@ -4,6 +4,21 @@ import { HexisAdaptationFabric, defaultHexisAdaptationState } from '../../src/or
 const fabric = new HexisAdaptationFabric();
 assert.equal(fabric.snapshot().version, 1);
 
+const makeHmxDocument = (exportId, sections) => ({
+  hmx_version: '1.7',
+  export_id: exportId,
+  export_intent: 'port',
+  exported_at: '2026-10-24T12:00:00.000Z',
+  source: {
+    instance_id: 'hexis-test-instance',
+    schema_version: '1.7',
+    embedding_model: 'test-embedder',
+    embedding_dimension: 1,
+    hexis_lineage_id: 'hexis-test-lineage',
+  },
+  sections,
+});
+
 const first = fabric.reviseBelief({ memoryId:'mem-1', confidence01:.5, trust01:.6, stance:'supports', evidence:{ref:'source-a',trust01:.9}, context:'test' });
 assert.equal(first.applied, true);
 assert(first.posteriorConfidence01 > .5);
@@ -21,12 +36,46 @@ const review = fabric.createLearningReview({periodStart:0,periodEnd:1,summary:'t
 const decided = fabric.decideLearningReview(review.id,review.items[0].id,'approve');
 assert.equal(decided?.status,'approved');
 
-const stage = fabric.stageHmx({document:{hmx_version:'1.7',export_id:'e1',sections:{memories:[{id:'m'}],goals:[{id:'g'}]}},intent:'port',strategy:'additive'});
+const stage = fabric.stageHmx({document:makeHmxDocument('exp_0123456789abcdef',{memories:[{id:'m'}],goals:[{id:'g'}]}),intent:'port',strategy:'additive'});
 assert.equal(stage.status,'staged');
 assert.equal(fabric.decideHmx(stage.stagingId,'accept')?.status,'accepted');
 
-const protectedStage = fabric.stageHmx({document:{hmx_version:'1.7',export_id:'e2',sections:{identity:[{id:'self'}]}},intent:'telepathy',strategy:'analysis_only'});
+const protectedStage = fabric.stageHmx({document:makeHmxDocument('exp_fedcba9876543210',{identity:[{id:'self'}]}),intent:'telepathy',strategy:'analysis_only'});
 assert.equal(fabric.decideHmx(protectedStage.stagingId,'accept')?.status,'staged');
+
+const incompleteEnvelope = makeHmxDocument('exp_aaaaaaaaaaaaaaaa', { memories: [{ id: 'missing-source-context' }] });
+delete incompleteEnvelope.source.embedding_model;
+const incompleteStage = fabric.stageHmx({ document: incompleteEnvelope, intent: 'port', strategy: 'additive' });
+assert(incompleteStage.conflicts.some(conflict => conflict.path === 'source' && conflict.kind === 'schema'));
+assert.equal(fabric.decideHmx(incompleteStage.stagingId, 'accept')?.status, 'staged',
+  'an HMX envelope without required source provenance must never be accepted');
+
+const unknownSection = fabric.stageHmx({
+  document: makeHmxDocument('exp_bbbbbbbbbbbbbbbb', { memories: [], experimental_identity_v2: [{ id: 'unreviewed' }] }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert(unknownSection.conflicts.some(conflict => conflict.kind === 'unknown-section'));
+assert.equal(fabric.decideHmx(unknownSection.stagingId, 'accept')?.status, 'staged',
+  'unsupported future sections must be reviewed rather than silently imported');
+
+const oversizedSection = fabric.stageHmx({
+  document: makeHmxDocument('exp_cccccccccccccccc', { memories: Array.from({ length: 257 }, (_, id) => ({ id: String(id) })) }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert(oversizedSection.conflicts.some(conflict => conflict.path === 'sections.memories' && conflict.kind === 'size-limit'));
+assert.equal(oversizedSection.sectionCounts.memories, 257);
+assert.equal(oversizedSection.stagedSections.memories.length, 256,
+  'oversized payloads are bounded in storage but cannot be accepted after truncation');
+
+const badIntent = fabric.stageHmx({
+  document: makeHmxDocument('exp_dddddddddddddddd', { memories: [] }),
+  intent: 'unbounded-autonomy',
+  strategy: 'additive',
+});
+assert(badIntent.conflicts.some(conflict => conflict.path === 'intent'));
+assert.equal(fabric.decideHmx(badIntent.stagingId, 'accept')?.status, 'staged');
 
 const out = fabric.enqueueOutbox({idempotencyKey:'k1',kind:'notify',channel:'telegram',payload:{text:'x',meta:{b:2,a:1}}});
 assert.equal(fabric.enqueueOutbox({idempotencyKey:'k1',kind:'notify',channel:'telegram',payload:{meta:{a:1,b:2},text:'x'}}).id,out.id);
