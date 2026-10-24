@@ -1,3 +1,10 @@
+## NK1 WorkPass526 — use Node 24 TypeScript transform mode for Hermes evidence binding
+
+- Corrected the P23 Hermes verified-evidence-binding npm alias to use `--experimental-transform-types`. Its imported skill store uses TypeScript parameter properties, which Node's strip-only mode rejects before the regression can execute.
+- No runtime behavior or promotion authority changed; this restores the test's intended execution path.
+
+---
+
 ## NK1 WorkPass525 — align regressions with canonical trust boundaries (2026-10-24)
 
 - Causal-stream invalid-input regression now compares the whole snapshot before/after instead of assuming unverified external observations count as grounded outcomes.
