@@ -116,6 +116,18 @@ const reuseProofB=await mintProof(developmentEvidenceVerificationInput(reuseB),r
 const blockedReuse=reuseEngine.recordExternalEvidence({...reuseB,verification:reuseProofB});
 assert.equal(blockedReuse.independentCount,1,'reused observation IDs cannot inflate replication across contexts');
 
+// One verified observation cannot be credited once as experiment evidence and again as a maturity outcome.
+const crossPathEngine=new P36AutonomousSelfDevelopmentEngine();
+const crossPathHypothesis=prepareHypothesis(crossPathEngine,104);
+const crossPathId='p36-cross-path-receipt';
+const crossPathEvidence=evidence(crossPathHypothesis.id,'cross-path-experiment',false,0);
+const crossPathProof=await mintProof(developmentEvidenceVerificationInput(crossPathEvidence),crossPathId);
+assert.equal(crossPathEngine.recordExternalEvidence({...crossPathEvidence,verification:crossPathProof}).independentCount,1);
+const crossPathOutcome={area:'learning',outcome01:.9,delayed:true,transfer:true};
+const crossPathOutcomeProof=await mintProof(developmentalOutcomeVerificationInput(crossPathOutcome),crossPathId);
+const crossPathMaturity=crossPathEngine.observeDevelopmentalOutcome({...crossPathOutcome,verification:crossPathOutcomeProof});
+assert.equal(crossPathMaturity.verifiedOutcomeCount,0,'same observation cannot be credited through a second learning route');
+
 // Maturity counts also require verifier provenance, and the same receipt can count only once.
 const maturityEngine=new P36AutonomousSelfDevelopmentEngine();
 const outcome={area:'learning',outcome01:.95,delayed:true,transfer:true};
