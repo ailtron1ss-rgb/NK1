@@ -319,29 +319,84 @@ export class P36AutonomousSelfDevelopmentEngine{
     const d=defaultState(); const r=raw??{};
     const sourceHypotheses=Array.isArray(r.hypotheses)?r.hypotheses.slice(-96):[];
     const revokedHypothesisIds=new Set<string>();
-    const restoredHypotheses=sourceHypotheses.map((h:any)=>{
-      const hasUnreplayablePromotion=h?.status==='completed'||['external-verified','holdout-verified','replicated'].includes(h?.evidenceGate);
-      if(!hasUnreplayablePromotion)return h;
-      if(typeof h?.id==='string')revokedHypothesisIds.add(h.id);
-      return {...h,status:'awaiting-evidence',evidenceGate:'none',result01:null,completedAt:0};
-    });
+    const seenHypothesisIds=new Set<string>();
+    const areas:DevelopmentArea[]=['memory','learning','world-model','self-model','relationship','agency','resource-discipline','perception'];
+    const statuses:DevelopmentStatus[]=['proposed','running','completed','rejected','rolled-back','preview-only','awaiting-evidence'];
+    const evidenceGates=new Set(['none','external-verified','holdout-verified','replicated']);
+    const restoredHypotheses=sourceHypotheses.map((rawHypothesis:any)=>{
+      let h:any;
+      try { h=structuredClone(rawHypothesis); } catch { return null; }
+      if(!h||typeof h!=='object'||Array.isArray(h))return null;
+      const id=canonicalEvidenceText(h.id,180);
+      const title=canonicalEvidenceText(h.title,180);
+      const hypothesis=canonicalEvidenceText(h.hypothesis,800);
+      if(!id||!title||!hypothesis||seenHypothesisIds.has(id)||!areas.includes(h.area))return null;
+      seenHypothesisIds.add(id);
+      const status:DevelopmentStatus=statuses.includes(h.status)?h.status:'proposed';
+      const gate=evidenceGates.has(h.evidenceGate)?h.evidenceGate:'none';
+      const hasUnreplayablePromotion=status==='completed'||gate==='external-verified'||gate==='holdout-verified'||gate==='replicated';
+      if(hasUnreplayablePromotion)revokedHypothesisIds.add(id);
+      const score=(value:unknown,fallback:number)=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:fallback;
+      const timestamp=(value:unknown)=>Number.isSafeInteger(value)&&Number(value)>=0?Number(value):0;
+      return {
+        id,area:h.area,title,hypothesis,
+        evidence:Array.isArray(h.evidence)?h.evidence.filter((value:unknown):value is string=>typeof value==='string'&&Boolean(canonicalEvidenceText(value,160))).slice(0,8).map((value:string)=>canonicalEvidenceText(value,160)!):[],
+        expectedGain01:score(h.expectedGain01,.2),
+        estimatedCost01:score(h.estimatedCost01,.2),
+        priority01:score(h.priority01,.2),
+        status:hasUnreplayablePromotion?'awaiting-evidence':status,
+        createdAt:timestamp(h.createdAt),
+        completedAt:hasUnreplayablePromotion?0:timestamp(h.completedAt),
+        result01:hasUnreplayablePromotion?null:(h.result01===null?null:score(h.result01,.5)),
+        evidenceGate:hasUnreplayablePromotion?'none':gate,
+      } as DevelopmentHypothesis;
+    }).filter((hypothesis):hypothesis is DevelopmentHypothesis=>hypothesis!==null);
+    const validActions=new Set<ActionKind>(ACTIONS);
+    const restoredCycles=Array.isArray((r as any).developmentCycles)?(r as any).developmentCycles.slice(-64).map((rawCycle:any)=>{
+      let cycle:any;
+      try { cycle=structuredClone(rawCycle); } catch { return null; }
+      if(!cycle||typeof cycle!=='object'||Array.isArray(cycle)||
+         typeof cycle.id!=='string'||cycle.id.length>180||typeof cycle.hypothesisId!=='string'||
+         !restoredHypotheses.some(hypothesis=>hypothesis.id===cycle.hypothesisId))return null;
+      const stageValues=['proposed','task-ready','awaiting-evidence','holdout-verified','replicated','closed'];
+      const stage=stageValues.includes(cycle.stage)?cycle.stage:'awaiting-evidence';
+      const revoke=revokedHypothesisIds.has(cycle.hypothesisId)||stage==='replicated'||stage==='holdout-verified';
+      return {
+        id:cycle.id.slice(0,180),hypothesisId:cycle.hypothesisId,
+        ...(typeof cycle.goalId==='string'&&cycle.goalId.length<=96?{goalId:cycle.goalId}:{}),
+        objective:canonicalEvidenceText(cycle.objective,240)??'Re-evaluate prior self-development hypothesis',
+        origin:['autonomous-gap','goal-pressure','user-directed'].includes(cycle.origin)?cycle.origin:'autonomous-gap',
+        requestedAction:validActions.has(cycle.requestedAction)?cycle.requestedAction:'verify',
+        requiredContexts:Number.isSafeInteger(cycle.requiredContexts)?Math.max(2,Math.min(8,cycle.requiredContexts)):2,
+        requiredPositiveDelays:Number.isSafeInteger(cycle.requiredPositiveDelays)?Math.max(2,Math.min(8,cycle.requiredPositiveDelays)):2,
+        requiredHoldout:Number.isSafeInteger(cycle.requiredHoldout)?Math.max(4,Math.min(16,cycle.requiredHoldout)):4,
+        stage:revoke?'awaiting-evidence':stage,createdAt:timestamp(cycle.createdAt),
+        taskCount:Number.isSafeInteger(cycle.taskCount)?Math.max(0,Math.min(1024,cycle.taskCount)):0,
+        verifiedEvidenceCount:0,lastEvidenceAt:0,
+      } as DevelopmentCycleRecord;
+    }).filter((cycle):cycle is DevelopmentCycleRecord=>cycle!==null):[];
     this.state={...d,...r,version:6,
-      // Cached maturity aggregates cannot be re-authenticated from a snapshot alone.
-      // Keep history as explicitly non-evidentiary context; verifier-backed receipts must rebuild certification.
+      currentHypothesisId:typeof r.currentHypothesisId==='string'&&restoredHypotheses.some(hypothesis=>
+        hypothesis.id===r.currentHypothesisId&&['proposed','running','awaiting-evidence'].includes(hypothesis.status))
+        ?r.currentHypothesisId:null,
+      lastCycleAt:Number.isSafeInteger(r.lastCycleAt)&&Number(r.lastCycleAt)>=0?Number(r.lastCycleAt):0,
+      cycles:Number.isSafeInteger(r.cycles)&&Number(r.cycles)>=0?Math.min(1_000_000_000,Number(r.cycles)):0,
+      // Cached maturity aggregates and promotion effects cannot be re-authenticated from a snapshot alone.
       developmentalMaturity:{...d.developmentalMaturity,history:Array.isArray((r as any).developmentalMaturity?.history)?(r as any).developmentalMaturity.history.slice(-64).map((x:any)=>({...x,verified01:0,retention01:0,transfer01:0,failed01:0})):[]},
-      agenda:{...d.agenda,...((r as any).agenda??{})},
+      agenda:{...d.agenda},
       hypotheses:restoredHypotheses,
       experiments:Array.isArray(r.experiments)?r.experiments.slice(-128).map((x:any)=>({...x,replicated:false,status:'insufficient',evidenceGate:'sandbox-preview'})):[],
-      developmentCycles:Array.isArray((r as any).developmentCycles)?(r as any).developmentCycles.slice(-64).map((c:any)=>({...c,stage:revokedHypothesisIds.has(c?.hypothesisId)||c?.stage==='replicated'||c?.stage==='holdout-verified'?'awaiting-evidence':c?.stage,verifiedEvidenceCount:0,lastEvidenceAt:0})):[],
+      developmentCycles:restoredCycles,
       // Verifier receipts are WeakMap-backed capabilities and do not survive JSON snapshots.
       // Preserve observations for audit, but never restore serialized trust booleans.
       externalEvidence:Array.isArray(r.externalEvidence)?r.externalEvidence.slice(-512).map(e=>({...e,independentVerified:false,observationId:undefined})):[],
       developmentalEvidenceReceiptIds:Array.isArray((r as any).developmentalEvidenceReceiptIds)?(r as any).developmentalEvidenceReceiptIds.filter((x:unknown):x is string=>typeof x==='string'&&x.length<=256).slice(-512):[],
       developmentalEvidenceObservationIds:Array.isArray((r as any).developmentalEvidenceObservationIds)?[...new Set((r as any).developmentalEvidenceObservationIds.filter((x:unknown):x is string=>typeof x==='string'&&x.length<=180))].slice(-512):[],
       investmentDecisions:Array.isArray((r as any).investmentDecisions)?(r as any).investmentDecisions.slice(-96):[],
-      // Outcome-derived metrics are not re-authenticated by a JSON snapshot.
+      learningBudget01:d.learningBudget01,spentBudget01:0,recovery01:d.recovery01,
+      // Outcome-derived metrics, learned policy weights and mastery are not re-authenticated by JSON.
       metrics:{...d.metrics},
-      curriculum:{...d.curriculum,focus:(r.curriculum?.focus??d.curriculum.focus),mastery:{...d.curriculum.mastery},plannedSteps:0,completedSteps:0},
+      curriculum:{...d.curriculum},
       actionBias:{...d.actionBias},
       acceptedChanges:0,
       unverifiedEvidenceAttempts:Number.isSafeInteger(r.unverifiedEvidenceAttempts)?Math.max(0,Math.min(1_000_000_000,r.unverifiedEvidenceAttempts!)):0,
