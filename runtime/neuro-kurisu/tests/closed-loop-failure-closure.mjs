@@ -30,6 +30,7 @@ causal.durable({ tick: 2, stateTick: 2, replaySignature: 'fixture-signature', co
 const finalized = causal.finalizeDurable({ tick: 2, stateTick: 2, replaySignature: 'fixture-signature', continuousTick: 2, processed: 2 });
 assert.equal(finalized?.status, 'FAIL');
 assert.equal(finalized?.complete, false);
+assert.equal(finalized?.score01, 0, 'durable bookkeeping must not grant causal score to a failed cycle');
 assert.equal(finalized?.failureReason, 'fixture-aborted');
 assert.equal(causal.snapshot().failures, 1);
 
