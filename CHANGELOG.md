@@ -1,8 +1,16 @@
+## NK1 WorkPass535 — remove runtime typecheck blockers surfaced by persistence CI (2026-10-24)
+
+- Guarded nullable causal-experience return values before forwarding them to unified learning; a missing signal now skips ingestion rather than dereferencing null.
+- Initialized the required `verifiedNonHoldoutExecutions` counter in newly compiled compound-skill base variants so runtime-created records match their declared schema.
+- Made the retrieval query numeric fallback accept optional `now` and `limit` values with explicit type narrowing.
+- The persistence workflow path filters are being expanded to include each file checked by its whole-runtime typecheck, so subsequent changes to this surface trigger validation.
+- The typecheck result for these changes remains pending until a run against the updated head completes.
+
 ## NK1 WorkPass534 — enforce canonical memory byte budget on restore (2026-10-24)
 
 - Fixed `MemoryOS2.restore()` so it recomputes the normalized serialized footprint and re-enforces the saved/effective byte budget after rebuilding indexes.
 - Added a restore-boundary regression with an intentionally stale `estimatedBytes` value and an oversized snapshot; it requires eligible records to be evicted, used bytes to stay within budget, and indexes to remain consistent.
-- The focused regression is included in the existing canonical-store CI step. CI verification for this change is pending; no passing result is claimed yet.
+- CI run [#40129105309](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40129105309) passed all four focused behavioral tests, including budget enforcement and index consistency; the overall workflow remained red because the runtime TypeScript check found unrelated nullable-result and schema-initialization errors, addressed in WorkPass535 below.
 
 ## NK1 WorkPass533 — align MemorySubsystemRuntime snapshot and restore shapes (2026-10-24)
 
