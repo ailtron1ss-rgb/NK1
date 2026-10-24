@@ -210,7 +210,7 @@ export class ExternalObserverFabric {
       if(!Number.isFinite(Number(row.observedAt))||!Number.isFinite(Number(row.confidence01)))continue;
       if(this.requireRegisteredSources){
         const source=sourceById.get(row.sourceId);
-        if(!source||source.sourceClass!==row.sourceClass||source.channel!==row.channel)continue;
+        if(!source||!source.enabled||source.sourceClass!==row.sourceClass||source.channel!==row.channel)continue;
         const rowKey=typeof row.independenceKey==='string'&&row.independenceKey.trim()
           ?row.independenceKey.trim().slice(0,120):undefined;
         if(rowKey!==undefined&&rowKey!==source.independenceKey)continue;
