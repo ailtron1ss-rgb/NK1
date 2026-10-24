@@ -1,3 +1,13 @@
+## NK1 WorkPass501 — bind autonomous actions to approval and execution evidence (2026-10-24)
+
+- Versioned the AILG durable snapshot contract to v2 and made decision records preserve whether an intent has external side effects.
+- Restore downgrades an external-effect decision to `approval-required` when its durable approval reference is absent; execution receipts are not restored for that downgraded decision.
+- Intent, outcome and promotion-evaluation inputs now use descriptor-based plain-data reads. Getter-backed data is rejected without invoking getters, including during proposal scoring and promotion eligibility checks.
+- Added regressions for hostile intent/outcome/evaluation envelopes, invalid control characters, malformed snapshots and missing approval references. No external dependency was added.
+- **Validation boundary:** source and test are committed and registered in `test:rebuild-recovered`; exact-head test/typecheck/CI execution is not available in the current GitHub status response. Runtime ActionGateway integration is still pending.
+
+---
+
 ## NK1 WorkPass500 — persist the autonomous intent/learning governor safely (2026-10-24)
 
 - Added bounded snapshot/restore for AILG decision, execution-reference and single-use outcome lineage; invalid records and accessor-backed objects are rejected without running getters.
