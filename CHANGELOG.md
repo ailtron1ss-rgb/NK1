@@ -1,3 +1,12 @@
+## NK1 WorkPass502 — require injected trust authorities for execution and approval (2026-10-24)
+
+- AILG no longer treats a non-empty receipt string as proof by itself: `authorize` and `recordExecution` require injected approval/execution verifier callbacks, and fail closed if those authorities are unavailable or reject the receipt.
+- Persistent approval/execution IDs are reaccepted only when canonical host-provided trust callbacks verify them; serialized flags alone cannot restore external actions as executable.
+- Expanded the regression to use explicit test-only trust authorities and to prove external action approval is refused without a trusted verifier.
+- **Integration boundary:** production callbacks still need to be wired to NK1's canonical P23 approval/evidence registry and ActionGateway supervisor. AILG does not dispatch tools itself, and no test or CI PASS is claimed in this pass.
+
+---
+
 ## NK1 WorkPass501 — bind autonomous actions to approval and execution evidence (2026-10-24)
 
 - Versioned the AILG durable snapshot contract to v2 and made decision records preserve whether an intent has external side effects.
