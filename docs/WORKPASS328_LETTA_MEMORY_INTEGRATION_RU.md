@@ -7,6 +7,7 @@
 
 - Добавлен `LettaMemoryBridge`: ленивый TypeScript-адаптер с созданием/повторным использованием Letta agent, ручным `recordExperience`, `recall`, canonical upsert и запросом forget, сериализацией обращений к одному агенту, маскированием секретов, ограничением размера данных и snapshot.
 - `MemoryFabric.applyLifecycleCommand` теперь публикует read-only события завершённых изменений. `MemorySubsystemRuntime` зеркалирует encode/revision/update в Letta после native commit и отправляет отдельный forget request; sync подавляется во время восстановления/compatibility migration. `flushLettaMemorySync()` позволяет дождаться очереди при завершении/тестах.
+- Добавлен отдельный вход `retrieveForCognitionWithLettaCandidates(...)`: сначала возвращает native retrieval NK1, затем (только при включённом Letta) прикладывает отдельный внешний candidate с меткой `untrusted-candidate`. Этот интерфейс не записывает внешние ответы в `MemoryOS2` автоматически; подключение его результата к каждому prompt/response остаётся отдельным этапом.
 - Автоматическая передача данных включается только при `NK1_LETTA_ENABLED=1` (или явной конфигурации в коде); прежние записи не выгружаются массово при старте. Snapshot/restore сохраняет identity и счётчики, но не включает провайдера сам по себе.
 - Ответы recall помечаются `untrusted-candidate`; они не меняют canonical memory, цели, само-модель или решения NK1 автоматически. Ответ агента «записано» не считается независимым доказательством долговременного commit.
 - Сохранён существующий governance gate: исследовательские/legacy артефакты не повышаются автоматически до canonical.
@@ -50,7 +51,7 @@ node --experimental-strip-types tests/integration/letta-governance-adaptation.mj
 1. Закрепить SDK в `package.json` и lockfile через воспроизводимый npm install на Node 24; пройти runtime typecheck и соответствующие memory tests.
 2. Выбрать один канонический путь сохранения receipt/agent id в persisted advanced state и подтвердить restart round-trip на рабочем runtime.
 3. Проверить MemFS persistence на реальном Letta local/cloud runtime: restart, duplicate record, conflicting/superseded memory, deletion and retention.
-4. Сравнить NK1 native-only baseline с native+Letta на парных seeds и независимом holdout. Не продвигать вариант, если recall uplift не доказан или latency/resource cost превышает пороги.
+4. Подключить `retrieveForCognitionWithLettaCandidates` к выбранному когнитивному read path через контролируемую feature flag; затем сравнить NK1 native-only baseline с native+Letta на парных seeds и независимом holdout. Не продвигать вариант, если recall uplift не доказан или latency/resource cost превышает пороги.
 5. После runtime validation — отдельный release asset и license/security review. Этот commit ничего не публикует в GitHub Releases.
 
 ## Безопасность и границы
