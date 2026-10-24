@@ -53,6 +53,8 @@ export interface OrganismGoal {
   createdAt: number;
   updatedAt: number;
   parentId?: string;
+  /** External goals require explicit approval before the ecology may reactivate them. */
+  activationApproved?: boolean;
 }
 
 export interface IntentCandidate {
