@@ -129,7 +129,7 @@ export class OutcomeCognitionFabric {
   }
 
   private fingerprintFromRecord(record:OutcomeCognitionProjection['verificationRecord']):string{
-    return sha256Stable({executionId:record.executionId??'',tool:record.tool,ok:Boolean(record.ok),outcomeClass:record.outcomeClass??null,verification:{verified:Boolean(record.verified),basis:record.basis,confidence01:cap(record.confidence01),externalObservation:Boolean(record.externalObservation),observationId:record.observationId??null,evidenceEventId:record.evidenceEventId??null,expectedPostcondition:record.expectedPostcondition??null,observedPostcondition:record.observedPostcondition??null}});
+    return sha256Stable({executionId:record.executionId??'',tool:record.tool,ok:Boolean(record.ok),outcomeClass:record.outcomeClass??null,verification:{verified:Boolean(record.verified),basis:record.basis,confidence01:cap(record.confidence01),externalObservation:Boolean(record.externalObservation),observationId:record.observationId??null,...(record.evidenceEventId?{evidenceEventId:record.evidenceEventId}:{}),expectedPostcondition:record.expectedPostcondition??null,observedPostcondition:record.observedPostcondition??null}});
   }
 
   private trimProjectionIndex(){while(this.projectionIndex.size>this.maxProjectionIndex){const oldest=this.projectionIndex.keys().next().value as string|undefined;if(!oldest)break;this.projectionIndex.delete(oldest);}}
@@ -169,7 +169,7 @@ export class OutcomeCognitionFabric {
     const actionVerified=assessment==='match'||(assessment==='not-external'&&v.basis==='tool-contract'&&v.verified===true&&input.ok===true);
     const outcomeOk=Boolean(input.ok)&&!explicitlyContradicted;
     const verifiedExternal=Boolean(outcomeOk&&assessment==='match'&&actionVerified);
-    const fingerprint=executionId?sha256Stable({executionId,tool,ok:outcomeOk,outcomeClass:input.outcomeClass??null,verification:{verified:actionVerified,basis:v.basis,confidence01:cap(v.confidence01),externalObservation:Boolean(v.externalObservation),observationId:v.observationId??null,evidenceEventId:v.evidenceEventId??null,expectedPostcondition:v.expectedPostcondition??null,observedPostcondition:v.observedPostcondition??null}}):undefined;
+    const fingerprint=executionId?sha256Stable({executionId,tool,ok:outcomeOk,outcomeClass:input.outcomeClass??null,verification:{verified:actionVerified,basis:v.basis,confidence01:cap(v.confidence01),externalObservation:Boolean(v.externalObservation),observationId:v.observationId??null,...(v.evidenceEventId?{evidenceEventId:v.evidenceEventId}:{}),expectedPostcondition:v.expectedPostcondition??null,observedPostcondition:v.observedPostcondition??null}}):undefined;
     if(executionId){
       const prior=this.projectionIndex.get(executionId);
       if(prior){
