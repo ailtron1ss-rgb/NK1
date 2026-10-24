@@ -42,13 +42,16 @@ concurrency:
 jobs:
   memory-persistence:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           package-manager-cache: false
+      - name: Check runtime TypeScript surface
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
       - name: Verify memory subsystem snapshot and restore
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/memory-subsystem-runtime-persistence.mjs
