@@ -50,6 +50,8 @@ let ledger = runtime.realityEvidenceLedger.snapshot();
 assert.equal(ledger.total, 1, 'production subsystem owner must forward an observer event into the canonical reality ledger');
 assert.equal(ledger.recent[0].eventId, evidenceEventId, 'verifier identity must survive the observer-to-ledger bridge');
 assert.equal(ledger.recent[0].realityClass, 'device-observation', 'device observations must retain their evidence class');
+assert.equal(ledger.recent[0].confidence01, input.confidence01 * 0.8,
+  'device evidence confidence must be reduced by its conservative registered-source trust prior');
 
 const replay = runtime.externalObserver.observe(input);
 assert.equal(replay.id, observation.id, 'observer retry must remain idempotent');
@@ -71,6 +73,30 @@ userRuntime.externalObserver.observe({
 const userEvidence = userRuntime.realityEvidenceLedger.snapshot();
 assert.equal(userEvidence.total, 1, 'user reports may be retained as context');
 assert.equal(userEvidence.externalCount, 0, 'user reports must not be promoted as external confirmation');
+
+// Sample confidence cannot override the registered source-class trust prior.
+// A world-class source reports 0.99 confidence, but its ledger evidence remains
+// below the independent-confirmation floor after the 0.56 trust prior is applied.
+const weakPriorRuntime = new EvidenceResearchSubsystemRuntime({
+  authorizeSourceRegistration: source => source.id === 'world-observer'
+    && source.sourceClass === 'world' && source.channel === 'world'
+    && source.independenceKey === 'world:scene',
+});
+weakPriorRuntime.externalObserver.registerSource({
+  id: 'world-observer', sourceClass: 'world', channel: 'world', independenceKey: 'world:scene',
+});
+weakPriorRuntime.externalObserver.observe({
+  sourceId: 'world-observer', sourceClass: 'world', channel: 'world',
+  independenceKey: 'world:scene', claimKey: 'world_state:ready',
+  observedPostcondition: 'world_state:ready', confidence01: 0.99,
+  payload: { state: 'ready' },
+});
+const weakPriorEvidence = weakPriorRuntime.realityEvidenceLedger.snapshot();
+assert.ok(Math.abs(weakPriorEvidence.recent[0].confidence01 - 0.99 * 0.56) < 1e-9,
+  'ledger confidence must multiply sample confidence by the registered source prior');
+assert.equal(weakPriorRuntime.realityEvidenceLedger.claimAssessment('world_state:ready').qualifiedIndependentExternalSources, 0,
+  'a weak-prior source cannot be counted as qualified independent confirmation');
+
 
 // A single external source grounds a claim but must not satisfy the stronger
 // independent-corroboration threshold used for consequential promotion.
