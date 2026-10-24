@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
-import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -129,6 +129,20 @@ test('native provider rejects datasets stored in mutable organism state', async 
     await assert.rejects(
       createProvider({ datasetPath, root, stateDirectory, candidateStore: new VersionedSkillCandidateStore() }),
       /native-p23-revision-dataset-must-be-outside-mutable-state-directory/,
+    );
+  });
+});
+
+test('native provider rejects symlink dataset paths before reading target bytes', async () => {
+  if (process.platform === 'win32') return;
+  await temporary(async ({ root, stateDirectory, configDirectory }) => {
+    const targetPath = path.join(configDirectory, 'protected-target.json');
+    const datasetPath = path.join(configDirectory, 'dataset-link.json');
+    await writeFile(targetPath, JSON.stringify(buildDataset()), { mode: 0o600 });
+    await symlink(targetPath, datasetPath);
+    await assert.rejects(
+      createProvider({ datasetPath, root, stateDirectory, candidateStore: new VersionedSkillCandidateStore() }),
+      /native-p23-revision-dataset-must-be-a-regular-non-symlink-file/,
     );
   });
 });
