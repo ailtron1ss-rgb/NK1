@@ -48,7 +48,7 @@ assert.equal(restoreConflict.recent(100).length,0,'restored conflicting event ro
 const executorSource=readFileSync(resolve(process.cwd(),'src/organism/body/EmbodiedActionExecutor.ts'),'utf8');
 const runtimeSource=readFileSync(resolve(process.cwd(),'src/organism/core/OrganismRuntime.ts'),'utf8');
 assert.match(executorSource,/createStableEvidenceEventId\('embodied'/);
-assert.match(runtimeSource,/eventId:embodiedAction\.eventId\?\.`\$\{embodiedAction\.eventId\}:action`/);
-assert.match(runtimeSource,/eventId:embodiedAction\.eventId\?\.`\$\{embodiedAction\.eventId\}:consequence`/);
+assert.ok(runtimeSource.includes("eventId:embodiedAction.eventId?`${embodiedAction.eventId}:action`"));
+assert.ok(runtimeSource.includes("eventId:embodiedAction.eventId?`${embodiedAction.eventId}:consequence`"));
 
 console.log('WORKPASS479_REALITY_EVIDENCE_EVENT_IDEMPOTENCY=PASS sameEventDedup=true conflictingPayloadQuarantine=true restoreQuarantine=true stableIdentity=true');
