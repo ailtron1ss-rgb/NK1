@@ -1,3 +1,9 @@
+## NK1 WorkPass96 — Live2D canonical asset integrity gate (2026-10-24)
+
+- Added a deterministic integrity gate that checks SHA-256 and size for all canonical/hydrated Live2D manifest entries, both model variants, all declared model resources, viewer expression-name mappings, and vendored Pixi/Cubism bundles.
+- Integrated the gate into standard app test commands and the focused Node.js 24 Live2D workflow; workflow path filters now include canonical model assets and the public-asset manifest.
+- Validation boundary: source/test/workflow commits exist; the exact-head workflow is still pending until GitHub Actions confirms the full run. Browser WebGL render and real audio timing are still separate release gates.
+
 ## NK1 WorkPass95 — Live2D render budget and visibility lifecycle (2026-10-24)
 
 - Start the Pixi application only after the model is loaded; cap real ticker rendering at 14 FPS idle and 30 FPS during speech, gestures, or high affect.
