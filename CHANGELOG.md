@@ -1,3 +1,12 @@
+# WorkPass331 follow-up — deterministic replay and cycle integrity (2026-10-24)
+
+- [HARDENED] Cognitive kernel stage events now use stable identities scoped to the logical tick and stage, so repeated delivery of identical input does not append duplicate causal events.
+- [FAIL-CLOSED] Reusing a tick with changed stage evidence, parent lineage, confidence, payload or timestamp is rejected instead of silently accepting the prior event.
+- [HARDENED] All stage input contracts are checked before event writes begin, preventing malformed input from leaving a partial decision cycle.
+- [HARDENED] Duplicate completion deliveries return the already-recorded cycle outcome and do not increment cycle counters again.
+- [TESTS ADDED] Added regressions for exact replay, conflicting replay, malformed-input atomicity and duplicate late feedback.
+- [VALIDATION] Source and regression changes are committed to `workpass331-unified-cognitive-kernel-2026-10-24`. Hosted workflow execution must be checked separately; this entry does not claim a passing run.
+
 # WorkPass331 — unified canonical cognitive kernel (2026-10-24)
 
 - [IMPLEMENTED] Added `CanonicalCognitiveKernel` as the single coordinator for observation, prediction, appraisal, attention, memory, goal, plan, action, outcome, learning and self-update event lineage.
