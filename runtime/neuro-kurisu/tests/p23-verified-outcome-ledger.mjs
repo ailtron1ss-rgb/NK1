@@ -21,7 +21,10 @@ assert.throws(() => new VerifiedOutcomeLedger([
 assert.throws(() => new VerifiedOutcomeLedger([manifest[0], manifest[0]]), /duplicate task id/);
 
 assert.equal(ledger.record(outcome()).accepted, true);
-assert.equal(ledger.record(outcome()).rejection.code, 'duplicate-attempt');
+assert.equal(ledger.record(outcome({ evidenceRef:'artifact://trial-2' })).rejection.code, 'duplicate-attempt',
+  'the same task/method/seed/attempt is rejected even when a distinct evidence ref is supplied');
+assert.equal(ledger.record(outcome({ method:'candidate', seed:100 })).rejection.code, 'duplicate-evidence-ref',
+  'one evidence ref cannot be reused for another otherwise-distinct outcome');
 assert.equal(ledger.record(outcome({ method:'self-judge', authority:'self-report' })).rejection.code, 'self-report-not-authoritative');
 assert.equal(ledger.record(outcome({ method:'wrong-version', taskVersion:'2' })).rejection.code, 'version-mismatch');
 assert.equal(ledger.record(outcome({ method:'   ' })).rejection.code, 'invalid-method');
