@@ -154,6 +154,17 @@ try {
     'scheduler diagnostics must not expose local endpoint URLs');
   assert.equal(diagnosticsBody.integration?.coreAffectHint?.emotion, 'curiosity', 'the local affect model should reach canonical cognitive appraisal');
   assert.equal(diagnosticsBody.integration?.coreAffectHint?.confidence01, 0.82, 'the core bridge should preserve bounded confidence metadata');
+  assert.ok(Number.isSafeInteger(diagnosticsBody.integration?.coreActionAttribution?.outcomeActionMismatches),
+    'B272 action-attribution mismatch counter should be visible in aggregate diagnostics');
+  const lastMismatch = diagnosticsBody.integration?.coreActionAttribution?.lastMismatch;
+  assert.ok(lastMismatch === null || (
+    Number.isSafeInteger(lastMismatch.tick)
+    && typeof lastMismatch.generatedAction === 'string'
+    && typeof lastMismatch.executedAction === 'string'
+    && lastMismatch.generatedAction !== lastMismatch.executedAction
+  ), 'B272 mismatch diagnostics must retain only bounded action provenance');
+  assert.equal(JSON.stringify(diagnosticsBody.integration?.coreActionAttribution).includes(providerUrl), false,
+    'action attribution diagnostics must not expose provider URLs');
 
   const classifyResponse = await fetch(`http://127.0.0.1:${appPort}/api/local-models/classify`, {
     method: 'POST',
