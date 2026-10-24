@@ -38,4 +38,13 @@ const consolidated = store.consolidate();
 consolidated[0].tags.push('mutated-outside');
 assert.equal(store.snapshot()[0].tags.includes('mutated-outside'), false);
 assert.equal(new AdaptiveExperienceConsolidator(Number.NaN).size(), 0);
+
+let restoreArrayGetterCalls = 0;
+const hostileRecords = [];
+Object.defineProperty(hostileRecords, '0', { enumerable: true, get() { restoreArrayGetterCalls += 1; return valid; } });
+hostileRecords.length = 1;
+const restoreGuard = new AdaptiveExperienceConsolidator();
+restoreGuard.restore(hostileRecords);
+assert.equal(restoreArrayGetterCalls, 0, 'restoring the episode list must not execute array index getters');
+assert.equal(restoreGuard.size(), 0, 'an accessor-backed saved episode array must be rejected');
 console.log('adaptive experience consolidation boundary: ok');
