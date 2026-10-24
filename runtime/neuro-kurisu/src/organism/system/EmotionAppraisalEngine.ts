@@ -253,6 +253,16 @@ export class EmotionAppraisalEngine {
     input=snapshotEmotionInput(input,'emotion-appraisal-input-must-be-plain-data') as unknown as typeof input;
     if(!input||typeof input!=='object'||!Number.isSafeInteger(input.tick)||input.tick<0)throw new RangeError('emotion-appraisal-tick-must-be-a-non-negative-safe-integer');
     if(input.at!==undefined&&(typeof input.at!=='number'||!Number.isFinite(input.at)||input.at<0))throw new RangeError('emotion-appraisal-timestamp-must-be-finite-and-non-negative');
+    const unitInterval=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
+    const appraisalFields=[
+      input.goalPressure01,input.goalCongruence01,input.controllability01,input.novelty01,
+      input.selfRelevance01,input.socialMeaning01,input.uncertainty01,input.predictionError01,
+      input.homeostaticPressure01,input.energy01,input.success01,
+    ];
+    if(appraisalFields.some(value=>value!==undefined&&!unitInterval(value))||
+       (input.external!==undefined&&typeof input.external!=='boolean')) {
+      throw new RangeError('emotion-appraisal-values-invalid');
+    }
     const a={relevance01:c(Math.max(input.goalPressure01??0,input.predictionError01??0,input.homeostaticPressure01??0)),goalCongruence01:c(input.goalCongruence01??(input.success01??.5)),controllability01:c(input.controllability01??(1-(input.uncertainty01??.35))),novelty01:c(input.novelty01??.35),selfRelevance01:c(input.selfRelevance01??.5),socialMeaning01:c(input.socialMeaning01??0),uncertainty01:c(input.uncertainty01??.35)};
     const arousal=c(a.relevance01*.20+a.novelty01*.19+a.uncertainty01*.20+(input.predictionError01??0)*.17+(input.homeostaticPressure01??0)*.15+this.state.interoception.regulationPressure01*.09);
     const valence=c(.5+(a.goalCongruence01-.5)*.48+a.controllability01*.10-(a.uncertainty01*.16)+((input.success01??.5)-.5)*.45);
