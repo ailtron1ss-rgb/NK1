@@ -1,3 +1,14 @@
+## NK1 WorkPass328 — universal input interpreter (2026-10-24)
+
+- [INTEGRATED] Added a deterministic interpretation boundary for every currently declared runtime input family: user text, vision semantics/features, audio events/samples, device telemetry, world context/events, goal/appraisal signals, and unverified outcome claims.
+- [INTEGRATED] Added an explicit audio modality to the existing multimodal state; old persisted snapshots receive the new counter through the existing default-state merge.
+- [WIRED] Runtime input evidence is normalized and bounded before it is recorded; the current tick's recorded observations now flow through the canonical `MultimodalPerception.fuse()` owner via `OrganismCore.fuseMultimodalObservations()`. The runtime no longer substitutes a snapshot for an actual fusion result.
+- [GROUNDING] Raw audio samples are not treated as a transcript; image feature vectors are not treated as scene understanding; reward/success fields remain unverified claims. The interpretation digest labels source material as fallible evidence, not instructions.
+- [REGRESSION] Added `test:universal-input-interpreter` with modality normalization, finite confidence/salience, old-state compatibility, unresolved-modality, and runtime-wiring checks; registered it in `test:rebuild-recovered`.
+- [VALIDATION] Commit records source and regression changes only. Exact-head runtime test/typecheck and Actions execution remain unverified; no autonomy/learning score uplift is claimed. The published `Neuro` release asset has not been rebuilt or replaced.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

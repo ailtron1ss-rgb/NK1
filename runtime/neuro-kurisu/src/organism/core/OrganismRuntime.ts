@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
+import { buildUniversalInputInterpretation, formatUniversalInterpretationContext } from '../cognition/UniversalInputInterpreter.ts';
 import { FileStateStore } from '../persistence/FileStateStore.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
 import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
@@ -585,11 +586,23 @@ export class OrganismRuntime {
     const observation = this.environment.toOrganismObservation();
     // Validate the actual runtime-to-core observation boundary before nested fields are read.
     assertCognitiveCycleBoundaryInput(observation, 'full');
-    const modalityEvents = [];
-    if (externalText) modalityEvents.push(this.core.recordMultimodalObservation({ modality:'text', summary:externalText.slice(0,500), confidence:.88, salience:.72, evidence:['user-input'], content:externalText }));
-    modalityEvents.push(this.core.recordMultimodalObservation({ modality:'sensor', summary:this.embodiment.resourceSummary(), confidence:body.sensoryFreshness01*.82, salience:Math.max(.18,Math.abs(body.telemetry.motion01 ?? 0)+.15), evidence:['device-telemetry'] }));
-    modalityEvents.push(this.core.recordMultimodalObservation({ modality:'world', summary:observation.worldContext.facts.slice(-8).join(' | '), confidence:.7, salience:Math.max(.15,observation.surprise ?? .2), evidence:['world-model'] }));
-    const fused = this.core.multimodalSnapshot();
+    const interpretation = buildUniversalInputInterpretation({
+      userText: externalText,
+      observation,
+      body: {
+        bodyEnergy01: body.bodyEnergy01,
+        cognitiveCapacity01: body.cognitiveCapacity01,
+        thermalStrain01: body.thermalStrain01,
+        sensoryFreshness01: body.sensoryFreshness01,
+        battery01: body.telemetry.battery01,
+        cpuLoad01: body.telemetry.cpuLoad01,
+        ramPressure01: body.telemetry.ramPressure01,
+        motion01: body.telemetry.motion01,
+      },
+      at: Date.now(),
+    });
+    const modalityEvents = interpretation.modalityInputs.map((event) => this.core.recordMultimodalObservation(event));
+    const fused = this.core.fuseMultimodalObservations(modalityEvents);
     const cycle = await this.core.observe({
       ...observation,
       text: externalText,
@@ -597,7 +610,7 @@ export class OrganismRuntime {
       embodiment: { bodyEnergy01: body.bodyEnergy01, cognitiveCapacity01: body.cognitiveCapacity01, thermalStrain01: body.thermalStrain01, sensoryFreshness01: body.sensoryFreshness01, awake: body.awake, battery01: body.telemetry.battery01, cpuLoad01: body.telemetry.cpuLoad01, ramPressure01: body.telemetry.ramPressure01 },
     });
     const activePerceptionRequestId = this.core.activePerceptionPendingId();
-    const fusedObservation = modalityEvents.slice(-6).map((x:any)=>`[${x.modality}] ${x.summary}`).join(' | ');
+    const fusedObservation = formatUniversalInterpretationContext(interpretation, fused);
     const cognitiveProposal = await this.generateCognitiveProposal(cycle, fusedObservation, Boolean(options.deliberate), !externalText, options.signal);
     if (cognitiveProposal) {
       this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });

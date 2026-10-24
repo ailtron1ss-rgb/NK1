@@ -1,5 +1,16 @@
 # NeuroCore — repository working rules
 
+## Current source-stack checkpoint — WorkPass328 (2026-10-24)
+
+- The canonical runtime now builds a bounded interpretation digest across text, vision, audio, device telemetry, world context/events, goal/appraisal signals and unverified outcome claims.
+- The existing multimodal owner receives normalized per-modality evidence and performs explicit per-tick fusion; audio is an additive modality with a default-state migration for older snapshots.
+- Semantic limits are explicit: raw audio samples are not a transcript, low-level visual features are not semantic scene interpretation, and success/reward fields are not independently verified evidence.
+- New regression command: `npm --prefix runtime/neuro-kurisu run test:universal-input-interpreter`; it is also included in the runtime rebuild-recovered suite.
+- Exact-head CI/typecheck is not yet verified. Recent Actions runner-startup failures must not be treated as a code-test failure or a pass.
+- Branch `workpass328-universal-interpreter` is a source-stack change, not a release archive. The published `Neuro` asset remains WorkPass70 until a refreshed ZIP can be built, hashed, and uploaded.
+
+---
+
 > **New-session entry point:** read [`NEUROCORE_START_HERE.md`](NEUROCORE_START_HERE.md) and [WorkPass126 skill-store integrity report](docs/WORKPASS126_SKILL_STORE_INTEGRITY_2026-10-21.md) and [WorkPass125 repository synchronization audit](docs/WORKPASS125_REPOSITORY_SYNC_AUDIT_2026-10-21.md), then refresh the live branch head, stacked PR state, exact-head Actions status and open-work register. The active learning stack is WorkPass124 on top of WorkPass123; PR #12 is draft and unmerged. WorkPass126 hardens durable skill-store schema and payload-integrity validation; its tests and exact-head CI remain unverified. The release/metadata `main` branch is not the direct merge target for the source stack. The mission is persistent across chats; do not ask the user to restate it.
 
 ## Latest checkpoint

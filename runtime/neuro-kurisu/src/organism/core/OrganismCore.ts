@@ -11159,6 +11159,21 @@ export class OrganismCore {
         this.persisted.facets.embodiment.multimodal = this.embodimentSubsystem.multimodal.snapshot();
         return ev;
     }
+    /** Fuse only the current runtime tick's canonical, already-recorded modality observations. */
+    fuseMultimodalObservations(events: Array<import('../body/MultimodalPerception.ts').ModalityObservation>) {
+        if (!Array.isArray(events) || events.length > 12) throw new RangeError('multimodal-fusion-event-count-invalid');
+        for (const event of events) {
+            if (!event || typeof event !== 'object' ||
+                !['text', 'speech', 'audio', 'vision', 'sensor', 'world'].includes(event.modality) ||
+                typeof event.summary !== 'string' || event.summary.length > 500 ||
+                typeof event.confidence !== 'number' || !Number.isFinite(event.confidence) || event.confidence < 0 || event.confidence > 1 ||
+                typeof event.salience !== 'number' || !Number.isFinite(event.salience) || event.salience < 0 || event.salience > 1 ||
+                !Array.isArray(event.evidence)) {
+                throw new TypeError('multimodal-fusion-event-invalid');
+            }
+        }
+        return this.embodimentSubsystem.multimodal.fuse(events);
+    }
     multimodalSnapshot() { return this.embodimentSubsystem.multimodal.snapshot(); }
     skillLibrarySnapshot() { return this.cognitiveRuntime.skillLibrary.snapshot(); }
     skillLibrarySummary() { return this.cognitiveRuntime.skillLibrary.summary(); }
