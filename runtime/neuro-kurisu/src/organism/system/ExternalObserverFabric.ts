@@ -191,10 +191,13 @@ export class ExternalObserverFabric {
       });
       seenSourceIds.add(id);
     }
-    const restoredObservations=Array.isArray(r.observations)?r.observations.slice(-this.maxObservations) as unknown[]:[];
+    const restoredObservations=Array.isArray(r.observations)?r.observations as unknown[]:[];
     const observations:ExternalObservation[]=[];
     const sourceById=new Map(restoredSources.map(source=>[source.id,source] as const));
     for(const value of restoredObservations){
+      // Bound accepted rows rather than raw offsets: corrupt/orphan rows must not
+      // crowd valid recent observations out of the bounded restore window.
+      if(observations.length>=this.maxObservations)break;
       if(!value||typeof value!=='object')continue;
       const row=value as any;
       if(typeof row.id!=='string'||typeof row.sourceId!=='string'||typeof row.claimKey!=='string')continue;
@@ -217,10 +220,22 @@ export class ExternalObserverFabric {
       }
     }
     const observationIds=new Set(observations.map(observation=>observation.id));
-    const assessments=(Array.isArray(r.assessments)?r.assessments.slice(-this.maxAssessments):[])
-      .filter((value:any)=>value&&typeof value==='object'&&typeof value.observationId==='string'&&observationIds.has(value.observationId));
-    const linkedActions=(Array.isArray(r.linkedActions)?r.linkedActions.slice(-this.maxLinks):[])
-      .filter((value:any)=>value&&typeof value==='object'&&typeof value.observationId==='string'&&observationIds.has(value.observationId));
+    const assessments:ExternalObserverState['assessments']=[];
+    for(const value of (Array.isArray(r.assessments)?r.assessments:[]) as unknown[]){
+      if(assessments.length>=this.maxAssessments)break;
+      if(!value||typeof value!=='object')continue;
+      const assessment=value as ExternalObserverState['assessments'][number];
+      if(typeof assessment.observationId!=='string'||!observationIds.has(assessment.observationId))continue;
+      assessments.push(assessment);
+    }
+    const linkedActions:ExternalObserverState['linkedActions']=[];
+    for(const value of (Array.isArray(r.linkedActions)?r.linkedActions:[]) as unknown[]){
+      if(linkedActions.length>=this.maxLinks)break;
+      if(!value||typeof value!=='object')continue;
+      const linked=value as ExternalObserverState['linkedActions'][number];
+      if(typeof linked.observationId!=='string'||!observationIds.has(linked.observationId))continue;
+      linkedActions.push(linked);
+    }
     this.state={...d,...r,
       version:2,observations,assessments,sources:restoredSources,linkedActions,
     };
