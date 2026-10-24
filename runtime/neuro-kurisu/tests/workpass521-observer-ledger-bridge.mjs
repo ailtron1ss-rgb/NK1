@@ -54,13 +54,27 @@ assert.equal(oneSourceAssessment.promotionReason, 'awaiting-second-independent-e
 
 runtime.externalObserver.observe({
   ...input,
-  sourceId: 'camera-side',
-  independenceKey: 'camera:side',
+  sourceId: 'camera-side-low-confidence',
+  independenceKey: 'camera:side-low',
+  confidence01: 0.20,
   evidenceEventId: `outcome:${'b'.repeat(40)}`,
   payload: { observationId: 'obs-2', scene: 'fresh' },
 });
+const mixedConfidence = runtime.realityEvidenceLedger.claimAssessment('fresh scene observed');
+assert.equal(mixedConfidence.independentExternalSources, 2, 'distinct source keys must be counted separately');
+assert.equal(mixedConfidence.qualifiedIndependentExternalSources, 1, 'low-confidence source must not qualify as corroboration');
+assert.equal(mixedConfidence.independentPromotionAllowed, false, 'one high-confidence source plus one weak source must not pass');
+
+runtime.externalObserver.observe({
+  ...input,
+  sourceId: 'camera-side',
+  independenceKey: 'camera:side',
+  evidenceEventId: `outcome:${'c'.repeat(40)}`,
+  payload: { observationId: 'obs-3', scene: 'fresh' },
+});
 const corroborated = runtime.realityEvidenceLedger.claimAssessment('fresh scene observed');
-assert.equal(corroborated.independentExternalSources, 2, 'distinct source keys must be counted separately');
+assert.equal(corroborated.independentExternalSources, 3, 'all distinct source keys remain visible in assessment');
+assert.equal(corroborated.qualifiedIndependentExternalSources, 2, 'both strong sources meet the confidence floor');
 assert.equal(corroborated.independentPromotionAllowed, true, 'two high-confidence independent sources may satisfy corroboration');
 
 const persisted = runtime.snapshot();
