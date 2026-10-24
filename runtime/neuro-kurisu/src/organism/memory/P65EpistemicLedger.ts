@@ -109,7 +109,7 @@ export class P65EpistemicLedger{
      (input.predicted01!==undefined&&(typeof input.predicted01!=='number'||!Number.isFinite(input.predicted01)||input.predicted01<0||input.predicted01>1))||
      (input.parentIds!==undefined&&(!Array.isArray(input.parentIds)||input.parentIds.length>8||
        input.parentIds.some(parent=>typeof parent!=='string'||parent.length===0||parent.length>256||
-         parent.trim()!==parent||/[\\u0000-\\u001f\\u007f-\\u009f]/.test(parent))||
+         parent.trim()!==parent||/[\u0000-\u001f\u007f-\u009f]/.test(parent))||
        new Set(input.parentIds).size!==input.parentIds.length)))return '';
   const content=input.content.trim().slice(0,320);if(!content)return '';
   const source=input.source.trim();
