@@ -106,6 +106,10 @@ export class UnifiedCognitiveCycle {
         maxDepth:6,maxNodes:128,maxStringUnits:16*1024,
       });
     } catch {
+      // Preserve the object-shape contract before reading any caller-owned field.
+      if(rawInput===null||typeof rawInput!=='object'||Array.isArray(rawInput)) {
+        throw new TypeError('cognitive cycle input must be an object');
+      }
       // Preserve precise scalar diagnostics without evaluating caller getters:
       // only own data descriptors are inspected after snapshot rejection.
       let tickValue:unknown;
