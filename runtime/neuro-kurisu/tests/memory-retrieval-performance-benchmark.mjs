@@ -74,6 +74,69 @@ function runQuery(memory, query, now) {
   const rows = memory.retrieve(query, 8, 0, 0, { temporalMode: 'at', asOfAt: now });
   return { elapsedMs: Math.max(0, performance.now() - started), topIds: rows.slice(0, 5).map(row => row.id) };
 }
+function benchmarkTemporalChain(size) {
+  const { memory, now } = buildMemory(size);
+  const chainStartAt = now - 120_000;
+  let current = memory.encode({
+    ...memoryInput(size + 10, now),
+    id: 'perf-revision-chain-root',
+    content: 'Performance fixture root record for indexed temporal revision-chain lookup.',
+    source: 'nk1-temporal-chain-performance-fixture-v1',
+    revisionGroupId: 'perf-revision-chain',
+    revisionSequence: 1,
+    validFromAt: chainStartAt,
+    observedAt: chainStartAt,
+  }, { clone: false, forceDistinct: true });
+  const expectedIds = [current.id];
+  const targetChainLength = 8;
+  for (let revision = 2; revision <= targetChainLength; revision++) {
+    const next = memory.reviseContent(current.id,
+      `Performance fixture revision ${revision} for indexed temporal chain lookup.`,
+      {
+        reason: 'temporal-chain-performance-fixture',
+        validAt: chainStartAt + (revision - 1) * 1_000,
+        source: 'nk1-temporal-chain-performance-fixture-v1',
+      });
+    if (!next) throw new Error(`Failed to construct temporal chain revision ${revision}`);
+    current = next;
+  }
+  const canonicalChain = memory.temporalChain('perf-revision-chain-root');
+  if (canonicalChain.length !== targetChainLength) {
+    throw new Error(`Expected ${targetChainLength} temporal revisions, received ${canonicalChain.length}`);
+  }
+  const chainIds = canonicalChain.map(row => row.id);
+  if (chainIds[0] !== 'perf-revision-chain-root') {
+    throw new Error('Temporal-chain order does not begin at its root revision');
+  }
+  for (let i = 1; i < chainIds.length; i++) {
+    const previous = canonicalChain[i - 1];
+    const row = canonicalChain[i];
+    if (row.revisionSequence !== i + 1 || row.supersedesId !== previous.id) {
+      throw new Error(`Temporal-chain link integrity failed at revision ${i + 1}`);
+    }
+  }
+  const warmupSamples = 16;
+  const measuredSamples = 100;
+  for (let i = 0; i < warmupSamples; i++) memory.temporalChain('perf-revision-chain-root');
+  const latencies = [];
+  for (let i = 0; i < measuredSamples; i++) {
+    const started = performance.now();
+    const rows = memory.temporalChain('perf-revision-chain-root');
+    latencies.push(Math.max(0, performance.now() - started));
+    if (rows.length !== targetChainLength || rows[rows.length - 1]?.id !== current.id) {
+      throw new Error('Temporal-chain lookup returned an incomplete or misordered chain');
+    }
+  }
+  const diagnostics = memory.indexDiagnostics?.();
+  return {
+    corpusSize: size,
+    chainLength: targetChainLength,
+    lookup: summarize(latencies),
+    chainIds,
+    indexIntegrity: diagnostics?.pass ?? null,
+  };
+}
+
 function benchmarkSize(size) {
   const { memory, now } = buildMemory(size);
   if (typeof globalThis.gc === 'function') globalThis.gc();
@@ -138,6 +201,9 @@ const report = {
     rankingComparison: 'top-five IDs recorded per query to detect retrieval drift',
     note: 'Run baseline and candidate in the same CI job and runner; noisy heap/RSS values are descriptive only.',
   },
-  results: CORPUS_SIZES.map(benchmarkSize),
+  results: CORPUS_SIZES.map(size => ({
+    ...benchmarkSize(size),
+    temporalChainLookup: benchmarkTemporalChain(size),
+  })),
 };
 console.log(JSON.stringify(report));
