@@ -1571,7 +1571,8 @@ async function route(req, res) {
             const query = String(input.query ?? '').trim().slice(0, 500);
             if (!query)
                 return json(res, 400, { ok: false, error: 'missing-query' });
-            const limit = Math.max(1, Math.min(10, Math.floor(Number(input.limit || 5))));
+            const rawLimit = Number(input.limit ?? 5);
+            const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(10, Math.floor(rawLimit))) : 5;
             // Local MemoryOS2 remains authoritative. Mem0 candidates are kept separate,
             // marked unverified, and are never inserted into prompts or canonical memory here.
             const canonicalMemories = runtime.core.memoryInspectorSearch(query, limit);
