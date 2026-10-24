@@ -44,7 +44,7 @@ try {
     env: { ...process.env, PATH: emptyPath },
     timeout: 15000,
   });
-  assert.equal(fallback.status, 0, `${fallback.stdout}\n${fallback.stderr}`);
+  assert.equal(fallback.status, 2, `${fallback.stdout}\n${fallback.stderr}`);
   assert.match(fallback.stdout, /TYPECHECK=PARTIAL mode=node-strip-syntax-only files=1/);
   assert.match(fallback.stdout, /semantic tsc check unavailable/);
   assert.doesNotMatch(fallback.stdout, /TYPECHECK=PASS/);
