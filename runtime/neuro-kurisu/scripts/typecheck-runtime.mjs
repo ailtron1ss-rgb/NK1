@@ -4,6 +4,14 @@ import path from 'node:path';
 
 const root = process.cwd();
 const args = ['-p', 'tsconfig.clean.json', '--noEmit'];
+// The canonical workflow installs dependencies under app/node_modules and reuses
+// that pinned TypeScript compiler for this runtime. Explicitly expose the same
+// installation's Node declarations; without this, ambient fallback shims hide
+// real Node APIs and create dozens of false missing-member/type errors.
+const appTypeRoots = path.resolve(root, '../../app/node_modules/@types');
+if (existsSync(path.join(appTypeRoots, 'node'))) {
+  args.push('--typeRoots', appTypeRoots, '--types', 'node');
+}
 const localCompilers = [
   { label: 'runtime-lock', path: path.join(root, 'node_modules/typescript/bin/tsc') },
   // The canonical installer installs the app lockfile too; reuse its pinned compiler
