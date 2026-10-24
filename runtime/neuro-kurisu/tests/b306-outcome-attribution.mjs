@@ -60,7 +60,7 @@ assert.equal(metrics.outcomes, 2, 'only two matched outcomes should be counted')
 assert.equal(metrics.causallyInfluencedOutcomes, 1, 'only a causally influenced matched decision contributes to the causal denominator');
 assert.equal(metrics.successfulCausalOutcomes, 1);
 assert.equal(metrics.causalSuccessRate01, 1);
-assert.equal(metrics.causalOutcomeCoverage01, .5);
+assert.equal(metrics.causalOutcomeCoverage01, 1, 'every causally influenced decision in this fixture has a matched outcome');
 
 const restored = new B306AutonomousInitiativeVerificationLedger();
 restored.restore(ledger.snapshot());
@@ -71,6 +71,7 @@ assert.equal(restoredMetrics.causalSuccessRate01, 1, 'causal success rate must s
 const legacySnapshot = defaultB306AutonomousInitiativeState();
 legacySnapshot.causallyInfluencedDecisions = 4;
 legacySnapshot.successfulCausalOutcomes = 1;
+delete legacySnapshot.causallyInfluencedOutcomes; // Simulate a snapshot written before the field existed.
 const migrated = new B306AutonomousInitiativeVerificationLedger();
 migrated.restore(legacySnapshot);
 assert.equal(migrated.diagnostics().causallyInfluencedOutcomes, 4, 'older snapshots need a conservative denominator migration');
