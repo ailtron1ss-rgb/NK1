@@ -16,7 +16,7 @@ Use this document as the repository's navigation and ordering index. It does not
 | Product direction and cognitive architecture | [Master strategy / brain map](NEUROCORE_MASTER_STRATEGY_AND_BRAIN_MAP.md) | Strategic reference; not proof that each layer is implemented |
 | Remaining work | [Canonical backlog](NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md) | Planning queue; deduplicate against live code/issues before selecting work |
 | Research and upstream candidates | [Research intake ledger](RESEARCH_INTAKE_LEDGER.md) | Queue only; a listed source is not automatically integrated or validated |
-| Branch reconciliation | [Cross-branch inventory](CROSS_BRANCH_INTEGRATION_INVENTORY.md) and [integration workspace notes](INTEGRATION_WORKSPACE.md) | Inventory and historical decisions; verify against current branch heads |
+| Branch reconciliation | [Dated 104-ref branch inventory](BRANCH_INVENTORY_2026-10-24.md), [cross-branch inventory](CROSS_BRANCH_INTEGRATION_INVENTORY.md) and [integration workspace notes](INTEGRATION_WORKSPACE.md) | The dated inventory is a names snapshot, not a mass-merge/delete instruction |
 | Hexis source selection and adaptation | [Operation Omega report](OPERATION_OMEGA_HEXIS_INTEGRATION_2026-10-24.md) | Explains source provenance, the archive boundary, and the limited NK1 adaptation |
 | Old handovers, numbered passes and research reports | `docs/history/`, `docs/reports/`, and older files in `docs/` | Historical evidence, not a live status authority unless linked from a current handover |
 
@@ -54,7 +54,10 @@ The repository contains multiple active-looking branch families: `main`, `rebuil
 - `integration` pointed to `cb0872f77c63396799a81b8e9a469b4fa6ddc936` (branch update observed 2026-10-24 11:43 UTC).
 - `operation-omega-hexis-2026-10-24` pointed to `acbada2ff00092927070fce83d59871110dcd8a0` (branch update observed 2026-10-24 14:03 UTC).
 - GitHub compare between `integration` and `operation-omega-hexis-2026-10-24` returned `status=diverged`, with 39 commits on the operation branch side and 17 commits on the integration side not shared by the other side. They are **not interchangeable snapshots**.
-- The branch `workpass330-independent-evidence-receipts` also existed, but its name alone does not make it a universal latest baseline.
+- `workpass331-unified-cognitive-kernel-2026-10-24` pointed to `5f318ad801f30ddd82150ed6be56baafc1c567a9` (commit time 2026-10-24 18:24 UTC). Compare against the operation branch returned `ahead`, 61 commits, 0 behind; this is a later source stream than the Hexis branch alone.
+- Compare of `integration` to that unified-kernel branch returned `diverged`, `ahead_by=100`, `behind_by=17`, and 135 changed paths. Treat it as a large reconciliation; the returned count is not a validation result.
+- `architecture/dependency-contracts-2026-10-24` and `optimization/deep-pass-2026-10-24` were updated near 19:26–19:27 UTC. Their compares to the unified-kernel branch remained divergent, with 2 and 6 unique commits respectively.
+- The branch inventory query returned 104 refs including this documentation branch; see [the complete names snapshot](BRANCH_INVENTORY_2026-10-24.md). Only the selected heads and comparisons in that file were inspected in detail.
 - The GitHub connector showed release assets dated 2026-10-19 (see §4), older than these source branches.
 
 These are a dated observation, **not** a permanent statement of current HEAD. Recheck before acting.
