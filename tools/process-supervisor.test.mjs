@@ -47,8 +47,9 @@ test('runCommand enforces a deadline and escalates an unresponsive process', asy
   ], { timeoutMs: 40, terminationGraceMs: 40, forceGraceMs: 150 });
 
   assert.equal(result.timedOut, true);
-  assert.ok(result.signal === 'SIGKILL' || result.code !== null,
+  assert.ok(result.signal !== null || result.code !== null,
     `timed-out command should have a terminal process result; signal=${result.signal} code=${result.code}`);
+  if (process.platform !== 'win32') assert.equal(result.signal, 'SIGKILL');
 });
 
 test('waitForHttp waits for readiness without a fixed startup sleep', async () => {
@@ -90,6 +91,10 @@ test('terminateChildren escalates a SIGTERM-resistant process group', async () =
 
   const [result] = await terminateChildren([child], { graceMs: 25, forceGraceMs: 150 });
   assert.equal(result.stopped, true);
-  assert.equal(result.forced, process.platform !== 'win32' ? true : result.forced);
-  if (process.platform !== 'win32') assert.equal(child.signalCode, 'SIGKILL');
+  if (process.platform !== 'win32') {
+    assert.equal(result.forced, true);
+    assert.equal(child.signalCode, 'SIGKILL');
+  } else {
+    assert.equal(result.stopped, true);
+  }
 });
