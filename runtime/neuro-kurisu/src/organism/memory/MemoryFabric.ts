@@ -320,7 +320,7 @@ export class MemoryFabric {
         action, tick, outcome, eventPayload:observationPayload,
         ...(commandId ? { commandId } : {}),
         ...(memoryId ? { memoryId } : {}),
-        ...(typeof eventPayload.reason === 'string' ? { reason: eventPayload.reason } : {}),
+        ...(typeof observationPayload.reason === 'string' ? { reason: observationPayload.reason } : {}),
       });
     }
     return result;
