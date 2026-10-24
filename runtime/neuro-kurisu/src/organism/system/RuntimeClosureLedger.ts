@@ -91,6 +91,42 @@ function statusOf(checks: RuntimeClosureCheck[]): RuntimeClosureStatus {
   return 'PASS';
 }
 
+
+const VALID_CLOSURE_STATUSES = new Set<RuntimeClosureStatus>(['PASS','DEGRADED','FAIL']);
+const VALID_CLOSURE_PHASES = new Set<RuntimeClosureRecord['phase']>(['step','durable','restore','failure']);
+const safeCounter = (value: unknown): number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0;
+
+function normalizeClosureRecord(raw: unknown): RuntimeClosureRecord | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const record = raw as Partial<RuntimeClosureRecord>;
+  if (typeof record.at !== 'number' || !Number.isFinite(record.at) ||
+      typeof record.tick !== 'number' || !Number.isSafeInteger(record.tick) || record.tick < 0 ||
+      !VALID_CLOSURE_PHASES.has(record.phase as RuntimeClosureRecord['phase']) ||
+      !VALID_CLOSURE_STATUSES.has(record.status as RuntimeClosureStatus) ||
+      typeof record.behaviorHash !== 'string' || !Array.isArray(record.checks)) return null;
+  const checks = record.checks.flatMap((rawCheck) => {
+    if (!rawCheck || typeof rawCheck !== 'object' || typeof rawCheck.name !== 'string' || typeof rawCheck.ok !== 'boolean') return [];
+    const check = rawCheck as RuntimeClosureCheck;
+    const safeScalar = (value: unknown): string | number | boolean | null | undefined => {
+      if (value === null || value === undefined || typeof value === 'string' || typeof value === 'boolean') return value;
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+      return String(value).slice(0, 180);
+    };
+    return [{
+      name: check.name.slice(0, 180),
+      ok: check.ok,
+      value: safeScalar(check.value),
+      expected: safeScalar(check.expected),
+      detail: typeof check.detail === 'string' ? check.detail.slice(0, 240) : undefined,
+    }];
+  }).slice(-32);
+  if (!checks.length) return null;
+  return {
+    at: record.at, tick: record.tick, phase: record.phase as RuntimeClosureRecord['phase'],
+    status: record.status as RuntimeClosureStatus, checks, behaviorHash: record.behaviorHash.slice(0, 160),
+    durableHash: typeof record.durableHash === 'string' ? record.durableHash.slice(0, 160) : undefined,
+  };
+}
 export class RuntimeClosureLedger {
   private state: RuntimeClosureSnapshot = {
     version: 1,
@@ -107,10 +143,31 @@ export class RuntimeClosureLedger {
 
   restore(snapshot?: Partial<RuntimeClosureSnapshot> | null): void {
     if (!snapshot || Number(snapshot.version) !== 1) return;
+    const records = Array.isArray(snapshot.records)
+      ? snapshot.records.map(normalizeClosureRecord).filter((record): record is RuntimeClosureRecord => record !== null).slice(-24)
+      : [];
+    const lastCycleRecord = [...records].reverse().find((record) => record.phase === 'step' || record.phase === 'failure');
+    const reportedStatus = VALID_CLOSURE_STATUSES.has(snapshot.lastStatus as RuntimeClosureStatus)
+      ? snapshot.lastStatus as RuntimeClosureStatus
+      : 'DEGRADED';
+    // Persisted summary and event history can contradict. Never restore a PASS
+    // when the latest retained cycle record is a failure; preserve explicit FAIL
+    // when the summary is stricter than the bounded record window.
+    const lastStatus: RuntimeClosureStatus = reportedStatus === 'FAIL' || lastCycleRecord?.status === 'FAIL'
+      ? 'FAIL'
+      : reportedStatus;
+    const failedTerminal = lastStatus === 'FAIL' && lastCycleRecord?.status === 'FAIL' ? lastCycleRecord : null;
     this.state = {
-      ...this.state,
-      ...snapshot,
-      records: Array.isArray(snapshot.records) ? snapshot.records.slice(-24) : [],
+      version: 1,
+      checks: safeCounter(snapshot.checks),
+      passes: safeCounter(snapshot.passes),
+      degraded: safeCounter(snapshot.degraded),
+      failures: Math.max(safeCounter(snapshot.failures), failedTerminal ? 1 : 0),
+      lastTick: safeCounter(snapshot.lastTick),
+      lastStatus,
+      lastBehaviorHash: failedTerminal?.behaviorHash ?? (typeof snapshot.lastBehaviorHash === 'string' ? snapshot.lastBehaviorHash.slice(0, 160) : ''),
+      lastDurableHash: typeof snapshot.lastDurableHash === 'string' ? snapshot.lastDurableHash.slice(0, 160) : '',
+      records,
     };
   }
 
