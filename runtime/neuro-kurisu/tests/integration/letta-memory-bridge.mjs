@@ -65,6 +65,15 @@ assert.ok(!recalled.response.includes('recallsecretvalue123'));
 assert.ok(recalled.response.includes('[REDACTED_SECRET]'));
 assert.equal(recalled.redacted, true);
 
+const rejectedId = await bridge.recordExperience({
+  id: 'api_key=secretvalue123',
+  source: 'test',
+  kind: 'observation',
+  summary: 'id must not be rewritten to a shared redaction placeholder',
+});
+assert.equal(rejectedId.ok, false);
+assert.equal(rejectedId.reason, 'sensitive-memory-id-rejected');
+
 const snapshot = bridge.snapshot();
 assert.equal(snapshot.agentId, 'agent-nk1-test');
 assert.equal(snapshot.metrics.recordsSubmitted, 1);
