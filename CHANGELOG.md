@@ -10,7 +10,7 @@
 
 - [CLOSED-LOOP] Added a terminal `failure` phase to `RuntimeClosureLedger`. Durability/restore bookkeeping cannot erase the last cycle's `FAIL`; a later actual step can replace it.
 - [CLOSED-LOOP] Added `CausalDomainClosureLedger.failPending()` for exceptions/cancellations before normal closure, preserving a bounded failure reason and denying causal success credit.
-- [CLOSED-LOOP] Added `failLatest()` so batch-finalization or emergency-checkpoint failures can downgrade an already-recorded cycle instead of leaving stale PASS evidence.
+- [CLOSED-LOOP] Added `failLatest()` so batch-finalization or emergency-checkpoint failures downgrade an already-recorded cycle instead of leaving stale PASS evidence, while preserving observed world/learning facts and revoking only unproven durability claims.
 - [INTEGRATION] `OrganismRuntime` now supplies the current `UnifiedCognitiveCycle` result to both terminal ledgers; missing/misaligned stage closure is a hard `FAIL` with zero causal score, including after durable finalization.
 - [INTERRUPT] `OrganismRuntime.stepInternal` now checks `AbortSignal` at cycle entry, after awaited perception/observation/proposal boundaries, and immediately before embodied-action dispatch; early cancellation avoids unnecessary inference, and late cancellation fails closed before physical actuation.
 - [LIFECYCLE] `OrganismRuntime.stop()` now shares one in-flight shutdown promise across concurrent callers. Failed shutdown persistence records a terminal runtime failure, attempts a best-effort failure flush, and always flushes/closes the continuity journal.
