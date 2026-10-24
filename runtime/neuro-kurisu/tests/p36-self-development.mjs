@@ -95,13 +95,17 @@ for(const item of followups){
   heldoutResult=campaign.recordExternalEvidence({...payload,verification:proof});
   if(item.contextKey==='holdout-d'){
     assert.equal(heldoutResult.status,'holdout-verified','paired independent holdout should unlock the intermediate gate');
-    assert.equal(heldoutResult.promoted,true);
+    assert.equal(heldoutResult.promoted,false,'holdout verification is provisional until independent replication');
+    assert.equal(campaign.diagnostics().acceptedChanges,0,'holdout alone must not mutate learned weights');
+    assert.notEqual(campaign.snapshot().hypotheses.find(row=>row.id===campaignHypothesis.id).status,'completed');
   }
 }
 assert.equal(heldoutResult.status,'replicated','promotion requires independent, delayed multi-context replication');
 assert.equal(heldoutResult.promoted,true);
 assert.equal(heldoutResult.independentCount,6);
 assert.equal(campaign.snapshot().hypotheses.find(row=>row.id===campaignHypothesis.id).evidenceGate,'replicated');
+assert.equal(campaign.snapshot().hypotheses.find(row=>row.id===campaignHypothesis.id).status,'completed');
+assert.equal(campaign.diagnostics().acceptedChanges,1,'only replicated evidence increments accepted changes');
 
 // A valid observation ID cannot be reused to manufacture another independent context.
 const reuseEngine=new P36AutonomousSelfDevelopmentEngine();
