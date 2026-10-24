@@ -1,3 +1,9 @@
+# WorkPass337 — type signal-normalization records explicitly (2026-10-24)
+
+- [FIXED] The WorkPass110 runtime typecheck exposed that the defensive isRecord ternaries in InnerImperativeController inferred the empty fallback as {}, causing TS2339 errors on fields despite the runtime guards.
+- [FIX] Explicitly type the normalized records as Record<string, unknown>, preserving finite-number fallback behavior without weakening action/tick validation.
+- [VALIDATION] This addresses the observed compiler errors around fields at lines 102–112. A new exact-head typecheck and WorkPass331 run must confirm no remaining type issues in the intent/memory/forecast integration.
+
 # WorkPass336 — persist bounded shadow-future comparisons (2026-10-24)
 
 - [INTEGRATION] The causal experience trace now carries the top six outputs from the existing `CounterfactualEngine`, with bounded action sequences, expected reward, uncertainty and rationale.

@@ -1,3 +1,11 @@
+## Latest corrective checkpoint — WorkPass337 TypeScript signal record types (2026-10-24)
+
+- WorkPass110 exact-head typecheck failed on InnerImperativeController.ts because guarded fallback objects for needs/body were inferred as {}, making accessed fields TS2339 errors.
+- Fixed the two normalized records to Record<string, unknown>. Field sanitization and fallback values remain unchanged; no casts to domain data types and no weakening of runtime validation.
+- Current cognitive integration includes WorkPass334 intent/homeostasis, WorkPass335 causal experience trace and WorkPass336 bounded shadow-future sample. Re-run exact-head WorkPass110/typecheck and WorkPass331 after this fix before claiming validation.
+
+---
+
 ## Latest durable checkpoint — WorkPass336: bounded shadow-future lineage (2026-10-24)
 
 - The existing `CounterfactualEngine` remains the source of imagined branches. The existing feedback event now stores a bounded top-six sample (first four actions, predicted reward, uncertainty, short rationale), plus the leading branch action and its agreement/disagreement with the generated plan.

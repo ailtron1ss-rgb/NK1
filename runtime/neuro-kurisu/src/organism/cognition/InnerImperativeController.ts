@@ -95,8 +95,8 @@ export function deriveInnerImperative(input: InnerImperativeInput): InnerImperat
   }
   if (!isAction(input.proposedAction)) throw new TypeError('inner-imperative-proposed-action-invalid');
 
-  const needs = isRecord(input.needs) ? input.needs : {};
-  const body = isRecord(input.embodiment) ? input.embodiment : {};
+  const needs: Record<string, unknown> = isRecord(input.needs) ? input.needs : {};
+  const body: Record<string, unknown> = isRecord(input.embodiment) ? input.embodiment : {};
   const hasExternalRequest = input.hasExternalRequest === true;
   const spontaneous = input.spontaneous === true;
   const awake = body.awake === true;
