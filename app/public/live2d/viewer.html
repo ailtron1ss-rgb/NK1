@@ -120,7 +120,7 @@
   const finiteNumber=(value,min,max,fallback=0)=>typeof value==='number'&&Number.isFinite(value)?clamp(value,min,max):fallback;
   function sanitizeIntent(d){
     if(d.protocolVersion!==1||!Number.isSafeInteger(d.stateVersion)||d.stateVersion<=lastIntentStateVersion)return null;
-    if(typeof d.sentAtEpochMs!=='number'||!Number.isFinite(d.sentAtEpochMs))return null;
+    if(typeof d.sentAtEpochMs!=='number'||!Number.isFinite(d.sentAtEpochMs)||d.sentAtEpochMs<0)return null;
     if(!['idle','starting','speaking','ended','cancelled','unknown'].includes(d.speechPhase))return null;
     const speechEventId=d.speechEventId===null?null:(typeof d.speechEventId==='string'&&d.speechEventId.length<=180?d.speechEventId:null);
     const audioClockId=d.audioClockId===null?null:(typeof d.audioClockId==='string'&&d.audioClockId.length<=220?d.audioClockId:null);
@@ -129,11 +129,15 @@
     if(d.speechPhase==='speaking'&&(!speechEventId||!audioClockId))return null;
     if(typeof d.audioTimeMs!=='number'||!Number.isFinite(d.audioTimeMs)||d.audioTimeMs<0)return null;
     if(d.clockSource!=='none'&&d.clockSource!=='speech-synthesis-boundary-anchored-monotonic'&&d.clockSource!=='speech-synthesis-elapsed-time-anchored-monotonic')return null;
+    if(d.speechPhase==='speaking'&&d.clockSource==='none')return null;
     if(typeof d.priority!=='number'||!Number.isFinite(d.priority)||d.priority<0||d.priority>100)return null;
     const cancellationToken=d.cancellationToken===null?null:(typeof d.cancellationToken==='string'&&d.cancellationToken.length<=220?d.cancellationToken:null);
     if(d.cancellationToken!==null&&cancellationToken===null)return null;
     if(d.speechPhase==='cancelled'&&(!speechEventId||cancellationToken!==`cancel:${speechEventId}`))return null;
-    if(!d.mouth||typeof d.mouth!=='object'||!d.gaze||typeof d.gaze!=='object'||!d.body||typeof d.body!=='object')return null;
+    if(!isRecord(d.mouth)||!isRecord(d.gaze)||!isRecord(d.body))return null;
+    if(typeof d.mouth.open!=='number'||!Number.isFinite(d.mouth.open)||typeof d.mouth.form!=='number'||!Number.isFinite(d.mouth.form))return null;
+    if(typeof d.gaze.x!=='number'||!Number.isFinite(d.gaze.x)||typeof d.gaze.y!=='number'||!Number.isFinite(d.gaze.y))return null;
+    if(typeof d.expressionIntensity!=='number'||!Number.isFinite(d.expressionIntensity)||typeof d.body.headTilt!=='number'||!Number.isFinite(d.body.headTilt)||typeof d.voiceEmphasis!=='number'||!Number.isFinite(d.voiceEmphasis))return null;
     if(typeof d.expression!=='string'||!Object.prototype.hasOwnProperty.call(EXPR_MAP,d.expression))return null;
     if(typeof d.mouth.viseme!=='string'||!/^[a-z]{1,16}$/.test(d.mouth.viseme))return null;
     if(typeof d.gaze.driven!=='boolean'||typeof d.body.gesture!=='boolean')return null;
