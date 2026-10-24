@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-export interface SemanticNode { id:string; label:string; type:'concept'|'episode'|'goal'|'self'|'person'|'place'; salience:number; lastSeen:number; }
+export interface SemanticNode { id:string; label:string; type:'concept'|'episode'|'goal'|'self'|'person'|'place'; salience:number; lastSeen:number; /** Non-empty only for source-isolated external/derived namespaces. */ sourceKey?:string; }
 export interface SemanticEdge { id:string; from:string; to:string; relation:'supports'|'contradicts'|'causes'|'associated'|'about'|'located'; weight:number; lastSeen:number; }
 export interface SemanticGraphState { nodes:SemanticNode[]; edges:SemanticEdge[]; updates:number; }
 const clamp=(v:number)=>Math.max(0,Math.min(1,v));
@@ -9,12 +9,13 @@ const normalize=(s:string)=>s.toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu,'').tr
 export class SemanticMemoryGraph {
   private state: SemanticGraphState={nodes:[],edges:[],updates:0};
   restore(state:SemanticGraphState|undefined):void { if(state) this.state={nodes:Array.isArray(state.nodes)?state.nodes.slice(0,1000):[],edges:Array.isArray(state.edges)?state.edges.slice(0,2200):[],updates:Number(state.updates||0)}; }
-  upsertNode(label:string,type:SemanticNode['type'],salience:number):SemanticNode {
+  upsertNode(label:string,type:SemanticNode['type'],salience:number,sourceKey=''):SemanticNode {
     const clean=normalize(label); if(!clean) throw new Error('semantic-node-empty');
-    const existing=this.state.nodes.find(n=>n.label===clean&&n.type===type);
+    const namespace=String(sourceKey??'').trim().slice(0,160);
+    const existing=this.state.nodes.find(n=>n.label===clean&&n.type===type&&String(n.sourceKey??'')===namespace);
     const now=Date.now();
     if(existing){ existing.salience=clamp(existing.salience*.82+salience*.18); existing.lastSeen=now; return structuredClone(existing); }
-    const node={id:randomUUID(),label:clean,type,salience:clamp(salience),lastSeen:now};
+    const node:SemanticNode={id:randomUUID(),label:clean,type,salience:clamp(salience),lastSeen:now,...(namespace?{sourceKey:namespace}:{})};
     this.state.nodes=[node,...this.state.nodes].sort((a,b)=>b.salience-a.salience).slice(0,1000); return structuredClone(node);
   }
   connect(from:string,to:string,relation:SemanticEdge['relation'],weight:number):SemanticEdge {
