@@ -33,6 +33,9 @@ export interface LocalInferenceSchedulerSnapshot {
   privacy: { endpointKeysExposed: false; promptsLogged: false; modelPathsLogged: false };
 }
 export class LocalInferenceScheduler {
+  readonly maxConcurrentPerGroup: number;
+  readonly maxQueuedPerGroup: number;
+  readonly queueTimeoutMs: number;
   constructor(options?: LocalInferenceSchedulerOptions);
   run<T>(rawGroup: string, task: () => Promise<T> | T, options?: LocalInferenceRunOptions): Promise<T>;
   snapshot(): LocalInferenceSchedulerSnapshot;
