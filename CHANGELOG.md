@@ -2,7 +2,7 @@
 
 - Added `workpass559-emotion-context-learning.mjs`, a deterministic test covering context-specific curiosity/anxiety calibration, its effect on action bias, unknown emotion IDs, backward-compatible global calibration, and snapshot/restore.
 - Reverted the temporary test insertion into BIG PASS 172 so the unrelated `OrganismCore.feedback()` / B272 failure is not conflated with the emotion change. Updated the focused CI workflow to run the standalone test instead.
-- **Validation boundary:** the isolated regression is committed and wired into Node.js 24 CI; its new hosted Actions result is pending. BIG PASS 172 remains independently failing in its B272 feedback path and is not claimed as passed.
+- **Validation:** hosted GitHub Actions [run #46](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40125395086) passed on the workflow commit; the log shows the isolated `workpass559-emotion-context-learning` test and the three observer/promotion regressions plus BIG PASS 64 all passing. BIG PASS 172 remains independently failing in its B272 feedback path and is not claimed as passed.
 
 ## NK1 WorkPass559 — stabilize Node.js 24 emotion regression setup (2026-10-24)
 
