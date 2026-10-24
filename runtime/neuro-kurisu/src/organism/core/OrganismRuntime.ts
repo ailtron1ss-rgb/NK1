@@ -554,7 +554,9 @@ export class OrganismRuntime {
               failureRecorded = true;
             }
           }
-          await this.journal.write('error', 'runtime.batch.end.failed', { message: reason }).catch(() => {});
+          const causalFailure = this.causalDomainClosureLedger.failLatest({ reason: failureReason || reason });
+          if (causalFailure) this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
+          await this.journal.write('error', 'runtime.batch.end.failed', { message: reason, causalClosureDowngraded: Boolean(causalFailure) }).catch(() => {});
         }
         let cpuMs=0;
         try { if(stepCpuStart && (process as any).cpuUsage) { const cpu=(process as any).cpuUsage(stepCpuStart); cpuMs=(Number(cpu?.user??0)+Number(cpu?.system??0))/1000; } } catch {}
@@ -588,7 +590,9 @@ export class OrganismRuntime {
                 failureRecorded = true;
               }
             }
-            await this.journal.write('error', 'runtime.emergency-checkpoint.failed', { tick, reason, message }).catch(() => {});
+            const causalFailure = this.causalDomainClosureLedger.failLatest({ reason: failureReason || message });
+            if (causalFailure) this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
+            await this.journal.write('error', 'runtime.emergency-checkpoint.failed', { tick, reason, message, causalClosureDowngraded: Boolean(causalFailure) }).catch(() => {});
           }
         }
         const runtimeView = this.core.runtimeClosureOperationalSnapshot();
