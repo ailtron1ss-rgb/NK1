@@ -26,6 +26,16 @@ const viewer=fs.readFileSync(path.join(root,'public/live2d/viewer.html'),'utf8')
 for(const token of ['Kurisu.mobile/Kurisu-mobile.model3.json','Kurisu/Kurisu.model3.json','kurisu_expression','kurisu_embodiment','kurisu_lipsync','TapHead','TapBody']) assert.ok(viewer.includes(token),`viewer missing ${token}`);
 assert.ok(viewer.includes('lastAppliedExpression'), 'viewer must cache the last applied expression');
 assert.ok(viewer.includes('expressionName===lastAppliedExpression'), 'mouth/embodiment updates must not restart an unchanged expression');
+for(const runtimeFile of ['./vendor/pixi.min.js','./vendor/live2dcubismcore.min.js','./vendor/cubism4.min.js']){
+  const localPath=path.join(root,'public/live2d',runtimeFile);
+  assert.ok(viewer.includes(`loadScript('${runtimeFile}')`),`runtime viewer must load local SDK file ${runtimeFile}`);
+  assert.ok(fs.existsSync(localPath),`runtime viewer SDK file missing: ${runtimeFile}`);
+  assert.ok(fs.statSync(localPath).size>10000,`runtime viewer SDK file unexpectedly small: ${runtimeFile}`);
+}
+assert.doesNotMatch(viewer,/loadScript\(['"]https?:\/\//u,'runtime viewer must not execute remote CDN scripts');
+assert.ok(viewer.includes('autoStart:false'),'runtime viewer must not start an unbounded ticker during model load');
+assert.ok(viewer.includes("document.addEventListener('visibilitychange',syncViewerVisibility)"),'runtime viewer must pause while hidden');
+assert.ok(viewer.includes('ev.source!==window.parent'),'runtime viewer must accept controls only from its parent window');
 const rootModel=JSON.parse(fs.readFileSync(path.join(root,'public/live2d/Kurisu/Kurisu.model3.json'),'utf8'));
 const mobileModel=JSON.parse(fs.readFileSync(path.join(root,'public/live2d/Kurisu.mobile/Kurisu-mobile.model3.json'),'utf8'));
 assert.equal((rootModel.FileReferences.Expressions||[]).length,(mobileModel.FileReferences.Expressions||[]).length);
