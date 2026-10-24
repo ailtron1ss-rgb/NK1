@@ -59,7 +59,7 @@ jobs:
         run: npm run test:p26:learning-continual-matrix
       - name: Run SkillLearnBench-compatible evaluation adapter regression
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p26-skilllearnbench-adapter.mjs
+        run: node --experimental-transform-types tests/p26-skilllearnbench-adapter.mjs
       - name: Run Hermes-inspired reflective candidate gate regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p29:hermes-reflective-candidate-gate
@@ -68,28 +68,28 @@ jobs:
         run: node --experimental-transform-types tests/p26-continual-replay-buffer.mjs
       - name: Run prioritized replay sampler regression
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p26-prioritized-replay-sampler.mjs
+        run: node --experimental-transform-types tests/p26-prioritized-replay-sampler.mjs
       - name: Run replay strategy ablation benchmark (5 deterministic seeds)
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p26-replay-ablation-benchmark.mjs
+        run: node --experimental-transform-types tests/p26-replay-ablation-benchmark.mjs
       - name: Run task-level continual forgetting metric regression
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p26-continual-forgetting-tracker.mjs
+        run: node --experimental-transform-types tests/p26-continual-forgetting-tracker.mjs
       - name: Run task-level forward/backward transfer metric regression
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p26-continual-transfer-tracker.mjs
+        run: node --experimental-transform-types tests/p26-continual-transfer-tracker.mjs
       - name: Run adaptive-window concept drift regression
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p26-adaptive-window-drift-detector.mjs
+        run: node --experimental-transform-types tests/p26-adaptive-window-drift-detector.mjs
       - name: Run drift-aware replay integration regression
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p26-drift-aware-learning-controller.mjs
+        run: node --experimental-transform-types tests/p26-drift-aware-learning-controller.mjs
       - name: Run Page-Hinkley drift detector and controller regression
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p27-page-hinkley-drift-detector.mjs
+        run: node --experimental-transform-types tests/p27-page-hinkley-drift-detector.mjs
       - name: Benchmark drift detectors on stable, noisy, abrupt and gradual streams (5 deterministic seeds)
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p28-drift-detector-benchmark.mjs
+        run: node --experimental-transform-types tests/p28-drift-detector-benchmark.mjs
       - name: Run existing P26 learning regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:true-learning

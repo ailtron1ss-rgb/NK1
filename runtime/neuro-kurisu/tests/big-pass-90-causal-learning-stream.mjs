@@ -369,8 +369,8 @@ assert.equal(safeAggregateSnapshot.consolidated, 0,
   "persisted consolidation count must exclude retained but ungrounded external claims");
 assert.equal(safeAggregateSnapshot.lastConsolidatedAt, 0, "invalid consolidation timestamp must be reset");
 assert.deepEqual(safeAggregateSnapshot.rolling, {
-  surprise01: 0, predictionError01: 0, causalStrength01: 0, learningOpportunity01: 0.4,
-}, "rolling metrics must be finite and within normalized bounds");
+  surprise01: 0, predictionError01: 0, causalStrength01: 0, learningOpportunity01: 0,
+}, "rolling metrics must be recomputed from trusted runtime outcomes, not unverified external events");
 assert.equal(safeAggregateSnapshot.behavioralImpact01, 0,
   "persisted behavioral impact must be recomputed instead of trusted");
 assert.equal(safeAggregateSnapshot.behavioralContextSamples, 0,

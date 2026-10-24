@@ -1,3 +1,12 @@
+## NK1 WorkPass532 — finish Node TypeScript test-mode compatibility and trusted replay metrics
+
+- Updated P26's direct TypeScript-backed test invocations to `--experimental-transform-types`, covering continual replay, replay ablation, transfer/forgetting and drift tests that may import constructor parameter properties.
+- Switched the Hermes production-promotion gate alias to transform mode; its candidate store transitively uses TypeScript parameter properties.
+- Corrected the external-only restore fixture to expect a zero rolling learning signal. Only verified runtime outcomes may seed rolling learning metrics, even when an imported record remains queryable.
+- No promotion gate was relaxed; exact-head CI remains the authority for closure.
+
+---
+
 ## NK1 WorkPass531 — align replay validation with runtime contracts
 
 - Switched the P26 continual-replay regression to Node's TypeScript transform mode because its imported `ContinualReplayBuffer` uses a constructor parameter property, unsupported by strip-only mode.
