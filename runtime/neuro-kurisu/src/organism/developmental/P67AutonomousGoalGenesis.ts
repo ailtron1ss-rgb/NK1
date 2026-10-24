@@ -64,21 +64,43 @@ export class P67AutonomousGoalGenesis {
  propose(rawInput:{tick:number;at:number;energy01:number;uncertainty01:number;predictionError01:number;novelty01:number;socialNeed01:number;goalPressure01:number;homeostaticPressure01:number;epistemicUnresolved:number;identity01:number;activeGoalCount:number;lastMode:string;identityDecision:'allow'|'caution'|'veto';motiveOverall01?:number;motiveConflict01?:number;motiveDominant?:string;attractorOverall01?:number;attractorConflict01?:number;attractorDominant?:string;valueWeights?:AdaptiveValueWeights;curriculumPressure01?:number;historyUnresolved01?:number;socialLearning01?:number;worldTransitionConfidence01?:number;worldTransitionError01?:number;worldTransitionNovelty01?:number;neuralConfidence01?:number}):P67Candidate|null{
   let input:typeof rawInput;
   try{input=snapshotPlainData<typeof rawInput>(rawInput,{maxDepth:8,maxNodes:256,maxStringUnits:8192});}
-  catch{throw new TypeError('p67-goal-input-invalid');}
-  if(!input||typeof input!=='object'||Array.isArray(input))throw new TypeError('p67-goal-input-invalid');
+  catch(error){
+    const reason=error instanceof Error?error.message.replace(/[^a-z0-9-]/gi,'-').slice(0,96):'unknown';
+    throw new TypeError(`p67-goal-input-invalid:snapshot:${reason}`);
+  }
+  if(!input||typeof input!=='object'||Array.isArray(input))throw new TypeError('p67-goal-input-invalid:shape');
+  // The live Core uses null for "no current dominant drive/attractor". Normalize only
+  // these nullable optional labels after the plain-data snapshot has rejected accessors.
+  // All other fields still pass through the strict validation below.
+  if((input as any).motiveDominant===null)(input as any).motiveDominant=undefined;
+  if((input as any).attractorDominant===null)(input as any).attractorDominant=undefined;
   const allowedKeys=new Set(['tick','at','energy01','uncertainty01','predictionError01','novelty01','socialNeed01','goalPressure01','homeostaticPressure01','epistemicUnresolved','identity01','activeGoalCount','lastMode','identityDecision','motiveOverall01','motiveConflict01','motiveDominant','attractorOverall01','attractorConflict01','attractorDominant','valueWeights','curriculumPressure01','historyUnresolved01','socialLearning01','worldTransitionConfidence01','worldTransitionError01','worldTransitionNovelty01','neuralConfidence01']);
   const unitKeys=['energy01','uncertainty01','predictionError01','novelty01','socialNeed01','goalPressure01','homeostaticPressure01','identity01','motiveOverall01','motiveConflict01','attractorOverall01','attractorConflict01','curriculumPressure01','historyUnresolved01','socialLearning01','worldTransitionConfidence01','worldTransitionError01','worldTransitionNovelty01','neuralConfidence01'];
-  if(Object.keys(input).some(key=>!allowedKeys.has(key))||
-     !Number.isSafeInteger(input.tick)||input.tick<0||typeof input.at!=='number'||!Number.isFinite(input.at)||input.at<0||
-     unitKeys.some(key=>(input as any)[key]!==undefined&&!isUnit((input as any)[key]))||
-     !Number.isSafeInteger(input.epistemicUnresolved)||input.epistemicUnresolved<0||input.epistemicUnresolved>100_000||
-     !Number.isSafeInteger(input.activeGoalCount)||input.activeGoalCount<0||input.activeGoalCount>1000||
-     typeof input.lastMode!=='string'||input.lastMode.length>96||
-     !['allow','caution','veto'].includes(input.identityDecision)||
-     ['motiveDominant','attractorDominant'].some(key=>(input as any)[key]!==undefined&&(typeof (input as any)[key]!=='string'||(input as any)[key].length>96))||
-     (input.valueWeights!==undefined&&(!input.valueWeights||typeof input.valueWeights!=='object'||Object.values(input.valueWeights).length>32||Object.values(input.valueWeights).some(value=>!isUnit(value))))) {
-   throw new TypeError('p67-goal-input-invalid');
+  const invalidReasons:string[]=[];
+  if(Object.keys(input).some(key=>!allowedKeys.has(key)))invalidReasons.push('unknown-key');
+  if(!Number.isSafeInteger(input.tick)||input.tick<0)invalidReasons.push('tick');
+  if(typeof input.at!=='number'||!Number.isFinite(input.at)||input.at<0)invalidReasons.push('at');
+  if(unitKeys.some(key=>(input as any)[key]!==undefined&&!isUnit((input as any)[key])))invalidReasons.push('unit-score');
+  if(!Number.isSafeInteger(input.epistemicUnresolved)||input.epistemicUnresolved<0||input.epistemicUnresolved>100_000)invalidReasons.push('epistemicUnresolved');
+  if(!Number.isSafeInteger(input.activeGoalCount)||input.activeGoalCount<0||input.activeGoalCount>1000)invalidReasons.push('activeGoalCount');
+  if(typeof input.lastMode!=='string'||input.lastMode.length>96)invalidReasons.push('lastMode');
+  if(!['allow','caution','veto'].includes(input.identityDecision))invalidReasons.push('identityDecision');
+  if(['motiveDominant','attractorDominant'].some(key=>(input as any)[key]!==undefined&&(typeof (input as any)[key]!=='string'||(input as any)[key].length>96)))invalidReasons.push('dominant-label');
+  if(input.valueWeights!==undefined){
+    const rawWeights=input.valueWeights as unknown;
+    const valueKeys=['curiosity','truth','autonomy','evidence','care','responsibility','social'];
+    const metadataKeys=['updatedAt','plasticityBudget'];
+    if(!rawWeights||typeof rawWeights!=='object'||Array.isArray(rawWeights)){
+      invalidReasons.push('valueWeights-shape');
+    }else{
+      const weights=rawWeights as Record<string,unknown>;
+      if(Object.keys(weights).some(key=>!valueKeys.includes(key)&&!metadataKeys.includes(key)))invalidReasons.push('valueWeights-unknown-key');
+      if(valueKeys.some(key=>weights[key]!==undefined&&!isUnit(weights[key])))invalidReasons.push('valueWeights-score');
+      if(weights.updatedAt!==undefined&&!(typeof weights.updatedAt==='number'&&Number.isSafeInteger(weights.updatedAt)&&weights.updatedAt>=0))invalidReasons.push('valueWeights-updatedAt');
+      if(weights.plasticityBudget!==undefined&&!isUnit(weights.plasticityBudget))invalidReasons.push('valueWeights-plasticityBudget');
+    }
   }
+  if(invalidReasons.length)throw new TypeError(`p67-goal-input-invalid:${invalidReasons.join(',')}`);
   this.state.cycles++;
   if(input.activeGoalCount>=4 || input.tick-this.state.lastGeneratedAt<16 || input.identityDecision==='veto') return null;
   const values:Partial<AdaptiveValueWeights>=input.valueWeights??{};
