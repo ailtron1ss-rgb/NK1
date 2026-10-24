@@ -77,5 +77,6 @@ jobs:
             docs/PROJECT_MAP_AND_ORDERING.md \
             docs/BRANCH_INVENTORY_2026-10-24.md \
             docs/architecture/module-dependency-contracts-ru.md \
+            docs/DOCUMENTATION_INVENTORY_AND_ARCHIVE_POLICY_2026-10-24.md \
             docs/INTEGRATION_WORKSPACE.md docs/ARCHITECTURE.md \
             docs/RESEARCH_INTAKE_LEDGER.md
