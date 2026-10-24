@@ -47,6 +47,8 @@ test("scanner ignores import-like examples inside strings and regex literals", (
 
 test("scanner separates TypeScript import-type queries from runtime imports", () => {
   const source = [
+    "import type { StaticState } from './static-types.ts';",
+    "export type { PublicShape } from '../shape-types.ts';",
     "type State = import('./state-types.ts').State;",
     "interface Context { memory?: import('../memory-types.ts').MemoryState; }",
     "const lazy = import('./runtime-module.ts').then(module => module.value);",
@@ -54,6 +56,8 @@ test("scanner separates TypeScript import-type queries from runtime imports", ()
 
   assert.deepEqual(collectRelativeImportSpecifiers(source), ["./runtime-module.ts"]);
   assert.deepEqual(collectRelativeTypeImportSpecifiers(source), [
+    "./static-types.ts",
+    "../shape-types.ts",
     "./state-types.ts",
     "../memory-types.ts",
   ]);
