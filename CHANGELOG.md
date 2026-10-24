@@ -1,3 +1,10 @@
+## NK1 WorkPass545 — require contradiction coverage for consequential reality promotion (2026-10-24)
+
+- The ledger now reports whether a claim is explicitly structured as `field=value` or `field: value`, the only format currently covered by deterministic contradiction checks.
+- P23 consequential promotion fails closed for free-form claims, even if they have two qualified sources, because the current contradiction scanner cannot reliably detect disagreement in natural-language prose.
+- Regression coverage asserts the distinction and checks that P23 enforces it before the existing independent evaluation and signed evidence gates.
+- **Validation boundary:** code and test are committed to `feature/feedback`; execution and hosted Actions remain unverified. This is a conservative gate, not semantic proof that a skill's behavior entails the structured claim.
+
 ## NK1 WorkPass544 — verify persistent contradiction veto and confidence filtering (2026-10-24)
 
 - Extended the reality-to-learning regression to cover the persistence boundary: a qualified external contradiction must still veto independent promotion after ledger snapshot/restore.
