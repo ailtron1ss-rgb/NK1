@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
-import { developmentEvidenceVerificationInput, P36_EXTERNAL_EVIDENCE_TOOL_ID } from '../src/organism/learning/P36AutonomousSelfDevelopment.ts';
+import { developmentEvidenceVerificationInput, developmentalOutcomeVerificationInput, P36_EXTERNAL_EVIDENCE_TOOL_ID } from '../src/organism/learning/P36AutonomousSelfDevelopment.ts';
 
 const store=new MemoryStateStore();
 const core=new OrganismCore(store,{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1});
@@ -14,7 +14,7 @@ assert.ok(after.cycles>=before.cycles);
 assert.ok(after.hypotheses.length>=0);
 assert.ok(after.experiments.length>=0);
 assert.equal(after.developmentalMaturity.verifiedOutcomeCount,0,'runtime feedback booleans alone must not certify developmental maturity');
-assert.ok(after.rejectedMaturityReceipts>0,'live runtime must expose receipt-less maturity attempts rather than silently certifying them');
+assert.equal(after.rejectedMaturityReceipts,0,'ordinary reward/transition booleans should no longer be submitted as independent maturity receipts');
 assert.ok(step.decision.selected);
 await core.flush();
 const saved=await store.load();
@@ -68,4 +68,33 @@ await core.flush();
 const afterEvaluator=await store.load();
 assert.ok(afterEvaluator.facets.learning.p36.externalEvidence.some(row=>row.executionId===evaluatorResult.executionId&&row.independentVerified),
   'verified P36 evidence must be projected into the normal persistence checkpoint');
+
+// Developmental maturity is a separate evidence lane. Legacy reward booleans do not update it;
+// only a second ActionGateway receipt bound to the exact maturity tuple can do so.
+const maturityInput=developmentalOutcomeVerificationInput({area:'learning',outcome01:.91,delayed:true,transfer:true});
+const maturityBefore=core.p36Diagnostics();
+const unlinkedMaturityResult=await core.executeTool(P36_EXTERNAL_EVIDENCE_TOOL_ID,maturityInput,'p36-unlinked-maturity');
+assert.equal(unlinkedMaturityResult.verified,true);
+assert.equal(core.p36Diagnostics().developmentalMaturity.verifiedOutcomeCount,maturityBefore.developmentalMaturity.verifiedOutcomeCount,
+  'unlinked maturity receipt must not update maturation');
+assert.equal(core.p36Diagnostics().rejectedMaturityReceipts,maturityBefore.rejectedMaturityReceipts+1,
+  'unlinked maturity attempt must be observable');
+const maturityResult=await core.executeTool(P36_EXTERNAL_EVIDENCE_TOOL_ID,maturityInput,'p36-linked-maturity',{decisionId:traceForEvidence.id});
+assert.equal(maturityResult.verified,true);
+const afterMaturity=core.p36Diagnostics().developmentalMaturity;
+assert.equal(afterMaturity.verifiedOutcomeCount,maturityBefore.developmentalMaturity.verifiedOutcomeCount+1);
+assert.equal(afterMaturity.retainedOutcomeCount,1);
+assert.equal(afterMaturity.transferredOutcomeCount,1);
+const directMaturityReplay=core.p36RecordDevelopmentalOutcome({
+  ...maturityInput,
+  toolId:P36_EXTERNAL_EVIDENCE_TOOL_ID,
+  executionId:maturityResult.executionId,
+  decisionId:traceForEvidence.id,
+  verification:maturityResult.verification,
+});
+assert.equal(directMaturityReplay.verifiedOutcomeCount,1,'Core public maturity API must require canonical proof and remain idempotent');
+await core.flush();
+const afterMaturityPersistence=await store.load();
+assert.equal(afterMaturityPersistence.facets.learning.p36.developmentalMaturity.verifiedOutcomeCount,1,
+  'maturity evidence must survive the normal persistence checkpoint as a result, not as a trust flag');
 console.log('P36_INTEGRATION=PASS',JSON.stringify({action:step.decision.selected.action,hypotheses:after.hypotheses.length,experiments:after.experiments.length,completedSteps:after.curriculum.completedSteps}));
