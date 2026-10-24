@@ -234,11 +234,16 @@ function sharedEntityCount(a:string[],b:string[]){const set=new Set(a);let n=0;f
 function hasNegationPolarityDifference(a:string,b:string){return negationSignature(a)!==negationSignature(b);}
 function identifierLike(text:string){return /(?:\b[A-Z]{2,}[-_/]?[0-9]{2,}\b|\b[0-9]{3,}\b|[A-F0-9]{8,})/.test(String(text));}
 function normalizeBm25(score:number,max?:number){if(score<=0)return 0;if(max!==undefined)return max>0?clamp(score/max):0;return clamp(score/(score+1));}
-function bm25Score(queryTokens:string[],content:string,docCount:number,documentFrequency:Map<string,number>,itemTokenLength:Map<string,number>,totalTokenLength:number,itemId?:string){
-  const tokens=tokenize(content); if(!tokens.length||!queryTokens.length||!docCount)return 0;
-  const tf=new Map<string,number>(); for(const t of tokens)tf.set(t,(tf.get(t)||0)+1);
-  const uniqueQ=[...new Set(queryTokens)]; const avgLen=Math.max(1,totalTokenLength/docCount); const dl=Math.max(1,itemId?itemTokenLength.get(itemId)??tokens.length:tokens.length); const k1=1.2,b=.75; let score=0;
-  for(const q of uniqueQ){const f=tf.get(q)||0;if(!f)continue;const df=documentFrequency.get(q)||0;const idf=Math.log(1+(docCount-df+0.5)/(df+0.5));const denom=f+k1*(1-b+b*dl/avgLen);score+=idf*((f*(k1+1))/denom);}
+function bm25Score(queryTokens:string[],content:string,docCount:number,documentFrequency:Map<string,number>,itemTokenLength:Map<string,number>,totalTokenLength:number,itemId?:string,cachedTermFrequency?:Map<string,number>){
+  const tokens=cachedTermFrequency?undefined:tokenize(content);
+  const tf=cachedTermFrequency??new Map<string,number>();
+  if(!cachedTermFrequency)for(const token of tokens??[])tf.set(token,(tf.get(token)||0)+1);
+  if(!tf.size||!queryTokens.length||!docCount)return 0;
+  // The caller passes the unique query-token array created from a Set once per query.
+  const avgLen=Math.max(1,totalTokenLength/docCount);
+  const dl=Math.max(1,itemId?itemTokenLength.get(itemId)??tokens?.length??0:tokens?.length??0);
+  const k1=1.2,b=.75; let score=0;
+  for(const q of queryTokens){const f=tf.get(q)||0;if(!f)continue;const df=documentFrequency.get(q)||0;const idf=Math.log(1+(docCount-df+0.5)/(df+0.5));const denom=f+k1*(1-b+b*dl/avgLen);score+=idf*((f*(k1+1))/denom);}
   return Math.max(0,score);
 }
 type MemoryEncodeInput=Omit<MemoryItem2,'id'|'createdAt'|'lastAccessAt'|'retrievalCount'|'revisionHistory'|'dormant'|'semanticVector'|'temperature01'|'residencyTier'> & {id?:string};
@@ -270,6 +275,8 @@ export class MemoryOS2{
  private readonly itemIndex=new Map<string,MemoryItem2>();
  private readonly contentIndex=new Map<string,string>();
  private readonly tokenCache=new Map<string,Set<string>>();
+ /** Bounded term frequencies reuse tokenization work for BM25 scoring. */
+ private readonly termFrequencyCache=new Map<string,Map<string,number>>();
  private readonly lowerContentCache=new Map<string,string>();
  private readonly tokenIndex=new Map<string,Set<string>>();
  /** Token-level character n-gram inverted index for typo/inflection-tolerant candidate discovery. */
@@ -553,7 +560,7 @@ export class MemoryOS2{
   // Recompute serialized footprint because older snapshots did not count provenance trails.
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
   this.adaptivePolicy.restore(this.state.adaptiveMemoryPolicy);
-  this.exactIndex.clear();this.contentIndex.clear();this.itemIndex.clear();this.tokenCache.clear();this.lowerContentCache.clear();this.tokenIndex.clear();this.characterGramIndex.clear();this.documentFrequency.clear();this.itemTokenLength.clear();this.revisionGroupIndex.clear();this.totalTokenLength=0;this.linkSupportCache=null;this.linkSupportCacheVersion=-1;this.lastCandidateCount=0;
+  this.exactIndex.clear();this.contentIndex.clear();this.itemIndex.clear();this.tokenCache.clear();this.termFrequencyCache.clear();this.lowerContentCache.clear();this.tokenIndex.clear();this.characterGramIndex.clear();this.documentFrequency.clear();this.itemTokenLength.clear();this.revisionGroupIndex.clear();this.totalTokenLength=0;this.linkSupportCache=null;this.linkSupportCacheVersion=-1;this.lastCandidateCount=0;
   const indexAt=Date.now();
   for(const m of this.state.items){
     const exactKey=`${m.kind}|${m.source}|${canonicalizeMemoryContent(m.content)}`;
@@ -569,7 +576,8 @@ export class MemoryOS2{
     this.indexItem(m);
   }
  }
- private tokensFor(text:string){const key=String(text);const hit=this.tokenCache.get(key);if(hit)return hit;const value=new Set(tokenize(key));if(this.tokenCache.size>=512){const first=this.tokenCache.keys().next().value as string|undefined;if(first)this.tokenCache.delete(first);}this.tokenCache.set(key,value);return value;}
+ private tokensFor(text:string){const key=String(text);const hit=this.tokenCache.get(key);if(hit)return hit;const tokens=tokenize(key);const value=new Set(tokens);const frequencies=new Map<string,number>();for(const token of tokens)frequencies.set(token,(frequencies.get(token)||0)+1);if(this.tokenCache.size>=512){const first=this.tokenCache.keys().next().value as string|undefined;if(first){this.tokenCache.delete(first);this.termFrequencyCache.delete(first);}}this.tokenCache.set(key,value);this.termFrequencyCache.set(key,frequencies);return value;}
+ private termFrequenciesFor(text:string){const key=String(text);this.tokensFor(key);return this.termFrequencyCache.get(key)??new Map<string,number>();}
  private lowerFor(id:string,text:string){const hit=this.lowerContentCache.get(id);if(hit!==undefined)return hit;const value=text.toLocaleLowerCase();if(this.lowerContentCache.size>=512){const first=this.lowerContentCache.keys().next().value as string|undefined;if(first)this.lowerContentCache.delete(first);}this.lowerContentCache.set(id,value);return value;}
  private provenanceStrength(m:MemoryItem2){const authority=clamp(Number(m.sourceAuthority01??.5));const reliability=clamp(Number(m.confidence??.5));const independence=m.independenceKey?1:0;const classBonus=m.provenanceClass==='device'?1:m.provenanceClass==='external'?.92:m.provenanceClass==='user'?.86:m.provenanceClass==='agent'?.68:m.provenanceClass==='derived'?.52:m.provenanceClass==='simulation'?.28:.5;const independentWitnesses=Math.max(0,this.independentEvidenceCount(m)-1);return clamp(authority*.50+reliability*.24+independence*.06+classBonus*.10+Math.min(.10,independentWitnesses*.025));}
  private provenanceClassFor(source:string,explicit?:MemoryProvenanceClass):MemoryProvenanceClass{if(explicit&&['device','external','user','agent','derived','simulation','unknown'].includes(explicit))return explicit;const s=String(source).toLowerCase();if(s.includes('device')||s.includes('android'))return 'device';if(s.includes('external')||s.includes('api')||s.includes('os'))return 'external';if(s.includes('user'))return 'user';if(s.includes('simulation')||s.includes('synthetic'))return 'simulation';if(s.includes('agent')||s.includes('model')||s.includes('llm'))return 'agent';if(s.includes('derived'))return 'derived';return 'unknown';}
@@ -881,7 +889,7 @@ export class MemoryOS2{
      const exact=this.lowerFor(m.id,m.content).includes(queryLower)?1:0;
      const coverage=queryTokenArray.length?queryTokenArray.filter(token=>lexicalTokens.has(token)).length/queryTokenArray.length:0;
      const fuzzy=fuzzyTokenCoverage(queryTokenArray,lexicalTokens);
-     const bm25=bm25Score(queryTokenArray,m.content,this.state.items.length,this.documentFrequency,this.itemTokenLength,this.totalTokenLength,m.id);
+     const bm25=bm25Score(queryTokenArray,m.content,this.state.items.length,this.documentFrequency,this.itemTokenLength,this.totalTokenLength,m.id,this.termFrequenciesFor(m.content));
      const lexical=clamp(.24*coverage+.14*exact+.42*normalizeBm25(bm25)+.20*fuzzy);
      const entity=overlap(queryEntities,m.entities);
      const conceptCoverage=conceptGroupCoverage(conceptQuery.groups,lexicalTokens);
