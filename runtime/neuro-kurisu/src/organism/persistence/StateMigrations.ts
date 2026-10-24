@@ -669,10 +669,13 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
     if (typeof hypothesis?.id === 'string') p36RevokedHypothesisIds.add(hypothesis.id);
     return { ...hypothesis, status:'awaiting-evidence', evidenceGate:'none', result01:null, completedAt:0 };
   });
-  const p36DevelopmentCycles:any[] = Array.isArray(p36Raw.developmentCycles) ? p36Raw.developmentCycles.slice(-64).map((cycle:any) =>
-    p36RevokedHypothesisIds.has(cycle?.hypothesisId)
-      ? { ...cycle, stage:'awaiting-evidence', verifiedEvidenceCount:0, lastEvidenceAt:0 }
-      : cycle) : [];
+  const p36DevelopmentCycles:any[] = Array.isArray(p36Raw.developmentCycles) ? p36Raw.developmentCycles.slice(-64).map((cycle:any) => ({
+    ...cycle,
+    stage:p36RevokedHypothesisIds.has(cycle?.hypothesisId)||cycle?.stage==='replicated'||cycle?.stage==='holdout-verified'
+      ? 'awaiting-evidence' : cycle?.stage,
+    verifiedEvidenceCount:0,
+    lastEvidenceAt:0,
+  })) : [];
   const p36MaturityHistory:any[] = Array.isArray(p36Raw.developmentalMaturity?.history)
     ? p36Raw.developmentalMaturity.history.slice(-64).map((item:any) => ({ ...item, verified01:0, retention01:0, transfer01:0, failed01:0 }))
     : [];
