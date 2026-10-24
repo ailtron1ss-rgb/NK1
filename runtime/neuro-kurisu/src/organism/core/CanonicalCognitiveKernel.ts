@@ -245,7 +245,14 @@ export class CanonicalCognitiveKernel {
     if (anchorTick !== undefined && (!Number.isSafeInteger(anchorTick) || anchorTick < 0)) {
       throw new RangeError('canonical-cognitive-kernel-anchor-tick-must-be-a-non-negative-safe-integer');
     }
-    for (const key of ['at', 'observation', 'prediction', 'appraisal', 'attention', 'memory', 'goal', 'plan', 'action'] as const) {
+    if (input.anchors.at !== undefined && (
+      typeof input.anchors.at !== 'number' ||
+      !Number.isFinite(input.anchors.at) ||
+      input.anchors.at < 0
+    )) {
+      throw new RangeError('canonical-cognitive-kernel-anchor-at-must-be-a-non-negative-finite-number');
+    }
+    for (const key of ['observation', 'prediction', 'appraisal', 'attention', 'memory', 'goal', 'plan', 'action'] as const) {
       const value = input.anchors[key];
       if (value !== undefined && (typeof value !== 'string' || !value.trim())) {
         throw new TypeError(`canonical-cognitive-kernel-anchor-${key}-must-be-a-non-empty-string`);
