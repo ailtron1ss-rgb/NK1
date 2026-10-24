@@ -111,6 +111,9 @@ export interface HexisHmxApplyReceipt {
     uniqueMemoryRecords: number;
     importedCount: number;
     deduplicatedCount: number;
+    projectedRelationships: number;
+    deferredRelationships: number;
+    semanticEdgeIds: string[];
     memoryIds: string[];
     createdMemoryIds: string[];
     deferredSections: Record<string, number>;
