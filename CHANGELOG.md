@@ -1,3 +1,12 @@
+## NK1 WorkPass489 — record shared helper convergence and type fixes (2026-10-24)
+
+- Kept `createRealityEvidenceEventId` byte-identical on `feature/feedback` and `feature/perception`; validated input uses explicit control-code checks, and the legacy tuple hashing / output format is preserved.
+- The feedback branch now has one `verifyOperationalCycle` implementation, fail-closed restore expectations, corrected evidence text validation, an explicit optional independence threshold fallback, and the P23 gap-field/import fixes from WorkPass487.
+- The shared projection identity function is not itself proof and does not replace decision-bound outcome IDs. Full verifier → ledger → MemoryOS2/P65/P23 propagation remains outstanding.
+- No exact-head test pass is claimed; hosted CI evidence is still unavailable from the current commit-status/workflow lookup.
+
+---
+
 ## NK1 WorkPass488 — share the reality-projection identity contract (2026-10-24)
 
 - Extended `EvidenceEventIdentity.ts` with a validated `createRealityEvidenceEventId(originEventId, role, discriminator)` utility that preserves the WorkPass456 ID encoding and 48-hex digest.
