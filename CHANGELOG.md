@@ -1,3 +1,13 @@
+## NK1 Optimization — indexed memory access hot path (2026-10-24)
+
+- [OPTIMIZED] Reused the pre-materialized query-token array during hybrid memory ranking instead of allocating it once per candidate.
+- [OPTIMIZED] Added a read-only `MemoryOS2.peek(id)` lookup backed by the canonical `itemIndex`. Updated the memory fabric lifecycle lookup, `revise`, `updateSignals`, and `get` to use the existing ID index instead of linear scans or a full snapshot lookup where possible.
+- [OPTIMIZED] Semantic-index maintenance now builds one fresh ID map after the asynchronous embedding call and validates each returned row in O(1), replacing repeated full-array searches while preserving stale-write checks.
+- [REGRESSION] Added `tests/optimization-indexed-memory-lookup.mjs` and the `test:optimization:indexed-memory-lookup` runtime script. The test guards read-only copy semantics, cold residency, missing-ID behavior, and indexed mutation lookup.
+- [VALIDATION] Changes are committed to `optimization/deep-pass-2026-10-24`. Runtime execution is not yet confirmed in this environment; no latency percentage or production speedup is claimed. Existing CI history documents runner-assignment failures, so CI status must be checked separately before promotion.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
