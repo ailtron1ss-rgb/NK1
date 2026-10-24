@@ -1,3 +1,10 @@
+## NK1 WorkPass329 — connect initiative policy to spontaneous dialogue (2026-10-24)
+
+- [WIRED] `OrganismRuntime.stepInternal` now evaluates the bounded initiative policy against live body energy, thermal/RAM pressure, cycle novelty/uncertainty/social need/goal pressure, and prediction confidence before reserving an unsolicited dialogue initiative.
+- [SAFETY] A deferred initiative emits a structured `initiative-policy` appraisal event with the machine-readable reason and score. External user-triggered dialogue is unchanged; Core remains responsible for its existing durable initiative reservation/cooldown, message staging, and canonical execution path.
+- [REGRESSION] Added `initiative-runtime-wiring-workpass329.mjs` and registered it in `test:rebuild-recovered` alongside the policy unit tests.
+- [VALIDATION] Repository writes were confirmed. The new tests have **not** been executed here and exact-head GitHub Actions status has not yet been confirmed. `main` and the Release ZIP remain unchanged.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
