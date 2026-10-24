@@ -1,3 +1,12 @@
+## NK1 WorkPass494 — preserve replay budget and intrinsic goal authorship
+
+- In the learning-category P23 runtime, made explicitly configured replay batch size and recent quota authoritative for reproducible ablations while preserving health-adaptive ranking and age half-life.
+- Rebalanced B272 endogenous goal valuation so the value scale does not saturate before trusted intrinsic drive can influence the outcome; zero-confidence drive still contributes nothing.
+- Reused existing P23 replay selection and B272 goal-genesis owners; no new subsystem or dependency was introduced.
+- **Validation boundary:** exact-head CI must confirm the replay runtime configuration and motivation-to-goal tests.
+
+---
+
 ## NK1 WorkPass490 — require independent-seed skill revision evidence
 
 - Hardened the existing `SkillRevisionGate` rather than adding a parallel evaluator: proposals now report distinct seed count and per-seed paired gains.
