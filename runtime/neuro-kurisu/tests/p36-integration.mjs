@@ -85,6 +85,7 @@ const afterMaturity=core.p36Diagnostics().developmentalMaturity;
 assert.equal(afterMaturity.verifiedOutcomeCount,maturityBefore.developmentalMaturity.verifiedOutcomeCount+1);
 assert.equal(afterMaturity.retainedOutcomeCount,1);
 assert.equal(afterMaturity.transferredOutcomeCount,1);
+const maturityRejectionsBeforeReplay=core.p36Diagnostics().rejectedMaturityReceipts;
 const directMaturityReplay=core.p36RecordDevelopmentalOutcome({
   ...maturityInput,
   toolId:P36_EXTERNAL_EVIDENCE_TOOL_ID,
@@ -93,6 +94,7 @@ const directMaturityReplay=core.p36RecordDevelopmentalOutcome({
   verification:maturityResult.verification,
 });
 assert.equal(directMaturityReplay.verifiedOutcomeCount,1,'Core public maturity API must require canonical proof and remain idempotent');
+assert.equal(core.p36Diagnostics().rejectedMaturityReceipts,maturityRejectionsBeforeReplay,'an exact public-API replay must not be misreported as a rejected receipt');
 await core.flush();
 const afterMaturityPersistence=await store.load();
 assert.equal(afterMaturityPersistence.facets.learning.p36.developmentalMaturity.verifiedOutcomeCount,1,
