@@ -134,8 +134,8 @@ const restoredExternalDuplicate = externalRestored.recordExternalLearningEvent({
 });
 assert.equal(restoredExternalDuplicate?.id, externalFirst?.id,
   "a restored external outcome must resolve to its original record");
-assert.equal(externalRestored.summary().outcomes, 1,
-  "a restored duplicate must not increment outcome count");
+assert.equal(externalRestored.summary().outcomes, 0,
+  "untrusted external evidence must remain excluded from the grounded outcome count after restore");
 assert.throws(() => externalRestored.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17", reward01: .05,
 }), /causal-external-trace-id-conflict/,
@@ -168,8 +168,8 @@ assert.ok(conflictRestore.snapshot().recordedTraceIds.includes("External-Source-
 assert.equal(conflictRestore.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17",
 }), null, "quarantined identity must not be accepted again as a new event");
-assert.equal(conflictRestore.summary().outcomes, 1,
-  "quarantine/retry must not change the persisted outcome count");
+assert.equal(conflictRestore.summary().outcomes, 0,
+  "quarantine/retry must not convert ungrounded external evidence into a grounded outcome");
 
 const cyclicSnapshot = externalStream.snapshot();
 const cyclicRecord = { ...externalFirst, id: "cyclic-normalized-alias", traceId: "Ｅxternal-Source-17" };
