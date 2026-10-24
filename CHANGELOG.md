@@ -1,3 +1,12 @@
+## NK1 WorkPass504 — make cognitive-event ingress atomic and fail closed
+
+- Hardened `CognitiveEventFabric.append()` with pre-mutation validation for finite non-negative ticks/timestamps, registered stages, bounded source and parent identities, confidence in [0,1], boolean external provenance, and plain payload records with data properties only.
+- Invalid envelopes are rejected before the event ring, total counter, or receipt-projection pruning can change. Accessor-backed IDs and payload fields are rejected without executing getters.
+- Added `test:cognitive-event-fabric-ingress-boundary` for invalid numeric/stage/parent/payload inputs, getter non-execution, and ledger immutability after rejection.
+- Code committed on `feature/learning`; exact-head test/typecheck remains to be confirmed. No cross-branch merge, release asset update, or learning uplift is claimed.
+
+---
+
 ## NK1 WorkPass504 — make cognitive-event ingress fail closed
 
 - Hardened `CognitiveEventFabric.append()` with pre-mutation validation for finite non-negative ticks/timestamps, registered stages, bounded source and parent identities, confidence in [0,1], boolean external provenance, and plain payload records with data properties only.
