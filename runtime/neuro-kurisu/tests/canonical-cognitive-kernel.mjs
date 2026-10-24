@@ -22,6 +22,7 @@ const decisionInput = () => ({
 const decision = kernel.beginDecisionCycle(decisionInput());
 
 assert.equal(decision.anchors.tick, 1);
+assert.equal(decision.anchors.observation, 'cef:kernel:1:observation', 'kernel event IDs must be stable for a logical stage');
 const firstDecisionTotal = eventFabric.snapshot().total;
 const replayedDecision = kernel.beginDecisionCycle(decisionInput());
 assert.deepEqual(replayedDecision.anchors, decision.anchors);
@@ -36,6 +37,15 @@ assert.throws(() => kernel.beginDecisionCycle({
   appraisal: { ...stage('homeostasis.appraise', { stress01: 0.2 }), confidence01: 1.01 },
 }), /confidence/, 'invalid stage input must fail before any event is appended');
 assert.equal(eventFabric.snapshot().total, firstDecisionTotal, 'preflight validation must be atomic');
+assert.throws(() => kernel.completeCycle({
+  anchors: { ...decision.anchors, at: -1 },
+  fallbackTick: 2,
+  at: 200,
+  outcome: stage('outcome.verifier', { success01: 0.9, verified: true }),
+  learning: stage('learning.update', { updated: true }),
+  selfUpdate: stage('self-model.update', { continuity01: 0.92 }),
+}), /anchor-at/, 'malformed anchor time must fail before completion writes');
+assert.equal(eventFabric.snapshot().total, firstDecisionTotal, 'malformed anchors must not append any completion events');
 assert.equal(new Set([
   decision.anchors.observation, decision.anchors.prediction, decision.anchors.appraisal,
   decision.anchors.attention, decision.anchors.memory, decision.anchors.goal,
