@@ -41,3 +41,34 @@ The cited work supports studying replay as a mechanism for planning, memory retr
 ## Definition of integrated
 
 A mechanism is integrated only when production runtime calls it, it consumes/produces the canonical evidence contract, its state survives restore when required, failure paths are explicit, and a regression test demonstrates the behavioral effect. A research document or a passing unit test alone does not meet this bar.
+
+## WorkPass509 — Hermes reflective evolution and NK1 promotion-boundary update (2026-10-24)
+
+### Upstream evidence reviewed
+
+- NousResearch/hermes-agent-self-evolution: https://github.com/NousResearch/hermes-agent-self-evolution and its PLAN.md. The loop mines real failures/traces, splits train/validation/holdout, creates candidate variants, evaluates them in parallel, applies size/semantic/test constraints, and opens a reviewable change. The upstream README distinguishes implemented skill-evolution from later planned phases; NK1 must not assume the whole optimizer stack is production-ready.
+- Voyager paper and project: https://arxiv.org/abs/2305.16291 and https://github.com/MineDojo/Voyager. Transferable ideas are automatic curriculum, executable/compositional skills, error-conditioned refinement, and environment self-verification—not Minecraft-specific action code.
+- GEPA use-case notes: https://gepa-ai.github.io/gepa/guides/use-cases/. Reflective mutation is valuable only when tied to traces and a measurable evaluator; it is not a substitute for independent holdout evidence.
+
+### NK1 adaptation decisions
+
+1. Keep P23 as the only skill-revision pipeline. Do not add a second optimizer, skill library, or memory store.
+2. Treat trajectory/error analysis as a candidate-generation signal, never as proof that the proposed repair works.
+3. Preserve independent train/validation/holdout identities and reject candidates that improve the target slice while regressing protected capability families.
+4. Keep candidate creation, evaluation, and activation as distinct authority boundaries. Activation requires the existing explicit promotion gate and provenance manifest.
+5. Mine only privacy-safe, provenance-tagged examples; synthetic, user-reported, simulator, and device-observed evidence remain separate lanes.
+6. Use Voyager-style curriculum as a bounded goal proposer: rank by capability gap × expected information gain × relevance, then pass candidates through budget, cooldown, ethics and capability gates.
+7. Keep source-code copying blocked until the exact upstream license and dependency transitive licenses are verified. This pass transfers design patterns only.
+
+### Next implementation passes
+
+- P0: propagate one decision/event identity through receipt → postcondition → RealityEvidenceLedger → episodic replay → P23 candidate manifest.
+- P1: add multi-seed paired evaluator that compares baseline/candidate on target and protected task families, recording latency and resource cost.
+- P2: add bounded failure clustering and a repair-plan schema that references concrete trace steps and expected postconditions.
+- P3: connect automatic curriculum to endogenous goals while ensuring simulated outcomes never enter the external-grounding lane.
+- P4: expose exact-head CI/holdout evidence in the integration dashboard; no branch merge or release publication without those gates.
+
+### Evidence boundary
+
+The upstream architecture is a useful donor pattern but does not establish NK1 improvement. No benchmark uplift, successful test run, production integration, or release artifact update is claimed by this research note.
+
