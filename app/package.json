@@ -25,7 +25,8 @@
     "assets:sync": "node scripts/sync-canonical-public-assets.mjs",
     "test:embodiment-timeline": "node --experimental-strip-types --test scripts/embodiment-timeline.test.mjs",
     "test:live2d-assets": "node scripts/test-live2d-assets.mjs",
-    "test:live2d-browser": "node scripts/test-live2d-browser.mjs"
+    "test:live2d-browser": "node scripts/test-live2d-browser.mjs",
+    "test:live2d-runtime-browser": "node scripts/test-live2d-runtime-browser.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
