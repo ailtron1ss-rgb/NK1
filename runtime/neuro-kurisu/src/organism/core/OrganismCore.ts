@@ -9430,6 +9430,8 @@ export class OrganismCore {
                 // to B272 would violate its provenance contract and can abort the cycle.
                 if (b272GoalState?.action === trace.selected.action) {
                     this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, externalEvidence01: projectEvidenceExternal ? 1 : 0, independentEvaluatorGain01: b272IndependentGain, acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal });
+                } else {
+                    this.developmentalNeural.endogenousGoalGenesisB272.recordOutcomeActionMismatch({ tick: state.tick, executedAction: trace.selected.action });
                 }
                 const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({ tick: state.tick, action: trace.selected.action, plan: b273Current.plan, reward01: gatedReward01, predictionError01: state.predictionError, independentGain01: b272IndependentGain, personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8), externalEvidence01: projectEvidenceExternal ? 1 : 0 });
@@ -9716,6 +9718,8 @@ export class OrganismCore {
                         independentEvaluatorGain01: b338IndependentGain,
                         acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
                     });
+                } else {
+                    this.developmentalNeural.endogenousGoalGenesisB272.recordOutcomeActionMismatch({ tick: state.tick, executedAction: trace.selected.action });
                 }
                 const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({
