@@ -5,6 +5,8 @@ import type { OrganismDecisionTrace, OrganismCycleResult, CognitiveProposal } fr
 import type { KnownEntityPromptContext } from '../system/KnownEntityDossier.ts';
 import { sanitizeAutonomousTopicText, type SocialInitiative } from '../system/AutonomousSocialInitiativeEngine.ts';
 import { InternalDialogueEngine, type InternalDialogueEvidence, type InternalDialogueClaim, type InternalDialogueReview } from '../cognition/InternalDialogueEngine.ts';
+import { bindCognitiveEventEvidence } from '../cognition/CognitiveEventEvidenceBridge.ts';
+import type { CognitiveEventFabricSnapshot } from '../system/CognitiveEventFabric.ts';
 
 const internalDialogueEngine = new InternalDialogueEngine();
 
@@ -34,10 +36,10 @@ function safeWorldFacts(values: string[] | undefined, count: number): string[] {
 
 /**
  * Runs a bounded internal review before the language model proposes a cognitive response.
- * Only planner hypotheses, weak prediction tickets, and a conservative prior-outcome signal
- * are linked here; the review never changes the canonical action selected by OrganismCore.
+ * CEF outcomes are accepted only when a direct action-parent edge and explicit action identity
+ * can be verified; the review never changes canonical OrganismCore action authority.
  */
-function buildInternalDialogueReview(cycle: OrganismCycleResult, fusedObservation: string): InternalDialogueReview {
+function buildInternalDialogueReview(cycle: OrganismCycleResult, fusedObservation: string, causalSnapshot?: CognitiveEventFabricSnapshot): InternalDialogueReview {
   const tick = Number.isSafeInteger(cycle.state?.tick) && cycle.state.tick >= 0 ? cycle.state.tick : 0;
   const candidates = (Array.isArray(cycle.decision?.candidates) ? cycle.decision.candidates : []).slice(0, 6);
   const evidence: InternalDialogueEvidence[] = [];
@@ -48,14 +50,6 @@ function buildInternalDialogueReview(cycle: OrganismCycleResult, fusedObservatio
     evidence.push({ id: predictionId, kind: 'prediction', confidence01: confidence, sourceGroup: 'planner-prediction' });
     const supportingEvidenceIds = [predictionId];
     const contradictingEvidenceIds: string[] = [];
-    const lastSuccess = Number(cycle.state.lastActionSuccess);
-    if (cycle.state.lastAction === candidate.action && cycle.state.lastActionSuccess !== null && Number.isFinite(lastSuccess)) {
-      const outcomeId = 'prior-outcome-' + (index + 1);
-      // A previous outcome is intentionally down-weighted because its context may differ.
-      evidence.push({ id: outcomeId, kind: 'outcome', confidence01: 0.45, sourceGroup: 'prior-action-outcomes' });
-      if (lastSuccess >= 0.65) supportingEvidenceIds.push(outcomeId);
-      else if (lastSuccess <= 0.35) contradictingEvidenceIds.push(outcomeId);
-    }
     return {
       id,
       action: candidate.action,
@@ -66,6 +60,9 @@ function buildInternalDialogueReview(cycle: OrganismCycleResult, fusedObservatio
       contradictingEvidenceIds,
     };
   });
+  const bound = bindCognitiveEventEvidence(claims, evidence, causalSnapshot);
+  const linkedClaims = bound.claims;
+  const linkedEvidence = bound.evidence;
   const knownUnknowns: string[] = [];
   if (Number(cycle.state.predictionError) > 0.35) {
     knownUnknowns.push('The current prediction error is elevated; compare prediction with observed outcome.');
@@ -74,16 +71,16 @@ function buildInternalDialogueReview(cycle: OrganismCycleResult, fusedObservatio
     knownUnknowns.push('Decision uncertainty is elevated; separate a plausible explanation from verified evidence.');
   }
   if (candidates.length === 0) knownUnknowns.push('No explicit action candidate is available for comparison.');
-  if (!candidates.some((candidate) => cycle.state.lastAction === candidate.action && cycle.state.lastActionSuccess !== null)) {
-    knownUnknowns.push('A direct outcome for the current decision context is not linked to these predictions.');
+  if (bound.linkedOutcomeEvents === 0 && bound.linkedIndependentObservations === 0) {
+    knownUnknowns.push('No linked causal outcome or independent post-action observation is available; predictions remain provisional.');
   }
   const selectedGoal = cycle.goals?.find((goal) => goal.id === cycle.decision.selected?.goalId);
   return internalDialogueEngine.deliberate({
     tick,
     focus: typeof fusedObservation === 'string' && fusedObservation.trim().length > 0 ? fusedObservation : 'Review the current cognitive proposal',
     goal: selectedGoal?.title,
-    claims,
-    evidence,
+    claims: linkedClaims,
+    evidence: linkedEvidence,
     knownUnknowns,
     cognitiveLoad01: cycle.state.needs?.cognitiveLoad,
     maxTurns: 6,
@@ -215,12 +212,12 @@ export function postHocExplanation(trace: OrganismDecisionTrace): string {
 }
 
 
-export function buildCognitiveProposalPrompt(cycle: OrganismCycleResult, fusedObservation: string, entityContext?: KnownEntityPromptContext, personalityContext = ''): LanguageRequest {
+export function buildCognitiveProposalPrompt(cycle: OrganismCycleResult, fusedObservation: string, entityContext?: KnownEntityPromptContext, personalityContext = '', causalSnapshot?: CognitiveEventFabricSnapshot): LanguageRequest {
   const at = Date.now();
   const date = new Date(at);
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   const safeEntityFacts = safeKnownEntityFacts(entityContext);
-  const internalDialogue = buildInternalDialogueReview(cycle, fusedObservation);
+  const internalDialogue = buildInternalDialogueReview(cycle, fusedObservation, causalSnapshot);
   const internalDialogueBrief = {
     version: internalDialogue.version,
     status: internalDialogue.status,
