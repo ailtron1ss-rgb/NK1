@@ -12,6 +12,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/system/MemoryWorldCausalBridge.ts"
       - "runtime/neuro-kurisu/tests/memory-subsystem-runtime-persistence.mjs"
       - "runtime/neuro-kurisu/tests/memory-causal-persistence-projection.mjs"
+      - "runtime/neuro-kurisu/tests/memory-canonical-store-checkpoint.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
       - ".github/workflows/memory-persistence-regression.yml"
@@ -25,6 +26,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/system/MemoryWorldCausalBridge.ts"
       - "runtime/neuro-kurisu/tests/memory-subsystem-runtime-persistence.mjs"
       - "runtime/neuro-kurisu/tests/memory-causal-persistence-projection.mjs"
+      - "runtime/neuro-kurisu/tests/memory-canonical-store-checkpoint.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
       - ".github/workflows/memory-persistence-regression.yml"
@@ -53,3 +55,6 @@ jobs:
       - name: Verify checkpoint projection and causal memory restore
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/memory-causal-persistence-projection.mjs
+      - name: Verify canonical MemoryOS2 checkpoint and restore
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-canonical-store-checkpoint
