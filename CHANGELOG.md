@@ -1,3 +1,14 @@
+## NK1 WorkPass507 — make experience consolidation identity-safe and limit-correct (2026-10-24)
+
+- Reject duplicate experience IDs at runtime ingress before mutating the bounded buffer.
+- Restore now keeps the last valid revision per ID, preventing legacy duplicate snapshots from counting one episode several times.
+- A requested consolidation limit of zero (or a negative limit) now returns an empty result instead of unexpectedly retaining one record.
+- Added focused regressions to the existing consolidator boundary test and included that test in the category's rebuild chain.
+- No new dependency or parallel memory store; these changes strengthen the existing AdaptiveExperienceConsolidator.
+- **Validation:** code and regression are committed; test execution/typecheck remain unconfirmed.
+
+---
+
 ## NK1 WorkPass506 — restore deterministic replay budgets and evidence-lane CI
 
 - Corrected the production replay selector so the configured `maxBatchSize` remains the hard experiment cap; health signals continue to affect ranking, recent-sample quota and age decay rather than silently shrinking an explicitly configured batch. This restores reproducibility for replay ablations.
