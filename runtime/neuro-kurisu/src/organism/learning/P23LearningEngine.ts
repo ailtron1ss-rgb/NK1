@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { CorrectionRuleMemory, emptyCorrectionRuleMemorySnapshot, type CorrectionReviewVerifier, type CorrectionRuleAssessment, type CorrectionRuleMemorySnapshot, type ReviewedCorrectionObservation } from './CorrectionRuleMemory.ts';
 import { snapshotPlainData } from './LearningTrustBoundary.ts';
 import type { ActionKind, IntentCandidate, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
 import type { AdaptivePolicyEngine, AdaptivePolicyState } from './AdaptivePolicyEngine.ts';
@@ -341,6 +342,8 @@ function sanitizeMetrics(value:unknown,fallback:P23LearningMetrics):P23LearningM
 
 export interface P23LearningState {
   version:1;
+  /** Additive reviewed-correction memory; older version-1 snapshots default to empty. */
+  correctionRules: CorrectionRuleMemorySnapshot;
   processedTraceIds:string[];
   replayedTraceIds:string[];
   experiences:LearningExperience[];
@@ -355,6 +358,7 @@ export interface P23LearningState {
 
 export const defaultP23Learning = ():P23LearningState => ({
   version:1,
+  correctionRules:emptyCorrectionRuleMemorySnapshot(),
   processedTraceIds:[],
   replayedTraceIds:[],
   experiences:[],
@@ -485,6 +489,7 @@ function canonicalize(
 
 export class P23LearningEngine {
   private state = defaultP23Learning();
+  private correctionRuleMemory = new CorrectionRuleMemory();
   private replaySelectionOptions: ReplaySelectionOptions = { maxBatchSize:64, recentQuota:32 };
   private verifiedSkillStore: VersionedSkillCandidateStore | null = null;
   private learningFitnessJournal: LearningFitnessJournalSink | null = null;
@@ -503,6 +508,13 @@ export class P23LearningEngine {
     if(raw!==undefined&&raw!==null&&!isPlainRecord(raw))throw new TypeError('P23 persisted learning state must be a plain object');
     const source=(raw??{}) as Partial<P23LearningState>;
     if(source.version!==undefined&&source.version!==1)throw new RangeError('unsupported P23 learning state version');
+    // Read this additive field only through an own data descriptor: persisted getters must never execute.
+    let rawCorrectionRules:unknown;
+    try {
+      const descriptor=Object.getOwnPropertyDescriptor(source,'correctionRules');
+      rawCorrectionRules=descriptor&&'value'in descriptor?descriptor.value:undefined;
+    } catch { rawCorrectionRules=undefined; }
+    this.correctionRuleMemory.restore(rawCorrectionRules);
     // Parse untrusted persistence into fresh rows; newest-first histories retain their valid prefix.
     const experiences=sanitizeRows(source.experiences,1024,parseLearningExperience,row=>row.traceId);
     const replayUpdates=sanitizeRows(source.replayUpdates,512,parseReplayUpdate,row=>row.traceId);
@@ -525,12 +537,32 @@ export class P23LearningEngine {
     if(this.verifiedSkillStore)metrics.skillPromotions=this.verifiedSkillStore.snapshot().active.length;
     else metrics.skillPromotions=skills.filter(row=>row.status==='promoted').length;
     const restoredLastLearningAt=metrics.lastLearningAt;
-    this.state={version:1,processedTraceIds,replayedTraceIds,experiences,replayUpdates,shadow,skills,ablations,evidenceDebt,checksum,metrics};
+    this.state={version:1,correctionRules:this.correctionRuleMemory.snapshot(),processedTraceIds,replayedTraceIds,experiences,replayUpdates,shadow,skills,ablations,evidenceDebt,checksum,metrics};
     this.recomputeMetrics();
     this.state.metrics.lastLearningAt=restoredLastLearningAt;
   }
 
-  snapshot():P23LearningState { return structuredClone(this.state); }
+  snapshot():P23LearningState {
+    this.state.correctionRules=this.correctionRuleMemory.snapshot();
+    return structuredClone(this.state);
+  }
+
+  /** Supply the trusted verifier used to authenticate human/reviewer correction evidence. */
+  configureCorrectionReviewVerifier(verifier:CorrectionReviewVerifier):void {
+    this.correctionRuleMemory.configureReviewVerifier(verifier);
+  }
+
+  /** Record an explicitly reviewed correction; raw outcome repetition is not accepted as correction evidence. */
+  recordReviewedCorrection(observation:ReviewedCorrectionObservation):{duplicate:boolean;rule:CorrectionRuleAssessment} {
+    const result=this.correctionRuleMemory.record(observation);
+    this.state.correctionRules=this.correctionRuleMemory.snapshot();
+    return result;
+  }
+
+  /** Read correction-rule maturity for the cognition/goal planner; recommendations never activate gates. */
+  correctionRules():CorrectionRuleAssessment[] {
+    return this.correctionRuleMemory.rules();
+  }
 
   /**
    * Opt into verified skill activation. When configured, the runtime resolver
