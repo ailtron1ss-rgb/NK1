@@ -364,7 +364,7 @@ import { CausalLifeGraph } from '../system/CausalLifeGraph.ts';
 import { CognitiveResourceEconomy } from '../system/CognitiveResourceEconomy.ts';
 import { RealityEvidenceLedger } from '../system/RealityEvidenceLedger.ts';
 import { UnifiedCognitiveCycle } from '../system/UnifiedCognitiveCycle.ts';
-import { EmotionAppraisalEngine, defaultEmotionAppraisalState } from '../system/EmotionAppraisalEngine.ts';
+import { EmotionAppraisalEngine, defaultEmotionAppraisalState, type LocalAffectHintInput } from '../system/EmotionAppraisalEngine.ts';
 import { MemoryCausalEconomy, defaultMemoryCausalEconomy } from '../system/MemoryCausalEconomy.ts';
 import { ActivePerceptionExecutor, defaultActivePerceptionExecutor, type ActivePerceptionModality } from '../system/ActivePerceptionExecutor.ts';
 import { ActivePerceptionNeuralSubstrate } from '../cognition/ActivePerceptionNeuralSubstrate.ts';
@@ -2506,6 +2506,14 @@ export class OrganismCore {
     setRuntimeClosure(snapshot: import('../system/RuntimeClosureLedger.ts').RuntimeClosureSnapshot): void { this.persisted.system.runtimeClosure = snapshot; }
     runtimeClosureSnapshot() { return structuredClone(this.persisted.system.runtimeClosure); }
     setEmotionAppraisal(snapshot: import('../system/EmotionAppraisalEngine.ts').EmotionAppraisalState): void { this.persisted.system.emotionAppraisal = snapshot; }
+    /** Feed a short-lived, bounded local-model affect cue into endogenous appraisal. */
+    observeLocalAffectHint(input: LocalAffectHintInput): boolean {
+        const accepted = this.cognitiveRuntime.emotionAppraisal.observeExternalAffectHint(input);
+        if (!accepted) return false;
+        this.persisted.system.emotionAppraisal = this.cognitiveRuntime.emotionAppraisal.snapshot();
+        this.markPersistenceDirty();
+        return true;
+    }
     p66Summary() { return this.p66InteroceptiveHomeostasis.summary(); }
     p67Summary() { return this.p67AutonomousGoalGenesis.summary(); }
     p68Summary() { return this.p68GoalEcology.summary(); }
