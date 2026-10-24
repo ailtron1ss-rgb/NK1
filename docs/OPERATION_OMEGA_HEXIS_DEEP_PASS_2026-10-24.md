@@ -34,6 +34,8 @@ NK1 remains the runtime and canonical memory owner. The upstream reference is [Q
 - Added explicit goal decisions: `pending → approved → materialized → active`. Approval creates a canonical NK1 goal only as `paused`, with `source: external` and `activationApproved: false`. A separate `activate` call is required and checks for capacity, title collisions, and identity continuity. A stale reject can no longer overwrite an already approved/materialized decision.
 - Added server endpoints `POST .../hmx/goals/prepare`, `GET .../hmx/goals/proposals`, and `POST .../hmx/goals/decide`. The server smoke covers a rejected early activation, the paused state after approval, explicit activation, and durable proposal retrieval.
 - Added an optional `sourceKey` namespace to `SemanticMemoryGraph` nodes. Imported HMX graph nodes now reuse only nodes in the same provenance namespace, avoiding accidental connection of a same-label native node to external-source relationships.
+- P68 retention pruning now protects external goals explicitly marked `activationApproved: false`, so an approved-but-not-activated goal is not lost during routine goal cleanup.
+- The bounded 256-entry HMX goal-proposal registry preflights the full batch capacity before its first mutation; when full, it fails closed rather than silently evicting pending or reviewed proposals.
 - Extended tests for goal proposal deduplication across exports, immutable decisions, P68 not auto-reactivating externally imported paused goals, and same-label graph-node isolation. The latest exact-head workflow is still queued; these new tests must not be described as passed until the run finishes.
 
 ## Explicit limits — not claimed complete
