@@ -19,7 +19,7 @@ process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON = JSON.stringify({ 'verifier-v
 const manifest = Array.from({ length: 10 }, (_, i) => ({
   taskId: 'task-' + i,
   family: i < 5 ? 'memory' : 'tool-use',
-  split: 'holdout',
+  split: i < 8 ? 'holdout' : 'validation',
   promptFingerprint: VerifiedOutcomeLedger.fingerprintPrompt('native revision prompt ' + i),
   verifierId: 'verifier-v1',
   version: 'v1',
