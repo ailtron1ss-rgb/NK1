@@ -18,7 +18,7 @@ Use this document as the repository's navigation and ordering index. It does not
 | Research and upstream candidates | [Research intake ledger](RESEARCH_INTAKE_LEDGER.md) | Queue only; a listed source is not automatically integrated or validated |
 | Branch reconciliation | [Dated 104-ref branch inventory](BRANCH_INVENTORY_2026-10-24.md), [cross-branch inventory](CROSS_BRANCH_INTEGRATION_INVENTORY.md) and [integration workspace notes](INTEGRATION_WORKSPACE.md) | The dated inventory is a names snapshot, not a mass-merge/delete instruction |
 | Dependency boundaries | [Module dependency contracts](architecture/module-dependency-contracts-ru.md) | Target-layer rules and audit scope; only exact-head test evidence can establish the current status |
-| Documentation cleanup | [Documentation inventory and archive policy](DOCUMENTATION_INVENTORY_AND_ARCHIVE_POLICY_2026-10-24.md) | Exact SHA groups and unreferenced candidates are evidence, not automatic deletion permission |
+| Documentation cleanup | [Documentation inventory and archive policy](DOCUMENTATION_INVENTORY_AND_ARCHIVE_POLICY_2026-10-24.md) and [historical reports index](history/reports/INDEX.md) | Exact SHA groups and unreferenced candidates are evidence, not automatic deletion permission |
 | Hexis source selection and adaptation | [Operation Omega report](OPERATION_OMEGA_HEXIS_INTEGRATION_2026-10-24.md) | Explains source provenance, the archive boundary, and the limited NK1 adaptation |
 | Old handovers, numbered passes and research reports | `docs/history/`, `docs/reports/`, and older files in `docs/` | Historical evidence, not a live status authority unless linked from a current handover |
 
