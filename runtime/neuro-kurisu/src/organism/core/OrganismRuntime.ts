@@ -664,8 +664,10 @@ export class OrganismRuntime {
 
   private async stepInternal(externalText?: string, options: { deliberate?: boolean; spontaneous?: boolean; signal?: AbortSignal } = {}): Promise<RuntimeStep> {
     if (!this.initialized) throw new Error('OrganismRuntime.init() must be called first');
+    throwIfAborted(options.signal, 'step-start');
     if (externalText) this.embodiment.userActivity();
     let body = await this.embodiment.sample();
+    throwIfAborted(options.signal, 'after-sensor-sample');
     const resourceAllocation = this.resourceEconomy.allocate({
       tick: this.core.operationalStatusSnapshot().tick,
       at: Date.now(),
@@ -691,6 +693,7 @@ export class OrganismRuntime {
     });
     const previousSampledAt=body.telemetry.sampledAt;
     const activeBody = await this.embodiment.sampleActive(perceptionPlan.requestedSensors,true);
+    throwIfAborted(options.signal, 'after-active-perception');
     const observedSensors:string[]=[];
     if(activeBody.telemetry.source==='android-termux' && activeBody.telemetry.staleMs===0){
       if(perceptionPlan.requestedSensors.includes('battery') || perceptionPlan.requestedSensors.includes('thermal')) observedSensors.push('battery');
@@ -722,9 +725,11 @@ export class OrganismRuntime {
       externalGoal: externalText ? { title: externalText.slice(0, 160), importance: 0.65, urgency: 0.4 } : undefined,
       embodiment: { bodyEnergy01: body.bodyEnergy01, cognitiveCapacity01: body.cognitiveCapacity01, thermalStrain01: body.thermalStrain01, sensoryFreshness01: body.sensoryFreshness01, awake: body.awake, battery01: body.telemetry.battery01, cpuLoad01: body.telemetry.cpuLoad01, ramPressure01: body.telemetry.ramPressure01 },
     });
+    throwIfAborted(options.signal, 'after-core-observation');
     const activePerceptionRequestId = this.core.activePerceptionPendingId();
     const fusedObservation = modalityEvents.slice(-6).map((x:any)=>`[${x.modality}] ${x.summary}`).join(' | ');
     const cognitiveProposal = await this.generateCognitiveProposal(cycle, fusedObservation, Boolean(options.deliberate), !externalText, options.signal);
+    throwIfAborted(options.signal, 'after-cognitive-proposal');
     if (cognitiveProposal) {
       this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });
     }
