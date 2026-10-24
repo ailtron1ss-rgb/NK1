@@ -2214,3 +2214,6 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Namespaced \`SemanticMemoryGraph\` nodes with an optional \`sourceKey\`; the Hexis projector looks up/reuses only matching-source graph nodes, keeping imported same-label nodes separate from native NK1 nodes.
 - Expanded unit/server tests for proposal deduplication across exports, immutable review decisions, paused-until-explicit-activation semantics, server acceptance-without-write, post-apply memory persistence, and native/imported graph node isolation.
 - Exact-head Hexis CI for WorkPass333 is queued as of this commit sequence; do not treat the new tests as passed until the latest run completes. Earlier WorkPass332 heads passed the five Hexis checks. The independent WorkPass110 causal-learning failure at \`tests/big-pass-90-causal-learning-stream.mjs:18\` remains separate; no learning-uplift claim is made.
+
+
+- **WorkPass333 safety hardening:** The 256-record HMX goal proposal registry now preflights capacity before mutation and refuses a new batch when full, rather than silently evicting pending/reviewed proposals. P68 pruning preserves external goals marked \`activationApproved: false\` until explicit activation is completed. Added regression coverage for full-queue atomic failure and retention during cleanup.
