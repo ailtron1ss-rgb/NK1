@@ -40,6 +40,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - name: Verify Node.js matches repository pin
         run: |
           expected="$(tr -d '[:space:]' < .nvmrc)"
