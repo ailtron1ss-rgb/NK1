@@ -189,6 +189,15 @@ assert.equal(mismatchedRestore.realityEvidenceLedger.snapshot().externalCount, 0
 assert.equal(mismatchedRestore.realityEvidenceLedger.snapshot().recent.length, 0, 'rejected observer evidence must not remain active in the canonical ledger');
 assert.equal(mismatchedRestore.externalObserver.snapshot().observations.length, 0, 'identity-mismatched rows must not remain in internal consensus calculations');
 
+const disabledSnapshot = structuredClone(guardedRuntime.snapshot());
+disabledSnapshot.externalObserver.sources[0].enabled = false;
+const disabledRestore = new EvidenceResearchSubsystemRuntime({ authorizeSourceRegistration });
+disabledRestore.restore(disabledSnapshot);
+assert.equal(disabledRestore.realityEvidenceLedger.snapshot().externalCount, 0,
+  'previous evidence from a disabled observer source must not keep external-confirmation authority');
+assert.equal(disabledRestore.realityEvidenceLedger.snapshot().recent.length, 0,
+  'disabled observer evidence must be removed from the active ledger projection');
+
 const legacySnapshot = structuredClone(guardedRuntime.snapshot());
 delete legacySnapshot.externalObserver.observations[0].independenceKey;
 legacySnapshot.realityEvidenceLedger = cleanLedger;
