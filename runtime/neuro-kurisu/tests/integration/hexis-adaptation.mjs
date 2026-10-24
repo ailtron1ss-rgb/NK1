@@ -114,11 +114,27 @@ const protectedExternalGoal = {
   updatedAt: Date.now(),
   activationApproved: false,
 };
+const staleCompletedGoals = Array.from({ length: 16 }, (_, index) => ({
+  id: 'old-completed-goal-' + index,
+  title: 'Previously completed task ' + index,
+  reason: 'Historical goal retained for regression coverage',
+  source: 'learned',
+  status: 'completed',
+  importance: 0.2,
+  urgency: 0.1,
+  confidence: 0.8,
+  progress: 1,
+  createdAt: Date.now() - 1000,
+  updatedAt: Date.now() - 1000,
+}));
+const goalPopulation = [...staleCompletedGoals, protectedExternalGoal];
 goalEcology.tick({
-  tick: 1, at: Date.now(), goals: [protectedExternalGoal],
+  tick: 1, at: Date.now(), goals: goalPopulation,
   lastAction: 'none', lastSuccess: null, mode: 'observe', homeostaticPressure01: 0.1, identity01: 0.9,
 });
 assert.equal(protectedExternalGoal.status, 'paused', 'imported goals remain non-active without explicit activation');
+assert(goalPopulation.some(goal => goal.id === protectedExternalGoal.id),
+  'P68 retention pruning must not delete a reviewed external goal awaiting explicit activation');
 
 // A same-text native memory must remain untouched by an external HMX import.
 const collisionRuntime = new MemorySubsystemRuntime();
