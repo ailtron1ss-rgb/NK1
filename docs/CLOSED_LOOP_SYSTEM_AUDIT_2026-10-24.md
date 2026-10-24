@@ -25,16 +25,17 @@
 
 ## Реальные изменения WorkPass328
 
-1. `RuntimeClosureLedger.fail()` создаёт явную терминальную запись `failure` с ограниченной причиной и диагностическими проверками.
-2. Статус `FAIL` не затирается повторными durable/flush- и restore-записями. Только следующий фактический когнитивный шаг может установить новый результат.
-3. `CausalDomainClosureLedger.failPending()` закрывает незавершённый цикл с нулевым причинным кредитом, если обычный путь `end()` не был достигнут.
-4. `CausalDomainClosureLedger.failLatest()` может понизить ранее записанный цикл до `FAIL`, если ошибка произошла после обычного закрытия — например при завершении batch или аварийном checkpoint.
-5. Результат `UnifiedCognitiveCycle` явно передаётся в `RuntimeClosureLedger` и `CausalDomainClosureLedger`. Отсутствующий/рассинхронизированный этап не может получить PASS или положительный causal score только из-за успешного выхода из runtime-функции.
-6. `AbortSignal` проверяется перед началом работы и после основных awaited perception/observation/proposal-границ, а также перед исполнительным вызовом. Тест отдельно моделирует отмену сразу на входе и отмену во время финальной генерации ответа.
-7. `beginBatch()` failure создаёт причинную терминальную запись; остановка runtime становится single-flight и закрывает continuity-журнал в `finally`, даже если финальный checkpoint завершается ошибкой.
-5. Перед передачей управления исполнительному слою `OrganismRuntime.stepInternal` повторно проверяет `AbortSignal`. Отмена, пришедшая после планирования, теперь останавливает путь до embodied-action dispatch.
-6. В `tests/closed-loop-failure-closure.mjs` добавлена регрессия для явного сбоя, повторной записи durability, закрытия pending-цикла, отмены до действия и сохранённого статуса сбоя.
-7. Тест добавлен в `test:rebuild-recovered`; запись WorkPass328 добавлена в `CHANGELOG.md`.
+1. `RuntimeClosureLedger.fail()` записывает терминальный `FAIL`, проверку причины и fingerprint сбоя. Нормализатор состояния при restore отклоняет некорректные записи и понижает противоречивые `PASS`, если в их checks есть `ok=false`.
+2. `CausalDomainClosureLedger.failPending()` закрывает незавершённый цикл, а `failLatest()` понижает уже закрытый цикл при сбое поздней финализации (`endBatch`, аварийный checkpoint или shutdown). Любой конечный `FAIL` получает причинный score `0`.
+3. Повторный `CausalDomainClosureLedger.begin()` больше не затирает pending-цикл: предыдущая попытка получает `FAIL` с причиной `previous-cycle-unclosed-at-next-begin`, затем начинается новая попытка.
+4. Итог `UnifiedCognitiveCycle` соединён с `RuntimeClosureLedger` и `CausalDomainClosureLedger`. Пропущенные/рассинхронизированные обязательные стадии означают `FAIL`; aligned ticks и успешное сохранение сами по себе не могут продвинуть цикл до `PASS`.
+5. `OrganismRuntime.stepInternal` проверяет `AbortSignal` на входе, после основных awaited perception/observation/proposal-граней и непосредственно перед `embodiedActions.execute`. Регрессия проверяет раннюю отмену и отмену во время финальной генерации без передачи действия executor-у.
+6. `beginBatch()` failure теперь получает terminal-запись runtime и causal ledger, а не только строку ошибки.
+7. `stop()` стал single-flight: конкурентные вызовы разделяют один durable shutdown; при сбое final checkpoint фиксируется terminal failure, а continuity journal закрывается в `finally`.
+8. Исправлена регистрация P23 фонового repair/revision clock: `p23-compound-repair-revision` теперь разрешён типом/registry `RuntimeClockScheduler`, и opt-in часы запускаются после `init()`. `tests/runtime-clocks.mjs` теперь регрессирует этот контур.
+9. В `CognitiveEventFabric` удалена дублирующая реализация `verifyOperationalCycle`; сохранена одна каноническая, расширенная проверка обязательных и переданных optional-этапов/причинных рёбер.
+10. Исправлен некорректный character-class в `OutcomeVerificationService` для проверки управляющих символов в correlation IDs. Добавлена защита тестом, что в `CognitiveEventFabric` остаётся один verifier.
+11. Добавлены `test:p328:closed-loop-failure-closure` и `audit:p328:closed-loop-failure-closure` (typecheck + регрессия); новый тест и `test:runtime-clocks` подключены к `test:rebuild-recovered`. `CHANGELOG.md` отражает изменения.
 
 ## Инварианты, которые теперь проверяются регрессией
 
