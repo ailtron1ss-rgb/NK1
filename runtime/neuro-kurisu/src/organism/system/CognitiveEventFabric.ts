@@ -89,6 +89,7 @@ const ownDataArray=(value:unknown):unknown[]|null=>{
   for(let i=0;i<lengthDescriptor.value;i++){const descriptor=Object.getOwnPropertyDescriptor(value,String(i));if(!descriptor){result.push(undefined);continue;}if(!('value' in descriptor))return null;result.push(descriptor.value);}
   return result;
 };
+const hasControlCharacters=(value:string):boolean=>Array.from(value).some(character=>{const point=character.codePointAt(0)??0;return point<=0x1f||(point>=0x7f&&point<=0x9f);});
 const COGNITIVE_STAGES=new Set<CognitiveStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update','tool-action','tool-outcome','tool-evidence','external-evidence','tool-reconciliation']);
 
 export class CognitiveEventFabric {
@@ -179,7 +180,7 @@ export class CognitiveEventFabric {
     const rawStage=ownData('stage');
     if(typeof rawStage!=='string'||!COGNITIVE_STAGES.has(rawStage as CognitiveStage)) throw new Error('invalid-cognitive-event-stage');
     const rawSource=ownData('source');
-    if(typeof rawSource!=='string'||!rawSource.trim()||rawSource.length>120||/[\\u0000-\\u001f\\u007f]/.test(rawSource)) throw new Error('invalid-cognitive-event-source');
+    if(typeof rawSource!=='string'||!rawSource.trim()||rawSource.length>120||hasControlCharacters(rawSource)) throw new Error('invalid-cognitive-event-source');
     const rawAt=ownData('at');
     if(rawAt!==undefined&&(typeof rawAt!=='number'||!Number.isFinite(rawAt)||rawAt<0)) throw new Error('invalid-cognitive-event-time');
     const rawConfidence=ownData('confidence01');
