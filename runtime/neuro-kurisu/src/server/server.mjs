@@ -924,27 +924,43 @@ async function route(req, res) {
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/hmx/decide') {
             const input = await body(req);
-            const decision = input.decision === 'accept' ? 'accept' : input.decision === 'reject' ? 'reject' : null;
+            const decision = ['accept', 'reject', 'apply'].includes(String(input.decision)) ? String(input.decision) : null;
             const stagingId = String(input.stagingId || '').trim();
             if (!decision || !stagingId)
                 return json(res, 400, { ok: false, error: 'stagingId-and-valid-decision-required' });
-            const result = runtime.core.hexisDecideHmx(stagingId, decision);
+            let result;
+            try {
+                result = runtime.core.hexisDecideHmx(stagingId, decision);
+            }
+            catch (error) {
+                await runtime.core.flush().catch(() => undefined);
+                return json(res, 422, {
+                    ok: false,
+                    error: String(error?.message ?? error),
+                    appliedToCanonicalMemory: false,
+                });
+            }
             await runtime.core.flush();
             if (!result)
                 return json(res, 404, { ok: false, error: 'hmx-stage-not-found', appliedToCanonicalMemory: false });
-            const expectedStatus = decision === 'accept' ? 'accepted' : 'rejected';
+            const expectedStatus = decision === 'accept' ? 'accepted' : decision === 'reject' ? 'rejected' : 'applied';
             if (result.status !== expectedStatus)
                 return json(res, 409, {
                     ok: false,
-                    error: decision === 'accept' ? 'hmx-import-conflicts' : 'hmx-stage-not-pending',
+                    error: result.conflicts?.length ? 'hmx-import-conflicts' : decision === 'apply' && result.status === 'staged' ? 'hmx-stage-not-approved' : 'hmx-stage-not-pending',
                     stage: result,
                     appliedToCanonicalMemory: false,
                 });
             return json(res, 200, {
                 ok: true,
                 stage: result,
-                appliedToCanonicalMemory: false,
-                note: 'HMX review disposition is recorded; canonical NK1 memory has not been mutated by this endpoint.',
+                application: decision === 'apply' ? result.application ?? null : null,
+                appliedToCanonicalMemory: decision === 'apply' && result.status === 'applied',
+                note: decision === 'apply'
+                    ? 'HMX memory records were projected through the canonical MemoryFabric/MemoryOS2 write path; deferred sections are listed in the application receipt.'
+                    : decision === 'accept'
+                        ? 'HMX candidate is approved for explicit application; canonical NK1 memory has not yet been mutated.'
+                        : 'HMX candidate was rejected; canonical NK1 memory has not been mutated.',
             });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/outbox') {
