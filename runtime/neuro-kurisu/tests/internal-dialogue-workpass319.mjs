@@ -225,4 +225,4 @@ assert.match(wholePrompt, /selected_action=reflect/);
 assert.match(wholePrompt, /A verified memory says the user prefers clear technical explanations/);
 assert.doesNotMatch(wholePrompt, /hunter2|curator@example\.com/);
 assert.match(wholePrompt, /Do not expose the private turn notes/);
-console.log('NK1_INTERNAL_DIALOGUE_WORKPASS319=PASS bounded-dialogue=true evidence-ranking=true contradiction-audit=true privacy-filter=true proposal-wiring=true planner-authority-preserved=true');
+console.log('NK1_INTERNAL_DIALOGUE_WORKPASS319=PASS cases=13 bounded-dialogue=true evidence-ranking=true contradiction-audit=true privacy-filter=true proposal-wiring=true planner-authority-preserved=true');
