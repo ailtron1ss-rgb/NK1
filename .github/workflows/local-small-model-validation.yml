@@ -6,6 +6,8 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/server/LocalSmallModelHub.mjs"
       - "runtime/neuro-kurisu/src/server/LocalInferenceScheduler.mjs"
+      - "runtime/neuro-kurisu/src/organism/integration/local/LocalInferenceScheduler.mjs"
+      - "runtime/neuro-kurisu/src/organism/integration/local/LocalInferenceScheduler.d.mts"
       - "runtime/neuro-kurisu/src/server/server.mjs"
       - "runtime/neuro-kurisu/tests/server-language-http-fake-provider.mjs"
       - "runtime/neuro-kurisu/scripts/register-typescript-loader.mjs"
@@ -33,6 +35,8 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/server/LocalSmallModelHub.mjs"
       - "runtime/neuro-kurisu/src/server/LocalInferenceScheduler.mjs"
+      - "runtime/neuro-kurisu/src/organism/integration/local/LocalInferenceScheduler.mjs"
+      - "runtime/neuro-kurisu/src/organism/integration/local/LocalInferenceScheduler.d.mts"
       - "runtime/neuro-kurisu/src/server/server.mjs"
       - "runtime/neuro-kurisu/tests/server-language-http-fake-provider.mjs"
       - "runtime/neuro-kurisu/scripts/register-typescript-loader.mjs"
@@ -81,6 +85,7 @@ jobs:
           --allowImportingTsExtensions
           runtime/neuro-kurisu/src/organism/body/VisionSemanticBackend.ts
           runtime/neuro-kurisu/src/organism/body/LocalOpenAICompatibleVisionBackend.ts
+          runtime/neuro-kurisu/src/organism/developmental/LocalEmbeddingProvider.ts
           runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts
       - name: Local small-model hub regression
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/local-small-model-hub-workpass.mjs
