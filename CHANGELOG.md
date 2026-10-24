@@ -1,10 +1,12 @@
 ## NK1 WorkPass Mem0-1 — opt-in Mem0 recall bridge (2026-10-24)
 
 - Added a dependency-free Mem0 Platform REST adapter with explicit enablement, fixed server-configured user scope, HTTPS-only base URL, bounded timeout and response size, safe error codes, scope mismatch rejection, and secret-free diagnostics.
-- Added an authenticated hybrid recall endpoint that returns canonical MemoryOS2 results separately from Mem0 external candidates. External candidates are provenance-labelled, unverified, marked as data rather than instructions, and are not inserted into live prompts or promoted to canonical memory.
-- Added an explicit conversation-export method requiring both a write-enable environment gate and per-operation approval. No automatic export or HTTP write route was introduced; targeted secret/PII masking is defense-in-depth, not a complete classifier.
-- Added adapter regressions for disabled-by-default behavior, fixed user scope, redaction, explicit export approval, HTTPS enforcement, provider-error sanitization and response-size limits; added the audit command and integration guide.
-- **Not claimed:** typecheck/test/HTTP smoke execution on this exact branch, live Mem0 credentials, independent retrieval uplift, or full cognitive-cycle injection. GitHub Actions runner availability is not assumed. The latest release ZIP metadata reports the same SHA-256 as the repository README, but the 136-MB asset could not be downloaded through the available file channel, so its bytes were not independently hashed or inspected.
+- Added an authenticated hybrid-recall endpoint that returns canonical MemoryOS2 results separately from Mem0 candidates.
+- Wired a second opt-in runtime path into LanguageOrgan: only with both `NK_MEM0_ENABLED=1` and `NK_MEM0_COGNITIVE_RECALL=1`, the runtime may query the current user message or autonomous topic and attach at most three sanitized remote notes as low-priority untrusted context. Current user corrections and canonical memory remain authoritative; external notes are not executed or promoted.
+- Added an explicit conversation-export method requiring a write-enable environment gate and per-operation approval. No automatic conversation export or HTTP write route was introduced; targeted secret/PII masking is defense-in-depth, not a complete classifier.
+- Added nine adapter/context regressions, the `test:mem0-platform-adapter-workpass1` script, a dedicated isolated GitHub Actions workflow (Node 24, adapter tests and server syntax check), integration documentation and research-intake record.
+- **Validation boundary:** the isolated workflow has been added, but its latest exact-head result must be checked before this pass is marked verified. A preceding broad runtime typecheck run at an earlier PR head failed on existing diagnostics in other areas (including cognition, learning and core event files); its log contained no errors naming `Mem0PlatformAdapter`, but that earlier run does not validate the later cognitive-context changes. Live Mem0 behavior, independent RU/EN retrieval uplift and retention/deletion alignment remain open.
+- No changes to `main` or release assets. The 136-MB latest release ZIP was not downloaded through the available file channel, so its bytes were not independently hashed or inspected.
 
 ---
 
