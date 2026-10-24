@@ -1157,7 +1157,13 @@ export class OrganismCore {
     private readonly store: JsonStateStore<PersistedOrganism>;
     private readonly actionExecutionLedgerArchive?: FileActionExecutionLedgerArchive;
     /** BIG PASS 56: physical owner/composition root for the seven organism systems. */
-    private readonly organismSystems = new OrganismSystemFabric();
+    private readonly organismSystems = new OrganismSystemFabric({
+        research: new EvidenceResearchSubsystemRuntime({
+            authorizeSourceRegistration: source => this.cognitiveRuntime.actionGateway.isDeclaredObservationSource({
+                sourceId: source.id, sourceClass: source.sourceClass, channel: source.channel, independenceKey: source.independenceKey,
+            }),
+        }),
+    });
     /** Owns the extracted developmental/neural execution modules; Core only orchestrates them. */
     private readonly developmentalNeural = new DevelopmentalNeuralRuntime();
     /** Durable trust context for signed shadow evidence; only trusted supervisor code may register runs. */
@@ -11517,6 +11523,14 @@ export class OrganismCore {
     externalObserverSnapshot() { return this.evidenceResearchSubsystem.externalObserver.snapshot(); }
     externalObserverSummary() { return this.evidenceResearchSubsystem.externalObserver.summary(); }
     reconcileExternalClaim(claimKey: string, expectedPostcondition?: string) { return structuredClone(this.evidenceResearchSubsystem.externalObserver.reconcileClaim(claimKey, expectedPostcondition)); }
+    /** Register only a source identity already declared by a trusted ActionGateway tool definition. */
+    registerExternalObserverSourceForTool(toolId: string) {
+        const source = this.cognitiveRuntime.actionGateway.observationSourceForTool(String(toolId));
+        if (!source) throw new Error('external-observer-tool-source-not-declared');
+        return this.evidenceResearchSubsystem.externalObserver.registerSource({
+            id: source.sourceId, sourceClass: source.sourceClass, channel: source.channel, independenceKey: source.independenceKey,
+        });
+    }
     async ingestExternalObservation(input: Parameters<import('../system/ExternalObserverFabric.ts').ExternalObserverFabric['observe']>[0] & {
         expectedPostcondition?: string;
         /** Exact OrganismDecisionTrace.id; deliberately never inferred from actionRef/executionId. */
@@ -11971,6 +11985,11 @@ export class OrganismCore {
         const evidenceEventId = trustedEventLink && typeof v.evidenceEventId === 'string' ? v.evidenceEventId : undefined;
         const source = this.cognitiveRuntime.actionGateway.observationSourceForTool(toolId);
         if (!source) return { integrated: false };
+        // This path only runs after ActionGateway confirms an external-postcondition
+        // result; bind the observer identity to the tool's declared source contract.
+        this.evidenceResearchSubsystem.externalObserver.registerSource({
+            id: source.sourceId, sourceClass: source.sourceClass, channel: source.channel, independenceKey: source.independenceKey,
+        });
         const expected = String(v.expectedPostcondition).normalize('NFKC').trim().toLocaleLowerCase();
         const claimKey = `tool-postcondition:${sha256Stable(expected)}`;
         const ingested = await this.ingestExternalObservation({
