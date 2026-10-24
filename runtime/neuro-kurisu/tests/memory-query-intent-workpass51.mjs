@@ -45,4 +45,59 @@ const generalRows = generalMemory.retrieve('нейронная память сл
 assert.equal(generalRows.length, 1);
 assert.equal(generalMemory.retrievalDiagnostics().queryIntentMode, 'general');
 assert.equal(generalMemory.retrievalDiagnostics().maxQueryIntentBoost01, 0, 'general search must not get an intent preference');
+const autobiographicalRecallCases = [
+  { query: 'Какие у меня воспоминания о нейронной памяти и эксперименте?', intent: 'episodic' },
+  { query: 'Вспомни, что мы обсуждали про нейронную память', intent: 'episodic' },
+  { query: 'Что ты помнишь о нашем прошлом разговоре про нейронную память?', intent: 'episodic' },
+  { query: 'What do you remember about our previous conversation on memory?', intent: 'episodic' },
+  { query: 'What did we discuss last time about memory?', intent: 'episodic' },
+  { query: 'Что ты помнишь обо мне и моих интересах?', intent: 'identity' },
+  { query: 'What do you remember about me and my preferences?', intent: 'identity' },
+];
+for (const fixture of autobiographicalRecallCases) {
+  assert.equal(detectMemoryQueryIntent(fixture.query), fixture.intent, 'autobiographical recall intent: ' + fixture.query);
+}
+
+const identityRecall = new MemoryOS2({ embeddingProvider: null });
+const identityContent = 'личные интересы предпочтения характер';
+encode(identityRecall, { id: 'a-semantic-decoy', kind: 'semantic', content: identityContent });
+encode(identityRecall, { id: 'z-identity-recall', kind: 'identity', content: identityContent, identityRelevance: .8 });
+assert.equal(
+  identityRecall.retrieve('Что ты помнишь обо мне и моих интересах?', 1, .1, .9)[0]?.id,
+  'z-identity-recall',
+  'profile recall must prefer identity memories rather than a lexical-tied semantic note',
+);
+
+const conversationalMemory = new MemoryOS2({ embeddingProvider: null });
+const conversationContent = 'нейронная память эксперимент разговор';
+encode(conversationalMemory, { id: 'a-semantic-decoy', kind: 'semantic', content: conversationContent });
+encode(conversationalMemory, {
+  id: 'z-social-conversation', kind: 'social', content: conversationContent,
+  context: { conversationId: 'conversation-42', sessionId: 'session-42' },
+});
+assert.equal(
+  conversationalMemory.retrieve('Что мы обсуждали в прошлый раз про нейронную память и эксперимент?', 1, .1, .1)[0]?.id,
+  'z-social-conversation',
+  'conversation-backed social memory must beat a lexical-tied semantic note for prior-dialogue recall',
+);
+
+const relationshipMemory = new MemoryOS2({ embeddingProvider: null });
+const relationshipContent = 'нейронная память эксперимент разговор';
+encode(relationshipMemory, {
+  id: 'a-relationship-social', kind: 'social', content: relationshipContent,
+  context: { relationshipId: 'relationship-7' },
+});
+encode(relationshipMemory, { id: 'z-actual-episode', kind: 'episodic', content: relationshipContent });
+assert.equal(
+  relationshipMemory.retrieve('Вспомни, что мы обсуждали про нейронную память', 1, .1, .1)[0]?.id,
+  'z-actual-episode',
+  'generic relationship memory must not outrank a real episode without conversation lineage',
+);
+
+console.log('MEMORY_QUERY_INTENT_AUTOBIOGRAPHICAL_RECALL=PASS', JSON.stringify({
+  phraseCases: autobiographicalRecallCases.length,
+  identityWinner: 'z-identity-recall',
+  conversationWinner: 'z-social-conversation',
+  relationshipGuard: 'z-actual-episode',
+}));
 console.log('MEMORY_QUERY_INTENT_WORKPASS51=PASS', JSON.stringify({ cases: reports, general: 'no-intent-bonus' }));
