@@ -131,7 +131,7 @@ try {
   const tampered = reopened.snapshot();
   tampered.records[0].packet.artifactFingerprint = 'f'.repeat(64);
   writeFileSync(inboxPath, JSON.stringify(tampered), 'utf8');
-  assert.throws(() => new HexisSkillReviewInbox(new AtomicFileSkillReviewInboxPersistence(inboxPath)), /digest|snapshot|packet/i,
+  assert.throws(() => new HexisSkillReviewInbox(new AtomicFileSkillReviewInboxPersistence(inboxPath)), /digest|snapshot|review inbox record|packet/i,
     'the digest-bound review packet must reject on-disk tampering');
 
   const fake = { ...proposal, proposalId: '9'.repeat(64) };
