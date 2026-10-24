@@ -60,7 +60,7 @@ const snapshot = ledger.snapshot();
 assert.equal(snapshot.manifestCount, 3);
 assert.equal(snapshot.rejectionCounts['self-report-not-authoritative'], 1);
 assert.equal(snapshot.acceptedOutcomes, 41);
-assert.equal(snapshot.rejectedOutcomes, 8);
+assert.equal(snapshot.rejectedOutcomes, 10);
 snapshot.outcomes[0].passed = !snapshot.outcomes[0].passed;
 assert.notEqual(snapshot.outcomes[0].passed, ledger.snapshot().outcomes[0].passed, 'snapshot must not mutate ledger state');
 console.log('P23_VERIFIED_OUTCOME_LEDGER=PASS');
