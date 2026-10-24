@@ -1,3 +1,10 @@
+# WorkPass335 — Hermes/P23 host-owned evaluator wiring (2026-10-24)
+
+- [INTEGRATION] Wired the existing P23 compound-repair revision provider through the separately configured host-owned independent-evaluation factory in the server bootstrap. The provider and evaluator config must be distinct; production requires fixed experiment authority and distinct baseline/source/revision methods.
+- [SAFETY] Keeps independent executor, verifier and safety-scanner services separate. Background revision remains opt-in; staging a candidate does not authorize activation or bypass signed shadow evidence and authenticated approval.
+- [TEST] Added the WorkPass335 host-evaluator workflow and registered `test:workpass335:hermes-host-evaluator` to exercise the host config contract and verify actual server-to-runtime wiring, followed by runtime typecheck on Node 24.
+- [LIMIT] Deployment-owned host evaluator config, real host executables, fixed task manifest/validation/holdout plans, exact-head green CI and independent paired-seed learning evaluation are still required. No production-ready or learning-uplift claim is made before those checks complete.
+
 # WorkPass335 — preserve intent-to-outcome provenance in experience memory (2026-10-24)
 
 - [INTEGRATION] Extended the existing `core.feedback → worldEvent` experience event with a bounded `innerIntentMemoryTrace`; no second memory store or direct runtime-owned MemoryOS2 writes were added.
