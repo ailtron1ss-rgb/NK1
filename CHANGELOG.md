@@ -1,3 +1,11 @@
+## NK1 WorkPass500 — validate the P65 bridge through CI (2026-10-24)
+
+- Extended P26 Learning Validation path filters to run when the shared evidence identity helper, verifier or P65 bridge changes.
+- Added an explicit CI step for `test:p65:verified-outcome-bridge` so the decision-bound receipt bridge is exercised on the exact PR commit.
+- The bridge rejects copied receipts and claim-text mismatch; only the verifier-owned, decision-linked external postcondition can update confidence, and the same event identity is not counted twice.
+
+---
+
 ## NK1 WorkPass499 — bridge process-trusted outcome receipts into P65 (2026-10-24)
 
 - Added `OutcomeVerification.evidenceEventId`, generated as a deterministic `outcome:<40-hex>` key from canonical tool, execution ID, decision ID, observation ID and full input.
