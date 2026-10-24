@@ -31,6 +31,8 @@ assert.equal(normalizedNk1Export.hmx_version, '1.7');
 assert(normalizedNk1Export.capabilities.formats.includes('json'));
 assert(normalizedNk1Export.capabilities.sections.includes('memories'));
 assert(['none', 'basic', 'strict', 'custom'].includes(normalizedNk1Export.privacy.redaction_policy));
+assert.equal(normalizedNk1Export.privacy.redaction_policy, 'none', 'the adapter must not claim redaction it did not perform');
+assert(normalizedNk1Export.export_warnings.some(warning => warning.includes('No automatic redaction')));
 assert.equal(typeof normalizedNk1Export.privacy.contains_sensitive_content, 'boolean');
 assert(['backup', 'migration', 'third_party_transfer', 'unspecified'].includes(normalizedNk1Export.privacy.consent_scope));
 assert(Array.isArray(normalizedNk1Export.export_scope.include_protected));
