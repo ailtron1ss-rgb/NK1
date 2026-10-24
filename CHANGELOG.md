@@ -1,3 +1,9 @@
+## NK1 WorkPass529 — guard the reality-to-learning promotion seam (2026-10-24)
+
+- Added `tests/workpass529-p23-reality-promotion-gate.mjs` to exercise the canonical ledger's one-source vs. two-qualified-source distinction and protect P23's consequential promotion preconditions against accidental weakening.
+- Added `.github/workflows/reality-learning-regression.yml` to run the new gate regression together with the existing observer-to-ledger persistence/replay test on relevant pushes and pull requests targeting `integration`.
+- This pass adds regression coverage, not a claim that arbitrary semantic contradictions are already detected or that hosted CI has passed. Candidate-to-claim semantic binding remains a follow-up risk to close.
+
 ## NK1 WorkPass528 — derive consequential promotion evidence from the canonical ledger (2026-10-24)
 
 - Hardened the new P23 promotion path to accept a real `RealityEvidenceLedger` and target claim, then compute corroboration internally rather than trusting a caller-supplied assessment object.
