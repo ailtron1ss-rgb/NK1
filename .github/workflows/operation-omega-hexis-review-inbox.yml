@@ -37,5 +37,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '24.21.0'
+          cache: false
       - name: Run Operation Omega review-inbox regression
         run: node --experimental-strip-types tests/operation-omega-hexis-review-inbox.mjs
