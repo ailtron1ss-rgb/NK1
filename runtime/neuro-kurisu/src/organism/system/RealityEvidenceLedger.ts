@@ -82,6 +82,12 @@ function sameEventPayload(a:RealityEvidenceRecord,b:RealityEvidenceRecord):boole
   return JSON.stringify([a.tick,a.realityClass,a.claim,a.confidence01,a.independenceKey,a.parentIds])===
     JSON.stringify([b.tick,b.realityClass,b.claim,b.confidence01,b.independenceKey,b.parentIds]);
 }
+function sameEventPayloadExceptConfidence(a:RealityEvidenceRecord,b:RealityEvidenceRecord):boolean{
+  // Trust calibration may conservatively reduce legacy confidence on restore,
+  // but no other event field may change under the same event identity.
+  return JSON.stringify([a.tick,a.realityClass,a.claim,a.independenceKey,a.parentIds])===
+    JSON.stringify([b.tick,b.realityClass,b.claim,b.independenceKey,b.parentIds]);
+}
 
 export class RealityEvidenceLedger {
   private readonly capacity:number;
@@ -161,6 +167,13 @@ export class RealityEvidenceLedger {
       const existing=this.records.find(record=>record.eventId===eventId);
       if(existing){
         if(sameEventPayload(existing,row))return structuredClone(existing);
+        if(sameEventPayloadExceptConfidence(existing,row)&&row.confidence01<existing.confidence01){
+          // Schema-compatible projection upgrades may lower a legacy raw score
+          // after source-trust calibration. A stable event ID may never elevate it.
+          const index=this.records.findIndex(record=>record.eventId===eventId);
+          if(index>=0)this.records[index]=row;
+          return structuredClone(row);
+        }
         this.quarantinedEventIds.add(eventId);
         this.records=this.records.filter(record=>record.eventId!==eventId);
         throw new Error('reality-evidence-event-id-conflict');
