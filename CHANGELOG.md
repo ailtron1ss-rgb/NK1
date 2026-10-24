@@ -1,3 +1,11 @@
+## NK1 Architecture — JSON dependency graph export (2026-10-24)
+
+- [ADDED] The architecture audit can now export a schema-versioned JSON graph through `NK1_DEPENDENCY_GRAPH_REPORT`: nodes, source layers, relative-import edges, layer-to-layer coupling counts, and summary metrics.
+- [TESTED] The architecture regression suite validates the generated JSON structure, node/edge counts, no unresolved imports/cycles/boundary violations, and automatically cleans up temporary files in local runs.
+- [ARTIFACT] Dedicated workflow run [40128498140](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40128498140) succeeded and uploaded artifact `nk1-module-dependency-graph` (artifact ID `12574340739`, SHA-256 `c3967255c8336f7db5e4f4f5bedd5d7598e1968d3c844bb1880b4b0cf8fb5913`, expires 2026-11-07).
+- [METRICS] That run validated 2,222 source files, 630 canonical-organism files, and 4,210 dependency edges with zero unresolved imports, cycles, legacy leakage, or boundary violations; the server graph reported 574 files and 1,868 edges.
+- [SCOPE] Evidence is tied to the audited code commit `264665af51b19685875483392cfc8b1a0ad62829`; run a new CI check after any subsequent code change.
+
 ## NK1 Architecture — focused dependency CI results (2026-10-24)
 
 - [PASS] Dedicated workflow run [40128282695](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40128282695) completed successfully on code commit `a248aabe41953a074483ebcbede923c2758fe6c2`.
