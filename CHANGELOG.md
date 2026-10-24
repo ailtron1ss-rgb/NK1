@@ -2,10 +2,11 @@
 
 - [INTEGRATED] Added a lazy, opt-in TypeScript adapter for the active Letta Agent SDK with MemFS-enabled persistent agent creation/reuse, experience submission, recall, serialized calls, bounded payloads, secret redaction, and metrics.
 - [WIRED] Connected the adapter to MemorySubsystemRuntime and included the provider identity/metrics in its snapshot and restore boundary.
+- [LIFECYCLE] Added observers at MemoryFabric's canonical mutation boundary. MemorySubsystemRuntime mirrors post-commit encode/revision/update events to Letta, submits forget requests, pauses mirroring during restore, and exposes a flush barrier for controlled shutdown/tests. Provider stays opt-in by default.
 - [SAFETY] Letta remains an external memory provider; NK1 is still the canonical owner of memory policy, goals, self-model, and actions. Recall results are explicitly marked as untrusted candidates and provider assertions are not treated as proof of durable writes.
 - [CONTRACT] Updated LETTA_INTEGRATION_POLICY.json to separate the historic Letta archive from the active SDK adapter and preserve manual artifact-promotion gates.
-- [TEST] Added a fake-client bridge regression test covering opt-in behavior, agent reuse, MemFS configuration, redaction, snapshot/restore, and recall trust labeling. The test has not been executed in the full project runtime in this pass.
-- [LIMITATION] The external SDK has not yet been added to the runtime package lock through a reproducible install. A local/cloud Letta E2E, native+Letta retrieval uplift, restart persistence against the actual provider, and production release validation remain open.
+- [TEST] Added fake-client regression tests covering adapter boundaries, agent reuse, MemFS configuration, redaction, snapshot/restore, recall trust labeling, canonical mutation mirroring, restore suppression, and forget-request routing. The tests have not been executed in the full project runtime in this pass.
+- [LIMITATION] The external SDK has not yet been added to the runtime package lock through a reproducible Node 24 install. Existing memories are not bulk-backfilled. Provider-side forget is an unverified request, not proof of erasure. A local/cloud Letta E2E, native+Letta retrieval uplift, restart persistence against the actual provider, and production release validation remain open.
 - [RELEASE] No Release asset was downloaded, rebuilt, replaced, or published by this pass.
 
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
