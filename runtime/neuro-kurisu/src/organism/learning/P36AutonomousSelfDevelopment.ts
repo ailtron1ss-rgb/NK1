@@ -535,7 +535,10 @@ export class P36AutonomousSelfDevelopmentEngine{
   recordExternalEvidence(input:{hypothesisId:string;contextKey:string;control01:number;treatment01:number;independentVerified?:boolean;verification?:OutcomeVerification;holdout:boolean;delayMs:number;evaluatorVersion:string;evidenceSource:'external-evaluator'|'manual-observer';protocolId?:string;sessionId?:string;trialId?:string;at?:number}):{eligible:boolean;evidenceCount:number;distinctContexts:number;distinctDelays:number;holdoutCount:number;independentCount:number;meanDelta01:number|null;ci95Low01:number|null;ci95High01:number|null;status:'insufficient'|'holdout-verified'|'replicated';promoted:boolean} {
     // The legacy independentVerified boolean is caller-controlled data and has no authority.
     const binding=developmentEvidenceVerificationInput(input);
-    if(!binding.hypothesisId||!binding.contextKey||!binding.evaluatorVersion||
+    if(typeof input.control01!=='number'||!Number.isFinite(input.control01)||input.control01<0||input.control01>1||
+       typeof input.treatment01!=='number'||!Number.isFinite(input.treatment01)||input.treatment01<0||input.treatment01>1||
+       typeof input.holdout!=='boolean'||typeof input.delayMs!=='number'||!Number.isFinite(input.delayMs)||input.delayMs<0||
+       !binding.hypothesisId||!binding.contextKey||!binding.evaluatorVersion||
        (input.evidenceSource!=='external-evaluator'&&input.evidenceSource!=='manual-observer')||
        (input.protocolId!==undefined&&!binding.protocolId)||(input.sessionId!==undefined&&!binding.sessionId)||
        (input.trialId!==undefined&&!binding.trialId))throw new Error('invalid-development-evidence');
@@ -553,15 +556,16 @@ export class P36AutonomousSelfDevelopmentEngine{
       sameEvidenceKey(x)&&x.independentVerified&&x.observationId===observationId));
     const receiptReused=Boolean(observationId&&this.state.developmentalEvidenceObservationIds.includes(observationId)&&!duplicateVerifiedReceipt);
     const independentVerified=Boolean(exactReceipt&&!receiptReused);
+    const acceptedAt=now();
     const row:DevelopmentEvidenceRecord={
-      id:`p36-e-${hash(`${binding.hypothesisId}:${binding.contextKey}:${input.at??now()}`)}-${now().toString(36)}`,
+      id:`p36-e-${hash(`${binding.hypothesisId}:${binding.contextKey}:${acceptedAt}`)}-${acceptedAt.toString(36)}`,
       hypothesisId:binding.hypothesisId,contextKey:binding.contextKey,control01:binding.control01,treatment01:binding.treatment01,
       delta01:binding.treatment01-binding.control01,independentVerified,holdout:binding.holdout,delayMs:binding.delayMs,
       evaluatorVersion:binding.evaluatorVersion,evidenceSource:input.evidenceSource,
       ...(binding.protocolId?{protocolId:binding.protocolId}:{}),
       ...(binding.sessionId?{sessionId:binding.sessionId}:{}),
       ...(binding.trialId?{trialId:binding.trialId}:{}),
-      ...(independentVerified&&observationId?{observationId}:{}),at:input.at??now(),
+      ...(independentVerified&&observationId?{observationId}:{}),at:acceptedAt,
     };
     const duplicateIndex=this.state.externalEvidence.findIndex(sameEvidenceKey);
     let storedOrExactDuplicate=false;
@@ -616,6 +620,8 @@ export class P36AutonomousSelfDevelopmentEngine{
   observeDevelopmentalOutcome(input:{area?:DevelopmentArea|null;outcome01:number;verified?:boolean;verification?:OutcomeVerification;delayed?:boolean;transfer?:boolean;at?:number}){
     // The legacy verified boolean is descriptive only; certification needs a verifier-minted receipt.
     const binding=developmentalOutcomeVerificationInput(input);
+    if(typeof input.outcome01!=='number'||!Number.isFinite(input.outcome01)||input.outcome01<0||input.outcome01>1||
+       (input.delayed!==undefined&&typeof input.delayed!=='boolean')||(input.transfer!==undefined&&typeof input.transfer!=='boolean'))throw new Error('invalid-developmental-outcome');
     if(input.area!==undefined&&input.area!==null&&binding.area===null)throw new Error('invalid-developmental-outcome-area');
     const verified=isTrustedExternalPostconditionVerification(input.verification,binding);
     const outcome=binding.outcome01;
