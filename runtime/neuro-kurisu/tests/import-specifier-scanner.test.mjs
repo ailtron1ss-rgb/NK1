@@ -35,6 +35,16 @@ test("scanner finds static, re-export, side-effect, dynamic and CommonJS imports
   ]);
 });
 
+test("scanner ignores import-like examples inside strings and regex literals", () => {
+  const source = [
+    "const fixture = 'import \"./fake-string.js\"';",
+    "const pattern = /import\\s*\\([\"']\\.\\/fake-regex\\.js[\"']\\)/;",
+    'import "./actual.js";',
+  ].join("\n");
+
+  assert.deepEqual(collectRelativeImportSpecifiers(source), ["./actual.js"]);
+});
+
 test("scanner de-duplicates repeated local import edges", () => {
   const source = [
     'import "./shared.js";',
