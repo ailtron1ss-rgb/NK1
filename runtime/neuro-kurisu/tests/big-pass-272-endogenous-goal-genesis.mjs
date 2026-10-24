@@ -59,6 +59,7 @@ const comparisonInput={
 };
 const baselineValue=baselineNet.step({...comparisonInput,intrinsicDrive01:0,intrinsicDriveConfidence01:1}).predictedFutureValue01;
 const drivenValue=drivenNet.step({...comparisonInput,intrinsicDrive01:0.9,intrinsicDriveConfidence01:1}).predictedFutureValue01;
+assert.ok(baselineValue<1&&drivenValue<1,'future-value calibration must retain headroom instead of saturating all candidates');
 assert.ok(drivenValue>baselineValue+0.1,'calibrated intrinsic drive did not influence endogenous goal value');
 const untrustedDriveNet=new B272EndogenousGoalGenesis(); untrustedDriveNet.restore(comparisonState);
 const untrustedValue=untrustedDriveNet.step({...comparisonInput,intrinsicDrive01:0.9,intrinsicDriveConfidence01:0}).predictedFutureValue01;
