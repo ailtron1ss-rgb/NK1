@@ -80,6 +80,11 @@ assert.equal(corroborated.independentPromotionAllowed, true, 'two high-confidenc
 const persisted = runtime.snapshot();
 const restored = new EvidenceResearchSubsystemRuntime();
 restored.restore(persisted);
-assert.equal(restored.realityEvidenceLedger.snapshot().total, 1, 'restore must reconcile observer and ledger state without duplicate rows');
-assert.equal(restored.realityEvidenceLedger.snapshot().recent[0].eventId, evidenceEventId);
+const restoredLedger = restored.realityEvidenceLedger.snapshot();
+assert.equal(restoredLedger.total, 3, 'restore must retain all three distinct evidence events without duplicate rows');
+assert.deepEqual(
+  new Set(restoredLedger.recent.map(row => row.eventId)),
+  new Set([evidenceEventId, `outcome:${'b'.repeat(40)}`, `outcome:${'c'.repeat(40)}`]),
+  'restore must preserve every verifier event identity across observer-ledger reconciliation',
+);
 console.log('WORKPASS521_OBSERVER_LEDGER_BRIDGE=PASS liveBridge=true idempotentReplay=true userReportNotExternal=true restoreReconciliation=true');
