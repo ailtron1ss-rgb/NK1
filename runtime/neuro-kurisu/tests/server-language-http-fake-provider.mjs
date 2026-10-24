@@ -146,6 +146,12 @@ try {
   assert.equal(diagnosticsBody.hub?.models?.find(model => model.id === 'local-emotion')?.configured, true);
   assert.equal(diagnosticsBody.hub?.models?.find(model => model.id === 'local-embeddings')?.configured, true);
   assert.equal(diagnosticsBody.hub?.models?.find(model => model.id === 'local-embeddings')?.provider, 'openai-compatible');
+  assert.equal(diagnosticsBody.hub?.scheduler?.maxConcurrentPerGroup, 1, 'all local providers should share the default per-endpoint inference budget');
+  assert.equal(diagnosticsBody.hub?.scheduler?.pending, 0, 'no queued model calls should remain after the chat response');
+  assert.ok(diagnosticsBody.hub?.scheduler?.groups?.reduce((sum, group) => sum + group.started, 0) >= 3,
+    'language, classifier and affect calls must all pass through the shared scheduler');
+  assert.equal(JSON.stringify(diagnosticsBody.hub?.scheduler).includes(providerUrl), false,
+    'scheduler diagnostics must not expose local endpoint URLs');
   assert.equal(diagnosticsBody.integration?.coreAffectHint?.emotion, 'curiosity', 'the local affect model should reach canonical cognitive appraisal');
   assert.equal(diagnosticsBody.integration?.coreAffectHint?.confidence01, 0.82, 'the core bridge should preserve bounded confidence metadata');
 
