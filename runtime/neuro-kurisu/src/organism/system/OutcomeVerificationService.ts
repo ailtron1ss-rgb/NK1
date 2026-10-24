@@ -114,8 +114,15 @@ const boundedText = (value: unknown, max: number): string | undefined => {
 /** Correlation IDs are rejected when malformed; truncation would let distinct tickets alias. */
 const boundedCorrelationId = (value: unknown, max: number): string | undefined => {
   if (typeof value !== 'string') return undefined;
-  const normalized = value.normalize('NFKC').trim();
-  if (!normalized || normalized.length > max || /[\u0000-\u001f\u007f-\u009f]/.test(normalized)) return undefined;
+  // Reject control characters before trim; otherwise leading/trailing newline and
+  // tab characters are silently erased and can alias a different correlation ID.
+  const canonical = value.normalize('NFKC');
+  if (Array.from(canonical).some(character => {
+    const code = character.codePointAt(0) ?? 0;
+    return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
+  })) return undefined;
+  const normalized = canonical.trim();
+  if (!normalized || normalized.length > max) return undefined;
   return normalized;
 };
 
