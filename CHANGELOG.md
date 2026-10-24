@@ -1,3 +1,10 @@
+# NK1 P23 runtime fixes — Node.js 24 strip-only and payload boundary (2026-10-24)
+
+- [FIXED] Removed TypeScript parameter-property syntax from the trusted shadow-learning scheduler and compound-repair revision coordinator. Node.js 24's built-in `--experimental-strip-types` loader rejects parameter properties because it strips types without transforming TypeScript syntax that requires runtime code generation.
+- [FIXED] Corrected the reflective payload-budget boundary regression: the limit applies to canonical UTF-8 JSON bytes, so a string's serialized quote delimiters count toward the 256 KiB budget.
+- [TESTS UPDATED] WorkPass291 now asserts that the canonical serialization is exactly the configured byte budget before testing rejection above the limit.
+- [VALIDATION] CI is required to confirm the Node.js 24 import path and exact-size test. No suite-wide success is claimed from these source changes alone.
+
 # NK1 CI repair — WorkPass291/293 test-script wiring (2026-10-24)
 
 - [FIXED] WorkPass291 and WorkPass293 workflows invoked test names that were absent from the runtime package manifest although their test files existed.
