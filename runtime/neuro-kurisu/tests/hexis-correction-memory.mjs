@@ -94,6 +94,12 @@ assert.throws(() => engine.recordReviewedCorrection(makeObservation('engine-1'))
   /correction-review-evidence-not-authenticated/);
 engine.configureCorrectionReviewVerifier(() => true);
 engine.recordReviewedCorrection(makeObservation('engine-2'));
+const curriculumTargets = engine.correctionLearningTargets();
+assert.equal(curriculumTargets.length, 1);
+assert.equal(curriculumTargets[0].family, 'correction-context-pressure');
+assert.equal(curriculumTargets[0].repairValue01, 0.8);
+assert.equal(curriculumTargets[0].blocked, false,
+  'a correction is a learning target, not an implicit policy block');
 const engineSnapshot = engine.snapshot();
 assert.equal(engineSnapshot.correctionRules.observations.length, 1);
 const restoredEngine = new P23LearningEngine();
