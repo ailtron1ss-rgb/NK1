@@ -2923,6 +2923,9 @@ export class OrganismCore {
         const proposal = this.hexisAdaptation.getGoalProposal(proposalId);
         if (!proposal) return null;
         if (decision === 'reject') {
+            if (proposal.status !== 'pending' && proposal.status !== 'rejected') {
+                throw new Error('hmx-goal-proposal-already-reviewed');
+            }
             const rejected = this.hexisAdaptation.decideGoalProposal(proposalId, 'reject');
             this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
             return { proposal: rejected, goal: null, requiresExplicitActivation: false };
