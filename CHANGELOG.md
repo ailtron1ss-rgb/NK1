@@ -1,3 +1,12 @@
+# WorkPass344 — use one appraisal state for app and Live2D (2026-10-24)
+
+- [EMOTION] The UI snapshot now sources label, valence, arousal, dominance, action tendency, cause and confidence from the current `EmotionAppraisalEngine` episode when present. It no longer substitutes non-domain labels `thinking`/`focused` from the last action, which the UI normalizer silently reduced to `calm`.
+- [LIVE2D] The `/api/organism/avatar` handler now returns the root-level `awake/action/expression/body` fields consumed by `public/avatar.html`, alongside asset status. Those signals derive from the same appraisal episode and current voice/body snapshot.
+- [EMBODIMENT] Expression selection, head tilt, gaze, expression intensity, gesture, motion group and voice emphasis are derived from canonical emotion plus current action/voice activity. Asset inventory remains read-only; this does not add a second emotion model.
+- [TEST] Extended the canonical runtime wiring regression to check shared appraisal provenance, valid labels, the public avatar response contract and the viewer's consumer fields.
+- [CI] WorkPass331 path filters now include the server and public avatar shell, so future changes to the endpoint re-run the contract regression.
+- [VALIDATION] WorkPass331, WorkPass110, WorkPass108, WorkPass292, WorkPass293 and WorkPass294 passed on parent SHA `74a17b4e865cfaab221b1289e9d6a7beabafc725`. WorkPass344 needs fresh exact-head verification; physical-device/browser E2E remains not run.
+
 # WorkPass343 — unify autonomous entry-point semantics (2026-10-24)
 
 - [RUNTIME] `autonomousStep()` now sets `spontaneous: true` before delegating to the existing `step()` path. `runAutonomousCycles()` already delegates to `autonomousStep()`, so explicit/batched autonomous calls now use the same endogenous-intent mode as the scheduled cognitive clock.

@@ -261,6 +261,87 @@ function embodimentAssetStatus() {
         provenance
     };
 }
+function currentEmotionPayload(runtime, snapshot) {
+    const state = snapshot?.state ?? {};
+    const field = snapshot?.facets?.cognition?.cognitiveField ?? {};
+    const appraisal = snapshot?.system?.emotionAppraisal ?? runtime.core.emotionAppraisalSnapshot();
+    const latestEpisode = Array.isArray(appraisal?.history) ? appraisal.history[0] : null;
+    const allowedLabels = ['curiosity', 'calm', 'joy', 'anxiety', 'frustration', 'sadness', 'anger', 'protective'];
+    const isEmotionLabel = (value) => allowedLabels.includes(String(value));
+    const unit = (value, fallback) => {
+        const n = Number(value);
+        return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : fallback;
+    };
+    const fallbackLabel = isEmotionLabel(appraisal?.lastLabel)
+        ? String(appraisal.lastLabel)
+        : isEmotionLabel(field.dominantEmotion)
+            ? String(field.dominantEmotion)
+            : String(state.lastAction) === 'explore'
+                ? 'curiosity'
+                : unit(field.valence01, .5) > .68
+                    ? 'joy'
+                    : unit(field.valence01, .5) < .30
+                        ? 'sadness'
+                        : unit(field.arousal01, .2) > .78
+                            ? 'anxiety'
+                            : 'calm';
+    const label = isEmotionLabel(latestEpisode?.label) ? String(latestEpisode.label) : fallbackLabel;
+    const tendencyByAppraisal = {
+        explore: 'explore', engage: 'respond', verify: 'verify', reflect: 'reflect',
+        rest: 'rest', protect: 'verify', withdraw: 'wait', approach: 'respond',
+    };
+    const allowedActions = ['respond', 'explore', 'verify', 'rest', 'reflect', 'wait', 'defer'];
+    const lastAction = allowedActions.includes(String(state.lastAction)) ? String(state.lastAction) : 'wait';
+    return {
+        label,
+        valence: unit(latestEpisode?.valence01, unit(field.valence01, .5)),
+        arousal: unit(latestEpisode?.arousal01, unit(field.arousal01, .2)),
+        dominance: unit(latestEpisode?.dominance01, unit(field.coherence01, .5)),
+        tendency: tendencyByAppraisal[String(latestEpisode?.actionTendency)] ?? lastAction,
+        cause: String(latestEpisode?.cause ?? field.rationale ?? 'cognitive-field'),
+        episodeId: String(latestEpisode?.id ?? ''),
+        confidence: unit(latestEpisode?.confidence01, .5),
+    };
+}
+function live2dExpressionForEmotion(label) {
+    const expressionByEmotion = {
+        curiosity: 'thinking', calm: 'neutral', joy: 'happy', anxiety: 'sad',
+        frustration: 'angry', sadness: 'sad', anger: 'angry', protective: 'focused',
+    };
+    return expressionByEmotion[String(label)] ?? 'neutral';
+}
+function live2dBodySignal(body, voice, emotion, state) {
+    const speaking = Boolean(voice?.state?.speaking);
+    const headTiltByEmotion = {
+        curiosity: -.045, calm: 0, joy: .018, anxiety: -.018,
+        frustration: .035, sadness: .055, anger: .025, protective: -.01,
+    };
+    const gazeByAction = {
+        explore: { x: .24, y: .04 }, verify: { x: .14, y: -.10 },
+        reflect: { x: -.19, y: -.14 }, respond: { x: .01, y: .01 },
+        wait: { x: -.035, y: -.005 }, rest: { x: -.06, y: .075 },
+    };
+    const lastAction = String(state?.lastAction ?? 'wait');
+    const gaze = gazeByAction[lastAction] ?? gazeByAction.wait;
+    const arousal = Number.isFinite(Number(emotion?.arousal)) ? Math.max(0, Math.min(1, Number(emotion.arousal))) : .2;
+    const valence = Number.isFinite(Number(emotion?.valence)) ? Math.max(0, Math.min(1, Number(emotion.valence))) : .5;
+    const motionGroup = speaking ? 'Special' : lastAction === 'reflect' ? 'TapHead' : 'Idle';
+    return {
+        awake: body?.awake === true,
+        speaking,
+        listening: Boolean(voice?.state?.listening),
+        headTilt: headTiltByEmotion[emotion?.label] ?? 0,
+        gazeX: Math.max(-.4, Math.min(.4, gaze.x + (valence - .5) * .16)),
+        gazeY: gaze.y,
+        mouthOpen: 0,
+        voiceEmphasis: speaking ? Math.min(1, arousal + .15) : 0,
+        expressionIntensity: arousal,
+        gesture: speaking || (arousal > .58 && ['curiosity', 'joy', 'protective'].includes(String(emotion?.label))),
+        motionGroup,
+        motionIndex: emotion?.label === 'joy' || emotion?.label === 'curiosity' ? 1 : 0,
+        motionToken: Number.isSafeInteger(Number(state?.tick)) && Number(state.tick) > 0 ? Number(state.tick) : 0,
+    };
+}
 async function body(req) {
     const declared = Number(req.headers['content-length'] || 0);
     if (Number.isFinite(declared) && declared > MAX_BODY_BYTES)
@@ -414,8 +495,23 @@ async function route(req, res) {
 
         if (req.method === 'GET' && url.pathname === '/api/embodiment/status')
             return json(res, 200, embodimentAssetStatus());
-        if (req.method === 'GET' && url.pathname === '/api/organism/avatar')
-            return json(res, 200, { ok: true, avatar: embodimentAssetStatus(), note: 'Read-only Live2D embodiment asset surface.' });
+        if (req.method === 'GET' && url.pathname === '/api/organism/avatar') {
+            const snapshot = runtime.core.snapshot();
+            const state = snapshot.state;
+            const body = runtime.embodiment.snapshot();
+            const voice = runtime.embodiment.voiceSnapshot();
+            const emotion = currentEmotionPayload(runtime, snapshot);
+            return json(res, 200, {
+                ok: true,
+                avatar: embodimentAssetStatus(),
+                awake: body.awake,
+                action: String(state.lastAction ?? 'wait'),
+                expression: live2dExpressionForEmotion(emotion.label),
+                emotion,
+                body: live2dBodySignal(body, voice, emotion, state),
+                note: 'Live2D assets and read-only state from the canonical appraisal episode.',
+            });
+        }
         if (req.method === 'GET' && url.pathname === '/api/organism/time') {
             const temporal = runtime.core.temporalContinuitySnapshot();
             return json(res, 200, { ok: true, current: runtime.core.temporalContext(), continuity: temporal, offlineSinceLastCheckpointMs: temporal.gapSincePreviousMs, lastSeenAt: temporal.lastCheckpointAt, lastSessionEndedAt: temporal.lastSessionEndedAt, sessionCount: temporal.sessionCount, interruptionCount: temporal.interruptionCount });
@@ -525,28 +621,13 @@ async function route(req, res) {
             const unifiedMemory = snapshot.facets.advanced.unifiedMemory;
             const memoryOS = snapshot.facets.advanced.memoryOS;
             const rawSkills = snapshot.facets.cognition.skills?.skills ?? [];
-            const labels = ['calm', 'curiosity', 'joy', 'anxiety', 'frustration', 'sadness', 'anger', 'protective'];
-            const scoreLabel = (() => {
-                if (String(state.lastAction) === 'reflect')
-                    return 'thinking';
-                if (String(state.lastAction) === 'verify')
-                    return 'focused';
-                if (String(state.lastAction) === 'explore')
-                    return 'curiosity';
-                if (Number(field.valence01) > 0.68)
-                    return 'joy';
-                if (Number(field.valence01) < 0.30)
-                    return 'sadness';
-                if (Number(field.arousal01) > 0.78)
-                    return 'anxiety';
-                return labels.includes(String(field.dominantEmotion)) ? String(field.dominantEmotion) : 'calm';
-            })();
+            const emotion = currentEmotionPayload(runtime, snapshot);
             const candidates = (snapshot.traces?.slice(-1)?.[0]?.candidates ?? []).slice(0, 7).map((c) => ({ action: String(c.action), score: Number(c.score ?? 0), confidence: Number(c.confidence ?? 0) }));
             const lastReward01 = Number(state.lastActionSuccess ?? 0.5);
             const voiceSnapshot = runtime.embodiment.voiceSnapshot();
             return json(res, 200, { ok: true, version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, at: state.at, tick: state.tick, awake: body.awake,
                 state: { needs: { ...state.needs, sleepPressure: Number(p48?.interoception?.sleepPressure01 ?? (body.awake ? .15 : .85)) }, predictionError: state.predictionError, selfPredictionError: state.selfPredictionError, attentionBudget: state.attentionBudget, lastAction: state.lastAction, lastReward01: lastReward01, autonomyScore: state.autonomyScore, predictedNextAction: state.predictedNextAction, lastPredictionConfidence: state.lastPredictionConfidence, worldContextVersion: state.worldContextVersion },
-                emotion: { label: scoreLabel, valence: Number(field.valence01 ?? .5), arousal: Number(field.arousal01 ?? .2), dominance: Number(field.coherence01 ?? .5), tendency: String(state.lastAction), cause: String(field.rationale ?? 'cognitive-field') },
+                emotion,
                 identity: { subjectId: String(p33?.identity?.canonicalName ?? 'kurisu').toLowerCase().replace(/\s+/g, '-'), name: String(p33?.identity?.canonicalName ?? 'Makise Kurisu'), fingerprint: String(snapshot.facets.consciousness?.identityContinuity?.selfNarrativeFingerprint ?? ''), createdAt: Number(p33?.identity?.createdAt ?? state.at), cycles: Number(p33?.continuity?.lifeTicks ?? state.tick), traits: (snapshot.system?.neuralGerminalOrganismB270?.traitValues && typeof snapshot.system.neuralGerminalOrganismB270.traitValues === 'object') ? snapshot.system.neuralGerminalOrganismB270.traitValues : {}, trust: Number(p33?.relationship?.trust01 ?? .5), traitNames: Array.isArray(p33?.identity?.coreTraits) ? p33.identity.coreTraits : [] },
                 lastDecision: candidates.length || state.lastAction !== 'none' ? { tick: state.tick, action: String(state.lastAction), predictedNextAction: String(state.predictedNextAction), selectedScore: Number(candidates.find((x) => x.action === state.lastAction)?.score ?? 0), candidates, workspace: Array.isArray(workspace?.selected) ? workspace.selected : [], reason: `canonical action=${String(state.lastAction)} next=${String(state.predictedNextAction)}` } : null,
                 memories: (Array.isArray(memoryOS?.items) ? memoryOS.items.slice(-32) : []).map((m) => ({ id: String(m.id), kind: String(m.kind), summary: String(m.content ?? m.summary ?? ''), salience: Number(m.salience ?? 0), confidence: Number(m.confidence ?? 0), predictionError: Number(m.predictionError ?? 0), createdAt: Number(m.createdAt ?? state.at), retrievedAt: Number(m.lastAccessAt ?? 0), retrievalCount: Number(m.retrievalCount ?? 0) })),

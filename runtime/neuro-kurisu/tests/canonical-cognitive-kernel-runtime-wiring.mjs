@@ -5,6 +5,8 @@ import { deriveInnerImperative } from '../src/organism/cognition/InnerImperative
 // Guard the *live* orchestration path, not just the kernel in isolation.
 const runtime = await readFile(new URL('../src/organism/core/OrganismRuntime.ts', import.meta.url), 'utf8');
 const core = await readFile(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
+const server = await readFile(new URL('../src/server/server.mjs', import.meta.url), 'utf8');
+const avatarHtml = await readFile(new URL('../public/avatar.html', import.meta.url), 'utf8');
 
 assert.match(
   runtime,
@@ -162,5 +164,22 @@ const malformedSignals = deriveInnerImperative({
 assert.equal(malformedSignals.resourceState.energy01, 0.5);
 assert.equal(malformedSignals.resourceState.bodyEnergy01, 0.5);
 assert.equal(malformedSignals.selectedAction, 'explore');
+
+assert.match(server, /function currentEmotionPayload\(runtime, snapshot\)/,
+  'the server must have one canonical emotion payload builder for the main app and Live2D endpoint');
+assert.match(server, /const latestEpisode = Array\.isArray\(appraisal\?\.history\) \? appraisal\.history\[0\] : null;/,
+  'the avatar expression must come from the real appraisal episode when one exists');
+assert.match(server, /const emotion = currentEmotionPayload\(runtime, snapshot\);[\s\S]*?emotion,/,
+  'the app ui-snapshot must expose the same internal appraisal payload rather than infer a second emotional state');
+assert.match(server, /live2dExpressionForEmotion\(emotion\.label\)/,
+  'the legacy Live2D endpoint must map canonical emotion labels to model-supported expressions');
+assert.match(server, /live2dBodySignal\(body, voice, emotion, state\)/,
+  'the legacy Live2D endpoint must derive body movement and voice emphasis from the same emotion state');
+assert.match(server, /awake: body\.awake,[\s\S]*?action: String\(state\.lastAction \?\? 'wait'\),[\s\S]*?expression: live2dExpressionForEmotion\(emotion\.label\),[\s\S]*?body: live2dBodySignal\(body, voice, emotion, state\)/,
+  'the avatar endpoint must provide the root-level fields consumed by the actual avatar.html viewer');
+assert.match(avatarHtml, /fetch\('\/api\/organism\/avatar'/,
+  'the static Live2D shell must continue to use its canonical avatar endpoint');
+assert.match(avatarHtml, /d\.awake[\s\S]*?d\.expression[\s\S]*?post\('kurisu_embodiment',d\.body\|\|\{\}\)/,
+  'the endpoint contract must satisfy the viewer state, expression and embodiment messages');
 
 console.log('canonical-cognitive-kernel-runtime-wiring + inner-imperative behavior: PASS');

@@ -77,3 +77,12 @@
 Фоновый cognitive clock уже вызывал `step(undefined, { deliberate: false, spontaneous: true })`, но публичный `autonomousStep()` не передавал `spontaneous`. Из-за этого `runAutonomousCycles()`, который делегирует в `autonomousStep()`, мог не активировать эндогенный режим внутреннего намерения.
 
 Теперь `autonomousStep()` явно передаёт `spontaneous: true`, сохраняя прежнее управление `deliberate`. Все входы сходятся в тот же `OrganismRuntime.step → CanonicalCognitiveKernel` путь; отдельный автономный планировщик не создаётся.
+
+
+## WorkPass344 — единое состояние эмоции для UI и Live2D
+
+Текущая эмоция теперь берётся из последнего эпизода `EmotionAppraisalEngine`: label, valence, arousal, dominance, action tendency, cause и confidence. React UI и старый статический Live2D shell получают одну и ту же запись. Если эпизода ещё нет, сервер использует нормализованный fallback из cognitive field, не генерируя псевдоэмоции `thinking`/`focused`, которые не входят в контракт `EmotionLabel`.
+
+Также исправлен контракт `GET /api/organism/avatar`: `public/avatar.html` ожидал корневые `awake`, `action`, `expression`, `body`, но endpoint возвращал только вложенное описание файлов `avatar`. Теперь endpoint оставляет инвентаризацию ресурсов и дополнительно отдаёт те сигналы, которые реально читает viewer. Выражение, наклон головы, взгляд, интенсивность, жест и голосовой акцент строятся из одной appraisal записи, текущего действия и реального speaking/listening состояния.
+
+Поведенческий UI snapshot использует тот же helper, что снимает расхождение между внутренней эмоциональной оценкой и двумя потребителями аватара. Контрактные source assertions включены в WorkPass331 runtime-wiring test, а триггеры workflow расширены на server/avatar файлы.

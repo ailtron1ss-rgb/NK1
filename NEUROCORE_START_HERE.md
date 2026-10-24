@@ -1,3 +1,13 @@
+## Latest checkpoint — WorkPass344: canonical appraisal → UI + Live2D
+
+- The React app's `/api/organism/ui-snapshot` and the static Live2D shell now obtain emotion fields from the same latest `EmotionAppraisalEngine` episode, falling back to validated cognitive-field values only when no episode exists.
+- Removed the old `thinking`/`focused` pseudo-label path from the UI snapshot. The declared label domain remains the eight actual emotion labels accepted by the app normalizer.
+- Fixed `GET /api/organism/avatar` to match what `public/avatar.html` actually consumes: root-level `awake`, `action`, model-supported `expression`, and a body signal with speaking/listening, head tilt, gaze, intensity and motion fields, while retaining the read-only asset report under `avatar`.
+- Added source contract assertions for shared appraisal state and the legacy viewer's response requirements. Added the server/avatar paths to WorkPass331 trigger filters.
+- **Validation:** the previous head `74a17b4...` passed WorkPass331, WorkPass110, WorkPass108, WorkPass292, WorkPass293 and WorkPass294. WorkPass344 is a new head; all relevant checks must be rerun. No physical Live2D/browser test was executed.
+
+---
+
 ## Latest checkpoint — WorkPass343 autonomous entry-point alignment (2026-10-24)
 
 - Review confirmed the scheduled cognitive clock already called `step(undefined, { deliberate: false, spontaneous: true })`. The gap was in the public `autonomousStep()`, which omitted `spontaneous`; consequently `runAutonomousCycles()` could execute without endogenous-intent mode.
