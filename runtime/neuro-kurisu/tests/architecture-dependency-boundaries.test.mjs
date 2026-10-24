@@ -138,6 +138,17 @@ test("full architecture audit enforces dependency boundaries and exports a JSON 
     assert.ok(report.dependencyBudget.checks.length >= 10);
     assert.equal(report.dependencyBudget.checks.every(check => check.withinBudget && check.observed <= check.maximum), true);
     assert.equal(report.edges.every(edge => edge.from && edge.to && edge.fromLayer && edge.toLayer), true);
+    assert.equal(report.edges.every(edge => ["runtime-import", "typescript-type-import", "runtime-and-type"].includes(edge.kind)), true);
+    assert.equal(report.summary.runtimeEdges + report.summary.typeOnlyEdges, report.edges.length);
+    assert.equal(report.summary.runtimeEdges, report.edges.filter(edge => edge.kind !== "typescript-type-import").length);
+    assert.equal(report.summary.typeEdges, report.edges.filter(edge => edge.kind !== "runtime-import").length);
+    assert.equal(report.summary.dualKindEdges, report.edges.filter(edge => edge.kind === "runtime-and-type").length);
+    assert.equal(report.summary.productionEdges + report.summary.testEdges, report.edges.length);
+    assert.equal(report.nodes.reduce((total, node) => total + node.runtimeOutDegree, 0), report.summary.runtimeEdges);
+    assert.equal(report.nodes.reduce((total, node) => total + node.typeOutDegree, 0), report.summary.typeEdges);
+    assert.ok(report.hotSpots.highRuntimeFanOut.length > 0);
+    assert.ok(report.hotSpots.highProductionRuntimeFanIn.length > 0);
+    assert.equal(report.productionLayerCoupling.length > 0, true);
     assert.equal(report.nodes.reduce((total, node) => total + node.outDegree, 0), report.edges.length);
     assert.equal(report.nodes.reduce((total, node) => total + node.inDegree, 0), report.edges.length);
     assert.ok(report.hotSpots.highFanOut.length > 0);
