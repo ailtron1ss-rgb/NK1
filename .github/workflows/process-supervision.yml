@@ -8,6 +8,9 @@ on:
       - "tools/process-supervisor.test.mjs"
       - "tools/super-dev.mjs"
       - "tools/super-start.mjs"
+      - "tools/super-install.mjs"
+      - "tools/super-doctor.mjs"
+      - "tools/verify-final-release.mjs"
       - "tools/verify-integration.mjs"
       - "package.json"
       - ".github/workflows/process-supervision.yml"
@@ -17,6 +20,9 @@ on:
       - "tools/process-supervisor.test.mjs"
       - "tools/super-dev.mjs"
       - "tools/super-start.mjs"
+      - "tools/super-install.mjs"
+      - "tools/super-doctor.mjs"
+      - "tools/verify-final-release.mjs"
       - "tools/verify-integration.mjs"
       - "package.json"
       - ".github/workflows/process-supervision.yml"
@@ -48,5 +54,16 @@ jobs:
             *.*) test "$actual" = "$expected" ;;
             *) test "${actual%%.*}" = "$expected" ;;
           esac
+      - name: Syntax-check orchestration and release scripts
+        run: |
+          node --check tools/process-supervisor.mjs
+          node --check tools/super-dev.mjs
+          node --check tools/super-start.mjs
+          node --check tools/super-install.mjs
+          node --check tools/super-doctor.mjs
+          node --check tools/verify-final-release.mjs
+          node --check tools/verify-integration.mjs
+      - name: Environment doctor smoke
+        run: npm run doctor
       - name: Process supervision and readiness regressions
         run: npm run test:process-supervisor
