@@ -16,7 +16,7 @@ for(let i=0;i<5;i++){
   assert.ok(r.decision.selected);
   const b272Before = resumed.b272EndogenousGoalDiagnostics().learningUpdates;
   const b272GeneratedAction = resumed.b272EndogenousGoalCurrent().action;
-  const executedAction = r.decision.selected;
+  const executedAction = r.decision.selected.action;
   await resumed.feedback({success:.74,reward:.71,surprise:.14});
   if (executedAction !== b272GeneratedAction) {
     b272ActionMismatches++;
