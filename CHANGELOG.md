@@ -1,3 +1,10 @@
+## NK1 Feedback — make evidence confidence monotonic across source trust cycles (2026-10-24)
+
+- Added canonical active-event lookup so the runtime can preserve the minimum confidence already recorded for a stable event identity.
+- This closes the decrease-then-recovery edge case: a real contradiction may downgrade old evidence, and a later successful observation may improve the source's future reputation, but cannot retroactively raise that old event's confidence or quarantine its ID.
+- Extended the regression to cover the whole cycle: verified match raises trust, contradiction lowers trust, retry conservatively downgrades the historical event, a later verified match restores trust, and retry leaves old event confidence unchanged.
+- **Validation boundary:** implementation and test are committed; final hosted regression remains pending.
+
 ## NK1 Feedback — keep source trust learning idempotent (2026-10-24)
 
 - Each observation now records the registered source reliability used at capture; strict restore clamps this field to the restored trusted registry, and replay can only retain or reduce the original evidence confidence.
