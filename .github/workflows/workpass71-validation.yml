@@ -108,6 +108,12 @@ jobs:
         run: npm --prefix app run typecheck
       - name: App development bundle build
         run: npm --prefix app run build:dev
+      - name: Verify pinned Node.js ambient types are installed
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f app/node_modules/@types/node/index.d.ts
+          node -e "const p = require('./app/node_modules/@types/node/package.json'); console.log('NODE_TYPES=' + p.version)"
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Runtime TypeScript fallback-status regression
