@@ -31,6 +31,7 @@ Work code-first. Prefer observable, testable behavior over architectural labels.
 - `app/`: UI and delivery shell; do not implement a second organism or canonical memory owner here.
 - `contracts/`: ownership, contracts, schemas, source provenance and SBOM.
 - `tools/` and `scripts/`: project audits, maintenance, verification and release automation.
+- `tools/audit-markdown-links.mjs` plus its regression test: local Markdown/HTML link audit; use `npm run audit:canonical-links` as the strict navigation gate.
 - `research/`: isolated research candidates; `legacy/`: preserved historical source/provenance.
 - `docs/history/` and `docs/reports/`: historical and detailed records; old pass reports are not current status unless explicitly linked from a current handover.
 
