@@ -428,6 +428,8 @@ export class OrganismRuntime {
         const previousTick = this.core.operationalStatusSnapshot().tick;
         const previousProcessed = this.continuousCognitiveFabric.diagnostics().processed;
         const result = await this.stepInternal(externalText, options);
+        const unifiedCycle = this.unifiedCycle.snapshot();
+        const cognitiveCycleComplete = unifiedCycle.lastComplete && unifiedCycle.lastTick === result.cycle.state.tick;
         const fabric = this.continuousCognitiveFabric.diagnostics();
         this.runtimeClosure.step({
           at: Date.now(),
@@ -443,6 +445,9 @@ export class OrganismRuntime {
           identityContinuity01: this.core.operationalStatusSnapshot().identityContinuity,
           predictionError01: result.cycle.state.predictionError,
           action: result.worldAction,
+          cognitiveCycleComplete,
+          cognitiveCycleTick: unifiedCycle.lastTick,
+          missingCognitiveStages: unifiedCycle.lastMissingStages,
         });
         this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
         await this.journal.write('info', 'runtime.step', { tick: result.cycle.state.tick, action: result.worldAction, external: Boolean(externalText) });
@@ -469,6 +474,7 @@ export class OrganismRuntime {
           causalLifeGraphChain: Boolean((domainAfter as any).lifeGraphCurrentTickComplete),
           replaySignaturePresent: Boolean(domainAfter.replaySignature),
           durableStateAligned: domainAfter.lastCheckpointTick === domainAfter.tick && Boolean(domainAfter.replaySignature),
+          cognitiveCycleComplete,
         };
         const closureRecord=this.causalDomainClosureLedger.end({counters:{
           memoryCount:domainAfter.memoryCount,worldTick:domainAfter.worldTick,identityRevision:domainAfter.identityRevision,agencyDecisions:domainAfter.agencyDecisions,
