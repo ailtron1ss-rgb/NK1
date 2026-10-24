@@ -13,6 +13,8 @@ on:
       - "tools/verify-final-release.mjs"
       - "tools/verify-integration.mjs"
       - "package.json"
+      - "CHANGELOG.md"
+      - "docs/PROCESS_SUPERVISION_OPTIMIZATION_2026-10-24.md"
       - ".github/workflows/process-supervision.yml"
   pull_request:
     paths:
@@ -25,6 +27,8 @@ on:
       - "tools/verify-final-release.mjs"
       - "tools/verify-integration.mjs"
       - "package.json"
+      - "CHANGELOG.md"
+      - "docs/PROCESS_SUPERVISION_OPTIMIZATION_2026-10-24.md"
       - ".github/workflows/process-supervision.yml"
 
 permissions:
