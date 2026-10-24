@@ -1,3 +1,11 @@
+## NK1 WorkPass502 — finish brain-fusion input hardening and evidence counts (2026-10-24)
+
+- Removed the ambiguous control-character regular expression from `UnifiedCognitiveLoop.validateEvent`; explicit code-point checks reject C0/C1 controls while preserving the strict own-data/prototype boundary.
+- The same hardened `UnifiedCognitiveLoop` implementation is now byte-aligned on feedback and perception, replacing the older unvalidated event path.
+- Corrected the conflict-restore regression to expect zero trusted outcomes for unverified external records; quarantine preserves the deduplication identity but does not promote it into verified-outcome metrics.
+
+---
+
 ## NK1 WorkPass499 — separate user reports from grounded evidence
 
 - `RealityEvidenceLedger` no longer counts `user-reported` records as external/device evidence for promotion. They remain visible as a separate `userReportedSamples` diagnostic.
