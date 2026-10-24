@@ -57,6 +57,7 @@ const spoofResult=guardEngine.recordExternalEvidence({...spoof,independentVerifi
 assert.equal(spoofResult.independentCount,0,'independentVerified=true is not proof');
 assert.equal(spoofResult.status,'insufficient');
 assert.equal(spoofResult.promoted,false);
+assert.throws(()=>guardEngine.recordExternalEvidence({...spoof,control01:NaN}),/invalid-development-evidence/,'non-finite evaluator scores must be rejected');
 const copyPayload=evidence(guardHypothesis.id,'copy-context',true,1000);
 const copyReceipt=await mintProof(developmentEvidenceVerificationInput(copyPayload));
 const copiedResult=guardEngine.recordExternalEvidence({...copyPayload,independentVerified:true,verification:structuredClone(copyReceipt)});
@@ -137,6 +138,7 @@ const maturityEngine=new P36AutonomousSelfDevelopmentEngine();
 const outcome={area:'learning',outcome01:.95,delayed:true,transfer:true};
 const forgedMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,verified:true});
 assert.equal(forgedMaturity.verifiedOutcomeCount,0,'a caller boolean cannot certify developmental maturity');
+assert.throws(()=>maturityEngine.observeDevelopmentalOutcome({...outcome,outcome01:1.1}),/invalid-developmental-outcome/,'out-of-range outcomes must be rejected');
 const outcomeProof=await mintProof(developmentalOutcomeVerificationInput(outcome));
 const measuredMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,verified:false,verification:outcomeProof});
 assert.equal(measuredMaturity.verifiedOutcomeCount,1);
