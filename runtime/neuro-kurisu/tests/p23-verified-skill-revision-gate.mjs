@@ -36,6 +36,21 @@ for (let i=0;i<10;i++) {
 result = evaluateSkillRevision(regressed,'baseline','candidate',{minPairedTasks:8,minAbsoluteGain:0,maxFamilyRegression:.1});
 assert.equal(result.accepted,false);
 assert.equal(result.reason,'heldout-family-regression');
+// A positive overall gain cannot hide a severe regression isolated to one seed.
+const seedRegressed = [];
+for (let i=0;i<8;i++) {
+  const seed = Math.floor(i / 2) + 1;
+  const family = i % 2 === 0 ? 'family-a' : 'family-b';
+  seedRegressed.push({taskId:`s-${i}`,taskVersion:'v1',family,split:'holdout',method:'baseline',seed,attempt:1,passed:false,authority:'human-review',verifierId:'human',expectedVerifierId:'v',evidenceRef:`sb-${i}`});
+  seedRegressed.push({taskId:`s-${i}`,taskVersion:'v1',family,split:'holdout',method:'candidate',seed,attempt:1,passed:seed!==1,authority:'human-review',verifierId:'human',expectedVerifierId:'v',evidenceRef:`sc-${i}`});
+}
+result = evaluateSkillRevision(seedRegressed, 'baseline', 'candidate', {minPairedTasks:8,minAbsoluteGain:.1,maxFamilyRegression:.1,maxSeedRegression:.5,minIndependentSeeds:3});
+assert.equal(result.absoluteGain, .75);
+assert.equal(result.accepted, false);
+assert.equal(result.reason, 'heldout-seed-regression',
+  'per-family averages are positive, but the gate must still reject the regressing seed');
+assert.equal(result.independentSeedN, 4);
+
 // Replaying the same verifier receipt under a new task ID must not inflate the independent holdout sample.
 const replayed = [...rows,
   { ...rows[0], taskId: 'replayed-task', evidenceRef: rows[0].evidenceRef },
