@@ -1,3 +1,12 @@
+## NK1 WorkPass509 — fail closed on malformed interoceptive signals (2026-10-24)
+
+- `EmotionAppraisalEngine.observeInteroception` now validates energy, thermal load, capacity, cognitive load, and optional homeostatic pressure as finite [0,1] values before calculating prediction error or updating affect state.
+- Prevents NaN, strings and out-of-range telemetry from silently turning into clamped zeros and contaminating the persistent body-state predictor.
+- Added regressions for non-finite energy, out-of-range load, malformed homeostatic pressure, and unchanged state after every rejected observation.
+- This is a control-signal model, not evidence of subjective feeling. Test execution on the updated head remains unverified.
+
+---
+
 ## NK1 WorkPass453 — unify correlation-ID trust boundaries (2026-10-24)
 
 - Shared the official Node type-root setup across runtime categories, reusing the existing locked app dependencies rather than introducing a duplicate dependency installation.
