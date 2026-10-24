@@ -50,8 +50,14 @@ export class EvidenceResearchSubsystemRuntime {
   private recordExternalObservationEvidence(observation:ExternalObservation):void {
     // Sample confidence is not source trust. The observer's assessment path
     // multiplies these signals; the canonical promotion ledger must do the same.
-    const sourceReliability01=this.externalObserver.registeredSourceReliability01(observation.sourceId);
-    if(sourceReliability01===null)return;
+    const currentSourceReliability01=this.externalObserver.registeredSourceReliability01(observation.sourceId);
+    if(currentSourceReliability01===null)return;
+    const capturedTrust=Number(observation.sourceReliabilityAtCapture01);
+    // Replays can conservatively lower confidence after source debiasing, but
+    // improvement in the source's current reputation never upgrades old evidence.
+    const sourceReliability01=Number.isFinite(capturedTrust)
+      ?Math.min(currentSourceReliability01,Math.max(0,Math.min(1,capturedTrust)))
+      :currentSourceReliability01;
     const evidenceConfidence01=Math.max(0,Math.min(1,observation.confidence01*sourceReliability01));
     const realityClass:EvidenceRealityClass = observation.sourceClass==='user' ? 'user-reported'
       : observation.sourceClass==='simulator' ? 'simulator'
