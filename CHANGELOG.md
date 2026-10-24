@@ -1,3 +1,13 @@
+## NK1 WorkPass492 — keep memory branch aligned with fail-closed learning evidence
+
+- Applied the shared Node.js 24 strip-only compatibility fix to both the versioned skill candidate store and its atomic file persistence adapter without changing their CAS/locking or authorization boundaries.
+- Hardened restored cognitive-cycle status so inconsistent persisted complete/incomplete/broken counters cannot be accepted as a successful last cycle.
+- Fixed signed outcome artifact replay handling and expanded the P23 regression to verify duplicate rejection plus one-time signed-receipt recovery after restoring a ledger.
+- Updated the invalid-cycle expectation to the canonical missing-stage set; the P65 independent-lineage collision correction from WorkPass480 remains intact.
+- **Validation boundary:** committed to `feature/memory`; exact-head CI has to confirm the shared regressions.
+
+---
+
 ## NK1 WorkPass480 — remove evidence-key delimiter collisions (2026-10-24)
 
 - P65 now encodes replay identity as a canonical JSON tuple `[independenceKey, evidenceId]` instead of joining upstream strings with a colon. Distinct pairs (`a:b`, `c`) and (`a`, `b:c`) can no longer collide.
