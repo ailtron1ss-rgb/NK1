@@ -1,4 +1,5 @@
 import { probeOrganismSystem, type OrganismSystemHealthSnapshot } from './OrganismSystemContract.ts';
+import { LettaMemoryBridge } from '../integration/letta/LettaMemoryBridge.ts';
 import { EventLog } from '../memory/EventSourcing.ts';
 import { MultiTimescaleMemory } from '../memory/MultiTimescaleMemory.ts';
 import { AutobiographicalMemory } from '../memory/AutobiographicalMemory.ts';
@@ -32,6 +33,8 @@ export class MemorySubsystemRuntime {
   readonly systemName='memory' as const;
   readonly dependencies=['world'] as const;
   readonly systemCapabilities=['state', 'memory', 'persistence'] as const;
+  /** Optional external long-term memory provider; NK1 remains the canonical owner. */
+  readonly lettaBridge = new LettaMemoryBridge();
   health(): OrganismSystemHealthSnapshot { return probeOrganismSystem(this); }
 
   readonly events = new EventLog();
@@ -69,6 +72,7 @@ export class MemorySubsystemRuntime {
   readonly memoryWorldCausalBridge = new MemoryWorldCausalBridge(96);
   restoreFromPersisted(input: { memory?: any; advanced?: any }) {
     const memory=input.memory ?? {}; const advanced=input.advanced ?? {};
+    this.lettaBridge.restore(advanced.lettaBridge);
     this.events.restore(memory.eventLog);
     this.memories.restore(memory.autobiographicalMemories);
     this.selfModel.restore(memory.selfModel);
@@ -102,6 +106,6 @@ export class MemorySubsystemRuntime {
     workspace:this.workspaceV2.snapshot(), semanticGraph:this.semanticMemory.snapshot(), memoryOS:this.memoryOS.snapshot(),
     unifiedMemory:this.unifiedMemory.snapshot(), p47:this.p47MemoryMind.snapshot(), p59:this.p59MemoryOperatingSystem.snapshot(),
     p62:this.p62MemoryFabric.snapshot(), p65:this.p65EpistemicLedger.snapshot(), p70:this.p70MemoryLifecycleGovernor.snapshot(),
-    p75:this.p75MemoryContinuumOS.snapshot(), fabric:this.fabric.snapshot(), experienceContinuum:this.experienceContinuum.snapshot(), hippocampal:this.hippocampal.snapshot(), hippocampalFormation:this.hippocampalFormation.snapshot(), consolidationController:this.consolidationController.snapshot(), memoryLifecycleAuthority:this.memoryLifecycleAuthority.snapshot(),
+    p75:this.p75MemoryContinuumOS.snapshot(), fabric:this.fabric.snapshot(), experienceContinuum:this.experienceContinuum.snapshot(), hippocampal:this.hippocampal.snapshot(), hippocampalFormation:this.hippocampalFormation.snapshot(), consolidationController:this.consolidationController.snapshot(), memoryLifecycleAuthority:this.memoryLifecycleAuthority.snapshot(), lettaBridge:this.lettaBridge.snapshot(),
   }; }
 }
