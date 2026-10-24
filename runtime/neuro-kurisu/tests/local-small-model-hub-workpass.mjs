@@ -95,7 +95,7 @@ assert.equal(signals.affect.emotion, 'curiosity');
 
 const before = hub.snapshot();
 assert.equal(before.localFirst, true);
-assert.equal(before.models.length, 4);
+assert.equal(before.models.length, 6);
 assert.equal(before.models.find((row) => row.id === 'local-embeddings').state, 'observed-healthy');
 assert.equal(before.metrics.classification.successes, 2);
 assert.equal(before.metrics.emotion.successes, 2);
@@ -119,6 +119,34 @@ await assert.rejects(() => invalidEmotionHub.analyzeEmotion('test'), /schema-mis
 assert.equal(invalidEmotionHub.snapshot().metrics.emotion.failures, 1);
 assert.equal(invalidEmotionHub.snapshot().metrics.emotion.lastFailureCode, 'inference-failed');
 
+const visionFallbackHub = new LocalSmallModelHub({
+  visionProvider: { id: 'local-vision:offline', model: 'tiny-vlm', async analyze() { throw new Error('local-vision-timeout'); } },
+  clock,
+});
+visionFallbackHub.setVisionFallbackProvider({
+  id: 'gemini-vision:explicit-test',
+  async analyze() {
+    return { semantic: true, sceneLabel: 'test scene', confidence01: 0.8, objects: [], relations: [], events: [], backend: 'gemini-vision:explicit-test', latencyMs: 3, evidenceKind: 'model-output' };
+  },
+});
+assert.equal(visionFallbackHub.hasCapability('vision'), true);
+const visualResult = await visionFallbackHub.analyzeVision({ imagePath: '/redacted/internal-frame.png', at: now, cameraId: 2 });
+assert.equal(visualResult.sceneLabel, 'test scene');
+assert.equal(visionFallbackHub.snapshot().metrics.vision.failures, 1, 'local vision failure must be visible even when fallback succeeds');
+assert.equal(visionFallbackHub.snapshot().metrics.vision.successes, 1);
+assert.equal(visionFallbackHub.snapshot().models.find((row) => row.id === 'local-vision').state, 'observed-failure');
+assert.equal(visionFallbackHub.snapshot().models.find((row) => row.id === 'vision-fallback').state, 'observed-healthy');
+assert.equal(JSON.stringify(visionFallbackHub.snapshot()).includes('/redacted/internal-frame.png'), false, 'vision diagnostics must not retain image paths');
+
+const noCloudVisionHub = new LocalSmallModelHub({
+  visionProvider: { id: 'local-vision:offline', model: 'tiny-vlm', async analyze() { throw new Error('local-vision-timeout'); } },
+  clock,
+});
+await assert.rejects(() => noCloudVisionHub.analyzeVision({ imagePath: '/redacted/private.png', at: now, cameraId: 3 }), /local-vision-timeout/);
+assert.equal(noCloudVisionHub.snapshot().metrics.vision.failures, 1);
+assert.equal(noCloudVisionHub.snapshot().recentDecisions.at(-1).selected, 'local-vision:offline');
+assert.equal(JSON.stringify(noCloudVisionHub.snapshot()).includes('/redacted/private.png'), false);
+
 console.log('LOCAL_SMALL_MODEL_HUB=PASS', JSON.stringify({
   languageRouting: true,
   specialistSchemas: true,
@@ -127,4 +155,6 @@ console.log('LOCAL_SMALL_MODEL_HUB=PASS', JSON.stringify({
   telemetryRedactsPrompts: true,
   contextSignals: true,
   malformedOutputRejected: true,
+  visionLocalFirstFallback: true,
+  visionPathRedaction: true,
 }));
