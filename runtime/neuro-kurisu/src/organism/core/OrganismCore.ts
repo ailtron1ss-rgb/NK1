@@ -259,7 +259,7 @@ import { CentralSubjectDynamics, defaultCentralSubjectDynamics } from '../cognit
 import { DeviceEvidenceLedger, defaultDeviceEvidence } from '../body/DeviceEvidenceLedger.ts';
 import { LifelongDevelopmentSystem, defaultLifelongDevelopment } from '../learning/LifelongDevelopmentSystem.ts';
 import { P27NeuralWorldFoundation, defaultP27NeuralWorld } from '../cognition/P27NeuralWorldFoundation.ts';
-import { P36AutonomousSelfDevelopmentEngine, P36_EXTERNAL_EVIDENCE_TOOL_ID, defaultP36SelfDevelopment } from '../learning/P36AutonomousSelfDevelopment.ts';
+import { P36AutonomousSelfDevelopmentEngine, P36_EXTERNAL_EVIDENCE_TOOL_ID, defaultP36SelfDevelopment, developmentEvidenceVerificationInput } from '../learning/P36AutonomousSelfDevelopment.ts';
 import { defaultP37EmbodiedSensorium, type P37Input, type P37SemanticWorldState } from '../body/P37EmbodiedSensorium.ts';
 import { defaultP38Research } from '../learning/P38AutonomousCausalResearch.ts';
 import { defaultP39ContinuousLife } from '../learning/P39ContinuousArtificialLife.ts';
@@ -10870,7 +10870,27 @@ export class OrganismCore {
     p36LearningAgenda() { return this.developmentalNeural.p36SelfDevelopment.learningAgenda(); }
     p36LearningInvestmentDecision() { return this.developmentalNeural.p36SelfDevelopment.learningInvestmentHistory(1)[0] ?? null; }
     p36LearningInvestmentHistory(limit = 32) { return this.developmentalNeural.p36SelfDevelopment.learningInvestmentHistory(limit); }
-    p36RecordExternalEvidence(input: Parameters<P36AutonomousSelfDevelopmentEngine['recordExternalEvidence']>[0]) { const r = this.developmentalNeural.p36SelfDevelopment.recordExternalEvidence(input); this.persisted.facets.learning.p36 = this.developmentalNeural.p36SelfDevelopment.snapshot(); return r; }
+    p36RecordExternalEvidence(input: Parameters<P36AutonomousSelfDevelopmentEngine['recordExternalEvidence']>[0]) {
+        const decisionId = typeof input.decisionId === 'string' ? input.decisionId.trim() : '';
+        const linkedTrace = decisionId
+            ? this.persisted.traces.find(trace => trace.id === decisionId && trace.selected !== null && trace.tick === trace.stateBefore.tick)
+            : undefined;
+        let verification: OutcomeVerification | undefined;
+        if (input.toolId === P36_EXTERNAL_EVIDENCE_TOOL_ID && linkedTrace &&
+            typeof input.executionId === 'string' &&
+            isTrustedDecisionLinkedExternalPostcondition(input.verification, {
+                toolId: P36_EXTERNAL_EVIDENCE_TOOL_ID,
+                input: developmentEvidenceVerificationInput(input),
+                executionId: input.executionId,
+                decisionId,
+            })) {
+            verification = input.verification;
+        }
+        const r = this.developmentalNeural.p36SelfDevelopment.recordExternalEvidence({ ...input, verification });
+        this.persisted.facets.learning.p36 = this.developmentalNeural.p36SelfDevelopment.snapshot();
+        this.markPersistenceDirty();
+        return r;
+    }
     p36DevelopmentEvidence(hypothesisId?: string) { return this.developmentalNeural.p36SelfDevelopment.developmentEvidence(hypothesisId); }
     p30ProposeExperiment(taskId: string) { const s = this.persisted.state; const p = this.developmentalNeural.p30Continual.proposeExperiment({ taskId, uncertainty01: s.needs.uncertainty, predictionError01: s.predictionError, novelty01: s.needs.novelty, resourceBudget01: 1 - this.developmentalNeural.p29Learning.diagnostics().resourceBudget.spent01 }); if (p)
         this.memorySubsystem.events.append(makeEvent('experiment', s.tick, { ...p, source: 'p30-api-proposal' } as any)); this.persisted.facets.learning.p30 = this.developmentalNeural.p30Continual.snapshot(); return p; }
