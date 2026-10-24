@@ -1,3 +1,12 @@
+## WorkPass497 — shared identity now reaches P23 causal records (2026-10-24)
+
+- `CausalExperienceStream` now uses the same deterministic projection-ID function as the reality evidence ledger. Grounded outcomes and unverified external imports are intentionally separated by role.
+- Legacy snapshot restore reconstructs missing deterministic IDs; regression coverage checks stable runtime IDs, restore stability, and NFKC-normalized external retries.
+- New identity only correlates events; it never promotes external imports to trusted learning. They remain `stateGrounded=false`, `replayEligible=false` and excluded from trusted outcome aggregates.
+- Next integration boundary: carry the verified action/decision receipt through RealityEvidenceLedger and MemoryOS2/P65 into this P23 record, preserving the upstream provenance across restart.
+
+---
+
 ## WorkPass489 — общая identity-функция для reality projections (2026-10-24)
 
 - `EvidenceEventIdentity.ts` теперь одинаков по blob SHA в `feature/feedback` и `feature/perception`; `RealityEvidenceLedger.realityEvidenceEventId` вызывает общий `createRealityEvidenceEventId`.
