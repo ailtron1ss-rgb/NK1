@@ -67,5 +67,33 @@ assert.equal(governor.evaluatePromotion({
   baselineSuccess01: .8, candidateSuccess01: .8, maxRegression01: .05,
   observedRegression01: .02, independentHoldoutCases: 8,
 }).reason, 'no-measured-improvement');
+assert.throws(() => governor.propose({
+  id: 'invalid-time', goal: 'invalid timestamp', triggerEvidence: ['test'],
+  expectedBenefit01: .5, uncertainty01: .1, cost01: .1, risk01: .1,
+  externalSideEffect: false,
+}, Number.NaN), /decision time/);
+
+const saved = governor.snapshot();
+const recovered = new AutonomousIntentLearningGovernor();
+recovered.restore(saved);
+assert.equal(recovered.snapshot().decisions.length, saved.decisions.length);
+assert.equal(recovered.snapshot().outcomes.length, 1, 'restore should preserve accepted outcome evidence');
+assert.deepEqual(recovered.recordOutcome(outcome), { accepted: false, reason: 'duplicate-outcome' }, 'restore must preserve single-use outcome semantics');
+assert.deepEqual(recovered.recordExecution('memory-repair-1', 'second-exec'), { accepted: false, reason: 'duplicate-execution' }, 'restore must retain execution idempotency');
+
+const corrupted = {
+  version: 1,
+  decisions: [
+    { intentId: 'bad', status: 'act', score01: 2, reason: 'corrupt', selectedAt: 0 },
+    { intentId: 'good', status: 'act', score01: .8, reason: 'recovered', selectedAt: 10 },
+  ],
+  outcomes: [{ intentId: 'good', observedBenefit01: 1, evidence: 'forged-without-execution', observedAt: 10 }],
+  executedIntentIds: [],
+  approvedIntentIds: [],
+};
+const sanitized = new AutonomousIntentLearningGovernor();
+sanitized.restore(corrupted);
+assert.deepEqual(sanitized.snapshot().decisions.map(d => d.intentId), ['good'], 'invalid restored decisions should be dropped');
+assert.equal(sanitized.snapshot().outcomes.length, 0, 'unexecuted restored outcomes must be dropped');
 
 console.log(JSON.stringify({ pass: 'AILG_INTENT_AND_PROMOTION_GATE', decisions: governor.snapshot().decisions.length }));
