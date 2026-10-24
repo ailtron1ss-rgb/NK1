@@ -2898,63 +2898,105 @@ export class OrganismCore {
         return { hmx_version: '1.7', record_type: 'document', export_id: randomUUID(), source_subject_id: String(state.system.subjectIdentity?.subjectId ?? ''), created_at: new Date().toISOString(), intent: 'port', strategy: 'additive', sections: { identity: [pma.identity], goals: goals.slice(0, 32), memories: memorySummary.slice(-96), relationships: knownEntities.slice(0, 32), skills: competence.slice(0, 48), in_flight_work: conversationAims.slice(0, 48), audit_records: this.hexisAdaptation.snapshot().beliefAudit.slice(-64) } };
     }
     hexisStageHmx(document: unknown, intent: HexisHmxIntent, strategy: HexisHmxStrategy) { const stage = this.hexisAdaptation.stageHmx({ document, intent, strategy }); this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot(); return stage; }
-    hexisDecideHmx(stagingId: string, decision: 'accept' | 'reject') {
+    hexisDecideHmx(stagingId: string, decision: 'accept' | 'reject' | 'apply') {
         const stage = this.hexisAdaptation.decideHmx(stagingId, decision);
-        if (stage?.status === 'accepted' && stage.intent === 'port' && stage.strategy !== 'analysis_only') {
-            const memories = Array.isArray(stage.stagedSections?.memories) ? stage.stagedSections.memories : [];
-            let created = 0, reused = 0;
-            const beforeItems = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items;
-            const beforeKeys = new Set(beforeItems.map((m) => `${m.kind}|${m.content}`));
-            for (const row of memories.slice(0, 96)) {
-                const record = row && typeof row === 'object' ? row as Record<string, unknown> : {};
-                const content = String(record.content ?? record.summary ?? '').trim().slice(0, 12000);
-                if (!content)
-                    continue;
-                const requestedKind = String(record.kind);
-                const safeKind = (['sensory', 'working', 'episodic', 'semantic', 'procedural', 'social', 'dream'].includes(requestedKind) ? requestedKind : 'semantic') as any;
-                const key = `${safeKind}|${content}`;
-                const wasPresent = beforeKeys.has(key);
-                const importedMemory = {
-                    content,
-                    kind: safeKind,
-                    source: 'hexis-hmx-import',
-                    tags: Array.isArray(record.tags)
-                        ? record.tags.map(String).slice(0, 24)
-                        : ['hexis', 'hmx'],
-                    context: record.context && typeof record.context === 'object'
-                        ? Object.fromEntries(Object.entries(record.context).slice(0, 12).map(([k, v]) => [String(k), String(v)]))
-                        : undefined,
-                    salience: Number(record.salience ?? 0.55),
-                    emotionalWeight: Number(record.emotionalWeight ?? 0.1),
-                    identityRelevance: 0,
-                    goalRelevance: Number(record.goalRelevance ?? 0),
-                    socialRelevance: Number(record.socialRelevance ?? 0),
-                    predictionError: Number(record.predictionError ?? 0),
-                    confidence: Number(record.confidence ?? 0.55),
-                    epistemicStatus: 'belief' as const,
-                    entities: Array.isArray(record.entities) ? record.entities.map(String).slice(0, 12) : [],
-                    semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [],
-                    provenanceClass: 'external' as const,
-                    sourceAuthority01: 0.55,
-                    independenceKey: `hexis:${stage.sourceSubjectId ?? stage.exportId}`,
-                    evidenceFreshnessAt: Date.now(),
-                    dormant: false,
-                    retrievalCount: 0,
-                    semanticVector: [],
-                };
-                this.memorySubsystem.fabric.encode(importedMemory, { tick: this.persisted.state.tick });
-                if (wasPresent)
-                    reused += 1;
-                else {
-                    created += 1;
-                    beforeKeys.add(key);
-                }
-            }
+        if (stage?.status === 'applied' && stage.application?.status !== 'noop') {
+            // Persist every canonical owner touched by the Hexis projector. Acceptance alone
+            // does not write memory; only the explicit apply decision reaches this branch.
             this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
-            (stage as any).importResult = { created, reused };
+            this.persisted.facets.advanced.memoryFabric = this.memorySubsystem.fabric.snapshot();
+            this.persisted.facets.memory.semanticGraph = this.memorySubsystem.semanticMemory.snapshot();
+            this.persisted.facets.memory.eventLog = this.memorySubsystem.events.recent(64);
         }
         this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
         return stage;
+    }
+    hexisPrepareGoalProposals(stagingId: string) {
+        const result = this.hexisAdaptation.prepareGoalProposals(stagingId);
+        this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+        return result;
+    }
+    hexisGoalProposals(status?: 'pending' | 'approved' | 'rejected' | 'materialized') {
+        return this.hexisAdaptation.listGoalProposals({ status, limit: 128 });
+    }
+    hexisDecideGoalProposal(proposalId: string, decision: 'approve' | 'reject' | 'activate') {
+        const proposal = this.hexisAdaptation.getGoalProposal(proposalId);
+        if (!proposal) return null;
+        if (decision === 'reject') {
+            const rejected = this.hexisAdaptation.decideGoalProposal(proposalId, 'reject');
+            this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+            return { proposal: rejected, goal: null, requiresExplicitActivation: false };
+        }
+        if (decision === 'approve') {
+            if (proposal.status === 'rejected') throw new Error('hmx-goal-proposal-was-rejected');
+            if (proposal.status === 'materialized' && proposal.canonicalGoalId) {
+                const existingGoal = this.persisted.goals.find(goal => goal.id === proposal.canonicalGoalId) ?? null;
+                return { proposal, goal: existingGoal ? structuredClone(existingGoal) : null, requiresExplicitActivation: Boolean(existingGoal && existingGoal.activationApproved !== true) };
+            }
+            const goalId = proposal.canonicalGoalId ?? proposal.id;
+            const existingById = this.persisted.goals.find(goal => goal.id === goalId);
+            const sameTitle = this.persisted.goals.find(goal =>
+                goal.id !== goalId &&
+                goal.title.normalize('NFKC').trim().toLocaleLowerCase() === proposal.title.normalize('NFKC').trim().toLocaleLowerCase() &&
+                (goal.status === 'candidate' || goal.status === 'active' || goal.status === 'paused'));
+            if (sameTitle) throw new Error('hmx-goal-title-conflicts-with-existing-goal:' + sameTitle.id);
+            if (!existingById && this.persisted.goals.length >= 100) throw new Error('organism-goal-capacity-reached');
+            const approved = proposal.status === 'pending'
+                ? this.hexisAdaptation.decideGoalProposal(proposalId, 'approve')
+                : proposal;
+            if (!approved) throw new Error('hmx-goal-approval-failed');
+            let goal = existingById;
+            if (!goal) {
+                const at = Date.now();
+                goal = {
+                    id: goalId,
+                    title: proposal.title.slice(0, 300),
+                    reason: ('Imported from external HMX source; not yet activated.' + (proposal.description ? ' ' + proposal.description : '')).slice(0, 2200),
+                    source: 'external',
+                    status: 'paused',
+                    activationApproved: false,
+                    importance: Math.max(0.1, Math.min(0.9, Number(proposal.importance) || 0.48)),
+                    urgency: Math.max(0.05, Math.min(0.78, Number(proposal.urgency) || 0.32)),
+                    confidence: Math.max(0.05, Math.min(0.8, Number(proposal.confidence) || 0.42)),
+                    progress: 0,
+                    createdAt: at,
+                    updatedAt: at,
+                };
+                this.persisted.goals.unshift(goal);
+                this.persisted.goals = this.persisted.goals.slice(0, 100);
+            }
+            const materialized = this.hexisAdaptation.markGoalProposalMaterialized(proposalId, goal.id);
+            this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+            return { proposal: materialized, goal: structuredClone(goal), requiresExplicitActivation: true };
+        }
+        if (decision === 'activate') {
+            if (proposal.status !== 'materialized' || !proposal.canonicalGoalId) throw new Error('hmx-goal-must-be-approved-and-materialized-before-activation');
+            const goal = this.persisted.goals.find(candidate => candidate.id === proposal.canonicalGoalId);
+            if (!goal) throw new Error('canonical-hmx-goal-not-found');
+            if (goal.status === 'active' && goal.activationApproved === true) {
+                return { proposal, goal: structuredClone(goal), requiresExplicitActivation: false, alreadyActive: true };
+            }
+            if (goal.status !== 'paused' || goal.activationApproved !== false) throw new Error('hmx-goal-is-not-awaiting-explicit-activation');
+            if (this.persisted.goals.filter(candidate => candidate.status === 'active').length >= 4) throw new Error('active-goal-capacity-reached');
+            const identity01 = clamp(Number((this.persisted.facets.consciousness as any)?.identityContinuity?.continuity ?? 0.5));
+            if (identity01 < 0.55) throw new Error('identity-continuity-too-low-for-external-goal-activation');
+            const duplicate = this.persisted.goals.find(candidate =>
+                candidate.id !== goal.id && candidate.status === 'active' &&
+                candidate.title.normalize('NFKC').trim().toLocaleLowerCase() === goal.title.normalize('NFKC').trim().toLocaleLowerCase());
+            if (duplicate) throw new Error('active-goal-title-conflict:' + duplicate.id);
+            goal.status = 'active';
+            goal.activationApproved = true;
+            goal.updatedAt = Date.now();
+            this.memorySubsystem.events.append(makeEvent('goal-updated', this.persisted.state.tick, {
+                goalId: goal.id, title: goal.title, source: 'external', reason: 'explicitly-activated-reviewed-hmx-goal',
+                proposalId: proposal.id, identityContinuity01: identity01,
+            } as any));
+            const activated = this.hexisAdaptation.markGoalProposalActivated(proposalId, goal.id);
+            this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+            this.persisted.facets.memory.eventLog = this.memorySubsystem.events.recent(64);
+            return { proposal: activated, goal: structuredClone(goal), requiresExplicitActivation: false };
+        }
+        throw new Error('invalid-hmx-goal-decision');
     }
     hexisEnqueueOutbox(input: {
         idempotencyKey: string;
