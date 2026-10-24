@@ -43,7 +43,7 @@ try {
       }
     }
     if (failed) process.exit(1);
-    console.log(`TYPECHECK=PASS mode=node-strip-syntax-only files=${files.length} note="TypeScript compiler not installed; semantic tsc check unavailable."`);
+    console.log(`TYPECHECK=PARTIAL mode=node-strip-syntax-only files=${files.length} note="TypeScript compiler not installed; semantic tsc check unavailable."`);
     process.exit(0);
   }
   process.exit(typeof error?.status === 'number' ? error.status : 1);
