@@ -73,6 +73,22 @@ export interface CognitiveEventFabricSnapshot {
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const cleanPayload=(x:unknown):Record<string,unknown>=>isRecord(x)?{...x}:{};
+// Snapshot fields are untrusted: inspect descriptors so getters are never run during restore.
+const ownDataRecord=(value:unknown):Record<string,unknown>|null=>{
+  if(!isRecord(value))return null;
+  const descriptors=Object.getOwnPropertyDescriptors(value);
+  const result:Record<string,unknown>=Object.create(null);
+  for(const [key,descriptor] of Object.entries(descriptors)){if(!('value' in descriptor))return null;result[key]=descriptor.value;}
+  return result;
+};
+const ownDataArray=(value:unknown):unknown[]|null=>{
+  if(!Array.isArray(value))return null;
+  const lengthDescriptor=Object.getOwnPropertyDescriptor(value,'length');
+  if(!lengthDescriptor||!('value' in lengthDescriptor)||!Number.isSafeInteger(lengthDescriptor.value)||lengthDescriptor.value<0||lengthDescriptor.value>16384)return null;
+  const result:unknown[]=[];
+  for(let i=0;i<lengthDescriptor.value;i++){const descriptor=Object.getOwnPropertyDescriptor(value,String(i));if(!descriptor){result.push(undefined);continue;}if(!('value' in descriptor))return null;result.push(descriptor.value);}
+  return result;
+};
 const COGNITIVE_STAGES=new Set<CognitiveStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update','tool-action','tool-outcome','tool-evidence','external-evidence','tool-reconciliation']);
 
 export class CognitiveEventFabric {
@@ -84,37 +100,40 @@ export class CognitiveEventFabric {
   constructor(capacity=512){this.capacity=Math.max(128,Math.min(4096,Math.floor(capacity)));}
 
   restore(raw?:Partial<CognitiveEventFabricSnapshot>|null):void{
-    const recentRows=Array.isArray(raw?.recent)?raw!.recent:[];
-    const receiptEvents=Array.isArray((raw as CognitiveEventFabricSnapshot | undefined)?.receiptEvents)
-      ? (raw as CognitiveEventFabricSnapshot).receiptEvents! : [];
+    const snapshot=ownDataRecord(raw);
+    const recentRows=ownDataArray(snapshot?.recent)??[];
+    const receiptEvents=ownDataArray(snapshot?.receiptEvents)??[];
     const rows=[...recentRows,...receiptEvents];
     const seen=new Set<string>();
     const restored:CognitiveEventNode[]=[];
     for(const value of rows){
-      if(!isRecord(value))continue;
-      const id=typeof value.id==='string'?value.id.trim().slice(0,180):'';
-      const stage=typeof value.stage==='string'?value.stage as CognitiveStage:undefined;
-      // Restore strictly typed ticks; do not coerce null/strings into valid causal time.
-      const tick=value.tick;
+      const row=ownDataRecord(value);
+      if(!row)continue;
+      const id=typeof row.id==='string'?row.id.trim().slice(0,180):'';
+      const stage=typeof row.stage==='string'?row.stage as CognitiveStage:undefined;
+      const tick=row.tick;
       if(!id||!COGNITIVE_STAGES.has(stage as CognitiveStage)||typeof tick!=='number'||!Number.isFinite(tick)||tick<0||seen.has(id))continue;
       seen.add(id);
-      const at=Number(value.at);
-      const parentIds=Array.isArray(value.parentIds)?value.parentIds.filter((parent):parent is string=>typeof parent==='string'&&Boolean(parent.trim())).map(parent=>parent.trim().slice(0,180)).slice(0,12):[];
+      const at=row.at;
+      const parentValues=ownDataArray(row.parentIds);
+      const parentIds=parentValues?parentValues.filter((parent):parent is string=>typeof parent==='string'&&Boolean(parent.trim())).map(parent=>parent.trim().slice(0,180)).slice(0,12):[];
+      const payload=ownDataRecord(row.payload);
       restored.push({
-        id, stage:stage as CognitiveStage, tick:Math.floor(tick),
-        at:Number.isFinite(at)&&at>=0?at:0,
-        source:typeof value.source==='string'?value.source.slice(0,120):'restored-unknown',
-        parentIds, external:Boolean(value.external), confidence01:clamp01(Number(value.confidence01??.5)),
-        payload:cleanPayload(value.payload),
+        id,stage:stage as CognitiveStage,tick:Math.floor(tick),
+        at:typeof at==='number'&&Number.isFinite(at)&&at>=0?at:0,
+        source:typeof row.source==='string'?row.source.slice(0,120):'restored-unknown',
+        parentIds,external:row.external===true,confidence01:typeof row.confidence01==='number'?clamp01(row.confidence01):.5,
+        payload:payload??{},
       });
       if(restored.length>=this.capacity)break;
     }
     this.events=restored;
     this.receiptProjectionIndex.clear();
     const restoredById=new Map(this.events.map(event=>[event.id,event] as const));
-    const receiptRows=Array.isArray((raw as CognitiveEventFabricSnapshot | undefined)?.receiptProjectionIndex)
-      ? (raw as CognitiveEventFabricSnapshot).receiptProjectionIndex! : [];
-    for(const entry of receiptRows) {
+    const receiptRows=ownDataArray(snapshot?.receiptProjectionIndex)??[];
+    for(const rawEntry of receiptRows) {
+      const entry=ownDataRecord(rawEntry);
+      if(!entry)continue;
       if(!entry || typeof entry.executionId!=='string' || !entry.executionId.trim() || entry.executionId.length>180) continue;
       if(typeof entry.actionEventId!=='string' || typeof entry.outcomeEventId!=='string' || typeof entry.evidenceEventId!=='string') continue;
       const projectedAt=Number(entry.projectedAt);
@@ -138,7 +157,8 @@ export class CognitiveEventFabric {
       this.receiptProjectionIndex.set(entry.executionId,{executionId:entry.executionId,actionEventId:entry.actionEventId.slice(0,180),outcomeEventId:entry.outcomeEventId.slice(0,180),evidenceEventId:entry.evidenceEventId.slice(0,180),projectedAt,...(/^[a-f0-9]{64}$/i.test(String(entry.projectionHash??''))?{projectionHash:String(entry.projectionHash).toLowerCase()}: {}),...(externalObservations.length?{externalObservations}:{}),...(receiptRevisions.length?{receiptRevisions}:{})});
       if(this.receiptProjectionIndex.size>=256) break;
     }
-    const rawTotal=Number(raw?.total??this.events.length);
+    const totalValue=snapshot?.total;
+    const rawTotal=typeof totalValue==='number'?totalValue:this.events.length;
     this.total=Math.max(this.events.length,Number.isFinite(rawTotal)?Math.max(0,Math.floor(rawTotal)):this.events.length);
   }
 
