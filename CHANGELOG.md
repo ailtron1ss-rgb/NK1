@@ -2122,6 +2122,7 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added a focused regression that constructs signed independent evaluation outcomes, creates an authentic accepted proposal, verifies review persistence, idempotency, decision transitions, stale-candidate denial and tamper rejection.
 - Added source/adaptation notes in `docs/OPERATION_OMEGA_HEXIS_INTEGRATION_2026-10-24.md`.
 - Added a focused Node 24 GitHub Actions workflow for the signed-evidence -> proposal packet -> durable review-decision regression.
+- Removed a TypeScript parameter-property runtime incompatibility from the trusted shadow-run registry, allowing the focused Node 24 end-to-end test to exercise real signed receipts.
 - Bound the operator-facing promotion-request CLI to the persisted approved review: it rechecks the candidate/active-version snapshot and compares the candidate, proposal, payload and shadow-evidence fingerprints before returning the unsigned Ed25519 request.
 
 - CI-driven compatibility repair: converted the canonical `VersionedSkillCandidateStore` constructor away from TypeScript parameter properties so Node's strip-only runtime can import it; moved the new filesystem adapter to plain `.mjs` to keep the TypeScript learning service free of additional filesystem type-stub requirements.
