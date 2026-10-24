@@ -627,7 +627,7 @@ export class P36AutonomousSelfDevelopmentEngine{
     const actionBinding=typeof input.toolId==='string'&&typeof input.executionId==='string'&&typeof input.decisionId==='string'
       ? {toolId:input.toolId,input:binding,executionId:input.executionId,decisionId:input.decisionId}
       : null;
-    const exactReceipt=input.evidenceSource==='external-evaluator'&&Boolean(actionBinding)&&
+    const exactReceipt=input.evidenceSource==='external-evaluator'&&input.toolId===P36_EXTERNAL_EVIDENCE_TOOL_ID&&Boolean(actionBinding)&&
       isTrustedDecisionLinkedExternalPostcondition(input.verification,actionBinding!);
     const observationId=exactReceipt?input.verification?.observationId:undefined;
     const sameEvidenceKey=(x:DevelopmentEvidenceRecord)=>x.hypothesisId===binding.hypothesisId&&
@@ -712,7 +712,7 @@ export class P36AutonomousSelfDevelopmentEngine{
     const actionBinding=typeof input.toolId==='string'&&typeof input.executionId==='string'&&typeof input.decisionId==='string'
       ? {toolId:input.toolId,input:binding,executionId:input.executionId,decisionId:input.decisionId}
       : null;
-    const verified=Boolean(actionBinding&&isTrustedDecisionLinkedExternalPostcondition(input.verification,actionBinding));
+    const verified=Boolean(input.toolId===P36_EXTERNAL_EVIDENCE_TOOL_ID&&actionBinding&&isTrustedDecisionLinkedExternalPostcondition(input.verification,actionBinding));
     const outcome=binding.outcome01;
     const delayed=binding.delayed;
     const transfer=binding.transfer;
