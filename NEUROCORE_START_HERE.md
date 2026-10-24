@@ -1,13 +1,14 @@
 ## Latest durable checkpoint — Mem0 integration WorkPass 1 (2026-10-24)
 
-- Current feature branch: mem0-integration-workpass1; draft PR [#100](https://github.com/ailtron1ss-rgb/NK1/pull/100), base workpass70-source at a4cf11141c0e8083e5f8a35bec8c6c2bebac640b. The feature branch must not be merged until the exact-head test/typecheck/server-smoke gates have actionable results.
-- Implemented an opt-in Mem0 Platform adapter and authenticated hybrid-search API. MemoryOS2 remains canonical; local results and external Mem0 candidates stay separate. User scope is server-configured; API key is never included in diagnostics; writes are gated and not automatically invoked.
-- Regression harness, npm scripts, Mem0 integration guide and research-intake entry are committed. **Exact-head execution remains UNVERIFIED**; no current workflow runs or combined statuses were reported for the source baseline during this pass. This is not a PASS.
-- No changes were made to main and no release asset was changed. Release metadata reports the README SHA-256 for the latest release ZIP, but the large asset was not downloaded and the archive bytes were not independently re-hashed or inspected.
-- Next: validate the test harness and server syntax on the project Node version; run exact-head typecheck/tests/server smoke when actionable; test with a disposable Mem0 user scope; check retention/deletion contracts; benchmark local vs hybrid recall on a frozen independent RU/EN holdout. Do not inject remote results into the live prompt until they meet safety and quality gates.
+- Feature branch: `mem0-integration-workpass1`; draft PR [#100](https://github.com/ailtron1ss-rgb/NK1/pull/100), base `workpass70-source` at `a4cf11141c0e8083e5f8a35bec8c6c2bebac640b`. Do not merge until the exact-head test and live-provider gates are complete.
+- Implemented a dependency-free Mem0 Platform adapter and authenticated diagnostics/search API. MemoryOS2 remains the sole canonical memory owner; local and remote results are returned separately.
+- Added a second explicit runtime gate: remote recalls enter the language context only when both `NK_MEM0_ENABLED=1` and `NK_MEM0_COGNITIVE_RECALL=1` are configured. Only the current message or autonomous topic is queried; at most three sanitized candidates are added as low-priority, untrusted context. They cannot change the selected action, execute instructions, or promote themselves to MemoryOS2.
+- Remote writes remain separately gated by `NK_MEM0_ALLOW_WRITES=1` plus per-operation approval; there is no auto-export or HTTP write route. The adapter/context test suite has nine behavioral cases and an isolated Node 24 Actions workflow.
+- **Validation:** the isolated workflow for current head `0013a86c95fd06e91b0e8c5adf9a0bec1e126318` was in progress at checkpoint time. An earlier broad typecheck failed on existing diagnostics in other modules and contained no `Mem0PlatformAdapter` diagnostics, but it predates the last cognitive-context edits and is not a current PASS.
+- No changes to `main` or release assets. The latest 136-MB release ZIP's metadata digest matches the README's declared digest, but the binary asset could not be downloaded and independently re-hashed/inspected.
+- Next: confirm the isolated workflow on the current HEAD, run a disabled-mode HTTP smoke and a live contract check on a disposable Mem0 user, align retention/deletion, and compare local vs hybrid recall on a frozen independent RU/EN holdout. Do not enable cognitive recall by default before those gates pass.
 
-Read [the WorkPass Mem0-1 implementation guide](runtime/neuro-kurisu/docs/MEM0_INTEGRATION_WORKPASS1.md) and [research-intake decision](docs/RESEARCH_INTAKE_LEDGER.md) for full contracts, risks and remaining work.
-
+Read [Mem0 WorkPass 1 guide](runtime/neuro-kurisu/docs/MEM0_INTEGRATION_WORKPASS1.md), [research intake decision](docs/RESEARCH_INTAKE_LEDGER.md), and the active Actions run for exact-head verification.
 ---
 
 ## Latest durable checkpoint — WorkPass272 (2026-10-22)
