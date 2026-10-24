@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { EvidenceResearchSubsystemRuntime } from '../src/organism/core/EvidenceResearchSubsystemRuntime.ts';
 import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
+import { RealityEvidenceLedger } from '../src/organism/system/RealityEvidenceLedger.ts';
 
 const gateway = new ActionGateway();
 const declaredSources = [
@@ -113,4 +114,26 @@ assert.deepEqual(
   new Set([evidenceEventId, `outcome:${'b'.repeat(40)}`, `outcome:${'c'.repeat(40)}`]),
   'restore must preserve every verifier event identity across observer-ledger reconciliation',
 );
-console.log('WORKPASS521_OBSERVER_LEDGER_BRIDGE=PASS liveBridge=true idempotentReplay=true userReportNotExternal=true restoreReconciliation=true');
+
+// The raw restore array may contain more than four times capacity in malformed
+// rows. It must still locate the valid evidence after those rows are rejected.
+const trustedLedgerRow = {
+  id: 'event:trusted-ledger-row', eventId: 'event:trusted-ledger-row',
+  tick: 7, at: 1000, realityClass: 'device-observation', claim: 'scene=status:ready',
+  confidence01: 0.95, independenceKey: 'camera:front', parentIds: [],
+};
+const noisyLedger = new RealityEvidenceLedger(128);
+noisyLedger.restore({
+  version: 1, total: 1, externalCount: 1, simulatorCount: 0, independentSources: 1,
+  recent: [
+    ...Array.from({ length: 512 }, (_, index) => ({
+      id: `malformed-ledger-row-${index}`, tick: -1, at: 1000,
+      realityClass: 'device-observation', claim: 'scene=status:ready',
+      confidence01: 0.95, independenceKey: 'camera:front', parentIds: [],
+    })),
+    trustedLedgerRow,
+  ],
+});
+assert.deepEqual(noisyLedger.snapshot().recent.map(row => row.eventId), ['event:trusted-ledger-row'],
+  'invalid rows must not use up the raw scan limit and crowd a valid external evidence record out');
+console.log('WORKPASS521_OBSERVER_LEDGER_BRIDGE=PASS liveBridge=true idempotentReplay=true userReportNotExternal=true restoreReconciliation=true noisyLedgerRestore=true');
