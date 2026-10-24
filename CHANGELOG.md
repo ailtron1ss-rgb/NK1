@@ -1,3 +1,82 @@
+## NK1 WorkPass454 — reject malformed affect-appraisal evidence before state change (2026-10-24)
+
+- `EmotionAppraisalEngine.appraise` now rejects non-finite, non-numeric and out-of-range optional appraisal signals, as well as non-boolean external provenance, before updating episode history or interoceptive-affect summaries.
+- Added regressions for infinity, numeric-string coercion and invalid external flags, asserting the complete affect snapshot remains unchanged after rejection.
+- Kept the existing appraisal/interoception/affective outcome system; no parallel emotion engine or new dependency was added. Homeostatic context still biases action tendencies rather than deterministically issuing actions.
+- **Validation boundary:** the existing WorkPass172 regression is included in `test:rebuild-recovered`; exact-head test/typecheck execution remains unconfirmed.
+
+---
+
+## NK1 WorkPass509 — fail closed on malformed interoceptive signals (2026-10-24)
+
+- `EmotionAppraisalEngine.observeInteroception` now validates energy, thermal load, capacity, cognitive load, and optional homeostatic pressure as finite [0,1] values before calculating prediction error or updating affect state.
+- Prevents NaN, strings and out-of-range telemetry from silently turning into clamped zeros and contaminating the persistent body-state predictor.
+- Added regressions for non-finite energy, out-of-range load, malformed homeostatic pressure, and unchanged state after every rejected observation.
+- This is a control-signal model, not evidence of subjective feeling. Test execution on the updated head remains unverified.
+
+---
+
+## NK1 WorkPass453 — unify correlation-ID trust boundaries (2026-10-24)
+
+- Shared the official Node type-root setup across runtime categories, reusing the existing locked app dependencies rather than introducing a duplicate dependency installation.
+- Replaced the malformed/trim-first correlation-ID check with code-point validation before trimming, so control characters cannot disappear during normalization and make unrelated events collide.
+- Emotional action calibration remains context-bound; this pass does not claim that a clean test suite or subjective affect has been demonstrated.
+
+---
+
+## NK1 WorkPass452 — context-bound affective action learning (2026-10-23)
+
+- Added context-specific outcome calibration keyed by action, emotion label and low/medium/high homeostatic-pressure band, while preserving the legacy global aggregate.
+- When an action has contextual history, its global reward cannot leak into an unmatched emotion/body-state context. Explicit `emotionId` attribution is validated so delayed outcomes update the episode they refer to.
+- Extended `big-pass-172-emotion-interoceptive-mind.mjs` to verify that an outcome attributed to an earlier emotion cannot rewrite the current stressed-context calibration.
+- Uses Hexis's principle that drives/emotional context shape action pressure without acting as deterministic orders; no new dependencies. Exact-head test not yet execution-verified.
+
+---
+
+## NK1 WorkPass449 — reject malformed affect outcome evidence before calibration (2026-10-23)
+
+- Hardened the emotional outcome-calibration ingress: success, surprise, and optional regulation cost must be finite numbers inside the normalized [0,1] contract. NaN, numeric strings, infinities, and out-of-range values no longer silently bias the running action calibration through coercion/clamping.
+- Validation runs before the outcome row or counters change. Added regressions for NaN success, an out-of-range regulation cost, and full state preservation after rejection. No dependency added.
+- **Verification:** regression source is committed, but exact-head execution is not claimed while hosted Actions fail before runner allocation.
+
+---
+
+## NK1 WorkPass448 — make emotion action lookups prototype-safe
+
+- Prevented prototype-inherited object members such as `constructor` from being mistaken for an existing learned action outcome. Outcome writes now use own-property lookup and reject prototype-like action names.
+- Removed implicit `String(action)` coercion from emotion calibration lookup and made both calibration lookup and action-bias scoring fail closed for non-string/invalid action identifiers.
+- Added regressions for prototype-key writes, state preservation after rejection, and zero execution of custom `toString` in read-only action lookups. Existing affect/homeostasis semantics and action scores for valid names are unchanged.
+- **Verification:** committed to `feature/emotions`; tests/typecheck remain unverified because Actions jobs terminate before runner assignment.
+
+---
+
+## NK1 WorkPass434 — schema-check emotion episode before feeling inference (2026-10-23)
+
+- Feeling inference now runs the detached episode through the same canonical normalizeEpisode schema used during persisted restore; ordinary plain objects with missing/malformed appraisal or interoception fields no longer reach nested reads.
+- Invalid emotion episodes are rejected before the live feelings history changes.
+- Added regression for a structurally malformed episode and a before/after state equality assertion. This keeps appraisal, interoception and self-report inputs on one episode contract.
+- Runtime execution remains unverified because hosted Actions has not assigned runners to recent jobs.
+
+---
+
+## NK1 WorkPass428 — unify emotion live-input trust boundary (2026-10-23)
+
+- Added one bounded descriptor-only snapshot helper for live appraisal, interoception, outcome calibration and feeling inference, not only persisted-state restore. Accessor-backed, cyclic, exotic or oversized inputs are rejected before state mutation.
+- Outcome action identity now must be a trimmed bounded string; custom object coercion can no longer create calibration keys.
+- Added regressions for getter non-execution, malicious action coercion and no state mutation after rejected input.
+- The affect subsystem remains a functional control-signal model, not evidence of phenomenal feeling. Runtime tests/typecheck remain unverified until hosted runners execute.
+
+---
+
+## NK1 WorkPass420 — protect affect-state restoration from executable objects (2026-10-23)
+
+- Emotion restore now snapshots bounded plain data before reading episode, interoception or calibration fields.
+- Accessor-backed/cyclic/exotic snapshots fail closed to the defined neutral affect state without running getters.
+- Added a regression proving corrupt persistence cannot execute a getter or seed emotion bias.
+- Validation remains pending until the current branch HEAD can run tests and typecheck in GitHub Actions.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
@@ -2113,3 +2192,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
 - Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
 - This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
+
+## NK1 WorkPass330 — harden affective-state recovery (2026-10-23)
+
+- **Fixed:** `EmotionAppraisalEngine.restore` now reconstructs bounded numeric state, counters, interoceptive measurements, emotion/feeling histories, and action-outcome calibration instead of blindly spreading corrupt persisted values into the live controller.
+- **Fixed:** `appraise` rejects non-safe ticks and non-finite/negative timestamps rather than emitting emotion episodes whose temporal identity is invalid.
+- **Regression added:** the existing WorkPass172 emotion/interoception scenario now restores deliberately corrupted snapshots, verifies safe defaults/bounds, verifies malformed history/calibration rows are discarded, and checks invalid timestamp rejection.
+- **Validation boundary:** changes are committed; execution is unconfirmed because current hosted Actions runs fail before runner allocation. No test-pass or CI-green claim.
