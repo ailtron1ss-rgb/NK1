@@ -76,11 +76,12 @@ async function scanNonMarkdownReferences(root, markdownPaths) {
 
     const seenTargets = new Set();
     for (const match of source.matchAll(tokenPattern)) {
-      const token = match[0].replace(/^[.\/\\]+/, "");
-      const normalized = token.replace(/\\/g, "/");
+      const token = match[0];
+      const normalized = path.posix.normalize(token.replace(/\\/g, "/"));
       const candidates = new Set();
+      const rootNormalized = normalized.replace(/^\/+/, "");
 
-      if (fileSet.has(normalized)) candidates.add(normalized);
+      if (fileSet.has(rootNormalized)) candidates.add(rootNormalized);
       const relativeResolved = path.relative(root, path.resolve(root, path.dirname(relativeSource), token)).split(path.sep).join("/");
       if (fileSet.has(relativeResolved)) candidates.add(relativeResolved);
 
