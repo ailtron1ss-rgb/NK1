@@ -106,7 +106,7 @@
     "test:pass17:v8-long-horizon": "node --experimental-strip-types tests/pass17-v8-file-long-horizon.mjs",
     "audit:lock": "node scripts/verify-lock.mjs",
     "audit:integrity": "node --experimental-strip-types scripts/audit-integrity.mjs",
-    "audit:architecture": "node scripts/audit-architecture.mjs",
+    "audit:architecture": "node --test tests/architecture-dependency-boundaries.test.mjs",
     "audit:contract": "node scripts/audit-release-contract.mjs",
     "audit:hygiene": "node scripts/audit-source-hygiene.mjs",
     "audit:all": "node scripts/audit-all.mjs",
