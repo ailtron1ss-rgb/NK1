@@ -1775,7 +1775,9 @@
     "test:workpass292:evidence-lanes": "node --experimental-strip-types tests/workpass292-evidence-lanes.mjs",
     "test:workpass293:p23-revision": "node --experimental-transform-types tests/workpass172-compound-revision-coordinator.mjs && node --experimental-transform-types tests/workpass292-evidence-lanes.mjs && node --experimental-transform-types tests/workpass293-autonomous-p23-revision.mjs",
     "test:p26:learning-input-integrity": "node --experimental-strip-types tests/p26-learning-input-integrity.mjs",
-    "test:workpass479:reality-evidence-idempotency": "node --experimental-strip-types tests/workpass479-reality-evidence-event-idempotency.mjs"
+    "test:workpass479:reality-evidence-idempotency": "node --experimental-strip-types tests/workpass479-reality-evidence-event-idempotency.mjs",
+    "test:p26:learning-recovery-benchmark": "node --experimental-strip-types tests/p26-learning-recovery-benchmark.mjs",
+    "test:p26:learning-continual-matrix": "node --experimental-strip-types tests/p26-learning-continual-matrix.mjs"
   },
   "devDependencies": {
     "@types/node": "22.20.4"

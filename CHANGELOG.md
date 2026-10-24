@@ -1,3 +1,11 @@
+## NK1 WorkPass529 — reconnect P26 validation commands and grounded replay fixture
+
+- Added the two npm aliases already required by `p26-learning-validation.yml`: recovery benchmark and continual-learning matrix. Both point to existing test files.
+- Corrected replay-diversity traces so each pre-action state tick matches the trace tick; the runtime deliberately rejects mismatched lineage rather than emitting replayable evidence.
+- Validation is delegated to exact-head Actions; no benchmark uplift is inferred from fixture repair.
+
+---
+
 ## NK1 WorkPass528 — sanitize P26 restore diagnostics and ground replay fixtures (2026-10-24)
 
 - `ParametricPolicyLearner.restore()` now validates the update counter, finite bounded metrics, training timestamp and literal boolean freeze state, in addition to existing weight/bias sanitization.
