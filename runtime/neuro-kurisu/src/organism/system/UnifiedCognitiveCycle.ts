@@ -56,6 +56,15 @@ export class UnifiedCognitiveCycle {
     // conservatively incomplete; otherwise a truncated/corrupt snapshot could
     // silently drop cycles from both outcome buckets.
     const incompleteCycles=cycles-completeCycles;
+    const brokenLineages=Math.min(incompleteCycles,safeCounter(source.brokenLineages));
+    // A legacy snapshot may omit newer aggregate fields, but when a field is
+    // present it must agree with the reconciled partition before lastComplete
+    // can be trusted. Sanitizing conflicting counters must not preserve a
+    // completion claim from the inconsistent original record.
+    const countersCoherent=
+      (source.completeCycles===undefined||source.completeCycles===completeCycles)&&
+      (source.incompleteCycles===undefined||source.incompleteCycles===incompleteCycles)&&
+      (source.brokenLineages===undefined||source.brokenLineages===brokenLineages);
     const hasMissingArray=Array.isArray(source.lastMissingStages);
     const rawMissing=hasMissingArray?source.lastMissingStages as unknown[]:[...OPERATIONAL_REQUIRED];
     const malformedMissing=rawMissing.some((stage)=>typeof stage!=='string'||!ALL_STAGES.has(stage as UnifiedCycleStage));
@@ -68,11 +77,11 @@ export class UnifiedCognitiveCycle {
       cycles,
       completeCycles,
       incompleteCycles,
-      brokenLineages:Math.min(incompleteCycles,safeCounter(source.brokenLineages)),
+      brokenLineages,
       meanStageCoverage01:safeMetric(source.meanStageCoverage01),
       meanCausalContinuity01:safeMetric(source.meanCausalContinuity01),
       lastTick,
-      lastComplete:cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
+      lastComplete:countersCoherent&&cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
       lastMissingStages:missing,
     };
   }
