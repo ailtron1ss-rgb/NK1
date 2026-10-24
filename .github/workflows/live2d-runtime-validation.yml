@@ -1,0 +1,51 @@
+name: Live2D runtime validation
+
+on:
+  push:
+    branches:
+      - main
+      - integration
+      - feature/visual-embodiment
+    paths:
+      - "app/public/live2d/**"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/avatar/embodimentTimeline.ts"
+      - "app/scripts/embodiment-timeline.test.mjs"
+      - "app/scripts/test-live2d-expression-cache.mjs"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - ".github/workflows/live2d-runtime-validation.yml"
+  pull_request:
+    paths:
+      - "app/public/live2d/**"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/avatar/embodimentTimeline.ts"
+      - "app/scripts/embodiment-timeline.test.mjs"
+      - "app/scripts/test-live2d-expression-cache.mjs"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - ".github/workflows/live2d-runtime-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live2d-runtime-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci --prefix app
+      - run: npm --prefix app run test:live2d-expression-cache
+      - run: npm --prefix app run test:embodiment-timeline
+      - run: npm --prefix app run typecheck
