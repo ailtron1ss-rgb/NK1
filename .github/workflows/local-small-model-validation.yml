@@ -90,6 +90,7 @@ jobs:
           runtime/neuro-kurisu/src/organism/body/VisionSemanticBackend.ts
           runtime/neuro-kurisu/src/organism/body/LocalOpenAICompatibleVisionBackend.ts
           runtime/neuro-kurisu/src/organism/developmental/LocalEmbeddingProvider.ts
+          runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts
           runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts
       - name: Local small-model hub regression
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/local-small-model-hub-workpass.mjs
