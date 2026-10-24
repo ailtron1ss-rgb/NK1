@@ -61,7 +61,7 @@ export function evaluateSkillRevision(
   const minAbsoluteGain = clamp(options.minAbsoluteGain ?? .02, .02);
   const maxFamilyRegression = clamp(options.maxFamilyRegression ?? .10, .10);
   const byPair = new Map<string, Map<string, RevisionObservation>>();
-  // A single verifier receipt cannot be replayed under multiple task IDs to manufacture sample size.
+  // A verifier receipt is globally single-use: it cannot be rebound to another task OR method.
   const seenEvidenceReceipts = new Set<string>();
   let rejectedRows = 0;
   for (const row of observations) {
@@ -69,7 +69,7 @@ export function evaluateSkillRevision(
       rejectedRows++;
       continue;
     }
-    const receiptKey = JSON.stringify([row.method, row.verifierId, row.evidenceRef.normalize('NFKC').trim()]);
+    const receiptKey = JSON.stringify([row.verifierId.normalize('NFKC').trim(), row.evidenceRef.normalize('NFKC').trim()]);
     if (seenEvidenceReceipts.has(receiptKey)) { rejectedRows++; continue; }
     seenEvidenceReceipts.add(receiptKey);
     const key = JSON.stringify([row.taskId, row.seed, row.attempt]);
