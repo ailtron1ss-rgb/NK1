@@ -1,3 +1,13 @@
+## NK1 WorkPass420 — enforce canonical restored learning evidence (2026-10-24)
+
+- Tightened `PersonalCurriculumEngine.restore()`: persisted thread IDs/families must be canonical normalized identities; persisted context keys must be valid single-line identities; malformed control characters are rejected.
+- Restore now rejects impossible outcome histories where successes + failures exceed total occurrences, while still validating verified count and timestamp separately.
+- Extended `big-pass-122-curriculum-restore-collision.mjs` with identity, context-key and inconsistent-counter cases. Fixed the test fixture so it passes actual control characters rather than a literal backslash sequence.
+- **Observed validation:** Node 24 installation and runtime typecheck passed on WorkPass417 run [40060149621](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40060149621); that run then found the malformed test fixture (expected exception missing). The fixture was corrected in subsequent commits. The exact corrected-head workflow [40060194767](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40060194767) is queued; corrected tests are not yet confirmed passing.
+- No runtime dependency added; no change to `main` or Release ZIP. No empirical learning uplift claimed.
+
+---
+
 ## NK1 WorkPass469–470 — make P26 learning input rejection atomic and restore-safe (2026-10-23)
 
 - `ParametricPolicyLearner.train` and `trainFeatures` reject non-finite targets, learning rates, sample weights, features, invalid actions and malformed state before learning. Batch training preflights every sample so a bad later item cannot leave a partially updated model.
