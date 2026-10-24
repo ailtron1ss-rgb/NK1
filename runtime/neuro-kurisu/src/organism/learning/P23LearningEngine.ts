@@ -842,18 +842,11 @@ export class P23LearningEngine {
       };
     });
     const metrics=this.state.metrics;
-    const adaptiveOptions=adaptiveReplayOptions(this.replaySelectionOptions,{
+    const options=adaptiveReplayOptions(this.replaySelectionOptions,{
       predictionError01:metrics.predictionError01,recentPredictionError01:metrics.recentPredictionError01,
       replayTdError01:metrics.replayMeanAbsTdError01,evidenceDebt01:clamp(metrics.evidenceDebtOpen/16),
       memoryPressure01:clamp(this.state.experiences.length/1024),energy01:1,
     },ranked.length);
-    // Explicit replay controls define the hard ablation budget and recency quota;
-    // adaptive health still influences ranking and half-life, not these caps.
-    const options:ReplaySelectionOptions={
-      ...adaptiveOptions,
-      maxBatchSize:Math.min(this.replaySelectionOptions.maxBatchSize??64,ranked.length),
-      recentQuota:Math.min(this.replaySelectionOptions.recentQuota??32,this.replaySelectionOptions.maxBatchSize??64,ranked.length),
-    };
     // Use the causal sampler as a bounded diversity prefilter, then retain the
     // adaptive multi-signal selector as the final authority for the replay batch.
     // This connects causal/recent-stratum coverage without discarding existing
@@ -1008,7 +1001,7 @@ export class P23LearningEngine {
       // Skills are durable but not immortal: stale evidence gradually loses
       // influence, reaching zero after 180 days without fresh validation.
       const ageMs=Math.max(0,now()-exact.updatedAt);
-      const retention=ageMs>=180*24*60*60*1000?0:1-forgettingRisk({lastValidatedAt:exact.updatedAt,now:now(),halfLifeMs:30*24*60*60*1000,usageGapMs:ageMs});
+      const retention=ageMs>=180*24*60*60*1000?0:1-forgettingRisk({lastValidatedAt:exact.updatedAt,now:now(),halfLifeMs:30*24*60*60*1000,gapMs:ageMs});
       if(exact.status==='promoted') return clamp(exact.confidence01*.05*retention);
       if(exact.status==='rejected') return retention===0?0:-clamp(exact.confidence01*.03*retention);
       return 0;
