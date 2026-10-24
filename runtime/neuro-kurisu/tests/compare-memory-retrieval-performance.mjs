@@ -32,6 +32,7 @@ const comparisons = candidate.results.map(after => {
   const rankingParity = rankingChecks.every(item => item.sameTopFive);
   const temporalChainParity = equalJson(before.temporalChainLookup.chainIds, after.temporalChainLookup.chainIds)
     && before.temporalChainLookup.chainLength === after.temporalChainLookup.chainLength;
+  const temporalDiagnosticsParity = equalJson(before.temporalChainLookup.temporalDiagnostics.state, after.temporalChainLookup.temporalDiagnostics.state);
   const summarizeWorkload = key => ({
     baseline: before[key],
     candidate: after[key],
@@ -56,6 +57,16 @@ const comparisons = candidate.results.map(after => {
       indexIntegrity: { baseline: before.temporalChainLookup.indexIntegrity, candidate: after.temporalChainLookup.indexIntegrity },
     },
     temporalChainParity,
+    temporalDiagnostics: {
+      baseline: before.temporalChainLookup.temporalDiagnostics.lookup,
+      candidate: after.temporalChainLookup.temporalDiagnostics.lookup,
+      p50ChangePercent: pctChange(before.temporalChainLookup.temporalDiagnostics.lookup.p50Ms, after.temporalChainLookup.temporalDiagnostics.lookup.p50Ms),
+      p95ChangePercent: pctChange(before.temporalChainLookup.temporalDiagnostics.lookup.p95Ms, after.temporalChainLookup.temporalDiagnostics.lookup.p95Ms),
+      p95SpeedupFactor: safeRatio(before.temporalChainLookup.temporalDiagnostics.lookup.p95Ms, after.temporalChainLookup.temporalDiagnostics.lookup.p95Ms),
+      throughputChangePercent: pctChange(before.temporalChainLookup.temporalDiagnostics.lookup.throughputPerSecond, after.temporalChainLookup.temporalDiagnostics.lookup.throughputPerSecond),
+      stateMatchesBaseline: temporalDiagnosticsParity,
+    },
+    temporalDiagnosticsParity,
     memory: {
       baseline: before.memory,
       candidate: after.memory,
@@ -82,7 +93,7 @@ const output = {
   candidate: { label: candidate.label, commit: candidate.commit, nodeVersion: candidate.nodeVersion },
   methodology: 'same runner; same deterministic synthetic corpus and query schedule; warmup excluded from measured samples; percentile changes are descriptive, not a production guarantee',
   results: comparisons,
-  allRankingParity: comparisons.every(row => row.rankingParity && row.temporalChainParity),
+  allRankingParity: comparisons.every(row => row.rankingParity && row.temporalChainParity && row.temporalDiagnosticsParity),
 };
 console.log(JSON.stringify(output, null, 2));
 if (!output.allRankingParity) {
