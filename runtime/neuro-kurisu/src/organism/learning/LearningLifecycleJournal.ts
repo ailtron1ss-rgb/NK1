@@ -241,9 +241,13 @@ function verifyEntry(raw: unknown, sequence: number, previousDigest: string): Le
  * explicit pending attempt instead of falsely asserting activation or failure.
  */
 export class JsonlLearningLifecycleJournal implements LearningLifecycleJournalSink {
+  private readonly filePath: string;
+  private readonly maxBytes: number;
   private cache: { size: number; mtimeMs: number; ctimeMs: number; ino: number; entries: LearningLifecycleEventEntry[] } | null = null;
 
-  constructor(private readonly filePath: string, private readonly maxBytes = DEFAULT_MAX_BYTES) {
+  constructor(filePath: string, maxBytes = DEFAULT_MAX_BYTES) {
+    this.filePath = filePath;
+    this.maxBytes = maxBytes;
     if (typeof filePath !== 'string' || !filePath.trim() || filePath.includes('\u0000') ||
         !safeCounter(maxBytes, 1024, 256 * 1024 * 1024)) {
       throw new Error('learning-lifecycle-journal-config-invalid');
