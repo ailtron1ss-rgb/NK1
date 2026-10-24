@@ -71,10 +71,13 @@ export interface CanonicalCycleCompletion {
  * The event and cycle classes remain ledgers/verifiers, not parallel decision-makers.
  */
 export class CanonicalCognitiveKernel {
-  constructor(
-    private readonly eventFabric: CognitiveEventFabric,
-    private readonly unifiedCycle: UnifiedCognitiveCycle,
-  ) {}
+  private readonly eventFabric: CognitiveEventFabric;
+  private readonly unifiedCycle: UnifiedCognitiveCycle;
+
+  constructor(eventFabric: CognitiveEventFabric, unifiedCycle: UnifiedCognitiveCycle) {
+    this.eventFabric = eventFabric;
+    this.unifiedCycle = unifiedCycle;
+  }
 
   beginDecisionCycle(input: {
     tick: number;
@@ -159,7 +162,7 @@ export class CanonicalCognitiveKernel {
     const hasAnchorTick = typeof anchorTick === 'number' && Number.isSafeInteger(anchorTick) && anchorTick >= 0;
     const fallbackTick = Number.isSafeInteger(input.fallbackTick) && input.fallbackTick >= 0 ? input.fallbackTick : 0;
     // Late feedback closes the logical action tick; 'at' keeps the real arrival time.
-    const tick = hasAnchorTick ? anchorTick : fallbackTick;
+    const tick = hasAnchorTick ? anchorTick as number : fallbackTick;
     const at = typeof input.at === 'number' && Number.isFinite(input.at) && input.at >= 0 ? input.at : Date.now();
     const parents = (...ids: Array<string | undefined>): string[] =>
       ids.filter((id): id is string => typeof id === 'string' && id.length > 0);
