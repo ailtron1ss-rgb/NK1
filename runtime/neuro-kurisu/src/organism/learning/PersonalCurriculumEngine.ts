@@ -106,16 +106,18 @@ export class PersonalCurriculumEngine {
       const source=['autobiographical','social','goal','mixed'].includes(String(x.source))?x.source as CurriculumThread['source']:null;
       const status=['emerging','active','satisfied','suppressed'].includes(String(x.status))?x.status as CurriculumThread['status']:null;
       const metrics=['socialRelevance01','identityRelevance01','causalStrength01','unresolved01','retention01','transfer01','learningNeed01','confidence01','priority01','lastOutcome01'];
-      if(typeof x.id!=='string'||!x.id.trim()||x.id.length>128||typeof x.family!=='string'||!x.family.trim()||x.family.length>180||
+      if(!isCurriculumIdentity(x.id,128)||!isCurriculumIdentity(x.family,180)||
          idCounts.get(x.id)!==1||familyCounts.get(x.family)!==1||
-         typeof x.title!=='string'||!x.title.trim()||x.title.length>140||!source||!status||
+         !isCurriculumText(x.title,140)||!x.title.trim()||!source||!status||
          !Array.isArray(x.contextKeys)||x.contextKeys.length>24||
-         x.contextKeys.some(k=>!isCurriculumText(k,180))||
+         x.contextKeys.some(k=>!isCurriculumText(k,180,true))||
          !metrics.every(k=>typeof x[k]==='number'&&Number.isFinite(x[k])&&x[k]>=0&&x[k]<=1)||
-         !['occurrences','verified','successes','failures','contexts'].every(k=>typeof x[k]==='number'&&Number.isSafeInteger(x[k])&&x[k]>=0&&x[k]<=1_000_000_000)||typeof x.lastAt!=='number'||!Number.isSafeInteger(x.lastAt)||x.lastAt<0)continue;
+         !['occurrences','verified','successes','failures','contexts'].every(k=>typeof x[k]==='number'&&Number.isSafeInteger(x[k])&&x[k]>=0&&x[k]<=1_000_000_000)||
+         !isCurriculumTimestamp(x.lastAt))continue;
       const contextKeys=Array.from(new Set(x.contextKeys as string[]));
       if(contextKeys.length!==(x.contextKeys as string[]).length||x.contexts!==contextKeys.length||
-         Number(x.verified)>Number(x.occurrences)||Number(x.successes)>Number(x.occurrences)||Number(x.failures)>Number(x.occurrences))continue;
+         Number(x.verified)>Number(x.occurrences)||
+         Number(x.successes)+Number(x.failures)>Number(x.occurrences))continue;
       const thread={...x,source,status,contextKeys} as unknown as CurriculumThread;
       if(ids.has(thread.id)||families.has(thread.family))continue;
       ids.add(thread.id);families.add(thread.family);threads.push(thread);
