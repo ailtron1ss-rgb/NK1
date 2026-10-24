@@ -1,3 +1,12 @@
+# NK1 process supervision optimization — schema validation hardening (2026-10-24)
+
+- [HARDENED] Migrated `tools/super-schema-check.mjs` from two unbounded synchronous subprocess calls to the shared process supervisor with bounded deadlines, live logs, bounded diagnostic tails, explicit fail-fast results and duration reporting.
+- [REGRESSION] Added `tools/super-schema-check.test.mjs` and `npm run test:super-schema-check` to reject invalid timeout configuration before launching either verification command.
+- [CI] Focused Node 24 workflow now syntax-checks the schema checker and includes its timeout-guard regression.
+- [SCOPE] This closes another unbounded process path but does not establish database migration correctness or runtime typecheck success; latest-head focused CI must confirm the new test. Main and the release asset remain unchanged.
+
+---
+
 # NK1 process supervision optimization — migration and fixture hardening (2026-10-24)
 
 - [HARDENED] `tools/super-install.test.mjs` now copies the shared `process-supervisor.mjs` dependency into its isolated fixtures. An Actions failure exposed the missing fixture dependency after the installer switched to shared supervision; the test contract itself was not weakened.
