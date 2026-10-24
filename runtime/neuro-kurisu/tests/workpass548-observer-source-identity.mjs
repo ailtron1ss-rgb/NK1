@@ -198,4 +198,31 @@ const normalizedTrustRestore = new EvidenceResearchSubsystemRuntime({ authorizeS
 normalizedTrustRestore.restore(poisonedTrustSnapshot);
 assert.equal(normalizedTrustRestore.externalObserver.snapshot().sources[0].reliability01, 1, 'restored source reliability must be clamped to the normalized range');
 
+// Invalid or unauthorized snapshot rows must not consume the restore capacity
+// before a valid source declaration is considered.
+const restorePolicy = source => source.id === 'trusted-camera' && source.sourceClass === 'device'
+  && source.channel === 'camera' && source.independenceKey === 'camera:front';
+const trustedSourceRuntime = new EvidenceResearchSubsystemRuntime({ authorizeSourceRegistration: restorePolicy });
+trustedSourceRuntime.externalObserver.registerSource({
+  id: 'trusted-camera', sourceClass: 'device', channel: 'camera', independenceKey: 'camera:front',
+});
+trustedSourceRuntime.externalObserver.observe({
+  sourceId: 'trusted-camera', sourceClass: 'device', channel: 'camera', independenceKey: 'camera:front',
+  claimKey: 'scene=clear', observedPostcondition: 'scene=clear', confidence01: 0.9,
+});
+const crowdedRestoreSnapshot = structuredClone(trustedSourceRuntime.externalObserver.snapshot());
+crowdedRestoreSnapshot.sources = [
+  ...Array.from({ length: 16 }, (_, index) => ({
+    id: `untrusted-${index}`, sourceClass: 'unknown', channel: 'unknown',
+    independenceKey: `untrusted-${index}`, reliability01: 1, enabled: true,
+  })),
+  ...crowdedRestoreSnapshot.sources,
+];
+const crowdedRestore = new EvidenceResearchSubsystemRuntime({ authorizeSourceRegistration: restorePolicy });
+crowdedRestore.externalObserver.restore(crowdedRestoreSnapshot);
+assert.ok(crowdedRestore.externalObserver.snapshot().sources.some(source => source.id === 'trusted-camera'),
+  'invalid/unapproved rows must not crowd a valid declared source out of the bounded restore registry');
+assert.equal(crowdedRestore.externalObserver.snapshot().observations.length, 1,
+  'observation from the retained trusted source must survive restore');
+
 console.log('WorkPass548 observer source identity regression: PASS');
