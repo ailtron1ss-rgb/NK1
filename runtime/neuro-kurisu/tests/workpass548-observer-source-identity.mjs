@@ -196,7 +196,8 @@ const poisonedTrustSnapshot = structuredClone(guardedRuntime.snapshot());
 poisonedTrustSnapshot.externalObserver.sources[0].reliability01 = 9;
 const normalizedTrustRestore = new EvidenceResearchSubsystemRuntime({ authorizeSourceRegistration });
 normalizedTrustRestore.restore(poisonedTrustSnapshot);
-assert.equal(normalizedTrustRestore.externalObserver.snapshot().sources[0].reliability01, 1, 'restored source reliability must be clamped to the normalized range');
+assert.equal(normalizedTrustRestore.externalObserver.snapshot().sources[0].reliability01, 0.8,
+  'strictly authorized device trust may be downgraded by persisted state but never elevated above the conservative class prior');
 
 // Invalid or unauthorized snapshot rows must not consume the restore capacity
 // before a valid source declaration is considered.
