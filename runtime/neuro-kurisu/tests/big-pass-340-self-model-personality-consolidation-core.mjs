@@ -7,7 +7,7 @@ import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.t
 import { BoundedOperationalJournal } from '../src/organism/persistence/BoundedOperationalJournal.ts';
 import { PredictiveSelfAgencySubstrate } from '../src/organism/cognition/PredictiveSelfAgencySubstrate.ts';
 
-// WorkPass460: outcome learning receives causal credit only when the action/outcome link supports it.
+// WorkPass524: outcome learning receives causal credit only when the action/outcome link supports it.
 const selfState={tick:1,at:1001,needs:{energy:.72,cognitiveLoad:.24,uncertainty:.3,novelty:.4,goalPressure:.5,socialNeed:.2,identityCoherence:.8}};
 const verifyActionIndex=2;
 const noCausalCredit=new PredictiveSelfAgencySubstrate();
