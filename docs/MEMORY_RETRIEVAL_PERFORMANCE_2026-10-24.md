@@ -2,13 +2,14 @@
 
 ## Status
 
-Two paired performance runs completed successfully on the same Ubuntu 24.04 GitHub-hosted runner class with Node.js v24.21.0:
+Four paired performance runs completed successfully on the same Ubuntu 24.04 GitHub-hosted runner class with Node.js v24.21.0. The first three primarily measured retrieval; run 4 adds an explicit temporal revision-chain lookup benchmark:
 
 - [Run 1 — 40126730431](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40126730431), candidate commit `56a15ddc50b012fe7114461d13b0f06e1f81a910`.
 - [Run 2 — 40126825696](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40126825696), candidate commit `42b496bcc290a03f2222b73c99a8e4daecc46fda`.
 - [Run 3 — 40126993226](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40126993226), candidate commit `f72cea55661e5a46129fe423d3a0fb9895c9af23`, adding the fuzzy-ranking token-length cache optimization.
-- Baseline for both: `19f64b1ae985e579795b4ef054fd3fb58259a336` (parent immediately before the optimization edits).
-- Retrieval parity: all recorded top-five IDs matched for every query at all three corpus sizes; both baseline and candidate reported consistent indexes.
+- [Run 4 — 40127276249](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40127276249), candidate commit `ccfc987d4b03bbde4645963df50f2a27b4bcbc83`, adding indexed temporal-chain lookup and chain parity validation.
+- Baseline for all four runs: `19f64b1ae985e579795b4ef054fd3fb58259a336` (pre-optimization reference commit).
+- Retrieval parity: all recorded top-five IDs matched for every query at all three corpus sizes; run 4 also returned identical eight-revision temporal chains from baseline and candidate, and index integrity passed in both.
 - Candidate cache: up to 512 token sets plus 512 term-frequency maps.
 
 The benchmark uses a deterministic synthetic bilingual corpus, not production traces. Each run measures 100 mixed queries after 16 warm-ups and 50 repetitions of a single query after 8 warm-ups, for each corpus size. The two runs vary visibly in absolute latency due to runner noise; the percentage improvements below are shown as a range across both runs, not a statistical confidence interval.
@@ -45,6 +46,20 @@ This run compares the candidate containing the additional Unicode token-length c
 
 All top-five rankings matched baseline and both indexes passed integrity checks. Candidate absolute heap after GC was higher by about 365 KB (2.96%), 616 KB (3.89%), and 615 KB (3.08%) at 256, 800, and 1,600 records. Candidate RSS after GC differed by -0.56%, +0.63%, and +0.55%; these small process-level deltas are descriptive, not peak-memory measurements.
 
+## Run 4 — indexed temporal revision-chain lookup
+
+Run 4 measures 100 calls after 16 warm-ups to fetch the same eight-revision chain at each corpus size. The baseline used the same revision data and sequence but its `temporalChain()` implementation filtered the full corpus; the candidate reads members from `revisionGroupIndex` and `itemIndex`, with safe fallback if indexed membership is inconsistent.
+
+| Memories in corpus | Baseline p50 / p95 | Candidate p50 / p95 | p50 change | p95 change | Throughput change |
+|---:|---:|---:|---:|---:|---:|
+| 256 | 0.0961 / 0.1857 ms | 0.0905 / 0.1152 ms | -5.83% | -37.96% | +10.72% |
+| 800 | 0.1450 / 0.1833 ms | 0.1311 / 0.1449 ms | -9.59% | -20.95% | +16.13% |
+| 1,600 | 0.1576 / 0.1800 ms | 0.1299 / 0.1435 ms | -17.58% | -20.28% | +24.88% |
+
+Every measured call returned the same chain IDs and revision order in both implementations. Index integrity passed for baseline and candidate. The targeted lifecycle regression also verifies sequence order and membership after persistence restore, idempotent replay, and forgetting.
+
+In the same run, mixed-query p95 improved by 42.57% / 33.82% / 22.86% for 256 / 800 / 1,600 items, and repeated-query p95 by 51.37% / 10.83% / 35.40%. Throughput changed by +83.88% / +37.51% / +29.85% (mixed) and +84.63% / +49.54% / +45.94% (repeated). These are same-run synthetic results, not production promises.
+
 ## Memory observations
 
 Run 2 reports absolute post-GC heap usage after each workload:
@@ -55,7 +70,7 @@ Run 2 reports absolute post-GC heap usage after each workload:
 | 800 | 15.83 MB | 16.44 MB | +602,656 bytes | +3.81% |
 | 1,600 | 19.87 MB | 20.59 MB | +715,512 bytes | +3.60% |
 
-The post-GC RSS difference in run 2 was -2.57% at 256 records, +1.26% at 800, and +4.19% at 1,600. Process RSS is noisy and is not a peak-memory measurement. The absolute heap result is more useful here: the candidate retains roughly 0.35–0.72 MB more after the tested workload, alongside the measured latency reduction.
+The post-GC RSS difference in run 2 was -2.57% at 256 records, +1.26% at 800, and +4.19% at 1,600. In run 4, candidate heap after GC was +369,488 bytes (+2.99%), +645,456 bytes (+4.05%), and +637,080 bytes (+3.19%) vs baseline; RSS differences were -1.75%, +0.90%, and +0.64%. Process RSS is noisy and is not a peak-memory measurement. Across these runs, the candidate typically retains roughly 0.35–0.72 MB more heap after the tested workload, alongside the measured latency reduction.
 
 ## Interpretation and limits
 
@@ -71,4 +86,4 @@ The post-GC RSS difference in run 2 was -2.57% at 256 records, +1.26% at 800, an
 - Comparator: `runtime/neuro-kurisu/tests/compare-memory-retrieval-performance.mjs`
 - Workflow: `.github/workflows/optimization-smoke.yml`
 
-The workflow checks out the exact baseline commit and candidate on the same runner, runs the targeted regression suite, then measures and compares 256 / 800 / 1,600-memory corpora.
+The workflow checks out the exact baseline commit and candidate on the same runner, runs the targeted regression suite, compares retrieval top-five parity, then measures mixed queries, repeated queries and an eight-revision temporal chain for 256 / 800 / 1,600-memory corpora.
