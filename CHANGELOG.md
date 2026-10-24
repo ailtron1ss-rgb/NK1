@@ -1,3 +1,11 @@
+## NK1 WorkPass524 — protect the autonomous learning feedback boundary (2026-10-24)
+
+- Detached and validated decision, outcome and commitment input records before mutating the autonomous-life learner; invalid actions, non-finite/out-of-range rewards, malformed timestamps and accessor-backed objects fail closed.
+- Replaced sliding-window-derived prediction/commitment IDs with UUID identities so capped histories cannot silently recycle identifiers.
+- Added regressions for no-mutation on invalid feedback, safe accessor rejection, and identifier uniqueness after prediction/commitment retention caps.
+- Added `docs/NK1_PROGRESS_SCORECARD_2026-10-24.md` with an explicit estimated readiness baseline (44%), subsystem ownership, quality score (learning system 51/100), evidence limitations and the next five integration passes.
+- Test execution was not performed by this API-only pass; source/test writes are committed, execution status remains unverified.
+
 ## NK1 WorkPass523 — improve outcome-driven tool failure diagnosis (2026-10-24)
 
 - Expanded P23 reflection classification to recognize failed tool calls/invocations and adapter failures in English and Russian, so the learning curriculum can route more real execution failures into the existing typed repair loop.
