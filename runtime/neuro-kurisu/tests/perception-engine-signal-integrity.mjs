@@ -106,4 +106,33 @@ function bodyWith(overrides = {}) {
   assert.equal(engine.snapshot().baseline.motion01, 0.9);
 }
 
+// Sensor loss/recovery is an availability event, not a fabricated zero-valued reading.
+{
+  const engine = new PerceptionEngine();
+  engine.perceive({ body: bodyWith() }); // establish an available baseline
+
+  const unavailable = bodyWith({
+    telemetry: {
+      motion01: null,
+      proximity01: null,
+      ambientLight01: null,
+      networkOnline: null,
+    },
+  });
+  const lost = Array.from({ length: 4 }, () => engine.perceive({ body: unavailable }));
+  assert.deepEqual(lost.map(event => event.kind), Array(4).fill('sensor-availability'));
+  assert.ok(lost.every(event => !['motion', 'proximity', 'light-change', 'network-change'].includes(event.kind)));
+  assert.equal(engine.snapshot().baseline.motion01, null);
+  assert.equal(engine.snapshot().baseline.proximity01, null);
+  assert.equal(engine.snapshot().baseline.ambientLight01, null);
+  assert.equal(engine.snapshot().baseline.networkOnline, null);
+
+  const restored = bodyWith();
+  const returned = Array.from({ length: 4 }, () => engine.perceive({ body: restored }));
+  assert.deepEqual(returned.map(event => event.kind), Array(4).fill('sensor-availability'));
+  assert.equal(engine.snapshot().baseline.motion01, 0.1);
+  assert.equal(engine.snapshot().baseline.networkOnline, false);
+  assert.equal(engine.snapshot().sensorChanges, 8);
+}
+
 console.log('PERCEPTION_ENGINE_SIGNAL_INTEGRITY=PASS');
