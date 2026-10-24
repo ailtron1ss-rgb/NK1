@@ -7,7 +7,7 @@ import { sharedLocalEmbeddingProvider } from '../src/organism/developmental/Memo
 let now = 1_000;
 const clock = () => now;
 const sent = { classifier: [], emotion: [], embeddings: [] };
-const languagePolicy = new LocalLanguageBackendPolicy({ baseCooldownMs: 100, maxCooldownMs: 400 });
+const languagePolicy = new LocalLanguageBackendPolicy({ baseCooldownMs: 250, maxCooldownMs: 500 });
 const languageProvider = {
   model: 'tiny-chat-q4',
   configured: () => true,
@@ -57,7 +57,7 @@ assert.equal(hub.selectLanguage({ localLlamaConfigured: true, ecologyPreferredBa
 hub.observeLanguage({ backend: 'gemini:remote-model', failures: ['llama.cpp:timeout'], latencyMs: 40, success: true });
 assert.equal(hub.selectLanguage({ localLlamaConfigured: true, ecologyPreferredBackend: 'kobold' }), 'kobold',
   'the shared router must honor the local language circuit breaker');
-now += 101;
+now += 251;
 assert.equal(hub.selectLanguage({ localLlamaConfigured: true, ecologyPreferredBackend: 'gemini' }), 'llama.cpp',
   'the local language route should resume at the cooldown deadline');
 hub.observeLanguage({ backend: 'llama.cpp:tiny-chat-q4', failures: [], latencyMs: 12, success: true });
