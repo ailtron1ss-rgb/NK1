@@ -1,3 +1,13 @@
+## NK1 WorkPass509 — close CEF restore coercion and control-character gaps (2026-10-24)
+
+- Replaced the incorrectly escaped control-character regex in CognitiveEventFabric ingress with explicit C0/C1 code-point validation, so natural labels containing the letter `u` are not rejected while actual control characters are.
+- Parent-ID arrays are copied from own data descriptors before inspection; nested receipt-replay records now require strict string and numeric types instead of coercing attacker-controlled values.
+- Added regression coverage for valid `user-input` source labels and rejection of embedded control characters. These changes build on WorkPass508's getter-safe persisted snapshot restoration.
+- Reuses the existing event fabric as the sole causal spine; no parallel ledger or dependency added.
+- **Validation boundary:** code, tests and rebuild-chain wiring are committed; exact-head execution/typecheck remains unconfirmed.
+
+---
+
 ## NK1 WorkPass509 — simplify restored evidence predicate guards (2026-10-24)
 
 - Rewrote two restored-receipt predicates as explicit fail-closed stage checks followed by separate field comparisons. This removes the TypeScript parser errors observed in the WorkPass294 runtime typecheck while preserving execution/observation correlation requirements.
