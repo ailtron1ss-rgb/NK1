@@ -77,13 +77,14 @@ Deletion is fail-closed: it requires the write gate and per-operation approval, 
 
 ## Validation and remaining work
 
-tests/mem0-platform-adapter-workpass1.mjs covers disabled-by-default behavior, fixed per-user scoping, result provenance, sensitive-text minimization, explicit write approval, HTTPS enforcement, HTTP error redaction, bounded response parsing, the prompt boundary for remote candidates, and consent/scope-bound deletion. `.github/workflows/mem0-platform-adapter.yml` runs the isolated regression and server syntax check separately from the wider suite.
+tests/mem0-platform-adapter-workpass1.mjs covers disabled-by-default behavior, fixed per-user scoping, result provenance, sensitive-text minimization, explicit write approval, HTTPS enforcement, HTTP error redaction, bounded response parsing, the prompt boundary for remote candidates, and consent/scope-bound deletion. `tests/server-language-http-fake-provider.mjs` also exercises the actual server diagnostics/search routes with Mem0 disabled, confirms local MemoryOS2 remains available and confirms no remote recall enters the prompt even if the second gate is set. `.github/workflows/mem0-platform-adapter.yml` runs the adapter suite, server syntax check, and this disabled-provider HTTP smoke separately from the broader repository suite.
 
 Run from runtime/neuro-kurisu:
 
 ~~~bash
 npm run typecheck
 npm run test:mem0-platform-adapter-workpass1
+node --experimental-strip-types tests/server-language-http-fake-provider.mjs
 npm run server:smoke
 ~~~
 
