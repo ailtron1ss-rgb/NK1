@@ -1,3 +1,15 @@
+## Latest durable checkpoint — WorkPass528 P36 ActionGateway integration (2026-10-24)
+
+- Continue in the existing `feature/learning` branch and draft PR [#79 → `integration`](https://github.com/ailtron1ss-rgb/NK1/pull/79); do not create a duplicate PR. Keep `main` and the Release ZIP unchanged.
+- Added reserved evaluator ID `organism.learning.p36.evaluate-evidence`. `OrganismCore.finalizeToolOutcome` routes evidence for this tool into P36 with the exact ActionGateway receipt, execution ID and decision ID. P36 only accepts it if the tool execution succeeded, its immutable external-postcondition receipt matches the complete normalized input, and the decision is linked to an existing selected trace.
+- P36 remains fail-closed for the normal Core feedback path when it supplies only the legacy `verifiedNow` boolean. Failed or unlinked evaluation attempts are observable and cannot promote mastery/action bias. Successful/failed route records are written to the self-development event journal.
+- P36 schema is now version 6. State migration calls the same `P36AutonomousSelfDevelopmentEngine.restore()` owner as runtime restore, preventing divergent trust rules. Unauthenticated promotions/cycles, maturity aggregates, metrics, mastery and action bias are revoked on restore; history/dedupe IDs remain non-authoritative.
+- Tests now use an ActionGateway fixture, plus a Core-level integration scenario for the reserved route. P26 Learning Validation is wired to run P36 self-development, migration, integration, performance and autonomous-cycle tests, and to trigger for `OrganismCore.ts` and P36 migration changes.
+- **Verification:** the exact-head workflow/typecheck/tests are not confirmed passing; GitHub returned no runnable PR check result during the pass. Do not claim learning uplift or production readiness. No real production evaluator is registered by this pass—the host must register a genuine independent evaluator under the reserved ID and then complete exact-head CI plus held-out retention/transfer measurements.
+- Full technical notes: [WorkPass528 P36 ActionGateway integration report](docs/WORKPASS528_P36_ACTIONGATEWAY_INTEGRATION_RU.md).
+
+---
+
 ## Latest durable checkpoint — WorkPass526 P36 self-development evidence provenance (2026-10-24)
 
 - Continue in the existing `feature/learning` branch and draft PR [#79 → `integration`](https://github.com/ailtron1ss-rgb/NK1/pull/79); do not create a duplicate branch/PR. Keep `main` and the Release ZIP unchanged.
