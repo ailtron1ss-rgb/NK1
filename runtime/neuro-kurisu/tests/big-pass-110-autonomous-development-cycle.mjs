@@ -7,11 +7,16 @@ const verifier=new OutcomeVerificationService();
 let receiptIndex=0;
 async function verifiedEvidence(input){
   const binding=developmentEvidenceVerificationInput(input);
-  const observationId=`big-pass-110-external-receipt-${++receiptIndex}`;
-  return verifier.verify({toolId:'independent-development-evaluator',input:binding,result:{task:'self-development-holdout',observationId}},()=>({
+  const ticket=++receiptIndex;
+  const observationId=`big-pass-110-external-receipt-${ticket}`;
+  const toolId='independent-development-evaluator';
+  const executionId=`exec-p36-e2e-${ticket}`;
+  const decisionId=`p36-e2e-decision-${ticket}`;
+  const verification=await verifier.verify({toolId,input:binding,result:{task:'self-development-holdout',observationId},executionId,decisionId},()=>({
     verified:true,basis:'external-postcondition',externalObservation:true,confidence01:1,observationId,
     expectedPostcondition:`evaluation-complete:${observationId}`,observedPostcondition:`evaluation-complete:${observationId}`,
   }));
+  return {toolId,executionId,decisionId,verification};
 }
 const state={tick:7,predictionError:.71,selfPredictionError:.41,autonomyScore:.64,attentionBudget:.78,needs:{energy:.84,cognitiveLoad:.22,uncertainty:.66,socialNeed:.25,novelty:.48,identityCoherence:.79,goalPressure:.42}};
 const h=engine.propose(state,{worldError01:.68,selfError01:.45,relationship01:.32,resourceRisk01:.18});
@@ -29,7 +34,7 @@ assert.equal(engine.snapshot().acceptedChanges,0);
 for(const [i,delay] of [1000,2000,4000,8000,16000,32000].entries()){
   const row={hypothesisId:h.id,contextKey:`ctx-${i<3?'a':i<5?'b':'c'}`,control01:.50,treatment01:.59,holdout:i>=2,delayMs:delay,evaluatorVersion:'real-evaluator-v1',evidenceSource:'external-evaluator',protocolId:'protocol-real-1',sessionId:'session-real-1',trialId:`trial-${i}`,at:1000+i};
   const verification=await verifiedEvidence(row);
-  engine.recordExternalEvidence({...row,verification});
+  engine.recordExternalEvidence({...row,...verification});
 }
 const snap=engine.snapshot();
 assert.equal(snap.acceptedChanges,1);
@@ -37,7 +42,8 @@ assert.ok(snap.externalEvidence.every(row=>row.independentVerified&&row.observat
 assert.equal(snap.hypotheses[0].evidenceGate,'replicated');
 assert.equal(snap.developmentCycles[0].stage,'replicated');
 const secondInput={hypothesisId:h.id,contextKey:'ctx-c',control01:.50,treatment01:.59,holdout:true,delayMs:64000,evaluatorVersion:'real-evaluator-v1',evidenceSource:'external-evaluator',protocolId:'protocol-real-1',sessionId:'session-real-1',trialId:'trial-6',at:2000};
-const second=engine.recordExternalEvidence({...secondInput,verification:await verifiedEvidence(secondInput)});
+const secondProof=await verifiedEvidence(secondInput);
+const second=engine.recordExternalEvidence({...secondInput,...secondProof});
 assert.equal(second.promoted,false);
 assert.equal(engine.snapshot().acceptedChanges,1);
 console.log('BIG_PASS_110_AUTONOMOUS_DEVELOPMENT=PASS',JSON.stringify({cycleStage:engine.snapshot().developmentCycles[0].stage,acceptedChanges:engine.snapshot().acceptedChanges,evidence:engine.snapshot().externalEvidence.length,request:engine.developmentTaskRequest()}));
