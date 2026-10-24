@@ -46,4 +46,5 @@ const visiting=new Set(), visited=new Set(), cycles=[];
 function dfs(n,stack=[]){if(visiting.has(n)){const i=stack.indexOf(n); cycles.push(stack.slice(i).concat(n)); return;} if(visited.has(n)) return; visiting.add(n); for(const d of graph.get(n)||[]) dfs(d,stack.concat(n)); visiting.delete(n); visited.add(n);}
 for(const f of files) dfs(f,[]);
 if(cycles.length) throw new Error(`import cycles detected: ${JSON.stringify(cycles.slice(0,5).map(c=>c.map(x=>path.relative(root,x))) )}`);
-console.log(`CLEAN_ARCHITECTURE=PASS sourceFiles=${files.length} canonicalFiles=${canonicalFiles.length} missing=0 cycles=0 legacyLeakage=0`);
+const dependencyEdges=[...graph.values()].reduce((total,edges)=>total+edges.length,0);
+console.log(`CLEAN_ARCHITECTURE=PASS sourceFiles=${files.length} canonicalFiles=${canonicalFiles.length} dependencyEdges=${dependencyEdges} missing=0 cycles=0 legacyLeakage=0 boundaryViolations=0`);
