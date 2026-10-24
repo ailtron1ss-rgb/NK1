@@ -23,6 +23,20 @@ const hostileOutcome=Object.defineProperties({}, {actual01:{enumerable:true,get(
 assert.throws(()=>e.recordOutcome(hostileOutcome),/autonomous-life-outcome-input-invalid/);
 assert.equal(feedbackGetterReads,0,'learning feedback snapshots must not execute caller-owned getters');
 assert.deepEqual(e.snapshot(),beforeBadDecision,'rejected object-shaped feedback must leave cognitive state unchanged');
+assert.throws(()=>e.addCommitment({action:'not-an-action'}),/autonomous-life-commitment-action-invalid/);
+assert.deepEqual(e.snapshot(),beforeBadDecision,'invalid commitments must not change motivational state');
+assert.throws(()=>e.addCommitment({action:'verify',dueAt:Number.POSITIVE_INFINITY}),/autonomous-life-commitment-time-invalid/);
+assert.deepEqual(e.snapshot(),beforeBadDecision,'invalid commitment deadlines must not enter persistent life state');
+// Capped rolling histories must not reuse IDs once the resident window is full.
+const idEngine=new AutonomousCognitiveLifeEngine(); idEngine.restore(defaultAutonomousCognitiveLife());
+for(let i=0;i<300;i++) idEngine.recordDecision({action:'verify',predicted01:.5,confidence01:.6,contextKey:'same-cycle',at:1000+i});
+const predictionIds=idEngine.snapshot().predictions.map(row=>row.id);
+assert.equal(predictionIds.length,256);
+assert.equal(new Set(predictionIds).size,predictionIds.length,'prediction IDs must stay unique after replay-window eviction');
+for(let i=0;i<48;i++) idEngine.addCommitment({action:'verify',goalId:'goal-'+i,dueAt:10000+i,reliability01:.5});
+const commitmentIds=idEngine.snapshot().commitments.map(row=>row.id);
+assert.equal(commitmentIds.length,32);
+assert.equal(new Set(commitmentIds).size,commitmentIds.length,'commitment IDs must stay unique after bounded history eviction');
 const hostileLifeState={...defaultAutonomousCognitiveLife()};
 let hostileLifeGetterReads=0;
 Object.defineProperty(hostileLifeState,'cycles',{enumerable:true,configurable:true,get(){hostileLifeGetterReads++;return 999;}});
