@@ -4,9 +4,9 @@
   "metric": "unique relative-import graph edges; runtime and TypeScript type-only edges are classified separately",
   "baseline": {
     "branch": "architecture/dependency-contracts-2026-10-24",
-    "auditedCommit": "19862298626b60ceb809d801920df4b2b7ca6bb1",
-    "workflowRun": "40129470402",
-    "note": "Schema v3 is validated with production runtime edges and type-only edges classified separately. Budgets distinguish runtime fan-out and incoming production runtime edges from type-only coupling; all 45 budget checks passed."
+    "auditedCommit": "0aefbbeda6a3e078e9b66e4ccd788d0bf944f024",
+    "workflowRun": "40129832572",
+    "note": "Validated graph after splitting StateMigrations facet builders into one stable facade and seven domain-specific modules. Runtime and type-only edges are separately classified; graph had zero missing imports, runtime cycles, boundary violations, or budget violations."
   },
   "modules": [
     {
@@ -20,12 +20,12 @@
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts",
-      "maxOutDegree": 252,
-      "maxRuntimeOutDegree": 153,
-      "maxTypeOutDegree": 117,
+      "maxOutDegree": 205,
+      "maxRuntimeOutDegree": 105,
+      "maxTypeOutDegree": 116,
       "maxProductionRuntimeInDegree": 2,
       "maxProductionTypeOnlyInDegree": 1,
-      "reason": "Migration/default-state hotspot; split migration/default factories by domain before adding more dependencies."
+      "reason": "Migration coordinator delegates eight initial-facet builders through a narrow facade; preserve the measured reduction and split normalization/migration logic further only behind stable contracts."
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/core/types.ts",
@@ -89,6 +89,78 @@
       "maxProductionRuntimeInDegree": 4,
       "maxProductionTypeOnlyInDegree": 2,
       "reason": "Runtime entry seam; new behavior should be delegated to existing owned runtimes."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/StateFacetDefaults.ts",
+      "maxOutDegree": 8,
+      "maxRuntimeOutDegree": 8,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Stable state-default facade only; domain logic belongs in the seven facet-specific builders."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/MemoryFacetDefaults.ts",
+      "maxOutDegree": 6,
+      "maxRuntimeOutDegree": 4,
+      "maxTypeOutDegree": 2,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own only the default memory facet and its narrow dependencies."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/EmbodimentFacetDefaults.ts",
+      "maxOutDegree": 16,
+      "maxRuntimeOutDegree": 14,
+      "maxTypeOutDegree": 2,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own only the default embodiment facet; new behavior should remain in body/perception modules."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/LearningFacetDefaults.ts",
+      "maxOutDegree": 26,
+      "maxRuntimeOutDegree": 24,
+      "maxTypeOutDegree": 2,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own only the default learning facet; avoid turning the builder into an execution coordinator."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/ConsciousnessFacetDefaults.ts",
+      "maxOutDegree": 13,
+      "maxRuntimeOutDegree": 11,
+      "maxTypeOutDegree": 2,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own only the default consciousness/evidence facet."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/EvolutionFacetDefaults.ts",
+      "maxOutDegree": 9,
+      "maxRuntimeOutDegree": 7,
+      "maxTypeOutDegree": 2,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own only the default evolution facet."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/AdvancedFacetDefaults.ts",
+      "maxOutDegree": 42,
+      "maxRuntimeOutDegree": 41,
+      "maxTypeOutDegree": 1,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Largest remaining facet builder; further split by bounded domain when the count grows, rather than expanding the migration coordinator."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/persistence/state-defaults/CognitionFacetDefaults.ts",
+      "maxOutDegree": 13,
+      "maxRuntimeOutDegree": 12,
+      "maxTypeOutDegree": 1,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own only the default cognition facet."
     }
   ]
 }
