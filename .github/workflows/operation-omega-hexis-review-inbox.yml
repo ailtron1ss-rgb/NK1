@@ -5,6 +5,8 @@ on:
     paths:
       - '.github/workflows/operation-omega-hexis-review-inbox.yml'
       - 'runtime/neuro-kurisu/src/organism/integration/hexis/HexisAdaptationFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/integration/hexis/Nk1HmxExportAdapter.mjs'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
       - 'runtime/neuro-kurisu/tests/integration/hexis-adaptation.mjs'
       - 'runtime/neuro-kurisu/tests/integration/hexis-server-smoke.mjs'
       - 'docs/OPERATION_OMEGA_HEXIS_DEEP_PASS_2026-10-24.md'
@@ -34,6 +36,8 @@ on:
     paths:
       - '.github/workflows/operation-omega-hexis-review-inbox.yml'
       - 'runtime/neuro-kurisu/src/organism/integration/hexis/HexisAdaptationFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/integration/hexis/Nk1HmxExportAdapter.mjs'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
       - 'runtime/neuro-kurisu/tests/integration/hexis-adaptation.mjs'
       - 'runtime/neuro-kurisu/tests/integration/hexis-server-smoke.mjs'
       - 'docs/OPERATION_OMEGA_HEXIS_DEEP_PASS_2026-10-24.md'
