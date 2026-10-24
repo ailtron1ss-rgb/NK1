@@ -3,6 +3,7 @@ name: NK1 personality character regression
 on:
   push:
     paths:
+      - "CHANGELOG.md"
       - "runtime/neuro-kurisu/src/organism/cognition/P2702PersistentPersonalityDynamics.ts"
       - "runtime/neuro-kurisu/src/organism/developmental/P67AutonomousGoalGenesis.ts"
       - "runtime/neuro-kurisu/src/organism/language/KurisuCanonProfile.ts"
@@ -17,6 +18,7 @@ on:
 
   pull_request:
     paths:
+      - "CHANGELOG.md"
       - "runtime/neuro-kurisu/src/organism/cognition/P2702PersistentPersonalityDynamics.ts"
       - "runtime/neuro-kurisu/src/organism/developmental/P67AutonomousGoalGenesis.ts"
       - "runtime/neuro-kurisu/src/organism/language/KurisuCanonProfile.ts"
