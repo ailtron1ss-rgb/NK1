@@ -1,3 +1,10 @@
+## NK1 WorkPass558 — learn action outcomes in emotional context (2026-10-24)
+
+- `EmotionAppraisalEngine.recordOutcome()` now keeps its backward-compatible action-wide calibration and, when `emotionId` resolves to an actual retained appraisal episode, also records a separate calibration for that episode's emotion label and action. Unknown or forged episode IDs cannot create contextual calibration.
+- `actionBias()` uses the emotion-context calibration after at least three observations, otherwise falls back to the global action estimate. The learned adjustment is stronger but bounded and ramps with sample count; this lets recent outcomes under anxiety differ from outcomes under curiosity without replacing the core appraisal/homeostasis signals.
+- Added regression coverage to BIG PASS 172 for distinct curiosity/anxiety outcome records, behavior-bias change, forged IDs, and snapshot/restore. Wired that regression into the Node.js 24 `Reality-to-learning regression` workflow and its push/PR path filters.
+- **Validation boundary:** code, regression, workflow, and changelog are committed on `feature/feedback`. Hosted CI needs to run on the new workflow head before this change can be marked CI-verified; the branch's Release ZIP has not been modified.
+
 ## NK1 WorkPass557 — move reality-to-learning regression to Node.js 24 (2026-10-24)
 
 - Updated the focused reality-to-learning workflow to `actions/checkout@v7` and `actions/setup-node@v7`, using Node.js 24 so this workflow no longer relies on the older Node.js 22 test runtime.
