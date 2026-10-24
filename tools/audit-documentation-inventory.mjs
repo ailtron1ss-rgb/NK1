@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractMarkdownLinks } from "./audit-markdown-links.mjs";
@@ -21,6 +21,89 @@ export async function walkMarkdownFiles(root, relativeDirectory = "") {
     }
   }
   return files;
+}
+
+const textExtensions = new Set([
+  ".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs", ".js", ".jsx",
+  ".py", ".sh", ".bash", ".ps1", ".json", ".jsonc", ".yml", ".yaml",
+  ".toml", ".xml", ".html", ".htm", ".txt", ".csv", ".sql", ".dockerfile"
+]);
+
+async function walkTextFiles(root, relativeDirectory = "") {
+  const files = [];
+  const entries = await readdir(path.join(root, relativeDirectory), { withFileTypes: true });
+  for (const entry of entries) {
+    const relative = path.posix.join(relativeDirectory.split(path.sep).join("/"), entry.name).replace(/^\.\//, "");
+    if (entry.isDirectory()) {
+      if ([...ignoredDirectories].some((ignored) => relative === ignored || relative.startsWith(ignored + "/"))) continue;
+      files.push(...await walkTextFiles(root, path.join(relativeDirectory, entry.name)));
+    } else if (entry.isFile() && !markdownExtensions.has(path.extname(entry.name).toLowerCase())) {
+      const extension = path.extname(entry.name).toLowerCase();
+      if (textExtensions.has(extension) || entry.name.toLowerCase() === "dockerfile" || entry.name.toLowerCase() === ".gitignore") {
+        files.push(relative);
+      }
+    }
+  }
+  return files;
+}
+
+async function scanNonMarkdownReferences(root, markdownPaths) {
+  const fileSet = new Set(markdownPaths);
+  const byBasename = new Map();
+  for (const target of markdownPaths) {
+    const key = path.posix.basename(target).toLowerCase();
+    if (!byBasename.has(key)) byBasename.set(key, []);
+    byBasename.get(key).push(target);
+  }
+
+  const hits = new Map(markdownPaths.map((target) => [target, new Set()]));
+  const sourceFiles = await walkTextFiles(root);
+  const tokenPattern = /[A-Za-z0-9_.\/\\-]+\.(?:md|mdx|markdown)\b/gi;
+  let scannedFiles = 0;
+  let readErrors = 0;
+
+  for (const relativeSource of sourceFiles) {
+    let size;
+    try { size = (await stat(path.resolve(root, relativeSource))).size; }
+    catch { readErrors += 1; continue; }
+    if (size > 4 * 1024 * 1024) continue;
+
+    let source;
+    try { source = await readFile(path.resolve(root, relativeSource), "utf8"); }
+    catch { readErrors += 1; continue; }
+    if (source.includes("\u0000")) continue;
+    scannedFiles += 1;
+
+    const seenTargets = new Set();
+    for (const match of source.matchAll(tokenPattern)) {
+      const token = match[0].replace(/^[.\/\\]+/, "");
+      const normalized = token.replace(/\\/g, "/");
+      const candidates = new Set();
+
+      if (fileSet.has(normalized)) candidates.add(normalized);
+      const relativeResolved = path.relative(root, path.resolve(root, path.dirname(relativeSource), token)).split(path.sep).join("/");
+      if (fileSet.has(relativeResolved)) candidates.add(relativeResolved);
+
+      const basename = path.posix.basename(normalized).toLowerCase();
+      const basenameCandidates = byBasename.get(basename) ?? [];
+      // Basename-only references are retained as conservative evidence. They
+      // can be ambiguous, so each matching path is kept as a review candidate.
+      for (const candidate of basenameCandidates) candidates.add(candidate);
+
+      for (const target of candidates) seenTargets.add(target);
+    }
+
+    for (const target of seenTargets) {
+      if (!hits.has(target)) hits.set(target, new Set());
+      hits.get(target).add(relativeSource);
+    }
+  }
+
+  return {
+    scannedFiles,
+    readErrors,
+    hits: new Map([...hits.entries()].map(([target, sources]) => [target, [...sources].sort()])),
+  };
 }
 
 function sha256(content) {
@@ -125,10 +208,19 @@ export async function buildDocumentationInventory({ root = repoRoot, files = nul
   const familyGroups = [...families.entries()]
     .map(([family, paths]) => ({ family, count: paths.length, paths: paths.sort() }))
     .sort((a, b) => b.count - a.count || a.family.localeCompare(b.family));
+  const nonMarkdown = await scanNonMarkdownReferences(absoluteRoot, filePaths);
   const orphanCandidates = records
     .filter((record) => inlinks.get(record.path) === 0)
-    .map((record) => ({ path: record.path, family: record.family, bytes: record.bytes }))
+    .map((record) => ({
+      path: record.path,
+      family: record.family,
+      bytes: record.bytes,
+      nonMarkdownReferenceFiles: nonMarkdown.hits.get(record.path) ?? [],
+    }))
     .sort((a, b) => a.path.localeCompare(b.path));
+  const zeroLocalReferenceCandidates = orphanCandidates
+    .filter((record) => record.nonMarkdownReferenceFiles.length === 0)
+    .map(({ path: filePath, family, bytes }) => ({ path: filePath, family, bytes }));
 
   return {
     root: absoluteRoot,
@@ -140,10 +232,16 @@ export async function buildDocumentationInventory({ root = repoRoot, files = nul
     filenameFamilyCount: familyGroups.length,
     familyCandidateFileCount: familyGroups.reduce((total, group) => total + group.count, 0),
     zeroInboundLinkCandidateCount: orphanCandidates.length,
+    nonMarkdownTextFilesScanned: nonMarkdown.scannedFiles,
+    nonMarkdownReferenceFileCount: [...nonMarkdown.hits.values()].filter((sources) => sources.length > 0).length,
+    nonMarkdownReferenceHitCount: [...nonMarkdown.hits.values()].reduce((total, sources) => total + sources.length, 0),
+    textFileReadErrorCount: nonMarkdown.readErrors,
+    zeroInboundAllLocalReferenceCandidateCount: zeroLocalReferenceCandidates.length,
     // Candidate lists are inventory evidence, not an automated deletion/move recommendation.
     exactDuplicateGroups: duplicateGroups,
     filenameFamilies: familyGroups,
     zeroInboundLinkCandidates: orphanCandidates,
+    zeroInboundAllLocalReferenceCandidates: zeroLocalReferenceCandidates,
     fileRecords: records,
     issues: linkIssues,
   };
@@ -173,8 +271,13 @@ async function main() {
   console.log("filesInExactDuplicateGroups=" + inventory.exactDuplicateFileCount);
   console.log("filenameFamilyGroups=" + inventory.filenameFamilyCount);
   console.log("filesInFilenameFamilies=" + inventory.familyCandidateFileCount);
-  console.log("zeroInboundLinkCandidates=" + inventory.zeroInboundLinkCandidateCount);
-  console.log("unreadableOrMissingFiles=" + inventory.unreadableOrMissingFiles);
+  console.log("zeroInboundMarkdownLinkCandidates=" + inventory.zeroInboundLinkCandidateCount);
+  console.log("nonMarkdownTextFilesScanned=" + inventory.nonMarkdownTextFilesScanned);
+  console.log("markdownFilesReferencedFromNonMarkdownText=" + inventory.nonMarkdownReferenceFileCount);
+  console.log("nonMarkdownReferenceHits=" + inventory.nonMarkdownReferenceHitCount);
+  console.log("zeroInboundAllScannedLocalReferenceCandidates=" + inventory.zeroInboundAllLocalReferenceCandidateCount);
+  console.log("textFileReadErrors=" + inventory.textFileReadErrorCount);
+  console.log("unreadableOrMissingMarkdownFiles=" + inventory.unreadableOrMissingFiles);
   console.log("");
   console.log("LARGEST EXACT DUPLICATE GROUPS (preserve until link/provenance review):");
   for (const group of inventory.exactDuplicateGroups.slice(0, 20)) {
@@ -187,7 +290,10 @@ async function main() {
   }
   console.log("");
   console.log("ZERO-INBOUND-LINK SAMPLE (not proof of orphaned/unneeded content):");
-  for (const file of inventory.zeroInboundLinkCandidates.slice(0, 30)) console.log("- " + file.path);
+  for (const file of inventory.zeroInboundLinkCandidates.slice(0, 30)) console.log("- " + file.path + " (non-Markdown references: " + file.nonMarkdownReferenceFiles.length + ")");
+  console.log("");
+  console.log("NO INBOUND LOCAL REFERENCES IN SCANNED TREES (still require external/provenance review):");
+  for (const file of inventory.zeroInboundAllLocalReferenceCandidates.slice(0, 30)) console.log("- " + file.path);
   if (inventory.issues.length) {
     console.log("");
     console.log("INVENTORY READ ISSUES:");
