@@ -2113,3 +2113,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
 - Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
 - This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
+
+## NK1 WorkPass329 — Hexis mechanism assimilation contract (2026-10-24)
+
+- [RESEARCH] Reviewed QuixiAI/Hexis (MIT) architecture: multi-type persistent memory, evidence-linked belief revision, bounded autonomous heartbeat/energy budgeting, appraisal, stateless workers and reviewable learning changes.
+- [INTEGRATION] Added `docs/architecture/HEXIS_ASSIMILATION_NK1.md` mapping those mechanisms to NK1's existing memory, EILS, OrganismCore, EthicalGate/ActionGateway and Hermes/P23 lifecycle.
+- [ARCHITECTURE] Explicitly rejected a parallel Hexis brain/database and unsafe direct integration; the intended design preserves one canonical identity, memory authority and gated action path.
+- [LIMITATION] This is an architecture/evidence-contract commit, not a claim that Hexis source code or dependencies were copied/installed. Runtime code assimilation remains pending inspection of the concrete existing implementations. CI status remains unverified because prior Actions jobs failed before runner assignment.
