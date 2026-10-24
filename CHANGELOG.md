@@ -1,3 +1,11 @@
+## NK1 WorkPass486 — project analysis and live integration blockers (2026-10-24)
+
+- Added `docs/NK1_PROJECT_ANALYSIS_2026-10-24_RU.md` with current architecture/branch ownership, Hexis adaptation map, evidence-identity drift between feedback and perception, observed CI/type blockers, scorecard, and ordered implementation gates.
+- Reclassified evidence identity as a partial branch-level bridge: `feature/feedback` and `feature/perception` currently contain competing ID contracts; end-to-end verifier → ledger → MemoryOS2/P65 → P23 propagation is not yet proven.
+- Distinguished changes committed/typecheck configuration updated from actual exact-head CI success, PR merge, and Release ZIP publication. No release update or CI pass is claimed.
+
+---
+
 ## NK1 WorkPass479 — evidence identity bridge, partial (2026-10-24)
 
 - `feature/feedback` now provides deterministic domain-separated event IDs, replay idempotency, conflicting-event quarantine, and runtime action/consequence ledger binding.
