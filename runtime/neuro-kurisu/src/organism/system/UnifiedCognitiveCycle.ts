@@ -60,7 +60,7 @@ export class UnifiedCognitiveCycle {
     const rawMissing=hasMissingArray?source.lastMissingStages as unknown[]:[...OPERATIONAL_REQUIRED];
     const malformedMissing=rawMissing.some((stage)=>typeof stage!=='string'||!ALL_STAGES.has(stage as UnifiedCycleStage));
     const filteredMissing=[...new Set(rawMissing.filter((stage):stage is UnifiedCycleStage=>typeof stage==='string'&&ALL_STAGES.has(stage as UnifiedCycleStage)))];
-    const normalizedMissing=malformedMissing?[...OPERATIONAL_REQUIRED]:filteredMissing;
+    const normalizedMissing=malformedMissing&&filteredMissing.length===0?[...OPERATIONAL_REQUIRED]:filteredMissing;
     const lastTick=typeof source.lastTick==='number'&&Number.isSafeInteger(source.lastTick)&&source.lastTick>=-1?source.lastTick:-1;
     const missing=cycles===0&&normalizedMissing.length===0?[...OPERATIONAL_REQUIRED]:normalizedMissing;
     this.state={
