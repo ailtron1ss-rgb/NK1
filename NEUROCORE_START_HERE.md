@@ -1,7 +1,7 @@
 ## Latest durable checkpoint — TypeScript validation hardening (2026-10-24)
 
 - Work branch: `typescript/runtime-typecheck-truth-2026-10-24`; draft PR #102 targets `workpass70-source`. Do not merge this source work directly into `main`.
-- Runtime fallback correctly reports `TYPECHECK=PARTIAL` when it can only parse TypeScript syntax; tests now cover pinned compiler selection, semantic-error limits, syntax-error rejection and propagation of a failed compiler exit.
+- Runtime fallback reports `TYPECHECK=PARTIAL` and exits 2 when it can only parse TypeScript syntax; the typecheck command cannot return success without a semantic compiler. Tests cover pinned compiler selection, partial/nonzero fallback, syntax-error rejection and propagation of a failed compiler exit.
 - PR CI first reached app typecheck but failed on six existing strict `checkJs` diagnostics in `app/src/legacy/avatar/safeLocalStorage.test.mjs`. Those diagnostics are now fixed with JSDoc parameter annotations and `Reflect.deleteProperty`; storage behavior is unchanged.
 - The original commit's CI runs are **failed before the new runtime fallback regression**, due to the app typecheck errors above. They do not validate the new code. The updated head still needs a new CI run and review of the Runtime typecheck and fallback-regression steps.
 - New regression is wired into `.github/workflows/workpass71-validation.yml`. No full Release ZIP has been rebuilt or updated.
