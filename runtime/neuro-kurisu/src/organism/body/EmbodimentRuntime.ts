@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 import { sampleAndroidTelemetryDetailed, type TermuxCapabilities, type TermuxTtsOptions, detectTermuxCapabilities, synthesizeSpeechInput, type AndroidTelemetryDiagnostics } from './AndroidEmbodimentBridge.ts';
 import { buildVoicePlan, defaultVoiceRuntimeState, type VoiceRuntimeState, type VoicePlan } from './VoiceEmbodiment.ts';
-import { defaultBodyState, synthesizeBody, type OrganismBodyEvent, type OrganismBodyState, shouldEnterSleep } from './EmbodiedBody.ts';
+import { defaultBodyState, normalizePersistedBodyState, synthesizeBody, type OrganismBodyEvent, type OrganismBodyState, shouldEnterSleep } from './EmbodiedBody.ts';
 import type { OrganismState } from '../core/types.ts';
 import type { AndroidSamplingPlan } from './AndroidEmbodimentBridge.ts';
 
@@ -23,13 +24,16 @@ export class EmbodimentRuntime {
   private speechGatewayDispatcher:SpeechGatewayDispatcher|null=null;
   private speechInterruptGatewayDispatcher:SpeechInterruptGatewayDispatcher|null=null;
   private activeSpeechEventId:string|null=null;
+  private speechInputDispatcher: (()=>Promise<string|null>) = synthesizeSpeechInput;
 
   /** The only permitted routes to physical TTS and interruption are ActionGateway-backed dispatchers. */
   setSpeechGatewayDispatcher(dispatcher:SpeechGatewayDispatcher|null):void { this.speechGatewayDispatcher=dispatcher; }
   setSpeechInterruptGatewayDispatcher(dispatcher:SpeechInterruptGatewayDispatcher|null):void { this.speechInterruptGatewayDispatcher=dispatcher; }
+  /** Injectable STT boundary for platform adapters and deterministic recovery tests. */
+  setSpeechInputDispatcher(dispatcher:(()=>Promise<string|null>)|null):void { this.speechInputDispatcher=dispatcher??synthesizeSpeechInput; }
 
   async init(persisted?: OrganismBodyState | null): Promise<void> {
-    this.body = persisted?.schemaVersion === 1 ? structuredClone(persisted) : defaultBodyState();
+    this.body = normalizePersistedBodyState(persisted) ?? defaultBodyState();
     this.capabilities = await detectTermuxCapabilities();
     this.body.ttsAvailable = this.capabilities.tts;
     this.body.sttAvailable = this.capabilities.stt;
@@ -114,10 +118,42 @@ export class EmbodimentRuntime {
   async speak(text: string, context?: { action?:string|null; mode?:string|null; needs?:OrganismNeedsLike; continuity01?:number; grounding01?:number; uncertainty01?:number; speechEventId?:string }): Promise<boolean> {
     if(this.activeSpeechEventId){this.voice.lastError='tts-prior-outcome-unresolved-no-overlap';this.voice.lastAt=Date.now();return false;}
     if(!this.body.ttsAvailable) { this.voice.lastError='tts-unavailable'; this.voice.lastAt=Date.now(); return false; }
+    if(typeof text!=='string') { this.voice.lastError='tts-invalid-text';this.voice.lastAt=Date.now();return false; }
+    // Clamp raw work before normalization; never call String(value) on caller/plugin input.
+    const clean=text.slice(0,8192).replace(/[\r\n]+/g,' ').trim().slice(0,2000);
+    if(!clean){this.voice.lastError='tts-empty-text';this.voice.lastAt=Date.now();return false;}
+    if(context!==undefined&&context!==null){
+      try {
+        context=snapshotPlainData<typeof context>(context,{allowNonFiniteNumbers:true,maxDepth:8,maxNodes:256,maxStringUnits:8192});
+        if(!context||typeof context!=='object'||Array.isArray(context))throw new Error('context-not-record');
+      } catch {
+        this.voice.lastError='tts-invalid-context';this.voice.lastAt=Date.now();return false;
+      }
+      for(const key of ['action','mode','speechEventId'] as const){
+        const value=context[key];
+        const maxLength=key==='speechEventId'?140:96;
+        if(value!==undefined&&value!==null&&(typeof value!=='string'||value.length>maxLength)){
+          this.voice.lastError='tts-invalid-context';this.voice.lastAt=Date.now();return false;
+        }
+      }
+      for(const key of ['continuity01','grounding01','uncertainty01'] as const){
+        const value=context[key];
+        if(value!==undefined&&(typeof value!=='number'||!Number.isFinite(value)||value<0||value>1)){
+          this.voice.lastError='tts-invalid-context';this.voice.lastAt=Date.now();return false;
+        }
+      }
+      if(context.needs!==undefined){
+        for(const key of ['energy','cognitiveLoad','uncertainty','socialNeed','novelty','identityCoherence','goalPressure'] as const){
+          const value=context.needs[key];
+          if(value!==undefined&&(typeof value!=='number'||!Number.isFinite(value)||value<0||value>1)){
+            this.voice.lastError='tts-invalid-context';this.voice.lastAt=Date.now();return false;
+          }
+        }
+      }
+    }
     const needs=context?.needs ?? { energy: this.body.bodyEnergy01, cognitiveLoad:1-this.body.cognitiveCapacity01, uncertainty:.35, socialNeed:.35, novelty:.2, identityCoherence:.8, goalPressure:.35 };
-    const plan=buildVoicePlan({ text:String(text||''), action:context?.action, mode:context?.mode, needs, body:this.body, continuity01:context?.continuity01, grounding01:context?.grounding01, uncertainty01:context?.uncertainty01 });
+    const plan=buildVoicePlan({ text:clean, action:context?.action, mode:context?.mode, needs, body:this.body, continuity01:context?.continuity01, grounding01:context?.grounding01, uncertainty01:context?.uncertainty01 });
     this.lastVoicePlan=plan;
-    const clean=String(text||'').replace(/[\r\n]+/g,' ').trim().slice(0,2000);
     const dispatcher=this.speechGatewayDispatcher;
     if(!dispatcher){this.voice.speaking=false;this.voice.lastAt=Date.now();this.voice.lastError='action-gateway-speech-dispatcher-unavailable';return false;}
     const speechEventId=String(context?.speechEventId??'').trim().slice(0,140)||`speech-${createHash('sha256').update(JSON.stringify({text:clean,action:context?.action??null,mode:context?.mode??null,lastUserActivityAt:this.body.lastUserActivityAt,lastExternalEventAt:this.body.lastExternalEventAt})).digest('hex').slice(0,48)}`;
@@ -149,10 +185,23 @@ export class EmbodimentRuntime {
   }
   async listen(): Promise<string | null> {
     if(!this.body.sttAvailable) { this.voice.lastError='stt-unavailable'; this.voice.lastAt=Date.now(); return null; }
+    if(this.voice.listening) { this.voice.lastError='stt-listen-already-active'; this.voice.lastAt=Date.now(); return null; }
     this.voice.listening=true; this.voice.listenCount+=1; this.voice.lastAt=Date.now(); this.voice.lastError=null;
-    const text=await synthesizeSpeechInput();
-    this.voice.listening=false; this.voice.lastAt=Date.now(); if(!text) this.voice.lastError='stt-empty-or-failed';
-    return text;
+    try {
+      const providerText: unknown = await this.speechInputDispatcher();
+      if(typeof providerText!=='string') { this.voice.lastError='stt-invalid-result'; return null; }
+      const text=providerText.replace(/[\r\n\t]+/g,' ').trim().slice(0,4000);
+      if(!text) { this.voice.lastError='stt-empty-or-failed'; return null; }
+      this.voice.lastError=null;
+      return text;
+    } catch(error) {
+      this.voice.lastError=`stt-provider-failed:${String((error as Error)?.message??error).replace(/[\\r\\n\\t]+/g,' ').slice(0,100)}`;
+      return null;
+    } finally {
+      // The UI/runtime must leave listening state on every resolved or thrown provider path.
+      this.voice.listening=false;
+      this.voice.lastAt=Date.now();
+    }
   }
 
   async markVoiceInterruption(reason='manual'): Promise<boolean> {

@@ -13,6 +13,7 @@ import {
   sampleMonotonicAudioClock,
   sampleVisemeClock,
   sampleVisemeTimeline,
+  smoothEmbodimentAffect,
   timelineOffsetForCharIndex,
 } from "../src/components/avatar/embodimentTimeline.ts";
 
@@ -149,6 +150,45 @@ test("AvatarStage publishes one versioned embodiment intent and rejects stale ut
   assert.match(viewer, /d\.type!=='kurisu_embodiment_intent'/);
   assert.match(viewer, /intent\.stateVersion/);
   assert.doesNotMatch(viewer, /d\.type==='kurisu_lipsync'|d\.type==='kurisu_embodiment'|d\.type==='kurisu_expression'/, "viewer must accept the unified control contract, not competing writers");
+});
+
+test("smooths low-frequency avatar affect without rewinding or overshooting", () => {
+  const start = smoothEmbodimentAffect(null, {
+    expressionIntensity: 0, gazeX: 0, gazeY: 0, headTilt: 0, voiceEmphasis: 0,
+  }, 100);
+  const halfway = smoothEmbodimentAffect(start, {
+    expressionIntensity: 1, gazeX: 1, gazeY: -1, headTilt: .15, voiceEmphasis: 1,
+  }, 190, 180);
+  assert.ok(halfway.expressionIntensity > 0 && halfway.expressionIntensity < 1);
+  assert.ok(halfway.gazeX > 0 && halfway.gazeX < 1);
+  assert.ok(halfway.gazeY < 0 && halfway.gazeY > -1);
+  assert.ok(halfway.headTilt > 0 && halfway.headTilt < .15);
+  assert.ok(halfway.voiceEmphasis > 0 && halfway.voiceEmphasis < 1);
+
+  const rewound = smoothEmbodimentAffect(halfway, {
+    expressionIntensity: 0, gazeX: -1, gazeY: 1, headTilt: -.15, voiceEmphasis: 0,
+  }, 189);
+  assert.deepEqual(rewound, halfway, "late affect snapshots cannot rewind the visual state clock");
+
+  const bounded = smoothEmbodimentAffect(halfway, {
+    expressionIntensity: 5, gazeX: 8, gazeY: -4, headTilt: 7, voiceEmphasis: -2,
+  }, 280, 0);
+  assert.ok(bounded.expressionIntensity >= 0 && bounded.expressionIntensity <= 1);
+  assert.ok(bounded.gazeX >= -1 && bounded.gazeX <= 1);
+  assert.ok(bounded.gazeY >= -1 && bounded.gazeY <= 1);
+  assert.ok(bounded.headTilt >= -.15 && bounded.headTilt <= .15);
+  assert.ok(bounded.voiceEmphasis >= 0 && bounded.voiceEmphasis <= 1);
+});
+
+test("AvatarStage applies the shared affect smoothing to expression, gaze, pose and voice", async () => {
+  const source = await readFile(join(root, "src/components/AvatarStage.tsx"), "utf8");
+  assert.match(source, /smoothEmbodimentAffect\(affectSmoothingRef\.current/);
+  assert.match(source, /expressionIntensity: affectState\.expressionIntensity/);
+  assert.match(source, /gaze: \{ x: affectState\.gazeX, y: affectState\.gazeY/);
+  assert.match(source, /headTilt: affectState\.headTilt/);
+  assert.match(source, /voiceEmphasis: affectState\.voiceEmphasis/);
+  assert.match(source, /mouth: activeUtterance \? mouthPose : CLOSED_MOUTH/,
+    "mouth pose remains driven by audio-boundary timing rather than affect smoothing");
 });
 
 // Check that the committed contract schema matches the versioned control envelope.

@@ -1,3 +1,65 @@
+## NK1 WorkPass454 — share safe runtime type and correlation boundaries (2026-10-24)
+
+- Synced the shared runtime typecheck boundary with the actual app dependency installation and excluded fallback Node declarations from semantic checking.
+- Hardened cross-subsystem correlation IDs so C0/C1 controls are rejected before trimming, avoiding accidental aliasing of action, outcome and embodiment event identities.
+- Existing avatar implementation is retained: this pass does not claim browser/Live2D, Android TTS, or lip-sync end-to-end validation. Those hardware/browser gates remain open.
+
+---
+
+## NK1 WorkPass453 — smoothed affect on one avatar intent clock (2026-10-23)
+
+- Added `smoothEmbodimentAffect`, a bounded exponential interpolation for expression intensity, gaze, head tilt and voice emphasis using monotonic sample time.
+- Integrated the smoothed channels into the existing unified `EmbodimentIntentV1` emitted by `AvatarStage`; mouth/viseme timing remains attached directly to the audio clock and observed SpeechSynthesis boundaries.
+- Expanded `embodiment-timeline.test.mjs` for monotonic/no-rewind behavior, bounds and real AvatarStage wiring.
+- No new package dependency; exact-head browser/unit suite has not been confirmed as passing.
+
+---
+
+## NK1 WorkPass448 — preserve action outcomes across sensor failures (2026-10-23)
+
+- Wrapped required pre-action telemetry sampling in a fail-closed boundary. A sampling exception now yields an explicit failed action receipt before any action branch can dispatch a device capability.
+- Made final post-action sampling fail-soft: an action already executed remains reported, but independent consequence verification is withheld and the receipt records `post-action-measurement-failed-effect-unverified`.
+- Added deterministic regressions for both failure positions. No dependency added; no device effect is fabricated and no verification credit is granted without a successful fresh sample.
+- **Verification:** regression source is committed; exact-head execution remains unconfirmed because hosted Actions fail before runner allocation.
+
+---
+
+## NK1 WorkPass445 — normalize persisted embodiment state before runtime initialization (2026-10-23)
+
+- Added a canonical `normalizePersistedBodyState` for the existing body schema. It snapshots bounded plain data before reads, rejects accessor/cyclic/oversized input, validates all persisted telemetry, confidence/resource ranges, timestamp/source enums, and sleep/awake consistency, then reconstructs only allowed fields.
+- `EmbodimentRuntime.init` now uses the normalizer and falls back to a fresh default body rather than cloning any object with `schemaVersion === 1`. Invalid stored values therefore cannot directly seed resource regulation, sleep state, or voice planning.
+- Added regressions for valid round-trip, getter non-execution, cycle rejection, non-finite telemetry, and inconsistent sleep state. No new dependencies; hardware behavior still needs device-level validation.
+- **Verification status:** source/test/changelog committed to `feature/visual-embodiment`; hosted Actions execution is not confirmed because runners are not being assigned.
+
+---
+
+## NK1 WorkPass433 — reject malformed embodiment commands before I/O (2026-10-23)
+
+- Added descriptor-based normalization of the EmbodiedActionExecutor payload with an allowlist of fields; accessors, custom/inherited prototypes, unknown keys, coercible non-string speech, and oversized identifiers fail closed.
+- Invalid payloads produce an explicit zero-proof failed result before telemetry, TTS or camera dispatch; valid camera callbacks remain the runtime-provided ActionGateway path.
+- Removed redundant String() conversion of spoken text after validation to keep a single trustworthy speech boundary.
+- Added regressions for getters, coercion objects, inherited capability flags, oversized IDs, and no telemetry/TTS dispatch on rejection. Hosted tests remain unverified due the existing Actions runner startup issue.
+
+---
+
+## NK1 WorkPass430 — gate speech synthesis input before planning (2026-10-23)
+
+- TTS now rejects non-string speech instead of coercing arbitrary caller values and clamps raw input before normalization/planning, preventing oversized text from consuming unbounded planning work.
+- Voice context is snapshotted through the shared plain-data boundary and validates action/mode/event identifiers, confidence values and affective needs before those signals enter prosody selection.
+- Added regression cases for hostile text coercion, getter-backed context, non-finite mood/context signals and proof that rejected input never reaches the TTS dispatcher.
+- No new runtime dependency: the same bounded snapshot helper used by memory/cognition is now included in the embodiment branch. Physical TTS still needs real-device integration verification; hosted test execution remains unconfirmed.
+
+---
+
+## NK1 WorkPass422 — serialize STT sessions and bound transcripts (2026-10-23)
+
+- Prevented concurrent STT calls from overlapping; a second listen request is refused while the first still owns the listening state.
+- STT provider results are now type-checked, normalized and bounded to 4,000 characters before being returned to the cognition layer.
+- Added regressions for overlapping listens, malformed provider output and retry behavior.
+- Validation is pending: source and tests are committed, but current hosted test jobs have not obtained a runner.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
@@ -2113,3 +2175,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
 - Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
 - This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
+
+## NK1 WorkPass334 — release stuck voice-listening state after STT failure (2026-10-23)
+
+- **Fixed:** `EmbodimentRuntime.listen()` now resets its listening flag and refreshes its timestamp in `finally`, including provider throws; the failure is returned as a bounded diagnostic rather than leaving the voice runtime stuck.
+- **Boundary improved:** STT dispatch is injectable through the existing embodiment owner, enabling deterministic recovery tests without a live microphone. Physical speech/TTS actions remain behind the ActionGateway-backed dispatcher.
+- **Regression added:** `tests/voice-embodiment.mjs` forces an STT bridge exception, asserts listening state is released, then retries successfully and verifies the new transcript is returned.
+- **Validation boundary:** fixture is wired to the existing `npm run test:voice` script; runtime execution is not confirmed because hosted Actions currently stops before runner steps.
