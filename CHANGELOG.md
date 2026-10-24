@@ -1,3 +1,10 @@
+## NK1 Feedback — preserve valid evidence through noisy ledger restore (2026-10-24)
+
+- The canonical `RealityEvidenceLedger` no longer limits restore scanning to the first four times capacity worth of raw rows, so malformed rows cannot evict valid external evidence beyond that prefix.
+- Valid recent records remain capacity-bounded. Restore continues scanning for conflicting replays of already-retained event IDs so the existing event quarantine invariant remains intact.
+- Added a regression with 512 malformed records in front of a valid ledger event using the minimum ledger capacity.
+- **Validation boundary:** source and regression are committed; hosted execution still needs to complete for this exact revision.
+
 ## NK1 Feedback — preserve valid recent observer rows during restore (2026-10-24)
 
 - Restored observation rows are now bounded by successfully accepted observations rather than raw array offsets, so malformed or orphan rows cannot evict valid recent evidence.
