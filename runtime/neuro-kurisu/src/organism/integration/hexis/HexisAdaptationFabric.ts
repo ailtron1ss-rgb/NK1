@@ -494,6 +494,30 @@ export class HexisAdaptationFabric {
                     conflicts.push({ path: `sections.${name}`, kind: 'schema', detail: 'each section entry must be a JSON object' });
                 }
                 const safeRows = bounded.filter(isHmxRecord);
+                if (name === 'memories') {
+                    safeRows.forEach((record, index) => {
+                        const ref = record.ref;
+                        const type = record.type;
+                        const content = record.content;
+                        if (typeof ref !== 'string' || !/^exp_[a-f0-9]{16}:.+$/.test(ref)) {
+                            conflicts.push({ path: `sections.memories[${index}].ref`, kind: 'schema', detail: 'memory ref must use the HMX exp_<16 lowercase hex>:<record> namespace' });
+                        } else if (typeof exportId === 'string' && /^exp_[a-f0-9]{16}$/.test(exportId) && !ref.startsWith(exportId + ':')) {
+                            conflicts.push({ path: `sections.memories[${index}].ref`, kind: 'reference-export-mismatch', detail: 'memory ref belongs to a different HMX export namespace' });
+                        }
+                        if (!isHmxText(type, 128)) {
+                            conflicts.push({ path: `sections.memories[${index}].type`, kind: 'schema', detail: 'memory type must be a non-empty string' });
+                        }
+                        if (!isHmxText(content, 250000)) {
+                            conflicts.push({ path: `sections.memories[${index}].content`, kind: 'schema', detail: 'memory content must be a non-empty string within the per-record limit' });
+                        }
+                        if (record.metadata !== undefined && !isHmxRecord(record.metadata)) {
+                            conflicts.push({ path: `sections.memories[${index}].metadata`, kind: 'schema', detail: 'memory metadata, when supplied, must be an object' });
+                        }
+                        if (record.provenance !== undefined && record.provenance !== null && !isHmxRecord(record.provenance)) {
+                            conflicts.push({ path: `sections.memories[${index}].provenance`, kind: 'schema', detail: 'memory provenance, when supplied, must be an object or null' });
+                        }
+                    });
+                }
                 totalRecords += safeRows.length;
                 sectionCounts[name] = value.length;
                 stagedSections[name] = structuredClone(safeRows);
