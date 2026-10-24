@@ -141,7 +141,8 @@ export class EmbodiedActionExecutor {
     const afterState={battery01:afterBody.telemetry.battery01,thermal01:afterBody.thermalStrain01,cognitiveCapacity01:afterBody.cognitiveCapacity01,awake:afterBody.awake,source:afterBody.telemetry.source};
     const consequenceVerification={attempted:true,independent,verified,sourceStable,freshBefore01:beforeFresh,freshAfter01:afterFresh,changed01,reason:consequenceReason,verificationMode};
     const result:EmbodiedActionResult={version:1,action,status,realityClass,source:afterBody.telemetry.source,at,before:base,after:afterState,stateDelta:delta,effect01,reason,capability,artifact,consequenceVerification};
-    const eventId=createStableEvidenceEventId('embodied',[action,at,status,realityClass,afterBody.telemetry.source,base,afterState,delta,effect01,reason,capability,artifact??null,consequenceVerification]);
+    const artifactIdentity=artifact?[artifact.kind,artifact.hash??null,artifact.size??null,artifact.executionId??null,artifact.providerReceiptId??null]:null;
+    const eventId=createStableEvidenceEventId('embodied',[action,at,status,realityClass,afterBody.telemetry.source,base,afterState,delta,effect01,reason,capability,artifactIdentity,consequenceVerification]);
     return eventId?{...result,eventId}:result;
   }
 }
