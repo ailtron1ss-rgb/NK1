@@ -61,7 +61,7 @@ const archiveHits = restored.retrieve(
 assert.ok(archiveHits.some(item => item.id === parent.id),
   'explicit archival retrieval must retain inspectability of historical revisions');
 
-// WorkPass460: semantic retrieval must apply the same damaged-revision guard as lexical recall.
+// WorkPass524: semantic retrieval must apply the same damaged-revision guard as lexical recall.
 const deterministicEmbeddingProvider = {
   providerId: 'workpass460-deterministic',
   modelId: 'workpass460-test-model',
