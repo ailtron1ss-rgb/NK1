@@ -9,6 +9,7 @@
 
 ---
 
+## Previous checkpoint — TypeScript check trustworthiness (2026-10-24)
 
 - Work branch: `typescript/runtime-typecheck-truth-2026-10-24`, based on `workpass70-source`; do not merge these changes directly into `main`.
 - `runtime/neuro-kurisu/scripts/typecheck-runtime.mjs` now distinguishes a real successful `tsc` run (`TYPECHECK=PASS`) from the parser-only fallback (`TYPECHECK=PARTIAL`). A syntax-only fallback cannot establish semantic type correctness.
