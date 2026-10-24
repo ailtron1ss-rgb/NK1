@@ -316,11 +316,15 @@ export class LocalSmallModelHub {
     })();
     const model = (id, role, configured, capabilities, detail = {}) => {
       const metricRole = ({ language: 'language', 'memory-retrieval': 'embeddings', classification: 'classification', affect: 'emotion' })[role];
-      const embeddingObservedSuccess = Number(embedding?.requests || 0) > Number(embedding?.failures || 0);
-      const observedSuccess = metricRole ? (this.metrics[metricRole].successes > 0 || (metricRole === 'embeddings' && embeddingObservedSuccess)) : false;
+      const embeddingRequests = Number(embedding?.requests || 0);
+      const embeddingFailures = Number(embedding?.failures || 0);
+      const embeddingObservedSuccess = embeddingRequests > embeddingFailures;
+      const metric = metricRole ? this.metrics[metricRole] : null;
+      const observedSuccess = Boolean(metric && (metric.successes > 0 || (metricRole === 'embeddings' && embeddingObservedSuccess)));
+      const observedFailure = Boolean(metric && !observedSuccess && (metric.requests > 0 || (metricRole === 'embeddings' && embeddingFailures > 0)));
       return {
         id, role, configured: Boolean(configured),
-        state: !configured ? 'not-configured' : observedSuccess ? 'observed-healthy' : 'configured-unprobed',
+        state: !configured ? 'not-configured' : observedSuccess ? 'observed-healthy' : observedFailure ? 'observed-failure' : 'configured-unprobed',
         capabilities,
         ...detail,
       };
