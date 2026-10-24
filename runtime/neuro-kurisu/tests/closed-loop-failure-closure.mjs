@@ -13,7 +13,8 @@ const failure = runtimeLedger.fail({ at: Date.now(), tick: 7, reason: 'fixture-a
 assert.equal(failure.phase, 'failure');
 assert.equal(failure.status, 'FAIL');
 runtimeLedger.durable({ at: Date.now(), tick: 7, stateTick: 7, replaySignature: 'fixture-signature', continuousTick: 7, continuityProcessed: 7 });
-assert.equal(runtimeLedger.diagnostics().lastStatus, 'FAIL');
+runtimeLedger.durable({ at: Date.now(), tick: 7, stateTick: 7, replaySignature: 'fixture-signature-2', continuousTick: 7, continuityProcessed: 7 });
+assert.equal(runtimeLedger.diagnostics().lastStatus, 'FAIL', 'repeated durability flushes must not mask the failure');
 
 // A failure must close a pending causal cycle, preserve its reason, and never
 // acquire success credit during later durable finalization.
