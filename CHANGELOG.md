@@ -1,3 +1,10 @@
+## NK1 WorkPass529 — restore lifecycle timing before legacy memory migration (2026-10-24)
+
+- Fixed migration ordering: old compatibility-only checkpoints previously imported records before restoring the persisted MemoryLifecycleAuthority state, so migration events could be stamped with tick 0 instead of the saved lifecycle tick.
+- Legacy import now runs after lifecycle authority, P70 governor, and consolidation controller restoration; canonical MemoryOS2 checkpoints still skip compatibility re-import.
+- Extended the canonical persistence regression to restore a legacy checkpoint with lifecycle tick 44 and require the resulting memory-created event to retain that tick.
+- The focused regression is wired into memory persistence CI. This newest change awaits exact-head Actions confirmation; no full runtime typecheck is claimed.
+
 ## NK1 WorkPass528 — keep canonical memory authoritative on restore (2026-10-24)
 
 - Fixed a restart duplication/downgrade path: when a checkpoint includes the canonical MemoryOS2 snapshot, MemorySubsystemRuntime no longer re-ingests lossy multi-timescale compatibility projections as fresh derived memories.
