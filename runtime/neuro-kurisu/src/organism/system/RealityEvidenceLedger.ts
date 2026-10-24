@@ -175,7 +175,13 @@ export class RealityEvidenceLedger {
       claim,samples:rows.length,externalSamples:external.length,userReportedSamples:userReported.length,simulationSamples:simulator.length,
       externalConfidence01:externalConfidence,simulationConfidence01:simulationConfidence,
       independentExternalSources:externalKeys.size,independentSimulationSources:simulationKeys.size,
+      // One source can ground a claim, but high-impact promotion requires
+      // corroboration from at least two distinct external independence keys.
       promotionAllowed:external.length>0&&externalKeys.size>0&&externalConfidence>=.55,
+      independentPromotionAllowed:externalKeys.size>=2&&externalConfidence>=.75,
+      promotionReason:externalKeys.size<2?'awaiting-second-independent-external-source'
+        :externalConfidence<.75?'independent-sources-present-but-confidence-below-promotion-threshold'
+        :'independent-external-corroboration-satisfied',
       realityGap01:Math.max(0,simulationConfidence-externalConfidence),
     };
   }
