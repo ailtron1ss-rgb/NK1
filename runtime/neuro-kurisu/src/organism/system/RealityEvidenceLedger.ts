@@ -168,6 +168,7 @@ export class RealityEvidenceLedger {
     const userReported=rows.filter(r=>USER_REPORTED.has(r.realityClass));
     const simulator=rows.filter(r=>r.realityClass==='simulator');
     const externalKeys=new Set(external.map(r=>r.independenceKey));
+    const qualifiedExternalKeys=new Set(external.filter(r=>r.confidence01>=.75).map(r=>r.independenceKey));
     const simulationKeys=new Set(simulator.map(r=>r.independenceKey));
     const externalConfidence=external.length?Math.max(...external.map(r=>r.confidence01)):0;
     const simulationConfidence=simulator.length?Math.max(...simulator.map(r=>r.confidence01)):0;
@@ -175,13 +176,14 @@ export class RealityEvidenceLedger {
       claim,samples:rows.length,externalSamples:external.length,userReportedSamples:userReported.length,simulationSamples:simulator.length,
       externalConfidence01:externalConfidence,simulationConfidence01:simulationConfidence,
       independentExternalSources:externalKeys.size,independentSimulationSources:simulationKeys.size,
-      // One source can ground a claim, but high-impact promotion requires
-      // corroboration from at least two distinct external independence keys.
+      qualifiedIndependentExternalSources:qualifiedExternalKeys.size,
+      // Basic grounding is compatible with one source. Consequential promotion
+      // needs two distinct sources that each meet the confidence floor.
       promotionAllowed:external.length>0&&externalKeys.size>0&&externalConfidence>=.55,
-      independentPromotionAllowed:externalKeys.size>=2&&externalConfidence>=.75,
-      promotionReason:externalKeys.size<2?'awaiting-second-independent-external-source'
-        :externalConfidence<.75?'independent-sources-present-but-confidence-below-promotion-threshold'
-        :'independent-external-corroboration-satisfied',
+      independentPromotionAllowed:qualifiedExternalKeys.size>=2,
+      promotionReason:qualifiedExternalKeys.size>=2?'independent-external-corroboration-satisfied'
+        :externalKeys.size<2?'awaiting-second-independent-external-source'
+        :'independent-sources-present-but-confidence-below-promotion-threshold',
       realityGap01:Math.max(0,simulationConfidence-externalConfidence),
     };
   }
