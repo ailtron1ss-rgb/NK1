@@ -4,7 +4,10 @@
 - [CLOSED-LOOP] Added `CausalDomainClosureLedger.failPending()` for exceptions/cancellations before normal closure, preserving a bounded failure reason and denying causal success credit.
 - [CLOSED-LOOP] Added `failLatest()` so batch-finalization or emergency-checkpoint failures can downgrade an already-recorded cycle instead of leaving stale PASS evidence.
 - [INTEGRATION] `OrganismRuntime` now supplies the current `UnifiedCognitiveCycle` result to both terminal ledgers; missing/misaligned stage closure is a hard `FAIL` with zero causal score, including after durable finalization.
-- [INTERRUPT] `OrganismRuntime.stepInternal` now checks `AbortSignal` immediately before embodied-action dispatch; an aborted planned action fails closed before physical actuation.
+- [INTERRUPT] `OrganismRuntime.stepInternal` now checks `AbortSignal` at cycle entry, after awaited perception/observation/proposal boundaries, and immediately before embodied-action dispatch; early cancellation avoids unnecessary inference, and late cancellation fails closed before physical actuation.
+- [LIFECYCLE] `OrganismRuntime.stop()` now shares one in-flight shutdown promise across concurrent callers. Failed shutdown persistence records a terminal runtime failure, attempts a best-effort failure flush, and always flushes/closes the continuity journal.
+- [ADMISSION] A `beginBatch()` failure now creates an explicit causal `FAIL` record rather than appearing only in the runtime error journal.
+- [VALIDATION] Added `audit:p328:closed-loop-failure-closure` (`typecheck` + regression) as a single acceptance command; execution is still pending a real runner.
 - [REGRESSION] Added `tests/closed-loop-failure-closure.mjs` and connected `test:p328:closed-loop-failure-closure` to `test:rebuild-recovered`; test execution remains unverified until CI gets a runner.
 - [DOCUMENTATION] Added `docs/CLOSED_LOOP_SYSTEM_AUDIT_2026-10-24.md` with the cross-module cycle map, invariants, remaining validation gaps and release gates.
 - [LIMITATION] This is a source-branch implementation checkpoint, not a regenerated release ZIP or a production-approval claim. Existing held-out learning, Android/Live2D E2E, long soak and runner-startup gates remain open.
