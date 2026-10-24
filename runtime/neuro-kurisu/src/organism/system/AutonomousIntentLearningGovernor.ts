@@ -23,6 +23,7 @@ export type AILGDecision = {
   score01: number;
   reason: string;
   selectedAt: number;
+  externalSideEffect: boolean;
 };
 
 export type AILGOutcome = {
@@ -173,7 +174,7 @@ export class AutonomousIntentLearningGovernor {
       reason = 'expected-value-below-threshold';
     }
 
-    const decision: AILGDecision = { intentId: safeIntent.id, status, score01, reason, selectedAt: now };
+    const decision: AILGDecision = { intentId: safeIntent.id, status, score01, reason, selectedAt: now, externalSideEffect: safeIntent.externalSideEffect };
     this.decisions.set(intent.id, decision);
     return { ...decision };
   }
@@ -195,6 +196,7 @@ export class AutonomousIntentLearningGovernor {
     const decision = this.decisions.get(intentId);
     if (!decision) return { accepted: false, reason: 'unknown-intent' };
     if (decision.status !== 'act') return { accepted: false, reason: 'intent-not-authorized' };
+    if (decision.externalSideEffect && !this.approvalReceipts.has(intentId)) return { accepted: false, reason: 'approval-required' };
     if (!nonBlank(executionReceipt) || executionReceipt.length > 512) return { accepted: false, reason: 'invalid-execution-receipt' };
     if (this.executionReceipts.has(intentId)) return { accepted: false, reason: 'duplicate-execution' };
     this.executionReceipts.set(intentId, executionReceipt);
@@ -296,14 +298,23 @@ export class AutonomousIntentLearningGovernor {
           !allowedStatuses.has(status) ||
           typeof score01 !== 'number' || !Number.isFinite(score01) || score01 < 0 || score01 > 1 ||
           typeof selectedAt !== 'number' || !Number.isFinite(selectedAt) || selectedAt < 0 ||
+          typeof value.externalSideEffect !== 'boolean' ||
           this.decisions.has(intentId)) continue;
-      this.decisions.set(intentId, { intentId, status, score01, reason, selectedAt });
+      this.decisions.set(intentId, { intentId, status, score01, reason, selectedAt, externalSideEffect: value.externalSideEffect });
     }
 
     const validIds = new Set(this.decisions.keys());
     const approvedIds = readDataArray(snapshot.approvedIntentIds) ?? [];
     for (const item of approvedIds.slice(-2048)) {
       if (nonBlank(item) && validIds.has(item) && this.decisions.get(item)?.status === 'act') this.approvalReceipts.set(item, 'restored-approval-reference');
+    }
+    // External-effect decisions lose executable status unless the snapshot carries
+    // a matching approval reference; a serialized status string is not approval.
+    for (const decision of this.decisions.values()) {
+      if (decision.externalSideEffect && !this.approvalReceipts.has(decision.intentId) && decision.status === 'act') {
+        decision.status = 'approval-required';
+        decision.reason = 'restore-approval-reference-missing';
+      }
     }
     const executedIds = readDataArray(snapshot.executedIntentIds) ?? [];
     for (const item of executedIds.slice(-2048)) {
