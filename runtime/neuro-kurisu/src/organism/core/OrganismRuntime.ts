@@ -375,6 +375,7 @@ export class OrganismRuntime {
       this.startEmbodimentClock();
       this.clockScheduler.start('reflection');
       if (this.trustedShadowLearningScheduler) this.clockScheduler.start('trusted-shadow-learning');
+      if (this.compoundRepairRevisionCoordinator && this.config.compoundRepairRevision?.backgroundRevision?.enabled === true) this.clockScheduler.start('p23-compound-repair-revision');
       if (this.config.autoRun) this.startCognitiveClock();
       await this.journal.write('info', 'runtime.init.complete', { tick: this.core.operationalStatusSnapshot().tick });
     });
