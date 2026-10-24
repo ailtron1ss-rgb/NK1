@@ -20,6 +20,10 @@ const MAX_DECISIONS = 64;
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const finiteIn = (value, min, max) => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
 const boundedText = (value, max = MAX_TEXT_CHARS) => sanitizeEmbeddingInput(String(value ?? '')).trim().slice(0, max);
+const safeModelLabel = (value, fallback = 'local-model') => {
+  const raw = String(value ?? fallback).replace(/https?:\/\/[^\\s"',}]+/gi, '[endpoint]');
+  return sanitizeEmbeddingInput(raw).trim().slice(0, 160) || fallback;
+};
 const nowDefault = () => Date.now();
 
 function providerConfigured(provider) {
@@ -120,7 +124,9 @@ export class LocalSmallModelHub {
   }
 
   _decision(entry) {
-    this.decisions.unshift({ at: this.clock(), ...entry });
+    const safeEntry = { ...entry };
+    if (typeof safeEntry.selected === 'string') safeEntry.selected = safeModelLabel(safeEntry.selected);
+    this.decisions.unshift({ at: this.clock(), ...safeEntry });
     this.decisions = this.decisions.slice(0, MAX_DECISIONS);
   }
 
@@ -137,7 +143,7 @@ export class LocalSmallModelHub {
   }
 
   observeLanguage({ backend = '', failures = [], latencyMs = 0, success } = {}) {
-    const normalizedBackend = String(backend).slice(0, 160);
+    const normalizedBackend = safeModelLabel(backend, 'unknown');
     const isLocalSuccess = normalizedBackend.startsWith('llama.cpp:');
     const inferredSuccess = typeof success === 'boolean' ? success : Boolean(normalizedBackend && !normalizedBackend.includes('fallback'));
     try {
@@ -181,7 +187,7 @@ export class LocalSmallModelHub {
         throw new Error('local-model-embeddings-invalid-vectors');
       }
       this._record('embeddings', { ok: true, latencyMs: this.clock() - started });
-      this._decision({ task: 'embeddings', selected: this.embeddingProvider.providerId || this.embeddingProvider.modelId || 'local-embeddings', reason: 'local-vector-inference-succeeded' });
+      this._decision({ task: 'embeddings', selected: safeModelLabel(`${this.embeddingProvider.kind || 'local'}:${this.embeddingProvider.modelId || this.embeddingProvider.model || 'embeddings'}`), reason: 'local-vector-inference-succeeded' });
       return vectors;
     } catch (error) {
       this._record('embeddings', { ok: false, latencyMs: this.clock() - started, error });
@@ -209,7 +215,7 @@ export class LocalSmallModelHub {
       const result = parseJsonObject(response?.text, 'classification');
       if (!normalizedLabels.includes(result.label) || !finiteIn(result.confidence, 0, 1)) throw new Error('local-model-classifier-schema-mismatch');
       this._record('classification', { ok: true, latencyMs: this.clock() - started });
-      this._decision({ task: 'classification', selected: this.classifierProvider.model || 'local-classifier', reason: 'validated-label-and-confidence' });
+      this._decision({ task: 'classification', selected: safeModelLabel(response.backend || this.classifierProvider.model || 'local-classifier'), reason: 'validated-label-and-confidence' });
       return { label: result.label, confidence: result.confidence, model: String(response.backend || this.classifierProvider.model || 'local-classifier').slice(0, 160) };
     } catch (error) {
       this._record('classification', { ok: false, latencyMs: this.clock() - started, error });
@@ -236,7 +242,7 @@ export class LocalSmallModelHub {
         throw new Error('local-model-emotion-schema-mismatch');
       }
       this._record('emotion', { ok: true, latencyMs: this.clock() - started });
-      this._decision({ task: 'emotion', selected: this.emotionProvider.model || 'local-emotion', reason: 'validated-affect-schema' });
+      this._decision({ task: 'emotion', selected: safeModelLabel(response.backend || this.emotionProvider.model || 'local-emotion'), reason: 'validated-affect-schema' });
       return {
         emotion: result.emotion,
         valence: result.valence,
@@ -267,13 +273,13 @@ export class LocalSmallModelHub {
         }
         this.visionHealth.local = true;
         this._record('vision', { ok: true, latencyMs: this.clock() - started });
-        this._decision({ task: 'vision', selected: String(result.backend || this.visionProvider.id || 'local-vision').slice(0, 160), reason: 'local-vision-inference-succeeded' });
+        this._decision({ task: 'vision', selected: safeModelLabel(result.backend || this.visionProvider.id || 'local-vision'), reason: 'local-vision-inference-succeeded' });
         return result;
       } catch (error) {
         lastError = error;
         this.visionHealth.local = false;
         this._record('vision', { ok: false, latencyMs: this.clock() - started, error });
-        this._decision({ task: 'vision', selected: String(this.visionProvider.id || 'local-vision').slice(0, 160), reason: failureCode(error) });
+        this._decision({ task: 'vision', selected: safeModelLabel(this.visionProvider.id || 'local-vision'), reason: failureCode(error) });
       }
     }
     // The fallback is only installed when the application explicitly enables it
@@ -287,13 +293,13 @@ export class LocalSmallModelHub {
         }
         this.visionHealth.fallback = true;
         this._record('vision', { ok: true, latencyMs: this.clock() - started });
-        this._decision({ task: 'vision', selected: String(result.backend || this.visionFallbackProvider.id || 'vision-fallback').slice(0, 160), reason: this.visionProvider ? 'explicit-cloud-fallback-after-local-failure' : 'explicitly-configured-vision-backend' });
+        this._decision({ task: 'vision', selected: safeModelLabel(result.backend || this.visionFallbackProvider.id || 'vision-fallback'), reason: this.visionProvider ? 'explicit-cloud-fallback-after-local-failure' : 'explicitly-configured-vision-backend' });
         return result;
       } catch (error) {
         lastError = error;
         this.visionHealth.fallback = false;
         this._record('vision', { ok: false, latencyMs: this.clock() - started, error });
-        this._decision({ task: 'vision', selected: String(this.visionFallbackProvider.id || 'vision-fallback').slice(0, 160), reason: failureCode(error) });
+        this._decision({ task: 'vision', selected: safeModelLabel(this.visionFallbackProvider.id || 'vision-fallback'), reason: failureCode(error) });
       }
     }
     throw lastError ?? new Error('local-model-vision-not-configured');
