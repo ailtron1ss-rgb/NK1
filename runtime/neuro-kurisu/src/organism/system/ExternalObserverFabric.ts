@@ -139,13 +139,17 @@ export class ExternalObserverFabric {
   private readonly maxSources:number;
   private readonly maxLinks:number;
   private readonly onObservation?: (observation:ExternalObservation)=>void;
+  private readonly requireRegisteredSources:boolean;
 
-  constructor(config:{maxObservations?:number;maxAssessments?:number;maxSources?:number;maxLinks?:number;onObservation?:(observation:ExternalObservation)=>void}={}){
+  constructor(config:{maxObservations?:number;maxAssessments?:number;maxSources?:number;maxLinks?:number;requireRegisteredSources?:boolean;onObservation?:(observation:ExternalObservation)=>void}={}){
     this.maxObservations=Math.max(64,Math.floor(config.maxObservations??256));
     this.maxAssessments=Math.max(64,Math.floor(config.maxAssessments??192));
     this.maxSources=Math.max(16,Math.floor(config.maxSources??48));
     this.maxLinks=Math.max(32,Math.floor(config.maxLinks??128));
     this.onObservation=config.onObservation;
+    // Production evidence sinks should only accept identities registered through
+    // the explicit registry API. Standalone adapters retain legacy auto-registration.
+    this.requireRegisteredSources=config.requireRegisteredSources??false;
   }
 
   restore(raw?:Partial<ExternalObserverState>|null){
@@ -209,9 +213,11 @@ export class ExternalObserverFabric {
       }
       return existing;
     }
+    // The canonical runtime disables implicit identity creation: an observation is
+    // evidence about a known source, not authority to mint a new trust-registry entry.
+    if(this.requireRegisteredSources) throw new Error('external-observer-source-not-registered');
     // Observation confidence describes this sample, not the source's long-term reliability.
-    // New identities start from the conservative class prior; only trusted registration
-    // or subsequent assessment may change the persistent reliability estimate.
+    // Standalone adapters retain auto-registration, always with a conservative class prior.
     return this.registerSource({id:input.sourceId,sourceClass:input.sourceClass,channel:input.channel,independenceKey:input.independenceKey});
   }
 
