@@ -13,6 +13,12 @@ const first = e.appraise({tick:1,at:1001,novelty01:.8,uncertainty01:.5,predictio
 assert.ok(calmBody.cycles===1 && calmBody.lastMismatch01<.25);
 assert.equal(first.label,'curiosity');
 assert.ok(first.valence01>.55,'successful episode should be positively valenced');
+
+const beforeInvalidAppraisal = e.snapshot();
+assert.throws(() => e.appraise({ tick: 2, novelty01: Infinity }), /emotion-appraisal-values-invalid/);
+assert.deepEqual(e.snapshot(), beforeInvalidAppraisal, 'invalid appraisal must not mutate emotion history or internal state');
+assert.throws(() => e.appraise({ tick: 2, socialMeaning01: '0.7' }), /emotion-appraisal-values-invalid/);
+assert.throws(() => e.appraise({ tick: 2, external: 'false' }), /emotion-appraisal-values-invalid/);
 const firstAgain = e.appraise({tick:1,at:1001,novelty01:.8,uncertainty01:.5,predictionError01:.1,homeostaticPressure01:.08,success01:.92,goalPressure01:.25,goalCongruence01:.9,controllability01:.8});
 assert.notEqual(first.id, firstAgain.id,'episode IDs must be unique within one process even with same tick/time');
 
