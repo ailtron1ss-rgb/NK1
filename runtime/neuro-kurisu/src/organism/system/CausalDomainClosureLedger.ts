@@ -124,7 +124,15 @@ export class CausalDomainClosureLedger {
   }
 
   begin(input:{tick:number;at?:number;counters:CausalDomainCounters}):void{
-    this.pending={tick:Math.max(0,Math.floor(Number(input.tick))),at:Number(input.at??Date.now()),before:normalizeCounters(input.counters)};
+    // A second begin is evidence that the preceding attempt escaped its finalizer.
+    // Close it explicitly instead of silently overwriting the only pending record.
+    if(this.pending){
+      this.failPending({reason:'previous-cycle-unclosed-at-next-begin',counters:input.counters});
+    }
+    const rawTick=Number(input?.tick);
+    const tick=Number.isSafeInteger(rawTick)&&rawTick>=0?rawTick:Math.max(0,this.state.lastTick+1);
+    const at=Number(input?.at??Date.now());
+    this.pending={tick,at:Number.isFinite(at)?at:Date.now(),before:normalizeCounters(input.counters)};
   }
 
   failPending(input:{reason:string;counters?:CausalDomainCounters}):CausalDomainClosureRecord|null{
