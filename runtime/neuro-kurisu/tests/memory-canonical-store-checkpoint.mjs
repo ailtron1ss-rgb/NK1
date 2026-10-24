@@ -149,11 +149,26 @@ legacy.restoreFromPersisted({
       associationIds: [],
     }],
   },
-  advanced: {},
+  advanced: {
+    memoryLifecycleAuthority: {
+      version: 1,
+      cycles: 5,
+      maintenanceRuns: 1,
+      consolidationRuns: 0,
+      lastTick: 44,
+      lastConsolidation: [],
+      meanPressure01: 0.3,
+      meanMemoryLoad01: 0.4,
+    },
+  },
 });
 const migrated = legacy.memoryOS.snapshot().items.find(row => row.context?.originalId === 'legacy-episode-01');
 assert.ok(migrated, 'legacy compatibility rows must still migrate when no canonical snapshot exists');
 assert.equal(migrated.provenanceClass, 'derived');
 assert.equal(migrated.source, 'multi-timescale-compatibility');
+assert.ok(
+  legacy.events.recent(64).some(event => event.type === 'memory-created' && event.tick === 44),
+  'legacy migration events must use the restored lifecycle tick, not the fresh runtime default',
+);
 
 console.log('MEMORY_CANONICAL_STORE_CHECKPOINT=PASS');
