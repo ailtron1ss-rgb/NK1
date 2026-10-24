@@ -71,10 +71,10 @@ function parseRecord(value:unknown):RealityEvidenceRecord|null{
 }
 /** Parse only explicit field=value / field:value claims; free-form prose is never guessed into a contradiction. */
 function explicitFieldValue(claim:string):{field:string;value:string}|null{
-  const match=/^([a-z][a-z0-9_.-]{1,63})\\s*[:=]\\s*(.{1,160})$/i.exec(claim.trim());
+  const match=/^([a-z][a-z0-9_.-]{1,63})\s*[:=]\s*(.{1,160})$/i.exec(claim.trim());
   if(!match)return null;
   const field=match[1].normalize('NFKC').toLowerCase();
-  const value=match[2].normalize('NFKC').trim().toLowerCase().replace(/\\s+/g,' ');
+  const value=match[2].normalize('NFKC').trim().toLowerCase().replace(/\s+/g,' ');
   return field&&value?{field,value}:null;
 }
 function sameEventPayload(a:RealityEvidenceRecord,b:RealityEvidenceRecord):boolean{
