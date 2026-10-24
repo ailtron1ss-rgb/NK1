@@ -590,20 +590,20 @@ export class P36AutonomousSelfDevelopmentEngine{
     if(cycle){cycle.verifiedEvidenceCount=independentCount;cycle.lastEvidenceAt=row.at;cycle.stage=replicated?'replicated':hasHoldout?'holdout-verified':'awaiting-evidence';}
     let promoted=false;
     if(status==='replicated'&&h.evidenceGate==='holdout-verified'){
-      h.evidenceGate='replicated';this.state.agenda.selectedHypothesisId=null;this.state.agenda.selectedArea=null;promoted=true;
-      this.state.curriculum.completedSteps+=1;
-      const positiveRate=rows.filter(x=>x.delta01>0).length/Math.max(1,rows.length);
-      this.state.metrics.experimentSuccess01=clamp(this.state.metrics.experimentSuccess01*.9+positiveRate*.1);
-      this.state.metrics.longHorizonImprovement01=clamp(this.state.metrics.longHorizonImprovement01*.94+clamp(.5+(mean??0))*.06);
-    }else if(status!=='insufficient'&&(!h.evidenceGate||h.evidenceGate==='none')){
-      h.status='completed';h.evidenceGate=status;h.completedAt=now();h.result01=clamp(.5+(mean??0));
-      const gain=Math.min(.08,Math.max(0,mean??0)*.12);this.state.curriculum.mastery[h.area]=clamp((this.state.curriculum.mastery[h.area]??.3)+gain);
-      this.state.curriculum.completedSteps+=replicated?1:0;this.state.acceptedChanges++;promoted=true;
+      // Holdout passage is provisional; only independently replicated evidence changes the organism.
+      h.evidenceGate='replicated';h.status='completed';h.completedAt=now();h.result01=clamp(.5+(mean??0));
+      this.state.agenda.selectedHypothesisId=null;this.state.agenda.selectedArea=null;
+      const gain=Math.min(.08,Math.max(0,mean??0)*.12);
+      this.state.curriculum.mastery[h.area]=clamp((this.state.curriculum.mastery[h.area]??.3)+gain);
+      this.state.curriculum.completedSteps+=1;this.state.acceptedChanges++;promoted=true;
       const preferred=this.preferredAction(h.area);const signed=(mean??0)>=0?1:-1;
       this.state.actionBias[preferred]=Math.max(-.12,Math.min(.12,this.state.actionBias[preferred]+signed*Math.min(.035,Math.abs(mean??0)*.08)));
       const positiveRate=rows.filter(x=>x.delta01>0).length/Math.max(1,rows.length);
       this.state.metrics.experimentSuccess01=clamp(this.state.metrics.experimentSuccess01*.9+positiveRate*.1);
       this.state.metrics.longHorizonImprovement01=clamp(this.state.metrics.longHorizonImprovement01*.94+clamp(.5+(mean??0))*.06);
+    }else if(status==='holdout-verified'&&(!h.evidenceGate||h.evidenceGate==='none')){
+      // Preserve the holdout gate and continue collecting delayed evidence without changing skill weights.
+      h.evidenceGate='holdout-verified';h.status='awaiting-evidence';
     }
     return {eligible:status!=='insufficient',evidenceCount:independentCount,distinctContexts:contexts.size,distinctDelays:delays.size,holdoutCount,independentCount,meanDelta01:mean,ci95Low01:ci.low,ci95High01:ci.high,status,promoted};
   }
