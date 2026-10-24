@@ -1,3 +1,11 @@
+## NK1 WorkPass334 — Align closed-loop regressions with evidence contracts (2026-10-24)
+
+- [CAUSAL-OUTCOME] Updated the WorkPass90 runtime-outcome fixture to include an explicit `lastAction` and bounded `lastActionSuccess` receipt. The stream's required state-attribution guard remains strict; it is the fixture that now models a real observed action outcome.
+- [SIGNED-EVIDENCE] Updated signed-artifact regression coverage to assert idempotent re-ingestion of the exact same signed artifact (restoring the process-local trust receipt without adding another outcome), and separately reject a different signed artifact attempting to occupy the same task/method/seed/attempt as `conflicting-existing-outcome`.
+- [VALIDATION] Both tests failed in CI on the older head for these contract mismatches. They have been corrected in the source branch; current-head runs are pending and their outcomes remain unclaimed.
+
+---
+
 ## NK1 WorkPass333 — Repair restore-contract and CI wiring defects (2026-10-24)
 
 - [RESTORE] Preserve valid persisted cognitive stages when a mixed stage list contains an invalid entry; fall back to all required stages only when no stored stage can be trusted. Fixes the exact WorkPass287 assertion in current CI.
