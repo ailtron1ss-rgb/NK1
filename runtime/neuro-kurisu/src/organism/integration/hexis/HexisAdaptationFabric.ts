@@ -624,6 +624,13 @@ export class HexisAdaptationFabric {
                 confidence: clamp(Number(row.metadata?.nk1NativeGoal?.confidence ?? row.confidence ?? 0.42), 0.05, 0.8),
             };
         });
+        const existingIds = new Set(this.state.goalProposals.map((proposal) => proposal.id));
+        const newIds = new Set(validated.map((candidate) => candidate.id).filter((id) => !existingIds.has(id)));
+        if (this.state.goalProposals.length + newIds.size > 256) {
+            throw new Error('hmx-goal-proposal-capacity-reached');
+        }
+        // Capacity and all rows are validated before the first mutation; never evict
+        // a pending or previously reviewed proposal merely to admit a new batch.
         const results: HexisGoalProposal[] = [];
         let created = 0, duplicates = 0;
         for (const candidate of validated) {
@@ -634,7 +641,6 @@ export class HexisAdaptationFabric {
             results.push(structuredClone(proposal));
             created++;
         }
-        this.state.goalProposals = this.state.goalProposals.slice(-256);
         this.state.metrics.hmxGoalProposalsCreated += created;
         return { stageId: stage.stagingId, created, duplicates, proposals: results };
     }
