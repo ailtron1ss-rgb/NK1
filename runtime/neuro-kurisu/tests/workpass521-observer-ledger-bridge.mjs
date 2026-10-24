@@ -125,6 +125,46 @@ runtime.externalObserver.observe({
   evidenceEventId: `outcome:${'b'.repeat(40)}`,
   payload: { observationId: 'obs-2', scene: 'fresh' },
 });
+// A later contradiction can downgrade a source; a subsequent good observation
+// may improve its trust again. Replaying the older event must not raise its
+// already-downgraded ledger confidence or quarantine the stable event identity.
+const trustCycleRuntime = new EvidenceResearchSubsystemRuntime({ authorizeSourceRegistration });
+trustCycleRuntime.externalObserver.registerSource({
+  id: 'camera-front', sourceClass: 'device', channel: 'camera', independenceKey: 'camera:front',
+});
+const trustCycleInput = {
+  sourceId: 'camera-front', sourceClass: 'device', channel: 'camera',
+  claimKey: 'status=ready', observedPostcondition: 'status=ready', confidence01: 0.98,
+  observedAt: Date.now(), independenceKey: 'camera:front', actionRef: 'trust-cycle-action-a',
+  evidenceEventId: `outcome:${'d'.repeat(40)}`, payload: { status: 'ready', version: 'a' },
+};
+const trustCycleFirst = trustCycleRuntime.externalObserver.observe(trustCycleInput);
+trustCycleRuntime.externalObserver.assess(trustCycleFirst.id, 'status=ready');
+const firstConfidence = trustCycleRuntime.realityEvidenceLedger.findByEventId(trustCycleInput.evidenceEventId).confidence01;
+const trustCycleContradiction = trustCycleRuntime.externalObserver.observe({
+  ...trustCycleInput, actionRef: 'trust-cycle-action-b',
+  evidenceEventId: `outcome:${'e'.repeat(40)}`, payload: { status: 'ready', version: 'b' },
+});
+trustCycleRuntime.externalObserver.assess(trustCycleContradiction.id, 'status=blocked');
+const replayAfterDowngrade = trustCycleRuntime.externalObserver.observe(trustCycleInput);
+const downgradedConfidence = trustCycleRuntime.realityEvidenceLedger.findByEventId(trustCycleInput.evidenceEventId).confidence01;
+assert.ok(downgradedConfidence < firstConfidence,
+  'replay after source trust falls must conservatively lower the original event confidence');
+const trustCycleRecovery = trustCycleRuntime.externalObserver.observe({
+  ...trustCycleInput, actionRef: 'trust-cycle-action-c',
+  evidenceEventId: `outcome:${'f'.repeat(40)}`, payload: { status: 'ready', version: 'c' },
+});
+trustCycleRuntime.externalObserver.assess(trustCycleRecovery.id, 'status=ready');
+assert.ok(trustCycleRuntime.externalObserver.snapshot().sources.find(source => source.id === 'camera-front').reliability01 >
+  trustCycleRuntime.externalObserver.registeredSourceReliability01('camera-front') - 1e-9,
+  'trust cycle should retain a normalized reputation estimate');
+trustCycleRuntime.externalObserver.observe(trustCycleInput);
+const recoveredReplayConfidence = trustCycleRuntime.realityEvidenceLedger.findByEventId(trustCycleInput.evidenceEventId).confidence01;
+assert.equal(recoveredReplayConfidence, downgradedConfidence,
+  'trust recovery must not elevate confidence for a pre-existing evidence event');
+assert.ok(!trustCycleRuntime.realityEvidenceLedger.snapshot().quarantinedEventIds?.includes(trustCycleInput.evidenceEventId),
+  'source trust recovery must not quarantine an idempotent historical event');
+
 const mixedConfidence = runtime.realityEvidenceLedger.claimAssessment('fresh scene observed');
 assert.equal(mixedConfidence.independentExternalSources, 2, 'distinct source keys must be counted separately');
 assert.equal(mixedConfidence.qualifiedIndependentExternalSources, 1, 'low-confidence source must not qualify as corroboration');
