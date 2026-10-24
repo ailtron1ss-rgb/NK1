@@ -17,6 +17,7 @@ Selected upstream files:
 Git blob SHAs and file sizes are in the archive's `SOURCE_MANIFEST.md`. The archive is a pinned reference snapshot, not an active Python/PostgreSQL subsystem; its SQL files depend on Hexis-specific schema/functions and must not be run against NK1's database as-is.
 
 ## Adaptation actually added to NK1
+- Extended the existing `SourceMonitor` with validated optional source fingerprints/citations/evidence classes, bounded parent-trace lineage, and safe persistence restore; legacy traces remain valid and malformed provenance is rejected. Evidence classes remain descriptive, not authentication claims.
 - Adapted Hexis's provenance-by-default and temporal source-history ideas into the canonical `P65EpistemicLedger`: optional bounded provenance fields (`sourceId`, `sourceKind`, capture time, evidence class, content fingerprint and citation label), evidence-sensitive deterministic IDs, safe restoration of legacy state, and bounded parent-claim source lineage. Existing claims without provenance keep their legacy identity; malformed provenance is dropped on restore and rejected on new writes. The evidence class is descriptive metadata and does not prove cryptographic authenticity; signed evidence remains verified only by the existing trusted-key gates.
 
 
