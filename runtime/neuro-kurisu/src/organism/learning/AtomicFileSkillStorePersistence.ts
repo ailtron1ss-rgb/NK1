@@ -124,8 +124,10 @@ function isSnapshot(value: unknown): value is VersionedSkillStoreSnapshot {
  */
 export class AtomicFileSkillStorePersistence implements SkillStorePersistence {
   private readonly lockPath: string;
+  private readonly filePath: string;
 
-  constructor(private readonly filePath: string) {
+  constructor(filePath: string) {
+    this.filePath = filePath;
     if (!filePath?.trim()) throw new Error('skill store file path must be non-empty');
     this.lockPath = filePath + '.lock';
   }
