@@ -37,6 +37,52 @@ const featureNames=[
   'boredom','resourceRisk','energyNoveltyInteraction','energyGoalPressureInteraction','noveltyGoalPressureInteraction','actionCost'
 ];
 
+function assertValidAction(value:unknown): asserts value is ActionKind {
+  if(typeof value!=='string'||!ACTIONS.includes(value as ActionKind))throw new Error('invalid-action');
+}
+function assertFiniteInput(value:unknown,code:string):void {
+  if(typeof value!=='number'||!Number.isFinite(value))throw new Error(code);
+}
+function assertValidStateForTraining(value:unknown): asserts value is OrganismState {
+  if(value===null||typeof value!=='object'||Array.isArray(value))throw new Error('state-must-have-needs');
+  const state=value as Record<string,unknown>;
+  const needs=state.needs;
+  if(needs===null||typeof needs!=='object'||Array.isArray(needs))throw new Error('state-must-have-needs');
+  const n=needs as Record<string,unknown>;
+  const values=[
+    n.energy,n.cognitiveLoad,n.uncertainty,n.novelty,n.goalPressure,n.socialNeed,n.identityCoherence,
+    state.predictionError,state.attentionBudget,state.selfPredictionError,
+  ];
+  if(values.some(item=>typeof item!=='number'||!Number.isFinite(item)))throw new Error('state-features-must-be-finite');
+}
+function assertValidTrainingSample(value:unknown):void {
+  if(value===null||typeof value!=='object'||Array.isArray(value))throw new Error('sample-must-be-object');
+  const sample=value as Record<string,unknown>;
+  assertValidAction(sample.action);
+  assertFiniteInput(sample.target01,'target-must-be-finite');
+  assertFiniteInput(sample.learningRate01,'rate-must-be-finite');
+  if(sample.sampleWeight01!==undefined)assertFiniteInput(sample.sampleWeight01,'sample-weight-must-be-finite');
+  assertValidStateForTraining(sample.state);
+  const extras=sample.extras;
+  if(extras!==undefined) {
+    if(extras===null||typeof extras!=='object'||Array.isArray(extras))throw new Error('extras-must-be-object');
+    for(const value of Object.values(extras as Record<string,unknown>)) {
+      if(value!==undefined)assertFiniteInput(value,'extras-must-be-finite');
+    }
+  }
+}
+function assertValidFeatureTrainingSample(value:unknown):void {
+  if(value===null||typeof value!=='object'||Array.isArray(value))throw new Error('sample-must-be-object');
+  const sample=value as Record<string,unknown>;
+  if(!Array.isArray(sample.features)||sample.features.some(item=>typeof item!=='number'||!Number.isFinite(item))) {
+    throw new Error('features-must-be-finite');
+  }
+  assertValidAction(sample.action);
+  assertFiniteInput(sample.target01,'target-must-be-finite');
+  assertFiniteInput(sample.learningRate01,'rate-must-be-finite');
+  if(sample.sampleWeight01!==undefined)assertFiniteInput(sample.sampleWeight01,'sample-weight-must-be-finite');
+}
+
 export function defaultParametricPolicy():ParametricPolicyState{
   const weights={} as Record<ActionKind,number[]>;
   const bias={} as Record<ActionKind,number>;
@@ -120,6 +166,7 @@ export class ParametricPolicyLearner{
   }
 
   train(input:{state:OrganismState;action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number;extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    assertValidTrainingSample(input);
     if(this.state.frozen) return {predictionBefore:this.value(input.state,input.action,input.extras).value,predictionAfter:this.value(input.state,input.action,input.extras).value,loss01:0,tdError01:0};
     const x=this.features(input.state,input.extras,input.action);
     const w=this.state.weights[input.action];
@@ -146,6 +193,7 @@ export class ParametricPolicyLearner{
   }
 
   trainFeatures(input:{features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    assertValidFeatureTrainingSample(input);
     if(this.state.frozen) { const value=this.predictFromFeatures(input.features,input.action); return {predictionBefore:value,predictionAfter:value,loss01:0,tdError01:0}; }
     const x=input.features.slice(0,featureNames.length).map(clamp); while(x.length<featureNames.length)x.push(0);
     const w=this.state.weights[input.action]; if(!w)return {predictionBefore:.5,predictionAfter:.5,loss01:0,tdError01:0};
@@ -169,6 +217,10 @@ export class ParametricPolicyLearner{
   }
 
   trainBatch(samples:Array<Parameters<ParametricPolicyLearner['train']>[0]>){
+    if(!Array.isArray(samples))throw new Error('samples-must-be-array');
+    // Preflight the entire batch before applying any SGD update so one malformed
+    // later row cannot partially train the model.
+    for(const sample of samples)assertValidTrainingSample(sample);
     let loss=0; let n=0;
     for(const sample of samples){const r=this.train(sample);loss+=r.loss01;n++;}
     return {samples:n,meanLoss01:n?loss/n:0,updates:this.state.updates};
