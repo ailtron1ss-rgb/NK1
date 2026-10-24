@@ -223,6 +223,9 @@ export interface SelfDevelopmentState {
   acceptedChanges:number;
   rejectedChanges:number;
   rollbackCount:number;
+  /** Count attempts that supplied caller data or failed canonical proof checks. */
+  unverifiedEvidenceAttempts:number;
+  rejectedMaturityReceipts:number;
   metrics:{
     selfDevelopmentCoherence01:number;
     experimentSuccess01:number;
@@ -268,6 +271,8 @@ const defaultState=():SelfDevelopmentState=>({
   acceptedChanges:0,
   rejectedChanges:0,
   rollbackCount:0,
+  unverifiedEvidenceAttempts:0,
+  rejectedMaturityReceipts:0,
   metrics:{selfDevelopmentCoherence01:.28,experimentSuccess01:.5,autonomy01:.82,developmentalReadiness01:.35,longHorizonImprovement01:.5},
   developmentalMaturity:{stage:'seed',score01:0,verifiedOutcomeCount:0,retainedOutcomeCount:0,transferredOutcomeCount:0,regressionCount:0,lastTransitionAt:0,history:[]},
   curriculum:{
@@ -566,6 +571,7 @@ export class P36AutonomousSelfDevelopmentEngine{
       sameEvidenceKey(x)&&x.independentVerified&&x.observationId===observationId));
     const receiptReused=Boolean(observationId&&this.state.developmentalEvidenceObservationIds.includes(observationId)&&!duplicateVerifiedReceipt);
     const independentVerified=Boolean(exactReceipt&&!receiptReused);
+    if(!independentVerified)this.state.unverifiedEvidenceAttempts=Math.min(1_000_000_000,this.state.unverifiedEvidenceAttempts+1);
     const acceptedAt=now();
     const row:DevelopmentEvidenceRecord={
       id:`p36-e-${hash(`${binding.hypothesisId}:${binding.contextKey}:${acceptedAt}`)}-${acceptedAt.toString(36)}`,
@@ -642,6 +648,7 @@ export class P36AutonomousSelfDevelopmentEngine{
     const alreadyApplied=Boolean(receiptKey&&this.state.developmentalEvidenceReceiptIds.includes(receiptKey));
     const observationAlreadyUsed=Boolean(observationId&&this.state.developmentalEvidenceObservationIds.includes(observationId));
     const applyVerified=Boolean(verified&&receiptKey&&!alreadyApplied&&!observationAlreadyUsed);
+    if(!applyVerified&&(!verified||observationAlreadyUsed))this.state.rejectedMaturityReceipts=Math.min(1_000_000_000,this.state.rejectedMaturityReceipts+1);
     if(applyVerified){
       this.state.developmentalEvidenceReceiptIds=[...this.state.developmentalEvidenceReceiptIds,receiptKey!].slice(-512);
       if(observationId)this.state.developmentalEvidenceObservationIds=[...this.state.developmentalEvidenceObservationIds,observationId].slice(-512);
@@ -705,6 +712,8 @@ export class P36AutonomousSelfDevelopmentEngine{
       acceptedChanges:this.state.acceptedChanges,
       rejectedChanges:this.state.rejectedChanges,
       rollbackCount:this.state.rollbackCount,
+      unverifiedEvidenceAttempts:this.state.unverifiedEvidenceAttempts,
+      rejectedMaturityReceipts:this.state.rejectedMaturityReceipts,
       metrics:{...this.state.metrics},
       developmentalMaturity:this.developmentalCertification(),
       curriculum:{...this.state.curriculum,mastery:{...this.state.curriculum.mastery}},
