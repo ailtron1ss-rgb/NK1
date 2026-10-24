@@ -5,6 +5,8 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/cognition/PerceptionEngine.ts"
       - "runtime/neuro-kurisu/src/organism/core/WorldContextNormalizer.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
       - "runtime/neuro-kurisu/tests/perception-engine-signal-integrity.mjs"
       - "runtime/neuro-kurisu/tests/world-context-normalizer-integrity.mjs"
       - "runtime/neuro-kurisu/package.json"
@@ -13,6 +15,8 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/cognition/PerceptionEngine.ts"
       - "runtime/neuro-kurisu/src/organism/core/WorldContextNormalizer.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
       - "runtime/neuro-kurisu/tests/perception-engine-signal-integrity.mjs"
       - "runtime/neuro-kurisu/tests/world-context-normalizer-integrity.mjs"
       - "runtime/neuro-kurisu/package.json"
