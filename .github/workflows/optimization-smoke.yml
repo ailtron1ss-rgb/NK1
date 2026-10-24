@@ -1,0 +1,52 @@
+name: NK1 optimization focused regression
+
+on:
+  push:
+    branches: [optimization/deep-pass-2026-10-24]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts"
+      - "runtime/neuro-kurisu/tests/optimization-indexed-memory-lookup.mjs"
+      - "runtime/neuro-kurisu/tests/cold-retrieval-residency-regression.mjs"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-numeric-terms.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-126-memory-retrieval-benchmark.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/optimization-smoke.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-optimization-smoke
+  cancel-in-progress: true
+
+jobs:
+  runtime-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          package-manager-cache: false
+      - name: Verify Node.js pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version | sed 's/^v//')"
+          test "$actual" = "$expected"
+      - name: Install runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu
+      - name: Indexed lookup and cache bounds
+        run: npm --prefix runtime/neuro-kurisu run test:optimization:indexed-memory-lookup
+      - name: Cold-memory residency regression
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/cold-retrieval-residency-regression.mjs
+      - name: Numeric retrieval regression
+        run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-numeric-terms
+      - name: Retrieval benchmark integrity
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-126-memory-retrieval-benchmark.mjs
+      - name: Runtime TypeScript check
+        run: npm --prefix runtime/neuro-kurisu run typecheck
