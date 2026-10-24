@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { CognitiveEventFabricSnapshot, CognitiveEventNode } from '../system/CognitiveEventFabric.ts';
 import type { InternalDialogueClaim, InternalDialogueEvidence } from './InternalDialogueEngine.ts';
 
@@ -131,7 +132,8 @@ export function bindCognitiveEventEvidence(
     const action = actionForNode(actionNode, byId);
     const matching = action ? byAction.get(action) : undefined;
     if (!matching?.length) { ignoredUnlinkedEvents++; return; }
-    const key = identity('cef_', String(eventNode.tick) + '_' + eventNode.stage + '_' + eventNode.id, 70);
+    const eventHash = createHash('sha256').update(eventNode.id).digest('hex').slice(0, 32);
+    const key = 'cef_' + eventNode.tick + '_' + eventNode.stage.replace(/-/g, '_') + '_' + eventHash;
     if (evidenceIds.has(key)) return;
     evidenceIds.add(key);
     evidence.push({
