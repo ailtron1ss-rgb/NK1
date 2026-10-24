@@ -1,0 +1,52 @@
+name: NK1 perception runtime integrity
+
+on:
+  push:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/cognition/PerceptionEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/core/WorldContextNormalizer.ts"
+      - "runtime/neuro-kurisu/tests/perception-engine-signal-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/world-context-normalizer-integrity.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/perception-runtime-integrity.yml"
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/cognition/PerceptionEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/core/WorldContextNormalizer.ts"
+      - "runtime/neuro-kurisu/tests/perception-engine-signal-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/world-context-normalizer-integrity.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/perception-runtime-integrity.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-perception-integrity-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  perception-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Verify event integrity across simultaneous sensor changes and stale telemetry
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:perception-engine-integrity
+      - name: Verify strict world-context normalization
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:world-context-integrity
+      - name: Re-run existing active-perception runtime integration
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p2842:runtime
+      - name: Audit runtime npm script targets and test file existence
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass84:script-integrity
+      - name: Type-check canonical runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
