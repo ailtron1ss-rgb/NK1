@@ -79,6 +79,17 @@ const readDataArray = (value: unknown): unknown[] | null => {
   return result;
 };
 
+export type AILGTrustAuthority = {
+  /** Verify the actual approval receipt through NK1's canonical approval service. */
+  verifyApprovalReceipt?: (intentId: string, receipt: string) => boolean;
+  /** Verify the actual execution receipt through NK1's ActionGateway/supervisor. */
+  verifyExecutionReceipt?: (intentId: string, receipt: string) => boolean;
+  /** Re-check persisted approval identity against the canonical trusted registry. */
+  trustPersistedApproval?: (intentId: string) => boolean;
+  /** Re-check persisted execution identity against the canonical trusted registry. */
+  trustPersistedExecution?: (intentId: string) => boolean;
+};
+
 export class AutonomousIntentLearningGovernor {
   private readonly decisions = new Map<string, AILGDecision>();
   private readonly outcomes = new Map<string, AILGOutcome>();
@@ -88,22 +99,31 @@ export class AutonomousIntentLearningGovernor {
   private readonly config: {
     minimumScore01?: number;
     maximumRisk01?: number;
-    requireApprovalForExternalEffects?: boolean;
+    verifyApprovalReceipt?: (intentId: string, receipt: string) => boolean;
+    verifyExecutionReceipt?: (intentId: string, receipt: string) => boolean;
+    trustPersistedApproval?: (intentId: string) => boolean;
+    trustPersistedExecution?: (intentId: string) => boolean;
   };
 
   constructor(config: {
     minimumScore01?: number;
     maximumRisk01?: number;
     requireApprovalForExternalEffects?: boolean;
+    verifyApprovalReceipt?: (intentId: string, receipt: string) => boolean;
+    verifyExecutionReceipt?: (intentId: string, receipt: string) => boolean;
+    trustPersistedApproval?: (intentId: string) => boolean;
+    trustPersistedExecution?: (intentId: string) => boolean;
   } = {}) {
     const raw = readDataRecord(config) ?? {};
     const minimum = raw.minimumScore01;
     const maximum = raw.maximumRisk01;
-    const requireApproval = raw.requireApprovalForExternalEffects;
     this.config = Object.freeze({
       ...(typeof minimum === 'number' && Number.isFinite(minimum) && minimum >= 0 && minimum <= 1 ? { minimumScore01: minimum } : {}),
       ...(typeof maximum === 'number' && Number.isFinite(maximum) && maximum >= 0 && maximum <= 1 ? { maximumRisk01: maximum } : {}),
-      requireApprovalForExternalEffects: typeof requireApproval === 'boolean' ? requireApproval : true,
+      ...(typeof raw.verifyApprovalReceipt === 'function' ? { verifyApprovalReceipt: raw.verifyApprovalReceipt as (intentId: string, receipt: string) => boolean } : {}),
+      ...(typeof raw.verifyExecutionReceipt === 'function' ? { verifyExecutionReceipt: raw.verifyExecutionReceipt as (intentId: string, receipt: string) => boolean } : {}),
+      ...(typeof raw.trustPersistedApproval === 'function' ? { trustPersistedApproval: raw.trustPersistedApproval as (intentId: string) => boolean } : {}),
+      ...(typeof raw.trustPersistedExecution === 'function' ? { trustPersistedExecution: raw.trustPersistedExecution as (intentId: string) => boolean } : {}),
     });
   }
 
@@ -185,6 +205,10 @@ export class AutonomousIntentLearningGovernor {
     if (!decision) return { accepted: false, reason: 'unknown-intent' };
     if (decision.status !== 'approval-required') return { accepted: false, reason: 'approval-not-required' };
     if (!nonBlank(approvalReceipt) || approvalReceipt.length > 512) return { accepted: false, reason: 'invalid-approval-receipt' };
+    if (!this.config.verifyApprovalReceipt) return { accepted: false, reason: 'approval-verifier-unavailable' };
+    let verified = false;
+    try { verified = this.config.verifyApprovalReceipt(intentId, approvalReceipt) === true; } catch { verified = false; }
+    if (!verified) return { accepted: false, reason: 'approval-receipt-untrusted' };
     this.approvalReceipts.set(intentId, approvalReceipt);
     decision.status = 'act';
     decision.reason = 'explicit-approval-recorded';
@@ -199,6 +223,10 @@ export class AutonomousIntentLearningGovernor {
     if (decision.externalSideEffect && !this.approvalReceipts.has(intentId)) return { accepted: false, reason: 'approval-required' };
     if (!nonBlank(executionReceipt) || executionReceipt.length > 512) return { accepted: false, reason: 'invalid-execution-receipt' };
     if (this.executionReceipts.has(intentId)) return { accepted: false, reason: 'duplicate-execution' };
+    if (!this.config.verifyExecutionReceipt) return { accepted: false, reason: 'execution-verifier-unavailable' };
+    let verified = false;
+    try { verified = this.config.verifyExecutionReceipt(intentId, executionReceipt) === true; } catch { verified = false; }
+    if (!verified) return { accepted: false, reason: 'execution-receipt-untrusted' };
     this.executionReceipts.set(intentId, executionReceipt);
     return { accepted: true, reason: 'execution-recorded' };
   }
@@ -306,19 +334,27 @@ export class AutonomousIntentLearningGovernor {
     const validIds = new Set(this.decisions.keys());
     const approvedIds = readDataArray(snapshot.approvedIntentIds) ?? [];
     for (const item of approvedIds.slice(-2048)) {
-      if (nonBlank(item) && validIds.has(item) && this.decisions.get(item)?.status === 'act') this.approvalReceipts.set(item, 'restored-approval-reference');
+      if (!nonBlank(item) || !validIds.has(item) || this.decisions.get(item)?.status !== 'act' || !this.config.trustPersistedApproval) continue;
+      let trusted = false;
+      try { trusted = this.config.trustPersistedApproval(item) === true; } catch { trusted = false; }
+      if (trusted) this.approvalReceipts.set(item, 'restored-approval-reference');
     }
-    // External-effect decisions lose executable status unless the snapshot carries
-    // a matching approval reference; a serialized status string is not approval.
+    // Serialized IDs are not credentials. Restored execution/approval state is
+    // accepted only after an injected canonical authority re-checks each identity.
     for (const decision of this.decisions.values()) {
-      if (decision.externalSideEffect && !this.approvalReceipts.has(decision.intentId) && decision.status === 'act') {
+      if ((decision.externalSideEffect || decision.status === 'act') &&
+          decision.status === 'act' && !this.approvalReceipts.has(decision.intentId) &&
+          decision.externalSideEffect) {
         decision.status = 'approval-required';
-        decision.reason = 'restore-approval-reference-missing';
+        decision.reason = 'restore-approval-reference-untrusted';
       }
     }
     const executedIds = readDataArray(snapshot.executedIntentIds) ?? [];
     for (const item of executedIds.slice(-2048)) {
-      if (nonBlank(item) && validIds.has(item) && this.decisions.get(item)?.status === 'act') this.executionReceipts.set(item, 'restored-execution-reference');
+      if (!nonBlank(item) || !validIds.has(item) || this.decisions.get(item)?.status !== 'act' || !this.config.trustPersistedExecution) continue;
+      let trusted = false;
+      try { trusted = this.config.trustPersistedExecution(item) === true; } catch { trusted = false; }
+      if (trusted) this.executionReceipts.set(item, 'restored-execution-reference');
     }
     const outcomeRows = readDataArray(snapshot.outcomes) ?? [];
     for (const item of outcomeRows.slice(-2048)) {
