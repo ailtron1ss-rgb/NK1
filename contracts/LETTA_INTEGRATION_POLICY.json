@@ -59,6 +59,7 @@
     "Cloud backend is never inferred from the mere presence of LETTA_API_KEY; NK1_LETTA_BACKEND=cloud is required.",
     "The adapter uses an allowlisted set of file tools, disables server-side web tools/skills, and enables the SDK memory-filesystem confinement for local sessions.",
     "Hybrid recall returns native NK1 records plus a separate untrusted Letta candidate; callers must review it and it is not automatically stored as canonical memory.",
-    "The outbox is persisted in the memory checkpoint projection and restored after restart, with bounded queue/receipts. Delivery is not transactionally coupled to the canonical FileStateStore commit and remains best-effort until crash-injection and reconciliation validation."
+    "The bounded sync outbox and receipts are projected into facets.memory in full and hot checkpoints and replayed after restore when pending intents were saved. This is not transactionally coupled to FileStateStore commit; crash injection and reconciliation remain required before production.",
+    "Canonical forget supersedes queued upserts for the same ID and is prioritized over failed non-delete writes; queue overflow is explicitly surfaced as requiresReconciliation."
   ]
 }
