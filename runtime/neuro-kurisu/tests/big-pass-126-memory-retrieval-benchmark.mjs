@@ -157,7 +157,12 @@ const missingProvenance = runMemoryOS2RetrievalBenchmark(before, examples, { now
 assert.equal(missingProvenance.promotion.allowed, false);
 assert.equal(missingProvenance.promotion.reason, 'dataset-provenance-incomplete');
 
-const insufficient = runMemoryOS2RetrievalBenchmark(before, examples.slice(0, 3), options);
+const insufficientExamples = examples.slice(0, 3);
+const insufficientDatasetHash = runMemoryOS2RetrievalBenchmark(before, insufficientExamples, options).datasetFingerprint;
+const insufficient = runMemoryOS2RetrievalBenchmark(before, insufficientExamples, {
+  ...options,
+  datasetProvenance: { ...datasetProvenance, contentSha256: insufficientDatasetHash },
+});
 assert.equal(insufficient.promotion.allowed, false);
 assert.equal(insufficient.promotion.reason, 'insufficient-labelled-holdout-or-corpus');
 console.log('BIG_PASS_126_MEMORY_RETRIEVAL_BENCHMARK=PASS', JSON.stringify({ corpus: report.corpusSize, train: report.trainQueries, holdout: report.holdoutQueries, recallDelta: report.deltas.recallAtK01, ci: report.confidence.recallAtK01, promotion: report.promotion.status, reason: report.promotion.reason, injectedExactLeakageProbeCount: leakReport.datasetIntegrity.crossSplitQueryLeakageCount, injectedNearDuplicateLeakageProbeCount: nearDuplicateLeakReport.datasetIntegrity.nearDuplicateCrossSplitPairCount }));
