@@ -44,7 +44,7 @@ export function applyTrustedOutcomeToP65(
   }
   const claim = ledger.snapshot().claimsData.find(row => row.id === input.claimId && row.kind === 'belief');
   if (!claim) return reject('belief-not-found');
-  const canonical = (value: string) => value.normalize('NFKC').trim().replace(/\\s+/g, ' ').toLocaleLowerCase();
+  const canonical = (value: string) => value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
   if (!verification.expectedPostcondition || canonical(claim.content) !== canonical(verification.expectedPostcondition)) {
     return reject('belief-postcondition-mismatch');
   }
