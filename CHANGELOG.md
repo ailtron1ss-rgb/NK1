@@ -1,3 +1,11 @@
+## NK1 WorkPass490 — require independent-seed skill revision evidence
+
+- Hardened the existing `SkillRevisionGate` rather than adding a parallel evaluator: proposals now report distinct seed count and per-seed paired gains.
+- A candidate is rejected when holdout evidence has fewer than three independent seeds by default, or when a sufficiently sampled seed exceeds the configured regression budget. Family-regression protection remains in place.
+- Expanded the existing P23 regression test with a single-seed inflation case and multi-seed coverage. This is code committed; test execution and end-to-end production wiring still need verification.
+
+---
+
 ## NK1 WorkPass491 — make the learning evidence path replay-safe and runtime-compatible
 
 - Replaced TypeScript constructor parameter properties in both skill candidate storage adapters with explicit readonly fields, retaining file-path validation, locking and injected authorization/evidence verifiers while allowing Node.js 24 strip-only tests to execute.
