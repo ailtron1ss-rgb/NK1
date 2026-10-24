@@ -1,3 +1,12 @@
+## NK1 WorkPass493 — semantic TypeScript and causality guards (2026-10-24)
+
+- Fixed remaining small strict-mode issues in endogenous-goal input validation, dream association predicates, cognition dependency restore typing, optional causal policy features and verified-dataset schema literals.
+- Registered `p23-compound-repair-revision` in the runtime clock registry and widened the trusted shadow registrar return contract to support the durable registration receipt.
+- Causal replay and repair signals now reach the unified learner only when the causal-experience ledger actually accepted/returned a record; the supervisor's output buffers use explicit Node Buffer typing.
+- Earlier WorkPass491 aliases now cover WorkPass291/292/293/294's workflow commands. Current CI will determine the remaining strict type errors and behavioral regressions.
+
+---
+
 ## NK1 WorkPass492 — additional strict typing repairs (2026-10-24)
 
 - Replaced dynamic indexing on the restored dependency-domain map with an explicit `Record<string, unknown>` boundary.
