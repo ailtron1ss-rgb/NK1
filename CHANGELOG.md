@@ -1,3 +1,11 @@
+## NK1 WorkPass478 — unify Hexis source mapping across memory and P23 (2026-10-24)
+
+- Expanded the Hexis upstream note into a cross-category map for QuixiAI memory/belief revision, hexis-framework correction learning, and Bevel skill lifecycle controls.
+- Explicitly distinguishes existing mechanisms, this pass's source changes, open runtime identity wiring, and unverified release evidence; records the shared receipt → canonical memory → P65 → P23 → independent evaluation → promotion chain.
+- This is an integration map, not a claim that the branches are merged or the end-to-end loop has passed.
+
+---
+
 ## NK1 WorkPass477 — prevent repeated correction evidence from escalating gates (2026-10-24)
 
 - Hardened Hexis-inspired P23 correction memory: a distinct observation ID no longer makes the same signed review-evidence fingerprint count as a second recurrence for the same rule.
