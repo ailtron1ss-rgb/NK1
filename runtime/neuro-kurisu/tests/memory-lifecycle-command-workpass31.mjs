@@ -74,6 +74,30 @@ assert.deepEqual(correctedChain.map(row => row.id), [seed.id, corrected.id],
   'indexed temporal-chain lookup must return the complete chain in revision order from either endpoint');
 assert.deepEqual(correctedChain.map(row => row.revisionSequence), [1, 2]);
 assert.equal(runtime.memoryOS.indexDiagnostics().pass, true, 'revision-group index must match canonical memory before restore');
+const temporalSnapshot = runtime.memoryOS.snapshot();
+const temporalNow = Date.now();
+const expectedCurrentCount = temporalSnapshot.items.filter(row => {
+  const from = Number(row.validFromAt ?? row.createdAt);
+  const until = row.validUntilAt == null ? Number.POSITIVE_INFINITY : Number(row.validUntilAt);
+  return from <= temporalNow && temporalNow < until;
+}).length;
+const expectedHistoricalCount = temporalSnapshot.items.filter(row => row.validUntilAt != null).length;
+const expectedRevisionGroups = new Map();
+for (const row of temporalSnapshot.items) {
+  const group = row.revisionGroupId ?? row.id;
+  expectedRevisionGroups.set(group, Math.max(expectedRevisionGroups.get(group) ?? 0, Number(row.revisionSequence ?? 1)));
+}
+assert.deepEqual(runtime.memoryOS.temporalDiagnostics(), {
+  current: expectedCurrentCount,
+  historical: expectedHistoricalCount,
+  revisedItems: expectedHistoricalCount,
+  revisionGroups: expectedRevisionGroups.size,
+  maxRevision: Math.max(0, ...expectedRevisionGroups.values()),
+  validityCoverage01: temporalSnapshot.items.length
+    ? Math.max(0, Math.min(1, Number.isFinite((expectedCurrentCount + expectedHistoricalCount) / temporalSnapshot.items.length)
+      ? (expectedCurrentCount + expectedHistoricalCount) / temporalSnapshot.items.length : 0))
+    : 1,
+}, 'single-pass temporal diagnostics must preserve the existing diagnostic contract');
 
 runtime.fabric.updateSignals(corrected.id, { confidence: .81 }, 'workpass31-confidence-update', { commandId: 'wp31:signals:seed', tick: 44 });
 runtime.fabric.updateContext(corrected.id, { branch: 'workpass31', reviewState: 'integrated' }, { commandId: 'wp31:context:seed', tick: 45 });
