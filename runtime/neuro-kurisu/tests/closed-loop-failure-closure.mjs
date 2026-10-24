@@ -66,7 +66,7 @@ const good = lateFailure.end({
   evidence: {
     memoryChanged: true, worldChanged: true, agencyChanged: true, learningChanged: true, selfChanged: true,
     memoryWorldVerified: true, worldAgencyLearningVerified: true, causalLifeGraphChain: true,
-    replaySignaturePresent: true, durableStateAligned: true,
+    replaySignaturePresent: true, durableStateAligned: true, cognitiveCycleComplete: true,
   },
 });
 assert.equal(good?.status, 'PASS');
@@ -75,6 +75,7 @@ assert.equal(downgraded?.status, 'FAIL');
 assert.equal(downgraded?.complete, false);
 assert.equal(downgraded?.score01, 0);
 assert.equal(downgraded?.failureReason, 'checkpoint-failed');
+assert.equal(downgraded?.evidence.cognitiveCycleComplete, true, 'late failure must not rewrite the factual unified-cycle result');
 assert.equal(lateFailure.snapshot().completeCycles, 0);
 assert.equal(lateFailure.snapshot().failures, 1);
 assert.equal(lateFailure.snapshot().meanScore01, 0);
