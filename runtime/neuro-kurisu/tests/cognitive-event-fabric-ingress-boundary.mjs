@@ -3,9 +3,9 @@ import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabri
 
 const fabric = new CognitiveEventFabric(128);
 fabric.append({ id: 'obs-1', tick: 1, stage: 'observation', source: 'test', confidence01: 0.7, payload: { signal: 'x' } });
-const before = fabric.snapshot();
 const naturalSource = fabric.append({ id: 'user-obs', tick: 2, stage: 'observation', source: 'user-input', confidence01: .7, payload: { signal: 'human' } });
 assert.equal(naturalSource.source, 'user-input', 'ordinary source labels containing u must remain valid');
+const before = fabric.snapshot();
 for (const invalid of [
   { tick: Number.NaN, stage: 'prediction', source: 'test' },
   { tick: -1, stage: 'prediction', source: 'test' },
@@ -21,7 +21,7 @@ Object.defineProperty(accessorEnvelope, 'tick', { enumerable: true, get() { gett
 assert.throws(() => fabric.append(accessorEnvelope), /cognitive-event-accessor-rejected/);
 assert.equal(getterCalls, 0);
 assert.equal(fabric.snapshot().total, before.total, 'invalid ingress must not mutate the ledger');
-assert.equal(fabric.recent().length, 1);
+assert.equal(fabric.recent().length, 2);
 
 const restored = new CognitiveEventFabric(128);
 let restoreGetterCalls = 0;
