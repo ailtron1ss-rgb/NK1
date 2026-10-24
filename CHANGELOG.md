@@ -1,3 +1,10 @@
+## NK1 WorkPass533 — align MemorySubsystemRuntime snapshot and restore shapes (2026-10-24)
+
+- Fixed the restore adapter so the subsystem's own snapshot can be restored directly, while retaining the organism checkpoint layout (memory / advanced / system).
+- Mapped the canonical MemoryOS2 snapshot, MemoryFabric, lifecycle authority, learning/evidence ledgers and compatibility memory fields through a shared precedence resolver; canonical snapshots still suppress compatibility re-import.
+- Extended the persistence regression to round-trip canonical source/provenance/validity and causal state from a native snapshot, and verify lifecycle tick continuity.
+- Validation is delegated to the memory persistence workflow; the exact-head run must finish before this newest round-trip is called passing.
+
 ## NK1 WorkPass532 — run memory typecheck with locked Node typings (2026-10-24)
 
 - The memory persistence workflow now runs `npm ci --ignore-scripts --no-audit --no-fund` from the runtime lockfile before typecheck, so `typecheck-runtime.mjs` can select `tsconfig.clean.json` and the pinned `@types/node` instead of silently using fallback shims.
