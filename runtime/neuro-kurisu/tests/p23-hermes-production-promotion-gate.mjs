@@ -31,7 +31,7 @@ assert.throws(() => engine.approveReflectiveVerifiedSkillCandidate(
 ), /raw-report-array-reflective-promotion-disabled/);
 assert.equal(approvalCalls, 0, 'legacy array-only API must never reach promotion approval');
 
-// WorkPass335: array-only reflective promotion is intentionally disabled because it cannot prove paired-seed lineage.
+// WorkPass336: array-only reflective promotion is intentionally disabled because it cannot prove paired-seed lineage.
 // WorkPass237: the independent promotion path must not accept caller-invented
 // baseline report arrays. It requires full evaluator envelopes so the canonical
 // matched comparison can prove task/seed/split/environment/manifest identity.
