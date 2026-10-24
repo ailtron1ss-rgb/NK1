@@ -127,10 +127,26 @@ function benchmarkTemporalChain(size) {
     }
   }
   const diagnostics = memory.indexDiagnostics?.();
+  for (let i = 0; i < warmupSamples; i++) memory.temporalDiagnostics();
+  const temporalDiagnosticLatencies = [];
+  let temporalDiagnosticState = null;
+  for (let i = 0; i < measuredSamples; i++) {
+    const started = performance.now();
+    const state = memory.temporalDiagnostics();
+    temporalDiagnosticLatencies.push(Math.max(0, performance.now() - started));
+    if (temporalDiagnosticState === null) temporalDiagnosticState = state;
+    else if (JSON.stringify(state) !== JSON.stringify(temporalDiagnosticState)) {
+      throw new Error('Temporal diagnostics must remain stable for the fixed benchmark snapshot');
+    }
+  }
   return {
     corpusSize: size,
     chainLength: targetChainLength,
     lookup: summarize(latencies),
+    temporalDiagnostics: {
+      lookup: summarize(temporalDiagnosticLatencies),
+      state: temporalDiagnosticState,
+    },
     chainIds,
     indexIntegrity: diagnostics?.pass ?? null,
   };
