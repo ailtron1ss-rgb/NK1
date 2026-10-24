@@ -421,11 +421,14 @@ export class P23LearningEngine {
     const ablations=sanitizeRows(source.ablations,512,parseAblation,row=>row.traceId);
     const evidenceDebt=sanitizeRows(source.evidenceDebt,256,parseEvidenceDebt,row=>row.id);
     // Reconcile dedupe caches with durable rows; restored rows must not be applied twice.
+    // Persisted dedupe caches are newest-first. Give them precedence over
+    // IDs reconstructed from retained evidence rows, otherwise a restart can
+    // discard the actual latest IDs and allow recently processed traces to replay.
     const processedTraceIds=sanitizeIdList([
-      ...experiences.map(row=>row.traceId),...(Array.isArray(source.processedTraceIds)?source.processedTraceIds:[]),
+      ...(Array.isArray(source.processedTraceIds)?source.processedTraceIds:[]),...experiences.map(row=>row.traceId),
     ],2048);
     const replayedTraceIds=sanitizeIdList([
-      ...replayUpdates.map(row=>row.traceId),...(Array.isArray(source.replayedTraceIds)?source.replayedTraceIds:[]),
+      ...(Array.isArray(source.replayedTraceIds)?source.replayedTraceIds:[]),...replayUpdates.map(row=>row.traceId),
     ],2048);
     const checksum=sanitizeChecksum(source.checksum,d.checksum);
     const metrics=sanitizeMetrics(source.metrics,d.metrics);
