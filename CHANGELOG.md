@@ -1,3 +1,8 @@
+## NK1 WorkPass331 — execute initiative regression guards in CI (2026-10-24)
+
+- [CI] Added `.github/workflows/initiative-regression.yml` on the `integration` branch to run the WorkPass329/330 initiative wiring regression tests with Node.js 22 on relevant pushes and pull requests.
+- [LIMITATION] This workflow is newly committed; its first run has not yet been verified. It avoids modifying the oversized runtime package manifest. The `main` branch and Release ZIP remain unchanged.
+
 ## NK1 WorkPass330 — guard autonomous clock wiring (2026-10-24)
 
 - [REGRESSION] Added `runtime/neuro-kurisu/tests/initiative-autonomous-clock-workpass330.mjs` to guard that the production cognitive clock calls `step(undefined, { deliberate: false, spontaneous: true })`, that `autoRun` starts the clock, and that the initiative gate remains restricted to endogenous cycles.
