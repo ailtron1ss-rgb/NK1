@@ -27,6 +27,9 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/CorrectionRuleMemory.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
       - "runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts"
+      - "runtime/neuro-kurisu/src/organism/system/EvidenceEventIdentity.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/P65VerifiedOutcomeBridge.ts"
+      - "runtime/neuro-kurisu/tests/p65-verified-outcome-bridge.mjs"
       - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
       - ".github/workflows/p26-learning-validation.yml"
   workflow_dispatch:
@@ -60,6 +63,9 @@ jobs:
       - name: Validate learning input integrity
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:learning-input-integrity
+      - name: Verify decision-bound evidence bridge into P65
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p65:verified-outcome-bridge
       - name: Run online learning and recovery probe
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:learning-recovery-benchmark
