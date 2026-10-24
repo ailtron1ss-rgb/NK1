@@ -116,6 +116,8 @@ assert.ok(runtimeSource.includes('durableStateAligned: domainAfter.lastCheckpoin
 // Exercise cancellation at both the entry boundary and the final pre-actuation boundary.
 const work = await mkdtemp(path.join(tmpdir(), 'neuro-kurisu-p328-'));
 const stateFile = path.join(work, 'organism.json');
+let stopDurableWrites = 0;
+const testJournal = { write: async (_level, event) => { if (event === 'runtime.stop.durable') stopDurableWrites += 1; } };
 let runtime;
 let lateController = null;
 let invokerCalls = 0;
@@ -123,6 +125,7 @@ const proposalMarker = 'suggestedAction must be one of';
 try {
   runtime = new OrganismRuntime({
     stateFile,
+    journal: testJournal,
     intervalMs: 5_000,
     enableLanguage: true,
     autoRun: false,
@@ -178,6 +181,10 @@ try {
   assert.equal(persisted.system?.causalDomainClosureLedger?.lastStatus, 'FAIL');
   assert.match(persisted.system?.causalDomainClosureLedger?.recent?.[0]?.failureReason ?? '', /cognitive-cycle-aborted:before-embodied-action/);
 
+  await Promise.all([runtime.stop(), runtime.stop()]);
+  assert.equal(stopDurableWrites, 1, 'concurrent stop calls must share one durable shutdown transaction');
+  runtime = null;
+
   console.log(JSON.stringify({
     pass: true,
     status: 'P328_CLOSED_LOOP_FAILURE_CLOSURE_PASS',
@@ -189,6 +196,6 @@ try {
     persistedCausalClosure: persisted.system?.causalDomainClosureLedger?.lastStatus,
   }, null, 2));
 } finally {
-  await runtime?.stop();
+  await runtime?.stop().catch(() => {});
   await rm(work, { recursive: true, force: true });
 }
