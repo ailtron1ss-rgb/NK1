@@ -152,7 +152,10 @@ export class MemorySubsystemRuntime {
     if (this.lettaSyncCompletedKeys.includes(key) || this.lettaSyncOutbox.some(entry => entry.key === key)) return;
     if (this.lettaSyncOutbox.length >= MAX_LETTA_SYNC_OUTBOX_ENTRIES) {
       if (input.action === 'forget') {
-        const evictIndex = this.lettaSyncOutbox.findLastIndex(entry => entry.input.action === 'upsert');
+        let evictIndex = -1;
+        for (let i = this.lettaSyncOutbox.length - 1; i >= 0; i -= 1) {
+          if (this.lettaSyncOutbox[i].input.action === 'upsert') { evictIndex = i; break; }
+        }
         if (evictIndex >= 0) {
           this.lettaSyncOutbox.splice(evictIndex, 1);
           this.lettaSyncOutboxOverflowCount += 1;
@@ -166,7 +169,7 @@ export class MemorySubsystemRuntime {
         return;
       }
     }
-    const entry = { key, input: structuredClone(input), enqueuedAt: Date.now(), attempts: 0, lastError: null };
+    const entry: LettaSyncOutboxEntry = { key, input: structuredClone(input), enqueuedAt: Date.now(), attempts: 0, lastError: null };
     if (input.action === 'forget') this.lettaSyncOutbox.unshift(entry);
     else this.lettaSyncOutbox.push(entry);
     this.scheduleLettaSyncDrain();
