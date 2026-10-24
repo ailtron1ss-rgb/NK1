@@ -152,6 +152,14 @@ test("AvatarStage publishes one versioned embodiment intent and rejects stale ut
   assert.doesNotMatch(viewer, /d\.type==='kurisu_lipsync'|d\.type==='kurisu_embodiment'|d\.type==='kurisu_expression'/, "viewer must accept the unified control contract, not competing writers");
 });
 
+test("AvatarStage exposes an explicit retry path after a Live2D viewer failure", async () => {
+  const source = await readFile(join(root, "src/components/AvatarStage.tsx"), "utf8");
+  assert.match(source, /const \[viewerAttempt, setViewerAttempt\] = useState\(0\)/);
+  assert.match(source, /if \(!live\) setViewerAttempt\(\(attempt\) => attempt \+ 1\)/);
+  assert.match(source, /<iframe key=\{viewerAttempt\} ref=\{frame\} title="Kurisu Live2D"/);
+  assert.match(source, /setLive\(false\)/, "viewer errors must expose the retry path");
+});
+
 test("smooths low-frequency avatar affect without rewinding or overshooting", () => {
   const start = smoothEmbodimentAffect(null, {
     expressionIntensity: 0, gazeX: 0, gazeY: 0, headTilt: 0, voiceEmphasis: 0,
