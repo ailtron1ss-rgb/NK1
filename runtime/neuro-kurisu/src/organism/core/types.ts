@@ -145,6 +145,8 @@ export interface OrganismDecisionTrace {
   /** State immediately after the associated outcome. This makes replay counterfactual/temporal learning explicit instead of inferring it from the old state. */
   stateAfter?: OrganismState;
   reasoningSignals: Record<string, number>;
+  /** Emotion episode that appraised the organism's state before this action was selected. */
+  emotionEpisodeId?: string;
   worldContextKey?: string;
   /** R19 operation-level semantic proof: hashes + invariant checks for the selected decision. */
   semanticEvidence?: import('../system/DecisionSemanticEvidence.ts').DecisionSemanticEvidence;
