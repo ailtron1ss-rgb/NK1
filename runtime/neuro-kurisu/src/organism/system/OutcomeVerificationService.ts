@@ -1,5 +1,6 @@
 export type OutcomeVerificationBasis = 'none' | 'tool-contract' | 'external-postcondition';
 
+import { createStableEvidenceEventId } from './EvidenceEventIdentity.ts';
 import type { WorldContext } from '../core/types.ts';
 import { normalizeWorldContext as normalizeCanonicalWorldContext } from '../core/WorldContextNormalizer.ts';
 import { stableJson } from '../core/StableSerialization.ts';
@@ -10,6 +11,8 @@ export interface OutcomeVerification {
   confidence01: number;
   externalObservation?: boolean;
   observationId?: string;
+  /** Stable join key; a correlation ID is not proof on its own. */
+  evidenceEventId?: string;
   expectedPostcondition?: string;
   observedPostcondition?: string;
   notes?: string;
@@ -104,6 +107,16 @@ export function isTrustedDecisionLinkedExternalPostcondition(
     return false;
   }
 }
+function makeEvidenceEventId(context: OutcomeVerificationContext, observationId: string): string | undefined {
+  const toolId = boundedCorrelationId(context.toolId, 180);
+  const executionId = boundedCorrelationId(context.executionId, 100);
+  const decisionId = boundedCorrelationId(context.decisionId, 180);
+  if (!toolId || toolId === 'unknown-tool' ||
+      !executionId || !/^exec-[a-z0-9-]{8,80}$/i.test(executionId) ||
+      !decisionId || !observationId || observationId.length > 180) return undefined;
+  return createStableEvidenceEventId('outcome', [toolId, executionId, decisionId, observationId, context.input]);
+}
+
 const clamp = (x: unknown) => typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : 0;
 const boundedText = (value: unknown, max: number): string | undefined => {
   if (typeof value !== 'string') return undefined;
@@ -233,6 +246,7 @@ export class OutcomeVerificationService {
         notes = 'external postcondition contradicts expected state';
       }
       const preserveExternalEvidence = external && externalEvidenceShapeValid && checked.verified === true;
+      const evidenceEventId = preserveExternalEvidence && observationId ? makeEvidenceEventId(isolated, observationId) : undefined;
       const normalized: OutcomeVerification = {
         verified,
         // Preserve valid contradictory external evidence for diagnostics, but it cannot authorize success.
@@ -240,6 +254,7 @@ export class OutcomeVerificationService {
         confidence01: verified || preserveExternalEvidence ? clamp(checked.confidence01) : 0,
         externalObservation: (verified || preserveExternalEvidence) && external,
         ...((verified || preserveExternalEvidence) && observationId ? { observationId } : {}),
+        ...(evidenceEventId ? { evidenceEventId } : {}),
         ...((verified || preserveExternalEvidence) && expectedPostcondition ? { expectedPostcondition } : {}),
         ...((verified || preserveExternalEvidence) && observedPostcondition ? { observedPostcondition } : {}),
         ...(notes ? { notes } : {}),
