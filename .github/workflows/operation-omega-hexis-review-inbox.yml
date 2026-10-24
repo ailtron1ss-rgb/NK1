@@ -14,6 +14,9 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/TrustedSkillShadowRunRegistry.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillShadowEvidence.ts'
       - 'runtime/neuro-kurisu/tests/operation-omega-hexis-review-inbox.mjs'
+      - 'runtime/neuro-kurisu/src/organism/memory/P65EpistemicLedger.ts'
+      - 'runtime/neuro-kurisu/tests/operation-omega-hexis-memory-provenance.mjs'
+      - 'runtime/neuro-kurisu/package.json'
       - 'legacy/input-archives/hexis-selected-2026-10-24/**'
       - 'docs/OPERATION_OMEGA_HEXIS_INTEGRATION_2026-10-24.md'
       - 'CHANGELOG.md'
@@ -34,6 +37,9 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/TrustedSkillShadowRunRegistry.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillShadowEvidence.ts'
       - 'runtime/neuro-kurisu/tests/operation-omega-hexis-review-inbox.mjs'
+      - 'runtime/neuro-kurisu/src/organism/memory/P65EpistemicLedger.ts'
+      - 'runtime/neuro-kurisu/tests/operation-omega-hexis-memory-provenance.mjs'
+      - 'runtime/neuro-kurisu/package.json'
       - 'legacy/input-archives/hexis-selected-2026-10-24/**'
       - 'docs/OPERATION_OMEGA_HEXIS_INTEGRATION_2026-10-24.md'
       - 'CHANGELOG.md'
@@ -56,3 +62,5 @@ jobs:
           package-manager-cache: false
       - name: Run Operation Omega review-inbox regression
         run: node --experimental-strip-types tests/operation-omega-hexis-review-inbox.mjs
+      - name: Run Hexis-inspired epistemic provenance regression
+        run: node --experimental-strip-types tests/operation-omega-hexis-memory-provenance.mjs
