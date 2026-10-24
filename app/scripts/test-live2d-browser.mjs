@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { inflateSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import { hydrateCanonicalPublicAssets } from "./sync-canonical-public-assets.mjs";
@@ -20,6 +21,69 @@ const mimeTypes = new Map([
 ]);
 
 const harness = "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>NK1 Live2D smoke test</title></head><body style=\"margin:0;background:#111\"><iframe id=\"viewer\" title=\"Live2D viewer\" style=\"width:760px;height:840px;border:0\"></iframe><script>window.__live2dMessages=[];window.addEventListener('message',function(event){var frame=document.getElementById('viewer');if(event.origin===location.origin&&event.source===frame.contentWindow&&event.data&&typeof event.data.type==='string')window.__live2dMessages.push(event.data)});</script></body></html>";
+
+
+function paeth(a, b, c) {
+  const p = a + b - c;
+  const pa = Math.abs(p - a);
+  const pb = Math.abs(p - b);
+  const pc = Math.abs(p - c);
+  return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+}
+
+function countBrightPngPixels(png) {
+  const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  assert.ok(png.subarray(0, 8).equals(signature), "Chromium screenshot must be a PNG");
+  let offset = 8;
+  let width = 0, height = 0, bitDepth = 0, colorType = 0, interlace = 0;
+  const compressed = [];
+  while (offset + 12 <= png.length) {
+    const length = png.readUInt32BE(offset); offset += 4;
+    const type = png.toString("ascii", offset, offset + 4); offset += 4;
+    const data = png.subarray(offset, offset + length);
+    offset += length + 4; // chunk body plus CRC
+    if (type === "IHDR") {
+      width = data.readUInt32BE(0);
+      height = data.readUInt32BE(4);
+      bitDepth = data[8];
+      colorType = data[9];
+      interlace = data[12];
+    } else if (type === "IDAT") compressed.push(data);
+    else if (type === "IEND") break;
+  }
+  assert.equal(bitDepth, 8, "PNG decoder expects 8-bit Chromium screenshots");
+  assert.ok(colorType === 2 || colorType === 6, "PNG decoder supports RGB/RGBA screenshots");
+  assert.equal(interlace, 0, "interlaced screenshot PNGs are unsupported");
+  const channels = colorType === 6 ? 4 : 3;
+  const stride = width * channels;
+  const raw = inflateSync(Buffer.concat(compressed));
+  const decoded = Buffer.alloc(stride * height);
+  let inputOffset = 0;
+  for (let y = 0; y < height; y++) {
+    const filter = raw[inputOffset++];
+    const row = y * stride;
+    const priorRow = row - stride;
+    for (let x = 0; x < stride; x++) {
+      const value = raw[inputOffset++];
+      const left = x >= channels ? decoded[row + x - channels] : 0;
+      const up = y > 0 ? decoded[priorRow + x] : 0;
+      const upLeft = y > 0 && x >= channels ? decoded[priorRow + x - channels] : 0;
+      let predictor = 0;
+      if (filter === 1) predictor = left;
+      else if (filter === 2) predictor = up;
+      else if (filter === 3) predictor = Math.floor((left + up) / 2);
+      else if (filter === 4) predictor = paeth(left, up, upLeft);
+      else if (filter !== 0) throw new Error("unsupported PNG filter " + filter);
+      decoded[row + x] = (value + predictor) & 255;
+    }
+  }
+  let brightPixels = 0;
+  for (let pixel = 0; pixel < width * height; pixel++) {
+    const offset = pixel * channels;
+    if (Math.max(decoded[offset], decoded[offset + 1], decoded[offset + 2]) > 64) brightPixels++;
+  }
+  return { width, height, brightPixels };
+}
 
 const server = createServer(async (request, response) => {
   try {
@@ -41,13 +105,7 @@ const server = createServer(async (request, response) => {
       response.end("forbidden");
       return;
     }
-    let bytes = await readFile(filePath);
-    if (pathname === "/viewer.html") {
-      const source = bytes.toString("utf8");
-      const anchor = "app.stage.addChild(model);";
-      if (!source.includes(anchor)) throw new Error("Live2D browser-test instrumentation anchor missing");
-      bytes = Buffer.from(source.replace(anchor, anchor + "window.__nk1TestApp=app;window.__nk1TestModel=model;"), "utf8");
-    }
+    const bytes = await readFile(filePath);
     response.writeHead(200, {
       "content-type": mimeTypes.get(path.extname(filePath)) || "application/octet-stream",
       "content-length": String(bytes.length),
@@ -119,28 +177,18 @@ try {
       return document.getElementById("status")?.textContent?.startsWith("ок ·") && canvas && canvas.width > 0 && canvas.height > 0;
     }, null, { timeout: 15000 });
 
-    const render = await frame.evaluate(async () => {
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const render = await frame.evaluate(() => {
       const canvas = document.getElementById("canvas");
-      const app = window.__nk1TestApp;
-      const model = window.__nk1TestModel;
-      if (!app || !model) return { width: canvas.width, height: canvas.height, hasWebGL: false, visiblePixels: 0, modelAvailable: false };
-      // WebGL may discard the previous buffer after presentation. Render and sample
-      // synchronously in the same task to inspect the actual drawing buffer reliably.
-      app.renderer.render(app.stage);
       const gl = canvas.getContext("webgl2") || canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
-      if (!gl) return { width: canvas.width, height: canvas.height, hasWebGL: false, visiblePixels: 0, modelAvailable: true };
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-      gl.finish();
-      const pixels = new Uint8Array(canvas.width * canvas.height * 4);
-      gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-      let visiblePixels = 0;
-      for (let offset = 3; offset < pixels.length; offset += 4) if (pixels[offset] > 12) visiblePixels++;
-      return { width: canvas.width, height: canvas.height, hasWebGL: true, visiblePixels };
+      return { width: canvas.width, height: canvas.height, hasWebGL: Boolean(gl) };
     });
     assert.ok(render.hasWebGL, profile + ": no WebGL context; " + JSON.stringify(render));
     assert.ok(render.width >= 500 && render.height >= 500, profile + ": canvas unexpectedly small; " + JSON.stringify(render));
-    assert.ok(render.visiblePixels > 250, profile + ": model canvas appears empty; " + JSON.stringify(render));
+    // Read Chromium's composed screenshot rather than a WebGL drawing buffer that
+    // browsers may discard after presentation when preserveDrawingBuffer=false.
+    const screenshot = await frame.locator("#canvas").screenshot();
+    const imageStats = countBrightPngPixels(screenshot);
+    assert.ok(imageStats.brightPixels > 250, profile + ": rendered canvas appears empty; " + JSON.stringify(imageStats));
 
     const sendIntent = async (stateVersion, expression, motionGroup, motionIndex) => {
       const intent = {
@@ -171,7 +219,7 @@ try {
     assert.ok(finalStatus.startsWith("ок ·"), profile + ": viewer left ready state after expression/motion events");
     assert.deepEqual(pageErrors, [], profile + ": uncaught browser exceptions: " + pageErrors.join(" | "));
     assert.deepEqual(badResponses, [], profile + ": failed local asset requests: " + badResponses.join(" | "));
-    console.log("NK1_LIVE2D_BROWSER_PROFILE=PASS profile=" + profile + " canvas=" + render.width + "x" + render.height + " visiblePixels=" + render.visiblePixels);
+    console.log("NK1_LIVE2D_BROWSER_PROFILE=PASS profile=" + profile + " canvas=" + render.width + "x" + render.height + " brightPixels=" + imageStats.brightPixels);
     await page.close();
   }
 
