@@ -41,6 +41,16 @@ assert.match(runtime, /counterfactualBranchCount:branches\.length/,
   'the canonical future/plan stage must retain the counterfactual availability signal');
 assert.match(runtime, /innerIntentId:innerIntent\.id/,
   'the canonical causal cycle must connect the intention to later evidence');
+assert.match(runtime, /innerIntentMemoryTrace:\s*\{/,
+  'the existing experience event must preserve the intent/outcome trace for autobiographical consolidation');
+assert.match(runtime, /retrievedMemoryIds:\s*cycle\.memories\.slice\(0, 12\)\.map\(memory => memory\.id\)/,
+  'the trace must retain which canonical memories were available to the decision');
+assert.match(runtime, /observation: observationEvidence\.id,\s*prediction: predictionEvidence\.id,\s*action: actionEvidence\.id,\s*outcome: outcomeEvidence\.id/s,
+  'the trace must bind intent to the four existing evidence receipts');
+assert.match(runtime, /attributionEligible: !innerIntent\.overridden/,
+  'a redirected action must not be credited to the original proposal');
+assert.match(runtime, /observedReward01: clamp01\(grounded\.reward01\)/,
+  'the trace must distinguish outcome from the plan prediction');
 
 const baseInput = {
   tick: 7,

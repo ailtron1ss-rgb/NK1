@@ -1,3 +1,15 @@
+## Latest durable checkpoint — WorkPass335: intent → outcome autobiographical trace (2026-10-24)
+
+**Branch:** `workpass334-inner-imperative-homeostasis-2026-10-24`; WorkPass334 intent/homeostasis controller and fixture corrections are retained.
+
+- The existing `OrganismRuntime → core.feedback → worldEvent` path now carries a bounded `innerIntentMemoryTrace` through the established experience/learning event, rather than creating a competing memory store.
+- The trace links intent source/motive/reason and resource snapshot with the active goal, proposed/selected/planned/executed actions, canonical memory IDs consulted, observation/prediction/action/outcome evidence receipt IDs, counterfactual branch availability, predicted versus grounded outcome, source, confidence/verification and prediction error.
+- If the homeostatic gate changes the action, `attributionEligible=false`; downstream learning must not credit the pre-override candidate for the changed behavior. Simulation evidence stays distinct from external/device evidence.
+- Regression coverage in `canonical-cognitive-kernel-runtime-wiring.mjs` asserts the trace is wired to the real feedback event and preserves receipt/memory attribution.
+- **Validation:** WorkPass331 on SHA `8eb983930e0da0552426bfb5012c70d0bf9c5c99` passed prerequisites, canonical kernel and inner-intent behavior tests. WorkPass335 is a newer commit and its exact-head results are pending; WorkPass110 also had an independent fixture-isolation failure which was corrected in `c8fdbaafb0b6d360aae0fc7270de1c4361cb81ba` and requires a fresh result. Do not claim end-to-end durable recall until a real restart/retrieval test confirms it.
+
+---
+
 ## Latest follow-up — WorkPass334 independent-evaluation regression isolation (2026-10-24)
 
 - Diagnosed the exact-head WorkPass110 failure in `workpass243-host-owned-independent-evaluation-services.mjs`: the test deliberately made the executor group-writable, verified denial, then left that mode in place before the separate run-root identity test. The executable safety check correctly fired first and masked the intended second assertion.

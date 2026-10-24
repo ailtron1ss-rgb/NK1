@@ -1,3 +1,11 @@
+# WorkPass335 — preserve intent-to-outcome provenance in experience memory (2026-10-24)
+
+- [INTEGRATION] Extended the existing `core.feedback → worldEvent` experience event with a bounded `innerIntentMemoryTrace`; no second memory store or direct runtime-owned MemoryOS2 writes were added.
+- [CAUSALITY] The trace binds intent ID/motive/reason, active goal, proposed/selected/planned/actual actions, resource state, retrieved canonical memory IDs, evidence receipt IDs, counterfactual availability, prediction, grounded reward, evidence/verification and prediction error.
+- [LEARNING] `attributionEligible` is false when homeostasis redirects an action, preventing an experience consolidator from attributing an outcome to the incompatible proposal. Simulation and external/device outcome sources remain distinct.
+- [TEST] Extended the live runtime-wiring regression to require the trace to travel through the existing event, reference existing evidence receipts and distinguish prediction from observed outcome.
+- [VALIDATION] Exact-head WorkPass331 passed on the previous cognitive-code head. The latest commit adds this memory-facing trace and is awaiting its own exact-head WorkPass331 and WorkPass110 results. No measured memory-retrieval uplift or production readiness is claimed.
+
 # WorkPass334 follow-up — isolate authority permission test state (2026-10-24)
 
 - [TEST FIX] The WorkPass243 independent-evaluation regression now restores the executor fixture to private executable permissions after asserting rejection of a group-writable executable. This prevents that intentional mutation from masking the subsequent run-root inode/identity check.
