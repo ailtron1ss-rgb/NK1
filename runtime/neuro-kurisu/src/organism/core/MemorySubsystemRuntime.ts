@@ -67,8 +67,8 @@ export class MemorySubsystemRuntime {
   readonly causalLifeGraph = new CausalLifeGraph();
   /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */
   readonly memoryWorldCausalBridge = new MemoryWorldCausalBridge(96);
-  restoreFromPersisted(input: { memory?: any; advanced?: any }) {
-    const memory=input.memory ?? {}; const advanced=input.advanced ?? {};
+  restoreFromPersisted(input: { memory?: any; advanced?: any; system?: any }) {
+    const memory=input.memory ?? {}; const advanced=input.advanced ?? {}; const system=input.system ?? {};
     this.events.restore(memory.eventLog);
     this.memories.restore(memory.autobiographicalMemories);
     this.selfModel.restore(memory.selfModel);
@@ -94,10 +94,10 @@ export class MemorySubsystemRuntime {
     // These evidence/causal projections live inside the canonical memory subsystem.
     // Persist them alongside the other advanced memory state so restart does not
     // erase retention policy learning, source lineage, life-graph links, or replay evidence.
-    this.memoryRetentionEconomy.restore(advanced.memoryRetentionEconomy ?? memory.memoryRetentionEconomy ?? (input as any).memoryRetentionEconomy);
-    this.memoryCausalEconomy.restore(advanced.memoryCausalEconomy ?? memory.memoryCausalEconomy ?? (input as any).memoryCausalEconomy);
-    this.causalLifeGraph.restore(advanced.causalLifeGraph ?? memory.causalLifeGraph ?? (input as any).causalLifeGraph);
-    this.memoryWorldCausalBridge.restore(advanced.memoryWorldCausalBridge ?? memory.memoryWorldCausalBridge ?? (input as any).memoryWorldCausalBridge);
+    this.memoryRetentionEconomy.restore(advanced.memoryRetentionEconomy ?? memory.memoryRetentionEconomy ?? system.memoryRetentionEconomy ?? (input as any).memoryRetentionEconomy);
+    this.memoryCausalEconomy.restore(advanced.memoryCausalEconomy ?? memory.memoryCausalEconomy ?? system.memoryCausalEconomy ?? (input as any).memoryCausalEconomy);
+    this.causalLifeGraph.restore(advanced.causalLifeGraph ?? memory.causalLifeGraph ?? system.causalLifeGraph ?? (input as any).causalLifeGraph);
+    this.memoryWorldCausalBridge.restore(advanced.memoryWorldCausalBridge ?? memory.memoryWorldCausalBridge ?? system.memoryWorldCausalBridge ?? (input as any).memoryWorldCausalBridge);
   }
 
   /** Read-only memory hygiene report; destructive repair remains an explicit separate operation. */
