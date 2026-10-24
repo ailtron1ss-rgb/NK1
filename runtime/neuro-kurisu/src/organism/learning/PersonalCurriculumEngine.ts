@@ -110,7 +110,7 @@ export class PersonalCurriculumEngine {
          idCounts.get(x.id)!==1||familyCounts.get(x.family)!==1||
          !isCurriculumText(x.title,140)||!x.title.trim()||!source||!status||
          !Array.isArray(x.contextKeys)||x.contextKeys.length>24||
-         x.contextKeys.some(k=>!isCurriculumText(k,180,true))||
+         x.contextKeys.some(k=>!isCurriculumIdentity(k,180))||
          !metrics.every(k=>typeof x[k]==='number'&&Number.isFinite(x[k])&&x[k]>=0&&x[k]<=1)||
          !['occurrences','verified','successes','failures','contexts'].every(k=>typeof x[k]==='number'&&Number.isSafeInteger(x[k])&&x[k]>=0&&x[k]<=1_000_000_000)||
          !isCurriculumTimestamp(x.lastAt))continue;
