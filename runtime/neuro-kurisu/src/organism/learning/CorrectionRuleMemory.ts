@@ -226,6 +226,11 @@ export class CorrectionRuleMemory {
     for (const rawRow of sourceRows) {
       const row = parseObservation(rawRow);
       if (!row || quarantined.has(row.observationId)) continue;
+      // Persisted fingerprints are claims, not authentication. Re-check every
+      // restored row with the host verifier before it can influence maturity.
+      let verified = false;
+      try { verified = this.verifyReview(structuredClone(row)); } catch { verified = false; }
+      if (!verified) continue;
       const prior = byId.get(row.observationId);
       if (!prior) {
         byId.set(row.observationId, row);
