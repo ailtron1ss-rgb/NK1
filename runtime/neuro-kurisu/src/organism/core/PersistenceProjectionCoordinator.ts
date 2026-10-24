@@ -384,11 +384,20 @@ export class PersistenceProjectionCoordinator {
     if (ctx.b333AutonomousGoalGenesis?.snapshot) target.system.b333AutonomousGoalGenesis=this.snapshotOnce('snap:b333AutonomousGoalGenesis', ctx.b333AutonomousGoalGenesis);
     if (ctx.b334AutonomousProjectLifecycle?.snapshot) target.system.b334AutonomousProjectLifecycle=this.snapshotOnce('snap:b334AutonomousProjectLifecycle', ctx.b334AutonomousProjectLifecycle);
     target.system.advancedProjectionScheduleMetrics=ctx.advancedProjectionScheduler.metrics(target.state.tick);
-    if (ctx.memoryRetentionEconomy?.snapshot) target.system.memoryRetentionEconomy=this.snapshotOnce('snap:memoryRetentionEconomy', ctx.memoryRetentionEconomy);
+    const memoryRetentionEconomy=ctx.memoryRetentionEconomy ?? ctx.memorySubsystem?.memoryRetentionEconomy;
+    if (memoryRetentionEconomy?.snapshot) target.system.memoryRetentionEconomy=this.snapshotOnce('snap:memoryRetentionEconomy', memoryRetentionEconomy);
     if (ctx.behavioralInfluenceLedger?.snapshot) target.system.behavioralInfluenceLedger=this.snapshotOnce('snap:behavioralInfluenceLedger', ctx.behavioralInfluenceLedger);
     if (ctx.emotionAppraisal?.snapshot) target.system.emotionAppraisal=this.snapshotOnce('snap:emotionAppraisal', ctx.emotionAppraisal);
     if (ctx.worldSubsystem?.worldModelEnsemble?.snapshot) target.system.worldModelEnsemble=this.snapshotOnce('snap:worldModelEnsemble', ctx.worldSubsystem.worldModelEnsemble);
-    if (ctx.memoryCausalEconomy?.snapshot) target.system.memoryCausalEconomy=this.snapshotOnce('snap:memoryCausalEconomy', ctx.memoryCausalEconomy);
+    const memoryCausalEconomy=ctx.memoryCausalEconomy ?? ctx.memorySubsystem?.memoryCausalEconomy;
+    if (memoryCausalEconomy?.snapshot) target.system.memoryCausalEconomy=this.snapshotOnce('snap:memoryCausalEconomy', memoryCausalEconomy);
+    // These bounded causal-memory projections are part of durable continuity, not
+    // transient telemetry. Fall back to the extracted memory subsystem when older
+    // OrganismCore facades do not expose direct aliases.
+    const causalLifeGraph=ctx.causalLifeGraph ?? ctx.memorySubsystem?.causalLifeGraph;
+    if (causalLifeGraph?.snapshot) target.system.causalLifeGraph=this.snapshotOnce('snap:causalLifeGraph', causalLifeGraph);
+    const memoryWorldCausalBridge=ctx.memoryWorldCausalBridge ?? ctx.memorySubsystem?.memoryWorldCausalBridge;
+    if (memoryWorldCausalBridge?.snapshot) target.system.memoryWorldCausalBridge=this.snapshotOnce('snap:memoryWorldCausalBridge', memoryWorldCausalBridge);
     if (ctx.activePerceptionExecutor?.snapshot) target.system.activePerceptionExecutor=this.snapshotOnce('snap:activePerceptionExecutor', ctx.activePerceptionExecutor);
     if (ctx.activePerceptionNeural?.snapshot) target.system.activePerceptionNeural=this.snapshotOnce('snap:activePerceptionNeural', ctx.activePerceptionNeural);
     if (ctx.worldCausalCalibration?.snapshot) target.system.worldCausalCalibration=this.snapshotOnce('snap:worldCausalCalibration', ctx.worldCausalCalibration);
