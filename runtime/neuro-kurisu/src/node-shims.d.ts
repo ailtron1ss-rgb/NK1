@@ -30,3 +30,33 @@ declare module 'node:dns/promises' { export function lookup(hostname:string, opt
 declare module 'node:net' { export function isIP(input:string):number; }
 declare module 'node:https' { export type RequestOptions = { lookup?: any; [key:string]: any }; export function request(options:any, callback:(response:any)=>void):any; }
 declare const Buffer: { isBuffer(value:unknown):boolean; from(value:string|Uint8Array, encoding?:string):any; concat(list:readonly Uint8Array[], totalLength?:number):Uint8Array; };
+
+declare namespace NodeJS {
+  interface ErrnoException extends Error { errno?: number; code?: string; path?: string; syscall?: string; }
+  interface Timeout { ref(): this; unref(): this; hasRef(): boolean; }
+  type Signals = string;
+}
+declare module 'node:fs' {
+  export const constants: any;
+  export function accessSync(path: string, mode?: number): void;
+  export function appendFileSync(path: string, data: string | Uint8Array, options?: any): void;
+  export function chmodSync(path: string, mode: number): void;
+  export function closeSync(fd: number): void;
+  export function copyFileSync(src: string, dest: string, mode?: number): void;
+  export function existsSync(path: string): boolean;
+  export function fsyncSync(fd: number): void;
+  export function lstatSync(path: string): any;
+  export function mkdirSync(path: string, options?: any): string | undefined;
+  export function openSync(path: string, flags: string | number, mode?: number): number;
+  export function readFileSync(path: string, options?: any): any;
+  export function readdirSync(path: string, options?: any): any[];
+  export function realpathSync(path: string): string;
+  export function renameSync(oldPath: string, newPath: string): void;
+  export function rmSync(path: string, options?: any): void;
+  export function statSync(path: string): any;
+  export function unlinkSync(path: string): void;
+  export function writeFileSync(path: string, data: string | Uint8Array, options?: any): void;
+  export function createReadStream(path: string, options?: any): any;
+  export function createWriteStream(path: string, options?: any): any;
+  export const promises: any;
+}
