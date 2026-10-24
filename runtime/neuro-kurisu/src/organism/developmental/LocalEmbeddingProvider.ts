@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { localEndpointResourceKey, sharedLocalInferenceScheduler } from '../integration/local/LocalInferenceScheduler.mjs';
 
 export type LocalEmbeddingProviderKind = 'ollama' | 'openai-compatible';
 
@@ -156,7 +157,16 @@ export class LocalEmbeddingProvider implements TextEmbeddingProvider {
       const part = missing.slice(offset, offset + this.batchSize);
       const remainingMs = deadlineAt - Date.now();
       if (remainingMs <= 0) throw new Error('Embedding request exceeded its total time budget');
-      const vectors = await this.requestVectors(part.map(row => row.text), remainingMs);
+      const texts = part.map(row => row.text);
+      const vectors = await sharedLocalInferenceScheduler.run(
+        localEndpointResourceKey({ baseUrl: this.baseUrl }, 'embeddings'),
+        () => {
+          const inferenceRemainingMs = deadlineAt - Date.now();
+          if (inferenceRemainingMs < 100) throw new Error('Embedding request exceeded its total time budget');
+          return this.requestVectors(texts, inferenceRemainingMs);
+        },
+        { queueTimeoutMs: Math.max(100, Math.min(sharedLocalInferenceScheduler.queueTimeoutMs, remainingMs)) },
+      );
       if (vectors.length !== part.length) throw new Error('Embedding provider returned a mismatched vector count');
       const dimension = vectors[0]?.length ?? 0;
       if (!dimension || dimension > 4096 || vectors.some(vector => vector.length !== dimension)) throw new Error('Embedding provider returned inconsistent dimensions');
