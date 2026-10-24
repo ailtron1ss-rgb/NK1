@@ -45,7 +45,7 @@ on:
 concurrency:
   # Pushes and PR updates on the same ref should validate the newest state,
   # not queue redundant full regressions for every intermediate commit.
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 permissions:
