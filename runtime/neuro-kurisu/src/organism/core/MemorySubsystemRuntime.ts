@@ -138,12 +138,37 @@ export class MemorySubsystemRuntime {
 
   private enqueueLettaSync(input: LettaCanonicalMemorySyncInput): void {
     const key = createHash('sha256').update(JSON.stringify(input)).digest('hex');
+    if (input.action === 'forget') {
+      // A canonical delete supersedes every unsent upsert for the same memory
+      // and takes priority over unrelated failed writes to protect privacy.
+      this.lettaSyncOutbox = this.lettaSyncOutbox.filter(
+        entry => !(entry.input.action === 'upsert' && entry.input.id === input.id),
+      );
+    } else if (this.lettaSyncOutbox.some(
+      entry => entry.input.action === 'forget' && entry.input.id === input.id,
+    )) {
+      return; // Never enqueue a stale upsert behind a pending forget.
+    }
     if (this.lettaSyncCompletedKeys.includes(key) || this.lettaSyncOutbox.some(entry => entry.key === key)) return;
     if (this.lettaSyncOutbox.length >= MAX_LETTA_SYNC_OUTBOX_ENTRIES) {
-      this.lettaSyncOutboxOverflowCount += 1;
-      return;
+      if (input.action === 'forget') {
+        const evictIndex = this.lettaSyncOutbox.findLastIndex(entry => entry.input.action === 'upsert');
+        if (evictIndex >= 0) {
+          this.lettaSyncOutbox.splice(evictIndex, 1);
+          this.lettaSyncOutboxOverflowCount += 1;
+        } else {
+          // Keep the hard bound: overflow is explicit and forces reconciliation.
+          this.lettaSyncOutboxOverflowCount += 1;
+          return;
+        }
+      } else {
+        this.lettaSyncOutboxOverflowCount += 1;
+        return;
+      }
     }
-    this.lettaSyncOutbox.push({ key, input: structuredClone(input), enqueuedAt: Date.now(), attempts: 0, lastError: null });
+    const entry = { key, input: structuredClone(input), enqueuedAt: Date.now(), attempts: 0, lastError: null };
+    if (input.action === 'forget') this.lettaSyncOutbox.unshift(entry);
+    else this.lettaSyncOutbox.push(entry);
     this.scheduleLettaSyncDrain();
   }
 
@@ -167,15 +192,18 @@ export class MemorySubsystemRuntime {
           const result = await this.lettaBridge.synchronizeCanonicalMemory(entry.input);
           if (!result.ok) {
             entry.lastError = result.reason ?? 'letta-sync-not-confirmed';
+            if (this.lettaSyncOutbox[0]?.key !== entry.key) continue;
             break;
           }
-          this.lettaSyncOutbox.shift();
+          const pendingIndex = this.lettaSyncOutbox.findIndex(candidate => candidate.key === entry.key);
+          if (pendingIndex >= 0) this.lettaSyncOutbox.splice(pendingIndex, 1);
           this.lettaSyncCompletedKeys.push(entry.key);
           if (this.lettaSyncCompletedKeys.length > MAX_LETTA_SYNC_RECEIPTS) {
             this.lettaSyncCompletedKeys = this.lettaSyncCompletedKeys.slice(-MAX_LETTA_SYNC_RECEIPTS);
           }
         } catch (error) {
           entry.lastError = error instanceof Error ? error.message.slice(0, 500) : 'letta-sync-failed';
+          if (this.lettaSyncOutbox[0]?.key !== entry.key) continue;
           break;
         }
       }
