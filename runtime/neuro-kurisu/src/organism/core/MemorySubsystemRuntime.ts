@@ -91,6 +91,13 @@ export class MemorySubsystemRuntime {
     this.hippocampalFormation.restore(advanced.hippocampalFormation);
     this.consolidationController.restore(advanced.consolidationController);
     this.memoryLifecycleAuthority.restore(advanced.memoryLifecycleAuthority);
+    // These evidence/causal projections live inside the canonical memory subsystem.
+    // Persist them alongside the other advanced memory state so restart does not
+    // erase retention policy learning, source lineage, life-graph links, or replay evidence.
+    this.memoryRetentionEconomy.restore(advanced.memoryRetentionEconomy ?? memory.memoryRetentionEconomy ?? (input as any).memoryRetentionEconomy);
+    this.memoryCausalEconomy.restore(advanced.memoryCausalEconomy ?? memory.memoryCausalEconomy ?? (input as any).memoryCausalEconomy);
+    this.causalLifeGraph.restore(advanced.causalLifeGraph ?? memory.causalLifeGraph ?? (input as any).causalLifeGraph);
+    this.memoryWorldCausalBridge.restore(advanced.memoryWorldCausalBridge ?? memory.memoryWorldCausalBridge ?? (input as any).memoryWorldCausalBridge);
   }
 
   /** Read-only memory hygiene report; destructive repair remains an explicit separate operation. */
@@ -102,6 +109,6 @@ export class MemorySubsystemRuntime {
     workspace:this.workspaceV2.snapshot(), semanticGraph:this.semanticMemory.snapshot(), memoryOS:this.memoryOS.snapshot(),
     unifiedMemory:this.unifiedMemory.snapshot(), p47:this.p47MemoryMind.snapshot(), p59:this.p59MemoryOperatingSystem.snapshot(),
     p62:this.p62MemoryFabric.snapshot(), p65:this.p65EpistemicLedger.snapshot(), p70:this.p70MemoryLifecycleGovernor.snapshot(),
-    p75:this.p75MemoryContinuumOS.snapshot(), fabric:this.fabric.snapshot(), experienceContinuum:this.experienceContinuum.snapshot(), hippocampal:this.hippocampal.snapshot(), hippocampalFormation:this.hippocampalFormation.snapshot(), consolidationController:this.consolidationController.snapshot(), memoryLifecycleAuthority:this.memoryLifecycleAuthority.snapshot(),
+    p75:this.p75MemoryContinuumOS.snapshot(), fabric:this.fabric.snapshot(), experienceContinuum:this.experienceContinuum.snapshot(), hippocampal:this.hippocampal.snapshot(), hippocampalFormation:this.hippocampalFormation.snapshot(), consolidationController:this.consolidationController.snapshot(), memoryLifecycleAuthority:this.memoryLifecycleAuthority.snapshot(), memoryRetentionEconomy:this.memoryRetentionEconomy.snapshot(), memoryCausalEconomy:this.memoryCausalEconomy.snapshot(), causalLifeGraph:this.causalLifeGraph.snapshot(), memoryWorldCausalBridge:this.memoryWorldCausalBridge.snapshot(),
   }; }
 }
