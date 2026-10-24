@@ -10,7 +10,7 @@
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 
 type GoalStatus='candidate'|'active'|'paused'|'completed'|'abandoned';
-export interface P68Goal {id:string;title:string;reason:string;source:string;status:GoalStatus;importance:number;urgency:number;confidence:number;progress:number;createdAt:number;updatedAt:number;parentId?:string;}
+export interface P68Goal {id:string;title:string;reason:string;source:string;status:GoalStatus;importance:number;urgency:number;confidence:number;progress:number;createdAt:number;updatedAt:number;parentId?:string;activationApproved?:boolean;}
 export interface P68GoalView {id:string;title:string;status:GoalStatus;vitality01:number;staleness01:number;conflict01:number;progress01:number;}
 export interface P68State {
   version:1;cycles:number;completed:number;abandoned:number;paused:number;reactivated:number;pruned:number;
@@ -46,7 +46,7 @@ export class P68GoalEcology {
     if(progress>=.92 && (input.lastAction==='respond'||input.lastAction==='verify'||input.lastAction==='reflect'||input.lastAction==='explore'||input.lastAction==='rest') && (input.lastSuccess??0)>=.72){g.progress=1;g.status='completed';g.updatedAt=input.at;this.state.completed++;views.push({id:g.id,title:g.title,status:g.status,vitality01:1,staleness01:0,conflict01:conflict,progress01:1});continue;}
     if(stale>.88 && confidence<.48 && vitality<.34){g.status='abandoned';g.updatedAt=input.at;this.state.abandoned++;views.push({id:g.id,title:g.title,status:g.status,vitality01:vitality,staleness01:stale,conflict01:conflict,progress01:progress});continue;}
     if(stale>.72 && input.homeostaticPressure01>.58){if(g.status==='active'){g.status='paused';g.updatedAt=input.at;this.state.paused++;}}
-    else if(g.status==='paused' && stale<.42 && input.identity01>.72){g.status='active';g.updatedAt=input.at;this.state.reactivated++;}
+    else if(g.status==='paused' && g.activationApproved!==false && stale<.42 && input.identity01>.72){g.status='active';g.updatedAt=input.at;this.state.reactivated++;}
     if(g.status==='active' && input.lastAction!=='none' && input.lastSuccess!=null){const relevance=clamp(importance*.45+urgency*.3+confidence*.25);g.progress=clamp(progress+(input.lastSuccess>=.65?relevance*.045:input.lastSuccess<.35?-relevance*.018:0));g.updatedAt=input.at;}
     views.push({id:g.id,title:g.title,status:g.status,vitality01:vitality,staleness01:stale,conflict01:conflict,progress01:clamp(g.progress)});
   }
