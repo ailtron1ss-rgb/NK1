@@ -34,6 +34,8 @@ on:
       - "tools/audit-markdown-links.mjs"
       - "tools/audit-markdown-links.test.mjs"
       - ".github/workflows/documentation-link-integrity.yml"
+      - "tools/audit-documentation-inventory.mjs"
+      - "tools/audit-documentation-inventory.test.mjs"
 
 permissions:
   contents: read
