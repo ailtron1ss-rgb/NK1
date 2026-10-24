@@ -226,7 +226,10 @@ test("actual Live2D viewer message handler accepts current state and rejects dup
     addEventListener(type, listener) { listeners.set(type, listener); },
     postMessage() {},
   };
+  const documentListeners = new Map();
   const fakeDocument = {
+    hidden: false,
+    addEventListener(type, listener) { documentListeners.set(type, listener); },
     getElementById(id) { return id === "canvas" ? canvas : status; },
     createElement() { return {}; },
     head: { appendChild() {} },
