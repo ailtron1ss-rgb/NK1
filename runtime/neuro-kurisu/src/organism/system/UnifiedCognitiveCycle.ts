@@ -53,6 +53,11 @@ export class UnifiedCognitiveCycle {
     // conservatively incomplete; otherwise a truncated/corrupt snapshot could
     // silently drop cycles from both outcome buckets.
     const incompleteCycles=cycles-completeCycles;
+    const restoredIncompleteCycles = safeCounter(source.incompleteCycles);
+    const restoredBrokenLineages = safeCounter(source.brokenLineages);
+    const countersConsistent =
+      (source.incompleteCycles === undefined || restoredIncompleteCycles === incompleteCycles) &&
+      (source.brokenLineages === undefined || restoredBrokenLineages <= incompleteCycles);
     const hasMissingArray=Array.isArray(source.lastMissingStages);
     const rawMissing=hasMissingArray?source.lastMissingStages as unknown[]:[...REQUIRED];
     const malformedMissing=rawMissing.some((stage)=>typeof stage!=='string'||!ALL_STAGES.has(stage as UnifiedCycleStage));
@@ -69,7 +74,7 @@ export class UnifiedCognitiveCycle {
       meanStageCoverage01:safeMetric(source.meanStageCoverage01),
       meanCausalContinuity01:safeMetric(source.meanCausalContinuity01),
       lastTick,
-      lastComplete:cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
+      lastComplete:cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0&&countersConsistent,
       lastMissingStages:missing,
     };
   }
