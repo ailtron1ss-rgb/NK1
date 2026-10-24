@@ -113,6 +113,14 @@ const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 // Keep single-digit numeric tokens: status codes, ratings, short versions and measured values are meaningful retrieval terms. Single-letter words remain excluded.
 const tokenize=(text:string)=>text.toLocaleLowerCase().normalize('NFKC').match(/[\p{L}\p{N}]{2,}|\p{N}/gu)??[];
 const characterGramCache=new Map<string,Set<string>>();
+const characterLengthCache=new Map<string,number>();
+function characterLength(token:string):number{
+ const key=String(token);
+ const cached=characterLengthCache.get(key);if(cached!==undefined)return cached;
+ const length=[...key].length;
+ if(characterLengthCache.size>=4096){const oldest=characterLengthCache.keys().next().value as string|undefined;if(oldest!==undefined)characterLengthCache.delete(oldest);}
+ characterLengthCache.set(key,length);return length;
+}
 function charTrigrams(token:string):Set<string>{
  const key=String(token).toLocaleLowerCase().normalize('NFKC');
  const cached=characterGramCache.get(key);if(cached)return cached;
@@ -125,7 +133,7 @@ function charTrigrams(token:string):Set<string>{
 }
 function charDiceSimilarity(a:string,b:string):number{
  if(a===b)return 1;
- if([...a].length<4||[...b].length<4)return 0;
+ if(characterLength(a)<4||characterLength(b)<4)return 0;
  const ga=charTrigrams(a),gb=charTrigrams(b);if(!ga.size||!gb.size)return 0;
  let common=0;for(const gram of ga)if(gb.has(gram))common++;
  return clamp(2*common/(ga.size+gb.size));
@@ -205,13 +213,20 @@ function conceptGroupCoverage(groups:ReadonlyArray<number>,documentTokens:Set<st
 }
 function fuzzyTokenCoverage(queryTokens:string[],documentTokens:Set<string>):number{
  if(!queryTokens.length||!documentTokens.size)return 0;
+ // A candidate's token set is reused across all query terms. Materialize its
+ // traversal once and cache Unicode code-point lengths rather than spreading each
+ // token repeatedly in the nested fuzzy-comparison loop.
+ const documentTokenArray=[...documentTokens];
  let total=0;
  for(const queryToken of queryTokens){
   if(documentTokens.has(queryToken)){total++;continue;}
-  if([...queryToken].length<4)continue;
+  const queryLength=characterLength(queryToken);
+  if(queryLength<4)continue;
+  const maximumLengthDifference=Math.max(2,Math.floor(queryLength*.4));
   let best=0;
-  for(const token of documentTokens){
-   if([...token].length<4||Math.abs([...token].length-[...queryToken].length)>Math.max(2,Math.floor([...queryToken].length*.4)))continue;
+  for(const token of documentTokenArray){
+   const tokenLength=characterLength(token);
+   if(tokenLength<4||Math.abs(tokenLength-queryLength)>maximumLengthDifference)continue;
    const similarity=charDiceSimilarity(queryToken,token);if(similarity>best)best=similarity;
   }
   total+=best>=.38?best:0;
