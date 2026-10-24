@@ -38,12 +38,13 @@ const evidenceInput=developmentEvidenceVerificationInput({
   evaluatorVersion:'core-action-gateway-fixture-v1',
   evidenceSource:'external-evaluator',
 });
+let coreEvidenceReceiptCount=0;
 core.registerActionTool({
   id:P36_EXTERNAL_EVIDENCE_TOOL_ID,
   capability:'learning.evaluation',
   destructive:false,
   projectAllowed:true,
-  execute:async()=>({ok:true,observationId:'core-action-gateway-p36-receipt-1'}),
+  execute:async()=>({ok:true,observationId:'core-action-gateway-p36-receipt-'+(++coreEvidenceReceiptCount)}),
   verify:({result})=>{
     const observationId=String(result.observationId??'');
     return {verified:Boolean(observationId),basis:'external-postcondition',externalObservation:true,confidence01:1,
@@ -51,6 +52,13 @@ core.registerActionTool({
       observedPostcondition:'p36-evaluation-complete:'+observationId};
   },
 });
+const attemptsBeforeUnlinked=core.p36Diagnostics().unverifiedEvidenceAttempts;
+const unlinkedInput=developmentEvidenceVerificationInput({...evidenceInput,contextKey:'core-unlinked-p36-context'});
+const unlinkedResult=await core.executeTool(P36_EXTERNAL_EVIDENCE_TOOL_ID,unlinkedInput,'p36-unlinked-evidence');
+assert.equal(unlinkedResult.verified,true,'the evaluator may verify its result, but the core decision-link gate is separate');
+assert.equal(core.p36DevelopmentEvidence(hypothesis.id).find(row=>row.contextKey==='core-unlinked-p36-context').independentVerified,false,
+  'a valid external receipt without a decision-linked trace must not enter independent learning');
+assert.equal(core.p36Diagnostics().unverifiedEvidenceAttempts,attemptsBeforeUnlinked+1);
 const evaluatorResult=await core.executeTool(P36_EXTERNAL_EVIDENCE_TOOL_ID,evidenceInput,'p36-integration-evidence',{decisionId:traceForEvidence.id});
 assert.equal(evaluatorResult.verified,true,'the registered independent evaluator must return a verified gateway result');
 const recorded=core.p36DevelopmentEvidence(hypothesis.id);
