@@ -1,3 +1,15 @@
+## Latest durable checkpoint — Mem0 integration WorkPass 1 (2026-10-24)
+
+- Current feature branch: mem0-integration-workpass1; draft PR [#100](https://github.com/ailtron1ss-rgb/NK1/pull/100), base workpass70-source at a4cf11141c0e8083e5f8a35bec8c6c2bebac640b. The feature branch must not be merged until the exact-head test/typecheck/server-smoke gates have actionable results.
+- Implemented an opt-in Mem0 Platform adapter and authenticated hybrid-search API. MemoryOS2 remains canonical; local results and external Mem0 candidates stay separate. User scope is server-configured; API key is never included in diagnostics; writes are gated and not automatically invoked.
+- Regression harness, npm scripts, Mem0 integration guide and research-intake entry are committed. **Exact-head execution remains UNVERIFIED**; no current workflow runs or combined statuses were reported for the source baseline during this pass. This is not a PASS.
+- No changes were made to main and no release asset was changed. Release metadata reports the README SHA-256 for the latest release ZIP, but the large asset was not downloaded and the archive bytes were not independently re-hashed or inspected.
+- Next: validate the test harness and server syntax on the project Node version; run exact-head typecheck/tests/server smoke when actionable; test with a disposable Mem0 user scope; check retention/deletion contracts; benchmark local vs hybrid recall on a frozen independent RU/EN holdout. Do not inject remote results into the live prompt until they meet safety and quality gates.
+
+Read [the WorkPass Mem0-1 implementation guide](runtime/neuro-kurisu/docs/MEM0_INTEGRATION_WORKPASS1.md) and [research-intake decision](docs/RESEARCH_INTAKE_LEDGER.md) for full contracts, risks and remaining work.
+
+---
+
 ## Latest durable checkpoint — WorkPass272 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use live PR for current HEAD.
