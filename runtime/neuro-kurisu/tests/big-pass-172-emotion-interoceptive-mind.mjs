@@ -13,6 +13,9 @@ const first = e.appraise({tick:1,at:1001,novelty01:.8,uncertainty01:.5,predictio
 assert.ok(calmBody.cycles===1 && calmBody.lastMismatch01<.25);
 assert.equal(first.label,'curiosity');
 assert.ok(first.valence01>.55,'successful episode should be positively valenced');
+const initialMood=e.snapshot().mood;
+assert.equal(initialMood.episodes,1,'appraisal must initialize the persistent mood state');
+assert.equal(initialMood.dominantLabel,first.label,'the first mood must reflect the first appraisal');
 
 const beforeInvalidAppraisal = e.snapshot();
 assert.throws(() => e.appraise({ tick: 2, novelty01: Infinity }), /emotion-appraisal-values-invalid/);
@@ -25,8 +28,21 @@ assert.notEqual(first.id, firstAgain.id,'episode IDs must be unique within one p
 e.observeInteroception({energy01:.18,thermal01:.86,capacity01:.24,load01:.88,homeostaticPressure01:.9});
 const stressed = e.appraise({tick:3,at:1003,novelty01:.2,uncertainty01:.9,predictionError01:.85,homeostaticPressure01:.9,success01:.12,goalPressure01:.9,goalCongruence01:.15,controllability01:.15});
 assert.ok(['anxiety','frustration','protective'].includes(stressed.label));
+const moodAfterStress=e.snapshot().mood;
+assert.equal(moodAfterStress.episodes,3,'mood must persist across successive appraisal episodes');
+assert.ok(moodAfterStress.valence01>stressed.valence01,
+  'mood must transition gradually rather than being overwritten by one negative episode');
+assert.ok(moodAfterStress.stress01>initialMood.stress01,
+  'repeated body/appraisal stress must influence the persistent affective state');
+assert.equal(moodAfterStress.dominantLabel,stressed.label,
+  'a sufficiently salient new emotion must be able to become the dominant mood');
 const feeling = e.inferFeeling(stressed,{energy01:.18,cognitiveLoad01:.88,uncertainty01:.9,selfFocus01:.8});
 assert.ok(feeling.interoceptiveMismatch01>.1 && feeling.bodilyFocus01>.5);
+const beforeInvalidFeeling=e.snapshot();
+assert.throws(()=>e.inferFeeling(stressed,{energy01:Infinity,cognitiveLoad01:.2,uncertainty01:.3}),/emotion-feeling-values-invalid/);
+assert.throws(()=>e.inferFeeling(stressed,{energy01:.8,cognitiveLoad01:'high',uncertainty01:.3}),/emotion-feeling-values-invalid/);
+assert.deepEqual(e.snapshot(),beforeInvalidFeeling,
+  'malformed body/feeling signals must be rejected without changing persistent affect');
 for(let i=0;i<4;i++) e.recordOutcome({action:'rest',success01:.9,surprise01:.1,regulationCost01:.2});
 assert.ok((e.outcomeCalibration('rest')?.attempts??0)===4);
 assert.ok(e.actionBias('rest')>e.actionBias('explore'),'high interoceptive pressure plus good rest outcomes should favor regulation');
@@ -60,6 +76,10 @@ assert.throws(() => e.recordOutcome({
   emotionId:'emotion-does-not-exist',action:'rest',success01:.5,surprise01:.5,
 }), /emotion-outcome-emotion-link-invalid/);
 const es=e.snapshot(); const er=new EmotionAppraisalEngine(); er.restore(es); assert.deepEqual(er.snapshot(),es);
+const legacyEmotion=new EmotionAppraisalEngine();
+legacyEmotion.restore({version:2,episodes:2,history:[first]});
+assert.equal(legacyEmotion.snapshot().mood.episodes,0,
+  'pre-mood persisted affect state must restore with a neutral backward-compatible mood default');
 
 // WorkPass330: restored affect state must not accept invalid counters, timestamps or malformed episodes.
 const corruptedEmotion = new EmotionAppraisalEngine();
