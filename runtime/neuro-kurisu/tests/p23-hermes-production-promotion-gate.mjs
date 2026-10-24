@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { P23LearningEngine } from '../src/organism/learning/P23LearningEngine.ts';
 
 const report = (taskId, trialId) => ({
@@ -58,8 +59,6 @@ assert.throws(() => engine.approveIndependentlyEvaluatedSkillCandidate(
   () => true,
 ), /matched independent baseline and candidate envelopes are required/);
 assert.equal(approvalCalls, 0, 'malformed envelopes must fail before approval');
-
-import { createHash } from 'node:crypto';
 
 const canonical = value => value === null || typeof value !== 'object'
   ? JSON.stringify(value)
