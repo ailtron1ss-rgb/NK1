@@ -2223,3 +2223,5 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The HMX apply error path in \`OrganismCore\` now persists the updated attempt counter before rethrowing. This keeps post-restart retries on a distinct canonical command ID after a compensated write.
 - Repaired P68's paused-goal traversal: the ecology now revisits both active and paused goals, allowing native paused goals to resume under existing conditions. External goals require \`activationApproved === true\` to reactivate, and both new and legacy unapproved external goals are protected from retention pruning.
 - Added regressions for unsupported apply strategies, restart-safe attempt advancement, P68 native-goal reactivation, external-goal activation gating, and fail-closed proposal queue capacity.
+
+- P68 follow-up: paused-goal traversal is now reachable, native paused goals may resume again, and automatic reactivation is capped at four active goals. External goals lacking an explicit activation marker (including legacy records) remain paused and are protected from cleanup.
