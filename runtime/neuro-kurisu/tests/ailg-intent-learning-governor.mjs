@@ -95,5 +95,12 @@ const sanitized = new AutonomousIntentLearningGovernor();
 sanitized.restore(corrupted);
 assert.deepEqual(sanitized.snapshot().decisions.map(d => d.intentId), ['good'], 'invalid restored decisions should be dropped');
 assert.equal(sanitized.snapshot().outcomes.length, 0, 'unexecuted restored outcomes must be dropped');
+let snapshotGetterCalls = 0;
+const accessorSnapshot = { decisions: [] };
+Object.defineProperty(accessorSnapshot, 'version', { enumerable: true, get() { snapshotGetterCalls += 1; return 1; } });
+const accessorRestore = new AutonomousIntentLearningGovernor();
+accessorRestore.restore(accessorSnapshot);
+assert.equal(snapshotGetterCalls, 0, 'restoring a snapshot must never execute top-level getters');
+assert.equal(accessorRestore.snapshot().decisions.length, 0);
 
 console.log(JSON.stringify({ pass: 'AILG_INTENT_AND_PROMOTION_GATE', decisions: governor.snapshot().decisions.length }));
