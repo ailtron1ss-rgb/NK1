@@ -1,3 +1,11 @@
+## NK1 WorkPass497 — share event identity with the P23 causal learning stream (2026-10-24)
+
+- Added optional `evidenceEventId` to causal experience records and derived it with the shared `createRealityEvidenceEventId` contract: grounded action outcomes use the `learning` role; caller-imported events use the distinct `learning-external` role.
+- Legacy snapshots reconstruct the deterministic ID from normalized trace identity during restore; retry tests require the external event key to survive NFKC normalization and restore.
+- This bridges common identity into P23's causal evidence stream while preserving legacy `cx-...` record IDs. The larger receipt → RealityEvidenceLedger → MemoryOS2/P65 flow remains an open integration boundary; IDs are correlation keys, not proof of truth.
+
+---
+
 ## NK1 WorkPass496 — close follow-up evidence and payload regressions (2026-10-24)
 
 - Corrected the reflective payload boundary fixture to account for the two JSON string delimiters, so the canonical encoded payload equals the 256 KiB limit.
