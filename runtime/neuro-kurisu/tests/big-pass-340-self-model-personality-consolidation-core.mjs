@@ -6,6 +6,7 @@ import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 import { BoundedOperationalJournal } from '../src/organism/persistence/BoundedOperationalJournal.ts';
 import { PredictiveSelfAgencySubstrate } from '../src/organism/cognition/PredictiveSelfAgencySubstrate.ts';
+import { OutcomeVerificationService } from '../src/organism/system/OutcomeVerificationService.ts';
 
 // WorkPass524: outcome learning receives causal credit only when the action/outcome link supports it.
 const selfState={tick:1,at:1001,needs:{energy:.72,cognitiveLoad:.24,uncertainty:.3,novelty:.4,goalPressure:.5,socialNeed:.2,identityCoherence:.8}};
@@ -35,6 +36,45 @@ assert.ok(partialDelta>0&&partialDelta<fullDelta,
   'low causal confidence must scale down the policy update rather than receive full credit');
 assert.equal(fullCredit.snapshot().predictionSamples,1,
   'strongly matched outcome evidence should count toward prediction calibration');
+
+// WorkPass525: production self-agency learning must require the exact verifier-minted receipt.
+const verificationService=new OutcomeVerificationService();
+const verificationContext={
+  toolId:'test.write-document',
+  input:{path:'draft.txt',content:'saved'},
+  result:{ok:true},
+  executionId:'exec-12345678',
+  decisionId:'decision-workpass525',
+};
+const trustedReceipt=await verificationService.verify(verificationContext,async()=>({
+  verified:true,basis:'external-postcondition',confidence01:.84,externalObservation:true,
+  observationId:'observation-workpass525',expectedPostcondition:'document saved',observedPostcondition:'document saved',
+}));
+const verifiedLearner=new PredictiveSelfAgencySubstrate();
+const verifiedBefore=verifiedLearner.snapshot();
+assert.throws(()=>verifiedLearner.learnVerifiedOutcome(
+  'verify',.9,selfState,false,1,{...trustedReceipt},
+  {toolId:verificationContext.toolId,input:verificationContext.input,executionId:verificationContext.executionId,decisionId:verificationContext.decisionId},
+),/predictive-self-agency-external-evidence-untrusted/,
+  'a JSON-equivalent copy of a verifier receipt must not carry its in-process trust capability');
+assert.deepEqual(verifiedLearner.snapshot(),verifiedBefore,
+  'untrusted copied evidence must be rejected before model state changes');
+assert.throws(()=>verifiedLearner.learnVerifiedOutcome(
+  'verify',.9,selfState,false,1,trustedReceipt,
+  {toolId:verificationContext.toolId,input:verificationContext.input,executionId:verificationContext.executionId,decisionId:'decision-from-another-action'},
+),/predictive-self-agency-external-evidence-untrusted/,
+  'a valid receipt cannot authorize a different decision');
+assert.deepEqual(verifiedLearner.snapshot(),verifiedBefore,
+  'decision-mismatched evidence must be rejected without learning');
+const verifiedUpdate=verifiedLearner.learnVerifiedOutcome(
+  'verify',.9,selfState,false,1,trustedReceipt,
+  {toolId:verificationContext.toolId,input:verificationContext.input,executionId:verificationContext.executionId,decisionId:verificationContext.decisionId},
+);
+assert.ok(verifiedUpdate.predictionError01>=0);
+assert.equal(verifiedLearner.snapshot().predictionSamples,1,
+  'exact externally verified evidence must be eligible for self-agency learning');
+assert.ok(Math.abs(verifiedLearner.snapshot().ownership01-verifiedBefore.ownership01)<=.84*.12+.001,
+  'caller-provided causal confidence must be capped by trusted verifier confidence');
 
 const dir=await mkdtemp(path.join(tmpdir(),'nk-b340-core-'));
 try {
