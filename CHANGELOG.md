@@ -1,3 +1,12 @@
+## NK1 WorkPass473 — make autonomous life-state restore fail closed (2026-10-24)
+
+- Hardened `AutonomousCognitiveLifeEngine.restore` with NK1's shared bounded plain-data snapshot. Getter-backed and cyclic persistence no longer executes accessors or gets spread into the live state.
+- Restore now rejects unsupported schema versions, filters malformed collection rows, enforces per-collection caps, and normalizes counters/timestamps and normalized [0,1] personality, embodiment, value and metric fields. Invalid top-level snapshots reset to safe defaults.
+- Added regressions for zero getter invocations and fail-closed cyclic restore. This closes a critical trust boundary in the autonomous cognitive-life/heartbeat path; no external runtime or dependency added.
+- Exact-head test execution remains unverified; this commit must be run through the existing owning test and typecheck before integration.
+
+---
+
 ## NK1 WorkPass420 — enforce canonical restored learning evidence (2026-10-24)
 
 - Tightened `PersonalCurriculumEngine.restore()`: persisted thread IDs/families must be canonical normalized identities; persisted context keys must be valid single-line identities; malformed control characters are rejected.
