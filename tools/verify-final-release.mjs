@@ -24,7 +24,7 @@ async function walk(dir) {
     if (IGNORED_DIRS.has(entry.name)) continue;
     const filePath = path.join(dir, entry.name);
     if (entry.isDirectory()) out.push(...await walk(filePath));
-    else if (entry.isFile()) out.push(filePath);
+    else out.push(filePath); // Preserve the previous symlink/other-entry audit behavior.
   }
   return out;
 }
