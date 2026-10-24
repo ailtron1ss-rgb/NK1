@@ -41,6 +41,14 @@ export type AILGPromotionEvidence = {
   minimumHoldoutCases?: number;
 };
 
+export type AILGSnapshot = {
+  version: 1;
+  decisions: AILGDecision[];
+  outcomes: AILGOutcome[];
+  executedIntentIds: string[];
+  approvedIntentIds: string[];
+};
+
 const finite01 = (n: number): number => Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0;
 const nonBlank = (s: unknown): s is string => typeof s === 'string' && s.trim().length > 0;
 
@@ -65,11 +73,15 @@ export class AutonomousIntentLearningGovernor {
   }
 
   propose(intent: AILGIntent, now = Date.now()): AILGDecision {
-    if (!nonBlank(intent.id) || !nonBlank(intent.goal) ||
+    if (!Number.isFinite(now) || now < 0) throw new RangeError('AILG decision time must be finite and non-negative');
+    if (!nonBlank(intent.id) || intent.id.length > 180 ||
+        !nonBlank(intent.goal) || intent.goal.length > 500 ||
         !Array.isArray(intent.triggerEvidence) ||
-        intent.triggerEvidence.length === 0 ||
-        !intent.triggerEvidence.every(nonBlank)) {
-      throw new TypeError('AILG intent requires an id, goal, and non-empty evidence');
+        intent.triggerEvidence.length === 0 || intent.triggerEvidence.length > 32 ||
+        !intent.triggerEvidence.every(e => nonBlank(e) && e.length <= 240) ||
+        typeof intent.externalSideEffect !== 'boolean' ||
+        (intent.requiresApproval !== undefined && typeof intent.requiresApproval !== 'boolean')) {
+      throw new TypeError('AILG intent requires bounded identity, goal, evidence, and boolean policy flags');
     }
     if (this.decisions.has(intent.id)) {
       throw new Error(`duplicate-intent:${intent.id}`);
@@ -172,15 +184,70 @@ export class AutonomousIntentLearningGovernor {
     return { eligible: true, reason: 'eligible-for-separate-approval', delta01 };
   }
 
-  snapshot() {
+  snapshot(): AILGSnapshot & { outcomeCoverage01: number } {
+    const executableCount = [...this.decisions.values()].filter(v => v.status === 'act').length;
     return {
+      version: 1,
       decisions: [...this.decisions.values()].map(v => ({ ...v })),
       outcomes: [...this.outcomes.values()].map(v => ({ ...v })),
       executedIntentIds: [...this.executionReceipts.keys()],
       approvedIntentIds: [...this.approvalReceipts.keys()],
-      outcomeCoverage01: this.decisions.size
-        ? this.outcomes.size / [...this.decisions.values()].filter(v => v.status === 'act').length || 0
-        : 0,
+      outcomeCoverage01: executableCount ? Math.min(1, this.outcomes.size / executableCount) : 0,
     };
+  }
+
+  /**
+   * Restore a bounded snapshot defensively. Receipt payloads are never restored;
+   * only identity/presence is retained. Host authorization must still be enforced
+   * by the ActionGateway before executing any real side effect.
+   */
+  restore(raw?: Partial<AILGSnapshot> | null): void {
+    this.decisions.clear();
+    this.outcomes.clear();
+    this.executionReceipts.clear();
+    this.approvalReceipts.clear();
+    if (raw?.version !== 1 || !Array.isArray(raw.decisions)) return;
+
+    const allowedStatuses = new Set<AILGDecision['status']>(['act', 'defer', 'reject', 'approval-required']);
+    for (const value of raw.decisions.slice(-2048)) {
+      if (!value || !nonBlank(value.intentId) || value.intentId.length > 180 ||
+          !nonBlank(value.reason) || value.reason.length > 160 ||
+          !allowedStatuses.has(value.status) ||
+          !Number.isFinite(value.score01) || value.score01 < 0 || value.score01 > 1 ||
+          !Number.isFinite(value.selectedAt) || value.selectedAt < 0 ||
+          this.decisions.has(value.intentId)) continue;
+      this.decisions.set(value.intentId, {
+        intentId: value.intentId,
+        status: value.status,
+        score01: value.score01,
+        reason: value.reason,
+        selectedAt: value.selectedAt,
+      });
+    }
+
+    const validIds = new Set(this.decisions.keys());
+    if (Array.isArray(raw.approvedIntentIds)) {
+      for (const id of raw.approvedIntentIds.slice(-2048)) {
+        const decision = validIds.has(id) ? this.decisions.get(id) : undefined;
+        if (decision?.status === 'act' && nonBlank(id)) this.approvalReceipts.set(id, 'restored-approval-reference');
+      }
+    }
+    if (Array.isArray(raw.executedIntentIds)) {
+      for (const id of raw.executedIntentIds.slice(-2048)) {
+        const decision = validIds.has(id) ? this.decisions.get(id) : undefined;
+        if (decision?.status === 'act' && nonBlank(id)) this.executionReceipts.set(id, 'restored-execution-reference');
+      }
+    }
+    if (Array.isArray(raw.outcomes)) {
+      for (const value of raw.outcomes.slice(-2048)) {
+        if (!value || !validIds.has(value.intentId) ||
+            !this.executionReceipts.has(value.intentId) ||
+            this.outcomes.has(value.intentId) ||
+            !nonBlank(value.evidence) || value.evidence.length > 1000 ||
+            !Number.isFinite(value.observedBenefit01) || value.observedBenefit01 < 0 || value.observedBenefit01 > 1 ||
+            !Number.isFinite(value.observedAt) || value.observedAt < 0) continue;
+        this.outcomes.set(value.intentId, { ...value });
+      }
+    }
   }
 }
