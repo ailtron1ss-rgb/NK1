@@ -1,3 +1,10 @@
+## NK1 Feedback — preserve valid recent observer rows during restore (2026-10-24)
+
+- Restored observation rows are now bounded by successfully accepted observations rather than raw array offsets, so malformed or orphan rows cannot evict valid recent evidence.
+- Assessment and linked-action restoration use the same accepted-row budget and retain valid references after skipping corrupt entries.
+- Expanded the observer identity regression to cover a valid observation, its independent assessment, and its action link followed by 64 orphan rows.
+- **Validation boundary:** implementation and regression are committed; this pass does not yet claim the new hosted run has completed.
+
 ## NK1 WorkPass563 — preserve decision-time affect in causal memory (2026-10-24)
 
 - `EmotionAppraisalEngine.episodeById()` provides the exact retained appraisal episode by ID so downstream consolidation can retrieve the decision-time signal without confusing it with a later feedback reaction.
