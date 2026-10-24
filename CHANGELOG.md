@@ -2113,3 +2113,50 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
 - Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
 - This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
+
+
+## [2026-10-24] Operation Omega — Hexis source transfer and review-inbox adaptation
+
+- Tightened the local Node child-process shim with event callback types and `ProcessEnv`; adapted timer `unref` to both Node timers and numeric DOM timer declarations, and corrected `fs/promises.access` mode typing.
+
+- Expanded the minimal Node compatibility declarations to cover the APIs actually used by the runtime (Node crypto key objects, filesystem sync/promises, path resolution, process platform and Buffer byte operations), so type-checking can distinguish missing shim declarations from real logic/type defects.
+
+- Refined P23 restore recovery: a non-empty sanitized dedupe cache remains authoritative and newest-first; valid experience/replay rows rebuild the cache only when its stored counterpart has no usable IDs.
+
+- Fixed P23 restore-cache precedence: persisted newest-first processed/replayed trace IDs now win over IDs reconstructed from experience/replay rows, while missing cache entries are still repaired from the rows.
+
+- Reordered Hermes/P23 evidence binding so signed shadow receipts are cryptographically verified before their task/outcome fields are used; tampered payloads now report `signed-shadow-evidence-not-trusted` rather than being misclassified as an ordinary outcome mismatch.
+
+- Corrected the Core-owned shadow-entry regression harness to assert both synchronous fail-closed preflight throws and asynchronous execution rejections without weakening the candidate/shadow-only policy.
+
+- Removed a second Node 24 strip-only incompatibility from `AtomicFileSkillStorePersistence`; the Core-owned shadow-entry test now reaches the lifecycle logic instead of failing while parsing a TypeScript parameter property.
+
+- Replaced an invalid escaped control-character regex in `OutcomeVerificationService` with an explicit code-point check; this restores the Core-owned trusted-shadow-entry regression under Node 24.
+
+- Fixed a P23 signed-outcome replay edge: an exact duplicate artifact in the same process is now rejected as `duplicate-attempt`, while an exact, signed artifact can still re-establish its process-local trust receipt after a ledger restore.
+
+- Connected provenance concepts to the existing `SourceMonitor`: bounded trace ancestry, copied lineage on read, validated optional source fingerprint/citation/evidence-class metadata, and fail-closed rejection of malformed provenance while retaining legacy records.
+
+- Expanded the pinned Hexis reference archive with 14 additional model/backend, CLI/bootstrap/instance API, config/schema, consent, usage, and backup/migration modules; the source manifest now tracks 73 selected files.
+
+- Adapted Hexis memory-provenance concepts into the canonical P65 epistemic ledger with bounded source identity/fingerprint/evidence-class metadata and a source-lineage read; preserved legacy claim IDs when provenance is absent and fail-closed behavior for malformed new provenance.
+
+- Expanded the pinned Hexis reference snapshot by a further 35 files for memory exchange/retrieval, node continuity, integration reliability, self-inspection, goals/policies, backup/restore, task orchestration, and additional memory/safety/heartbeat/skill-learning SQL designs; all paths, upstream blob SHAs and byte sizes are now in the manifest, and no Hexis SQL migration is active.
+
+- Added an Ed25519-authenticated review-decision verifier and made the promotion-request CLI require a trusted signed decision artifact bound to the exact review packet and decision; unkeyed inbox digests alone no longer satisfy the review gate.
+- Added `create-skill-review-decision-signing-request.mjs` to emit the canonical unsigned payload from the durable review record for an external signer; added regression coverage so NK1 never handles the private review key.
+
+- Updated the targeted CI path filters so archive, source-manifest, changelog and integration-note commits also get a current Node 24 review-inbox regression run.
+
+- Expanded the pinned Hexis reference archive with 15 additional agent API, capability maturity, heartbeat/wake, subconscious, self-repair, tool-registry, trust-anchor, emotion/belief/memory provenance, temporal memory, weekly review and deliberate forgetting source files (all tracked by upstream blob SHA; SQL remains inactive).
+
+- Added a fresh, pinned copy of selected MIT-licensed Hexis agent, skill, memory, and skill-improvement review sources under `legacy/input-archives/hexis-selected-2026-10-24/`; preserved the existing older snapshot unchanged and recorded upstream commit, Git blob SHAs, file sizes and attribution.
+- Added `HexisSkillReviewInbox.ts`: digest-bound review packets, source/candidate matching, durable atomic JSON persistence, reviewer decision audit records, and stale-evidence rejection. Review approval is explicitly not activation authority; the existing NK1 signed promotion and shadow-evidence gates remain mandatory.
+- Added a focused regression that constructs signed independent evaluation outcomes, creates an authentic accepted proposal, verifies review persistence, idempotency, decision transitions, stale-candidate denial and tamper rejection.
+- Added source/adaptation notes in `docs/OPERATION_OMEGA_HEXIS_INTEGRATION_2026-10-24.md`.
+- Added a focused Node 24 GitHub Actions workflow for the signed-evidence -> proposal packet -> durable review-decision regression.
+- Removed a TypeScript parameter-property runtime incompatibility from the trusted shadow-run registry, allowing the focused Node 24 end-to-end test to exercise real signed receipts.
+- Bound the operator-facing promotion-request CLI to the persisted approved review: it rechecks the candidate/active-version snapshot and compares the candidate, proposal, payload and shadow-evidence fingerprints before returning the unsigned Ed25519 request.
+
+- CI-driven compatibility repair: converted the canonical `VersionedSkillCandidateStore` constructor away from TypeScript parameter properties so Node's strip-only runtime can import it; moved the new filesystem adapter to plain `.mjs` to keep the TypeScript learning service free of additional filesystem type-stub requirements.
+- Validation status: code and test are committed for exact-head CI; local execution was not available through the GitHub write connector. No test pass or production acceptance is claimed. The review-inbox-to-authenticated-UI / signed-approval-request wiring remains open.

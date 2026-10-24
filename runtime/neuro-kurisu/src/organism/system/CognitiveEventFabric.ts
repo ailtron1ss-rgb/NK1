@@ -478,51 +478,6 @@ export class CognitiveEventFabric {
     return { tick: cycleTick, complete, integrity01: complete ? 1 : integrity01, missingStages, invalidStages, missingEdges };
   }
 
-  /**
-   * Verify one cycle against its own causal edges rather than the whole rolling
-   * buffer. Global lineage can fall when old parents age out of the ring buffer;
-   * that must not invalidate a currently complete cycle. IDs, stage names, tick
-   * ownership and required causal links are all checked here.
-   */
-  verifyOperationalCycle(stageIds: OperationalCycleStageIds): OperationalCycleLineageCheck {
-    const required = ['observation','prediction','action','outcome','learning','self-update'] as const;
-    const byId = new Map(this.events.map(event => [event.id, event] as const));
-    const found = new Map<string, CognitiveEventNode>();
-    const missingStages: string[] = [];
-    const invalidStages: string[] = [];
-    let cycleTick: number | null = null;
-    for (const stage of required) {
-      const id = stageIds[stage];
-      const event = id ? byId.get(id) : undefined;
-      if (!event) { missingStages.push(stage); continue; }
-      if (event.stage !== stage) { invalidStages.push(`${stage}:expected-stage-${stage}-got-${event.stage}`); continue; }
-      if (cycleTick === null) cycleTick = event.tick;
-      if (event.tick !== cycleTick) { invalidStages.push(`${stage}:tick-mismatch`); continue; }
-      found.set(stage, event);
-    }
-    const edgeRequirements: Array<[keyof typeof stageIds, keyof typeof stageIds, string]> = [
-      ['prediction','observation','prediction->observation'],
-      ['action','prediction','action->prediction'],
-      ['action','observation','action->observation'],
-      ['outcome','action','outcome->action'],
-      ['learning','outcome','learning->outcome'],
-      ['self-update','learning','self-update->learning'],
-    ];
-    const missingEdges: string[] = [];
-    let validEdges = 0;
-    for (const [childStage, parentStage, label] of edgeRequirements) {
-      const child = found.get(childStage as string);
-      const parent = found.get(parentStage as string);
-      if (child && parent && child.parentIds.includes(parent.id)) validEdges++;
-      else missingEdges.push(label);
-    }
-    const stageCoverage = found.size / required.length;
-    const edgeCoverage = validEdges / edgeRequirements.length;
-    const integrity01 = clamp01(stageCoverage * .6 + edgeCoverage * .4);
-    const complete = missingStages.length === 0 && invalidStages.length === 0 && missingEdges.length === 0;
-    return { tick: cycleTick, complete, integrity01: complete ? 1 : integrity01, missingStages, invalidStages, missingEdges };
-  }
-
   recent(limit=64):CognitiveEventNode[]{return structuredClone(this.events.slice(0,Math.max(1,Math.min(256,Math.floor(limit)))));}
 
   snapshot():CognitiveEventFabricSnapshot{

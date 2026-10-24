@@ -106,6 +106,15 @@ export function bindReflectiveReportsToVerifiedShadowEvidence(
       continue;
     }
     consumedRuns.add(report.trialId);
+    // Authenticate the signed payload before branching on any of its fields.
+    // Otherwise a tampered payload may be classified merely as an outcome mismatch,
+    // hiding the primary reason the supplied evidence is untrusted.
+    let verified = false;
+    try { verified = verifyEvidence(observation, candidate); } catch { verified = false; }
+    if (!verified) {
+      reasons.push('signed-shadow-evidence-not-trusted');
+      continue;
+    }
     if (payload.taskId !== report.taskId || payload.runId !== report.trialId) {
       reasons.push('reflective-trial-receipt-identity-mismatch');
       continue;
@@ -113,12 +122,6 @@ export function bindReflectiveReportsToVerifiedShadowEvidence(
     if (payload.passed !== report.taskSuccess?.passed ||
         report.taskSuccess?.passRate !== (payload.passed ? 1 : 0)) {
       reasons.push('reflective-trial-outcome-mismatch');
-      continue;
-    }
-    let verified = false;
-    try { verified = verifyEvidence(observation, candidate); } catch { verified = false; }
-    if (!verified) {
-      reasons.push('signed-shadow-evidence-not-trusted');
       continue;
     }
     boundTrials += 1;
@@ -284,18 +287,20 @@ export function bindIndependentEvaluationToVerifiedShadowEvidence(
       continue;
     }
     consumedRuns.add(binding.runId!);
+    // The verifier is the trust boundary. Only inspect payload identity/outcome
+    // after its signature and candidate binding are accepted.
+    let verified = false;
+    try { verified = verifyEvidence(observation, candidate); } catch { verified = false; }
+    if (!verified) {
+      reasons.push('signed-shadow-evidence-not-trusted');
+      continue;
+    }
     if (payload.runId !== binding.runId || observation.runId !== binding.runId ||
         payload.taskId !== binding.taskId || payload.seed !== binding.seed ||
         payload.manifestFingerprint !== trustedManifestFingerprint ||
         payload.passed !== reportItem.report.taskSuccess.passed ||
         binding.verifierPassed !== reportItem.report.taskSuccess.passed) {
       reasons.push('independent-evaluation-signed-receipt-mismatch');
-      continue;
-    }
-    let verified = false;
-    try { verified = verifyEvidence(observation, candidate); } catch { verified = false; }
-    if (!verified) {
-      reasons.push('signed-shadow-evidence-not-trusted');
       continue;
     }
     boundTrials += 1;

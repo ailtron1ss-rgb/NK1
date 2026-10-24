@@ -420,13 +420,18 @@ export class P23LearningEngine {
     const skills=sanitizeRows(source.skills,256,parsePolicySkill,row=>row.id);
     const ablations=sanitizeRows(source.ablations,512,parseAblation,row=>row.traceId);
     const evidenceDebt=sanitizeRows(source.evidenceDebt,256,parseEvidenceDebt,row=>row.id);
-    // Reconcile dedupe caches with durable rows; restored rows must not be applied twice.
-    const processedTraceIds=sanitizeIdList([
-      ...experiences.map(row=>row.traceId),...(Array.isArray(source.processedTraceIds)?source.processedTraceIds:[]),
-    ],2048);
-    const replayedTraceIds=sanitizeIdList([
-      ...replayUpdates.map(row=>row.traceId),...(Array.isArray(source.replayedTraceIds)?source.replayedTraceIds:[]),
-    ],2048);
+    // Dedupe caches are newest-first and authoritative when they contain any
+    // valid IDs. Rebuild from durable rows only when a missing/poisoned cache has
+    // no valid entries; otherwise adding every row would change persisted cache
+    // semantics and resurrect IDs intentionally outside the retained window.
+    const persistedProcessedIds=sanitizeIdList(source.processedTraceIds,2048);
+    const processedTraceIds=persistedProcessedIds.length>0
+      ? persistedProcessedIds
+      : sanitizeIdList(experiences.map(row=>row.traceId),2048);
+    const persistedReplayedIds=sanitizeIdList(source.replayedTraceIds,2048);
+    const replayedTraceIds=persistedReplayedIds.length>0
+      ? persistedReplayedIds
+      : sanitizeIdList(replayUpdates.map(row=>row.traceId),2048);
     const checksum=sanitizeChecksum(source.checksum,d.checksum);
     const metrics=sanitizeMetrics(source.metrics,d.metrics);
     metrics.outcomes=Math.max(metrics.outcomes,experiences.length);
@@ -1001,7 +1006,7 @@ export class P23LearningEngine {
       // Skills are durable but not immortal: stale evidence gradually loses
       // influence, reaching zero after 180 days without fresh validation.
       const ageMs=Math.max(0,now()-exact.updatedAt);
-      const retention=ageMs>=180*24*60*60*1000?0:1-forgettingRisk({lastValidatedAt:exact.updatedAt,now:now(),halfLifeMs:30*24*60*60*1000,usageGapMs:ageMs});
+      const retention=ageMs>=180*24*60*60*1000?0:1-forgettingRisk({lastValidatedAt:exact.updatedAt,now:now(),halfLifeMs:30*24*60*60*1000,gapMs:ageMs});
       if(exact.status==='promoted') return clamp(exact.confidence01*.05*retention);
       if(exact.status==='rejected') return retention===0?0:-clamp(exact.confidence01*.03*retention);
       return 0;
