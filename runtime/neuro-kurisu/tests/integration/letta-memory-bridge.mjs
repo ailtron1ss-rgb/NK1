@@ -61,6 +61,9 @@ assert.equal(recalled.ok, true);
 assert.equal(recalled.trust, 'untrusted-candidate');
 assert.equal(recalled.evidence, 'agent-response-unverified');
 assert.match(recalled.response, /record-1/);
+assert.ok(!recalled.response.includes('recallsecretvalue123'));
+assert.ok(recalled.response.includes('[REDACTED_SECRET]'));
+assert.equal(recalled.redacted, true);
 
 const snapshot = bridge.snapshot();
 assert.equal(snapshot.agentId, 'agent-nk1-test');
