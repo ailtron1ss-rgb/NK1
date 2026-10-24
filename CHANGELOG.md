@@ -1,3 +1,9 @@
+## NK1 WorkPass530 — add runtime typecheck to memory regression CI (2026-10-24)
+
+- The focused memory persistence workflow now runs the runtime package's `npm run typecheck` before the three behavioral regressions.
+- Increased the job timeout to 10 minutes so the repository's configured TypeScript/compiler fallback can finish without weakening the runtime check.
+- This is validation wiring, not a claim that the whole runtime is type-safe. The exact workflow run must report its mode and conclusion before a typecheck pass is claimed.
+
 ## NK1 WorkPass529 — restore lifecycle timing before legacy memory migration (2026-10-24)
 
 - Fixed migration ordering: old compatibility-only checkpoints previously imported records before restoring the persisted MemoryLifecycleAuthority state, so migration events could be stamped with tick 0 instead of the saved lifecycle tick.
