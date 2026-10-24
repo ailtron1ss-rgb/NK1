@@ -968,7 +968,7 @@ export class MemoryOS2{
   m.revisionHistory=normalizeRevisionHistory([entry,...m.revisionHistory]);
   if(tracked)this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
  }
- revise(id:string,to:EpistemicStatus,reason:string){const m=this.state.items.find(x=>x.id===id);if(!m||m.epistemicStatus===to)return;const from=m.epistemicStatus;this.recordRevision(m,{at:Date.now(),from,to,reason});m.epistemicStatus=to;m.lastAccessAt=Date.now();this.state.reconsolidations++;if(to==='quarantined')this.state.quarantined++;}
+ revise(id:string,to:EpistemicStatus,reason:string){const m=this.itemIndex.get(String(id));if(!m||m.epistemicStatus===to)return;const from=m.epistemicStatus;this.recordRevision(m,{at:Date.now(),from,to,reason});m.epistemicStatus=to;m.lastAccessAt=Date.now();this.state.reconsolidations++;if(to==='quarantined')this.state.quarantined++;}
  reviseContent(id:string,newContent:string,options:{reason?:string;validAt?:number;source?:string;epistemicStatus?:EpistemicStatus;salience?:number;confidence?:number}={}){
    const requested=this.itemIndex.get(id); if(!requested||!String(newContent).trim())return null;
    const group=requested.revisionGroupId??requested.id;
@@ -1010,7 +1010,7 @@ export class MemoryOS2{
    return structuredClone(m.context??{});
  }
  updateSignals(id:string, patch:Partial<Pick<MemoryItem2,'salience'|'emotionalWeight'|'identityRelevance'|'goalRelevance'|'socialRelevance'|'predictionError'|'confidence'|'dormant'>>, reason='reconsolidation') {
-   const m=this.state.items.find(x=>x.id===id); if(!m) return null;
+   const m=this.itemIndex.get(String(id)); if(!m) return null;
    const fromStatus=m.epistemicStatus;
    const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
    if(patch.salience!==undefined)m.salience=c(patch.salience);
@@ -1027,7 +1027,8 @@ export class MemoryOS2{
    this.state.reconsolidations++;
    return structuredClone(m);
  }
- get(id:string){const m=this.state.items.find(x=>x.id===id); if(!m)return null; if(!m.semanticVector.length)m.semanticVector=vectorize(m.content); m.lastAccessAt=Date.now(); m.temperature01=memoryTemperature(m); m.residencyTier='hot'; return structuredClone(m);}
+ peek(id:string){const m=this.itemIndex.get(String(id));return m?structuredClone(m):null;}
+ get(id:string){const m=this.itemIndex.get(String(id)); if(!m)return null; if(!m.semanticVector.length)m.semanticVector=vectorize(m.content); m.lastAccessAt=Date.now(); m.temperature01=memoryTemperature(m); m.residencyTier='hot'; return structuredClone(m);}
  markDormant(id:string,dormant=true,reason='memory-economy'){return this.updateSignals(id,{dormant},reason);}
  forgetById(id:string,reason='memory-knockout'){
    const i=this.state.items.findIndex(x=>x.id===id);
