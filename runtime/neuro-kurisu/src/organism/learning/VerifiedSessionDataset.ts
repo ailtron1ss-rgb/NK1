@@ -105,7 +105,7 @@ export function buildVerifiedSessionDataset(
   // Suppress them rather than publishing a pass rate for one or two observations.
   const holdoutAggregates: HoldoutAggregate[] = [...holdout.values()]
     .filter(row => row.n >= MIN_HOLDOUT_AGGREGATE_OUTCOMES && row.seeds.size >= MIN_HOLDOUT_AGGREGATE_OUTCOMES)
-    .map(row => ({
+    .map((row): HoldoutAggregate => ({
       split: 'holdout',
       family: row.family,
       method: row.method,
@@ -126,7 +126,7 @@ export function buildVerifiedSessionDataset(
   // Stable fingerprint lets downstream generators/evaluators bind results to the
   // exact verified dataset rather than merely to a task manifest or export time.
   const datasetIdentity = {
-    schemaVersion: 1,
+    schemaVersion: 1 as const,
     manifestFingerprint: ledger.manifestFingerprint(),
     training: sortedTraining,
     validation: sortedValidation,

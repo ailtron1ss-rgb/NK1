@@ -1,3 +1,25 @@
+## Latest durable checkpoint — TypeScript validation hardening (2026-10-24)
+
+- Work branch: `typescript/runtime-typecheck-truth-2026-10-24`; draft PR #102 targets `workpass70-source`. Do not merge this source work directly into `main`.
+- Runtime fallback reports `TYPECHECK=PARTIAL` and exits 2 when it can only parse TypeScript syntax; the typecheck command cannot return success without a semantic compiler. Tests cover pinned compiler selection, partial/nonzero fallback, syntax-error rejection and propagation of a failed compiler exit.
+- PR CI first reached app typecheck but failed on six existing strict `checkJs` diagnostics in `app/src/legacy/avatar/safeLocalStorage.test.mjs`. Those diagnostics are now fixed with JSDoc parameter annotations and `Reflect.deleteProperty`; storage behavior is unchanged.
+- The original commit's CI runs are **failed before the new runtime fallback regression**, due to the app typecheck errors above. They do not validate the new code. The updated head still needs a new CI run and review of the Runtime typecheck and fallback-regression steps.
+- New regression is wired into `.github/workflows/workpass71-validation.yml`. No full Release ZIP has been rebuilt or updated.
+- Next: verify the updated head's app typecheck, runtime typecheck, and focused fallback regression; resolve any new diagnostics rather than loosening strict mode.
+
+---
+
+## Previous checkpoint — TypeScript check trustworthiness (2026-10-24)
+
+- Work branch: `typescript/runtime-typecheck-truth-2026-10-24`, based on `workpass70-source`; do not merge these changes directly into `main`.
+- `runtime/neuro-kurisu/scripts/typecheck-runtime.mjs` now distinguishes a real successful `tsc` run (`TYPECHECK=PASS`) from the parser-only fallback (`TYPECHECK=PARTIAL`). A syntax-only fallback cannot establish semantic type correctness.
+- `tests/typecheck-runtime-compiler-selection.mjs` now checks pinned compiler selection, labels a syntax-valid type mismatch as partial when `tsc` is unavailable, fails on syntax errors in fallback mode, and propagates a compiler's non-zero exit.
+- `.github/workflows/workpass71-validation.yml` runs the focused regression for source-branch/pull-request validation.
+- **Validation status: not yet verified on this exact branch.** Do not state that the test or the semantic typecheck passed until the corresponding run has completed and its logs are inspected.
+- Next: execute the focused regression and runtime/app typechecks on the exact HEAD, inspect the diff, then carry the fix into the validated source/release path. This change does not update the large Release ZIP.
+
+---
+
 ## Latest durable checkpoint — WorkPass272 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use live PR for current HEAD.

@@ -1,3 +1,28 @@
+## 2026-10-24 — Final TypeScript patch-set checkpoint
+
+- [BOUNDARY] The app strict-JS fixes, runtime partial-check exit behavior, and matching regression assertions are now all present on the same branch head.
+- [CI] A fresh source-branch/pull-request validation is required for this combined head; earlier runs were cancelled or failed before the latest combined state could finish.
+- [NO FALSE GREEN] Syntax-only parsing is diagnostic evidence only. A missing semantic compiler makes `npm run typecheck` fail instead of passing.
+- [RELEASE] No merge, main-branch update, or release-archive replacement has been performed.
+
+## 2026-10-24 — Prevent parser-only fallback from passing typecheck
+
+- [TYPECHECK] When no TypeScript compiler is available, runtime parsing still reports `TYPECHECK=PARTIAL`, but the wrapper now exits with code 2. A semantic typecheck command therefore cannot succeed solely because syntax parsing succeeded.
+- [REGRESSION] The compiler-selection test asserts the partial status and non-zero exit, while keeping separate coverage for syntax errors (exit 1) and compiler diagnostics (original non-zero exit propagated).
+
+## 2026-10-24 — Repair strict JS checking in avatar-storage tests
+
+- [TYPECHECK] Corrected six existing `checkJs` errors in `app/src/legacy/avatar/safeLocalStorage.test.mjs`: annotated test-double parameters and used `Reflect.deleteProperty` for optional global cleanup instead of deleting a required typed property.
+- [VALIDATION] The first pull-request run exposed these pre-existing app typecheck failures before reaching the new runtime regression. The fix is now included on the same work branch; a rerun on the updated exact HEAD is required.
+- [SCOPE] Test and type declarations only; storage adapter runtime behavior is unchanged.
+
+## 2026-10-24 — TypeScript runtime-check status is now explicit
+
+- [TYPECHECK] A compiler-free runtime fallback now reports `TYPECHECK=PARTIAL` when it can only parse TypeScript syntax; it no longer labels syntax-only validation as a complete typecheck.
+- [REGRESSION] Extended the compiler-selection test to cover the app-pinned compiler, the explicitly partial syntax fallback (including a syntax-valid type mismatch), syntax-error rejection, and propagation of a non-zero compiler exit.
+- [CI] Added the regression to the WorkPass71 validation workflow so the behavior is checked on the source branch and pull requests.
+- [LIMITATION] These changes improve verification honesty, not application type coverage. The exact-head CI and test execution still need to pass before the change is treated as validated.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
