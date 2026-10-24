@@ -1,3 +1,11 @@
+## NK1 WorkPass525 — connect external verification research to NK1's learning trust boundary (2026-10-24)
+
+- Reviewed the current Hermes Agent Self-Evolution project and the Reflexion paper; recorded the provenance and NK1 adaptation in `docs/RESEARCH_INTAKE_LEDGER.md`. The pass preserves trace/evaluation separation and treats reflective or numeric feedback as distinct from authenticated external outcome evidence.
+- Updated the readiness scorecard to 45% overall and 52/100 estimated learning-system maturity. The score remains a qualitative engineering estimate; the evidence-gated self-agency method exists in the personality/feedback branches, while full live call-site migration is still open.
+- No upstream files were copied or vendored and no dependency was added. Source/test edits are committed in their owning category branches; no passing test or runtime improvement is claimed without execution evidence.
+
+---
+
 ## NK1 WorkPass524 — protect the autonomous learning feedback boundary (2026-10-24)
 
 - Detached and validated decision, outcome and commitment input records before mutating the autonomous-life learner; invalid actions, non-finite/out-of-range rewards, malformed timestamps and accessor-backed objects fail closed.
