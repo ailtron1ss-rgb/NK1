@@ -31,7 +31,7 @@ const input = {
   claimKey: 'scene:freshness',
   observedPostcondition: 'fresh scene observed',
   confidence01: 0.98,
-  observedAt: 1000,
+  observedAt: Date.now(),
   actionRef: 'exec-abcdefgh',
   tool: 'organism.device.read',
   tick: 11,
@@ -52,10 +52,22 @@ assert.equal(ledger.recent[0].eventId, evidenceEventId, 'verifier identity must 
 assert.equal(ledger.recent[0].realityClass, 'device-observation', 'device observations must retain their evidence class');
 assert.equal(ledger.recent[0].confidence01, input.confidence01 * 0.8,
   'device evidence confidence must be reduced by its conservative registered-source trust prior');
+assert.equal(observation.sourceReliabilityAtCapture01, 0.8,
+  'each observation must retain the trust factor used for its first evidence projection');
+const matchAssessment = runtime.externalObserver.assess(observation.id, input.observedPostcondition);
+assert.equal(matchAssessment.assessment, 'match', 'fresh exact postcondition should be verified as a match');
+const reliabilityAfterMatch = runtime.externalObserver.snapshot().sources.find(source => source.id === input.sourceId).reliability01;
+assert.ok(reliabilityAfterMatch > observation.sourceReliabilityAtCapture01,
+  'a definitive match can improve source trust instead of decaying trust by double-counting the prior');
 
 const replay = runtime.externalObserver.observe(input);
 assert.equal(replay.id, observation.id, 'observer retry must remain idempotent');
-assert.equal(runtime.realityEvidenceLedger.snapshot().total, 1, 'observer retry must not inflate ledger evidence count');
+const ledgerAfterReplay = runtime.realityEvidenceLedger.snapshot();
+assert.equal(ledgerAfterReplay.total, 1, 'observer retry must not inflate ledger evidence count');
+assert.equal(ledgerAfterReplay.recent[0].confidence01, input.confidence01 * observation.sourceReliabilityAtCapture01,
+  'replaying an existing observation must reuse its capture-time trust rather than changing ledger payload');
+assert.ok(!ledgerAfterReplay.quarantinedEventIds?.includes(evidenceEventId),
+  'an idempotent replay must not quarantine a stable event because the source trust improved');
 
 const userRuntime = new EvidenceResearchSubsystemRuntime({ authorizeSourceRegistration });
 userRuntime.externalObserver.registerSource({id:'user-report',sourceClass:'user',channel:'user',independenceKey:'user:session-1'});
