@@ -14,7 +14,6 @@ export type AILGIntent = {
   cost01: number;
   risk01: number;
   externalSideEffect: boolean;
-  requiresApproval?: boolean;
 };
 
 export type AILGDecision = {
@@ -56,6 +55,8 @@ const hasControls = (s: string): boolean => Array.from(s).some(ch => { const p =
 
 const readDataRecord = (value: unknown): Record<string, unknown> | null => {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return null;
   const descriptors = Object.getOwnPropertyDescriptors(value);
   const result: Record<string, unknown> = Object.create(null);
   for (const [key, descriptor] of Object.entries(descriptors)) {
@@ -66,7 +67,7 @@ const readDataRecord = (value: unknown): Record<string, unknown> | null => {
 };
 
 const readDataArray = (value: unknown): unknown[] | null => {
-  if (!Array.isArray(value)) return null;
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
   const length = Object.getOwnPropertyDescriptor(value, 'length');
   if (!length || !('value' in length) || !Number.isSafeInteger(length.value) || length.value < 0 || length.value > 8192) return null;
   const result: unknown[] = [];
@@ -108,7 +109,6 @@ export class AutonomousIntentLearningGovernor {
   constructor(config: {
     minimumScore01?: number;
     maximumRisk01?: number;
-    requireApprovalForExternalEffects?: boolean;
     verifyApprovalReceipt?: (intentId: string, receipt: string) => boolean;
     verifyExecutionReceipt?: (intentId: string, receipt: string) => boolean;
     trustPersistedApproval?: (intentId: string) => boolean;
@@ -138,13 +138,11 @@ export class AutonomousIntentLearningGovernor {
     const costValue = raw?.cost01;
     const riskValue = raw?.risk01;
     const externalSideEffect = raw?.externalSideEffect;
-    const requiresApproval = raw?.requiresApproval;
     if (!raw || !nonBlank(idValue) || idValue.length > 180 || hasControls(idValue) ||
         !nonBlank(goalValue) || goalValue.length > 500 || hasControls(goalValue) ||
         !evidence || evidence.length === 0 || evidence.length > 32 ||
         !evidence.every(e => nonBlank(e) && e.length <= 240 && !hasControls(e)) ||
         typeof externalSideEffect !== 'boolean' ||
-        (requiresApproval !== undefined && typeof requiresApproval !== 'boolean') ||
         typeof benefitValue !== 'number' || typeof uncertaintyValue !== 'number' ||
         typeof costValue !== 'number' || typeof riskValue !== 'number') {
       throw new TypeError('AILG intent requires bounded plain-data identity, goal, evidence, and policy flags');
@@ -166,7 +164,6 @@ export class AutonomousIntentLearningGovernor {
       cost01: costValue,
       risk01: riskValue,
       externalSideEffect,
-      ...(typeof requiresApproval === 'boolean' ? { requiresApproval } : {}),
     };
 
     // Benefit and information value compete with uncertainty, cost, and risk.
@@ -185,8 +182,7 @@ export class AutonomousIntentLearningGovernor {
     if (safeIntent.risk01 > maximumRisk) {
       status = 'reject';
       reason = 'risk-limit-exceeded';
-    } else if (safeIntent.externalSideEffect &&
-      (safeIntent.requiresApproval || this.config.requireApprovalForExternalEffects !== false)) {
+    } else if (safeIntent.externalSideEffect) {
       status = 'approval-required';
       reason = 'external-side-effect-needs-approval';
     } else if (score01 < minimumScore) {
