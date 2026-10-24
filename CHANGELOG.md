@@ -2117,6 +2117,8 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 ## [2026-10-24] Operation Omega — Hexis source transfer and review-inbox adaptation
 
+- Removed a second Node 24 strip-only incompatibility from `AtomicFileSkillStorePersistence`; the Core-owned shadow-entry test now reaches the lifecycle logic instead of failing while parsing a TypeScript parameter property.
+
 - Replaced an invalid escaped control-character regex in `OutcomeVerificationService` with an explicit code-point check; this restores the Core-owned trusted-shadow-entry regression under Node 24.
 
 - Fixed a P23 signed-outcome replay edge: an exact duplicate artifact in the same process is now rejected as `duplicate-attempt`, while an exact, signed artifact can still re-establish its process-local trust receipt after a ledger restore.
