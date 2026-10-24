@@ -1,3 +1,11 @@
+## NK1 Architecture — domain budgets and single-owner regression gate (2026-10-24)
+
+- [PASS] Workflow [40130445101](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40130445101) passed on commit `8cf0b1fdd2d35b40708afd33901f5ebf89891330`: server graph 580 files/1,249 edges, 6/6 tests; architecture graph 2,230 source files, 638 canonical files, 4,665 edges (3,959 runtime/dual-kind; 706 type-only), 0 missing imports/cycles/legacy leakage/boundary violations, 85/85 dependency budget checks and 6/6 architecture tests.
+- [REGRESSION] Added a static ownership test confirming `StateMigrations.ts` consumes the stable `StateFacetDefaults.ts` facade, each of the seven domain-specific builders has exactly one file owner, and duplicate default-factory declarations are not left in the migration coordinator.
+- [BUDGET] Reduced the tracked `StateMigrations.ts` fan-out ceilings to reflect the measured reduction (max total 205, runtime 105, type 116). Added five-dimensional budgets for the facade and all seven children; the largest remaining builder, `AdvancedFacetDefaults.ts`, is limited to 42 total/41 runtime outgoing edges.
+- [BASELINE] `contracts/module-dependency-budgets.json` now records commit `8cf0b1fdd2d35b40708afd33901f5ebf89891330` and run `40130445101`.
+- [ARTIFACT] Graph artifact ID `12574029467`, SHA-256 `ac53303103112223a777ea9ad70c762af17837312b62c56752800d7bf2dfa4e8`, expires 2026-11-07.
+
 ## NK1 Architecture — domain-owned persistence defaults (2026-10-24)
 
 - [REFACTOR] Extracted the eight initial-facet builders from `StateMigrations.ts` into `StateFacetDefaults.ts` plus seven domain-specific modules under `persistence/state-defaults/`. The migration coordinator now retains only a narrow stable import from the facade.
