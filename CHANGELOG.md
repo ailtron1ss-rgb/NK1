@@ -1,3 +1,8 @@
+## NK1 WorkPass330 — guard autonomous clock wiring (2026-10-24)
+
+- [REGRESSION] Added `runtime/neuro-kurisu/tests/initiative-autonomous-clock-workpass330.mjs` to guard that the production cognitive clock calls `step(undefined, { deliberate: false, spontaneous: true })`, that `autoRun` starts the clock, and that the initiative gate remains restricted to endogenous cycles.
+- [LIMITATION] The new test file is committed but is not yet registered in `package.json`; a package edit was not applied because the fetched manifest could not be safely validated after transformation. Test execution and CI remain unverified. The `main` branch and Release ZIP remain unchanged.
+
 ## NK1 WorkPass329 — connect initiative policy to spontaneous dialogue (2026-10-24)
 
 - [WIRED] `OrganismRuntime.stepInternal` now evaluates the bounded initiative policy against live body energy, thermal/RAM pressure, cycle novelty/uncertainty/social need/goal pressure, and prediction confidence before reserving an unsolicited dialogue initiative.
