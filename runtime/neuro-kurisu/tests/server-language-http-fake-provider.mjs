@@ -71,6 +71,7 @@ const child = spawn(process.execPath, ['--import', path.join(runtimeRoot, 'scrip
     ...process.env,
     HOST: '127.0.0.1',
     PORT: String(appPort),
+    NEURO_AUTORUN_ENABLED: '0',
     STATE_DIR: stateDir,
     LLAMA_CPP_URL: providerUrl,
     LLAMA_CPP_MODEL: 'neurocore-http-smoke-model',
