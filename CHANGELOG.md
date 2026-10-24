@@ -1,3 +1,12 @@
+## NK1 WorkPass487 — lock canonical zero in reflective candidate reports
+
+- Extended the existing Hermes/SkillLearnBench candidate-gate regression with a realistic sub-micro negative trajectory delta that rounds to zero at the public report boundary.
+- Confirms the evaluation result exposes canonical positive zero rather than IEEE-754 negative zero, preventing representation-only differences in downstream fingerprints/evidence comparisons.
+- Reuses the existing candidate gate and test command; no parallel evaluator, dependency, or promotion path was added.
+- **Validation:** regression committed; execution/typecheck on the current exact head remains unverified.
+
+---
+
 ## NK1 WorkPass479 — connect stable event identity to reality evidence (2026-10-24)
 
 - Shared event identity and ledger deduplication are now implemented on `feature/feedback`; the cross-category Hexis map records the completed segment and keeps the full memory/P65/P23 evidence bridge explicitly open.
