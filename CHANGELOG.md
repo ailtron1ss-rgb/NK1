@@ -1,3 +1,9 @@
+## 2026-10-24 — Repair strict JS checking in avatar-storage tests
+
+- [TYPECHECK] Corrected six existing `checkJs` errors in `app/src/legacy/avatar/safeLocalStorage.test.mjs`: annotated test-double parameters and used `Reflect.deleteProperty` for optional global cleanup instead of deleting a required typed property.
+- [VALIDATION] The first pull-request run exposed these pre-existing app typecheck failures before reaching the new runtime regression. The fix is now included on the same work branch; a rerun on the updated exact HEAD is required.
+- [SCOPE] Test and type declarations only; storage adapter runtime behavior is unchanged.
+
 ## 2026-10-24 — TypeScript runtime-check status is now explicit
 
 - [TYPECHECK] A compiler-free runtime fallback now reports `TYPECHECK=PARTIAL` when it can only parse TypeScript syntax; it no longer labels syntax-only validation as a complete typecheck.
