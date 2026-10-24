@@ -36,6 +36,7 @@
 9. В `CognitiveEventFabric` удалена дублирующая реализация `verifyOperationalCycle`; сохранена одна каноническая, расширенная проверка обязательных и переданных optional-этапов/причинных рёбер.
 10. Исправлен некорректный character-class в `OutcomeVerificationService` для проверки управляющих символов в correlation IDs. Добавлена защита тестом, что в `CognitiveEventFabric` остаётся один verifier.
 11. Добавлены `test:p328:closed-loop-failure-closure` и `audit:p328:closed-loop-failure-closure` (typecheck + регрессия); новый тест и `test:runtime-clocks` подключены к `test:rebuild-recovered`. `CHANGELOG.md` отражает изменения.
+12. CI runs выявили и исправили вспомогательные блокеры: `TrustedSkillShadowRunRegistry` использовал constructor parameter property, несовместимый с Node 24 strip-only; WorkPass203 evaluator test повторно объявлял `snapshotEvaluator`; workflow references `test:workpass291:payload-budget` и `test:workpass292:evidence-lanes` отсутствовали в `package.json`. Скрипты теперь зарегистрированы, а external-event regression согласована с правилом, что неподтверждённый импорт не увеличивает trusted outcome count.
 
 ## Инварианты, которые теперь проверяются регрессией
 
@@ -51,7 +52,7 @@
 
 ## Осталось закрыть отдельно
 
-- **Точная CI-проверка:** прежний PR merge SHA `c4c1189e900e7aa70aa7ab1d56487ffa343843a7` (head `2990f2cf…`) показал App typecheck error в нетронутом `app/src/legacy/avatar/safeLocalStorage.test.mjs`, большое число Runtime/P26 TypeScript errors в Node shims/нетронутых типах и WorkPass79 failure на `tests/p23-signed-outcome-artifact.mjs:33` (`duplicate-attempt`, actual `undefined`). Следующий run на head `cbe7bb4b…` выявил WorkPass287 restore-contract failure в `tests/workpass287-unified-cycle-contract.mjs:73`: `lastComplete=true` сохранялся при противоречивых persisted counters. `UnifiedCognitiveCycle.restore()` теперь fail-closed на таких агрегатах и регрессия добавлена для когерентного snapshot; результат нового прогона на текущем SHA ещё не получен.
+- **Точная CI-проверка:** прежние PR merge runs обнаружили и исправили в последующих коммитах несколько конкретных проблем: `UnifiedCognitiveCycle.restore()` сохранял `lastComplete=true` при противоречивых persisted counters; Node 24 strip-only блокеры в `AtomicFileSkillStorePersistence` и `TrustedSkillShadowRunRegistry`; отсутствующие `test:workpass291:payload-budget`/`test:workpass292:evidence-lanes`; дублирующее объявление `snapshotEvaluator` в WorkPass203 regression; неверные ожидания по adaptive replay и trusted external outcome counts. Оставались также отдельные App/Runtime typecheck ошибки и motivation-to-goal assertion. Новый прогон на последнем SHA должен подтвердить, какие из этих проблем закрыты; прошлые runs не считаются валидацией текущего кода.
 - **Проверка конкурентных границ:** контролируемые инварианты для одновременных `stop()`, `flush()`, `AbortSignal` и входящего autonomous clock требуют отдельного стресс-теста.
 - **Проверка полного внешнего цикла:** реальная Android/Termux телеметрия, исполнительное подтверждение, отмена аудио/Live2D и browser E2E остаются незакрытыми release gates.
 - **Независимый эффект обучения:** нельзя объявлять контур улучшившимся лишь потому, что он провёл обновление. Требуются paired seeds, неизменяемый holdout, сравнение с baseline и отсутствие семейных регрессий.
