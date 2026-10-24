@@ -1,3 +1,11 @@
+## NK1 WorkPass509 — align trusted shadow rejection test with API contract (2026-10-24)
+
+- Corrected `p23-core-trusted-shadow-entry.mjs`: the canonical coordinator intentionally rejects an invalid control/baseline lane synchronously before any child process can spawn, so the regression now uses `assert.throws` rather than promise rejection assertion.
+- The runtime policy remains unchanged: only `arm='candidate'` + `method='shadow'` qualifies for trusted shadow-learning execution. The test verifies the durable registry is unchanged after refusal.
+- This resolves the observed WorkPass108 failure mode at the test contract level; the exact updated head still needs execution to claim PASS.
+
+---
+
 ## NK1 WorkPass508 — connect memory evidence to canonical event identity (2026-10-24)
 
 - Reconciled the memory branch's legacy reality ledger with the event-aware implementation used by feedback/perception: bounded plain-data restore, event ID validation, exact-retry idempotency and conflicting-payload quarantine.
