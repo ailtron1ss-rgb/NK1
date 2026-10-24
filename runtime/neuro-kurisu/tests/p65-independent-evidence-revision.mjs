@@ -84,10 +84,13 @@ const collisionClaim = collisionLedger.record({tick:3,at:300,kind:'belief',conte
 const collisionFirst = collisionLedger.reviseBeliefFromEvidence({claimId:collisionClaim,evidenceId:'c',source:'publisher-a',independenceKey:'a:b',stance:'supports',strength01:.9,at:310});
 assert.equal(collisionFirst.independentSource,true);
 const collisionSecond = collisionLedger.reviseBeliefFromEvidence({claimId:collisionClaim,evidenceId:'b:c',source:'publisher-b',independenceKey:'a',stance:'supports',strength01:.9,at:320});
-assert.equal(collisionSecond.reason,'same-source-evidence-recorded', 'the structured pair [a,b:c] differs from [a:b,c]');
-assert.equal(collisionSecond.independentSource,false);
-assert.equal(collisionSecond.confidence01,collisionFirst.confidence01);
-assert.equal(collisionLedger.snapshot().claimsData.find(row=>row.id===collisionClaim).evidenceKeys.length,2);
+assert.equal(collisionSecond.reason,'independent-evidence-applied', 'the structured pair [a,b:c] must not collide with [a:b,c]');
+assert.equal(collisionSecond.independentSource,true, 'a distinct evidence lineage must remain independently countable');
+assert.ok(collisionSecond.confidence01 > collisionFirst.confidence01, 'the formerly-colliding independent evidence must update confidence once');
+const collisionFinal = collisionLedger.snapshot().claimsData.find(row=>row.id===collisionClaim);
+assert.equal(collisionFinal.evidenceKeys.length,2);
+assert.ok(collisionFinal.evidenceLineageKeys.includes('a:b'));
+assert.ok(collisionFinal.evidenceLineageKeys.includes('a'));
 // V2 snapshots restore through allowlisted fields; unsupported rows are quarantined.
 const legacy = ledger.snapshot();
 delete legacy.claimsData[0].evidenceSources;
