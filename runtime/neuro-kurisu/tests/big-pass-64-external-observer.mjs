@@ -40,6 +40,11 @@ try {
   assert.ok(core.externalObserverSummary().verifiedCount >= 1);
   await core.flush();
   const restored=new OrganismCore(new FileStateStore(path.join(dir,'state.json')),{enableLanguage:false});
+  restored.registerActionTool({
+    id:'observer.smoke',capability:'smoke',destructive:false,
+    observationSource:{sourceId:'device-smoke',sourceClass:'device',channel:'sensor',independenceKey:'sensor:smoke'},
+    execute:async()=>({ok:true,value:1}),
+  });
   await restored.init();
   assert.ok(restored.externalObserverSnapshot().observations.length >= 1);
   assert.ok(restored.outcomeCognitionSnapshot().records.some(r=>r.executionId===executed.executionId && r.verified));
