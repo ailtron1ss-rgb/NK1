@@ -1,3 +1,11 @@
+## NK1 WorkPass501 — close P65 bridge validation wiring (2026-10-24)
+
+- Corrected postcondition whitespace canonicalization in the P65 adapter and strengthened its fixture to include repeated internal whitespace.
+- Extended the verified-outcome workflow path filters and added a dedicated step for the new decision-bound P65 bridge regression, so the adapter is exercised alongside signed verifier-artifact checks.
+- End-to-end contract: exact in-process trusted receipt + exact action/decision + matching belief text → one P65 evidence revision; replay, copied receipt, wrong decision and unrelated claim fail closed.
+
+---
+
 ## NK1 WorkPass500 — validate the P65 bridge through CI (2026-10-24)
 
 - Extended P26 Learning Validation path filters to run when the shared evidence identity helper, verifier or P65 bridge changes.
