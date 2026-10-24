@@ -50,6 +50,9 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+      - name: Install locked runtime type definitions
+        working-directory: runtime/neuro-kurisu
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Check runtime TypeScript surface
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
