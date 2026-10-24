@@ -125,7 +125,13 @@ export class CognitiveEventFabric {
       seen.add(id);
       const at=row.at;
       const parentValues=ownDataArray(row.parentIds);
-      const parentIds=parentValues?parentValues.filter((parent):parent is string=>typeof parent==='string'&&Boolean(parent.trim())).map(parent=>parent.trim().slice(0,180)).slice(0,12):[];
+      // Persisted lineage is part of the causal claim. Never silently filter,
+      // normalize, or truncate malformed parent IDs into a different graph.
+      if(row.parentIds!==undefined&&(!parentValues||parentValues.length>12||
+        parentValues.some(parent=>typeof parent!=='string'||parent.length===0||parent.length>180||
+          parent.trim()!==parent||hasControlCharacters(parent))||
+        new Set(parentValues).size!==parentValues.length))continue;
+      const parentIds=parentValues?[...parentValues] as string[]:[];
       const payload=ownDataRecord(row.payload);
       restored.push({
         id,stage:stage as CognitiveStage,tick:Math.floor(tick),
