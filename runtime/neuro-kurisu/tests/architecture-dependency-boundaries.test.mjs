@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import path from "node:path";
+import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -95,22 +97,44 @@ test("dependency boundary policy ignores similarly named directories and sibling
   assert.deepEqual(violations, []);
 });
 
-test("full architecture audit enforces dependency boundaries on the current tree", () => {
-  const result = spawnSync(process.execPath, [auditor], {
-    cwd: runtimeRoot,
-    encoding: "utf8",
-    maxBuffer: 8 * 1024 * 1024,
-  });
+test("full architecture audit enforces dependency boundaries and exports a JSON graph", async () => {
+  const inheritedReport = process.env.NK1_DEPENDENCY_GRAPH_REPORT;
+  const tempDir = inheritedReport ? null : await mkdtemp(path.join(tmpdir(), "nk1-dependency-graph-"));
+  const reportPath = inheritedReport ?? path.join(tempDir, "dependency-graph.json");
 
-  assert.equal(result.error, undefined, result.error?.message);
-  assert.equal(
-    result.status,
-    0,
-    "architecture audit failed:\n" + String(result.stdout) + "\n" + String(result.stderr),
-  );
-  assert.match(result.stdout, /CLEAN_ARCHITECTURE=PASS/);
-  assert.match(result.stdout, /dependencyEdges=\d+/);
-  assert.match(result.stdout, /boundaryViolations=0/);
-  assert.doesNotMatch(result.stdout, /dependency boundary violations|canonical leakage|import cycles detected|missing relative imports/);
-  console.log(result.stdout.trim());
+  try {
+    const result = spawnSync(process.execPath, [auditor], {
+      cwd: runtimeRoot,
+      encoding: "utf8",
+      maxBuffer: 8 * 1024 * 1024,
+      env: { ...process.env, NK1_DEPENDENCY_GRAPH_REPORT: reportPath },
+    });
+
+    assert.equal(result.error, undefined, result.error?.message);
+    assert.equal(
+      result.status,
+      0,
+      "architecture audit failed:\n" + String(result.stdout) + "\n" + String(result.stderr),
+    );
+    assert.match(result.stdout, /CLEAN_ARCHITECTURE=PASS/);
+    assert.match(result.stdout, /dependencyEdges=\d+/);
+    assert.match(result.stdout, /boundaryViolations=0/);
+    assert.match(result.stdout, /DEPENDENCY_GRAPH_REPORT=/);
+    assert.doesNotMatch(result.stdout, /dependency boundary violations|canonical leakage|import cycles detected|missing relative imports/);
+
+    const report = JSON.parse(await readFile(reportPath, "utf8"));
+    assert.equal(report.schemaVersion, 1);
+    assert.ok(report.summary.sourceFiles > 0);
+    assert.ok(report.summary.canonicalFiles > 0);
+    assert.equal(report.edges.length, report.summary.dependencyEdges);
+    assert.ok(report.nodes.length >= report.summary.sourceFiles);
+    assert.ok(report.layerCoupling.length > 0);
+    assert.equal(report.summary.missingImports, 0);
+    assert.equal(report.summary.cycles, 0);
+    assert.equal(report.summary.boundaryViolations, 0);
+    assert.equal(report.edges.every(edge => edge.from && edge.to && edge.fromLayer && edge.toLayer), true);
+    console.log(result.stdout.trim());
+  } finally {
+    if (tempDir) await rm(tempDir, { recursive: true, force: true });
+  }
 });
