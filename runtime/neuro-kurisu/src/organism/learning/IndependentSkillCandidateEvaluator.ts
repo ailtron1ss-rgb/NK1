@@ -602,6 +602,12 @@ export interface MatchedSeedGrowthOptions {
   minimumValidationGainLower95?: number;
   /** Maximum tolerated regression on any one held-out seed. Defaults to 0.15. */
   maximumHoldoutSeedRegression01?: number;
+  /**
+   * Require manifest-bound validation/holdout plans and scheduled run IDs.
+   * Defaults to true whenever requireSeedGrowthGate is enabled. Disable only
+   * for synthetic diagnostic fixtures; production promotion never disables it.
+   */
+  requireCanonicalExperimentAuthority?: boolean;
 }
 
 export interface MatchedSeedGrowthSummary {
@@ -699,6 +705,22 @@ export function compareMatchedIndependentEvaluations(
   }
   const ba = bp.experimentAuthority;
   const ca = cp.experimentAuthority;
+  const requireCanonicalExperimentAuthority =
+    options.requireCanonicalExperimentAuthority ?? options.requireSeedGrowthGate === true;
+  if (requireCanonicalExperimentAuthority) {
+    const validExperimentAuthority = (authority: typeof ba): boolean =>
+      !!authority &&
+      isDigest(authority.manifestFingerprint) &&
+      isDigest(authority.validationPlanFingerprint) &&
+      isDigest(authority.holdoutPlanFingerprint) &&
+      typeof authority.method === 'string' &&
+      authority.method.trim().length > 0 &&
+      Number.isSafeInteger(authority.attempt) &&
+      authority.attempt >= 1;
+    if (!validExperimentAuthority(ba) || !validExperimentAuthority(ca)) {
+      throw new Error('matched-independent-evaluation-experiment-authority-required');
+    }
+  }
   if (!!ba !== !!ca ||
       (ba && ca && (ba.manifestFingerprint !== ca.manifestFingerprint ||
         ba.validationPlanFingerprint !== ca.validationPlanFingerprint ||
@@ -736,6 +758,8 @@ export function compareMatchedIndependentEvaluations(
           // independent verifier authenticated which exact run was evaluated.
           !binding.bindingVerified ||
           !binding.runId || !binding.runId.trim() ||
+          (requireCanonicalExperimentAuthority &&
+            (typeof binding.plannedRunId !== 'string' || !binding.plannedRunId.trim())) ||
           !Number.isSafeInteger(binding.safetyViolationCount) || binding.safetyViolationCount !== 0) {
         throw new Error(`matched-independent-evaluation-${label}-untrusted-trial`);
       }
