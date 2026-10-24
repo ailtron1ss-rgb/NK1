@@ -21,6 +21,24 @@ export interface ConsolidatedExperience extends ExperienceRecord {
 
 const clamp01=(v:number)=>Math.max(0,Math.min(1,Number.isFinite(v)?v:0));
 
+function normalizeTags(value: unknown): string[] | null {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const length = descriptors.length?.value;
+  if (!Number.isSafeInteger(length) || length < 0 || length > 24 ||
+      Reflect.ownKeys(value).length !== length + 1) return null;
+  const tags: string[] = [];
+  for (let index = 0; index < length; index++) {
+    const descriptor = descriptors[String(index)];
+    if (!descriptor || !('value' in descriptor) || !descriptor.enumerable) return null;
+    const tag = descriptor.value;
+    if (typeof tag !== 'string' || !tag.trim() || tag.length > 80 ||
+        /[\\u0000-\\u001f\\u007f-\\u009f]/.test(tag)) return null;
+    tags.push(tag);
+  }
+  return tags;
+}
+
 function normalizeExperience(value:unknown):ExperienceRecord|null {
   if(value===null||typeof value!=='object'||Array.isArray(value))return null;
   const descriptors=Object.getOwnPropertyDescriptors(value);
@@ -34,8 +52,9 @@ function normalizeExperience(value:unknown):ExperienceRecord|null {
   for(const key of ['novelty','utility','uncertainty'] as const){
     if(typeof row[key]!=='number'||!Number.isFinite(row[key])||row[key]<0||row[key]>1)return null;
   }
-  if(!Array.isArray(row.tags)||row.tags.length>24||row.tags.some(tag=>typeof tag!=='string'||!tag.trim()||tag.length>80||/[\u0000-\u001f\u007f-\u009f]/.test(tag)))return null;
-  return {id:row.id,timestamp:row.timestamp,novelty:row.novelty as number,utility:row.utility as number,uncertainty:row.uncertainty as number,tags:[...row.tags as string[]]};
+  const tags=normalizeTags(row.tags);
+  if(!tags)return null;
+  return {id:row.id,timestamp:row.timestamp,novelty:row.novelty as number,utility:row.utility as number,uncertainty:row.uncertainty as number,tags};
 }
 
 export class AdaptiveExperienceConsolidator {
