@@ -5,6 +5,8 @@ const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wa
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const tanh=(x:number)=>Math.tanh(Number.isFinite(x)?x:0);
 const now=()=>Date.now();
+const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+const REQUIRED_NEEDS=['energy','cognitiveLoad','uncertainty','novelty','goalPressure','socialNeed','identityCoherence'] as const;
 
 /**
  * P26 learned function approximator.
@@ -119,21 +121,47 @@ export class ParametricPolicyLearner{
     return this.predict(state,extras).find(p=>p.action===action)!;
   }
 
+  private validateTrainingInput(input:{state:OrganismState;action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number;extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}}):void {
+    if(!input||typeof input!=='object')throw new TypeError('training-input-must-be-object');
+    if(!ACTIONS.includes(input.action))throw new RangeError('invalid-action');
+    if(typeof input.target01!=='number'||!Number.isFinite(input.target01))throw new RangeError('target-must-be-finite');
+    if(input.target01<0||input.target01>1)throw new RangeError('target-out-of-range');
+    if(typeof input.learningRate01!=='number'||!Number.isFinite(input.learningRate01))throw new RangeError('rate-must-be-finite');
+    if(input.sampleWeight01!==undefined&&(typeof input.sampleWeight01!=='number'||!Number.isFinite(input.sampleWeight01)))throw new RangeError('sample-weight-must-be-finite');
+    const state=input.state as unknown;
+    if(!isRecord(state)||!isRecord(state.needs))throw new TypeError('state-must-have-needs');
+    for(const key of REQUIRED_NEEDS){
+      const value=state.needs[key];
+      if(typeof value!=='number'||!Number.isFinite(value))throw new RangeError('state-feature-must-be-finite');
+    }
+    for(const key of ['predictionError','attentionBudget'] as const){
+      const value=state[key];
+      if(typeof value!=='number'||!Number.isFinite(value))throw new RangeError('state-feature-must-be-finite');
+    }
+    if(input.extras!==undefined){
+      if(!isRecord(input.extras))throw new TypeError('training-extras-must-be-object');
+      for(const key of ['external01','boredom01','resourceRisk01','thermalPressure01','bodyCapacity01'] as const){
+        const value=input.extras[key];
+        if(value!==undefined&&(typeof value!=='number'||!Number.isFinite(value)))throw new RangeError('extra-feature-must-be-finite');
+      }
+    }
+  }
+
   train(input:{state:OrganismState;action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number;extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
-    if(this.state.frozen) return {predictionBefore:this.value(input.state,input.action,input.extras).value,predictionAfter:this.value(input.state,input.action,input.extras).value,loss01:0,tdError01:0};
+    this.validateTrainingInput(input);
+    const before=this.value(input.state,input.action,input.extras).value;
+    if(this.state.frozen)return {predictionBefore:before,predictionAfter:before,loss01:0,tdError01:0};
     const x=this.features(input.state,input.extras,input.action);
     const w=this.state.weights[input.action];
-    if(!w) return {predictionBefore:.5,predictionAfter:.5,loss01:0,tdError01:0};
-    const before=this.value(input.state,input.action,input.extras).value;
-    const target=clamp(input.target01);
+    const target=input.target01;
     const error=target-before;
-    const requestedRate=Number.isFinite(input.learningRate01)?input.learningRate01:.03;
-    const requestedWeight=input.sampleWeight01===undefined?1:(Number.isFinite(input.sampleWeight01)?input.sampleWeight01:.1);
+    const requestedRate=input.learningRate01;
+    const requestedWeight=input.sampleWeight01===undefined?1:input.sampleWeight01;
     const lr=Math.max(.003,Math.min(.30,requestedRate))*Math.max(.1,Math.min(1,requestedWeight));
-    const zDerivative=Math.max(.05, 2*before*(1-before));
-    const norm=0.25+x.reduce((sum,v)=>sum+v*v,0);
+    const zDerivative=Math.max(.05,2*before*(1-before));
+    const norm=.25+x.reduce((sum,v)=>sum+v*v,0);
     const step=lr*error*zDerivative/norm;
-    for(let i=0;i<w.length;i++) w[i]=Math.max(-4,Math.min(4,w[i]+step*x[i]));
+    for(let i=0;i<w.length;i++)w[i]=Math.max(-4,Math.min(4,w[i]+step*x[i]));
     this.state.bias[input.action]=Math.max(-4,Math.min(4,(this.state.bias[input.action]??0)+step));
     const after=this.value(input.state,input.action,input.extras).value;
     this.state.updates++;
@@ -146,12 +174,19 @@ export class ParametricPolicyLearner{
   }
 
   trainFeatures(input:{features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    if(!input||typeof input!=='object')throw new TypeError('training-input-must-be-object');
+    if(!ACTIONS.includes(input.action))throw new RangeError('invalid-action');
+    if(!Array.isArray(input.features)||input.features.some(value=>typeof value!=='number'||!Number.isFinite(value)))throw new RangeError('features-must-be-finite');
+    if(typeof input.target01!=='number'||!Number.isFinite(input.target01))throw new RangeError('target-must-be-finite');
+    if(input.target01<0||input.target01>1)throw new RangeError('target-out-of-range');
+    if(typeof input.learningRate01!=='number'||!Number.isFinite(input.learningRate01))throw new RangeError('rate-must-be-finite');
+    if(input.sampleWeight01!==undefined&&(typeof input.sampleWeight01!=='number'||!Number.isFinite(input.sampleWeight01)))throw new RangeError('sample-weight-must-be-finite');
     if(this.state.frozen) { const value=this.predictFromFeatures(input.features,input.action); return {predictionBefore:value,predictionAfter:value,loss01:0,tdError01:0}; }
-    const x=input.features.slice(0,featureNames.length).map(clamp); while(x.length<featureNames.length)x.push(0);
-    const w=this.state.weights[input.action]; if(!w)return {predictionBefore:.5,predictionAfter:.5,loss01:0,tdError01:0};
-    const before=this.predictFromFeatures(x,input.action), target=clamp(input.target01), error=target-before;
-    const requestedRate=Number.isFinite(input.learningRate01)?input.learningRate01:.03;
-    const requestedWeight=input.sampleWeight01===undefined?1:(Number.isFinite(input.sampleWeight01)?input.sampleWeight01:.1);
+    const x=input.features.slice(0,featureNames.length); while(x.length<featureNames.length)x.push(0);
+    const w=this.state.weights[input.action];
+    const before=this.predictFromFeatures(x,input.action), target=input.target01, error=target-before;
+    const requestedRate=input.learningRate01;
+    const requestedWeight=input.sampleWeight01===undefined?1:input.sampleWeight01;
     const lr=Math.max(.002,Math.min(.25,requestedRate))*Math.max(.05,Math.min(1,requestedWeight));
     const derivative=Math.max(.05,2*before*(1-before)), norm=.25+x.reduce((sum,v)=>sum+v*v,0), step=lr*error*derivative/norm;
     for(let i=0;i<w.length;i++)w[i]=Math.max(-4,Math.min(4,w[i]+step*x[i]));
@@ -169,6 +204,10 @@ export class ParametricPolicyLearner{
   }
 
   trainBatch(samples:Array<Parameters<ParametricPolicyLearner['train']>[0]>){
+    if(!Array.isArray(samples))throw new TypeError('training-batch-must-be-array');
+    // Preflight the entire batch before the first update. A malformed later row
+    // must not partially train the model on earlier rows.
+    for(const sample of samples)this.validateTrainingInput(sample);
     let loss=0; let n=0;
     for(const sample of samples){const r=this.train(sample);loss+=r.loss01;n++;}
     return {samples:n,meanLoss01:n?loss/n:0,updates:this.state.updates};

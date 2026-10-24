@@ -842,11 +842,19 @@ export class P23LearningEngine {
       };
     });
     const metrics=this.state.metrics;
-    const options=adaptiveReplayOptions(this.replaySelectionOptions,{
+    const adaptiveOptions=adaptiveReplayOptions(this.replaySelectionOptions,{
       predictionError01:metrics.predictionError01,recentPredictionError01:metrics.recentPredictionError01,
       replayTdError01:metrics.replayMeanAbsTdError01,evidenceDebt01:clamp(metrics.evidenceDebtOpen/16),
       memoryPressure01:clamp(this.state.experiences.length/1024),energy01:1,
     },ranked.length);
+    // Explicit replay-selection configuration is a reproducible ablation control:
+    // health signals shape ranking/half-life, but cannot silently shrink the
+    // caller's declared hard batch cap or recent-example quota.
+    const options:ReplaySelectionOptions={
+      ...adaptiveOptions,
+      maxBatchSize:Math.min(this.replaySelectionOptions.maxBatchSize??64,ranked.length),
+      recentQuota:Math.min(this.replaySelectionOptions.recentQuota??32,this.replaySelectionOptions.maxBatchSize??64,ranked.length),
+    };
     // Use the causal sampler as a bounded diversity prefilter, then retain the
     // adaptive multi-signal selector as the final authority for the replay batch.
     // This connects causal/recent-stratum coverage without discarding existing

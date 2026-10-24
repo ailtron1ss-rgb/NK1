@@ -1,3 +1,13 @@
+## NK1 WorkPass493 — validate learning inputs and preserve replay controls
+
+- Added fail-closed validation before P26 policy updates: reject non-finite target/rate/sample weights, invalid actions, malformed needs/state features and non-finite feature vectors instead of silently clamping them into training labels.
+- Made P26 batch training preflight every sample before the first weight update, so invalid later feedback cannot partially mutate the policy.
+- Fixed P23 replay ablation controls: the configured hard batch cap and recent quota are now preserved while health-adaptive metrics continue to affect replay ranking/half-life.
+- Rebalanced B272 goal-value components to avoid early saturation at 1; confidence-weighted intrinsic drive now has observable leverage on goal valuation while confidence zero leaves the baseline unchanged.
+- **Validation boundary:** changes are committed to `feature/experiments`; new exact-head CI results are required before marking these gates passed.
+
+---
+
 ## NK1 WorkPass490 — close strict runtime and evidence replay gaps
 
 - Tightened B272 needs-key iteration and boolean filtering for intrinsic/dream experiments, made cognitive dependency transition restoration explicitly record-shaped, and corrected the optional numeric fallback used by evidence-ranked skill retrieval.
