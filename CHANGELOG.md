@@ -2,7 +2,7 @@
 
 - Hardened the existing `SkillRevisionGate` rather than adding a parallel evaluator: proposals now report distinct seed count and per-seed paired gains.
 - A candidate is rejected when holdout evidence has fewer than three independent seeds by default, or when a sufficiently sampled seed exceeds the configured regression budget. Family-regression protection remains in place.
-- Expanded the existing P23 regression test with a single-seed inflation case and multi-seed coverage. This is code committed; test execution and end-to-end production wiring still need verification.
+- Expanded the existing P23 regression test with single-seed inflation and a positive-global-gain case that still regresses on one seed while task-family means remain positive. This is code committed; test execution and end-to-end production wiring still need verification.
 
 ---
 
