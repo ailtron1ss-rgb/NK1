@@ -1,3 +1,10 @@
+## NK1 Architecture — transitive server dependency audit (2026-10-24)
+
+- [HARDENED] Expanded `runtime/neuro-kurisu/scripts/audit-server-imports.mjs` from checking only direct imports of `src/server/server.mjs` to traversing the reachable relative-import graph.
+- [COVERAGE] The scanner covers static imports, re-exports, literal dynamic imports, and literal CommonJS requires; it resolves common JS/TS extensions, index modules, imported assets, and NodeNext-style `.js` specifiers mapped to local TypeScript sources.
+- [REGRESSION] Added `tests/server-import-graph-audit.test.mjs`, asserting transitive traversal, graph connectivity, and zero unresolved local edges. The existing `audit:server-imports` command now runs this regression test and the scanner.
+- [LIMITATION] The changes are committed to the architecture work branch and source-verified via GitHub; the audit/test have not been executed in a local checkout or CI in this pass, so runtime PASS is not claimed.
+
 ## NK1 Architecture — module dependency contracts (2026-10-24)
 
 - [ADDED] Added `docs/architecture/module-dependency-contracts-ru.md` with a target dependency map, module ownership matrix, integration invariants, and a staged plan for enforcing boundaries.
