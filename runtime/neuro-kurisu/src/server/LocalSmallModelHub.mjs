@@ -21,7 +21,7 @@ const isRecord = (value) => value !== null && typeof value === 'object' && !Arra
 const finiteIn = (value, min, max) => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
 const boundedText = (value, max = MAX_TEXT_CHARS) => sanitizeEmbeddingInput(String(value ?? '')).trim().slice(0, max);
 const safeModelLabel = (value, fallback = 'local-model') => {
-  const raw = String(value ?? fallback).replace(/https?:\/\/[^\\s"',}]+/gi, '[endpoint]');
+  const raw = String(value ?? fallback).replace(/https?:\/\/[^\s"',}]+/gi, '[endpoint]');
   return sanitizeEmbeddingInput(raw).trim().slice(0, 160) || fallback;
 };
 const nowDefault = () => Date.now();
