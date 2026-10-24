@@ -109,6 +109,8 @@ assert.ok(abortGate >= 0 && actionDispatch > abortGate, 'the abort gate must pre
 assert.match(runtimeSource, /causalDomainClosureLedger\.failPending\(/);
 assert.match(runtimeSource, /causalDomainClosureLedger\.failLatest\(/);
 assert.match(runtimeSource, /runtime\.step\.aborted/);
+assert.ok(runtimeSource.includes('cognitiveCycleComplete,\n          cognitiveCycleTick: unifiedCycle.lastTick'), 'runtime closure must consume the unified cycle result');
+assert.ok(runtimeSource.includes('durableStateAligned: domainAfter.lastCheckpointTick === domainAfter.tick && Boolean(domainAfter.replaySignature),\n          cognitiveCycleComplete,'), 'causal closure must consume the unified cycle result');
 
 // Exercise the actual runtime abort path and inspect the persisted closure state.
 const work = await mkdtemp(path.join(tmpdir(), 'neuro-kurisu-p328-'));
