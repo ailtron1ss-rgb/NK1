@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { ActionKind, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
+import { createRealityEvidenceEventId } from '../system/EvidenceEventIdentity.ts';
 
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const containsControlCharacter=(value:string):boolean=>Array.from(value).some(character=>{
@@ -30,6 +31,8 @@ export interface CausalExperienceRecord {
   tick:number;
   at:number;
   traceId:string;
+  /** Cross-subsystem identity for a causal projection; never evidence of truth by itself. */
+  evidenceEventId?:string;
   action:ActionKind;
   taskId:string;
   reward01:number;
@@ -135,8 +138,10 @@ export class CausalExperienceStream {
           // eligibility only for the runtime-outcome provenance and bounded policy vector;
           // the host persistence boundary still must authenticate the snapshot itself.
           const trustedRuntimeEvidence=isGroundedRuntimeOutcome(record);
+          const normalizedProvenance=trustedRuntimeEvidence?'runtime-outcome':'external';
+          const evidenceEventId=createRealityEvidenceEventId(traceId,normalizedProvenance==='runtime-outcome'?'learning':'learning-external','causal-record');
           return [{
-            ...record,traceId,taskId,
+            ...record,traceId,taskId,evidenceEventId,
             ...(!trustedRuntimeEvidence?{provenance:'external',stateGrounded:false,replayEligible:false}:{}),
           }];
         })
@@ -243,8 +248,9 @@ export class CausalExperienceStream {
     const causalStrength=clamp01(stateDelta*.34+predictionError*.24+surprise*.18+outcomeMagnitude*.16+novelty*.08);
     const learningOpportunity=clamp01(causalStrength*.58+surprise*.18+predictionError*.14+novelty*.10);
     const id=`cx-${trace.tick}-${traceId}`;
+    const evidenceEventId=createRealityEvidenceEventId(traceId,'learning','causal-record');
     const record:CausalExperienceRecord={
-      id, tick:trace.tick, at:Date.now(), traceId, action:trace.selected.action,
+      id, tick:trace.tick, at:Date.now(), traceId, evidenceEventId, action:trace.selected.action,
       taskId, reward01:reward, success01:success,
       surprise01:surprise, predictionError01:predictionError, novelty01:novelty, uncertainty01:uncertainty,
       energyBefore01:clamp01(trace.stateBefore.needs.energy), energyAfter01:clamp01(stateAfter.needs.energy),
@@ -314,6 +320,7 @@ export class CausalExperienceStream {
     })).digest('hex').slice(0,40)}`:input.traceId;
     const traceId=normalizeTraceId(derivedTraceId);
     if(!traceId)throw new Error('causal-external-trace-id-invalid');
+    const evidenceEventId=createRealityEvidenceEventId(traceId,'learning-external','causal-record');
     const prior=this.state.records.find(record=>record.traceId===traceId);
     if(prior){
       // Stable source identity is idempotent only for the same normalized payload.
@@ -332,7 +339,7 @@ export class CausalExperienceStream {
       return null;
     }
     const record:CausalExperienceRecord={
-      id, tick:eventTick, at, traceId, action:input.action,
+      id, tick:eventTick, at, traceId, evidenceEventId, action:input.action,
       taskId, reward01:reward, success01:success, surprise01:surprise,
       predictionError01:surprise*.6, novelty01:novelty, uncertainty01:uncertainty, energyBefore01:.5,
       energyAfter01:clamp01(.5-success*.08), stateDelta01:clamp01(Math.abs(success-.5)*.7+surprise*.3), causalStrength01:causal,
