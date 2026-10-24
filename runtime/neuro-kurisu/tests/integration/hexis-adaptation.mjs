@@ -89,6 +89,7 @@ assert.equal(protectedExternalGoal.status, 'paused', 'imported goals remain non-
 // A same-text native memory must remain untouched by an external HMX import.
 const collisionRuntime = new MemorySubsystemRuntime();
 const nativeText = normalizedNk1Export.sections.memories[0].content;
+const nativeGraphNode = collisionRuntime.semanticMemory.upsertNode(nativeText, 'concept', 0.82);
 const nativeItem = collisionRuntime.fabric.encode({
   content: nativeText,
   tags: ['native-only'],
@@ -140,6 +141,10 @@ const isolatedHexisDuplicate = collisionRuntime.fabric.canonicalSnapshot().items
   item.source.startsWith('hexis:') && item.content === nativeText);
 assert(isolatedHexisDuplicate);
 assert.notEqual(isolatedHexisDuplicate.id, nativeBeforeImport.id, 'the Hexis memory must have a separate stable identity from the native same-text record');
+const matchingGraphNodes = collisionRuntime.semanticMemory.snapshot().nodes.filter(node => node.label === nativeGraphNode.label && node.type === nativeGraphNode.type);
+assert.equal(matchingGraphNodes.length, 2, 'same-label imported and native graph nodes must stay in separate source namespaces');
+assert(matchingGraphNodes.some(node => node.id === nativeGraphNode.id && !node.sourceKey));
+assert(matchingGraphNodes.some(node => node.id !== nativeGraphNode.id && node.sourceKey?.startsWith('hexis:')));
 
 // Approved HMX memories enter the canonical MemoryFabric -> MemoryOS2 path only
 // through the explicit apply decision. The identity and goals sections remain deferred.
