@@ -1,3 +1,10 @@
+## NK1 WorkPass536 — run skill-store dependent P23 test in Node TypeScript transform mode
+
+- Updated the skill-retrieval/reflection/curriculum regression alias to `--experimental-transform-types`. Its imported `VersionedSkillCandidateStore` uses TypeScript parameter properties, which Node 24's strip-only mode cannot execute.
+- This fixes the test command contract; no behavior, learning score, or promotion policy changes.
+
+---
+
 ## NK1 WorkPass535 — preserve full recent ID caches and recover missing durable identities
 
 - Refined P23 restore reconciliation: keep the persisted newest-first deduplication cache intact when durable row IDs are already represented; when a durable identity is missing, evict only the oldest cache entry to make room. This retains bounded capacity while guaranteeing durable experience/replay rows remain deduplicated after restart.
