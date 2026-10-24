@@ -1,3 +1,11 @@
+## NK1 WorkPass333 — Repair restore-contract and CI wiring defects (2026-10-24)
+
+- [RESTORE] Preserve valid persisted cognitive stages when a mixed stage list contains an invalid entry; fall back to all required stages only when no stored stage can be trusted. Fixes the exact WorkPass287 assertion in current CI.
+- [CI] Restore `test:workpass293:p23-revision` npm alias to the existing `tests/workpass293-autonomous-p23-revision.mjs` test, matching the workflow's command.
+- [VALIDATION] The source changes now trigger both relevant GitHub Actions workflows; success is pending the exact-head runs.
+
+---
+
 ## NK1 WorkPass328 — Close failed cognitive cycles explicitly (2026-10-24)
 
 - [CLOSED-LOOP] Added a terminal `failure` phase to `RuntimeClosureLedger`. Durability/restore bookkeeping cannot erase the last cycle's `FAIL`; a later actual step can replace it.
