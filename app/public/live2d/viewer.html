@@ -33,8 +33,13 @@
   function loadScript(src,fallback){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>fallback?loadScript(fallback).then(resolve,reject):reject(new Error('не удалось загрузить '+src));document.head.appendChild(s)})}
   function send(type,extra={}){try{parent&&parent.postMessage({type,...extra},window.location.origin)}catch{}}
   function setCore(id,value){try{const core=model?.internalModel?.coreModel;if(core?.setParameterValueById)core.setParameterValueById(id,value)}catch{}}
+  function visualStateIsActive(signal=bodySignal){return Boolean(signal?.speaking||signal?.gesture||signal?.expressionIntensity>0.5)}
+  function updateTickerBudget(){if(!app?.ticker)return;app.ticker.maxFPS=visualStateIsActive()?30:14}
+  function syncViewerVisibility(){if(!app?.ticker||!model)return;if(document.hidden){app.stop();return}updateTickerBudget();app.start()}
+  document.addEventListener('visibilitychange',syncViewerVisibility);
   function applyEmbodiment(d){
     bodySignal=d||{};
+    updateTickerBudget();
     setCore('ParamAngleX',clamp(bodySignal.gazeX,-1,1)*30);
     setCore('ParamAngleY',clamp(bodySignal.gazeY,-1,1)*20);
     setCore('ParamAngleZ',clamp(bodySignal.headTilt,-.15,.15)*35);
@@ -77,7 +82,7 @@
       await loadScript('./vendor/cubism4.min.js');
       const PIXI=window.PIXI;
       if(!PIXI?.live2d)throw new Error('Live2D runtime не найден');
-      app=new PIXI.Application({view:document.getElementById('canvas'),autoStart:true,backgroundAlpha:0,resizeTo:window,antialias:true,powerPreference:'low-power'});
+      app=new PIXI.Application({view:document.getElementById('canvas'),autoStart:false,backgroundAlpha:0,resizeTo:window,antialias:true,powerPreference:'low-power'});
       const {Live2DModel}=PIXI.live2d;
       model=await Live2DModel.from(modelPath,{autoInteract:false});
       if(!model?.width)throw new Error('модель без размера');
@@ -87,10 +92,7 @@
       app.ticker.add(() => {
         if(!model)return;
         const now=performance.now();
-        const active=Boolean(bodySignal.speaking||bodySignal.expressionIntensity>.5||bodySignal.gesture);
-        const targetFps=active?30:14;
-        const every=1000/targetFps;
-        if(now-(model.__nkLastFrame||0)<every)return;model.__nkLastFrame=now;
+        model.__nkLastFrame=now;
         lipCurrent+=(lipTarget-lipCurrent)*.30;
         lipFormCurrent+=(lipFormTarget-lipFormCurrent)*.30;
         eyeX+=(targetEyeX-eyeX)*.08;eyeY+=(targetEyeY-eyeY)*.08;
@@ -102,6 +104,8 @@
         setCore('ParamEyeLOpen',1-blinkT);setCore('ParamEyeROpen',1-blinkT);
         if(bodySignal.gazeDriven){setCore('ParamEyeBallX',clamp(bodySignal.gazeX,-1,1));setCore('ParamEyeBallY',clamp(bodySignal.gazeY,-1,1))}else if(!bodySignal.gazeX&&!bodySignal.gazeY){setCore('ParamEyeBallX',eyeX);setCore('ParamEyeBallY',eyeY)}
       });
+      updateTickerBudget();
+      syncViewerVisibility();
     }catch(err){status.textContent='fallback';send('live2d_error',{error:String(err?.message||err)})}
   }
   document.getElementById('canvas').addEventListener('pointerdown',ev=>{
