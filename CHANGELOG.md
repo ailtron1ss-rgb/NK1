@@ -4,7 +4,7 @@
 - `CausalLifeGraph.recordCycle()` now accepts a separate `decisionEmotion`. It keeps the pre-action appraisal and post-outcome emotional reaction as distinct emotion nodes, while connecting the decision-time emotion to the decision, then to the selected action and observed outcome. Existing callers remain compatible when they provide only one emotion.
 - Memory reconsolidation now blends the arousal that preceded the action, arousal after the result, and outcome-time attention capture. It also includes excess decision-time memory-salience in bounded salience adjustment and writes an explicit `decisionEmotion->feedbackEmotion` lineage into reconsolidation reasons.
 - Extended the real Core integration regression to prove the persisted causal path `decision-time emotion -> decision -> action -> outcome`, and updated CI path filters for `CausalLifeGraph.ts`.
-- **Validation boundary:** code and regression are committed on `feature/feedback`; the hosted Actions run triggered for this pass must complete successfully before this integration can be marked CI-verified. `main` and the Release ZIP remain unchanged.
+- **Validation:** hosted GitHub Actions [run #53](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40127395955) passed. Its log confirms `workpass561-core-emotion-feedback-link` produced the causal path `interpreted-as → selected → resulted-in`, the contextual emotion-learning regression passed, BIG PASS 172 passed (including restart persistence), and the observer/promotion regressions plus BIG PASS 64 passed. `main` and the Release ZIP remain unchanged.
 
 ## NK1 WorkPass562 — keep the feedback cycle alive when goal/action ownership differs (2026-10-24)
 
