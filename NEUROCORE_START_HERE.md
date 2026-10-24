@@ -1,3 +1,15 @@
+## Latest durable checkpoint — WorkPass529 P36 maturity evidence route (2026-10-24)
+
+- Continue in the existing `feature/learning` branch and draft PR [#79 → `integration`](https://github.com/ailtron1ss-rgb/NK1/pull/79); do not create a duplicate PR. `main` and the Release ZIP remain unchanged.
+- Removed the normal Core feedback call that fed `verifiedNow` into P36 maturity. Internal reward/world-transition evidence is still useful for other learning systems, but cannot authorize independent maturity.
+- The reserved evaluator ID `organism.learning.p36.evaluate-evidence` now supports two distinct request contracts: default baseline/treatment/holdout evidence and `kind: 'developmental-outcome'`. Both require a successful ActionGateway run, immutable external-postcondition receipt, matching execution and decision IDs, and a persisted selected trace.
+- Added `Core.p36RecordDevelopmentalOutcome` with the same receipt/trace checks. Exact replay of a previously applied maturity receipt is idempotent and does not increment the rejected-receipt counter.
+- Expanded `p36-integration.mjs` to test unlinked maturity receipt rejection, linked maturity receipt acceptance, persistence and public-method replay. P36 unit regression also checks exact maturity receipt idempotency.
+- Full implementation note: [WorkPass529 P36 maturity evidence routing](docs/WORKPASS529_P36_MATURITY_EVIDENCE_ROUTING_RU.md).
+- **Verification:** no exact-HEAD workflow/check result is available in this session; current tests/typecheck are not confirmed passing. A real host-owned production evaluator is still not registered under the reserved ID, and durable signed proof re-ingestion after restart remains open. Do not claim a measured learning gain or production readiness.
+
+---
+
 ## Latest durable checkpoint — WorkPass528 P36 ActionGateway integration (2026-10-24)
 
 - Continue in the existing `feature/learning` branch and draft PR [#79 → `integration`](https://github.com/ailtron1ss-rgb/NK1/pull/79); do not create a duplicate PR. Keep `main` and the Release ZIP unchanged.
