@@ -157,10 +157,13 @@ export class CausalDomainClosureLedger {
     if(!previous || (input.tick!==undefined && previous.tick!==Math.max(0,Math.floor(Number(input.tick)))))return null;
     const reason=(typeof input?.reason==='string'?input.reason:'cycle finalization failed')
       .normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').trim().slice(0,240)||'cycle finalization failed';
+    // The post-action evidence remains factual even if a later durable boundary fails.
+    // Downgrade only the persistence claims; retain observed world/learning/identity
+    // changes and the unified-cycle result so diagnostics do not rewrite history.
     const evidence:CausalDomainEvidence={
-      memoryChanged:false,worldChanged:false,agencyChanged:false,learningChanged:false,selfChanged:false,
-      memoryWorldVerified:false,worldAgencyLearningVerified:false,causalLifeGraphChain:false,
-      replaySignaturePresent:false,durableStateAligned:false,cognitiveCycleComplete:previous.evidence.cognitiveCycleComplete
+      ...previous.evidence,
+      replaySignaturePresent:false,
+      durableStateAligned:false,
     };
     const after=normalizeCounters(input.counters??previous.after);
     const record:CausalDomainClosureRecord={
