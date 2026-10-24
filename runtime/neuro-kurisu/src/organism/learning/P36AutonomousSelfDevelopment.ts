@@ -320,6 +320,7 @@ export class P36AutonomousSelfDevelopmentEngine{
     const sourceHypotheses=Array.isArray(r.hypotheses)?r.hypotheses.slice(-96):[];
     const revokedHypothesisIds=new Set<string>();
     const seenHypothesisIds=new Set<string>();
+    const safeTimestamp=(value:unknown)=>Number.isSafeInteger(value)&&Number(value)>=0?Number(value):0;
     const areas:DevelopmentArea[]=['memory','learning','world-model','self-model','relationship','agency','resource-discipline','perception'];
     const statuses:DevelopmentStatus[]=['proposed','running','completed','rejected','rolled-back','preview-only','awaiting-evidence'];
     const evidenceGates=new Set(['none','external-verified','holdout-verified','replicated']);
@@ -337,7 +338,6 @@ export class P36AutonomousSelfDevelopmentEngine{
       const hasUnreplayablePromotion=status==='completed'||gate==='external-verified'||gate==='holdout-verified'||gate==='replicated';
       if(hasUnreplayablePromotion)revokedHypothesisIds.add(id);
       const score=(value:unknown,fallback:number)=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:fallback;
-      const timestamp=(value:unknown)=>Number.isSafeInteger(value)&&Number(value)>=0?Number(value):0;
       return {
         id,area:h.area,title,hypothesis,
         evidence:Array.isArray(h.evidence)?h.evidence.filter((value:unknown):value is string=>typeof value==='string'&&Boolean(canonicalEvidenceText(value,160))).slice(0,8).map((value:string)=>canonicalEvidenceText(value,160)!):[],
@@ -345,8 +345,8 @@ export class P36AutonomousSelfDevelopmentEngine{
         estimatedCost01:score(h.estimatedCost01,.2),
         priority01:score(h.priority01,.2),
         status:hasUnreplayablePromotion?'awaiting-evidence':status,
-        createdAt:timestamp(h.createdAt),
-        completedAt:hasUnreplayablePromotion?0:timestamp(h.completedAt),
+        createdAt:safeTimestamp(h.createdAt),
+        completedAt:hasUnreplayablePromotion?0:safeTimestamp(h.completedAt),
         result01:hasUnreplayablePromotion?null:(h.result01===null?null:score(h.result01,.5)),
         evidenceGate:hasUnreplayablePromotion?'none':gate,
       } as DevelopmentHypothesis;
@@ -370,7 +370,7 @@ export class P36AutonomousSelfDevelopmentEngine{
         requiredContexts:Number.isSafeInteger(cycle.requiredContexts)?Math.max(2,Math.min(8,cycle.requiredContexts)):2,
         requiredPositiveDelays:Number.isSafeInteger(cycle.requiredPositiveDelays)?Math.max(2,Math.min(8,cycle.requiredPositiveDelays)):2,
         requiredHoldout:Number.isSafeInteger(cycle.requiredHoldout)?Math.max(4,Math.min(16,cycle.requiredHoldout)):4,
-        stage:revoke?'awaiting-evidence':stage,createdAt:timestamp(cycle.createdAt),
+        stage:revoke?'awaiting-evidence':stage,createdAt:safeTimestamp(cycle.createdAt),
         taskCount:Number.isSafeInteger(cycle.taskCount)?Math.max(0,Math.min(1024,cycle.taskCount)):0,
         verifiedEvidenceCount:0,lastEvidenceAt:0,
       } as DevelopmentCycleRecord;
