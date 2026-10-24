@@ -1,3 +1,12 @@
+## NK1 WorkPass485 — make the runtime typecheck self-contained
+
+- CI runs `npm ci` inside `runtime/neuro-kurisu` only; the application lockfile is not installed in that job. Therefore pointing `tsconfig.clean.json` at `../../app/node_modules/@types` is not reproducible and produced `TS2688: Cannot find type definition file for 'node'` after the shim was excluded.
+- Added the already-used, pinned-version-range `@types/node` as a runtime development dependency and included its exact locked `22.20.4` package plus `undici-types 6.21.0` in the runtime lockfile. No runtime dependency or application dependency changed.
+- The semantic runtime typecheck now resolves Node types only from the runtime package installation, while excluding the fallback declarations so they cannot shadow the official API.
+- **Validation:** exact-head CI must confirm the type dependency installs and expose the remaining genuine TypeScript errors; no clean typecheck is claimed yet.
+
+---
+
 ## NK1 WorkPass483 — use authoritative Node types for semantic runtime typecheck (2026-10-24)
 
 - The runtime typecheck was compiling `src/node-shims.d.ts` together with the real code. Those narrow fallback declarations shadowed the locked Node API surface and caused a cascade of false missing-member errors (`createPublicKey`, `realpath`, `NodeJS`, `process.platform`, `Buffer`, path/fs overloads).
