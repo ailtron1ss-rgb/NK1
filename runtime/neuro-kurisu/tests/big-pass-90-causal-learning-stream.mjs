@@ -201,6 +201,8 @@ assert.throws(() => externalStream.recordExternalLearningEvent({
 assert.deepEqual(externalStream.snapshot(), beforeInvalidExternalInput,
   "invalid external task/action data must not mutate any causal-stream state");
 
+const beforeInvalidIdentityKeys = externalStream.snapshot();
+
 // IDs are identity keys, not display strings: truncating an overlong value could
 // collapse two independent tasks/events into one duplicate and silently lose data.
 const longTaskPrefix = "t".repeat(120);
@@ -236,15 +238,17 @@ assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, taskId: "edge-task" + String.fromCharCode(10), traceId: "control-task-edge",
 }), /causal-external-task-id-invalid/,
   "task IDs with trailing control characters must not normalize into ordinary IDs");
-assert.equal(externalStream.summary().outcomes, 1,
-  "overlong or control-bearing identity keys must fail before mutating causal state");
+assert.deepEqual(externalStream.snapshot(), beforeInvalidIdentityKeys,
+  "overlong or control-bearing identity keys must fail before mutating any causal state");
 
+const beforeOverlongRuntimeTrace = externalStream.snapshot();
 const overlongRuntimeTrace = { ...trace, id: "r".repeat(181) };
 assert.equal(externalStream.recordOutcome(
   overlongRuntimeTrace, mkState({ tick: 22 }),
   { reward01: .5, success01: .5, surprise01: .5, novelty01: .5 },
 ), null, "an overlong runtime trace cannot be silently truncated into another identity");
-assert.equal(externalStream.summary().outcomes, 1);
+assert.deepEqual(externalStream.snapshot(), beforeOverlongRuntimeTrace,
+  'rejected overlong runtime trace must not mutate causal state');
 
 const corruptSnapshot = externalStream.snapshot();
 corruptSnapshot.records.push({

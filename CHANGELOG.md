@@ -1,3 +1,12 @@
+## NK1 WorkPass527 — make P26 training input validation fail closed and batches atomic (2026-10-24)
+
+- `ParametricPolicyLearner.train()` and `trainFeatures()` now reject non-finite targets, learning rates, sample weights, feature vectors, invalid actions, malformed state needs and non-finite state features before training or diagnostics can mutate.
+- `trainBatch()` validates every sample before the first update, preventing a valid early sample from training the model when a later sample is malformed.
+- Updated causal-stream regression assertions to compare full pre/post snapshots rather than incorrectly assuming unverified external events contribute one trusted outcome.
+- These changes improve input integrity and failure atomicity; they make no claim of measured learning uplift.
+
+---
+
 ## NK1 WorkPass526 — use Node 24 TypeScript transform mode for Hermes evidence binding
 
 - Corrected the P23 Hermes verified-evidence-binding npm alias to use `--experimental-transform-types`. Its imported skill store uses TypeScript parameter properties, which Node's strip-only mode rejects before the regression can execute.
