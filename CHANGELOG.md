@@ -1,3 +1,13 @@
+## NK1 WorkPass508 — harden persisted cognitive-event restore (2026-10-24)
+
+- CognitiveEventFabric snapshot restoration now reads top-level snapshots, event rows and nested payload/receipt arrays through property descriptors, discarding accessor-backed data instead of executing getters while restoring persistent state.
+- Restored flags and numeric metadata are accepted only with the expected runtime type; malformed nested receipt projection entries cannot be blindly materialized as trusted replay guards.
+- Added regressions for hostile getter-backed event rows and top-level snapshots, and included the existing ingress/restore boundary test in `test:rebuild-recovered`.
+- Research/design basis: keep one causal fabric as the event spine and treat persisted state as untrusted, rather than creating a second memory store. This is a native NK1 hardening pass; no external dependency or unreviewed source code was imported.
+- **Validation boundary:** code and test chain are committed; test execution and typecheck are not confirmed, and no outcome-learning uplift is claimed.
+
+---
+
 ## NK1 WorkPass506 — make the reality ledger replay-safe and identity-aware
 
 - Reconciled the learning branch's older `RealityEvidenceLedger` with the hardened feedback-branch implementation: bounded plain-data ingress, event-ID validation, duplicate retry idempotency, conflicting-payload quarantine and safe snapshot restore.
