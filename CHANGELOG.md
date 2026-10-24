@@ -1,3 +1,10 @@
+## NK1 WorkPass458 — deduplicate epistemic evidence by event identity (2026-10-24)
+
+- **Fixed:** P65 belief revision now deduplicates by the canonical evidence event ID itself, not by the pair of source-lineage label and event ID. An event replayed through another adapter/source label can no longer masquerade as independent corroboration.
+- **Regression added:** the existing Hexis-inspired epistemic-ledger test now relabels a previously applied event as a supposedly independent source and asserts fail-closed rejection with unchanged confidence.
+- **Architecture:** P65 remains the single belief-revision owner; no second memory store or runtime dependency added. This strengthens the ledger boundary but does not yet complete end-to-end event-ID propagation from ActionGateway through reality evidence and reflection.
+- **Validation:** regression source committed; execution/typecheck not claimed because hosted runner startup remains unresolved.
+
 ## NK1 WorkPass512 — make memory restore safe at the collection boundary (2026-10-24)
 
 - Added descriptor-only reading for the persisted episode collection itself, not just each record. Sparse, custom-prototype, oversized or accessor-backed arrays are discarded before any ## NK1 WorkPass512 — align trusted shadow and signed-evidence contracts (2026-10-24)
