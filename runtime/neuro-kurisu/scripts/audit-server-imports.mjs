@@ -11,10 +11,10 @@ const graph = new Map();
 const unresolved = [];
 const queue = [entry];
 const visited = new Set();
+const sourceExtension = /\.(?:ts|tsx|mts|cts|mjs|cjs|js|jsx)$/i;
 
 function resolveImport(importer, specifier) {
-  // Keep resolution local to the importing file. Query/hash suffixes are not
-  // filesystem paths and are removed before trying the normal JS/TS candidates.
+  // Query/hash suffixes are loader metadata, not part of the filesystem path.
   const clean = String(specifier).split(/[?#]/, 1)[0];
   const base = path.resolve(path.dirname(importer), clean);
   const candidates = [
@@ -22,6 +22,15 @@ function resolveImport(importer, specifier) {
     ...extensions.map(extension => base + extension),
     ...indexFiles.map(file => path.join(base, file)),
   ];
+
+  // NodeNext TypeScript code can import "./module.js" while the checkout
+  // contains "./module.ts". Resolve those source counterparts explicitly.
+  const emittedSuffix = base.match(/\.(mjs|cjs|js|jsx)$/i)?.[0];
+  if (emittedSuffix) {
+    const stem = base.slice(0, -emittedSuffix.length);
+    candidates.push(stem + ".ts", stem + ".tsx", stem + ".mts", stem + ".cts");
+  }
+
   return candidates.find(candidate => {
     try {
       return fs.statSync(candidate).isFile();
@@ -49,7 +58,18 @@ while (queue.length > 0) {
   visited.add(file);
 
   if (!fs.existsSync(file) || !fs.statSync(file).isFile()) {
-    unresolved.push({ importer: path.relative(packageRoot, file), specifier: "<entry>", reason: "entry or dependency is not a file" });
+    unresolved.push({
+      importer: path.relative(packageRoot, file),
+      specifier: "<entry>",
+      reason: "entry or dependency is not a file",
+    });
+    continue;
+  }
+
+  // Assets and JSON may be legitimate local imports, but their contents are
+  // not JavaScript modules and must not be parsed as source code.
+  if (!sourceExtension.test(file)) {
+    graph.set(file, []);
     continue;
   }
 
