@@ -5,8 +5,9 @@
 
 ## Что изменено
 
-- Добавлен `LettaMemoryBridge`: ленивый TypeScript-адаптер с созданием/повторным использованием Letta agent, `recordExperience`, `recall`, сериализацией обращений к одному агенту, маскированием очевидных секретов, ограничением размера данных и snapshot.
-- Мост встраивается в `MemorySubsystemRuntime` как опциональный провайдер внешней долговременной памяти. Его snapshot восстанавливается вместе с `advanced` memory state.
+- Добавлен `LettaMemoryBridge`: ленивый TypeScript-адаптер с созданием/повторным использованием Letta agent, ручным `recordExperience`, `recall`, canonical upsert и запросом forget, сериализацией обращений к одному агенту, маскированием секретов, ограничением размера данных и snapshot.
+- `MemoryFabric.applyLifecycleCommand` теперь публикует read-only события завершённых изменений. `MemorySubsystemRuntime` зеркалирует encode/revision/update в Letta после native commit и отправляет отдельный forget request; sync подавляется во время восстановления/compatibility migration. `flushLettaMemorySync()` позволяет дождаться очереди при завершении/тестах.
+- Автоматическая передача данных включается только при `NK1_LETTA_ENABLED=1` (или явной конфигурации в коде); прежние записи не выгружаются массово при старте. Snapshot/restore сохраняет identity и счётчики, но не включает провайдера сам по себе.
 - Ответы recall помечаются `untrusted-candidate`; они не меняют canonical memory, цели, само-модель или решения NK1 автоматически. Ответ агента «записано» не считается независимым доказательством долговременного commit.
 - Сохранён существующий governance gate: исследовательские/legacy артефакты не повышаются автоматически до canonical.
 - Добавлен изолированный fake-client regression test без сетевого запроса.
@@ -15,13 +16,13 @@
 
 Окружение проекта закрепляет Node.js 24, что совместимо с требованием SDK Node.js >=22.19.0.
 
-Из каталога `runtime/neuro-kurisu` установите SDK в собственной рабочей копии:
+Из каталога `runtime/neuro-kurisu` установите зафиксированную версию SDK в собственной рабочей копии:
 
 ```bash
-npm install @letta-ai/letta-agent-sdk
+npm install @letta-ai/letta-agent-sdk@0.8.52
 ```
 
-Установка зависимости отдельно не меняет NK1 lockfile автоматически; перед выпуском её следует зафиксировать согласованно через npm, не редактируя lockfile вручную.
+Команда install обновит `package.json` и `package-lock.json` в рабочей копии. В этой ветке SDK пока намеренно не добавлен в обязательные dependencies/lockfile: перед фиксацией требуется воспроизводимый install на Node 24, затем оба npm-файла надо проверить и коммитить согласованно.
 
 Переменные:
 
@@ -35,11 +36,12 @@ npm install @letta-ai/letta-agent-sdk
 ## Проверка
 
 ```bash
-node --experimental-strip-types tests/integration/letta-memory-bridge.mjs
+npm run test:letta-memory-bridge
+npm run test:letta-memory-lifecycle-sync
 node --experimental-strip-types tests/integration/letta-governance-adaptation.mjs
 ```
 
-Тест моста использует fake SDK-клиент и проверяет только контракты адаптера: сохранение ID, redaction, порядок операций и классификацию recall. Он не проверяет доступность внешнего сервера, фактическое сохранение MemFS, качество retrieval, production build или end-to-end подключение к OrganismCore.
+Тесты используют fake SDK-клиент и проверяют adapter contracts, redaction, restore snapshot, автоматическое зеркалирование из canonical mutation boundary, подавление mirror во время restore и выдачу forget request. Они не доказывают физическое удаление данных в Letta, доступность внешнего сервера, реальное сохранение MemFS, retrieval uplift, production build или полное поведенческое E2E.
 
 ## Следующие обязательные этапы
 
@@ -51,4 +53,4 @@ node --experimental-strip-types tests/integration/letta-governance-adaptation.mj
 
 ## Безопасность и границы
 
-Letta хранит внешнюю память; NK1 native memory, provenance и policy остаются canonical. Пользовательские и внешние записи рассматриваются как данные, не как исполняемые инструкции. Секретные строки маскируются перед отправкой, но регулярный фильтр не гарантирует обнаружение каждого секрета: не передавайте ключи/пароли в summary. Удаление данных должно быть реализовано и проверено отдельно — этот мост пока не обещает автоматическое синхронное удаление между двумя хранилищами.
+Letta хранит внешнюю память; NK1 native memory, provenance и policy остаются canonical. Пользовательские и внешние записи рассматриваются как данные, не как исполняемые инструкции. Секретные строки маскируются перед отправкой, но регулярный фильтр не гарантирует обнаружение каждого секрета: не передавайте ключи/пароли в summary. Forget request теперь отправляется после canonical forget, однако ответ агента лишь фиксируется как неподтверждённое свидетельство: успешное физическое удаление из всех файлов/производных сводок Letta пока не проверено и не гарантируется. До отдельной provider-level проверки интеграцию нельзя считать production-ready.
