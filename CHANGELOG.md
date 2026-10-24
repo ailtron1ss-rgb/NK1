@@ -1,3 +1,10 @@
+## NK1 WorkPass97 — Live2D browser smoke and viewer recovery (2026-10-24)
+
+- Added a Playwright/Chromium smoke test for the actual local Live2D iframe, both mobile and quality model profiles, WebGL output, local-resource responses, browser exceptions, and versioned embodiment events.
+- Added an explicit user-triggered iframe retry after Live2D initialization failure.
+- Integrated browser setup and smoke execution into the Node.js 24 Live2D workflow; the PNG screenshot-based pixel sampler remains under exact-head CI validation at `ffadcfeee8ea3d400466357edd1ff313e3287602`.
+- Evidence boundary: a preceding browser run successfully rendered both profiles using synchronous WebGL readback, and asset integrity + expression/timeline tests + typecheck passed. Do not call the screenshot-sampling refinement green until its exact-head Actions result completes. Real audio, device, and acoustic lip-sync checks remain open.
+
 ## NK1 WorkPass96 — Live2D canonical asset integrity gate (2026-10-24)
 
 - Added a deterministic integrity gate that checks SHA-256 and size for all canonical/hydrated Live2D manifest entries, both model variants, all declared model resources, viewer expression-name mappings, and vendored Pixi/Cubism bundles.
