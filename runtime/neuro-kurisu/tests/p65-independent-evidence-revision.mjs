@@ -25,6 +25,14 @@ assert.equal(ledger.reviseBeliefFromEvidence({
   claimId, evidenceId: 'same-publisher-second-page', source: 'web',
   stance: 'supports', strength01: 0.99, at: 111,
 }).reason, 'evidence-already-applied');
+// The same event cannot be replayed as independent evidence by relabelling its source.
+const relabelledReplay = ledger.reviseBeliefFromEvidence({
+  claimId, evidenceId: 'same-publisher-second-page', source: 'independent-lab',
+  independenceKey: 'independent-lab:1', stance: 'supports', strength01: 0.99, at: 112,
+});
+assert.equal(relabelledReplay.accepted, false);
+assert.equal(relabelledReplay.reason, 'evidence-already-applied');
+assert.equal(relabelledReplay.confidence01, 0.6);
 
 // A genuinely new source closes some uncertainty through a log-odds update.
 const corroborated = ledger.reviseBeliefFromEvidence({
