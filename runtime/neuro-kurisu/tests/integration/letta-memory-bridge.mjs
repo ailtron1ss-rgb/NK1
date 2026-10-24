@@ -15,7 +15,7 @@ function fakeClient() {
         async ready() {},
         async send(prompt) {
           calls.prompts.push(prompt);
-          nextResponse = prompt.includes('NK1_MEMORY_QUERY:')
+          nextResponse = prompt.includes('NK1_MEMORY_QUERY_JSON:')
             ? 'Candidate: record-1; source=unit-test; uncertainty=low.'
             : 'Stored at memory/experience/record-1.md';
         },
