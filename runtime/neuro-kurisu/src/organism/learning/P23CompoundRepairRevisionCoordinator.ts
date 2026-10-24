@@ -153,6 +153,10 @@ export function fingerprintCompoundRepairEvidence(
  * validating the proposal, reports, candidate source, fitness and staging gate.
  */
 export class P23CompoundRepairRevisionCoordinator {
+  private readonly runtime: OrganismRuntime;
+  private readonly engine: P23LearningEngine;
+  private readonly provideInputs: CompoundRepairRevisionInputProvider;
+  private readonly retryBackoffStore?: CompoundRepairRetryBackoffStore;
   private readonly inFlightBySkill = new Map<string, Promise<CompoundRepairRevisionOutcome>>();
   // Bind coalescing to the evidence snapshot, not just the skill identity.
   // A request for newer evidence must not disappear behind a stale in-flight attempt.
@@ -162,11 +166,16 @@ export class P23CompoundRepairRevisionCoordinator {
   private retryBackoffPersistenceFailure: string | null = null;
 
   constructor(
-    private readonly runtime: OrganismRuntime,
-    private readonly engine: P23LearningEngine,
-    private readonly provideInputs: CompoundRepairRevisionInputProvider,
-    private readonly retryBackoffStore?: CompoundRepairRetryBackoffStore,
-  ) {}
+    runtime: OrganismRuntime,
+    engine: P23LearningEngine,
+    provideInputs: CompoundRepairRevisionInputProvider,
+    retryBackoffStore?: CompoundRepairRetryBackoffStore,
+  ) {
+    this.runtime = runtime;
+    this.engine = engine;
+    this.provideInputs = provideInputs;
+    this.retryBackoffStore = retryBackoffStore;
+  }
 
   private evidenceDigest(rows: ReturnType<OrganismRuntime['compoundSkillRepairEvidence']>): string {
     return fingerprintCompoundRepairEvidence(rows);
