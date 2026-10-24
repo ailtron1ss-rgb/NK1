@@ -41,7 +41,7 @@ function boundedText(value: unknown, max = 160): string {
 }
 
 function parsePayload(raw: string): Record<string, unknown> {
-  const trimmed = String(raw ?? '').trim().replace(/^\`\`\`(?:json)?/i, '').replace(/\`\`\`$/, '').trim();
+  const trimmed = String(raw ?? '').trim().replace(/^`{3}(?:json)?/i, '').replace(/`{3}$/, '').trim();
   if (!trimmed || trimmed.length > 256_000) throw new Error('local-vision-invalid-output-size');
   const start = trimmed.indexOf('{');
   const end = trimmed.lastIndexOf('}');
