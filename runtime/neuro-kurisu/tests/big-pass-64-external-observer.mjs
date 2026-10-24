@@ -35,7 +35,7 @@ try {
   assert.equal(resolved.resolution?.resolved,true);
   const outcome=core.outcomeCognitionSnapshot();
   const verifiedOutcome=outcome.records.find(record=>record.executionId===executed.executionId);
-  assert.ok(verifiedOutcome?.verified, 'the matching execution record must contain the verified external outcome');
+  assert.ok(verifiedOutcome?.externalObservations?.some(observation=>observation.verified), 'the matching execution record must retain verified external evidence separately from its original receipt');
   assert.equal(verifiedOutcome.executionId,executed.executionId);
   assert.ok(outcome.causal.nodes.some(n=>n.kind==='observation' && n.evidenceRef===resolved.observation.id));
   assert.ok(core.externalObserverSummary().verifiedCount >= 1);
@@ -48,6 +48,6 @@ try {
   });
   await restored.init();
   assert.ok(restored.externalObserverSnapshot().observations.length >= 1);
-  assert.ok(restored.outcomeCognitionSnapshot().records.some(r=>r.executionId===executed.executionId && r.verified));
+  assert.ok(restored.outcomeCognitionSnapshot().records.some(r=>r.executionId===executed.executionId && r.externalObservations?.some(observation=>observation.verified)), 'restoration must preserve verified external observations without rewriting the original action receipt');
   console.log('BIG_PASS_64_EXTERNAL_OBSERVER=PASS verified='+core.externalObserverSummary().verifiedCount+' contradicted='+core.externalObserverSummary().contradictedCount+' observations='+core.externalObserverSummary().observations);
 } finally { await rm(dir,{recursive:true,force:true}); }
