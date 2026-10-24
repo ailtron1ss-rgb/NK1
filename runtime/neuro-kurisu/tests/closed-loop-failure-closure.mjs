@@ -17,6 +17,7 @@ runtimeLedger.durable({ at: Date.now(), tick: 7, stateTick: 7, replaySignature: 
 runtimeLedger.durable({ at: Date.now(), tick: 7, stateTick: 7, replaySignature: 'fixture-signature-2', continuousTick: 7, continuityProcessed: 7 });
 runtimeLedger.restoreVerification({ at: Date.now(), tick: 7, previousDurableHash: 'previous-hash', replaySignature: 'fixture-signature-2', continuousTick: 7, processed: 7 });
 assert.equal(runtimeLedger.diagnostics().lastStatus, 'FAIL', 'durability and restore bookkeeping must not mask the failure');
+assert.equal(runtimeLedger.snapshot().lastBehaviorHash, failure.behaviorHash, 'restore bookkeeping must preserve the failed cycle fingerprint');
 
 // A normal step can itself fail its closure checks; durability must not turn it green.
 const failedStepLedger = new RuntimeClosureLedger();
