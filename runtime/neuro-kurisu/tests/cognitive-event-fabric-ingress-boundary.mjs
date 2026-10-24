@@ -68,7 +68,7 @@ restored.restore({
   recent: [
     restoredRow('valid-lineage', ['parent-event']),
     restoredRow('padded-parent', [' parent-event']),
-    restoredRow('control-parent', ['parent\\u0000event']),
+    restoredRow('control-parent', ['parent\u0000event']),
     restoredRow('duplicate-parent', ['parent-event', 'parent-event']),
     restoredRow('oversized-parent-list', Array.from({ length: 13 }, (_, i) => `parent-${i}`)),
   ],
