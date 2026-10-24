@@ -225,29 +225,35 @@ export class PredictiveSelfAgencySubstrate {
            Number.isFinite(cleanObservedState.needs[key as keyof typeof cleanObservedState.needs]))) {
       throw new TypeError('predictive-self-agency-outcome-state-invalid');
     }
+    const causalMatch=clamp01(causalMatch01);
     const p=this.predict(action);
     const err=outcome01-p.predictedOutcome01;
-    const lr=.026/Math.sqrt(1+this.state.predictionSamples/2500);
-    const idx=Math.max(0,ACTIONS.indexOf(action));
-    const d=err*p.predictedOutcome01*(1-p.predictedOutcome01);
+    // An outcome can be accurate yet unrelated to the chosen action. Causal match is
+    // therefore a credit-assignment weight, not merely an ownership diagnostic.
+    // At zero match, retain the prediction for inspection but do not train policy,
+    // confidence, ownership or authorship from a potentially coincidental outcome.
+    if(causalMatch<=0) {
+      return {predictionError01:Math.abs(err),agencyError01:this.state.agencyError01,ownership01:this.state.ownership01,authorship01:this.state.authorship01};
+    }
+    const lr=(.026/Math.sqrt(1+this.state.predictionSamples/2500))*causalMatch;
+    const idx=ACTIONS.indexOf(action);
+    const d=err*p.predictedOutcome01*(1-p.predictedOutcome01)*causalMatch;
     for(let j=0;j<24;j++) {
       this.state.actionRows[idx][j]=clamp11(
         (this.state.actionRows[idx][j]??0)+lr*d*(this.state.selfLatent[j]??0),
       );
     }
     this.state.actionBias[idx]=clamp11((this.state.actionBias[idx]??0)+lr*d);
-    this.state.agencyError01=clamp01(this.state.agencyError01*.94+Math.abs(err)*.06);
+    this.state.agencyError01=clamp01(this.state.agencyError01*.94+Math.abs(err)*causalMatch*.06);
     const requestPenalty=externallyRequested?.18:0;
-    const causalMatch=clamp01(causalMatch01);
-    this.state.ownership01=clamp01(
-      this.state.ownership01*.88+
-      clamp01(p.ownershipPrior01*.72+causalMatch*.28-requestPenalty)*.12,
-    );
-    this.state.authorship01=clamp01(
-      this.state.authorship01*.88+
-      clamp01(p.intention01*.38+(1-this.state.agencyError01)*.3+this.state.ownership01*.32)*.12,
-    );
-    this.state.predictionSamples++;
+    const ownershipTarget=clamp01(p.ownershipPrior01*.72+causalMatch*.28-requestPenalty);
+    const learningWeight=.12*causalMatch;
+    this.state.ownership01=clamp01(this.state.ownership01*(1-learningWeight)+ownershipTarget*learningWeight);
+    const authorshipTarget=clamp01(p.intention01*.38+(1-this.state.agencyError01)*.3+this.state.ownership01*.32);
+    this.state.authorship01=clamp01(this.state.authorship01*(1-learningWeight)+authorshipTarget*learningWeight);
+    // Only stronger causal matches count as a new calibrated sample. Weak links may
+    // provide a small policy gradient but must not inflate confidence sample counts.
+    if(causalMatch>=.5)this.state.predictionSamples++;
     this.state.lastObservedSelfState=this.features({
       self:[],body:[],world:[],memory:[],motivation:[],state:cleanObservedState,
       externalRequested:externallyRequested,
