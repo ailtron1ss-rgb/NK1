@@ -52,11 +52,11 @@ jobs:
       - name: Cold-memory residency regression
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/cold-retrieval-residency-regression.mjs
       - name: Memory lifecycle canonical-lookup regression
-        run: node --experimental-strip-types runtime/neuro-kurisu/tests/memory-lifecycle-command-workpass31.mjs
+        run: node --experimental-transform-types runtime/neuro-kurisu/tests/memory-lifecycle-command-workpass31.mjs
       - name: Semantic embedding regression
-        run: node --experimental-strip-types runtime/neuro-kurisu/tests/memory-semantic-embeddings-workpass33.mjs
+        run: node --experimental-transform-types runtime/neuro-kurisu/tests/memory-semantic-embeddings-workpass33.mjs
       - name: Cognitive retrieval integration regression
-        run: node --experimental-strip-types runtime/neuro-kurisu/tests/memory-cognition-retrieval-workpass34.mjs
+        run: node --experimental-transform-types runtime/neuro-kurisu/tests/memory-cognition-retrieval-workpass34.mjs
       - name: Numeric retrieval regression
         run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-numeric-terms
       - name: Retrieval benchmark integrity
