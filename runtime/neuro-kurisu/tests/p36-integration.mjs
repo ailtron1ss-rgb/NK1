@@ -13,6 +13,7 @@ assert.ok(after.cycles>=before.cycles);
 assert.ok(after.hypotheses.length>=0);
 assert.ok(after.experiments.length>=0);
 assert.equal(after.developmentalMaturity.verifiedOutcomeCount,0,'runtime feedback booleans alone must not certify developmental maturity');
+assert.ok(after.rejectedMaturityReceipts>0,'live runtime must expose receipt-less maturity attempts rather than silently certifying them');
 assert.ok(step.decision.selected);
 await core.flush();
 const saved=await store.load();
