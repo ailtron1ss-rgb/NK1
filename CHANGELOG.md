@@ -1,3 +1,11 @@
+## NK1 WorkPass510 — фиксировать boundary-проходы и статус CI без завышения готовности (2026-10-24)
+
+- Зафиксированы emotion interoception ingress guard и предсказуемая семантика лимитов RealityEvidenceLedger, включая регрессионные сценарии.
+- Обновлён progress scorecard с точными границами подтверждения: Actions на затронутых ветках pending/in progress, поэтому pass не объявлен зелёным и процент релизной готовности не увеличен.
+- Записаны решения по Hermes/GEPA/Voyager: переносить методы в существующий P23/evidence gate; не копировать исходники без проверки лицензии, не плодить параллельные memory/learning subsystems.
+
+---
+
 ## NK1 WorkPass509 — refresh source assimilation and next integration passes (2026-10-24)
 
 - Reviewed the current Hermes Agent Self-Evolution repository/plan, GEPA notes, and Voyager paper/repository. Recorded adaptation boundaries and next code milestones in `research/WORKPASS500_MULTISCALE_COGNITION_AND_REPLAY.md`.
