@@ -42,6 +42,12 @@ on:
       - 'runtime/neuro-kurisu/tests/workpass548-observer-source-identity.mjs'
       - '.github/workflows/reality-learning-regression.yml'
 
+concurrency:
+  # Pushes and PR updates on the same ref should validate the newest state,
+  # not queue redundant full regressions for every intermediate commit.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
