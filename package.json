@@ -22,6 +22,7 @@
     "backup": "node tools/super-backup.mjs",
     "restore": "node tools/super-restore.mjs",
     "migrate": "node tools/super-migrate.mjs",
+    "test:super-migrate": "node --test tools/super-migrate.test.mjs",
     "sbom": "node tools/super-sbom.mjs",
     "freeze": "node tools/super-freeze.mjs",
     "release:verify": "node tools/verify-final-release.mjs",
