@@ -8,8 +8,7 @@
     "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "typeRoots": [
-      "./node_modules/@types",
-      "../../app/node_modules/@types"
+      "./node_modules/@types"
     ],
     "types": [
       "node"
