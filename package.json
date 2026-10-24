@@ -186,6 +186,9 @@
     "test:markdown-links": "node --test tools/audit-markdown-links.test.mjs",
     "audit:markdown-links": "node tools/audit-markdown-links.mjs",
     "audit:canonical-links": "node tools/audit-markdown-links.mjs --strict --files README.md AGENTS.md NEUROCORE_START_HERE.md docs/PROJECT_MAP_AND_ORDERING.md docs/BRANCH_INVENTORY_2026-10-24.md docs/INTEGRATION_WORKSPACE.md docs/ARCHITECTURE.md docs/RESEARCH_INTAKE_LEDGER.md",
+    "test:markdown-links": "node --test tools/audit-markdown-links.test.mjs",
+    "audit:markdown-links": "node tools/audit-markdown-links.mjs",
+    "audit:canonical-links": "node tools/audit-markdown-links.mjs --strict --files README.md AGENTS.md NEUROCORE_START_HERE.md docs/PROJECT_MAP_AND_ORDERING.md docs/BRANCH_INVENTORY_2026-10-24.md docs/INTEGRATION_WORKSPACE.md docs/ARCHITECTURE.md docs/RESEARCH_INTAKE_LEDGER.md",
     "audit:ci-reliability": "node tools/verify-ci-reliability.mjs"
   },
   "version": "35.0.0-super-workpass70",
