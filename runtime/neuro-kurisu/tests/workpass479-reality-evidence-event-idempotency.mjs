@@ -47,7 +47,7 @@ assert.equal(restoreConflict.recent(100).length,0,'restored conflicting event ro
 
 const executorSource=readFileSync(resolve(process.cwd(),'src/organism/body/EmbodiedActionExecutor.ts'),'utf8');
 const runtimeSource=readFileSync(resolve(process.cwd(),'src/organism/core/OrganismRuntime.ts'),'utf8');
-assert.match(executorSource,/createStableEvidenceEventId\('embodied',\[decisionId,action\]\)/);
+assert.match(executorSource,/createStableEvidenceEventId\('embodied',\[decisionId\]\)/);
 assert.match(executorSource,/const decisionId=typeof input\.decisionId==='string'/);
 assert.doesNotMatch(executorSource,/createStableEvidenceEventId\('embodied',\[action,at,status/);
 assert.ok(runtimeSource.includes("eventId:embodiedAction.eventId?`${embodiedAction.eventId}:action`"));
