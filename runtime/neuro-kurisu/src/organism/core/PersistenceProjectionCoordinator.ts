@@ -60,6 +60,9 @@ export class PersistenceProjectionCoordinator {
       target.facets.advanced.p25=this.snapshotOnce('snap:p25ScientificDevelopment', ctx.p25ScientificDevelopment);
       }
       if(materialize.has('memory')) {
+      // MemoryOS2 is the canonical writable memory owner. Preserve its bounded, full-fidelity
+      // state beside the advanced memory facets; compatibility records below are intentionally lossy.
+      target.facets.advanced.memoryOS=this.snapshotOnce('snap:memorySubsystem.memoryOS', ctx.memorySubsystem.memoryOS);
       target.facets.advanced.p47=this.snapshotOnce('snap:memorySubsystem.p47MemoryMind', ctx.memorySubsystem.p47MemoryMind);
       }
       if(materialize.has('identity')) {
