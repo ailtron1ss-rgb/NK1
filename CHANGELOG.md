@@ -1,3 +1,10 @@
+## NK1 WorkPass537 — run trusted shadow registry regression in TypeScript transform mode
+
+- Switched `test:p23:trusted-skill-shadow-run-registry` to `--experimental-transform-types`; the imported `TrustedSkillShadowRunRegistry` defines a TypeScript constructor parameter property and therefore cannot run under Node 24 strip-only mode.
+- Test-launch compatibility only; runtime registry behavior is unchanged.
+
+---
+
 ## NK1 WorkPass536 — run skill-store dependent P23 test in Node TypeScript transform mode
 
 - Updated the skill-retrieval/reflection/curriculum regression alias to `--experimental-transform-types`. Its imported `VersionedSkillCandidateStore` uses TypeScript parameter properties, which Node 24's strip-only mode cannot execute.
