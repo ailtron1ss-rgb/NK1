@@ -189,10 +189,10 @@ export async function runLearningProcess(
     explicitEnv: explicitEnvKeys.map(key => [key, env[key] ?? null]),
   }));
 
-  // The stream may yield pooled Buffer<ArrayBufferLike> chunks; explicit
-  // annotations prevent Buffer.alloc's narrower initial generic from leaking.
-  let stdout: Buffer<ArrayBufferLike> = Buffer.alloc(0);
-  let stderr: Buffer<ArrayBufferLike> = Buffer.alloc(0);
+  // Use the portable Buffer annotation shared by Node's full type package and
+  // NK1's fallback type shim; the stream still accepts pooled Buffer chunks.
+  let stdout: Buffer = Buffer.alloc(0);
+  let stderr: Buffer = Buffer.alloc(0);
   let stdoutBytes = 0;
   let stderrBytes = 0;
   let outputTruncated = false;
