@@ -66,6 +66,13 @@
 - Задана целевая цепочка: action receipt → canonical memory → P65 → P23 → независимая оценка → согласованная активация → receipt/rollback.
 - Полный общий runtime bridge обозначен как открытая работа, а не завершённая интеграция.
 
+### WorkPass479 / H4 partial — `feature/feedback`
+
+- Added `EvidenceEventIdentity.ts`, a shared domain-separated identity helper reused by the existing `OutcomeVerificationService` and by embodied action results.
+- `RealityEvidenceLedger` now deduplicates same-ID/same-payload retries, quarantines conflicting payload reuse during live ingest and restore, and excludes quarantined IDs from claim promotion and external-evidence counts.
+- `OrganismRuntime` binds the same embodied event ID to separate action and consequence rows. The new regression is wired into P2841 while preserving its existing persistence regression.
+- This advances H4 but does **not** close it: verifier-issued outcome IDs still need full propagation across canonical MemoryOS2, P65 and P23; exact-head CI remains unverified.
+
 ## Следующие несколько проходов — код вперёд
 
 1. **H4 — evidence identity bridge (memory + feedback):** принять общий immutable event/receipt identity; транзитивно связывать MemoryOS2, P65 и VerifiedOutcomeLedger; тестировать mirror, duplicate, conflict, late proof и restart.
