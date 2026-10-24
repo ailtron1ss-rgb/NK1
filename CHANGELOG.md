@@ -1,3 +1,10 @@
+## NK1 WorkPass530 — make Hermes signed-receipt tamper test isolate signature integrity
+
+- The tamper fixture now changes a signed seed field rather than the binary pass result. Changing `passed` was rejected earlier by the report/outcome consistency gate, so the assertion did not reach the signed-observation verifier.
+- The revised test keeps task/run/outcome aligned while corrupting the signed payload, directly exercising signature rejection.
+
+---
+
 ## NK1 WorkPass529 — reconnect P26 validation commands and grounded replay fixture
 
 - Added the two npm aliases already required by `p26-learning-validation.yml`: recovery benchmark and continual-learning matrix. Both point to existing test files.
