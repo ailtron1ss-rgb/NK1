@@ -1,3 +1,13 @@
+## NK1 WorkPass486 — bind initiative outcomes to their decisions
+
+- Hardened the B306 autonomous-initiative evidence ledger so outcomes can be attached to an exact decision tick (and selected action when provided), including delayed/out-of-order feedback.
+- Rejects unmatched ticks, mismatched actions, malformed outcomes and duplicate outcome receipts. The legacy numeric call remains compatible but is single-use for the latest decision; it can no longer overwrite or double-count a receipt.
+- Adds a causal-outcome denominator and coverage metric so causal success is calculated from observed, decision-bound outcomes rather than silently treating every influenced decision as observed feedback.
+- Includes backward-compatible migration for saved B306 state and a focused regression integrated into `test:rebuild-recovered`.
+- **Validation:** source and regression added; execution on the GitHub runtime/Actions head has not yet been confirmed.
+
+---
+
 ## NK1 WorkPass485 — make the runtime typecheck self-contained
 
 - CI runs `npm ci` inside `runtime/neuro-kurisu` only; the application lockfile is not installed in that job. Therefore pointing `tsconfig.clean.json` at `../../app/node_modules/@types` is not reproducible and produced `TS2688: Cannot find type definition file for 'node'` after the shim was excluded.
