@@ -167,6 +167,42 @@ assert(goalPopulation.some(goal => goal.id === legacyExternalGoal.id),
 assert.equal(nativePausedGoal.status, 'active',
   'repairing P68 paused-goal traversal must retain its intended reactivation behavior for non-external goals');
 
+const cappedEcology = new P68GoalEcology();
+const fourActiveGoals = Array.from({ length: 4 }, (_, index) => ({
+  id: 'active-goal-' + index,
+  title: 'Current active objective ' + index,
+  reason: 'Active planning objective',
+  source: 'intrinsic',
+  status: 'active',
+  importance: 0.6,
+  urgency: 0.3,
+  confidence: 0.7,
+  progress: 0.5,
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+}));
+const fifthPausedNativeGoal = {
+  id: 'fifth-paused-native-goal',
+  title: 'A fifth paused native goal',
+  reason: 'Must wait for active capacity',
+  source: 'learned',
+  status: 'paused',
+  importance: 0.6,
+  urgency: 0.3,
+  confidence: 0.7,
+  progress: 0.5,
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+};
+const cappedPopulation = [...fourActiveGoals, fifthPausedNativeGoal];
+cappedEcology.tick({
+  tick: 1, at: Date.now(), goals: cappedPopulation,
+  lastAction: 'none', lastSuccess: null, mode: 'observe', homeostaticPressure01: 0.1, identity01: 0.9,
+});
+assert.equal(cappedPopulation.filter(goal => goal.status === 'active').length, 4,
+  'P68 reactivation must not exceed the same four-goal active capacity enforced by explicit activation');
+assert.equal(fifthPausedNativeGoal.status, 'paused');
+
 // Analysis and authoritative strategies are reviewable, but the current projector
 // only implements additive port semantics and must reject writes from other strategies.
 for (const [exportId, intent, strategy] of [
