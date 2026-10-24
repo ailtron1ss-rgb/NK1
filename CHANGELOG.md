@@ -1,3 +1,12 @@
+## NK1 WorkPass480 — remove evidence-key delimiter collisions (2026-10-24)
+
+- P65 now encodes replay identity as a canonical JSON tuple `[independenceKey, evidenceId]` instead of joining upstream strings with a colon. Distinct pairs (`a:b`, `c`) and (`a`, `b:c`) can no longer collide.
+- Added a regression verifying the second pair is retained as same-lineage evidence without being mistaken for a replay or raising confidence twice.
+- No schema migration or dependency added; the serialized key format remains internal and bounded by the existing 64-entry evidence-key limit.
+- Exact-head test/typecheck remains unverified; no memory or learning uplift is claimed.
+
+---
+
 ## NK1 WorkPass477 — collapse mirrored evidence into one epistemic lineage (2026-10-24)
 
 - Added optional stable `independenceKey` to P65 evidence revisions. Independent-source counting now uses normalized lineage identity rather than the publisher label alone, so syndicated copies under different hosts cannot inflate belief confidence.
