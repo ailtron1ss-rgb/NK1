@@ -4,9 +4,9 @@
   "metric": "unique relative-import graph edges; runtime and TypeScript type-only edges are classified separately",
   "baseline": {
     "branch": "architecture/dependency-contracts-2026-10-24",
-    "auditedCommit": "8cf0b1fdd2d35b40708afd33901f5ebf89891330",
-    "workflowRun": "40130445101",
-    "note": "Passing schema-v3 baseline after StateMigrations default-factory extraction into a narrow facade plus seven domain modules. Runtime/type edges are separated; 85 budget checks and the state-default single-owner regression test pass, with zero missing imports, runtime cycles, boundary violations, or budget violations."
+    "auditedCommit": "a995fdd1e7ee1f7bbb5ac028a3073f2a0e2c95ef",
+    "workflowRun": "40130701739",
+    "note": "Passing schema-v3 baseline after splitting persistence initial-state builders by domain and narrowing AdvancedFacetDefaults to a 3-edge facade. Runtime and type-only edges are separately measured; 100 budget checks and both scanner/audit test suites pass with zero unresolved imports, runtime cycles, boundary violations, or budget violations."
   },
   "modules": [
     {
