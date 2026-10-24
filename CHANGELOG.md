@@ -1,3 +1,13 @@
+## NK1 WorkPass500 — persist the autonomous intent/learning governor safely (2026-10-24)
+
+- Added bounded snapshot/restore for AILG decision, execution-reference and single-use outcome lineage; invalid records and accessor-backed objects are rejected without running getters.
+- Validation now rejects invalid decision timestamps and bounds intent identity, goal and evidence sizes, in addition to score/risk/cost checks.
+- Extended regression coverage for restart continuity, duplicate execution/outcome protection, malformed snapshot evidence and getter non-execution.
+- Research adaptation: GEPA's reflective trajectory→diagnosis→candidate→evaluation pattern (ICLR 2026) and Letta's versioned, persistent memory model informed the separation of durable history from host-side action authorization. No upstream implementation was copied; this is a native NK1 seam. [GEPA paper](https://arxiv.org/abs/2507.19457) · [Letta MemFS](https://docs.letta.com/configuration/memory)
+- **Validation boundary:** the test is wired into `test:rebuild-recovered`; GitHub Actions returned no checks for the inspected head, so execution/typecheck and real-runtime wiring remain unverified. No learning uplift or consciousness claim is made.
+
+---
+
 ## NK1 WorkPass499 — evidence-backed autonomous intent and learning gate (2026-10-24)
 
 - Added `AutonomousIntentLearningGovernor` as a deterministic AILG seam: intents require explicit trigger evidence; score/risk/cost inputs are bounded; duplicate intent IDs are rejected; high-risk proposals fail closed; external side effects require approval by default.
