@@ -259,7 +259,7 @@ import { CentralSubjectDynamics, defaultCentralSubjectDynamics } from '../cognit
 import { DeviceEvidenceLedger, defaultDeviceEvidence } from '../body/DeviceEvidenceLedger.ts';
 import { LifelongDevelopmentSystem, defaultLifelongDevelopment } from '../learning/LifelongDevelopmentSystem.ts';
 import { P27NeuralWorldFoundation, defaultP27NeuralWorld } from '../cognition/P27NeuralWorldFoundation.ts';
-import { P36AutonomousSelfDevelopmentEngine, defaultP36SelfDevelopment } from '../learning/P36AutonomousSelfDevelopment.ts';
+import { P36AutonomousSelfDevelopmentEngine, P36_EXTERNAL_EVIDENCE_TOOL_ID, defaultP36SelfDevelopment } from '../learning/P36AutonomousSelfDevelopment.ts';
 import { defaultP37EmbodiedSensorium, type P37Input, type P37SemanticWorldState } from '../body/P37EmbodiedSensorium.ts';
 import { defaultP38Research } from '../learning/P38AutonomousCausalResearch.ts';
 import { defaultP39ContinuousLife } from '../learning/P39ContinuousArtificialLife.ts';
@@ -11820,6 +11820,55 @@ export class OrganismCore {
             this.persisted.system.cognitiveEventFabric = this.cognitiveRuntime.cognitiveEventFabric.snapshot();
             this.persisted.facets.embodiment.toolAudit = this.cognitiveRuntime.actionGateway.snapshot();
             return;
+        }
+        // The reserved P36 evaluator route is the only live path that may submit independent
+        // developmental evidence. The exact ActionGateway receipt and a persisted decision-linked
+        // trace must both be present; caller booleans or a tool-contract ACK never qualify.
+        if (id === P36_EXTERNAL_EVIDENCE_TOOL_ID) {
+            const p36Proof = result.ok && result.verified && result.outcomeClass === 'executed-verified' &&
+                decisionLinkedExternalPostcondition ? result.verification : undefined;
+            try {
+                const p36EvidenceResult = this.developmentalNeural.p36SelfDevelopment.recordExternalEvidence({
+                    ...(input as any),
+                    toolId: id,
+                    executionId: result.executionId,
+                    decisionId: suppliedDecisionId,
+                    verification: p36Proof,
+                });
+                this.persisted.facets.learning.p36 = this.developmentalNeural.p36SelfDevelopment.snapshot();
+                this.memorySubsystem.events.append(makeEvent(
+                    p36EvidenceResult.promoted ? 'self-development-evidence-promoted' : 'self-development-evidence-recorded',
+                    this.persisted.state.tick,
+                    {
+                        source: 'action-gateway-p36-independent-evaluator',
+                        toolId: id,
+                        executionId: result.executionId,
+                        decisionLinked: Boolean(p36Proof),
+                        status: p36EvidenceResult.status,
+                        independentCount: p36EvidenceResult.independentCount,
+                        distinctContexts: p36EvidenceResult.distinctContexts,
+                        distinctDelays: p36EvidenceResult.distinctDelays,
+                        promoted: p36EvidenceResult.promoted,
+                        unverifiedEvidenceAttempts: this.developmentalNeural.p36SelfDevelopment.diagnostics().unverifiedEvidenceAttempts,
+                    } as any,
+                ));
+            } catch (error) {
+                // Evidence collection is fail-closed but should not misclassify a read-only
+                // evaluator failure as an uncertain external side effect.
+                this.memorySubsystem.events.append(makeEvent(
+                    'self-development-evidence-rejected',
+                    this.persisted.state.tick,
+                    {
+                        source: 'action-gateway-p36-independent-evaluator',
+                        toolId: id,
+                        executionId: result.executionId,
+                        decisionLinked: Boolean(p36Proof),
+                        reason: String((error as any)?.message ?? 'p36-evidence-rejected').replace(/[\r\n\t]+/g, ' ').slice(0, 180),
+                    } as any,
+                ));
+            }
+            this.persisted.facets.learning.p36 = this.developmentalNeural.p36SelfDevelopment.snapshot();
+            this.markPersistenceDirty();
         }
         // If an earlier terminal outcome was already projected, an authoritative
         // provider receipt is an append-only evidence revision for that same execution.
