@@ -5,7 +5,7 @@
 - Restricted value adaptation to the values exercised by the action instead of moving all values together after every outcome.
 - Enabled gradual self-belief-anchor updates only from verified identity observations. Malformed inputs are neutralized; invalid actions do not mutate personality state; action preferences retain a signed utility offset.
 - Extended the P2702 regression for hostile snapshots, invariants, dimension lengths, semantic trait/value attribution, signed preferences, verified self-belief updates and snapshot round-trips. Corrected its expected `NeuralExperienceBranch` schema version, registered `npm run test:character-personality`, and added a dedicated Node 24 GitHub Actions workflow for this focused personality regression.
-- **Validation boundary:** changes and regression coverage are committed to the work branch. The local runtime/typecheck could not be executed in this pass, so test success and end-to-end behavioral improvement are not claimed; CI status remains to be checked.
+- **Validation:** the dedicated Node 24 personality regression passed on the PR head (`pass: true`, `learningUpdates: 1`, snapshot/restore and hostile-state assertions passed). A full semantic TypeScript typecheck was not run. Broader workflows triggered by the PR still have unrelated failures: WorkPass291/293 reference missing test-script aliases, WorkPass99 hits Node 24 strip-only TypeScript syntax, and WorkPass287-288 fails the B272 intrinsic-drive/goal assertion; those separate contracts are outside this pass and remain unfixed. Live-Core unseen-context generalization remains an open validation target.
 
 ---
 
