@@ -1,3 +1,11 @@
+## NK1 WorkPass538 — standardize WorkPass110 Node 24 TypeScript test mode
+
+- Standardized TypeScript-backed direct test commands in the WorkPass110 continual-learning workflow to `--experimental-transform-types`.
+- Updated the directly invoked npm test aliases and their nested test aliases used by this workflow so a constructor parameter property cannot stop the suite before behavioral assertions run.
+- This is runner compatibility only. It preserves test assertions, verifier authority, promotion policy and metric thresholds.
+
+---
+
 ## NK1 WorkPass537 — run trusted shadow registry regression in TypeScript transform mode
 
 - Switched `test:p23:trusted-skill-shadow-run-registry` to `--experimental-transform-types`; the imported `TrustedSkillShadowRunRegistry` defines a TypeScript constructor parameter property and therefore cannot run under Node 24 strip-only mode.
