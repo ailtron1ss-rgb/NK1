@@ -1,3 +1,10 @@
+## NK1 WorkPass540 — assert the earliest snapshot-integrity denial
+
+- Updated the malformed active-snapshot regression to assert the concrete first guard: changing the active candidate's base version to a nonexistent predecessor fails the persisted rollback-target binding check.
+- The previous expectation named a later CAS/signature guard that this fixture never reached. The earlier validation is stricter for this malformed target and remains unchanged.
+
+---
+
 ## NK1 WorkPass539 — exercise rollback with authenticated approval
 
 - Updated the versioned skill-store regression to reflect the current rollback API: a rollback needs a signed, candidate-bound, timestamped active-version approval, not a positional version number.
