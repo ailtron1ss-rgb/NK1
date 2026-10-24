@@ -1,3 +1,13 @@
+## NK1 WorkPass511 — detach nested cognitive evidence payloads (2026-10-24)
+
+- CognitiveEventFabric now uses the shared `PlainDataSnapshot` helper to deep-copy bounded event payloads before the ledger mutates. Nested accessors, cyclic structures, over-depth and oversized payloads are rejected without invoking nested getters.
+- The snapshot restore path also uses the same bounded detachment for nested payloads, avoiding live caller references being retained inside causal history.
+- Updated the existing CEF boundary regression to prove caller mutation cannot rewrite an already-recorded event and hostile nested values fail without advancing the ledger.
+- This keeps one canonical event fabric as NK1's causal spine, reusing the shared plain-data helper and adding no dependency.
+- **Validation boundary:** test remains in the category rebuild chain; exact-head run/typecheck is not available in this pass.
+
+---
+
 ## NK1 WorkPass510 — enforce plain prototypes for restored cognitive state (2026-10-24)
 
 - CEF snapshot restore now rejects custom-prototype/class instances for event rows, nested payloads, parent arrays and receipt-reference structures; fields are still read only through own data descriptors.
