@@ -28,22 +28,63 @@ export interface CognitiveLoopResult {
 export class UnifiedCognitiveLoop {
   private history: CognitiveEvent[] = [];
 
-  constructor(private readonly maxHistory = 256) {}
+  private readonly maxHistory: number;
+
+  constructor(maxHistory = 256) {
+    this.maxHistory = Number.isSafeInteger(maxHistory)
+      ? Math.max(1, Math.min(4096, maxHistory))
+      : 256;
+  }
+
+  private validateEvent(value: unknown): CognitiveEvent {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+      throw new TypeError('cognitive-event-invalid');
+    }
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw new TypeError('cognitive-event-invalid');
+    }
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const row: Record<string, unknown> = Object.create(null);
+    for (const [key, descriptor] of Object.entries(descriptors)) {
+      if (!Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+        throw new TypeError('cognitive-event-invalid');
+      }
+      row[key] = descriptor.value;
+    }
+    const id = row.id;
+    const boundedSignal = (n: unknown) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 1;
+    if (typeof id !== 'string' || id.length < 1 || id.length > 180 ||
+        id.trim() !== id || id.normalize('NFKC') !== id ||
+        /[\\u0000-\\u001f\\u007f-\\u009f]/.test(id) ||
+        !boundedSignal(row.novelty) || !boundedSignal(row.predictionError) ||
+        !boundedSignal(row.importance) || typeof row.timestamp !== 'number' ||
+        !Number.isFinite(row.timestamp) || row.timestamp < 0) {
+      throw new TypeError('cognitive-event-invalid');
+    }
+    return {
+      id,
+      novelty: row.novelty as number,
+      predictionError: row.predictionError as number,
+      importance: row.importance as number,
+      timestamp: row.timestamp,
+    };
+  }
 
   process(event: CognitiveEvent): CognitiveLoopResult {
     this.history.push(event);
     if (this.history.length > this.maxHistory) this.history.shift();
 
     const learningSignal = this.clamp(
-      event.predictionError * 0.45 + event.novelty * 0.35 + event.importance * 0.2,
+      safeEvent.predictionError * 0.45 + safeEvent.novelty * 0.35 + safeEvent.importance * 0.2,
     );
 
     const consolidationSignal = this.clamp(
-      event.importance * 0.6 + event.predictionError * 0.4,
+      safeEvent.importance * 0.6 + safeEvent.predictionError * 0.4,
     );
 
     const explorationSignal = this.clamp(
-      event.novelty * 0.7 + event.predictionError * 0.3,
+      safeEvent.novelty * 0.7 + safeEvent.predictionError * 0.3,
     );
 
     return {
