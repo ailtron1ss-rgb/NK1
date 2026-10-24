@@ -122,7 +122,7 @@ const report = {
   schemaVersion: 1,
   benchmark: 'nk1-memory-retrieval-performance',
   label: process.env.NK1_PERF_LABEL ?? 'unspecified',
-  commit: process.env.GITHUB_SHA ?? process.env.NK1_PERF_COMMIT ?? 'local',
+  commit: process.env.NK1_PERF_COMMIT ?? process.env.GITHUB_SHA ?? 'local',
   nodeVersion: process.version,
   platform: process.platform,
   arch: process.arch,
