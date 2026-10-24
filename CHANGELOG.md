@@ -1,3 +1,13 @@
+## NK1 WorkPass475 — make cycle and causal history evidence-consistent (2026-10-24)
+
+- Personal curriculum snapshots now accept only bounded plain-data threads with consistent identity/schema, counters and [0,1] metrics; completion/suppression counts are recomputed, and a newly observed poor outcome can reopen a formerly satisfied thread.
+- Unified-cycle restore preserves valid diagnostics from mixed malformed stage lists but never accepts malformed or count-inconsistent persistence as a completed cognitive cycle. All-invalid stage lists fall back to the required-stage list.
+- Updated causal-learning fixtures to attach outcome credit only when the after-state identifies the selected action and its bounded success value. External/imported rows remain preserved for review but do not inflate trusted runtime outcome counters.
+- Shared runtime typecheck now includes official Node type roots and excludes fallback declarations from semantic checking; correlation IDs are checked for C0/C1 controls before whitespace trimming.
+- **Verification:** focused failures were found from real Actions logs and corrected. Exact-head functional reruns are in flight; full CI and behavioral improvement are not yet claimed.
+
+---
+
 ## NK1 WorkPass474 — reconcile cycle diagnostics and ground causal test evidence (2026-10-24)
 
 - Unified cognitive-cycle restore now keeps valid missing-stage diagnostics from a mixed valid/invalid persisted list, while malformed entries still prevent `lastComplete` from being trusted.
