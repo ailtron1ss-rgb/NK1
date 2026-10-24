@@ -559,6 +559,7 @@ async function route(req, res) {
                         episodes: Number(affectMood.episodes ?? 0),
                     } : null,
                     latestFeeling: latestFeeling ? {
+                        tick: Number(latestFeeling.tick ?? -1), at: Number(latestFeeling.at ?? 0),
                         label: String(latestFeeling.label ?? 'calm'), intensity01: Number(latestFeeling.intensity01 ?? 0),
                         interoceptiveMismatch01: Number(latestFeeling.interoceptiveMismatch01 ?? 0),
                         selfAccessConfidence01: Number(latestFeeling.selfAccessConfidence01 ?? 0),
