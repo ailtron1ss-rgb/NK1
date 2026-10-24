@@ -1,3 +1,10 @@
+## NK1 WorkPass542 — align signed-shadow E2E fixture with canonical candidate identity
+
+- Updated the signed-shadow runtime E2E fixture to compute candidate IDs using the current canonical five-element identity tuple, including the explicit `null` provenance fingerprint for a candidate without revision provenance.
+- This keeps the runtime test aligned with the production store and ensures the child-signed observation names the exact candidate staged by Core. No runtime check or trust boundary is weakened.
+
+---
+
 ## NK1 WorkPass541 — align durable candidate identity with provenance and preserve legacy reads
 
 - Fixed `AtomicFileSkillStorePersistence` candidate validation to match the canonical VersionedSkillCandidateStore identity, including the fifth provenance fingerprint for provenance-bearing candidates.
