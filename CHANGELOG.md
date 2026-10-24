@@ -1,3 +1,13 @@
+## NK1 WorkPass487 — feedback/cognitive type blockers (2026-10-24)
+
+- Removed the duplicate `CognitiveEventFabric.verifyOperationalCycle` implementation, retaining the richer implementation that checks optional cognitive stages and their causal edges.
+- Corrected the WorkPass287 restore regression to expect the six required stages when the saved missing-stage array is malformed; runtime behavior remains fail-closed.
+- Replaced malformed escaped control-character regex ranges in external evidence ID/text validation with explicit code-point checks.
+- Added a conservative default for optional `minIndependent01`, aligned `P23LearningEngine` with `forgettingRisk.gapMs`, and imported `ReplaySelectionOptions` from its canonical `ReplaySelectionPolicy` module.
+- These are code-level fixes with regression assertions, not a claim that the latest full CI has passed; confirm on the final commit SHA.
+
+---
+
 ## NK1 WorkPass482 — make decision identity fail closed and action-independent
 
 - Finalized the WorkPass481 event key as a domain-separated hash of the stable decision ID alone. Since the decision produces one embodied result per cycle, changing the action/result under the same decision now reuses the key and is caught as a payload conflict instead of minting a new event ID.
