@@ -82,10 +82,10 @@ assert.deepEqual(recovered.recordOutcome(outcome), { accepted: false, reason: 'd
 assert.deepEqual(recovered.recordExecution('memory-repair-1', 'second-exec'), { accepted: false, reason: 'duplicate-execution' }, 'restore must retain execution idempotency');
 
 const corrupted = {
-  version: 1,
+  version: 2,
   decisions: [
-    { intentId: 'bad', status: 'act', score01: 2, reason: 'corrupt', selectedAt: 0 },
-    { intentId: 'good', status: 'act', score01: .8, reason: 'recovered', selectedAt: 10 },
+    { intentId: 'bad', status: 'act', score01: 2, reason: 'corrupt', selectedAt: 0, externalSideEffect: false },
+    { intentId: 'good', status: 'act', score01: .8, reason: 'recovered', selectedAt: 10, externalSideEffect: false },
   ],
   outcomes: [{ intentId: 'good', observedBenefit01: 1, evidence: 'forged-without-execution', observedAt: 10 }],
   executedIntentIds: [],
@@ -95,6 +95,14 @@ const sanitized = new AutonomousIntentLearningGovernor();
 sanitized.restore(corrupted);
 assert.deepEqual(sanitized.snapshot().decisions.map(d => d.intentId), ['good'], 'invalid restored decisions should be dropped');
 assert.equal(sanitized.snapshot().outcomes.length, 0, 'unexecuted restored outcomes must be dropped');
+const unapprovedExternal = new AutonomousIntentLearningGovernor();
+unapprovedExternal.restore({
+  version: 2,
+  decisions: [{ intentId: 'external', status: 'act', score01: .9, reason: 'tampered-status', selectedAt: 10, externalSideEffect: true }],
+  outcomes: [], executedIntentIds: ['external'], approvedIntentIds: [],
+});
+assert.equal(unapprovedExternal.snapshot().decisions[0].status, 'approval-required', 'external effects must lose executable status without an approval reference');
+assert.equal(unapprovedExternal.recordExecution('external', 'execution:forged'), { accepted: false, reason: 'intent-not-authorized' });
 let snapshotGetterCalls = 0;
 const accessorSnapshot = { decisions: [] };
 Object.defineProperty(accessorSnapshot, 'version', { enumerable: true, get() { snapshotGetterCalls += 1; return 1; } });
