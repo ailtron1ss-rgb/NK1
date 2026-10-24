@@ -23,6 +23,7 @@ import { LocalOpenAICompatibleVisionBackend } from '../organism/body/LocalOpenAI
 import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
 import { sharedLocalEmbeddingProvider } from '../organism/developmental/MemoryOS2.ts';
 import { LocalSmallModelHub } from './LocalSmallModelHub.mjs';
+import { LocalInferenceScheduler } from './LocalInferenceScheduler.mjs';
 import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
@@ -39,6 +40,11 @@ const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 15000);
 const LLAMA_CPP_PROVIDER = new OpenAICompatibleLocalChatProvider({ baseUrl: process.env.LLAMA_CPP_URL, model: process.env.LLAMA_CPP_MODEL || 'local-model', timeoutMs: LLM_TIMEOUT_MS });
 const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
 const LOCAL_EMBEDDING_PROVIDER = sharedLocalEmbeddingProvider;
+const LOCAL_INFERENCE_SCHEDULER = new LocalInferenceScheduler({
+    maxConcurrentPerGroup: Number(process.env.NK_LOCAL_MAX_CONCURRENT_PER_ENDPOINT ?? 1),
+    maxQueuedPerGroup: Number(process.env.NK_LOCAL_MAX_QUEUED_PER_ENDPOINT ?? 16),
+    queueTimeoutMs: Number(process.env.NK_LOCAL_QUEUE_TIMEOUT_MS ?? 4000),
+});
 function optionalLocalRoleProvider(baseUrlKey, modelKey, fallbackModel) {
     const baseUrl = String(process.env[baseUrlKey] ?? '').trim();
     if (!baseUrl)
@@ -67,6 +73,7 @@ const LOCAL_SMALL_MODEL_HUB = new LocalSmallModelHub({
     classifierProvider: LOCAL_CLASSIFIER_PROVIDER,
     emotionProvider: LOCAL_EMOTION_PROVIDER,
     visionProvider: LOCAL_VISION_PROVIDER,
+    scheduler: LOCAL_INFERENCE_SCHEDULER,
     languagePolicy: LOCAL_LANGUAGE_BACKEND_POLICY,
     enableContextSignals: LOCAL_CONTEXT_SIGNALS_ENABLED,
 });
@@ -377,7 +384,7 @@ async function tryLlamaCpp(request, failures) {
     if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
     if (!LLAMA_CPP_PROVIDER.configured() || LOCAL_LANGUAGE_BACKEND_POLICY.snapshot().coolingDown) return null;
     try {
-        return await LLAMA_CPP_PROVIDER.generate({ system: request.system, user: request.user, maxTokens: request.maxTokens, temperature: request.temperature, signal: request.signal });
+        return await LOCAL_SMALL_MODEL_HUB.runScheduled('language', LLAMA_CPP_PROVIDER, () => LLAMA_CPP_PROVIDER.generate({ system: request.system, user: request.user, maxTokens: request.maxTokens, temperature: request.temperature, signal: request.signal }), { signal: request.signal });
     }
     catch (error) {
         if (request.signal?.aborted) throw new Error('llama.cpp-request-aborted');
