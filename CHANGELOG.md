@@ -1,3 +1,104 @@
+# WorkPass345 — ground emotion source classification in learning provenance (2026-10-24)
+
+- [FIXED] EmotionAppraisalEngine feedback previously set `external` to `Boolean(outcome.evidenceSource)`. Any nonempty source label—including simulation—could therefore label an imagined/modelled outcome as `external-experience`.
+- [INTEGRATION] When authoritative `LearningProvenance` is present, the emotion episode now receives `external: true` only for `source === 'external'`. Legacy Core feedback calls without provenance retain their previous source-presence fallback.
+- [REGRESSION] Added a canonical live-Core assertion for the evidence-backed external classification.
+- [VALIDATION] On the parent SHA `6bb8d55d5b9dcf8c541ec0995c63f0a3210f336f`, WorkPass331, WorkPass110, WorkPass108, WorkPass292, WorkPass293 and WorkPass294 passed. WorkPass345 is a fresh change and needs its own exact-head regression run.
+
+# WorkPass344 — use one appraisal state for app and Live2D (2026-10-24)
+
+- [EMOTION] The UI snapshot now sources label, valence, arousal, dominance, action tendency, cause and confidence from the current `EmotionAppraisalEngine` episode when present. It no longer substitutes non-domain labels `thinking`/`focused` from the last action, which the UI normalizer silently reduced to `calm`.
+- [LIVE2D] The `/api/organism/avatar` handler now returns the root-level `awake/action/expression/body` fields consumed by `public/avatar.html`, alongside asset status. Those signals derive from the same appraisal episode and current voice/body snapshot.
+- [EMBODIMENT] Expression selection, head tilt, gaze, expression intensity, gesture, motion group and voice emphasis are derived from canonical emotion plus current action/voice activity. Asset inventory remains read-only; this does not add a second emotion model.
+- [TEST] Extended the canonical runtime wiring regression to check shared appraisal provenance, valid labels, the public avatar response contract and the viewer's consumer fields.
+- [CI] WorkPass331 path filters now include the server and public avatar shell, so future changes to the endpoint re-run the contract regression.
+- [VALIDATION] WorkPass331, WorkPass110, WorkPass108, WorkPass292, WorkPass293 and WorkPass294 passed on parent SHA `74a17b4e865cfaab221b1289e9d6a7beabafc725`. WorkPass344 needs fresh exact-head verification; physical-device/browser E2E remains not run.
+
+# WorkPass343 — unify autonomous entry-point semantics (2026-10-24)
+
+- [RUNTIME] `autonomousStep()` now sets `spontaneous: true` before delegating to the existing `step()` path. `runAutonomousCycles()` already delegates to `autonomousStep()`, so explicit/batched autonomous calls now use the same endogenous-intent mode as the scheduled cognitive clock.
+- [BOUNDARY] External chat/command paths continue to retain their explicit request semantics; no parallel runtime or planner was added.
+- [REGRESSION] Extended the canonical live-runtime wiring test to assert the public autonomous entry point activates spontaneous mode and the batch API delegates to it.
+- [VALIDATION] WorkPass331, WorkPass110, WorkPass108, WorkPass292, WorkPass293 and WorkPass294 passed on parent SHA `7db92e58cf8a3252d8edd8a6f5223690403f0087`. This routing fix requires fresh exact-head runs. The background clock already used `spontaneous: true`; this closes the separate public/batched entry-point gap.
+
+# WorkPass342 — evidence-gated identity evolution (2026-10-24)
+
+- [IDENTITY] Memory-to-identity path dependence now requires explicit runtime provenance to be external with verification and independence both >= 0.62. When provenance is absent for legacy feedback callers, existing behavior is preserved.
+- [IDENTITY] B284 autobiographical identity revisions now consume the actual LearningProvenance verification/independence values. Explicit simulation outcomes are not converted into external verification; explicit runtime provenance also disables the legacy synthetic internal-consistency fallback. The B284 repeated-evidence, context-holdout and cooldown policy remains the final authority.
+- [MEMORY] Ordinary memory outcome/reconsolidation continues under existing bounded MemoryOS2/causal-economy scales; this gate specifically prevents weak/simulated evidence from changing durable identity trajectory.
+- [TEST] Added live-Core source regressions guarding both identity influence paths.
+- [VALIDATION] WorkPass331, WorkPass110, WorkPass292, WorkPass293, WorkPass294 and WorkPass108 all passed on SHA `b1bf1ae3e53f513c311c7607c58204563fb1e2b8`. WorkPass342 requires fresh exact-head CI; no behavior uplift is claimed without matched holdout evaluation.
+
+# WorkPass341 — remove duplicate feedback provenance property (2026-10-24)
+
+- [CORRECTION] Exact-head WorkPass110 exposed TS1117 after WorkPass340 added a second `learning` key to the `core.feedback` object. Inspection confirmed the runtime already had one canonical `LearningProvenance` payload later in the same call, including the final gate values.
+- [FIXED] Removed the redundant new property instead of inventing a second policy. The pre-existing single `learning` object remains the authoritative source; current-cycle memory provenance from WorkPass339 still flows alongside it.
+- [REGRESSION] Updated the source-wiring assertion to require the single canonical payload and all gate fields.
+- [VALIDATION] WorkPass331 passed on SHA `a0c2671abc7760e3298ec58586ede1bc28311409`; WorkPass110 failed there on the duplicate-key error. This fix must pass fresh exact-head WorkPass110 + WorkPass331 before the branch is marked green.
+
+# WorkPass340 — preserve the reality-learning gate into Core feedback (2026-10-24)
+
+- [INTEGRATION] `OrganismRuntime` now passes the final `RealityLearningGate` decision into `OrganismCore.feedback` via the existing `LearningProvenance` contract.
+- [GROUNDING] The Core now receives the exact external/simulation classification, evidence/verified/independent/consequence signals, learning scales, and gated reward/success/surprise rather than inferring generic defaults from a source label. This keeps the learning gate authoritative for memory, world-model, neural and identity updates.
+- [CAUSAL MEMORY] Combined with WorkPass339, the current-cycle memory IDs and its actual gate result now arrive together. The conservative no-action-credit rule remains in place when homeostasis redirects the proposed action.
+- [TEST] Runtime-wiring regression asserts that the grounding signals and post-arbitration scales are passed into Core feedback.
+- [VALIDATION] WorkPass331, WorkPass110/typecheck and WorkPass293 passed on exact SHA `cdc7ff8a67272289c394f624017b53345d51319b`. This latest learning-provenance handoff requires fresh exact-head runs.
+
+# WorkPass339 — decision-time memories enter the canonical feedback loop (2026-10-24)
+
+- [INTEGRATION] Extended the existing `OrganismCore.feedback` input with a bounded `causalMemoryContext` carrying trace ID, decision-time memory IDs and grounded evidence/verification signals from the real runtime.
+- [MEMORY] Core feedback now unions those exact memory IDs with its existing retrieval/encoding IDs before applying the normal MemoryOS2 causal and reconsolidation flow; it still writes through the canonical memory subsystem only.
+- [ATTRIBUTION] When the inner-intent homeostatic gate redirected the proposed action, the explicitly consulted memory IDs are excluded from decision-level causal learning for that outcome. Emotional/surprise reconsolidation remains separate and may still occur.
+- [TEST] Runtime wiring regression now reads `OrganismCore.ts` and guards the runtime-to-feedback contract, explicit memory-ID inclusion and fail-safe attribution rule.
+- [VALIDATION] WorkPass331 and WorkPass293 passed on SHA `5fb7922a4dffddacd72cc91f72ec69260fa5a015`; this deeper Core-memory change needs fresh exact-head WorkPass331 and WorkPass110/typecheck runs.
+
+# WorkPass338 — typecheck workflow tracks inner imperative changes (2026-10-24)
+
+- [CI INTEGRATION] Added InnerImperativeController.ts to both WorkPass110 push/pull_request path filters. This ensures the full runtime TypeScript check runs when the new cognitive policy changes.
+- [WHY] WorkPass110 revealed real TS2339 errors while testing the controller, but a follow-up fix that touched only the controller was not guaranteed to start the same workflow. The checker must explicitly follow that source file.
+- [VALIDATION] A fresh WorkPass110 run on the exact head is required; this path-filter commit itself is not a test result.
+
+# WorkPass337 — type signal-normalization records explicitly (2026-10-24)
+
+- [FIXED] The WorkPass110 runtime typecheck exposed that the defensive isRecord ternaries in InnerImperativeController inferred the empty fallback as {}, causing TS2339 errors on fields despite the runtime guards.
+- [FIX] Explicitly type the normalized records as Record<string, unknown>, preserving finite-number fallback behavior without weakening action/tick validation.
+- [VALIDATION] This addresses the observed compiler errors around fields at lines 102–112. A new exact-head typecheck and WorkPass331 run must confirm no remaining type issues in the intent/memory/forecast integration.
+
+# WorkPass336 — persist bounded shadow-future comparisons (2026-10-24)
+
+- [INTEGRATION] The causal experience trace now carries the top six outputs from the existing `CounterfactualEngine`, with bounded action sequences, expected reward, uncertainty and rationale.
+- [CAUSALITY] The event records the best branch's first action and whether it disagrees with the plan, while keeping imagined reward separate from grounded observed reward. The new trace does not execute a simulated action or silently replace the planner's selected action.
+- [RESOURCE BOUND] At most six branches and four actions per branch are carried into the memory-facing event, preserving bounded runtime/persistence size.
+- [TEST] Added runtime-wiring assertions for branch bounds, plan disagreement and prediction/outcome separation.
+- [VALIDATION] The previous WorkPass331 run confirmed inner-intent behavior on SHA `8eb983930e0da0552426bfb5012c70d0bf9c5c99`; WorkPass335/336 need fresh exact-head workflow and WorkPass110 results. This pass creates evidence for future counterfactual calibration but does not claim improved decisions yet.
+
+# WorkPass335 — preserve intent-to-outcome provenance in experience memory (2026-10-24)
+
+- [INTEGRATION] Extended the existing `core.feedback → worldEvent` experience event with a bounded `innerIntentMemoryTrace`; no second memory store or direct runtime-owned MemoryOS2 writes were added.
+- [CAUSALITY] The trace binds intent ID/motive/reason, active goal, proposed/selected/planned/actual actions, resource state, retrieved canonical memory IDs, evidence receipt IDs, counterfactual availability, prediction, grounded reward, evidence/verification and prediction error.
+- [LEARNING] `attributionEligible` is false when homeostasis redirects an action, preventing an experience consolidator from attributing an outcome to the incompatible proposal. Simulation and external/device outcome sources remain distinct.
+- [TEST] Extended the live runtime-wiring regression to require the trace to travel through the existing event, reference existing evidence receipts and distinguish prediction from observed outcome.
+- [VALIDATION] Exact-head WorkPass331 passed on the previous cognitive-code head. The latest commit adds this memory-facing trace and is awaiting its own exact-head WorkPass331 and WorkPass110 results. No measured memory-retrieval uplift or production readiness is claimed.
+
+# WorkPass334 follow-up — isolate authority permission test state (2026-10-24)
+
+- [TEST FIX] The WorkPass243 independent-evaluation regression now restores the executor fixture to private executable permissions after asserting rejection of a group-writable executable. This prevents that intentional mutation from masking the subsequent run-root inode/identity check.
+- [VALIDATION] A previous exact-head WorkPass110 run failed because the second assertion observed the earlier permission violation. The next exact-head run must confirm the permission and root-identity cases both pass; this test correction does not weaken the runtime permission gate.
+
+# WorkPass334 follow-up — installer fixture dependency fix (2026-10-24)
+
+- [FIXED] `tools/super-install.test.mjs` now copies `runtime-requirements.mjs` into its isolated temporary fixture, matching the import used by `super-install.mjs`.
+- [VALIDATION] The WorkPass331 prerequisite workflow previously stopped before the cognitive tests with `ERR_MODULE_NOT_FOUND` in the fixture. This commit addresses that concrete failure; a fresh exact-head run is required before the prerequisite suite or WorkPass334 behavior tests can be marked passed.
+
+# WorkPass334 — endogenous intent and homeodynamic action arbitration (2026-10-24)
+
+- [INTEGRATION] Added `InnerImperativeController` as a thin policy over the existing live decision, organism needs and embodiment telemetry. It does not create a second goal, memory, world-model, identity or action owner.
+- [BEHAVIOR] During spontaneous autonomous cycles only, a critical resource floor or constrained resources plus a resource-intensive action can redirect to `rest` (or `wait` at a sleep boundary). Explicit user requests and non-spontaneous cycles keep the proposed action; the existing embodied recovery/action boundary remains in place.
+- [CAUSALITY] The live canonical cognitive ledger now records the intent ID, motive, reason, proposed/selected/actual actions, resource state and whether the gate overrode the proposal. The plan stage also records counterfactual branch availability and whether uncertainty requires future review.
+- [LEARNING] When the gate changes the selected action, the old candidate is not credited for the changed behavior. The self-update event links back to the intent and grounded outcome so future identity/skill changes can retain causal lineage.
+- [TEST] Extended the existing live-kernel wiring regression with behavior cases for normal autonomy, low-energy recovery, sleep boundary, epistemic uncertainty, explicit-user priority, non-spontaneous calls and malformed numeric signals.
+- [VALIDATION] Source and regression code are committed; exact-head Actions, runtime typecheck and device/browser E2E are still required. No learning uplift or production readiness is claimed.
+
 # WorkPass333 — независимая оценка: execution ≠ verification (2026-10-24)
 
 - [FIXED] Независимый оценщик больше не превращает успешно выполненный sandbox-run в `executable=false`, если отдельный верификатор недоступен или не подтверждает привязку. Метрика исполнимости отражает факт корректного завершения исполнения, а не доверие к трассе.

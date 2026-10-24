@@ -8395,6 +8395,8 @@ export class OrganismCore {
         evidenceSource?: import('../system/ExternalEvidenceTrust.ts').EvidenceSourceClass;
         learning?: LearningProvenance;
         worldEvent?: OrganismObservation['worldEvent'];
+        /** Exact decision-time memory IDs and attribution gate from the same live runtime cycle. */
+        causalMemoryContext?: { traceId: string; memoryIds: string[]; attributionEligible: boolean; evidence01: number; verified01: number; independent01: number; };
         worldTransition?: WorldTransitionForOrganism;
         evaluationContextFamily?: string;
         evaluationPhase?: B304SemanticPhase;
@@ -8451,7 +8453,7 @@ export class OrganismCore {
             this.cognitiveRuntime.sourceMonitor.add('system', 'feedback-note', 0.7, 'hypothesis');
         this.persisted.facets.cognition.sources = this.cognitiveRuntime.sourceMonitor.snapshot();
         const trace = this.persisted.traces[0];
-        const feedbackEmotion = this.cognitiveRuntime.emotionAppraisal.appraise({ tick: state.tick, at: state.at, goalPressure01: state.needs.goalPressure, goalCongruence01: success, controllability01: 1 - state.needs.uncertainty, novelty01: clamp(state.needs.novelty * .6 + surprise * .4), selfRelevance01: state.needs.identityCoherence, socialMeaning01: state.needs.socialNeed, uncertainty01: state.needs.uncertainty, predictionError01: surprise, homeostaticPressure01: clamp((1 - state.needs.energy) * .4 + state.needs.cognitiveLoad * .25 + state.needs.uncertainty * .2 + surprise * .15), energy01: state.needs.energy, success01: gatedSuccess01, external: Boolean(outcome.evidenceSource) });
+        const feedbackEmotion = this.cognitiveRuntime.emotionAppraisal.appraise({ tick: state.tick, at: state.at, goalPressure01: state.needs.goalPressure, goalCongruence01: success, controllability01: 1 - state.needs.uncertainty, novelty01: clamp(state.needs.novelty * .6 + surprise * .4), selfRelevance01: state.needs.identityCoherence, socialMeaning01: state.needs.socialNeed, uncertainty01: state.needs.uncertainty, predictionError01: surprise, homeostaticPressure01: clamp((1 - state.needs.energy) * .4 + state.needs.cognitiveLoad * .25 + state.needs.uncertainty * .2 + surprise * .15), energy01: state.needs.energy, success01: gatedSuccess01, external: outcome.learning ? outcome.learning.source === 'external' : Boolean(outcome.evidenceSource) });
         const feedbackFeeling = this.cognitiveRuntime.emotionAppraisal.inferFeeling(feedbackEmotion, { energy01: state.needs.energy, cognitiveLoad01: state.needs.cognitiveLoad, uncertainty01: state.needs.uncertainty, selfFocus01: state.needs.identityCoherence });
         const feedbackCalibration = this.cognitiveRuntime.emotionAppraisal.recordOutcome({ action: trace?.selected?.action ?? feedbackEmotion.actionTendency, success01: gatedSuccess01, surprise01: gatedSurprise01, regulationCost01: this.cognitiveRuntime.emotionAppraisal.regulationPressure01() });
         const feedbackTraceId = trace?.id ?? `tick:${state.tick}`;
@@ -8466,8 +8468,12 @@ export class OrganismCore {
         this.persisted.system.worldModelEnsemble = this.worldSubsystem.worldModelEnsemble.snapshot();
         const externalEvidenceSources = ['os', 'device', 'user', 'external-api'];
         const projectEvidenceExternal = externalEvidenceSources.includes(String(outcome.evidenceSource ?? '').toLowerCase());
-        const feedbackMemoryIds = [...(this.persisted.facets.memory.lastRetrievedMemoryIds ?? []), ...(this.persisted.system.lastEncodedMemoryIds ?? [])].filter((id, index, arr) => arr.indexOf(id) === index).slice(0, 12);
+        const explicitCausalMemoryIds = [...new Set((outcome.causalMemoryContext?.memoryIds ?? []).filter(id => typeof id === 'string' && id.length > 0))].slice(0, 12);
+        const feedbackMemoryIds = [...explicitCausalMemoryIds, ...(this.persisted.facets.memory.lastRetrievedMemoryIds ?? []), ...(this.persisted.system.lastEncodedMemoryIds ?? [])].filter((id, index, arr) => typeof id === 'string' && id.length > 0 && arr.indexOf(id) === index).slice(0, 12);
         for (const memoryId of feedbackMemoryIds) {
+            // A homeostatic redirect may still update emotional salience below, but must not teach a decision-level causal link from a memory to an action that was not executed.
+            if (outcome.causalMemoryContext?.attributionEligible === false && explicitCausalMemoryIds.includes(memoryId))
+                continue;
             const causalBefore = this.organismSystems.memory.memoryCausalEconomy.assessMemory(memoryId);
             const gatedSuccess = .5 + (success - .5) * learning.memoryPromotionScale01;
             const gatedSurprise = surprise * learning.memoryPromotionScale01;
@@ -8492,20 +8498,29 @@ export class OrganismCore {
                     confidence01: memoryReadiness * learning.memoryPromotionScale01, tick: state.tick, at: state.at,
                     reason: 'memory-causal-economy:high-promotion-readiness',
                 });
-                const identityInfluence = this.cognitiveRuntime.identityTrajectory.observeMemoryInfluence({
-                    magnitude01: memoryReadiness * learning.identityUpdateScale01,
-                    independentSources: causalBefore.independentSources,
-                    outcomeCount: causalBefore.outcomeCount + 1,
-                    verified: projectEvidenceExternal || Boolean(outcome.worldTransition),
-                    memoryIds: [memoryId], at: state.at,
-                });
-                if (identityInfluence.applied) {
-                    this.organismSystems.memory.memoryCausalEconomy.recordEffect({
-                        memoryIds: [memoryId], kind: 'identity', magnitude01: Math.abs(identityInfluence.delta ?? 0),
-                        confidence01: clamp(identityInfluence.gate * learning.identityUpdateScale01), tick: state.tick, at: state.at,
-                        reason: 'memory-causal-economy:verified-memory-influenced-identity-path-dependence',
+                // When runtime supplied the authoritative reality-learning decision, identity may only
+                // be influenced by externally grounded, sufficiently verified and independent evidence.
+                // Legacy feedback callers without LearningProvenance retain the existing conservative path.
+                const identityInfluenceEligible = !outcome.learning ||
+                    (outcome.learning.source === 'external' &&
+                        outcome.learning.verified01 >= .62 &&
+                        outcome.learning.independent01 >= .62);
+                if (identityInfluenceEligible) {
+                    const identityInfluence = this.cognitiveRuntime.identityTrajectory.observeMemoryInfluence({
+                        magnitude01: memoryReadiness * learning.identityUpdateScale01,
+                        independentSources: causalBefore.independentSources,
+                        outcomeCount: causalBefore.outcomeCount + 1,
+                        verified: projectEvidenceExternal || Boolean(outcome.worldTransition),
+                        memoryIds: [memoryId], at: state.at,
                     });
-                    this.cognitiveRuntime.identityTrajectory.noteChapter(`Memory influence: ${memoryId.slice(0, 12)}; path-dependence +${Number(identityInfluence.delta ?? 0).toFixed(4)}`);
+                    if (identityInfluence.applied) {
+                        this.organismSystems.memory.memoryCausalEconomy.recordEffect({
+                            memoryIds: [memoryId], kind: 'identity', magnitude01: Math.abs(identityInfluence.delta ?? 0),
+                            confidence01: clamp(identityInfluence.gate * learning.identityUpdateScale01), tick: state.tick, at: state.at,
+                            reason: 'memory-causal-economy:verified-memory-influenced-identity-path-dependence',
+                        });
+                        this.cognitiveRuntime.identityTrajectory.noteChapter(`Memory influence: ${memoryId.slice(0, 12)}; path-dependence +${Number(identityInfluence.delta ?? 0).toFixed(4)}`);
+                    }
                 }
             }
         }
@@ -9624,10 +9639,19 @@ export class OrganismCore {
                     personalityLedgerEnabled: true });
                 {
                     const identityRevisionEvidence01 = clamp(.58 + Math.abs(reward01 - .5) * .62 - state.predictionError * .12);
-                    const identityRevisionVerified01 = projectEvidenceExternal ? 1 : (outcome.worldTransition ? .78 : 0);
-                    const identityRevisionIndependent01 = projectEvidenceExternal ? 1 : (outcome.worldTransition ? .72 : 0);
+                    // Do not infer external identity evidence from a device label when the runtime has
+                    // already supplied the actual LearningGate provenance. Simulated outcomes can improve
+                    // predictive substrate, but cannot satisfy the durable external identity-revision gate.
+                    const identityRevisionVerified01 = outcome.learning
+                        ? (outcome.learning.source === 'external' ? clamp(outcome.learning.verified01) : 0)
+                        : projectEvidenceExternal ? 1 : (outcome.worldTransition ? .78 : 0);
+                    const identityRevisionIndependent01 = outcome.learning
+                        ? (outcome.learning.source === 'external' ? clamp(outcome.learning.independent01) : 0)
+                        : projectEvidenceExternal ? 1 : (outcome.worldTransition ? .72 : 0);
                     const identityRevisionContextKey = `${outcome.worldTransition ? 'world' : 'internal'}|${projectEvidenceExternal ? String(outcome.evidenceSource ?? 'external') : 'simulation'}|${trace.selected.action}|bucket:${state.tick % 4}`;
-                    const identityRevisionInternalConsistency01 = projectEvidenceExternal || outcome.worldTransition ? 0 : clamp(.60 + (1 - state.predictionError) * .22 + p80FeedbackState.continuity01 * .16);
+                    const identityRevisionInternalConsistency01 = outcome.learning
+                        ? 0
+                        : projectEvidenceExternal || outcome.worldTransition ? 0 : clamp(.60 + (1 - state.predictionError) * .22 + p80FeedbackState.continuity01 * .16);
                     const rev = this.developmentalNeural.neuralAutobiographicalIdentityB284.observeVerifiedRevisionEvidence({ tick: state.tick, reason: Math.abs(reward01 - .5) >= .08 ? 'major-outcome' : 'new-value', evidence01: identityRevisionEvidence01, verified01: identityRevisionVerified01, independent01: identityRevisionIndependent01, contextKey: identityRevisionContextKey, internalConsistency01: identityRevisionInternalConsistency01 });
                     if (rev.revised) {
                         const d = this.developmentalNeural.neuralAutobiographicalIdentityB284.diagnostics();

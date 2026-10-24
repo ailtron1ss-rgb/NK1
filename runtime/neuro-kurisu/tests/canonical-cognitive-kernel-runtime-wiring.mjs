@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { deriveInnerImperative } from '../src/organism/cognition/InnerImperativeController.ts';
 
 // Guard the *live* orchestration path, not just the kernel in isolation.
 const runtime = await readFile(new URL('../src/organism/core/OrganismRuntime.ts', import.meta.url), 'utf8');
+const core = await readFile(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
+const server = await readFile(new URL('../src/server/server.mjs', import.meta.url), 'utf8');
+const avatarHtml = await readFile(new URL('../public/avatar.html', import.meta.url), 'utf8');
 
 assert.match(
   runtime,
@@ -26,5 +30,158 @@ assert.doesNotMatch(runtime, /this\.cognitiveEventFabric\.recordOperationalCycle
   'the live path must not retain the parallel manual stage writer');
 assert.doesNotMatch(runtime, /this\.unifiedCycle\.evaluate\(/,
   'the live path must not independently evaluate a second cycle');
+assert.match(runtime, /const innerIntent = deriveInnerImperative\(/,
+  'the live runtime must derive an internal intent before plan construction');
+assert.match(runtime, /async autonomousStep\(options: \{ deliberate\?: boolean \} = \{ deliberate: false \}\): Promise<RuntimeStep> \{\s*\/\/ Keep the public autonomous-cycle API semantically aligned with the background clock:\s*\/\/ endogenous intent must not depend on which scheduler entered the same organism loop\.\s*return this\.step\(undefined, \{ deliberate: false, spontaneous: true, \.\.\.options \}\);/s,
+  'explicit autonomousStep/runAutonomousCycles must activate the same endogenous-intent path as the background cognitive clock');
+assert.match(runtime, /for\(let i=0;i<total;i\+=1\)\{ const result=await this\.autonomousStep\(\);/,
+  'the batch autonomous-cycle API must delegate to the canonical autonomous entry point');
+assert.ok(
+  runtime.indexOf('const innerIntent = deriveInnerImperative(') < runtime.indexOf('this.plans.build('),
+  'internal intent must arbitrate before planning',
+);
+assert.match(runtime, /const internalAction = innerIntent\.selectedAction;/,
+  'the inner intent action must feed the live plan and embodied-action path');
+assert.match(runtime, /const selectedCandidate = innerIntent\.overridden \? null : cycle\.decision\.selected;/,
+  'a homeostatic override must not credit the original incompatible candidate');
+assert.match(runtime, /counterfactualBranchCount:branches\.length/,
+  'the canonical future/plan stage must retain the counterfactual availability signal');
+assert.match(runtime, /innerIntentId:innerIntent\.id/,
+  'the canonical causal cycle must connect the intention to later evidence');
+assert.match(runtime, /causalMemoryContext:\s*\{\s*traceId: innerIntent\.id,\s*memoryIds: cycle\.memories\.slice\(0, 12\)\.map\(memory => memory\.id\),\s*attributionEligible: !innerIntent\.overridden/s,
+  'the live runtime must pass decision-time memory IDs and attribution eligibility into Core feedback');
+assert.match(runtime, /learning:\s*\{\s*source: grounded\.source,\s*evidence01: learningGate\.evidence01,\s*verified01: learningGate\.verified01,\s*independent01: learningGate\.independent01,\s*consequence01: learningGate\.consequence01,\s*learningScale01: learningGate\.learningScale01,\s*neuralUpdateScale01: learningGate\.neuralUpdateScale01,\s*worldModelUpdateScale01: learningGate\.worldModelUpdateScale01,\s*memoryPromotionScale01: learningGate\.memoryPromotionScale01,\s*identityUpdateScale01: learningGate\.identityUpdateScale01,\s*reward01: learningGate\.reward01,\s*success01: learningGate\.success01,\s*surprise01: learningGate\.surprise01/s,
+  'the single Core feedback learning payload must preserve the final RealityLearningGate provenance and scales');
+assert.match(core, /causalMemoryContext\?: \{ traceId: string; memoryIds: string\[\]; attributionEligible: boolean;/,
+  'Core feedback must accept the matching causal memory context');
+assert.match(core, /const explicitCausalMemoryIds = \[\.\.\.new Set\(\(outcome\.causalMemoryContext\?\.memoryIds \?\? \[\]\)/,
+  'Core feedback must include the exact memory IDs used in this runtime decision');
+assert.match(core, /outcome\.causalMemoryContext\?\.attributionEligible === false && explicitCausalMemoryIds\.includes\(memoryId\)/,
+  'a redirected action must not assign decision-level causal credit to the current cycle memories');
+assert.match(core, /A homeostatic redirect may still update emotional salience below, but must not teach a decision-level causal link/,
+  'the no-credit rule must leave outcome/emotion reconsolidation separate from action attribution');
+assert.match(core, /success01: gatedSuccess01, external: outcome\.learning \? outcome\.learning\.source === 'external' : Boolean\(outcome\.evidenceSource\) \}\);/,
+  'emotion appraisal must use authoritative LearningProvenance so simulation outcomes are not tagged as external experiences');
+assert.match(core, /const identityInfluenceEligible = !outcome\.learning \|\|\s*\(outcome\.learning\.source === 'external' &&\s*outcome\.learning\.verified01 >= \.62 &&\s*outcome\.learning\.independent01 >= \.62\)/s,
+  'authoritative runtime provenance must gate memory-to-identity influence on external, verified and independent evidence');
+assert.match(core, /if \(identityInfluenceEligible\) \{\s*const identityInfluence = this\.cognitiveRuntime\.identityTrajectory\.observeMemoryInfluence/s,
+  'the identity trajectory must not be updated when explicit reality-learning evidence is weak');
+assert.match(core, /const identityRevisionVerified01 = outcome\.learning\s*\?\s*\(outcome\.learning\.source === 'external' \? clamp\(outcome\.learning\.verified01\) : 0\)/s,
+  'B284 identity revision must use actual verification from supplied provenance and reject simulation as external proof');
+assert.match(core, /const identityRevisionIndependent01 = outcome\.learning\s*\?\s*\(outcome\.learning\.source === 'external' \? clamp\(outcome\.learning\.independent01\) : 0\)/s,
+  'B284 must use actual independence rather than equating device provenance with independent corroboration');
+assert.match(core, /const identityRevisionInternalConsistency01 = outcome\.learning\s*\?\s*0/s,
+  'explicit runtime provenance must disable the legacy synthetic internal-consistency shortcut while preserving the B284 holdout/cooldown gates');
+assert.match(runtime, /innerIntentMemoryTrace:\s*\{/,
+  'the existing experience event must preserve the intent/outcome trace for autobiographical consolidation');
+assert.match(runtime, /retrievedMemoryIds:\s*cycle\.memories\.slice\(0, 12\)\.map\(memory => memory\.id\)/,
+  'the trace must retain which canonical memories were available to the decision');
+assert.match(runtime, /observation: observationEvidence\.id,\s*prediction: predictionEvidence\.id,\s*action: actionEvidence\.id,\s*outcome: outcomeEvidence\.id/s,
+  'the trace must bind intent to the four existing evidence receipts');
+assert.match(runtime, /attributionEligible: !innerIntent\.overridden/,
+  'a redirected action must not be credited to the original proposal');
+assert.match(runtime, /observedReward01: clamp01\(grounded\.reward01\)/,
+  'the trace must distinguish outcome from the plan prediction');
+assert.match(runtime, /counterfactualBranches: branches\.slice\(0, 6\)\.map\(\(branch, index\)/,
+  'the memory trace must retain only a bounded ranked sample of imagined futures');
+assert.match(runtime, /counterfactualDisagreesWithPlan: Boolean\(branches\[0\]\?\.actions\[0\]/,
+  'the trace must expose when the best simulated future differs from the committed plan');
+assert.match(runtime, /These are model predictions and remain explicitly separate from outcome evidence/,
+  'counterfactual predictions must not be conflated with grounded outcomes');
 
-console.log('canonical-cognitive-kernel-runtime-wiring: PASS');
+const baseInput = {
+  tick: 7,
+  hasExternalRequest: false,
+  spontaneous: true,
+  proposedAction: 'explore',
+  selectedGoalId: 'goal-7',
+  needs: {
+    energy01: 0.72, cognitiveLoad01: 0.22, uncertainty01: 0.24,
+    novelty01: 0.4, goalPressure01: 0.31, socialNeed01: 0.2,
+  },
+  embodiment: { awake: true, bodyEnergy01: 0.76, cognitiveCapacity01: 0.82, thermalStrain01: 0.18 },
+  predictionError01: 0.22,
+};
+const normalIntent = deriveInnerImperative(baseInput);
+assert.equal(normalIntent.selectedAction, 'explore');
+assert.equal(normalIntent.overridden, false);
+assert.equal(normalIntent.source, 'endogenous');
+assert.equal(normalIntent.motive, 'continuity');
+assert.equal(normalIntent.futureReviewRequired, false);
+assert.equal(normalIntent.id, 'inner-intent:7');
+
+const lowEnergyIntent = deriveInnerImperative({
+  ...baseInput,
+  needs: { ...baseInput.needs, energy01: 0.17 },
+  embodiment: { ...baseInput.embodiment, bodyEnergy01: 0.16 },
+});
+assert.equal(lowEnergyIntent.selectedAction, 'rest');
+assert.equal(lowEnergyIntent.overridden, true);
+assert.equal(lowEnergyIntent.motive, 'homeostatic');
+assert.equal(lowEnergyIntent.reason, 'energy-budget-needs-recovery');
+
+const sleepingIntent = deriveInnerImperative({
+  ...baseInput,
+  embodiment: { ...baseInput.embodiment, awake: false },
+});
+assert.equal(sleepingIntent.selectedAction, 'wait');
+assert.equal(sleepingIntent.reason, 'sleep-boundary-defers-autonomous-action');
+
+const epistemicIntent = deriveInnerImperative({
+  ...baseInput,
+  needs: { ...baseInput.needs, uncertainty01: 0.81 },
+  predictionError01: 0.74,
+});
+assert.equal(epistemicIntent.motive, 'epistemic-gap');
+assert.equal(epistemicIntent.futureReviewRequired, true);
+assert.equal(epistemicIntent.selectedAction, 'explore',
+  'uncertainty records a review requirement but does not arbitrarily rewrite an otherwise safe action');
+
+const userDirectedIntent = deriveInnerImperative({
+  ...baseInput,
+  hasExternalRequest: true,
+  needs: { ...baseInput.needs, energy01: 0.08 },
+  embodiment: { ...baseInput.embodiment, bodyEnergy01: 0.08 },
+});
+assert.equal(userDirectedIntent.source, 'external');
+assert.equal(userDirectedIntent.selectedAction, 'explore',
+  'internal homeostasis must not silently rewrite an explicitly user-directed decision');
+assert.equal(userDirectedIntent.overridden, false);
+
+const nonAutonomousIntent = deriveInnerImperative({
+  ...baseInput,
+  spontaneous: false,
+  needs: { ...baseInput.needs, energy01: 0.08 },
+  embodiment: { ...baseInput.embodiment, bodyEnergy01: 0.08 },
+});
+assert.equal(nonAutonomousIntent.selectedAction, 'explore',
+  'the homeostatic intent gate only overrides autonomous spontaneous actions');
+assert.equal(nonAutonomousIntent.source, 'continuity');
+assert.throws(() => deriveInnerImperative({ ...baseInput, tick: Number.NaN }), /tick/);
+const malformedSignals = deriveInnerImperative({
+  ...baseInput,
+  needs: { ...baseInput.needs, energy01: Number.NaN },
+  embodiment: { ...baseInput.embodiment, bodyEnergy01: Number.POSITIVE_INFINITY },
+});
+assert.equal(malformedSignals.resourceState.energy01, 0.5);
+assert.equal(malformedSignals.resourceState.bodyEnergy01, 0.5);
+assert.equal(malformedSignals.selectedAction, 'explore');
+
+assert.match(server, /function currentEmotionPayload\(runtime, snapshot\)/,
+  'the server must have one canonical emotion payload builder for the main app and Live2D endpoint');
+assert.match(server, /const latestEpisode = Array\.isArray\(appraisal\?\.history\) \? appraisal\.history\[0\] : null;/,
+  'the avatar expression must come from the real appraisal episode when one exists');
+assert.match(server, /const emotion = currentEmotionPayload\(runtime, snapshot\);[\s\S]*?emotion,/,
+  'the app ui-snapshot must expose the same internal appraisal payload rather than infer a second emotional state');
+assert.match(server, /live2dExpressionForEmotion\(emotion\.label\)/,
+  'the legacy Live2D endpoint must map canonical emotion labels to model-supported expressions');
+assert.match(server, /live2dBodySignal\(body, voice, emotion, state\)/,
+  'the legacy Live2D endpoint must derive body movement and voice emphasis from the same emotion state');
+assert.match(server, /awake: body\.awake,[\s\S]*?action: String\(state\.lastAction \?\? 'wait'\),[\s\S]*?expression: live2dExpressionForEmotion\(emotion\.label\),[\s\S]*?body: live2dBodySignal\(body, voice, emotion, state\)/,
+  'the avatar endpoint must provide the root-level fields consumed by the actual avatar.html viewer');
+assert.match(avatarHtml, /fetch\('\/api\/organism\/avatar'/,
+  'the static Live2D shell must continue to use its canonical avatar endpoint');
+assert.match(avatarHtml, /d\.awake[\s\S]*?d\.expression[\s\S]*?post\('kurisu_embodiment',d\.body\|\|\{\}\)/,
+  'the endpoint contract must satisfy the viewer state, expression and embodiment messages');
+
+console.log('canonical-cognitive-kernel-runtime-wiring + inner-imperative behavior: PASS');
