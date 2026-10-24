@@ -1,3 +1,10 @@
+## NK1 WorkPass554 — validate restored observer lineage before ledger backfill (2026-10-24)
+
+- The observer-to-ledger restore reconciliation now requires each persisted observation to match a registered source ID, source class, and channel. Rows with a conflicting explicit independence key are discarded instead of being reintroduced as canonical evidence.
+- For legacy rows that predate the persisted independence key, reconciliation inherits the key from the registered source. This preserves the historical evidence path without letting a row invent a new independence identity.
+- Added regression cases for orphan observations, class/channel identity mismatch, and legacy recovery using the registry's independence key.
+- **Validation boundary:** source and tests are committed to `feature/feedback`; focused GitHub Actions results are being checked. This protects reconciliation/backfill, not the authenticity of an externally tampered persisted snapshot as a whole.
+
 ## NK1 WorkPass553 — require explicit source registration at the canonical evidence boundary (2026-10-24)
 
 - Added `requireRegisteredSources` to `ExternalObserverFabric`. Legacy standalone adapters keep their compatible auto-registration behavior, but when enabled, unseen source IDs are rejected by `observe()` instead of being minted by an observation.
