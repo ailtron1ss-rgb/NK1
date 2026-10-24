@@ -1,3 +1,10 @@
+## NK1 WorkPass528 — keep canonical memory authoritative on restore (2026-10-24)
+
+- Fixed a restart duplication/downgrade path: when a checkpoint includes the canonical MemoryOS2 snapshot, MemorySubsystemRuntime no longer re-ingests lossy multi-timescale compatibility projections as fresh derived memories.
+- Legacy compatibility migration remains enabled when the canonical MemoryOS2 snapshot is absent; this preserves restoration of older checkpoint shapes.
+- Extended the canonical checkpoint regression to assert one canonical record survives with its original source/provenance/epistemic metadata, and that legacy-only checkpoints still migrate.
+- The focused test is already registered in the Node 24 memory persistence workflow. **Exact-head execution remains unverified until an actionable Actions result is available**; no runtime typecheck or full-suite pass is claimed.
+
 ## NK1 WorkPass527 — persist the canonical MemoryOS2 checkpoint (2026-10-24)
 
 - Fixed a checkpoint projection gap: the canonical MemoryOS2 store was not included in facets.advanced, even though compatibility records were projected and restore already expected advanced.memoryOS.
