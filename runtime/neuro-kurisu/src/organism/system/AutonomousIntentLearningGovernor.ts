@@ -94,47 +94,77 @@ export class AutonomousIntentLearningGovernor {
     maximumRisk01?: number;
     requireApprovalForExternalEffects?: boolean;
   } = {}) {
-    this.config = config;
+    const raw = readDataRecord(config) ?? {};
+    const minimum = raw.minimumScore01;
+    const maximum = raw.maximumRisk01;
+    const requireApproval = raw.requireApprovalForExternalEffects;
+    this.config = Object.freeze({
+      minimumScore01: typeof minimum === 'number' && Number.isFinite(minimum) && minimum >= 0 && minimum <= 1 ? minimum : undefined,
+      maximumRisk01: typeof maximum === 'number' && Number.isFinite(maximum) && maximum >= 0 && maximum <= 1 ? maximum : undefined,
+      requireApprovalForExternalEffects: typeof requireApproval === 'boolean' ? requireApproval : true,
+    });
   }
 
   propose(intent: AILGIntent, now = Date.now()): AILGDecision {
     if (!Number.isFinite(now) || now < 0) throw new RangeError('AILG decision time must be finite and non-negative');
-    if (!nonBlank(intent.id) || intent.id.length > 180 ||
-        !nonBlank(intent.goal) || intent.goal.length > 500 ||
-        !Array.isArray(intent.triggerEvidence) ||
-        intent.triggerEvidence.length === 0 || intent.triggerEvidence.length > 32 ||
-        !intent.triggerEvidence.every(e => nonBlank(e) && e.length <= 240) ||
-        typeof intent.externalSideEffect !== 'boolean' ||
-        (intent.requiresApproval !== undefined && typeof intent.requiresApproval !== 'boolean')) {
-      throw new TypeError('AILG intent requires bounded identity, goal, evidence, and boolean policy flags');
+    const raw = readDataRecord(intent);
+    const evidence = raw ? readDataArray(raw.triggerEvidence) : null;
+    const idValue = raw?.id;
+    const goalValue = raw?.goal;
+    const benefitValue = raw?.expectedBenefit01;
+    const uncertaintyValue = raw?.uncertainty01;
+    const costValue = raw?.cost01;
+    const riskValue = raw?.risk01;
+    const externalSideEffect = raw?.externalSideEffect;
+    const requiresApproval = raw?.requiresApproval;
+    if (!raw || !nonBlank(idValue) || idValue.length > 180 ||
+        !nonBlank(goalValue) || goalValue.length > 500 ||
+        !evidence || evidence.length === 0 || evidence.length > 32 ||
+        !evidence.every(e => nonBlank(e) && e.length <= 240) ||
+        typeof externalSideEffect !== 'boolean' ||
+        (requiresApproval !== undefined && typeof requiresApproval !== 'boolean') ||
+        typeof benefitValue !== 'number' || typeof uncertaintyValue !== 'number' ||
+        typeof costValue !== 'number' || typeof riskValue !== 'number') {
+      throw new TypeError('AILG intent requires bounded plain-data identity, goal, evidence, and policy flags');
     }
-    if (this.decisions.has(intent.id)) {
-      throw new Error(`duplicate-intent:${intent.id}`);
+    if (this.decisions.has(idValue)) {
+      throw new Error(`duplicate-intent:${idValue}`);
     }
-    for (const n of [intent.expectedBenefit01, intent.uncertainty01, intent.cost01, intent.risk01]) {
+    for (const n of [benefitValue, uncertaintyValue, costValue, riskValue]) {
       if (!Number.isFinite(n) || n < 0 || n > 1) {
         throw new RangeError('AILG scores must be finite values in [0, 1]');
       }
     }
+    const safeIntent: AILGIntent = {
+      id: idValue,
+      goal: goalValue,
+      triggerEvidence: evidence as string[],
+      expectedBenefit01: benefitValue,
+      uncertainty01: uncertaintyValue,
+      cost01: costValue,
+      risk01: riskValue,
+      externalSideEffect,
+      ...(typeof requiresApproval === 'boolean' ? { requiresApproval } : {}),
+    };
 
     // Benefit and information value compete with uncertainty, cost, and risk.
     // Keep this transparent and deterministic so downstream evaluation can audit it.
-    const informationValue = intent.uncertainty01 * 0.2;
+    const informationValue = safeIntent.uncertainty01 * 0.2;
     const score01 = finite01(
-      intent.expectedBenefit01 * 0.65 +
+      safeIntent.expectedBenefit01 * 0.65 +
       informationValue -
-      intent.cost01 * 0.15 -
-      intent.risk01 * 0.4
+      safeIntent.cost01 * 0.15 -
+      safeIntent.risk01 * 0.4
     );
     const maximumRisk = this.config.maximumRisk01 ?? 0.35;
     const minimumScore = this.config.minimumScore01 ?? 0.35;
     let status: AILGDecision['status'] = 'act';
     let reason = 'evidence-backed-intent-cleared';
-    if (intent.risk01 > maximumRisk) {
+    if (safeIntent.risk01 > maximumRisk) {
       status = 'reject';
       reason = 'risk-limit-exceeded';
-    } else if (intent.externalSideEffect &&
-      (intent.requiresApproval || this.config.requireApprovalForExternalEffects !== false)) {
+    } else if (safeIntent.externalSideEffect &&
+      (safeIntent.requiresApproval || this.config.requireApprovalForExternalEffects !== false)) {
       status = 'approval-required';
       reason = 'external-side-effect-needs-approval';
     } else if (score01 < minimumScore) {
@@ -142,7 +172,7 @@ export class AutonomousIntentLearningGovernor {
       reason = 'expected-value-below-threshold';
     }
 
-    const decision: AILGDecision = { intentId: intent.id, status, score01, reason, selectedAt: now };
+    const decision: AILGDecision = { intentId: safeIntent.id, status, score01, reason, selectedAt: now };
     this.decisions.set(intent.id, decision);
     return { ...decision };
   }
@@ -171,17 +201,24 @@ export class AutonomousIntentLearningGovernor {
   }
 
   recordOutcome(outcome: AILGOutcome): { accepted: boolean; reason: string } {
-    const decision = this.decisions.get(outcome.intentId);
+    const raw = readDataRecord(outcome);
+    if (!raw) return { accepted: false, reason: 'invalid-outcome' };
+    const intentId = raw.intentId;
+    const observedBenefit01 = raw.observedBenefit01;
+    const evidence = raw.evidence;
+    const observedAt = raw.observedAt;
+    if (!nonBlank(intentId)) return { accepted: false, reason: 'invalid-outcome' };
+    const decision = this.decisions.get(intentId);
     if (!decision) return { accepted: false, reason: 'unknown-intent' };
-    if (decision.status !== 'act' || !this.executionReceipts.has(outcome.intentId)) return { accepted: false, reason: 'intent-not-executed' };
-    if (this.outcomes.has(outcome.intentId)) return { accepted: false, reason: 'duplicate-outcome' };
-    if (!Number.isFinite(outcome.observedBenefit01) ||
-        outcome.observedBenefit01 < 0 || outcome.observedBenefit01 > 1 ||
-        !nonBlank(outcome.evidence) ||
-        !Number.isFinite(outcome.observedAt)) {
+    if (decision.status !== 'act' || !this.executionReceipts.has(intentId)) return { accepted: false, reason: 'intent-not-executed' };
+    if (this.outcomes.has(intentId)) return { accepted: false, reason: 'duplicate-outcome' };
+    if (typeof observedBenefit01 !== 'number' || !Number.isFinite(observedBenefit01) ||
+        observedBenefit01 < 0 || observedBenefit01 > 1 ||
+        !nonBlank(evidence) || evidence.length > 1000 ||
+        typeof observedAt !== 'number' || !Number.isFinite(observedAt) || observedAt < 0) {
       return { accepted: false, reason: 'invalid-outcome' };
     }
-    this.outcomes.set(outcome.intentId, { ...outcome });
+    this.outcomes.set(intentId, { intentId, observedBenefit01, evidence, observedAt });
     return { accepted: true, reason: 'outcome-recorded' };
   }
 
