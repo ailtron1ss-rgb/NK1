@@ -125,7 +125,7 @@ function familyFor(relativePath) {
     const kind = workpass[2];
     if (/HANDOVER/.test(kind)) return "workpass-handovers";
     if (/REPORT|IMPLEMENTATION/.test(kind)) return "workpass-reports";
-    if (/TASKS?/.test(kind)) return "workpass-task-lists";
+    if (/TASKS?/.test(kind) || /СПИСОК\s*ДЕЛ|ЗАДАЧ/.test(kind)) return "workpass-task-lists";
     if (/CHECKPOINT/.test(kind)) return "workpass-checkpoints";
     if (/CODE_CHANGES/.test(kind)) return "workpass-change-ledgers";
     if (/AUDIT|INVENTORY|CHANGED_FILES/.test(kind)) return "workpass-audit-ledgers";
