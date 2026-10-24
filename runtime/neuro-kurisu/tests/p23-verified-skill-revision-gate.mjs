@@ -36,6 +36,15 @@ const replayed = [...rows,
 result = evaluateSkillRevision(replayed, 'baseline', 'candidate', {minPairedTasks:8,minAbsoluteGain:.1});
 assert.equal(result.pairedN, 10, 'reused verifier receipts must not create an eleventh independent pair');
 assert.ok(result.rejectedRows >= 2, 'both replayed method receipts should be rejected');
+// One verifier receipt cannot be reused to certify both sides of the same comparison.
+const sharedReceipt = [
+  { ...rows[0], taskId: 'shared-receipt-task', method: 'baseline', evidenceRef: 'artifact://shared-receipt' },
+  { ...rows[1], taskId: 'shared-receipt-task', method: 'candidate', evidenceRef: 'artifact://shared-receipt' },
+];
+result = evaluateSkillRevision(sharedReceipt, 'baseline', 'candidate', {minPairedTasks:2,minAbsoluteGain:0});
+assert.equal(result.pairedN, 0, 'a single receipt must not attest to both baseline and candidate');
+assert.ok(result.rejectedRows >= 1, 'the reused receipt must be rejected');
+
 // Validation/train observations are deliberately excluded.
 result = evaluateSkillRevision(rows.map(x=>({...x,split:'train'})),'baseline','candidate');
 assert.equal(result.pairedN,0);
