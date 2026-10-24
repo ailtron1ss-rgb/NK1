@@ -183,6 +183,7 @@ export function runCommand(command, args = [], options = {}) {
     let finalTimer;
     let timeoutCleanupStarted = false;
     let closeResult = null;
+    let terminationResult = null;
 
     const finish = (code, signal) => {
       if (settled) return;
@@ -201,6 +202,8 @@ export function runCommand(command, args = [], options = {}) {
         err: err.toString('utf8'),
         outTruncated,
         errTruncated,
+        terminationResult,
+        cleanupFailed: Boolean(terminationResult && !terminationResult.stopped),
         durationMs: Date.now() - startedAt,
       });
     };
@@ -244,12 +247,19 @@ export function runCommand(command, args = [], options = {}) {
         if (settled) return;
         timedOut = true;
         timeoutCleanupStarted = true;
-        void terminateChild(child, { graceMs: terminationGraceMs, forceGraceMs }).then(() => {
+        void terminateChild(child, { graceMs: terminationGraceMs, forceGraceMs }).then((result) => {
+          terminationResult = result;
+          const closed = closeResult ?? { code: child.exitCode, signal: child.signalCode };
+          finish(closed.code, closed.signal);
+        }).catch((error) => {
+          terminationResult = { stopped: false, error: error instanceof Error ? error.message : String(error) };
           const closed = closeResult ?? { code: child.exitCode, signal: child.signalCode };
           finish(closed.code, closed.signal);
         });
-        finalTimer = setTimeout(() => finish(closeResult?.code ?? null, closeResult?.signal ?? 'SIGKILL'),
-          terminationGraceMs + forceGraceMs + 1_000);
+        finalTimer = setTimeout(() => {
+          terminationResult ??= { stopped: false, error: 'termination deadline exceeded' };
+          finish(closeResult?.code ?? null, closeResult?.signal ?? 'SIGKILL');
+        }, terminationGraceMs + forceGraceMs + 1_000);
       }, timeoutMs);
       timeoutTimer.unref?.();
     }
