@@ -1,3 +1,13 @@
+## WorkPass486 — текущий технический срез (2026-10-24)
+
+- Создан отдельный технический документ [NK1 project analysis](NK1_PROJECT_ANALYSIS_2026-10-24_RU.md): владельцы подсистем, степень подтверждения integration bridge, observed CI/typecheck blockers, очередность объединения веток и release gates.
+- Подтверждено расхождение event identity между feedback и perception: это две веточные реализации, а не одна завершённая общая API. До сквозной передачи verifier/receipt → RealityEvidenceLedger → MemoryOS2/P65 → P23 мост остаётся частичным.
+- На runtime typecheck в `feature/experiments` обновлена конфигурация и добавлена реальная Node types dependency, однако успешный semantic check на точном HEAD ещё нужно подтверждать фактическим workflow.
+- Следующие кодовые шаги: устранить duplicate `verifyOperationalCycle`, согласовать тест полного набора missing stages с контрактом, исправить тип/импорт/валидацию по подтверждённому текущему SHA, затем унифицировать event identity и проверить retry/conflict/restore сценарии.
+- Не объявляются успешными тесты без фактически завершившегося job; PR merge и Release ZIP не подразумеваются коммитом в рабочую категорийную/плановую ветку.
+
+---
+
 # Neuro Kurisu / NK1 — progress and Hexis assimilation checkpoint
 
 **Дата:** 2026-10-24  
