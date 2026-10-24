@@ -46,7 +46,7 @@ try {
   });
   assert.equal(fallback.status, 2, `${fallback.stdout}\n${fallback.stderr}`);
   assert.match(fallback.stdout, /TYPECHECK=PARTIAL mode=node-strip-types files=1/);
-  assert.match(fallback.stdout, /semantic tsc check unavailable/);
+  assert.match(fallback.stdout, /no semantic typecheck performed/);
   assert.doesNotMatch(fallback.stdout, /TYPECHECK=PASS/);
   console.log('TYPECHECK_RUNTIME_FALLBACK_STATUS=PASS syntax-only fallback is explicitly partial');
 
