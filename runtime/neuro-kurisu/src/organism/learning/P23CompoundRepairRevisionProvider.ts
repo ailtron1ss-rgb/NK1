@@ -36,6 +36,8 @@ interface VerifiedProposalDataset {
   artifacts: SignedOutcomeArtifact[];
   baselineMethod: string;
   candidateMethod: string;
+  baselinePayloadFingerprint: string;
+  candidatePayloadFingerprint: string;
   gateOptions: VerifiedSkillPromotionOptions;
 }
 
@@ -158,6 +160,7 @@ function parseDataset(value: unknown): VerifiedProposalDataset {
   const signedPayloadKeys = [
     'schemaVersion', 'artifactId', 'runId', 'manifestFingerprint', 'taskId',
     'taskVersion', 'method', 'seed', 'attempt', 'passed', 'verifierId', 'observedAt',
+    'payloadFingerprint',
   ];
   for (const artifact of value.artifacts) {
     if (!isRecord(artifact) || !onlyKeys(artifact, ['payload', 'signature']) ||
@@ -166,11 +169,38 @@ function parseDataset(value: unknown): VerifiedProposalDataset {
       throw new Error('native-p23-revision-signed-artifact-shape-invalid');
     }
   }
+
+  // The method label and outcome alone are insufficient to identify executable
+  // content. Each trusted signer must bind outcomes to the exact payload digest.
+  const fingerprintsForMethod = (method: string): string => {
+    const fingerprints = new Set<string>();
+    for (const artifact of value.artifacts as SignedOutcomeArtifact[]) {
+      const payload = artifact.payload as unknown as RecordValue;
+      if (payload.method !== method) continue;
+      const fingerprint = payload.payloadFingerprint;
+      if (!isNonEmptyString(fingerprint) || !/^[a-f0-9]{64}$/i.test(fingerprint)) {
+        throw new Error('native-p23-revision-signed-payload-fingerprint-required:' + method);
+      }
+      fingerprints.add(fingerprint.toLowerCase());
+    }
+    if (fingerprints.size !== 1) {
+      throw new Error('native-p23-revision-method-must-bind-one-payload-fingerprint:' + method);
+    }
+    return [...fingerprints][0];
+  };
+  const baselinePayloadFingerprint = fingerprintsForMethod(value.baselineMethod);
+  const candidatePayloadFingerprint = fingerprintsForMethod(value.candidateMethod);
+  if (baselinePayloadFingerprint === candidatePayloadFingerprint) {
+    throw new Error('native-p23-revision-baseline-and-candidate-payload-fingerprints-identical');
+  }
+
   return {
     manifest: value.manifest as TaskManifestEntry[],
     artifacts: value.artifacts as SignedOutcomeArtifact[],
     baselineMethod: value.baselineMethod,
     candidateMethod: value.candidateMethod,
+    baselinePayloadFingerprint,
+    candidatePayloadFingerprint,
     gateOptions: parseGateOptions(value.gateOptions),
   };
 }
@@ -284,18 +314,31 @@ export async function createNativeCompoundRepairRevisionProvider(
     if (!input || !isNonEmptyString(input.skillId)) throw new Error('native-p23-revision-skill-id-required');
     const { proposal } = await issueVerifiedProposal(datasetPath, options.root, options.stateDirectory, trustedKeys);
     const snapshot = options.candidateStore.snapshot();
+    const active = snapshot.active.find(candidate => candidate.skillId === input.skillId);
+    if (!active) throw new Error('native-p23-revision-active-baseline-required');
     const eligible = snapshot.candidates.filter(candidate =>
       candidate.skillId === input.skillId &&
       candidate.proposalId === proposal.proposalId &&
       candidate.proposalOutcomeFingerprint === proposal.outcomeFingerprint &&
+      candidate.payloadFingerprint.toLowerCase() === dataset.candidatePayloadFingerprint &&
       ['staged', 'shadow', 'active'].includes(candidate.status),
     ).sort((a, b) => b.version - a.version || b.createdAt - a.createdAt);
     const source = eligible[0];
     if (!source) {
-      throw new Error('native-p23-revision-no-candidate-matches-signed-proposal');
+      throw new Error('native-p23-revision-no-candidate-matches-signed-proposal-and-payload');
     }
-    if (source.status === 'active' && source.previousActive === null) {
-      throw new Error('native-p23-revision-active-source-has-no-prior-baseline');
+    if (source.status === 'active') {
+      if (active.payloadFingerprint.toLowerCase() !== dataset.candidatePayloadFingerprint ||
+          source.previousActive?.payloadFingerprint.toLowerCase() !== dataset.baselinePayloadFingerprint) {
+        throw new Error('native-p23-revision-active-source-payload-binding-mismatch');
+      }
+    } else {
+      if (active.payloadFingerprint.toLowerCase() !== dataset.baselinePayloadFingerprint) {
+        throw new Error('native-p23-revision-active-baseline-payload-binding-mismatch');
+      }
+      if (source.baseVersion !== active.version) {
+        throw new Error('native-p23-revision-source-base-version-is-stale');
+      }
     }
     return {
       proposal,
