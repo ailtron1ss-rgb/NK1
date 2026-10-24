@@ -19,6 +19,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
       - "runtime/neuro-kurisu/tests/local-small-model-hub-workpass.mjs"
       - "runtime/neuro-kurisu/tests/local-inference-scheduler-workpass.mjs"
       - "runtime/neuro-kurisu/tests/local-affect-appraisal-bridge-workpass.mjs"
@@ -46,6 +48,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
       - "runtime/neuro-kurisu/tests/local-small-model-hub-workpass.mjs"
       - "runtime/neuro-kurisu/tests/local-inference-scheduler-workpass.mjs"
       - "runtime/neuro-kurisu/tests/local-affect-appraisal-bridge-workpass.mjs"
@@ -91,6 +95,8 @@ jobs:
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/local-small-model-hub-workpass.mjs
       - name: Local affect-to-appraisal bridge regression
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/local-affect-appraisal-bridge-workpass.mjs
+      - name: B272 endogenous-goal action attribution regression
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs
       - name: Local inference scheduler and backpressure regression
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/local-inference-scheduler-workpass.mjs
       - name: Local vision HTTP and output-boundary regression
