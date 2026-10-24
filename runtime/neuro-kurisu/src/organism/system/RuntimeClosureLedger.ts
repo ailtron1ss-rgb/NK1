@@ -47,6 +47,9 @@ export interface RuntimeClosureStepInput {
   identityContinuity01?: number;
   predictionError01?: number;
   action?: string;
+  cognitiveCycleComplete?: boolean;
+  cognitiveCycleTick?: number;
+  missingCognitiveStages?: string[];
 }
 
 export interface RuntimeClosureDurabilityInput {
@@ -123,6 +126,18 @@ export class RuntimeClosureLedger {
     const validActions = new Set(['observe','inspect','move','collect','rest','communicate']);
     checks.push({ name: 'action-valid', ok: input.action == null || validActions.has(input.action), value: input.action ?? null, expected: 'EnvironmentAction' });
     if (input.continuousTick != null) checks.push({ name: 'continuous-fabric-aligned', ok: input.continuousTick === input.stateTick, value: input.continuousTick, expected: input.stateTick });
+    if (input.cognitiveCycleComplete !== undefined) {
+      const cognitiveTickAligned = input.cognitiveCycleTick == null || input.cognitiveCycleTick === input.stateTick;
+      const cognitiveComplete = input.cognitiveCycleComplete === true && cognitiveTickAligned;
+      const missing = Array.isArray(input.missingCognitiveStages) ? input.missingCognitiveStages.slice(0, 11).join(',') : '';
+      checks.push({
+        name: 'unified-cognitive-cycle-complete',
+        ok: cognitiveComplete,
+        value: input.cognitiveCycleComplete,
+        expected: true,
+        detail: cognitiveComplete ? undefined : `incomplete-or-misaligned:${missing || (cognitiveTickAligned ? 'cycle-contract' : 'tick-mismatch')}`
+      });
+    }
     const status = statusOf(checks);
     const behaviorHash = fastFingerprint({
       tick: input.stateTick,
@@ -135,6 +150,9 @@ export class RuntimeClosureLedger {
       uncertainty01: finite01(input.uncertainty01),
       identityContinuity01: finite01(input.identityContinuity01),
       predictionError01: finite01(input.predictionError01),
+      cognitiveCycleComplete: input.cognitiveCycleComplete ?? null,
+      cognitiveCycleTick: input.cognitiveCycleTick ?? null,
+      missingCognitiveStages: Array.isArray(input.missingCognitiveStages) ? input.missingCognitiveStages.slice(0, 11) : [],
     });
     const record: RuntimeClosureRecord = { at: input.at, tick: input.stateTick, phase: 'step', status, checks, behaviorHash };
     this.commit(record);
