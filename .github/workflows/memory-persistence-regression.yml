@@ -1,0 +1,55 @@
+name: Memory persistence regression
+
+on:
+  push:
+    branches: [feature/memory]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/PersistenceProjectionCoordinator.ts"
+      - "runtime/neuro-kurisu/src/organism/system/MemoryRetentionEconomy.ts"
+      - "runtime/neuro-kurisu/src/organism/system/MemoryCausalEconomy.ts"
+      - "runtime/neuro-kurisu/src/organism/system/CausalLifeGraph.ts"
+      - "runtime/neuro-kurisu/src/organism/system/MemoryWorldCausalBridge.ts"
+      - "runtime/neuro-kurisu/tests/memory-subsystem-runtime-persistence.mjs"
+      - "runtime/neuro-kurisu/tests/memory-causal-persistence-projection.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/memory-persistence-regression.yml"
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/PersistenceProjectionCoordinator.ts"
+      - "runtime/neuro-kurisu/src/organism/system/MemoryRetentionEconomy.ts"
+      - "runtime/neuro-kurisu/src/organism/system/MemoryCausalEconomy.ts"
+      - "runtime/neuro-kurisu/src/organism/system/CausalLifeGraph.ts"
+      - "runtime/neuro-kurisu/src/organism/system/MemoryWorldCausalBridge.ts"
+      - "runtime/neuro-kurisu/tests/memory-subsystem-runtime-persistence.mjs"
+      - "runtime/neuro-kurisu/tests/memory-causal-persistence-projection.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/memory-persistence-regression.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-memory-persistence-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  memory-persistence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Verify memory subsystem snapshot and restore
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/memory-subsystem-runtime-persistence.mjs
+      - name: Verify checkpoint projection and causal memory restore
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/memory-causal-persistence-projection.mjs
