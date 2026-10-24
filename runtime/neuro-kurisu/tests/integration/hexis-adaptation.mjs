@@ -20,7 +20,10 @@ const nativeNk1Export = {
     }],
     goals: [{ id: 'goal-1', title: 'Improve source attribution', description: 'Keep traceable evidence.' }],
     memories: [{ id: 'mem-1', type: 'semantic', content: 'Evidence should remain traceable.', importance: 0.8 }],
-    relationships: [{ id: 'rel-1', sourceId: 'mem-1', targetId: 'goal-1', edgeType: 'supports' }],
+    relationships: [
+      { id: 'rel-1', sourceId: 'mem-1', targetId: 'goal-1', edgeType: 'supports' },
+      { id: 'rel-2', sourceId: 'mem-1', targetId: 'skill-1', edgeType: 'supports' },
+    ],
     skills: [{ id: 'skill-1', name: 'Evidence review', instructions: 'Check source quality before using a claim.' }],
     in_flight_work: null,
     audit_records: null,
@@ -63,7 +66,7 @@ assert.equal(importedNormalizedExport.decideHmx(normalizedStage.stagingId, 'acce
 // Approved HMX memories enter the canonical MemoryFabric -> MemoryOS2 path only
 // through the explicit apply decision. The identity and goals sections remain deferred.
 const canonicalMemoryRuntime = new MemorySubsystemRuntime();
-const canonicalProjector = new HexisCanonicalMemoryProjector(canonicalMemoryRuntime.fabric);
+const canonicalProjector = new HexisCanonicalMemoryProjector(canonicalMemoryRuntime.fabric, canonicalMemoryRuntime.semanticMemory);
 const applyFabric = new HexisAdaptationFabric();
 applyFabric.bindCanonicalMemoryApply(candidate => canonicalProjector.apply(candidate));
 const applyStage = applyFabric.stageHmx({ document: normalizedNk1Export, intent: 'port', strategy: 'additive' });
@@ -77,6 +80,11 @@ const appliedStage = applyFabric.decideHmx(applyStage.stagingId, 'apply');
 assert.equal(appliedStage?.status, 'applied');
 assert.equal(appliedStage?.application?.importedCount, 2);
 assert.equal(appliedStage?.application?.memoryIds.length, 2);
+assert.equal(appliedStage?.application?.projectedRelationships, 1, 'relationships between imported memory records must enter the canonical semantic graph');
+assert.equal(appliedStage?.application?.deferredRelationships, 1, 'relationships whose other endpoint is a deferred goal must remain deferred');
+assert.equal(appliedStage?.application?.deferredSections.relationships, 1);
+assert.equal(canonicalMemoryRuntime.semanticMemory.snapshot().edges.length, 1);
+assert(appliedStage?.application?.semanticEdgeIds.length === 1);
 assert.equal(appliedStage?.application?.status, 'partial', 'unmapped identity/goals/relationship/config sections must be disclosed, not claimed as imported');
 assert(appliedStage?.application?.deferredSections.identity > 0);
 const canonicalImported = canonicalMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:'));
@@ -95,6 +103,7 @@ const duplicateApply = duplicateApplyFabric.decideHmx(duplicateStage.stagingId, 
 assert.equal(duplicateApply?.application?.importedCount, 0);
 assert.equal(duplicateApply?.application?.deduplicatedCount, 2);
 assert.equal(canonicalMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 2);
+assert.equal(canonicalMemoryRuntime.semanticMemory.snapshot().edges.length, 1, 're-import must not duplicate or reinforce an existing imported edge');
 
 const emptyApplyFabric = new HexisAdaptationFabric();
 emptyApplyFabric.bindCanonicalMemoryApply(candidate => canonicalProjector.apply(candidate));
@@ -125,7 +134,7 @@ const rollbackFabric = {
   },
   forgetById: (...args) => rollbackMemoryRuntime.fabric.forgetById(...args),
 };
-const rollbackProjector = new HexisCanonicalMemoryProjector(rollbackFabric);
+const rollbackProjector = new HexisCanonicalMemoryProjector(rollbackFabric, rollbackMemoryRuntime.semanticMemory);
 const rollbackHexisFabric = new HexisAdaptationFabric();
 rollbackHexisFabric.bindCanonicalMemoryApply(candidate => rollbackProjector.apply(candidate));
 const rollbackStage = rollbackHexisFabric.stageHmx({ document: normalizedNk1Export, intent: 'port', strategy: 'additive' });
@@ -135,9 +144,13 @@ assert.equal(rollbackHexisFabric.getHmxStage(rollbackStage.stagingId)?.status, '
   'a failed apply must not mark the stage complete');
 assert.equal(rollbackMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 0,
   'partially inserted HMX memories must be rolled back');
+assert.equal(rollbackMemoryRuntime.semanticMemory.snapshot().nodes.length, 0,
+  'partially projected semantic graph nodes must also roll back with failed canonical-memory application');
 const retryAfterRollback = rollbackHexisFabric.decideHmx(rollbackStage.stagingId, 'apply');
 assert.equal(retryAfterRollback?.status, 'applied', 'the same approved stage must remain safely retryable after compensation');
 assert.equal(rollbackMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 2);
+assert.equal(rollbackMemoryRuntime.semanticMemory.snapshot().edges.length, 1,
+  'retry must commit graph relations after all canonical memory rows succeed');
 
 
 const fabric = new HexisAdaptationFabric();
