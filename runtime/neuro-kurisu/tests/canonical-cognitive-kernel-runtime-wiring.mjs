@@ -51,6 +51,12 @@ assert.match(runtime, /attributionEligible: !innerIntent\.overridden/,
   'a redirected action must not be credited to the original proposal');
 assert.match(runtime, /observedReward01: clamp01\(grounded\.reward01\)/,
   'the trace must distinguish outcome from the plan prediction');
+assert.match(runtime, /counterfactualBranches: branches\.slice\(0, 6\)\.map\(\(branch, index\)/,
+  'the memory trace must retain only a bounded ranked sample of imagined futures');
+assert.match(runtime, /counterfactualDisagreesWithPlan: Boolean\(branches\[0\]\?\.actions\[0\]/,
+  'the trace must expose when the best simulated future differs from the committed plan');
+assert.match(runtime, /These are model predictions and remain explicitly separate from outcome evidence/,
+  'counterfactual predictions must not be conflated with grounded outcomes');
 
 const baseInput = {
   tick: 7,

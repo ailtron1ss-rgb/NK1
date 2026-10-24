@@ -1,3 +1,11 @@
+# WorkPass336 — persist bounded shadow-future comparisons (2026-10-24)
+
+- [INTEGRATION] The causal experience trace now carries the top six outputs from the existing `CounterfactualEngine`, with bounded action sequences, expected reward, uncertainty and rationale.
+- [CAUSALITY] The event records the best branch's first action and whether it disagrees with the plan, while keeping imagined reward separate from grounded observed reward. The new trace does not execute a simulated action or silently replace the planner's selected action.
+- [RESOURCE BOUND] At most six branches and four actions per branch are carried into the memory-facing event, preserving bounded runtime/persistence size.
+- [TEST] Added runtime-wiring assertions for branch bounds, plan disagreement and prediction/outcome separation.
+- [VALIDATION] The previous WorkPass331 run confirmed inner-intent behavior on SHA `8eb983930e0da0552426bfb5012c70d0bf9c5c99`; WorkPass335/336 need fresh exact-head workflow and WorkPass110 results. This pass creates evidence for future counterfactual calibration but does not claim improved decisions yet.
+
 # WorkPass335 — preserve intent-to-outcome provenance in experience memory (2026-10-24)
 
 - [INTEGRATION] Extended the existing `core.feedback → worldEvent` experience event with a bounded `innerIntentMemoryTrace`; no second memory store or direct runtime-owned MemoryOS2 writes were added.

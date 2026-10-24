@@ -1,3 +1,12 @@
+## Latest durable checkpoint — WorkPass336: bounded shadow-future lineage (2026-10-24)
+
+- The existing `CounterfactualEngine` remains the source of imagined branches. The existing feedback event now stores a bounded top-six sample (first four actions, predicted reward, uncertainty, short rationale), plus the leading branch action and its agreement/disagreement with the generated plan.
+- Imagined values remain predictions. They are not treated as observed or verified facts and do not directly execute or override the chosen action. Later learning can compare the stored forecast with the separately grounded outcome.
+- Memory/event growth is bounded at six branches by four actions each; the trace remains inside the existing `core.feedback.worldEvent` channel and `MemoryOS2` remains the sole memory owner.
+- Runtime-wiring regression now guards these boundaries. Exact-head tests for this newest commit are pending.
+
+---
+
 ## Latest durable checkpoint — WorkPass335: intent → outcome autobiographical trace (2026-10-24)
 
 **Branch:** `workpass334-inner-imperative-homeostasis-2026-10-24`; WorkPass334 intent/homeostasis controller and fixture corrections are retained.

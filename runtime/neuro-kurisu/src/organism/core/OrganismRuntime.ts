@@ -877,6 +877,17 @@ export class OrganismRuntime {
             },
             counterfactualBranchCount: branches.length,
             counterfactualBudgetAccepted: simBudget.accepted,
+            // Persist a small ranked sample of imagined futures, not the entire rollout.
+            // These are model predictions and remain explicitly separate from outcome evidence.
+            counterfactualBestFirstAction: branches[0]?.actions[0] ?? null,
+            counterfactualDisagreesWithPlan: Boolean(branches[0]?.actions[0] && branches[0].actions[0] !== worldAction),
+            counterfactualBranches: branches.slice(0, 6).map((branch, index) => ({
+              rank: index + 1,
+              actions: branch.actions.slice(0, 4),
+              expectedReward: branch.expectedReward,
+              uncertainty: branch.uncertainty,
+              rationale: String(branch.rationale).slice(0, 160),
+            })),
             predictedReward01: clamp01(expectedReward),
             observedReward01: clamp01(grounded.reward01),
             outcomeSource: grounded.source,
