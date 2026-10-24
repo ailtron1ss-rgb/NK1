@@ -5,13 +5,13 @@ import { P23LearningEngine } from '../src/organism/learning/P23LearningEngine.ts
 
 const sha = value => createHash('sha256').update(value).digest('hex');
 const ruleId = sha('rule:avoid-unscoped-destructive-action');
-const fingerprint = sha('authenticated-review-evidence');
+const fingerprint = id => sha('authenticated-review-evidence:' + id);
 const makeObservation = (id, overrides = {}) => ({
   schemaVersion: 1,
   ruleId,
   observationId: sha(id),
   reviewerId: 'reviewer:verified-fixture',
-  reviewEvidenceFingerprint: fingerprint,
+  reviewEvidenceFingerprint: fingerprint(id),
   reviewedAt: Number(id.match(/(\d+)$/)?.[1] ?? 1) * 100,
   severity: 'high',
   rootCause: 'context-pressure',
@@ -87,6 +87,23 @@ assert.throws(() => conflictMemory.record(makeObservation('seed-11', { observati
   /correction-observation-id-conflict/);
 assert.ok(conflictMemory.snapshot().quarantinedObservationIds.includes(conflictId));
 assert.equal(conflictMemory.rules().length, 0);
+
+// A different observation ID cannot turn the same signed review artifact into repeat evidence.
+const reusedEvidenceMemory = new CorrectionRuleMemory(() => true);
+const sharedReviewFingerprint = sha('one-review-artifact-used-twice');
+reusedEvidenceMemory.record(makeObservation('reused-artifact-1', { reviewEvidenceFingerprint: sharedReviewFingerprint }));
+assert.throws(() => reusedEvidenceMemory.record(makeObservation('reused-artifact-2', { reviewEvidenceFingerprint: sharedReviewFingerprint })),
+  /correction-review-evidence-reused/);
+assert.equal(reusedEvidenceMemory.assess(ruleId).observationCount, 1,
+  'the same evidence fingerprint must not escalate a rule twice');
+
+// Restore also quarantines duplicate evidence fingerprints instead of allowing persisted replay.
+const restoreFirst = makeObservation('restore-artifact-1', { reviewEvidenceFingerprint: sharedReviewFingerprint });
+const restoreReplay = makeObservation('restore-artifact-2', { reviewEvidenceFingerprint: sharedReviewFingerprint });
+const restoredReplay = new CorrectionRuleMemory(() => true);
+restoredReplay.restore({ schemaVersion: 1, revision: 2, observations: [restoreFirst, restoreReplay], quarantinedObservationIds: [] });
+assert.equal(restoredReplay.assess(ruleId).observationCount, 1);
+assert.ok(restoredReplay.snapshot().quarantinedObservationIds.includes(restoreReplay.observationId));
 
 // The learning engine persists the correction memory inside its existing snapshot.
 const engine = new P23LearningEngine();
