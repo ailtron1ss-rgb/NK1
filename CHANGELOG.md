@@ -1,3 +1,10 @@
+## NK1 WorkPass551 — separate sample confidence from source trust (2026-10-24)
+
+- New observer sources now start from the conservative reliability prior for their declared source class instead of inheriting the first caller-supplied observation confidence. A single self-reported `confidence01: 0.99` can no longer mint an `external-api` source with persistent reliability 0.99.
+- Kept per-observation confidence intact as evidence about that sample; persistent source reliability remains a separate trust estimate updated by explicit source registration and assessment feedback.
+- Extended the observer identity regression to assert that a new external API source starts at the 0.84 class prior while its individual observation retains 0.99 confidence.
+- **Validation boundary:** source, regression, and changelog are committed to `feature/feedback`; the Node regression and hosted Actions result have not yet been confirmed. This does not authenticate the origin of brand-new source IDs; it prevents one direct confidence-to-trust escalation path.
+
 ## NK1 WorkPass550 — reject identity mismatches at observation ingress (2026-10-24)
 
 - `ExternalObserverFabric.ensureSource(...)` now rejects an observation when the caller's source class, channel, or explicitly supplied independence key conflicts with the registered source identity. Previously the registry's identity was retained silently, which hid caller spoofing/wiring errors even though the stored row used registered values.
