@@ -342,9 +342,8 @@ export class AutonomousIntentLearningGovernor {
     // Serialized IDs are not credentials. Restored execution/approval state is
     // accepted only after an injected canonical authority re-checks each identity.
     for (const decision of this.decisions.values()) {
-      if ((decision.externalSideEffect || decision.status === 'act') &&
-          decision.status === 'act' && !this.approvalReceipts.has(decision.intentId) &&
-          decision.externalSideEffect) {
+      if (decision.externalSideEffect && decision.status === 'act' &&
+          !this.approvalReceipts.has(decision.intentId)) {
         decision.status = 'approval-required';
         decision.reason = 'restore-approval-reference-untrusted';
       }
