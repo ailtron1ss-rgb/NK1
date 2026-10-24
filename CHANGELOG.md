@@ -1,3 +1,10 @@
+## NK1 Architecture — split advanced state defaults into bounded domains (2026-10-24)
+
+- [REFACTOR] Split the former 40-edge `AdvancedFacetDefaults.ts` into a stable 3-edge facade and three explicit domain builders: context/memory/governance (17 edges), developmental P49–P79 (20 edges), and research/learning (3 edges). The returned state keys and external `defaultAdvancedFacet()` factory remain unchanged.
+- [PASS] Focused workflow [40130701739](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40130701739) succeeded on commit `a995fdd1e7ee1f7bbb5ac028a3073f2a0e2c95ef`: server import graph 583 files/1,252 edges, 0 unresolved imports and 6/6 server/scanner tests; architecture graph 2,233 source files, 641 canonical-organism files, 4,668 edges (3,962 runtime/dual-kind and 706 type-only), 0 missing imports, runtime cycles, legacy leakage or boundary violations; 100/100 dependency budget checks and 6/6 architecture tests passed.
+- [BUDGET] Added five-dimensional limits to each new advanced builder and reduced the advanced facade cap to 5 total / 4 runtime outgoing edges.
+- [ARTIFACT] Graph schema-v3 artifact `nk1-module-dependency-graph`, ID `12574034831`, SHA-256 `5f2023912b7c3bb57b9f28231cecdee9a44a0ff8b824f8a1c58d0e4509fc2e7c`, expires 2026-11-07.
+
 ## NK1 Architecture — domain budgets and single-owner regression gate (2026-10-24)
 
 - [PASS] Workflow [40130445101](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40130445101) passed on commit `8cf0b1fdd2d35b40708afd33901f5ebf89891330`: server graph 580 files/1,249 edges, 6/6 tests; architecture graph 2,230 source files, 638 canonical files, 4,665 edges (3,959 runtime/dual-kind; 706 type-only), 0 missing imports/cycles/legacy leakage/boundary violations, 85/85 dependency budget checks and 6/6 architecture tests.
