@@ -1,5 +1,14 @@
 # NeuroCore — repository working rules
 
+## Latest durable checkpoint — WorkPass334 (2026-10-24)
+
+- The core CI workflow now runs the universal input interpreter regression directly before app typecheck, so its own result is visible even if a separate app check fails later.
+- WorkPass333 addressed observed app typecheck errors and updated signed-artifact idempotency expectations; exact-head rerun is required to confirm both.
+- Interpreter now consumes fresh P41 perception, marks epistemic provenance, persists fusion state, and avoids treating confidence spread alone as semantic contradiction.
+- Release ZIP remains unchanged and PR stays draft until current-head gates are validated.
+
+---
+
 ## Latest durable checkpoint — WorkPass333 (2026-10-24)
 
 - Fixed the app TypeScript test errors reported by Actions: typed the storage fixture callbacks and used `Reflect.deleteProperty` for optional test setup/restore.

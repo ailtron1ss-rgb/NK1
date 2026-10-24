@@ -1,3 +1,11 @@
+## NK1 WorkPass334 — execute interpreter regression before unrelated gates (2026-10-24)
+
+- [CI] Added a dedicated step to the core validation workflow to run `tests/universal-input-interpreter.mjs` directly before app typecheck.
+- [REASON] The last exact-head workflow showed that unrelated app/typecheck failures could skip the aggregate runtime test suite; this step makes the interpreter's own signal visible independently.
+- [VALIDATION] Step is wired in workflow source; its execution and result must be confirmed on the new head. This does not bypass or weaken later gates.
+
+---
+
 ## NK1 WorkPass333 — unblock TypeScript and signed-outcome regression gates (2026-10-24)
 
 - [FIXED] Typed callback parameters and replaced direct deletion of the non-optional `globalThis.window` property in `safeLocalStorage.test.mjs`, addressing the exact app-typecheck failures reported by GitHub Actions.

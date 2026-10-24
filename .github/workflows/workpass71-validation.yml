@@ -104,6 +104,8 @@ jobs:
         run: npm --prefix app run test:embodiment-timeline
       - name: Run app script regression suite
         run: npm --prefix app run test:scripts
+      - name: Universal input interpreter regression (WorkPass328–333)
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/universal-input-interpreter.mjs
       - name: App typecheck
         run: npm --prefix app run typecheck
       - name: App development bundle build
