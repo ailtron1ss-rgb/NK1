@@ -1,3 +1,12 @@
+## NK1 WorkPass515 — preserve causal lineage during epistemic-memory restore (2026-10-24)
+
+- P65 restore now rejects persisted claims with malformed, duplicate, whitespace-padded, control-character, or over-limit parent references instead of silently stripping the references and retaining the claim as if it were a root observation.
+- Added regressions for whitespace-only and duplicate parent IDs while preserving the existing legacy snapshot migration behavior.
+- This applies Hexis-style evidence-linked belief history to NK1's existing P65 ledger; no second memory authority or new dependency was introduced.
+- **Validation boundary:** code and regression committed; exact-head runtime test/typecheck/CI have not been executed or verified.
+
+---
+
 ## NK1 WorkPass458 — deduplicate epistemic evidence by event identity (2026-10-24)
 
 - **Fixed:** P65 belief revision now deduplicates by the canonical evidence event ID itself, not by the pair of source-lineage label and event ID. An event replayed through another adapter/source label can no longer masquerade as independent corroboration.
