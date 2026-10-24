@@ -1,3 +1,14 @@
+## NK1 WorkPass526 — protect persistent character and correct causal personality credit (2026-10-24)
+
+- Hardened `P2702PersistentPersonalityDynamics.restore()`: canonical identity invariants and vector names now come from code-owned Kurisu profile; restored vectors are finite, bounded and schema-aligned; counters, action preferences and relationship keys are sanitized.
+- Corrected action-to-trait credit assignment. Positive/negative outcomes update semantically relevant adaptive traits (for example, explore updates playfulness/sarcasm, verify updates composure/directness) instead of whichever trait happened to occupy the same array index.
+- Restricted value adaptation to the values exercised by the action instead of moving all values together after every outcome.
+- Enabled gradual self-belief-anchor updates only from verified identity observations. Malformed inputs are neutralized; invalid actions do not mutate personality state; action preferences retain a signed utility offset.
+- Extended the P2702 regression for hostile snapshots, invariants, dimension lengths, semantic trait/value attribution, signed preferences, verified self-belief updates and snapshot round-trips. Corrected its expected `NeuralExperienceBranch` schema version and registered `npm run test:character-personality`.
+- **Validation boundary:** changes and regression coverage are committed to the work branch. The local runtime/typecheck could not be executed in this pass, so test success and end-to-end behavioral improvement are not claimed; CI status remains to be checked.
+
+---
+
 ## NK1 WorkPass525 — bind self-agency learning to trusted external receipts (2026-10-24)
 
 - Added `learnVerifiedOutcome` as an explicit evidence-gated path on `PredictiveSelfAgencySubstrate`. It requires the exact verifier-minted frozen receipt and binds tool ID, execution ID, decision ID and the complete canonical input; serialized/copied receipts cannot carry the in-process WeakMap capability.
