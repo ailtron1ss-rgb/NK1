@@ -26,6 +26,26 @@ assert.ok((e.outcomeCalibration('rest')?.attempts??0)===4);
 assert.ok(e.actionBias('rest')>e.actionBias('explore'),'high interoceptive pressure plus good rest outcomes should favor regulation');
 const es=e.snapshot(); const er=new EmotionAppraisalEngine(); er.restore(es); assert.deepEqual(er.snapshot(),es);
 
+// Outcome learning is conditional on the appraisal that preceded the action.
+const contextual = new EmotionAppraisalEngine();
+const curiousEpisode = contextual.appraise({tick:1,at:2001,novelty01:.9,uncertainty01:.4,goalPressure01:.2,predictionError01:.1,homeostaticPressure01:.1,goalCongruence01:.8,controllability01:.8});
+assert.equal(curiousEpisode.label,'curiosity');
+for(let i=0;i<4;i++) contextual.recordOutcome({emotionId:curiousEpisode.id,action:'explore',success01:.95,surprise01:.05,regulationCost01:.1});
+const anxiousEpisode = contextual.appraise({tick:2,at:2002,novelty01:.1,uncertainty01:.9,goalPressure01:.95,predictionError01:.9,homeostaticPressure01:.85,goalCongruence01:.1,controllability01:.1});
+assert.equal(anxiousEpisode.label,'anxiety');
+const anxietyBiasBefore = contextual.actionBias('explore');
+for(let i=0;i<3;i++) contextual.recordOutcome({emotionId:anxiousEpisode.id,action:'explore',success01:.05,surprise01:.95,regulationCost01:.9});
+const curiosityCalibration = contextual.outcomeCalibration('explore',curiousEpisode.id);
+const anxietyCalibration = contextual.outcomeCalibration('explore',anxiousEpisode.id);
+assert.ok(curiosityCalibration && anxietyCalibration);
+assert.ok(curiosityCalibration.meanBenefit01>anxietyCalibration.meanBenefit01,'same action must retain distinct outcomes for curiosity vs anxiety');
+assert.ok(contextual.actionBias('explore')<anxietyBiasBefore,'recent anxiety-context failures should reduce the explore bias even when global explore outcomes were good');
+assert.equal(contextual.outcomeCalibration('explore','forged-emotion-id'),null,'unknown emotion IDs must not create or read contextual calibration');
+const contextualRestored = new EmotionAppraisalEngine();
+contextualRestored.restore(contextual.snapshot());
+assert.deepEqual(contextualRestored.outcomeCalibration('explore',anxiousEpisode.id),anxietyCalibration,'emotion-conditioned calibration must survive snapshot/restore');
+assert.equal(contextualRestored.actionBias('explore'),contextual.actionBias('explore'));
+
 const h = new P66InteroceptiveHomeostasis();
 const high = h.observe({tick:1,at:1,energy01:.2,thermal01:.9,capacity01:.25,load01:.9,awake:true,uncertainty01:.8,predictionError01:.8,novelty01:.2});
 assert.equal(high.mode,'recover'); assert.ok(high.pressure01>.5);
