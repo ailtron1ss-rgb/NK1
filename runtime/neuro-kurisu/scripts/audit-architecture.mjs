@@ -26,7 +26,7 @@ function resolve(base,spec){
 }
 for(const f of files){
   const t=await readFile(f,'utf8');
-  const runtimeText=stripComments(t).replace(/import\s+type\s+[^;\n]+from\s+['\"][^'\"]+['\"]\s*;?/g,'');
+  const runtimeText=stripComments(t);
   const runtimeSpecs=new Set(collectRelativeImportSpecifiers(runtimeText));
   const typeSpecs=new Set(collectRelativeTypeImportSpecifiers(runtimeText));
   const allSpecs=new Set([...runtimeSpecs,...typeSpecs]);
