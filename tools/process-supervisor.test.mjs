@@ -44,7 +44,7 @@ test('runCommand enforces a deadline and escalates an unresponsive process', asy
   const result = await runCommand(process.execPath, [
     '-e',
     'process.on("SIGTERM", () => {}); setInterval(() => {}, 1000);',
-  ], { timeoutMs: 500, terminationGraceMs: 75, forceGraceMs: 150 });
+  ], { timeoutMs: 1_000, terminationGraceMs: 75, forceGraceMs: 150 });
 
   assert.equal(result.timedOut, true);
   assert.ok(result.signal !== null || result.code !== null,
@@ -85,11 +85,18 @@ test('waitForHttp returns a bounded, actionable readiness failure', async () => 
 test('terminateChildren escalates a SIGTERM-resistant process group', async () => {
   const child = spawnManaged(process.execPath, [
     '-e',
-    'process.on("SIGTERM", () => {}); setInterval(() => {}, 1000);',
-  ], { stdio: 'ignore' });
+    'process.on("SIGTERM", () => {}); process.stdout.write("ready"); setInterval(() => {}, 1000);',
+  ], { stdio: ['ignore', 'pipe', 'ignore'] });
   child.on('error', () => {});
+  child.stdout.setEncoding('utf8');
+  await new Promise((resolveReady, rejectReady) => {
+    child.stdout.on('data', (chunk) => {
+      if (chunk.includes('ready')) resolveReady();
+    });
+    child.once('error', rejectReady);
+  });
 
-  const [result] = await terminateChildren([child], { graceMs: 25, forceGraceMs: 150 });
+  const [result] = await terminateChildren([child], { graceMs: 150, forceGraceMs: 150 });
   assert.equal(result.stopped, true);
   if (process.platform !== 'win32') {
     assert.equal(result.forced, true);
