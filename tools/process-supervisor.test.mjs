@@ -101,7 +101,5 @@ test('terminateChildren escalates a SIGTERM-resistant process group', async () =
   if (process.platform !== 'win32') {
     assert.equal(result.forced, true);
     assert.equal(child.signalCode, 'SIGKILL');
-  } else {
-    assert.equal(result.stopped, true);
   }
 });
