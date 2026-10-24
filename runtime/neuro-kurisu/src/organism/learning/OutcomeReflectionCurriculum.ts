@@ -21,7 +21,7 @@ export function classifyLearningFailureReason(notes:unknown):ReflectionFailureCl
   if(/permission denied|unauthori[sz]ed|forbidden|no permission|нет доступа|не авториз|не разрешено/.test(reason))return 'permission-denied';
   if(/out of memory|resource.?exhaust|budget exceeded|resource limit|cardinality limit|исчерпан.*ресурс|превышен.*лимит/.test(reason))return 'resource-exhaustion';
   if(/low confidence|insufficient evidence|no evidence|confidence too low|низк.*уверенн|недостаточн.*данн|нет доказательств/.test(reason))return 'low-confidence';
-  if(/tool error|provider error|gateway error|tool failed|adapter error|ошибк.*инструмент|ошибк.*провайдер|ошибк.*шлюз/.test(reason))return 'tool-error';
+  if(/tool error|provider error|gateway error|tool failed|failed tool(?: call| invocation)?|tool call failed|tool invocation failed|adapter error|ошибк.*инструмент|инструмент.*ошибк|сбой.*инструмент|не удалось.*инструмент|ошибк.*провайдер|ошибк.*шлюз/.test(reason))return 'tool-error';
   return undefined;
 }
 export type FailureKind='prediction-gap'|'low-outcome'|'low-reward-efficiency'|'unexpected-surprise'|'repeated-context-failure'|'stale-skill'|'insufficient-evidence';
