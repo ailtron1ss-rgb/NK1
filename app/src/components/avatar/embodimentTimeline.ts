@@ -84,6 +84,14 @@ export interface AffectiveEmbodimentInput {
     dominantLabel: AffectiveEmotionLabel;
     persistence01: number;
   };
+  /** Recent functional self-access report; stale reports are ignored using freshness01. */
+  feeling?: {
+    intensity01: number;
+    interoceptiveMismatch01: number;
+    selfAccessConfidence01: number;
+    bodilyFocus01: number;
+    freshness01: number;
+  };
 }
 
 export interface AffectiveEmbodimentProfile {
@@ -126,6 +134,13 @@ export function deriveAffectiveEmbodiment(input: AffectiveEmbodimentInput): Affe
   const moodStress = input.mood ? unit(input.mood.stress01, measuredStress) : measuredStress;
   const stressBlend = moodPersistence * 0.25;
   const stress01 = clamp(measuredStress * (1 - stressBlend) + moodStress * stressBlend, 0, 1);
+  const feelingFreshness = input.feeling ? unit(input.feeling.freshness01, 0) : 0;
+  const feelingIntensity = input.feeling ? unit(input.feeling.intensity01, 0) : 0;
+  const feelingConfidence = input.feeling ? unit(input.feeling.selfAccessConfidence01, 0) : 0;
+  const feelingFocus = input.feeling ? unit(input.feeling.bodilyFocus01, 0) : 0;
+  const feelingMismatch = input.feeling ? unit(input.feeling.interoceptiveMismatch01, 1) : 1;
+  const feelingWeight = clamp(feelingFreshness * feelingIntensity * feelingConfidence
+    * (0.7 + feelingFocus * 0.3) * (1 - feelingMismatch * 0.35), 0, 1);
   const labelPitch: Record<AffectiveEmotionLabel, number> = {
     curiosity: 0.012, calm: 0, joy: 0.025, anxiety: -0.012,
     frustration: -0.02, sadness: -0.035, anger: -0.03, protective: -0.005,
@@ -144,8 +159,8 @@ export function deriveAffectiveEmbodiment(input: AffectiveEmbodimentInput): Affe
     speechPitch: clamp(0.98 + (valence - 0.5) * 0.14 + (dominance - 0.5) * 0.035
       - stress01 * 0.055 + labelPitchOffset, 0.82, 1.15),
     expressionIntensity: clamp(arousal * 0.55 + stress01 * 0.20
-      + Math.abs(valence - 0.5) * 0.15 + (1 - energy) * 0.10, 0, 1),
-    voiceEmphasis: clamp(arousal * 0.50 + stress01 * 0.24 + Math.abs(valence - 0.5) * 0.26, 0, 1),
+      + Math.abs(valence - 0.5) * 0.15 + (1 - energy) * 0.10 + feelingWeight * 0.08, 0, 1),
+    voiceEmphasis: clamp(arousal * 0.50 + stress01 * 0.24 + Math.abs(valence - 0.5) * 0.26 + feelingWeight * 0.05, 0, 1),
     headTilt: clamp(currentHeadBase + (valence - 0.5) * 0.06
       - (uncertainty - 0.5) * 0.02 + sleep * 0.015, -0.15, 0.15),
     gazeXOffset: clamp((valence - 0.5) * 0.10 + (dominance - 0.5) * 0.035, -0.15, 0.15),
