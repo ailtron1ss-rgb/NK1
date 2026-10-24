@@ -9,6 +9,7 @@
     "npm": ">=10.8.0"
   },
   "scripts": {
+    "test:workpass293:p23-revision": "node --experimental-transform-types tests/workpass172-compound-revision-coordinator.mjs && node --experimental-transform-types tests/p23-local-model-skill-revision-generator.mjs && node --experimental-strip-types tests/p23-revision-plan-holdout-isolation.mjs",
     "test:workpass292:evidence-lanes": "node --experimental-strip-types tests/workpass292-evidence-lanes.mjs",
     "test:adaptive-experience-consolidator-boundary": "node --experimental-strip-types tests/adaptive-experience-consolidator-boundary.mjs",
     "test:cognitive-cycle-boundary": "node --experimental-strip-types tests/cognitive-cycle-boundary.mjs",
