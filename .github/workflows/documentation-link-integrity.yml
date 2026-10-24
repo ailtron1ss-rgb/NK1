@@ -77,6 +77,8 @@ jobs:
           node tools/audit-markdown-links.mjs --strict --files \
             README.md AGENTS.md NEUROCORE_START_HERE.md \
             docs/PROJECT_MAP_AND_ORDERING.md \
+            docs/DEFINITION-OF-DONE.md \
+            docs/architecture/branch-goals.md \
             docs/BRANCH_INVENTORY_2026-10-24.md \
             docs/architecture/module-dependency-contracts-ru.md \
             docs/DOCUMENTATION_INVENTORY_AND_ARCHIVE_POLICY_2026-10-24.md \
