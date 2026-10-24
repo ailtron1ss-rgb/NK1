@@ -219,3 +219,38 @@ Before importing any stream:
 
 No branch in this table is marked integrated based only on its ancestry comparison.
 
+## 7. Open PR mapping and integration stacks (observed 2026-10-24 ~20:27 UTC)
+
+The repository returned **34 open PRs** when queried. The table below matches the 20 branches in §5 to their live PR state at that time. A missing open PR is explicitly distinguished from a closed/superseded PR.
+
+| Branch | PR | Base branch | State | Ordering implication |
+|---|---:|---|---|---|
+| `architecture/unified-cognitive-cycle-closure-2026-10-24` | [#99](https://github.com/ailtron1ss-rgb/NK1/pull/99) | `integration` | open / draft | Separate legacy base; compare selected code and tests against unified-kernel rather than merging history wholesale |
+| `compat/avatar-storage-strict-types-20261024` | [#103](https://github.com/ailtron1ss-rgb/NK1/pull/103) | `workpass70-source` | open / draft | Old source-stack base; port compatible app test/type fixes selectively |
+| `feature/emotional-continuity-20261024` | [#114](https://github.com/ailtron1ss-rgb/NK1/pull/114) | `feature/emotions` | open / draft | Feature-stack PR; app/affect and runtime contracts need combined review |
+| `local-small-model-integration-2026-10-24` | [#101](https://github.com/ailtron1ss-rgb/NK1/pull/101) | `workpass70-source` | open / draft | Old source-stack base; inspect runtime API, model adapters and package changes before porting |
+| `mem0-integration-workpass1` | [#100](https://github.com/ailtron1ss-rgb/NK1/pull/100) | `workpass70-source` | open / draft | Old source-stack base; retain opt-in memory boundary and independently review persistence effects |
+| `operation-omega-hexis-deep-pass-2026-10-24` | [#95](https://github.com/ailtron1ss-rgb/NK1/pull/95) | `operation-omega-hexis-2026-10-24` | open / non-draft | Separate Hexis stack; review provenance and selected import boundary changes |
+| `optimization/process-supervision-20261024` | [#110](https://github.com/ailtron1ss-rgb/NK1/pull/110) | `workpass334-inner-imperative-homeostasis-2026-10-24` | open / draft | Child of WorkPass334; overlaps workflows, package manifests, process lifecycle and core |
+| `typescript/runtime-typecheck-truth-2026-10-24` | [#102](https://github.com/ailtron1ss-rgb/NK1/pull/102) | `workpass70-source` | open / draft | Old source-stack base; test/typecheck tooling needs exact-head validation |
+| `workpass319-internal-dialogue-2026-10-24` | [#111](https://github.com/ailtron1ss-rgb/NK1/pull/111) | `workpass70-source` | open / draft | Internal-dialogue engine is isolated by its feature tests but not ancestry-aligned to unified-kernel |
+| `workpass328-closed-loop-failure-closure-2026-10-24` | [#97](https://github.com/ailtron1ss-rgb/NK1/pull/97) | `workpass70-source` | open / draft | Broad core/learning changes; selective port and regression rerun required |
+| `workpass328-letta-memory-bridge` | [#107](https://github.com/ailtron1ss-rgb/NK1/pull/107) | `workpass70-source` | open / draft | Memory bridge requires owner/schema/provenance review before porting |
+| `workpass328-universal-interpreter` | [#112](https://github.com/ailtron1ss-rgb/NK1/pull/112) | `rebuild` | open / draft | Separate rebuild base; check multimodal API and runtime compatibility independently |
+| `workpass331-project-ordering-unified-20261024` | [#106](https://github.com/ailtron1ss-rgb/NK1/pull/106) | `workpass331-unified-cognitive-kernel-2026-10-24` | open / draft | Navigation/inventory/dependency-gate change; keep draft until exact-head CI stays green |
+| `workpass332-live-runtime-kernel-2026-10-24` | [#96](https://github.com/ailtron1ss-rgb/NK1/pull/96) | `workpass331-unified-cognitive-kernel-2026-10-24` | open / draft | First live-runtime child of unified-kernel in the observed PR stack |
+| `workpass334-inner-imperative-homeostasis-2026-10-24` | [#105](https://github.com/ailtron1ss-rgb/NK1/pull/105) | `workpass332-live-runtime-kernel-2026-10-24` | open / draft | Stacked on WorkPass332; establishes appraisal/intent/controller changes used by its child PRs |
+| `workpass335-hermes-host-owned-evaluator-2026-10-24` | [#108](https://github.com/ailtron1ss-rgb/NK1/pull/108) | `workpass334-inner-imperative-homeostasis-2026-10-24` | open / draft | WorkPass334 child; validate host-owned evaluator authority before merging downstream |
+| `workpass335-paired-seed-growth-2026-10-24` | [#113](https://github.com/ailtron1ss-rgb/NK1/pull/113) | `workpass334-inner-imperative-homeostasis-2026-10-24` | open / draft | Parallel WorkPass334 child; intersects learning evidence and shared workflow/package files |
+| `workpass526-autobiographical-recall-intent` | [#94](https://github.com/ailtron1ss-rgb/NK1/pull/94) | `feature/memory` | closed / draft / superseded | No open PR found; PR #94 was closed as superseded by WorkPass528. Do not revive it without comparing current recall behavior |
+| `workpass526-personality-core-hardening-2026-10-24` | [#98](https://github.com/ailtron1ss-rgb/NK1/pull/98) | `feature/personality` | open / non-draft | Feature stack; check exact-head CI and persist/restore semantics before merge |
+| `workpass528-bilingual-conversation-recall` | [#104](https://github.com/ailtron1ss-rgb/NK1/pull/104) | `feature/memory` | open / draft | Feature-memory stack; compare memory schema and replay behavior with WorkPass526 changes |
+
+### Safe order inferred from the PR graph
+
+1. **Unified cognitive runtime stack:** `workpass331-unified-cognitive-kernel` → PR #96 (WorkPass332) → PR #105 (WorkPass334) → then review PRs #108, #110 and #113 as separate children of WorkPass334. The three children touch shared files; rebase/recheck siblings after the first merge rather than merging all three concurrently.
+2. **Legacy-base PRs:** #97, #100, #101, #102, #103, #107 and #111 target `workpass70-source`. Do not merge them directly into unified-kernel without a deliberate retarget/port and exact-head validation.
+3. **Other stacks:** #99 targets `integration`, #112 targets `rebuild`, #95 targets the Hexis branch, #98 targets `feature/personality`, #104 and superseded #94 target `feature/memory`, and #114 targets `feature/emotions`. Those bases are not interchangeable; inspect their branch ancestry and test outcomes separately.
+
+PR base relationships show intent/stacking, not that a parent PR has merged. Check live state and CI before every merge/rebase; do not treat a PR being non-draft as a test pass.
+
