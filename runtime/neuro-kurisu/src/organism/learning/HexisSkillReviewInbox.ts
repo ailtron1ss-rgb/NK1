@@ -269,7 +269,10 @@ export class InMemorySkillReviewInboxPersistence implements SkillReviewInboxPers
  * holding the lock, remove the stale .lock file only after verifying no writer runs.
  */
 export class AtomicFileSkillReviewInboxPersistence implements SkillReviewInboxPersistence {
-  constructor(private readonly filePath: string) {
+  private readonly filePath: string;
+
+  constructor(filePath: string) {
+    this.filePath = filePath;
     if (!isText(filePath)) throw new Error('skill review inbox path is required');
   }
 
@@ -330,10 +333,15 @@ export interface SkillReviewDecisionInput {
 }
 
 export class HexisSkillReviewInbox {
+  private readonly persistence: SkillReviewInboxPersistence;
+  private readonly maxCasRetries: number;
+
   constructor(
-    private readonly persistence: SkillReviewInboxPersistence = new InMemorySkillReviewInboxPersistence(),
-    private readonly maxCasRetries = 32,
+    persistence: SkillReviewInboxPersistence = new InMemorySkillReviewInboxPersistence(),
+    maxCasRetries = 32,
   ) {
+    this.persistence = persistence;
+    this.maxCasRetries = maxCasRetries;
     if (!Number.isSafeInteger(maxCasRetries) || maxCasRetries < 1 || maxCasRetries > 256) {
       throw new Error('skill review CAS retry limit is out of bounds');
     }
