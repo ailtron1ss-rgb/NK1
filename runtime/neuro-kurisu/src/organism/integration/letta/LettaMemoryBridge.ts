@@ -185,20 +185,25 @@ export class LettaMemoryBridge {
 
   async recordExperience(input: LettaExperienceInput): Promise<LettaBridgeOperationResult> {
     if (!this.enabled) return { ok: false, reason: 'letta-disabled' };
-    const id = asSafeString(input?.id, 256);
-    const source = asSafeString(input?.source, 256);
-    const kind = asSafeString(input?.kind, 128);
+    const safeId = redactSecrets(asSafeString(input?.id, 256));
+    const safeSource = redactSecrets(asSafeString(input?.source, 256));
+    const safeKind = redactSecrets(asSafeString(input?.kind, 128));
     const originalSummary = asSafeString(input?.summary, MAX_SUMMARY_CHARS * 2);
-    if (!id || !source || !kind || !originalSummary) return { ok: false, reason: 'invalid-memory-record' };
+    if (!safeId.text || !safeSource.text || !safeKind.text || !originalSummary) return { ok: false, reason: 'invalid-memory-record' };
 
     const safe = redactSecrets(originalSummary);
     const summary = safe.text.slice(0, MAX_SUMMARY_CHARS);
-    if (safe.redacted) this.snapshotState.metrics.redactions += 1;
+    let inputRedacted = safeId.redacted || safeSource.redacted || safeKind.redacted || safe.redacted;
+    if (inputRedacted) this.snapshotState.metrics.redactions += 1;
     const occurredAt = typeof input.occurredAt === 'number' && Number.isFinite(input.occurredAt)
       ? Math.floor(input.occurredAt) : Date.now();
     const tags = Array.isArray(input.tags)
       ? input.tags.filter((tag): tag is string => typeof tag === 'string')
-          .map((tag) => redactSecrets(tag.trim().slice(0, 80)).text).filter(Boolean).slice(0, 24)
+          .map((tag) => {
+            const result = redactSecrets(tag.trim().slice(0, 80));
+            if (result.redacted) this.snapshotState.metrics.redactions += 1;
+            return result.text;
+          }).filter(Boolean).slice(0, 24)
       : [];
     const payload = {
       id, occurredAt, source, kind, summary, confidence01: clamp01(input.confidence01), tags,
@@ -220,7 +225,9 @@ export class LettaMemoryBridge {
       this.snapshotState.metrics.successfulTurns += 1;
       this.snapshotState.lastOperationAt = Date.now();
       this.snapshotState.lastError = null;
-      return { ok: true, agentId: this.agentId ?? undefined, response: response.slice(0, 4000), redacted: safe.redacted, evidence: 'agent-response-unverified' };
+      const safeResponse = redactSecrets(response);
+      if (safeResponse.redacted) this.snapshotState.metrics.redactions += 1;
+      return { ok: true, agentId: this.agentId ?? undefined, response: safeResponse.text.slice(0, 4000), redacted: inputRedacted || safeResponse.redacted, evidence: 'agent-response-unverified' };
     } catch (error) {
       return this.failed(this.errorCode(error));
     }
@@ -249,7 +256,9 @@ export class LettaMemoryBridge {
       this.snapshotState.metrics.successfulTurns += 1;
       this.snapshotState.lastOperationAt = Date.now();
       this.snapshotState.lastError = null;
-      return { ok: true, agentId: this.agentId ?? undefined, response: response.slice(0, 12000), redacted: safeQuery.redacted, trust: 'untrusted-candidate', evidence: 'agent-response-unverified' };
+      const safeResponse = redactSecrets(response);
+      if (safeResponse.redacted) this.snapshotState.metrics.redactions += 1;
+      return { ok: true, agentId: this.agentId ?? undefined, response: safeResponse.text.slice(0, 12000), redacted: safeQuery.redacted || safeResponse.redacted, trust: 'untrusted-candidate', evidence: 'agent-response-unverified' };
     } catch (error) {
       return this.failed(this.errorCode(error));
     }
