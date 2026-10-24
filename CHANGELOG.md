@@ -1,3 +1,9 @@
+## NK1 Feedback — bound event conflict quarantine memory (2026-10-24)
+
+- The `RealityEvidenceLedger` now bounds conflict quarantine tombstones to the same configured receipt window (512–2,048 IDs), including during restore-time duplicate/conflict reconciliation.
+- Added a stress regression that attempts 620 different conflicting event-ID reuses and checks the in-memory/persisted quarantine window stays capped at 512 entries for a 128-capacity ledger.
+- **Validation boundary:** the helper correction and stress regression are committed; the latest hosted regression run is pending.
+
 ## NK1 CI — unify push and PR regression concurrency by source branch (2026-10-24)
 
 - The reality-to-learning workflow concurrency key now uses the pull request's source branch when the event is a PR, otherwise the pushed branch name. A push and a PR update for the same feature branch therefore supersede each other's stale runs rather than occupying separate concurrency groups.
