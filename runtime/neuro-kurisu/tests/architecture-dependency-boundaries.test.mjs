@@ -60,7 +60,7 @@ test("dependency boundary policy reports each forbidden core edge", () => {
   assert.ok(signatures.has("canonical-core-to-outward-layer:app-source"));
   assert.ok(signatures.has("canonical-core-to-outward-layer:app-server"));
   assert.ok(signatures.has("canonical-core-to-outward-layer:runtime-server"));
-  assert.ok(signatures.has("canonical-core-to-research:"));
+  assert.ok(signatures.has("canonical-core-to-external-research:"));
   assert.ok(signatures.has("canonical-core-to-legacy:"));
 });
 
