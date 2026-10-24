@@ -11863,7 +11863,7 @@ export class OrganismCore {
             try {
                 if ((input as any)?.kind === 'developmental-outcome') {
                     const before = this.developmentalNeural.p36SelfDevelopment.developmentalCertification();
-                    const maturity = this.developmentalNeural.p36SelfDevelopment.observeDevelopmentalOutcome({
+                    this.developmentalNeural.p36SelfDevelopment.observeDevelopmentalOutcome({
                         ...(input as any),
                         toolId: id,
                         executionId: result.executionId,
