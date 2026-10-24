@@ -42,6 +42,7 @@ The core accepts only the allowlisted affect label, valence in -1..1, arousal/co
 - `runtime/neuro-kurisu/src/server/LocalSmallModelHub.mjs` owns capability metadata, task dispatch, schema checks and safe counters.
 - `runtime/neuro-kurisu/src/server/server.mjs` sends language selection/completion accounting through the hub. If a specialist model is configured, its validated low-confidence signal can be attached to the language-response system context; the original user text remains intact.
 - `MemoryOS2` exports `sharedLocalEmbeddingProvider`. The canonical `MemorySubsystemRuntime` and the server's embeddings endpoint share this exact provider instance, so they also share its bounded vector cache and diagnostics instead of opening independent provider caches.
+- The shared embedding provider also uses the process-wide per-origin inference scheduler. Memory retrieval, explicit embedding API calls, language inference and specialist classifiers share one resource lane when they point at the same origin; separate local origins can still execute independently.
 - Existing memory retrieval remains canonical: real local embeddings enrich the derived semantic index, while provider failure falls back to the existing lexical/fuzzy/graph path. Vectors are not a second source of canonical memory facts.
 - `GET /api/local-models` reports configured capabilities and privacy-safe operational state.
 - `POST /api/local-models/embeddings` accepts 1–32 non-empty strings, max 2,400 characters each.
