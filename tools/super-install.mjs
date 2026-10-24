@@ -69,6 +69,9 @@ for (const workspace of workspaces) {
   console.log(`SUPER_INSTALL=START workspace=${workspace.name} lockfile=${path.relative(root, path.join(cwd, 'package-lock.json'))}`);
   const result = await runNpmInstall({ cwd, env: installEnv, timeoutMs });
   if (result.error || result.code !== 0 || result.timedOut) {
+    if (result.timedOut) {
+      console.error(`SUPER_INSTALL=TIMEOUT workspace=${workspace.name} deadlineMs=${timeoutMs}; child termination was enforced by the process supervisor`);
+    }
     const status = typeof result.code === 'number' ? result.code : 1;
     const reason = result.timedOut ? `timeout-after-${result.durationMs}ms`
       : result.error ? `spawn-error`
