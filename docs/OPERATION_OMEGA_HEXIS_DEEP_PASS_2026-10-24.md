@@ -1,32 +1,45 @@
 # NK1 / Hexis deep integration pass — 2026-10-24
 
-## Scope and source of truth
+## Source of truth
 
-This pass continues the Hexis adaptation on `operation-omega-hexis-deep-pass-2026-10-24`, based on the existing `operation-omega-hexis-2026-10-24` work. Upstream reference: [QuixiAI/Hexis](https://github.com/QuixiAI/Hexis), tree commit `9e718951dc2a50dfcdc6f22513a1916315840132`. The interoperability contract is [HMX 1.7](https://github.com/QuixiAI/Hexis/blob/main/schemas/hmx-1.7.schema.json), blob `33289a9e14234776676465b93092f254ad64ba8f`.
+NK1 remains the runtime and canonical memory owner. The upstream reference is [QuixiAI/Hexis](https://github.com/QuixiAI/Hexis); the interoperability envelope is [HMX 1.7](https://github.com/QuixiAI/Hexis/blob/main/schemas/hmx-1.7.schema.json). Hexis Python/PostgreSQL files remain a reference archive under `legacy/input-archives/`; its migrations are not run against NK1.
 
-NK1 remains the canonical runtime and memory owner. The Python/PostgreSQL Hexis snapshot stays under `legacy/input-archives/`; no Hexis SQL migration is executed against NK1.
+## WorkPass330 — format bridge and import boundary
 
-## Problems found against the live NK1 server
+- Added `Nk1HmxExportAdapter.mjs` and wired it to the server's HMX export endpoint so NK1-native identity, memories, skills, goals, relationships and episodes are converted into an HMX 1.7 envelope rather than passing through an incompatible native object.
+- The adapter produces the required export ID, intent, timestamp, lineage, capabilities, privacy, scope and statistics fields. NK1 native skills become procedural-memory records. Unsupported or malformed native extensions are preserved in metadata/config rather than silently discarded.
+- The export explicitly says `privacy.redaction_policy: none` and warns that no automatic redaction was performed. It also records that source vectors were not exported and must be re-embedded before vector retrieval.
+- Hardened HMX staging: validates the envelope and source lineage, limits payload/section/aggregate sizes, rejects unknown sections, and checks the required memory reference/type/content fields before approval.
+- Hardened the HTTP decision endpoint: `accept` records approval only, `apply` is a separate operation, invalid requests return 400, missing stages return 404, and conflicted stages cannot be accepted.
 
-The existing `GET /api/organism/integration/hexis/hmx/export` forwarded an NK1-native object as if it were HMX 1.7. In a real Node 24 server smoke, the export had a UUID `export_id` instead of the HMX `exp_<16 lowercase hex>` identifier, omitted required `export_intent`, `exported_at`, and `source` metadata, emitted the NK1-only `skills` section, and could expose `in_flight_work` / `audit_records` as null. Tight validation correctly refused to accept that payload.
+## WorkPass331 — actual canonical-memory projection
 
-The import boundary also needed hardening: incomplete source metadata, unknown sections, malformed section shapes, and truncated oversized arrays must not be treated as acceptable imports.
+The missing apply path is now implemented, rather than treating an accepted stage as completed learning.
 
-## Implemented
+- Added `HexisCanonicalMemoryProjector.mjs`, bound in `OrganismSystemFabric` to the existing `MemorySubsystemRuntime.fabric`.
+- The projector writes through the canonical `MemoryFabric.encode()` boundary into `MemoryOS2`; it does not edit persisted JSON directly and it does not create a competing store.
+- Only records in HMX `sections.memories` are written in this pass. Each record carries export/ref/lineage context and external provenance, is never silently promoted to a fact, and uses stable source/reference/content identity plus a persisted command ID for retry safety.
+- Re-importing the same lineage, reference and content is deduplicated. If a batch write fails, newly created records are removed through the canonical `MemoryFabric.forgetById()` command; the HMX stage remains accepted and can be retried with a new application-attempt ID.
+- The persisted application receipt records imported/deduplicated counts, canonical memory IDs, source lineage, attempt/digest, and all deferred sections. An applied stage can be replayed without repeating the write.
 
-- Added `Nk1HmxExportAdapter.mjs` and wired it into the real server HMX export route. It converts the native identity, goals, memories, skills, relationships and episodes into HMX-shaped records; maps NK1 skills to procedural memories; creates stable canonical export/reference IDs; supplies the required metadata envelope; and preserves native-only or malformed records under `sections.config.nk1NativeSections` / record metadata rather than silently dropping them.
-- The adapter emits upstream-shaped `capabilities`, `privacy`, `export_scope`, and `statistics` fields. It explicitly warns that native NK1 export has no embedding-vector payload; it does not claim that source vectors were transferred. Consumers must re-embed before vector retrieval.
-- Tightened `HexisAdaptationFabric.stageHmx()`: require the HMX 1.x version/envelope, canonical export ID, export intent/date-time/source lineage and supported section shapes.
-- Added bounded staging limits: 1,000,000 characters per envelope, 256 records per array section, and 1,024 aggregate stored array records. Over-limit, malformed, protected-by-intent or unsupported payloads retain explicit conflicts and cannot be accepted.
-- Added regressions for missing provenance, unknown sections, invalid intent, per-section and aggregate overflow, NK1-to-HMX export conversion, skill-to-procedural-memory mapping, reference conversion, native-extension preservation, and required HMX metadata.
-- Updated the Node 24 workflow to run the HMX adapter test plus the actual server smoke, and to trigger when the adapter or server path changes.
-- Hardened the server-side decision API: unknown decisions / missing IDs receive a 400, nonexistent stages receive a 404, and attempting to accept a conflicted stage receives 409 rather than a misleading `ok: true`. Responses explicitly say `appliedToCanonicalMemory: false`, since acceptance here is an approval record—not a memory-write operation.
-- Set `privacy.redaction_policy: none` and emit an explicit warning because this bridge does not automatically redact exported content. The operator must review the portable document before external transfer.
+## Explicit limits — not claimed complete
 
-## Validation and remaining boundary
+The application receipt intentionally marks the import as partial when non-empty sections remain. `identity`, `goals`, `relationships`, `narrative`, `config`, `audit_records` and `in_flight_work` are not yet projected into their respective canonical subsystems. In particular, an HMX identity section cannot overwrite NK1's identity model through this memory path. A later pass must add separate, validated projections for goals and graph relationships, plus protected identity replacement with consent, fidelity checks and rollback.
 
-A GitHub Actions run at an intermediate commit after the server adapter was wired reported **success for all five Hexis steps**, including the server smoke that performs HMX export, staging and acceptance, memory provenance, source monitoring, and the signed skill-review inbox. The added independent round-trip/schema-shape test was then extended; exact-head CI must confirm those latest additions.
+Embeddings are not transferred; the current adapter warns that re-embedding is required. No measured learning uplift or production-readiness claim is made.
 
-The separate `WorkPass110 continual learning metrics` workflow has also failed on an unrelated pre-existing `tests/big-pass-90-causal-learning-stream.mjs:18` assertion (`record` is null). That failure is not reported as a Hexis regression.
+## Validation
 
-The adapter is still a format/consent boundary, not an automatic replacement for NK1 identity, memory, or policy state. The HMX decision endpoint does not yet apply accepted HMX records into the canonical cognitive memory substrate; that requires a separate transactional projection/apply path with rollback and fidelity accounting. No measured learning uplift is claimed, and this PR remains open until the exact head's validation is green.
+GitHub Actions run [40127219359](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40127219359) at code commit `7363c8c490af9b28f41901a32cb85fc3ae02ee4d` completed all five Hexis steps successfully:
+
+1. Signed skill review-inbox regression.
+2. Epistemic memory-provenance regression.
+3. Source-monitor lineage regression.
+4. HMX format/staging/canonical apply regression, including idempotent re-import and injected-failure rollback.
+5. Server smoke, including real HTTP export → stage → approve → apply and explicit deferred-section reporting.
+
+The parallel WorkPass110 metrics workflow still fails on the independent pre-existing `tests/big-pass-90-causal-learning-stream.mjs:18` assertion (`record` is null). It is not attributed to Hexis.
+
+## Pull request status
+
+Changes are on `operation-omega-hexis-deep-pass-2026-10-24` and tracked in [PR #95](https://github.com/ailtron1ss-rgb/NK1/pull/95). The PR is open and is not merged into its base branch.
