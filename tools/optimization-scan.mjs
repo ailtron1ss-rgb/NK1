@@ -106,4 +106,4 @@ const result = {
   exactDuplicateFiles: duplicates,
   warnings: records.filter((x) => x.kind === 'warning' || x.kind === 'skipped-large'),
 };
-process.stdout.write(JSON.stringify(result, null, 2) + '\\n');
+process.stdout.write(JSON.stringify(result, null, 2) + '\n');
