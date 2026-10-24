@@ -23,6 +23,28 @@ assert.equal(getterCalls, 0);
 assert.equal(fabric.snapshot().total, before.total, 'invalid ingress must not mutate the ledger');
 assert.equal(fabric.recent().length, 2);
 
+const nestedPayload = { nested: { label: 'before-mutation' } };
+fabric.append({ id: 'nested-payload', tick: 3, stage: 'observation', source: 'test', payload: nestedPayload });
+nestedPayload.nested.label = 'mutated-after-append';
+const detachedNode = fabric.snapshot().recent.find(node => node.id === 'nested-payload');
+assert.equal(detachedNode.payload.nested.label, 'before-mutation', 'nested payload must be detached from caller-owned state');
+
+let nestedGetterCalls = 0;
+const hostileNestedPayload = {};
+Object.defineProperty(hostileNestedPayload, 'secret', { enumerable: true, get() { nestedGetterCalls += 1; return 'leak'; } });
+const beforeDeepReject = fabric.snapshot().total;
+assert.throws(() => fabric.append({
+  id: 'nested-accessor', tick: 4, stage: 'observation', source: 'test',
+  payload: { nested: hostileNestedPayload },
+}), /invalid-cognitive-event-payload/);
+assert.equal(nestedGetterCalls, 0, 'deep payload snapshot must not execute nested getters');
+const cyclicPayload = {};
+cyclicPayload.self = cyclicPayload;
+assert.throws(() => fabric.append({
+  id: 'cyclic-payload', tick: 4, stage: 'observation', source: 'test', payload: { cyclic: cyclicPayload },
+}), /invalid-cognitive-event-payload/);
+assert.equal(fabric.snapshot().total, beforeDeepReject, 'rejected nested payloads must not mutate the causal ledger');
+
 const restored = new CognitiveEventFabric(128);
 let restoreGetterCalls = 0;
 const hostileRow = { tick: 2, stage: 'prediction', source: 'persisted', parentIds: [], external: false, confidence01: .8, payload: {} };
