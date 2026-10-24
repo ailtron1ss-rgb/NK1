@@ -1,3 +1,22 @@
+## WorkPass474 — Hexis-inspired reliability and autonomous continuity follow-up (2026-10-24)
+
+### Source read and transfer
+- Re-inspected [Hexis](https://github.com/QuixiAI/Hexis) source: `db/59_belief_revision.sql` (residual confidence revision, independent-evidence dedupe, protected beliefs and durable audit), `db/08_functions_goals.sql` (event-based goal progress and bounded active population), and `services/heartbeat_agentic.py` (bounded energy budget, real tool loop and explicit failure finalization).
+- NK1 already contains the previous native belief revision / evidence lineage adaptation in `MemoryOS2` and the existing P67/P68 goal owners. This pass extended those owners rather than cloning them.
+
+### New code committed on existing category branches
+- `feature/memory`, HEAD `8116e22ea9f3e358c3d8d6cb2287097b3a8b5465`, [PR #82](https://github.com/ailtron1ss-rgb/NK1/pull/82): memory doctor now builds a first-wins ID map once and resolves revision predecessor/successor links in O(1), eliminating repeated full-list scans during revision-integrity diagnostics. Commit `79b0498943d85820ca31799b354025b46cc21496`.
+- `feature/personality`, HEAD `1c54ce358ec7d80032be6e8b68275e472e5d6523`, [PR #83](https://github.com/ailtron1ss-rgb/NK1/pull/83): P68 rejects duplicate live goal IDs before lifecycle mutation. Regression added in `big-pass-376-goal-ecology.mjs`. Commit `d51249b5a31a205fb56ad758ff202b5818bab5c7`.
+- `feature/learning`, HEAD `a06a9f346d200109b2233d05898b3a6e4d843859`, [PR #79](https://github.com/ailtron1ss-rgb/NK1/pull/79): `AutonomousCognitiveLifeEngine.restore` now uses the shared bounded plain-data snapshot, fails closed on getters/cycles/unsupported versions, bounds restored collections, and normalizes counters, timestamps and unit-interval metrics. Regressions assert zero getter invocations and safe defaults for cyclic state. Commit `2aef640fc3f8eda95b62c46e4ecb2fe0245ac5f7`.
+
+### Status / no overclaim
+- No Hexis PostgreSQL migrations, Python runtime, credentials, or heartbeat scheduler were vendored. No dependency added; canonical memory and goal owners remain unchanged.
+- Regression source is committed but exact-head tests have not yet been confirmed passing. No quality uplift is inferred from source changes alone.
+- `main` remains `84119539afca904a91d5617b86ae334917a9e578`; `integration` remains `2a2b89bebc49243b6196b8c9e75b65f64ae21c64` in the prior verified audit. Changes remain in their existing feature branches.
+- Readiness remains **46/100** until exact-head test/typecheck evidence, cross-branch integration and release ZIP replacement/hash verification are available.
+
+---
+
 ## WorkPass463 — refresh two category heads after parallel branch advances (2026-10-23)
 
 - Re-read live refs and the current open PR list after additional parallel commits were pushed to the existing branches. `feature/memory` is now `f2c8b66b2a785279936f21ec0bea329891d6acda` (PR #82) and `feature/perception` is now `d5dd7584f416183e83779f5c19ff717ea994a25b` (PR #80). The previously reported core mechanisms were checked on the newer files: residual confidence revision/provenance ceiling/audit trail still exist in MemoryOS2 and accepted event IDs/observation anchor still exist in UnifiedCognitiveCycle.
