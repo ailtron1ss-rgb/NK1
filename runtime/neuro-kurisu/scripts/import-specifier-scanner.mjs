@@ -160,9 +160,11 @@ const explicitTypeImportPattern = /\b(?:import|export)\s+type\b(?:(?!;|\n\s*(?:i
 
 export function collectRelativeTypeImportSpecifiers(source) {
   const code = maskedImportCode(source);
-  const specifiers = new Set();
-  for (const match of code.matchAll(typeImportPattern)) specifiers.add(match[2]);
-  for (const match of code.matchAll(explicitTypeImportPattern)) specifiers.add(match[2]);
+  const matches = [
+    ...[...code.matchAll(typeImportPattern)].map(match => ({ index: match.index, specifier: match[2] })),
+    ...[...code.matchAll(explicitTypeImportPattern)].map(match => ({ index: match.index, specifier: match[2] })),
+  ].sort((a, b) => a.index - b.index);
+  const specifiers = new Set(matches.map(match => match.specifier));
   return [...specifiers];
 }
 
