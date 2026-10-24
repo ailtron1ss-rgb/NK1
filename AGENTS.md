@@ -34,6 +34,7 @@ Work code-first. Prefer observable, testable behavior over architectural labels.
 - `npm run audit:ordering`: unified gate for Markdown link regressions, strict canonical navigation links, runtime dependency-boundary tests and transitive server import validation; `npm run audit:quick` invokes it.
 - `docs/architecture/module-dependency-contracts-ru.md`: target dependency directions and boundaries. Its tests establish only the rules they actually exercise; check exact-head Actions before calling the audit green.
 - `docs/DOCUMENTATION_INVENTORY_AND_ARCHIVE_POLICY_2026-10-24.md`: rules for reviewing exact duplicate and zero-inbound documentation candidates; never delete/move from a scan alone.
+- `docs/history/reports/INDEX.md`: records the first byte-identical historical report move and its hash manifest.
 - `research/`: isolated research candidates; `legacy/`: preserved historical source/provenance.
 - `docs/history/` and `docs/reports/`: historical and detailed records; old pass reports are not current status unless explicitly linked from a current handover.
 
