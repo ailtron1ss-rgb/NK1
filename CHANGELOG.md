@@ -1,3 +1,11 @@
+## NK1 WorkPass503 — repair missing validation alias and Node 24 diagnostics runner
+
+- Added `test:p26:learning-input-integrity`, which was referenced by the P26 CI workflow but missing from the package scripts.
+- Switched `test:p23:hermes-reflective-diagnostics` to `--experimental-transform-types` because its imported candidate store uses TypeScript parameter properties unsupported by strip-only mode.
+- Confirmed the causal stream quarantine test already expects zero trusted outcomes after restore; the earlier stale assertion is fixed in the perception branch as well. CI reruns are pending.
+
+---
+
 ## NK1 WorkPass502 — finish brain-fusion input hardening and evidence counts (2026-10-24)
 
 - Removed the ambiguous control-character regular expression from `UnifiedCognitiveLoop.validateEvent`; explicit code-point checks reject C0/C1 controls while preserving the strict own-data/prototype boundary.
