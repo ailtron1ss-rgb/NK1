@@ -150,14 +150,15 @@ const replayAfterDowngrade = trustCycleRuntime.externalObserver.observe(trustCyc
 const downgradedConfidence = trustCycleRuntime.realityEvidenceLedger.findByEventId(trustCycleInput.evidenceEventId).confidence01;
 assert.ok(downgradedConfidence < firstConfidence,
   'replay after source trust falls must conservatively lower the original event confidence');
+const trustAfterDowngrade = trustCycleRuntime.externalObserver.registeredSourceReliability01('camera-front');
 const trustCycleRecovery = trustCycleRuntime.externalObserver.observe({
   ...trustCycleInput, actionRef: 'trust-cycle-action-c',
   evidenceEventId: `outcome:${'f'.repeat(40)}`, payload: { status: 'ready', version: 'c' },
 });
 trustCycleRuntime.externalObserver.assess(trustCycleRecovery.id, 'status=ready');
-assert.ok(trustCycleRuntime.externalObserver.snapshot().sources.find(source => source.id === 'camera-front').reliability01 >
-  trustCycleRuntime.externalObserver.registeredSourceReliability01('camera-front') - 1e-9,
-  'trust cycle should retain a normalized reputation estimate');
+const trustAfterRecovery = trustCycleRuntime.externalObserver.registeredSourceReliability01('camera-front');
+assert.ok(trustAfterRecovery > trustAfterDowngrade,
+  'a later verified match should let the registered source reputation recover');
 trustCycleRuntime.externalObserver.observe(trustCycleInput);
 const recoveredReplayConfidence = trustCycleRuntime.realityEvidenceLedger.findByEventId(trustCycleInput.evidenceEventId).confidence01;
 assert.equal(recoveredReplayConfidence, downgradedConfidence,
