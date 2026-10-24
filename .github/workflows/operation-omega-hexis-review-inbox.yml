@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/operation-omega-hexis-review-inbox.yml'
       - 'runtime/neuro-kurisu/src/organism/learning/HexisSkillReviewInbox.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/AuthenticatedSkillReviewDecision.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillReviewInboxPersistence.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillPromotion.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeArtifact.ts'
@@ -23,6 +24,7 @@ on:
     paths:
       - '.github/workflows/operation-omega-hexis-review-inbox.yml'
       - 'runtime/neuro-kurisu/src/organism/learning/HexisSkillReviewInbox.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/AuthenticatedSkillReviewDecision.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/AtomicFileSkillReviewInboxPersistence.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillPromotion.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeArtifact.ts'

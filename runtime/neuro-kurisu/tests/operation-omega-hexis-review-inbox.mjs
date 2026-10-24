@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHash, generateKeyPairSync } from 'node:crypto';
+import { createHash, generateKeyPairSync, sign as signSignature } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -7,6 +7,7 @@ import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeL
 import { AtomicFileTrustedSkillShadowRunRegistry } from '../src/organism/learning/TrustedSkillShadowRunRegistry.ts';
 import { signSkillShadowArtifactForFixture, skillShadowPayloadFingerprint } from '../src/organism/learning/VerifiedSkillShadowEvidence.ts';
 import { createReviewedSkillPromotionApprovalRequest } from '../scripts/create-skill-promotion-approval-request.mjs';
+import { canonicalSkillReviewDecisionPayload, createSkillReviewDecisionSigningPayload } from '../src/organism/learning/AuthenticatedSkillReviewDecision.ts';
 import {
   ingestSignedOutcomeArtifact, signOutcomePayloadForFixture,
 } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
@@ -17,6 +18,9 @@ import { AtomicFileSkillReviewInboxPersistence } from '../src/organism/learning/
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');
 const publicPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
 const privatePem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+const { publicKey: reviewPublicKey, privateKey: reviewPrivateKey } = generateKeyPairSync('ed25519');
+const reviewPublicPem = reviewPublicKey.export({ type: 'spki', format: 'pem' }).toString();
+const reviewPrivatePem = reviewPrivateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
 const verifierId = 'omega-fixture-verifier';
 const manifest = Array.from({ length: 8 }, (_, i) => ({
   taskId: 'omega-task-' + i,
@@ -146,14 +150,51 @@ try {
   await writeFileSync(storePath, JSON.stringify({
     schemaVersion: 1, revision: 3, active: [], candidates: [candidate],
   }), 'utf8');
+  const reviewSigningKeyId = 'omega-review-signer';
+  const signedReviewPayload = createSkillReviewDecisionSigningPayload(approved, reviewSigningKeyId);
+  const canonicalReviewPayload = canonicalSkillReviewDecisionPayload(signedReviewPayload);
+  const signedReviewArtifact = {
+    payload: signedReviewPayload,
+    signature: signSignature(null, Buffer.from(canonicalReviewPayload, 'utf8'), reviewPrivateKey).toString('base64'),
+  };
+  const reviewDecisionPath = path.join(root, 'signed-review-decision.json');
+  const reviewVerifierKeys = JSON.stringify({ [reviewSigningKeyId]: reviewPublicPem });
+  await writeFileSync(reviewDecisionPath, JSON.stringify({
+    ...signedReviewArtifact, signature: 'A'.repeat(88),
+  }), 'utf8');
+  await assert.rejects(
+    () => createReviewedSkillPromotionApprovalRequest({
+      storePath, registryPath, reviewInboxPath: inboxPath, reviewId: approved.packet.reviewId, signedReviewDecisionPath: reviewDecisionPath,
+      rawReviewVerifierKeys: reviewVerifierKeys,
+      rawVerifierKeys: JSON.stringify({ [verifierId]: publicPem }),
+      candidateId, approverId: 'omega-operator', approvalId: 'omega-approval-request-bad-review-signature',
+      minShadowRuns: 3, now: 1_800_000_000_500,
+    }),
+    /signature|signed review decision/i,
+    'an unsigned or malformed reviewer decision must fail closed',
+  );
+  await writeFileSync(reviewDecisionPath, JSON.stringify(signedReviewArtifact), 'utf8');
+  await assert.rejects(
+    () => createReviewedSkillPromotionApprovalRequest({
+      storePath, registryPath, reviewInboxPath: inboxPath, reviewId: approved.packet.reviewId, signedReviewDecisionPath: reviewDecisionPath,
+      rawReviewVerifierKeys: JSON.stringify({ 'unrelated-key': reviewPublicPem }),
+      rawVerifierKeys: JSON.stringify({ [verifierId]: publicPem }),
+      candidateId, approverId: 'omega-operator', approvalId: 'omega-approval-request-untrusted-review-key',
+      minShadowRuns: 3, now: 1_800_000_000_500,
+    }),
+    /not trusted/,
+  );
   const reviewedRequest = await createReviewedSkillPromotionApprovalRequest({
-    storePath, registryPath, reviewInboxPath: inboxPath, reviewId: approved.packet.reviewId,
+    storePath, registryPath, reviewInboxPath: inboxPath, reviewId: approved.packet.reviewId, signedReviewDecisionPath: reviewDecisionPath,
+    rawReviewVerifierKeys: reviewVerifierKeys,
     rawVerifierKeys: JSON.stringify({ [verifierId]: publicPem }),
     candidateId, approverId: 'omega-operator', approvalId: 'omega-approval-request',
     minShadowRuns: 3, now: 1_800_000_000_500,
   });
   assert.equal(reviewedRequest.status, 'approval-request-only');
   assert.equal(reviewedRequest.humanReview.status, 'approved-for-signed-promotion');
+  assert.equal(reviewedRequest.humanReview.authenticated, true);
+  assert.equal(reviewedRequest.humanReview.signingKeyId, reviewSigningKeyId);
   assert.equal(reviewedRequest.humanReview.reviewId, approved.packet.reviewId);
   assert.equal(reviewedRequest.payload.shadowEvidenceFingerprint, approved.packet.shadowEvidenceFingerprint);
   assert.match(reviewedRequest.warning, /matching approved human review was verified/);

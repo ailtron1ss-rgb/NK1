@@ -4,6 +4,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { AtomicFileSkillReviewInboxPersistence } from '../src/organism/learning/AtomicFileSkillReviewInboxPersistence.mjs';
 import { HexisSkillReviewInbox, assertSkillReviewReadyForSignedPromotion } from '../src/organism/learning/HexisSkillReviewInbox.ts';
+import { parseTrustedSkillReviewDecisionKeys, verifySignedSkillReviewDecisionArtifact } from '../src/organism/learning/AuthenticatedSkillReviewDecision.ts';
 import {
   canonicalSkillPromotionApprovalPayload,
   createSkillPromotionApprovalPayload,
@@ -104,10 +105,13 @@ export async function createSkillPromotionApprovalRequest({ storePath, registryP
  * still a separate step.
  */
 export async function createReviewedSkillPromotionApprovalRequest({
-  reviewInboxPath, reviewId, ...requestOptions
+  reviewInboxPath, reviewId, signedReviewDecisionPath,
+  rawReviewVerifierKeys = process.env.NEURO_SKILL_REVIEW_APPROVAL_KEYS_JSON,
+  ...requestOptions
 }) {
-  if (!nonEmpty(reviewInboxPath) || !/^[a-f0-9]{64}$/.test(reviewId ?? '')) {
-    throw new Error('a review inbox path and SHA-256 review ID are required');
+  if (!nonEmpty(reviewInboxPath) || !/^[a-f0-9]{64}$/.test(reviewId ?? '') ||
+      !nonEmpty(signedReviewDecisionPath)) {
+    throw new Error('a review inbox path, SHA-256 review ID and signed decision artifact path are required');
   }
 
   // Keep the existing cryptographic shadow-evidence checks and canonical payload
@@ -147,6 +151,17 @@ export async function createReviewedSkillPromotionApprovalRequest({
   const review = inbox.snapshot().records.find(record => record.packet.reviewId === reviewId);
   if (!review) throw new Error('matching skill review ID is absent from the durable review inbox');
 
+  const signedDecisionPath = path.resolve(signedReviewDecisionPath);
+  const signedDecisionInfo = await lstat(signedDecisionPath);
+  if (signedDecisionInfo.isSymbolicLink() || !signedDecisionInfo.isFile() || signedDecisionInfo.size > 1024 * 1024) {
+    throw new Error('signed review decision must be a regular non-symlink file no larger than 1 MiB');
+  }
+  let signedDecisionArtifact;
+  try { signedDecisionArtifact = JSON.parse(await readFile(signedDecisionPath, 'utf8')); }
+  catch (error) { throw new Error(`signed review decision could not be parsed: ${String(error?.message || error)}`); }
+  const trustedReviewKeys = parseTrustedSkillReviewDecisionKeys(rawReviewVerifierKeys);
+  const authenticatedReviewDecision = verifySignedSkillReviewDecisionArtifact(signedDecisionArtifact, trustedReviewKeys, review);
+
   assertSkillReviewReadyForSignedPromotion(review, candidate);
   const payload = request.payload;
   if (request.status !== 'approval-request-only' ||
@@ -172,22 +187,25 @@ export async function createReviewedSkillPromotionApprovalRequest({
       reviewerId: review.decision.reviewerId,
       decidedAt: review.decision.decidedAt,
       decisionDigest: review.decision.digest,
+      authenticated: true,
+      signingKeyId: authenticatedReviewDecision.keyId,
+      signedDecisionDigest: authenticatedReviewDecision.decisionDigest,
     },
-    warning: request.warning + ' A matching approved human review was verified; this remains an unsigned request and still does not authorize activation.',
+    warning: request.warning + ' A matching approved human review was verified with a trusted Ed25519 signature; this remains an unsigned request and still does not authorize activation.',
   };
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
 if (isMain) {
-  const [, , storePath, registryPath, reviewInboxPath, reviewId, candidateId, approverId, approvalId, rawMinRuns] = process.argv;
-  if (!storePath || !registryPath || !reviewInboxPath || !reviewId || !candidateId || !approverId || !approvalId) {
-    console.error(`Usage: NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON='{"verifier-id":"<Ed25519 public PEM>"}' node --experimental-strip-types scripts/create-skill-promotion-approval-request.mjs <candidate-store.json> <trusted-run-registry.json> <review-inbox.json> <review-id> <candidate-id> <approver-id> <approval-id> [min-shadow-runs]`);
+  const [, , storePath, registryPath, reviewInboxPath, reviewId, signedReviewDecisionPath, candidateId, approverId, approvalId, rawMinRuns] = process.argv;
+  if (!storePath || !registryPath || !reviewInboxPath || !reviewId || !signedReviewDecisionPath || !candidateId || !approverId || !approvalId) {
+    console.error(`Usage: NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON='{"verifier-id":"<Ed25519 public PEM>"}' NEURO_SKILL_REVIEW_APPROVAL_KEYS_JSON='{"reviewer-key-id":"<Ed25519 public PEM>"}' node --experimental-strip-types scripts/create-skill-promotion-approval-request.mjs <candidate-store.json> <trusted-run-registry.json> <review-inbox.json> <review-id> <signed-review-decision.json> <candidate-id> <approver-id> <approval-id> [min-shadow-runs]`);
     process.exitCode = 2;
   } else {
     try {
       const minShadowRuns = rawMinRuns === undefined ? 3 : Number(rawMinRuns);
       const result = await createReviewedSkillPromotionApprovalRequest({
-        storePath, registryPath, reviewInboxPath, reviewId, candidateId, approverId, approvalId, minShadowRuns,
+        storePath, registryPath, reviewInboxPath, reviewId, signedReviewDecisionPath, candidateId, approverId, approvalId, minShadowRuns,
       });
       console.log(JSON.stringify(result));
     } catch (error) {
