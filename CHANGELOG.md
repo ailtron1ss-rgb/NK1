@@ -1,3 +1,10 @@
+## NK1 WorkPass509 — simplify restored evidence predicate guards (2026-10-24)
+
+- Rewrote two restored-receipt predicates as explicit fail-closed stage checks followed by separate field comparisons. This removes the TypeScript parser errors observed in the WorkPass294 runtime typecheck while preserving execution/observation correlation requirements.
+- The change is committed on `feature/learning`; the new exact-head typecheck and causal event identity tests must still execute before claiming PASS.
+
+---
+
 ## NK1 WorkPass508 — harden persisted cognitive-event restore (2026-10-24)
 
 - CognitiveEventFabric snapshot restoration now reads top-level snapshots, event rows and nested payload/receipt arrays through property descriptors, discarding accessor-backed data instead of executing getters while restoring persistent state.
