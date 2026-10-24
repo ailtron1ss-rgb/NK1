@@ -1,3 +1,11 @@
+## NK1 WorkPass319 — bounded internal dialogue (2026-10-24)
+
+- [ADDED] Introduced `InternalDialogueEngine` with a bounded six-pass review: framing, hypothesis comparison, skeptic, evidence audit, metacognitive calibration and synthesis.
+- [INTEGRATED] Wired the review into `buildCognitiveProposalPrompt`, before provider proposal generation. It compares planner candidates using explicit evidence links and treats predictions as weaker than observed outcomes.
+- [SAFETY] The review is advisory-only; `OrganismCore` and existing safety gates retain action authority. The output is summary-only, ignores duplicate evidence identities after the first occurrence, and filters obvious secret/contact-bearing text from unresolved questions.
+- [REGRESSION] Added `test:internal-dialogue-workpass319` to exercise evidence ranking, contradictory evidence, missing evidence, bounded turns, privacy filtering and proposal wiring.
+- [VALIDATION] The standalone engine test passed locally on Node.js 22.16.0. The full integration test, exact-head typecheck/CI and release-archive rebuild remain to be verified; no learning uplift or production readiness is claimed.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
