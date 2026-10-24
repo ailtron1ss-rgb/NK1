@@ -1,3 +1,12 @@
+## NK1 WorkPass488 — share the reality-projection identity contract (2026-10-24)
+
+- Extended `EvidenceEventIdentity.ts` with a validated `createRealityEvidenceEventId(originEventId, role, discriminator)` utility that preserves the WorkPass456 ID encoding and 48-hex digest.
+- Kept outcome/decision identity separate from projection identity: outcome IDs remain decision-bound for conflict detection; reality projections are keyed by upstream event + role + discriminator.
+- The implementation is intended to be identical on `feature/perception` and `feature/feedback` so the common helper can converge cleanly through the existing draft PRs; no branch is merged by this commit.
+- Exact-head CI remains unverified; the corresponding regression is wired to the perception P2841 suite.
+
+---
+
 ## NK1 WorkPass487 — feedback/cognitive type blockers (2026-10-24)
 
 - Removed the duplicate `CognitiveEventFabric.verifyOperationalCycle` implementation, retaining the richer implementation that checks optional cognitive stages and their causal edges.
