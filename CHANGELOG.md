@@ -1,3 +1,11 @@
+## NK1 WorkPass553 — require explicit source registration at the canonical evidence boundary (2026-10-24)
+
+- Added `requireRegisteredSources` to `ExternalObserverFabric`. Legacy standalone adapters keep their compatible auto-registration behavior, but when enabled, unseen source IDs are rejected by `observe()` instead of being minted by an observation.
+- Enabled the strict mode for `EvidenceResearchSubsystemRuntime`, which forwards observer events into the canonical `RealityEvidenceLedger`. Production evidence observations now require a prior explicit source-registry entry; existing identity mismatch and sample-confidence separation checks still apply.
+- Updated the observer-to-ledger bridge regression to register camera and user-report identities before ingestion. Extended the source-identity regression to prove unregistered ingress is rejected and never reaches the canonical ledger, while a registered source is accepted. Existing standalone adapter auto-registration coverage remains.
+- **Trust boundary:** this separates observation ingress from explicit source registration; it does not authenticate which application component is allowed to call the public registration API. A stronger registrar capability/policy is a separate follow-up.
+- **Validation boundary:** changes are committed on `feature/feedback`; the focused GitHub Actions workflow needs to complete before this pass can be called CI-verified.
+
 ## NK1 WorkPass552 — prevent observer-source registry eviction (2026-10-24)
 
 - `ExternalObserverFabric.registerSource(...)` now rejects brand-new source IDs when the bounded registry reaches capacity instead of silently evicting the oldest registered identity. Existing source configuration updates still work when identity fields match.
