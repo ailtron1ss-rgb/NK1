@@ -27,9 +27,18 @@ NK1 remains the runtime and canonical memory owner. The upstream reference is [Q
 - Extended the canonical `MemoryFabric` mutation command with an explicit `forceDistinct` option. The importer now uses a stable distinct ID, so a same-text native NK1 record is not reconsolidated with incoming Hexis metadata/provenance.
 - If a multi-record write fails, new memory rows are compensated through canonical `MemoryFabric.forgetById()` calls and the semantic graph is restored to its pre-apply snapshot. The HMX stage remains approved/retryable; the retry uses a new command attempt but the same stable imported record IDs.
 
+## WorkPass333 — reviewed goals and canonical lifecycle
+
+- Removed the obsolete `OrganismCore.hexisDecideHmx` path that inserted memories during `accept`. `accept` now only records the human review decision; only `apply` invokes the canonical projector, and then persists MemoryOS2, MemoryFabric, semantic graph, event log and Hexis receipts.
+- Added a durable bounded `goalProposals` registry to `HexisAdaptationFabric`. Approved HMX stages can produce stable, deduplicated proposals, but preparing the queue does not create a canonical organism goal.
+- Added explicit goal decisions: `pending → approved → materialized → active`. Approval creates a canonical NK1 goal only as `paused`, with `source: external` and `activationApproved: false`. A separate `activate` call is required and checks for capacity, title collisions, and identity continuity. A stale reject can no longer overwrite an already approved/materialized decision.
+- Added server endpoints `POST .../hmx/goals/prepare`, `GET .../hmx/goals/proposals`, and `POST .../hmx/goals/decide`. The server smoke covers a rejected early activation, the paused state after approval, explicit activation, and durable proposal retrieval.
+- Added an optional `sourceKey` namespace to `SemanticMemoryGraph` nodes. Imported HMX graph nodes now reuse only nodes in the same provenance namespace, avoiding accidental connection of a same-label native node to external-source relationships.
+- Extended tests for goal proposal deduplication across exports, immutable decisions, P68 not auto-reactivating externally imported paused goals, and same-label graph-node isolation. The latest exact-head workflow is still queued; these new tests must not be described as passed until the run finishes.
+
 ## Explicit limits — not claimed complete
 
-Only HMX `sections.memories` is projected as memory records in this pass. Relationships are projected only when both endpoints resolve to imported memory records. Structural `identity`, `goals`, goal/identity-linked relationships, `narrative`, `config`, `audit_records`, and `in_flight_work` remain deferred, and an HMX identity section cannot overwrite NK1's canonical identity model through this memory path. Further work needs separate projections with consent, conflict handling, fidelity checks and rollback for those owners.
+Only HMX `sections.memories` is projected as memory records in this pass. Relationships are projected only when both endpoints resolve to imported memory records. Structural `identity`, goal/identity-linked relationships, `narrative`, `config`, `audit_records`, and `in_flight_work` remain deferred. HMX goals have a separate reviewed-proposal path and are not imported as active goals by memory apply; an HMX identity section cannot overwrite NK1's canonical identity model through this memory path. Further work needs separate projections with consent, conflict handling, fidelity checks and rollback for those owners.
 
 Embeddings are not transferred; the current adapter warns that re-embedding is required. No measured learning uplift or production-readiness claim is made.
 
