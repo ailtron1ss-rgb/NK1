@@ -19,7 +19,7 @@ Object.defineProperties(envelope, {
   execute: { value: execute, enumerable: true },
 });
 const result = snapshotPlainDataEnvelope(envelope, ['execute']);
-assert.deepEqual(result.data, { id: 'source-1', evidence: { verified: true, score: 0.9 } });
+assert.deepEqual({ ...result.data }, { id: 'source-1', evidence: { verified: true, score: 0.9 } });
 assert.equal(result.capabilities.execute, execute, 'approved capability identity must be retained');
 assert.equal(capabilityCalls, 0, 'snapshotting a capability must never execute it');
 assert.equal(Object.getPrototypeOf(result.data), null, 'detached record must not inherit object prototype');
