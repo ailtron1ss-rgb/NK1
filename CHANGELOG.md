@@ -1,3 +1,13 @@
+## NK1 WorkPass496 — close remaining runtime-boundary regressions
+
+- Replaced the trusted shadow-run registry's TypeScript constructor parameter property so Node.js 24 strip-only tests can execute the real durable registry path.
+- Corrected the reflective payload fixture to measure canonical JSON bytes, including quote delimiters, testing exact 256 KiB acceptance and one-byte-over rejection.
+- Updated the causal-experience integration fixture to provide the observed action and success fields required to mint grounded outcome evidence.
+- P26 training input and persisted-diagnostic validation is already present in this branch; this pass aligns shared integration fixtures.
+- **Validation boundary:** committed; exact-head CI must still verify the updated scenarios.
+
+---
+
 ## NK1 WorkPass494 — preserve replay budget and intrinsic goal authorship
 
 - In the learning-category P23 runtime, made explicitly configured replay batch size and recent quota authoritative for reproducible ablations while preserving health-adaptive ranking and age half-life.
