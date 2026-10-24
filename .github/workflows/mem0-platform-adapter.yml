@@ -31,7 +31,8 @@ permissions:
 
 concurrency:
   group: nk1-mem0-adapter-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
+  # Keep the latest-head safety regression queued instead of cancelling it during rapid checkpoint pushes.
+  cancel-in-progress: false
 
 jobs:
   mem0-adapter:
