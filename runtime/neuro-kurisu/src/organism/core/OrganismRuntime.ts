@@ -164,6 +164,7 @@ export class OrganismRuntime {
   private consecutiveActiveCycles = 0;
   private queue: Promise<unknown> = Promise.resolve();
   private initialized = false;
+  private stopPromise: Promise<void> | null = null;
   private lastContextBudgetLedger: ContextBudgetLedgerReport | null = null;
   contextBudgetDiagnostics() {
     return this.lastContextBudgetLedger ? structuredClone(this.lastContextBudgetLedger) : {
@@ -1556,44 +1557,65 @@ export class OrganismRuntime {
   embodimentStatus(): ReturnType<EmbodimentRuntime['snapshot']> { return this.embodiment.snapshot(); }
   embodimentDiagnostics(){ return this.embodiment.sensorDiagnosticsSnapshot(); }
   async stop(): Promise<void> {
-    // Stop is a durability boundary, not merely a scheduler shutdown.  The previous
-    // implementation closed runtime clocks/ledgers without forcing the core/world
-    // stores to persist the final in-memory cycle.  On mobile this is especially
-    // dangerous because checkpoint cadence is deliberately throttled.
-    this.stopping = true;
-    this.clockScheduler.stop();
-    await this.clockScheduler.drain();
-    await this.trustedShadowLearningScheduler?.drain();
-    await this.queue.catch(() => undefined);
+    // Concurrent callers share one shutdown transaction; otherwise overlapping
+    // flush/close paths can race the continuity ledger and overwrite terminal state.
+    if (this.stopPromise) return this.stopPromise;
+    this.stopPromise = this.stopInternal();
+    return this.stopPromise;
+  }
 
-    // All queued cognitive work has drained, so the final flush is now serialized
-    // with the same queue used by step()/tool calls.  This closes the crash/restart
-    // window without making every cycle pay a synchronous disk write.
-    await this.enqueue(async () => {
-      // Capture the closure before the single durable flush. A previous implementation
-      // flushed twice here, which is disproportionately expensive because a full core
-      // projection serializes several MB of state on a phone.
-      const runtimeView = this.core.runtimeClosureOperationalSnapshot();
-      this.runtimeClosure.durable({
-        at: Date.now(),
-        tick: runtimeView.tick,
-        stateTick: runtimeView.tick,
-        replaySignature: runtimeView.replaySignature,
-        continuousTick: runtimeView.continuous?.tick,
-        continuityProcessed: runtimeView.continuous?.processed,
-        memoryCount: runtimeView.memoryCount,
+  private async stopInternal(): Promise<void> {
+    // Stop is a durability boundary, not merely a scheduler shutdown. Preserve
+    // a terminal failure if final persistence cannot be completed.
+    let shutdownError: unknown;
+    try {
+      this.clockScheduler.stop();
+      await this.clockScheduler.drain();
+      await this.trustedShadowLearningScheduler?.drain();
+      await this.queue.catch(() => undefined);
+
+      // All queued cognitive work has drained, so final persistence is serialized
+      // with the same queue used by step()/tool calls.
+      await this.enqueue(async () => {
+        const runtimeView = this.core.runtimeClosureOperationalSnapshot();
+        this.runtimeClosure.durable({
+          at: Date.now(),
+          tick: runtimeView.tick,
+          stateTick: runtimeView.tick,
+          replaySignature: runtimeView.replaySignature,
+          continuousTick: runtimeView.continuous?.tick,
+          continuityProcessed: runtimeView.continuous?.processed,
+          memoryCount: runtimeView.memoryCount,
+        });
+        this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+        await this.core.flush();
+        await this.checkpointWorld(true);
+        await this.journal.write('info', 'runtime.stop.durable', {
+          tick: runtimeView.tick,
+          worldTick: this.environment.snapshot().tick,
+        }).catch(() => {});
       });
-      this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
-      await this.core.flush();
-      await this.checkpointWorld(true);
-      await this.journal.write('info', 'runtime.stop.durable', {
-        tick: runtimeView.tick,
-        worldTick: this.environment.snapshot().tick,
-      }).catch(() => {});
-    });
-
-    await this.continuityLedger.flush().catch(() => {});
-    await this.continuityLedger.close();
+    } catch (error: any) {
+      shutdownError = error;
+      const reason = String(error?.message || error).replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').trim().slice(0, 240) || 'runtime shutdown finalization failed';
+      let tick = 0;
+      try { tick = Number(this.core.operationalStatusSnapshot().tick) || 0; } catch {}
+      try {
+        this.runtimeClosure.fail({ at: Date.now(), tick, reason });
+        this.core.setRuntimeClosure(this.runtimeClosure.snapshot());
+      } catch {}
+      try {
+        const causalFailure = this.causalDomainClosureLedger.failLatest({ reason, tick });
+        if (causalFailure) this.core.setCausalDomainClosureLedger(this.causalDomainClosureLedger.snapshot());
+      } catch {}
+      await this.journal.write('error', 'runtime.stop.failed', { tick, reason }).catch(() => {});
+      // Best effort only: preserve the failure marker if storage permits it.
+      await this.core.flush().catch(() => {});
+    } finally {
+      await this.continuityLedger.flush().catch(() => {});
+      await this.continuityLedger.close();
+    }
+    if (shutdownError !== undefined) throw shutdownError;
   }
 
   private runtimeDecision(): ReturnType<typeof choosePhonePolicyDelay> {
