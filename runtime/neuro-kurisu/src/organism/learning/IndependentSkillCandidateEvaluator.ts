@@ -591,6 +591,29 @@ export function recordIndependentEvaluationOutcomes(
  * matching report IDs alone is insufficient because they can hide changed
  * inputs or cross-environment comparisons.
  */
+export interface MatchedSeedGrowthOptions {
+  /** Enable the stricter gate only at the actual candidate-promotion boundary. */
+  requireSeedGrowthGate?: boolean;
+  /** Minimum matched independent seeds required in each split. Defaults to 5. */
+  minimumPairedSeeds?: number;
+  /** Minimum fraction of validation seeds on which the candidate beats baseline. Defaults to 0.6. */
+  minimumValidationSeedWinRate01?: number;
+  /** Minimum acceptable lower bound of the per-seed 95% t confidence interval. Defaults to 0. */
+  minimumValidationGainLower95?: number;
+  /** Maximum tolerated regression on any one held-out seed. Defaults to 0.15. */
+  maximumHoldoutSeedRegression01?: number;
+}
+
+export interface MatchedSeedGrowthSummary {
+  pairedSeedCount: number;
+  meanDelta01: number | null;
+  confidenceLower95Delta01: number | null;
+  confidenceUpper95Delta01: number | null;
+  positiveSeedRate01: number;
+  worstSeedDelta01: number | null;
+  completeSeedCoverage: boolean;
+}
+
 export function compareMatchedIndependentEvaluations(
   baseline: {
     payloadFingerprint: string;
@@ -642,12 +665,15 @@ export function compareMatchedIndependentEvaluations(
       };
     };
   },
+  options: MatchedSeedGrowthOptions = {},
 ): SkillLearnBenchCandidateGateReport & {
   matchedTrialCount: number;
   matchedValidationTrialCount: number;
   matchedHoldoutTrialCount: number;
   environmentFingerprint: string;
   planFingerprint: string;
+  seedAnalysis: { validation: MatchedSeedGrowthSummary; holdout: MatchedSeedGrowthSummary };
+  seedGrowthGateApplied: boolean;
 } {
   const validEnvelope = (value: typeof baseline, label: string): void => {
     if (!value || !isDigest(value.payloadFingerprint) || !isDigest(value.evaluationFingerprint) ||
@@ -706,7 +732,7 @@ export function compareMatchedIndependentEvaluations(
           !Number.isSafeInteger(binding.seed) || binding.seed < 0 ||
           typeof binding.taskId !== 'string' || !binding.taskId.trim() ||
           typeof binding.trialId !== 'string' || !binding.trialId.trim() ||
-          !binding.bindingVerified || !binding.verifierPassed ||
+          !binding.bindingVerified ||
           !binding.runId || !binding.runId.trim() ||
           !Number.isSafeInteger(binding.safetyViolationCount) || binding.safetyViolationCount !== 0) {
         throw new Error(`matched-independent-evaluation-${label}-untrusted-trial`);
@@ -738,12 +764,175 @@ export function compareMatchedIndependentEvaluations(
     { validation: baseline.evaluation.validation, holdout: baseline.evaluation.holdout },
     { validation: candidate.evaluation.validation, holdout: candidate.evaluation.holdout },
   );
+  const summarizeSeedGrowth = (split: 'validation' | 'holdout'): MatchedSeedGrowthSummary => {
+    type Report = (typeof baseline.evaluation.validation)[number];
+    type RunBinding = (typeof baseline.evaluation.provenance.runBindings)[number];
+    const collect = (
+      envelope: typeof baseline,
+      bindings: Map<string, RunBinding>,
+    ): Map<number, Map<string, number[]>> => {
+      const bySeed = new Map<number, Map<string, number[]>>();
+      for (const report of envelope.evaluation[split]) {
+        const binding = bindings.get(JSON.stringify([report.taskId, report.trialId]));
+        if (!binding || binding.split !== split) continue;
+        const taskScores = bySeed.get(binding.seed) ?? new Map<string, number[]>();
+        const scores = taskScores.get(report.taskId) ?? [];
+        const score = 0.5 * report.taskSuccess.passRate +
+          0.3 * report.trajectoryQuality.aggregate +
+          0.2 * report.skillQuality.aggregate;
+        scores.push(score);
+        taskScores.set(report.taskId, scores);
+        bySeed.set(binding.seed, taskScores);
+      }
+      return bySeed;
+    };
+    const baselineBySeed = collect(baseline, baselineBindings);
+    const candidateBySeed = collect(candidate, candidateBindings);
+    const taskIds = new Set([
+      ...baseline.evaluation[split].map(row => row.taskId),
+      ...candidate.evaluation[split].map(row => row.taskId),
+    ]);
+    const baselineSeeds = [...baselineBySeed.keys()].sort((a, b) => a - b);
+    const candidateSeeds = [...candidateBySeed.keys()].sort((a, b) => a - b);
+    let completeSeedCoverage =
+      baselineSeeds.length === candidateSeeds.length &&
+      baselineSeeds.every((seed, index) => seed === candidateSeeds[index]);
+    const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
+    const perSeedMean = (rows: Map<string, number[]>) =>
+      mean([...taskIds].map(taskId => mean(rows.get(taskId)!)));
+    const deltas: number[] = [];
+    const allSeeds = [...new Set([...baselineSeeds, ...candidateSeeds])].sort((a, b) => a - b);
+    for (const seed of allSeeds) {
+      const baselineTasks = baselineBySeed.get(seed);
+      const candidateTasks = candidateBySeed.get(seed);
+      const isComplete = !!baselineTasks && !!candidateTasks &&
+        baselineTasks.size === taskIds.size && candidateTasks.size === taskIds.size &&
+        [...taskIds].every(taskId =>
+          (baselineTasks.get(taskId)?.length ?? 0) > 0 &&
+          (candidateTasks.get(taskId)?.length ?? 0) > 0);
+      if (!isComplete) {
+        completeSeedCoverage = false;
+        continue;
+      }
+      deltas.push(perSeedMean(candidateTasks!) - perSeedMean(baselineTasks!));
+    }
+    const rounded = (value: number | null): number | null =>
+      value === null ? null : Number(value.toFixed(6));
+    if (deltas.length === 0) {
+      return {
+        pairedSeedCount: 0,
+        meanDelta01: null,
+        confidenceLower95Delta01: null,
+        confidenceUpper95Delta01: null,
+        positiveSeedRate01: 0,
+        worstSeedDelta01: null,
+        completeSeedCoverage: false,
+      };
+    }
+    const deltaMean = mean(deltas);
+    let lower: number | null = null;
+    let upper: number | null = null;
+    if (deltas.length >= 2) {
+      const sumSquares = deltas.reduce((sum, value) => sum + (value - deltaMean) ** 2, 0);
+      const standardDeviation = Math.sqrt(sumSquares / (deltas.length - 1));
+      const standardError = standardDeviation / Math.sqrt(deltas.length);
+      // Two-sided 95% Student-t critical values; 1.96 is a conservative large-df approximation.
+      const t95 = [
+        0, 12.706, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262,
+        2.228, 2.201, 2.179, 2.160, 2.145, 2.131, 2.120, 2.110, 2.101, 2.093,
+        2.086, 2.080, 2.074, 2.069, 2.064, 2.060, 2.056, 2.052, 2.048, 2.045, 2.042,
+      ];
+      const degreesOfFreedom = deltas.length - 1;
+      const critical = degreesOfFreedom <= 30 ? t95[degreesOfFreedom] : 1.96;
+      const margin = critical * standardError;
+      lower = deltaMean - margin;
+      upper = deltaMean + margin;
+    }
+    return {
+      pairedSeedCount: deltas.length,
+      meanDelta01: rounded(deltaMean),
+      confidenceLower95Delta01: rounded(lower),
+      confidenceUpper95Delta01: rounded(upper),
+      positiveSeedRate01: rounded(deltas.filter(value => value > 0).length / deltas.length)!,
+      worstSeedDelta01: rounded(Math.min(...deltas)),
+      completeSeedCoverage,
+    };
+  };
+
+  const seedAnalysis = {
+    validation: summarizeSeedGrowth('validation'),
+    holdout: summarizeSeedGrowth('holdout'),
+  };
+  const strictSeedGate = options.requireSeedGrowthGate === true;
+  const reasons = [...gate.reasons];
+  const feedback = [...gate.feedback];
+  const addBlocker = (reason: string, note: string) => {
+    if (!reasons.includes(reason)) reasons.push(reason);
+    if (!feedback.includes(note)) feedback.push(note);
+  };
+
+  if (strictSeedGate) {
+    const minimumPairedSeeds = options.minimumPairedSeeds ?? 5;
+    const minimumValidationSeedWinRate01 = options.minimumValidationSeedWinRate01 ?? 0.6;
+    const minimumValidationGainLower95 = options.minimumValidationGainLower95 ?? 0;
+    const maximumHoldoutSeedRegression01 = options.maximumHoldoutSeedRegression01 ?? 0.15;
+    if (!Number.isSafeInteger(minimumPairedSeeds) || minimumPairedSeeds < 2 || minimumPairedSeeds > 10000 ||
+        !Number.isFinite(minimumValidationSeedWinRate01) || minimumValidationSeedWinRate01 < 0 || minimumValidationSeedWinRate01 > 1 ||
+        !Number.isFinite(minimumValidationGainLower95) || minimumValidationGainLower95 < -1 || minimumValidationGainLower95 > 1 ||
+        !Number.isFinite(maximumHoldoutSeedRegression01) || maximumHoldoutSeedRegression01 < 0 || maximumHoldoutSeedRegression01 > 1) {
+      throw new RangeError('matched-independent-evaluation-seed-growth-options-invalid');
+    }
+    if (seedAnalysis.validation.pairedSeedCount < minimumPairedSeeds) {
+      addBlocker(
+        'independent-evaluation-validation-paired-seed-count-insufficient',
+        'Promotion blocked: validation has too few fully paired independent seeds.',
+      );
+    }
+    if (seedAnalysis.holdout.pairedSeedCount < minimumPairedSeeds) {
+      addBlocker(
+        'independent-evaluation-holdout-paired-seed-count-insufficient',
+        'Promotion blocked: holdout has too few fully paired independent seeds.',
+      );
+    }
+    if (!seedAnalysis.validation.completeSeedCoverage || !seedAnalysis.holdout.completeSeedCoverage) {
+      addBlocker(
+        'independent-evaluation-incomplete-seed-task-coverage',
+        'Promotion blocked: each seed must cover the same task set in both compared arms.',
+      );
+    }
+    if (seedAnalysis.validation.positiveSeedRate01 < minimumValidationSeedWinRate01) {
+      addBlocker(
+        'independent-evaluation-validation-seed-consistency-insufficient',
+        'Promotion blocked: the candidate does not improve often enough across independent validation seeds.',
+      );
+    }
+    if (seedAnalysis.validation.confidenceLower95Delta01 === null ||
+        seedAnalysis.validation.confidenceLower95Delta01 <= minimumValidationGainLower95) {
+      addBlocker(
+        'independent-evaluation-validation-confidence-lower-bound-insufficient',
+        'Promotion blocked: the 95% per-seed confidence lower bound does not exceed the configured improvement floor.',
+      );
+    }
+    if (seedAnalysis.holdout.worstSeedDelta01 !== null &&
+        seedAnalysis.holdout.worstSeedDelta01 < -maximumHoldoutSeedRegression01) {
+      addBlocker(
+        'independent-evaluation-holdout-seed-regression-exceeds-tolerance',
+        'Promotion blocked: at least one holdout seed regresses beyond the configured safety margin.',
+      );
+    }
+  }
+
   return {
     ...gate,
+    eligible: reasons.length === 0,
+    reasons,
+    feedback,
     matchedTrialCount: baselineBindings.size,
     matchedValidationTrialCount: [...baselineBindings.values()].filter(row => row.split === 'validation').length,
     matchedHoldoutTrialCount: [...baselineBindings.values()].filter(row => row.split === 'holdout').length,
     environmentFingerprint: bp.environmentFingerprint,
     planFingerprint: bp.planFingerprint,
+    seedAnalysis,
+    seedGrowthGateApplied: strictSeedGate,
   };
 }
