@@ -192,6 +192,22 @@ function sanitizeIdList(value:unknown,limit:number):string[]{
   }
   return result;
 }
+function mergeNewestIdCache(value:unknown,durableIds:string[],limit:number):string[]{
+  const result=sanitizeIdList(value,limit);
+  const seen=new Set(result);
+  for(const id of sanitizeIdList(durableIds,limit)){
+    if(seen.has(id))continue;
+    // Retain the persisted newest-first prefix; make room at its oldest end for
+    // any durable row identity missing from the cache so it cannot be replayed.
+    if(result.length>=limit){
+      const evicted=result.pop();
+      if(evicted!==undefined)seen.delete(evicted);
+    }
+    result.push(id);
+    seen.add(id);
+  }
+  return result;
+}
 function sanitizeRows<T>(value:unknown,limit:number,parse:(item:unknown)=>T|null,identity:(item:T)=>string):T[]{
   if(!Array.isArray(value))return [];
   const result:T[]=[],seen=new Set<string>();
@@ -424,12 +440,8 @@ export class P23LearningEngine {
     // Keep the persisted cache's newest-first order. Then append identities that
     // are recoverable from durable rows but missing from that cache. Durable rows
     // still repopulate an empty/corrupt cache, without displacing recent IDs.
-    const processedTraceIds=sanitizeIdList([
-      ...(Array.isArray(source.processedTraceIds)?source.processedTraceIds:[]),...experiences.map(row=>row.traceId),
-    ],2048);
-    const replayedTraceIds=sanitizeIdList([
-      ...(Array.isArray(source.replayedTraceIds)?source.replayedTraceIds:[]),...replayUpdates.map(row=>row.traceId),
-    ],2048);
+    const processedTraceIds=mergeNewestIdCache(source.processedTraceIds,experiences.map(row=>row.traceId),2048);
+    const replayedTraceIds=mergeNewestIdCache(source.replayedTraceIds,replayUpdates.map(row=>row.traceId),2048);
     const checksum=sanitizeChecksum(source.checksum,d.checksum);
     const metrics=sanitizeMetrics(source.metrics,d.metrics);
     metrics.outcomes=Math.max(metrics.outcomes,experiences.length);

@@ -1,3 +1,11 @@
+## NK1 WorkPass535 — preserve full recent ID caches and recover missing durable identities
+
+- Refined P23 restore reconciliation: keep the persisted newest-first deduplication cache intact when durable row IDs are already represented; when a durable identity is missing, evict only the oldest cache entry to make room. This retains bounded capacity while guaranteeing durable experience/replay rows remain deduplicated after restart.
+- Added full-capacity regression fixtures covering both processed-trace and replay IDs, including preservation of the newest cached key and recovery of a missing durable key.
+- Exact-head CI remains the verification authority; no overall readiness or learning uplift is claimed.
+
+---
+
 ## NK1 WorkPass534 — preserve newest restored IDs and make metrics fixtures valid
 
 - P23 restore now prioritizes the persisted newest-first deduplication caches, then appends IDs recovered from sanitized durable experience/replay rows. This prevents old retained rows from displacing the cache's newest valid IDs while still rebuilding an empty cache after restore.

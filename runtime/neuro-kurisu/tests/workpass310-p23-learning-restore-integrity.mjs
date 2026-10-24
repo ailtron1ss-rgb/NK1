@@ -80,6 +80,28 @@ const identityRestored=identityEngine.snapshot();
 assert.ok(identityRestored.processedTraceIds.includes('trace-127'),'restored experience must remain deduplicated even when its ID cache is missing');
 assert.ok(identityRestored.replayedTraceIds.includes('replay-1'),'restored replay row must remain deduplicated even when its ID cache is missing');
 assert.equal(identityRestored.metrics.outcomes,1,'outcome metrics must cover durable experience rows');
+
+// A full persisted cache must keep its newest entry while still restoring
+// durable identities that were missing from the cache before this restart.
+const saturatedCache=P23RestoreIdentityFixture();
+saturatedCache.processedTraceIds=Array.from({length:2048},(_,i)=>`cached-trace-${i}`);
+saturatedCache.replayedTraceIds=Array.from({length:2048},(_,i)=>`cached-replay-${i}`);
+saturatedCache.experiences=[experiences[0]];
+saturatedCache.replayUpdates=[validReplay];
+const saturatedEngine=new P23LearningEngine();
+saturatedEngine.restore(saturatedCache);
+const saturatedRestored=saturatedEngine.snapshot();
+assert.equal(saturatedRestored.processedTraceIds.length,2048);
+assert.equal(saturatedRestored.processedTraceIds[0],'cached-trace-0',
+  'restoring durable rows must preserve the newest cached identity');
+assert.equal(saturatedRestored.processedTraceIds.at(-1),'trace-127',
+  'a missing durable experience ID must replace the oldest cached ID');
+assert.equal(saturatedRestored.replayedTraceIds.length,2048);
+assert.equal(saturatedRestored.replayedTraceIds[0],'cached-replay-0',
+  'restoring replay rows must preserve the newest replay cache ID');
+assert.equal(saturatedRestored.replayedTraceIds.at(-1),'replay-1',
+  'a missing durable replay ID must replace the oldest cached ID');
+
 function P23RestoreIdentityFixture(){
   return {...base,version:1,processedTraceIds:[],replayedTraceIds:[],experiences:[],replayUpdates:[],
     shadow:[],skills:[],ablations:[],evidenceDebt:[],checksum:{...base.checksum},metrics:{...base.metrics}};
