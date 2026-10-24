@@ -53,7 +53,8 @@ assert.equal(snapshot.meanStageCoverage01,0);
 assert.equal(snapshot.meanCausalContinuity01,1);
 assert.equal(snapshot.lastTick,-1);
 assert.equal(snapshot.lastComplete,false);
-assert.deepEqual(snapshot.lastMissingStages,['action']);
+assert.deepEqual(snapshot.lastMissingStages,['observation','prediction','action','outcome','learning','self-update'],
+  'a malformed persisted stage list must fail closed as a fully incomplete cycle');
 
 const inconsistentRestore=new UnifiedCognitiveCycle();
 inconsistentRestore.restore({
