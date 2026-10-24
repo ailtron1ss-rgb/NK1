@@ -20,7 +20,7 @@ The escalation policy is deliberately adapted rather than transplanted unchanged
 
 ## Integration boundary
 
-The state is part of P23LearningEngine snapshots, so it persists with the existing learning state. The verifier defaults to deny and must be configured by the trusted runtime **before recording or restoring** reviewed corrections; persisted fingerprints are rechecked instead of being trusted as proof. If the verifier is unavailable, restored correction evidence is dropped. Raw outcome frequency is not treated as proof that a correction occurred; calls must come from a reviewed-correction path.
+The state is part of P23LearningEngine snapshots, so it persists with the existing learning state. The verifier defaults to deny and must be configured by the trusted runtime **before recording or restoring** reviewed corrections; persisted fingerprints are rechecked instead of being trusted as proof. If the verifier is unavailable, restored correction evidence is dropped. Raw outcome frequency is not treated as proof that a correction occurred; calls must come from a reviewed-correction path. The same P23 engine exposes `correctionLearningTargets()`, which translates assessments into the existing Pareto-ranked curriculum format. These targets request repair/evidence work; they do not change action policy or activate gates.
 
 The upstream Hexis project currently targets Claude Code. NK1 reuses the general disposition/escalation pattern, not its Claude-specific hooks or CLI. See the upstream README and enforcement escalation design:
 https://github.com/hexis-framework/hexis
