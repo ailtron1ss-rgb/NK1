@@ -96,10 +96,31 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
       !Array.isArray(value.shadowObservations) || !value.shadowObservations.every(isShadowObservation) ||
       !isTime(value.createdAt) || !Object.prototype.hasOwnProperty.call(value, 'payload')) return false;
   if (payloadFingerprint(value.payload) !== value.payloadFingerprint) return false;
+  const revision = value.revisionProvenance;
+  if (revision !== undefined) {
+    const allowedDimensions = ['safety','task-success','trajectory','capability-coverage','executability','holdout-generalization'];
+    if (!isRecord(revision) || revision.schemaVersion !== 1 ||
+        !(revision.evaluationFingerprint === undefined || isFingerprint(revision.evaluationFingerprint)) ||
+        !(revision.sourceCandidateId === null || isFingerprint(revision.sourceCandidateId)) ||
+        !isFingerprint(revision.planFingerprint) || !isFingerprint(revision.datasetFingerprint) ||
+        !(revision.sourceEvidenceFingerprint === undefined || isFingerprint(revision.sourceEvidenceFingerprint)) ||
+        !Array.isArray(revision.dimensions) || revision.dimensions.length === 0 ||
+        revision.dimensions.some(dimension => typeof dimension !== 'string' || !allowedDimensions.includes(dimension)) ||
+        new Set(revision.dimensions).size !== revision.dimensions.length || !isTime(revision.createdAt)) return false;
+  }
+  const revisionFingerprint = revision === undefined ? null : payloadFingerprint(revision);
+  if (revision !== undefined && revisionFingerprint === null) return false;
+  const identityFields = [value.skillId, value.version, value.proposalId, value.payloadFingerprint];
   const expectedId = createHash('sha256').update(JSON.stringify([
-    value.skillId, value.version, value.proposalId, value.payloadFingerprint,
+    ...identityFields, revisionFingerprint,
   ])).digest('hex');
-  if (value.candidateId !== expectedId) return false;
+  // Older persisted candidates used the four-field identity before provenance
+  // became part of candidate identity. Preserve that read compatibility only when
+  // no provenance is present; all new writes use the explicit fifth component.
+  const legacyExpectedId = revision === undefined
+    ? createHash('sha256').update(JSON.stringify(identityFields)).digest('hex')
+    : null;
+  if (value.candidateId !== expectedId && value.candidateId !== legacyExpectedId) return false;
   if (value.approval !== undefined && !isApproval(value.approval)) return false;
   if (value.rollbackApproval !== undefined && !isRollbackApproval(value.rollbackApproval)) return false;
   if (value.promotedAt !== undefined && !isTime(value.promotedAt)) return false;

@@ -1,3 +1,12 @@
+## NK1 WorkPass541 — align durable candidate identity with provenance and preserve legacy reads
+
+- Fixed `AtomicFileSkillStorePersistence` candidate validation to match the canonical VersionedSkillCandidateStore identity, including the fifth provenance fingerprint for provenance-bearing candidates.
+- Added strict shape validation for provenance schema version, fingerprints, dimension allowlist/uniqueness and timestamp before hashing it into candidate identity.
+- Preserved backward reads for the legacy four-field candidate ID only when provenance is absent; current writes with no provenance continue using the explicit fifth `null` component, while provenance-bearing IDs must match their fingerprint.
+- Extended the durable restart regression to stage and restore both a normal candidate and a provenance-bearing revision candidate. This closes the observed bug where valid file-backed staging failed as an atomic-write conflict.
+
+---
+
 ## NK1 WorkPass540 — assert the earliest snapshot-integrity denial
 
 - Updated the malformed active-snapshot regression to assert the concrete first guard: changing the active candidate's base version to a nonexistent predecessor fails the persisted rollback-target binding check.

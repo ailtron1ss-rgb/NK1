@@ -220,9 +220,27 @@ try {
   const durable = new AtomicFileSkillStorePersistence(filePath);
   const durableStore = new VersionedSkillCandidateStore(durable);
   const durableCandidate = durableStore.stageCandidate(proposal('g'), 'file-backed-skill', { instruction: 'persisted' });
+  const revisionProvenance = {
+    schemaVersion: 1,
+    evaluationFingerprint: 'a'.repeat(64),
+    sourceCandidateId: null,
+    planFingerprint: 'b'.repeat(64),
+    datasetFingerprint: 'c'.repeat(64),
+    sourceEvidenceFingerprint: 'd'.repeat(64),
+    dimensions: ['task-success', 'trajectory'],
+    createdAt: Date.now(),
+  };
+  const durableRevisionCandidate = durableStore.stageCandidate(
+    proposal('g-revision'), 'file-backed-revision-skill', { instruction: 'persisted with provenance' }, revisionProvenance,
+  );
   const afterRestart = new VersionedSkillCandidateStore(new AtomicFileSkillStorePersistence(filePath));
-  assert.equal(afterRestart.snapshot().candidates[0].candidateId, durableCandidate.candidateId,
-    'atomic file adapter restores candidate state across store reconstruction');
+  const restoredSnapshot = afterRestart.snapshot();
+  assert.equal(restoredSnapshot.candidates.find(item => item.candidateId === durableCandidate.candidateId)?.candidateId,
+    durableCandidate.candidateId,
+    'atomic file adapter restores candidates without provenance across store reconstruction');
+  const restoredRevision = restoredSnapshot.candidates.find(item => item.candidateId === durableRevisionCandidate.candidateId);
+  assert.equal(restoredRevision?.revisionProvenance?.planFingerprint, revisionProvenance.planFingerprint,
+    'atomic file adapter validates and restores the provenance-bound candidate identity');
   assert.equal(durable.compareAndSwap(0, { schemaVersion: 1, revision: 1, active: [], candidates: [] }), false,
     'stale revisions cannot overwrite a newer durable snapshot');
 } finally {
