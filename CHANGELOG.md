@@ -1,3 +1,10 @@
+## 2026-10-24 — TypeScript runtime-check status is now explicit
+
+- [TYPECHECK] A compiler-free runtime fallback now reports `TYPECHECK=PARTIAL` when it can only parse TypeScript syntax; it no longer labels syntax-only validation as a complete typecheck.
+- [REGRESSION] Extended the compiler-selection test to cover the app-pinned compiler, the explicitly partial syntax fallback (including a syntax-valid type mismatch), syntax-error rejection, and propagation of a non-zero compiler exit.
+- [CI] Added the regression to the WorkPass71 validation workflow so the behavior is checked on the source branch and pull requests.
+- [LIMITATION] These changes improve verification honesty, not application type coverage. The exact-head CI and test execution still need to pass before the change is treated as validated.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
