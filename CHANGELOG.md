@@ -1,3 +1,10 @@
+## NK1 WorkPass555 — sanitize restored observer trust state (2026-10-24)
+
+- `ExternalObserverFabric.restore()` now validates restored source identities against supported source classes/channels, discards malformed/duplicate IDs, normalizes reliability to [0, 1], and sanitizes counters and enabled state.
+- In strict canonical mode, restored observations must match a registered source ID/class/channel and cannot override the registered independence key. Legacy rows missing the key inherit it from the registry. Invalid/orphan observations and assessments or action links without retained observations are dropped before recomputation.
+- The regression now verifies orphan and conflicting rows are removed from the observer's internal state (not merely omitted from the ledger), and restored reliability values are clamped.
+- **Validation boundary:** this constrains corrupt/inconsistent restored state; it does not cryptographically authenticate a snapshot imported from an untrusted party.
+
 ## NK1 WorkPass554 — validate restored observer lineage before ledger backfill (2026-10-24)
 
 - The observer-to-ledger restore reconciliation now requires each persisted observation to match a registered source ID, source class, and channel. Rows with a conflicting explicit independence key are discarded instead of being reintroduced as canonical evidence.
