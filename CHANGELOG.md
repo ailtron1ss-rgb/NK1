@@ -1,3 +1,12 @@
+## NK1 WorkPass508 — connect memory evidence to canonical event identity (2026-10-24)
+
+- Reconciled the memory branch's legacy reality ledger with the event-aware implementation used by feedback/perception: bounded plain-data restore, event ID validation, exact-retry idempotency and conflicting-payload quarantine.
+- Added the shared `RealityEvidenceLedger.realityEvidenceEventId(...)` delegate so memory-owned evidence uses the same canonical ID format as the cognitive learning lane.
+- Kept epistemic classes separate: user-reported claims remain queryable but do not inflate external/device-observation aggregates.
+- Added a focused regression for identity delegation, idempotent retries, conflict quarantine and user-report separation. Committed to `feature/memory`; execution/typecheck are not yet confirmed.
+
+---
+
 ## NK1 WorkPass507 — make experience consolidation identity-safe and limit-correct (2026-10-24)
 
 - Reject duplicate experience IDs at runtime ingress before mutating the bounded buffer.
