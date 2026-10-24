@@ -1,3 +1,9 @@
+## WorkPass474 addendum — category exit-gate progress (2026-10-24)
+
+The current follow-up extends existing category owners: `feature/memory` optimizes revision-link diagnostics to O(n); `feature/personality` rejects duplicate live goal IDs before lifecycle mutation; `feature/learning` hardens autonomous cognitive-life restore with bounded plain-data validation. The implementation is committed on the existing PRs #82, #83 and #79. These changes are not integrated or test-confirmed yet. Keep readiness at 46/100; do not raise scores until exact-head suites and integration gates pass.
+
+---
+
 # NK1 branch goals, shared brain contracts and exit gates
 
 **Updated:** 2026-10-23  
