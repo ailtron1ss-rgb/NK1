@@ -1,3 +1,11 @@
+## NK1 WorkPass491 — regression contracts match fail-closed behavior (2026-10-24)
+
+- Added the missing `test:workpass294:correlated-postcondition` npm alias referenced by the workflow, so the postcondition regression proceeds after its semantic typecheck.
+- Corrected the P26 true-learning test: non-finite learning rates are rejected before mutation, rather than silently treated as a successful update; the regression now asserts unchanged finite weights, biases, and update count.
+- Normalized any partially malformed `lastMissingStages` array to the full required-stage set, instead of retaining a valid-looking subset from a corrupted snapshot.
+
+---
+
 ## NK1 WorkPass489 — verify shared ID implementation on the perception branch (2026-10-24)
 
 - Corrected the common helper's output expression and changed control filtering to explicit code-point checks; the helper file's blob now matches `feature/feedback` byte-for-byte.
