@@ -15,7 +15,8 @@ assert.equal(failure.status, 'FAIL');
 assert.equal(runtimeLedger.snapshot().lastBehaviorHash, failure.behaviorHash, 'failure fingerprint must replace stale successful behavior hash');
 runtimeLedger.durable({ at: Date.now(), tick: 7, stateTick: 7, replaySignature: 'fixture-signature', continuousTick: 7, continuityProcessed: 7 });
 runtimeLedger.durable({ at: Date.now(), tick: 7, stateTick: 7, replaySignature: 'fixture-signature-2', continuousTick: 7, continuityProcessed: 7 });
-assert.equal(runtimeLedger.diagnostics().lastStatus, 'FAIL', 'repeated durability flushes must not mask the failure');
+runtimeLedger.restoreVerification({ at: Date.now(), tick: 7, previousDurableHash: 'previous-hash', replaySignature: 'fixture-signature-2', continuousTick: 7, processed: 7 });
+assert.equal(runtimeLedger.diagnostics().lastStatus, 'FAIL', 'durability and restore bookkeeping must not mask the failure');
 
 // A normal step can itself fail its closure checks; durability must not turn it green.
 const failedStepLedger = new RuntimeClosureLedger();
