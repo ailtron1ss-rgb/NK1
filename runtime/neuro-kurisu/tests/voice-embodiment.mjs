@@ -160,4 +160,30 @@ assert.equal(postflightFailure.consequenceVerification.verified, false);
 assert.equal(postflightFailure.consequenceVerification.reason, 'post-action-measurement-failed-effect-unverified');
 assert.equal(postflightSampleCalls, 3);
 
+
+// WorkPass460: invalid continuity and event payloads are rejected before state mutation.
+const continuityGuard = new EmbodimentRuntime();
+continuityGuard.body = { ...defaultBodyState(), lastUserActivityAt: 100, lastExternalEventAt: 200 };
+const continuityBefore = continuityGuard.snapshot();
+const eventsBefore = continuityGuard.eventLog();
+continuityGuard.userActivity(Number.NaN);
+continuityGuard.userActivity(Number.POSITIVE_INFINITY);
+assert.deepEqual(continuityGuard.snapshot(), continuityBefore,
+  'invalid user-activity timestamps must not poison continuity or sleep decisions');
+let eventCoercions = 0;
+const hostileEventDetail = { toString() { eventCoercions++; return 'must not enter history'; } };
+continuityGuard.externalEvent(hostileEventDetail, .9, 300);
+continuityGuard.externalEvent('bad importance', Number.NaN, 300);
+continuityGuard.externalEvent('bad timestamp', .9, Number.NEGATIVE_INFINITY);
+continuityGuard.externalEvent('\\u0000hidden control', .9, 300);
+assert.equal(eventCoercions, 0, 'external-event validation must never coerce arbitrary objects');
+assert.deepEqual(continuityGuard.snapshot(), continuityBefore,
+  'rejected external events must not update wake or continuity timestamps');
+assert.deepEqual(continuityGuard.eventLog(), eventsBefore,
+  'rejected external events must not create misleading event receipts');
+const beforeBadSleepReason = continuityGuard.snapshot();
+continuityGuard.sleep({ toString() { eventCoercions++; return 'unsafe'; } });
+assert.equal(eventCoercions, 0, 'sleep/wake reasons must be strings, never implicit coercions');
+assert.deepEqual(continuityGuard.snapshot(), beforeBadSleepReason);
+
 console.log('VOICE_EMBODIMENT=PASS');
