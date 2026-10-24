@@ -345,10 +345,13 @@ export class VersionedSkillCandidateStore {
       previousActive?.version ?? 0,
       ...current.candidates.filter(item => item.skillId === skillId).map(item => item.version),
     ) + 1;
-    const candidateId = createHash('sha256').update(JSON.stringify([
-      skillId, nextVersion, proposal.proposalId, payloadFingerprint,
-      revisionProvenance ? fingerprint(revisionProvenance) : null,
-    ])).digest('hex');
+    // Preserve the historical four-field ID for ordinary candidates. Revision
+    // provenance extends identity only when it exists; appending a null sentinel
+    // would make file-backed validation disagree with the in-memory store and
+    // reject every ordinary candidate on durable write.
+    const candidateIdentity: unknown[] = [skillId, nextVersion, proposal.proposalId, payloadFingerprint];
+    if (revisionProvenance) candidateIdentity.push(fingerprint(revisionProvenance));
+    const candidateId = createHash('sha256').update(JSON.stringify(candidateIdentity)).digest('hex');
     const candidate: VersionedSkillCandidate = {
       candidateId, skillId, version: nextVersion, payload: clone(payload), payloadFingerprint,
       proposalId: proposal.proposalId, proposalOutcomeFingerprint: proposal.outcomeFingerprint,

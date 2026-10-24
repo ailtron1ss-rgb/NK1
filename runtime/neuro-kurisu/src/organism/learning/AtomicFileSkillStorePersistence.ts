@@ -86,6 +86,19 @@ function isRollbackApproval(value: unknown): value is SkillRollbackApproval {
     payload.expectedActiveVersion === value.expectedActiveVersion;
 }
 
+function isRevisionProvenance(value: unknown): boolean {
+  if (!isRecord(value) || value.schemaVersion !== 1 ||
+      !isFingerprint(value.evaluationFingerprint) ||
+      !(value.sourceCandidateId === null || isFingerprint(value.sourceCandidateId)) ||
+      !isFingerprint(value.planFingerprint) || !isFingerprint(value.datasetFingerprint) ||
+      (value.sourceEvidenceFingerprint !== undefined && !isFingerprint(value.sourceEvidenceFingerprint)) ||
+      !Array.isArray(value.dimensions) || value.dimensions.length === 0 ||
+      value.dimensions.some(d => !['safety','task-success','trajectory','capability-coverage','executability','holdout-generalization'].includes(String(d))) ||
+      new Set(value.dimensions).size !== value.dimensions.length ||
+      typeof value.createdAt !== 'number' || !Number.isFinite(value.createdAt) || value.createdAt <= 0) return false;
+  return true;
+}
+
 function isCandidate(value: unknown): value is VersionedSkillCandidate {
   if (!isRecord(value) || !isFingerprint(value.candidateId) || !isText(value.skillId) ||
       !isVersion(value.version) || !isFingerprint(value.payloadFingerprint) ||
@@ -96,9 +109,18 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
       !Array.isArray(value.shadowObservations) || !value.shadowObservations.every(isShadowObservation) ||
       !isTime(value.createdAt) || !Object.prototype.hasOwnProperty.call(value, 'payload')) return false;
   if (payloadFingerprint(value.payload) !== value.payloadFingerprint) return false;
-  const expectedId = createHash('sha256').update(JSON.stringify([
-    value.skillId, value.version, value.proposalId, value.payloadFingerprint,
-  ])).digest('hex');
+  if (value.revisionProvenance !== undefined && !isRevisionProvenance(value.revisionProvenance)) return false;
+  // Candidate IDs preserve the legacy four-field identity unless revision
+  // provenance is present. In that case bind its canonical fingerprint as the
+  // fifth identity component so durable restore verifies the same tuple staging
+  // used to create the candidate.
+  const identityParts: unknown[] = [value.skillId, value.version, value.proposalId, value.payloadFingerprint];
+  if (value.revisionProvenance !== undefined) {
+    const provenanceFingerprint = payloadFingerprint(value.revisionProvenance);
+    if (!provenanceFingerprint) return false;
+    identityParts.push(provenanceFingerprint);
+  }
+  const expectedId = createHash('sha256').update(JSON.stringify(identityParts)).digest('hex');
   if (value.candidateId !== expectedId) return false;
   if (value.approval !== undefined && !isApproval(value.approval)) return false;
   if (value.rollbackApproval !== undefined && !isRollbackApproval(value.rollbackApproval)) return false;

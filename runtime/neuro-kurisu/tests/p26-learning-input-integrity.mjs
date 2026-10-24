@@ -14,6 +14,7 @@ const valid = { state, action: 'respond', target01: .9, learningRate01: .06 };
 
 assert.throws(() => learner.train({ ...valid, target01: Number.NaN }), /target-must-be-finite/);
 assert.throws(() => learner.train({ ...valid, learningRate01: Number.POSITIVE_INFINITY }), /rate-must-be-finite/);
+assert.throws(() => learner.train({ ...valid, learningRate01: 1.01 }), /rate-must-be-finite-and-in-0-1/);
 assert.throws(() => learner.train({ ...valid, sampleWeight01: Number.NaN }), /sample-weight-must-be-finite/);
 assert.throws(() => learner.train({ ...valid, action: 'not-an-action' }), /invalid-action/);
 assert.deepEqual(learner.snapshot(), initial, 'rejected samples must not mutate policy weights or learning diagnostics');
@@ -66,4 +67,4 @@ const result = learner.train(valid);
 assert.equal(learner.snapshot().updates, 1, 'valid feedback must still update the learner');
 assert.ok(Number.isFinite(result.predictionAfter));
 assert.ok(learner.snapshot().weights.respond.every(Number.isFinite));
-console.log('P26_LEARNING_INPUT_INTEGRITY=PASS invalidSamples=5 corruptSnapshotFieldsRepaired=9 atomicBatchReject=2 stateMutationOnReject=0 validUpdates=1');
+console.log('P26_LEARNING_INPUT_INTEGRITY=PASS invalidSamples=6 corruptSnapshotFieldsRepaired=9 atomicBatchReject=2 stateMutationOnReject=0 validUpdates=1');

@@ -1,0 +1,40 @@
+name: WorkPass331 unified cognitive kernel
+
+on:
+  push:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/CanonicalCognitiveKernel.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
+      - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel.mjs"
+      - ".github/workflows/workpass331-unified-cognitive-kernel.yml"
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/CanonicalCognitiveKernel.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
+      - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel.mjs"
+      - ".github/workflows/workpass331-unified-cognitive-kernel.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-workpass331-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  canonical-cognitive-kernel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Verify canonical decision-to-learning causal loop
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/canonical-cognitive-kernel.mjs

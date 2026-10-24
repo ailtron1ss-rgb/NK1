@@ -1,3 +1,76 @@
+# NK1 follow-up — durable identity, independent evaluator and final integration verification (2026-10-24)
+
+- [FIXED] WorkPass203 independent-candidate evaluator regression declared `snapshotEvaluator` twice in one ES module. Renamed the authority-snapshot case variables and rebound every dependent assertion to the isolated fixture so the regression parses and evaluates the intended snapshot rather than failing on a duplicate declaration or stale references.
+- [VALIDATION] Fresh WorkPass331, WorkPass287–288, WorkPass292, WorkPass294, WorkPass99, WorkPass102 and WorkPass105 passed on commit `e3d08c728d159f8bf12f7515f5626197f95263c9`. P26 Learning Validation also passed all steps on that commit. WorkPass110 exposed the duplicate evaluator declaration; it has now been fixed and requires a fresh rerun.
+
+- [FIXED] File-backed skill candidate persistence now uses the same candidate ID tuple as candidate staging. Ordinary candidates retain their legacy four-part identity; reflective revisions bind the canonical provenance fingerprint only when provenance is present.
+- [HARDENED] Durable snapshot validation now validates provenance metadata before trusting it and verifies the matching five-part identity for provenance-bearing revisions.
+- [TEST] WorkPass110 exposed the durable CAS mismatch that the in-memory adapter could not detect. The existing file-backed lifecycle regression now covers it via the normal stage/restore path.
+- [TEST] Corrected the P26 learning-input-integrity summary counter to reflect its six malformed sample cases.
+
+# NK1 integration pass — cognitive cycle, learning integrity and CI hardening (2026-10-24)
+
+- [KERNEL] Added replay-idempotent causal stage IDs (`cef:kernel:<tick>:<stage>`), conflicting-evidence rejection and full stage preflight before event writes in `CanonicalCognitiveKernel`.
+- [KERNEL] Duplicate completion deliveries reuse existing outcome/learning/self-update records and do not increment cycle counters again; malformed restored cycle counters cannot silently claim a completed cycle.
+- [LEARNING] `ParametricPolicyLearner` rejects malformed actions, targets, learning rates outside `[0,1]`, sample weights and non-finite feature inputs; batches are preflighted atomically before any weight update. Restore normalizes corrupt model diagnostics and freeze metadata.
+- [LEARNING] Causal experience tests now require grounded action/outcome transitions and ensure imported, unverified external records remain reviewable but do not count as trusted runtime outcomes or affect trusted rolling metrics.
+- [LEARNING] Intrinsic-drive confidence now contributes explicitly to endogenous goal value; previous max-based composition could erase a calibrated drive signal.
+- [RUNTIME] Added null guards around optional causal-learning records, registered the compound-repair clock kind, made the trusted-shadow run API consistently asynchronous and aligned the registrar return contract.
+- [RUNTIME] Removed Node.js strip-only-incompatible TypeScript parameter properties from P23 runtime classes and the continual replay buffer; narrowed numeric retrieval inputs and fixed Android child-process error typing.
+- [EMBODIMENT] Live2D expression application now ignores repeated unchanged expression requests instead of restarting the same expression each time.
+- [CI] Wired missing WorkPass291–294 and P26 test scripts; P26 learning validation now targets Node.js 24. Corrected stale regression expectations for fail-closed restore, adaptive replay bounds, signed rollback approval, seed-manifest verifier identity and IEEE-754 comparison boundaries.
+- [TESTS] Added replay/conflict/atomicity regressions for the kernel and malformed-sample/restore-integrity coverage for the policy learner.
+- [VALIDATION] On earlier relevant heads, WorkPass331, WorkPass287–288, WorkPass291–294, WorkPass99, WorkPass102, WorkPass105, WorkPass108 and WorkPass293 completed successfully. P26 additionally passed runtime typecheck, input-integrity, recovery/matrix, replay, forgetting/transfer and drift-detection stages before a stale malformed-input regression was corrected. Fresh whole-pass validation on this final changelog commit remains required.
+- [LIMITS] No claim of independent retrieval uplift, 24-hour autonomous operation, Android soak, production readiness or release-asset refresh is made. `main` and the published Release ZIP have not been changed.
+
+# NK1 integration hardening — CI contracts, replay and runtime boundaries (2026-10-24)
+
+- [FIXED] Wired missing WorkPass291, WorkPass292 and WorkPass293 runtime package scripts to their existing regression files.
+- [FIXED] Removed Node.js 24 strip-only-incompatible parameter properties from P23 scheduler/coordinator classes.
+- [FIXED] Made P23 reflective-payload boundary test count the canonical serialized UTF-8 bytes, including the JSON string delimiters.
+- [FIXED] Changed stale WorkPass287 restore expectation to match the implementation's fail-closed reset when persisted stage history is malformed.
+- [FIXED] Clarified the P23 replay test contract: adaptive selection may choose fewer samples than the configured cap, but never exceed the hard maximum.
+- [HARDENED] Added an explicit P23 compound-repair clock kind to the runtime clock contract and allow-list.
+- [HARDENED] Narrowed optional numeric skill-retrieval inputs before arithmetic and aligned Android child-process error callback typing with Node.js.
+- [HARDENED] Aligned the trusted shadow-run registrar return type with its durable registry implementation.
+- [HARDENED] Added null guards before forwarding replay/validation/verified-repair causal records into unified learning. Missing causal records no longer cause an exception or become fabricated learning evidence.
+- [VALIDATION] WorkPass291, WorkPass292 and WorkPass293 passed on the prior code head `53850d54cfafdcf20030db60e23738796bc06862`; later changes require revalidation on the new head. Broad typecheck, kernel test, retrieval benchmark and remaining holdout gates are still being evaluated; no release-ready claim is made.
+
+# NK1 P23 runtime fixes — Node.js 24 strip-only and payload boundary (2026-10-24)
+
+- [FIXED] Removed TypeScript parameter-property syntax from the trusted shadow-learning scheduler and compound-repair revision coordinator. Node.js 24's built-in `--experimental-strip-types` loader rejects parameter properties because it strips types without transforming TypeScript syntax that requires runtime code generation.
+- [FIXED] Corrected the reflective payload-budget boundary regression: the limit applies to canonical UTF-8 JSON bytes, so a string's serialized quote delimiters count toward the 256 KiB budget.
+- [TESTS UPDATED] WorkPass291 now asserts that the canonical serialization is exactly the configured byte budget before testing rejection above the limit.
+- [VALIDATION] CI is required to confirm the Node.js 24 import path and exact-size test. No suite-wide success is claimed from these source changes alone.
+
+# NK1 CI repair — WorkPass291/293 test-script wiring (2026-10-24)
+
+- [FIXED] WorkPass291 and WorkPass293 workflows invoked test names that were absent from the runtime package manifest although their test files existed.
+- [WIRED] Added `test:workpass291:payload-budget` and `test:workpass293:p23-revision` commands, using the existing Node.js 24 strip-types convention.
+- [VALIDATION] The updated package manifest parses as JSON. CI must execute both tests on the current head before their behavior is considered verified; no test pass is implied by script wiring alone.
+
+# NK1 CI repair — WorkPass292 evidence-lanes script (2026-10-24)
+
+- [FIXED] The WorkPass292 workflow called `test:workpass292:evidence-lanes`, but the runtime package did not define that script even though the corresponding test file existed.
+- [WIRED] Added the missing runtime package script to execute `tests/workpass292-evidence-lanes.mjs` under the project's Node.js 24 strip-types command.
+- [VALIDATION] The package manifest parses as valid JSON. The workflow must re-run the test on this new head; no test pass is claimed before that run completes.
+
+# WorkPass331 follow-up — deterministic replay and cycle integrity (2026-10-24)
+
+- [HARDENED] Cognitive kernel stage events now use stable identities scoped to the logical tick and stage, so repeated delivery of identical input does not append duplicate causal events.
+- [FAIL-CLOSED] Reusing a tick with changed stage evidence, parent lineage, confidence, payload or timestamp is rejected instead of silently accepting the prior event.
+- [HARDENED] All stage input contracts are checked before event writes begin, preventing malformed input from leaving a partial decision cycle.
+- [HARDENED] Duplicate completion deliveries return the already-recorded cycle outcome and do not increment cycle counters again.
+- [TESTS ADDED] Added regressions for exact replay, conflicting replay, malformed-input atomicity and duplicate late feedback.
+- [VALIDATION] Source and regression changes are committed to `workpass331-unified-cognitive-kernel-2026-10-24`. Hosted workflow execution must be checked separately; this entry does not claim a passing run.
+
+# WorkPass331 — unified canonical cognitive kernel (2026-10-24)
+
+- [IMPLEMENTED] Added `CanonicalCognitiveKernel` as the single coordinator for observation, prediction, appraisal, attention, memory, goal, plan, action, outcome, learning and self-update event lineage.
+- [IMPLEMENTED] Wired `OrganismCore` decision and feedback paths through the kernel; asynchronous feedback closes the originating logical tick and is evaluated against the shared event and cycle ledgers.
+- [IMPLEMENTED] Added a focused causal-cycle regression test and GitHub Actions workflow. Specialized cognitive modules remain component owners; duplicated event-chain construction was removed from `OrganismCore`.
+- [VALIDATION] Focused workflow will validate this exact commit. Existing unrelated runtime/app typecheck and CI failures are not declared fixed by this pass.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

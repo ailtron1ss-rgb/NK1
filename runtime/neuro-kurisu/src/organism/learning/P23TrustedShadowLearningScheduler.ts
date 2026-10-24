@@ -170,7 +170,10 @@ export class P23TrustedShadowLearningScheduler {
   readonly initialDelayMs: number;
   private readonly config: TrustedShadowLearningScheduleConfig;
 
-  constructor(private readonly core: TrustedShadowLearningCore, config: TrustedShadowLearningScheduleConfig) {
+  private readonly core: TrustedShadowLearningCore;
+
+  constructor(core: TrustedShadowLearningCore, config: TrustedShadowLearningScheduleConfig) {
+    this.core = core;
     if (!config || config.enabled !== true) throw new Error('trusted shadow runtime schedule requires explicit enablement');
     if (!nonEmpty(config.runtimeVersion) || !nonEmpty(config.taskId) || !nonEmpty(config.taskVersion)) {
       throw new Error('trusted shadow runtime task identity is incomplete');
