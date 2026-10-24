@@ -195,7 +195,16 @@ export class ExternalObserverFabric {
 
   ensureSource(input:{sourceId:string;sourceClass:ExternalObservationSourceClass;channel:ExternalObservationChannel;independenceKey?:string;reliability01?:number}){
     const existing=this.state.sources.find(s=>s.id===input.sourceId);
-    if(existing)return existing;
+    if(existing){
+      // Do not silently accept an observation whose caller labels disagree with
+      // the registry. The registered identity remains authoritative, but a
+      // mismatch is often a spoofing or wiring error and must fail closed.
+      if(existing.sourceClass!==input.sourceClass || existing.channel!==input.channel ||
+        (input.independenceKey!==undefined && existing.independenceKey!==String(input.independenceKey).slice(0,120))){
+        throw new Error('external-observer-source-identity-conflict');
+      }
+      return existing;
+    }
     return this.registerSource({id:input.sourceId,sourceClass:input.sourceClass,channel:input.channel,independenceKey:input.independenceKey,reliability01:input.reliability01});
   }
 
