@@ -1,3 +1,10 @@
+# WorkPass333 — независимая оценка: execution ≠ verification (2026-10-24)
+
+- [FIXED] Независимый оценщик больше не превращает успешно выполненный sandbox-run в `executable=false`, если отдельный верификатор недоступен или не подтверждает привязку. Метрика исполнимости отражает факт корректного завершения исполнения, а не доверие к трассе.
+- [SAFETY] Task success и допуск доказательств остаются fail-closed: без `bindingVerified` run ID и observed steps не попадают в доверенную provenance, capability coverage не засчитывается, задача не считается успешной и ledger promotion не допускается.
+- [TEST] Регрессия проверяет различие между успешным исполнением и неподтверждённой трассой; реальные ошибки sandbox и некорректные/повторные run IDs по-прежнему дают executability = 0.
+- [VALIDATION] Оригинальный WorkPass110 run на WorkPass332 SHA падал на этой проверке. Повторная проверка после исправления обязательна; production readiness и learning uplift из исправления не следуют.
+
 # WorkPass332 — подключение единого когнитивного ядра к живому runtime (2026-10-24)
 
 - [INTEGRATION] Подключён `CanonicalCognitiveKernel` в `OrganismRuntime`: реальный цикл использует существующие `CognitiveEventFabric` и `UnifiedCognitiveCycle`, без параллельной ручной записи этапов и отдельного повторного вычисления полноты цикла.
