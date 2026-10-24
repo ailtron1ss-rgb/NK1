@@ -34,7 +34,7 @@ function resolveImport(importer, specifier) {
 function collectRelativeSpecifiers(source) {
   // Covers static imports, re-exports, literal dynamic imports and literal
   // CommonJS requires. Bare package imports are intentionally not traversed.
-  const pattern = /(?:\\bfrom\\s*|\\bimport\\s*(?:\\(\\s*)?|\\brequire\\s*\\(\\s*)["']([^"']+)["']/g;
+  const pattern = /(?:\bfrom\s*|\bimport\s*(?:\(\s*)?|\brequire\s*\(\s*)["']([^"']+)["']/g;
   const result = new Set();
   for (const match of source.matchAll(pattern)) {
     const specifier = match[1];
