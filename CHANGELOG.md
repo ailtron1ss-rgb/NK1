@@ -1,3 +1,11 @@
+## NK1 WorkPass556 — authorize source registration through trusted tool declarations (2026-10-24)
+
+- `ExternalObserverFabric` strict mode now requires every new registered source identity to be approved by an injected registrar policy. It rejects arbitrary source IDs, refuses identity mismatches, and treats strict-mode registration as identity lookup rather than an API for changing reliability/enablement. New strict-mode sources start at the conservative class prior.
+- `ActionGateway.isDeclaredObservationSource()` confirms an exact source ID/class/channel/independence-key match against a registered `ToolDefinition.observationSource`. `EvidenceResearchSubsystemRuntime` accepts the source-registration policy as constructor configuration.
+- `OrganismCore` connects strict registration to the trusted ActionGateway catalogue, exposes `registerExternalObserverSourceForTool()` for declared tools, and registers a tool source automatically only in the verified external-postcondition integration path. Restored observer source records must still match a currently declared source.
+- Updated source-identity and observer-to-ledger tests to use declared source policies. Expanded `.github/workflows/reality-learning-regression.yml` to run `big-pass-64-external-observer.mjs` so the actual Core → ActionGateway → observer path is covered in CI.
+- **Validation boundary:** code and tests are committed on `feature/feedback`. This entry does not claim success until the latest hosted CI run for the final source/test commit completes.
+
 ## NK1 WorkPass555 — sanitize restored observer trust state (2026-10-24)
 
 - `ExternalObserverFabric.restore()` now validates restored source identities against supported source classes/channels, discards malformed/duplicate IDs, normalizes reliability to [0, 1], and sanitizes counters and enabled state.
