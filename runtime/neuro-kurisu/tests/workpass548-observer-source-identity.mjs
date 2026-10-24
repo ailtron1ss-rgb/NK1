@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { ExternalObserverFabric } from '../src/organism/system/ExternalObserverFabric.ts';
 import { EvidenceResearchSubsystemRuntime } from '../src/organism/core/EvidenceResearchSubsystemRuntime.ts';
+import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
 
 const fabric = new ExternalObserverFabric();
 const registered = fabric.registerSource({
@@ -103,7 +104,24 @@ assert.equal(existingAtCapacity.reliability01, 0.51, 'known source calibration r
 assert.equal(bounded.snapshot().sources.length, 16, 'updating a known identity must not grow or shrink the registry');
 
 // The production evidence sink must not let a first observation mint a source identity.
-const guardedRuntime = new EvidenceResearchSubsystemRuntime();
+const authorityGateway = new ActionGateway();
+const allowedCameraSource = {
+  sourceId: 'registered-camera',
+  sourceClass: 'device',
+  channel: 'camera',
+  independenceKey: 'camera:front',
+};
+authorityGateway.registerTool({
+  id: 'camera.front.read',
+  capability: 'device.camera.read',
+  destructive: false,
+  observationSource: allowedCameraSource,
+  execute: async () => ({ ok: true }),
+});
+const authorizeSourceRegistration = source => authorityGateway.isDeclaredObservationSource({
+  sourceId: source.id, sourceClass: source.sourceClass, channel: source.channel, independenceKey: source.independenceKey,
+});
+const guardedRuntime = new EvidenceResearchSubsystemRuntime({ authorizeSourceRegistration });
 assert.throws(() => guardedRuntime.externalObserver.observe({
   sourceId: 'unregistered-camera',
   sourceClass: 'device',
@@ -116,13 +134,23 @@ assert.throws(() => guardedRuntime.externalObserver.observe({
 assert.equal(guardedRuntime.externalObserver.snapshot().observations.length, 0, 'rejected ingress must not persist an observation');
 assert.equal(guardedRuntime.realityEvidenceLedger.snapshot().total, 0, 'rejected ingress must not reach the canonical evidence ledger');
 
-guardedRuntime.externalObserver.registerSource({
+assert.throws(() => guardedRuntime.externalObserver.registerSource({
+  id: 'made-up-camera',
+  sourceClass: 'device',
+  channel: 'camera',
+  independenceKey: 'camera:spoofed',
+  reliability01: 1,
+}), /external-observer-source-registration-not-authorized/);
+const registeredSource = guardedRuntime.externalObserver.registerSource({
   id: 'registered-camera',
   sourceClass: 'device',
   channel: 'camera',
   independenceKey: 'camera:front',
-  reliability01: 0.9,
+  reliability01: 0.99,
+  enabled: false,
 });
+assert.equal(registeredSource.reliability01, 0.8, 'strict registration must use the conservative source-class prior');
+assert.equal(registeredSource.enabled, true, 'strict registration must not accept caller-controlled enablement');
 const admittedObservation = guardedRuntime.externalObserver.observe({
   sourceId: 'registered-camera',
   sourceClass: 'device',
@@ -140,7 +168,7 @@ const cleanLedger = new EvidenceResearchSubsystemRuntime().realityEvidenceLedger
 const orphanSnapshot = structuredClone(guardedRuntime.snapshot());
 orphanSnapshot.externalObserver.sources = [];
 orphanSnapshot.realityEvidenceLedger = cleanLedger;
-const orphanRestore = new EvidenceResearchSubsystemRuntime();
+const orphanRestore = new EvidenceResearchSubsystemRuntime({ authorizeSourceRegistration });
 orphanRestore.restore(orphanSnapshot);
 assert.equal(orphanRestore.realityEvidenceLedger.snapshot().total, 0, 'orphan observations must not be backfilled without a registered source');
 assert.equal(orphanRestore.externalObserver.snapshot().observations.length, 0, 'orphan rows must be removed from strict observer state, not just hidden from the ledger');
@@ -150,7 +178,7 @@ mismatchedSnapshot.externalObserver.sources[0].sourceClass = 'user';
 mismatchedSnapshot.externalObserver.sources[0].channel = 'user';
 mismatchedSnapshot.externalObserver.sources[0].independenceKey = 'user:forged';
 mismatchedSnapshot.realityEvidenceLedger = cleanLedger;
-const mismatchedRestore = new EvidenceResearchSubsystemRuntime();
+const mismatchedRestore = new EvidenceResearchSubsystemRuntime({ authorizeSourceRegistration });
 mismatchedRestore.restore(mismatchedSnapshot);
 assert.equal(mismatchedRestore.realityEvidenceLedger.snapshot().total, 0, 'restored rows cannot override the registered source class/channel');
 assert.equal(mismatchedRestore.externalObserver.snapshot().observations.length, 0, 'identity-mismatched rows must not remain in internal consensus calculations');
@@ -158,7 +186,7 @@ assert.equal(mismatchedRestore.externalObserver.snapshot().observations.length, 
 const legacySnapshot = structuredClone(guardedRuntime.snapshot());
 delete legacySnapshot.externalObserver.observations[0].independenceKey;
 legacySnapshot.realityEvidenceLedger = cleanLedger;
-const legacyRestore = new EvidenceResearchSubsystemRuntime();
+const legacyRestore = new EvidenceResearchSubsystemRuntime({ authorizeSourceRegistration });
 legacyRestore.restore(legacySnapshot);
 const legacyLedgerRow = legacyRestore.realityEvidenceLedger.snapshot().recent[0];
 assert.equal(legacyRestore.realityEvidenceLedger.snapshot().total, 1, 'legacy rows with a known source remain recoverable');
@@ -166,7 +194,7 @@ assert.equal(legacyLedgerRow.independenceKey, 'camera:front', 'legacy rows inher
 
 const poisonedTrustSnapshot = structuredClone(guardedRuntime.snapshot());
 poisonedTrustSnapshot.externalObserver.sources[0].reliability01 = 9;
-const normalizedTrustRestore = new EvidenceResearchSubsystemRuntime();
+const normalizedTrustRestore = new EvidenceResearchSubsystemRuntime({ authorizeSourceRegistration });
 normalizedTrustRestore.restore(poisonedTrustSnapshot);
 assert.equal(normalizedTrustRestore.externalObserver.snapshot().sources[0].reliability01, 1, 'restored source reliability must be clamped to the normalized range');
 
