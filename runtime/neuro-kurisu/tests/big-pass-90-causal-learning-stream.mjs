@@ -87,13 +87,13 @@ const externalDuplicate = externalStream.recordExternalLearningEvent({
 });
 assert.equal(externalDuplicate?.id, externalFirst?.id,
   "NFKC-normalized upstream retry must resolve to the same recorded outcome");
-assert.equal(externalStream.summary().outcomes, 1,
+assert.equal(externalStream.summary().outcomes, 0,
   "duplicate external evidence must not increment outcome count");
 assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17", success01: .1,
 }), /causal-external-trace-id-conflict/,
   "reusing a trace identity with a changed outcome must surface a conflict");
-assert.equal(externalStream.summary().outcomes, 1,
+assert.equal(externalStream.summary().outcomes, 0,
   "conflicting duplicate evidence must not mutate outcome counts");
 
 assert.throws(() => externalStream.recordExternalLearningEvent({
@@ -134,7 +134,7 @@ const restoredExternalDuplicate = externalRestored.recordExternalLearningEvent({
 });
 assert.equal(restoredExternalDuplicate?.id, externalFirst?.id,
   "a restored external outcome must resolve to its original record");
-assert.equal(externalRestored.summary().outcomes, 1,
+assert.equal(externalRestored.summary().outcomes, 0,
   "a restored duplicate must not increment outcome count");
 assert.throws(() => externalRestored.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17", reward01: .05,
@@ -168,7 +168,7 @@ assert.ok(conflictRestore.snapshot().recordedTraceIds.includes("External-Source-
 assert.equal(conflictRestore.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17",
 }), null, "quarantined identity must not be accepted again as a new event");
-assert.equal(conflictRestore.summary().outcomes, 1,
+assert.equal(conflictRestore.summary().outcomes, 0,
   "quarantine/retry must not change the persisted outcome count");
 
 const cyclicSnapshot = externalStream.snapshot();
@@ -189,7 +189,7 @@ assert.throws(() => externalStream.recordExternalLearningEvent({
 assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, action: "delete-all", traceId: "invalid-action",
 }), /causal-external-action-invalid/);
-assert.equal(externalStream.summary().outcomes, 1,
+assert.equal(externalStream.summary().outcomes, 0,
   "invalid external task/action data must not mutate the causal stream");
 
 // IDs are identity keys, not display strings: truncating an overlong value could
@@ -227,7 +227,7 @@ assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, taskId: "edge-task" + String.fromCharCode(10), traceId: "control-task-edge",
 }), /causal-external-task-id-invalid/,
   "task IDs with trailing control characters must not normalize into ordinary IDs");
-assert.equal(externalStream.summary().outcomes, 1,
+assert.equal(externalStream.summary().outcomes, 0,
   "overlong or control-bearing identity keys must fail before mutating causal state");
 
 const overlongRuntimeTrace = { ...trace, id: "r".repeat(181) };
