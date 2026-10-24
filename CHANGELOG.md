@@ -1,3 +1,44 @@
+# WorkPass337 — type signal-normalization records explicitly (2026-10-24)
+
+- [FIXED] The WorkPass110 runtime typecheck exposed that the defensive isRecord ternaries in InnerImperativeController inferred the empty fallback as {}, causing TS2339 errors on fields despite the runtime guards.
+- [FIX] Explicitly type the normalized records as Record<string, unknown>, preserving finite-number fallback behavior without weakening action/tick validation.
+- [VALIDATION] This addresses the observed compiler errors around fields at lines 102–112. A new exact-head typecheck and WorkPass331 run must confirm no remaining type issues in the intent/memory/forecast integration.
+
+# WorkPass336 — persist bounded shadow-future comparisons (2026-10-24)
+
+- [INTEGRATION] The causal experience trace now carries the top six outputs from the existing `CounterfactualEngine`, with bounded action sequences, expected reward, uncertainty and rationale.
+- [CAUSALITY] The event records the best branch's first action and whether it disagrees with the plan, while keeping imagined reward separate from grounded observed reward. The new trace does not execute a simulated action or silently replace the planner's selected action.
+- [RESOURCE BOUND] At most six branches and four actions per branch are carried into the memory-facing event, preserving bounded runtime/persistence size.
+- [TEST] Added runtime-wiring assertions for branch bounds, plan disagreement and prediction/outcome separation.
+- [VALIDATION] The previous WorkPass331 run confirmed inner-intent behavior on SHA `8eb983930e0da0552426bfb5012c70d0bf9c5c99`; WorkPass335/336 need fresh exact-head workflow and WorkPass110 results. This pass creates evidence for future counterfactual calibration but does not claim improved decisions yet.
+
+# WorkPass335 — preserve intent-to-outcome provenance in experience memory (2026-10-24)
+
+- [INTEGRATION] Extended the existing `core.feedback → worldEvent` experience event with a bounded `innerIntentMemoryTrace`; no second memory store or direct runtime-owned MemoryOS2 writes were added.
+- [CAUSALITY] The trace binds intent ID/motive/reason, active goal, proposed/selected/planned/actual actions, resource state, retrieved canonical memory IDs, evidence receipt IDs, counterfactual availability, prediction, grounded reward, evidence/verification and prediction error.
+- [LEARNING] `attributionEligible` is false when homeostasis redirects an action, preventing an experience consolidator from attributing an outcome to the incompatible proposal. Simulation and external/device outcome sources remain distinct.
+- [TEST] Extended the live runtime-wiring regression to require the trace to travel through the existing event, reference existing evidence receipts and distinguish prediction from observed outcome.
+- [VALIDATION] Exact-head WorkPass331 passed on the previous cognitive-code head. The latest commit adds this memory-facing trace and is awaiting its own exact-head WorkPass331 and WorkPass110 results. No measured memory-retrieval uplift or production readiness is claimed.
+
+# WorkPass334 follow-up — isolate authority permission test state (2026-10-24)
+
+- [TEST FIX] The WorkPass243 independent-evaluation regression now restores the executor fixture to private executable permissions after asserting rejection of a group-writable executable. This prevents that intentional mutation from masking the subsequent run-root inode/identity check.
+- [VALIDATION] A previous exact-head WorkPass110 run failed because the second assertion observed the earlier permission violation. The next exact-head run must confirm the permission and root-identity cases both pass; this test correction does not weaken the runtime permission gate.
+
+# WorkPass334 follow-up — installer fixture dependency fix (2026-10-24)
+
+- [FIXED] `tools/super-install.test.mjs` now copies `runtime-requirements.mjs` into its isolated temporary fixture, matching the import used by `super-install.mjs`.
+- [VALIDATION] The WorkPass331 prerequisite workflow previously stopped before the cognitive tests with `ERR_MODULE_NOT_FOUND` in the fixture. This commit addresses that concrete failure; a fresh exact-head run is required before the prerequisite suite or WorkPass334 behavior tests can be marked passed.
+
+# WorkPass334 — endogenous intent and homeodynamic action arbitration (2026-10-24)
+
+- [INTEGRATION] Added `InnerImperativeController` as a thin policy over the existing live decision, organism needs and embodiment telemetry. It does not create a second goal, memory, world-model, identity or action owner.
+- [BEHAVIOR] During spontaneous autonomous cycles only, a critical resource floor or constrained resources plus a resource-intensive action can redirect to `rest` (or `wait` at a sleep boundary). Explicit user requests and non-spontaneous cycles keep the proposed action; the existing embodied recovery/action boundary remains in place.
+- [CAUSALITY] The live canonical cognitive ledger now records the intent ID, motive, reason, proposed/selected/actual actions, resource state and whether the gate overrode the proposal. The plan stage also records counterfactual branch availability and whether uncertainty requires future review.
+- [LEARNING] When the gate changes the selected action, the old candidate is not credited for the changed behavior. The self-update event links back to the intent and grounded outcome so future identity/skill changes can retain causal lineage.
+- [TEST] Extended the existing live-kernel wiring regression with behavior cases for normal autonomy, low-energy recovery, sleep boundary, epistemic uncertainty, explicit-user priority, non-spontaneous calls and malformed numeric signals.
+- [VALIDATION] Source and regression code are committed; exact-head Actions, runtime typecheck and device/browser E2E are still required. No learning uplift or production readiness is claimed.
+
 # WorkPass333 — независимая оценка: execution ≠ verification (2026-10-24)
 
 - [FIXED] Независимый оценщик больше не превращает успешно выполненный sandbox-run в `executable=false`, если отдельный верификатор недоступен или не подтверждает привязку. Метрика исполнимости отражает факт корректного завершения исполнения, а не доверие к трассе.

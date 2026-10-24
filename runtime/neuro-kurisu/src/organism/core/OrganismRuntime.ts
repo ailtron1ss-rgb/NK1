@@ -19,6 +19,7 @@ import { ContinuityLedger } from '../system/ContinuityLedger.ts';
 import { RuntimeEvidenceBus } from '../system/RuntimeEvidenceBus.ts';
 import { CognitiveEventFabric } from '../system/CognitiveEventFabric.ts';
 import { CanonicalCognitiveKernel } from './CanonicalCognitiveKernel.ts';
+import { deriveInnerImperative } from '../cognition/InnerImperativeController.ts';
 import { CognitiveResourceEconomy } from '../system/CognitiveResourceEconomy.ts';
 import { RealityEvidenceLedger } from '../system/RealityEvidenceLedger.ts';
 import { UnifiedCognitiveCycle } from '../system/UnifiedCognitiveCycle.ts';
@@ -604,8 +605,46 @@ export class OrganismRuntime {
     if (cognitiveProposal) {
       this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });
     }
-    const internalAction = cycle.decision.selected?.action ?? 'wait';
-    const observationEvidence = this.evidenceBus.publish({tick:cycle.state.tick,kind:'observation',source:'runtime',confidence01:.72,payload:{external:Boolean(externalText),predictionError:cycle.state.predictionError,selectedAction:internalAction}});
+    const proposedInternalAction = cycle.decision.selected?.action ?? 'wait';
+    const innerIntent = deriveInnerImperative({
+      tick: cycle.state.tick,
+      hasExternalRequest: Boolean(externalText),
+      spontaneous: Boolean(options.spontaneous),
+      proposedAction: proposedInternalAction,
+      selectedGoalId: cycle.decision.selected?.goalId ?? null,
+      needs: {
+        energy01: cycle.state.needs.energy,
+        cognitiveLoad01: cycle.state.needs.cognitiveLoad,
+        uncertainty01: cycle.state.needs.uncertainty,
+        novelty01: cycle.state.needs.novelty,
+        goalPressure01: cycle.state.needs.goalPressure,
+        socialNeed01: cycle.state.needs.socialNeed,
+      },
+      embodiment: {
+        awake: body.awake,
+        bodyEnergy01: body.bodyEnergy01,
+        cognitiveCapacity01: body.cognitiveCapacity01,
+        thermalStrain01: body.thermalStrain01,
+      },
+      predictionError01: cycle.state.predictionError,
+    });
+    const internalAction = innerIntent.selectedAction;
+    const observationEvidence = this.evidenceBus.publish({
+      tick:cycle.state.tick,
+      kind:'observation',
+      source:'runtime',
+      confidence01:.72,
+      payload:{
+        external:Boolean(externalText),
+        predictionError:cycle.state.predictionError,
+        proposedAction:proposedInternalAction,
+        selectedAction:internalAction,
+        innerIntentId:innerIntent.id,
+        innerIntentMotive:innerIntent.motive,
+        innerIntentReason:innerIntent.reason,
+        innerIntentOverrode:innerIntent.overridden,
+      },
+    });
     this.core.cognitiveBudgetSpend('planning',undefined,cycle.state.needs.uncertainty,'action-planning');
     const plan = this.plans.build(cycle.goals.find(g => g.id === cycle.decision.selected?.goalId) ?? null, internalAction, 4, 4);
     const simBudget=this.core.cognitiveBudgetSpend('simulation',undefined,cycle.state.needs.uncertainty,'counterfactual-rollout');
@@ -660,7 +699,7 @@ export class OrganismRuntime {
     this.realityEvidence.record({tick:cycle.state.tick,realityClass:bodyIsPhysical?'device-observation':'derived',claim:bodyIsPhysical?'device-resource-sample':'host-resource-sample-derived',confidence01:bodyIsPhysical ? body.sensoryFreshness01*.82 : body.sensoryFreshness01*.25,independenceKey:`${bodyIsPhysical?'device':'host'}:${body.telemetry.sampledAt}`,parentIds:[observationEvidence.id]});
     this.realityEvidence.record({tick:cycle.state.tick,realityClass:'simulator',claim:'shadow-world-transition-outcome',confidence01:.72,independenceKey:`sim-shadow:${transition.at}`,parentIds:[predictionEvidence.id]});
 
-    const selectedCandidate = cycle.decision.selected;
+    const selectedCandidate = innerIntent.overridden ? null : cycle.decision.selected;
     const expectedReward01 = Math.max(0, Math.min(1, selectedCandidate?.predictedUtility ?? expectedReward));
     const expectedStateDelta01 = 0.5;
     let language: LanguageResponse | undefined;
@@ -800,7 +839,65 @@ export class OrganismRuntime {
       reward: learningRewardSigned,
       evidenceSource: outcomeSource,
       surprise: learningGate.surprise01,
-      worldEvent: { type: grounded.source === 'external' ? 'external_action_consequence' : 'environment_transition', importance: learningGate.surprise01, payload: { action: embodiedAction.action, internalAction, facts: grounded.source === 'simulation' ? transition.after.facts.slice(-6) : [this.embodiment.resourceSummary()], plan, realitySource:grounded.source, shadowHeld01:shadowResolution.commitShadow?0:1, shadowDivergence01:shadowResolution.divergence01 } },
+      worldEvent: {
+        type: grounded.source === 'external' ? 'external_action_consequence' : 'environment_transition',
+        importance: learningGate.surprise01,
+        payload: {
+          action: embodiedAction.action,
+          internalAction,
+          facts: grounded.source === 'simulation' ? transition.after.facts.slice(-6) : [this.embodiment.resourceSummary()],
+          plan,
+          realitySource:grounded.source,
+          shadowHeld01:shadowResolution.commitShadow?0:1,
+          shadowDivergence01:shadowResolution.divergence01,
+          // Preserve a single causal autobiographical trace in the existing
+          // experience event. MemoryOS2 remains the only writable memory owner.
+          innerIntentMemoryTrace: {
+            schemaVersion: 1,
+            intentId: innerIntent.id,
+            source: innerIntent.source,
+            motive: innerIntent.motive,
+            reason: innerIntent.reason,
+            selectedGoalId: innerIntent.selectedGoalId,
+            proposedAction: innerIntent.proposedAction,
+            selectedAction: innerIntent.selectedAction,
+            plannedWorldAction: worldAction,
+            actualEmbodiedAction: embodiedAction.action,
+            overridden: innerIntent.overridden,
+            attributionEligible: !innerIntent.overridden,
+            confidence01: innerIntent.confidence01,
+            futureReviewRequired: innerIntent.futureReviewRequired,
+            resourceState: innerIntent.resourceState,
+            retrievedMemoryIds: cycle.memories.slice(0, 12).map(memory => memory.id),
+            evidenceIds: {
+              observation: observationEvidence.id,
+              prediction: predictionEvidence.id,
+              action: actionEvidence.id,
+              outcome: outcomeEvidence.id,
+            },
+            counterfactualBranchCount: branches.length,
+            counterfactualBudgetAccepted: simBudget.accepted,
+            // Persist a small ranked sample of imagined futures, not the entire rollout.
+            // These are model predictions and remain explicitly separate from outcome evidence.
+            counterfactualBestFirstAction: branches[0]?.actions[0] ?? null,
+            counterfactualDisagreesWithPlan: Boolean(branches[0]?.actions[0] && branches[0].actions[0] !== worldAction),
+            counterfactualBranches: branches.slice(0, 6).map((branch, index) => ({
+              rank: index + 1,
+              actions: branch.actions.slice(0, 4),
+              expectedReward: branch.expectedReward,
+              uncertainty: branch.uncertainty,
+              rationale: String(branch.rationale).slice(0, 160),
+            })),
+            predictedReward01: clamp01(expectedReward),
+            observedReward01: clamp01(grounded.reward01),
+            outcomeSource: grounded.source,
+            verified01: clamp01(grounded.verified01),
+            independent01: clamp01(grounded.independent01),
+            evidence01: clamp01(grounded.evidence01),
+            predictionError01: resolvedPrediction?.error01 ?? null,
+          },
+        },
+      },
       learning: {
         source: grounded.source,
         evidence01: learningGate.evidence01,
@@ -946,17 +1043,17 @@ export class OrganismRuntime {
       appraisal:{source:'homeostatic-appraisal',confidence01:clamp01(1-cycle.state.needs.uncertainty),payload:{energy01:cycle.state.needs.energy,cognitiveLoad01:cycle.state.needs.cognitiveLoad,uncertainty01:cycle.state.needs.uncertainty,novelty01:cycle.state.needs.novelty,socialNeed01:cycle.state.needs.socialNeed,goalPressure01:cycle.state.needs.goalPressure,predictionError01:cycle.state.predictionError}},
       attention:{source:'global-workspace',confidence01:clamp01(cycle.workspace.selected.length/Math.max(1,cycle.decision.candidates.length)),payload:{broadcastId:cycle.workspace.broadcastId,selectedCandidateIds:cycle.workspace.selected.slice(0,16),recurrentCycles:cycle.workspace.recurrentCycles,attentionBudget01:cycle.state.attentionBudget}},
       memory:{source:'active-memory-context',confidence01:clamp01(cycle.memories.length/8),payload:{retrievedMemoryIds:cycle.memories.slice(0,12).map(memory=>memory.id),retrievedCount:cycle.memories.length,continuity01:continuousFabric.continuity01,memoryRetention01:continuousFabric.memoryRetention01,lastSpine01:continuousFabric.lastSpine01}},
-      goal:{source:'canonical-goal-selection',confidence01:clamp01(cycle.decision.selected?.confidence ?? .5),payload:{selectedGoalId:cycle.decision.selected?.goalId ?? null,activeGoalIds:cycle.goals.slice(0,12).map(goal=>goal.id),autonomousOverride:cycle.decision.autonomousOverride}},
-      plan:{source:'plan-engine',confidence01:clamp01(plan.steps[0]?.confidence ?? .5),payload:{stepCount:plan.steps.length,nextAction:worldAction,firstStepConfidence01:plan.steps[0]?.confidence ?? null}},
-      action:{source:'organism-action-gate',confidence01:cycle.decision.selected?.confidence ?? .5,payload:{evidenceId:actionEvidence.id,action:embodiedAction.action,internalAction,goalId:cycle.decision.selected?.goalId ?? null}},
+      goal:{source:'canonical-goal-selection',confidence01:clamp01(cycle.decision.selected?.confidence ?? .5),payload:{selectedGoalId:cycle.decision.selected?.goalId ?? null,activeGoalIds:cycle.goals.slice(0,12).map(goal=>goal.id),autonomousOverride:cycle.decision.autonomousOverride,innerIntent:{id:innerIntent.id,source:innerIntent.source,motive:innerIntent.motive,reason:innerIntent.reason,selectedGoalId:innerIntent.selectedGoalId,proposedAction:innerIntent.proposedAction,selectedAction:innerIntent.selectedAction,overridden:innerIntent.overridden,autonomous:innerIntent.autonomous,confidence01:innerIntent.confidence01,futureReviewRequired:innerIntent.futureReviewRequired,resourceState:innerIntent.resourceState}}},
+      plan:{source:'plan-engine',confidence01:clamp01(plan.steps[0]?.confidence ?? .5),payload:{stepCount:plan.steps.length,nextAction:worldAction,firstStepConfidence01:plan.steps[0]?.confidence ?? null,innerIntentId:innerIntent.id,futureReviewRequired:innerIntent.futureReviewRequired,counterfactualBranchCount:branches.length,counterfactualBudgetAccepted:simBudget.accepted,expectedReward01:clamp01(expectedReward)}},
+      action:{source:'organism-action-gate',confidence01:cycle.decision.selected?.confidence ?? .5,payload:{evidenceId:actionEvidence.id,action:embodiedAction.action,internalAction,proposedInternalAction,innerIntentId:innerIntent.id,innerIntentReason:innerIntent.reason,innerIntentOverrode:innerIntent.overridden,goalId:cycle.decision.selected?.goalId ?? null}},
     });
     const cycleCompletion = this.canonicalCognitiveKernel.completeCycle({
       anchors: cycleDecision.anchors,
       fallbackTick: cycle.state.tick,
       at: cycle.state.at,
-      outcome:{source:grounded.source==='external'?'external-device':'shadow-simulator',external:grounded.source==='external',confidence01:grounded.evidence01,payload:{evidenceId:outcomeEvidence.id,reward01:grounded.reward01,surprise:grounded.surprise01,error01:resolvedPrediction?.error01 ?? null,verified01:grounded.verified01}},
-      learning:{source:'core.feedback',confidence01:clamp01((1-(resolvedPrediction?.error01??0.5))*learningGate.learningScale01),payload:{predictionError01:resolvedPrediction?.error01??null,realitySource:grounded.source,learningPriority01:grounded.learningPriority01,learningScale01:learningGate.learningScale01}},
-      selfUpdate:{source:'core.lifecycle',confidence01:this.core.consciousnessSnapshot().identityContinuity.continuity,payload:{identityContinuity01:this.core.consciousnessSnapshot().identityContinuity.continuity}},
+      outcome:{source:grounded.source==='external'?'external-device':'shadow-simulator',external:grounded.source==='external',confidence01:grounded.evidence01,payload:{evidenceId:outcomeEvidence.id,reward01:grounded.reward01,surprise:grounded.surprise01,error01:resolvedPrediction?.error01 ?? null,verified01:grounded.verified01,innerIntentId:innerIntent.id,proposedAction:proposedInternalAction,selectedAction:internalAction,actualAction:embodiedAction.action,innerIntentOverrode:innerIntent.overridden}},
+      learning:{source:'core.feedback',confidence01:clamp01((1-(resolvedPrediction?.error01??0.5))*learningGate.learningScale01),payload:{predictionError01:resolvedPrediction?.error01??null,realitySource:grounded.source,learningPriority01:grounded.learningPriority01,learningScale01:learningGate.learningScale01,innerIntentId:innerIntent.id,actionAttributionValid:!innerIntent.overridden}},
+      selfUpdate:{source:'core.lifecycle',confidence01:this.core.consciousnessSnapshot().identityContinuity.continuity,payload:{identityContinuity01:this.core.consciousnessSnapshot().identityContinuity.continuity,innerIntentId:innerIntent.id,innerIntentMotive:innerIntent.motive,innerIntentReason:innerIntent.reason,actualAction:embodiedAction.action,evidenceSupport01:grounded.evidence01,identityUpdateScale01:learningGate.identityUpdateScale01}},
     });
     const cycleStageIds = {
       observation: cycleDecision.anchors.observation,

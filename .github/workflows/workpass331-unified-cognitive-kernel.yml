@@ -3,6 +3,7 @@ name: WorkPass331 unified cognitive kernel
 on:
   push:
     paths:
+      - "runtime/neuro-kurisu/src/organism/cognition/InnerImperativeController.ts"
       - "runtime/neuro-kurisu/src/organism/core/CanonicalCognitiveKernel.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel-runtime-wiring.mjs"
@@ -20,6 +21,7 @@ on:
       - ".github/workflows/workpass331-unified-cognitive-kernel.yml"
   pull_request:
     paths:
+      - "runtime/neuro-kurisu/src/organism/cognition/InnerImperativeController.ts"
       - "runtime/neuro-kurisu/src/organism/core/CanonicalCognitiveKernel.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/canonical-cognitive-kernel-runtime-wiring.mjs"
