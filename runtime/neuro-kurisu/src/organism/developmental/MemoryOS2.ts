@@ -114,7 +114,7 @@ function isConversationMemory(item:MemoryItem2):boolean{
  );
  if(hasConversationIdentity)return true;
  const metadata=[item.source,...Object.entries(context).flatMap(([key,value])=>[key,String(value??'')])].join(' ').normalize('NFKC');
- return /\b(?:conversation|dialogue|chat[-_ ]history|transcript|message[-_ ]history|discussion[-_ ]summary)\\b|разговор|диалог|чат|переписк|транскрипт|истори[яи] (?:бесед|диалог|разговор)|обсужден(?:ие|ия|ий)/iu.test(metadata);
+ return /\b(?:conversation|dialogue|chat[-_ ]history|transcript|message[-_ ]history|discussion[-_ ]summary)\b|разговор|диалог|чат|переписк|транскрипт|истори[яи] (?:бесед|диалог|разговор)|обсужден(?:ие|ия|ий)/iu.test(metadata);
 }
 function memoryIntentFit(intent:MemoryQueryIntent,item:MemoryItem2):number{
  const hasGoal=Boolean(String(item.context?.goalId??'').trim())||item.goalRelevance>=.65;
