@@ -3,7 +3,7 @@ import type { WorldContext } from '../core/types.ts';
 
 const clamp = (n:number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 
-type PerceptionKind = 'motion'|'proximity'|'light-change'|'resource'|'network-change'|'world-surprise'|'social-input'|'text-input'|'quiet';
+type PerceptionKind = 'motion'|'proximity'|'light-change'|'resource'|'network-change'|'sensor-availability'|'world-surprise'|'social-input'|'text-input'|'quiet';
 
 export interface PerceptionEvent {
   id: string;
@@ -27,6 +27,8 @@ export interface PerceptionState {
   worldChanges: number;
   externalEvents: number;
   quietCycles: number;
+  /** True after the first fresh telemetry sample establishes a reference baseline. */
+  baselineInitialized: boolean;
   baseline: {
     battery01: number | null;
     ambientLight01: number | null;
@@ -58,6 +60,7 @@ export function defaultPerceptionState(): PerceptionState {
     worldChanges:0,
     externalEvents:0,
     quietCycles:0,
+    baselineInitialized:false,
     baseline:{battery01:null,ambientLight01:null,proximity01:null,motion01:null,networkOnline:null,thermal01:null},
     recent:[],
   };
@@ -76,7 +79,7 @@ function push(state:PerceptionState, event:Omit<PerceptionEvent,'id'|'at'>): Per
   };
 }
 
-const changed = (prev:number|null, next:number|null, threshold:number) => prev == null || next == null ? prev !== next : Math.abs(next-prev) >= threshold;
+const changed = (prev:number|null, next:number|null, threshold:number) => prev != null && next != null && Math.abs(next-prev) >= threshold;
 const MAX_SENSOR_STALE_MS = 120_000;
 const MIN_SENSOR_FRESHNESS01 = 0.2;
 
@@ -90,6 +93,9 @@ export class PerceptionEngine {
       ...(value ?? {}),
       version:2,
       baseline:{...base.baseline,...(value?.baseline ?? {})},
+      baselineInitialized: typeof value?.baselineInitialized === 'boolean'
+        ? value.baselineInitialized
+        : !!value?.baseline && Object.values(value.baseline).some(v => v !== null),
       recent:Array.isArray(value?.recent) ? value!.recent.slice(0,64) : [],
     };
     this.lastWorld = null;
@@ -126,7 +132,40 @@ export class PerceptionEngine {
         networkOnline:b.telemetry.networkOnline,
         thermal01:b.thermalStrain01,
       };
-      const baseline = this.state.baseline;
+      let baseline = this.state.baseline;
+      if (!this.state.baselineInitialized) {
+        // First fresh sample is a reference point, not a physical change.
+        this.state = { ...this.state, baseline: current, baselineInitialized: true };
+        baseline = current;
+      } else {
+        // Sensor signal availability is not equivalent to a numeric value of zero.
+        // Report availability transitions separately and update one baseline field at a time.
+        const availability = [
+          { name: 'motion', key: 'motion01' as const, previous: baseline.motion01, current: current.motion01 },
+          { name: 'proximity', key: 'proximity01' as const, previous: baseline.proximity01, current: current.proximity01 },
+          { name: 'ambient-light', key: 'ambientLight01' as const, previous: baseline.ambientLight01, current: current.ambientLight01 },
+          { name: 'network', key: 'networkOnline' as const, previous: baseline.networkOnline, current: current.networkOnline },
+        ].find(item => (item.previous === null) !== (item.current === null));
+        if (availability) {
+          this.state.sensorChanges += 1;
+          this.state.baseline = { ...baseline, [availability.key]: availability.current };
+          const available = availability.current !== null;
+          this.state = push(this.state, {
+            kind: 'sensor-availability',
+            salience: available ? 0.34 : 0.42,
+            novelty: 0.65,
+            confidence: 0.78,
+            source: 'android',
+            detail: `${availability.name} signal became ${available ? 'available' : 'unavailable'}`,
+            evidence: [
+              `sensor=${availability.name}`,
+              `previous=${String(availability.previous)}`,
+              `current=${String(availability.current)}`,
+            ],
+          });
+          return this.state.lastEvent!;
+        }
+      }
       if (changed(baseline.motion01,current.motion01,0.18)) {
         this.state.sensorChanges += 1;
         this.state.baseline = { ...baseline, motion01: current.motion01 };
