@@ -1,3 +1,20 @@
+## Latest durable checkpoint — WorkPass333: restore truthful independent-evaluation status (2026-10-24)
+
+**Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR #96 remains draft and targets WorkPass331's source branch, not `main`.
+
+- WorkPass332 live cognitive-kernel wiring passed its exact-HEAD kernel workflow: [run 40125747286](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40125747286). The WorkPass287–288 contracts, replay strategy benchmark, WorkPass292, WorkPass293, WorkPass294, WorkPass102, WorkPass105, P26 learning validation and WorkPass108 also passed on SHA `6f9143d8f329e707e7cbeb890d7a197199ddc083`.
+- WorkPass110 failed at `workpass203-independent-candidate-evaluator.mjs` when verifier failure incorrectly lowered execution-quality to non-executable. The root cause was coupling `executable` to `bindingVerified`, which conflated successful sandbox execution with trust in its trace.
+- WorkPass333 separates these facts. A valid sandbox execution remains executable even if verification fails, while task success, trusted run ID/steps, verified capability coverage and ledger admission still require independent binding. Added regression assertions for the exact distinction.
+- Code/test/doc edits have been pushed after the WorkPass332 SHA; fresh exact-HEAD Actions results are pending. Do not report the WorkPass110 correction as validated until the rerun passes.
+
+### Next gates
+1. Confirm fresh WorkPass110 and full runtime typecheck pass on the newest branch SHA.
+2. Run the canonical kernel integration plus organism smoke and persistence/restart tests together on the same SHA; source-contract tests alone are not a complete runtime proof.
+3. Check production UI build/database migration, browser Live2D E2E and Android/Termux voice execution.
+4. Do not change learning/retrieval quality scores without paired multi-seed, frozen-holdout uplift on the same validated corpus. Release remains non-production-approved until all release gates close.
+
+---
+
 ## Latest durable checkpoint — WorkPass332: live runtime kernel wiring (2026-10-24)
 
 **Working branch:** `workpass332-live-runtime-kernel-2026-10-24`, based on `workpass331-unified-cognitive-kernel-2026-10-24`. Do not use `main` as the source-code integration target; it is a release/metadata branch.
