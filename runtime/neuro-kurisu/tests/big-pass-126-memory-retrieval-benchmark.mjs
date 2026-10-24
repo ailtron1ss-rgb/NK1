@@ -26,7 +26,15 @@ const options = {
   },
 };
 const before = memory.snapshot();
-const report = runMemoryOS2RetrievalBenchmark(before, examples, options);
+// Provenance is bound to the exact canonical dataset fingerprint, not to an
+// unverified label. A first deterministic report supplies that fingerprint.
+const datasetFingerprint = runMemoryOS2RetrievalBenchmark(before, examples, options).datasetFingerprint;
+const datasetProvenance = {
+  ...options.datasetProvenance,
+  licenseId: 'LicenseRef-NK1-Synthetic-Regression-Fixture',
+  contentSha256: datasetFingerprint,
+};
+const report = runMemoryOS2RetrievalBenchmark(before, examples, { ...options, datasetProvenance });
 const after = memory.snapshot();
 assert.equal(report.schemaVersion, 6, 'benchmark report follows the current schema version');
 assert.equal(report.benchmark, 'memoryos2-retrieval-vs-bm25-baseline');
