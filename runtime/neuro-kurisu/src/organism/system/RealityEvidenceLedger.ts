@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { createRealityEvidenceEventId } from './EvidenceEventIdentity.ts';
 import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 
 /**
@@ -47,12 +48,7 @@ const MAX_TOTAL=Number.MAX_SAFE_INTEGER;
  * runtime event. It joins projections; it never grants trust or external status.
  */
 export function realityEvidenceEventId(originEventId:string,role:string,discriminator:string):string{
-  const validPart=(value:unknown,max:number):value is string=>typeof value==='string'&&value.length>0&&value===value.trim()&&value.length<=max&&!/[\u0000-\u001f\u007f-\u009f]/.test(value);
-  if(!validPart(originEventId,256)||!validPart(discriminator,256)||typeof role!=='string'||! /^[a-z][a-z0-9-]{0,39}$/.test(role)){
-    throw new TypeError('reality-evidence-event-identity-invalid');
-  }
-  const digest=createHash('sha256').update(JSON.stringify(['nk1-reality-event-v1',originEventId,role,discriminator])).digest('hex').slice(0,48);
-  return `nk1-reality:${role}:${digest}`;
+  return createRealityEvidenceEventId(originEventId,role,discriminator);
 }
 
 
