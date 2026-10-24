@@ -59,4 +59,23 @@ restored.restore(hostileSnapshot);
 assert.equal(restoreGetterCalls, 0, 'snapshot top-level getters must not be executed');
 assert.equal(restored.recent().length, 0);
 
+const restoredRow = (id, parentIds) => ({
+  id, tick: 3, at: 3, stage: 'learning', source: 'persisted-test',
+  parentIds, external: false, confidence01: .8, payload: {},
+});
+restored.restore({
+  version: 1, capacity: 128, total: 4,
+  recent: [
+    restoredRow('valid-lineage', ['parent-event']),
+    restoredRow('padded-parent', [' parent-event']),
+    restoredRow('control-parent', ['parent\\u0000event']),
+    restoredRow('duplicate-parent', ['parent-event', 'parent-event']),
+    restoredRow('oversized-parent-list', Array.from({ length: 13 }, (_, i) => `parent-${i}`)),
+  ],
+});
+assert.deepEqual(restored.recent().map(node => node.id), ['valid-lineage'],
+  'restore must reject malformed lineage rather than silently rewrite causal ancestry');
+assert.deepEqual(restored.recent()[0].parentIds, ['parent-event'],
+  'valid persisted parent IDs must be preserved exactly');
+
 console.log('cognitive event fabric ingress/restore boundary: ok');
