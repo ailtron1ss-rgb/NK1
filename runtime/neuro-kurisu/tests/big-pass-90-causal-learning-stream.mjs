@@ -271,16 +271,23 @@ assert.equal(boundedDuplicateStream.summary().outcomes, outcomesBeforeEvictedRet
   "late duplicate after bounded eviction must not change outcome counts");
 
 const replayDiversity = new CausalExperienceStream(64);
+const replayAfterState = (tick) => mkState({
+  tick,
+  lastAction: trace.selected.action,
+  lastActionSuccess: .7,
+  needs: { ...mkState().needs, energy: .55, uncertainty: .4, novelty: .75 },
+});
 for (let i = 0; i < 3; i++) {
+  const tick = 10 + i;
   replayDiversity.recordOutcome({
-    ...trace, id: `replay-a-${i}`, tick: 10 + i,
+    ...trace, id: `replay-a-${i}`, tick, stateBefore: mkState({ tick }),
     selected: { ...trace.selected, goalId: "task-A" },
-  }, mkState({ tick: 11 + i }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+  }, replayAfterState(tick + 1), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
 }
 replayDiversity.recordOutcome({
-  ...trace, id: "replay-b-0", tick: 20,
+  ...trace, id: "replay-b-0", tick: 20, stateBefore: mkState({ tick: 20 }),
   selected: { ...trace.selected, goalId: "task-B" },
-}, mkState({ tick: 21 }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+}, replayAfterState(21), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
 const replayBatch = replayDiversity.prioritizedReplayCandidates(2);
 assert.ok(replayBatch.some((row) => row.taskId === "task-A"));
 assert.ok(replayBatch.some((row) => row.taskId === "task-B"),
