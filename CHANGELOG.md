@@ -1,3 +1,11 @@
+# NK1 gateway partial-response timeout safety (2026-10-24)
+
+- [HARDENED] A gateway upstream failure after downstream headers are committed now closes the incomplete response without emitting the upstream error as an unhandled `ServerResponse` error. It cannot safely change the already-sent HTTP status to 504.
+- [REGRESSION] The streaming trickle timeout test covers the mid-response cancellation path as part of `npm run test:super-gateway`.
+- [VALIDATION STATUS] The full focused suite must pass on the latest commit after this small hardening change; no change to the main branch or Release ZIP.
+
+---
+
 # NK1 process-supervisor cleanup outcome propagation (2026-10-24)
 
 - [HARDENED] `runCommand()` reports the termination outcome and `cleanupFailed` after timeout handling, distinguishing an exited child from a process group that may still be alive.
