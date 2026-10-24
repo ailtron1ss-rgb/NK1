@@ -1,3 +1,10 @@
+# WorkPass337 — require canonical experiment provenance for learning-growth claims (2026-10-24)
+
+- [FIXED] The strict paired-seed comparison now refuses evaluation envelopes without a canonical experiment manifest, validation plan, holdout plan, distinct baseline/candidate method identities, and a valid attempt identity.
+- [FIXED] Strict promotion additionally requires each run binding to carry its planned run ID; diagnostic-only tests must explicitly opt out, while the production P23 activation path cannot opt out.
+- [TEST] Added comparator coverage for missing experiment authority and promotion-path coverage proving that an otherwise complete-looking envelope without canonical experiment authority cannot activate a skill.
+- [VALIDATION] Code and tests are committed in draft PR #113. Exact-head Actions and TypeScript checks remain unconfirmed; no measured learning uplift or production readiness is claimed.
+
 # WorkPass336 — paired-seed learning-growth gate (2026-10-24)
 
 - [INTEGRATION] Independent candidate comparison now summarizes paired per-seed deltas, 95% t-intervals, validation seed-win rate, worst holdout-seed regression and task-coverage completeness.
