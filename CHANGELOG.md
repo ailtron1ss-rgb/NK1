@@ -1,3 +1,10 @@
+# WorkPass348 — bind signed outcomes to exact skill payloads (2026-10-24)
+
+- [EVIDENCE] Extended the existing signed outcome payload with an optional `payloadFingerprint` field. Legacy consumers remain compatible, while the native Hermes/P23 path requires one consistent SHA-256 payload fingerprint for both baseline and candidate methods and rejects equal fingerprints.
+- [INTEGRITY] Native provider now matches the signed candidate fingerprint to the actual staged/active versioned-store payload and the signed baseline fingerprint to the current active baseline (or the active candidate's saved previous version). A matching proposal ID alone is no longer sufficient to select source code for revision.
+- [TEST] Updated signed fixture artifacts to bind method outcomes to real canonical payload fingerprints, seed a verified active baseline, and add a regression that rejects the same proposal lineage when the staged payload differs.
+- [VALIDATION] WorkPass347's full target workflow passed before this extension. The new WorkPass348 payload-binding regression and typecheck require fresh exact-head Actions results.
+
 # WorkPass347 — race-resistant signed dataset read (2026-10-24)
 
 - [SECURITY] Native P23 provider now opens the resolved dataset via a file descriptor and rechecks dev/ino against the previously inspected file. On POSIX, O_NOFOLLOW prevents a symlink swap at the final path component. Descriptor metadata is checked before reading and again after read to detect inode replacement or concurrent mutation.
