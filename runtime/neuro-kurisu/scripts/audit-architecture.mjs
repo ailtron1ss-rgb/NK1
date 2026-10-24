@@ -110,6 +110,7 @@ const productionInDegreeByPath=new Map();
 const runtimeInDegreeByPath=new Map();
 const runtimeOutDegreeByPath=new Map();
 const productionRuntimeInDegreeByPath=new Map();
+const productionTypeOnlyInDegreeByPath=new Map();
 const typeInDegreeByPath=new Map();
 const typeOutDegreeByPath=new Map();
 for(const edge of edges){
@@ -124,6 +125,8 @@ for(const edge of edges){
     if(edge.fromLayer!=='runtime-tests'){
       productionRuntimeInDegreeByPath.set(edge.to,(productionRuntimeInDegreeByPath.get(edge.to)||0)+1);
     }
+  }else if(edge.fromLayer!=='runtime-tests'){
+    productionTypeOnlyInDegreeByPath.set(edge.to,(productionTypeOnlyInDegreeByPath.get(edge.to)||0)+1);
   }
   if(edge.kind!=='runtime-import'){
     typeOutDegreeByPath.set(edge.from,(typeOutDegreeByPath.get(edge.from)||0)+1);
@@ -137,6 +140,7 @@ for(const node of nodes){
   node.runtimeInDegree=runtimeInDegreeByPath.get(node.id)||0;
   node.runtimeOutDegree=runtimeOutDegreeByPath.get(node.id)||0;
   node.productionRuntimeInDegree=productionRuntimeInDegreeByPath.get(node.id)||0;
+  node.productionTypeOnlyInDegree=productionTypeOnlyInDegreeByPath.get(node.id)||0;
   node.typeInDegree=typeInDegreeByPath.get(node.id)||0;
   node.typeOutDegree=typeOutDegreeByPath.get(node.id)||0;
 }
@@ -149,7 +153,7 @@ const rankNodes=metric=>canonicalSources
     id:node.id,layer:node.layer,inDegree:node.inDegree,
     productionInDegree:node.productionInDegree,outDegree:node.outDegree,
     runtimeInDegree:node.runtimeInDegree,runtimeOutDegree:node.runtimeOutDegree,
-    productionRuntimeInDegree:node.productionRuntimeInDegree,
+    productionRuntimeInDegree:node.productionRuntimeInDegree,productionTypeOnlyInDegree:node.productionTypeOnlyInDegree,
     typeInDegree:node.typeInDegree,typeOutDegree:node.typeOutDegree,
   }));
 const hotSpots={
@@ -172,7 +176,14 @@ for(const budget of dependencyBudget.modules){
     budgetViolations.push({path:budget.path,rule:'tracked-source-missing'});
     continue;
   }
-  for(const [limitKey,metric] of [['maxOutDegree','outDegree'],['maxProductionInDegree','productionInDegree']]){
+  const budgetMetrics=[
+    ['maxOutDegree','outDegree'],
+    ['maxRuntimeOutDegree','runtimeOutDegree'],
+    ['maxTypeOutDegree','typeOutDegree'],
+    ['maxProductionRuntimeInDegree','productionRuntimeInDegree'],
+    ['maxProductionTypeOnlyInDegree','productionTypeOnlyInDegree'],
+  ];
+  for(const [limitKey,metric] of budgetMetrics){
     if(budget[limitKey]===undefined) continue;
     const check={
       path:budget.path,
@@ -199,7 +210,7 @@ for(const file of files){
   sourceLayerCounts[layer]=(sourceLayerCounts[layer]||0)+1;
 }
 const report={
-  schemaVersion:2,
+  schemaVersion:3,
   generatedAt:new Date().toISOString(),
   repositoryRoot:'.',
   summary:{
