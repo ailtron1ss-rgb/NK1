@@ -253,11 +253,12 @@ export function buildUniversalInputInterpretation(rawInput: {
     if (urgency !== null) worldParts.push('goal-urgency=' + urgency.toFixed(2));
   }
 
-  const appraisal = [
+  const appraisalSignals: Array<[string, number | null]> = [
     ['surprise', metric01(observation.surprise)],
     ['novelty', metric01(observation.novelty)],
     ['social-signal', metric01(observation.socialSignal)],
-  ].filter((entry): entry is [string, number] => entry[1] !== null);
+  ];
+  const appraisal = appraisalSignals.filter((entry): entry is [string, number] => entry[1] !== null);
   if (appraisal.length) worldParts.push('appraisal-signals=' + appraisal.map(([name, value]) => name + '=' + value.toFixed(2)).join(', '));
 
   const reward = finiteNumber(observation.reward);
