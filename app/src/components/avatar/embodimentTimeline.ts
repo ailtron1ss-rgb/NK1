@@ -63,6 +63,77 @@ const clamp = (n: number, low: number, high: number): number =>
 
 export const CLOSED_MOUTH: MouthPose = Object.freeze({ open: 0.015, form: 0, viseme: "rest" });
 
+export type AffectiveEmotionLabel = "curiosity" | "calm" | "joy" | "anxiety" | "frustration" | "sadness" | "anger" | "protective";
+
+/** Normalized canonical emotion and body signals used to express affect through voice and avatar. */
+export interface AffectiveEmbodimentInput {
+  label: AffectiveEmotionLabel;
+  valence01: number;
+  arousal01: number;
+  dominance01: number;
+  energy01: number;
+  cognitiveLoad01: number;
+  uncertainty01: number;
+  sleepPressure01: number;
+}
+
+export interface AffectiveEmbodimentProfile {
+  /** Bounded browser TTS controls. */
+  speechRate: number;
+  speechPitch: number;
+  /** Bounded expression and prosody channels. */
+  expressionIntensity: number;
+  voiceEmphasis: number;
+  headTilt: number;
+  gazeXOffset: number;
+  gazeYOffset: number;
+  stress01: number;
+}
+
+/**
+ * Map organism emotion plus body-state signals to a consistent presentation profile.
+ * This is an embodiment mapping, not a second emotion engine: the canonical affect
+ * remains upstream, while every output is bounded before it crosses the UI boundary.
+ */
+export function deriveAffectiveEmbodiment(input: AffectiveEmbodimentInput): AffectiveEmbodimentProfile {
+  const unit = (value: number, fallback = 0.5): number =>
+    Number.isFinite(value) ? clamp(value, 0, 1) : fallback;
+  const valence = unit(input.valence01);
+  const arousal = unit(input.arousal01);
+  const dominance = unit(input.dominance01);
+  const energy = unit(input.energy01, 0.68);
+  const load = unit(input.cognitiveLoad01, 0.25);
+  const uncertainty = unit(input.uncertainty01, 0.35);
+  const sleep = unit(input.sleepPressure01, 0.15);
+
+  const stress01 = clamp(
+    (1 - dominance) * 0.22 + uncertainty * 0.32 + load * 0.24 + sleep * 0.12 + (1 - energy) * 0.10,
+    0, 1,
+  );
+  const labelPitch: Record<AffectiveEmotionLabel, number> = {
+    curiosity: 0.012, calm: 0, joy: 0.025, anxiety: -0.012,
+    frustration: -0.02, sadness: -0.035, anger: -0.03, protective: -0.005,
+  };
+  const headBase: Record<AffectiveEmotionLabel, number> = {
+    curiosity: -0.045, calm: 0, joy: 0.018, anxiety: -0.018,
+    frustration: 0.035, sadness: 0.055, anger: 0.025, protective: -0.01,
+  };
+  return {
+    speechRate: clamp(0.96 + (arousal - 0.30) * 0.11 + (valence - 0.5) * 0.05
+      - stress01 * 0.09 - (1 - energy) * 0.04, 0.78, 1.12),
+    speechPitch: clamp(0.98 + (valence - 0.5) * 0.14 + (dominance - 0.5) * 0.035
+      - stress01 * 0.055 + labelPitch[input.label], 0.82, 1.15),
+    expressionIntensity: clamp(arousal * 0.55 + stress01 * 0.20
+      + Math.abs(valence - 0.5) * 0.15 + (1 - energy) * 0.10, 0, 1),
+    voiceEmphasis: clamp(arousal * 0.50 + stress01 * 0.24 + Math.abs(valence - 0.5) * 0.26, 0, 1),
+    headTilt: clamp(headBase[input.label] + (valence - 0.5) * 0.06
+      - (uncertainty - 0.5) * 0.02 + sleep * 0.015, -0.15, 0.15),
+    gazeXOffset: clamp((valence - 0.5) * 0.10 + (dominance - 0.5) * 0.035, -0.15, 0.15),
+    gazeYOffset: clamp((uncertainty - 0.35) * 0.08 + (sleep - 0.25) * 0.04, -0.12, 0.12),
+    stress01,
+  };
+}
+
 export function poseForGrapheme(grapheme: string): MouthPose {
   const char = String(grapheme ?? "").toLocaleLowerCase().normalize("NFKC");
   if (!char || /^\s$/u.test(char)) return { open: 0.045, form: 0, viseme: "neutral" };
