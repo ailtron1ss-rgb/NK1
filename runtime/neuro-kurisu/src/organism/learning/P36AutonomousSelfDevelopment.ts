@@ -332,7 +332,7 @@ export class P36AutonomousSelfDevelopmentEngine{
       agenda:{...d.agenda,...((r as any).agenda??{})},
       hypotheses:restoredHypotheses,
       experiments:Array.isArray(r.experiments)?r.experiments.slice(-128).map((x:any)=>({...x,replicated:false,status:'insufficient',evidenceGate:'sandbox-preview'})):[],
-      developmentCycles:Array.isArray((r as any).developmentCycles)?(r as any).developmentCycles.slice(-64).map((c:any)=>revokedHypothesisIds.has(c?.hypothesisId)?({...c,stage:'awaiting-evidence',verifiedEvidenceCount:0,lastEvidenceAt:0}):c):[],
+      developmentCycles:Array.isArray((r as any).developmentCycles)?(r as any).developmentCycles.slice(-64).map((c:any)=>({...c,stage:revokedHypothesisIds.has(c?.hypothesisId)||c?.stage==='replicated'||c?.stage==='holdout-verified'?'awaiting-evidence':c?.stage,verifiedEvidenceCount:0,lastEvidenceAt:0})):[],
       // Verifier receipts are WeakMap-backed capabilities and do not survive JSON snapshots.
       // Preserve observations for audit, but never restore serialized trust booleans.
       externalEvidence:Array.isArray(r.externalEvidence)?r.externalEvidence.slice(-512).map(e=>({...e,independentVerified:false,observationId:undefined})):[],
