@@ -76,9 +76,9 @@ A “canonical” path points readers to the current view; it does not mean the 
 - [x] Markdown link scanner and regression tests.
 - [x] Exact-content SHA-256 inventory and candidate grouping.
 - [x] Root `audit:ordering` and `audit:quick` integration.
-- [ ] Read the exact-head documentation inventory output and triage the actual duplicate groups.
-- [ ] Search code/workflows/manifests for all references to the first archive batch.
-- [ ] Move one verified small batch with a reversible path manifest.
-- [ ] Verify restore/release packaging and update the canonical release archive only in the release workflow.
+- [x] Read an inventory output and triage the exact-content groups; rerun after changes to the family classifier and archive move before treating counts as current.
+- [x] Search local Markdown and scanned source/config/manifest references for the first archive candidate; GitHub issue/PR path searches found no direct references.
+- [x] Move one verified historical status report byte-for-byte with a reversible SHA-256/Git-blob manifest; see `docs/history/reports/INDEX.md`.
+- [ ] Confirm the newest post-move exact-head link, inventory, architecture and server-import workflow; runtime restore/release packaging and ZIP publication remain separate gates.
 
 **Honest status:** this pass creates the evidence-gathering mechanism and a safe policy. The inventory output and follow-up reference search must determine which specific files can move. It does not claim the repository has already been cleaned of duplicates, and does not authorize deleting historical records.
