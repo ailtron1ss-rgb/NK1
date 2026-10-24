@@ -20,6 +20,11 @@ const accessor = { ...valid };
 Object.defineProperty(accessor, 'utility', { enumerable: true, get() { getterCalls += 1; return 0.9; } });
 assert.throws(() => store.ingest(accessor), /experience-record-invalid/);
 assert.equal(getterCalls, 0);
+const accessorTags = [];
+Object.defineProperty(accessorTags, '0', { enumerable: true, get() { getterCalls += 1; return 'hidden'; } });
+accessorTags.length = 1;
+assert.throws(() => store.ingest({ ...valid, id: 'episode-with-hostile-tags', tags: accessorTags }), /experience-record-invalid/);
+assert.equal(getterCalls, 0, 'normalizing tag arrays must not execute index getters');
 assert.equal(store.size(), 1, 'rejected ingress must not mutate memory');
 
 store.restore([valid, { ...valid, id: 'bad', uncertainty: Infinity }, { ...valid, id: 'episode-2' }, { ...valid, utility: 0.95 }]);
