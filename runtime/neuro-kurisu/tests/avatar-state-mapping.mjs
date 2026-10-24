@@ -34,7 +34,7 @@ assert.equal(speaking.expression, 'happy');
 assert.equal(speaking.body.motionGroup, 'Special');
 assert.equal(speaking.body.expressionIntensity, 1, 'arousal must be bounded before it reaches the viewer');
 assert.equal(speaking.body.voiceEmphasis, 1);
-assert.equal(speaking.lipsync, 0.67);
+assert.ok(Math.abs(speaking.lipsync - 0.67) < 1e-9);
 assert.equal(speaking.body.speaking, true);
 
 const safeFallback = buildAvatarPresentation({
