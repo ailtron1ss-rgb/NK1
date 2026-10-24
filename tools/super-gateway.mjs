@@ -81,6 +81,10 @@ export function createGatewayServer({
 
     upstream.on('error', (error) => {
       if (res.destroyed || res.writableEnded) return;
+      if (res.headersSent) {
+        res.destroy(error);
+        return;
+      }
       const timedOut = error?.code === 'ETIMEDOUT';
       const status = timedOut ? 504 : 502;
       const body = timedOut ? 'super-project upstream timed out' : 'super-project upstream unavailable';
@@ -92,19 +96,16 @@ export function createGatewayServer({
       res.end(body);
     });
 
-    req.once('aborted', () => upstream.destroy());
-    res.once('close', () => {
+    const abortUpstream = () => upstream.destroy();
+    const abortOnClientClose = () => {
       if (!res.writableEnded) upstream.destroy();
-    });
+    };
+    req.once('aborted', abortUpstream);
+    res.once('close', abortOnClientClose);
     upstream.once('close', () => {
       req.removeListener('aborted', abortUpstream);
       res.removeListener('close', abortOnClientClose);
     });
-
-    function abortUpstream() { upstream.destroy(); }
-    function abortOnClientClose() {
-      if (!res.writableEnded) upstream.destroy();
-    }
 
     req.pipe(upstream);
   };
