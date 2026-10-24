@@ -41,7 +41,13 @@ const server = createServer(async (request, response) => {
       response.end("forbidden");
       return;
     }
-    const bytes = await readFile(filePath);
+    let bytes = await readFile(filePath);
+    if (pathname === "/viewer.html") {
+      const source = bytes.toString("utf8");
+      const anchor = "app.stage.addChild(model);";
+      if (!source.includes(anchor)) throw new Error("Live2D browser-test instrumentation anchor missing");
+      bytes = Buffer.from(source.replace(anchor, anchor + "window.__nk1TestApp=app;window.__nk1TestModel=model;"), "utf8");
+    }
     response.writeHead(200, {
       "content-type": mimeTypes.get(path.extname(filePath)) || "application/octet-stream",
       "content-length": String(bytes.length),
@@ -116,8 +122,15 @@ try {
     const render = await frame.evaluate(async () => {
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const canvas = document.getElementById("canvas");
+      const app = window.__nk1TestApp;
+      const model = window.__nk1TestModel;
+      if (!app || !model) return { width: canvas.width, height: canvas.height, hasWebGL: false, visiblePixels: 0, modelAvailable: false };
+      // WebGL may discard the previous buffer after presentation. Render and sample
+      // synchronously in the same task to inspect the actual drawing buffer reliably.
+      app.renderer.render(app.stage);
       const gl = canvas.getContext("webgl2") || canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
-      if (!gl) return { width: canvas.width, height: canvas.height, hasWebGL: false, visiblePixels: 0 };
+      if (!gl) return { width: canvas.width, height: canvas.height, hasWebGL: false, visiblePixels: 0, modelAvailable: true };
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       gl.finish();
       const pixels = new Uint8Array(canvas.width * canvas.height * 4);
       gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
