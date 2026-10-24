@@ -10,6 +10,19 @@ const mk=(over={})=>({
   futureMismatch01:.36, futureIdentityCoherence01:.79, regret01:.22, counterfactualGap01:.3, evidence01:.55, resource01:.7, at:Date.now(), ...over
 });
 const e=new AutonomousCognitiveLifeEngine(); e.restore(defaultAutonomousCognitiveLife());
+// WorkPass460: malformed external feedback is rejected before any predictor/metric mutation.
+const beforeBadDecision=e.snapshot();
+assert.throws(()=>e.recordDecision({action:'not-an-action',predicted01:.5,confidence01:.5}),/autonomous-life-decision-action-invalid/);
+assert.deepEqual(e.snapshot(),beforeBadDecision,'invalid decision labels must not create prediction records');
+assert.throws(()=>e.recordDecision({action:'verify',predicted01:Number.NaN,confidence01:.5}),/autonomous-life-decision-signal-invalid/);
+assert.deepEqual(e.snapshot(),beforeBadDecision,'non-finite predictions must not enter the learning loop');
+assert.throws(()=>e.recordOutcome({actual01:1.4,verified01:.9,causal01:.8,transfer01:.5,social01:.5,identity01:.5,learning01:.5,surprise01:.2}),/autonomous-life-outcome-signal-invalid/);
+assert.deepEqual(e.snapshot(),beforeBadDecision,'out-of-range rewards must not update model metrics or consume a prediction');
+let feedbackGetterReads=0;
+const hostileOutcome=Object.defineProperties({}, {actual01:{enumerable:true,get(){feedbackGetterReads++;return .9;}}});
+assert.throws(()=>e.recordOutcome(hostileOutcome),/autonomous-life-outcome-input-invalid/);
+assert.equal(feedbackGetterReads,0,'learning feedback snapshots must not execute caller-owned getters');
+assert.deepEqual(e.snapshot(),beforeBadDecision,'rejected object-shaped feedback must leave cognitive state unchanged');
 const hostileLifeState={...defaultAutonomousCognitiveLife()};
 let hostileLifeGetterReads=0;
 Object.defineProperty(hostileLifeState,'cycles',{enumerable:true,configurable:true,get(){hostileLifeGetterReads++;return 999;}});
