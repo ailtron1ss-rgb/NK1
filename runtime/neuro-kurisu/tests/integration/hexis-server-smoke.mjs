@@ -49,6 +49,15 @@ try {
       provenance: { source_id: 'nk1-server-smoke', confidence: 0.78 },
     },
   ];
+  importDocument.sections.goals = [
+    ...(Array.isArray(importDocument.sections.goals) ? importDocument.sections.goals : []),
+    {
+      ref: `${importExportId}:server-smoke-reviewed-goal`,
+      title: 'Reviewed Hexis smoke goal',
+      description: 'This external goal must not enter active planning before an explicit activation decision.',
+      metadata: { importance: 0.52, urgency: 0.28, confidence: 0.65 },
+    },
+  ];
   const stageRes = await (await post('/api/organism/integration/hexis/hmx/stage', { document: importDocument, intent: 'port', strategy: 'additive' })).json();
   if (!stageRes.ok || stageRes.stage?.status !== 'staged' || stageRes.stage?.conflicts?.length) throw new Error(`hexis-hmx-stage:${JSON.stringify(stageRes.stage?.conflicts)}`);
   const acceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'accept' })).json();
@@ -63,6 +72,29 @@ try {
     throw new Error(`hexis-canonical-memory-receipt:${JSON.stringify(applyResult.application)}`);
   }
   if (!applyResult.application?.deferredSections?.identity) throw new Error('hexis-identity-section-must-remain-explicitly-deferred');
+  const goalPrepareResponse = await post('/api/organism/integration/hexis/hmx/goals/prepare', { stagingId: stageRes.stage.stagingId });
+  const goalPrepare = await goalPrepareResponse.json();
+  if (!goalPrepare.ok || goalPrepare.created < 1 || !goalPrepare.proposals?.length) throw new Error(`hexis-goal-prepare:${JSON.stringify(goalPrepare)}`);
+  const goalProposal = goalPrepare.proposals.find(item => item.title === 'Reviewed Hexis smoke goal');
+  if (!goalProposal || goalProposal.status !== 'pending') throw new Error('hexis-goal-proposal-not-pending');
+  const earlyActivationResponse = await post('/api/organism/integration/hexis/hmx/goals/decide', { proposalId: goalProposal.id, decision: 'activate' });
+  const earlyActivation = await earlyActivationResponse.json();
+  if (earlyActivationResponse.status !== 409 || earlyActivation.goalActivated !== false) throw new Error('hexis-goal-activated-before-review');
+  const approvedGoalResponse = await post('/api/organism/integration/hexis/hmx/goals/decide', { proposalId: goalProposal.id, decision: 'approve' });
+  const approvedGoal = await approvedGoalResponse.json();
+  if (!approvedGoal.ok || approvedGoal.proposal?.status !== 'materialized' || approvedGoal.goal?.status !== 'paused' || approvedGoal.goal?.activationApproved !== false || approvedGoal.goalActivated !== false) {
+    throw new Error(`hexis-goal-approval:${JSON.stringify(approvedGoal)}`);
+  }
+  const activationResponse = await post('/api/organism/integration/hexis/hmx/goals/decide', { proposalId: goalProposal.id, decision: 'activate' });
+  const activationResult = await activationResponse.json();
+  if (!activationResult.ok || activationResult.goal?.status !== 'active' || activationResult.goal?.activationApproved !== true || activationResult.goalActivated !== true) {
+    throw new Error(`hexis-goal-explicit-activation:${JSON.stringify({ status: activationResponse.status, body: activationResult })}`);
+  }
+  const proposalListResponse = await (await fetch(`${base}/api/organism/integration/hexis/hmx/goals/proposals?status=materialized`)).json();
+  if (!proposalListResponse.ok || !proposalListResponse.proposals?.some(item => item.id === goalProposal.id && item.canonicalGoalId === activationResult.goal.id)) {
+    throw new Error('hexis-goal-proposal-not-durable');
+  }
+
   const replayApply = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'apply' })).json();
   if (!replayApply.ok || replayApply.application?.digest !== applyResult.application?.digest) throw new Error('hexis-canonical-apply-replay-not-idempotent');
 
