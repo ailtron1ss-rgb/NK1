@@ -108,11 +108,13 @@ export class P65EpistemicLedger{
      typeof input.content!=='string'||
      (input.predicted01!==undefined&&(typeof input.predicted01!=='number'||!Number.isFinite(input.predicted01)||input.predicted01<0||input.predicted01>1))||
      (input.parentIds!==undefined&&(!Array.isArray(input.parentIds)||input.parentIds.length>8||
-       input.parentIds.some(parent=>typeof parent!=='string'||parent.length===0||parent.length>256))))return '';
+       input.parentIds.some(parent=>typeof parent!=='string'||parent.length===0||parent.length>256||
+         parent.trim()!==parent||/[\\u0000-\\u001f\\u007f-\\u009f]/.test(parent))||
+       new Set(input.parentIds).size!==input.parentIds.length)))return '';
   const content=input.content.trim().slice(0,320);if(!content)return '';
   const source=input.source.trim();
   const id=stableId(input.tick,input.kind,content,source);if(this.state.recentIds.includes(id))return id;
-  const parentIds=Array.isArray(input.parentIds)?input.parentIds.filter((v):v is string=>typeof v==='string'&&v.length>0&&v.length<=256).slice(0,8):[];
+  const parentIds=Array.isArray(input.parentIds)?input.parentIds.slice():[];
   const claim:P65Claim={id,tick:input.tick,at:input.at,kind:input.kind,content,confidence01:clamp(input.confidence01),source,resolved:false,parentIds,predicted01:input.kind==='prediction'?clamp(input.predicted01 ?? input.confidence01):undefined,lastSupportedAt:input.at,supportCount:1,status:'active',evidenceSources:[source.normalize('NFKC').toLowerCase()],evidenceKeys:[],evidenceLineageKeys:[source.normalize('NFKC').toLowerCase()],revisionHistory:[]};
   this.state.claims++;
   if(input.kind==='observation') this.state.observations++;
