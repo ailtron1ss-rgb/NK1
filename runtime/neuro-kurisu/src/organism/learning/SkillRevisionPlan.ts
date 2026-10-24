@@ -74,7 +74,6 @@ export function planSkillRevision(
   const trajectory=mean(validation,r=>r.trajectoryQuality.aggregate);
   const coverage=mean(validation,r=>r.skillQuality.functionalCoverage);
   const executable=mean(validation,r=>r.skillQuality.executability);
-  const holdoutDelta=fitness.holdoutDelta01;
   add('task-success',1-success,validation.filter(r=>!r.taskSuccess.passed),
     'Improve the procedure at the first independently observed failure point. State the required preconditions, expected postconditions, and recovery path; do not infer success from the skill output itself.');
   add('trajectory',1-trajectory,validation.filter(r=>r.trajectoryQuality.aggregate<0.8),
@@ -83,19 +82,6 @@ export function planSkillRevision(
     'Add only the missing required capabilities evidenced by these trials. Make each capability explicit in the instructions and avoid unrelated prompt growth.');
   add('executability',1-executable,validation.filter(r=>r.skillQuality.executability<1),
     'Repair the concrete parsing or runtime preflight failure while preserving the existing skill contract; do not replace a failed executable artifact with descriptive text alone.');
-  if(holdoutDelta<0) {
-    // Holdout is evaluation-only: expose only an aggregate signal, never raw
-    // holdout task IDs, trial IDs, or per-example failure details to the generator.
-    const priority=Number(clamp(Math.min(1,Math.abs(holdoutDelta)*5)).toFixed(6));
-    targets.push({
-      dimension:'holdout-generalization',
-      priority01:priority,
-      affectedTaskIds:[],
-      evidenceCount:0,
-      evidenceIds:[],
-      directive:'Aggregate evaluation indicates a generalization gap. Improve the generality of the procedure without seeing or tuning to holdout examples; request a fresh independent holdout after revision.',
-    });
-  }
   const dimensionScore=0.5*success+0.3*trajectory+0.2*mean(validation,r=>r.skillQuality.aggregate);
   const plan:SkillRevisionPlan = {
     candidateEligible:fitness.eligible,
@@ -103,7 +89,13 @@ export function planSkillRevision(
     overallFitness01:Number(clamp(dimensionScore).toFixed(6)),
     targets:targets.sort((a,b)=>b.priority01-a.priority01||a.dimension.localeCompare(b.dimension)).slice(0,5),
     preserve:['Existing safety constraints','Verified task preconditions and postconditions','Unchanged behavior outside the evidenced failure scope'],
-    rationale:[...fitness.reasons,...fitness.feedback].filter((x,i,a)=>a.indexOf(x)===i),
+    // Deliberately do not forward gate reasons or feedback: some are derived from
+    // holdout measurements and could become a repeated optimization side channel.
+    rationale:blockedBySafety
+      ? ['A hard safety constraint was triggered. Resolve safety before performance optimization and request a fresh independent evaluation.']
+      : targets.length
+        ? ['Revision targets are derived from validation evidence only. Holdout results remain withheld from optimization.']
+        : ['Current validation evidence does not justify a targeted change. Collect additional independent validation evidence; keep holdout results withheld.'],
     optimizerInstruction:'',
   };
   plan.optimizerInstruction=renderSkillRevisionInstruction(plan);

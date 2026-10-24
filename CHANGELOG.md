@@ -1,3 +1,958 @@
+## NK1 WorkPass522 — align evidence-replay and durable identity regression contracts (2026-10-24)
+
+- The paired-outcome persistence fixture now uses a fresh evidence receipt when testing duplicate-attempt identity, plus a separate assertion for evidence-receipt reuse. This keeps the tests aligned with the ledger's explicit rejection precedence instead of conflating two independent invariants.
+- The causal-stream restore fixture expects rolling learning opportunity to be recomputed from trusted grounded records; imported external rows cannot preserve forged aggregate learning signals.
+- The replay-diversity fixture now builds a matching before/after decision transition, so the regression measures balanced replay selection only after the stream has accepted real action-conditioned outcomes.
+- **Verification boundary:** source/test updates are committed to `feature/learning`; final CI for the latest commit must confirm the new exact-head result.
+
+---
+## NK1 WorkPass521 — normalize async repair errors and make regression fixtures evidence-valid (2026-10-24)
+
+- Converted `P23CompoundRepairRevisionCoordinator.reviseFromObservedRepairs()` to an `async` method so invalid skill identity is returned as a rejected promise, matching the public Promise contract and callers' `assert.rejects` semantics.
+- Removed Node 24 strip-only-incompatible constructor parameter properties from `LearningLifecycleJournal` and `P23TrustedShadowLearningScheduler` (the corresponding fitness-journal/coordinator fixes are recorded in WorkPass520).
+- Rebuilt replay-diversity test fixtures with matching pre-action ticks, explicit selected-action attribution, and observed post-action success; tests now exercise real causal outcomes rather than expecting ungrounded traces to create memory.
+- Kept paired-outcome identity fixtures within the learning trust-boundary contract while still testing permitted field separators.
+- **Verification boundary:** latest hosted workflows are being re-run on the changed source. No merge to `main`, overall readiness claim, or release-asset replacement is made.
+
+---
+## NK1 WorkPass520 — fix Node 24 journal compatibility and restore-contract regressions (2026-10-24)
+
+- Removed a TypeScript parameter property from `JsonlLearningFitnessJournal`; Node 24's built-in strip-only TypeScript loader can now import the journal without an unsupported-syntax exception.
+- Tightened the WorkPass294 source assertion to recognize the gateway's optional-parenthesized decision-id spread without weakening the required execution/decision lineage check.
+- Made regression expectations consistent with fail-closed semantics: malformed cognitive-cycle stage history stays fully incomplete, and untrusted external events never count as grounded outcomes after restore or conflicting retries.
+- Updated the verified-outcome ledger's expected rejection total to include the added batch timestamp case.
+- **Verification boundary:** these changes are committed to `feature/learning`; the latest exact-head CI is still the authority for pass/fail. No merge to `main` or release-asset update is claimed.
+
+---
+## NK1 WorkPass519 — preserve field-level validation and grounded restore counts (2026-10-24)
+
+- `VerifiedOutcomeLedger` now snapshots non-finite numeric sentinels without invoking accessors or accepting unsafe object shapes, allowing field-specific validators to return `invalid-time`, `invalid-seed`, or `invalid-attempt` rather than collapsing every such case into `invalid-outcome`.
+- Added a batch-path regression for a non-finite timestamp so atomic batch ingestion preserves the same precise rejection contract as individual records.
+- Corrected causal-stream restore assertions: externally imported events remain ungrounded and therefore stay out of the trusted outcome count after restart; restore/retry cannot upgrade them into learning credit.
+- **Verification boundary:** code and regression updates committed; the exact post-change CI results are not yet confirmed.
+
+---
+## NK1 WorkPass518 — block skill-bias leakage across distant contexts (2026-10-24)
+
+- Fixed a behavioral-learning regression: retrieval-augmented skill ranking admitted contexts with similarity as low as 0.5 into action bias, bypassing the legacy five-of-six bucket neighbor gate.
+- Kept broad retrieval available for inspection, but constrained behavioral transfer to similarity >= 5/6; close-neighbor transfer remains possible while distant contexts cannot nudge action selection.
+- Existing `p23-true-learning.mjs` regression explicitly checks that a dissimilar context receives zero skill bias.
+- **Verification boundary:** source change committed; the post-change GitHub Actions rerun is still pending. No overall learning uplift or release readiness is claimed.
+
+---
+## NK1 WorkPass517 — preserve causal lineage during event-fabric recovery (2026-10-24)
+
+- Hardened `CognitiveEventFabric.restore()`: persisted parent IDs are now validated as a whole. Whitespace-padded, control-character, duplicate, oversized, or malformed parent lists cause the row to be discarded rather than silently filtered, normalized, or truncated into a different causal graph.
+- Added restore regressions that preserve valid parent IDs exactly and reject malformed lineage variants.
+- This is native NK1 integration: the existing cognitive event fabric remains the single causal spine; no parallel store or dependency was introduced.
+- **Validation boundary:** code/test/changelog committed on `feature/learning`; exact-head runtime test, typecheck and hosted CI were not executed or verified in this pass.
+
+---
+
+## NK1 WorkPass513 — finish strict CEF payload ownership and recovery checks (2026-10-24)
+
+- Deep-copy cognitive event payloads before appending them to the causal journal, using the existing bounded `PlainDataSnapshot` helper (12 levels, 2,048 nodes, 64 KiB string budget).
+- Reject cyclic, accessor-backed, over-deep or over-sized nested payloads before changing the event count; restore also detaches nested payload state instead of retaining input references.
+- Regressions cover nested caller mutation, hostile nested getters, cycles, top-level restore getters, malformed source controls and plain-prototype checks. The CEF ingress test is wired into the learning category's rebuild chain.
+- **Validation boundary:** code/test-chain readback only; no exact-head runtime test, typecheck or CI PASS is available.
+
+---
+
+## NK1 WorkPass511 — detach nested cognitive evidence payloads (2026-10-24)
+
+- CognitiveEventFabric now uses the shared `PlainDataSnapshot` helper to deep-copy bounded event payloads before the ledger mutates. Nested accessors, cyclic structures, over-depth and oversized payloads are rejected without invoking nested getters.
+- The snapshot restore path also uses the same bounded detachment for nested payloads, avoiding live caller references being retained inside causal history.
+- Updated the existing CEF boundary regression to prove caller mutation cannot rewrite an already-recorded event and hostile nested values fail without advancing the ledger.
+- This keeps one canonical event fabric as NK1's causal spine, reusing the shared plain-data helper and adding no dependency.
+- **Validation boundary:** test remains in the category rebuild chain; exact-head run/typecheck is not available in this pass.
+
+---
+
+## NK1 WorkPass510 — enforce plain prototypes for restored cognitive state (2026-10-24)
+
+- CEF snapshot restore now rejects custom-prototype/class instances for event rows, nested payloads, parent arrays and receipt-reference structures; fields are still read only through own data descriptors.
+- Added this restriction to the same existing causal event fabric, preserving the rule that memory and action receipts have one shared event spine.
+- Follow-up fix from WorkPass509: source/parent/payload identity checks use C0/C1 code-point validation and strict receipt field types; the malformed double-escaped regex has been removed.
+- **Validation boundary:** committed with regression coverage wired into `test:rebuild-recovered`; exact-head execution/typecheck remains unconfirmed.
+
+---
+
+## NK1 WorkPass512 — unify trusted-run Promise contract and signed-evidence failure tests (2026-10-24)
+
+- Aligned the trusted shadow coordinator with the asynchronous contract already used by feedback/perception: invalid registrar/runtime/lane inputs now reject the returned Promise, while the candidate+shadow-only gate and registration-before-spawn rule remain unchanged.
+- Kept Node 24 typechecking portable across the full Node definitions and NK1 fallback shim by using non-generic `Buffer` annotations.
+- Strengthened the Hermes signed-receipt tamper test: it recomputes the unsigned outer payload fingerprint after mutating the signed payload, forcing the verifier to detect the stale signature instead of short-circuiting on the easy-to-detect fingerprint mismatch.
+- The duplicate-attempt ledger test now uses a unique evidence reference and separately tests reused evidence references. WorkPass511 also updates unverified external outcome assertions to preserve the zero-trusted-outcome invariant.
+- CI reruns for the exact latest head are still required before these fixes can be called green.
+
+---
+
+## NK1 WorkPass511 — restore typecheck portability and sharpen outcome contracts (2026-10-24)
+
+- Removed generic `Buffer<ArrayBufferLike>` annotations from learning-process output accumulators. Portable `Buffer` annotations work with the installed Node types and NK1's fallback shim, addressing the exact type errors observed after the CognitiveEventFabric predicate repair.
+- Split `VerifiedOutcomeLedger` regressions so reusing task/method/seed/attempt with a unique evidence ref is distinguished from reusing one evidence ref across distinct outcomes.
+- Corrected five stale causal-stream assertions: caller-imported/unverified events remain available for adjudication but must not increment grounded outcome totals; duplicates, conflicts and rejected malformed inputs all preserve the same zero trusted count.
+- Code/test changes are committed; exact-head typecheck and focused suites still need successful execution before PASS can be claimed.
+
+---
+
+## NK1 WorkPass509 — close CEF restore coercion and control-character gaps (2026-10-24)
+
+- Replaced the incorrectly escaped control-character regex in CognitiveEventFabric ingress with explicit C0/C1 code-point validation, so natural labels containing the letter `u` are not rejected while actual control characters are.
+- Parent-ID arrays are copied from own data descriptors before inspection; nested receipt-replay records now require strict string and numeric types instead of coercing attacker-controlled values.
+- Added regression coverage for valid `user-input` source labels and rejection of embedded control characters. These changes build on WorkPass508's getter-safe persisted snapshot restoration.
+- Reuses the existing event fabric as the sole causal spine; no parallel ledger or dependency added.
+- **Validation boundary:** code, tests and rebuild-chain wiring are committed; exact-head execution/typecheck remains unconfirmed.
+
+---
+
+## NK1 WorkPass509 — simplify restored evidence predicate guards (2026-10-24)
+
+- Rewrote two restored-receipt predicates as explicit fail-closed stage checks followed by separate field comparisons. This removes the TypeScript parser errors observed in the WorkPass294 runtime typecheck while preserving execution/observation correlation requirements.
+- The change is committed on `feature/learning`; the new exact-head typecheck and causal event identity tests must still execute before claiming PASS.
+
+---
+
+## NK1 WorkPass508 — harden persisted cognitive-event restore (2026-10-24)
+
+- CognitiveEventFabric snapshot restoration now reads top-level snapshots, event rows and nested payload/receipt arrays through property descriptors, discarding accessor-backed data instead of executing getters while restoring persistent state.
+- Restored flags and numeric metadata are accepted only with the expected runtime type; malformed nested receipt projection entries cannot be blindly materialized as trusted replay guards.
+- Added regressions for hostile getter-backed event rows and top-level snapshots, and included the existing ingress/restore boundary test in `test:rebuild-recovered`.
+- Research/design basis: keep one causal fabric as the event spine and treat persisted state as untrusted, rather than creating a second memory store. This is a native NK1 hardening pass; no external dependency or unreviewed source code was imported.
+- **Validation boundary:** code and test chain are committed; test execution and typecheck are not confirmed, and no outcome-learning uplift is claimed.
+
+---
+
+## NK1 WorkPass506 — make the reality ledger replay-safe and identity-aware
+
+- Reconciled the learning branch's older `RealityEvidenceLedger` with the hardened feedback-branch implementation: bounded plain-data ingress, event-ID validation, duplicate retry idempotency, conflicting-payload quarantine and safe snapshot restore.
+- Added `eventId` as a join key without treating it as proof. `user-reported` observations remain distinct from external/device-observed evidence in trust aggregates.
+- Exposed `RealityEvidenceLedger.realityEvidenceEventId(...)` as a thin delegate to the shared identity helper, and added tests for retry idempotency, conflict quarantine and restore collisions.
+- Changes are committed on `feature/learning`; current GitHub status has no workflow runs attached to the WorkPass505 head. WorkPass506 test execution/typecheck is not yet confirmed.
+
+---
+
+## NK1 WorkPass505 — unify causal learning event identity across subsystems
+
+- Ported the shared `EvidenceEventIdentity` contract into `feature/learning`; IDs remain deterministic, domain-separated join keys and never count as proof that an event is true.
+- Grounded runtime outcomes now carry `nk1-reality:learning:<48-hex>`; imported/unverified hypotheses use the separate `learning-external` lane. Restore reconstructs IDs for legacy records from normalized trace identity and provenance, preserving idempotent cross-subsystem joins without promoting external claims.
+- Added a Node.js 24 strip-types regression test covering deterministic IDs, role separation, hostile input rejection, runtime outcome wiring, and restore compatibility. The test is committed; execution/typecheck on this exact head is not yet confirmed.
+
+---
+
+## NK1 WorkPass504 — make cognitive-event ingress atomic and fail closed
+
+- Hardened `CognitiveEventFabric.append()` with pre-mutation validation for finite non-negative ticks/timestamps, registered stages, bounded source and parent identities, confidence in [0,1], boolean external provenance, and plain payload records with data properties only.
+- Invalid envelopes are rejected before the event ring, total counter, or receipt-projection pruning can change. Accessor-backed IDs and payload fields are rejected without executing getters.
+- Added `test:cognitive-event-fabric-ingress-boundary` for invalid numeric/stage/parent/payload inputs, getter non-execution, and ledger immutability after rejection.
+- Code committed on `feature/learning`; exact-head test/typecheck remains to be confirmed. No cross-branch merge, release asset update, or learning uplift is claimed.
+
+---
+
+## NK1 WorkPass504 — make cognitive-event ingress fail closed
+
+- Hardened `CognitiveEventFabric.append()` with pre-mutation validation for finite non-negative ticks/timestamps, registered stages, bounded source and parent identities, confidence in [0,1], boolean external provenance, and plain payload records with data properties only.
+- Invalid envelopes are rejected before the event ring, total counter, or receipt-projection pruning can change. This strengthens the shared causal spine used by perception, action outcomes, and learning evidence.
+- This is runtime code committed on `feature/learning`; exact-head regression/typecheck is still required. No cross-branch merge, release-asset update, or learning uplift is claimed.
+
+---
+
+## NK1 WorkPass496 — close remaining runtime-boundary regressions
+
+- Replaced the trusted shadow-run registry's TypeScript constructor parameter property so Node.js 24 strip-only tests can execute the real durable registry path.
+- Corrected the reflective payload fixture to measure canonical JSON bytes, including quote delimiters, testing exact 256 KiB acceptance and one-byte-over rejection.
+- Updated the causal-experience integration fixture to provide the observed action and success fields required to mint grounded outcome evidence.
+- P26 training input and persisted-diagnostic validation is already present in this branch; this pass aligns shared integration fixtures.
+- **Validation boundary:** committed; exact-head CI must still verify the updated scenarios.
+
+---
+
+## NK1 WorkPass494 — preserve replay budget and intrinsic goal authorship
+
+- In the learning-category P23 runtime, made explicitly configured replay batch size and recent quota authoritative for reproducible ablations while preserving health-adaptive ranking and age half-life.
+- Rebalanced B272 endogenous goal valuation so the value scale does not saturate before trusted intrinsic drive can influence the outcome; zero-confidence drive still contributes nothing.
+- Reused existing P23 replay selection and B272 goal-genesis owners; no new subsystem or dependency was introduced.
+- **Validation boundary:** exact-head CI must confirm the replay runtime configuration and motivation-to-goal tests.
+
+---
+
+## NK1 WorkPass490 — require independent-seed skill revision evidence
+
+- Hardened the existing `SkillRevisionGate` rather than adding a parallel evaluator: proposals now report distinct seed count and per-seed paired gains.
+- A candidate is rejected when holdout evidence has fewer than three independent seeds by default, or when a sufficiently sampled seed exceeds the configured regression budget. Family-regression protection remains in place.
+- Expanded the existing P23 regression test with single-seed inflation and a positive-global-gain case that still regresses on one seed while task-family means remain positive. This is code committed; test execution and end-to-end production wiring still need verification.
+
+---
+
+## NK1 WorkPass491 — make the learning evidence path replay-safe and runtime-compatible
+
+- Replaced TypeScript constructor parameter properties in both skill candidate storage adapters with explicit readonly fields, retaining file-path validation, locking and injected authorization/evidence verifiers while allowing Node.js 24 strip-only tests to execute.
+- Made restored cognitive-cycle completion conditional on a coherent persisted partition of complete, incomplete and broken-lineage counters.
+- Tightened signed outcome artifact idempotency: an exact signed artifact may re-establish process-local trust after restoring a ledger, but a same-process replay is rejected as `duplicate-attempt`; conflicting outcomes remain blocked.
+- Added regression assertions covering duplicate rejection and one-time receipt re-establishment after restore.
+- **Validation boundary:** committed on `feature/learning`; exact-head CI must still confirm the P23 lifecycle and cycle-restoration paths.
+
+---
+
+## NK1 WorkPass489 — cross-seed promotion gate contract
+
+- Added `runtime/neuro-kurisu/research/WORKPASS489_CROSS_SEED_PROMOTION_GATE.md` to define a fail-closed, paired-seed promotion protocol integrated with the existing P23/Hermes evaluator and verified-outcome ledger.
+- Specifies frozen manifests, holdout isolation, per-seed and per-task-family regression budgets, deterministic reason codes, append-only evidence, and separation of proposal from activation.
+- This is a contract/planning artifact; runtime wiring and experiment results are explicitly not claimed complete.
+
+---
+
+## NK1 WorkPass488 — preserve bounded numeric sentinels for field policy validation
+
+- Fixed the typecheck blocker introduced by the candidate-gate hardening: `PlainDataSnapshotOptions` now supports explicit `allowNonFiniteNumbers`.
+- The default remains fail-closed. Only an explicit caller opt-in preserves NaN/Infinity long enough for the owning field-specific validator to reject the value with a precise policy error; object/accessor/cycle/size protections remain active.
+- This enables the existing Hermes candidate gate to report `candidate-minimum-validation-gain-invalid` for non-finite thresholds rather than collapsing to a generic snapshot boundary error.
+- No dependency or second snapshot implementation added. **Validation:** fix committed; exact-head Actions is still running/awaiting verification.
+
+---
+
+## NK1 WorkPass487 — lock canonical zero in reflective candidate reports
+
+- Extended the existing Hermes/SkillLearnBench candidate-gate regression with a realistic sub-micro negative trajectory delta that rounds to zero at the public report boundary.
+- Confirms the evaluation result exposes canonical positive zero rather than IEEE-754 negative zero, preventing representation-only differences in downstream fingerprints/evidence comparisons.
+- Reuses the existing candidate gate and test command; no parallel evaluator, dependency, or promotion path was added.
+- **Validation:** regression committed; execution/typecheck on the current exact head remains unverified.
+
+---
+
+## NK1 WorkPass479 — connect stable event identity to reality evidence (2026-10-24)
+
+- Shared event identity and ledger deduplication are now implemented on `feature/feedback`; the cross-category Hexis map records the completed segment and keeps the full memory/P65/P23 evidence bridge explicitly open.
+- No code from the feedback branch is assumed to be merged into `integration`; the category PR remains the integration route.
+
+---
+
+## NK1 WorkPass478 — unify Hexis source mapping across memory and P23 (2026-10-24)
+
+- Expanded the Hexis upstream note into a cross-category map for QuixiAI memory/belief revision, hexis-framework correction learning, and Bevel skill lifecycle controls.
+- Explicitly distinguishes existing mechanisms, this pass's source changes, open runtime identity wiring, and unverified release evidence; records the shared receipt → canonical memory → P65 → P23 → independent evaluation → promotion chain.
+- This is an integration map, not a claim that the branches are merged or the end-to-end loop has passed.
+
+---
+
+## NK1 WorkPass477 — prevent repeated correction evidence from escalating gates (2026-10-24)
+
+- Hardened Hexis-inspired P23 correction memory: a distinct observation ID no longer makes the same signed review-evidence fingerprint count as a second recurrence for the same rule.
+- Runtime insertion rejects reuse of the same review artifact; snapshot restoration keeps the first verified row and quarantines later rows reusing the fingerprint. Existing observation-ID conflict quarantine remains unchanged.
+- Updated regression fixtures to give distinct events distinct review fingerprints and added live + restore-path tests for evidence replay. Gate candidates still only request independent review; they never activate a policy gate here.
+- **Validation status:** implementation and regression source committed on `feature/learning`; exact-head execution/typecheck not run here. No learning uplift or production-readiness claim.
+
+---
+
+## NK1 WorkPass476 — repair Hermes gate execution and correction-to-curriculum wiring (2026-10-24)
+
+- Kept the Hexis-inspired correction lifecycle inside P23: reviewed correction → soft rule → reinforced rule → gate-review candidate. The P23 facade exposes assessments as Pareto-ranked repair/evidence curriculum targets; this does not activate policy gates.
+- Fixed a real parser stop in `p29-hermes-reflective-candidate-gate.mjs`: the latter family-level holdout/validation scenario redeclared `familyBaseline` and `familyCandidate` in the same module scope. Renamed only the second scenario's identifiers so both family-regression cases remain covered.
+- Shared runtime typecheck now points to the already-installed `app/node_modules/@types/node` and excludes the minimal `src/node-shims.d.ts` from semantic typechecking, avoiding the shim shadowing official Node APIs. Control-bearing correlation IDs are rejected before `trim()`.
+- **Verification:** the Hermes regression was observed failing on the earlier duplicate-declaration commit; the fix is committed. Exact-head end-to-end status is still pending/has other unrelated runtime type errors; no green CI or learning-uplift claim is made.
+
+---
+
+## NK1 WorkPass475 — close curriculum persistence path and guard B272 evidence (2026-10-24)
+
+- Added the shared `core/PlainDataSnapshot.ts` bounded snapshotter with configurable depth/node/string limits; `LearningTrustBoundary` now reuses it instead of owning a separate implementation. This also resolves the previously missing core import in `AutonomousCognitiveLifeEngine.ts`.
+- B272 outcome credit is now conditional on the executed action matching the generated goal action. A planner override no longer throws out the entire feedback cycle; mismatched outcomes are not falsely credited to the endogenous-goal learner.
+- Updated the core curriculum persistence regression to use Node's `--experimental-transform-types`, and to exercise the real feedback/checkpoint path while separately asserting that the saved curriculum can be restored directly.
+- **Verified on exact HEAD `c51924526daefcd28d052075c5688494bd9d6394`:** [WorkPass417 Personal Curriculum Integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40060792519) passed. Node 24 install, TypeScript typecheck, all three curriculum restore/input tests, and core restart persistence passed (`cycles=5`, `threads=7`, `persisted=true`).
+- No new external runtime dependency. `main` and the Release ZIP were not changed. Full P23 end-to-end held-out learning gain remains unproven; no empirical uplift claimed.
+
+---
+
+## NK1 WorkPass474 — reviewed correction memory with Hexis-style escalation (2026-10-24)
+
+- Added `CorrectionRuleMemory` to the P23 learning runtime. It stores bounded, structured corrections only when a host-configured reviewer verifier accepts the record; free-form prompt/conversation content is not persisted.
+- Correction lifecycle is explicit: soft rule → reinforced rule → gate-review candidate. Ambiguous rules, instruction conflicts and edge cases recommend clarification rather than brittle enforcement. Critical or repeated high-impact binary context-pressure corrections can request an independent gate review.
+- Added `P23LearningEngine.correctionLearningTargets()` to translate these assessments into the existing Pareto-ranked learning curriculum, so repair/evidence work can compete with other goals without changing the action policy.
+- Gate candidates never activate a hard gate in this module. Reviewer verification defaults to deny; saved evidence is re-verified on restore; duplicate observations are idempotent and conflicting reused IDs are quarantined.
+- P23 snapshots retain the new field additively; older version-1 snapshots restore with an empty correction memory. Registered `test:hexis:correction-memory` and appended it to `test:p23:learning`. No package dependency was needed.
+- **Verification status:** source/tests/package and this changelog are committed on `feature/learning`; the test suite and exact-head TypeScript check have not been run in this environment. No learning-uplift or production-readiness claim is made.
+
+---
+
+## NK1 WorkPass473 — make autonomous life-state restore fail closed (2026-10-24)
+
+- Hardened `AutonomousCognitiveLifeEngine.restore` with NK1's shared bounded plain-data snapshot. Getter-backed and cyclic persistence no longer executes accessors or gets spread into the live state.
+- Restore now rejects unsupported schema versions, filters malformed collection rows, enforces per-collection caps, and normalizes counters/timestamps and normalized [0,1] personality, embodiment, value and metric fields. Invalid top-level snapshots reset to safe defaults.
+- Added regressions for zero getter invocations and fail-closed cyclic restore. This closes a critical trust boundary in the autonomous cognitive-life/heartbeat path; no external runtime or dependency added.
+- Exact-head test execution remains unverified; this commit must be run through the existing owning test and typecheck before integration.
+
+---
+
+## NK1 WorkPass420 — enforce canonical restored learning evidence (2026-10-24)
+
+- Tightened `PersonalCurriculumEngine.restore()`: persisted thread IDs/families must be canonical normalized identities; persisted context keys must be valid single-line identities; malformed control characters are rejected.
+- Restore now rejects impossible outcome histories where successes + failures exceed total occurrences, while still validating verified count and timestamp separately.
+- Extended `big-pass-122-curriculum-restore-collision.mjs` with identity, context-key and inconsistent-counter cases. Fixed the test fixture so it passes actual control characters rather than a literal backslash sequence.
+- **Observed validation:** Node 24 installation and runtime typecheck passed on WorkPass417 run [40060149621](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40060149621); that run then found the malformed test fixture (expected exception missing). The fixture was corrected in subsequent commits. The exact corrected-head workflow [40060194767](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40060194767) is queued; corrected tests are not yet confirmed passing.
+- No runtime dependency added; no change to `main` or Release ZIP. No empirical learning uplift claimed.
+
+---
+
+## NK1 WorkPass469–470 — make P26 learning input rejection atomic and restore-safe (2026-10-23)
+
+- `ParametricPolicyLearner.train` and `trainFeatures` reject non-finite targets, learning rates, sample weights, features, invalid actions and malformed state before learning. Batch training preflights every sample so a bad later item cannot leave a partially updated model.
+- Restore now sanitizes all learner diagnostics, the update counter, timestamp and `frozen` flag in addition to weights/biases. Only literal boolean `true` can restore a freeze; invalid metrics fall back to safe defaults.
+- The runtime's P26 workflow already has its three referenced scripts on this category branch. A real runner reports `TYPECHECK=PASS`; the first input-integrity attempt exposed the restore-diagnostics gap. A new run is queued on the updated branch.
+- **Verification boundary:** no learning-performance uplift is claimed until all behavioral benchmark steps complete.
+
+---
+
+## NK1 WorkPass460 — harden Hermes/P23 evaluation envelope canonicalization (2026-10-23)
+
+- Hardened the reflective evidence binder before it reads evaluation fields: accessor-backed envelope properties are rejected by descriptor inspection, and a canonicalization failure returns immediately so the rejected accessor is not later invoked by validation code.
+- Canonical evidence encoding now rejects accessor-backed fields, sparse arrays, unsupported enumerable symbol/array keys, non-plain objects, non-finite numbers, circular data, and oversized/deep envelopes. Explicit node, depth, collection, key and total-string budgets bound work before a report can be joined to signed shadow receipts.
+- Added regressions for outer and nested getters (asserting zero getter calls), sparse arrays that could otherwise collide with empty-array encodings, and depth-budget exhaustion. Existing `test:p23:hermes-verified-evidence-binding` remains the owning test script; no dependency added.
+- The signature still authenticates only receipt identity and binary outcome, not candidate quality scores. This is an input-integrity correction, not a learning gain or promotion.
+- **Verification:** source and regression committed on `feature/learning`; runtime execution and exact-head typecheck are unverified in this environment because network access to the repository is unavailable here and recent hosted Actions runs have reported runner-allocation failures.
+
+---
+
+## NK1 WorkPass419 — durable P23 repair retry backoff (2026-10-23)
+
+- **Failure recovery:** P23 compound-repair generation/evaluation cooldown now persists in a dedicated sidecar through NK1's existing atomic `FileStateStore`; it is restored during runtime initialization before revision requests can run.
+- **Bounded schema:** one record per skill binds an exact SHA-256 repair-evidence digest, retry count (1–12), deadline, and fixed failure category; at most 128 records are retained. Persisted snapshots are plain-data checked and strictly validated; malformed snapshots/rows fail closed instead of silently resetting cooldown.
+- **Lifecycle:** a same-evidence retry remains blocked across coordinator/runtime restarts; new evidence digest bypasses the old cooldown as before. Successful candidate staging best-effort clears retry state, while the versioned candidate store remains authoritative for duplicate-stage suppression.
+- **Observability:** retry diagnostics distinguish configured/durable persistence from ephemeral in-memory mode and expose persistence-health status.
+- **Regression:** extended `workpass172-compound-revision-coordinator.mjs` to simulate a failed provider, persisted cooldown, fresh coordinator restore, blocked duplicate retry, and malformed persisted state. Existing P26 Learning Validation watches the coordinator/runtime/test files and runs the regression.
+- **Dependencies:** none added; reused existing `FileStateStore`.
+- **Validation boundary:** implementation and regression wiring are committed, but exact-head typecheck/runtime tests remain unconfirmed because Actions jobs continue to fail before runner allocation (`runner_id=0`, zero steps/logs). No learning uplift is claimed; estimates unchanged at 83% learning implementation / ~45% production readiness.
+
+---
+
+## NK1 WorkPass418 — deterministic and evidence-safe personal curriculum (2026-10-23)
+
+- **Restore integrity:** persisted curriculum rows sharing an ID or family are quarantined as a set, so array ordering cannot choose the surviving conflicting memory. Numeric fields, counters, context cardinality and text/identity boundaries are validated before restore.
+- **Online intake:** outcomes and developmental-context inputs are snapshotted through NK1's shared learning trust boundary and checked before mutating state. Goal source/status fields must match the canonical organism types.
+- **Autonomous target stability:** goal-ranking inputs are validated before focus mutation; duplicate goal IDs are rejected, and equal-scoring goals use a stable ID tie-break so shuffled input does not change focus order.
+- **Lifecycle diagnostics:** completion/suppression counts are now derived from unique current thread states and reconciled on restore; repeated feedback no longer inflates counters.
+- **Regression coverage:** added identity-conflict, invalid-input, non-active-goal compatibility, deterministic tie-order and lifecycle-count cases. The existing `test:big-pass-122` script runs the added curriculum regressions, and WorkPass417's focused workflow watches the new test.
+- **Research/architecture:** reuse NK1's existing `LearningTrustBoundary` and canonical curriculum/P23 paths; no parallel learner or new runtime dependency.
+- **Validation boundary:** exact-head runtime tests and typecheck remain unconfirmed. The visible Actions jobs continue to fail before runner allocation (runner ID 0, no steps/logs), so no PASS or empirical learning improvement is claimed. Learning estimates remain implementation 83%, production readiness ~45%.
+- Details: [learning scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md).
+
+---
+
+## NK1 WorkPass448 — bound bootstrap computation cost (2026-10-23)
+
+- Added a hard cap of 16,000,000 bootstrap draws per invocation in `PairedSeedConfidence.ts`. The requested resample count and sample count are checked before the resampling loop/temporary result allocation.
+- Oversized `sampleCount × resamples` combinations fail closed with `paired-seed-bootstrap-work-budget-exceeded`; the cap bounds the computation rather than silently shrinking the caller's confidence settings.
+- Added a regression with 5,000 values × 4,000 resamples to ensure the request is rejected before the large bootstrap loop.
+- Existing confidence intervals inside the budget keep the same RNG, resampling algorithm, quantile calculation and output. No new dependency and no promotion-policy change.
+- **Verification:** source/test committed; exact-head runtime execution still unconfirmed.
+
+---
+
+## NK1 WorkPass447 — task-cluster bootstrap interval for robust learning diagnostics (2026-10-23)
+
+- Extended `LearningRobustMetrics.ts` with a deterministic percentile-bootstrap interval for the equal-weight macro-mean of per-task candidate-minus-baseline deltas across task success, skill quality and trajectory quality.
+- Bootstrap units are **tasks**, not repeated trials. This avoids treating many seeds from one task as if they were independent task families; per-task scores still use all validated matched trials.
+- The interval records sample count, resamples (2,000), confidence level (95%), point estimate and bounds. A one-task sample returns `null` instead of manufacturing between-task uncertainty.
+- Bumped the diagnostics shape to schema version 2. New fields remain under the explicitly diagnostic-only summary; no promotion, eligibility, safety or approval logic consumes the interval.
+- Added regressions for interval ordering/reproducibility through row-order permutation, positive point estimates with task-level uncertainty, all-zero ceiling cases and the one-task boundary. Existing test script wiring is reused; no new dependency was added.
+- **Verification boundary:** code and tests are committed, but the exact-HEAD test/typecheck has not been executed successfully in this environment. No statistically confirmed learning gain is claimed.
+
+---
+
+## NK1 WorkPass446 — bound skill-evaluation work and remove quadratic trajectory matching (2026-10-23)
+
+- Replaced repeated suffix scans in trajectory-order evaluation with a position index, preserving the prior ordered-match semantics while changing worst-case matching from quadratic to linear time.
+- Capped each capability/trajectory rubric at 4,096 identifiers and each identifier at 256 characters, failing closed before aggregate score calculation to bound evaluator inputs.
+- Added regressions for order-score parity, oversized rubrics, and oversized identifiers. No new dependency.
+- **Verification:** source and regression changes are committed; hosted test execution remains unconfirmed while runner allocation is blocked.
+
+---
+
+## NK1 WorkPass441 — independent per-axis holdout promotion guard (2026-10-23)
+
+- Ported the useful WorkPass329 mechanism from the donor-gate workstream into the more advanced feature/learning implementation without replacing its task/family gates.
+- A candidate must now stay within separate holdout regression limits for independently verified task success, execution-trajectory quality, and skill quality; improvements to the 50/30/20 composite cannot override any of those hard axis-level checks.
+- Holdout deltas use paired evidence and macro-averages per task, preventing repeated trials from dominating one task's contribution. Default tolerated regression is 0.02 per dimension and each threshold is range-validated.
+- Added behavioral cases for a composite gain that hides trajectory regression plus independent task-success and skill-quality regressions. No new runtime dependency was introduced.
+- **Verification status:** source/test/changelog changes committed together; hosted Actions execution remains unconfirmed. No measured learning uplift is claimed.
+
+---
+
+## NK1 WorkPass440 — simplify one-time P23 failure classification (2026-10-23)
+
+- Replaced an inline classifier expression with a named local computed once before the immutable experience record is assembled. No behavioral change; improves reviewability and keeps the single normalized result explicit.
+
+---
+
+## NK1 WorkPass439 — repair the failure-reason regression import and avoid duplicate classification (2026-10-23)
+
+- Corrected the P23 reflection regression's import list so the new reason-taxonomy assertions resolve their classifier.
+- Ensured the record builder evaluates the classifier once and adds only the compact recognized category; raw notes remain transient.
+- Static follow-up only. Runner execution remains unconfirmed.
+
+---
+
+## NK1 WorkPass438 — carry typed failure diagnoses into the reflective repair loop (2026-10-23)
+
+- The existing core feedback-to-P23 call now forwards `outcome.notes` as ephemeral diagnostic input; P23 classifies at most the first 512 characters into a compact taxonomy and never persists the raw free-form notes in learning experience rows.
+- Reflection now recognizes repeated typed causes (tool error, timeout, permission denial, safety block, postcondition mismatch, resource exhaustion and low confidence), boosts priority modestly when a cause repeats, and proposes cause-specific repair steps that preserve safety/least-privilege constraints.
+- Immutable event IDs now include the failure class in their duplicate/conflict decision; a contradictory diagnosis for the same experience is quarantined.
+- Added direct reason-classification/reflection regressions and a source-wiring contract test for the real Core feedback -> P23 path.
+- No new dependencies or parallel memory store. Runtime tests remain unexecuted because this environment cannot resolve github.com and hosted Actions has no assigned runners; no learning uplift is claimed.
+
+---
+
+## NK1 WorkPass437 — make outcome reflection reward-aware without conflating success (2026-10-23)
+
+- Extended the existing P23 reflection evidence with optional validated reward while keeping task-success pass-rate/Wilson metrics separate.
+- Reflection now emits a low-reward-efficiency diagnosis when repeated successful actions have consistently poor reward, and supplies a specific repair suggestion to compare benefit against resource cost.
+- Candidate priority blends reward only when recorded reward exists; legacy rows preserve their prior ranking. Contradictory reward reuse under the same evidence ID is quarantined by the immutable-experience identity check.
+- P23 now forwards its recorded reward into reflection. Added direct regressions for costly success, targeted repair, conflicting event identities and legacy compatibility.
+- This is a functional Hermes-style diagnosis improvement, not proof of measured learning uplift. Exact-head runtime tests remain unexecuted.
+
+---
+
+## NK1 WorkPass424 — deterministic autonomous reflection queue (2026-10-23)
+
+- Made outcome-reflection ordering deterministic when hypotheses have equal priority and confidence: newest evidence window wins, then context/action/key use locale-independent code-unit ordering.
+- Added a replay-order permutation regression so identical evidence produces the same repair queue regardless of provider or batch insertion order. This prevents nondeterministic autonomous repair targeting when scores tie.
+- No new dependency or promotion shortcut. Reflection remains a hypothesis generator; held-out independent evaluation and authenticated promotion gates remain mandatory.
+- The new test is committed but exact-head execution remains unconfirmed while Actions jobs fail before runner assignment; no learning uplift is claimed.
+
+---
+
+## NK1 WorkPass423 — bound independent-evaluation cardinality (2026-10-23)
+
+- Added hard cardinality limits before expensive work: at most 4,096 planned tasks per candidate evaluation, 128 required or verifier-claimed capabilities, and 512 expected/observed trajectory steps per task.
+- Oversized plans and task contracts are rejected before execution; overlong sandbox traces are marked non-executable and cannot contribute verified evidence.
+- Extended the existing bounded-evaluator regression for oversized plans, expected-step vectors and returned execution traces. No new evaluator or parallel promotion path was introduced.
+- Exact-head test/typecheck remain unverified while hosted Actions jobs fail before runner assignment; this is a resource-boundary implementation, not a learning-uplift claim.
+
+---
+
+## NK1 WorkPass417 — protect persistent and online personal-curriculum evidence (2026-10-23)
+
+- **Restore path:** snapshots pass through the shared plain-data boundary; accessor-backed, cyclic or unsupported snapshots fall back to a clean curriculum state without invoking accessors.
+- **History integrity:** persisted thread rows with invalid counters/scores, inconsistent context counts, duplicate IDs/families or malformed context keys are excluded. Numeric curriculum aggregates are range-checked; timestamp validation stays separate from ordinary bounded counters.
+- **Online learning path:** outcome and developmental-context observations are snapshotted and validated before state mutation; scores, identifiers, timestamps and goal fields must satisfy their contracts.
+- **CI wiring:** the P26 Learning Validation workflow now watches the curriculum engine and its existing direct/core-persistence tests, and invokes both curriculum regressions.
+- **Validation boundary:** regression cases for restoration are committed. The input-gate changes and exact-head suite have not yet been executed in a runner; no empirical learning uplift is claimed. No new runtime dependency was added.
+
+---
+
+## NK1 WorkPass416 — deterministic trial-order numeric summaries (2026-10-23)
+
+- Canonically sort each task's matched trials by stable `trialId` before computing fractional score means; this prevents floating-point summation order from changing the rounded summary under row permutations.
+- Extended WorkPass406's regression with 5 task families × 37 seeds, heterogeneous fractional scores and reverse/scrambled input order; summary equality is asserted.
+- Cost is O(R) grouping + O(R log R) worst-case within-task sorting + O(R) work per metric dimension, replacing prior repeated O(T × R) filtering. Metric formulas, equal task weights and promotion gates are unchanged.
+- Exact-head test/typecheck remain unverified because current Actions jobs return failure without step logs; no measured performance or learning uplift is claimed.
+
+- **Cross-branch strategy sync:** selectively synchronized `docs/NEUROCORE_MASTER_STRATEGY_AND_BRAIN_MAP.md` from `integration` after line-by-line content comparison; its Git blob is now identical on both branches. This imports the shared status and release/CI limitations without merging the divergent branch history or touching `main`/release assets.
+
+---
+
+## NK1 WorkPass415 — linearize task-balanced robust metrics (2026-10-23)
+
+- Replaced repeated `rows.filter(...taskId...)` scans with one `Map` grouping pass over matched trials; all score dimensions reuse the same grouping.
+- Reduces aggregation setup from repeated O(tasks × trials) filtering to O(trials) grouping plus a linear scan of the grouped rows per dimension. Metric values, task weighting, and tie-breaking remain unchanged.
+- WorkPass406 regression keeps an input-order-invariance assertion and exact arithmetic cases for IQM, median, optimality gap, and paired improvement.
+- No new runtime dependencies. Exact-head runtime test/typecheck remain unverified because hosted Actions logs are unavailable; no measured learning uplift claimed.
+
+---
+
+## NK1 WorkPass414 — harden Pareto curriculum regression coverage (2026-10-23)
+
+- Extended the P23 curriculum regression with two cases: a blocked prerequisite has a maximal scalar score but must still rank after every eligible Pareto layer; and equal-objective candidate ordering is invariant to input insertion order.
+- These tests exercise selection semantics only; they do not substitute for a TypeScript/runtime execution.
+- Exact-head CI and test status remain unconfirmed because connector-visible Actions jobs have no step records.
+
+---
+
+## NK1 WorkPass413 — stabilize the learning CI runner and runtime pin (2026-10-23)
+
+- Changed the P26 learning workflow to use the explicit `ubuntu-24.04` image rather than a moving `ubuntu-latest` alias.
+- The workflow path filters include root `.nvmrc`, root/app manifests and the CI-audit script/test. A pre-install step verifies the runner's Node.js version against that shared pin.
+- Static review confirms every P26 workflow `npm run` command resolves in the package selected by `working-directory` or `--prefix`. The actual runner/test outcome remains unverified: representative connector-visible failed jobs return zero steps.
+
+---
+
+## NK1 WorkPass412 — richer task-balanced learning metrics (2026-10-23)
+
+- Extended `LearningRobustMetrics.ts` with task-balanced median and task-balanced optimality gap against ceiling=1, with deltas for baseline/candidate comparisons.
+- The diagnostics now expose IQM, median, optimality gap and paired probability-of-improvement for task success, skill quality and trajectory quality.
+- Directly inspected `google-research/rliable/rliable/metrics.py` (blob `dc206a180c822eaf3bc8524a63b127aeb1e60fe7`, Apache-2.0); adapted statistical measures without copying upstream code or adding Python dependencies.
+- Extended WorkPass406's test for median, gap and ceiling cases; existing P23/P26 wiring already invokes it.
+- All metrics remain diagnostic-only; no promotion policy changed. Exact-HEAD tests/typecheck remain unverified because hosted Actions logs are unavailable. No performance uplift is claimed.
+- Details: [WorkPass412 implementation note](docs/WORKPASS412_RLIABLE_METRIC_DEPTH_RU.md).
+
+---
+
+## NK1 WorkPass411 — make learning CI script wiring self-auditing (2026-10-23)
+
+- **Cross-branch integration:** selectively ported the workflow-to-package script resolver from `feature/experiments`; did not merge its divergent branch history.
+- **Runtime improvement:** the reliability audit now maps each `npm run` invocation to the root, app, or runtime package using step-level `working-directory`, `npm --prefix`, and inline `cd` context. A root script can no longer falsely satisfy a missing runtime/app alias.
+- **Regression:** added tests for correct context resolution, missing aliases and backward-compatible policy-only calls.
+- **CI integration:** the P26 learning workflow runs the audit tests and full static workflow/script audit before `npm ci`, and now triggers when the audit code/tests or relevant package manifests change.
+- **Validation boundary:** code is committed, but GitHub reports no status checks on the exact latest commit and the hosted jobs returned by the connector are historical PR runs. No local test/typecheck or exact-HEAD CI pass is claimed.
+
+---
+
+## NK1 WorkPass410 — introduce Pareto-frontier learning-target selection (2026-10-23)
+
+- **Code:** added deterministic non-dominated layering for the P23 curriculum across six objectives; preserves complementary high-value learning targets instead of filling the queue with a dominated near-duplicate. Existing weighted-score mode remains backward-compatible.
+- **Integration:** P23 recommendations now opt into Pareto-frontier ordering; reflection target families encode the diagnosed failure kind plus action, while evidence-debt targets use a separate verification-debt family.
+- **Regression:** added fixtures proving that a complementary frontier target is selected before a dominated near-clone, and pinned the new runtime family identities.
+- **Research adaptation:** inspected GEPA's Pareto-efficient reflective-search code/docs and Hermes Agent Self-Evolution's candidate workflow; adapted the selection principle to NK1 TypeScript rather than adding an incompatible Python optimizer dependency. References and boundaries are recorded in `docs/NK1_LEARNING_PARETO_FRONTIER_2026-10-23.md`.
+- **Safety:** selection does not promote or activate candidates; the existing independent evaluation, signed evidence and promotion gate remain mandatory.
+- **Validation:** tests/typecheck have not been executed in this connector pass. No CI pass or measured learning uplift is claimed.
+
+---
+
+## NK1 WorkPass409 — recover lifecycle attempts interrupted after intent (2026-10-23)
+
+- Found and closed a crash-recovery gap: a process could exit after persisting `activation-intent` but before writing `activation-outcome-unknown`, leaving the prior reconciler unable to see that attempt.
+- `P23LearningEngine.reconcileLearningLifecycleOutcomes()` now reconciles every non-terminal intent against the authoritative versioned skill store. If present, the explicit unknown event is preferred; the initial intent is sufficient evidence for a store-based reconciliation after abrupt exit.
+- `LearningLifecycleJournal` accepts only legal reconciliation sequences: `intent → unknown → reconciliation` or `intent → reconciliation`. Pending-intent and explicit-unknown counts are reported separately.
+- Extended `workpass408-lifecycle-store-reconciliation.mjs` with an intent-only crash simulation; confirms exact active fingerprint recovery, non-active candidate outcome, missing lineage remaining pending, and repeat idempotency. Existing P26 workflow runs this regression.
+- Estimated learning implementation coverage updated to 82%; production readiness remains ~45%. These remain engineering estimates, not benchmark outcomes.
+- Exact-HEAD CI/typecheck are still not confirmed: Actions jobs return failure without available steps/logs. No tests are claimed as passing and no learning uplift is claimed.
+
+---
+
+## NK1 WorkPass408 — reconcile uncertain activation attempts against the versioned store (2026-10-23)
+
+- Added `P23LearningEngine.reconcileLearningLifecycleOutcomes()`: uncertain activations are reconciled only against the canonical skill-store snapshot, using exact candidate/skill/version/payload fingerprint bindings.
+- Added lifecycle terminal events `activation-reconciled-active` and `activation-reconciled-not-currently-active`; unknown attempts stay pending until a safe reconciliation. Conflicting/missing lineage is not guessed.
+- Runtime invokes conservative reconciliation on startup and exposes an explicit method to retry. It never promotes, approves or rolls back a skill as a side effect of reconciliation.
+- Added end-to-end integration regression for exact active match, shadow/non-active record, absent candidate lineage and idempotent repeat; wired into `test:p23:learning` and P26 Learning Validation.
+- Added [WorkPass408 implementation note](docs/WORKPASS408_LIFECYCLE_STORE_RECONCILIATION_RU.md); category completion estimate updates to 81%, production readiness remains ~45% pending actionable CI, real restart/rollback soak and measured external-task uplift.
+- Validation remains unconfirmed: Actions jobs return failure without step logs; do not infer either green tests or a code failure from the unavailable runner output.
+
+---
+
+## NK1 WorkPass407 — persist the real P23 activation outcome (2026-10-23)
+
+- Added a separate hash-chained `LearningLifecycleJournal.ts`: promotion rejection, pre-side-effect activation intent, confirmed activation, and explicit unknown outcomes.
+- Wired it through `P23LearningEngine` and `OrganismRuntime`, including optional host sink injection and aggregate diagnostics in longitudinal/persistence snapshots.
+- Lifecycle transitions are validated; duplicate identical writes are idempotent, conflicting evidence bindings or illegal transitions fail closed, and raw candidate payloads/task/holdout rows are not persisted.
+- Made activation intent mandatory before activation when a lifecycle sink is configured. If a store exception does not prove whether a side effect occurred, record `activation-outcome-unknown` instead of inventing a failure; a missing terminal journal event remains pending for later reconciliation.
+- Added path resolver to ensure lifecycle JSONL never reuses the organism state filename; tests cover lowercase/uppercase `.json`, no-extension and NUL cases.
+- Added `workpass407-learning-lifecycle-journal.mjs`, wired into `test:p23:learning` and P26 Learning Validation; extended WorkPass402 to assert lifecycle rejection fingerprints.
+- Directly inspected Hermes Self-Evolution README/PLAN/`evolve_skill.py` files and adapted its constraint/holdout/failure-preservation principles; no upstream runtime code or dependency was imported.
+- Verification remains unconfirmed on exact HEAD: Actions jobs return failure without accessible steps/logs. No measured learning uplift is claimed. See [WorkPass407 implementation notes](docs/WORKPASS407_P23_ACTIVATION_OUTCOME_JOURNAL_RU.md).
+
+---
+
+## NK1 WorkPass406 follow-through — API and CI integration (2026-10-23)
+
+- **Public API:** `P23LearningEngine.approveIndependentlyEvaluatedSkillCandidate` now preserves the typed `learningRobustDiagnostics` shape in returned `fitness`.
+- **CI reachability:** added the new metrics module/test to P26 path filters and an explicit regression step invoking `npm run test:workpass406:robust-metrics`.
+- **Progress accounting:** added [WorkPass406 learning progress scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md), separating estimated implementation completeness (77%) from estimated production readiness (~45%).
+- **Local-only validation:** an isolated regression harness and strict TypeScript check for the new utility passed. This is not a full runtime checkout/build or exact-HEAD CI pass.
+- **CI status:** P26 on the current branch HEAD reports failure without available steps/logs; do not attribute the failure to the code without evidence. No measured learning uplift is claimed.
+
+---
+
+## NK1 WorkPass406 — task-balanced robust learning diagnostics (2026-10-23)
+
+- **Added:** task-balanced interquartile mean (IQM), IQM delta and paired probability-of-improvement summaries for task success, skill quality and trajectory quality on validation and holdout.
+- **Integrated:** `compareMatchedIndependentEvaluations` publishes these as `learningRobustDiagnostics`. They are descriptive-only and do not alter eligibility or promotion.
+- **Guardrails:** require exact task/trial pairing, plain-data snapshots, bounded finite scores and order-invariant summaries; no third-party runtime dependency added.
+- **Regression:** `tests/workpass406-learning-robust-metrics.mjs` is wired into `npm run test:p23:learning`; covers IQM arithmetic, paired win/tie/loss probability, row-order invariance, missing/mismatched pairs, invalid scores and accessor rejection.
+- **Research:** adapts reporting ideas from [Google Research RLiable](https://github.com/google-research/rliable) and the generation/evaluation/promotion separation described by [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution). No upstream code was copied.
+- **Verification boundary:** implementation and wiring are committed; exact-HEAD runtime test, TypeScript check and CI have not yet been confirmed. No measured learning uplift is claimed.
+- Details: [WorkPass406 implementation note](docs/WORKPASS406_TASK_BALANCED_ROBUST_METRICS_RU.md).
+
+---
+
+## NK1 WorkPass405 — persist privacy-filtered P23 fitness decisions (2026-10-23)
+
+- [NEW] Added `LearningFitnessJournal.ts`: hash-chained JSONL records with schema version, ordered sequence, prior digest, SHA-256 digest, capped file size, lock-file serialization, append+fsync and full-chain validation on reads.
+- [INTEGRATION] P23 exposes `configureLearningFitnessJournal(...)` and records `fitness-accepted` / `fitness-rejected` immediately after its real independent-evaluation gate, before shadow receipt verification and activation. A configured sink failure aborts promotion; the journal records a fitness decision, not a claim that the skill was activated.
+- [RUNTIME] `OrganismRuntime` now configures the P23 journal when `compoundRepairRevision.engine` is configured. By default it writes `<stateFile stem>.learning-fitness.jsonl`; callers can inject an explicit sink.
+- [PRIVACY] Strict exact-key schemas retain only fingerprints, allowlisted decision codes, paired trial counts, gate policy and aggregate validation/holdout confidence summaries. Prompts, individual task IDs, family names and raw holdout rows are not written. Getter inputs, extra fields, chain tampering, truncation, blank lines and concurrent lock contention fail closed.
+- [REGRESSION] `workpass405-learning-fitness-journal.mjs` exercises JSONL round trip, chaining, privacy bounds, accessor rejection, lock preservation, tampering and aggregate telemetry (`snapshotDiagnostics`). `P23LearningEngine` and `OrganismRuntime` expose privacy-filtered aggregates to dashboard callers. WorkPass402 confirms rejection decisions reach the configured sink before any activation side effect, while broken diagnostic readback degrades to a bounded status rather than breaking runtime snapshots. Verified file metadata is cached between unchanged snapshots. P26 runs the journal test on Node.js 24.
+- [RESEARCH] Extends RLiable-inspired uncertainty tracking toward continuous learning telemetry while preserving Hermes-style separation between evaluation, evidence authorization and activation.
+- [LIMITS] SHA-256 chaining is tamper-evident but not a signature: a writer able to rewrite the entire file can recompute the chain. Independent signed checkpoints and remote durable storage remain future work.
+- [VALIDATION] Code, tests, P26 wiring, runtime configuration and documentation are committed to `feature/learning`; Actions test/typecheck execution remains unverified because jobs expose no step logs.
+
+---
+
+## NK1 WorkPass404 — gate noisy family improvements on bootstrap confidence (2026-10-23)
+
+- [NEW] Added `PairedSeedConfidence.ts`, a dependency-free deterministic percentile-bootstrap interval for paired-seed mean deltas; input, resample-count, confidence-level and seed bounds fail closed. The helper snapshots caller-owned input arrays and options through `LearningTrustBoundary` before reads, rejecting accessors without invocation.
+- [INTEGRATION] Independent family evaluation now computes intervals over common-seed family-wide deltas, averaging repeats within task/seed and weighting tasks equally within family. Bootstrap random streams are deterministic by plan/split/family.
+- [PROMOTION] Under the existing strict P23 policy, validation requires a positive lower bootstrap bound per adequately replicated family; holdout requires the lower bound to stay above the family regression tolerance. Uncertain validation gain and noisy holdout regression each have explicit gate reason codes.
+- [REGRESSION] `workpass404-paired-seed-confidence.mjs` covers repeatability, stable positive, noisy-positive-mean and all-negative samples plus malformed options. WorkPass225 now covers an apparently positive validation mean with an adverse seed that makes the family interval unsafe.
+- [RESEARCH] Adapted RLiable's uncertainty-aware evaluation recommendations alongside SkillLearnBench's task-level variability and Hermes' guarded promotion. Three seeds remain a minimum structural screen, not statistical proof; IQM, probability of improvement, larger seed suites and cost reporting remain follow-up work.
+- [CI] P26 now watches the confidence utility and test file and runs the confidence regression under Node.js 24; no runtime package dependency was added.
+- [VALIDATION] Committed to `feature/learning`; actual test/typecheck execution remains unverified because GitHub Actions jobs do not expose step logs.
+
+---
+
+## NK1 WorkPass403 — require paired-seed replication within each skill family (2026-10-23)
+
+- [FIXED] The independent-evaluation comparator now supports `minimumValidationFamilySeeds` and `minimumHoldoutFamilySeeds`. A seed counts only when it is shared by every task in a sufficiently sampled family; seed counts from different tasks are not unioned into fake replication.
+- [PROMOTION] P23 production activation now requires 3 common paired seeds per family on both validation and holdout, in addition to canonical family provenance and at least 2 distinct tasks per family. This policy is fixed in the promotion authority, not candidate-controlled.
+- [REPORTING] Reports now include family seed-coverage counts and failure counts. Requested seed coverage with zero eligible family metadata fails closed; invalid minima fail closed.
+- [REGRESSION] WorkPass225 covers a two-seed candidate that is blocked and a three-seed case that passes coverage. WorkPass402's end-to-end production test also verifies that the true P23 activation entry point rejects two-seed family evidence before store approval.
+- [RESEARCH] Adapted RLiable's recommendation to quantify uncertainty and run variability, SkillLearnBench's multidomain/three-axis assessment, and Hermes' guarded candidate promotion. Three seeds are a structural floor, not statistical proof; bootstrap intervals / IQM and larger seed counts remain future work.
+- [CI] Existing P26 path/step wiring runs both affected regression scripts under Node.js 24; no new runtime dependency was introduced.
+- [VALIDATION] Changes are committed on `feature/learning`; exact-head tests/typecheck are still runtime-unverified because Actions jobs have no exposed step logs.
+
+---
+
+## NK1 WorkPass402 — enforce family coverage at production promotion (2026-10-23)
+
+- [FIXED] The authoritative P23 activation path `approveIndependentlyEvaluatedSkillCandidate` no longer uses the permissive default evaluation profile. It requires at least one sufficiently sampled canonical task family in both validation and holdout: 2 distinct tasks per family, minimum one family per split.
+- [INTEGRATION] `compareMatchedIndependentEvaluations` now accepts typed `SkillLearnBenchCandidateGateOptions` and forwards them to the existing SkillLearnBench gate. Diagnostic callers retain legacy-compatible defaults; production activation sets the policy internally and cannot be downgraded by a generated skill.
+- [PROVENANCE] Canonical family metadata is sourced from the trusted experiment manifest by the independent evaluator; existing WorkPass213 coverage checks reject caller-forged family labels.
+- [REGRESSION/CI] WorkPass225 tests strict comparator options with missing family labels, and the new `tests/workpass402-production-promotion-family-gate.mjs` drives the actual P23 activation method with a valid independently evaluated baseline/candidate that lacks family labels. The advisory gate accepts the improved candidate under legacy defaults; production activation rejects both missing-family splits before store approval. P26 triggers and runs both Node.js 24 tests.
+- [RESEARCH] Adapts SkillLearnBench's multi-domain/three-axis evaluation findings and Hermes' candidate guardrail separation. The 2-task floor is structural coverage, not proof of statistical generalization; paired multi-seed calibration is still required.
+- [VALIDATION] Source, regression, P26 wiring, docs and research notes are committed to `feature/learning`; exact-head tests/typecheck remain unverified because Actions jobs expose no steps or logs. No result uplift is claimed.
+
+---
+
+## NK1 WorkPass401 — make task-family coverage explicitly enforceable (2026-10-23)
+
+- [FIXED] Added opt-in strict coverage requirements `minimumValidationFamilies` and `minimumHoldoutFamilies`, so a benchmark/production profile can reject missing task-family provenance rather than silently skip family-level checks.
+- [COMPATIBILITY] Both minimums default to 0 to preserve legacy test reports; strict profiles should set 1+ and supply canonical family metadata. Family names are never inferred from task IDs.
+- [METRICS] Missing required coverage yields `validation-family-coverage-insufficient` / `holdout-family-coverage-insufficient`. Invalid negative, fractional or unsafe minima fail closed.
+- [REGRESSION] P29 verifies an unlabeled validation/holdout pair fails under strict coverage settings while legacy default behavior stays compatible.
+- [CI] Existing P26 Learning Validation source/test filters already cover the adapter and P29 script. No package dependency or new workflow added.
+- [VALIDATION] Code, adversarial regression, docs and research intake are committed on `feature/learning`; exact-head execution/typecheck remains unverified due missing Actions step logs.
+
+---
+
+## NK1 WorkPass400 — block validation-family regressions (2026-10-23)
+
+- [FIXED] SkillLearnBench candidate evaluation now also checks macro-average change by sufficiently sampled validation task family; moderate losses across a family cannot be hidden by gains in another family when each individual loss remains below the per-task limit.
+- [METRICS] Added `maximumValidationFamilyRegression01` (default 0.10), `minimumValidationFamilyTasks` (default 2), `validationFamiliesEvaluated` and `validationFamilyRegressions`. Invalid limits fail closed.
+- [REFACTOR] Validation and holdout family gates now share one paired family aggregation helper: average repeated trials within each task, then weight tasks equally. Holdout family counts and gate behavior are preserved.
+- [REGRESSION] P29 demonstrates a positive overall validation gain and zero per-task vetoes while a sufficiently sampled family declines by 0.16; family-level gate rejects the candidate. It also checks invalid threshold rejection.
+- [RESEARCH] SkillLearnBench's 20 verified tasks across 15 sub-domains and three-level evaluation motivates guarding uneven task/domain gains; Hermes Self-Evolution motivates independent evaluation with separate promotion guardrails. The 0.10 threshold is an NK1 engineering default and needs paired multi-seed calibration.
+- [CI] Existing P26 Learning Validation path/step wiring already includes the modified adapter and P29 test. No extra dependency or duplicate workflow was introduced.
+- [VALIDATION] Source, adversarial test, documentation and research ledger are committed on `feature/learning`; exact-head runtime execution/typecheck is not yet verified because GitHub Actions jobs expose no step logs.
+
+---
+
+## NK1 WorkPass399 — block hidden validation task regressions (2026-10-23)
+
+- [FIXED] The SkillLearnBench-compatible candidate gate computes each validation task's paired baseline/candidate mean across its repeats. A macro-average gain no longer hides a task-local regression greater than configurable `maximumValidationTaskRegression01` (default 0.20).
+- [METRICS] The candidate gate report exposes `validationTaskRegressions`; malformed threshold settings fail closed with `candidate-maximum-validation-task-regression-invalid`.
+- [REGRESSION] The P29 candidate-gate suite adds a mixed result where the overall validation score improves, but one task degrades sharply while two others improve; the candidate is rejected.
+- [CI] P26 Learning Validation already triggers on the SkillLearnBench adapter and P29 regression path and runs the candidate-gate script; no additional dependency or duplicate workflow was added.
+- [RESEARCH] The change complements SkillLearnBench's outcome/trajectory/skill-quality split and its finding that continual skill-learning gains vary across tasks; the threshold is an NK1 engineering guard and requires multi-seed calibration.
+- [RESEARCH LEDGER] Recorded the source review, gap, adaptation and benchmark-calibration limitation in `docs/RESEARCH_INTAKE_LEDGER.md`.
+- [VALIDATION] Code/test/docs are committed on `feature/learning`. Exact-head test/typecheck execution remains unconfirmed while Actions jobs expose no runner steps/logs.
+
+---
+
+## NK1 WorkPass398 — snapshot promotion envelopes and approval before access (2026-10-23)
+
+- [FIXED] `approveIndependentlyEvaluatedSkillCandidate` now snapshots the caller-owned baseline and evaluation envelopes through NK1's plain-data trust boundary before reading properties or comparing fingerprints. Accessor/Proxy boundary failures are rejected closed.
+- [FIXED] The private promotion finalizer detaches the approval object before passing it to the skill store; caller-defined getters cannot execute during field inspection.
+- [REGRESSION] Extended `p23-hermes-production-promotion-gate.mjs` to assert that getters on the baseline, candidate envelope and approval are never invoked, and that malformed approval input does not reach the store.
+- [CI] The P26 Learning Validation workflow already covers the P23 source path and focused promotion-gate test path; no duplicate workflow or dependency was added.
+- [RESEARCH] Continues the evidence-boundary model used in NK1's P23 lifecycle and Hermes-inspired candidate pipeline. The patch strengthens input handling but does not claim learning-score improvement.
+- [VALIDATION] Source/test/docs are committed on `feature/learning`; hosted runtime/typecheck execution remains unconfirmed because Actions job records expose no steps/logs.
+
+---
+
+## NK1 WorkPass397 — close lower-level reflective promotion bypass (2026-10-23)
+
+- [FIXED] The general `approveVerifiedSkillCandidate` API now rejects staged candidates carrying `revisionProvenance`; reflective revisions cannot skip matched independent-evaluation checks after shadow staging.
+- [INTEGRATED] `approveIndependentlyEvaluatedSkillCandidate` now enters a private finalizer only after exact payload/fingerprint/provenance, matched baseline/candidate and signed-evidence checks. Non-reflective candidates retain the general path.
+- [REGRESSION] Extended `p23-hermes-production-promotion-gate.mjs` to attempt direct activation via the lower-level API and verify that the store approval callback is untouched.
+- [CI] Reuses the P26 Learning Validation path/step added in WorkPass394; no duplicate workflow was introduced.
+- [VALIDATION] Source and test commits are present; Actions continues to provide no runner step details for the latest P26 attempt. Runtime test/typecheck is not claimed as passed.
+- [SCOPE] `main` and the GitHub Release ZIP remain unchanged.
+
+---
+
+## NK1 WorkPass396 — verify exact generated payload writeback and staged-only authority (2026-10-23)
+- [TEST ADDED] The end-to-end P23 revision fixture now asserts the versioned store contains the exact revised payload that was independently evaluated, not just a different fingerprint.
+- [SAFETY] The same regression asserts that a successful evaluation leaves the candidate in `staged` state and the active-skill set empty; promotion still requires the separate approval path.
+- [RESEARCH] This targets a real upstream risk pattern in Hermes Agent Self-Evolution issue history: unchanged optimizer output and evolved skill text not being written back to the skill artifact.
+
+## NK1 WorkPass395 — preserve prototype-backed provider compatibility (2026-10-23)
+- [TEST ADDED] Added a fixture whose `configured` and `generate` capabilities live on its prototype, proving that descriptor-based capability resolution still supports class-style provider implementations while rejecting accessor-backed capabilities.
+- [COMPATIBILITY] Keeps the direct-generator boundary compatible with NK1's host-owned OpenAI-compatible local chat provider.
+
+## NK1 WorkPass394 — close the direct local-generator trust-boundary path (2026-10-23)
+- [FIXED] `P23LocalModelSkillRevisionGenerator` now snapshots the request before reading fields or serializing source/validation data; generator response data is snapshotted before reading `response.text`.
+- [SAFETY] Host provider methods are resolved from property descriptors and accessor-backed `configured`/`generate` capabilities are rejected without invoking getters. Missing/unconfigured providers retain the established not-configured error contract.
+- [TEST ADDED] Added regressions for request getter non-invocation, response getter non-invocation, provider capability getters and absent-provider compatibility.
+- [CI] P26 Learning Validation path filters and steps now include the local model revision generator and its regression test.
+
+## NK1 WorkPass394 — block report-only reflective promotion (2026-10-23)
+
+- [FIXED] Disabled the legacy `approveReflectiveVerifiedSkillCandidate` production path. Caller-owned fitness arrays plus signed run receipts cannot authorize activation because receipts bind identity/binary outcome, not skill-quality or trajectory metrics.
+- [INTEGRATED] The supported promotion route is explicit: a fingerprinted P23 independent-evaluation envelope, exact staged-payload/provenance match, paired task/seed/split/environment/manifest checks, signed shadow evidence and trusted approval.
+- [REGRESSION] The promotion-gate test now constructs a candidate that passes the advisory aggregate fitness calculation, then proves the legacy path fails before receipt verification and before the store's approval method can be reached.
+- [CI] Added the regression file to P26 Learning Validation's path filter and execution steps.
+- [RESEARCH] Applied the trace-to-revision, independent-evaluation and guardrail principle from Hermes Agent Self-Evolution inside the existing NK1 learning lifecycle; no upstream source code or new dependency was copied in this pass.
+- [VALIDATION] Code/test/CI/docs are committed on `feature/learning`. Hosted test execution on this exact HEAD remains unconfirmed; no learning uplift or production readiness is claimed.
+
+---
+
+## NK1 WorkPass393 — align runtime repair-ledger API with eligibility semantics (2026-10-23)
+- [DOC FIXED] Clarified that `OrganismRuntime.compoundSkillRepairEvidence` returns a bounded diagnostic ledger, including noneligible failed attempts, while the coordinator alone filters `revisionEligible` and passes the eligible subset through the strict canonicalization/fingerprint gate.
+- [WHY] Diagnostic experience and promotion evidence have different contracts; preserving a failed attempt must not imply that it is approved for skill generation.
+
+## NK1 WorkPass392 — require independent task coverage in validation (2026-10-23)
+- [FIXED] The SkillLearnBench candidate gate now requires at least two distinct paired validation tasks by default, configurable through `minimumValidationTasks`. Repeating trials on one task no longer substitutes for task-level validation coverage.
+- [CHANGED] Gate output includes `validationTaskCount`; insufficient coverage returns `validation-task-coverage-insufficient` while preserving the existing paired score and holdout-family checks.
+- [TEST ADDED] An apparent improvement over multiple repeats of a single task is rejected; invalid minimum-task configuration also fails closed.
+
+## NK1 WorkPass391 — keep diagnostic repair memory separate from revision-eligible evidence (2026-10-23)
+- [FIXED] OrganismRuntime no longer applies the strict revision-candidate canonicalizer to every repair observation. A legitimate failed attempt with no selected replacement remains in the bounded diagnostic ledger, while only rows marked `revisionEligible` proceed into the coordinator's strict canonicalizer/fingerprint.
+- [FIXED] Candidate-tool ordering is normalized when runtime observations are shaped; newest-96 ordering remains deterministic before the evidence window is returned.
+- [TEST ADDED] The runtime-level 120-row fixture now includes a newest ineligible observation with an empty candidate-tool set and confirms it remains in diagnostic memory without being promoted to a revision candidate.
+
+## NK1 WorkPass390 — reject no-op revisions before evaluation (2026-10-23)
+- [FIXED] P23 now compares the canonical detached generated payload to the source candidate before launching the independent evaluator. An unchanged artifact fails immediately, avoiding wasted sandbox execution; the stage-time no-op check remains as a second guard.
+- [TEST ADDED] The signed-evidence generator-boundary integration fixture verifies that the no-op is rejected, the evaluator is never called and no extra candidate version is written.
+
+## NK1 WorkPass389 — end-to-end revision boundary regression (2026-10-23)
+- [TEST ADDED] Added a P23 integration fixture using a real signed-evidence promotion proposal and versioned candidate store. It verifies that generator-returned accessors are rejected before evaluation, evaluator-returned accessors are rejected before fingerprint inspection, neither can stage a candidate, and a detached payload with a valid independent evaluation can still stage as a separate candidate.
+- [CI] Wired the integration test into the existing P26 Learning Validation workflow and path filter.
+
+## NK1 WorkPass388 — make snapshot type contracts explicit (2026-10-23)
+- [MAINTENANCE] Removed self-referential `typeof` assertions for baseline/evaluation/fresh-report snapshots; their detached values are now asserted against the input and evaluator return contracts directly.
+
+## NK1 WorkPass387 — unify continual-metric trust boundary (2026-10-23)
+- [CHANGED] ContinualLearningMetrics now snapshots the task/score matrix through the shared LearningTrustBoundary before inspecting properties or calculating a curve.
+- [SAFETY] Accessors, cyclic/non-plain records and malformed arrays fail closed; sparse score arrays keep an actionable diagnostic, and non-finite score matrices are rejected at the boundary.
+- [TEST ADDED] Verifies that a getter is never invoked and that non-finite score arrays are rejected; prior task, forgetting, transfer and growth-curve cases are retained.
+
+## NK1 WorkPass386 — bound repair history before canonicalization (2026-10-23)
+- [FIXED] OrganismRuntime now chooses the deterministic newest 96 repair records before calling the strict canonicalizer. A legitimate longer history no longer trips the canonicalizer's input bound before windowing.
+- [TEST ADDED] A runtime-level fixture with 120 eligible repair rows checks that precisely the newest 96 are retained and ordered from newest to oldest.
+
+## NK1 WorkPass385 — add longitudinal learning-curve metrics (2026-10-23)
+- [CHANGED] ContinualLearningMetrics now returns the mean score at each sequential checkpoint, normalized trapezoidal area under the curve, and final-minus-first checkpoint score.
+- [WHY] A final score can hide temporary regressions and instability. The curve captures measured intermediate performance without inferring causality or treating memory growth as learning.
+- [TEST ADDED] Covered the deterministic curve, area calculation, net endpoint change and the one-checkpoint edge case.
+- [CI] Added the metric implementation/test to P26 path filtering and an explicit test step.
+
+## NK1 WorkPass384 — preserve canonicalization error contracts (2026-10-23)
+- [FIXED] The shared trust-boundary snapshot now rejects payload getters, sparse arrays, array extra-properties, cycles and non-finite numbers before hashing or sandbox evaluation.
+- [COMPATIBILITY] Cyclic/non-finite payloads retain their established canonicalization error codes; other invalid plain-data shapes return a bounded data-boundary error.
+- [TEST ADDED] Extended the reflective payload budget regression and ran it through P26 Learning Validation.
+
+## NK1 WorkPass383 — harden P23 revision generator/evaluator boundary (2026-10-23)
+- [FIXED] Candidate baseline/reports/options are snapshotted after authentic proposal checks; generator output is detached and size-bounded before hashing/evaluation; independent-evaluator output is detached before fingerprint and report inspection.
+- [SAFETY] The exact detached payload used for the fingerprint is the one passed to the independent evaluator and subsequently staged. Malformed reports cannot invoke property getters or change through a retained reference across an await.
+
+## NK1 WorkPass382 — validate compound repair evidence before fingerprinting (2026-10-23)
+- [FIXED] Canonical evidence hashing now snapshots and validates each row, caps the evidence batch at 96, and rejects accessor/sparse/malformed inputs, duplicate candidate tools, invalid timestamps and out-of-range confidence.
+- [TEST ADDED] Added regressions for no-getter execution, sparse evidence, invalid confidence, duplicate tool identities, and canonical valid ordering.
+
+## NK1 WorkPass381 — deterministic curriculum ordering (2026-10-23)
+- [FIXED] Outcome-reflection and curriculum tie-breaks now use locale-independent code-unit comparison for stable identifier ordering across hosts.
+- [TEST ADDED] Equal-score Unicode/case-mixed target IDs have an explicit deterministic order regression.
+- [RATIONALE] Reproducibility must include tie-break ordering, not only deterministic scores. This does not claim a measured learning uplift.
+
+## NK1 WorkPass380 — locale-independent repair evidence fingerprints (2026-10-23)
+- [FIXED] Canonical repair-evidence sorting no longer depends on locale-specific `localeCompare` collation. Candidate tool sets and every identity/tie-break field use deterministic code-unit order before fingerprinting.
+- [SAFETY] Equivalent evidence now hashes consistently across different host locales; materially different evidence remains distinguishable.
+- [VALIDATION] Source and focused regressions are committed; execution remains unverified while Actions exposes no step logs.
+
+## NK1 WorkPass379 — close family-provenance downgrade paths (2026-10-23)
+- [FIXED] Matched baseline/candidate reports must now agree exactly on whether a canonical task family is present and, when present, its value. Removing the family label from just one side cannot silently fall back to aggregate-only scoring.
+- [FIXED] Malformed post-snapshot candidate-gate roots/options are rejected with a bounded data-boundary error instead of failing later during metric access.
+- [TEST ADDED] Covered one-sided family-label omission and invalid null gate options.
+- [VALIDATION] Source and regression commits are present; execution still awaits CI steps/logs.
+
+## NK1 WorkPass378 — snapshot candidate evaluation inputs safely (2026-10-23)
+- [FIXED] SkillLearnBench trial inputs, aggregate report batches, candidate baseline/candidate report sets, gate envelopes and gate options are detached via the shared learning trust boundary before fields are read.
+- [SAFETY] Accessors, sparse arrays, invalid object prototypes and reflection failures are rejected without invoking caller-owned getters; family metadata follows the same trust boundary as outcome scores.
+- [TEST ADDED] Added regressions for accessor-backed task family, report family, baseline envelope and gate option, plus sparse report batches. The existing Node.js 24 P26 workflow includes the adapter and P29 regression paths.
+- [VALIDATION] Static source/API verification only; execution remains unconfirmed while Actions reports fail without step-level logs.
+
+## NK1 WorkPass377 — prevent aggregate-masked task-family regressions (2026-10-23)
+- [CHANGED] Independent candidate evaluation now binds the task-family label from the canonical task manifest into each measured trial report and its evaluation-plan fingerprint; a caller-supplied family label cannot override the manifest.
+- [FIXED] SkillLearnBench candidate gating now macro-averages results by task and checks each adequately sampled holdout family separately. A severe family regression blocks eligibility even when gains in another family leave the aggregate score unchanged.
+- [SAFETY] Family names and family-specific holdout scores are not included in optimizer-facing feedback; only a generic generalization warning and aggregate counts are exposed.
+- [TEST ADDED] Added an aggregate-neutral scenario where memory tasks regress and perception tasks improve; the candidate must be rejected. Added regression coverage for manifest-authoritative family attribution.
+- [CI] Added independent-evaluator family provenance source/test paths and a focused regression step to the existing Node.js 24 validation workflow. Execution is not yet confirmed.
+
+## NK1 WorkPass376 — task-family-aware holdout gate (2026-10-23)
+- [CHANGED] SkillLearnBench evaluation reports can carry bounded canonical task-family provenance, preserving backward compatibility for legacy reports without family labels.
+- [FIXED] Candidate promotion eligibility now includes a configurable holdout family regression tolerance (default 0.10) and minimum family coverage (default 2 distinct tasks); insufficiently sampled families do not act as a veto.
+- [SAFETY] Family attribution must remain consistent across trials and paired baseline/candidate reports. Holdout family details stay out of generator-facing plans.
+
+## NK1 WorkPass375 — deterministic repair-evidence fingerprints (2026-10-23)
+- [FIXED] Candidate-tools are fingerprinted as a canonical set, and repair records use deterministic tie-breaking when timestamps match. Property insertion order and row ordering no longer create distinct revision provenance for equivalent evidence.
+- [CHANGED] The runtime and P23 coordinator now share the same canonicalization/fingerprint functions, including the newest-96 evidence budget boundary.
+- [TEST ADDED] Covered row/property/tool ordering invariance and verified that a material diagnosis change still changes the fingerprint.
+- [CI] Added the runtime/coordinator sources to the P26 path filter and an explicit regression step for compound repair evidence fingerprinting. Test execution remains unverified until runner logs are available.
+
+## NK1 WorkPass374 — unify evidence fingerprint semantics (2026-10-23)
+- [CHANGED] Introduced one canonical representation for compound repair evidence. Revisions now use stable row ordering, stable property order, and sorted candidate-tool sets.
+- [SAFETY] A real diagnosis or outcome-evidence change still changes the digest and forces a fresh revision; only representational changes are normalized.
+
+## NK1 WorkPass373 — reject sparse replay snapshots (2026-10-23)
+- [FIXED] Persisted replay feature vectors can no longer pass validation with missing sparse-array elements; all 16 positions must be present and normalized.
+- [TEST ADDED] Added a restore regression proving sparse vectors are quarantined instead of becoming replay evidence.
+- [VALIDATION] Static/API inspection only; Actions still reports failures without step summaries or retrievable logs.
+
+## NK1 WorkPass372 — protect replay snapshot round-trips (2026-10-23)
+- [TEST ADDED] Added schema-v1 save/restore coverage for the new replay feature snapshot and tested that snapshot-bearing experiences remain replayable after restore.
+- [COMPATIBILITY] Added regressions for older schema-v1 experiences without the optional replay fields; the bounded matching-trace fallback remains available.
+- [VALIDATION] Assertions are committed but remain unverified until the runner exposes execution steps/logs.
+
+## NK1 WorkPass371 — preserve minimal trace compatibility (2026-10-23)
+- [FIXED] Replay snapshot capture tolerates valid legacy/minimal traces that omit reasoningSignals; causal strength defaults to a neutral prior instead of throwing during ingestion.
+- [COMPATIBILITY] Existing P23 curriculum integration tests include this compact trace shape; its new replay feature fields remain optional when restoring old schema-v1 state.
+- [VALIDATION] Static source/API inspection only so far; step-level test results are still pending.
+
+## NK1 WorkPass370 — wire P23 learning edits into CI (2026-10-23)
+- [FIXED] The P26 learning-validation workflow now triggers when P23 learning-engine, curriculum, trust-boundary, and their focused test files change.
+- [CHANGED] Added explicit workflow steps for the P23 replay-integrity and reflection/curriculum regressions on the existing Node.js 24 workflow.
+- [VALIDATION] Workflow configuration is committed; actual test execution remains unconfirmed until GitHub Actions returns step-level results.
+
+## NK1 WorkPass369 — diversify curriculum candidates and normalize scores (2026-10-23)
+- [CHANGED] Ranked learning targets now interleave score-ordered candidate families so diverse eligible repair opportunities are not starved by one recurring family; the globally best candidate remains first.
+- [FIXED] Public `score01` stays inside its declared `[0,1]` range when verification cost outweighs the estimated benefit.
+- [TEST ADDED] Added ranking regressions for normalized score bounds, top-target preservation, and multi-family coverage. Execution is not yet independently confirmed.
+
+## NK1 WorkPass368 — family-aware active learning curriculum (2026-10-23)
+- [CHANGED] Integrated family-aware interleaving into the existing reflection curriculum rather than introducing a parallel scheduler; when only one family exists, its internal score order is preserved.
+- [RESEARCH] Adapted the automatic-curriculum/diverse-skill principle from Voyager at the ranking boundary; no upstream dependency or copied source file was added.
+
+## NK1 WorkPass367 — reject malformed feedback before learning (2026-10-23)
+- [FIXED] P23 now rejects out-of-range feedback and non-finite/out-of-range predicted utility/confidence instead of silently clamping malformed values into plausible-looking training evidence.
+- [TEST ADDED] Added regressions for out-of-range outcomes and non-finite predicted utility.
+
+## NK1 WorkPass366 — validate incoming learning evidence (2026-10-23)
+- [FIXED] Experience ingestion now requires a bounded trace identity, safe tick/time, valid action, and normalized predicted values before recording an outcome.
+- [RATIONALE] Calibration is only meaningful when prediction and outcome labels retain the same explicit numeric contract.
+
+## NK1 WorkPass365 — replay identity regression coverage (2026-10-23)
+- [TEST ADDED] Covered same-ID/different-action and stale-tick trace rejection, snapshot shape, and the original trace continuing to replay after rejected joins.
+
+## NK1 WorkPass364 — bind replay to persisted outcomes (2026-10-23)
+- [CHANGED] P23 records the goal-pressure score, causal-strength score, and 16-dimensional replay feature vector alongside the outcome; the replay selector uses that snapshot instead of mutable trace labels/features on the new-data path.
+- [FIXED] Replay candidates must match the stored experience on trace ID, tick, selected action, and discretized context; malformed/stale candidate objects fail closed.
+- [COMPATIBILITY] Added fields are optional in schema-v1 persisted rows; legacy rows use a checked matching trace fallback while the persisted reward/outcome remains authoritative.
+- [SAFETY] This hardens evidence integrity; it does not by itself prove improved learned performance. CI remains unverified.
+
+## NK1 WorkPass362 — make reflection windows auditable (2026-10-23)
+
+- [FIXED] Reflection output now distinguishes lifetime `occurrences` from `sampleCount`, the exact recent window used for the reported metrics, and records `windowStartTick`/`windowEndTick`.
+- [INTEGRATED] Added regression coverage for a 12-observation history where statistics use only the newest eight; source evidence IDs must match `sampleCount`.
+- [SCOPE] The output metadata prevents downstream dashboards and planners from confusing full history volume with the smaller recent sample. No scoring gate uses the lifetime count as transfer evidence.
+- [VALIDATION] Code/test changes committed; test/typecheck execution remains unverified because current Actions runs expose no runnable steps.
+
+## NK1 WorkPass361 — align the reflection contract and harden hostile proxy inputs (2026-10-23)
+
+- [FIXED] Added newly emitted pass-threshold, pass-rate and Wilson-interval fields to the public `ReflectionHypothesis` interface, matching the object actually returned by the implementation.
+- [HARDENED] Moved `Array.isArray` checks for reflection/curriculum arrays and raw identities inside exception boundaries. Revoked Proxies now fail closed instead of throwing before the shared snapshot boundary can reject them.
+- [REGRESSION] Added revoked-array and revoked-object Proxy cases for both reflection and learning-target ranking; renamed the old stale test marker so logs identify the current P23 suite.
+- [VALIDATION] The branch contents are committed and API-verified, but no runtime pass is claimed.
+
+## NK1 WorkPass360 — keep information gain separate from demonstrated transfer (2026-10-23)
+
+- [FIXED] Evidence-debt targets no longer map `informationGainPerCost01` into the `transfer01` field. Information gain estimates whether checking an item is worthwhile; it does not demonstrate cross-task generalization.
+- [INTEGRATED] Both reflection-derived and evidence-debt-derived targets now report zero transfer until independent cross-context/held-out measurements are available. Their uncertainty, novelty, verification cost and repair value still drive the curriculum.
+- [REGRESSION] Added a check that the normal P23 curriculum does not label a verification-debt target as transferable based only on its information-gain score.
+- [VALIDATION] Source/test commits are present, but new-head CI and runtime execution remain unverified while Actions jobs expose zero runnable steps. No transfer uplift is claimed; `main` and the release asset are untouched.
+
+## NK1 WorkPass359 — calibrate reflective uncertainty and stop inferring transfer from recurrence (2026-10-23)
+
+- [FIXED] `ReflectionHypothesis` now reports the explicit 0.5 pass threshold, observed pass rate, descriptive Wilson lower/upper bounds and interval width from the recent evidence window.
+- [FIXED] Reflection confidence accounts for sample-window size and interval width; repair priority combines prediction mismatch, observed outcome, surprise and conservative pass-rate risk. The interval is explicitly descriptive because experience rows may be correlated; it is not a claim of calibrated confidence.
+- [FIXED] `P23LearningEngine.recommendLearningTargets()` no longer treats `occurrences / 12` as skill-transfer evidence. Repeated errors inside one context influence repair priority but set transfer to zero until matched cross-context/held-out outcomes support a transfer claim.
+- [RESEARCH] Added `docs/WORKPASS359_REFLECTION_TRANSFER_CALIBRATION.md` summarizing inspected Hermes Agent Self-Evolution, Reflexion, Voyager and CleanRL patterns and how they were adapted to NK1's existing TypeScript candidate/evaluation lifecycle. No upstream implementation code was copied and no new dependency was added.
+- [REGRESSION] Extended the P23 reflection/curriculum regression with interval, threshold and transfer-separation assertions. It remains wired into `test:p23:learning`.
+- [VALIDATION] Source and regression changes are committed; exact-head execution remains unverified because exposed Actions attempts fail before useful steps are available. No measured performance uplift is claimed. `main` and the release ZIP remain untouched.
+
+## NK1 WorkPass358 — de-duplicate curriculum targets by immutable identity (2026-10-23)
+
+- [FIXED] The ranked learning curriculum now counts one target identity once; repeated identical proposals cannot occupy multiple top-k positions.
+- [FIXED] Conflicting target payloads under the same ID are quarantined. A malformed target row with a valid identity also invalidates that identity for the current ranking batch instead of allowing the earlier row to survive.
+- [INTEGRATION] Added exact-duplicate, conflicting-score and malformed-reuse regressions to the P23 curriculum suite already wired into `test:p23:learning`.
+- [VALIDATION] GitHub source/test commits are present; live test execution is still unverified because this environment cannot resolve `github.com` for a local checkout and the exposed Actions runs are failing before useful job evidence. No empirical learning uplift is claimed.
+
+## NK1 WorkPass357 — fail-closed outcome reflection and curriculum inputs (2026-10-23)
+
+- [FIXED] Outcome reflection now snapshots input through the shared `LearningTrustBoundary`; caller-owned accessors are rejected without invoking getters.
+- [FIXED] Reflection evidence IDs are immutable: exact duplicates are idempotent, conflicting payloads or malformed reuse quarantine the identity, and reflection counts use only unique valid observations.
+- [BOUNDED] Reflection accepts at most 4,096 rows and curriculum ranking at most 512 targets; oversized or structurally ambiguous arrays fail closed rather than silently biasing a truncated sample.
+- [FIXED] Reflection metrics, identities, timestamps, and learning-target scores are checked before aggregation. Invalid target rows cannot become ranked actions; direct scoring rejects malformed targets.
+- [INTEGRATION] Added these regressions to the P23 aggregate learning command. No new package dependency was introduced.
+- [VALIDATION] Source/test changes are committed; exact-head execution and CI remain unverified until a runner completes the learning suite. No measured learning uplift is claimed.
+
+## NK1 WorkPass356 — report learning experiment suite success only after every assertion
+
+- [FIXED] Moved the `P23_LEARNING_EXPERIMENT_PLAN=PASS` marker to the end of the experiment-plan test file. WorkPass350–352 regression assertions previously followed an earlier success log, so a later assertion could fail after the suite had already printed a misleading PASS line.
+- [INTEGRATED] Test output now reflects completion of the entire file, including getter, replay, atomic batch and snapshot-budget regressions.
+- [VALIDATION] Source ordering is inspected and committed; execution remains unverified due the runner-allocation problem.
+
+## NK1 WorkPass355 — stop holdout-score leakage into skill optimization (2026-10-23)
+
+- [FIXED] Removed the numeric `holdoutDelta01` feedback channel from the reflective revision generator contract. The generator receives a policy flag that results are withheld, not scores, direction, or case details.
+- [FIXED] Removed the `holdout-generalization` optimizer target and stopped copying gate reasons/feedback into the revision plan rationale, since those strings can reveal holdout-derived regression/coverage signals. Hard holdout safety failures still block optimization, and the independent gate still decides eligibility.
+- [HARDENED] The local-model generator now rejects the legacy numeric holdout contract and tells the model that aggregate scores and regression direction are withheld.
+- [REGRESSION] Updated plan isolation and local-model generator tests to assert absence of the score field, old aggregate channel, holdout-derived reasons, and holdout target. Added those suites to the aggregate `test:p23:learning` command.
+- [SCOPE] This prevents iterative optimization from learning on a nominal holdout via repeated aggregate feedback; final holdout evaluation remains a gate, not a tuning signal.
+- [VALIDATION] Committed regression coverage is present, but CI/test execution remains unverified until Actions runs on an assigned runner.
+
+## NK1 WorkPass354 — preserve optional configuration typing and gate callable properties
+
+- [FIXED] Built the detached provider config with an omitted `options` property when absent, preserving strict TypeScript `exactOptionalPropertyTypes` semantics instead of assigning explicit `undefined`.
+- [REGRESSION] Added a hostile generator-accessor case: callback capabilities are accepted only as own data properties, never by invoking getters.
+- [VALIDATION] Code/test additions are committed; exact-head typecheck and test execution remain unverified due runner allocation failures.
+
+## NK1 WorkPass353 — reuse the trust boundary for autonomous repair providers (2026-10-23)
+
+- [REFACTORED] Added `snapshotPlainDataEnvelope()`: it safely detaches provider data while preserving only explicitly allow-listed callable capabilities, using own data descriptors without executing accessors.
+- [HARDENED] `P23CompoundRepairRevisionCoordinator` no longer reads untrusted provider fields before detaching them and no longer uses `structuredClone()` as a getter safety boundary. Top-level/nested getter-backed evidence now fails before staging; repair evidence is copied through the shared snapshot boundary too.
+- [REGRESSION] Extended the compound-repair coordinator suite with top-level and nested getter side-effect counters and assertions that no candidate staging occurs.
+- [INTEGRATION] This applies the same trust policy to the autonomous repair route as the independent evaluator and verified outcome ledger.
+- [VALIDATION] Test assertions are committed but remain unverified; current Actions jobs fail before runner assignment (runner ID 0, zero steps).
+
+## NK1 WorkPass352 — bound total learning snapshot size and remove stale import (2026-10-23)
+
+- [HARDENED] The shared trust boundary now bounds aggregate string/key volume as well as depth and node count. This closes the case where a single huge string bypassed the previous object-node limits.
+- [INTEGRATED] Candidate-evaluator and ledger inputs use the same ceiling; tests cover both one oversized string and aggregate content over the limit.
+- [CLEANUP] Removed the now-unused sequential outcome-write import after switching independent evaluation commits to the atomic batch API.
+- [VALIDATION] Source review confirms the new size guards and test wiring are present. Runtime test execution is still unverified because Actions jobs stop before runner assignment.
+
+## NK1 WorkPass351 — atomic commits for verified learning batches (2026-10-23)
+
+- [INTEGRATED] Added `VerifiedOutcomeLedger.recordBatch()`: all outcomes in a batch are snapshotted and validated against existing rows and one another before any are stored.
+- [FIXED] `recordIndependentEvaluationOutcomes()` now commits all validation/holdout evidence through the atomic ledger batch instead of writing each cell sequentially. A late duplicate receipt or invalid row cannot leave a partially recorded experiment.
+- [REGRESSION] Added batch-collision atomicity coverage: duplicate receipts reject the entire batch with zero accepted writes; a fully valid two-row batch commits both.
+- [SCOPE] This pass strengthens the learning→evaluation→evidence spine; no new dependencies or promotion bypasses were introduced.
+- [VALIDATION] Source and tests are committed, but this suite remains unverified until an Actions runner executes the exact commit.
+
+## NK1 WorkPass350 — unify learning trust boundary and evidence receipt identity (2026-10-23)
+
+- [REFACTORED] Extracted bounded descriptor-only data snapshots and normalized identity checks into `LearningTrustBoundary.ts`, now shared by candidate evaluation and the canonical verified-outcome ledger.
+- [HARDENED] Manifest construction and outcome recording snapshot untrusted records before property access. Accessors/getters, cycles, unsupported prototypes, control-bearing identities and oversized structures are rejected fail-closed.
+- [INTEGRATED] The ledger now enforces global evidence-reference uniqueness: a single receipt cannot be reused to attest another method, seed, task or attempt. Accepted records persist a validated field-by-field snapshot rather than spreading the caller's object.
+- [REGRESSION] Added getter-side-effect and receipt-reuse cases to `test:p23:learning-experiment-plan`. The aggregate `test:p23:learning` now includes the independent evaluator, bounded-evaluation, experiment-plan and execution-evidence suites.
+- [DEPENDENCIES] No new package dependency added; this uses existing Node.js primitives and current experiment contracts.
+- [VALIDATION] These new and existing suites are still **unverified** until GitHub Actions runs the exact head with an assigned runner. A committed regression test is not evidence that it passed.
+
+## NK1 WorkPass349 — close detached-plan bypass and wire regression suites (2026-10-23)
+
+- [FIXED] Bound every manifest/schedule lookup in the independent evaluator to the detached task snapshot. The prior validation loop could still reread the caller-owned task array after the safe snapshot, undermining the invariant when inputs were mutable or accessor-backed.
+- [BOUNDED] Added an own-key limit to plain-object snapshots to prevent oversized single-level records bypassing the node/depth budget.
+- [INTEGRATED] The aggregate `test:p23:learning` command now also runs the WorkPass203 independent-evaluator regression suite and WorkPass227 timeout/trust-boundary suite, so these contracts are included in normal learning-suite runs.
+- [REGRESSION] Added a safety-scanner getter case; task, candidate, executor, verifier and safety response getter counters must stay at zero.
+- [VALIDATION] The GitHub branch update is recorded; these suites remain unverified until Actions assigns a runner and executes the workflow steps.
+
+## NK1 WorkPass348 — harden the independent learning-evaluation boundary (2026-10-23)
+
+- [HARDENED] Added descriptor-only snapshots for task plans, generated candidate payloads, and executor/verifier/safety-scanner responses. Accessor properties are rejected without invoking getters; unsupported objects, cycles, sparse arrays, non-finite numbers, symbols and reflection failures fail closed.
+- [HARDENED] Normalized the evaluator's identity policy: task IDs, trial IDs, capability IDs, expected step IDs, scheduled method IDs, observed step IDs and returned run IDs must be bounded, trimmed, NFKC-normalized and free of control characters.
+- [REGRESSION] Extended the existing independent-evaluator suite with getter side-effect counters, malformed task identities, hostile candidate payloads, and hostile executor/verifier responses. The suite is wired through the existing `test:workpass203:independent-candidate-evaluator` script.
+- [RESEARCH] This adapts the trace-guided proposal/evaluate/gate separation documented in [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution) and the reproducible identity/seed discipline emphasized by [CleanRL](https://docs.cleanrl.dev/). The current change does not vendor upstream code or add dependencies.
+- [VALIDATION] Source and regression changes are committed on `feature/learning`; the new tests remain **unverified** until the GitHub Actions job actually starts a runner and executes steps. No learning uplift or production readiness is claimed from source changes alone.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
@@ -2113,3 +3068,105 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
 - Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
 - This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
+
+## NK1 WorkPass328 — preserve concurrent learning requests for new evidence (2026-10-23)
+
+- **Fixed:** P23 revision requests for one skill no longer coalesce solely by skill ID. Identical evidence snapshots still share a single in-flight evaluation; requests carrying a different verified evidence digest wait for the predecessor to settle, then re-read the canonical repair ledger and retry with current evidence.
+- **Safety preserved:** the older attempt still fails closed if its evidence changed during asynchronous preparation. Only the fresh digest is permitted to reach candidate staging; the follow-up does not inherit an old evaluation result.
+- **Regression added:** `runtime/neuro-kurisu/tests/workpass172-compound-revision-coordinator.mjs` now covers this race and asserts stale-attempt rejection, successful retry, single staging, and exact latest-digest provenance. The existing npm script `test:workpass172:compound-revision-coordinator` already reaches this test.
+- **Validation boundary:** code and regression are committed; hosted Actions currently stop before any runner step, so this pass does **not** claim a runtime test pass or green CI.
+
+## NK1 WorkPass335 — make continual-learning transfer evidence strict (2026-10-23)
+
+- **Scientific validity fix:** forward transfer is no longer calculated against an implicit zero baseline. If pre-training scores are provided, `evaluateContinualLearning` requires an explicit measured `referenceScore`; the outcome-matrix adapter enforces the same requirement when a pre-training method is selected.
+- **Input integrity fix:** sparse task lists and sparse stage arrays are rejected rather than silently skipped by `map`/`forEach`; task identifiers are bounded and control-character checked.
+- **Regression added:** the existing continual metrics and outcome-matrix tests cover missing/invalid baselines, sparse arrays, unsafe task IDs, and preservation of the missing matched-seed test.
+- **Validation boundary:** regression wiring is committed, but runtime execution is unconfirmed while GitHub Actions jobs fail before any runner step.
+
+## NK1 WorkPass337 — restore missing learning CI script wiring (2026-10-23)
+
+- Added npm aliases to the existing runtime package for three P26 regression files, the WorkPass293 P23 revision/coordinator path, and the WorkPass291/292/294 regression files whose workflows referenced missing script names.
+- The script definitions match the corresponding additions in `feature/experiments`, avoiding package.json differences between the two proposed integration PRs.
+- Static inspection confirmed the previously identified script names are declared; no runtime test has been executed or claimed to pass because Actions jobs still fail before runner assignment.
+
+
+## NK1 WorkPass338 — validate learning scheduler input before single-flight reuse (2026-10-23)
+
+- **Fixed:** `P23TrustedShadowLearningScheduler.runOnce()` now validates `runtimeTick` before returning an already-running promise. Previously, a caller that supplied `NaN` or another invalid tick while a run was in flight silently received the existing promise, masking malformed input.
+- **Regression added:** the runtime scheduler test checks that invalid concurrent input rejects, valid overlapping calls still share one promise, and only one process execution is initiated.
+- **Runtime alignment:** `p26-learning-validation.yml` now uses Node.js 24, consistent with the current package engine range and the newer learning workflow.
+- **Research boundary:** records lessons from Hermes reflective candidate evolution and CleanRL's reproducible-seed discipline; this pass copies no upstream source code or datasets. It relies on NK1's existing exact-payload, independent-evaluation and signed-evidence lifecycle.
+- **Verification boundary:** source and regression are committed, but runtime execution is **not confirmed**. The latest exact-head Actions jobs ended before runner assignment (no runner and no steps), so this changelog does not claim a passing test, typecheck, or CI run.
+- Report: `docs/WORKPASS338_LEARNING_SCHEDULER_CONTRACT_2026-10-23.md`.
+
+
+## NK1 WorkPass339 — fail closed on malformed revision observations
+
+- **Fixed:** the skill-revision gate validates runtime observation data instead of calling string methods on unchecked values. Non-objects, wrong field types, oversized/control-character text, invalid seed/attempt values and invalid authority labels are rejected as rows rather than crashing with errors such as `trim is not a function`.
+- **Boundary hardened:** baseline/candidate method IDs, observation collections and options containers are validated before scoring. Invalid rows cannot enter a paired sample or raise the promotion score.
+- **Regression added:** malformed input fixtures cover null/objects, wrong field types, control characters, non-finite seeds, invalid method types and invalid top-level arguments.
+- **Research alignment:** preserves the trace-to-candidate-to-independent-evaluation path and paired/holdout evaluation discipline. No upstream code or dataset copied.
+- **Validation boundary:** code and tests are committed, but Actions still yield no runner steps/logs; no test pass or measured learning uplift is claimed.
+
+
+## NK1 WorkPass340 — make malformed-text regressions unambiguous
+
+- Reworked two WorkPass339 test fixtures to construct actual newline and NUL characters using `String.fromCharCode`, avoiding double-escaped source literals that could accidentally test printable backslash sequences instead of control characters.
+- This is a test-fixture correction only; no claim of runtime execution is made while the hosted job returns no steps/logs.
+
+
+## NK1 WorkPass341 — bind reflective comparisons to task versions
+
+- **Fixed:** `RevisionObservation` now carries the exact `taskVersion`; the paired-sample key is `taskId + taskVersion + seed + attempt`. Reused task IDs with different manifest versions can no longer be counted as a matched baseline/candidate observation.
+- **Integrated:** `VerifiedSkillPromotion` now carries the active manifest task version into the canonical revision gate instead of dropping it during adaptation.
+- **Regression added:** the revision gate checks that baseline v1 and candidate v2 for the same task ID do not form a pair; malformed missing task-version values are rejected.
+- **Research principle:** paired controlled evaluation must compare the same task definition and avoid sample inflation when task definitions evolve. This follows the project's existing manifest-bound evaluation architecture; no external implementation copied.
+- **Validation boundary:** changes and tests are committed; hosted Actions still have no executable steps/logs, so runtime test status remains unverified.
+
+
+## NK1 WorkPass342 — prevent one evidence receipt from representing two methods
+
+- **Fixed:** revision evidence deduplication now keys on the normalized evidence reference itself, rather than `method + verifier + reference`. A single signed receipt cannot be relabelled as both baseline and candidate or rebound to another verifier/task to fabricate matched evidence.
+- **Regression added:** reusing the baseline receipt as the candidate receipt removes that would-be pair and increments the rejected-row count.
+- **Compatibility:** the authenticated outcome path already emits per-outcome evidence references; normal distinct receipts retain their existing scoring behavior.
+- **Validation boundary:** source and regression are committed; tests and typecheck remain unverified because hosted Actions have returned jobs with zero steps/logs.
+
+
+## NK1 WorkPass343 — make evidence-collision handling order-independent
+
+- **Reworked:** the reflective revision gate now groups observations before scoring. Duplicate task/method/seed attempts invalidate every colliding row instead of silently selecting the first; duplicate evidence references invalidate every row carrying that receipt, regardless of method, claimed verifier or input ordering.
+- **Reason:** first-write-wins scoring made the outcome depend on the ordering of caller-supplied rows. Collision rejection is conservative and prevents one reused receipt or conflicting duplicate from deciding a candidate score.
+- **Regression updated:** duplicated original/replayed receipts are all excluded (not only later copies); cross-method reused evidence removes both colliding observations.
+- **Validation boundary:** code/tests committed; no runtime PASS is claimed until GitHub Actions can execute the suite on a runner.
+
+
+## NK1 WorkPass344 — reject non-canonical learning identity aliases
+
+- **Hardened:** evaluation identifiers must already be NFKC-normalized in addition to being bounded, trimmed and free of control characters. This blocks compatibility-form aliases from creating distinct task/method identities when they encode the same normalized identifier.
+- **Regression added:** full-width compatibility characters are rejected as malformed task IDs and cannot increase the paired-sample count.
+- **Validation boundary:** source and regression are committed. Runtime test/typecheck remain unverified until GitHub Actions jobs acquire a runner.
+
+
+## NK1 WorkPass345 — avoid invoking getters and proxy traps in learning evidence
+
+- **Hardened:** the revision evaluator snapshots only own data properties from plain input objects before reading evidence fields. Accessor properties are rejected without invocation; reflection errors from proxy/exotic objects become rejected rows instead of aborting the scoring call.
+- **Options hardened:** gate thresholds are read from the same plain-data snapshot, so a caller-defined getter cannot run during evaluation.
+- **Regression added:** hostile proxy traps, throwing identity getters and throwing options getters are rejected; existing valid paired observations retain their prior scoring.
+- **Validation boundary:** source and regressions committed; runtime execution remains unverified while GitHub Actions fails before runner assignment.
+
+
+## NK1 WorkPass346 — register the autonomous P23 repair clock
+
+- **Fixed:** `OrganismRuntime.registerCompoundRepairRevisionClock()` uses the runtime clock ID `p23-compound-repair-revision`, but `RuntimeClockScheduler` previously allowed only cognitive, embodiment, reflection and trusted-shadow-learning. Explicitly enabling background repair therefore failed registration with `Unknown runtime clock`.
+- **Integrated:** added the P23 repair clock to the scheduler's typed clock-kind union and runtime allow-list.
+- **Regression added:** `runtime-clocks.mjs` registers the production P23 clock ID, admits its task and checks that it executes.
+- **Impact:** removes a hard runtime blocker from the opt-in autonomous repair-to-P23 scheduling path; it does not claim that candidate generation/promotion is automatically enabled or that learning quality increased.
+- **Validation boundary:** source/test are committed. Hosted Actions still do not allocate a runner, so execution remains unverified.
+
+
+## NK1 WorkPass347 — centralize runtime clock identity
+
+- **Refactored:** exported one canonical `RUNTIME_CLOCK_IDS` registry and derived `RuntimeClockKind` plus the scheduler allow-list from it.
+- **Integrated:** `OrganismRuntime` now references the same constants when registering and starting cognitive, embodiment, reflection, trusted-shadow and P23 compound-repair clocks. This prevents another type/allow-list/caller drift like the one fixed in WorkPass346.
+- **Regression:** runtime clock tests consume the shared constants and pin the P23 repair ID as a stable contract.
+- **Validation boundary:** source and test changes are committed; Actions still end before runner steps, so typecheck/runtime status is not yet verified.

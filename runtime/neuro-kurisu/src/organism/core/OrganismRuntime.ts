@@ -12,9 +12,11 @@ import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
 import { EmbodimentRuntime } from '../body/EmbodimentRuntime.ts';
 import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
+import { JsonlLearningFitnessJournal, type LearningFitnessJournalSink } from '../learning/LearningFitnessJournal.ts';
+import { JsonlLearningLifecycleJournal, learningLifecycleJournalPathForStateFile, type LearningLifecycleJournalSink } from '../learning/LearningLifecycleJournal.ts';
 import type { JsonStateStore } from '../persistence/FileStateStore.ts';
 import { choosePhonePolicyDelay, type PhonePolicyConfig } from '../system/PhoneRuntimePolicy.ts';
-import { RuntimeClockScheduler, type RuntimeClockDecision } from '../system/RuntimeClockScheduler.ts';
+import { RuntimeClockScheduler, RUNTIME_CLOCK_IDS, type RuntimeClockDecision } from '../system/RuntimeClockScheduler.ts';
 import { ContinuityLedger } from '../system/ContinuityLedger.ts';
 import { RuntimeEvidenceBus } from '../system/RuntimeEvidenceBus.ts';
 import { CognitiveEventFabric } from '../system/CognitiveEventFabric.ts';
@@ -39,7 +41,7 @@ import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/Act
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
-import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
+import { P23CompoundRepairRevisionCoordinator, canonicalCompoundRepairEvidence, fingerprintCompoundRepairEvidence, type CompoundRepairRevisionInputProvider, type CompoundRepairRetryBackoffSnapshot } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
 import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEvaluationProvider.ts';
 import type { IndependentCandidateEvaluationConfig } from '../learning/IndependentSkillCandidateEvaluator.ts';
 import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndependentEvaluationFactoryOptions } from '../learning/HostOwnedIndependentEvaluationServices.ts';
@@ -92,6 +94,10 @@ export interface RuntimeConfig extends OrganismConfig {
   stateStore?: JsonStateStore<PersistedOrganism>;
   worldStateStore?: JsonStateStore<PersistedWorld>;
   journal?: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
+  /** Optional explicit sink; when omitted, the P23 fitness journal is written beside stateFile. */
+  learningFitnessJournal?: LearningFitnessJournalSink;
+  /** Optional explicit append-only sink for P23 activation intent/results. */
+  learningLifecycleJournal?: LearningLifecycleJournalSink;
   visionBackend?: VisionSemanticBackend;
   /** Explicit opt-in to scheduled, Core-owned P23 candidate/shadow learner runs. */
   trustedShadowLearning?: TrustedShadowLearningScheduleConfig;
@@ -264,14 +270,37 @@ export class OrganismRuntime {
       if (!config.compoundRepairRevision.engine.verifiedSkillCandidateSnapshot()) {
         throw new Error('compound-repair-revision requires a configured verified P23 candidate store');
       }
+      const defaultFitnessJournalPath = config.stateFile.toLowerCase().endsWith('.json')
+        ? config.stateFile.replace(/\.json$/i, '.learning-fitness.jsonl')
+        : `${config.stateFile}.learning-fitness.jsonl`;
+      if (config.learningFitnessJournal) {
+        config.compoundRepairRevision.engine.configureLearningFitnessJournal(config.learningFitnessJournal);
+      } else {
+        config.compoundRepairRevision.engine.configureLearningFitnessJournalIfAbsent(
+          new JsonlLearningFitnessJournal(defaultFitnessJournalPath),
+        );
+      }
+      if (config.learningLifecycleJournal) {
+        config.compoundRepairRevision.engine.configureLearningLifecycleJournal(config.learningLifecycleJournal);
+      } else {
+        config.compoundRepairRevision.engine.configureLearningLifecycleJournalIfAbsent(
+          new JsonlLearningLifecycleJournal(learningLifecycleJournalPathForStateFile(config.stateFile)),
+        );
+      }
+      // Resolve prior uncertain intents from the canonical versioned store on startup.
+      // Reconciliation is conservative and never promotes a candidate.
+      config.compoundRepairRevision.engine.reconcileLearningLifecycleOutcomes();
       const provideInputs = config.compoundRepairRevision.independentEvaluationConfigForRepair
         ? withIndependentCandidateEvaluation(
             config.compoundRepairRevision.provideInputs,
             config.compoundRepairRevision.independentEvaluationConfigForRepair,
           )
         : config.compoundRepairRevision.provideInputs;
+      const retryBackoffStore = new FileStateStore<CompoundRepairRetryBackoffSnapshot>(
+        `${config.stateFile}.p23-compound-repair-retry-backoff.json`,
+      );
       this.compoundRepairRevisionCoordinator = new P23CompoundRepairRevisionCoordinator(
-        this, config.compoundRepairRevision.engine, provideInputs,
+        this, config.compoundRepairRevision.engine, provideInputs, retryBackoffStore,
       );
     } else {
       this.compoundRepairRevisionCoordinator = null;
@@ -309,6 +338,7 @@ export class OrganismRuntime {
       if (this.initialized) return;
       await this.journal.write('info', 'runtime.init.begin');
       await this.core.init();
+      if (this.compoundRepairRevisionCoordinator) await this.compoundRepairRevisionCoordinator.restoreRetryBackoff();
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
@@ -362,8 +392,8 @@ export class OrganismRuntime {
       await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog(), { sensorFailures: snap.facets.embodiment?.sensorFailures ?? 0 });
       this.initialized = true;
       this.startEmbodimentClock();
-      this.clockScheduler.start('reflection');
-      if (this.trustedShadowLearningScheduler) this.clockScheduler.start('trusted-shadow-learning');
+      this.clockScheduler.start(RUNTIME_CLOCK_IDS.reflection);
+      if (this.trustedShadowLearningScheduler) this.clockScheduler.start(RUNTIME_CLOCK_IDS.trustedShadowLearning);
       if (this.config.autoRun) this.startCognitiveClock();
       await this.journal.write('info', 'runtime.init.complete', { tick: this.core.operationalStatusSnapshot().tick });
     });
@@ -1061,12 +1091,14 @@ export class OrganismRuntime {
   }
   proceduralSkillLibrarySnapshot(){ return this.proceduralSkillLibrary.snapshot(); }
   /**
-   * Return generator-ready repair evidence from actual persisted compound executions.
-   * Holdout observations are excluded; evidence is descriptive and never authorizes activation.
+   * Return a bounded diagnostic ledger of persisted non-holdout repair observations.
+   * Failed/ineligible attempts remain available for diagnosis. The P23 coordinator
+   * filters revisionEligible and strictly canonicalizes that smaller set before
+   * generation; this method does not certify evidence or authorize activation.
    */
   compoundSkillRepairEvidence(id?:string){
     const state=this.proceduralSkillLibrary.snapshot();
-    return state.compoundSkills
+    const rows=state.compoundSkills
       .filter(skill=>!id||skill.id===id)
       .flatMap(skill=>skill.repairsLedger
         .filter(row=>!row.holdout)
@@ -1078,15 +1110,26 @@ export class OrganismRuntime {
           failedTool:row.toolId,
           diagnosis:row.diagnosis,
           contextSignature:row.contextSignature,
-          candidateTools:[...row.candidateTools],
+          candidateTools:[...row.candidateTools].sort((a,b)=>a<b?-1:a>b?1:0),
           selectedTool:row.selectedTool,
           verified:row.verified,
           confidence01:row.confidence01,
           observedAt:row.at,
           revisionEligible:Boolean(row.verified&&row.selectedTool&&row.selectedTool!==row.toolId&&row.candidateTools.includes(row.selectedTool)&&row.confidence01>=skill.policy.minEvidence01),
-        })))
-      .sort((a,b)=>b.observedAt-a.observedAt)
-      .slice(0,96);
+        })));
+    // This API returns the bounded observation ledger, including ineligible repairs
+    // needed for diagnostics. Do not run the promotion-only canonicalizer on all rows:
+    // a real failed attempt may have no selected tool and still belongs in memory.
+    // The coordinator filters revisionEligible first, then validates/fingerprints only
+    // the rows that are allowed to reach generation.
+    const stableKey=(row:typeof rows[number])=>JSON.stringify(row);
+    return rows.sort((a,b)=>{
+      const atA=Number.isSafeInteger(a.observedAt)&&a.observedAt>=0?a.observedAt:-1;
+      const atB=Number.isSafeInteger(b.observedAt)&&b.observedAt>=0?b.observedAt:-1;
+      if(atA!==atB)return atB-atA;
+      const left=stableKey(a),right=stableKey(b);
+      return left<right?-1:left>right?1:0;
+    }).slice(0,96);
   }
 
 
@@ -1134,11 +1177,11 @@ export class OrganismRuntime {
       throw new Error('configured P23 learning engine is required');
     }
     if(typeof input.generate!=='function') throw new Error('configured skill revision generator is required');
-    const repairEvidence=this.compoundSkillRepairEvidence(input.skillId).filter(row=>row.revisionEligible);
+    const repairEvidence=canonicalCompoundRepairEvidence(this.compoundSkillRepairEvidence(input.skillId).filter(row=>row.revisionEligible));
     if(repairEvidence.length===0) {
       throw new Error('no verified non-holdout compound repair evidence is eligible for revision');
     }
-    const computedEvidenceFingerprint=createHash('sha256').update(JSON.stringify(repairEvidence)).digest('hex');
+    const computedEvidenceFingerprint=fingerprintCompoundRepairEvidence(repairEvidence);
     if(input.sourceEvidenceFingerprint!==undefined && input.sourceEvidenceFingerprint!==computedEvidenceFingerprint) {
       throw new Error('compound repair evidence changed before revision provenance could be bound');
     }
@@ -1530,7 +1573,7 @@ export class OrganismRuntime {
     const initialDelayMs = config.initialDelayMs ?? 300_000;
     const intervalMs = config.intervalMs ?? 900_000;
     this.clockScheduler.register({
-      id: 'p23-compound-repair-revision',
+      id: RUNTIME_CLOCK_IDS.p23CompoundRepairRevision,
       initialDelayMs,
       decide: () => {
         const body = this.embodiment.snapshot();
@@ -1572,7 +1615,7 @@ export class OrganismRuntime {
         this.compoundRepairRevisionMetrics.lastStatus = result.status;
         if (result.status === 'candidate-staged') {
           this.compoundRepairRevisionMetrics.staged++;
-          this.compoundRepairRevisionMetrics.lastCandidateId = result.candidateId;
+          this.compoundRepairRevisionMetrics.lastCandidateId = result.candidateId ?? null;
         } else if (result.status === 'already-staged-for-evidence') {
           this.compoundRepairRevisionMetrics.deduplicated++;
         } else if (result.status === 'retry-backoff-active') {
@@ -1600,7 +1643,7 @@ export class OrganismRuntime {
     this.registerCompoundRepairRevisionClock();
     if (this.trustedShadowLearningScheduler) {
       this.clockScheduler.register({
-        id: 'trusted-shadow-learning',
+        id: RUNTIME_CLOCK_IDS.trustedShadowLearning,
         initialDelayMs: this.trustedShadowLearningScheduler.initialDelayMs,
         decide: () => {
           const body = this.embodiment.snapshot();
@@ -1635,7 +1678,7 @@ export class OrganismRuntime {
       });
     }
     this.clockScheduler.register({
-      id: 'cognitive', initialDelayMs: 0,
+      id: RUNTIME_CLOCK_IDS.cognitive, initialDelayMs: 0,
       decide: () => {
         const p = this.runtimeDecision();
         return { delayMs: p.nextDelayMs, reason: p.reasonCodes.join(','), run: p.cognitiveBudget01 >= 0.45 && this.embodiment.snapshot().awake };
@@ -1653,13 +1696,13 @@ export class OrganismRuntime {
       },
     });
     this.clockScheduler.register({
-      id: 'embodiment', initialDelayMs: this.sensorIntervalMs,
+      id: RUNTIME_CLOCK_IDS.embodiment, initialDelayMs: this.sensorIntervalMs,
       decide: () => { const p=this.runtimeDecision(); return { delayMs:p.sampleDelayMs, reason:`sensor-cadence:${p.reasonCodes.join(',')}`, run:!this.stopping }; },
       task: async () => { await this.sampleEmbodiment(); },
       onError: async (error) => { await this.journal.write('warn', 'runtime.clock.failed', { clock: 'embodiment', message: String((error as any)?.message || error) }).catch(() => {}); },
     });
     this.clockScheduler.register({
-      id: 'reflection', initialDelayMs: this.reflectionIntervalMs(),
+      id: RUNTIME_CLOCK_IDS.reflection, initialDelayMs: this.reflectionIntervalMs(),
       decide: () => ({ delayMs: this.reflectionIntervalMs(), reason: 'reflection-cadence', run: this.initialized && !this.stopping }),
       task: async () => { if (this.embodiment.snapshot().awake && this.stepsSinceConsolidation >= 12) await this.sleepConsolidate(); },
       onError: async (error) => { await this.journal.write('warn', 'runtime.clock.failed', { clock: 'reflection', message: String((error as any)?.message || error) }).catch(() => {}); },
@@ -1680,8 +1723,8 @@ export class OrganismRuntime {
     return Math.max(60_000, Math.round(base * (this.embodiment.snapshot().awake ? 1 : 2)));
   }
 
-  private startCognitiveClock(): void { if (this.initialized) this.clockScheduler.start('cognitive'); }
-  private startEmbodimentClock(): void { if (this.initialized) this.clockScheduler.start('embodiment'); }
+  private startCognitiveClock(): void { if (this.initialized) this.clockScheduler.start(RUNTIME_CLOCK_IDS.cognitive); }
+  private startEmbodimentClock(): void { if (this.initialized) this.clockScheduler.start(RUNTIME_CLOCK_IDS.embodiment); }
 
   private shouldCheckpointWorld(force = false): boolean {
     if (force || this.lastWorldCheckpointAt === 0) return true;
@@ -1721,6 +1764,17 @@ export class OrganismRuntime {
   }
   async sleepConsolidate(): Promise<ConsolidationResult> { return this.enqueue(() => this.consolidateInternal(true)); }
   consolidationGateDiagnostics(){ return this.adaptiveConsolidationGate.diagnostics(); }
+  /** Safe aggregate P23 learning-fitness history for dashboards; no raw evaluation rows are returned. */
+  learningFitnessJournalDiagnostics() {
+    return this.config.compoundRepairRevision?.engine.learningFitnessJournalDiagnostics()
+      ?? { configured:false as const, available:false as const };
+  }
+  /** Explicitly retry reconciliation of uncertain lifecycle intents against the versioned store. */
+  reconcileLearningLifecycleOutcomes() {
+    return this.config.compoundRepairRevision?.engine.reconcileLearningLifecycleOutcomes()
+      ?? { configured:false as const, available:false as const, reason:'store-unconfigured' as const };
+  }
+
   compoundRepairRevisionDiagnostics() {
     return {
       ...this.compoundRepairRevisionMetrics,
@@ -1741,6 +1795,9 @@ export class OrganismRuntime {
       ...this.core.longitudinalSnapshot(),
       trustedShadowLearning:this.trustedShadowLearningScheduler?.snapshot() ?? { enabled:false },
       compoundRepairRevision:this.compoundRepairRevisionDiagnostics(),
+      learningFitnessJournal:this.learningFitnessJournalDiagnostics(),
+      learningLifecycleJournal:this.config.compoundRepairRevision?.engine.learningLifecycleJournalDiagnostics()
+        ?? {configured:false as const,available:false as const},
       lastAutonomyStepMs:this.lastAutonomyStepAt,
       runtimeClocks:this.clockScheduler.snapshot(),
       continuityLedger:this.continuityLedger.metrics(),
@@ -1754,6 +1811,9 @@ export class OrganismRuntime {
       core:this.core.persistenceMetrics(),
       trustedShadowLearning:this.trustedShadowLearningScheduler?.snapshot() ?? { enabled:false },
       compoundRepairRevision:this.compoundRepairRevisionDiagnostics(),
+      learningFitnessJournal:this.learningFitnessJournalDiagnostics(),
+      learningLifecycleJournal:this.config.compoundRepairRevision?.engine.learningLifecycleJournalDiagnostics()
+        ?? {configured:false as const,available:false as const},
       predictionLedger:this.core.predictionLedgerSnapshot(),
       continuity:this.core.continuitySnapshot(),
       world:typeof this.worldStore.metrics==='function' ? this.worldStore.metrics() : null,

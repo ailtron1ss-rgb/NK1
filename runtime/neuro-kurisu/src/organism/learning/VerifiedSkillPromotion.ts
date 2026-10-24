@@ -100,7 +100,7 @@ export function proposeVerifiedSkillPromotion(
     const task = taskById.get(outcome.taskId);
     if (!task) return [];
     return [{
-      taskId: outcome.taskId, family: task.family, split: task.split, method: outcome.method,
+      taskId: outcome.taskId, taskVersion: task.version, family: task.family, split: task.split, method: outcome.method,
       seed: outcome.seed, attempt: outcome.attempt, passed: outcome.passed, authority: outcome.authority,
       verifierId: outcome.verifierId, expectedVerifierId: task.verifierId, evidenceRef: outcome.evidenceRef,
     }];

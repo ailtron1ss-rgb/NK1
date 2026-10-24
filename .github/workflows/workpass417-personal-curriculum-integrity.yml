@@ -1,0 +1,52 @@
+name: WorkPass417 Personal Curriculum Integrity
+
+on:
+  push:
+    branches:
+      - feature/learning
+    paths:
+      - "runtime/neuro-kurisu/src/organism/learning/PersonalCurriculumEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningTrustBoundary.ts"
+      - "runtime/neuro-kurisu/src/organism/core/PlainDataSnapshot.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/AutonomousCognitiveLifeEngine.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-122-personal-curriculum.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-122-personal-curriculum-observation-boundary.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-122-curriculum-restore-collision.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-122-core-personal-curriculum.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/workpass417-personal-curriculum-integrity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workpass417-curriculum-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: Typecheck runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+      - name: Verify curriculum restore and online observation contracts
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-122
+      - name: Verify curriculum state persists through core restart
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-122:core

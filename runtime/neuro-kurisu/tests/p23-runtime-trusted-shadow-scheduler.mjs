@@ -188,6 +188,55 @@ assert.throws(() => new P23TrustedShadowLearningScheduler(invalidCandidateCore, 
   },
 }), /candidateId must be a 64-hex candidate fingerprint/);
 
+// Invalid caller input must be rejected even while a valid trusted-shadow run is in flight.
+let unblockSingleFlight;
+const singleFlightBarrier = new Promise(resolve => { unblockSingleFlight = resolve; });
+let singleFlightStarts = 0;
+const singleFlightScheduler = new P23TrustedShadowLearningScheduler({
+  async runTrustedSkillShadowLearningProcess() {
+    singleFlightStarts += 1;
+    await singleFlightBarrier;
+    return { receipt: {
+      status: 'completed',
+      exitCode: 0,
+      runDirectory: os.tmpdir(),
+      runId: 'single-flight-run',
+      stdout: 'completed',
+    } };
+  },
+  async recordVerifiedSkillShadow() {},
+}, {
+  enabled: true,
+  runtimeVersion: 'nk1-single-flight-validation-test',
+  taskId: 'single-flight-validation-test',
+  taskVersion: 'v1',
+  manifestFingerprint: 'a'.repeat(64),
+  planFingerprint: 'b'.repeat(64),
+  command: {
+    executable: process.execPath,
+    args: [],
+    cwd: process.cwd(),
+    runRoot: path.join(os.tmpdir(), 'nk1-single-flight-runs'),
+    surviveDir: path.join(os.tmpdir(), 'nk1-single-flight-survive'),
+  },
+});
+const singleFlight = singleFlightScheduler.runOnce(7);
+assert.throws(
+  () => singleFlightScheduler.runOnce(Number.NaN),
+  /trusted shadow runtime tick is invalid/,
+  'invalid input must not be hidden by an active run',
+);
+assert.equal(
+  singleFlightScheduler.runOnce(8),
+  singleFlight,
+  'valid overlapping requests still share one in-flight execution',
+);
+assert.equal(singleFlightScheduler.snapshot().runsStarted, 1);
+unblockSingleFlight();
+const singleFlightResult = await singleFlight;
+assert.equal(singleFlightResult.receipt.status, 'completed');
+assert.equal(singleFlightStarts, 1, 'single-flight coalescing must not launch duplicate work');
+
 const root = await mkdtemp(path.join(os.tmpdir(), 'nk1-runtime-shadow-scheduler-'));
 let runtime;
 try {

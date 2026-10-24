@@ -49,6 +49,7 @@ assert.ok(proposal.seedClusteredEvaluation.bootstrap95CI[0] > 0,
 assert.equal(proposal.familyEvaluation.length,2);
 assert.equal(proposal.canActivateAutomatically,false);
 assert.equal(proposal.authenticatedEvidenceRows,100);
+assert.ok(proposal.gate.pairedN > 0, 'manifest-version-bound observations should still produce paired evidence');
 assert.equal(proposal.unauthenticatedEvidenceRows,0);
 assert.match(proposal.proposalId,/^[a-f0-9]{64}$/);
 assert.match(proposal.datasetFingerprint,/^[a-f0-9]{64}$/);

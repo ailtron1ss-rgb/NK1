@@ -13,7 +13,8 @@ const row = (overrides = {}) => ({
   evidenceRef: 'evidence://run/7', observedAt: 1_800_000_000_000, ...overrides,
 });
 assert.equal(ledger.record(row()).accepted, true);
-assert.equal(ledger.record(row()).rejection.code, 'duplicate-attempt');
+assert.equal(ledger.record(row({ evidenceRef: 'evidence://run/7-retry' })).rejection.code, 'duplicate-attempt');
+assert.equal(ledger.record(row({ method: 'candidate', seed: 9, evidenceRef: 'evidence://run/7' })).rejection.code, 'duplicate-evidence-ref');
 assert.equal(ledger.record(row({ method: 'self-check', authority: 'self-report' })).rejection.code, 'self-report-not-authoritative');
 ledger.record(row({ taskId: 'task-2', method: 'candidate', seed: 8, passed: false, evidenceRef: 'evidence://run/8' }));
 assert.equal(ledger.record(row({ method: 'malformed', evidenceRef: undefined })).rejection.code, 'invalid-outcome');

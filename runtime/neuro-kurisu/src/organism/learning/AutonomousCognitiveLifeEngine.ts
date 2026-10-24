@@ -1,4 +1,5 @@
 import type { ActionKind, OrganismGoal, OrganismState } from '../core/types.ts';
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const mean=(xs:number[],fallback=.5)=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:fallback;
@@ -103,12 +104,59 @@ export const defaultAutonomousCognitiveLife=():AutonomousCognitiveLifeState=>({
 export class AutonomousCognitiveLifeEngine {
   private state=defaultAutonomousCognitiveLife();
   restore(raw?:Partial<AutonomousCognitiveLifeState>|null){
-    const d=defaultAutonomousCognitiveLife(),r:any=raw??{};
-    const merge=(base:any,value:any)=>({...base,...(value&&typeof value==='object'?value:{})});
-    this.state={...d,...r,version:1,
-      activeIntentions:Array.isArray(r.activeIntentions)?r.activeIntentions.slice(-32):[],commitments:Array.isArray(r.commitments)?r.commitments.slice(-32):[],plans:Array.isArray(r.plans)?r.plans.slice(-64):[],predictions:Array.isArray(r.predictions)?r.predictions.slice(-256):[],perceptionQueue:Array.isArray(r.perceptionQueue)?r.perceptionQueue.slice(-32):[],
-      personality:merge(d.personality,r.personality),values:merge(d.values,r.values),embodiment:merge(d.embodiment,r.embodiment),metrics:merge(d.metrics,r.metrics),
-      longitudinal:Array.isArray(r.longitudinal)?r.longitudinal.slice(-192):[],researchTrials:Array.isArray(r.researchTrials)?r.researchTrials.slice(-96):[]
+    const d=defaultAutonomousCognitiveLife();
+    let detached:unknown;
+    try{
+      detached=snapshotPlainData<unknown>(raw??{}, {maxDepth:16,maxNodes:16384,maxStringUnits:512*1024});
+    }catch{
+      this.state=d;return;
+    }
+    if(!detached||typeof detached!=='object'||Array.isArray(detached)){
+      this.state=d;return;
+    }
+    const r=detached as Record<string,unknown>;
+    if(r.version!==undefined&&r.version!==1){this.state=d;return;}
+    const merge=(base:Record<string,unknown>,value:unknown)=>value&&typeof value==='object'&&!Array.isArray(value)?{...base,...value as Record<string,unknown>}:base;
+    const boundedRows=(value:unknown,limit:number)=>Array.isArray(value)?value.filter(row=>row&&typeof row==='object'&&!Array.isArray(row)).slice(-limit):[];
+    const count=(value:unknown,fallback=0)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
+    const timestamp=(value:unknown,fallback=0)=>typeof value==='number'&&Number.isFinite(value)&&value>=0?value:fallback;
+    const metric=(value:unknown,fallback:number)=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:fallback;
+    const personality=merge(d.personality as unknown as Record<string,unknown>,r.personality);
+    const values=merge(d.values as unknown as Record<string,unknown>,r.values);
+    const embodiment=merge(d.embodiment as unknown as Record<string,unknown>,r.embodiment);
+    const metrics=merge(d.metrics as unknown as Record<string,unknown>,r.metrics);
+    for(const key of Object.keys(d.personality) as Array<keyof PersonalityDynamics>){
+      const fallback=d.personality[key];
+      (personality as any)[key]=key==='evidenceCount'?count(personality[key],fallback as number):metric(personality[key],fallback as number);
+    }
+    for(const key of Object.keys(d.values) as Array<keyof ValueDynamics>){
+      const fallback=d.values[key];
+      (values as any)[key]=key==='unresolvedValueConflicts'?count(values[key],fallback as number):metric(values[key],fallback as number);
+    }
+    for(const key of Object.keys(d.embodiment) as Array<keyof EmbodiedDynamics>){
+      (embodiment as any)[key]=metric(embodiment[key],d.embodiment[key] as number);
+    }
+    for(const key of Object.keys(d.metrics) as Array<keyof AutonomousCognitiveLifeState['metrics']>){
+      (metrics as any)[key]=metric(metrics[key],d.metrics[key] as number);
+    }
+    this.state={
+      ...d,cycles:count(r.cycles),lastAt:timestamp(r.lastAt),autonomousTicks:count(r.autonomousTicks),
+      activeIntentions:boundedRows(r.activeIntentions,32) as IntentState[],
+      commitments:boundedRows(r.commitments,32) as AgencyCommitment[],
+      plans:boundedRows(r.plans,64) as PlanBranch[],
+      predictions:boundedRows(r.predictions,256) as PredictionRecord[],
+      perceptionQueue:boundedRows(r.perceptionQueue,32) as PerceptionCandidate[],
+      personality:personality as unknown as PersonalityDynamics,
+      values:values as unknown as ValueDynamics,
+      embodiment:embodiment as unknown as EmbodiedDynamics,
+      metrics:metrics as unknown as AutonomousCognitiveLifeState['metrics'],
+      longitudinal:boundedRows(r.longitudinal,192) as LongitudinalPoint[],
+      researchTrials:boundedRows(r.researchTrials,96) as ResearchTrial[],
+      lastAction:actions.includes(r.lastAction as ActionKind)?r.lastAction as ActionKind:undefined,
+      lastPredictionError01:metric(r.lastPredictionError01,d.lastPredictionError01),
+      lastInformationGain01:metric(r.lastInformationGain01,d.lastInformationGain01),
+      lastCausalAttribution01:metric(r.lastCausalAttribution01,d.lastCausalAttribution01),
+      lastReason:typeof r.lastReason==='string'?r.lastReason.slice(0,2048):d.lastReason,
     };
   }
   snapshot(){return structuredClone(this.state);}

@@ -25,8 +25,8 @@ const generatorFacing = JSON.stringify({ targets: plan.targets, optimizerInstruc
 assert.ok(!generatorFacing.includes('SECRET_HOLDOUT_TASK'), 'holdout task ID must not reach generator-facing plan');
 assert.ok(!generatorFacing.includes('SECRET_HOLDOUT_TRIAL'), 'holdout trial ID must not reach generator-facing plan');
 assert.ok(generatorFacing.includes('validation-task-safe'), 'validation evidence remains available for bounded repair');
-// A non-safety holdout regression may influence only the aggregate signal;
- // its individual task/trial identity must remain absent from generator-facing content.
+// A non-safety holdout regression may decide the gate, but must not enter the
+// optimization plan, targets, rationale, or generator-facing instruction.
 const validationWeak = [report('validation-task-weak', 'validation-trial-weak', 0)];
 validationWeak[0].taskSuccess = { passed: false, passRate: 0.5 };
 const holdoutRegression = [report('SECRET_HOLDOUT_TASK_2', 'SECRET_HOLDOUT_TRIAL_2', 0)];
@@ -44,6 +44,10 @@ const generalizationFacing = JSON.stringify({
 assert.ok(!generalizationFacing.includes('SECRET_HOLDOUT_TASK_2'), 'holdout task ID must not reach generalization prompt');
 assert.ok(!generalizationFacing.includes('SECRET_HOLDOUT_TRIAL_2'), 'holdout trial ID must not reach generalization prompt');
 assert.ok(!generalizationFacing.includes('task-specific failures'), 'generator must not be instructed to inspect holdout cases');
-assert.ok(generalizationFacing.includes('Aggregate evaluation indicates a generalization gap'), 'only aggregate generalization signal should reach generator');
+assert.ok(!generalizationFacing.includes('holdout-regression-exceeds-tolerance'), 'holdout-derived gate reason must not reach the optimizer');
+assert.ok(!generalizationFacing.includes('Aggregate holdout evaluation indicates regression'), 'holdout-derived feedback must not reach the optimizer');
+assert.ok(!generalizationFacing.includes('gap01') && !generalizationFacing.includes('-0.1'), 'numeric holdout scores must not enter the optimizer plan');
+assert.ok(!generalizationPlan.targets.some(target => target.dimension === 'holdout-generalization'), 'holdout performance must not create a targeted optimization request');
+assert.ok(generalizationFacing.includes('Holdout results remain withheld from optimization'), 'the plan must retain a no-tuning policy statement');
 
 console.log('P23_REVISION_PLAN_HOLDOUT_ISOLATION=PASS');

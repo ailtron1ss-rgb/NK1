@@ -9,16 +9,64 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/ContinualReplayBuffer.ts"
       - "runtime/neuro-kurisu/src/organism/learning/PrioritizedReplaySampler.ts"
       - "runtime/neuro-kurisu/src/organism/learning/ContinualForgettingTracker.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/ContinualLearningMetrics.ts"
+      - "runtime/neuro-kurisu/tests/p23-continual-learning-metrics.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/ContinualTransferTracker.ts"
       - "runtime/neuro-kurisu/src/organism/learning/AdaptiveWindowDriftDetector.ts"
       - "runtime/neuro-kurisu/src/organism/learning/DriftAwareLearningController.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningFitnessJournal.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P23LocalModelSkillRevisionGenerator.ts"
+      - "runtime/neuro-kurisu/tests/p23-local-model-skill-revision-generator.mjs"
+      - "runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/OutcomeReflectionCurriculum.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/PersonalCurriculumEngine.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-122-personal-curriculum.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-122-core-personal-curriculum.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-122-personal-curriculum-observation-boundary.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-122-curriculum-restore-collision.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningTrustBoundary.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionCoordinator.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/PairedSeedConfidence.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningRobustMetrics.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningLifecycleJournal.ts"
+      - "runtime/neuro-kurisu/tests/workpass407-learning-lifecycle-journal.mjs"
+      - "runtime/neuro-kurisu/tests/workpass408-lifecycle-store-reconciliation.mjs"
+      - "runtime/neuro-kurisu/tests/workpass406-learning-robust-metrics.mjs"
+      - "runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs"
+      - "runtime/neuro-kurisu/tests/workpass225-matched-independent-evaluation.mjs"
+      - "runtime/neuro-kurisu/tests/workpass404-paired-seed-confidence.mjs"
+      - "runtime/neuro-kurisu/tests/workpass402-production-promotion-family-gate.mjs"
+      - "runtime/neuro-kurisu/tests/workpass405-learning-fitness-journal.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/tests/workpass172-compound-revision-coordinator.mjs"
+      - "runtime/neuro-kurisu/tests/workpass419-p23-retry-backoff-store.mjs"
+      - "runtime/neuro-kurisu/tests/p23-true-learning.mjs"
+      - "runtime/neuro-kurisu/tests/workpass291-reflective-payload-budget.mjs"
+      - "runtime/neuro-kurisu/tests/workpass383-p23-revision-generator-boundary.mjs"
+      - "runtime/neuro-kurisu/tests/p23-skill-retrieval-reflection-curriculum.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/PageHinkleyDriftDetector.ts"
       - "runtime/neuro-kurisu/tests/p26-*.mjs"
       - "runtime/neuro-kurisu/tests/p27-page-hinkley-drift-detector.mjs"
       - "runtime/neuro-kurisu/tests/p28-drift-detector-benchmark.mjs"
       - "runtime/neuro-kurisu/research/vendor/CleanRL/**"
+      - ".nvmrc"
+      - "package.json"
+      - "app/package.json"
+      - "tools/verify-ci-reliability.mjs"
+      - "tools/verify-ci-reliability.test.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
+      - "runtime/neuro-kurisu/scripts/typecheck-runtime.mjs"
+      - "runtime/neuro-kurisu/tsconfig.clean.json"
+      - "runtime/neuro-kurisu/tsconfig.shim.json"
+      - "runtime/neuro-kurisu/src/node-shims.d.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/CorrectionRuleMemory.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts"
+      - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
       - ".github/workflows/p26-learning-validation.yml"
   workflow_dispatch:
 
@@ -31,7 +79,7 @@ concurrency:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -39,9 +87,23 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "22.12.0"
+          node-version: "24"
           cache: npm
           cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Test CI reliability policy and script resolver
+        run: node --test tools/verify-ci-reliability.test.mjs
+      - name: Audit workflow npm commands against package manifests
+        run: npm run audit:ci-reliability
+
+      - name: Enforce Node.js runtime baseline from .nvmrc
+        run: |
+          expected="$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version | sed 's/^v//')"
+          case "$expected" in
+            *.*.*) test "$actual" = "$expected" ;;
+            *) case "$actual" in "$expected"|"$expected".*) ;; *) echo "Expected Node.js $expected but got $actual"; exit 1 ;; esac ;;
+          esac
+
       - name: Install locked dependencies
         working-directory: runtime/neuro-kurisu
         run: npm ci
@@ -72,6 +134,9 @@ jobs:
       - name: Run replay strategy ablation benchmark (5 deterministic seeds)
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p26-replay-ablation-benchmark.mjs
+      - name: Run sequential continual-learning metrics and longitudinal growth curve regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-continual-learning-metrics.mjs
       - name: Run task-level continual forgetting metric regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p26-continual-forgetting-tracker.mjs
@@ -90,6 +155,67 @@ jobs:
       - name: Benchmark drift detectors on stable, noisy, abrupt and gradual streams (5 deterministic seeds)
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p28-drift-detector-benchmark.mjs
+      - name: Run local skill-revision generator trust-boundary regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:local-model-skill-revision-generator
+      - name: Run end-to-end P23 revision generator/evaluator boundary regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass383-p23-revision-generator-boundary.mjs
+      - name: Run reflective candidate payload boundary regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass291:payload-budget
+      - name: Run P23 learning replay-integrity regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-true-learning.mjs
+      - name: Run P23 reflection and diverse-curriculum regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-skill-retrieval-reflection-curriculum.mjs
+
+      - name: Run personal curriculum state restore regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-122
+
+      - name: Run personal curriculum core persistence regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-122:core
+      - name: Run P23 compound repair evidence fingerprint regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass172-compound-revision-coordinator.mjs
+
+      - name: Verify file-backed P23 retry cooldown survives restart
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass419:retry-backoff-store
+      - name: Run independent evaluator task-family provenance regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass203-independent-candidate-evaluator.mjs
+
+      - name: Run matched independent evaluation strict family coverage regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass225-matched-independent-evaluation.mjs
+
+      - name: Run deterministic paired-seed bootstrap confidence regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass404-paired-seed-confidence.mjs
+      - name: Run task-balanced robust learning metrics regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass406:robust-metrics
+
+      - name: Run hash-chained learning fitness journal regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass405-learning-fitness-journal.mjs
+      - name: Run P23 activation lifecycle journal regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass407:learning-lifecycle-journal
+      - name: Reconcile uncertain P23 activation against versioned store
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass408:lifecycle-reconciliation
+
+      - name: Run P23 production promotion strict family gate end-to-end regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass402-production-promotion-family-gate.mjs
+      - name: Run reflective promotion authority firewall regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-hermes-production-promotion-gate.mjs
       - name: Run existing P26 learning regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:true-learning

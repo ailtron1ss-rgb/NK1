@@ -2,9 +2,30 @@ import { createHash } from 'node:crypto';
 import type { SkillLearnBenchTrialReport } from './SkillLearnBenchAdapter.ts';
 import type { SkillShadowEvidenceVerifier, SkillShadowObservation, VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 
-function canonicalEvidence(value: unknown, ancestors = new Set<object>()): string {
+const MAX_EVIDENCE_CANONICAL_NODES = 100_000;
+const MAX_EVIDENCE_CANONICAL_DEPTH = 64;
+const MAX_EVIDENCE_CANONICAL_ARRAY_LENGTH = 20_000;
+const MAX_EVIDENCE_CANONICAL_OBJECT_KEYS = 20_000;
+const MAX_EVIDENCE_CANONICAL_STRING_UNITS = 4 * 1024 * 1024;
+type EvidenceCanonicalBudget = { nodes: number; stringUnits: number };
+
+function canonicalEvidence(
+  value: unknown,
+  ancestors = new Set<object>(),
+  budget: EvidenceCanonicalBudget = { nodes: 0, stringUnits: 0 },
+  depth = 0,
+): string {
+  if (depth > MAX_EVIDENCE_CANONICAL_DEPTH) throw new Error('evidence-envelope-depth-exceeded');
+  budget.nodes += 1;
+  if (budget.nodes > MAX_EVIDENCE_CANONICAL_NODES) throw new Error('evidence-envelope-node-budget-exceeded');
   if (typeof value === 'number' && !Number.isFinite(value)) {
     throw new Error('evidence-envelope-non-finite-number');
+  }
+  if (typeof value === 'string') {
+    budget.stringUnits += value.length;
+    if (budget.stringUnits > MAX_EVIDENCE_CANONICAL_STRING_UNITS) {
+      throw new Error('evidence-envelope-string-budget-exceeded');
+    }
   }
   if (value === null || typeof value !== 'object') {
     const encoded = JSON.stringify(value);
@@ -18,12 +39,50 @@ function canonicalEvidence(value: unknown, ancestors = new Set<object>()): strin
   }
   ancestors.add(value);
   try {
-    if (Array.isArray(value)) return '[' + value.map(item => canonicalEvidence(item, ancestors)).join(',') + ']';
-    const object = value as Record<string, unknown>;
-    return '{' + Object.keys(object).sort().map(key => {
-      const encodedKey = JSON.stringify(key);
-      if (encodedKey === undefined) throw new Error('evidence-envelope-key-not-json-serializable');
-      return encodedKey + ':' + canonicalEvidence(object[key], ancestors);
+    const descriptors = Object.getOwnPropertyDescriptors(value) as Record<PropertyKey, PropertyDescriptor>;
+    if (Array.isArray(value)) {
+      const length = descriptors.length?.value;
+      if (typeof length !== 'number' || !Number.isSafeInteger(length) || length < 0 ||
+          length > MAX_EVIDENCE_CANONICAL_ARRAY_LENGTH) {
+        throw new Error('evidence-envelope-array-budget-exceeded');
+      }
+      for (const key of Reflect.ownKeys(descriptors)) {
+        if (key === 'length') continue;
+        const descriptor = descriptors[key];
+        if (!descriptor?.enumerable) continue;
+        if (typeof key === 'symbol' || !/^(0|[1-9]\d*)$/.test(key) ||
+            !Number.isSafeInteger(Number(key)) || Number(key) >= length) {
+          throw new Error('evidence-envelope-array-extra-key');
+        }
+      }
+      const items: string[] = [];
+      for (let index = 0; index < length; index += 1) {
+        const descriptor = descriptors[String(index)];
+        if (!descriptor || !descriptor.enumerable) throw new Error('evidence-envelope-sparse-array');
+        if (!('value' in descriptor)) throw new Error('evidence-envelope-accessor-not-permitted');
+        items.push(canonicalEvidence(descriptor.value, ancestors, budget, depth + 1));
+      }
+      return '[' + items.join(',') + ']';
+    }
+
+    const keys: string[] = [];
+    for (const key of Reflect.ownKeys(descriptors)) {
+      const descriptor = descriptors[key];
+      if (!descriptor?.enumerable) continue;
+      if (typeof key === 'symbol') throw new Error('evidence-envelope-symbol-key-not-supported');
+      if (key.length > 1024) throw new Error('evidence-envelope-key-too-long');
+      budget.stringUnits += key.length;
+      if (budget.stringUnits > MAX_EVIDENCE_CANONICAL_STRING_UNITS) {
+        throw new Error('evidence-envelope-string-budget-exceeded');
+      }
+      keys.push(key);
+    }
+    if (keys.length > MAX_EVIDENCE_CANONICAL_OBJECT_KEYS) throw new Error('evidence-envelope-object-key-budget-exceeded');
+    keys.sort();
+    return '{' + keys.map(key => {
+      const descriptor = descriptors[key]!;
+      if (!('value' in descriptor)) throw new Error('evidence-envelope-accessor-not-permitted');
+      return JSON.stringify(key) + ':' + canonicalEvidence(descriptor.value, ancestors, budget, depth + 1);
     }).join(',') + '}';
   } finally {
     ancestors.delete(value);
@@ -178,16 +237,46 @@ export function bindIndependentEvaluationToVerifiedShadowEvidence(
   verifyEvidence: SkillShadowEvidenceVerifier,
 ): ReflectiveEvidenceBindingReport {
   const reasons: string[] = [];
-  const evaluation = envelope?.evaluation;
-  const authority = evaluation?.provenance?.experimentAuthority;
-  const bindings = evaluation?.provenance?.runBindings;
-  const trustedManifestFingerprint = authority?.manifestFingerprint ?? '';
+  let evaluationValue: unknown;
   let recomputedEvaluationFingerprint: string | null = null;
   try {
-    if (evaluation) recomputedEvaluationFingerprint = sha256Evidence(evaluation);
+    if (!envelope || typeof envelope !== 'object') throw new Error('evidence-envelope-object-required');
+    const envelopePrototype = Object.getPrototypeOf(envelope);
+    if (envelopePrototype !== Object.prototype && envelopePrototype !== null) {
+      throw new Error('evidence-envelope-non-plain-object');
+    }
+    const envelopeDescriptors = Object.getOwnPropertyDescriptors(envelope) as Record<PropertyKey, PropertyDescriptor>;
+    for (const field of ['payloadFingerprint', 'evaluationFingerprint', 'evaluation'] as const) {
+      const descriptor = envelopeDescriptors[field];
+      if (descriptor && !('value' in descriptor)) throw new Error('evidence-envelope-accessor-not-permitted');
+    }
+    const evaluationDescriptor = envelopeDescriptors.evaluation;
+    evaluationValue = evaluationDescriptor && 'value' in evaluationDescriptor ? evaluationDescriptor.value : undefined;
+    if (evaluationValue !== undefined) recomputedEvaluationFingerprint = sha256Evidence(evaluationValue);
   } catch {
-    reasons.push('independent-evaluation-envelope-not-canonicalizable');
+    // Reject before reading envelope/evaluation fields again; doing so after a
+    // canonicalization failure could execute the very accessor being rejected.
+    return {
+      accepted: false,
+      reasons: ['independent-evaluation-envelope-not-canonicalizable'],
+      boundTrials: 0,
+      manifestFingerprint: null,
+      boundEvidenceScope: 'identity-and-binary-outcome-only',
+      qualityMetricsAuthenticated: false,
+    };
   }
+  const evaluation = evaluationValue as typeof envelope.evaluation | undefined;
+  if (!evaluation) return {
+    accepted: false,
+    reasons: ['independent-evaluation-envelope-not-canonicalizable'],
+    boundTrials: 0,
+    manifestFingerprint: null,
+    boundEvidenceScope: 'identity-and-binary-outcome-only',
+    qualityMetricsAuthenticated: false,
+  };
+  const authority = evaluation.provenance?.experimentAuthority;
+  const bindings = evaluation?.provenance?.runBindings;
+  const trustedManifestFingerprint = authority?.manifestFingerprint ?? '';
   if (!envelope || !/^[a-f0-9]{64}$/.test(envelope.payloadFingerprint) ||
       !/^[a-f0-9]{64}$/.test(envelope.evaluationFingerprint) || !evaluation ||
       envelope.payloadFingerprint !== evaluation.provenance?.payloadFingerprint ||

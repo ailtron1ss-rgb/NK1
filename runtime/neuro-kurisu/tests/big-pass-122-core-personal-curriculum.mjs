@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { PersonalCurriculumEngine } from '../src/organism/learning/PersonalCurriculumEngine.ts';
 
 const store=new MemoryStateStore();
 const core=new OrganismCore(store,{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1,enableLanguage:false});
@@ -9,11 +10,21 @@ const goal={id:'curriculum-goal',title:'Поддерживать и улучша
 const saved=await store.load(); saved.goals=[goal]; await store.save(saved);
 const resumed=new OrganismCore(store,{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1,enableLanguage:false});
 await resumed.init();
+let b272ActionMismatches=0;
 for(let i=0;i<5;i++){
   const r=await resumed.observe({text:i%2?'помоги проверить и исследовать':'давай исследуем',novelty:.72,worldContext:{tick:i+1,location:`memory-lab-${i}`,energy:.8,attention:.8,uncertainty:.62,facts:['shared-context'],objects:[],events:[]}});
   assert.ok(r.decision.selected);
+  const b272Before = resumed.b272EndogenousGoalDiagnostics().learningUpdates;
+  const b272GeneratedAction = resumed.b272EndogenousGoalCurrent().action;
+  const executedAction = r.decision.selected.action;
   await resumed.feedback({success:.74,reward:.71,surprise:.14});
+  if (executedAction !== b272GeneratedAction) {
+    b272ActionMismatches++;
+    assert.equal(resumed.b272EndogenousGoalDiagnostics().learningUpdates, b272Before,
+      'a planner-overridden action must not be falsely credited to the endogenous-goal learner');
+  }
 }
+assert.ok(b272ActionMismatches > 0, 'integration regression must exercise the planner/B272 action mismatch');
 const d=resumed.personalCurriculumDiagnostics();
 assert.ok(d.cycles>=5,JSON.stringify(d));
 assert.ok(d.threads>=1,JSON.stringify(d));
@@ -21,6 +32,10 @@ assert.ok(d.curriculumPressure01>.25,JSON.stringify(d));
 await resumed.flush();
 const raw=await store.load();
 assert.ok(raw.facets.learning.personalCurriculum);
+const directRestore = new PersonalCurriculumEngine();
+directRestore.restore(raw.facets.learning.personalCurriculum);
+assert.ok(directRestore.diagnostics().cycles >= d.cycles,
+  JSON.stringify({persisted: raw.facets.learning.personalCurriculum, direct: directRestore.diagnostics(), before: d}));
 const restarted=new OrganismCore(store,{checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:1,enableLanguage:false});
 await restarted.init();
 const d2=restarted.personalCurriculumDiagnostics();

@@ -7,7 +7,8 @@
  * These are small TypeScript reimplementations, not copied upstream runtimes.
  * Scores are heuristics until verified task-stream experiments demonstrate uplift.
  */
-import type { LearningExperience, ReplaySelectionOptions } from './P23LearningEngine.ts';
+import type { LearningExperience } from './P23LearningEngine.ts';
+import type { ReplaySelectionOptions } from './ReplaySelectionPolicy.ts';
 export interface ReplayPriority { id:string; priority01:number; recency01:number; surprise01:number; predictionError01:number; novelty01:number; forgettingRisk01:number; reasons:string[] }
 export interface LearningHealth { predictionError01:number; recentPredictionError01:number; replayTdError01:number; evidenceDebt01:number; memoryPressure01:number; energy01:number }
 export interface CurriculumTask { id:string; uncertainty01:number; readiness01:number; transfer01:number; novelty01:number; verificationCost01:number; repairValue01:number; blocked?:boolean }
@@ -32,8 +33,8 @@ export function scoreReplayPriority(e:LearningExperience,newestTick:number,frequ
 export function adaptiveReplayOptions(base:ReplaySelectionOptions,h:LearningHealth,count:number):ReplaySelectionOptions{
  const cap=Math.max(1,Math.min(64,Math.floor(f(base.maxBatchSize??64,64))));
  const pressure=c(.35*h.recentPredictionError01+.25*h.replayTdError01+.2*h.evidenceDebt01+.2*h.memoryPressure01);
- const energy=h.energy01<.2?.5:h.energy01<.4?.75:1;
- const size=Math.max(1,Math.min(cap,Math.max(0,count),Math.round(cap*energy*(.65+.35*pressure))));
+ // Keep the configured hard cap stable for reproducible ablations; health affects ranking and decay, not requested batch size.
+ const size=Math.max(1,Math.min(cap,Math.max(0,count)));
  const ratio=c(.35+.25*h.recentPredictionError01+.15*h.evidenceDebt01-.15*h.memoryPressure01);
  return{maxBatchSize:size,recentQuota:Math.max(0,Math.min(size,Math.round(size*ratio))),ageHalfLifeTicks:pressure>.7?512:Number.POSITIVE_INFINITY};
 }

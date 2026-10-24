@@ -1,8 +1,34 @@
 import type { OrganismGoal } from '../core/types.ts';
+import { snapshotPlainData } from './LearningTrustBoundary.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const clean=(x:unknown,n=140)=>String(x??'').trim().replace(/\s+/g,' ').slice(0,n);
 const hash=(s:string)=>{let h=2166136261>>>0;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)>>>0;}return (h>>>0).toString(16).padStart(8,'0');};
+const isCurriculumUnit=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
+const isCurriculumIdentity=(value:unknown,maxLength:number):value is string=>
+  typeof value==='string'&&value.length>0&&value.length<=maxLength&&value.trim()===value&&
+  value.normalize('NFKC')===value&&!Array.from(value).some(character=>{
+    const code=character.codePointAt(0)??0;
+    return code<=0x1f||(code>=0x7f&&code<=0x9f);
+  });
+const isCurriculumText=(value:unknown,maxLength:number,allowEmpty=false):value is string=>
+  typeof value==='string'&&value.length<=maxLength&&(allowEmpty||value.length>0)&&
+  !Array.from(value).some(character=>{
+    const code=character.codePointAt(0)??0;
+    return code<=0x08||(code>=0x0b&&code<=0x1f)||(code>=0x7f&&code<=0x9f);
+  });
+const isCurriculumTimestamp=(value:unknown):value is number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
+const isCurriculumCounter=(value:unknown):value is number=>isCurriculumTimestamp(value)&&value<=1_000_000_000;
+function snapshotCurriculumInput(value:unknown,label:string):Record<string,unknown>{
+  let detached:unknown;
+  try{detached=snapshotPlainData(value);}
+  catch{throw new Error(`personal-curriculum-${label}-data-boundary-rejected`);}
+  if(detached===null||typeof detached!=='object'||Array.isArray(detached))throw new Error(`personal-curriculum-${label}-shape-invalid`);
+  return detached as Record<string,unknown>;
+}
+function assertCurriculumUnits(value:Record<string,unknown>,keys:readonly string[],label:string):void{
+  if(!keys.every(key=>isCurriculumUnit(value[key])))throw new Error(`personal-curriculum-${label}-score-invalid`);
+}
 
 export interface CurriculumThread {
   id:string;
@@ -54,16 +80,71 @@ export const defaultPersonalCurriculum=():PersonalCurriculumState=>({
 export class PersonalCurriculumEngine {
   private state=defaultPersonalCurriculum();
   restore(raw?:Partial<PersonalCurriculumState>|null){
-    const d=defaultPersonalCurriculum(),r=raw??{};
-    this.state={...d,...r,version:1,
-      threads:Array.isArray(r.threads)?r.threads.slice(-64).map((x:any)=>({...x,
-        contextKeys:Array.isArray(x.contextKeys)?Array.from(new Set(x.contextKeys.map((v:any)=>clean(v,180)))).slice(0,24):[],
-        status:['emerging','active','satisfied','suppressed'].includes(x.status)?x.status:'emerging',
-        source:['autobiographical','social','goal','mixed'].includes(x.source)?x.source:'mixed'
-      })):[]
+    const defaults=defaultPersonalCurriculum();
+    let detached:unknown;
+    try{detached=snapshotPlainData(raw??{});}catch{this.state=defaults;return;}
+    if(detached===null||typeof detached!=='object'||Array.isArray(detached)){this.state=defaults;return;}
+    const r=detached as Record<string,unknown>;
+    const safeCount=(v:unknown,fallback:number)=>typeof v==='number'&&Number.isSafeInteger(v)&&v>=0&&v<=1_000_000_000?v:fallback;
+    const safeUnit=(v:unknown,fallback:number)=>typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=1?v:fallback;
+    const safeTimestamp=(v:unknown,fallback:number)=>typeof v==='number'&&Number.isSafeInteger(v)&&v>=0?v:fallback;
+    const threads:CurriculumThread[]=[];
+    const ids=new Set<string>(),families=new Set<string>();
+    const rows=Array.isArray(r.threads)?r.threads.slice(-64):[];
+    // If a persisted identity collides, quarantine every row with that ID/family.
+    // Do not let serialization order decide which conflicting memory survives.
+    const idCounts=new Map<string,number>(),familyCounts=new Map<string,number>();
+    for(const value of rows){
+      if(!value||typeof value!=='object'||Array.isArray(value))continue;
+      const row=value as Record<string,unknown>;
+      if(typeof row.id==='string')idCounts.set(row.id,(idCounts.get(row.id)??0)+1);
+      if(typeof row.family==='string')familyCounts.set(row.family,(familyCounts.get(row.family)??0)+1);
+    }
+    for(const value of rows){
+      if(!value||typeof value!=='object'||Array.isArray(value))continue;
+      const x=value as Record<string,unknown>;
+      const source=['autobiographical','social','goal','mixed'].includes(String(x.source))?x.source as CurriculumThread['source']:null;
+      const status=['emerging','active','satisfied','suppressed'].includes(String(x.status))?x.status as CurriculumThread['status']:null;
+      const metrics=['socialRelevance01','identityRelevance01','causalStrength01','unresolved01','retention01','transfer01','learningNeed01','confidence01','priority01','lastOutcome01'];
+      if(!isCurriculumIdentity(x.id,128)||!isCurriculumIdentity(x.family,180)||
+         idCounts.get(x.id)!==1||familyCounts.get(x.family)!==1||
+         !isCurriculumText(x.title,140)||!x.title.trim()||!source||!status||
+         !Array.isArray(x.contextKeys)||x.contextKeys.length>24||
+         x.contextKeys.some(k=>!isCurriculumIdentity(k,180))||
+         !metrics.every(k=>typeof x[k]==='number'&&Number.isFinite(x[k])&&x[k]>=0&&x[k]<=1)||
+         !['occurrences','verified','successes','failures','contexts'].every(k=>typeof x[k]==='number'&&Number.isSafeInteger(x[k])&&x[k]>=0&&x[k]<=1_000_000_000)||
+         !isCurriculumTimestamp(x.lastAt))continue;
+      const contextKeys=Array.from(new Set(x.contextKeys as string[]));
+      if(contextKeys.length!==(x.contextKeys as string[]).length||x.contexts!==contextKeys.length||
+         Number(x.verified)>Number(x.occurrences)||
+         Number(x.successes)+Number(x.failures)>Number(x.occurrences))continue;
+      const thread={...x,source,status,contextKeys} as unknown as CurriculumThread;
+      if(ids.has(thread.id)||families.has(thread.family))continue;
+      ids.add(thread.id);families.add(thread.family);threads.push(thread);
+    }
+    const focus=typeof r.focusThreadId==='string'&&ids.has(r.focusThreadId)?r.focusThreadId:null;
+    this.state={
+      version:1,cycles:safeCount(r.cycles,defaults.cycles),threads,
+      focusThreadId:focus,
+      focusGoalId:isCurriculumIdentity(r.focusGoalId,256)?r.focusGoalId:null,
+      curriculumPressure01:safeUnit(r.curriculumPressure01,defaults.curriculumPressure01),
+      socialLearning01:safeUnit(r.socialLearning01,defaults.socialLearning01),
+      autobiographicalLearning01:safeUnit(r.autobiographicalLearning01,defaults.autobiographicalLearning01),
+      identityLearning01:safeUnit(r.identityLearning01,defaults.identityLearning01),
+      transferReadiness01:safeUnit(r.transferReadiness01,defaults.transferReadiness01),
+      completedThreads:safeCount(r.completedThreads,defaults.completedThreads),
+      suppressedThreads:safeCount(r.suppressedThreads,defaults.suppressedThreads),
+      lastAt:safeTimestamp(r.lastAt,defaults.lastAt)
     };
+    this.syncLifecycleCounts();
   }
   snapshot(){return structuredClone(this.state);}
+
+  /** Aggregate lifecycle counts from unique live threads, not repeated observations. */
+  private syncLifecycleCounts(){
+    this.state.completedThreads=this.state.threads.filter(thread=>thread.status==='satisfied').length;
+    this.state.suppressedThreads=this.state.threads.filter(thread=>thread.status==='suppressed').length;
+  }
 
   beginCycle(){
     this.state.cycles++;
@@ -82,7 +163,27 @@ export class PersonalCurriculumEngine {
   }
 
   observeOutcome(input:{goal:OrganismGoal|null;outcome01:number;verified:boolean;contextKey:string;causal01:number;social01:number;identity01:number;retention01:number;transfer01:number;at?:number;sourceMomentCount?:number}):CurriculumThread|null{
-    if(!input.goal)return null;
+    input=snapshotCurriculumInput(input,'outcome') as unknown as typeof input;
+    if(input.goal===null)return null;
+    const goal=input.goal as unknown as Record<string,unknown>;
+    if(!goal||typeof goal!=='object'||Array.isArray(goal)||
+       !isCurriculumIdentity(goal.id,256)||
+       !isCurriculumText(goal.title,512)||
+       !isCurriculumText(goal.reason,4096,true)||
+       !['intrinsic','external','learned','homeostatic'].includes(goal.source as string)||
+       !['candidate','active','paused','completed','abandoned'].includes(goal.status as string)||
+       !isCurriculumUnit(goal.importance)||!isCurriculumUnit(goal.urgency)||
+       !isCurriculumUnit(goal.confidence)||!isCurriculumUnit(goal.progress)||
+       !isCurriculumTimestamp(goal.createdAt)||!isCurriculumTimestamp(goal.updatedAt)){
+      throw new Error('personal-curriculum-goal-invalid');
+    }
+    assertCurriculumUnits(input as unknown as Record<string,unknown>,
+      ['outcome01','causal01','social01','identity01','retention01','transfer01'],'outcome');
+    if(typeof input.verified!=='boolean'||!isCurriculumText(input.contextKey,512,true)||
+       (input.at!==undefined&&!isCurriculumTimestamp(input.at))||
+       (input.sourceMomentCount!==undefined&&!isCurriculumCounter(input.sourceMomentCount))){
+      throw new Error('personal-curriculum-outcome-invalid');
+    }
     const at=input.at??Date.now();
     const family=this.family(input.goal);
     const source:CurriculumThread['source']=input.social01>.52&&input.identity01>.48?'mixed':input.social01>.52?'social':input.identity01>.52?'autobiographical':'goal';
@@ -105,9 +206,9 @@ export class PersonalCurriculumEngine {
     thread.learningNeed01=clamp(thread.unresolved01*.34+(1-thread.retention01)*.18+(1-thread.transfer01)*.16+(1-thread.confidence01)*.14+thread.socialRelevance01*.08+thread.identityRelevance01*.10);
     thread.confidence01=clamp(thread.confidence01*.9+evidence*.07+thread.retention01*.03);
     thread.priority01=clamp(thread.learningNeed01*.42+thread.identityRelevance01*.18+thread.socialRelevance01*.13+thread.causalStrength01*.12+thread.transfer01*.08+(input.goal.importance*.04)+(input.goal.urgency*.03));
-    if(thread.occurrences>=6&&thread.contexts>=3&&thread.verified>=3&&rate>=.72&&thread.retention01>=.62&&thread.transfer01>=.42&&thread.unresolved01<.32){ if(thread.status!=='satisfied')this.state.completedThreads++; thread.status='satisfied'; }
+    if(thread.occurrences>=6&&thread.contexts>=3&&thread.verified>=3&&rate>=.72&&thread.retention01>=.62&&thread.transfer01>=.42&&thread.unresolved01<.32)thread.status='satisfied';
     else if(thread.status!=='suppressed')thread.status=thread.priority01>.42?'active':'emerging';
-    if(thread.status==='suppressed')this.state.suppressedThreads++;
+    this.syncLifecycleCounts();
     this.state.curriculumPressure01=clamp(this.state.curriculumPressure01*.94+thread.learningNeed01*.06);
     this.state.socialLearning01=clamp(this.state.socialLearning01*.95+thread.socialRelevance01*.05);
     this.state.autobiographicalLearning01=clamp(this.state.autobiographicalLearning01*.95+thread.unresolved01*.05);
@@ -118,6 +219,16 @@ export class PersonalCurriculumEngine {
   }
 
   observeDevelopmentalContext(input:{action:string;source:'autobiographical'|'social'|'mixed';contextKey:string;pressure01:number;identity01:number;social01:number;causal01:number;evidence01:number;unresolved01:number;at?:number;label?:string}):CurriculumThread|null{
+    input=snapshotCurriculumInput(input,'developmental-context') as unknown as typeof input;
+    if(!isCurriculumText(input.action,256)||
+       !['autobiographical','social','mixed'].includes(input.source)||
+       !isCurriculumText(input.contextKey,512,true)||
+       (input.label!==undefined&&!isCurriculumText(input.label,512,true))||
+       (input.at!==undefined&&!isCurriculumTimestamp(input.at))){
+      throw new Error('personal-curriculum-developmental-context-invalid');
+    }
+    assertCurriculumUnits(input as unknown as Record<string,unknown>,
+      ['pressure01','identity01','social01','causal01','evidence01','unresolved01'],'developmental-context');
     const at=input.at??Date.now();
     const family=`context:${input.source}:${clean(input.action,48).toLowerCase()}`;
     const thread=this.findOrCreate(family,input.label||`${input.source} learning: ${input.action}`,input.source,at);
@@ -141,10 +252,32 @@ export class PersonalCurriculumEngine {
     this.state.identityLearning01=clamp(this.state.identityLearning01*.94+thread.identityRelevance01*.06);
     this.state.transferReadiness01=clamp(this.state.transferReadiness01*.94+thread.transfer01*.06);
     this.state.lastAt=at;
+    this.syncLifecycleCounts();
     return structuredClone(thread);
   }
 
   rankGoals(input:{goals:OrganismGoal[];identity01:number;social01:number;novelty01:number;uncertainty01:number}):Array<{goalId:string;score01:number;threadId:string|null;learningNeed01:number;historyFit01:number;socialFit01:number;identityFit01:number;reason:string}>{
+    input=snapshotCurriculumInput(input,'goal-ranking') as unknown as typeof input;
+    assertCurriculumUnits(input as unknown as Record<string,unknown>,['identity01','social01','novelty01','uncertainty01'],'goal-ranking');
+    if(!Array.isArray(input.goals)||input.goals.length>256)throw new Error('personal-curriculum-goal-ranking-goals-invalid');
+    const goalIds=new Set<string>();
+    for(const rawGoal of input.goals){
+      if(rawGoal===null||typeof rawGoal!=='object'||Array.isArray(rawGoal))throw new Error('personal-curriculum-goal-ranking-goal-invalid');
+      const goal=rawGoal as unknown as Record<string,unknown>;
+      if(!isCurriculumIdentity(goal.id,256)||
+         !isCurriculumText(goal.title,512)||
+         !isCurriculumText(goal.reason,4096,true)||
+         (typeof goal.source!=='string'||!['intrinsic','external','learned','homeostatic'].includes(goal.source))||
+         (typeof goal.status!=='string'||!['candidate','active','paused','completed','abandoned'].includes(goal.status))||
+         !isCurriculumUnit(goal.importance)||!isCurriculumUnit(goal.urgency)||
+         !isCurriculumUnit(goal.confidence)||!isCurriculumUnit(goal.progress)||
+         !isCurriculumTimestamp(goal.createdAt)||!isCurriculumTimestamp(goal.updatedAt)||
+         (goal.parentId!==undefined&&!isCurriculumIdentity(goal.parentId,256))||
+         goalIds.has(goal.id)){
+        throw new Error('personal-curriculum-goal-ranking-goal-invalid');
+      }
+      goalIds.add(goal.id);
+    }
     const ranked=input.goals.filter(g=>g.status==='active').map(goal=>{
       const family=this.family(goal); const thread=this.state.threads.find(t=>t.family===family);
       const historyFit=thread?clamp(thread.causalStrength01*.35+thread.retention01*.2+thread.transfer01*.2+(1-thread.unresolved01)*.25):0;
@@ -153,7 +286,7 @@ export class PersonalCurriculumEngine {
       const identityFit=thread?thread.identityRelevance01:input.identity01*.35;
       const score=clamp(goal.importance*.18+goal.urgency*.12+learningNeed*.28+historyFit*.16+socialFit*.08+identityFit*.12+this.state.curriculumPressure01*.06);
       return {goalId:goal.id,score01:score,threadId:thread?.id??null,learningNeed01:learningNeed,historyFit01:historyFit,socialFit01:socialFit,identityFit01:identityFit,reason:thread?`history-thread:${thread.id}`:learningNeed>.6?'new-learning-gap':'goal-priority'};
-    }).sort((a,b)=>b.score01-a.score01);
+    }).sort((a,b)=>b.score01-a.score01||(a.goalId<b.goalId?-1:a.goalId>b.goalId?1:0));
     const top=ranked[0];
     this.state.focusGoalId=top?.goalId??null;
     this.state.focusThreadId=top?.threadId??null;

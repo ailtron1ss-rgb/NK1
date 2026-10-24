@@ -84,6 +84,8 @@ assert.ok(versionRejected.reasons.includes('signed-shadow-evidence-not-trusted')
 
 const tampered = structuredClone(validObservation);
 tampered.artifact.payload.passed = false;
+// Keep the wrapper fingerprint consistent so the verifier must reject the stale signature itself.
+tampered.evidenceFingerprint = skillShadowPayloadFingerprint(tampered.artifact.payload);
 const tamperRejected = engine.bindReflectiveCandidateEvidence([report()], [tampered], candidate, verifier);
 assert.equal(tamperRejected.accepted, false);
 assert.ok(tamperRejected.reasons.includes('signed-shadow-evidence-not-trusted'));
@@ -144,6 +146,60 @@ const tamperedEnvelopeBound = engine.bindIndependentEvaluationEvidence(
 assert.equal(tamperedEnvelopeBound.accepted, false,
   'receipt binding must reject a modified or mismatched evaluation digest');
 assert.ok(tamperedEnvelopeBound.reasons.includes('independent-evaluation-envelope-integrity-invalid'));
+
+// Accessor-backed data must be rejected without invoking the accessor, including
+// both the outer envelope and nested report data.
+let outerEvaluationGetterCalls = 0;
+const accessorEnvelope = {
+  payloadFingerprint: candidate.payloadFingerprint,
+  evaluationFingerprint: independentEnvelope.evaluationFingerprint,
+};
+Object.defineProperty(accessorEnvelope, 'evaluation', {
+  enumerable: true,
+  configurable: true,
+  get() { outerEvaluationGetterCalls += 1; return independentEvaluation; },
+});
+const outerAccessorBound = engine.bindIndependentEvaluationEvidence(
+  accessorEnvelope, independentReceipts, candidate, verifier,
+);
+assert.equal(outerAccessorBound.accepted, false);
+assert.equal(outerEvaluationGetterCalls, 0, 'the envelope evaluation accessor must never run');
+
+const nestedAccessorEvaluation = structuredClone(independentEvaluation);
+let nestedGetterCalls = 0;
+Object.defineProperty(nestedAccessorEvaluation.provenance, 'payloadFingerprint', {
+  enumerable: true,
+  configurable: true,
+  get() { nestedGetterCalls += 1; return candidate.payloadFingerprint; },
+});
+const nestedAccessorBound = engine.bindIndependentEvaluationEvidence(
+  { ...independentEnvelope, evaluation: nestedAccessorEvaluation },
+  independentReceipts, candidate, verifier,
+);
+assert.equal(nestedAccessorBound.accepted, false);
+assert.equal(nestedGetterCalls, 0, 'nested accessors must be rejected before later field reads');
+assert.ok(nestedAccessorBound.reasons.includes('independent-evaluation-envelope-not-canonicalizable'));
+
+const sparseEvaluation = structuredClone(independentEvaluation);
+sparseEvaluation.validation[0].skillQuality.missingCapabilityIds = new Array(1);
+const sparseBound = engine.bindIndependentEvaluationEvidence(
+  { ...independentEnvelope, evaluation: sparseEvaluation },
+  independentReceipts, candidate, verifier,
+);
+assert.equal(sparseBound.accepted, false,
+  'sparse arrays must not canonicalize to the same fingerprint as an empty or differently shaped array');
+assert.ok(sparseBound.reasons.includes('independent-evaluation-envelope-not-canonicalizable'));
+
+let deepNode = { leaf: true };
+for (let depth = 0; depth < 70; depth += 1) deepNode = { child: deepNode };
+const deepEvaluation = structuredClone(independentEvaluation);
+deepEvaluation.provenance.unexpectedPayload = deepNode;
+const deepBound = engine.bindIndependentEvaluationEvidence(
+  { ...independentEnvelope, evaluation: deepEvaluation },
+  independentReceipts, candidate, verifier,
+);
+assert.equal(deepBound.accepted, false, 'excessively deep envelopes must fail before stack exhaustion');
+assert.ok(deepBound.reasons.includes('independent-evaluation-envelope-not-canonicalizable'));
 
 const cyclicEvaluation = structuredClone(independentEvaluation);
 cyclicEvaluation.provenance.self = cyclicEvaluation;

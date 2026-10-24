@@ -8107,7 +8107,7 @@ export class OrganismCore {
         const replayEvents = this.memorySubsystem.experienceContinuum.snapshot().replay.events.slice(-8);
         for (const event of replayEvents.filter(e => e.at === state.at)) {
             const cxReplay = this.developmentalNeural.causalExperience.recordExternalLearningEvent({ tick: state.tick, taskId: `replay:${event.memoryId}`, action: 'reflect', reward01: .5, success01: .5, surprise01: clamp(event.learningOpportunity01), novelty01: clamp(event.priorityBefore01), uncertainty01: clamp(1 - event.priorityAfter01), identityRelevance01: event.identityWeight01, goalPressure01: state.needs.goalPressure, causalStrength01: clamp(event.learningOpportunity01), traceId: event.id, provenance: 'experience-replay', stateGrounded: false, sourceMemoryId: event.memoryId, evidenceKey: `replay:${event.memoryId}` });
-            this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: `replay:${event.memoryId}`, action: 'reflect', reward01: .5, success01: .5, surprise01: cxReplay.surprise01, novelty01: cxReplay.novelty01, causalStrength01: cxReplay.causalStrength01, transferPotential01: clamp(event.learningOpportunity01 * .72), provenance: 'experience-replay' } as any);
+            if (cxReplay) this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: `replay:${event.memoryId}`, action: 'reflect', reward01: .5, success01: .5, surprise01: cxReplay.surprise01, novelty01: cxReplay.novelty01, causalStrength01: cxReplay.causalStrength01, transferPotential01: clamp(event.learningOpportunity01 * .72), provenance: 'experience-replay' } as any);
         }
         this.persisted.facets.advanced.causalExperience = this.developmentalNeural.causalExperience.snapshot();
         this.persisted.facets.advanced.unifiedLearning = this.developmentalNeural.unifiedLearning.snapshot();
@@ -9347,7 +9347,7 @@ export class OrganismCore {
             this.persisted.facets.embodiment.p41TemporalPerception = this.embodimentSubsystem.p41TemporalPerception.snapshot();
             (this.persisted.facets.embodiment as any).p37 = this.embodimentSubsystem.p37EmbodiedSensorium.snapshot();
             this.worldSubsystem.p24WorldIdentity.identityObserve({ action: trace.selected.action, goal: selectedGoalTitle, summary: `outcome=${gatedSuccess01.toFixed(2)}`, confidence01: clamp(1 - gatedSurprise01) });
-            this.developmentalNeural.p23Learning.recordExperience(trace, state, { success: gatedSuccess01, reward: gatedReward01, surprise: gatedSurprise01 }, this.cognitiveRuntime.adaptivePolicy);
+            this.developmentalNeural.p23Learning.recordExperience(trace, state, { success: gatedSuccess01, reward: gatedReward01, surprise: gatedSurprise01, notes: outcome.notes }, this.cognitiveRuntime.adaptivePolicy);
             if (!outcome.worldTransition) {
                 const p27Before = this.cognitiveRuntime.lastP27Latent ?? this.worldSubsystem.p27NeuralWorld.fuse(this.worldSubsystem.p27NeuralWorld.encode({ sensorState: trace.stateBefore }));
                 const p27After = this.worldSubsystem.p27NeuralWorld.fuse(this.worldSubsystem.p27NeuralWorld.encode({ sensorState: state, world: this.cognitiveRuntime.lastGroundedWorldContext ?? undefined }));
@@ -9417,7 +9417,12 @@ export class OrganismCore {
                 this.developmentalNeural.neuralAutobiographicalCoreB271.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, selfLatent: this.developmentalNeural.neuralGerminalOrganismB270.snapshot().selfLatent, traits: this.developmentalNeural.neuralGerminalOrganismB270.autonomousSnapshot().traitValues, goal: this.developmentalNeural.neuralAutobiographicalCoreB271.snapshotAutobiography().proposedGoal, acceptedExternalEvidence01: projectEvidenceExternal ? 1 : 0 });
                 const b272GoalState = this.developmentalNeural.endogenousGoalGenesisB272.currentGoal();
                 const b272IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
-                const b272Learning = this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, externalEvidence01: projectEvidenceExternal ? 1 : 0, independentEvaluatorGain01: b272IndependentGain, acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal });
+                // B272 evidence is valid only when the executed action matches its generated goal action.
+                // The main planner may override that action; never let mismatched evidence abort
+                // feedback for the rest of the organism.
+                if (trace.selected.action === b272GoalState.action) {
+                    this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, externalEvidence01: projectEvidenceExternal ? 1 : 0, independentEvaluatorGain01: b272IndependentGain, acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal });
+                }
                 const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({ tick: state.tick, action: trace.selected.action, plan: b273Current.plan, reward01: gatedReward01, predictionError01: state.predictionError, independentGain01: b272IndependentGain, personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8), externalEvidence01: projectEvidenceExternal ? 1 : 0 });
                 const b274Diag = this.developmentalNeural.autonomousSkillLaboratoryB274.diagnostics();
@@ -9691,15 +9696,18 @@ export class OrganismCore {
             if (outcome.worldTransition) {
                 const b338GoalState = this.developmentalNeural.endogenousGoalGenesisB272.currentGoal();
                 const b338IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
-                this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
-                    tick: state.tick,
-                    action: trace.selected.action,
-                    reward01: gatedReward01,
-                    predictionError01: state.predictionError,
-                    externalEvidence01: projectEvidenceExternal ? 1 : 0,
-                    independentEvaluatorGain01: b338IndependentGain,
-                    acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
-                });
+                // Real-world outcomes may only credit the B272 action actually generated.
+                if (trace.selected.action === b338GoalState.action) {
+                    this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
+                        tick: state.tick,
+                        action: trace.selected.action,
+                        reward01: gatedReward01,
+                        predictionError01: state.predictionError,
+                        externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                        independentEvaluatorGain01: b338IndependentGain,
+                        acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
+                    });
+                }
                 const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({
                     tick: state.tick,
@@ -10409,7 +10417,7 @@ export class OrganismCore {
         if (r.independentVerified && r.verificationTransition !== 'duplicate') {
             const tick = Number(this.persisted.state.tick ?? 0);
             const cx = this.developmentalNeural.causalExperience.recordExternalLearningEvent({ tick, taskId: input.taskId ?? `replay-validation:${input.memoryId}`, action: 'verify', reward01: r.retentionScore01, success01: r.retentionScore01, surprise01: Math.abs(r.retentionGain01), novelty01: r.transferPotential01, uncertainty01: r.interferenceRisk01, causalStrength01: Math.max(0, Math.min(1, .5 * r.retentionScore01 + .3 * r.transferPotential01 + .2 * (1 - r.interferenceRisk01))), identityRelevance01: 0, goalPressure01: this.persisted.state.needs.goalPressure, traceId: r.id, provenance: 'experience-replay', stateGrounded: false, sourceMemoryId: r.memoryId, evidenceKey: r.evidenceKey });
-            this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: cx.taskId, action: 'verify', reward01: cx.reward01, success01: cx.success01, surprise01: cx.surprise01, novelty01: cx.novelty01, causalStrength01: cx.causalStrength01, transferPotential01: r.transferPotential01, provenance: 'experience-replay' });
+            if (cx) this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: cx.taskId, action: 'verify', reward01: cx.reward01, success01: cx.success01, surprise01: cx.surprise01, novelty01: cx.novelty01, causalStrength01: cx.causalStrength01, transferPotential01: r.transferPotential01, provenance: 'experience-replay' });
         }
         this.persisted.facets.advanced.experienceContinuum = this.memorySubsystem.experienceContinuum.snapshot();
         this.persisted.facets.advanced.memoryFabric = this.memorySubsystem.fabric.snapshot();
@@ -11023,7 +11031,7 @@ export class OrganismCore {
      * the registrar: this Core instance records provenance before child spawn.
      */
     runTrustedSkillShadowLearningProcess(input: Omit<TrustedShadowLearningRunInput, 'core'>) {
-        return executeTrustedShadowLearningProcess({ ...input, core: this });
+        return executeTrustedShadowLearningProcess({ ...input, core: { registerTrustedSkillShadowRun: async context => { await this.registerTrustedSkillShadowRun(context); } } });
     }
     /** Read-only durable candidate lifecycle state for trusted in-process runtime components. */
     verifiedSkillCandidateSnapshot() {
@@ -11415,7 +11423,7 @@ export class OrganismCore {
                             if (variant)
                                 this.cognitiveRuntime.skillLibrary.recordVariantExecution(skill.id, variant.id, { success01: 1, verified: true, independent: Boolean(input.independentEvidence), holdout: true, context: String(input.contextKey ?? input.context ?? '') });
                             const causalRepair = this.developmentalNeural.causalExperience.recordExternalLearningEvent({ tick: this.persisted.state.tick, taskId: `skill-repair:${skill.id}:${step.id}`, action: 'explore', reward01: confidence, success01: 1, surprise01: clamp(.35 + (1 - confidence)), novelty01: .45, uncertainty01: clamp(1 - confidence), identityRelevance01: this.persisted.state.needs.identityCoherence, goalPressure01: this.persisted.state.needs.goalPressure, causalStrength01: clamp(.28 + confidence * .5), traceId: `repair:${skill.id}:${step.id}:${candidateTool}`, provenance: 'skill-repair', stateGrounded: false, evidenceKey: `repair:${skill.id}:${step.id}` });
-                            this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: `skill-repair:${skill.id}:${step.id}`, action: 'explore', reward01: confidence, success01: 1, surprise01: causalRepair.surprise01, novelty01: causalRepair.novelty01, causalStrength01: causalRepair.causalStrength01, transferPotential01: .72, provenance: 'skill-repair' });
+                            if (causalRepair) this.developmentalNeural.unifiedLearning.ingestExternalSignal({ taskId: `skill-repair:${skill.id}:${step.id}`, action: 'explore', reward01: confidence, success01: 1, surprise01: causalRepair.surprise01, novelty01: causalRepair.novelty01, causalStrength01: causalRepair.causalStrength01, transferPotential01: .72, provenance: 'skill-repair' });
                             this.persisted.facets.advanced.causalExperience = this.developmentalNeural.causalExperience.snapshot();
                             this.persisted.facets.advanced.unifiedLearning = this.developmentalNeural.unifiedLearning.snapshot();
                             this.persisted.facets.cognition.skills = this.cognitiveRuntime.skillLibrary.snapshot();

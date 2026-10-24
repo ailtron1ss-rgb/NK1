@@ -9,6 +9,7 @@
     "npm": ">=10.8.0"
   },
   "scripts": {
+    "test:cognitive-event-fabric-ingress-boundary": "node --experimental-strip-types tests/cognitive-event-fabric-ingress-boundary.mjs",
     "test:cognitive-cycle-boundary": "node --experimental-strip-types tests/cognitive-cycle-boundary.mjs",
     "test:workpass95:receipt-integrity": "node --experimental-strip-types tests/workpass95-restored-action-receipt-integrity.mjs",
     "test:workpass96:finalizer-boundary": "node --experimental-strip-types tests/workpass96-action-finalizer-boundary.mjs",
@@ -20,9 +21,13 @@
     "test:p26:sequential-benchmark": "node --experimental-strip-types tests/p26-sequential-learning-benchmark.mjs",
     "test:p26:replay-policy-sweep": "node --experimental-strip-types tests/p26-replay-policy-sweep.mjs",
     "test:p26:feature-schema-migration": "node --experimental-strip-types tests/p26-feature-schema-migration.mjs",
+    "test:p26:learning-input-integrity": "node --experimental-strip-types tests/p26-learning-input-integrity.mjs",
+    "test:p26:learning-recovery-benchmark": "node --experimental-strip-types tests/p26-learning-recovery-benchmark.mjs",
+    "test:p26:learning-continual-matrix": "node --experimental-strip-types tests/p26-learning-continual-matrix.mjs",
     "test:learning-replay": "npm run test:p26:feature-schema-migration && npm run test:causal-replay-sampler && npm run test:causal-replay-benchmark && node --experimental-strip-types tests/big-pass-115-causal-replay.mjs && npm run test:p26:true-learning && npm run test:p26:holdout-provenance && npm run test:p26:sequential-benchmark && npm run test:p26:replay-policy-sweep",
     "test:workpass318:operational-microcycle-finite-input": "node --experimental-strip-types tests/operational-microcycle-finite-input.mjs",
-    "test:rebuild-recovered": "npm run test:cognitive-cycle-boundary && npm run test:cognitive-cycle-boundary-runtime-wiring && npm run test:learning-replay && npm run test:causal-replay-runtime-wiring && npm run test:workpass95:receipt-integrity && npm run test:workpass96:finalizer-boundary && npm run test:workpass97:planner-route && npm run test:workpass98:project-reconciliation-route && npm run test:workpass318:operational-microcycle-finite-input",
+    "test:workpass406:robust-metrics": "node --experimental-strip-types tests/workpass406-learning-robust-metrics.mjs",
+    "test:rebuild-recovered": "npm run test:cognitive-cycle-boundary && npm run test:cognitive-cycle-boundary-runtime-wiring && npm run test:learning-replay && npm run test:causal-replay-runtime-wiring && npm run test:workpass95:receipt-integrity && npm run test:workpass96:finalizer-boundary && npm run test:workpass97:planner-route && npm run test:workpass98:project-reconciliation-route && npm run test:workpass318:operational-microcycle-finite-input && npm run test:cognitive-event-fabric-ingress-boundary",
     "test:workpass292:motivation-to-goal": "node --experimental-strip-types tests/big-pass-272-endogenous-goal-genesis.mjs",
     "test:workpass288:intrinsic-motivation": "node --experimental-strip-types tests/workpass288-intrinsic-motivation-contract.mjs",
     "test:workpass287:cognitive-cycle": "node --experimental-strip-types tests/workpass287-unified-cycle-contract.mjs",
@@ -49,8 +54,8 @@
     "test:big-pass-242-249": "node --experimental-strip-types tests/big-pass-242-249-neuro-digital-evolution.mjs",
     "test:big-pass-90:causal-stream": "node --experimental-strip-types tests/big-pass-90-causal-learning-stream.mjs",
     "test:big-pass-116": "node --experimental-strip-types tests/big-pass-116-predictive-transfer.mjs",
-    "test:big-pass-122": "node --experimental-strip-types tests/big-pass-122-personal-curriculum.mjs",
-    "test:big-pass-122:core": "node --experimental-strip-types tests/big-pass-122-core-personal-curriculum.mjs",
+    "test:big-pass-122": "node --experimental-strip-types tests/big-pass-122-personal-curriculum.mjs && node --experimental-strip-types tests/big-pass-122-personal-curriculum-observation-boundary.mjs && node --experimental-strip-types tests/big-pass-122-curriculum-restore-collision.mjs",
+    "test:big-pass-122:core": "node --experimental-transform-types tests/big-pass-122-core-personal-curriculum.mjs",
     "test:big-pass-128-154": "node --experimental-strip-types tests/big-pass-128-154-autonomous-cognitive-life.mjs",
     "test:big-pass-128-154:core": "node --experimental-strip-types tests/big-pass-128-154-core-autonomous-life.mjs",
     "test:big-pass-128-154:server": "node tests/big-pass-128-154-server-smoke.mjs",
@@ -69,7 +74,7 @@
     "test:big-pass-96": "node --experimental-strip-types tests/big-pass-96-developmental-self.mjs",
     "test:big-pass-96:integration": "node --experimental-strip-types tests/big-pass-96-developmental-integration.mjs",
     "audit:pass96": "npm run test:big-pass-96 && npm run test:big-pass-96:integration && npm run audit:full && npm run audit:legacy && npm run audit:archive",
-    "test:p23:learning": "node --experimental-strip-types tests/p23-true-learning.mjs",
+    "test:p23:learning": "node --experimental-strip-types tests/p23-true-learning.mjs && npm run test:workpass203:independent-candidate-evaluator && npm run test:workpass227:bounded-independent-evaluation && npm run test:p23:learning-experiment-plan && npm run test:p23:learning-execution-evidence && npm run test:p23:revision-plan-holdout-isolation && npm run test:p23:local-model-skill-revision-generator && npm run test:p23:skill-retrieval-reflection-curriculum && npm run test:workpass406:robust-metrics && npm run test:workpass407:learning-lifecycle-journal && npm run test:workpass408:lifecycle-reconciliation && npm run test:workpass419:retry-backoff-store && npm run test:hexis:correction-memory",
     "test:workpass197:skill-transfer-safety": "node --experimental-strip-types tests/workpass197-skill-transfer-safety.mjs",
     "test:p23:verified-outcomes": "node --experimental-strip-types tests/p23-verified-outcome-ledger.mjs",
     "test:p23:versioned-skill-store": "node --experimental-strip-types tests/p23-versioned-skill-candidate-store.mjs",
@@ -1739,6 +1744,10 @@
     "test:big-pass-170:repair-loop": "node --experimental-strip-types tests/big-pass-168-runtime-compound-skills.mjs",
     "test:big-pass-171:repair-evidence-p23": "node --experimental-strip-types tests/big-pass-168-runtime-compound-skills.mjs",
     "test:workpass172:compound-revision-coordinator": "node --experimental-strip-types tests/workpass172-compound-revision-coordinator.mjs",
+    "test:workpass293:p23-revision": "node --experimental-strip-types tests/workpass293-autonomous-p23-revision.mjs && npm run test:workpass172:compound-revision-coordinator",
+    "test:workpass291:payload-budget": "node --experimental-strip-types tests/workpass291-reflective-payload-budget.mjs",
+    "test:workpass292:evidence-lanes": "node --experimental-strip-types tests/workpass292-evidence-lanes.mjs",
+    "test:workpass294:correlated-postcondition": "node --experimental-strip-types tests/workpass294-correlated-postcondition.mjs",
     "test:workpass173:runtime-revision-entry": "node --experimental-strip-types tests/workpass172-compound-revision-coordinator.mjs",
     "test:p23:revision-plan-holdout-isolation": "node --experimental-strip-types tests/p23-revision-plan-holdout-isolation.mjs",
     "test:p23:local-model-skill-revision-generator": "node --experimental-strip-types tests/p23-local-model-skill-revision-generator.mjs",
@@ -1768,6 +1777,17 @@
     "test:p324:interrupt-episodes": "node --experimental-strip-types tests/cognitive-dependency-interrupt-episode-workpass324.mjs",
     "test:p325:core-eleven-phase-spine": "node tests/workpass325-core-eleven-phase-causal-loop.mjs",
     "test:cognitive-cycle-boundary-runtime-wiring": "node tests/cognitive-cycle-boundary-runtime-wiring.mjs",
-    "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs"
+    "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs",
+    "test:workpass407:learning-lifecycle-journal": "node --experimental-strip-types tests/workpass407-learning-lifecycle-journal.mjs",
+    "test:workpass408:lifecycle-reconciliation": "node --experimental-strip-types tests/workpass408-lifecycle-store-reconciliation.mjs",
+    "test:workpass419:retry-backoff-store": "node --experimental-strip-types tests/workpass419-p23-retry-backoff-store.mjs",
+    "test:hexis:correction-memory": "node --experimental-strip-types tests/hexis-correction-memory.mjs",
+    "test:workpass505:causal-event-identity": "node --experimental-strip-types tests/workpass505-causal-event-identity.mjs",
+    "test:workpass505": "npm run typecheck && npm run test:workpass505:causal-event-identity",
+    "test:workpass506:reality-evidence-ledger": "node --experimental-strip-types tests/workpass506-reality-evidence-event-ledger.mjs",
+    "test:workpass506": "npm run typecheck && npm run test:workpass506:reality-evidence-ledger && npm run test:workpass505:causal-event-identity"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.4"
   }
 }

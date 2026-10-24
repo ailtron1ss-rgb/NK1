@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { P23CompoundRepairRevisionCoordinator } from '../src/organism/learning/P23CompoundRepairRevisionCoordinator.ts';
+import { P23CompoundRepairRevisionCoordinator, canonicalCompoundRepairEvidence, fingerprintCompoundRepairEvidence } from '../src/organism/learning/P23CompoundRepairRevisionCoordinator.ts';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 
 const evidence = [{
@@ -9,6 +8,62 @@ const evidence = [{
   candidateTools: ['fallback'], selectedTool: 'fallback', verified: true, confidence01: .9,
   observedAt: 10, revisionEligible: true,
 }];
+
+const sameTimeEvidence = [
+  evidence[0],
+  { ...evidence[0], failureFingerprint:'fp-b', stepId:'step-2', diagnosis:'different verified failure',
+    candidateTools:['tool-z','fallback','tool-a'] },
+];
+const permutedEvidence = [...sameTimeEvidence].reverse().map(row => ({
+  ...Object.fromEntries(Object.entries(row).reverse()),
+  candidateTools:[...row.candidateTools].reverse(),
+}));
+assert.equal(fingerprintCompoundRepairEvidence(sameTimeEvidence), fingerprintCompoundRepairEvidence(permutedEvidence),
+  'row order, property insertion order and candidate-tool set order must not manufacture a new repair-evidence revision');
+assert.notEqual(fingerprintCompoundRepairEvidence(sameTimeEvidence),
+  fingerprintCompoundRepairEvidence(sameTimeEvidence.map((row,index) => index===0 ? {...row,diagnosis:'materially changed diagnosis'} : row)),
+  'a material change in repair evidence must change the revision fingerprint');
+
+let canonicalAccessorCalls=0;
+const accessorEvidenceRow=Object.defineProperty({...evidence[0]},'diagnosis',{
+  enumerable:true,get(){canonicalAccessorCalls++;return 'forged diagnosis';},
+});
+assert.throws(()=>canonicalCompoundRepairEvidence([accessorEvidenceRow]),/compound-repair-evidence-data-boundary-rejected/);
+assert.equal(canonicalAccessorCalls,0,'canonical evidence snapshot must reject getters without invoking them');
+assert.throws(()=>canonicalCompoundRepairEvidence([evidence[0],,]),/compound-repair-evidence-data-boundary-rejected/,
+  'sparse evidence rows must not be skipped by canonicalization');
+assert.throws(()=>canonicalCompoundRepairEvidence([{...evidence[0],confidence01:1.01}]),/compound-repair-evidence-row-invalid/,
+  'out-of-range evidence confidence must not contribute to a revision fingerprint');
+assert.throws(()=>canonicalCompoundRepairEvidence([{...evidence[0],candidateTools:['fallback','fallback']}]),/compound-repair-evidence-row-invalid/,
+  'duplicate candidate tools must not change revision provenance');
+assert.deepEqual(canonicalCompoundRepairEvidence(sameTimeEvidence).map(row=>row.failureFingerprint),
+  ['fp-a','fp-b'],'valid repair evidence remains accepted and deterministically ordered');
+
+const manyRepairRows=Array.from({length:120},(_,index)=>({
+  holdout:false,failureFingerprint:`repair-${String(index).padStart(3,'0')}`,
+  stepId:`step-${index}`,toolId:'primary',diagnosis:`verified diagnosis ${index}`,
+  contextSignature:'ctx-a',
+  // The newest row is a legitimate failed attempt with no selected replacement.
+  // It is useful diagnostic memory but must not be a skill-revision candidate.
+  candidateTools:index===119?[]:['fallback'],
+  selectedTool:index===119?'':'fallback',
+  verified:index!==119,confidence01:index===119 ? 0.2 : 0.9,at:index,
+}));
+const runtimeEvidenceView=Object.create(OrganismRuntime.prototype);
+runtimeEvidenceView.proceduralSkillLibrary={snapshot:()=>({compoundSkills:[{
+  id:'skill-a',name:'fallback',repairsLedger:manyRepairRows,policy:{minEvidence01:.5},
+}]})};
+const newestRepairWindow=OrganismRuntime.prototype.compoundSkillRepairEvidence.call(runtimeEvidenceView,'skill-a');
+assert.equal(newestRepairWindow.length,96,
+  'a longer legitimate repair ledger must be reduced to the 96-row evidence window before canonical validation');
+assert.equal(newestRepairWindow[0].observedAt,119);
+assert.equal(newestRepairWindow.at(-1).observedAt,24,
+  'the retained bounded window must contain the newest repair evidence, not fail on the full ledger size');
+assert.equal(newestRepairWindow[0].revisionEligible,false,
+  'ineligible diagnostic observations remain available without being admitted to revision generation');
+assert.deepEqual(newestRepairWindow[0].candidateTools,[],
+  'a failed attempt without a viable replacement remains in the runtime evidence window');
+
 let providerCalls = 0;
 let stagedCalls = 0;
 let received = null;
@@ -211,8 +266,63 @@ assert.equal(concurrentResultTwo.status, 'candidate-staged');
 assert.equal(concurrentStageCalls, 1, 'concurrent callers must not create duplicate candidate stages');
 assert.strictEqual(concurrentResultOne, concurrentResultTwo, 'coalesced callers should share the same result object');
 
+// WorkPass328: a concurrent request with NEW evidence must not be swallowed by a stale in-flight revision.
+const changingEvidence = [structuredClone(evidence[0])];
+let releaseOldEvidenceProvider;
+const oldEvidenceBarrier = new Promise(resolve => { releaseOldEvidenceProvider = resolve; });
+let changingProviderCalls = 0;
+let changingStageCalls = 0;
+let stagedEvidenceDigest = null;
+const changingCoordinator = new P23CompoundRepairRevisionCoordinator(
+  {
+    compoundSkillRepairEvidence: () => changingEvidence,
+    generateCompoundSkillRevision: async input => {
+      changingStageCalls++;
+      stagedEvidenceDigest = input.sourceEvidenceFingerprint;
+      return { candidate: { candidateId: 'fresh-evidence-candidate' }, repairEvidenceCount: 1 };
+    },
+  },
+  engine,
+  async () => {
+    changingProviderCalls++;
+    const attempt = changingProviderCalls;
+    if (attempt === 1) await oldEvidenceBarrier;
+    return {
+      proposal: { authentic: true, attempt },
+      sourceCandidateId: `source-candidate-${attempt}`,
+      baseline: { validation: [], holdout: [] },
+      candidateEvaluation: { validation: [], holdout: [] },
+      generate: async () => ({ generated: true, attempt }),
+      evaluateRevisedCandidate: async input => ({
+        payloadFingerprint: input.payloadFingerprint,
+        evaluationFingerprint: (attempt === 1 ? 'd' : 'e').repeat(64),
+        evaluation: { validation: [], holdout: [] },
+      }),
+    };
+  },
+);
+const staleAttempt = changingCoordinator.reviseFromObservedRepairs('skill-a');
+assert.equal(changingProviderCalls, 1, 'first evidence snapshot must enter the provider');
+changingEvidence[0] = {
+  ...changingEvidence[0],
+  failureFingerprint: 'fp-newer',
+  diagnosis: 'a newer independently observed repair changes the evidence snapshot',
+};
+const latestDigest = fingerprintCompoundRepairEvidence(changingEvidence);
+const latestAttempt = changingCoordinator.reviseFromObservedRepairs('skill-a');
+assert.equal(changingProviderCalls, 1, 'new-evidence request waits for the currently running snapshot');
+releaseOldEvidenceProvider();
+const [staleSettled, latestSettled] = await Promise.allSettled([staleAttempt, latestAttempt]);
+assert.equal(staleSettled.status, 'rejected', 'the old snapshot must fail closed after the ledger changes');
+assert.match(String(staleSettled.reason), /compound repair evidence changed while trusted revision inputs were being prepared/);
+assert.equal(latestSettled.status, 'fulfilled', 'the queued request must retry using the newer ledger snapshot');
+assert.equal(latestSettled.value.status, 'candidate-staged');
+assert.equal(changingProviderCalls, 2, 'new evidence must trigger a fresh provider/evaluation attempt');
+assert.equal(changingStageCalls, 1, 'only the fresh snapshot may reach candidate staging');
+assert.equal(stagedEvidenceDigest, latestDigest, 'staged provenance must bind to the current evidence digest');
+
 // A persisted candidate carries the same source-evidence digest across coordinator restarts.
-const durableDigest = createHash('sha256').update(JSON.stringify(evidence)).digest('hex');
+const durableDigest = fingerprintCompoundRepairEvidence(evidence);
 let durableProviderCalls = 0;
 let durableStageCalls = 0;
 const durableCoordinator = new P23CompoundRepairRevisionCoordinator(
@@ -281,4 +391,151 @@ assert.equal(failureProviderCalls, 2, 'new verified repair evidence must bypass 
 assert.equal(retryCoordinator.retryBackoffDiagnostics()[0].attempts, 1,
   'new evidence gets a fresh bounded retry budget');
 
-console.log('WorkPass172 + WorkPass293 + WorkPass294 coordinator regressions completed');
+
+// WorkPass419: retry cooldown survives coordinator/runtime restart through the existing state-store contract.
+let persistedRetryState = null;
+const retryStateStore = {
+  load: async () => persistedRetryState === null ? null : structuredClone(persistedRetryState),
+  save: async value => { persistedRetryState = structuredClone(value); },
+};
+const restartEvidence = [structuredClone(evidence[0])];
+let restartProviderCalls = 0;
+const restartRuntime = {
+  compoundSkillRepairEvidence: () => restartEvidence,
+  generateCompoundSkillRevision: async () => { throw new Error('must not stage after retry restore'); },
+};
+const firstRetryCoordinator = new P23CompoundRepairRevisionCoordinator(
+  restartRuntime,
+  engine,
+  async () => {
+    restartProviderCalls++;
+    throw new Error('persistent cooldown seed failure');
+  },
+  retryStateStore,
+);
+await assert.rejects(() => firstRetryCoordinator.reviseFromObservedRepairs('skill-a'),
+  /persistent cooldown seed failure/);
+assert.equal(persistedRetryState.schemaVersion, 1);
+assert.equal(persistedRetryState.entries.length, 1);
+assert.equal(persistedRetryState.entries[0].attempts, 1);
+
+const restartedCoordinator = new P23CompoundRepairRevisionCoordinator(
+  restartRuntime,
+  engine,
+  async () => {
+    restartProviderCalls++;
+    throw new Error('must remain in cooldown after restart');
+  },
+  retryStateStore,
+);
+await restartedCoordinator.restoreRetryBackoff();
+const persistedCooldown = await restartedCoordinator.reviseFromObservedRepairs('skill-a');
+assert.equal(persistedCooldown.status, 'retry-backoff-active',
+  'a coordinator restart must not erase the cooldown for identical failing evidence');
+assert.equal(restartProviderCalls, 1, 'restored cooldown must skip expensive provider work');
+assert.equal(restartedCoordinator.retryBackoffDiagnostics()[0].durable, true);
+assert.equal(restartedCoordinator.retryBackoffPersistenceDiagnostics().available, true);
+
+const corruptRetryCoordinator = new P23CompoundRepairRevisionCoordinator(
+  restartRuntime, engine, async () => { throw new Error('must not execute'); },
+  { load: async () => ({ schemaVersion: 1, entries: [{ skillId: 'skill-a', evidenceDigest: 'a'.repeat(64), attempts: 99, retryAfter: Date.now() + 1000, category: 'revision-generation-or-evaluation-failed' }] }), save: async () => {} },
+);
+await assert.rejects(() => corruptRetryCoordinator.restoreRetryBackoff(),
+  /compound-repair-retry-backoff-entry-invalid/,
+  'malformed persisted retry state must fail closed rather than silently resetting the cooldown');
+
+let hostileProviderGetterCalls = 0;
+let hostileProviderStageCalls = 0;
+const hostileProviderRuntime = {
+  compoundSkillRepairEvidence: () => evidence,
+  generateCompoundSkillRevision: async () => {
+    hostileProviderStageCalls++;
+    return { candidate: { candidateId: 'should-never-stage' }, repairEvidenceCount: 1 };
+  },
+};
+const hostileProviderResult = {
+  proposal: { authentic: true },
+  sourceCandidateId: 'hostile-provider-source',
+  baseline: { validation: [], holdout: [] },
+  candidateEvaluation: { validation: [], holdout: [] },
+  generate: async () => ({ generated: true }),
+  evaluateRevisedCandidate: async input => ({
+    payloadFingerprint: input.payloadFingerprint,
+    evaluationFingerprint: 'f'.repeat(64),
+    evaluation: { validation: [], holdout: [] },
+  }),
+};
+Object.defineProperty(hostileProviderResult, 'sourceCandidateId', {
+  enumerable: true,
+  get() { hostileProviderGetterCalls++; return 'must-not-be-read'; },
+});
+const hostileProviderCoordinator = new P23CompoundRepairRevisionCoordinator(
+  hostileProviderRuntime, engine, async () => hostileProviderResult,
+);
+await assert.rejects(
+  () => hostileProviderCoordinator.reviseFromObservedRepairs('skill-a'),
+  /provider-data-boundary-rejected/,
+);
+assert.equal(hostileProviderGetterCalls, 0,
+  'the coordinator must inspect provider descriptors without invoking getters');
+assert.equal(hostileProviderStageCalls, 0,
+  'untrusted provider envelopes must fail before candidate staging');
+
+let nestedProviderGetterCalls = 0;
+const hostileNestedProposal = { authentic: true };
+Object.defineProperty(hostileNestedProposal, 'hidden', {
+  enumerable: true,
+  get() { nestedProviderGetterCalls++; return 'must-not-be-read'; },
+});
+const nestedProviderCoordinator = new P23CompoundRepairRevisionCoordinator(
+  hostileProviderRuntime,
+  engine,
+  async () => ({
+    proposal: hostileNestedProposal,
+    sourceCandidateId: 'nested-hostile-source',
+    baseline: { validation: [], holdout: [] },
+    candidateEvaluation: { validation: [], holdout: [] },
+    generate: async () => ({ generated: true }),
+    evaluateRevisedCandidate: async input => ({
+      payloadFingerprint: input.payloadFingerprint,
+      evaluationFingerprint: 'f'.repeat(64),
+      evaluation: { validation: [], holdout: [] },
+    }),
+  }),
+);
+await assert.rejects(
+  () => nestedProviderCoordinator.reviseFromObservedRepairs('skill-a'),
+  /provider-data-boundary-rejected/,
+);
+assert.equal(nestedProviderGetterCalls, 0,
+  'nested provider data must be snapshotted recursively without invoking getters');
+
+
+let generatorCapabilityGetterCalls = 0;
+const hostileCapabilityResult = {
+  proposal: { authentic: true },
+  sourceCandidateId: 'capability-hostile-source',
+  baseline: { validation: [], holdout: [] },
+  candidateEvaluation: { validation: [], holdout: [] },
+  generate: async () => ({ generated: true }),
+  evaluateRevisedCandidate: async input => ({
+    payloadFingerprint: input.payloadFingerprint,
+    evaluationFingerprint: 'a'.repeat(64),
+    evaluation: { validation: [], holdout: [] },
+  }),
+};
+Object.defineProperty(hostileCapabilityResult, 'generate', {
+  enumerable: true,
+  get() { generatorCapabilityGetterCalls++; return async () => ({ generated: true }); },
+});
+const hostileCapabilityCoordinator = new P23CompoundRepairRevisionCoordinator(
+  hostileProviderRuntime, engine, async () => hostileCapabilityResult,
+);
+await assert.rejects(
+  () => hostileCapabilityCoordinator.reviseFromObservedRepairs('skill-a'),
+  /provider-data-boundary-rejected/,
+);
+assert.equal(generatorCapabilityGetterCalls, 0,
+  'callable capabilities must be own data properties too; accessors never become capabilities');
+
+console.log('WorkPass172 + WorkPass293 + WorkPass294 + WorkPass353/354 coordinator regressions completed');

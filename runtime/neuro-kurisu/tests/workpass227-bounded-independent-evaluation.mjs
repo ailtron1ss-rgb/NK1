@@ -95,4 +95,33 @@ try {
   else process.env.NODE_ENV = priorNodeEnv;
 }
 
+
+ // WorkPass423: bound task/capability/trajectory cardinality before expensive per-row work.
+ const oversizedTaskSet = Array.from({ length: 4097 }, (_, index) => ({
+   ...tasks[0], taskId: 'validation-' + index, trialId: 'validation-trial-' + index,
+ }));
+ assert.throws(
+   () => createIndependentSkillCandidateEvaluator({ ...base, tasks: oversizedTaskSet }),
+   /independent-candidate-evaluator-task-count-limit/,
+   'oversized evaluation plans must be rejected before looping through all rows',
+ );
+ const oversizedExpectedSteps = Array.from({ length: 513 }, (_, index) => 'step-' + index);
+ assert.throws(
+   () => createIndependentSkillCandidateEvaluator({
+     ...base, tasks: [{ ...tasks[0], expectedStepIds: oversizedExpectedSteps }, tasks[1]],
+   }),
+   /independent-candidate-evaluator-task-shape-limit/,
+   'a task cannot request unbounded expected-step processing',
+ );
+ let oversizedOutputSequence = 0;
+ const oversizedObservedSteps = createIndependentSkillCandidateEvaluator({
+   ...base,
+   executor: { async execute() {
+     return { runId: 'oversized-' + (++oversizedOutputSequence), observedStepIds: Array.from({ length: 513 }, (_, index) => 'step-' + index) };
+   } },
+ });
+ const oversizedOutputResult = await oversizedObservedSteps({ payload, payloadFingerprint });
+ assert.ok(oversizedOutputResult.evaluation.provenance.runBindings.every(binding => !binding.executable && !binding.bindingVerified),
+   'oversized executor traces must fail closed rather than becoming evidence');
+
 console.log('WorkPass227 bounded independent-evaluation services + WorkPass240 authority-boundary regressions: PASS');

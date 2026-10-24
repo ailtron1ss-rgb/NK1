@@ -60,6 +60,15 @@ export class UnifiedCognitiveCycle {
     const normalizedMissing=malformedMissing?[...REQUIRED]:filteredMissing;
     const lastTick=typeof source.lastTick==='number'&&Number.isSafeInteger(source.lastTick)&&source.lastTick>=-1?source.lastTick:-1;
     const missing=cycles===0&&normalizedMissing.length===0?[...REQUIRED]:normalizedMissing;
+    // Restored completion is trusted only when every persisted counter forms
+    // the same coherent partition reconstructed above.
+    const countersConsistent =
+      typeof source.completeCycles==='number' && Number.isSafeInteger(source.completeCycles) &&
+      source.completeCycles===completeCycles &&
+      typeof source.incompleteCycles==='number' && Number.isSafeInteger(source.incompleteCycles) &&
+      source.incompleteCycles===incompleteCycles &&
+      typeof source.brokenLineages==='number' && Number.isSafeInteger(source.brokenLineages) &&
+      source.brokenLineages>=0 && source.brokenLineages<=incompleteCycles;
     this.state={
       version:1,
       cycles,
@@ -69,7 +78,7 @@ export class UnifiedCognitiveCycle {
       meanStageCoverage01:safeMetric(source.meanStageCoverage01),
       meanCausalContinuity01:safeMetric(source.meanCausalContinuity01),
       lastTick,
-      lastComplete:cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
+      lastComplete:countersConsistent&&cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
       lastMissingStages:missing,
     };
   }

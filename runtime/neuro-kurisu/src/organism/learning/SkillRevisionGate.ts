@@ -8,6 +8,8 @@
 export type RevisionAuthority = 'independent-verifier' | 'human-review' | 'self-report';
 export interface RevisionObservation {
   taskId: string;
+  /** Version of the exact manifest task; task IDs may be reused when prompts evolve. */
+  taskVersion: string;
   family: string;
   split: 'train' | 'validation' | 'holdout';
   method: string;
@@ -23,6 +25,10 @@ export interface SkillRevisionGateOptions {
   minPairedTasks?: number;
   minAbsoluteGain?: number;
   maxFamilyRegression?: number;
+  /** Minimum distinct random seeds represented in paired holdout evidence. */
+  minIndependentSeeds?: number;
+  /** Reject a candidate with a seed-level pass-rate regression beyond this budget. */
+  maxSeedRegression?: number;
 }
 export interface SkillRevisionGateResult {
   accepted: boolean;
@@ -32,56 +38,152 @@ export interface SkillRevisionGateResult {
   candidatePassRate: number;
   absoluteGain: number;
   familyGains: Array<{ family: string; pairedN: number; gain: number }>;
+  seedGains: Array<{ seed: number; pairedN: number; gain: number }>;
+  independentSeedN: number;
   rejectedRows: number;
 }
 const clamp = (x: number, fallback: number) => Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : fallback;
 const boundedInteger = (value: number | undefined, fallback: number, min: number, max: number) =>
   Number.isFinite(value) ? Math.max(min, Math.min(max, Math.floor(value!))) : fallback;
-const valid = (x: RevisionObservation) => Boolean(
-  x && x.taskId?.trim() && x.family?.trim() && x.method?.trim() &&
-  Number.isSafeInteger(x.seed) && x.seed >= 0 &&
-  Number.isSafeInteger(x.attempt) && x.attempt === 1 &&
-  x.split === 'holdout' && typeof x.passed === 'boolean' &&
-  (x.authority === 'independent-verifier' || x.authority === 'human-review') &&
-  x.verifierId?.trim() && x.evidenceRef?.trim() &&
-  (x.authority !== 'independent-verifier' || x.verifierId === x.expectedVerifierId)
-);
+const isBoundedText = (value: unknown, max: number): value is string =>
+  typeof value === 'string' && value.length > 0 && value.length <= max &&
+  value.trim() === value && value.normalize('NFKC') === value &&
+  !Array.from(value).some(character => {
+    const code = character.charCodeAt(0);
+    return code <= 0x1f || code === 0x7f || (code >= 0x80 && code <= 0x9f);
+  });
 
-/** Pair on exact task/version identity (taskId), seed and first attempt; retries and replayed evidence receipts are not independent samples. */
+const toPlainDataRecord = (value: unknown): Record<string, unknown> | undefined => {
+  try {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return undefined;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const record: Record<string, unknown> = Object.create(null);
+    for (const [key, descriptor] of Object.entries(descriptors)) {
+      // Never invoke untrusted getters while evaluating evidence. Snapshot own
+      // data properties before reading any identity or outcome field.
+      if (!Object.prototype.hasOwnProperty.call(descriptor, 'value')) return undefined;
+      record[key] = descriptor.value;
+    }
+    return record;
+  } catch {
+    // Proxies and exotic objects can throw during reflection; treat them as invalid rows.
+    return undefined;
+  }
+};
+
+/** Validate and detach untrusted runtime data, not just the TypeScript surface type. */
+const parseObservation = (value: unknown): RevisionObservation | undefined => {
+  const row = toPlainDataRecord(value);
+  if (!row) return undefined;
+  const taskId = row.taskId;
+  const taskVersion = row.taskVersion;
+  const family = row.family;
+  const split = row.split;
+  const method = row.method;
+  const seed = row.seed;
+  const attempt = row.attempt;
+  const passed = row.passed;
+  const authority = row.authority;
+  const verifierId = row.verifierId;
+  const expectedVerifierId = row.expectedVerifierId;
+  const evidenceRef = row.evidenceRef;
+  if (!isBoundedText(taskId, 256) ||
+      !isBoundedText(taskVersion, 128) ||
+      !isBoundedText(family, 128) ||
+      !isBoundedText(method, 128) ||
+      !isBoundedText(verifierId, 128) ||
+      !isBoundedText(expectedVerifierId, 128) ||
+      !isBoundedText(evidenceRef, 512) ||
+      !Number.isSafeInteger(seed) || (seed as number) < 0 ||
+      !Number.isSafeInteger(attempt) || attempt !== 1 ||
+      split !== 'holdout' || typeof passed !== 'boolean' ||
+      (authority !== 'independent-verifier' && authority !== 'human-review')) {
+    return undefined;
+  }
+  if (authority === 'independent-verifier' && verifierId !== expectedVerifierId) return undefined;
+  return {
+    taskId,
+    taskVersion,
+    family,
+    split,
+    method,
+    seed: seed as number,
+    attempt: attempt as number,
+    passed,
+    authority,
+    verifierId,
+    expectedVerifierId,
+    evidenceRef,
+  };
+};
+
+/** Pair on exact task ID + manifest version + seed + first attempt; retries and replayed evidence receipts are not independent samples. */
 export function evaluateSkillRevision(
   observations: readonly RevisionObservation[],
   baselineMethod: string,
   candidateMethod: string,
   options: SkillRevisionGateOptions = {},
 ): SkillRevisionGateResult {
-  if (!baselineMethod?.trim() || !candidateMethod?.trim() || baselineMethod === candidateMethod) {
-    throw new Error('two distinct method names are required');
+  if (!isBoundedText(baselineMethod, 128) || !isBoundedText(candidateMethod, 128) ||
+      baselineMethod === candidateMethod) {
+    throw new Error('two distinct bounded method names are required');
   }
-  const minPairedTasks = boundedInteger(options.minPairedTasks, 8, 2, 10000);
-  const minAbsoluteGain = clamp(options.minAbsoluteGain ?? .02, .02);
-  const maxFamilyRegression = clamp(options.maxFamilyRegression ?? .10, .10);
-  const byPair = new Map<string, Map<string, RevisionObservation>>();
-  // A single verifier receipt cannot be replayed under multiple task IDs to manufacture sample size.
-  const seenEvidenceReceipts = new Set<string>();
+  if (!Array.isArray(observations)) throw new Error('revision observations must be an array');
+  const optionValues = toPlainDataRecord(options);
+  if (!optionValues) throw new Error('revision gate options must be a plain data object');
+  const minPairedTasks = boundedInteger(optionValues.minPairedTasks as number | undefined, 8, 2, 10000);
+  const minAbsoluteGain = clamp((optionValues.minAbsoluteGain as number | undefined) ?? .02, .02);
+  const maxFamilyRegression = clamp((optionValues.maxFamilyRegression as number | undefined) ?? .10, .10);
+  const minIndependentSeeds = boundedInteger(optionValues.minIndependentSeeds as number | undefined, 3, 1, 10000);
+  const maxSeedRegression = clamp((optionValues.maxSeedRegression as number | undefined) ?? .50, .50);
+  const byPair = new Map<string, Map<string, RevisionObservation[]>>();
+  const receiptCounts = new Map<string, number>();
   let rejectedRows = 0;
-  for (const row of observations) {
-    if (!valid(row) || (row.method !== baselineMethod && row.method !== candidateMethod)) {
+  for (const input of observations) {
+    const row = parseObservation(input);
+    if (!row || (row.method !== baselineMethod && row.method !== candidateMethod)) {
       rejectedRows++;
       continue;
     }
-    const receiptKey = JSON.stringify([row.method, row.verifierId, row.evidenceRef.normalize('NFKC').trim()]);
-    if (seenEvidenceReceipts.has(receiptKey)) { rejectedRows++; continue; }
-    seenEvidenceReceipts.add(receiptKey);
-    const key = JSON.stringify([row.taskId, row.seed, row.attempt]);
-    const pair = byPair.get(key) ?? new Map<string, RevisionObservation>();
-    if (pair.has(row.method)) { rejectedRows++; continue; }
-    pair.set(row.method, row);
+    const receiptKey = row.evidenceRef.normalize('NFKC').trim();
+    receiptCounts.set(receiptKey, (receiptCounts.get(receiptKey) ?? 0) + 1);
+    const key = JSON.stringify([row.taskId, row.taskVersion, row.seed, row.attempt]);
+    const pair = byPair.get(key) ?? new Map<string, RevisionObservation[]>();
+    const methodRows = pair.get(row.method) ?? [];
+    methodRows.push(row);
+    pair.set(row.method, methodRows);
     byPair.set(key, pair);
   }
-  const paired = [...byPair.values()].filter(pair => {
-    if (!pair.has(baselineMethod) || !pair.has(candidateMethod)) return false;
-    return pair.get(baselineMethod)!.family === pair.get(candidateMethod)!.family;
-  });
+
+  // Duplicate identities invalidate every colliding row. First-write-wins would
+  // make the score depend on attacker-controlled input order.
+  const duplicateReceipts = new Set([...receiptCounts.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([receipt]) => receipt));
+  const paired: Array<Map<string, RevisionObservation>> = [];
+  for (const byMethod of byPair.values()) {
+    const usable = new Map<string, RevisionObservation>();
+    for (const [method, methodRows] of byMethod) {
+      if (methodRows.length !== 1) {
+        rejectedRows += methodRows.length;
+        continue;
+      }
+      const row = methodRows[0]!;
+      if (duplicateReceipts.has(row.evidenceRef.normalize('NFKC').trim())) {
+        rejectedRows++;
+        continue;
+      }
+      usable.set(method, row);
+    }
+    if (!usable.has(baselineMethod) || !usable.has(candidateMethod)) continue;
+    if (usable.get(baselineMethod)!.family !== usable.get(candidateMethod)!.family) {
+      rejectedRows += 2;
+      continue;
+    }
+    paired.push(usable);
+  }
   const n = paired.length;
   const baselinePassRate = n ? paired.reduce((s, p) => s + Number(p.get(baselineMethod)!.passed), 0) / n : 0;
   const candidatePassRate = n ? paired.reduce((s, p) => s + Number(p.get(candidateMethod)!.passed), 0) / n : 0;
@@ -99,11 +201,29 @@ export function evaluateSkillRevision(
     family, pairedN: rows.length,
     gain: rows.reduce((s, row) => s + row.candidate - row.baseline, 0) / rows.length,
   }));
+  const bySeed = new Map<number, Array<{ baseline: number; candidate: number }>>();
+  for (const pair of paired) {
+    const baseline = pair.get(baselineMethod)!;
+    const candidate = pair.get(candidateMethod)!;
+    const rows = bySeed.get(baseline.seed) ?? [];
+    rows.push({ baseline: Number(baseline.passed), candidate: Number(candidate.passed) });
+    bySeed.set(baseline.seed, rows);
+  }
+  const seedGains = [...bySeed.entries()].sort(([a], [b]) => a - b).map(([seed, rows]) => ({
+    seed,
+    pairedN: rows.length,
+    gain: rows.reduce((sum, row) => sum + row.candidate - row.baseline, 0) / rows.length,
+  }));
+  const independentSeedN = seedGains.length;
   const severeRegression = familyGains.find(row => row.pairedN >= 2 && row.gain < -maxFamilyRegression);
-  const accepted = n >= minPairedTasks && absoluteGain >= minAbsoluteGain && !severeRegression;
+  const severeSeedRegression = seedGains.find(row => row.pairedN >= 2 && row.gain < -maxSeedRegression);
+  const accepted = n >= minPairedTasks && independentSeedN >= minIndependentSeeds &&
+    absoluteGain >= minAbsoluteGain && !severeRegression && !severeSeedRegression;
   const reason = n < minPairedTasks ? 'insufficient-independent-heldout-pairs' :
+    independentSeedN < minIndependentSeeds ? 'insufficient-independent-seeds' :
     severeRegression ? 'heldout-family-regression' :
+    severeSeedRegression ? 'heldout-seed-regression' :
     absoluteGain < minAbsoluteGain ? 'no-material-heldout-improvement' :
     'heldout-gate-passed-proposal-only';
-  return { accepted, reason, pairedN: n, baselinePassRate, candidatePassRate, absoluteGain, familyGains, rejectedRows };
+  return { accepted, reason, pairedN: n, baselinePassRate, candidatePassRate, absoluteGain, familyGains, seedGains, independentSeedN, rejectedRows };
 }

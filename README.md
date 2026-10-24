@@ -1,3 +1,172 @@
+## Current source-stack checkpoint — WorkPass419 (2026-10-23)
+
+- **P23 restart resilience:** compound repair revision retry cooldown now persists to an atomic `FileStateStore` sidecar and is restored during runtime startup. The cooldown is keyed by exact repair-evidence SHA-256, so unchanged failing evidence is throttled after restart while genuinely new evidence can proceed.
+- **Fail-closed restoration:** snapshot schema and entries are bounded/validated; corrupted retry records cannot silently reset to an immediate retry. Diagnostics indicate whether persistence is configured and healthy.
+- **Regression:** P23 coordinator test now covers failure → persisted cooldown → new coordinator → blocked duplicate attempt, plus malformed persisted-state rejection. P26 tracks the coordinator, runtime and test.
+- **Progress remains:** learning implementation estimate 83%, production readiness ~45%; tests and typecheck still unconfirmed because hosted Actions jobs fail before runner allocation. No measured learning uplift claimed.
+- **Architecture:** reused the existing atomic `FileStateStore`; no new runtime dependency or duplicate learner. `main` and the Release ZIP remain unchanged.
+
+---
+
+## Current source-stack checkpoint — WorkPass418 (2026-10-23)
+
+- **Personal curriculum restore/intake:** invalid state is filtered before it can guide learning. Duplicate saved IDs/families are quarantined as complete conflict sets rather than resolved by array ordering.
+- **Goal selection:** ranking validates canonical goal status/source and numeric domains before updating focus; ties sort by stable goal ID.
+- **Lifecycle counts:** completion/suppression diagnostics are reconciled from unique thread status to avoid inflation through repeated outcomes.
+- **Regressions:** the WorkPass417 `test:big-pass-122` script now includes the online input-boundary and restore-collision tests; focused CI watches the collision-test path.
+- **Progress unchanged:** learning implementation estimate 83%, confirmed production readiness ~45%. Tests/typecheck remain unverified because GitHub Actions jobs fail before runner allocation with zero steps; no measured learning uplift is claimed.
+- **Architecture:** no extra learning engine or runtime dependency; continues using NK1's shared trust boundary. `main` and the Release ZIP are unchanged.
+
+---
+
+## Current source-stack checkpoint — WorkPass448 (2026-10-23)
+
+- **Bootstrap resource bound:** the shared `PairedSeedConfidence.ts` now rejects workloads above 16 million draw operations before entering the bootstrap loop or allocating resample results.
+- **Fail-closed behavior:** an excessive `sampleCount × resamples` request returns the explicit `paired-seed-bootstrap-work-budget-exceeded` error rather than running potentially unbounded CPU work or silently reducing a requested confidence setting.
+- **Regression:** the existing bootstrap utility test now checks rejection of a 5,000-value × 4,000-resample workload; accepted workloads preserve their existing output shape/algorithm.
+- **Guardrail:** this is input-workload hardening, not an accuracy/performance benchmark. Tests/typecheck are still not confirmed on exact HEAD; progress remains 83% implementation and ~45% confirmed production readiness. `main` and Release ZIP are unchanged.
+- Details: [WorkPass448 bootstrap work budget](docs/WORKPASS448_BOOTSTRAP_WORK_BUDGET_RU.md), [WorkPass447 task-cluster interval](docs/WORKPASS447_TASK_CLUSTER_BOOTSTRAP_RU.md).
+
+---
+
+## Current source-stack checkpoint — WorkPass447 (2026-10-23)
+
+- **Task-level uncertainty:** robust diagnostics now include a deterministic percentile-bootstrap interval for the equal-weight mean candidate-minus-baseline delta, independently for task success, skill quality and trajectory quality.
+- **Correct resampling unit:** trials are averaged inside task before bootstrapping across tasks, so a task with many repeated seeds does not count as many independent tasks. One-task inputs produce no between-task interval.
+- **Guardrail:** this is diagnostic-only, the metric summary is schema v2, and promotion / safety / approval policy is unchanged. It is not proof of a learning improvement or a replacement for the untouched holdout.
+- **Regression coverage:** interval bounds, uncertainty despite a positive point estimate, row-order stability and the one-task edge case were added to the existing WorkPass406 test. Exact-HEAD execution remains unconfirmed; learning implementation estimate remains **83%**, production readiness **~45%**. `main` and the Release ZIP remain unchanged.
+- Details: [WorkPass447 design note](docs/WORKPASS447_TASK_CLUSTER_BOOTSTRAP_RU.md), [learning scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md).
+
+---
+
+## Current source-stack checkpoint — WorkPass416 (2026-10-23)
+
+- **Deterministic numeric aggregation:** trial rows are grouped by task and then sorted by stable `trialId` before summation. This prevents input insertion order from moving a task mean's final rounded decimal due to floating-point addition order.
+- **Regression:** WorkPass406's metrics test now includes a 5-task × 37-seed fractional corpus and asserts identical summaries for reverse/scrambled row order.
+- **Efficiency:** one O(R) grouping pass replaces repeated O(T × R) full-list filtering; canonical per-task sorting adds O(R log R) worst-case total and each score dimension scans grouped rows once.
+- **Metrics:** the diagnostic-only schema still reports task-balanced IQM, median, optimality gap and paired probability of improvement for task success, skill quality and trajectory quality. Promotion gates are unchanged.
+- **Progress:** learning-category implementation estimated at **83%**; production readiness remains **~45%**. Exact-head runtime tests/typecheck remain unconfirmed because hosted Actions logs are unavailable. `main` and the Release ZIP remain unchanged.
+- **Cross-branch strategy map:** `docs/NEUROCORE_MASTER_STRATEGY_AND_BRAIN_MAP.md` was selectively synchronized from `integration` after a line-level diff confirmed integration contained additions and no deleted learning-branch content; the resulting blob matches integration exactly. Branch histories remain divergent, so this was a document sync, not a merge.
+- Details: [RLiable metrics note](docs/WORKPASS412_RLIABLE_METRIC_DEPTH_RU.md) and [learning scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md).
+
+---
+
+## Current source-stack checkpoint — WorkPass415 (2026-10-23)
+
+- **Metric efficiency:** `LearningRobustMetrics.ts` now groups matched baseline/candidate trial rows by task once. All three score dimensions reuse the grouping rather than rescanning all trials for every task; this removes repeated O(tasks × trials) filtering while preserving task weights and metric formulas.
+- **Metrics now available:** task-balanced IQM, median, optimality gap against score ceiling 1, their deltas, and paired probability of improvement for task success, skill quality and trajectory quality.
+- **Branch-level integration:** this follows the existing Pareto-frontier curriculum and workflow-to-package script audit/runner-pinning changes present in `feature/learning`. P23 and P26 wiring remain intact; no new package dependency was added.
+- **Progress:** learning-category implementation estimated at 83%; production readiness remains ~45%. These are engineering estimates, not benchmark outcomes.
+- **Validation boundary:** the aggregation refactor's exact-HEAD runtime test/typecheck are not confirmed; GitHub Actions has continued to report failed jobs without step logs. No measured learning uplift is claimed; `main` and Release ZIP remain unchanged.
+- Details: [RLiable metric implementation note](docs/WORKPASS412_RLIABLE_METRIC_DEPTH_RU.md) and [learning progress scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md).
+
+---
+
+## Current source-stack checkpoint — WorkPass412 (2026-10-23)
+
+- **Richer learning diagnostics:** `LearningRobustMetrics.ts` now reports task-balanced IQM, task-balanced median, task-balanced optimality gap (score ceiling = 1), all three deltas, and paired probability of improvement for task success, skill quality and trajectory quality.
+- **Fair task weighting:** matched repeated trials are averaged within task before the robust summaries, so a task with more repeat runs does not dominate. Scores pass the existing [0,1] boundary. This is a task-balanced adaptation of metric ideas from RLiable, not copied code.
+- **Upstream inspection:** directly read [`google-research/rliable/rliable/metrics.py`](https://github.com/google-research/rliable/blob/master/rliable/metrics.py) (blob `dc206a180c822eaf3bc8524a63b127aeb1e60fe7`); its mean/median, optimality-gap, IQM and probability-of-improvement estimators inform the schema.
+- **Integration/safety:** metrics flow through the existing P23 independent evaluator and remain `diagnosticOnly: true`. They do not alter eligibility, safety, evidence binding or promotion approval.
+- **Regression/CI:** `workpass406-learning-robust-metrics.mjs` now covers median/gap/delta and zero-gap ceiling behavior. Its existing P23/P26 execution wiring remains in place; the latest workflow-to-package audit also checks command context.
+- **Progress estimate:** learning-category implementation **83%**; production readiness **~45%**. Estimates remain engineering judgments, not benchmark outcomes.
+- **Validation boundary:** exact-HEAD test/typecheck still unconfirmed; GitHub Actions reports failure without available step logs. No measured learning uplift is claimed; `main` and Release ZIP remain unchanged.
+- Details: [WorkPass412 implementation note](docs/WORKPASS412_RLIABLE_METRIC_DEPTH_RU.md) and [learning progress scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md).
+
+---
+
+## Current source-stack checkpoint — WorkPass409 (2026-10-23)
+
+- **Crash window closed:** reconciliation now scans every pending `activation-intent`, not only attempts that managed to append `activation-outcome-unknown`. If the process died immediately after intent, the current versioned skill store can still reconcile the result.
+- **Evidence handling:** an explicit unknown event is preferred when present; otherwise intent alone is checked. The journal validates both legal transition shapes. Metrics distinguish total pending intents from the subset with explicit unknown outcomes.
+- **Regression:** the existing `workpass408-lifecycle-store-reconciliation.mjs` now includes an abrupt-exit fixture with only a durable intent, verifying exact active match recovery, non-active state, missing lineage remaining pending and repeat idempotency. The P26 step already invokes this test.
+- **Progress:** learning-category implementation estimated at 82%; production readiness stays ~45%, because exact-HEAD CI, production evaluator isolation and real multi-seed uplift are still unverified.
+- **Validation boundary:** current GitHub Actions failure still exposes no step logs. The crash-window fix is committed but is not represented as CI-verified or as an improvement in learned task performance. `main` and the Release ZIP remain unchanged.
+- Details: [WorkPass408 reconciliation design](docs/WORKPASS408_LIFECYCLE_STORE_RECONCILIATION_RU.md) and [learning progress scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md).
+
+---
+
+## Current source-stack checkpoint — WorkPass408 (2026-10-23)
+
+- **Recovery loop added:** `P23LearningEngine.reconcileLearningLifecycleOutcomes()` compares uncertain activation intents against the authoritative versioned skill store and appends a reconciled event only when candidate identity, skill/version and payload fingerprint match.
+- **Outcomes:** exact active record → `activation-reconciled-active`; candidate exists but is not currently active → `activation-reconciled-not-currently-active`; missing/contradictory lineage stays unresolved. This never promotes or rolls back a skill.
+- **Runtime integration:** reconciliation runs during startup after the journal/store are configured and is exposed as `OrganismRuntime.reconcileLearningLifecycleOutcomes()` for explicit retry.
+- **Regression/CI:** `tests/workpass408-lifecycle-store-reconciliation.mjs` verifies exact active match, non-active candidate, missing lineage and repeat idempotency. It is wired into `npm run test:p23:learning` and P26 Learning Validation.
+- **Progress:** category implementation is estimated at 81%; production readiness remains ~45%. Details: [WorkPass408 lifecycle reconciliation](docs/WORKPASS408_LIFECYCLE_STORE_RECONCILIATION_RU.md) and [learning progress scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md).
+- **Validation boundary:** exact-head test/typecheck/CI remain unconfirmed because Actions jobs return failure without step logs. No measured learning uplift is claimed; `main` and the Release ZIP remain unchanged.
+
+---
+
+## Current source-stack checkpoint — WorkPass407 (2026-10-23)
+
+- **Lifecycle gap closed:** new `LearningLifecycleJournal.ts` records durable P23 promotion rejection, pre-activation intent, confirmed activation, and explicitly uncertain outcomes in a separate hash-chained JSONL journal.
+- **Correct ordering:** intent must be persisted before a skill activation side effect; if this write fails, activation is not attempted. A post-store exception is recorded as `activation-outcome-unknown`, not falsely classified as success or failure.
+- **Runtime integration:** `P23LearningEngine` and `OrganismRuntime` expose bounded aggregate lifecycle diagnostics in longitudinal and persistence snapshots. A centralized, regression-tested path resolver keeps the journal separate from the organism state file.
+- **Regression/CI:** `tests/workpass407-learning-lifecycle-journal.mjs` is part of `npm run test:p23:learning` and a dedicated P26 Learning Validation step; WorkPass402 checks that production promotion rejection is bound to the staged payload/evaluation fingerprint.
+- **Open-source source inspection:** directly reviewed [Hermes Self-Evolution README](https://github.com/NousResearch/hermes-agent-self-evolution/blob/main/README.md), [PLAN.md](https://github.com/NousResearch/hermes-agent-self-evolution/blob/main/PLAN.md), and [`evolve_skill.py`](https://github.com/NousResearch/hermes-agent-self-evolution/blob/main/evolution/skills/evolve_skill.py). Adapted the separate gate/holdout/failure-preservation mechanisms to NK1's TypeScript lifecycle; no Python framework dependency or incompatible upstream source was imported.
+- **Progress:** category implementation is estimated at 79%; production readiness remains ~45%. These are heuristic estimates; the [WorkPass407 scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md) records the limits.
+- **Validation boundary:** full exact-HEAD CI/runtime typecheck remains unconfirmed. GitHub Actions still returns failed jobs without accessible steps/logs; no benchmark uplift, complete release readiness or subjective consciousness is claimed. `main` and the Release ZIP remain unchanged.
+- Details: [WorkPass407 activation lifecycle note](docs/WORKPASS407_P23_ACTIVATION_OUTCOME_JOURNAL_RU.md).
+
+---
+
+## Current source-stack checkpoint — WorkPass406 (2026-10-23)
+
+- **New evaluation diagnostics:** `compareMatchedIndependentEvaluations` reports task-balanced interquartile mean (IQM), IQM delta and paired probability of improvement separately for task success, skill quality and trajectory quality on validation and holdout.
+- **Integration boundary:** metrics are explicitly diagnostic-only (`diagnosticOnly: true`); they do not authorize promotion or modify the existing eligibility predicate. P23's confidence, source/evidence binding, safety, family/seed coverage, signed receipt and authenticated approval gates remain authoritative.
+- **Input integrity:** exact task/trial pairing is required; score values must be finite and within [0, 1]; plain-data snapshots prevent caller accessors from executing. Seed observations are aggregated within each task before equally-weighting tasks.
+- **Regression wiring:** `runtime/neuro-kurisu/tests/workpass406-learning-robust-metrics.mjs` is part of `npm run test:p23:learning`. See [WorkPass406 implementation note](docs/WORKPASS406_TASK_BALANCED_ROBUST_METRICS_RU.md).
+- **Research:** adapts reporting ideas from [RLiable](https://github.com/google-research/rliable) and lifecycle separation from [Hermes Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution); no extra runtime dependency or upstream code added.
+- **Validation boundary:** code, test and documentation are committed; exact-head test/typecheck/CI remain unconfirmed, and no measured learning uplift is claimed. `main` and the GitHub Release ZIP remain unchanged.
+- **Category progress:** implementation completeness is estimated at 77%, with production readiness around 45%; these are explicitly heuristic estimates. The scorecard separates implementation from verified operation and lists remaining release gates: [learning progress scorecard](docs/WORKPASS406_LEARNING_PROGRESS_SCORECARD_RU.md). The new metric test is now an explicit P26 step.
+
+---
+
+## Current source-stack checkpoint — WorkPass405 (2026-10-23)
+
+- **P23 production promotion gate:** canonical family coverage, minimum two tasks per family, 3 common paired seeds, per-family 95% percentile-bootstrap intervals / 2,000 resamples, with conservative validation and holdout bounds.
+- **Telemetry added:** `IndependentSkillCandidateEvaluator` now retains safe aggregate confidence metrics: equal-weight family mean delta, worst lower bound, and worst upper bound per split, alongside family/seed coverage and failure counts.
+- **Hash-chained fitness journal:** `LearningFitnessJournal.ts` persists P23 `fitness-accepted`/`fitness-rejected` decisions as versioned JSONL with SHA-256 chain, bounded file size, lock serialization, `fsync`, exact field allowlists and read-time integrity checks. `snapshotDiagnostics()` provides aggregate acceptance/rejection rates, reason counts and confidence trends; `OrganismRuntime` exposes it via `longitudinalSnapshot()` and `persistenceMetrics()`. Broken diagnostic readback degrades to a bounded health status, while failed journal writes still block promotion. It intentionally records the evaluation gate result, not the subsequent signed-evidence/approval activation result.
+- **Runtime integration:** when `OrganismRuntime` is configured with `compoundRepairRevision.engine`, the engine receives an injected sink or a default sibling `<stateFile stem>.learning-fitness.jsonl` journal. Journal failures fail closed before promotion. Prompts/task IDs/family names/raw holdout rows are excluded.
+- **Regression/CI:** `workpass405-learning-fitness-journal.mjs` covers chaining, round trip, privacy schema, hostile accessors, lock contention and tampering. WorkPass402 production test checks rejected decisions are journaled without reaching store approval. P26 runs tests under Node.js 24.
+- **Research:** RLiable's uncertainty-aware reporting and Hermes' separation of generation, evaluation and promotion inform the changes. The unkeyed digest chain is tamper-evident, not signed proof; remote signed checkpoints and stale-lock recovery remain open.
+- **Verification:** source/docs are committed to `feature/learning`, but current Actions jobs do not expose step logs and I do not claim passing tests/typecheck. No benchmark gain is claimed.
+- **Release:** `main` and the GitHub Release ZIP remain unchanged. See [WorkPass405 learning fitness journal](docs/WORKPASS405_LEARNING_FITNESS_JOURNAL_RU.md) and [WorkPass404 confidence gate](docs/WORKPASS404_BOOTSTRAP_CONFIDENCE_GATE_RU.md).
+
+---
+
+## Current source-stack checkpoint — WorkPass398 (2026-10-23)
+
+- **Promotion input hardening:** P23 snapshots caller-owned independent baseline/evaluation envelopes through the plain-data boundary before property access; hostile accessors/proxies are rejected without executing getters.
+- **Approval hardening:** the private promotion finalizer snapshots the approval object before forwarding it to the versioned skill store; the store still requires authenticated approval and signed shadow evidence.
+- **Coverage:** the P23 promotion regression now includes getter non-invocation cases for baseline, candidate envelope and approval, plus checks that malformed input does not reach the store. P26 Learning Validation already runs that regression.
+- **Research linkage:** builds on the trust-boundary and evidence-separated revision design inspired by Hermes Agent Self-Evolution, Reflexion and SkillLearnBench. No new runtime dependency or external source file was added.
+- **Verification state:** source, regression and changelog are committed; execution on the actual Node 24 runner remains unverified because Actions exposes failed jobs without step logs. No learning uplift is claimed.
+- **Scope:** category branch `feature/learning`; `main` and the large Release ZIP remain untouched. See [WorkPass398 implementation notes](docs/WORKPASS398_PROMOTION_INPUT_TRUST_BOUNDARY_RU.md).
+
+---
+
+## Current source-stack checkpoint — WorkPass397 (2026-10-23)
+
+- **P23 promotion authority:** the report-only `approveReflectiveVerifiedSkillCandidate` API fails closed. Signed shadow receipts bind run/task identity and binary outcome, not trajectory or skill-quality metrics.
+- **Second bypass closed:** the general `approveVerifiedSkillCandidate` method now refuses staged candidates with `revisionProvenance`. Reflective revisions must use `approveIndependentlyEvaluatedSkillCandidate`, which passes the matched independent-evaluation/provenance and signed-evidence gates before reaching its private finalizer.
+- **Adversarial regression:** `runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs` demonstrates that advisory fitness can look eligible yet must not authorize the report-only path; it also proves the lower-level generic API cannot bypass the revision gate. P26 Learning Validation runs this test.
+- **Research integration:** principles from [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution) are adapted inside NK1's existing P23 lifecycle; no upstream source file was copied and no runtime dependency was added.
+- **Verification state:** code/tests/workflow/docs are committed on `feature/learning`. Hosted Actions has returned failed jobs with no runner steps/log URL, so the test and typecheck are not claimed as passed. No learning uplift is claimed.
+- **Release state:** this pass does not change `main` or regenerate the large GitHub Release ZIP. See [WorkPass394 detail](docs/WORKPASS394_PROMOTION_AUTHORITY_FIREWALL_RU.md) and [WorkPass397 detail](docs/WORKPASS397_DIRECT_PROMOTION_GATE_RU.md).
+
+---
+
+
+- **Learning safety fix:** the report-only `approveReflectiveVerifiedSkillCandidate` API now fails closed. Signed shadow receipts bind run/task identity and binary outcome, not trajectory or skill-quality metrics; caller-supplied scores can no longer authorize production promotion through this legacy route.
+- **Canonical promotion path:** use `approveIndependentlyEvaluatedSkillCandidate` with a fingerprinted independent evaluation envelope matched to the exact staged payload, task/trial/seed/split/environment/manifest and trusted signed receipts, followed by authenticated approval.
+- **Regression/CI:** `runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs` includes an adversarial case whose metrics pass the advisory scorer but whose legacy promotion call must fail before verifier/store access. P26 Learning Validation now watches and runs this test.
+- **Research:** the design is adapted from the independent evaluation and explicit guardrail principles in [Hermes Agent Self-Evolution](https://github.com/NousResearch/hermes-agent-self-evolution); no source code was copied and no dependency was added.
+- **Verification state:** source, regression, CI wiring and documentation are committed on `feature/learning`. The test and typecheck have **not** been executed on this exact HEAD in the current environment; no performance uplift is claimed. See [WorkPass394 detail](docs/WORKPASS394_PROMOTION_AUTHORITY_FIREWALL_RU.md).
+- **Release state:** this pass does not modify `main` or replace the large ZIP asset under GitHub Releases.
+
+---
+
 ## Current source-stack checkpoint — WorkPass272 (2026-10-22)
 
 - WorkPass272 hardens evaluator authority isolation: a shared predicate now requires both non-overlapping resolved paths and distinct device/inode filesystem identities for run/survive storage roots, including case-insensitive path comparisons on Windows.

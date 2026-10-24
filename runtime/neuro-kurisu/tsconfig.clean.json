@@ -8,6 +8,7 @@
     "allowImportingTsExtensions": true,
     "skipLibCheck": true
   },
+  "exclude": ["src/node-shims.d.ts"],
   "include": [
     "src/organism/**/*.ts",
     "src/server/**/*.ts",

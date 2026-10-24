@@ -16,7 +16,7 @@ export interface RetrievedSkill extends RetrievableSkill {
   score01: number; transferBias01: number; reasons: string[];
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
-const n=(x:number,d=0)=>Number.isFinite(x)?x:d;
+const n=(x:number|undefined,d=0)=>typeof x==='number'&&Number.isFinite(x)?x:d;
 
 /** Six-bucket organism contexts are compared by feature position, not substring. */
 export function contextSimilarity01(a:string,b:string):number {
@@ -73,6 +73,10 @@ export function retrievedSkillBias(query:SkillRetrievalQuery,skills:readonly Ret
   // same-action failure evidence. Aggregate only qualified, action-matched
   // evidence and clamp the result so retrieval can nudge, never dominate policy.
   const relevant=rows.filter(s=>
+    // Behavioral transfer is stricter than exploratory retrieval: only a near-neighbor
+    // may bias action selection. Broader retrieved rows remain inspectable, but a
+    // distant context must not nudge execution merely because its score is non-zero.
+    s.similarity01>=5/6 &&
     (query.action===undefined||s.action===query.action) &&
     ((s.status==='promoted'&&s.validationSuccess01>=.7) ||
      (s.status==='rejected'&&s.validationSuccess01<=.42)));
