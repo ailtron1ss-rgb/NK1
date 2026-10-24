@@ -71,7 +71,7 @@ export class RelationshipSelf {
       this.state = empty;
       return;
     }
-    const version = descriptors.version && 'value' in descriptors.version && descriptors.version.value === 1 ? 1 : 1;
+    const version = 1;
     const modelsDescriptor = descriptors.models;
     const rawModels = modelsDescriptor && 'value' in modelsDescriptor ? modelsDescriptor.value : undefined;
     const restored: RelationshipSelfModel[] = [];
