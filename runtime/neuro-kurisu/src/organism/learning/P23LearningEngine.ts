@@ -802,6 +802,12 @@ export class P23LearningEngine {
     if(!staged || staged.status!=='shadow' || staged.payloadFingerprint!==candidatePayloadFingerprint) {
       throw new Error('reality corroboration gate rejected candidate: staged payload fingerprint mismatch');
     }
+    // The corroborated fact must identify the exact staged payload, not merely
+    // be an unrelated structured claim with two independent sources.
+    const expectedRealityClaim=`payload_fingerprint=${candidatePayloadFingerprint}`;
+    if(claim!==expectedRealityClaim) {
+      throw new Error('reality corroboration gate rejected claim: exact staged payload fingerprint claim required');
+    }
     const realityAssessment=ledger.claimAssessment(claim);
     if(realityAssessment.contradictionCoverageAvailable!==true) {
       throw new Error('reality corroboration gate rejected claim: explicit field/value structure required for contradiction coverage');
