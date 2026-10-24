@@ -64,6 +64,40 @@ const normalizedStage = importedNormalizedExport.stageHmx({
 assert.deepEqual(normalizedStage.conflicts, [], 'NK1 native export adapter must emit a conflict-free HMX 1.7 envelope');
 assert.equal(importedNormalizedExport.decideHmx(normalizedStage.stagingId, 'accept')?.status, 'accepted');
 
+// A saturated HMX goal-review queue fails closed and does not partially append a batch.
+const fullGoalQueueFabric = new HexisAdaptationFabric();
+const fullGoalQueueState = defaultHexisAdaptationState();
+fullGoalQueueState.goalProposals = Array.from({ length: 256 }, (_, index) => ({
+  id: 'existing-goal-proposal-' + index,
+  stageId: 'old-stage',
+  exportId: 'exp_1111111111111111',
+  sourceLineageId: 'old-lineage',
+  sourceRef: 'exp_1111111111111111:goal-' + index,
+  title: 'Existing pending goal ' + index,
+  description: '',
+  importance: 0.5,
+  urgency: 0.3,
+  confidence: 0.4,
+  status: 'pending',
+  createdAt: Date.now(),
+}));
+fullGoalQueueFabric.restore(fullGoalQueueState);
+const overflowGoalStage = fullGoalQueueFabric.stageHmx({
+  document: makeHmxDocument('exp_2222222222222222', {
+    goals: [{ ref: 'exp_2222222222222222:new-goal', title: 'Must remain unstaged' }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.deepEqual(overflowGoalStage.conflicts, []);
+assert.equal(fullGoalQueueFabric.decideHmx(overflowGoalStage.stagingId, 'accept')?.status, 'accepted');
+const beforeFullQueue = fullGoalQueueFabric.snapshot();
+assert.throws(() => fullGoalQueueFabric.prepareGoalProposals(overflowGoalStage.stagingId), /hmx-goal-proposal-capacity-reached/);
+assert.deepEqual(fullGoalQueueFabric.snapshot().goalProposals, beforeFullQueue.goalProposals,
+  'capacity failure must not partially alter the durable proposal queue');
+assert.deepEqual(fullGoalQueueFabric.snapshot().metrics, beforeFullQueue.metrics,
+  'capacity failure must not increment proposal metrics');
+
 // P68 must not autonomously reactivate an HMX-imported paused goal awaiting explicit approval.
 const goalEcology = new P68GoalEcology();
 const protectedExternalGoal = {
