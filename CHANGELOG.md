@@ -1,3 +1,8 @@
+## NK1 WorkPass529 — enforce runtime-to-avatar affect bridge contract (2026-10-24)
+
+- Added a cross-layer regression that checks the runtime UI snapshot, backend type contract, normalization layer and Live2D/voice adapter all carry the canonical mood and latest feeling-access signal.
+- Registered the contract test in the runtime package and the focused affect/embodiment CI workflow; this complements behavior tests and typechecks without claiming that any of them have already passed.
+
 ## NK1 WorkPass528 — focused affect/embodiment CI gate (2026-10-24)
 
 - Added a pull-request workflow running runtime TypeScript checks and the canonical emotion/interoception regression, plus app TypeScript checks and the voice/Live2D affect regression on Node.js 24.
