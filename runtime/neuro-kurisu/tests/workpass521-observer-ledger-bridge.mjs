@@ -19,6 +19,11 @@ const input = {
   payload: { observationId: 'obs-1', scene: 'fresh' },
 };
 
+// Canonical evidence ingestion accepts observations only after explicit source registration.
+runtime.externalObserver.registerSource({id:'camera-front',sourceClass:'device',channel:'camera',independenceKey:'camera:front'});
+runtime.externalObserver.registerSource({id:'camera-side-low-confidence',sourceClass:'device',channel:'camera',independenceKey:'camera:side-low'});
+runtime.externalObserver.registerSource({id:'camera-side',sourceClass:'device',channel:'camera',independenceKey:'camera:side'});
+
 const observation = runtime.externalObserver.observe(input);
 let ledger = runtime.realityEvidenceLedger.snapshot();
 assert.equal(ledger.total, 1, 'production subsystem owner must forward an observer event into the canonical reality ledger');
@@ -30,6 +35,7 @@ assert.equal(replay.id, observation.id, 'observer retry must remain idempotent')
 assert.equal(runtime.realityEvidenceLedger.snapshot().total, 1, 'observer retry must not inflate ledger evidence count');
 
 const userRuntime = new EvidenceResearchSubsystemRuntime();
+userRuntime.externalObserver.registerSource({id:'user-report',sourceClass:'user',channel:'user',independenceKey:'user:session-1'});
 userRuntime.externalObserver.observe({
   sourceId: 'user-report',
   sourceClass: 'user',
