@@ -1,3 +1,12 @@
+# WorkPass334 — endogenous intent and homeodynamic action arbitration (2026-10-24)
+
+- [INTEGRATION] Added `InnerImperativeController` as a thin policy over the existing live decision, organism needs and embodiment telemetry. It does not create a second goal, memory, world-model, identity or action owner.
+- [BEHAVIOR] During spontaneous autonomous cycles only, a critical resource floor or constrained resources plus a resource-intensive action can redirect to `rest` (or `wait` at a sleep boundary). Explicit user requests and non-spontaneous cycles keep the proposed action; the existing embodied recovery/action boundary remains in place.
+- [CAUSALITY] The live canonical cognitive ledger now records the intent ID, motive, reason, proposed/selected/actual actions, resource state and whether the gate overrode the proposal. The plan stage also records counterfactual branch availability and whether uncertainty requires future review.
+- [LEARNING] When the gate changes the selected action, the old candidate is not credited for the changed behavior. The self-update event links back to the intent and grounded outcome so future identity/skill changes can retain causal lineage.
+- [TEST] Extended the existing live-kernel wiring regression with behavior cases for normal autonomy, low-energy recovery, sleep boundary, epistemic uncertainty, explicit-user priority, non-spontaneous calls and malformed numeric signals.
+- [VALIDATION] Source and regression code are committed; exact-head Actions, runtime typecheck and device/browser E2E are still required. No learning uplift or production readiness is claimed.
+
 # WorkPass333 — независимая оценка: execution ≠ verification (2026-10-24)
 
 - [FIXED] Независимый оценщик больше не превращает успешно выполненный sandbox-run в `executable=false`, если отдельный верификатор недоступен или не подтверждает привязку. Метрика исполнимости отражает факт корректного завершения исполнения, а не доверие к трассе.

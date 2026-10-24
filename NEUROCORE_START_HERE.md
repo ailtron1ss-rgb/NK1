@@ -1,3 +1,21 @@
+## Latest durable checkpoint — WorkPass334: inner intent + homeodynamic arbitration (2026-10-24)
+
+**Working branch:** `workpass334-inner-imperative-homeostasis-2026-10-24`, stacked on `workpass332-live-runtime-kernel-2026-10-24` (the WorkPass332 live-kernel branch). Keep the existing branch stack intact; do not merge directly to `main`.
+
+- Added a bounded `InnerImperativeController` to the real `OrganismRuntime` path before planning. It reads current needs and embodiment telemetry, derives a reasoned intent receipt and only changes an autonomous spontaneous action when low energy/capacity, high thermal strain, high cognitive load or a sleep boundary makes the proposed action inappropriate.
+- Explicit user-directed and non-spontaneous choices are not rewritten by this gate. Existing embodied-action/recovery controls still decide whether an action may execute.
+- Intention provenance now travels through the canonical `goal → plan → action → outcome → learning → self-update` events. The plan event stores counterfactual branch availability and a flag for uncertainty/prediction-error review. An overridden proposal is excluded from selected-candidate outcome credit.
+- Regression cases were added to `tests/canonical-cognitive-kernel-runtime-wiring.mjs`, which is already run by `.github/workflows/workpass331-unified-cognitive-kernel.yml`. The helper path was added to workflow filters.
+- **Validation status:** code is committed, but no test pass is claimed until the exact-head workflow and runtime typecheck return actionable successful steps. Then run organism smoke, persistence/restart and physical-device/browser E2E. Do not raise learning/quality metrics without independent held-out evidence.
+
+### Next integration passes
+1. Wire the intent receipt to revision-aware autobiographical memory and the existing B272/B273 goal-learning owners, preserving MemoryOS2 as the sole writable memory store.
+2. Use counterfactual branches for explicit bounded plan comparison, with predictions separated from real outcomes.
+3. Bind emotion/homeostasis, identity/self-model updates and avatar expression to the same verified outcome lineage.
+4. Compare autonomy, memory-to-action grounding and energy-safe behavior against frozen baselines; keep all results unverified until exact-head CI and controlled runs complete.
+
+---
+
 ## Latest durable checkpoint — WorkPass333: restore truthful independent-evaluation status (2026-10-24)
 
 **Branch:** `workpass332-live-runtime-kernel-2026-10-24`; PR #96 remains draft and targets WorkPass331's source branch, not `main`.
