@@ -127,7 +127,20 @@ const staleCompletedGoals = Array.from({ length: 16 }, (_, index) => ({
   createdAt: Date.now() - 1000,
   updatedAt: Date.now() - 1000,
 }));
-const goalPopulation = [...staleCompletedGoals, protectedExternalGoal];
+const nativePausedGoal = {
+  id: 'legacy-paused-goal',
+  title: 'Resume ordinary native goal',
+  reason: 'A native paused goal may be reactivated by the ecology',
+  source: 'learned',
+  status: 'paused',
+  importance: 0.6,
+  urgency: 0.3,
+  confidence: 0.7,
+  progress: 0.5,
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+};
+const goalPopulation = [...staleCompletedGoals, protectedExternalGoal, nativePausedGoal];
 goalEcology.tick({
   tick: 1, at: Date.now(), goals: goalPopulation,
   lastAction: 'none', lastSuccess: null, mode: 'observe', homeostaticPressure01: 0.1, identity01: 0.9,
@@ -135,6 +148,8 @@ goalEcology.tick({
 assert.equal(protectedExternalGoal.status, 'paused', 'imported goals remain non-active without explicit activation');
 assert(goalPopulation.some(goal => goal.id === protectedExternalGoal.id),
   'P68 retention pruning must not delete a reviewed external goal awaiting explicit activation');
+assert.equal(nativePausedGoal.status, 'active',
+  'repairing P68 paused-goal traversal must retain its intended reactivation behavior for non-external goals');
 
 // A same-text native memory must remain untouched by an external HMX import.
 const collisionRuntime = new MemorySubsystemRuntime();
