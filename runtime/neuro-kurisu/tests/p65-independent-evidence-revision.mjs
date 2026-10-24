@@ -105,9 +105,11 @@ delete legacy.claimsData[0].evidenceSources;
 delete legacy.claimsData[0].evidenceKeys;
 delete legacy.claimsData[0].evidenceLineageKeys;
 delete legacy.claimsData[0].revisionHistory;
-legacy.claimsData.push({
-  ...legacy.claimsData[0], id: 'corrupt-confidence', confidence01: Infinity,
-});
+legacy.claimsData.push(
+  { ...legacy.claimsData[0], id: 'corrupt-confidence', confidence01: Infinity },
+  { ...legacy.claimsData[0], id: 'corrupt-parent-whitespace', parentIds: ['  '] },
+  { ...legacy.claimsData[0], id: 'corrupt-parent-duplicate', parentIds: ['parent:a', 'parent:a'] },
+);
 const restored = new P65EpistemicLedger();
 restored.restore(legacy);
 assert.equal(restored.snapshot().claimsData.length, 1);
