@@ -74,6 +74,10 @@ function parseBaseUrl(value: string | undefined): URL | null {
   }
 }
 
+function isMem0MemoryId(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 function safeUserId(value: unknown): string | null {
   const userId = String(value ?? '').trim();
   return /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(userId) ? userId : null;
@@ -160,6 +164,8 @@ export class Mem0PlatformAdapter {
   private requests = 0;
   private failures = 0;
   private scopeRejected = 0;
+  /** Memory IDs proven to belong to this process' configured user scope, in bounded LRU-like insertion order. */
+  private readonly issuedMemoryIds = new Map<string, string>();
   private lastStatus = 'idle';
 
   constructor(options: Mem0AdapterOptions = {}) {
@@ -254,6 +260,7 @@ export class Mem0PlatformAdapter {
       const score = Number(row.score);
       const createdRaw = row.created_at ?? row.createdAt;
       const created = typeof createdRaw === 'number' ? createdRaw : Date.parse(String(createdRaw ?? ''));
+      if (isMem0MemoryId(id)) this.rememberScopedMemoryId(id);
       memories.push({
         id,
         content: minimized.text,
@@ -269,6 +276,68 @@ export class Mem0PlatformAdapter {
     }
     this.lastStatus = 'ok';
     return { status: 'ok', memories, diagnostics: diagnostics() };
+  }
+
+  /**
+   * Delete one memory only if this adapter previously observed its UUID from a
+   * search/add scoped to this configured user. No cascade is allowed.
+   */
+  async deleteMemory(
+    memoryIdInput: string,
+    options: { approved?: boolean } = {},
+  ): Promise<{ status: Mem0Status; deleted: boolean; errorCode?: string; diagnostics: Mem0Diagnostics }> {
+    const diagnostics = () => this.diagnostics();
+    if (!this.enabled) {
+      this.lastStatus = 'disabled';
+      return { status: 'disabled', deleted: false, diagnostics: diagnostics() };
+    }
+    if (!this.apiKey || !this.userId || !this.baseUrl) {
+      this.lastStatus = 'unconfigured';
+      return { status: 'unconfigured', deleted: false, diagnostics: diagnostics() };
+    }
+    if (!this.allowWrites) {
+      this.lastStatus = 'writes-disabled';
+      return { status: 'writes-disabled', deleted: false, diagnostics: diagnostics() };
+    }
+    if (options.approved !== true) {
+      this.lastStatus = 'consent-required';
+      return { status: 'consent-required', deleted: false, diagnostics: diagnostics() };
+    }
+    const memoryId = String(memoryIdInput ?? '').trim();
+    if (!isMem0MemoryId(memoryId) || this.issuedMemoryIds.get(memoryId) !== this.userId) {
+      this.lastStatus = 'invalid-input';
+      return { status: 'invalid-input', deleted: false, errorCode: 'memory-id-not-issued-for-configured-scope', diagnostics: diagnostics() };
+    }
+
+    this.requests++;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const url = new URL(`/v1/memories/${encodeURIComponent(memoryId)}/`, this.baseUrl);
+      // Intentionally never cascade into linked memories.
+      url.searchParams.set('delete_linked', 'false');
+      const response = await this.fetchImpl(url.toString(), {
+        method: 'DELETE',
+        headers: { authorization: `Token ${this.apiKey}`, accept: 'application/json' },
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        await response.body?.cancel().catch(() => undefined);
+        this.failures++;
+        this.lastStatus = `http-${response.status}`;
+        return { status: 'error', deleted: false, errorCode: `http-${response.status}`, diagnostics: diagnostics() };
+      }
+      await response.body?.cancel().catch(() => undefined);
+      this.issuedMemoryIds.delete(memoryId);
+      this.lastStatus = 'ok';
+      return { status: 'ok', deleted: true, diagnostics: diagnostics() };
+    } catch {
+      this.failures++;
+      this.lastStatus = controller.signal.aborted ? 'timeout' : 'transport-error';
+      return { status: 'error', deleted: false, errorCode: this.lastStatus, diagnostics: diagnostics() };
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   /** Explicit export only; caller must enable remote writes and pass approved=true per operation. */
@@ -321,8 +390,20 @@ export class Mem0PlatformAdapter {
     }
     const root = asRecord(result.value);
     const ids = Array.isArray(root?.results) ? root!.results.map(item => String(asRecord(item)?.id ?? '')).filter(Boolean).slice(0, 32) : [];
+    for (const id of ids) if (isMem0MemoryId(id)) this.rememberScopedMemoryId(id);
     this.lastStatus = 'ok';
     return { status: 'ok', memoryIds: ids, diagnostics: diagnostics() };
+  }
+
+  private rememberScopedMemoryId(memoryId: string): void {
+    if (!this.userId || !isMem0MemoryId(memoryId)) return;
+    this.issuedMemoryIds.delete(memoryId);
+    this.issuedMemoryIds.set(memoryId, this.userId);
+    while (this.issuedMemoryIds.size > 256) {
+      const oldest = this.issuedMemoryIds.keys().next().value;
+      if (oldest === undefined) break;
+      this.issuedMemoryIds.delete(oldest);
+    }
   }
 
   private async post(path: string, payload: JsonRecord): Promise<{ ok: true; value: unknown } | { ok: false; errorCode: string }> {
