@@ -160,8 +160,8 @@ async function configureCompoundRepairRevision() {
             baseline = active;
             sourceMode = 'pending-source';
         }
-        if (baseline.payloadFingerprint === source.payloadFingerprint) {
-            throw new Error('canonical-p23-revision-baseline-and-source-payload-identical');
+        if (!baseline || baseline.payloadFingerprint === source.payloadFingerprint) {
+            throw new Error('canonical-p23-revision-baseline-and-source-payload-identical-or-missing');
         }
         const baselineIdentity = {
             skillId: baseline.skillId,
