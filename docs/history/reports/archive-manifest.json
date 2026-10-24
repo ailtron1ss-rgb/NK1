@@ -22,8 +22,8 @@
       "originalGitBlobSha": "4d98729c1ad2f2ba497d67c2cb03254608d5adbc",
       "archivedGitBlobSha": "4d98729c1ad2f2ba497d67c2cb03254608d5adbc",
       "copyCommit": "faa1ab98d4ecdd44affe552ec6ded9e17b325e1e",
-      "sourceRemovalCommit": null,
-      "sourceRemoved": false,
+      "sourceRemovalCommit": "0211c0ac5a9198b3c0d381616aff0d62c34780fc",
+      "sourceRemoved": true,
       "reason": "Preserve a dated 2026-10-06 structural inventory with stale role/count snapshots. The repository inventory reported no incoming local Markdown or scanned non-Markdown path/basename references, and GitHub issue/PR search found no direct reference to docs/INVENTORY.md. The archived copy was verified byte-identical before source removal."
     }
   ]
