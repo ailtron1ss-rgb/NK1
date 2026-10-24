@@ -2,7 +2,7 @@
 
 - [RESTORE] Preserve valid persisted cognitive stages when a mixed stage list contains an invalid entry; fall back to all required stages only when no stored stage can be trusted. Fixes the exact WorkPass287 assertion in current CI.
 - [CI] Restore `test:workpass293:p23-revision` npm alias to the existing `tests/workpass293-autonomous-p23-revision.mjs` test, matching the workflow's command.
-- [VALIDATION] The source changes now trigger both relevant GitHub Actions workflows; success is pending the exact-head runs.
+- [VALIDATION] The PR did trigger GitHub Actions on merge SHA `c4c1189e900e7aa70aa7ab1d56487ffa343843a7` (PR head then was `2990f2cf4d8b364dfbbdea9bb1d09f948c51c45d`). The WorkPass79 run failed in the unrelated `tests/p23-signed-outcome-artifact.mjs` duplicate-attempt assertion; core regression stopped at pre-existing App typecheck errors in `app/src/legacy/avatar/safeLocalStorage.test.mjs`; P26/runtime typecheck also reported many pre-existing Node-shim and unrelated type errors. That run additionally exposed loop-specific defects now fixed below (P23 clock kind, duplicate `verifyOperationalCycle`, malformed control-character regex). These results do not validate later commits; the new HEAD still needs its own run.
 
 ---
 
@@ -15,7 +15,10 @@
 - [INTERRUPT] `OrganismRuntime.stepInternal` now checks `AbortSignal` at cycle entry, after awaited perception/observation/proposal boundaries, and immediately before embodied-action dispatch; early cancellation avoids unnecessary inference, and late cancellation fails closed before physical actuation.
 - [LIFECYCLE] `OrganismRuntime.stop()` now shares one in-flight shutdown promise across concurrent callers. Failed shutdown persistence records a terminal runtime failure, attempts a best-effort failure flush, and always flushes/closes the continuity journal.
 - [ADMISSION] A `beginBatch()` failure now creates an explicit causal `FAIL` record rather than appearing only in the runtime error journal.
-- [VALIDATION] Added `audit:p328:closed-loop-failure-closure` (`typecheck` + regression) as a single acceptance command; execution is still pending a real runner.
+- [BACKGROUND-CYCLE] Registered and started the opt-in `p23-compound-repair-revision` clock in `RuntimeClockScheduler`; `tests/runtime-clocks.mjs` now exercises this clock, and the test is part of `test:rebuild-recovered`.
+- [COGNITIVE-LINEAGE] Removed the duplicate `CognitiveEventFabric.verifyOperationalCycle` implementation, keeping the extended single verifier that checks both required and supplied optional-stage edges.
+- [EVIDENCE-BOUNDARY] Corrected the malformed control-character regex in `OutcomeVerificationService` which prevented TypeScript compilation.
+- [VALIDATION] Added `audit:p328:closed-loop-failure-closure` (`typecheck` + regression) as a single acceptance command. Current observed Actions logs are from the earlier PR head `2990f2cf…`: typecheck and unrelated P23 artifact checks failed; the new loop-specific fixes have not yet been validated on the latest head.
 - [REGRESSION] Added `tests/closed-loop-failure-closure.mjs` and connected `test:p328:closed-loop-failure-closure` to `test:rebuild-recovered`; test execution remains unverified until CI gets a runner.
 - [DOCUMENTATION] Added `docs/CLOSED_LOOP_SYSTEM_AUDIT_2026-10-24.md` with the cross-module cycle map, invariants, remaining validation gaps and release gates.
 - [LIMITATION] This is a source-branch implementation checkpoint, not a regenerated release ZIP or a production-approval claim. Existing held-out learning, Android/Live2D E2E, long soak and runner-startup gates remain open.
