@@ -233,6 +233,7 @@ export class MemoryFabric {
     let memoryId:string|undefined;
     let booleanValue:boolean|undefined;
     let eventPayload:Record<string,unknown>|undefined;
+    let observationPayload:Record<string,unknown>|undefined;
     const tick=Number.isFinite(command.tick)?Math.floor(Number(command.tick)):0;
 
     switch(action){
@@ -245,6 +246,7 @@ export class MemoryFabric {
         this.touchHot(item.id);
         result=item; memoryId=item.id; outcome='applied';
         eventPayload={memoryId:item.id,kind:item.kind,source:item.source,created,action:created?'encode':'reconsolidate',commandId:commandId||undefined};
+        observationPayload=eventPayload;
         if(command.syncCompatibility)this.projectCompatibility(32);
         if(command.emitEvent===false)eventPayload=undefined;
         break;
@@ -296,6 +298,7 @@ export class MemoryFabric {
       }
     }
 
+    if(!observationPayload && eventPayload) observationPayload=eventPayload;
     if(eventPayload){
       if(action==='encode')this.events.append(makeEvent('memory-created',tick,eventPayload));
       else this.events.append(makeEvent('memory-lifecycle',tick,eventPayload));
@@ -312,9 +315,9 @@ export class MemoryFabric {
         this.mutationReceipts.delete(oldest);
       }
     }
-    if(eventPayload){
+    if(observationPayload){
       this.notifyLifecycleObservers({
-        action, tick, outcome, eventPayload,
+        action, tick, outcome, eventPayload:observationPayload,
         ...(commandId ? { commandId } : {}),
         ...(memoryId ? { memoryId } : {}),
         ...(typeof eventPayload.reason === 'string' ? { reason: eventPayload.reason } : {}),
