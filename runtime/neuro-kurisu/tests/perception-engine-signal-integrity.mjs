@@ -29,7 +29,24 @@ function bodyWith(overrides = {}) {
 // independently salient changes that happened in the same telemetry sample.
 {
   const engine = new PerceptionEngine();
-  engine.perceive({ body: bodyWith() }); // establish baseline
+  engine.perceive({
+    body: bodyWith({ telemetry: {
+      motion01: null, proximity01: null, ambientLight01: null, networkOnline: null,
+    } }),
+  }); // establish a baseline with unavailable sensors
+
+  const available = bodyWith();
+  const availabilityEvents = [
+    engine.perceive({ body: available }).kind,
+    engine.perceive({ body: available }).kind,
+    engine.perceive({ body: available }).kind,
+    engine.perceive({ body: available }).kind,
+  ];
+  assert.deepEqual(
+    availabilityEvents,
+    ['motion', 'proximity', 'light-change', 'network-change'],
+    'sensor availability transitions must not be swallowed as baseline initialization',
+  );
 
   const changed = bodyWith({
     telemetry: {
@@ -50,7 +67,7 @@ function bodyWith(overrides = {}) {
     ['motion', 'proximity', 'light-change', 'network-change'],
     'simultaneous sensor changes must be observed across successive perception cycles',
   );
-  assert.equal(engine.snapshot().sensorChanges, 4);
+  assert.equal(engine.snapshot().sensorChanges, 8);
 }
 
 // Old telemetry must not create a false fresh-world event or overwrite a good
