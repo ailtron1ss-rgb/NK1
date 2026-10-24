@@ -1,3 +1,19 @@
+## NK1 WorkPass528 — preserve Core feedback when B272's proposed action diverges (2026-10-24)
+
+- Fixed both `OrganismCore.feedback()` paths that credit B272. B272 now receives outcome learning only when its internally generated action matches the action actually selected by the canonical Core; on a mismatch, only B272's credit update is skipped. The mismatch no longer throws and interrupts B299 personality or other outcome learners. B272's strict action-match guard remains intact.
+- Replaced the experimental live-personality harness with a focused 48-cycle `OrganismCore.observe() → feedback()` test using actual selected actions and world-transition evidence. It explicitly asserts that B272/Core action mismatches occur without cutting off the rest of feedback, that B299 continues learning, and that learned personality survives restore and has a measurable effect on candidate scores under B299 lesion.
+- **Focused GitHub Actions PASS (Node 24, commit `21a8a20d99fbfe7ac11c37215a3f3d9eb14439e1`):**
+  - 48 outcome cycles; B272/Core action mismatches observed: 28.
+  - B299 learning updates: 48; verified updates: 48; context-credit assignments: 48.
+  - Sum of absolute personality action-bias magnitudes: `0 → 0.0036059369`.
+  - Restore preserved all seven action-bias values exactly.
+  - B299 lesion candidate-distribution difference: L1 `0.0020404621`; maximum single-action delta `0.0004192327`.
+  - The trust-boundary, P67 null/typed-value metadata, and P2702 hostile-snapshot regressions also passed in the same workflow.
+- Supporting fixes carried through this pass: restored missing `LearningTrustBoundary.ts` using the shared plain-data snapshot helper; exposed its canonical node budget; normalized only nullable P67 dominant-drive labels and validated `AdaptiveValueWeights` fields according to their actual typed contract; separated push and pull-request workflow concurrency to avoid mutual cancellation.
+- **Validation boundary:** focused behavioral and persistence regressions are green. Full semantic TypeScript typecheck has not been independently confirmed. Several broader PR workflows still fail on separate baseline issues (missing WorkPass291/293 npm script aliases, Node 24 strip-only syntax in WorkPass99, and the independent B272 intrinsic-drive/goal assertion in WorkPass287-288). This pass does not claim those unrelated workflows or end-to-end unseen-context generalization are all resolved.
+
+---
+
 ## NK1 WorkPass527 — validate learned personality in live Core and restore missing trust boundary (2026-10-24)
 
 - Added a live-Core developmental experiment that learns from every action actually selected by the organism over 72 feedback cycles, rather than discarding all outcomes except `verify`. It measures action counts, learned personality bias, snapshot/restore consistency, and the candidate-distribution difference between the same restored state with B299 active versus lesioned.
