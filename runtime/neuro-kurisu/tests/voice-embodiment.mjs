@@ -161,7 +161,7 @@ assert.equal(postflightFailure.consequenceVerification.reason, 'post-action-meas
 assert.equal(postflightSampleCalls, 3);
 
 
-// WorkPass460: invalid continuity and event payloads are rejected before state mutation.
+// WorkPass524: invalid continuity and event payloads are rejected before state mutation.
 const continuityGuard = new EmbodimentRuntime();
 continuityGuard.body = { ...defaultBodyState(), lastUserActivityAt: 100, lastExternalEventAt: 200 };
 const continuityBefore = continuityGuard.snapshot();
