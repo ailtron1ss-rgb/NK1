@@ -124,7 +124,7 @@ test("full architecture audit enforces dependency boundaries and exports a JSON 
     assert.doesNotMatch(result.stdout, /dependency boundary violations|dependency budget violations|canonical leakage|import cycles detected|missing relative imports/);
 
     const report = JSON.parse(await readFile(reportPath, "utf8"));
-    assert.equal(report.schemaVersion, 2);
+    assert.equal(report.schemaVersion, 3);
     assert.ok(report.summary.sourceFiles > 0);
     assert.ok(report.summary.canonicalFiles > 0);
     assert.equal(report.edges.length, report.summary.dependencyEdges);
@@ -134,6 +134,9 @@ test("full architecture audit enforces dependency boundaries and exports a JSON 
     assert.equal(report.summary.cycles, 0);
     assert.equal(report.summary.boundaryViolations, 0);
     assert.equal(report.summary.dependencyBudgetViolations, 0);
+    assert.ok(report.dependencyBudget.checks.some(check => check.metric === "runtimeOutDegree"));
+    assert.ok(report.dependencyBudget.checks.some(check => check.metric === "productionRuntimeInDegree"));
+    assert.ok(report.dependencyBudget.checks.some(check => check.metric === "productionTypeOnlyInDegree"));
     assert.equal(report.dependencyBudget.violations.length, 0);
     assert.ok(report.dependencyBudget.checks.length >= 10);
     assert.equal(report.dependencyBudget.checks.every(check => check.withinBudget && check.observed <= check.maximum), true);
@@ -146,6 +149,7 @@ test("full architecture audit enforces dependency boundaries and exports a JSON 
     assert.equal(report.summary.productionEdges + report.summary.testEdges, report.edges.length);
     assert.equal(report.nodes.reduce((total, node) => total + node.runtimeOutDegree, 0), report.summary.runtimeEdges);
     assert.equal(report.nodes.reduce((total, node) => total + node.typeOutDegree, 0), report.summary.typeEdges);
+    assert.equal(report.nodes.reduce((total, node) => total + node.productionTypeOnlyInDegree, 0), report.summary.productionTypeOnlyEdges);
     assert.ok(report.hotSpots.highRuntimeFanOut.length > 0);
     assert.ok(report.hotSpots.highProductionRuntimeFanIn.length > 0);
     assert.equal(report.productionLayerCoupling.length > 0, true);
