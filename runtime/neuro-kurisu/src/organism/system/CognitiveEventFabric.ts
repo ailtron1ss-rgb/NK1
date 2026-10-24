@@ -391,6 +391,12 @@ export class CognitiveEventFabric {
     return ids;
   }
 
+  /**
+   * Verify one cycle against its own causal edges rather than the whole rolling
+   * buffer. Old parent events aging out must not invalidate a complete live
+   * cycle, but any optional phase supplied in stageIds must retain its causal
+   * parents (and the action must cite a supplied plan).
+   */
   verifyOperationalCycle(stageIds: OperationalCycleStageIds): OperationalCycleLineageCheck {
     const required = ['observation','prediction','action','outcome','learning','self-update'] as const;
     const optional = ['appraisal','attention','memory','goal','plan'] as const;
