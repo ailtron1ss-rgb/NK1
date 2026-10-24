@@ -1,3 +1,10 @@
+## NK1 WorkPass526 — body-aware voice and Live2D affect coupling (2026-10-24)
+
+- Added one bounded mapping from canonical emotion (label, valence, arousal, dominance) plus available body needs (energy, cognitive load, uncertainty, sleep pressure) to TTS rate/pitch, expression intensity, voice emphasis, head tilt and gaze offsets.
+- AvatarStage now uses the shared mapping for newly emitted speech and for the unified Live2D intent; existing protocol v1 fields and viewer validation remain unchanged.
+- Added focused regression cases for distinct calm/strained profiles, body-state influence, and finite/clamped output under malformed signals.
+- **Validation boundary:** source and regression updates are committed, but the exact-head app test/typecheck and real browser/Live2D playback have not been run here. This updates embodiment of existing signals; it does not prove subjective feeling.
+
 ## NK1 WorkPass525 — persistent affective continuity and grounded feeling access (2026-10-24)
 
 - Added a backward-compatible persistent mood state that blends recent appraisal episodes, retaining valence, arousal, stress, confidence, dominant label and persistence across nearby events.
