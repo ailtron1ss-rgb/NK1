@@ -146,6 +146,13 @@ export function ingestSignedOutcomeArtifact(
     if (!exactMatch) {
       return { accepted: false, artifactFingerprint: fingerprint, rejection: 'conflicting-existing-outcome' };
     }
+    // An already-authenticated row is a replay, not a new receipt. After restart,
+    // however, an exact artifact must be allowed once to re-establish process-local
+    // trust for an identical persisted row; restored snapshots deliberately carry no
+    // authenticatedEvidence entry.
+    if (hasAuthenticatedOutcomeEvidence(ledger, outcome.evidenceRef)) {
+      return { accepted: false, artifactFingerprint: fingerprint, rejection: 'duplicate-attempt' };
+    }
   } else {
     const result = ledger.record(outcome);
     if (!result.accepted) {

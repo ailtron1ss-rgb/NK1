@@ -2117,6 +2117,8 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 ## [2026-10-24] Operation Omega — Hexis source transfer and review-inbox adaptation
 
+- Fixed a P23 signed-outcome replay edge: an exact duplicate artifact in the same process is now rejected as `duplicate-attempt`, while an exact, signed artifact can still re-establish its process-local trust receipt after a ledger restore.
+
 - Connected provenance concepts to the existing `SourceMonitor`: bounded trace ancestry, copied lineage on read, validated optional source fingerprint/citation/evidence-class metadata, and fail-closed rejection of malformed provenance while retaining legacy records.
 
 - Expanded the pinned Hexis reference archive with 14 additional model/backend, CLI/bootstrap/instance API, config/schema, consent, usage, and backup/migration modules; the source manifest now tracks 73 selected files.
