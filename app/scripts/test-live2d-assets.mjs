@@ -11,13 +11,13 @@ const publicRoot = path.join(appRoot, "public", "live2d");
 const manifestPath = path.join(repoRoot, "contracts/inventory/canonical-public-assets-workpass42.json");
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
-function resolveSafe(root, relative, { allowParent = false } = {}) {
+function resolveSafe(root, relative) {
   assert.equal(typeof relative, "string", "asset references must be strings");
   assert.ok(relative.length > 0, "asset references must not be empty");
   assert.ok(!path.isAbsolute(relative), `absolute asset reference rejected: ${relative}`);
   assert.ok(!relative.includes("\\"), `Windows separator rejected in asset reference: ${relative}`);
   const parts = relative.split("/");
-  assert.ok(!parts.some((part) => part === "" || part === "." || (!allowParent && part === "..")), `non-canonical asset reference: ${relative}`);
+  assert.ok(!parts.some((part) => part === "" || part === "." || part === ".."), `non-canonical asset reference: ${relative}`);
   const resolved = path.resolve(root, ...parts);
   const rel = path.relative(root, resolved);
   assert.ok(rel && !rel.startsWith("..") && !path.isAbsolute(rel), `asset reference escapes model root: ${relative}`);
@@ -85,7 +85,8 @@ for (const variant of variants) {
   assert.ok(motionRefs.length >= 4, `${variant.name}: motion coverage regressed`);
 
     assert.ok(!path.isAbsolute(reference) && !reference.includes("\\"), `${variant.name}: unsafe model reference ${reference}`);
-    const filePath = resolveSafe(variant.dir, reference, { allowParent: true });
+    const fromPublicRoot = path.relative(publicRoot, path.resolve(variant.dir, reference));
+    const filePath = resolveSafe(publicRoot, fromPublicRoot);
     await assertRegularFile(filePath, `${variant.name} reference ${reference}`);
     const info = await stat(filePath);
     assert.ok(info.size > 0, `${variant.name}: empty referenced asset ${reference}`);
