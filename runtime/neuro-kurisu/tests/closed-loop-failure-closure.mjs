@@ -147,6 +147,21 @@ assert.equal(contradictoryCausalRestore.snapshot().completeCycles, 0);
 assert.equal(contradictoryCausalRestore.snapshot().failures, 1);
 assert.equal(contradictoryCausalRestore.snapshot().meanScore01, 0);
 
+// Re-entering begin() must close the stale attempt rather than overwrite its pending record.
+const reenteredCausal = new CausalDomainClosureLedger();
+reenteredCausal.begin({ tick: 4, counters: before });
+reenteredCausal.begin({ tick: 5, counters: before });
+assert.equal(reenteredCausal.snapshot().recent[0]?.status, 'FAIL');
+assert.equal(reenteredCausal.snapshot().recent[0]?.failureReason, 'previous-cycle-unclosed-at-next-begin');
+const reenteredNext = reenteredCausal.end({
+  counters: { memoryCount: 2, worldTick: 2, identityRevision: 2, agencyDecisions: 2, learningUpdates: 2, selfChangeCount: 2, lifeGraphCompleteChains: 2 },
+  evidence: { memoryChanged: true, worldChanged: true, agencyChanged: true, learningChanged: true, selfChanged: true, memoryWorldVerified: true, worldAgencyLearningVerified: true, causalLifeGraphChain: true, replaySignaturePresent: true, durableStateAligned: true, cognitiveCycleComplete: true },
+});
+assert.equal(reenteredNext?.tick, 5);
+assert.equal(reenteredNext?.status, 'PASS');
+assert.equal(reenteredCausal.snapshot().totalCycles, 2);
+assert.equal(reenteredCausal.snapshot().failures, 1);
+
 // The causal ledger must use the unified cycle's explicit contract result as a hard gate.
 const incompleteCausal = new CausalDomainClosureLedger();
 incompleteCausal.begin({ tick: 3, counters: before });
