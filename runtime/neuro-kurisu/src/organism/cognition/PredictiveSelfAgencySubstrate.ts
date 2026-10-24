@@ -1,4 +1,6 @@
 import type { ActionKind, OrganismState } from '../core/types.ts';
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
+import { isTrustedDecisionLinkedExternalPostcondition, type ExpectedDecisionOutcomeBinding, type OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
@@ -117,6 +119,39 @@ export class PredictiveSelfAgencySubstrate {
     };
   }
 
+  /** Production path: only an exact verifier-minted receipt bound to the gateway decision can authorize external learning. */
+  learnVerifiedOutcome(
+    action:ActionKind,
+    outcome01:number,
+    observedState:OrganismState,
+    externallyRequested:boolean,
+    causalMatch01:number,
+    verification:unknown,
+    rawBinding:ExpectedDecisionOutcomeBinding,
+  ) {
+    let binding:unknown;
+    try { binding=snapshotPlainData<unknown>(rawBinding,{maxDepth:12,maxNodes:2048,maxStringUnits:32*1024}); }
+    catch { throw new TypeError('predictive-self-agency-evidence-binding-invalid'); }
+    if(!binding||typeof binding!=='object'||Array.isArray(binding)) throw new TypeError('predictive-self-agency-evidence-binding-invalid');
+    const clean=binding as Record<string,unknown>;
+    if(Object.keys(clean).some(key=>!['toolId','input','executionId','decisionId'].includes(key))||
+       typeof clean.toolId!=='string'||!clean.toolId.trim()||clean.toolId.length>180||
+       typeof clean.executionId!=='string'||!/^exec-[a-z0-9-]{8,80}$/i.test(clean.executionId)||
+       typeof clean.decisionId!=='string'||!clean.decisionId.trim()||clean.decisionId.length>180||
+       !clean.input||typeof clean.input!=='object'||Array.isArray(clean.input)) {
+      throw new TypeError('predictive-self-agency-evidence-binding-invalid');
+    }
+    // Verification identity is intentional: JSON-equivalent saved/copy objects do not
+    // retain the verifier's WeakMap capability and are not sufficient evidence.
+    if(!isTrustedDecisionLinkedExternalPostcondition(verification,clean as unknown as ExpectedDecisionOutcomeBinding)) {
+      throw new TypeError('predictive-self-agency-external-evidence-untrusted');
+    }
+    const trusted=verification as OutcomeVerification;
+    if(typeof trusted.confidence01!=='number'||!Number.isFinite(trusted.confidence01)||trusted.confidence01<0||trusted.confidence01>1) throw new TypeError('predictive-self-agency-external-evidence-confidence-invalid');
+    if(typeof causalMatch01!=='number'||!Number.isFinite(causalMatch01)||causalMatch01<0||causalMatch01>1) throw new RangeError('predictive-self-agency-causal-match-invalid');
+    return this.learnOutcome(action,outcome01,observedState,externallyRequested,Math.min(causalMatch01,trusted.confidence01));
+  }
+
   learnOutcome(
     action:ActionKind,
     outcome01:number,
@@ -124,37 +159,43 @@ export class PredictiveSelfAgencySubstrate {
     externallyRequested:boolean,
     causalMatch01:number,
   ) {
-    const p=this.predict(action);
-    const err=clamp01(outcome01)-p.predictedOutcome01;
-    const lr=.026/Math.sqrt(1+this.state.predictionSamples/2500);
-    const idx=Math.max(0,ACTIONS.indexOf(action));
-    const d=err*p.predictedOutcome01*(1-p.predictedOutcome01);
-    for(let j=0;j<24;j++) {
-      this.state.actionRows[idx][j]=clamp11(
-        (this.state.actionRows[idx][j]??0)+lr*d*(this.state.selfLatent[j]??0),
-      );
+    if(!ACTIONS.includes(action))throw new TypeError('predictive-self-agency-action-invalid');
+    if(typeof outcome01!=='number'||!Number.isFinite(outcome01)||outcome01<0||outcome01>1) throw new RangeError('predictive-self-agency-outcome-invalid');
+    if(typeof externallyRequested!=='boolean')throw new TypeError('predictive-self-agency-request-flag-invalid');
+    if(typeof causalMatch01!=='number'||!Number.isFinite(causalMatch01)||causalMatch01<0||causalMatch01>1) throw new RangeError('predictive-self-agency-causal-match-invalid');
+    let detachedState:unknown;
+    try { detachedState=snapshotPlainData<OrganismState>(observedState,{maxDepth:16,maxNodes:2048,maxStringUnits:32*1024}); }
+    catch { throw new TypeError('predictive-self-agency-outcome-state-invalid'); }
+    if(!detachedState||typeof detachedState!=='object'||Array.isArray(detachedState)) throw new TypeError('predictive-self-agency-outcome-state-invalid');
+    const cleanObservedState=detachedState as OrganismState;
+    if(!Number.isSafeInteger(cleanObservedState.tick)||cleanObservedState.tick<0||
+       typeof cleanObservedState.at!=='number'||!Number.isFinite(cleanObservedState.at)||cleanObservedState.at<0||
+       !cleanObservedState.needs||typeof cleanObservedState.needs!=='object'||
+       !['energy','cognitiveLoad','uncertainty','novelty','goalPressure','socialNeed','identityCoherence']
+         .every(key=>typeof cleanObservedState.needs[key as keyof typeof cleanObservedState.needs]==='number'&&Number.isFinite(cleanObservedState.needs[key as keyof typeof cleanObservedState.needs]))) {
+      throw new TypeError('predictive-self-agency-outcome-state-invalid');
     }
+    const causalMatch=causalMatch01;
+    const p=this.predict(action);
+    const err=outcome01-p.predictedOutcome01;
+    // A verified outcome still receives credit only in proportion to its causal link.
+    // At zero linkage it remains an observation but does not train the action policy.
+    if(causalMatch<=0) return {predictionError01:Math.abs(err),agencyError01:this.state.agencyError01,ownership01:this.state.ownership01,authorship01:this.state.authorship01};
+    const lr=(.026/Math.sqrt(1+this.state.predictionSamples/2500))*causalMatch;
+    const idx=ACTIONS.indexOf(action);
+    const d=err*p.predictedOutcome01*(1-p.predictedOutcome01);
+    for(let j=0;j<24;j++) this.state.actionRows[idx][j]=clamp11((this.state.actionRows[idx][j]??0)+lr*d*(this.state.selfLatent[j]??0));
     this.state.actionBias[idx]=clamp11((this.state.actionBias[idx]??0)+lr*d);
-    this.state.agencyError01=clamp01(this.state.agencyError01*.94+Math.abs(err)*.06);
+    this.state.agencyError01=clamp01(this.state.agencyError01*.94+Math.abs(err)*causalMatch*.06);
     const requestPenalty=externallyRequested?.18:0;
-    const causalMatch=clamp01(causalMatch01);
-    this.state.ownership01=clamp01(
-      this.state.ownership01*.88+
-      clamp01(p.ownershipPrior01*.72+causalMatch*.28-requestPenalty)*.12,
-    );
-    this.state.authorship01=clamp01(
-      this.state.authorship01*.88+
-      clamp01(p.intention01*.38+(1-this.state.agencyError01)*.3+this.state.ownership01*.32)*.12,
-    );
-    this.state.predictionSamples++;
-    this.state.lastObservedSelfState=this.features({
-      self:[],body:[],world:[],memory:[],motivation:[],state:observedState,
-      externalRequested:externallyRequested,
-    });
-    return {
-      predictionError01:Math.abs(err),agencyError01:this.state.agencyError01,
-      ownership01:this.state.ownership01,authorship01:this.state.authorship01,
-    };
+    const learningWeight=.12*causalMatch;
+    const ownershipTarget=clamp01(p.ownershipPrior01*.72+causalMatch*.28-requestPenalty);
+    this.state.ownership01=clamp01(this.state.ownership01*(1-learningWeight)+ownershipTarget*learningWeight);
+    const authorshipTarget=clamp01(p.intention01*.38+(1-this.state.agencyError01)*.3+this.state.ownership01*.32);
+    this.state.authorship01=clamp01(this.state.authorship01*(1-learningWeight)+authorshipTarget*learningWeight);
+    if(causalMatch>=.5)this.state.predictionSamples++;
+    this.state.lastObservedSelfState=this.features({self:[],body:[],world:[],memory:[],motivation:[],state:cleanObservedState,externalRequested:externallyRequested});
+    return {predictionError01:Math.abs(err),agencyError01:this.state.agencyError01,ownership01:this.state.ownership01,authorship01:this.state.authorship01};
   }
   agencyDiagnostics(){return {ownership01:this.state.ownership01,authorship01:this.state.authorship01,agencyConfidence01:clamp01((1-this.state.agencyError01)*.55+this.state.ownership01*.25+this.state.authorship01*.2),predictionError01:this.state.predictionError01,samples:this.state.predictionSamples};}
 }
