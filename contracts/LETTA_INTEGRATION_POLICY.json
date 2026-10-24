@@ -43,7 +43,10 @@
     "localFilesystemConfinement": "memory",
     "cloudFilesystemConfinementAvailable": false,
     "eventLogSuppressionDoesNotSuppressCanonicalMemorySync": true,
-    "externalRecallPromotedToCanonicalAutomatically": false
+    "externalRecallPromotedToCanonicalAutomatically": false,
+    "durableSyncOutbox": false,
+    "externalMemorySyncBestEffort": true,
+    "productionReady": false
   },
   "activeRuntimeAdapter": "runtime/neuro-kurisu/src/organism/integration/letta/LettaMemoryBridge.ts",
   "activeSdk": "https://github.com/letta-ai/letta-agent-sdk",
@@ -54,6 +57,7 @@
     "SDK dependency and lockfile still require a reproducible Node 24 install before release.",
     "Cloud backend is never inferred from the mere presence of LETTA_API_KEY; NK1_LETTA_BACKEND=cloud is required.",
     "The adapter uses an allowlisted set of file tools, disables server-side web tools/skills, and enables the SDK memory-filesystem confinement for local sessions.",
-    "Hybrid recall returns native NK1 records plus a separate untrusted Letta candidate; callers must review it and it is not automatically stored as canonical memory."
+    "Hybrid recall returns native NK1 records plus a separate untrusted Letta candidate; callers must review it and it is not automatically stored as canonical memory.",
+    "The in-process sync queue is not persisted with the memory snapshot. A durable outbox and restart reconciliation remain mandatory before production."
   ]
 }
