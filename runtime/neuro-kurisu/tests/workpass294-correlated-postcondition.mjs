@@ -8,8 +8,10 @@ import {
 } from '../src/organism/system/OutcomeVerificationService.ts';
 import { OutcomeCognitionFabric } from '../src/organism/system/OutcomeCognitionFabric.ts';
 import { RealityEvidenceLedger } from '../src/organism/system/RealityEvidenceLedger.ts';
+import { ExternalObserverFabric } from '../src/organism/system/ExternalObserverFabric.ts';
 
 const root = process.cwd();
+const projectedEvidenceIdForObserver = value => value;
 const gatewaySource = readFileSync(resolve(root, 'src/organism/system/ActionGateway.ts'), 'utf8');
 const serviceSource = readFileSync(resolve(root, 'src/organism/system/OutcomeVerificationService.ts'), 'utf8');
 const coreSource = readFileSync(resolve(root, 'src/organism/core/OrganismCore.ts'), 'utf8');
@@ -163,6 +165,45 @@ assert.equal(verifierProjection.verificationRecord.evidenceEventId, verification
   'the real verifier event identity must survive entry into the canonical causal outcome projection');
 assert.equal(verifierProjection.verifiedExternal, true,
   'the verifier-to-projection seam should retain the independently verified external postcondition');
+
+// Exercise the real observer's identity-based deduplication with the verifier-minted key.
+// The observer remains the owner of observations; this test does not imply the ledger is
+// automatically populated by every production observer call.
+const crossSubsystemObserver = new ExternalObserverFabric();
+const observedOnce = crossSubsystemObserver.observe({
+  sourceId: 'camera-front',
+  sourceClass: 'device',
+  channel: 'camera',
+  claimKey: 'scene:freshness',
+  observedPostcondition: 'fresh scene observed',
+  confidence01: 0.98,
+  observedAt: 1000,
+  actionRef: expected.executionId,
+  tool: expected.toolId,
+  tick: 11,
+  independenceKey: 'observation:obs-1',
+  evidenceEventId: projectedEvidenceIdForObserver(verification.evidenceEventId),
+  payload: { observationId: 'obs-1', scene: 'fresh' },
+});
+const observedReplay = crossSubsystemObserver.observe({
+  sourceId: 'camera-front',
+  sourceClass: 'device',
+  channel: 'camera',
+  claimKey: 'scene:freshness',
+  observedPostcondition: 'fresh scene observed',
+  confidence01: 0.98,
+  observedAt: 1000,
+  actionRef: expected.executionId,
+  tool: expected.toolId,
+  tick: 11,
+  independenceKey: 'observation:obs-1',
+  evidenceEventId: projectedEvidenceIdForObserver(verification.evidenceEventId),
+  payload: { observationId: 'obs-1', scene: 'fresh' },
+});
+assert.equal(observedReplay.id, observedOnce.id,
+  'the observer must deduplicate the same verifier event on an exact replay');
+assert.equal(crossSubsystemObserver.snapshot().totalObservations, 1,
+  'an exact verifier-event replay must not inflate observer counts');
 
 // Carry that same verifier-minted event identity into the canonical reality ledger.
 // Replays must be idempotent across consumers; the shared ID does not manufacture trust.
