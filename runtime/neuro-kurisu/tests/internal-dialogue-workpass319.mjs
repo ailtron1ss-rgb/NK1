@@ -158,7 +158,20 @@ const toolEvidenceSnapshot = toolFabric.snapshot();
 const externalBound = bindCognitiveEventEvidence(seedClaims, [], toolEvidenceSnapshot);
 assert.equal(externalBound.linkedIndependentObservations, 1, 'late independent observation must retain its causal tool-receipt lineage');
 assert.ok(externalBound.claims.find((claim) => claim.id === 'candidate-2')?.supportingEvidenceIds?.length === 1);
+
 assert.equal(externalBound.evidence[0].kind, 'observation');
+const missingIndependenceSnapshot = structuredClone(toolEvidenceSnapshot);
+const independentRow = missingIndependenceSnapshot.recent.find((row) => row.stage === 'external-evidence');
+assert.ok(independentRow);
+independentRow.payload.independenceKey = '';
+assert.equal(bindCognitiveEventEvidence(seedClaims, [], missingIndependenceSnapshot).linkedIndependentObservations, 0,
+  'an external observation without an independence key must not become evidence');
+const danglingSnapshot = structuredClone(causalSnapshot);
+const outcomeRow = danglingSnapshot.recent.find((row) => row.stage === 'outcome');
+assert.ok(outcomeRow);
+outcomeRow.parentIds = ['missing-action-parent'];
+assert.equal(bindCognitiveEventEvidence(seedClaims, [], danglingSnapshot).linkedOutcomeEvents, 0,
+  'an outcome without an exact action parent must not become evidence');
 const proposalPrompt = buildCognitiveProposalPrompt(
   cycle,
   'A grounded observation about two competing action hypotheses.',
