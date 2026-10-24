@@ -17,7 +17,7 @@ function restoreWindow() {
 
 test("avatar preference reads fail closed when storage is unavailable", () => {
   try {
-    delete globalThis.window;
+    Reflect.deleteProperty(globalThis, "window");
     assert.equal(readAvatarPreference("profile"), null);
     Object.defineProperty(globalThis, "window", { configurable: true, get() { throw new Error("blocked"); } });
     assert.equal(readAvatarPreference("profile"), null);
