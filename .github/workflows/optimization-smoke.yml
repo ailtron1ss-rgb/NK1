@@ -14,6 +14,8 @@ on:
       - "runtime/neuro-kurisu/tests/memory-lifecycle-command-workpass31.mjs"
       - "runtime/neuro-kurisu/tests/memory-semantic-embeddings-workpass33.mjs"
       - "runtime/neuro-kurisu/tests/memory-cognition-retrieval-workpass34.mjs"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-performance-benchmark.mjs"
+      - "runtime/neuro-kurisu/tests/compare-memory-retrieval-performance.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
       - ".github/workflows/optimization-smoke.yml"
@@ -31,6 +33,12 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+      - name: Checkout pre-optimization baseline
+        uses: actions/checkout@v7
+        with:
+          ref: 19f64b1ae985e579795b4ef054fd3fb58259a336
+          path: baseline
+          fetch-depth: 1
       - uses: actions/setup-node@v7
         with:
           node-version-file: ".nvmrc"
@@ -61,5 +69,22 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-numeric-terms
       - name: Retrieval benchmark integrity
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-126-memory-retrieval-benchmark.mjs
+      - name: Prepare paired performance benchmark
+        run: |
+          set -euo pipefail
+          mkdir -p .benchmark-results
+          cp runtime/neuro-kurisu/tests/memory-retrieval-performance-benchmark.mjs baseline/runtime/neuro-kurisu/tests/memory-retrieval-performance-benchmark.mjs
+      - name: Measure baseline retrieval
+        env:
+          NK1_PERF_LABEL: baseline
+          NK1_PERF_COMMIT: 19f64b1ae985e579795b4ef054fd3fb58259a336
+        run: node --expose-gc --experimental-strip-types baseline/runtime/neuro-kurisu/tests/memory-retrieval-performance-benchmark.mjs > .benchmark-results/baseline.json
+      - name: Measure candidate retrieval
+        env:
+          NK1_PERF_LABEL: candidate
+          NK1_PERF_COMMIT: ${{ github.sha }}
+        run: node --expose-gc --experimental-strip-types runtime/neuro-kurisu/tests/memory-retrieval-performance-benchmark.mjs > .benchmark-results/candidate.json
+      - name: Compare baseline and candidate
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/compare-memory-retrieval-performance.mjs .benchmark-results/baseline.json .benchmark-results/candidate.json | tee .benchmark-results/comparison.json
       # The repository-wide typecheck currently fails in unrelated legacy learning/system modules;
       # the targeted runtime regressions remain independently actionable in this workflow.
