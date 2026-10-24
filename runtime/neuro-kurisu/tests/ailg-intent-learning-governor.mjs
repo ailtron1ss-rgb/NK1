@@ -102,7 +102,7 @@ unapprovedExternal.restore({
   outcomes: [], executedIntentIds: ['external'], approvedIntentIds: [],
 });
 assert.equal(unapprovedExternal.snapshot().decisions[0].status, 'approval-required', 'external effects must lose executable status without an approval reference');
-assert.equal(unapprovedExternal.recordExecution('external', 'execution:forged'), { accepted: false, reason: 'intent-not-authorized' });
+assert.deepEqual(unapprovedExternal.recordExecution('external', 'execution:forged'), { accepted: false, reason: 'intent-not-authorized' });
 let snapshotGetterCalls = 0;
 const accessorSnapshot = { decisions: [] };
 Object.defineProperty(accessorSnapshot, 'version', { enumerable: true, get() { snapshotGetterCalls += 1; return 1; } });
