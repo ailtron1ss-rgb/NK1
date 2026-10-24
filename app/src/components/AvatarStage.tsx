@@ -6,6 +6,7 @@ import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/saf
 import {
   appendVisemeClockAnchor,
   buildVisemeTimeline,
+  deriveAffectiveEmbodiment,
   CLOSED_MOUTH,
   reanchorMonotonicAudioClock,
   sampleMonotonicAudioClock,
@@ -150,7 +151,17 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       if (voiceEnabled && lastTurn?.text?.trim()) {
         const text = lastTurn.text;
         const language = inferSpeechLanguage(text);
-        const rate = 0.96;
+        const speechAffect = deriveAffectiveEmbodiment({
+          label: lastTurn.emotion ?? snap.emotion.label,
+          valence01: snap.emotion.valence,
+          arousal01: snap.emotion.arousal,
+          dominance01: snap.emotion.dominance,
+          energy01: snap.needs.energy,
+          cognitiveLoad01: snap.needs.cognitiveLoad,
+          uncertainty01: snap.needs.uncertainty,
+          sleepPressure01: snap.needs.sleepPressure,
+        });
+        const rate = speechAffect.speechRate;
         const sequence = ++speechSequenceRef.current;
         const speechEventId = `avatar-speech-${Date.now().toString(36)}-${sequence.toString(36)}`;
         const session: BrowserSpeechSession = {
@@ -172,8 +183,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = language;
         utterance.rate = rate;
-        const utteranceEmotion = lastTurn.emotion ?? snap.emotion.label;
-        utterance.pitch = utteranceEmotion === "joy" ? 1.03 : utteranceEmotion === "frustration" || utteranceEmotion === "anger" ? 0.92 : 1.0;
+        utterance.pitch = speechAffect.speechPitch;
         const availableVoices = voicesRef.current;
         const selected = availableVoices.find((voice) => voice.name === voiceName) ?? availableVoices.find((voice) => voice.lang.toLowerCase().startsWith(utterance.lang.slice(0, 2).toLowerCase())) ?? null;
         if (selected) utterance.voice = selected;
@@ -298,16 +308,21 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     const win = frame.current?.contentWindow;
     if (!win || !live || mode !== "live2d") return;
     const expression = EXPR[snap.emotion.label] ?? "neutral";
+    const affective = deriveAffectiveEmbodiment({
+      label: snap.emotion.label,
+      valence01: snap.emotion.valence,
+      arousal01: snap.emotion.arousal,
+      dominance01: snap.emotion.dominance,
+      energy01: snap.needs.energy,
+      cognitiveLoad01: snap.needs.cognitiveLoad,
+      uncertainty01: snap.needs.uncertainty,
+      sleepPressure01: snap.needs.sleepPressure,
+    });
     const gazeByAction: Record<OrganismSnapshot["lastOption"], { x: number; y: number }> = {
       explore: { x: 0.24, y: 0.04 }, verify: { x: 0.14, y: -0.10 }, reflect: { x: -0.19, y: -0.14 },
       respond: { x: 0.01, y: 0.01 }, wait: { x: -0.035, y: -0.005 }, rest: { x: -0.06, y: 0.075 },
     };
     const gaze = gazeByAction[snap.lastOption] ?? gazeByAction.wait;
-    const valenceOffset = (snap.emotion.valence - 0.5) * 0.16;
-    const headTiltByEmotion: Record<EmotionLabel, number> = {
-      curiosity: -0.045, calm: 0, joy: 0.018, anxiety: -0.018,
-      frustration: 0.035, sadness: 0.055, anger: 0.025, protective: -0.01,
-    };
     const activeSession = activeSpeechSessionRef.current;
     const session = activeSession ?? lastSpeechSessionRef.current;
     const activeUtterance = Boolean(activeSession && speechPhaseRef.current === "speaking" && voiceStatus === "speaking");
@@ -332,20 +347,24 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       priority: speechPhaseRef.current === "cancelled" ? 100 : activeUtterance ? 70 : thinking ? 45 : 30,
       cancellationToken: session ? `cancel:${session.speechEventId}` : null,
       expression,
-      expressionIntensity: snap.emotion.arousal,
+      expressionIntensity: affective.expressionIntensity,
       mouth: activeUtterance ? mouthPose : CLOSED_MOUTH,
-      gaze: { x: Math.max(-0.4, Math.min(0.4, gaze.x + valenceOffset)), y: gaze.y, driven: true },
+      gaze: {
+        x: Math.max(-0.4, Math.min(0.4, gaze.x + affective.gazeXOffset)),
+        y: Math.max(-0.3, Math.min(0.3, gaze.y + affective.gazeYOffset)),
+        driven: true,
+      },
       body: {
-        headTilt: headTiltByEmotion[snap.emotion.label],
+        headTilt: affective.headTilt,
         gesture: bodyGestureActive,
         motionGroup,
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
         motionToken: Number.isSafeInteger(motionToken) && motionToken > 0 ? motionToken : 0,
       },
-      voiceEmphasis: activeUtterance ? Math.min(1, snap.emotion.arousal + 0.15) : 0,
+      voiceEmphasis: activeUtterance ? affective.voiceEmphasis : 0,
     };
     win.postMessage(intent, window.location.origin);
-  }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
+  }, [snap.emotion, snap.needs, snap.lastOption, snap.chat, snap.tick, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-elevated">
