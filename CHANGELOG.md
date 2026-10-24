@@ -1,3 +1,11 @@
+## NK1 WorkPass501 — repair CI script aliases and Node 24 TypeScript transform
+
+- Added the missing `test:p26:learning-input-integrity` package-script alias required by the P26 validation workflow.
+- Switched `test:p23:hermes-reflective-diagnostics` from strip-only TypeScript mode to Node's transform-types mode because the imported candidate store uses TypeScript parameter properties that strip-only mode cannot execute.
+- This directly addresses observed CI failures (missing npm script and `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`); the rerun is pending.
+
+---
+
 ## NK1 WorkPass500 — guard relationship-self updates
 
 - `RelationshipSelf.observe` now rejects malformed identity strings and non-finite/out-of-range social evidence before mutating trust, warmth, guardedness, or predictability.
