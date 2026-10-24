@@ -1,3 +1,12 @@
+## NK1 WorkPass511 — restore typecheck portability and sharpen outcome contracts (2026-10-24)
+
+- Removed generic `Buffer<ArrayBufferLike>` annotations from learning-process output accumulators. Portable `Buffer` annotations work with the installed Node types and NK1's fallback shim, addressing the exact type errors observed after the CognitiveEventFabric predicate repair.
+- Split `VerifiedOutcomeLedger` regressions so reusing task/method/seed/attempt with a unique evidence ref is distinguished from reusing one evidence ref across distinct outcomes.
+- Corrected five stale causal-stream assertions: caller-imported/unverified events remain available for adjudication but must not increment grounded outcome totals; duplicates, conflicts and rejected malformed inputs all preserve the same zero trusted count.
+- Code/test changes are committed; exact-head typecheck and focused suites still need successful execution before PASS can be claimed.
+
+---
+
 ## NK1 WorkPass509 — close CEF restore coercion and control-character gaps (2026-10-24)
 
 - Replaced the incorrectly escaped control-character regex in CognitiveEventFabric ingress with explicit C0/C1 code-point validation, so natural labels containing the letter `u` are not rejected while actual control characters are.
