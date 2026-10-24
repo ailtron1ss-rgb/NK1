@@ -93,7 +93,7 @@ try {
   const inboxPath = path.join(root, 'skill-review-inbox.json');
   const persistence = new AtomicFileSkillReviewInboxPersistence(inboxPath);
   const inbox = new HexisSkillReviewInbox(persistence);
-  const submitted = inbox.submit(proposal, candidate, 1_800_000_000_010);
+  const submitted = inbox.submit(proposal, candidate, 1_800_000_000_300);
   assert.equal(submitted.status, 'pending');
   assert.equal(submitted.packet.candidateId, candidate.candidateId);
   assert.equal(submitted.packet.artifactFingerprint, artifactFingerprint);
@@ -103,21 +103,19 @@ try {
     'the human review packet must not expose raw holdout prompts');
   assert.equal(inbox.submit(proposal, candidate, 1_800_000_000_010).packet.reviewId, submitted.packet.reviewId,
     'identical evidence packet submissions must be idempotent');
-  assert.throws(() => inbox.decide(submitted.packet.reviewId, {
-    outcome: 'approve', reviewerId: 'reviewer-omega', rationale: 'Looks good',
-    decidedAt: 1_800_000_000_020,
-  }) && assertSkillReviewReadyForSignedPromotion(inbox.getForCandidate(candidateId), candidate),
-  /completed positive human review/, 'an approval decision is required before signed promotion can be requested');
+  assert.throws(() => assertSkillReviewReadyForSignedPromotion(submitted, candidate),
+    /completed positive human review/,
+    'a pending review must not be accepted as authorization to request signed promotion');
 
   const approved = inbox.decide(submitted.packet.reviewId, {
     outcome: 'approve', reviewerId: 'reviewer-omega', rationale: 'Evidence and regression summaries reviewed',
-    decidedAt: 1_800_000_000_020,
+    decidedAt: 1_800_000_000_320,
   });
   assert.equal(approved.status, 'approved-for-signed-promotion');
   assert.doesNotThrow(() => assertSkillReviewReadyForSignedPromotion(approved, candidate));
   assert.throws(() => inbox.decide(submitted.packet.reviewId, {
     outcome: 'reject', reviewerId: 'reviewer-omega', rationale: 'Contradictory duplicate decision',
-    decidedAt: 1_800_000_000_030,
+    decidedAt: 1_800_000_000_330,
   }), /already has a final decision/);
 
   const staleCandidate = {
@@ -137,7 +135,7 @@ try {
     'the digest-bound review packet must reject on-disk tampering');
 
   const fake = { ...proposal, proposalId: '9'.repeat(64) };
-  assert.throws(() => inbox.submit(fake, candidate, 1_800_000_000_040), /authentic proposal/);
+  assert.throws(() => inbox.submit(fake, candidate, 1_800_000_000_340), /authentic proposal/);
   console.log('OPERATION_OMEGA_HEXIS_REVIEW_INBOX=PASS signed evidence -> review packet -> durable human decision; activation remains separately signed');
 } finally {
   rmSync(root, { recursive: true, force: true });

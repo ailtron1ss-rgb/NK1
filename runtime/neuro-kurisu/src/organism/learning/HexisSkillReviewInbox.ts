@@ -160,7 +160,7 @@ export function createHexisSkillReviewPacket(
   createdAt = Date.now(),
 ): HexisSkillReviewPacket {
   assertProposalAndCandidate(proposal, candidate);
-  if (!Number.isFinite(createdAt) || createdAt <= 0) throw new Error('review packet timestamp must be positive');
+  if (!Number.isSafeInteger(createdAt) || createdAt <= 0) throw new Error('review packet timestamp must be a positive safe integer');
   const body = {
     schemaVersion: 1 as const,
     createdAt,
@@ -312,8 +312,12 @@ export class AtomicFileSkillReviewInboxPersistence implements SkillReviewInboxPe
       return true;
     } finally {
       if (tempPath) { try { unlinkSync(tempPath); } catch { /* best-effort temporary file cleanup */ } }
-      if (lockFd !== undefined) closeSync(lockFd);
-      try { unlinkSync(lockPath); } catch { /* preserve the original persistence error */ }
+      // Only remove a lock we successfully created. Unlink it before closing the
+      // descriptor so a writer that never acquired the lock cannot remove it.
+      if (lockFd !== undefined) {
+        try { unlinkSync(lockPath); } catch { /* preserve the original persistence error */ }
+        closeSync(lockFd);
+      }
     }
   }
 }
@@ -361,7 +365,7 @@ export class HexisSkillReviewInbox {
     const rationale = typeof input.rationale === 'string' ? input.rationale.trim() : '';
     const decidedAt = input.decidedAt ?? Date.now();
     if (!reviewerId || reviewerId.length > 128 || /[\u0000-\u001f\u007f]/.test(reviewerId) ||
-        rationale.length < 3 || rationale.length > 2000 || !Number.isFinite(decidedAt) || decidedAt <= 0) {
+        rationale.length < 3 || rationale.length > 2000 || !Number.isSafeInteger(decidedAt) || decidedAt <= 0) {
       throw new Error('review decision requires a bounded reviewer ID, rationale and positive timestamp');
     }
     return this.transact(snapshot => {
