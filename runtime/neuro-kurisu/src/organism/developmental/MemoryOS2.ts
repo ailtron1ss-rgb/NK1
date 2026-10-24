@@ -725,7 +725,7 @@ export class MemoryOS2{
  private recordConfidenceRevision(item:MemoryItem2,evidence:MemoryEvidenceSource,stance:MemoryConfidenceStance,at:number,sourceKey:string,forcedReason?:'duplicate_source'|'protected'):MemoryConfidenceRevisionResult{
   const prior=typeof item.confidence==='number'&&Number.isFinite(item.confidence)?clamp(item.confidence):.5;
   const authority=clamp(Number(evidence.sourceAuthority01));
-  const protectedBelief=stance==='contradicts'&&(item.kind==='identity'||item.context?.protected==='true');
+  const protectedBelief=stance==='contradicts'&&(item.context?.protected==='true');
   const reason=forcedReason??(protectedBelief?'protected':'applied');
   const applied=reason==='applied';
   const posterior=applied?(stance==='supports'?Math.min(.99,prior+(1-prior)*.35*authority):Math.max(.05,prior*(1-.35*authority))):prior;
@@ -777,7 +777,7 @@ export class MemoryOS2{
   }
   item.evidenceSources=this.normalizeEvidenceSources({...item,evidenceSources:[...(item.evidenceSources??[]),evidence]});
   item.evidenceLineageKeys=[...new Set([...(item.evidenceLineageKeys??[]),sourceKey])].slice(-32);
-  const protectedBelief=stance==='contradicts'&&(item.kind==='identity'||item.context?.protected==='true');
+  const protectedBelief=stance==='contradicts'&&(item.context?.protected==='true');
   const receipt=this.recordConfidenceRevision(item,evidence,stance as MemoryConfidenceStance,at,sourceKey,protectedBelief?'protected':undefined);
   this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-previousBytes+estimateMemoryBytes(item));
   this.state.reconsolidations++;
