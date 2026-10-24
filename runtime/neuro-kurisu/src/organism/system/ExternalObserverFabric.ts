@@ -170,6 +170,10 @@ export class ExternalObserverFabric {
     if(!/^[a-z0-9._-]{2,80}$/i.test(id))throw new Error('invalid-observer-source-id');
     const now=Date.now();
     const prior=this.state.sources.find(s=>s.id===id);
+    // Never let a stream of caller-chosen IDs evict established source identities.
+    // At capacity, preserve the registry and fail closed for new identities; updates
+    // to an already registered source remain possible.
+    if(!prior && this.state.sources.length>=this.maxSources) throw new Error('observer-source-registry-capacity-exceeded');
     // A source ID is the stable trust-registry identity. Allowing a later
     // registration to rewrite its class/channel/independence key lets one
     // physical source masquerade as a second independent witness.
