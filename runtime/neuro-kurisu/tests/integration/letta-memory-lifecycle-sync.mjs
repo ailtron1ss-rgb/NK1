@@ -159,4 +159,49 @@ assert.equal(recoveredRuntime.lettaSyncOutboxStatus().completedReceipts, 1);
 assert.ok(recovered.state.prompts.some((prompt) => prompt.includes('This record must survive a Letta transport failure.')));
 assert.equal(recoveredRuntime.snapshot().lettaSyncOutbox.entries.length, 0);
 await recoveredRuntime.close();
+
+// A canonical forget must supersede an unsent upsert and move to the front
+// of the outbox even when the provider is failing.
+const deletePriorityClient = {
+  async createAgent() { return 'agent-lifecycle-test'; },
+  resumeSession() {
+    return {
+      async ready() {},
+      async send() { throw new Error('simulated-network-outage'); },
+      async *stream() { yield { type: 'assistant', content: 'should never be reached' }; },
+      async close() {},
+    };
+  },
+};
+const deletePriorityRuntime = new MemorySubsystemRuntime({ letta: { enabled: true, client: deletePriorityClient } });
+const deletePriorityItem = deletePriorityRuntime.fabric.encode({
+  content: 'This pending write must be superseded by canonical deletion.',
+  kind: 'episodic',
+  tags: ['delete-priority'],
+  context: { testRun: 'workpass328-delete-priority' },
+  salience: 0.6,
+  emotionalWeight: 0.0,
+  identityRelevance: 0.0,
+  goalRelevance: 0.0,
+  socialRelevance: 0.0,
+  predictionError: 0.0,
+  confidence: 0.85,
+  epistemicStatus: 'fact',
+  source: 'unit-test',
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+});
+assert.ok(deletePriorityItem?.id);
+await deletePriorityRuntime.flushLettaMemorySync();
+assert.equal(deletePriorityRuntime.lettaSyncOutboxStatus().pending, 1);
+assert.equal(deletePriorityRuntime.getLettaSyncOutboxSnapshot().entries[0].input.action, 'upsert');
+assert.equal(deletePriorityRuntime.fabric.forgetById(deletePriorityItem.id, 'delete-priority-test'), true);
+await deletePriorityRuntime.flushLettaMemorySync();
+const priorityQueue = deletePriorityRuntime.getLettaSyncOutboxSnapshot().entries;
+assert.equal(priorityQueue.length, 1);
+assert.equal(priorityQueue[0].input.action, 'forget');
+assert.equal(priorityQueue[0].input.id, deletePriorityItem.id);
+assert.ok(!priorityQueue.some((entry) => entry.input.action === 'upsert' && entry.input.id === deletePriorityItem.id));
 console.log('LETTA_MEMORY_LIFECYCLE_SYNC=PASS');
