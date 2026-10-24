@@ -18,12 +18,13 @@
     "preview:stop": "node scripts/preview.mjs stop",
     "typecheck": "tsc --noEmit",
     "check:auth": "node scripts/check-auth-invariant.mjs",
-    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts && npm run test:live2d-expression-cache && npm run test:embodiment-timeline",
+    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts && npm run test:live2d-expression-cache && npm run test:embodiment-timeline && npm run test:live2d-assets",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test:scripts": "node --experimental-strip-types --test 'scripts/**/*.test.mjs' && npm run test:live2d-expression-cache && npm run test:embodiment-timeline",
+    "test:scripts": "node --experimental-strip-types --test 'scripts/**/*.test.mjs' && npm run test:live2d-expression-cache && npm run test:embodiment-timeline && npm run test:live2d-assets",
     "assets:sync": "node scripts/sync-canonical-public-assets.mjs",
-    "test:embodiment-timeline": "node --experimental-strip-types --test scripts/embodiment-timeline.test.mjs"
+    "test:embodiment-timeline": "node --experimental-strip-types --test scripts/embodiment-timeline.test.mjs",
+    "test:live2d-assets": "node scripts/test-live2d-assets.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
