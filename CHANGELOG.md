@@ -1,3 +1,11 @@
+# WorkPass338 — preserve successful reflective revision lineage (2026-10-24)
+
+- [FIXED] Reflective revision staging now retains the exact evidence-backed plan used to generate the candidate. The persisted plan fingerprint and repair dimensions no longer get replaced by a post-revision diagnosis.
+- [FIXED] A fresh independently evaluated candidate with no remaining performance targets can be staged when the source repair plan was non-empty and the fresh evaluation has no safety blocker. An empty post-revision target list is treated as possible successful repair, not as missing source evidence.
+- [OBSERVABILITY] The revision result distinguishes the original generation plan from the post-revision plan, so callers can see both intended changes and remaining deficits.
+- [TEST] Added an authenticated end-to-end regression using signed outcome fixtures; it requires successful improvement, zero remaining targets, preserved source-plan provenance, and a new staged version.
+- [VALIDATION] Regression is wired into the focused Node.js 24 workflow. Actual Actions execution and TypeScript checks remain unconfirmed until an exact-head run reports results.
+
 # WorkPass337 — require canonical experiment provenance for learning-growth claims (2026-10-24)
 
 - [FIXED] The strict paired-seed comparison now refuses evaluation envelopes without a canonical experiment manifest, validation plan, holdout plan, distinct baseline/candidate method identities, and a valid attempt identity.
