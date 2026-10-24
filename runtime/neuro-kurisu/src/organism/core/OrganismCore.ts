@@ -11523,6 +11523,14 @@ export class OrganismCore {
     externalObserverSnapshot() { return this.evidenceResearchSubsystem.externalObserver.snapshot(); }
     externalObserverSummary() { return this.evidenceResearchSubsystem.externalObserver.summary(); }
     reconcileExternalClaim(claimKey: string, expectedPostcondition?: string) { return structuredClone(this.evidenceResearchSubsystem.externalObserver.reconcileClaim(claimKey, expectedPostcondition)); }
+    /** Register only a source identity explicitly declared by a trusted ActionGateway tool. */
+    registerExternalObserverSourceForTool(toolId: string) {
+        const source = this.cognitiveRuntime.actionGateway.observationSourceForTool(String(toolId));
+        if (!source) throw new Error('external-observer-tool-source-not-declared');
+        return this.evidenceResearchSubsystem.externalObserver.registerSource({
+            id: source.sourceId, sourceClass: source.sourceClass, channel: source.channel, independenceKey: source.independenceKey,
+        });
+    }
     /** Register only a source identity already declared by a trusted ActionGateway tool definition. */
     registerExternalObserverSourceForTool(toolId: string) {
         const source = this.cognitiveRuntime.actionGateway.observationSourceForTool(String(toolId));
