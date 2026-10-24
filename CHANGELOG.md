@@ -1,3 +1,13 @@
+## NK1 WorkPass527 — validate learned personality in live Core and restore missing trust boundary (2026-10-24)
+
+- Added a live-Core developmental experiment that learns from every action actually selected by the organism over 72 feedback cycles, rather than discarding all outcomes except `verify`. It measures action counts, learned personality bias, snapshot/restore consistency, and the candidate-distribution difference between the same restored state with B299 active versus lesioned.
+- Corrected the Node 24 launch mode for the Core-level test to `--experimental-transform-types`; `--experimental-strip-types` stops at a transitive TypeScript parameter property before the test can run.
+- Restored the missing `LearningTrustBoundary.ts` dependency required by `PersonalCurriculumEngine`, using the current shared `PlainDataSnapshot` implementation and exporting its canonical node budget.
+- Added a focused trust-boundary contract covering canonical identity strings, accessor non-invocation, approved capability identity, and hostile envelope rejection. Registered the new test in the focused personality workflow.
+- **Validation status:** the first live-Core run exposed the missing import above before behavioral assertions executed. A rerun with the restored dependency and corrected Node transform mode is required; no live-Core generalization PASS is claimed yet.
+
+---
+
 ## NK1 WorkPass526 — protect persistent character and correct causal personality credit (2026-10-24)
 
 - Hardened `P2702PersistentPersonalityDynamics.restore()`: canonical identity invariants and vector names now come from code-owned Kurisu profile; restored vectors are finite, bounded and schema-aligned; counters, action preferences and relationship keys are sanitized.
