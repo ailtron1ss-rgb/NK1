@@ -1,3 +1,15 @@
+## 2026-10-24 — Unified local small-model routing and memory embeddings
+
+- [IMPLEMENTED] Added `LocalSmallModelHub` as a single capability registry for local language generation, semantic embeddings, intent classification and affect estimation, with bounded inputs/outputs, schema validation and prompt-free telemetry.
+- [RUNTIME] Routed language-model selection and outcome accounting through the hub while retaining the existing P40 selection and local-language circuit-breaker policy. Optional, explicitly configured specialist models can contribute validated low-confidence context signals to the language-response path.
+- [MEMORY] Exported a shared embedding provider and injected that same instance into the canonical `MemorySubsystemRuntime` and server hub. This shares embedding cache/diagnostics between real memory semantic indexing and the API instead of maintaining two independent provider instances.
+- [API] Added authenticated endpoints `GET /api/local-models`, `POST /api/local-models/embeddings`, `POST /api/local-models/classify` and `POST /api/local-models/emotion`. The existing API authorization/rate-limit middleware remains in front of them.
+- [PRIVACY] Local specialist chat endpoints continue to enforce loopback-only transport. Embedding remote access remains opt-in and HTTPS-only; obvious credentials/contact identifiers are scrubbed before model inference. The sanitizer is heuristic, not a guarantee of complete PII removal.
+- [REGRESSION] Added `test:local-small-model-hub` and an audit script to the runtime package, plus a WorkPass71 CI step covering routing/cooldown, output schemas, redaction, embedding bounds, memory-provider wiring and graceful specialist-signal degradation.
+- [VALIDATION STATUS] The checks are committed but have not yet been verified green on this exact branch. Real local model execution, device resource profiles, retrieval-uplift evaluation and production/release approval remain outstanding; no model downloads or release assets were modified.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
