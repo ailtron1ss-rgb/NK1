@@ -8418,6 +8418,7 @@ export class OrganismCore {
             this.cognitiveRuntime.sourceMonitor.add('system', 'feedback-note', 0.7, 'hypothesis');
         this.persisted.facets.cognition.sources = this.cognitiveRuntime.sourceMonitor.snapshot();
         const trace = this.persisted.traces[0];
+        const decisionEmotion = trace?.emotionEpisodeId ? this.cognitiveRuntime.emotionAppraisal.episodeById(trace.emotionEpisodeId) : null;
         const feedbackEmotion = this.cognitiveRuntime.emotionAppraisal.appraise({ tick: state.tick, at: state.at, goalPressure01: state.needs.goalPressure, goalCongruence01: success, controllability01: 1 - state.needs.uncertainty, novelty01: clamp(state.needs.novelty * .6 + surprise * .4), selfRelevance01: state.needs.identityCoherence, socialMeaning01: state.needs.socialNeed, uncertainty01: state.needs.uncertainty, predictionError01: surprise, homeostaticPressure01: clamp((1 - state.needs.energy) * .4 + state.needs.cognitiveLoad * .25 + state.needs.uncertainty * .2 + surprise * .15), energy01: state.needs.energy, success01: gatedSuccess01, external: Boolean(outcome.evidenceSource) });
         const feedbackFeeling = this.cognitiveRuntime.emotionAppraisal.inferFeeling(feedbackEmotion, { energy01: state.needs.energy, cognitiveLoad01: state.needs.cognitiveLoad, uncertainty01: state.needs.uncertainty, selfFocus01: state.needs.identityCoherence });
         const feedbackCalibration = this.cognitiveRuntime.emotionAppraisal.recordOutcome({ emotionId: trace?.emotionEpisodeId, action: trace?.selected?.action ?? feedbackEmotion.actionTendency, success01: gatedSuccess01, surprise01: gatedSurprise01, regulationCost01: this.cognitiveRuntime.emotionAppraisal.regulationPressure01() });
@@ -8484,12 +8485,19 @@ export class OrganismCore {
             if (!existing)
                 continue;
             const memoryBlend = clamp(learning.memoryPromotionScale01);
-            const emotionalTarget = clamp(existing.emotionalWeight * (1 - .22 * memoryBlend) + feedbackEmotion.arousal01 * .22 * memoryBlend);
+            // Reconsolidation should preserve both the affect that preceded the decision
+            // and the reaction to the observed outcome; outcome emotion must not overwrite
+            // the decision-time emotional context.
+            const decisionArousal01 = decisionEmotion?.arousal01 ?? feedbackEmotion.arousal01;
+            const decisionMemorySalience01 = decisionEmotion?.memorySalienceMultiplier01 ?? 1;
+            const reconsolidationAffect01 = clamp(decisionArousal01 * .45 + feedbackEmotion.arousal01 * .35 + feedbackEmotion.interoceptiveDelta.attentionCapture01 * .20);
+            const emotionalTarget = clamp(existing.emotionalWeight * (1 - .22 * memoryBlend) + reconsolidationAffect01 * .22 * memoryBlend);
             const predictionTarget = clamp(existing.predictionError * (1 - .38 * memoryBlend) + surprise * .38 * memoryBlend);
-            const salienceTarget = clamp(existing.salience * (1 - .28 * memoryBlend) + (Math.abs(success - .5) * .20 + feedbackEmotion.interoceptiveDelta.attentionCapture01 * .08) * memoryBlend);
-            const reconsolidated = this.memorySubsystem.fabric.updateSignals(memoryId, { emotionalWeight: emotionalTarget, predictionError: predictionTarget, salience: salienceTarget, dormant: false }, `feedback-reconsolidation:${feedbackEmotion.label}`);
+            const salienceTarget = clamp(existing.salience * (1 - .28 * memoryBlend) + (Math.abs(success - .5) * .20 + feedbackEmotion.interoceptiveDelta.attentionCapture01 * .08 + Math.max(0, decisionMemorySalience01 - 1) * .06) * memoryBlend);
+            const affectLineage = `decision=${decisionEmotion?.label ?? 'unknown'}->feedback=${feedbackEmotion.label}`;
+            const reconsolidated = this.memorySubsystem.fabric.updateSignals(memoryId, { emotionalWeight: emotionalTarget, predictionError: predictionTarget, salience: salienceTarget, dormant: false }, `feedback-reconsolidation:${affectLineage}`);
             if (reconsolidated) {
-                this.organismSystems.memory.memoryRetentionEconomy.recordConsolidation({ memoryId, tick: state.tick, at: state.at, mode: 'strengthen', score01: clamp((salienceTarget * .5 + emotionalTarget * .25 + predictionTarget * .25) * memoryBlend), emotionalGain01: clamp(feedbackEmotion.arousal01 * .22 * memoryBlend), identityGain01: 0, goalGain01: 0, reason: `feedback=${success.toFixed(2)};surprise=${surprise.toFixed(2)};emotion=${feedbackEmotion.label};memoryScale=${memoryBlend.toFixed(3)}` });
+                this.organismSystems.memory.memoryRetentionEconomy.recordConsolidation({ memoryId, tick: state.tick, at: state.at, mode: 'strengthen', score01: clamp((salienceTarget * .5 + emotionalTarget * .25 + predictionTarget * .25) * memoryBlend), emotionalGain01: clamp(reconsolidationAffect01 * .22 * memoryBlend), identityGain01: 0, goalGain01: 0, reason: `feedback=${success.toFixed(2)};surprise=${surprise.toFixed(2)};${affectLineage};memoryScale=${memoryBlend.toFixed(3)}` });
             }
         }
         this.persisted.system.memoryRetentionEconomy = this.organismSystems.memory.memoryRetentionEconomy.snapshot();
@@ -8834,6 +8842,11 @@ export class OrganismCore {
                 tick: state.tick, at: state.at,
                 experience: { id: `obs:${state.tick + 1}`, label: 'observed-experience', confidence01: projectEvidenceExternal ? .8 : .6, external01: projectEvidenceExternal ? 1 : 0, metadata: causalEpisodeId ? { b294CausalEpisodeId: causalEpisodeId } : undefined },
                 emotion: { id: feedbackEmotion.id, label: feedbackEmotion.label, confidence01: feedbackFeeling.selfAccessConfidence01, external01: Boolean(outcome.evidenceSource) ? 1 : 0, metadata: causalEpisodeId ? { b294CausalEpisodeId: causalEpisodeId } : undefined },
+                decisionEmotion: decisionEmotion ? {
+                    id: decisionEmotion.id, label: decisionEmotion.label, confidence01: decisionEmotion.confidence01,
+                    external01: decisionEmotion.cause === 'external-experience' ? 1 : 0,
+                    metadata: { phase: 'decision-time', actionTendency: decisionEmotion.actionTendency, valence01: decisionEmotion.valence01, arousal01: decisionEmotion.arousal01, memorySalienceMultiplier01: decisionEmotion.memorySalienceMultiplier01 },
+                } : undefined,
                 memory: (this.persisted.facets.memory.lastRetrievedMemoryIds ?? [])[0]
                     ? { id: (this.persisted.facets.memory.lastRetrievedMemoryIds ?? [])[0], label: 'retrieved-memory', confidence01: .65, external01: 0, metadata: causalEpisodeId ? { b294CausalEpisodeId: causalEpisodeId } : undefined }
                     : undefined,
