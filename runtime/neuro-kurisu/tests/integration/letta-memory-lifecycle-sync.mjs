@@ -102,4 +102,61 @@ assert.equal(runtime.lettaBridge.snapshot().metrics.forgetRequests, 1);
 assert.equal(runtime.lettaBridge.snapshot().metrics.forgetResponsesReceived, 1);
 
 await runtime.close();
+
+// A failed external write must remain in the snapshot-backed outbox and replay
+// on restart instead of being silently lost when the process-local queue dies.
+const failingClient = {
+  async createAgent() { return 'agent-lifecycle-test'; },
+  resumeSession() {
+    return {
+      async ready() {},
+      async send() { throw new Error('simulated-network-outage'); },
+      async *stream() { yield { type: 'assistant', content: 'should never be reached' }; },
+      async close() {},
+    };
+  },
+};
+const failingRuntime = new MemorySubsystemRuntime({ letta: { enabled: true, client: failingClient } });
+failingRuntime.fabric.encode({
+  content: 'This record must survive a Letta transport failure.',
+  kind: 'episodic',
+  tags: ['outbox-test'],
+  context: { testRun: 'workpass328-outbox' },
+  salience: 0.7,
+  emotionalWeight: 0.0,
+  identityRelevance: 0.0,
+  goalRelevance: 0.0,
+  socialRelevance: 0.0,
+  predictionError: 0.0,
+  confidence: 0.85,
+  epistemicStatus: 'fact',
+  source: 'unit-test',
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+});
+await failingRuntime.flushLettaMemorySync();
+const failedSnapshot = failingRuntime.snapshot();
+assert.equal(failedSnapshot.lettaSyncOutbox.version, 1);
+assert.equal(failedSnapshot.lettaSyncOutbox.entries.length, 1);
+assert.ok(failedSnapshot.lettaSyncOutbox.entries[0].attempts >= 1);
+assert.match(failedSnapshot.lettaSyncOutbox.entries[0].lastError, /simulated-network-outage/);
+assert.equal(failingRuntime.lettaSyncOutboxStatus().pending, 1);
+
+const recovered = makeClient();
+const recoveredRuntime = new MemorySubsystemRuntime({ letta: { enabled: true, client: recovered.client } });
+recoveredRuntime.restoreFromPersisted({
+  memory: {
+    lettaBridge: failedSnapshot.lettaBridge,
+    lettaSyncOutbox: failedSnapshot.lettaSyncOutbox,
+  },
+  advanced: {},
+});
+await recoveredRuntime.flushLettaMemorySync();
+assert.equal(recoveredRuntime.lettaSyncOutboxStatus().pending, 0);
+assert.equal(recoveredRuntime.lettaSyncOutboxStatus().completedReceipts, 1);
+assert.ok(recovered.state.prompts.some((prompt) => prompt.includes('This record must survive a Letta transport failure.')));
+assert.equal(recoveredRuntime.snapshot().lettaSyncOutbox.entries.length, 0);
+await recoveredRuntime.close();
 console.log('LETTA_MEMORY_LIFECYCLE_SYNC=PASS');
