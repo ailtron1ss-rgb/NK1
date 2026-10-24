@@ -2,6 +2,53 @@ import { readdir, readFile } from 'node:fs/promises';
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { collectDependencyBoundaryViolations } from './dependency-boundary-policy.mjs';
+function stripComments(source) {
+  const chars = [...source];
+  const quoteChars = new Set(["'", '"', String.fromCharCode(96)]);
+  let quote = null;
+  let escaped = false;
+
+  for (let i = 0; i < source.length; i += 1) {
+    const char = source[i];
+    const next = source[i + 1];
+
+    if (quote !== null) {
+      if (escaped) { escaped = false; continue; }
+      if (char === "\\") { escaped = true; continue; }
+      if (char === quote) quote = null;
+      continue;
+    }
+
+    if (quoteChars.has(char)) { quote = char; continue; }
+
+    if (char === "/" && next === "/") {
+      for (let j = i; j < source.length && source[j] !== "\n"; j += 1) {
+        if (chars[j] !== "\r") chars[j] = " ";
+      }
+      while (i < source.length && source[i] !== "\n") i += 1;
+      continue;
+    }
+
+    if (char === "/" && next === "*") {
+      chars[i] = " ";
+      chars[i + 1] = " ";
+      i += 2;
+      while (i < source.length) {
+        if (source[i] === "*" && source[i + 1] === "/") {
+          chars[i] = " ";
+          chars[i + 1] = " ";
+          i += 1;
+          break;
+        }
+        if (chars[i] !== "\r" && chars[i] !== "\n") chars[i] = " ";
+        i += 1;
+      }
+    }
+  }
+
+  return chars.join("");
+}
+
 const root=process.cwd(); const files=[];
 async function walk(d){for(const e of await readdir(d,{withFileTypes:true})){const p=path.join(d,e.name); if(e.isDirectory()){if(['legacy-original','legacy','state','node_modules','history','.git','dist','coverage','.grok'].includes(e.name))continue; await walk(p)} else if(/\.(ts|tsx|mts|cts|mjs|cjs|js|jsx)$/.test(e.name)) files.push(p)}}
 // Runtime integration tests deliberately import a few canonical React/API source
@@ -25,7 +72,7 @@ function resolve(base,spec){
   try{return statSync(p).isFile()?p:undefined}catch{return undefined}
 }
 for(const f of files){
-  const t=await readFile(f,'utf8');
+  const t=stripComments(await readFile(f,'utf8'));
   const runtimeText=t.replace(/import\s+type\s+[^;\n]+from\s+['\"][^'\"]+['\"]\s*;?/g,'');
   let m; while((m=pat.exec(runtimeText))){
     const spec=m[2]; const r=resolve(f,spec); if(r) graph.get(f).push(r); else missing.push([path.relative(root,f),spec]);
