@@ -1,6 +1,9 @@
 name: NK1 Module Dependency Audit
 
 on:
+  push:
+    branches:
+      - architecture/dependency-contracts-2026-10-24
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
