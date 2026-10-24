@@ -70,7 +70,18 @@ NK_LOCAL_CLASSIFIER_URL=http://127.0.0.1:8081/v1
 NK_LOCAL_CLASSIFIER_MODEL=your-small-classifier-model
 NK_LOCAL_EMOTION_URL=http://127.0.0.1:8082/v1
 NK_LOCAL_EMOTION_MODEL=your-small-affect-model
-NK_LOCAL_SPECIALIST_TIMEOUT_MS=15000
+NK_LOCAL_SPECIALIST_TIMEOUT_MS=3000
+
+# Optional local vision-language model (loopback, OpenAI-compatible)
+NK_LOCAL_VISION_URL=http://127.0.0.1:8083/v1
+NK_LOCAL_VISION_MODEL=your-local-vlm
+NK_LOCAL_VISION_TIMEOUT_MS=12000
+NK_LOCAL_VISION_MAX_IMAGE_BYTES=8000000
+
+# Per-origin backpressure for local models; tune only after measurement
+NK_LOCAL_MAX_CONCURRENT_PER_ENDPOINT=1
+NK_LOCAL_MAX_QUEUED_PER_ENDPOINT=16
+NK_LOCAL_QUEUE_TIMEOUT_MS=4000
 
 # Specialist signals are used only when the corresponding endpoints are configured
 NK_LOCAL_CONTEXT_SIGNALS_ENABLED=1
@@ -88,6 +99,8 @@ Set `NK_LOCAL_CONTEXT_SIGNALS_ENABLED=0` to disable specialist calls from the la
 - `configured-unprobed`: configuration exists but this process has not yet observed a successful inference.
 - `observed-healthy`: at least one successful inference has been observed by the current process or, for embeddings, by the shared provider.
 - The hub snapshot does not perform network probes, include credentials, or retain prompts.
+- A shared per-origin FIFO scheduler prevents configured local roles from concurrently overloading the same server. Defaults are one active inference per origin, at most 16 queued calls, and a four-second queue deadline; queue-full and timeout failures are visible in counters. Distinct endpoint origins remain independently schedulable.
+- Scheduler diagnostics expose aggregate lane counters only; origin/URL keys are not included. Increase `NK_LOCAL_MAX_CONCURRENT_PER_ENDPOINT` (up to 8) only after measuring the device, because concurrency can increase memory use and worsen latency.
 - Chat model transports have a bounded response size and timeout; embedding requests are batched and cached with existing provider limits.
 - If a configured model is offline, the specialist API returns a bounded error and the main cognitive response path continues without the optional signal.
 - The memory's deterministic retrieval path remains available when embeddings fail; semantic enrichment is best-effort and derived.
