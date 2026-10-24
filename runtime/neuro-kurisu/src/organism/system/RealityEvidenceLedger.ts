@@ -139,7 +139,7 @@ export class RealityEvidenceLedger {
     const quarantine=new Set<string>();
     const quarantineId=(id:string)=>{
       quarantine.delete(id);
-      quarantineId(id);
+      quarantine.add(id);
       while(quarantine.size>this.receiptCapacity){
         const oldest=quarantine.keys().next().value as string|undefined;
         if(oldest===undefined)break;
@@ -164,7 +164,7 @@ export class RealityEvidenceLedger {
         if(row.confidence01<prior.confidence01)receipts.set(id,{...prior,confidence01:row.confidence01});
         return;
       }
-      quarantine.add(id);
+      quarantineId(id);
       receipts.delete(id);
     };
 
@@ -222,7 +222,7 @@ export class RealityEvidenceLedger {
               receipts.set(row.eventId,{...receiptNow,confidence01});
             }
           }else{
-            quarantine.add(row.eventId);
+            quarantineId(row.eventId);
             receipts.delete(row.eventId);
           }
           continue;
