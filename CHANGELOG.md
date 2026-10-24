@@ -1,3 +1,9 @@
+## NK1 Architecture — focused dependency CI gate (2026-10-24)
+
+- [ADDED] Added `.github/workflows/nk1-module-dependency-audit.yml`, a path-filtered PR workflow using Node.js 24 and first-party Actions v7.
+- [GATE] The focused job runs the transitive server import audit and the architecture dependency-boundary test suite, avoiding the unrelated long-running cognitive/replay benchmarks.
+- [LIMITATION] The workflow definition is committed, but a run result for this workflow has not yet been returned by the GitHub workflow-run query. Do not treat the gate as passed until its job completes.
+
 ## NK1 Architecture — dependency-policy false-positive guard (2026-10-24)
 
 - [REGRESSION] Added a fifth fixture test ensuring the policy does not confuse sibling path prefixes or similarly named directories (`app/source-archive`, `research-adapter`, `legacy-code`) with forbidden target roots.
