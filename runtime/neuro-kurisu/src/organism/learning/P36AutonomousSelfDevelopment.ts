@@ -1,3 +1,4 @@
+import { isTrustedExternalPostconditionVerification, type OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 import type { ActionKind, OrganismState } from '../core/types.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
@@ -82,7 +83,83 @@ export interface DevelopmentEvidenceRecord {
   protocolId?:string;
   sessionId?:string;
   trialId?:string;
+  /** Opaque process-local verifier output ID; this alone is never a trust token. */
+  observationId?:string;
   at:number;
+}
+
+export interface DevelopmentEvidenceVerificationBinding {
+  hypothesisId:string;
+  contextKey:string;
+  control01:number;
+  treatment01:number;
+  holdout:boolean;
+  delayMs:number;
+  evaluatorVersion:string;
+  evidenceSource:'external-evaluator'|'manual-observer';
+  protocolId?:string;
+  sessionId?:string;
+  trialId?:string;
+}
+
+export interface NormalizedDevelopmentEvidenceVerificationBinding extends Omit<DevelopmentEvidenceVerificationBinding,'evidenceSource'> {
+  evidenceSource:DevelopmentEvidenceVerificationBinding['evidenceSource']|'invalid';
+  [key:string]:unknown;
+}
+
+function canonicalEvidenceText(value:unknown,max:number):string|undefined{
+  if(typeof value!=='string')return undefined;
+  const normalized=value.normalize('NFKC').trim();
+  if(!normalized||normalized.length>max||Array.from(normalized).some(character=>{
+    const code=character.codePointAt(0)??0;
+    return code<=0x1f||(code>=0x7f&&code<=0x9f);
+  }))return undefined;
+  return normalized;
+}
+
+/** Exact, normalized tuple that the canonical external verifier must bind its receipt to. */
+export function developmentEvidenceVerificationInput(input:DevelopmentEvidenceVerificationBinding):NormalizedDevelopmentEvidenceVerificationBinding{
+  const binding:NormalizedDevelopmentEvidenceVerificationBinding={
+    hypothesisId:canonicalEvidenceText(input.hypothesisId,180)??'',
+    contextKey:canonicalEvidenceText(input.contextKey,96)??'',
+    control01:clamp(input.control01),
+    treatment01:clamp(input.treatment01),
+    holdout:input.holdout===true,
+    delayMs:Number.isFinite(input.delayMs)?Math.max(0,Math.floor(input.delayMs)):0,
+    evaluatorVersion:canonicalEvidenceText(input.evaluatorVersion,64)??'',
+    evidenceSource:input.evidenceSource==='external-evaluator'||input.evidenceSource==='manual-observer'?input.evidenceSource:'invalid',
+  };
+  for(const key of ['protocolId','sessionId','trialId'] as const){
+    const value=input[key];
+    if(value!==undefined)binding[key]=canonicalEvidenceText(value,96)??'';
+  }
+  return binding;
+}
+
+export interface DevelopmentalOutcomeVerificationBinding {
+  area?:DevelopmentArea|null;
+  outcome01:number;
+  delayed?:boolean;
+  transfer?:boolean;
+}
+
+export interface NormalizedDevelopmentalOutcomeVerificationBinding extends Omit<DevelopmentalOutcomeVerificationBinding,'area'|'delayed'|'transfer'> {
+  area:DevelopmentArea|null;
+  outcome01:number;
+  delayed:boolean;
+  transfer:boolean;
+  [key:string]:unknown;
+}
+
+/** Bind an outcome receipt to its exact normalized score, domain, retention and transfer claims. */
+export function developmentalOutcomeVerificationInput(input:DevelopmentalOutcomeVerificationBinding):NormalizedDevelopmentalOutcomeVerificationBinding{
+  const areas:DevelopmentArea[]=['memory','learning','world-model','self-model','relationship','agency','resource-discipline','perception'];
+  return {
+    area:input.area===null||input.area===undefined?null:(areas.includes(input.area)?input.area:null),
+    outcome01:clamp(input.outcome01),
+    delayed:input.delayed===true,
+    transfer:input.transfer===true,
+  };
 }
 
 export interface LearningInvestmentDecision {
@@ -135,6 +212,8 @@ export interface SelfDevelopmentState {
   experiments:DevelopmentExperiment[];
   developmentCycles:DevelopmentCycleRecord[];
   externalEvidence:DevelopmentEvidenceRecord[];
+  /** Bounded idempotency ledger; stored IDs never grant verification authority. */
+  developmentalEvidenceReceiptIds:string[];
   investmentDecisions:LearningInvestmentDecision[];
   learningBudget01:number;
   spentBudget01:number;
@@ -178,6 +257,7 @@ const defaultState=():SelfDevelopmentState=>({
   experiments:[],
   developmentCycles:[],
   externalEvidence:[],
+  developmentalEvidenceReceiptIds:[],
   investmentDecisions:[],
   learningBudget01:.82,
   spentBudget01:0,
@@ -230,12 +310,17 @@ export class P36AutonomousSelfDevelopmentEngine{
   restore(raw?:Partial<SelfDevelopmentState>|null){
     const d=defaultState(); const r=raw??{};
     this.state={...d,...r,version:5,
-      developmentalMaturity:{...d.developmentalMaturity,...((r as any).developmentalMaturity??{}),history:Array.isArray((r as any).developmentalMaturity?.history)?(r as any).developmentalMaturity.history.slice(-64):[]},
+      // Cached maturity aggregates cannot be re-authenticated from a snapshot alone.
+      // Keep history as explicitly non-evidentiary context; verifier-backed receipts must rebuild certification.
+      developmentalMaturity:{...d.developmentalMaturity,history:Array.isArray((r as any).developmentalMaturity?.history)?(r as any).developmentalMaturity.history.slice(-64).map((x:any)=>({...x,verified01:0,retention01:0,transfer01:0,failed01:0})):[]},
       agenda:{...d.agenda,...((r as any).agenda??{})},
       hypotheses:Array.isArray(r.hypotheses)?r.hypotheses.slice(-96):[],
       experiments:Array.isArray(r.experiments)?r.experiments.slice(-128):[],
       developmentCycles:Array.isArray((r as any).developmentCycles)?(r as any).developmentCycles.slice(-64):[],
-      externalEvidence:Array.isArray(r.externalEvidence)?r.externalEvidence.slice(-512):[],
+      // Verifier receipts are WeakMap-backed capabilities and do not survive JSON snapshots.
+      // Preserve observations for audit, but never restore serialized trust booleans.
+      externalEvidence:Array.isArray(r.externalEvidence)?r.externalEvidence.slice(-512).map(e=>({...e,independentVerified:false,observationId:undefined})):[],
+      developmentalEvidenceReceiptIds:Array.isArray((r as any).developmentalEvidenceReceiptIds)?(r as any).developmentalEvidenceReceiptIds.filter((x:unknown):x is string=>typeof x==='string'&&x.length<=256).slice(-512):[],
       investmentDecisions:Array.isArray((r as any).investmentDecisions)?(r as any).investmentDecisions.slice(-96):[],
       metrics:{...d.metrics,...(r.metrics??{})},
       curriculum:{...d.curriculum,...(r.curriculum??{}),mastery:{...d.curriculum.mastery,...(r.curriculum?.mastery??{})}},
@@ -448,13 +533,42 @@ export class P36AutonomousSelfDevelopmentEngine{
     return structuredClone(result);
   }
 
-  recordExternalEvidence(input:{hypothesisId:string;contextKey:string;control01:number;treatment01:number;independentVerified:boolean;holdout:boolean;delayMs:number;evaluatorVersion:string;evidenceSource:'external-evaluator'|'manual-observer';protocolId?:string;sessionId?:string;trialId?:string;at?:number}):{eligible:boolean;evidenceCount:number;distinctContexts:number;distinctDelays:number;holdoutCount:number;independentCount:number;meanDelta01:number|null;ci95Low01:number|null;ci95High01:number|null;status:'insufficient'|'holdout-verified'|'replicated';promoted:boolean} {
-    const h=this.state.hypotheses.find(x=>x.id===String(input.hypothesisId));
+  recordExternalEvidence(input:{hypothesisId:string;contextKey:string;control01:number;treatment01:number;independentVerified?:boolean;verification?:OutcomeVerification;holdout:boolean;delayMs:number;evaluatorVersion:string;evidenceSource:'external-evaluator'|'manual-observer';protocolId?:string;sessionId?:string;trialId?:string;at?:number}):{eligible:boolean;evidenceCount:number;distinctContexts:number;distinctDelays:number;holdoutCount:number;independentCount:number;meanDelta01:number|null;ci95Low01:number|null;ci95High01:number|null;status:'insufficient'|'holdout-verified'|'replicated';promoted:boolean} {
+    // The legacy independentVerified boolean is caller-controlled data and has no authority.
+    const binding=developmentEvidenceVerificationInput(input);
+    if(!binding.hypothesisId||!binding.contextKey||!binding.evaluatorVersion||
+       (input.evidenceSource!=='external-evaluator'&&input.evidenceSource!=='manual-observer')||
+       (input.protocolId!==undefined&&!binding.protocolId)||(input.sessionId!==undefined&&!binding.sessionId)||
+       (input.trialId!==undefined&&!binding.trialId))throw new Error('invalid-development-evidence');
+    const h=this.state.hypotheses.find(x=>x.id===binding.hypothesisId);
     if(!h) throw new Error('unknown-development-hypothesis');
-    if(!input.contextKey || !input.evaluatorVersion) throw new Error('invalid-development-evidence');
-    const row:DevelopmentEvidenceRecord={id:`p36-e-${hash(`${h.id}:${input.contextKey}:${input.at??now()}`)}-${now().toString(36)}`,hypothesisId:h.id,contextKey:String(input.contextKey).slice(0,96),control01:clamp(input.control01),treatment01:clamp(input.treatment01),delta01:clamp(input.treatment01)-clamp(input.control01),independentVerified:Boolean(input.independentVerified),holdout:Boolean(input.holdout),delayMs:Math.max(0,Math.floor(Number(input.delayMs)||0)),evaluatorVersion:String(input.evaluatorVersion).slice(0,64),evidenceSource:input.evidenceSource,protocolId:input.protocolId?String(input.protocolId).slice(0,96):undefined,sessionId:input.sessionId?String(input.sessionId).slice(0,96):undefined,trialId:input.trialId?String(input.trialId).slice(0,96):undefined,at:input.at??now()};
-    const dup=this.state.externalEvidence.some(x=>x.hypothesisId===row.hypothesisId&&x.contextKey===row.contextKey&&x.evaluatorVersion===row.evaluatorVersion&&x.holdout===row.holdout&&x.delayMs===row.delayMs);
-    if(!dup)this.state.externalEvidence=[row,...this.state.externalEvidence].slice(0,512);
+
+    const exactReceipt=input.evidenceSource==='external-evaluator'&&
+      isTrustedExternalPostconditionVerification(input.verification,binding);
+    const observationId=exactReceipt?input.verification?.observationId:undefined;
+    const sameEvidenceKey=(x:DevelopmentEvidenceRecord)=>x.hypothesisId===binding.hypothesisId&&
+      x.contextKey===binding.contextKey&&x.evaluatorVersion===binding.evaluatorVersion&&
+      x.holdout===binding.holdout&&x.delayMs===binding.delayMs;
+    // One observation ID cannot be reused across contexts/splits to inflate replication.
+    const receiptReused=Boolean(observationId&&this.state.externalEvidence.some(x=>
+      x.hypothesisId===binding.hypothesisId&&x.independentVerified&&x.observationId===observationId&&!sameEvidenceKey(x)));
+    const independentVerified=Boolean(exactReceipt&&!receiptReused);
+    const row:DevelopmentEvidenceRecord={
+      id:`p36-e-${hash(`${binding.hypothesisId}:${binding.contextKey}:${input.at??now()}`)}-${now().toString(36)}`,
+      hypothesisId:binding.hypothesisId,contextKey:binding.contextKey,control01:binding.control01,treatment01:binding.treatment01,
+      delta01:binding.treatment01-binding.control01,independentVerified,holdout:binding.holdout,delayMs:binding.delayMs,
+      evaluatorVersion:binding.evaluatorVersion,evidenceSource:input.evidenceSource,
+      ...(binding.protocolId?{protocolId:binding.protocolId}:{}),
+      ...(binding.sessionId?{sessionId:binding.sessionId}:{}),
+      ...(binding.trialId?{trialId:binding.trialId}:{}),
+      ...(independentVerified&&observationId?{observationId}:{}),at:input.at??now(),
+    };
+    const duplicateIndex=this.state.externalEvidence.findIndex(sameEvidenceKey);
+    if(duplicateIndex<0)this.state.externalEvidence=[row,...this.state.externalEvidence].slice(0,512);
+    else if(independentVerified&&!this.state.externalEvidence[duplicateIndex].independentVerified){
+      // A forged first attempt cannot poison the idempotency slot for a later verified receipt.
+      const next=[...this.state.externalEvidence];next[duplicateIndex]=row;this.state.externalEvidence=next;
+    }
     const rows=this.state.externalEvidence.filter(x=>x.hypothesisId===h.id&&x.independentVerified);
     const contexts=new Set(rows.map(x=>x.contextKey));
     const holdoutCount=rows.filter(x=>x.holdout).length;
@@ -466,26 +580,24 @@ export class P36AutonomousSelfDevelopmentEngine{
     const repeatedContexts=new Set(rows.filter(x=>x.holdout).map(x=>x.contextKey)).size;
     const replicated=hasHoldout&&holdoutCount>=4&&repeatedContexts>=3&&mean!==null&&mean>.03&&ci.low!==null&&ci.low>0;
     const status=replicated?'replicated':hasHoldout?'holdout-verified':'insufficient';
-    const cycle=this.state.developmentCycles.find(c=>c.hypothesisId===h.id && c.stage!=='closed');
+    const cycle=this.state.developmentCycles.find(c=>c.hypothesisId===h.id&&c.stage!=='closed');
     if(cycle){cycle.verifiedEvidenceCount=independentCount;cycle.lastEvidenceAt=row.at;cycle.stage=replicated?'replicated':hasHoldout?'holdout-verified':'awaiting-evidence';}
     let promoted=false;
-    if(status==='replicated' && h.evidenceGate==='holdout-verified'){
-      h.evidenceGate='replicated';
-      this.state.agenda.selectedHypothesisId=null;
-      this.state.agenda.selectedArea=null;
-      promoted=true;
+    if(status==='replicated'&&h.evidenceGate==='holdout-verified'){
+      h.evidenceGate='replicated';this.state.agenda.selectedHypothesisId=null;this.state.agenda.selectedArea=null;promoted=true;
       this.state.curriculum.completedSteps+=1;
-      this.state.metrics.experimentSuccess01=clamp(this.state.metrics.experimentSuccess01*.9+.92*.1);
-      this.state.metrics.longHorizonImprovement01=clamp(this.state.metrics.longHorizonImprovement01*.94+.62*.06);
-    } else if(status!=='insufficient' && (!h.evidenceGate || h.evidenceGate==='none')){
-      h.status='completed'; h.evidenceGate=status; h.completedAt=now(); h.result01=clamp(.5+(mean??0));
-      const gain=Math.min(.08,Math.max(0,mean??0)*.12); this.state.curriculum.mastery[h.area]=clamp((this.state.curriculum.mastery[h.area]??.3)+gain);
-      this.state.curriculum.completedSteps+=replicated?1:0;
-      this.state.acceptedChanges++;
-      promoted=true;
-      const preferred=this.preferredAction(h.area); const signed=(mean??0)>=0?1:-1; this.state.actionBias[preferred]=Math.max(-.12,Math.min(.12,this.state.actionBias[preferred]+signed*Math.min(.035,Math.abs(mean??0)*.08)));
-      this.state.metrics.experimentSuccess01=clamp(this.state.metrics.experimentSuccess01*.9+(replicated?.92:.75)*.1);
-      this.state.metrics.longHorizonImprovement01=clamp(this.state.metrics.longHorizonImprovement01*.94+(replicated?.62:.56)*.06);
+      const positiveRate=rows.filter(x=>x.delta01>0).length/Math.max(1,rows.length);
+      this.state.metrics.experimentSuccess01=clamp(this.state.metrics.experimentSuccess01*.9+positiveRate*.1);
+      this.state.metrics.longHorizonImprovement01=clamp(this.state.metrics.longHorizonImprovement01*.94+clamp(.5+(mean??0))*.06);
+    }else if(status!=='insufficient'&&(!h.evidenceGate||h.evidenceGate==='none')){
+      h.status='completed';h.evidenceGate=status;h.completedAt=now();h.result01=clamp(.5+(mean??0));
+      const gain=Math.min(.08,Math.max(0,mean??0)*.12);this.state.curriculum.mastery[h.area]=clamp((this.state.curriculum.mastery[h.area]??.3)+gain);
+      this.state.curriculum.completedSteps+=replicated?1:0;this.state.acceptedChanges++;promoted=true;
+      const preferred=this.preferredAction(h.area);const signed=(mean??0)>=0?1:-1;
+      this.state.actionBias[preferred]=Math.max(-.12,Math.min(.12,this.state.actionBias[preferred]+signed*Math.min(.035,Math.abs(mean??0)*.08)));
+      const positiveRate=rows.filter(x=>x.delta01>0).length/Math.max(1,rows.length);
+      this.state.metrics.experimentSuccess01=clamp(this.state.metrics.experimentSuccess01*.9+positiveRate*.1);
+      this.state.metrics.longHorizonImprovement01=clamp(this.state.metrics.longHorizonImprovement01*.94+clamp(.5+(mean??0))*.06);
     }
     return {eligible:status!=='insufficient',evidenceCount:independentCount,distinctContexts:contexts.size,distinctDelays:delays.size,holdoutCount,independentCount,meanDelta01:mean,ci95Low01:ci.low,ci95High01:ci.high,status,promoted};
   }
@@ -495,15 +607,25 @@ export class P36AutonomousSelfDevelopmentEngine{
   recordRollback(reason:string){this.state.rollbackCount++;this.state.metrics.longHorizonImprovement01=clamp(this.state.metrics.longHorizonImprovement01*.9+.1*.35);const h=this.state.hypotheses.find(x=>x.id===this.state.currentHypothesisId);if(h)h.status='rolled-back';this.state.currentHypothesisId=null;return reason;}
 
 
-  observeDevelopmentalOutcome(input:{area?:DevelopmentArea|null;outcome01:number;verified?:boolean;delayed?:boolean;transfer?:boolean;at?:number}){
-    const outcome=clamp(input.outcome01);
-    const verified=Boolean(input.verified);
-    const delayed=Boolean(input.delayed);
-    const transfer=Boolean(input.transfer);
-    if(verified)this.state.developmentalMaturity.verifiedOutcomeCount++;
-    if(verified&&delayed&&outcome>=.62)this.state.developmentalMaturity.retainedOutcomeCount++;
-    if(verified&&transfer&&outcome>=.62)this.state.developmentalMaturity.transferredOutcomeCount++;
-    const failure=verified&&outcome<.4?1:0;
+  observeDevelopmentalOutcome(input:{area?:DevelopmentArea|null;outcome01:number;verified?:boolean;verification?:OutcomeVerification;delayed?:boolean;transfer?:boolean;at?:number}){
+    // The legacy verified boolean is descriptive only; certification needs a verifier-minted receipt.
+    const binding=developmentalOutcomeVerificationInput(input);
+    if(input.area!==undefined&&input.area!==null&&binding.area===null)throw new Error('invalid-developmental-outcome-area');
+    const verified=isTrustedExternalPostconditionVerification(input.verification,binding);
+    const outcome=binding.outcome01;
+    const delayed=binding.delayed;
+    const transfer=binding.transfer;
+    const observationId=verified?input.verification?.observationId:undefined;
+    const receiptKey=observationId?`${observationId}:${hash(JSON.stringify(binding)??'')}`:undefined;
+    const alreadyApplied=Boolean(receiptKey&&this.state.developmentalEvidenceReceiptIds.includes(receiptKey));
+    const applyVerified=Boolean(verified&&receiptKey&&!alreadyApplied);
+    if(applyVerified){
+      this.state.developmentalEvidenceReceiptIds=[...this.state.developmentalEvidenceReceiptIds,receiptKey!].slice(-512);
+      this.state.developmentalMaturity.verifiedOutcomeCount++;
+      if(delayed&&outcome>=.62)this.state.developmentalMaturity.retainedOutcomeCount++;
+      if(transfer&&outcome>=.62)this.state.developmentalMaturity.transferredOutcomeCount++;
+    }
+    const failure=applyVerified&&outcome<.4?1:0;
     if(failure)this.state.developmentalMaturity.regressionCount++;
     const evidenceRate=clamp(this.state.developmentalMaturity.verifiedOutcomeCount/Math.max(1,this.state.cycles));
     const retentionRate=clamp(this.state.developmentalMaturity.retainedOutcomeCount/Math.max(1,this.state.developmentalMaturity.verifiedOutcomeCount));
@@ -517,15 +639,15 @@ export class P36AutonomousSelfDevelopmentEngine{
     else if(retentionRate<.45)next='integration';
     else if(transferRate<.40)next='transfer';
     else if(retentionRate<.72)next='consolidation';
-    else if(this.state.developmentalMaturity.verifiedOutcomeCount>=12 && regressionRate<.18)next='stable';
+    else if(this.state.developmentalMaturity.verifiedOutcomeCount>=12&&regressionRate<.18)next='stable';
     const rank:Record<DevelopmentalMaturityStage,number>={seed:0,acquisition:1,integration:2,transfer:3,consolidation:4,stable:5};
-    if(rank[next]<rank[current] && failure===0)next=current;
-    if(failure>0 && current==='stable' && regressionRate>.25)next='consolidation';
+    if(rank[next]<rank[current]&&failure===0)next=current;
+    if(failure>0&&current==='stable'&&regressionRate>.25)next='consolidation';
     this.state.developmentalMaturity.score01=score;
     if(next!==current){
       this.state.developmentalMaturity.stage=next;
       this.state.developmentalMaturity.lastTransitionAt=input.at??now();
-      this.state.developmentalMaturity.history=[{cycle:this.state.cycles,stage:next,area:input.area??this.state.curriculum.focus,verified01:verified?1:0,retention01:delayed&&outcome>=.62?1:0,transfer01:transfer&&outcome>=.62?1:0,failed01:failure,at:input.at??now()},...this.state.developmentalMaturity.history].slice(0,64);
+      this.state.developmentalMaturity.history=[{cycle:this.state.cycles,stage:next,area:binding.area??this.state.curriculum.focus,verified01:applyVerified?1:0,retention01:applyVerified&&delayed&&outcome>=.62?1:0,transfer01:applyVerified&&transfer&&outcome>=.62?1:0,failed01:failure,at:input.at??now()},...this.state.developmentalMaturity.history].slice(0,64);
     }
     return structuredClone(this.state.developmentalMaturity);
   }
