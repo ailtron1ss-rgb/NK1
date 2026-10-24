@@ -42,7 +42,10 @@ test("avatar preference persists when storage works", () => {
     setWindow({ localStorage: {
       /** @param {string} key */
       getItem(key) { return values.get(key) ?? null; },
-      /** @param {string} key @param {string} value */
+      /**
+       * @param {string} key
+       * @param {string} value
+       */
       setItem(key, value) { values.set(key, String(value)); },
     } });
     assert.equal(readAvatarPreference("profile"), null);
