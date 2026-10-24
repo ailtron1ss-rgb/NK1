@@ -1,3 +1,135 @@
+## WorkPass474 — Hexis-inspired reliability and autonomous continuity follow-up (2026-10-24)
+
+### Source read and transfer
+- Re-inspected [Hexis](https://github.com/QuixiAI/Hexis) source: `db/59_belief_revision.sql` (residual confidence revision, independent-evidence dedupe, protected beliefs and durable audit), `db/08_functions_goals.sql` (event-based goal progress and bounded active population), and `services/heartbeat_agentic.py` (bounded energy budget, real tool loop and explicit failure finalization).
+- NK1 already contains the previous native belief revision / evidence lineage adaptation in `MemoryOS2` and the existing P67/P68 goal owners. This pass extended those owners rather than cloning them.
+
+### New code committed on existing category branches
+- `feature/memory`, HEAD `8116e22ea9f3e358c3d8d6cb2287097b3a8b5465`, [PR #82](https://github.com/ailtron1ss-rgb/NK1/pull/82): memory doctor now builds a first-wins ID map once and resolves revision predecessor/successor links in O(1), eliminating repeated full-list scans during revision-integrity diagnostics. Commit `79b0498943d85820ca31799b354025b46cc21496`.
+- `feature/personality`, HEAD `1c54ce358ec7d80032be6e8b68275e472e5d6523`, [PR #83](https://github.com/ailtron1ss-rgb/NK1/pull/83): P68 rejects duplicate live goal IDs before lifecycle mutation. Regression added in `big-pass-376-goal-ecology.mjs`. Commit `d51249b5a31a205fb56ad758ff202b5818bab5c7`.
+- `feature/learning`, HEAD `a06a9f346d200109b2233d05898b3a6e4d843859`, [PR #79](https://github.com/ailtron1ss-rgb/NK1/pull/79): `AutonomousCognitiveLifeEngine.restore` now uses the shared bounded plain-data snapshot, fails closed on getters/cycles/unsupported versions, bounds restored collections, and normalizes counters, timestamps and unit-interval metrics. Regressions assert zero getter invocations and safe defaults for cyclic state. Commit `2aef640fc3f8eda95b62c46e4ecb2fe0245ac5f7`.
+
+### Status / no overclaim
+- No Hexis PostgreSQL migrations, Python runtime, credentials, or heartbeat scheduler were vendored. No dependency added; canonical memory and goal owners remain unchanged.
+- Regression source is committed but exact-head tests have not yet been confirmed passing. No quality uplift is inferred from source changes alone.
+- `main` remains `84119539afca904a91d5617b86ae334917a9e578`; `integration` remains `2a2b89bebc49243b6196b8c9e75b65f64ae21c64` in the prior verified audit. Changes remain in their existing feature branches.
+- Readiness remains **46/100** until exact-head test/typecheck evidence, cross-branch integration and release ZIP replacement/hash verification are available.
+
+---
+
+## WorkPass463 — refresh two category heads after parallel branch advances (2026-10-23)
+
+- Re-read live refs and the current open PR list after additional parallel commits were pushed to the existing branches. `feature/memory` is now `f2c8b66b2a785279936f21ec0bea329891d6acda` (PR #82) and `feature/perception` is now `d5dd7584f416183e83779f5c19ff717ea994a25b` (PR #80). The previously reported core mechanisms were checked on the newer files: residual confidence revision/provenance ceiling/audit trail still exist in MemoryOS2 and accepted event IDs/observation anchor still exist in UnifiedCognitiveCycle.
+- Other current category tips remain learning `09b801e7ec77320b9915d201df29b0720aaaef28`, emotions `be344d0599e66c9d3305ec2023a88fe016c673b7`, personality `48e36266f6349fe69efa14ee54b187e0dcd4350e`, visual-embodiment `927629a433eff63d01397dd370a68a666093ff78`, experiments `6c75864ff5311101782f5d1bfe1d323f95396542`, feedback `28b1e691ff4e0f5c8d2ef73382d0dcc7aa48adb1`; planning HEAD at the start of this update was `8e00fe30faa74b030bd98573045d24dce26d400e`.
+- All nine PRs remain open drafts against `integration`; `main` `84119539afca904a91d5617b86ae334917a9e578` and `integration` `2a2b89bebc49243b6196b8c9e75b65f64ae21c64` are unchanged. Tests remain unverified (Actions jobs have `runner_id=0` and no steps; local clone failed at DNS resolution); no release ZIP asset was updated. Scorecard remains 7/7 implementation/regression-source categories, 0/7 exact-head suites confirmed passing, 0/7 category PR merges, 0/1 release ZIP refreshed/hash-verified, readiness 46/100.
+
+---
+
+## WorkPass461 — reconcile latest live category heads and implementation evidence (2026-10-23)
+
+### Current branch tips / open draft PRs
+- `feature/learning` — `09b801e7ec77320b9915d201df29b0720aaaef28` ([PR #79](https://github.com/ailtron1ss-rgb/NK1/pull/79)).
+- `feature/perception` — current live HEAD `d5dd7584f416183e83779f5c19ff717ea994a25b` ([PR #80](https://github.com/ailtron1ss-rgb/NK1/pull/80)); the unified-cycle receipt now returns the exact accepted per-stage event IDs and explicit observation anchor produced by the current evidence handoff.
+- `feature/emotions` — `be344d0599e66c9d3305ec2023a88fe016c673b7` ([PR #81](https://github.com/ailtron1ss-rgb/NK1/pull/81)).
+- `feature/memory` — current live HEAD `f2c8b66b2a785279936f21ec0bea329891d6acda` ([PR #82](https://github.com/ailtron1ss-rgb/NK1/pull/82)); residual belief revision, evidence-lineage de-duplication, provenance trust ceilings and audit persistence remain present on the current ref.
+- `feature/personality` — `48e36266f6349fe69efa14ee54b187e0dcd4350e` ([PR #83](https://github.com/ailtron1ss-rgb/NK1/pull/83)); P67/P68 safe goal state and idempotent goal decisions are present on the current ref.
+- `feature/visual-embodiment` — `927629a433eff63d01397dd370a68a666093ff78` ([PR #84](https://github.com/ailtron1ss-rgb/NK1/pull/84)); pre-/post-action sensing failure semantics remain present alongside current avatar-affect coupling work.
+- `feature/experiments` — `6c75864ff5311101782f5d1bfe1d323f95396542` ([PR #85](https://github.com/ailtron1ss-rgb/NK1/pull/85)).
+- `feature/feedback` — `28c930ae0f559796780ff844e0830078d4f4d2cf` ([PR #87](https://github.com/ailtron1ss-rgb/NK1/pull/87)); evidence ledger field bounds are present.
+- `planning/master-audit-roadmap` — current pass is committed in PR [#88](https://github.com/ailtron1ss-rgb/NK1/pull/88).
+
+### Execution/release truth
+All nine PRs remain open drafts against `integration`; current integration remains `2a2b89bebc49243b6196b8c9e75b65f64ae21c64`, and `main` remains `84119539afca904a91d5617b86ae334917a9e578`. Neither was changed by these implementation passes. Existing hosted jobs still terminate before step execution (`runner_id=0`, no steps). A local shallow clone was also unavailable in this environment because DNS resolution for github.com failed; therefore no exact-head test is claimed as run or passed. The binary release asset has not been replaced or hash-refreshed. Scorecard is unchanged: category implementation/regression source 7/7; exact-head suites proven passing 0/7; PRs merged 0/7; release ZIP refreshed/hash-verified 0/1; overall engineering readiness **46/100**.
+
+No package dependency was added. The next work order stays: obtain a real runner → execute owning suites/typecheck → integrate category PRs in reviewable order → cross-category E2E/holdout benchmarks → rebuild and hash-verify the primary release ZIP.
+
+---
+
+## WorkPass457 — inspect Hexis goal/belief mechanisms and adapt them into NK1 (2026-10-23)
+
+### Primary-source inspection and license
+Repository: [QuixiAI/Hexis](https://github.com/QuixiAI/Hexis). The repository LICENSE was fetched and confirms MIT (blob SHA `790aa39fefe3dfcba304ea00e1a69d261602c975`). Relevant upstream source files inspected:
+- [`db/59_belief_revision.sql`](https://github.com/QuixiAI/Hexis/blob/main/db/59_belief_revision.sql), blob SHA `d984392ba8a567fa8f907a39db7d990e44e0d370`: residual confidence revision, de-duplication across support/contradict evidence, protected-belief handling and a durable audit.
+- [`db/08_functions_goals.sql`](https://github.com/QuixiAI/Hexis/blob/main/db/08_functions_goals.sql), blob SHA `7f3cf98abadaa064adc4f91244015f57e777d194`: goal progress as recorded events and a bounded active-goal population.
+- [`db/07_functions_heartbeat.sql`](https://github.com/QuixiAI/Hexis/blob/main/db/07_functions_heartbeat.sql), blob SHA `62f4c48b2441347d29d266c39056c267c27c1a72`, and [`services/heartbeat_agentic.py`](https://github.com/QuixiAI/Hexis/blob/main/services/heartbeat_agentic.py), blob SHA `88c670e9f55cdd3c1c1452f258cfa4de979015ba`: a heartbeat is a real tool-using loop with energy/economy constraints and claim release on failure, not merely a periodic prompt.
+
+### NK1 native adaptations now committed
+- **Canonical memory / residual belief revision:** [PR #82](https://github.com/ailtron1ss-rgb/NK1/pull/82), current HEAD `0661cab1e8c5f5553b89ace430316fd653dab05e`. Added `MemoryOS2.reviseConfidenceFromEvidence`: independent support closes 35% of remaining doubt scaled by bounded provenance authority; contradiction removes 35% of current confidence; bounds stay at 0.05–0.99. A lineage can vote only once across both stances, protected semantic/identity assertions retain contradictory evidence without silent confidence change, and up to 32 revision receipts are persisted within the same canonical memory/byte budget. External authority claims are capped at the existing provenance-class default. Existing generic ingestion now uses the same support formula instead of an unrelated 0.82/0.18 blend. Regression source covers formulas, replay/stance-flip de-duplication, protected contradictions, hostile getters, restore and byte-budget accounting. No Postgres or second memory database was added.
+- **P67 endogenous goals:** [PR #83](https://github.com/ailtron1ss-rgb/NK1/pull/83), current HEAD `38848c405bb64f15cc479e59043ec0115dc402ba`. Proposal signals and restored goal candidates are snapshot/schema bounded before counters change; promotion/rejection decisions use durable idempotent receipts so replay cannot inflate the self-development metrics. The ID validator was corrected to match the actual stable P67 IDs.
+- **P68 goal ecology:** same [PR #83](https://github.com/ailtron1ss-rgb/NK1/pull/83). Live tick ingress and restored lifecycle state are validated through the shared plain-data boundary. Accessor-backed or malformed state cannot advance lifecycle counters; after successful validation the existing goal objects are still updated in place so the core wiring remains intact.
+
+### Transfer boundary
+Only mechanisms were adapted. Hexis's PostgreSQL-native state, SQL migrations, Python runtime and heartbeat scheduler were **not** vendored; no runtime dependency was added. NK1 retains one memory owner (`MemoryOS2`), one existing P67 goal creator, the P68 lifecycle owner, and the canonical action gateway. Independent-source evidence remains different from independently verified external-action outcomes.
+
+### Verification and progress truth
+These implementation/test commits are present on the existing category branches; they are not proven passes yet. Exact-head suites remain confirmed passing `0/7`, category PR merges `0/7`, verified release ZIP updates `0/1`. Overall engineering readiness remains **46/100** until test execution, cross-branch integration and release evidence exist. No measured autonomy, memory quality or learning-uplift claim is made.
+
+---
+
+## Additional implementation follow-up — emotion calibration and CI runtime policy (2026-10-23)
+
+- **Emotion regulation / evidence-bounded calibration:** source commit `23b66f101076b4d4680bb602550fb9da73a4cae4` (`feature/emotions`, PR [#81](https://github.com/ailtron1ss-rgb/NK1/pull/81)) validates outcome success, surprise, and regulation-cost values as finite numbers in [0,1] before changing the action-calibration row. NaN/string/out-of-range inputs no longer silently become training signals. Regression commit: `dc8b48479ebaed988564f4b5b7f2ae74fae367e8`.
+- **Experiments / Node.js 24 compatibility guard:** source commit `0527d811e30657aed0a8323ef830144277d25c80` (`feature/experiments`, PR [#85](https://github.com/ailtron1ss-rgb/NK1/pull/85)) extends the existing policy audit to cover artifact upload/download actions as well as checkout/setup-node, so a v4 downgrade is caught. The current workflows inspected on this branch already use Node 24 and v7-compatible first-party Actions where applicable; this closes a validator gap rather than rewriting those workflows. Regression commit: `fd6340781cc02e9d49f07e58a841df78b7a9e488`.
+- **Primary-source code inspection:** inspected Hermes' `evolution/skills/evolve_skill.py` (fetched blob SHA `2a79a670aaa632fe720b2fef0fc9ce62ee7d281f`) and `PLAN.md` (blob SHA `48f9ef147e5b47d3d24d712d5360f41d31340ce6`). Transferable mechanics are dataset splitting, baseline constraint validation, candidate evaluation and approval/revert. NK1 already has native holdout/approval gates; the additional size bounds and action-runtime audit are native adaptations, not a wholesale vendor import.
+- No package dependency was added. Tests remain unexecuted on these exact heads; this is source-code progress, not verified uplift.
+
+---
+
+## Follow-up implementation pass — cross-category boundary and fault-tolerance work (2026-10-23)
+
+This follow-up extends the existing category branches; it does not introduce a second memory owner, learner, planner, or action gateway.
+
+- **Learning / Hermes-inspired evaluation guardrails:** source commit `350d06aa6b5242496f3316b98914149d4828a00e` (`feature/learning`, PR [#79](https://github.com/ailtron1ss-rgb/NK1/pull/79)). Trajectory-order matching now uses an index (linear worst-case rather than repeated suffix scans); skill/capability rubrics are bounded to 4,096 IDs with 256-character ID caps. This adapts the upstream emphasis on candidate size limits, evaluation and semantic-preservation gates without copying the external optimizer or adding dependencies. Primary source: https://github.com/NousResearch/hermes-agent-self-evolution.
+- **Perception / live cognitive ingress:** source commit `4c7ed4d54c2178d51a68300bcb48f8c145bd78dc` (`feature/perception`, PR [#80](https://github.com/ailtron1ss-rgb/NK1/pull/80)). The unified cycle snapshots and allowlists input before reading it; unknown stages and hostile getters are rejected before state mutation.
+- **Feedback / evidence restore:** source commit `807454005c260eab807bc38c7ca77c8f489e55d4` (`feature/feedback`, PR [#87](https://github.com/ailtron1ss-rgb/NK1/pull/87)). Ledger checkpoints are detached through the bounded plain-data boundary before schema reads, rejecting accessor-backed and cyclic restore payloads.
+- **Memory / diagnostics isolation:** source commit `8553b9619a30e2b5af0dfabc0cf03b01343a6375` (`feature/memory`, PR [#82](https://github.com/ailtron1ss-rgb/NK1/pull/82)). A broken optional embedding-provider diagnostics hook no longer prevents valid semantic-index batches or makes the read-only diagnostics method throw. The canonical `MemoryOS2` store and lexical fallback remain the sole memory path.
+- **Personality / atomic self-model updates:** source commit `ed53ca53040b04bfac55a0ad234cfc7364ab6b02` (`feature/personality`, PR [#83](https://github.com/ailtron1ss-rgb/NK1/pull/83)). Reward, causal-match and outcome-state fields are detached and validated before prediction mutates self-agency weights/counters.
+- **Embodiment / action receipt integrity:** source commit `f21bcfab5dd94b93b57181961a095d26bf7b0e35` (`feature/visual-embodiment`, PR [#84](https://github.com/ailtron1ss-rgb/NK1/pull/84)). Required pre-action sensor failure blocks dispatch and returns an explicit failed receipt; a failed post-action sample withholds independent-verification credit without hiding an action result already produced.
+
+### External mechanism intake verified on 2026-10-23
+
+- [Hermes Agent Self-Evolution / GEPA](https://github.com/NousResearch/hermes-agent-self-evolution): the README describes trace-driven reflection, candidate generation/evaluation, size/test/semantic constraints and PR review. NK1 reused the guardrail principle, not the full upstream runtime.
+- [Letta memory & dreaming](https://docs.letta.com/configuration/memory): the documentation describes git-backed memory and background consolidation/dreaming with review. NK1 keeps `MemoryOS2` as the canonical owner; no MemFS side store was added.
+- [OpenAI evaluation best practices](https://developers.openai.com/api/docs/guides/evaluation-best-practices): task-specific evaluation data, retained logs, automation and human calibration support NK1's direction toward paired/held-out evidence rather than subjective “looks better” claims.
+- No new package or runtime dependency was introduced in this follow-up. Research links and design transfer are provenance, not proof of measured performance gain.
+
+### Truthful status after this pass
+
+All seven intended category branches still have implementation commits and regression-source additions (7/7, 100%). Exact-head suite execution remains confirmed on 0/7 (0%); category PR merges remain 0/7; the release ZIP remains updated/hash-verified 0/1. Overall readiness therefore remains **46/100** rather than increasing based on code volume. Latest PR heads are refreshed in GitHub; PRs remain drafts against `integration`, which was not modified. Actions jobs still have the runner-provisioning blocker described below.
+
+---
+
+## WorkPass449 — verified upstream mechanisms and current implementation delta (2026-10-23)
+
+### Hermes Agent Self-Evolution / GEPA — mechanism adapted, not vendored
+- Primary source: https://github.com/NousResearch/hermes-agent-self-evolution (the repository README identifies the project as MIT-licensed and describes trace-driven reflective mutation, candidate evaluation, test/size/semantic constraints, and reviewable PR-based promotion).
+- NK1 source donor inspected: https://github.com/ailtron1ss-rgb/NK1/tree/workpass328-upstream-donor-gate, especially `runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts` and `tests/p29-hermes-reflective-candidate-gate.mjs`.
+- **Adapted in code:** WorkPass441/commit `780d774f4fb29963d99ad08bda51a84f5a39b263` ports independent holdout regression limits for task success, trajectory quality, and skill quality into `feature/learning`, preserving existing paired trials, family-level regression, safety gate, and approval boundary. This is a native NK1 adaptation; no external Python optimizer or new dependency was installed.
+- **Still open:** trace-to-repair-to-candidate end-to-end provider wiring, exact-head evaluation, rollback proof, and matched real-task learning-uplift measurements. Unit fixtures are not measured uplift.
+
+### Letta / MemFS — versioned memory as an architectural reference
+- Primary sources: https://docs.letta.com/configuration/memory and https://github.com/letta-ai/letta-code. Their docs describe reviewable, git-backed memory files, cross-session continuity, and consolidation/dreaming.
+- **NK1 decision:** keep `runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts` as the sole canonical memory owner; do not add a parallel MemFS store. Preserve provenance, temporal validity, revision lineage, bounded restore/query behavior, and reviewable consolidation as the transferable properties.
+- **Adapted in this pass:** WorkPass447/commit `14b12d738c35ba14891a2d474f8d23ccd6ecdfeb` hardens temporal retrieval-control ingestion; WorkPass450/commit `97d329bc208aa8c7e4097947070b32dd17718fd0` validates the background semantic-index maintenance options before provider inspection or work. Both preserve the canonical MemoryOS2 owner and add no dependency; neither is claimed as copied Letta code.
+
+### Voyager — compositional skill reuse and feedback-guided revision
+- Primary source: https://github.com/MineDojo/Voyager (MIT license; README describes automatic curriculum, an executable compositional skill library, checkpoint/resume, and iterative repair using environment feedback, errors, and self-verification).
+- **Reusable lesson:** learned behavior must be versioned, retrievable by task/context, composed under dependency constraints, and improved against execution feedback; reuse must be demonstrated on unseen NK1 task families, not Minecraft-specific reward logic.
+- **Disposition:** protocol/design reference only in this pass; no Voyager runtime/dependencies vendored, and no performance claim is made.
+
+### Current NK1 commits in this follow-up
+- `feature/learning` — `780d774f4fb29963d99ad08bda51a84f5a39b263`: candidate per-axis holdout regression gate.
+- `feature/perception` — `8a38fd74c10f1863da995692e334238e15e4849e`: bounded snapshot on unified-cycle restore.
+- `feature/feedback` — `45758ede29ee884cd2eaf3b24b5b7baf979fa923` and `4cacd0bb177dba5033f00d4b8d67fb972cfcd36d`: verified-outcome and manifest ingress guards.
+- `feature/visual-embodiment` — `5e1fa2523b13f1e9596848e160fec89b5a3aace7`: persisted body-schema normalization before runtime start.
+- `feature/personality` — `6d0cb1a2d6eb9fe9c36a1f0b5e572e0696260892`: live self-agency observation guard.
+- `feature/memory` — `14b12d738c35ba14891a2d474f8d23ccd6ecdfeb` (temporal retrieval) and `97d329bc208aa8c7e4097947070b32dd17718fd0` (background semantic-index maintenance options).
+- `feature/emotions` — `8c86aa1b315f1e73e44668d42a7e21585dec912e`: prototype-safe emotion action calibration.
+- **License discipline:** code is adapted by mechanism rather than copied wholesale. Before adding upstream source files/dependencies, re-check the exact repository/license/revision and preserve provenance. Do not vendor AGPL Darwinian Evolver into NK1 by default.
+- **Verification truth:** regression tests were added but exact-head execution is not verified; current Actions examples terminate before the first step with `runner_id=0` and zero steps. No learning or runtime-quality uplift is claimed.
+
+---
+
 ## WorkPass266 — primary-source metadata check for memory and neuroscience candidates (2026-10-22)
 
 - [AMA-Bench, ICML 2026](https://proceedings.mlr.press/v306/zhao26bs.html) — publisher record describes long-horizon memory over agent/environment trajectories (states, actions, observations and tool output). Use its protocol as a candidate for trajectory-grounded evaluation; code/data integration has not been performed.

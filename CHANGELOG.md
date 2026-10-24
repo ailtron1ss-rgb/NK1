@@ -1,3 +1,177 @@
+## NK1 WorkPass510 — фиксировать boundary-проходы и статус CI без завышения готовности (2026-10-24)
+
+- Зафиксированы emotion interoception ingress guard и предсказуемая семантика лимитов RealityEvidenceLedger, включая регрессионные сценарии.
+- Обновлён progress scorecard с точными границами подтверждения: Actions на затронутых ветках pending/in progress, поэтому pass не объявлен зелёным и процент релизной готовности не увеличен.
+- Записаны решения по Hermes/GEPA/Voyager: переносить методы в существующий P23/evidence gate; не копировать исходники без проверки лицензии, не плодить параллельные memory/learning subsystems.
+
+---
+
+## NK1 WorkPass509 — refresh source assimilation and next integration passes (2026-10-24)
+
+- Reviewed the current Hermes Agent Self-Evolution repository/plan, GEPA notes, and Voyager paper/repository. Recorded adaptation boundaries and next code milestones in `research/WORKPASS500_MULTISCALE_COGNITION_AND_REPLAY.md`.
+- Decision: reuse failure-conditioned reflection, automatic curriculum, compositional skill ideas and holdout gates inside NK1's existing P23/evidence pipeline; do not create duplicate memory or a second promotion authority.
+- Upstream license status must be checked at the exact source revision before copying code. This pass ports architecture decisions, not source files.
+- Research review is not proof of runtime integration, benchmark uplift, passing CI, or release ZIP replacement.
+
+---
+
+## NK1 WorkPass504 — refresh Hexis assimilation plan against latest passes
+
+- Reconciled the integration checkpoint with the current planning branch, including WorkPass499–503: user-reported evidence stays below the external-grounding promotion boundary, UnifiedCognitiveLoop ingress hardening is aligned between feedback/perception, and the missing P26 learning-input test alias plus Node 24 diagnostics flag are addressed in source.
+- Marked the related CI reruns as pending rather than passed. The next code milestone is a single causal envelope from action receipt through postcondition verification and evidence ledger into MemoryOS2/P65/P23, with provenance and replay/restore identity preserved.
+- No category PR merge, production readiness, or Release ZIP replacement is inferred.
+
+---
+
+## NK1 WorkPass500 — multiscale replay research mapped to runtime
+
+- Added `research/WORKPASS500_MULTISCALE_COGNITION_AND_REPLAY.md` mapping hippocampal replay/planning research, predictive-processing caveats, Voyager skill refinement and Letta/MemGPT memory tiers to existing NK1 subsystems.
+- Defines measurable engineering targets and explicit non-claims: analogies to brain mechanisms do not prove subjective consciousness.
+- Sets next integration targets around causal identity across action outcomes, episodic replay, candidate provenance and independent ablation.
+
+---
+
+## NK1 WorkPass490 — Hermes self-evolution donor analysis
+
+- Added `research/WORKPASS490_HERMES_SELF_EVOLUTION_ADAPTATION.md` with upstream links, implemented-vs-planned boundaries, integration lessons, and a source-license verification rule.
+- Documents the choice to adapt failure-conditioned reflection, candidate evaluation, holdout isolation, and approval/rollback patterns into NK1's existing P23 evidence and promotion path instead of introducing a second optimizer or memory system.
+- The learning-branch implementation is separate and is not claimed merged into this planning branch or the release archive.
+
+---
+
+## NK1 WorkPass489 — converge reality-projection identity helper (2026-10-24)
+
+- Matched `EvidenceEventIdentity.ts` byte-for-byte on feedback and perception; perception's public identity API delegates to the shared function while retaining the persisted ID shape.
+- Updated the Hexis assimilation checkpoint and master analysis to distinguish outcome identity from projection identity and to keep full runtime propagation as an open integration gate.
+- Latest feedback fixes remain committed on its draft PR; exact-head workflow success, merges, and Release ZIP publication are not inferred.
+
+---
+
+## NK1 WorkPass486 — project analysis and live integration blockers (2026-10-24)
+
+- Added `docs/NK1_PROJECT_ANALYSIS_2026-10-24_RU.md` with current architecture/branch ownership, Hexis adaptation map, evidence-identity drift between feedback and perception, observed CI/type blockers, scorecard, and ordered implementation gates.
+- Reclassified evidence identity as a partial branch-level bridge: `feature/feedback` and `feature/perception` currently contain competing ID contracts; end-to-end verifier → ledger → MemoryOS2/P65 → P23 propagation is not yet proven.
+- Distinguished changes committed/typecheck configuration updated from actual exact-head CI success, PR merge, and Release ZIP publication. No release update or CI pass is claimed.
+
+---
+
+## NK1 WorkPass479 — evidence identity bridge, partial (2026-10-24)
+
+- `feature/feedback` now provides deterministic domain-separated event IDs, replay idempotency, conflicting-event quarantine, and runtime action/consequence ledger binding.
+- Updated the scorecard to distinguish this completed bridge segment from the still-open full propagation across MemoryOS2, P65 and P23. No release or test success is inferred.
+
+---
+
+## NK1 WorkPass478 — integrated progress scorecard (2026-10-24)
+
+- Added `docs/HEXIS_ASSIMILATION_PROGRESS_2026-10-24_RU.md`: a provisional engineering scorecard, end goals for existing category branches, the current memory/learning Hexis code passes, release blockers, and the next five implementation passes.
+- Scores are explicitly marked as triage estimates, not measured intelligence/benchmark outcomes. The report distinguishes code present on category branches from tests passed, PR merge, and Release ZIP publication.
+- Keep `main` out of direct rebuild merges; category PRs remain the integration path.
+
+---
+
+## NK1 WorkPass474 — record Hexis reliability transfer and three category fixes (2026-10-24)
+
+- Recorded exact source files inspected in Hexis and their narrow NK1 adaptations.
+- Synced research ledger, category exit-gate notes and Russian master audit with current memory, personality and learning branch commits.
+- Readiness remains 46/100: tests on exact heads remain unverified, PRs remain drafts, and the release ZIP has not been replaced/hash-verified.
+
+---
+
+## NK1 WorkPass457 — add verifier-owned shared event identity (2026-10-23)
+
+- The feedback branch's OutcomeVerificationService now mints a stable evidenceEventId for external evidence only when the exact execution/decision/tool/input/observation tuple is available and valid.
+- WorkPass456's reality ledger accepts that kind of upstream eventId; however, the live OrganismCore call-site has not yet been changed to pass it through every consumer. The cross-subsystem wire therefore remains partial.
+- Planning docs now distinguish an emitted correlation key from trusted evidence authority. Readiness remains 46/100 pending exact-head CI and actual end-to-end propagation.
+
+---
+
+## NK1 WorkPass463 — refresh branch-head truth after parallel updates (2026-10-23)
+
+- Re-read all current category refs, open PR heads, `main`, and `integration`; detected new heads on memory and perception beyond the previous status snapshot.
+- Confirmed the Hexis-inspired belief-revision/provenance mechanism and the event-ID/observation-anchor result contract remain present on the two new live heads. Synced research intake, branch goals and the Russian master audit to avoid stale SHA reporting.
+- Validation status is unchanged: exact-head tests remain unverified because Actions never assigns a runner and a local clone failed due DNS resolution. No dependency or release asset change; `main`/`integration` unchanged; readiness 46/100.
+
+---
+
+## NK1 WorkPass456 — record shared evidence identity bridge as partial (2026-10-23)
+
+- The perception branch now supports an optional upstream eventId in RealityEvidenceLedger and blocks reuse of that identity with changed payload.
+- This is a prepared boundary, not the completed runtime wire: ActionGateway/postcondition → ledger → P65 → reward/reflection propagation is still outstanding and remains WorkPass457's first integration objective.
+- Updated branch goals and master audit so the end-to-end connection is explicitly marked partial. Overall readiness remains 46/100; exact-head test execution and Release ZIP remain unverified/unchanged.
+
+---
+
+## NK1 WorkPass461 — reconcile current branches and validation limits (2026-10-23)
+
+- Updated the source-intake ledger and Russian master audit against current branch refs and open PR heads, including the latest memory trust ceilings, P67/P68 goal-state guards, event-ID continuity in perception, and bounded verified-outcome fields.
+- Confirmed that changes remain on category branch tips; `main` and `integration` were not changed. All category PRs remain drafts.
+- Exact-head tests remain unverified: GitHub Actions jobs have `runner_id=0` and no steps, and a local repository clone could not resolve github.com via DNS. No test pass or performance uplift is claimed; no dependency added and no release ZIP replacement claimed.
+- Scorecard remains 7/7 core branches with implementation/regression source, 0/7 exact-head suites confirmed passing, 0/7 PR merges, 0/1 release ZIP refreshed/hash-verified, readiness 46/100.
+
+---
+
+## NK1 WorkPass455 — map Hexis principles into existing NK1 owners (2026-10-23)
+
+- Inspected the MIT-licensed QuixiAI/Hexis primary docs for memory architecture/provenance, persistent identity/worldview, resource-bounded OODA/heartbeat, and subconscious observations feeding conscious decisions.
+- Added a source-attributed integration map that keeps NK1's existing MemoryOS2, ActionGateway, P23 lifecycle and EmbodimentIntentV1 as canonical owners rather than cloning the donor stack or adding dependencies.
+- Recorded category commits WorkPass449–454 and a fixed-order route: event identity → unified state-to-decision context → held-out memory benchmark → verified self-repair loop → small-PR integration and release hash check.
+- Readiness remains 46/100; latest CI evidence still lacks executed steps/logs, so no category tests are reported as passing. Main, integration and the Release ZIP were not changed by this pass.
+
+---
+
+## NK1 WorkPass457 — integrate Hexis-inspired belief and goal-governance mechanisms (2026-10-23)
+
+- Inspected current Hexis MIT sources for evidence-based belief revision, goal-progress recording and energy-aware heartbeat execution. Added provenance with source file/blob references to the research intake ledger.
+- Updated the memory branch with residual confidence revision, source-lineage de-duplication across support/contradiction, a bounded persistent revision receipt and a provenance-class trust ceiling. Updated the personality branch with P67 replay-safe goal decisions and P68 trust-bounded lifecycle ingress/restore. No Hexis database/runtime or new dependency was vendored.
+- Synced branch exit-gates and the Russian master audit to the latest PR #82/#83 heads. The verified scorecard remains 7/7 core branches with code/regression source, 0/7 exact-head suites confirmed passing, 0/7 PRs merged, 0/1 release ZIP refreshed/hash-verified, readiness 46/100. `main` and `integration` unchanged.
+
+---
+
+## NK1 WorkPass453 — record affect calibration and Node 24 audit changes (2026-10-23)
+
+- Synced the planning ledger to the latest commits on `feature/emotions` and `feature/experiments`; recorded primary-source inspection of Hermes' GEPA skill-evolution workflow and its dataset/constraint/evaluation/approval phases.
+- Hardened affect-learning ingress against non-finite or out-of-range outcome values and expanded CI policy checks to include artifact actions.
+- Kept the verified evidence score unchanged: 7/7 core branches with implementation/regression source, 0/7 exact-head suites confirmed passing, 0/7 category PR merges, 0/1 release ZIP refreshed/hash-verified, overall readiness 46/100. `main` and `integration` remain untouched; no dependencies added.
+
+---
+
+## NK1 WorkPass452 — record multi-branch fault-tolerance follow-up (2026-10-23)
+
+- Updated the research intake ledger with the latest code commits on learning, perception, memory, personality, embodiment, and feedback, and rechecked primary guidance from Hermes Self-Evolution/GEPA, Letta memory/dreaming, and OpenAI evaluation best practices.
+- Refreshed the branch goals and Russian master-audit narrative to distinguish code committed from code executed, integrated, benchmarked, or shipped.
+- Kept engineering readiness at 46/100 because exact-head suites remain unverified (0/7), merges remain 0/7, and release-asset replacement remains unavailable through the current GitHub connector. No dependency was added; `main` and `integration` unchanged.
+
+---
+
+## NK1 WorkPass451 — refresh memory-branch status and release-artifact evidence
+
+- Updated the planning ledger with the latest `feature/memory` commit `97d329bc208aa8c7e4097947070b32dd17718fd0`, covering the canonical background semantic-index maintenance boundary.
+- Recorded the existing stable WorkPass70 release ZIP and later WorkPass70 Hotfix1 prerelease by exact size and SHA-256. Both were published on 2026-10-19; neither contains the 2026-10-23 category commits.
+- Explicitly documented the binary release-asset replacement blocker: available GitHub actions can commit repository text and read release metadata but do not expose a binary release-asset upload/replace operation. No archive update is claimed.
+- Overall readiness remains 46/100; exact-head execution remains unverified because representative Actions jobs fail before receiving a runner. `main` unchanged.
+
+---
+
+## NK1 WorkPass449 — reconcile seven category passes and upstream research provenance (2026-10-23)
+
+- Refreshed the persistent branch-goal scorecard with the exact current category commit SHAs, regression-authored state, PR/integration status, and runner-startup evidence.
+- Added a research-intake record tying the three follow-up mechanisms to primary sources: Hermes Self-Evolution/GEPA for trace-guided candidate evolution, Letta/MemFS for versioned/reviewable memory consolidation, and Voyager for compositional skill reuse and feedback-guided repair. Adaptation vs. source-code vendoring is explicitly distinguished.
+- Corrected the Russian master plan's stale statement that category branches had no feature commits. Seven category branches now have implementation commits; zero category PRs are merged and zero exact-head suites are confirmed passing in this follow-up.
+- Preserved the previous overall readiness baseline of 46/100; code commits and authored regressions are not treated as test passes, measured learning uplift, integrated runtime readiness, or release completeness.
+- `main` and the binary release ZIP remain unchanged.
+
+---
+
+## NK1 WorkPass441 — explicit branch goals, brain wiring and exit gates (2026-10-23)
+
+- Added `docs/NK1_BRANCH_GOALS_AND_EXIT_GATES.md` on the existing planning branch. It defines the finish state of each current category branch, cross-domain interfaces, evidence-based exit gates, the unified cognitive/action/learning loop and a sequenced next-pass plan.
+- The document preserves the existing readiness estimate at 46/100 and distinguishes code committed, tests authored, tests executed, end-to-end evidence and release integration.
+- It adds research intake rules for Hermes/GEPA, Letta/MemFS and Voyager, including license and architecture cautions.
+- `main` and the release archive are unchanged.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
