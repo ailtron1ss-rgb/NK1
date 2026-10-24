@@ -1,4 +1,5 @@
 import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
+import { isTrustedDecisionLinkedExternalPostcondition, type ExpectedDecisionOutcomeBinding, type OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 import type { ActionKind, OrganismState } from '../core/types.ts';
 
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
@@ -186,6 +187,54 @@ export class PredictiveSelfAgencySubstrate {
       action,intention01,predictedOutcome01,ownershipPrior01,confidence01,
       selfContinuity01:this.state.selfContinuity01,
     };
+  }
+
+  /**
+   * Evidence-gated production learning path. The verifier result must be the exact
+   * frozen object minted by OutcomeVerificationService and bound to the exact
+   * ActionGateway execution, decision and full tool input. Persisted/copied receipts
+   * and caller-supplied correlation IDs cannot authorize this path. Simulations may
+   * continue to use learnOutcome(), but must not label their evidence externally verified.
+   */
+  learnVerifiedOutcome(
+    action:ActionKind,
+    outcome01:number,
+    observedState:OrganismState,
+    externallyRequested:boolean,
+    causalMatch01:number,
+    verification:unknown,
+    rawBinding:ExpectedDecisionOutcomeBinding,
+  ) {
+    let binding:unknown;
+    try {
+      binding=snapshotPlainData<unknown>(rawBinding,{maxDepth:12,maxNodes:2048,maxStringUnits:32*1024});
+    } catch {
+      throw new TypeError('predictive-self-agency-evidence-binding-invalid');
+    }
+    if(!binding||typeof binding!=='object'||Array.isArray(binding)) throw new TypeError('predictive-self-agency-evidence-binding-invalid');
+    const clean=binding as Record<string,unknown>;
+    if(Object.keys(clean).some(key=>!['toolId','input','executionId','decisionId'].includes(key))||
+       typeof clean.toolId!=='string'||!clean.toolId.trim()||clean.toolId.length>180||
+       typeof clean.executionId!=='string'||!/^exec-[a-z0-9-]{8,80}$/i.test(clean.executionId)||
+       typeof clean.decisionId!=='string'||!clean.decisionId.trim()||clean.decisionId.length>180||
+       !clean.input||typeof clean.input!=='object'||Array.isArray(clean.input)) {
+      throw new TypeError('predictive-self-agency-evidence-binding-invalid');
+    }
+    // Do not clone 'verification': object identity in the verifier's WeakMap is the
+    // trust capability. Equivalent JSON is intentionally insufficient.
+    if(!isTrustedDecisionLinkedExternalPostcondition(verification,clean as unknown as ExpectedDecisionOutcomeBinding)) {
+      throw new TypeError('predictive-self-agency-external-evidence-untrusted');
+    }
+    const trusted=verification as OutcomeVerification;
+    if(typeof trusted.confidence01!=='number'||!Number.isFinite(trusted.confidence01)||trusted.confidence01<0||trusted.confidence01>1) {
+      throw new TypeError('predictive-self-agency-external-evidence-confidence-invalid');
+    }
+    if(typeof causalMatch01!=='number'||!Number.isFinite(causalMatch01)||causalMatch01<0||causalMatch01>1) {
+      throw new RangeError('predictive-self-agency-causal-match-invalid');
+    }
+    // External verifier confidence caps caller-provided causal confidence; it can
+    // never be inflated merely by passing 1 as the numeric causal-match argument.
+    return this.learnOutcome(action,outcome01,observedState,externallyRequested,Math.min(causalMatch01,trusted.confidence01));
   }
 
   learnOutcome(
