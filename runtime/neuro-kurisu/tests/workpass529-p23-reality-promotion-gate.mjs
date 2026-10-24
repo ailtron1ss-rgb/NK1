@@ -30,6 +30,8 @@ ledger.record({
 const twoSources = ledger.claimAssessment('device reports stable temperature');
 assert.equal(twoSources.qualifiedIndependentExternalSources, 2);
 assert.equal(twoSources.independentPromotionAllowed, true);
+assert.equal(twoSources.contradictionCoverageAvailable, false,
+  'free-form claims have no deterministic contradiction coverage');
 
 // A qualified external observation for the opposite value of the same explicit
 // field must veto promotion, even when the target claim has two agreeing sources.
@@ -96,6 +98,7 @@ const end = engineSource.indexOf('\n  approveVerifiedSkillCandidate(', start);
 assert.ok(end > start, 'P23 reality gate must remain a distinct method');
 const gate = engineSource.slice(start, end);
 assert.match(gate, /ledger instanceof RealityEvidenceLedger/, 'only the canonical ledger type is accepted');
+assert.match(gate, /contradictionCoverageAvailable!==true/, 'consequential promotion requires a claim shape covered by contradiction detection');
 assert.match(gate, /independentPromotionAllowed!==true/, 'the stronger independent-promotion signal is mandatory');
 assert.match(gate, /qualifiedIndependentExternalSources<2/, 'two confidence-qualified independent sources are mandatory');
 assert.match(gate, /candidatePayloadFingerprint:string/, 'the gate must require an exact candidate payload fingerprint');
@@ -107,4 +110,4 @@ assert.ok(gate.indexOf('independentPromotionAllowed') < gate.indexOf('approveInd
 assert.match(gate, /approveIndependentlyEvaluatedSkillCandidate\(/,
   'the reality gate must retain the independent evaluation, signed evidence, and store approval path');
 
-console.log('WORKPASS529_P23_REALITY_PROMOTION_GATE=PASS one-source-blocked two-independent-qualified-sources-required canonical-ledger-and-existing-gates-preserved');
+console.log('WORKPASS529_P23_REALITY_PROMOTION_GATE=PASS one-source-blocked two-independent-qualified-sources-required structured-claim-contradiction-coverage canonical-ledger-and-existing-gates-preserved');
