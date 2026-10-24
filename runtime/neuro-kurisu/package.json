@@ -249,6 +249,8 @@
     "test:p40:performance": "node --experimental-strip-types tests/p40-performance.mjs",
     "test:p38:server": "node --experimental-strip-types tests/p38-server-smoke.mjs",
     "test:p32:causal-self": "node --experimental-strip-types tests/p32-causal-self-model.mjs",
+    "test:p2702:persistent-personality": "node --experimental-strip-types tests/p2702-persistent-personality-dynamics.mjs",
+    "test:character-personality": "npm run typecheck && npm run test:p2702:persistent-personality",
     "test:p41:native": "node --experimental-strip-types tests/p41-native-perception.mjs",
     "test:p41:integration": "node --experimental-strip-types tests/p41-integration.mjs",
     "test:p41:migration": "node --experimental-strip-types tests/p41-migration.mjs",
