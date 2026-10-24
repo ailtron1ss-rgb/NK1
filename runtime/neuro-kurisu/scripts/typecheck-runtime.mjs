@@ -3,15 +3,18 @@ import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const args = ['-p', 'tsconfig.clean.json', '--noEmit'];
-// The canonical workflow installs dependencies under app/node_modules and reuses
-// that pinned TypeScript compiler for this runtime. Explicitly expose the same
-// installation's Node declarations; without this, ambient fallback shims hide
-// real Node APIs and create dozens of false missing-member/type errors.
-const appTypeRoots = path.resolve(root, '../../app/node_modules/@types');
-if (existsSync(path.join(appTypeRoots, 'node'))) {
-  args.push('--typeRoots', appTypeRoots, '--types', 'node');
-}
+// P26 installs runtime/neuro-kurisu/package-lock.json, so prefer that lock's
+// Node typings. Only fall back to the app install when the runtime lock lacks them.
+const nodeTypeRootCandidates = [
+  path.resolve(root, 'node_modules/@types'),
+  path.resolve(root, '../../app/node_modules/@types'),
+];
+const nodeTypeRoots = nodeTypeRootCandidates.find(candidate => existsSync(path.join(candidate, 'node')));
+const hasOfficialNodeTypes = Boolean(nodeTypeRoots);
+const configFile = hasOfficialNodeTypes ? 'tsconfig.clean.json' : 'tsconfig.shim.json';
+const args = ['-p', configFile, '--noEmit'];
+if (nodeTypeRoots) args.push('--typeRoots', nodeTypeRoots, '--types', 'node');
+console.log(`TYPECHECK_NODE_TYPES=${hasOfficialNodeTypes ? 'official' : 'fallback-shim'}`);
 const localCompilers = [
   { label: 'runtime-lock', path: path.join(root, 'node_modules/typescript/bin/tsc') },
   // The canonical installer installs the app lockfile too; reuse its pinned compiler
