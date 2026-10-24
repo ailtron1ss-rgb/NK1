@@ -22,7 +22,12 @@
     "secretsRedactedBeforeOutboundRequests": true,
     "providerResponseIsNotDurabilityProof": true,
     "humanApprovalRequiredForGeneratedArtifactPromotion": true,
-    "legacyArchiveRemainsProvenanceOnly": true
+    "legacyArchiveRemainsProvenanceOnly": true,
+    "canonicalMemoryLifecycleObserverEnabledWhenOptedIn": true,
+    "historicalMemoryBackfillByDefault": false,
+    "letTaForgetRequestIsUnverified": true,
+    "nativeMutationCompletesBeforeExternalSync": true,
+    "syncSuppressedDuringRuntimeRestore": true
   },
   "activeRuntimeAdapter": "runtime/neuro-kurisu/src/organism/integration/letta/LettaMemoryBridge.ts",
   "activeSdk": "https://github.com/letta-ai/letta-agent-sdk",
