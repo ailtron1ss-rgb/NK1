@@ -1,3 +1,12 @@
+# NK1 process-supervisor log buffer optimization (2026-10-24)
+
+- [OPTIMIZED] Log-tail capture now discards old bytes before constructing the next buffer instead of concatenating an oversized combined buffer and then slicing it. This reduces intermediate allocations for high-volume subprocess output while preserving tail semantics.
+- [REGRESSION] Added exact-capacity and zero-byte-capture tests, alongside existing overflow/tail and live-streaming regressions.
+- [VALIDATION STATUS] Latest process-supervisor changes require a successful CI run for their exact head; no quantified CPU or memory gain is claimed.
+- [SCOPE] `main` and the published Release ZIP remain unchanged.
+
+---
+
 # NK1 process optimization — gateway upstream deadline (2026-10-24)
 
 - [HARDENED] `tools/super-gateway.mjs` now applies configurable upstream request deadlines (30 seconds by default; 1–120 seconds allowed), returning `504` for upstream timeouts and `502` for connection failures.
