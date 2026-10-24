@@ -1,3 +1,13 @@
+## NK1 WorkPass498 — close Node24, trusted registration and causal-metric seams
+
+- Replaced the remaining P23 trusted-shadow scheduler constructor parameter property so runtime tests execute under Node.js 24's strip-only TypeScript runner.
+- Made Core's trusted shadow-run registration return the registry's validated, persisted context. Exact re-registration can report the canonical persisted timestamp; authority remains in the registry.
+- Added `npm ci` to the WorkPass294 typecheck workflow in the same execution directory so Node type definitions are installed on clean runners.
+- Aligned the causal-stream regression with the quarantine contract: external imports remain deduplicated and inspectable but never increment trusted runtime-outcome metrics.
+- **Validation boundary:** committed; exact-head Actions must confirm these runtime paths before considering the failures resolved.
+
+---
+
 ## NK1 WorkPass495 — sanitize restored learner state and close runtime boundary gaps
 
 - P26 restore now sanitizes every persisted diagnostic and counter, restores `frozen` only from literal boolean `true`, and resets negative/invalid update counts rather than preserving NaN timestamps or diagnostic metrics.
