@@ -9,6 +9,8 @@
     "npm": ">=10.8.0"
   },
   "scripts": {
+    "test:letta-memory-bridge": "node --experimental-strip-types tests/integration/letta-memory-bridge.mjs",
+    "test:letta-memory-lifecycle-sync": "node --experimental-strip-types tests/integration/letta-memory-lifecycle-sync.mjs",
     "test:cognitive-cycle-boundary": "node --experimental-strip-types tests/cognitive-cycle-boundary.mjs",
     "test:workpass95:receipt-integrity": "node --experimental-strip-types tests/workpass95-restored-action-receipt-integrity.mjs",
     "test:workpass96:finalizer-boundary": "node --experimental-strip-types tests/workpass96-action-finalizer-boundary.mjs",
