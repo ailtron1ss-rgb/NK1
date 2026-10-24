@@ -6,6 +6,7 @@ Two paired performance runs completed successfully on the same Ubuntu 24.04 GitH
 
 - [Run 1 — 40126730431](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40126730431), candidate commit `56a15ddc50b012fe7114461d13b0f06e1f81a910`.
 - [Run 2 — 40126825696](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40126825696), candidate commit `42b496bcc290a03f2222b73c99a8e4daecc46fda`.
+- [Run 3 — 40126993226](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40126993226), candidate commit `f72cea55661e5a46129fe423d3a0fb9895c9af23`, adding the fuzzy-ranking token-length cache optimization.
 - Baseline for both: `19f64b1ae985e579795b4ef054fd3fb58259a336` (parent immediately before the optimization edits).
 - Retrieval parity: all recorded top-five IDs matched for every query at all three corpus sizes; both baseline and candidate reported consistent indexes.
 - Candidate cache: up to 512 token sets plus 512 term-frequency maps.
@@ -31,6 +32,18 @@ This is a warm-cache case and should not be generalized to a varied production w
 | 256 | 3.349 / 3.578 → 1.883 / 2.134 ms | 4.258 / 5.905 → 2.449 / 3.969 ms | 32.79–40.35% | +70.44–75.90% |
 | 800 | 4.273 / 6.668 → 2.742 / 2.904 ms | 5.175 / 7.480 → 3.565 / 3.950 ms | 47.20–56.45% | +43.52–55.95% |
 | 1,600 | 5.442 / 7.383 → 3.870 / 6.559 ms | 6.711 / 11.646 → 5.042 / 7.696 ms | 11.17–33.92% | +36.25–38.07% |
+
+## Run 3 — token-length reuse in fuzzy ranking
+
+This run compares the candidate containing the additional Unicode token-length cache to the same pre-optimization baseline. The change only memoizes code-point lengths and reuses the document-token traversal; the ranking similarity rules are unchanged.
+
+| Memories | Mixed p50 / p95: baseline → candidate | Mixed p95 change | Repeated p50 / p95: baseline → candidate | Repeated p95 change | Throughput change, mixed / repeated |
+|---:|---:|---:|---:|---:|---:|
+| 256 | 3.237 / 6.590 → 2.348 / 6.078 ms | -7.77% | 2.502 / 2.678 → 1.509 / 2.379 ms | -11.15% | +31.30% / +55.59% |
+| 800 | 4.682 / 8.496 → 3.578 / 6.824 ms | -19.69% | 3.258 / 4.904 → 2.008 / 2.806 ms | -42.79% | +33.62% / +54.95% |
+| 1,600 | 5.566 / 9.400 → 4.817 / 8.062 ms | -14.23% | 4.582 / 6.130 → 3.229 / 5.802 ms | -5.35% | +18.25% / +37.05% |
+
+All top-five rankings matched baseline and both indexes passed integrity checks. Candidate absolute heap after GC was higher by about 365 KB (2.96%), 616 KB (3.89%), and 615 KB (3.08%) at 256, 800, and 1,600 records. Candidate RSS after GC differed by -0.56%, +0.63%, and +0.55%; these small process-level deltas are descriptive, not peak-memory measurements.
 
 ## Memory observations
 
