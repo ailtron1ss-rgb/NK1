@@ -1,6 +1,5 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { stripTypeScriptTypes } from 'node:module';
 import path from 'node:path';
 
 const root = process.cwd();
@@ -34,6 +33,14 @@ try {
       }
     };
     walk(path.join(root, 'src'));
+    // Load the TypeScript parser API only if the semantic compiler is absent.
+    // Older Node releases may not export it, but must still be able to import and
+    // run this wrapper when a pinned tsc compiler is available.
+    const stripTypeScriptTypes = (await import('node:module')).stripTypeScriptTypes;
+    if (typeof stripTypeScriptTypes !== 'function') {
+      console.log(`TYPECHECK=PARTIAL mode=parser-unavailable files=${files.length} note="TypeScript compiler and Node TypeScript parser API unavailable; semantic typecheck not performed."`);
+      process.exit(2);
+    }
     let failed = 0;
     let unsupported = 0;
     for (const file of files) {
