@@ -162,6 +162,8 @@ const runtime = new OrganismRuntime({
     enableLanguage: true,
     visionBackend: VISION_BACKEND,
     languageInvoker: invokeLanguage,
+    mem0Adapter: MEM0_MEMORY_ADAPTER,
+    mem0CognitiveRecall: process.env.NK_MEM0_COGNITIVE_RECALL === '1',
     autoRun: true,
     intervalMs: INTERVAL_MS,
     sensorIntervalMs: SENSOR_INTERVAL_MS,
