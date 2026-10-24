@@ -8,9 +8,11 @@ engine.beginCycle();
 const h=engine.propose(state,{worldError01:.7,selfError01:.6,perception01:.4,resourceRisk01:.2});
 assert.ok(h,'a developmental hypothesis should be generated');
 assert.ok(h.hypothesis.length>20);
+const previewMetricsBefore={...engine.snapshot().metrics};
 const x=engine.runSafeExperiment(h.id,state,7);
 assert.ok(x,'safe developmental experiment should run');
 assert.equal(x.safeSandbox,true);
+assert.deepEqual(engine.snapshot().metrics,previewMetricsBefore,'sandbox previews must not fabricate changes in outcome-derived metrics');
 assert.ok(Number.isFinite(engine.snapshot().actionBias.reflect));
 const d=engine.diagnostics();
 assert.ok(d.cycles===1);
@@ -128,6 +130,9 @@ const duplicatedMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,
 assert.equal(duplicatedMaturity.verifiedOutcomeCount,1,'the same authenticated outcome receipt is idempotent');
 const copiedMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,verification:structuredClone(outcomeProof)});
 assert.equal(copiedMaturity.verifiedOutcomeCount,1,'a serialized copy cannot replay a trusted maturity receipt');
+const reusedMaturityProof=await mintProof(developmentalOutcomeVerificationInput({...outcome,area:'memory',outcome01:.8}),outcomeProof.observationId);
+const reusedMaturity=maturityEngine.observeDevelopmentalOutcome({area:'memory',outcome01:.8,delayed:true,transfer:true,verification:reusedMaturityProof});
+assert.equal(reusedMaturity.verifiedOutcomeCount,1,'one observation ID cannot certify two different developmental outcomes');
 
 // A restored snapshot is informative history, not authenticated proof of independent learning.
 const forgedSnapshot=campaign.snapshot();
@@ -139,6 +144,7 @@ assert.equal(restored.snapshot().externalEvidence.some(row=>row.independentVerif
 assert.equal(restored.developmentalCertification().certified,false,'persisted aggregate counters cannot self-certify maturity');
 assert.equal(restored.snapshot().developmentalMaturity.verifiedOutcomeCount,0);
 assert.equal(restored.snapshot().developmentalEvidenceReceiptIds.length,0);
+assert.equal(restored.snapshot().developmentalEvidenceObservationIds.length,6,'deduplication identities survive restore without restoring trust');
 console.log('P36_SELF_DEVELOPMENT_PROVENANCE=PASS spoofed-flags=blocked copied-receipts=blocked manual-lane=blocked duplicate-poisoning=blocked reused-observation=blocked holdout=verified replication=verified maturity-idempotency=verified restore-demotion=verified');
 console.log('P36_SELF_DEVELOPMENT=PASS',JSON.stringify({area:h.area,delta01:x.delta01,acceptedChanges:d.acceptedChanges,focus:d.curriculum.focus}));
 
