@@ -85,7 +85,11 @@ try {
 } catch (error) {
   record('runtime/bridge:http', false, String(error));
 } finally {
-  await terminateChildren([runtime, bridge], { graceMs: 800, forceGraceMs: 500 });
+  const cleanup = await terminateChildren([runtime, bridge], { graceMs: 800, forceGraceMs: 500 });
+  for (const [label, outcome] of [['runtime', cleanup[0]], ['research-bridge', cleanup[1]]]) {
+    record(`cleanup:${label}`, outcome.stopped,
+      outcome.stopped ? 'process cleanup confirmed' : `cleanup incomplete forced=${outcome.forced} signal=${outcome.signal ?? 'none'}`);
+  }
 }
 
 for (const [label, command, args] of [
@@ -99,7 +103,8 @@ for (const [label, command, args] of [
     : r.timedOut
       ? `timed out after ${r.durationMs}ms${tail ? ` — ${tail}` : ''}`
       : tail || `exit=${r.code}`;
-  record(label, r.code === 0 && !r.timedOut && !r.error, detail);
+  record(label, r.code === 0 && !r.timedOut && !r.error && !r.cleanupFailed,
+    r.cleanupFailed ? `${detail} — child process cleanup incomplete` : detail);
 }
 
 const environmentBlocked = !existsSync(resolve(ROOT, 'app/node_modules'));
