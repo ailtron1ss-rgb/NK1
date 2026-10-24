@@ -142,6 +142,7 @@ export function runCommand(command, args = [], options = {}) {
     terminationGraceMs = 1_000,
     forceGraceMs = 500,
     maxOutputBytes = DEFAULT_MAX_OUTPUT_BYTES,
+    streamOutput = false,
   } = options;
   const maxBytes = Number.isFinite(maxOutputBytes) ? Math.max(0, Math.floor(maxOutputBytes)) : DEFAULT_MAX_OUTPUT_BYTES;
   const startedAt = Date.now();
@@ -195,11 +196,13 @@ export function runCommand(command, args = [], options = {}) {
     }
 
     child.stdout?.on('data', (chunk) => {
+      if (streamOutput) process.stdout.write(chunk);
       const result = withTail(out, chunk, maxBytes);
       out = result.buffer;
       outTruncated ||= result.truncated;
     });
     child.stderr?.on('data', (chunk) => {
+      if (streamOutput) process.stderr.write(chunk);
       const result = withTail(err, chunk, maxBytes);
       err = result.buffer;
       errTruncated ||= result.truncated;
