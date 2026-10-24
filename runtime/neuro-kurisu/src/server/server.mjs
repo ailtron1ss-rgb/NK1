@@ -446,7 +446,7 @@ function localModelFailure(res, error) {
     const message = String(error?.message ?? '');
     if (/not-configured/i.test(message))
         return json(res, 503, { ok: false, error: message.slice(0, 120) });
-    if (/(?:classifier|emotion|embeddings)-empty-input|invalid-labels|batch-limit-exceeded/i.test(message)
+    if (/(?:classifier|emotion|embeddings)-empty-input|invalid-labels|batch-limit-exceeded/i.test(message))
         return json(res, 400, { ok: false, error: message.slice(0, 120) });
     if (/timeout|timed out|deadline|abort/i.test(message))
         return json(res, 504, { ok: false, error: 'local-model-inference-timeout' });
