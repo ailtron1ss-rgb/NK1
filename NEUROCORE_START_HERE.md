@@ -1,3 +1,15 @@
+## Latest durable checkpoint — Strict TypeScript pass hardening (2026-10-24)
+
+- Branch: `typescript/runtime-typecheck-truth-2026-10-24`; draft [PR #102](https://github.com/ailtron1ss-rgb/NK1/pull/102) targets `workpass70-source`. `main` and the large Release ZIP are unchanged.
+- `tsconfig.clean.json` now uses the locked `app/node_modules/@types/node` types and excludes the incomplete runtime Node shim files from the semantic typecheck.
+- The first full strict runtime check dropped from 85 diagnostics to 19 after replacing the shim environment. The current source changes address those 19 categories: null-guarding replay/repair signals, capability narrowing for the trusted shadow registrar, Buffer typing, optional retrieval values and verified dataset schema literals. A fresh exact-head result is pending.
+- Removed a duplicate `verifyOperationalCycle` implementation and added tests for optional-stage causal edges; corrected the control-character range in outcome correlation IDs and added an isolation-boundary test.
+- Corrected `p23-compound-repair-revision` clock kind; its focused CI regression passed on an earlier head. Runtime fallback uses Node's TypeScript stripping parser, never executes scanned files and exits 2 when semantic `tsc` is unavailable.
+- A prior run failed the fallback test only because the assertion still expected the old mode label; that assertion is corrected on the latest head. Other validation workflows also expose failures in `p23-signed-outcome-artifact.mjs` (duplicate-attempt assertion), outside this TypeScript work's direct scope.
+- Validation state: app typecheck passed on prior runs; complete runtime typecheck and all focused regressions on the combined latest head are **not yet confirmed**. Do not merge or claim full validation until logs from that exact HEAD are inspected.
+
+---
+
 ## Latest durable checkpoint — TypeScript validation hardening (2026-10-24)
 
 - Work branch: `typescript/runtime-typecheck-truth-2026-10-24`; draft PR #102 targets `workpass70-source`. Do not merge this source work directly into `main`.
