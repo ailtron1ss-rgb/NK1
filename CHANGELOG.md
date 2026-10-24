@@ -1,3 +1,10 @@
+## NK1 WorkPass546 — bind reality corroboration to the exact candidate payload (2026-10-24)
+
+- P23 now requires the structured reality claim to be exactly `payload_fingerprint=<staged SHA-256>`; unrelated corroborated facts can no longer satisfy this precondition for a different candidate.
+- Added regression coverage showing that two independent qualified sources can corroborate one exact payload fingerprint, while a different fingerprint remains uncorroborated.
+- This closes the direct unrelated-claim binding gap, but does not prove that the external sources themselves are honest or that the candidate's semantic behavior entails the claimed payload; existing independent evaluation, signed evidence, and approval checks remain required.
+- **Validation boundary:** changes are committed to `feature/feedback`; tests and hosted Actions have not been run/confirmed in this pass.
+
 ## NK1 WorkPass545 — require contradiction coverage for consequential reality promotion (2026-10-24)
 
 - The ledger now reports whether a claim is explicitly structured as `field=value` or `field: value`, the only format currently covered by deterministic contradiction checks.
