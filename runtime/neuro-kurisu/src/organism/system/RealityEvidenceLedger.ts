@@ -142,7 +142,7 @@ export class RealityEvidenceLedger {
        !validText(input.independenceKey,160)||(input.eventId!==undefined&&!validText(input.eventId,256))||
        (input.confidence01!==undefined&&!validScore(input.confidence01))||
        (input.parentIds!==undefined&&(!Array.isArray(input.parentIds)||input.parentIds.length>8||
-         input.parentIds.some(id=>typeof id!=='string'||id.length===0||id.length>256)))){
+         input.parentIds.some(id=>!validText(id,256))||new Set(input.parentIds).size!==input.parentIds.length))){
       throw new TypeError('reality-evidence-input-invalid');
     }
     const claim=input.claim.trim(),independenceKey=input.independenceKey.trim();
