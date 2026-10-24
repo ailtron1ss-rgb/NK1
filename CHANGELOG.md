@@ -1,3 +1,9 @@
+## NK1 WorkPass528 — focused affect/embodiment CI gate (2026-10-24)
+
+- Added a pull-request workflow running runtime TypeScript checks and the canonical emotion/interoception regression, plus app TypeScript checks and the voice/Live2D affect regression on Node.js 24.
+- The workflow is scoped to the affect engine, runtime UI snapshot, app normalization, embodiment timeline, related tests, and lockfiles so this change has a targeted validation path instead of relying on unrelated learning-metrics CI.
+- **Validation boundary:** workflow definition is committed; a successful run is not claimed until GitHub completes the job.
+
 ## NK1 WorkPass527 — bridge canonical mood and feeling access to embodiment (2026-10-24)
 
 - The organism UI snapshot now exposes a compact projection of the persisted affect engine: mood trajectory, latest feeling-access episode, and interoceptive regulation pressure. It does not serialize the full emotion history or calibration tables.
