@@ -57,6 +57,9 @@ const child = spawn(process.execPath, ['--experimental-strip-types', 'src/server
     LLAMA_CPP_MODEL: 'neurocore-http-smoke-model',
     LLM_TIMEOUT_MS: '5000',
     NEURO_REQUEST_TIMEOUT_MS: '20000',
+    NK_MEM0_ENABLED: '0',
+    NK_MEM0_COGNITIVE_RECALL: '1',
+    NK_MEM0_USER_ID: 'mem0-http-smoke-user',
   },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
@@ -81,6 +84,34 @@ async function waitReady() {
 
 try {
   await waitReady();
+
+  // Route-level Mem0 contract: the second cognitive gate can be set, but the
+  // primary provider gate remains off, so no cloud call or remote prompt context is allowed.
+  const mem0DiagnosticsResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/memory/mem0/diagnostics`);
+  const mem0Diagnostics = await mem0DiagnosticsResponse.json();
+  assert.equal(mem0DiagnosticsResponse.status, 200);
+  assert.equal(mem0Diagnostics.ok, true);
+  assert.equal(mem0Diagnostics.diagnostics?.enabled, false);
+  assert.equal(mem0Diagnostics.diagnostics?.available, false);
+  assert.equal(Object.prototype.hasOwnProperty.call(mem0Diagnostics.diagnostics ?? {}, 'apiKey'), false);
+
+  const mem0SearchResponse = await fetch(`http://127.0.0.1:${appPort}/api/organism/memory/mem0/search`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ query: 'the current user preference', limit: 5 }),
+  });
+  const mem0Search = await mem0SearchResponse.json();
+  assert.equal(mem0SearchResponse.status, 200, `Mem0 disabled search must degrade to local memory: ${JSON.stringify(mem0Search)}`);
+  assert.equal(mem0Search.ok, true);
+  assert.equal(mem0Search.canonical?.source, 'MemoryOS2');
+  assert.equal(mem0Search.canonical?.authoritative, true);
+  assert.ok(Array.isArray(mem0Search.canonical?.memories));
+  assert.deepEqual(mem0Search.externalCandidates, []);
+  assert.equal(mem0Search.mem0?.status, 'disabled');
+  assert.equal(mem0Search.policy?.autoPromotion, false);
+  assert.equal(mem0Search.policy?.instructionExecution, false);
+  assert.equal(JSON.stringify(mem0Search).includes('MEM0_API_KEY'), false);
+
   const response = await fetch(`http://127.0.0.1:${appPort}/api/organism/chat`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -98,6 +129,8 @@ try {
   assert.equal(lastProviderPayload?.model, 'neurocore-http-smoke-model', 'configured model identity must reach the provider');
   assert.ok(Array.isArray(lastProviderPayload?.messages) && lastProviderPayload.messages.some(message => message.role === 'user' && message.content.includes('configured local model')), 'user prompt must reach the local provider');
   assert.equal(lastProviderPayload?.stream, false, 'smoke provider request should use the bounded non-streaming response path');
+  const renderedPrompt = (lastProviderPayload?.messages ?? []).map(message => String(message.content ?? '')).join('\\n');
+  assert.doesNotMatch(renderedPrompt, /MEM0 EXTERNAL RECALL/, 'disabled Mem0 must not influence the cognitive prompt even if the second gate is set');
   console.log('SERVER_LANGUAGE_HTTP_FAKE_PROVIDER=PASS', JSON.stringify({
     status: response.status,
     backend: body.language.backend,
