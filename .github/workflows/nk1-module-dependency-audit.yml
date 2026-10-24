@@ -1,0 +1,40 @@
+name: NK1 Module Dependency Audit
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - '.github/workflows/nk1-module-dependency-audit.yml'
+      - 'runtime/neuro-kurisu/scripts/audit-architecture.mjs'
+      - 'runtime/neuro-kurisu/scripts/audit-server-imports.mjs'
+      - 'runtime/neuro-kurisu/scripts/dependency-boundary-policy.mjs'
+      - 'runtime/neuro-kurisu/tests/*dependency*'
+      - 'runtime/neuro-kurisu/tests/server-import-graph-audit.test.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-module-dependency-audit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-boundaries:
+    name: Import graph and layer boundaries
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout pull request merge commit
+        uses: actions/checkout@v7
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Verify Node.js runtime
+        run: node --version
+      - name: Audit transitive server imports
+        run: npm --prefix runtime/neuro-kurisu run audit:server-imports
+      - name: Audit architecture dependency boundaries
+        run: npm --prefix runtime/neuro-kurisu run audit:architecture
