@@ -1,3 +1,11 @@
+## NK1 WorkPass453 — unify correlation-ID trust boundaries (2026-10-24)
+
+- Shared the official Node type-root setup across runtime categories, reusing the existing locked app dependencies rather than introducing a duplicate dependency installation.
+- Replaced the malformed/trim-first correlation-ID check with code-point validation before trimming, so control characters cannot disappear during normalization and make unrelated events collide.
+- Emotional action calibration remains context-bound; this pass does not claim that a clean test suite or subjective affect has been demonstrated.
+
+---
+
 ## NK1 WorkPass452 — context-bound affective action learning (2026-10-23)
 
 - Added context-specific outcome calibration keyed by action, emotion label and low/medium/high homeostatic-pressure band, while preserving the legacy global aggregate.
