@@ -65,7 +65,7 @@ assert.ok(appAddress && typeof appAddress === 'object');
 const appPort = appAddress.port;
 await new Promise(resolve => portProbe.close(resolve));
 
-const child = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], {
+const child = spawn(process.execPath, ['--import', path.join(runtimeRoot, 'scripts/register-typescript-loader.mjs'), 'src/server/server.mjs'], {
   cwd: runtimeRoot,
   env: {
     ...process.env,
