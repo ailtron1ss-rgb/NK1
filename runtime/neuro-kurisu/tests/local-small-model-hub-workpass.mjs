@@ -104,6 +104,8 @@ assert.ok(before.recentDecisions.length <= 32);
 assert.equal(JSON.stringify(before).includes('super_secret_value_123'), false);
 assert.equal(JSON.stringify(before).includes('alice@example.com'), false);
 assert.equal(JSON.stringify(before).includes('A short safe sentence'), false, 'diagnostics must not retain prompts');
+assert.equal(JSON.stringify(before).includes('127.0.0.1:11434'), false, 'model diagnostics and decisions must not expose endpoint URLs');
+assert.ok(before.recentDecisions.some((row) => row.task === 'embeddings' && row.selected.includes('embeddinggemma')), 'embedding telemetry should retain a safe model label');
 
 const offHub = new LocalSmallModelHub({ languagePolicy, clock, enableContextSignals: false });
 assert.equal(await offHub.deriveContextSignals('Do not run auxiliary inference'), null);
