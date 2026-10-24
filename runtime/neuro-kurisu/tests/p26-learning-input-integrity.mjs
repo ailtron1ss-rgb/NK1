@@ -14,6 +14,7 @@ const valid = { state, action: 'respond', target01: .9, learningRate01: .06 };
 
 assert.throws(() => learner.train({ ...valid, target01: Number.NaN }), /target-must-be-finite/);
 assert.throws(() => learner.train({ ...valid, learningRate01: Number.POSITIVE_INFINITY }), /rate-must-be-finite/);
+assert.throws(() => learner.train({ ...valid, learningRate01: 1.01 }), /rate-must-be-finite-and-in-0-1/);
 assert.throws(() => learner.train({ ...valid, sampleWeight01: Number.NaN }), /sample-weight-must-be-finite/);
 assert.throws(() => learner.train({ ...valid, action: 'not-an-action' }), /invalid-action/);
 assert.deepEqual(learner.snapshot(), initial, 'rejected samples must not mutate policy weights or learning diagnostics');
