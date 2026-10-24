@@ -184,7 +184,7 @@ try {
   const emotionBody = await emotionResponse.json();
   assert.equal(emotionResponse.status, 200, `emotion route failed: ${JSON.stringify(emotionBody)}`);
   assert.equal(emotionBody.result?.emotion, 'curiosity');
-  assert.match(emotionBody.caveat, /uncertain estimate/i);
+  assert.match(emotionBody.caveat, /uncertain signal/i);
 
   const embeddingsResponse = await fetch(`http://127.0.0.1:${appPort}/api/local-models/embeddings`, {
     method: 'POST',
