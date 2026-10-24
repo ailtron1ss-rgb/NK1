@@ -955,9 +955,11 @@ async function route(req, res) {
                 ok: true,
                 stage: result,
                 application: decision === 'apply' ? result.application ?? null : null,
-                appliedToCanonicalMemory: decision === 'apply' && result.status === 'applied',
+                appliedToCanonicalMemory: decision === 'apply' && result.status === 'applied' && result.application?.status !== 'noop',
                 note: decision === 'apply'
-                    ? 'HMX memory records were projected through the canonical MemoryFabric/MemoryOS2 write path; deferred sections are listed in the application receipt.'
+                    ? result.application?.status === 'noop'
+                        ? 'The apply decision completed, but the candidate contained no memory records; canonical NK1 memory was not mutated.'
+                        : 'HMX memory records were projected through the canonical MemoryFabric/MemoryOS2 write path; deferred sections are listed in the application receipt.'
                     : decision === 'accept'
                         ? 'HMX candidate is approved for explicit application; canonical NK1 memory has not yet been mutated.'
                         : 'HMX candidate was rejected; canonical NK1 memory has not been mutated.',
