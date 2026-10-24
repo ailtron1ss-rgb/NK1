@@ -1,3 +1,11 @@
+## NK1 WorkPass504 — make cognitive-event ingress fail closed
+
+- Hardened `CognitiveEventFabric.append()` with pre-mutation validation for finite non-negative ticks/timestamps, registered stages, bounded source and parent identities, confidence in [0,1], boolean external provenance, and plain payload records with data properties only.
+- Invalid envelopes are rejected before the event ring, total counter, or receipt-projection pruning can change. This strengthens the shared causal spine used by perception, action outcomes, and learning evidence.
+- This is runtime code committed on `feature/learning`; exact-head regression/typecheck is still required. No cross-branch merge, release-asset update, or learning uplift is claimed.
+
+---
+
 ## NK1 WorkPass496 — close remaining runtime-boundary regressions
 
 - Replaced the trusted shadow-run registry's TypeScript constructor parameter property so Node.js 24 strip-only tests can execute the real durable registry path.
