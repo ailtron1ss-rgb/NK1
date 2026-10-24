@@ -1,3 +1,9 @@
+## NK1 WorkPass544 — verify persistent contradiction veto and confidence filtering (2026-10-24)
+
+- Extended the reality-to-learning regression to cover the persistence boundary: a qualified external contradiction must still veto independent promotion after ledger snapshot/restore.
+- Added a low-confidence contradictory observation and asserted it does not inflate the qualified contradiction-source count; also covered unrelated structured fields and kept free-form claims conservative.
+- **Validation boundary:** committed regression coverage only; no local runtime execution or hosted Actions result was available to confirm PASS at this head.
+
 ## NK1 WorkPass543 — veto reality-ledger promotion on explicit external contradictions (2026-10-24)
 
 - Added conservative contradiction detection for claims explicitly encoded as `field=value` or `field: value`; free-form prose is not guessed into structured facts.
