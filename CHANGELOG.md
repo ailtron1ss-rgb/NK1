@@ -1,3 +1,10 @@
+## NK1 WorkPass527 — persist the canonical MemoryOS2 checkpoint (2026-10-24)
+
+- Fixed a checkpoint projection gap: the canonical MemoryOS2 store was not included in facets.advanced, even though compatibility records were projected and restore already expected advanced.memoryOS.
+- The advanced-memory projection now saves the bounded full store alongside P47/P59/P62/P65/P70/P75 state when the memory group is materialized. This preserves epistemic status, temporal validity, provenance trails and other record metadata beyond the lossy compatibility projection.
+- Added test:memory-canonical-store-checkpoint to exercise real projection → checkpoint → restore and registered it in the memory persistence workflow.
+- **Validation boundary:** implementation, regression, package script and CI wiring are committed. The current Actions run/check result has not been exposed by the available GitHub status response, so this new regression is **not yet claimed as passing**; runtime typecheck and broad suite remain unverified.
+
 ## NK1 WorkPass526 — connect memory evidence to durable checkpoint projection (2026-10-24)
 
 - The real checkpoint projector now persists the causal autobiographical graph and memory-to-world influence evidence, in addition to retention policy and causal evidence state.
