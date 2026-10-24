@@ -93,7 +93,7 @@ export class ExternalPostconditionVerifier {
     const independenceStrength01=Math.min(freshBefore,freshAfter)*(cv.sourceStable===true?1:0)*(cv.attempted===true?1:0)*(cv.verified===true?1:0);
     const independent=Boolean(cv.attempted===true && cv.independent===true && cv.verified===true &&
       cv.verificationMode==='independent-observation' && fresh && sourceIsDevice &&
-      independenceStrength01>=contract.minIndependent01);
+      independenceStrength01 >= (contract.minIndependent01 ?? .7));
 
     let proofClass:PostconditionProofClass='none';
     if(executed && observation && independent) proofClass='independent-observation';
