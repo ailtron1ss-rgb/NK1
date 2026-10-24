@@ -144,6 +144,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:p317:micro-dream-associations
       - name: Local small-model capability hub regressions
         run: npm --prefix runtime/neuro-kurisu run test:local-small-model-hub
+      - name: Local small vision backend regressions
+        run: npm --prefix runtime/neuro-kurisu run test:local-vision-backend
       - name: Local LLM bounded-response regression
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/local-chat-provider-workpass40.mjs
       - name: Optional live local LLM smoke (skips without explicit loopback URL)
