@@ -5,6 +5,8 @@ const store = new AdaptiveExperienceConsolidator(16);
 const valid = { id: 'episode-1', timestamp: 10, novelty: 0.8, utility: 0.7, uncertainty: 0.2, tags: ['decision'] };
 store.ingest(valid);
 assert.equal(store.size(), 1);
+assert.throws(() => store.ingest(valid), /experience-id-duplicate/);
+assert.deepEqual(store.consolidate(0), [], 'zero limit must not silently retain one memory');
 
 for (const invalid of [
   { ...valid, id: ' bad' },
@@ -20,8 +22,9 @@ assert.throws(() => store.ingest(accessor), /experience-record-invalid/);
 assert.equal(getterCalls, 0);
 assert.equal(store.size(), 1, 'rejected ingress must not mutate memory');
 
-store.restore([valid, { ...valid, id: 'bad', uncertainty: Infinity }, { ...valid, id: 'episode-2' }]);
-assert.deepEqual(store.snapshot().map(row => row.id), ['episode-1', 'episode-2']);
+store.restore([valid, { ...valid, id: 'bad', uncertainty: Infinity }, { ...valid, id: 'episode-2' }, { ...valid, utility: 0.95 }]);
+assert.deepEqual(store.snapshot().map(row => row.id), ['episode-2', 'episode-1']);
+assert.equal(store.snapshot()[1].utility, 0.95, 'restore must retain the last valid revision for a repeated ID');
 const consolidated = store.consolidate();
 consolidated[0].tags.push('mutated-outside');
 assert.equal(store.snapshot()[0].tags.includes('mutated-outside'), false);
