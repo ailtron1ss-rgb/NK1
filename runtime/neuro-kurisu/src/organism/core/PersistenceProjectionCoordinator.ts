@@ -31,6 +31,8 @@ export class PersistenceProjectionCoordinator {
     // The live WorldModel remains the runtime source of truth between checkpoints.
     target.worldModel=ctx.worldSubsystem.world.persisted();
     target.facets.memory.eventLog=ctx.memorySubsystem.events.recent(budgetAction.eventLimit);
+    target.facets.memory.lettaBridge=ctx.memorySubsystem.lettaBridge.snapshot();
+    target.facets.memory.lettaSyncOutbox=ctx.memorySubsystem.getLettaSyncOutboxSnapshot();
     target.facets.memory.selfModel=this.snapshotOnce('snap:memorySubsystem.selfModel', ctx.memorySubsystem.selfModel);
     target.facets.memory.socialModel=this.snapshotOnce('snap:memorySubsystem.socialModel', ctx.memorySubsystem.socialModel);
     target.facets.memory.adaptiveValues=this.snapshotOnce('snap:memorySubsystem.valuePlasticity', ctx.memorySubsystem.valuePlasticity);
@@ -298,6 +300,8 @@ export class PersistenceProjectionCoordinator {
   syncHot(target: PersistedOrganism, ctx: PersistenceProjectionContext): void {
     this.snapshotCache.clear();
     target.facets.memory.eventLog=ctx.memorySubsystem.events.recent(192);
+    target.facets.memory.lettaBridge=ctx.memorySubsystem.lettaBridge.snapshot();
+    target.facets.memory.lettaSyncOutbox=ctx.memorySubsystem.getLettaSyncOutboxSnapshot();
     target.facets.memory.workspace=this.snapshotOnce('snap:memorySubsystem.workspaceV2', ctx.memorySubsystem.workspaceV2);
     target.facets.memory.semanticGraph=this.snapshotOnce('snap:memorySubsystem.semanticMemory', ctx.memorySubsystem.semanticMemory);
     target.facets.consciousness.identityContinuity=this.snapshotOnce('snap:selfSubsystem.identityContinuity', ctx.selfSubsystem.identityContinuity);
