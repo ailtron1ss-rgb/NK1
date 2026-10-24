@@ -1,3 +1,9 @@
+## NK1 WorkPass528 — derive consequential promotion evidence from the canonical ledger (2026-10-24)
+
+- Hardened the new P23 promotion path to accept a real `RealityEvidenceLedger` and target claim, then compute corroboration internally rather than trusting a caller-supplied assessment object.
+- Added a regression with one strong and one weak independent device source; promotion is denied before the skill store can approve. Non-ledger objects are rejected as well.
+- Existing independent fitness, exact payload binding, signed shadow evidence, and store-level approval remain mandatory. Hosted CI has not yet been confirmed.
+
 ## NK1 WorkPass527 — add reality-corroboration precondition to consequential skill promotion (2026-10-24)
 
 - Added a P23LearningEngine promotion entry point that requires the ledger's confidence-qualified independent-corroboration assessment before invoking the existing independent evaluation, signed shadow evidence, and store approval path.
