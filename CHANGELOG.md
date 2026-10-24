@@ -1,3 +1,11 @@
+# WorkPass340 — preserve the reality-learning gate into Core feedback (2026-10-24)
+
+- [INTEGRATION] `OrganismRuntime` now passes the final `RealityLearningGate` decision into `OrganismCore.feedback` via the existing `LearningProvenance` contract.
+- [GROUNDING] The Core now receives the exact external/simulation classification, evidence/verified/independent/consequence signals, learning scales, and gated reward/success/surprise rather than inferring generic defaults from a source label. This keeps the learning gate authoritative for memory, world-model, neural and identity updates.
+- [CAUSAL MEMORY] Combined with WorkPass339, the current-cycle memory IDs and its actual gate result now arrive together. The conservative no-action-credit rule remains in place when homeostasis redirects the proposed action.
+- [TEST] Runtime-wiring regression asserts that the grounding signals and post-arbitration scales are passed into Core feedback.
+- [VALIDATION] WorkPass331, WorkPass110/typecheck and WorkPass293 passed on exact SHA `cdc7ff8a67272289c394f624017b53345d51319b`. This latest learning-provenance handoff requires fresh exact-head runs.
+
 # WorkPass339 — decision-time memories enter the canonical feedback loop (2026-10-24)
 
 - [INTEGRATION] Extended the existing `OrganismCore.feedback` input with a bounded `causalMemoryContext` carrying trace ID, decision-time memory IDs and grounded evidence/verification signals from the real runtime.

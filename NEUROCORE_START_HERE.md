@@ -1,3 +1,13 @@
+## Latest checkpoint — WorkPass340: single source of truth for learning scales (2026-10-24)
+
+- Runtime feedback now carries the final `RealityLearningGate` result through `LearningProvenance`: source classification, evidence, verification, independence, consequence, learning/world-model/memory/identity/neural scales, and the gated reward/success/surprise signals.
+- This prevents Core from independently inferring generic learning scales solely from `device`/`simulator` labels after runtime has already made a more specific evidence decision.
+- Together with WorkPass339, the Core feedback receives the exact memory IDs used during the decision plus the gate outcome and attribution eligibility. The single MemoryOS2-owned causal memory/reconsolidation pipeline remains in place.
+- Regression now checks both the current decision memory IDs and exact gate provenance on the live path.
+- **Validation:** exact-head WorkPass331, WorkPass110/typecheck and WorkPass293 passed on SHA `cdc7ff8a67272289c394f624017b53345d51319b`. WorkPass340 requires fresh runs; do not carry forward results as if this commit had already passed.
+
+---
+
 ## Latest durable checkpoint — WorkPass339: decision-time memory IDs wired into feedback (2026-10-24)
 
 - `OrganismRuntime` now passes `causalMemoryContext` into the same `OrganismCore.feedback` invocation that receives the observed action result. It carries the current trace ID, up to 12 exact cycle memory IDs and bounded verification/evidence signals.
