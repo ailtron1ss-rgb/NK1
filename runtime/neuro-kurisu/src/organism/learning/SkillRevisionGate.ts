@@ -69,7 +69,7 @@ export function evaluateSkillRevision(
       rejectedRows++;
       continue;
     }
-    const receiptKey = JSON.stringify([row.method, row.verifierId, row.evidenceRef.normalize('NFKC').trim()]);
+    const receiptKey = JSON.stringify([row.verifierId, row.evidenceRef.normalize('NFKC').trim()]);
     if (seenEvidenceReceipts.has(receiptKey)) { rejectedRows++; continue; }
     seenEvidenceReceipts.add(receiptKey);
     const key = JSON.stringify([row.taskId, row.seed, row.attempt]);
