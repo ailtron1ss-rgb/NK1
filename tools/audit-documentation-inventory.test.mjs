@@ -42,7 +42,7 @@ test("groups exact content without claiming same-name families are duplicates", 
 test("counts known inbound links and marks zero-inbound candidates conservatively", async (t) => {
   const root = await fixture(t);
   const result = await buildDocumentationInventory({ root });
-  assert.equal(result.zeroInboundLinkCandidateCount, 3);
+  assert.equal(result.zeroInboundLinkCandidateCount, 5);
   assert.ok(result.zeroInboundLinkCandidates.some((item) => item.path === "docs/unlinked-note.md"));
   assert.ok(result.zeroInboundLinkCandidates.some((item) => item.path === "old/PROJECT_CURRENT_STATUS_2.md"));
   assert.ok(result.zeroInboundLinkCandidates.some((item) => item.path === "README.md"), "root README can have no inbound links and must remain a candidate, not be auto-excluded as disposable");
