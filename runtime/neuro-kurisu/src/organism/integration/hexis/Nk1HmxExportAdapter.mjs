@@ -175,7 +175,7 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
   const rawMemories = asArray(nativeSections.memories);
   const rawSkills = asArray(nativeSections.skills);
   const rawGoals = asArray(nativeSections.goals);
-  const rawIdentity = asArray(nativeSections.identity);
+  const rawIdentity = Array.isArray(nativeSections.identity) ? asArray(nativeSections.identity) : isRecord(nativeSections.identity) ? [nativeSections.identity] : [];
   const rawRelationships = asArray(nativeSections.relationships);
   const malformedNativeSections = {};
   for (const name of ['memories', 'skills', 'goals', 'identity', 'relationships', 'episodes']) {
