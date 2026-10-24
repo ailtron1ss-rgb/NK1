@@ -1,8 +1,8 @@
 # NK1 branch inventory — snapshot 2026-10-24
 
 **Snapshot method:** GitHub branch search, all returned pages.  
-**Observed refs:** 104, including `workpass331-project-ordering-20261024`, created during this ordering pass.  
-**Important limitation:** this is a **name inventory**, not a verdict that each branch is current, merged, tested, safe to delete, or part of the release. Only selected branch heads and comparisons below were inspected. Refresh live state before any merge or retirement.
+**Initial snapshot:** 104 refs were returned by the first all-page branch query, including `workpass331-project-ordering-20261024`. A later all-page live refresh at approximately 2026-10-24 20:24 UTC returned **124 unique refs**; the 20 additional names and their selected live heads are recorded in §5.  
+**Important limitation:** this is a dated name/head inventory, not a verdict that each branch is current, merged, tested, safe to delete, or part of the release. Refresh live state before any merge or retirement.
 
 ## 1. Branches by family
 
@@ -151,3 +151,33 @@ These compare summaries are snapshot evidence, not a complete content-level revi
 4. Preserve licenses, source manifests and historical branches until their unique content and downstream references are accounted for.
 5. Update this inventory or replace it with a generated branch manifest after the next broad reconciliation.
 6. Do not delete a branch solely because its name is old, its pass number is lower, or it appears behind another branch.
+
+## 5. Additional refs found by live refresh (2026-10-24 ~20:24 UTC)
+
+The subsequent all-page branch search returned 124 unique names, 20 more than the initial grouped snapshot in §1. These heads came from independent active streams, including work happening in parallel. A newer commit timestamp or a WorkPass label does not mean the change is present in the unified-kernel branch.
+
+| Newly observed branch | Head SHA | Commit time (UTC) | Last commit summary |
+|---|---|---|---|
+| `architecture/unified-cognitive-cycle-closure-2026-10-24` | `20b7bd6962adbfd946cb20491e0eb4ba094dc70f` | 2026-10-24 19:35:32 | Documents fail-closed restoration rules |
+| `compat/avatar-storage-strict-types-20261024` | `483f8cc546859f7eaaea447e9ac894110f613cb6` | 2026-10-24 20:11:55 | Guards rejected evidence and corrects causal test contracts |
+| `feature/emotional-continuity-20261024` | `b3605ab5b2d06ea086855a919fc3e65c75fd3068` | 2026-10-24 20:19:52 | Records affect bridge contract test |
+| `local-small-model-integration-2026-10-24` | `1810bb15d9762b071f6584f9b233fd3f86529db5` | 2026-10-24 20:20:24 | Aligns live emotion API smoke with uncertainty caveat |
+| `mem0-integration-workpass1` | `91d7daf5db14794fd046ac173e23b4114ae0fe24` | 2026-10-24 20:04:48 | Fixes control-character regex in correlation IDs |
+| `operation-omega-hexis-deep-pass-2026-10-24` | `2057cf6f3b2bc2794aeae5565d7f17bc17f105fe` | 2026-10-24 20:17:53 | Records P68 paused-goal and capacity repair |
+| `optimization/process-supervision-20261024` | `c545712267608779f11d43cc68990a277aba093b` | 2026-10-24 20:22:46 | Records gateway partial-response safety |
+| `typescript/runtime-typecheck-truth-2026-10-24` | `0c71f17dbf8e1bbe28efebeb37560d1d253d5376` | 2026-10-24 20:23:26 | Wires WorkPass292/293 evidence revision test scripts |
+| `workpass319-internal-dialogue-2026-10-24` | `f1e018a92096b39e5ea0ab91aa59973c97c45f9a` | 2026-10-24 20:09:39 | Documents internal-dialogue calibration fixes |
+| `workpass328-closed-loop-failure-closure-2026-10-24` | `ffc4a8306cb07f906e1f4238000a383c397f6cf4` | 2026-10-24 20:23:16 | Protects unsaturated endogenous-goal scoring |
+| `workpass328-letta-memory-bridge` | `02c2ceb2bd6a8f3e36843f0d49ad87ac650b6858` | 2026-10-24 20:11:15 | Corrects provider-failure pattern boundaries |
+| `workpass328-universal-interpreter` | `a7eddeae35d61e0fd9446a01bbca8534cfde1f03` | 2026-10-24 20:16:29 | Closes audio-migration and interpreter typing gaps |
+| `workpass331-project-ordering-unified-20261024` | `2e0bf02870496ddfaed58afd3ea853090df7fd32` | 2026-10-24 20:23:50 | Refreshes inventory evidence pointer |
+| `workpass332-live-runtime-kernel-2026-10-24` | `bcbcc6fe94eb923bf05b00f4dd578d0dfa30f089` | 2026-10-24 19:43:51 | Gates supported runtime versions and startup preflight |
+| `workpass334-inner-imperative-homeostasis-2026-10-24` | `6bb8d55d5b9dcf8c541ec0995c63f0a3210f336f` | 2026-10-24 20:22:25 | Drives app and Live2D from canonical appraisal state |
+| `workpass335-hermes-host-owned-evaluator-2026-10-24` | `6e27207cc033367946a04090a22397a8944edd05` | 2026-10-24 20:24:05 | Rebases Hermes/P23 integration onto WorkPass344 appraisal runtime |
+| `workpass335-paired-seed-growth-2026-10-24` | `3b2c5e95fad90f39f44ea4fe7b093eed6fc52f3b` | 2026-10-24 20:21:49 | Records TypeScript compatibility fix |
+| `workpass526-autobiographical-recall-intent` | `52d3410c6a126eb56fe30c368babb55726eea187` | 2026-10-24 19:47:59 | Documents conversation-backed recall ranking |
+| `workpass526-personality-core-hardening-2026-10-24` | `7600bb9256209296055e97adf296c0437bcfd6ec` | 2026-10-24 19:57:28 | Records live personality feedback and B272 causal-gate result |
+| `workpass528-bilingual-conversation-recall` | `9d85cbfff9a41f52405e4b0da6849758a129d574` | 2026-10-24 19:50:08 | Runs recall regression in P26 CI |
+
+This refresh shows why the repository should not be organized by branch suffix alone: distinct streams are touching related areas such as affect, memory, runtime typing, Live2D and Hermes/P23. Before importing any one of them, compare its current head against the chosen base, inspect changed paths and conflicts, and record the target tests. None of these 20 streams is declared integrated merely because it appears in this inventory.
+
