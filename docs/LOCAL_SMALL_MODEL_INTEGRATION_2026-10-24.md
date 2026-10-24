@@ -13,9 +13,21 @@ This is an incremental runtime integration, not a claim that every neural subsys
 | Main language model | Existing local `llama.cpp` OpenAI-compatible adapter | Text generation, reasoning/planning prompts, skill-revision generation | Local-first policy; existing circuit breaker retained |
 | Memory embeddings | Shared `LocalEmbeddingProvider` | Semantic memory indexing and retrieval, direct batch embeddings | Shared cache/diagnostics between `MemorySubsystemRuntime` and the hub |
 | Intent/classification | Optional loopback `/v1/chat/completions` model | Bounded label selection with confidence validation | Disabled when `NK_LOCAL_CLASSIFIER_URL` is absent |
-| Affect estimate | Optional loopback `/v1/chat/completions` model | Emotion label, valence, arousal, confidence, all schema-checked | Disabled when `NK_LOCAL_EMOTION_URL` is absent |
+| Affect estimate | Optional loopback `/v1/chat/completions` model | Emotion label, valence, arousal, confidence, all schema-checked | Disabled when `NK_LOCAL_EMOTION_URL` is absent |\n| Visual perception | Local OpenAI-compatible VLM | Bounded image-to-JSON: scene, objects, relations and events | Enabled by `NK_LOCAL_VISION_URL`; loopback HTTP only |
 
 The classifier and affect model use bounded JSON contracts. Invalid outputs are rejected; specialist results are fallible hints and cannot override the user message or system policy. The model hub records decision metadata and aggregate request/latency/failure metrics, never the input prompt or model output text.
+
+## Local vision path
+
+The existing visual-perception contract (`VisionSemanticBackend`) now has a local implementation, `LocalOpenAICompatibleVisionBackend`. It sends an image to a loopback OpenAI-compatible `/v1/chat/completions` endpoint as a data URI, asks for a bounded JSON scene description and normalizes its output before the core perception pipeline receives it.
+
+- `NK_LOCAL_VISION_URL=http://127.0.0.1:8080/v1`
+- `NK_LOCAL_VISION_MODEL=your-local-vlm`
+- `NK_LOCAL_VISION_TIMEOUT_MS=12000` (bounded to 500–60,000 ms)
+- `NK_LOCAL_VISION_MAX_IMAGE_BYTES=8000000` (bounded to 32 KB–12 MB)
+- PNG, JPEG, WebP and GIF files are accepted; oversized images and provider responses are rejected before parsing.
+- The local VLM is preferred whenever configured. A cloud Gemini fallback is created only when both `GEMINI_VISION_ENABLED=1` and `GEMINI_API_KEY` are present. If local inference fails, the hub records that failure before using the explicitly configured fallback; it never enables cloud use on its own.
+- Operational diagnostics record the selected backend and result, not image content or image file paths. Visual labels and confidence values remain model-generated evidence rather than ground truth.
 
 ## Integration points
 
@@ -58,7 +70,7 @@ NK_LOCAL_CONTEXT_SIGNALS_ENABLED=1
 
 The current default embedding backend is local Ollama at `127.0.0.1:11434` with model `embeddinggemma`. A local OpenAI-compatible embeddings endpoint can instead be selected with `NK_EMBEDDINGS_PROVIDER=openai-compatible` and `NK_EMBEDDINGS_BASE_URL=http://127.0.0.1:8080/v1`.
 
-Remote embeddings are blocked by default. They require explicit `NK_EMBEDDINGS_ALLOW_REMOTE=1` and HTTPS. The classifier and affect chat adapters enforce loopback-only HTTP; a remote URL is rejected by the existing local-chat provider. The embedding sanitizer removes common credential/contact patterns, but it is a heuristic, not a universal PII detector.
+Remote embeddings are blocked by default. They require explicit `NK_EMBEDDINGS_ALLOW_REMOTE=1` and HTTPS. The classifier, affect and vision adapters enforce loopback-only HTTP; a remote URL is rejected by the corresponding local adapter. The embedding sanitizer removes common credential/contact patterns, but it is a heuristic, not a universal PII detector.
 
 Set `NK_LOCAL_CONTEXT_SIGNALS_ENABLED=0` to disable specialist calls from the language-response path while retaining the diagnostics and explicit specialist API routes.
 
@@ -74,6 +86,6 @@ Set `NK_LOCAL_CONTEXT_SIGNALS_ENABLED=0` to disable specialist calls from the la
 
 ## Validation status
 
-A dedicated regression test covers local-first routing/cooldown, strict classification and affect schemas, prompt redaction, embedding batch caps, shared memory-provider configuration, bounded diagnostics, context-signal degradation and malformed model output rejection. The test is registered in the runtime package and WorkPass71 CI.
+A dedicated regression test covers local-first routing/cooldown, strict classification and affect schemas, prompt redaction, embedding batch caps, shared memory-provider configuration, bounded diagnostics, context-signal degradation, explicit vision fallback and malformed output rejection. A separate local-vision regression exercises loopback enforcement, multimodal payload shape, image/response size limits and output normalization. Both tests are registered in the runtime package, WorkPass71 CI and a focused CI workflow.
 
 **Do not treat this document or a configured endpoint as proof of model quality.** The suite still needs to execute successfully on the exact branch; actual device inference, latency/RAM measurements, retrieval uplift against an untouched holdout, and long-soak behavior remain separate validation gates.
