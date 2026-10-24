@@ -170,8 +170,10 @@ const measuredMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,ve
 assert.equal(measuredMaturity.verifiedOutcomeCount,1);
 assert.equal(measuredMaturity.retainedOutcomeCount,1);
 assert.equal(measuredMaturity.transferredOutcomeCount,1);
+const maturityRejectionsBeforeExactReplay=maturityEngine.diagnostics().rejectedMaturityReceipts;
 const duplicatedMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,...outcomeProof});
 assert.equal(duplicatedMaturity.verifiedOutcomeCount,1,'the same authenticated outcome receipt is idempotent');
+assert.equal(maturityEngine.diagnostics().rejectedMaturityReceipts,maturityRejectionsBeforeExactReplay,'an exact receipt replay is idempotent, not reported as a trust rejection');
 const copiedMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,...outcomeProof,verification:structuredClone(outcomeProof.verification)});
 assert.equal(copiedMaturity.verifiedOutcomeCount,1,'a serialized copy cannot replay a trusted maturity receipt');
 const reusedMaturityProof=await mintProof(developmentalOutcomeVerificationInput({...outcome,area:'memory',outcome01:.8}),outcomeProof.verification.observationId);
