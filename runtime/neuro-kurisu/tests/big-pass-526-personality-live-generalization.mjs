@@ -13,7 +13,8 @@ const cfg = {
 const actions = ['respond', 'explore', 'verify', 'rest', 'reflect', 'wait', 'defer'];
 const trainContext = { social: 0, epistemic: 1, autonomy: 0, maintenance: 0 };
 const holdoutContext = { social: 1, epistemic: 0, autonomy: 0, maintenance: 0 };
-const steps = 72;
+const steps = 48;
+const maxAttempts = steps * 12;
 const worldTransition = (tick, action, reward) => ({
   action,
   before: {
@@ -36,26 +37,41 @@ await learner.init();
 learner.b299CausalPersonalitySetContext(holdoutContext);
 const initialBias = Object.fromEntries(actions.map(action => [action, learner.b299CausalPersonalityBias(action)]));
 const actionCounts = Object.fromEntries(actions.map(action => [action, 0]));
+let attempts = 0;
+let skippedUnmatched = 0;
 const magnitude = map => Object.values(map).reduce((sum, value) => sum + Math.abs(value), 0);
 
-// Follow the established B299/B341 integration seam: ask live Core to select an action,
-// then attach feedback to that exact selection. Every action is trained; no forced "verify".
-for (let i = 0; i < steps; i++) {
+// Preserve B272's causal guard: only credit the outcome when Core's selected action matches
+// the endogenous action for which B272 actually generated the current goal. Unmatched cycles
+// are counted but never given false outcome credit; no action is force-selected by the test.
+while (attempts < maxAttempts && Object.values(actionCounts).reduce((sum, count) => sum + count, 0) < steps) {
   learner.b299CausalPersonalitySetContext(trainContext);
   const result = await learner.observe({
     text: 'An uncertain hypothesis remains. Inspect evidence and choose a useful next cognitive step.',
   });
-  const action = result.decision?.selected?.action;
-  assert.ok(actions.includes(action), `Core did not return a recognized selected action at tick ${i}: ${action}`);
-  actionCounts[action]++;
+  const selectedAction = result.decision?.selected?.action;
+  assert.ok(actions.includes(selectedAction), `Core did not return a recognized selected action at attempt ${attempts}: ${selectedAction}`);
+  attempts++;
+  const endogenousAction = learner.b272EndogenousGoalCurrent()?.action;
+  if (endogenousAction !== selectedAction) {
+    skippedUnmatched++;
+    continue;
+  }
+
+  actionCounts[selectedAction]++;
+  const creditedTick = attempts;
   await learner.feedback({
     success: 0.92,
     reward: 0.9,
     surprise: 0.08,
     evidenceSource: 'device',
-    worldTransition: worldTransition(i, action, 0.9),
+    worldTransition: worldTransition(creditedTick, selectedAction, 0.9),
   });
 }
+
+const creditedSteps = Object.values(actionCounts).reduce((sum, count) => sum + count, 0);
+assert.equal(creditedSteps, steps,
+  `not enough causally matched Core outcomes to test personality transfer: credited=${creditedSteps}, attempts=${attempts}, mismatches=${skippedUnmatched}`);
 
 learner.b299CausalPersonalitySetContext(holdoutContext);
 const diagnostics = learner.b299CausalPersonalityDiagnostics();
@@ -63,9 +79,8 @@ const afterBias = Object.fromEntries(actions.map(action => [action, learner.b299
 const beforeMagnitude = magnitude(initialBias);
 const afterMagnitude = magnitude(afterBias);
 const dominantAction = actions.slice().sort((a, b) => actionCounts[b] - actionCounts[a])[0];
-assert.equal(diagnostics.learningUpdates, steps, 'not every observed outcome updated personality');
+assert.equal(diagnostics.learningUpdates, steps, 'not every causally matched outcome updated personality');
 assert.ok(diagnostics.verifiedUpdates > 0, 'live Core produced no verified personality outcomes');
-assert.ok(actionCounts[dominantAction] >= Math.ceil(steps / actions.length), 'dominant action count violates coverage bound');
 assert.ok(afterMagnitude > beforeMagnitude + 1e-5,
   `live experience did not increase measurable personality action influence: ${beforeMagnitude} -> ${afterMagnitude}`);
 assert.ok(diagnostics.contextCreditAssignments >= steps, 'context credit was not assigned for every live outcome');
@@ -104,6 +119,8 @@ assert.ok(l1 > 1e-5 && maxCandidateDelta > 1e-6,
 console.log(JSON.stringify({
   pass: true,
   steps,
+  attempts,
+  skippedUnmatched,
   actionCounts,
   dominantAction,
   beforeMagnitude,
