@@ -5,6 +5,9 @@ on:
     branches: [feature/memory]
     paths:
       - "runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/ProceduralSkillLibrary.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/SkillRetrievalAugmentation.ts"
       - "runtime/neuro-kurisu/src/organism/memory/AdaptiveExperienceConsolidator.ts"
       - "runtime/neuro-kurisu/src/organism/core/PersistenceProjectionCoordinator.ts"
       - "runtime/neuro-kurisu/src/organism/system/MemoryRetentionEconomy.ts"
@@ -20,6 +23,9 @@ on:
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/ProceduralSkillLibrary.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/SkillRetrievalAugmentation.ts"
       - "runtime/neuro-kurisu/src/organism/core/PersistenceProjectionCoordinator.ts"
       - "runtime/neuro-kurisu/src/organism/system/MemoryRetentionEconomy.ts"
       - "runtime/neuro-kurisu/src/organism/system/MemoryCausalEconomy.ts"
