@@ -264,6 +264,9 @@ export class LettaMemoryBridge {
     const safeKind = redactSecrets(asSafeString(input?.kind, 128));
     const originalSummary = asSafeString(input?.summary, MAX_SUMMARY_CHARS * 2);
     if (!safeId.text || !safeSource.text || !safeKind.text || !originalSummary) return { ok: false, reason: 'invalid-memory-record' };
+    const id = safeId.text;
+    const source = safeSource.text;
+    const kind = safeKind.text;
 
     const safe = redactSecrets(originalSummary);
     const summary = safe.text.slice(0, MAX_SUMMARY_CHARS);
