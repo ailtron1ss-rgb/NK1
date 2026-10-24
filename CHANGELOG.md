@@ -1,3 +1,9 @@
+## NK1 WorkPass548 — freeze registered observer-source identity (2026-10-24)
+
+- `ExternalObserverFabric.registerSource(...)` now rejects attempts to reuse an existing source ID with a different source class, channel, or independence key. A single registered source can no longer silently re-label itself as a distinct independent witness.
+- Added `workpass548-observer-source-identity.mjs` regression coverage for independence-key spoofing, class/channel rewrites, state preservation after rejection, and permitted reliability updates.
+- **Validation boundary:** implementation and regression are committed to `feature/feedback`; the new Node test has not been executed here. This hardens identity consistency, but does not authenticate who is allowed to register a brand-new source; that still depends on the upstream registry boundary.
+
 ## NK1 WorkPass547 — veto promotion on a conflicting candidate fingerprint (2026-10-24)
 
 - Extended the P23 reality-gate regression: after two independent qualified sources corroborate one staged payload fingerprint, a qualified external claim for a different fingerprint must be detected as a contradiction and veto promotion of the original candidate.
