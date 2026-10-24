@@ -1,4 +1,4 @@
-import { isTrustedExternalPostconditionVerification, type OutcomeVerification } from '../system/OutcomeVerificationService.ts';
+import { isTrustedDecisionLinkedExternalPostcondition, type OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 import type { ActionKind, OrganismState } from '../core/types.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
@@ -83,6 +83,10 @@ export interface DevelopmentEvidenceRecord {
   protocolId?:string;
   sessionId?:string;
   trialId?:string;
+  /** ActionGateway execution tuple that the verifier receipt is bound to. */
+  toolId?:string;
+  executionId?:string;
+  decisionId?:string;
   /** Opaque process-local verifier output ID; this alone is never a trust token. */
   observationId?:string;
   at:number;
@@ -604,7 +608,7 @@ export class P36AutonomousSelfDevelopmentEngine{
     return structuredClone(result);
   }
 
-  recordExternalEvidence(input:{hypothesisId:string;contextKey:string;control01:number;treatment01:number;independentVerified?:boolean;verification?:OutcomeVerification;holdout:boolean;delayMs:number;evaluatorVersion:string;evidenceSource:'external-evaluator'|'manual-observer';protocolId?:string;sessionId?:string;trialId?:string;at?:number}):{eligible:boolean;evidenceCount:number;distinctContexts:number;distinctDelays:number;holdoutCount:number;independentCount:number;meanDelta01:number|null;ci95Low01:number|null;ci95High01:number|null;status:'insufficient'|'holdout-verified'|'replicated';promoted:boolean} {
+  recordExternalEvidence(input:{hypothesisId:string;contextKey:string;control01:number;treatment01:number;independentVerified?:boolean;verification?:OutcomeVerification;toolId?:string;executionId?:string;decisionId?:string;holdout:boolean;delayMs:number;evaluatorVersion:string;evidenceSource:'external-evaluator'|'manual-observer';protocolId?:string;sessionId?:string;trialId?:string;at?:number}):{eligible:boolean;evidenceCount:number;distinctContexts:number;distinctDelays:number;holdoutCount:number;independentCount:number;meanDelta01:number|null;ci95Low01:number|null;ci95High01:number|null;status:'insufficient'|'holdout-verified'|'replicated';promoted:boolean} {
     // The legacy independentVerified boolean is caller-controlled data and has no authority.
     const binding=developmentEvidenceVerificationInput(input);
     if(typeof input.control01!=='number'||!Number.isFinite(input.control01)||input.control01<0||input.control01>1||
@@ -617,8 +621,11 @@ export class P36AutonomousSelfDevelopmentEngine{
     const h=this.state.hypotheses.find(x=>x.id===binding.hypothesisId);
     if(!h) throw new Error('unknown-development-hypothesis');
 
-    const exactReceipt=input.evidenceSource==='external-evaluator'&&
-      isTrustedExternalPostconditionVerification(input.verification,binding);
+    const actionBinding=typeof input.toolId==='string'&&typeof input.executionId==='string'&&typeof input.decisionId==='string'
+      ? {toolId:input.toolId,input:binding,executionId:input.executionId,decisionId:input.decisionId}
+      : null;
+    const exactReceipt=input.evidenceSource==='external-evaluator'&&Boolean(actionBinding)&&
+      isTrustedDecisionLinkedExternalPostcondition(input.verification,actionBinding!);
     const observationId=exactReceipt?input.verification?.observationId:undefined;
     const sameEvidenceKey=(x:DevelopmentEvidenceRecord)=>x.hypothesisId===binding.hypothesisId&&
       x.contextKey===binding.contextKey&&x.evaluatorVersion===binding.evaluatorVersion&&
@@ -638,6 +645,9 @@ export class P36AutonomousSelfDevelopmentEngine{
       ...(binding.protocolId?{protocolId:binding.protocolId}:{}),
       ...(binding.sessionId?{sessionId:binding.sessionId}:{}),
       ...(binding.trialId?{trialId:binding.trialId}:{}),
+      ...(independentVerified&&input.toolId?{toolId:input.toolId}:{}),
+      ...(independentVerified&&input.executionId?{executionId:input.executionId}:{}),
+      ...(independentVerified&&input.decisionId?{decisionId:input.decisionId}:{}),
       ...(independentVerified&&observationId?{observationId}:{}),at:acceptedAt,
     };
     const duplicateIndex=this.state.externalEvidence.findIndex(sameEvidenceKey);
@@ -690,13 +700,16 @@ export class P36AutonomousSelfDevelopmentEngine{
   recordRollback(reason:string){this.state.rollbackCount++;this.state.metrics.longHorizonImprovement01=clamp(this.state.metrics.longHorizonImprovement01*.9+.1*.35);const h=this.state.hypotheses.find(x=>x.id===this.state.currentHypothesisId);if(h)h.status='rolled-back';this.state.currentHypothesisId=null;return reason;}
 
 
-  observeDevelopmentalOutcome(input:{area?:DevelopmentArea|null;outcome01:number;verified?:boolean;verification?:OutcomeVerification;delayed?:boolean;transfer?:boolean;at?:number}){
+  observeDevelopmentalOutcome(input:{area?:DevelopmentArea|null;outcome01:number;verified?:boolean;verification?:OutcomeVerification;toolId?:string;executionId?:string;decisionId?:string;delayed?:boolean;transfer?:boolean;at?:number}){
     // The legacy verified boolean is descriptive only; certification needs a verifier-minted receipt.
     const binding=developmentalOutcomeVerificationInput(input);
     if(typeof input.outcome01!=='number'||!Number.isFinite(input.outcome01)||input.outcome01<0||input.outcome01>1||
        (input.delayed!==undefined&&typeof input.delayed!=='boolean')||(input.transfer!==undefined&&typeof input.transfer!=='boolean'))throw new Error('invalid-developmental-outcome');
     if(input.area!==undefined&&input.area!==null&&binding.area===null)throw new Error('invalid-developmental-outcome-area');
-    const verified=isTrustedExternalPostconditionVerification(input.verification,binding);
+    const actionBinding=typeof input.toolId==='string'&&typeof input.executionId==='string'&&typeof input.decisionId==='string'
+      ? {toolId:input.toolId,input:binding,executionId:input.executionId,decisionId:input.decisionId}
+      : null;
+    const verified=Boolean(actionBinding&&isTrustedDecisionLinkedExternalPostcondition(input.verification,actionBinding));
     const outcome=binding.outcome01;
     const delayed=binding.delayed;
     const transfer=binding.transfer;
