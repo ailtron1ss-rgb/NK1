@@ -2169,3 +2169,5 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Expanded `tests/integration/hexis-adaptation.mjs` for missing provenance, unknown future sections, oversized imports, and invalid intent. Updated the HMX fixtures to provide a complete envelope.
 - Added `docs/OPERATION_OMEGA_HEXIS_DEEP_PASS_2026-10-24.md` with the source baseline, integration rationale, code changes and validation boundary.
 - Validation status: changes are committed to the dedicated continuation branch. Tests have **not** yet been run on the exact branch head; no test-pass or production-readiness claim is made.
+
+- Follow-up CI pass: the HMX adapter regression passed under Node 24. The server smoke was first blocked by Node's strip-only TS loader, so its child runtime now uses `--experimental-transform-types`; after startup was unblocked, the smoke reached HMX acceptance and exposed a real conflict-path mismatch. The acceptance assertion now prints the complete staged conflict set for diagnosis. Exact-head server acceptance is still pending; this is not marked green.
