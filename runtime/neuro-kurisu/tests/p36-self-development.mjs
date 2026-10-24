@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { P36AutonomousSelfDevelopmentEngine, developmentEvidenceVerificationInput, developmentalOutcomeVerificationInput } from '../src/organism/learning/P36AutonomousSelfDevelopment.ts';
-import { OutcomeVerificationService } from '../src/organism/system/OutcomeVerificationService.ts';
+import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
 
 const engine=new P36AutonomousSelfDevelopmentEngine();
 const state={version:39,tick:12,at:Date.now(),needs:{energy:.72,cognitiveLoad:.3,uncertainty:.75,socialNeed:.2,novelty:.55,identityCoherence:.82,goalPressure:.4},predictionError:.62,attentionBudget:.82,lastAction:'reflect',lastActionSuccess:.55,autonomyScore:.7,selfPredictionError:.58,predictedNextAction:'reflect',lastPredictionConfidence:.5,worldContextVersion:1};
@@ -21,22 +21,32 @@ assert.ok(d.curriculum.completedSteps>=0);
 
 assert.equal(d.acceptedChanges,0,'safe sandbox previews must not count as accepted organism changes');
 
-const verifier=new OutcomeVerificationService();
+const gateway=new ActionGateway({live:true});
 let receiptSequence=0;
+let forcedObservationId;
+let issuedObservationCount=0;
+gateway.registerTool({
+  id:'p36-independent-fixture-verifier',
+  capability:'learning.evaluation',
+  destructive:false,
+  execute:async()=>({ok:true,observationId:forcedObservationId??('p36-independent-proof-'+(++issuedObservationCount))}),
+  verify:({result})=>{
+    const observationId=String(result.observationId??'');
+    return {
+      verified:Boolean(observationId),basis:'external-postcondition',externalObservation:true,confidence01:1,observationId,
+      expectedPostcondition:'evaluation-completed:'+observationId,
+      observedPostcondition:'evaluation-completed:'+observationId,
+    };
+  },
+});
 async function mintProof(binding, suppliedObservationId){
   const ticket=++receiptSequence;
-  const observationId=suppliedObservationId??('p36-independent-proof-'+ticket);
-  const toolId='p36-independent-fixture-verifier';
-  const executionId=`exec-p36-ticket-${ticket}`;
+  forcedObservationId=suppliedObservationId;
   const decisionId=`p36-development-decision-${ticket}`;
-  const verification=await verifier.verify({
-    toolId,input:binding,result:{fixture:'independent-evaluator',observationId},executionId,decisionId,
-  },()=>({
-    verified:true,basis:'external-postcondition',externalObservation:true,confidence01:1,observationId,
-    expectedPostcondition:'evaluation-completed:'+observationId,
-    observedPostcondition:'evaluation-completed:'+observationId,
-  }));
-  return {toolId,executionId,decisionId,verification};
+  const result=await gateway.executeTool('p36-independent-fixture-verifier',binding,'p36-independent-development-evaluation',{decisionId});
+  forcedObservationId=undefined;
+  assert.equal(result.verified,true,'fixture evaluator result must pass through ActionGateway verification');
+  return {toolId:result.tool,executionId:result.executionId,decisionId,verification:result.verification};
 }
 function prepareHypothesis(engine,tick){
   engine.beginCycle();
