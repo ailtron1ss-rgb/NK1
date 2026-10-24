@@ -138,12 +138,14 @@ export class ExternalObserverFabric {
   private readonly maxAssessments:number;
   private readonly maxSources:number;
   private readonly maxLinks:number;
+  private readonly onObservation?: (observation:ExternalObservation)=>void;
 
-  constructor(config:{maxObservations?:number;maxAssessments?:number;maxSources?:number;maxLinks?:number}={}){
+  constructor(config:{maxObservations?:number;maxAssessments?:number;maxSources?:number;maxLinks?:number;onObservation?:(observation:ExternalObservation)=>void}={}){
     this.maxObservations=Math.max(64,Math.floor(config.maxObservations??256));
     this.maxAssessments=Math.max(64,Math.floor(config.maxAssessments??192));
     this.maxSources=Math.max(16,Math.floor(config.maxSources??48));
     this.maxLinks=Math.max(32,Math.floor(config.maxLinks??128));
+    this.onObservation=config.onObservation;
   }
 
   restore(raw?:Partial<ExternalObserverState>|null){
@@ -211,6 +213,7 @@ export class ExternalObserverFabric {
         existing.observedAt===observedAt&&existing.payloadHash===payloadHash&&
         existing.independenceKey===source.independenceKey;
       if(!samePayload)throw new Error('external-observer-evidence-event-identity-conflict');
+      this.onObservation?.(structuredClone(existing));
       return structuredClone(existing);
     }
     // Compatibility bridge: restoring a persisted v2 row must remain idempotent.
@@ -229,6 +232,9 @@ export class ExternalObserverFabric {
       freshness01:freshness(observedAt,Date.now()),payloadHash,worldContextAfter:input.worldContextAfter?structuredClone(input.worldContextAfter):undefined,
       metadata:structuredClone(input.metadata??{}),
     };
+    // Forward before mutating observer state: if the evidence sink rejects a conflict,
+    // the observation itself must not appear successfully committed in this subsystem.
+    this.onObservation?.(structuredClone(row));
     this.state.observations=[row,...this.state.observations].slice(0,this.maxObservations);
     source.samples+=1;source.lastAt=observedAt;
     this.refreshCorroboratedClaim(row.claimKey);
