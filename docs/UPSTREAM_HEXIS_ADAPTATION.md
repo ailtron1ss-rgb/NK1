@@ -85,3 +85,10 @@ The category PRs for memory and learning currently target `integration` and rema
 5. **H8 — release readiness:** full exact-head Actions/typecheck, real model and embodiment E2E, restart recovery, security/privacy, soak, reproducible release asset and rollback proof.
 
 No new runtime dependency is required for the adaptations described above. Do not add one merely to copy Hexis's database stack. Any later dependency must be justified by a demonstrated capability gap and pinned/recorded in the branch that adopts it.
+
+
+### WorkPass479 — shared event identity and RealityEvidenceLedger
+
+- `feature/feedback` now has a shared domain-separated `createStableEvidenceEventId` helper. The existing `OutcomeVerificationService` keeps the same `outcome:<40-hex>` identity format, while `EmbodiedActionExecutor` attaches a separate `embodied:<40-hex>` idempotency key to normalized action results.
+- `RealityEvidenceLedger` deduplicates identical event replays, quarantines conflicting reuse, excludes quarantined events from promotion/counts, and validates bounded persisted records. `OrganismRuntime` attaches distinct action/consequence suffixes to the same embodied event ID.
+- This closes only the embodied-result → RealityEvidenceLedger segment. The verifier-issued outcome event ID still needs full call-site propagation across canonical MemoryOS2, P65, and P23; the event ID itself is never authority.
