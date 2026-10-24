@@ -1,3 +1,12 @@
+## NK1 WorkPass495 — synchronize assertions with actual safety contracts (2026-10-24)
+
+- Updated causal learning fixture to include the observed `lastAction` and matching `lastActionSuccess`; the runtime now rejects uncorrelated state changes instead of fabricating action-conditioned evidence.
+- Reverted the inherited-stage test from expecting a thrown exception to verifying the real contract: inherited prototype fields cannot satisfy the missing required observation stage and the cycle remains incomplete.
+- Converted WorkPass106 promotion-gate checks and WorkPass291 payload-budget test to Node's TypeScript transform mode where imported source uses constructor parameter properties.
+- Added an early process-local authenticated-receipt check to signed outcome ingestion so duplicate signed artifacts are rejected before ledger lookup; restore-time verification remains a separate path.
+
+---
+
 ## NK1 WorkPass493 — semantic TypeScript and causality guards (2026-10-24)
 
 - Fixed remaining small strict-mode issues in endogenous-goal input validation, dream association predicates, cognition dependency restore typing, optional causal policy features and verified-dataset schema literals.
