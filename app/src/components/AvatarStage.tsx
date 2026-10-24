@@ -33,6 +33,33 @@ function inferSpeechLanguage(text: string): string {
   return cyrillic >= latin ? "ru-RU" : "en-US";
 }
 
+/** Project the canonical affect/mood/feeling state into one shared UI input contract. */
+function affectiveSignalsFromSnapshot(snap: OrganismSnapshot, label = snap.emotion.label) {
+  const feeling = snap.affect?.latestFeeling;
+  const ageMs = feeling ? Date.now() - feeling.at : Number.POSITIVE_INFINITY;
+  const freshness01 = feeling && Number.isFinite(ageMs) && ageMs >= 0
+    ? Math.exp(-Math.min(ageMs, 86_400_000) / 45_000)
+    : 0;
+  return {
+    label,
+    valence01: snap.emotion.valence,
+    arousal01: snap.emotion.arousal,
+    dominance01: snap.emotion.dominance,
+    energy01: snap.needs.energy,
+    cognitiveLoad01: snap.needs.cognitiveLoad,
+    uncertainty01: snap.needs.uncertainty,
+    sleepPressure01: snap.needs.sleepPressure,
+    mood: snap.affect?.mood ?? undefined,
+    feeling: feeling ? {
+      intensity01: feeling.intensity01,
+      interoceptiveMismatch01: feeling.interoceptiveMismatch01,
+      selfAccessConfidence01: feeling.selfAccessConfidence01,
+      bodilyFocus01: feeling.bodilyFocus01,
+      freshness01,
+    } : undefined,
+  };
+}
+
 type BrowserSpeechSession = {
   speechEventId: string;
   audioClockId: string;
@@ -151,16 +178,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       if (voiceEnabled && lastTurn?.text?.trim()) {
         const text = lastTurn.text;
         const language = inferSpeechLanguage(text);
-        const speechAffect = deriveAffectiveEmbodiment({
-          label: lastTurn.emotion ?? snap.emotion.label,
-          valence01: snap.emotion.valence,
-          arousal01: snap.emotion.arousal,
-          dominance01: snap.emotion.dominance,
-          energy01: snap.needs.energy,
-          cognitiveLoad01: snap.needs.cognitiveLoad,
-          uncertainty01: snap.needs.uncertainty,
-          sleepPressure01: snap.needs.sleepPressure,
-        });
+        const speechAffect = deriveAffectiveEmbodiment(affectiveSignalsFromSnapshot(snap, lastTurn.emotion ?? snap.emotion.label));
         const rate = speechAffect.speechRate;
         const sequence = ++speechSequenceRef.current;
         const speechEventId = `avatar-speech-${Date.now().toString(36)}-${sequence.toString(36)}`;
@@ -308,16 +326,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     const win = frame.current?.contentWindow;
     if (!win || !live || mode !== "live2d") return;
     const expression = EXPR[snap.emotion.label] ?? "neutral";
-    const affective = deriveAffectiveEmbodiment({
-      label: snap.emotion.label,
-      valence01: snap.emotion.valence,
-      arousal01: snap.emotion.arousal,
-      dominance01: snap.emotion.dominance,
-      energy01: snap.needs.energy,
-      cognitiveLoad01: snap.needs.cognitiveLoad,
-      uncertainty01: snap.needs.uncertainty,
-      sleepPressure01: snap.needs.sleepPressure,
-    });
+    const affective = deriveAffectiveEmbodiment(affectiveSignalsFromSnapshot(snap));
     const gazeByAction: Record<OrganismSnapshot["lastOption"], { x: number; y: number }> = {
       explore: { x: 0.24, y: 0.04 }, verify: { x: 0.14, y: -0.10 }, reflect: { x: -0.19, y: -0.14 },
       respond: { x: 0.01, y: 0.01 }, wait: { x: -0.035, y: -0.005 }, rest: { x: -0.06, y: 0.075 },
@@ -364,7 +373,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       voiceEmphasis: activeUtterance ? affective.voiceEmphasis : 0,
     };
     win.postMessage(intent, window.location.origin);
-  }, [snap.emotion, snap.needs, snap.lastOption, snap.chat, snap.tick, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
+  }, [snap.emotion, snap.affect, snap.needs, snap.lastOption, snap.chat, snap.tick, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-elevated">
