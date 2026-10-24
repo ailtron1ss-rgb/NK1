@@ -320,7 +320,9 @@ export class LettaMemoryBridge {
       return { ok: true, agentId: this.agentId ?? undefined, response: safeResponse.text.slice(0, 4000), redacted: inputRedacted || safeResponse.redacted, evidence: 'agent-response-unverified' };
     } catch (error) {
       return this.failed(this.errorCode(error));
-    } 
+    }
+  }
+
   async recall(query: string, options: { maxResults?: number } = {}): Promise<LettaBridgeOperationResult> {
     if (!this.enabled) return { ok: false, reason: 'letta-disabled' };
     const safeQuery = redactSecrets(asSafeString(query, MAX_QUERY_CHARS));
