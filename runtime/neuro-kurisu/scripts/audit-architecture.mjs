@@ -18,7 +18,7 @@ function resolve(base,spec){
   const p=path.resolve(path.dirname(base),clean);
   const extensions=['.ts','.tsx','.mts','.cts','.mjs','.cjs','.js','.jsx','.json','.css','.svg'];
   const c=[p,...extensions.map(e=>p+e),path.join(p,'index.ts'),path.join(p,'index.tsx'),path.join(p,'index.mjs'),path.join(p,'index.js')];
-    const emittedSuffix=p.match(/\.(mjs|cjs|js|jsx)$/i)?.[0];
+  const emittedSuffix=p.match(/\.(mjs|cjs|js|jsx)$/i)?.[0];
   if(emittedSuffix){const stem=p.slice(0,-emittedSuffix.length); c.push(stem+'.ts',stem+'.tsx',stem+'.mts',stem+'.cts');}
   const indexed=c.find(x=>graph.has(x)||fileSet.has(x));
   if(indexed)return indexed;
