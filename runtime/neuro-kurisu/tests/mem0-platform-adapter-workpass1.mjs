@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Mem0PlatformAdapter } from '../src/organism/integration/mem0/Mem0PlatformAdapter.ts';
 
-function jsonResponse(value: unknown, status = 200): Response {
+function jsonResponse(value, status = 200) {
   return new Response(JSON.stringify(value), {
     status,
     headers: { 'content-type': 'application/json; charset=utf-8' },
@@ -23,8 +23,8 @@ test('Mem0 is disabled by default and does not make network calls', async () => 
 
 test('search scopes to the configured user, redacts sensitive content and labels hits as untrusted', async () => {
   let requestedUrl = '';
-  let requestedHeaders: HeadersInit | undefined;
-  let requestedBody: Record<string, unknown> | undefined;
+  let requestedHeaders;
+  let requestedBody;
   const adapter = new Mem0PlatformAdapter({
     enabled: true,
     apiKey: 'do-not-log-this-key',
@@ -32,7 +32,7 @@ test('search scopes to the configured user, redacts sensitive content and labels
     fetchImpl: async (input, init) => {
       requestedUrl = String(input);
       requestedHeaders = init?.headers;
-      requestedBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      requestedBody = JSON.parse(String(init?.body));
       return jsonResponse({ results: [
         { id: 'mem-good', user_id: 'nk1-user-01', memory: 'Contact alice@example.com; api_key=very-secret-value-123456', score: 0.91, created_at: '2026-10-23T12:00:00Z' },
         { id: 'mem-cross-user', user_id: 'another-user', memory: 'must never appear in results', score: 0.99 },
@@ -43,7 +43,7 @@ test('search scopes to the configured user, redacts sensitive content and labels
   const result = await adapter.search('contact preference', 50);
   assert.equal(result.status, 'ok');
   assert.equal(new URL(requestedUrl).pathname, '/v3/memories/search/');
-  assert.equal((requestedHeaders as Record<string, string>).authorization, 'Token do-not-log-this-key');
+  assert.equal(requestedHeaders.authorization, 'Token do-not-log-this-key');
   assert.deepEqual(requestedBody?.filters, { user_id: 'nk1-user-01' });
   assert.equal(requestedBody?.limit, 10);
   assert.equal(result.memories.length, 1);
@@ -66,7 +66,7 @@ test('search query is minimized before it leaves NK1', async () => {
     apiKey: 'test-key',
     userId: 'scope',
     fetchImpl: async (_input, init) => {
-      sentQuery = String((JSON.parse(String(init?.body)) as Record<string, unknown>).query ?? '');
+      sentQuery = String((JSON.parse(String(init?.body))).query ?? '');
       return jsonResponse({ results: [] });
     },
   });
@@ -106,7 +106,7 @@ test('missing user scope or an insecure endpoint fails closed before fetch', asy
 
 test('remote writes need both an environment gate and per-operation approval', async () => {
   let calls = 0;
-  let payload: Record<string, unknown> | undefined;
+  let payload;
   const adapter = new Mem0PlatformAdapter({
     enabled: true,
     apiKey: 'test-key',
@@ -114,7 +114,7 @@ test('remote writes need both an environment gate and per-operation approval', a
     allowWrites: true,
     fetchImpl: async (_input, init) => {
       calls++;
-      payload = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      payload = JSON.parse(String(init?.body));
       return jsonResponse({ results: [{ id: 'mem-added' }] });
     },
   });
@@ -131,7 +131,7 @@ test('remote writes need both an environment gate and per-operation approval', a
   assert.equal(accepted.status, 'ok');
   assert.deepEqual(accepted.memoryIds, ['mem-added']);
   assert.equal(calls, 1);
-  const body = payload as { user_id?: string; messages?: Array<{ role: string; content: string }>; metadata?: Record<string, unknown> };
+  const body = payload;
   assert.equal(body.user_id, 'scope');
   assert.deepEqual(body.messages?.map(row => row.role), ['user', 'assistant']);
   assert.match(body.messages?.[0]?.content ?? '', /\[redacted-email\]/);
