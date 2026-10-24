@@ -1,4 +1,4 @@
-import type { OrganismSnapshot, ActionKind, EmotionLabel, MemoryRecord, Skill, Goal, Belief } from "@/organism/types";
+import type { OrganismSnapshot, ActionKind, EmotionLabel, MemoryRecord, Skill, Goal, Belief, EmotionAffectSnapshot } from "@/organism/types";
 import type { BackendUiSnapshot } from "./types";
 
 const clamp = (n: unknown, fallback = 0) => {
@@ -59,6 +59,29 @@ export function toOrganismSnapshot(remote: BackendUiSnapshot, chat: OrganismSnap
     updatedAt: remote.at,
     source: b.source || "canonical-memory",
   }));
+  const rawMood = remote.affect?.mood;
+  const rawFeeling = remote.affect?.latestFeeling;
+  const affect: EmotionAffectSnapshot = {
+    mood: rawMood ? {
+      tick: Number.isSafeInteger(rawMood.tick) && rawMood.tick >= -1 ? rawMood.tick : -1,
+      at: Number.isFinite(rawMood.at) && rawMood.at >= 0 ? rawMood.at : Number(remote.at || 0),
+      valence01: clamp(rawMood.valence01, clamp(remote.emotion.valence, 0.5)),
+      arousal01: clamp(rawMood.arousal01, clamp(remote.emotion.arousal, 0.22)),
+      stress01: clamp(rawMood.stress01, 0.2),
+      confidence01: clamp(rawMood.confidence01, 0.5),
+      dominantLabel: emotion(rawMood.dominantLabel),
+      persistence01: clamp(rawMood.persistence01, 0),
+      episodes: Number.isSafeInteger(rawMood.episodes) && rawMood.episodes >= 0 ? rawMood.episodes : 0,
+    } : null,
+    latestFeeling: rawFeeling ? {
+      label: emotion(rawFeeling.label),
+      intensity01: clamp(rawFeeling.intensity01),
+      interoceptiveMismatch01: clamp(rawFeeling.interoceptiveMismatch01),
+      selfAccessConfidence01: clamp(rawFeeling.selfAccessConfidence01),
+      bodilyFocus01: clamp(rawFeeling.bodilyFocus01),
+    } : null,
+    regulationPressure01: clamp(remote.affect?.regulationPressure01, 0.18),
+  };
 
   return {
     version: Number(remote.schemaVersion),
@@ -74,6 +97,7 @@ export function toOrganismSnapshot(remote: BackendUiSnapshot, chat: OrganismSnap
       tendency: action(remote.emotion.tendency),
       cause: remote.emotion.cause,
     },
+    affect,
     identity: {
       subjectId: remote.identity.subjectId,
       name: remote.identity.name,
