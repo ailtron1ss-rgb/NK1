@@ -1,0 +1,53 @@
+name: WorkPass335 Hermes host-owned evaluator
+
+on:
+  push:
+    branches: [workpass335-hermes-host-owned-evaluator-2026-10-24]
+    paths:
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/src/server/compound-repair-revision-host-config.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/HostOwnedIndependentEvaluationServices.ts"
+      - "runtime/neuro-kurisu/tests/workpass330-production-revision-wiring.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/workpass335-hermes-host-evaluator.yml"
+      - "CHANGELOG.md"
+      - "docs/WORKPASS335_HERMES_HOST_OWNED_EVALUATION_RU.md"
+  pull_request:
+    branches: [workpass334-inner-imperative-homeostasis-2026-10-24]
+    paths:
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/src/server/compound-repair-revision-host-config.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/HostOwnedIndependentEvaluationServices.ts"
+      - "runtime/neuro-kurisu/tests/workpass330-production-revision-wiring.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/workpass335-hermes-host-evaluator.yml"
+      - "CHANGELOG.md"
+      - "docs/WORKPASS335_HERMES_HOST_OWNED_EVALUATION_RU.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-workpass335-hermes-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  host-owned-evaluator-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Test Hermes host-owned evaluator and server wiring
+        run: npm --prefix runtime/neuro-kurisu run test:workpass335:hermes-host-evaluator
+      - name: Typecheck runtime
+        run: npm --prefix runtime/neuro-kurisu run typecheck
