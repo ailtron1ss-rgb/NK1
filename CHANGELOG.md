@@ -1,3 +1,14 @@
+## NK1 WorkPass489 — repair shared cognitive runtime integration contracts
+
+- Removed the duplicate `CognitiveEventFabric.verifyOperationalCycle` implementation and retained the strict cycle-local verifier, including optional appraisal/attention/memory/goal/plan ancestry checks.
+- Fixed the malformed control-character regex in decision-linked external outcome verification and aligned the clock-kind union with the existing opt-in P23 repair scheduler.
+- Repaired strict-TypeScript integration defects in typed replay-selection imports, retention-gap field naming, compound-skill defaults, optional policy-vector narrowing, verified-session literal schemas, and Node Buffer stream accumulators.
+- Made the versioned candidate store compatible with Node.js 24's built-in strip-only TypeScript runner by replacing constructor parameter properties with explicit class fields; persisted-store and approval semantics are unchanged.
+- Added null guards where causal-event creation can legitimately return no record, preventing learning from reading fields that were never emitted. Adjusted a corrupted-cycle regression to assert the canonical fail-closed missing-stage set.
+- **Validation boundary:** changes committed to `feature/experiments`; exact-head typecheck and affected regression suites must still run. No end-to-end learning uplift or production readiness is claimed.
+
+---
+
 ## NK1 WorkPass486 — bind initiative outcomes to their decisions
 
 - Hardened the B306 autonomous-initiative evidence ledger so outcomes can be attached to an exact decision tick (and selected action when provided), including delayed/out-of-order feedback.
