@@ -11,12 +11,12 @@
   "modules": [
     {
       "path": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
-      "maxOutDegree": 425,
-      "maxRuntimeOutDegree": 385,
-      "maxTypeOutDegree": 220,
+      "maxOutDegree": 420,
+      "maxRuntimeOutDegree": 382,
+      "maxTypeOutDegree": 218,
       "maxProductionRuntimeInDegree": 8,
-      "maxProductionTypeOnlyInDegree": 7,
-      "reason": "Cognitive composition root. Track runtime fan-out and incoming runtime ownership separately from type-only links."
+      "maxProductionTypeOnlyInDegree": 6,
+      "reason": "Largest canonical runtime dependency hub (417 total / 379 runtime outgoing edges in schema-v3 graph). Keep a small, explicit budget while future extraction reduces this composition root; do not add production inbound owners."
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts",
@@ -38,12 +38,12 @@
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/core/DevelopmentalNeuralRuntime.ts",
-      "maxOutDegree": 139,
-      "maxRuntimeOutDegree": 138,
-      "maxTypeOutDegree": 5,
+      "maxOutDegree": 135,
+      "maxRuntimeOutDegree": 135,
+      "maxTypeOutDegree": 3,
       "maxProductionRuntimeInDegree": 1,
-      "maxProductionTypeOnlyInDegree": 2,
-      "reason": "High fan-out runtime owner; keep composition behind narrow ports and subsystem contracts."
+      "maxProductionTypeOnlyInDegree": 1,
+      "reason": "Large developmental engine composition hub (135 outgoing runtime edges). Freeze current fan-out until a domain-owned runtime cluster extraction is implemented and measured."
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/cognition/index.ts",
@@ -56,12 +56,12 @@
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/core/CognitiveRuntimeCluster.ts",
-      "maxOutDegree": 74,
-      "maxRuntimeOutDegree": 68,
-      "maxTypeOutDegree": 8,
+      "maxOutDegree": 72,
+      "maxRuntimeOutDegree": 67,
+      "maxTypeOutDegree": 7,
       "maxProductionRuntimeInDegree": 1,
-      "maxProductionTypeOnlyInDegree": 2,
-      "reason": "High fan-out runtime cluster; new subsystems should use explicit interfaces and avoid growing central wiring."
+      "maxProductionTypeOnlyInDegree": 1,
+      "reason": "Runtime wiring cluster (70 total / 65 runtime outgoing edges). Avoid adding more direct wiring; new capabilities should use existing subsystem owner contracts."
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/index.ts",
