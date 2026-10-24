@@ -1,3 +1,23 @@
+## NK1 WorkPass528 — connect P36 to the ActionGateway evidence path (2026-10-24)
+
+- Added the reserved tool identity `organism.learning.p36.evaluate-evidence`. The main `OrganismCore.finalizeToolOutcome` now routes that tool's evaluation output into P36 using the exact in-process verification receipt, execution ID and decision ID from `ActionGateway`.
+- P36 requires the same complete normalized evidence input that was evaluated and a decision linked to a persisted selected trace. If the tool result is unverified, not successful, or not decision-linked, the route records an untrusted attempt and does not promote learning. Failures are kept in the self-development event journal without reclassifying a read-only evaluator error as an uncertain side effect.
+- Updated P36 direct and autonomous-cycle tests to obtain receipts through real `ActionGateway` test fixtures rather than calling the verifier service directly. Added a core-level integration scenario for the reserved evaluator route and a workflow path trigger for `OrganismCore.ts`.
+- **Important boundary:** this pass adds the live integration contract and routing; a host-owned independent evaluator still must be registered for the reserved tool ID in a production deployment. The fixture evaluator is test scaffolding, not a deployed independent evaluator.
+- **Verification boundary:** exact-head test/typecheck results are not confirmed. No measured learning gain or production-readiness increase is claimed. `main` and the Release ZIP remain unchanged.
+
+---
+
+## NK1 WorkPass527 — harden P36 schema restoration and autonomous evidence cycles (2026-10-24)
+
+- Bumped the P36 state version from 5 to 6 and centralized persisted-state migration through `P36AutonomousSelfDevelopmentEngine.restore()`, so state migration and runtime restoration apply the same trust policy.
+- Restore now validates/de-duplicates developmental hypotheses and campaign cycles, bounds score/timestamp/task fields, revokes serialized completed/promotion status, clears unverifiable learned metrics/mastery/action bias and resets completed/holdout cycle evidence counts. Historical evidence remains available for inspection but its serialized trust flag/receipt is demoted.
+- Added bounded diagnostic counters for failed external evidence and maturity receipt attempts; invalid evaluator scores and non-integer or out-of-range delay values are rejected.
+- Updated the autonomous cycle and migration regression fixtures to the P36 v6 and decision-bound receipt contract. Added the persistence migration path to the P26 learning workflow.
+- **Verification boundary:** changes are committed; no exact-HEAD CI result is available yet.
+
+---
+
 ## NK1 WorkPass526 — secure P36 self-development promotion and evidence provenance (2026-10-24)
 
 - P36 no longer treats the caller-provided `independentVerified` or `verified` booleans as authority. External evidence and developmental maturity now require the exact immutable receipt issued by the canonical `OutcomeVerificationService`, bound to the normalized evidence tuple.
