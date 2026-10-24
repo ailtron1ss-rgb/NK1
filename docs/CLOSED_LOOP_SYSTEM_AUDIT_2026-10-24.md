@@ -29,7 +29,9 @@
 2. Статус `FAIL` не затирается повторными durable/flush- и restore-записями. Только следующий фактический когнитивный шаг может установить новый результат.
 3. `CausalDomainClosureLedger.failPending()` закрывает незавершённый цикл с нулевым причинным кредитом, если обычный путь `end()` не был достигнут.
 4. `CausalDomainClosureLedger.failLatest()` может понизить ранее записанный цикл до `FAIL`, если ошибка произошла после обычного закрытия — например при завершении batch или аварийном checkpoint.
-5. Результат `UnifiedCognitiveCycle` теперь явно передаётся в `RuntimeClosureLedger` и `CausalDomainClosureLedger`. Отсутствующий/рассинхронизированный этап не может получить PASS или положительный causal score только из-за успешного выхода из runtime-функции.
+5. Результат `UnifiedCognitiveCycle` явно передаётся в `RuntimeClosureLedger` и `CausalDomainClosureLedger`. Отсутствующий/рассинхронизированный этап не может получить PASS или положительный causal score только из-за успешного выхода из runtime-функции.
+6. `AbortSignal` проверяется перед началом работы и после основных awaited perception/observation/proposal-границ, а также перед исполнительным вызовом. Тест отдельно моделирует отмену сразу на входе и отмену во время финальной генерации ответа.
+7. `beginBatch()` failure создаёт причинную терминальную запись; остановка runtime становится single-flight и закрывает continuity-журнал в `finally`, даже если финальный checkpoint завершается ошибкой.
 5. Перед передачей управления исполнительному слою `OrganismRuntime.stepInternal` повторно проверяет `AbortSignal`. Отмена, пришедшая после планирования, теперь останавливает путь до embodied-action dispatch.
 6. В `tests/closed-loop-failure-closure.mjs` добавлена регрессия для явного сбоя, повторной записи durability, закрытия pending-цикла, отмены до действия и сохранённого статуса сбоя.
 7. Тест добавлен в `test:rebuild-recovered`; запись WorkPass328 добавлена в `CHANGELOG.md`.
