@@ -6,6 +6,11 @@ on:
       - '.github/workflows/operation-omega-hexis-review-inbox.yml'
       - 'runtime/neuro-kurisu/src/organism/integration/hexis/HexisAdaptationFabric.ts'
       - 'runtime/neuro-kurisu/src/organism/integration/hexis/Nk1HmxExportAdapter.mjs'
+      - 'runtime/neuro-kurisu/src/organism/integration/hexis/HexisCanonicalMemoryProjector.mjs'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts'
       - 'runtime/neuro-kurisu/src/server/server.mjs'
       - 'runtime/neuro-kurisu/tests/integration/hexis-adaptation.mjs'
       - 'runtime/neuro-kurisu/tests/integration/hexis-server-smoke.mjs'
@@ -37,6 +42,11 @@ on:
       - '.github/workflows/operation-omega-hexis-review-inbox.yml'
       - 'runtime/neuro-kurisu/src/organism/integration/hexis/HexisAdaptationFabric.ts'
       - 'runtime/neuro-kurisu/src/organism/integration/hexis/Nk1HmxExportAdapter.mjs'
+      - 'runtime/neuro-kurisu/src/organism/integration/hexis/HexisCanonicalMemoryProjector.mjs'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts'
       - 'runtime/neuro-kurisu/src/server/server.mjs'
       - 'runtime/neuro-kurisu/tests/integration/hexis-adaptation.mjs'
       - 'runtime/neuro-kurisu/tests/integration/hexis-server-smoke.mjs'
@@ -83,6 +93,6 @@ jobs:
       - name: Run Hexis-inspired source-monitor lineage regression
         run: node --experimental-strip-types tests/operation-omega-hexis-source-monitor.mjs
       - name: Run Hexis HMX staging and import-boundary regression
-        run: node --experimental-strip-types tests/integration/hexis-adaptation.mjs
+        run: node --experimental-transform-types tests/integration/hexis-adaptation.mjs
       - name: Run Hexis server integration smoke
         run: node --experimental-strip-types tests/integration/hexis-server-smoke.mjs
