@@ -8498,20 +8498,29 @@ export class OrganismCore {
                     confidence01: memoryReadiness * learning.memoryPromotionScale01, tick: state.tick, at: state.at,
                     reason: 'memory-causal-economy:high-promotion-readiness',
                 });
-                const identityInfluence = this.cognitiveRuntime.identityTrajectory.observeMemoryInfluence({
-                    magnitude01: memoryReadiness * learning.identityUpdateScale01,
-                    independentSources: causalBefore.independentSources,
-                    outcomeCount: causalBefore.outcomeCount + 1,
-                    verified: projectEvidenceExternal || Boolean(outcome.worldTransition),
-                    memoryIds: [memoryId], at: state.at,
-                });
-                if (identityInfluence.applied) {
-                    this.organismSystems.memory.memoryCausalEconomy.recordEffect({
-                        memoryIds: [memoryId], kind: 'identity', magnitude01: Math.abs(identityInfluence.delta ?? 0),
-                        confidence01: clamp(identityInfluence.gate * learning.identityUpdateScale01), tick: state.tick, at: state.at,
-                        reason: 'memory-causal-economy:verified-memory-influenced-identity-path-dependence',
+                // When runtime supplied the authoritative reality-learning decision, identity may only
+                // be influenced by externally grounded, sufficiently verified and independent evidence.
+                // Legacy feedback callers without LearningProvenance retain the existing conservative path.
+                const identityInfluenceEligible = !outcome.learning ||
+                    (outcome.learning.source === 'external' &&
+                        outcome.learning.verified01 >= .62 &&
+                        outcome.learning.independent01 >= .62);
+                if (identityInfluenceEligible) {
+                    const identityInfluence = this.cognitiveRuntime.identityTrajectory.observeMemoryInfluence({
+                        magnitude01: memoryReadiness * learning.identityUpdateScale01,
+                        independentSources: causalBefore.independentSources,
+                        outcomeCount: causalBefore.outcomeCount + 1,
+                        verified: projectEvidenceExternal || Boolean(outcome.worldTransition),
+                        memoryIds: [memoryId], at: state.at,
                     });
-                    this.cognitiveRuntime.identityTrajectory.noteChapter(`Memory influence: ${memoryId.slice(0, 12)}; path-dependence +${Number(identityInfluence.delta ?? 0).toFixed(4)}`);
+                    if (identityInfluence.applied) {
+                        this.organismSystems.memory.memoryCausalEconomy.recordEffect({
+                            memoryIds: [memoryId], kind: 'identity', magnitude01: Math.abs(identityInfluence.delta ?? 0),
+                            confidence01: clamp(identityInfluence.gate * learning.identityUpdateScale01), tick: state.tick, at: state.at,
+                            reason: 'memory-causal-economy:verified-memory-influenced-identity-path-dependence',
+                        });
+                        this.cognitiveRuntime.identityTrajectory.noteChapter(`Memory influence: ${memoryId.slice(0, 12)}; path-dependence +${Number(identityInfluence.delta ?? 0).toFixed(4)}`);
+                    }
                 }
             }
         }
@@ -9630,10 +9639,19 @@ export class OrganismCore {
                     personalityLedgerEnabled: true });
                 {
                     const identityRevisionEvidence01 = clamp(.58 + Math.abs(reward01 - .5) * .62 - state.predictionError * .12);
-                    const identityRevisionVerified01 = projectEvidenceExternal ? 1 : (outcome.worldTransition ? .78 : 0);
-                    const identityRevisionIndependent01 = projectEvidenceExternal ? 1 : (outcome.worldTransition ? .72 : 0);
+                    // Do not infer external identity evidence from a device label when the runtime has
+                    // already supplied the actual LearningGate provenance. Simulated outcomes can improve
+                    // predictive substrate, but cannot satisfy the durable external identity-revision gate.
+                    const identityRevisionVerified01 = outcome.learning
+                        ? (outcome.learning.source === 'external' ? clamp(outcome.learning.verified01) : 0)
+                        : projectEvidenceExternal ? 1 : (outcome.worldTransition ? .78 : 0);
+                    const identityRevisionIndependent01 = outcome.learning
+                        ? (outcome.learning.source === 'external' ? clamp(outcome.learning.independent01) : 0)
+                        : projectEvidenceExternal ? 1 : (outcome.worldTransition ? .72 : 0);
                     const identityRevisionContextKey = `${outcome.worldTransition ? 'world' : 'internal'}|${projectEvidenceExternal ? String(outcome.evidenceSource ?? 'external') : 'simulation'}|${trace.selected.action}|bucket:${state.tick % 4}`;
-                    const identityRevisionInternalConsistency01 = projectEvidenceExternal || outcome.worldTransition ? 0 : clamp(.60 + (1 - state.predictionError) * .22 + p80FeedbackState.continuity01 * .16);
+                    const identityRevisionInternalConsistency01 = outcome.learning
+                        ? 0
+                        : projectEvidenceExternal || outcome.worldTransition ? 0 : clamp(.60 + (1 - state.predictionError) * .22 + p80FeedbackState.continuity01 * .16);
                     const rev = this.developmentalNeural.neuralAutobiographicalIdentityB284.observeVerifiedRevisionEvidence({ tick: state.tick, reason: Math.abs(reward01 - .5) >= .08 ? 'major-outcome' : 'new-value', evidence01: identityRevisionEvidence01, verified01: identityRevisionVerified01, independent01: identityRevisionIndependent01, contextKey: identityRevisionContextKey, internalConsistency01: identityRevisionInternalConsistency01 });
                     if (rev.revised) {
                         const d = this.developmentalNeural.neuralAutobiographicalIdentityB284.diagnostics();

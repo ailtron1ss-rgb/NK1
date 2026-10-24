@@ -1,3 +1,11 @@
+# WorkPass342 — evidence-gated identity evolution (2026-10-24)
+
+- [IDENTITY] Memory-to-identity path dependence now requires explicit runtime provenance to be external with verification and independence both >= 0.62. When provenance is absent for legacy feedback callers, existing behavior is preserved.
+- [IDENTITY] B284 autobiographical identity revisions now consume the actual LearningProvenance verification/independence values. Explicit simulation outcomes are not converted into external verification; explicit runtime provenance also disables the legacy synthetic internal-consistency fallback. The B284 repeated-evidence, context-holdout and cooldown policy remains the final authority.
+- [MEMORY] Ordinary memory outcome/reconsolidation continues under existing bounded MemoryOS2/causal-economy scales; this gate specifically prevents weak/simulated evidence from changing durable identity trajectory.
+- [TEST] Added live-Core source regressions guarding both identity influence paths.
+- [VALIDATION] WorkPass331, WorkPass110, WorkPass292, WorkPass293, WorkPass294 and WorkPass108 all passed on SHA `b1bf1ae3e53f513c311c7607c58204563fb1e2b8`. WorkPass342 requires fresh exact-head CI; no behavior uplift is claimed without matched holdout evaluation.
+
 # WorkPass341 — remove duplicate feedback provenance property (2026-10-24)
 
 - [CORRECTION] Exact-head WorkPass110 exposed TS1117 after WorkPass340 added a second `learning` key to the `core.feedback` object. Inspection confirmed the runtime already had one canonical `LearningProvenance` payload later in the same call, including the final gate values.

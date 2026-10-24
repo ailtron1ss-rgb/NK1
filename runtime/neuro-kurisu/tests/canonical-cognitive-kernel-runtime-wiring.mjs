@@ -54,6 +54,16 @@ assert.match(core, /outcome\.causalMemoryContext\?\.attributionEligible === fals
   'a redirected action must not assign decision-level causal credit to the current cycle memories');
 assert.match(core, /A homeostatic redirect may still update emotional salience below, but must not teach a decision-level causal link/,
   'the no-credit rule must leave outcome/emotion reconsolidation separate from action attribution');
+assert.match(core, /const identityInfluenceEligible = !outcome\.learning \|\|\s*\(outcome\.learning\.source === 'external' &&\s*outcome\.learning\.verified01 >= \.62 &&\s*outcome\.learning\.independent01 >= \.62\)/s,
+  'authoritative runtime provenance must gate memory-to-identity influence on external, verified and independent evidence');
+assert.match(core, /if \(identityInfluenceEligible\) \{\s*const identityInfluence = this\.cognitiveRuntime\.identityTrajectory\.observeMemoryInfluence/s,
+  'the identity trajectory must not be updated when explicit reality-learning evidence is weak');
+assert.match(core, /const identityRevisionVerified01 = outcome\.learning\s*\?\s*\(outcome\.learning\.source === 'external' \? clamp\(outcome\.learning\.verified01\) : 0\)/s,
+  'B284 identity revision must use actual verification from supplied provenance and reject simulation as external proof');
+assert.match(core, /const identityRevisionIndependent01 = outcome\.learning\s*\?\s*\(outcome\.learning\.source === 'external' \? clamp\(outcome\.learning\.independent01\) : 0\)/s,
+  'B284 must use actual independence rather than equating device provenance with independent corroboration');
+assert.match(core, /const identityRevisionInternalConsistency01 = outcome\.learning\s*\?\s*0/s,
+  'explicit runtime provenance must disable the legacy synthetic internal-consistency shortcut while preserving the B284 holdout/cooldown gates');
 assert.match(runtime, /innerIntentMemoryTrace:\s*\{/,
   'the existing experience event must preserve the intent/outcome trace for autobiographical consolidation');
 assert.match(runtime, /retrievedMemoryIds:\s*cycle\.memories\.slice\(0, 12\)\.map\(memory => memory\.id\)/,

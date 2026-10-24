@@ -1,3 +1,12 @@
+## Latest durable checkpoint — WorkPass342: evidence-gated identity evolution (2026-10-24)
+
+- `OrganismCore.feedback` now allows the memory-to-identity path-dependence update only when supplied runtime `LearningProvenance` identifies an external outcome with both verification and independence >= 0.62. Existing feedback callers that omit provenance retain the prior behavior for compatibility.
+- B284's autobiographical identity revision now uses the actual provenance verification/independence values, rather than promoting a device/source label to verified-and-independent evidence. For explicit runtime provenance, the synthetic internal-consistency fallback is disabled; B284's existing repeated evidence, context holdout and cooldown gates remain authoritative.
+- Memory learning, quarantining and emotion/surprise reconsolidation remain distinct paths; the new guard is specifically about durable identity/path-dependence attribution.
+- **Last confirmed exact-head green:** WorkPass331, WorkPass110, WorkPass292, WorkPass293, WorkPass294 and WorkPass108 passed on `b1bf1ae3e53f513c311c7607c58204563fb1e2b8`. Current WorkPass342 commit must pass fresh typecheck and live-cycle regression.
+ 
+---
+
 ## Latest corrective checkpoint — WorkPass341 duplicate learning-property removal (2026-10-24)
 
 - WorkPass340 accidentally added a second `learning` property to the Core feedback object. The typechecker reported TS1117 at `OrganismRuntime.ts:926`.
