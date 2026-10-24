@@ -13,7 +13,7 @@ export interface RuntimeClosureCheck {
 export interface RuntimeClosureRecord {
   at: number;
   tick: number;
-  phase: 'step' | 'durable' | 'restore';
+  phase: 'step' | 'durable' | 'restore' | 'failure';
   status: RuntimeClosureStatus;
   checks: RuntimeClosureCheck[];
   behaviorHash: string;
@@ -141,6 +141,26 @@ export class RuntimeClosureLedger {
     return structuredClone(record);
   }
 
+  fail(input: { at: number; tick: number; reason: string }): RuntimeClosureRecord {
+    const tick = Number.isSafeInteger(input.tick) && input.tick >= 0 ? input.tick : 0;
+    const reason = (typeof input.reason === 'string' ? input.reason : 'cycle execution failed')
+      .replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ')
+      .trim()
+      .slice(0, 240) || 'cycle execution failed';
+    const record: RuntimeClosureRecord = {
+      at: Number.isFinite(input.at) ? input.at : Date.now(),
+      tick,
+      phase: 'failure',
+      status: 'FAIL',
+      checks: [
+        { name: 'cycle-execution-completed', ok: false, value: 'failed', expected: 'completed', detail: reason },
+        { name: 'failure-tick-valid', ok: Number.isSafeInteger(input.tick) && input.tick >= 0, value: tick, expected: 'non-negative safe integer' },
+      ],
+      behaviorHash: fastFingerprint({ tick, phase: 'failure', reason }),
+    };
+    this.commit(record, false);
+    return structuredClone(record);
+  }
   durable(input: RuntimeClosureDurabilityInput): RuntimeClosureRecord {
     const checks: RuntimeClosureCheck[] = [
       { name: 'durable-state-tick', ok: input.stateTick === input.tick, value: input.stateTick, expected: input.tick },
@@ -205,7 +225,9 @@ export class RuntimeClosureLedger {
     else if (record.status === 'DEGRADED') this.state.degraded += record.checks.filter((check) => check.detail?.startsWith('degraded')).length || 1;
     else this.state.failures += record.checks.filter((check) => !check.ok).length || 1;
     this.state.lastTick = record.tick;
-    this.state.lastStatus = record.status;
+    const previous = this.state.records[this.state.records.length - 1];
+    const preserveFailure = record.phase === 'durable' && previous?.phase === 'failure' && previous.tick === record.tick;
+    if (!preserveFailure) this.state.lastStatus = record.status;
     if (updateBehavior) this.state.lastBehaviorHash = record.behaviorHash;
     this.state.records = [...this.state.records, record].slice(-24);
   }
