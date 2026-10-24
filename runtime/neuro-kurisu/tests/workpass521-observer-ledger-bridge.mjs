@@ -150,6 +150,19 @@ assert.ok(!restoredLedger.quarantinedEventIds?.includes(evidenceEventId),
   'conservative recalibration of a legacy event must not quarantine its stable event ID');
 assert.equal(restoredLedger.recent.find(row => row.eventId === evidenceEventId)?.confidence01, input.confidence01 * 0.8,
   'restore must lower the legacy raw sample confidence using the registered source prior');
+assert.throws(() => restored.realityEvidenceLedger.record({
+  eventId: evidenceEventId,
+  tick: input.tick,
+  at: input.observedAt,
+  realityClass: 'device-observation',
+  claim: input.observedPostcondition,
+  confidence01: input.confidence01,
+  independenceKey: input.independenceKey,
+  parentIds: [input.actionRef, input.tool],
+}), /reality-evidence-event-id-conflict/,
+  'the same event identity must not raise confidence after conservative recalibration');
+assert.ok(restored.realityEvidenceLedger.snapshot().quarantinedEventIds?.includes(evidenceEventId),
+  'attempting to boost confidence under a stable event ID must quarantine the identity');
 
 // The raw restore array may contain more than four times capacity in malformed
 // rows. It must still locate the valid evidence after those rows are rejected.
