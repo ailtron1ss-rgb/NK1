@@ -146,6 +146,17 @@ try {
   });
   await runtime.init();
   const priorFailures = runtime.causalDomainClosureSnapshot().failures;
+  // Batch admission failure is also a terminal attempted cycle, even though the
+  // normal causal `begin()` path has not been reached yet.
+  const originalBeginBatch = runtime.core.beginBatch.bind(runtime.core);
+  runtime.core.beginBatch = async () => { throw new Error('fixture-batch-begin-failed'); };
+  await assert.rejects(runtime.step(undefined, { deliberate: false }), /fixture-batch-begin-failed/);
+  runtime.core.beginBatch = originalBeginBatch;
+  const beginFailure = runtime.causalDomainClosureSnapshot();
+  assert.equal(beginFailure.recent[0]?.status, 'FAIL');
+  assert.match(beginFailure.recent[0]?.failureReason ?? '', /runtime\.batch\.begin\.failed/);
+  assert.equal(runtime.runtimeClosureDiagnostics().lastStatus, 'FAIL');
+
   const invokersBeforeEarlyAbort = invokerCalls;
   const controller = new AbortController();
   controller.abort('fixture-abort-at-entry');
@@ -170,7 +181,7 @@ try {
   assert.equal(lateController.signal.aborted, true, 'the controlled provider must cancel during final response generation');
   assert.equal(embodiedDispatches, beforeLateDispatches, 'late cancellation must prevent embodied-action dispatch');
   const closure = runtime.causalDomainClosureSnapshot();
-  assert(closure.failures >= priorFailures + 2, 'both aborted runtime cycles must be accounted as causal failures');
+  assert(closure.failures >= priorFailures + 3, 'batch-admission failure and both aborted runtime cycles must be accounted as causal failures');
   assert.equal(closure.recent[0]?.status, 'FAIL');
   assert.match(closure.recent[0]?.failureReason ?? '', /cognitive-cycle-aborted:before-embodied-action/);
   assert.equal(runtime.runtimeClosureDiagnostics().lastStatus, 'FAIL');
