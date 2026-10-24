@@ -488,7 +488,18 @@ async function route(req, res) {
             return json(res, 200, { ok: true, ready: runtimeReady, service: 'neuro-kurisu', version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, tick: runtimeReady ? runtime.core.operationalStatusSnapshot().tick : 0, uptimeSec: Math.round(process.uptime()), bodySource: runtimeReady ? runtime.embodiment.snapshot().telemetry.source : 'initializing', actionLedger: runtimeReady ? runtime.core.actionExecutionLedgerMetrics() : null });
         }
         if (req.method === 'GET' && url.pathname === '/api/local-models') {
-            return json(res, 200, { ok: true, hub: LOCAL_SMALL_MODEL_HUB.snapshot() });
+            const affectHint = runtimeReady ? runtime.core.systemSnapshot()?.emotionAppraisal?.externalAffectHint : null;
+            return json(res, 200, {
+                ok: true,
+                hub: LOCAL_SMALL_MODEL_HUB.snapshot(),
+                integration: {
+                    coreAffectHint: affectHint ? {
+                        emotion: affectHint.emotion,
+                        confidence01: affectHint.confidence01,
+                        at: affectHint.at,
+                    } : null,
+                },
+            });
         }
         if (req.method === 'POST' && url.pathname === '/api/local-models/embeddings') {
             if (!LOCAL_EMBEDDING_PROVIDER)
