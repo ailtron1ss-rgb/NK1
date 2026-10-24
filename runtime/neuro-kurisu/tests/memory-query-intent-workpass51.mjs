@@ -78,6 +78,32 @@ assert.equal(
   'profile recollection prompts must prefer identity memories rather than episode memories',
 );
 
+const conversationalMemory = new MemoryOS2({ embeddingProvider: null });
+const conversationContent = 'нейронная память эксперимент разговор';
+encode(conversationalMemory, { id: 'a-semantic-decoy', kind: 'semantic', content: conversationContent });
+encode(conversationalMemory, {
+  id: 'z-social-conversation', kind: 'social', content: conversationContent,
+  context: { conversationId: 'conversation-42', sessionId: 'session-42' },
+});
+assert.equal(
+  conversationalMemory.retrieve('Что мы обсуждали в прошлый раз про нейронную память и эксперимент?', 1, .1, .1)[0]?.id,
+  'z-social-conversation',
+  'a conversation-backed social memory must beat a lexical-tied semantic note for prior-dialogue recall',
+);
+
+const relationshipMemory = new MemoryOS2({ embeddingProvider: null });
+const relationshipContent = 'нейронная память эксперимент разговор';
+encode(relationshipMemory, {
+  id: 'a-relationship-social', kind: 'social', content: relationshipContent,
+  context: { relationshipId: 'relationship-7' },
+});
+encode(relationshipMemory, { id: 'z-actual-episode', kind: 'episodic', content: relationshipContent });
+assert.equal(
+  relationshipMemory.retrieve('Вспомни, что мы обсуждали про нейронную память', 1, .1, .1)[0]?.id,
+  'z-actual-episode',
+  'a generic relationship/social record must not outrank an actual episode without conversation lineage',
+);
+
 console.log('MEMORY_QUERY_INTENT_AUTOBIOGRAPHICAL_RECALL=PASS', JSON.stringify({
   phraseCases: autobiographicalRecallCases.length,
   episodicWinner: 'z-episodic-recall',
