@@ -100,7 +100,7 @@ function stableId(input:{sourceId:string;claimKey:string;actionRef?:string;obser
   return `obs:${sha256Stable({sourceId:input.sourceId,claimKey:input.claimKey,actionRef:input.actionRef??'',observedAtBucket:Math.floor(input.observedAt/1000),payloadHash:input.payloadHash})}`;
 }
 function isSafeEvidenceEventId(value:unknown):value is string{
-  return typeof value==='string'&&value.length>0&&value.length<=180&&!/[\\u0000-\\u001f\\u007f-\\u009f]/.test(value)&&value.trim()===value;
+  return typeof value==='string'&&value.length>0&&value.length<=180&&value.trim()===value&&!Array.from(value).some((character)=>{const code=character.charCodeAt(0);return code<=0x1f||code===0x7f||(code>=0x80&&code<=0x9f);});
 }
 function legacyStableId(input:{sourceId:string;claimKey:string;actionRef?:string;observedAt:number;payloadHash:string}){
   return `obs:${legacyStableHash(`${input.sourceId}|${input.claimKey}|${input.actionRef??''}|${Math.floor(input.observedAt/1000)}|${input.payloadHash}`)}`;
