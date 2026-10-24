@@ -1,3 +1,20 @@
+## WorkPass525 — bind self-agency learning to trusted external receipts (2026-10-24)
+
+### External source mechanisms reviewed
+- **Hermes Agent Self-Evolution** — https://github.com/NousResearch/hermes-agent-self-evolution. The upstream README describes reflective optimization over execution traces with candidate evaluation, constraint gates, and review before changes are shipped. Its reported roadmap explicitly distinguishes skill evolution from tool/code evolution; this pass does not assume every upstream phase is integrated or copy its code.
+- **Reflexion: Language Agents with Verbal Reinforcement Learning** — https://arxiv.org/abs/2303.11366. The paper's core mechanism preserves reflective feedback in episodic memory for future behavior instead of equating any scalar reward with a trustworthy real-world outcome.
+
+### NK1 adaptation
+- Added `learnVerifiedOutcome` to the self-agency substrate as a narrow gateway from external verification to model learning. It requires the *exact* frozen `OutcomeVerificationService` receipt registered in the process-local `WeakMap`, plus matching tool ID, gateway execution ID, decision ID and canonical full input. A JSON-equivalent copy or persisted receipt is insufficient.
+- Trusted verifier confidence caps the requested causal-match score. A new regression covers forged/copied receipts, mismatched decision links, valid evidence and zero/partial/full causal credit.
+- This maintains NK1's own runtime and data model; no upstream files were copied or vendored and no dependency was added. The method is an available evidence-gated entry point; migration of every live call site to it remains open work.
+
+### Evidence limits
+- The source and regression writes are committed in the appropriate category branches. No runtime test/typecheck result is claimed in this pass because execution was not available through this edit workflow.
+- This is an integrity mechanism, not a measured learning improvement or a claim about phenomenal consciousness.
+
+---
+
 ## WorkPass419 — durable retry cooldown for reflective skill revision (2026-10-23)
 
 - **Failure mode:** `P23CompoundRepairRevisionCoordinator.retryBackoffBySkill` was memory-only. A process restart could immediately re-run a repeatedly failing generator/evaluator against unchanged repair evidence.
