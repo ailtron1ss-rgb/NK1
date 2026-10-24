@@ -58,6 +58,7 @@ assert.equal(spoofResult.independentCount,0,'independentVerified=true is not pro
 assert.equal(spoofResult.status,'insufficient');
 assert.equal(spoofResult.promoted,false);
 assert.throws(()=>guardEngine.recordExternalEvidence({...spoof,control01:NaN}),/invalid-development-evidence/,'non-finite evaluator scores must be rejected');
+assert.throws(()=>guardEngine.recordExternalEvidence({...spoof,delayMs:.9}),/invalid-development-evidence/,'fractional delays must not be normalized into a different evidence identity');
 const copyPayload=evidence(guardHypothesis.id,'copy-context',true,1000);
 const copyReceipt=await mintProof(developmentEvidenceVerificationInput(copyPayload));
 const copiedResult=guardEngine.recordExternalEvidence({...copyPayload,independentVerified:true,verification:structuredClone(copyReceipt)});
@@ -73,6 +74,7 @@ assert.equal(guardEngine.diagnostics().unverifiedEvidenceAttempts,3,'all three u
 // A forged row must not occupy the duplicate key and block its later valid receipt.
 const campaign=new P36AutonomousSelfDevelopmentEngine();
 const campaignHypothesis=prepareHypothesis(campaign,102);
+assert.ok(campaign.beginAutonomousDevelopmentCycle({hypothesisId:campaignHypothesis.id,origin:'autonomous-gap'}));
 const first=evidence(campaignHypothesis.id,'context-a',false,0);
 const poisoned=campaign.recordExternalEvidence({...first,independentVerified:true});
 assert.equal(poisoned.independentCount,0);
@@ -169,6 +171,10 @@ assert.equal(restored.snapshot().acceptedChanges,0,'persisted accepted-change co
 assert.equal(restored.snapshot().hypotheses.find(row=>row.id===campaignHypothesis.id).status,'awaiting-evidence','previously promoted hypotheses must return to evidence review after trust is revoked');
 assert.equal(restored.snapshot().hypotheses.find(row=>row.id===campaignHypothesis.id).evidenceGate,'none');
 assert.equal(restored.snapshot().curriculum.completedSteps,0);
+const restoredCycle=restored.snapshot().developmentCycles.find(row=>row.hypothesisId===campaignHypothesis.id);
+assert.equal(restoredCycle.stage,'awaiting-evidence','replicated cycles must reopen when their evidence cannot be re-authenticated');
+assert.equal(restoredCycle.verifiedEvidenceCount,0);
+assert.equal(restoredCycle.lastEvidenceAt,0);
 assert.deepEqual(restored.snapshot().actionBias,{respond:0,explore:0,verify:0,rest:0,reflect:0,wait:0,defer:0},'policy effects are reset when promotion proof cannot be re-authenticated');
 console.log('P36_SELF_DEVELOPMENT_PROVENANCE=PASS spoofed-flags=blocked copied-receipts=blocked manual-lane=blocked duplicate-poisoning=blocked reused-observation=blocked holdout=verified replication=verified maturity-idempotency=verified restore-demotion=verified');
 console.log('P36_SELF_DEVELOPMENT=PASS',JSON.stringify({area:h.area,delta01:x.delta01,acceptedChanges:d.acceptedChanges,focus:d.curriculum.focus}));
