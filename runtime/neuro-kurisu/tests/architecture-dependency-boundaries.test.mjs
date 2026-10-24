@@ -129,16 +129,6 @@ test("persistence default factories have one stable domain owner", async () => {
   }
 });
 
-test("full architecture audit enforces dependency boundaries and exports a JSON graph", async () => {") + "['\"]"));
-    assert.match(moduleText, new RegExp("export const " + factory + "\\s*="));
-    assert.doesNotMatch(migrations, new RegExp("(?:^|\\n)\\s*(?:export\\s+)?const " + factory + "\\s*=", "m"));
-  }
-
-  for (const factory of ["defaultNeeds", ...domains.map(([name]) => name)]) {
-    assert.match(migrations, new RegExp("\\b" + factory + "\\s*\\("), "migration must consume the canonical " + factory + " factory");
-  }
-});
-
 test("full architecture audit enforces dependency boundaries and exports a JSON graph", async () => {
   const inheritedReport = process.env.NK1_DEPENDENCY_GRAPH_REPORT;
   const tempDir = inheritedReport ? null : await mkdtemp(path.join(tmpdir(), "nk1-dependency-graph-"));
