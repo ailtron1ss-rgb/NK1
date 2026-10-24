@@ -39,6 +39,34 @@ export interface EmotionState {
   cause: string;
 }
 
+/** Canonical affect data projected from the persisted runtime state. */
+export interface AffectiveMoodState {
+  tick: number;
+  at: number;
+  valence01: number;
+  arousal01: number;
+  stress01: number;
+  confidence01: number;
+  dominantLabel: EmotionLabel;
+  persistence01: number;
+  episodes: number;
+}
+
+/** Functional self-access report anchored to one emotion and interoceptive mismatch. */
+export interface FeelingAccessState {
+  label: EmotionLabel;
+  intensity01: number;
+  interoceptiveMismatch01: number;
+  selfAccessConfidence01: number;
+  bodilyFocus01: number;
+}
+
+export interface EmotionAffectSnapshot {
+  mood: AffectiveMoodState | null;
+  latestFeeling: FeelingAccessState | null;
+  regulationPressure01: number;
+}
+
 export interface MemoryRecord {
   id: string;
   kind: MemoryKind;
@@ -148,6 +176,8 @@ export interface OrganismSnapshot {
   awake: boolean;
   needs: Needs;
   emotion: EmotionState;
+  /** Optional for older backend snapshots; populated from the canonical affect engine when available. */
+  affect?: EmotionAffectSnapshot;
   identity: IdentityPublic;
   lastAction: ActionKind;
   lastOption: OptionKind;
@@ -203,6 +233,11 @@ export function emptySnapshot(): OrganismSnapshot {
       dominance: 0.55,
       tendency: "wait",
       cause: "baseline",
+    },
+    affect: {
+      mood: { tick: -1, at: 0, valence01: 0.5, arousal01: 0.22, stress01: 0.2, confidence01: 0.5, dominantLabel: "calm", persistence01: 0, episodes: 0 },
+      latestFeeling: null,
+      regulationPressure01: 0.18,
     },
     identity: {
       subjectId: "kurisu",
