@@ -45,8 +45,8 @@ function deferredSectionCounts(sections) {
 /**
  * A narrow Hexis -> NK1 projector.
  * MemoryFabric is the single write path; the adapter never writes persisted JSON directly.
- * Identity, goals, relationships, narrative and policy sections are reported as deferred
- * until their respective canonical subsystem projection is explicitly implemented.
+ * Memory references are mapped into SemanticMemoryGraph only when both endpoints are imported
+ * memory records. Goals, structural identity, narrative, audit and policy sections remain deferred.
  */
 function semanticNodeType(nativeType) {
   const kind = String(nativeType ?? '').toLowerCase();
