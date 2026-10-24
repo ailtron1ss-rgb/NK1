@@ -1,3 +1,12 @@
+## NK1 Architecture — domain-owned persistence defaults (2026-10-24)
+
+- [REFACTOR] Extracted the eight initial-facet builders from `StateMigrations.ts` into `StateFacetDefaults.ts` plus seven domain-specific modules under `persistence/state-defaults/`. The migration coordinator now retains only a narrow stable import from the facade.
+- [MEASURED] Focused graph run [40129832572](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40129832572) succeeded on commit `0aefbbeda6a3e078e9b66e4ccd788d0bf944f024`: 2,230 source files, 638 canonical-organism files, 4,665 graph relationships (3,959 runtime/dual-kind, 706 type-only), zero missing imports, runtime cycles, legacy leakage, or boundary/budget violations.
+- [MEASURED] `StateMigrations.ts` now has 199 outgoing edges (100 runtime, 114 type-only), down from 246 total edges in the earlier schema-v2 graph. New facade and per-domain modules remain individually bounded; the largest is `AdvancedFacetDefaults.ts` with 40 outgoing runtime edges.
+- [PASS] Server audit in that run: 580 reachable files, 1,249 edges, zero unresolved imports; server/scanner tests 6/6 and architecture tests 5/5 passed.
+- [BUDGET] Expanded `contracts/module-dependency-budgets.json` to baseline the migration reduction and guard the facade plus seven child builders against unreviewed fan-out growth. The latest added static regression test asserts that each builder has one domain owner; it was committed after the measured run and needs its own new CI result.
+- [ARTIFACT] Graph schema-v3 artifact `nk1-module-dependency-graph`, ID `12574248803`, SHA-256 `fba14c70be40c6154810254da2da61280e6008efd2cca762bbb3cdc3c00ef2be` (expires 2026-11-07).
+
 ## NK1 Architecture — schema v3 dependency graph and type-only cycle separation (2026-10-24)
 
 - [PASS] Focused dependency workflow [40129470402](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40129470402) completed successfully on commit `19862298626b60ceb809d801920df4b2b7ca6bb1`.
