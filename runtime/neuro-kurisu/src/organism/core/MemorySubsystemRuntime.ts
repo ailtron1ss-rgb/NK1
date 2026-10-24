@@ -1,4 +1,5 @@
 import { probeOrganismSystem, type OrganismSystemHealthSnapshot } from './OrganismSystemContract.ts';
+import { LettaMemoryBridge, type LettaMemoryBridgeOptions } from '../integration/letta/LettaMemoryBridge.ts';
 import { EventLog } from '../memory/EventSourcing.ts';
 import { MultiTimescaleMemory } from '../memory/MultiTimescaleMemory.ts';
 import { AutobiographicalMemory } from '../memory/AutobiographicalMemory.ts';
@@ -16,7 +17,7 @@ import { P62MemoryFabric } from '../memory/P62MemoryFabric.ts';
 import { P65EpistemicLedger } from '../memory/P65EpistemicLedger.ts';
 import { P70MemoryLifecycleGovernor } from '../developmental/P70MemoryLifecycleGovernor.ts';
 import { P75MemoryContinuumOS } from '../developmental/P75MemoryContinuumOS.ts';
-import { MemoryFabric } from '../memory/MemoryFabric.ts';
+import { MemoryFabric, type MemoryLifecycleObservation } from '../memory/MemoryFabric.ts';
 import { ExperienceContinuumFabric } from '../memory/ExperienceContinuumFabric.ts';
 import { HippocampalMemorySubstrate } from '../memory/HippocampalMemorySubstrate.ts';
 import { HippocampalFormationCircuit } from '../memory/HippocampalFormationCircuit.ts';
@@ -32,6 +33,10 @@ export class MemorySubsystemRuntime {
   readonly systemName='memory' as const;
   readonly dependencies=['world'] as const;
   readonly systemCapabilities=['state', 'memory', 'persistence'] as const;
+  /** Optional external long-term memory provider; NK1 remains the canonical owner. */
+  readonly lettaBridge: LettaMemoryBridge;
+  private suppressLettaSync = false;
+  private readonly pendingLettaSyncs = new Set<Promise<void>>();
   health(): OrganismSystemHealthSnapshot { return probeOrganismSystem(this); }
 
   readonly events = new EventLog();
@@ -67,8 +72,87 @@ export class MemorySubsystemRuntime {
   readonly causalLifeGraph = new CausalLifeGraph();
   /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */
   readonly memoryWorldCausalBridge = new MemoryWorldCausalBridge(96);
+
+  constructor(options: { letta?: LettaMemoryBridgeOptions } = {}) {
+    this.lettaBridge = new LettaMemoryBridge(options.letta);
+    this.fabric.subscribeLifecycleObserver((observation) => this.onMemoryLifecycleObservation(observation));
+  }
+
+  private onMemoryLifecycleObservation(observation: MemoryLifecycleObservation): void {
+    if (this.suppressLettaSync || !this.lettaBridge.status().enabled || !observation.memoryId) return;
+    let request: Promise<unknown>;
+    if (observation.action === 'forget') {
+      request = this.lettaBridge.synchronizeCanonicalMemory({
+        action: 'forget',
+        id: observation.memoryId,
+        source: 'nk1-memory-fabric',
+        kind: 'canonical-memory-lifecycle',
+        reason: observation.reason ?? 'canonical-forget',
+        occurredAt: Date.now(),
+      });
+    } else {
+      const item = observation.item;
+      if (!item) return;
+      const summary = JSON.stringify({
+        canonicalOwner: 'NK1/MemoryFabric',
+        memoryId: item.id,
+        lifecycleAction: observation.action,
+        commandId: observation.commandId ?? null,
+        tick: observation.tick,
+        content: item.content,
+        context: item.context ?? {},
+        createdAt: item.createdAt,
+        observedAt: item.observedAt ?? null,
+        validFromAt: item.validFromAt ?? null,
+        validUntilAt: item.validUntilAt ?? null,
+        epistemicStatus: item.epistemicStatus,
+        supersedesId: item.supersedesId ?? null,
+        supersededById: item.supersededById ?? null,
+        revisionGroupId: item.revisionGroupId ?? null,
+        revisionSequence: item.revisionSequence ?? null,
+        provenanceClass: item.provenanceClass ?? 'unknown',
+        sourceAuthority01: item.sourceAuthority01 ?? null,
+      });
+      const tags = [
+        ...(item.tags ?? []),
+        'nk1-canonical-memory',
+        'nk1-kind:' + item.kind,
+        'nk1-epistemic:' + item.epistemicStatus,
+        'nk1-provenance:' + (item.provenanceClass ?? 'unknown'),
+        ...(item.supersedesId ? ['nk1-supersedes:' + item.supersedesId] : []),
+        ...(item.supersededById ? ['nk1-superseded-by:' + item.supersededById] : []),
+      ].slice(0, 24);
+      request = this.lettaBridge.synchronizeCanonicalMemory({
+        action: 'upsert',
+        id: item.id,
+        source: item.source || 'nk1-memory-fabric',
+        kind: item.kind,
+        summary,
+        occurredAt: item.observedAt ?? item.createdAt,
+        confidence01: item.confidence,
+        tags,
+      });
+    }
+    const tracked = request.then(() => undefined, () => undefined);
+    this.pendingLettaSyncs.add(tracked);
+    void tracked.then(() => { this.pendingLettaSyncs.delete(tracked); });
+  }
+
+  /** Wait for best-effort external memory operations before graceful shutdown/tests. */
+  async flushLettaMemorySync(): Promise<void> {
+    while (this.pendingLettaSyncs.size > 0) await Promise.all([...this.pendingLettaSyncs]);
+  }
+
+  async close(): Promise<void> {
+    await this.flushLettaMemorySync();
+    await this.lettaBridge.close();
+  }
+
   restoreFromPersisted(input: { memory?: any; advanced?: any }) {
-    const memory=input.memory ?? {}; const advanced=input.advanced ?? {};
+    this.suppressLettaSync = true;
+    try {
+      const memory=input.memory ?? {}; const advanced=input.advanced ?? {};
+    this.lettaBridge.restore(advanced.lettaBridge ?? memory.lettaBridge);
     this.events.restore(memory.eventLog);
     this.memories.restore(memory.autobiographicalMemories);
     this.selfModel.restore(memory.selfModel);
@@ -91,6 +175,53 @@ export class MemorySubsystemRuntime {
     this.hippocampalFormation.restore(advanced.hippocampalFormation);
     this.consolidationController.restore(advanced.consolidationController);
     this.memoryLifecycleAuthority.restore(advanced.memoryLifecycleAuthority);
+    } finally {
+      this.suppressLettaSync = false;
+    }
+  }
+
+  /**
+   * Retrieve canonical NK1 memories and, when explicitly enabled, ask Letta for a
+   * separate untrusted candidate set. External text is never promoted to MemoryOS2.
+   */
+  async retrieveForCognitionWithLettaCandidates(
+    query: string,
+    options: { limit?: number; goalRelevance?: number; identityRelevance?: number; tick?: number } = {},
+  ) {
+    const limit = Math.max(1, Math.min(32, Math.floor(Number.isFinite(options.limit) ? Number(options.limit) : 8)));
+    const canonicalRecords = await this.fabric.retrieveForCognition(
+      query,
+      limit,
+      options.goalRelevance ?? 0,
+      options.identityRelevance ?? 0,
+      { tick: options.tick },
+    );
+    if (!this.lettaBridge.status().enabled) {
+      return {
+        canonicalRecords,
+        externalCandidate: null,
+        externalStatus: { status: 'disabled' as const, reason: 'letta-disabled' },
+      };
+    }
+    const recalled = await this.lettaBridge.recall(query, { maxResults: limit });
+    if (!recalled.ok || !recalled.response) {
+      return {
+        canonicalRecords,
+        externalCandidate: null,
+        externalStatus: { status: 'unavailable' as const, reason: recalled.reason ?? 'letta-empty-response' },
+      };
+    }
+    return {
+      canonicalRecords,
+      externalCandidate: {
+        provider: 'letta' as const,
+        content: recalled.response,
+        trust: 'untrusted-candidate' as const,
+        evidence: 'agent-response-unverified' as const,
+        agentId: recalled.agentId,
+      },
+      externalStatus: { status: 'candidate-available' as const },
+    };
   }
 
   /** Read-only memory hygiene report; destructive repair remains an explicit separate operation. */
@@ -102,6 +233,6 @@ export class MemorySubsystemRuntime {
     workspace:this.workspaceV2.snapshot(), semanticGraph:this.semanticMemory.snapshot(), memoryOS:this.memoryOS.snapshot(),
     unifiedMemory:this.unifiedMemory.snapshot(), p47:this.p47MemoryMind.snapshot(), p59:this.p59MemoryOperatingSystem.snapshot(),
     p62:this.p62MemoryFabric.snapshot(), p65:this.p65EpistemicLedger.snapshot(), p70:this.p70MemoryLifecycleGovernor.snapshot(),
-    p75:this.p75MemoryContinuumOS.snapshot(), fabric:this.fabric.snapshot(), experienceContinuum:this.experienceContinuum.snapshot(), hippocampal:this.hippocampal.snapshot(), hippocampalFormation:this.hippocampalFormation.snapshot(), consolidationController:this.consolidationController.snapshot(), memoryLifecycleAuthority:this.memoryLifecycleAuthority.snapshot(),
+    p75:this.p75MemoryContinuumOS.snapshot(), fabric:this.fabric.snapshot(), experienceContinuum:this.experienceContinuum.snapshot(), hippocampal:this.hippocampal.snapshot(), hippocampalFormation:this.hippocampalFormation.snapshot(), consolidationController:this.consolidationController.snapshot(), memoryLifecycleAuthority:this.memoryLifecycleAuthority.snapshot(), lettaBridge:this.lettaBridge.snapshot(),
   }; }
 }

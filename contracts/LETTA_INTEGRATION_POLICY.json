@@ -1,6 +1,6 @@
 {
   "source": "letta-main.zip",
-  "classification": "reference-governance-only",
+  "classification": "governance-reference-plus-optional-memory-provider",
   "currentRuntimeAvailableInArchive": false,
   "rules": {
     "canonicalSource": "Neuro-Kurisu 35.40",
@@ -9,6 +9,32 @@
     "provenanceArchivesAreImmutable": true,
     "credentialFilesExcluded": true,
     "generatedArtifactsRequireHumanReview": true,
-    "telemetryDefault": {"enabled": true, "localOnly": true, "redactSensitive": true, "exportAllowed": false, "retentionDays": 30}
-  }
+    "telemetryDefault": {
+      "enabled": true,
+      "localOnly": true,
+      "redactSensitive": true,
+      "exportAllowed": false,
+      "retentionDays": 30
+    },
+    "externalMemoryProviderEnabledByDefault": false,
+    "nk1RemainsCanonicalMemoryAndActionOwner": true,
+    "recalledContentTrust": "untrusted-candidate",
+    "secretsRedactedBeforeOutboundRequests": true,
+    "providerResponseIsNotDurabilityProof": true,
+    "humanApprovalRequiredForGeneratedArtifactPromotion": true,
+    "legacyArchiveRemainsProvenanceOnly": true,
+    "canonicalMemoryLifecycleObserverEnabledWhenOptedIn": true,
+    "historicalMemoryBackfillByDefault": false,
+    "letTaForgetRequestIsUnverified": true,
+    "nativeMutationCompletesBeforeExternalSync": true,
+    "syncSuppressedDuringRuntimeRestore": true
+  },
+  "activeRuntimeAdapter": "runtime/neuro-kurisu/src/organism/integration/letta/LettaMemoryBridge.ts",
+  "activeSdk": "https://github.com/letta-ai/letta-agent-sdk",
+  "integrationNotes": [
+    "The archived letta-main.zip remains a historical/governance reference; it is not imported as the current runtime.",
+    "The runtime adapter uses the current Letta TypeScript Agent SDK with MemFS enabled.",
+    "Provider responses must not directly mutate NK1 canonical memory, goals, self-model, or action state.",
+    "SDK dependency and lockfile still require a reproducible Node 24 install before release."
+  ]
 }

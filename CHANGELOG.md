@@ -1,3 +1,17 @@
+## NK1 WorkPass328 — optional Letta memory bridge (2026-10-24)
+
+- [INTEGRATED] Added a lazy, opt-in TypeScript adapter for the active Letta Agent SDK with MemFS-enabled persistent agent creation/reuse, experience submission, recall, serialized calls, bounded payloads, secret redaction, and metrics.
+- [WIRED] Connected the adapter to MemorySubsystemRuntime and included the provider identity/metrics in its snapshot and restore boundary.
+- [LIFECYCLE] Added observers at MemoryFabric's canonical mutation boundary. MemorySubsystemRuntime mirrors post-commit encode/revision/update events to Letta, submits forget requests, pauses mirroring during restore, and exposes a flush barrier for controlled shutdown/tests. Provider stays opt-in by default.
+- [RECALL] Added `retrieveForCognitionWithLettaCandidates`: native NK1 retrieval remains authoritative; optional Letta recall is returned as a separate untrusted candidate and is not written into canonical memory. The route is available to selected callers but is not globally inserted into every cognitive prompt pending benchmarking/feature-flag review.
+- [RESTORE] Added compatibility for restoring Letta bridge identity from memory facets or system-fabric snapshots; snapshot restore never enables the provider.
+- [SECURITY] Letta backend defaults to local even when `LETTA_API_KEY` exists; cloud requires explicit `NK1_LETTA_BACKEND=cloud`. The agent is hidden, has no server-side web tools/skills, receives a narrow file-tool allowlist, and uses the SDK's local `filesystemConfinement: 'memory'` sandbox. Cloud mode lacks that same local kernel boundary and requires a separate security review.
+- [SAFETY] Letta remains an external memory provider; NK1 is still the canonical owner of memory policy, goals, self-model, and actions. Recall results are explicitly marked as untrusted candidates and provider assertions are not treated as proof of durable writes.
+- [CONTRACT] Updated LETTA_INTEGRATION_POLICY.json to separate the historic Letta archive from the active SDK adapter and preserve manual artifact-promotion gates.
+- [TEST] Added fake-client regression tests covering adapter boundaries, agent reuse, MemFS configuration, redaction, snapshot/restore, recall trust labeling, canonical mutation mirroring, restore suppression, hybrid recall isolation, and forget-request routing. Registered both commands in `.github/workflows/workpass71-validation.yml`; they have not been executed in the full project runtime by this authoring pass.
+- [LIMITATION] The external SDK has not yet been added to the runtime package lock through a reproducible Node 24 install. Existing memories are not bulk-backfilled. Provider-side forget is an unverified request, not proof of erasure. A local/cloud Letta E2E, native+Letta retrieval uplift, restart persistence against the actual provider, and production release validation remain open.
+- [RELEASE] No Release asset was downloaded, rebuilt, replaced, or published by this pass.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

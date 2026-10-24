@@ -13,6 +13,19 @@ export type MemoryLifecycleEncodeInput = Omit<MemoryItem2,'id'|'createdAt'|'last
 type EncodeInput = MemoryLifecycleEncodeInput;
 
 export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'forget';
+
+export interface MemoryLifecycleObservation {
+  action: MemoryLifecycleAction;
+  tick: number;
+  outcome: 'applied' | 'noop';
+  commandId?: string;
+  memoryId?: string;
+  reason?: string;
+  eventPayload: Record<string, unknown>;
+  /** Read-only snapshot of the canonical post-mutation item; absent for forget. */
+  item?: MemoryItem2;
+}
+export type MemoryLifecycleObserver = (observation: MemoryLifecycleObservation) => void;
 export type MemoryLifecycleCommand =
   | { action:'encode'; input:EncodeInput; commandId?:string; tick?:number; emitEvent?:boolean; syncCompatibility?:boolean }
   | { action:'revise-status'; id:string; to:MemoryItem2['epistemicStatus']; reason:string; commandId?:string; tick?:number }
@@ -143,6 +156,7 @@ export class MemoryFabric {
   private lastCognitiveMemoryQueryAt=0;
   private lastPolicyDecisionId:string|undefined;
   private readonly maxMutationReceipts=512;
+  private readonly lifecycleObservers = new Set<MemoryLifecycleObserver>();
 
   constructor(
     memoryOS:MemoryOS2,
@@ -166,6 +180,26 @@ export class MemoryFabric {
       maxRecentEvents:clampInt(config.maxRecentEvents??96,32,320),
       compatibilityRefreshEvery:clampInt(config.compatibilityRefreshEvery??8,1,64),
     };
+  }
+
+  /** Observe committed lifecycle events without making observer work part of the mutation transaction. */
+  subscribeLifecycleObserver(observer: MemoryLifecycleObserver): () => void {
+    this.lifecycleObservers.add(observer);
+    return () => { this.lifecycleObservers.delete(observer); };
+  }
+
+  private notifyLifecycleObservers(input: Omit<MemoryLifecycleObservation, 'eventPayload' | 'item'> & { eventPayload: Record<string, unknown> }): void {
+    if (this.lifecycleObservers.size === 0) return;
+    const item = input.action === 'forget' || !input.memoryId ? undefined : this.findCanonical(input.memoryId) ?? undefined;
+    const observation: MemoryLifecycleObservation = {
+      ...input,
+      eventPayload: structuredClone(input.eventPayload),
+      ...(item ? { item: structuredClone(item) } : {}),
+    };
+    for (const observer of this.lifecycleObservers) {
+      try { observer(structuredClone(observation)); }
+      catch { /* external observers must never roll back or break the canonical mutation */ }
+    }
   }
 
   /**
@@ -277,6 +311,14 @@ export class MemoryFabric {
         this.retireMutationReceipt(oldest);
         this.mutationReceipts.delete(oldest);
       }
+    }
+    if(eventPayload){
+      this.notifyLifecycleObservers({
+        action, tick, outcome, eventPayload,
+        ...(commandId ? { commandId } : {}),
+        ...(memoryId ? { memoryId } : {}),
+        ...(typeof eventPayload.reason === 'string' ? { reason: eventPayload.reason } : {}),
+      });
     }
     return result;
   }
