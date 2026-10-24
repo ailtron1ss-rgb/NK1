@@ -1,4 +1,19 @@
-## Current source-stack checkpoint — WorkPass272 (2026-10-22)
+# NK1 / Neuro Kurisu — repository entry point
+
+> **Current navigation:** read [the project map, ownership boundaries, branch rules and release-artifact policy](docs/PROJECT_MAP_AND_ORDERING.md). Then read [the working rules](AGENTS.md) and refresh live GitHub state before choosing a source branch.
+
+- **Canonical runtime owner:** `runtime/neuro-kurisu/`
+- **UI shell:** `app/`; it must not own a second organism or writable memory system.
+- **Research-only code:** `research/`; **historical/provenance sources:** `legacy/`.
+- **Branch warning:** `integration` and `operation-omega-hexis-2026-10-24` diverged in the 2026-10-24 comparison. Do not infer ancestry from pass numbers.
+- **Branch names:** see the [2026-10-24 branch inventory](docs/BRANCH_INVENTORY_2026-10-24.md) for the observed 104 refs and selected live comparisons; it is not a deletion list.
+- **Documentation links:** run `npm run test:markdown-links` for parser regressions and `npm run audit:canonical-links` for strict checks on key navigation files.
+- **Release warning:** the latest attached release ZIP observed on 2026-10-24 was WorkPass70 dated 2026-10-19. No later source change is part of the released binary unless the asset is rebuilt and its digest verified.
+- The continuation records below are preserved for traceability. Their status statements are historical snapshots, not a substitute for the live branch, diff, PR and Actions results.
+
+---
+
+## Historical continuation snapshot — WorkPass272 (2026-10-22)
 
 - WorkPass272 hardens evaluator authority isolation: a shared predicate now requires both non-overlapping resolved paths and distinct device/inode filesystem identities for run/survive storage roots, including case-insensitive path comparisons on Windows.
 - Added unit-level contract cases for different path strings with the same underlying identity, nested roots, and truly distinct roots; the existing WorkPass110 workflow already runs the host-owned evaluator subprocess regression.
