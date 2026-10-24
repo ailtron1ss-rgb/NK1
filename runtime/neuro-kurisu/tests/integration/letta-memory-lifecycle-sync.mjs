@@ -70,7 +70,7 @@ assert.equal(state.prompts.length, 2);
 
 // Suppressing event-log output must not bypass committed-memory mirroring.
 runtime.fabric.encode({
-  content: 'This deliberately suppresses lifecycle notification.',
+  content: 'This deliberately suppresses event-log emission only.',
   kind: 'episodic',
   tags: [],
   context: {},
@@ -91,7 +91,7 @@ runtime.fabric.encode({
 await runtime.flushLettaMemorySync();
 assert.equal(state.prompts.length, 3);
 assert.equal(runtime.lettaBridge.snapshot().metrics.lifecycleUpserts, 2);
-assert.ok(state.prompts[2].includes('This deliberately suppresses lifecycle notification.'));
+assert.ok(state.prompts[2].includes('This deliberately suppresses event-log emission only.'));
 
 assert.equal(runtime.fabric.forgetById(item.id, 'test-forget'), true);
 await runtime.flushLettaMemorySync();
