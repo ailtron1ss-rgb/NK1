@@ -282,8 +282,8 @@ export class MemoryFabric {
   }
 
   private findCanonical(id:string):MemoryItem2|null {
-    const item=this.memoryOS.snapshot({clone:false}).items.find(row=>row.id===String(id));
-    return item?structuredClone(item):null;
+    // MemoryOS2 owns an ID index; avoid a whole-corpus scan for lifecycle checks.
+    return this.memoryOS.peek(id);
   }
 
   private replayMutationReceipt(receipt:MemoryLifecycleReceipt):MemoryItem2|Record<string,string>|boolean|void|null {
