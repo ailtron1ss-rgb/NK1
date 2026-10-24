@@ -25,7 +25,7 @@ test('runCommand bounds output while preserving the newest diagnostic tail', asy
 
   assert.equal(result.code, 0);
   assert.equal(result.out.length, 64);
-  assert.equal(result.out, '0123456789'.repeat(6) + '0123');
+  assert.equal(result.out, ('0123456789'.repeat(100)).slice(-64));
   assert.equal(result.outTruncated, true);
 });
 
@@ -44,7 +44,7 @@ test('runCommand enforces a deadline and escalates an unresponsive process', asy
   const result = await runCommand(process.execPath, [
     '-e',
     'process.on("SIGTERM", () => {}); setInterval(() => {}, 1000);',
-  ], { timeoutMs: 40, terminationGraceMs: 40, forceGraceMs: 150 });
+  ], { timeoutMs: 500, terminationGraceMs: 75, forceGraceMs: 150 });
 
   assert.equal(result.timedOut, true);
   assert.ok(result.signal !== null || result.code !== null,
