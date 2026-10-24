@@ -1,3 +1,9 @@
+## NK1 WorkPass531 — fix memory array-descriptor typing and keep regressions running (2026-10-24)
+
+- Fixed two runtime typecheck errors in AdaptiveExperienceConsolidator by reading an array's length through its own property descriptor, while preserving getter-safe validation of hostile arrays.
+- Added the existing experience-consolidator boundary test to the memory persistence workflow and made all focused regression steps run even when the repository-wide typecheck fails.
+- The latest whole-runtime check exposed unrelated existing type errors in AndroidEmbodimentBridge, OrganismCore, skill-store persistence/evaluation modules and other learning components. These remain unresolved; the next exact-head run will verify this memory fix and execute focused regressions independently of that global failure.
+
 ## NK1 WorkPass530 — add runtime typecheck to memory regression CI (2026-10-24)
 
 - The focused memory persistence workflow now runs the runtime package's `npm run typecheck` before the three behavioral regressions.
