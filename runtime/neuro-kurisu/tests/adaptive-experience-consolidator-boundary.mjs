@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import { AdaptiveExperienceConsolidator } from '../src/organism/memory/AdaptiveExperienceConsolidator.ts';
 
 const store = new AdaptiveExperienceConsolidator(16);
+const ordinaryUserTagStore = new AdaptiveExperienceConsolidator(16);
+ordinaryUserTagStore.ingest({ id: 'user-tag-episode', timestamp: 1, novelty: .5, utility: .5, uncertainty: .5, tags: ['user-input'] });
+assert.equal(ordinaryUserTagStore.size(), 1, 'ordinary tags containing u remain valid');
+assert.throws(() => ordinaryUserTagStore.ingest({ id: 'control-tag-episode', timestamp: 2, novelty: .5, utility: .5, uncertainty: .5, tags: ['bad\u0001tag'] }), /experience-record-invalid/);
 const valid = { id: 'episode-1', timestamp: 10, novelty: 0.8, utility: 0.7, uncertainty: 0.2, tags: ['decision'] };
 store.ingest(valid);
 assert.equal(store.size(), 1);
