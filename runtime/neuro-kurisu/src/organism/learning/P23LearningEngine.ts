@@ -682,6 +682,12 @@ export class P23LearningEngine {
    * Fitness and evidence binding are mandatory preconditions; activation still
    * delegates to the configured store's signed approval and shadow-evidence verifiers.
    */
+  /**
+   * Legacy diagnostic shape retained for source compatibility only.
+   * Raw arrays have no evaluator provenance, paired seed plan, or immutable
+   * environment identity, so they must never authorize activation. Use
+   * approveIndependentlyEvaluatedSkillCandidate with complete evaluator envelopes.
+   */
   approveReflectiveVerifiedSkillCandidate(
     candidateId:string,
     approval:SkillPromotionApproval,
@@ -691,23 +697,14 @@ export class P23LearningEngine {
     minShadowRuns=3,
     options:SkillLearnBenchCandidateGateOptions={},
   ):{active:ActiveSkillVersion;fitness:SkillLearnBenchCandidateGateReport;evidenceBinding:ReflectiveEvidenceBindingReport} {
-    if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
-    const snapshot=this.verifiedSkillStore.snapshot();
-    const staged=snapshot.candidates.find(item=>item.candidateId===candidateId);
-    if(!staged || staged.status!=='shadow') throw new Error('reflective promotion requires an existing shadow candidate');
-    const fitness=this.evaluateReflectiveSkillCandidate(baseline,candidateEvaluation,options);
-    if(!fitness.eligible) throw new Error(`reflective fitness gate rejected candidate: ${fitness.reasons.join(',')}`);
-    const reports=[...candidateEvaluation.validation,...candidateEvaluation.holdout];
-    const evidenceBinding=this.bindReflectiveCandidateEvidence(
-      reports,staged.shadowObservations,staged,verifyEvidence,
-    );
-    if(!evidenceBinding.accepted) {
-      throw new Error(`reflective evidence binding rejected candidate: ${evidenceBinding.reasons.join(',')}`);
-    }
-    // The store independently re-verifies signed receipts and the authenticated
-    // approval at the point of activation; this gate cannot replace either check.
-    const active=this.approveVerifiedSkillCandidate(candidateId,approval,minShadowRuns);
-    return {active,fitness,evidenceBinding};
+    void candidateId;
+    void approval;
+    void baseline;
+    void candidateEvaluation;
+    void verifyEvidence;
+    void minShadowRuns;
+    void options;
+    throw new Error('raw-report-array-reflective-promotion-disabled-use-independent-evaluation-envelope');
   }
 
   /**
@@ -723,7 +720,7 @@ export class P23LearningEngine {
     evaluation:Parameters<typeof compareMatchedIndependentEvaluations>[1] & Parameters<typeof bindIndependentEvaluationToVerifiedShadowEvidence>[0],
     verifyEvidence:SkillShadowEvidenceVerifier,
     minShadowRuns=3,
-  ):{active:ActiveSkillVersion;fitness:SkillLearnBenchCandidateGateReport & {matchedTrialCount:number;matchedValidationTrialCount:number;matchedHoldoutTrialCount:number;environmentFingerprint:string;planFingerprint:string};evidenceBinding:ReflectiveEvidenceBindingReport} {
+  ):{active:ActiveSkillVersion;fitness:ReturnType<typeof compareMatchedIndependentEvaluations>;evidenceBinding:ReflectiveEvidenceBindingReport} {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
     // Public runtime APIs can be called from untyped JavaScript despite TypeScript
     // declarations. Reject absent/malformed envelopes before any property access.
@@ -746,7 +743,13 @@ export class P23LearningEngine {
     // Never gate on a caller-supplied collection of baseline reports. The
     // evaluator proves one-to-one task/trial/seed/split joins and identical
     // plan/environment/manifest before computing the paired SkillLearnBench gate.
-    const fitness=compareMatchedIndependentEvaluations(baseline,evaluation);
+    const fitness=compareMatchedIndependentEvaluations(baseline,evaluation,{
+      requireSeedGrowthGate:true,
+      minimumPairedSeeds:5,
+      minimumValidationSeedWinRate01:0.6,
+      minimumValidationGainLower95:0,
+      maximumHoldoutSeedRegression01:0.15,
+    });
     if(!fitness.eligible) throw new Error(`independent reflective fitness gate rejected candidate: ${fitness.reasons.join(',')}`);
     // Bind against the exact receipts persisted on the candidate; caller-supplied
     // alternate receipts cannot be used to pass this pre-promotion check.
