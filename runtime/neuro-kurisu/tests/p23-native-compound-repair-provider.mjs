@@ -88,6 +88,57 @@ const createProvider = ({ datasetPath, root, stateDirectory, candidateStore }) =
     generateSkillRevision: async request => ({ ...request.sourcePayload, revised: true }),
   });
 
+
+function createStoreWithActiveBaseline(proposal, sourcePayload) {
+  const approvedAt = Date.now();
+  const baselineProposalId = 'c'.repeat(64);
+  const baselineCandidate = {
+    candidateId: 'a'.repeat(64),
+    skillId: 'skill-a',
+    version: 1,
+    payload: baselinePayload,
+    payloadFingerprint: baselinePayloadFingerprint,
+    proposalId: baselineProposalId,
+    proposalOutcomeFingerprint: 'd'.repeat(64),
+    baseVersion: null,
+    previousActive: null,
+    status: 'active',
+    shadowObservations: Array.from({ length: 3 }, (_, index) => ({
+      runId: 'baseline-shadow-' + index,
+      evidenceFingerprint: String(index + 1).repeat(64),
+      passed: true,
+      observedAt: approvedAt - 1000 + index,
+    })),
+    createdAt: approvedAt - 1000,
+    approval: { approvedBy: 'native-provider-test', approvedAt, expectedActiveVersion: null },
+    promotedAt: approvedAt,
+  };
+  let persisted = {
+    schemaVersion: 1,
+    revision: 0,
+    active: [{
+      skillId: 'skill-a',
+      version: 1,
+      payload: baselinePayload,
+      payloadFingerprint: baselinePayloadFingerprint,
+      proposalId: baselineProposalId,
+      activatedAt: approvedAt,
+    }],
+    candidates: [baselineCandidate],
+  };
+  const persistence = {
+    read: () => structuredClone(persisted),
+    compareAndSwap(expectedRevision, next) {
+      if (persisted.revision !== expectedRevision || next.revision !== expectedRevision + 1) return false;
+      persisted = structuredClone(next);
+      return true;
+    },
+  };
+  const candidateStore = new VersionedSkillCandidateStore(persistence, () => true, () => true, () => true);
+  const candidate = candidateStore.stageCandidate(proposal, 'skill-a', sourcePayload);
+  return { candidateStore, candidate };
+}
+
 test('native provider rebuilds an authentic proposal from signed artifacts and finds its staged source', async () => {
   await temporary(async ({ root, stateDirectory, configDirectory }) => {
     const datasetPath = path.join(configDirectory, 'verified-proposal.json');
@@ -101,53 +152,8 @@ test('native provider rebuilds an authentic proposal from signed artifacts and f
     const proposal = proposeVerifiedSkillPromotion(sourceLedger, dataset.baselineMethod, dataset.candidateMethod, dataset.gateOptions);
     assert.equal(proposal.gate.accepted, true);
     assert.equal(isAuthenticVerifiedSkillPromotionProposal(proposal), true);
-    // The canonical active baseline must be present and cryptographically admitted
-    // by the store's configured verifier adapters before any source candidate is staged.
-    const approvedAt = Date.now();
-    const baselineCandidate = {
-      candidateId: 'baseline-active-v1',
-      skillId: 'skill-a',
-      version: 1,
-      payload: baselinePayload,
-      payloadFingerprint: baselinePayloadFingerprint,
-      proposalId: 'c'.repeat(64),
-      proposalOutcomeFingerprint: 'd'.repeat(64),
-      baseVersion: null,
-      previousActive: null,
-      status: 'active',
-      shadowObservations: Array.from({ length: 3 }, (_, index) => ({
-        runId: 'baseline-shadow-' + index,
-        evidenceFingerprint: String(index + 1).repeat(64),
-        passed: true,
-        observedAt: approvedAt - 1000 + index,
-      })),
-      createdAt: approvedAt - 1000,
-      approval: { approvedBy: 'native-provider-test', approvedAt, expectedActiveVersion: null },
-      promotedAt: approvedAt,
-    };
-    let persisted = {
-      schemaVersion: 1,
-      revision: 0,
-      active: [{
-        skillId: 'skill-a',
-        version: 1,
-        payload: baselinePayload,
-        payloadFingerprint: baselinePayloadFingerprint,
-        proposalId: baselineCandidate.proposalId,
-        activatedAt: approvedAt,
-      }],
-      candidates: [baselineCandidate],
-    };
-    const persistence = {
-      read: () => structuredClone(persisted),
-      compareAndSwap(expectedRevision, next) {
-        if (persisted.revision !== expectedRevision || next.revision !== expectedRevision + 1) return false;
-        persisted = structuredClone(next);
-        return true;
-      },
-    };
-    const candidateStore = new VersionedSkillCandidateStore(persistence, () => true, () => true, () => true);
-    const candidate = candidateStore.stageCandidate(proposal, 'skill-a', candidatePayload);
+    // The exact payloads in the active baseline, signed artifacts and staged source agree.
+    const { candidateStore, candidate } = createStoreWithActiveBaseline(proposal, candidatePayload);
 
     const provider = await createProvider({ datasetPath, root, stateDirectory, candidateStore });
     const inputs = await provider({ skillId: 'skill-a', repairFingerprints: ['a'.repeat(64)], repairEvidence: [] });
@@ -157,6 +163,27 @@ test('native provider rebuilds an authentic proposal from signed artifacts and f
     assert.equal(inputs.options, undefined, 'promotion gate options must not be confused with fresh candidate-fitness options');
     assert.equal(inputs.proposal.gate.accepted, true);
     await assert.rejects(inputs.evaluateRevisedCandidate({}), /native-p23-revision-requires-independent-evaluation-wrapper/);
+  });
+});
+
+test('native provider rejects a candidate with correct proposal lineage but the wrong payload fingerprint', async () => {
+  await temporary(async ({ root, stateDirectory, configDirectory }) => {
+    const datasetPath = path.join(configDirectory, 'payload-mismatch.json');
+    await writeFile(datasetPath, JSON.stringify(buildDataset()), { mode: 0o600 });
+    const sourceLedger = new VerifiedOutcomeLedger(manifest);
+    const dataset = buildDataset();
+    for (const artifact of dataset.artifacts) {
+      const result = ingestSignedOutcomeArtifact(sourceLedger, manifest, artifact, new Map([['verifier-v1', publicPem]]));
+      assert.equal(result.accepted, true);
+    }
+    const proposal = proposeVerifiedSkillPromotion(sourceLedger, dataset.baselineMethod, dataset.candidateMethod, dataset.gateOptions);
+    const wrongPayload = { schemaVersion: 1, steps: ['read', 'different-code'] };
+    const { candidateStore } = createStoreWithActiveBaseline(proposal, wrongPayload);
+    const provider = await createProvider({ datasetPath, root, stateDirectory, candidateStore });
+    await assert.rejects(
+      provider({ skillId: 'skill-a', repairFingerprints: ['b'.repeat(64)], repairEvidence: [] }),
+      /native-p23-revision-no-candidate-matches-signed-proposal-and-payload/,
+    );
   });
 });
 
