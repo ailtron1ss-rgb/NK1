@@ -1,3 +1,12 @@
+## NK1 WorkPass513 — finish strict CEF payload ownership and recovery checks (2026-10-24)
+
+- Deep-copy cognitive event payloads before appending them to the causal journal, using the existing bounded `PlainDataSnapshot` helper (12 levels, 2,048 nodes, 64 KiB string budget).
+- Reject cyclic, accessor-backed, over-deep or over-sized nested payloads before changing the event count; restore also detaches nested payload state instead of retaining input references.
+- Regressions cover nested caller mutation, hostile nested getters, cycles, top-level restore getters, malformed source controls and plain-prototype checks. The CEF ingress test is wired into the learning category's rebuild chain.
+- **Validation boundary:** code/test-chain readback only; no exact-head runtime test, typecheck or CI PASS is available.
+
+---
+
 ## NK1 WorkPass511 — detach nested cognitive evidence payloads (2026-10-24)
 
 - CognitiveEventFabric now uses the shared `PlainDataSnapshot` helper to deep-copy bounded event payloads before the ledger mutates. Nested accessors, cyclic structures, over-depth and oversized payloads are rejected without invoking nested getters.
