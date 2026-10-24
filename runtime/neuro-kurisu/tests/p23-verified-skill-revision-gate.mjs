@@ -36,6 +36,13 @@ const replayed = [...rows,
 result = evaluateSkillRevision(replayed, 'baseline', 'candidate', {minPairedTasks:8,minAbsoluteGain:.1});
 assert.equal(result.pairedN, 10, 'reused verifier receipts must not create an eleventh independent pair');
 assert.ok(result.rejectedRows >= 2, 'both replayed method receipts should be rejected');
+// The same verifier receipt cannot be rebound across methods to fabricate a matched comparison.
+const crossMethodReceipt = rows.map(x => ({...x}));
+crossMethodReceipt.find(x => x.taskId === 'task-0' && x.method === 'candidate').evidenceRef =
+  crossMethodReceipt.find(x => x.taskId === 'task-0' && x.method === 'baseline').evidenceRef;
+result = evaluateSkillRevision(crossMethodReceipt, 'baseline', 'candidate', {minPairedTasks:8,minAbsoluteGain:.1});
+assert.equal(result.pairedN, 9, 'cross-method receipt reuse must invalidate the fabricated pair');
+assert.ok(result.rejectedRows >= 1, 'reused cross-method evidence must be rejected');
 // Validation/train observations are deliberately excluded.
 result = evaluateSkillRevision(rows.map(x=>({...x,split:'train'})),'baseline','candidate');
 assert.equal(result.pairedN,0);
