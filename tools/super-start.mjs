@@ -41,8 +41,12 @@ async function shutdown(signal, exitCode = 0) {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`[super] shutting down (${signal})`);
-  await terminateChildren(children, { graceMs: 800, forceGraceMs: 500 });
-  process.exit(exitCode);
+  const outcomes = await terminateChildren(children, { graceMs: 800, forceGraceMs: 500 });
+  const survivors = outcomes.filter((outcome) => !outcome.stopped);
+  if (survivors.length) {
+    console.error(`[super] shutdown incomplete: ${survivors.length} child process group(s) may still be alive`);
+  }
+  process.exit(survivors.length && exitCode === 0 ? 1 : exitCode);
 }
 
 process.on('SIGINT', () => { void shutdown('SIGINT'); });
