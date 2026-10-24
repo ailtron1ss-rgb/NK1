@@ -1,3 +1,22 @@
+## Latest durable checkpoint — WorkPass332: live runtime kernel wiring (2026-10-24)
+
+**Working branch:** `workpass332-live-runtime-kernel-2026-10-24`, based on `workpass331-unified-cognitive-kernel-2026-10-24`. Do not use `main` as the source-code integration target; it is a release/metadata branch.
+
+- Connected the real `OrganismRuntime` execution path to `CanonicalCognitiveKernel`, reusing the runtime's existing `CognitiveEventFabric` and `UnifiedCognitiveCycle`.
+- Replaced the live `recordOperationalCycle → verifyOperationalCycle → unifiedCycle.evaluate` path with `beginDecisionCycle → completeCycle`. Existing domain systems still own perception/prediction, appraisal, attention, memory, goals, planning, action, outcome verification, learning and self-update; the kernel binds their events into one causal cycle.
+- Added `runtime/neuro-kurisu/tests/canonical-cognitive-kernel-runtime-wiring.mjs` and placed it in `.github/workflows/workpass331-unified-cognitive-kernel.yml`.
+- Updated the WorkPass331 kernel report and `CHANGELOG.md`. Code and workflow commits are pushed on the WorkPass332 branch; this new integration is **not yet validated on its exact final HEAD**.
+- The parent WorkPass331 head `5f318ad801f30ddd82150ed6be56baafc1c567a9` had successful results for its kernel and learning-validation workflows, including run [40120536327](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40120536327) and [40120536434](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40120536434). Those results do not substitute for fresh checks on WorkPass332.
+- Local execution could not be used in this environment because GitHub hostname resolution failed; use exact-head GitHub Actions as the validation source.
+
+### Next acceptance gates
+1. Verify WorkPass332's runtime-wiring and kernel contract runs complete with actual steps.
+2. Run runtime/app TypeScript checks, organism smoke, learning replay and persistence/restart regressions on the exact head.
+3. Re-run production app build and migration, then real browser/Live2D and Android/Termux voice/device integration.
+4. Keep recall/learning scores unchanged until a paired multi-seed benchmark on the same validated corpus and an immutable holdout shows measurable uplift. Keep the release marked non-production-approved until all release gates close.
+
+---
+
 ## Latest durable checkpoint — WorkPass272 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use live PR for current HEAD.
