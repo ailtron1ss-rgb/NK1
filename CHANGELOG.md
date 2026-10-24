@@ -1,3 +1,11 @@
+## NK1 WorkPass504 — finalize AILG fail-closed identity handling (2026-10-24)
+
+- Tightened the completed AILG iteration so every external-effect proposal requires approval, and the validated detached intent ID—not a reread of the caller object—is used as its ledger key.
+- AILG record/array parsers now require plain prototypes, complementing accessor rejection and bounded fields. Canonical approval/execution verification remains injected and fails closed when unavailable.
+- **Validation boundary:** static readback confirms the module and regression are wired in `test:rebuild-recovered`; this connector session did not expose actionable checks, so test/typecheck PASS remains unclaimed.
+
+---
+
 ## NK1 WorkPass503 — close AILG input identity and trusted-receipt boundaries (2026-10-24)
 
 - Removed the caller-controlled approval bypass: every external-effect intent enters `approval-required`; approval and execution receipts need injected canonical verification callbacks, otherwise the governor fails closed.
