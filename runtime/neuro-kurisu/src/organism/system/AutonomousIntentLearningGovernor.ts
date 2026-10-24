@@ -52,6 +52,31 @@ export type AILGSnapshot = {
 const finite01 = (n: number): number => Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0;
 const nonBlank = (s: unknown): s is string => typeof s === 'string' && s.trim().length > 0;
 
+const readDataRecord = (value: unknown): Record<string, unknown> | null => {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const result: Record<string, unknown> = Object.create(null);
+  for (const [key, descriptor] of Object.entries(descriptors)) {
+    if (!('value' in descriptor)) return null;
+    result[key] = descriptor.value;
+  }
+  return result;
+};
+
+const readDataArray = (value: unknown): unknown[] | null => {
+  if (!Array.isArray(value)) return null;
+  const length = Object.getOwnPropertyDescriptor(value, 'length');
+  if (!length || !('value' in length) || !Number.isSafeInteger(length.value) || length.value < 0 || length.value > 8192) return null;
+  const result: unknown[] = [];
+  for (let i = 0; i < length.value; i++) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(i));
+    if (!descriptor) { result.push(undefined); continue; }
+    if (!('value' in descriptor)) return null;
+    result.push(descriptor.value);
+  }
+  return result;
+};
+
 export class AutonomousIntentLearningGovernor {
   private readonly decisions = new Map<string, AILGDecision>();
   private readonly outcomes = new Map<string, AILGOutcome>();
@@ -206,48 +231,51 @@ export class AutonomousIntentLearningGovernor {
     this.outcomes.clear();
     this.executionReceipts.clear();
     this.approvalReceipts.clear();
-    if (raw?.version !== 1 || !Array.isArray(raw.decisions)) return;
+    const snapshot = readDataRecord(raw);
+    if (snapshot?.version !== 1) return;
+    const decisionRows = readDataArray(snapshot.decisions);
+    if (!decisionRows) return;
 
     const allowedStatuses = new Set<AILGDecision['status']>(['act', 'defer', 'reject', 'approval-required']);
-    for (const value of raw.decisions.slice(-2048)) {
-      if (!value || !nonBlank(value.intentId) || value.intentId.length > 180 ||
-          !nonBlank(value.reason) || value.reason.length > 160 ||
-          !allowedStatuses.has(value.status) ||
-          !Number.isFinite(value.score01) || value.score01 < 0 || value.score01 > 1 ||
-          !Number.isFinite(value.selectedAt) || value.selectedAt < 0 ||
-          this.decisions.has(value.intentId)) continue;
-      this.decisions.set(value.intentId, {
-        intentId: value.intentId,
-        status: value.status,
-        score01: value.score01,
-        reason: value.reason,
-        selectedAt: value.selectedAt,
-      });
+    for (const item of decisionRows.slice(-2048)) {
+      const value = readDataRecord(item);
+      if (!value) continue;
+      const intentId = value.intentId;
+      const reason = value.reason;
+      const status = value.status as AILGDecision['status'];
+      const score01 = value.score01;
+      const selectedAt = value.selectedAt;
+      if (!nonBlank(intentId) || intentId.length > 180 ||
+          !nonBlank(reason) || reason.length > 160 ||
+          !allowedStatuses.has(status) ||
+          typeof score01 !== 'number' || !Number.isFinite(score01) || score01 < 0 || score01 > 1 ||
+          typeof selectedAt !== 'number' || !Number.isFinite(selectedAt) || selectedAt < 0 ||
+          this.decisions.has(intentId)) continue;
+      this.decisions.set(intentId, { intentId, status, score01, reason, selectedAt });
     }
 
     const validIds = new Set(this.decisions.keys());
-    if (Array.isArray(raw.approvedIntentIds)) {
-      for (const id of raw.approvedIntentIds.slice(-2048)) {
-        const decision = validIds.has(id) ? this.decisions.get(id) : undefined;
-        if (decision?.status === 'act' && nonBlank(id)) this.approvalReceipts.set(id, 'restored-approval-reference');
-      }
+    const approvedIds = readDataArray(snapshot.approvedIntentIds) ?? [];
+    for (const item of approvedIds.slice(-2048)) {
+      if (nonBlank(item) && validIds.has(item) && this.decisions.get(item)?.status === 'act') this.approvalReceipts.set(item, 'restored-approval-reference');
     }
-    if (Array.isArray(raw.executedIntentIds)) {
-      for (const id of raw.executedIntentIds.slice(-2048)) {
-        const decision = validIds.has(id) ? this.decisions.get(id) : undefined;
-        if (decision?.status === 'act' && nonBlank(id)) this.executionReceipts.set(id, 'restored-execution-reference');
-      }
+    const executedIds = readDataArray(snapshot.executedIntentIds) ?? [];
+    for (const item of executedIds.slice(-2048)) {
+      if (nonBlank(item) && validIds.has(item) && this.decisions.get(item)?.status === 'act') this.executionReceipts.set(item, 'restored-execution-reference');
     }
-    if (Array.isArray(raw.outcomes)) {
-      for (const value of raw.outcomes.slice(-2048)) {
-        if (!value || !validIds.has(value.intentId) ||
-            !this.executionReceipts.has(value.intentId) ||
-            this.outcomes.has(value.intentId) ||
-            !nonBlank(value.evidence) || value.evidence.length > 1000 ||
-            !Number.isFinite(value.observedBenefit01) || value.observedBenefit01 < 0 || value.observedBenefit01 > 1 ||
-            !Number.isFinite(value.observedAt) || value.observedAt < 0) continue;
-        this.outcomes.set(value.intentId, { ...value });
-      }
+    const outcomeRows = readDataArray(snapshot.outcomes) ?? [];
+    for (const item of outcomeRows.slice(-2048)) {
+      const value = readDataRecord(item);
+      if (!value) continue;
+      const intentId = value.intentId;
+      const evidence = value.evidence;
+      const observedBenefit01 = value.observedBenefit01;
+      const observedAt = value.observedAt;
+      if (!nonBlank(intentId) || !validIds.has(intentId) || !this.executionReceipts.has(intentId) ||
+          this.outcomes.has(intentId) || !nonBlank(evidence) || evidence.length > 1000 ||
+          typeof observedBenefit01 !== 'number' || !Number.isFinite(observedBenefit01) || observedBenefit01 < 0 || observedBenefit01 > 1 ||
+          typeof observedAt !== 'number' || !Number.isFinite(observedAt) || observedAt < 0) continue;
+      this.outcomes.set(intentId, { intentId, observedBenefit01, evidence, observedAt });
     }
   }
 }
