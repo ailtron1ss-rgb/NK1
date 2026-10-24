@@ -1,3 +1,9 @@
+## NK1 WorkPass527 — add reality-corroboration precondition to consequential skill promotion (2026-10-24)
+
+- Added a P23LearningEngine promotion entry point that requires the ledger's confidence-qualified independent-corroboration assessment before invoking the existing independent evaluation, signed shadow evidence, and store approval path.
+- Rejects missing/malformed assessments, fewer than two qualified independent external sources, or an assessment that does not explicitly allow independent promotion; existing promotion APIs and their compatibility behavior remain unchanged.
+- Added regression cases proving one qualified source cannot reach store approval. The assessment must be obtained by the caller from the canonical RealityEvidenceLedger for the candidate's target claim; hosted CI is not yet confirmed.
+
 ## NK1 WorkPass526 — preserve all corroborating events across restore (2026-10-24)
 
 - Corrected the observer-ledger bridge regression after WorkPass524 expanded the fixture from one observation to three distinct source events.
