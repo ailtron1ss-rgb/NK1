@@ -29,6 +29,29 @@ const makeEvaluation = async (payload, environmentFingerprint = 'a'.repeat(64), 
 
 const baseline = await makeEvaluation({ skill: 'baseline', version: 1 }, 'a'.repeat(64), { runPrefix: 'baseline-', observed: ['open'] });
 const candidate = await makeEvaluation({ skill: 'candidate', version: 2 }, 'a'.repeat(64), { runPrefix: 'candidate-' });
+const withSyntheticExperimentAuthority = (evaluation, method) => {
+  const copy = structuredClone(evaluation);
+  copy.evaluation.provenance.experimentAuthority = {
+    manifestFingerprint: 'c'.repeat(64),
+    validationPlanFingerprint: 'd'.repeat(64),
+    holdoutPlanFingerprint: 'e'.repeat(64),
+    method,
+    attempt: 1,
+  };
+  for (const binding of copy.evaluation.provenance.runBindings) {
+    binding.plannedRunId = `scheduled-${method}-${binding.trialId}`;
+  }
+  copy.evaluationFingerprint = digest(copy.evaluation);
+  return copy;
+};
+const baselineWithAuthority = withSyntheticExperimentAuthority(baseline, 'baseline');
+const candidateWithAuthority = withSyntheticExperimentAuthority(candidate, 'candidate');
+
+assert.throws(
+  () => compareMatchedIndependentEvaluations(baseline, candidate, { requireSeedGrowthGate: true }),
+  /experiment-authority-required/,
+  'strict growth analysis must reject envelopes without canonical experiment provenance',
+);
 const comparison = compareMatchedIndependentEvaluations(baseline, candidate);
 assert.equal(comparison.matchedTrialCount, 2);
 assert.equal(comparison.matchedValidationTrialCount, 1);
@@ -38,7 +61,7 @@ assert.equal(comparison.planFingerprint, baseline.evaluation.provenance.planFing
 assert.ok(comparison.validationGain01 > 0, 'matched scoring should preserve the measured validation improvement');
 assert.ok(comparison.reasons.includes('holdout-task-coverage-insufficient'), 'one holdout task must not satisfy the existing minimum holdout gate');
 
-const insufficientSeedComparison = compareMatchedIndependentEvaluations(baseline, candidate, {
+const insufficientSeedComparison = compareMatchedIndependentEvaluations(baselineWithAuthority, candidateWithAuthority, {
   requireSeedGrowthGate: true,
 });
 assert.ok(insufficientSeedComparison.reasons.includes('independent-evaluation-validation-paired-seed-count-insufficient'));
@@ -95,7 +118,9 @@ const growthCandidate = await makeEvaluation(
       : ['open', 'summarize'],
   },
 );
-const growth = compareMatchedIndependentEvaluations(growthBaseline, growthCandidate, {
+const growthWithAuthorityBaseline = withSyntheticExperimentAuthority(growthBaseline, 'baseline');
+const growthWithAuthorityCandidate = withSyntheticExperimentAuthority(growthCandidate, 'candidate');
+const growth = compareMatchedIndependentEvaluations(growthWithAuthorityBaseline, growthWithAuthorityCandidate, {
   requireSeedGrowthGate: true,
 });
 assert.equal(growth.seedGrowthGateApplied, true);
@@ -124,9 +149,11 @@ const oneSeedRegression = await makeEvaluation(
     failedTaskIds: ['holdout-a', 'holdout-b'],
   },
 );
-const regressionGate = compareMatchedIndependentEvaluations(growthBaseline, oneSeedRegression, {
-  requireSeedGrowthGate: true,
-});
+const regressionGate = compareMatchedIndependentEvaluations(
+  growthWithAuthorityBaseline,
+  withSyntheticExperimentAuthority(oneSeedRegression, 'candidate'),
+  { requireSeedGrowthGate: true },
+);
 assert.ok(regressionGate.holdoutDelta01 > -0.02, 'aggregate holdout score should not expose this isolated regression by itself');
 assert.ok(
   regressionGate.reasons.includes('independent-evaluation-holdout-seed-regression-exceeds-tolerance'),
