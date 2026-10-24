@@ -1,3 +1,10 @@
+## NK1 WorkPass526 — align bilingual autobiographical recall intent (2026-10-24)
+
+- Fixed intent routing for Russian recollection terms such as “воспоминания”, “вспомин…”, “что мы обсуждали” and “прошлый разговор”, plus English prompts about prior conversations.
+- Added a higher-priority identity branch for “what do you remember about me?” / “что ты помнишь обо мне?” so profile recall is not misrouted as an episode query.
+- Extended the existing intent regression with bilingual phrasing and end-to-end tied-lexical ranking checks. The canonical MemoryOS2 owner remains unchanged; no parallel memory store or dependency was introduced.
+- **Validation boundary:** source, regression and changelog are committed; exact-head runtime execution and TypeScript typecheck have not been run or verified in this connector-only pass.
+
 ## NK1 WorkPass525 — close memory subsystem persistence gap (2026-10-24)
 
 - The canonical memory runtime snapshot now includes retention-economy learning, causal evidence lineage, the autobiographical causal graph, and memory-to-world replay evidence.
