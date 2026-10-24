@@ -200,12 +200,17 @@ assert.equal(restoredIncompleteFinal?.score01, 0);
 // Guard the live physical-action path against cancellation that arrives after
 // planning but before actuation.
 const runtimeSource = await readFile(new URL('../src/organism/core/OrganismRuntime.ts', import.meta.url), 'utf8');
+const clockSchedulerSource = await readFile(new URL('../src/organism/system/RuntimeClockScheduler.ts', import.meta.url), 'utf8');
+const cognitiveEventFabricSource = await readFile(new URL('../src/organism/system/CognitiveEventFabric.ts', import.meta.url), 'utf8');
 const abortGate = runtimeSource.indexOf("throwIfAborted(options.signal, 'before-embodied-action');");
 const actionDispatch = runtimeSource.indexOf('this.embodiedActions.execute(physicalAction,');
 assert.ok(abortGate >= 0 && actionDispatch > abortGate, 'the abort gate must precede embodied action dispatch');
 assert.match(runtimeSource, /causalDomainClosureLedger\.failPending\(/);
 assert.match(runtimeSource, /causalDomainClosureLedger\.failLatest\(/);
 assert.match(runtimeSource, /runtime\.step\.aborted/);
+assert.match(runtimeSource, /clockScheduler\.start\('p23-compound-repair-revision'\)/, 'the optional P23 background revision loop must be started when configured');
+assert.match(clockSchedulerSource, /'p23-compound-repair-revision'/, 'scheduler must recognize the runtime-registered P23 clock');
+assert.equal((cognitiveEventFabricSource.match(/verifyOperationalCycle\(/g) ?? []).length, 1, 'there must be one canonical operational lineage verifier');
 assert.ok(runtimeSource.includes('cognitiveCycleComplete,\n          cognitiveCycleTick: unifiedCycle.lastTick'), 'runtime closure must consume the unified cycle result');
 assert.ok(runtimeSource.includes('durableStateAligned: domainAfter.lastCheckpointTick === domainAfter.tick && Boolean(domainAfter.replaySignature),\n          cognitiveCycleComplete,'), 'causal closure must consume the unified cycle result');
 
