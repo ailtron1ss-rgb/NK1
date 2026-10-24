@@ -1,3 +1,11 @@
+## NK1 WorkPass528 — sanitize P26 restore diagnostics and ground replay fixtures (2026-10-24)
+
+- `ParametricPolicyLearner.restore()` now validates the update counter, finite bounded metrics, training timestamp and literal boolean freeze state, in addition to existing weight/bias sanitization.
+- Corrected replay-diversity fixtures to include the post-action state attribution required by `recordOutcome()`; ungrounded transitions are intentionally rejected before replay.
+- Validation remains pending on the exact PR head; no learning-uplift or whole-release claim is made.
+
+---
+
 ## NK1 WorkPass527 — make P26 training input validation fail closed and batches atomic (2026-10-24)
 
 - `ParametricPolicyLearner.train()` and `trainFeatures()` now reject non-finite targets, learning rates, sample weights, feature vectors, invalid actions, malformed state needs and non-finite state features before training or diagnostics can mutate.
