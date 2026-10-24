@@ -305,13 +305,13 @@ export class RuntimeClosureLedger {
     else if (record.status === 'DEGRADED') this.state.degraded += record.checks.filter((check) => check.detail?.startsWith('degraded')).length || 1;
     else this.state.failures += record.checks.filter((check) => !check.ok).length || 1;
     this.state.lastTick = record.tick;
-    // Durable receipts and restart verification are bookkeeping, not a new
-    // cognitive attempt. They must not erase FAIL from the last cycle; only
-    // a later step/failure record is allowed to replace the terminal cycle status.
-    const preserveFailedCycle = (record.phase === 'durable' || record.phase === 'restore')
-      && this.state.lastStatus === 'FAIL';
-    if (!preserveFailedCycle) this.state.lastStatus = record.status;
-    if (updateBehavior && !preserveFailedCycle) this.state.lastBehaviorHash = record.behaviorHash;
+    // Durable receipts and restore verification are bookkeeping, not a new
+    // cognitive attempt. They must not erase a terminal FAIL or DEGRADED status;
+    // only a later actual step may replace the preceding cycle's result.
+    const preserveTerminalStatus = (record.phase === 'durable' || record.phase === 'restore')
+      && this.state.lastStatus !== 'PASS';
+    if (!preserveTerminalStatus) this.state.lastStatus = record.status;
+    if (updateBehavior && !preserveTerminalStatus) this.state.lastBehaviorHash = record.behaviorHash;
     this.state.records = [...this.state.records, record].slice(-24);
   }
 }
