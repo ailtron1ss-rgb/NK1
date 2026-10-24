@@ -1,3 +1,9 @@
+## NK1 WorkPass534 — enforce canonical memory byte budget on restore (2026-10-24)
+
+- Fixed `MemoryOS2.restore()` so it recomputes the normalized serialized footprint and re-enforces the saved/effective byte budget after rebuilding indexes.
+- Added a restore-boundary regression with an intentionally stale `estimatedBytes` value and an oversized snapshot; it requires eligible records to be evicted, used bytes to stay within budget, and indexes to remain consistent.
+- The focused regression is included in the existing canonical-store CI step. CI verification for this change is pending; no passing result is claimed yet.
+
 ## NK1 WorkPass533 — align MemorySubsystemRuntime snapshot and restore shapes (2026-10-24)
 
 - Fixed the restore adapter so the subsystem's own snapshot can be restored directly, while retaining the organism checkpoint layout (memory / advanced / system).
