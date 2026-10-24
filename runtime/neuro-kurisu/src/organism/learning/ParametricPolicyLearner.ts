@@ -95,6 +95,16 @@ export class ParametricPolicyLearner{
       const bias=Number(this.state.bias[a]??0);
       this.state.bias[a]=Number.isFinite(bias)?Math.max(-4,Math.min(4,bias)):0;
     }
+    const finiteMetric=(value:unknown,fallback:number,min=0,max=1):number=>
+      typeof value==='number'&&Number.isFinite(value)?Math.max(min,Math.min(max,value)):fallback;
+    this.state.updates=typeof raw?.updates==='number'&&Number.isSafeInteger(raw.updates)&&raw.updates>=0?raw.updates:0;
+    this.state.tdAbsMean01=finiteMetric(raw?.tdAbsMean01,d.tdAbsMean01);
+    this.state.trainRewardMean01=finiteMetric(raw?.trainRewardMean01,d.trainRewardMean01);
+    this.state.explorationRate01=finiteMetric(raw?.explorationRate01,d.explorationRate01);
+    this.state.lastLoss01=finiteMetric(raw?.lastLoss01,d.lastLoss01);
+    this.state.lastTrainedAt=typeof raw?.lastTrainedAt==='number'&&Number.isFinite(raw.lastTrainedAt)&&raw.lastTrainedAt>=0?raw.lastTrainedAt:d.lastTrainedAt;
+    this.state.frozen=raw?.frozen===true;
+    this.state.version=1;
   }
 
   snapshot():ParametricPolicyState{return structuredClone(this.state);}

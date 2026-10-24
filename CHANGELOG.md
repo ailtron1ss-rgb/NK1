@@ -1,3 +1,13 @@
+## NK1 WorkPass495 — sanitize restored learner state and close runtime boundary gaps
+
+- P26 restore now sanitizes every persisted diagnostic and counter, restores `frozen` only from literal boolean `true`, and resets negative/invalid update counts rather than preserving NaN timestamps or diagnostic metrics.
+- Fixed the remaining Node.js 24 strip-only blocker in `AtomicFileTrustedSkillShadowRunRegistry` by replacing its constructor parameter property with an explicit readonly field.
+- Corrected the reflective payload boundary test to count canonical JSON bytes (including the two quote bytes around a string); it now verifies exact-limit acceptance and one-byte-over rejection without weakening the 256 KiB cap.
+- Updated the causal-experience integration fixture to include the observed post-action action/success fields now required for runtime-grounded learning evidence.
+- **Validation boundary:** committed to `feature/experiments`; exact-head CI will decide which remaining integration seams need repair.
+
+---
+
 ## NK1 WorkPass493 — validate learning inputs and preserve replay controls
 
 - Added fail-closed validation before P26 policy updates: reject non-finite target/rate/sample weights, invalid actions, malformed needs/state features and non-finite feature vectors instead of silently clamping them into training labels.
