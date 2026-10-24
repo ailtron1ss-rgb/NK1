@@ -4,7 +4,7 @@
 - The projector falls back to the canonical `MemorySubsystemRuntime` for memory-owned components when legacy root aliases are absent.
 - `MemorySubsystemRuntime.restoreFromPersisted` now accepts those components from the durable `system` projection as well as legacy memory/advanced shapes.
 - Added `test:memory-causal-persistence-projection`: exercise runtime state → checkpoint projection → new runtime restore.
-- **Validation boundary:** implementation and test are committed; the regression and runtime typecheck have not been executed in this pass.
+- **Validation:** GitHub Actions run [#40125762388](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40125762388) passed both persistence regressions on commit `7f1f9bd09b71a7428ed1b42cc9e76f062833bbd1`; the runtime typecheck and full regression suite have not been run.
 
 ## NK1 WorkPass525 — close memory subsystem persistence gap (2026-10-24)
 
