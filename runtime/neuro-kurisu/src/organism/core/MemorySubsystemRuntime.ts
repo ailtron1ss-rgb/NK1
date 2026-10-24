@@ -84,18 +84,6 @@ export class MemorySubsystemRuntime {
     );
     this.memoryOS.restore(canonicalMemorySnapshot);
     this.fabric.restore(advanced.memoryFabric);
-    // Compatibility rows are a lossy view of MemoryOS2. Import them only for legacy
-    // checkpoints that predate the canonical snapshot; otherwise each restart would
-    // recreate derived copies and dilute canonical provenance/epistemic metadata.
-    if (!hasCanonicalMemorySnapshot) {
-      this.fabric.consolidateCompatibility(
-        this.memories.snapshot({clone:false}),
-        96,
-        this.memoryLifecycleAuthority.snapshot().lastTick >= 0
-          ? this.memoryLifecycleAuthority.snapshot().lastTick
-          : 0,
-      );
-    }
     this.unifiedMemory.restore(advanced.unifiedMemory);
     this.p47MemoryMind.restore(advanced.p47);
     this.p59MemoryOperatingSystem.restore(advanced.p59MemoryOperatingSystem);
@@ -108,6 +96,16 @@ export class MemorySubsystemRuntime {
     this.hippocampalFormation.restore(advanced.hippocampalFormation);
     this.consolidationController.restore(advanced.consolidationController);
     this.memoryLifecycleAuthority.restore(advanced.memoryLifecycleAuthority);
+    // Compatibility migration uses the restored lifecycle tick, not the new instance's
+    // default -1 state. Legacy checkpoints remain importable without rewriting current snapshots.
+    if (!hasCanonicalMemorySnapshot) {
+      const restoredTick=this.memoryLifecycleAuthority.snapshot().lastTick;
+      this.fabric.consolidateCompatibility(
+        this.memories.snapshot({clone:false}),
+        96,
+        restoredTick >= 0 ? restoredTick : 0,
+      );
+    }
     // These evidence/causal projections live inside the canonical memory subsystem.
     // Persist them alongside the other advanced memory state so restart does not
     // erase retention policy learning, source lineage, life-graph links, or replay evidence.
