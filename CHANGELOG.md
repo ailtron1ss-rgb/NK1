@@ -2117,6 +2117,8 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 ## [2026-10-24] Operation Omega — Hexis source transfer and review-inbox adaptation
 
+- Refined P23 restore recovery: a non-empty sanitized dedupe cache remains authoritative and newest-first; valid experience/replay rows rebuild the cache only when its stored counterpart has no usable IDs.
+
 - Fixed P23 restore-cache precedence: persisted newest-first processed/replayed trace IDs now win over IDs reconstructed from experience/replay rows, while missing cache entries are still repaired from the rows.
 
 - Reordered Hermes/P23 evidence binding so signed shadow receipts are cryptographically verified before their task/outcome fields are used; tampered payloads now report `signed-shadow-evidence-not-trusted` rather than being misclassified as an ordinary outcome mismatch.
