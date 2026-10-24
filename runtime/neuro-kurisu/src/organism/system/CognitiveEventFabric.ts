@@ -143,9 +143,40 @@ export class CognitiveEventFabric {
   }
 
   append(input:{id?:string;tick:number;stage:CognitiveStage;source:string;parentIds?:string[];external?:boolean;confidence01?:number;payload?:Record<string,unknown>;at?:number}):CognitiveEventNode{
-    const at=Number.isFinite(input.at)?Number(input.at):Date.now();
+    // Validate the whole ingress envelope before mutating the rolling ledger.
+    // Rejected telemetry must not advance counters or prune receipt replay guards.
+    if(!isRecord(input)) throw new Error('invalid-cognitive-event-envelope');
+    const ownData=(key:string):unknown=>{
+      const descriptor=Object.getOwnPropertyDescriptor(input,key);
+      if(!descriptor) return undefined;
+      if(!('value' in descriptor)) throw new Error('cognitive-event-accessor-rejected');
+      return descriptor.value;
+    };
+    const rawTick=ownData('tick');
+    if(typeof rawTick!=='number'||!Number.isFinite(rawTick)||rawTick<0||rawTick>Number.MAX_SAFE_INTEGER) throw new Error('invalid-cognitive-event-tick');
+    const rawStage=ownData('stage');
+    if(typeof rawStage!=='string'||!COGNITIVE_STAGES.has(rawStage as CognitiveStage)) throw new Error('invalid-cognitive-event-stage');
+    const rawSource=ownData('source');
+    if(typeof rawSource!=='string'||!rawSource.trim()||rawSource.length>120||/[\\u0000-\\u001f\\u007f]/.test(rawSource)) throw new Error('invalid-cognitive-event-source');
+    const rawAt=ownData('at');
+    if(rawAt!==undefined&&(typeof rawAt!=='number'||!Number.isFinite(rawAt)||rawAt<0)) throw new Error('invalid-cognitive-event-time');
+    const rawConfidence=ownData('confidence01');
+    if(rawConfidence!==undefined&&(typeof rawConfidence!=='number'||!Number.isFinite(rawConfidence)||rawConfidence<0||rawConfidence>1)) throw new Error('invalid-cognitive-event-confidence');
+    const rawExternal=ownData('external');
+    if(rawExternal!==undefined&&typeof rawExternal!=='boolean') throw new Error('invalid-cognitive-event-external-flag');
+    const rawParents=ownData('parentIds');
+    if(rawParents!==undefined&&(!Array.isArray(rawParents)||rawParents.length>12||rawParents.some(parent=>typeof parent!=='string'||!parent.trim()||parent.length>180||/[\\u0000-\\u001f\\u007f]/.test(parent)))) throw new Error('invalid-cognitive-event-parent-ids');
+    const rawPayload=ownData('payload');
+    if(rawPayload!==undefined){
+      if(!isRecord(rawPayload)||Object.getPrototypeOf(rawPayload)!==Object.prototype) throw new Error('invalid-cognitive-event-payload');
+      for(const [key,descriptor] of Object.entries(Object.getOwnPropertyDescriptors(rawPayload))){
+        if(!('value' in descriptor)) throw new Error('cognitive-event-payload-accessor-rejected');
+        if(!key||key.length>120||/[\\u0000-\\u001f\\u007f]/.test(key)) throw new Error('invalid-cognitive-event-payload-key');
+      }
+    }
+    const at=rawAt===undefined?Date.now():rawAt;
     const suppliedId=typeof input.id==='string'?input.id.trim():'';
-    if(input.id!==undefined&&(!suppliedId||suppliedId.length>180||/[\u0000-\u001f\u007f]/.test(suppliedId))) throw new Error('invalid-cognitive-event-id');
+    if(input.id!==undefined&&(!suppliedId||suppliedId.length>180||/[\\u0000-\\u001f\\u007f]/.test(suppliedId))) throw new Error('invalid-cognitive-event-id');
     if(suppliedId){
       const prior=this.events.find(event=>event.id===suppliedId);
       if(prior){
