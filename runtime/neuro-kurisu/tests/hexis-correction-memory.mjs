@@ -97,6 +97,7 @@ engine.recordReviewedCorrection(makeObservation('engine-2'));
 const engineSnapshot = engine.snapshot();
 assert.equal(engineSnapshot.correctionRules.observations.length, 1);
 const restoredEngine = new P23LearningEngine();
+restoredEngine.configureCorrectionReviewVerifier(() => true);
 restoredEngine.restore(engineSnapshot);
 assert.equal(restoredEngine.snapshot().correctionRules.observations.length, 1);
 assert.equal(restoredEngine.correctionRules().length, 1);
