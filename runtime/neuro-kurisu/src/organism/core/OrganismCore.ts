@@ -259,7 +259,7 @@ import { CentralSubjectDynamics, defaultCentralSubjectDynamics } from '../cognit
 import { DeviceEvidenceLedger, defaultDeviceEvidence } from '../body/DeviceEvidenceLedger.ts';
 import { LifelongDevelopmentSystem, defaultLifelongDevelopment } from '../learning/LifelongDevelopmentSystem.ts';
 import { P27NeuralWorldFoundation, defaultP27NeuralWorld } from '../cognition/P27NeuralWorldFoundation.ts';
-import { P36AutonomousSelfDevelopmentEngine, P36_EXTERNAL_EVIDENCE_TOOL_ID, defaultP36SelfDevelopment, developmentEvidenceVerificationInput } from '../learning/P36AutonomousSelfDevelopment.ts';
+import { P36AutonomousSelfDevelopmentEngine, P36_EXTERNAL_EVIDENCE_TOOL_ID, defaultP36SelfDevelopment, developmentEvidenceVerificationInput, developmentalOutcomeVerificationInput } from '../learning/P36AutonomousSelfDevelopment.ts';
 import { defaultP37EmbodiedSensorium, type P37Input, type P37SemanticWorldState } from '../body/P37EmbodiedSensorium.ts';
 import { defaultP38Research } from '../learning/P38AutonomousCausalResearch.ts';
 import { defaultP39ContinuousLife } from '../learning/P39ContinuousArtificialLife.ts';
@@ -9974,17 +9974,11 @@ export class OrganismCore {
                 if (p36Experiment)
                     this.memorySubsystem.events.append(makeEvent('self-development-experiment', state.tick, { ...p36Experiment, source: 'p36-safe-sandbox' } as any));
             }
-            const p36Maturity = this.developmentalNeural.p36SelfDevelopment.observeDevelopmentalOutcome({
-                area: activeHypothesis?.area ?? p36State.curriculum.focus,
-                outcome01: gatedSuccess01,
-                verified: verifiedNow,
-                delayed: Boolean(state.tick - trace.stateBefore.tick >= 6),
-                transfer: Boolean(this.developmentalNeural.developmentalSynthesis.diagnostics().abstraction01 > .18),
-                at: state.at
-            });
-            if (verifiedNow && (p36Maturity.stage === 'consolidation' || p36Maturity.stage === 'stable')) {
-                this.memorySubsystem.events.append(makeEvent('developmental-executive', state.tick, { source: 'p36-developmental-maturity', ...p36Maturity } as any));
-            }
+            // Generic reward/world-transition booleans are useful to other learning loops, but
+            // they are not independent developmental-maturity receipts. P36 maturity is updated
+            // only by the reserved ActionGateway evaluator route below; do not repeatedly submit
+            // ordinary feedback as a rejected "verified" receipt.
+            void activeHypothesis;
             this.persisted.facets.learning.p36 = this.developmentalNeural.p36SelfDevelopment.snapshot();
             const p2700AfterPolicyBias = this.cognitiveRuntime.adaptivePolicy.bias(p2700Context, trace.selected.action, trace.selected.predictedUtility ?? .5);
             const p2700PolicyDelta = clamp(Math.abs(p2700AfterPolicyBias - p2700BeforePolicyBias) * 2.4);
@@ -11848,30 +11842,61 @@ export class OrganismCore {
             const p36Proof = result.ok && result.verified && result.outcomeClass === 'executed-verified' &&
                 decisionLinkedExternalPostcondition ? result.verification : undefined;
             try {
-                const p36EvidenceResult = this.developmentalNeural.p36SelfDevelopment.recordExternalEvidence({
-                    ...(input as any),
-                    toolId: id,
-                    executionId: result.executionId,
-                    decisionId: suppliedDecisionId,
-                    verification: p36Proof,
-                });
-                this.persisted.facets.learning.p36 = this.developmentalNeural.p36SelfDevelopment.snapshot();
-                this.memorySubsystem.events.append(makeEvent(
-                    p36EvidenceResult.promoted ? 'self-development-evidence-promoted' : 'self-development-evidence-recorded',
-                    this.persisted.state.tick,
-                    {
-                        source: 'action-gateway-p36-independent-evaluator',
+                if ((input as any)?.kind === 'developmental-outcome') {
+                    const before = this.developmentalNeural.p36SelfDevelopment.developmentalCertification();
+                    const maturity = this.developmentalNeural.p36SelfDevelopment.observeDevelopmentalOutcome({
+                        ...(input as any),
                         toolId: id,
                         executionId: result.executionId,
-                        decisionLinked: Boolean(p36Proof),
-                        status: p36EvidenceResult.status,
-                        independentCount: p36EvidenceResult.independentCount,
-                        distinctContexts: p36EvidenceResult.distinctContexts,
-                        distinctDelays: p36EvidenceResult.distinctDelays,
-                        promoted: p36EvidenceResult.promoted,
-                        unverifiedEvidenceAttempts: this.developmentalNeural.p36SelfDevelopment.diagnostics().unverifiedEvidenceAttempts,
-                    } as any,
-                ));
+                        decisionId: suppliedDecisionId,
+                        verification: p36Proof,
+                    });
+                    this.persisted.facets.learning.p36 = this.developmentalNeural.p36SelfDevelopment.snapshot();
+                    const after = this.developmentalNeural.p36SelfDevelopment.developmentalCertification();
+                    const counted = after.verifiedOutcomeCount > before.verifiedOutcomeCount;
+                    this.memorySubsystem.events.append(makeEvent(
+                        counted ? 'self-development-maturity-evidence-accepted' : 'self-development-maturity-evidence-rejected',
+                        this.persisted.state.tick,
+                        {
+                            source: 'action-gateway-p36-independent-evaluator',
+                            toolId: id,
+                            executionId: result.executionId,
+                            decisionLinked: Boolean(p36Proof),
+                            stage: after.stage,
+                            score01: after.score01,
+                            verifiedOutcomeCount: after.verifiedOutcomeCount,
+                            retainedOutcomeCount: after.retainedOutcomeCount,
+                            transferredOutcomeCount: after.transferredOutcomeCount,
+                            certified: after.certified,
+                            rejectedMaturityReceipts: this.developmentalNeural.p36SelfDevelopment.diagnostics().rejectedMaturityReceipts,
+                        } as any,
+                    ));
+                } else {
+                    const p36EvidenceResult = this.developmentalNeural.p36SelfDevelopment.recordExternalEvidence({
+                        ...(input as any),
+                        toolId: id,
+                        executionId: result.executionId,
+                        decisionId: suppliedDecisionId,
+                        verification: p36Proof,
+                    });
+                    this.persisted.facets.learning.p36 = this.developmentalNeural.p36SelfDevelopment.snapshot();
+                    this.memorySubsystem.events.append(makeEvent(
+                        p36EvidenceResult.promoted ? 'self-development-evidence-promoted' : 'self-development-evidence-recorded',
+                        this.persisted.state.tick,
+                        {
+                            source: 'action-gateway-p36-independent-evaluator',
+                            toolId: id,
+                            executionId: result.executionId,
+                            decisionLinked: Boolean(p36Proof),
+                            status: p36EvidenceResult.status,
+                            independentCount: p36EvidenceResult.independentCount,
+                            distinctContexts: p36EvidenceResult.distinctContexts,
+                            distinctDelays: p36EvidenceResult.distinctDelays,
+                            promoted: p36EvidenceResult.promoted,
+                            unverifiedEvidenceAttempts: this.developmentalNeural.p36SelfDevelopment.diagnostics().unverifiedEvidenceAttempts,
+                        } as any,
+                    ));
+                }
             } catch (error) {
                 // Evidence collection is fail-closed but should not misclassify a read-only
                 // evaluator failure as an uncertain external side effect.
@@ -11882,6 +11907,7 @@ export class OrganismCore {
                         source: 'action-gateway-p36-independent-evaluator',
                         toolId: id,
                         executionId: result.executionId,
+                        evidenceKind: (input as any)?.kind === 'developmental-outcome' ? 'developmental-outcome' : 'external-evidence',
                         decisionLinked: Boolean(p36Proof),
                         reason: String((error as any)?.message ?? 'p36-evidence-rejected').replace(/[\r\n\t]+/g, ' ').slice(0, 180),
                     } as any,
