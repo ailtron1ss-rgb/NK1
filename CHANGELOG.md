@@ -1,3 +1,12 @@
+## NK1 WorkPass493 — workflow aliases and signed evidence replay safety (2026-10-24)
+
+- Added the missing package-script aliases referenced by WorkPass291/292/293/294 workflows.
+- Signed outcome artifact re-ingestion now distinguishes exact in-memory duplicate attempts from recovery of an exact signed artifact into a restored ledger: repeat live attempts are rejected, while process-local trust receipts can be re-established after restart.
+- Corrected the P26 invalid-input regression to assert that non-finite training controls fail closed without mutating weights, biases or update counters.
+- Earlier WorkPass491 cognitive-cycle changes and official Node-type setup are now under fresh CI.
+
+---
+
 ## NK1 WorkPass491 — regression contracts match fail-closed behavior (2026-10-24)
 
 - Added the missing `test:workpass294:correlated-postcondition` npm alias referenced by the workflow, so the postcondition regression proceeds after its semantic typecheck.
