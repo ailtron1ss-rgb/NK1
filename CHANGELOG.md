@@ -1,3 +1,13 @@
+## NK1 WorkPass503 — close AILG input identity and trusted-receipt boundaries (2026-10-24)
+
+- Removed the caller-controlled approval bypass: every external-effect intent enters `approval-required`; approval and execution receipts need injected canonical verification callbacks, otherwise the governor fails closed.
+- Restore does not trust serialized receipt IDs alone. Persisted approval/execution identity is accepted only when the host-provided trusted registry callbacks revalidate it.
+- Input and snapshot parsing rejects accessors and non-plain prototypes, bounds identifiers/evidence strings, and prevents the governor from using the original untrusted input object as a map key after validation.
+- This is still an arbitration/evidence module, not yet connected to the production ActionGateway. Real verifier/supervisor callbacks and runtime wiring remain required.
+- **Validation boundary:** code/test registered in `test:rebuild-recovered`; no executed test, typecheck or CI PASS is claimed.
+
+---
+
 ## NK1 WorkPass502 — require injected trust authorities for execution and approval (2026-10-24)
 
 - AILG no longer treats a non-empty receipt string as proof by itself: `authorize` and `recordExecution` require injected approval/execution verifier callbacks, and fail closed if those authorities are unavailable or reject the receipt.
