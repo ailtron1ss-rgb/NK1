@@ -56,31 +56,31 @@ jobs:
         run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Check evidence ledger
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p23-verified-outcome-ledger.mjs
+        run: node --experimental-transform-types tests/p23-verified-outcome-ledger.mjs
       - name: Check conservative outcome promotion gate
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p23-verified-outcome-promotion-gate.mjs
+        run: node --experimental-transform-types tests/p23-verified-outcome-promotion-gate.mjs
       - name: Check ledger-to-promotion integration
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p23-outcome-promotion-integration.mjs
+        run: node --experimental-transform-types tests/p23-outcome-promotion-integration.mjs
       - name: Check collision-safe paired outcome identity
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p23-paired-outcome-identity.mjs
+        run: node --experimental-transform-types tests/p23-paired-outcome-identity.mjs
       - name: Check stable task-manifest fingerprint binding
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p23-task-manifest-fingerprint.mjs
+        run: node --experimental-transform-types tests/p23-task-manifest-fingerprint.mjs
       - name: Check durable ledger roundtrip and corruption rejection
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p23-verified-outcome-ledger-persistence.mjs
+        run: node --experimental-transform-types tests/p23-verified-outcome-ledger-persistence.mjs
       - name: Check atomic local-file persistence and restart restore
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p23-verified-outcome-ledger-file-store.mjs
+        run: node --experimental-transform-types tests/p23-verified-outcome-ledger-file-store.mjs
       - name: Verify signed independent outcome artifacts and reject tampering
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p23-signed-outcome-artifact.mjs
+        run: node --experimental-transform-types tests/p23-signed-outcome-artifact.mjs
       - name: Check Core-owned trusted shadow execution entry point
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/p23-core-trusted-shadow-entry.mjs
+        run: node --experimental-transform-types tests/p23-core-trusted-shadow-entry.mjs
       - name: Check Hermes-inspired reflective candidate evaluation gate
         working-directory: runtime/neuro-kurisu
         run: npm run test:p29:hermes-reflective-candidate-gate
