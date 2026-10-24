@@ -389,9 +389,9 @@ assert.equal(authoritySnapshotContexts.find(row => row.taskId === 'authority-val
   'scheduled run identity must come from the validated authority snapshot');
 assert.equal(authoritySnapshotResult.evaluation.provenance.experimentAuthority.method, 'candidate',
   'post-construction mutation must not change the evaluator authority label');
-assert.equal(snapshotResult.evaluation.provenance.experimentAuthority.validationPlanFingerprint, validationPlan.planFingerprint,
+assert.equal(authoritySnapshotResult.evaluation.provenance.experimentAuthority.validationPlanFingerprint, validationPlan.planFingerprint,
   'the attested plan fingerprint must remain the plan that was validated');
-assert.equal(snapshotContexts.length, 2);
+assert.equal(authoritySnapshotContexts.length, 2);
 
 const tamperedEvaluation = structuredClone(authorityEvaluation);
 tamperedEvaluation.evaluation.validation[0].taskSuccess.passed = false;
