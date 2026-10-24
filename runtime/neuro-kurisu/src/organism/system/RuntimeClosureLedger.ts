@@ -155,13 +155,13 @@ export class RuntimeClosureLedger {
     const reportedStatus = VALID_CLOSURE_STATUSES.has(snapshot.lastStatus as RuntimeClosureStatus)
       ? snapshot.lastStatus as RuntimeClosureStatus
       : 'DEGRADED';
-    // Persisted summary and event history can contradict. Never restore a PASS
-    // when the latest retained cycle record is a failure; preserve explicit FAIL
-    // when the summary is stricter than the bounded record window.
-    const lastStatus: RuntimeClosureStatus = reportedStatus === 'FAIL' || lastCycleRecord?.status === 'FAIL'
-      ? 'FAIL'
+    const rank: Record<RuntimeClosureStatus, number> = { PASS: 0, DEGRADED: 1, FAIL: 2 };
+    // A contradictory summary must never be less severe than its latest retained cycle evidence.
+    const lastStatus: RuntimeClosureStatus = lastCycleRecord && rank[lastCycleRecord.status] > rank[reportedStatus]
+      ? lastCycleRecord.status
       : reportedStatus;
     const failedTerminal = lastStatus === 'FAIL' && lastCycleRecord?.status === 'FAIL' ? lastCycleRecord : null;
+    const terminalOverridesSummary = Boolean(lastCycleRecord && rank[lastCycleRecord.status] > rank[reportedStatus]);
     this.state = {
       version: 1,
       checks: safeCounter(snapshot.checks),
@@ -170,7 +170,7 @@ export class RuntimeClosureLedger {
       failures: Math.max(safeCounter(snapshot.failures), failedTerminal ? 1 : 0),
       lastTick: safeCounter(snapshot.lastTick),
       lastStatus,
-      lastBehaviorHash: failedTerminal?.behaviorHash ?? (typeof snapshot.lastBehaviorHash === 'string' ? snapshot.lastBehaviorHash.slice(0, 160) : ''),
+      lastBehaviorHash: (terminalOverridesSummary ? lastCycleRecord?.behaviorHash : failedTerminal?.behaviorHash) ?? (typeof snapshot.lastBehaviorHash === 'string' ? snapshot.lastBehaviorHash.slice(0, 160) : ''),
       lastDurableHash: typeof snapshot.lastDurableHash === 'string' ? snapshot.lastDurableHash.slice(0, 160) : '',
       records,
     };
