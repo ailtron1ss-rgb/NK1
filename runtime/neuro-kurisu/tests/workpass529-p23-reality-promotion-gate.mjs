@@ -91,6 +91,26 @@ assert.equal(ledger.claimAssessment('temperature: stable').contradictionDetected
   'unrelated fields must not erase an existing qualified contradiction');
 assert.equal(ledger.claimAssessment('device reports stable temperature').contradictionDetected, false);
 
+// Corroboration must be about the exact staged bytes, not an unrelated true fact.
+const candidateFingerprint = 'a'.repeat(64);
+const candidateClaim = `payload_fingerprint=${candidateFingerprint}`;
+const candidateLedger = new RealityEvidenceLedger();
+for (const [eventId, realityClass, independenceKey] of [
+  ['candidate-payload-source-a', 'device-observation', 'device-a'],
+  ['candidate-payload-source-b', 'external-observation', 'provider-b'],
+]) {
+  candidateLedger.record({
+    eventId, tick: 10, at: 10_000, realityClass,
+    claim: candidateClaim, confidence01: 0.9, independenceKey, parentIds: [],
+  });
+}
+const candidateAssessment = candidateLedger.claimAssessment(candidateClaim);
+assert.equal(candidateAssessment.contradictionCoverageAvailable, true);
+assert.equal(candidateAssessment.independentPromotionAllowed, true);
+assert.equal(candidateAssessment.qualifiedIndependentExternalSources, 2);
+assert.equal(candidateLedger.claimAssessment(`payload_fingerprint=${'b'.repeat(64)}`).independentPromotionAllowed, false,
+  'evidence for another payload must not corroborate this candidate');
+
 const engineSource = await readFile(new URL('../src/organism/learning/P23LearningEngine.ts', import.meta.url), 'utf8');
 const start = engineSource.indexOf('approveRealityCorroboratedSkillCandidate(');
 assert.notEqual(start, -1, 'P23 must expose the consequential reality-corroborated promotion path');
@@ -99,6 +119,10 @@ assert.ok(end > start, 'P23 reality gate must remain a distinct method');
 const gate = engineSource.slice(start, end);
 assert.match(gate, /ledger instanceof RealityEvidenceLedger/, 'only the canonical ledger type is accepted');
 assert.match(gate, /contradictionCoverageAvailable!==true/, 'consequential promotion requires a claim shape covered by contradiction detection');
+assert.match(gate, /expectedRealityClaim=`payload_fingerprint=\$\{candidatePayloadFingerprint\}`/,
+  'reality claim must bind to the exact staged payload fingerprint');
+assert.match(gate, /claim!==expectedRealityClaim/,
+  'unrelated reality claims must not authorize this candidate');
 assert.match(gate, /independentPromotionAllowed!==true/, 'the stronger independent-promotion signal is mandatory');
 assert.match(gate, /qualifiedIndependentExternalSources<2/, 'two confidence-qualified independent sources are mandatory');
 assert.match(gate, /candidatePayloadFingerprint:string/, 'the gate must require an exact candidate payload fingerprint');
