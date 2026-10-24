@@ -30,10 +30,10 @@ function canonicalBaseUrl(raw: string | undefined): string {
 function imageMimeType(filePath: string): string {
   const name = path.basename(filePath).toLowerCase();
   const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : '';
-  if (ext === '.png') return 'image/png';
-  if (ext === '.webp') return 'image/webp';
-  if (ext === '.gif') return 'image/gif';
-  if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg';
+  if (ext === 'png') return 'image/png';
+  if (ext === 'webp') return 'image/webp';
+  if (ext === 'gif') return 'image/gif';
+  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
   throw new Error('local-vision-unsupported-image-type');
 }
 
