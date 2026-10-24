@@ -63,4 +63,8 @@ assert.doesNotMatch(executorSource,/createStableEvidenceEventId\('embodied',\[ac
 assert.ok(runtimeSource.includes("eventId:embodiedAction.eventId?`${embodiedAction.eventId}:action`"));
 assert.ok(runtimeSource.includes("eventId:embodiedAction.eventId?`${embodiedAction.eventId}:consequence`"));
 
+// Read limits follow normal collection semantics: zero returns no rows; invalid limits use the default.
+assert.deepEqual(ledger.recent(0), []);
+assert.equal(ledger.recent(-4).length, 0);
+assert.equal(ledger.recent(Number.NaN).length, ledger.recent(64).length);
 console.log('WORKPASS479_REALITY_EVIDENCE_EVENT_IDEMPOTENCY=PASS sameEventDedup=true conflictingPayloadQuarantine=true restoreQuarantine=true stableIdentity=true');
