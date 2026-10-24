@@ -181,6 +181,23 @@ export interface HexisExecutionPlan {
     rationale: string;
     at: number;
 }
+export interface HexisGoalProposal {
+    id: string;
+    stageId: string;
+    exportId: string;
+    sourceLineageId: string;
+    sourceRef: string;
+    title: string;
+    description: string;
+    importance: number;
+    urgency: number;
+    confidence: number;
+    status: 'pending' | 'approved' | 'rejected' | 'materialized';
+    canonicalGoalId?: string;
+    createdAt: number;
+    decidedAt?: number;
+    decisionReason?: string;
+}
 export interface HexisAdaptationState {
     version: 1;
     source: {
@@ -195,6 +212,7 @@ export interface HexisAdaptationState {
     retentionProposals: HexisRetentionProposal[];
     fidelityReceipts: HexisFidelityReceipt[];
     hmxStages: HexisHmxStage[];
+    goalProposals: HexisGoalProposal[];
     outbox: HexisOutboxEntry[];
     connectorPolicies: HexisConnectorPolicy[];
     executions: HexisExecutionPlan[];
@@ -208,6 +226,10 @@ export interface HexisAdaptationState {
         hmxStaged: number;
         hmxAccepted: number;
         hmxApplied: number;
+        hmxGoalProposalsCreated: number;
+        hmxGoalProposalsApproved: number;
+        hmxGoalProposalsRejected: number;
+        hmxGoalProposalsActivated: number;
         outboxQueued: number;
         outboxPublished: number;
         outboxIdempotencyConflicts: number;
@@ -241,7 +263,7 @@ const isHmxText = (value: unknown, max = 256): value is string =>
     typeof value === 'string' && value.trim().length > 0 && value.length <= max &&
     !/[\u0000-\u001f\u007f]/.test(value);
 export function defaultHexisAdaptationState(): HexisAdaptationState {
-    return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], outbox: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, hmxApplied: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
+    return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], goalProposals: [], outbox: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, hmxApplied: 0, hmxGoalProposalsCreated: 0, hmxGoalProposalsApproved: 0, hmxGoalProposalsRejected: 0, hmxGoalProposalsActivated: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
 }
 export class HexisAdaptationFabric {
     private state = defaultHexisAdaptationState();
@@ -271,6 +293,7 @@ export class HexisAdaptationFabric {
                     stagedSections: stage?.stagedSections && typeof stage.stagedSections === 'object' ? stage.stagedSections : {},
                   }))
                 : [],
+            goalProposals: Array.isArray((value as any).goalProposals) ? (value as any).goalProposals.slice(-256) : [],
             outbox: Array.isArray(value.outbox) ? value.outbox.slice(-512) : [],
             connectorPolicies: normalizedPolicies,
             executions: Array.isArray(value.executions) ? value.executions.slice(-512) : [],
@@ -297,6 +320,10 @@ export class HexisAdaptationFabric {
                 retentionProposals: this.state.retentionProposals.length,
                 fidelityReceipts: this.state.fidelityReceipts.length,
                 hmxStages: this.state.hmxStages.length,
+                goalProposals: this.state.goalProposals.length,
+                pendingGoalProposals: this.state.goalProposals.filter((proposal) => proposal.status === 'pending').length,
+                approvedGoalProposals: this.state.goalProposals.filter((proposal) => proposal.status === 'approved').length,
+                materializedGoalProposals: this.state.goalProposals.filter((proposal) => proposal.status === 'materialized').length,
                 pendingOutbox,
                 connectorPolicies: activePolicies,
                 executions: this.state.executions.length,
@@ -570,6 +597,87 @@ export class HexisAdaptationFabric {
         this.state.metrics.hmxStaged += 1;
         return structuredClone(stage);
     }
+    prepareGoalProposals(stagingId: string) {
+        const stage = this.state.hmxStages.find((candidate) => candidate.stagingId === stagingId);
+        if (!stage) throw new Error('hmx-goal-stage-not-found');
+        if (stage.status !== 'accepted' && stage.status !== 'applied') throw new Error('hmx-goal-stage-must-be-accepted');
+        if (stage.conflicts.length) throw new Error('hmx-goal-stage-has-conflicts');
+        if (stage.intent !== 'port' || stage.strategy === 'analysis_only') throw new Error('hmx-goal-import-requires-explicit-port-intent');
+        const rows = Array.isArray(stage.stagedSections?.goals) ? stage.stagedSections.goals.slice(0, 64) : [];
+        const lineage = String(stage.sourceLineageId ?? '').trim();
+        if (!lineage) throw new Error('hmx-goal-source-lineage-required');
+        const validated = rows.map((row: any, index) => {
+            if (!isHmxRecord(row)) throw new Error('hmx-goal-row-not-object:' + index);
+            const ref = String(row.ref ?? '').trim();
+            const title = String(row.title ?? row.name ?? '').trim();
+            const description = String(row.description ?? row.summary ?? '').trim();
+            if (!ref || !ref.startsWith(stage.exportId + ':') || ref.length > 512) throw new Error('hmx-goal-ref-invalid:' + index);
+            if (!isHmxText(title, 300)) throw new Error('hmx-goal-title-invalid:' + index);
+            if (description.length > 2000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(description)) throw new Error('hmx-goal-description-invalid:' + index);
+            const stableRef = ref.slice(stage.exportId.length + 1);
+            const id = 'hexgoal:' + digest({ lineage, stableRef, title: title.normalize('NFKC'), description: description.normalize('NFKC') }).slice(0, 32);
+            return {
+                id, stageId: stage.stagingId, exportId: stage.exportId, sourceLineageId: lineage,
+                sourceRef: ref, title: title.slice(0, 300), description: description.slice(0, 2000),
+                importance: clamp(Number(row.metadata?.nk1NativeGoal?.importance ?? row.importance ?? 0.48), 0.1, 0.9),
+                urgency: clamp(Number(row.metadata?.nk1NativeGoal?.urgency ?? row.urgency ?? 0.32), 0.05, 0.78),
+                confidence: clamp(Number(row.metadata?.nk1NativeGoal?.confidence ?? row.confidence ?? 0.42), 0.05, 0.8),
+            };
+        });
+        const results: HexisGoalProposal[] = [];
+        let created = 0, duplicates = 0;
+        for (const candidate of validated) {
+            const existing = this.state.goalProposals.find((proposal) => proposal.id === candidate.id);
+            if (existing) { results.push(structuredClone(existing)); duplicates++; continue; }
+            const proposal: HexisGoalProposal = { ...candidate, status: 'pending', createdAt: nowMs() };
+            this.state.goalProposals.push(proposal);
+            results.push(structuredClone(proposal));
+            created++;
+        }
+        this.state.goalProposals = this.state.goalProposals.slice(-256);
+        this.state.metrics.hmxGoalProposalsCreated += created;
+        return { stageId: stage.stagingId, created, duplicates, proposals: results };
+    }
+    listGoalProposals(input: { status?: HexisGoalProposal['status']; limit?: number } = {}) {
+        const limit = Math.max(1, Math.min(128, Math.floor(Number(input.limit ?? 64))));
+        return this.state.goalProposals.filter((proposal) => !input.status || proposal.status === input.status).slice(-limit).reverse().map((proposal) => structuredClone(proposal));
+    }
+    getGoalProposal(id: string) {
+        const proposal = this.state.goalProposals.find((candidate) => candidate.id === String(id));
+        return proposal ? structuredClone(proposal) : null;
+    }
+    decideGoalProposal(id: string, decision: 'approve' | 'reject') {
+        const proposal = this.state.goalProposals.find((candidate) => candidate.id === String(id));
+        if (!proposal) return null;
+        if (decision !== 'approve' && decision !== 'reject') throw new Error('invalid-hmx-goal-decision');
+        if (proposal.status !== 'pending') return structuredClone(proposal);
+        proposal.status = decision === 'approve' ? 'approved' : 'rejected';
+        proposal.decidedAt = nowMs();
+        proposal.decisionReason = decision === 'approve' ? 'explicit-review-approval' : 'explicit-review-rejection';
+        if (decision === 'approve') this.state.metrics.hmxGoalProposalsApproved++;
+        else this.state.metrics.hmxGoalProposalsRejected++;
+        return structuredClone(proposal);
+    }
+    markGoalProposalMaterialized(id: string, canonicalGoalId: string) {
+        const proposal = this.state.goalProposals.find((candidate) => candidate.id === String(id));
+        if (!proposal) return null;
+        const target = String(canonicalGoalId ?? '').trim();
+        if (!target) throw new Error('canonical-goal-id-required');
+        if (proposal.status === 'materialized' && proposal.canonicalGoalId === target) return structuredClone(proposal);
+        if (proposal.status !== 'approved') throw new Error('hmx-goal-must-be-approved-before-materialization');
+        proposal.status = 'materialized';
+        proposal.canonicalGoalId = target;
+        proposal.decidedAt = nowMs();
+        return structuredClone(proposal);
+    }
+    markGoalProposalActivated(id: string, canonicalGoalId: string) {
+        const proposal = this.state.goalProposals.find((candidate) => candidate.id === String(id));
+        if (!proposal) return null;
+        if (proposal.status !== 'materialized' || proposal.canonicalGoalId !== String(canonicalGoalId)) throw new Error('hmx-goal-must-be-materialized-before-activation');
+        this.state.metrics.hmxGoalProposalsActivated++;
+        return structuredClone(proposal);
+    }
+
     decideHmx(stagingId: string, decision: HexisHmxDecision): HexisHmxStage | null {
         const stage = this.state.hmxStages.find((candidate) => candidate.stagingId === stagingId);
         if (!stage) return null;
