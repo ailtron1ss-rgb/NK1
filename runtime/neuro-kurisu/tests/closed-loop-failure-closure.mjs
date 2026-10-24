@@ -68,6 +68,14 @@ assert.ok(incompleteStep.checks.some((check) => check.name === 'unified-cognitiv
 // A failure must close a pending causal cycle, preserve its reason, and never
 // acquire success credit during later durable finalization.
 const before = { memoryCount: 1, worldTick: 1, identityRevision: 1, agencyDecisions: 1, learningUpdates: 1, selfChangeCount: 1, lifeGraphCompleteChains: 1 };
+const noProgressCausal = new CausalDomainClosureLedger();
+noProgressCausal.begin({ tick: 2, counters: before });
+const noProgressRecord = noProgressCausal.end({
+  counters: before,
+  evidence: { memoryChanged: false, worldChanged: false, agencyChanged: false, learningChanged: false, selfChanged: false, memoryWorldVerified: true, worldAgencyLearningVerified: true, causalLifeGraphChain: true, replaySignaturePresent: true, durableStateAligned: true, cognitiveCycleComplete: true },
+});
+assert.equal(noProgressRecord?.status, 'FAIL');
+assert.equal(noProgressRecord?.score01, 0, 'a failed no-progress cycle must not keep partial causal score');
 const causal = new CausalDomainClosureLedger();
 causal.begin({ tick: 2, counters: before });
 const failed = causal.failPending({ reason: 'fixture-aborted', counters: before });
