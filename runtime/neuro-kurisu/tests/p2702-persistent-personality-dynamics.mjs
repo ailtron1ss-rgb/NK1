@@ -3,6 +3,7 @@ import { P2702PersistentPersonalityDynamics } from '../src/organism/cognition/P2
 import { NeuralExperienceBranch, defaultNeuralExperienceBranch } from '../src/organism/cognition/NeuralExperienceBranch.ts';
 
 const actions={respond:.5,explore:.5,verify:.5,rest:.5,reflect:.5,wait:.5,defer:.5};
+const badRelationshipId='bad'+String.fromCharCode(10)+'id';
 const p=new P2702PersistentPersonalityDynamics();
 const before=p.snapshot();
 let out=p.beforeDecision({tick:1,novelty01:.9,uncertainty01:.8,goalPressure01:.7,identityGap01:.2,reward01:.5,actionUtilities:actions,identityVector:new Array(24).fill(.2)});
@@ -14,8 +15,11 @@ assert(after.autobiographicalStrength01>before.autobiographicalStrength01);
 assert(after.adaptiveValues.some((v,i)=>Math.abs(v-(before.adaptiveValues[i]??v))>1e-6));
 assert.notEqual(after.selfBeliefs[0],before.selfBeliefs[0],
   'verified identity observations must refine the persistent self-belief anchor');
+const curiosityExpressionIndex=after.adaptiveNames.indexOf('curiosityExpression');
 const playfulnessIndex=after.adaptiveNames.indexOf('playfulness');
 const warmthIndex=after.adaptiveNames.indexOf('warmth');
+assert.ok(Math.abs(after.adaptiveValues[curiosityExpressionIndex]-before.adaptiveValues[curiosityExpressionIndex])>1e-6,
+  'explore outcomes should train the adaptive expression of research curiosity');
 assert.ok(Math.abs(after.adaptiveValues[playfulnessIndex]-before.adaptiveValues[playfulnessIndex])>1e-6,
   'explore outcomes should train playfulness, not an unrelated trait selected by array position');
 assert.equal(after.adaptiveValues[warmthIndex],before.adaptiveValues[warmthIndex],
@@ -37,7 +41,7 @@ hostile.restore({
   invariantNames:['forged'],invariantValues:[0],
   adaptiveNames:['forged'],adaptiveValues:[NaN,7],
   valueNames:['forged'],valueWeights:[-4,3],
-  relationshipTrust:{trusted:4,'bad\\nid':0.2,broken:Infinity,constructor:0.8},
+  relationshipTrust:{trusted:4,[badRelationshipId]:0.2,broken:Infinity,constructor:0.8},
   selfBeliefs:[NaN,2],selfUncertainty:[0,Infinity],tensionState:[-9],
   actionPreference:{explore:99,verify:-99,respond:NaN,unknown:1}
 });
@@ -54,7 +58,7 @@ assert.equal(safe.tick,0);
 assert.equal(safe.experienceCount,0);
 assert.equal(safe.learningUpdates,0);
 assert.equal(safe.relationshipTrust.trusted,1);
-assert.equal(Object.hasOwn(safe.relationshipTrust,'bad\\nid'),false);
+assert.equal(Object.hasOwn(safe.relationshipTrust,badRelationshipId),false);
 assert.equal(Object.hasOwn(safe.relationshipTrust,'constructor'),false);
 assert.equal(safe.actionPreference.explore,0.5);
 assert.equal(safe.actionPreference.verify,-0.5);
@@ -76,7 +80,7 @@ assert.equal(signed.snapshot().actionPreference.verify,0);
 const guarded=new P2702PersistentPersonalityDynamics();
 const guardedDecision=guarded.beforeDecision({
   tick:Infinity,novelty01:NaN,uncertainty01:Infinity,goalPressure01:-9,identityGap01:NaN,
-  reward01:Infinity,actionUtilities:{...actions,explore:NaN},identityVector:[NaN],relationshipId:'bad\\nid'
+  reward01:Infinity,actionUtilities:{...actions,explore:NaN},identityVector:[NaN],relationshipId:badRelationshipId
 });
 for(const value of Object.values(guardedDecision.actionBias)) assert(Number.isFinite(value)&&value>=0&&value<=1);
 assert(Number.isFinite(guarded.snapshot().tick));
