@@ -21,6 +21,16 @@ assert.equal(replay.id,first.id);
 assert.equal(ledger.snapshot().total,1,'same event replay must not append or increment event count');
 assert.equal(ledger.claimAssessment('action-consequence:inspect').promotionAllowed,true);
 
+// A user report is useful context, but must not be misclassified as independent
+// external/device confirmation for evidence promotion.
+const reportedOnly=new RealityEvidenceLedger(128);
+reportedOnly.record({eventId:'reported:'+'b'.repeat(40),tick:6,at:101,realityClass:'user-reported',claim:'reported-only-claim',confidence01:1,independenceKey:'user:session-1',parentIds:[]});
+const reportedAssessment=reportedOnly.claimAssessment('reported-only-claim');
+assert.equal(reportedAssessment.userReportedSamples,1);
+assert.equal(reportedAssessment.externalSamples,0);
+assert.equal(reportedAssessment.promotionAllowed,false,
+  'user-reported content must not satisfy the external grounding requirement');
+
 assert.throws(()=>ledger.record({eventId,tick:5,at:1000,realityClass:'device-observation',claim:'tampered-action-consequence',confidence01:.99,independenceKey:'device:sample-55',parentIds:['outcome-5']}),/reality-evidence-event-id-conflict/);
 assert.ok(ledger.snapshot().quarantinedEventIds.includes(eventId));
 assert.equal(ledger.claimAssessment('action-consequence:inspect').promotionAllowed,false,
