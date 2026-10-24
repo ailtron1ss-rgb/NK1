@@ -2,7 +2,12 @@
 const SNAPSHOT_MAX_DEPTH = 64;
 export const SNAPSHOT_MAX_NODES = 100_000;
 const SNAPSHOT_MAX_TEXT_UNITS = 4 * 1024 * 1024;
-type SnapshotBudget = { nodes: number; textUnits: number };
+export interface PlainDataSnapshotOptions {
+  maxDepth?: number;
+  maxNodes?: number;
+  maxStringUnits?: number;
+}
+type SnapshotBudget = { nodes: number; textUnits: number; maxDepth: number; maxNodes: number; maxStringUnits: number };
 function snapshotPlainDataInner(
   value: unknown,
   ancestors = new Set<object>(),
@@ -11,7 +16,7 @@ function snapshotPlainDataInner(
 ): unknown {
   if (typeof value === 'string') {
     budget.textUnits += value.length;
-    if (budget.textUnits > SNAPSHOT_MAX_TEXT_UNITS) {
+    if (budget.textUnits > budget.maxStringUnits) {
       throw new Error('independent-evaluator-snapshot-size-limit');
     }
     return value;
@@ -23,7 +28,7 @@ function snapshotPlainDataInner(
     return value;
   }
   if (typeof value !== 'object') throw new Error('independent-evaluator-snapshot-unsupported-value');
-  if (depth > SNAPSHOT_MAX_DEPTH || budget.nodes >= SNAPSHOT_MAX_NODES) {
+  if (depth > budget.maxDepth || budget.nodes >= budget.maxNodes) {
     throw new Error('independent-evaluator-snapshot-size-limit');
   }
   budget.nodes++;
@@ -37,7 +42,7 @@ function snapshotPlainDataInner(
     const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
     const length = lengthDescriptor?.value;
     if (!lengthDescriptor || !Number.isSafeInteger(length) || length < 0 ||
-        length > SNAPSHOT_MAX_NODES || keys.length !== length + 1) {
+        length > budget.maxNodes || keys.length !== length + 1) {
       throw new Error('independent-evaluator-snapshot-array-shape-invalid');
     }
     ancestors.add(value);
@@ -60,7 +65,7 @@ function snapshotPlainDataInner(
     throw new Error('independent-evaluator-snapshot-object-prototype-invalid');
   }
   const keys = Reflect.ownKeys(value);
-  if (keys.length > SNAPSHOT_MAX_NODES) throw new Error('independent-evaluator-snapshot-size-limit');
+  if (keys.length > budget.maxNodes) throw new Error('independent-evaluator-snapshot-size-limit');
   const result = Object.create(prototype === null ? null : Object.prototype) as Record<string, unknown>;
   ancestors.add(value);
   try {
@@ -89,8 +94,23 @@ function snapshotPlainDataInner(
   }
 }
 
-export function snapshotPlainData(value: unknown): unknown {
-  return snapshotPlainDataInner(value, new Set<object>(), 0, { nodes: 0, textUnits: 0 });
+export function snapshotPlainData<T = unknown>(
+  value: unknown,
+  options: PlainDataSnapshotOptions = {},
+): T {
+  const validLimit = (candidate: number | undefined, fallback: number, hardLimit: number, name: string) => {
+    if (candidate === undefined) return fallback;
+    if (!Number.isSafeInteger(candidate) || candidate < 1) {
+      throw new Error(`plain-data-snapshot-${name}-invalid`);
+    }
+    return Math.min(candidate, hardLimit);
+  };
+  const maxDepth = validLimit(options.maxDepth, SNAPSHOT_MAX_DEPTH, SNAPSHOT_MAX_DEPTH, 'max-depth');
+  const maxNodes = validLimit(options.maxNodes, SNAPSHOT_MAX_NODES, SNAPSHOT_MAX_NODES, 'max-nodes');
+  const maxStringUnits = validLimit(options.maxStringUnits, SNAPSHOT_MAX_TEXT_UNITS, SNAPSHOT_MAX_TEXT_UNITS, 'max-string-units');
+  return snapshotPlainDataInner(value, new Set<object>(), 0, {
+    nodes: 0, textUnits: 0, maxDepth, maxNodes, maxStringUnits,
+  }) as T;
 }
 
 
