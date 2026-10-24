@@ -18,6 +18,14 @@ runtimeLedger.durable({ at: Date.now(), tick: 7, stateTick: 7, replaySignature: 
 runtimeLedger.restoreVerification({ at: Date.now(), tick: 7, previousDurableHash: 'previous-hash', replaySignature: 'fixture-signature-2', continuousTick: 7, processed: 7 });
 assert.equal(runtimeLedger.diagnostics().lastStatus, 'FAIL', 'durability and restore bookkeeping must not mask the failure');
 assert.equal(runtimeLedger.snapshot().lastBehaviorHash, failure.behaviorHash, 'restore bookkeeping must preserve the failed cycle fingerprint');
+const contradictoryRuntimeRestore = new RuntimeClosureLedger();
+contradictoryRuntimeRestore.restore({
+  version: 1, checks: 0, passes: 0, degraded: 0, failures: 0, lastTick: 7,
+  lastStatus: 'PASS', lastBehaviorHash: 'forged-success-hash', lastDurableHash: '',
+  records: runtimeLedger.snapshot().records,
+});
+assert.equal(contradictoryRuntimeRestore.diagnostics().lastStatus, 'FAIL', 'restored summary must not promote a retained failure record');
+assert.equal(contradictoryRuntimeRestore.snapshot().lastBehaviorHash, failure.behaviorHash);
 
 // A normal step can itself fail its closure checks; durability must not turn it green.
 const failedStepLedger = new RuntimeClosureLedger();
@@ -101,7 +109,8 @@ assert.equal(incompleteFinal?.status, 'FAIL');
 assert.equal(incompleteFinal?.complete, false);
 assert.equal(incompleteFinal?.score01, 0);
 const restoredIncompleteCausal = new CausalDomainClosureLedger();
-restoredIncompleteCausal.restore(incompleteCausal.snapshot());
+restoredIncompleteCausal.restore({ ...incompleteCausal.snapshot(), lastStatus: 'PASS' });
+assert.equal(restoredIncompleteCausal.snapshot().lastStatus, 'FAIL', 'restored summary must not promote a retained incomplete cognitive cycle');
 assert.equal(restoredIncompleteCausal.snapshot().recent[0]?.evidence.cognitiveCycleComplete, false);
 const restoredIncompleteFinal = restoredIncompleteCausal.finalizeDurable({ tick: 3, stateTick: 3, replaySignature: 'fixture-signature-after-restart', continuousTick: 3, processed: 3 });
 assert.equal(restoredIncompleteFinal?.status, 'FAIL', 'restart must not promote an incomplete cognitive cycle');
