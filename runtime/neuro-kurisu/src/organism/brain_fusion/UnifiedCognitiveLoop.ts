@@ -56,7 +56,7 @@ export class UnifiedCognitiveLoop {
     const boundedSignal = (n: unknown) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 1;
     if (typeof id !== 'string' || id.length < 1 || id.length > 180 ||
         id.trim() !== id || id.normalize('NFKC') !== id ||
-        /[\u0000-\u001f\u007f-\u009f]/.test(id) ||
+        Array.from(id).some((character) => { const code = character.codePointAt(0) ?? 0; return code <= 0x1f || (code >= 0x7f && code <= 0x9f); }) ||
         !boundedSignal(row.novelty) || !boundedSignal(row.predictionError) ||
         !boundedSignal(row.importance) || typeof row.timestamp !== 'number' ||
         !Number.isFinite(row.timestamp) || row.timestamp < 0) {
