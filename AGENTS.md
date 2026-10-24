@@ -32,6 +32,7 @@ Work code-first. Prefer observable, testable behavior over architectural labels.
 - `contracts/`: ownership, contracts, schemas, source provenance and SBOM.
 - `tools/` and `scripts/`: project audits, maintenance, verification and release automation.
 - `tools/audit-markdown-links.mjs` plus its regression test: local Markdown/HTML link audit; use `npm run audit:canonical-links` as the strict navigation gate.
+- `docs/architecture/module-dependency-contracts-ru.md`: target dependency directions and boundaries. Its tests establish only the rules they actually exercise; check exact-head Actions before calling the audit green.
 - `research/`: isolated research candidates; `legacy/`: preserved historical source/provenance.
 - `docs/history/` and `docs/reports/`: historical and detailed records; old pass reports are not current status unless explicitly linked from a current handover.
 
