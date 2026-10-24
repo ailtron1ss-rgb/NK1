@@ -193,7 +193,10 @@ export class CorrectionRuleMemory {
   }
 
   snapshot(): CorrectionRuleMemorySnapshot {
-    return structuredClone(this.state);
+    const copy=structuredClone(this.state);
+    copy.observations.sort((a,b)=>a.reviewedAt-b.reviewedAt||a.observationId.localeCompare(b.observationId));
+    copy.quarantinedObservationIds.sort();
+    return copy;
   }
 
   restore(raw: unknown): void {
