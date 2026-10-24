@@ -2,6 +2,7 @@
 
 - [CAUSAL-OUTCOME] Updated the WorkPass90 runtime-outcome fixture to include an explicit `lastAction` and bounded `lastActionSuccess` receipt. The stream's required state-attribution guard remains strict; it is the fixture that now models a real observed action outcome.
 - [SIGNED-EVIDENCE] Updated signed-artifact regression coverage to assert idempotent re-ingestion of the exact same signed artifact (restoring the process-local trust receipt without adding another outcome), and separately reject a different signed artifact attempting to occupy the same task/method/seed/attempt as `conflicting-existing-outcome`.
+- [NODE24-RUNTIME] Converted constructor parameter properties to explicit fields in `VersionedSkillCandidateStore`, `P23TrustedShadowLearningScheduler`, and `P23CompoundRepairRevisionCoordinator`. Node 24's `--experimental-strip-types` loader rejects constructor parameter properties; these modules are reachable from the replay/runtime cycle tests and must load before their assertions can run.
 - [VALIDATION] Both tests failed in CI on the older head for these contract mismatches. They have been corrected in the source branch; current-head runs are pending and their outcomes remain unclaimed.
 
 ---
