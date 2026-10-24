@@ -69,6 +69,11 @@ const corrected = runtime.fabric.reviseContent(seed.id, 'WP31 canonical memory m
 assert.ok(corrected?.id);
 assert.notEqual(corrected.id, seed.id);
 assert.equal(runtime.memoryOS.temporalChain(seed.id).length, 2, 'content correction must create one canonical temporal revision');
+const correctedChain = runtime.memoryOS.temporalChain(corrected.id);
+assert.deepEqual(correctedChain.map(row => row.id), [seed.id, corrected.id],
+  'indexed temporal-chain lookup must return the complete chain in revision order from either endpoint');
+assert.deepEqual(correctedChain.map(row => row.revisionSequence), [1, 2]);
+assert.equal(runtime.memoryOS.indexDiagnostics().pass, true, 'revision-group index must match canonical memory before restore');
 
 runtime.fabric.updateSignals(corrected.id, { confidence: .81 }, 'workpass31-confidence-update', { commandId: 'wp31:signals:seed', tick: 44 });
 runtime.fabric.updateContext(corrected.id, { branch: 'workpass31', reviewState: 'integrated' }, { commandId: 'wp31:context:seed', tick: 45 });
@@ -115,6 +120,9 @@ const replayedContext = restored.fabric.updateContext(corrected.id, { branch: 'w
 assert.equal(replayedContext.reviewState, 'integrated');
 restored.fabric.revise(corrected.id, 'hypothesis', 'workpass31-epistemic-review', { commandId: 'wp31:status:seed', tick: 54 });
 assert.equal(restored.fabric.forgetById(disposable.id, 'workpass31-disposal', { commandId: 'wp31:forget:disposable', tick: 55 }), true);
+assert.deepEqual(restored.memoryOS.temporalChain(corrected.id).map(row => row.id), [seed.id, corrected.id],
+  'restore and command replay must preserve revision-group index membership');
+assert.equal(restored.memoryOS.indexDiagnostics().pass, true, 'all derived indexes must remain consistent after replay and forgetting');
 
 assert.equal(restored.memoryOS.size(), beforeReplaySize, 'restoring and replaying receipts must not resurrect forgotten memories or add revisions');
 assert.deepEqual(restored.fabric.snapshot().stats, beforeReplayFabricStats, 'replay must not change mutation/retrieval counters');
