@@ -13,6 +13,9 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/TrustedSkillShadowRunRegistry.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillShadowEvidence.ts'
       - 'runtime/neuro-kurisu/tests/operation-omega-hexis-review-inbox.mjs'
+      - 'legacy/input-archives/hexis-selected-2026-10-24/**'
+      - 'docs/OPERATION_OMEGA_HEXIS_INTEGRATION_2026-10-24.md'
+      - 'CHANGELOG.md'
       - 'runtime/neuro-kurisu/scripts/create-skill-promotion-approval-request.mjs'
       - 'runtime/neuro-kurisu/package.json'
   push:
@@ -28,6 +31,9 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/TrustedSkillShadowRunRegistry.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSkillShadowEvidence.ts'
       - 'runtime/neuro-kurisu/tests/operation-omega-hexis-review-inbox.mjs'
+      - 'legacy/input-archives/hexis-selected-2026-10-24/**'
+      - 'docs/OPERATION_OMEGA_HEXIS_INTEGRATION_2026-10-24.md'
+      - 'CHANGELOG.md'
       - 'runtime/neuro-kurisu/scripts/create-skill-promotion-approval-request.mjs'
       - 'runtime/neuro-kurisu/package.json'
 permissions:

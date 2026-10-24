@@ -2117,6 +2117,8 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 ## [2026-10-24] Operation Omega — Hexis source transfer and review-inbox adaptation
 
+- Updated the targeted CI path filters so archive, source-manifest, changelog and integration-note commits also get a current Node 24 review-inbox regression run.
+
 - Expanded the pinned Hexis reference archive with 15 additional agent API, capability maturity, heartbeat/wake, subconscious, self-repair, tool-registry, trust-anchor, emotion/belief/memory provenance, temporal memory, weekly review and deliberate forgetting source files (all tracked by upstream blob SHA; SQL remains inactive).
 
 - Added a fresh, pinned copy of selected MIT-licensed Hexis agent, skill, memory, and skill-improvement review sources under `legacy/input-archives/hexis-selected-2026-10-24/`; preserved the existing older snapshot unchanged and recorded upstream commit, Git blob SHAs, file sizes and attribution.
