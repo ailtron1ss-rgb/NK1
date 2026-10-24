@@ -5,179 +5,78 @@
  * identity and lifetime, while OrganismCore becomes an orchestration layer.
  * No new learner or alternate source of truth is introduced here.
  */
-import { NeuralSubstrateBackend } from '../cognition/NeuralSubstrateBackend.ts';
-import { BoundedRecurrentStateSubstrate, type BoundedRecurrentState, type RecurrentStep } from '../cognition/BoundedRecurrentStateSubstrate.ts';
-import { RecurrentCausalMemory, defaultRecurrentCausalMemory } from '../cognition/RecurrentCausalMemory.ts';
-import { B261UnifiedWorldModel, defaultB261UnifiedWorldModel } from '../cognition/B261UnifiedWorldModel.ts';
-import { B262MultiTimescaleWorldModel, defaultB262MultiTimescaleWorldModel } from '../cognition/B262MultiTimescaleWorldModel.ts';
-import { B263RealActionCausality, defaultB263RealActionCausality } from '../cognition/B263RealActionCausality.ts';
-import { B264CausalPolicyLearning, defaultB264CausalPolicyLearning } from '../cognition/B264CausalPolicyLearning.ts';
-import { B265IndependentPolicyEvaluator, defaultB265IndependentPolicyEvaluator } from '../cognition/B265IndependentPolicyEvaluator.ts';
-import { B266HiddenTaskGeneralization, defaultB266HiddenTaskGeneralization } from '../cognition/B266HiddenTaskGeneralization.ts';
-import { B267AdaptiveRegimeController, defaultB267AdaptiveRegimeController } from '../cognition/B267AdaptiveRegimeController.ts';
-import { B268CausalSelfExperimentLab, defaultB268CausalSelfExperimentLab, evaluateB264SnapshotOnFamilies, mutateB264PolicySnapshot, type B268ExperimentSpec } from '../cognition/B268CausalSelfExperimentLab.ts';
-import { B269SpikingPlasticNeuralSubstrate, defaultB269SpikingPlastic } from '../cognition/B269SpikingPlasticNeuralSubstrate.ts';
-import { B270NeuralGerminalOrganism, defaultB270NeuralGerminalOrganism } from '../cognition/B270NeuralGerminalOrganism.ts';
-import { B271NeuralAutobiographicalCore, defaultB271State } from '../cognition/B271NeuralAutobiographicalCore.ts';
-import { B272EndogenousGoalGenesis, defaultB272State } from '../cognition/B272EndogenousGoalGenesis.ts';
-import { B273AutonomousGoalLifecycle, defaultB273State } from '../cognition/B273AutonomousGoalLifecycle.ts';
-import { B274AutonomousSkillLaboratory, defaultB274State } from '../cognition/B274AutonomousSkillLaboratory.ts';
-import { B275NeuralCompositionalPolicy, defaultB275State } from '../cognition/B275NeuralCompositionalPolicy.ts';
-import { B276LatentActionProgramSynthesizer, defaultB276State } from '../cognition/B276LatentActionProgramSynthesizer.ts';
-import { B277NeuralOperatorGenesis, defaultB277State } from '../cognition/B277NeuralOperatorGenesis.ts';
-import { B278NeuralPrimitiveGenesis, defaultB278State } from '../cognition/B278NeuralPrimitiveGenesis.ts';
-import { B279NeuralAttractorAssemblies, defaultB279State } from '../cognition/B279NeuralAttractorAssemblies.ts';
-import { B280MultiAreaNeuralCircuit, defaultB280State } from '../cognition/B280MultiAreaNeuralCircuit.ts';
-import { B281PredictiveInterAreaMessaging, defaultB281State } from '../cognition/B281PredictiveInterAreaMessaging.ts';
-import { B282PredictiveGlobalWorkspace, defaultB282State } from '../cognition/B282PredictiveGlobalWorkspace.ts';
-import { B283CompetingPredictiveHypotheses, defaultB283State } from '../cognition/B283CompetingPredictiveHypotheses.ts';
-import { B284NeuralAutobiographicalIdentityCore, defaultB284State } from '../cognition/B284NeuralAutobiographicalIdentityCore.ts';
-import { B285NeuralLifeConsolidationCore, defaultB285State } from '../cognition/B285NeuralLifeConsolidationCore.ts';
-import { B286SelfConflictContinuityCore, defaultB286State } from '../cognition/B286SelfConflictContinuityCore.ts';
-import { B287RelationshipValueDevelopmentCore, defaultB287State } from '../cognition/B287RelationshipValueDevelopmentCore.ts';
-import { B288SocialPredictiveSelfOtherBrain, defaultB288State } from '../cognition/B288SocialPredictiveSelfOtherBrain.ts';
-import { B289NeuralOrganismIntegrationSpine, defaultB289State } from '../system/B289NeuralOrganismIntegrationSpine.ts';
-import { B290RealityGatedNeurodevelopment, defaultB290State } from '../system/B290RealityGatedNeurodevelopment.ts';
-import { B291UnifiedSelfAgencyGate, defaultB291State } from '../system/B291UnifiedSelfAgencyGate.ts';
-import { B292CognitiveStateBus, defaultB292CognitiveStateBus } from '../system/B292CognitiveStateBus.ts';
-import { B292IntentTrace, defaultB292IntentTrace } from '../system/B292IntentTrace.ts';
-import { B293SelfWorldPredictiveMicrocircuit, defaultB293State } from '../system/B293SelfWorldPredictiveMicrocircuit.ts';
-import { B294CausalNeuralEventSpine, defaultB294State } from '../system/B294CausalNeuralEventSpine.ts';
-import { B295AdaptiveCognitiveBudget, defaultB295AdaptiveCognitiveBudget, type B295BudgetPlan } from '../system/B295AdaptiveCognitiveBudget.ts';
-import { B296NeuralPersonalityAgencyNucleus, defaultB296State } from '../system/B296NeuralPersonalityAgencyNucleus.ts';
-import { NeuralMemoryContinuityCore } from '../system/NeuralMemoryContinuityCore.ts';
-import { NeuralPlasticityBenchmarkSuite } from '../system/NeuralPlasticityBenchmarkSuite.ts';
-import { B297ExecutiveNeuralFusion, defaultB297State } from '../system/B297ExecutiveNeuralFusion.ts';
-import { ActionOwnershipGraph, defaultActionOwnershipState } from '../system/ActionOwnershipGraph.ts';
-import { B299CausalPersonalityDevelopmentLoop, defaultB299State } from '../system/B299CausalPersonalityDevelopmentLoop.ts';
-import { B312ExecutiveDecisionHandoff, defaultB312DecisionHandoff } from '../system/B312ExecutiveDecisionHandoff.ts';
-import { B313LongitudinalBehavioralDivergence, defaultB313State, traitToAction } from '../system/B313LongitudinalBehavioralDivergence.ts';
-import { B349NeuralDevelopmentalSpine, defaultB349State } from '../system/B349NeuralDevelopmentalSpine.ts';
-import { B365UnifiedNeuroCausalCore, defaultB365State } from '../cognition/B365UnifiedNeuroCausalCore.ts';
-import { B2501DeepNeuralCausalBranch, defaultB2501State } from '../cognition/B2501DeepNeuralCausalBranch.ts';
-import { B2502EINeuralReplayField, defaultB2502State } from '../cognition/B2502EINeuralReplayField.ts';
-import { B2503ActionablePredictiveField, defaultB2503State } from '../cognition/B2503ActionablePredictiveField.ts';
-import { B2504UnifiedSelfWorldPredictiveField, defaultB2504State } from '../cognition/B2504UnifiedSelfWorldPredictiveField.ts';
-import { B2505CompositionalReplayComposer, defaultB2505State } from '../cognition/B2505CompositionalReplayComposer.ts';
-import { B2506NeuralBottleneckEscalator, defaultB2506State } from '../cognition/B2506NeuralBottleneckEscalator.ts';
-import { B2507ConsolidationScheduler, defaultB2507State } from '../cognition/B2507ConsolidationScheduler.ts';
-import { B2508AdaptiveNeuralComputeGovernor, defaultB2508State } from '../cognition/B2508AdaptiveNeuralComputeGovernor.ts';
-import { B2509EmbodiedHomeostaticActionField, defaultB2509State } from '../cognition/B2509EmbodiedHomeostaticActionField.ts';
-import { B2510DevelopmentalPersonalityCoupling, defaultB2510State } from '../cognition/B2510DevelopmentalPersonalityCoupling.ts';
-import { B2511ActiveEpistemicExperimentController, defaultB2511State } from '../cognition/B2511ActiveEpistemicExperimentController.ts';
-import { B2512EpistemicSemanticAutobiographicalConsolidator, defaultB2512State } from '../cognition/B2512EpistemicSemanticAutobiographicalConsolidator.ts';
-import { B2513FutureSelfProjectionField, defaultB2513State } from '../cognition/B2513FutureSelfProjectionField.ts';
-import { B2514MemoryNeedPrioritizer, defaultB2514State } from '../cognition/B2514MemoryNeedPrioritizer.ts';
-import { B2515UnifiedOrganismLatentFabric, defaultB2515State } from '../cognition/B2515UnifiedOrganismLatentFabric.ts';
-import { B2516CausalAutobiographicalGraph, defaultB2516State } from '../cognition/B2516CausalAutobiographicalGraph.ts';
-import { B2517SelfAuthoredRuleCompiler, defaultB2517State } from '../cognition/B2517SelfAuthoredRuleCompiler.ts';
-import { B2518PersistentSelfWorldModel, defaultB2518State } from '../cognition/B2518PersistentSelfWorldModel.ts';
-import { B2519LongHorizonCounterfactualPlanner, defaultB2519State } from '../cognition/B2519LongHorizonCounterfactualPlanner.ts';
-import { B2520SensorimotorImagination, defaultB2520State } from '../cognition/B2520SensorimotorImagination.ts';
-import { B2521LearnedGenerativeOrganismLoop, defaultB2521State } from '../cognition/B2521LearnedGenerativeOrganismLoop.ts';
-import { B2522AdaptiveWorldModelMixtureRouter, defaultB2522State } from '../cognition/B2522AdaptiveWorldModelMixtureRouter.ts';
-import { B2523MultiHorizonCounterfactualVerifier, defaultB2523State } from '../cognition/B2523MultiHorizonCounterfactualVerifier.ts';
-import { B2524NonparametricWorldExperienceMemory, defaultB2524State } from '../cognition/B2524NonparametricWorldExperienceMemory.ts';
-import { B2525LearnedLatentTransitionField, defaultB2525State } from '../cognition/B2525LearnedLatentTransitionField.ts';
-import { NeuralExperienceBranch, defaultNeuralExperienceBranch } from '../cognition/NeuralExperienceBranch.ts';
-import { B385B390AutonomousDevelopmentalOrganismCore, defaultB385B390State } from '../system/B385B390AutonomousDevelopmentalOrganismCore.ts';
-import { B391B400NeuralDevelopmentalIntegrationCore, defaultB391B400State } from '../system/B391B400NeuralDevelopmentalIntegrationCore.ts';
-import { B401B420AdaptiveCognitiveResearchCore, defaultB401B420State } from '../system/B401B420AdaptiveCognitiveResearchCore.ts';
-import { B421B450ResearchAccelerationCore, defaultB421B450State, type B421Input } from '../system/B421B450ResearchAccelerationCore.ts';
-import { B451B500MetaCognitiveDevelopmentCore, defaultB451B500State, type B451Input } from '../system/B451B500MetaCognitiveDevelopmentCore.ts';
-import { B501B560HierarchicalMetaMemoryCore, defaultB501B560State } from '../system/B501B560HierarchicalMetaMemoryCore.ts';
-import { B561B620MetaCognitiveEvolutionCore, defaultB561B620State, type B561Input } from '../system/B561B620MetaCognitiveEvolutionCore.ts';
-import { B621B720UnifiedAdaptiveMindCore, defaultB621B720State } from '../system/B621B720UnifiedAdaptiveMindCore.ts';
-import { B721B900DevelopmentalLearningFabric, defaultB721B900State } from '../system/B721B900DevelopmentalLearningFabric.ts';
-import { B901B1100CausalDevelopmentalMetaLearner, defaultB901B1100State } from '../system/B901B1100CausalDevelopmentalMetaLearner.ts';
-import { B1101B1350SelfDevelopmentCore, defaultB1101B1350State } from '../system/B1101B1350SelfDevelopmentCore.ts';
-import { B1351B1600LifelongDevelopmentCore, defaultB1351B1600State } from '../system/B1351B1600LifelongDevelopmentCore.ts';
-import { PersistentContinuityKernel, defaultPersistentContinuityKernel, type ContinuityMaterialInput } from '../system/PersistentContinuityKernel.ts';
-import { B1701B2200UnifiedLifeContinuityCore, defaultB1701B2200State, type B1701Input } from '../system/B1701B2200UnifiedLifeContinuityCore.ts';
-import { B2201B2500LifeCourseSelfModelCore, defaultB2201B2500State, type B2201Input } from '../system/B2201B2500LifeCourseSelfModelCore.ts';
-import { CanonicalSelfAgencyAuthority } from '../system/CanonicalSelfAgencyAuthority.ts';
-import { NeuroDigitalFusionKernel } from '../cognition/NeuroDigitalFusionKernel.ts';
-import { PlasticityHomeostasisGovernor } from '../system/PlasticityHomeostasisGovernor.ts';
-import { CausalSelfExperimentLab } from '../system/CausalSelfExperimentLab.ts';
-import { DreamCounterfactualLaboratory } from '../system/DreamCounterfactualLaboratory.ts';
-import { CapabilitySelfModelGraph } from '../system/CapabilitySelfModelGraph.ts';
-import { NeuroSymbolicConceptCompiler } from '../cognition/NeuroSymbolicConceptCompiler.ts';
-import { NeuralMorphogenesisEngine } from '../system/NeuralMorphogenesisEngine.ts';
-import { HybridNeuroCognitiveLoop } from '../system/HybridNeuroCognitiveLoop.ts';
-import { NeuroDigitalEvolutionEngine } from '../system/NeuroDigitalEvolutionEngine.ts';
-import { P23LearningEngine, defaultP23Learning } from '../learning/P23LearningEngine.ts';
-import { P25ScientificDevelopmentEngine, defaultP25ScientificDevelopment } from '../learning/P25ScientificDevelopmentEngine.ts';
-import { P26TrueLearningEngine, defaultP26TrueLearning } from '../learning/P26TrueLearningEngine.ts';
-import { P28PlasticitySubstrate, defaultP28Plasticity } from '../learning/P28PlasticitySubstrate.ts';
-import { P29LearningGovernanceEngine, defaultP29Governance } from '../learning/P29LearningGovernance.ts';
-import { P30ContinualIntelligenceEngine, defaultP30Continual } from '../learning/P30ContinualIntelligence.ts';
-import { DevelopmentalSynthesisEngine, defaultDevelopmentalSynthesis } from '../learning/DevelopmentalSynthesisEngine.ts';
-import { DevelopmentalExecutiveEngine, defaultDevelopmentalExecutive } from '../learning/DevelopmentalExecutiveEngine.ts';
-import { MetaDevelopmentalStrategyEngine, defaultMetaDevelopmental } from '../learning/MetaDevelopmentalStrategyEngine.ts';
-import { PersonalCurriculumEngine, defaultPersonalCurriculum } from '../learning/PersonalCurriculumEngine.ts';
-import { DevelopmentalPortfolioEngine, defaultDevelopmentalPortfolio } from '../learning/DevelopmentalPortfolioEngine.ts';
-import { LifeCourseNavigator, defaultLifeCourseNavigator } from '../learning/LifeCourseNavigator.ts';
-import { PersonalWorldlineEngine, defaultPersonalWorldline } from '../learning/PersonalWorldlineEngine.ts';
-import { IntegratedLifeTrajectoryEngine, defaultIntegratedLifeTrajectory, type TrajectoryDecision } from '../learning/IntegratedLifeTrajectoryEngine.ts';
-import { CognitiveOrganismContinuityEngine, defaultCognitiveOrganismContinuity, type CognitiveOrganismContext } from '../learning/CognitiveOrganismContinuityEngine.ts';
-import { AutonomousCognitiveLifeEngine, defaultAutonomousCognitiveLife, type AutonomousCognitiveLifeContext } from '../learning/AutonomousCognitiveLifeEngine.ts';
-import { VerifiedAutonomousLifeEngine, defaultVerifiedAutonomousLife, type VerifiedAutonomousLifeContext } from '../learning/VerifiedAutonomousLifeEngine.ts';
-import { ResearchGradeOrganismEngine, defaultResearchGradeOrganism } from '../learning/ResearchGradeOrganismEngine.ts';
-import { OperationalLifeEngine, defaultOperationalLife, type OperationalLifeContext } from '../learning/OperationalLifeEngine.ts';
-import { AutonomousScientificBrainSubstrate } from '../learning/AutonomousScientificBrainSubstrate.ts';
-import { P36AutonomousSelfDevelopmentEngine, defaultP36SelfDevelopment } from '../learning/P36AutonomousSelfDevelopment.ts';
-import { CausalExperienceStream, defaultCausalExperienceStream } from '../learning/CausalExperienceStream.ts';
-import { UnifiedLearningSubstrate, defaultUnifiedLearning } from '../learning/UnifiedLearningSubstrate.ts';
-import { CognitiveResearchBattery, defaultCognitiveResearchBattery } from '../learning/CognitiveResearchBattery.ts';
-import { CausalDevelopmentLoop, defaultCausalDevelopmentLoop } from '../learning/CausalDevelopmentLoop.ts';
-import { CognitiveDependencyGraph, defaultCognitiveDependencyState } from './CognitiveDependencyGraph.ts';
-import { CognitiveSpineScheduler, defaultCognitiveSpineSchedule } from '../system/CognitiveSpineScheduler.ts';
-import { B380TemporalLifeIntegrator, defaultB380State, type B380TemporalSignals } from '../system/B380TemporalLifeIntegrator.ts';
-import { OrganismResourceAllocator, defaultOrganismResourceAllocation } from '../system/OrganismResourceAllocator.ts';
-import { UnifiedCognitiveSubstrate, defaultUnifiedCognitiveSubstrate } from './UnifiedCognitiveSubstrate.ts';
-import { B301MobileStateEconomy, defaultB301MobileStateEconomy } from '../system/B301MobileStateEconomy.ts';
-import { B302LongHorizonDevelopmentLedger, defaultB302LongHorizonState, type B302EpochKind } from '../system/B302LongHorizonDevelopmentLedger.ts';
-import { B303HoldoutGeneralizationLedger, defaultB303HoldoutState, type B303EvaluationPhase } from '../system/B303HoldoutGeneralizationLedger.ts';
-import { B304SemanticHoldoutLedger, defaultB304SemanticHoldoutState, type B304SemanticPhase } from '../system/B304SemanticHoldoutLedger.ts';
-import { B305CriticalPathVerificationLedger, defaultB305CriticalPathState } from '../system/B305CriticalPathVerificationLedger.ts';
+import type { BoundedRecurrentState, RecurrentStep } from '../cognition/BoundedRecurrentStateSubstrate.ts';
+import type { B365UnifiedNeuroCausalCore } from '../cognition/B365UnifiedNeuroCausalCore.ts';
+import type { B385B390AutonomousDevelopmentalOrganismCore } from '../system/B385B390AutonomousDevelopmentalOrganismCore.ts';
+import type { B391B400NeuralDevelopmentalIntegrationCore } from '../system/B391B400NeuralDevelopmentalIntegrationCore.ts';
+import type { B401B420AdaptiveCognitiveResearchCore } from '../system/B401B420AdaptiveCognitiveResearchCore.ts';
+import type { B451B500MetaCognitiveDevelopmentCore } from '../system/B451B500MetaCognitiveDevelopmentCore.ts';
+import type { B621B720UnifiedAdaptiveMindCore } from '../system/B621B720UnifiedAdaptiveMindCore.ts';
+import type { B721B900DevelopmentalLearningFabric } from '../system/B721B900DevelopmentalLearningFabric.ts';
+import type { B901B1100CausalDevelopmentalMetaLearner } from '../system/B901B1100CausalDevelopmentalMetaLearner.ts';
+import type { B1101B1350SelfDevelopmentCore } from '../system/B1101B1350SelfDevelopmentCore.ts';
+import type { B1351B1600LifelongDevelopmentCore } from '../system/B1351B1600LifelongDevelopmentCore.ts';
+import type { B1701B2200UnifiedLifeContinuityCore } from '../system/B1701B2200UnifiedLifeContinuityCore.ts';
+import type { B2201B2500LifeCourseSelfModelCore } from '../system/B2201B2500LifeCourseSelfModelCore.ts';
+import type { DevelopmentalExecutiveEngine } from '../learning/DevelopmentalExecutiveEngine.ts';
+import type { TrajectoryDecision } from '../learning/IntegratedLifeTrajectoryEngine.ts';
+import type { CognitiveOrganismContinuityEngine } from '../learning/CognitiveOrganismContinuityEngine.ts';
+import type { AutonomousCognitiveLifeEngine } from '../learning/AutonomousCognitiveLifeEngine.ts';
+import { createDevelopmentalLearningInstances } from './DevelopmentalInstanceGroupLearning.ts';
+import { createDevelopmentalCausalInstances } from './DevelopmentalInstanceGroupCausal.ts';
+import { createDevelopmentalPredictiveInstances } from './DevelopmentalInstanceGroupPredictive.ts';
+import { createDevelopmentalLifeCourseInstances } from './DevelopmentalInstanceGroupLifeCourse.ts';
 
-export class DevelopmentalNeuralRuntime {
-  readonly canonicalSelfAgencyAuthority = new CanonicalSelfAgencyAuthority();
-  readonly neuroDigitalFusion = new NeuroDigitalFusionKernel();
-  readonly plasticityHomeostasis = new PlasticityHomeostasisGovernor();
-  readonly causalSelfExperimentLab = new CausalSelfExperimentLab();
-  readonly dreamCounterfactualLab = new DreamCounterfactualLaboratory();
-  readonly capabilitySelfModel = new CapabilitySelfModelGraph();
-  readonly neuroSymbolicCompiler = new NeuroSymbolicConceptCompiler();
-  readonly neuralMorphogenesis = new NeuralMorphogenesisEngine();
-  readonly hybridNeuroCognitiveLoop = new HybridNeuroCognitiveLoop();
-  readonly neuroDigitalEvolution = new NeuroDigitalEvolutionEngine();
-  readonly p23Learning = new P23LearningEngine();
-  readonly p25ScientificDevelopment = new P25ScientificDevelopmentEngine();
-  readonly p26TrueLearning = new P26TrueLearningEngine();
-  readonly p28Plasticity = new P28PlasticitySubstrate();
-  readonly p29Learning = new P29LearningGovernanceEngine();
-  readonly p30Continual = new P30ContinualIntelligenceEngine();
-  readonly causalExperience = new CausalExperienceStream();
-  readonly unifiedLearning = new UnifiedLearningSubstrate();
-  readonly cognitiveDependencies = new CognitiveDependencyGraph();
-  readonly cognitiveResearchBattery = new CognitiveResearchBattery();
-  readonly causalDevelopmentLoop = new CausalDevelopmentLoop();
-  readonly b380TemporalLife = new B380TemporalLifeIntegrator();
-  readonly developmentalSynthesis = new DevelopmentalSynthesisEngine();
-  readonly developmentalExecutive = new DevelopmentalExecutiveEngine();
-  readonly metaDevelopmental = new MetaDevelopmentalStrategyEngine();
-  readonly personalCurriculum = new PersonalCurriculumEngine();
-  readonly developmentalPortfolio = new DevelopmentalPortfolioEngine();
-  readonly lifeCourseNavigator = new LifeCourseNavigator();
-  readonly personalWorldline = new PersonalWorldlineEngine();
-  readonly integratedLifeTrajectory = new IntegratedLifeTrajectoryEngine();
-  readonly cognitiveOrganismContinuity = new CognitiveOrganismContinuityEngine();
-  readonly autonomousCognitiveLife = new AutonomousCognitiveLifeEngine();
-  readonly verifiedAutonomousLife = new VerifiedAutonomousLifeEngine();
-  readonly researchGradeOrganism = new ResearchGradeOrganismEngine();
-  readonly operationalLife = new OperationalLifeEngine();
-  readonly autonomousScientificBrain = new AutonomousScientificBrainSubstrate();
+type createDevelopmentalLearningInstancesResult = ReturnType<typeof createDevelopmentalLearningInstances>;
+type createDevelopmentalCausalInstancesResult = ReturnType<typeof createDevelopmentalCausalInstances>;
+type createDevelopmentalPredictiveInstancesResult = ReturnType<typeof createDevelopmentalPredictiveInstances>;
+type createDevelopmentalLifeCourseInstancesResult = ReturnType<typeof createDevelopmentalLifeCourseInstances>;
+  constructor() {
+    Object.assign(
+      this,
+      createDevelopmentalLearningInstances(),
+      createDevelopmentalCausalInstances(),
+      createDevelopmentalPredictiveInstances(),
+      createDevelopmentalLifeCourseInstances()
+    );
+  }
+
+  readonly canonicalSelfAgencyAuthority: createDevelopmentalLearningInstancesResult["canonicalSelfAgencyAuthority"] = undefined as unknown as createDevelopmentalLearningInstancesResult["canonicalSelfAgencyAuthority"];
+  readonly neuroDigitalFusion: createDevelopmentalLearningInstancesResult["neuroDigitalFusion"] = undefined as unknown as createDevelopmentalLearningInstancesResult["neuroDigitalFusion"];
+  readonly plasticityHomeostasis: createDevelopmentalLearningInstancesResult["plasticityHomeostasis"] = undefined as unknown as createDevelopmentalLearningInstancesResult["plasticityHomeostasis"];
+  readonly causalSelfExperimentLab: createDevelopmentalLearningInstancesResult["causalSelfExperimentLab"] = undefined as unknown as createDevelopmentalLearningInstancesResult["causalSelfExperimentLab"];
+  readonly dreamCounterfactualLab: createDevelopmentalLearningInstancesResult["dreamCounterfactualLab"] = undefined as unknown as createDevelopmentalLearningInstancesResult["dreamCounterfactualLab"];
+  readonly capabilitySelfModel: createDevelopmentalLearningInstancesResult["capabilitySelfModel"] = undefined as unknown as createDevelopmentalLearningInstancesResult["capabilitySelfModel"];
+  readonly neuroSymbolicCompiler: createDevelopmentalLearningInstancesResult["neuroSymbolicCompiler"] = undefined as unknown as createDevelopmentalLearningInstancesResult["neuroSymbolicCompiler"];
+  readonly neuralMorphogenesis: createDevelopmentalLearningInstancesResult["neuralMorphogenesis"] = undefined as unknown as createDevelopmentalLearningInstancesResult["neuralMorphogenesis"];
+  readonly hybridNeuroCognitiveLoop: createDevelopmentalLearningInstancesResult["hybridNeuroCognitiveLoop"] = undefined as unknown as createDevelopmentalLearningInstancesResult["hybridNeuroCognitiveLoop"];
+  readonly neuroDigitalEvolution: createDevelopmentalLearningInstancesResult["neuroDigitalEvolution"] = undefined as unknown as createDevelopmentalLearningInstancesResult["neuroDigitalEvolution"];
+  readonly p23Learning: createDevelopmentalLearningInstancesResult["p23Learning"] = undefined as unknown as createDevelopmentalLearningInstancesResult["p23Learning"];
+  readonly p25ScientificDevelopment: createDevelopmentalLearningInstancesResult["p25ScientificDevelopment"] = undefined as unknown as createDevelopmentalLearningInstancesResult["p25ScientificDevelopment"];
+  readonly p26TrueLearning: createDevelopmentalLearningInstancesResult["p26TrueLearning"] = undefined as unknown as createDevelopmentalLearningInstancesResult["p26TrueLearning"];
+  readonly p28Plasticity: createDevelopmentalLearningInstancesResult["p28Plasticity"] = undefined as unknown as createDevelopmentalLearningInstancesResult["p28Plasticity"];
+  readonly p29Learning: createDevelopmentalLearningInstancesResult["p29Learning"] = undefined as unknown as createDevelopmentalLearningInstancesResult["p29Learning"];
+  readonly p30Continual: createDevelopmentalLearningInstancesResult["p30Continual"] = undefined as unknown as createDevelopmentalLearningInstancesResult["p30Continual"];
+  readonly causalExperience: createDevelopmentalLearningInstancesResult["causalExperience"] = undefined as unknown as createDevelopmentalLearningInstancesResult["causalExperience"];
+  readonly unifiedLearning: createDevelopmentalLearningInstancesResult["unifiedLearning"] = undefined as unknown as createDevelopmentalLearningInstancesResult["unifiedLearning"];
+  readonly cognitiveDependencies: createDevelopmentalLearningInstancesResult["cognitiveDependencies"] = undefined as unknown as createDevelopmentalLearningInstancesResult["cognitiveDependencies"];
+  readonly cognitiveResearchBattery: createDevelopmentalLearningInstancesResult["cognitiveResearchBattery"] = undefined as unknown as createDevelopmentalLearningInstancesResult["cognitiveResearchBattery"];
+  readonly causalDevelopmentLoop: createDevelopmentalLearningInstancesResult["causalDevelopmentLoop"] = undefined as unknown as createDevelopmentalLearningInstancesResult["causalDevelopmentLoop"];
+  readonly b380TemporalLife: createDevelopmentalLearningInstancesResult["b380TemporalLife"] = undefined as unknown as createDevelopmentalLearningInstancesResult["b380TemporalLife"];
+  readonly developmentalSynthesis: createDevelopmentalLearningInstancesResult["developmentalSynthesis"] = undefined as unknown as createDevelopmentalLearningInstancesResult["developmentalSynthesis"];
+  readonly developmentalExecutive: createDevelopmentalLearningInstancesResult["developmentalExecutive"] = undefined as unknown as createDevelopmentalLearningInstancesResult["developmentalExecutive"];
+  readonly metaDevelopmental: createDevelopmentalLearningInstancesResult["metaDevelopmental"] = undefined as unknown as createDevelopmentalLearningInstancesResult["metaDevelopmental"];
+  readonly personalCurriculum: createDevelopmentalLearningInstancesResult["personalCurriculum"] = undefined as unknown as createDevelopmentalLearningInstancesResult["personalCurriculum"];
+  readonly developmentalPortfolio: createDevelopmentalLearningInstancesResult["developmentalPortfolio"] = undefined as unknown as createDevelopmentalLearningInstancesResult["developmentalPortfolio"];
+  readonly lifeCourseNavigator: createDevelopmentalLearningInstancesResult["lifeCourseNavigator"] = undefined as unknown as createDevelopmentalLearningInstancesResult["lifeCourseNavigator"];
+  readonly personalWorldline: createDevelopmentalLearningInstancesResult["personalWorldline"] = undefined as unknown as createDevelopmentalLearningInstancesResult["personalWorldline"];
+  readonly integratedLifeTrajectory: createDevelopmentalLearningInstancesResult["integratedLifeTrajectory"] = undefined as unknown as createDevelopmentalLearningInstancesResult["integratedLifeTrajectory"];
+  readonly cognitiveOrganismContinuity: createDevelopmentalLearningInstancesResult["cognitiveOrganismContinuity"] = undefined as unknown as createDevelopmentalLearningInstancesResult["cognitiveOrganismContinuity"];
+  readonly autonomousCognitiveLife: createDevelopmentalLearningInstancesResult["autonomousCognitiveLife"] = undefined as unknown as createDevelopmentalLearningInstancesResult["autonomousCognitiveLife"];
+  readonly verifiedAutonomousLife: createDevelopmentalLearningInstancesResult["verifiedAutonomousLife"] = undefined as unknown as createDevelopmentalLearningInstancesResult["verifiedAutonomousLife"];
+  readonly researchGradeOrganism: createDevelopmentalLearningInstancesResult["researchGradeOrganism"] = undefined as unknown as createDevelopmentalLearningInstancesResult["researchGradeOrganism"];
+  readonly operationalLife: createDevelopmentalLearningInstancesResult["operationalLife"] = undefined as unknown as createDevelopmentalLearningInstancesResult["operationalLife"];
+  readonly autonomousScientificBrain: createDevelopmentalLearningInstancesResult["autonomousScientificBrain"] = undefined as unknown as createDevelopmentalLearningInstancesResult["autonomousScientificBrain"];
   researchGradeDecisionId: string|null = null;
   operationalLifeDecisionId: string|null = null;
   verifiedAutonomousLifeDecisionId:string|null = null;
@@ -185,15 +84,15 @@ export class DevelopmentalNeuralRuntime {
   continuityProjections: import('../learning/CognitiveOrganismContinuityEngine.ts').ContinuityProjection[] = [];
   trajectoryDecisions: TrajectoryDecision[] = [];
   developmentalExecutiveDecision: import('../learning/DevelopmentalExecutiveEngine.ts').DevelopmentExecutiveDecision | null = null;
-  readonly p36SelfDevelopment = new P36AutonomousSelfDevelopmentEngine();
-  readonly cognitiveSpineScheduler = new CognitiveSpineScheduler();
-  readonly resourceAllocator = new OrganismResourceAllocator();
-  readonly unifiedCognitiveSubstrate = new UnifiedCognitiveSubstrate();
+  readonly p36SelfDevelopment: createDevelopmentalLearningInstancesResult["p36SelfDevelopment"] = undefined as unknown as createDevelopmentalLearningInstancesResult["p36SelfDevelopment"];
+  readonly cognitiveSpineScheduler: createDevelopmentalLearningInstancesResult["cognitiveSpineScheduler"] = undefined as unknown as createDevelopmentalLearningInstancesResult["cognitiveSpineScheduler"];
+  readonly resourceAllocator: createDevelopmentalLearningInstancesResult["resourceAllocator"] = undefined as unknown as createDevelopmentalLearningInstancesResult["resourceAllocator"];
+  readonly unifiedCognitiveSubstrate: createDevelopmentalLearningInstancesResult["unifiedCognitiveSubstrate"] = undefined as unknown as createDevelopmentalLearningInstancesResult["unifiedCognitiveSubstrate"];
   /** B259: one canonical recurrent learning substrate; domain modules remain projections around it. */
   /** Single neural composition root; canonical learner remains persisted, mLSTM is an explicit shadow backend. */
-  readonly neuralSubstrate = new NeuralSubstrateBackend();
+  readonly neuralSubstrate: createDevelopmentalLearningInstancesResult["neuralSubstrate"] = undefined as unknown as createDevelopmentalLearningInstancesResult["neuralSubstrate"];
   /** R23 bounded recurrent substrate stays in the developmental/neural ownership boundary. */
-  readonly boundedRecurrent = new BoundedRecurrentStateSubstrate(16,'r23-core');
+  readonly boundedRecurrent: createDevelopmentalLearningInstancesResult["boundedRecurrent"] = undefined as unknown as createDevelopmentalLearningInstancesResult["boundedRecurrent"];
 
   restoreBoundedRecurrent(raw?:Partial<BoundedRecurrentState>){ this.boundedRecurrent.restore(raw); }
   snapshotBoundedRecurrent(){ return this.boundedRecurrent.snapshot(); }
@@ -228,149 +127,149 @@ export class DevelopmentalNeuralRuntime {
       unifiedNeuroCausalCoreB365:b365Snapshot ?? this.unifiedNeuroCausalCoreB365.snapshot(),
     };
   }
-  readonly recurrentCausalMemory = new RecurrentCausalMemory();
+  readonly recurrentCausalMemory: createDevelopmentalCausalInstancesResult["recurrentCausalMemory"] = undefined as unknown as createDevelopmentalCausalInstancesResult["recurrentCausalMemory"];
   /** B261: single action-conditioned world dynamics path around the shared latent/recurrent state. */
-  readonly unifiedWorldModelB261 = new B261UnifiedWorldModel();
-  readonly multiTimescaleWorldModelB262 = new B262MultiTimescaleWorldModel();
+  readonly unifiedWorldModelB261: createDevelopmentalCausalInstancesResult["unifiedWorldModelB261"] = undefined as unknown as createDevelopmentalCausalInstancesResult["unifiedWorldModelB261"];
+  readonly multiTimescaleWorldModelB262: createDevelopmentalCausalInstancesResult["multiTimescaleWorldModelB262"] = undefined as unknown as createDevelopmentalCausalInstancesResult["multiTimescaleWorldModelB262"];
   /** B263: real action consequence and intervention causal learner. */
-  readonly realActionCausalityB263 = new B263RealActionCausality();
+  readonly realActionCausalityB263: createDevelopmentalCausalInstancesResult["realActionCausalityB263"] = undefined as unknown as createDevelopmentalCausalInstancesResult["realActionCausalityB263"];
   /** B264: policy must causally exploit intervention predictions and learn from real consequences. */
-  readonly causalPolicyLearningB264 = new B264CausalPolicyLearning();
+  readonly causalPolicyLearningB264: createDevelopmentalCausalInstancesResult["causalPolicyLearningB264"] = undefined as unknown as createDevelopmentalCausalInstancesResult["causalPolicyLearningB264"];
   /** B265: an independent evaluator scores multi-step behaviour without trusting the policy's self-reported reward. */
-  readonly independentPolicyEvaluatorB265 = new B265IndependentPolicyEvaluator();
+  readonly independentPolicyEvaluatorB265: createDevelopmentalCausalInstancesResult["independentPolicyEvaluatorB265"] = undefined as unknown as createDevelopmentalCausalInstancesResult["independentPolicyEvaluatorB265"];
   /** B266: hidden-family, delayed-reward and adversarial generalization evaluator. */
-  readonly hiddenTaskGeneralizationB266 = new B266HiddenTaskGeneralization();
+  readonly hiddenTaskGeneralizationB266: createDevelopmentalCausalInstancesResult["hiddenTaskGeneralizationB266"] = undefined as unknown as createDevelopmentalCausalInstancesResult["hiddenTaskGeneralizationB266"];
   /** B267: online regime-shift detection and adaptive exploration/verification controller. */
-  readonly adaptiveRegimeControllerB267 = new B267AdaptiveRegimeController();
-  readonly causalSelfExperimentLabB268 = new B268CausalSelfExperimentLab();
+  readonly adaptiveRegimeControllerB267: createDevelopmentalCausalInstancesResult["adaptiveRegimeControllerB267"] = undefined as unknown as createDevelopmentalCausalInstancesResult["adaptiveRegimeControllerB267"];
+  readonly causalSelfExperimentLabB268: createDevelopmentalCausalInstancesResult["causalSelfExperimentLabB268"] = undefined as unknown as createDevelopmentalCausalInstancesResult["causalSelfExperimentLabB268"];
   /** B269: event-driven sparse neuronal substrate with local/neuromodulated plasticity and homeostasis. */
-  readonly spikingPlasticNeuralB269 = new B269SpikingPlasticNeuralSubstrate();
+  readonly spikingPlasticNeuralB269: createDevelopmentalCausalInstancesResult["spikingPlasticNeuralB269"] = undefined as unknown as createDevelopmentalCausalInstancesResult["spikingPlasticNeuralB269"];
   /** B270: unified neural-germinal self/agency/personality substrate. */
-  readonly neuralGerminalOrganismB270 = new B270NeuralGerminalOrganism();
+  readonly neuralGerminalOrganismB270: createDevelopmentalCausalInstancesResult["neuralGerminalOrganismB270"] = undefined as unknown as createDevelopmentalCausalInstancesResult["neuralGerminalOrganismB270"];
   /** B271: neural assemblies bind autobiographical sequences, predict self, and generate endogenous goals. */
-  readonly neuralAutobiographicalCoreB271 = new B271NeuralAutobiographicalCore();
+  readonly neuralAutobiographicalCoreB271: createDevelopmentalCausalInstancesResult["neuralAutobiographicalCoreB271"] = undefined as unknown as createDevelopmentalCausalInstancesResult["neuralAutobiographicalCoreB271"];
   /** B272: endogenous continuous goal generation from self/world conflict, needs and learned action prototypes. */
-  readonly endogenousGoalGenesisB272 = new B272EndogenousGoalGenesis();
+  readonly endogenousGoalGenesisB272: createDevelopmentalCausalInstancesResult["endogenousGoalGenesisB272"] = undefined as unknown as createDevelopmentalCausalInstancesResult["endogenousGoalGenesisB272"];
   /** B273: autonomous hierarchical goal lifecycle, subgoal formation, plan/skill genesis and outcome-driven goal revision. */
-  readonly autonomousGoalLifecycleB273 = new B273AutonomousGoalLifecycle();
+  readonly autonomousGoalLifecycleB273: createDevelopmentalCausalInstancesResult["autonomousGoalLifecycleB273"] = undefined as unknown as createDevelopmentalCausalInstancesResult["autonomousGoalLifecycleB273"];
   /** B274: self-directed skill discovery through imagined experiment, bounded real trial, independent verification and promotion/rollback. */
-  readonly autonomousSkillLaboratoryB274 = new B274AutonomousSkillLaboratory();
+  readonly autonomousSkillLaboratoryB274: createDevelopmentalCausalInstancesResult["autonomousSkillLaboratoryB274"] = undefined as unknown as createDevelopmentalCausalInstancesResult["autonomousSkillLaboratoryB274"];
   /** B275: learned compositional neural policy that can combine verified skills into reusable behavior programs. */
-  readonly neuralCompositionalPolicyB275 = new B275NeuralCompositionalPolicy();
+  readonly neuralCompositionalPolicyB275: createDevelopmentalCausalInstancesResult["neuralCompositionalPolicyB275"] = undefined as unknown as createDevelopmentalCausalInstancesResult["neuralCompositionalPolicyB275"];
   /** B276: latent hierarchical action-program synthesis, verification, transfer and self/personality grounding. */
-  readonly latentActionProgramSynthesizerB276 = new B276LatentActionProgramSynthesizer();
+  readonly latentActionProgramSynthesizerB276: createDevelopmentalCausalInstancesResult["latentActionProgramSynthesizerB276"] = undefined as unknown as createDevelopmentalCausalInstancesResult["latentActionProgramSynthesizerB276"];
   /** B277: developmental neural operator genesis; learned internal operators grow from neural/self/world context and verified programs. */
-  readonly neuralOperatorGenesisB277 = new B277NeuralOperatorGenesis();
+  readonly neuralOperatorGenesisB277: createDevelopmentalCausalInstancesResult["neuralOperatorGenesisB277"] = undefined as unknown as createDevelopmentalCausalInstancesResult["neuralOperatorGenesisB277"];
   /** B278: endogenous neural primitive invention from operator/program/self/world context, with independent promotion and transfer. */
-  readonly neuralPrimitiveGenesisB278 = new B278NeuralPrimitiveGenesis();
+  readonly neuralPrimitiveGenesisB278: createDevelopmentalCausalInstancesResult["neuralPrimitiveGenesisB278"] = undefined as unknown as createDevelopmentalCausalInstancesResult["neuralPrimitiveGenesisB278"];
   /** B279: recurrent attractor assemblies consolidate distributed experience in synaptic weights; recall does not require a pattern ledger. */
-  readonly neuralAttractorAssembliesB279 = new B279NeuralAttractorAssemblies();
+  readonly neuralAttractorAssembliesB279: createDevelopmentalCausalInstancesResult["neuralAttractorAssembliesB279"] = undefined as unknown as createDevelopmentalCausalInstancesResult["neuralAttractorAssembliesB279"];
   /** B280: explicit excitatory/inhibitory multi-area neural circuit with short-term plasticity and cross-area assemblies. */
-  readonly multiAreaNeuralCircuitB280 = new B280MultiAreaNeuralCircuit();
+  readonly multiAreaNeuralCircuitB280: createDevelopmentalCausalInstancesResult["multiAreaNeuralCircuitB280"] = undefined as unknown as createDevelopmentalCausalInstancesResult["multiAreaNeuralCircuitB280"];
   /** B281: predictive inter-area messaging with delayed cross-area credit. */
-  readonly predictiveInterAreaMessagingB281 = new B281PredictiveInterAreaMessaging();
+  readonly predictiveInterAreaMessagingB281: createDevelopmentalCausalInstancesResult["predictiveInterAreaMessagingB281"] = undefined as unknown as createDevelopmentalCausalInstancesResult["predictiveInterAreaMessagingB281"];
   /** B282: shared predictive workspace with winner-take-all coalition, global future prediction and broadcast/action influence. */
-  readonly predictiveGlobalWorkspaceB282 = new B282PredictiveGlobalWorkspace();
-  readonly competingPredictiveHypothesesB283 = new B283CompetingPredictiveHypotheses();
+  readonly predictiveGlobalWorkspaceB282: createDevelopmentalCausalInstancesResult["predictiveGlobalWorkspaceB282"] = undefined as unknown as createDevelopmentalCausalInstancesResult["predictiveGlobalWorkspaceB282"];
+  readonly competingPredictiveHypothesesB283: createDevelopmentalCausalInstancesResult["competingPredictiveHypothesesB283"] = undefined as unknown as createDevelopmentalCausalInstancesResult["competingPredictiveHypothesesB283"];
   /** B284: neural autobiographical identity core; slow self/value/relationship continuity substrate. */
-  readonly neuralAutobiographicalIdentityB284 = new B284NeuralAutobiographicalIdentityCore();
+  readonly neuralAutobiographicalIdentityB284: createDevelopmentalCausalInstancesResult["neuralAutobiographicalIdentityB284"] = undefined as unknown as createDevelopmentalCausalInstancesResult["neuralAutobiographicalIdentityB284"];
   /** B285: long-horizon neural life consolidation, relationship-specific self and future-self prediction. */
-  readonly neuralLifeConsolidationB285 = new B285NeuralLifeConsolidationCore();
-  readonly selfConflictContinuityB286 = new B286SelfConflictContinuityCore();
-  readonly relationshipValueDevelopmentB287 = new B287RelationshipValueDevelopmentCore();
+  readonly neuralLifeConsolidationB285: createDevelopmentalCausalInstancesResult["neuralLifeConsolidationB285"] = undefined as unknown as createDevelopmentalCausalInstancesResult["neuralLifeConsolidationB285"];
+  readonly selfConflictContinuityB286: createDevelopmentalCausalInstancesResult["selfConflictContinuityB286"] = undefined as unknown as createDevelopmentalCausalInstancesResult["selfConflictContinuityB286"];
+  readonly relationshipValueDevelopmentB287: createDevelopmentalCausalInstancesResult["relationshipValueDevelopmentB287"] = undefined as unknown as createDevelopmentalCausalInstancesResult["relationshipValueDevelopmentB287"];
   /** B288: canonical social-brain coordinator; consolidates overlapping social/relationship state into one predictive neural loop. */
-  readonly socialPredictiveSelfOtherB288 = new B288SocialPredictiveSelfOtherBrain();
+  readonly socialPredictiveSelfOtherB288: createDevelopmentalCausalInstancesResult["socialPredictiveSelfOtherB288"] = undefined as unknown as createDevelopmentalCausalInstancesResult["socialPredictiveSelfOtherB288"];
   /** B289: compact recurrent bridge that integrates existing neural subsystems and exposes an explicit mobile active-set. */
-  readonly neuralOrganismIntegrationB289 = new B289NeuralOrganismIntegrationSpine();
+  readonly neuralOrganismIntegrationB289: createDevelopmentalCausalInstancesResult["neuralOrganismIntegrationB289"] = undefined as unknown as createDevelopmentalCausalInstancesResult["neuralOrganismIntegrationB289"];
   /** B290: single developmental gate coordinating existing neural plasticity and evidence systems. */
-  readonly realityGatedNeurodevelopmentB290 = new B290RealityGatedNeurodevelopment();
-  readonly unifiedSelfAgencyPersonalityB291 = new B291UnifiedSelfAgencyGate();
-  readonly cognitiveStateBusB292 = new B292CognitiveStateBus();
-  readonly intentTraceB292 = new B292IntentTrace();
+  readonly realityGatedNeurodevelopmentB290: createDevelopmentalCausalInstancesResult["realityGatedNeurodevelopmentB290"] = undefined as unknown as createDevelopmentalCausalInstancesResult["realityGatedNeurodevelopmentB290"];
+  readonly unifiedSelfAgencyPersonalityB291: createDevelopmentalCausalInstancesResult["unifiedSelfAgencyPersonalityB291"] = undefined as unknown as createDevelopmentalCausalInstancesResult["unifiedSelfAgencyPersonalityB291"];
+  readonly cognitiveStateBusB292: createDevelopmentalCausalInstancesResult["cognitiveStateBusB292"] = undefined as unknown as createDevelopmentalCausalInstancesResult["cognitiveStateBusB292"];
+  readonly intentTraceB292: createDevelopmentalCausalInstancesResult["intentTraceB292"] = undefined as unknown as createDevelopmentalCausalInstancesResult["intentTraceB292"];
   /** B293: small recurrent self/world predictive circuit feeding evidence into B290/B291. */
-  readonly selfWorldPredictiveMicrocircuitB293 = new B293SelfWorldPredictiveMicrocircuit();
+  readonly selfWorldPredictiveMicrocircuitB293: createDevelopmentalCausalInstancesResult["selfWorldPredictiveMicrocircuitB293"] = undefined as unknown as createDevelopmentalCausalInstancesResult["selfWorldPredictiveMicrocircuitB293"];
   /** B294: causal event-linked eligibility circuit routing real outcomes into bounded neural credit assignment. */
-  readonly causalNeuralEventSpineB294 = new B294CausalNeuralEventSpine();
+  readonly causalNeuralEventSpineB294: createDevelopmentalCausalInstancesResult["causalNeuralEventSpineB294"] = undefined as unknown as createDevelopmentalCausalInstancesResult["causalNeuralEventSpineB294"];
   /** B295: central compute-budget/seam controller for B289-B294; it owns cadence, not cognition. */
-  readonly adaptiveCognitiveBudgetB295 = new B295AdaptiveCognitiveBudget();
+  readonly adaptiveCognitiveBudgetB295: createDevelopmentalCausalInstancesResult["adaptiveCognitiveBudgetB295"] = undefined as unknown as createDevelopmentalCausalInstancesResult["adaptiveCognitiveBudgetB295"];
   /** B296: compact event-driven neural readout coupling spiking, self, agency and personality without duplicating canonical state. */
-  readonly neuralPersonalityAgencyNucleusB296 = new B296NeuralPersonalityAgencyNucleus();
+  readonly neuralPersonalityAgencyNucleusB296: createDevelopmentalCausalInstancesResult["neuralPersonalityAgencyNucleusB296"] = undefined as unknown as createDevelopmentalCausalInstancesResult["neuralPersonalityAgencyNucleusB296"];
   /** P2843: fast episodic + slow semantic complementary-learning memory substrate. */
-  readonly neuralMemoryContinuityP2843 = new NeuralMemoryContinuityCore();
-  readonly neuralPlasticityBenchmarkP2844 = new NeuralPlasticityBenchmarkSuite();
+  readonly neuralMemoryContinuityP2843: createDevelopmentalCausalInstancesResult["neuralMemoryContinuityP2843"] = undefined as unknown as createDevelopmentalCausalInstancesResult["neuralMemoryContinuityP2843"];
+  readonly neuralPlasticityBenchmarkP2844: createDevelopmentalCausalInstancesResult["neuralPlasticityBenchmarkP2844"] = undefined as unknown as createDevelopmentalCausalInstancesResult["neuralPlasticityBenchmarkP2844"];
   /** B297: consolidated executive action ecology; fuses duplicated bias channels with redundancy tracking and outcome-weighted reliability. */
-  readonly executiveNeuralFusionB297 = new B297ExecutiveNeuralFusion();
+  readonly executiveNeuralFusionB297: createDevelopmentalCausalInstancesResult["executiveNeuralFusionB297"] = undefined as unknown as createDevelopmentalCausalInstancesResult["executiveNeuralFusionB297"];
   /** B298: provenance graph proving where action scores changed after executive fusion. */
-  readonly actionOwnershipGraphB298 = new ActionOwnershipGraph();
+  readonly actionOwnershipGraphB298: createDevelopmentalCausalInstancesResult["actionOwnershipGraphB298"] = undefined as unknown as createDevelopmentalCausalInstancesResult["actionOwnershipGraphB298"];
   /** B299: outcome-grounded personality development bridge; not a second personality store. */
-  readonly causalPersonalityDevelopmentB299 = new B299CausalPersonalityDevelopmentLoop();
-  readonly mobileStateEconomyB301 = new B301MobileStateEconomy();
-  readonly longHorizonDevelopmentB302 = new B302LongHorizonDevelopmentLedger();
-  readonly holdoutGeneralizationB303 = new B303HoldoutGeneralizationLedger();
+  readonly causalPersonalityDevelopmentB299: createDevelopmentalCausalInstancesResult["causalPersonalityDevelopmentB299"] = undefined as unknown as createDevelopmentalCausalInstancesResult["causalPersonalityDevelopmentB299"];
+  readonly mobileStateEconomyB301: createDevelopmentalCausalInstancesResult["mobileStateEconomyB301"] = undefined as unknown as createDevelopmentalCausalInstancesResult["mobileStateEconomyB301"];
+  readonly longHorizonDevelopmentB302: createDevelopmentalCausalInstancesResult["longHorizonDevelopmentB302"] = undefined as unknown as createDevelopmentalCausalInstancesResult["longHorizonDevelopmentB302"];
+  readonly holdoutGeneralizationB303: createDevelopmentalCausalInstancesResult["holdoutGeneralizationB303"] = undefined as unknown as createDevelopmentalCausalInstancesResult["holdoutGeneralizationB303"];
   /** B304: evaluation-only semantic-family holdout; never a second learner. */
-  readonly semanticHoldoutB304 = new B304SemanticHoldoutLedger();
+  readonly semanticHoldoutB304: createDevelopmentalCausalInstancesResult["semanticHoldoutB304"] = undefined as unknown as createDevelopmentalCausalInstancesResult["semanticHoldoutB304"];
   /** B305: evaluation-only verification of the existing neural -> causal -> personality -> policy -> outcome -> persistence chain. */
-  readonly criticalPathVerificationB305 = new B305CriticalPathVerificationLedger();
+  readonly criticalPathVerificationB305: createDevelopmentalCausalInstancesResult["criticalPathVerificationB305"] = undefined as unknown as createDevelopmentalCausalInstancesResult["criticalPathVerificationB305"];
   /** B312: closes the verified policy -> executive -> final action handoff without creating a new learner. */
-  readonly b312ExecutiveDecisionHandoff = new B312ExecutiveDecisionHandoff();
-  readonly b313LongitudinalBehavioralDivergence = new B313LongitudinalBehavioralDivergence();
+  readonly b312ExecutiveDecisionHandoff: createDevelopmentalCausalInstancesResult["b312ExecutiveDecisionHandoff"] = undefined as unknown as createDevelopmentalCausalInstancesResult["b312ExecutiveDecisionHandoff"];
+  readonly b313LongitudinalBehavioralDivergence: createDevelopmentalCausalInstancesResult["b313LongitudinalBehavioralDivergence"] = undefined as unknown as createDevelopmentalCausalInstancesResult["b313LongitudinalBehavioralDivergence"];
   /** B349: one causal developmental spine that consolidates B269/B289/B293/B294/B296 into a single outcome-trained neural influence path. */
-  readonly b349NeuralDevelopmentalSpine = new B349NeuralDevelopmentalSpine();
+  readonly b349NeuralDevelopmentalSpine: createDevelopmentalCausalInstancesResult["b349NeuralDevelopmentalSpine"] = undefined as unknown as createDevelopmentalCausalInstancesResult["b349NeuralDevelopmentalSpine"];
   /** B365: canonical 96-neuron causal core. It fuses body/interoception, exteroception, recurrent association and self/action populations. */
-  readonly unifiedNeuroCausalCoreB365 = new B365UnifiedNeuroCausalCore();
-  readonly b2501DeepNeuralCausalBranch = new B2501DeepNeuralCausalBranch();
-  readonly b2502EINeuralReplayField = new B2502EINeuralReplayField();
-  readonly b2503ActionablePredictiveField = new B2503ActionablePredictiveField();
-  readonly b2504UnifiedSelfWorldPredictiveField = new B2504UnifiedSelfWorldPredictiveField();
-  readonly b2505CompositionalReplayComposer = new B2505CompositionalReplayComposer();
-  readonly b2506NeuralBottleneckEscalator = new B2506NeuralBottleneckEscalator();
-  readonly b2507ConsolidationScheduler = new B2507ConsolidationScheduler();
-  readonly b2508AdaptiveNeuralComputeGovernor = new B2508AdaptiveNeuralComputeGovernor();
-  readonly b2509EmbodiedHomeostaticActionField = new B2509EmbodiedHomeostaticActionField();
-  readonly b2510DevelopmentalPersonalityCoupling = new B2510DevelopmentalPersonalityCoupling();
-  readonly b2511ActiveEpistemicExperimentController = new B2511ActiveEpistemicExperimentController();
-  readonly b2512EpistemicSemanticAutobiographicalConsolidator = new B2512EpistemicSemanticAutobiographicalConsolidator();
-  readonly b2513FutureSelfProjectionField = new B2513FutureSelfProjectionField();
-  readonly b2514MemoryNeedPrioritizer = new B2514MemoryNeedPrioritizer();
-  readonly b2515UnifiedOrganismLatentFabric = new B2515UnifiedOrganismLatentFabric();
-  readonly b2516CausalAutobiographicalGraph = new B2516CausalAutobiographicalGraph();
-  readonly b2517SelfAuthoredRuleCompiler = new B2517SelfAuthoredRuleCompiler();
-  readonly b2518PersistentSelfWorldModel = new B2518PersistentSelfWorldModel();
-  readonly b2519LongHorizonCounterfactualPlanner = new B2519LongHorizonCounterfactualPlanner();
-  readonly b2520SensorimotorImagination = new B2520SensorimotorImagination();
-  readonly b2521LearnedGenerativeOrganismLoop = new B2521LearnedGenerativeOrganismLoop();
-  readonly b2522AdaptiveWorldModelMixtureRouter = new B2522AdaptiveWorldModelMixtureRouter();
-  readonly b2523MultiHorizonCounterfactualVerifier = new B2523MultiHorizonCounterfactualVerifier();
-  readonly b2524NonparametricWorldExperienceMemory = new B2524NonparametricWorldExperienceMemory();
-  readonly b2525LearnedLatentTransitionField = new B2525LearnedLatentTransitionField();
+  readonly unifiedNeuroCausalCoreB365: createDevelopmentalPredictiveInstancesResult["unifiedNeuroCausalCoreB365"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["unifiedNeuroCausalCoreB365"];
+  readonly b2501DeepNeuralCausalBranch: createDevelopmentalPredictiveInstancesResult["b2501DeepNeuralCausalBranch"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2501DeepNeuralCausalBranch"];
+  readonly b2502EINeuralReplayField: createDevelopmentalPredictiveInstancesResult["b2502EINeuralReplayField"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2502EINeuralReplayField"];
+  readonly b2503ActionablePredictiveField: createDevelopmentalPredictiveInstancesResult["b2503ActionablePredictiveField"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2503ActionablePredictiveField"];
+  readonly b2504UnifiedSelfWorldPredictiveField: createDevelopmentalPredictiveInstancesResult["b2504UnifiedSelfWorldPredictiveField"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2504UnifiedSelfWorldPredictiveField"];
+  readonly b2505CompositionalReplayComposer: createDevelopmentalPredictiveInstancesResult["b2505CompositionalReplayComposer"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2505CompositionalReplayComposer"];
+  readonly b2506NeuralBottleneckEscalator: createDevelopmentalPredictiveInstancesResult["b2506NeuralBottleneckEscalator"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2506NeuralBottleneckEscalator"];
+  readonly b2507ConsolidationScheduler: createDevelopmentalPredictiveInstancesResult["b2507ConsolidationScheduler"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2507ConsolidationScheduler"];
+  readonly b2508AdaptiveNeuralComputeGovernor: createDevelopmentalPredictiveInstancesResult["b2508AdaptiveNeuralComputeGovernor"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2508AdaptiveNeuralComputeGovernor"];
+  readonly b2509EmbodiedHomeostaticActionField: createDevelopmentalPredictiveInstancesResult["b2509EmbodiedHomeostaticActionField"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2509EmbodiedHomeostaticActionField"];
+  readonly b2510DevelopmentalPersonalityCoupling: createDevelopmentalPredictiveInstancesResult["b2510DevelopmentalPersonalityCoupling"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2510DevelopmentalPersonalityCoupling"];
+  readonly b2511ActiveEpistemicExperimentController: createDevelopmentalPredictiveInstancesResult["b2511ActiveEpistemicExperimentController"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2511ActiveEpistemicExperimentController"];
+  readonly b2512EpistemicSemanticAutobiographicalConsolidator: createDevelopmentalPredictiveInstancesResult["b2512EpistemicSemanticAutobiographicalConsolidator"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2512EpistemicSemanticAutobiographicalConsolidator"];
+  readonly b2513FutureSelfProjectionField: createDevelopmentalPredictiveInstancesResult["b2513FutureSelfProjectionField"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2513FutureSelfProjectionField"];
+  readonly b2514MemoryNeedPrioritizer: createDevelopmentalPredictiveInstancesResult["b2514MemoryNeedPrioritizer"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2514MemoryNeedPrioritizer"];
+  readonly b2515UnifiedOrganismLatentFabric: createDevelopmentalPredictiveInstancesResult["b2515UnifiedOrganismLatentFabric"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2515UnifiedOrganismLatentFabric"];
+  readonly b2516CausalAutobiographicalGraph: createDevelopmentalPredictiveInstancesResult["b2516CausalAutobiographicalGraph"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2516CausalAutobiographicalGraph"];
+  readonly b2517SelfAuthoredRuleCompiler: createDevelopmentalPredictiveInstancesResult["b2517SelfAuthoredRuleCompiler"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2517SelfAuthoredRuleCompiler"];
+  readonly b2518PersistentSelfWorldModel: createDevelopmentalPredictiveInstancesResult["b2518PersistentSelfWorldModel"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2518PersistentSelfWorldModel"];
+  readonly b2519LongHorizonCounterfactualPlanner: createDevelopmentalPredictiveInstancesResult["b2519LongHorizonCounterfactualPlanner"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2519LongHorizonCounterfactualPlanner"];
+  readonly b2520SensorimotorImagination: createDevelopmentalPredictiveInstancesResult["b2520SensorimotorImagination"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2520SensorimotorImagination"];
+  readonly b2521LearnedGenerativeOrganismLoop: createDevelopmentalPredictiveInstancesResult["b2521LearnedGenerativeOrganismLoop"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2521LearnedGenerativeOrganismLoop"];
+  readonly b2522AdaptiveWorldModelMixtureRouter: createDevelopmentalPredictiveInstancesResult["b2522AdaptiveWorldModelMixtureRouter"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2522AdaptiveWorldModelMixtureRouter"];
+  readonly b2523MultiHorizonCounterfactualVerifier: createDevelopmentalPredictiveInstancesResult["b2523MultiHorizonCounterfactualVerifier"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2523MultiHorizonCounterfactualVerifier"];
+  readonly b2524NonparametricWorldExperienceMemory: createDevelopmentalPredictiveInstancesResult["b2524NonparametricWorldExperienceMemory"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2524NonparametricWorldExperienceMemory"];
+  readonly b2525LearnedLatentTransitionField: createDevelopmentalPredictiveInstancesResult["b2525LearnedLatentTransitionField"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["b2525LearnedLatentTransitionField"];
   /** Unified temporal neural branch: one experience token, pressure field, recurrent state and plasticity path. */
-  readonly neuralExperienceBranch = new NeuralExperienceBranch();
+  readonly neuralExperienceBranch: createDevelopmentalPredictiveInstancesResult["neuralExperienceBranch"] = undefined as unknown as createDevelopmentalPredictiveInstancesResult["neuralExperienceBranch"];
   lastEmbodiedBridgeFeatures:number[] = new Array(64).fill(0);
   lastEmbodiedBridgeFreshness01 = .5;
   /** B385-B390: developmental fabric connecting autobiographical retrieval, self-model, values, goals, motivation and prediction into one causal loop. */
-  readonly b385B390AutonomousDevelopmentalOrganism = new B385B390AutonomousDevelopmentalOrganismCore();
-  readonly b391B400NeuralDevelopmentalIntegration = new B391B400NeuralDevelopmentalIntegrationCore();
+  readonly b385B390AutonomousDevelopmentalOrganism: createDevelopmentalLifeCourseInstancesResult["b385B390AutonomousDevelopmentalOrganism"] = undefined as unknown as createDevelopmentalLifeCourseInstancesResult["b385B390AutonomousDevelopmentalOrganism"];
+  readonly b391B400NeuralDevelopmentalIntegration: createDevelopmentalLifeCourseInstancesResult["b391B400NeuralDevelopmentalIntegration"] = undefined as unknown as createDevelopmentalLifeCourseInstancesResult["b391B400NeuralDevelopmentalIntegration"];
   /** B401-B420: research ensemble for continual memory, multi-timescale state, latent prediction and counterfactual routing. It is an adaptive support layer, never a second canonical policy owner. */
-  readonly b401B420AdaptiveCognitiveResearch = new B401B420AdaptiveCognitiveResearchCore();
+  readonly b401B420AdaptiveCognitiveResearch: createDevelopmentalLifeCourseInstancesResult["b401B420AdaptiveCognitiveResearch"] = undefined as unknown as createDevelopmentalLifeCourseInstancesResult["b401B420AdaptiveCognitiveResearch"];
   /** B421-B450: research acceleration fabric combining causal graph retrieval, procedural refinement, meta-routing, adaptive compute, hierarchical world prediction, coordinated micro-rollouts, calibration and self-experiment proposals. It is a bounded residual support layer, never a second policy owner. */
-  readonly b421B450ResearchAcceleration = new B421B450ResearchAccelerationCore();
+  readonly b421B450ResearchAcceleration: createDevelopmentalLifeCourseInstancesResult["b421B450ResearchAcceleration"] = undefined as unknown as createDevelopmentalLifeCourseInstancesResult["b421B450ResearchAcceleration"];
   /** B451-B500: meta-cognitive developmental controller; learns when/how to remember, transfer skills, allocate compute, run experiments and consolidate identity. */
-  readonly b451B500MetaCognitiveDevelopment = new B451B500MetaCognitiveDevelopmentCore();
+  readonly b451B500MetaCognitiveDevelopment: createDevelopmentalLifeCourseInstancesResult["b451B500MetaCognitiveDevelopment"] = undefined as unknown as createDevelopmentalLifeCourseInstancesResult["b451B500MetaCognitiveDevelopment"];
   /** B501-B560: hierarchical temporal memory, learned meta-routing, calibrated confidence, counterfactual state checks and strategy transfer. */
-  readonly b501B560HierarchicalMetaMemory = new B501B560HierarchicalMetaMemoryCore();
+  readonly b501B560HierarchicalMetaMemory: createDevelopmentalLifeCourseInstancesResult["b501B560HierarchicalMetaMemory"] = undefined as unknown as createDevelopmentalLifeCourseInstancesResult["b501B560HierarchicalMetaMemory"];
   /** B561-B620: learned meta-policy, dual-process memory, co-evolving skills, action-conditioned world model, distributed population code and experiment/compute governance. */
-  readonly b561B620MetaCognitiveEvolution = new B561B620MetaCognitiveEvolutionCore();
+  readonly b561B620MetaCognitiveEvolution: createDevelopmentalLifeCourseInstancesResult["b561B620MetaCognitiveEvolution"] = undefined as unknown as createDevelopmentalLifeCourseInstancesResult["b561B620MetaCognitiveEvolution"];
   /** B621-B720: unified adaptive mind layer combining learned strategy routing, hierarchical autobiographical memory, world-model ensembles, regime-shift detection, transferable skills and distributed neural identity. */
-  readonly b621B720UnifiedAdaptiveMind = new B621B720UnifiedAdaptiveMindCore();
-  readonly b721B900DevelopmentalLearning = new B721B900DevelopmentalLearningFabric();
-  readonly b901B1100CausalDevelopmentalMetaLearner = new B901B1100CausalDevelopmentalMetaLearner();
-  readonly b1101B1350SelfDevelopment = new B1101B1350SelfDevelopmentCore();
-  readonly b1351B1600LifelongDevelopment = new B1351B1600LifelongDevelopmentCore();
-  readonly persistentContinuityKernel = new PersistentContinuityKernel();
+  readonly b621B720UnifiedAdaptiveMind: createDevelopmentalLifeCourseInstancesResult["b621B720UnifiedAdaptiveMind"] = undefined as unknown as createDevelopmentalLifeCourseInstancesResult["b621B720UnifiedAdaptiveMind"];
+  readonly b721B900DevelopmentalLearning: createDevelopmentalLifeCourseInstancesResult["b721B900DevelopmentalLearning"] = undefined as unknown as createDevelopmentalLifeCourseInstancesResult["b721B900DevelopmentalLearning"];
+  readonly b901B1100CausalDevelopmentalMetaLearner: createDevelopmentalLifeCourseInstancesResult["b901B1100CausalDevelopmentalMetaLearner"] = undefined as unknown as createDevelopmentalLifeCourseInstancesResult["b901B1100CausalDevelopmentalMetaLearner"];
+  readonly b1101B1350SelfDevelopment: createDevelopmentalLifeCourseInstancesResult["b1101B1350SelfDevelopment"] = undefined as unknown as createDevelopmentalLifeCourseInstancesResult["b1101B1350SelfDevelopment"];
+  readonly b1351B1600LifelongDevelopment: createDevelopmentalLifeCourseInstancesResult["b1351B1600LifelongDevelopment"] = undefined as unknown as createDevelopmentalLifeCourseInstancesResult["b1351B1600LifelongDevelopment"];
+  readonly persistentContinuityKernel: createDevelopmentalLifeCourseInstancesResult["persistentContinuityKernel"] = undefined as unknown as createDevelopmentalLifeCourseInstancesResult["persistentContinuityKernel"];
   /** B1701-B2200: canonical life continuity, behavior contracts, causal receipts, runtime-independent transfer, self-memory fabric, neural causal readout, world calibration, autonomous research and curriculum. */
-  readonly b1701B2200UnifiedLifeContinuity = new B1701B2200UnifiedLifeContinuityCore();
+  readonly b1701B2200UnifiedLifeContinuity: createDevelopmentalLifeCourseInstancesResult["b1701B2200UnifiedLifeContinuity"] = undefined as unknown as createDevelopmentalLifeCourseInstancesResult["b1701B2200UnifiedLifeContinuity"];
   /** B2201-B2500: canonical life-course self-model; binds unfinished intentions, autobiographical causality, self-beliefs and behavioural continuity into the decision loop. */
-  readonly b2201B2500LifeCourseSelfModel = new B2201B2500LifeCourseSelfModelCore();
+  readonly b2201B2500LifeCourseSelfModel: createDevelopmentalLifeCourseInstancesResult["b2201B2500LifeCourseSelfModel"] = undefined as unknown as createDevelopmentalLifeCourseInstancesResult["b2201B2500LifeCourseSelfModel"];
   b1701DecisionCache:ReturnType<B1701B2200UnifiedLifeContinuityCore['beforeDecision']>|null=null;
   b2201DecisionCache:ReturnType<B2201B2500LifeCourseSelfModelCore['beforeDecision']>|null=null;
   b1101DecisionCache:ReturnType<B1101B1350SelfDevelopmentCore['beforeDecision']>|null=null;
