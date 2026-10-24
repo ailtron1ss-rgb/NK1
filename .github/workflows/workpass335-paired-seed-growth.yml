@@ -53,3 +53,6 @@ jobs:
       - name: Preserve source repair plan after successful revision
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass338-p23-successful-revision-provenance.mjs
+      - name: TypeScript runtime syntax and semantic check
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
