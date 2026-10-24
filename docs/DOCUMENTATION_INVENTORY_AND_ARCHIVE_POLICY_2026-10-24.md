@@ -77,8 +77,8 @@ A “canonical” path points readers to the current view; it does not mean the 
 - [x] Exact-content SHA-256 inventory and candidate grouping.
 - [x] Root `audit:ordering` and `audit:quick` integration.
 - [x] Read an inventory output and triage exact-content groups and filename families; [the result report](DOCUMENTATION_INVENTORY_RESULTS_2026-10-24.md) binds the counts to the tested SHA and run URL.
-- [x] Search local Markdown and scanned source/config/manifest references for two archive candidates; GitHub issue/PR path searches found no direct references for either exact path.
-- [x] Move two dated 2026-10-06 snapshots byte-for-byte with a reversible SHA-256/Git-blob manifest: `FINAL-STATUS-2026-10-06.md` and `INVENTORY.md`; see `docs/history/reports/INDEX.md`.
+- [x] Search local Markdown and scanned source/config/manifest references for three archive candidates; GitHub issue/PR path searches found no direct references for the three exact paths.
+- [x] Move three dated 2026-10-06 snapshots byte-for-byte with a reversible SHA-256/Git-blob manifest: `FINAL-STATUS-2026-10-06.md`, `INVENTORY.md`, and `CONFLICTS-AND-GAPS.md`; see `docs/history/reports/INDEX.md`.
 - [ ] Confirm the latest exact-head run after adding this result report and its strict-link entry; runtime restore/release packaging and ZIP publication remain separate gates.
 
 **Honest status:** this pass creates the evidence-gathering mechanism and a safe policy. The inventory output and follow-up reference search must determine which specific files can move. It does not claim the repository has already been cleaned of duplicates, and does not authorize deleting historical records.
