@@ -22,7 +22,7 @@ const verification = await service.verify({
 assert.equal(verification.evidenceEventId?.startsWith('outcome:'), true);
 
 const p65 = new P65EpistemicLedger();
-const claimId = p65.record({ tick: 1, at: 100, kind: 'belief', content: 'Fresh scene observed', confidence01: .5, source: 'organism' });
+const claimId = p65.record({ tick: 1, at: 100, kind: 'belief', content: 'Fresh   scene observed', confidence01: .5, source: 'organism' });
 const result = applyTrustedOutcomeToP65(p65, { claimId, verification, expected, at: 200 });
 assert.equal(result.accepted, true);
 assert.equal(result.independentSource, true);
