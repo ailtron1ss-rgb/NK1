@@ -1,3 +1,11 @@
+## NK1 WorkPass478 — integrated progress scorecard (2026-10-24)
+
+- Added `docs/HEXIS_ASSIMILATION_PROGRESS_2026-10-24_RU.md`: a provisional engineering scorecard, end goals for existing category branches, the current memory/learning Hexis code passes, release blockers, and the next five implementation passes.
+- Scores are explicitly marked as triage estimates, not measured intelligence/benchmark outcomes. The report distinguishes code present on category branches from tests passed, PR merge, and Release ZIP publication.
+- Keep `main` out of direct rebuild merges; category PRs remain the integration path.
+
+---
+
 ## NK1 WorkPass474 — record Hexis reliability transfer and three category fixes (2026-10-24)
 
 - Recorded exact source files inspected in Hexis and their narrow NK1 adaptations.
