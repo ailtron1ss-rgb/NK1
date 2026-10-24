@@ -170,9 +170,20 @@ export class ExternalObserverFabric {
     if(!/^[a-z0-9._-]{2,80}$/i.test(id))throw new Error('invalid-observer-source-id');
     const now=Date.now();
     const prior=this.state.sources.find(s=>s.id===id);
+    // A source ID is the stable trust-registry identity. Allowing a later
+    // registration to rewrite its class/channel/independence key lets one
+    // physical source masquerade as a second independent witness.
+    const requestedIndependenceKey=String(input.independenceKey??prior?.independenceKey??id).slice(0,120);
+    if(prior && (
+      prior.sourceClass!==input.sourceClass ||
+      prior.channel!==input.channel ||
+      prior.independenceKey!==requestedIndependenceKey
+    )) {
+      throw new Error('external-observer-source-identity-conflict');
+    }
     const next:ExternalObserverSource={
-      id,sourceClass:input.sourceClass,channel:input.channel,
-      independenceKey:String(input.independenceKey??id).slice(0,120),
+      id,sourceClass:prior?.sourceClass??input.sourceClass,channel:prior?.channel??input.channel,
+      independenceKey:prior?.independenceKey??requestedIndependenceKey,
       reliability01:clamp(input.reliability01??prior?.reliability01??baseReliability(input.sourceClass)),
       enabled:input.enabled??prior?.enabled??true,
       samples:prior?.samples??0,accepted:prior?.accepted??0,contradicted:prior?.contradicted??0,lastAt:prior?.lastAt??0,
