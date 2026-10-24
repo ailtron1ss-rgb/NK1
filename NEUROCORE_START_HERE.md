@@ -1,3 +1,11 @@
+## Latest follow-up — WorkPass334 independent-evaluation regression isolation (2026-10-24)
+
+- Diagnosed the exact-head WorkPass110 failure in `workpass243-host-owned-independent-evaluation-services.mjs`: the test deliberately made the executor group-writable, verified denial, then left that mode in place before the separate run-root identity test. The executable safety check correctly fired first and masked the intended second assertion.
+- Restored the test fixture's mode to `0700` after the permission-denial assertion. Runtime security behavior is unchanged.
+- **Validation remains pending** for the latest commit: rerun WorkPass110 and WorkPass331, inspect their exact-head outcomes, and keep unrelated remaining failures separately tracked.
+
+---
+
 ## Latest follow-up — WorkPass334 CI fixture dependency correction (2026-10-24)
 
 - Diagnosed the first exact-HEAD WorkPass331 workflow failure: `tools/super-install.test.mjs` copied `super-install.mjs` to a temporary folder without also copying its imported sibling `runtime-requirements.mjs`. The resulting `ERR_MODULE_NOT_FOUND` happened before the new cognitive regression ran.

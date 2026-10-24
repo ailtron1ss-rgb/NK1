@@ -1,3 +1,8 @@
+# WorkPass334 follow-up — isolate authority permission test state (2026-10-24)
+
+- [TEST FIX] The WorkPass243 independent-evaluation regression now restores the executor fixture to private executable permissions after asserting rejection of a group-writable executable. This prevents that intentional mutation from masking the subsequent run-root inode/identity check.
+- [VALIDATION] A previous exact-head WorkPass110 run failed because the second assertion observed the earlier permission violation. The next exact-head run must confirm the permission and root-identity cases both pass; this test correction does not weaken the runtime permission gate.
+
 # WorkPass334 follow-up — installer fixture dependency fix (2026-10-24)
 
 - [FIXED] `tools/super-install.test.mjs` now copies `runtime-requirements.mjs` into its isolated temporary fixture, matching the import used by `super-install.mjs`.
