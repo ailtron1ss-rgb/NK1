@@ -957,7 +957,43 @@ export class OrganismRuntime {
     const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap);
     const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:cycleStageMap,parentIntegrity01:cycleLineage.complete ? cycleLineage.integrity01 : 0});
     this.core.setRuntimeUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
-    this.realityEvidence.record({tick:cycle.state.tick,eventId:realityEvidenceEventId(cycleStageIds.outcome??outcomeEvidence.id,'cycle-completeness',String(cycle.state.tick)),realityClass:'derived',claim:'cognitive-cycle-completeness',confidence01:cycleVerification.complete ? .95 : .35,independenceKey:`cycle:${cycle.state.tick}`,parentIds:Object.values(cycleStageIds).filter(Boolean) as string[]});
+    // The evidence ledger intentionally caps direct parent lineage at eight IDs.
+    // Preserve every cycle stage by grouping its lineage into two bounded evidence nodes.
+    const cycleCoreParents = [
+      cycleStageIds.observation, cycleStageIds.prediction, cycleStageIds.appraisal,
+      cycleStageIds.attention, cycleStageIds.memory, cycleStageIds.goal,
+    ].filter((id): id is string => typeof id === 'string' && id.length > 0);
+    const cycleExecutionParents = [
+      cycleStageIds.plan, cycleStageIds.action, cycleStageIds.outcome,
+      cycleStageIds.learning, cycleStageIds.selfUpdate,
+    ].filter((id): id is string => typeof id === 'string' && id.length > 0);
+    const cycleCoreLineage = this.realityEvidence.record({
+      tick: cycle.state.tick,
+      eventId: realityEvidenceEventId(cycleStageIds.outcome ?? outcomeEvidence.id, 'cycle-stage-lineage', `${cycle.state.tick}:core`),
+      realityClass: 'derived',
+      claim: 'cognitive-cycle-core-stage-lineage',
+      confidence01: cycleLineage.complete ? .9 : .35,
+      independenceKey: `cycle-stage-core:${cycle.state.tick}`,
+      parentIds: cycleCoreParents,
+    });
+    const cycleExecutionLineage = this.realityEvidence.record({
+      tick: cycle.state.tick,
+      eventId: realityEvidenceEventId(cycleStageIds.outcome ?? outcomeEvidence.id, 'cycle-stage-lineage', `${cycle.state.tick}:execution`),
+      realityClass: 'derived',
+      claim: 'cognitive-cycle-execution-stage-lineage',
+      confidence01: cycleLineage.complete ? .9 : .35,
+      independenceKey: `cycle-stage-execution:${cycle.state.tick}`,
+      parentIds: cycleExecutionParents,
+    });
+    this.realityEvidence.record({
+      tick: cycle.state.tick,
+      eventId: realityEvidenceEventId(cycleStageIds.outcome ?? outcomeEvidence.id, 'cycle-completeness', String(cycle.state.tick)),
+      realityClass: 'derived',
+      claim: 'cognitive-cycle-completeness',
+      confidence01: cycleVerification.complete ? .95 : .35,
+      independenceKey: `cycle:${cycle.state.tick}`,
+      parentIds: [cycleCoreLineage.id, cycleExecutionLineage.id],
+    });
     this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());
 
 
