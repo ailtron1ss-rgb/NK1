@@ -1,3 +1,12 @@
+## NK1 WorkPass516 — enforce canonical parent lineage on live P65 writes (2026-10-24)
+
+- P65 live writes now reject duplicate parent IDs, whitespace-padded IDs and control characters, matching the stricter restore contract from WorkPass515.
+- Removed the old silent parent-ID filtering after validation; accepted lineage is preserved exactly as supplied.
+- Extended the existing P65 regression with malformed live-lineage inputs, including an actual control-character case.
+- **Validation boundary:** source and regression committed; exact-head runtime test/typecheck/CI have not been executed or verified.
+
+---
+
 ## NK1 WorkPass515 — preserve causal lineage during epistemic-memory restore (2026-10-24)
 
 - P65 restore now rejects persisted claims with malformed, duplicate, whitespace-padded, control-character, or over-limit parent references instead of silently stripping the references and retaining the claim as if it were a root observation.
