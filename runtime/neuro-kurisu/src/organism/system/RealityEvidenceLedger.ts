@@ -32,7 +32,8 @@ export interface RealityEvidenceLedgerState {
 }
 
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
-const EXTERNAL=new Set<EvidenceRealityClass>(['external-observation','device-observation','user-reported']);
+const EXTERNAL=new Set<EvidenceRealityClass>(['external-observation','device-observation']);
+const USER_REPORTED=new Set<EvidenceRealityClass>(['user-reported']);
 const REALITY_CLASSES=new Set<EvidenceRealityClass>(['external-observation','device-observation','simulator','derived','model-generated','user-reported']);
 const EVENT_ID=/^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$/;
 const CONTROL=/[\u0000-\u001f\u007f-\u009f]/;
@@ -163,13 +164,14 @@ export class RealityEvidenceLedger {
   claimAssessment(claim:string){
     const rows=this.records.filter(r=>r.claim===claim&&(!r.eventId||!this.quarantinedEventIds.has(r.eventId)));
     const external=rows.filter(r=>EXTERNAL.has(r.realityClass));
+    const userReported=rows.filter(r=>USER_REPORTED.has(r.realityClass));
     const simulator=rows.filter(r=>r.realityClass==='simulator');
     const externalKeys=new Set(external.map(r=>r.independenceKey));
     const simulationKeys=new Set(simulator.map(r=>r.independenceKey));
     const externalConfidence=external.length?Math.max(...external.map(r=>r.confidence01)):0;
     const simulationConfidence=simulator.length?Math.max(...simulator.map(r=>r.confidence01)):0;
     return {
-      claim,samples:rows.length,externalSamples:external.length,simulationSamples:simulator.length,
+      claim,samples:rows.length,externalSamples:external.length,userReportedSamples:userReported.length,simulationSamples:simulator.length,
       externalConfidence01:externalConfidence,simulationConfidence01:simulationConfidence,
       independentExternalSources:externalKeys.size,independentSimulationSources:simulationKeys.size,
       promotionAllowed:external.length>0&&externalKeys.size>0&&externalConfidence>=.55,
