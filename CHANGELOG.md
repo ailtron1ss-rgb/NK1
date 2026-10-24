@@ -1,3 +1,9 @@
+# WorkPass347 — race-resistant signed dataset read (2026-10-24)
+
+- [SECURITY] Native P23 provider now opens the resolved dataset via a file descriptor and rechecks dev/ino against the previously inspected file. On POSIX, O_NOFOLLOW prevents a symlink swap at the final path component. Descriptor metadata is checked before reading and again after read to detect inode replacement or concurrent mutation.
+- [TEST] Added a regression for explicit symlink dataset paths in addition to protected permissions, state-directory isolation and signed-artifact validation.
+- [VALIDATION] Fresh exact-head Hermes contract and TypeScript typecheck are required; the earlier WorkPass346 run does not validate these additions.
+
 # WorkPass346 — native signed-evidence Hermes/P23 provider (2026-10-24)
 
 - [INTEGRATION] Added `P23CompoundRepairRevisionProvider.ts` so NK1 can form an authentic proposal directly from a configured signed-outcome dataset without a custom provider plugin. The provider rebuilds the verified ledger, validates all Ed25519 signatures against the external trusted keyring, applies the promotion gate, and requires exact proposal/outcome fingerprint agreement with the canonical versioned candidate store.
