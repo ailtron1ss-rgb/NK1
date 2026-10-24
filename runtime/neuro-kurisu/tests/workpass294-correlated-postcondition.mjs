@@ -21,7 +21,7 @@ assert.match(gatewaySource, /executionId,\s*\.\.\.\(?(?:typeof context\.decision
   'gateway verification must carry the action execution and decision tickets');
 assert.match(coreSource, /const trustedEventLink = Boolean\(decisionLinkedExternalPostcondition && actionInput && linkedDecisionId/,
   'event ID propagation requires the trusted decision/input binding, not just a caller string');
-assert.match(coreSource, /evidenceEventId: trustedEventLink && typeof v\.evidenceEventId === 'string' \? v\.evidenceEventId : undefined/,
+assert.match(coreSource, /const evidenceEventId = trustedEventLink && typeof v\.evidenceEventId === 'string' \? v\.evidenceEventId : undefined/,
   'only a freshly trusted verifier result may pass its event key into the canonical observer');
 assert.match(coreSource, /this\.integrateVerifiedToolObservation\(id, result, options, false, decisionLinkedExternalPostcondition, input\)/,
   'the canonical full action input is rebound to the exact verification before the event key is admitted');

@@ -25,9 +25,15 @@ const invalidId=cycle.evaluate({tick:3,stageIds:{...stages,action:'  '},parentIn
 assert.equal(invalidId.complete,false);
 assert.ok(invalidId.missingStages.includes('action'));
 
-assert.throws(()=>cycle.evaluate({tick:NaN,stageIds:stages,parentIntegrity01:1}),/tick/);
+const beforeRejectedTick = cycle.snapshot();
+assert.throws(()=>cycle.evaluate({tick:NaN,stageIds:stages,parentIntegrity01:1}),/cognitive cycle input data boundary rejected/);
+assert.deepEqual(cycle.snapshot(), beforeRejectedTick,
+  "non-finite tick must fail at the plain-data boundary without mutating cycle state");
 assert.throws(()=>cycle.evaluate({tick:0,stageIds:stages,parentIntegrity01:1}),/strictly increase/);
-assert.throws(()=>cycle.evaluate({tick:4,stageIds:stages,parentIntegrity01:Infinity}),/parentIntegrity01/);
+const beforeRejectedParentIntegrity = cycle.snapshot();
+assert.throws(()=>cycle.evaluate({tick:4,stageIds:stages,parentIntegrity01:Infinity}),/cognitive cycle input data boundary rejected/);
+assert.deepEqual(cycle.snapshot(), beforeRejectedParentIntegrity,
+  "non-finite parent integrity must fail at the plain-data boundary without mutating cycle state");
 const unsafeId=cycle.evaluate({tick:5,stageIds:{...stages,action:'act\n1'},parentIntegrity01:1});
 assert.equal(unsafeId.complete,false);
 assert.ok(unsafeId.missingStages.includes('action'));

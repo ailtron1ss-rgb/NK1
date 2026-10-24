@@ -1,3 +1,12 @@
+## NK1 WorkPass525 — align regressions with canonical trust boundaries (2026-10-24)
+
+- Causal-stream invalid-input regression now compares the whole snapshot before/after instead of assuming unverified external observations count as grounded outcomes.
+- Unified cognitive-cycle tests now expect the plain-data boundary to reject non-finite inputs before field-specific validation, and prove the rejection is state-preserving.
+- Corrected the correlated-postcondition source assertion to match the actual local variable assignment (`const evidenceEventId = ...`) while retaining the trusted-link requirement.
+- These are test-contract corrections; they do not relax evidence admission or action authorization. Exact-head Actions is still the final check.
+
+---
+
 ## NK1 WorkPass524 — release live history slots on evidence conflict (2026-10-24)
 
 - A write-time event-ID payload conflict now immediately removes the quarantined event from the retained history, matching the restore-time retention fix.

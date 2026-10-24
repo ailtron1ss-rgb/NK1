@@ -191,14 +191,15 @@ assert.equal(cycleSafeRestore.recent(64).some(row => row.traceId === "External-S
 assert.ok(cycleSafeRestore.snapshot().recordedTraceIds.includes("External-Source-17"),
   "a cyclic collision must retain its normalized identity in the dedup guard");
 
+const beforeInvalidExternalInput = externalStream.snapshot();
 assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, taskId: "   ", traceId: "invalid-task",
 }), /causal-external-task-id-required/);
 assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, action: "delete-all", traceId: "invalid-action",
 }), /causal-external-action-invalid/);
-assert.equal(externalStream.summary().outcomes, 1,
-  "invalid external task/action data must not mutate the causal stream");
+assert.deepEqual(externalStream.snapshot(), beforeInvalidExternalInput,
+  "invalid external task/action data must not mutate any causal-stream state");
 
 // IDs are identity keys, not display strings: truncating an overlong value could
 // collapse two independent tasks/events into one duplicate and silently lose data.
