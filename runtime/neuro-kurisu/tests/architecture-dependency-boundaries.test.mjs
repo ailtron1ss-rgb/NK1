@@ -97,6 +97,35 @@ test("dependency boundary policy ignores similarly named directories and sibling
   assert.deepEqual(violations, []);
 });
 
+test("persistence default factories have one stable domain owner", async () => {
+  const persistenceRoot = new URL("../src/organism/persistence/", import.meta.url);
+  const migrations = await readFile(new URL("StateMigrations.ts", persistenceRoot), "utf8");
+  const facade = await readFile(new URL("StateFacetDefaults.ts", persistenceRoot), "utf8");
+  const domains = [
+    ["defaultMemoryFacet", "state-defaults/MemoryFacetDefaults.ts"],
+    ["defaultEmbodimentFacet", "state-defaults/EmbodimentFacetDefaults.ts"],
+    ["defaultLearningFacet", "state-defaults/LearningFacetDefaults.ts"],
+    ["defaultConsciousnessFacet", "state-defaults/ConsciousnessFacetDefaults.ts"],
+    ["defaultEvolutionFacet", "state-defaults/EvolutionFacetDefaults.ts"],
+    ["defaultAdvancedFacet", "state-defaults/AdvancedFacetDefaults.ts"],
+    ["defaultCognitionFacet", "state-defaults/CognitionFacetDefaults.ts"],
+  ];
+
+  assert.match(migrations, /import \{[^}]*defaultNeeds[^}]*defaultMemoryFacet[^}]*defaultEmbodimentFacet[^}]*defaultLearningFacet[^}]*defaultConsciousnessFacet[^}]*defaultEvolutionFacet[^}]*defaultAdvancedFacet[^}]*defaultCognitionFacet[^}]*\} from ["']\.\/StateFacetDefaults\.ts["']/);
+  assert.match(facade, /export const defaultNeeds\s*=/);
+
+  for (const [factory, relativePath] of domains) {
+    const moduleText = await readFile(new URL(relativePath, persistenceRoot), "utf8");
+    assert.match(facade, new RegExp("export \\{\\s*" + factory + "\\s*\\} from ['\"]\\.\\/" + relativePath.replace(/[.*+?^${}()|[\]\\]/g, "\\test("full architecture audit enforces dependency boundaries and exports a JSON graph", async () => {") + "['\"]"));
+    assert.match(moduleText, new RegExp("export const " + factory + "\\s*="));
+    assert.doesNotMatch(migrations, new RegExp("(?:^|\\n)\\s*(?:export\\s+)?const " + factory + "\\s*=", "m"));
+  }
+
+  for (const factory of ["defaultNeeds", ...domains.map(([name]) => name)]) {
+    assert.match(migrations, new RegExp("\\b" + factory + "\\s*\\("), "migration must consume the canonical " + factory + " factory");
+  }
+});
+
 test("full architecture audit enforces dependency boundaries and exports a JSON graph", async () => {
   const inheritedReport = process.env.NK1_DEPENDENCY_GRAPH_REPORT;
   const tempDir = inheritedReport ? null : await mkdtemp(path.join(tmpdir(), "nk1-dependency-graph-"));
