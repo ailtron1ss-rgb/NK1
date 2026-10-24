@@ -1,3 +1,8 @@
+## NK1 Architecture — dependency graph observability (2026-10-24)
+
+- [OBSERVABILITY] The architecture audit success line now reports `dependencyEdges` and `boundaryViolations=0` alongside source-file and cycle/missing-import counts.
+- [REGRESSION] The full-tree test asserts the graph metrics are present and that the boundary violation count is zero.
+
 ## NK1 Architecture — enforce dependency directions (2026-10-24)
 
 - [ADDED] Extracted a pure, testable dependency boundary policy in `runtime/neuro-kurisu/scripts/dependency-boundary-policy.mjs`.
