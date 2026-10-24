@@ -1,3 +1,11 @@
+## NK1 WorkPass502 — close relationship-model input and CI follow-ups
+
+- Corrected the relationship-model control-character guard to use code-point checks instead of an incorrectly escaped regular expression.
+- Kept the P26 script alias and Node 24 transform-mode fix from WorkPass501; CI reruns are active on the branch head.
+- The new relationship-model boundary test remains pending execution; no test-pass claim is made here.
+
+---
+
 ## NK1 WorkPass501 — repair CI script aliases and Node 24 TypeScript transform
 
 - Added the missing `test:p26:learning-input-integrity` package-script alias required by the P26 validation workflow.
