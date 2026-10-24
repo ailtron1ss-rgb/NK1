@@ -623,7 +623,7 @@
     "test:big-pass-160:verification": "npm run test:big-pass-160 && npm run typecheck && npm run test:function-public-utilities",
     "test:big-pass-161:sweep": "node --experimental-strip-types tests/big-pass-161-function-sweep.mjs",
     "test:big-pass-161": "node --experimental-strip-types tests/big-pass-160-semantic-coverage.mjs && npm run test:big-pass-161:sweep && node scripts/audit-semantic-coverage.mjs",
-    "test:big-pass-161:cognitive": "node --experimental-strip-types tests/big-pass-161-cognitive-event-fabric.mjs",
+    "test:big-pass-161:cognitive": "node --experimental-transform-types tests/big-pass-161-cognitive-event-fabric.mjs",
     "test:big-pass-161:all": "npm run typecheck && npm run test:big-pass-161:cognitive && npm run test:big-pass-161:sweep && node scripts/audit-semantic-coverage.mjs",
     "test:big-pass-162": "node --experimental-strip-types tests/big-pass-162-unified-cognitive-economy.mjs",
     "audit:big-pass-162": "npm run typecheck && npm run test:big-pass-160 && npm run test:big-pass-162 && node --experimental-strip-types tests/big-pass-162-runtime-integration.mjs && npm run test:big-pass-161:sweep && npm run test:big-pass-161:cognitive && node scripts/audit-semantic-coverage.mjs && npm run audit:architecture && npm run audit:integrity && npm run audit:forensics && npm run audit:hygiene && npm run verify:release-source",
