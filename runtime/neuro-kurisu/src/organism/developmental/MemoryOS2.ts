@@ -3,6 +3,8 @@ import { MemorySignalFusion, type MemoryFusionProfile } from './MemorySignalFusi
 import { AdaptiveMemoryPolicy, type MemoryPolicyName } from './AdaptiveMemoryPolicy.ts';
 import { canonicalizeMemoryContent, deriveMemoryIdentity, mergeMemoContext, mergeMemoTags, memoContentHash, stableMemoryId } from './MemoInspiredMemoryPrimitives.ts';
 import { LocalEmbeddingProvider, type TextEmbeddingProvider } from './LocalEmbeddingProvider.ts';
+/** Shared provider instance for the canonical organism memory runtime and local-model hub API. */
+export const sharedLocalEmbeddingProvider = LocalEmbeddingProvider.fromEnvironment();
 import { cosineSimilarity, fnv1a32 } from '../core/NumericPrimitives.ts';
 export type EpistemicStatus='fact'|'belief'|'hypothesis'|'unknown'|'quarantined';
 export type MemoryProvenanceClass='device'|'external'|'user'|'agent'|'derived'|'simulation'|'unknown';

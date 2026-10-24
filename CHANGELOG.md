@@ -1,3 +1,19 @@
+## 2026-10-24 — Unified local small-model routing and memory embeddings
+
+- [IMPLEMENTED] Added `LocalSmallModelHub` as a single capability registry for local language generation, semantic embeddings, intent classification and affect estimation, with bounded inputs/outputs, schema validation and prompt-free telemetry.
+- [RUNTIME] Routed language-model selection and outcome accounting through the hub while retaining the existing P40 selection and local-language circuit-breaker policy. Optional, explicitly configured specialist models can contribute validated low-confidence context signals to the language-response path.
+- [AFFECT FUSION] Validated local affect hints now enter the canonical `EmotionAppraisalEngine` through `OrganismCore`; the hint is short-lived, stores no prompt, and may blend at most 18% into valence/arousal without overriding the core's emotion label or action tendency.
+- [VISION] Added a loopback-only OpenAI-compatible local VLM behind the existing `VisionSemanticBackend` contract. It bounds image/response sizes, normalizes scene/object/relation/event outputs, prefers local inference, and permits Gemini fallback only when explicitly enabled and configured.
+- [MEMORY] Exported a shared embedding provider and injected that same instance into the canonical `MemorySubsystemRuntime` and server hub. This shares embedding cache/diagnostics between real memory semantic indexing and the API instead of maintaining two independent provider instances.
+- [API] Added authenticated endpoints `GET /api/local-models`, `POST /api/local-models/embeddings`, `POST /api/local-models/classify` and `POST /api/local-models/emotion`. The existing API authorization/rate-limit middleware remains in front of them.
+- [PRIVACY] Local specialist chat endpoints continue to enforce loopback-only transport. Embedding remote access remains opt-in and HTTPS-only; obvious credentials/contact identifiers are scrubbed before model inference. The sanitizer is heuristic, not a guarantee of complete PII removal.
+- [REGRESSION] Added `test:local-small-model-hub`, `test:local-vision-backend`, `test:local-affect-appraisal-bridge` and `test:server-local-small-model-http`, plus focused CI independent from the existing whole-runtime typecheck. The live-server smoke starts NK1 with fake local endpoints and validates diagnostics plus classifier, affect and embedding routes end to end, including the core affect bridge. The test runtime can disable background autonomous ticks through `NEURO_AUTORUN_ENABLED=0`; production default remains enabled.
+- [VALIDATION STATUS] The targeted TypeScript check for the local VLM and the hub, vision, embedding-privacy, local-selection and chat-provider regressions passed in [NK1 local small-model validation](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40126642822). The repository-wide runtime typecheck still fails on existing unrelated cognition/core/learning errors; it is tracked separately and is not claimed green. Fixed a malformed control-character regex in `OutcomeVerificationService.ts` that had made Node 24 fail to import that module. Real-device model execution, resource profiling, retrieval-uplift evaluation and production/release approval remain outstanding; no model weights were downloaded or release assets modified.
+
+- [CURRENT STATUS] Follow-up changes add a TypeScript ESM loader for the end-to-end server test and a bounded affect-to-core bridge. Final CI for the current head is pending; earlier focused checks passed before these follow-up changes, so do not treat the latest head as fully green until its run completes.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

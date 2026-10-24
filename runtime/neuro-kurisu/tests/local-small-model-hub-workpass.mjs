@@ -1,0 +1,161 @@
+import assert from 'node:assert/strict';
+import { LocalSmallModelHub } from '../src/server/LocalSmallModelHub.mjs';
+import { LocalLanguageBackendPolicy } from '../src/server/local-language-backend-policy.mjs';
+import { MemorySubsystemRuntime } from '../src/organism/core/MemorySubsystemRuntime.ts';
+import { sharedLocalEmbeddingProvider } from '../src/organism/developmental/MemoryOS2.ts';
+
+let now = 1_000;
+const clock = () => now;
+const sent = { classifier: [], emotion: [], embeddings: [] };
+const languagePolicy = new LocalLanguageBackendPolicy({ baseCooldownMs: 250, maxCooldownMs: 500 });
+const languageProvider = {
+  model: 'tiny-chat-q4',
+  configured: () => true,
+};
+const embeddingProvider = {
+  providerId: 'ollama:http://127.0.0.1:11434:embeddinggemma',
+  modelId: 'embeddinggemma',
+  async embedBatch(texts) {
+    sent.embeddings.push(...texts);
+    return texts.map((_, index) => [1, index + 1, 0]);
+  },
+  diagnostics() {
+    return { configured: true, provider: 'ollama', model: 'embeddinggemma', endpoint: 'http://127.0.0.1:11434', cacheEntries: 2 };
+  },
+};
+const classifierProvider = {
+  model: 'tiny-classifier-q4',
+  configured: () => true,
+  async generate(request) {
+    sent.classifier.push(request);
+    return { text: JSON.stringify({ label: 'technical', confidence: 0.92 }), backend: 'llama.cpp:tiny-classifier-q4' };
+  },
+};
+const emotionProvider = {
+  model: 'tiny-affect-q4',
+  configured: () => true,
+  async generate(request) {
+    sent.emotion.push(request);
+    return { text: JSON.stringify({ emotion: 'curiosity', valence: 0.4, arousal: 0.6, confidence: 0.81 }), backend: 'llama.cpp:tiny-affect-q4' };
+  },
+};
+
+const canonicalMemorySubsystem = new MemorySubsystemRuntime();
+assert.equal(canonicalMemorySubsystem.memoryOS.embeddingConfigured(), Boolean(sharedLocalEmbeddingProvider),
+  'canonical memory and the API hub must observe the same shared provider configuration');
+assert.equal(
+  canonicalMemorySubsystem.memoryOS.semanticEmbeddingMaintenanceDiagnostics().provider,
+  sharedLocalEmbeddingProvider?.diagnostics().provider ?? 'none',
+  'canonical semantic memory must use the shared provider, not a second endpoint configuration',
+);
+
+const hub = new LocalSmallModelHub({
+  languageProvider, embeddingProvider, classifierProvider, emotionProvider,
+  languagePolicy, clock,
+});
+assert.equal(hub.selectLanguage({ localLlamaConfigured: true, ecologyPreferredBackend: 'gemini' }), 'llama.cpp');
+hub.observeLanguage({ backend: 'gemini:remote-model', failures: ['llama.cpp:timeout'], latencyMs: 40, success: true });
+assert.equal(hub.selectLanguage({ localLlamaConfigured: true, ecologyPreferredBackend: 'kobold' }), 'kobold',
+  'the shared router must honor the local language circuit breaker');
+now += 251;
+assert.equal(hub.selectLanguage({ localLlamaConfigured: true, ecologyPreferredBackend: 'gemini' }), 'llama.cpp',
+  'the local language route should resume at the cooldown deadline');
+hub.observeLanguage({ backend: 'llama.cpp:tiny-chat-q4', failures: [], latencyMs: 12, success: true });
+
+const classified = await hub.classifyText(
+  'Please investigate the runtime; contact me at alice@example.com and api_key=super_secret_value_123',
+  ['question', 'technical', 'request', 'other'],
+);
+assert.deepEqual(
+  { label: classified.label, confidence: classified.confidence },
+  { label: 'technical', confidence: 0.92 },
+);
+const classifierWire = JSON.stringify(sent.classifier);
+assert.equal(classifierWire.includes('alice@example.com'), false, 'email should be removed before local model input');
+assert.equal(classifierWire.includes('super_secret_value_123'), false, 'credential-like values should be removed before model input');
+assert.ok(classifierWire.includes('REDACTED_EMAIL'));
+assert.ok(classifierWire.includes('REDACTED_CREDENTIAL'));
+assert.equal(classified.model, 'llama.cpp:tiny-classifier-q4');
+
+const affect = await hub.analyzeEmotion('I am delighted by this discovery!');
+assert.deepEqual(
+  { emotion: affect.emotion, valence: affect.valence, arousal: affect.arousal, confidence: affect.confidence },
+  { emotion: 'curiosity', valence: 0.4, arousal: 0.6, confidence: 0.81 },
+);
+
+const vectors = await hub.embedBatch(['memory about science', 'memory about sarcasm']);
+assert.equal(vectors.length, 2);
+assert.equal(vectors[0].length, 3);
+assert.equal(sent.embeddings.length, 2);
+await assert.rejects(() => hub.embedBatch(Array.from({ length: 33 }, (_, i) => `text ${i}`)), /batch-limit/);
+
+const signals = await hub.deriveContextSignals('A short safe sentence');
+assert.equal(signals.intent.label, 'technical');
+assert.equal(signals.affect.emotion, 'curiosity');
+
+const before = hub.snapshot();
+assert.equal(before.localFirst, true);
+assert.equal(before.models.length, 6);
+assert.equal(before.models.find((row) => row.id === 'local-embeddings').state, 'observed-healthy');
+assert.equal(before.metrics.classification.successes, 2);
+assert.equal(before.metrics.emotion.successes, 2);
+assert.equal(before.metrics.embeddings.successes, 1);
+assert.ok(before.recentDecisions.length <= 32);
+assert.equal(JSON.stringify(before).includes('super_secret_value_123'), false);
+assert.equal(JSON.stringify(before).includes('alice@example.com'), false);
+assert.equal(JSON.stringify(before).includes('A short safe sentence'), false, 'diagnostics must not retain prompts');
+
+const offHub = new LocalSmallModelHub({ languagePolicy, clock, enableContextSignals: false });
+assert.equal(await offHub.deriveContextSignals('Do not run auxiliary inference'), null);
+assert.equal(offHub.snapshot().contextSignalsEnabled, false);
+
+const invalidEmotionHub = new LocalSmallModelHub({
+  emotionProvider: { configured: () => true, model: 'bad-fixture', async generate() {
+    return { text: JSON.stringify({ emotion: 'made-up', valence: 8, arousal: -1, confidence: 2 }) };
+  } },
+  clock,
+});
+await assert.rejects(() => invalidEmotionHub.analyzeEmotion('test'), /schema-mismatch/);
+assert.equal(invalidEmotionHub.snapshot().metrics.emotion.failures, 1);
+assert.equal(invalidEmotionHub.snapshot().metrics.emotion.lastFailureCode, 'inference-failed');
+assert.equal(invalidEmotionHub.snapshot().models.find((row) => row.id === 'local-emotion').state, 'observed-failure', 'invalid output after a real request must not look like an unprobed model');
+
+const visionFallbackHub = new LocalSmallModelHub({
+  visionProvider: { id: 'local-vision:offline', model: 'tiny-vlm', async analyze() { throw new Error('local-vision-timeout'); } },
+  clock,
+});
+visionFallbackHub.setVisionFallbackProvider({
+  id: 'gemini-vision:explicit-test',
+  async analyze() {
+    return { semantic: true, sceneLabel: 'test scene', confidence01: 0.8, objects: [], relations: [], events: [], backend: 'gemini-vision:explicit-test', latencyMs: 3, evidenceKind: 'model-output' };
+  },
+});
+assert.equal(visionFallbackHub.hasCapability('vision'), true);
+const visualResult = await visionFallbackHub.analyzeVision({ imagePath: '/redacted/internal-frame.png', at: now, cameraId: 2 });
+assert.equal(visualResult.sceneLabel, 'test scene');
+assert.equal(visionFallbackHub.snapshot().metrics.vision.failures, 1, 'local vision failure must be visible even when fallback succeeds');
+assert.equal(visionFallbackHub.snapshot().metrics.vision.successes, 1);
+assert.equal(visionFallbackHub.snapshot().models.find((row) => row.id === 'local-vision').state, 'observed-failure');
+assert.equal(visionFallbackHub.snapshot().models.find((row) => row.id === 'vision-fallback').state, 'observed-healthy');
+assert.equal(JSON.stringify(visionFallbackHub.snapshot()).includes('/redacted/internal-frame.png'), false, 'vision diagnostics must not retain image paths');
+
+const noCloudVisionHub = new LocalSmallModelHub({
+  visionProvider: { id: 'local-vision:offline', model: 'tiny-vlm', async analyze() { throw new Error('local-vision-timeout'); } },
+  clock,
+});
+await assert.rejects(() => noCloudVisionHub.analyzeVision({ imagePath: '/redacted/private.png', at: now, cameraId: 3 }), /local-vision-timeout/);
+assert.equal(noCloudVisionHub.snapshot().metrics.vision.failures, 1);
+assert.equal(noCloudVisionHub.snapshot().recentDecisions.at(-1).selected, 'local-vision:offline');
+assert.equal(JSON.stringify(noCloudVisionHub.snapshot()).includes('/redacted/private.png'), false);
+
+console.log('LOCAL_SMALL_MODEL_HUB=PASS', JSON.stringify({
+  languageRouting: true,
+  specialistSchemas: true,
+  embeddingBatchBound: true,
+  promptRedaction: true,
+  telemetryRedactsPrompts: true,
+  contextSignals: true,
+  malformedOutputRejected: true,
+  visionLocalFirstFallback: true,
+  visionPathRedaction: true,
+}));

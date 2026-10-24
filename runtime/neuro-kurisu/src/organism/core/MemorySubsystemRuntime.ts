@@ -7,7 +7,7 @@ import { SocialWorldModel } from '../cognition/SocialWorldModel.ts';
 import { ValuePlasticity } from '../cognition/ValuePlasticity.ts';
 import { RecurrentWorkspaceV2 } from '../cognition/RecurrentWorkspaceV2.ts';
 import { SemanticMemoryGraph } from '../memory/SemanticMemoryGraph.ts';
-import { MemoryOS2 } from '../developmental/MemoryOS2.ts';
+import { MemoryOS2, sharedLocalEmbeddingProvider } from '../developmental/MemoryOS2.ts';
 import { MemorySubstrateCoordinator } from '../developmental/MemorySubstrateCoordinator.ts';
 import { UnifiedMemorySystem } from '../developmental/UnifiedMemorySystem.ts';
 import { P47TemporalMemoryMind } from '../developmental/P47TemporalMemoryMind.ts';
@@ -42,7 +42,7 @@ export class MemorySubsystemRuntime {
   readonly valuePlasticity = new ValuePlasticity();
   readonly workspaceV2 = new RecurrentWorkspaceV2();
   readonly semanticMemory = new SemanticMemoryGraph();
-  readonly memoryOS = new MemoryOS2();
+  readonly memoryOS = new MemoryOS2({ embeddingProvider: sharedLocalEmbeddingProvider ?? null });
   readonly memorySubstrate = new MemorySubstrateCoordinator();
   readonly unifiedMemory = new UnifiedMemorySystem();
   readonly p47MemoryMind = new P47TemporalMemoryMind();
