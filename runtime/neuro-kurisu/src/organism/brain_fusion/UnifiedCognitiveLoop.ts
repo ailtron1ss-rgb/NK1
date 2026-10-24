@@ -56,7 +56,7 @@ export class UnifiedCognitiveLoop {
     const boundedSignal = (n: unknown) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 1;
     if (typeof id !== 'string' || id.length < 1 || id.length > 180 ||
         id.trim() !== id || id.normalize('NFKC') !== id ||
-        /[\\u0000-\\u001f\\u007f-\\u009f]/.test(id) ||
+        /[\u0000-\u001f\u007f-\u009f]/.test(id) ||
         !boundedSignal(row.novelty) || !boundedSignal(row.predictionError) ||
         !boundedSignal(row.importance) || typeof row.timestamp !== 'number' ||
         !Number.isFinite(row.timestamp) || row.timestamp < 0) {
@@ -72,7 +72,8 @@ export class UnifiedCognitiveLoop {
   }
 
   process(event: CognitiveEvent): CognitiveLoopResult {
-    this.history.push(event);
+    const safeEvent = this.validateEvent(event);
+    this.history.push(safeEvent);
     if (this.history.length > this.maxHistory) this.history.shift();
 
     const learningSignal = this.clamp(
