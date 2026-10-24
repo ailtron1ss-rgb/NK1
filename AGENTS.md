@@ -21,6 +21,7 @@ Work code-first. Prefer observable, testable behavior over architectural labels.
 - `docs/NEURO_KURISU_FULL_RELEASE_BACKLOG_CANONICAL.md`: long-term backlog; reconcile items with current code before executing.
 - `docs/RESEARCH_INTAKE_LEDGER.md`: upstream research candidates and integration decisions.
 - `docs/CROSS_BRANCH_INTEGRATION_INVENTORY.md` and `docs/INTEGRATION_WORKSPACE.md`: branch reconciliation inventory and historical integration constraints.
+- `docs/BRANCH_INVENTORY_2026-10-24.md`: dated 104-ref branch-name snapshot and selected divergence evidence; refresh before ref cleanup.
 - `docs/OPERATION_OMEGA_HEXIS_INTEGRATION_2026-10-24.md`: pinned Hexis source provenance and NK1 adaptation boundary.
 - `runtime/neuro-kurisu/`: canonical organism/runtime implementation.
 - `runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts`: canonical memory store and retrieval owner.
