@@ -12,6 +12,7 @@ const runtimeLedger = new RuntimeClosureLedger();
 const failure = runtimeLedger.fail({ at: Date.now(), tick: 7, reason: 'fixture-aborted' });
 assert.equal(failure.phase, 'failure');
 assert.equal(failure.status, 'FAIL');
+assert.equal(runtimeLedger.snapshot().lastBehaviorHash, failure.behaviorHash, 'failure fingerprint must replace stale successful behavior hash');
 runtimeLedger.durable({ at: Date.now(), tick: 7, stateTick: 7, replaySignature: 'fixture-signature', continuousTick: 7, continuityProcessed: 7 });
 runtimeLedger.durable({ at: Date.now(), tick: 7, stateTick: 7, replaySignature: 'fixture-signature-2', continuousTick: 7, continuityProcessed: 7 });
 assert.equal(runtimeLedger.diagnostics().lastStatus, 'FAIL', 'repeated durability flushes must not mask the failure');
