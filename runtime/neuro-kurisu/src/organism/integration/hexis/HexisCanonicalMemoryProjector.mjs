@@ -1,0 +1,227 @@
+import { createHash } from 'node:crypto';
+
+const clamp01 = value => Math.max(0, Math.min(1, Number.isFinite(Number(value)) ? Number(value) : 0));
+const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+const asText = (value, max = 2048) => typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : '';
+const hash = value => createHash('sha256').update(String(value)).digest('hex');
+const dateMs = value => {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = typeof value === 'number' ? value : Date.parse(String(value));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+};
+const memoryKind = value => {
+  const kind = String(value ?? '').toLowerCase();
+  return ['sensory', 'working', 'episodic', 'semantic', 'autobiographical', 'procedural', 'social', 'identity', 'dream'].includes(kind)
+    ? kind
+    : (kind === 'relationship' ? 'social' : 'semantic');
+};
+const memoryStatus = value => {
+  const status = String(value ?? '').toLowerCase();
+  return status === 'quarantined' ? 'hypothesis' : 'belief';
+};
+const contextText = value => {
+  if (typeof value === 'string') return value.slice(0, 1200);
+  try { return JSON.stringify(value).slice(0, 1200); } catch { return ''; }
+};
+const arrayOfText = value => Array.isArray(value)
+  ? [...new Set(value.filter(item => typeof item === 'string' && item.trim()).map(item => item.trim().slice(0, 160)))].slice(0, 32)
+  : [];
+const stableRecordContent = value => String(value ?? '').normalize('NFKC').trim();
+
+function deferredSectionCounts(sections) {
+  const result = {};
+  for (const [name, value] of Object.entries(sections ?? {})) {
+    if (name === 'memories') continue;
+    const count = Array.isArray(value) ? value.length : isRecord(value) ? Object.keys(value).length : 0;
+    if (count > 0) result[name] = count;
+  }
+  return result;
+}
+
+/**
+ * A narrow Hexis -> NK1 projector.
+ * MemoryFabric is the single write path; the adapter never writes persisted JSON directly.
+ * Identity, goals, relationships, narrative and policy sections are reported as deferred
+ * until their respective canonical subsystem projection is explicitly implemented.
+ */
+export class HexisCanonicalMemoryProjector {
+  constructor(memoryFabric) {
+    if (!memoryFabric || typeof memoryFabric.encode !== 'function' || typeof memoryFabric.canonicalSnapshot !== 'function' || typeof memoryFabric.forgetById !== 'function') {
+      throw new TypeError('canonical-memory-fabric-required');
+    }
+    this.memoryFabric = memoryFabric;
+  }
+
+  apply(stage) {
+    if (!isRecord(stage) || stage.status !== 'accepted') throw new Error('hmx-stage-must-be-accepted-before-apply');
+    if (stage.application && stage.status === 'applied') return structuredClone(stage.application);
+    const sections = isRecord(stage.stagedSections) ? stage.stagedSections : {};
+    const records = Array.isArray(sections.memories) ? sections.memories : [];
+    const exportId = asText(stage.exportId, 128);
+    const lineageId = asText(stage.sourceLineageId, 512);
+    if (!/^exp_[a-f0-9]{16}$/.test(exportId)) throw new Error('hmx-apply-invalid-export-id');
+    if (!lineageId) throw new Error('hmx-apply-source-lineage-required');
+    if (records.length > 256) throw new Error('hmx-apply-memory-count-limit');
+
+    // Validate every row before making the first canonical write.
+    const normalized = [];
+    const seenRefs = new Map();
+    for (let index = 0; index < records.length; index++) {
+      const row = records[index];
+      if (!isRecord(row)) throw new Error('hmx-apply-memory-row-not-object:' + index);
+      const ref = asText(row.ref, 512);
+      const type = asText(row.type, 128);
+      const content = asText(row.content, 250000);
+      if (!ref || !new RegExp('^' + exportId + ':.+$').test(ref)) throw new Error('hmx-apply-memory-ref-invalid:' + index);
+      if (!type) throw new Error('hmx-apply-memory-type-required:' + index);
+      if (!content) throw new Error('hmx-apply-memory-content-required:' + index);
+      const prior = seenRefs.get(ref);
+      const contentHash = hash(content);
+      if (prior && prior !== contentHash) throw new Error('hmx-apply-duplicate-ref-conflict:' + ref);
+      if (prior) continue;
+      seenRefs.set(ref, contentHash);
+      normalized.push({ row, ref, type, content, contentHash });
+    }
+
+    const existingItems = this.memoryFabric.canonicalSnapshot().items ?? [];
+    const beforeIds = new Set(existingItems.map(item => item.id));
+    const existingImportKeys = new Set(existingItems
+      .filter(item => String(item.source ?? '').startsWith('hexis:'))
+      .map(item => String(item.source) + '\0' + stableRecordContent(item.content)));
+    const createdIds = [];
+    const touchedIds = [];
+    const warnings = [];
+    const importedIds = [];
+    let importedCount = 0;
+    let deduplicatedCount = 0;
+    const appliedAt = Date.now();
+    const attempt = Math.max(1, Math.floor(Number(stage.applicationAttempts ?? 1)));
+
+    try {
+      for (const item of normalized) {
+        const { row, ref, type, content: memoryText, contentHash } = item;
+        const nativeType = type.toLowerCase();
+        const source = 'hexis:' + hash(lineageId).slice(0, 12) + ':' + hash(ref + '\0' + contentHash).slice(0, 24);
+        const existingKey = source + '\0' + stableRecordContent(memoryText);
+        if (existingImportKeys.has(existingKey)) {
+          const duplicate = existingItems.find(candidate => candidate.source === source && stableRecordContent(candidate.content) === stableRecordContent(memoryText));
+          if (duplicate?.id) importedIds.push(duplicate.id);
+          deduplicatedCount++;
+          continue;
+        }
+
+        const observedAt = dateMs(row.created_at ?? row.createdAt) ?? appliedAt;
+        const validFromAt = dateMs(row.valid_from ?? row.validFrom) ?? observedAt;
+        const validUntilAt = dateMs(row.valid_until ?? row.validUntil);
+        const trustValue = row.trust_level ?? row.trustLevel ?? row.provenance?.confidence;
+        const confidence = clamp01(Number.isFinite(Number(trustValue)) ? Number(trustValue) : 0.45);
+        const salience = clamp01(Number.isFinite(Number(row.importance)) ? Number(row.importance) : 0.55);
+        const tags = [...new Set([
+          'hexis-import',
+          'hexis:' + nativeType.slice(0, 64),
+          ...arrayOfText(row.metadata?.tags),
+          asText(row.metadata?.category, 96),
+        ].filter(Boolean))].slice(0, 32);
+        const provenancePayload = row.provenance ?? row.source_attribution ?? null;
+        const context = {
+          hexisExportId: exportId,
+          hexisMemoryRef: ref,
+          hexisSourceLineageId: lineageId.slice(0, 512),
+          hexisOriginalType: nativeType,
+          hexisImportedAt: String(appliedAt),
+          hexisSourceSchema: 'hmx-1.7',
+          ...(provenancePayload ? { hexisProvenance: contextText(provenancePayload) } : {}),
+          ...(row.valid_until !== undefined || row.validUntil !== undefined ? { hexisValidUntil: String(row.valid_until ?? row.validUntil ?? '') } : {}),
+        };
+        const provenanceClass = 'external';
+        const authority = confidence;
+        const independenceKey = asText(row.provenance?.source_id ?? row.provenance?.sourceId ?? row.source_attribution?.source_id, 96) || ('hexis-ref:' + hash(ref).slice(0, 24));
+        const commandId = 'hexis-hmx:' + hash(exportId + '\0' + ref + '\0' + contentHash + '\0' + attempt).slice(0, 48);
+        const memoryInput = {
+          content: memoryText,
+          tags,
+          context,
+          kind: memoryKind(nativeType),
+          salience,
+          emotionalWeight: clamp01(Number(row.metadata?.emotionalWeight ?? row.metadata?.emotional_weight ?? 0.1)),
+          identityRelevance: clamp01(Number(row.metadata?.identityRelevance ?? row.metadata?.identity_relevance ?? (nativeType === 'identity' ? 0.65 : 0.05))),
+          goalRelevance: clamp01(Number(row.metadata?.goalRelevance ?? row.metadata?.goal_relevance ?? 0.05)),
+          socialRelevance: clamp01(Number(row.metadata?.socialRelevance ?? row.metadata?.social_relevance ?? (nativeType === 'social' || nativeType === 'relationship' ? 0.45 : 0.05))),
+          predictionError: 0,
+          confidence,
+          epistemicStatus: memoryStatus(row.status),
+          source,
+          entities: arrayOfText(row.metadata?.entities),
+          semanticLinks: [],
+          temporalLinks: [],
+          causalLinks: [],
+          provenanceClass,
+          sourceAuthority01: authority,
+          independenceKey,
+          observedAt,
+          evidenceFreshnessAt: dateMs(row.updated_at ?? row.updatedAt) ?? observedAt,
+          validFromAt,
+          validUntilAt,
+          evidenceSources: [{
+            source,
+            provenanceClass,
+            sourceAuthority01: authority,
+            independenceKey,
+            observedAt,
+            evidenceFreshnessAt: dateMs(row.updated_at ?? row.updatedAt) ?? observedAt,
+          }],
+        };
+        const inserted = this.memoryFabric.encode(memoryInput, { commandId, syncCompatibility: false });
+        if (!inserted?.id) throw new Error('hmx-apply-canonical-write-returned-no-id:' + ref);
+        importedIds.push(inserted.id);
+        if (beforeIds.has(inserted.id)) {
+          deduplicatedCount++;
+        } else {
+          createdIds.push(inserted.id);
+          beforeIds.add(inserted.id);
+          importedCount++;
+        }
+        existingImportKeys.add(existingKey);
+      }
+    } catch (error) {
+      const rollbackErrors = [];
+      for (const id of [...createdIds].reverse()) {
+        try {
+          this.memoryFabric.forgetById(id, 'hexis-hmx-apply-rollback', {
+            commandId: 'hexis-hmx-rollback:' + hash(exportId + '\0' + String(stage.stagingId) + '\0' + id + '\0' + attempt).slice(0, 48),
+          });
+        } catch (rollbackError) {
+          rollbackErrors.push(String(rollbackError?.message ?? rollbackError).slice(0, 240));
+        }
+      }
+      const reason = String(error?.message ?? error).slice(0, 500);
+      throw new Error('hmx-canonical-apply-failed:' + reason + (rollbackErrors.length ? ';rollback-failures=' + rollbackErrors.join('|') : ''));
+    }
+
+    const deferredSections = deferredSectionCounts(sections);
+    if (Object.keys(deferredSections).length) {
+      warnings.push('Only the memories section is projected into canonical MemoryOS2 in this pass; other non-empty sections remain approved-but-deferred.');
+    }
+    if (normalized.length === 0) warnings.push('The accepted HMX document contained no memory records to apply.');
+    const base = {
+      version: 1,
+      exportId,
+      sourceLineageId: lineageId,
+      stageId: String(stage.stagingId),
+      stageDigest: String(stage.digest),
+      attempt,
+      appliedAt,
+      status: normalized.length === 0 ? 'noop' : Object.keys(deferredSections).length ? 'partial' : 'applied',
+      complete: normalized.length > 0 && Object.keys(deferredSections).length === 0,
+      candidateMemoryRecords: records.length,
+      uniqueMemoryRecords: normalized.length,
+      importedCount,
+      deduplicatedCount,
+      memoryIds: [...new Set(importedIds)].slice(0, 256),
+      createdMemoryIds: [...new Set(createdIds)].slice(0, 256),
+      deferredSections,
+      warnings,
+    };
+    return { ...base, digest: hash(JSON.stringify(base)) };
+  }
+}
