@@ -166,6 +166,10 @@ assert.equal(approvedGoalProposal?.status, 'approved');
 const materializedGoalProposal = applyFabric.markGoalProposalMaterialized(firstGoalProposal.id, 'test-canonical-goal:' + firstGoalProposal.id);
 assert.equal(materializedGoalProposal?.status, 'materialized');
 assert.equal(materializedGoalProposal?.canonicalGoalId, 'test-canonical-goal:' + firstGoalProposal.id);
+assert.throws(() => applyFabric.decideGoalProposal(firstGoalProposal.id, 'reject'), /hmx-goal-proposal-already-reviewed/,
+  'a materialized goal cannot be rewritten as rejected by a stale decision');
+assert.equal(applyFabric.decideGoalProposal(firstGoalProposal.id, 'approve')?.status, 'materialized',
+  'replaying the same approval remains idempotent after materialization');
 assert.equal(applyFabric.listGoalProposals({ status: 'pending' }).some(proposal => proposal.id === firstGoalProposal.id), false,
   'approved/materialized proposals must leave the pending review queue');
 
