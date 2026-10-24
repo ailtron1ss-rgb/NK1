@@ -1,3 +1,12 @@
+## NK1 WorkPass477 — prevent repeated correction evidence from escalating gates (2026-10-24)
+
+- Hardened Hexis-inspired P23 correction memory: a distinct observation ID no longer makes the same signed review-evidence fingerprint count as a second recurrence for the same rule.
+- Runtime insertion rejects reuse of the same review artifact; snapshot restoration keeps the first verified row and quarantines later rows reusing the fingerprint. Existing observation-ID conflict quarantine remains unchanged.
+- Updated regression fixtures to give distinct events distinct review fingerprints and added live + restore-path tests for evidence replay. Gate candidates still only request independent review; they never activate a policy gate here.
+- **Validation status:** implementation and regression source committed on `feature/learning`; exact-head execution/typecheck not run here. No learning uplift or production-readiness claim.
+
+---
+
 ## NK1 WorkPass476 — repair Hermes gate execution and correction-to-curriculum wiring (2026-10-24)
 
 - Kept the Hexis-inspired correction lifecycle inside P23: reviewed correction → soft rule → reinforced rule → gate-review candidate. The P23 facade exposes assessments as Pareto-ranked repair/evidence curriculum targets; this does not activate policy gates.
