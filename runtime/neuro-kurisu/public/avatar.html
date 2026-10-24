@@ -27,15 +27,59 @@
   <div id="fallback" class="fallback"><div class="fallback-card"><div class="fallback-avatar"><div class="fallback-hair"></div><div class="fallback-face"><span class="eye left"></span><span class="eye right"></span><span class="mouth"></span></div></div><div>2D safe renderer</div></div></div>
   <div class="hud"><span id="state" class="chip">инициализация…</span><span id="tick" class="chip">tick —</span></div>
 </div>
-<script>
-const frame=document.getElementById('live2d'), fallback=document.getElementById('fallback'), state=document.getElementById('state'), tick=document.getElementById('tick');
-let last={};
-function post(type,data={}){try{frame.contentWindow.postMessage({type,...data},location.origin)}catch{}}
-function expressionFor(action){return action==='communicate'?'tender':action==='inspect'?'thinking':action==='move'?'focused':action==='collect'?'happy':action==='rest'?'tired':'neutral'}
-window.addEventListener('message',e=>{if(e.origin!==location.origin)return;if(e.data?.type==='live2d_ready'){fallback.style.display='none';state.textContent='Live2D online'}if(e.data?.type==='live2d_error'){fallback.style.display='grid';state.textContent='Live2D fallback'}});
-async function refresh(){try{const r=await fetch('/api/organism/avatar',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();last=d;state.textContent=(d.awake?'awake':'sleep')+' · '+(d.action||'wait');post('kurisu_expression',{expression:d.expression||expressionFor(d.action)});post('kurisu_embodiment',d.body||{});if(d.body?.speaking)post('kurisu_lipsync',{value:.55});else post('kurisu_lipsync',{value:0});}catch{state.textContent='offline'}}
-async function refreshTick(){try{const r=await fetch('/api/organism/status-lite',{cache:'no-store'});if(r.ok){const d=await r.json();tick.textContent='tick '+(d.tick??'—')}}catch{}}
-void refresh();void refreshTick();setInterval(refresh,5000);setInterval(refreshTick,5000);
+<script type="module">
+import { buildAvatarPresentation } from './avatar-state.mjs';
+
+const frame = document.getElementById('live2d');
+const fallback = document.getElementById('fallback');
+const state = document.getElementById('state');
+const tick = document.getElementById('tick');
+let refreshInFlight = false;
+
+function post(type, data = {}) {
+  try {
+    frame.contentWindow.postMessage({ type, ...data }, location.origin);
+  } catch {
+    // The iframe may still be navigating; the next snapshot will retry.
+  }
+}
+
+window.addEventListener('message', (event) => {
+  if (event.origin !== location.origin || event.source !== frame.contentWindow) return;
+  if (event.data?.type === 'live2d_ready') {
+    fallback.style.display = 'none';
+    state.textContent = 'Live2D online';
+  } else if (event.data?.type === 'live2d_error') {
+    fallback.style.display = 'grid';
+    state.textContent = 'Live2D fallback';
+  }
+});
+
+async function refresh() {
+  if (refreshInFlight) return;
+  refreshInFlight = true;
+  try {
+    // This endpoint exposes the actual organism UI state. /api/organism/avatar
+    // is deliberately an asset-inventory endpoint and has no emotion/action fields.
+    const response = await fetch('/api/organism/ui-snapshot', { cache: 'no-store' });
+    if (!response.ok) throw new Error('avatar-snapshot-http-' + response.status);
+    const snapshot = await response.json();
+    const presentation = buildAvatarPresentation(snapshot);
+    if (!presentation) throw new Error('avatar-snapshot-invalid');
+    state.textContent = (presentation.awake ? 'awake' : 'sleep') + ' · ' + presentation.action + ' · ' + presentation.emotion;
+    tick.textContent = 'tick ' + presentation.tick;
+    post('kurisu_expression', { expression: presentation.expression });
+    post('kurisu_embodiment', presentation.body);
+    post('kurisu_lipsync', { value: presentation.lipsync });
+  } catch {
+    state.textContent = 'organism offline';
+  } finally {
+    refreshInFlight = false;
+  }
+}
+
+void refresh();
+window.setInterval(() => { void refresh(); }, 5000);
 </script>
 </body>
 </html>
