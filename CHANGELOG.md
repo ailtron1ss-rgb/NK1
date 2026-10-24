@@ -4,7 +4,7 @@
 - [INTEGRITY] Native provider now matches the signed candidate fingerprint to the actual staged/active versioned-store payload and the signed baseline fingerprint to the current active baseline (or the active candidate's saved previous version). A matching proposal ID alone is no longer sufficient to select source code for revision.
 - [TEST] Updated signed fixture artifacts to bind method outcomes to real canonical payload fingerprints, seed a verified active baseline, and add a regression that rejects the same proposal lineage when the staged payload differs.
 - [FAIL-CLOSED] Added explicit negative cases for missing payload fingerprints and equal baseline/candidate fingerprints; the native provider refuses datasets that cannot prove which payload each signed method outcome represents.
-- [VALIDATION] WorkPass347's full target workflow passed before this extension. The new WorkPass348 payload-binding regression and typecheck require fresh exact-head Actions results.
+- [VALIDATION] Exact-head commit `71e9286f9fe11c6afec851359a96f9e9b0011259` passed the Hermes host-evaluator workflow (including native signed-provider/payload-mismatch regressions and runtime typecheck), WorkPass110 continual-learning metrics, WorkPass108, WorkPass293, WorkPass294, WorkPass105, WorkPass331, WorkPass102 and P26 Learning Validation. These are contract/regression validations, not a real deployment run or measured learning-uplift result.
 
 # WorkPass347 — race-resistant signed dataset read (2026-10-24)
 
