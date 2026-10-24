@@ -74,6 +74,8 @@ export function toOrganismSnapshot(remote: BackendUiSnapshot, chat: OrganismSnap
       episodes: Number.isSafeInteger(rawMood.episodes) && rawMood.episodes >= 0 ? rawMood.episodes : 0,
     } : null,
     latestFeeling: rawFeeling ? {
+      tick: Number.isSafeInteger(rawFeeling.tick) && rawFeeling.tick >= -1 ? rawFeeling.tick : -1,
+      at: Number.isFinite(rawFeeling.at) && rawFeeling.at >= 0 ? rawFeeling.at : Number(remote.at || 0),
       label: emotion(rawFeeling.label),
       intensity01: clamp(rawFeeling.intensity01),
       interoceptiveMismatch01: clamp(rawFeeling.interoceptiveMismatch01),
