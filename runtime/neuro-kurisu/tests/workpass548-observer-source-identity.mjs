@@ -206,11 +206,39 @@ const trustedSourceRuntime = new EvidenceResearchSubsystemRuntime({ authorizeSou
 trustedSourceRuntime.externalObserver.registerSource({
   id: 'trusted-camera', sourceClass: 'device', channel: 'camera', independenceKey: 'camera:front',
 });
-trustedSourceRuntime.externalObserver.observe({
+const trustedObservation = trustedSourceRuntime.externalObserver.observe({
   sourceId: 'trusted-camera', sourceClass: 'device', channel: 'camera', independenceKey: 'camera:front',
-  claimKey: 'scene=clear', observedPostcondition: 'scene=clear', confidence01: 0.9,
+  claimKey: 'scene=clear', observedPostcondition: 'scene=clear', confidence01: 0.95,
+  actionRef: 'trusted-action-1',
 });
+trustedSourceRuntime.externalObserver.assess(trustedObservation.id, 'scene=clear');
 const crowdedRestoreSnapshot = structuredClone(trustedSourceRuntime.externalObserver.snapshot());
+// Persisted snapshots are most-recent-first. Old invalid rows beyond the raw
+// limit must not evict the valid observation, assessment, or action link.
+crowdedRestoreSnapshot.observations = [
+  ...crowdedRestoreSnapshot.observations,
+  ...Array.from({ length: 64 }, (_, index) => ({
+    id: `orphan-observation-${index}`, sourceId: 'missing-source',
+    sourceClass: 'device', channel: 'camera', independenceKey: 'camera:front',
+    claimKey: 'scene=clear', observedAt: Date.now() - index - 1,
+    confidence01: 0.8, freshness01: 1, facts: [], metadata: {},
+  })),
+];
+crowdedRestoreSnapshot.assessments = [
+  ...crowdedRestoreSnapshot.assessments,
+  ...Array.from({ length: 64 }, (_, index) => ({
+    observationId: `orphan-observation-${index}`, expectedPostcondition: 'scene=clear',
+    observedPostcondition: 'scene=clear', assessment: 'match', similarity01: 1,
+    confidence01: 0.8, verified: true, reason: 'fixture', assessedAt: Date.now(),
+  })),
+];
+crowdedRestoreSnapshot.linkedActions = [
+  ...crowdedRestoreSnapshot.linkedActions,
+  ...Array.from({ length: 64 }, (_, index) => ({
+    actionRef: `orphan-action-${index}`, observationId: `orphan-observation-${index}`,
+    assessment: 'match', at: Date.now(),
+  })),
+];
 crowdedRestoreSnapshot.sources = [
   ...Array.from({ length: 16 }, (_, index) => ({
     id: `untrusted-${index}`, sourceClass: 'unknown', channel: 'unknown',
@@ -223,6 +251,10 @@ crowdedRestore.externalObserver.restore(crowdedRestoreSnapshot);
 assert.ok(crowdedRestore.externalObserver.snapshot().sources.some(source => source.id === 'trusted-camera'),
   'invalid/unapproved rows must not crowd a valid declared source out of the bounded restore registry');
 assert.equal(crowdedRestore.externalObserver.snapshot().observations.length, 1,
-  'observation from the retained trusted source must survive restore');
+  'valid recent observation must survive invalid rows beyond the raw restore limit');
+assert.equal(crowdedRestore.externalObserver.snapshot().assessments.length, 1,
+  'assessment linked to a retained observation must survive invalid rows beyond the raw restore limit');
+assert.equal(crowdedRestore.externalObserver.snapshot().linkedActions.length, 1,
+  'action link linked to a retained observation must survive invalid rows beyond the raw restore limit');
 
 console.log('WorkPass548 observer source identity regression: PASS');
