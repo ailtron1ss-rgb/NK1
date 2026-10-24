@@ -1,5 +1,5 @@
 import { sanitizeEmbeddingInput } from '../organism/developmental/LocalEmbeddingProvider.ts';
-import { LocalInferenceScheduler, localEndpointResourceKey } from './LocalInferenceScheduler.mjs';
+import { LocalInferenceScheduler, localEndpointResourceKey } from '../organism/integration/local/LocalInferenceScheduler.mjs';
 
 const INTENT_LABELS = Object.freeze([
   'question',
