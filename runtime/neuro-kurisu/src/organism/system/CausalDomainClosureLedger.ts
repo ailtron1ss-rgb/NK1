@@ -23,6 +23,8 @@ export interface CausalDomainEvidence {
   causalLifeGraphChain:boolean;
   replaySignaturePresent:boolean;
   durableStateAligned:boolean;
+  /** Explicit result of UnifiedCognitiveCycle; omitted only by legacy snapshots/tests. */
+  cognitiveCycleComplete?:boolean;
 }
 
 export interface CausalDomainClosureRecord {
@@ -102,7 +104,7 @@ export class CausalDomainClosureLedger {
       evidence:{
         memoryChanged:false,worldChanged:false,agencyChanged:false,learningChanged:false,selfChanged:false,
         memoryWorldVerified:false,worldAgencyLearningVerified:false,causalLifeGraphChain:false,
-        replaySignaturePresent:false,durableStateAligned:false
+        replaySignaturePresent:false,durableStateAligned:false,cognitiveCycleComplete:false
       },
       failureReason:reason
     });
@@ -118,7 +120,7 @@ export class CausalDomainClosureLedger {
     const evidence:CausalDomainEvidence={
       memoryChanged:false,worldChanged:false,agencyChanged:false,learningChanged:false,selfChanged:false,
       memoryWorldVerified:false,worldAgencyLearningVerified:false,causalLifeGraphChain:false,
-      replaySignaturePresent:false,durableStateAligned:false
+      replaySignaturePresent:false,durableStateAligned:false,cognitiveCycleComplete:false
     };
     const after=normalizeCounters(input.counters??previous.after);
     const record:CausalDomainClosureRecord={
@@ -145,12 +147,13 @@ export class CausalDomainClosureLedger {
     const changed=[evidence.memoryChanged,evidence.worldChanged,evidence.agencyChanged,evidence.learningChanged,evidence.selfChanged].filter(Boolean).length;
     const causalEdges=[evidence.memoryChanged,evidence.memoryWorldVerified,evidence.worldAgencyLearningVerified,evidence.causalLifeGraphChain,evidence.learningChanged&&evidence.selfChanged].filter(Boolean).length;
     const persistence=evidence.replaySignaturePresent&&evidence.durableStateAligned;
-    const score=clamp(changed*.10+causalEdges*.11+(evidence.memoryWorldVerified?.08:0)+(evidence.worldAgencyLearningVerified?.08:0)+(evidence.causalLifeGraphChain?.12:0)+(persistence?.05:0));
     const failureReason=typeof input.failureReason==='string'
       ? input.failureReason.normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').trim().slice(0,240)||'cycle execution failed'
       : undefined;
-    const complete=!failureReason && changed===5 && causalEdges>=4 && persistence && evidence.memoryWorldVerified && evidence.worldAgencyLearningVerified && evidence.causalLifeGraphChain;
-    const status:CausalClosureStatus=failureReason?'FAIL':(complete?'PASS':((evidence.worldChanged||evidence.agencyChanged||evidence.learningChanged||evidence.selfChanged)?'DEGRADED':'FAIL'));
+    const cognitiveCycleFailed=evidence.cognitiveCycleComplete===false;
+    const score=failureReason||cognitiveCycleFailed?0:clamp(changed*.10+causalEdges*.11+(evidence.memoryWorldVerified?.08:0)+(evidence.worldAgencyLearningVerified?.08:0)+(evidence.causalLifeGraphChain?.12:0)+(persistence?.05:0));
+    const complete=!failureReason && !cognitiveCycleFailed && changed===5 && causalEdges>=4 && persistence && evidence.memoryWorldVerified && evidence.worldAgencyLearningVerified && evidence.causalLifeGraphChain;
+    const status:CausalClosureStatus=failureReason||cognitiveCycleFailed?'FAIL':(complete?'PASS':((evidence.worldChanged||evidence.agencyChanged||evidence.learningChanged||evidence.selfChanged)?'DEGRADED':'FAIL'));
     const causalChain=['memory','world','agency','learning','self'].filter((_,i)=>[evidence.memoryChanged,evidence.worldChanged,evidence.agencyChanged,evidence.learningChanged,evidence.selfChanged][i]);
     const record:CausalDomainClosureRecord={
       version:1,tick:pending.tick,at:pending.at,status,score01:score,complete,causalChain,evidence,
@@ -191,9 +194,10 @@ export class CausalDomainClosureLedger {
     const changed=[evidence.memoryChanged,evidence.worldChanged,evidence.agencyChanged,evidence.learningChanged,evidence.selfChanged].filter(Boolean).length;
     const causalEdges=[evidence.memoryChanged,evidence.memoryWorldVerified,evidence.worldAgencyLearningVerified,evidence.causalLifeGraphChain,evidence.learningChanged&&evidence.selfChanged].filter(Boolean).length;
     const persistence=replaySignaturePresent&&durableStateAligned;
-    const score=record.failureReason?0:clamp(changed*.10+causalEdges*.11+(evidence.memoryWorldVerified?.08:0)+(evidence.worldAgencyLearningVerified?.08:0)+(evidence.causalLifeGraphChain?.12:0)+(persistence?.05:0));
-    const complete=!record.failureReason && changed===5 && causalEdges>=4 && persistence && evidence.memoryWorldVerified && evidence.worldAgencyLearningVerified && evidence.causalLifeGraphChain;
-    const status:CausalClosureStatus=record.failureReason?'FAIL':(complete?'PASS':((evidence.worldChanged||evidence.agencyChanged||evidence.learningChanged||evidence.selfChanged)?'DEGRADED':'FAIL'));
+    const cognitiveCycleFailed=evidence.cognitiveCycleComplete===false;
+    const score=record.failureReason||cognitiveCycleFailed?0:clamp(changed*.10+causalEdges*.11+(evidence.memoryWorldVerified?.08:0)+(evidence.worldAgencyLearningVerified?.08:0)+(evidence.causalLifeGraphChain?.12:0)+(persistence?.05:0));
+    const complete=!record.failureReason && !cognitiveCycleFailed && changed===5 && causalEdges>=4 && persistence && evidence.memoryWorldVerified && evidence.worldAgencyLearningVerified && evidence.causalLifeGraphChain;
+    const status:CausalClosureStatus=record.failureReason||cognitiveCycleFailed?'FAIL':(complete?'PASS':((evidence.worldChanged||evidence.agencyChanged||evidence.learningChanged||evidence.selfChanged)?'DEGRADED':'FAIL'));
     const durableHash=hash({tick:input.tick,replaySignature:input.replaySignature,continuousTick:input.continuousTick??null,processed:input.processed??null});
     const priorStatus=record.status;
     const next={...record,evidence,score01:score,complete,status,durableHash};
@@ -226,7 +230,8 @@ export class CausalDomainClosureLedger {
         memoryChanged:Boolean(e.memoryChanged),worldChanged:Boolean(e.worldChanged),agencyChanged:Boolean(e.agencyChanged),
         learningChanged:Boolean(e.learningChanged),selfChanged:Boolean(e.selfChanged),memoryWorldVerified:Boolean(e.memoryWorldVerified),
         worldAgencyLearningVerified:Boolean(e.worldAgencyLearningVerified),causalLifeGraphChain:Boolean(e.causalLifeGraphChain),
-        replaySignaturePresent:Boolean(e.replaySignaturePresent),durableStateAligned:Boolean(e.durableStateAligned)
+        replaySignaturePresent:Boolean(e.replaySignaturePresent),durableStateAligned:Boolean(e.durableStateAligned),
+        ...(typeof e.cognitiveCycleComplete==='boolean'?{cognitiveCycleComplete:e.cognitiveCycleComplete}:{})
       },
       before:normalizeCounters(raw?.before),after:normalizeCounters(raw?.after),
       behaviorHash:String(raw?.behaviorHash??''),durableHash:raw?.durableHash?String(raw.durableHash):undefined,
