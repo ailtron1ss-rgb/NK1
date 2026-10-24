@@ -34,8 +34,9 @@ try {
   assert.equal(resolved.assessment?.verified,true);
   assert.equal(resolved.resolution?.resolved,true);
   const outcome=core.outcomeCognitionSnapshot();
-  assert.equal(outcome.records[0].verified,true);
-  assert.equal(outcome.records[0].executionId,executed.executionId);
+  const verifiedOutcome=outcome.records.find(record=>record.executionId===executed.executionId);
+  assert.ok(verifiedOutcome?.verified, 'the matching execution record must contain the verified external outcome');
+  assert.equal(verifiedOutcome.executionId,executed.executionId);
   assert.ok(outcome.causal.nodes.some(n=>n.kind==='observation' && n.evidenceRef===resolved.observation.id));
   assert.ok(core.externalObserverSummary().verifiedCount >= 1);
   await core.flush();
