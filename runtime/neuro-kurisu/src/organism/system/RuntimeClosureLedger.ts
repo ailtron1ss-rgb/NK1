@@ -249,7 +249,7 @@ export class RuntimeClosureLedger {
     const preserveFailedCycle = (record.phase === 'durable' || record.phase === 'restore')
       && this.state.lastStatus === 'FAIL';
     if (!preserveFailedCycle) this.state.lastStatus = record.status;
-    if (updateBehavior) this.state.lastBehaviorHash = record.behaviorHash;
+    if (updateBehavior && !preserveFailedCycle) this.state.lastBehaviorHash = record.behaviorHash;
     this.state.records = [...this.state.records, record].slice(-24);
   }
 }
