@@ -24,20 +24,19 @@ assert.equal(d.acceptedChanges,0,'safe sandbox previews must not count as accept
 const verifier=new OutcomeVerificationService();
 let receiptSequence=0;
 async function mintProof(binding, suppliedObservationId){
-  const observationId=suppliedObservationId??('p36-independent-proof-'+(++receiptSequence));
-  return verifier.verify({
-    toolId:'p36-independent-fixture-verifier',
-    input:binding,
-    result:{fixture:'independent-evaluator',observationId},
+  const ticket=++receiptSequence;
+  const observationId=suppliedObservationId??('p36-independent-proof-'+ticket);
+  const toolId='p36-independent-fixture-verifier';
+  const executionId=`exec-p36-${ticket}`;
+  const decisionId=`p36-development-decision-${ticket}`;
+  const verification=await verifier.verify({
+    toolId,input:binding,result:{fixture:'independent-evaluator',observationId},executionId,decisionId,
   },()=>({
-    verified:true,
-    basis:'external-postcondition',
-    externalObservation:true,
-    confidence01:1,
-    observationId,
+    verified:true,basis:'external-postcondition',externalObservation:true,confidence01:1,observationId,
     expectedPostcondition:'evaluation-completed:'+observationId,
     observedPostcondition:'evaluation-completed:'+observationId,
   }));
+  return {toolId,executionId,decisionId,verification};
 }
 function prepareHypothesis(engine,tick){
   engine.beginCycle();
@@ -61,12 +60,12 @@ assert.throws(()=>guardEngine.recordExternalEvidence({...spoof,control01:NaN}),/
 assert.throws(()=>guardEngine.recordExternalEvidence({...spoof,delayMs:.9}),/invalid-development-evidence/,'fractional delays must not be normalized into a different evidence identity');
 const copyPayload=evidence(guardHypothesis.id,'copy-context',true,1000);
 const copyReceipt=await mintProof(developmentEvidenceVerificationInput(copyPayload));
-const copiedResult=guardEngine.recordExternalEvidence({...copyPayload,independentVerified:true,verification:structuredClone(copyReceipt)});
+const copiedResult=guardEngine.recordExternalEvidence({...copyPayload,independentVerified:true,...copyReceipt,verification:structuredClone(copyReceipt.verification)});
 assert.equal(copiedResult.independentCount,0,'structured-cloned verifier output must not retain trust');
 assert.equal(copiedResult.promoted,false);
 const manualPayload=evidence(guardHypothesis.id,'manual-context',true,1000,'manual-observer');
 const manualReceipt=await mintProof(developmentEvidenceVerificationInput(manualPayload));
-const manualResult=guardEngine.recordExternalEvidence({...manualPayload,verification:manualReceipt});
+const manualResult=guardEngine.recordExternalEvidence({...manualPayload,...manualReceipt});
 assert.equal(manualResult.independentCount,0,'manual observer evidence cannot enter the independent-evaluator lane');
 assert.equal(guardEngine.diagnostics().acceptedChanges,0);
 assert.equal(guardEngine.diagnostics().unverifiedEvidenceAttempts,3,'all three untrusted evidence attempts are visible in diagnostics');
@@ -79,10 +78,10 @@ const first=evidence(campaignHypothesis.id,'context-a',false,0);
 const poisoned=campaign.recordExternalEvidence({...first,independentVerified:true});
 assert.equal(poisoned.independentCount,0);
 const firstProof=await mintProof(developmentEvidenceVerificationInput(first));
-const repaired=campaign.recordExternalEvidence({...first,independentVerified:false,verification:firstProof});
+const repaired=campaign.recordExternalEvidence({...first,independentVerified:false,...firstProof});
 assert.equal(repaired.independentCount,1,'a verified receipt replaces an untrusted row with the same identity');
 assert.equal(campaign.snapshot().externalEvidence.find(row=>row.contextKey==='context-a').independentVerified,true);
-const repeated=campaign.recordExternalEvidence({...first,verification:firstProof});
+const repeated=campaign.recordExternalEvidence({...first,...firstProof});
 assert.equal(repeated.independentCount,1,'re-delivery of the same evidence identity is idempotent');
 
 const followups=[
@@ -96,7 +95,7 @@ let heldoutResult=repaired;
 for(const item of followups){
   const payload=evidence(campaignHypothesis.id,item.contextKey,item.holdout,item.delayMs);
   const proof=await mintProof(developmentEvidenceVerificationInput(payload));
-  heldoutResult=campaign.recordExternalEvidence({...payload,verification:proof});
+  heldoutResult=campaign.recordExternalEvidence({...payload,...proof});
   if(item.contextKey==='holdout-d'){
     assert.equal(heldoutResult.status,'holdout-verified','paired independent holdout should unlock the intermediate gate');
     assert.equal(heldoutResult.promoted,false,'holdout verification is provisional until independent replication');
@@ -117,11 +116,11 @@ const reuseHypothesis=prepareHypothesis(reuseEngine,103);
 const reuseId='p36-one-observation-used-twice';
 const reuseA=evidence(reuseHypothesis.id,'reuse-a',false,0);
 const reuseProofA=await mintProof(developmentEvidenceVerificationInput(reuseA),reuseId);
-const acceptedA=reuseEngine.recordExternalEvidence({...reuseA,verification:reuseProofA});
+const acceptedA=reuseEngine.recordExternalEvidence({...reuseA,...reuseProofA});
 assert.equal(acceptedA.independentCount,1);
 const reuseB=evidence(reuseHypothesis.id,'reuse-b',true,6000);
 const reuseProofB=await mintProof(developmentEvidenceVerificationInput(reuseB),reuseId);
-const blockedReuse=reuseEngine.recordExternalEvidence({...reuseB,verification:reuseProofB});
+const blockedReuse=reuseEngine.recordExternalEvidence({...reuseB,...reuseProofB});
 assert.equal(blockedReuse.independentCount,1,'reused observation IDs cannot inflate replication across contexts');
 
 // One verified observation cannot be credited once as experiment evidence and again as a maturity outcome.
@@ -130,10 +129,10 @@ const crossPathHypothesis=prepareHypothesis(crossPathEngine,104);
 const crossPathId='p36-cross-path-receipt';
 const crossPathEvidence=evidence(crossPathHypothesis.id,'cross-path-experiment',false,0);
 const crossPathProof=await mintProof(developmentEvidenceVerificationInput(crossPathEvidence),crossPathId);
-assert.equal(crossPathEngine.recordExternalEvidence({...crossPathEvidence,verification:crossPathProof}).independentCount,1);
+assert.equal(crossPathEngine.recordExternalEvidence({...crossPathEvidence,...crossPathProof}).independentCount,1);
 const crossPathOutcome={area:'learning',outcome01:.9,delayed:true,transfer:true};
 const crossPathOutcomeProof=await mintProof(developmentalOutcomeVerificationInput(crossPathOutcome),crossPathId);
-const crossPathMaturity=crossPathEngine.observeDevelopmentalOutcome({...crossPathOutcome,verification:crossPathOutcomeProof});
+const crossPathMaturity=crossPathEngine.observeDevelopmentalOutcome({...crossPathOutcome,...crossPathOutcomeProof});
 assert.equal(crossPathMaturity.verifiedOutcomeCount,0,'same observation cannot be credited through a second learning route');
 
 // Maturity counts also require verifier provenance, and the same receipt can count only once.
@@ -144,16 +143,16 @@ assert.equal(forgedMaturity.verifiedOutcomeCount,0,'a caller boolean cannot cert
 assert.equal(maturityEngine.diagnostics().rejectedMaturityReceipts,1,'blocked maturity assertions must be observable');
 assert.throws(()=>maturityEngine.observeDevelopmentalOutcome({...outcome,outcome01:1.1}),/invalid-developmental-outcome/,'out-of-range outcomes must be rejected');
 const outcomeProof=await mintProof(developmentalOutcomeVerificationInput(outcome));
-const measuredMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,verified:false,verification:outcomeProof});
+const measuredMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,verified:false,...outcomeProof});
 assert.equal(measuredMaturity.verifiedOutcomeCount,1);
 assert.equal(measuredMaturity.retainedOutcomeCount,1);
 assert.equal(measuredMaturity.transferredOutcomeCount,1);
-const duplicatedMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,verification:outcomeProof});
+const duplicatedMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,...outcomeProof});
 assert.equal(duplicatedMaturity.verifiedOutcomeCount,1,'the same authenticated outcome receipt is idempotent');
-const copiedMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,verification:structuredClone(outcomeProof)});
+const copiedMaturity=maturityEngine.observeDevelopmentalOutcome({...outcome,...outcomeProof,verification:structuredClone(outcomeProof.verification)});
 assert.equal(copiedMaturity.verifiedOutcomeCount,1,'a serialized copy cannot replay a trusted maturity receipt');
-const reusedMaturityProof=await mintProof(developmentalOutcomeVerificationInput({...outcome,area:'memory',outcome01:.8}),outcomeProof.observationId);
-const reusedMaturity=maturityEngine.observeDevelopmentalOutcome({area:'memory',outcome01:.8,delayed:true,transfer:true,verification:reusedMaturityProof});
+const reusedMaturityProof=await mintProof(developmentalOutcomeVerificationInput({...outcome,area:'memory',outcome01:.8}),outcomeProof.verification.observationId);
+const reusedMaturity=maturityEngine.observeDevelopmentalOutcome({area:'memory',outcome01:.8,delayed:true,transfer:true,...reusedMaturityProof});
 assert.equal(reusedMaturity.verifiedOutcomeCount,1,'one observation ID cannot certify two different developmental outcomes');
 
 // A restored snapshot is informative history, not authenticated proof of independent learning.
