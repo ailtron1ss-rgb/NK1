@@ -3,11 +3,12 @@ import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { meetsMinimumVersion } from './runtime-requirements.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const nodeMajor = Number(process.versions.node.split('.')[0]);
-if (nodeMajor !== 22) {
-  console.error(`SUPER_INSTALL=FAIL reason=node-major-required expected=22 actual=${process.version}`);
+const requiredNodeVersion = '22.12.0';
+if (!meetsMinimumVersion(process.versions.node, requiredNodeVersion)) {
+  console.error(`SUPER_INSTALL=FAIL reason=node-version-required expected=>=${requiredNodeVersion} actual=${process.version}`);
   process.exit(1);
 }
 
