@@ -19,4 +19,19 @@ assert.throws(() => fabric.append(accessorEnvelope), /cognitive-event-accessor-r
 assert.equal(getterCalls, 0);
 assert.equal(fabric.snapshot().total, before.total, 'invalid ingress must not mutate the ledger');
 assert.equal(fabric.recent().length, 1);
-console.log('cognitive event fabric ingress boundary: ok');
+
+const restored = new CognitiveEventFabric(128);
+let restoreGetterCalls = 0;
+const hostileRow = { tick: 2, stage: 'prediction', source: 'persisted', parentIds: [], external: false, confidence01: .8, payload: {} };
+Object.defineProperty(hostileRow, 'id', { enumerable: true, get() { restoreGetterCalls += 1; return 'hostile'; } });
+restored.restore({ version: 1, capacity: 128, total: 1, recent: [hostileRow] });
+assert.equal(restoreGetterCalls, 0, 'restoring a persisted row must not execute getters');
+assert.equal(restored.recent().length, 0, 'accessor-backed restored rows must be discarded');
+
+const hostileSnapshot = { version: 1, capacity: 128, total: 1, recent: [] };
+Object.defineProperty(hostileSnapshot, 'recent', { enumerable: true, get() { restoreGetterCalls += 1; return []; } });
+restored.restore(hostileSnapshot);
+assert.equal(restoreGetterCalls, 0, 'snapshot top-level getters must not be executed');
+assert.equal(restored.recent().length, 0);
+
+console.log('cognitive event fabric ingress/restore boundary: ok');
