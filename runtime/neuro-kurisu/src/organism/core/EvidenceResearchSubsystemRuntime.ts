@@ -155,7 +155,14 @@ export class EvidenceResearchSubsystemRuntime {
     // previously persisted ledger after their observer row has been discarded.
     const observerState=this.externalObserver.snapshot();
     const acceptedObserverEventIds=new Set<string>();
+    const registeredSources=new Map(observerState.sources.map(source=>[source.id,source]));
     for(const observation of observerState.observations){
+      const source=registeredSources.get(observation.sourceId);
+      if(!source||!source.enabled||source.sourceClass!==observation.sourceClass||source.channel!==observation.channel)continue;
+      const rowIndependenceKey=typeof observation.independenceKey==='string'&&observation.independenceKey.trim()
+        ?observation.independenceKey
+        :undefined;
+      if(rowIndependenceKey!==undefined&&rowIndependenceKey!==source.independenceKey)continue;
       if(typeof observation.id==='string'&&observation.id.trim())acceptedObserverEventIds.add(observation.id);
       if(typeof observation.evidenceEventId==='string'&&observation.evidenceEventId.trim())acceptedObserverEventIds.add(observation.evidenceEventId);
     }
