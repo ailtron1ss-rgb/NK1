@@ -5,7 +5,7 @@
  * untrusted, provenance-labelled candidates; this module never promotes them
  * to MemoryOS2 and never uploads conversation data automatically.
  */
-export type Mem0Status = 'ok' | 'disabled' | 'unconfigured' | 'invalid-input' | 'consent-required' | 'error';
+export type Mem0Status = 'ok' | 'disabled' | 'unconfigured' | 'writes-disabled' | 'invalid-input' | 'consent-required' | 'error';
 
 export interface Mem0Candidate {
   id: string;
@@ -81,7 +81,9 @@ function safeUserId(value: unknown): string | null {
 
 /** Targeted minimization for outbound text, not a general-purpose PII detector. */
 export function redactMem0Text(input: string): { text: string; redacted: boolean } {
-  let text = String(input ?? '').slice(0, MAX_MESSAGE_CHARS * 4);
+  const raw = String(input ?? '');
+  let text = raw.slice(0, MAX_MESSAGE_CHARS * 4);
+  const inputTruncated = raw.length > text.length;
   const original = text;
   text = text
     .replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/gi, '[redacted-private-key]')
@@ -91,7 +93,8 @@ export function redactMem0Text(input: string): { text: string; redacted: boolean
     .replace(/\b(api[_-]?key|access[_-]?token|refresh[_-]?token|password|secret)\s*[:=]\s*[^\s,;]+/gi, '$1=[redacted]')
     .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[redacted-email]')
     .replace(/\b\+?\d[\d\s().-]{8,}\d\b/g, '[redacted-number]');
-  return { text: text.slice(0, MAX_MESSAGE_CHARS), redacted: text !== original };
+  const output = text.slice(0, MAX_MESSAGE_CHARS);
+  return { text: output, redacted: inputTruncated || text !== original || output.length !== text.length };
 }
 
 async function readBoundedBody(response: Response, maxBytes: number): Promise<string> {
@@ -210,7 +213,8 @@ export class Mem0PlatformAdapter {
       this.lastStatus = 'unconfigured';
       return { status: 'unconfigured', memories: [], diagnostics: diagnostics() };
     }
-    const query = String(queryInput ?? '').trim().slice(0, MAX_QUERY_CHARS);
+    const rawQuery = String(queryInput ?? '').trim().slice(0, MAX_QUERY_CHARS);
+    const query = redactMem0Text(rawQuery).text.trim();
     if (!query) {
       this.lastStatus = 'invalid-input';
       return { status: 'invalid-input', memories: [], diagnostics: diagnostics() };
@@ -245,7 +249,7 @@ export class Mem0PlatformAdapter {
       const content = String(row.memory ?? row.content ?? row.text ?? '').trim();
       const id = String(row.id ?? '').trim().slice(0, 180);
       if (!id || !content) continue;
-      const minimized = redactMem0Text(content.slice(0, MAX_MEMORY_CHARS));
+      const minimized = redactMem0Text(content);
       if (!minimized.text.trim()) continue;
       const score = Number(row.score);
       const createdRaw = row.created_at ?? row.createdAt;
@@ -273,9 +277,17 @@ export class Mem0PlatformAdapter {
     options: { approved?: boolean } = {},
   ): Promise<{ status: Mem0Status; memoryIds: string[]; errorCode?: string; diagnostics: Mem0Diagnostics }> {
     const diagnostics = () => this.diagnostics();
-    if (!this.enabled || !this.apiKey || !this.userId || !this.baseUrl || !this.allowWrites) {
-      this.lastStatus = this.enabled ? 'writes-disabled' : 'disabled';
-      return { status: this.enabled ? 'unconfigured' : 'disabled', memoryIds: [], diagnostics: diagnostics() };
+    if (!this.enabled) {
+      this.lastStatus = 'disabled';
+      return { status: 'disabled', memoryIds: [], diagnostics: diagnostics() };
+    }
+    if (!this.apiKey || !this.userId || !this.baseUrl) {
+      this.lastStatus = 'unconfigured';
+      return { status: 'unconfigured', memoryIds: [], diagnostics: diagnostics() };
+    }
+    if (!this.allowWrites) {
+      this.lastStatus = 'writes-disabled';
+      return { status: 'writes-disabled', memoryIds: [], diagnostics: diagnostics() };
     }
     if (options.approved !== true) {
       this.lastStatus = 'consent-required';
