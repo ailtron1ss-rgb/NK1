@@ -2674,3 +2674,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
 - Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
 - This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
+
+## NK1 WorkPass557 — preserve valid observer sources during bounded restore (2026-10-24)
+
+- Fixed `ExternalObserverFabric.restore()` so malformed, duplicate, or unauthorized persisted source rows do not consume the bounded registry capacity before valid declared sources are evaluated.
+- Added a regression that prepends 16 unauthorized rows ahead of a valid trusted camera source and verifies the trusted source and its observation survive restore.
+- **Validation boundary:** source, regression, and changelog are committed; hosted Actions execution still needs to confirm the focused regression passes.
