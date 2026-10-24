@@ -1,3 +1,13 @@
+## NK1 WorkPass490 — close strict runtime and evidence replay gaps
+
+- Tightened B272 needs-key iteration and boolean filtering for intrinsic/dream experiments, made cognitive dependency transition restoration explicitly record-shaped, and corrected the optional numeric fallback used by evidence-ranked skill retrieval.
+- Fixed the Node.js 24 strip-only syntax blocker in the atomic skill-store file adapter by replacing its constructor parameter property with a regular readonly class field; file naming and locking semantics stay the same.
+- Made `UnifiedCognitiveCycle.restore` require a coherent counter partition before honoring a persisted `lastComplete` flag, so corrupted over-counted history cannot masquerade as a complete cognitive cycle.
+- Fixed signed outcome ingestion replay semantics: an exact artifact may re-establish a process-local trust receipt after restore, but a second ingestion in the same process now returns `duplicate-attempt`. Added regressions for both paths.
+- **Validation boundary:** committed as runtime improvements; CI must confirm these exact-head cases. No production-readiness claim.
+
+---
+
 ## NK1 WorkPass489 — repair shared cognitive runtime integration contracts
 
 - Removed the duplicate `CognitiveEventFabric.verifyOperationalCycle` implementation and retained the strict cycle-local verifier, including optional appraisal/attention/memory/goal/plan ancestry checks.
