@@ -316,6 +316,25 @@ assert.throws(() => evaluateSkillLearnBenchCandidate(baseline, improved, {
   maximumValidationTaskRegression01: Number.NaN,
 }), /candidate-maximum-validation-task-regression-invalid/);
 
+// A tiny negative score delta can round to IEEE-754 -0 at the report boundary.
+// Reports are consumed by canonical evidence stores, so expose one stable +0 representation.
+const subMicroRegression = {
+  validation: improved.validation.map((row, index) => index === 0 ? ({
+    ...structuredClone(row),
+    trajectoryQuality: {
+      ...structuredClone(row.trajectoryQuality),
+      completeness: 0.999997,
+      aggregate: 0.999999,
+    },
+  }) : structuredClone(row)),
+  holdout: improved.holdout,
+};
+const roundedZero = evaluateSkillLearnBenchCandidate(improved, subMicroRegression);
+assert.equal(roundedZero.validationGain01, 0);
+assert.equal(Object.is(roundedZero.validationGain01, -0), false,
+  'tiny negative deltas must use canonical positive zero in the report');
+
+
 assert.throws(() => evaluateSkillLearnBenchCandidate(null, improved), /candidate-evaluation-input-invalid/);
 let familyAccessorCalls = 0;
 const accessorTrialInput = Object.defineProperties({
