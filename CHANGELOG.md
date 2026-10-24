@@ -1,3 +1,10 @@
+## NK1 Feedback — revoke ledger events from rejected observer rows (2026-10-24)
+
+- Runtime restore now validates the strict observer registry before accepting persisted ledger rows and removes ledger projections linked to observations discarded for missing, disabled, or mismatched source identities.
+- Added regressions which keep the old ledger intact while deleting or forging the source registry, verifying the orphaned event no longer appears in active external evidence.
+- The normal legacy-observation recovery case remains separate and continues to backfill a valid row from an authorized source.
+- **Validation boundary:** implementation and regressions are committed; hosted execution for this specific restore-hardening revision is pending.
+
 ## NK1 Feedback — downgrade legacy evidence confidence without identity loss (2026-10-24)
 
 - Event replay now permits a confidence-only downgrade when tick, reality class, claim, independence key and parent links match the original event; identity conflicts and any attempted confidence increase remain rejected/quarantined.
