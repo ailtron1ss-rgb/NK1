@@ -387,7 +387,8 @@ export class MemoryOS2{
    if(!Array.isArray(vectors)||vectors.length!==candidates.length)throw new Error('embedding-vector-count-mismatch');
    // The provider call yields to the event loop; take one fresh ID map after it returns
    // so concurrent writes are respected without scanning the whole corpus per candidate.
-   const currentItemsById=new Map(this.state.items.map(row=>[row.id,row]));
+   const currentItemsById=new Map<string,MemoryItem2>();
+   for(const row of this.state.items)if(!currentItemsById.has(row.id))currentItemsById.set(row.id,row);
    const dimensions=Number(vectors[0]?.length??0);
    for(let index=0;index<candidates.length;index++){
     const item=candidates[index],raw=vectors[index];
