@@ -48,12 +48,44 @@ function deferredSectionCounts(sections) {
  * Identity, goals, relationships, narrative and policy sections are reported as deferred
  * until their respective canonical subsystem projection is explicitly implemented.
  */
+function semanticNodeType(nativeType) {
+  const kind = String(nativeType ?? '').toLowerCase();
+  if (kind === 'episodic' || kind === 'autobiographical') return 'episode';
+  if (kind === 'social' || kind === 'relationship') return 'person';
+  return 'concept';
+}
+function semanticRelationType(nativeType) {
+  const kind = String(nativeType ?? '').toLowerCase();
+  if (['supports', 'contradicts', 'causes', 'about', 'located', 'associated'].includes(kind)) return kind;
+  if (kind === 'supersedes' || kind === 'revises') return 'associated';
+  return 'associated';
+}
+function semanticLabel(value) {
+  return String(value ?? '').toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').trim().slice(0, 96);
+}
+
 export class HexisCanonicalMemoryProjector {
-  constructor(memoryFabric) {
+  constructor(memoryFabric, semanticGraph) {
     if (!memoryFabric || typeof memoryFabric.encode !== 'function' || typeof memoryFabric.canonicalSnapshot !== 'function' || typeof memoryFabric.forgetById !== 'function') {
       throw new TypeError('canonical-memory-fabric-required');
     }
+    if (semanticGraph !== undefined && (!semanticGraph || typeof semanticGraph.snapshot !== 'function' || typeof semanticGraph.restore !== 'function' || typeof semanticGraph.upsertNode !== 'function' || typeof semanticGraph.connect !== 'function')) {
+      throw new TypeError('semantic-memory-graph-required');
+    }
     this.memoryFabric = memoryFabric;
+    this.semanticGraph = semanticGraph;
+  }
+
+  ensureSemanticNode(ref, content, nativeType, salience, nodeIdsByRef) {
+    if (!this.semanticGraph || nodeIdsByRef.has(ref)) return nodeIdsByRef.get(ref) ?? null;
+    const label = semanticLabel(content);
+    if (!label) return null;
+    const type = semanticNodeType(nativeType);
+    // Reuse graph nodes instead of reinforcing them on every re-import.
+    const existing = this.semanticGraph.snapshot().nodes.find(node => node.label === label && node.type === type);
+    const node = existing ?? this.semanticGraph.upsertNode(content, type, salience);
+    nodeIdsByRef.set(ref, node.id);
+    return node.id;
   }
 
   apply(stage) {
