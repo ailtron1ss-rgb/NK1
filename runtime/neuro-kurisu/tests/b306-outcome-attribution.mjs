@@ -72,7 +72,7 @@ const legacySnapshot = defaultB306AutonomousInitiativeState();
 legacySnapshot.causallyInfluencedDecisions = 4;
 legacySnapshot.successfulCausalOutcomes = 1;
 const migrated = new B306AutonomousInitiativeVerificationLedger();
-migrated.restore(legacySnapshot as any);
+migrated.restore(legacySnapshot);
 assert.equal(migrated.diagnostics().causallyInfluencedOutcomes, 4, 'older snapshots need a conservative denominator migration');
 
 console.log(JSON.stringify({
