@@ -146,9 +146,18 @@ function parseDataset(value: unknown): VerifiedProposalDataset {
       throw new Error('native-p23-revision-task-manifest-entry-invalid');
     }
   }
+  if (!value.manifest.some(row => isRecord(row) && row.split === 'validation') ||
+      !value.manifest.some(row => isRecord(row) && row.split === 'holdout')) {
+    throw new Error('native-p23-revision-validation-and-holdout-manifest-required');
+  }
+  const signedPayloadKeys = [
+    'schemaVersion', 'artifactId', 'runId', 'manifestFingerprint', 'taskId',
+    'taskVersion', 'method', 'seed', 'attempt', 'passed', 'verifierId', 'observedAt',
+  ];
   for (const artifact of value.artifacts) {
     if (!isRecord(artifact) || !onlyKeys(artifact, ['payload', 'signature']) ||
-        !isRecord(artifact.payload) || !isNonEmptyString(artifact.signature)) {
+        !isRecord(artifact.payload) || !onlyKeys(artifact.payload, signedPayloadKeys) ||
+        !isNonEmptyString(artifact.signature)) {
       throw new Error('native-p23-revision-signed-artifact-shape-invalid');
     }
   }
