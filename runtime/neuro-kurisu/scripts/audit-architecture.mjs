@@ -3,50 +3,10 @@ import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { collectDependencyBoundaryViolations } from './dependency-boundary-policy.mjs';
 function stripComments(source) {
-  const chars = [...source];
-  const quoteChars = new Set(["'", '"', String.fromCharCode(96)]);
-  let quote = null;
-  let escaped = false;
-
-  for (let i = 0; i < source.length; i += 1) {
-    const char = source[i];
-    const next = source[i + 1];
-
-    if (quote !== null) {
-      if (escaped) { escaped = false; continue; }
-      if (char === "\\") { escaped = true; continue; }
-      if (char === quote) quote = null;
-      continue;
-    }
-
-    if (quoteChars.has(char)) { quote = char; continue; }
-
-    if (char === "/" && next === "/") {
-      for (let j = i; j < source.length && source[j] !== "\n"; j += 1) {
-        if (chars[j] !== "\r") chars[j] = " ";
-      }
-      while (i < source.length && source[i] !== "\n") i += 1;
-      continue;
-    }
-
-    if (char === "/" && next === "*") {
-      chars[i] = " ";
-      chars[i + 1] = " ";
-      i += 2;
-      while (i < source.length) {
-        if (source[i] === "*" && source[i + 1] === "/") {
-          chars[i] = " ";
-          chars[i + 1] = " ";
-          i += 1;
-          break;
-        }
-        if (chars[i] !== "\r" && chars[i] !== "\n") chars[i] = " ";
-        i += 1;
-      }
-    }
-  }
-
-  return chars.join("");
+  const blank = (match) => match.replace(/[^\r\n]/g, " ");
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, blank)
+    .replace(/(^|[ \t])\/\/[^\r\n]*/gm, blank);
 }
 
 const root=process.cwd(); const files=[];
