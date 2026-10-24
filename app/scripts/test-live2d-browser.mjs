@@ -105,7 +105,25 @@ const server = createServer(async (request, response) => {
       response.end("forbidden");
       return;
     }
-    const bytes = await readFile(filePath);
+    let bytes = await readFile(filePath);
+    if (pathname === "/viewer.html") {
+      // Add test-only observability to the response in memory. The repository's
+      // production viewer file remains unchanged.
+      let source = bytes.toString("utf8");
+      const expressionAnchor = "try{model.expression(expressionName);lastAppliedExpression=expressionName}catch{}";
+      const motionAnchor = "try{model.motion(String(bodySignal.motionGroup),Number(bodySignal.motionIndex||0));lastMotionKey=k}catch{}";
+      const intentAnchor = "applyEmbodiment(intent);\n  });\n  boot();";
+      if (!source.includes(expressionAnchor) || !source.includes(motionAnchor) || !source.includes(intentAnchor)) {
+        throw new Error("Live2D browser smoke instrumentation anchors missing");
+      }
+      source = source.replace(expressionAnchor,
+        "try{model.expression(expressionName);lastAppliedExpression=expressionName;window.__nk1LastExpression=expressionName}catch{}");
+      source = source.replace(motionAnchor,
+        "try{model.motion(String(bodySignal.motionGroup),Number(bodySignal.motionIndex||0));lastMotionKey=k;window.__nk1LastMotion={group:String(bodySignal.motionGroup),index:Number(bodySignal.motionIndex||0),token}}catch{}");
+      source = source.replace(intentAnchor,
+        "applyEmbodiment(intent);\n    window.__nk1LastAcceptedIntent={stateVersion:intent.stateVersion,expression:intent.expression,motionGroup:intent.motionGroup,motionIndex:intent.motionIndex,motionToken:intent.motionToken,speaking:intent.speaking};\n  });\n  boot();");
+      bytes = Buffer.from(source, "utf8");
+    }
     response.writeHead(200, {
       "content-type": mimeTypes.get(path.extname(filePath)) || "application/octet-stream",
       "content-length": String(bytes.length),
@@ -214,7 +232,20 @@ try {
     };
     await sendIntent(1, "angry", "TapHead", 0);
     await sendIntent(2, "happy", "Special", 1);
-    await new Promise((resolve) => setTimeout(resolve, 350));
+    await frame.waitForFunction(() => window.__nk1LastAcceptedIntent?.stateVersion === 2, null, { timeout: 5000 });
+    await frame.waitForFunction(() => window.__nk1LastExpression === "Stanby Smile", null, { timeout: 5000 });
+    await frame.waitForFunction(() => window.__nk1LastMotion?.group === "Special" && window.__nk1LastMotion?.index === 1 && window.__nk1LastMotion?.token === 2, null, { timeout: 5000 });
+    const appliedIntent = await frame.evaluate(() => ({
+      ...window.__nk1LastAcceptedIntent,
+      appliedExpression: window.__nk1LastExpression,
+      appliedMotion: window.__nk1LastMotion,
+    }));
+    assert.equal(appliedIntent.stateVersion, 2, profile + ": viewer must accept the latest intent");
+    assert.equal(appliedIntent.expression, "happy", profile + ": latest affect state was not accepted");
+    assert.equal(appliedIntent.motionGroup, "Special", profile + ": motion group was not accepted");
+    assert.equal(appliedIntent.appliedExpression, "Stanby Smile", profile + ": model expression API was not invoked");
+    assert.deepEqual(appliedIntent.appliedMotion, { group: "Special", index: 1, token: 2 },
+      profile + ": model motion API was not invoked for the latest intent");
     const finalStatus = await frame.locator("#status").textContent();
     assert.ok(finalStatus.startsWith("ок ·"), profile + ": viewer left ready state after expression/motion events");
     assert.deepEqual(pageErrors, [], profile + ": uncaught browser exceptions: " + pageErrors.join(" | "));
