@@ -103,4 +103,25 @@ accessorRestore.restore(accessorSnapshot);
 assert.equal(snapshotGetterCalls, 0, 'restoring a snapshot must never execute top-level getters');
 assert.equal(accessorRestore.snapshot().decisions.length, 0);
 
+let inputGetterCalls = 0;
+const hostileIntent = {
+  goal: 'hostile intent', triggerEvidence: ['test'], expectedBenefit01: .8,
+  uncertainty01: .1, cost01: .1, risk01: .1, externalSideEffect: false,
+};
+Object.defineProperty(hostileIntent, 'id', { enumerable: true, get() { inputGetterCalls += 1; return 'hostile-intent'; } });
+assert.throws(() => accessorRestore.propose(hostileIntent), /plain-data/);
+assert.equal(inputGetterCalls, 0, 'proposal parsing must not execute input getters');
+
+const hostileOutcome = { observedBenefit01: .8, evidence: 'should-not-be-read', observedAt: 1 };
+Object.defineProperty(hostileOutcome, 'intentId', { enumerable: true, get() { inputGetterCalls += 1; return 'memory-repair-1'; } });
+assert.deepEqual(accessorRestore.recordOutcome(hostileOutcome), { accepted: false, reason: 'invalid-outcome' });
+assert.equal(inputGetterCalls, 0, 'outcome parsing must not execute input getters');
+
+const hostilePromotion = {
+  candidateSuccess01: .8, maxRegression01: .05, observedRegression01: .01, independentHoldoutCases: 8,
+};
+Object.defineProperty(hostilePromotion, 'baselineSuccess01', { enumerable: true, get() { inputGetterCalls += 1; return .7; } });
+assert.equal(accessorRestore.evaluatePromotion(hostilePromotion).reason, 'invalid-evaluation-evidence');
+assert.equal(inputGetterCalls, 0, 'promotion parsing must not execute input getters');
+
 console.log(JSON.stringify({ pass: 'AILG_INTENT_AND_PROMOTION_GATE', decisions: governor.snapshot().decisions.length }));
