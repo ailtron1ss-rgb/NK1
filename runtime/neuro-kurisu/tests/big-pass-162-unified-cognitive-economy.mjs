@@ -16,6 +16,52 @@ const cycle=new UnifiedCognitiveCycle();
 let result=cycle.evaluate({tick:1,stageIds:{observation:ids.observation,prediction:ids.prediction,action:ids.action,outcome:ids.outcome,learning:ids.learning,'self-update':ids.selfUpdate},parentIntegrity01:1});
 assert.equal(result.complete,true);
 assert.equal(result.missingStages.length,0);
+assert.equal(result.observationId,ids.observation,
+  'the observation anchor must survive the event-fabric to unified-cycle handoff');
+assert.deepEqual(result.stageIds,{
+  observation:ids.observation,prediction:ids.prediction,action:ids.action,
+  outcome:ids.outcome,learning:ids.learning,'self-update':ids.selfUpdate,
+},'the unified cycle must return the exact accepted event IDs consumed by its evidence contract');
+
+// Live ingress is untrusted just like restored state: accessor-backed fields
+// must be rejected before their code runs, and rejected events must not advance
+// the cycle counter.
+let cycleInputGetterReads=0;
+const getterBackedCycleInput={
+  tick:2,
+  stageIds:{observation:'o-2',prediction:'p-2',action:'a-2',outcome:'r-2',learning:'l-2','self-update':'s-2'},
+  parentIntegrity01:1,
+};
+Object.defineProperty(getterBackedCycleInput,'tick',{
+  enumerable:true,configurable:true,
+  get(){cycleInputGetterReads++;return 2;},
+});
+const ingressProbe=new UnifiedCognitiveCycle();
+assert.throws(()=>ingressProbe.evaluate(getterBackedCycleInput),/cognitive cycle input data boundary rejected/);
+assert.equal(cycleInputGetterReads,0,'live cognitive ingress must not invoke caller-owned getters');
+assert.equal(ingressProbe.snapshot().cycles,0,'rejected cognitive ingress must not mutate cycle state');
+assert.throws(()=>ingressProbe.evaluate({
+  tick:1,stageIds:{observation:'o',unknownStage:'hidden'},parentIntegrity01:1,
+}),/unknown cognitive stage/);
+assert.equal(ingressProbe.snapshot().cycles,0,'unknown stage identifiers must fail before the cycle is advanced');
+
+// Persisted cognitive-cycle state is untrusted: restore must not run getters.
+const restoreProbe=new UnifiedCognitiveCycle();
+restoreProbe.restore(cycle.snapshot());
+assert.deepEqual(restoreProbe.snapshot(),cycle.snapshot(),'well-formed cycle state should round-trip');
+let cycleRestoreGetterReads=0;
+const getterBackedCycleState=cycle.snapshot();
+Object.defineProperty(getterBackedCycleState,'cycles',{
+  configurable:true, enumerable:true,
+  get(){cycleRestoreGetterReads++;return 999;},
+});
+restoreProbe.restore(getterBackedCycleState);
+assert.equal(cycleRestoreGetterReads,0,'restore must reject accessor-backed state without executing the getter');
+assert.equal(restoreProbe.snapshot().cycles,0,'invalid restore must recover to a clean default state');
+const cyclicCycleState={...cycle.snapshot()};
+cyclicCycleState.cycleSelf=cyclicCycleState;
+restoreProbe.restore(cyclicCycleState);
+assert.equal(restoreProbe.snapshot().cycles,0,'cyclic persisted state must fail closed to defaults');
 
 const economy=new CognitiveResourceEconomy();
 const abundant=economy.allocate({tick:1,energy01:.9,cognitiveLoad01:.1,uncertainty01:.2,novelty01:.5,predictionDebt01:.1,thermalStrain01:.1,ramPressure01:.1,awake:true});

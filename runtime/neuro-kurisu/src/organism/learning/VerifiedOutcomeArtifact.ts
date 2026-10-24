@@ -134,6 +134,14 @@ export function ingestSignedOutcomeArtifact(
   // A restored ledger intentionally has no in-memory trust receipts. Permit the exact
   // signed artifact to re-establish its receipt after restart, but never overwrite or
   // bless a conflicting outcome that happens to occupy the same task/method/seed/attempt.
+  const priorReceipt = authenticatedEvidence.get(ledger)?.get(outcome.evidenceRef);
+  if (priorReceipt !== undefined) {
+    return {
+      accepted: false,
+      artifactFingerprint: fingerprint,
+      rejection: priorReceipt === fingerprint ? 'duplicate-attempt' : 'conflicting-authenticated-receipt',
+    };
+  }
   const existing = ledger.snapshot().outcomes.find(row =>
     row.taskId === outcome.taskId && row.method === outcome.method &&
     row.seed === outcome.seed && row.attempt === outcome.attempt,
@@ -145,6 +153,11 @@ export function ingestSignedOutcomeArtifact(
       existing.observedAt === outcome.observedAt;
     if (!exactMatch) {
       return { accepted: false, artifactFingerprint: fingerprint, rejection: 'conflicting-existing-outcome' };
+    }
+    // Exact replay is only allowed to restore a process-local trust receipt after
+    // ledger restart. Within one live ledger, the same authenticated attempt is a duplicate.
+    if (authenticatedEvidence.get(ledger)?.has(outcome.evidenceRef)) {
+      return { accepted: false, artifactFingerprint: fingerprint, rejection: 'duplicate-attempt' };
     }
   } else {
     const result = ledger.record(outcome);

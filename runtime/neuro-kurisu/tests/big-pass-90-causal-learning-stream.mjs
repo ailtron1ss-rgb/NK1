@@ -13,9 +13,10 @@ const trace={
 
 const stream=new CausalExperienceStream(16);
 stream.observe(trace);
-const record=stream.recordOutcome(trace,mkState({tick:2,at:1100,needs:{...mkState().needs,energy:.55,uncertainty:.4,novelty:.75}}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75});
+const record=stream.recordOutcome(trace,mkState({tick:2,at:1100,lastAction:'explore',lastActionSuccess:.8,needs:{...mkState().needs,energy:.55,uncertainty:.4,novelty:.75}}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75});
 
 assert.ok(record);
+assert.match(record.evidenceEventId,/^nk1-reality:learning:[a-f0-9]{48}$/);
 assert.ok(record.causalStrength01>.3);
 // Invalid state snapshots must not be clamped into apparently grounded outcomes.
 assert.equal(stream.recordOutcome({
@@ -50,6 +51,8 @@ const persisted=stream.snapshot();
 const restored=new CausalExperienceStream(16);
 restored.restore(persisted);
 assert.deepEqual(restored.recent(8),stream.recent(8));
+assert.equal(restored.recent(8)[0]?.evidenceEventId,record.evidenceEventId,
+  'legacy snapshot restore must reconstruct the deterministic shared evidence ID');
 assert.equal(restored.recordOutcome(trace,mkState({tick:2,at:1100}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75}),null,
   "restored trace identity must prevent recording the same runtime outcome twice");
 assert.ok(Array.isArray(restored.snapshot().recordedTraceIds));
@@ -76,6 +79,9 @@ const externalFirst = externalStream.recordExternalLearningEvent(externalInput);
 assert.ok(externalFirst);
 assert.equal(externalFirst.provenance, "external",
   "public external intake must not allow callers to impersonate runtime provenance");
+assert.match(externalFirst.evidenceEventId,/^nk1-reality:learning-external:[a-f0-9]{48}$/);
+assert.notEqual(externalFirst.evidenceEventId,record.evidenceEventId,
+  'unverified imports must use a different identity domain from grounded runtime outcomes');
 assert.equal(externalFirst.stateGrounded, false,
   "caller-supplied stateGrounded=true must not create trusted state-transition evidence");
 assert.equal(externalFirst.replayEligible, false,
@@ -85,16 +91,18 @@ assert.equal(externalStream.consolidate(8, 1300).length, 0,
 const externalDuplicate = externalStream.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17",
 });
+assert.equal(externalDuplicate?.evidenceEventId,externalFirst?.evidenceEventId,
+  'normalized duplicate retries must reuse the same shared evidence ID');
 assert.equal(externalDuplicate?.id, externalFirst?.id,
   "NFKC-normalized upstream retry must resolve to the same recorded outcome");
-assert.equal(externalStream.summary().outcomes, 1,
-  "duplicate external evidence must not increment outcome count");
+assert.equal(externalStream.summary().outcomes, 0,
+  "unverified external evidence must not increment grounded outcome count");
 assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17", success01: .1,
 }), /causal-external-trace-id-conflict/,
   "reusing a trace identity with a changed outcome must surface a conflict");
-assert.equal(externalStream.summary().outcomes, 1,
-  "conflicting duplicate evidence must not mutate outcome counts");
+assert.equal(externalStream.summary().outcomes, 0,
+  "conflicting duplicate evidence must not mutate grounded outcome counts");
 
 assert.throws(() => externalStream.recordExternalLearningEvent({
   tick: Number.NaN, taskId: "bad-tick", action: "explore",
@@ -134,13 +142,13 @@ const restoredExternalDuplicate = externalRestored.recordExternalLearningEvent({
 });
 assert.equal(restoredExternalDuplicate?.id, externalFirst?.id,
   "a restored external outcome must resolve to its original record");
-assert.equal(externalRestored.summary().outcomes, 1,
-  "a restored duplicate must not increment outcome count");
+assert.equal(externalRestored.summary().outcomes, 0,
+  "restored unverified external evidence must not increment grounded outcome count");
 assert.throws(() => externalRestored.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17", reward01: .05,
 }), /causal-external-trace-id-conflict/,
   "the durable duplicate guard must also detect changed payload after restore");
-assert.equal(externalRestored.summary().outcomes, 1);
+assert.equal(externalRestored.summary().outcomes, 0);
 
 // Legacy snapshots may contain Unicode variants that collapse under the current
 // NFKC identity rule. Exact duplicate rows are deduplicated; conflicting rows
@@ -168,8 +176,8 @@ assert.ok(conflictRestore.snapshot().recordedTraceIds.includes("External-Source-
 assert.equal(conflictRestore.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17",
 }), null, "quarantined identity must not be accepted again as a new event");
-assert.equal(conflictRestore.summary().outcomes, 1,
-  "quarantine/retry must not change the persisted outcome count");
+assert.equal(conflictRestore.summary().outcomes, 0,
+  "restored imported evidence must not increment trusted outcome counters after quarantine");
 
 const cyclicSnapshot = externalStream.snapshot();
 const cyclicRecord = { ...externalFirst, id: "cyclic-normalized-alias", traceId: "Ｅxternal-Source-17" };

@@ -42,12 +42,21 @@ const hardened=new ParametricPolicyLearner();
 hardened.restore({weights:{explore:[NaN,Infinity,-Infinity]},bias:{explore:NaN}});
 assert.ok(Object.values(hardened.snapshot().weights).flat().every(Number.isFinite), 'restored policy weights must remain finite');
 assert.ok(Object.values(hardened.snapshot().bias).every(Number.isFinite), 'restored policy biases must remain finite');
-hardened.train({state:mkState(.7,.4,.3),action:'explore',target01:.9,learningRate01:NaN,sampleWeight01:NaN});
-assert.ok(Object.values(hardened.snapshot().weights).flat().every(Number.isFinite), 'malformed learning rates must not poison learned weights');
-assert.ok(Object.values(hardened.snapshot().bias).every(Number.isFinite), 'malformed sample weights must not poison learned biases');
-assert.equal(hardened.snapshot().updates,1);
-hardened.trainFeatures({features:new Array(15).fill(.5),action:'explore',target01:.8,learningRate01:Infinity,sampleWeight01:NaN});
-assert.ok(Object.values(hardened.snapshot().weights).flat().every(Number.isFinite), 'feature-level updates must reject non-finite training controls');
-assert.ok(Object.values(hardened.snapshot().bias).every(Number.isFinite), 'feature-level updates must preserve finite biases');
-assert.equal(hardened.snapshot().updates,2);
+const beforeMalformed=hardened.snapshot();
+assert.throws(
+  ()=>hardened.train({state:mkState(.7,.4,.3),action:'explore',target01:.9,learningRate01:NaN,sampleWeight01:NaN}),
+  /rate-must-be-finite/,
+  'non-finite learning rates must be rejected before changing policy state',
+);
+assert.throws(
+  ()=>hardened.trainFeatures({features:new Array(15).fill(.5),action:'explore',target01:.8,learningRate01:Infinity,sampleWeight01:NaN}),
+  /rate-must-be-finite/,
+  'feature-level training must reject non-finite controls',
+);
+const afterMalformed=hardened.snapshot();
+assert.deepEqual(afterMalformed.weights,beforeMalformed.weights,'rejected inputs must not poison or mutate learned weights');
+assert.deepEqual(afterMalformed.bias,beforeMalformed.bias,'rejected inputs must not mutate learned biases');
+assert.equal(afterMalformed.updates,beforeMalformed.updates,'rejected samples must not increment the update counter');
+assert.ok(Object.values(afterMalformed.weights).flat().every(Number.isFinite), 'restored policy weights must remain finite');
+assert.ok(Object.values(afterMalformed.bias).every(Number.isFinite), 'restored policy biases must remain finite');
 console.log(`P26_TRUE_LEARNING=PASS updates=${learner.snapshot().updates} heldout=${learned.toFixed(3)} preExplore=${(before.reduce((a,b)=>a+b,0)/before.length).toFixed(3)} finiteGuard=PASS`);

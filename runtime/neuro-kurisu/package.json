@@ -35,7 +35,8 @@
     "test:p2841:postcondition": "node --experimental-strip-types tests/p2841-postcondition-grounded-world.mjs",
     "test:p2841:runtime": "node --experimental-strip-types tests/p2841-runtime-external-grounding.mjs",
     "test:p2841:migration": "node --experimental-strip-types tests/p2841-schema-migration.mjs",
-    "test:p2841": "npm run typecheck && npm run test:p2841:postcondition && npm run test:p2841:runtime && npm run test:p2841:persistence && npm run test:p2841:migration && npm run test:p2840",
+    "test:workpass488:evidence-event-identity": "node --experimental-strip-types tests/reality-evidence-event-identity.mjs",
+    "test:p2841": "npm run typecheck && npm run test:p2841:postcondition && npm run test:p2841:runtime && npm run test:workpass451:reality-evidence-ledger && npm run test:p2841:persistence && npm run test:p2841:migration && npm run test:workpass488:evidence-event-identity && npm run test:p2840",
     "test:p2842:calibration": "node --experimental-strip-types tests/p2842-causal-calibration.mjs",
     "test:p2842:runtime": "node --experimental-strip-types tests/p2842-active-perception-runtime.mjs",
     "test:p2842:migration": "node --experimental-strip-types tests/p2842-schema-migration.mjs",
@@ -64,6 +65,9 @@
     "test:p25:migration": "node --experimental-strip-types tests/p25-migration.mjs",
     "test:p25:integration": "node --experimental-strip-types tests/p25-integration.mjs",
     "test:p26:true-learning": "node --experimental-strip-types tests/p26-true-learning.mjs",
+    "test:p26:learning-input-integrity": "node --experimental-strip-types tests/p26-learning-input-integrity.mjs",
+    "test:p26:learning-recovery-benchmark": "node --experimental-strip-types tests/p26-learning-recovery-benchmark.mjs",
+    "test:p26:learning-continual-matrix": "node --experimental-strip-types tests/p26-learning-continual-matrix.mjs",
     "test:p26:migration": "node --experimental-strip-types tests/p26-migration.mjs",
     "test:p26:world": "node --experimental-strip-types tests/p26-contextual-world.mjs",
     "test:big-pass-96": "node --experimental-strip-types tests/big-pass-96-developmental-self.mjs",
@@ -1768,6 +1772,17 @@
     "test:p324:interrupt-episodes": "node --experimental-strip-types tests/cognitive-dependency-interrupt-episode-workpass324.mjs",
     "test:p325:core-eleven-phase-spine": "node tests/workpass325-core-eleven-phase-causal-loop.mjs",
     "test:cognitive-cycle-boundary-runtime-wiring": "node tests/cognitive-cycle-boundary-runtime-wiring.mjs",
-    "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs"
+    "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs",
+    "test:workpass451:reality-evidence-ledger": "node --experimental-strip-types tests/workpass451-reality-evidence-ledger.mjs",
+    "test:workpass294:correlated-postcondition": "node --experimental-strip-types tests/workpass294-correlated-postcondition.mjs",
+    "test:workpass291:payload-budget": "node --experimental-transform-types tests/workpass291-reflective-payload-budget.mjs",
+    "test:workpass292:evidence-lanes": "node --experimental-strip-types tests/workpass292-evidence-lanes.mjs",
+    "test:workpass293:p23-revision": "node --experimental-transform-types tests/workpass172-compound-revision-coordinator.mjs && node --experimental-transform-types tests/workpass292-evidence-lanes.mjs && node --experimental-transform-types tests/workpass293-autonomous-p23-revision.mjs",
+    "test:unified-cognitive-loop-ingress": "node --experimental-strip-types tests/unified-cognitive-loop-ingress.mjs",
+    "test:workpass510:reality-evidence-quarantine": "node --experimental-strip-types tests/workpass510-reality-evidence-quarantine.mjs",
+    "test:workpass510": "npm run typecheck && npm run test:workpass510:reality-evidence-quarantine && npm run test:workpass451:reality-evidence-ledger && npm run test:workpass488:evidence-event-identity"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.4"
   }
 }

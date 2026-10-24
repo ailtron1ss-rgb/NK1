@@ -53,7 +53,7 @@ assert.equal(snapshot.meanStageCoverage01,0);
 assert.equal(snapshot.meanCausalContinuity01,1);
 assert.equal(snapshot.lastTick,-1);
 assert.equal(snapshot.lastComplete,false);
-assert.deepEqual(snapshot.lastMissingStages,['action']);
+assert.deepEqual(snapshot.lastMissingStages,['observation','prediction','action','outcome','learning','self-update']);
 
 const inconsistentRestore=new UnifiedCognitiveCycle();
 inconsistentRestore.restore({
@@ -115,9 +115,11 @@ assert.throws(()=>cycle.evaluate({tick:6,stageIds:null,parentIntegrity01:1}),/st
 const inheritedIds=Object.assign(Object.create({observation:'obs-from-prototype'}),{
   prediction:'pred-6',action:'act-6',outcome:'out-6',learning:'learn-6','self-update':'self-6',
 });
-const inheritedResult=cycle.evaluate({tick:6,stageIds:inheritedIds,parentIntegrity01:1});
-assert.equal(inheritedResult.complete,false);
-assert.ok(inheritedResult.missingStages.includes('observation'));
+assert.throws(
+  ()=>cycle.evaluate({tick:6,stageIds:inheritedIds,parentIntegrity01:1}),
+  /input data boundary rejected/,
+  'inherited properties must be rejected at the public plain-data boundary',
+);
 
 const saturated=new UnifiedCognitiveCycle();
 saturated.restore({cycles:Number.MAX_SAFE_INTEGER,completeCycles:Number.MAX_SAFE_INTEGER,incompleteCycles:0,brokenLineages:0,lastTick:0,lastComplete:true,lastMissingStages:[]});
