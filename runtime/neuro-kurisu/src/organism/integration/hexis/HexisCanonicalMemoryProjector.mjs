@@ -90,6 +90,7 @@ export class HexisCanonicalMemoryProjector {
 
   apply(stage) {
     if (!isRecord(stage) || stage.status !== 'accepted') throw new Error('hmx-stage-must-be-accepted-before-apply');
+    if (stage.intent !== 'port' || stage.strategy !== 'additive') throw new Error('hmx-canonical-apply-requires-port-additive-strategy');
     if (stage.application && stage.status === 'applied') return structuredClone(stage.application);
     const sections = isRecord(stage.stagedSections) ? stage.stagedSections : {};
     const records = Array.isArray(sections.memories) ? sections.memories : [];
