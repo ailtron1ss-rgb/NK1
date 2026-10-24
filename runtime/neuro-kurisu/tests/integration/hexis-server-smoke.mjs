@@ -38,6 +38,16 @@ try {
   if (!stageRes.ok || stageRes.stage?.status !== 'staged') throw new Error('hexis-hmx-stage');
   const acceptRes = await (await post('/api/organism/integration/hexis/hmx/decide', { stagingId: stageRes.stage.stagingId, decision: 'accept' })).json();
   if (!acceptRes.ok || acceptRes.stage?.status !== 'accepted') throw new Error(`hexis-hmx-accept:${JSON.stringify({ stage: stageRes.stage, accepted: acceptRes.stage })}`);
+  if (acceptRes.appliedToCanonicalMemory !== false || !String(acceptRes.note || '').includes('has not been mutated')) throw new Error('hexis-review-is-not-memory-application');
+
+  const malformedDocument = structuredClone(exportRes.document);
+  delete malformedDocument.source.embedding_model;
+  const malformedStageResponse = await post('/api/organism/integration/hexis/hmx/stage', { document: malformedDocument, intent: 'port', strategy: 'additive' });
+  const malformedStage = await malformedStageResponse.json();
+  if (!malformedStage.ok || !malformedStage.stage?.conflicts?.some(conflict => conflict.path === 'source')) throw new Error('hexis-hmx-missing-source-rejected');
+  const blockedAcceptResponse = await post('/api/organism/integration/hexis/hmx/decide', { stagingId: malformedStage.stage.stagingId, decision: 'accept' });
+  const blockedAccept = await blockedAcceptResponse.json();
+  if (blockedAcceptResponse.status !== 409 || blockedAccept.ok !== false || blockedAccept.stage?.status !== 'staged' || blockedAccept.appliedToCanonicalMemory !== false) throw new Error('hexis-hmx-conflict-not-accepted');
   if (memoryIndex.memoryIndex[0]?.id) {
     const proposal = await (await post('/api/organism/integration/hexis/retention/propose', { memoryId: memoryIndex.memoryIndex[0].id, action: 'archive', reason: 'server-smoke' })).json();
     if (!proposal.ok || !proposal.proposal?.id) throw new Error('hexis-retention-propose');
