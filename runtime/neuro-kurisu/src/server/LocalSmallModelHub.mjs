@@ -257,7 +257,8 @@ export class LocalSmallModelHub {
     })();
     const model = (id, role, configured, capabilities, detail = {}) => {
       const metricRole = ({ language: 'language', 'memory-retrieval': 'embeddings', classification: 'classification', affect: 'emotion' })[role];
-      const observedSuccess = metricRole ? this.metrics[metricRole].successes > 0 : false;
+      const embeddingObservedSuccess = Number(embedding?.requests || 0) > Number(embedding?.failures || 0);
+      const observedSuccess = metricRole ? (this.metrics[metricRole].successes > 0 || (metricRole === 'embeddings' && embeddingObservedSuccess)) : false;
       return {
         id, role, configured: Boolean(configured),
         state: !configured ? 'not-configured' : observedSuccess ? 'observed-healthy' : 'configured-unprobed',
