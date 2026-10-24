@@ -123,7 +123,7 @@ test("full architecture audit enforces dependency boundaries and exports a JSON 
     assert.doesNotMatch(result.stdout, /dependency boundary violations|canonical leakage|import cycles detected|missing relative imports/);
 
     const report = JSON.parse(await readFile(reportPath, "utf8"));
-    assert.equal(report.schemaVersion, 1);
+    assert.equal(report.schemaVersion, 2);
     assert.ok(report.summary.sourceFiles > 0);
     assert.ok(report.summary.canonicalFiles > 0);
     assert.equal(report.edges.length, report.summary.dependencyEdges);
@@ -133,6 +133,14 @@ test("full architecture audit enforces dependency boundaries and exports a JSON 
     assert.equal(report.summary.cycles, 0);
     assert.equal(report.summary.boundaryViolations, 0);
     assert.equal(report.edges.every(edge => edge.from && edge.to && edge.fromLayer && edge.toLayer), true);
+    assert.equal(report.nodes.reduce((total, node) => total + node.outDegree, 0), report.edges.length);
+    assert.equal(report.nodes.reduce((total, node) => total + node.inDegree, 0), report.edges.length);
+    assert.ok(report.hotSpots.highFanOut.length > 0);
+    assert.ok(report.hotSpots.highProductionFanIn.length > 0);
+    assert.ok(report.hotSpots.highFanOut[0].outDegree > 0);
+    assert.ok(report.hotSpots.highProductionFanIn[0].productionInDegree > 0);
+    assert.equal(report.hotSpots.highFanOut[0].outDegree, report.summary.maxCanonicalOutDegree);
+    assert.equal(report.hotSpots.highProductionFanIn[0].productionInDegree, report.summary.maxCanonicalProductionInDegree);
     console.log(result.stdout.trim());
   } finally {
     if (tempDir) await rm(tempDir, { recursive: true, force: true });
