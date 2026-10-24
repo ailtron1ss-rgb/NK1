@@ -25,7 +25,8 @@ const hasControlCharacters=(value:string):boolean=>Array.from(value).some(charac
 function normalizeTags(value: unknown): string[] | null {
   if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
   const descriptors = Object.getOwnPropertyDescriptors(value);
-  const length = descriptors.length?.value;
+  const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+  const length = lengthDescriptor && 'value' in lengthDescriptor ? lengthDescriptor.value : undefined;
   if (!Number.isSafeInteger(length) || length < 0 || length > 24 ||
       Reflect.ownKeys(value).length !== length + 1) return null;
   const tags: string[] = [];
@@ -43,7 +44,8 @@ function normalizeTags(value: unknown): string[] | null {
 function readExperienceRows(value: unknown, maxRows: number): unknown[] {
   if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return [];
   const descriptors = Object.getOwnPropertyDescriptors(value);
-  const length = descriptors.length?.value;
+  const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+  const length = lengthDescriptor && 'value' in lengthDescriptor ? lengthDescriptor.value : undefined;
   if (!Number.isSafeInteger(length) || length < 0 || length > 100_000 ||
       Reflect.ownKeys(value).length !== length + 1) return [];
   const start = Math.max(0, length - maxRows);
