@@ -169,7 +169,10 @@ export class ExternalObserverFabric {
     // Persisted source registries are state, not authority to bypass identity checks.
     // Keep the most-recent-first order emitted by registerSource and discard malformed
     // or duplicate IDs before observations are reconciled against them.
-    for(const value of (Array.isArray(r.sources)?r.sources.slice(0,this.maxSources):[]) as unknown[]){
+    for(const value of (Array.isArray(r.sources)?r.sources:[]) as unknown[]){
+      // Invalid, duplicate, or unauthorized rows must not consume the bounded
+      // registry's restore budget and crowd out later valid declarations.
+      if(restoredSources.length>=this.maxSources)break;
       if(!value||typeof value!=='object')continue;
       const source=value as any;
       const id=typeof source.id==='string'?source.id.trim().slice(0,80):'';
