@@ -263,7 +263,7 @@ export class P23CompoundRepairRevisionCoordinator {
    * digest within this coordinator lifetime. New repair evidence creates a new digest.
    * The P23 gate and explicit activation approval remain separate authorities.
    */
-  reviseFromObservedRepairs(skillId: string): Promise<CompoundRepairRevisionOutcome> {
+  async reviseFromObservedRepairs(skillId: string): Promise<CompoundRepairRevisionOutcome> {
     if (typeof skillId !== 'string' || skillId.trim().length === 0) {
       throw new Error('compound skill id is required');
     }
