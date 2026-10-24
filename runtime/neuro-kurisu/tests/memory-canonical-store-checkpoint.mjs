@@ -115,11 +115,45 @@ restored.restoreFromPersisted({
   memory: target.facets.memory,
   advanced: target.facets.advanced,
 });
-const item = restored.memoryOS.snapshot().items.find(row => row.id === 'canonical-memory-checkpoint-17');
+const restoredItems = restored.memoryOS.snapshot().items;
+assert.equal(
+  restoredItems.length,
+  1,
+  'canonical checkpoints must not re-import lossy compatibility rows as duplicate memories',
+);
+const item = restoredItems.find(row => row.id === 'canonical-memory-checkpoint-17');
 assert.ok(item, 'canonical memory record must survive checkpoint restore');
 assert.equal(item.content, 'The canonical store must preserve provenance and temporal validity across checkpoint restore.');
 assert.equal(item.validFromAt, 1600);
 assert.equal(item.evidenceSources[0].source, 'session:17');
+assert.equal(item.source, 'user-session-17');
+assert.equal(item.provenanceClass, 'user');
 assert.equal(item.epistemicStatus, 'fact');
+
+// Legacy checkpoints without MemoryOS2 still need compatibility migration.
+const legacy = new MemorySubsystemRuntime();
+legacy.restoreFromPersisted({
+  memory: {
+    autobiographicalMemories: [{
+      id: 'legacy-episode-01',
+      kind: 'episode',
+      summary: 'A preserved observation from an older checkpoint.',
+      salience: 0.75,
+      evidence: ['legacy-journal'],
+      createdAt: 1500,
+      timescale: 'episodic',
+      retrievalCount: 2,
+      lastRetrievedAt: 1550,
+      confidence: 0.8,
+      sourceEventIds: [],
+      associationIds: [],
+    }],
+  },
+  advanced: {},
+});
+const migrated = legacy.memoryOS.snapshot().items.find(row => row.context?.originalId === 'legacy-episode-01');
+assert.ok(migrated, 'legacy compatibility rows must still migrate when no canonical snapshot exists');
+assert.equal(migrated.provenanceClass, 'derived');
+assert.equal(migrated.source, 'multi-timescale-compatibility');
 
 console.log('MEMORY_CANONICAL_STORE_CHECKPOINT=PASS');
