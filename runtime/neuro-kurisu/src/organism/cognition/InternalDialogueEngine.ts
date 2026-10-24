@@ -134,10 +134,15 @@ function getWeightedLinks(claim: InternalDialogueClaim, evidenceById: Map<string
       result.contradictionCount++;
     }
     result.evidenceIds.push(record.id);
-    result.sources.add(record.sourceGroup || record.id);
+    if (relation === 'support') result.sources.add(record.sourceGroup || record.id);
   };
-  for (const id of Array.isArray(claim.supportingEvidenceIds) ? claim.supportingEvidenceIds : []) add(id, 'support');
-  for (const id of Array.isArray(claim.contradictingEvidenceIds) ? claim.contradictingEvidenceIds : []) add(id, 'contradiction');
+  const supporting = [...new Set((Array.isArray(claim.supportingEvidenceIds) ? claim.supportingEvidenceIds : []).filter(validId))];
+  const contradicting = [...new Set((Array.isArray(claim.contradictingEvidenceIds) ? claim.contradictingEvidenceIds : []).filter(validId))];
+  const contradictionSet = new Set(contradicting);
+  // Fail closed if one source is simultaneously declared supportive and contradictory.
+  // The conservative relation wins; an ambiguous evidence identity never boosts support.
+  for (const id of contradicting) add(id, 'contradiction');
+  for (const id of supporting) if (!contradictionSet.has(id)) add(id, 'support');
   return result;
 }
 
@@ -185,9 +190,11 @@ export class InternalDialogueEngine {
       };
     }).sort((a, b) => b.score01 - a.score01 || a.id.localeCompare(b.id));
 
-    const supportedClaims = candidateScores.filter((score) => score.supportingEvidenceCount + score.contradictingEvidenceCount > 0).length;
-    const coverage01 = candidateScores.length ? round3((supportedClaims / candidateScores.length)
-      * candidateScores.reduce((sum, item) => sum + (item.evidenceCoverage01 * (1 - item.contradiction01)), 0) / candidateScores.length) : 0;
+    // Each candidate contributes exactly once to coverage; unsupported candidates
+    // already contribute zero, so multiplying by a second support-rate factor double-penalizes gaps.
+    const coverage01 = candidateScores.length
+      ? round3(candidateScores.reduce((sum, item) => sum + (item.evidenceCoverage01 * (1 - item.contradiction01)), 0) / candidateScores.length)
+      : 0;
     const allLinked = candidateScores.reduce((sum, item) => sum + item.supportingEvidenceCount + item.contradictingEvidenceCount, 0);
     const contradictionCount = candidateScores.reduce((sum, item) => sum + item.contradictingEvidenceCount, 0);
     const contradiction01 = allLinked ? round3(contradictionCount / allLinked) : 0;
