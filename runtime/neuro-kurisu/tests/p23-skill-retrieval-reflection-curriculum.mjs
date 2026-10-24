@@ -61,6 +61,10 @@ assert.equal(legacyRewardReflection.rewardObserved01, undefined,
 
 assert.equal(classifyLearningFailureReason('tool gateway timed out after deadline'), 'timeout');
 assert.equal(classifyLearningFailureReason('safety policy blocked action'), 'safety-block');
+assert.equal(classifyLearningFailureReason('failed tool call: adapter returned an error'), 'tool-error');
+assert.equal(classifyLearningFailureReason('tool invocation failed during execution'), 'tool-error');
+assert.equal(classifyLearningFailureReason('Не удалось выполнить инструмент: ошибка адаптера'), 'tool-error');
+assert.equal(classifyLearningFailureReason('ошибка шлюза инструмента'), 'tool-error');
 assert.equal(classifyLearningFailureReason({ toString() { throw new Error('must not coerce'); } }), undefined,
   'failure-reason classification must ignore non-string inputs without coercion');
 const reasonRows = Array.from({ length: 5 }, (_, i) => ({
