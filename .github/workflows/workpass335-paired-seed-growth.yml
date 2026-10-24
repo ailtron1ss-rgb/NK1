@@ -1,4 +1,4 @@
-name: WorkPass337 paired-seed growth and provenance gate
+name: WorkPass338 successful reflective revision provenance and paired-seed growth
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
       - "runtime/neuro-kurisu/tests/workpass225-matched-independent-evaluation.mjs"
       - "runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs"
+      - "runtime/neuro-kurisu/tests/workpass338-p23-successful-revision-provenance.mjs"
       - ".github/workflows/workpass335-paired-seed-growth.yml"
       - "docs/WORKPASS335_PAIRED_SEED_GROWTH_RU.md"
       - "CHANGELOG.md"
@@ -18,6 +19,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
       - "runtime/neuro-kurisu/tests/workpass225-matched-independent-evaluation.mjs"
       - "runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs"
+      - "runtime/neuro-kurisu/tests/workpass338-p23-successful-revision-provenance.mjs"
       - ".github/workflows/workpass335-paired-seed-growth.yml"
       - "docs/WORKPASS335_PAIRED_SEED_GROWTH_RU.md"
       - "CHANGELOG.md"
@@ -48,3 +50,6 @@ jobs:
       - name: Fail closed on legacy promotion bypass
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-hermes-production-promotion-gate.mjs
+      - name: Preserve source repair plan after successful revision
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass338-p23-successful-revision-provenance.mjs
