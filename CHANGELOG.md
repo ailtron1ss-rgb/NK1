@@ -1,3 +1,9 @@
+## NK1 WorkPass550 — reject identity mismatches at observation ingress (2026-10-24)
+
+- `ExternalObserverFabric.ensureSource(...)` now rejects an observation when the caller's source class, channel, or explicitly supplied independence key conflicts with the registered source identity. Previously the registry's identity was retained silently, which hid caller spoofing/wiring errors even though the stored row used registered values.
+- Extended `workpass548-observer-source-identity.mjs` to assert that a mislabeled observation is rejected before any observation is persisted. The existing CI workflow already includes this regression file.
+- **Validation boundary:** code, regression, and changelog are committed to `feature/feedback`; test execution and hosted Actions status are not yet confirmed. This protects existing registered IDs but does not authenticate authorization to mint brand-new source IDs.
+
 ## NK1 WorkPass549 — execute observer identity regression in CI (2026-10-24)
 
 - Wired `workpass548-observer-source-identity.mjs` into the focused reality-to-learning workflow and expanded its path filters so changes to `ExternalObserverFabric.ts` and the new regression actually trigger the job on `feature/feedback` and relevant pull requests into `integration`.
