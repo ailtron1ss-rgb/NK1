@@ -1,3 +1,12 @@
+## NK1 WorkPass520 — fix Node 24 journal compatibility and restore-contract regressions (2026-10-24)
+
+- Removed a TypeScript parameter property from `JsonlLearningFitnessJournal`; Node 24's built-in strip-only TypeScript loader can now import the journal without an unsupported-syntax exception.
+- Tightened the WorkPass294 source assertion to recognize the gateway's optional-parenthesized decision-id spread without weakening the required execution/decision lineage check.
+- Made regression expectations consistent with fail-closed semantics: malformed cognitive-cycle stage history stays fully incomplete, and untrusted external events never count as grounded outcomes after restore or conflicting retries.
+- Updated the verified-outcome ledger's expected rejection total to include the added batch timestamp case.
+- **Verification boundary:** these changes are committed to `feature/learning`; the latest exact-head CI is still the authority for pass/fail. No merge to `main` or release-asset update is claimed.
+
+---
 ## NK1 WorkPass519 — preserve field-level validation and grounded restore counts (2026-10-24)
 
 - `VerifiedOutcomeLedger` now snapshots non-finite numeric sentinels without invoking accessors or accepting unsafe object shapes, allowing field-specific validators to return `invalid-time`, `invalid-seed`, or `invalid-attempt` rather than collapsing every such case into `invalid-outcome`.
