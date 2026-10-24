@@ -31,6 +31,27 @@ const twoSources = ledger.claimAssessment('device reports stable temperature');
 assert.equal(twoSources.qualifiedIndependentExternalSources, 2);
 assert.equal(twoSources.independentPromotionAllowed, true);
 
+// A qualified external observation for the opposite value of the same explicit
+// field must veto promotion, even when the target claim has two agreeing sources.
+ledger.record({
+  eventId: 'reality-gate-contradictory-source',
+  tick: 3,
+  at: 3000,
+  realityClass: 'device-observation',
+  claim: 'temperature: unstable',
+  confidence01: 0.89,
+  independenceKey: 'sensor-c',
+  parentIds: [],
+});
+const disputed = ledger.claimAssessment('temperature: stable');
+assert.equal(disputed.contradictionDetected, true, 'explicit field/value disagreement must be surfaced');
+assert.equal(disputed.independentContradictionSources, 1);
+assert.equal(disputed.independentPromotionAllowed, false, 'contradictory external evidence must veto promotion');
+assert.equal(disputed.promotionReason, 'qualified-external-contradiction-detected');
+
+// Natural-language claims are intentionally not guessed into a field/value pair.
+assert.equal(ledger.claimAssessment('device reports stable temperature').contradictionDetected, false);
+
 const engineSource = await readFile(new URL('../src/organism/learning/P23LearningEngine.ts', import.meta.url), 'utf8');
 const start = engineSource.indexOf('approveRealityCorroboratedSkillCandidate(');
 assert.notEqual(start, -1, 'P23 must expose the consequential reality-corroborated promotion path');
