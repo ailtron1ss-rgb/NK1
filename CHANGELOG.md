@@ -1,3 +1,15 @@
+## NK1 WorkPass332 — enforce full cognitive-cycle closure (2026-10-24)
+
+- [ARCHITECTURE] Ported `docs/architecture/module-dependency-contracts-ru.md` into the integration-based source branch, establishing one cycle owner, one action gateway, subsystem ports, single-writer state ownership, and candidate/holdout/promotion boundaries. The map is an enforceable target contract, not evidence that every current import has already been audited.
+- [INTEGRATION] Added an explicit `full` mode to the existing `UnifiedCognitiveCycle` contract. Full mode requires distinct, valid identities for all eleven stages: observation, prediction, appraisal, attention, memory, goal, plan, action, outcome, learning, and self-update.
+- [RUNTIME] Wired `OrganismRuntime` to use full mode after the existing causal-event lineage verifier. The legacy six-stage operational mode remains the default for compatible callers.
+- [STATE RESTORE] Fixed normalization of malformed persisted stage lists: retain valid entries when present, but conservatively fall back to all operational stages when every entry is invalid. This repairs an assertion exposed by the WorkPass287 CI run.
+- [STATE INTEGRITY] Restoration now invalidates `lastComplete` whenever explicitly stored aggregate counters disagree with the reconciled cycle partition, while snapshots that omit newer optional counters remain compatible. Both cases have regression assertions.
+- [REGRESSION] Added `tests/workpass332-full-cognitive-closure.mjs` covering full closure, a missing intermediate phase, duplicate stage identity, invalid mode, and production runtime wiring; registered it in the recovered regression aggregate.
+- [VALIDATION] Changes are committed on an isolated integration-based branch. Local execution and exact-head GitHub Actions are not yet verified; no green test/CI claim is made. `main` and the Release ZIP are untouched.
+
+---
+
 ## NK1 WorkPass331 — execute initiative regression guards in CI (2026-10-24)
 
 - [CI] Added `.github/workflows/initiative-regression.yml` on the `integration` branch to run the WorkPass329/330 initiative wiring regression tests with Node.js 22 on relevant pushes and pull requests.

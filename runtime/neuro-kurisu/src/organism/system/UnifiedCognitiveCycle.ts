@@ -28,14 +28,17 @@ export interface UnifiedCognitiveCycleResult {
   missingStages:UnifiedCycleStage[];
 }
 
-const REQUIRED:UnifiedCycleStage[]=['observation','prediction','action','outcome','learning','self-update'];
-const ALL_STAGES=new Set<UnifiedCycleStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update']);
+export type UnifiedCognitiveCycleMode='operational'|'full';
+
+const OPERATIONAL_REQUIRED:UnifiedCycleStage[]=['observation','prediction','action','outcome','learning','self-update'];
+const FULL_REQUIRED:UnifiedCycleStage[]=['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update'];
+const ALL_STAGES=new Set<UnifiedCycleStage>(FULL_REQUIRED);
 const clamp01=(x:number)=>Math.max(0,Math.min(1,x));
 const safeCounter=(value:unknown):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
 const safeMetric=(value:unknown):number=>typeof value==='number'&&Number.isFinite(value)?clamp01(value):0;
 const validStageId=(value:unknown):value is string=>typeof value==='string'&&value.length>0&&value.length<=256&&value.trim().length>0&&!/[\u0000-\u001f\u007f-\u009f]/u.test(value);
 
-export const defaultUnifiedCognitiveCycle=():UnifiedCognitiveCycleState=>({version:1,cycles:0,completeCycles:0,incompleteCycles:0,brokenLineages:0,meanStageCoverage01:0,meanCausalContinuity01:0,lastTick:-1,lastComplete:false,lastMissingStages:[...REQUIRED]});
+export const defaultUnifiedCognitiveCycle=():UnifiedCognitiveCycleState=>({version:1,cycles:0,completeCycles:0,incompleteCycles:0,brokenLineages:0,meanStageCoverage01:0,meanCausalContinuity01:0,lastTick:-1,lastComplete:false,lastMissingStages:[...OPERATIONAL_REQUIRED]});
 
 export class UnifiedCognitiveCycle {
   private state=defaultUnifiedCognitiveCycle();
@@ -53,29 +56,41 @@ export class UnifiedCognitiveCycle {
     // conservatively incomplete; otherwise a truncated/corrupt snapshot could
     // silently drop cycles from both outcome buckets.
     const incompleteCycles=cycles-completeCycles;
+    const brokenLineages=Math.min(incompleteCycles,safeCounter(source.brokenLineages));
+    // A legacy snapshot may omit newer aggregate fields, but when a field is
+    // present it must agree with the reconciled partition before lastComplete
+    // can be trusted. Sanitizing conflicting counters must not preserve a
+    // completion claim from the inconsistent original record.
+    const countersCoherent=
+      (source.completeCycles===undefined||source.completeCycles===completeCycles)&&
+      (source.incompleteCycles===undefined||source.incompleteCycles===incompleteCycles)&&
+      (source.brokenLineages===undefined||source.brokenLineages===brokenLineages);
     const hasMissingArray=Array.isArray(source.lastMissingStages);
-    const rawMissing=hasMissingArray?source.lastMissingStages as unknown[]:[...REQUIRED];
+    const rawMissing=hasMissingArray?source.lastMissingStages as unknown[]:[...OPERATIONAL_REQUIRED];
     const malformedMissing=rawMissing.some((stage)=>typeof stage!=='string'||!ALL_STAGES.has(stage as UnifiedCycleStage));
     const filteredMissing=[...new Set(rawMissing.filter((stage):stage is UnifiedCycleStage=>typeof stage==='string'&&ALL_STAGES.has(stage as UnifiedCycleStage)))];
-    const normalizedMissing=malformedMissing?[...REQUIRED]:filteredMissing;
+    const normalizedMissing=malformedMissing&&filteredMissing.length===0?[...OPERATIONAL_REQUIRED]:filteredMissing;
     const lastTick=typeof source.lastTick==='number'&&Number.isSafeInteger(source.lastTick)&&source.lastTick>=-1?source.lastTick:-1;
-    const missing=cycles===0&&normalizedMissing.length===0?[...REQUIRED]:normalizedMissing;
+    const missing=cycles===0&&normalizedMissing.length===0?[...OPERATIONAL_REQUIRED]:normalizedMissing;
     this.state={
       version:1,
       cycles,
       completeCycles,
       incompleteCycles,
-      brokenLineages:Math.min(incompleteCycles,safeCounter(source.brokenLineages)),
+      brokenLineages,
       meanStageCoverage01:safeMetric(source.meanStageCoverage01),
       meanCausalContinuity01:safeMetric(source.meanCausalContinuity01),
       lastTick,
-      lastComplete:cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
+      lastComplete:countersCoherent&&cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
       lastMissingStages:missing,
     };
   }
 
-  evaluate(input:{tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number}):UnifiedCognitiveCycleResult {
+  evaluate(input:{tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number;mode?:UnifiedCognitiveCycleMode}):UnifiedCognitiveCycleResult {
     if(input===null||typeof input!=='object')throw new TypeError('cognitive cycle input must be an object');
+    const mode=input.mode??'operational';
+    if(mode!=='operational'&&mode!=='full')throw new RangeError('cognitive cycle mode must be full or operational');
+    const required=mode==='full'?FULL_REQUIRED:OPERATIONAL_REQUIRED;
     if(input.stageIds===null||typeof input.stageIds!=='object'||Array.isArray(input.stageIds))throw new TypeError('stageIds must be an object');
     if(!Number.isSafeInteger(input.tick)||input.tick<0)throw new RangeError('cognitive cycle tick must be a non-negative safe integer');
     if(input.tick<=this.state.lastTick)throw new RangeError('cognitive cycle tick must strictly increase');
@@ -94,13 +109,13 @@ export class UnifiedCognitiveCycle {
     // Distinct required stages must refer to distinct events. Reusing one ID
     // across observation/action/outcome must not manufacture a complete cycle.
     const idCounts=new Map<string,number>();
-    for(const stage of REQUIRED) {
+    for(const stage of required) {
       const id=validIds[stage];
       if(id!==undefined)idCounts.set(id,(idCounts.get(id)??0)+1);
     }
-    const present=REQUIRED.filter(stage=>validIds[stage]!==undefined&&idCounts.get(validIds[stage]!)===1);
-    const missing=REQUIRED.filter(stage=>validIds[stage]===undefined||idCounts.get(validIds[stage]!)!==1);
-    const coverage=present.length/REQUIRED.length;
+    const present=required.filter(stage=>validIds[stage]!==undefined&&idCounts.get(validIds[stage]!)===1);
+    const missing=required.filter(stage=>validIds[stage]===undefined||idCounts.get(validIds[stage]!)!==1);
+    const coverage=present.length/required.length;
     const causal=input.parentIntegrity01;
     const complete=missing.length===0&&causal>=0.5;
     const cycles=this.state.cycles+1;
