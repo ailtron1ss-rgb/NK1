@@ -312,23 +312,33 @@ export class P36AutonomousSelfDevelopmentEngine{
   private state=defaultState();
   restore(raw?:Partial<SelfDevelopmentState>|null){
     const d=defaultState(); const r=raw??{};
+    const sourceHypotheses=Array.isArray(r.hypotheses)?r.hypotheses.slice(-96):[];
+    const revokedHypothesisIds=new Set<string>();
+    const restoredHypotheses=sourceHypotheses.map((h:any)=>{
+      const hasUnreplayablePromotion=h?.status==='completed'||['external-verified','holdout-verified','replicated'].includes(h?.evidenceGate);
+      if(!hasUnreplayablePromotion)return h;
+      if(typeof h?.id==='string')revokedHypothesisIds.add(h.id);
+      return {...h,status:'awaiting-evidence',evidenceGate:'none',result01:null,completedAt:0};
+    });
     this.state={...d,...r,version:5,
       // Cached maturity aggregates cannot be re-authenticated from a snapshot alone.
       // Keep history as explicitly non-evidentiary context; verifier-backed receipts must rebuild certification.
       developmentalMaturity:{...d.developmentalMaturity,history:Array.isArray((r as any).developmentalMaturity?.history)?(r as any).developmentalMaturity.history.slice(-64).map((x:any)=>({...x,verified01:0,retention01:0,transfer01:0,failed01:0})):[]},
       agenda:{...d.agenda,...((r as any).agenda??{})},
-      hypotheses:Array.isArray(r.hypotheses)?r.hypotheses.slice(-96):[],
-      experiments:Array.isArray(r.experiments)?r.experiments.slice(-128):[],
-      developmentCycles:Array.isArray((r as any).developmentCycles)?(r as any).developmentCycles.slice(-64):[],
+      hypotheses:restoredHypotheses,
+      experiments:Array.isArray(r.experiments)?r.experiments.slice(-128).map((x:any)=>({...x,replicated:false,status:'insufficient',evidenceGate:'sandbox-preview'})):[],
+      developmentCycles:Array.isArray((r as any).developmentCycles)?(r as any).developmentCycles.slice(-64).map((c:any)=>revokedHypothesisIds.has(c?.hypothesisId)?({...c,stage:'awaiting-evidence',verifiedEvidenceCount:0,lastEvidenceAt:0}):c):[],
       // Verifier receipts are WeakMap-backed capabilities and do not survive JSON snapshots.
       // Preserve observations for audit, but never restore serialized trust booleans.
       externalEvidence:Array.isArray(r.externalEvidence)?r.externalEvidence.slice(-512).map(e=>({...e,independentVerified:false,observationId:undefined})):[],
       developmentalEvidenceReceiptIds:Array.isArray((r as any).developmentalEvidenceReceiptIds)?(r as any).developmentalEvidenceReceiptIds.filter((x:unknown):x is string=>typeof x==='string'&&x.length<=256).slice(-512):[],
       developmentalEvidenceObservationIds:Array.isArray((r as any).developmentalEvidenceObservationIds)?[...new Set((r as any).developmentalEvidenceObservationIds.filter((x:unknown):x is string=>typeof x==='string'&&x.length<=180))].slice(-512):[],
       investmentDecisions:Array.isArray((r as any).investmentDecisions)?(r as any).investmentDecisions.slice(-96):[],
-      metrics:{...d.metrics,...(r.metrics??{})},
-      curriculum:{...d.curriculum,...(r.curriculum??{}),mastery:{...d.curriculum.mastery,...(r.curriculum?.mastery??{})}},
-      actionBias:{...d.actionBias,...(r.actionBias??{})},
+      // Outcome-derived metrics are not re-authenticated by a JSON snapshot.
+      metrics:{...d.metrics},
+      curriculum:{...d.curriculum,focus:(r.curriculum?.focus??d.curriculum.focus),mastery:{...d.curriculum.mastery},plannedSteps:0,completedSteps:0},
+      actionBias:{...d.actionBias},
+      acceptedChanges:0,
     };
   }
   snapshot(){return structuredClone(this.state);}
