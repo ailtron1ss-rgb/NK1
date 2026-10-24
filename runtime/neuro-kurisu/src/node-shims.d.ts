@@ -1,7 +1,7 @@
 declare module 'node:crypto' { export function randomUUID(): string;
   export function createHash(algorithm: string): { update(data: string | Uint8Array): any; digest(encoding: string): string }; export function verify(algorithm: null | string, data: Uint8Array, key: string, signature: Uint8Array): boolean; export function sign(algorithm: null | string, data: Uint8Array, key: string): any; export function createPublicKey(key: string | Uint8Array | object): any; }
 declare module 'node:fs/promises' {
-  export function access(path:string): Promise<void>;
+  export function access(path:string, mode?:number): Promise<void>;
   export function appendFile(path:string,data:string|Uint8Array,options?:string|{encoding?:string;mode?:number;flag?:string}):Promise<void>;
   export function copyFile(src:string,dest:string):Promise<void>;
   export function mkdir(path:string, options?:{recursive?:boolean;mode?:number}):Promise<string|undefined>;
@@ -38,6 +38,7 @@ declare namespace NodeJS {
   interface ErrnoException extends Error { errno?: number; code?: string; path?: string; syscall?: string; }
   interface Timeout { ref(): this; unref(): this; hasRef(): boolean; }
   type Signals = string;
+  type ProcessEnv = Record<string, string | undefined>;
 }
 declare module 'node:fs' {
   export const constants: any;
@@ -58,7 +59,7 @@ declare module 'node:fs' {
   export function rmSync(path: string, options?: any): void;
   export function statSync(path: string): any;
   export function unlinkSync(path: string): void;
-  export function writeFileSync(path: string, data: string | Uint8Array, options?: any): void;
+  export function writeFileSync(path: string | number, data: string | Uint8Array, options?: any): void;
   export function createReadStream(path: string, options?: any): any;
   export function createWriteStream(path: string, options?: any): any;
   export const promises: any;
