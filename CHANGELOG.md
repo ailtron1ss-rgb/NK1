@@ -1,3 +1,10 @@
+## Compatibility repair — avatar storage test typecheck (2026-10-24)
+
+- [DIAGNOSIS] Exact-head CI run [40061272363](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40061272363) passed the 232-test app script regression suite, then failed `npm --prefix app run typecheck` on six diagnostics in `app/src/legacy/avatar/safeLocalStorage.test.mjs`: implicit-any test-helper parameters and TypeScript's restriction on deleting a required property.
+- [FIX] Added narrow JSDoc parameter/map types while keeping `strict` and `checkJs` enabled; replaced direct `delete globalThis.window` expressions with `Reflect.deleteProperty`. Runtime test intent and assertions are unchanged.
+- [VERIFICATION] Patch created on `compat/avatar-storage-strict-types-20261024`. The targeted rerun, full app typecheck, app development build, runtime typecheck, and later cognitive/runtime regressions remain pending until a new exact-head Actions run returns actionable results.
+- [SCOPE] This repairs a concrete CI-blocking compatibility defect. It does not establish full project compatibility, production readiness, retrieval/learning improvement, or release-asset synchronization.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
