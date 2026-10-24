@@ -40,6 +40,7 @@ await assert.rejects(
 firstGate.resolve();
 assert.deepEqual(await Promise.all([first, second, third]), ['first', 'second', 'third']);
 assert.equal(maximumActive, 1, 'one endpoint must never exceed its configured concurrency');
+const sameEndpointConcurrencyBounded = maximumActive === 1;
 assert.deepEqual(order, ['start:first', 'end:first', 'start:second', 'end:second', 'start:third', 'end:third']);
 
 const blocker = deferred();
@@ -64,15 +65,23 @@ timeoutGate.resolve();
 assert.equal(await timeoutRunning, 'timeout-blocker');
 
 const separateGate = deferred();
+const independentGate = deferred();
 let separateStarted = false;
 const busy = scheduler.run('busy-lane', task('busy', separateGate));
 await new Promise((resolve) => setImmediate(resolve));
-const independent = await scheduler.run('independent-lane', async () => {
+const independent = scheduler.run('independent-lane', async () => {
   separateStarted = true;
+  active++;
+  maximumActive = Math.max(maximumActive, active);
+  await independentGate.promise;
+  active--;
   return 'independent';
 });
-assert.equal(independent, 'independent', 'independent endpoints must remain independently schedulable');
-assert.equal(separateStarted, true);
+await new Promise((resolve) => setImmediate(resolve));
+assert.equal(separateStarted, true, 'a free local endpoint must not wait behind another endpoint queue');
+assert.equal(active, 2, 'separate resource lanes can run concurrently');
+independentGate.resolve();
+assert.equal(await independent, 'independent', 'independent endpoints must remain independently schedulable');
 separateGate.resolve();
 await busy;
 
@@ -92,7 +101,7 @@ assert.ok(snapshot.groups.reduce((sum, row) => sum + row.rejected, 0) >= 1);
 assert.ok(snapshot.groups.reduce((sum, row) => sum + row.timedOut, 0) >= 1);
 
 console.log('LOCAL_INFERENCE_SCHEDULER=PASS', JSON.stringify({
-  boundedConcurrency: maximumActive === 1,
+  boundedConcurrency: sameEndpointConcurrencyBounded,
   fifoOrder: true,
   boundedQueue: true,
   queuedCancellation: true,
