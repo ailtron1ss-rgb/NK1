@@ -1,3 +1,13 @@
+## NK1 WorkPass477 — collapse mirrored evidence into one epistemic lineage (2026-10-24)
+
+- Added optional stable `independenceKey` to P65 evidence revisions. Independent-source counting now uses normalized lineage identity rather than the publisher label alone, so syndicated copies under different hosts cannot inflate belief confidence.
+- Evidence replay identity is keyed by lineage plus evidence ID; changing the host label or stance cannot reuse the same lineage/evidence pair as a fresh vote.
+- Persisted lineage keys and revision-history lineage metadata are bounded and restore compatibly from older v2 snapshots (legacy rows fall back to their normalized source label).
+- Expanded the P65 regression for mirrored publishers, same-lineage contradiction, normalization, and snapshot round-trip. No new dependency or parallel memory store.
+- **Validation status:** code and regression source committed; exact-head execution/typecheck has not been run here. No empirical retrieval or learning uplift claimed.
+
+---
+
 ## NK1 WorkPass473 — fix stale recall starvation and restore/typecheck integrity (2026-10-24)
 
 - Retrieval's bounded 192-item seed pool now prioritizes temporal validity before lexical similarity, so a flood of expired exact matches cannot crowd a weaker but current record out before temporal filtering. The WorkPass80 regression now adds 220 expired distractors and asserts both current recall and archive-mode recall.
