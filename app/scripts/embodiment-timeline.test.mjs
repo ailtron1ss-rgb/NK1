@@ -6,6 +6,7 @@ import test from "node:test";
 import vm from "node:vm";
 import {
   buildVisemeTimeline,
+  deriveAffectiveEmbodiment,
   CLOSED_MOUTH,
   isEmbodimentIntentV1,
   appendVisemeClockAnchor,
@@ -92,6 +93,39 @@ test("Russian and English graphemes map to distinct mouth shapes", () => {
   const en = buildVisemeTimeline("move with you", 1, "en-US");
   assert.ok(en.some((frame) => frame.pose.viseme === "wide"));
   assert.ok(en.some((frame) => frame.pose.viseme === "round"));
+});
+
+
+test("maps emotion and body-state signals into bounded, synchronized voice and avatar affect", () => {
+  const calm = deriveAffectiveEmbodiment({
+    label: "calm", valence01: 0.5, arousal01: 0.2, dominance01: 0.7,
+    energy01: 0.9, cognitiveLoad01: 0.1, uncertainty01: 0.1, sleepPressure01: 0.05,
+  });
+  const strained = deriveAffectiveEmbodiment({
+    label: "anxiety", valence01: 0.3, arousal01: 0.8, dominance01: 0.15,
+    energy01: 0.18, cognitiveLoad01: 0.9, uncertainty01: 0.9, sleepPressure01: 0.8,
+  });
+  assert.ok(strained.stress01 > calm.stress01, "low energy and high load/uncertainty must influence the expression profile");
+  assert.ok(strained.expressionIntensity > calm.expressionIntensity);
+  assert.ok(strained.voiceEmphasis > calm.voiceEmphasis);
+  assert.ok(strained.speechRate < calm.speechRate, "strained body state should slow the voice profile");
+  assert.ok(strained.speechPitch < calm.speechPitch, "negative/high-stress affect should lower the pitch profile");
+  assert.notEqual(strained.headTilt, calm.headTilt);
+  assert.notEqual(strained.gazeYOffset, calm.gazeYOffset);
+
+  const malformed = deriveAffectiveEmbodiment({
+    label: "calm", valence01: Number.NaN, arousal01: Number.POSITIVE_INFINITY, dominance01: -3,
+    energy01: Number.NaN, cognitiveLoad01: 3, uncertainty01: -1, sleepPressure01: Number.NaN,
+  });
+  for (const [key, min, max] of [
+    ["speechRate", 0.78, 1.12], ["speechPitch", 0.82, 1.15],
+    ["expressionIntensity", 0, 1], ["voiceEmphasis", 0, 1],
+    ["headTilt", -0.15, 0.15], ["gazeXOffset", -0.15, 0.15],
+    ["gazeYOffset", -0.12, 0.12], ["stress01", 0, 1],
+  ]) {
+    assert.ok(Number.isFinite(malformed[key]), `${key} should stay finite on malformed signals`);
+    assert.ok(malformed[key] >= min && malformed[key] <= max, `${key} must remain inside the UI contract`);
+  }
 });
 
 test("actual character boundary recalibrates an estimate that ran too far ahead", () => {
