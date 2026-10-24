@@ -143,6 +143,7 @@ orphanSnapshot.realityEvidenceLedger = cleanLedger;
 const orphanRestore = new EvidenceResearchSubsystemRuntime();
 orphanRestore.restore(orphanSnapshot);
 assert.equal(orphanRestore.realityEvidenceLedger.snapshot().total, 0, 'orphan observations must not be backfilled without a registered source');
+assert.equal(orphanRestore.externalObserver.snapshot().observations.length, 0, 'orphan rows must be removed from strict observer state, not just hidden from the ledger');
 
 const mismatchedSnapshot = structuredClone(guardedRuntime.snapshot());
 mismatchedSnapshot.externalObserver.sources[0].sourceClass = 'user';
@@ -152,6 +153,7 @@ mismatchedSnapshot.realityEvidenceLedger = cleanLedger;
 const mismatchedRestore = new EvidenceResearchSubsystemRuntime();
 mismatchedRestore.restore(mismatchedSnapshot);
 assert.equal(mismatchedRestore.realityEvidenceLedger.snapshot().total, 0, 'restored rows cannot override the registered source class/channel');
+assert.equal(mismatchedRestore.externalObserver.snapshot().observations.length, 0, 'identity-mismatched rows must not remain in internal consensus calculations');
 
 const legacySnapshot = structuredClone(guardedRuntime.snapshot());
 delete legacySnapshot.externalObserver.observations[0].independenceKey;
@@ -161,5 +163,11 @@ legacyRestore.restore(legacySnapshot);
 const legacyLedgerRow = legacyRestore.realityEvidenceLedger.snapshot().recent[0];
 assert.equal(legacyRestore.realityEvidenceLedger.snapshot().total, 1, 'legacy rows with a known source remain recoverable');
 assert.equal(legacyLedgerRow.independenceKey, 'camera:front', 'legacy rows inherit independence identity from the registry');
+
+const poisonedTrustSnapshot = structuredClone(guardedRuntime.snapshot());
+poisonedTrustSnapshot.externalObserver.sources[0].reliability01 = 9;
+const normalizedTrustRestore = new EvidenceResearchSubsystemRuntime();
+normalizedTrustRestore.restore(poisonedTrustSnapshot);
+assert.equal(normalizedTrustRestore.externalObserver.snapshot().sources[0].reliability01, 1, 'restored source reliability must be clamped to the normalized range');
 
 console.log('WorkPass548 observer source identity regression: PASS');
