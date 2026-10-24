@@ -34,6 +34,16 @@ contradictoryCheckRestore.restore({
 });
 assert.equal(contradictoryCheckRestore.diagnostics().lastStatus, 'FAIL', 'a restored PASS record with a failed check must be downgraded');
 
+// Bookkeeping may not erase DEGRADED either; only a new actual cognitive step resolves it.
+const degradedBoundaryLedger = new RuntimeClosureLedger();
+const firstSession = degradedBoundaryLedger.restoreVerification({ at: Date.now(), tick: 0, replaySignature: '', continuousTick: 0 });
+assert.equal(firstSession.status, 'DEGRADED');
+degradedBoundaryLedger.durable({ at: Date.now(), tick: 0, stateTick: 0, replaySignature: 'new-signature', continuousTick: 0, continuityProcessed: 0 });
+assert.equal(degradedBoundaryLedger.diagnostics().lastStatus, 'DEGRADED', 'durability must not mask an unresolved degraded cycle');
+const recoveredBoundary = degradedBoundaryLedger.step({ at: Date.now(), previousTick: 0, stateTick: 1, cycleTick: 1, continuousTick: 1, processed: 1, previousProcessed: 0, continuity01: 0.8, energy01: 0.8, uncertainty01: 0.2, identityContinuity01: 0.9, predictionError01: 0.1, action: 'observe', cognitiveCycleComplete: true, cognitiveCycleTick: 1, missingCognitiveStages: [] });
+assert.equal(recoveredBoundary.status, 'PASS');
+assert.equal(degradedBoundaryLedger.diagnostics().lastStatus, 'PASS', 'a verified new cycle may replace prior degraded status');
+
 // A normal step can itself fail its closure checks; durability must not turn it green.
 const failedStepLedger = new RuntimeClosureLedger();
 const failedStep = failedStepLedger.step({ at: Date.now(), previousTick: 0, stateTick: 1, cycleTick: 2, continuousTick: 1, processed: 1, previousProcessed: 0, continuity01: .72, energy01: .8, uncertainty01: .2, identityContinuity01: .9, predictionError01: .1, action: 'observe' });
