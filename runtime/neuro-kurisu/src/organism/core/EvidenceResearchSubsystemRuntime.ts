@@ -58,7 +58,12 @@ export class EvidenceResearchSubsystemRuntime {
     const sourceReliability01=Number.isFinite(capturedTrust)
       ?Math.min(currentSourceReliability01,Math.max(0,Math.min(1,capturedTrust)))
       :currentSourceReliability01;
-    const evidenceConfidence01=Math.max(0,Math.min(1,observation.confidence01*sourceReliability01));
+    const eventId=observation.evidenceEventId??observation.id;
+    const calibratedConfidence01=Math.max(0,Math.min(1,observation.confidence01*sourceReliability01));
+    const priorEvidence=this.realityEvidenceLedger.findByEventId(eventId);
+    const evidenceConfidence01=priorEvidence
+      ?Math.min(calibratedConfidence01,priorEvidence.confidence01)
+      :calibratedConfidence01;
     const realityClass:EvidenceRealityClass = observation.sourceClass==='user' ? 'user-reported'
       : observation.sourceClass==='simulator' ? 'simulator'
       : observation.sourceClass==='organism' ? 'model-generated'
@@ -72,7 +77,7 @@ export class EvidenceResearchSubsystemRuntime {
       .filter((value):value is string=>typeof value==='string'&&value.trim().length>0)
       .map(value=>value.normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').trim().slice(0,256)).filter(value=>value.length>0).slice(0,8);
     this.realityEvidenceLedger.record({
-      eventId:observation.evidenceEventId??observation.id,
+      eventId,
       tick:Number.isSafeInteger(observation.tick)&&Number(observation.tick)>=0?Number(observation.tick):0,
       at:Number.isFinite(observation.observedAt)&&observation.observedAt>=0?observation.observedAt:Date.now(),
       realityClass,claim,confidence01:evidenceConfidence01,independenceKey,parentIds,
