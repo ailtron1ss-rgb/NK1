@@ -1,3 +1,12 @@
+## NK1 WorkPass483 — use authoritative Node types for semantic runtime typecheck (2026-10-24)
+
+- The runtime typecheck was compiling `src/node-shims.d.ts` together with the real code. Those narrow fallback declarations shadowed the locked Node API surface and caused a cascade of false missing-member errors (`createPublicKey`, `realpath`, `NodeJS`, `process.platform`, `Buffer`, path/fs overloads).
+- Excluded the fallback shim from semantic `tsc`, explicitly selected the already-locked `@types/node` from `app/node_modules/@types`, and retained runtime-local types as a fallback.
+- Corrected the compiler selection to prefer the canonical app-lock TypeScript compiler, matching the existing `typecheck-runtime-compiler-selection.mjs` contract.
+- **Validation:** source and the existing compiler-selection regression are committed on `feature/experiments`; this exact head has not yet run CI. Independent application-level type errors may remain after the shadow-type cascade is removed. No dependency was added.
+
+---
+
 ## NK1 WorkPass340 — extend CI runtime audit to artifact actions (2026-10-23)
 
 - Extended the existing CI compatibility audit to cover `actions/upload-artifact` and `actions/download-artifact` as well as checkout/setup-node. This closes a blind spot where artifact action downgrades could bypass the Node.js 24 runtime policy.
