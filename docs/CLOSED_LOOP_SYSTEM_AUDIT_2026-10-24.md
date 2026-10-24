@@ -57,12 +57,12 @@
 
 ## Проверка состояния после интеграции
 
-После фактического запуска регрессии проверить на одном и том же commit SHA:
-1. `npm run audit:p328:closed-loop-failure-closure` (TypeScript check + новая регрессия);
-2. `npm run test:p2685:runtime-closure`;
-4. `test:rebuild-recovered`;
-5. abort/no-actuation и restart/durable assertions;
-6. GitHub Actions job steps/logs — запуск со статусом без runner не является ни успешным, ни неуспешным исполнением тестов.
+После фактического запуска на одном и том же commit SHA выполнить:
+1. `npm run audit:p328:closed-loop-failure-closure` — TypeScript check + новая регрессия;
+2. `npm run test:p2685:runtime-closure` — действующий runtime closure/restart тест;
+3. `npm run test:rebuild-recovered` — существующий агрегат реконструированных регрессий;
+4. проверить отдельные assertions для ранней отмены, отмены до embodied-action, beginBatch failure, сохранения failure state и конкурентного `stop()`;
+5. проверить restart/durable поведение и реальные GitHub Actions job steps/logs. Пустой workflow status или запуск без назначенного runner не являются результатом исполнения тестов.
 
 ## Критерий закрытия задачи
 
