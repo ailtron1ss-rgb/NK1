@@ -32,7 +32,7 @@ export class LocalInferenceScheduler {
   _group(rawKey) {
     let key = groupKey(rawKey);
     let group = this.groups.get(key);
-    if (!group && this.groups.size >= MAX_GROUPS) {
+    if (!group && this.groups.size >= MAX_GROUPS - 1) {
       key = 'overflow-resource';
       group = this.groups.get(key);
     }
