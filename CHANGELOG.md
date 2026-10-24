@@ -1,3 +1,11 @@
+## NK1 WorkPass474 — record Hexis reliability transfer and three category fixes (2026-10-24)
+
+- Recorded exact source files inspected in Hexis and their narrow NK1 adaptations.
+- Synced research ledger, category exit-gate notes and Russian master audit with current memory, personality and learning branch commits.
+- Readiness remains 46/100: tests on exact heads remain unverified, PRs remain drafts, and the release ZIP has not been replaced/hash-verified.
+
+---
+
 ## NK1 WorkPass457 — add verifier-owned shared event identity (2026-10-23)
 
 - The feedback branch's OutcomeVerificationService now mints a stable evidenceEventId for external evidence only when the exact execution/decision/tool/input/observation tuple is available and valid.
