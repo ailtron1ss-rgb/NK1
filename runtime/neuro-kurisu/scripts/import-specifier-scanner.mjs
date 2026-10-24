@@ -150,27 +150,37 @@ function maskedImportCode(source) {
 }
 
 // TypeScript import-type queries have the shape import("./module").Type or
-// import("./module")["Type"]. They create compile-time graph edges but do not
-// load the referenced module at runtime. Exclude them from runtime traversal
-// while preserving them as separately labelled architecture graph edges.
+// import("./module")["Type"]. They create compile-time edges, not runtime loads.
 const typeImportPattern = /\bimport\s*\(\s*(["'])(\.\.?\/[^"']+)\1\s*\)\s*(?:\.\s*[A-Za-z_$][\w$]*\b(?!\s*\()|\[\s*["'][^"']+["']\s*\])/g;
+
+// Explicitly type-only declarations also belong in the compile-time graph.
+// Stop at semicolons or the next top-level import/export start so a malformed
+// statement cannot absorb unrelated imports.
+const explicitTypeImportPattern = /\b(?:import|export)\s+type\b(?:(?!;|\n\s*(?:import|export)\b)[\s\S])*?\bfrom\s*(["'])(\.\.?\/[^"']+)\1/g;
 
 export function collectRelativeTypeImportSpecifiers(source) {
   const code = maskedImportCode(source);
   const specifiers = new Set();
   for (const match of code.matchAll(typeImportPattern)) specifiers.add(match[2]);
+  for (const match of code.matchAll(explicitTypeImportPattern)) specifiers.add(match[2]);
   return [...specifiers];
 }
 
 export function collectRelativeImportSpecifiers(source) {
   const code = maskedImportCode(source);
-  // Covers static imports, re-exports, side-effect imports, literal dynamic
-  // imports and literal CommonJS requires. Bare packages are not graph edges.
-  const typeImportStarts = new Set([...code.matchAll(typeImportPattern)].map(match => match.index));
+  // Covers static/runtime imports, re-exports, side-effect imports, literal
+  // dynamic imports and literal CommonJS requires. Type-only imports are
+  // retained in collectRelativeTypeImportSpecifiers instead.
+  const typeQueryStarts = new Set([...code.matchAll(typeImportPattern)].map(match => match.index));
+  const typeDeclarationQuoteOffsets = new Set(
+    [...code.matchAll(explicitTypeImportPattern)].map(match => match.index + match[0].length - 1),
+  );
   const pattern = /(?:\bfrom\s+|\bimport\s*(?:\(\s*)?|\brequire\s*\(\s*)(["'])(\.\.?\/[^"']+)\1/g;
   const specifiers = new Set();
   for (const match of code.matchAll(pattern)) {
-    if (typeImportStarts.has(match.index)) continue;
+    if (typeQueryStarts.has(match.index)) continue;
+    const closingQuoteOffset = match.index + match[0].length - 1;
+    if (typeDeclarationQuoteOffsets.has(closingQuoteOffset)) continue;
     specifiers.add(match[2]);
   }
   return [...specifiers];
