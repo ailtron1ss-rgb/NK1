@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { CausalExperienceStream } from '../src/organism/learning/CausalExperienceStream.ts';
 
 const mkState=(overrides={})=>({
-  tick:1,at:1000,predictionError:.6,attentionBudget:.8,selfPredictionError:.2,autonomyScore:.6,
+  tick:1,at:1000,lastAction:'explore',lastActionSuccess:.7,predictionError:.6,attentionBudget:.8,selfPredictionError:.2,autonomyScore:.6,
   needs:{energy:.7,cognitiveLoad:.3,uncertainty:.65,novelty:.7,goalPressure:.6,socialNeed:.4,identityCoherence:.82},
   ...overrides,
 });
