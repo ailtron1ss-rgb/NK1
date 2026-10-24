@@ -49,7 +49,44 @@ assert.equal(disputed.independentContradictionSources, 1);
 assert.equal(disputed.independentPromotionAllowed, false, 'contradictory external evidence must veto promotion');
 assert.equal(disputed.promotionReason, 'qualified-external-contradiction-detected');
 
-// Natural-language claims are intentionally not guessed into a field/value pair.
+// A low-confidence contradictory report is retained but must not veto by itself.
+ledger.record({
+  eventId: 'reality-gate-low-confidence-contradiction',
+  tick: 4,
+  at: 4000,
+  realityClass: 'external-observation',
+  claim: 'temperature: frozen',
+  confidence01: 0.42,
+  independenceKey: 'sensor-d',
+  parentIds: [],
+});
+assert.equal(ledger.claimAssessment('temperature: stable').independentPromotionAllowed, false,
+  'the earlier qualified contradiction must continue to veto promotion');
+assert.equal(ledger.claimAssessment('temperature: stable').independentContradictionSources, 1,
+  'low-confidence contradictory reports must not inflate qualified contradiction sources');
+
+// The veto must survive persistence/restore rather than existing only in transient memory.
+const restored = new RealityEvidenceLedger();
+restored.restore(ledger.snapshot());
+const restoredDispute = restored.claimAssessment('temperature: stable');
+assert.equal(restoredDispute.contradictionDetected, true);
+assert.equal(restoredDispute.independentPromotionAllowed, false);
+assert.equal(restoredDispute.promotionReason, 'qualified-external-contradiction-detected');
+
+// A different field is not a contradiction, and natural-language claims are
+// intentionally not guessed into a field/value pair.
+ledger.record({
+  eventId: 'reality-gate-unrelated-field',
+  tick: 5,
+  at: 5000,
+  realityClass: 'device-observation',
+  claim: 'humidity: high',
+  confidence01: 0.96,
+  independenceKey: 'sensor-e',
+  parentIds: [],
+});
+assert.equal(ledger.claimAssessment('temperature: stable').contradictionDetected, true,
+  'unrelated fields must not erase an existing qualified contradiction');
 assert.equal(ledger.claimAssessment('device reports stable temperature').contradictionDetected, false);
 
 const engineSource = await readFile(new URL('../src/organism/learning/P23LearningEngine.ts', import.meta.url), 'utf8');
