@@ -1,3 +1,12 @@
+## NK1 WorkPass481 — bind embodied event IDs to the originating decision (2026-10-24)
+
+- Fixed a flaw in WorkPass479 identity construction: the event key no longer depends on wall-clock time, sensor values, or the action result itself.
+- `EmbodiedActionExecutor` now mints an `embodied:<40-hex>` event ID from the normalized, bounded `decisionId` plus action, and only when that stable identity exists. `OrganismRuntime` supplies the originating decision ID.
+- Same-decision replays now use the same event ID; if payload changes across retries, `RealityEvidenceLedger` detects same-ID/different-payload conflict and quarantines it rather than treating it as another independent observation.
+- Updated regression assertions for decision-bound identity. Exact-head execution/typecheck remains unverified; event IDs remain idempotency keys, not proof of truth.
+
+---
+
 ## NK1 WorkPass479 — stable embodied evidence IDs and conflict quarantine (2026-10-24)
 
 - Extracted a shared domain-separated SHA-256 event-ID helper and reused it for the existing OutcomeVerificationService tuple, preserving the `outcome:<40-hex>` format while making the identity contract reusable by embodiment.
