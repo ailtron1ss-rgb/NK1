@@ -1781,5 +1781,8 @@
     "test:workpass408:lifecycle-reconciliation": "node --experimental-strip-types tests/workpass408-lifecycle-store-reconciliation.mjs",
     "test:workpass419:retry-backoff-store": "node --experimental-strip-types tests/workpass419-p23-retry-backoff-store.mjs",
     "test:hexis:correction-memory": "node --experimental-strip-types tests/hexis-correction-memory.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.4"
   }
 }
