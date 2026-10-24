@@ -1,5 +1,6 @@
 ## NK1 WorkPass332 — enforce full cognitive-cycle closure (2026-10-24)
 
+- [ARCHITECTURE] Ported `docs/architecture/module-dependency-contracts-ru.md` into the integration-based source branch, establishing one cycle owner, one action gateway, subsystem ports, single-writer state ownership, and candidate/holdout/promotion boundaries. The map is an enforceable target contract, not evidence that every current import has already been audited.
 - [INTEGRATION] Added an explicit `full` mode to the existing `UnifiedCognitiveCycle` contract. Full mode requires distinct, valid identities for all eleven stages: observation, prediction, appraisal, attention, memory, goal, plan, action, outcome, learning, and self-update.
 - [RUNTIME] Wired `OrganismRuntime` to use full mode after the existing causal-event lineage verifier. The legacy six-stage operational mode remains the default for compatible callers.
 - [REGRESSION] Added `tests/workpass332-full-cognitive-closure.mjs` covering full closure, a missing intermediate phase, duplicate stage identity, invalid mode, and production runtime wiring; registered it in the recovered regression aggregate.
