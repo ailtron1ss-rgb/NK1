@@ -15,6 +15,7 @@ async function fixture(t) {
   await writeFile(path.join(root, "docs", "PROJECT_CURRENT_STATUS_1.md"), "# Status snapshot\n");
   await writeFile(path.join(root, "old", "PROJECT_CURRENT_STATUS_2.md"), "# Status snapshot\n");
   await writeFile(path.join(root, "docs", "unlinked-note.md"), "# Unlinked note\n");
+  await writeFile(path.join(root, "docs", "WORKPASS33_REPORT_2026-10-13.md"), "# Historical WorkPass report\n");
   await writeFile(path.join(root, "scripts", "uses-status.mjs"), 'const report = "docs/PROJECT_CURRENT_STATUS_1.md";\n');
   return root;
 }
@@ -22,7 +23,7 @@ async function fixture(t) {
 test("groups exact content without claiming same-name families are duplicates", async (t) => {
   const root = await fixture(t);
   const result = await buildDocumentationInventory({ root });
-  assert.equal(result.scannedFiles, 4);
+  assert.equal(result.scannedFiles, 5);
   assert.equal(result.exactDuplicateGroupCount, 1);
   assert.equal(result.exactDuplicateGroups[0].count, 2);
   assert.deepEqual(result.exactDuplicateGroups[0].paths, [
@@ -31,6 +32,8 @@ test("groups exact content without claiming same-name families are duplicates", 
   ]);
   const family = result.filenameFamilies.find((group) => group.family === "project-current-status");
   assert.equal(family.count, 2);
+  const reportFamily = result.filenameFamilies.find((group) => group.family === "workpass-reports");
+  assert.equal(reportFamily.count, 1, "hyphenated date suffixes must remain part of WorkPass filename-family classification");
 });
 
 test("counts known inbound links and marks zero-inbound candidates conservatively", async (t) => {
