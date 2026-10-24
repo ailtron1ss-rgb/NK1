@@ -181,3 +181,41 @@ The subsequent all-page branch search returned 124 unique names, 20 more than th
 
 This refresh shows why the repository should not be organized by branch suffix alone: distinct streams are touching related areas such as affect, memory, runtime typing, Live2D and Hermes/P23. Before importing any one of them, compare its current head against the chosen base, inspect changed paths and conflicts, and record the target tests. None of these 20 streams is declared integrated merely because it appears in this inventory.
 
+## 6. Compare the additional streams against the selected unified-kernel base
+
+**Comparison base at observation time:** `workpass331-unified-cognitive-kernel-2026-10-24` at `5f318ad801f30ddd82150ed6be56baafc1c567a9`. The comparison below was queried live during this ordering pass after the branch-name refresh. Ahead/behind counts are ancestry evidence only; they do not certify CI, correctness, PR review or safe automatic merge.
+
+| Branch | Compare status | Ahead | Behind | Changed paths in compare | Reconciliation guidance |
+|---|---|---:|---:|---:|---|
+| `architecture/unified-cognitive-cycle-closure-2026-10-24` | diverged | 30 | 100 | 14 | Selectively review initiative/cycle code and tests; preserve current kernel changes |
+| `compat/avatar-storage-strict-types-20261024` | diverged | 11 | 100 | 22 | Review app storage tests and runtime type-shim overlaps before porting |
+| `feature/emotional-continuity-20261024` | diverged | 61 | 100 | 22 | Review avatar/affect/runtime API contracts together; do not import the full branch history |
+| `local-small-model-integration-2026-10-24` | diverged | 108 | 100 | 29 | Broad vision/runtime/loader stream; compare changed source files and runtime tests individually |
+| `mem0-integration-workpass1` | diverged | 59 | 100 | 17 | Keep Mem0 adapter isolated; review memory ownership and package changes before porting |
+| `operation-omega-hexis-deep-pass-2026-10-24` | diverged | 96 | 61 | 15 | Hexis/goals/memory stream; preserve its provenance and cherry-pick only isolated compatible work |
+| `optimization/process-supervision-20261024` | ahead | 95 | 0 | 34 | Descends from the selected base, but still requires exact-head checks and overlapping-file review |
+| `typescript/runtime-typecheck-truth-2026-10-24` | diverged | 53 | 100 | 29 | Review runtime typecheck and test-script wiring with package-lock/package.json changes |
+| `workpass319-internal-dialogue-2026-10-24` | diverged | 26 | 100 | 8 | Review dialogue engine, language organ and tests as one unit; current branch history differs |
+| `workpass328-closed-loop-failure-closure-2026-10-24` | diverged | 114 | 100 | 31 | Failure-closure/P23/runtime changes overlap core and learning; do not merge wholesale |
+| `workpass328-letta-memory-bridge` | diverged | 71 | 100 | 14 | Review Letta adapter, memory runtime/fabric and provider policy as one contract |
+| `workpass328-universal-interpreter` | diverged | 8 | 100 | 15 | Universal interpreter touches multimodal input and core; inspect import path and tests |
+| `workpass331-project-ordering-unified-20261024` | ahead | 99 | 0 | 26 | This ordering branch descends from the selected base; its final current head will continue to advance during this PR |
+| `workpass332-live-runtime-kernel-2026-10-24` | ahead | 19 | 0 | 15 | Descendant of the selected base; compare runtime orchestration/tests and verify exact-head checks |
+| `workpass334-inner-imperative-homeostasis-2026-10-24` | ahead | 32 | 0 | 23 | Descendant of the selected base; review appraisal, controller and avatar/state wiring together |
+| `workpass335-hermes-host-owned-evaluator-2026-10-24` | ahead | 36 | 0 | 35 | Descendant of the selected base; review evaluator authority, P23 promotion and tests as one lifecycle |
+| `workpass335-paired-seed-growth-2026-10-24` | ahead | 58 | 0 | 27 | Descendant of the selected base; inspect benchmark/test changes before accepting any learning metric claim |
+| `workpass526-autobiographical-recall-intent` | diverged | 148 | 100 | 54 | Recall/learning stream diverges substantially; extract candidate improvements, not the branch history |
+| `workpass526-personality-core-hardening-2026-10-24` | diverged | 112 | 100 | 39 | Personality/motivation and restore behavior overlap core; compare tests and persisted schema effects |
+| `workpass528-bilingual-conversation-recall` | diverged | 156 | 100 | 58 | Broad recall/learning branch with substantial divergence; isolate API/schema changes and rerun learning regressions |
+
+At this snapshot, five of the additional streams were descendants of the selected base (`optimization/process-supervision`, the ordering branch, WorkPass332, WorkPass334, WorkPass335 Hermes and WorkPass335 paired-seed — six streams in total). The remaining additional streams reported divergent ancestry. This is a stronger integration signal than branch names alone, but even a clean `ahead / 0 behind` comparison is not a test result.
+
+Before importing any stream:
+
+1. Refresh its head SHA and compare against the current target again.
+2. Inspect exact overlapping paths, particularly `CHANGELOG.md`, `runtime/neuro-kurisu/package.json`, core/runtime classes, shared workflow files and release manifests.
+3. Check open PRs and exact-head Actions, then port narrowly scoped source/tests with provenance.
+4. Re-run `npm run audit:ordering` plus the owning behavior/learning tests on the final proposed integration commit.
+
+No branch in this table is marked integrated based only on its ancestry comparison.
+
