@@ -661,6 +661,7 @@
     "audit:function-reality-171": "node scripts/audit-function-reality-171.mjs",
     "audit:big-pass-171": "node scripts/audit-big-pass-171.mjs",
     "test:big-pass-172": "node --experimental-strip-types tests/big-pass-172-emotion-interoceptive-mind.mjs",
+    "test:affect-ui-contract": "node tests/affect-ui-snapshot-contract.mjs",
     "audit:big-pass-172": "node scripts/audit-big-pass-172.mjs",
     "test:big-pass-173": "node --experimental-strip-types tests/big-pass-173-world-model-2.mjs",
     "audit:big-pass-173": "node scripts/audit-big-pass-173.mjs",
