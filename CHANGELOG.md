@@ -1,3 +1,12 @@
+## NK1 WorkPass533 — restore idempotent Live2D expressions and stable CI contracts
+
+- The runtime Live2D viewer now caches the last applied expression and skips reapplying the same expression during repeated embodiment updates, avoiding needless expression resets while mouth/gaze signals change.
+- Fixed a floating-point exact-equality assertion in continual-transfer metrics by using a tight numerical tolerance.
+- Switched the P23 persisted-learning-restore test to TypeScript transform mode because its imported versioned skill store uses parameter properties.
+- These changes improve animation stability and validation reliability; browser/device E2E and physical lip-sync remain separate release gates.
+
+---
+
 ## NK1 WorkPass532 — finish Node TypeScript test-mode compatibility and trusted replay metrics
 
 - Updated P26's direct TypeScript-backed test invocations to `--experimental-transform-types`, covering continual replay, replay ablation, transfer/forgetting and drift tests that may import constructor parameter properties.
