@@ -148,6 +148,7 @@ export interface DevelopmentalOutcomeVerificationBinding {
 }
 
 export interface NormalizedDevelopmentalOutcomeVerificationBinding extends Omit<DevelopmentalOutcomeVerificationBinding,'area'|'delayed'|'transfer'> {
+  kind:'developmental-outcome';
   area:DevelopmentArea|null;
   outcome01:number;
   delayed:boolean;
@@ -159,6 +160,7 @@ export interface NormalizedDevelopmentalOutcomeVerificationBinding extends Omit<
 export function developmentalOutcomeVerificationInput(input:DevelopmentalOutcomeVerificationBinding):NormalizedDevelopmentalOutcomeVerificationBinding{
   const areas:DevelopmentArea[]=['memory','learning','world-model','self-model','relationship','agency','resource-discipline','perception'];
   return {
+    kind:'developmental-outcome',
     area:input.area===null||input.area===undefined?null:(areas.includes(input.area)?input.area:null),
     outcome01:clamp(input.outcome01),
     delayed:input.delayed===true,
