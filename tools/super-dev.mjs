@@ -1,21 +1,29 @@
-import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { spawnManaged, terminateChildren } from './process-supervisor.mjs';
 
 const ROOT = resolve(new URL('..', import.meta.url).pathname);
 const stateDir = resolve(ROOT, '.super-state');
 mkdirSync(stateDir, { recursive: true });
 
 const children = [];
+let shuttingDown = false;
+
 function launch(label, command, args, env = {}) {
-  const child = spawn(command, args, {
+  const child = spawnManaged(command, args, {
     cwd: ROOT,
     env: { ...process.env, ...env },
     stdio: 'inherit',
   });
+  child.on('error', (error) => {
+    console.error(`[super] ${label} spawn error: ${error.message}`);
+    void shutdown(`spawn-error:${label}`, 1);
+  });
   child.on('exit', (code, signal) => {
-    if (signal) console.log(`[super] ${label} exited via ${signal}`);
-    else if (code !== 0) console.error(`[super] ${label} exited with ${code}`);
+    if (shuttingDown) return;
+    if (signal) console.error(`[super] ${label} exited unexpectedly via ${signal}`);
+    else console.error(`[super] ${label} exited unexpectedly with code ${code}`);
+    void shutdown(`child-exit:${label}`, code === 0 && !signal ? 1 : (code ?? 1));
   });
   children.push(child);
   return child;
@@ -33,10 +41,13 @@ launch('research-bridge', 'python3', ['research/research_bridge.py'], {
 });
 launch('ui', 'npm', ['--prefix', 'app', 'run', 'dev']);
 
-const shutdown = (signal) => {
+async function shutdown(signal, exitCode = 0) {
+  if (shuttingDown) return;
+  shuttingDown = true;
   console.log(`[super] shutting down (${signal})`);
-  for (const child of children) child.kill('SIGTERM');
-  setTimeout(() => process.exit(0), 800).unref();
-};
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('SIGTERM', () => shutdown('SIGTERM'));
+  await terminateChildren(children, { graceMs: 800, forceGraceMs: 500 });
+  process.exit(exitCode);
+}
+
+process.on('SIGINT', () => { void shutdown('SIGINT'); });
+process.on('SIGTERM', () => { void shutdown('SIGTERM'); });
