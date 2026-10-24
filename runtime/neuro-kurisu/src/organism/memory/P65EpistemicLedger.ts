@@ -38,7 +38,13 @@ export class P65EpistemicLedger{
    if(!id||!source||content===null||!validKind(value.kind)||!Number.isSafeInteger(value.tick)||(value.tick as number)<0||
       typeof value.at!=='number'||!Number.isFinite(value.at)||value.at<0||typeof value.confidence01!=='number'||!Number.isFinite(value.confidence01)||
       typeof value.resolved!=='boolean')continue;
-   const parentIds=Array.isArray(value.parentIds)?value.parentIds.filter((v):v is string=>typeof v==='string'&&v.length<=256).slice(0,8):[];
+   // Do not turn a corrupted causal claim into a root claim by silently
+   // dropping malformed parent references during restore.
+   const rawParentIds=value.parentIds;
+   if(rawParentIds!==undefined&&(!Array.isArray(rawParentIds)||rawParentIds.length>8||
+      rawParentIds.some((v)=>typeof v!=='string'||v.length===0||v.length>256||v.trim()!==v||
+        /[\\u0000-\\u001f\\u007f-\\u009f]/.test(v))||new Set(rawParentIds).size!==rawParentIds.length))continue;
+   const parentIds=(rawParentIds??[]) as string[];
    const evidenceSources=Array.isArray(value.evidenceSources)?[...new Set(value.evidenceSources.filter((v):v is string=>typeof v==='string'&&v.trim().length>0&&v.length<=160).map(v=>v.trim().toLowerCase()))].slice(0,32):[source.toLowerCase()];
    const evidenceKeys=Array.isArray(value.evidenceKeys)?[...new Set(value.evidenceKeys.filter((v):v is string=>typeof v==='string'&&v.length>0&&v.length<=320))].slice(-64):[];
     const evidenceLineageKeys=Array.isArray(value.evidenceLineageKeys)?[...new Set(value.evidenceLineageKeys.filter((v):v is string=>typeof v==='string'&&v.trim().length>0&&v.length<=130).map(v=>v.trim().normalize('NFKC').toLowerCase()))].slice(-32):[...evidenceSources];
