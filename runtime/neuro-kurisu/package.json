@@ -1783,7 +1783,9 @@
     "test:workpass419:retry-backoff-store": "node --experimental-strip-types tests/workpass419-p23-retry-backoff-store.mjs",
     "test:hexis:correction-memory": "node --experimental-strip-types tests/hexis-correction-memory.mjs",
     "test:workpass505:causal-event-identity": "node --experimental-strip-types tests/workpass505-causal-event-identity.mjs",
-    "test:workpass505": "npm run typecheck && npm run test:workpass505:causal-event-identity"
+    "test:workpass505": "npm run typecheck && npm run test:workpass505:causal-event-identity",
+    "test:workpass506:reality-evidence-ledger": "node --experimental-strip-types tests/workpass506-reality-evidence-event-ledger.mjs",
+    "test:workpass506": "npm run typecheck && npm run test:workpass506:reality-evidence-ledger && npm run test:workpass505:causal-event-identity"
   },
   "devDependencies": {
     "@types/node": "22.20.4"
