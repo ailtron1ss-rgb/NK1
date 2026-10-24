@@ -11,6 +11,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSessionDataset.ts'
       - 'runtime/neuro-kurisu/tests/operation-omega-hexis-review-inbox.mjs'
+      - 'runtime/neuro-kurisu/scripts/create-skill-promotion-approval-request.mjs'
       - 'runtime/neuro-kurisu/package.json'
   push:
     branches: [rebuild]
@@ -23,6 +24,7 @@ on:
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/VerifiedSessionDataset.ts'
       - 'runtime/neuro-kurisu/tests/operation-omega-hexis-review-inbox.mjs'
+      - 'runtime/neuro-kurisu/scripts/create-skill-promotion-approval-request.mjs'
       - 'runtime/neuro-kurisu/package.json'
 permissions:
   contents: read

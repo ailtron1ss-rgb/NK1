@@ -23,7 +23,7 @@ Git blob SHAs and file sizes are in the archive's `SOURCE_MANIFEST.md`. The arch
 - Records a human decision and binds the review to the exact candidate version, artifact digest, source proposal and shadow-evidence fingerprint.
 - Rejects stale review decisions after candidate or shadow evidence changes.
 
-This is intentionally **not activation authority**. An approved item only makes the candidate eligible to request the existing signed promotion approval. The NK1 Ed25519 verifier, signed shadow-run evidence and existing promotion/rollback controls remain mandatory. The reviewer's identity is an audit label supplied by the host; a production UI/service must source it from an authenticated identity provider. The inbox does not claim to authenticate a reviewer or to enable an unattended activation.
+This is intentionally **not activation authority**. The operator CLI `scripts/create-skill-promotion-approval-request.mjs` now requires the durable review-inbox path and exact review ID, and only returns the unsigned request when the approved review still matches the current candidate, active version, proposal lineage and shadow-evidence fingerprint. The request still requires the existing signed promotion approval. The NK1 Ed25519 verifier, signed shadow-run evidence and existing promotion/rollback controls remain mandatory. The reviewer's identity is an audit label supplied by the host; a production UI/service must source it from an authenticated identity provider. The inbox does not claim to authenticate a reviewer or to enable an unattended activation.
 
 ## Why not copy the whole Hexis runtime into active NK1
 
@@ -31,6 +31,6 @@ NK1 already has a Node/TypeScript canonical P23 learning engine, evidence ledger
 
 ## Boundaries / remaining work
 
-- The review inbox and separate `.mjs` filesystem adapter are implemented and have a focused regression test, with a dedicated Node 24 GitHub Actions workflow. It is a service seam; wiring an authenticated product UI / operator command into the inbox and making the signed-approval request CLI require the matching approved review remains a separate integration step.
+- The review inbox, separate `.mjs` filesystem adapter and review-bound CLI gate are implemented. A focused Node 24 GitHub Actions test covers signed independent outcomes, signed shadow receipts, review persistence/approval, and creation of the review-bound unsigned request. The reviewer identity is not authenticated by the CLI itself; integration with an authenticated operator UI/identity provider remains open.
 - The imported Hexis SQL routines have not been executed against NK1 and should not be.
 - This change does not claim real learning uplift, subjective consciousness, or production readiness. CI/local tests must still run on the exact PR head before merge.
