@@ -91,39 +91,71 @@ const nodes=[...allNodes].map(file=>({
 })).sort((a,b)=>a.id.localeCompare(b.id));
 const edges=[];
 const layerLinks=new Map();
+const productionLayerLinks=new Map();
 for(const [from,dependencies] of graph){
   for(const to of dependencies){
     const fromLayer=layerOf(from);
     const toLayer=layerOf(to);
     const key=fromLayer+' -> '+toLayer;
     layerLinks.set(key,(layerLinks.get(key)||0)+1);
-    edges.push({from:repoPath(from),to:repoPath(to),fromLayer,toLayer,kind:'relative-import'});
+    if(fromLayer!=='runtime-tests') productionLayerLinks.set(key,(productionLayerLinks.get(key)||0)+1);
+    const kind=edgeKindByPair.get(from+'\0'+to)||'runtime-import';
+    edges.push({from:repoPath(from),to:repoPath(to),fromLayer,toLayer,kind});
   }
 }
 const inDegreeByPath=new Map();
 const outDegreeByPath=new Map();
 const productionInDegreeByPath=new Map();
+const runtimeInDegreeByPath=new Map();
+const runtimeOutDegreeByPath=new Map();
+const productionRuntimeInDegreeByPath=new Map();
+const typeInDegreeByPath=new Map();
+const typeOutDegreeByPath=new Map();
 for(const edge of edges){
   outDegreeByPath.set(edge.from,(outDegreeByPath.get(edge.from)||0)+1);
   inDegreeByPath.set(edge.to,(inDegreeByPath.get(edge.to)||0)+1);
   if(edge.fromLayer!=='runtime-tests'){
     productionInDegreeByPath.set(edge.to,(productionInDegreeByPath.get(edge.to)||0)+1);
   }
+  if(edge.kind!=='typescript-type-import'){
+    runtimeOutDegreeByPath.set(edge.from,(runtimeOutDegreeByPath.get(edge.from)||0)+1);
+    runtimeInDegreeByPath.set(edge.to,(runtimeInDegreeByPath.get(edge.to)||0)+1);
+    if(edge.fromLayer!=='runtime-tests'){
+      productionRuntimeInDegreeByPath.set(edge.to,(productionRuntimeInDegreeByPath.get(edge.to)||0)+1);
+    }
+  }
+  if(edge.kind!=='runtime-import'){
+    typeOutDegreeByPath.set(edge.from,(typeOutDegreeByPath.get(edge.from)||0)+1);
+    typeInDegreeByPath.set(edge.to,(typeInDegreeByPath.get(edge.to)||0)+1);
+  }
 }
 for(const node of nodes){
   node.inDegree=inDegreeByPath.get(node.id)||0;
   node.outDegree=outDegreeByPath.get(node.id)||0;
   node.productionInDegree=productionInDegreeByPath.get(node.id)||0;
+  node.runtimeInDegree=runtimeInDegreeByPath.get(node.id)||0;
+  node.runtimeOutDegree=runtimeOutDegreeByPath.get(node.id)||0;
+  node.productionRuntimeInDegree=productionRuntimeInDegreeByPath.get(node.id)||0;
+  node.typeInDegree=typeInDegreeByPath.get(node.id)||0;
+  node.typeOutDegree=typeOutDegreeByPath.get(node.id)||0;
 }
 const canonicalSources=nodes.filter(node=>node.kind==='source'&&node.layer==='canonical-organism');
 const rankNodes=metric=>canonicalSources
   .filter(node=>node[metric]>0)
   .sort((a,b)=>b[metric]-a[metric]||a.id.localeCompare(b.id))
   .slice(0,25)
-  .map(node=>({id:node.id,layer:node.layer,inDegree:node.inDegree,productionInDegree:node.productionInDegree,outDegree:node.outDegree}));
+  .map(node=>({
+    id:node.id,layer:node.layer,inDegree:node.inDegree,
+    productionInDegree:node.productionInDegree,outDegree:node.outDegree,
+    runtimeInDegree:node.runtimeInDegree,runtimeOutDegree:node.runtimeOutDegree,
+    productionRuntimeInDegree:node.productionRuntimeInDegree,
+    typeInDegree:node.typeInDegree,typeOutDegree:node.typeOutDegree,
+  }));
 const hotSpots={
   highFanOut:rankNodes('outDegree'),
   highProductionFanIn:rankNodes('productionInDegree'),
+  highRuntimeFanOut:rankNodes('runtimeOutDegree'),
+  highProductionRuntimeFanIn:rankNodes('productionRuntimeInDegree'),
 };
 const dependencyBudgetPath=path.resolve(root,'../../contracts/module-dependency-budgets.json');
 const dependencyBudget=JSON.parse(await readFile(dependencyBudgetPath,'utf8'));
