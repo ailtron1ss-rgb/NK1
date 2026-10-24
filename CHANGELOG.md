@@ -1,3 +1,15 @@
+# NK1 process supervision optimization — 2026-10-24
+
+- [OPTIMIZED] Added shared `tools/process-supervisor.mjs`: bounded stdout/stderr tails, wall-clock command deadlines, HTTP readiness polling, and staged process termination with POSIX process-group cleanup.
+- [OPTIMIZED] Replaced the fixed 3.5-second sleep in `tools/verify-integration.mjs` with readiness checks for Runtime and Research Bridge; each HTTP request is bounded and TypeScript subprocesses have a 180-second timeout.
+- [HARDENED] Integration verification uses a unique `.verify-state/run-*` directory per invocation, preventing parallel runs from deleting each other's temporary state.
+- [HARDENED] Development and production launchers now share shutdown handling; unexpected service exits are treated as failed startup rather than silently leaving a partial system running.
+- [REGRESSION] Added tests for command exit propagation, bounded log capture, spawn errors, timeout escalation, HTTP readiness polling, and process-group cleanup. Added a focused Node 24 workflow and wired the tests into `npm run test:integration`.
+- [VALIDATION STATUS] Automated focused tests and full integration checks are wired but not claimed as passed until the exact branch HEAD has a successful Actions run and `npm run test:integration` completes in a dependency-installed environment.
+- [SCOPE] This change improves developer/test/runtime process management; no memory-retrieval, learning-quality, or cognition-performance uplift is claimed. `main` and the published Release ZIP are unchanged.
+
+---
+
 # WorkPass335 — preserve intent-to-outcome provenance in experience memory (2026-10-24)
 
 - [INTEGRATION] Extended the existing `core.feedback → worldEvent` experience event with a bounded `innerIntentMemoryTrace`; no second memory store or direct runtime-owned MemoryOS2 writes were added.
