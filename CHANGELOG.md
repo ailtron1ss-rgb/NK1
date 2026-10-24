@@ -1,3 +1,12 @@
+## NK1 WorkPass509 — refresh source assimilation and next integration passes (2026-10-24)
+
+- Reviewed the current Hermes Agent Self-Evolution repository/plan, GEPA notes, and Voyager paper/repository. Recorded adaptation boundaries and next code milestones in `research/WORKPASS500_MULTISCALE_COGNITION_AND_REPLAY.md`.
+- Decision: reuse failure-conditioned reflection, automatic curriculum, compositional skill ideas and holdout gates inside NK1's existing P23/evidence pipeline; do not create duplicate memory or a second promotion authority.
+- Upstream license status must be checked at the exact source revision before copying code. This pass ports architecture decisions, not source files.
+- Research review is not proof of runtime integration, benchmark uplift, passing CI, or release ZIP replacement.
+
+---
+
 ## NK1 WorkPass504 — refresh Hexis assimilation plan against latest passes
 
 - Reconciled the integration checkpoint with the current planning branch, including WorkPass499–503: user-reported evidence stays below the external-grounding promotion boundary, UnifiedCognitiveLoop ingress hardening is aligned between feedback/perception, and the missing P26 learning-input test alias plus Node 24 diagnostics flag are addressed in source.
