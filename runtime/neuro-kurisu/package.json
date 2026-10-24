@@ -1264,6 +1264,7 @@
     "test:p2684:mobile-soak": "node --max-old-space-size=256 --experimental-strip-types tests/p2684-mobile-soak.mjs",
     "test:p2685:runtime-closure": "node --experimental-strip-types tests/p2685-runtime-closure.mjs",
     "test:p328:closed-loop-failure-closure": "node --experimental-strip-types tests/closed-loop-failure-closure.mjs",
+    "audit:p328:closed-loop-failure-closure": "npm run typecheck && npm run test:p328:closed-loop-failure-closure",
     "audit:p2685:runtime-closure": "npm run typecheck && npm run test:p2685:runtime-closure",
     "release:p2685:runtime-closure": "npm run audit:p2685:runtime-closure && npm run test:p2679:transition && npm run test:b504:continuous-cognitive && npm run test:p2684:memory-residency && npm run test:p2684:mobile-soak && npm run server:smoke && npm run audit:architecture && npm run audit:integrity && npm run audit:forensics && npm run audit:hygiene && npm run audit:syntax && npm run audit:contract && npm run verify:release-source",
     "test:p2687:adaptive-replay": "node --experimental-strip-types tests/p2687-adaptive-replay-governor.mjs",
