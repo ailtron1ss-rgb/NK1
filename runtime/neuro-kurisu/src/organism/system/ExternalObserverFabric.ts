@@ -42,6 +42,8 @@ export interface ExternalObservation {
   observedPostcondition?:string;
   facts:string[];
   confidence01:number;
+  /** Registered source trust at capture time; replay never recomputes this upward. */
+  sourceReliabilityAtCapture01?:number;
   freshness01:number;
   payloadHash:string;
   worldContextAfter?:WorldContext;
@@ -214,9 +216,14 @@ export class ExternalObserverFabric {
         const rowKey=typeof row.independenceKey==='string'&&row.independenceKey.trim()
           ?row.independenceKey.trim().slice(0,120):undefined;
         if(rowKey!==undefined&&rowKey!==source.independenceKey)continue;
+        const capturedTrust=Number(row.sourceReliabilityAtCapture01);
+        const sourceReliabilityAtCapture01=Number.isFinite(capturedTrust)
+          ?Math.min(source.reliability01,clamp(capturedTrust))
+          :source.reliability01;
         observations.push({
           ...row,independenceKey:rowKey??source.independenceKey,
           observedAt:nonNegativeFinite(row.observedAt),confidence01:clamp(Number(row.confidence01)),
+          sourceReliabilityAtCapture01,
           freshness01:clamp(Number(row.freshness01)),
           facts:Array.isArray(row.facts)?row.facts.filter((fact:unknown)=>typeof fact==='string').slice(0,64):[],
           metadata:row.metadata&&typeof row.metadata==='object'&&!Array.isArray(row.metadata)?row.metadata:{},
@@ -368,6 +375,7 @@ export class ExternalObserverFabric {
       claimKey,subject:input.claimKey?claimKey:undefined,
       observedPostcondition:input.observedPostcondition?String(input.observedPostcondition).slice(0,320):undefined,
       facts:[...(input.facts??[])].map(x=>norm(x)).filter(Boolean).slice(0,24),confidence01:clamp(input.confidence01??source.reliability01),
+      sourceReliabilityAtCapture01:source.reliability01,
       freshness01:freshness(observedAt,Date.now()),payloadHash,worldContextAfter:input.worldContextAfter?structuredClone(input.worldContextAfter):undefined,
       metadata:structuredClone(input.metadata??{}),
     };
@@ -409,7 +417,17 @@ export class ExternalObserverFabric {
     const assessment:ExternalObservationAssessment={observationId,actionRef:observation.actionRef,claimKey:observation.claimKey,expectedPostcondition:String(expectedPostcondition).slice(0,320),observedPostcondition:observed.slice(0,320),assessment:comparison.assessment,similarity01:comparison.similarity01,confidence01:assessedConfidence,verified,reason:comparison.reason,assessedAt:Date.now()};
     this.state.assessments=[assessment,...this.state.assessments].slice(0,this.maxAssessments);
     if(observation.actionRef)this.state.linkedActions=[{actionRef:observation.actionRef,observationId,assessment:assessment.assessment,at:assessment.assessedAt},...this.state.linkedActions.filter(x=>x.observationId!==observationId)].slice(0,this.maxLinks);
-    if(source){if(assessment.assessment==='match')source.accepted+=1;if(assessment.assessment==='mismatch')source.contradicted+=1;source.reliability01=clamp(source.reliability01*.94+(assessment.similarity01*assessment.confidence01)*.06);}
+    if(source){
+      if(assessment.assessment==='match')source.accepted+=1;
+      if(assessment.assessment==='mismatch')source.contradicted+=1;
+      // Assessment confidence is already attenuated by the prior source trust.
+      // Do not multiply that prior into itself a second time when learning trust.
+      // Definitive matches can improve trust; definitive contradictions reduce it.
+      if(assessment.assessment==='match'||assessment.assessment==='mismatch'){
+        const trustTarget01=clamp(observation.confidence01*liveFreshness*assessment.similarity01);
+        source.reliability01=clamp(source.reliability01*.94+trustTarget01*.06);
+      }
+    }
     this.refreshCorroboratedClaim(observation.claimKey);
     this.recompute();
     return structuredClone(assessment);
