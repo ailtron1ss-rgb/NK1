@@ -803,6 +803,9 @@ export class P23LearningEngine {
       throw new Error('reality corroboration gate rejected candidate: staged payload fingerprint mismatch');
     }
     const realityAssessment=ledger.claimAssessment(claim);
+    if(realityAssessment.contradictionCoverageAvailable!==true) {
+      throw new Error('reality corroboration gate rejected claim: explicit field/value structure required for contradiction coverage');
+    }
     if(realityAssessment.independentPromotionAllowed!==true ||
        !Number.isSafeInteger(realityAssessment.qualifiedIndependentExternalSources) ||
        realityAssessment.qualifiedIndependentExternalSources<2) {
