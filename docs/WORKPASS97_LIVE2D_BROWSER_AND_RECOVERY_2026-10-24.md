@@ -12,8 +12,9 @@ Date: 2026-10-24
 ## Evidence observed
 
 - Exact-head asset integrity test on commit `27d3d70b7384f487fe963ebef83957006f6222c3` passed: 21 manifest entries hydrated/verified, both model profiles had expected expression/motion/resource coverage, and the vendored runtime assets were present.
-- The browser smoke on commit `e5dd65a880bfa2560208a75bcef5bcebb94479ac` loaded both profiles with a working WebGL context and nonempty model output. The logged pixel counts after an explicit synchronous WebGL render were 83,505 (mobile) and 83,468 (quality). Expression-cache, embodiment-timeline, and TypeScript typecheck steps also passed on that run, although GitHub marked the overall run cancelled during cleanup after a newer commit was pushed.
-- A follow-up changes only the browser-test pixel sampling from post-presentation WebGL buffer reads to a Chromium screenshot of the rendered canvas. The exact-head CI for `ffadcfeee8ea3d400466357edd1ff313e3287602` is the authority for that refinement; do not infer a pass from the preceding commit's browser result.
+- Exact-head GitHub Actions run `40127269491` passed on code/test/workflow commit `ffadcfeee8ea3d400466357edd1ff313e3287602`: [run details](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40127269491). The run completed asset hydration, canonical asset integrity, Chromium installation, the real browser smoke, expression-cache regression, embodiment-timeline suite, and TypeScript typecheck successfully.
+- The screenshot-based browser smoke reported `mobile` canvas `760x840` with 68,469 bright pixels, and `quality` canvas `760x840` with 68,513 bright pixels. Both profiles reached `live2d_ready`, produced visible canvas content, sent versioned emotion/motion intents, and completed without failed local asset responses or uncaught page errors.
+- The branch HEAD subsequently advanced only for report/CHANGELOG documentation commits; the tested application code and workflow are exactly those at the successful `ffadcfe` run.
 
 ## Validation boundary
 
