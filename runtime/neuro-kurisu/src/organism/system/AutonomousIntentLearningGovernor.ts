@@ -48,11 +48,19 @@ export class AutonomousIntentLearningGovernor {
   private readonly decisions = new Map<string, AILGDecision>();
   private readonly outcomes = new Map<string, AILGOutcome>();
 
-  constructor(private readonly config: {
+  private readonly config: {
     minimumScore01?: number;
     maximumRisk01?: number;
     requireApprovalForExternalEffects?: boolean;
-  } = {}) {}
+  };
+
+  constructor(config: {
+    minimumScore01?: number;
+    maximumRisk01?: number;
+    requireApprovalForExternalEffects?: boolean;
+  } = {}) {
+    this.config = config;
+  }
 
   propose(intent: AILGIntent, now = Date.now()): AILGDecision {
     if (!nonBlank(intent.id) || !nonBlank(intent.goal) ||
