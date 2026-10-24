@@ -4,7 +4,8 @@
 - Corrected the Node 24 launch mode for the Core-level test to `--experimental-transform-types`; `--experimental-strip-types` stops at a transitive TypeScript parameter property before the test can run.
 - Restored the missing `LearningTrustBoundary.ts` dependency required by `PersonalCurriculumEngine`, using the current shared `PlainDataSnapshot` implementation and exporting its canonical node budget.
 - Added a focused trust-boundary contract covering canonical identity strings, accessor non-invocation, approved capability identity, and hostile envelope rejection. Registered the new test in the focused personality workflow.
-- **Validation status:** the first live-Core run exposed the missing import above before behavioral assertions executed. A rerun with the restored dependency and corrected Node transform mode is required; no live-Core generalization PASS is claimed yet.
+- Fixed a second live-runtime contract break: Core can provide null dominant-drive/attractor labels, while P67 treats those optional string labels as absent-or-string. P67 now normalizes only explicit nulls after safe snapshotting, and its regression covers this real-Core input shape.
+- **Validation status:** shared trust-boundary and P2702 tests passed; the live-Core exercise then exposed P67's nullable-label contract mismatch. A fresh rerun after this correction is required; no live-Core generalization PASS is claimed yet.
 
 ---
 
