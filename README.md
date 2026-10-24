@@ -1,10 +1,10 @@
 ## Current source-stack checkpoint — Mem0 integration WorkPass 1 (2026-10-24)
 
-- Draft PR [#100](https://github.com/ailtron1ss-rgb/NK1/pull/100) adds the Mem0 Platform adapter and scoped hybrid-recall API to `workpass70-source`.
-- MemoryOS2 remains authoritative. Remote results stay separate in the API; an independent second gate lets the runtime use at most three sanitized Mem0 notes as low-priority, untrusted context only when both `NK_MEM0_ENABLED=1` and `NK_MEM0_COGNITIVE_RECALL=1` are configured. No automatic writes/promotions or conversation export.
-- Adapter and prompt-context regressions cover opt-out, per-user scope, masking, export approval, HTTPS/response limits/errors and the untrusted prompt boundary. Dedicated Node 24 Actions run [40126269767](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40126269767) passed the server syntax check and all nine tests on the implementation code head.
-- The broader runtime typecheck [40126269720](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40126269720) still fails with 88 diagnostics in the wider source tree and no errors naming the Mem0 adapter or LanguageOrgan. This is not a clean repository build; live provider behavior and independent RU/EN quality remain unverified.
-- No changes to `main` or release assets. Keep PR #100 draft until the runtime's broader typecheck debt, disabled-mode HTTP smoke, live-provider contract, retention/deletion review and independent retrieval evaluation are addressed.
+- Draft PR [#100](https://github.com/ailtron1ss-rgb/NK1/pull/100) implements Mem0 Platform recall on top of `workpass70-source`.
+- MemoryOS2 remains canonical. Remote notes enter live language context only with both `NK_MEM0_ENABLED=1` and `NK_MEM0_COGNITIVE_RECALL=1`, capped at three sanitized low-priority, explicitly untrusted notes. No automatic export or promotion.
+- Added an internal scope-bound remote delete primitive: it requires both the write gate and per-operation approval, only deletes a UUID previously observed through that adapter's scoped search/add in the current process, never cascades to linked memories, and is not exposed over HTTP.
+- **Validation:** the earlier isolated Node 24 run [40126269767](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40126269767) passed server syntax and 9/9 earlier adapter/context tests. The current suite has 11 cases; the latest run for the new deletion cases was cancelled by rapid follow-up pushes and needs a completed exact-head result. The broader typecheck [40126269720](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40126269720) still fails with 88 diagnostics across the wider repository; no errors named `Mem0PlatformAdapter.ts` or `LanguageOrgan.ts`, but overall build is not clean.
+- No changes to `main` or release assets. Keep PR #100 in Draft until current-head tests, live Mem0 contract, deletion/retention review and independent RU/EN retrieval-quality evaluation are complete.
 
 
 ---
