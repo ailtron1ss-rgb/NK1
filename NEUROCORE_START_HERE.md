@@ -1,3 +1,11 @@
+## Latest checkpoint — WorkPass338 CI path coverage (2026-10-24)
+
+- Added runtime/neuro-kurisu/src/organism/cognition/InnerImperativeController.ts to WorkPass110 push and pull_request path filters, so changes to the inner-intent policy trigger the runtime typecheck suite.
+- WorkPass331 had passed on SHA e521c524..., which includes the first causal trace and bounded future branches; its newest exact-head run was queued. WorkPass110 on that earlier head exposed type errors, corrected in f9f5ed16..., but needs a fresh exact-head run on this commit.
+- Do not mark the branch validated until the new WorkPass110 typecheck and WorkPass331 finish successfully.
+
+---
+
 ## Latest corrective checkpoint — WorkPass337 TypeScript signal record types (2026-10-24)
 
 - WorkPass110 exact-head typecheck failed on InnerImperativeController.ts because guarded fallback objects for needs/body were inferred as {}, making accessed fields TS2339 errors.

@@ -1,3 +1,9 @@
+# WorkPass338 — typecheck workflow tracks inner imperative changes (2026-10-24)
+
+- [CI INTEGRATION] Added InnerImperativeController.ts to both WorkPass110 push/pull_request path filters. This ensures the full runtime TypeScript check runs when the new cognitive policy changes.
+- [WHY] WorkPass110 revealed real TS2339 errors while testing the controller, but a follow-up fix that touched only the controller was not guaranteed to start the same workflow. The checker must explicitly follow that source file.
+- [VALIDATION] A fresh WorkPass110 run on the exact head is required; this path-filter commit itself is not a test result.
+
 # WorkPass337 — type signal-normalization records explicitly (2026-10-24)
 
 - [FIXED] The WorkPass110 runtime typecheck exposed that the defensive isRecord ternaries in InnerImperativeController inferred the empty fallback as {}, causing TS2339 errors on fields despite the runtime guards.
