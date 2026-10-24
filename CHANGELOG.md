@@ -1,3 +1,12 @@
+## NK1 WorkPass510 — durable evidence quarantine and epistemic source separation (2026-10-24)
+
+- Hardened the perception branch's canonical `RealityEvidenceLedger`: conflicting `eventId` payloads now quarantine the key immediately, hide its old row from recent views and claim assessments, and persist quarantine state through snapshot/restore.
+- Same-event retries are idempotent despite a changed processing timestamp; identity reuse with changed evidence content is not treated as a second observation.
+- Tightened bounded text/event identity validation and separated `user-reported` claims from independent external/device observation aggregates. User reports remain available in claim assessments but cannot independently unlock promotion.
+- Added `test:workpass510:reality-evidence-quarantine` and connected it with the existing WorkPass451 ledger and WorkPass488 identity regressions. Commit/test declaration is complete; execution on this exact head remains unconfirmed.
+
+---
+
 ## NK1 WorkPass502 — finish brain-fusion input hardening and evidence counts (2026-10-24)
 
 - Removed the ambiguous control-character regular expression from `UnifiedCognitiveLoop.validateEvent`; explicit code-point checks reject C0/C1 controls while preserving the strict own-data/prototype boundary.
