@@ -1,10 +1,10 @@
 ## NK1 WorkPass526 — protect persistent character and correct causal personality credit (2026-10-24)
 
 - Hardened `P2702PersistentPersonalityDynamics.restore()`: canonical identity invariants and vector names now come from code-owned Kurisu profile; restored vectors are finite, bounded and schema-aligned; counters, action preferences and relationship keys are sanitized.
-- Corrected action-to-trait credit assignment. Positive/negative outcomes update semantically relevant adaptive traits (for example, explore updates playfulness/sarcasm, verify updates composure/directness) instead of whichever trait happened to occupy the same array index.
+- Corrected action-to-trait credit assignment. Positive/negative outcomes update semantically relevant adaptive traits (for example, explore updates adaptive research-curiosity expression and playfulness, verify updates composure/directness) instead of whichever trait happened to occupy the same array index. The canonical profile now separates stable curiosity from its learned behavioral expression.
 - Restricted value adaptation to the values exercised by the action instead of moving all values together after every outcome.
 - Enabled gradual self-belief-anchor updates only from verified identity observations. Malformed inputs are neutralized; invalid actions do not mutate personality state; action preferences retain a signed utility offset.
-- Extended the P2702 regression for hostile snapshots, invariants, dimension lengths, semantic trait/value attribution, signed preferences, verified self-belief updates and snapshot round-trips. Corrected its expected `NeuralExperienceBranch` schema version and registered `npm run test:character-personality`.
+- Extended the P2702 regression for hostile snapshots, invariants, dimension lengths, semantic trait/value attribution, signed preferences, verified self-belief updates and snapshot round-trips. Corrected its expected `NeuralExperienceBranch` schema version, registered `npm run test:character-personality`, and added a dedicated Node 24 GitHub Actions workflow for this focused personality regression.
 - **Validation boundary:** changes and regression coverage are committed to the work branch. The local runtime/typecheck could not be executed in this pass, so test success and end-to-end behavioral improvement are not claimed; CI status remains to be checked.
 
 ---
