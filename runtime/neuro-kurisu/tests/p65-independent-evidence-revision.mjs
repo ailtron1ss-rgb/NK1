@@ -150,5 +150,12 @@ assert.equal(ledger.record({
   confidence01: 0.7, source: 'web', parentIds: ['valid-parent', ''],
 }), '', 'malformed parent references must be rejected rather than silently removed');
 
+for (const parentIds of [['  '], ['parent\\u0000id'], ['parent:a', 'parent:a']]) {
+  assert.equal(ledger.record({
+    tick: 2, at: 154, kind: 'belief', content: 'invalid canonical parent lineage',
+    confidence01: 0.7, source: 'web', parentIds,
+  }), '', 'whitespace, control characters and duplicate parent IDs must be rejected');
+}
+
 
 console.log('P65_INDEPENDENT_EVIDENCE_REVISION=PASS sourceDedup=true lineageDedup=true logOddsUpdate=true contradictionErodesConfidence=true restoreSanitized=true accessorRejected=true');
