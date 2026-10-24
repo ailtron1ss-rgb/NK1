@@ -122,7 +122,7 @@ function maskNonSpecifierLiterals(source) {
       const quote = char;
       const prefix = source.slice(Math.max(0, i - 160), i).replace(/\s+$/, "");
       const isSpecifier = quote !== String.fromCharCode(96) &&
-        /(?:\bfrom\s+|\bimport\s*(?:\(\s*)?|\brequire\s*\(\s*)$/.test(prefix);
+        /(?:\bfrom\b|\bimport\s*(?:\(\s*)?|\brequire\s*\(\s*)$/.test(prefix);
       let end = i + 1;
       for (; end < source.length; end += 1) {
         if (source[end] === "\\") {
