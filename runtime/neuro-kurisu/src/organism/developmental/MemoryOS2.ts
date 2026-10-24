@@ -378,13 +378,16 @@ export class MemoryOS2{
    // The local provider enforces bounded payloads, timeout, host policy and an LRU vector cache.
    const vectors=await provider.embedBatch(candidates.map(item=>item.content),{timeoutMs});
    if(!Array.isArray(vectors)||vectors.length!==candidates.length)throw new Error('embedding-vector-count-mismatch');
+   // The provider call yields to the event loop; take one fresh ID map after it returns
+   // so concurrent writes are respected without scanning the whole corpus per candidate.
+   const currentItemsById=new Map(this.state.items.map(row=>[row.id,row]));
    const dimensions=Number(vectors[0]?.length??0);
    for(let index=0;index<candidates.length;index++){
     const item=candidates[index],raw=vectors[index];
     if(!Array.isArray(raw)||!dimensions||dimensions>4096||raw.length!==dimensions||raw.some(value=>!Number.isFinite(Number(value)))){failRow(item);continue;}
     const clean=raw.map(Number);const norm=Math.sqrt(clean.reduce((sum,value)=>sum+value*value,0));
     if(!(norm>1e-12)){failRow(item);continue;}
-    const current=this.state.items.find(row=>row.id===item.id);
+    const current=currentItemsById.get(item.id);
     if(!current||current.dormant||current.epistemicStatus==='quarantined'||memoContentHash(current.content)!==memoContentHash(item.content)){staleSkipped++;continue;}
     this.semanticEmbeddingIndex.set(item.id,{contentHash:memoContentHash(current.content),providerId:provider.providerId,vector:clean.map(value=>value/norm),lastUsedAt:now});
     this.semanticEmbeddingRetry.delete(item.id);indexed++;
@@ -740,6 +743,8 @@ export class MemoryOS2{
  }
  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={},clone=true){
    const qTokens=this.tokensFor(query);
+   // Materialize query tokens once per retrieval, not once for each ranked candidate.
+   const queryTokenArray=[...qTokens];
    const conceptQuery=expandMemoryQueryConcepts(qTokens);
    const queryEntities=extractEntities(query);
    this.state.semanticQueries++;
@@ -874,7 +879,6 @@ export class MemoryOS2{
      m.temperature01=memoryTemperature(m,now);
      const lexicalTokens=this.tokensFor(m.content);
      const exact=this.lowerFor(m.id,m.content).includes(queryLower)?1:0;
-     const queryTokenArray=[...qTokens];
      const coverage=queryTokenArray.length?queryTokenArray.filter(token=>lexicalTokens.has(token)).length/queryTokenArray.length:0;
      const fuzzy=fuzzyTokenCoverage(queryTokenArray,lexicalTokens);
      const bm25=bm25Score(queryTokenArray,m.content,this.state.items.length,this.documentFrequency,this.itemTokenLength,this.totalTokenLength,m.id);
@@ -927,7 +931,7 @@ export class MemoryOS2{
    // retrieval channel, and its previous calculation silently warmed cold memories.
    // Residency planning and explicit get()/consolidation own vector materialization.
    this.state.adaptiveMemoryPolicy=this.adaptivePolicy.snapshot();
-   const queryTokens=[...qTokens];
+   const queryTokens=queryTokenArray;
    for(const witness of this.state.evictionWitnesses){
      if(witness.tokens.length<2||queryTokens.length<2)continue;
      const ov=overlap(queryTokens,witness.tokens);
