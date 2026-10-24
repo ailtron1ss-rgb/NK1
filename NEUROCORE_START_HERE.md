@@ -1,3 +1,11 @@
+## Latest checkpoint — WorkPass343 autonomous entry-point alignment (2026-10-24)
+
+- Review confirmed the scheduled cognitive clock already called `step(undefined, { deliberate: false, spontaneous: true })`. The gap was in the public `autonomousStep()`, which omitted `spontaneous`; consequently `runAutonomousCycles()` could execute without endogenous-intent mode.
+- Updated `autonomousStep()` to make `spontaneous: true` explicit, leaving caller-controlled `deliberate` behavior intact. The batch method continues to use the same entry point.
+- Added source regression assertions for both the public entry point and batch delegation. Exact-head WorkPass331/110 and the evidence/identity workflows must pass after this commit.
+
+---
+
 ## Latest durable checkpoint — WorkPass342: evidence-gated identity evolution (2026-10-24)
 
 - `OrganismCore.feedback` now allows the memory-to-identity path-dependence update only when supplied runtime `LearningProvenance` identifies an external outcome with both verification and independence >= 0.62. Existing feedback callers that omit provenance retain the prior behavior for compatibility.

@@ -30,6 +30,10 @@ assert.doesNotMatch(runtime, /this\.unifiedCycle\.evaluate\(/,
   'the live path must not independently evaluate a second cycle');
 assert.match(runtime, /const innerIntent = deriveInnerImperative\(/,
   'the live runtime must derive an internal intent before plan construction');
+assert.match(runtime, /async autonomousStep\(options: \{ deliberate\?: boolean \} = \{ deliberate: false \}\): Promise<RuntimeStep> \{\s*\/\/ Keep the public autonomous-cycle API semantically aligned with the background clock:\s*\/\/ endogenous intent must not depend on which scheduler entered the same organism loop\.\s*return this\.step\(undefined, \{ deliberate: false, spontaneous: true, \.\.\.options \}\);/s,
+  'explicit autonomousStep/runAutonomousCycles must activate the same endogenous-intent path as the background cognitive clock');
+assert.match(runtime, /for\(let i=0;i<total;i\+=1\)\{ const result=await this\.autonomousStep\(\);/,
+  'the batch autonomous-cycle API must delegate to the canonical autonomous entry point');
 assert.ok(
   runtime.indexOf('const innerIntent = deriveInnerImperative(') < runtime.indexOf('this.plans.build('),
   'internal intent must arbitrate before planning',

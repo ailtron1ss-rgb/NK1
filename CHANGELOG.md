@@ -1,3 +1,10 @@
+# WorkPass343 — unify autonomous entry-point semantics (2026-10-24)
+
+- [RUNTIME] `autonomousStep()` now sets `spontaneous: true` before delegating to the existing `step()` path. `runAutonomousCycles()` already delegates to `autonomousStep()`, so explicit/batched autonomous calls now use the same endogenous-intent mode as the scheduled cognitive clock.
+- [BOUNDARY] External chat/command paths continue to retain their explicit request semantics; no parallel runtime or planner was added.
+- [REGRESSION] Extended the canonical live-runtime wiring test to assert the public autonomous entry point activates spontaneous mode and the batch API delegates to it.
+- [VALIDATION] WorkPass331, WorkPass110, WorkPass108, WorkPass292, WorkPass293 and WorkPass294 passed on parent SHA `7db92e58cf8a3252d8edd8a6f5223690403f0087`. This routing fix requires fresh exact-head runs. The background clock already used `spontaneous: true`; this closes the separate public/batched entry-point gap.
+
 # WorkPass342 — evidence-gated identity evolution (2026-10-24)
 
 - [IDENTITY] Memory-to-identity path dependence now requires explicit runtime provenance to be external with verification and independence both >= 0.62. When provenance is absent for legacy feedback callers, existing behavior is preserved.

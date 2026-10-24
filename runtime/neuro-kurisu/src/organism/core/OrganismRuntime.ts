@@ -374,7 +374,9 @@ export class OrganismRuntime {
 
   /** B368: explicit endogenous cycle with no external command. */
   async autonomousStep(options: { deliberate?: boolean } = { deliberate: false }): Promise<RuntimeStep> {
-    return this.step(undefined, { deliberate: false, ...options });
+    // Keep the public autonomous-cycle API semantically aligned with the background clock:
+    // endogenous intent must not depend on which scheduler entered the same organism loop.
+    return this.step(undefined, { deliberate: false, spontaneous: true, ...options });
   }
 
   /** B368: bounded sequential autonomous closed loop. */
