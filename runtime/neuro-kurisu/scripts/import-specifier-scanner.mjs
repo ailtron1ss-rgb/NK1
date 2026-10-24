@@ -145,12 +145,33 @@ function maskNonSpecifierLiterals(source) {
   return output;
 }
 
+function maskedImportCode(source) {
+  return maskNonSpecifierLiterals(stripComments(source));
+}
+
+// TypeScript import-type queries have the shape import("./module").Type or
+// import("./module")["Type"]. They create compile-time graph edges but do not
+// load the referenced module at runtime. Exclude them from runtime traversal
+// while preserving them as separately labelled architecture graph edges.
+const typeImportPattern = /\bimport\s*\(\s*(["'])(\.\.?\/[^"']+)\1\s*\)\s*(?:\.\s*[A-Za-z_$][\w$]*\b(?!\s*\()|\[\s*["'][^"']+["']\s*\])/g;
+
+export function collectRelativeTypeImportSpecifiers(source) {
+  const code = maskedImportCode(source);
+  const specifiers = new Set();
+  for (const match of code.matchAll(typeImportPattern)) specifiers.add(match[2]);
+  return [...specifiers];
+}
+
 export function collectRelativeImportSpecifiers(source) {
-  const code = maskNonSpecifierLiterals(stripComments(source));
+  const code = maskedImportCode(source);
   // Covers static imports, re-exports, side-effect imports, literal dynamic
   // imports and literal CommonJS requires. Bare packages are not graph edges.
+  const typeImportStarts = new Set([...code.matchAll(typeImportPattern)].map(match => match.index));
   const pattern = /(?:\bfrom\s+|\bimport\s*(?:\(\s*)?|\brequire\s*\(\s*)(["'])(\.\.?\/[^"']+)\1/g;
   const specifiers = new Set();
-  for (const match of code.matchAll(pattern)) specifiers.add(match[2]);
+  for (const match of code.matchAll(pattern)) {
+    if (typeImportStarts.has(match.index)) continue;
+    specifiers.add(match[2]);
+  }
   return [...specifiers];
 }
