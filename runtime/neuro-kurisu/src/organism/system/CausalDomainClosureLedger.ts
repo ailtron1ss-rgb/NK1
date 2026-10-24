@@ -191,9 +191,10 @@ export class CausalDomainClosureLedger {
       ? input.failureReason.normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').trim().slice(0,240)||'cycle execution failed'
       : undefined;
     const cognitiveCycleFailed=evidence.cognitiveCycleComplete===false;
-    const score=failureReason||cognitiveCycleFailed?0:clamp(changed*.10+causalEdges*.11+(evidence.memoryWorldVerified?.08:0)+(evidence.worldAgencyLearningVerified?.08:0)+(evidence.causalLifeGraphChain?.12:0)+(persistence?.05:0));
     const complete=!failureReason && !cognitiveCycleFailed && changed===5 && causalEdges>=4 && persistence && evidence.memoryWorldVerified && evidence.worldAgencyLearningVerified && evidence.causalLifeGraphChain;
     const status:CausalClosureStatus=failureReason||cognitiveCycleFailed?'FAIL':(complete?'PASS':((evidence.worldChanged||evidence.agencyChanged||evidence.learningChanged||evidence.selfChanged)?'DEGRADED':'FAIL'));
+    const proposedScore=clamp(changed*.10+causalEdges*.11+(evidence.memoryWorldVerified?.08:0)+(evidence.worldAgencyLearningVerified?.08:0)+(evidence.causalLifeGraphChain?.12:0)+(persistence?.05:0));
+    const score=status==='FAIL'?0:proposedScore;
     const causalChain=['memory','world','agency','learning','self'].filter((_,i)=>[evidence.memoryChanged,evidence.worldChanged,evidence.agencyChanged,evidence.learningChanged,evidence.selfChanged][i]);
     const record:CausalDomainClosureRecord={
       version:1,tick:pending.tick,at:pending.at,status,score01:score,complete,causalChain,evidence,
