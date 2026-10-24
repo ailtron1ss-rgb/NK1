@@ -35,7 +35,7 @@ export function createStableEvidenceEventId(namespace: string, identity: unknown
 export function createRealityEvidenceEventId(originEventId: string, role: string, discriminator: string): string {
   const validPart = (value: unknown, max: number): value is string =>
     typeof value === 'string' && value.length > 0 && value === value.trim() && value.length <= max &&
-    !/[\u0000-\u001f\u007f-\u009f]/.test(value);
+    !Array.from(value).some((character) => { const code = character.charCodeAt(0); return code <= 0x1f || code === 0x7f || (code >= 0x80 && code <= 0x9f); });
   if (!validPart(originEventId, 256) || !validPart(discriminator, 256) ||
       typeof role !== 'string' || !/^[a-z][a-z0-9-]{0,39}$/.test(role)) {
     throw new TypeError('reality-evidence-event-identity-invalid');
@@ -44,6 +44,6 @@ export function createRealityEvidenceEventId(originEventId: string, role: string
     .update(JSON.stringify(['nk1-reality-event-v1', originEventId, role, discriminator]))
     .digest('hex')
     .slice(0, 48);
-  return \`nk1-reality:\${role}:\${digest}\`;
+  return 'nk1-reality:' + role + ':' + digest;
 }
 
