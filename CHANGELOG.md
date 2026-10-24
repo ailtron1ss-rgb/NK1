@@ -1,3 +1,12 @@
+## NK1 WorkPass454 — reject malformed affect-appraisal evidence before state change (2026-10-24)
+
+- `EmotionAppraisalEngine.appraise` now rejects non-finite, non-numeric and out-of-range optional appraisal signals, as well as non-boolean external provenance, before updating episode history or interoceptive-affect summaries.
+- Added regressions for infinity, numeric-string coercion and invalid external flags, asserting the complete affect snapshot remains unchanged after rejection.
+- Kept the existing appraisal/interoception/affective outcome system; no parallel emotion engine or new dependency was added. Homeostatic context still biases action tendencies rather than deterministically issuing actions.
+- **Validation boundary:** the existing WorkPass172 regression is included in `test:rebuild-recovered`; exact-head test/typecheck execution remains unconfirmed.
+
+---
+
 ## NK1 WorkPass509 — fail closed on malformed interoceptive signals (2026-10-24)
 
 - `EmotionAppraisalEngine.observeInteroception` now validates energy, thermal load, capacity, cognitive load, and optional homeostatic pressure as finite [0,1] values before calculating prediction error or updating affect state.
