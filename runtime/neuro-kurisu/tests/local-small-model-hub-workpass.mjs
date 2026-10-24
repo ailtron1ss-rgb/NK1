@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { LocalSmallModelHub } from '../src/server/LocalSmallModelHub.mjs';
 import { LocalLanguageBackendPolicy } from '../src/server/local-language-backend-policy.mjs';
+import { MemorySubsystemRuntime } from '../src/organism/core/MemorySubsystemRuntime.ts';
+import { sharedLocalEmbeddingProvider } from '../src/organism/developmental/MemoryOS2.ts';
 
 let now = 1_000;
 const clock = () => now;
@@ -37,6 +39,15 @@ const emotionProvider = {
     return { text: JSON.stringify({ emotion: 'curiosity', valence: 0.4, arousal: 0.6, confidence: 0.81 }), backend: 'llama.cpp:tiny-affect-q4' };
   },
 };
+
+const canonicalMemorySubsystem = new MemorySubsystemRuntime();
+assert.equal(canonicalMemorySubsystem.memoryOS.embeddingConfigured(), Boolean(sharedLocalEmbeddingProvider),
+  'canonical memory and the API hub must observe the same shared provider configuration');
+assert.equal(
+  canonicalMemorySubsystem.memoryOS.semanticEmbeddingMaintenanceDiagnostics().provider,
+  sharedLocalEmbeddingProvider?.diagnostics().provider ?? 'none',
+  'canonical semantic memory must use the shared provider, not a second endpoint configuration',
+);
 
 const hub = new LocalSmallModelHub({
   languageProvider, embeddingProvider, classifierProvider, emotionProvider,
