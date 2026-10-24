@@ -11,7 +11,9 @@ on:
       - 'runtime/neuro-kurisu/scripts/audit-architecture.mjs'
       - 'runtime/neuro-kurisu/scripts/audit-server-imports.mjs'
       - 'runtime/neuro-kurisu/scripts/dependency-boundary-policy.mjs'
+      - 'runtime/neuro-kurisu/scripts/import-specifier-scanner.mjs'
       - 'runtime/neuro-kurisu/tests/*dependency*'
+      - 'runtime/neuro-kurisu/tests/import-specifier-scanner.test.mjs'
       - 'runtime/neuro-kurisu/tests/server-import-graph-audit.test.mjs'
       - 'runtime/neuro-kurisu/package.json'
 
@@ -40,4 +42,14 @@ jobs:
       - name: Audit transitive server imports
         run: npm --prefix runtime/neuro-kurisu run audit:server-imports
       - name: Audit architecture dependency boundaries
+        env:
+          NK1_DEPENDENCY_GRAPH_REPORT: ${{ runner.temp }}/nk1-module-dependency-graph.json
         run: npm --prefix runtime/neuro-kurisu run audit:architecture
+      - name: Upload inspectable dependency graph
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nk1-module-dependency-graph
+          path: ${{ runner.temp }}/nk1-module-dependency-graph.json
+          retention-days: 14
+          if-no-files-found: error
