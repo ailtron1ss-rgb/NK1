@@ -1,3 +1,11 @@
+## NK1 WorkPass454 — share safe runtime type and correlation boundaries (2026-10-24)
+
+- Synced the shared runtime typecheck boundary with the actual app dependency installation and excluded fallback Node declarations from semantic checking.
+- Hardened cross-subsystem correlation IDs so C0/C1 controls are rejected before trimming, avoiding accidental aliasing of action, outcome and embodiment event identities.
+- Existing avatar implementation is retained: this pass does not claim browser/Live2D, Android TTS, or lip-sync end-to-end validation. Those hardware/browser gates remain open.
+
+---
+
 ## NK1 WorkPass453 — smoothed affect on one avatar intent clock (2026-10-23)
 
 - Added `smoothEmbodimentAffect`, a bounded exponential interpolation for expression intensity, gaze, head tilt and voice emphasis using monotonic sample time.
