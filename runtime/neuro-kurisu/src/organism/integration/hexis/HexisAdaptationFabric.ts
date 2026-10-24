@@ -602,7 +602,7 @@ export class HexisAdaptationFabric {
         if (!stage) throw new Error('hmx-goal-stage-not-found');
         if (stage.status !== 'accepted' && stage.status !== 'applied') throw new Error('hmx-goal-stage-must-be-accepted');
         if (stage.conflicts.length) throw new Error('hmx-goal-stage-has-conflicts');
-        if (stage.intent !== 'port' || stage.strategy === 'analysis_only') throw new Error('hmx-goal-import-requires-explicit-port-intent');
+        if (stage.intent !== 'port' || stage.strategy !== 'additive') throw new Error('hmx-goal-import-requires-port-additive-strategy');
         const rows = Array.isArray(stage.stagedSections?.goals) ? stage.stagedSections.goals.slice(0, 64) : [];
         const lineage = String(stage.sourceLineageId ?? '').trim();
         if (!lineage) throw new Error('hmx-goal-source-lineage-required');
@@ -695,6 +695,9 @@ export class HexisAdaptationFabric {
         if (decision === 'apply') {
             if (stage.status === 'applied' && stage.application) return structuredClone(stage);
             if (stage.status !== 'accepted' || stage.conflicts.length) return structuredClone(stage);
+            if (stage.intent !== 'port' || stage.strategy !== 'additive') {
+                throw new Error('hmx-canonical-apply-requires-port-additive-strategy');
+            }
             if (!this.canonicalMemoryApply) throw new Error('canonical-memory-apply-not-bound');
             stage.applicationAttempts = Math.max(0, Math.floor(Number(stage.applicationAttempts ?? 0))) + 1;
             // The attempt counter is persisted on the stage; a compensated retry uses fresh command IDs.
