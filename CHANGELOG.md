@@ -1,3 +1,8 @@
+# WorkPass334 follow-up — installer fixture dependency fix (2026-10-24)
+
+- [FIXED] `tools/super-install.test.mjs` now copies `runtime-requirements.mjs` into its isolated temporary fixture, matching the import used by `super-install.mjs`.
+- [VALIDATION] The WorkPass331 prerequisite workflow previously stopped before the cognitive tests with `ERR_MODULE_NOT_FOUND` in the fixture. This commit addresses that concrete failure; a fresh exact-head run is required before the prerequisite suite or WorkPass334 behavior tests can be marked passed.
+
 # WorkPass334 — endogenous intent and homeodynamic action arbitration (2026-10-24)
 
 - [INTEGRATION] Added `InnerImperativeController` as a thin policy over the existing live decision, organism needs and embodiment telemetry. It does not create a second goal, memory, world-model, identity or action owner.

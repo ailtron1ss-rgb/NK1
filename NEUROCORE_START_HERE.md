@@ -1,3 +1,11 @@
+## Latest follow-up — WorkPass334 CI fixture dependency correction (2026-10-24)
+
+- Diagnosed the first exact-HEAD WorkPass331 workflow failure: `tools/super-install.test.mjs` copied `super-install.mjs` to a temporary folder without also copying its imported sibling `runtime-requirements.mjs`. The resulting `ERR_MODULE_NOT_FOUND` happened before the new cognitive regression ran.
+- Added the missing dependency copy to the fixture and documented the fix in `CHANGELOG.md`. This is a test-harness repair, not a cognitive-learning result.
+- **Validation is pending:** a fresh workflow must execute prerequisites, canonical kernel contract, and live runtime/inner-intent regression on the new head. Do not infer test success from this source fix alone.
+
+---
+
 ## Latest durable checkpoint — WorkPass334: inner intent + homeodynamic arbitration (2026-10-24)
 
 **Working branch:** `workpass334-inner-imperative-homeostasis-2026-10-24`, stacked on `workpass332-live-runtime-kernel-2026-10-24` (the WorkPass332 live-kernel branch). Keep the existing branch stack intact; do not merge directly to `main`.

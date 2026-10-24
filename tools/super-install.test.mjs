@@ -18,6 +18,8 @@ async function createFixture(t) {
   const fakeBin = path.join(root, 'fake-bin');
   for (const dir of [tools, app, runtime, fakeBin]) await mkdir(dir, { recursive: true });
   await writeFile(path.join(tools, 'super-install.mjs'), await readFile(installerSource));
+  // The installer imports this sibling module; fixtures must copy runtime dependencies too.
+  await writeFile(path.join(tools, 'runtime-requirements.mjs'), await readFile(path.join(repoRoot, 'tools/runtime-requirements.mjs')));
   for (const [dir, name, version] of [[app, 'app-builder-workspace', '1.0.0'], [runtime, 'neuro-kurisu-organism-evolution', '1.0.0']]) {
     await writeFile(path.join(dir, 'package.json'), JSON.stringify({ name, version }, null, 2));
     await writeFile(path.join(dir, 'package-lock.json'), JSON.stringify({ lockfileVersion: 3, packages: { '': { name, version } } }, null, 2));
