@@ -34,7 +34,7 @@ export function adaptiveReplayOptions(base:ReplaySelectionOptions,h:LearningHeal
  const cap=Math.max(1,Math.min(64,Math.floor(f(base.maxBatchSize??64,64))));
  const pressure=c(.35*h.recentPredictionError01+.25*h.replayTdError01+.2*h.evidenceDebt01+.2*h.memoryPressure01);
  const energy=h.energy01<.2?.5:h.energy01<.4?.75:1;
- const size=Math.max(1,Math.min(cap,Math.max(0,count),Math.round(cap*energy*(.65+.35*pressure))));
+ // The configured hard cap is part of the experiment manifest: health may change ranking and age decay, but must not silently shrink a requested ablation batch. Energy remains an upstream scheduling concern.\n const size=Math.max(1,Math.min(cap,Math.max(0,count)));
  const ratio=c(.35+.25*h.recentPredictionError01+.15*h.evidenceDebt01-.15*h.memoryPressure01);
  const configuredRecent=Math.max(0,Math.min(size,Math.floor(f(base.recentQuota??Math.floor(size/2)))));
  const adaptiveRecent=Math.max(0,Math.min(size,Math.round(size*ratio)));
