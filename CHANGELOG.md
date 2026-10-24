@@ -1,3 +1,12 @@
+## NK1 WorkPass510 — enforce plain prototypes for restored cognitive state (2026-10-24)
+
+- CEF snapshot restore now rejects custom-prototype/class instances for event rows, nested payloads, parent arrays and receipt-reference structures; fields are still read only through own data descriptors.
+- Added this restriction to the same existing causal event fabric, preserving the rule that memory and action receipts have one shared event spine.
+- Follow-up fix from WorkPass509: source/parent/payload identity checks use C0/C1 code-point validation and strict receipt field types; the malformed double-escaped regex has been removed.
+- **Validation boundary:** committed with regression coverage wired into `test:rebuild-recovered`; exact-head execution/typecheck remains unconfirmed.
+
+---
+
 ## NK1 WorkPass512 — unify trusted-run Promise contract and signed-evidence failure tests (2026-10-24)
 
 - Aligned the trusted shadow coordinator with the asynchronous contract already used by feedback/perception: invalid registrar/runtime/lane inputs now reject the returned Promise, while the candidate+shadow-only gate and registration-before-spawn rule remain unchanged.
