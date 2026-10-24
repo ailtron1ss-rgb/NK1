@@ -1,3 +1,10 @@
+## NK1 WorkPass479 — evidence identity bridge, partial (2026-10-24)
+
+- `feature/feedback` now provides deterministic domain-separated event IDs, replay idempotency, conflicting-event quarantine, and runtime action/consequence ledger binding.
+- Updated the scorecard to distinguish this completed bridge segment from the still-open full propagation across MemoryOS2, P65 and P23. No release or test success is inferred.
+
+---
+
 ## NK1 WorkPass478 — integrated progress scorecard (2026-10-24)
 
 - Added `docs/HEXIS_ASSIMILATION_PROGRESS_2026-10-24_RU.md`: a provisional engineering scorecard, end goals for existing category branches, the current memory/learning Hexis code passes, release blockers, and the next five implementation passes.
