@@ -1,3 +1,11 @@
+# WorkPass346 — native signed-evidence Hermes/P23 provider (2026-10-24)
+
+- [INTEGRATION] Added `P23CompoundRepairRevisionProvider.ts` so NK1 can form an authentic proposal directly from a configured signed-outcome dataset without a custom provider plugin. The provider rebuilds the verified ledger, validates all Ed25519 signatures against the external trusted keyring, applies the promotion gate, and requires exact proposal/outcome fingerprint agreement with the canonical versioned candidate store.
+- [SECURITY] Dataset files must be regular non-symlink files outside mutable runtime state, no group/world write permission, in a protected parent directory, and at most 32 MiB. Unknown schema fields, invalid signatures, incomplete validation/holdout definitions, missing candidates and mismatched proposal lineage fail closed. An external provider module and native dataset cannot be configured simultaneously.
+- [EVALUATION] The built-in provider still requires the separate host-owned executor/verifier/safety-scanner config; it does not simulate evaluation or grant promotion authority. Canonical payload selection now compares pending candidates with the current active version, and active candidates with their saved prior active version; identical/missing baselines are rejected.
+- [TEST] Added native provider regressions for signed proposal reconstruction, staged-candidate identity, tampered signatures, state-directory isolation and unsafe file permissions. Wired them into the targeted Hermes workflow and added runtime typecheck coverage for the active-source baseline route.
+- [VALIDATION] New WorkPass346 native-provider files are awaiting exact-head test/typecheck and broader P23/continual-learning runs. No production-readiness or measured learning-uplift claim is made.
+
 # WorkPass336 — canonical P23 revision evidence and proposal snapshot integrity (2026-10-24)
 
 - [FIXED] Added a safe proposal snapshot function that accepts only a proposal already authenticated by the P23 issuer and rebinds its process-local digest to a detached copy. Provider/coordinator snapshots can no longer accidentally erase the issuer proof; modifying the copy still invalidates it, and fabricated objects cannot be sealed.
