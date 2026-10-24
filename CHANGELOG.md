@@ -1,3 +1,9 @@
+## NK1 Feedback — downgrade legacy evidence confidence without identity loss (2026-10-24)
+
+- Event replay now permits a confidence-only downgrade when tick, reality class, claim, independence key and parent links match the original event; identity conflicts and any attempted confidence increase remain rejected/quarantined.
+- Added a full-runtime restore regression that simulates a pre-calibration ledger snapshot and verifies source-trust adjustment preserves the event ID without leaving high-confidence legacy evidence behind.
+- **Validation boundary:** implementation and migration regression are committed; hosted execution for this revision remains to be confirmed.
+
 ## NK1 Feedback — bind ledger confidence to registered source trust (2026-10-24)
 
 - The canonical evidence bridge now multiplies each observation's sample confidence by the current registered source reliability before placing it in the RealityEvidenceLedger; caller-supplied confidence alone cannot pass the independent-source threshold.
