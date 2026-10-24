@@ -1,6 +1,6 @@
 ## NK1 WorkPass331 — repository ordering and source-of-truth map (2026-10-24)
 
-- [DOCUMENTED] Added `docs/PROJECT_MAP_AND_ORDERING.md` as the navigation page for canonical ownership, branch ancestry, release-asset status, historical documentation, and the staged cleanup order. Added `docs/BRANCH_INVENTORY_2026-10-24.md`, which enumerates the 104 branch refs observed during this pass and records selected head/comparison evidence.
+- [DOCUMENTED] Added `docs/PROJECT_MAP_AND_ORDERING.md` as the navigation page for canonical ownership, branch ancestry, release-asset status, historical documentation, and the staged cleanup order. Added `docs/BRANCH_INVENTORY_2026-10-24.md`, which preserves the initial 104-ref list and adds a later live refresh to 124 unique refs, with 20 newly observed branch heads and timestamps.
 - [NAVIGATION] Refreshed `AGENTS.md`, `README.md`, and `NEUROCORE_START_HERE.md` so readers reach the map first and no longer mistake old continuation snapshots for current GitHub state.
 - [TOOLING] Added a dependency-free Markdown/HTML local-link auditor with a regression suite, `test:markdown-links`, `audit:markdown-links` and strict `audit:canonical-links` commands, plus a Node.js 24-compatible GitHub Actions workflow for the canonical navigation gate.
 - [INTEGRATION] Added root `audit:ordering` as the single entry point for Markdown regressions, strict canonical-link validation, runtime architecture-boundary tests and transitive server import checks; `audit:quick` now calls it rather than invoking only the older architecture script.
