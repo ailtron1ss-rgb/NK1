@@ -77,6 +77,8 @@ function push(state:PerceptionState, event:Omit<PerceptionEvent,'id'|'at'>): Per
 }
 
 const changed = (prev:number|null, next:number|null, threshold:number) => prev != null && next != null && Math.abs(next-prev) >= threshold;
+const MAX_SENSOR_STALE_MS = 120_000;
+const MIN_SENSOR_FRESHNESS01 = 0.2;
 
 export class PerceptionEngine {
   private state: PerceptionState = defaultPerceptionState();
@@ -96,6 +98,10 @@ export class PerceptionEngine {
 
   perceive(input:PerceptionInput): PerceptionEvent {
     const b = input.body;
+    const telemetryStaleMs = b && Number.isFinite(b.telemetry?.staleMs) ? Math.max(0, b.telemetry.staleMs) : Number.POSITIVE_INFINITY;
+    const bodyTelemetryFresh = !!b && Number.isFinite(b.sensoryFreshness01)
+      && b.sensoryFreshness01 >= MIN_SENSOR_FRESHNESS01
+      && telemetryStaleMs <= MAX_SENSOR_STALE_MS;
     const w = input.world;
     const prev = this.lastWorld ?? input.previousWorld ?? null;
     if (input.externalEvent) {
@@ -108,7 +114,7 @@ export class PerceptionEngine {
       return this.state.lastEvent!;
     }
 
-    if (b) {
+    if (b && bodyTelemetryFresh) {
       const current = {
         battery01:b.telemetry.battery01,
         ambientLight01:b.telemetry.ambientLight01,
@@ -120,31 +126,31 @@ export class PerceptionEngine {
       const baseline = this.state.baseline;
       if (changed(baseline.motion01,current.motion01,0.18)) {
         this.state.sensorChanges += 1;
-        this.state.baseline = current;
+        this.state.baseline = { ...baseline, motion01: current.motion01 };
         this.state = push(this.state, { kind:'motion', salience:clamp(0.35+(current.motion01 ?? 0)*0.55), novelty:clamp(Math.abs((current.motion01 ?? 0)-(baseline.motion01 ?? 0))), confidence:0.76, source:'android', detail:'motion change detected', evidence:[`from=${baseline.motion01?.toFixed(2) ?? 'n/a'}`,`to=${current.motion01?.toFixed(2) ?? 'n/a'}`] });
         return this.state.lastEvent!;
       }
       if (changed(baseline.proximity01,current.proximity01,0.22)) {
         this.state.sensorChanges += 1;
-        this.state.baseline = current;
+        this.state.baseline = { ...baseline, proximity01: current.proximity01 };
         this.state = push(this.state, { kind:'proximity', salience:0.58, novelty:clamp(Math.abs((current.proximity01 ?? 0)-(baseline.proximity01 ?? 0))), confidence:0.7, source:'android', detail:'proximity changed', evidence:[`from=${baseline.proximity01?.toFixed(2) ?? 'n/a'}`,`to=${current.proximity01?.toFixed(2) ?? 'n/a'}`] });
         return this.state.lastEvent!;
       }
       if (changed(baseline.ambientLight01,current.ambientLight01,0.20)) {
         this.state.sensorChanges += 1;
-        this.state.baseline = current;
+        this.state.baseline = { ...baseline, ambientLight01: current.ambientLight01 };
         this.state = push(this.state, { kind:'light-change', salience:0.34, novelty:clamp(Math.abs((current.ambientLight01 ?? 0)-(baseline.ambientLight01 ?? 0))), confidence:0.64, source:'android', detail:'ambient light changed', evidence:[`from=${baseline.ambientLight01?.toFixed(2) ?? 'n/a'}`,`to=${current.ambientLight01?.toFixed(2) ?? 'n/a'}`] });
         return this.state.lastEvent!;
       }
       if (baseline.networkOnline !== null && current.networkOnline !== baseline.networkOnline) {
         this.state.sensorChanges += 1;
-        this.state.baseline = current;
+        this.state.baseline = { ...baseline, networkOnline: current.networkOnline };
         this.state = push(this.state, { kind:'network-change', salience:0.46, novelty:0.42, confidence:0.9, source:'android', detail:`network ${current.networkOnline ? 'online' : 'offline'}`, evidence:[`previous=${String(baseline.networkOnline)}`,`current=${String(current.networkOnline)}`] });
         return this.state.lastEvent!;
       }
       if (baseline.battery01 !== null && Math.abs(current.battery01-baseline.battery01) >= 0.06) {
         this.state.sensorChanges += 1;
-        this.state.baseline = current;
+        this.state.baseline = { ...baseline, battery01: current.battery01 };
         this.state = push(this.state, { kind:'resource', salience:clamp(0.35+Math.abs(current.battery01-baseline.battery01)*2.4), novelty:clamp(Math.abs(current.battery01-baseline.battery01)), confidence:0.96, source:'android', detail:'battery state changed', evidence:[`from=${baseline.battery01.toFixed(2)}`,`to=${current.battery01.toFixed(2)}`] });
         return this.state.lastEvent!;
       }
