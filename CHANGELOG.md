@@ -1,3 +1,9 @@
+## NK1 WorkPass330 — cross-method learning evidence integrity (2026-10-24)
+
+- [HARDENED] Skill revision evaluation now treats each verifier/evidence receipt as globally single-use, preventing one receipt from being rebound across baseline and candidate methods to manufacture a matched holdout comparison.
+- [REGRESSION] Added a focused case proving that cross-method receipt reuse invalidates the affected pair.
+- [VALIDATION] Regression coverage was added; the test suite was not executed in this GitHub-only pass.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
