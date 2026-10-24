@@ -54,21 +54,23 @@ assert.equal(memory.peek('optimization-peek-cold-row')?.salience, 0.81);
 // BM25 should reuse bounded token-frequency profiles rather than tokenize each
 // candidate from scratch on every query.
 const frequencyProbe = 'benchmark repeated repeated unique';
-memory.tokensFor(frequencyProbe);
-assert.equal(memory.termFrequenciesFor(frequencyProbe).get('repeated'), 2);
+const cacheProbe = new MemoryOS2({ embeddingProvider: null });
+cacheProbe.tokensFor(''); // Empty text is still a valid cache key and must not defeat eviction.
+cacheProbe.tokensFor(frequencyProbe);
+assert.equal(cacheProbe.termFrequenciesFor(frequencyProbe).get('repeated'), 2);
 for (let index = 0; index < 600; index++) {
-  memory.tokensFor(`optimization bounded-cache probe ${index}`);
+  cacheProbe.tokensFor(`optimization bounded-cache probe ${index}`);
 }
-assert.ok(memory.tokenCache.size <= 512, 'token cache must remain bounded');
-assert.ok(memory.termFrequencyCache.size <= 512, 'BM25 term-frequency cache must remain bounded');
+assert.ok(cacheProbe.tokenCache.size <= 512, 'token cache must remain bounded even when its oldest key is empty');
+assert.ok(cacheProbe.termFrequencyCache.size <= 512, 'BM25 term-frequency cache must remain bounded');
 assert.equal(memory.indexDiagnostics().pass, true, 'derived lookup indexes must remain consistent');
 
 console.log('OPTIMIZATION_INDEXED_MEMORY_LOOKUP=PASS', JSON.stringify({
   peekIsReadOnly: true,
   indexedSignalUpdate: updated?.salience,
-  repeatedTermFrequency: memory.termFrequenciesFor(frequencyProbe).get('repeated'),
-  tokenCacheEntries: memory.tokenCache.size,
-  termFrequencyCacheEntries: memory.termFrequencyCache.size,
+  repeatedTermFrequency: cacheProbe.termFrequenciesFor(frequencyProbe).get('repeated'),
+  tokenCacheEntries: cacheProbe.tokenCache.size,
+  termFrequencyCacheEntries: cacheProbe.termFrequencyCache.size,
   cacheLimit: 512,
   indexesConsistent: memory.indexDiagnostics().pass,
 }));
