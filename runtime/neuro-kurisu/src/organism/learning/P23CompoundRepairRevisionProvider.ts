@@ -1,5 +1,6 @@
 import { createPublicKey } from 'node:crypto';
-import { lstat, readFile, realpath, stat } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { lstat, open, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 import type { P23LearningEngine } from './P23LearningEngine.ts';
 import type { VersionedSkillCandidateStore } from './VersionedSkillCandidateStore.ts';
@@ -200,7 +201,34 @@ async function readDataset(pathSetting: string, root: string, stateDirectory: st
   if (isPathWithin(statePath, actualPath)) {
     throw new Error('native-p23-revision-dataset-must-be-outside-mutable-state-directory');
   }
-  const raw = await readFile(actualPath, 'utf8');
+  // Open the resolved inode itself. O_NOFOLLOW blocks a symlink swap at the
+  // final path component; fstat binds the opened descriptor to the inode checked
+  // before open, and a second fstat detects mutation while the bytes are read.
+  const flags = constants.O_RDONLY |
+    (process.platform === 'win32' ? 0 : (constants.O_NOFOLLOW ?? 0));
+  const handle = await open(actualPath, flags);
+  let raw: string;
+  try {
+    const openedInfo = await handle.stat();
+    if (!openedInfo.isFile() || openedInfo.dev !== actualInfo.dev || openedInfo.ino !== actualInfo.ino) {
+      throw new Error('native-p23-revision-dataset-file-changed-before-open');
+    }
+    if (process.platform !== 'win32' && (openedInfo.mode & 0o022) !== 0) {
+      throw new Error('native-p23-revision-dataset-must-not-be-group-or-world-writable');
+    }
+    if (openedInfo.size < 1 || openedInfo.size > MAX_DATASET_BYTES) {
+      throw new Error('native-p23-revision-dataset-size-invalid');
+    }
+    raw = await handle.readFile('utf8');
+    const afterRead = await handle.stat();
+    if (afterRead.dev !== openedInfo.dev || afterRead.ino !== openedInfo.ino ||
+        afterRead.size !== openedInfo.size || afterRead.mtimeMs !== openedInfo.mtimeMs ||
+        afterRead.ctimeMs !== openedInfo.ctimeMs) {
+      throw new Error('native-p23-revision-dataset-mutated-during-read');
+    }
+  } finally {
+    await handle.close();
+  }
   if (Buffer.byteLength(raw, 'utf8') > MAX_DATASET_BYTES) throw new Error('native-p23-revision-dataset-size-invalid');
   let decoded: unknown;
   try { decoded = JSON.parse(raw); } catch {
