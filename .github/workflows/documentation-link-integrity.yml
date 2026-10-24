@@ -46,7 +46,7 @@ jobs:
           actual="$(node --version | sed 's/^v//')"
           case "$expected" in
             *.*.*) test "$actual" = "$expected" ;;
-            *) case "$actual" in "$expected"|"\${expected}".*) ;; *) exit 1 ;; esac ;;
+            *) case "$actual" in "$expected"|"${expected}".*) ;; *) exit 1 ;; esac ;;
           esac
       - name: Run link-auditor regression tests
         run: node --test tools/audit-markdown-links.test.mjs
