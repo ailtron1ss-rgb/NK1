@@ -37,7 +37,10 @@ jobs:
           set -euo pipefail
           expected="$(tr -d '[:space:]' < .nvmrc)"
           actual="$(node --version | sed 's/^v//')"
-          test "$actual" = "$expected"
+          case "$expected" in
+            *.*) test "$actual" = "$expected" ;;
+            *) test "${actual%%.*}" = "$expected" ;;
+          esac
       - name: Install runtime dependencies
         run: npm ci --prefix runtime/neuro-kurisu
       - name: Indexed lookup and cache bounds
