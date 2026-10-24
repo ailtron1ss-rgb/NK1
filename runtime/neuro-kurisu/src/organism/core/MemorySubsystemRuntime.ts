@@ -67,35 +67,41 @@ export class MemorySubsystemRuntime {
   readonly causalLifeGraph = new CausalLifeGraph();
   /** Ownership extraction: retained algorithm/state, moved out of OrganismCore. */
   readonly memoryWorldCausalBridge = new MemoryWorldCausalBridge(96);
-  restoreFromPersisted(input: { memory?: any; advanced?: any; system?: any }) {
+  restoreFromPersisted(input: { memory?: any; advanced?: any; system?: any; [key:string]: any }) {
+    const flat=input as Record<string,any>;
     const memory=input.memory ?? {}; const advanced=input.advanced ?? {}; const system=input.system ?? {};
-    this.events.restore(memory.eventLog);
-    this.memories.restore(memory.autobiographicalMemories);
-    this.selfModel.restore(memory.selfModel);
-    this.socialModel.restore(memory.socialModel);
-    this.valuePlasticity.restore(memory.adaptiveValues);
-    this.workspaceV2.restore(memory.workspace);
-    this.semanticMemory.restore(memory.semanticGraph);
-    const canonicalMemorySnapshot=advanced.memoryOS;
+    // Accept both organism checkpoints (facets.memory / facets.advanced / system)
+    // and this subsystem's own snapshot() shape. The latter is used by tests,
+    // isolated persistence adapters and restart recovery paths.
+    const fromPersisted=(advancedKey:string, flatKey=advancedKey, memoryKey=flatKey, systemKey=flatKey) =>
+      advanced[advancedKey] ?? memory[memoryKey] ?? system[systemKey] ?? flat[flatKey];
+    this.events.restore(memory.eventLog ?? flat.events);
+    this.memories.restore(memory.autobiographicalMemories ?? flat.memories);
+    this.selfModel.restore(memory.selfModel ?? flat.selfModel);
+    this.socialModel.restore(memory.socialModel ?? flat.socialModel);
+    this.valuePlasticity.restore(memory.adaptiveValues ?? flat.adaptiveValues);
+    this.workspaceV2.restore(memory.workspace ?? flat.workspace);
+    this.semanticMemory.restore(memory.semanticGraph ?? flat.semanticGraph);
+    const canonicalMemorySnapshot=advanced.memoryOS ?? memory.memoryOS ?? system.memoryOS ?? flat.memoryOS;
     const hasCanonicalMemorySnapshot=Boolean(
       canonicalMemorySnapshot &&
       typeof canonicalMemorySnapshot==='object' &&
       Array.isArray((canonicalMemorySnapshot as any).items)
     );
     this.memoryOS.restore(canonicalMemorySnapshot);
-    this.fabric.restore(advanced.memoryFabric);
-    this.unifiedMemory.restore(advanced.unifiedMemory);
-    this.p47MemoryMind.restore(advanced.p47);
-    this.p59MemoryOperatingSystem.restore(advanced.p59MemoryOperatingSystem);
-    this.p62MemoryFabric.restore(advanced.p62MemoryFabric);
-    this.p65EpistemicLedger.restore(advanced.p65EpistemicLedger);
-    this.p70MemoryLifecycleGovernor.restore(advanced.p70MemoryLifecycleGovernor);
-    this.p75MemoryContinuumOS.restore(advanced.p75MemoryContinuumOS);
-    this.experienceContinuum.restore(advanced.experienceContinuum);
-    this.hippocampal.restore(advanced.hippocampal);
-    this.hippocampalFormation.restore(advanced.hippocampalFormation);
-    this.consolidationController.restore(advanced.consolidationController);
-    this.memoryLifecycleAuthority.restore(advanced.memoryLifecycleAuthority);
+    this.fabric.restore(fromPersisted('memoryFabric','fabric','memoryFabric','memoryFabric'));
+    this.unifiedMemory.restore(fromPersisted('unifiedMemory'));
+    this.p47MemoryMind.restore(fromPersisted('p47'));
+    this.p59MemoryOperatingSystem.restore(fromPersisted('p59MemoryOperatingSystem','p59','p59MemoryOperatingSystem','p59MemoryOperatingSystem'));
+    this.p62MemoryFabric.restore(fromPersisted('p62MemoryFabric','p62','p62MemoryFabric','p62MemoryFabric'));
+    this.p65EpistemicLedger.restore(fromPersisted('p65EpistemicLedger','p65','p65EpistemicLedger','p65EpistemicLedger'));
+    this.p70MemoryLifecycleGovernor.restore(fromPersisted('p70MemoryLifecycleGovernor','p70','p70MemoryLifecycleGovernor','p70MemoryLifecycleGovernor'));
+    this.p75MemoryContinuumOS.restore(fromPersisted('p75MemoryContinuumOS','p75','p75MemoryContinuumOS','p75MemoryContinuumOS'));
+    this.experienceContinuum.restore(fromPersisted('experienceContinuum'));
+    this.hippocampal.restore(fromPersisted('hippocampal'));
+    this.hippocampalFormation.restore(fromPersisted('hippocampalFormation'));
+    this.consolidationController.restore(fromPersisted('consolidationController'));
+    this.memoryLifecycleAuthority.restore(fromPersisted('memoryLifecycleAuthority'));
     // Compatibility migration uses the restored lifecycle tick, not the new instance's
     // default -1 state. Legacy checkpoints remain importable without rewriting current snapshots.
     if (!hasCanonicalMemorySnapshot) {
@@ -109,10 +115,10 @@ export class MemorySubsystemRuntime {
     // These evidence/causal projections live inside the canonical memory subsystem.
     // Persist them alongside the other advanced memory state so restart does not
     // erase retention policy learning, source lineage, life-graph links, or replay evidence.
-    this.memoryRetentionEconomy.restore(advanced.memoryRetentionEconomy ?? memory.memoryRetentionEconomy ?? system.memoryRetentionEconomy ?? (input as any).memoryRetentionEconomy);
-    this.memoryCausalEconomy.restore(advanced.memoryCausalEconomy ?? memory.memoryCausalEconomy ?? system.memoryCausalEconomy ?? (input as any).memoryCausalEconomy);
-    this.causalLifeGraph.restore(advanced.causalLifeGraph ?? memory.causalLifeGraph ?? system.causalLifeGraph ?? (input as any).causalLifeGraph);
-    this.memoryWorldCausalBridge.restore(advanced.memoryWorldCausalBridge ?? memory.memoryWorldCausalBridge ?? system.memoryWorldCausalBridge ?? (input as any).memoryWorldCausalBridge);
+    this.memoryRetentionEconomy.restore(fromPersisted('memoryRetentionEconomy'));
+    this.memoryCausalEconomy.restore(fromPersisted('memoryCausalEconomy'));
+    this.causalLifeGraph.restore(fromPersisted('causalLifeGraph'));
+    this.memoryWorldCausalBridge.restore(fromPersisted('memoryWorldCausalBridge'));
   }
 
   /** Read-only memory hygiene report; destructive repair remains an explicit separate operation. */
