@@ -12,6 +12,8 @@ on:
       - "tools/super-install.test.mjs"
       - "tools/super-migrate.mjs"
       - "tools/super-migrate.test.mjs"
+      - "tools/super-schema-check.mjs"
+      - "tools/super-schema-check.test.mjs"
       - "tools/runtime-requirements.mjs"
       - "tools/runtime-requirements.test.mjs"
       - "tools/super-doctor.mjs"
@@ -31,6 +33,8 @@ on:
       - "tools/super-install.test.mjs"
       - "tools/super-migrate.mjs"
       - "tools/super-migrate.test.mjs"
+      - "tools/super-schema-check.mjs"
+      - "tools/super-schema-check.test.mjs"
       - "tools/runtime-requirements.mjs"
       - "tools/runtime-requirements.test.mjs"
       - "tools/super-doctor.mjs"
@@ -76,6 +80,8 @@ jobs:
           node --check tools/super-install.mjs
           node --check tools/super-migrate.mjs
           node --check tools/super-migrate.test.mjs
+          node --check tools/super-schema-check.mjs
+          node --check tools/super-schema-check.test.mjs
           node --check tools/super-doctor.mjs
           node --check tools/verify-final-release.mjs
           node --check tools/verify-integration.mjs
@@ -85,5 +91,7 @@ jobs:
         run: npm run test:runtime-prerequisites
       - name: Migration timeout guard regression
         run: npm run test:super-migrate
+      - name: Schema-check timeout guard regression
+        run: npm run test:super-schema-check
       - name: Process supervision and readiness regressions
         run: npm run test:process-supervisor
