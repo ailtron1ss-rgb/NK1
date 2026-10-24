@@ -23,7 +23,7 @@ import { LocalOpenAICompatibleVisionBackend } from '../organism/body/LocalOpenAI
 import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
 import { sharedLocalEmbeddingProvider } from '../organism/developmental/MemoryOS2.ts';
 import { LocalSmallModelHub } from './LocalSmallModelHub.mjs';
-import { LocalInferenceScheduler } from './LocalInferenceScheduler.mjs';
+import { sharedLocalInferenceScheduler } from '../organism/integration/local/LocalInferenceScheduler.mjs';
 import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
@@ -40,11 +40,7 @@ const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 15000);
 const LLAMA_CPP_PROVIDER = new OpenAICompatibleLocalChatProvider({ baseUrl: process.env.LLAMA_CPP_URL, model: process.env.LLAMA_CPP_MODEL || 'local-model', timeoutMs: LLM_TIMEOUT_MS });
 const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
 const LOCAL_EMBEDDING_PROVIDER = sharedLocalEmbeddingProvider;
-const LOCAL_INFERENCE_SCHEDULER = new LocalInferenceScheduler({
-    maxConcurrentPerGroup: Number(process.env.NK_LOCAL_MAX_CONCURRENT_PER_ENDPOINT ?? 1),
-    maxQueuedPerGroup: Number(process.env.NK_LOCAL_MAX_QUEUED_PER_ENDPOINT ?? 16),
-    queueTimeoutMs: Number(process.env.NK_LOCAL_QUEUE_TIMEOUT_MS ?? 4000),
-});
+const LOCAL_INFERENCE_SCHEDULER = sharedLocalInferenceScheduler;
 function optionalLocalRoleProvider(baseUrlKey, modelKey, fallbackModel) {
     const baseUrl = String(process.env[baseUrlKey] ?? '').trim();
     if (!baseUrl)
