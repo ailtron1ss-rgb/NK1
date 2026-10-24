@@ -2899,7 +2899,16 @@ export class OrganismCore {
     }
     hexisStageHmx(document: unknown, intent: HexisHmxIntent, strategy: HexisHmxStrategy) { const stage = this.hexisAdaptation.stageHmx({ document, intent, strategy }); this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot(); return stage; }
     hexisDecideHmx(stagingId: string, decision: 'accept' | 'reject' | 'apply') {
-        const stage = this.hexisAdaptation.decideHmx(stagingId, decision);
+        let stage: any;
+        try {
+            stage = this.hexisAdaptation.decideHmx(stagingId, decision);
+        }
+        catch (error) {
+            // Keep the failed attempt counter durable so a post-restart retry gets
+            // a new canonical command ID after compensation removed earlier rows.
+            this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
+            throw error;
+        }
         if (stage?.status === 'applied' && stage.application?.status !== 'noop') {
             // Persist every canonical owner touched by the Hexis projector. Acceptance alone
             // does not write memory; only the explicit apply decision reaches this branch.
