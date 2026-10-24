@@ -1,3 +1,16 @@
+## NK1 WorkPass Mem0-1 — opt-in Mem0 recall bridge (2026-10-24)
+
+- Added a dependency-free Mem0 Platform REST adapter with explicit enablement, fixed server-configured user scope, HTTPS-only base URL, bounded timeout and response size, safe error codes, scope mismatch rejection, and secret-free diagnostics.
+- Added an authenticated hybrid-recall endpoint that returns canonical MemoryOS2 results separately from Mem0 candidates.
+- Wired a second opt-in runtime path into LanguageOrgan: only with both `NK_MEM0_ENABLED=1` and `NK_MEM0_COGNITIVE_RECALL=1`, the runtime may query the current user message or autonomous topic and attach at most three sanitized remote notes as low-priority untrusted context. Current user corrections and canonical memory remain authoritative; external notes are not executed or promoted.
+- Added an explicit conversation-export method requiring a write-enable environment gate and per-operation approval. No automatic conversation export or HTTP write route was introduced; targeted secret/PII masking is defense-in-depth, not a complete classifier.
+- Added eleven adapter/context/deletion regressions, the `test:mem0-platform-adapter-workpass1` script, a dedicated isolated GitHub Actions workflow (Node 24, adapter tests, server syntax check, and disabled-provider HTTP smoke through the existing fake-local-LLM server integration test), integration documentation and research-intake record.
+- Added an internal scope-bound explicit delete primitive using Mem0's documented `DELETE /v1/memories/{memory_id}/` endpoint: requires the write gate and per-operation approval, accepts only UUIDs previously observed via the configured user scope in this process, disables cascade deletion, and invalidates the authorization after success. No public HTTP deletion endpoint exists.
+- **Validation:** isolated Actions run [40126269767](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40126269767) passed on code head `0013a86c95fd06e91b0e8c5adf9a0bec1e126318`: Node 24 check, server syntax check, and all nine adapter/context tests passed. Subsequent commits through `59286fc3822fc11daffd9fee661d341d018d8e90` changed documentation only. The broader runtime typecheck [40126269720](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40126269720) still fails with 88 diagnostics across the wider runtime; its log has no errors named `Mem0PlatformAdapter.ts` or `LanguageOrgan.ts`, but it includes unrelated existing cognition/learning/core diagnostics and an unrelated P23 clock-kind type error in `OrganismRuntime.ts`. Live Mem0 behavior, independent RU/EN retrieval uplift and retention/deletion alignment remain open.
+- No changes to `main` or release assets. The 136-MB latest release ZIP was not downloaded through the available file channel, so its bytes were not independently hashed or inspected.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

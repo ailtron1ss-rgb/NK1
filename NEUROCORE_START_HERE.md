@@ -1,3 +1,18 @@
+## Latest durable checkpoint — Mem0 integration WorkPass 1 (2026-10-24)
+
+- Feature branch: `mem0-integration-workpass1`; draft PR [#100](https://github.com/ailtron1ss-rgb/NK1/pull/100), base `workpass70-source` at `a4cf11141c0e8083e5f8a35bec8c6c2bebac640b`. Do not merge until current-head checks, live-provider and quality gates are complete.
+- Implemented a dependency-free Mem0 Platform adapter and authenticated diagnostics/search API. MemoryOS2 remains NK1's sole canonical memory owner; local and remote results stay separate.
+- Remote recall enters language context only when both `NK_MEM0_ENABLED=1` and `NK_MEM0_COGNITIVE_RECALL=1` are configured. Up to three sanitized notes enter a low-priority, explicitly untrusted section. They cannot execute instructions, change selected actions, or automatically promote to MemoryOS2.
+- Added internal explicit deletion through Mem0's documented endpoint: only a valid UUID previously returned by scoped search/add in the current adapter process is eligible; deletion requires the write gate and per-operation approval, always sets `delete_linked=false`, and is not exposed over HTTP.
+- The dedicated Node 24 workflow now checks server syntax, runs 11 adapter/context/deletion tests, and executes the fake-local-LLM HTTP test against the real Mem0 diagnostics/search routes while Mem0 remains disabled. This latest exact-head workflow was queued/pending at the last check; it must complete successfully to validate the new deletion and route-smoke changes. Earlier CI [40126269767](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40126269767) passed only the preceding nine-case suite.
+- The wider runtime typecheck [40126269720](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40126269720) remains failed with 88 diagnostics elsewhere in the repository; no errors named `Mem0PlatformAdapter.ts` or `LanguageOrgan.ts`, but a separate P23 clock-kind error exists in `OrganismRuntime.ts`. The overall codebase is not typecheck-clean.
+- No changes to `main` or release assets. The 136-MB release ZIP was not downloaded and independently re-hashed/inspected.
+- Next: confirm exact-head targeted CI, then perform a live provider contract check with a disposable Mem0 scope, review retention/deletion semantics and compare local vs hybrid recall on a frozen independent RU/EN holdout. Keep cognitive recall disabled by default until privacy and quality gates pass.
+
+Read [Mem0 WorkPass 1 guide](runtime/neuro-kurisu/docs/MEM0_INTEGRATION_WORKPASS1.md), [research intake decision](docs/RESEARCH_INTAKE_LEDGER.md), and the exact-head Actions logs.
+
+---
+
 ## Latest durable checkpoint — WorkPass272 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use live PR for current HEAD.

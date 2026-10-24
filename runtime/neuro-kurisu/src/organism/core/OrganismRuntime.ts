@@ -10,6 +10,7 @@ import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvok
 import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.ts';
 import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
 import { EmbodimentRuntime } from '../body/EmbodimentRuntime.ts';
+import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem0PlatformAdapter.ts';
 import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
 import type { JsonStateStore } from '../persistence/FileStateStore.ts';
@@ -104,6 +105,10 @@ export interface RuntimeConfig extends OrganismConfig {
     /** Optional background repair-to-P23 loop. Opt-in and independently evaluated; never auto-activates candidates. */
     backgroundRevision?: { enabled: boolean; initialDelayMs?: number; intervalMs?: number };
   };
+  /** Optional shared Mem0 adapter; disabled-by-default adapter is created if omitted. */
+  mem0Adapter?: Mem0PlatformAdapter;
+  /** Separate explicit opt-in before remote recall is allowed into live language context. */
+  mem0CognitiveRecall?: boolean;
   /** P2836: how real device outcomes compete with the predictive simulator. */
   realityMode?: RealityGroundingMode;
 }
@@ -143,6 +148,8 @@ export class OrganismRuntime {
   readonly embodiedActions = new EmbodiedActionExecutor(this.embodiment);
   readonly embodiedRecovery = new EmbodiedRecoveryController();
   private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
+  private readonly mem0Adapter: Mem0PlatformAdapter;
+  private readonly mem0CognitiveRecallEnabled: boolean;
   private stepsSinceConsolidation = 0;
   private readonly worldStore: JsonStateStore<PersistedWorld>;
   private readonly journal: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
@@ -216,6 +223,8 @@ export class OrganismRuntime {
 
   constructor(config: RuntimeConfig) {
     this.config = { intervalMs: 30_000, enableLanguage: false, autoRun: false, ...config };
+    this.mem0Adapter = config.mem0Adapter ?? Mem0PlatformAdapter.fromEnvironment();
+    this.mem0CognitiveRecallEnabled = config.mem0CognitiveRecall === true;
     const defaultSensorCadenceMs = config.performanceProfile === 'mobile' ? 60_000 : 60_000;
     const inheritedSensorCadenceMs = config.intervalMs == null ? defaultSensorCadenceMs : Math.max(30_000, Number(config.intervalMs) * 2);
     this.sensorIntervalMs = Math.max(10_000, Number(config.sensorIntervalMs ?? inheritedSensorCadenceMs));
@@ -508,6 +517,18 @@ export class OrganismRuntime {
     });
   }
 
+  /** Remote recall is a separately gated, best-effort source. It never writes to canonical MemoryOS2. */
+  private async retrieveMem0Context(query: string): Promise<Mem0Candidate[]> {
+    if (!this.mem0CognitiveRecallEnabled || !query.trim() || !this.mem0Adapter.diagnostics().available) return [];
+    try {
+      const result = await this.mem0Adapter.search(query, 3);
+      return result.status === 'ok' ? result.memories.slice(0, 3) : [];
+    } catch {
+      // External memory must never prevent a local-first response.
+      return [];
+    }
+  }
+
   private async generateCognitiveProposal(cycle: OrganismCycleResult, fusedObservation: string, deliberate = false, autonomous = false, signal?: AbortSignal): Promise<CognitiveProposal|null> {
     if (!this.config.enableLanguage || !this.config.languageInvoker) return null;
     const current = this.core.operationalStatusSnapshot();
@@ -667,9 +688,11 @@ export class OrganismRuntime {
       : null;
     const languageBudgetAllows = currentBudgetAllowsLanguage(this.core.cognitiveBudgetOperationalSnapshot()?.mode);
     if (this.config.enableLanguage && this.config.languageInvoker && languageBudgetAllows && (Boolean(externalText) || Boolean(autonomousAgenda))) {
+      const mem0Query = externalText || autonomousAgenda?.topic || '';
+      const externalMem0Memories = await this.retrieveMem0Context(mem0Query);
       const request = externalText
-        ? buildCognitivePrompt(cycle, transition.after.facts, externalText, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext())
-        : buildAutonomousDialoguePrompt(cycle, autonomousAgenda!, transition.after.facts, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext());
+        ? buildCognitivePrompt(cycle, transition.after.facts, externalText, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories)
+        : buildAutonomousDialoguePrompt(cycle, autonomousAgenda!, transition.after.facts, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories);
       if(options.signal) request.signal=options.signal;
       this.lastContextBudgetLedger = request.contextLedger ?? null;
       try {
