@@ -1,22 +1,29 @@
 import assert from 'node:assert/strict';
 import { P36AutonomousSelfDevelopmentEngine, developmentEvidenceVerificationInput } from '../src/organism/learning/P36AutonomousSelfDevelopment.ts';
-import { OutcomeVerificationService } from '../src/organism/system/OutcomeVerificationService.ts';
+import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
 
 const engine=new P36AutonomousSelfDevelopmentEngine();
-const verifier=new OutcomeVerificationService();
+const gateway=new ActionGateway({live:true});
 let receiptIndex=0;
+let issuedObservationCount=0;
+gateway.registerTool({
+  id:'independent-development-evaluator',
+  capability:'learning.evaluation',
+  destructive:false,
+  execute:async()=>({ok:true,observationId:`big-pass-110-external-receipt-${++issuedObservationCount}`}),
+  verify:({result})=>{
+    const observationId=String(result.observationId??'');
+    return {verified:Boolean(observationId),basis:'external-postcondition',externalObservation:true,confidence01:1,observationId,
+      expectedPostcondition:`evaluation-complete:${observationId}`,observedPostcondition:`evaluation-complete:${observationId}`};
+  },
+});
 async function verifiedEvidence(input){
   const binding=developmentEvidenceVerificationInput(input);
   const ticket=++receiptIndex;
-  const observationId=`big-pass-110-external-receipt-${ticket}`;
-  const toolId='independent-development-evaluator';
-  const executionId=`exec-p36-e2e-${ticket}`;
   const decisionId=`p36-e2e-decision-${ticket}`;
-  const verification=await verifier.verify({toolId,input:binding,result:{task:'self-development-holdout',observationId},executionId,decisionId},()=>({
-    verified:true,basis:'external-postcondition',externalObservation:true,confidence01:1,observationId,
-    expectedPostcondition:`evaluation-complete:${observationId}`,observedPostcondition:`evaluation-complete:${observationId}`,
-  }));
-  return {toolId,executionId,decisionId,verification};
+  const result=await gateway.executeTool('independent-development-evaluator',binding,'P36 independent evidence fixture',{decisionId});
+  assert.equal(result.verified,true,'independent fixture must be verified through ActionGateway');
+  return {toolId:result.tool,executionId:result.executionId,decisionId,verification:result.verification};
 }
 const state={tick:7,predictionError:.71,selfPredictionError:.41,autonomyScore:.64,attentionBudget:.78,needs:{energy:.84,cognitiveLoad:.22,uncertainty:.66,socialNeed:.25,novelty:.48,identityCoherence:.79,goalPressure:.42}};
 const h=engine.propose(state,{worldError01:.68,selfError01:.45,relationship01:.32,resourceRisk01:.18});
