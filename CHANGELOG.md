@@ -1,3 +1,10 @@
+## NK1 WorkPass459 — validate canonical evidence parent lineage (2026-10-24)
+
+- **Fixed:** RealityEvidenceLedger rejects parent IDs that are whitespace-only, contain control characters, are not NFKC-canonical, exceed the canonical text boundary, or repeat within one record.
+- **Regression added:** malformed parent-lineage cases assert rejection before evidence enters the ledger.
+- **Architecture:** preserves the existing reality-evidence owner and upstream event-ID mechanism; no new dependency or parallel ledger.
+- **Validation:** source and regression are committed; tests/typecheck remain unverified until a hosted runner executes steps.
+
 ## NK1 WorkPass510 — durable evidence quarantine and epistemic source separation (2026-10-24)
 
 - Hardened the perception branch's canonical `RealityEvidenceLedger`: conflicting `eventId` payloads now quarantine the key immediately, hide its old row from recent views and claim assessments, and persist quarantine state through snapshot/restore.
