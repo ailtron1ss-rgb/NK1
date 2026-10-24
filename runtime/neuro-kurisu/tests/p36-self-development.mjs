@@ -27,7 +27,7 @@ async function mintProof(binding, suppliedObservationId){
   const ticket=++receiptSequence;
   const observationId=suppliedObservationId??('p36-independent-proof-'+ticket);
   const toolId='p36-independent-fixture-verifier';
-  const executionId=`exec-p36-${ticket}`;
+  const executionId=`exec-p36-ticket-${ticket}`;
   const decisionId=`p36-development-decision-${ticket}`;
   const verification=await verifier.verify({
     toolId,input:binding,result:{fixture:'independent-evaluator',observationId},executionId,decisionId,
