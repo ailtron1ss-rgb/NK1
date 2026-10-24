@@ -1,3 +1,11 @@
+## NK1 WorkPass489 — converge reality-projection identity helper (2026-10-24)
+
+- Matched `EvidenceEventIdentity.ts` byte-for-byte on feedback and perception; perception's public identity API delegates to the shared function while retaining the persisted ID shape.
+- Updated the Hexis assimilation checkpoint and master analysis to distinguish outcome identity from projection identity and to keep full runtime propagation as an open integration gate.
+- Latest feedback fixes remain committed on its draft PR; exact-head workflow success, merges, and Release ZIP publication are not inferred.
+
+---
+
 ## NK1 WorkPass486 — project analysis and live integration blockers (2026-10-24)
 
 - Added `docs/NK1_PROJECT_ANALYSIS_2026-10-24_RU.md` with current architecture/branch ownership, Hexis adaptation map, evidence-identity drift between feedback and perception, observed CI/type blockers, scorecard, and ordered implementation gates.
