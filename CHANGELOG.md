@@ -1,11 +1,11 @@
-## NK1 [perception] — canonical world-model evidence boundary (2026-10-24)
+## NK1 [perception] — runtime sensor and world-context integrity (2026-10-24)
 
-- Added a pure perception boundary with typed modality/source metadata, timestamp validation, bounded confidence and freshness decay.
-- Added deterministic claim fusion with idempotent event-ID deduplication and explicit contradiction reporting; incompatible values are never averaged into false consensus.
-- Added regression cases for malformed provenance, stale evidence, duplicate delivery, conflicts and predicate separation.
-- Added `docs/PERCEPTION_WORLD_MODEL_PASS_2026-10-24.md` describing data flow, integration contract and acceptance gates.
-- **Integration status:** implementation and tests committed on `feature/perception`; not yet connected to the canonical runtime cycle.
-- **Validation status:** tests have not been executed in this GitHub edit pass; do not treat this as runtime-verified or production-ready.
+- Fixed canonical runtime perception so one sensor event updates only its own baseline; simultaneous changes remain detectable on subsequent perception cycles.
+- Stale or missing device telemetry now fails closed for sensor-event generation.
+- Hardened world-context normalization: null/blank/non-finite values use declared defaults, boolean flags require actual booleans, text arrays reject non-string entries, and invalid evidence kinds/source IDs are discarded.
+- Added runtime regressions `tests/perception-engine-signal-integrity.mjs` and `tests/world-context-normalizer-integrity.mjs`, plus package scripts for both.
+- Retired the disconnected UI-shell prototype after finding the existing canonical runtime perception owners.
+- **Validation boundary:** implementation and tests are committed on `feature/perception`; tests, typecheck and exact-head CI remain unverified.
 
 ---
 
