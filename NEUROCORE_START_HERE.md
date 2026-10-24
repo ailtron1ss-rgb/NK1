@@ -1,3 +1,14 @@
+## Latest durable checkpoint — TypeScript check trustworthiness (2026-10-24)
+
+- Work branch: `typescript/runtime-typecheck-truth-2026-10-24`, based on `workpass70-source`; do not merge these changes directly into `main`.
+- `runtime/neuro-kurisu/scripts/typecheck-runtime.mjs` now distinguishes a real successful `tsc` run (`TYPECHECK=PASS`) from the parser-only fallback (`TYPECHECK=PARTIAL`). A syntax-only fallback cannot establish semantic type correctness.
+- `tests/typecheck-runtime-compiler-selection.mjs` now checks pinned compiler selection, labels a syntax-valid type mismatch as partial when `tsc` is unavailable, fails on syntax errors in fallback mode, and propagates a compiler's non-zero exit.
+- `.github/workflows/workpass71-validation.yml` runs the focused regression for source-branch/pull-request validation.
+- **Validation status: not yet verified on this exact branch.** Do not state that the test or the semantic typecheck passed until the corresponding run has completed and its logs are inspected.
+- Next: execute the focused regression and runtime/app typechecks on the exact HEAD, inspect the diff, then carry the fix into the validated source/release path. This change does not update the large Release ZIP.
+
+---
+
 ## Latest durable checkpoint — WorkPass272 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use live PR for current HEAD.
