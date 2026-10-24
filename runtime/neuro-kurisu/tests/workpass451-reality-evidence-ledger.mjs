@@ -91,6 +91,8 @@ restored.restore({
     first,
     { ...first, id: 'invalid-score', confidence01: Number.POSITIVE_INFINITY },
     { ...first, id: 'unknown-class', realityClass: 'simulator-ish' },
+    { ...first, id: 'malformed-parent-lineage', parentIds: ['  '] },
+    { ...first, id: 'duplicate-parent-lineage', parentIds: ['decision:12', 'decision:12'] },
     { ...first },
   ],
 });
