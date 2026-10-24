@@ -77,6 +77,54 @@ function featureVector(state:OrganismState, extras?:{external01?:number;boredom0
 export class ParametricPolicyLearner{
   private state=defaultParametricPolicy();
 
+  private assertUpdateContract(input: {
+    action: unknown;
+    target01: unknown;
+    learningRate01: unknown;
+    sampleWeight01?: unknown;
+  }): void {
+    if (!ACTIONS.includes(input.action as ActionKind)) {
+      throw new RangeError('invalid-action');
+    }
+    if (typeof input.target01 !== 'number' || !Number.isFinite(input.target01) || input.target01 < 0 || input.target01 > 1) {
+      throw new RangeError('target-must-be-finite-and-in-0-1');
+    }
+    if (typeof input.learningRate01 !== 'number' || !Number.isFinite(input.learningRate01) || input.learningRate01 < 0) {
+      throw new RangeError('rate-must-be-finite-and-non-negative');
+    }
+    if (input.sampleWeight01 !== undefined && (
+      typeof input.sampleWeight01 !== 'number' ||
+      !Number.isFinite(input.sampleWeight01) ||
+      input.sampleWeight01 < 0 ||
+      input.sampleWeight01 > 1
+    )) {
+      throw new RangeError('sample-weight-must-be-finite-and-in-0-1');
+    }
+  }
+
+  private assertTrainingState(state: unknown): void {
+    if (!state || typeof state !== 'object' || Array.isArray(state)) {
+      throw new TypeError('state-must-be-an-object-with-needs');
+    }
+    const row = state as Record<string, unknown>;
+    if (!row.needs || typeof row.needs !== 'object' || Array.isArray(row.needs)) {
+      throw new TypeError('state-must-have-needs');
+    }
+    const needs = row.needs as Record<string, unknown>;
+    for (const name of ['energy','cognitiveLoad','uncertainty','novelty','goalPressure','socialNeed','identityCoherence']) {
+      const value = needs[name];
+      if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) {
+        throw new RangeError(`state-needs-${name}-must-be-finite-and-in-0-1`);
+      }
+    }
+    for (const name of ['predictionError','attentionBudget','selfPredictionError','autonomyScore']) {
+      const value = row[name];
+      if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) {
+        throw new RangeError(`state-${name}-must-be-finite-and-in-0-1`);
+      }
+    }
+  }
+
   restore(raw?:Partial<ParametricPolicyState>|null){
     const d=defaultParametricPolicy();
     const savedNames=Array.isArray(raw?.featureNames)?raw!.featureNames:[];
@@ -120,6 +168,9 @@ export class ParametricPolicyLearner{
   }
 
   train(input:{state:OrganismState;action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number;extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    if (!input || typeof input !== 'object') throw new TypeError('training-input-required');
+    this.assertUpdateContract(input);
+    this.assertTrainingState(input.state);
     if(this.state.frozen) return {predictionBefore:this.value(input.state,input.action,input.extras).value,predictionAfter:this.value(input.state,input.action,input.extras).value,loss01:0,tdError01:0};
     const x=this.features(input.state,input.extras,input.action);
     const w=this.state.weights[input.action];
@@ -146,6 +197,12 @@ export class ParametricPolicyLearner{
   }
 
   trainFeatures(input:{features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    if (!input || typeof input !== 'object') throw new TypeError('training-input-required');
+    this.assertUpdateContract(input);
+    if (!Array.isArray(input.features) || input.features.length === 0 ||
+      input.features.some(value => typeof value !== 'number' || !Number.isFinite(value))) {
+      throw new RangeError('features-must-be-finite');
+    }
     if(this.state.frozen) { const value=this.predictFromFeatures(input.features,input.action); return {predictionBefore:value,predictionAfter:value,loss01:0,tdError01:0}; }
     const x=input.features.slice(0,featureNames.length).map(clamp); while(x.length<featureNames.length)x.push(0);
     const w=this.state.weights[input.action]; if(!w)return {predictionBefore:.5,predictionAfter:.5,loss01:0,tdError01:0};
@@ -169,6 +226,14 @@ export class ParametricPolicyLearner{
   }
 
   trainBatch(samples:Array<Parameters<ParametricPolicyLearner['train']>[0]>){
+    if (!Array.isArray(samples)) throw new TypeError('training-batch-must-be-an-array');
+    // Validate the entire batch before the first weight update; a malformed
+    // later sample must not leave earlier valid samples partially applied.
+    for (const sample of samples) {
+      if (!sample || typeof sample !== 'object') throw new TypeError('training-input-required');
+      this.assertUpdateContract(sample);
+      this.assertTrainingState(sample.state);
+    }
     let loss=0; let n=0;
     for(const sample of samples){const r=this.train(sample);loss+=r.loss01;n++;}
     return {samples:n,meanLoss01:n?loss/n:0,updates:this.state.updates};
