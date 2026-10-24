@@ -25,6 +25,18 @@
       "sourceRemovalCommit": "0211c0ac5a9198b3c0d381616aff0d62c34780fc",
       "sourceRemoved": true,
       "reason": "Preserve a dated 2026-10-06 structural inventory with stale role/count snapshots. The repository inventory reported no incoming local Markdown or scanned non-Markdown path/basename references, and GitHub issue/PR search found no direct reference to docs/INVENTORY.md. The archived copy was verified byte-identical before source removal."
+    },
+    {
+      "originalPath": "docs/CONFLICTS-AND-GAPS.md",
+      "archivedPath": "docs/history/reports/CONFLICTS-AND-GAPS-2026-10-06.md",
+      "contentSha256": "47478ec872d30bbae3740d8f73f7db7a761e661dcddbbbebb040f796be8308c0",
+      "sizeBytes": 2294,
+      "originalGitBlobSha": "8d64dceff3688227619de65e4877a3bea1e8d2df",
+      "archivedGitBlobSha": "8d64dceff3688227619de65e4877a3bea1e8d2df",
+      "copyCommit": "1652f879e4c85346461737871776092bb3d4b878",
+      "sourceRemovalCommit": null,
+      "sourceRemoved": false,
+      "reason": "Preserve the dated 2026-10-06 conflicts/gaps snapshot as historical engineering evidence. The latest scanned inventory found no inbound local Markdown or scanned non-Markdown path/basename references; exact GitHub issue/PR path searches returned no direct references. Its old capability and constraint claims should not be treated as current status."
     }
   ]
 }
