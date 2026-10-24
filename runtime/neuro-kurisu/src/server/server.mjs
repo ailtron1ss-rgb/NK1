@@ -19,6 +19,7 @@ import { RELEASE_CONTRACT } from '../organism/system/ReleaseContract.ts';
 import { resolvePhonePolicyConfig } from '../organism/system/PhoneRuntimePolicy.ts';
 import { authorizeApiRequest } from '../organism/system/ApiSecurityPolicy.ts';
 import { GeminiVisionSemanticBackend } from '../organism/body/GeminiVisionSemanticBackend.ts';
+import { LocalOpenAICompatibleVisionBackend } from '../organism/body/LocalOpenAICompatibleVisionBackend.ts';
 import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local/OpenAICompatibleLocalChatProvider.ts';
 import { sharedLocalEmbeddingProvider } from '../organism/developmental/MemoryOS2.ts';
 import { LocalSmallModelHub } from './LocalSmallModelHub.mjs';
@@ -46,17 +47,26 @@ function optionalLocalRoleProvider(baseUrlKey, modelKey, fallbackModel) {
     return new OpenAICompatibleLocalChatProvider({
         baseUrl,
         model: process.env[modelKey] || fallbackModel,
-        timeoutMs: Math.max(250, Math.min(120000, Number(process.env.NK_LOCAL_SPECIALIST_TIMEOUT_MS) || LLM_TIMEOUT_MS)),
+        timeoutMs: Math.max(250, Math.min(120000, Number(process.env.NK_LOCAL_SPECIALIST_TIMEOUT_MS) || Math.min(3000, LLM_TIMEOUT_MS))),
     });
 }
 const LOCAL_CLASSIFIER_PROVIDER = optionalLocalRoleProvider('NK_LOCAL_CLASSIFIER_URL', 'NK_LOCAL_CLASSIFIER_MODEL', 'tiny-classifier');
 const LOCAL_EMOTION_PROVIDER = optionalLocalRoleProvider('NK_LOCAL_EMOTION_URL', 'NK_LOCAL_EMOTION_MODEL', 'tiny-affect');
+const LOCAL_VISION_PROVIDER = String(process.env.NK_LOCAL_VISION_URL ?? '').trim()
+    ? new LocalOpenAICompatibleVisionBackend({
+        baseUrl: process.env.NK_LOCAL_VISION_URL,
+        model: process.env.NK_LOCAL_VISION_MODEL || 'local-vision-model',
+        timeoutMs: Math.max(500, Math.min(60000, Number(process.env.NK_LOCAL_VISION_TIMEOUT_MS) || 12000)),
+        maxImageBytes: Math.max(32000, Math.min(12000000, Number(process.env.NK_LOCAL_VISION_MAX_IMAGE_BYTES) || 8000000)),
+    })
+    : undefined;
 const LOCAL_CONTEXT_SIGNALS_ENABLED = !/^(0|false|off|no)$/i.test(String(process.env.NK_LOCAL_CONTEXT_SIGNALS_ENABLED ?? '1'));
 const LOCAL_SMALL_MODEL_HUB = new LocalSmallModelHub({
     languageProvider: LLAMA_CPP_PROVIDER,
     embeddingProvider: LOCAL_EMBEDDING_PROVIDER,
     classifierProvider: LOCAL_CLASSIFIER_PROVIDER,
     emotionProvider: LOCAL_EMOTION_PROVIDER,
+    visionProvider: LOCAL_VISION_PROVIDER,
     languagePolicy: LOCAL_LANGUAGE_BACKEND_POLICY,
     enableContextSignals: LOCAL_CONTEXT_SIGNALS_ENABLED,
 });
@@ -134,7 +144,12 @@ function consumeRateLimit(req, pathName) {
                 rateBuckets.delete(k);
     return bucket.count <= RATE_LIMIT ? { allowed: true, remaining: RATE_LIMIT - bucket.count } : { allowed: false, retryAfterSec: Math.ceil((bucket.startedAt + RATE_WINDOW_MS - now) / 1000) };
 }
-const VISION_BACKEND = VISION_ENABLED && process.env.GEMINI_API_KEY ? new GeminiVisionSemanticBackend({ apiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_VISION_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-flash', timeoutMs: Number(process.env.GEMINI_VISION_TIMEOUT_MS || 12000), maxImageBytes: Number(process.env.GEMINI_VISION_MAX_IMAGE_BYTES || 8000000) }) : undefined;
+const CLOUD_VISION_BACKEND = VISION_ENABLED && process.env.GEMINI_API_KEY ? new GeminiVisionSemanticBackend({ apiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_VISION_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-flash', timeoutMs: Number(process.env.GEMINI_VISION_TIMEOUT_MS || 12000), maxImageBytes: Number(process.env.GEMINI_VISION_MAX_IMAGE_BYTES || 8000000) }) : undefined;
+LOCAL_SMALL_MODEL_HUB.setVisionFallbackProvider(CLOUD_VISION_BACKEND);
+const VISION_BACKEND = LOCAL_SMALL_MODEL_HUB.hasCapability('vision') ? {
+    id: 'local-small-model-hub',
+    analyze: (input) => LOCAL_SMALL_MODEL_HUB.analyzeVision(input),
+} : undefined;
 await mkdir(STATE, { recursive: true });
 const lock = new ProcessLock(path.join(STATE, 'organism-runtime.lock'));
 await lock.acquire();
