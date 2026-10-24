@@ -108,6 +108,35 @@ export class CausalDomainClosureLedger {
     });
   }
 
+  /** Retroactively downgrade a cycle when durable/batch finalization fails after normal closure. */
+  failLatest(input:{reason:string;tick?:number;counters?:CausalDomainCounters}):CausalDomainClosureRecord|null{
+    if(this.pending)return this.failPending({reason:input.reason,counters:input.counters});
+    const previous=this.state.recent[0];
+    if(!previous || (input.tick!==undefined && previous.tick!==Math.max(0,Math.floor(Number(input.tick)))))return null;
+    const reason=(typeof input?.reason==='string'?input.reason:'cycle finalization failed')
+      .normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').trim().slice(0,240)||'cycle finalization failed';
+    const evidence:CausalDomainEvidence={
+      memoryChanged:false,worldChanged:false,agencyChanged:false,learningChanged:false,selfChanged:false,
+      memoryWorldVerified:false,worldAgencyLearningVerified:false,causalLifeGraphChain:false,
+      replaySignaturePresent:false,durableStateAligned:false
+    };
+    const after=normalizeCounters(input.counters??previous.after);
+    const record:CausalDomainClosureRecord={
+      ...previous, status:'FAIL', score01:0, complete:false, causalChain:[], evidence, after,
+      failureReason:reason, behaviorHash:fastHash({tick:previous.tick,status:'FAIL',reason,after})
+    };
+    this.state={
+      ...this.state,
+      completeCycles:Math.max(0,this.state.completeCycles-Number(previous.complete)),
+      degradedCycles:Math.max(0,this.state.degradedCycles-Number(previous.status==='DEGRADED')),
+      failures:this.state.failures+Number(previous.status!=='FAIL'),
+      meanScore01:clamp(this.state.meanScore01+(0-previous.score01)/Math.max(1,this.state.totalCycles)),
+      lastStatus:previous.tick===this.state.lastTick?'FAIL':this.state.lastStatus,
+      lastBehaviorHash:previous.tick===this.state.lastTick?record.behaviorHash:this.state.lastBehaviorHash,
+      recent:[record,...this.state.recent.slice(1)]
+    };
+    return structuredClone(record);
+  }
   end(input:{counters:CausalDomainCounters;evidence:CausalDomainEvidence;durableHash?:string;failureReason?:string}):CausalDomainClosureRecord|null{
     if(!this.pending)return null;
     const pending=this.pending;
