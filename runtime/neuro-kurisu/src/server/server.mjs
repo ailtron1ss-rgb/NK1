@@ -117,6 +117,8 @@ const TRUSTED_PROMOTION_APPROVER_IDS = new Set(parseTrustedSkillPromotionApprova
 const PHONE_MODE = PHONE_POLICY.mode !== 'research';
 const INTERVAL_MS = PHONE_POLICY.baseIntervalMs;
 const SENSOR_INTERVAL_MS = PHONE_POLICY.samplerIntervalMs;
+// Allow deterministic service/test mode without autonomous ticks; production defaults to autonomous.
+const AUTO_RUN_ENABLED = !/^(0|false|off|no)$/i.test(String(process.env.NEURO_AUTORUN_ENABLED ?? '1'));
 const CHECKPOINT_MIN_MS = PHONE_POLICY.checkpointMinIntervalMs;
 const CHECKPOINT_MAX_CYCLES = PHONE_POLICY.checkpointMaxDirtyCycles;
 const WORLD_CHECKPOINT_MIN_MS = PHONE_POLICY.worldCheckpointMinIntervalMs;
@@ -216,7 +218,7 @@ const runtime = new OrganismRuntime({
     enableLanguage: true,
     visionBackend: VISION_BACKEND,
     languageInvoker: invokeLanguage,
-    autoRun: true,
+    autoRun: AUTO_RUN_ENABLED,
     intervalMs: INTERVAL_MS,
     sensorIntervalMs: SENSOR_INTERVAL_MS,
     phonePolicy: PHONE_POLICY,
