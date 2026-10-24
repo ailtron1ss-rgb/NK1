@@ -1,6 +1,6 @@
 ## NK1 WorkPass328 — Close failed cognitive cycles explicitly (2026-10-24)
 
-- [CLOSED-LOOP] Added a terminal `failure` phase to `RuntimeClosureLedger`. A same-tick durability receipt can no longer overwrite the last cycle's failure status.
+- [CLOSED-LOOP] Added a terminal `failure` phase to `RuntimeClosureLedger`. Durability/restore bookkeeping cannot erase the last cycle's `FAIL`; a later actual step can replace it.
 - [CLOSED-LOOP] Added `CausalDomainClosureLedger.failPending()` for exceptions/cancellations before normal closure, preserving a bounded failure reason and denying causal success credit.
 - [CLOSED-LOOP] Added `failLatest()` so batch-finalization or emergency-checkpoint failures can downgrade an already-recorded cycle instead of leaving stale PASS evidence.
 - [INTERRUPT] `OrganismRuntime.stepInternal` now checks `AbortSignal` immediately before embodied-action dispatch; an aborted planned action fails closed before physical actuation.
