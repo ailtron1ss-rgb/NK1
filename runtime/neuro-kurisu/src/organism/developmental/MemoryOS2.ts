@@ -1208,10 +1208,21 @@ export class MemoryOS2{
  }
 
  temporalDiagnostics(){
-   const now=Date.now(); const current=this.state.items.filter(m=>{const from=Number(m.validFromAt??m.createdAt),until=m.validUntilAt==null?Infinity:Number(m.validUntilAt);return from<=now&&now<until;}).length;
-   const historical=this.state.items.filter(m=>m.validUntilAt!=null).length;
-   const chains=new Map<string,number>(); for(const m of this.state.items)chains.set(m.revisionGroupId??m.id,Math.max(chains.get(m.revisionGroupId??m.id)??0,Number(m.revisionSequence??1)));
-   const maxRevision=Math.max(0,...chains.values());
+   const now=Date.now();
+   let current=0,historical=0,maxRevision=0;
+   const chains=new Map<string,number>();
+   // Keep the observable result unchanged while counting validity and revision
+   // metadata in a single corpus pass instead of allocating filtered arrays.
+   for(const memory of this.state.items){
+     const from=Number(memory.validFromAt??memory.createdAt);
+     const until=memory.validUntilAt==null?Number.POSITIVE_INFINITY:Number(memory.validUntilAt);
+     if(from<=now&&now<until)current++;
+     if(memory.validUntilAt!=null)historical++;
+     const group=memory.revisionGroupId??memory.id;
+     const sequence=Number(memory.revisionSequence??1);
+     chains.set(group,Math.max(chains.get(group)??0,sequence));
+     maxRevision=Math.max(maxRevision,sequence);
+   }
    return {current,historical,revisedItems:historical,revisionGroups:chains.size,maxRevision,validityCoverage01:this.state.items.length?clamp((current+historical)/this.state.items.length):1};
  }
  temporalChain(id:string){
