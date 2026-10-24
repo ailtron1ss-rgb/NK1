@@ -318,12 +318,15 @@ rollbackHexisFabric.decideHmx(rollbackStage.stagingId, 'accept');
 assert.throws(() => rollbackHexisFabric.decideHmx(rollbackStage.stagingId, 'apply'), /hmx-canonical-apply-failed/);
 assert.equal(rollbackHexisFabric.getHmxStage(rollbackStage.stagingId)?.status, 'accepted',
   'a failed apply must not mark the stage complete');
+assert.equal(rollbackHexisFabric.getHmxStage(rollbackStage.stagingId)?.applicationAttempts, 1,
+  'a failed apply attempt must be retained so restart-safe retries use a new canonical command ID');
 assert.equal(rollbackMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 0,
   'partially inserted HMX memories must be rolled back');
 assert.equal(rollbackMemoryRuntime.semanticMemory.snapshot().nodes.length, 0,
   'partially projected semantic graph nodes must also roll back with failed canonical-memory application');
 const retryAfterRollback = rollbackHexisFabric.decideHmx(rollbackStage.stagingId, 'apply');
 assert.equal(retryAfterRollback?.status, 'applied', 'the same approved stage must remain safely retryable after compensation');
+assert.equal(retryAfterRollback?.application?.attempt, 2, 'a compensated retry uses a distinct durable attempt ID');
 assert.equal(rollbackMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 2);
 assert.equal(rollbackMemoryRuntime.semanticMemory.snapshot().edges.length, 1,
   'retry must commit graph relations after all canonical memory rows succeed');
