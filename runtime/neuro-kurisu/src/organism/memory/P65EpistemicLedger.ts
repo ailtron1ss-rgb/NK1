@@ -43,7 +43,7 @@ export class P65EpistemicLedger{
    const rawParentIds=value.parentIds;
    if(rawParentIds!==undefined&&(!Array.isArray(rawParentIds)||rawParentIds.length>8||
       rawParentIds.some((v)=>typeof v!=='string'||v.length===0||v.length>256||v.trim()!==v||
-        /[\\u0000-\\u001f\\u007f-\\u009f]/.test(v))||new Set(rawParentIds).size!==rawParentIds.length))continue;
+        /[\u0000-\u001f\u007f-\u009f]/.test(v))||new Set(rawParentIds).size!==rawParentIds.length))continue;
    const parentIds=(rawParentIds??[]) as string[];
    const evidenceSources=Array.isArray(value.evidenceSources)?[...new Set(value.evidenceSources.filter((v):v is string=>typeof v==='string'&&v.trim().length>0&&v.length<=160).map(v=>v.trim().toLowerCase()))].slice(0,32):[source.toLowerCase()];
    const evidenceKeys=Array.isArray(value.evidenceKeys)?[...new Set(value.evidenceKeys.filter((v):v is string=>typeof v==='string'&&v.length>0&&v.length<=320))].slice(-64):[];
