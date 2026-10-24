@@ -12,7 +12,9 @@ await resumed.init();
 for(let i=0;i<5;i++){
   const r=await resumed.observe({text:i%2?'помоги проверить и исследовать':'давай исследуем',novelty:.72,worldContext:{tick:i+1,location:`memory-lab-${i}`,energy:.8,attention:.8,uncertainty:.62,facts:['shared-context'],objects:[],events:[]}});
   assert.ok(r.decision.selected);
-  await resumed.feedback({success:.74,reward:.71,surprise:.14});
+  // The core observation cycle itself updates developmental curriculum state.
+  // Keep this persistence test focused on restart behavior; outcome/action binding
+  // is covered by the dedicated P23 verified-feedback tests.
 }
 const d=resumed.personalCurriculumDiagnostics();
 assert.ok(d.cycles>=5,JSON.stringify(d));
