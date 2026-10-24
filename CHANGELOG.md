@@ -1,3 +1,9 @@
+## NK1 WorkPass549 — execute observer identity regression in CI (2026-10-24)
+
+- Wired `workpass548-observer-source-identity.mjs` into the focused reality-to-learning workflow and expanded its path filters so changes to `ExternalObserverFabric.ts` and the new regression actually trigger the job on `feature/feedback` and relevant pull requests into `integration`.
+- The workflow now runs the observer/ledger bridge, P23 reality-promotion gate, and observer-source identity regression together under Node.js 22.
+- **Validation boundary:** workflow configuration is committed; execution and test outcomes must be confirmed from the resulting GitHub Actions run, not inferred from the commit succeeding.
+
 ## NK1 WorkPass548 — freeze registered observer-source identity (2026-10-24)
 
 - `ExternalObserverFabric.registerSource(...)` now rejects attempts to reuse an existing source ID with a different source class, channel, or independence key. A single registered source can no longer silently re-label itself as a distinct independent witness.
