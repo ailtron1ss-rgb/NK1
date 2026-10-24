@@ -145,6 +145,26 @@ assert.equal(growth.seedAnalysis.validation.completeSeedCoverage, true);
 assert.equal(growth.seedAnalysis.holdout.completeSeedCoverage, true);
 assert.equal(growth.eligible, true, 'consistent improvements across all seeds should pass the seed gate');
 
+const sparseBaseline = structuredClone(growthWithAuthorityBaseline);
+const sparseCandidate = structuredClone(growthWithAuthorityCandidate);
+for (const envelope of [sparseBaseline, sparseCandidate]) {
+  envelope.evaluation.validation = envelope.evaluation.validation.filter(
+    row => row.trialId !== 'validation-a-seed-23',
+  );
+  envelope.evaluation.provenance.runBindings = envelope.evaluation.provenance.runBindings.filter(
+    row => row.trialId !== 'validation-a-seed-23',
+  );
+  envelope.evaluationFingerprint = digest(envelope.evaluation);
+}
+const incompleteCoverage = compareMatchedIndependentEvaluations(sparseBaseline, sparseCandidate, {
+  requireSeedGrowthGate: true,
+});
+assert.equal(incompleteCoverage.seedAnalysis.validation.pairedSeedCount, 4);
+assert.equal(incompleteCoverage.seedAnalysis.validation.completeSeedCoverage, false);
+assert.ok(incompleteCoverage.reasons.includes('independent-evaluation-incomplete-seed-task-coverage'));
+assert.equal(incompleteCoverage.eligible, false, 'matched arrays cannot hide a missing task within one seed');
+
+
 // Four held-out seeds improve; one independently verified task failure remains valid
 // negative evidence and must not be silently discarded as "untrusted" merely because
 // its verifier-bound outcome is false. The macro-average is positive, yet the strict
