@@ -1,3 +1,11 @@
+## NK1 WorkPass526 — connect memory evidence to durable checkpoint projection (2026-10-24)
+
+- The real checkpoint projector now persists the causal autobiographical graph and memory-to-world influence evidence, in addition to retention policy and causal evidence state.
+- The projector falls back to the canonical `MemorySubsystemRuntime` for memory-owned components when legacy root aliases are absent.
+- `MemorySubsystemRuntime.restoreFromPersisted` now accepts those components from the durable `system` projection as well as legacy memory/advanced shapes.
+- Added `test:memory-causal-persistence-projection`: exercise runtime state → checkpoint projection → new runtime restore.
+- **Validation boundary:** implementation and test are committed; the regression and runtime typecheck have not been executed in this pass.
+
 ## NK1 WorkPass525 — close memory subsystem persistence gap (2026-10-24)
 
 - The canonical memory runtime snapshot now includes retention-economy learning, causal evidence lineage, the autobiographical causal graph, and memory-to-world replay evidence.
