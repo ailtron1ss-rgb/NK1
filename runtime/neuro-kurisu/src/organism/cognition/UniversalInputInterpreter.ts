@@ -1,5 +1,6 @@
 import type { OrganismObservation } from '../core/types.ts';
 import type { Modality, ModalityObservation } from '../body/MultimodalPerception.ts';
+import type { P41PerceptionState } from './P41SemanticPerception.ts';
 
 export type UniversalModalityInput =
   Pick<ModalityObservation, 'modality' | 'summary' | 'confidence' | 'salience' | 'evidence'> &
@@ -79,6 +80,8 @@ export function buildUniversalInputInterpretation(rawInput: {
   userText?: unknown;
   observation: OrganismObservation;
   body?: UniversalInterpreterBody;
+  /** Bounded recent semantic-perception memory; cached values are never treated as current-frame facts. */
+  perception?: Partial<P41PerceptionState> | null;
   at?: unknown;
 }): UniversalInputInterpretation {
   if (!isRecord(rawInput)) throw new TypeError('universal-interpreter-input-must-be-object');
@@ -91,6 +94,62 @@ export function buildUniversalInputInterpretation(rawInput: {
   const at = atCandidate !== null && atCandidate >= 0 ? Math.floor(atCandidate) : Date.now();
   const modalityInputs: UniversalModalityInput[] = [];
   const unresolved: string[] = [];
+  const p41 = isRecord(input.perception) ? input.perception as unknown as Partial<P41PerceptionState> : null;
+  const MAX_CACHED_PERCEPTION_AGE_MS = 120_000;
+  let hasDirectVisionSemantics = false;
+  let hasDirectAudioEvents = false;
+  const isFreshPerceptionTime = (value: unknown): boolean => {
+    const timestamp = finiteNumber(value);
+    if (timestamp === null || timestamp <= 0) return false;
+    const ageMs = at - timestamp;
+    return ageMs >= -30_000 && ageMs <= MAX_CACHED_PERCEPTION_AGE_MS;
+  };
+  const cachedPerceptionItems = (modality: 'vision' | 'audio'): Array<{ text: string; confidence: number; ageMs: number }> => {
+    if (!p41) return [];
+    const items: Array<{ text: string; confidence: number; ageMs: number }> = [];
+    for (const entity of safeRecordArray(p41.entities, 64)) {
+      if (!Array.isArray(entity.modalities) || !entity.modalities.includes(modality) ||
+          !((metric01(entity.present01) ?? 0) > 0.25) || !isFreshPerceptionTime(entity.lastSeenAt)) continue;
+      const label = cleanText(entity.label, 80);
+      const confidence = metric01(entity.confidence01);
+      const lastSeenAt = finiteNumber(entity.lastSeenAt);
+      if (!label || confidence === null || lastSeenAt === null) continue;
+      items.push({ text: 'entity=' + label, confidence, ageMs: Math.max(0, at - lastSeenAt) });
+    }
+    for (const event of safeRecordArray(p41.events, 48)) {
+      if (!Array.isArray(event.modalities) || !event.modalities.includes(modality) ||
+          !isFreshPerceptionTime(event.lastAt)) continue;
+      const label = cleanText(event.label, 100);
+      const confidence = metric01(event.confidence01);
+      const lastAt = finiteNumber(event.lastAt);
+      if (!label || confidence === null || lastAt === null) continue;
+      items.push({ text: 'event=' + label, confidence, ageMs: Math.max(0, at - lastAt) });
+    }
+    if (modality === 'vision') {
+      for (const relation of safeRecordArray(p41.relations, 48)) {
+        if (relation.modality !== 'vision' || !isFreshPerceptionTime(relation.at)) continue;
+        const from = cleanText(relation.from, 64);
+        const kind = cleanText(relation.relation, 64);
+        const to = cleanText(relation.to, 64);
+        const confidence = metric01(relation.confidence01);
+        const timestamp = finiteNumber(relation.at);
+        if (!from || !kind || !to || confidence === null || timestamp === null) continue;
+        items.push({ text: 'relation=' + from + ' ' + kind + ' ' + to, confidence, ageMs: Math.max(0, at - timestamp) });
+      }
+    }
+    return items.slice(0, 12);
+  };
+  const addRecentPerception = (modality: 'vision' | 'audio') => {
+    const items = cachedPerceptionItems(modality);
+    if (!items.length) return;
+    const meanConfidence = items.reduce((sum, item) => sum + item.confidence, 0) / items.length;
+    const maximumAgeMs = Math.max(...items.map(item => item.ageMs));
+    const freshnessDiscount = 1 - Math.min(1, maximumAgeMs / MAX_CACHED_PERCEPTION_AGE_MS) * 0.35;
+    const detail = items.map(item => item.text + ' (age_ms=' + Math.round(item.ageMs) + ')').join('; ');
+    add(modality, 'recent cached P41 perception, not a current-frame observation: ' + detail,
+      meanConfidence * freshnessDiscount, 0.38,
+      ['p41-cached-perceptual-evidence', 'not-current-frame', 'semantic-output-not-independent-verification']);
+  };
   const addUnresolved = (value: string) => { if (!unresolved.includes(value)) unresolved.push(value); };
 
   const add = (
@@ -144,6 +203,7 @@ export function buildUniversalInputInterpretation(rawInput: {
       relations.length ? 'relations=' + relations.join(', ') : '',
     ].filter(Boolean);
     if (semanticParts.length) {
+      hasDirectVisionSemantics = true;
       const objectConfidences = objects.map(object => object.confidence).filter((value): value is number => value !== null);
       const defaultConfidence = objectConfidences.length
         ? objectConfidences.reduce((sum, value) => sum + value, 0) / objectConfidences.length
@@ -161,6 +221,8 @@ export function buildUniversalInputInterpretation(rawInput: {
     }
   }
 
+  if (!hasDirectVisionSemantics) addRecentPerception('vision');
+
   const audio = isRecord(observation.audio) ? observation.audio : null;
   if (audio) {
     const audioEvents = safeRecordArray(audio.events, 8).map(event => ({
@@ -171,6 +233,7 @@ export function buildUniversalInputInterpretation(rawInput: {
     const sampleRate = finiteNumber(audio.sampleRate);
     const audioConfidence = metric01(audio.confidence01) ?? (audioEvents.length ? 0.4 : 0.2);
     if (audioEvents.length) {
+      hasDirectAudioEvents = true;
       const labels = audioEvents.map(event => event.label +
         (event.confidence === null ? '' : ' (' + event.confidence.toFixed(2) + ')')).join(', ');
       add('audio', 'audio-event labels=' + labels + '; waveform samples=' + samples +
@@ -186,6 +249,15 @@ export function buildUniversalInputInterpretation(rawInput: {
       addUnresolved('audio-signal-has-no-semantic-event-or-transcript');
     } else {
       addUnresolved('audio-input-has-no-usable-samples-or-event-labels');
+    }
+  }
+
+  if (!hasDirectAudioEvents) addRecentPerception('audio');
+  if (p41 && Array.isArray(p41.pending)) {
+    for (const pending of safeRecordArray(p41.pending, 64)) {
+      if (pending.status !== 'pending' || (finiteNumber(pending.expiresAt) ?? 0) <= at) continue;
+      if (pending.modality === 'vision') addUnresolved('p41-vision-perception-pending');
+      if (pending.modality === 'audio') addUnresolved('p41-audio-perception-pending');
     }
   }
 

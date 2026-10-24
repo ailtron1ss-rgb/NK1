@@ -59,6 +59,57 @@ assert.ok(rich.modalityInputs.find(item => item.modality === 'world')?.evidence.
 assert.match(rich.modalityInputs.find(item => item.modality === 'audio')?.summary ?? '', /transcript unavailable/);
 assert.doesNotMatch(rich.modalityInputs.find(item => item.modality === 'audio')?.summary ?? '', /0\.99/);
 
+const now = Date.now();
+const cachedPerception = buildUniversalInputInterpretation({
+  at: now,
+  observation: {},
+  perception: {
+    version: 1,
+    tick: 7,
+    entities: [
+      { id: 'vision-1', label: 'red mug', kind: 'object', confidence01: 0.82, salience01: 0.7, present01: 0.9, firstSeenAt: now - 1500, lastSeenAt: now - 1500, observations: 2, modalities: ['vision'], position: null },
+    ],
+    events: [
+      { id: 'audio-1', label: 'door chime', confidence01: 0.76, modalities: ['audio'], startedAt: now - 2500, lastAt: now - 2500, persistence01: 0.6, evidenceKind: 'model-output' },
+    ],
+    relations: [
+      { id: 'rel-1', from: 'red mug', relation: 'on', to: 'desk', confidence01: 0.7, modality: 'vision', evidenceKind: 'model-output', at: now - 1500 },
+    ],
+    pending: [
+      { id: 'pending-vision', modality: 'vision', query: 'scene semantics', expectedInformationGain01: 0.7, estimatedCost01: 0.2, priority01: 0.8, createdAt: now - 1000, expiresAt: now + 30000, status: 'pending' },
+    ],
+  },
+});
+assert.ok(cachedPerception.modalities.includes('vision'));
+assert.ok(cachedPerception.modalities.includes('audio'));
+assert.match(cachedPerception.modalityInputs.find(item => item.modality === 'vision')?.summary ?? '', /not a current-frame observation/);
+assert.match(cachedPerception.modalityInputs.find(item => item.modality === 'vision')?.summary ?? '', /relation=red mug on desk/);
+assert.match(cachedPerception.modalityInputs.find(item => item.modality === 'audio')?.summary ?? '', /event=door chime/);
+assert.ok(cachedPerception.unresolved.includes('p41-vision-perception-pending'));
+
+const directVisionWins = buildUniversalInputInterpretation({
+  at: now,
+  observation: { vision: { sceneLabel: 'current camera frame', confidence01: 0.91, objects: [{ label: 'current cup', confidence01: 0.9 }] } },
+  perception: {
+    entities: [
+      { id: 'old-cached-vision', label: 'stale-looking previous mug', kind: 'object', confidence01: 0.78, salience01: 0.6, present01: 0.95, firstSeenAt: now - 1000, lastSeenAt: now - 1000, observations: 3, modalities: ['vision'], position: null },
+    ],
+  },
+});
+assert.equal(directVisionWins.modalityInputs.filter(item => item.modality === 'vision').length, 1,
+  'current direct semantic vision should take precedence over cached P41 vision to avoid duplicate evidence');
+
+const stalePerception = buildUniversalInputInterpretation({
+  at: now,
+  observation: {},
+  perception: {
+    entities: [
+      { id: 'stale-vision', label: 'old object', kind: 'object', confidence01: 1, salience01: 0.9, present01: 1, firstSeenAt: now - 600000, lastSeenAt: now - 600000, observations: 1, modalities: ['vision'], position: null },
+    ],
+  },
+});
+assert.ok(!stalePerception.modalities.includes('vision'), 'stale semantic perception must not be promoted into a recent input');
+
 const rawVision = buildUniversalInputInterpretation({
   observation: { vision: { features: [0.1, 0.2], confidence01: 0.9 } },
 });
@@ -110,6 +161,7 @@ const runtimeSource = await readFile(new URL('../src/organism/core/OrganismRunti
 const coreSource = await readFile(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
 const runtimePackage = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 assert.match(runtimeSource, /buildUniversalInputInterpretation/);
+assert.match(runtimeSource, /perception: this\.core\.p41PerceptionSnapshot\(\)/, 'runtime must supply canonical P41 semantic-perception memory to the interpreter');
 assert.match(runtimeSource, /this\.core\.fuseMultimodalObservations\(modalityEvents\)/);
 assert.match(runtimeSource, /formatUniversalInterpretationContext\(interpretation, fused\)/);
 assert.match(coreSource, /fuseMultimodalObservations\(events: Array<import\('\.\.\/body\/MultimodalPerception\.ts'\)\.ModalityObservation>\)/);

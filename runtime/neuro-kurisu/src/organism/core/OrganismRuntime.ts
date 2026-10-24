@@ -589,6 +589,9 @@ export class OrganismRuntime {
     const interpretation = buildUniversalInputInterpretation({
       userText: externalText,
       observation,
+      // P41 stores semantic results produced by the configured vision/audio backends.
+      // The interpreter age-bounds these as cached perception rather than current-frame evidence.
+      perception: this.core.p41PerceptionSnapshot(),
       body: {
         bodyEnergy01: body.bodyEnergy01,
         cognitiveCapacity01: body.cognitiveCapacity01,

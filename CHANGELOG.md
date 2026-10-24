@@ -1,3 +1,23 @@
+## NK1 WorkPass332 — prioritize current perception and enforce strict cache freshness (2026-10-24)
+
+- [FIXED] Corrected the cached entity presence predicate so only entities with `present01 > 0.25` are admitted; low-presence residuals no longer pass due to operator precedence.
+- [ARBITRATION] Fresh direct semantic vision/audio events now suppress cached records from the same modality for that cycle, avoiding duplicate votes from the same underlying content.
+- [FRESHNESS] Cached P41 timestamps now allow at most 30 seconds of future clock skew and require age no greater than 120 seconds.
+- [REGRESSION] Added a direct-vision-over-cache case and retained stale-cache rejection.
+- [VALIDATION] Source/test updates are committed together; exact-head test execution remains unverified while GitHub Actions is queued.
+
+---
+
+## NK1 WorkPass331 — connect P41 semantic-perception memory to the interpreter (2026-10-24)
+
+- [WIRED] `OrganismRuntime` now passes the canonical P41 perception snapshot into `UniversalInputInterpreter`, so actual configured semantic vision/audio results can inform later cognitive proposals even when the environment observation does not repeat them.
+- [BOUNDED] Cached entities/events/vision relations are accepted only when their source timestamps are within a 120-second freshness window; summaries identify them as cached and not current-frame evidence. Expired, malformed or stale records are omitted.
+- [AWARENESS] Active P41 vision/audio requests are exposed as unresolved items instead of being mistaken for successful perception.
+- [REGRESSION] Added cases for recent cached vision/audio results, relations, pending perception and stale-record rejection.
+- [VALIDATION] Source/test changes committed; exact-head Actions jobs still need to execute. No learning score uplift claimed.
+
+---
+
 ## NK1 WorkPass330 — explicit epistemic labels across interpreted inputs (2026-10-24)
 
 - [HARDENED] Added machine-readable evidence markers distinguishing user/caller claims, vision-model semantic output, audio event labels, external goal claims and incoming world-event claims from independently verified facts.

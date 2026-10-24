@@ -1,5 +1,15 @@
 # NeuroCore — repository working rules
 
+## Latest durable checkpoint — WorkPass332 (2026-10-24)
+
+- The interpreter consumes recent cached P41 vision entities/relations and audio event labels only when evidence timestamps are within a 120-second age bound, allowing at most 30 seconds of future clock skew.
+- A corrected presence gate excludes entity residues with `present01 <= 0.25`.
+- Current semantic vision/audio data take precedence over cached records of the same modality to avoid duplicate evidence.
+- Existing unresolved P41 vision/audio requests remain explicit; stale/malformed cached records are not promoted.
+- The targeted test is expanded, but exact-head execution/typecheck remains unverified. Published release ZIP unchanged.
+
+---
+
 ## Latest durable checkpoint — WorkPass330 (2026-10-24)
 
 - Interpreted text, vision labels, audio event labels, caller goals and incoming world events now carry explicit machine-readable epistemic markers.

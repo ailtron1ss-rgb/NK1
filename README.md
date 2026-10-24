@@ -1,3 +1,23 @@
+## Current source-stack checkpoint — WorkPass332 (2026-10-24)
+
+- The interpreter consumes recent cached P41 vision entities/relations and audio event labels only when evidence timestamps are within a 120-second age bound, allowing at most 30 seconds of future clock skew.
+- A corrected presence gate excludes entity residues with `present01 <= 0.25`.
+- Current semantic vision/audio data take precedence over cached records of the same modality to avoid duplicate evidence.
+- Existing unresolved P41 vision/audio requests remain explicit; stale/malformed cached records are not promoted.
+- The targeted test is expanded, but exact-head execution/typecheck remains unverified. Published release ZIP unchanged.
+
+---
+
+## Current source-stack checkpoint — WorkPass331 (2026-10-24)
+
+- The universal interpreter now receives the canonical P41 semantic-perception snapshot from runtime, covering cached vision entities/relations and audio events that are absent from the current environment observation.
+- Cached P41 evidence is age-bounded to 120 seconds and marked as prior perception, not a current-frame fact; stale/malformed records are omitted.
+- Active vision/audio perception requests are surfaced as unresolved.
+- Regression source covers fresh and stale perception memory.
+- Exact-head tests/typecheck remain unverified; published release ZIP unchanged.
+
+---
+
 ## Current source-stack checkpoint — WorkPass330 (2026-10-24)
 
 - Interpreted text, vision labels, audio event labels, caller goals and incoming world events now carry explicit machine-readable epistemic markers.
