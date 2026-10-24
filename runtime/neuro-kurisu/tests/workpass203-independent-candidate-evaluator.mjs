@@ -288,6 +288,11 @@ const unbound = await unboundEvaluator({
 });
 assert.equal(unbound.evaluation.validation[0].taskSuccess.passed, false,
   'a verifier must attest the exact execution binding before a trial can pass');
+assert.equal(unbound.evaluation.validation[0].skillQuality.executability, 1,
+  'a completed sandbox execution remains executable even when its trace cannot be independently bound');
+assert.equal(unbound.evaluation.provenance.runBindings[0].executable, true);
+assert.equal(unbound.evaluation.provenance.runBindings[0].runId, null,
+  'unbound execution must not export its run ID as trusted provenance');
 assert.equal(unbound.evaluation.provenance.runBindings[0].runId, null,
   'unbound run IDs must not enter trusted provenance');
 assert.equal(unbound.evaluation.provenance.runBindings[0].observedStepIds.length, 0,
