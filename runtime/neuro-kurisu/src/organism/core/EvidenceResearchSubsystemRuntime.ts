@@ -183,7 +183,6 @@ export class EvidenceResearchSubsystemRuntime {
     this.realityEvidenceLedger.restore(ledgerToRestore);
     // Older valid rows without independenceKey inherit the registered source key
     // rather than falling back to a potentially weaker row ID.
-    const registeredSources=new Map(observerState.sources.map(source=>[source.id,source]));
     for(const observation of observerState.observations){
       const source=registeredSources.get(observation.sourceId);
       if(!source || source.sourceClass!==observation.sourceClass || source.channel!==observation.channel) continue;
