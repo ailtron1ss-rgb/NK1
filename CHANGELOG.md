@@ -1,3 +1,11 @@
+## Runtime compatibility follow-up (2026-10-24)
+
+- [FIX] Runtime typecheck now resolves the full Node.js declarations from the already-pinned `@types/node` dependency in the canonical app lockfile. Removed partial ambient stubs that masked missing APIs and caused false module/global type shapes; `strict` remains enabled.
+- [FIX] Corrected the `ReplaySelectionOptions` import to its defining module, aligned the retention helper input with `gapMs`, initialized `verifiedNonHoldoutExecutions`, guarded optional skill-query numbers, and preserved the literal dataset schema tags.
+- [FIX] Removed a duplicate cognitive-cycle verifier, retaining the implementation with additional optional-stage and parent-edge checks. Corrected the control-character regex to use actual Unicode escapes.
+- [FIX] Updated the causal-stream regression to include the observed action name and matching success field expected by the current causal-evidence gate.
+- [EVIDENCE] PR CI on the prior head passed app typecheck and app development build, then exposed runtime TypeScript errors and the stale causal test fixture. This batch is committed to the same draft PR; rerun results are still required. No production-readiness or learning-uplift claim is made.
+
 ## Compatibility repair — avatar storage test typecheck (2026-10-24)
 
 - [DIAGNOSIS] Exact-head CI run [40061272363](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40061272363) passed the 232-test app script regression suite, then failed `npm --prefix app run typecheck` on six diagnostics in `app/src/legacy/avatar/safeLocalStorage.test.mjs`: implicit-any test-helper parameters and TypeScript's restriction on deleting a required property.

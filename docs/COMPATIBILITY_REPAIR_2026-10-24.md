@@ -26,3 +26,17 @@ The workflow stopped at typecheck, so the app build, runtime typecheck and later
 This patch repairs one demonstrated compatibility blocker, not full compatibility. The repository's own release notes still flag production build with database migrations, real browser/Live2D E2E, actual Android/Termux audio synchronization, independent retrieval uplift, endurance/soak coverage, and license review as unresolved. Source-branch Actions history also contains repeated failures, so every new run must be classified from its actual job steps/logs rather than from the conclusion alone.
 
 The published WorkPass70 archive remains a separately versioned release artifact. No release ZIP was rebuilt or replaced by this change.
+
+## Runtime compatibility follow-up (2026-10-24)
+
+The latest CI on the pre-follow-up PR merge head proved the first fix effective: the app regression suite, app typecheck, and development build passed. Runtime typecheck then exposed incomplete handwritten Node.js declarations that hid the actual Node API shape, alongside type-contract errors. In addition, the continual-learning workflow hit an older test fixture that did not provide the observed action result now required to create grounded causal evidence.
+
+Changes committed on `compat/avatar-storage-strict-types-20261024`:
+- Resolve Node.js API types through the canonical `@types/node` dependency already installed by CI, and remove conflicting partial ambient declarations.
+- Align `ReplaySelectionOptions` import ownership and `gapMs` property names; initialize a required compound-skill evidence counter.
+- Handle optional query numbers safely and preserve the exact dataset schema literal types.
+- Remove a duplicate cognitive-cycle verifier, retaining the more complete verifier with optional-stage and causal-edge checks.
+- Repair the over-escaped Unicode control-character regex.
+- Update the causal-stream test fixture to carry `lastAction` and `lastActionSuccess`; the runtime evidence gate was not relaxed.
+
+**Status: implementation committed; CI verification pending.** Exact-head app and runtime checks must pass before this repair can be considered validated. The release ZIP was not rebuilt or changed.
