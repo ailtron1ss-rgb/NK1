@@ -1,3 +1,14 @@
+# NK1 process supervision optimization — second pass (2026-10-24)
+
+- [OPTIMIZED] Unified `tools/super-install.mjs` with the shared process supervisor; npm install keeps live console output while the retained stdout/stderr diagnostics remain bounded, and process timeout/escalation logic is no longer duplicated.
+- [OPTIMIZED] `tools/super-doctor.mjs` runs independent Node/npm version probes concurrently with 5-second per-command deadlines and bounded output. Removed an unused Python version subprocess.
+- [OPTIMIZED] `tools/verify-final-release.mjs` runs independent read-only audits concurrently and checks file metadata with bounded batches of 64 entries rather than serial per-file `stat()` calls.
+- [REGRESSION] Added streamed-output coverage and extended the focused Node 24 workflow with syntax checks for orchestration scripts and a `npm run doctor` smoke step.
+- [VALIDATION STATUS] The first focused Node 24 process-supervision workflow passed its full configured step list on commit `eadd0a2ad19ae0677087f5569084026bdd5495da`. The newer second-pass changes require their own exact-head CI run; full runtime integration and measured release-verification timing remain open.
+- [SCOPE] No runtime cognition or learning uplift is claimed. `main` and the published Release ZIP remain unchanged.
+
+---
+
 # NK1 process supervision optimization — 2026-10-24
 
 - [OPTIMIZED] Added shared `tools/process-supervisor.mjs`: bounded stdout/stderr tails, wall-clock command deadlines, HTTP readiness polling, and staged process termination with POSIX process-group cleanup.
