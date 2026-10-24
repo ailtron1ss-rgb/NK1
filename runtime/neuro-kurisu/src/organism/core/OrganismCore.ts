@@ -364,7 +364,7 @@ import { CausalLifeGraph } from '../system/CausalLifeGraph.ts';
 import { CognitiveResourceEconomy } from '../system/CognitiveResourceEconomy.ts';
 import { RealityEvidenceLedger } from '../system/RealityEvidenceLedger.ts';
 import { UnifiedCognitiveCycle } from '../system/UnifiedCognitiveCycle.ts';
-import { EmotionAppraisalEngine, defaultEmotionAppraisalState } from '../system/EmotionAppraisalEngine.ts';
+import { EmotionAppraisalEngine, defaultEmotionAppraisalState, type LocalAffectHintInput } from '../system/EmotionAppraisalEngine.ts';
 import { MemoryCausalEconomy, defaultMemoryCausalEconomy } from '../system/MemoryCausalEconomy.ts';
 import { ActivePerceptionExecutor, defaultActivePerceptionExecutor, type ActivePerceptionModality } from '../system/ActivePerceptionExecutor.ts';
 import { ActivePerceptionNeuralSubstrate } from '../cognition/ActivePerceptionNeuralSubstrate.ts';
@@ -2506,6 +2506,14 @@ export class OrganismCore {
     setRuntimeClosure(snapshot: import('../system/RuntimeClosureLedger.ts').RuntimeClosureSnapshot): void { this.persisted.system.runtimeClosure = snapshot; }
     runtimeClosureSnapshot() { return structuredClone(this.persisted.system.runtimeClosure); }
     setEmotionAppraisal(snapshot: import('../system/EmotionAppraisalEngine.ts').EmotionAppraisalState): void { this.persisted.system.emotionAppraisal = snapshot; }
+    /** Feed a short-lived, bounded local-model affect cue into endogenous appraisal. */
+    observeLocalAffectHint(input: LocalAffectHintInput): boolean {
+        const accepted = this.cognitiveRuntime.emotionAppraisal.observeExternalAffectHint(input);
+        if (!accepted) return false;
+        this.persisted.system.emotionAppraisal = this.cognitiveRuntime.emotionAppraisal.snapshot();
+        this.markPersistenceDirty();
+        return true;
+    }
     p66Summary() { return this.p66InteroceptiveHomeostasis.summary(); }
     p67Summary() { return this.p67AutonomousGoalGenesis.summary(); }
     p68Summary() { return this.p68GoalEcology.summary(); }
@@ -9417,7 +9425,14 @@ export class OrganismCore {
                 this.developmentalNeural.neuralAutobiographicalCoreB271.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, selfLatent: this.developmentalNeural.neuralGerminalOrganismB270.snapshot().selfLatent, traits: this.developmentalNeural.neuralGerminalOrganismB270.autonomousSnapshot().traitValues, goal: this.developmentalNeural.neuralAutobiographicalCoreB271.snapshotAutobiography().proposedGoal, acceptedExternalEvidence01: projectEvidenceExternal ? 1 : 0 });
                 const b272GoalState = this.developmentalNeural.endogenousGoalGenesisB272.currentGoal();
                 const b272IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
-                const b272Learning = this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, externalEvidence01: projectEvidenceExternal ? 1 : 0, independentEvaluatorGain01: b272IndependentGain, acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal });
+                // B272 learns only from the action its own generator proposed. The
+                // canonical policy may choose a different action; crediting that action
+                // to B272 would violate its provenance contract and can abort the cycle.
+                if (b272GoalState?.action === trace.selected.action) {
+                    this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, externalEvidence01: projectEvidenceExternal ? 1 : 0, independentEvaluatorGain01: b272IndependentGain, acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal });
+                } else {
+                    this.developmentalNeural.endogenousGoalGenesisB272.recordOutcomeActionMismatch({ tick: state.tick, executedAction: trace.selected.action });
+                }
                 const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({ tick: state.tick, action: trace.selected.action, plan: b273Current.plan, reward01: gatedReward01, predictionError01: state.predictionError, independentGain01: b272IndependentGain, personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8), externalEvidence01: projectEvidenceExternal ? 1 : 0 });
                 const b274Diag = this.developmentalNeural.autonomousSkillLaboratoryB274.diagnostics();
@@ -9691,15 +9706,21 @@ export class OrganismCore {
             if (outcome.worldTransition) {
                 const b338GoalState = this.developmentalNeural.endogenousGoalGenesisB272.currentGoal();
                 const b338IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
-                this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
-                    tick: state.tick,
-                    action: trace.selected.action,
-                    reward01: gatedReward01,
-                    predictionError01: state.predictionError,
-                    externalEvidence01: projectEvidenceExternal ? 1 : 0,
-                    independentEvaluatorGain01: b338IndependentGain,
-                    acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
-                });
+                // Keep the real-world-transition branch under the same action-
+                // attribution guard as the synthetic branch above.
+                if (b338GoalState?.action === trace.selected.action) {
+                    this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
+                        tick: state.tick,
+                        action: trace.selected.action,
+                        reward01: gatedReward01,
+                        predictionError01: state.predictionError,
+                        externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                        independentEvaluatorGain01: b338IndependentGain,
+                        acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
+                    });
+                } else {
+                    this.developmentalNeural.endogenousGoalGenesisB272.recordOutcomeActionMismatch({ tick: state.tick, executedAction: trace.selected.action });
+                }
                 const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({
                     tick: state.tick,

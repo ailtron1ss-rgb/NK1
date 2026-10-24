@@ -40,6 +40,10 @@ export interface EmotionOutcomeCalibration {
   meanBenefit01:number;
 }
 
+export type LocalAffectLabel = 'neutral'|'joy'|'sadness'|'anger'|'fear'|'surprise'|'disgust'|'curiosity'|'uncertain';
+export interface LocalAffectHintInput { emotion:LocalAffectLabel; valence:number; arousal:number; confidence:number; at?:number; }
+export interface StoredLocalAffectHint { emotion:LocalAffectLabel; valence01:number; arousal01:number; confidence01:number; at:number; }
+
 export interface EmotionAppraisalState {
   version:2; episodes:number; lastTick:number; lastAt:number; lastLabel:EmotionLabel;
   meanArousal01:number; meanValence01:number; meanStress01:number; meanAttentionCapture01:number;
@@ -47,16 +51,27 @@ export interface EmotionAppraisalState {
   feelings:FeelingEpisode[];
   interoception:InteroceptiveAffectState;
   outcomes:Record<string,EmotionOutcomeCalibration>;
+  /** Bounded, short-lived affect hint from an auxiliary model; never a user prompt or authority. */
+  externalAffectHint:StoredLocalAffectHint|null;
 }
 
 
 const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const localAffectLabels:LocalAffectLabel[]=['neutral','joy','sadness','anger','fear','surprise','disgust','curiosity','uncertain'];
+const restoreLocalAffectHint=(raw:unknown,now=Date.now()):StoredLocalAffectHint|null=>{
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+  const value=raw as Record<string,unknown>;
+  const at=Number(value.at),valence01=Number(value.valence01),arousal01=Number(value.arousal01),confidence01=Number(value.confidence01);
+  if(!localAffectLabels.includes(value.emotion as LocalAffectLabel)||!Number.isSafeInteger(at)||at<=0||at>now+5000||now-at>15000)return null;
+  if(!Number.isFinite(valence01)||valence01<0||valence01>1||!Number.isFinite(arousal01)||arousal01<0||arousal01>1||!Number.isFinite(confidence01)||confidence01<0||confidence01>1)return null;
+  return {emotion:value.emotion as LocalAffectLabel,valence01,arousal01,confidence01,at};
+};
 const emptyInteroception=():InteroceptiveAffectState=>({
   cycles:0, meanMismatch01:.18, lastMismatch01:.18, regulationPressure01:.18, stability01:.72, recovery01:.5, predictionCalibration01:.5,
   lastObserved:{energy01:.68,thermal01:.2,capacity01:.72,load01:.38},
   predicted:{energy01:.68,thermal01:.2,capacity01:.72,load01:.38},
 });
-const empty=():EmotionAppraisalState=>({version:2,episodes:0,lastTick:-1,lastAt:0,lastLabel:'calm',meanArousal01:0.22,meanValence01:0.5,meanStress01:0.2,meanAttentionCapture01:0.2,history:[],feelings:[],interoception:emptyInteroception(),outcomes:{}});
+const empty=():EmotionAppraisalState=>({version:2,episodes:0,lastTick:-1,lastAt:0,lastLabel:'calm',meanArousal01:0.22,meanValence01:0.5,meanStress01:0.2,meanAttentionCapture01:0.2,history:[],feelings:[],interoception:emptyInteroception(),outcomes:{},externalAffectHint:null});
 
 export class EmotionAppraisalEngine {
   private state=empty();
@@ -66,9 +81,19 @@ export class EmotionAppraisalEngine {
       lastLabel:(['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective'] as string[]).includes(String(r.lastLabel))?r.lastLabel as EmotionLabel:d.lastLabel,
       history:Array.isArray(r.history)?r.history.slice(0,128):[], feelings:Array.isArray(r.feelings)?r.feelings.slice(0,128):[],
       interoception:{...d.interoception,...(r.interoception??{}),lastObserved:{...d.interoception.lastObserved,...(r.interoception?.lastObserved??{})},predicted:{...d.interoception.predicted,...(r.interoception?.predicted??{})}},
-      outcomes:{...d.outcomes,...(r.outcomes??{})}};
+      outcomes:{...d.outcomes,...(r.outcomes??{})},
+      externalAffectHint:restoreLocalAffectHint(r.externalAffectHint)};
   }
   snapshot(){return structuredClone(this.state);}
+
+  /** Accept a sanitized, short-lived affect signal. The next appraisal may blend at most 18%. */
+  observeExternalAffectHint(input:LocalAffectHintInput):boolean{
+    if(!input||typeof input!=='object'||!localAffectLabels.includes(input.emotion))return false;
+    const valence=Number(input.valence),arousal=Number(input.arousal),confidence=Number(input.confidence),at=Number(input.at??Date.now()),now=Date.now();
+    if(!Number.isFinite(valence)||valence< -1||valence>1||!Number.isFinite(arousal)||arousal<0||arousal>1||!Number.isFinite(confidence)||confidence<0||confidence>1||!Number.isSafeInteger(at)||at<=0||at>now+5000||now-at>15000)return false;
+    this.state.externalAffectHint={emotion:input.emotion,valence01:c((valence+1)/2),arousal01:c(arousal),confidence01:c(confidence),at};
+    return true;
+  }
 
   observeInteroception(input:{energy01:number;thermal01:number;capacity01:number;load01:number;homeostaticPressure01?:number}):InteroceptiveAffectState{
     const st=this.state.interoception;
@@ -99,8 +124,15 @@ export class EmotionAppraisalEngine {
   outcomeCalibration(action:string):EmotionOutcomeCalibration|null{return this.state.outcomes[String(action)]?structuredClone(this.state.outcomes[String(action)]):null;}
   appraise(input:{tick:number;at?:number;goalPressure01?:number;goalCongruence01?:number;controllability01?:number;novelty01?:number;selfRelevance01?:number;socialMeaning01?:number;uncertainty01?:number;predictionError01?:number;homeostaticPressure01?:number;energy01?:number;success01?:number;external?:boolean}):EmotionEpisode{
     const a={relevance01:c(Math.max(input.goalPressure01??0,input.predictionError01??0,input.homeostaticPressure01??0)),goalCongruence01:c(input.goalCongruence01??(input.success01??.5)),controllability01:c(input.controllability01??(1-(input.uncertainty01??.35))),novelty01:c(input.novelty01??.35),selfRelevance01:c(input.selfRelevance01??.5),socialMeaning01:c(input.socialMeaning01??0),uncertainty01:c(input.uncertainty01??.35)};
-    const arousal=c(a.relevance01*.20+a.novelty01*.19+a.uncertainty01*.20+(input.predictionError01??0)*.17+(input.homeostaticPressure01??0)*.15+this.state.interoception.regulationPressure01*.09);
-    const valence=c(.5+(a.goalCongruence01-.5)*.48+a.controllability01*.10-(a.uncertainty01*.16)+((input.success01??.5)-.5)*.45);
+    const at=Number.isFinite(Number(input.at))?Number(input.at):Date.now();
+    const hint=this.state.externalAffectHint;
+    const hintAgeMs=hint?at-hint.at:Number.POSITIVE_INFINITY;
+    const hintWeight=hint&&hintAgeMs>=0&&hintAgeMs<=15000?Math.min(.18,hint.confidence01*.18):0;
+    if(hint&&hintAgeMs>15000)this.state.externalAffectHint=null;
+    const baseArousal=c(a.relevance01*.20+a.novelty01*.19+a.uncertainty01*.20+(input.predictionError01??0)*.17+(input.homeostaticPressure01??0)*.15+this.state.interoception.regulationPressure01*.09);
+    const arousal=c(baseArousal*(1-hintWeight)+(hint?.arousal01??baseArousal)*hintWeight);
+    const baseValence=c(.5+(a.goalCongruence01-.5)*.48+a.controllability01*.10-(a.uncertainty01*.16)+((input.success01??.5)-.5)*.45);
+    const valence=c(baseValence*(1-hintWeight)+(hint?.valence01??baseValence)*hintWeight);
     const stress=c((1-a.controllability01)*.30+a.uncertainty01*.20+(input.predictionError01??0)*.22+(input.homeostaticPressure01??0)*.18+this.state.interoception.lastMismatch01*.10);
     const dominance=c(a.controllability01*.62+a.selfRelevance01*.18+(input.success01??.5)*.20);
     let label:EmotionLabel='calm'; let actionTendency:EmotionActionTendency='engage';
