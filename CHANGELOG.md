@@ -1,3 +1,8 @@
+## 2026-10-24 — Prevent parser-only fallback from passing typecheck
+
+- [TYPECHECK] When no TypeScript compiler is available, runtime parsing still reports `TYPECHECK=PARTIAL`, but the wrapper now exits with code 2. A semantic typecheck command therefore cannot succeed solely because syntax parsing succeeded.
+- [REGRESSION] The compiler-selection test asserts the partial status and non-zero exit, while keeping separate coverage for syntax errors (exit 1) and compiler diagnostics (original non-zero exit propagated).
+
 ## 2026-10-24 — Repair strict JS checking in avatar-storage tests
 
 - [TYPECHECK] Corrected six existing `checkJs` errors in `app/src/legacy/avatar/safeLocalStorage.test.mjs`: annotated test-double parameters and used `Reflect.deleteProperty` for optional global cleanup instead of deleting a required typed property.
