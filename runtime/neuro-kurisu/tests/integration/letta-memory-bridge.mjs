@@ -2,15 +2,16 @@ import assert from 'node:assert/strict';
 import { LettaMemoryBridge } from '../../src/organism/integration/letta/LettaMemoryBridge.ts';
 
 function fakeClient() {
-  const calls = { created: [], prompts: [], closedSessions: 0, clientClosed: 0 };
+  const calls = { created: [], sessionOptions: [], prompts: [], closedSessions: 0, clientClosed: 0 };
   let nextResponse = 'Memory record accepted by test fake.';
   const client = {
     async createAgent(options) {
       calls.created.push(options);
       return 'agent-nk1-test';
     },
-    resumeSession(agentId) {
+    resumeSession(agentId, options = {}) {
       assert.equal(agentId, 'agent-nk1-test');
+      calls.sessionOptions.push(options);
       return {
         async ready() {},
         async send(prompt) {
@@ -39,7 +40,16 @@ assert.equal(initialRecall.ok, true);
 assert.equal(initialRecall.trust, 'untrusted-candidate');
 assert.equal(calls.created.length, 1);
 assert.equal(calls.created[0].memfs, true);
+assert.deepEqual(calls.created[0].baseTools, []);
+assert.deepEqual(calls.created[0].skillSources, []);
+assert.equal(calls.created[0].hidden, true);
+assert.equal(calls.created[0].systemInfoReminder, false);
 assert.match(calls.created[0].systemPrompt, /persistent memory filesystem/i);
+assert.deepEqual(calls.sessionOptions[0].allowedTools, ['Read', 'Edit', 'Write', 'Glob', 'Grep', 'LS']);
+assert.equal(calls.sessionOptions[0].permissionMode, 'acceptEdits');
+assert.equal(calls.sessionOptions[0].filesystemConfinement, 'memory');
+assert.deepEqual(calls.sessionOptions[0].skillSources, []);
+assert.equal(calls.sessionOptions[0].systemInfoReminder, false);
 
 const written = await bridge.recordExperience({
   id: 'record-1',
