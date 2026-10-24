@@ -167,6 +167,32 @@ assert(goalPopulation.some(goal => goal.id === legacyExternalGoal.id),
 assert.equal(nativePausedGoal.status, 'active',
   'repairing P68 paused-goal traversal must retain its intended reactivation behavior for non-external goals');
 
+// Analysis and authoritative strategies are reviewable, but the current projector
+// only implements additive port semantics and must reject writes from other strategies.
+for (const [exportId, intent, strategy] of [
+  ['exp_3333333333333333', 'analysis', 'analysis_only'],
+  ['exp_4444444444444444', 'port', 'authoritative'],
+]) {
+  const strategyRuntime = new MemorySubsystemRuntime();
+  const strategyProjector = new HexisCanonicalMemoryProjector(strategyRuntime.fabric, strategyRuntime.semanticMemory);
+  const strategyFabric = new HexisAdaptationFabric();
+  strategyFabric.bindCanonicalMemoryApply(candidate => strategyProjector.apply(candidate));
+  const candidate = strategyFabric.stageHmx({
+    document: makeHmxDocument(exportId, {
+      memories: [{ ref: exportId + ':blocked-memory', type: 'semantic', content: 'Must not be mutated by unsupported strategy.' }],
+    }),
+    intent,
+    strategy,
+  });
+  assert.deepEqual(candidate.conflicts, []);
+  assert.equal(strategyFabric.decideHmx(candidate.stagingId, 'accept')?.status, 'accepted');
+  assert.throws(() => strategyFabric.decideHmx(candidate.stagingId, 'apply'), /hmx-canonical-apply-requires-port-additive-strategy/);
+  assert.equal(strategyFabric.getHmxStage(candidate.stagingId)?.status, 'accepted',
+    'a rejected apply strategy must leave the review stage retryable');
+  assert.equal(strategyRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 0,
+    'unsupported HMX strategies must never write canonical memory');
+}
+
 // A same-text native memory must remain untouched by an external HMX import.
 const collisionRuntime = new MemorySubsystemRuntime();
 const nativeText = normalizedNk1Export.sections.memories[0].content;
