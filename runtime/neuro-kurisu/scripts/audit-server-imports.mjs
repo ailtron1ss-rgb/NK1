@@ -40,12 +40,59 @@ function resolveImport(importer, specifier) {
   }) ?? null;
 }
 
+function stripComments(source) {
+  const chars = [...source];
+  const quoteChars = new Set(["'", '"', String.fromCharCode(96)]);
+  let quote = null;
+  let escaped = false;
+
+  for (let i = 0; i < source.length; i += 1) {
+    const char = source[i];
+    const next = source[i + 1];
+
+    if (quote !== null) {
+      if (escaped) { escaped = false; continue; }
+      if (char === "\\") { escaped = true; continue; }
+      if (char === quote) quote = null;
+      continue;
+    }
+
+    if (quoteChars.has(char)) { quote = char; continue; }
+
+    if (char === "/" && next === "/") {
+      for (let j = i; j < source.length && source[j] !== "\n"; j += 1) {
+        if (chars[j] !== "\r") chars[j] = " ";
+      }
+      while (i < source.length && source[i] !== "\n") i += 1;
+      continue;
+    }
+
+    if (char === "/" && next === "*") {
+      chars[i] = " ";
+      chars[i + 1] = " ";
+      i += 2;
+      while (i < source.length) {
+        if (source[i] === "*" && source[i + 1] === "/") {
+          chars[i] = " ";
+          chars[i + 1] = " ";
+          i += 1;
+          break;
+        }
+        if (chars[i] !== "\r" && chars[i] !== "\n") chars[i] = " ";
+        i += 1;
+      }
+    }
+  }
+
+  return chars.join("");
+}
+
 function collectRelativeSpecifiers(source) {
   // Covers static imports, re-exports, literal dynamic imports and literal
   // CommonJS requires. Bare package imports are intentionally not traversed.
   const pattern = /(?:\bfrom\s*|\bimport\s*(?:\(\s*)?|\brequire\s*\(\s*)["']([^"']+)["']/g;
   const result = new Set();
-  for (const match of source.matchAll(pattern)) {
+  for (const match of stripComments(source).matchAll(pattern)) {
     const specifier = match[1];
     if (specifier.startsWith(".")) result.add(specifier);
   }
