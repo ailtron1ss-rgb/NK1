@@ -28,6 +28,17 @@ const recoveredStep = failedStepLedger.step({ at: Date.now(), previousTick: 1, s
 assert.equal(recoveredStep.status, 'PASS');
 assert.equal(failedStepLedger.diagnostics().lastStatus, 'PASS', 'a new step may replace the prior cycle status');
 
+// A missing unified-cognition stage is a terminal failure even when the surrounding runtime checks align.
+const incompleteCognitive = new RuntimeClosureLedger();
+const incompleteStep = incompleteCognitive.step({
+  at: Date.now(), previousTick: 0, stateTick: 1, cycleTick: 1, continuousTick: 1,
+  processed: 1, previousProcessed: 0, continuity01: .8, energy01: .8, uncertainty01: .2,
+  identityContinuity01: .9, predictionError01: .1, action: 'observe',
+  cognitiveCycleComplete: false, cognitiveCycleTick: 1, missingCognitiveStages: ['outcome'],
+});
+assert.equal(incompleteStep.status, 'FAIL');
+assert.ok(incompleteStep.checks.some((check) => check.name === 'unified-cognitive-cycle-complete' && !check.ok));
+
 // A failure must close a pending causal cycle, preserve its reason, and never
 // acquire success credit during later durable finalization.
 const before = { memoryCount: 1, worldTick: 1, identityRevision: 1, agencyDecisions: 1, learningUpdates: 1, selfChangeCount: 1, lifeGraphCompleteChains: 1 };
@@ -67,6 +78,26 @@ assert.equal(downgraded?.failureReason, 'checkpoint-failed');
 assert.equal(lateFailure.snapshot().completeCycles, 0);
 assert.equal(lateFailure.snapshot().failures, 1);
 assert.equal(lateFailure.snapshot().meanScore01, 0);
+
+// The causal ledger must use the unified cycle's explicit contract result as a hard gate.
+const incompleteCausal = new CausalDomainClosureLedger();
+incompleteCausal.begin({ tick: 3, counters: before });
+const incompleteRecord = incompleteCausal.end({
+  counters: { memoryCount: 2, worldTick: 2, identityRevision: 2, agencyDecisions: 2, learningUpdates: 2, selfChangeCount: 2, lifeGraphCompleteChains: 2 },
+  evidence: {
+    memoryChanged: true, worldChanged: true, agencyChanged: true, learningChanged: true, selfChanged: true,
+    memoryWorldVerified: true, worldAgencyLearningVerified: true, causalLifeGraphChain: true,
+    replaySignaturePresent: true, durableStateAligned: true, cognitiveCycleComplete: false,
+  },
+});
+assert.equal(incompleteRecord?.status, 'FAIL');
+assert.equal(incompleteRecord?.complete, false);
+assert.equal(incompleteRecord?.score01, 0);
+incompleteCausal.durable({ tick: 3, stateTick: 3, replaySignature: 'fixture-signature', continuousTick: 3, processed: 3 });
+const incompleteFinal = incompleteCausal.finalizeDurable({ tick: 3, stateTick: 3, replaySignature: 'fixture-signature', continuousTick: 3, processed: 3 });
+assert.equal(incompleteFinal?.status, 'FAIL');
+assert.equal(incompleteFinal?.complete, false);
+assert.equal(incompleteFinal?.score01, 0);
 
 // Guard the live physical-action path against cancellation that arrives after
 // planning but before actuation.
