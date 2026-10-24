@@ -79,3 +79,8 @@ npm run test:integration
 - Добавлены Node-тесты для маршрутов UI/Runtime/Research, 504 при зависшем upstream и проверки диапазона timeout-конфигурации. Эти тесты включены в focused workflow.
 - The gateway's timeout is a **wall-clock total deadline**, not only an inactivity timer: responses that keep sending small chunks cannot keep a request alive indefinitely. If the response has already started, the gateway closes the downstream socket on timeout because it cannot safely change an already-sent status to 504. A regression covers this trickle-response case.
 
+### Экономия памяти при сборе журналов команд
+
+- В `process-supervisor.mjs` сбор последних байтов stdout/stderr больше не сначала объединяет весь старый хвост с крупным новым чанком, чтобы затем отбросить лишнее. Теперь сохраняется только требуемая часть предыдущего хвоста плюс новый чанк.
+- Добавлены проверки границы ёмкости и нулевого бюджета вывода; при этом сохраняются прежние правила последних байтов и флаг усечения.
+- Это устраняет лишние промежуточные буферы при больших логах. Измерение выигрыша в CPU/RSS на реальном установщике пока не выполнено.
