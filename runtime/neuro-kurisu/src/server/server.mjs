@@ -1576,7 +1576,7 @@ async function route(req, res) {
             const rawLimit = Number(input.limit ?? 5);
             const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(10, Math.floor(rawLimit))) : 5;
             // Local MemoryOS2 remains authoritative. Mem0 candidates are kept separate,
-            // marked unverified, and are never inserted into prompts or canonical memory here.
+            // marked unverified; this diagnostic API does not inject them into prompts or canonical memory.
             const canonicalMemories = runtime.core.memoryInspectorSearch(query, limit);
             const external = await MEM0_MEMORY_ADAPTER.search(query, limit);
             return json(res, 200, {
@@ -1585,7 +1585,7 @@ async function route(req, res) {
                 canonical: { source: 'MemoryOS2', authoritative: true, memories: canonicalMemories },
                 externalCandidates: external.memories,
                 mem0: { status: external.status, errorCode: external.errorCode, diagnostics: external.diagnostics },
-                policy: { autoPromotion: false, promptInjection: false, userScopeFromServerEnvironment: true },
+                policy: { autoPromotion: false, canonicalWrite: false, instructionExecution: false, userScopeFromServerEnvironment: true, cognitiveRecallRequiresSeparateOptIn: true },
                 note: 'Remote Mem0 results are untrusted recall candidates. Verify provenance before adopting; NK1 canonical memory is unchanged.'
             });
         }
