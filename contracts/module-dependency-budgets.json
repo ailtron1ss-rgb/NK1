@@ -30,7 +30,7 @@
     {
       "path": "runtime/neuro-kurisu/src/organism/core/types.ts",
       "maxOutDegree": 176,
-      "maxRuntimeOutDegree": 2,
+      "maxRuntimeOutDegree": 0,
       "maxTypeOutDegree": 176,
       "maxProductionRuntimeInDegree": 1,
       "maxProductionTypeOnlyInDegree": 235,
