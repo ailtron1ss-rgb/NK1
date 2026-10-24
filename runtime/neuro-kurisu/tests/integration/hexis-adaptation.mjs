@@ -36,7 +36,7 @@ assert.equal(normalizedNk1Export.sections.identity[0].content, nativeNk1Export.s
 assert.equal(normalizedNk1Export.sections.identity[0].facets.length, 3);
 assert.equal(normalizedNk1Export.sections.memories.length, 2, 'native skills must be mapped to procedural HMX memories');
 assert.equal(normalizedNk1Export.sections.memories.find(memory => memory.metadata.nk1NativeKind === 'skill')?.type, 'procedural');
-assert.match(normalizedNk1Export.sections.relationships[0].source_ref, new RegExp('^' + normalizedNk1Export.export_id.replace(/[.*+?^$\{\}()|[\]\\]/g, '\\const fabric = new HexisAdaptationFabric();') + ':'));
+assert(normalizedNk1Export.sections.relationships[0].source_ref.startsWith(normalizedNk1Export.export_id + ':'));
 assert(normalizedNk1Export.sections.config.nk1NativeSections.nk1_private_extension);
 assert(normalizedNk1Export.export_warnings.some(warning => warning.includes('re-embed')));
 
