@@ -175,7 +175,7 @@ export class RealityEvidenceLedger {
   recent(limit=64){return structuredClone(this.records.filter(record=>!record.eventId||!this.quarantinedEventIds.has(record.eventId)).slice(0,Math.max(1,Math.min(256,Math.floor(limit)))));}
 
   claimAssessment(claim:string){
-    const rows=this.records.filter(r=>r.claim===claim);
+    const rows=this.records.filter(r=>r.claim===claim&&(!r.eventId||!this.quarantinedEventIds.has(r.eventId)));
     const external=rows.filter(r=>EXTERNAL.has(r.realityClass));
     const userReported=rows.filter(r=>USER_REPORTED.has(r.realityClass));
     const simulator=rows.filter(r=>r.realityClass==='simulator');
