@@ -51,6 +51,9 @@ export interface B272State {
   acceptedGoals:number;
   rejectedGoals:number;
   rollbackCount:number;
+  /** Count of real policy outcomes not attributed to this generator because actions differed. */
+  outcomeActionMismatches:number;
+  lastOutcomeActionMismatch:{tick:number;generatedAction:ActionKind;executedAction:ActionKind}|null;
   currentGoal:number[];
   currentGoalId:string;
   currentAction:ActionKind;
@@ -75,7 +78,7 @@ export function defaultB272State():B272State{
   const selfProjectionWeights=GOAL_DIMS.map((_,i)=>Array.from({length:16},(_,j)=>clamp11(Math.sin((i+2)*(j+1)*.19)*.06)));
   const worldProjectionWeights=GOAL_DIMS.map((_,i)=>Array.from({length:16},(_,j)=>clamp11(Math.cos((i+3)*(j+2)*.17)*.06)));
   const g=defaultGoal(3);
-  return {version:1,tick:0,lastOutcomeTick:-1,steps:0,learningUpdates:0,generatedGoals:0,acceptedGoals:0,rejectedGoals:0,rollbackCount:0,currentGoal:g,currentGoalId:`g-${hashVector(g)}`,currentAction:'reflect',currentConfidence01:.35,goalPressure01:.2,goalNovelty01:.25,selfConflict01:.2,internalCoherence01:.7,agency01:.4,actionPrototypeWeights,goalWeights,selfProjectionWeights,worldProjectionWeights,goalHistory:[],outcomeHistory:[],goalOutcomeMemory:{}};
+  return {version:1,tick:0,lastOutcomeTick:-1,steps:0,learningUpdates:0,generatedGoals:0,acceptedGoals:0,rejectedGoals:0,rollbackCount:0,outcomeActionMismatches:0,lastOutcomeActionMismatch:null,currentGoal:g,currentGoalId:`g-${hashVector(g)}`,currentAction:'reflect',currentConfidence01:.35,goalPressure01:.2,goalNovelty01:.25,selfConflict01:.2,internalCoherence01:.7,agency01:.4,actionPrototypeWeights,goalWeights,selfProjectionWeights,worldProjectionWeights,goalHistory:[],outcomeHistory:[],goalOutcomeMemory:{}};
 }
 
 export interface B272StepInput {
@@ -186,6 +189,13 @@ export class B272EndogenousGoalGenesis {
       goalHistory:goalHistory.slice(-128),
       outcomeHistory:uniqueOutcomeHistory.slice(-256),
       goalOutcomeMemory:Object.fromEntries(Object.entries(goalOutcomeMemory).slice(-256)),
+      outcomeActionMismatches:safeCounter(r.outcomeActionMismatches,d.outcomeActionMismatches),
+      lastOutcomeActionMismatch:(()=> {
+        const mismatch = isRecord(r.lastOutcomeActionMismatch) ? r.lastOutcomeActionMismatch : null;
+        if (!mismatch || !Number.isSafeInteger(mismatch.tick) || typeof mismatch.tick !== 'number' || mismatch.tick < 0 || mismatch.tick > tick
+          || !isAction(mismatch.generatedAction) || !isAction(mismatch.executedAction) || mismatch.generatedAction === mismatch.executedAction) return null;
+        return { tick: mismatch.tick, generatedAction: mismatch.generatedAction, executedAction: mismatch.executedAction };
+      })(),
     };
   }
   snapshot(){return structuredClone(this.state);}
@@ -294,6 +304,19 @@ const learned=this.learnedGoalValue(v,input.tick);
     this.state.goalHistory=[...this.state.goalHistory,{tick:input.tick,id:c.id,vector:c.vector.slice(),action,reward01:input.lastReward01,predictionError01:input.predictionError01,accepted:false}].slice(-128);
     return {...c,action,goalId:c.id,goalVector:c.vector.slice(),selfConflict01:selfConflict,agency01:this.state.agency01,endogenous01};
   }
+  /** Record a policy/action attribution mismatch without crediting B272 for another policy's action. */
+  recordOutcomeActionMismatch(input:{tick:number;executedAction:ActionKind}):boolean {
+    if(!isRecord(input))throw new TypeError('B272 outcome action mismatch must be an object');
+    if(!Number.isSafeInteger(input.tick)||typeof input.tick!=='number'||input.tick!==this.state.tick)throw new RangeError('B272 mismatch tick must match the current goal tick');
+    if(!isAction(input.executedAction))throw new RangeError('B272 executed action is invalid');
+    if(input.executedAction===this.state.currentAction)return false;
+    if(this.state.lastOutcomeActionMismatch?.tick===input.tick)return false;
+    if(this.state.outcomeActionMismatches>=Number.MAX_SAFE_INTEGER)throw new RangeError('B272 mismatch counter reached its safe integer limit');
+    this.state.outcomeActionMismatches++;
+    this.state.lastOutcomeActionMismatch={tick:input.tick,generatedAction:this.state.currentAction,executedAction:input.executedAction};
+    return true;
+  }
+
   learnFromOutcome(input:{tick:number;action:ActionKind;reward01:number;predictionError01:number;externalEvidence01:number;independentEvaluatorGain01?:number;acceptedExternalGoal?:boolean}){
     if(!isRecord(input))throw new TypeError('B272 outcome must be an object');
     if(!Number.isSafeInteger(input.tick)||typeof input.tick!=='number'||input.tick!==this.state.tick)throw new RangeError('B272 outcome tick must match the current goal tick');
