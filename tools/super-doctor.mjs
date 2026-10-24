@@ -13,7 +13,6 @@ const ok = (name, pass, detail = '') => out.push({ name, pass, detail });
 const versionCommands = [
   { name: 'node', command: process.execPath, args: ['--version'] },
   { name: 'npm', command: 'npm', args: ['--version'] },
-  { name: 'python3', command: 'python3', args: ['--version'] },
 ];
 
 // These independent, cheap probes run concurrently and are individually
