@@ -1,3 +1,13 @@
+## NK1 WorkPass497 — synchronize memory branch runtime and goal contracts
+
+- Applied the shared P26 input-validation and persisted-diagnostic recovery path, including finite training metrics, non-negative update counts and strict boolean restoration for `frozen`.
+- Removed the remaining Node.js 24 strip-only constructor parameter property from the trusted shadow-run registry.
+- Corrected the canonical JSON byte-bound test and supplied grounded post-action state in the causal learning integration fixture.
+- Aligned the memory category's P23 replay hard limit/recent quota and B272 intrinsic goal valuation with WorkPass494, preserving existing Hexis/P65 lineage changes.
+- **Validation boundary:** committed; exact-head Actions must confirm the updated paths.
+
+---
+
 ## NK1 WorkPass501 — close P65 bridge validation wiring (2026-10-24)
 
 - Corrected postcondition whitespace canonicalization in the P65 adapter and strengthened its fixture to include repeated internal whitespace.
