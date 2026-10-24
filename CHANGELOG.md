@@ -1,4 +1,7 @@
-# NK1 follow-up — durable candidate identity and final integration verification (2026-10-24)
+# NK1 follow-up — durable identity, independent evaluator and final integration verification (2026-10-24)
+
+- [FIXED] WorkPass203 independent-candidate evaluator regression declared `snapshotEvaluator` twice in one ES module. Renamed the authority-snapshot case variables so the regression parses and runs rather than failing before test execution.
+- [VALIDATION] Fresh WorkPass331, WorkPass287–288, WorkPass292, WorkPass294, WorkPass99, WorkPass102 and WorkPass105 passed on commit `e3d08c728d159f8bf12f7515f5626197f95263c9`. P26 Learning Validation also passed all steps on that commit. WorkPass110 exposed the duplicate evaluator declaration; it has now been fixed and requires a fresh rerun.
 
 - [FIXED] File-backed skill candidate persistence now uses the same candidate ID tuple as candidate staging. Ordinary candidates retain their legacy four-part identity; reflective revisions bind the canonical provenance fingerprint only when provenance is present.
 - [HARDENED] Durable snapshot validation now validates provenance metadata before trusting it and verifies the matching five-part identity for provenance-bearing revisions.
