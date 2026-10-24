@@ -87,13 +87,38 @@ for(const [from,dependencies] of graph){
     edges.push({from:repoPath(from),to:repoPath(to),fromLayer,toLayer,kind:'relative-import'});
   }
 }
+const inDegreeByPath=new Map();
+const outDegreeByPath=new Map();
+const productionInDegreeByPath=new Map();
+for(const edge of edges){
+  outDegreeByPath.set(edge.from,(outDegreeByPath.get(edge.from)||0)+1);
+  inDegreeByPath.set(edge.to,(inDegreeByPath.get(edge.to)||0)+1);
+  if(edge.fromLayer!=='runtime-tests'){
+    productionInDegreeByPath.set(edge.to,(productionInDegreeByPath.get(edge.to)||0)+1);
+  }
+}
+for(const node of nodes){
+  node.inDegree=inDegreeByPath.get(node.id)||0;
+  node.outDegree=outDegreeByPath.get(node.id)||0;
+  node.productionInDegree=productionInDegreeByPath.get(node.id)||0;
+}
+const canonicalSources=nodes.filter(node=>node.kind==='source'&&node.layer==='canonical-organism');
+const rankNodes=metric=>canonicalSources
+  .filter(node=>node[metric]>0)
+  .sort((a,b)=>b[metric]-a[metric]||a.id.localeCompare(b.id))
+  .slice(0,25)
+  .map(node=>({id:node.id,layer:node.layer,inDegree:node.inDegree,productionInDegree:node.productionInDegree,outDegree:node.outDegree}));
+const hotSpots={
+  highFanOut:rankNodes('outDegree'),
+  highProductionFanIn:rankNodes('productionInDegree'),
+};
 const sourceLayerCounts={};
 for(const file of files){
   const layer=layerOf(file);
   sourceLayerCounts[layer]=(sourceLayerCounts[layer]||0)+1;
 }
 const report={
-  schemaVersion:1,
+  schemaVersion:2,
   generatedAt:new Date().toISOString(),
   repositoryRoot:'.',
   summary:{
@@ -104,8 +129,11 @@ const report={
     missingImports:missing.length,
     cycles:cycles.length,
     boundaryViolations:boundaryViolations.length,
+    maxCanonicalOutDegree:hotSpots.highFanOut[0]?.outDegree||0,
+    maxCanonicalProductionInDegree:hotSpots.highProductionFanIn[0]?.productionInDegree||0,
   },
   sourceLayerCounts,
+  hotSpots,
   layerCoupling:[...layerLinks.entries()]
     .map(([link,count])=>({link,count}))
     .sort((a,b)=>b.count-a.count||a.link.localeCompare(b.link)),
@@ -116,6 +144,6 @@ const reportPath=process.env.NK1_DEPENDENCY_GRAPH_REPORT;
 if(reportPath){
   const absoluteReportPath=path.resolve(reportPath);
   await writeFile(absoluteReportPath,JSON.stringify(report,null,2)+String.fromCharCode(10),'utf8');
-  console.log('DEPENDENCY_GRAPH_REPORT='+absoluteReportPath+' nodes='+nodes.length+' edges='+edges.length);
+  console.log('DEPENDENCY_GRAPH_REPORT='+absoluteReportPath+' nodes='+nodes.length+' edges='+edges.length+' canonicalHubs='+hotSpots.highFanOut.length);
 }
 console.log('CLEAN_ARCHITECTURE=PASS sourceFiles='+files.length+' canonicalFiles='+canonicalFiles.length+' dependencyEdges='+dependencyEdges+' missing=0 cycles=0 legacyLeakage=0 boundaryViolations=0');
