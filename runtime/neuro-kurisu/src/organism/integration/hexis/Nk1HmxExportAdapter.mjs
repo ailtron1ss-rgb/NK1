@@ -252,23 +252,63 @@ export function normalizeNk1HmxExport(nativeDocument, options = {}) {
   };
   const exportedAt = parseDate(root.exported_at ?? root.exportedAt) || new Date().toISOString();
   const intent = ['port', 'duplicate', 'telepathy', 'analysis'].includes(options.intent) ? options.intent : 'port';
+  const taskCount = value => isRecord(value)
+    ? (Array.isArray(value.consolidation_tasks) ? value.consolidation_tasks.length : 0) +
+      (Array.isArray(value.reconsolidation_tasks) ? value.reconsolidation_tasks.length : 0)
+    : 0;
+  const auditCount = value => isRecord(value)
+    ? Object.values(value).reduce((sum, rows) => sum + (Array.isArray(rows) ? rows.length : 0), 0)
+    : 0;
+  const narrative = isRecord(sections.narrative) ? sections.narrative : {};
+  const narrativeNodes = ['life_chapters', 'turning_points', 'narrative_threads', 'value_conflicts']
+    .reduce((sum, key) => sum + (Array.isArray(narrative[key]) ? narrative[key].length : 0), 0);
+  const edgeTypes = [...new Set(sections.relationships.map(row => row.edge_type))];
+  const sectionNames = Object.keys(sections);
   return {
     hmx_version: HMX_VERSION,
     export_id: exportId,
     export_intent: intent,
     exported_at: exportedAt,
     source,
-    capabilities: { memory_types: ['episodic', 'semantic', 'procedural'], embedding_model: source.embedding_model, embedding_dimension: source.embedding_dimension },
-    privacy: { redaction_policy: 'nk1-native-export', includes_raw_turns: false },
-    export_scope: { filter: 'nk1-native-runtime', include_protected_sections: true },
+    capabilities: {
+      formats: ['json'],
+      sections: sectionNames,
+      hash_algorithms: ['sha256'],
+      relationship_edge_types: edgeTypes,
+      optional_features: ['nk1-native-metadata', 'text-only-no-vectors'],
+      embedding_model: source.embedding_model,
+      embedding_dimension: source.embedding_dimension,
+    },
+    privacy: {
+      redaction_policy: 'basic',
+      contains_sensitive_content: true,
+      consent_scope: 'migration',
+      excluded_secret_patterns: [],
+      includes_raw_turns: false,
+    },
+    export_scope: {
+      filter: 'nk1-native-runtime',
+      include_protected: ['identity', 'worldview', 'drives', 'emotional_triggers', 'narrative', 'goals'],
+      include_raw_units: false,
+      include_config: true,
+      include_in_flight_work: true,
+      include_audit_records: true,
+    },
     sections,
     export_warnings: [...new Set(warnings)],
     statistics: {
-      memories: sections.memories.length,
-      episodes: sections.episodes.length,
-      relationships: sections.relationships.length,
-      identity: sections.identity.length,
-      goals: sections.goals.length,
+      total_memories: sections.memories.length,
+      total_episodes: sections.episodes.length,
+      total_relationships: sections.relationships.length,
+      total_raw_units: Array.isArray(sections.raw_units) ? sections.raw_units.length : 0,
+      total_narrative_nodes: narrativeNodes,
+      total_in_flight_tasks: taskCount(sections.in_flight_work),
+      total_audit_records: auditCount(sections.audit_records),
+      total_conflicts_predicted: 0,
+      estimated_embedding_items: 0,
+      estimated_embedding_tokens: 0,
+      estimated_embedding_cost_units: null,
+      estimated_uncompressed_bytes: Buffer.byteLength(serialized, 'utf8'),
       nativeSkillRecordsMapped: rawSkills.length,
     },
   };
