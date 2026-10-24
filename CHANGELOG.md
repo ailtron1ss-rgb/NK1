@@ -1,3 +1,9 @@
+## NK1 WorkPass524 — preserve appraisal-time homeostatic context (2026-10-24)
+
+- Emotion episodes now retain the homeostatic regulation-pressure band observed when they were appraised. Delayed outcome feedback for an older emotion is attributed to that historical context rather than the organism's current stress state.
+- The field is optional when reading prior persisted episodes; when present, restore validates that it is a finite unit interval.
+- Added a targeted regression asserting that delayed feedback retains the original low-pressure band. Test execution is not claimed in this pass.
+
 ## NK1 WorkPass454 — reject malformed affect-appraisal evidence before state change (2026-10-24)
 
 - `EmotionAppraisalEngine.appraise` now rejects non-finite, non-numeric and out-of-range optional appraisal signals, as well as non-boolean external provenance, before updating episode history or interoceptive-affect summaries.
