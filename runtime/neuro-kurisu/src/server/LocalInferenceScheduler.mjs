@@ -30,8 +30,12 @@ export class LocalInferenceScheduler {
   }
 
   _group(rawKey) {
-    const key = groupKey(rawKey);
+    let key = groupKey(rawKey);
     let group = this.groups.get(key);
+    if (!group && this.groups.size >= MAX_GROUPS) {
+      key = 'overflow-resource';
+      group = this.groups.get(key);
+    }
     if (!group) {
       group = {
         id: `resource-${this.nextGroupId++}`,
@@ -94,7 +98,8 @@ export class LocalInferenceScheduler {
         signal.addEventListener('abort', entry.abortHandler, { once: true });
       }
       entry.timer = setTimeout(() => removeQueued(new Error('local-inference-queue-timeout'), 'timedOut'), timeoutMs);
-      entry.timer.unref?.();
+      // Keep the timer referenced: an awaiting queued caller must receive its timeout
+      // even when no other I/O happens to keep a test/process event loop alive.
       group.queue.push(entry);
       this._drain(group);
     });
