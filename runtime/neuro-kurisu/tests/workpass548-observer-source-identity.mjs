@@ -91,5 +91,14 @@ assert.throws(() => bounded.observe({
 assert.equal(bounded.snapshot().sources.length, 16, 'registry must not silently evict a registered source');
 assert.ok(bounded.snapshot().sources.some(source => source.id === 'capacity-00'), 'oldest source identity must remain intact');
 assert.equal(bounded.snapshot().observations.length, 0, 'evidence from the rejected identity must not persist');
+const existingAtCapacity = bounded.registerSource({
+  id: 'capacity-00',
+  sourceClass: 'unknown',
+  channel: 'unknown',
+  independenceKey: 'group-0',
+  reliability01: 0.51,
+});
+assert.equal(existingAtCapacity.reliability01, 0.51, 'known source calibration remains writable at capacity');
+assert.equal(bounded.snapshot().sources.length, 16, 'updating a known identity must not grow or shrink the registry');
 
 console.log('WorkPass548 observer source identity regression: PASS');
