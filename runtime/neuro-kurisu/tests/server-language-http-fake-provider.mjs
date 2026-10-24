@@ -10,6 +10,10 @@ const runtimeRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 const stateDir = await mkdtemp(path.join(tmpdir(), 'neurocore-language-http-'));
 const deadlineAt = Date.now() + 120_000;
 let providerRequests = 0;
+let languageRequests = 0;
+let classifierRequests = 0;
+let emotionRequests = 0;
+let embeddingRequests = 0;
 let lastProviderPayload = null;
 const fakeProvider = createServer(async (req, res) => {
   let raw = '';
@@ -22,6 +26,7 @@ const fakeProvider = createServer(async (req, res) => {
     return;
   }
   if (req.url === '/v1/embeddings') {
+    embeddingRequests++;
     const data = Array.isArray(lastProviderPayload?.input)
       ? lastProviderPayload.input.map((_, index) => ({ index, embedding: [1, index + 1, 0] }))
       : [];
@@ -36,10 +41,10 @@ const fakeProvider = createServer(async (req, res) => {
   }
   const systemPrompt = String(lastProviderPayload?.messages?.find(message => message.role === 'system')?.content || '');
   const reply = systemPrompt.includes('small local text classifier')
-    ? JSON.stringify({ label: 'technical', confidence: 0.91 })
+    ? (classifierRequests++, JSON.stringify({ label: 'technical', confidence: 0.91 }))
     : systemPrompt.includes('local, fallible affect-signal estimator')
-      ? JSON.stringify({ emotion: 'curiosity', valence: 0.4, arousal: 0.6, confidence: 0.82 })
-      : 'FAKE_LOCAL_PROVIDER_OK';
+      ? (emotionRequests++, JSON.stringify({ emotion: 'curiosity', valence: 0.4, arousal: 0.6, confidence: 0.82 }))
+      : (languageRequests++, 'FAKE_LOCAL_PROVIDER_OK');
   res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
   res.end(JSON.stringify({
     id: 'neurocore-http-smoke',
@@ -124,7 +129,10 @@ try {
   assert.equal(body.language?.backend, 'llama.cpp:neurocore-http-smoke-model', 'reported backend must identify the provider that actually answered');
   assert.equal(body.language?.preferredBackend, 'llama.cpp', 'configured local provider should be preferred while healthy');
   assert.ok(Number.isFinite(body.language?.latencyMs) && body.language.latencyMs >= 0, 'language invocation must report finite non-negative latency');
-  assert.equal(providerRequests, 3, 'the language request plus the enabled classifier and affect signals should reach the fake local provider');
+  assert.equal(languageRequests, 1, 'the chat cycle should reach the main local language model exactly once');
+  assert.equal(classifierRequests, 1, 'the enabled local classifier should be invoked exactly once for the chat cycle');
+  assert.equal(emotionRequests, 1, 'the enabled local affect model should be invoked exactly once for the chat cycle');
+  assert.equal(providerRequests, 3, 'the chat cycle should send one request per configured model role');
   assert.equal(lastProviderPayload?.model, 'neurocore-http-smoke-model', 'configured model identity must reach the provider');
   assert.ok(Array.isArray(lastProviderPayload?.messages) && lastProviderPayload.messages.some(message => message.role === 'user' && message.content.includes('configured local model')), 'user prompt must reach the local provider');
   assert.equal(lastProviderPayload?.stream, false, 'smoke provider request should use the bounded non-streaming response path');
@@ -193,6 +201,10 @@ try {
     preferredBackend: body.language.preferredBackend,
     latencyMs: body.language.latencyMs,
     providerRequests,
+    languageRequests,
+    classifierRequests,
+    emotionRequests,
+    embeddingRequests,
   }));
 } finally {
   if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');
