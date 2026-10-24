@@ -76,13 +76,15 @@ const cleanPayload=(x:unknown):Record<string,unknown>=>isRecord(x)?{...x}:{};
 // Snapshot fields are untrusted: inspect descriptors so getters are never run during restore.
 const ownDataRecord=(value:unknown):Record<string,unknown>|null=>{
   if(!isRecord(value))return null;
+  const prototype=Object.getPrototypeOf(value);
+  if(prototype!==Object.prototype&&prototype!==null)return null;
   const descriptors=Object.getOwnPropertyDescriptors(value);
   const result:Record<string,unknown>=Object.create(null);
   for(const [key,descriptor] of Object.entries(descriptors)){if(!('value' in descriptor))return null;result[key]=descriptor.value;}
   return result;
 };
 const ownDataArray=(value:unknown):unknown[]|null=>{
-  if(!Array.isArray(value))return null;
+  if(!Array.isArray(value)||Object.getPrototypeOf(value)!==Array.prototype)return null;
   const lengthDescriptor=Object.getOwnPropertyDescriptor(value,'length');
   if(!lengthDescriptor||!('value' in lengthDescriptor)||!Number.isSafeInteger(lengthDescriptor.value)||lengthDescriptor.value<0||lengthDescriptor.value>16384)return null;
   const result:unknown[]=[];
