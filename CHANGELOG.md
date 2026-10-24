@@ -1,3 +1,10 @@
+## NK1 Feedback — bind ledger confidence to registered source trust (2026-10-24)
+
+- The canonical evidence bridge now multiplies each observation's sample confidence by the current registered source reliability before placing it in the RealityEvidenceLedger; caller-supplied confidence alone cannot pass the independent-source threshold.
+- Strict observer restore now caps persisted source trust at the source-class prior. Persisted values may retain a downgrade, but cannot raise a device/world/API source above its conservative class prior.
+- Added regressions for a high-confidence world-class observation (0.99 sample confidence, 0.56 source prior) and for an attempt to restore a device source with trust 9.
+- **Validation boundary:** regression files and code are committed; hosted run for the trust-calibration changes is pending.
+
 ## NK1 Feedback — preserve valid evidence through noisy ledger restore (2026-10-24)
 
 - The canonical `RealityEvidenceLedger` no longer limits restore scanning to the first four times capacity worth of raw rows, so malformed rows cannot evict valid external evidence beyond that prefix.
