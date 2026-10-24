@@ -1,3 +1,11 @@
+## NK1 WorkPass505 — unify causal learning event identity across subsystems
+
+- Ported the shared `EvidenceEventIdentity` contract into `feature/learning`; IDs remain deterministic, domain-separated join keys and never count as proof that an event is true.
+- Grounded runtime outcomes now carry `nk1-reality:learning:<48-hex>`; imported/unverified hypotheses use the separate `learning-external` lane. Restore reconstructs IDs for legacy records from normalized trace identity and provenance, preserving idempotent cross-subsystem joins without promoting external claims.
+- Added a Node.js 24 strip-types regression test covering deterministic IDs, role separation, hostile input rejection, runtime outcome wiring, and restore compatibility. The test is committed; execution/typecheck on this exact head is not yet confirmed.
+
+---
+
 ## NK1 WorkPass504 — make cognitive-event ingress atomic and fail closed
 
 - Hardened `CognitiveEventFabric.append()` with pre-mutation validation for finite non-negative ticks/timestamps, registered stages, bounded source and parent identities, confidence in [0,1], boolean external provenance, and plain payload records with data properties only.
