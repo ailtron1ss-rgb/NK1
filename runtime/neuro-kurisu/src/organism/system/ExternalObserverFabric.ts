@@ -182,9 +182,15 @@ export class ExternalObserverFabric {
         ?source.independenceKey.trim().slice(0,120):id;
       if(this.requireRegisteredSources&&!this.authorizeSourceRegistration?.({id,sourceClass:source.sourceClass,channel:source.channel,independenceKey}))continue;
       const reliability=Number(source.reliability01);
+      const normalizedReliability=Number.isFinite(reliability)?clamp(reliability):baseReliability(source.sourceClass);
+      // In strict mode the persisted snapshot may lower trust, but it cannot
+      // elevate an authorized source above its conservative class prior.
+      const restoredReliability=this.requireRegisteredSources
+        ?Math.min(baseReliability(source.sourceClass),normalizedReliability)
+        :normalizedReliability;
       restoredSources.push({
         id,sourceClass:source.sourceClass,channel:source.channel,independenceKey,
-        reliability01:Number.isFinite(reliability)?clamp(reliability):baseReliability(source.sourceClass),
+        reliability01:restoredReliability,
         enabled:typeof source.enabled==='boolean'?source.enabled:true,
         samples:nonNegativeInteger(source.samples),accepted:nonNegativeInteger(source.accepted),
         contradicted:nonNegativeInteger(source.contradicted),lastAt:nonNegativeFinite(source.lastAt),
@@ -245,6 +251,12 @@ export class ExternalObserverFabric {
   }
 
   snapshot(){return structuredClone(this.state);}
+
+  /** Return the current trust prior for a registered, enabled source; never create identities here. */
+  registeredSourceReliability01(sourceId:string):number|null {
+    const source=this.state.sources.find(item=>item.id===sourceId);
+    return source?.enabled?clamp(source.reliability01):null;
+  }
 
   registerSource(input:Partial<ExternalObserverSource>&Pick<ExternalObserverSource,'id'|'sourceClass'|'channel'>){
     const id=String(input.id).trim().slice(0,80);
