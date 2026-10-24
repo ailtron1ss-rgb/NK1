@@ -1,3 +1,10 @@
+## NK1 Feedback — preserve event idempotency beyond the active evidence window (2026-10-24)
+
+- `RealityEvidenceLedger` now keeps a bounded, persisted replay-receipt index (up to 2,048 event identities) alongside the active evidence window.
+- An exact retry for an evicted but indexed event no longer increments the evidence total or reinserts old evidence as if it were new. Conflicting payload reuse still quarantines the ID, even after its active row has been evicted or after restart.
+- Added a regression covering 130 events through a 128-row ledger, snapshot/restore, exact replay of the evicted oldest event, and conflicting reuse.
+- **Validation boundary:** implementation and regression are committed; hosted execution for this exact revision must pass.
+
 ## NK1 CI — cancel superseded reality-learning regression runs (2026-10-24)
 
 - Added a per-ref concurrency group to the reality-to-learning workflow. A newer push or pull-request update on the same ref cancels the obsolete in-progress run instead of building a queue of redundant full suites.
