@@ -6,6 +6,7 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
       - "runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts"
       - "runtime/neuro-kurisu/tests/optimization-indexed-memory-lookup.mjs"
       - "runtime/neuro-kurisu/tests/cold-retrieval-residency-regression.mjs"
       - "runtime/neuro-kurisu/tests/memory-retrieval-numeric-terms.mjs"
