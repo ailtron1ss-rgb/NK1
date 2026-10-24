@@ -60,6 +60,7 @@ export class P68GoalEcology {
   catch{throw new TypeError('p68-goal-input-invalid');}
   if(!detached||typeof detached!=='object'||Array.isArray(detached))throw new TypeError('p68-goal-input-invalid');
   const safe=detached as Record<string,unknown>;
+  const seenGoalIds=new Set<string>();
   if(!Number.isSafeInteger(safe.tick)||Number(safe.tick)<0||typeof safe.at!=='number'||!Number.isFinite(safe.at)||safe.at<0||
      !Array.isArray(safe.goals)||safe.goals.length>256||typeof safe.lastAction!=='string'||safe.lastAction.length>96||
      (safe.lastSuccess!=null&&(typeof safe.lastSuccess!=='number'||!Number.isFinite(safe.lastSuccess)||safe.lastSuccess<0||safe.lastSuccess>1))||
@@ -69,8 +70,9 @@ export class P68GoalEcology {
      safe.goals.some((g:unknown)=>{
       if(!g||typeof g!=='object'||Array.isArray(g))return true;
       const row=g as Record<string,unknown>;
-      return typeof row.id!=='string'||!row.id.trim()||row.id.length>180||
-       typeof row.title!=='string'||row.title.length>240||typeof row.reason!=='string'||row.reason.length>512||
+      if(typeof row.id!=='string'||!row.id.trim()||row.id.length>180||seenGoalIds.has(row.id))return true;
+      seenGoalIds.add(row.id);
+      return typeof row.title!=='string'||row.title.length>240||typeof row.reason!=='string'||row.reason.length>512||
        typeof row.source!=='string'||row.source.length>96||!GOAL_STATUSES.has(row.status as GoalStatus)||
        !['importance','urgency','confidence','progress'].every(key=>typeof row[key]==='number'&&Number.isFinite(row[key])&&(row[key] as number)>=0&&(row[key] as number)<=1)||
        !['createdAt','updatedAt'].every(key=>typeof row[key]==='number'&&Number.isFinite(row[key])&&(row[key] as number)>=0);
