@@ -1,3 +1,11 @@
+## NK1 WorkPass525 — persistent affective continuity and grounded feeling access (2026-10-24)
+
+- Added a backward-compatible persistent mood state that blends recent appraisal episodes, retaining valence, arousal, stress, confidence, dominant label and persistence across nearby events.
+- Recent mood now softly conditions later appraisal and bounded action tendencies; long gaps reduce historical carry-over so one episode does not permanently dominate.
+- Feeling inference now rejects malformed/non-finite normalized body signals before mutation and derives interoceptive mismatch from prediction error between supplied and last-observed energy/load, current uncertainty and episode stress.
+- Added regression assertions for mood continuity, salient mood transitions, rejected feeling inputs with unchanged state, and restoration of pre-mood persisted state.
+- **Validation boundary:** test source has been updated, but execution/typecheck on this exact commit is not yet verified. This is a functional affect/control model, not evidence of subjective consciousness.
+
 ## NK1 WorkPass524 — preserve appraisal-time homeostatic context (2026-10-24)
 
 - Emotion episodes now retain the homeostatic regulation-pressure band observed when they were appraised. Delayed outcome feedback for an older emotion is attributed to that historical context rather than the organism's current stress state.
