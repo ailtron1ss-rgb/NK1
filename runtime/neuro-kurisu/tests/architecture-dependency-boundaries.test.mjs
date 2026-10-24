@@ -116,7 +116,20 @@ test("persistence default factories have one stable domain owner", async () => {
 
   for (const [factory, relativePath] of domains) {
     const moduleText = await readFile(new URL(relativePath, persistenceRoot), "utf8");
-    assert.match(facade, new RegExp("export \\{\\s*" + factory + "\\s*\\} from ['\"]\\.\\/" + relativePath.replace(/[.*+?^${}()|[\]\\]/g, "\\test("full architecture audit enforces dependency boundaries and exports a JSON graph", async () => {") + "['\"]"));
+    assert.ok(
+      facade.includes("export { " + factory + " } from './" + relativePath + "';"),
+      "facade must re-export exactly one domain owner for " + factory,
+    );
+    assert.match(moduleText, new RegExp("export const " + factory + "\\s*="));
+    assert.doesNotMatch(migrations, new RegExp("(?:^|\\n)\\s*(?:export\\s+)?const " + factory + "\\s*=", "m"));
+  }
+
+  for (const factory of ["defaultNeeds", ...domains.map(([name]) => name)]) {
+    assert.match(migrations, new RegExp("\\b" + factory + "\\s*\\("), "migration must consume the canonical " + factory + " factory");
+  }
+});
+
+test("full architecture audit enforces dependency boundaries and exports a JSON graph", async () => {") + "['\"]"));
     assert.match(moduleText, new RegExp("export const " + factory + "\\s*="));
     assert.doesNotMatch(migrations, new RegExp("(?:^|\\n)\\s*(?:export\\s+)?const " + factory + "\\s*=", "m"));
   }
