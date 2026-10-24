@@ -38,7 +38,7 @@
     "test:workpass488:evidence-event-identity": "node --experimental-strip-types tests/reality-evidence-event-identity.mjs",
     "test:p2841": "npm run typecheck && npm run test:p2841:postcondition && npm run test:p2841:runtime && npm run test:workpass451:reality-evidence-ledger && npm run test:p2841:persistence && npm run test:p2841:migration && npm run test:workpass488:evidence-event-identity && npm run test:p2840",
     "test:p2842:calibration": "node --experimental-strip-types tests/p2842-causal-calibration.mjs",
-    "test:p2842:runtime": "node --experimental-strip-types tests/p2842-active-perception-runtime.mjs",
+    "test:p2842:runtime": "node --experimental-transform-types --experimental-strip-types tests/p2842-active-perception-runtime.mjs",
     "test:perception-engine-integrity": "node --experimental-strip-types tests/perception-engine-signal-integrity.mjs",
     "test:world-context-integrity": "node --experimental-strip-types tests/world-context-normalizer-integrity.mjs",
     "test:p2842:migration": "node --experimental-strip-types tests/p2842-schema-migration.mjs",
