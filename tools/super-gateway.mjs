@@ -62,6 +62,8 @@ export function createGatewayServer({
       method: req.method,
       headers: stripHopByHopHeaders(req.headers),
     }, (upstreamRes) => {
+      responseStarted = true;
+      upstreamRes.once('close', clearDeadline);
       if (res.destroyed) {
         upstreamRes.destroy();
         return;
@@ -73,13 +75,28 @@ export function createGatewayServer({
       upstreamRes.pipe(res);
     });
 
+    let responseStarted = false;
+    const deadlineTimer = setTimeout(() => {
+      const error = new Error(`Upstream request exceeded ${upstreamTimeoutMs}ms total deadline`);
+      error.code = 'ETIMEDOUT';
+      upstream.destroy(error);
+    }, upstreamTimeoutMs);
+    deadlineTimer.unref?.();
+
+    const clearDeadline = () => clearTimeout(deadlineTimer);
+    // Keep a wall-clock deadline even when the upstream keeps trickling bytes;
+    // the socket inactivity timer below is an additional early warning.
     upstream.setTimeout(upstreamTimeoutMs, () => {
-      const error = new Error(`Upstream request timed out after ${upstreamTimeoutMs}ms`);
+      const error = new Error(`Upstream socket idle for ${upstreamTimeoutMs}ms`);
       error.code = 'ETIMEDOUT';
       upstream.destroy(error);
     });
+    upstream.once('close', () => {
+      if (!responseStarted) clearDeadline();
+    });
 
     upstream.on('error', (error) => {
+      clearDeadline();
       if (res.destroyed || res.writableEnded) return;
       if (res.headersSent) {
         res.destroy(error);
