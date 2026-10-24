@@ -1,3 +1,9 @@
+## NK1 CI — cancel superseded reality-learning regression runs (2026-10-24)
+
+- Added a per-ref concurrency group to the reality-to-learning workflow. A newer push or pull-request update on the same ref cancels the obsolete in-progress run instead of building a queue of redundant full suites.
+- Push and pull-request refs remain separate groups; this does not merge, promote, or publish code.
+- **Validation boundary:** workflow configuration is committed; the resulting run must confirm GitHub Actions accepts the concurrency settings.
+
 ## NK1 Feedback — make evidence confidence monotonic across source trust cycles (2026-10-24)
 
 - Added canonical active-event lookup so the runtime can preserve the minimum confidence already recorded for a stable event identity.
