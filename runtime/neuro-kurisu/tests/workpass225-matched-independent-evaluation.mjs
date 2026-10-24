@@ -52,6 +52,17 @@ assert.throws(
   /experiment-authority-required/,
   'strict growth analysis must reject envelopes without canonical experiment provenance',
 );
+const missingScheduledRun = structuredClone(baselineWithAuthority);
+missingScheduledRun.evaluation.provenance.runBindings[0].plannedRunId = null;
+missingScheduledRun.evaluationFingerprint = digest(missingScheduledRun.evaluation);
+assert.throws(
+  () => compareMatchedIndependentEvaluations(missingScheduledRun, candidateWithAuthority, {
+    requireCanonicalExperimentAuthority: true,
+  }),
+  /untrusted-trial/,
+  'canonical provenance is insufficient when a trial has no scheduled run ID',
+);
+
 const comparison = compareMatchedIndependentEvaluations(baseline, candidate);
 assert.equal(comparison.matchedTrialCount, 2);
 assert.equal(comparison.matchedValidationTrialCount, 1);
