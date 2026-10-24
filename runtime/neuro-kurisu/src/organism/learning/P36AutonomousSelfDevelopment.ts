@@ -723,7 +723,7 @@ export class P36AutonomousSelfDevelopmentEngine{
     const alreadyApplied=Boolean(receiptKey&&this.state.developmentalEvidenceReceiptIds.includes(receiptKey));
     const observationAlreadyUsed=Boolean(observationId&&this.state.developmentalEvidenceObservationIds.includes(observationId));
     const applyVerified=Boolean(verified&&receiptKey&&!alreadyApplied&&!observationAlreadyUsed);
-    if(!applyVerified&&(!verified||observationAlreadyUsed))this.state.rejectedMaturityReceipts=Math.min(1_000_000_000,this.state.rejectedMaturityReceipts+1);
+    if(!alreadyApplied&&(!verified||observationAlreadyUsed))this.state.rejectedMaturityReceipts=Math.min(1_000_000_000,this.state.rejectedMaturityReceipts+1);
     if(applyVerified){
       this.state.developmentalEvidenceReceiptIds=[...this.state.developmentalEvidenceReceiptIds,receiptKey!].slice(-512);
       if(observationId)this.state.developmentalEvidenceObservationIds=[...this.state.developmentalEvidenceObservationIds,observationId].slice(-512);
