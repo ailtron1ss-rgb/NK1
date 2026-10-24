@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { P23LearningEngine } from '../src/organism/learning/P23LearningEngine.ts';
+import { RealityEvidenceLedger } from '../src/organism/system/RealityEvidenceLedger.ts';
 
 const report = (taskId, trialId) => ({
   taskId, trialId,
@@ -57,11 +58,24 @@ assert.throws(() => engine.approveIndependentlyEvaluatedSkillCandidate(
   () => true,
 ), /matched independent baseline and candidate envelopes are required/);
 assert.equal(approvalCalls, 0, 'malformed envelopes must fail before approval');
-// WorkPass527: consequential promotion has an additional reality-evidence
-// precondition. One qualified source (or a malformed assessment) must stop
-// before independent evaluation or the store's approval authority is reached.
+// WorkPass528: promotion derives corroboration from the canonical ledger,
+// so callers cannot forge an assessment object with a claimed source count.
+const realityLedger = new RealityEvidenceLedger();
+realityLedger.record({
+  tick: 1, at: 1, realityClass: 'device-observation',
+  claim: 'skill-a:consequential-postcondition', confidence01: 0.90,
+  independenceKey: 'camera:front', parentIds: [],
+  eventId: `outcome:${'d'.repeat(40)}`,
+});
+realityLedger.record({
+  tick: 2, at: 2, realityClass: 'device-observation',
+  claim: 'skill-a:consequential-postcondition', confidence01: 0.20,
+  independenceKey: 'camera:side', parentIds: [],
+  eventId: `outcome:${'e'.repeat(40)}`,
+});
 assert.throws(() => engine.approveRealityCorroboratedSkillCandidate(
-  { independentPromotionAllowed: false, qualifiedIndependentExternalSources: 1, promotionReason: 'awaiting-second-independent-external-source' },
+  realityLedger,
+  'skill-a:consequential-postcondition',
   candidate.candidateId,
   { approvedBy: 'reviewer', approvedAt: 100, expectedActiveVersion: null },
   { validation, holdout },
@@ -69,12 +83,13 @@ assert.throws(() => engine.approveRealityCorroboratedSkillCandidate(
   () => true,
 ), /reality corroboration gate rejected consequential promotion/);
 assert.throws(() => engine.approveRealityCorroboratedSkillCandidate(
-  { independentPromotionAllowed: true, qualifiedIndependentExternalSources: 1, promotionReason: 'invalid-count' },
+  {},
+  'skill-a:consequential-postcondition',
   candidate.candidateId,
   { approvedBy: 'reviewer', approvedAt: 100, expectedActiveVersion: null },
   { validation, holdout },
   candidateEnvelope,
   () => true,
-), /reality corroboration gate rejected consequential promotion/);
-assert.equal(approvalCalls, 0, 'reality corroboration failure must block before store approval');
-console.log('P23_HERMES_PRODUCTION_PROMOTION_GATE=PASS fitnessFailureBlocksApproval=true matchedEnvelopeRequired=true malformedEnvelopeDenied=true realityCorroborationRequired=true');
+), /reality corroboration gate requires a canonical ledger/);
+assert.equal(approvalCalls, 0, 'ledger corroboration failure must block before store approval');
+console.log('P23_HERMES_PRODUCTION_PROMOTION_GATE=PASS fitnessFailureBlocksApproval=true matchedEnvelopeRequired=true malformedEnvelopeDenied=true canonicalRealityLedgerRequired=true');
