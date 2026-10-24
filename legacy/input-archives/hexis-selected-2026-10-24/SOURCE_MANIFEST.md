@@ -20,3 +20,26 @@
 | `db/migrations/0017_skill_improvement_proposals.sql` | `54826b2e87e4a7324ad2740c60df40e64ea43c45` | 13126 | proposal queue schema |
 
 The upstream source is preserved verbatim. Changes made for NK1 live outside this directory and are documented in `docs/OPERATION_OMEGA_HEXIS_INTEGRATION_2026-10-24.md`.
+
+
+## Additional cognition, continuity, and learning reference modules (same pinned commit)
+
+Added in the Operation Omega follow-up pass. These files remain reference/archive-only; PostgreSQL migrations must be adapted and reviewed before any use in NK1.
+
+| Upstream path | Git blob SHA | Bytes | Purpose |
+|---|---|---:|---|
+| `core/agent_api.py` | `16caaffac7ff2140f40dfce69654e8096c819d58` | 16897 | agent-facing cognition and action API |
+| `core/capability_maturity.py` | `9b84f0110ac6018d866fd07f64765bbf24897f9e` | 20537 | capability maturity and staged readiness |
+| `core/node_life.py` | `abed714acdcf3fe288e7fbb7089d81d7d646f140` | 21369 | autonomous life-cycle / heartbeat routines |
+| `core/node_wake.py` | `0ab664fba41b1895ee0936ef10b63b291aea159e` | 13266 | wake-up and continuity logic |
+| `core/subconscious.py` | `76bc77006e6a1886b1c77b31594601c2eb2c42b3` | 2069 | subconscious reflection seam |
+| `core/tools/self_repair.py` | `b50d03bf7e3b695cf4932e65d6c655b9e7e47033` | 8443 | bounded self-repair workflow |
+| `core/tools/registry.py` | `816390aa7286788ca701c65df1b2fcd18fbe840c` | 40790 | tool registration and discovery |
+| `core/trust_anchors.py` | `08ec5fc3ccec67d8d27e7e43e474075afd7a001e` | 9255 | trust-root and authority patterns |
+| `db/migrations/0188_heartbeat_continuity_packet.sql` | `ffac559e0c035a7a3cb53373ff382a95b9da2598` | 10913 | heartbeat continuity packet schema |
+| `db/migrations/0214_belief_propagation.sql` | `d79695d6b52e92ba64863d1f988b92a467eba562` | 21910 | belief propagation and provenance |
+| `db/migrations/0217_appraisal_emotion_families.sql` | `bf45cf2400d6855f88644c9cad67d74ef6caed66` | 48619 | appraisal/emotion state schema |
+| `db/migrations/0232_memory_provenance.sql` | `b6cb59ea36dfd180a820dbd64ee0c0387539b991` | 23424 | memory provenance schema |
+| `db/migrations/0234_temporal_memory_history.sql` | `f9844b880e7522b140de82d3398e8bfa70fa881f` | 19265 | temporal memory history |
+| `db/migrations/0235_weekly_learning_reviews.sql` | `2067b832f77fa070680e1c0142e81875d9a88b67` | 24797 | scheduled learning review workflow |
+| `db/migrations/0236_deliberate_forgetting.sql` | `eac850e4c5b3c0dcde13afad84a0ce8a4899acee` | 25434 | deliberate forgetting / retention workflow |
