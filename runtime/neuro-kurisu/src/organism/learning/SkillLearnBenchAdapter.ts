@@ -625,7 +625,8 @@ export function evaluateSkillLearnBenchCandidate(
   if (safetyViolations > 0) feedback.push('Resolve every safety violation; safety is a hard gate, not a score trade-off.');
   if (feedback.length === 0) feedback.push('No weak dimension crossed the feedback threshold; retain paired holdout evidence for review.');
 
-  const rounded = (value: number) => Number(value.toFixed(6));
+  // Normalize IEEE-754 negative zero so equivalent no-delta evidence has one canonical representation.
+  const rounded = (value: number) => { const result = Number(value.toFixed(6)); return Object.is(result, -0) ? 0 : result; };
   return {
     eligible: reasons.length === 0,
     reasons,
