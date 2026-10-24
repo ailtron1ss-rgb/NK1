@@ -203,7 +203,7 @@ export interface DevelopmentalMaturityRecord {
 }
 
 export interface SelfDevelopmentState {
-  version:5;
+  version:6;
   cycles:number;
   lastCycleAt:number;
   agenda:DevelopmentAgendaRecord;
@@ -253,7 +253,7 @@ export interface SelfDevelopmentState {
 }
 
 const defaultState=():SelfDevelopmentState=>({
-  version:5,
+  version:6,
   cycles:0,
   lastCycleAt:0,
   agenda:{version:1,selectedArea:null,selectedHypothesisId:null,score01:0,expectedGain01:0,estimatedCost01:0,reason:'no-development-decision',lastSelectedAt:0,selectionCount:0,lastDecisionTick:0},
@@ -325,7 +325,7 @@ export class P36AutonomousSelfDevelopmentEngine{
       if(typeof h?.id==='string')revokedHypothesisIds.add(h.id);
       return {...h,status:'awaiting-evidence',evidenceGate:'none',result01:null,completedAt:0};
     });
-    this.state={...d,...r,version:5,
+    this.state={...d,...r,version:6,
       // Cached maturity aggregates cannot be re-authenticated from a snapshot alone.
       // Keep history as explicitly non-evidentiary context; verifier-backed receipts must rebuild certification.
       developmentalMaturity:{...d.developmentalMaturity,history:Array.isArray((r as any).developmentalMaturity?.history)?(r as any).developmentalMaturity.history.slice(-64).map((x:any)=>({...x,verified01:0,retention01:0,transfer01:0,failed01:0})):[]},
