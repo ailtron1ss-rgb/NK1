@@ -90,6 +90,8 @@ corrupt.learningUpdates=Number.POSITIVE_INFINITY;
 corrupt.acceptedGoals=999;
 corrupt.rejectedGoals=-3;
 corrupt.rollbackCount=Number.MAX_SAFE_INTEGER;
+corrupt.outcomeActionMismatches=-4;
+corrupt.lastOutcomeActionMismatch={tick:999999,generatedAction:'execute-shell',executedAction:'respond'};
 corrupt.currentAction='execute-shell';
 corrupt.currentConfidence01=Number.NaN;
 corrupt.currentGoal=[Number.NaN,1];
@@ -106,6 +108,8 @@ assert.equal(sanitized.learningUpdates,0);
 assert.equal(sanitized.acceptedGoals,0);
 assert.equal(sanitized.rejectedGoals,0);
 assert.equal(sanitized.rollbackCount,0);
+assert.equal(sanitized.outcomeActionMismatches,0);
+assert.equal(sanitized.lastOutcomeActionMismatch,null);
 assert.equal(sanitized.currentAction,'reflect');
 assert.ok(sanitized.currentGoal.length===8&&sanitized.currentGoal.every(Number.isFinite));
 assert.equal(sanitized.actionPrototypeWeights.length,7);
@@ -137,6 +141,37 @@ const highGoal=evidenceHigh.step({...comparisonInput,tick:0});
 const lowGain=evidenceLow.learnFromOutcome({tick:0,action:lowGoal.action,reward01:.7,predictionError01:.2,externalEvidence01:0}).gain11;
 const highGain=evidenceHigh.learnFromOutcome({tick:0,action:highGoal.action,reward01:.7,predictionError01:.2,externalEvidence01:1}).gain11;
 assert.ok(highGain>lowGain,'external evidence must contribute to bounded learning credit');
+
+const mismatchNet=new B272EndogenousGoalGenesis();
+const mismatchGoal=mismatchNet.step({...comparisonInput,tick:0});
+const executedAction=mismatchGoal.action==='explore'?'respond':'explore';
+assert.equal(mismatchNet.recordOutcomeActionMismatch({tick:0,executedAction}),true,
+  'a mismatched selected action should be recorded, not attributed to the endogenous goal');
+assert.equal(mismatchNet.snapshot().outcomeActionMismatches,1);
+assert.deepEqual(mismatchNet.snapshot().lastOutcomeActionMismatch,{
+  tick:0,generatedAction:mismatchGoal.action,executedAction,
+});
+assert.equal(mismatchNet.snapshot().learningUpdates,0,
+  'recording a mismatch must not grant false learning credit');
+assert.equal(mismatchNet.recordOutcomeActionMismatch({tick:0,executedAction}),false,
+  'a duplicate mismatch report must not inflate the counter');
+assert.throws(()=>mismatchNet.learnFromOutcome({
+  tick:0,action:executedAction,reward01:.9,predictionError01:.1,externalEvidence01:1,
+}),/action must match/,
+  'the B272 attribution contract remains strict when a caller bypasses the core guard');
+const mismatchSnapshot=mismatchNet.snapshot();
+const mismatchRestored=new B272EndogenousGoalGenesis();
+mismatchRestored.restore(mismatchSnapshot);
+assert.deepEqual(mismatchRestored.snapshot().lastOutcomeActionMismatch,mismatchSnapshot.lastOutcomeActionMismatch,
+  'action-attribution mismatch evidence must survive persistence restore');
+
+const invalidMismatchNet=new B272EndogenousGoalGenesis();
+invalidMismatchNet.step({...comparisonInput,tick:0});
+const invalidMismatchBefore=invalidMismatchNet.snapshot();
+assert.throws(()=>invalidMismatchNet.recordOutcomeActionMismatch({tick:1,executedAction:'respond'}),/tick/);
+assert.throws(()=>invalidMismatchNet.recordOutcomeActionMismatch({tick:0,executedAction:'execute-shell'}),/action/);
+assert.deepEqual(invalidMismatchNet.snapshot(),invalidMismatchBefore,
+  'invalid mismatch evidence must be rejected before mutation');
 
 console.log(JSON.stringify({pass:true,diagnostics:d,accepted,uniqueRecentGoals:actionCounts.size,currentGoal:before},null,2));
 function rAction(n){return n.currentGoal().action;}
