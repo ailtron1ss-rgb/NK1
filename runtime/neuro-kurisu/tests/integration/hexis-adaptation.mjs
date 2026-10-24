@@ -3,6 +3,7 @@ import { HexisAdaptationFabric, defaultHexisAdaptationState } from '../../src/or
 import { normalizeNk1HmxExport } from '../../src/organism/integration/hexis/Nk1HmxExportAdapter.mjs';
 import { HexisCanonicalMemoryProjector } from '../../src/organism/integration/hexis/HexisCanonicalMemoryProjector.mjs';
 import { MemorySubsystemRuntime } from '../../src/organism/core/MemorySubsystemRuntime.ts';
+import { P68GoalEcology } from '../../src/organism/developmental/P68GoalEcology.ts';
 
 const nativeNk1Export = {
   hmx_version: '1.7',
@@ -62,6 +63,28 @@ const normalizedStage = importedNormalizedExport.stageHmx({
 });
 assert.deepEqual(normalizedStage.conflicts, [], 'NK1 native export adapter must emit a conflict-free HMX 1.7 envelope');
 assert.equal(importedNormalizedExport.decideHmx(normalizedStage.stagingId, 'accept')?.status, 'accepted');
+
+// P68 must not autonomously reactivate an HMX-imported paused goal awaiting explicit approval.
+const goalEcology = new P68GoalEcology();
+const protectedExternalGoal = {
+  id: 'hexgoal:activation-gate-test',
+  title: 'Review external candidate',
+  reason: 'Untrusted imported goal',
+  source: 'external',
+  status: 'paused',
+  importance: 0.6,
+  urgency: 0.3,
+  confidence: 0.5,
+  progress: 0,
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+  activationApproved: false,
+};
+goalEcology.tick({
+  tick: 1, at: Date.now(), goals: [protectedExternalGoal],
+  lastAction: 'none', lastSuccess: null, mode: 'observe', homeostaticPressure01: 0.1, identity01: 0.9,
+});
+assert.equal(protectedExternalGoal.status, 'paused', 'imported goals remain non-active without explicit activation');
 
 // A same-text native memory must remain untouched by an external HMX import.
 const collisionRuntime = new MemorySubsystemRuntime();
@@ -129,6 +152,18 @@ assert.deepEqual(applyStage.conflicts, []);
 const canonicalBeforeApproval = canonicalMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:'));
 assert.equal(canonicalBeforeApproval.length, 0, 'staging an import must not mutate canonical memory');
 assert.equal(applyFabric.decideHmx(applyStage.stagingId, 'accept')?.status, 'accepted');
+const preparedGoals = applyFabric.prepareGoalProposals(applyStage.stagingId);
+assert(preparedGoals.proposals.length > 0, 'HMX goals must be staged as proposals after HMX approval');
+assert(preparedGoals.proposals.every(proposal => proposal.status === 'pending'));
+const firstGoalProposal = preparedGoals.proposals[0];
+const approvedGoalProposal = applyFabric.decideGoalProposal(firstGoalProposal.id, 'approve');
+assert.equal(approvedGoalProposal?.status, 'approved');
+const materializedGoalProposal = applyFabric.markGoalProposalMaterialized(firstGoalProposal.id, 'test-canonical-goal:' + firstGoalProposal.id);
+assert.equal(materializedGoalProposal?.status, 'materialized');
+assert.equal(materializedGoalProposal?.canonicalGoalId, 'test-canonical-goal:' + firstGoalProposal.id);
+assert.equal(applyFabric.listGoalProposals({ status: 'pending' }).some(proposal => proposal.id === firstGoalProposal.id), false,
+  'approved/materialized proposals must leave the pending review queue');
+
 assert.equal(canonicalMemoryRuntime.fabric.canonicalSnapshot().items.filter(item => item.source.startsWith('hexis:')).length, 0,
   'approval remains separate from applying the import');
 const appliedStage = applyFabric.decideHmx(applyStage.stagingId, 'apply');
@@ -162,6 +197,10 @@ const duplicateApplyFabric = new HexisAdaptationFabric();
 duplicateApplyFabric.bindCanonicalMemoryApply(candidate => canonicalProjector.apply(candidate));
 const duplicateStage = duplicateApplyFabric.stageHmx({ document: laterNormalizedNk1Export, intent: 'port', strategy: 'additive' });
 assert.equal(duplicateApplyFabric.decideHmx(duplicateStage.stagingId, 'accept')?.status, 'accepted');
+const duplicateGoalPreparation = duplicateApplyFabric.prepareGoalProposals(duplicateStage.stagingId);
+assert.equal(duplicateGoalPreparation.created, 0, 'same lineage/reference/content goal proposals must deduplicate across re-exports');
+assert.equal(duplicateGoalPreparation.duplicates, preparedGoals.proposals.length);
+
 const duplicateApply = duplicateApplyFabric.decideHmx(duplicateStage.stagingId, 'apply');
 assert.equal(duplicateApply?.application?.importedCount, 0);
 assert.equal(duplicateApply?.application?.deduplicatedCount, 2);
