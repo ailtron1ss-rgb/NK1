@@ -23,6 +23,7 @@ import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local
 import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
+import { normalizeNk1HmxExport } from '../organism/integration/hexis/Nk1HmxExportAdapter.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
 const PUBLIC = path.join(ROOT, 'public');
@@ -902,7 +903,8 @@ async function route(req, res) {
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/hmx/export') {
             try {
-                const document = runtime.core.hexisExportHmx();
+                const nativeDocument = runtime.core.hexisExportHmx();
+                const document = normalizeNk1HmxExport(nativeDocument, { intent: url.searchParams.get('intent') || 'port' });
                 return json(res, 200, { ok: true, document });
             }
             catch (error) {
