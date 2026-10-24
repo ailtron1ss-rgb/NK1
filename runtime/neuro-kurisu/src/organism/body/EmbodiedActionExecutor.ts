@@ -35,7 +35,7 @@ export class EmbodiedActionExecutor {
   private readonly embodiment: EmbodimentRuntime;
   constructor(embodiment: EmbodimentRuntime) { this.embodiment = embodiment; }
 
-  async execute(action:string, input:{spokenText?:string;speechEventId?:string;allowCamera?:boolean;captureCamera?:(cameraId:number,retain:boolean)=>Promise<{ok:boolean;path?:string;size?:number;hash?:string;error?:string;executionId?:string;providerReceiptId?:string}>}={}):Promise<EmbodiedActionResult>{
+  async execute(action:string, input:{decisionId?:string;spokenText?:string;speechEventId?:string;allowCamera?:boolean;captureCamera?:(cameraId:number,retain:boolean)=>Promise<{ok:boolean;path?:string;size?:number;hash?:string;error?:string;executionId?:string;providerReceiptId?:string}>}={}):Promise<EmbodiedActionResult>{
     const preSample=await this.embodiment.sample({force:true,requestedSensors:['battery','thermal','network']});
     const before=this.embodiment.snapshot();
     const at=Date.now();
@@ -142,7 +142,10 @@ export class EmbodiedActionExecutor {
     const consequenceVerification={attempted:true,independent,verified,sourceStable,freshBefore01:beforeFresh,freshAfter01:afterFresh,changed01,reason:consequenceReason,verificationMode};
     const result:EmbodiedActionResult={version:1,action,status,realityClass,source:afterBody.telemetry.source,at,before:base,after:afterState,stateDelta:delta,effect01,reason,capability,artifact,consequenceVerification};
     const artifactIdentity=artifact?[artifact.kind,artifact.hash??null,artifact.size??null,artifact.executionId??null,artifact.providerReceiptId??null]:null;
-    const eventId=createStableEvidenceEventId('embodied',[action,at,status,realityClass,afterBody.telemetry.source,base,afterState,delta,effect01,reason,capability,artifactIdentity,consequenceVerification]);
+    const decisionId=typeof input.decisionId==='string'&&input.decisionId.trim()===input.decisionId&&input.decisionId.length>0&&input.decisionId.length<=180&&!/[\\u0000-\\u001f\\u007f-\\u009f]/.test(input.decisionId)?input.decisionId.normalize('NFKC'):undefined;
+    // Stable occurrence identity is input/decision-bound, not wall-clock or outcome-bound.
+    // A changed result for this same decision therefore conflicts in RealityEvidenceLedger.
+    const eventId=decisionId?createStableEvidenceEventId('embodied',[decisionId,action]):undefined;
     return eventId?{...result,eventId}:result;
   }
 }
