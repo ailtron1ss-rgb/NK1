@@ -100,6 +100,8 @@ persistence adapters ──> owned schemas + migration/version boundaries
 
 ## 7. Команды для проверки в рабочем клоне
 
+Для отдельного CI-прогона по pull request добавлен `.github/workflows/nk1-module-dependency-audit.yml`. Он запускает две команды ниже на Node.js 24, когда изменяются аудитор, его policy, тесты или runtime package manifest.
+
 Из корня проекта:
 
 ```bash
