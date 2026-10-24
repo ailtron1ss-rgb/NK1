@@ -1,3 +1,11 @@
+## NK1 WorkPass474 — reconcile cycle diagnostics and ground causal test evidence (2026-10-24)
+
+- Unified cognitive-cycle restore now keeps valid missing-stage diagnostics from a mixed valid/invalid persisted list, while malformed entries still prevent `lastComplete` from being trusted.
+- Fixed a stale causal-stream test fixture to include the observed post-action identity and bounded success value required by `CausalExperienceStream.recordOutcome()`. Runtime validation remains strict; the test no longer assumes that a changed state alone proves which action caused it.
+- **Verification status:** source and fixture corrections are committed; the exact-head Actions result is being checked. These repairs clarify the evidence contract and do not claim better autonomous behavior by themselves.
+
+---
+
 ## NK1 WorkPass473 — make personal curriculum restore-safe and reopen contradicted goals (2026-10-24)
 
 - Replaced unchecked persisted-state spreading in `PersonalCurriculumEngine.restore()` with the shared bounded plain-data snapshot and strict validation of thread identity/family, outcome counters, context keys, timestamps and normalized [0,1] metrics. Getter-backed or malformed top-level persistence fails closed; malformed/conflicting thread rows are excluded.
