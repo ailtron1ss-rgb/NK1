@@ -31,6 +31,7 @@ type createDevelopmentalLearningInstancesResult = ReturnType<typeof createDevelo
 type createDevelopmentalCausalInstancesResult = ReturnType<typeof createDevelopmentalCausalInstances>;
 type createDevelopmentalPredictiveInstancesResult = ReturnType<typeof createDevelopmentalPredictiveInstances>;
 type createDevelopmentalLifeCourseInstancesResult = ReturnType<typeof createDevelopmentalLifeCourseInstances>;
+export class DevelopmentalNeuralRuntime {
   constructor() {
     Object.assign(
       this,
