@@ -152,7 +152,7 @@ export class MemorySubsystemRuntime {
     this.suppressLettaSync = true;
     try {
       const memory=input.memory ?? {}; const advanced=input.advanced ?? {};
-    this.lettaBridge.restore(advanced.lettaBridge);
+    this.lettaBridge.restore(advanced.lettaBridge ?? memory.lettaBridge);
     this.events.restore(memory.eventLog);
     this.memories.restore(memory.autobiographicalMemories);
     this.selfModel.restore(memory.selfModel);
@@ -178,6 +178,50 @@ export class MemorySubsystemRuntime {
     } finally {
       this.suppressLettaSync = false;
     }
+  }
+
+  /**
+   * Retrieve canonical NK1 memories and, when explicitly enabled, ask Letta for a
+   * separate untrusted candidate set. External text is never promoted to MemoryOS2.
+   */
+  async retrieveForCognitionWithLettaCandidates(
+    query: string,
+    options: { limit?: number; goalRelevance?: number; identityRelevance?: number; tick?: number } = {},
+  ) {
+    const limit = Math.max(1, Math.min(32, Math.floor(Number.isFinite(options.limit) ? Number(options.limit) : 8)));
+    const canonicalRecords = await this.fabric.retrieveForCognition(
+      query,
+      limit,
+      options.goalRelevance ?? 0,
+      options.identityRelevance ?? 0,
+      { tick: options.tick },
+    );
+    if (!this.lettaBridge.status().enabled) {
+      return {
+        canonicalRecords,
+        externalCandidate: null,
+        externalStatus: { status: 'disabled' as const, reason: 'letta-disabled' },
+      };
+    }
+    const recalled = await this.lettaBridge.recall(query, { maxResults: limit });
+    if (!recalled.ok || !recalled.response) {
+      return {
+        canonicalRecords,
+        externalCandidate: null,
+        externalStatus: { status: 'unavailable' as const, reason: recalled.reason ?? 'letta-empty-response' },
+      };
+    }
+    return {
+      canonicalRecords,
+      externalCandidate: {
+        provider: 'letta' as const,
+        content: recalled.response,
+        trust: 'untrusted-candidate' as const,
+        evidence: 'agent-response-unverified' as const,
+        agentId: recalled.agentId,
+      },
+      externalStatus: { status: 'candidate-available' as const },
+    };
   }
 
   /** Read-only memory hygiene report; destructive repair remains an explicit separate operation. */
