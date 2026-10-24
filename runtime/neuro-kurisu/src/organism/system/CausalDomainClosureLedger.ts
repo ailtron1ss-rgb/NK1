@@ -244,14 +244,15 @@ export class CausalDomainClosureLedger {
     const failureReason=typeof raw?.failureReason==='string'?raw.failureReason.normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').trim().slice(0,240)||undefined:undefined;
     const cognitiveCycleFailed=e.cognitiveCycleComplete===false;
     const rawStatus:CausalClosureStatus=['PASS','DEGRADED','FAIL'].includes(raw?.status)?raw.status:'DEGRADED';
-    const status:CausalClosureStatus=failureReason||cognitiveCycleFailed?'FAIL':rawStatus;
+    // A persisted PASS without its matching complete=true proof is contradictory.
+    const status:CausalClosureStatus=failureReason||cognitiveCycleFailed||rawStatus==='PASS'&&raw?.complete!==true?'FAIL':rawStatus;
     return {
       version:1,
       tick:finiteCount(raw?.tick),
       at:Number.isFinite(Number(raw?.at))?Number(raw.at):0,
       status,
       score01:status==='FAIL'?0:clamp(Number(raw?.score01??0)),
-      complete:status!=='FAIL'&&Boolean(raw?.complete),
+      complete:status==='PASS'&&Boolean(raw?.complete),
       causalChain:Array.isArray(raw?.causalChain)?raw.causalChain.filter((x:any)=>typeof x==='string').map((x:string)=>x.slice(0,80)).slice(0,8):[],
       evidence:{
         memoryChanged:Boolean(e.memoryChanged),worldChanged:Boolean(e.worldChanged),agencyChanged:Boolean(e.agencyChanged),
