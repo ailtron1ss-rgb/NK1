@@ -184,6 +184,14 @@ for(const budget of dependencyBudget.modules){
     if(!check.withinBudget) budgetViolations.push({...check,rule:'dependency-budget-exceeded'});
   }
 }
+const runtimeEdges=edges.filter(edge=>edge.kind!=='typescript-type-import').length;
+const typeOnlyEdges=edges.filter(edge=>edge.kind==='typescript-type-import').length;
+const dualKindEdges=edges.filter(edge=>edge.kind==='runtime-and-type').length;
+const typeEdges=edges.filter(edge=>edge.kind!=='runtime-import').length;
+const productionEdges=edges.filter(edge=>edge.fromLayer!=='runtime-tests').length;
+const testEdges=edges.length-productionEdges;
+const productionRuntimeEdges=edges.filter(edge=>edge.fromLayer!=='runtime-tests'&&edge.kind!=='typescript-type-import').length;
+const productionTypeOnlyEdges=edges.filter(edge=>edge.fromLayer!=='runtime-tests'&&edge.kind==='typescript-type-import').length;
 const sourceLayerCounts={};
 for(const file of files){
   const layer=layerOf(file);
@@ -197,12 +205,22 @@ const report={
     sourceFiles:files.length,
     canonicalFiles:canonicalFiles.length,
     dependencyEdges,
+    runtimeEdges,
+    typeEdges,
+    typeOnlyEdges,
+    dualKindEdges,
+    productionEdges,
+    testEdges,
+    productionRuntimeEdges,
+    productionTypeOnlyEdges,
     resolvedNodes:nodes.length,
     missingImports:missing.length,
     cycles:cycles.length,
     boundaryViolations:boundaryViolations.length,
     maxCanonicalOutDegree:hotSpots.highFanOut[0]?.outDegree||0,
     maxCanonicalProductionInDegree:hotSpots.highProductionFanIn[0]?.productionInDegree||0,
+    maxCanonicalRuntimeOutDegree:hotSpots.highRuntimeFanOut[0]?.runtimeOutDegree||0,
+    maxCanonicalProductionRuntimeInDegree:hotSpots.highProductionRuntimeFanIn[0]?.productionRuntimeInDegree||0,
     dependencyBudgetChecks:budgetChecks.length,
     dependencyBudgetViolations:budgetViolations.length,
   },
@@ -212,6 +230,9 @@ const report={
   layerCoupling:[...layerLinks.entries()]
     .map(([link,count])=>({link,count}))
     .sort((a,b)=>b.count-a.count||a.link.localeCompare(b.link)),
+  productionLayerCoupling:[...productionLayerLinks.entries()]
+    .map(([link,count])=>({link,count}))
+    .sort((a,b)=>b.count-a.count||a.link.localeCompare(b.link)),
   nodes,
   edges,
 };
@@ -219,13 +240,13 @@ const reportPath=process.env.NK1_DEPENDENCY_GRAPH_REPORT;
 if(reportPath){
   const absoluteReportPath=path.resolve(reportPath);
   await writeFile(absoluteReportPath,JSON.stringify(report,null,2)+String.fromCharCode(10),'utf8');
-  console.log('DEPENDENCY_GRAPH_REPORT='+absoluteReportPath+' nodes='+nodes.length+' edges='+edges.length+' canonicalHubs='+hotSpots.highFanOut.length);
+  console.log('DEPENDENCY_GRAPH_REPORT='+absoluteReportPath+' nodes='+nodes.length+' edges='+edges.length+' runtimeEdges='+runtimeEdges+' typeOnlyEdges='+typeOnlyEdges+' canonicalHubs='+hotSpots.highFanOut.length);
 }
 if(budgetViolations.length){
   console.error('DEPENDENCY_BUDGET=FAIL checks='+budgetChecks.length+' violations='+JSON.stringify(budgetViolations));
-  console.log('CLEAN_ARCHITECTURE=FAIL sourceFiles='+files.length+' canonicalFiles='+canonicalFiles.length+' dependencyEdges='+dependencyEdges+' dependencyBudgetViolations='+budgetViolations.length);
+  console.log('CLEAN_ARCHITECTURE=FAIL sourceFiles='+files.length+' canonicalFiles='+canonicalFiles.length+' dependencyEdges='+dependencyEdges+' runtimeEdges='+runtimeEdges+' typeOnlyEdges='+typeOnlyEdges+' dependencyBudgetViolations='+budgetViolations.length);
   process.exitCode=1;
 }else{
   console.log('DEPENDENCY_BUDGET=PASS checks='+budgetChecks.length+' violations=0');
-  console.log('CLEAN_ARCHITECTURE=PASS sourceFiles='+files.length+' canonicalFiles='+canonicalFiles.length+' dependencyEdges='+dependencyEdges+' missing=0 cycles=0 legacyLeakage=0 boundaryViolations=0 dependencyBudgetViolations=0');
+  console.log('CLEAN_ARCHITECTURE=PASS sourceFiles='+files.length+' canonicalFiles='+canonicalFiles.length+' dependencyEdges='+dependencyEdges+' runtimeEdges='+runtimeEdges+' typeOnlyEdges='+typeOnlyEdges+' missing=0 cycles=0 legacyLeakage=0 boundaryViolations=0 dependencyBudgetViolations=0');
 }
