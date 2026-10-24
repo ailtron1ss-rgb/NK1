@@ -141,11 +141,12 @@ export class EmbodiedActionExecutor {
     const afterState={battery01:afterBody.telemetry.battery01,thermal01:afterBody.thermalStrain01,cognitiveCapacity01:afterBody.cognitiveCapacity01,awake:afterBody.awake,source:afterBody.telemetry.source};
     const consequenceVerification={attempted:true,independent,verified,sourceStable,freshBefore01:beforeFresh,freshAfter01:afterFresh,changed01,reason:consequenceReason,verificationMode};
     const result:EmbodiedActionResult={version:1,action,status,realityClass,source:afterBody.telemetry.source,at,before:base,after:afterState,stateDelta:delta,effect01,reason,capability,artifact,consequenceVerification};
-    const artifactIdentity=artifact?[artifact.kind,artifact.hash??null,artifact.size??null,artifact.executionId??null,artifact.providerReceiptId??null]:null;
-    const decisionId=typeof input.decisionId==='string'&&input.decisionId.trim()===input.decisionId&&input.decisionId.length>0&&input.decisionId.length<=180&&!/[\\u0000-\\u001f\\u007f-\\u009f]/.test(input.decisionId)?input.decisionId.normalize('NFKC'):undefined;
+    const decisionText=input.decisionId;
+    const hasControl=typeof decisionText==='string'&&Array.from(decisionText).some(character=>{const code=character.codePointAt(0)??0;return code<=0x1f||(code>=0x7f&&code<=0x9f);});
+    const decisionId=typeof decisionText==='string'&&decisionText.length>0&&decisionText.length<=180&&decisionText.trim()===decisionText&&!hasControl?decisionText.normalize('NFKC'):undefined;
     // Stable occurrence identity is input/decision-bound, not wall-clock or outcome-bound.
     // A changed result for this same decision therefore conflicts in RealityEvidenceLedger.
-    const eventId=decisionId?createStableEvidenceEventId('embodied',[decisionId,action]):undefined;
+    const eventId=decisionId?createStableEvidenceEventId('embodied',[decisionId]):undefined;
     return eventId?{...result,eventId}:result;
   }
 }
