@@ -113,6 +113,29 @@ test("maps emotion and body-state signals into bounded, synchronized voice and a
   assert.notEqual(strained.headTilt, calm.headTilt);
   assert.notEqual(strained.gazeYOffset, calm.gazeYOffset);
 
+  const moodCarryover = deriveAffectiveEmbodiment({
+    label: "calm", valence01: 0.5, arousal01: 0.2, dominance01: 0.7,
+    energy01: 0.9, cognitiveLoad01: 0.1, uncertainty01: 0.1, sleepPressure01: 0.05,
+    mood: { valence01: 0.2, arousal01: 0.85, stress01: 0.8, confidence01: 0.9, dominantLabel: "anxiety", persistence01: 0.9 },
+  });
+  assert.ok(moodCarryover.stress01 > calm.stress01, "persistent canonical mood must carry into embodiment even when the newest label is calm");
+  assert.ok(moodCarryover.speechPitch < calm.speechPitch, "dominant mood must softly affect later speech");
+
+  const freshFeeling = deriveAffectiveEmbodiment({
+    label: "calm", valence01: 0.5, arousal01: 0.2, dominance01: 0.7,
+    energy01: 0.9, cognitiveLoad01: 0.1, uncertainty01: 0.1, sleepPressure01: 0.05,
+    feeling: { intensity01: 0.9, interoceptiveMismatch01: 0.1, selfAccessConfidence01: 0.95, bodilyFocus01: 0.8, freshness01: 1 },
+  });
+  const staleFeeling = deriveAffectiveEmbodiment({
+    label: "calm", valence01: 0.5, arousal01: 0.2, dominance01: 0.7,
+    energy01: 0.9, cognitiveLoad01: 0.1, uncertainty01: 0.1, sleepPressure01: 0.05,
+    feeling: { intensity01: 0.9, interoceptiveMismatch01: 0.1, selfAccessConfidence01: 0.95, bodilyFocus01: 0.8, freshness01: 0 },
+  });
+  assert.ok(freshFeeling.expressionIntensity > calm.expressionIntensity, "fresh, confident feeling access may gently amplify expression");
+  assert.ok(freshFeeling.voiceEmphasis > calm.voiceEmphasis);
+  assert.equal(staleFeeling.expressionIntensity, calm.expressionIntensity, "stale feeling reports must not continue driving the avatar");
+  assert.equal(staleFeeling.voiceEmphasis, calm.voiceEmphasis, "stale feeling reports must not continue driving voice emphasis");
+
   const malformed = deriveAffectiveEmbodiment({
     label: "calm", valence01: Number.NaN, arousal01: Number.POSITIVE_INFINITY, dominance01: -3,
     energy01: Number.NaN, cognitiveLoad01: 3, uncertainty01: -1, sleepPressure01: Number.NaN,
