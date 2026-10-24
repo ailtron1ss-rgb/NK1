@@ -95,6 +95,8 @@ export function isTrustedDecisionLinkedExternalPostcondition(
       expected.decisionId.length > 180) return false;
   const context = trustedExternalPostconditionResults.get(value as object);
   if (!context || assessExternalPostcondition(value as OutcomeVerification) !== 'match') return false;
+  // A successful external observation cannot convert an explicit negative executor result into action success.
+  if (context.result?.ok === false) return false;
   if (context.toolId !== expected.toolId ||
       context.executionId !== expected.executionId ||
       context.decisionId !== expected.decisionId) return false;
