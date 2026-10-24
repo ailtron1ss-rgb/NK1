@@ -210,6 +210,8 @@ export class MemorySubsystemRuntime {
       if (!rawEntry || typeof rawEntry !== 'object') return [];
       const entry = rawEntry as LettaSyncOutboxEntry;
       if (!validKey(entry.key) || !validOperation(entry.input)) return [];
+      const expectedKey = createHash('sha256').update(JSON.stringify(entry.input)).digest('hex');
+      if (entry.key !== expectedKey) return [];
       return [{
         key: entry.key, input: structuredClone(entry.input),
         enqueuedAt: typeof entry.enqueuedAt === 'number' && Number.isFinite(entry.enqueuedAt) ? Math.max(0, entry.enqueuedAt) : Date.now(),
