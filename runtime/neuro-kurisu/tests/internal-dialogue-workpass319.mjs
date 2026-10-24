@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { InternalDialogueEngine, sanitizeInternalDialogueText } from '../src/organism/cognition/InternalDialogueEngine.ts';
 import { buildCognitiveProposalPrompt } from '../src/organism/language/LanguageOrgan.ts';
+import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabric.ts';
+import { bindCognitiveEventEvidence } from '../src/organism/cognition/CognitiveEventEvidenceBridge.ts';
 
 const engine = new InternalDialogueEngine();
 const strong = engine.deliberate({
@@ -106,11 +108,39 @@ const entityContext = {
     { memoryId: 'safe-fact', statement: 'A verified memory says the user prefers clear technical explanations', confidence01: .91, source: 'test', observedAt: 200 },
   ],
 };
-const proposalPrompt = buildCognitiveProposalPrompt(cycle, 'A grounded observation about two competing action hypotheses.', entityContext);
+const causalFabric = new CognitiveEventFabric();
+const stageIds = causalFabric.recordOperationalCycle({
+  tick: 11,
+  observation: { source: 'test-observation', external: true, confidence01: .94, payload: { source: 'independent-sensor' } },
+  prediction: { source: 'test-prediction', confidence01: .7, payload: { action: 'verify' } },
+  plan: { source: 'test-plan', confidence01: .85, payload: { action: 'verify' } },
+  action: { source: 'test-action', confidence01: .85, payload: { action: 'verify' } },
+  outcome: { source: 'test-outcome', external: true, confidence01: .94, payload: { success: true, reward: .92 } },
+  learning: { source: 'test-learning', confidence01: .8, payload: { updated: true } },
+  selfUpdate: { source: 'test-self-update', confidence01: .8, payload: { reflected: true } },
+});
+const causalSnapshot = causalFabric.snapshot();
+const seedClaims = [
+  { id: 'candidate-1', action: 'respond', supportingEvidenceIds: [], contradictingEvidenceIds: [] },
+  { id: 'candidate-2', action: 'verify', supportingEvidenceIds: [], contradictingEvidenceIds: [] },
+];
+const linked = bindCognitiveEventEvidence(seedClaims, [], causalSnapshot);
+assert.equal(linked.linkedOutcomeEvents, 1, 'causal outcome must bind only through a direct action parent and explicit action identity');
+assert.ok(linked.claims.find((claim) => claim.id === 'candidate-2')?.supportingEvidenceIds?.length === 1);
+assert.equal(linked.claims.find((claim) => claim.id === 'candidate-1')?.supportingEvidenceIds?.length, 0);
+assert.equal(linked.evidence[0].kind, 'outcome');
+const proposalPrompt = buildCognitiveProposalPrompt(
+  cycle,
+  'A grounded observation about two competing action hypotheses.',
+  entityContext,
+  '',
+  causalSnapshot,
+);
 const wholePrompt = proposalPrompt.system + '\n' + proposalPrompt.user;
 assert.match(wholePrompt, /INTERNAL DIALOGUE REVIEW/);
 assert.match(wholePrompt, /advisoryOnly/);
 assert.match(wholePrompt, /candidate-1/);
+assert.match(wholePrompt, /cef_/ , 'linked causal evidence IDs should appear in the bounded internal audit');
 assert.match(wholePrompt, /selected_action=reflect/);
 assert.match(wholePrompt, /A verified memory says the user prefers clear technical explanations/);
 assert.doesNotMatch(wholePrompt, /hunter2|curator@example\.com/);
