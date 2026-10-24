@@ -443,6 +443,8 @@ export class HexisAdaptationFabric {
                     conflicts.push({ path: `sections.${name}`, kind: 'schema', detail: 'section must be an array of records' });
                     continue;
                 }
+                const remainingTotal = Math.max(0, HMX_MAX_TOTAL_RECORDS - totalRecords);
+                const boundedCount = Math.min(value.length, HMX_MAX_SECTION_RECORDS, remainingTotal);
                 if (value.length > HMX_MAX_SECTION_RECORDS) {
                     conflicts.push({
                         path: `sections.${name}`,
@@ -450,7 +452,14 @@ export class HexisAdaptationFabric {
                         detail: `section exceeds the ${HMX_MAX_SECTION_RECORDS}-record staging limit`,
                     });
                 }
-                const bounded = value.slice(0, HMX_MAX_SECTION_RECORDS);
+                if (value.length > remainingTotal) {
+                    conflicts.push({
+                        path: `sections.${name}`,
+                        kind: 'size-limit',
+                        detail: `section exceeds the remaining aggregate ${HMX_MAX_TOTAL_RECORDS}-record staging budget`,
+                    });
+                }
+                const bounded = value.slice(0, boundedCount);
                 if (bounded.some((record) => !isHmxRecord(record))) {
                     conflicts.push({ path: `sections.${name}`, kind: 'schema', detail: 'each section entry must be a JSON object' });
                 }
@@ -470,14 +479,6 @@ export class HexisAdaptationFabric {
                 stagedSections[name] = structuredClone(value);
             }
         }
-        if (totalRecords > HMX_MAX_TOTAL_RECORDS) {
-            conflicts.push({
-                path: 'sections',
-                kind: 'size-limit',
-                detail: `sections exceed the ${HMX_MAX_TOTAL_RECORDS}-record total staging limit`,
-            });
-        }
-
         const blocked = (intent === 'telepathy' || intent === 'analysis')
             ? names.filter((name) => protectedSections.has(name))
             : [];
