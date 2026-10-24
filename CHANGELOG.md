@@ -1,3 +1,15 @@
+## NK1 WorkPass526 — secure P36 self-development promotion and evidence provenance (2026-10-24)
+
+- P36 no longer treats the caller-provided `independentVerified` or `verified` booleans as authority. External evidence and developmental maturity now require the exact immutable receipt issued by the canonical `OutcomeVerificationService`, bound to the normalized evidence tuple.
+- Prevented a forged first record from poisoning the duplicate key for later verified evidence; exact redelivery stays idempotent. Reused observation IDs cannot be counted across contexts, held-out runs, or the separate maturity path.
+- Changed the promotion lifecycle: held-out evidence is provisional. Learning weights, mastery, accepted-change counters and outcome-derived metrics are updated only after the replication gate passes.
+- Removed outcome-metric drift from sandbox previews. A simulated preview remains `preview-only` and cannot count as a demonstrated improvement.
+- Hardened restore semantics: serialized trust flags and maturity aggregates are not re-authenticated just because they appear in a saved snapshot. Historical rows remain available as non-trusted context; fresh canonical evidence is required.
+- Added regression coverage for spoofed booleans, copied receipts, invalid scores, duplicate poisoning, reused observation IDs, provisional holdout, replication-only promotion, maturity idempotency, snapshot demotion and preview metric stability. Wired the P36 self-development, migration, integration and performance suites into the existing P26 Learning Validation workflow.
+- **Verification boundary:** code and workflow changes are committed on `feature/learning` / PR #79. No exact-HEAD workflow run was returned for the current head during this pass; the new tests and runtime typecheck are **not yet verified as passing**. No measured learning gain or production-readiness uplift is claimed. `main` and the GitHub Release ZIP remain unchanged.
+
+---
+
 ## NK1 WorkPass525 — connect external verification research to NK1's learning trust boundary (2026-10-24)
 
 - Reviewed the current Hermes Agent Self-Evolution project and the Reflexion paper; recorded the provenance and NK1 adaptation in `docs/RESEARCH_INTAKE_LEDGER.md`. The pass preserves trace/evaluation separation and treats reflective or numeric feedback as distinct from authenticated external outcome evidence.
