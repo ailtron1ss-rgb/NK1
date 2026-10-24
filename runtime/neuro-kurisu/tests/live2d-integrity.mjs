@@ -30,4 +30,10 @@ const rootModel=JSON.parse(fs.readFileSync(path.join(root,'public/live2d/Kurisu/
 const mobileModel=JSON.parse(fs.readFileSync(path.join(root,'public/live2d/Kurisu.mobile/Kurisu-mobile.model3.json'),'utf8'));
 assert.equal((rootModel.FileReferences.Expressions||[]).length,(mobileModel.FileReferences.Expressions||[]).length);
 assert.deepEqual(Object.keys(rootModel.FileReferences.Motions||{}),Object.keys(mobileModel.FileReferences.Motions||{}));
+const avatarHtml=fs.readFileSync(path.join(root,'public/avatar.html'),'utf8');
+assert.ok(avatarHtml.includes("fetch('/api/organism/ui-snapshot'"), 'avatar UI must consume the actual organism snapshot');
+assert.ok(!avatarHtml.includes("fetch('/api/organism/avatar'"), 'asset inventory must not be mistaken for runtime state');
+assert.ok(avatarHtml.includes('buildAvatarPresentation(snapshot)'), 'avatar UI must normalize the live snapshot before posting to its iframe');
+assert.ok(avatarHtml.includes("post('kurisu_embodiment', presentation.body)"), 'avatar UI must send body and affect state to Live2D');
+assert.ok(avatarHtml.includes("post('kurisu_lipsync', { value: presentation.lipsync })"), 'avatar UI must feed the shared speaking state into lip sync');
 console.log(`LIVE2D_INTEGRITY=PASS qualityTextureBytes=${fs.statSync(path.join(root,'public/live2d/Kurisu/Kurisu.4096/texture_00.png')).size} mobileTextureBytes=${fs.statSync(path.join(root,'public/live2d/Kurisu.mobile/Kurisu.2048/texture_00_mobile_2048.png')).size}`);
