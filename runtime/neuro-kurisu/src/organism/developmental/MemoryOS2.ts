@@ -1214,7 +1214,20 @@ export class MemoryOS2{
    const maxRevision=Math.max(0,...chains.values());
    return {current,historical,revisedItems:historical,revisionGroups:chains.size,maxRevision,validityCoverage01:this.state.items.length?clamp((current+historical)/this.state.items.length):1};
  }
- temporalChain(id:string){const m=this.itemIndex.get(id);if(!m)return [];const group=m.revisionGroupId??m.id;return this.state.items.filter(x=>(x.revisionGroupId??x.id)===group).sort((a,b)=>(a.revisionSequence??1)-(b.revisionSequence??1)).map(x=>structuredClone(x));}
+ temporalChain(id:string){
+   const m=this.itemIndex.get(String(id));if(!m)return [];
+   const group=m.revisionGroupId??m.id;
+   const indexedIds=this.revisionGroupIndex.get(group);
+   if(indexedIds){
+     const indexedRows=[...indexedIds].map(revisionId=>this.itemIndex.get(revisionId)).filter((row):row is MemoryItem2=>Boolean(row)&&(row.revisionGroupId??row.id)===group);
+     // Use the index on the normal path. Fall back to the canonical list if a derived
+     // entry is stale rather than returning a silently incomplete revision history.
+     if(indexedRows.length===indexedIds.size&&indexedRows.some(row=>row.id===m.id)){
+       return indexedRows.sort((a,b)=>(a.revisionSequence??1)-(b.revisionSequence??1)).map(row=>structuredClone(row));
+     }
+   }
+   return this.state.items.filter(row=>(row.revisionGroupId??row.id)===group).sort((a,b)=>(a.revisionSequence??1)-(b.revisionSequence??1)).map(row=>structuredClone(row));
+ }
  temperatureSummary(limit=16){return this.state.items.slice().sort((a,b)=>b.temperature01-a.temperature01).slice(0,Math.max(1,Math.min(32,Math.floor(limit)))).map(m=>({id:m.id,residencyTier:m.residencyTier??'cold',temperature01:m.temperature01,salience:m.salience,emotionalWeight:m.emotionalWeight,identityRelevance:m.identityRelevance,goalRelevance:m.goalRelevance,socialRelevance:m.socialRelevance,predictionError:m.predictionError,lastAccessAt:m.lastAccessAt}));}
 
  inspectRecent(limit=24){
@@ -1233,7 +1246,27 @@ export class MemoryOS2{
  retrievalDiagnostics(){return {candidateCount:this.lastCandidateCount,totalItems:this.state.items.length,pruning01:this.state.items.length?Math.max(0,1-this.lastCandidateCount/this.state.items.length):0,signalFusion:true,hybridRetrieval:true,...this.lastHybridDiagnostics};}
  indexDiagnostics(){
    let staleItemIndex=0,missingItemIndex=0,staleExact=0,staleContent=0,dfMismatch=0;
+   let staleRevisionGroupIndex=0,missingRevisionGroupIndex=0,wrongRevisionGroupIndex=0;
    const ids=new Set(this.state.items.map(m=>m.id));
+   const expectedRevisionGroups=new Map<string,Set<string>>();
+   for(const row of this.state.items){
+     const group=row.revisionGroupId??row.id;
+     let members=expectedRevisionGroups.get(group);if(!members){members=new Set<string>();expectedRevisionGroups.set(group,members);}
+     members.add(row.id);
+   }
+   for(const [group,members] of this.revisionGroupIndex){
+     if(!members.size)staleRevisionGroupIndex++;
+     for(const memberId of members){
+       const row=this.itemIndex.get(memberId);
+       if(!row||!ids.has(memberId)){staleRevisionGroupIndex++;continue;}
+       if((row.revisionGroupId??row.id)!==group)wrongRevisionGroupIndex++;
+     }
+   }
+   for(const [group,members] of expectedRevisionGroups){
+     const actual=this.revisionGroupIndex.get(group);
+     if(!actual){missingRevisionGroupIndex+=members.size;continue;}
+     for(const memberId of members)if(!actual.has(memberId))missingRevisionGroupIndex++;
+   }
    for(const id of this.itemIndex.keys())if(!ids.has(id))staleItemIndex++;
    for(const id of ids)if(!this.itemIndex.has(id))missingItemIndex++;
    for(const id of this.exactIndex.values())if(!ids.has(id))staleExact++;
@@ -1247,7 +1280,7 @@ export class MemoryOS2{
    for(const token of expectedDf.keys())for(const gram of charTrigrams(token)){let posting=expectedGrams.get(gram);if(!posting){posting=new Set<string>();expectedGrams.set(gram,posting);}posting.add(token);}
    let characterGramMismatch=expectedGrams.size===this.characterGramIndex.size?0:1;
    if(!characterGramMismatch)for(const [gram,tokens] of expectedGrams){const actual=this.characterGramIndex.get(gram);if(!actual||actual.size!==tokens.size||[...tokens].some(token=>!actual.has(token))){characterGramMismatch++;break;}}
-   return {pass:staleItemIndex===0&&missingItemIndex===0&&staleExact===0&&staleContent===0&&dfMismatch===0&&characterGramMismatch===0,items:this.state.items.length,itemIndexSize:this.itemIndex.size,staleItemIndex,missingItemIndex,staleExact,staleContent,dfMismatch,characterGramMismatch,characterGramVocabulary:this.characterGramIndex.size,semanticEmbeddingProvider:'none' as const,semanticVectorUsedForRanking:false};
+   return {pass:staleItemIndex===0&&missingItemIndex===0&&staleExact===0&&staleContent===0&&dfMismatch===0&&characterGramMismatch===0&&staleRevisionGroupIndex===0&&missingRevisionGroupIndex===0&&wrongRevisionGroupIndex===0,items:this.state.items.length,itemIndexSize:this.itemIndex.size,staleItemIndex,missingItemIndex,staleExact,staleContent,dfMismatch,characterGramMismatch,staleRevisionGroupIndex,missingRevisionGroupIndex,wrongRevisionGroupIndex,revisionGroupCount:this.revisionGroupIndex.size,characterGramVocabulary:this.characterGramIndex.size,semanticEmbeddingProvider:'none' as const,semanticVectorUsedForRanking:false};
  }
  /**
   * Read-only /doctor pass adapted from MemFS maintenance: checks memory identity, provenance,
