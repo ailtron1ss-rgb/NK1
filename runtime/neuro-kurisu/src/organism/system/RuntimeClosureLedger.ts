@@ -158,7 +158,7 @@ export class RuntimeClosureLedger {
       ],
       behaviorHash: fastFingerprint({ tick, phase: 'failure', reason }),
     };
-    this.commit(record, false);
+    this.commit(record);
     return structuredClone(record);
   }
   durable(input: RuntimeClosureDurabilityInput): RuntimeClosureRecord {
