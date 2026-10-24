@@ -312,7 +312,7 @@ export async function createNativeCompoundRepairRevisionProvider(
   await issueVerifiedProposal(datasetPath, options.root, options.stateDirectory, trustedKeys);
   return async input => {
     if (!input || !isNonEmptyString(input.skillId)) throw new Error('native-p23-revision-skill-id-required');
-    const { proposal } = await issueVerifiedProposal(datasetPath, options.root, options.stateDirectory, trustedKeys);
+    const { dataset, proposal } = await issueVerifiedProposal(datasetPath, options.root, options.stateDirectory, trustedKeys);
     const snapshot = options.candidateStore.snapshot();
     const active = snapshot.active.find(candidate => candidate.skillId === input.skillId);
     if (!active) throw new Error('native-p23-revision-active-baseline-required');
