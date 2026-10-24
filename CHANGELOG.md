@@ -1,3 +1,11 @@
+## NK1 WorkPass522 — wire external observations into the canonical reality ledger (2026-10-24)
+
+- Added an optional observation sink to `ExternalObserverFabric`; exact replays are forwarded again so a partially persisted state can heal through the ledger's event-ID idempotency.
+- `EvidenceResearchSubsystemRuntime` now owns `RealityEvidenceLedger` and wires its observer to record each observation, carrying event identity, tick, timestamp, confidence, independence key, and bounded causal parent IDs.
+- Evidence classes are mapped conservatively: user reports remain `user-reported`, simulators remain `simulator`, organism-generated observations remain `model-generated`, unknown sources remain `derived`, and device observations remain `device-observation`.
+- Runtime snapshots now include the ledger; restore loads both stores then reconciles observer rows into the ledger to backfill missing event records idempotently.
+- Added `workpass521-observer-ledger-bridge.mjs` to cover the live owner-level bridge, replay idempotency, user-report separation, and restore reconciliation. Hosted CI has not yet been confirmed for this head.
+
 ## NK1 WorkPass521 — cover verifier identity at the external-observer boundary (2026-10-24)
 
 - Extended the correlated-postcondition regression to feed the actual verifier-minted event key into `ExternalObserverFabric` and replay the same observation.
