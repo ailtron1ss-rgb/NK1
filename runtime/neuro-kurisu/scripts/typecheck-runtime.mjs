@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
 import path from 'node:path';
 
 const root = process.cwd();
@@ -34,17 +35,29 @@ try {
     };
     walk(path.join(root, 'src'));
     let failed = 0;
+    let unsupported = 0;
     for (const file of files) {
       try {
-        execFileSync(process.execPath, ['--experimental-strip-types', '--check', file], { cwd: root, stdio: 'ignore' });
-      } catch {
-        failed++;
-        console.error(`TS_PARSE_FAIL ${path.relative(root, file)}`);
+        // Node explicitly does not support TypeScript in --check. Parse the
+        // source through the module API instead; this strips erasable types but
+        // never evaluates the file or its imports.
+        stripTypeScriptTypes(readFileSync(file, 'utf8'), { mode: 'strip', sourceUrl: file });
+      } catch (error) {
+        const relative = path.relative(root, file);
+        if (error?.code === 'ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX') {
+          // Some valid TS constructs need code generation rather than stripping.
+          // That limits this diagnostic fallback; it does not prove the source is invalid.
+          unsupported++;
+          console.error(`TS_PARSE_UNSUPPORTED ${relative}: ${String(error.message ?? error).slice(0, 240)}`);
+        } else {
+          failed++;
+          console.error(`TS_PARSE_FAIL ${relative}: ${String(error?.message ?? error).slice(0, 240)}`);
+        }
       }
     }
     if (failed) process.exit(1);
-    console.log(`TYPECHECK=PARTIAL mode=node-strip-syntax-only files=${files.length} note="TypeScript compiler not installed; semantic tsc check unavailable."`);
-    // Parsing is useful diagnostic evidence, but it is not a successful typecheck.
+    console.log(`TYPECHECK=PARTIAL mode=node-strip-types files=${files.length} unsupported=${unsupported} note="TypeScript compiler unavailable; no semantic typecheck performed."`);
+    // A syntax-only fallback can never report semantic typecheck success.
     process.exit(2);
   }
   process.exit(typeof error?.status === 'number' ? error.status : 1);
