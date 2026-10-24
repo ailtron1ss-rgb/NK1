@@ -770,6 +770,43 @@ export class P23LearningEngine {
     return {active,fitness,evidenceBinding};
   }
 
+
+  /**
+   * Consequential promotion path requiring the RealityEvidenceLedger's
+   * confidence-qualified corroboration assessment in addition to the normal
+   * independent evaluation, signed shadow evidence, and authenticated approval.
+   * The assessment is an input snapshot, not proof by itself: callers must obtain
+   * it from the canonical ledger for the candidate's target claim.
+   */
+  approveRealityCorroboratedSkillCandidate(
+    realityAssessment:{
+      independentPromotionAllowed:boolean;
+      qualifiedIndependentExternalSources:number;
+      promotionReason:string;
+    },
+    candidateId:string,
+    approval:SkillPromotionApproval,
+    baseline:Parameters<typeof compareMatchedIndependentEvaluations>[0],
+    evaluation:Parameters<typeof compareMatchedIndependentEvaluations>[1] & Parameters<typeof bindIndependentEvaluationToVerifiedShadowEvidence>[0],
+    verifyEvidence:SkillShadowEvidenceVerifier,
+    minShadowRuns=3,
+  ):ReturnType<P23LearningEngine['approveIndependentlyEvaluatedSkillCandidate']> {
+    if(!realityAssessment || typeof realityAssessment!=='object' ||
+       realityAssessment.independentPromotionAllowed!==true ||
+       !Number.isSafeInteger(realityAssessment.qualifiedIndependentExternalSources) ||
+       realityAssessment.qualifiedIndependentExternalSources<2) {
+      const reason=typeof realityAssessment?.promotionReason==='string'
+        ? realityAssessment.promotionReason.slice(0,120)
+        : 'reality-corroboration-assessment-invalid';
+      throw new Error(`reality corroboration gate rejected consequential promotion: ${reason}`);
+    }
+    // Keep all existing independent fitness, exact-payload, signed-evidence and
+    // store-level approval checks authoritative; this is an additional precondition.
+    return this.approveIndependentlyEvaluatedSkillCandidate(
+      candidateId,approval,baseline,evaluation,verifyEvidence,minShadowRuns,
+    );
+  }
+
   approveVerifiedSkillCandidate(
     candidateId:string,
     approval:SkillPromotionApproval,
