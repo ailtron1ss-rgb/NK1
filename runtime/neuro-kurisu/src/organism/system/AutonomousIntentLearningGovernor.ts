@@ -101,8 +101,8 @@ export class AutonomousIntentLearningGovernor {
     const maximum = raw.maximumRisk01;
     const requireApproval = raw.requireApprovalForExternalEffects;
     this.config = Object.freeze({
-      minimumScore01: typeof minimum === 'number' && Number.isFinite(minimum) && minimum >= 0 && minimum <= 1 ? minimum : undefined,
-      maximumRisk01: typeof maximum === 'number' && Number.isFinite(maximum) && maximum >= 0 && maximum <= 1 ? maximum : undefined,
+      ...(typeof minimum === 'number' && Number.isFinite(minimum) && minimum >= 0 && minimum <= 1 ? { minimumScore01: minimum } : {}),
+      ...(typeof maximum === 'number' && Number.isFinite(maximum) && maximum >= 0 && maximum <= 1 ? { maximumRisk01: maximum } : {}),
       requireApprovalForExternalEffects: typeof requireApproval === 'boolean' ? requireApproval : true,
     });
   }
