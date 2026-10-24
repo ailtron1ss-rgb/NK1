@@ -28,7 +28,7 @@ const options = {
 const before = memory.snapshot();
 const report = runMemoryOS2RetrievalBenchmark(before, examples, options);
 const after = memory.snapshot();
-assert.equal(report.schemaVersion, 3);
+assert.equal(report.schemaVersion, 6, 'benchmark report follows the current schema version');
 assert.equal(report.benchmark, 'memoryos2-retrieval-vs-bm25-baseline');
 assert.equal(report.retrievalAlgorithmVersion, 'memoryos2-hybrid-v5-bilingual-concept-recall');
 assert.equal(report.baselineConfigurationFingerprint.length, 64);
