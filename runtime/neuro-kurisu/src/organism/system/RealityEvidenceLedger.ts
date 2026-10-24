@@ -116,6 +116,16 @@ export class RealityEvidenceLedger {
     }
   }
 
+  private quarantineEventId(eventId:string):void {
+    this.quarantinedEventIds.delete(eventId);
+    this.quarantinedEventIds.add(eventId);
+    while(this.quarantinedEventIds.size>this.receiptCapacity){
+      const oldest=this.quarantinedEventIds.keys().next().value as string|undefined;
+      if(oldest===undefined)break;
+      this.quarantinedEventIds.delete(oldest);
+    }
+  }
+
   restore(raw?:Partial<RealityEvidenceLedgerState>|null):void{
     let detached:unknown;
     try{
@@ -127,8 +137,20 @@ export class RealityEvidenceLedger {
       this.records=[];this.eventReceipts=new Map();this.total=0;this.quarantinedEventIds=new Set();return;
     }
     const quarantine=new Set<string>();
+    const quarantineId=(id:string)=>{
+      quarantine.delete(id);
+      quarantineId(id);
+      while(quarantine.size>this.receiptCapacity){
+        const oldest=quarantine.keys().next().value as string|undefined;
+        if(oldest===undefined)break;
+        quarantine.delete(oldest);
+      }
+    };
     if(Array.isArray(detached.quarantinedEventIds)){
-      for(const value of detached.quarantinedEventIds.slice(-2048)){const id=eventIdValue(value);if(id)quarantine.add(id);}
+      for(const value of detached.quarantinedEventIds.slice(-this.receiptCapacity)){
+        const id=eventIdValue(value);
+        if(id)quarantineId(id);
+      }
     }
 
     const receipts=new Map<string,RealityEvidenceRecord>();
@@ -178,7 +200,7 @@ export class RealityEvidenceLedger {
           if(sameEventPayloadExceptConfidence(receipt,row)){
             row={...row,confidence01:Math.min(receipt.confidence01,row.confidence01)};
           }else if(!sameEventPayload(receipt,row)){
-            quarantine.add(row.eventId);
+            quarantineId(row.eventId);
             receipts.delete(row.eventId);
             continue;
           }
@@ -258,7 +280,7 @@ export class RealityEvidenceLedger {
           this.eventReceipts.set(eventId,recalibrated);
           return structuredClone(recalibrated);
         }
-        this.quarantinedEventIds.add(eventId);
+        this.quarantineEventId(eventId);
         this.records=this.records.filter(record=>record.eventId!==eventId);
         this.eventReceipts.delete(eventId);
         throw new Error('reality-evidence-event-id-conflict');
