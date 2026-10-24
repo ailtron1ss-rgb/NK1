@@ -16,10 +16,10 @@ const privatePem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(
 const previousKeyring = process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON;
 process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON = JSON.stringify({ 'verifier-v1': publicPem });
 
-const manifest = Array.from({ length: 10 }, (_, i) => ({
+const manifest = Array.from({ length: 12 }, (_, i) => ({
   taskId: 'task-' + i,
   family: i < 5 ? 'memory' : 'tool-use',
-  split: i < 8 ? 'holdout' : 'validation',
+  split: i < 8 ? 'holdout' : i < 10 ? 'train' : 'validation',
   promptFingerprint: VerifiedOutcomeLedger.fingerprintPrompt('native revision prompt ' + i),
   verifierId: 'verifier-v1',
   version: 'v1',
