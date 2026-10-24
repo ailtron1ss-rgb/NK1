@@ -127,6 +127,19 @@ const staleCompletedGoals = Array.from({ length: 16 }, (_, index) => ({
   createdAt: Date.now() - 1000,
   updatedAt: Date.now() - 1000,
 }));
+const legacyExternalGoal = {
+  id: 'legacy-external-paused-goal',
+  title: 'Legacy imported goal without activation marker',
+  reason: 'Old external goal must also await explicit activation',
+  source: 'external',
+  status: 'paused',
+  importance: 0.55,
+  urgency: 0.25,
+  confidence: 0.6,
+  progress: 0.4,
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+};
 const nativePausedGoal = {
   id: 'legacy-paused-goal',
   title: 'Resume ordinary native goal',
@@ -140,7 +153,7 @@ const nativePausedGoal = {
   createdAt: Date.now(),
   updatedAt: Date.now(),
 };
-const goalPopulation = [...staleCompletedGoals, protectedExternalGoal, nativePausedGoal];
+const goalPopulation = [...staleCompletedGoals, protectedExternalGoal, legacyExternalGoal, nativePausedGoal];
 goalEcology.tick({
   tick: 1, at: Date.now(), goals: goalPopulation,
   lastAction: 'none', lastSuccess: null, mode: 'observe', homeostaticPressure01: 0.1, identity01: 0.9,
@@ -148,6 +161,9 @@ goalEcology.tick({
 assert.equal(protectedExternalGoal.status, 'paused', 'imported goals remain non-active without explicit activation');
 assert(goalPopulation.some(goal => goal.id === protectedExternalGoal.id),
   'P68 retention pruning must not delete a reviewed external goal awaiting explicit activation');
+assert.equal(legacyExternalGoal.status, 'paused', 'legacy external goals without the new marker remain activation-gated');
+assert(goalPopulation.some(goal => goal.id === legacyExternalGoal.id),
+  'P68 retention pruning must preserve legacy external goals until explicit activation');
 assert.equal(nativePausedGoal.status, 'active',
   'repairing P68 paused-goal traversal must retain its intended reactivation behavior for non-external goals');
 
