@@ -1,0 +1,50 @@
+name: WorkPass335 paired-seed learning growth
+
+on:
+  push:
+    branches: [workpass335-paired-seed-growth-2026-10-24]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
+      - "runtime/neuro-kurisu/tests/workpass225-matched-independent-evaluation.mjs"
+      - "runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs"
+      - ".github/workflows/workpass335-paired-seed-growth.yml"
+      - "docs/WORKPASS335_PAIRED_SEED_GROWTH_RU.md"
+      - "CHANGELOG.md"
+  pull_request:
+    branches: [workpass334-inner-imperative-homeostasis-2026-10-24]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
+      - "runtime/neuro-kurisu/tests/workpass225-matched-independent-evaluation.mjs"
+      - "runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs"
+      - ".github/workflows/workpass335-paired-seed-growth.yml"
+      - "docs/WORKPASS335_PAIRED_SEED_GROWTH_RU.md"
+      - "CHANGELOG.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-workpass335-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  paired-seed-growth:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Confirm Node runtime
+        run: node --version
+      - name: Compare matched independent evaluation across seeds
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass225-matched-independent-evaluation.mjs
+      - name: Fail closed on legacy promotion bypass
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-hermes-production-promotion-gate.mjs
