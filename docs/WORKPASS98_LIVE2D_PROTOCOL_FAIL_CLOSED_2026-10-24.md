@@ -15,6 +15,8 @@ The canonical public-asset manifest owns the model, texture, motion, expression 
 
 ## Validation
 
-- GitHub Actions workflow was triggered by the source, browser-test and source-contract commits. The exact-head result is linked from the final WorkPass98 changelog entry when available.
-- Negative-probe success is not inferred from a source diff; the report must be updated only after the exact workflow run completes.
+- Exact source/test/workflow commit: `1fde12d60b036ebb7787cf301a6cf78cd4f7f2f1`. GitHub Actions run [40128198611](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40128198611) **passed**.
+- Passed steps: `npm ci --prefix app`, `assets:sync`, `test:live2d-assets`, Chromium installation, `test:live2d-browser`, `test:live2d-expression-cache`, `test:embodiment-timeline` (14 tests; 14 passed, 0 failed) and `typecheck`.
+- Browser smoke completed against the real iframe in both profiles: mobile canvas `760x840`, 68,465 bright pixels; quality canvas `760x840`, 68,506 bright pixels. The malformed-NaN and missing-clock probes were rejected in both profiles; otherwise the browser step would have failed.
+- The branch head subsequently advanced through report/CHANGELOG-only commits, so the tested source SHA remains `1fde12d...`; those documentation commits do not alter the tested runtime/test code.
 - This pass does not establish real acoustic lip-sync, physical audio output, Android/Termux TTS/STT, long-session stability, or target-device performance.
