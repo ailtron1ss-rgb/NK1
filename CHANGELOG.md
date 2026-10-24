@@ -1,3 +1,10 @@
+## NK1 WorkPass525 — bind self-agency learning to trusted external receipts (2026-10-24)
+
+- Added `learnVerifiedOutcome` as an explicit evidence-gated path on `PredictiveSelfAgencySubstrate`. It requires the exact verifier-minted frozen receipt and binds tool ID, execution ID, decision ID and the complete canonical input; serialized/copied receipts cannot carry the in-process WeakMap capability.
+- The trusted verifier's confidence caps caller-provided causal match. The regular `learnOutcome` path is retained for simulation/research input but now rejects malformed signals/state and learns in proportion to causal credit; a zero match does not update policy weights, agency calibration or confidence counts.
+- Added regressions for copied/fabricated evidence, mismatched decision linkage, valid receipt use, and zero/partial/full causal credit.
+- This adds a safe integration API; a full live-runtime call-site migration is still a follow-on task. Source and tests are committed but were not executed in this pass.
+
 ## NK1 WorkPass524 — make self-agency learning respect causal evidence (2026-10-24)
 
 - Scaled policy-gradient updates, agency-error updates and ownership/authorship adaptation by the observed action/outcome causal-match signal.
