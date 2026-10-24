@@ -179,6 +179,7 @@ export class HexisCanonicalMemoryProjector {
         const independenceKey = asText(row.provenance?.source_id ?? row.provenance?.sourceId ?? row.source_attribution?.source_id, 96) || ('hexis-ref:' + hash(ref).slice(0, 24));
         const commandId = 'hexis-hmx:' + hash(exportId + '\0' + ref + '\0' + contentHash + '\0' + attempt).slice(0, 48);
         const memoryInput = {
+          id: 'hexis-memory:' + hash(lineageId + '\\0' + ref + '\\0' + contentHash).slice(0, 48),
           content: memoryText,
           tags,
           context,
@@ -212,7 +213,7 @@ export class HexisCanonicalMemoryProjector {
             evidenceFreshnessAt: dateMs(row.updated_at ?? row.updatedAt) ?? observedAt,
           }],
         };
-        const inserted = this.memoryFabric.encode(memoryInput, { commandId, syncCompatibility: false });
+        const inserted = this.memoryFabric.encode(memoryInput, { commandId, syncCompatibility: false, forceDistinct: true });
         if (!inserted?.id) throw new Error('hmx-apply-canonical-write-returned-no-id:' + ref);
         importedIds.push(inserted.id);
         if (beforeIds.has(inserted.id)) {
