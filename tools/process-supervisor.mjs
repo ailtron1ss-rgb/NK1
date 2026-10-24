@@ -12,7 +12,7 @@ function withTail(current, chunk, maxBytes) {
   if (incoming.length >= maxBytes) {
     return {
       buffer: Buffer.from(incoming.subarray(incoming.length - maxBytes)),
-      truncated: incoming.length > maxBytes || current.length > 0 || incoming.length === maxBytes,
+      truncated: incoming.length > maxBytes || current.length > 0,
     };
   }
 
