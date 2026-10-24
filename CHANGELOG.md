@@ -1,3 +1,15 @@
+# NK1 process supervision optimization — migration and fixture hardening (2026-10-24)
+
+- [HARDENED] `tools/super-install.test.mjs` now copies the shared `process-supervisor.mjs` dependency into its isolated fixtures. An Actions failure exposed the missing fixture dependency after the installer switched to shared supervision; the test contract itself was not weakened.
+- [COMPATIBILITY] `super-install.mjs` retains structured `SUPER_INSTALL=TIMEOUT workspace=... deadlineMs=...` diagnostics while using shared timeout and process-group cleanup.
+- [HARDENED] `super-migrate.mjs` now bounds app and runtime migration subprocesses with `NK_MIGRATION_TIMEOUT_MS` (default 30 minutes; allowed 1–60 minutes), streams logs, limits retained diagnostic tails, and keeps app migration before runtime migration. Timeout cancellation warns operators to inspect partial application state before retrying.
+- [REGRESSION] Added `tools/super-migrate.test.mjs` and `npm run test:super-migrate` to reject invalid timeout configuration before migration execution.
+- [CI] Focused Node 24 process workflow now checks launcher syntax, environment doctor probes, installer prerequisites, supervisor regressions and migration timeout validation.
+- [VALIDATION STATUS] Earlier focused process regression passed on commit `eadd0a2ad19ae0677087f5569084026bdd5495da`. The second-pass run must be evaluated on the latest branch head; one intermediate canonical-kernel run failed because the temporary installer fixture omitted the newly imported supervisor module, and the fixture was repaired afterward.
+- [SCOPE] No cognition or learning uplift is claimed. `main` and the published Release ZIP are unchanged.
+
+---
+
 # NK1 process supervision optimization — second pass (2026-10-24)
 
 - [OPTIMIZED] Unified `tools/super-install.mjs` with the shared process supervisor; npm install keeps live console output while the retained stdout/stderr diagnostics remain bounded, and process timeout/escalation logic is no longer duplicated.
