@@ -40,7 +40,13 @@ assert.deepEqual(governor.recordOutcome({
 assert.deepEqual(governor.recordOutcome({
   intentId: 'external-write-1', observedBenefit01: 1, evidence: 'verified', observedAt: 103,
 }), { accepted: false, reason: 'intent-not-executed' });
+assert.deepEqual(governor.authorize('external-write-1', 'approval:review-44'), { accepted: true, reason: 'authorized' });
+assert.deepEqual(governor.recordExecution('external-write-1', 'execution:tool-run-44'), { accepted: true, reason: 'execution-recorded' });
 
+assert.deepEqual(governor.recordOutcome({
+  intentId: 'memory-repair-1', observedBenefit01: .8, evidence: 'verified', observedAt: 103,
+}), { accepted: false, reason: 'intent-not-executed' });
+assert.deepEqual(governor.recordExecution('memory-repair-1', 'execution:task-12'), { accepted: true, reason: 'execution-recorded' });
 const outcome = { intentId: 'memory-repair-1', observedBenefit01: .8, evidence: 'holdout-task-pass', observedAt: 104 };
 assert.deepEqual(governor.recordOutcome(outcome), { accepted: true, reason: 'outcome-recorded' });
 assert.deepEqual(governor.recordOutcome(outcome), { accepted: false, reason: 'duplicate-outcome' });
