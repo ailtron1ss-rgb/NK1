@@ -1,3 +1,14 @@
+## NK1 WorkPass479 — stable embodied evidence IDs and conflict quarantine (2026-10-24)
+
+- Extracted a shared domain-separated SHA-256 event-ID helper and reused it for the existing OutcomeVerificationService tuple, preserving the `outcome:<40-hex>` format while making the identity contract reusable by embodiment.
+- EmbodiedActionExecutor now attaches an idempotency/join `eventId` to the exact normalized action result. It is explicitly not proof of a successful external effect.
+- RealityEvidenceLedger accepts optional event IDs, returns the existing row on identical replay, quarantines conflicting payload reuse, and excludes quarantined events from claim promotion/counts. Restore now snapshots bounded plain data, validates records, detects conflicting event IDs, and preserves the quarantine list compatibly.
+- OrganismRuntime binds the same embodied event ID to separate action/consequence evidence rows with domain suffixes; this prevents a restarted/replayed result from counting twice while keeping distinct claims distinct.
+- Added `test:workpass479:reality-evidence` and wired it into the P2841 evidence suite in place of its missing persistence-script reference.
+- **Validation status:** code and regression source are committed; exact-head execution/typecheck remains unverified. Stable IDs are deduplication keys, never trust/authority on their own; no learning uplift or production-readiness claim is made.
+
+---
+
 ## NK1 WorkPass457 — mint stable verifier-bound evidence event IDs (2026-10-23)
 
 - OutcomeVerificationService now emits an optional SHA-256-derived evidenceEventId only for properly shaped external postcondition evidence tied to a valid host execution ID, decision ID, tool, observation ID and full action input.
