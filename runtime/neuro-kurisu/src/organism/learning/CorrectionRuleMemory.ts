@@ -217,6 +217,7 @@ export class CorrectionRuleMemory {
     const sourceRows = detached.observations.slice(0, MAX_OBSERVATIONS);
     const byId = new Map<string, ReviewedCorrectionObservation>();
     const conflicted = new Set<string>();
+    const seenEvidenceKeys = new Set<string>();
     const quarantined = new Set<string>();
     const storedQuarantine = Array.isArray(detached.quarantinedObservationIds)
       ? detached.quarantinedObservationIds.filter((id): id is string => typeof id === 'string' && HASH.test(id)).slice(0, MAX_QUARANTINED)
@@ -233,6 +234,13 @@ export class CorrectionRuleMemory {
       if (!verified) continue;
       const prior = byId.get(row.observationId);
       if (!prior) {
+        const evidenceKey = `${row.ruleId}:${row.reviewEvidenceFingerprint}`;
+        if (seenEvidenceKeys.has(evidenceKey)) {
+          // The same reviewed artifact cannot create a second recurrence vote.
+          quarantined.add(row.observationId);
+          continue;
+        }
+        seenEvidenceKeys.add(evidenceKey);
         byId.set(row.observationId, row);
       } else if (!sameObservation(prior, row)) {
         byId.delete(row.observationId);
@@ -272,6 +280,8 @@ export class CorrectionRuleMemory {
       this.state.revision++;
       throw new Error('correction-observation-id-conflict');
     }
+    const repeatedEvidence = this.state.observations.find(row => row.ruleId === observation.ruleId && row.reviewEvidenceFingerprint === observation.reviewEvidenceFingerprint);
+    if (repeatedEvidence) throw new Error('correction-review-evidence-reused');
     if (this.state.observations.length >= MAX_OBSERVATIONS) throw new RangeError('correction-memory-capacity-reached');
 
     this.state.observations.push(observation);
