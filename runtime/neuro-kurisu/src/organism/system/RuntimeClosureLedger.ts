@@ -121,9 +121,14 @@ function normalizeClosureRecord(raw: unknown): RuntimeClosureRecord | null {
     }];
   }).slice(-32);
   if (!checks.length) return null;
+  const normalizedStatus: RuntimeClosureStatus = record.status === 'FAIL' || checks.some((check) => !check.ok)
+    ? 'FAIL'
+    : record.status === 'DEGRADED' || checks.some((check) => check.detail?.startsWith('degraded'))
+      ? 'DEGRADED'
+      : 'PASS';
   return {
     at: record.at, tick: record.tick, phase: record.phase as RuntimeClosureRecord['phase'],
-    status: record.status as RuntimeClosureStatus, checks, behaviorHash: record.behaviorHash.slice(0, 160),
+    status: normalizedStatus, checks, behaviorHash: record.behaviorHash.slice(0, 160),
     durableHash: typeof record.durableHash === 'string' ? record.durableHash.slice(0, 160) : undefined,
   };
 }
