@@ -23,8 +23,12 @@ Date: 2026-10-24
 - `app/scripts/test-live2d-runtime-browser.mjs` boots the runtime viewer in Chromium for both `mobile` and `quality` profiles, checks visible canvas output and local-resource responses, sends expression/body/lip-sync intents, then opens the real `avatar.html` against a deterministic UI-snapshot fixture and verifies snapshot → expression → motion → lip-sync.
 - The focused Node.js 24 workflow now runs the runtime browser smoke and the runtime's `test:live2d` command alongside the app viewer gates.
 
-## Validation status at report creation
+## Validation
 
-The source, contract tests, workflow integration, and script registration are committed by head `6b36e6aa6c8bd6a37122b60ab977e0ed4d7e3d52`. The exact-head GitHub Actions run is [40129428404](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40129428404), queued when this report was authored. Do not infer a pass until the workflow finishes.
-
-This pass proves runtime wiring only if the browser test passes. It does not prove physical audio output, acoustic-phoneme timing, Android/Termux hardware capability, long-session stability, or performance on the target phone.
+- Exact code/test/workflow head: `6b36e6aa6c8bd6a37122b60ab977e0ed4d7e3d52`. GitHub Actions run [40129428404](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40129428404) **passed**.
+- Asset sync and manifest gate passed with `manifest=24 hydrated=24 qualityRefs=13 mobileRefs=13`, including all three vendor SDK files verified by byte size and SHA-256.
+- App viewer Chromium smoke passed: mobile canvas `760x840` / 68,469 bright pixels; quality `760x840` / 68,520 bright pixels.
+- Runtime viewer Chromium smoke passed: mobile canvas `760x840` / 68,475 bright pixels; quality `760x840` / 68,516 bright pixels. The end-to-end avatar fixture confirmed `snapshot→emotion→motion→lipsync`.
+- Runtime integrity and presentation mapping passed (`LIVE2D_INTEGRITY=PASS`, `AVATAR_STATE_MAPPING=PASS`). Embodiment timeline tests: 14 passed, 0 failed. Expression/render budget check and TypeScript typecheck passed.
+- Branch later advanced through report/CHANGELOG commits; the tested runtime, test and workflow source SHA remains `6b36e6a...`.
+- Still not proved: physical audio output, acoustic/phoneme-level lip-sync, Android/Termux hardware TTS/STT, long-session stability, or performance on the target phone.
