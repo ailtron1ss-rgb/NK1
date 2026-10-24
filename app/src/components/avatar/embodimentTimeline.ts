@@ -75,6 +75,15 @@ export interface AffectiveEmbodimentInput {
   cognitiveLoad01: number;
   uncertainty01: number;
   sleepPressure01: number;
+  /** Persisted canonical mood; absent/null is supported for old backend snapshots. */
+  mood?: {
+    valence01: number;
+    arousal01: number;
+    stress01: number;
+    confidence01: number;
+    dominantLabel: AffectiveEmotionLabel;
+    persistence01: number;
+  };
 }
 
 export interface AffectiveEmbodimentProfile {
@@ -98,18 +107,25 @@ export interface AffectiveEmbodimentProfile {
 export function deriveAffectiveEmbodiment(input: AffectiveEmbodimentInput): AffectiveEmbodimentProfile {
   const unit = (value: number, fallback = 0.5): number =>
     Number.isFinite(value) ? clamp(value, 0, 1) : fallback;
-  const valence = unit(input.valence01);
-  const arousal = unit(input.arousal01);
+  const moodPersistence = input.mood ? unit(input.mood.persistence01, 0) : 0;
+  const moodBlend = moodPersistence * 0.30;
+  const currentValence = unit(input.valence01);
+  const currentArousal = unit(input.arousal01);
   const dominance = unit(input.dominance01);
   const energy = unit(input.energy01, 0.68);
   const load = unit(input.cognitiveLoad01, 0.25);
   const uncertainty = unit(input.uncertainty01, 0.35);
   const sleep = unit(input.sleepPressure01, 0.15);
+  const valence = currentValence * (1 - moodBlend) + (input.mood ? unit(input.mood.valence01, currentValence) : currentValence) * moodBlend;
+  const arousal = currentArousal * (1 - moodBlend) + (input.mood ? unit(input.mood.arousal01, currentArousal) : currentArousal) * moodBlend;
 
-  const stress01 = clamp(
+  const measuredStress = clamp(
     (1 - dominance) * 0.22 + uncertainty * 0.32 + load * 0.24 + sleep * 0.12 + (1 - energy) * 0.10,
     0, 1,
   );
+  const moodStress = input.mood ? unit(input.mood.stress01, measuredStress) : measuredStress;
+  const stressBlend = moodPersistence * 0.25;
+  const stress01 = clamp(measuredStress * (1 - stressBlend) + moodStress * stressBlend, 0, 1);
   const labelPitch: Record<AffectiveEmotionLabel, number> = {
     curiosity: 0.012, calm: 0, joy: 0.025, anxiety: -0.012,
     frustration: -0.02, sadness: -0.035, anger: -0.03, protective: -0.005,
@@ -118,15 +134,19 @@ export function deriveAffectiveEmbodiment(input: AffectiveEmbodimentInput): Affe
     curiosity: -0.045, calm: 0, joy: 0.018, anxiety: -0.018,
     frustration: 0.035, sadness: 0.055, anger: 0.025, protective: -0.01,
   };
+  const moodLabel = input.mood?.dominantLabel ?? input.label;
+  const labelBlend = moodPersistence * 0.25;
+  const labelPitchOffset = labelPitch[input.label] * (1 - labelBlend) + labelPitch[moodLabel] * labelBlend;
+  const currentHeadBase = headBase[input.label] * (1 - labelBlend) + headBase[moodLabel] * labelBlend;
   return {
     speechRate: clamp(0.96 + (arousal - 0.30) * 0.11 + (valence - 0.5) * 0.05
       - stress01 * 0.09 - (1 - energy) * 0.04, 0.78, 1.12),
     speechPitch: clamp(0.98 + (valence - 0.5) * 0.14 + (dominance - 0.5) * 0.035
-      - stress01 * 0.055 + labelPitch[input.label], 0.82, 1.15),
+      - stress01 * 0.055 + labelPitchOffset, 0.82, 1.15),
     expressionIntensity: clamp(arousal * 0.55 + stress01 * 0.20
       + Math.abs(valence - 0.5) * 0.15 + (1 - energy) * 0.10, 0, 1),
     voiceEmphasis: clamp(arousal * 0.50 + stress01 * 0.24 + Math.abs(valence - 0.5) * 0.26, 0, 1),
-    headTilt: clamp(headBase[input.label] + (valence - 0.5) * 0.06
+    headTilt: clamp(currentHeadBase + (valence - 0.5) * 0.06
       - (uncertainty - 0.5) * 0.02 + sleep * 0.015, -0.15, 0.15),
     gazeXOffset: clamp((valence - 0.5) * 0.10 + (dominance - 0.5) * 0.035, -0.15, 0.15),
     gazeYOffset: clamp((uncertainty - 0.35) * 0.08 + (sleep - 0.25) * 0.04, -0.12, 0.12),
