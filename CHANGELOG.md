@@ -1,3 +1,12 @@
+## NK1 WorkPass512 — align trusted shadow and signed-evidence contracts (2026-10-24)
+
+- Ported feedback/perception's async trusted-shadow coordinator contract into the memory/learning copies. Invalid baseline/control runs reject the Promise before spawn; the test now asserts that contract and confirms no extra registration is written.
+- Replaced generic `Buffer<ArrayBufferLike>` annotations with portable `Buffer` annotations for the runtime type-shim path.
+- Improved the Hermes signed-evidence tamper regression so it maintains the outer payload fingerprint and therefore exercises signature verification rather than only an earlier mismatch check.
+- These updates are committed in `feature/memory`; exact-head workflow confirmation is still pending.
+
+---
+
 ## NK1 WorkPass510 — make experience tag normalization accessor-safe (2026-10-24)
 
 - Normalizes tags by inspecting own array-index descriptors, rejecting accessor-backed, sparse, overlong, or non-plain arrays without executing getters.
