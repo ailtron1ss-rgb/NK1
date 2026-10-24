@@ -31,13 +31,20 @@ export interface RealityEvidenceLedgerState {
   simulatorCount:number;
   independentSources:number;
   recent:RealityEvidenceRecord[];
+  /** Event IDs whose identity was reused with conflicting evidence content. */
+  quarantinedEventIds?:string[];
 }
 
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const REALITY_CLASSES:readonly EvidenceRealityClass[]=['external-observation','device-observation','simulator','derived','model-generated','user-reported'];
-const EXTERNAL=new Set<EvidenceRealityClass>(['external-observation','device-observation','user-reported']);
-const validText=(value:unknown,max:number):value is string=>typeof value==='string'&&value.trim().length>0&&value.trim().length<=max;
+const EXTERNAL=new Set<EvidenceRealityClass>(['external-observation','device-observation']);
+const USER_REPORTED=new Set<EvidenceRealityClass>(['user-reported']);
+const CONTROL_CHARACTERS=/[\u0000-\u001f\u007f-\u009f]/;
+const validText=(value:unknown,max:number):value is string=>
+  typeof value==='string'&&value.length>0&&value.length<=max&&value.trim()===value&&
+  !CONTROL_CHARACTERS.test(value)&&value.normalize('NFKC')===value;
+const validEventId=(value:unknown):value is string=>validText(value,256);
 const validScore=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
 const validTick=(value:unknown):value is number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
 const stableEvidenceId=(value:unknown):string=>'rel:'+createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0,40);
@@ -56,6 +63,7 @@ export class RealityEvidenceLedger {
   private readonly capacity:number;
   private records:RealityEvidenceRecord[]=[];
   private total=0;
+  private readonly quarantinedEventIds=new Set<string>();
 
   constructor(capacity=384){this.capacity=Math.max(128,Math.min(2048,Math.floor(capacity)));}
 
@@ -64,11 +72,17 @@ export class RealityEvidenceLedger {
     try{detached=snapshotPlainData(raw??{},{allowNonFiniteNumbers:true,maxDepth:16,maxNodes:20_000,maxStringUnits:2*1024*1024});}
     catch{this.records=[];this.total=0;return;}
     const value=isRecord(detached)?detached:{};
+    const quarantine=new Set<string>();
+    if(Array.isArray(value.quarantinedEventIds)){
+      for(const rawId of value.quarantinedEventIds.slice(-2048)){
+        if(validEventId(rawId))quarantine.add(rawId);
+      }
+    }
     const candidates=Array.isArray(value.recent)?value.recent.slice(0,this.capacity):[];
     const parsedRecords:RealityEvidenceRecord[]=[];
     for(const candidate of candidates){
       if(!isRecord(candidate)||!validText(candidate.id,256)||
-         (candidate.eventId!==undefined&&!validText(candidate.eventId,256))||!validTick(candidate.tick)||
+         (candidate.eventId!==undefined&&!validEventId(candidate.eventId))||!validTick(candidate.tick)||
          typeof candidate.at!=='number'||!Number.isFinite(candidate.at)||candidate.at<0||
          !REALITY_CLASSES.includes(candidate.realityClass as EvidenceRealityClass)||
          !validText(candidate.claim,240)||!validScore(candidate.confidence01)||
@@ -101,16 +115,19 @@ export class RealityEvidenceLedger {
     const conflictedEvents=new Set<string>();
     for(const [id,group] of byId)if(new Set(group.map(serialized)).size>1)conflictedIds.add(id);
     for(const [eventId,group] of byEventId)if(new Set(group.map(serialized)).size>1)conflictedEvents.add(eventId);
+    for(const eventId of conflictedEvents)quarantine.add(eventId);
     const records:RealityEvidenceRecord[]=[];
     const acceptedPayloads=new Set<string>();
     for(const record of parsedRecords){
-      if(conflictedIds.has(record.id)||(record.eventId&&conflictedEvents.has(record.eventId)))continue;
+      if(conflictedIds.has(record.id)||(record.eventId&&(conflictedEvents.has(record.eventId)||quarantine.has(record.eventId))))continue;
       const key=serialized(record);
       if(acceptedPayloads.has(key))continue;
       acceptedPayloads.add(key);
       records.push(record);
     }
     this.records=records;
+    this.quarantinedEventIds.clear();
+    for(const eventId of quarantine)this.quarantinedEventIds.add(eventId);
     this.total=typeof value.total==='number'&&Number.isSafeInteger(value.total)&&value.total>=records.length
       ?Math.min(MAX_TOTAL,value.total):records.length;
   }
@@ -131,17 +148,21 @@ export class RealityEvidenceLedger {
     const claim=input.claim.trim(),independenceKey=input.independenceKey.trim();
     const confidence01=input.confidence01??.5;
     const parentIds=(input.parentIds??[]).slice();
-    const eventId=input.eventId?.trim();
+    const eventId=input.eventId;
+    if(eventId!==undefined&&this.quarantinedEventIds.has(eventId))throw new TypeError('reality-evidence-event-id-quarantined');
     const identity={tick:input.tick,at,realityClass:input.realityClass,claim,confidence01,independenceKey,parentIds};
     const id=eventId
       ?stableEvidenceId({namespace:'nk1-reality-event-v1',eventId})
       :stableEvidenceId(identity);
     const prior=this.records.find(row=>row.id===id||(eventId!==undefined&&row.eventId===eventId));
     if(prior){
-      const samePayload=prior.tick===input.tick&&prior.at===at&&prior.realityClass===input.realityClass&&
+      const samePayload=prior.tick===input.tick&&prior.realityClass===input.realityClass&&
         prior.claim===claim&&prior.confidence01===confidence01&&prior.independenceKey===independenceKey&&
         JSON.stringify(prior.parentIds)===JSON.stringify(parentIds)&&prior.eventId===eventId;
-      if(!samePayload)throw new TypeError('reality-evidence-event-identity-conflict');
+      if(!samePayload){
+        if(eventId)this.quarantinedEventIds.add(eventId);
+        throw new TypeError('reality-evidence-event-identity-conflict');
+      }
       return structuredClone(prior);
     }
     const row:RealityEvidenceRecord={id,...(eventId?{eventId}:{}),tick:input.tick,at,realityClass:input.realityClass,claim,confidence01,independenceKey,parentIds};
@@ -151,24 +172,30 @@ export class RealityEvidenceLedger {
     return structuredClone(row);
   }
 
-  recent(limit=64){return structuredClone(this.records.slice(0,Math.max(1,Math.min(256,Math.floor(limit)))));}
+  recent(limit=64){return structuredClone(this.records.filter(record=>!record.eventId||!this.quarantinedEventIds.has(record.eventId)).slice(0,Math.max(1,Math.min(256,Math.floor(limit)))));}
 
   claimAssessment(claim:string){
     const rows=this.records.filter(r=>r.claim===claim);
     const external=rows.filter(r=>EXTERNAL.has(r.realityClass));
+    const userReported=rows.filter(r=>USER_REPORTED.has(r.realityClass));
     const simulator=rows.filter(r=>r.realityClass==='simulator');
     const externalKeys=new Set(external.map(r=>r.independenceKey));
+    const userReportedKeys=new Set(userReported.map(r=>r.independenceKey));
     const simulationKeys=new Set(simulator.map(r=>r.independenceKey));
     const externalConfidence=external.length?Math.max(...external.map(r=>r.confidence01)):0;
+    const userReportedConfidence=userReported.length?Math.max(...userReported.map(r=>r.confidence01)):0;
     const simulationConfidence=simulator.length?Math.max(...simulator.map(r=>r.confidence01)):0;
     return {
       claim,
       samples:rows.length,
       externalSamples:external.length,
+      userReportedSamples:userReported.length,
       simulationSamples:simulator.length,
       externalConfidence01:externalConfidence,
+      userReportedConfidence01:userReportedConfidence,
       simulationConfidence01:simulationConfidence,
       independentExternalSources:externalKeys.size,
+      independentUserReportedSources:userReportedKeys.size,
       independentSimulationSources:simulationKeys.size,
       promotionAllowed:external.length>0&&externalKeys.size>0&&externalConfidence>=.55,
       realityGap01:Math.max(0,simulationConfidence-externalConfidence),
@@ -176,7 +203,16 @@ export class RealityEvidenceLedger {
   }
 
   snapshot():RealityEvidenceLedgerState{
-    const independent=new Set(this.records.filter(r=>EXTERNAL.has(r.realityClass)).map(r=>r.independenceKey));
-    return {version:1,total:this.total,externalCount:this.records.filter(r=>EXTERNAL.has(r.realityClass)).length,simulatorCount:this.records.filter(r=>r.realityClass==='simulator').length,independentSources:independent.size,recent:this.recent(96)};
+    const active=this.records.filter(record=>!record.eventId||!this.quarantinedEventIds.has(record.eventId));
+    const independent=new Set(active.filter(r=>EXTERNAL.has(r.realityClass)).map(r=>r.independenceKey));
+    return {
+      version:1,
+      total:this.total,
+      externalCount:active.filter(r=>EXTERNAL.has(r.realityClass)).length,
+      simulatorCount:active.filter(r=>r.realityClass==='simulator').length,
+      independentSources:independent.size,
+      recent:this.recent(96),
+      quarantinedEventIds:[...this.quarantinedEventIds].slice(-2048),
+    };
   }
 }
