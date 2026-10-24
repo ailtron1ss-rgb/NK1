@@ -1,3 +1,12 @@
+## NK1 WorkPass333 — unblock TypeScript and signed-outcome regression gates (2026-10-24)
+
+- [FIXED] Typed callback parameters and replaced direct deletion of the non-optional `globalThis.window` property in `safeLocalStorage.test.mjs`, addressing the exact app-typecheck failures reported by GitHub Actions.
+- [FIXED] Updated `p23-signed-outcome-artifact.mjs` to match the signed-artifact contract: exact replay of a valid, already-accepted artifact is idempotent and restores the in-memory trust receipt; a different signed outcome on the same task/method/seed/attempt remains rejected as `conflicting-existing-outcome`.
+- [EVIDENCE] These changes address observed failures in Actions run 40128478430 (app typecheck) and 40128478478 (signed-outcome regression), not speculative runner-startup failures.
+- [VALIDATION] Fixes are committed; a new head must execute the workflow steps before either gate can be called green.
+
+---
+
 ## NK1 WorkPass332 — prioritize current perception and enforce strict cache freshness (2026-10-24)
 
 - [FIXED] Corrected the cached entity presence predicate so only entities with `present01 > 0.25` are admitted; low-presence residuals no longer pass due to operator precedence.

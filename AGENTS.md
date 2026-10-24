@@ -1,5 +1,14 @@
 # NeuroCore — repository working rules
 
+## Latest durable checkpoint — WorkPass333 (2026-10-24)
+
+- Fixed the app TypeScript test errors reported by Actions: typed the storage fixture callbacks and used `Reflect.deleteProperty` for optional test setup/restore.
+- Aligned signed-outcome test expectations with the implementation: exact signed artifact replay is idempotent; conflicting signed outcomes for the same attempt still fail closed.
+- WorkPass328–332 interpreter changes remain: canonical fusion, persisted conflict evidence, epistemic source tags, and fresh P41 perception input with age-bounded cache.
+- New-head CI must confirm the two fixed gates and run the interpreter regression. Release ZIP remains unchanged.
+
+---
+
 ## Latest durable checkpoint — WorkPass332 (2026-10-24)
 
 - The interpreter consumes recent cached P41 vision entities/relations and audio event labels only when evidence timestamps are within a 120-second age bound, allowing at most 30 seconds of future clock skew.
