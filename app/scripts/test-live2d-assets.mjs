@@ -119,6 +119,13 @@ assert.match(viewer, /document\.addEventListener\(['"]visibilitychange['"]/u);
 assert.match(viewer, /app\.stop\(\)/u);
 assert.match(viewer, /app\.start\(\)/u);
 assert.match(viewer, /lastAppliedExpression/u);
+assert.match(viewer, /function sanitizeIntent\(d\)/u, "the viewer must validate parent embodiment messages");
+assert.match(viewer, /if\(!isRecord\(d\.mouth\)\|\|!isRecord\(d\.gaze\)\|\|!isRecord\(d\.body\)\)return null;/u,
+  "nested embodiment payloads must be plain records, not arrays");
+assert.match(viewer, /d\.speechPhase==='speaking'&&d\.clockSource==='none'/u,
+  "speaking intent must not claim a missing audio clock source");
+assert.match(viewer, /Number\.isFinite\(d\.expressionIntensity\)/u,
+  "non-finite affect fields must be rejected before clamping");
 
 const mapMatch = viewer.match(/const EXPR_MAP=\{([\s\S]*?)\};/u);
 assert.ok(mapMatch, "viewer expression mapping must exist");
