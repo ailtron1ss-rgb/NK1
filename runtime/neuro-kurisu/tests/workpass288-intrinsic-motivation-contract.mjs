@@ -48,4 +48,33 @@ assert.equal(engine.snapshot().novelty,0.8);
 engine.restore({overall:1,dominant:'made-up'});
 assert.equal(engine.snapshot().overall,0);
 assert.equal(engine.proposeGoal(),null);
+
+let restoreGetterReads = 0;
+const hostileRestore = Object.defineProperty({}, 'novelty', {
+  enumerable: true, get() { restoreGetterReads++; return 1; },
+});
+engine.restore(hostileRestore);
+assert.equal(restoreGetterReads, 0, 'motivation restore must not execute persisted-state getters');
+assert.equal(engine.snapshot().novelty, 0, 'unsafe persisted motivation state fails closed to defaults');
+
+engine.update({ uncertainty:.7, predictionError:.2, novelty:.3, goalPressure:.2,
+  socialNeed:.1, energy:.8, lastSuccess:.8, worldEvidenceQuality:.7 });
+const beforeRejectedUpdate = engine.snapshot();
+let updateGetterReads = 0;
+const hostileUpdate = Object.defineProperty({
+  predictionError:.2, novelty:.3, goalPressure:.2, socialNeed:.1, energy:.8,
+  lastSuccess:.8, worldEvidenceQuality:.7,
+}, 'uncertainty', {
+  enumerable: true, get() { updateGetterReads++; return .99; },
+});
+assert.throws(() => engine.update(hostileUpdate), /intrinsic-motivation-input-must-be-plain-data/);
+assert.equal(updateGetterReads, 0, 'live motivation update must reject getter-backed signals without invoking them');
+assert.deepEqual(engine.snapshot(), beforeRejectedUpdate, 'rejected motivation updates must not partially mutate drive state');
+
+const cyclicUpdate = { uncertainty:.7, predictionError:.2, novelty:.3, goalPressure:.2,
+  socialNeed:.1, energy:.8, lastSuccess:.8, worldEvidenceQuality:.7 };
+cyclicUpdate.self = cyclicUpdate;
+assert.throws(() => engine.update(cyclicUpdate), /intrinsic-motivation-input-must-be-plain-data/);
+assert.deepEqual(engine.snapshot(), beforeRejectedUpdate, 'cyclic motivation input must fail without state mutation');
+
 console.log('WorkPass288 intrinsic motivation contract: PASS');

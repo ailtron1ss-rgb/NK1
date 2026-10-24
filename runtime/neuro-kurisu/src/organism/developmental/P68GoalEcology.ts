@@ -1,3 +1,4 @@
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 /**
  * P68 — Goal Ecology.
  *
@@ -18,16 +19,67 @@ export interface P68State {
   activeCount:number;lastTopGoalId:string|null;lastMode:string;history:P68GoalView[];
 }
 export const defaultP68=():P68State=>({version:1,cycles:0,completed:0,abandoned:0,paused:0,reactivated:0,pruned:0,meanVitality01:.62,meanStaleness01:.18,meanConflict01:.12,goalPressure01:.32,activeCount:0,lastTopGoalId:null,lastMode:'observe',history:[]});
+const safeCount=(value:unknown)=>Number.isSafeInteger(value)&&Number(value)>=0?Number(value):0;
+const safeUnit=(value:unknown,fallback:number)=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:fallback;
+const GOAL_STATUSES=new Set<GoalStatus>(['candidate','active','paused','completed','abandoned']);
+function normalizeGoalView(value:unknown):P68GoalView|null{
+ if(!value||typeof value!=='object'||Array.isArray(value))return null;
+ const r=value as Record<string,unknown>;
+ if(typeof r.id!=='string'||!r.id.trim()||r.id.length>180||typeof r.title!=='string'||r.title.length>240||
+    !GOAL_STATUSES.has(r.status as GoalStatus)||!['vitality01','staleness01','conflict01','progress01'].every(key=>typeof r[key]==='number'&&Number.isFinite(r[key])&&(r[key] as number)>=0&&(r[key] as number)<=1))return null;
+ return {id:r.id,title:r.title,status:r.status as GoalStatus,vitality01:r.vitality01 as number,staleness01:r.staleness01 as number,conflict01:r.conflict01 as number,progress01:r.progress01 as number};
+}
 function words(value:string){return new Set((String(value).toLowerCase().match(/[\p{L}\p{N}]{3,}/gu)??[]));}
 function overlap(a:Set<string>,b:Set<string>){let common=0;for(const x of a)if(b.has(x))common++;return common/Math.max(1,Math.min(a.size,b.size));}
 export class P68GoalEcology {
  private state=defaultP68();
- restore(raw?:Partial<P68State>|null){const d=defaultP68(),r=raw??{};this.state={...d,...r,history:Array.isArray(r.history)?r.history.slice(-128):[]};}
+ restore(raw?:Partial<P68State>|null){
+  const d=defaultP68();let detached:unknown;
+  try{detached=snapshotPlainData<unknown>(raw??{},{maxDepth:12,maxNodes:4096,maxStringUnits:512*1024});}
+  catch{this.state=d;return;}
+  if(!detached||typeof detached!=='object'||Array.isArray(detached)){this.state=d;return;}
+  const r=detached as Record<string,unknown>;
+  if(r.version!==undefined&&r.version!==1){this.state=d;return;}
+  const history=(Array.isArray(r.history)?r.history:[]).slice(-128).map(normalizeGoalView).filter((v):v is P68GoalView=>v!==null);
+  this.state={
+   version:1,cycles:safeCount(r.cycles),completed:safeCount(r.completed),abandoned:safeCount(r.abandoned),
+   paused:safeCount(r.paused),reactivated:safeCount(r.reactivated),pruned:safeCount(r.pruned),
+   meanVitality01:safeUnit(r.meanVitality01,d.meanVitality01),meanStaleness01:safeUnit(r.meanStaleness01,d.meanStaleness01),
+   meanConflict01:safeUnit(r.meanConflict01,d.meanConflict01),goalPressure01:safeUnit(r.goalPressure01,d.goalPressure01),
+   activeCount:safeCount(r.activeCount),lastTopGoalId:typeof r.lastTopGoalId==='string'&&r.lastTopGoalId.length<=180?r.lastTopGoalId:null,
+   lastMode:typeof r.lastMode==='string'&&r.lastMode.length<=96?r.lastMode:d.lastMode,history,
+  };
+ }
  snapshot(){return structuredClone(this.state);}
  persistenceSnapshot(){
   return {...this.state,history:this.state.history.slice(0,64).map(view=>({...view}))};
  }
- tick(input:{tick:number;at:number;goals:P68Goal[];lastAction:string;lastSuccess:number|null;mode:string;homeostaticPressure01:number;identity01:number}):{goalPressure01:number;conflictPressure01:number;staleness01:number;topGoalId:string|null;activeCount:number} {
+ tick(rawInput:{tick:number;at:number;goals:P68Goal[];lastAction:string;lastSuccess:number|null;mode:string;homeostaticPressure01:number;identity01:number}):{goalPressure01:number;conflictPressure01:number;staleness01:number;topGoalId:string|null;activeCount:number} {
+  let detached:unknown;
+  try{detached=snapshotPlainData<unknown>(rawInput,{maxDepth:12,maxNodes:8192,maxStringUnits:512*1024});}
+  catch{throw new TypeError('p68-goal-input-invalid');}
+  if(!detached||typeof detached!=='object'||Array.isArray(detached))throw new TypeError('p68-goal-input-invalid');
+  const safe=detached as Record<string,unknown>;
+  const seenGoalIds=new Set<string>();
+  if(!Number.isSafeInteger(safe.tick)||Number(safe.tick)<0||typeof safe.at!=='number'||!Number.isFinite(safe.at)||safe.at<0||
+     !Array.isArray(safe.goals)||safe.goals.length>256||typeof safe.lastAction!=='string'||safe.lastAction.length>96||
+     (safe.lastSuccess!=null&&(typeof safe.lastSuccess!=='number'||!Number.isFinite(safe.lastSuccess)||safe.lastSuccess<0||safe.lastSuccess>1))||
+     typeof safe.mode!=='string'||safe.mode.length>96||
+     typeof safe.homeostaticPressure01!=='number'||!Number.isFinite(safe.homeostaticPressure01)||safe.homeostaticPressure01<0||safe.homeostaticPressure01>1||
+     typeof safe.identity01!=='number'||!Number.isFinite(safe.identity01)||safe.identity01<0||safe.identity01>1||
+     safe.goals.some((g:unknown)=>{
+      if(!g||typeof g!=='object'||Array.isArray(g))return true;
+      const row=g as Record<string,unknown>;
+      if(typeof row.id!=='string'||!row.id.trim()||row.id.length>180||seenGoalIds.has(row.id))return true;
+      seenGoalIds.add(row.id);
+      return typeof row.title!=='string'||row.title.length>240||typeof row.reason!=='string'||row.reason.length>512||
+       typeof row.source!=='string'||row.source.length>96||!GOAL_STATUSES.has(row.status as GoalStatus)||
+       !['importance','urgency','confidence','progress'].every(key=>typeof row[key]==='number'&&Number.isFinite(row[key])&&(row[key] as number)>=0&&(row[key] as number)<=1)||
+       !['createdAt','updatedAt'].every(key=>typeof row[key]==='number'&&Number.isFinite(row[key])&&(row[key] as number)>=0);
+     }))throw new TypeError('p68-goal-input-invalid');
+  // Snapshot validation rejects accessors and cycles before lifecycle state changes.
+  // Keep the original objects after validation so core receives valid transitions.
+  const input=rawInput;
   const goals=input.goals;
   const active=goals.filter(g=>g.status==='active');
   const views:P68GoalView[]=[];

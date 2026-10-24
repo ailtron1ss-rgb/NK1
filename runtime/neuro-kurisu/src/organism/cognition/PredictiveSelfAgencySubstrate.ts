@@ -1,3 +1,4 @@
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 import type { ActionKind, OrganismState } from '../core/types.ts';
 
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
@@ -68,11 +69,49 @@ export class PredictiveSelfAgencySubstrate {
   private state=defaults();
   snapshot(){return structuredClone(this.state);}
   restore(raw?:Partial<PredictiveSelfAgencyState>|null){
-    const d=defaults(),r=raw??{}; const arr=(v:any,n:number)=>Array.isArray(v)?v.slice(0,n).concat(new Array(Math.max(0,n-v.length)).fill(0)).slice(0,n):new Array(n).fill(0);
-    const mat=(v:any,rows:number,cols:number,seed:number,scale:number)=>Array.from({length:rows},(_,i)=>Array.isArray(v?.[i])?arr(v[i],cols):new Array(cols).fill(0).map((__,j)=>initWeight(i+seed,j,scale)));
-    this.state={...d,...r,selfLatent:arr(r.selfLatent,24),previousSelfLatent:arr(r.previousSelfLatent,24),intention:arr(r.intention,24),predictions:arr(r.predictions,4),
-      actionRows:mat(r.actionRows,ACTIONS.length,24,1,.028),actionBias:arr(r.actionBias,ACTIONS.length),selfWeights:mat(r.selfWeights,24,24,31,.022),stateWeights:mat(r.stateWeights,24,24,61,.024),
-      lastPredictedSelfState:arr(r.lastPredictedSelfState,24),lastObservedSelfState:arr(r.lastObservedSelfState,24)};
+    const d=defaults();
+    let detached: unknown;
+    try {
+      detached = snapshotPlainData(raw ?? {}, { allowNonFiniteNumbers: true, maxDepth: 12, maxNodes: 4096, maxStringUnits: 64 * 1024 });
+    } catch {
+      this.state = d;
+      return;
+    }
+    const r=detached&&typeof detached==='object'&&!Array.isArray(detached)?detached as Partial<PredictiveSelfAgencyState>:{};
+    if(r.version!==undefined&&r.version!==1)throw new RangeError('unsupported predictive self-agency state version');
+    const vector=(value:unknown,fallback:number[],mode:'signed'|'unit'='signed')=>Array.from({length:fallback.length},(_,i)=>{
+      const candidate=Array.isArray(value)?value[i]:undefined;
+      if(typeof candidate!=='number'||!Number.isFinite(candidate))return fallback[i]??0;
+      return mode==='unit'?clamp01(candidate):clamp11(candidate);
+    });
+    const matrix=(value:unknown,fallback:number[][])=>fallback.map((row,i)=>vector(Array.isArray(value)?value[i]:undefined,row));
+    const counter=(value:unknown)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
+    const unit=(value:unknown,fallback:number)=>typeof value==='number'&&Number.isFinite(value)?clamp01(value):fallback;
+    const timestamp=(value:unknown,fallback:number)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
+    this.state={
+      version:1,
+      selfLatent:vector(r.selfLatent,d.selfLatent),
+      previousSelfLatent:vector(r.previousSelfLatent,d.previousSelfLatent),
+      intention:vector(r.intention,d.intention),
+      predictions:vector(r.predictions,d.predictions,'unit'),
+      actionRows:matrix(r.actionRows,d.actionRows),
+      actionBias:vector(r.actionBias,d.actionBias),
+      selfWeights:matrix(r.selfWeights,d.selfWeights),
+      stateWeights:matrix(r.stateWeights,d.stateWeights),
+      learningSteps:counter(r.learningSteps),
+      predictionSamples:counter(r.predictionSamples),
+      predictionError01:unit(r.predictionError01,d.predictionError01),
+      agencyError01:unit(r.agencyError01,d.agencyError01),
+      ownership01:unit(r.ownership01,d.ownership01),
+      authorship01:unit(r.authorship01,d.authorship01),
+      selfContinuity01:unit(r.selfContinuity01,d.selfContinuity01),
+      lastAction:ACTIONS.includes(r.lastAction as ActionKind)?r.lastAction as ActionKind:d.lastAction,
+      lastPredictedOutcome01:unit(r.lastPredictedOutcome01,d.lastPredictedOutcome01),
+      lastPredictedSelfState:vector(r.lastPredictedSelfState,d.lastPredictedSelfState),
+      lastObservedSelfState:vector(r.lastObservedSelfState,d.lastObservedSelfState),
+      lastTick:timestamp(r.lastTick,d.lastTick),
+      lastAt:timestamp(r.lastAt,d.lastAt),
+    };
   }
   private features(i:SelfAgencyInput){
     const base=[...i.self,...i.body,...i.world,...i.memory,...i.motivation];
@@ -81,7 +120,36 @@ export class PredictiveSelfAgencySubstrate {
     for(let k=0;k<out.length;k++){const x=Number(base[k%Math.max(1,base.length)]??0);const y=Number(base[(k*7+3)%Math.max(1,base.length)]??0);out[k]=clamp11(x*.7+y*.3);} return out;
   }
   private stepSelf(x:number[]){const prev=this.state.selfLatent,next=new Array(24).fill(0);for(let i=0;i<24;i++){let z=0;for(let j=0;j<24;j++)z+=(this.state.selfWeights[i][j]??0)*(prev[j]??0)+(this.state.stateWeights[i][j]??0)*(x[j]??0);next[i]=tanh(z);}return next;}
-  observe(input:SelfAgencyInput){
+  observe(rawInput:SelfAgencyInput){
+    // Runtime callers may be JavaScript adapters, restored state or plugins;
+    // detach descriptors before spreading arrays or reading nested state.
+    let detached: unknown;
+    try {
+      detached=snapshotPlainData<SelfAgencyInput>(rawInput,{
+        maxDepth:16,maxNodes:2048,maxStringUnits:32*1024,
+      });
+    } catch {
+      throw new TypeError('predictive-self-agency-input-invalid');
+    }
+    if(!detached||typeof detached!=='object'||Array.isArray(detached)) {
+      throw new TypeError('predictive-self-agency-input-invalid');
+    }
+    const input=detached as SelfAgencyInput;
+    const vectors=[input.self,input.body,input.world,input.memory,input.motivation];
+    if(vectors.some(vector=>!Array.isArray(vector)||vector.length>256||
+      vector.some(value=>typeof value!=='number'||!Number.isFinite(value)))) {
+      throw new TypeError('predictive-self-agency-vectors-invalid');
+    }
+    if(typeof input.externalRequested!=='boolean'||!input.state||
+      typeof input.state!=='object'||!input.state.needs||
+      typeof input.state.needs!=='object'||
+      !Number.isSafeInteger(input.state.tick)||input.state.tick<0||
+      !Number.isFinite(input.state.at)||input.state.at<0||
+      !['energy','cognitiveLoad','uncertainty','novelty','goalPressure','socialNeed','identityCoherence']
+        .every(key=>typeof input.state.needs[key as keyof typeof input.state.needs]==='number'&&
+          Number.isFinite(input.state.needs[key as keyof typeof input.state.needs]))) {
+      throw new TypeError('predictive-self-agency-state-invalid');
+    }
     const x=this.features(input),prev=this.state.selfLatent.slice(),next=this.stepSelf(x);
     if(this.state.learningSteps>0){const prevTarget=this.state.lastObservedSelfState;const err=prevTarget.reduce((s,v,i)=>s+Math.abs(v-(this.state.lastPredictedSelfState[i]??0)),0)/(24*2);this.state.predictionError01=clamp01(this.state.predictionError01*.96+err*.04);this.learnSelf(prevTarget,x);}
     this.state.previousSelfLatent=prev;this.state.selfLatent=next;this.state.intention=next.slice();this.state.lastObservedSelfState=x.slice();this.state.learningSteps++;this.state.predictionSamples++;
@@ -90,7 +158,10 @@ export class PredictiveSelfAgencySubstrate {
   }
   private learnSelf(target:number[],x:number[]){const lr=.015/Math.sqrt(1+this.state.learningSteps/4000),p=this.state.lastPredictedSelfState;for(let i=0;i<24;i++){const e=target[i]-(p[i]??0);for(let j=0;j<24;j++){const local=e*(1-(p[i]??0)**2);this.state.selfWeights[i][j]=clamp11(this.state.selfWeights[i][j]+lr*local*(this.state.previousSelfLatent[j]??0));this.state.stateWeights[i][j]=clamp11(this.state.stateWeights[i][j]+lr*local*(x[j]??0));}}}
   predict(action:ActionKind) {
-    const idx=Math.max(0,ACTIONS.indexOf(action));
+    // Compile-time ActionKind is not a runtime trust boundary: JS callers must not
+    // silently map unknown actions onto ACTIONS[0] and learn against that row.
+    if(!ACTIONS.includes(action))throw new TypeError('predictive-self-agency-action-invalid');
+    const idx=ACTIONS.indexOf(action);
     const row=this.state.actionRows[idx]??[];
     const z=(this.state.actionBias[idx]??0)+row.reduce(
       (sum,value,j)=>sum+(value??0)*(this.state.selfLatent[j]??0),0,
@@ -124,8 +195,38 @@ export class PredictiveSelfAgencySubstrate {
     externallyRequested:boolean,
     causalMatch01:number,
   ) {
+    // Validate every external learning signal before prediction mutates the model.
+    // Malformed reward data or hostile state getters must yield zero learning.
+    if(!ACTIONS.includes(action))throw new TypeError('predictive-self-agency-action-invalid');
+    if(typeof outcome01!=='number'||!Number.isFinite(outcome01)||outcome01<0||outcome01>1) {
+      throw new RangeError('predictive-self-agency-outcome-invalid');
+    }
+    if(typeof externallyRequested!=='boolean')throw new TypeError('predictive-self-agency-request-flag-invalid');
+    if(typeof causalMatch01!=='number'||!Number.isFinite(causalMatch01)||causalMatch01<0||causalMatch01>1) {
+      throw new RangeError('predictive-self-agency-causal-match-invalid');
+    }
+    let detachedState:unknown;
+    try {
+      detachedState=snapshotPlainData<OrganismState>(observedState,{
+        maxDepth:16,maxNodes:2048,maxStringUnits:32*1024,
+      });
+    } catch {
+      throw new TypeError('predictive-self-agency-outcome-state-invalid');
+    }
+    if(!detachedState||typeof detachedState!=='object'||Array.isArray(detachedState)) {
+      throw new TypeError('predictive-self-agency-outcome-state-invalid');
+    }
+    const cleanObservedState=detachedState as OrganismState;
+    if(!Number.isSafeInteger(cleanObservedState.tick)||cleanObservedState.tick<0||
+       typeof cleanObservedState.at!=='number'||!Number.isFinite(cleanObservedState.at)||cleanObservedState.at<0||
+       !cleanObservedState.needs||typeof cleanObservedState.needs!=='object'||
+       !['energy','cognitiveLoad','uncertainty','novelty','goalPressure','socialNeed','identityCoherence']
+         .every(key=>typeof cleanObservedState.needs[key as keyof typeof cleanObservedState.needs]==='number'&&
+           Number.isFinite(cleanObservedState.needs[key as keyof typeof cleanObservedState.needs]))) {
+      throw new TypeError('predictive-self-agency-outcome-state-invalid');
+    }
     const p=this.predict(action);
-    const err=clamp01(outcome01)-p.predictedOutcome01;
+    const err=outcome01-p.predictedOutcome01;
     const lr=.026/Math.sqrt(1+this.state.predictionSamples/2500);
     const idx=Math.max(0,ACTIONS.indexOf(action));
     const d=err*p.predictedOutcome01*(1-p.predictedOutcome01);
@@ -148,7 +249,7 @@ export class PredictiveSelfAgencySubstrate {
     );
     this.state.predictionSamples++;
     this.state.lastObservedSelfState=this.features({
-      self:[],body:[],world:[],memory:[],motivation:[],state:observedState,
+      self:[],body:[],world:[],memory:[],motivation:[],state:cleanObservedState,
       externalRequested:externallyRequested,
     });
     return {

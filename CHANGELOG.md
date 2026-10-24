@@ -1,3 +1,153 @@
+## NK1 WorkPass503 — restore relationship self-model from validated plain data (2026-10-24)
+
+- Replaced shallow relationship-state restoration with bounded, per-model plain-data snapshotting. Accessor-backed models and top-level state are dropped without getter execution.
+- Rejects malformed social metrics, non-canonical/control-character identities, malformed project/commitment lists, and invalid timestamps; restores deduplicated models within the 64-model cap.
+- Extended the existing relationship-model regression for valid roundtrip, malformed-model filtering, duplicate identities and hostile accessor snapshots. Added it to the personality category's rebuild test chain.
+- Reuses the existing `PlainDataSnapshot` integrity helper rather than adding another sanitization implementation or dependency; preserves B288SocialPredictiveSelfOtherBrain as the documented canonical social-brain owner.
+- **Validation boundary:** code and test-chain wiring are committed; test/typecheck execution remains unconfirmed.
+
+---
+
+## NK1 WorkPass502 — close relationship-model input and CI follow-ups
+
+- Corrected the relationship-model control-character guard to use code-point checks instead of an incorrectly escaped regular expression.
+- Kept the P26 script alias and Node 24 transform-mode fix from WorkPass501; CI reruns are active on the branch head.
+- The new relationship-model boundary test remains pending execution; no test-pass claim is made here.
+
+---
+
+## NK1 WorkPass501 — repair CI script aliases and Node 24 TypeScript transform
+
+- Added the missing `test:p26:learning-input-integrity` package-script alias required by the P26 validation workflow.
+- Switched `test:p23:hermes-reflective-diagnostics` from strip-only TypeScript mode to Node's transform-types mode because the imported candidate store uses TypeScript parameter properties that strip-only mode cannot execute.
+- This directly addresses observed CI failures (missing npm script and `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`); the rerun is pending.
+
+---
+
+## NK1 WorkPass500 — guard relationship-self updates
+
+- `RelationshipSelf.observe` now rejects malformed identity strings and non-finite/out-of-range social evidence before mutating trust, warmth, guardedness, or predictability.
+- Added and registered `test:relationship-self-input-boundary` to ensure invalid inputs do not create or update relationship models.
+- This protects the user/social model from corrupted or malformed observations; the test is committed but not yet executed.
+
+---
+
+## NK1 WorkPass475 — make cycle and causal history evidence-consistent (2026-10-24)
+
+- Personal curriculum snapshots now accept only bounded plain-data threads with consistent identity/schema, counters and [0,1] metrics; completion/suppression counts are recomputed, and a newly observed poor outcome can reopen a formerly satisfied thread.
+- Unified-cycle restore preserves valid diagnostics from mixed malformed stage lists but never accepts malformed or count-inconsistent persistence as a completed cognitive cycle. All-invalid stage lists fall back to the required-stage list.
+- Updated causal-learning fixtures to attach outcome credit only when the after-state identifies the selected action and its bounded success value. External/imported rows remain preserved for review but do not inflate trusted runtime outcome counters.
+- Shared runtime typecheck now includes official Node type roots and excludes fallback declarations from semantic checking; correlation IDs are checked for C0/C1 controls before whitespace trimming.
+- **Verification:** focused failures were found from real Actions logs and corrected. Exact-head functional reruns are in flight; full CI and behavioral improvement are not yet claimed.
+
+---
+
+## NK1 WorkPass474 — reconcile cycle diagnostics and ground causal test evidence (2026-10-24)
+
+- Unified cognitive-cycle restore now keeps valid missing-stage diagnostics from a mixed valid/invalid persisted list, while malformed entries still prevent `lastComplete` from being trusted.
+- Fixed a stale causal-stream test fixture to include the observed post-action identity and bounded success value required by `CausalExperienceStream.recordOutcome()`. Runtime validation remains strict; the test no longer assumes that a changed state alone proves which action caused it.
+- **Verification status:** source and fixture corrections are committed; the exact-head Actions result is being checked. These repairs clarify the evidence contract and do not claim better autonomous behavior by themselves.
+
+---
+
+## NK1 WorkPass473 — make personal curriculum restore-safe and reopen contradicted goals (2026-10-24)
+
+- Replaced unchecked persisted-state spreading in `PersonalCurriculumEngine.restore()` with the shared bounded plain-data snapshot and strict validation of thread identity/family, outcome counters, context keys, timestamps and normalized [0,1] metrics. Getter-backed or malformed top-level persistence fails closed; malformed/conflicting thread rows are excluded.
+- Reconciles `completedThreads` and `suppressedThreads` from unique current thread records instead of trusting persisted totals or incrementing counters on every repeated observation.
+- A newly observed low outcome now prevents an otherwise historically successful thread from remaining `satisfied` solely on its accumulated average; contrary evidence can reopen the thread. Suppressed threads remain suppressed until an explicit lifecycle change.
+- Extended the existing personal-curriculum regression with malformed/accessor restore cases, realistic timestamps, reopening after contrary evidence, and counter reconciliation. **Exact-head test/typecheck remains unverified; no autonomy or learning-uplift claim is made.**
+
+---
+
+## NK1 WorkPass472 — reject duplicate live goal identities before ecology updates (2026-10-24)
+
+- P68 now rejects duplicate goal IDs during its bounded, accessor-safe validation phase. Previously, two live goal objects with the same ID could collide in the token-set map and each advance lifecycle counters, creating ambiguous progress/completion evidence.
+- Added a regression fixture asserting that duplicate IDs throw before the ecology snapshot changes. This strengthens Hexis-inspired goal event/idempotency semantics without importing Hexis's PostgreSQL scheduler or adding a second goal owner.
+- Exact-head execution is not claimed; regression source is committed for the existing branch suite.
+
+---
+
+## NK1 WorkPass450 — canonical identity restore boundary (2026-10-23)
+
+- Replaced the unchecked persisted-state spread in `CanonicalSelfAgencyAuthority.restore` with a bounded `PlainDataSnapshot` plus explicit field/score/counter validation.
+- Canonical identity invariants/fingerprint are always reconstructed from the built-in Kurisu canon; persisted data cannot overwrite them. Invalid counters/traits or a mismatched fingerprint set identity integrity to zero and enter `identity-block`.
+- Unknown forward-compatible trait keys are ignored; accessor-backed/cyclic/oversized data fails closed without invoking getters.
+- Expanded the existing `canonical-self-agency-authority.mjs` regression; no new runtime dependency.
+- Inspired by Hexis's distinction between evolving worldview/personality memories and persistent identity contracts; no Hexis code copied. Exact-head execution remains unverified.
+
+---
+
+## NK1 WorkPass456 — harden goal ecology restore and live ingress (2026-10-23)
+
+- Added the canonical bounded plain-data boundary to P68 goal lifecycle input and persistence restore. Getter-backed/cyclic state fails closed before lifecycle counters or goal fields change; restored counters, modes and history are normalized to finite schema-valid values.
+- Preserved the current core contract: once the input passes descriptor validation, P68 continues to apply valid lifecycle/progress transitions to original goal objects in-place.
+- Added regressions for getter non-execution, no cycle advancement after rejected input, malformed persisted rows and safe restore. No dependency added.
+- **Verification:** regression source is committed but not executed on the exact HEAD because hosted Actions still fails before runner allocation.
+
+---
+
+## NK1 WorkPass455 — make endogenous goal lifecycle replay-safe and restore-safe (2026-10-23)
+
+- Adapted Hexis-style durable-goal governance into the existing P67 owner: persisted candidate history now has bounded schema normalization, generated-ID linkage and decision receipt normalization; accessor/cyclic restore payloads fall back safely to default state.
+- Goal proposal input is detached through the shared bounded plain-data boundary and allowlisted before the cycle counter changes. Invalid ranges, unknown fields and accessor-backed internal-drive signals are rejected without partial mutation.
+- Promotion/rejection decisions now carry idempotent receipts: a generated goal can receive only one final decision, preventing retries or replay from inflating self-development metrics. The goal engine still only proposes goals; it does not bypass identity gates or execute actions.
+- Added regressions for accessor/non-schema ingress, invalid restored goal rows, round-trip persistence and duplicate promotion/rejection accounting. No new dependency.
+- **Verification:** source and regression changes are committed; hosted execution remains unverified due to runner allocation failure.
+
+---
+
+## NK1 WorkPass449 — make self-agency learning outcomes atomic and evidence-bounded (2026-10-23)
+
+- Validated reward, external-request flag, causal-match confidence, and detached observed-state data before prediction or any weight/counter mutation.
+- NaN/out-of-range reward or causal evidence and accessor-backed observed-state payloads now fail closed; learning consumes only the detached, finite state snapshot. The valid reward scale remains [0,1].
+- Added regressions asserting malformed reward/causal/state inputs leave the complete self-model snapshot unchanged and never invoke caller-owned getters. No dependency added.
+- **Verification:** tests and code committed; exact-head execution is unconfirmed while GitHub Actions fails before runner allocation.
+
+---
+
+## NK1 WorkPass446 — validate live self-agency observations before feature extraction
+
+- Extended the same descriptor-based plain-data boundary already used for self-model restoration to the live `PredictiveSelfAgencySubstrate.observe` path. It now detaches the entire observation before spreading vectors or reading nested organism state.
+- Rejects getter-backed/cyclic/exotic payloads, non-finite or oversized modality vectors, invalid tick/time, non-boolean external-request metadata and malformed need signals before any learned state can change.
+- Added regressions proving getter non-execution, state non-mutation after rejected observations, rejection of NaN vectors and the 256-value per-modality bound. No new dependency or duplicate self-model was introduced.
+- **Verification:** committed to `feature/personality`; exact-head test and typecheck remain unverified due the repository's runner-assignment failure.
+
+---
+
+## NK1 WorkPass436 — correct canonical motivation-boundary import (2026-10-23)
+
+- Corrected the shared snapshot helper path in IntrinsicMotivationEngine to its canonical sibling under organism/core. No behavior change; this is a source-level integration correction discovered during follow-up inspection.
+- Typecheck and runtime suite remain pending because the hosted Actions runner has not executed job steps.
+
+---
+
+## NK1 WorkPass435 — protect endogenous motivation state and signals (2026-10-23)
+
+- The intrinsic drive engine now reuses the canonical PlainDataSnapshot boundary for both persisted restore and live drive updates.
+- Accessor/cyclic/exotic/oversized snapshots fail closed on restore; live update rejects unsafe graphs before any drive or goal signal changes. Finite/range fallback semantics for ordinary numeric observations are preserved.
+- Added regressions for restore getter non-execution, live getter/cycle rejection and no partial state mutation.
+- This strengthens the motivation-to-endogenous-goal path without introducing a competing motivation store or package dependency. Hosted execution remains unverified.
+
+---
+
+## NK1 WorkPass429 — reject unknown self-agency actions before prediction (2026-10-23)
+
+- The self-agency substrate previously used Math.max(0, ACTIONS.indexOf(action)); a runtime-invalid action therefore silently mapped to row zero (respond) and could pollute the wrong learned policy.
+- predict() now rejects unknown action identifiers before mutating predicted state. learnOutcome() reaches the same guard before changing weights, credit or ownership estimates.
+- Added state-equality regressions for invalid prediction and invalid outcome credit. This preserves one canonical action vocabulary across cognition and learning; no new dependency.
+- Tests/typecheck are still unexecuted on the hosted runner, so the change is not described as validated.
+
+---
+
+## NK1 WorkPass421 — isolate predictive self-model restore from caller objects (2026-10-23)
+
+- `PredictiveSelfAgencySubstrate.restore()` now reads a bounded detached snapshot and falls back to initialized state if the input contains accessors, cycles or unsupported object graphs.
+- Numeric corruption still follows the existing per-field finite/range fallbacks; this change prevents getter execution and aliasing during restore.
+- Added regressions for root accessors and accessor-backed matrix/vector arrays.
+- Validation is pending because current hosted jobs have no runner assignment or executed test steps.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
@@ -2113,3 +2263,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
 - Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
 - This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
+
+## NK1 WorkPass332 — sanitize restored self-agency model (2026-10-23)
+
+- **Fixed:** `PredictiveSelfAgencySubstrate.restore` no longer spreads arbitrary persisted values into the live self-model. It reconstructs fixed-size vectors/matrices, falls back to seeded weights for invalid cells, bounds predictions/errors/ownership signals, and validates action names, counters, timestamps and schema version.
+- **Regression added:** WorkPass186 now restores NaN/Infinity, invalid counters, a fake action and malformed weights, then asserts finite model state and finite next-step predictions; unsupported schema versions are rejected.
+- **Architecture:** no second self-model is introduced; the existing self-agency substrate remains the single owner for its prediction and authorship state.
+- **Validation boundary:** implementation/regression are committed; Actions currently stops before runner allocation, so no test pass is claimed.

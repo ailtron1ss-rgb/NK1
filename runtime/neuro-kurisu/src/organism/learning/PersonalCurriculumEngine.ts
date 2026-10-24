@@ -1,8 +1,54 @@
 import type { OrganismGoal } from '../core/types.ts';
+import { snapshotPlainData } from './LearningTrustBoundary.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const clean=(x:unknown,n=140)=>String(x??'').trim().replace(/\s+/g,' ').slice(0,n);
 const hash=(s:string)=>{let h=2166136261>>>0;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)>>>0;}return (h>>>0).toString(16).padStart(8,'0');};
+const isRecord=(value:unknown):value is Record<string,unknown>=>{
+  if(value===null||typeof value!=='object'||Array.isArray(value))return false;
+  try{const prototype=Object.getPrototypeOf(value);return prototype===Object.prototype||prototype===null;}catch{return false;}
+};
+const isCounter=(value:unknown):value is number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
+const isUnit=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
+const isTime=(value:unknown):value is number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
+const isCleanText=(value:unknown,max:number):value is string=>typeof value==='string'&&value.length>0&&value.length<=max&&value.trim()===value&&clean(value,max)===value&&
+  !Array.from(value).some(character=>{const code=character.charCodeAt(0);return code<=0x1f||code===0x7f||(code>=0x80&&code<=0x9f);});
+
+const THREAD_KEYS=new Set([
+  'id','family','title','source','occurrences','verified','successes','failures','contexts','contextKeys',
+  'socialRelevance01','identityRelevance01','causalStrength01','unresolved01','retention01','transfer01',
+  'learningNeed01','confidence01','priority01','status','lastOutcome01','lastAt',
+]);
+
+function parseCurriculumThread(value:unknown):CurriculumThread|null{
+  try{
+    if(!isRecord(value)||Object.keys(value).some(key=>!THREAD_KEYS.has(key)))return null;
+    const x=value;
+    if(!isCleanText(x.family,180)||!isCleanText(x.title,140)||x.id!==`curr:${hash(x.family)}`||
+       !['autobiographical','social','goal','mixed'].includes(String(x.source))||
+       !['emerging','active','satisfied','suppressed'].includes(String(x.status))||
+       !isCounter(x.occurrences)||!isCounter(x.verified)||x.verified>x.occurrences||
+       !isCounter(x.successes)||!isCounter(x.failures)||x.successes+x.failures>x.occurrences||
+       !isCounter(x.contexts)||!Array.isArray(x.contextKeys)||Object.getPrototypeOf(x.contextKeys)!==Array.prototype||
+       x.contextKeys.length>24||x.contexts!==x.contextKeys.length||
+       new Set(x.contextKeys).size!==x.contextKeys.length||
+       x.contextKeys.some((v)=>!isCleanText(v,180))||
+       !isUnit(x.socialRelevance01)||!isUnit(x.identityRelevance01)||!isUnit(x.causalStrength01)||
+       !isUnit(x.unresolved01)||!isUnit(x.retention01)||!isUnit(x.transfer01)||!isUnit(x.learningNeed01)||
+       !isUnit(x.confidence01)||!isUnit(x.priority01)||!isUnit(x.lastOutcome01)||!isTime(x.lastAt))return null;
+    return {
+      id:x.id as string,family:x.family,title:x.title,source:x.source as CurriculumThread['source'],
+      occurrences:x.occurrences,verified:x.verified,successes:x.successes,failures:x.failures,
+      contexts:x.contexts,contextKeys:[...x.contextKeys] as string[],
+      socialRelevance01:x.socialRelevance01,identityRelevance01:x.identityRelevance01,
+      causalStrength01:x.causalStrength01,unresolved01:x.unresolved01,retention01:x.retention01,
+      transfer01:x.transfer01,learningNeed01:x.learningNeed01,confidence01:x.confidence01,
+      priority01:x.priority01,status:x.status as CurriculumThread['status'],
+      lastOutcome01:x.lastOutcome01,lastAt:x.lastAt,
+    };
+  }catch{return null;}
+}
+
 
 export interface CurriculumThread {
   id:string;
@@ -53,14 +99,56 @@ export const defaultPersonalCurriculum=():PersonalCurriculumState=>({
 
 export class PersonalCurriculumEngine {
   private state=defaultPersonalCurriculum();
+
+  private reconcileThreadCounts():void {
+    this.state.completedThreads=this.state.threads.filter(thread=>thread.status==='satisfied').length;
+    this.state.suppressedThreads=this.state.threads.filter(thread=>thread.status==='suppressed').length;
+  }
   restore(raw?:Partial<PersonalCurriculumState>|null){
-    const d=defaultPersonalCurriculum(),r=raw??{};
-    this.state={...d,...r,version:1,
-      threads:Array.isArray(r.threads)?r.threads.slice(-64).map((x:any)=>({...x,
-        contextKeys:Array.isArray(x.contextKeys)?Array.from(new Set(x.contextKeys.map((v:any)=>clean(v,180)))).slice(0,24):[],
-        status:['emerging','active','satisfied','suppressed'].includes(x.status)?x.status:'emerging',
-        source:['autobiographical','social','goal','mixed'].includes(x.source)?x.source:'mixed'
-      })):[]
+    const d=defaultPersonalCurriculum();
+    if(raw===undefined||raw===null){this.state=d;return;}
+    let detached:unknown;
+    try{
+      detached=snapshotPlainData<unknown>(raw,{maxDepth:8,maxNodes:8192,maxStringUnits:1024*1024});
+    }catch{this.state=d;return;}
+    if(!isRecord(detached)||(detached.version!==undefined&&detached.version!==1)){this.state=d;return;}
+    const r=detached;
+    const rawThreads=Array.isArray(r.threads)?r.threads.slice(-64):[];
+    const byId=new Map<string,CurriculumThread>(),invalidIds=new Set<string>(),conflictedIds=new Set<string>();
+    for(const rawThread of rawThreads){
+      const rawId=isRecord(rawThread)&&typeof rawThread.id==='string'?rawThread.id:null;
+      const parsed=parseCurriculumThread(rawThread);
+      if(!parsed){
+        if(rawId)invalidIds.add(rawId);
+        continue;
+      }
+      if(invalidIds.has(parsed.id)||conflictedIds.has(parsed.id)){byId.delete(parsed.id);conflictedIds.add(parsed.id);continue;}
+      const previous=byId.get(parsed.id);
+      if(!previous){byId.set(parsed.id,parsed);continue;}
+      if(JSON.stringify(previous)!==JSON.stringify(parsed)){
+        byId.delete(parsed.id);conflictedIds.add(parsed.id);
+      }
+    }
+    for(const id of invalidIds)byId.delete(id);
+    for(const id of conflictedIds)byId.delete(id);
+    const threads=[...byId.values()].slice(-64);
+    const threadIds=new Set(threads.map(thread=>thread.id));
+    const rawFocusThread=typeof r.focusThreadId==='string'&&isCleanText(r.focusThreadId,160)&&threadIds.has(r.focusThreadId)?r.focusThreadId:null;
+    const rawFocusGoal=typeof r.focusGoalId==='string'&&isCleanText(r.focusGoalId,180)?r.focusGoalId:null;
+    this.state={
+      version:1,
+      cycles:isCounter(r.cycles)?r.cycles:d.cycles,
+      threads,
+      focusThreadId:rawFocusThread,
+      focusGoalId:rawFocusGoal,
+      curriculumPressure01:isUnit(r.curriculumPressure01)?r.curriculumPressure01:d.curriculumPressure01,
+      socialLearning01:isUnit(r.socialLearning01)?r.socialLearning01:d.socialLearning01,
+      autobiographicalLearning01:isUnit(r.autobiographicalLearning01)?r.autobiographicalLearning01:d.autobiographicalLearning01,
+      identityLearning01:isUnit(r.identityLearning01)?r.identityLearning01:d.identityLearning01,
+      transferReadiness01:isUnit(r.transferReadiness01)?r.transferReadiness01:d.transferReadiness01,
+      completedThreads:threads.filter(thread=>thread.status==='satisfied').length,
+      suppressedThreads:threads.filter(thread=>thread.status==='suppressed').length,
+      lastAt:isTime(r.lastAt)?r.lastAt:d.lastAt,
     };
   }
   snapshot(){return structuredClone(this.state);}
@@ -105,15 +193,15 @@ export class PersonalCurriculumEngine {
     thread.learningNeed01=clamp(thread.unresolved01*.34+(1-thread.retention01)*.18+(1-thread.transfer01)*.16+(1-thread.confidence01)*.14+thread.socialRelevance01*.08+thread.identityRelevance01*.10);
     thread.confidence01=clamp(thread.confidence01*.9+evidence*.07+thread.retention01*.03);
     thread.priority01=clamp(thread.learningNeed01*.42+thread.identityRelevance01*.18+thread.socialRelevance01*.13+thread.causalStrength01*.12+thread.transfer01*.08+(input.goal.importance*.04)+(input.goal.urgency*.03));
-    if(thread.occurrences>=6&&thread.contexts>=3&&thread.verified>=3&&rate>=.72&&thread.retention01>=.62&&thread.transfer01>=.42&&thread.unresolved01<.32){ if(thread.status!=='satisfied')this.state.completedThreads++; thread.status='satisfied'; }
+    if(thread.occurrences>=6&&thread.contexts>=3&&thread.verified>=3&&rate>=.72&&thread.lastOutcome01>=.62&&thread.retention01>=.62&&thread.transfer01>=.42&&thread.unresolved01<.32){ thread.status='satisfied'; }
     else if(thread.status!=='suppressed')thread.status=thread.priority01>.42?'active':'emerging';
-    if(thread.status==='suppressed')this.state.suppressedThreads++;
     this.state.curriculumPressure01=clamp(this.state.curriculumPressure01*.94+thread.learningNeed01*.06);
     this.state.socialLearning01=clamp(this.state.socialLearning01*.95+thread.socialRelevance01*.05);
     this.state.autobiographicalLearning01=clamp(this.state.autobiographicalLearning01*.95+thread.unresolved01*.05);
     this.state.identityLearning01=clamp(this.state.identityLearning01*.95+thread.identityRelevance01*.05);
     this.state.transferReadiness01=clamp(this.state.transferReadiness01*.95+thread.transfer01*.05);
     this.state.lastAt=at;
+    this.reconcileThreadCounts();
     return structuredClone(thread);
   }
 

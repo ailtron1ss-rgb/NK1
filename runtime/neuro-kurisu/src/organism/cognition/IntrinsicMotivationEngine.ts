@@ -1,3 +1,5 @@
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
+
 export interface IntrinsicDriveState {
   epistemic: number;
   novelty: number;
@@ -27,7 +29,16 @@ export class IntrinsicMotivationEngine {
   snapshot(){ return structuredClone(this.state); }
 
   restore(value:Partial<IntrinsicDriveState>|undefined):void {
-    const source=value??{};
+    let source:Partial<IntrinsicDriveState>;
+    try {
+      source=snapshotPlainData<Partial<IntrinsicDriveState>>(value??{},{
+        allowNonFiniteNumbers:true,maxDepth:4,maxNodes:64,maxStringUnits:2048,
+      });
+      if(!source||typeof source!=='object'||Array.isArray(source))throw new Error('invalid-motivation-state');
+    } catch {
+      this.state=defaultIntrinsicDriveState();
+      return;
+    }
     const drives:Record<DriveName,number>={
       epistemic:finiteInput(source.epistemic),
       novelty:finiteInput(source.novelty),
@@ -58,6 +69,14 @@ export class IntrinsicMotivationEngine {
     lastSuccess:number|null;
     worldEvidenceQuality:number
   }):IntrinsicDriveState {
+    // TypeScript types do not protect JavaScript/plugin/persisted-state callers.
+    // Detach a bounded plain-data snapshot before reading any signal or changing state.
+    try {
+      input=snapshotPlainData<typeof input>(input,{allowNonFiniteNumbers:true,maxDepth:4,maxNodes:64,maxStringUnits:2048});
+      if(!input||typeof input!=='object'||Array.isArray(input))throw new Error('invalid-motivation-input');
+    } catch {
+      throw new TypeError('intrinsic-motivation-input-must-be-plain-data');
+    }
     // Treat all externally supplied signals as bounded observations. Invalid
     // numbers cannot leak NaN into ranking or make an arbitrary drive dominant.
     const uncertainty=finiteInput(input.uncertainty);
