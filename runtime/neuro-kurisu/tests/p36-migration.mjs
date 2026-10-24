@@ -8,7 +8,7 @@ const migrated=migratePersistedOrganism({
   facets:{learning:{p36:{
     version:5,
     currentHypothesisId:'persisted-promoted-hypothesis',
-    hypotheses:[{id:'persisted-promoted-hypothesis',area:'learning',status:'completed',evidenceGate:'replicated',result01:.91,completedAt:123}],
+    hypotheses:[{id:'persisted-promoted-hypothesis',area:'learning',title:'Persisted hypothesis',hypothesis:'Recheck the prior candidate with fresh external evidence.',evidence:['persisted test fixture'],expectedGain01:.8,estimatedCost01:.2,priority01:.9,status:'completed',evidenceGate:'replicated',result01:.91,createdAt:100,completedAt:123}],
     externalEvidence:[{id:'persisted-evidence',hypothesisId:'persisted-promoted-hypothesis',contextKey:'old-context',control01:.4,treatment01:.9,delta01:.5,independentVerified:true,observationId:'forged-saved-receipt',holdout:true,delayMs:6000,evaluatorVersion:'old',evidenceSource:'external-evaluator',at:123}],
     acceptedChanges:7,
     developmentCycles:[{id:'old-cycle',hypothesisId:'persisted-promoted-hypothesis',stage:'replicated',verifiedEvidenceCount:6,lastEvidenceAt:123}],
