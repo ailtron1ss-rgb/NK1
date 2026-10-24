@@ -1,0 +1,61 @@
+name: Affect and embodied expression validation
+
+on:
+  pull_request:
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
+      - 'runtime/neuro-kurisu/tests/big-pass-172-emotion-interoceptive-mind.mjs'
+      - 'app/src/components/AvatarStage.tsx'
+      - 'app/src/components/avatar/embodimentTimeline.ts'
+      - 'app/scripts/embodiment-timeline.test.mjs'
+      - 'app/src/organism/types.ts'
+      - 'app/src/neuro-kurisu/types.ts'
+      - 'app/src/neuro-kurisu/normalize.ts'
+      - 'app/package.json'
+      - 'app/package-lock.json'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - '.github/workflows/affect-embodiment-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-and-ui:
+    name: Runtime affect and UI embodiment
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci --no-audit --no-fund
+
+      - name: Runtime TypeScript check
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+
+      - name: Emotion and interoception regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-172
+
+      - name: Install app dependencies
+        working-directory: app
+        run: npm ci --no-audit --no-fund
+
+      - name: App TypeScript check
+        working-directory: app
+        run: npm run typecheck
+
+      - name: Voice and Live2D affect regression
+        working-directory: app
+        run: npm run test:embodiment-timeline
