@@ -2113,3 +2113,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
 - Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
 - This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
+
+
+## NK1 WorkPass328 — bounded autonomous initiative policy (2026-10-24)
+
+- [IMPLEMENTED] Added a pure motivation-layer policy that gates unsolicited initiative on energy, threat, curiosity, and cooldown. Accepted decisions expose a bounded priority score and the next eligible time; the policy does not execute tools or bypass the canonical action gateway.
+- [SAFETY] Non-finite drive inputs use safe defaults; low energy, elevated threat, low curiosity, and cooldown each return explicit machine-readable deferral reasons.
+- [TEST] Added five focused regression cases for stable-state initiative, energy/threat suppression, curiosity/cooldown gates, invalid numeric input, and sanitized rationale text. Registered the test in the recovered runtime regression aggregate.
+- [STATUS] Code and test wiring are committed to `integration`; the tests have **not yet been executed** in this environment. Hosted Actions remains affected by the previously observed runner-allocation failure. `main` and the Release ZIP were not changed.
