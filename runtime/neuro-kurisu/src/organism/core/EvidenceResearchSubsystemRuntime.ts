@@ -48,6 +48,11 @@ export class EvidenceResearchSubsystemRuntime {
   /** Canonical event-idempotent sink for observer outputs; IDs correlate events but do not grant trust. */
   readonly realityEvidenceLedger = new RealityEvidenceLedger();
   private recordExternalObservationEvidence(observation:ExternalObservation):void {
+    // Sample confidence is not source trust. The observer's assessment path
+    // multiplies these signals; the canonical promotion ledger must do the same.
+    const sourceReliability01=this.externalObserver.registeredSourceReliability01(observation.sourceId);
+    if(sourceReliability01===null)return;
+    const evidenceConfidence01=Math.max(0,Math.min(1,observation.confidence01*sourceReliability01));
     const realityClass:EvidenceRealityClass = observation.sourceClass==='user' ? 'user-reported'
       : observation.sourceClass==='simulator' ? 'simulator'
       : observation.sourceClass==='organism' ? 'model-generated'
@@ -64,7 +69,7 @@ export class EvidenceResearchSubsystemRuntime {
       eventId:observation.evidenceEventId??observation.id,
       tick:Number.isSafeInteger(observation.tick)&&Number(observation.tick)>=0?Number(observation.tick):0,
       at:Number.isFinite(observation.observedAt)&&observation.observedAt>=0?observation.observedAt:Date.now(),
-      realityClass,claim,confidence01:observation.confidence01,independenceKey,parentIds,
+      realityClass,claim,confidence01:evidenceConfidence01,independenceKey,parentIds,
     });
   }
   readonly externalObserver:ExternalObserverFabric;
