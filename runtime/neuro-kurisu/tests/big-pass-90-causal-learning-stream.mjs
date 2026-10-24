@@ -3,6 +3,9 @@ import { CausalExperienceStream } from '../src/organism/learning/CausalExperienc
 
 const mkState=(overrides={})=>({
   tick:1,at:1000,predictionError:.6,attentionBudget:.8,selfPredictionError:.2,autonomyScore:.6,
+  // The state-after fixture represents an explicitly attributed completed action;
+  // causal experience must not be minted from a state diff without an outcome receipt.
+  lastAction:'explore',lastActionSuccess:.8,
   needs:{energy:.7,cognitiveLoad:.3,uncertainty:.65,novelty:.7,goalPressure:.6,socialNeed:.4,identityCoherence:.82},
   ...overrides,
 });
@@ -232,7 +235,7 @@ assert.equal(externalStream.summary().outcomes, 1,
 
 const overlongRuntimeTrace = { ...trace, id: "r".repeat(181) };
 assert.equal(externalStream.recordOutcome(
-  overlongRuntimeTrace, mkState({ tick: 22 }),
+  overlongRuntimeTrace, mkState({ tick: 22, lastActionSuccess: .5 }),
   { reward01: .5, success01: .5, surprise01: .5, novelty01: .5 },
 ), null, "an overlong runtime trace cannot be silently truncated into another identity");
 assert.equal(externalStream.summary().outcomes, 1);
