@@ -1772,5 +1772,9 @@
     "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs",
     "test:workpass292:evidence-lanes": "node --experimental-transform-types tests/workpass292-evidence-lanes.mjs",
     "test:workpass293:p23-revision": "node --experimental-transform-types tests/workpass293-autonomous-p23-revision.mjs && node --experimental-transform-types tests/workpass172-compound-revision-coordinator.mjs && node --experimental-transform-types tests/workpass292-evidence-lanes.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "typescript": "^5.9.3"
   }
 }
