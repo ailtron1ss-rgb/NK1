@@ -1,3 +1,11 @@
+## NK1 WorkPass502 — finish brain-fusion input hardening and evidence counts (2026-10-24)
+
+- Removed the ambiguous control-character regular expression from `UnifiedCognitiveLoop.validateEvent`; explicit code-point checks reject C0/C1 controls while preserving the strict own-data/prototype boundary.
+- The same hardened `UnifiedCognitiveLoop` implementation is now byte-aligned on feedback and perception, replacing the older unvalidated event path.
+- Corrected the conflict-restore regression to expect zero trusted outcomes for unverified external records; quarantine preserves the deduplication identity but does not promote it into verified-outcome metrics.
+
+---
+
 ## NK1 WorkPass501 — close cognitive ingress and restore-counter regressions
 
 - Fixed the unified cognitive-loop ingress implementation after CI caught an invalid control-character regex and a missed local snapshot binding; processing now validates and detaches an event before history mutation.
