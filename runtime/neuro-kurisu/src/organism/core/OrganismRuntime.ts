@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
+import { evaluateInitiative } from '../extensions/motivation/InitiativePolicy.ts';
 import { FileStateStore } from '../persistence/FileStateStore.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
 import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
@@ -662,9 +663,41 @@ export class OrganismRuntime {
     const expectedReward01 = Math.max(0, Math.min(1, selectedCandidate?.predictedUtility ?? expectedReward));
     const expectedStateDelta01 = 0.5;
     let language: LanguageResponse | undefined;
-    const autonomousAgenda = !externalText && options.spontaneous
+    // Gate endogenous dialogue with live homeostatic state before asking Core
+    // to reserve an initiative. Core remains the authority for durable cooldown,
+    // message staging, and the canonical response/action path.
+    const initiativeDecision = !externalText && options.spontaneous
+      ? evaluateInitiative({
+          energy: body.bodyEnergy01,
+          threat: Math.max(body.thermalStrain01, body.telemetry.ramPressure01 ?? 0),
+          curiosity: Math.max(
+            cycle.state.needs.novelty,
+            cycle.state.needs.uncertainty,
+            cycle.state.needs.socialNeed,
+            cycle.state.needs.goalPressure,
+          ),
+          confidence: 1 - cycle.state.predictionError,
+          // Persistent cooldown is enforced by Core's initiative reservation.
+          lastInitiativeAt: 0,
+        }, Date.now())
+      : null;
+    const autonomousAgenda = initiativeDecision?.allowed
       ? this.core.autonomousSocialInitiativeForGeneration()
       : null;
+    if (!externalText && options.spontaneous && initiativeDecision && !initiativeDecision.allowed) {
+      this.evidenceBus.publish({
+        tick: cycle.state.tick,
+        kind: 'appraisal',
+        source: 'initiative-policy',
+        confidence01: 0.95,
+        payload: {
+          allowed: false,
+          reason: initiativeDecision.reason,
+          nextEligibleAt: initiativeDecision.nextEligibleAt,
+          priority: initiativeDecision.priority,
+        },
+      });
+    }
     const languageBudgetAllows = currentBudgetAllowsLanguage(this.core.cognitiveBudgetOperationalSnapshot()?.mode);
     if (this.config.enableLanguage && this.config.languageInvoker && languageBudgetAllows && (Boolean(externalText) || Boolean(autonomousAgenda))) {
       const request = externalText
