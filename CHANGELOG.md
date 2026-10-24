@@ -1,3 +1,284 @@
+## NK1 WorkPass516 — enforce canonical parent lineage on live P65 writes (2026-10-24)
+
+- P65 live writes now reject duplicate parent IDs, whitespace-padded IDs and control characters, matching the stricter restore contract from WorkPass515.
+- Removed the old silent parent-ID filtering after validation; accepted lineage is preserved exactly as supplied.
+- Extended the existing P65 regression with malformed live-lineage inputs, including an actual control-character case.
+- **Validation boundary:** source and regression committed; exact-head runtime test/typecheck/CI have not been executed or verified.
+
+---
+
+## NK1 WorkPass515 — preserve causal lineage during epistemic-memory restore (2026-10-24)
+
+- P65 restore now rejects persisted claims with malformed, duplicate, whitespace-padded, control-character, or over-limit parent references instead of silently stripping the references and retaining the claim as if it were a root observation.
+- Added regressions for whitespace-only and duplicate parent IDs while preserving the existing legacy snapshot migration behavior.
+- This applies Hexis-style evidence-linked belief history to NK1's existing P65 ledger; no second memory authority or new dependency was introduced.
+- **Validation boundary:** code and regression committed; exact-head runtime test/typecheck/CI have not been executed or verified.
+
+---
+
+## NK1 WorkPass458 — deduplicate epistemic evidence by event identity (2026-10-24)
+
+- **Fixed:** P65 belief revision now deduplicates by the canonical evidence event ID itself, not by the pair of source-lineage label and event ID. An event replayed through another adapter/source label can no longer masquerade as independent corroboration.
+- **Regression added:** the existing Hexis-inspired epistemic-ledger test now relabels a previously applied event as a supposedly independent source and asserts fail-closed rejection with unchanged confidence.
+- **Architecture:** P65 remains the single belief-revision owner; no second memory store or runtime dependency added. This strengthens the ledger boundary but does not yet complete end-to-end event-ID propagation from ActionGateway through reality evidence and reflection.
+- **Validation:** regression source committed; execution/typecheck not claimed because hosted runner startup remains unresolved.
+
+## NK1 WorkPass512 — make memory restore safe at the collection boundary (2026-10-24)
+
+- Added descriptor-only reading for the persisted episode collection itself, not just each record. Sparse, custom-prototype, oversized or accessor-backed arrays are discarded before any ## NK1 WorkPass512 — align trusted shadow and signed-evidence contracts (2026-10-24)
+
+- Ported feedback/perception's async trusted-shadow coordinator contract into the memory/learning copies. Invalid baseline/control runs reject the Promise before spawn; the test now asserts that contract and confirms no extra registration is written.
+- Replaced generic `Buffer<ArrayBufferLike>` annotations with portable `Buffer` annotations for the runtime type-shim path.
+- Improved the Hermes signed-evidence tamper regression so it maintains the outer payload fingerprint and therefore exercises signature verification rather than only an earlier mismatch check.
+- These updates are committed in `feature/memory`; exact-head workflow confirmation is still pending.
+
+---
+
+## NK1 WorkPass510 — make experience tag normalization accessor-safe (2026-10-24)
+
+- Normalizes tags by inspecting own array-index descriptors, rejecting accessor-backed, sparse, overlong, or non-plain arrays without executing getters.
+- Uses explicit C0/C1 code-point checks for tags, avoiding the malformed double-escaped regex pitfall found in another evidence-ingress path.
+- Added regressions for hostile tag-index getters, valid `user-input` labels, control-character rejection, identity duplicate prevention and zero-limit consolidation.
+- The existing bounded `AdaptiveExperienceConsolidator` remains the memory owner; no second store or new dependency was introduced.
+- **Validation boundary:** test is wired to the memory branch rebuild chain; exact-head execution and typecheck remain unconfirmed.
+
+---
+
+## NK1 WorkPass509 — align trusted shadow rejection test with API contract (2026-10-24)
+
+- Corrected `p23-core-trusted-shadow-entry.mjs`: the canonical coordinator intentionally rejects an invalid control/baseline lane synchronously before any child process can spawn, so the regression now uses `assert.throws` rather than promise rejection assertion.
+- The runtime policy remains unchanged: only `arm='candidate'` + `method='shadow'` qualifies for trusted shadow-learning execution. The test verifies the durable registry is unchanged after refusal.
+- This resolves the observed WorkPass108 failure mode at the test contract level; the exact updated head still needs execution to claim PASS.
+
+---
+
+## NK1 WorkPass508 — connect memory evidence to canonical event identity (2026-10-24)
+
+- Reconciled the memory branch's legacy reality ledger with the event-aware implementation used by feedback/perception: bounded plain-data restore, event ID validation, exact-retry idempotency and conflicting-payload quarantine.
+- Added the shared `RealityEvidenceLedger.realityEvidenceEventId(...)` delegate so memory-owned evidence uses the same canonical ID format as the cognitive learning lane.
+- Kept epistemic classes separate: user-reported claims remain queryable but do not inflate external/device-observation aggregates.
+- Added a focused regression for identity delegation, idempotent retries, conflict quarantine and user-report separation. Committed to `feature/memory`; execution/typecheck are not yet confirmed.
+
+---
+
+## NK1 WorkPass507 — make experience consolidation identity-safe and limit-correct (2026-10-24)
+
+- Reject duplicate experience IDs at runtime ingress before mutating the bounded buffer.
+- Restore now keeps the last valid revision per ID, preventing legacy duplicate snapshots from counting one episode several times.
+- A requested consolidation limit of zero (or a negative limit) now returns an empty result instead of unexpectedly retaining one record.
+- Added focused regressions to the existing consolidator boundary test and included that test in the category's rebuild chain.
+- No new dependency or parallel memory store; these changes strengthen the existing AdaptiveExperienceConsolidator.
+- **Validation:** code and regression are committed; test execution/typecheck remain unconfirmed.
+
+---
+
+## NK1 WorkPass506 — restore deterministic replay budgets and evidence-lane CI
+
+- Corrected the production replay selector so the configured `maxBatchSize` remains the hard experiment cap; health signals continue to affect ranking, recent-sample quota and age decay rather than silently shrinking an explicitly configured batch. This restores reproducibility for replay ablations.
+- Reconnected the existing WorkPass292 causal evidence-lanes regression to its declared package command, removing a CI failure caused by a missing script rather than missing test coverage.
+- WorkPass505 in this branch adds fail-closed experience-memory ingress/restore validation and a dedicated boundary test for accessor execution, invalid metrics, restore filtering, and detached results.
+- Exact-head validation is running/required; unrelated runtime type errors still need separate fixes. No learning uplift is claimed.
+
+---
+
+## NK1 WorkPass505 — validate memory consolidation ingress and restore
+
+- Hardened `AdaptiveExperienceConsolidator` so malformed IDs, control characters, non-finite timestamps/scores, out-of-range utility/novelty/uncertainty, oversized tags, and accessor-backed records are rejected before ingestion.
+- Restore now filters invalid persisted records and reapplies the buffer cap; invalid capacity and consolidation limits use bounded fallbacks. Returned consolidated rows detach tag arrays from internal state.
+- This protects autobiographical consolidation from malformed runtime or persisted experience data without adding a parallel memory store or external dependency.
+- Code committed on `feature/memory`; exact-head tests/typecheck remain required.
+
+---
+
+## NK1 WorkPass497 — synchronize memory branch runtime and goal contracts
+
+- Applied the shared P26 input-validation and persisted-diagnostic recovery path, including finite training metrics, non-negative update counts and strict boolean restoration for `frozen`.
+- Removed the remaining Node.js 24 strip-only constructor parameter property from the trusted shadow-run registry.
+- Corrected the canonical JSON byte-bound test and supplied grounded post-action state in the causal learning integration fixture.
+- Aligned the memory category's P23 replay hard limit/recent quota and B272 intrinsic goal valuation with WorkPass494, preserving existing Hexis/P65 lineage changes.
+- **Validation boundary:** committed; exact-head Actions must confirm the updated paths.
+
+---
+
+## NK1 WorkPass501 — close P65 bridge validation wiring (2026-10-24)
+
+- Corrected postcondition whitespace canonicalization in the P65 adapter and strengthened its fixture to include repeated internal whitespace.
+- Extended the verified-outcome workflow path filters and added a dedicated step for the new decision-bound P65 bridge regression, so the adapter is exercised alongside signed verifier-artifact checks.
+- End-to-end contract: exact in-process trusted receipt + exact action/decision + matching belief text → one P65 evidence revision; replay, copied receipt, wrong decision and unrelated claim fail closed.
+
+---
+
+## NK1 WorkPass500 — validate the P65 bridge through CI (2026-10-24)
+
+- Extended P26 Learning Validation path filters to run when the shared evidence identity helper, verifier or P65 bridge changes.
+- Added an explicit CI step for `test:p65:verified-outcome-bridge` so the decision-bound receipt bridge is exercised on the exact PR commit.
+- The bridge rejects copied receipts and claim-text mismatch; only the verifier-owned, decision-linked external postcondition can update confidence, and the same event identity is not counted twice.
+
+---
+
+## NK1 WorkPass499 — bridge process-trusted outcome receipts into P65 (2026-10-24)
+
+- Added `OutcomeVerification.evidenceEventId`, generated as a deterministic `outcome:<40-hex>` key from canonical tool, execution ID, decision ID, observation ID and full input.
+- Added `P65VerifiedOutcomeBridge.ts`: only the exact process-local verifier-minted and decision-linked receipt can revise a belief; copied/restored objects, missing IDs, changed execution/decision, mismatched belief text, and malformed input fail closed.
+- The adapter derives its evidence source/lineage and strength from the trusted verifier context rather than trusting caller-supplied values. P65 retains responsibility for evidence de-duplication and same-lineage confidence controls.
+- Added `test:p65:verified-outcome-bridge.mjs` plus `test:p65:verified-outcome-bridge` script for success, replay rejection, copied-token rejection, claim binding and decision-binding regressions.
+- This is the verifier → P65 bridge; it does not yet automatically feed every P23 causal trace or claim from the main organism loop, and its test must pass on the resulting CI head before the bridge is considered validated.
+
+---
+
+## NK1 WorkPass492 — keep memory branch aligned with fail-closed learning evidence
+
+- Applied the shared Node.js 24 strip-only compatibility fix to both the versioned skill candidate store and its atomic file persistence adapter without changing their CAS/locking or authorization boundaries.
+- Hardened restored cognitive-cycle status so inconsistent persisted complete/incomplete/broken counters cannot be accepted as a successful last cycle.
+- Fixed signed outcome artifact replay handling and expanded the P23 regression to verify duplicate rejection plus one-time signed-receipt recovery after restoring a ledger.
+- Updated the invalid-cycle expectation to the canonical missing-stage set; the P65 independent-lineage collision correction from WorkPass480 remains intact.
+- **Validation boundary:** committed to `feature/memory`; exact-head CI has to confirm the shared regressions.
+
+---
+
+## NK1 WorkPass480 — remove evidence-key delimiter collisions (2026-10-24)
+
+- P65 now encodes replay identity as a canonical JSON tuple `[independenceKey, evidenceId]` instead of joining upstream strings with a colon. Distinct pairs (`a:b`, `c`) and (`a`, `b:c`) can no longer collide.
+- Corrected the collision regression to reflect the intended behavior: both structured tuples are distinct, so the second independent lineage must be retained and update confidence exactly once rather than being dropped as a replay. Same-lineage mirrors and exact evidence replays remain separately covered by existing assertions.
+- No schema migration or dependency added; the serialized key format remains internal and bounded by the existing 64-entry evidence-key limit.
+- Exact-head test/typecheck remains unverified; no memory or learning uplift is claimed.
+
+---
+
+## NK1 WorkPass477 — collapse mirrored evidence into one epistemic lineage (2026-10-24)
+
+- Added optional stable `independenceKey` to P65 evidence revisions. Independent-source counting now uses normalized lineage identity rather than the publisher label alone, so syndicated copies under different hosts cannot inflate belief confidence.
+- Evidence replay identity is keyed by lineage plus evidence ID; changing the host label or stance cannot reuse the same lineage/evidence pair as a fresh vote.
+- Persisted lineage keys and revision-history lineage metadata are bounded and restore compatibly from older v2 snapshots (legacy rows fall back to their normalized source label).
+- Expanded the P65 regression for mirrored publishers, same-lineage contradiction, normalization, and snapshot round-trip. No new dependency or parallel memory store.
+- **Validation status:** code and regression source committed; exact-head execution/typecheck has not been run here. No empirical retrieval or learning uplift claimed.
+
+---
+
+## NK1 WorkPass473 — fix stale recall starvation and restore/typecheck integrity (2026-10-24)
+
+- Retrieval's bounded 192-item seed pool now prioritizes temporal validity before lexical similarity, so a flood of expired exact matches cannot crowd a weaker but current record out before temporal filtering. The WorkPass80 regression now adds 220 expired distractors and asserts both current recall and archive-mode recall.
+- Repaired a missing mapper/object delimiter in `MemoryOS2.restore` that produced a TypeScript parse error, and removed an impossible `item.kind === 'identity'` check after the function had already narrowed the record to `'semantic'`.
+- Fixed the invalid correlation-ID regex with a direct C0/C1 code-point check performed before trimming. The typecheck script now resolves official Node types from the canonical app install and excludes fallback shims from semantic tsc.
+- **Verification:** the prior syntax failure is fixed in source. The current P26 typecheck is being rerun with the corrected type-root boundary; other pre-existing strict-type errors still need triage. Exact-head full validation is not claimed green.
+
+---
+
+## NK1 WorkPass472 — prevent stale memories from starving current retrieval (2026-10-24)
+
+- Corrected candidate-pool ordering in canonical `MemoryOS2.retrieve`: temporal validity now ranks ahead of lexical score when truncating the bounded 192-item seed pool. Previously, many expired exact-phrase hits could crowd a weaker but valid current memory out before the later temporal filter ran.
+- `temporalMode: 'all'` is unaffected because archive candidates remain temporally eligible; current/point-in-time modes prefer entries valid at their requested time.
+- Extended the existing WorkPass80 memory-residency regression with 220 expired high-match distractors and a current valid target, plus an archive-mode control. No new owner, database, or dependency was added.
+- **Verification status:** source and regression are committed on `feature/memory`; exact-head execution/typecheck has not yet been confirmed. This is a correctness/recall fix, not a measured retrieval-uplift claim.
+
+---
+
+## NK1 WorkPass471 — linearize Hexis-inspired memory doctor revision checks (2026-10-24)
+
+- Optimized the read-only memory integrity doctor: revision-link checks now resolve predecessor/successor IDs through a first-wins map instead of scanning the full memory list for every revision edge. This changes worst-case revision-link diagnostics from quadratic to linear in memory count while preserving the old first-match behavior for duplicate IDs.
+- This is a focused scalability adaptation of Hexis's audited belief/revision history applied to NK1's canonical `MemoryOS2`; no database or dependency was added.
+- Existing CLI regression source remains in place. Exact-head execution is still unverified due to the hosted runner provisioning issue.
+
+---
+
+## NK1 WorkPass459 — reapply provenance authority ceilings on snapshot restore (2026-10-23)
+
+- Fixed a persisted-state bypass in the canonical `MemoryOS2` owner: restored memory rows now re-derive the provenance class and cap persisted authority at that class's default ceiling, just as live ingestion does.
+- A finite, explicitly lower authority remains intact. Missing or malformed authority falls back to the class default; external records cannot restore a caller-edited score above `0.90`.
+- Added regression coverage that poisons both the canonical memory row and its serialized evidence trail, then verifies the restored parent and evidence remain capped while a valid `0.20` authority stays lower.
+- No new dependency or second memory owner was introduced. This closes a trust-boundary inconsistency in the Hexis-inspired evidence-revision path; it is not a measured memory or learning uplift.
+- **Verification:** runtime code and regression were committed on `feature/memory`; exact-head test/typecheck execution remains unverified because the hosted-runner startup issue has been reported by prior checkpoints.
+
+---
+
+## NK1 WorkPass458 — unify provenance authority ceilings across memory ingress (2026-10-23)
+
+- Extended the same Hexis-inspired provenance ceiling to every MemoryOS2 ingress path: the canonical memory row, its primary evidence row, serialized evidence-trail rows, and the explicit residual confidence-revision API. Explicit lower trust values are preserved; caller-supplied authority cannot exceed the default maximum of its declared provenance class.
+- Tightened the restored confidence-revision receipt validator: impossible applied/reason combinations and un-applied rows that change confidence are discarded; support receipts cannot lower confidence and contradiction receipts cannot raise it.
+- Added a regression proving an external input with sourceAuthority01=1.0 is normalized to the .90 external-source ceiling on both memory and its evidence trail. No dependencies added.
+- **Verification:** new regression source committed; exact-head execution still unverified due to the hosted-runner startup blocker.
+
+---
+
+## NK1 WorkPass449 — audited source-aware belief revision (2026-10-23)
+
+- Added `P65EpistemicLedger.reviseBeliefFromEvidence`: evidence IDs are idempotent, independent sources update belief confidence in log-odds space, contradictions reduce confidence, and repeated same-source evidence cannot repeatedly inflate confidence.
+- Bound live input and restore through the existing plain-data trust boundary; malformed claims and histories are quarantined, evidence/revision buffers are capped, and legacy P65 snapshots remain readable.
+- Added `p65-independent-evidence-revision.mjs` and wired it into `test:p64:p65`.
+- Adapted the evidence provenance/audited belief-revision principle from the MIT-licensed [QuixiAI/Hexis memory architecture](https://github.com/QuixiAI/Hexis/blob/main/docs/concepts/memory-architecture.md); no source file or runtime dependency copied.
+- Verification boundary: exact-head tests/typecheck have not been confirmed. No measured retrieval/learning uplift claimed.
+
+---
+
+## NK1 WorkPass456 — cap Hexis-style evidence weight by canonical provenance trust (2026-10-23)
+
+- Confidence revision now caps caller-declared evidence authority at the canonical default for its declared provenance class: external .90, user .86, agent .68, derived .52, simulation .28, unknown .50, device .95.
+- Lower explicit authority is still honored; a caller cannot set authority above the provenance policy just by supplying a high numeric field. This is a native guardrail around the residual revision mechanism, not a claim that the label itself is cryptographically authenticated.
+- Added a regression for an external source claiming authority 1.0 and verified that the formula uses the .90 ceiling. Existing lineage de-duplication and audit behavior remain intact. Execution on the exact HEAD is still unverified.
+
+---
+
+## NK1 WorkPass455 — fix accessor-backed belief test fixture (2026-10-23)
+
+- Corrected the hostile-evidence regression fixture so its accessor is configurable from the start and the test reaches the intended memory ingress instead of throwing during fixture construction.
+- This is a test-fixture correction only; no runtime behavior changed. Exact-head execution remains unverified due to the Actions runner-allocation blocker.
+
+---
+
+## NK1 WorkPass454 — integrate Hexis-inspired auditable belief revision into canonical memory (2026-10-23)
+
+- Added a residual evidence-revision policy to the existing `MemoryOS2` owner: independent support closes 35% of remaining doubt scaled by source authority; independent contradiction removes 35% of current confidence scaled by authority. Confidence is bounded to [0.05, 0.99].
+- A source lineage is counted once across both stances. Replayed evidence and changed-stance replays cannot move confidence; explicitly protected semantic memories retain contradictory evidence without silent confidence rewrite.
+- Confidence revisions persist as a bounded 32-entry audit on the same memory record and count toward the canonical byte budget. Existing generic ingestion now reuses the same residual support policy rather than the older ad-hoc 0.82/0.18 confidence blend.
+- Added regressions for exact formulas, duplicate-source stance flips, protected contradiction retention, getter rejection, persistence restore, and byte-budget accounting. Adapted from the mechanism in [QuixiAI/Hexis db/59_belief_revision.sql](https://github.com/QuixiAI/Hexis/blob/main/db/59_belief_revision.sql); no SQL database or new package was introduced.
+- **Verification:** source and test changes are committed; exact-head execution remains unverified while hosted Actions fails before runner allocation.
+
+---
+
+## NK1 WorkPass448 — isolate semantic-memory maintenance from diagnostics failures (2026-10-23)
+
+- Wrapped optional embedding-provider diagnostics in a fail-soft boundary for both background semantic indexing and the read-only diagnostics endpoint. A faulty diagnostics hook no longer blocks embedding batches or causes memory observability itself to throw.
+- Indexing can still succeed while returning an explicit `provider-diagnostics-error` status; this fault does not trigger retry/backoff or mutate canonical memory contents. Normal provider error/backoff behavior is unchanged.
+- Added a deterministic provider fixture whose diagnostics method throws but whose embedding method works. No new dependency added.
+- **Verification:** regression source is committed; exact-head execution is not claimed due to the existing Actions runner-startup blocker.
+
+---
+
+## NK1 WorkPass450 — guard background semantic-index maintenance options
+
+- Reused the canonical bounded plain-data snapshot boundary for `MemoryOS2.maintainSemanticIndexBatch`. Accessors, cycles, custom prototypes, unknown fields, non-finite option values, and negative timestamps are rejected before embedding-provider diagnostics, retry-ledger changes, or index work.
+- Preserved normal bounded batching, timeouts, content-bound retry/backoff, and lexical fallback semantics for valid option values; no new dependency and no second memory worker was introduced.
+- Added regressions proving getter non-execution, no memory-state mutation, no embedding request on rejected input, and rejection of unknown option fields. Exact-head execution remains unverified while Actions does not assign a runner.
+
+---
+
+## NK1 WorkPass447 — harden MemoryOS2 temporal query controls
+
+- The canonical retrieval owner now snapshots and allowlists temporal query options before reading them or mutating retrieval counters/index diagnostics. Accessor-backed, cyclic, custom-prototype, unknown-key and malformed temporal options are rejected with an explicit boundary error.
+- Historical mode now requires a finite, non-negative `asOfAt`; unknown temporal policies no longer silently behave as current retrieval. Query and result-cap protections from WorkPass427 remain unchanged.
+- Added regressions for zero getter execution, no state mutation after rejected options, unknown mode rejection, and invalid historical timestamps. No new store/dependency.
+- **Verification:** committed to `feature/memory`; exact-head tests and typecheck remain unverified while hosted Actions fails before runner assignment.
+
+---
+
+## NK1 WorkPass427 — bound public memory retrieval ingress (2026-10-23)
+
+- The canonical MemoryOS2 retrieval boundary now rejects non-string queries before coercion (so plugin-defined toString/valueOf cannot run) and rejects queries above 16 KiB before tokenization/index work.
+- Result limits are normalized to 1–64, with the existing default of 8 applied to non-finite/non-number limits; retrieval cannot amplify output simply because a caller passed Infinity or a huge integer.
+- Added regression coverage for hostile coercion, overlong query rejection, bounded result count and NaN limit fallback. This hardens the existing memory owner; no second memory store or runtime dependency was introduced.
+- Regression is committed but has not been executed on the hosted runner; no retrieval-quality uplift is claimed.
+
+---
+
+## NK1 WorkPass418 — cap memory budgets and harden restore ingress (2026-10-23)
+
+- Added a bounded plain-data snapshot boundary to memory restoration. Accessor-backed, cyclic, sparse, symbol-keyed and exotic object graphs fail closed without executing getters.
+- Capped persisted and caller-supplied memory byte budgets at 8 MiB; excessive values fall back to the existing finite budget instead of disabling eviction.
+- Added regressions for over-cap persisted budgets, over-cap overrides and getter-backed snapshots.
+- Tests/typecheck are pending; recent hosted jobs terminate before runner assignment.
+
+---
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
@@ -2113,3 +2394,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The host-owned evaluation adapter now pins the executor response `runId` to the exact invocation ID recorded by the process supervisor; with canonical experiment authority, that is the scheduled run ID.
 - Extended the existing host-service regression fixture with a detached-run-ID response and asserted fail-closed rejection.
 - This closes a provenance-binding gap, not the outstanding deployment requirement for real OS/container isolation or independent verifier/scanner executables. Test/typecheck/CI remain unverified until the exact head actually executes successfully.
+
+## NK1 WorkPass331 — fail closed on corrupted memory budgets (2026-10-23)
+
+- **Fixed:** `MemoryOS2.restore` now validates persisted count/timestamp fields and restores a non-finite or invalid `byteBudget` to the bounded default instead of preserving Infinity/NaN in the live memory controller.
+- **Fixed:** `enforceByteBudget({ maxBytes })` ignores invalid non-finite overrides and keeps the current finite budget, preventing a JS/plugin caller from using Infinity to bypass eviction.
+- **Regression added:** `memory-provenance-lineage-workpass30.mjs` restores a poisoned snapshot and tests corrupt counters, an infinite maintenance timestamp, invalid budget and an infinite runtime override.
+- **Validation boundary:** code and regression are committed; current hosted Actions failures occur before runner assignment, so execution remains unconfirmed.

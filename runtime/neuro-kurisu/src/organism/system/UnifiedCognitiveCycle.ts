@@ -1,3 +1,5 @@
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
+
 /**
  * BIG PASS 162 / WorkPass287 — Unified Cognitive Cycle contract.
  *
@@ -26,6 +28,10 @@ export interface UnifiedCognitiveCycleResult {
   causalContinuity01:number;
   complete:boolean;
   missingStages:UnifiedCycleStage[];
+  /** Accepted event identities carried forward from the canonical event fabric. */
+  stageIds:Partial<Record<UnifiedCycleStage,string>>;
+  /** Explicit observation anchor for downstream memory/action evidence joins. */
+  observationId:string|null;
 }
 
 const REQUIRED:UnifiedCycleStage[]=['observation','prediction','action','outcome','learning','self-update'];
@@ -41,7 +47,20 @@ export class UnifiedCognitiveCycle {
   private state=defaultUnifiedCognitiveCycle();
 
   restore(raw?:Partial<UnifiedCognitiveCycleState>|null):void {
-    const source=raw??{};
+    let source:Partial<UnifiedCognitiveCycleState>;
+    try {
+      source=snapshotPlainData<Partial<UnifiedCognitiveCycleState>>(raw??{}, {
+        allowNonFiniteNumbers:true, maxDepth:12, maxNodes:4096, maxStringUnits:64*1024,
+      });
+    } catch {
+      // Invalid persisted state must not execute getters or corrupt the live cycle.
+      this.state=defaultUnifiedCognitiveCycle();
+      return;
+    }
+    if(source===null||typeof source!=='object'||Array.isArray(source)) {
+      this.state=defaultUnifiedCognitiveCycle();
+      return;
+    }
     const cycles=safeCounter(source.cycles);
     // Restored counters must describe one coherent history: complete and
     // incomplete are disjoint subsets of cycles, and broken lineages are a
@@ -53,6 +72,8 @@ export class UnifiedCognitiveCycle {
     // conservatively incomplete; otherwise a truncated/corrupt snapshot could
     // silently drop cycles from both outcome buckets.
     const incompleteCycles=cycles-completeCycles;
+    const restoredCountPartitionConsistent=source.incompleteCycles===incompleteCycles&&
+      completeCycles+safeCounter(source.incompleteCycles)===cycles;
     const hasMissingArray=Array.isArray(source.lastMissingStages);
     const rawMissing=hasMissingArray?source.lastMissingStages as unknown[]:[...REQUIRED];
     const malformedMissing=rawMissing.some((stage)=>typeof stage!=='string'||!ALL_STAGES.has(stage as UnifiedCycleStage));
@@ -69,14 +90,53 @@ export class UnifiedCognitiveCycle {
       meanStageCoverage01:safeMetric(source.meanStageCoverage01),
       meanCausalContinuity01:safeMetric(source.meanCausalContinuity01),
       lastTick,
-      lastComplete:cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
+      lastComplete:cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&restoredCountPartitionConsistent&&!malformedMissing&&missing.length===0,
       lastMissingStages:missing,
     };
   }
 
-  evaluate(input:{tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number}):UnifiedCognitiveCycleResult {
-    if(input===null||typeof input!=='object')throw new TypeError('cognitive cycle input must be an object');
+  evaluate(rawInput:{tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number}):UnifiedCognitiveCycleResult {
+    // Snapshot before dereferencing any caller-owned property: TypeScript types do
+    // not protect this public runtime boundary from getters, proxies, cycles or
+    // oversized payloads. Invalid ingress must not execute code or mutate state.
+    type CycleInput={tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number};
+    let input:CycleInput;
+    try {
+      input=snapshotPlainData<CycleInput>(rawInput,{
+        maxDepth:6,maxNodes:128,maxStringUnits:16*1024,
+      });
+    } catch {
+      // Preserve the object-shape contract before reading any caller-owned field.
+      if(rawInput===null||typeof rawInput!=='object'||Array.isArray(rawInput)) {
+        throw new TypeError('cognitive cycle input must be an object');
+      }
+      // Preserve precise scalar diagnostics without evaluating caller getters:
+      // only own data descriptors are inspected after snapshot rejection.
+      let tickValue:unknown;
+      let parentIntegrityValue:unknown;
+      try {
+        if(rawInput!==null&&typeof rawInput==='object') {
+          const tickDescriptor=Object.getOwnPropertyDescriptor(rawInput,'tick');
+          if(tickDescriptor&&'value'in tickDescriptor)tickValue=tickDescriptor.value;
+          const parentDescriptor=Object.getOwnPropertyDescriptor(rawInput,'parentIntegrity01');
+          if(parentDescriptor&&'value'in parentDescriptor)parentIntegrityValue=parentDescriptor.value;
+        }
+      } catch {
+        // Proxies/getters remain blocked by the generic trust-boundary error.
+      }
+      if(typeof tickValue==='number'&&(!Number.isSafeInteger(tickValue)||tickValue<0)) {
+        throw new RangeError('cognitive cycle tick must be a non-negative safe integer');
+      }
+      if(typeof parentIntegrityValue==='number'&&(!Number.isFinite(parentIntegrityValue)||parentIntegrityValue<0||parentIntegrityValue>1)) {
+        throw new RangeError('parentIntegrity01 must be a finite value in [0, 1]');
+      }
+      throw new TypeError('cognitive cycle input data boundary rejected');
+    }
+    if(input===null||typeof input!=='object'||Array.isArray(input))throw new TypeError('cognitive cycle input must be an object');
+    const allowedInputKeys=new Set(['tick','stageIds','parentIntegrity01']);
+    if(Object.keys(input).some(key=>!allowedInputKeys.has(key)))throw new TypeError('cognitive cycle input contains unknown fields');
     if(input.stageIds===null||typeof input.stageIds!=='object'||Array.isArray(input.stageIds))throw new TypeError('stageIds must be an object');
+    if(Object.keys(input.stageIds).some(stage=>!ALL_STAGES.has(stage as UnifiedCycleStage)))throw new TypeError('stageIds contains an unknown cognitive stage');
     if(!Number.isSafeInteger(input.tick)||input.tick<0)throw new RangeError('cognitive cycle tick must be a non-negative safe integer');
     if(input.tick<=this.state.lastTick)throw new RangeError('cognitive cycle tick must strictly increase');
     if(typeof input.parentIntegrity01!=='number'||!Number.isFinite(input.parentIntegrity01)||input.parentIntegrity01<0||input.parentIntegrity01>1) {
@@ -116,7 +176,10 @@ export class UnifiedCognitiveCycle {
       lastComplete:complete,
       lastMissingStages:missing,
     };
-    return {tick:input.tick,stageCoverage01:coverage,causalContinuity01:causal,complete,missingStages:[...missing]};
+    return {
+      tick:input.tick,stageCoverage01:coverage,causalContinuity01:causal,complete,
+      missingStages:[...missing],stageIds:{...validIds},observationId:validIds.observation??null,
+    };
   }
 
   snapshot():UnifiedCognitiveCycleState {

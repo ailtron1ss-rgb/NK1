@@ -37,6 +37,56 @@ assert.deepEqual(a, b, 'candidate and result ranking must remain independent of 
 assert.equal(ordered.retrievalDiagnostics().candidateCount, 192);
 assert.equal(ordered.retrievalDiagnostics().candidateSelection, 'idf-coverage-fuzzy-concept-rrf-stable-id');
 
+let queryCoercions = 0;
+const hostileQuery = { toString() { queryCoercions++; return query; } };
+assert.throws(
+  () => ordered.retrieve(hostileQuery, 8, 0, 0, { temporalMode: 'at', asOfAt: now }),
+  /memory-query-must-be-string/,
+  'the public retrieval boundary must reject objects instead of coercing plugin input',
+);
+assert.equal(queryCoercions, 0, 'retrieval validation must not execute a caller-owned toString');
+assert.throws(
+  () => ordered.retrieve('x'.repeat(16 * 1024 + 1), 8, 0, 0, { temporalMode: 'at', asOfAt: now }),
+  /memory-query-size-limit/,
+  'overlong search strings must be rejected before token/index work',
+);
+assert.equal(
+  ordered.retrieve(query, 1000, 0, 0, { temporalMode: 'at', asOfAt: now }).length,
+  64,
+  'oversized result requests must be clamped to the canonical retrieval ceiling',
+);
+assert.equal(
+  ordered.retrieve(query, Number.NaN, 0, 0, { temporalMode: 'at', asOfAt: now }).length,
+  8,
+  'non-finite result limits must use the safe default instead of propagating NaN',
+);
+
+const beforeInvalidTemporalOptions = ordered.snapshot();
+let temporalGetterReads = 0;
+const hostileTemporalOptions = Object.defineProperty({}, 'temporalMode', {
+  enumerable: true,
+  get() { temporalGetterReads++; return 'at'; },
+});
+assert.throws(
+  () => ordered.retrieve(query, 8, 0, 0, hostileTemporalOptions),
+  /memory-temporal-options-invalid/,
+  'temporal retrieval controls must reject accessor-backed options at ingress',
+);
+assert.equal(temporalGetterReads, 0, 'temporal validation must not execute caller-owned getters');
+assert.deepEqual(ordered.snapshot(), beforeInvalidTemporalOptions,
+  'invalid temporal controls must be rejected before retrieval counters or indexes mutate');
+assert.throws(
+  () => ordered.retrieve(query, 8, 0, 0, { temporalMode: 'rewind-all' }),
+  /memory-temporal-options-invalid/,
+  'unknown temporal policies must not silently fall back to current memory semantics',
+);
+assert.throws(
+  () => ordered.retrieve(query, 8, 0, 0, { temporalMode: 'at', asOfAt: Number.NaN }),
+  /memory-temporal-options-invalid/,
+  'historical retrieval time must be finite and non-negative',
+);
+
+
 // The query should materially separate true token overlap from unrelated records;
 // this guards against giving orthogonal hashed vectors a free 0.5 semantic score.
 const isolated = new MemoryOS2();

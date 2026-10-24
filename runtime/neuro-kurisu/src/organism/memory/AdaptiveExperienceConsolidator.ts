@@ -20,25 +20,87 @@ export interface ConsolidatedExperience extends ExperienceRecord {
 }
 
 const clamp01=(v:number)=>Math.max(0,Math.min(1,Number.isFinite(v)?v:0));
+const hasControlCharacters=(value:string):boolean=>Array.from(value).some(character=>{const point=character.codePointAt(0)??0;return point<=0x1f||(point>=0x7f&&point<=0x9f);});
+
+function normalizeTags(value: unknown): string[] | null {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const length = descriptors.length?.value;
+  if (!Number.isSafeInteger(length) || length < 0 || length > 24 ||
+      Reflect.ownKeys(value).length !== length + 1) return null;
+  const tags: string[] = [];
+  for (let index = 0; index < length; index++) {
+    const descriptor = descriptors[String(index)];
+    if (!descriptor || !('value' in descriptor) || !descriptor.enumerable) return null;
+    const tag = descriptor.value;
+    if (typeof tag !== 'string' || !tag.trim() || tag.length > 80 ||
+        hasControlCharacters(tag)) return null;
+    tags.push(tag);
+  }
+  return tags;
+}
+
+function readExperienceRows(value: unknown, maxRows: number): unknown[] {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return [];
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const length = descriptors.length?.value;
+  if (!Number.isSafeInteger(length) || length < 0 || length > 100_000 ||
+      Reflect.ownKeys(value).length !== length + 1) return [];
+  const start = Math.max(0, length - maxRows);
+  const rows: unknown[] = [];
+  for (let index = start; index < length; index++) {
+    const descriptor = descriptors[String(index)];
+    if (!descriptor || !('value' in descriptor) || !descriptor.enumerable) return [];
+    rows.push(descriptor.value);
+  }
+  return rows;
+}
+
+function normalizeExperience(value:unknown):ExperienceRecord|null {
+  if(value===null||typeof value!=='object'||Array.isArray(value))return null;
+  const prototype=Object.getPrototypeOf(value);
+  if(prototype!==Object.prototype&&prototype!==null)return null;
+  const descriptors=Object.getOwnPropertyDescriptors(value);
+  const row:Record<string,unknown>=Object.create(null);
+  for(const [key,descriptor] of Object.entries(descriptors)){
+    if(!('value' in descriptor))return null;
+    row[key]=descriptor.value;
+  }
+  if(typeof row.id!=='string'||!row.id.trim()||row.id!==row.id.trim()||row.id.length>180||/[\u0000-\u001f\u007f-\u009f]/.test(row.id))return null;
+  if(typeof row.timestamp!=='number'||!Number.isFinite(row.timestamp)||row.timestamp<0)return null;
+  for(const key of ['novelty','utility','uncertainty'] as const){
+    if(typeof row[key]!=='number'||!Number.isFinite(row[key])||row[key]<0||row[key]>1)return null;
+  }
+  const tags=normalizeTags(row.tags);
+  if(!tags)return null;
+  return {id:row.id,timestamp:row.timestamp,novelty:row.novelty as number,utility:row.utility as number,uncertainty:row.uncertainty as number,tags};
+}
 
 export class AdaptiveExperienceConsolidator {
   private readonly maxBuffer: number;
   private buffer: ExperienceRecord[] = [];
 
   constructor(maxBuffer = 256) {
-    this.maxBuffer = Math.max(16, Math.floor(maxBuffer));
+    this.maxBuffer = Number.isSafeInteger(maxBuffer) ? Math.max(16, Math.min(4096, maxBuffer)) : 256;
   }
 
   ingest(exp: ExperienceRecord): void {
-    this.buffer.push({ ...exp, novelty:clamp01(exp.novelty), utility:clamp01(exp.utility), uncertainty:clamp01(exp.uncertainty), tags:[...exp.tags].slice(0,24) });
+    const safe=normalizeExperience(exp);
+    if(!safe)throw new TypeError('experience-record-invalid');
+    if(this.buffer.some(existing=>existing.id===safe.id))throw new Error('experience-id-duplicate');
+    this.buffer.push(safe);
     if (this.buffer.length > this.maxBuffer) this.buffer.splice(0, this.buffer.length - this.maxBuffer);
   }
 
   consolidate(limit = this.buffer.length): ConsolidatedExperience[] {
-    const boundedLimit = Math.max(1, Math.min(this.buffer.length, Math.floor(limit)));
+    if(this.buffer.length===0)return [];
+    const requestedLimit=Number.isFinite(limit)?Math.floor(limit):this.buffer.length;
+    if(requestedLimit<=0)return [];
+    const boundedLimit=Math.min(this.buffer.length,requestedLimit);
     return this.buffer
       .map((e) => ({
         ...e,
+        tags:[...e.tags],
         retentionScore: this.score(e),
         abstractionLevel: clamp01((e.utility + e.novelty + (1 - e.uncertainty)) / 3),
         consolidated: true,
@@ -52,7 +114,17 @@ export class AdaptiveExperienceConsolidator {
   snapshot(): ExperienceRecord[] { return structuredClone(this.buffer); }
 
   restore(records?: ExperienceRecord[] | null): void {
-    this.buffer = Array.isArray(records) ? records.slice(-this.maxBuffer) : [];
+    const restored:ExperienceRecord[]=[];
+    for(const raw of readExperienceRows(records,this.maxBuffer*4)){
+      const safe=normalizeExperience(raw);
+      if(!safe)continue;
+      // Persisted snapshots may contain repeated IDs after older schema migrations.
+      // Keep the last valid revision and move it to the newest position.
+      const previous=restored.findIndex(row=>row.id===safe.id);
+      if(previous>=0)restored.splice(previous,1);
+      restored.push(safe);
+    }
+    this.buffer=restored.slice(-this.maxBuffer);
   }
 
   private score(e: ExperienceRecord): number {

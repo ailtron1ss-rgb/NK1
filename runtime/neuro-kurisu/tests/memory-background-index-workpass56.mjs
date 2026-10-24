@@ -35,6 +35,24 @@ const add = (id, content, salience = .5) => memory.encode({
 add('memory-kurisu', 'Kurisu personality and curiosity shape which scientific topics she explores.', .9);
 add('memory-goals', 'A memory of research goals helps the next planning cycle.', .6);
 const canonicalBefore = memory.snapshot();
+let maintenanceGetterReads = 0;
+const hostileMaintenanceOptions = Object.defineProperty({}, 'now', {
+  enumerable: true,
+  get() { maintenanceGetterReads++; return now; },
+});
+await assert.rejects(
+  () => memory.maintainSemanticIndexBatch(hostileMaintenanceOptions),
+  /memory-index-maintenance-options-invalid/,
+  'semantic-index maintenance must reject accessor-backed options before inspecting the provider',
+);
+assert.equal(maintenanceGetterReads, 0, 'maintenance input validation must never execute caller-owned getters');
+assert.deepEqual(memory.snapshot(), canonicalBefore, 'rejected maintenance options must not mutate canonical memory');
+assert.equal(provider.requests, 0, 'invalid maintenance options must not dispatch embedding work');
+await assert.rejects(
+  () => memory.maintainSemanticIndexBatch({ now, unexpected: true }),
+  /memory-index-maintenance-options-invalid/,
+  'unknown maintenance fields must not be silently accepted',
+);
 const first = await memory.maintainSemanticIndexBatch({ maxItems: 1, providerTimeoutMs: 1200, now });
 assert.equal(first.enabled, true);
 assert.equal(first.considered, 1);
@@ -46,6 +64,25 @@ const second = await memory.maintainSemanticIndexBatch({ maxItems: 1, providerTi
 assert.equal(second.indexedItems, 2, 'a later maintenance step should incrementally finish the small corpus');
 assert.equal(second.remaining, 0);
 assert.equal(provider.requests, 2, 'one bounded provider batch is sent per maintenance step');
+
+// Observability must never become a failure dependency: a custom/local provider
+// may have a broken diagnostics hook while embedding itself continues to work.
+const brokenDiagnosticsProvider = new DeterministicProvider();
+brokenDiagnosticsProvider.diagnostics = () => { throw new Error('diagnostics adapter failure'); };
+const diagnosticsMemory = new MemoryOS2({ embeddingProvider: brokenDiagnosticsProvider });
+diagnosticsMemory.encode({
+  id:'diagnostics-memory',content:'A failed optional diagnostics hook must not break canonical memory.',
+  kind:'semantic',source:'diagnostics-failure-fixture',tags:[],context:{},salience:.7,
+  emotionalWeight:.1,identityRelevance:.2,goalRelevance:.2,socialRelevance:.1,predictionError:.1,
+  confidence:.9,epistemicStatus:'fact',entities:[],semanticLinks:[],temporalLinks:[],causalLinks:[],
+  contradictionLinks:[],validFromAt:now-100,createdAt:now-50,
+});
+const diagnosticsRecovery = await diagnosticsMemory.maintainSemanticIndexBatch({maxItems:1,now});
+assert.equal(diagnosticsRecovery.indexed,1,'embedding can still succeed when diagnostics fail');
+assert.equal(diagnosticsRecovery.lastErrorCode,'provider-diagnostics-error');
+assert.equal(diagnosticsMemory.snapshot().items.length,1,'diagnostics failure must not alter canonical memories');
+assert.equal(diagnosticsMemory.semanticEmbeddingMaintenanceDiagnostics().lastErrorCode,'provider-diagnostics-error',
+  'read-only diagnostics should report the adapter fault without throwing');
 
 const offlineProvider = new DeterministicProvider();
 offlineProvider.fail = true;
