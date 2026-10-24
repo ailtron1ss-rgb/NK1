@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { ExternalObserverFabric } from '../src/organism/system/ExternalObserverFabric.ts';
+import { EvidenceResearchSubsystemRuntime } from '../src/organism/core/EvidenceResearchSubsystemRuntime.ts';
 
 const fabric = new ExternalObserverFabric();
 const registered = fabric.registerSource({
@@ -100,5 +101,38 @@ const existingAtCapacity = bounded.registerSource({
 });
 assert.equal(existingAtCapacity.reliability01, 0.51, 'known source calibration remains writable at capacity');
 assert.equal(bounded.snapshot().sources.length, 16, 'updating a known identity must not grow or shrink the registry');
+
+// The production evidence sink must not let a first observation mint a source identity.
+const guardedRuntime = new EvidenceResearchSubsystemRuntime();
+assert.throws(() => guardedRuntime.externalObserver.observe({
+  sourceId: 'unregistered-camera',
+  sourceClass: 'device',
+  channel: 'camera',
+  independenceKey: 'camera:unregistered',
+  claimKey: 'scene=fresh',
+  observedPostcondition: 'scene=fresh',
+  confidence01: 0.99,
+}), /external-observer-source-not-registered/);
+assert.equal(guardedRuntime.externalObserver.snapshot().observations.length, 0, 'rejected ingress must not persist an observation');
+assert.equal(guardedRuntime.realityEvidenceLedger.snapshot().total, 0, 'rejected ingress must not reach the canonical evidence ledger');
+
+guardedRuntime.externalObserver.registerSource({
+  id: 'registered-camera',
+  sourceClass: 'device',
+  channel: 'camera',
+  independenceKey: 'camera:front',
+  reliability01: 0.9,
+});
+const admittedObservation = guardedRuntime.externalObserver.observe({
+  sourceId: 'registered-camera',
+  sourceClass: 'device',
+  channel: 'camera',
+  independenceKey: 'camera:front',
+  claimKey: 'scene=fresh',
+  observedPostcondition: 'scene=fresh',
+  confidence01: 0.99,
+});
+assert.equal(admittedObservation.sourceId, 'registered-camera');
+assert.equal(guardedRuntime.realityEvidenceLedger.snapshot().total, 1, 'registered source observation must still reach the canonical ledger');
 
 console.log('WorkPass548 observer source identity regression: PASS');
