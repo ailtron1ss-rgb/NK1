@@ -1,3 +1,16 @@
+## WorkPass Mem0-1 — Mem0 Platform REST recall integration (2026-10-24)
+
+- **Primary sources:** [Mem0 Platform API reference](https://docs.mem0.ai/platform/api-reference) and [Mem0 platform quickstart](https://docs.mem0.ai/platform/quickstart), reviewed for scoped search and memory-add contracts. This pass uses the Platform HTTP API; no Mem0 SDK or upstream source code is vendored.
+- **Mechanism adapted:** server-side POST to the documented v3 memory search/add routes, Token authorization, and per-user filters. NK1 owns a small typed REST adapter rather than adding a new dependency.
+- **Canonical-owner decision:** MemoryOS2 remains the only authoritative NK1 memory store. Mem0 is a remote recall source; results are separate unverified candidates with explicit provenance. No remote memory is silently promoted, used as executable instruction, or automatically inserted into the live cognition prompt.
+- **Expected benefit:** optional cross-session recall of user-approved facts that may be absent from the current local memory, while preserving local-first operation.
+- **Risks/costs:** query latency and availability, cloud transfer/privacy, per-user scope mistakes, provider retention/deletion mismatch, untrusted or stale facts, and unknown retrieval lift. The provider is disabled by default; the user scope is server-configured, remote writes are independently disabled, and writes require explicit per-operation approval. Targeted scrubbing is defense-in-depth, not a complete PII detector.
+- **Integration boundary:** authenticated /api/organism/memory/mem0/search returns local MemoryOS2 results and remote candidates in separate fields. The response does not join remote items to canonical history or rank them against local results.
+- **Evidence / status:** IMPLEMENTED on mem0-integration-workpass1. Adapter regressions are committed; exact-head execution, live API behavior, independent RU/EN holdout uplift, retention/deletion semantics, and full cognitive-cycle integration remain UNVERIFIED/OPEN. No quality or retrieval uplift is claimed from source code alone.
+- **Decision:** accept as an opt-in provider adapter, not as a new memory owner. Before prompt integration, run a disposable-scope live contract check and paired local-vs-hybrid experiments on a frozen, independently labelled holdout; require no stale-fact/cross-user/privacy regression and measurable benefit before promotion. If future work copies upstream source/SDK code, inspect the exact repository revision and license before adoption.
+
+---
+
 ## WorkPass266 — primary-source metadata check for memory and neuroscience candidates (2026-10-22)
 
 - [AMA-Bench, ICML 2026](https://proceedings.mlr.press/v306/zhao26bs.html) — publisher record describes long-horizon memory over agent/environment trajectories (states, actions, observations and tool output). Use its protocol as a candidate for trajectory-grounded evaluation; code/data integration has not been performed.
