@@ -85,6 +85,35 @@ assert.equal(activeAfterCapacityRestore.some(row=>row.eventId===newestFirst[0].e
 assert.equal(activeAfterCapacityRestore.some(row=>row.eventId==='capacity-event-1'),true,
   'quarantine must not evict a valid event merely to keep an inactive conflict row');
 
+// The live write path must release the conflicted row's capacity slot immediately,
+// not wait for restore or for a later bounded-history eviction.
+const runtimeCapacityLedger=new RealityEvidenceLedger(capacity);
+for(let index=0;index<capacity;index++){
+  runtimeCapacityLedger.record({
+    eventId:`runtime-capacity-${index}`,tick:index,at:500+index,
+    realityClass:'device-observation',claim:`runtime-capacity-claim-${index}`,
+    confidence01:.8,independenceKey:`device:runtime-capacity-${index}`,parentIds:[],
+  });
+}
+assert.throws(()=>runtimeCapacityLedger.record({
+  eventId:`runtime-capacity-${capacity-1}`,tick:capacity-1,at:900,
+  realityClass:'device-observation',claim:'runtime-conflicting-claim',
+  confidence01:.1,independenceKey:`device:runtime-capacity-${capacity-1}`,parentIds:[],
+}),/reality-evidence-event-id-conflict/);
+runtimeCapacityLedger.record({
+  eventId:'runtime-capacity-new',tick:capacity,at:901,
+  realityClass:'device-observation',claim:'runtime-capacity-new-claim',
+  confidence01:.8,independenceKey:'device:runtime-capacity-new',parentIds:[],
+});
+const activeAfterRuntimeConflict=runtimeCapacityLedger.recent(256);
+assert.equal(activeAfterRuntimeConflict.length,capacity,
+  'live conflict quarantine must release its slot before retention trims another event');
+assert.ok(activeAfterRuntimeConflict.some(row=>row.eventId==='runtime-capacity-0'),
+  'a live conflict must not evict an unrelated valid historical observation');
+assert.equal(activeAfterRuntimeConflict.some(row=>row.eventId===`runtime-capacity-${capacity-1}`),false,
+  'the conflicted live event identity must remain inactive');
+
+
 
 const executorSource=readFileSync(resolve(process.cwd(),'src/organism/body/EmbodiedActionExecutor.ts'),'utf8');
 const runtimeSource=readFileSync(resolve(process.cwd(),'src/organism/core/OrganismRuntime.ts'),'utf8');

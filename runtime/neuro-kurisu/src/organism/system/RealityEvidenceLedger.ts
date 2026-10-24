@@ -150,6 +150,7 @@ export class RealityEvidenceLedger {
       if(existing){
         if(sameEventPayload(existing,row))return structuredClone(existing);
         this.quarantinedEventIds.add(eventId);
+        this.records=this.records.filter(record=>record.eventId!==eventId);
         throw new Error('reality-evidence-event-id-conflict');
       }
     }

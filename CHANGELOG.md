@@ -1,3 +1,11 @@
+## NK1 WorkPass524 — release live history slots on evidence conflict (2026-10-24)
+
+- A write-time event-ID payload conflict now immediately removes the quarantined event from the retained history, matching the restore-time retention fix.
+- Added a regression that fills the 128-entry ledger, conflicts its newest event, then writes a new event; the unrelated oldest valid record must remain available and the active window must stay full.
+- Exact-head Actions checks are the validation authority; this commit makes no local-execution or whole-project readiness claim.
+
+---
+
 ## NK1 WorkPass523 — keep quarantined evidence out of retention budget (2026-10-24)
 
 - Fixed `RealityEvidenceLedger.restore()` so identity-conflicted event rows are removed before the bounded history capacity is applied.
