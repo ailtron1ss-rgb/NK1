@@ -103,7 +103,8 @@ test('native provider rebuilds an authentic proposal from signed artifacts and f
     assert.equal(inputs.sourceCandidateId, candidate.candidateId);
     assert.equal(inputs.proposal.proposalId, proposal.proposalId);
     assert.equal(isAuthenticVerifiedSkillPromotionProposal(inputs.proposal), true);
-    assert.equal(inputs.options.minPairedTasks, 8);
+    assert.equal(inputs.options, undefined, 'promotion gate options must not be confused with fresh candidate-fitness options');
+    assert.equal(inputs.proposal.gate.accepted, true);
     await assert.rejects(inputs.evaluateRevisedCandidate({}), /native-p23-revision-requires-independent-evaluation-wrapper/);
   });
 });
