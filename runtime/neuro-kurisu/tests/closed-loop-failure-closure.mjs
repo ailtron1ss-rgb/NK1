@@ -113,29 +113,61 @@ assert.match(runtimeSource, /runtime\.step\.aborted/);
 assert.ok(runtimeSource.includes('cognitiveCycleComplete,\n          cognitiveCycleTick: unifiedCycle.lastTick'), 'runtime closure must consume the unified cycle result');
 assert.ok(runtimeSource.includes('durableStateAligned: domainAfter.lastCheckpointTick === domainAfter.tick && Boolean(domainAfter.replaySignature),\n          cognitiveCycleComplete,'), 'causal closure must consume the unified cycle result');
 
-// Exercise the actual runtime abort path and inspect the persisted closure state.
+// Exercise cancellation at both the entry boundary and the final pre-actuation boundary.
 const work = await mkdtemp(path.join(tmpdir(), 'neuro-kurisu-p328-'));
 const stateFile = path.join(work, 'organism.json');
 let runtime;
+let lateController = null;
+let invokerCalls = 0;
+const proposalMarker = 'suggestedAction must be one of';
 try {
   runtime = new OrganismRuntime({
     stateFile,
     intervalMs: 5_000,
-    enableLanguage: false,
+    enableLanguage: true,
     autoRun: false,
     performanceProfile: 'mobile',
+    languageInvoker: async (request) => {
+      invokerCalls += 1;
+      const proposal = request.system.includes(proposalMarker);
+      if (!proposal) lateController?.abort('fixture-late-abort-before-action');
+      return {
+        text: proposal
+          ? JSON.stringify({ summary: 'bounded test proposal', hypotheses: [], uncertainty: 0.2, suggestedAction: null, evidenceNeeded: [] })
+          : 'controlled test response',
+        backend: 'test-provider',
+        latencyMs: 1,
+      };
+    },
     cycleResultMode: 'summary',
   });
   await runtime.init();
   const priorFailures = runtime.causalDomainClosureSnapshot().failures;
+  const invokersBeforeEarlyAbort = invokerCalls;
   const controller = new AbortController();
-  controller.abort('fixture-abort-before-action');
+  controller.abort('fixture-abort-at-entry');
   await assert.rejects(
     runtime.step(undefined, { deliberate: false, signal: controller.signal }),
+    /cognitive-cycle-aborted:step-start/,
+  );
+  assert.equal(invokerCalls, invokersBeforeEarlyAbort, 'an already-cancelled cycle must stop before inference');
+
+  let embodiedDispatches = 0;
+  const realEmbodiedExecute = runtime.embodiedActions.execute.bind(runtime.embodiedActions);
+  runtime.embodiedActions.execute = async (...args) => {
+    embodiedDispatches += 1;
+    return realEmbodiedExecute(...args);
+  };
+  lateController = new AbortController();
+  const beforeLateDispatches = embodiedDispatches;
+  await assert.rejects(
+    runtime.step('Exercise the cancellation boundary.', { deliberate: true, signal: lateController.signal }),
     /cognitive-cycle-aborted:before-embodied-action/,
   );
+  assert.equal(lateController.signal.aborted, true, 'the controlled provider must cancel during final response generation');
+  assert.equal(embodiedDispatches, beforeLateDispatches, 'late cancellation must prevent embodied-action dispatch');
   const closure = runtime.causalDomainClosureSnapshot();
-  assert(closure.failures > priorFailures, 'the aborted runtime cycle must be accounted as a causal failure');
+  assert(closure.failures >= priorFailures + 2, 'both aborted runtime cycles must be accounted as causal failures');
   assert.equal(closure.recent[0]?.status, 'FAIL');
   assert.match(closure.recent[0]?.failureReason ?? '', /cognitive-cycle-aborted:before-embodied-action/);
   assert.equal(runtime.runtimeClosureDiagnostics().lastStatus, 'FAIL');
@@ -144,7 +176,7 @@ try {
   const persisted = JSON.parse(await readFile(stateFile, 'utf8'));
   assert.equal(persisted.system?.runtimeClosure?.lastStatus, 'FAIL');
   assert.equal(persisted.system?.causalDomainClosureLedger?.lastStatus, 'FAIL');
-  assert.match(persisted.system?.causalDomainClosureLedger?.recent?.[0]?.failureReason ?? '', /cognitive-cycle-aborted/);
+  assert.match(persisted.system?.causalDomainClosureLedger?.recent?.[0]?.failureReason ?? '', /cognitive-cycle-aborted:before-embodied-action/);
 
   console.log(JSON.stringify({
     pass: true,
