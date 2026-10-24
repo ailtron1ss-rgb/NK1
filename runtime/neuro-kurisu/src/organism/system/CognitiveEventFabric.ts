@@ -136,8 +136,8 @@ export class CognitiveEventFabric {
       if(!entry)continue;
       if(!entry || typeof entry.executionId!=='string' || !entry.executionId.trim() || entry.executionId.length>180) continue;
       if(typeof entry.actionEventId!=='string' || typeof entry.outcomeEventId!=='string' || typeof entry.evidenceEventId!=='string') continue;
-      const projectedAt=Number(entry.projectedAt);
-      if(!Number.isFinite(projectedAt) || projectedAt<0) continue;
+      const projectedAt=entry.projectedAt;
+      if(typeof projectedAt!=='number'||!Number.isFinite(projectedAt)||projectedAt<0) continue;
       const action=restoredById.get(entry.actionEventId), outcome=restoredById.get(entry.outcomeEventId), evidence=restoredById.get(entry.evidenceEventId);
       // Never restore a replay guard whose three referenced nodes have aged out,
       // been truncated or no longer match the execution identity/stage contract.
@@ -146,17 +146,17 @@ export class CognitiveEventFabric {
       if(!outcome.parentIds.includes(action.id) || !evidence.parentIds.includes(outcome.id)) continue;
       const externalObservationRows=ownDataArray(entry.externalObservations)??[];
       const externalObservations=externalObservationRows.slice(-32).map(ownDataRecord).filter((ref:any)=>{
-        if(!ref||typeof ref.observationId!=='string'||!ref.observationId.trim()||ref.observationId.length>180||typeof ref.eventId!=='string'||ref.eventId.length>180||!/^[a-f0-9]{64}$/i.test(String(ref.projectionHash??''))||!Number.isFinite(Number(ref.projectedAt))||Number(ref.projectedAt)<0)return false;
+        if(!ref||typeof ref.observationId!=='string'||!ref.observationId.trim()||ref.observationId.length>180||typeof ref.eventId!=='string'||ref.eventId.length>180||typeof ref.projectionHash!=='string'||!/^[a-f0-9]{64}$/i.test(ref.projectionHash)||typeof ref.projectedAt!=='number'||!Number.isFinite(ref.projectedAt)||ref.projectedAt<0)return false;
         const event=restoredById.get(String(ref.eventId));
         return event?.stage==='external-evidence'&&event.payload.executionId===entry.executionId&&event.payload.observationId===ref.observationId&&event.payload.projectionHash===String(ref.projectionHash).toLowerCase();
-      }).map((ref:any)=>({observationId:String(ref.observationId),eventId:String(ref.eventId),projectionHash:String(ref.projectionHash).toLowerCase(),projectedAt:Number(ref.projectedAt)}));
+      }).map((ref:any)=>({observationId:String(ref.observationId),eventId:String(ref.eventId),projectionHash:ref.projectionHash.toLowerCase(),projectedAt:ref.projectedAt}));
       const receiptRevisionRows=ownDataArray(entry.receiptRevisions)??[];
       const receiptRevisions=receiptRevisionRows.slice(-32).map(ownDataRecord).filter((ref:any)=>{
-        if(!ref||typeof ref.revisionId!=='string'||!ref.revisionId.trim()||ref.revisionId.length>180||typeof ref.eventId!=='string'||ref.eventId.length>180||!/^[a-f0-9]{64}$/i.test(String(ref.projectionHash??''))||!Number.isFinite(Number(ref.projectedAt))||Number(ref.projectedAt)<0)return false;
+        if(!ref||typeof ref.revisionId!=='string'||!ref.revisionId.trim()||ref.revisionId.length>180||typeof ref.eventId!=='string'||ref.eventId.length>180||typeof ref.projectionHash!=='string'||!/^[a-f0-9]{64}$/i.test(ref.projectionHash)||typeof ref.projectedAt!=='number'||!Number.isFinite(ref.projectedAt)||ref.projectedAt<0)return false;
         const event=restoredById.get(String(ref.eventId));
         return event?.stage==='tool-reconciliation'&&event.payload.executionId===entry.executionId&&event.payload.revisionId===ref.revisionId&&event.payload.projectionHash===String(ref.projectionHash).toLowerCase();
       }).map((ref:any)=>({revisionId:String(ref.revisionId),eventId:String(ref.eventId),projectionHash:String(ref.projectionHash).toLowerCase(),projectedAt:Number(ref.projectedAt)}));
-      this.receiptProjectionIndex.set(entry.executionId,{executionId:entry.executionId,actionEventId:entry.actionEventId.slice(0,180),outcomeEventId:entry.outcomeEventId.slice(0,180),evidenceEventId:entry.evidenceEventId.slice(0,180),projectedAt,...(/^[a-f0-9]{64}$/i.test(String(entry.projectionHash??''))?{projectionHash:String(entry.projectionHash).toLowerCase()}: {}),...(externalObservations.length?{externalObservations}:{}),...(receiptRevisions.length?{receiptRevisions}:{})});
+      this.receiptProjectionIndex.set(entry.executionId,{executionId:entry.executionId,actionEventId:entry.actionEventId.slice(0,180),outcomeEventId:entry.outcomeEventId.slice(0,180),evidenceEventId:entry.evidenceEventId.slice(0,180),projectedAt,...(typeof entry.projectionHash==='string'&&/^[a-f0-9]{64}$/i.test(entry.projectionHash)?{projectionHash:entry.projectionHash.toLowerCase()}: {}),...(externalObservations.length?{externalObservations}:{}),...(receiptRevisions.length?{receiptRevisions}:{})});
       if(this.receiptProjectionIndex.size>=256) break;
     }
     const totalValue=snapshot?.total;
@@ -187,7 +187,8 @@ export class CognitiveEventFabric {
     const rawExternal=ownData('external');
     if(rawExternal!==undefined&&typeof rawExternal!=='boolean') throw new Error('invalid-cognitive-event-external-flag');
     const rawParents=ownData('parentIds');
-    if(rawParents!==undefined&&(!Array.isArray(rawParents)||rawParents.length>12||rawParents.some(parent=>typeof parent!=='string'||!parent.trim()||parent.length>180||/[\\u0000-\\u001f\\u007f]/.test(parent)))) throw new Error('invalid-cognitive-event-parent-ids');
+    const safeParentValues=rawParents===undefined?[]:ownDataArray(rawParents);
+    if(rawParents!==undefined&&(!safeParentValues||safeParentValues.length>12||safeParentValues.some(parent=>typeof parent!=='string'||!parent.trim()||parent.length>180||/[\\u0000-\\u001f\\u007f]/.test(parent)))) throw new Error('invalid-cognitive-event-parent-ids');
     const rawPayload=ownData('payload');
     if(rawPayload!==undefined){
       if(!isRecord(rawPayload)||Object.getPrototypeOf(rawPayload)!==Object.prototype) throw new Error('invalid-cognitive-event-payload');
@@ -212,7 +213,7 @@ export class CognitiveEventFabric {
       id:suppliedId||`cef:${at}:${Math.max(0,Math.floor(input.tick))}:${Math.random().toString(16).slice(2)}`,
       tick:Math.max(0,Math.floor(input.tick)), at,
       stage:input.stage, source:String(input.source||'unknown').slice(0,120),
-      parentIds:[...(input.parentIds??[])].map(String).slice(0,12),
+      parentIds:[...(safeParentValues??[])].map(parent=>String(parent)).slice(0,12),
       external:Boolean(input.external), confidence01:clamp01(input.confidence01??0.5), payload:cleanPayload(input.payload),
     };
     this.events.unshift(event);
