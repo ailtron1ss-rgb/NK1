@@ -1,3 +1,13 @@
+## NK1 WorkPass499 — bridge process-trusted outcome receipts into P65 (2026-10-24)
+
+- Added `OutcomeVerification.evidenceEventId`, generated as a deterministic `outcome:<40-hex>` key from canonical tool, execution ID, decision ID, observation ID and full input.
+- Added `P65VerifiedOutcomeBridge.ts`: only the exact process-local verifier-minted and decision-linked receipt can revise a belief; copied/restored objects, missing IDs, changed execution/decision, mismatched belief text, and malformed input fail closed.
+- The adapter derives its evidence source/lineage and strength from the trusted verifier context rather than trusting caller-supplied values. P65 retains responsibility for evidence de-duplication and same-lineage confidence controls.
+- Added `test:p65:verified-outcome-bridge.mjs` plus `test:p65:verified-outcome-bridge` script for success, replay rejection, copied-token rejection, claim binding and decision-binding regressions.
+- This is the verifier → P65 bridge; it does not yet automatically feed every P23 causal trace or claim from the main organism loop, and its test must pass on the resulting CI head before the bridge is considered validated.
+
+---
+
 ## NK1 WorkPass492 — keep memory branch aligned with fail-closed learning evidence
 
 - Applied the shared Node.js 24 strip-only compatibility fix to both the versioned skill candidate store and its atomic file persistence adapter without changing their CAS/locking or authorization boundaries.
