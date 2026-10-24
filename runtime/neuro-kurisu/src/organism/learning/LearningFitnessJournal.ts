@@ -231,12 +231,16 @@ function verifyEntry(value: unknown, expectedSequence: number, expectedPrevious:
  * or individual holdout rows. Any malformed/tampered existing chain fails closed.
  */
 export class JsonlLearningFitnessJournal implements LearningFitnessJournalSink {
+  private readonly filePath: string;
+  private readonly maxBytes: number;
   private cache: {
     size: number; mtimeMs: number; ctimeMs: number; ino: number;
     entries: LearningFitnessJournalEntry[];
   } | null = null;
 
-  constructor(private readonly filePath: string, private readonly maxBytes = DEFAULT_MAX_BYTES) {
+  constructor(filePath: string, maxBytes = DEFAULT_MAX_BYTES) {
+    this.filePath = filePath;
+    this.maxBytes = maxBytes;
     if (typeof filePath !== 'string' || !filePath.trim() || filePath.includes('\u0000') ||
         !safeInteger(maxBytes) || maxBytes < 1024 || maxBytes > 512 * 1024 * 1024) {
       throw new Error('learning-fitness-journal-config-invalid');
