@@ -97,11 +97,14 @@ export class CausalDomainClosureLedger {
     // If a persisted summary credited the most recent record as complete but
     // normalization proves that record failed, remove that one stale success credit.
     if(failedLatest&&rawLatest?.complete===true&&!latest?.complete)completeCycles=Math.max(0,completeCycles-1);
+    const rawMeanScore=clamp(Number(raw?.meanScore01??0));
+    const lastScoreOverstatement=failedLatest&&latest?Math.max(0,clamp(Number(rawLatest?.score01??0))-latest.score01):0;
+    const meanScore01=clamp(rawMeanScore-lastScoreOverstatement/Math.max(1,totalCycles));
     this.state={
       version:1,capacity:cap,totalCycles,completeCycles,
       degradedCycles:safeCount(raw?.degradedCycles),
       failures:Math.max(safeCount(raw?.failures),failedLatest?1:0),
-      meanScore01:clamp(Number(raw?.meanScore01??0)),
+      meanScore01,
       lastTick:finiteCount(raw?.lastTick),
       lastStatus,
       lastBehaviorHash:failedLatest&&latest?latest.behaviorHash:String(raw?.lastBehaviorHash??'').slice(0,160),
