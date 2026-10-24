@@ -1,3 +1,10 @@
+## NK1 WorkPass479 — connect stable event identity to reality evidence (2026-10-24)
+
+- Shared event identity and ledger deduplication are now implemented on `feature/feedback`; the cross-category Hexis map records the completed segment and keeps the full memory/P65/P23 evidence bridge explicitly open.
+- No code from the feedback branch is assumed to be merged into `integration`; the category PR remains the integration route.
+
+---
+
 ## NK1 WorkPass478 — unify Hexis source mapping across memory and P23 (2026-10-24)
 
 - Expanded the Hexis upstream note into a cross-category map for QuixiAI memory/belief revision, hexis-framework correction learning, and Bevel skill lifecycle controls.
