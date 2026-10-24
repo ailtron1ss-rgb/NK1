@@ -55,7 +55,8 @@ const comparisonInput={
   needs:{energy01:0.7,uncertainty01:0.4,novelty01:0.5,goalPressure01:0.3,socialNeed01:0.2},
   traits:{curiosity:0.7,'truth-seeking':0.7,'self-reflection':0.6,'self-preservation':0.7,care:0.6,'social-attunement':0.5,persistence:0.7},
   predictionError01:0.3,autobiographicalContinuity01:0.8,identityContinuity01:0.8,
-  intrinsicReward01:0.2,lastAction:null,lastReward01:0.5,
+  // Keep the baseline intrinsic reward below the driven value to isolate drive influence.
+  intrinsicReward01:0.1,lastAction:null,lastReward01:0.5,
 };
 const baselineValue=baselineNet.step({...comparisonInput,intrinsicDrive01:0,intrinsicDriveConfidence01:1}).predictedFutureValue01;
 const drivenValue=drivenNet.step({...comparisonInput,intrinsicDrive01:0.9,intrinsicDriveConfidence01:1}).predictedFutureValue01;
