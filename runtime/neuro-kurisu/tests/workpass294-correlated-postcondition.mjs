@@ -7,6 +7,7 @@ import {
   isTrustedExternalPostconditionVerification,
 } from '../src/organism/system/OutcomeVerificationService.ts';
 import { OutcomeCognitionFabric } from '../src/organism/system/OutcomeCognitionFabric.ts';
+import { RealityEvidenceLedger } from '../src/organism/system/RealityEvidenceLedger.ts';
 
 const root = process.cwd();
 const gatewaySource = readFileSync(resolve(root, 'src/organism/system/ActionGateway.ts'), 'utf8');
@@ -162,6 +163,38 @@ assert.equal(verifierProjection.verificationRecord.evidenceEventId, verification
   'the real verifier event identity must survive entry into the canonical causal outcome projection');
 assert.equal(verifierProjection.verifiedExternal, true,
   'the verifier-to-projection seam should retain the independently verified external postcondition');
+
+// Carry that same verifier-minted event identity into the canonical reality ledger.
+// Replays must be idempotent across consumers; the shared ID does not manufacture trust.
+const crossSubsystemLedger = new RealityEvidenceLedger();
+const projectedEvidenceId = verifierProjection.verificationRecord.evidenceEventId;
+assert.ok(projectedEvidenceId, 'the verified projection should expose its bounded cross-subsystem event identity');
+const ledgerEvidence = crossSubsystemLedger.record({
+  eventId: projectedEvidenceId,
+  tick: 11,
+  at: 1000,
+  realityClass: 'external-observation',
+  claim: 'fresh scene observed',
+  confidence01: 0.98,
+  independenceKey: 'observation:obs-1',
+  parentIds: [expected.executionId, expected.decisionId],
+});
+const ledgerReplay = crossSubsystemLedger.record({
+  eventId: projectedEvidenceId,
+  tick: 11,
+  at: 2000,
+  realityClass: 'external-observation',
+  claim: 'fresh scene observed',
+  confidence01: 0.98,
+  independenceKey: 'observation:obs-1',
+  parentIds: [expected.executionId, expected.decisionId],
+});
+assert.equal(ledgerReplay.id, ledgerEvidence.id,
+  'the verifier-to-ledger handoff must deduplicate the exact same evidence event across retries');
+assert.equal(crossSubsystemLedger.snapshot().total, 1,
+  'cross-subsystem retry must not inflate the reality evidence count');
+assert.equal(crossSubsystemLedger.claimAssessment('fresh scene observed').promotionAllowed, true,
+  'the correlated external observation should remain assessable by the existing grounding policy');
 
 const fabric = new OutcomeCognitionFabric();
 const eventKey = 'outcome:' + 'a'.repeat(40);
