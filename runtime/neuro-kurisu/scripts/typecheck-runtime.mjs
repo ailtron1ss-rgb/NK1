@@ -3,7 +3,13 @@ import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const args = ['-p', 'tsconfig.clean.json', '--noEmit'];
+// Prefer official Node declarations from the app install when they are present;
+// otherwise use the runtime's explicit fallback shims in tsconfig.shim.json.
+const appTypeRoots = path.resolve(root, '../../app/node_modules/@types');
+const hasOfficialNodeTypes = existsSync(path.join(appTypeRoots, 'node'));
+const configFile = hasOfficialNodeTypes ? 'tsconfig.clean.json' : 'tsconfig.shim.json';
+const args = ['-p', configFile, '--noEmit'];
+if (hasOfficialNodeTypes) args.push('--typeRoots', appTypeRoots, '--types', 'node');
 // The canonical workflow installs dependencies under app/node_modules and reuses
 // that pinned TypeScript compiler for this runtime. Explicitly expose the same
 // installation's Node declarations; without this, ambient fallback shims hide
