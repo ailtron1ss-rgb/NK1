@@ -237,7 +237,7 @@ export class PredictiveSelfAgencySubstrate {
     }
     const lr=(.026/Math.sqrt(1+this.state.predictionSamples/2500))*causalMatch;
     const idx=ACTIONS.indexOf(action);
-    const d=err*p.predictedOutcome01*(1-p.predictedOutcome01)*causalMatch;
+    const d=err*p.predictedOutcome01*(1-p.predictedOutcome01);
     for(let j=0;j<24;j++) {
       this.state.actionRows[idx][j]=clamp11(
         (this.state.actionRows[idx][j]??0)+lr*d*(this.state.selfLatent[j]??0),
