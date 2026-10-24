@@ -1,3 +1,12 @@
+## NK1 WorkPass505 — validate memory consolidation ingress and restore
+
+- Hardened `AdaptiveExperienceConsolidator` so malformed IDs, control characters, non-finite timestamps/scores, out-of-range utility/novelty/uncertainty, oversized tags, and accessor-backed records are rejected before ingestion.
+- Restore now filters invalid persisted records and reapplies the buffer cap; invalid capacity and consolidation limits use bounded fallbacks. Returned consolidated rows detach tag arrays from internal state.
+- This protects autobiographical consolidation from malformed runtime or persisted experience data without adding a parallel memory store or external dependency.
+- Code committed on `feature/memory`; exact-head tests/typecheck remain required.
+
+---
+
 ## NK1 WorkPass497 — synchronize memory branch runtime and goal contracts
 
 - Applied the shared P26 input-validation and persisted-diagnostic recovery path, including finite training metrics, non-negative update counts and strict boolean restoration for `frozen`.
