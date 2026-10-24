@@ -56,6 +56,13 @@ const p68Result=p68.tick({tick:1,at:1000,goals:[p68Goal],lastAction:'explore',la
 assert.equal(p68Result.activeCount,1);
 assert.ok(p68Goal.progress>.4,'valid goal progress remains visible to the canonical caller');
 const p68BeforeHostile=p68.snapshot();
+const duplicateGoal={...p68Goal,id:'goal-evidence',progress:.1};
+const duplicateGoalStateBefore=p68.snapshot();
+assert.throws(()=>p68.tick({
+  tick:2,at:2000,goals:[p68Goal,duplicateGoal],lastAction:'explore',lastSuccess:.9,
+  mode:'observe',homeostaticPressure01:.2,identity01:.8,
+}),/p68-goal-input-invalid/,'duplicate goal IDs must not double-count lifecycle transitions');
+assert.deepEqual(p68.snapshot(),duplicateGoalStateBefore,'duplicate goal IDs must be rejected before state mutation');
 let p68GetterReads=0;
 const p68Hostile={tick:2,at:2000,goals:[],lastAction:'wait',lastSuccess:null,mode:'observe',homeostaticPressure01:.2,identity01:.8};
 Object.defineProperty(p68Hostile,'tick',{enumerable:true,configurable:true,get(){p68GetterReads++;return 2;}});
