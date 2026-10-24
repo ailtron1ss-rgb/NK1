@@ -357,8 +357,8 @@ assert.equal(safeAggregateSnapshot.consolidated, safeAggregateSnapshot.records.f
   "invalid persisted consolidation count must fall back to retained consolidated rows");
 assert.equal(safeAggregateSnapshot.lastConsolidatedAt, 0, "invalid consolidation timestamp must be reset");
 assert.deepEqual(safeAggregateSnapshot.rolling, {
-  surprise01: 0, predictionError01: 0, causalStrength01: 0, learningOpportunity01: 0.4,
-}, "rolling metrics must be finite and within normalized bounds");
+  surprise01: 0, predictionError01: 0, causalStrength01: 0, learningOpportunity01: 0,
+}, "unverified external imports must not contribute to trusted rolling learning metrics");
 assert.equal(safeAggregateSnapshot.behavioralImpact01, 0,
   "persisted behavioral impact must be recomputed instead of trusted");
 assert.equal(safeAggregateSnapshot.behavioralContextSamples, 0,
