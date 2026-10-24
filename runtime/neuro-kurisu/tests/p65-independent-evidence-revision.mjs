@@ -78,6 +78,16 @@ roundTripLineage.restore(lineageMemory.snapshot());
 assert.deepEqual(roundTripLineage.snapshot().claimsData.find(row=>row.id===lineageClaim).evidenceLineageKeys,['web','story-family-42']);
 assert.equal(roundTripLineage.snapshot().claimsData.find(row=>row.id===lineageClaim).revisionHistory[1].independenceKey,'story-family-42');
 
+// Compound IDs are compared as a structured tuple, not an ambiguous colon-concatenated string.
+const collisionLedger = new P65EpistemicLedger();
+const collisionClaim = collisionLedger.record({tick:3,at:300,kind:'belief',content:'Evidence identifiers are compared without delimiter collisions.',confidence01:.5,source:'web'});
+const collisionFirst = collisionLedger.reviseBeliefFromEvidence({claimId:collisionClaim,evidenceId:'c',source:'publisher-a',independenceKey:'a:b',stance:'supports',strength01:.9,at:310});
+assert.equal(collisionFirst.independentSource,true);
+const collisionSecond = collisionLedger.reviseBeliefFromEvidence({claimId:collisionClaim,evidenceId:'b:c',source:'publisher-b',independenceKey:'a',stance:'supports',strength01:.9,at:320});
+assert.equal(collisionSecond.reason,'same-source-evidence-recorded', 'the structured pair [a,b:c] differs from [a:b,c]');
+assert.equal(collisionSecond.independentSource,false);
+assert.equal(collisionSecond.confidence01,collisionFirst.confidence01);
+assert.equal(collisionLedger.snapshot().claimsData.find(row=>row.id===collisionClaim).evidenceKeys.length,2);
 // V2 snapshots restore through allowlisted fields; unsupported rows are quarantined.
 const legacy = ledger.snapshot();
 delete legacy.claimsData[0].evidenceSources;
