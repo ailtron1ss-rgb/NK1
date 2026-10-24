@@ -1,3 +1,12 @@
+## NK1 WorkPass472 — prevent stale memories from starving current retrieval (2026-10-24)
+
+- Corrected candidate-pool ordering in canonical `MemoryOS2.retrieve`: temporal validity now ranks ahead of lexical score when truncating the bounded 192-item seed pool. Previously, many expired exact-phrase hits could crowd a weaker but valid current memory out before the later temporal filter ran.
+- `temporalMode: 'all'` is unaffected because archive candidates remain temporally eligible; current/point-in-time modes prefer entries valid at their requested time.
+- Extended the existing WorkPass80 memory-residency regression with 220 expired high-match distractors and a current valid target, plus an archive-mode control. No new owner, database, or dependency was added.
+- **Verification status:** source and regression are committed on `feature/memory`; exact-head execution/typecheck has not yet been confirmed. This is a correctness/recall fix, not a measured retrieval-uplift claim.
+
+---
+
 ## NK1 WorkPass471 — linearize Hexis-inspired memory doctor revision checks (2026-10-24)
 
 - Optimized the read-only memory integrity doctor: revision-link checks now resolve predecessor/successor IDs through a first-wins map instead of scanning the full memory list for every revision edge. This changes worst-case revision-link diagnostics from quadratic to linear in memory count while preserving the old first-match behavior for duplicate IDs.
