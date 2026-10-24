@@ -179,6 +179,11 @@ export class EmotionAppraisalEngine {
 
   observeInteroception(input:{energy01:number;thermal01:number;capacity01:number;load01:number;homeostaticPressure01?:number}):InteroceptiveAffectState{
     input=snapshotEmotionInput(input,'emotion-interoception-input-must-be-plain-data') as unknown as typeof input;
+    const unit=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
+    if(!unit(input.energy01)||!unit(input.thermal01)||!unit(input.capacity01)||!unit(input.load01)||
+       (input.homeostaticPressure01!==undefined&&!unit(input.homeostaticPressure01))){
+      throw new RangeError('emotion-interoception-values-invalid');
+    }
     const st=this.state.interoception;
     const actual={energy01:c(input.energy01),thermal01:c(input.thermal01),capacity01:c(input.capacity01),load01:c(input.load01)};
     const errors=[Math.abs(actual.energy01-st.predicted.energy01),Math.abs(actual.thermal01-st.predicted.thermal01),Math.abs(actual.capacity01-st.predicted.capacity01),Math.abs(actual.load01-st.predicted.load01)];
