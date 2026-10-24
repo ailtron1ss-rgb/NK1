@@ -12,7 +12,7 @@ async function walk(d){for(const e of await readdir(d,{withFileTypes:true})){con
 const roots=[path.join(root,'src'),path.join(root,'scripts'),path.join(root,'tests'),path.join(root,'research'),
   path.resolve(root,'../../app/src'),path.resolve(root,'../../app/scripts'),path.resolve(root,'../../app/server')].filter(p=>existsSync(p));
 for(const sourceRoot of roots) await walk(sourceRoot);
-const fileSet=new Set(files); const graph=new Map(files.map(f=>[f,[]])); const edgeKindByPair=new Map(); const missing=[]; const canonicalRoot=path.join(root,'src','organism');
+const fileSet=new Set(files); const graph=new Map(files.map(f=>[f,[]])); const runtimeGraph=new Map(files.map(f=>[f,[]])); const edgeKindByPair=new Map(); const missing=[]; const canonicalRoot=path.join(root,'src','organism');
 function resolve(base,spec){
   const clean=String(spec).split(/[?#]/,1)[0];
   const p=path.resolve(path.dirname(base),clean);
@@ -34,6 +34,7 @@ for(const f of files){
     const r=resolve(f,spec);
     if(!r){missing.push([path.relative(root,f),spec]);continue;}
     if(!graph.get(f).includes(r)) graph.get(f).push(r);
+    if(runtimeSpecs.has(spec)&&!runtimeGraph.get(f).includes(r)) runtimeGraph.get(f).push(r);
     const pair=f+'\0'+r;
     const nextKind=runtimeSpecs.has(spec)&&typeSpecs.has(spec)?'runtime-and-type':runtimeSpecs.has(spec)?'runtime-import':'typescript-type-import';
     const oldKind=edgeKindByPair.get(pair);
@@ -57,9 +58,9 @@ if(boundaryViolations.length){
   throw new Error('dependency boundary violations: '+JSON.stringify(boundaryViolations.slice(0,50))+(boundaryViolations.length>50?' (truncated)':''));
 }
 const visiting=new Set(), visited=new Set(), cycles=[];
-function dfs(n,stack=[]){if(visiting.has(n)){const i=stack.indexOf(n); cycles.push(stack.slice(i).concat(n)); return;} if(visited.has(n)) return; visiting.add(n); for(const d of graph.get(n)||[]) dfs(d,stack.concat(n)); visiting.delete(n); visited.add(n);}
+function dfs(n,stack=[]){if(visiting.has(n)){const i=stack.indexOf(n); cycles.push(stack.slice(i).concat(n)); return;} if(visited.has(n)) return; visiting.add(n); for(const d of runtimeGraph.get(n)||[]) dfs(d,stack.concat(n)); visiting.delete(n); visited.add(n);}
 for(const f of files) dfs(f,[]);
-if(cycles.length) throw new Error(`import cycles detected: ${JSON.stringify(cycles.slice(0,5).map(c=>c.map(x=>path.relative(root,x))) )}`);
+if(cycles.length) throw new Error(`runtime import cycles detected: ${JSON.stringify(cycles.slice(0,5).map(c=>c.map(x=>path.relative(root,x))) )}`);
 const dependencyEdges=[...graph.values()].reduce((total,edges)=>total+edges.length,0);
 const repoRoot=path.resolve(root,'../..');
 const sourceSet=new Set(files);
