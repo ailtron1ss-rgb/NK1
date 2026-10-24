@@ -2,6 +2,8 @@
 
 - [HARDENED] `tools/super-gateway.mjs` now applies configurable upstream request deadlines (30 seconds by default; 1–120 seconds allowed), returning `504` for upstream timeouts and `502` for connection failures.
 - [HARDENED] Client disconnects cancel upstream requests; if an upstream fails after downstream headers were sent, the downstream socket is destroyed rather than attempting a second response.
+- [HARDENED] The upstream limit is an absolute wall-clock deadline as well as a socket idle timeout, so a service cannot evade the limit by slowly streaming chunks. A response that already sent headers is terminated rather than double-written.
+- [REGRESSION] Added a trickle-stream test to verify total request deadlines.
 - [COMPATIBILITY] Proxying removes hop-by-hop headers and headers nominated by the incoming `Connection` header. The direct CLI entry point remains intact while the server factory is importable for tests.
 - [REGRESSION] Added `tools/super-gateway.test.mjs` for UI/runtime/research routing, timeout handling, and timeout configuration bounds; `npm run test:super-gateway` is part of the focused Node 24 workflow.
 - [VALIDATION STATUS] The previous focused workflow passed on `4e7a981dd270feab79c90fdfd618aa1c1c41761d`; the new gateway tests require a successful run on the latest branch head.
