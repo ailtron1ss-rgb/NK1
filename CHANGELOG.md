@@ -1,3 +1,10 @@
+# NK1 follow-up — durable candidate identity and final integration verification (2026-10-24)
+
+- [FIXED] File-backed skill candidate persistence now uses the same candidate ID tuple as candidate staging. Ordinary candidates retain their legacy four-part identity; reflective revisions bind the canonical provenance fingerprint only when provenance is present.
+- [HARDENED] Durable snapshot validation now validates provenance metadata before trusting it and verifies the matching five-part identity for provenance-bearing revisions.
+- [TEST] WorkPass110 exposed the durable CAS mismatch that the in-memory adapter could not detect. The existing file-backed lifecycle regression now covers it via the normal stage/restore path.
+- [TEST] Corrected the P26 learning-input-integrity summary counter to reflect its six malformed sample cases.
+
 # NK1 integration pass — cognitive cycle, learning integrity and CI hardening (2026-10-24)
 
 - [KERNEL] Added replay-idempotent causal stage IDs (`cef:kernel:<tick>:<stage>`), conflicting-evidence rejection and full stage preflight before event writes in `CanonicalCognitiveKernel`.
