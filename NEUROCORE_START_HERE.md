@@ -1,3 +1,12 @@
+## Latest durable checkpoint — WorkPass330 (2026-10-24)
+
+- Interpreted text, vision labels, audio event labels, caller goals and incoming world events now carry explicit machine-readable epistemic markers.
+- These markers separate received claims/model output from independent verification and are carried through the canonical multimodal evidence records.
+- WorkPass329 also persists post-fusion state and no longer counts confidence spread alone as semantic conflict.
+- Exact-head tests/typecheck remain unverified; release asset unchanged.
+
+---
+
 ## Latest durable checkpoint — WorkPass329 (2026-10-24)
 
 - Fusion-state persistence is now explicit: `OrganismCore.fuseMultimodalObservations()` persists the owner snapshot after the canonical fuser updates its counters.

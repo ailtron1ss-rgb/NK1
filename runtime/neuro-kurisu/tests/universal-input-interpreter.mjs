@@ -41,8 +41,13 @@ assert.equal(rich.version, 1);
 assert.equal(rich.at, 1234);
 for (const modality of ['text', 'vision', 'audio', 'sensor', 'world']) {
   assert.ok(rich.modalities.includes(modality), 'missing modality: ' + modality);
+assert.ok(rich.modalityInputs.find(item => item.modality === 'vision')?.evidence.includes('semantic-output-not-independent-verification'));
+assert.ok(rich.modalityInputs.find(item => item.modality === 'audio')?.evidence.includes('audio-labels-not-transcript'));
+assert.ok(rich.modalityInputs.find(item => item.modality === 'world')?.evidence.includes('world-event-claim-unverified'));
+assert.ok(rich.modalityInputs.find(item => item.modality === 'world')?.evidence.includes('external-goal-claim-unverified'));
 }
 assert.match(rich.modalityInputs.find(item => item.modality === 'text')?.summary ?? '', /Hello world/);
+assert.ok(rich.modalityInputs.find(item => item.modality === 'text')?.evidence.includes('claim-truth-unverified'));
 assert.ok(rich.modalityInputs.every(item => item.summary.length <= 500));
 assert.ok(rich.modalityInputs.every(item => Number.isFinite(item.confidence) && item.confidence >= 0 && item.confidence <= 1));
 assert.ok(rich.modalityInputs.every(item => Number.isFinite(item.salience) && item.salience >= 0 && item.salience <= 1));

@@ -120,7 +120,7 @@ export function buildUniversalInputInterpretation(rawInput: {
   const userText = cleanText(input.userText, 460);
   if (userText) {
     add('text', 'user-input (untrusted): ' + userText, 0.88, 0.72,
-      ['user-input', 'source-classified-text'], typeof input.userText === 'string' ? input.userText : userText);
+      ['user-input', 'source-classified-text', 'claim-truth-unverified'], typeof input.userText === 'string' ? input.userText : userText);
   }
 
   const vision = isRecord(observation.vision) ? observation.vision : null;
@@ -151,7 +151,7 @@ export function buildUniversalInputInterpretation(rawInput: {
       add('vision', 'vision semantic output (model/evidence, not independently verified): ' + semanticParts.join('; '),
         metric01(vision.confidence01) ?? defaultConfidence,
         0.5 + Math.min(0.3, objects.length * 0.04),
-        ['vision-input', 'semantic-labels-present']);
+        ['vision-input', 'semantic-labels-present', 'semantic-output-not-independent-verification']);
     } else if (features > 0) {
       add('vision', 'visual features available (' + features + ' values); semantic scene and object labels unresolved',
         metric01(vision.confidence01) ?? 0.15, 0.28, ['vision-input', 'features-only']);
@@ -176,7 +176,7 @@ export function buildUniversalInputInterpretation(rawInput: {
       add('audio', 'audio-event labels=' + labels + '; waveform samples=' + samples +
         '; speech transcript unavailable in this input contract',
         audioConfidence, 0.45 + Math.min(0.2, audioEvents.length * 0.03),
-        ['audio-input', 'event-labels-present']);
+        ['audio-input', 'event-labels-present', 'audio-labels-not-transcript']);
       addUnresolved('audio-event-labels-do-not-establish-a-speech-transcript');
     } else if (samples > 0) {
       add('audio', 'audio signal available (' + samples + ' samples' +
@@ -241,6 +241,7 @@ export function buildUniversalInputInterpretation(rawInput: {
   if (worldEvent) {
     const eventType = cleanText(worldEvent.type, 100);
     if (eventType) {
+      worldEvidenceTags.push('world-event-claim-unverified');
       const payload = isRecord(worldEvent.payload) ? worldEvent.payload : {};
       const keys = Object.keys(payload).slice(0, 8).map(key => cleanText(key, 48)).filter(Boolean);
       worldParts.push('incoming-event=' + eventType + (keys.length ? ' (payload keys: ' + keys.join(', ') + ')' : ''));
@@ -249,6 +250,7 @@ export function buildUniversalInputInterpretation(rawInput: {
 
   const externalGoal = isRecord(observation.externalGoal) ? observation.externalGoal : null;
   if (externalGoal) {
+    worldEvidenceTags.push('external-goal-claim-unverified');
     const title = cleanText(externalGoal.title, 160);
     if (title) worldParts.push('external-goal-claim=' + title);
     const importance = metric01(externalGoal.importance);

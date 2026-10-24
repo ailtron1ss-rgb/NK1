@@ -1,3 +1,12 @@
+## NK1 WorkPass330 — explicit epistemic labels across interpreted inputs (2026-10-24)
+
+- [HARDENED] Added machine-readable evidence markers distinguishing user/caller claims, vision-model semantic output, audio event labels, external goal claims and incoming world-event claims from independently verified facts.
+- [BOUNDARY] These tags supplement readable summaries; they do not upgrade model output or caller claims into verified evidence.
+- [REGRESSION] Added contract assertions that the relevant markers survive interpretation and are available on the modality events supplied to the canonical fuser.
+- [VALIDATION] Changes are committed to the WorkPass328 branch. Exact-head tests and typecheck remain unverified while Actions is queued.
+
+---
+
 ## NK1 WorkPass329 — persist fusion state and distinguish confidence spread from contradiction (2026-10-24)
 
 - [FIXED] The canonical `OrganismCore.fuseMultimodalObservations()` owner now persists the multimodal snapshot after `fuse()`, so fusion counters and explicit conflict counts are durable instead of being lost behind the last observation snapshot.
