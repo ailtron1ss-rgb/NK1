@@ -38,12 +38,12 @@
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/core/DevelopmentalNeuralRuntime.ts",
-      "maxOutDegree": 135,
-      "maxRuntimeOutDegree": 135,
-      "maxTypeOutDegree": 3,
+      "maxOutDegree": 21,
+      "maxRuntimeOutDegree": 4,
+      "maxTypeOutDegree": 17,
       "maxProductionRuntimeInDegree": 1,
       "maxProductionTypeOnlyInDegree": 1,
-      "reason": "Large developmental engine composition hub (135 outgoing runtime edges). Freeze current fan-out until a domain-owned runtime cluster extraction is implemented and measured."
+      "reason": "Compatibility facade owns the public field surface; constructor objects are created in four bounded instance groups. Keep the facade at 21 total edges (4 runtime factory edges plus 17 type-only contracts)."
     },
     {
       "path": "runtime/neuro-kurisu/src/organism/cognition/index.ts",
@@ -188,6 +188,42 @@
       "maxProductionRuntimeInDegree": 1,
       "maxProductionTypeOnlyInDegree": 0,
       "reason": "Own causal experience and research/learning default fields only."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/DevelopmentalInstanceGroupLearning.ts",
+      "maxOutDegree": 42,
+      "maxRuntimeOutDegree": 42,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own the first 42 developmental learning and neural-substrate constructors."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/DevelopmentalInstanceGroupCausal.ts",
+      "maxOutDegree": 51,
+      "maxRuntimeOutDegree": 51,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own the B261–B349 causal cognition and organism integration constructors."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/DevelopmentalInstanceGroupPredictive.ts",
+      "maxOutDegree": 27,
+      "maxRuntimeOutDegree": 27,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own B365 and the B2501–B2525 predictive/replay field constructors."
+    },
+    {
+      "path": "runtime/neuro-kurisu/src/organism/core/DevelopmentalInstanceGroupLifeCourse.ts",
+      "maxOutDegree": 15,
+      "maxRuntimeOutDegree": 15,
+      "maxTypeOutDegree": 0,
+      "maxProductionRuntimeInDegree": 1,
+      "maxProductionTypeOnlyInDegree": 0,
+      "reason": "Own B385–B2500 life-course, continuity, and long-horizon development constructors."
     }
   ]
 }
