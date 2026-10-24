@@ -1,3 +1,11 @@
+## NK1 WorkPass518 — block skill-bias leakage across distant contexts (2026-10-24)
+
+- Fixed a behavioral-learning regression: retrieval-augmented skill ranking admitted contexts with similarity as low as 0.5 into action bias, bypassing the legacy five-of-six bucket neighbor gate.
+- Kept broad retrieval available for inspection, but constrained behavioral transfer to similarity >= 5/6; close-neighbor transfer remains possible while distant contexts cannot nudge action selection.
+- Existing `p23-true-learning.mjs` regression explicitly checks that a dissimilar context receives zero skill bias.
+- **Verification boundary:** source change committed; the post-change GitHub Actions rerun is still pending. No overall learning uplift or release readiness is claimed.
+
+---
 ## NK1 WorkPass517 — preserve causal lineage during event-fabric recovery (2026-10-24)
 
 - Hardened `CognitiveEventFabric.restore()`: persisted parent IDs are now validated as a whole. Whitespace-padded, control-character, duplicate, oversized, or malformed parent lists cause the row to be discarded rather than silently filtered, normalized, or truncated into a different causal graph.
