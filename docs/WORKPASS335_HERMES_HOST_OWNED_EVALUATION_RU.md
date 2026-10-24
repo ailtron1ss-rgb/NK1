@@ -84,3 +84,8 @@ Canonical resolver теперь корректно обрабатывает об
 ## WorkPass347 — устойчивое чтение signed dataset
 
 Чтение JSON набора доказательств теперь выполняется через открытый файловый дескриптор, а не повторное открытие имени файла после проверок. На POSIX включается O_NOFOLLOW; после открытия проверяется, что dev/ino совпадают с ранее проверенным inode. Метаданные повторно сверяются после чтения, чтобы обнаруживать замену или изменение файла во время операции. Добавлен отдельный регрессионный тест на символическую ссылку.
+
+
+## WorkPass348 — signed evidence binds the evaluated payload
+
+В native Hermes/P23-режиме каждый outcome-артефакт baseline/candidate должен включать подписанный `payloadFingerprint` (SHA-256 канонического JSON payload). Для каждого метода разрешён ровно один fingerprint, fingerprints baseline и candidate должны различаться. Provider сверяет candidate fingerprint с фактическим кандидатом versioned store, а baseline fingerprint — с текущим active payload или `previousActive` активной версии. Кандидат с правильным proposal ID, но другим payload, отклоняется. Поле в общем outcome-контракте опционально для обратной совместимости; native provider строго требует его только на этом пути.
