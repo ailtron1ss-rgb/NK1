@@ -24,6 +24,7 @@ on:
       - "runtime/neuro-kurisu/tsconfig.shim.json"
       - "runtime/neuro-kurisu/src/node-shims.d.ts"
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/tests/memory-query-intent-workpass51.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/CorrectionRuleMemory.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
       - "runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts"
@@ -60,6 +61,9 @@ jobs:
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
+      - name: Run bilingual autobiographical and conversation recall regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-query-intent-workpass51
       - name: Validate learning input integrity
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:learning-input-integrity
