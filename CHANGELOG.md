@@ -1,3 +1,11 @@
+## NK1 WorkPass510 — make evidence-ledger read limits predictable (2026-10-24)
+
+- `RealityEvidenceLedger.recent(0)` now returns an empty list instead of silently returning one evidence record; negative finite limits also return none, while non-finite/non-numeric limits safely fall back to the documented default.
+- Added a focused regression to the existing event-idempotency suite and registered that suite as a package script so the contract is directly runnable.
+- This is API consistency and bounded-read hardening; it does not change evidence trust or promotion rules. Exact-head execution remains unverified.
+
+---
+
 ## NK1 WorkPass503 — repair missing validation alias and Node 24 diagnostics runner
 
 - Added `test:p26:learning-input-integrity`, which was referenced by the P26 CI workflow but missing from the package scripts.
