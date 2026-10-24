@@ -839,23 +839,6 @@ export class OrganismRuntime {
       reward: learningRewardSigned,
       evidenceSource: outcomeSource,
       surprise: learningGate.surprise01,
-      // Feed the exact post-arbitration learning decision back to Core instead of
-      // letting Core infer weaker/different scales from the source label alone.
-      learning: {
-        source: grounded.source === 'external' ? 'external' : 'simulation',
-        evidence01: clamp01(grounded.evidence01),
-        verified01: clamp01(grounded.verified01),
-        independent01: clamp01(grounded.independent01),
-        consequence01: clamp01(grounded.consequence01),
-        learningScale01: clamp01(learningGate.learningScale01),
-        neuralUpdateScale01: clamp01(learningGate.neuralUpdateScale01),
-        worldModelUpdateScale01: clamp01(learningGate.worldModelUpdateScale01),
-        memoryPromotionScale01: clamp01(learningGate.memoryPromotionScale01),
-        identityUpdateScale01: clamp01(learningGate.identityUpdateScale01),
-        reward01: clamp01(learningGate.reward01),
-        success01: clamp01(learningGate.success01),
-        surprise01: clamp01(learningGate.surprise01),
-      },
       causalMemoryContext: {
         traceId: innerIntent.id,
         memoryIds: cycle.memories.slice(0, 12).map(memory => memory.id),

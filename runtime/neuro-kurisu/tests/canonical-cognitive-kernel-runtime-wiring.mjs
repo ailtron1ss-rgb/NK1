@@ -44,10 +44,8 @@ assert.match(runtime, /innerIntentId:innerIntent\.id/,
   'the canonical causal cycle must connect the intention to later evidence');
 assert.match(runtime, /causalMemoryContext:\s*\{\s*traceId: innerIntent\.id,\s*memoryIds: cycle\.memories\.slice\(0, 12\)\.map\(memory => memory\.id\),\s*attributionEligible: !innerIntent\.overridden/s,
   'the live runtime must pass decision-time memory IDs and attribution eligibility into Core feedback');
-assert.match(runtime, /learning:\s*\{\s*source: grounded\.source === 'external' \? 'external' : 'simulation',\s*evidence01: clamp01\(grounded\.evidence01\),\s*verified01: clamp01\(grounded\.verified01\),\s*independent01: clamp01\(grounded\.independent01\),/s,
-  'the exact grounded evidence and verification fields must flow into Core feedback');
-assert.match(runtime, /memoryPromotionScale01: clamp01\(learningGate\.memoryPromotionScale01\),\s*identityUpdateScale01: clamp01\(learningGate\.identityUpdateScale01\),\s*reward01: clamp01\(learningGate\.reward01\),\s*success01: clamp01\(learningGate\.success01\),\s*surprise01: clamp01\(learningGate\.surprise01\)/s,
-  'Core must receive the post-arbitration scales and outcome signals rather than infer generic defaults');
+assert.match(runtime, /learning:\s*\{\s*source: grounded\.source,\s*evidence01: learningGate\.evidence01,\s*verified01: learningGate\.verified01,\s*independent01: learningGate\.independent01,\s*consequence01: learningGate\.consequence01,\s*learningScale01: learningGate\.learningScale01,\s*neuralUpdateScale01: learningGate\.neuralUpdateScale01,\s*worldModelUpdateScale01: learningGate\.worldModelUpdateScale01,\s*memoryPromotionScale01: learningGate\.memoryPromotionScale01,\s*identityUpdateScale01: learningGate\.identityUpdateScale01,\s*reward01: learningGate\.reward01,\s*success01: learningGate\.success01,\s*surprise01: learningGate\.surprise01/s,
+  'the single Core feedback learning payload must preserve the final RealityLearningGate provenance and scales');
 assert.match(core, /causalMemoryContext\?: \{ traceId: string; memoryIds: string\[\]; attributionEligible: boolean;/,
   'Core feedback must accept the matching causal memory context');
 assert.match(core, /const explicitCausalMemoryIds = \[\.\.\.new Set\(\(outcome\.causalMemoryContext\?\.memoryIds \?\? \[\]\)/,

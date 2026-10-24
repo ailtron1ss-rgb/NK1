@@ -1,3 +1,10 @@
+# WorkPass341 — remove duplicate feedback provenance property (2026-10-24)
+
+- [CORRECTION] Exact-head WorkPass110 exposed TS1117 after WorkPass340 added a second `learning` key to the `core.feedback` object. Inspection confirmed the runtime already had one canonical `LearningProvenance` payload later in the same call, including the final gate values.
+- [FIXED] Removed the redundant new property instead of inventing a second policy. The pre-existing single `learning` object remains the authoritative source; current-cycle memory provenance from WorkPass339 still flows alongside it.
+- [REGRESSION] Updated the source-wiring assertion to require the single canonical payload and all gate fields.
+- [VALIDATION] WorkPass331 passed on SHA `a0c2671abc7760e3298ec58586ede1bc28311409`; WorkPass110 failed there on the duplicate-key error. This fix must pass fresh exact-head WorkPass110 + WorkPass331 before the branch is marked green.
+
 # WorkPass340 — preserve the reality-learning gate into Core feedback (2026-10-24)
 
 - [INTEGRATION] `OrganismRuntime` now passes the final `RealityLearningGate` decision into `OrganismCore.feedback` via the existing `LearningProvenance` contract.

@@ -1,3 +1,11 @@
+## Latest corrective checkpoint — WorkPass341 duplicate learning-property removal (2026-10-24)
+
+- WorkPass340 accidentally added a second `learning` property to the Core feedback object. The typechecker reported TS1117 at `OrganismRuntime.ts:926`.
+- Confirmed the original feedback call already carried the final `LearningProvenance` from `RealityLearningGate` later in the object. Removed the duplicate; did not replace the original payload or alter the gate scales.
+- The source regression now asserts the existing canonical object. WorkPass331 passed on `a0c2671...`, but WorkPass110 failed on that head due to the duplicate; both must run again on this corrective head.
+
+---
+
 ## Latest checkpoint — WorkPass340: single source of truth for learning scales (2026-10-24)
 
 - Runtime feedback now carries the final `RealityLearningGate` result through `LearningProvenance`: source classification, evidence, verification, independence, consequence, learning/world-model/memory/identity/neural scales, and the gated reward/success/surprise signals.
