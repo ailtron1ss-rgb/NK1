@@ -1,3 +1,10 @@
+## 2026-10-24 — Final TypeScript patch-set checkpoint
+
+- [BOUNDARY] The app strict-JS fixes, runtime partial-check exit behavior, and matching regression assertions are now all present on the same branch head.
+- [CI] A fresh source-branch/pull-request validation is required for this combined head; earlier runs were cancelled or failed before the latest combined state could finish.
+- [NO FALSE GREEN] Syntax-only parsing is diagnostic evidence only. A missing semantic compiler makes `npm run typecheck` fail instead of passing.
+- [RELEASE] No merge, main-branch update, or release-archive replacement has been performed.
+
 ## 2026-10-24 — Prevent parser-only fallback from passing typecheck
 
 - [TYPECHECK] When no TypeScript compiler is available, runtime parsing still reports `TYPECHECK=PARTIAL`, but the wrapper now exits with code 2. A semantic typecheck command therefore cannot succeed solely because syntax parsing succeeded.
