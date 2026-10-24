@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { MemorySubsystemRuntime } from '../src/organism/core/MemorySubsystemRuntime.ts';
 import { PersistenceProjectionCoordinator } from '../src/organism/core/PersistenceProjectionCoordinator.ts';
+import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
 
 const runtime = new MemorySubsystemRuntime();
 runtime.memoryOS.restore({
@@ -170,5 +171,44 @@ assert.ok(
   legacy.events.recent(64).some(event => event.type === 'memory-created' && event.tick === 44),
   'legacy migration events must use the restored lifecycle tick, not the fresh runtime default',
 );
+
+
+// Restore is a persistence ingress, so stale byte counters must not bypass the live
+// budget. Older/edited snapshots can hold more data than their saved estimate admits.
+const oversizedSource = new MemoryOS2({ signalFusionProfile: 'balanced' });
+for (let index = 0; index < 3; index++) {
+  oversizedSource.encode({
+    content: `restore budget record ${index}: ${String.fromCharCode(97 + index).repeat(6000)}`,
+    kind: 'episodic',
+    source: `restore-budget-${index}`,
+    tags: ['restore-budget'],
+    salience: 0.12,
+    emotionalWeight: 0.05,
+    identityRelevance: 0.04,
+    goalRelevance: 0.08,
+    socialRelevance: 0.02,
+    predictionError: 0.01,
+    confidence: 0.25,
+    epistemicStatus: 'fact',
+    entities: [],
+    semanticLinks: [],
+    temporalLinks: [],
+    causalLinks: [],
+    contradictionLinks: [],
+  }, { clone: false });
+}
+const oversizedSnapshot = oversizedSource.snapshot();
+assert.ok(oversizedSnapshot.estimatedBytes > 16384, 'fixture must exceed the minimum supported memory budget');
+oversizedSnapshot.byteBudget = 16384;
+oversizedSnapshot.estimatedBytes = 1; // Simulate a stale pre-provenance accounting value.
+const boundedRestore = new MemoryOS2({ signalFusionProfile: 'balanced' });
+boundedRestore.restore(oversizedSnapshot);
+const restoredBudget = boundedRestore.budgetDiagnostics();
+assert.ok(restoredBudget.budgetEvictions >= 1, 'restore must evict eligible low-value records above budget');
+assert.ok(
+  restoredBudget.estimatedBytes <= restoredBudget.byteBudget,
+  'restored canonical memory must respect its effective byte budget',
+);
+assert.equal(boundedRestore.indexDiagnostics().pass, true, 'budget eviction after restore must keep memory indexes consistent');
 
 console.log('MEMORY_CANONICAL_STORE_CHECKPOINT=PASS');
