@@ -208,7 +208,7 @@ This refresh shows why the repository should not be organized by branch suffix a
 | `workpass526-personality-core-hardening-2026-10-24` | diverged | 112 | 100 | 39 | Personality/motivation and restore behavior overlap core; compare tests and persisted schema effects |
 | `workpass528-bilingual-conversation-recall` | diverged | 156 | 100 | 58 | Broad recall/learning branch with substantial divergence; isolate API/schema changes and rerun learning regressions |
 
-At this snapshot, five of the additional streams were descendants of the selected base (`optimization/process-supervision`, the ordering branch, WorkPass332, WorkPass334, WorkPass335 Hermes and WorkPass335 paired-seed — six streams in total). The remaining additional streams reported divergent ancestry. This is a stronger integration signal than branch names alone, but even a clean `ahead / 0 behind` comparison is not a test result.
+At this snapshot, six additional streams were descendants of the selected base: `optimization/process-supervision`, the ordering branch, WorkPass332, WorkPass334, WorkPass335 Hermes and WorkPass335 paired-seed. The remaining additional streams reported divergent ancestry. This is a stronger integration signal than branch names alone, but even a clean `ahead / 0 behind` comparison is not a test result.
 
 Before importing any stream:
 
