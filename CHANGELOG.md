@@ -1,3 +1,9 @@
+## NK1 WorkPass525 — keep verified evidence and causal credit on the feedback branch (2026-10-24)
+
+- Mirrored the evidence-gated self-agency update boundary here beside the canonical `OutcomeVerificationService`: only the exact verifier-minted receipt, bound to a tool execution, decision and full input, can enter `learnVerifiedOutcome`.
+- Detached and validated the binding and observed state before learning. Verified confidence caps caller-supplied causal match; no-cause outcomes cannot train the action policy or increase calibration samples.
+- Added focused tests for forged/copied receipts, mismatched decision IDs, valid evidence and proportional causal credit. Runtime/CI execution has not been verified in this pass.
+
 ## NK1 WorkPass529 — guard the reality-to-learning promotion seam (2026-10-24)
 
 - Added `tests/workpass529-p23-reality-promotion-gate.mjs` to exercise the canonical ledger's one-source vs. two-qualified-source distinction and protect P23's consequential promotion preconditions against accidental weakening.
