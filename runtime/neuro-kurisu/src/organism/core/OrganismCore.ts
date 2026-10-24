@@ -9968,7 +9968,6 @@ export class OrganismCore {
             this.persisted.facets.advanced.cognitiveResearchBattery = this.developmentalNeural.cognitiveResearchBattery.snapshot();
             const p36State = this.developmentalNeural.p36SelfDevelopment.snapshot();
             const activeHypothesisId = p36State.currentHypothesisId;
-            const activeHypothesis = activeHypothesisId ? p36State.hypotheses.find((h: any) => h.id === activeHypothesisId) : null;
             if (activeHypothesisId) {
                 const p36Experiment = this.developmentalNeural.p36SelfDevelopment.runSafeExperiment(activeHypothesisId, state, trace.tick);
                 if (p36Experiment)
@@ -9978,7 +9977,6 @@ export class OrganismCore {
             // they are not independent developmental-maturity receipts. P36 maturity is updated
             // only by the reserved ActionGateway evaluator route below; do not repeatedly submit
             // ordinary feedback as a rejected "verified" receipt.
-            void activeHypothesis;
             this.persisted.facets.learning.p36 = this.developmentalNeural.p36SelfDevelopment.snapshot();
             const p2700AfterPolicyBias = this.cognitiveRuntime.adaptivePolicy.bias(p2700Context, trace.selected.action, trace.selected.predictedUtility ?? .5);
             const p2700PolicyDelta = clamp(Math.abs(p2700AfterPolicyBias - p2700BeforePolicyBias) * 2.4);
@@ -10884,6 +10882,27 @@ export class OrganismCore {
         this.persisted.facets.learning.p36 = this.developmentalNeural.p36SelfDevelopment.snapshot();
         this.markPersistenceDirty();
         return r;
+    }
+    p36RecordDevelopmentalOutcome(input: Parameters<P36AutonomousSelfDevelopmentEngine['observeDevelopmentalOutcome']>[0]) {
+        const decisionId = typeof input.decisionId === 'string' ? input.decisionId.trim() : '';
+        const linkedTrace = decisionId
+            ? this.persisted.traces.find(trace => trace.id === decisionId && trace.selected !== null && trace.tick === trace.stateBefore.tick)
+            : undefined;
+        let verification: OutcomeVerification | undefined;
+        if (input.toolId === P36_EXTERNAL_EVIDENCE_TOOL_ID && linkedTrace &&
+            typeof input.executionId === 'string' &&
+            isTrustedDecisionLinkedExternalPostcondition(input.verification, {
+                toolId: P36_EXTERNAL_EVIDENCE_TOOL_ID,
+                input: developmentalOutcomeVerificationInput(input),
+                executionId: input.executionId,
+                decisionId,
+            })) {
+            verification = input.verification;
+        }
+        const result = this.developmentalNeural.p36SelfDevelopment.observeDevelopmentalOutcome({ ...input, verification });
+        this.persisted.facets.learning.p36 = this.developmentalNeural.p36SelfDevelopment.snapshot();
+        this.markPersistenceDirty();
+        return result;
     }
     p36DevelopmentEvidence(hypothesisId?: string) { return this.developmentalNeural.p36SelfDevelopment.developmentEvidence(hypothesisId); }
     p30ProposeExperiment(taskId: string) { const s = this.persisted.state; const p = this.developmentalNeural.p30Continual.proposeExperiment({ taskId, uncertainty01: s.needs.uncertainty, predictionError01: s.predictionError, novelty01: s.needs.novelty, resourceBudget01: 1 - this.developmentalNeural.p29Learning.diagnostics().resourceBudget.spent01 }); if (p)
