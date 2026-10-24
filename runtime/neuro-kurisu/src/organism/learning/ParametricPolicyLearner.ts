@@ -89,8 +89,8 @@ export class ParametricPolicyLearner{
     if (typeof input.target01 !== 'number' || !Number.isFinite(input.target01) || input.target01 < 0 || input.target01 > 1) {
       throw new RangeError('target-must-be-finite-and-in-0-1');
     }
-    if (typeof input.learningRate01 !== 'number' || !Number.isFinite(input.learningRate01) || input.learningRate01 < 0) {
-      throw new RangeError('rate-must-be-finite-and-non-negative');
+    if (typeof input.learningRate01 !== 'number' || !Number.isFinite(input.learningRate01) || input.learningRate01 < 0 || input.learningRate01 > 1) {
+      throw new RangeError('rate-must-be-finite-and-in-0-1');
     }
     if (input.sampleWeight01 !== undefined && (
       typeof input.sampleWeight01 !== 'number' ||
