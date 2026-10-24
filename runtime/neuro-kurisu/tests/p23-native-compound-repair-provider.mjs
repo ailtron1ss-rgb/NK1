@@ -4,7 +4,7 @@ import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { VersionedSkillCandidateStore } from '../src/organism/learning/VersionedSkillCandidateStore.ts';
+import { fingerprintSkillPayload, VersionedSkillCandidateStore } from '../src/organism/learning/VersionedSkillCandidateStore.ts';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import { ingestSignedOutcomeArtifact, signOutcomePayloadForFixture } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 import { isAuthenticVerifiedSkillPromotionProposal, proposeVerifiedSkillPromotion } from '../src/organism/learning/VerifiedSkillPromotion.ts';
@@ -15,6 +15,11 @@ const publicPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
 const privatePem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
 const previousKeyring = process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON;
 process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON = JSON.stringify({ 'verifier-v1': publicPem });
+
+const baselinePayload = { schemaVersion: 1, steps: ['read'] };
+const candidatePayload = { schemaVersion: 1, steps: ['read', 'verify'] };
+const baselinePayloadFingerprint = fingerprintSkillPayload(baselinePayload);
+const candidatePayloadFingerprint = fingerprintSkillPayload(candidatePayload);
 
 const manifest = Array.from({ length: 12 }, (_, i) => ({
   taskId: 'task-' + i,
@@ -45,6 +50,7 @@ function buildDataset() {
           passed: i < threshold,
           verifierId: task.verifierId,
           observedAt: 1_760_000_000_000 + seed * 1000 + i,
+          payloadFingerprint: method === 'baseline-v1' ? baselinePayloadFingerprint : candidatePayloadFingerprint,
         };
         artifacts.push(signOutcomePayloadForFixture(payload, privatePem));
       }
@@ -95,8 +101,53 @@ test('native provider rebuilds an authentic proposal from signed artifacts and f
     const proposal = proposeVerifiedSkillPromotion(sourceLedger, dataset.baselineMethod, dataset.candidateMethod, dataset.gateOptions);
     assert.equal(proposal.gate.accepted, true);
     assert.equal(isAuthenticVerifiedSkillPromotionProposal(proposal), true);
-    const candidateStore = new VersionedSkillCandidateStore();
-    const candidate = candidateStore.stageCandidate(proposal, 'skill-a', { schemaVersion: 1, steps: ['read', 'verify'] });
+    // The canonical active baseline must be present and cryptographically admitted
+    // by the store's configured verifier adapters before any source candidate is staged.
+    const approvedAt = Date.now();
+    const baselineCandidate = {
+      candidateId: 'baseline-active-v1',
+      skillId: 'skill-a',
+      version: 1,
+      payload: baselinePayload,
+      payloadFingerprint: baselinePayloadFingerprint,
+      proposalId: 'c'.repeat(64),
+      proposalOutcomeFingerprint: 'd'.repeat(64),
+      baseVersion: null,
+      previousActive: null,
+      status: 'active',
+      shadowObservations: Array.from({ length: 3 }, (_, index) => ({
+        runId: 'baseline-shadow-' + index,
+        evidenceFingerprint: String(index + 1).repeat(64),
+        passed: true,
+        observedAt: approvedAt - 1000 + index,
+      })),
+      createdAt: approvedAt - 1000,
+      approval: { approvedBy: 'native-provider-test', approvedAt, expectedActiveVersion: null },
+      promotedAt: approvedAt,
+    };
+    let persisted = {
+      schemaVersion: 1,
+      revision: 0,
+      active: [{
+        skillId: 'skill-a',
+        version: 1,
+        payload: baselinePayload,
+        payloadFingerprint: baselinePayloadFingerprint,
+        proposalId: baselineCandidate.proposalId,
+        activatedAt: approvedAt,
+      }],
+      candidates: [baselineCandidate],
+    };
+    const persistence = {
+      read: () => structuredClone(persisted),
+      compareAndSwap(expectedRevision, next) {
+        if (persisted.revision !== expectedRevision || next.revision !== expectedRevision + 1) return false;
+        persisted = structuredClone(next);
+        return true;
+      },
+    };
+    const candidateStore = new VersionedSkillCandidateStore(persistence, () => true, () => true, () => true);
+    const candidate = candidateStore.stageCandidate(proposal, 'skill-a', candidatePayload);
 
     const provider = await createProvider({ datasetPath, root, stateDirectory, candidateStore });
     const inputs = await provider({ skillId: 'skill-a', repairFingerprints: ['a'.repeat(64)], repairEvidence: [] });
