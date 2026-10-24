@@ -1,7 +1,27 @@
 import assert from 'node:assert/strict';
 import { EvidenceResearchSubsystemRuntime } from '../src/organism/core/EvidenceResearchSubsystemRuntime.ts';
+import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
 
-const runtime = new EvidenceResearchSubsystemRuntime();
+const gateway = new ActionGateway();
+const declaredSources = [
+  { sourceId: 'camera-front', sourceClass: 'device', channel: 'camera', independenceKey: 'camera:front' },
+  { sourceId: 'camera-side-low-confidence', sourceClass: 'device', channel: 'camera', independenceKey: 'camera:side-low' },
+  { sourceId: 'camera-side', sourceClass: 'device', channel: 'camera', independenceKey: 'camera:side' },
+  { sourceId: 'user-report', sourceClass: 'user', channel: 'user', independenceKey: 'user:session-1' },
+];
+for (const source of declaredSources) {
+  gateway.registerTool({
+    id: `observer.${source.sourceId}`,
+    capability: 'test.observer',
+    destructive: false,
+    observationSource: source,
+    execute: async () => ({ ok: true }),
+  });
+}
+const authorizeSourceRegistration = source => gateway.isDeclaredObservationSource({
+  sourceId: source.id, sourceClass: source.sourceClass, channel: source.channel, independenceKey: source.independenceKey,
+});
+const runtime = new EvidenceResearchSubsystemRuntime({ authorizeSourceRegistration });
 const evidenceEventId = `outcome:${'a'.repeat(40)}`;
 const input = {
   sourceId: 'camera-front',
@@ -20,9 +40,9 @@ const input = {
 };
 
 // Canonical evidence ingestion accepts observations only after explicit source registration.
-runtime.externalObserver.registerSource({id:'camera-front',sourceClass:'device',channel:'camera',independenceKey:'camera:front'});
-runtime.externalObserver.registerSource({id:'camera-side-low-confidence',sourceClass:'device',channel:'camera',independenceKey:'camera:side-low'});
-runtime.externalObserver.registerSource({id:'camera-side',sourceClass:'device',channel:'camera',independenceKey:'camera:side'});
+for (const source of declaredSources.slice(0, 3)) runtime.externalObserver.registerSource({
+  id: source.sourceId, sourceClass: source.sourceClass, channel: source.channel, independenceKey: source.independenceKey,
+});
 
 const observation = runtime.externalObserver.observe(input);
 let ledger = runtime.realityEvidenceLedger.snapshot();
@@ -34,7 +54,7 @@ const replay = runtime.externalObserver.observe(input);
 assert.equal(replay.id, observation.id, 'observer retry must remain idempotent');
 assert.equal(runtime.realityEvidenceLedger.snapshot().total, 1, 'observer retry must not inflate ledger evidence count');
 
-const userRuntime = new EvidenceResearchSubsystemRuntime();
+const userRuntime = new EvidenceResearchSubsystemRuntime({ authorizeSourceRegistration });
 userRuntime.externalObserver.registerSource({id:'user-report',sourceClass:'user',channel:'user',independenceKey:'user:session-1'});
 userRuntime.externalObserver.observe({
   sourceId: 'user-report',
@@ -84,7 +104,7 @@ assert.equal(corroborated.qualifiedIndependentExternalSources, 2, 'both strong s
 assert.equal(corroborated.independentPromotionAllowed, true, 'two high-confidence independent sources may satisfy corroboration');
 
 const persisted = runtime.snapshot();
-const restored = new EvidenceResearchSubsystemRuntime();
+const restored = new EvidenceResearchSubsystemRuntime({ authorizeSourceRegistration });
 restored.restore(persisted);
 const restoredLedger = restored.realityEvidenceLedger.snapshot();
 assert.equal(restoredLedger.total, 3, 'restore must retain all three distinct evidence events without duplicate rows');
