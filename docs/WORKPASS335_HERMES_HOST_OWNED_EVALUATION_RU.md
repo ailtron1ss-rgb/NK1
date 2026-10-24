@@ -89,3 +89,8 @@ Canonical resolver теперь корректно обрабатывает об
 ## WorkPass348 — signed evidence binds the evaluated payload
 
 В native Hermes/P23-режиме каждый outcome-артефакт baseline/candidate должен включать подписанный `payloadFingerprint` (SHA-256 канонического JSON payload). Для каждого метода разрешён ровно один fingerprint, fingerprints baseline и candidate должны различаться. Provider сверяет candidate fingerprint с фактическим кандидатом versioned store, а baseline fingerprint — с текущим active payload или `previousActive` активной версии. Кандидат с правильным proposal ID, но другим payload, отклоняется. Поле в общем outcome-контракте опционально для обратной совместимости; native provider строго требует его только на этом пути.
+
+
+## WorkPass348 — exact-head validation result
+
+На commit `71e9286f9fe11c6afec851359a96f9e9b0011259` GitHub Actions успешно выполнил тесты встроенного native provider (включая несовпадение payload, отсутствие fingerprint и одинаковые fingerprints baseline/candidate) и runtime TypeScript typecheck. Также успешно завершились WorkPass110 continual-learning metrics, WorkPass108, WorkPass293, WorkPass294, WorkPass105, WorkPass331, WorkPass102 и P26 Learning Validation. Это доказывает корректность покрытых контрактов на данном commit, но не наличие реальных host-owned executable services, не автономное production-развёртывание и не измеренный прирост обучения.
