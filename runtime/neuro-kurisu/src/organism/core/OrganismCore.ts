@@ -7765,6 +7765,7 @@ export class OrganismCore {
             id: randomUUID(),
             tick: state.tick,
             createdAt: state.at,
+            emotionEpisodeId: emotionEpisode.id,
             candidates: governedCandidates.slice(0, 7),
             selected: selectedIntent ?? null,
             stateBefore: previous,
@@ -8419,7 +8420,7 @@ export class OrganismCore {
         const trace = this.persisted.traces[0];
         const feedbackEmotion = this.cognitiveRuntime.emotionAppraisal.appraise({ tick: state.tick, at: state.at, goalPressure01: state.needs.goalPressure, goalCongruence01: success, controllability01: 1 - state.needs.uncertainty, novelty01: clamp(state.needs.novelty * .6 + surprise * .4), selfRelevance01: state.needs.identityCoherence, socialMeaning01: state.needs.socialNeed, uncertainty01: state.needs.uncertainty, predictionError01: surprise, homeostaticPressure01: clamp((1 - state.needs.energy) * .4 + state.needs.cognitiveLoad * .25 + state.needs.uncertainty * .2 + surprise * .15), energy01: state.needs.energy, success01: gatedSuccess01, external: Boolean(outcome.evidenceSource) });
         const feedbackFeeling = this.cognitiveRuntime.emotionAppraisal.inferFeeling(feedbackEmotion, { energy01: state.needs.energy, cognitiveLoad01: state.needs.cognitiveLoad, uncertainty01: state.needs.uncertainty, selfFocus01: state.needs.identityCoherence });
-        const feedbackCalibration = this.cognitiveRuntime.emotionAppraisal.recordOutcome({ action: trace?.selected?.action ?? feedbackEmotion.actionTendency, success01: gatedSuccess01, surprise01: gatedSurprise01, regulationCost01: this.cognitiveRuntime.emotionAppraisal.regulationPressure01() });
+        const feedbackCalibration = this.cognitiveRuntime.emotionAppraisal.recordOutcome({ emotionId: trace?.emotionEpisodeId, action: trace?.selected?.action ?? feedbackEmotion.actionTendency, success01: gatedSuccess01, surprise01: gatedSurprise01, regulationCost01: this.cognitiveRuntime.emotionAppraisal.regulationPressure01() });
         const feedbackTraceId = trace?.id ?? `tick:${state.tick}`;
         const nextWorldContext01 = outcome.worldTransition?.after ? b391ContextFromWorld(outcome.worldTransition.after) : undefined;
         const nextWorldVector3 = outcome.worldTransition?.after ? [clamp(outcome.worldTransition.after.energy), clamp(outcome.worldTransition.after.attention), clamp(outcome.worldTransition.after.uncertainty)] : undefined;
