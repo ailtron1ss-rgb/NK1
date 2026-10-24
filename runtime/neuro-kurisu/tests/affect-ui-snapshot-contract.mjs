@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 
 const rootPath = new URL('../../../', import.meta.url);
 const read = (relative) => readFile(new URL(relative, rootPath), 'utf8');
