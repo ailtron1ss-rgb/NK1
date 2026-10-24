@@ -1,3 +1,11 @@
+## NK1 WorkPass518 — carry verifier event identity through the causal outcome spine (2026-10-24)
+
+- Extended the existing `OutcomeCognitionFabric` projection to retain the verifier's stable `evidenceEventId` alongside the execution, observation and postcondition fields; the event key is explicitly a join/idempotency key, not proof of truth.
+- Included the event key in the immutable execution fingerprint and causal event data, so reusing one execution ID with a different evidence key fails as an outcome identity conflict instead of silently rebinding ancestry.
+- Recovery validates persisted event-key shape and preserves valid identity across snapshot/restart; malformed keys are excluded from the projection. Older records without the optional field remain compatible.
+- Added regression coverage for propagation, exact replay after restore, changed-key conflict and malformed-key rejection in the existing correlated-postcondition test.
+- **Validation boundary:** committed on `feature/feedback`; this pass did not execute the runtime test, typecheck or hosted Actions. Do not mark the regression PASS until it runs at the exact head. No claim of real-world learning uplift or full end-to-end P65 propagation is made.
+
 ## NK1 WorkPass542 — align signed-shadow E2E fixture with canonical candidate identity
 
 - Updated the signed-shadow runtime E2E fixture to compute candidate IDs using the current canonical five-element identity tuple, including the explicit `null` provenance fingerprint for a candidate without revision provenance.
