@@ -181,7 +181,7 @@ export function bindCognitiveEventEvidence(
     if (node.stage === 'external-evidence') {
       const outcome = node.parentIds.map(id => byId.get(id)).find(row => row?.stage === 'tool-outcome');
       const action = outcome?.parentIds.map(id => byId.get(id)).find(row => row?.stage === 'tool-action');
-      const hasExactLineage = Boolean(outcome && action && outcome.tick === node.tick &&
+      const hasExactLineage = Boolean(outcome && action && node.tick >= outcome.tick &&
         outcome.parentIds.includes(action.id) && outcome.payload.executionId === node.payload.executionId &&
         action.payload.executionId === node.payload.executionId);
       const independent = typeof node.payload.sourceId === 'string' && node.payload.sourceId.trim().length > 0 &&
