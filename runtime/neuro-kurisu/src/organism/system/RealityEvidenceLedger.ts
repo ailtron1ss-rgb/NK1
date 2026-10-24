@@ -69,6 +69,14 @@ function parseRecord(value:unknown):RealityEvidenceRecord|null{
   if(!id||tick<0||at===null||typeof realityClass!=='string'||!REALITY_CLASSES.has(realityClass as EvidenceRealityClass)||!claim||confidence===null||!independenceKey||!parentIds)return null;
   return {id,...(eventId?{eventId}:{}),tick,at,realityClass:realityClass as EvidenceRealityClass,claim,confidence01:confidence,independenceKey,parentIds:[...parentIds]};
 }
+/** Parse only explicit field=value / field:value claims; free-form prose is never guessed into a contradiction. */
+function explicitFieldValue(claim:string):{field:string;value:string}|null{
+  const match=/^([a-z][a-z0-9_.-]{1,63})\\s*[:=]\\s*(.{1,160})$/i.exec(claim.trim());
+  if(!match)return null;
+  const field=match[1].normalize('NFKC').toLowerCase();
+  const value=match[2].normalize('NFKC').trim().toLowerCase().replace(/\\s+/g,' ');
+  return field&&value?{field,value}:null;
+}
 function sameEventPayload(a:RealityEvidenceRecord,b:RealityEvidenceRecord):boolean{
   // Processing time is deliberately excluded: a retry may be observed later.
   return JSON.stringify([a.tick,a.realityClass,a.claim,a.confidence01,a.independenceKey,a.parentIds])===
@@ -169,19 +177,30 @@ export class RealityEvidenceLedger {
     const simulator=rows.filter(r=>r.realityClass==='simulator');
     const externalKeys=new Set(external.map(r=>r.independenceKey));
     const qualifiedExternalKeys=new Set(external.filter(r=>r.confidence01>=.75).map(r=>r.independenceKey));
+    const target=explicitFieldValue(claim);
+    const conflictingRows=target?this.records.filter(r=>{
+      if(r.claim===claim||(r.eventId&&this.quarantinedEventIds.has(r.eventId))||!EXTERNAL.has(r.realityClass)||r.confidence01<.75)return false;
+      const parsed=explicitFieldValue(r.claim);
+      return parsed?.field===target.field&&parsed.value!==target.value;
+    }):[];
+    const independentContradictionSources=new Set(conflictingRows.map(r=>r.independenceKey)).size;
+    const contradictionDetected=conflictingRows.length>0;
     const simulationKeys=new Set(simulator.map(r=>r.independenceKey));
     const externalConfidence=external.length?Math.max(...external.map(r=>r.confidence01)):0;
     const simulationConfidence=simulator.length?Math.max(...simulator.map(r=>r.confidence01)):0;
+    const independentlyCorroborated=qualifiedExternalKeys.size>=2;
     return {
       claim,samples:rows.length,externalSamples:external.length,userReportedSamples:userReported.length,simulationSamples:simulator.length,
       externalConfidence01:externalConfidence,simulationConfidence01:simulationConfidence,
       independentExternalSources:externalKeys.size,independentSimulationSources:simulationKeys.size,
       qualifiedIndependentExternalSources:qualifiedExternalKeys.size,
-      // Basic grounding is compatible with one source. Consequential promotion
-      // needs two distinct sources that each meet the confidence floor.
-      promotionAllowed:external.length>0&&externalKeys.size>0&&externalConfidence>=.55,
-      independentPromotionAllowed:qualifiedExternalKeys.size>=2,
-      promotionReason:qualifiedExternalKeys.size>=2?'independent-external-corroboration-satisfied'
+      contradictionDetected,conflictingClaims:conflictingRows.length,independentContradictionSources,
+      // Only explicit structured field/value claims can be compared for contradiction.
+      // Ambiguous free-form language is deliberately not interpreted as disagreement.
+      promotionAllowed:!contradictionDetected&&external.length>0&&externalKeys.size>0&&externalConfidence>=.55,
+      independentPromotionAllowed:independentlyCorroborated&&!contradictionDetected,
+      promotionReason:contradictionDetected?'qualified-external-contradiction-detected'
+        :independentlyCorroborated?'independent-external-corroboration-satisfied'
         :externalKeys.size<2?'awaiting-second-independent-external-source'
         :'independent-sources-present-but-confidence-below-promotion-threshold',
       realityGap01:Math.max(0,simulationConfidence-externalConfidence),
