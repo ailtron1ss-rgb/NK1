@@ -70,4 +70,26 @@ const mintedSource = autoRegistered.snapshot().sources.find(source => source.id 
 assert.equal(mintedSource.reliability01, 0.84, 'new external-api sources must start from the conservative class prior');
 assert.equal(autoRegistered.snapshot().observations[0].confidence01, 0.99, 'sample confidence remains separate evidence');
 
+// Source registry exhaustion must not evict established identities or accept new evidence.
+const bounded = new ExternalObserverFabric({ maxSources: 16 });
+for (let i = 0; i < 16; i += 1) {
+  bounded.registerSource({
+    id: `capacity-${String(i).padStart(2, '0')}`,
+    sourceClass: 'unknown',
+    channel: 'unknown',
+    independenceKey: `group-${i}`,
+  });
+}
+assert.equal(bounded.snapshot().sources.length, 16);
+assert.throws(() => bounded.observe({
+  sourceId: 'capacity-new',
+  sourceClass: 'unknown',
+  channel: 'unknown',
+  claimKey: 'attacker=claim',
+  observedPostcondition: 'attacker=claim',
+}), /observer-source-registry-capacity-exceeded/);
+assert.equal(bounded.snapshot().sources.length, 16, 'registry must not silently evict a registered source');
+assert.ok(bounded.snapshot().sources.some(source => source.id === 'capacity-00'), 'oldest source identity must remain intact');
+assert.equal(bounded.snapshot().observations.length, 0, 'evidence from the rejected identity must not persist');
+
 console.log('WorkPass548 observer source identity regression: PASS');
