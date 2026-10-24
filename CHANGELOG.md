@@ -2117,6 +2117,8 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 ## [2026-10-24] Operation Omega — Hexis source transfer and review-inbox adaptation
 
+- Expanded the pinned Hexis reference snapshot by a further 35 files for memory exchange/retrieval, node continuity, integration reliability, self-inspection, goals/policies, backup/restore, task orchestration, and additional memory/safety/heartbeat/skill-learning SQL designs; all paths, upstream blob SHAs and byte sizes are now in the manifest, and no Hexis SQL migration is active.
+
 - Added an Ed25519-authenticated review-decision verifier and made the promotion-request CLI require a trusted signed decision artifact bound to the exact review packet and decision; unkeyed inbox digests alone no longer satisfy the review gate.
 - Added `create-skill-review-decision-signing-request.mjs` to emit the canonical unsigned payload from the durable review record for an external signer; added regression coverage so NK1 never handles the private review key.
 
