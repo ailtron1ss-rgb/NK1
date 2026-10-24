@@ -185,6 +185,14 @@ export class RealityEvidenceLedger {
     return structuredClone(row);
   }
 
+  /** Exact active event lookup used to keep replayed confidence monotonic. */
+  findByEventId(eventId:string):RealityEvidenceRecord|undefined {
+    if(typeof eventId!=='string'||!eventId)return undefined;
+    const row=this.records.find(record=>record.eventId===eventId);
+    if(!row||this.quarantinedEventIds.has(eventId))return undefined;
+    return structuredClone(row);
+  }
+
   recent(limit=64){const bounded=typeof limit==='number'&&Number.isFinite(limit)?Math.max(0,Math.min(256,Math.floor(limit))):64;return structuredClone(this.records.filter(row=>!row.eventId||!this.quarantinedEventIds.has(row.eventId)).slice(0,bounded));}
 
   claimAssessment(claim:string){
