@@ -1,3 +1,11 @@
+## NK1 WorkPass527 — bridge canonical mood and feeling access to embodiment (2026-10-24)
+
+- The organism UI snapshot now exposes a compact projection of the persisted affect engine: mood trajectory, latest feeling-access episode, and interoceptive regulation pressure. It does not serialize the full emotion history or calibration tables.
+- App types and normalization preserve the optional affect projection with bounded values and backward-compatible neutral defaults.
+- AvatarStage now uses canonical mood persistence and recent feeling-access confidence/intensity alongside live body needs to calibrate voice and Live2D. Feeling influence decays with age and is attenuated by interoceptive mismatch, so old reports cannot indefinitely drive expression.
+- Added regression coverage for mood carry-over despite a calm latest label, fresh feeling influence, stale feeling suppression, and bounded output.
+- **Validation boundary:** exact-head app/runtime typechecks and test execution remain unverified. No real browser/Live2D playback or subjective-consciousness claim is made.
+
 ## NK1 WorkPass526 — body-aware voice and Live2D affect coupling (2026-10-24)
 
 - Added one bounded mapping from canonical emotion (label, valence, arousal, dominance) plus available body needs (energy, cognitive load, uncertainty, sleep pressure) to TTS rate/pitch, expression intensity, voice emphasis, head tilt and gaze offsets.
