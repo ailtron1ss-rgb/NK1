@@ -1,3 +1,13 @@
+## NK1 WorkPass498 — finalize shared boundaries and restore semantics (2026-10-24)
+
+- Corrected the restored-external-outcome regression to expect zero grounded outcomes: imported evidence remains preserved for adjudication but cannot increment trusted outcome counters after restore.
+- Made `runTrustedShadowLearningProcess` async so invalid registrar/runtime/run-lane inputs consistently reject its Promise; this preserves the existing `assert.rejects` caller contract without weakening the candidate/shadow-only gate.
+- Aligned `UnifiedCognitiveCycle` across feedback/perception on the strict plain-data ingress boundary. Inherited prototypes/getters/cyclic or non-plain input are rejected before state mutation; tests now require that exact rejection.
+- Repaired event identity computation order in `CausalExperienceStream` so imported event identity is created only after source trace normalization/validation. Runtime and imported projections retain separate identity domains.
+- CI has passed the 287/288 cognitive contract suite and the key 99/102/105/291/292/293/294/296 slices on at least one recent perception head; WorkPass110 and WorkPass108 failures were traced to the above follow-up contracts and are now rerunning on newer commits. This is not a claim that every workflow passes.
+
+---
+
 ## NK1 WorkPass497 — share event identity with the P23 causal learning stream (2026-10-24)
 
 - Added optional `evidenceEventId` to causal experience records and derived it with the shared `createRealityEvidenceEventId` contract: grounded action outcomes use the `learning` role; caller-imported events use the distinct `learning-external` role.
