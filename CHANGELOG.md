@@ -4,7 +4,7 @@
 - `ActionGateway.isDeclaredObservationSource()` confirms an exact source ID/class/channel/independence-key match against a registered `ToolDefinition.observationSource`. `EvidenceResearchSubsystemRuntime` accepts the source-registration policy as constructor configuration.
 - `OrganismCore` connects strict registration to the trusted ActionGateway catalogue, exposes `registerExternalObserverSourceForTool()` for declared tools, and registers a tool source automatically only in the verified external-postcondition integration path. Restored observer source records must still match a currently declared source.
 - Updated source-identity and observer-to-ledger tests to use declared source policies. Expanded `.github/workflows/reality-learning-regression.yml` to run `big-pass-64-external-observer.mjs` so the actual Core → ActionGateway → observer path is covered in CI.
-- **Validation boundary:** code and tests are committed on `feature/feedback`. This entry does not claim success until the latest hosted CI run for the final source/test commit completes.
+- **Validation:** hosted `Reality-to-learning regression` passed for source/test commit `a13f75fa7e2e7b4616f9eefea566a2cabb20c1eb` (run [#39](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40103996466)). The run executed WorkPass521, WorkPass529, WorkPass548 and the Core-level BIG PASS 64 observer test. Subsequent change is changelog-only.
 
 ## NK1 WorkPass555 — sanitize restored observer trust state (2026-10-24)
 
