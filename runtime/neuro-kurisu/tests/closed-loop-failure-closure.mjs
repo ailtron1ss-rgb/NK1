@@ -26,6 +26,13 @@ contradictoryRuntimeRestore.restore({
 });
 assert.equal(contradictoryRuntimeRestore.diagnostics().lastStatus, 'FAIL', 'restored summary must not promote a retained failure record');
 assert.equal(contradictoryRuntimeRestore.snapshot().lastBehaviorHash, failure.behaviorHash);
+const contradictoryCheckRestore = new RuntimeClosureLedger();
+contradictoryCheckRestore.restore({
+  version: 1, checks: 1, passes: 1, degraded: 0, failures: 0, lastTick: 8,
+  lastStatus: 'PASS', lastBehaviorHash: 'forged-success-hash', lastDurableHash: '',
+  records: [{ at: Date.now(), tick: 8, phase: 'step', status: 'PASS', behaviorHash: 'contradictory-check', checks: [{ name: 'unified-cognitive-cycle-complete', ok: false, expected: true, value: false }] }],
+});
+assert.equal(contradictoryCheckRestore.diagnostics().lastStatus, 'FAIL', 'a restored PASS record with a failed check must be downgraded');
 
 // A normal step can itself fail its closure checks; durability must not turn it green.
 const failedStepLedger = new RuntimeClosureLedger();
@@ -111,6 +118,24 @@ const terminalFailFinal = terminalFailWithAlignedEvidence.finalizeDurable({ tick
 assert.equal(terminalFailFinal?.status, 'FAIL');
 assert.equal(terminalFailFinal?.complete, false);
 assert.equal(terminalFailFinal?.score01, 0);
+const contradictoryCausalRestore = new CausalDomainClosureLedger();
+contradictoryCausalRestore.restore({
+  version: 1, capacity: 8, totalCycles: 1, completeCycles: 1, degradedCycles: 0, failures: 0,
+  meanScore01: 0.9, lastTick: 5, lastStatus: 'PASS', lastBehaviorHash: 'forged-causal-pass', lastDurableHash: '',
+  recent: [{
+    version: 1, tick: 5, at: Date.now(), status: 'PASS', score01: 0.9, complete: false,
+    causalChain: ['memory','world','agency','learning','self'],
+    evidence: { memoryChanged: true, worldChanged: true, agencyChanged: true, learningChanged: true, selfChanged: true,
+      memoryWorldVerified: true, worldAgencyLearningVerified: true, causalLifeGraphChain: true,
+      replaySignaturePresent: true, durableStateAligned: true, cognitiveCycleComplete: true },
+    before, after: { memoryCount: 2, worldTick: 2, identityRevision: 2, agencyDecisions: 2, learningUpdates: 2, selfChangeCount: 2, lifeGraphCompleteChains: 2 },
+    behaviorHash: 'forged-causal-pass',
+  }],
+});
+assert.equal(contradictoryCausalRestore.snapshot().lastStatus, 'FAIL', 'PASS without complete=true must fail closed');
+assert.equal(contradictoryCausalRestore.snapshot().completeCycles, 0);
+assert.equal(contradictoryCausalRestore.snapshot().failures, 1);
+assert.equal(contradictoryCausalRestore.snapshot().meanScore01, 0);
 
 // The causal ledger must use the unified cycle's explicit contract result as a hard gate.
 const incompleteCausal = new CausalDomainClosureLedger();
